@@ -1,0 +1,9 @@
+<div class="form-field">
+    <label for="@For">
+        @Label
+    </label>
+
+    <div class="form-field__control @(HasError ? "form-field__control--error" : null)">
+        @ChildContent
+    </div>
+</div>

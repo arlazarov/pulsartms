@@ -1,0 +1,116 @@
+import { Deck, MapView } from '@deck.gl/core';
+import { ScatterplotLayer, PathLayer, IconLayer, TextLayer } from '@deck.gl/layers';
+import { PathStyleExtension } from '@deck.gl/extensions';
+import { createScene } from '../../Scripts/fleetMap/rendering/scene.js';
+import { currentRouteColor, futureRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.js';
+
+const host = document.getElementById('map');
+const listeners = new Map();
+let overlay;
+window.markerClicks = [];
+class OfflineOverlay {
+  constructor(props) { this.props = props; overlay = this; }
+  setMap() {
+    this.deck = new Deck({ parent: host, views: [new MapView({ id: 'offline' })],
+      initialViewState: { longitude: -80, latitude: 36.5, zoom: 6 }, controller: false,
+      ...this.props, style: { ...this.props.style, pointerEvents: 'auto' },
+      onAfterRender: () => { window.markerFrames = (window.markerFrames || 0) + 1; } });
+  }
+  setProps(props) { this.props = props; this.deck.setProps(props); }
+  pickObject(query) { return this.deck.pickObject(query); }
+  finalize() { this.deck.finalize(); }
+}
+const map = { getDiv: () => host, getZoom: () => 6, setOptions() {},
+  addListener(name, callback) { listeners.set(name, callback); return { remove() { listeners.delete(name); } }; } };
+const routeDashExtensions = [new PathStyleExtension({ dash: true, highPrecisionDash: true })];
+const scene = createScene(map, { GoogleMapsOverlay: OfflineOverlay, ScatterplotLayer, PathLayer, IconLayer, TextLayer, routeDashExtensions });
+const current = new scene.Polyline({ map, strokeWeight: 3, routeRole: 'current', routeColor: currentRouteColor });
+current.setPath([{ lng: -83, lat: 34.5 }, { lng: -81, lat: 36 }, { lng: -78.5, lat: 37.5 }]);
+const future = new scene.Polyline({ map, strokeWeight: 3, routeRole: 'future', routeColor: futureRouteColor(0) });
+future.setPath([{ lng: -78.5, lat: 37.5 }, { lng: -77.5, lat: 38.5 }, { lng: -80, lat: 39 }]);
+const truckSpecs = [
+  { unitNumber: '54777', engineState: 'on', longitude: -81.2, latitude: 35.9, heading: 35, speed: 45 },
+  { unitNumber: '11005', engineState: 'off', longitude: -83.4, latitude: 37.4, heading: 0, speed: 0 },
+  { unitNumber: '11006', engineState: 'idle', longitude: -76.8, latitude: 35.5, heading: 90, speed: 0 },
+  { unitNumber: '11007', engineState: 'on', longitude: -81.7, latitude: 38.2, heading: 180, speed: 0 },
+];
+const trucks = truckSpecs.map(spec => {
+  const truck = scene.createTruckMarker(map, () => window.markerClicks.push(spec.unitNumber));
+  truck.update(spec); truck.render(spec); truck.setSelected(spec.unitNumber === '54777');
+  return truck;
+});
+const stops = [
+  { position: { lng: -83, lat: 34.5 }, number: '1', job: 'Delivery', color: currentRouteColor },
+  { position: { lng: -78.5, lat: 37.5 }, number: '2', job: 'Pickup', color: futureRouteColor(0) },
+  { position: { lng: -80, lat: 39 }, number: '12', job: 'Delivery', color: futureRouteColor(0) },
+].map(spec => new scene.StopMarker({ ...spec, onSelect: () => window.markerClicks.push(`stop-${spec.number}`) }));
+const stationSpecs = [
+  ['green', -84, 35.4, 'rgb(21,128,61)', 5.119],
+  ['amber', -79.6, 34.7, 'rgb(245,158,11)', 5.613],
+  ['red', -76.5, 37.8, 'rgb(185,28,28)', 6.289],
+  ['planned', -79.1, 36.4, 'rgb(21,128,61)', 5.286],
+  ['crowded', -79.11, 36.4, 'rgb(245,158,11)', 5.913],
+  ['unavailable', -83, 38.8, 'rgb(128,144,165)', null],
+];
+const stations = scene.createStationPointLayer(map, id => window.markerClicks.push(id));
+for (const [id, lng, lat, color, price] of stationSpecs)
+  stations.setPoint(id, { lng, lat }, color, id === 'planned', false, id === 'planned' ? '1' : '', false, price);
+stations.setVisible(true);
+const screenPoint = position => {
+  const [x, y] = overlay.deck.getViewports()[0].project(position);
+  const rect = host.getBoundingClientRect();
+  return { x: rect.x + x, y: rect.y + y, mapX: x, mapY: y };
+};
+window.markerReport = () => {
+  const layers = overlay.props.layers;
+  const get = id => layers.find(layer => layer.props.id === id)?.props;
+  const icons = layers.find(layer => layer.props.id === 'truck-icons');
+  const price = get('fuel-price-labels');
+  return { loaded: !!icons?.isLoaded && layers.filter(layer => layer instanceof IconLayer || layer instanceof TextLayer).every(layer => layer.isLoaded),
+    trucks: icons?.props.data.map(truck => ({ unit: truck.unit, ...screenPoint(truck.position),
+      size: icons.props.getSize(truck), svg: decodeURIComponent(icons.props.getIcon(truck).url), angle: icons.props.getAngle(truck) })),
+    stops: layers.filter(layer => /^route-stop-\d+-points$/.test(layer.props.id)).flatMap(layer => layer.props.data.map(stop => ({
+      number: stop.number, size: layer.props.getSize, color: stop.color, ...screenPoint(stop.position) }))),
+    stations: ['fuel-points', 'fuel-recommendation-points'].flatMap(id => get(id)?.data.map(row => ({ id: row.id, color: get(id).getFillColor(row),
+      radius: typeof get(id).getRadius === 'function' ? get(id).getRadius(row) : get(id).getRadius, ...screenPoint(row.position) })) ?? []),
+    prices: price?.data.map(row => ({ id: row.id, text: price.getText(row), fontSize: price.fontSettings.fontSize,
+      color: row.color, ...screenPoint(row.position) })) ?? [],
+    roads: [current, future].map(line => ({role: line.routeRole, opacity: get(line.id)?.opacity,
+      width: get(line.id)?.getWidth, originalGeometry: get(line.id)?.data === line.data})),
+    layerIds: layers.map(layer => layer.props.id) };
+};
+window.selectNextRoute = selected => future.setOptions({routeSelected: selected, zIndex: selected ? 10 : 0});
+let routeProbe, selectionProbe;
+window.showRouteProbe = role => {
+  current.setMap(null); future.setMap(null); stations.setVisible(false);
+  for (const truck of trucks) truck.setVisible(false);
+  for (const stop of stops) stop.map = null;
+  if (!routeProbe) {
+    routeProbe = new scene.Polyline({map, strokeWeight: 2});
+    routeProbe.setPath(Array.from({length: 161}, (_, index) => ({lng: -85 + index / 16, lat: 36.5})));
+  }
+  if (role === 'current-muted') {
+    if (!selectionProbe) {
+      selectionProbe = new scene.Polyline({map, strokeWeight: 2, routeRole: 'future', routeSelected: true});
+      selectionProbe.setPath([{lng: -100, lat: 0}, {lng: -99, lat: 0}]);
+    }
+    selectionProbe.setMap(map);
+  } else selectionProbe?.setMap(null);
+  routeProbe.setOptions({routeRole: role.startsWith('current') ? 'current' : 'future',
+    routeColor: futureRouteColor(0), routeMuted: role === 'future-muted'});
+};
+window.routeProbeReport = () => {
+  const layers = overlay.props.layers.filter(layer => layer.props.id === routeProbe?.id || layer.props.id === `${routeProbe?.id}-outline`);
+  const line = layers.find(layer => layer.props.id === routeProbe?.id)?.props;
+  return line ? {loaded: layers.every(layer => layer.isLoaded), role: line.opacity < 1 ? `${routeProbe.routeRole}-muted` : routeProbe.routeRole,
+    pointCount: line.data[0].length, start: screenPoint(line.data[0][0]), end: screenPoint(line.data[0].at(-1)),
+    color: line.getColor, outlineColor: layers.find(layer => layer.props.id.endsWith('-outline'))?.props.getColor,
+    width: line.getWidth, opacity: line.opacity, extensions: line.extensions?.map(extension => extension.opts),
+    originalGeometry: layers.every(layer => layer.props.data === routeProbe.data)} : null;
+};
+window.disposeMarkerFixture = () => {
+  for (const truck of trucks) truck.dispose();
+  for (const stop of stops) stop.map = null;
+  stations.dispose(); scene.dispose();
+  return listeners.size;
+};

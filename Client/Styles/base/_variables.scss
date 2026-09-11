@@ -1,0 +1,55 @@
+$font-base: 1rem;
+$scale-font: 1.333;
+$control-height: var(--size-control);
+$control-compact-height: var(--size-control-compact);
+$control-touch-height: var(--size-control-touch);
+$control-font-size: var(--type-body);
+$control-padding: var(--space-sm) var(--space-md);
+
+$spaces: (hair: .0625rem, micro: .125rem, xs: .25rem, sm: .5rem,
+  md: .75rem, lg: 1rem, xl: 1.25rem, xxl: 1.5rem, section: 2rem);
+$font-sizes: (caption: .6875rem, small: .75rem, label: .8125rem, body: .875rem,
+  lead: 1rem, subtitle: 1.125rem, heading: 1.25rem, title: 1.5rem, page-title: 2rem, micro: .625rem);
+$sizes: (control: 2.5rem, control-compact: 2rem, control-touch: 2.75rem,
+  checkbox: 1.25rem, content-form: 65rem, content-account: 36rem, content-login: 25rem, content-load-dialog: 56rem, map-details-card: 37.5rem,
+  dispatch-metric: 8rem, dispatch-dialog-metric: 10rem, route-metric: 5.5rem, fuel-dial: 3.5rem, fuel-visit: 14rem,
+  fuel-levels: 17rem, fuel-visit-number: 1.375rem, map-truck-info-min: 8rem,
+  map-truck-illustration: 4.5rem, map-hos-dial: 4rem, hos-dial: 3.625rem, hos-dial-compact: 3.25rem, map-inspector: 84rem,
+  map-driver-duty-min: 4.5rem, map-driver-duty-width: 11rem,
+  map-route-info-min: 7rem, map-route-estimate-min: 5.375rem, map-route-address-min: 5rem,
+  map-route-address-stacked-min: 6.5rem, fuel-editor: 46rem, fuel-editor-list: 15rem,
+  fuel-editor-map-peek: 7rem, fuel-editor-card: 26rem, fuel-editor-timeline: 10rem, fuel-editor-timeline-mobile: 8rem, dispatch-load-card: 22.5rem, dispatch-stop-marker: 1.5rem, dispatch-stop-details: 6rem,
+  fuel-editor-wide: 54rem, fuel-editor-route: 20rem, fuel-editor-height: 40rem, map-arrival-fuel-dial: 2.5rem,
+  map-fuel-card: 32rem, map-fuel-quote: 22.5rem, map-fuel-inspector: 60rem, map-stop-inspector: 46rem, map-fuel-dial: 4rem);
+
+$breakpoints: (
+  sm: 500px,
+  md: 800px,
+  bg: 1000px,
+  map-mobile: 768px,
+  map-truck-wide: 1400px,
+  map-truck-spacious: 1800px,
+  map-fuel-levels: 20rem,
+  map-fuel-inspector-columns: 52rem,
+  map-info-stacked: 20rem,
+  fuel-editor-columns: 1000px,
+  narrow-card: 551px,
+  dispatch-stops: 851px,
+  route-columns: 1001px,
+  map-route-columns: 1101px,
+  paper-columns: 1101px,
+  truck-details: 1200px,
+);
+
+$radii: (
+  sm: .5rem,
+  md: .75rem,
+  pill: 999rem,
+);
+
+$shadows: (
+  marker: 0 1px 4px color-mix(in srgb, var(--ui-shadow) 25%, transparent),
+  card: 0 2px 6px color-mix(in srgb, var(--ui-shadow) 8%, transparent),
+  popup: 0 4px 16px color-mix(in srgb, var(--ui-shadow) 12%, transparent),
+  modal: 0 12px 40px color-mix(in srgb, var(--ui-shadow) 16%, transparent),
+);

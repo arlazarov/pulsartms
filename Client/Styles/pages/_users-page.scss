@@ -1,0 +1,30 @@
+@use '../base' as ui;
+
+.users-page {
+  display: grid;
+  gap: ui.pg(md);
+  min-width: 0;
+
+  &__error {
+    color: ui.theme(danger-text);
+  }
+  &__name { font-weight: 600; }
+  &__email { color: ui.theme(text-secondary); }
+  &__label { display: none; }
+  &__inactive { display: inline-block; margin-left: ui.pg(sm); padding: ui.pg(micro) ui.pg(sm); border-radius: ui.radius(pill); background: ui.theme(surface-muted); color: ui.theme(text-secondary); font-size: ui.fs(caption); font-weight: 500; }
+
+  @media (max-width: ui.breakpoint(md, max)) {
+    .data-table-pagination { display: flex; flex-direction: column; gap: ui.pg(lg); }
+    .data-table-pagination__navigation { order: 1; margin-bottom: 0; }
+    .data-table { display: grid; gap: ui.pg(md); border: 0; background: transparent; overflow: visible; }
+    .data-table__header { display: none; }
+    .data-table__body { display: grid; gap: ui.pg(md); }
+    .data-table__row { grid-template-columns: minmax(0, 1fr); border: 1px solid ui.theme(border-subtle); border-radius: ui.radius(sm); padding: ui.pg(lg); gap: ui.pg(md); background: ui.theme(surface); }
+    .data-table__row > div { padding: 0; overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+    .data-table__row:hover { background: ui.theme(surface); }
+    &__name { font-size: ui.fs(lead); font-weight: 650; }
+    &__label { display: block; margin-bottom: ui.pg(xs); color: ui.theme(text-muted); font-size: ui.fs(caption); font-weight: 500; }
+    &__email { font-size: ui.fs(body); color: ui.theme(text-secondary); }
+    .data-table__row > .data-table__actions { display: grid; grid-template-columns: 1fr 1fr; gap: ui.pg(md); margin-top: ui.pg(xs); padding-top: ui.pg(md); border-top: 1px solid ui.theme(border-subtle); }
+  }
+}

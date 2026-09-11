@@ -1,0 +1,56 @@
+@page "/dispatch/{Id:guid}"
+@attribute [Authorize]
+
+<PageTitle>Dispatch details</PageTitle>
+<section class="dispatch-page dispatch-details">
+    <a href="/dispatch">← Dispatch</a>
+    @if (_loading) { <p role="status">Loading dispatch...</p> }
+    else if (_error is not null)
+    {
+        <p class="dispatch-page__error" role="alert">@_error</p>
+        <button class="btn" @onclick="LoadAsync">Retry</button>
+    }
+    else if (_item is not null)
+    {
+        <div class="dispatch-page__header">
+            <div class="dispatch-details__title"><h1>Load <LoadNumber Value="_item.LoadNumber" /></h1><span class="dispatch-details__status">@_item.Status.Replace('_', ' ')</span></div>
+            @if (_item.TruckId.HasValue)
+            { <a class="btn" href="@($"/fleet/map?truckId={_item.TruckId}")">Show truck on map</a> }
+        </div>
+        <dl class="dispatch-page__summary">
+            <div><dt>Order</dt><dd>@Value(_item.OrderNumber)</dd></div>
+            <div><dt>Customer</dt><dd>@Value(_item.CustomerName)</dd></div>
+            <div><dt>Driver</dt><dd>@Value(_item.DriverName)</dd></div>
+            <div><dt>Truck / Trailer</dt><dd>@Value(_item.TruckNumber) / @Value(_item.TrailerNumber)</dd></div>
+            <div><dt>Ship / Delivery</dt><dd>@Date(_item.ShipDate) / @Date(_item.DeliveryDate)</dd></div>
+            <div><dt>Loaded miles</dt><dd>@(_item.LoadedMiles?.ToString("N1") ?? "—")</dd></div>
+            <div><dt>Charge</dt><dd>@(_item.Price?.ToString("N2") ?? "—") @_item.Currency</dd></div>
+            <div><dt>Last synced</dt><dd>@Timestamp(_item.LastSyncedAt)</dd></div>
+        </dl>
+        <h2>Stops</h2>
+        @if (_item.Stops.Count == 0) { <p>No stops provided.</p> }
+        @foreach (var stop in _item.Stops.OrderBy(x => x.Sequence))
+        {
+            <article class="dispatch-page__stop">
+                <header class="dispatch-details__stop-heading"><span class="dispatch-details__sequence">@stop.Sequence</span><div><span class="dispatch-details__job">@stop.Job</span><h3>@Value(stop.Name)</h3></div></header>
+                <p>@stop.Address @stop.City @stop.Province @stop.ZipCode @stop.Country</p>
+                <dl class="dispatch-page__summary">
+                    <div><dt>Scheduled</dt><dd>@Date(stop.ScheduledDate) @stop.ScheduledTime?.ToString("hh:mm tt", System.Globalization.CultureInfo.InvariantCulture)
+                        @if (stop.IsWindow) { <span> – @Date(stop.ScheduledDate2) @stop.ScheduledTime2?.ToString("hh:mm tt", System.Globalization.CultureInfo.InvariantCulture)</span> }
+                    </dd></div>
+                    <div><dt>Driver / Co-driver</dt><dd>@Value(stop.DriverName) / @Value(stop.CoDriverName)</dd></div>
+                    <div><dt>Truck / Trailer</dt><dd>@Value(stop.TruckNumber) / @Value(stop.TrailerNumber)</dd></div>
+                    <div><dt>Commodity</dt><dd>@Commodity(stop.Commodity)</dd></div>
+                    <div><dt>Weight</dt><dd>@stop.Weight @stop.WeightUnit</dd></div>
+                    <div><dt>Pieces / Pallets</dt><dd>@stop.Pieces / @stop.Pallets</dd></div>
+                    <div><dt>Temperature</dt><dd>@Value(stop.Temperature) @stop.TemperatureUnit</dd></div>
+                    <div><dt>Arrived</dt><dd>@Timestamp(stop.ArrivedAt)</dd></div>
+                    <div><dt>Picked up</dt><dd>@Timestamp(stop.PickedUpAt)</dd></div>
+                    <div><dt>Delivered</dt><dd>@Timestamp(stop.DeliveredAt)</dd></div>
+                    <div><dt>Departed</dt><dd>@Timestamp(stop.DepartedAt)</dd></div>
+                </dl>
+                @if (!string.IsNullOrWhiteSpace(stop.Notes)) { <p class="dispatch-page__notes">@stop.Notes</p> }
+            </article>
+        }
+    }
+</section>

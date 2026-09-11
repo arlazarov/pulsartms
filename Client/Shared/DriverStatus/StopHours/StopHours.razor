@@ -1,0 +1,47 @@
+@using System.Globalization
+
+<div class="stop-hours" aria-label="ETA and cycle forecast">
+    @if (ShowSummary)
+    {
+    <div class="stop-hours__row stop-hours__road">
+        <span class="stop-hours__label">ETA</span>
+        <span class="stop-hours__value"><span class="stop-hours__arrival"><time datetime="@Estimate.Arrival.ToString("O", CultureInfo.InvariantCulture)">@StopHoursDisplay.Timestamp(Estimate.Arrival)</time>
+            @if (Status.Length > 0) { <span class="stop-hours__status stop-hours__status--@StatusTone">@Status</span> }</span>
+            @if (CycleStatus.Length > 0)
+            { <span class="stop-hours__status stop-hours__cycle-status stop-hours__status--@CycleStatusTone">@CycleStatus</span> }
+        </span>
+    </div>
+    }
+    @if (ShowDetails)
+    {
+    <section class="stop-hours__cycle" aria-label="Cycle at this stop">
+        <div class="stop-hours__row stop-hours__arrival-cycle">
+            <h3 class="stop-hours__heading" title="Estimated cycle remaining on arrival">Cycle remaining</h3>
+            <strong class="@CycleClass(Hours.CycleAtArrivalMinutes)">@CycleValue(Hours.CycleAtArrivalMinutes)</strong>
+        </div>
+        @if (ShowRecap)
+        {
+            <div class="stop-hours__row stop-hours__recap">
+                <span class="stop-hours__label">Next recap</span>
+                <span class="stop-hours__value">
+                    @if (NextRecap is { } recap)
+                    {
+                        <time datetime="@recap.ToString("O", CultureInfo.InvariantCulture)">@StopHoursDisplay.RecapDate(recap)</time>
+                        <span>+@StopHoursDisplay.Duration(Recap!.NextRecapMinutes!.Value)</span>
+                    }
+                    else { @RecapStatus }
+                </span>
+            </div>
+        }
+        @foreach (var alternative in Alternatives)
+        {
+            <div class="stop-hours__row stop-hours__alternative" data-kind="@alternative.Kind">
+                <span class="stop-hours__label">With recap</span>
+                <span class="stop-hours__value"><time datetime="@alternative.Arrival.ToString("O", CultureInfo.InvariantCulture)">@StopHoursDisplay.Timestamp(alternative.Arrival)</time>
+                    <span class="stop-hours__status stop-hours__status--@StopHoursDisplay.AlternativeTone(alternative)">@AlternativeStatus(alternative)</span>
+                </span>
+            </div>
+        }
+    </section>
+    }
+</div>

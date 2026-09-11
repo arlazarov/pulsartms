@@ -1,0 +1,23 @@
+@use 'sass:color';
+@use '../base/variables' as vars;
+@use '../base/functions' as fn;
+
+@mixin set-scale($prefix, $base, $scale) {
+  @for $i from 1 through 18 {
+    $step: $i * 50;
+    --#{$prefix}-#{$step}: #{fn.scale-value($base, $scale, $step)};
+  }
+}
+
+@mixin export-colors($colors) {
+  @each $group, $shades in $colors {
+    @each $shade, $value in $shades {
+      --clr-#{$group}-#{$shade}: #{$value};
+      --clr-#{$group}-#{$shade}-rgb: #{color.channel($value, 'red', $space: rgb)}, #{color.channel($value, 'green', $space: rgb)}, #{color.channel($value, 'blue', $space: rgb)};
+    }
+  }
+}
+
+@mixin base-root() {
+  @include set-scale(fs, vars.$font-base, vars.$scale-font);
+}

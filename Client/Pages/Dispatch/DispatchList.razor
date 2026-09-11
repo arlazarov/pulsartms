@@ -1,0 +1,110 @@
+@page "/dispatch"
+@attribute [Authorize]
+
+<PageTitle>Dispatch</PageTitle>
+<section class="dispatch-page dispatch-board">
+    <PageHeader Title="Dispatch" />
+    <div class="dispatch-page__filters dispatch-board__filters filter-toolbar">
+        <SearchInput Id="dispatch-search" Placeholder="Truck, driver, trailer or load" Value="@_search"
+                     Options="SearchOptions" Loading="@(_loadedSearch != _search)" Changed="OnSearchInput" Selected="ChooseSearchAsync" Enter="SubmitSearchAsync" />
+        <div class="dispatch-view filter-toolbar__views" role="group" aria-label="Dispatch view">
+            <button type="button" aria-pressed="@(_view == 0 ? "true" : "false")" @onclick="() => SelectViewAsync(0)"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" /><path d="M3 8h14M7 8v9" /></svg>Cards</button>
+            <button type="button" aria-pressed="@(_view == 1 ? "true" : "false")" @onclick="() => SelectViewAsync(1)"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" /><path d="M3 8h14M3 12h14M8 3v14" /></svg>Table</button>
+            <button type="button" aria-pressed="@(_view == 2 ? "true" : "false")" @onclick="() => SelectViewAsync(2)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2h7l4 4v12H5zM12 2v5h4M8 10h5M8 13h5" /></svg>Papers</button>
+        </div>
+        <div class="dispatch-board__scope filter-toolbar__views" role="group" aria-label="Load scope">
+            <button id="dispatch-active" type="button" aria-pressed="@(!_showCompleted ? "true" : "false")" @onclick="() => SelectScopeAsync(false)">Active</button>
+            <button id="dispatch-completed" type="button" aria-pressed="@(_showCompleted ? "true" : "false")" @onclick="() => SelectScopeAsync(true)">Completed</button>
+        </div>
+        @if (TruckId.HasValue) { <a class="btn" href="/dispatch">Show all trucks</a> }
+    </div>
+    <div class="dispatch-board__body">
+    @if (_error is not null)
+    {
+        <p class="dispatch-board__message dispatch-page__error" role="alert">@_error <button class="btn" @onclick="() => LoadAsync(_page)">Retry</button></p>
+    }
+    @if (_loading && _data is null) { <p class="dispatch-board__message" role="status">@(_showCompleted ? "Loading completed loads..." : "Loading trucks and dispatches...")</p> }
+    else if (_data is not null)
+    {
+        <div class="dispatch-board__count">@_data.TotalCount @(_showCompleted ? _data.TotalCount == 1 ? "completed load" : "completed loads" : _data.TotalCount == 1 ? "truck" : "trucks")<span>@(_showCompleted ? "Newest load numbers first" : _view == 2 ? "Loads on this page" : "Ordered by truck number")</span></div>
+        @if (_data.Items.Count == 0) { <div class="dispatch-board__empty">@(_showCompleted ? "No completed loads match this search." : "No trucks or upcoming loads match this search.")</div> }
+        @if (_view == 1) { <DispatchTable Trucks="_data.Items" Completed="_showCompleted" LoadPhase="LoadPhase" Refreshing="RefreshingEstimates" /> }
+        else if (_view == 2) { <DispatchPapers Trucks="_data.Items" Completed="_showCompleted" LoadPhase="LoadPhase" Refreshing="RefreshingEstimates" /> }
+        else
+        {
+        @foreach (var truck in _data.Items)
+        {
+            <article class="dispatch-truck" @key="truck.Key" aria-label="@($"Truck {truck.TruckNumber}")">
+                <header class="dispatch-truck__header">
+                    <div class="dispatch-truck__identity">
+                        <svg class="dispatch-truck__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5h12v12H2zM14 9h4l4 4v4h-8z" /><circle cx="6" cy="18" r="2" /><circle cx="18" cy="18" r="2" /></svg>
+                        <h2>@(string.IsNullOrWhiteSpace(truck.TruckNumber) ? "Awaiting assignment" : truck.TruckNumber)</h2>
+                        <strong class="dispatch-truck__header-driver">@(string.IsNullOrWhiteSpace(truck.DriverName) ? "Driver not assigned" : truck.DriverName)</strong>
+                        @if (!string.IsNullOrWhiteSpace(truck.TrailerNumber))
+                        { <span class="dispatch-truck__trailer">Trailer <strong>@truck.TrailerNumber</strong></span> }
+                        @if (!_showCompleted && (!truck.TruckId.HasValue || truck.Dispatches.Count == 0))
+                        { <span class="dispatch-truck__status is-@TruckMotion(truck) @TelemetryTone.Speed(truck.Speed)"><span aria-hidden="true">●</span>@TruckMotionLabel(truck)</span> }
+                    </div>
+                    @if (truck.TruckId.HasValue)
+                    {
+                        <a class="dispatch-truck__map" href="@($"/fleet/map?truckId={truck.TruckId}")"
+                           aria-label="@($"Locate truck {truck.TruckNumber} on map")" title="Locate on map">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z" />
+                                <circle cx="12" cy="9" r="2.5" />
+                            </svg>
+                        </a>
+                    }
+                </header>
+                @if (!_showCompleted)
+                {
+                <div class="dispatch-truck__equipment">
+                    @if (truck.TruckId.HasValue && truck.Dispatches.Count > 0)
+                    { <DispatchPlanning @key="truck.Key" TruckId="truck.TruckId" Load="truck.Dispatches[0]" Compact="true" BoardHeader="true" Hos="truck.Hos" CurrentCycle="truck.CurrentCycle" Refreshing="RefreshingEstimates"
+                        MotionState="@TruckMotion(truck)" MotionLabel="@TruckMotionLabel(truck)" Speed="truck.Speed"
+                        DisplayChanged="RefreshCardSummaries"
+                        ForecastChanged="forecast => OnForecastChanged(truck, truck.Dispatches[0].Id, forecast)" /> }
+                    else if (truck.TruckId.HasValue)
+                    {
+                        <section class="dispatch-planning dispatch-planning--compact dispatch-planning--board" aria-label="Driver status">
+                            <div class="dispatch-planning__driver">
+                                <DriverDutySummary CurrentStatus="@(truck.Hos?.CurrentDutyStatus)" ClockUpdatedAt="truck.Hos?.UpdatedAt" />
+                                <DriverNextRecap Snapshot="truck.CurrentCycle" />
+                            </div>
+                            <DriverHours Clocks="truck.Hos" ShowDutyStatus="false" />
+                        </section>
+                    }
+                </div>
+                }
+                <div class="dispatch-truck__loads" role="region" aria-label="@($"Loads for truck {truck.TruckNumber}")" tabindex="0">
+                    @if (truck.Dispatches.Count == 0)
+                    { <div class="dispatch-truck__available"><span aria-hidden="true">○</span><div><strong>No active dispatch</strong><p>Ready for the next assignment.</p></div></div> }
+                    @for (var index = 0; index < truck.Dispatches.Count; index++)
+                    {
+                        var load = truck.Dispatches[index];
+                        var current = index == 0 && IsCurrent(load);
+                        var order = index + (IsCurrent(truck.Dispatches.FirstOrDefault()) ? 0 : 1);
+                        var summary = CardPlanningSummary(truck, load);
+                        <DispatchLoadCard @key="load.Id" Load="load" Truck="truck" Current="current" Order="order" Refreshing="RefreshingEstimates"
+                            RemainingMiles="summary.RemainingMiles" FuelStopCount="summary.FuelStopCount"
+                            HeaderDriverName="@truck.DriverName" HeaderTrailerNumber="@truck.TrailerNumber" />
+                    }
+                </div>
+            </article>
+        }
+        }
+        <footer class="dispatch-board__footer">
+        @if (_view == 1)
+        { <p class="dispatch-board__rpm-note">Loaded RPM: rate ÷ loaded miles · Total RPM: rate ÷ (loaded + empty miles)</p> }
+        @if (_data.TotalPages > 1 || (_view == 1 && _data.TotalCount > 0))
+        {
+            <nav class="dispatch-page__pagination" aria-label="@(_showCompleted ? "Completed load pages" : "Truck pages")">
+                <button class="btn" disabled="@(!_data.HasPreviousPage)" @onclick="() => LoadAsync(_page - 1)">Previous</button>
+                <span>Page @_data.Page of @_data.TotalPages</span>
+                <button class="btn" disabled="@(!_data.HasNextPage)" @onclick="() => LoadAsync(_page + 1)">Next</button>
+            </nav>
+        }
+        </footer>
+    }
+    </div>
+</section>

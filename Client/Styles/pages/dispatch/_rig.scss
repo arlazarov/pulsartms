@@ -1,0 +1,60 @@
+@use '../../base' as ui;
+@use 'rig-motion';
+
+.dispatch-rig-wrap {
+  position: relative;
+  width: min(280px, 100%);
+  flex: 0 1 280px;
+}
+
+.dispatch-rig-status {
+  position: absolute;
+  top: -22px;
+  left: 38.95%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: ui.pg(sm);
+  padding: ui.pg(xs) ui.pg(sm);
+  border-radius: ui.radius(pill);
+  background: ui.theme(surface-muted);
+  color: ui.theme(text-secondary);
+  font-size: ui.fs(micro);
+  font-weight: 700;
+
+  i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  &--moving { background: ui.theme(success-text, 0.1); color: ui.theme(success-text); }
+  &--idling { background: ui.theme(warning-text, 0.14); color: ui.theme(warning-text); }
+}
+
+.dispatch-rig {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  &__ground { stroke: ui.theme(border-subtle); stroke-width: 2; }
+  &__road-motion { stroke: ui.clr(neutral, 400); stroke-width: 2; stroke-dasharray: 10 30; opacity: 0; }
+  &__cab { fill: ui.clr(primary, 600); }
+  &__window { fill: ui.clr(primary, 600, 0.22); stroke: ui.clr(neutral, 0, 0.8); stroke-width: 1; }
+  &__chassis { fill: ui.theme(text-secondary); }
+  &__light { fill: ui.clr(warning, 500); }
+  &__trailer { fill: ui.theme(canvas); stroke: ui.theme(border); stroke-width: 1.5; }
+  &__trim { fill: none; stroke: ui.theme(border-subtle); }
+  &__wheel { fill: ui.clr(neutral, 800); stroke: ui.theme(surface); stroke-width: 2; }
+  &__hub { fill: ui.clr(neutral, 400); }
+  &__spoke { fill: none; stroke: ui.theme(border-subtle); stroke-width: 1.5; }
+  &__exhaust { color: ui.theme(text-muted); }
+
+
+
+  &__sleep text { fill: ui.clr(primary, 600); font-size: ui.fs(small); font-weight: 500; }
+
+
+  &__power { fill: none; stroke: ui.theme(text-muted); stroke-width: 2; stroke-linecap: round; }
+
+  &__label { fill: ui.theme(text-muted); font-size: 9px; letter-spacing: 2px; }
+  &__trailer-number { fill: ui.theme(text); font-size: ui.fs(heading); font-weight: 700; }
+
+}

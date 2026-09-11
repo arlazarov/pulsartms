@@ -1,0 +1,48 @@
+@use '../../base' as ui;
+
+.fleet-map-toolbar {
+  input[type='date'] {
+    max-width: 100%;
+    @include ui.input-control;
+  }
+
+}
+
+.fleet-map-filters { display: contents; }
+.fleet-map-mobile-filters, .fleet-map-mobile-summary { display: none; }
+
+@media (max-width: ui.breakpoint(map-mobile, max)) {
+  .fleet-map-page {
+    position: relative;
+    gap: ui.pg(sm);
+    > h1 { display: none; }
+  }
+  .fleet-map-toolbar {
+    position: relative;
+    flex-wrap: nowrap;
+    padding: ui.pg(sm);
+    z-index: 20;
+    > .fleet-map-date { flex: 1; min-width: 0; margin: 0; }
+    > .fleet-map-date > [role='status'] { display: none; }
+    .search-input { width: 100%; min-width: 0; }
+  }
+  .fleet-map-mobile-filters { display: inline-flex; flex-shrink: 0; }
+  .fleet-map-filters {
+    display: none;
+    .fleet-map-date { flex-wrap: wrap; max-width: 100%; }
+    &.is-open {
+      display: flex;
+      flex-wrap: wrap;
+      gap: ui.pg(sm);
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      padding: ui.pg(md);
+      background: ui.theme(surface);
+      border: 1px solid ui.theme(border-subtle);
+      border-radius: ui.radius(sm);
+      box-shadow: ui.shadow(popup);
+    }
+  }
+}

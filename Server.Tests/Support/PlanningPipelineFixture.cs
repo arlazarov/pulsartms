@@ -1,0 +1,54 @@
+using Application;
+using Application.Features.Routing.Interfaces;
+using Application.Features.Routing.Models;
+using Application.Interfaces;
+using Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Server.Tests.Support;
+
+internal sealed class PlanningPipelineFixture(
+  SqliteConnection connection, ServiceProvider root, AsyncServiceScope scope,
+  PlanningPipelineFixture.RejectingRouter router) : IAsyncDisposable
+{
+  public RejectingRouter Router => router;
+  public IServiceProvider Services => scope.ServiceProvider;
+
+  public static async Task<PlanningPipelineFixture> CreateAsync()
+  {
+    var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    var services = new ServiceCollection();
+    services.AddLogging();
+    services.AddApplication();
+    services.AddSingleton<ICurrentUser>(new Infrastructure.Identity.CurrentUser(new HttpContextAccessor()));
+    services.AddDbContext<AppDbContext>(options => options.UseSqlite(connection));
+    services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
+    var router = new RejectingRouter();
+    services.AddSingleton<IRoutingProvider>(router);
+    var root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+    var scope = root.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreatedAsync();
+    return new(connection, root, scope, router);
+  }
+
+  public async ValueTask DisposeAsync()
+  {
+    await scope.DisposeAsync();
+    await root.DisposeAsync();
+    await connection.DisposeAsync();
+  }
+
+  internal sealed class RejectingRouter : IRoutingProvider
+  {
+    public bool IsConfigured => true;
+    public int Calls { get; private set; }
+    public Task<TruckRoute> CalculateAsync(IReadOnlyList<RoutePoint> points, TruckRouteProfile profile, CancellationToken ct)
+    { Calls++; throw new InvalidOperationException("No route call expected."); }
+    public Task<RoutePoint> GeocodeAsync(string address, CancellationToken ct)
+    { Calls++; throw new InvalidOperationException("No geocode expected."); }
+  }
+}

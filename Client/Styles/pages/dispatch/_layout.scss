@@ -1,0 +1,60 @@
+@use '../../base' as ui;
+
+.dispatch-page {
+  display: grid;
+  gap: ui.pg(lg);
+  min-width: 0;
+
+  h2 { font-size: ui.fs(subtitle); }
+  h3 { font-size: ui.fs(lead); }
+
+  a:not(.btn) {
+    color: ui.theme(link);
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+    text-underline-offset: 3px;
+  }
+
+  &__header, &__filters, &__pagination {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: ui.pg(md);
+  }
+
+  &__header { justify-content: space-between; }
+  &__filters {
+    align-items: end;
+    label { display: grid; gap: ui.pg(md); }
+    select { @include ui.input-control; }
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    th, td { padding: ui.pg(md); text-align: left; vertical-align: top; }
+    th { background: ui.theme(surface-muted); }
+    tbody tr + tr { border-top: 1px solid ui.theme(border-subtle); }
+    small { display: block; color: ui.theme(text-secondary); }
+  }
+
+  &__summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    gap: ui.pg(md);
+    dt { color: ui.theme(text-secondary); font-size: ui.fs(label); }
+    dd { overflow-wrap: anywhere; }
+  }
+
+  &__stop {
+    display: grid;
+    gap: ui.pg(md);
+    padding: ui.pg(lg);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface);
+  }
+
+  &__notes { white-space: pre-wrap; }
+  &__error { color: ui.theme(danger-text); }
+}

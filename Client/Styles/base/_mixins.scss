@@ -1,0 +1,108 @@
+@use 'sass:map';
+@use 'variables' as vars;
+@use 'functions' as fn;
+
+@mixin mq($key) {
+  @if not map.has-key(vars.$breakpoints, $key) {
+    @error 'Unknown breakpoint: #{$key}';
+  }
+  @media (min-width: map.get(vars.$breakpoints, $key)) {
+    @content;
+  }
+}
+
+@mixin input-control {
+  box-sizing: border-box;
+  min-height: vars.$control-height;
+  min-width: 0;
+  max-width: 100%;
+  padding: vars.$control-padding;
+  font: inherit;
+  font-size: vars.$control-font-size;
+  font-weight: 400;
+  line-height: 1.4;
+  background: fn.theme(surface);
+  color: fn.theme(text);
+  border: 1px solid fn.theme(border);
+  border-radius: fn.radius(sm);
+
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+  &::placeholder { color: fn.theme(text-muted); opacity: 1; }
+  &:where(:hover:not(:disabled):not(:focus)) { border-color: fn.theme(text-muted); }
+  &:focus {
+    border-color: fn.theme(focus);
+    outline: 0;
+    box-shadow: 0 0 0 3px fn.theme(focus, .12);
+  }
+  &:disabled { background: fn.theme(surface-muted); color: fn.theme(text-muted); cursor: not-allowed; }
+  &.invalid, &[aria-invalid='true'] { @include invalid-control; }
+  @media (max-width: fn.breakpoint(md, max)) { min-height: vars.$control-touch-height; font-size: fn.fs(lead); }
+}
+
+@mixin invalid-control {
+  border-color: fn.theme(danger-text);
+  &:focus { box-shadow: 0 0 0 3px fn.theme(danger-text, .12); }
+}
+
+@mixin button-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: fn.pg(sm);
+  min-height: vars.$control-height;
+  padding: vars.$control-padding;
+  border: 1px solid var(--button-border, #{fn.theme(border)});
+  border-radius: fn.radius(sm);
+  background: var(--button-bg, #{fn.theme(surface)});
+  color: var(--button-text, #{fn.theme(text-secondary)});
+  font: inherit;
+  font-size: vars.$control-font-size;
+  line-height: 1.4;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+  &:hover:not(:disabled) {
+    background: var(--button-hover-bg, #{fn.theme(surface-muted)});
+    color: var(--button-hover-text, #{fn.theme(text)});
+    border-color: var(--button-hover-border, #{fn.theme(border)});
+  }
+  &:focus-visible { outline: 3px solid fn.theme(focus); outline-offset: 2px; }
+  &:disabled {
+    background: fn.theme(surface-muted);
+    color: fn.theme(text-muted);
+    border-color: fn.theme(border-subtle);
+    opacity: .5;
+    cursor: not-allowed;
+  }
+  @media (max-width: fn.breakpoint(md, max)) { min-height: vars.$control-touch-height; }
+}
+
+@mixin compact-control {
+  & { min-height: vars.$control-compact-height; padding: fn.pg(xs) fn.pg(md); }
+  @media (max-width: fn.breakpoint(md, max)) { min-height: vars.$control-touch-height; }
+}
+
+@mixin checkbox-control {
+  width: fn.size(checkbox);
+  height: fn.size(checkbox);
+  flex: 0 0 auto;
+  accent-color: fn.theme(link);
+  cursor: pointer;
+  &:disabled { cursor: not-allowed; opacity: .5; }
+}
+
+@mixin icon-control {
+  @include button-control;
+  @include compact-control;
+  & {
+    width: fn.size(control-compact);
+    min-width: fn.size(control-compact);
+    padding: 0;
+    flex-shrink: 0;
+  }
+  @media (max-width: fn.breakpoint(md, max)) {
+    width: fn.size(control-touch);
+    min-width: fn.size(control-touch);
+  }
+}

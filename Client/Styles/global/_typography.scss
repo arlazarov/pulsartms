@@ -1,0 +1,17 @@
+@use '../base/functions' as fn;
+body {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: fn.fs(body);
+  line-height: 1.45;
+}
+h1, h2, h3 { line-height: 1.2; letter-spacing: -.025em; }
+h1 {
+  margin: 0;
+  font-size: fn.fs(page-title);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -.025em;
+}
+@media (max-width: fn.breakpoint(map-mobile, max)) {
+  h1 { font-size: fn.fs(title); }
+}

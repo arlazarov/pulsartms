@@ -1,0 +1,23 @@
+steps:
+  - name: node:22
+    entrypoint: bash
+    args: [verify-release.sh, node]
+  - name: mcr.microsoft.com/dotnet/sdk:10.0
+    entrypoint: bash
+    args: [verify-release.sh, dotnet]
+    env: [AMFTMS_RELEASE_DIR=/workspace/artifacts/release]
+  - name: node:22
+    entrypoint: bash
+    args: [verify-release.sh, artifact]
+    env: [AMFTMS_RELEASE_DIR=/workspace/artifacts/release]
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - Server/API/Dockerfile
+      - -t
+      - us-east4-docker.pkg.dev/amftms/amftms/api:$BUILD_ID
+      - .
+
+images:
+  - us-east4-docker.pkg.dev/amftms/amftms/api:$BUILD_ID

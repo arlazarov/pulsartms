@@ -1,0 +1,59 @@
+@use '../base' as ui;
+
+.data-table-pagination {
+  width: 100%;
+
+  &__navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: ui.pg(md);
+    gap: ui.pg(sm);
+  }
+
+  &__button,
+  &__info {
+    min-height: ui.size(control);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: ui.theme(surface);
+
+    border: 1px solid ui.theme(border);
+  }
+
+  &__button {
+    @include ui.button-control;
+    & { width: ui.size(control); padding: 0; }
+
+    @media (max-width: ui.breakpoint(md, max)) { width: ui.size(control-touch); }
+  }
+
+  &__info {
+    min-width: 80px;
+
+    gap: ui.pg(md);
+
+    padding: 0 ui.pg(md);
+
+    border: 0;
+    background: transparent;
+
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(label);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__current {
+    color: ui.theme(text);
+
+    font-weight: 600;
+  }
+
+  &__separator {
+    color: ui.theme(border);
+  }
+}

@@ -1,0 +1,40 @@
+@use '../base' as ui;
+
+.form-field {
+  display: grid;
+  gap: ui.pg(sm);
+  min-width: 0;
+
+  label {
+    color: ui.theme(text);
+
+    font-size: ui.fs(label);
+    font-weight: 600;
+  }
+
+  &__control {
+    input,
+    textarea,
+    select {
+      width: 100%;
+      @include ui.input-control;
+    }
+    textarea { min-height: 96px; resize: vertical; }
+
+    &--error {
+      input,
+      textarea,
+      select {
+        @include ui.invalid-control;
+      }
+    }
+  }
+}
+
+.form-field__checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: ui.pg(md);
+  min-height: ui.size(control-touch);
+  input { @include ui.checkbox-control; }
+}

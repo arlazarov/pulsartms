@@ -1,0 +1,42 @@
+@implements IAsyncDisposable
+
+<dialog @ref="_dialog" id="@DialogId" class="dispatch-load-dialog" aria-labelledby="@TitleId" @onclose="NotifyClosedAsync">
+    <header class="dispatch-paper__identity" tabindex="-1" autofocus>
+        <div class="dispatch-paper__heading">
+            <div class="dispatch-paper__title"><h2 id="@TitleId"><LoadNumber Value="Load.LoadNumber" /></h2>@if (!string.IsNullOrEmpty(DisplayPhase) && DisplayPhase != Row.Status) { <span class="dispatch-paper__phase @(DisplayPhase == "Current" ? "is-current" : DisplayPhase == "Next" ? "is-next" : "")">@DisplayPhase</span> }<span class="dispatch-paper__tab-status @(IsCompleted ? "is-completed" : Row.InTransit ? "is-moving" : "")">@(IsCompleted ? "Completed" : Row.Status)</span></div>
+            <div class="dispatch-paper__equipment">Truck @Row.TruckNumber · Trailer @Row.TrailerNumber · @Row.DriverName</div>
+        </div>
+        <div class="dispatch-paper__customer"><strong>@DispatchBoardRow.Text(Load.CustomerName)</strong>@if (!string.IsNullOrWhiteSpace(Load.OrderNumber)) { <span>Order @Load.OrderNumber</span> }</div>
+        <button class="dispatch-paper__close" type="button" aria-label="Close load details" @onclick="CloseAsync">×</button>
+    </header>
+    <div class="dispatch-load-dialog__content">
+        <dl class="dispatch-paper__financials" aria-label="Load mileage and rate">
+            <div class="dispatch-paper__mileage"><dt>Loaded miles</dt><dd>@DispatchFinancialDisplay.Miles(Load.LoadedMiles)<small>Total @DispatchFinancialDisplay.Miles(Load.TotalMiles) · <span class="dispatch-paper__empty-miles" title="@EmptyMilesHint">Empty @DispatchFinancialDisplay.Miles(Load.EmptyMiles)</span></small></dd></div>
+            <div><dt>Rate</dt><dd>@DispatchFinancialDisplay.Money(Load.Price, Load.Currency)</dd></div>
+            <div><dt>Loaded RPM</dt><dd>@DispatchFinancialDisplay.Money(Load.LoadedRatePerMile, Load.Currency)</dd></div>
+            <div><dt>Total RPM</dt><dd>@DispatchFinancialDisplay.Money(Load.TotalRatePerMile, Load.Currency)</dd></div>
+        </dl>
+        <ol class="dispatch-paper__stops">
+        @foreach (var (stop, index) in OrderedStops.Select((stop, index) => (stop, index)))
+        {
+            <li @key="stop.Id" class="@(IsPickup(stop) ? "is-pickup" : "is-delivery")">
+                <DispatchLoadStop DispatchId="Load.Id" Stop="stop" Number="@(index + 1)" FallbackDate="FallbackDate(index)" Eta="Load.Eta" CompletedLoad="IsCompleted" Refreshing="Refreshing" Detailed="true" CollapsibleDetails="true">
+                <AdditionalDetails>
+                <div class="dispatch-paper__stop-metadata">
+                    @if (!string.IsNullOrWhiteSpace(stop.ZipCode) || !string.IsNullOrWhiteSpace(stop.Country)) { <span>@string.Join(" · ", new[] { stop.ZipCode, stop.Country }.Where(value => !string.IsNullOrWhiteSpace(value)))</span> }
+                    @if (!string.IsNullOrWhiteSpace(stop.Commodity)) { <span>Commodity: @stop.Commodity</span> }
+                    @if (stop.Weight.HasValue) { <span>@stop.Weight?.ToString("N0") @stop.WeightUnit</span> }
+                    @if (stop.Pieces.HasValue || stop.Pallets.HasValue) { <span>Pieces: @(stop.Pieces?.ToString("N0") ?? "—") · Pallets: @(stop.Pallets?.ToString("N0") ?? "—")</span> }
+                    @if (!string.IsNullOrWhiteSpace(stop.Temperature)) { <span>Temperature: @stop.Temperature @stop.TemperatureUnit</span> }
+                    @if (!string.IsNullOrWhiteSpace(stop.Notes)) { <p class="dispatch-paper__notes">@stop.Notes</p> }
+                </div>
+                </AdditionalDetails>
+                </DispatchLoadStop>
+            </li>
+        }
+        </ol>
+        @if (OrderedStops.Count == 0) { <p>Stop details pending</p> }
+        @if (!IsCompleted) { <DispatchCycleForecast Load="Load" Refreshing="Refreshing" Detailed="true" /> }
+        <footer class="dispatch-paper__footer"><a href="@($"/dispatch/{Load.Id}")">Open full load ↗</a>@if ((Load.TruckId ?? Truck?.TruckId).HasValue) { <a href="@Row.MapUrl">Map ↗</a> }</footer>
+    </div>
+</dialog>

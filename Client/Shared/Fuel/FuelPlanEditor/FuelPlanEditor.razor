@@ -1,0 +1,122 @@
+<section @ref="_surface" class="fuel-plan-editor is-@_mobileView.ToString().ToLowerInvariant()" role="region" aria-label="Edit fuel plan" tabindex="-1" @onkeydown="OnKeyDown" aria-busy="@(Busy ? "true" : "false")">
+    <header class="fuel-plan-editor__header">
+        <div><strong>Fuel plan</strong><span>Truck @TruckNumber</span><small class="fuel-plan-editor__draft">Draft</small></div>
+        <button type="button" class="btn btn--small" aria-label="Close fuel plan editor" disabled="@_saving" @onclick="CloseAsync">×</button>
+    </header>
+    <div class="fuel-plan-editor__views" role="group" aria-label="Fuel editor view">
+        <button type="button" class="btn @(_mobileView == MobileView.Route ? "btn--primary" : "btn--text")" aria-pressed="@(_mobileView == MobileView.Route ? "true" : "false")" @onclick="() => _mobileView = MobileView.Route">Route</button>
+        <button type="button" class="btn @(_mobileView == MobileView.Fuel ? "btn--primary" : "btn--text")" aria-pressed="@(_mobileView == MobileView.Fuel ? "true" : "false")" @onclick="() => _mobileView = MobileView.Fuel">Fuel details</button>
+        <button type="button" class="btn @(_mobileView == MobileView.Map ? "btn--primary" : "btn--text")" aria-pressed="@(_mobileView == MobileView.Map ? "true" : "false")" @onclick="() => _mobileView = MobileView.Map">Map</button>
+    </div>
+    <div class="fuel-plan-editor__timeline">
+            <nav @ref="_stopList" class="fuel-plan-editor__stops" aria-label="Route and fuel stops" data-reorder-surface data-reorder-axis="vertical">
+                <div class="fuel-plan-editor__timeline-heading"><strong>Route timeline</strong><small>Drag to reorder</small></div>
+                <div class="fuel-plan-editor__origin"><ActionIcon Kind="truck" /> Current location</div>
+                @foreach (var entry in Timeline())
+                {
+                    @if (entry.Fuel is { } row)
+                    {
+                        var stopIndex = _stops.IndexOf(row);
+                        <div @key="row.Key" class="fuel-plan-editor__stop @(stopIndex == _selected ? "is-selected" : "")" data-reorder-key="@entry.Key">
+                            <button type="button" class="fuel-plan-editor__grip" data-reorder-handle disabled="@Busy"
+                                aria-label="@($"Move {row.Name}")" aria-describedby="fuel-reorder-help"
+                                @onkeydown="args => MoveWithKeyboardAsync(row.Key, args)">
+                                <svg viewBox="0 0 16 20" aria-hidden="true"><circle cx="5" cy="5" r="1.5" /><circle cx="11" cy="5" r="1.5" /><circle cx="5" cy="10" r="1.5" /><circle cx="11" cy="10" r="1.5" /><circle cx="5" cy="15" r="1.5" /><circle cx="11" cy="15" r="1.5" /></svg>
+                            </button>
+                            <button type="button" class="fuel-plan-editor__stop-select" aria-pressed="@(stopIndex == _selected ? "true" : "false")" disabled="@Busy" @onclick="() => SelectRowAsync(stopIndex)">
+                                <span class="fuel-plan-editor__stop-heading"><span class="fleet-fuel-visit__number">@(stopIndex + 1)</span><ActionIcon Kind="fuel" /><strong>@row.Name</strong></span>
+                                <span class="fuel-plan-editor__stop-meta"><small>@(row.Edit.FillToTarget ? "Full tank" : $"{Quantity(row.Edit.BuyGallons)} US gal")</small>
+                                <small class="fuel-plan-editor__stop-cost">@(CostFor(row) is { } cost ? $"≈ {Money(cost)} USD" : "Cost —")</small></span>
+                            </button>
+                        </div>
+                    }
+                    else if (entry.Stop is { } stop)
+                    {
+                        <div @key="entry.Key" class="fuel-plan-editor__anchor @(IsPickup(stop) ? "is-pickup" : "is-delivery")" data-reorder-key="@entry.Key" data-reorder-after="@(entry.Last ? "false" : "true")">
+                            <span class="fuel-plan-editor__anchor-symbol" aria-hidden="true">@stop.Sequence</span>
+                            <div><small>@StopJob(stop)</small><strong>@stop.Name</strong><span>@stop.DisplayAddress</span></div>
+                        </div>
+                    }
+                }
+                <p id="fuel-reorder-help" class="fuel-plan-editor__hint">Use the grip to drag, or focus it and press ↑ / ↓. Select a station on the map to add it here.</p>
+                <span class="fuel-plan-editor__announcement" role="status" aria-live="polite" aria-atomic="true">@_orderAnnouncement</span>
+            </nav>
+    </div>
+    <div class="fuel-plan-editor__content">
+        @if (_errors.Count > 0)
+        {
+            <div class="fuel-plan-editor__errors" role="alert">@foreach (var error in _errors) { <p>@RouteMessageDisplay.Concise(error)</p> }</div>
+        }
+            <div class="fuel-plan-editor__selection">
+                @if (_loading)
+                {
+                    <p class="fuel-plan-editor__empty" role="status">Loading…</p>
+                }
+                else if (_preview is null)
+                {
+                    <button type="button" class="btn" @onclick="LoadAsync">Retry</button>
+                }
+                else if (Selected is { } selected)
+                {
+                    <div class="fuel-plan-editor__station-summary">
+                    <div class="fuel-plan-editor__station-identity">
+                    <div class="fuel-plan-editor__station-heading"><div><small>Fuel stop @(_selected + 1)</small><strong>@selected.Name</strong></div>
+                        <button type="button" class="btn btn--text" disabled="@Busy" @onclick="RemoveAsync" aria-label="Remove selected fuel stop">Remove</button>
+                    </div>
+                    @if (SelectedDetails is { } details)
+                    {
+                        <p class="fuel-plan-editor__address">@details.Address</p>
+                    }
+                    <p class="fuel-plan-editor__position">@PositionFor(selected)</p>
+                    </div>
+                    <div class="fleet-fuel-visit__levels" aria-busy="@(_previewing ? "true" : "false")">
+                        <FuelGauge Label="On arrival" Gallons="SelectedResult?.ArrivalGallons" TankGallons="_preview.TankGallons" />
+                        <div class="fleet-fuel-visit__action">
+                            <span class="fleet-fuel-visit__label">@(selected.Edit.FillToTarget ? "Fill up" : "Buy")</span>
+                            <strong class="fleet-fuel-visit__buy">@Quantity(SelectedResult?.BuyGallons) US gal</strong>
+                            <span class="fleet-fuel-visit__arrow" aria-hidden="true">→</span>
+                        </div>
+                        <FuelGauge Label="After fueling" Gallons="SelectedResult?.DepartureGallons" TankGallons="_preview.TankGallons" />
+                    </div>
+                    </div>
+                    <div class="fuel-plan-editor__quantity">
+                        <div class="fuel-plan-editor__quantity-heading">
+                            <label for="fuel-edit-quantity">Quantity @if (!selected.Edit.FillToTarget) { <strong>@Quantity(selected.Edit.BuyGallons) US gal</strong> }</label>
+                            <label class="fuel-plan-editor__full"><input type="checkbox" checked="@selected.Edit.FillToTarget" disabled="@(Busy || (selected.Edit.FillToTarget && !CanBuyPartial))" @onchange="FullTankAsync" /> Full tank</label>
+                        </div>
+                        <input id="fuel-edit-quantity" type="range" min="10" max="@SliderMaximum" step="10" value="@(selected.Edit.FillToTarget ? SliderMaximum : selected.SliderGallons)"
+                            aria-label="Gallons to buy" aria-valuetext="@(selected.Edit.FillToTarget ? "Full tank" : $"{Quantity(selected.SliderGallons)} US gallons")"
+                            disabled="@(Busy || !CanEditQuantity)" title="@(!CanEditQuantity ? "Quantity is unavailable for this route position." : null)" @oninput="QuantityAsync" />
+                        <div class="fuel-plan-editor__range-labels"><span>10 gal</span><span>Full tank</span></div>
+                    </div>
+                    <div class="fuel-plan-editor__price"><span>Your price</span><strong>@SelectedPrice</strong></div>
+                    <div class="fuel-plan-editor__cost"><span>Estimated cost</span><strong>@(CostFor(selected) is { } amount ? $"≈ {Money(amount)} USD" : "—")</strong></div>
+                }
+                else
+                {
+                    <p class="fuel-plan-editor__empty">No fuel stops. Select a station on the map to add one.</p>
+                }
+            </div>
+        @if (_preview is { } preview)
+        {
+            <div class="fuel-plan-editor__totals" aria-label="Fuel plan totals">
+                <span>Planned fuel <strong>@Quantity(_valuesCurrent ? preview.Plan.PurchaseGallons : null) US gal</strong></span>
+                <span>Estimated fuel cost <strong>@Money(_valuesCurrent ? preview.Plan.PurchaseCostUsd : null) USD</strong></span>
+                <span>At finish <strong>@Quantity(_valuesCurrent ? preview.Plan.ArrivalGallons : null) US gal</strong></span>
+            </div>
+        }
+        @if (_confirmReset)
+        {
+            <div class="fuel-plan-editor__confirmation" role="group" aria-label="Replace fuel plan confirmation">
+                <p>Replace these stops and quantities with a new automatic plan? Unsaved changes will be discarded.</p>
+                <button type="button" class="btn" disabled="@Busy" @onclick="() => _confirmReset = false">Keep editing</button>
+                <button type="button" class="btn btn--danger" disabled="@Busy" @onclick="ResetAsync">Replace with automatic plan</button>
+            </div>
+        }
+    </div>
+    <footer class="fuel-plan-editor__footer">
+        <button type="button" class="btn btn--text" disabled="@(Busy || _preview is null)" @onclick="() => { _confirmReset = true; _mobileView = MobileView.Fuel; }">Automatic plan</button>
+        <div><button type="button" class="btn" disabled="@_saving" @onclick="CloseAsync">Cancel</button>
+            <button type="button" class="btn btn--primary fuel-plan-editor__save" disabled="@(!CanSave)" @onclick="SaveAsync">Save plan</button></div>
+    </footer>
+</section>

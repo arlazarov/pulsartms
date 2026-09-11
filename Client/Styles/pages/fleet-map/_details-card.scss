@@ -1,0 +1,40 @@
+@use '../../base' as ui;
+
+.fleet-map-details-card {
+  position: absolute;
+  z-index: 5;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(#{ui.size(map-details-card)}, calc(100% - 24px));
+  box-sizing: border-box;
+  max-height: min(320px, calc(100% - 56px));
+  background: ui.theme(surface);
+  color: ui.theme(text);
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(sm);
+  box-shadow: ui.shadow(popup);
+  overflow: auto;
+  pointer-events: auto;
+
+  &__close {
+    @include ui.icon-control;
+    & {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 1;
+    }
+  }
+  &__body { padding: ui.pg(md); padding-right: calc(#{ui.size(control-touch)} + #{ui.pg(md)}); }
+  @media (max-width: ui.breakpoint(map-mobile, max)) {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    transform: none;
+    border-radius: ui.radius(sm) ui.radius(sm) 0 0;
+    max-height: min(calc(100% - #{ui.size(control-touch)}), calc(100dvh - #{ui.size(control-touch)}));
+  }
+}

@@ -1,0 +1,12 @@
+@using System.Globalization
+<div class="driver-next-recap" aria-label="Next recap">
+    <span>Next recap</span>
+    <strong>
+        @if (NextRecap is { } recap)
+        {
+            <time datetime="@recap.ToString("O", CultureInfo.InvariantCulture)">@Client.Shared.DriverStatus.StopHoursDisplay.RecapDate(recap)</time>
+            <span>+@Client.Shared.DriverStatus.StopHoursDisplay.Duration(Snapshot!.Cycle.NextRecapMinutes!.Value)</span>
+        }
+        else { <span>—</span> }
+    </strong>
+</div>

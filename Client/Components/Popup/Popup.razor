@@ -1,0 +1,29 @@
+@if (IsOpen)
+{
+    <div class="popup">
+        <div
+            class="popup__overlay"
+            @onclick="CloseAsync">
+        </div>
+
+        <div class="popup__content">
+            @if (!string.IsNullOrWhiteSpace(Title))
+            {
+                <div class="popup__title">
+                    @Title
+                </div>
+            }
+
+            <div class="popup__body">
+                @ChildContent
+            </div>
+
+            @if (Footer is not null)
+            {
+                <div class="popup__footer">
+                    @Footer
+                </div>
+            }
+        </div>
+    </div>
+}

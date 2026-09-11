@@ -1,0 +1,21 @@
+<div class="driver-hours-panel">
+<div class="driver-hours" role="group" aria-label="Driver hours remaining"
+     title="@(Clocks is null ? "Samsara HOS unavailable" : "Samsara · updated " + Clocks.UpdatedAt.ToLocalTime().ToString("hh:mm tt", System.Globalization.CultureInfo.InvariantCulture))">
+    @foreach (var clock in new[] { ("Break", Clocks?.BreakMs, 8), ("Drive", Clocks?.DriveMs, 11), ("Shift", Clocks?.ShiftMs, 14), ("Cycle", Clocks?.CycleMs, 70) })
+    {
+        <div class="driver-hours__clock @(clock.Item2 is null ? "is-unavailable" : clock.Item2 <= 3600000 ? "is-low" : "")"
+             aria-label="@($"{clock.Item1}: {Format(clock.Item2)} remaining")">
+            <span class="driver-hours__dial" title="@($"{Format(clock.Item2)} remaining · {clock.Item3}h scale (US)")">
+                <svg viewBox="0 0 64 64" aria-hidden="true">
+                    <circle class="driver-hours__track" cx="32" cy="32" r="28" />
+                    <circle class="driver-hours__arc" cx="32" cy="32" r="28" pathLength="100"
+                            stroke-dasharray="@(Fill(clock.Item2, clock.Item3) + " 100")" />
+                </svg>
+                <strong>@Format(clock.Item2)</strong>
+            </span>
+            <span class="driver-hours__label">@clock.Item1</span>
+        </div>
+    }
+</div>
+@if (ShowDutyStatus) { <DriverDutySummary Status="Status" CurrentStatus="@(Clocks?.CurrentDutyStatus)" ClockUpdatedAt="Clocks?.UpdatedAt" /> }
+</div>

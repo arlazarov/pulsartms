@@ -1,0 +1,74 @@
+@use '../base' as ui;
+
+.data-table {
+  width: 100%;
+
+  background: ui.theme(surface);
+
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(sm);
+
+  overflow-x: auto;
+
+  &__header,
+  &__row {
+    display: grid;
+    grid-template-columns: var(--data-table-columns);
+    align-items: center;
+  }
+
+  &__header {
+    background: ui.theme(surface-soft);
+    color: ui.theme(text-secondary);
+
+    font-size: ui.fs(label);
+    font-weight: 600;
+
+    border-bottom: 1px solid ui.theme(border-subtle);
+  }
+
+  &__row {
+    background: ui.theme(surface);
+    color: ui.theme(text);
+
+    transition: background 120ms ease;
+
+    &:not(:last-child) {
+      border-bottom: 1px solid ui.theme(border-subtle);
+    }
+
+    &:hover {
+      background: ui.theme(surface-soft);
+    }
+    &:focus-within { background: ui.theme(selected); }
+  }
+
+  &__header > div {
+    padding: ui.pg(md) ui.pg(md);
+  }
+
+  &__row > div {
+    padding: ui.pg(md) ui.pg(md);
+  }
+
+  &__header > div,
+  &__row > div {
+    min-width: 0;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__header > div:last-child {
+    text-align: center;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: ui.pg(sm);
+  }
+}

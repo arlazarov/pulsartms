@@ -1,0 +1,31 @@
+<section class="settings-page__card" aria-labelledby="dispatch-number-settings-title">
+    <h2 id="dispatch-number-settings-title">Load numbers</h2>
+    @if (_loading) { <p role="status">Loading load number settings…</p> }
+    @if (_error is not null)
+    {
+        <p class="settings-page__error" role="alert">@_error
+            <button class="btn btn--small" type="button" disabled="@(_loading || _saving)" @onclick="LoadAsync">Reload load number settings</button>
+        </p>
+    }
+    @if (_context is not null)
+    {
+        <EditForm @key="_context" EditContext="_context" OnValidSubmit="SaveAsync" class="dispatch-number-settings__form">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <fieldset disabled="@(_loading || _saving)" class="settings-page__form">
+                <legend class="visually-hidden">Load number display preferences</legend>
+                <div class="settings-page__fields">
+                    <label for="settings-load-prefix">Load number prefix
+                        <InputText id="settings-load-prefix" maxlength="16" @bind-Value="_form.LoadNumberPrefix" />
+                        <small>Leave empty to show only the number. Applies to current and future loads.</small>
+                    </label>
+                </div>
+                <p class="settings-page__hint">Example: <strong>@Example</strong>. Load and order numbers are not changed.</p>
+                <div class="settings-page__actions">
+                    <button class="btn btn--primary" type="submit">@(_saving ? "Saving…" : "Save load numbering")</button>
+                    @if (_saved) { <span class="settings-page__saved" role="status">Load numbering saved.</span> }
+                </div>
+            </fieldset>
+        </EditForm>
+    }
+</section>

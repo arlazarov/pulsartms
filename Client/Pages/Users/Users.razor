@@ -1,0 +1,100 @@
+@page "/users"
+@attribute [Authorize(Roles = "Admin")]
+@using Client.Components.DataTable
+@using Client.Components.Popup
+
+<PageTitle>Users</PageTitle>
+
+<section class="users-page">
+    <PageHeader Title="Users">
+        <NavLink
+            class="btn btn--primary"
+            href="/users/add">
+            Add User
+        </NavLink>
+    </PageHeader>
+
+    @if (!IsLoading && !string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="users-page__error">
+            @Error
+        </div>
+    }
+    else if (UsersData is not null)
+    {
+        <DataTablePagination
+            Columns="minmax(180px, 1fr) minmax(300px, 2fr) 100px 180px"
+            Page="@UsersData.Page"
+            TotalPages="@UsersData.TotalPages"
+            HasPreviousPage="@UsersData.HasPreviousPage"
+            HasNextPage="@UsersData.HasNextPage"
+            OnPageChanged="PageChangedAsync">
+
+            <Header>
+                <div>Name</div>
+                <div>Email</div>
+                <div>Role</div>
+                <div>Actions</div>
+            </Header>
+
+            <Rows>
+                @foreach (var user in UsersData.Items)
+                {
+                    <div class="data-table__row users-page__user" @key="user.Id">
+                        <div class="users-page__name">@user.Name @if (!user.IsActive) { <span class="users-page__inactive">Inactive</span> }</div>
+
+                        <div class="users-page__email"><span class="users-page__label">Email</span>@user.Email</div>
+
+                        <div>@user.Role</div>
+                        <div class="data-table__actions">
+                            <NavLink
+                                class="btn btn--table"
+                                aria-label="@($"Edit {user.Name}")"
+                                href="@($"/users/{user.Id}/edit")">
+                                Edit
+                            </NavLink>
+
+                            <button
+                                class="btn btn--table btn--table-danger"
+                                aria-label="@($"Delete {user.Name}")"
+                                type="button"
+                                @onclick="() => AskDeleteUser(user.Id)">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                }
+            </Rows>
+
+        </DataTablePagination>
+    }
+</section>
+
+<Popup
+    IsOpen="@(DeleteUserId is not null)"
+    Title="Delete User"
+    OnClose="CancelDelete">
+
+    <ChildContent>
+        This action cannot be undone.
+    </ChildContent>
+
+    <Footer>
+      <button
+          class="btn btn--danger"
+          type="button"
+          disabled="@IsDeleting"
+          @onclick="DeleteUserAsync">
+          @(IsDeleting ? "Deleting..." : "Delete")
+      </button>
+
+        <button
+            class="btn"
+            type="button"
+            disabled="@IsDeleting"
+            @onclick="CancelDelete">
+            Cancel
+        </button>
+    </Footer>
+
+</Popup>

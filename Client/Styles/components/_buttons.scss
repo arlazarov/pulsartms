@@ -1,0 +1,44 @@
+@use '../base' as ui;
+
+.btn.map-action-icon {
+  min-width: ui.size(control-touch);
+  min-height: ui.size(control-touch);
+}
+
+.btn {
+  --button-bg: #{ui.theme(surface)};
+  --button-text: #{ui.theme(text-secondary)};
+  --button-border: #{ui.theme(border)};
+  --button-hover-bg: #{ui.theme(surface-muted)};
+  --button-hover-text: #{ui.theme(text)};
+  --button-hover-border: #{ui.theme(border)};
+  @include ui.button-control;
+  &--small, &--table { @include ui.compact-control; }
+  &--table {
+    --button-bg: transparent;
+    --button-border: transparent;
+  }
+  &--primary {
+    font-weight: 600;
+    --button-bg: #{ui.theme(action)}; --button-text: #{ui.theme(on-accent)}; --button-border: #{ui.theme(action)};
+    --button-hover-bg: #{ui.theme(action-hover)}; --button-hover-text: #{ui.theme(on-accent)}; --button-hover-border: #{ui.theme(action-hover)};
+  }
+  &--danger {
+    font-weight: 600;
+    --button-bg: #{ui.theme(danger-action)}; --button-text: #{ui.theme(on-accent)}; --button-border: #{ui.theme(danger-action)};
+    --button-hover-bg: #{ui.theme(danger-action-hover)}; --button-hover-text: #{ui.theme(on-accent)}; --button-hover-border: #{ui.theme(danger-action-hover)};
+  }
+  &--text {
+    --button-bg: transparent; --button-border: transparent;
+    --button-hover-border: transparent;
+  }
+  &--table-danger {
+    --button-text: #{ui.theme(danger-text)}; --button-hover-bg: #{ui.theme(danger-surface)};
+    --button-hover-text: #{ui.theme(danger-text)}; --button-hover-border: #{ui.theme(danger-border)};
+  }
+  &--sidebar {
+    width: 100%; font-weight: 400;
+    --button-bg: transparent; --button-text: #{ui.theme(navigation-link)}; --button-border: transparent;
+    --button-hover-bg: #{ui.theme(navigation-hover)}; --button-hover-text: #{ui.theme(on-accent)}; --button-hover-border: transparent;
+  }
+}

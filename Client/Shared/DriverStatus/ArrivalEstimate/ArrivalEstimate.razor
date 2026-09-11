@@ -1,0 +1,31 @@
+@using Client.Models.DTO.Planning
+@if (DisplayEta?.Stops.Count > 0 || (ShowAppointment && Stop?.ScheduledDate is not null)
+    || (ShowDutyStatus && DisplayEta?.DutyStatus is not null))
+{
+    <div class="arrival-estimate">
+        @if (ShowAppointment && Stop?.ScheduledDate is not null)
+        {
+            <span class="arrival-estimate__appointment">@(Stop.Job.Contains("pick", StringComparison.OrdinalIgnoreCase) ? "Pickup" : Stop.Job.Contains("drop", StringComparison.OrdinalIgnoreCase) || Stop.Job.Contains("deliver", StringComparison.OrdinalIgnoreCase) ? "Delivery" : "Scheduled")
+                <strong>@Appointment</strong>
+            </span>
+        }
+        @if (DisplayEta?.Stops.FirstOrDefault() is { } next)
+        {
+            @if (next.Hours is not null)
+            {
+                <StopHours Estimate="next" Recap="DisplayEta.CycleAtCalculation" ShowRecap="ShowRecap" ShowSummary="ShowSummary" ShowDetails="ShowDetails" />
+            }
+            else
+            {
+            @if (ShowSummary)
+            {
+            <span>ETA <strong>@StopHoursDisplay.Timestamp(next.Arrival)</strong> @if (ShowDetails) { <small>local · @($"UTC{next.Arrival:zzz}")</small> }</span>
+            @if (next.LateMinutes is > 0) { <strong class="arrival-estimate__late">Late by @Duration(next.LateMinutes.Value)</strong> }
+            else if (next.LateMinutes == 0) { <span class="arrival-estimate__ontime">On time</span> }
+            }
+            else if (ShowDetails) { <span class="arrival-estimate__timezone">Arrival time zone <strong>@($"UTC{next.Arrival:zzz}")</strong></span> }
+            }
+        }
+        @if (ShowDutyStatus && DisplayEta?.DutyStatus is { } status) { <DriverDutySummary Status="status" /> }
+    </div>
+}

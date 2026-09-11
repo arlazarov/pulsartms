@@ -1,0 +1,40 @@
+@inherits DataTable
+
+<div class="data-table-pagination">
+    <div class="data-table-pagination__navigation">
+        <button
+            class="data-table-pagination__button"
+            type="button"
+            disabled="@(!HasPreviousPage)"
+            @onclick="PreviousPageAsync">
+            ‹
+        </button>
+
+        <div class="data-table-pagination__info">
+            <span class="data-table-pagination__current">
+                @Page
+            </span>
+
+            <span class="data-table-pagination__separator">
+                /
+            </span>
+
+            <span>
+                @TotalPages
+            </span>
+        </div>
+
+        <button
+            class="data-table-pagination__button"
+            type="button"
+            disabled="@(!HasNextPage)"
+            @onclick="NextPageAsync">
+            ›
+        </button>
+    </div>
+
+    <DataTable
+        Header="@Header"
+        Rows="@Rows"
+        Columns="@Columns" />
+</div>

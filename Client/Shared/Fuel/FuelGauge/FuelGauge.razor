@@ -1,0 +1,12 @@
+@using System.Globalization
+<div class="fleet-fuel-visit__gauge" aria-label="@($"{Label}: {PercentLabel}, {QuantityLabel} US gal")">
+    <span class="fleet-fuel-visit__label">@Label</span>
+    <span class="driver-hours__dial fleet-fuel-visit__dial">
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+            <circle class="driver-hours__track" cx="32" cy="32" r="28" pathLength="100" />
+            <circle class="driver-hours__arc" cx="32" cy="32" r="28" pathLength="100" stroke-dasharray="@($"{Percent ?? 0} 100")" />
+        </svg>
+        <strong class="fleet-fuel-visit__percent">@PercentLabel</strong>
+    </span>
+    <span class="fleet-fuel-visit__quantity">@QuantityLabel US gal</span>
+</div>

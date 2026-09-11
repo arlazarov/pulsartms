@@ -1,0 +1,54 @@
+@page "/login"
+@layout AuthLayout
+@using Client.Components.Form
+
+<PageTitle>Login</PageTitle>
+
+@if (!IsCheckingSession)
+{
+<div class="login-page">
+    <div class="container">
+        <div class="login-page__brand">AMF Carrier</div>
+        <h1>Welcome back</h1>
+        <p class="login-page__intro">Sign in to manage your fleet.</p>
+        <EditForm Model="@Model" OnValidSubmit="LoginAsync">
+
+            <FormField
+                Label="Email"
+                For="email">
+
+                <InputText
+                    id="email"
+                    @bind-Value="Model.Email"
+                    autocomplete="email" />
+            </FormField>
+
+            <FormField
+                Label="Password"
+                For="password">
+
+                <InputText
+                    id="password"
+                    type="password"
+                    @bind-Value="Model.Password"
+                    autocomplete="current-password" />
+            </FormField>
+
+            <button
+                class="btn btn--primary"
+                type="submit"
+                disabled="@IsLoading">
+                @(IsLoading ? "Signing in..." : "Sign in")
+            </button>
+
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <div class="login-page__error">
+                    @Error
+                </div>
+            }
+
+        </EditForm>
+    </div>
+</div>
+}

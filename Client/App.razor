@@ -1,0 +1,37 @@
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            @if (routeData.PageType == typeof(Client.Pages.Auth.Login))
+            {
+                <RouteView RouteData="@routeData" DefaultLayout="@typeof(AuthLayout)" />
+            }
+            else
+            {
+                <AuthorizeView Context="authenticationState">
+                    <Authorized>
+                        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                            <NotAuthorized>
+                                <p role="alert">You do not have permission to access this page.</p>
+                            </NotAuthorized>
+                        </AuthorizeRouteView>
+                    </Authorized>
+                    <NotAuthorized>
+                        <RedirectToLogin />
+                    </NotAuthorized>
+                </AuthorizeView>
+            }
+        </Found>
+        <NotFound>
+            <AuthorizeView>
+                <Authorized>
+                    <LayoutView Layout="@typeof(MainLayout)">
+                        <p>Page not found.</p>
+                    </LayoutView>
+                </Authorized>
+                <NotAuthorized>
+                    <RedirectToLogin />
+                </NotAuthorized>
+            </AuthorizeView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

@@ -1,0 +1,11 @@
+namespace Client.Models.DTO.Planning;
+
+public sealed class RouteStopTracking
+{
+  public List<Guid> PassedStopIds { get; set; } = [];
+  public Dictionary<Guid, DateTime> VisitedStops { get; set; } = [];
+  public Guid? NextStopId { get; set; }
+  public string NextStopLabel { get; set; } = "";
+  public bool AllStopsPassed { get; set; }
+  public DateTime? OffRouteSince { get; set; }
+}

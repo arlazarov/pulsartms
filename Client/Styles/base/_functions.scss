@@ -1,0 +1,81 @@
+@use 'sass:map';
+@use 'sass:math';
+@use 'sass:meta';
+@use 'variables' as vars;
+@use 'colors' as colors;
+@use 'themes' as themes;
+
+@function clr($group, $shade, $alpha: null) {
+  @if $alpha != null and (meta.type-of($alpha) != 'number' or not math.is-unitless($alpha) or $alpha < 0 or $alpha > 1) {
+    @error 'Color alpha must be a number between 0 and 1.';
+  }
+  @if not map.has-key(colors.$colors, $group, $shade) {
+    @error 'Unknown color: #{$group} #{$shade}';
+  }
+  @if $alpha == null or $alpha == 1 {
+    @return var(--clr-#{$group}-#{$shade});
+  }
+  @return rgba(var(--clr-#{$group}-#{$shade}-rgb), #{$alpha});
+}
+
+@function scale-value($base, $scale, $step) {
+  @return math.div($base, $scale) * math.pow($scale, math.div($step, 100) - 1);
+}
+
+@function _scale($prefix, $base, $scale, $step) {
+  @if meta.type-of($step) != 'number' or not math.is-unitless($step) {
+    @error 'Scale step must be a unitless number.';
+  }
+  @if $step >= 50 and $step <= 900 and $step % 50 == 0 {
+    @return var(--#{$prefix}-#{$step});
+  }
+  @return scale-value($base, $scale, $step);
+}
+
+@function fs($step) {
+  @if map.has-key(vars.$font-sizes, $step) { @return var(--type-#{$step}); }
+  @if meta.type-of($step) != 'number' { @error 'Unknown font token: #{$step}'; }
+  @return _scale(fs, vars.$font-base, vars.$scale-font, $step);
+}
+
+@function pg($step) {
+  @if map.has-key(vars.$spaces, $step) { @return var(--space-#{$step}); }
+  @error 'Unknown spacing token: #{$step}. Use a named spacing token.';
+}
+
+@function breakpoint($key, $edge: min) {
+  @if not map.has-key(vars.$breakpoints, $key) { @error 'Unknown breakpoint: #{$key}'; }
+  @if $edge == min { @return map.get(vars.$breakpoints, $key); }
+  @if $edge == max { @return map.get(vars.$breakpoints, $key) - 1px; }
+  @error 'Breakpoint edge must be min or max.';
+}
+
+@function theme($role, $alpha: null) {
+  @if not map.has-key(themes.$roles, $role) { @error 'Unknown theme role: #{$role}'; }
+  @if $alpha != null {
+    @if meta.type-of($alpha) != 'number' or not math.is-unitless($alpha) or $alpha < 0 or $alpha > 1 {
+      @error 'Theme alpha must be a number between 0 and 1.';
+    }
+    @return color-mix(in srgb, var(--ui-#{$role}) #{$alpha * 100%}, transparent);
+  }
+  @return var(--ui-#{$role});
+}
+
+@function shadow($key) {
+  @if not map.has-key(vars.$shadows, $key) {
+    @error 'Unknown shadow: #{$key}';
+  }
+  @return var(--shadow-#{$key});
+}
+
+@function radius($key) {
+  @if not map.has-key(vars.$radii, $key) {
+    @error 'Unknown radius: #{$key}';
+  }
+  @return var(--radius-#{$key});
+}
+
+@function size($key) {
+  @if not map.has-key(vars.$sizes, $key) { @error 'Unknown size token: #{$key}'; }
+  @return var(--size-#{$key});
+}

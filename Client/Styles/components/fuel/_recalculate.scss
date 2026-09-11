@@ -1,0 +1,10 @@
+@use '../../base' as ui;
+
+.fuel-recalculate {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ui.pg(sm);
+  flex-shrink: 0;
+  .btn { white-space: nowrap; }
+}

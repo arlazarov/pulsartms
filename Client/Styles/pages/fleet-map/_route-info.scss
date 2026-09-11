@@ -1,0 +1,87 @@
+@use '../../base' as ui;
+
+.fleet-map-route-info {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: ui.pg(md) ui.pg(lg);
+  padding: ui.pg(md);
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(sm);
+  background: ui.theme(surface);
+  font-size: ui.fs(body);
+  min-height: ui.size(map-route-info-min);
+  align-content: start;
+  > * { flex: 0 1 auto; max-width: 100%; }
+
+  > .arrival-estimate { min-width: 0; max-width: 100%; min-height: ui.size(map-route-estimate-min); align-content: start; align-self: start; }
+  &__metric, > .fleet-map-route-info__load, &__next, &__appointment { display: flex; flex-direction: column; align-items: flex-start; gap: ui.pg(xs); min-width: 0; padding-right: ui.pg(lg); border-right: 1px solid ui.theme(border-subtle); }
+  &__next { min-height: ui.size(map-route-address-min); }
+  &__metric {
+    min-width: ui.size(route-metric);
+    strong { font-size: ui.fs(title); line-height: 1.15; font-variant-numeric: tabular-nums; }
+    small { font-size: ui.fs(body); font-weight: 600; }
+  }
+  &__load { line-height: 1.4; }
+  &__load .fleet-map-route-info__secondary { font-size: ui.fs(caption); overflow-wrap: anywhere; }
+  &__load-reference { display: flex; flex-wrap: wrap; align-items: baseline; gap: ui.pg(xs) ui.pg(sm); }
+  &__load-reference > .fleet-map-route-info__copy-number { font-size: ui.fs(lead); }
+  &__total { margin-top: ui.pg(micro); }
+  &__appointment > strong { font-size: ui.fs(body); font-weight: 600; line-height: 1.4; }
+  &__label { font-size: ui.fs(small); color: ui.theme(text-muted); }
+  &__secondary { font-size: ui.fs(small); color: ui.theme(text-secondary); }
+  &__next strong { overflow-wrap: anywhere; font-size: ui.fs(lead); font-weight: 600; }
+  &__address { overflow-wrap: anywhere; line-height: 1.4; }
+  &__copy-address, &__copy-number {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    &:hover { text-decoration: underline; }
+    &:focus-visible { outline: 2px solid ui.theme(focus); outline-offset: ui.pg(xs); }
+  }
+  &__copy-address { display: flex; flex-direction: column; gap: ui.pg(xs); }
+  > .fleet-map-route-info__next .fleet-map-route-info__copy-address { flex-direction: row; align-items: center; gap: ui.pg(sm); }
+  &__address-icon { display: grid; flex: 0 0 ui.fs(heading); color: ui.theme(text-secondary); }
+  &__address-icon svg { width: ui.fs(heading); height: ui.fs(heading); }
+  &__address-lines { display: grid; gap: ui.pg(xs); min-width: 0; }
+  > .arrival-estimate .stop-hours__road time { font-size: ui.fs(body); font-weight: 600; }
+  &__messages { flex-basis: 100%; display: flex; flex-wrap: wrap; align-content: start; gap: ui.pg(sm); min-width: 0; overflow-wrap: anywhere; }
+  &__messages:not(:has(> *)) { display: none; }
+  &__error { margin: 0; color: ui.theme(warning-text); font-size: ui.fs(small); line-height: 1.4; }
+  &__status { display: flex; flex-wrap: wrap; gap: ui.pg(sm); color: ui.theme(warning-text); font-size: ui.fs(small); }
+
+  @media (max-width: ui.breakpoint(map-route-columns, max)) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    &__metric { grid-row: 1; min-width: 0; }
+    > .fleet-map-route-info__load { grid-column: 1; grid-row: 2; min-height: ui.size(map-route-address-stacked-min); }
+    &__next { grid-column: 2; grid-row: 2; min-height: ui.size(map-route-address-stacked-min); }
+    &__appointment { grid-column: 1; grid-row: 3; }
+    > .arrival-estimate { grid-column: 2; grid-row: 3; }
+    .stop-hours__cycle { font-size: ui.fs(caption); }
+    .stop-hours__cycle .stop-hours__value { white-space: nowrap; }
+    &__metric, > .fleet-map-route-info__load, &__next, &__appointment { padding-right: 0; border-right: 0; }
+    > .fleet-map-route-info__load, &__next, &__appointment, > .arrival-estimate { padding-top: ui.pg(md); border-top: 1px solid ui.theme(border-subtle); }
+  }
+
+  @media (max-width: ui.breakpoint(map-mobile, max)) {
+    > .fleet-map-route-info__load, &__next {
+      min-height: calc(#{ui.size(map-route-address-stacked-min)} + #{ui.pg(xl)});
+    }
+  }
+}
+
+@container map-truck-inspection (width < #{ui.breakpoint(map-info-stacked)}) {
+  .fleet-map-route-info {
+    > .fleet-map-route-info__load, > .fleet-map-route-info__next,
+    > .fleet-map-route-info__appointment, > .arrival-estimate {
+      grid-column: 1 / -1;
+      grid-row: auto;
+    }
+  }
+}

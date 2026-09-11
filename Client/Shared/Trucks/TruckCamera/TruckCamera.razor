@@ -1,0 +1,18 @@
+@implements IAsyncDisposable
+<button type="button" class="btn map-action-icon" title="Camera" aria-label="Camera" disabled="@(TruckId == Guid.Empty)" @onclick="OpenAsync"><ActionIcon Kind="camera" /></button>
+@if (_open)
+{
+    <dialog @ref="_dialog" class="truck-camera" aria-label="Road-facing camera" @onclose="Close" @onkeydown="OnKeyDown">
+        <header><strong>Road camera · @TruckNumber</strong><button type="button" class="btn" aria-label="Close camera" @onclick="Close">×</button></header>
+        @if (_image?.Url is { } url)
+        {
+            <img src="@url" alt="Road-facing camera snapshot" referrerpolicy="no-referrer" @onerror="ImageFailed" />
+            <p>Captured @_image.CapturedAt?.ToLocalTime().ToString("MMM d, hh:mm:ss tt", System.Globalization.CultureInfo.InvariantCulture)</p>
+        }
+        <p role="status">@_message</p>
+        <footer><button type="button" class="btn" disabled="@_refreshing" aria-busy="@(_refreshing ? "true" : "false")" @onclick="RefreshAsync">
+            @if (_refreshing) { <span class="truck-camera__spinner" aria-hidden="true"></span> }
+            Refresh
+        </button></footer>
+    </dialog>
+}

@@ -1,0 +1,69 @@
+<div class="dispatch-rig-wrap">
+    <span class="dispatch-rig-status dispatch-rig-status--@MotionState"><i aria-hidden="true"></i>@MotionLabel</span>
+    <svg class="dispatch-rig is-@MotionState" viewBox="0 0 380 110" role="img"
+         aria-label="@($"Truck {TruckNumber}, trailer {TrailerNumber}, {MotionLabel}")">
+        <line x1="8" y1="99" x2="372" y2="99" class="dispatch-rig__ground" />
+        <line x1="8" y1="99" x2="372" y2="99" class="dispatch-rig__road-motion" aria-hidden="true" />
+        <defs>
+            <radialGradient id="@_smokeGradientId">
+                <stop offset="0%" stop-color="currentColor" stop-opacity=".85" />
+                <stop offset="45%" stop-color="currentColor" stop-opacity=".5" />
+                <stop offset="100%" stop-color="currentColor" stop-opacity="0" />
+            </radialGradient>
+        </defs>
+        <g transform="translate(380 0) scale(-1 1)">
+            <g class="dispatch-rig__vehicle">
+                <g class="dispatch-rig__cab-motion">
+                <path d="M15 78V49L32 24H78Q84 24 84 30V79Z" class="dispatch-rig__cab" />
+                <path d="M22 48L35 30H51V48Z" class="dispatch-rig__window" />
+                <rect x="58" y="31" width="17" height="17" rx="2" class="dispatch-rig__window" />
+                <rect x="8" y="63" width="6" height="9" rx="1" class="dispatch-rig__light" />
+                </g>
+                <rect x="10" y="75" width="112" height="11" rx="3" class="dispatch-rig__chassis" />
+                <g class="dispatch-rig__trailer-motion">
+                    <rect x="93" y="10" width="278" height="67" rx="6" class="dispatch-rig__trailer" />
+                    <path d="M102 17V70M362 17V70M108 70H356" class="dispatch-rig__trim" />
+                </g>
+                <rect x="109" y="78" width="8" height="9" rx="1" class="dispatch-rig__chassis" />
+            </g>
+            @foreach (var x in new[] { 35, 83, 106, 323, 346 })
+            {
+                <g class="dispatch-rig__wheel-set" style="transform-origin: @(x)px 87px">
+                    <circle cx="@x" cy="87" r="11" class="dispatch-rig__wheel" />
+                    <circle cx="@x" cy="87" r="4" class="dispatch-rig__hub" />
+                    <path d="@($"M{x - 8} 87H{x + 8}M{x} 79V95")" class="dispatch-rig__spoke" />
+                </g>
+            }
+            <g class="dispatch-rig__exhaust" transform="translate(0 18)" fill="@($"url(#{_smokeGradientId})")" aria-hidden="true">
+                <g class="dispatch-rig__puff">
+                    <ellipse cx="19" cy="18" rx="6" ry="4" />
+                    <ellipse cx="16" cy="16" rx="4" ry="5" />
+                </g>
+                <g class="dispatch-rig__puff">
+                    <ellipse cx="19" cy="18" rx="5" ry="6" />
+                    <ellipse cx="22" cy="16" rx="5" ry="3" />
+                </g>
+                <g class="dispatch-rig__puff">
+                    <ellipse cx="19" cy="18" rx="6" ry="5" />
+                    <ellipse cx="16" cy="19" rx="4" ry="3" />
+                </g>
+            </g>
+        </g>
+        @if (Sleeping)
+        {
+            <g class="dispatch-rig__sleep" aria-hidden="true">
+                <text x="306" y="22">z</text>
+                <text x="330" y="22">Z</text>
+                <text x="354" y="22">Z</text>
+            </g>
+        }
+        else if (MotionState == "off")
+        {
+            <g class="dispatch-rig__power" transform="translate(335 10)" aria-hidden="true">
+                <path d="M-5-4a7 7 0 1 0 10 0M0-8V0" />
+            </g>
+        }
+        <text x="148" y="34" text-anchor="middle" class="dispatch-rig__label">TRAILER</text>
+        <text x="148" y="57" text-anchor="middle" class="dispatch-rig__trailer-number">@(string.IsNullOrWhiteSpace(TrailerNumber) ? "Not assigned" : TrailerNumber)</text>
+    </svg>
+</div>

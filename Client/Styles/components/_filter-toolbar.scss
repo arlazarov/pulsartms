@@ -1,0 +1,53 @@
+@use '../base' as ui;
+
+.filter-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ui.pg(sm);
+  min-width: 0;
+  padding: ui.pg(sm) ui.pg(md);
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(sm);
+  background: ui.theme(surface);
+
+  &__views {
+    display: inline-flex;
+    flex-wrap: wrap;
+    max-width: 100%;
+    align-items: center;
+    gap: ui.pg(xs);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-soft);
+    svg { width: ui.size(checkbox); height: ui.size(checkbox); flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+    button {
+      --button-bg: transparent;
+      --button-border: transparent;
+      --button-hover-border: transparent;
+      @include ui.button-control;
+      &[aria-pressed='true'] {
+        --button-bg: #{ui.theme(action)};
+        --button-hover-bg: #{ui.theme(action-hover)};
+        --button-text: #{ui.theme(on-accent)};
+        --button-hover-text: #{ui.theme(on-accent)};
+        --button-hover-border: #{ui.theme(action-hover)};
+        background: ui.theme(action);
+        border-color: ui.theme(action);
+        color: ui.theme(on-accent);
+        font-weight: 600;
+      }
+    }
+  }
+
+  &__toggle {
+    --button-bg: transparent;
+    --button-border: transparent;
+    --button-hover-border: transparent;
+    @include ui.button-control;
+    & { justify-content: flex-start; font-weight: 400; white-space: nowrap; }
+    &:has(input:checked) { color: ui.theme(text); }
+    &:has(input:focus-visible) { outline: 3px solid ui.theme(focus); outline-offset: 2px; }
+    input { @include ui.checkbox-control; }
+  }
+}

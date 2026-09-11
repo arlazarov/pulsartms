@@ -1,0 +1,59 @@
+<div class="dispatch-table-wrap" role="region" aria-label="Dispatch load table" tabindex="0">
+<table class="dispatch-table">
+    <caption class="visually-hidden">Dispatches on this page</caption>
+    <colgroup><col class="dispatch-table__column-load" /><col class="dispatch-table__column-truck" /><col class="dispatch-table__column-stop" span="2" /><col class="dispatch-table__column-miles" /><col class="dispatch-table__column-rate" /><col class="dispatch-table__column-rpm" span="2" /></colgroup>
+    <thead><tr><th scope="col">Load / status</th><th scope="col">Truck / driver</th><th scope="col">Pickup</th><th scope="col">Delivery</th><th scope="col">Miles</th><th scope="col" class="dispatch-table__money">Rate</th><th scope="col" class="dispatch-table__money">Loaded RPM</th><th scope="col" class="dispatch-table__money">Total RPM</th></tr></thead>
+    <tbody>
+    @foreach (var row in Rows)
+    {
+        var phase = Phase(row);
+        <tr @key="row.Load.Id" class="dispatch-table__row @(phase == "Current" ? "is-current" : phase == "Next" ? "is-next" : row.Planned ? "is-planned" : "")" @onclick="e => OpenFromRow(row, e)">
+            <td class="dispatch-table__load">
+                <button type="button" class="dispatch-table__open" aria-haspopup="dialog" aria-label="@($"Open load {LoadLabel(row.Load.LoadNumber)}")" @onclick="() => Open(row)" @onclick:stopPropagation="true">
+                    <strong><LoadNumber Value="row.Load.LoadNumber" /></strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+                </button>
+                <div class="dispatch-table__labels">
+                    @if (!string.IsNullOrEmpty(phase) && phase != row.Status) { <span class="dispatch-table__phase @(phase == "Current" ? "is-current" : phase == "Next" ? "is-next" : "")">@phase</span> }
+                    <span class="dispatch-table__status @(row.Completed ? "is-completed" : row.InTransit ? "is-moving" : "")">@row.Status</span>
+                </div>
+                <span class="dispatch-table__customer">@DispatchBoardRow.Text(row.Load.CustomerName)</span>
+                @if (!string.IsNullOrWhiteSpace(row.Load.OrderNumber)) { <small class="dispatch-table__order">Order @row.Load.OrderNumber</small> }
+            </td>
+            <td class="dispatch-table__equipment">
+                <div class="dispatch-table__truck"><strong>Truck @row.TruckNumber</strong>@if ((row.Load.TruckId ?? row.Truck.TruckId).HasValue) { <a class="dispatch-table__map" href="@row.MapUrl" aria-label="@($"View {LoadLabel(row.Load.LoadNumber)} on map")" @onclick:stopPropagation="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10" /></svg></a> }</div>
+                <span>@row.DriverName</span><small class="dispatch-table__trailer">Trailer @row.TrailerNumber</small>
+            </td>
+            @foreach (var pickup in new[] { true, false })
+            {
+                var stops = Stops(row, pickup);
+                <td class="dispatch-table__stop @(pickup ? "is-pickup" : "is-delivery")">
+                    @foreach (var stop in stops)
+                    {
+                        <div @key="stop.Id" class="dispatch-table__stop-entry">
+                            <strong>@DispatchBoardRow.Location(stop)</strong>
+                            <small class="dispatch-table__schedule">@DispatchBoardRow.Schedule(stop, pickup ? row.Load.ShipDate : row.Load.DeliveryDate)</small>
+                            @if (StopCompleted(row, stop)) { <span class="dispatch-table__stop-completed"><span aria-hidden="true">✓</span> Completed</span> }
+                            @if (!string.IsNullOrWhiteSpace(stop.Name)) { <small class="dispatch-table__facility">@stop.Name</small> }
+                            @if (!string.IsNullOrWhiteSpace(stop.Address) && !string.IsNullOrWhiteSpace(stop.City)) { <small class="dispatch-table__street">@stop.Address</small> }
+                        </div>
+                    }
+                    @if (stops.Count == 0) { <div class="dispatch-table__stop-entry"><strong>Pending</strong><small class="dispatch-table__schedule">@DispatchBoardRow.Schedule(null, pickup ? row.Load.ShipDate : row.Load.DeliveryDate)</small></div> }
+                </td>
+            }
+            <td class="dispatch-table__mileage"><div class="dispatch-table__mileage-values"><strong>@DispatchFinancialDisplay.Miles(row.Load.LoadedMiles)</strong><span aria-hidden="true">/</span><strong>@DispatchFinancialDisplay.Miles(row.Load.TotalMiles)</strong></div><small>Loaded / total</small><small>@DispatchFinancialDisplay.Miles(row.Load.EmptyMiles) empty · @row.Load.Stops.Count stops</small></td>
+            <td class="dispatch-table__money"><strong>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency)</strong></td>
+            <td class="dispatch-table__money"><strong>@DispatchFinancialDisplay.Money(row.Load.LoadedRatePerMile, row.Load.Currency)</strong></td>
+            <td class="dispatch-table__money"><strong>@DispatchFinancialDisplay.Money(row.Load.TotalRatePerMile, row.Load.Currency)</strong></td>
+        </tr>
+    }
+    @foreach (var truck in Trucks.Where(x => x.Dispatches.Count == 0))
+    {
+        <tr @key="truck.Key"><td>No active load</td><td class="dispatch-table__equipment"><strong>Truck @DispatchBoardRow.Text(truck.TruckNumber)</strong><span>@DispatchBoardRow.Text(truck.DriverName)</span><small>Trailer @DispatchBoardRow.Text(truck.TrailerNumber)</small></td><td colspan="6">Ready for assignment</td></tr>
+    }
+    </tbody>
+</table>
+</div>
+@if (SelectedRow is { } selected)
+{
+    <DispatchLoadDialog @key="selected.Load.Id" Load="selected.Load" Truck="selected.Truck" Phase="@Phase(selected)" Completed="@(Completed || selected.Completed)" Refreshing="Refreshing" Closed="Close" />
+}

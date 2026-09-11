@@ -1,0 +1,65 @@
+using Application.Caching;
+using Application.Features.Routing.Algorithms;
+using Application.Features.Routing.Models;
+using Microsoft.Extensions.Caching.Memory;
+
+namespace Application.Features.Routing.Services.FuelPlanning;
+
+public sealed class FuelPlanMemory : IDisposable
+{
+  private readonly MemoryCache cache = new(new MemoryCacheOptions { SizeLimit = 8 * 1024 * 1024 });
+  private readonly KeyedGates gates = new();
+  private readonly SemaphoreSlim priceGate = new(1);
+  private readonly SemaphoreSlim coldLoads = new(2, 2);
+  private sealed record CachedLeg(DateTime CalculatedAt, int Index, RouteGeometry Geometry);
+
+  public async Task<string?> PricesAsync(string key, Func<Task<string?>> load, CancellationToken ct)
+  {
+    if (cache.TryGetValue<string>(key, out var found)) return found;
+    await priceGate.WaitAsync(ct);
+    try
+    {
+      if (cache.TryGetValue<string>(key, out found)) return found;
+      found = await load();
+      if (found is not null) cache.Set(key, found, new MemoryCacheEntryOptions
+      { Size = 512, AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30) });
+      return found;
+    }
+    finally { priceGate.Release(); }
+  }
+
+  public async Task<RouteGeometry?> LegAsync(TruckFuelPlanSnapshot snapshot, int index,
+    Func<Task<TruckFuelPlanSnapshot?>> load, CancellationToken ct)
+  {
+    var key = snapshot.TruckId;
+    if (cache.TryGetValue<CachedLeg>(key, out var found)
+      && found!.CalculatedAt == snapshot.CalculatedAt && found.Index == index) return found.Geometry;
+    var gate = gates.For(snapshot.TruckId);
+    await gate.WaitAsync(ct);
+    try
+    {
+      if (cache.TryGetValue<CachedLeg>(key, out found)
+        && found!.CalculatedAt == snapshot.CalculatedAt && found.Index == index) return found.Geometry;
+      await coldLoads.WaitAsync(ct);
+      try
+      {
+        var full = await load();
+        if (full?.CalculatedAt != snapshot.CalculatedAt
+          || (full.Plan.EstimatedStationAccess ? full.BaselineRoute : full.CheckedRoute) is not { } route
+          || index < 0 || index >= route.Legs.Count) return null;
+        var leg = route.Legs[index];
+        var size = Math.Max(1024L, leg.Points.Count * 64L);
+        if (size > 8 * 1024 * 1024) return null;
+        var geometry = new RouteGeometry(new() { Legs = [leg] });
+        if (found is null || found.CalculatedAt <= snapshot.CalculatedAt)
+          cache.Set(key, new CachedLeg(snapshot.CalculatedAt, index, geometry), new MemoryCacheEntryOptions
+          { Size = size, AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30) });
+        return geometry;
+      }
+      finally { coldLoads.Release(); }
+    }
+    finally { gate.Release(); }
+  }
+
+  public void Dispose() { cache.Dispose(); gates.Dispose(); priceGate.Dispose(); coldLoads.Dispose(); }
+}

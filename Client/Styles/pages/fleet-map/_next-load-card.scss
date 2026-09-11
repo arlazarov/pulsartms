@@ -1,0 +1,21 @@
+@use '../../base' as ui;
+
+.fleet-map-next-load-card {
+  font-size: ui.fs(label);
+  overflow-wrap: anywhere;
+
+  &__header {
+    display: grid;
+    font-size: ui.fs(label);
+  }
+
+  &__metrics {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: ui.pg(sm);
+    margin: 0;
+    > div { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; }
+    dt { color: ui.theme(text-muted); font-size: ui.fs(small); }
+    dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+  }
+}

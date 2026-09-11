@@ -1,0 +1,36 @@
+@use 'sass:map';
+@use 'colors';
+
+// Primitive colors remain stable; semantic roles change with the theme.
+$roles: (
+  link: colors.value(primary, 700), success-text: colors.value('green', 700), warning-text: colors.value(amber, 700), danger-text: colors.value(danger, 700),
+  success-surface: colors.value('green', 50), warning-surface: colors.value(amber, 50),
+  telemetry-warning-icon: colors.value(warning, 500),
+  telemetry-critical-icon: colors.value(amber, 700),
+  action: colors.value(primary, 600), action-hover: colors.value(primary, 700), danger-action: colors.value(danger, 600), danger-action-hover: colors.value(danger, 700),
+  navigation: colors.value(blue-gray, 950), navigation-text: colors.value(blue-gray, 100), navigation-muted: colors.value(blue-gray, 300),
+  navigation-link: colors.value(blue-gray, 200), navigation-hover: colors.value(blue-gray, 900), navigation-active: colors.value(brand, 600),
+  navigation-indicator: colors.value(brand, 300), navigation-border: colors.value(blue-gray, 800), navigation-control: colors.value(blue-gray, 600),
+  brand: colors.value(brand, 500), focus: colors.value(brand, 700), glow: colors.value(blue-gray, 50),
+  pickup: colors.value('brown', 700), delivery: colors.value('teal', 700), transit: colors.value(brand, 600),
+  route-next: colors.value('violet', 700), route-next-surface: colors.value('violet', 50),
+  map-price-low: colors.value(success, 700), map-price-middle: colors.value(warning, 500),
+  map-price-high: colors.value(danger, 700), map-price-unavailable: colors.value(neutral, 500),
+  map-route-current: colors.value(brand, 650), map-route-future: colors.value('violet', 700),
+  canvas: colors.value(neutral, 50), surface: colors.value(neutral, 0), surface-soft: colors.value(neutral, 50), surface-muted: colors.value(neutral, 100),
+  text: colors.value(neutral, 900), text-secondary: colors.value(neutral, 700), text-muted: colors.value(blue-gray, 500),
+  border: colors.value(neutral, 300), border-subtle: colors.value(neutral, 200), accent: colors.value(primary, 600),
+  on-accent: colors.value(neutral, 0), selected: colors.value(primary, 50), selection-border: colors.value(primary, 200), danger-surface: colors.value(rose, 50), danger-border: colors.value(rose, 200),
+  shadow: colors.value(neutral, 1000), overlay: colors.value(neutral, 1000)
+);
+$dark-roles: map.merge($roles, (
+  link: colors.value(primary, 300), success-text: colors.value('green', 200), warning-text: colors.value(amber, 300), danger-text: colors.value(rose, 300),
+  telemetry-critical-icon: colors.value(amber, 300),
+  success-surface: colors.value('green', 950), warning-surface: colors.value(amber, 950),
+  pickup: colors.value('brown', 300), delivery: colors.value('teal', 300), transit: colors.value(primary, 300), focus: colors.value(primary, 300), glow: colors.value(primary, 900),
+  route-next: colors.value('violet', 300), route-next-surface: colors.value('violet', 950),
+  canvas: colors.value(blue-gray, 1000), surface: colors.value(neutral, 900), surface-soft: colors.value(blue-gray, 950), surface-muted: colors.value(neutral, 800),
+  text: colors.value(neutral, 100), text-secondary: colors.value(neutral, 300), text-muted: colors.value(blue-gray, 400),
+  border: colors.value(neutral, 700), border-subtle: colors.value(blue-gray, 850), accent: colors.value(primary, 300),
+  on-accent: colors.value(neutral, 0), selected: colors.value(primary, 800), selection-border: colors.value(primary, 600), danger-surface: colors.value(rose, 950), danger-border: colors.value(rose, 700)
+));

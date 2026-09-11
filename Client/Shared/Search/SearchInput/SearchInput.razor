@@ -1,0 +1,25 @@
+<div class="search-input">
+    <label for="@Id" class="visually-hidden">@Placeholder</label>
+    <svg class="search-input__icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" /><path d="m13 13 4 4" /></svg>
+    <input id="@Id" type="search" placeholder="@Placeholder" autocomplete="off" value="@Value"
+           role="combobox" aria-autocomplete="list" aria-controls="@(Id + "-options")"
+           aria-expanded="@(ShowOptions ? "true" : "false")"
+           aria-activedescendant="@(ShowOptions && _active >= 0 && _active < Options.Count ? $"{Id}-option-{_active}" : null)"
+           @oninput="InputAsync" @onfocus="() => _open = true" @onblur="() => _open = false" @onkeydown="KeyAsync" />
+    @if (ShowOptions)
+    {
+        <div id="@(Id + "-options")" class="search-input__options" role="listbox">
+            @for (var i = 0; i < Options.Count; i++)
+            {
+                var index = i;
+                var option = Options[i];
+                <button id="@($"{Id}-option-{index}")" type="button" role="option" tabindex="-1"
+                        aria-selected="@(index == _active ? "true" : "false")"
+                        @onmousedown:preventDefault="true" @onclick="() => ChooseAsync(option.Value)">
+                    <strong>@option.Value</strong><span>@option.Detail</span>
+                </button>
+            }
+            @if (Options.Count == 0) { <span class="search-input__empty" role="status">@(Loading ? "Searching…" : "No matches found")</span> }
+        </div>
+    }
+</div>

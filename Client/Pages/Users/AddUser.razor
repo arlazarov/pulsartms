@@ -1,0 +1,59 @@
+@page "/users/add"
+@attribute [Authorize(Roles = "Admin")]
+@using Client.Components.Form
+@using Client.Pages.Base
+@inherits FormPage
+
+<PageTitle>Add User</PageTitle>
+
+<section class="add-user-page">
+    <PageHeader Title="Add User" />
+
+    <Form
+        Model="@Model"
+        OnSubmit="CreateUserAsync"
+        OnCancel="Cancel"
+        SubmitText="Create User"
+        IsSaving="@IsSaving"
+        Errors="@Errors">
+
+        <FormField
+            Label="Name"
+            For="name"
+            HasError="@HasError("Name")">
+
+            <InputText
+                id="name"
+                @bind-Value="Model.Name" />
+        </FormField>
+
+        <FormField
+            Label="Email"
+            For="email"
+            HasError="@HasError("Email")">
+
+            <InputText
+                id="email"
+                type="email"
+                @bind-Value="Model.Email" />
+        </FormField>
+
+        <FormField
+            Label="Password"
+            For="password"
+            HasError="@HasError("Password")">
+
+            <InputText
+                id="password"
+                type="password"
+                @bind-Value="Model.Password" />
+        </FormField>
+
+        <FormField Label="Role" For="role" HasError="@HasError("Role")">
+            <InputSelect id="role" @bind-Value="Model.Role">
+                <option value="Dispatch">Dispatch</option>
+                <option value="Admin">Admin</option>
+            </InputSelect>
+        </FormField>
+    </Form>
+</section>

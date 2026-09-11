@@ -1,0 +1,11 @@
+@if (Detailed && HasLegacyCycle)
+{
+<div class="dispatch-load__cycle" aria-label="Estimated cycle after this load">
+    <dl>
+        <div>
+            <dt>Cycle after delivery</dt>
+            <dd>@CycleRemaining</dd>
+        </div>
+    </dl>
+</div>
+}

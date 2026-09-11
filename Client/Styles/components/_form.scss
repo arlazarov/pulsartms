@@ -1,0 +1,26 @@
+@use '../base' as ui;
+
+.form {
+  &__actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+    margin-top: ui.pg(md);
+    padding-top: ui.pg(lg);
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+
+  &__errors {
+    display: grid;
+    gap: ui.pg(sm);
+
+    margin-top: ui.pg(md);
+    padding: ui.pg(md);
+    background: ui.theme(danger-surface);
+    border: 1px solid ui.theme(danger-border);
+    border-radius: ui.radius(sm);
+    color: ui.theme(danger-text);
+    font-size: ui.fs(label);
+  }
+}

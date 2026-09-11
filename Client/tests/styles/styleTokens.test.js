@@ -1,0 +1,151 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { compileString } from 'sass';
+import { fileURLToPath } from 'node:url';
+
+const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
+
+test('popup secondary cycle warnings span both columns without changing the inline arrival status', () => {
+  const css = compileString("@use 'components/driver-status'; @use 'pages/fleet-map/popup-content';", {loadPaths}).css;
+  assert.match(css, /\.stop-hours__arrival\s*\{\s*display: contents;/);
+  assert.match(css, /\.fleet-route-popup \.stop-hours__road > \.stop-hours__value, \.fleet-route-popup \.fleet-route-popup__value--cycle\s*\{\s*display: contents;/);
+  assert.match(css, /\.fleet-route-popup \.stop-hours__cycle-status, \.fleet-route-popup__cycle-status\s*\{\s*grid-column: 1\s*\/\s*-1;/);
+  assert.match(css, /\.fleet-route-popup \.stop-hours__arrival, \.fleet-route-popup__arrival\s*\{\s*display: flex;/);
+});
+
+test('public style API emits no CSS and exposes only the intended controls and tokens', () => {
+  assert.equal(compileString("@use 'base' as ui;", {loadPaths}).css, '');
+  const css = compileString("@use 'base' as ui; .x { padding: ui.pg(sm); @include ui.button-control; }", {loadPaths}).css;
+  assert.match(css, /var\(--space-sm\)/);
+  assert.throws(() => compileString("@use 'base' as ui; .x { width: ui.scale-value(1, 2, 3); }", {loadPaths}), /Undefined function/);
+  for (const folder of ['pages', 'components', 'layouts']) {
+    const root = new URL(`../../Styles/${folder}/`, import.meta.url);
+    for (const file of readdirSync(root, {recursive: true}).filter(x => x.endsWith('.scss')))
+      assert.doesNotMatch(readFileSync(new URL(file, root), 'utf8'), /@use ['"][^'"]*base\//, `${folder}/${file}: use the public base API`);
+  }
+});
+
+test('theme roles derive all colors from the primitive palette', () => {
+  const source = readFileSync(new URL('../../Styles/base/_themes.scss', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /#[\da-f]{3,8}\b|rgba?\(/i);
+  assert.doesNotThrow(() => compileString(`@use 'sass:map'; @use 'base/colors' as p; @use 'base/themes' as t;
+    @if map.get(t.$roles, action) != p.value(primary, 600) { @error 'Action does not use primary'; }
+    @if map.get(t.$roles, surface) != p.value(neutral, 0) { @error 'Surface does not use neutral'; }`, {loadPaths}));
+});
+
+test('token functions validate names and preserve legacy font scales', () => {
+  const css = compileString(`@use 'base/functions' as fn;
+    .sample { padding: fn.pg(sm); font-size: fn.fs(body); width: fn.size(control);
+      border-radius: fn.radius(sm); box-shadow: fn.shadow(popup); line-height: fn.fs(125); }`, {loadPaths}).css;
+  for (const token of ['--space-sm', '--type-body', '--size-control', '--radius-sm', '--shadow-popup'])
+    assert.ok(css.includes(token));
+  for (const fn of ['pg', 'fs', 'size', 'theme', 'radius', 'shadow'])
+    assert.throws(() => compileString(`@use 'base/functions' as fn; .x { width: fn.${fn}(unknown-token); }`, {loadPaths}), /Unknown/);
+});
+
+test('spacing rejects the obsolete numeric scale and breakpoints retain exact boundaries', () => {
+  assert.throws(() => compileString(`@use 'base/functions' as fn; .x { gap: fn.pg(125); }`, {loadPaths}), /named spacing/);
+  for (const retired of ['tiny', 'snug', 'compact', 'inset', 'comfortable', 'roomy'])
+    assert.throws(() => compileString(`@use 'base/functions' as fn; .x { gap: fn.pg(${retired}); }`, {loadPaths}), /Unknown spacing/);
+  const css = compileString(`@use 'base/functions' as fn;
+    @media (max-width: fn.breakpoint(md, max)) { .x { display:none; } }
+    @media (min-width: fn.breakpoint(map-mobile)) { .y { display:block; } }`, {loadPaths}).css;
+  assert.match(css, /max-width: 799px/);
+  assert.match(css, /min-width: 768px/);
+});
+
+test('both themes export the same role contract', () => {
+  assert.doesNotThrow(() => compileString(`@use 'sass:map'; @use 'base/themes' as c;
+    @each $name, $value in c.$roles {
+      @if not map.has-key(c.$dark-roles, $name) { @error 'Missing dark role'; }
+    }
+    @each $name, $value in c.$dark-roles {
+      @if not map.has-key(c.$roles, $name) { @error 'Unknown dark role'; }
+    }`, {loadPaths}));
+});
+
+test('semantic transparency is validated', () => {
+  const css = compileString(`@use 'base/functions' as fn; .x { color: fn.theme(focus, .12); }`, {loadPaths}).css;
+  assert.match(css, /color-mix\(in srgb, var\(--ui-focus\) 12%, transparent\)/);
+  assert.throws(() => compileString(`@use 'base/functions' as fn; .x { color: fn.theme(focus, 2); }`, {loadPaths}), /alpha/);
+});
+
+test('UI styles use palette functions instead of raw color literals', () => {
+  for (const folder of ['pages', 'components', 'layouts']) {
+    const root = new URL(`../../Styles/${folder}/`, import.meta.url);
+    for (const file of readdirSync(root, {recursive: true}).filter(x => x.endsWith('.scss'))) {
+      const source = readFileSync(new URL(file, root), 'utf8');
+      assert.doesNotMatch(source, /#[0-9a-f]{3,8}\b|rgba?\(/i, `${folder}/${file}`);
+      assert.doesNotMatch(source, /(?:fn|ui)\.pg\(\d|@media\s*\((?:min|max)-width:\s*\d/, `${folder}/${file}`);
+      assert.doesNotMatch(source, /(?:fn|ui)\.fs\(\d|min-height:\s*44px/, `${folder}/${file}`);
+    }
+  }
+});
+
+test('dispatch card typography and spacing use named tokens', () => {
+  const source = readFileSync(new URL('../../Styles/pages/dispatch/_load.scss', import.meta.url), 'utf8');
+  const cards = source.slice(source.indexOf('.dispatch-load {'));
+  assert.ok(cards.length > 100);
+  assert.doesNotMatch(cards, /(?:font-size|border-radius):\s*[\d.]+px/);
+  assert.doesNotMatch(cards, /(?:padding(?:-\w+)?|gap):[^;{}]*\dpx/);
+});
+
+test('all UI partials use semantic colors and named interface dimensions', () => {
+  for (const folder of ['pages', 'components', 'layouts']) {
+    const root = new URL(`../../Styles/${folder}/`, import.meta.url);
+    for (const file of readdirSync(root, {recursive: true}).filter(x => x.endsWith('.scss'))) {
+      let source = readFileSync(new URL(file, root), 'utf8');
+      const illustration = folder === 'pages' && file === 'dispatch/_rig.scss';
+      if (!illustration) assert.doesNotMatch(source, /(?:fn|ui)\.clr\(/, `${folder}/${file}: use semantic roles`);
+      if (illustration) source = source.replace('font-size: 9px;', ''); // SVG view-box label geometry.
+      assert.doesNotMatch(source, /font-size:\s*[\d.]+(?:px|rem)\b/, `${folder}/${file}: use font tokens`);
+      assert.doesNotMatch(source, /(?:^|[;{\s])(?:padding|margin)(?:-[a-z]+)?:[^;{}]*\dpx|(?:row-|column-)?gap:[^;{}]*\dpx/, `${folder}/${file}: use spacing tokens`);
+      assert.doesNotMatch(source, /border-radius:[^;{}]*\dpx/, `${folder}/${file}: use radius tokens`);
+    }
+  }
+});
+
+test('all SCSS modules are reachable from the main stylesheet', async () => {
+  const {compile} = await import('sass');
+  const root = new URL('../../Styles/', import.meta.url);
+  const loaded = new Set(compile(fileURLToPath(new URL('main.scss', root))).loadedUrls.map(x => fileURLToPath(x)));
+  for (const file of readdirSync(root, {recursive: true}).filter(x => x.endsWith('.scss')))
+    assert.ok(loaded.has(fileURLToPath(new URL(file, root))), `Orphan stylesheet: ${file}`);
+});
+
+test('truck motion is owned by its animation module', () => {
+  const visual = readFileSync(new URL('../../Styles/pages/dispatch/_rig.scss', import.meta.url), 'utf8');
+  assert.doesNotMatch(visual, /@keyframes|animation(?:-\w+)?:/);
+  const motion = readFileSync(new URL('../../Styles/pages/dispatch/_rig-motion.scss', import.meta.url), 'utf8');
+  assert.match(motion, /prefers-reduced-motion/);
+  for (const state of ['is-off', 'is-moving', 'is-idling']) assert.ok(motion.includes(state));
+  const definitions = [...motion.matchAll(/@keyframes ([\w-]+)/g)].map(x => x[1]);
+  assert.equal(new Set(definitions).size, definitions.length);
+  for (const [, name] of motion.matchAll(/animation:\s*([\w-]+)/g)) assert.ok(definitions.includes(name), name);
+});
+
+test('theme text roles meet normal-text contrast on their supported surfaces', () => {
+  const css = compileString(`@use 'base/themes' as t;
+    .light { @each $key, $value in t.$roles { --#{$key}: #{$value}; } }
+    .dark { @each $key, $value in t.$dark-roles { --#{$key}: #{$value}; } }`, {loadPaths}).css;
+  const luminance = hex => {
+    const channels = hex.match(/\w\w/g).map(x => parseInt(x, 16) / 255)
+      .map(x => x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4);
+    return channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722;
+  };
+  for (const [, theme, body] of css.matchAll(/\.(light|dark)\s*\{([^}]+)\}/g)) {
+    const roles = Object.fromEntries([...body.matchAll(/--([\w-]+):\s*#([0-9a-f]{6});/gi)].map(x => [x[1], x[2]]));
+    const pairs = ['text', 'text-secondary', 'text-muted', 'link', 'success-text', 'warning-text', 'danger-text', 'pickup', 'delivery', 'transit']
+      .flatMap(text => ['surface', 'surface-soft', 'surface-muted', 'canvas'].map(surface => [text, surface]));
+    pairs.push(...['text', 'text-secondary', 'text-muted', 'link'].map(text => [text, 'selected']));
+    pairs.push(...['action', 'action-hover', 'danger-action', 'danger-action-hover'].map(x => ['on-accent', x]));
+    pairs.push(['success-text', 'success-surface'], ['warning-text', 'warning-surface'], ['text', 'warning-surface'], ['on-accent', 'navigation-active']);
+    for (const [foreground, background] of pairs) {
+      assert.ok(roles[foreground] && roles[background], `${theme}: missing role`);
+      const a = luminance(roles[foreground]), b = luminance(roles[background]);
+      const ratio = (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+      assert.ok(ratio >= 4.5, `${theme}: ${foreground}/${background} contrast ${ratio.toFixed(2)} < 4.5`);
+    }
+  }
+});

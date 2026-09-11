@@ -1,0 +1,7 @@
+
+<div class="fuel-recalculate">
+    <button type="button" class="btn @(IconOnly ? "map-action-icon" : "")" title="@(ManuallyEdited ? "Edit fuel plan" : "Calculate Fuel")" aria-label="@(ManuallyEdited ? "Edit fuel plan" : "Calculate Fuel")" disabled="@(Disabled || _busy || DispatchId == Guid.Empty)" @onclick="RecalculateAsync" aria-busy="@_busy">
+        @if (IconOnly) { <ActionIcon Kind="fuel" /> }
+        else { <text>@(ManuallyEdited ? "Edit fuel plan" : "Calculate Fuel")</text> }
+    </button>
+</div>

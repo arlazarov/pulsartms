@@ -1,0 +1,33 @@
+@use '../base' as ui;
+
+.add-user-page {
+  display: grid;
+  gap: ui.pg(md);
+  min-width: 0;
+
+  form {
+    display: grid;
+    gap: ui.pg(lg);
+    width: 100%;
+    max-width: ui.size(content-account);
+    min-width: 0;
+    padding: ui.pg(xl);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface);
+  }
+
+  .form__actions {
+    flex-wrap: wrap;
+    margin-top: ui.pg(xs);
+    padding-top: ui.pg(lg);
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+
+  &__error { color: ui.theme(danger-text); font-size: ui.fs(body); }
+
+  @media (max-width: ui.breakpoint(md, max)) {
+    form { padding: ui.pg(lg); }
+    .form__actions > .btn { flex: 1 1 auto; }
+  }
+}

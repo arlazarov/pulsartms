@@ -1,0 +1,40 @@
+@use '../base' as ui;
+
+.login-page {
+  width: 100%;
+  min-height: 100%;
+
+  display: grid;
+  place-items: center;
+
+  padding: ui.pg(lg);
+
+  background: ui.theme(canvas);
+
+  .container {
+    width: 100%;
+    max-width: ui.size(content-login);
+
+    padding: ui.pg(xxl);
+
+    background: ui.theme(surface);
+
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    box-shadow: ui.shadow(card);
+  }
+
+  &__brand { color: ui.theme(link); font-weight: 700; letter-spacing: -.02em; font-size: ui.fs(lead); margin-bottom: ui.pg(xxl); }
+  h1 { margin-bottom: ui.pg(sm); font-size: ui.fs(title); }
+  &__intro { color: ui.theme(text-muted); margin-bottom: ui.pg(xl); font-size: ui.fs(body); line-height: 1.5; }
+
+  form {
+    display: grid;
+    gap: ui.pg(lg);
+  }
+  &__error {
+    color: ui.theme(danger-text);
+    font-size: ui.fs(body);
+    line-height: 1.5;
+  }
+}

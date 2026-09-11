@@ -1,0 +1,38 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {compileString} from 'sass';
+import {fileURLToPath} from 'node:url';
+
+const css = compileString("@use 'pages/fleet-map/details'; @use 'pages/fleet-map/popup-content';", {
+  loadPaths: [fileURLToPath(new URL('../../Styles/', import.meta.url))]
+}).css;
+
+test('station comparison keeps content-sized columns and reuses the original quote accents', () => {
+  assert.match(css, /\.fleet-station-popup__comparison\s*\{[^}]*width: fit-content;[^}]*max-width: 100%;/);
+  assert.match(css, /\.fleet-station-popup__comparison table\s*\{[^}]*width: auto;/);
+  assert.match(css, /\.fleet-station-popup__discount-label,\s*\.fleet-station-popup__discount\s*\{[^}]*color: var\(--ui-link\);[^}]*background: var\(--ui-selected\);/);
+  assert.match(css, /\.fleet-station-popup__discount,\s*\.fleet-station-popup__ifta\s*\{[^}]*color: var\(--ui-success-text\);/);
+  assert.match(css, /\.fleet-station-popup__savings-label,\s*\.fleet-station-popup__savings\s*\{[^}]*color: var\(--ui-success-text\);/);
+});
+
+test('ordinary fuel inspector fits its quote without changing truck or planned fuel layout', () => {
+  assert.match(css, /min-width: min\(100%, var\(--size-map-fuel-quote\)\);/);
+  assert.match(css, /\.fleet-map-inspector\[data-inspector-mode=fuel\]:not\(:has\(\.fleet-station-popup--planned\)\)\s*\{[^}]*width: fit-content;[^}]*max-width: min\(100%, var\(--size-map-fuel-card\)\);/);
+  assert.match(css, /\.fleet-map-inspector\[data-inspector-mode=fuel\]:not\(:has\(\.fleet-station-popup--planned\)\) \.fleet-map-inspector__native\s*\{[^}]*container-type: normal;/);
+  assert.match(css, /\.fleet-map-inspector\[data-inspector-mode=fuel\]:not\(:has\(\.fleet-station-popup--planned\)\) \.fleet-station-popup\s*\{[^}]*display: block;/);
+});
+
+test('quote comparison separates the next-day price and both change columns', () => {
+  assert.match(css, /\.fleet-station-popup__comparison th:nth-child\(n\+3\), \.fleet-station-popup__comparison td:nth-child\(n\+3\)\s*\{[^}]*border-left: 1px solid var\(--ui-border-subtle\);/);
+});
+
+test('planned fuel inspector bounds width and keeps prices beside purchase gauges', () => {
+  assert.match(css, /width: min\(100%, var\(--size-map-fuel-inspector\)\);/);
+  assert.match(css, /@container map-inspector \(min-width: 52rem\)/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) max-content minmax\(0, 1fr\);/);
+  assert.match(css, /:has\(> \.fleet-station-popup__comparison:not\(\[hidden\]\)\) > \.fleet-station-popup__comparison\s*\{[^}]*grid-column: 2;[^}]*grid-row: 1\s*\/\s*span 4;/);
+});
+
+test('current and future route stop inspectors share a compact bounded width', () => {
+  assert.match(css, /\.fleet-map-inspector\[data-inspector-mode=stop\], \.fleet-map-inspector\[data-inspector-mode=nextstop\]\s*\{[^}]*width: min\(100%, var\(--size-map-stop-inspector\)\);/);
+});

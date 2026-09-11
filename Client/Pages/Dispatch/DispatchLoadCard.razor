@@ -1,0 +1,53 @@
+<section class="dispatch-load @(Current && !Completed ? "dispatch-load--current" : "") @(Next ? "dispatch-load--next" : "")" aria-label="@($"Load {LoadLabel}")">
+    <span class="dispatch-load__connector" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6" /></svg></span>
+    <div class="dispatch-load__heading">
+        <div class="dispatch-load__title">
+            <button type="button" class="btn btn--text btn--small dispatch-load__number" @onclick="OpenDetails" aria-label="@($"Open load {LoadLabel}")"><LoadNumber Value="Load.LoadNumber" /></button>
+            <span class="dispatch-load__phase">@Phase</span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Load.OrderNumber))
+        {
+            <button type="button" class="btn btn--text btn--small dispatch-load__order" title="@(_copied ? "Copied" : "Copy order number")"
+                    aria-label="Copy order number" @onclick="CopyOrderAsync">Order <strong>@Load.OrderNumber</strong>
+                <svg class="dispatch-load__copy-icon @(_copied ? "is-copied" : "")" viewBox="0 0 20 20" aria-hidden="true">
+                    @if (_copied) { <path d="m4 10 4 4 8-8" /> }
+                    else { <rect x="6" y="6" width="10" height="11" rx="2" /><path d="M4 13H3V3h10v1" /> }
+                </svg>
+            </button>
+        }
+    </div>
+    @if (_copyError is not null) { <span class="dispatch-load__copy-error" role="alert">@_copyError</span> }
+    <div class="dispatch-load__reference">
+        <span>@Load.CustomerName</span>
+        <span class="dispatch-load__status @(!Completed && Load.Status == "in_transit" ? "is-moving" : "")">@Status</span>
+    </div>
+    @if (ShowTrailerAssignment || ShowDriverAssignment)
+    {
+        <div class="dispatch-load__meta">
+            @if (ShowTrailerAssignment) { <span class="dispatch-load__assignment">Trailer <strong>@Load.TrailerNumber</strong></span> }
+            @if (ShowDriverAssignment) { <span class="dispatch-load__assignment">Driver <strong>@Load.DriverName</strong></span> }
+        </div>
+    }
+    <div class="dispatch-load__overview">
+        <ol class="dispatch-load__route" aria-label="Stops and arrival estimates">
+            @foreach (var stop in OrderedStops)
+            {
+                <li @key="(Load.Id, stop.Id, stop.Sequence)" class="dispatch-load__route-stop">
+                    <DispatchLoadStop DispatchId="Load.Id" Stop="stop" Number="@(OrderedStops.IndexOf(stop) + 1)"
+                        FallbackDate="FallbackDate(stop)" Eta="Load.Eta" Refreshing="Refreshing" CompletedLoad="Completed" Detailed="false" />
+                </li>
+            }
+        </ol>
+        @if (OrderedStops.Count == 0) { <p class="dispatch-load__empty">Stops not provided</p> }
+    </div>
+    <footer class="dispatch-load__footer">
+        @if (ShowRemaining) { <span class="dispatch-load__remaining">@RemainingMiles!.Value.ToString("N0") mi remaining</span> }
+        @if (ShowFuelStops) { <span class="dispatch-load__fuel-count"><ActionIcon Kind="fuel" /> Fuel stops <strong>@FuelStopCount</strong></span> }
+        @if (!ShowRemaining && !ShowFuelStops) { <span>@(OrderedStops.Count == 1 ? "1 stop" : $"{OrderedStops.Count} stops")</span> }
+        <button type="button" class="btn btn--text btn--small dispatch-load__details" @onclick="OpenDetails" aria-label="@($"Details for load {LoadLabel}")">Details <span aria-hidden="true">↗</span></button>
+    </footer>
+</section>
+@if (_showDetails)
+{
+    <DispatchLoadDialog @key="Load.Id" Load="Load" Truck="Truck" Phase="@Phase" Completed="Completed" Refreshing="Refreshing" Closed="CloseDetails" />
+}

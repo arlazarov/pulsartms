@@ -1,0 +1,81 @@
+<section class="integration-settings" aria-labelledby="integration-settings-title">
+    <header class="integration-settings__heading">
+        <h2 id="integration-settings-title">Integrations</h2>
+        <p class="settings-page__hint">Configured means credentials are present, not that the connection has been tested.</p>
+    </header>
+    @if (_loading) { <p role="status">Loading integrations…</p> }
+    @if (_loadError is not null)
+    {
+        <p class="settings-page__error" role="alert">@_loadError
+            <button class="btn btn--small" type="button" disabled="@_loading" @onclick="LoadAsync">Reload integrations</button>
+        </p>
+    }
+    <div class="integration-settings__grid">
+        @foreach (var card in _cards)
+        {
+            <section class="settings-page__card integration-settings__card" data-provider="@card.Provider" aria-labelledby="@($"integration-{card.Provider}-title")" @key="card.Provider">
+                <header class="integration-settings__card-heading">
+                    <h3 id="@($"integration-{card.Provider}-title")">@card.Title</h3>
+                    <span class="integration-settings__status @(card.State?.Configured == true ? "is-configured" : "")">@Status(card)</span>
+                </header>
+                <p class="settings-page__hint">@card.Description</p>
+                @if (card.State is not null)
+                {
+                    <p class="integration-settings__source">@(card.State.UsesSavedSettings ? "Saved in Settings" : "Server configuration")</p>
+                    @if (card.Editing)
+                    {
+                        <form class="integration-settings__form" @onsubmit="() => SaveAsync(card, false)" @onsubmit:preventDefault="true" autocomplete="off">
+                            <fieldset class="settings-page__form" disabled="@card.Busy">
+                                <legend class="visually-hidden">@card.Title credentials</legend>
+                                <div class="settings-page__fields integration-settings__fields">
+                                    @foreach (var field in card.Fields)
+                                    {
+                                        <label for="@FieldId(card, field)">@field.Label
+                                            <input id="@FieldId(card, field)" type="password" autocomplete="new-password" spellcheck="false" autocapitalize="none" maxlength="4096"
+                                                   value="@card.Values[field.Name]" @oninput="args => Change(card, field.Name, args.Value?.ToString())"
+                                                   aria-describedby="@($"integration-{card.Provider}-help")" />
+                                            <small>@(FieldConfigured(card, field.Name) ? "Saved value kept when left blank." : "Not configured.")</small>
+                                        </label>
+                                    }
+                                </div>
+                                <p class="settings-page__hint" id="@($"integration-{card.Provider}-help")">Enter only values you want to replace. Saved credentials are never displayed.</p>
+                                @if (card.Provider == "google-email")
+                                { <p class="settings-page__hint">Changing the Client ID also requires a new client secret and refresh token.</p> }
+                                <div class="settings-page__actions">
+                                    <button class="btn btn--primary" type="submit" disabled="@(!CanSave(card))">@(card.Busy ? "Saving…" : "Save changes")</button>
+                                    <button class="btn" type="button" @onclick="() => Cancel(card)">Cancel</button>
+                                </div>
+                            </fieldset>
+                        </form>
+                    }
+                    else if (card.ConfirmRestore)
+                    {
+                        <div class="integration-settings__confirmation" role="group" aria-label="@($"Use server configuration for {card.Title}")">
+                            <p>Replace this saved override with the server configuration? The server credentials will not be deleted.</p>
+                            <div class="settings-page__actions">
+                                <button class="btn btn--primary" type="button" disabled="@card.Busy" @onclick="() => SaveAsync(card, true)">@(card.Busy ? "Applying…" : "Confirm server configuration")</button>
+                                <button class="btn" type="button" disabled="@card.Busy" @onclick="() => Cancel(card)">Keep saved settings</button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="settings-page__actions">
+                            <button class="btn" type="button" disabled="@card.Busy" @onclick="() => Edit(card)">@(card.State.Configured ? "Edit credentials" : "Add credentials")</button>
+                            @if (card.State.CanRestoreDeployment)
+                            { <button class="btn btn--text" type="button" disabled="@card.Busy" @onclick="() => RequestRestore(card)">Use server configuration</button> }
+                        </div>
+                    }
+                }
+                @if (card.Error is not null)
+                {
+                    <p class="settings-page__error" role="alert">@card.Error
+                        @if (card.NeedsRefresh)
+                        { <button class="btn btn--small" type="button" disabled="@card.Busy" @onclick="() => RefreshAsync(card)">Refresh status</button> }
+                    </p>
+                }
+                @if (card.Saved) { <p class="settings-page__saved" role="status">Configuration saved.</p> }
+            </section>
+        }
+    </div>
+</section>

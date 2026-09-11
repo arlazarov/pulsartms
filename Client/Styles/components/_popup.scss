@@ -1,0 +1,74 @@
+@use '../base' as ui;
+
+html.popup-open {
+  overflow: hidden;
+}
+
+@media (max-width: ui.breakpoint(md, max)) {
+  // Mobile scroll locking needs a fixed body; desktop sticky navigation must remain in flow.
+  body.popup-open {
+    position: fixed;
+    inset-inline: 0;
+    top: var(--popup-scroll-offset, 0);
+    width: 100%;
+    overflow: hidden;
+  }
+}
+
+.popup {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+
+  display: grid;
+  place-items: center;
+
+  padding: ui.pg(lg);
+
+  &__overlay {
+    position: absolute;
+    inset: 0;
+
+    background: ui.theme(overlay, 0.35);
+  }
+
+  &__content {
+    position: relative;
+    z-index: 1;
+
+    width: 100%;
+    max-width: 420px;
+
+    padding: ui.pg(lg);
+
+    background: ui.theme(surface);
+
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(md);
+    box-shadow: ui.shadow(modal);
+  }
+
+  &__title {
+    margin-bottom: ui.pg(md);
+
+    color: ui.theme(text);
+
+    font-size: ui.fs(lead);
+    font-weight: 600;
+  }
+
+  &__body {
+    color: ui.theme(text-secondary);
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+
+    margin-top: ui.pg(lg);
+    padding-top: ui.pg(md);
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+}

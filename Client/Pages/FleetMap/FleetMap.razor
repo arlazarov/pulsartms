@@ -1,0 +1,333 @@
+@page "/fleet/map"
+
+<PageTitle>Fleet Map</PageTitle>
+
+<div class="fleet-map-page">
+    <div class="fleet-map-page__background">
+    <PageHeader Title="Fleet Map" />
+
+    <fieldset class="fleet-map-toolbar filter-toolbar" disabled="@_disposed">
+        <legend class="visually-hidden">Map filters</legend>
+        <div class="fleet-map-date">
+            <SearchInput Id="fleet-truck-search" Placeholder="Truck, driver or trailer" Value="@TruckSearch"
+                         Options="SearchOptions" Changed="OnTruckSearchChanged" Selected="ChooseSearchTruckAsync" Enter="SearchEnterAsync" />
+            @if (!string.IsNullOrWhiteSpace(TruckSearch))
+            { <span role="status">@MatchingTrucks.Count found</span> }
+        </div>
+        <button type="button" class="btn fleet-map-mobile-filters" aria-expanded="@(_mobileFiltersOpen ? "true" : "false")" aria-controls="fleet-map-filters" @onclick="() => _mobileFiltersOpen = !_mobileFiltersOpen">Filters</button>
+        <div id="fleet-map-filters" class="fleet-map-filters @(_mobileFiltersOpen ? "is-open" : "")">
+        <div class="fleet-map-date">
+        <label for="fleet-date">Date</label>
+
+        <input
+            id="fleet-date"
+            type="date"
+            @bind="SelectedDate"
+            @bind:after="OnDateChanged" />
+        </div>
+
+        <label class="fleet-map-toggle filter-toolbar__toggle">
+            <input type="checkbox" @bind="UseIfta" @bind:after="OnIftaToggleChanged" />
+            IFTA
+        </label>
+
+        <label class="fleet-map-toggle filter-toolbar__toggle">
+            <input
+                type="checkbox"
+                @bind="ShowFuelStations"
+                @bind:after="OnFuelStationsToggleChanged" />
+
+            Fuel Stations
+        </label>
+
+        <label class="fleet-map-toggle filter-toolbar__toggle">
+            <input
+                type="checkbox"
+                @bind="ShowTrucks"
+                @bind:after="OnTrucksToggleChanged" />
+
+            Trucks
+        </label>
+
+        <label class="fleet-map-toggle filter-toolbar__toggle">
+            <input
+                type="checkbox"
+                @bind="ShowTraffic"
+                @bind:after="OnTrafficToggleChanged" />
+
+            Traffic
+        </label>
+        <label class="fleet-map-toggle filter-toolbar__toggle">
+            <input type="checkbox" @bind="ShowNextLoads" @bind:after="OnNextLoadsChanged" />
+            Next loads
+        </label>
+        @if (ShowNextLoads && _nextLoadsMessage is not null)
+        {
+            <span role="status">@_nextLoadsMessage</span>
+        }
+        </div>
+    </fieldset>
+    @if (MapError is not null)
+    {
+        <p class="fleet-map-page__message" role="alert">
+            @MapError
+            <button class="btn btn--small" disabled="@_initializing" @onclick="StartMapAsync">Retry</button>
+        </p>
+    }
+    @if (FocusError is not null) { <p class="fleet-map-page__message" role="status">@FocusError</p> }
+    @if (TruckError is not null)
+    {
+        <p class="fleet-map-page__message" role="status">@TruckError</p>
+    }
+    @if (StationError is not null)
+    {
+        <p class="fleet-map-page__message" role="alert">@StationError <button class="btn btn--small" @onclick="OnDateChanged">Retry</button></p>
+    }
+    </div>
+    <div class="fleet-map-stage">
+    <div
+        id="fleet-map"
+        @ref="_mapElement"
+        tabindex="-1"
+        aria-label="Fleet and fuel station map"
+        aria-busy="@_initializing">
+    </div>
+    <section class="fleet-map-info-reserved fleet-map-inspector @(InspectorVisible ? "has-selection" : "") @(_mobileDetailsOpen ? "is-expanded" : "")" aria-label="Map information" data-inspector-mode="@_inspectorMode.ToString().ToLowerInvariant()" @onkeydown="OnInspectorKeyDownAsync" @onkeydown:stopPropagation="true">
+        <header class="fleet-map-inspector__header">
+        @if (_inspectorMode == MapInspectorMode.Truck)
+        {
+            <strong class="fleet-map-inspector__title fleet-map-inspector__desktop-title">@InspectorTitle</strong>
+            <button type="button" class="fleet-map-mobile-summary__toggle" aria-expanded="@(_mobileDetailsOpen ? "true" : "false")" aria-controls="fleet-map-details" @onclick="() => _mobileDetailsOpen = !_mobileDetailsOpen">
+                <strong>@InspectorTitle</strong>
+                <span>@(NextStopMiles is { } miles ? $"Next stop {miles:N0} mi" : "Truck details")</span>
+                <span>@(_mobileDetailsOpen ? "Hide ▴" : "Details ▾")</span>
+            </button>
+        }
+        else
+        {
+            <strong class="fleet-map-inspector__title">@InspectorTitle</strong>
+            @if (HasTruckInspection)
+            {
+                <button type="button" class="btn btn--text btn--small fleet-map-inspector__back" @onclick="BackToTruckAsync">Back to truck</button>
+            }
+        }
+            <button type="button" class="btn btn--small fleet-map-inspector__close" aria-label="Close map information" @onclick="CloseInspectorAsync">×</button>
+        </header>
+        <div class="fleet-map-inspector__native" hidden="@(_inspectorMode is not (MapInspectorMode.Stop or MapInspectorMode.Fuel))"></div>
+        @if (HasTruckInspection)
+        {
+            <div id="fleet-map-details" class="fleet-map-info-content" hidden="@(_inspectorMode != MapInspectorMode.Truck)">
+    @if (SelectedTruck is { } truck)
+    {
+        var currentCycle = DisplayRouteState?.Eta is { CycleAtCalculation: { } cycle } currentEta
+            ? new Client.Models.DTO.Planning.DriverCycleSnapshot(currentEta.CalculatedAt, currentEta.ValidUntil, cycle)
+            : null;
+        <div class="fleet-map-reveal"><div class="fleet-map-reveal__inner">
+        <div class="fleet-map-truck-info" aria-label="Selected truck">
+            <div class="fleet-map-truck-info__identity">
+                <span class="fleet-map-truck-info__illustration"><TruckIllustration /></span>
+                <div class="fleet-map-truck-info__vehicle">
+                    <strong>Truck @truck.UnitNumber</strong>
+                    <span class="fleet-map-truck-info__driver">Driver <strong>@(string.IsNullOrWhiteSpace(truck.DriverName) ? "—" : truck.DriverName)</strong></span>
+                    <span>Trailer <b>@(string.IsNullOrWhiteSpace(truck.TrailerNumber) ? "—" : truck.TrailerNumber)</b></span>
+                </div>
+            </div>
+            <div class="fleet-map-truck-info__telemetry" aria-label="Current truck readings">
+                <span class="fleet-map-truck-info__reading @TelemetryTone.Speed(truck.Speed)"><small><ActionIcon Kind="speed" />Speed</small><strong>@truck.Speed.ToString("N0") <small>mph</small></strong></span>
+                <span class="fleet-map-truck-info__reading fleet-map-truck-info__reading--fuel"><FuelReading Percent="@((double?)truck.FuelPercent)" Variant="metric" /></span>
+                <span class="fleet-map-truck-info__reading @TelemetryTone.Engine(truck.Speed, truck.EngineState)"><small><ActionIcon Kind="engine" />Engine</small><strong>@(string.IsNullOrWhiteSpace(truck.EngineState) ? "—" : truck.EngineState)</strong></span>
+            </div>
+            <div class="fleet-map-truck-info__hours">
+                <span class="fleet-map-truck-info__hours-label">HOS <span>(Samsara)</span></span>
+                <Client.Shared.DriverStatus.DriverHours.DriverHours @key="_activeTruckId" Clocks="_hos" ShowDutyStatus="false" />
+            </div>
+            <div class="fleet-map-truck-info__duty">
+                <DriverDutySummary Compact="true" Status="DisplayRouteState?.Eta?.DutyStatus" CurrentStatus="@(_hos?.CurrentDutyStatus)" ClockUpdatedAt="@(_hos?.UpdatedAt)" />
+                <Client.Shared.DriverStatus.DriverNextRecap.DriverNextRecap Snapshot="currentCycle" />
+            </div>
+            <div class="fleet-map-truck-info__actions">
+            <div class="fleet-map-truck-info__buttons" role="group" aria-label="Truck actions">
+            @if (ShowTrucks)
+            {
+                <button type="button" class="btn map-action-icon @(_followingTruck ? "btn--primary" : "")" title="Follow" aria-label="Follow" aria-pressed="@(_followingTruck ? "true" : "false")" @onclick="ToggleFollowAsync"><ActionIcon Kind="follow" /></button>
+            }
+                <FuelRecalculateButton IconOnly="true" @key="(_routeState?.Plan?.DispatchId ?? Guid.Empty)" DispatchId="@(_routeState?.Plan?.DispatchId ?? Guid.Empty)"
+                    ManuallyEdited="@(_routeState?.Plan?.FuelPlan?.ManuallyEdited == true)" Disabled="@_fuelEditorOpen" EditRequested="OpenFuelEditorAsync"
+                    Recalculated="OnFuelRecalculated" BusyChanged="OnFuelBusyChanged" Failed="OnFuelFailed" />
+                @if (_routeState?.Plan?.FuelPlan?.ManuallyEdited != true)
+                {
+                    <button type="button" class="btn map-action-icon" title="Edit fuel plan" aria-label="Edit fuel plan" disabled="@(!CanEditFuel || _recalculatingFuel)" @onclick="OpenFuelEditorAsync"><ActionIcon Kind="edit" /></button>
+                }
+                <TruckCamera @key="truck.TruckId" TruckId="truck.TruckId" TruckNumber="@truck.UnitNumber" />
+            </div>
+            @if (SelectedDispatchId is { } selectedDispatchId)
+            {
+                <a href="@($"/dispatch/{selectedDispatchId}")">Route &amp; load details <ActionIcon Kind="external-link" /></a>
+            }
+            </div>
+        </div>
+        </div></div>
+    }
+
+    @if ((_routeLoading || _loadDetails is not null || ScheduledStop is not null) && _routeState?.Plan is null)
+    {
+        <div class="fleet-map-route-info" aria-label="Current dispatch route" aria-busy="@(_routeLoading ? "true" : "false")">
+            @foreach (var label in new[] { "Remaining", "Next Stop" })
+            {
+                <div class="fleet-map-route-info__metric">
+                    <span class="fleet-map-route-info__label">@label</span>
+                    <strong>— <small>mi</small></strong>
+                    <span class="fleet-map-route-info__secondary">— km</span>
+                </div>
+            }
+            <div class="fleet-map-route-info__load">
+                <span class="fleet-map-route-info__label">Load</span>
+                    @if (_loadDetails is { } details)
+                    {
+                        <div class="fleet-map-route-info__load-reference">
+                        <button type="button" class="fleet-map-route-info__copy-number" title="Copy load number" @onclick="() => CopyTextAsync(details.LoadNumber.ToString(System.Globalization.CultureInfo.InvariantCulture))"><strong><Client.Shared.Dispatch.LoadNumber.LoadNumber Value="details.LoadNumber" /></strong></button>
+                        <span class="fleet-map-route-info__secondary">Order <button type="button" class="fleet-map-route-info__copy-number" title="Copy order number" disabled="@(string.IsNullOrWhiteSpace(details.OrderNumber))" @onclick="() => CopyTextAsync(details.OrderNumber)">@details.OrderNumber</button></span>
+                        </div>
+                    }
+                    else { <strong>—</strong> }
+                <span class="fleet-map-route-info__total fleet-map-route-info__secondary">Total — mi · — km</span>
+            </div>
+            <div class="fleet-map-route-info__next">
+                <span class="fleet-map-route-info__label">Next stop</span><strong>—</strong>
+            </div>
+            <div class="fleet-map-route-info__appointment">
+                <span class="fleet-map-route-info__label">@(ScheduledStop?.Job.Contains("pick", StringComparison.OrdinalIgnoreCase) == true ? "Pickup" : ScheduledStop?.Job.Contains("drop", StringComparison.OrdinalIgnoreCase) == true || ScheduledStop?.Job.Contains("deliver", StringComparison.OrdinalIgnoreCase) == true ? "Delivery" : "Appointment")</span>
+                <strong>@Client.Services.StopAppointmentDisplay.Format(ScheduledStop)</strong>
+            </div>
+            <div class="arrival-estimate">
+                <ArrivalEstimate Stop="ScheduledStop" Memory="_arrivalMemory" DispatchId="SelectedDispatchId" Refreshing="_etaRefreshPending" ShowDutyStatus="false" ShowAppointment="false" />
+            </div>
+            @if (VisibleRouteError is { } unplannedRouteError)
+            { <div class="fleet-map-route-info__messages"><span class="fleet-map-route-info__error" role="status">@unplannedRouteError</span></div> }
+        </div>
+    }
+    @if (_routeState?.Plan is { } routePlan)
+    {
+        <div class="fleet-map-reveal"><div class="fleet-map-reveal__inner">
+        <div class="fleet-map-route-info" aria-label="Current dispatch route">
+            <div class="fleet-map-route-info__metric">
+                <span class="fleet-map-route-info__label">Remaining</span>
+                <strong>@(RemainingMiles?.ToString("N0") ?? "—") <small>mi</small></strong>
+                <span class="fleet-map-route-info__secondary">@((RemainingMiles * 1.609344)?.ToString("N0") ?? "—") km</span>
+            </div>
+            <div class="fleet-map-route-info__metric fleet-map-route-info__distance">
+                <span class="fleet-map-route-info__label">Next Stop</span>
+                <strong>@(NextStopMiles?.ToString("N0") ?? "—") <small>mi</small></strong>
+                <span class="fleet-map-route-info__secondary">@((NextStopMiles * 1.609344)?.ToString("N0") ?? "—") km</span>
+            </div>
+            <div class="fleet-map-route-info__load" aria-busy="@(_loadDetails is null ? "true" : "false")">
+                <span class="fleet-map-route-info__label">Load</span>
+                    @if (_loadDetails is { } details)
+                    {
+                        <div class="fleet-map-route-info__load-reference">
+                        <button type="button" class="fleet-map-route-info__copy-number" title="Copy load number" @onclick="() => CopyTextAsync(details.LoadNumber.ToString(System.Globalization.CultureInfo.InvariantCulture))"><strong><Client.Shared.Dispatch.LoadNumber.LoadNumber Value="details.LoadNumber" /></strong></button>
+                        <span class="fleet-map-route-info__secondary">Order <button type="button" class="fleet-map-route-info__copy-number" title="Copy order number" disabled="@(string.IsNullOrWhiteSpace(details.OrderNumber))" @onclick="() => CopyTextAsync(details.OrderNumber)">@details.OrderNumber</button></span>
+                        </div>
+                    }
+                    else { <strong>—</strong> }
+                <span class="fleet-map-route-info__total fleet-map-route-info__secondary">Total @routePlan.OriginalPlannedMiles.ToString("N0") mi · @((routePlan.OriginalPlannedMiles * 1.609344).ToString("N0")) km</span>
+            </div>
+            <div class="fleet-map-route-info__next">
+                @if (routePlan.Stops.FirstOrDefault(s => s.Id == routePlan.Tracking.NextStopId) is { } nextStop && !string.IsNullOrWhiteSpace(nextStop.Address))
+                {
+                    var address = Client.Services.StopAddressLines.Create(nextStop.Address);
+                    var kind = !string.IsNullOrWhiteSpace(nextStop.Job) ? nextStop.Job
+                        : routePlan.Tracking.NextStopLabel.Contains('·') ? routePlan.Tracking.NextStopLabel.Split('·')[0].Trim() : "Next stop";
+                    <span class="fleet-map-route-info__label">@kind</span>
+                    <button type="button" class="fleet-map-route-info__copy-address" title="Copy full address" @onclick="() => CopyTextAsync(nextStop.Address)">
+                        <span class="fleet-map-route-info__address-icon"><ActionIcon Kind="location" /></span>
+                        <span class="fleet-map-route-info__address-lines">
+                            <span>@address.Street</span>
+                            @if (address.Locality.Length > 0)
+                            { <strong class="fleet-map-route-info__address">@address.Locality</strong> }
+                        </span>
+                    </button>
+                    @if (_addressCopyMessage is not null) { <span class="fleet-map-route-info__secondary" role="status">@_addressCopyMessage</span> }
+                }
+                else
+                {
+                    <span class="fleet-map-route-info__label">Next stop</span>
+                    <strong>@(routePlan.Tracking.NextStopId.HasValue ? routePlan.Tracking.NextStopLabel : "—")</strong>
+                }
+            </div>
+            <div class="fleet-map-route-info__appointment">
+                <span class="fleet-map-route-info__label">@(ScheduledStop?.Job.Contains("pick", StringComparison.OrdinalIgnoreCase) == true ? "Pickup" : ScheduledStop?.Job.Contains("drop", StringComparison.OrdinalIgnoreCase) == true || ScheduledStop?.Job.Contains("deliver", StringComparison.OrdinalIgnoreCase) == true ? "Delivery" : "Appointment")</span>
+                <strong>@Client.Services.StopAppointmentDisplay.Format(ScheduledStop)</strong>
+            </div>
+            <div class="arrival-estimate">
+                <ArrivalEstimate @key="(routePlan.DispatchId, routePlan.TruckId)" Eta="DisplayRouteState?.Eta" Stop="ScheduledStop" Memory="_arrivalMemory" DispatchId="SelectedDispatchId" Refreshing="_etaRefreshPending" Completed="routePlan.Tracking.AllStopsPassed" ShowDutyStatus="false" ShowAppointment="false" />
+            </div>
+            <div class="fleet-map-route-info__messages">
+                @foreach (var warning in routePlan.Route.Warnings)
+                { <span class="fleet-map-route-info__error" role="status">@Client.Shared.RouteMessageDisplay.Concise(warning)</span> }
+                @if (_routeState.Progress?.OffRoute == true || _routeState.Progress?.LocationStale == true || routePlan.InputsChanged)
+                {
+                    <div class="fleet-map-route-info__status" role="status">
+                        @if (_routeState.Progress?.OffRoute == true) { <span>Off planned route</span> }
+                        @if (_routeState.Progress?.LocationStale == true) { <span>GPS unavailable or stale</span> }
+                        @if (routePlan.InputsChanged) { <span>Route needs updating</span> }
+                    </div>
+                }
+                @if (VisibleRouteError is { } plannedRouteError)
+                { <span class="fleet-map-route-info__error" role="status">@plannedRouteError</span> }
+            </div>
+
+        </div>
+        </div></div>
+    }
+    @if (VisibleRouteError is { } emptyRouteError && _routeState?.Plan is null && _loadDetails is null) { <p class="fleet-map-route-info__error" role="status">@emptyRouteError</p> }
+
+
+            </div>
+        }
+        @if (_inspectorMode == MapInspectorMode.NextStop && InspectedRoute is { } inspected)
+        {
+            <NextLoadDetailsCard Embedded="true" Route="inspected" Stop="InspectedStop" StopIndex="_inspectedStopIndex"
+                FuelArrival="InspectedFuelArrival"
+                DistanceMiles="InspectedDistanceMiles"
+                Details="_inspectedDetails" Eta="InspectedEta" Refreshing="InspectedEtaRefreshing" Loading="@(_inspectedDetailsRequest is not null)"
+                Error="@_inspectedDetailsError" CopyMessage="@_addressCopyMessage"
+                OnCopy="CopyTextAsync" OnClose="BackToTruckAsync" />
+        }
+    </section>
+
+    @if (!_fuelEditorOpen && (ShowFuelStations || _routeState?.Plan is not null))
+    {
+        <aside class="fleet-map-key" aria-label="Map key">
+            @if (_routeState?.Plan is not null)
+            {
+                <div class="fleet-map-key__routes">
+                    <span><i class="fleet-map-key__line" aria-hidden="true"></i>Current route</span>
+                    @if (ShowNextLoads)
+                    { <span><i class="fleet-map-key__line fleet-map-key__line--next" aria-hidden="true"></i>Next loads · color by load</span> }
+                    <span><i class="fleet-map-key__stop" aria-hidden="true">1</i>Pickup / delivery</span>
+                    @if (ShowFuelStations || _routeState?.Plan?.FuelPlan is { NeedsRefresh: false, Stops.Count: > 0 })
+                    { <span><i class="fleet-map-key__planned" aria-hidden="true">Fuel</i>Planned fuel</span> }
+                </div>
+            }
+            @if (ShowFuelStations)
+            {
+                <div class="fleet-map-key__fuel">
+                    <span class="fleet-map-key__fuel-label">Fuel · @(UseIfta ? "After IFTA" : "Your price")</span>
+                    <span class="fleet-map-key__scale"><span>Lower</span><i aria-hidden="true"></i><span>Higher</span></span>
+                    <span class="fleet-map-key__note">Within each currency</span>
+                    <span class="fleet-map-key__missing"><i aria-hidden="true"></i>No price</span>
+                </div>
+            }
+        </aside>
+    }
+    @if (_fuelEditorOpen && _fuelEditorIdentity is { } editorIdentity)
+    {
+        <FuelPlanEditor @key="editorIdentity" TruckId="editorIdentity.Truck" DispatchId="editorIdentity.Dispatch"
+            TruckNumber="@(SelectedTruck?.UnitNumber ?? "")" Station="_fuelEditorStation"
+            StationSelected="@(station => OnFuelEditorStationSelectedAsync(editorIdentity, station))"
+            Saved="OnFuelPlanSavedAsync" Reset="OnFuelPlanResetAsync" Closed="CloseFuelEditorAsync" />
+    }
+    </div>
+
+</div>

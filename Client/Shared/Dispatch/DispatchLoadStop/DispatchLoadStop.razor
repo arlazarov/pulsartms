@@ -1,0 +1,53 @@
+@{
+    RenderFragment detailContent = @<div class="dispatch-load__stop-detail-content">
+        @if (!CollapsibleDetails && HasStreet) { <span class="dispatch-load__street">@Stop.Address</span> }
+        @if (!string.IsNullOrWhiteSpace(Stop.StopNo)) { <span class="dispatch-load__reference-number">Ref # <strong>@Stop.StopNo</strong></span> }
+        @if (AppointmentReferences.Count > 0) { <span class="dispatch-load__appointment-reference">Appt # <strong>@string.Join(", ", AppointmentReferences)</strong></span> }
+        @if (HasDisplayEstimate)
+        {
+            <ArrivalEstimate Stop="PlannedStop" Eta="StopEstimate" DispatchId="DispatchId" Memory="Memory"
+                Completed="Completed" Refreshing="Refreshing" ShowDutyStatus="false" ShowAppointment="false" ShowSummary="false" />
+            @if (!HasHoursForecast && HasLegacyCycle)
+            {
+                <div class="dispatch-load__stop-cycle" title="Estimated cycle hours remaining after service at this stop">
+                    <span>Cycle after stop</span><strong>@CycleRemaining</strong>
+                </div>
+            }
+        }
+        @AdditionalDetails
+    </div>;
+}
+
+<div class="dispatch-load__stop @(Completed ? "dispatch-load__stop--completed" : "")" data-stop-id="@Stop.Id">
+    <div class="dispatch-load__stop-heading">
+        <span class="dispatch-load__stop-number" aria-label="@($"Stop {Number}")">@Number</span>
+        <span class="dispatch-load__stop-job">@Job</span>
+        @if (Completed) { <span class="dispatch-load__completed">Completed</span> }
+    </div>
+    <strong class="dispatch-load__location">@Location</strong>
+    @if ((!Detailed || CollapsibleDetails) && HasStreet) { <span class="dispatch-load__street">@Stop.Address</span> }
+    @if ((Detailed || !HasStreet) && !string.IsNullOrWhiteSpace(Stop.Name)) { <span class="dispatch-load__facility">@Stop.Name</span> }
+    <div class="dispatch-load__stop-times">
+        @if (PlannedStop.ScheduledDate is null)
+        {
+            <span class="dispatch-load__appointment">Appointment <strong>—</strong></span>
+        }
+        <ArrivalEstimate Stop="PlannedStop" Eta="StopEstimate" DispatchId="DispatchId" Memory="Memory"
+            Completed="Completed" Refreshing="Refreshing" ShowDutyStatus="false" ShowDetails="false" />
+        @if (!Completed && !HasDisplayEstimate)
+        {
+            <span class="dispatch-load__eta-missing">ETA <strong>—</strong></span>
+        }
+    </div>
+    @if (Detailed && HasDetails)
+    {
+        @if (CollapsibleDetails)
+        {
+            <details class="dispatch-load__stop-details">
+                <summary>More details</summary>
+                @detailContent
+            </details>
+        }
+        else { @detailContent }
+    }
+</div>

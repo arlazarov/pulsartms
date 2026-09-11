@@ -1,0 +1,15 @@
+@using Client.Models.DTO.Planning
+<div class="driver-duty" aria-label="Current driver duty status">
+    <div class="driver-duty__current">
+        <span class="driver-duty__label">@(Compact ? "HOS ·" : "HOS status:")</span>
+        <span><strong>@Label(string.IsNullOrEmpty(CurrentStatus) ? Status?.Status : CurrentStatus)</strong>@if (Fresh && Matches && Status?.StatusMinutes is { } minutes) { <span>@(Compact ? " · " : " for ")@StatusDuration(minutes)</span> }</span>
+    </div>
+    @if (Fresh && Matches && Status?.TenHourRestRemainingMinutes is { } remaining)
+    {
+        <span>@(remaining > 0 ? $"{Duration(remaining)} left to complete 10h rest" : "10h rest reached")</span>
+        @if (CycleResetText is { } reset)
+        {
+            <span class="driver-duty__cycle-reset">@reset</span>
+        }
+    }
+</div>

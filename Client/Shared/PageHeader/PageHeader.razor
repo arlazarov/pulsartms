@@ -1,0 +1,7 @@
+<header class="page-header">
+    <div class="page-header__title">
+        <h1>@Title</h1>
+        @if (!string.IsNullOrWhiteSpace(Description)) { <p>@Description</p> }
+    </div>
+    @if (ChildContent is not null) { <div class="page-header__actions">@ChildContent</div> }
+</header>
