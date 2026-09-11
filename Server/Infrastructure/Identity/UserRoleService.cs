@@ -45,7 +45,6 @@ public sealed class UserRoleService(AppDbContext db) : IUserRoleService
     if (transaction is not null) await transaction.CommitAsync(ct);
   }
 
-  // Preserve legacy accounts, but ambiguous or invalid explicit claims cannot grant administration.
-  private static string Resolve(IReadOnlyCollection<string?> roles) => roles.Count == 0 ? "Admin"
-    : roles.Count == 1 && roles.Single() == "Admin" ? "Admin" : "Dispatch";
+  private static string Resolve(IReadOnlyCollection<string?> roles) =>
+    roles.Count == 1 && roles.Single() == "Admin" ? "Admin" : "Dispatch";
 }

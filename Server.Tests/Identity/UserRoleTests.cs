@@ -4,6 +4,8 @@ using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace Server.Tests.Identity;
 
@@ -11,6 +13,36 @@ namespace Server.Tests.Identity;
 [Trait("Kind", "Integration")]
 public class UserRoleTests
 {
+  [Fact]
+  public async Task AuthorizationRequiresTheCurrentExplicitRoleEvenWithAnAdminToken()
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options);
+    await db.Database.EnsureCreatedAsync();
+    var user = await AddUserAsync(db);
+    var roles = new UserRoleService(db);
+    var principal = new ClaimsPrincipal(new ClaimsIdentity([
+      new Claim(ClaimTypes.NameIdentifier, user.IdentityUserId), new Claim(ClaimTypes.Role, "Admin")
+    ], "fixture"));
+    async Task<bool> Authorized()
+    {
+      var requirement = new AdminRequirement();
+      var context = new AuthorizationHandlerContext([requirement], principal, null);
+      await new AdminAuthorizationHandler(roles).HandleAsync(context);
+      return context.HasSucceeded;
+    }
+    Assert.False(await Authorized());
+    await roles.SetAsync(user.IdentityUserId, "Admin");
+    Assert.True(await Authorized());
+    await roles.SetAsync(user.IdentityUserId, "Dispatch");
+    Assert.False(await Authorized());
+    await roles.SetAsync(user.IdentityUserId, "Admin");
+    user.IsActive = false;
+    await db.SaveChangesAsync();
+    Assert.False(await Authorized());
+  }
+
   [Fact]
   public async Task ConcurrentFirstAssignmentsKeepOneRoleAndWorkingReads()
   {
@@ -89,7 +121,7 @@ public class UserRoleTests
   }
 
   [Fact]
-  public async Task LegacyUsersAreAdminsAndExplicitRolesPersist()
+  public async Task MissingRolesCannotGrantAdministrationAndExplicitRolesPersist()
   {
     await using var connection = new SqliteConnection("Data Source=:memory:");
     await connection.OpenAsync();
@@ -101,7 +133,9 @@ public class UserRoleTests
     db.Users.Add(user);
     await db.SaveChangesAsync();
     var roles = new UserRoleService(db);
-    Assert.Equal("Admin", await roles.GetAsync(identity.Id));
+    Assert.Equal("Dispatch", await roles.GetAsync(identity.Id));
+    Assert.Equal("Dispatch", (await roles.GetAsync(new[] { user.Id }))[user.Id]);
+    Assert.Empty(await db.UserClaims.ToListAsync());
     await roles.SetAsync(identity.Id, "Dispatch");
     Assert.Equal("Dispatch", await roles.GetAsync(identity.Id));
     Assert.Equal("Dispatch", (await roles.GetAsync(new[] { user.Id }))[user.Id]);

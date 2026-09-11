@@ -45,7 +45,23 @@ read-only query. Review each affected identity with the authorized administrator
 and choose its intended role explicitly. The application's explicit role setter
 repairs duplicate application-role claims during an authorized assignment;
 ambiguous claims resolve to Dispatch until repaired. Accounts with no explicit
-role retain the existing legacy Admin behavior.
+role also resolve to Dispatch. Only one explicit `amftms:role=Admin` claim on an
+active account grants administrative access; a role in an existing token does not
+bypass the current database check.
+
+Before deploying this policy, assign the approved administrators explicitly.
+`scripts/sql/assign-explicit-admins.sql` accepts the psql `admin_emails` variable as
+a JSON array. It locks the matching identities/profiles in stable identity order,
+requires exactly one active identity per approved address, and upserts only their
+application-role claims in one transaction. Supply the reviewed list privately;
+never derive administrator access from a domain or grant it to every existing user.
+Pin the target, back up the affected claims table, and verify the role index before
+execution. After commit, verify exactly one Admin claim per approved identity.
+This is an authorized configuration operation, not a disposable database test or
+a schema migration. Roll back only the reviewed assignments; do not restore the
+whole claims table over later unrelated changes.
+The authorized September 11 assignment and its verification boundaries are recorded
+in [the transition evidence](../archive/2026-09/explicit-roles-fuel-lifecycle-2026-09-11.md).
 
 Do not proceed with automatic startup migrations while duplicate groups remain:
 a failed migration prevents the new revision from starting. Use a reviewed,

@@ -95,9 +95,12 @@ const futureRoute = {id: futureId, loadNumber: 1442, status: 'planned', stopCoun
 const truck = {truckId, unitNumber: '11006', driverName: 'Fixture Driver', trailerNumber: 'TR-100',
   latitude: 41.8, longitude: -87.6, speed: 45, heading: 90, updatedAt: now, engineState: 'Driving', fuelPercent: 75};
 const success = response => ({success: true, response, errors: []});
-const mapStub = `export async function createFleetMap(element, _key, callbacks) {
+const viewportSource = await readFile(new URL('../../scripts/fleetMap/ui/cameraViewport.js', import.meta.url), 'utf8');
+const mapStub = `${viewportSource}
+export async function createFleetMap(element, _key, callbacks) {
   element.dataset.hoursFixture = 'offline-map-callbacks';
   element.style.background = 'var(--ui-surface-muted)';
+  const viewport = createCameraViewport(element, {});
   let revision = 0, selectedTruck = null;
   const transition = kind => callbacks.invokeMethodAsync('OnMapInspectorChanged', kind, selectedTruck, ++revision);
   const fixture = window.hoursFixture = {next: null, async selectTruck(id) {
@@ -116,7 +119,7 @@ const mapStub = `export async function createFleetMap(element, _key, callbacks) 
     setStopEtas(value){fixture.etas = value;},setLoadReference(){},setFollow(){},
     setRouteBytes(bytes){fixture.plan = JSON.parse(new TextDecoder().decode(bytes));return true;},
     setNextLoadsBytes(bytes){const data = JSON.parse(new TextDecoder().decode(bytes)); if(data.routes)fixture.next = data;},
-    focusTruck(){return true;},dispose(){delete window.hoursFixture;}};
+    focusTruck(){return true;},dispose(){viewport.dispose();delete window.hoursFixture;}};
 }`;
 const stubIntegrity = `sha256-${createHash('sha256').update(mapStub).digest('base64')}`;
 const html = (await readFile(resolve(artifact, 'index.html'), 'utf8')).replace(
@@ -277,6 +280,8 @@ async function checkHeaderLoadingSpace(page, name) {
       maxHeight: parseFloat(getComputedStyle(host).maxHeight) * map.getBoundingClientRect().height / 100,
       widthCap: parseFloat(getComputedStyle(host).getPropertyValue('--size-map-inspector'))
         * parseFloat(getComputedStyle(document.documentElement).fontSize),
+      insetCap: parseFloat(getComputedStyle(host).getPropertyValue('--space-md'))
+        * parseFloat(getComputedStyle(document.documentElement).fontSize),
       position: getComputedStyle(host).position,
       truckWidth: truckCopy.clientWidth, truckScrollWidth: truckCopy.scrollWidth,
       routeWidth: routeCopy.clientWidth, routeScrollWidth: routeCopy.scrollWidth});
@@ -301,11 +306,13 @@ async function checkHeaderLoadingSpace(page, name) {
   for (const state of [sizes.ready, sizes.loading]) {
     for (const key of ['x', 'y', 'width', 'height'])
       check(Math.abs(state.map[key] - sizes.before[key]) <= 1, `${name}: ${key} of the actual map shifts while inspector values load`);
+    const sideClearance = Math.max(0, Math.min(state.overlay.x - state.map.x,
+      state.map.x + state.map.width - state.overlay.x - state.overlay.width));
     check(state.position === 'absolute' && state.overlay.height <= state.maxHeight + 1
       && Math.abs(state.overlay.x + state.overlay.width / 2 - state.map.x - state.map.width / 2) <= 1
-      && Math.abs(state.overlay.y - state.map.y) <= 1
+      && Math.abs(state.overlay.y - state.map.y - Math.min(state.insetCap, sideClearance)) <= 1
       && Math.abs(state.overlay.width - Math.min(state.map.width, state.widthCap)) <= 1,
-      `${name}: loading/ready inspector must remain a centered width-capped top-flush overlay`);
+      `${name}: loading/ready inspector must remain centered and width-capped with coordinated top/side clearance`);
     check(state.truckScrollWidth <= state.truckWidth + 1 && state.routeScrollWidth <= state.routeWidth + 1,
       `${name}: loading/ready inspector content overflows horizontally`);
   }
@@ -571,7 +578,7 @@ try {
       validUntil: new Date(dispatchReplacementTime + 120_000).toISOString(), shiftMinutes: 5};
     heldDispatch.release();
     await page.waitForFunction(() => [...document.querySelectorAll('.dispatch-load .stop-hours__road')]
-      .some(node => node.textContent.includes('19:10')));
+      .some(node => node.textContent.includes('07:10 PM')));
     dispatchQuiet = await checkQuietReplacement(dispatchScope, `${name}-dispatch-deadline`);
     }
 
@@ -615,8 +622,16 @@ try {
       const rect = element.getBoundingClientRect(), style = getComputedStyle(element);
       const truck = element.querySelector('.fleet-map-truck-info'), route = element.querySelector('.fleet-map-route-info');
       const truckStyle = getComputedStyle(truck), routeStyle = getComputedStyle(route);
+      const shadowReference = document.createElement('div');
+      shadowReference.style.boxShadow = style.getPropertyValue('--shadow-card');
+      element.append(shadowReference);
+      const expectedShadow = getComputedStyle(shadowReference).boxShadow;
+      shadowReference.remove();
       return {position: style.position, height: rect.height, top: rect.top, left: rect.left, right: rect.right, width: rect.width,
         widthCap: parseFloat(style.getPropertyValue('--size-map-inspector')) * parseFloat(getComputedStyle(document.documentElement).fontSize),
+        insetCap: parseFloat(style.getPropertyValue('--space-md')) * parseFloat(getComputedStyle(document.documentElement).fontSize),
+        expectedShadow,
+        expectedRadius: parseFloat(style.getPropertyValue('--radius-sm')) * parseFloat(getComputedStyle(document.documentElement).fontSize),
         shadow: style.boxShadow, radius: style.borderRadius, background: style.backgroundColor,
         rowGap: route.getBoundingClientRect().top - truck.getBoundingClientRect().bottom,
         truckRadius: truckStyle.borderRadius, routeRadius: routeStyle.borderRadius,
@@ -632,14 +647,16 @@ try {
     check(overlayGeometry.top >= mapRect.y && mapRect.y >= overlayGeometry.filtersBottom - 1
       && overlayGeometry.top >= overlayGeometry.headingBottom,
       `${name}: the info overlay must stay inside the map, never cover the page heading or filters`);
-    check(Math.abs(overlayGeometry.top - mapRect.y) <= 1
+    const sideClearance = Math.max(0, Math.min(overlayGeometry.left - mapRect.x, mapRect.x + mapRect.width - overlayGeometry.right));
+    check(Math.abs(overlayGeometry.top - mapRect.y - Math.min(overlayGeometry.insetCap, sideClearance)) <= 1
       && Math.abs(overlayGeometry.left + overlayGeometry.width / 2 - mapRect.x - mapRect.width / 2) <= 1
       && Math.abs(overlayGeometry.width - Math.min(mapRect.width, overlayGeometry.widthCap)) <= 1
       && Math.abs(overlayGeometry.rowGap) <= 1,
-      `${name}: unified information must be centered at the map top, width-capped, and have no gap between its two rows`);
-    check(overlayGeometry.shadow === 'none' && overlayGeometry.radius === '0px'
+      `${name}: unified information must be centered with coordinated top/side clearance and no gap between its rows`);
+    check(overlayGeometry.expectedShadow !== 'none' && overlayGeometry.shadow === overlayGeometry.expectedShadow
+      && Math.abs(parseFloat(overlayGeometry.radius) - overlayGeometry.expectedRadius) <= 1
       && overlayGeometry.truckRadius === '0px' && overlayGeometry.routeRadius === '0px' && overlayGeometry.divider === '1px',
-      `${name}: information must use one shared surface and subtle divider, without popup shadows or separate card corners`);
+      `${name}: information must use the shared popup surface, radius and shadow without separate row corners`);
     await page.screenshot({path: resolve(output, `${name}-selected-info-expanded.png`)});
     const fuelReading = page.locator('.fleet-map-truck-info__reading').filter({hasText: 'Fuel'});
     check(await fuelReading.locator('.fuel-reading__value').textContent() === '75%'
@@ -870,7 +887,7 @@ try {
     heldMap.release();
     await page.waitForFunction(calculatedAt => Date.parse(window.hoursFixture?.etas?.eta?.calculatedAt) === Date.parse(calculatedAt)
       && window.hoursFixture?.etas?.refreshing === false, timing.calculatedAt);
-    await page.waitForFunction(() => document.querySelector('.fleet-map-next-load-card .stop-hours__road')?.textContent.includes('19:10'));
+    await page.waitForFunction(() => document.querySelector('.fleet-map-next-load-card .stop-hours__road')?.textContent.includes('07:10 PM'));
     const mapQuiet = await checkQuietReplacement(mapScope, `${name}-map-deadline`);
     assert.deepEqual(await savedFuelPayload(page), fuelBefore,
       `${name}: complete ETA replacement altered the saved fuel metadata`);

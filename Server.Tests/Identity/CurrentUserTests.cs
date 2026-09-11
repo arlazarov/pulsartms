@@ -91,7 +91,9 @@ public class CurrentUserTests
     Assert.Equal(status, result.StatusCode);
     if (status != 200) { Assert.Null(result.Response); return; }
     Assert.Equal(fixture.User.Id, result.Response!.Id);
-    Assert.True(result.Response.IsAdmin);
+    Assert.False(result.Response.IsAdmin);
+    await roles.SetAsync("self", "Admin");
+    Assert.True((await handler.Handle(new(), default)).Response!.IsAdmin);
     await roles.SetAsync("self", "Dispatch");
     Assert.False((await handler.Handle(new(), default)).Response!.IsAdmin);
   }

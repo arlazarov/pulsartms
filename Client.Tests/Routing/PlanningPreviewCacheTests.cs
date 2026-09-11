@@ -92,6 +92,57 @@ public sealed class PlanningPreviewCacheTests
   }
 
   [Fact]
+  public async Task FuelRecalculationSupersedesItsOwnReadsWithoutDiscardingAnotherTruckPreview()
+  {
+    var truckA = Guid.NewGuid();
+    var truckB = Guid.NewGuid();
+    var latestA = Result(truckA, 2);
+    var previewB = Result(truckB, 1);
+    var oldA = latestA with { State = Result(truckA, 1).State };
+    var replyA = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+    var replyB = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+    using var handler = new StubHttpMessageHandler((request, _) =>
+      request.RequestUri!.AbsolutePath.Contains(truckB.ToString(), StringComparison.Ordinal) ? replyB.Task : replyA.Task);
+    using var client = new HttpClient(handler) { BaseAddress = new("https://local.test/") };
+    var cache = new PlanningDisplayCache(new ApiService(client));
+    var pendingA = cache.ReadPreviewAsync(truckA, default);
+    var pendingB = cache.ReadPreviewAsync(truckB, default);
+    cache.StoreRecalculated(latestA);
+    Assert.Same(latestA, cache.Get($"api/fleet/trucks/{truckA}/planning"));
+    replyA.SetResult(Ok(oldA));
+    replyB.SetResult(Ok(previewB));
+    Assert.Same(latestA, await pendingA);
+    var resultB = await pendingB;
+    Assert.NotNull(resultB);
+    Assert.Equal(truckB, resultB.TruckId);
+    Assert.Same(resultB, cache.Get($"api/fleet/trucks/{truckB}/planning"));
+    Assert.Same(latestA, cache.Get($"api/dispatch/{latestA.DispatchId}/planning/automatic"));
+  }
+
+  [Fact]
+  public async Task FuelRecalculationSupersedesOnlyMatchingPendingRefreshes()
+  {
+    var latestA = Result(Guid.NewGuid(), 2);
+    var latestB = Result(Guid.NewGuid(), 3);
+    var urlA = $"api/fleet/trucks/{latestA.TruckId}/planning";
+    var urlB = $"api/fleet/trucks/{latestB.TruckId}/planning";
+    var replyA = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+    var replyB = new TaskCompletionSource<HttpResponseMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+    using var handler = new StubHttpMessageHandler((request, _) =>
+      request.RequestUri!.AbsolutePath.Contains(latestB.TruckId.ToString(), StringComparison.Ordinal) ? replyB.Task : replyA.Task);
+    using var client = new HttpClient(handler) { BaseAddress = new("https://local.test/") };
+    var cache = new PlanningDisplayCache(new ApiService(client));
+    var pendingA = cache.RefreshAsync(urlA, default);
+    var pendingB = cache.RefreshAsync(urlB, default);
+    cache.StoreRecalculated(latestA);
+    replyA.SetResult(Ok(Result(latestA.TruckId, 1)));
+    replyB.SetResult(Ok(latestB));
+    await Task.WhenAll(pendingA, pendingB);
+    Assert.Same(latestA, cache.Get(urlA));
+    Assert.Equal(3, cache.Get(urlB)!.State!.Plan!.Version);
+  }
+
+  [Fact]
   public async Task BulkPreloadOverflowDoesNotBlockAnExplicitTruckPreview()
   {
     var truck = Guid.NewGuid();

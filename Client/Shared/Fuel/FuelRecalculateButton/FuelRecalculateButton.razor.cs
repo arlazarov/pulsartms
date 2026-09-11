@@ -17,22 +17,38 @@ public partial class FuelRecalculateButton : IDisposable
     [Parameter] public EventCallback<AutomaticPlanningResult> Recalculated { get; set; }
     [Parameter] public EventCallback<bool> BusyChanged { get; set; }
     [Parameter] public EventCallback Failed { get; set; }
-    private readonly CancellationTokenSource _lifetime = new();
+    private CancellationTokenSource? _request;
+    private Guid _identity;
     private bool _busy;
     private bool _disposed;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_identity == DispatchId || _disposed) return;
+        _identity = DispatchId;
+        _request?.Cancel();
+        _request = null;
+        if (!_busy) return;
+        _busy = false;
+        await BusyChanged.InvokeAsync(false);
+    }
 
     private async Task RecalculateAsync()
     {
         if (_busy || _disposed || Disabled || DispatchId == Guid.Empty) return;
         if (ManuallyEdited) { await EditRequested.InvokeAsync(); return; }
+        var dispatchId = DispatchId;
+        using var request = new CancellationTokenSource();
+        _request = request;
         _busy = true;
-        await BusyChanged.InvokeAsync(true);
         try
         {
+            await BusyChanged.InvokeAsync(true);
+            if (!Owns(request, dispatchId)) return;
             var response = await Api.PostAsync<object, AutomaticPlanningResult>(
-                $"api/dispatch/{DispatchId}/planning/fuel/recalculate", new { }, _lifetime.Token);
-            if (_disposed) return;
-            if (response.Success && response.Response is { } result)
+                $"api/dispatch/{dispatchId}/planning/fuel/recalculate", new { }, request.Token);
+            if (!Owns(request, dispatchId)) return;
+            if (response.Success && response.Response is { } result && result.DispatchId == dispatchId)
             {
                 PlanningCache.StoreRecalculated(result);
                 await Recalculated.InvokeAsync(result);
@@ -40,25 +56,32 @@ public partial class FuelRecalculateButton : IDisposable
             else
             {
                 var reasons = response.Errors?.Where(reason => !string.IsNullOrWhiteSpace(reason)).ToArray();
-                Logger.LogWarning("Calculate Fuel failed for dispatch {DispatchId}: {Reason}", DispatchId,
+                Logger.LogWarning("Calculate Fuel failed for dispatch {DispatchId}: {Reason}", dispatchId,
                     reasons is { Length: > 0 } ? string.Join("; ", reasons) : "The server returned no fuel calculation result.");
                 await Failed.InvokeAsync();
             }
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
         {
-            if (!_disposed)
+            if (Owns(request, dispatchId))
             {
-                Logger.LogWarning(ex, "Calculate Fuel failed for dispatch {DispatchId}: {Reason}", DispatchId, ex.Message);
+                Logger.LogWarning(ex, "Calculate Fuel failed for dispatch {DispatchId}", dispatchId);
                 await Failed.InvokeAsync();
             }
         }
         finally
         {
-            _busy = false;
-            if (!_disposed) await BusyChanged.InvokeAsync(false);
+            if (Owns(request, dispatchId))
+            {
+                _request = null;
+                _busy = false;
+                await BusyChanged.InvokeAsync(false);
+            }
         }
     }
 
-    public void Dispose() { _disposed = true; _lifetime.Cancel(); _lifetime.Dispose(); }
+    private bool Owns(CancellationTokenSource request, Guid dispatchId) =>
+        !_disposed && !request.IsCancellationRequested && ReferenceEquals(_request, request) && DispatchId == dispatchId;
+
+    public void Dispose() { _disposed = true; _request?.Cancel(); _request = null; }
 }

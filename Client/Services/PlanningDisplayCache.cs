@@ -168,12 +168,16 @@ public sealed class PlanningDisplayCache(ApiService api, TimeProvider? timeProvi
 
   public void StoreRecalculated(AutomaticPlanningResult result)
   {
-    generation++;
-    preload = null;
-    preloadRead = null;
-    foreach (var key in entries.Where(x => x.Value.Result.DispatchId == result.DispatchId).Select(x => x.Key).ToArray())
+    var keys = entries.Where(x => result.DispatchId.HasValue && x.Value.Result.DispatchId == result.DispatchId)
+      .Select(x => x.Key).ToHashSet();
+    keys.Add($"api/fleet/trucks/{result.TruckId}/planning");
+    if (result.DispatchId is { } dispatchId) keys.Add($"api/dispatch/{dispatchId}/planning/automatic");
+    foreach (var key in keys)
+    {
+      // Revoke only this plan's in-flight reads; other trucks keep their own request ownership.
+      refreshing.Remove(key);
       Store(key, result);
-    Store($"api/dispatch/{result.DispatchId}/planning/automatic", result);
+    }
   }
 
   public void Store(string url, AutomaticPlanningResult? result)

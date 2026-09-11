@@ -10,6 +10,7 @@ started again under the current project policy.
 
 ### Reviews and implementation records
 
+- [September 11 explicit roles and fuel lifecycle hardening](2026-09/explicit-roles-fuel-lifecycle-2026-09-11.md)
 - [September 11 standards audit and unused-file cleanup](2026-09/full-standards-audit-2026-09-11.md)
 - [September 11 automatic artifact retention](2026-09/artifact-retention-2026-09-11.md)
 - [September 11 component folders and HOS style ownership](2026-09/component-styles-2026-09-11.md)

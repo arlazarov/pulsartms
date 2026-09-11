@@ -51,6 +51,15 @@ Unresolved rows retain identity and removal controls without invented gauges.
 Save/reset callbacks recheck truck and dispatch ownership before publishing. A
 manual plan requires an explicit confirmed reset before automatic replacement.
 
+The Calculate Fuel control captures its dispatch and request ownership before
+notifying the page. Switching dispatches cancels that ownership, including A→B→A;
+late replies cannot publish a plan, report a failure, or clear a newer operation's
+busy state. A response must also match the requested dispatch. Cancellation does
+not guarantee that a server-side calculation already in progress was rolled back.
+Publishing saved or recalculated fuel supersedes only the matching planning-cache
+keys and their pending refreshes. Both truck and dispatch keys receive the result,
+even on a cold cache; unrelated truck previews and refreshes remain eligible.
+
 One information inspector is centered horizontally with an `md` top gap capped
 by its actual side clearance. The top gap disappears when the inspector fills
 the map width. Its named maximum width leaves the map visible on both sides on
