@@ -161,6 +161,7 @@ public sealed class FuelStationStatusOperation(
 
     var asked = 0;
     var closed = 0;
+    var changed = false;
     foreach (var station in due)
     {
       ct.ThrowIfCancellationRequested();
@@ -178,8 +179,14 @@ public sealed class FuelStationStatusOperation(
         // A provider that answers nothing has not said the station is shut.
         // Recording the attempt still matters, or the same station is asked
         // about again on every pass and no other station is ever reached.
+        var was = station.BusinessStatus;
         station.BusinessStatus =
           place?.BusinessStatus ?? station.BusinessStatus;
+        changed |= !string.Equals(
+          was,
+          station.BusinessStatus,
+          StringComparison.Ordinal
+        );
         if (place is not null)
         {
           if (!string.IsNullOrWhiteSpace(place.PlaceId))
@@ -208,6 +215,12 @@ public sealed class FuelStationStatusOperation(
       }
     }
     await db.SaveChangesAsync(ct);
+    // A station that just closed must leave the map and the planner at once.
+    // Both read the cached station list, and nothing else drops it when a
+    // status changes, so it would keep being offered until the entry aged
+    // out on its own.
+    if (changed)
+      scope.ServiceProvider.GetRequiredService<IReadCache>().Invalidate("fuel");
     if (asked > 0)
       logger.LogInformation(
         "FuelStationStatus Asked={Asked} Closed={Closed} Due={Due}",

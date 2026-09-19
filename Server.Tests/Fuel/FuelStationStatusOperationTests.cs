@@ -1,3 +1,4 @@
+using Application.Caching;
 using Application.Features.Fuel.Background;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Models;
@@ -36,6 +37,37 @@ public sealed class FuelStationStatusOperationTests
     Assert.Equal(1, await f.Operation.RunOnceAsync(default));
 
     Assert.Equal([f.Query("never")], f.Places.Asked);
+  }
+
+  // The map and the planner both read a cached station list, and nothing
+  // else drops it when a status changes, so a station that just closed would
+  // keep being offered until the entry aged out on its own.
+  [Fact]
+  public async Task AClosingStationDropsTheCachedStationList()
+  {
+    await using var f = await Fixture.CreateAsync();
+    await f.AddAsync("shut", checkedAt: null);
+    f.Places.Status = FuelStationStatus.ClosedPermanently;
+    var before = f.Reads.Generation("fuel");
+
+    await f.Operation.RunOnceAsync(default);
+
+    Assert.NotEqual(before, f.Reads.Generation("fuel"));
+  }
+
+  // An answer that did not change must not drop it: every pass would then
+  // clear the list for hundreds of stations that are exactly as they were.
+  [Fact]
+  public async Task AnUnchangedAnswerLeavesTheCachedListAlone()
+  {
+    await using var f = await Fixture.CreateAsync();
+    await f.AddAsync("same", checkedAt: null);
+    f.Places.Status = "";
+    var before = f.Reads.Generation("fuel");
+
+    await f.Operation.RunOnceAsync(default);
+
+    Assert.Equal(before, f.Reads.Generation("fuel"));
   }
 
   [Fact]
@@ -189,6 +221,7 @@ public sealed class FuelStationStatusOperationTests
     public required FuelStationStatusOptions Options { get; init; }
     public required FuelStationStatusOperation Operation { get; init; }
     public required ManualTimeProvider Clock { get; init; }
+    public required ReadCache Reads { get; init; }
     public DateTime Now => Clock.UtcNow.UtcDateTime;
 
     public static async Task<Fixture> CreateAsync()
@@ -208,14 +241,17 @@ public sealed class FuelStationStatusOperationTests
         places,
         clock
       );
+      var reads = TestCache.Create();
       var services = new ServiceCollection()
         .AddSingleton<IAppDbContext>(db)
+        .AddSingleton<IReadCache>(reads)
         .AddSingleton(lookups)
         .AddSingleton<IPlaceSearchService>(places)
         .BuildServiceProvider();
       var options = new FuelStationStatusOptions();
       return new Fixture
       {
+        Reads = reads,
         Connection = connection,
         Services = services,
         Db = db,
