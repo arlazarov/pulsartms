@@ -52,11 +52,14 @@ public sealed class ReadCache(IOptions<SynchronizationOptions> options)
     ReferenceHandler = ReferenceHandler.IgnoreCycles,
   };
 
+  // The gate is shared by 64 stripes, so a slow loader also holds unrelated
+  // keys. An abandoned request must stop waiting instead of queueing behind it.
   public async Task<T> GetAsync<T>(
     string group,
     string key,
     Func<Task<T>> load,
-    TimeSpan? lifetime = null
+    TimeSpan? lifetime = null,
+    CancellationToken ct = default
   )
   {
     var version = generations.Get(group);
@@ -66,7 +69,7 @@ public sealed class ReadCache(IOptions<SynchronizationOptions> options)
     var gate = gates[
       (uint)StringComparer.Ordinal.GetHashCode(cacheKey) % gates.Length
     ];
-    await gate.WaitAsync();
+    await gate.WaitAsync(ct);
     try
     {
       if (bounded.TryGetValue<Cached>(cacheKey, out saved))

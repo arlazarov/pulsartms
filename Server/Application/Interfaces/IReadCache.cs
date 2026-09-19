@@ -6,7 +6,8 @@ public interface IReadCache
     string group,
     string key,
     Func<Task<T>> load,
-    TimeSpan? lifetime = null
+    TimeSpan? lifetime = null,
+    CancellationToken ct = default
   );
   void Invalidate(string group);
   long Generation(string group);

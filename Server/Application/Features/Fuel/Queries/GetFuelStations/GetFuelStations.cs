@@ -58,7 +58,8 @@ public class GetFuelStationsHandler(
     var items = await reads.GetAsync(
       "fuel",
       date.ToString("O"),
-      () => LoadAsync(date, cancellationToken)
+      () => LoadAsync(date, cancellationToken),
+      ct: cancellationToken
     );
     if (request.IncludeNextDay && date < DateOnly.MaxValue)
     {
@@ -66,7 +67,8 @@ public class GetFuelStationsHandler(
       var next = await reads.GetAsync(
         "fuel",
         nextDate.ToString("O"),
-        () => LoadAsync(nextDate, cancellationToken)
+        () => LoadAsync(nextDate, cancellationToken),
+        ct: cancellationToken
       );
       var byId = next.ToDictionary(station => station.Id);
       items = items

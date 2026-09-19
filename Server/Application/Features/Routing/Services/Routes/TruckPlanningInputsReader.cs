@@ -61,7 +61,8 @@ public sealed class TruckPlanningInputsReader(
     var captured = await reads.GetAsync(
       "board",
       key,
-      () => CaptureAsync(ids, asOf, settings, ct)
+      () => CaptureAsync(ids, asOf, settings, ct),
+      ct: ct
     );
     return await WithClocksAsync(captured, includeHos, ct);
   }

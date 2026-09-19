@@ -64,4 +64,46 @@ public sealed class ReadCacheGenerationTests
     cache.Invalidate("active");
     Assert.True(cache.Generation("active") > version);
   }
+
+  // A slow loader holds one of 64 shared stripes, so an abandoned request
+  // must stop waiting rather than queue behind unrelated work.
+  [Fact]
+  public async Task AnAbandonedReaderStopsWaitingForAnotherKeysLoad()
+  {
+    using var cache = new ReadCache(
+      Options.Create(new SynchronizationOptions())
+    );
+    var started = new TaskCompletionSource();
+    var release = new TaskCompletionSource();
+    var slow = Task.Run(
+      () =>
+        cache.GetAsync(
+          "group",
+          "slow",
+          async () =>
+          {
+            started.SetResult();
+            await release.Task;
+            return 1;
+          }
+        )
+    );
+    await started.Task;
+    using var abandoned = new CancellationTokenSource();
+
+    var waiting = Task.Run(
+      () =>
+        cache.GetAsync(
+          "group",
+          "slow",
+          () => Task.FromResult(2),
+          ct: abandoned.Token
+        )
+    );
+    await abandoned.CancelAsync();
+
+    await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting);
+    release.SetResult();
+    Assert.Equal(1, await slow);
+  }
 }
