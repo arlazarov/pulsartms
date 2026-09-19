@@ -189,6 +189,31 @@ tables read once per call rather than once per request.
 before this was known. At sixty-six milliseconds a poll that was a fifth of
 one instance's database time spent on an exchange with nothing to carry.
 
+## Why opening hours are not yet a filter
+
+A station that exists and trades can still be shut at the hour a driver
+reaches it, and `FuelStationHours` now answers that question from the
+provider's local periods. The planner does not ask it, and the reason is
+structural rather than unfinished wiring.
+
+`FuelOptimizer` chooses stops in miles and gallons. It has no clock:
+`FuelArrivalPolicy` is about gallons on arrival, not time. `FuelStopArrival`,
+the per-stop result, carries `Gallons` and `Percent` and no timestamp. The
+only place a schedule exists is `FuelScheduleContext.Evaluate`, which
+replays a whole finished route through hours of service to produce a
+schedule impact - a property of a route, not an arrival time for one
+station.
+
+So there is nowhere to ask "is it open when he gets there", because nothing
+computes when he gets there. Giving the planner that means either an arrival
+estimate threaded through candidate selection, or a check after selection
+that can reject a plan and re-run - and a rejection has to keep the rule the
+owner was most explicit about: the driver always has fuel stops. A plan
+refused for a closed station must be replaced, never emptied.
+
+Closed businesses are different and are already excluded, because
+`CLOSED_PERMANENTLY` and `CLOSED_TEMPORARILY` need no clock to decide.
+
 ## What the forecast description cannot be
 
 Describing a truck's chain is the largest single cost in a board request and
