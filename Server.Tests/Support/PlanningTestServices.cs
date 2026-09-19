@@ -56,8 +56,8 @@ internal sealed class PlanningTestServices : IDisposable
     Sender = sender;
     var profiles = new TruckPlanningProfileService(db, Reads, Settings);
     Routes = new(db, router, sender!, profiles, new(db, Reads, profiles), new(db, Options.Create(new RouteRecalculationBudgetOptions())), Reads, Options.Create(new FuelRegionOptions()),
-      Options.Create(new SynchronizationOptions()), Displays, new(db, router));
-    Deadheads = new(db, router, Routes, new(db), new Infrastructure.Persistence.DeadheadHistoryReader((Infrastructure.Persistence.AppDbContext)db));
+      Options.Create(new SynchronizationOptions()), Displays, new(db, router, Reads));
+    Deadheads = new(db, router, Routes, new(db), new Infrastructure.Persistence.DeadheadHistoryReader((Infrastructure.Persistence.AppDbContext)db), Reads);
     var hos = new NoHos();
     BoardReader = new(new DispatchBoardReader(db, Reads, boardHos ?? hos, Deadheads));
     EtaMemory = new();
@@ -73,7 +73,7 @@ internal sealed class PlanningTestServices : IDisposable
     EtaInputs = new(db, BoardReader, Routes, new Infrastructure.Persistence.EtaRootRouteReader((Infrastructure.Persistence.AppDbContext)db),
       new Infrastructure.Persistence.NextLoadRouteReader((Infrastructure.Persistence.AppDbContext)db),
       new Infrastructure.Persistence.DeadheadHistoryReader((Infrastructure.Persistence.AppDbContext)db), EtaMemory,
-      new RouteRegionLookup(), Options.Create(new EtaPlanningOptions()));
+      new RouteRegionLookup(), Options.Create(new EtaPlanningOptions()), Reads);
     Forecasts = new(EtaInputs, new Infrastructure.Persistence.EtaForecastStore((Infrastructure.Persistence.AppDbContext)db), EtaMemory, Eta, Routes);
     BoardService = new(BoardReader, Forecasts);
     Board = new(BoardService);

@@ -34,7 +34,7 @@ public sealed class DeadheadTests
     var router = new Router();
     using var services = new PlanningTestServices(db, router);
     var plans = services.Routes;
-    var service = new DeadheadService(db, router, plans, new(db), new DeadheadHistoryReader(db));
+    var service = new DeadheadService(db, router, plans, new(db), new DeadheadHistoryReader(db), services.Reads);
     var profile = await plans.ProfileAsync(truck.Id, default);
     await service.EnsureAsync(b, profile, default);
     var saved = await db.DispatchDeadheads.SingleAsync();

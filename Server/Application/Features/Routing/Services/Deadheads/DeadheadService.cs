@@ -12,7 +12,8 @@ using Application.Caching;
 
 namespace Application.Features.Routing.Services.Deadheads;
 
-public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, RoutePlanningService plans, DispatchRates financials, IDeadheadHistoryReader historyReader)
+public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, RoutePlanningService plans, DispatchRates financials,
+  IDeadheadHistoryReader historyReader, ReadCache reads)
 {
   private static readonly KeyedGates Gates = new();
 
@@ -124,7 +125,7 @@ public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, 
       // Persist the retry budget before making any billable provider requests.
       saved.ErrorMessage = null;
       saved.RetryAfter = DateTime.UtcNow.AddMinutes(5);
-      try { await db.SaveChangesAsync(ct); }
+      try { await db.SaveChangesAsync(ct); reads.Invalidate($"chain:{load.Id}"); }
       catch (DbUpdateConcurrencyException) { db.Entry(saved).State = EntityState.Detached; return; }
       try
       {
@@ -146,6 +147,7 @@ public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, 
         saved.RetryAfter = DateTime.MinValue;
         saved.ErrorMessage = null;
         await db.SaveChangesAsync(ct);
+        reads.Invalidate($"chain:{load.Id}");
         await financials.SaveAsync(current, saved.Miles, hash, ct);
       }
       catch (RoutePlanningException ex)
@@ -153,6 +155,7 @@ public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, 
         saved.ErrorMessage = ex.Message;
         saved.RetryAfter = ex.RetryAfter;
         await db.SaveChangesAsync(ct);
+        reads.Invalidate($"chain:{load.Id}");
         throw;
       }
     }

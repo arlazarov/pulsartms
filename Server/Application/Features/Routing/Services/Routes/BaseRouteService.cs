@@ -11,7 +11,7 @@ using System.Text.Json;
 
 namespace Application.Features.Routing.Services.Routes;
 
-public sealed class BaseRouteService(IAppDbContext db, IRoutingProvider routing)
+public sealed class BaseRouteService(IAppDbContext db, IRoutingProvider routing, ReadCache reads)
 {
   private static readonly KeyedGates Gates = new();
   public static string Signature(Domain.Entities.Dispatch.Dispatch load, TruckRouteProfile profile) =>
@@ -70,6 +70,7 @@ public sealed class BaseRouteService(IAppDbContext db, IRoutingProvider routing)
       saved.RouteJson = RoutePlanStorage.Serialize(route);
       saved.CalculatedAt = route.CalculatedAt;
       await db.SaveChangesAsync(ct);
+      reads.Invalidate($"chain:{load.Id}");
       return route;
     }
     finally

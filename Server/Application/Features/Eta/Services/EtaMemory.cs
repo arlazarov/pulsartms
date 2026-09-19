@@ -13,6 +13,19 @@ public sealed class EtaMemory : IDisposable
   public readonly ConcurrentDictionary<Guid, Entry> Results = new();
   public readonly ConcurrentDictionary<Guid, DateTime> Viewed = new();
   private readonly ConcurrentDictionary<Guid, string> demandedInputs = new();
+  // Board enrichment reuses one chain description per truck while its cache generations and this lifetime hold.
+  public static readonly TimeSpan DescriptionLifetime = TimeSpan.FromSeconds(60);
+  private sealed record RememberedDescription(string Key, DateTime At, EtaChainDescription? Value);
+  private readonly ConcurrentDictionary<Guid, RememberedDescription> descriptions = new();
+  public bool TryRecallDescription(Guid truckId, string key, DateTime now, out EtaChainDescription? value)
+  {
+    value = null;
+    if (!descriptions.TryGetValue(truckId, out var remembered) || remembered.Key != key || remembered.At <= now - DescriptionLifetime) return false;
+    value = remembered.Value;
+    return true;
+  }
+  public void RememberDescription(Guid truckId, string key, DateTime now, EtaChainDescription? value) =>
+    descriptions[truckId] = new(key, now, value);
   public EtaRouteTimingCache Timing { get; } = new();
   private readonly MemoryCache futureTimings = new(new MemoryCacheOptions { SizeLimit = 32768 });
   private readonly SemaphoreSlim[] futureGates = Enumerable.Range(0, 16).Select(_ => new SemaphoreSlim(1)).ToArray();
@@ -84,6 +97,8 @@ public sealed class EtaMemory : IDisposable
   }
   public IEnumerable<Guid> Due(DateTime now)
   {
+    foreach (var item in descriptions)
+      if (item.Value.At < now.AddMinutes(-10)) descriptions.TryRemove(item.Key, out _);
     foreach (var item in Viewed)
     {
       if (item.Value < now.AddMinutes(-10)) { Forget(item.Key); continue; }

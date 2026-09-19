@@ -20,7 +20,7 @@ public sealed class EtaForecastService(EtaChainInputsService inputs, IEtaForecas
         .Where(x => x.Key.HasValue).Select(x => (TruckId: x.Key!.Value, Loads: (IReadOnlyList<DispatchResponse>)x.ToArray())).ToArray();
     foreach (var group in groups)
     {
-      var description = await inputs.DescribeAsync(group.TruckId, ct, rows is null ? null : group.Loads);
+      var description = await inputs.DescribeAsync(group.TruckId, ct, rows is null ? null : group.Loads, memoized: rows is not null);
       if (description is null) continue;
       var now = DateTime.UtcNow;
       memory.Demand(description.RootDispatchId, description.InputHash, now);

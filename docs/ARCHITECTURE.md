@@ -176,7 +176,11 @@ future loads. The clock charges driving plus once-per-new-shift PTI/fuel allowan
 it does not infer actual ELD changes or charge each saved fuel recommendation again.
 
 `EtaChainInputsService` validates the authoritative truck/load sequence and saved
-base/deadhead revisions. `EtaService` carries one clock across that chain;
+base/deadhead revisions. Board enrichment reuses the last description per truck
+while the `board`, `dispatch`, `profile:{truck}`, `route:{load}` and `chain:{load}`
+generations are unchanged, for at most `EtaMemory.DescriptionLifetime`;
+`BaseRouteService` and `DeadheadService` bump `chain:{load}` after each write.
+Refresh workers always describe the chain fresh. `EtaService` carries one clock across that chain;
 `EtaForecastService` publishes exact dispatch/stop identities and owns snapshot
 freshness. `IEtaForecastStore` is the Application persistence boundary;
 Infrastructure implements transactional, newer-only writes to `DispatchEtaForecasts`.

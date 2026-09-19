@@ -168,7 +168,8 @@ public sealed class BaseRouteAnchorRepairTests
     public Router Router { get; } = new();
     public RoutePoint[] Points => load.Stops.OrderBy(stop => stop.Sequence)
       .Select(stop => new RoutePoint((double)stop.Latitude!, (double)stop.Longitude!)).ToArray();
-    public BaseRouteService Service => new(db, Router);
+    public Application.Caching.ReadCache Reads { get; } = TestCache.Create();
+    public BaseRouteService Service => new(db, Router, Reads);
     public static async Task<Fixture> CreateAsync()
     {
       var connection = new SqliteConnection("Data Source=:memory:");

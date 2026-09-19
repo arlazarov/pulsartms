@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Security.Cryptography;
+using Application.Caching;
 using System.Text.Json;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Queries;
@@ -26,10 +27,10 @@ public sealed record EtaFutureTiming(Guid DispatchId, EtaRouteTiming? Connection
 
 public sealed class EtaChainInputsService(IAppDbContext db, Application.Features.Dispatch.Interfaces.IDispatchBoardReader board, RoutePlanningService routes,
   IEtaRootRouteReader rootRoutes, INextLoadRouteReader savedRoutes, IDeadheadHistoryReader history,
-  EtaMemory memory, IRouteRegionLookup regions, IOptions<EtaPlanningOptions> options)
+  EtaMemory memory, IRouteRegionLookup regions, IOptions<EtaPlanningOptions> options, ReadCache reads)
 {
   public async Task<EtaChainDescription?> DescribeAsync(Guid truckId, CancellationToken ct,
-    IReadOnlyList<DispatchResponse>? ordered = null)
+    IReadOnlyList<DispatchResponse>? ordered = null, bool memoized = false)
   {
     if (ordered is null)
     {
@@ -37,6 +38,24 @@ public sealed class EtaChainInputsService(IAppDbContext db, Application.Features
       ordered = page.Items.FirstOrDefault(x => x.TruckId == truckId)?.Dispatches;
     }
     if (ordered is null || ordered.Count == 0) return null;
+    // Board enrichment may reuse the last description while every input generation is unchanged;
+    // refresh workers always describe fresh so a changed chain is never missed.
+    var key = memoized ? MemoKey(truckId, ordered) : null;
+    var now = DateTime.UtcNow;
+    if (key is not null && memory.TryRecallDescription(truckId, key, now, out var recalled)) return recalled;
+    var description = await LoadDescriptionAsync(truckId, ordered, ct);
+    if (key is not null) memory.RememberDescription(truckId, key, now, description);
+    return description;
+  }
+
+  // Dispatch sync, address verification, profile saves, route plan saves and base-route/deadhead
+  // writes each bump one of these generations; the memo is only as fresh as they are.
+  private string MemoKey(Guid truckId, IReadOnlyList<DispatchResponse> ordered) =>
+    $"{truckId}|{reads.Generation("board")}|{reads.Generation("dispatch")}|{reads.Generation($"profile:{truckId}")}|"
+    + string.Join("|", ordered.Select(x => $"{x.Id}:{reads.Generation($"route:{x.Id}")}:{reads.Generation($"chain:{x.Id}")}"));
+
+  private async Task<EtaChainDescription?> LoadDescriptionAsync(Guid truckId, IReadOnlyList<DispatchResponse> ordered, CancellationToken ct)
+  {
     var ids = ordered.Select(x => x.Id).ToArray();
     var loaded = await db.Dispatches.AsNoTracking().Include(x => x.Stops)
       .Where(x => ids.Contains(x.Id)).ToDictionaryAsync(x => x.Id, ct);
