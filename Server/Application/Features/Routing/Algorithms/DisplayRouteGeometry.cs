@@ -45,4 +45,52 @@ public static class DisplayRouteGeometry
     }
     return points.Where((_, i) => keep[i]).ToList();
   }
+
+  // The reference road exists on the map for one purpose: to draw what lies
+  // behind the truck. The map finds the truck's origin on it and throws the
+  // rest away, so everything past that point was sent, parsed and measured
+  // for nothing - more than half of a long route's payload.
+  //
+  // The search is the map's own, deliberately: nearest segment on a plane
+  // scaled at the origin's latitude, the first of equals, nothing beyond two
+  // miles. The head keeps the matched segment whole, so the map's search over
+  // it lands on the same segment it would have found in the full road. No
+  // match means the map draws the whole reference separately, and it is left
+  // alone.
+  public static List<RouteLeg> TravelledHead(
+    IReadOnlyList<RouteLeg> reference,
+    RoutePoint origin
+  )
+  {
+    const double limit = 2d / 69 * (2d / 69);
+    var scale = Math.Cos(origin.Latitude * Math.PI / 180);
+    var best = double.PositiveInfinity;
+    var (bestLeg, bestPoint) = (-1, -1);
+    for (var leg = 0; leg < reference.Count; leg++)
+    {
+      var points = reference[leg].Points;
+      for (var i = 1; i < points.Count; i++)
+      {
+        var dx = (points[i].Longitude - points[i - 1].Longitude) * scale;
+        var dy = points[i].Latitude - points[i - 1].Latitude;
+        var x = (origin.Longitude - points[i - 1].Longitude) * scale;
+        var y = origin.Latitude - points[i - 1].Latitude;
+        var length = dx * dx + dy * dy;
+        var t = length > 0 ? Math.Clamp((x * dx + y * dy) / length, 0, 1) : 0;
+        var distance = Math.Pow(x - t * dx, 2) + Math.Pow(y - t * dy, 2);
+        if (distance < best)
+          (best, bestLeg, bestPoint) = (distance, leg, i);
+      }
+    }
+    if (bestLeg < 0 || best >= limit)
+      return reference.ToList();
+    return
+    [
+      .. reference.Take(bestLeg),
+      reference[bestLeg] with
+      {
+        Points = reference[bestLeg].Points.Take(bestPoint + 1).ToList(),
+      },
+    ];
+  }
 }

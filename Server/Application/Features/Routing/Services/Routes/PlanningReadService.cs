@@ -44,6 +44,15 @@ public sealed class PlanningReadService(
           }
         )
         .ToList();
+      if (
+        plan.FromCurrentPosition
+        && plan.Route.Legs.FirstOrDefault()?.Points.FirstOrDefault()
+          is { } origin
+      )
+        reference.Legs = DisplayRouteGeometry.TravelledHead(
+          reference.Legs,
+          origin
+        );
     }
     plan.Route.Points = [];
     plan.Route.Legs = plan

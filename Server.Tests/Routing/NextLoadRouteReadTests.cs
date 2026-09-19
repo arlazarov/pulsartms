@@ -340,6 +340,46 @@ public sealed class NextLoadRouteReadTests
     Assert.Equal(1, fixture.Reader.GeometryReads);
   }
 
+  [Fact]
+  public async Task UpcomingRoadsAreThinnedToWhatALineOnAMapNeeds()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var id = fixture.Loads[1].Id;
+    var saved = await fixture.Db.DispatchBaseRoutes.SingleAsync(x =>
+      x.DispatchId == id
+    );
+    // A straight road reported as two hundred and one points, which is what
+    // a routing provider does.
+    var dense = Enumerable
+      .Range(0, 201)
+      .Select(i => new RoutePoint(40 + i / 200d, -80))
+      .ToList();
+    saved.RouteJson = JsonSerializer.Serialize(
+      new TruckRoute
+      {
+        CalculatedAt = DateTime.UtcNow,
+        Miles = 100,
+        Seconds = 6000,
+        Legs = [new(100, 6000, dense)],
+      },
+      RoutePlanningService.Json
+    );
+    await fixture.Db.SaveChangesAsync();
+
+    var route = (
+      await fixture.Handler.Handle(
+        new(fixture.Truck, fixture.Loads[0].Id),
+        default
+      )
+    ).Response!.Routes!.Single(x => x.Id == id);
+
+    Assert.Equal("ready", route.Status);
+    Assert.Equal([dense[0], dense[^1]], Assert.Single(route.Legs).Points);
+    // The stops still sit on the road's real ends.
+    Assert.Equal(40, route.Stops[0].Latitude);
+    Assert.Equal(41, route.Stops[^1].Latitude);
+  }
+
   [Theory]
   [InlineData("{")]
   [InlineData("{\"legs\":null}")]

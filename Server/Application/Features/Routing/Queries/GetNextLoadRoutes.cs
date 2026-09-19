@@ -214,6 +214,15 @@ public sealed class GetNextLoadRoutesHandler(
       var deadhead = connection is null
         ? null
         : NextLoadConnection.From(connection);
+      // These roads are only drawn. The saved geometry is what the routing
+      // provider returned, several times denser than a line on a map needs,
+      // and three upcoming loads of it was the largest thing the map was
+      // ever sent.
+      if (deadhead is not null)
+        deadhead = deadhead with
+        {
+          Points = DisplayRouteGeometry.Simplify(deadhead.Points),
+        };
       previousId = load.Id;
       previousLeg = load.ExecutionLegId;
       var route =
@@ -259,7 +268,14 @@ public sealed class GetNextLoadRoutesHandler(
           load.Id,
           load.LoadNumber,
           "ready",
-          route.Legs,
+          route
+            .Legs.Select(leg =>
+              leg with
+              {
+                Points = DisplayRouteGeometry.Simplify(leg.Points),
+              }
+            )
+            .ToList(),
           stops
             .Select(
               (s, i) =>
