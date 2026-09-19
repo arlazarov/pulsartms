@@ -120,3 +120,15 @@ by reading the code.
 - How an expense and its allocation to a load are recorded, before tolls,
   actual costs and owner-operator pay exist.
 - Whether the two multi-writer tables keep two writers or gain one owner.
+- Whether `FuelRoadsAreValidatedBeforeProfileAndResultWrites` is still earning
+  its place. It asserts the order of literal strings by their position in one
+  source file, so it fails when that sequence moves even though behaviour is
+  unchanged, and it blocks giving fuel publication a contract of its own. The
+  same guarantee is already covered by what the code does rather than how it
+  reads: `LateRoadChangesKeepProfileAndBothFuelCopies` and
+  `FailedFuelCalculationPreservesProfileAndBothSavedCopies` prove a rejected
+  publication writes nothing, `ProfileSaveOnlyInvalidatesTheCacheAfterCommit`
+  proves caches drop only after the commit, and
+  `FuelSuccessCommitsTheRequestedProfileWithBothCopies` proves a successful one
+  commits the profile and both copies together. Replacing it is a decision
+  about the checks, not a licence to relax one.
