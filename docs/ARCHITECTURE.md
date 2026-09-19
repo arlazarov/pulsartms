@@ -113,8 +113,11 @@ a bounded per-load fallback because it does not support LATERAL. SQL translation
 and SQLite semantics are tested; production query plans and latency remain unmeasured.
 Application retains the assignment, chronology, and ambiguity checks.
 
-Fuel owns Gmail watch registration, renewal, retry timing, and periodic notification
-recovery. IGmailWatchStore persists typed lifecycle state in a dedicated existing
+Fuel discounts enter through `IFuelDiscountProvider`; `FuelDiscounts:Source` picks the
+Infrastructure implementation at startup (`bvd-gmail`, or `none` for customers without
+a fuel card), so another card program is a new provider and source name, not a change
+to import, station or planning code. Fuel owns Gmail watch registration, renewal, retry
+timing, and periodic notification recovery for the BVD mailbox source. IGmailWatchStore persists typed lifecycle state in a dedicated existing
 SynchronizationCheckpoints row. Its Infrastructure adapter shares the lease storage
 primitive with fleet synchronization, but not its row, owner, or schedule. Background
 Gmail work requires an explicit Admin registration and uses non-interactive credentials.

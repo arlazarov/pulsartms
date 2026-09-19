@@ -7,6 +7,7 @@ using Infrastructure.Integrations.TomTom;
 using Application.Features.Dispatch.Interfaces;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fuel.Interfaces;
+using Application.Features.Fuel.Models;
 using Application.Interfaces;
 using Infrastructure.Identity;
 using Infrastructure.Integrations.Bvd;
@@ -94,9 +95,21 @@ public static class DependencyInjection
     services.AddScoped<IGmailWatchService, GmailWatchService>();
     services.AddScoped<IGmailWatchStore, GmailWatchStore>();
     services.AddScoped<IFuelStationLookupStore, Infrastructure.Integrations.Google.Places.FuelStationLookupStore>();
-    if (configuration.GetValue("Gmail:BackgroundMaintenanceEnabled", true))
-      services.AddHostedService<ApplicationWorker<IGmailWatchOperation>>();
-    services.AddScoped<IFuelDiscountProvider, BvdFuelDiscountProvider>();
+    // The Gmail worker only exists for the BVD mailbox import; other sources or none leave it out.
+    var fuelSource = configuration["FuelDiscounts:Source"] ?? FuelDiscountSources.BvdGmail;
+    switch (fuelSource)
+    {
+      case FuelDiscountSources.BvdGmail:
+        services.AddScoped<IFuelDiscountProvider, BvdFuelDiscountProvider>();
+        if (configuration.GetValue("Gmail:BackgroundMaintenanceEnabled", true))
+          services.AddHostedService<ApplicationWorker<IGmailWatchOperation>>();
+        break;
+      case FuelDiscountSources.None:
+        services.AddScoped<IFuelDiscountProvider, Infrastructure.Integrations.NoFuelDiscountProvider>();
+        break;
+      default:
+        throw new InvalidOperationException($"Unsupported fuel discount source '{fuelSource}'.");
+    }
 
 
     services.AddScoped<ISynchronizationStore, SynchronizationStore>();

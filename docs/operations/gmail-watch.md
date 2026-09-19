@@ -14,8 +14,11 @@ application registration and verification. Do not run competing renewal owners.
 Local development must use an isolated database and test mailbox; a database with
 an existing registration authorizes background work for its configured mailbox.
 
+`FuelDiscounts:Source` selects where fuel discounts come from: `bvd-gmail` (default)
+imports BVD price files from the configured mailbox, `none` installs no import and no
+Gmail worker for customers without a fuel card. Any other value stops startup.
 `Gmail:BackgroundMaintenanceEnabled` controls only the automatic Gmail renewal and
-notification-recovery worker. It defaults to `true`; `appsettings.Development.json`
+notification-recovery worker of the `bvd-gmail` source. It defaults to `true`; `appsettings.Development.json`
 sets it to `false` so a local API does not compete for an existing registration.
 Environment overrides use `Gmail__BackgroundMaintenanceEnabled`. The setting is
 read at startup, so changes require restarting that host. Manual Admin watch/import
