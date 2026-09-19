@@ -50,7 +50,17 @@ Do not use the working database as an automated test fixture.
 
 `BackgroundOperations:Enabled=false` disables all hosted application operations
 through the shared Infrastructure worker. It defaults to true; it does not
-disable HTTP commands or database startup migrations. Keep
+disable HTTP commands or database startup migrations.
+
+`BackgroundOperations:Roles` narrows which operations one instance runs, named
+after the work rather than the interface: `DriverHosRefresh`, `PlanningRefresh`,
+`BaseRoute`, `EtaRefresh`, `TruckHistory`, `OdometerCapture`,
+`ExecutionPlanning`, `GmailWatch`, `FleetSynchronization`. Absent or empty means
+all of them, so an instance that states no roles behaves as before. `Enabled`
+still overrides it, and stating a role does not enable an operation that its own
+feature switch has turned off. This is what lets an instance serve requests
+while another runs the work, and what lets a read-oriented local instance still
+refresh HOS, which is served from a snapshot a background operation fills. Keep
 `Database:ApplyMigrations=false` and apply only reviewed pending migrations
 explicitly during a cutover. The ordinary development database remains the
 default for subsequent implementation and automated verification.
