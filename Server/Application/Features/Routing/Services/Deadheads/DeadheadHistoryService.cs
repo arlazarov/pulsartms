@@ -234,36 +234,57 @@ public sealed class DeadheadHistoryService(
     if (nativeLegs.Count == 0)
       return history;
     var result = history.ToDictionary();
-    foreach (var group in nativeLegs.GroupBy(x => x.TruckId))
-    {
-      var truck = group.Key;
-      var snapshots = history
-        .Values.Where(x => x.Current.TruckId == truck)
-        .ToArray();
-      var candidates = snapshots
-        .SelectMany(x => x.Predecessors.Append(x.Current))
+    var groups = nativeLegs.GroupBy(x => x.TruckId).ToArray();
+    var byTruck = groups.ToDictionary(
+      group => group.Key,
+      group =>
+        history.Values.Where(x => x.Current.TruckId == group.Key).ToArray()
+    );
+
+    // One read for every truck rather than one read per truck. This was a
+    // loop of awaits, each about half a second, so the cost grew with the
+    // fleet: two trucks meant two round trips, ten would mean ten. The read
+    // already accepted a set of trucks.
+    //
+    // Widening the arguments is safe because each one is matched by id:
+    // owned dispatches are looked up by dispatch id, completed legs by leg
+    // id, and a leg belongs to one truck, so the union answers each truck
+    // exactly as its own call did.
+    var read = Stopwatch.GetTimestamp();
+    var execution = await ExecutionLoads.ReadAsync(
+      db,
+      null,
+      byTruck
+        .Values.SelectMany(snapshots =>
+          snapshots.SelectMany(x => x.Predecessors.Append(x.Current))
+        )
         .Select(x => x.Id)
         .Distinct()
-        .ToArray();
-      var perTruck = Stopwatch.GetTimestamp();
-      var execution = await ExecutionLoads.ReadAsync(
-        db,
-        truck,
-        candidates,
-        ct,
-        completedLegIds: group
-          .Where(x => x.Status == "completed")
-          .Select(x => x.Id)
-          .ToArray()
-      );
-      PerformanceStages.Elapsed("deadhead-history", "per-truck", perTruck);
-      PerformanceStages.Count("deadhead-history", "truck-reads", 1);
+        .ToArray(),
+      ct,
+      completedLegIds: nativeLegs
+        .Where(x => x.Status == "completed")
+        .Select(x => x.Id)
+        .ToArray(),
+      truckIds: groups.Select(x => x.Key).ToArray()
+    );
+    PerformanceStages.Elapsed("deadhead-history", "loads", read);
+
+    // Work.TruckId is the leg's truck, so the one result separates back into
+    // what each truck's call would have returned.
+    var loadsByTruck = execution
+      .Loads.Where(x => x.Work.TruckId.HasValue)
+      .GroupBy(x => x.Work.TruckId!.Value)
+      .ToDictionary(x => x.Key, x => x.ToArray());
+    foreach (var (truck, snapshots) in byTruck)
+    {
+      var loads = loadsByTruck.GetValueOrDefault(truck, []);
       foreach (var snapshot in snapshots)
         result[snapshot.Current.Id] = snapshot with
         {
           Predecessors = snapshot
             .Predecessors.Where(x => !execution.OwnedDispatchIds.Contains(x.Id))
-            .Concat(execution.Loads.Select(x => x.Work))
+            .Concat(loads.Select(x => x.Work))
             .ToImmutableArray(),
         };
     }
