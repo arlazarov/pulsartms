@@ -47,6 +47,30 @@ public sealed class ApiContractTests
   }
 
   [Fact]
+  public async Task TelemetryStreamSendsOneEventPerRevisionAndCommentsWhileUnchanged()
+  {
+    await using var host = await ApiTestHost.StartAsync();
+    var revisions = new Queue<string>(["rev-1", "rev-1", "rev-2"]);
+    host.Mediator.Script = request => RequestResponse<FleetLocationsResponse>.Ok(new()
+      { Revision = revisions.Count > 1 ? revisions.Dequeue() : revisions.Peek(), Trucks = [new() { UnitNumber = "54777" }] });
+    using var cancel = new CancellationTokenSource();
+    using var response = await host.Client.GetAsync("/api/fleet/locations/stream?points=false", HttpCompletionOption.ResponseHeadersRead, cancel.Token);
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    Assert.Equal("text/event-stream", response.Content.Headers.ContentType!.MediaType);
+    Assert.Empty(response.Content.Headers.ContentEncoding);
+    using var reader = new StreamReader(await response.Content.ReadAsStreamAsync(cancel.Token));
+    var lines = new List<string>();
+    while (lines.Count(line => line.StartsWith("event:", StringComparison.Ordinal)) < 2)
+      lines.Add((await reader.ReadLineAsync(cancel.Token))!);
+    cancel.Cancel();
+    Assert.Equal(["id: rev-1", "event: locations"], lines.Take(2));
+    Assert.Contains("\"unitNumber\":\"54777\"", lines[2]);
+    Assert.Contains(": waiting", lines);
+    Assert.Contains("id: rev-2", lines);
+    Assert.All(host.Mediator.Requests.Skip(1).Take(2), request => Assert.Equal("rev-1", Assert.IsType<GetFleetLocationsQuery>(request).KnownRevision));
+  }
+
+  [Fact]
   public async Task PlanningPollsAcceptGetAndPostWithOneDigestTag()
   {
     await using var host = await ApiTestHost.StartAsync();

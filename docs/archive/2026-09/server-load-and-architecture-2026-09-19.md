@@ -70,7 +70,26 @@ smaller bodies and skipped serialization are established by tests, not by
 latency, CPU or egress numbers. The k6 scenario has no baseline yet and the
 OTLP export has not been pointed at a collector. The planning handler still
 runs in full on every poll; only the response transfer is skipped on `304`.
-The in-process `LoadProbe` harness was not rerun.
+## Local board read measurement (in-process harness)
+
+`tools/LoadProbe` had not compiled since the board reader split; it now hosts
+`DispatchBoardReader` directly with HOS and financials off. One run in this
+sandbox (Release build, SQLite in memory, unknown shared CPU, client and server
+in one process) gave, for warm closed-loop reads of `/board`:
+
+| Trucks | Concurrency | Requests/s | p50 ms | p95 ms | SQL per request | Body KB |
+| ------ | ----------- | ---------- | ------ | ------ | --------------- | ------- |
+| 100 | 5 | 672 | 6 | 12 | 1 | 43 |
+| 100 | 100 | 454 | 230 | 322 | 1 | 43 |
+| 300 | 100 | 656 | 144 | 202 | 1 | 43 |
+| 1000 | 20 | 494 | 32 | 98 | 1 | 43 |
+| 1000 | 100 | 729 | 137 | 192 | 1 | 43 |
+
+Cold reads after invalidation cost 7 to 102 SQL statements per wave and 57 to
+150 ms p50. Retained managed heap after a forced GC was 10 to 15 MB across the
+three fleet sizes. These are sandbox numbers for one handler without
+authentication, ETA, telemetry, PostgreSQL or the network; they bound the
+board index and page hydration cost, not Cloud Run throughput.
 
 ## Worker split: assessed, not built
 

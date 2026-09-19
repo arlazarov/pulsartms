@@ -40,5 +40,7 @@ node scripts/artifacts.mjs run scratch -- dotnet run --project tools/LoadProbe -
   --artifacts-path {artifacts} -- --sustained
 ```
 
+One sandbox run is recorded in the
+[September 19 archive record](../archive/2026-09/server-load-and-architecture-2026-09-19.md).
 Its numbers describe one process on the machine that ran it. They do not predict
 Cloud Run throughput, PostgreSQL query cost or browser rendering time.
