@@ -15,7 +15,6 @@ using Application.Features.Routing.Models;
 using Application.Features.Routing.Options;
 using Application.Features.Routing.Services.Addresses;
 using Application.Features.Synchronization.Options;
-using Application.Features.Synchronization.Services;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
 using Microsoft.Extensions.Options;

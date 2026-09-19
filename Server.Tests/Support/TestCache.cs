@@ -2,7 +2,6 @@ using Application.Caching;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Options;
 using Application.Features.Synchronization.Options;
-using Application.Features.Synchronization.Services;
 using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Support;

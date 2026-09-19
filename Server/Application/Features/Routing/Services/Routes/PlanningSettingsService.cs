@@ -5,7 +5,6 @@ using System.Text.Json;
 using Application.Caching;
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Models;
-using Application.Features.Synchronization.Services;
 using Domain.Entities.Fleet;
 
 namespace Application.Features.Routing.Services.Routes;

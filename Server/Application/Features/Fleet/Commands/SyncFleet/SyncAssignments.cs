@@ -1,9 +1,9 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Application.Caching;
+using Application.Concurrency;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Queries.GetFleetLocations;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -23,14 +23,14 @@ public sealed class SyncAssignmentsHandler(
     CancellationToken ct
   )
   {
-    await SynchronizationGates.Fleet.WaitAsync(ct);
+    await ProcessGates.Fleet.WaitAsync(ct);
     try
     {
       return await SyncAsync(request, ct);
     }
     finally
     {
-      SynchronizationGates.Fleet.Release();
+      ProcessGates.Fleet.Release();
     }
   }
 

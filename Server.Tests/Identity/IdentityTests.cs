@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Application.Caching;
 using Application.Features.Auth.Interfaces;
-using Application.Features.Synchronization.Services;
 using Application.Interfaces;
 using Domain.Entities;
 using Infrastructure.Identity;

@@ -2,7 +2,6 @@ using System.Text.Json;
 using Application.Caching;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Models;
-using Application.Features.Synchronization.Services;
 using Domain.Entities.Dispatch;
 using Microsoft.Extensions.Caching.Memory;
 

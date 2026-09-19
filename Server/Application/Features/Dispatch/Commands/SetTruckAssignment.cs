@@ -1,10 +1,10 @@
 using System.Data;
 using Application.Caching;
+using Application.Concurrency;
 using Application.Features.Dispatch.Models;
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Background;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 using Domain.Entities.Dispatch;
 using Microsoft.Extensions.Logging;
@@ -81,7 +81,7 @@ public sealed class SetTruckAssignmentHandler(
         is not ("Admin" or "Dispatch")
     )
       return Fail("You cannot change truck assignments.", 403);
-    await SynchronizationGates.Dispatch.WaitAsync(ct);
+    await ProcessGates.Dispatch.WaitAsync(ct);
     try
     {
       await using var transaction = await db.Database.BeginTransactionAsync(
@@ -241,7 +241,7 @@ public sealed class SetTruckAssignmentHandler(
     }
     finally
     {
-      SynchronizationGates.Dispatch.Release();
+      ProcessGates.Dispatch.Release();
     }
   }
 

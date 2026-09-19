@@ -2,6 +2,7 @@ using System.Data;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Application.Caching;
+using Application.Concurrency;
 using Application.Diagnostics;
 using Application.Features.Dispatch.Interfaces;
 using Application.Features.Dispatch.Models;
@@ -10,7 +11,6 @@ using Application.Features.Dispatch.Services;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Exceptions;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 using Domain.Entities.Dispatch;
 using Microsoft.Extensions.Caching.Memory;
@@ -43,7 +43,7 @@ public class SyncDispatchesCommandHandler(
     CancellationToken cancellationToken
   )
   {
-    await SynchronizationGates.Dispatch.WaitAsync(cancellationToken);
+    await ProcessGates.Dispatch.WaitAsync(cancellationToken);
     try
     {
       return await SyncAsync(request, cancellationToken);
@@ -58,7 +58,7 @@ public class SyncDispatchesCommandHandler(
     }
     finally
     {
-      SynchronizationGates.Dispatch.Release();
+      ProcessGates.Dispatch.Release();
     }
   }
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Application.Caching;
+using Application.Concurrency;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Background;
@@ -7,7 +8,6 @@ using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Addresses;
-using Application.Features.Synchronization.Services;
 using Domain.Entities.Dispatch;
 using Microsoft.Extensions.Logging;
 
@@ -219,7 +219,7 @@ public sealed partial class RouteChoiceService(
       throw new RoutePlanningException(
         "This route option changed. Calculate the preview again."
       );
-    await SynchronizationGates.Dispatch.WaitAsync(ct);
+    await ProcessGates.Dispatch.WaitAsync(ct);
     try
     {
       if (draft.Work is null)
@@ -398,7 +398,7 @@ public sealed partial class RouteChoiceService(
     }
     finally
     {
-      SynchronizationGates.Dispatch.Release();
+      ProcessGates.Dispatch.Release();
     }
   }
 }

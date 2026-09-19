@@ -2,7 +2,6 @@ using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Services;
 using Application.Features.Synchronization.Options;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 using Microsoft.Extensions.Options;
 

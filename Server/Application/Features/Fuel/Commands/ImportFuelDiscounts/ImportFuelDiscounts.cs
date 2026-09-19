@@ -3,7 +3,6 @@ using Application.Features.Fuel.Exceptions;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Services;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 using Domain.Entities.Fuel;
 

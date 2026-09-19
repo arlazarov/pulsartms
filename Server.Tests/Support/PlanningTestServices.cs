@@ -19,7 +19,6 @@ using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Options;
-using Application.Features.Synchronization.Services;
 using Application.Interfaces;
 using Infrastructure.Integrations.GeoTimeZone;
 using Infrastructure.Persistence;

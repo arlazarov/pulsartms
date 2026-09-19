@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Text.Json;
 using Application.Caching;
 using Application.Features.Synchronization.Options;
-using Application.Features.Synchronization.Services;
 using Domain.Entities.Dispatch;
 using Microsoft.Extensions.Options;
 using Xunit.Abstractions;

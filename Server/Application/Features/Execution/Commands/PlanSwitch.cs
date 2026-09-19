@@ -1,9 +1,9 @@
 using System.Data;
 using Application.Caching;
+using Application.Concurrency;
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Background;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
@@ -42,7 +42,7 @@ public sealed class PlanSwitchHandler(
         "Select explicit transfer boundaries and resource assignments."
       );
     var hash = ExecutionCommandSupport.Hash(request);
-    await SynchronizationGates.Dispatch.WaitAsync(ct);
+    await ProcessGates.Dispatch.WaitAsync(ct);
     try
     {
       await using var transaction = await db.Database.BeginTransactionAsync(
@@ -393,7 +393,7 @@ public sealed class PlanSwitchHandler(
     }
     finally
     {
-      SynchronizationGates.Dispatch.Release();
+      ProcessGates.Dispatch.Release();
     }
   }
 

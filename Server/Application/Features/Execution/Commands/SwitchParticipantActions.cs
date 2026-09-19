@@ -1,10 +1,10 @@
 using System.Data;
 using System.Text.Json;
 using Application.Caching;
+using Application.Concurrency;
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Background;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 using Domain.Entities.Execution;
 using Microsoft.Extensions.Logging;
@@ -118,7 +118,7 @@ internal sealed class SwitchParticipantMutation(
     var hash = ExecutionCommandSupport.Hash(
       new { Action = action, Request = request }
     );
-    await SynchronizationGates.Dispatch.WaitAsync(ct);
+    await ProcessGates.Dispatch.WaitAsync(ct);
     try
     {
       await using var transaction = await db.Database.BeginTransactionAsync(
@@ -243,7 +243,7 @@ internal sealed class SwitchParticipantMutation(
     }
     finally
     {
-      SynchronizationGates.Dispatch.Release();
+      ProcessGates.Dispatch.Release();
     }
   }
 

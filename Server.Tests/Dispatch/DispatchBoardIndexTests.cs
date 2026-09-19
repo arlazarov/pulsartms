@@ -1,7 +1,6 @@
 using Application.Caching;
 using Application.Features.Dispatch.Models;
 using Application.Features.Synchronization.Options;
-using Application.Features.Synchronization.Services;
 using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Dispatch;

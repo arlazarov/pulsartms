@@ -1,11 +1,11 @@
 using System.Data;
 using Application.Caching;
+using Application.Concurrency;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Services;
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Background;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 using Domain.Entities.Dispatch;
 
@@ -63,7 +63,7 @@ public sealed class CorrectDispatchStopHandler(
     )
       return Fail("Completion must be an actual time, not in the future.", 400);
     var hash = DispatchWorkspaceData.Hash(command);
-    await SynchronizationGates.Dispatch.WaitAsync(ct);
+    await ProcessGates.Dispatch.WaitAsync(ct);
     try
     {
       await using var transaction = await db.Database.BeginTransactionAsync(
@@ -356,7 +356,7 @@ public sealed class CorrectDispatchStopHandler(
     }
     finally
     {
-      SynchronizationGates.Dispatch.Release();
+      ProcessGates.Dispatch.Release();
     }
   }
 

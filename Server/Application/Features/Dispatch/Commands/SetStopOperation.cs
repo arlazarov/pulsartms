@@ -1,9 +1,9 @@
 using System.Data;
 using Application.Caching;
+using Application.Concurrency;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Services;
 using Application.Features.Routing.Background;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 using Domain.Entities.Dispatch;
 using Microsoft.Extensions.Logging;
@@ -91,7 +91,7 @@ public sealed class SetStopOperationHandler(
       || !StopOperation.Valid(update.Action, update.StateAfter)
     )
       return Fail("Choose a compatible action and state.");
-    await SynchronizationGates.Dispatch.WaitAsync(ct);
+    await ProcessGates.Dispatch.WaitAsync(ct);
     try
     {
       await using var transaction = await db.Database.BeginTransactionAsync(
@@ -254,7 +254,7 @@ public sealed class SetStopOperationHandler(
     }
     finally
     {
-      SynchronizationGates.Dispatch.Release();
+      ProcessGates.Dispatch.Release();
     }
   }
 

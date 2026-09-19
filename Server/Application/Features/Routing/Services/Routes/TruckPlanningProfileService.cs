@@ -3,7 +3,6 @@ using Application.Caching;
 using Application.Features.Fuel.Services;
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Models;
-using Application.Features.Synchronization.Services;
 using Domain.Entities.Fleet;
 using Load = Domain.Entities.Dispatch.Dispatch;
 

@@ -5,7 +5,6 @@ using Application.Features.Routing.Models;
 using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Options;
-using Application.Features.Synchronization.Services;
 using Domain.Entities.Dispatch;
 using Microsoft.Extensions.Options;
 

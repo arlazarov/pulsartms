@@ -1,7 +1,7 @@
 using Application.Caching;
+using Application.Concurrency;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Queries.GetFleetLocations;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -21,14 +21,14 @@ public class SyncFleetHandler(
     CancellationToken cancellationToken
   )
   {
-    await SynchronizationGates.Fleet.WaitAsync(cancellationToken);
+    await ProcessGates.Fleet.WaitAsync(cancellationToken);
     try
     {
       return await SyncAsync(request, cancellationToken);
     }
     finally
     {
-      SynchronizationGates.Fleet.Release();
+      ProcessGates.Fleet.Release();
     }
   }
 

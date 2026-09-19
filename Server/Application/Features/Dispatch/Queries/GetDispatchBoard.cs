@@ -5,7 +5,6 @@ using Application.Features.Execution.Queries;
 using Application.Features.Execution.Services;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Routing.Services.Deadheads;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 
 namespace Application.Features.Dispatch.Queries;

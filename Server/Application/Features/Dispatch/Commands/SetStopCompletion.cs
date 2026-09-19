@@ -1,10 +1,10 @@
 using System.Data;
 using Application.Caching;
+using Application.Concurrency;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Services;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Services.Routes;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 using Domain.Entities.Dispatch;
 
@@ -90,7 +90,7 @@ public sealed class SetStopCompletionHandler(
         "You cannot update stop completion.",
         403
       );
-    await SynchronizationGates.Dispatch.WaitAsync(ct);
+    await ProcessGates.Dispatch.WaitAsync(ct);
     try
     {
       await using var transaction = await db.Database.BeginTransactionAsync(
@@ -282,7 +282,7 @@ public sealed class SetStopCompletionHandler(
     }
     finally
     {
-      SynchronizationGates.Dispatch.Release();
+      ProcessGates.Dispatch.Release();
     }
   }
 
