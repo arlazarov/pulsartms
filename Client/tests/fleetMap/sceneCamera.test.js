@@ -114,6 +114,16 @@ test('scene ignores device and camera callbacks after disposal', async t => {
   assert.equal(native[0].map, null);
 });
 
+test('disposal clears the rendering-mode listeners the overlay library leaves behind', t => {
+  const { scene } = fixture(t);
+  const cleared = [];
+  globalThis.google.maps.event = {
+    clearListeners: (_map, name) => cleared.push(name),
+  };
+  scene.dispose();
+  assert.deepEqual(cleared, ['renderingtype_changed']);
+});
+
 test('raster startup releases the gate without a native WebGL overlay', t => {
   const { deck, native, flush } = fixture(t, 'RASTER');
   deck.props.onLoad();

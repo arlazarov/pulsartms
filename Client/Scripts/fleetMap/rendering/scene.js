@@ -523,6 +523,15 @@ export function createScene(
         () => stops.clear(),
         () => repaint.dispose(),
         () => truckOverlay.finalize(),
+        // deck.gl subscribes anonymously on a map that is not initialised yet
+        // and never unsubscribes; left in place it rebuilds the finalized
+        // overlay on the retained map. Only one scene exists per map, so by
+        // now every listener for this event is a dead one.
+        () =>
+          globalThis.google?.maps?.event?.clearListeners?.(
+            map,
+            'renderingtype_changed',
+          ),
         () => stations.clear(),
         () => trucks.clear(),
         () => lines.clear(),
