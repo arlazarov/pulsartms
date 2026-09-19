@@ -13,4 +13,13 @@ public class PlaceSearchResult
   // lookup predates this field, which is not the same as operational - a
   // station nobody has asked about yet has not been cleared, only unasked.
   public string BusinessStatus { get; set; } = string.Empty;
+
+  // The provider's weekly opening periods, kept as it gave them. Null means
+  // it said nothing, which is not the same as "always open": a station whose
+  // hours are unknown must not be refused, only not vouched for.
+  public string? OpeningHoursJson { get; set; }
+
+  // Minutes the station's local time is ahead of UTC. The periods are stated
+  // in local time and mean nothing without it.
+  public int? UtcOffsetMinutes { get; set; }
 }

@@ -19,6 +19,13 @@ public class FuelStation : BaseEntity
   public string BusinessStatus { get; set; } = string.Empty;
   public DateTime? StatusCheckedAt { get; set; }
 
+  // The provider's weekly opening periods and the station's offset from UTC,
+  // kept together because the periods are local time and mean nothing alone.
+  // Null is "not stated", which FuelStationHours answers Unknown for rather
+  // than refusing the station.
+  public string? OpeningHoursJson { get; set; }
+  public int? UtcOffsetMinutes { get; set; }
+
   public ICollection<FuelDiscount> FuelDiscounts { get; set; } = [];
   public ICollection<FuelTransaction> FuelTransactions { get; set; } = [];
 }

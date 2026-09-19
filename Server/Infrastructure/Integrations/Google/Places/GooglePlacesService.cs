@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Models;
@@ -32,7 +33,8 @@ public class GooglePlacesService(
     request.Headers.Add(
       "X-Goog-FieldMask",
       "places.id,places.displayName,places.formattedAddress,places.location,"
-        + "places.businessStatus"
+        + "places.businessStatus,places.regularOpeningHours,"
+        + "places.utcOffsetMinutes"
     );
 
     request.Content = JsonContent.Create(new { textQuery = query });
@@ -53,6 +55,10 @@ public class GooglePlacesService(
       Latitude = place.Location?.Latitude ?? 0,
       Longitude = place.Location?.Longitude ?? 0,
       BusinessStatus = place.BusinessStatus,
+      OpeningHoursJson = place.RegularOpeningHours is null
+        ? null
+        : JsonSerializer.Serialize(place.RegularOpeningHours),
+      UtcOffsetMinutes = place.UtcOffsetMinutes,
     };
   }
 
@@ -78,6 +84,12 @@ public class GooglePlacesService(
 
     [JsonPropertyName("businessStatus")]
     public string BusinessStatus { get; set; } = string.Empty;
+
+    [JsonPropertyName("regularOpeningHours")]
+    public JsonElement? RegularOpeningHours { get; set; }
+
+    [JsonPropertyName("utcOffsetMinutes")]
+    public int? UtcOffsetMinutes { get; set; }
   }
 
   private class DisplayName

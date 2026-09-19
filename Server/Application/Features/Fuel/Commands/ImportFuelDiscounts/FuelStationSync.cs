@@ -141,6 +141,8 @@ public static class FuelStationSync
       if (place is not null)
       {
         station.BusinessStatus = place.BusinessStatus;
+        station.OpeningHoursJson = place.OpeningHoursJson;
+        station.UtcOffsetMinutes = place.UtcOffsetMinutes;
         station.StatusCheckedAt = DateTime.UtcNow;
       }
     }

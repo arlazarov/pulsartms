@@ -104,6 +104,11 @@ public sealed class FuelStationStatusOperation(
         // about again on every pass and no other station is ever reached.
         station.BusinessStatus =
           place?.BusinessStatus ?? station.BusinessStatus;
+        if (place is not null)
+        {
+          station.OpeningHoursJson = place.OpeningHoursJson;
+          station.UtcOffsetMinutes = place.UtcOffsetMinutes;
+        }
         station.StatusCheckedAt = clock.GetUtcNow().UtcDateTime;
         asked++;
         if (FuelStationStatus.Closed(station.BusinessStatus))
