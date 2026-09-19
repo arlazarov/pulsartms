@@ -91,12 +91,14 @@ three fleet sizes. These are sandbox numbers for one handler without
 authentication, ETA, telemetry, PostgreSQL or the network; they bound the
 board index and page hydration cost, not Cloud Run throughput.
 
-## Worker split: assessed, not built
+## Worker split
 
-Moving the synchronization, ETA, planning and Gmail workers to a second Cloud Run
-service would need the telemetry snapshot, ETA memory and planning caches to move
-out of process (a shared store or Redis), because `ServerTelemetry`,
-`EtaMemory`, `FuelPlanMemory` and `ReadCache` are per instance and the
-synchronization checkpoint persists cursors, not the snapshot. That is a separate
-project with its own measurements; the single-instance `--max-instances 1`
-deployment does not need it at the current fleet size.
+`Hosting:Role` lets the same image run as `Workers` (owns the lease and every
+worker) and `Api` (serves requests, follows the owner checkpoint, hosts no other
+worker). The follower republishes only when a vehicle timestamp in the checkpoint
+changed, so browser validators and held polls behave as on a single instance.
+Limits: an `Api` instance is up to `CheckpointSeconds` plus `FollowSeconds` behind
+and carries no high-frequency trail points; ETA and planning memories are per
+instance and are rebuilt from their stores on each `Api` process. This split has
+not been deployed or load-tested; `--max-instances 1` in role `All` remains the
+default.

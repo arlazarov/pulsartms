@@ -53,6 +53,15 @@ gate are unaffected. Formatting and comparisons already use invariant culture
 explicitly; adding culture-specific formatting to the server requires reverting
 `InvariantGlobalization`.
 
+The default deployment is one Cloud Run service with `--max-instances 1` in role
+`All`. To split request serving from background work, deploy the same image twice:
+`amftms-workers` with `Hosting__Role=Workers`, `Database__ApplyMigrations=true`,
+`--max-instances 1` and a lower `Synchronization__CheckpointSeconds`; and the
+request tier with `Hosting__Role=Api`, `Database__ApplyMigrations=false` and as many
+instances as needed. Deploy the workers service first so migrations and the lease
+exist before request instances start following the checkpoint. See
+[synchronization](../features/synchronization.md) for the staleness bound of `Api`.
+
 Cloud Build tags the API with its unique `$BUILD_ID`. `deploy-server.sh` waits for
 that build, verifies its successful result and expected image name, and deploys
 the returned `sha256` digest, never a shared mutable `latest` tag. It prints the

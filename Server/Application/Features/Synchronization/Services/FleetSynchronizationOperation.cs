@@ -20,7 +20,8 @@ using Microsoft.Extensions.Options;
 namespace Application.Features.Synchronization.Services;
 
 public sealed class FleetSynchronizationOperation(IServiceScopeFactory scopes, IOptions<SynchronizationOptions> options,
-  ServerTelemetry telemetry, ILogger<FleetSynchronizationOperation> logger) : IFleetSynchronizationOperation, ISynchronizationStatusProvider
+  ServerTelemetry telemetry, ILogger<FleetSynchronizationOperation> logger, IOptions<Application.Options.HostingOptions> hosting)
+  : IFleetSynchronizationOperation, ISynchronizationStatusProvider
 {
   private volatile bool active;
   public SynchronizationStatus Status
@@ -41,6 +42,7 @@ public sealed class FleetSynchronizationOperation(IServiceScopeFactory scopes, I
   public async Task RunAsync(CancellationToken stoppingToken)
   {
     if (!config.Enabled) { logger.LogInformation("Server synchronization is disabled."); return; }
+    if (hosting.Value.Role == Application.Options.HostingRole.Api) { await RunFollowerAsync(stoppingToken); return; }
     while (!stoppingToken.IsCancellationRequested)
     {
       try
@@ -64,6 +66,35 @@ public sealed class FleetSynchronizationOperation(IServiceScopeFactory scopes, I
       catch (Exception ex) { logger.LogWarning(ex, "Synchronization will retry."); }
       try { await Task.Delay(TimeSpan.FromSeconds(config.RetrySeconds), stoppingToken); }
       catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+    }
+  }
+
+  // Api-role instances never take the lease; they republish the owner's checkpoint so reads and held
+  // polls see the shared snapshot. Unchanged checkpoints keep the revision, so validators still match.
+  private async Task RunFollowerAsync(CancellationToken ct)
+  {
+    logger.LogInformation("Server synchronization follows the owner checkpoint on this instance.");
+    DateTime? published = null;
+    while (!ct.IsCancellationRequested)
+    {
+      try
+      {
+        SynchronizationState latest;
+        using (var scope = scopes.CreateScope())
+          latest = await scope.ServiceProvider.GetRequiredService<ISynchronizationStore>().ReadAsync(ct);
+        var newest = latest.Vehicles.Values.SelectMany(x => new[] { x.UpdatedAt, x.EngineUpdatedAt ?? default, x.FuelUpdatedAt ?? default })
+          .DefaultIfEmpty().Max();
+        if (published != newest)
+        {
+          lock (stateGate) state = latest;
+          await PublishAsync([], ct);
+          published = newest;
+        }
+      }
+      catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
+      catch (Exception ex) { logger.LogWarning(ex, "Synchronization follower will retry."); }
+      try { await Task.Delay(TimeSpan.FromSeconds(config.FollowSeconds), ct); }
+      catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
     }
   }
 

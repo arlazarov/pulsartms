@@ -8,6 +8,7 @@ public static class OptionsRegistration
 {
   public static IServiceCollection AddApplicationOptions(this IServiceCollection services, IConfiguration configuration)
   {
+    Bind<Application.Options.HostingOptions>("Hosting");
     Bind<SynchronizationOptions>("Synchronization");
     Bind<FuelRegionOptions>("FuelRegions");
     Bind<RouteRecalculationBudgetOptions>("RouteRecalculationBudget");

@@ -38,6 +38,9 @@ public static class DependencyInjection
       options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"));
     });
 
+    // Api-role instances serve requests and follow the owner's checkpoint; every other worker stays off.
+    var role = configuration.GetValue("Hosting:Role", Application.Options.HostingRole.All);
+    var workers = role != Application.Options.HostingRole.Api;
     services.AddHostedService<DatabaseInitializer>();
     services.AddTransient<Microsoft.AspNetCore.Hosting.IStartupFilter, SessionStartupFilter>();
     services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
@@ -101,7 +104,7 @@ public static class DependencyInjection
     {
       case FuelDiscountSources.BvdGmail:
         services.AddScoped<IFuelDiscountProvider, BvdFuelDiscountProvider>();
-        if (configuration.GetValue("Gmail:BackgroundMaintenanceEnabled", true))
+        if (workers && configuration.GetValue("Gmail:BackgroundMaintenanceEnabled", true))
           services.AddHostedService<ApplicationWorker<IGmailWatchOperation>>();
         break;
       case FuelDiscountSources.None:
@@ -119,8 +122,8 @@ public static class DependencyInjection
     services.AddHttpClient<IIftaApiService, IftaApiService>();
 
     services.AddSingleton<Application.Features.Eta.Interfaces.IRouteRegionLookup, Infrastructure.Eta.RouteRegionLookup>();
-    services.AddHostedService<ApplicationWorker<IEtaRefreshOperation>>();
-    services.AddHostedService<ApplicationWorker<ITruckHistoryOperation>>();
+    if (workers) services.AddHostedService<ApplicationWorker<IEtaRefreshOperation>>();
+    if (workers) services.AddHostedService<ApplicationWorker<ITruckHistoryOperation>>();
     services.AddHttpClient<SamsaraApiService>();
     services.AddSingleton<SamsaraHosHistoryCache>();
     services.AddSingleton<SamsaraDriverCatalogCache>();
@@ -133,8 +136,8 @@ public static class DependencyInjection
 
     services.AddHttpClient<IAddressGeocoder, GoogleAddressGeocoder>(client => client.Timeout = TimeSpan.FromSeconds(15)).RemoveAllLoggers();
     services.AddHttpClient<IRoutingProvider, TomTomRoutingProvider>(client => client.Timeout = TimeSpan.FromSeconds(30)).RemoveAllLoggers();
-    services.AddHostedService<ApplicationWorker<IPlanningRefreshOperation>>();
-    services.AddHostedService<ApplicationWorker<IBaseRouteOperation>>();
+    if (workers) services.AddHostedService<ApplicationWorker<IPlanningRefreshOperation>>();
+    if (workers) services.AddHostedService<ApplicationWorker<IBaseRouteOperation>>();
 
     services.AddHttpClient<TorqueApiService>();
     services.AddScoped<IDispatchProvider, TorqueDispatchProvider>();

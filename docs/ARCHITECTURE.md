@@ -113,6 +113,11 @@ a bounded per-load fallback because it does not support LATERAL. SQL translation
 and SQLite semantics are tested; production query plans and latency remain unmeasured.
 Application retains the assignment, chronology, and ambiguity checks.
 
+`HostingOptions.Role` (`All`, `Workers`, `Api`) decides which workers a process hosts;
+an `Api` process follows the synchronization checkpoint instead of owning it, so the
+request tier can scale out while one `Workers` process owns provider polling.
+`HostingRoleRegistrationTests` checks the gating.
+
 Per-key concurrency stripes come from the `ProcessGates` singleton (`For<TOwner>()`),
 not static fields, so tests and any future multi-instance hosting own their gates
 explicitly; `Single<TOwner>()` and `Slots<TOwner>(n)` serve whole-operation and
