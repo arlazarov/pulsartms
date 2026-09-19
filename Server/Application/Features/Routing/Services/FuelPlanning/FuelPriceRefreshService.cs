@@ -95,6 +95,17 @@ public sealed class FuelPriceRefreshService(
         return;
       days[date] = dayPrices;
     }
+    // A stop the station list no longer offers is a stop the driver cannot
+    // use. The list already leaves out stations the place provider reports
+    // as closed, so a travel stop that shuts while a plan points at it is
+    // caught here - by the plan being redone, not by the stop quietly
+    // disappearing and leaving the driver with nowhere to fuel.
+    var offered = days.Values.SelectMany(x => x).Select(x => x.Id).ToHashSet();
+    if (saved.Plan.Stops.Any(x => !offered.Contains(x.StationId)))
+    {
+      await RecalculateAsync(saved, current, dispatchId, ct);
+      return;
+    }
     var signature = UsFuelDiscountSignature.Calendar(days);
     if (saved.Plan.UsDiscountSignature == signature)
       return;

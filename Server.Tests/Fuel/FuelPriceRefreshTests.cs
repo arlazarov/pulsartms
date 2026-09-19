@@ -362,6 +362,41 @@ public sealed class FuelPriceRefreshTests
     Assert.Equal(0, sender.PriceReads);
   }
 
+  // A travel stop that shuts leaves the station list, and a plan pointing at
+  // it has to be redone. The stop must not simply vanish: that would leave
+  // the driver with nowhere to fuel, which is the worse of the two.
+  [Fact]
+  public async Task AStopTheListNoLongerOffersRebuildsThePlan()
+  {
+    var clock = new ManualTimeProvider(
+      new DateTimeOffset(2026, 9, 14, 18, 0, 0, TimeSpan.Zero)
+    );
+    var sender = new Sender();
+    var store = new Store();
+    store.Snapshot.Plan.Stops =
+    [
+      new() { StationId = Guid.NewGuid(), Number = 1 },
+    ];
+    store.Snapshot.Plan.UsDiscountSignature = UsFuelDiscountSignature.Calendar(
+      new Dictionary<DateOnly, List<FuelStationDto>>
+      {
+        [new(2026, 9, 14)] = sender.Prices,
+      }
+    );
+    var service = new FuelPriceRefreshService(
+      store,
+      sender,
+      sender,
+      new CarrierFuelPrices(sender),
+      clock,
+      sender
+    );
+
+    await service.RefreshAsync(Current(store), default);
+
+    Assert.NotEmpty(sender.Calculations);
+  }
+
   [Fact]
   public async Task ChangedUpcomingAssignmentsRefreshWithoutChangedPrices()
   {
