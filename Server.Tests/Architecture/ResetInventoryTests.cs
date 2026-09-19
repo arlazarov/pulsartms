@@ -57,6 +57,49 @@ public sealed class ResetInventoryTests
     );
   }
 
+  // The guard refuses to run against a schema the inventory was not reviewed
+  // for, which only works while it names the schema this code produces. It had
+  // counted one migration too many: RebuildExecutionStorage is written across
+  // two files, and counting files counted it twice, so the guard would have
+  // refused every database that was actually up to date.
+  [Fact]
+  public void TheResetGuardNamesTheSchemaThisCodeProduces()
+  {
+    var migrations = Migrations();
+    var sql = File.ReadAllText(
+      Path.Combine(Root(), "scripts/sql/reset-core-storage.sql")
+    );
+
+    var count = Regex.Match(
+      sql,
+      @"__EFMigrationsHistory""\s*\)\s*<>\s*(?<count>\d+)"
+    );
+    Assert.True(count.Success, "The reset script checks no migration count.");
+    Assert.Equal(
+      migrations.Count,
+      int.Parse(count.Groups["count"].Value)
+    );
+
+    var latest = Regex.Match(
+      sql,
+      @"max\(""MigrationId""\).*?IS DISTINCT FROM\s*'(?<id>[^']+)'",
+      RegexOptions.Singleline
+    );
+    Assert.True(latest.Success, "The reset script names no latest migration.");
+    Assert.Equal(migrations[^1], latest.Groups["id"].Value);
+
+    // The acknowledgement names the schema the operator states they reviewed,
+    // so it has to move with the schema. Left behind, it would acknowledge an
+    // inventory that no longer describes the database.
+    var acknowledged = Regex.Match(
+      sql,
+      @"reset_ack.*?IS DISTINCT FROM\s*'(?<id>[^']+)'",
+      RegexOptions.Singleline
+    );
+    Assert.True(acknowledged.Success, "The reset script asks for no token.");
+    Assert.Equal(migrations[^1], acknowledged.Groups["id"].Value);
+  }
+
   [Fact]
   public void TheIdentityBoundaryStaysProtected()
   {
@@ -81,6 +124,18 @@ public sealed class ResetInventoryTests
       Assert.Contains(required, protectedTables);
       Assert.DoesNotContain(required, operational);
     }
+  }
+
+  private static IReadOnlyList<string> Migrations()
+  {
+    using var connection = new SqliteConnection("Data Source=:memory:");
+    connection.Open();
+    using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    var migrations = db.Database.GetMigrations().Order().ToArray();
+    Assert.NotEmpty(migrations);
+    return migrations;
   }
 
   private static HashSet<string> MappedTables()
