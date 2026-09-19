@@ -19,12 +19,18 @@ public sealed class PostgresFixture : IAsyncDisposable
 {
   private readonly string schema;
   private readonly string connectionString;
+  private readonly NpgsqlDataSource source;
   private readonly List<AppDbContext> opened = [];
 
-  private PostgresFixture(string schema, string connectionString)
+  private PostgresFixture(
+    string schema,
+    string connectionString,
+    NpgsqlDataSource source
+  )
   {
     this.schema = schema;
     this.connectionString = connectionString;
+    this.source = source;
   }
 
   // Whether this machine has a development database recorded at all. A
@@ -40,16 +46,25 @@ public sealed class PostgresFixture : IAsyncDisposable
       ?? throw new InvalidOperationException(
         "No development Postgres is recorded."
       );
-    var schema = "t_" + Guid.NewGuid().ToString("n");
-    var builder = new NpgsqlConnectionStringBuilder(recorded)
+    // The name carries the time it was made, so a run that dies before it
+    // can clean up is collected by the next one. This database is shared:
+    // leaks here are somebody else's problem to look at, not just clutter.
+    var schema = FormattableString.Invariant(
+      $"t_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{Guid.NewGuid():n}"
+    );
+    var text = new NpgsqlConnectionStringBuilder(recorded)
     {
-      SearchPath = schema,
       Timeout = 10,
       CommandTimeout = 30,
-      // The pool would outlive the schema this run creates.
+      // Returning a connection to the pool discards session state, and the
+      // search path is session state: the initializer below would be undone
+      // the moment a connection was reused, putting the run back into the
+      // shared schema for its second query onwards. Every connection here is
+      // its own, so the initializer always runs.
       Pooling = false,
-    };
-    await using (var connection = new NpgsqlConnection(builder.ToString()))
+    }.ToString();
+
+    await using (var connection = new NpgsqlConnection(text))
     {
       await connection.OpenAsync();
       await using var create = new NpgsqlCommand(
@@ -57,19 +72,66 @@ public sealed class PostgresFixture : IAsyncDisposable
         connection
       );
       await create.ExecuteNonQueryAsync();
+      await CollectAbandonedAsync(connection);
     }
-    var fixture = new PostgresFixture(schema, builder.ToString());
-    await using var db = fixture.Connect();
-    await db.Database.EnsureCreatedAsync();
+
+    // Npgsql will put `Search Path` in the connection string, but this server
+    // ignores that startup parameter - asking it afterwards still answers
+    // `"$user", public`. Setting it on the open connection does hold, so
+    // every physical connection sets it as it is made. Without this the
+    // tests write into the fixture database's shared schema and read each
+    // other's rows, which is how this was found.
+    var sourceBuilder = new NpgsqlDataSourceBuilder(text);
+    sourceBuilder.UsePhysicalConnectionInitializer(
+      connection =>
+      {
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SET search_path TO \"{schema}\"";
+        command.ExecuteNonQuery();
+      },
+      async connection =>
+      {
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"SET search_path TO \"{schema}\"";
+        await command.ExecuteNonQueryAsync();
+      }
+    );
+    var source = sourceBuilder.Build();
+
+    var fixture = new PostgresFixture(schema, text, source);
+    try
+    {
+      await fixture.FillAsync();
+    }
+    catch
+    {
+      // The schema already exists at this point. Without this, every failure
+      // between creating it and finishing left one behind: forty-one of them
+      // accumulated while this fixture was being written.
+      await fixture.DisposeAsync();
+      throw;
+    }
     return fixture;
+  }
+
+  private async Task FillAsync()
+  {
+    await using var db = Connect();
+    // EnsureCreated would do nothing: the database exists, and it does not
+    // look at schemas. The model's own script is unqualified, so it lands
+    // wherever the search path points - which is this run's schema. It goes
+    // through a plain command because the script contains braces, which
+    // ExecuteSqlRaw would read as parameter placeholders.
+    await using var command = source.CreateCommand(
+      db.Database.GenerateCreateScript()
+    );
+    await command.ExecuteNonQueryAsync();
   }
 
   public AppDbContext Connect()
   {
     var db = new AppDbContext(
-      new DbContextOptionsBuilder<AppDbContext>()
-        .UseNpgsql(connectionString)
-        .Options
+      new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(source).Options
     );
     opened.Add(db);
     return db;
@@ -111,24 +173,64 @@ public sealed class PostgresFixture : IAsyncDisposable
     }
   }
 
+  // Schemas from runs that ended more than an hour ago. An hour is far
+  // longer than any run here takes, so this never removes a live one.
+  private static async Task CollectAbandonedAsync(NpgsqlConnection connection)
+  {
+    try
+    {
+      await using var stale = new NpgsqlCommand(
+        """
+        SELECT schema_name FROM information_schema.schemata
+        WHERE schema_name ~ '^t_[0-9]+_[0-9a-f]{32}$'
+          AND to_timestamp(split_part(schema_name, '_', 2)::bigint)
+            < now() - interval '1 hour'
+        """,
+        connection
+      );
+      var names = new List<string>();
+      await using (var reader = await stale.ExecuteReaderAsync())
+        while (await reader.ReadAsync())
+          names.Add(reader.GetString(0));
+      foreach (var name in names)
+      {
+        await using var drop = new NpgsqlCommand(
+          $"DROP SCHEMA IF EXISTS \"{name}\" CASCADE",
+          connection
+        );
+        await drop.ExecuteNonQueryAsync();
+      }
+    }
+    catch (PostgresException)
+    {
+      // Collecting somebody else's leftovers is a courtesy, not this run's
+      // job. A failure here must not stop the run that is about to start.
+    }
+  }
+
   public async ValueTask DisposeAsync()
   {
     foreach (var db in opened)
       await db.DisposeAsync();
-    try
-    {
-      await using var connection = new NpgsqlConnection(connectionString);
-      await connection.OpenAsync();
-      await using var drop = new NpgsqlCommand(
-        $"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE",
-        connection
-      );
-      await drop.ExecuteNonQueryAsync();
-    }
-    catch (Exception)
-    {
-      // The schema is named after a fresh guid, so a leak is inert. Failing
-      // here would replace a real test result with a cleanup error.
-    }
+    await source.DisposeAsync();
+    // A drop can find a connection still holding the schema. Retrying beats
+    // leaving it: the collector above would only reach it an hour later.
+    for (var attempt = 0; attempt < 3; attempt++)
+      try
+      {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var drop = new NpgsqlCommand(
+          $"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE",
+          connection
+        );
+        drop.CommandTimeout = 15;
+        await drop.ExecuteNonQueryAsync();
+        return;
+      }
+      catch (Exception)
+      {
+        await Task.Delay(TimeSpan.FromSeconds(1));
+      }
   }
 }
