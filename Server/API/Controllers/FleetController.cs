@@ -52,5 +52,5 @@ public class FleetController : BaseController
 
   [HttpGet("locations")]
   public async Task<IActionResult> GetLocations(CancellationToken cancellationToken) =>
-    await HandleRequest(new GetFleetLocationsQuery(), cancellationToken);
+    await HandleRevisionedRequest(new GetFleetLocationsQuery(), x => x.Revision, cancellationToken);
 }
