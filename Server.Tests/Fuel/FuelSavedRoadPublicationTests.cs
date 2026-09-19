@@ -367,6 +367,67 @@ public sealed class FuelSavedRoadPublicationTests
     );
   }
 
+  // Publication writes the profile, then the fuel on the route, then the
+  // truck's own copy, and only the last one can still refuse: another session
+  // may have saved a plan since this one read the revision it expects. The
+  // refusal has to take the two earlier writes down with it, or the driver is
+  // left with fuel stops on a route whose plan was never accepted.
+  //
+  // This is what the publication order was being checked for. It was checked
+  // by comparing where those three calls appear in the source file, which
+  // says nothing about whether they share a transaction - and inside one
+  // transaction their order is not observable at all. This asks the question
+  // the file positions were standing in for.
+  [Fact]
+  public async Task ARefusedTruckPlanTakesTheRouteWriteWithIt()
+  {
+    await using var f = await SavedFuelHorizonFixture.CreateAsync();
+    var profile = await f.PrepareCalculationAsync();
+    await f.Services.Fuel.BuildAsync(f.Current.Id, new(profile), default);
+
+    // Between this publication reading the revision it expects and reaching
+    // the write that checks it, another session saves. The probe fires once,
+    // after the expectation was read and before the transaction opens.
+    var before = await SnapshotAsync(f);
+    var saved = await f.Db.Set<StoredFuel>().AsNoTracking().SingleAsync();
+    f.Publication.BeforeBegin = async () =>
+    {
+      f.Publication.BeforeBegin = null;
+      await StampStoredPlanAsync(f, saved.CalculatedAt.AddMinutes(1));
+    };
+
+    await Assert.ThrowsAsync<PlanningSettingsConflictException>(
+      () => f.Services.Fuel.BuildAsync(f.Current.Id, new(profile), default)
+    );
+
+    Assert.Null(f.Db.Database.CurrentTransaction);
+    f.Db.ChangeTracker.Clear();
+    Assert.Equal(before, await SnapshotAsync(f));
+
+    // The same build, once the revision it expects is the one on the row,
+    // does change all of this. The assertion above is about the refusal, not
+    // about a build that writes nothing either way.
+    await StampStoredPlanAsync(f, saved.CalculatedAt);
+    f.Db.ChangeTracker.Clear();
+    await f.Services.Fuel.BuildAsync(f.Current.Id, new(profile), default);
+    f.Db.ChangeTracker.Clear();
+    Assert.NotEqual(before, await SnapshotAsync(f));
+  }
+
+  private static async Task StampStoredPlanAsync(
+    SavedFuelHorizonFixture f,
+    DateTime calculatedAt
+  )
+  {
+    await f
+      .Db.Set<StoredFuel>()
+      .ExecuteUpdateAsync(s =>
+        s.SetProperty(x => x.CalculatedAt, calculatedAt)
+      );
+    f.Db.ChangeTracker.Clear();
+    f.Services.FuelPlans.Invalidate(f.State.Plan!.TruckId);
+  }
+
   private static SavedRoadValidation Validator(SavedFuelHorizonFixture f) =>
     f.Services.Roads;
 

@@ -179,49 +179,21 @@ public sealed class PlanningPublicationBoundaryTests
     );
   }
 
-  [Fact]
-  public void FuelRoadsAreValidatedBeforeProfileAndResultWrites()
-  {
-    var source = File.ReadAllText(
-      Path.Combine(
-        Root(),
-        "Server/Application/Features/Routing/Services/FuelPlanning/FuelPlanningService.cs"
-      )
-    );
-    var begin = source.IndexOf(
-      "publication.BeginAsync",
-      StringComparison.Ordinal
-    );
-    var roads = source.IndexOf(
-      "roads.RequireCurrentAsync",
-      StringComparison.Ordinal
-    );
-    var profile = source.IndexOf(
-      "profiles.SaveAsync",
-      StringComparison.Ordinal
-    );
-    var route = source.IndexOf(
-      "routeStore.StoreFuelAsync",
-      StringComparison.Ordinal
-    );
-    var truck = source.IndexOf(
-      "savedPlans.ReplaceAsync",
-      StringComparison.Ordinal
-    );
-    var commit = source.IndexOf(
-      "transaction.CommitAsync",
-      StringComparison.Ordinal
-    );
-
-    Assert.True(
-      begin >= 0
-        && begin < roads
-        && roads < profile
-        && profile < route
-        && route < truck
-        && truck < commit
-    );
-  }
+  // Fuel publication was checked here too, by comparing where six calls
+  // appear in FuelPlanningService.cs. Three of those six orderings were not
+  // properties of the program at all: the writes share one transaction, so
+  // which ran first is not observable by anything. The two that did matter -
+  // roads validated inside the transaction, and nothing surviving a refusal -
+  // are now asked as questions about behaviour instead:
+  //
+  //   FuelSavedRoadPublicationTests.MetadataValidationRequiresTheOwningTransaction
+  //   FuelSavedRoadPublicationTests.StaleCachedCurrentRoadCannotPublishFuel
+  //   FuelSavedRoadPublicationTests.ARefusedTruckPlanTakesTheRouteWriteWithIt
+  //
+  // The last of those was written for this removal and checked against a
+  // deliberately broken publication - committing before the final write makes
+  // it fail. Behaviour is asked of the code wherever the code lives, which is
+  // what lets fuel publication move behind a Routing contract.
 
   [Theory]
   [InlineData("BaseRouteService", "EnsureCoreAsync(", "saved.InputHash =")]
