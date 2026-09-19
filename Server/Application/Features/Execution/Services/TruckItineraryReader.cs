@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Application.Diagnostics;
 using Application.Features.Execution.Interfaces;
 using Application.Features.Execution.Models;
 using Application.Features.Routing.Models;
@@ -52,6 +54,7 @@ public sealed class TruckItineraryReader(
     if (truckIds.Count == 0)
       return new Dictionary<Guid, TruckItinerarySnapshot>();
     var day = DateOnly.FromDateTime(asOf.UtcDateTime);
+    var at = Stopwatch.GetTimestamp();
     var batch = await ExecutionWorkReader.ReadBatchAsync(
       db,
       day,
@@ -62,6 +65,8 @@ public sealed class TruckItineraryReader(
       includeInactive: true,
       truckIds: truckIds
     );
+    PerformanceStages.Elapsed("itinerary-read", "work-batch", at);
+    at = Stopwatch.GetTimestamp();
     var work = batch.Rows.SelectMany(x => x.Loads).ToArray();
     var legacyIds = work.Where(x => !x.ExecutionLegId.HasValue)
       .Select(x => x.Id)
@@ -79,11 +84,15 @@ public sealed class TruckItineraryReader(
         ),
       })
       .ToDictionaryAsync(x => x.Load.Id, ct);
+    PerformanceStages.Elapsed("itinerary-read", "legacy", at);
+    at = Stopwatch.GetTimestamp();
     var native = batch
       .Native.Loads.Select(x => x.Work)
       .ToDictionary(x => new WorkIdentity(x.Id, x.ExecutionLegId));
     var legs = batch.Native.Legs.ToDictionary(x => x.Id);
     var evidence = await WorkSequenceReader.ReadAsync(db, work, ct);
+    PerformanceStages.Elapsed("itinerary-read", "evidence", at);
+    at = Stopwatch.GetTimestamp();
     var result = new Dictionary<Guid, TruckItinerarySnapshot>();
     foreach (var row in batch.Rows)
     {
@@ -164,6 +173,7 @@ public sealed class TruckItineraryReader(
         sequence
       );
     }
+    PerformanceStages.Elapsed("itinerary-read", "assemble", at);
     return result;
   }
 

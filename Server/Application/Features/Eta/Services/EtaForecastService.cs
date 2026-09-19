@@ -174,12 +174,13 @@ public sealed class EtaForecastService(
             .Snapshot()
             .Where(x =>
               x.Key.StartsWith("eta-describe/", StringComparison.Ordinal)
+              || x.Key.StartsWith("itinerary-read/", StringComparison.Ordinal)
             )
             .Select(x =>
             {
               var was = before.GetValueOrDefault(x.Key);
               return (
-                Name: x.Key["eta-describe/".Length..],
+                Name: x.Key[(x.Key.IndexOf('/') + 1)..],
                 Ms: x.Value.TotalMs - (was?.TotalMs ?? 0),
                 Calls: x.Value.Count - (was?.Count ?? 0)
               );
