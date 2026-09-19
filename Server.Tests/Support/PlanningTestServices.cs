@@ -232,7 +232,8 @@ internal sealed class PlanningTestServices : IDisposable
       EtaMemory,
       Eta,
       Routes,
-      Publication
+      Publication,
+      NullLogger<EtaForecastService>.Instance
     );
     Board = new(
       db,

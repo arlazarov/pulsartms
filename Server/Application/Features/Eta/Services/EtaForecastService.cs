@@ -1,9 +1,12 @@
+using System.Diagnostics;
+using Application.Diagnostics;
 using Application.Features.Dispatch.Models;
 using Application.Features.Eta.Interfaces;
 using Application.Features.Eta.Models;
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
+using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Eta.Services;
 
@@ -13,7 +16,8 @@ public sealed class EtaForecastService(
   EtaMemory memory,
   EtaService eta,
   RoutePlanningService routes,
-  PlanningWorkPublication publication
+  PlanningWorkPublication publication,
+  ILogger<EtaForecastService> logger
 )
 {
   public async Task PopulateAsync(
@@ -25,6 +29,8 @@ public sealed class EtaForecastService(
     if (rows is not null)
       foreach (var row in rows)
         row.CurrentCycle = null;
+    var before = PerformanceStages.Snapshot();
+    var stage = Stopwatch.GetTimestamp();
     var saved = await ReadSavedAsync(
       dispatches
         .Where(x => !x.ExecutionLegId.HasValue)
@@ -38,6 +44,8 @@ public sealed class EtaForecastService(
         .ToArray(),
       ct
     );
+    var savedMs = Stopwatch.GetElapsedTime(stage).TotalMilliseconds;
+    stage = Stopwatch.GetTimestamp();
     var groups = rows is not null
       ? rows.Where(x => x.TruckId.HasValue)
         .Select(x =>
@@ -60,14 +68,25 @@ public sealed class EtaForecastService(
           )
         )
         .ToArray();
+    var groupMs = Stopwatch.GetElapsedTime(stage).TotalMilliseconds;
+    stage = Stopwatch.GetTimestamp();
     var descriptions = rows is null
       ? null
       : await inputs.DescribeManyAsync(rows, ct);
+    var describeMs = Stopwatch.GetElapsedTime(stage).TotalMilliseconds;
+    stage = Stopwatch.GetTimestamp();
+    var describedOne = 0d;
     foreach (var group in groups)
     {
-      var description = descriptions is null
-        ? await inputs.DescribeAsync(group.TruckId, ct)
-        : descriptions.GetValueOrDefault(group.TruckId);
+      EtaChainDescription? description;
+      if (descriptions is null)
+      {
+        var one = Stopwatch.GetTimestamp();
+        description = await inputs.DescribeAsync(group.TruckId, ct);
+        describedOne += Stopwatch.GetElapsedTime(one).TotalMilliseconds;
+      }
+      else
+        description = descriptions.GetValueOrDefault(group.TruckId);
       if (description is null)
         continue;
       var now = DateTime.UtcNow;
@@ -128,6 +147,47 @@ public sealed class EtaForecastService(
           };
       }
     }
+
+    // The forecast is the largest stage of a board request that includes it,
+    // and it is one call to here. Saying which part it was beats guessing
+    // from the one number the board reports.
+    var matchMs = Stopwatch.GetElapsedTime(stage).TotalMilliseconds;
+    var total = savedMs + groupMs + describeMs + matchMs;
+    if (total >= 500)
+      logger.LogInformation(
+        "EtaTiming TotalMs={Total} SavedMs={Saved} GroupMs={Group} "
+          + "DescribeMs={Describe} DescribeOneMs={DescribeOne} "
+          + "MatchMs={Match} Loads={Loads} Trucks={Trucks} Rows={Rows} "
+          + "Inside={Inside}",
+        Math.Round(total),
+        Math.Round(savedMs),
+        Math.Round(groupMs),
+        Math.Round(describeMs),
+        Math.Round(describedOne),
+        Math.Round(matchMs),
+        dispatches.Count,
+        groups.Length,
+        rows?.Count ?? 0,
+        string.Join(
+          " ",
+          PerformanceStages
+            .Snapshot()
+            .Where(x =>
+              x.Key.StartsWith("eta-describe/", StringComparison.Ordinal)
+            )
+            .Select(x =>
+            {
+              var was = before.GetValueOrDefault(x.Key);
+              return (
+                Name: x.Key["eta-describe/".Length..],
+                Ms: x.Value.TotalMs - (was?.TotalMs ?? 0),
+                Calls: x.Value.Count - (was?.Count ?? 0)
+              );
+            })
+            .Where(x => x.Calls > 0)
+            .Select(x => $"{x.Name}={Math.Round(x.Ms)}/{x.Calls}")
+        )
+      );
   }
 
   private static bool Matches(

@@ -1,6 +1,8 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Application.Diagnostics;
 using Application.Features.Dispatch.Models;
 using Application.Features.Eta.Algorithms;
 using Application.Features.Eta.Interfaces;
@@ -90,21 +92,28 @@ public sealed partial class EtaChainInputsService(
     scope.ReadAsync(
       async token =>
       {
+        var at = Stopwatch.GetTimestamp();
         var snapshots = await itineraries.ReadManyAsync(
           truckIds,
           DateTimeOffset.UtcNow,
           token
         );
+        PerformanceStages.Elapsed("eta-describe", "itineraries", at);
         var descriptions = new Dictionary<Guid, EtaChainDescription>();
         var work = snapshots.Values.Where(x => !x.Segments.IsEmpty).ToArray();
         if (work.Length == 0)
           return (IReadOnlyDictionary<Guid, EtaChainDescription>)descriptions;
+        at = Stopwatch.GetTimestamp();
         var batch = await ReadBatchAsync(work, token);
+        PerformanceStages.Elapsed("eta-describe", "batch", at);
+        at = Stopwatch.GetTimestamp();
         foreach (var snapshot in work)
           if (
             await DescribeCoreAsync(snapshot, batch, token) is { } description
           )
             descriptions[snapshot.TruckId] = description;
+        PerformanceStages.Elapsed("eta-describe", "core", at);
+        PerformanceStages.Count("eta-describe", "trucks", work.Length);
         return descriptions;
       },
       ct,
