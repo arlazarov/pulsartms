@@ -189,6 +189,41 @@ tables read once per call rather than once per request.
 before this was known. At sixty-six milliseconds a poll that was a fifth of
 one instance's database time spent on an exchange with nothing to carry.
 
+## The round trips that must stay
+
+Counting queries per table says where the repeats are; it does not say which
+repeats are waste. Each of the four largest was checked, and two of them are
+load-bearing:
+
+**Trucks, Drivers, Trailers, SwitchParticipants** were waste. They are tiny
+tables read once per call instead of once per request, and `FleetNames` and
+`ActiveTransfers` in `Application/Reference` fixed that.
+
+**LoadExecutionLegs** must keep its per-call filter. It looks like the same
+shape - thirty-six queries over twelve rows - but unlike the others it grows
+with every executed load and never shrinks. Loading it whole would work
+today and become a fault later, silently.
+
+**Dispatches** is not a repeat within a request. Twenty-seven queries is
+about three per request across the eight a page makes, each over ids that
+request asked for. It also grows without bound.
+
+**The two board enrichment calls** look like the clearest waste of all: each
+re-runs the whole board query, so the page pays for the base computation
+twice, about 470ms. They must stay two.
+
+They run concurrently - the measured starts are 2119ms and 2124ms - in two
+requests with two database contexts, so the forecast and the deadhead read
+overlap. Combined into one call they would serialise, because one context
+cannot run them at once:
+
+  two calls  470 + max(1600, 1880) contended  ~2.4s
+  one call   470 + 1600 + 1880 in sequence    ~3.9s
+
+The duplicated 470ms buys 1.6 seconds of waiting. Removing the waste would
+make the page slower, which is the opposite of what counting queries alone
+suggests.
+
 ## Why opening hours are not yet a filter
 
 A station that exists and trades can still be shut at the hour a driver
