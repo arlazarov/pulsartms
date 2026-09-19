@@ -1,9 +1,0 @@
-@use '../../base' as ui;
-
-.fleet-map-date {
-  display: flex;
-  align-items: center;
-  gap: ui.pg(sm);
-  font-size: ui.fs(label);
-  color: ui.theme(text-secondary);
-}

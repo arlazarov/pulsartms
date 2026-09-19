@@ -225,7 +225,7 @@ public sealed class FleetMapComponentTests
   }
 
   [Fact]
-  public async Task ToolbarGroupsLayersSeparatelyFromPricingAndDisclosureRetainsMapAndInputs()
+  public async Task ToolbarCarriesOnlyLayersAndDisclosureRetainsMapAndInputs()
   {
     using var fixture = new SelectionFixture();
     var component = fixture.Render();
@@ -234,13 +234,13 @@ public sealed class FleetMapComponentTests
     );
     var map = component.Find("#fleet-map");
     var search = component.Find("#fleet-truck-search");
-    var date = component.Find("#fleet-date");
     var layers = component.Find("[aria-label='Map layers']");
     Assert.Equal(3, layers.QuerySelectorAll("input[type='checkbox']").Length);
     Assert.Equal(3, layers.QuerySelectorAll("svg[aria-hidden='true']").Length);
-    Assert.Single(
-      component.FindAll("[aria-label='Fuel price mode'] input[type='checkbox']")
-    );
+    // Neither the date nor the price basis is a map question: the map is
+    // today, and it prices fuel the way the planner does.
+    Assert.Empty(component.FindAll("#fleet-date"));
+    Assert.Empty(component.FindAll("[aria-label='Fuel price mode']"));
     var filters = component.Find(".fleet-map-mobile-filters");
     Assert.Equal("false", filters.GetAttribute("aria-expanded"));
     await filters.ClickAsync(new MouseEventArgs());
@@ -253,7 +253,6 @@ public sealed class FleetMapComponentTests
       search.OuterHtml,
       component.Find("#fleet-truck-search").OuterHtml
     );
-    Assert.Equal(date.OuterHtml, component.Find("#fleet-date").OuterHtml);
     Assert.Equal(0, fixture.FuelWrites);
   }
 
@@ -2536,7 +2535,7 @@ public sealed class FleetMapComponentTests
   }
 
   [Fact]
-  public async Task StationToggleReusesLoadedDateAndIftaDoesNotRequestStationsAgain()
+  public async Task StationToggleReusesLoadedDateAndTheFleetPriceBasisDoesNotRequestStationsAgain()
   {
     using var fixture = new Fixture();
     var component = fixture.Render();
@@ -2552,7 +2551,7 @@ public sealed class FleetMapComponentTests
     Assert.Equal(1, fixture.StationCalls);
     Assert.Single(fixture.Js.Calls, x => x.Name == "setStations");
     Assert.Equal(
-      "Fuel · Your price",
+      "Fuel price",
       component.Find(".fleet-map-key__fuel-label").TextContent
     );
     Assert.Equal(
@@ -2574,21 +2573,39 @@ public sealed class FleetMapComponentTests
         Toggle(component, "Fuel Stations")
           .ChangeAsync(new ChangeEventArgs { Value = true })
     );
-    await component.InvokeAsync(
-      () =>
-        Toggle(component, "IFTA")
-          .ChangeAsync(new ChangeEventArgs { Value = true })
-    );
-    Assert.Equal(
-      "Fuel · After IFTA",
-      component.Find(".fleet-map-key__fuel-label").TextContent
-    );
+    // The price basis is the fleet's planning setting, not a map switch, and
+    // learning it repaints the markers without asking for the stations again.
     Assert.Equal(1, fixture.StationCalls);
     Assert.Single(fixture.Js.Calls, x => x.Name == "setStations");
-    Assert.Equal(
-      true,
-      fixture.Js.Calls.Last(x => x.Name == "setIfta").Args![0]
+    Assert.DoesNotContain(component.Markup, "IFTA");
+  }
+
+  // The IFTA switch left the map. What the map paints is now whatever the
+  // fleet plans on, and it says so without waiting for the answer to start.
+  [Fact]
+  public async Task FleetPriceBasisReachesTheMarkersWithoutHoldingUpTheMap()
+  {
+    using var fixture = new Fixture { FleetUsesIfta = false };
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, x => x.Name == "setTrucks")
     );
+    var created = Assert.Single(fixture.Js.Calls, x => x.Name == "setOptions");
+    Assert.True(
+      JsonSerializer
+        .SerializeToElement(created.Args![0])
+        .GetProperty("useIfta")
+        .GetBoolean(),
+      "the map starts on the planner's default rather than waiting"
+    );
+    component.WaitForAssertion(
+      () =>
+        Assert.Equal(
+          false,
+          fixture.Js.Calls.Last(x => x.Name == "setIfta").Args![0]
+        )
+    );
+    Assert.DoesNotContain(component.Markup, "IFTA");
   }
 
   [Fact]
@@ -5261,6 +5278,12 @@ public sealed class FleetMapComponentTests
           ? Defer(_preview, uri, ct)
           : Task.FromResult(Ok(_plans[Guid.Parse(uri.Segments[^3].Trim('/'))]));
       }
+      // Before the dispatch "/planning" suffix: the fleet map asks this one
+      // for the price basis it colours stations by.
+      if (uri.AbsolutePath == "/api/settings/planning")
+        return Task.FromResult(
+          Ok(new { preferences = new { useIfta = true }, revision = 1 })
+        );
       if (uri.AbsolutePath.EndsWith("/planning", StringComparison.Ordinal))
       {
         Interlocked.Increment(ref PlanningCalls);
@@ -5387,6 +5410,7 @@ public sealed class FleetMapComponentTests
     public int NextCalls;
     public int StationCalls;
     public bool FailLocations;
+    public bool FleetUsesIfta = true;
     private readonly ClientComponentContext _context;
 
     public Fixture()
@@ -5432,6 +5456,10 @@ public sealed class FleetMapComponentTests
               points = Array.Empty<object>(),
             }
           );
+      if (uri.AbsolutePath == "/api/settings/planning")
+        return Ok(
+          new { preferences = new { useIfta = FleetUsesIfta }, revision = 1 }
+        );
       if (uri.AbsolutePath.EndsWith("/planning"))
         return Ok(
           new

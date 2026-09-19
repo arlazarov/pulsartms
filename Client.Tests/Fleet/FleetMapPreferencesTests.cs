@@ -23,12 +23,12 @@ public sealed class FleetMapPreferencesTests
   {
     using var fixture = new Fixture();
     fixture.Values[fixture.Key] = """
-      {"useIfta":true,"showFuelStations":true,
+      {"useIfta":false,"showFuelStations":true,
        "showTraffic":false,"showNextLoads":true}
       """;
     var cut = fixture.Render();
     Ready(cut);
-    Assert.True(Toggle(cut, "IFTA").HasAttribute("checked"));
+    Assert.DoesNotContain(cut.Markup, "IFTA");
     Assert.True(Toggle(cut, "Fuel Stations").HasAttribute("checked"));
     Assert.False(Toggle(cut, "Traffic").HasAttribute("checked"));
     Assert.True(Toggle(cut, "Next loads").HasAttribute("checked"));
@@ -36,6 +36,8 @@ public sealed class FleetMapPreferencesTests
     var options = JsonSerializer.SerializeToElement(
       Assert.Single(calls, call => call.Name == "setOptions").Args![0]
     );
+    // A useIfta left in storage by an older visit no longer speaks for the
+    // map: the fleet's planning setting does.
     Assert.True(options.GetProperty("useIfta").GetBoolean());
     Assert.True(options.GetProperty("stationsVisible").GetBoolean());
     Assert.False(options.GetProperty("trafficVisible").GetBoolean());
@@ -61,7 +63,7 @@ public sealed class FleetMapPreferencesTests
     var cut = fixture.Render();
     Ready(cut);
     Assert.True(Toggle(cut, "Traffic").HasAttribute("checked"));
-    foreach (var label in new[] { "IFTA", "Fuel Stations", "Next loads" })
+    foreach (var label in new[] { "Fuel Stations", "Next loads" })
       Assert.False(Toggle(cut, label).HasAttribute("checked"));
     Assert.Equal(0, fixture.StationReads);
   }
@@ -87,15 +89,15 @@ public sealed class FleetMapPreferencesTests
     {
       var cut = first.Render();
       Ready(cut);
-      foreach (var label in new[] { "IFTA", "Fuel Stations", "Next loads" })
+      foreach (var label in new[] { "Fuel Stations", "Next loads" })
         await ChangeAsync(cut, label, true);
       await ChangeAsync(cut, "Traffic", false);
       Assert.Equal(
-        4,
+        3,
         first.Js.Calls.Count(call => call.Name == "localStorage.setItem")
       );
       using var json = JsonDocument.Parse(values[first.Key]);
-      Assert.Equal(4, json.RootElement.EnumerateObject().Count());
+      Assert.Equal(3, json.RootElement.EnumerateObject().Count());
       Assert.False(json.RootElement.GetProperty("showTraffic").GetBoolean());
     }
     using (var returning = new Fixture(user, values))
@@ -103,7 +105,7 @@ public sealed class FleetMapPreferencesTests
       var cut = returning.Render();
       Ready(cut);
       Assert.False(Toggle(cut, "Traffic").HasAttribute("checked"));
-      foreach (var label in new[] { "IFTA", "Fuel Stations", "Next loads" })
+      foreach (var label in new[] { "Fuel Stations", "Next loads" })
         Assert.True(Toggle(cut, label).HasAttribute("checked"));
     }
     using var another = new Fixture(Guid.NewGuid(), values);

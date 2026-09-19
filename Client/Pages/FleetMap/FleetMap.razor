@@ -19,26 +19,9 @@
             <ActionIcon Kind="filters" /><span>Filters</span>
         </button>
         <div id="fleet-map-filters" class="fleet-map-filters @(_mobileFiltersOpen ? "is-open" : "")">
-        <div class="fleet-map-date">
-        <label for="fleet-date">Date</label>
-
-        <input
-            id="fleet-date"
-            type="date"
-            aria-label="Date"
-            @bind="SelectedDate"
-            @bind:after="OnDateChanged" />
-        </div>
-
         <div class="fleet-map-layer-controls"
              aria-busy="@(!_preferencesLoaded ? "true" : "false")"
              aria-hidden="@(!_preferencesLoaded ? "true" : "false")">
-        <div class="fleet-map-pricing" role="group" aria-label="Fuel price mode">
-            <label class="fleet-map-toggle filter-toolbar__toggle" title="Compare fuel prices after IFTA">
-                <input type="checkbox" class="visually-hidden" @bind="UseIfta" @bind:after="OnIftaToggleChanged" />
-                <span>IFTA</span>
-            </label>
-        </div>
         <div class="fleet-map-layers" role="group" aria-label="Map layers">
         <label class="fleet-map-toggle filter-toolbar__toggle"
                title="Fuel Stations">
@@ -466,7 +449,7 @@
             @if (ShowFuelStations)
             {
                 <div class="fleet-map-key__fuel">
-                    <span class="fleet-map-key__fuel-label">Fuel · @(UseIfta ? "After IFTA" : "Your price")</span>
+                    <span class="fleet-map-key__fuel-label">Fuel price</span>
                     <span class="fleet-map-key__scale"><span>Lower</span><i aria-hidden="true"></i><span>Higher</span></span>
                     <span class="fleet-map-key__note">Within each currency</span>
                     <span class="fleet-map-key__missing"><i aria-hidden="true"></i>No price</span>

@@ -158,7 +158,11 @@ public partial class FleetMap : IAsyncDisposable
   private string? StationError => _stations?.Error ?? _stations?.PriceError;
   private DateOnly SelectedDate { get; set; } =
     DateOnly.FromDateTime(DateTime.Today);
-  private bool UseIfta { get; set; }
+
+  // Not a map switch any more: the map colours stations by the same price the
+  // planner buys on, so the two cannot disagree. The planner's default stands
+  // until the fleet's setting is read.
+  private bool UseIfta { get; set; } = true;
   private bool ShowFuelStations { get; set; }
   private bool ShowTraffic { get; set; } = true;
 
@@ -284,6 +288,7 @@ public partial class FleetMap : IAsyncDisposable
       await InvokeAsync(StateHasChanged);
       _truckPollingTask = PollTrucksAsync(_lifetime.Token);
       _ = OnDateChanged();
+      _ = ReadFuelPricingBasisAsync();
     }
     catch (Exception ex) when (IsLoadError(ex))
     {
@@ -834,13 +839,6 @@ public partial class FleetMap : IAsyncDisposable
       await _stations.LoadAsync(date, () => UseIfta, _lifetime.Token);
     if (!_disposed)
       await InvokeAsync(StateHasChanged);
-  }
-
-  private async Task OnIftaToggleChanged()
-  {
-    await SaveMapPreferencesAsync();
-    if (_map is not null && !_disposed)
-      await _map.InvokeVoidAsync("setIfta", UseIfta);
   }
 
   private async Task OnFuelStationsToggleChanged()
