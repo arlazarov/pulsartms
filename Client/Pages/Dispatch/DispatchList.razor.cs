@@ -14,6 +14,7 @@ public partial class DispatchList : IDisposable
   [Inject] private PlanningDisplayCache PlanningCache { get; set; } = default!;
   [Inject] private IJSRuntime JS { get; set; } = default!;
   [Inject] private TimeProvider Clock { get; set; } = default!;
+  [Inject] private IPageVisibility Visibility { get; set; } = default!;
   private const string ViewStorageKey = "amftms.dispatch.view";
 
   protected override async Task OnInitializedAsync()
@@ -236,6 +237,7 @@ public partial class DispatchList : IDisposable
   private async Task PollTelemetryAsync(CancellationToken cancellationToken)
   {
     using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10), Clock);
+    using var pace = Visibility.Pace(timer, TimeSpan.FromSeconds(10));
     try
     {
       var initial = await Api.GetAsync<FleetLocationsMapDto>(TelemetryUrl, cancellationToken);

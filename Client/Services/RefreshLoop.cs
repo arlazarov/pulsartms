@@ -7,9 +7,11 @@ public static class RefreshLoop
     Func<Exception, Task> onError,
     TimeSpan interval,
     CancellationToken cancellationToken,
-    TimeProvider? clock = null)
+    TimeProvider? clock = null,
+    IPageVisibility? visibility = null)
   {
     using var timer = new PeriodicTimer(interval, clock ?? TimeProvider.System);
+    using var pace = visibility?.Pace(timer, interval);
     try
     {
       do

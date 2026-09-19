@@ -72,8 +72,9 @@ All maintained browser JavaScript lives in `Client/Scripts`:
 - `fleetMap/ui/`: shared inspector ownership, camera insets and distance labels.
 - `fleetMap/lifecycle/`: cooperative browser scheduling.
 - `dispatch/`: Dispatch browser interop.
-- `shared/`: reusable popup scroll locking, native dialog interop and atomic
-  authentication-session storage.
+- `shared/`: reusable popup scroll locking, native dialog interop, atomic
+  authentication-session storage and the document-visibility watcher that lets
+  `IPageVisibility` slow polling in hidden tabs.
 
 `build/javascript.mjs` bundles these entry points with ESM splitting. GPU code
 remains dynamically imported; shared chunks are generated, not hand-maintained.

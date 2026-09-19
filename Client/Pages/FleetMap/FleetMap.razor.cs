@@ -27,6 +27,7 @@ public partial class FleetMap : IAsyncDisposable
     catch (JSException) { _addressCopyMessage = "Could not copy. Please try again."; }
   }
   [Inject] private PlanningDisplayCache PlanningCache { get; set; } = default!;
+  [Inject] private IPageVisibility Visibility { get; set; } = default!;
   [Inject]
   private HttpClient Http { get; set; } = default!;
 
@@ -205,7 +206,7 @@ public partial class FleetMap : IAsyncDisposable
         await InvokeAsync(StateHasChanged);
       },
       TimeSpan.FromSeconds(10),
-      cancellationToken, Clock);
+      cancellationToken, Clock, Visibility);
 
   [JSInvokable]
   public Task OnTruckSelected(string id)

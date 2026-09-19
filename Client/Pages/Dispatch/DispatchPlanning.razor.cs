@@ -9,6 +9,7 @@ public partial class DispatchPlanning : IDisposable
 {
     [Inject] private PlanningDisplayCache PlanningCache { get; set; } = default!;
     [Inject] private TimeProvider Clock { get; set; } = default!;
+    [Inject] private IPageVisibility Visibility { get; set; } = default!;
     [Parameter] public DispatchResponse? Load { get; set; }
     [Parameter] public Guid? TruckId { get; set; }
     [Parameter] public DriverHosClocks? Hos { get; set; }
@@ -149,6 +150,7 @@ public partial class DispatchPlanning : IDisposable
     private async Task PollAsync(string url, CancellationToken ct)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10), Clock);
+        using var pace = Visibility.Pace(timer, TimeSpan.FromSeconds(10));
         try { while (await timer.WaitForNextTickAsync(ct))
         {
             if (_result?.State?.Plan is null || Clock.GetUtcNow().UtcDateTime - _lastRefresh >= TimeSpan.FromMinutes(1))
