@@ -1,7 +1,6 @@
 using Application.Features.Eta.Services;
 using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Routes;
-using Application.Features.Synchronization.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 

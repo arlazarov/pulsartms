@@ -1,4 +1,4 @@
-using Application.Features.Synchronization.Interfaces;
+using Application.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 

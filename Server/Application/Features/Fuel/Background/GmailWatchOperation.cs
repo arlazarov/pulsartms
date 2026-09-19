@@ -1,5 +1,4 @@
 using Application.Features.Fuel.Services;
-using Application.Features.Synchronization.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 

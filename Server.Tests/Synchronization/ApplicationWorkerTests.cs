@@ -1,4 +1,5 @@
 using Application.Features.Synchronization.Interfaces;
+using Application.Interfaces;
 using Infrastructure.Synchronization;
 using Microsoft.Extensions.Configuration;
 

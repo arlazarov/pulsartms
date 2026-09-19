@@ -5,7 +5,6 @@ using Application.Features.Routing.Options;
 using Application.Features.Routing.Services.Addresses;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
-using Application.Features.Synchronization.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

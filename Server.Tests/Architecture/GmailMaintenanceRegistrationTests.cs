@@ -1,5 +1,5 @@
+using Application.Features.Fuel.Background;
 using Application.Features.Fuel.Interfaces;
-using Application.Features.Synchronization.Interfaces;
 using Infrastructure;
 using Infrastructure.Integrations.Bvd;
 using Infrastructure.Integrations.Google.Gmail;

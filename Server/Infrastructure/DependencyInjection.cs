@@ -33,6 +33,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Application.Features.Routing.Background;
+using Application.Features.Eta.Background;
+using Application.Features.Fleet.Background;
+using Application.Features.Fuel.Background;
 
 namespace Infrastructure;
 

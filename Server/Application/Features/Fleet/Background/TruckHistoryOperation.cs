@@ -1,5 +1,4 @@
 using Application.Features.Fleet.Queries.GetFleetLocations;
-using Application.Features.Synchronization.Interfaces;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
