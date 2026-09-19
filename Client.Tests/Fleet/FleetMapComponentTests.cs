@@ -63,12 +63,20 @@ public sealed class FleetMapComponentTests
     var toggle = component.Find(".fleet-map-mobile-summary__toggle");
     Assert.Contains("is-mobile-collapsed", inspector.ClassList);
     Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+    var closed = component.Find(".fleet-map-inspector__header").InnerHtml;
 
     await toggle.ClickAsync(new MouseEventArgs());
 
     Assert.Contains("is-mobile-expanded", inspector.ClassList);
     Assert.Equal("true", toggle.GetAttribute("aria-expanded"));
-    Assert.Equal("Hide", toggle.TextContent.Trim());
+    // The header is what stays on screen either way, so opening the card may
+    // not rewrite a word of it - a "Details"/"Hide" toggle used to, and the
+    // row shifted under the dispatcher's finger as it opened.
+    Assert.Equal(
+      closed.Replace("aria-expanded=\"false\"", "aria-expanded=\"true\""),
+      component.Find(".fleet-map-inspector__header").InnerHtml
+    );
+    Assert.Equal("Truck details", toggle.GetAttribute("aria-label"));
   }
 
   [Theory]
@@ -870,10 +878,7 @@ public sealed class FleetMapComponentTests
     AssertTruckPanelsVisible(component);
     var summary = component.Find("#fleet-map-route-details");
     Assert.False(summary.HasAttribute("hidden"));
-    Assert.Equal(
-      "fleet-map-telemetry-details",
-      summary.NextElementSibling!.Id
-    );
+    Assert.Equal("fleet-map-telemetry-details", summary.NextElementSibling!.Id);
     Assert.NotNull(
       component.Find(
         ".fleet-map-inspector__identity .fleet-map-inspector__trailer"

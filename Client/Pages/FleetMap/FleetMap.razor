@@ -202,14 +202,16 @@
                 {
                     @if (_inspectorMode == MapInspectorMode.Truck)
                     {
+                        @* A chevron, not a word: "Details"/"Hide" are
+                           different widths, so the row moved as it opened. *@
                         <button type="button"
                                 class="btn btn--text btn--small
                                     fleet-map-mobile-summary__toggle"
                                 aria-expanded="@(_mobileTruckDetailsOpen
                                     ? "true" : "false")"
                                 aria-controls="fleet-map-details"
+                                aria-label="Truck details"
                                 @onclick="ToggleMobileTruckDetails">
-                            @(_mobileTruckDetailsOpen ? "Hide" : "Details")
                         </button>
                     }
                     <button type="button"

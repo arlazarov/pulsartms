@@ -78,8 +78,31 @@
   &.is-mobile-collapsed .fleet-map-inspector__header {
     border-bottom: 0;
   }
+  // The only thing that may change when the card opens is the chevron's
+  // angle: a word would change the row's width and push the rest of the
+  // header sideways on the way open.
   .fleet-map-mobile-summary__toggle {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: ui.size(control-compact);
+    color: ui.theme(text-secondary);
+    @media (max-width: ui.breakpoint(md, max)) {
+      min-inline-size: ui.size(control-touch);
+    }
+    &::after {
+      content: '\25be';
+      line-height: 1;
+      transition: transform 120ms ease;
+    }
+    &[aria-expanded='true']::after {
+      transform: rotate(180deg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      &::after {
+        transition: none;
+      }
+    }
   }
   .fleet-map-mobile-summary__label {
     display: none;
@@ -120,16 +143,6 @@
     }
     .fleet-map-inspector__actions .map-action-icon.btn--primary {
       background: ui.theme(action);
-    }
-    .fleet-map-mobile-summary__toggle {
-      gap: ui.pg(xs);
-      color: ui.theme(text-secondary);
-      &::after {
-        content: '▾';
-      }
-      &[aria-expanded='true']::after {
-        content: '▴';
-      }
     }
   }
   .fleet-map-truck-info {
@@ -576,11 +589,12 @@
     .fleet-map-mobile-summary__toggle {
       display: inline-flex;
     }
+    // The driver and the trailer stay in the closed card: they are half of
+    // what a dispatcher looks a truck up by.
     &.is-mobile-collapsed {
       .fleet-map-inspector__header {
         border-bottom: 0;
       }
-      .fleet-map-inspector__crew,
       .fleet-map-inspector__actions,
       .fleet-map-info-content {
         display: none;
@@ -640,26 +654,8 @@
       grid-row: 3;
       margin-left: 0;
     }
-    @container map-truck-header (width < #{ui.breakpoint(map-info-stacked)}) {
-      &.is-mobile-expanded {
-        .fleet-map-inspector__header {
-          grid-template-columns: minmax(0, 1fr) max-content;
-        }
-        .fleet-map-inspector__controls {
-          grid-column: 2;
-        }
-        .fleet-map-mobile-summary__remaining {
-          grid-column: 1 / -1;
-          grid-row: 2;
-          justify-self: center;
-        }
-        .fleet-map-inspector__crew {
-          grid-row: 3;
-        }
-        .fleet-map-inspector__actions {
-          grid-row: 4;
-        }
-      }
-    }
+    // Nothing here re-columns on open. The header a dispatcher reads while
+    // the card is shut keeps every row and every column when it opens;
+    // opening only adds the actions and the detail below them.
   }
 }
