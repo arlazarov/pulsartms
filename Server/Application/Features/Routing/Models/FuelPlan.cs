@@ -35,6 +35,13 @@ public sealed class FuelPlan
   // station and the volume do not change, only what the fuel costs. Hiding it
   // leaves a dispatcher unable to tell "recalculating" from "nowhere to go".
   public bool PricesOutOfDate { get; set; }
+
+  // The same idea for the truck's position. A plan whose stops and prices
+  // hold does not stop being the plan to drive because the last GPS fix is
+  // old or missing: only the "how far along is he" figures are unknown, and
+  // the driver still has to fuel somewhere. Hiding it leaves him with
+  // nothing, which is the worse answer.
+  public bool PositionUnverified { get; set; }
   public string ProfileSignature { get; set; } = "";
   public double StartingGallons { get; set; }
   public double RemainingMiles { get; set; }

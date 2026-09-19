@@ -1453,6 +1453,47 @@ public sealed class FuelPlanProjectionTests
     );
   }
 
+  // A driver with no fuel stop at all is the worse answer. An unreadable GPS
+  // fix says how far along he is is unknown; it does not say where he has to
+  // fuel, so the stops stay. Leaving the saved road is different - the plan's
+  // geometry no longer describes where he is - and there the stops go.
+  [Theory]
+  [InlineData("stale-gps", true)]
+  [InlineData("missing-road", true)]
+  [InlineData("off-road", false)]
+  public void AnUnreadablePositionKeepsTheStopsButLeavingTheRoadDoesNot(
+    string location,
+    bool kept
+  )
+  {
+    var fixture = new Fixture();
+    var state = fixture.State(0);
+    var leg = fixture.Leg(0);
+    if (location == "stale-gps")
+      state = state with
+      {
+        Progress = state.Progress! with { LocationStale = true },
+      };
+    if (location == "off-road")
+      state = state with
+      {
+        Progress = state.Progress! with { Position = new(40.1, -99.75) },
+      };
+
+    var result = FuelPlanProjection.Project(
+      fixture.Saved,
+      state,
+      fixture.Loads,
+      location == "missing-road" ? null : leg,
+      fixture.Now
+    );
+
+    Assert.True(result.NeedsRefresh);
+    Assert.Equal(kept, result.PositionUnverified);
+    if (kept)
+      Assert.NotEmpty(result.Stops);
+  }
+
   [Fact]
   public void AnInvalidPlanIsNotMerelyRepricedEvenWhenItsPricesAreOld()
   {

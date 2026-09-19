@@ -1,5 +1,5 @@
-using Client.Models.DTO.Dispatch.Workspace;
 using Client.Models.DTO;
+using Client.Models.DTO.Dispatch.Workspace;
 using Microsoft.AspNetCore.Components;
 
 namespace Client.Pages.Dispatch;
@@ -22,11 +22,16 @@ public partial class DispatchStopFields
   public EventCallback<Guid> VerifyAddressRequested { get; set; }
 
   [Parameter]
-  public Func<string, CancellationToken, Task<RequestResponseDTO<VerifiedDispatchAddress>>>? AddressLookup { get; set; }
+  public Func<
+    string,
+    CancellationToken,
+    Task<RequestResponseDTO<VerifiedDispatchAddress>>
+  >? AddressLookup { get; set; }
 
   private async Task ApplyAddressAsync(VerifiedDispatchAddress address)
   {
-    if (Disabled) return;
+    if (Disabled)
+      return;
     Stop.Address = address.Address;
     Stop.City = address.City;
     Stop.Province = address.Province;

@@ -193,6 +193,7 @@ public static class FuelPlanProjection
     {
       fuel.NeedsRefresh = true;
       fuel.PricesOutOfDate = false;
+      fuel.PositionUnverified = false;
       fuel.ScheduleImpact = null;
       fuel.RefreshReasons.Add(reason);
     }
@@ -206,8 +207,19 @@ public static class FuelPlanProjection
       fuel.NeedsRefresh = true;
       fuel.RefreshReasons.Add(reason);
     }
+    // The position could not be read, so how far along he is is unknown -
+    // but where he has to fuel is not. A recalculation is wanted; the stops
+    // stay, because a driver with no fuel stop at all is the worse outcome.
+    void Unverified(string reason)
+    {
+      if (!fuel.NeedsRefresh)
+        fuel.PositionUnverified = true;
+      fuel.NeedsRefresh = true;
+      fuel.RefreshReasons.Add(reason);
+    }
     fuel.NeedsRefresh = false;
     fuel.PricesOutOfDate = false;
+    fuel.PositionUnverified = false;
     if (
       fuel.EstimatedStationAccess
       && fuel.SelectionVersion < MinimumEstimatedAccessVersion
@@ -245,7 +257,7 @@ public static class FuelPlanProjection
       || currentLeg is null
     )
     {
-      Invalid(
+      Unverified(
         "The saved fuel road cannot be verified from the current GPS position."
       );
       return fuel;

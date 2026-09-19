@@ -908,9 +908,11 @@ public partial class FleetMap : IAsyncDisposable
     GC.SuppressFinalize(this);
   }
 
-  // A plan is worth showing when it still holds, even if its prices belong to
-  // an earlier pricing day; only an invalid plan is hidden.
+  // A plan is worth showing when it still holds - whether its prices belong
+  // to an earlier pricing day or the truck's position could not be read.
+  // Only a plan whose stops no longer match the work is hidden, because a
+  // driver with no fuel stop at all is the worse answer.
   private static bool Usable(FuelPlan? fuel) =>
     fuel is { Stops.Count: > 0 }
-    && (!fuel.NeedsRefresh || fuel.PricesOutOfDate);
+    && (!fuel.NeedsRefresh || fuel.PricesOutOfDate || fuel.PositionUnverified);
 }

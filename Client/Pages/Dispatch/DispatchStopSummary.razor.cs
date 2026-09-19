@@ -67,12 +67,17 @@ public partial class DispatchStopSummary
   private static string Number(decimal value) =>
     value.ToString("0.##", CultureInfo.InvariantCulture);
 
-  private static string FactIcon(string label) => label switch
-  {
-    "Contact" or "Phone" or "Email" => "contact",
-    "Commodity" or "Weight" or "Pieces" or "Pallets" => "cargo",
-    "Temperature" => "temperature",
-    "Arrived" or "Picked up" or "Delivered" or "Departed" or "Manually completed" => "check",
-    _ => "reference",
-  };
+  private static string FactIcon(string label) =>
+    label switch
+    {
+      "Contact" or "Phone" or "Email" => "contact",
+      "Commodity" or "Weight" or "Pieces" or "Pallets" => "cargo",
+      "Temperature" => "temperature",
+      "Arrived"
+      or "Picked up"
+      or "Delivered"
+      or "Departed"
+      or "Manually completed" => "check",
+      _ => "reference",
+    };
 }

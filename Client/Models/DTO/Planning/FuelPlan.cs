@@ -23,6 +23,7 @@ public sealed class FuelPlan
 
   // The plan still holds; only its prices belong to an earlier pricing day.
   public bool PricesOutOfDate { get; set; }
+  public bool PositionUnverified { get; set; }
   public bool ManuallyEdited { get; set; }
   public string ProfileSignature { get; set; } = "";
   public double StartingGallons { get; set; }
