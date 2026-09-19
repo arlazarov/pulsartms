@@ -46,6 +46,29 @@ public sealed class FleetLocationRevisionTests
     Assert.Equal(first.Revision, second.Revision);
   }
 
+  [Fact]
+  public async Task BoardReadsShareTheSnapshotRevisionWithoutLocationHistory()
+  {
+    var telemetry = new ServerTelemetry();
+    var snapshot = new FleetLocationsResponse
+    {
+      Trucks = [new() { TruckId = Guid.NewGuid() }],
+      Points = [new() { TruckId = Guid.NewGuid() }, new() { TruckId = Guid.NewGuid() }]
+    };
+    telemetry.Set(snapshot);
+    using var memory = new MemoryCache(new MemoryCacheOptions());
+    using var stream = new FleetLocationStream(TimeProvider.System);
+    var handler = new GetFleetLocationsHandler(null!, null!, null!, new FleetTelemetryCache(memory), stream, telemetry,
+      Microsoft.Extensions.Options.Options.Create(new Application.Features.Synchronization.Options.SynchronizationOptions { Enabled = true }));
+    var full = (await handler.Handle(new(), default)).Response!;
+    var board = (await handler.Handle(new(IncludePoints: false), default)).Response!;
+    Assert.Same(snapshot, full);
+    Assert.Empty(board.Points);
+    Assert.Same(snapshot.Trucks, board.Trucks);
+    Assert.Equal(snapshot.Revision, board.Revision);
+    Assert.Equal(2, snapshot.Points.Count);
+  }
+
   [Theory]
   [InlineData("W/\"abc-1\"", true)]
   [InlineData("\"abc-1\"", true)]

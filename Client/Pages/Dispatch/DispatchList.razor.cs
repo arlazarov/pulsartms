@@ -230,19 +230,22 @@ public partial class DispatchList : IDisposable
     }
   }
 
+  // The board shows current positions only; location history stays on the map.
+  internal const string TelemetryUrl = "api/fleet/locations?points=false";
+
   private async Task PollTelemetryAsync(CancellationToken cancellationToken)
   {
     using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10), Clock);
     try
     {
-      var initial = await Api.GetAsync<FleetLocationsMapDto>("api/fleet/locations", cancellationToken);
+      var initial = await Api.GetAsync<FleetLocationsMapDto>(TelemetryUrl, cancellationToken);
       if (_disposed) return;
       if (initial.Success && initial.Response is not null) ApplyTelemetry(initial.Response);
       await InvokeAsync(StateHasChanged);
       while (await timer.WaitForNextTickAsync(cancellationToken))
       {
         if (_showCompleted) continue;
-        var fleet = await Api.GetAsync<FleetLocationsMapDto>("api/fleet/locations", cancellationToken);
+        var fleet = await Api.GetAsync<FleetLocationsMapDto>(TelemetryUrl, cancellationToken);
         if (_disposed) return;
         if (_showCompleted) continue;
         if (!_loading && _searchDelay is null && Clock.GetUtcNow().UtcDateTime - _lastBoardRefresh >= TimeSpan.FromMinutes(1))
