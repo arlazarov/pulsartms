@@ -54,6 +54,51 @@ public class FuelStationTests
     Assert.Equal(2, await db.FuelDiscounts.CountAsync());
   }
 
+  // A station the place provider says is shut is not somewhere a driver can
+  // buy fuel, so it must not be offered for planning or drawn on the map.
+  // An empty status is a station nobody has asked about, which is not the
+  // same answer and must not be dropped: almost every station has one.
+  [Theory]
+  [InlineData("", true)]
+  [InlineData(FuelStationStatus.Operational, true)]
+  [InlineData(FuelStationStatus.ClosedTemporarily, false)]
+  [InlineData(FuelStationStatus.ClosedPermanently, false)]
+  public async Task AStationReportedShutIsNotOffered(
+    string status,
+    bool offered
+  )
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await db.Database.EnsureCreatedAsync();
+    using var reads = TestCache.Create();
+    var date = new DateOnly(2026, 9, 9);
+    db.FuelStations.Add(
+      new FuelStation
+      {
+        Id = Guid.NewGuid(),
+        ExternalId = "status",
+        Region = "ON",
+        Latitude = 43,
+        Longitude = -79,
+        BusinessStatus = status,
+        FuelDiscounts = [Discount("CAD", date)],
+      }
+    );
+    await db.SaveChangesAsync();
+
+    var response = await new GetFuelStationsHandler(
+      db,
+      reads,
+      TimeProvider.System
+    ).Handle(new(date), default);
+
+    Assert.Equal(offered, response.Response!.Count == 1);
+  }
+
   [Theory]
   [InlineData("OR", "Diesel", false, "2")]
   [InlineData(" or ", "", false, "2")]

@@ -1,6 +1,7 @@
 using Application.Caching;
 using Application.Features.Fuel.Models;
 using Application.Models;
+using Domain.Entities.Fuel;
 
 namespace Application.Features.Fuel.Queries.GetFuelStations;
 
@@ -115,6 +116,15 @@ public class GetFuelStationsHandler(
       .Where(x =>
         x.Latitude.HasValue
         && x.Longitude.HasValue
+        // A station the place provider reports as shut is not somewhere a
+        // driver can buy fuel, so it is not offered - for planning or on the
+        // map. Temporary closures are excluded the same way and return on
+        // their own once the status is asked again and answers otherwise.
+        //
+        // An empty status is kept. It means nobody has asked, not that the
+        // station is shut, and dropping the unasked would empty the map.
+        && x.BusinessStatus != FuelStationStatus.ClosedPermanently
+        && x.BusinessStatus != FuelStationStatus.ClosedTemporarily
         && x.FuelDiscounts.Any(d =>
           d.EffectiveFrom <= date && d.EffectiveTo >= date
         )
