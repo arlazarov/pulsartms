@@ -26,6 +26,8 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
   staged replacement plan; they do not describe deployed functionality.
 - [Customs data preparation](architecture/customs-preparation.md) defines the
   planned shipment, crossing and fleet data for future ACE/ACI manifests.
+- [Module ownership and save boundaries](architecture/module-ownership.md)
+  records measured coupling, table owners and transaction boundaries.
 - [Build, run and development workflow](development/setup.md)
 - [PulsR product naming and compatibility](development/product-branding.md)
 - [Temporary outputs and automatic retention](development/artifact-retention.md)
