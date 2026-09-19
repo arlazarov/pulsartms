@@ -189,6 +189,27 @@ tables read once per call rather than once per request.
 before this was known. At sixty-six milliseconds a poll that was a fifth of
 one instance's database time spent on an exchange with nothing to carry.
 
+## Where the board stands after the round trips came out
+
+One page load, measured the same way as the 208-query baseline:
+
+| | at the start | after |
+| --- | --- | --- |
+| deadhead read, whole | 1882ms | 567ms |
+| forecast describe | 1971ms | 901ms |
+| enrichment request, financials | 2347ms | 1005ms |
+| enrichment request, forecast | 2433ms | 1446ms |
+
+These are single runs against a network-bound database, so treat the margins
+rather than the digits; the margins are large and consistent across both
+requests.
+
+An apparent 700ms was unaccounted for at one point - the board reporting
+1482ms of financials while the deadhead read reported 789ms. That was a
+misreading: the two lines came from different requests. Within one request
+they agree, 1003ms of board of which 567ms is the deadhead and the rest
+details and execution. There is no hidden cost there.
+
 ## The round trips that must stay
 
 Counting queries per table says where the repeats are; it does not say which
