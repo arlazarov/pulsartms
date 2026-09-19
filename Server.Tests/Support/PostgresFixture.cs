@@ -173,8 +173,9 @@ public sealed class PostgresFixture : IAsyncDisposable
     }
   }
 
-  // Schemas from runs that ended more than an hour ago. An hour is far
-  // longer than any run here takes, so this never removes a live one.
+  // Schemas from runs that ended more than half an hour ago - far longer
+  // than any run here takes, so this never removes a live one, and short
+  // enough that a leak is gone before the next working session.
   private static async Task CollectAbandonedAsync(NpgsqlConnection connection)
   {
     try
@@ -184,7 +185,7 @@ public sealed class PostgresFixture : IAsyncDisposable
         SELECT schema_name FROM information_schema.schemata
         WHERE schema_name ~ '^t_[0-9]+_[0-9a-f]{32}$'
           AND to_timestamp(split_part(schema_name, '_', 2)::bigint)
-            < now() - interval '1 hour'
+            < now() - interval '30 minutes'
         """,
         connection
       );
@@ -215,7 +216,7 @@ public sealed class PostgresFixture : IAsyncDisposable
     await source.DisposeAsync();
     // A drop can find a connection still holding the schema. Retrying beats
     // leaving it: the collector above would only reach it an hour later.
-    for (var attempt = 0; attempt < 3; attempt++)
+    for (var attempt = 0; attempt < 4; attempt++)
       try
       {
         await using var connection = new NpgsqlConnection(connectionString);
@@ -224,7 +225,9 @@ public sealed class PostgresFixture : IAsyncDisposable
           $"DROP SCHEMA IF EXISTS \"{schema}\" CASCADE",
           connection
         );
-        drop.CommandTimeout = 15;
+        // Dropping the model's tables over a network link is not quick, and
+        // a timeout here is what left one schema behind on each full run.
+        drop.CommandTimeout = 120;
         await drop.ExecuteNonQueryAsync();
         return;
       }
