@@ -26,6 +26,8 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
   staged replacement plan; they do not describe deployed functionality.
 - [Customs data preparation](architecture/customs-preparation.md) defines the
   planned shipment, crossing and fleet data for future ACE/ACI manifests.
+- [How mileage is attributed to a load](architecture/mileage-allocation.md)
+  records the existing attribution mechanism and what it cannot express.
 - [Module ownership and save boundaries](architecture/module-ownership.md)
   records measured coupling, table owners and transaction boundaries.
 - [Build, run and development workflow](development/setup.md)
