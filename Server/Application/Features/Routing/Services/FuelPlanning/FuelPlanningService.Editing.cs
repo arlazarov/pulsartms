@@ -13,7 +13,7 @@ public sealed partial class FuelPlanningService
   {
     var truckId = (await plans.LoadAsync(dispatchId, ct)).TruckId
       ?? throw new RoutePlanningException("A truck assignment is required for fuel planning.");
-    var gate = TruckGates.For(truckId);
+    var gate = truckGates.For(truckId);
     await GateWait.WaitAsync(gate, "FuelTruck", ct);
     try
     {
@@ -28,7 +28,7 @@ public sealed partial class FuelPlanningService
   {
     var truckId = (await plans.LoadAsync(dispatchId, ct)).TruckId
       ?? throw new RoutePlanningException("A truck assignment is required for fuel planning.");
-    var gate = TruckGates.For(truckId);
+    var gate = truckGates.For(truckId);
     await GateWait.WaitAsync(gate, "FuelTruck", ct);
     try
     {

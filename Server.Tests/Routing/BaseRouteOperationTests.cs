@@ -182,7 +182,8 @@ public sealed class BaseRouteOperationTests
       services.AddScoped(provider => new PlanningTestServices(provider.GetRequiredService<IAppDbContext>(), router, reads: reads));
       services.AddScoped(provider => provider.GetRequiredService<PlanningTestServices>().Routes);
       services.AddScoped(provider => provider.GetRequiredService<PlanningTestServices>().Deadheads);
-      services.AddScoped(provider => new BaseRouteService(provider.GetRequiredService<IAppDbContext>(), router, reads));
+      services.AddScoped(provider => new BaseRouteService(provider.GetRequiredService<IAppDbContext>(), router, reads,
+        provider.GetRequiredService<PlanningTestServices>().Gates));
       services.AddScoped(provider => new StopAddressService(provider.GetRequiredService<IAppDbContext>(), new NoAddressLookup(), reads, queue));
       var root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
       var truck = new Truck { Id = Guid.NewGuid(), ExternalId = "preparation", UnitNumber = "Preparation", IsActive = true };

@@ -14,5 +14,8 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" PrivateAssets="all" />
     <ProjectReference Include="../Client/Client.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
   <ItemGroup><Using Include="Xunit" /></ItemGroup>
 </Project>

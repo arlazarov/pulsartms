@@ -71,8 +71,9 @@ public sealed class EtaDescriptionMemoTests
     db.Dispatches.Add(load);
     await db.SaveChangesAsync();
     using var reads = TestCache.Create();
+    using var gates = new Application.Caching.ProcessGates();
     var before = reads.Generation($"chain:{load.Id}");
-    await new BaseRouteService(db, new Router(), reads).EnsureAsync(load, new TruckRouteProfile { UsesFleetDefaults = true }, default);
+    await new BaseRouteService(db, new Router(), reads, gates).EnsureAsync(load, new TruckRouteProfile { UsesFleetDefaults = true }, default);
     Assert.NotEqual(before, reads.Generation($"chain:{load.Id}"));
   }
 
@@ -93,7 +94,7 @@ public sealed class EtaDescriptionMemoTests
     using var services = new PlanningTestServices(db, router);
     var reads = services.Reads;
     var before = reads.Generation($"chain:{later.Id}");
-    var service = new DeadheadService(db, router, services.Routes, new(db), new DeadheadHistoryReader(db), reads);
+    var service = new DeadheadService(db, router, services.Routes, new(db), new DeadheadHistoryReader(db), reads, services.Gates);
     await service.EnsureAsync(later, await services.Routes.ProfileAsync(truck.Id, default), default);
     Assert.Equal(1, router.Calls);
     Assert.NotEqual(before, reads.Generation($"chain:{later.Id}"));

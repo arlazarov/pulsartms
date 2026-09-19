@@ -73,6 +73,10 @@ transports in each test project's `Support` folder. Keep pure algorithm tests
 separate from tests that create a database/service provider or render a component;
 split a class when it mixes those responsibilities. Architecture checks belong in
 `Architecture`, including layer boundaries and dependency registration checks.
+Both test projects carry an explicit `xunit.runner.json`: collections run in
+parallel on all cores, assemblies do not, and a failure never stops the run. Tests
+that touch the static state listed in `ProcessStateTests` must tolerate parallel
+collections (compare against a captured baseline, not an absolute count).
 `ApiContractTests` there drives the real MVC pipeline (routing, JSON, `ETag`/`304`,
 compression) through `ApiTestHost`, an in-process host with a scripted mediator and
 no database, identity or workers; add a case there when an HTTP contract changes.

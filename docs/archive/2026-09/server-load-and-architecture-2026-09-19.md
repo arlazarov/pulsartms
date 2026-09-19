@@ -34,6 +34,10 @@ artifact check and the offline UI smoke), except where noted below.
 - `FuelDiscounts:Source` selects the fuel discount provider (`bvd-gmail` or
   `none`), so customers without a fuel card run no Gmail worker.
 - Twenty more Fleet Map helper modules are type-checked.
+- Per-service `KeyedGates` statics moved to the `ProcessGates` DI singleton; both
+  test projects carry an explicit `xunit.runner.json`; `ProcessStateTests` and
+  `FeatureDependencyTests` freeze the remaining static state and the
+  cross-feature reference map as debt that may only shrink.
 
 ## CI failures seen and fixed on the branch
 

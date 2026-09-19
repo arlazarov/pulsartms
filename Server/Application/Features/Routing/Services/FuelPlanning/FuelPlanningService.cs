@@ -13,9 +13,9 @@ namespace Application.Features.Routing.Services.FuelPlanning;
 
 public sealed partial class FuelPlanningService(RoutePlanningService plans, ISender mediator,
   Application.Features.Dispatch.Interfaces.IDispatchBoardReader dispatchBoard, FuelRegionPlanner regions, FuelHorizon horizons, IOptions<FuelRegionOptions> options,
-  TruckFuelPlans savedPlans, FuelScheduleEvaluator schedules, IAppDbContext db)
+  TruckFuelPlans savedPlans, FuelScheduleEvaluator schedules, IAppDbContext db, ProcessGates processGates)
 {
-  private static readonly KeyedGates TruckGates = new();
+  private readonly KeyedGates truckGates = processGates.For<FuelPlanningService>();
   // Manual searches share a small per-process budget; ordinary planning reads never acquire it.
   private static readonly SemaphoreSlim SearchSlots = new(2, 2);
 
@@ -23,7 +23,7 @@ public sealed partial class FuelPlanningService(RoutePlanningService plans, ISen
   {
     var truckId = (await plans.LoadAsync(dispatchId, ct)).TruckId
       ?? throw new RoutePlanningException("A truck assignment is required for fuel planning.");
-    var gate = TruckGates.For(truckId);
+    var gate = truckGates.For(truckId);
     await GateWait.WaitAsync(gate, "FuelTruck", ct);
     try
     {

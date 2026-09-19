@@ -13,9 +13,9 @@ using Application.Caching;
 namespace Application.Features.Routing.Services.Deadheads;
 
 public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, RoutePlanningService plans, DispatchRates financials,
-  IDeadheadHistoryReader historyReader, ReadCache reads)
+  IDeadheadHistoryReader historyReader, ReadCache reads, ProcessGates processGates)
 {
-  private static readonly KeyedGates Gates = new();
+  private readonly KeyedGates gates = processGates.For<DeadheadService>();
 
   public Task<IReadOnlyDictionary<Guid, DeadheadHistorySnapshot>> ReadHistoryAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct) =>
     historyReader.ReadAsync(ids, ct);
@@ -101,7 +101,7 @@ public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, 
     load = latestLoad;
     var pair = DeadheadConnection.Find(history.GetValueOrDefault(load.Id));
     var hash = pair is not null && profile.Validate() is null ? pair.Signature(profile) : "";
-    var gate = Gates.For(load.TruckId ?? load.Id);
+    var gate = gates.For(load.TruckId ?? load.Id);
     await GateWait.WaitAsync(gate, "Deadhead", ct);
     try
     {

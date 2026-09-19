@@ -14,6 +14,9 @@
     <ProjectReference Include="../Server/API/API.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="Server.Tests.Support" />
   </ItemGroup>

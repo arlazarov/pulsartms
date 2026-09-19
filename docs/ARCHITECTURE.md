@@ -113,6 +113,13 @@ a bounded per-load fallback because it does not support LATERAL. SQL translation
 and SQLite semantics are tested; production query plans and latency remain unmeasured.
 Application retains the assignment, chronology, and ambiguity checks.
 
+Per-key concurrency stripes come from the `ProcessGates` singleton (`For<TOwner>()`),
+not static fields, so tests and any future multi-instance hosting own their gates
+explicitly. `ProcessStateTests` lists the remaining static gates and counters as
+debt that may only shrink, and `FeatureDependencyTests` freezes the current
+cross-feature reference map (Routing, Eta, Dispatch, Fleet and Synchronization
+still form cycles) so it can only lose edges.
+
 Fuel discounts enter through `IFuelDiscountProvider`; `FuelDiscounts:Source` picks the
 Infrastructure implementation at startup (`bvd-gmail`, or `none` for customers without
 a fuel card), so another card program is a new provider and source name, not a change

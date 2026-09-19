@@ -9,9 +9,9 @@ using Application.Caching;
 namespace Application.Features.Routing.Services.Routes;
 
 public sealed class AutomaticPlanningService(RoutePlanningService plans, FuelPlanningService fuel,
-  Application.Features.Dispatch.Services.DispatchBoardService dispatchBoard, IMemoryCache cache, PlanningReadService planningReads)
+  Application.Features.Dispatch.Services.DispatchBoardService dispatchBoard, IMemoryCache cache, PlanningReadService planningReads, ProcessGates processGates)
 {
-  private static readonly KeyedGates Gates = new();
+  private readonly KeyedGates gates = processGates.For<AutomaticPlanningService>();
 
   public async Task<AutomaticPlanningResult> ForTruckAsync(Guid truckId, CancellationToken ct)
   {
@@ -32,7 +32,7 @@ public sealed class AutomaticPlanningService(RoutePlanningService plans, FuelPla
 
   public async Task<AutomaticPlanningResult> ForDispatchAsync(Guid dispatchId, CancellationToken ct, bool connectFromTruck = false)
   {
-    var gate = Gates.For((await plans.LoadAsync(dispatchId, ct)).TruckId!.Value);
+    var gate = gates.For((await plans.LoadAsync(dispatchId, ct)).TruckId!.Value);
     await GateWait.WaitAsync(gate, "AutomaticPlanning", ct);
     try
     {
@@ -76,7 +76,7 @@ public sealed class AutomaticPlanningService(RoutePlanningService plans, FuelPla
 
   public async Task<AutomaticPlanningResult> RecalculateFuelAsync(Guid dispatchId, CancellationToken ct)
   {
-    var gate = Gates.For((await plans.LoadAsync(dispatchId, ct)).TruckId!.Value);
+    var gate = gates.For((await plans.LoadAsync(dispatchId, ct)).TruckId!.Value);
     await GateWait.WaitAsync(gate, "AutomaticPlanning", ct);
     try
     {
@@ -108,7 +108,7 @@ public sealed class AutomaticPlanningService(RoutePlanningService plans, FuelPla
 
   public async Task PrepareUpcomingAsync(Guid dispatchId, CancellationToken ct)
   {
-    var gate = Gates.For((await plans.LoadAsync(dispatchId, ct)).TruckId!.Value);
+    var gate = gates.For((await plans.LoadAsync(dispatchId, ct)).TruckId!.Value);
     await GateWait.WaitAsync(gate, "AutomaticPlanning", ct);
     try
     {

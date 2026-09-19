@@ -521,7 +521,7 @@ public partial class AutomaticPlanningTests
     fixture.Load.Stops[0].Job = "Pick Up";
     fixture.Load.Stops[1].Job = "Drop Off";
     await fixture.Db.SaveChangesAsync();
-    var baseRoutes = new BaseRouteService(fixture.Db, fixture.Router, fixture.Services.Reads);
+    var baseRoutes = new BaseRouteService(fixture.Db, fixture.Router, fixture.Services.Reads, fixture.Services.Gates);
     foreach (var id in ids.Skip(1))
     {
       var load = await fixture.Plans.LoadAsync(id, default);
@@ -1110,7 +1110,7 @@ public partial class AutomaticPlanningTests
         services.Eta, services.FuelPlans);
       return new() { Connection = connection, Db = db, Truck = truck, Load = load, Location = location,
         Router = router, Cache = cache, Plans = plans, Services = services, Stations = stations, Sender = sender,
-        Reader = reader, Service = new(plans, services.Fuel, services.BoardService, cache, reader) };
+        Reader = reader, Service = new(plans, services.Fuel, services.BoardService, cache, reader, services.Gates) };
     }
     public async ValueTask DisposeAsync() { Services.Dispose(); Cache.Dispose(); await Db.DisposeAsync(); await Connection.DisposeAsync(); }
   }

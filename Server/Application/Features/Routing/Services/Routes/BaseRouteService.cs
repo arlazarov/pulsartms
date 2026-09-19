@@ -11,9 +11,9 @@ using System.Text.Json;
 
 namespace Application.Features.Routing.Services.Routes;
 
-public sealed class BaseRouteService(IAppDbContext db, IRoutingProvider routing, ReadCache reads)
+public sealed class BaseRouteService(IAppDbContext db, IRoutingProvider routing, ReadCache reads, ProcessGates processGates)
 {
-  private static readonly KeyedGates Gates = new();
+  private readonly KeyedGates gates = processGates.For<BaseRouteService>();
   public static string Signature(Domain.Entities.Dispatch.Dispatch load, TruckRouteProfile profile) =>
     Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new {
       LocationPolicy = "google-street-address-v1",
@@ -32,7 +32,7 @@ public sealed class BaseRouteService(IAppDbContext db, IRoutingProvider routing,
     if (ordered.Count is < 2 or > 49) throw new RoutePlanningException("The base route requires 2 to 49 stops.");
     if (resolvedPoints is not null && (resolvedPoints.Count != ordered.Count || resolvedPoints.Any(point => point?.IsValid != true)))
       throw new RoutePlanningException("The base route stop coordinates are incomplete.");
-    var gate = Gates.For(load.Id);
+    var gate = gates.For(load.Id);
     await GateWait.WaitAsync(gate, "BaseRoute", ct);
     DispatchBaseRoute? saved = null;
     var ownsSaved = false;

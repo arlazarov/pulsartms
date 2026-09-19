@@ -27,6 +27,7 @@ internal sealed class PlanningTestServices : IDisposable
 {
   private readonly bool ownsReads;
   public ReadCache Reads { get; }
+  public ProcessGates Gates { get; } = new();
   public RouteDisplayCache Displays { get; }
   public PlanningSettingsService Settings { get; }
   public RoutePlanningService Routes { get; }
@@ -56,8 +57,8 @@ internal sealed class PlanningTestServices : IDisposable
     Sender = sender;
     var profiles = new TruckPlanningProfileService(db, Reads, Settings);
     Routes = new(db, router, sender!, profiles, new(db, Reads, profiles), new(db, Options.Create(new RouteRecalculationBudgetOptions())), Reads, Options.Create(new FuelRegionOptions()),
-      Options.Create(new SynchronizationOptions()), Displays, new(db, router, Reads));
-    Deadheads = new(db, router, Routes, new(db), new Infrastructure.Persistence.DeadheadHistoryReader((Infrastructure.Persistence.AppDbContext)db), Reads);
+      Options.Create(new SynchronizationOptions()), Displays, new(db, router, Reads, Gates), Gates);
+    Deadheads = new(db, router, Routes, new(db), new Infrastructure.Persistence.DeadheadHistoryReader((Infrastructure.Persistence.AppDbContext)db), Reads, Gates);
     var hos = new NoHos();
     BoardReader = new(new DispatchBoardReader(db, Reads, boardHos ?? hos, Deadheads));
     EtaMemory = new();
@@ -69,7 +70,7 @@ internal sealed class PlanningTestServices : IDisposable
     Fuel = new(Routes, sender, BoardReader,
       new(BoardReader, Options.Create(new FuelRegionOptions()), Routes, Deadheads),
       new(Routes, db, BoardReader, Deadheads), Options.Create(new FuelRegionOptions()),
-      FuelPlans, FuelSchedules, db);
+      FuelPlans, FuelSchedules, db, Gates);
     EtaInputs = new(db, BoardReader, Routes, new Infrastructure.Persistence.EtaRootRouteReader((Infrastructure.Persistence.AppDbContext)db),
       new Infrastructure.Persistence.NextLoadRouteReader((Infrastructure.Persistence.AppDbContext)db),
       new Infrastructure.Persistence.DeadheadHistoryReader((Infrastructure.Persistence.AppDbContext)db), EtaMemory,
@@ -79,7 +80,7 @@ internal sealed class PlanningTestServices : IDisposable
     Board = new(BoardService);
   }
 
-  public void Dispose() { FuelMemory.Dispose(); EtaMemory.Dispose(); Displays.Dispose(); if (ownsReads) Reads.Dispose(); }
+  public void Dispose() { FuelMemory.Dispose(); EtaMemory.Dispose(); Displays.Dispose(); Gates.Dispose(); if (ownsReads) Reads.Dispose(); }
 
   // Board reads no longer go through MediatR; remaining sends (fuel prices, telemetry) need a test-specific sender.
   private sealed class UnsupportedSender : ISender

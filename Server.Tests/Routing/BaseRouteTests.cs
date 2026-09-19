@@ -32,7 +32,8 @@ public sealed class BaseRouteTests
     await db.SaveChangesAsync();
     var router = new Router();
     using var reads = TestCache.Create();
-    var service = new BaseRouteService(db, router, reads);
+    using var gates = new Application.Caching.ProcessGates();
+    var service = new BaseRouteService(db, router, reads, gates);
     var profile = new TruckRouteProfile { UsesFleetDefaults = true };
     await service.EnsureAsync(load, profile, default);
     var saved = await db.DispatchBaseRoutes.SingleAsync();
@@ -84,7 +85,8 @@ public sealed class BaseRouteTests
     await db.SaveChangesAsync();
     var router = new Router();
     using var reads = TestCache.Create();
-    var route = await new BaseRouteService(db, router, reads).EnsureAsync(load, profile, default);
+    using var gates = new Application.Caching.ProcessGates();
+    var route = await new BaseRouteService(db, router, reads, gates).EnsureAsync(load, profile, default);
     Assert.Single(route.Legs);
     Assert.Equal(calls, router.Calls);
     Assert.Equal(calls * 2, router.Geocodes);
