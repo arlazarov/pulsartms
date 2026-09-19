@@ -31,6 +31,7 @@ public sealed class TestCategoryTests
       "Architecture",
       "Caching",
       "Costs",
+      "Database",
       "Dispatch",
       "Eta",
       "Finance",
