@@ -38,9 +38,13 @@ public sealed class SynchronizationOptions
   public int ReadCacheSeconds { get; set; } = 120;
 
   // How long another instance's write may still be answered from this one's
-  // cache. Lower costs one small indexed query per instance per interval.
+  // cache. Each poll is a round trip, and a round trip to the managed
+  // database this runs against measures about ninety milliseconds whatever
+  // the query, so two seconds spent a fifth of one instance's database time
+  // on an exchange that has nothing to carry most of the time. Ten seconds
+  // is still far inside the cache lifetimes it protects.
   [Range(1, 60)]
-  public int CacheRelaySeconds { get; set; } = 2;
+  public int CacheRelaySeconds { get; set; } = 10;
 
   [Range(1, 60)]
   public int SessionValidationSeconds { get; set; } = 30;

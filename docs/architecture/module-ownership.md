@@ -148,6 +148,47 @@ that only costs requests or can also collide on a write has not been checked,
 and nothing here has been run on two instances. That, not the caches, is what
 the pin now waits on.
 
+## What actually makes a request slow here
+
+Measured from the generated SQL during one board page load against the
+managed database this runs on:
+
+  208 queries, 13754ms in total, 66ms on average
+  179 under 100ms, 23 between 100 and 200ms, 6 over 200ms
+
+Almost none of that is the database working. A round trip to this database
+costs about 66ms whatever the query is; the same statements against a local
+PostgreSQL would be about a millisecond. What is slow is the *number of
+sequential queries*, and that is invisible on a developer machine.
+
+This changes what optimising means here. Rewriting a query saves a couple of
+milliseconds of work and none of the latency. Removing a query saves the
+whole sixty-six. The one change so far that moved a measurement -
+ApplyExecutionAsync from 1436ms to 366ms - removed a round trip; it did not
+make anything compute faster.
+
+The counts say where the round trips are:
+
+| Table | Queries in one page load |
+| --- | --- |
+| LoadExecutionLegs | 34 |
+| Dispatches | 25 |
+| CacheInvalidations | 22 |
+| SwitchParticipants | 16 |
+| Drivers | 16 |
+| Trucks | 15 |
+| Trailers | 15 |
+
+`Trucks`, `Drivers`, `Trailers` and `SwitchParticipants` appearing about
+fifteen times each is one shape: `ExecutionLoads.ReadAsync` runs roughly
+fifteen times per page and each run asks separately for the names of the
+trucks, drivers and trailers it just loaded. Those are small reference
+tables read once per call rather than once per request.
+
+`CacheInvalidations` is the relay polling, and it was set to two seconds
+before this was known. At sixty-six milliseconds a poll that was a fifth of
+one instance's database time spent on an exchange with nothing to carry.
+
 ## What the forecast description cannot be
 
 Describing a truck's chain is the largest single cost in a board request and
