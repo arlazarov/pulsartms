@@ -22,3 +22,16 @@ fi
 dotnet --version
 
 npm install --prefix Client --no-audit --no-fund
+
+# Browser smokes need the headless shell pinned by the installed Playwright. Its CDN is blocked here,
+# so when the download fails the pre-installed Chromium is linked where Playwright looks for it.
+browsers="${PLAYWRIGHT_BROWSERS_PATH:-/opt/pw-browsers}"
+revision="$(node -e "console.log(require('./Client/node_modules/playwright-core/browsers.json').browsers.find(b => b.name === 'chromium-headless-shell').revision)" 2>/dev/null || true)"
+shell="$browsers/chromium_headless_shell-$revision/chrome-headless-shell-linux64/chrome-headless-shell"
+if [ -n "$revision" ] && [ ! -e "$shell" ] && [ -x "$browsers/chromium" ]; then
+  if ! (cd Client && npx playwright install chromium-headless-shell >/dev/null 2>&1); then
+    mkdir -p "$(dirname "$shell")"
+    ln -sf "$browsers/chromium" "$shell"
+    touch "$browsers/chromium_headless_shell-$revision/INSTALLATION_COMPLETE" "$browsers/chromium_headless_shell-$revision/DEPENDENCIES_VALIDATED"
+  fi
+fi
