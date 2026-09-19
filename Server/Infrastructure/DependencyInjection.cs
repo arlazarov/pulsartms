@@ -126,6 +126,7 @@ public static class DependencyInjection
     services.AddScoped<IOdometerFeedProvider, SamsaraOdometerProvider>();
     services.AddHostedService<ApplicationWorker<IOdometerCaptureOperation>>();
     services.AddHostedService<CacheInvalidationWorker>();
+    services.AddHostedService<ApplicationWorker<IFuelStationStatusOperation>>();
     services.AddScoped<INextLoadRouteReader, NextLoadRouteReader>();
     services.AddScoped<ITruckFuelPlanStore, TruckFuelPlanStore>();
     services.AddScoped<IDriverHosStore, DriverHosStore>();

@@ -1,5 +1,6 @@
 using Application.Features.Dispatch.Options;
 using Application.Features.Eta.Options;
+using Application.Features.Fuel.Options;
 using Application.Features.Routing.Options;
 using Application.Features.Synchronization.Options;
 
@@ -15,6 +16,7 @@ public static class OptionsRegistration
     Bind<SynchronizationOptions>("Synchronization");
     Bind<DispatchImportOptions>("DispatchImport");
     Bind<FuelRegionOptions>("FuelRegions");
+    Bind<FuelStationStatusOptions>("FuelStationStatus");
     Bind<RouteRecalculationBudgetOptions>("RouteRecalculationBudget");
     Bind<RoutePreparationOptions>("RoutePreparation");
     Bind<EtaPlanningOptions>("EtaPlanning");

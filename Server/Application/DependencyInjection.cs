@@ -70,6 +70,10 @@ public static class DependencyInjection
     services.AddSingleton(TimeProvider.System);
     services.AddScoped<GmailWatchLifecycle>();
     services.AddScoped<FuelStationLookupService>();
+    services.AddSingleton<
+      IFuelStationStatusOperation,
+      FuelStationStatusOperation
+    >();
     services.AddScoped<FuelExchangeRateService>();
     services.AddSingleton<IGmailWatchOperation, GmailWatchOperation>();
     services.AddSingleton<ReadCache>();
