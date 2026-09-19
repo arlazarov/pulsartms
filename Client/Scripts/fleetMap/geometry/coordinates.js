@@ -1,3 +1,5 @@
+// @ts-check
+/** @param {unknown} latitude @param {unknown} longitude */
 export function coordinates(latitude, longitude) {
   if (latitude == null || longitude == null) return null;
   const lat = Number(latitude);

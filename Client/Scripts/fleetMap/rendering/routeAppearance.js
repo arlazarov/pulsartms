@@ -1,6 +1,8 @@
+// @ts-check
 import { sceneMetrics as metrics } from './sceneMetrics.js';
 import { currentRouteLineColor } from './routePalette.js';
 
+/** @type {Record<string, readonly number[]>} */
 const colors = {
   current: currentRouteLineColor,
   future: [145, 105, 201, 240],
@@ -8,6 +10,19 @@ const colors = {
 };
 const outline = [255, 255, 255, 210];
 
+/**
+ * @typedef {{id: string, data: unknown, visible?: boolean, strokeWeight: number, routeRole: string,
+ *   routeColor?: readonly number[] | null, routeMuted?: boolean, cachedLayer?: unknown[] | null, cachedData?: unknown,
+ *   cachedWidth?: number, cachedRole?: string, cachedColor?: string, cachedExtensions?: unknown, cachedMuted?: boolean,
+ *   cachedVisible?: boolean}} RouteLine
+ */
+
+/**
+ * @param {RouteLine} line
+ * @param {new (props: Record<string, unknown>) => unknown} PathLayer
+ * @param {unknown[]} routeDashExtensions
+ * @param {boolean} [selectionMuted]
+ */
 export function routeLayers(line, PathLayer, routeDashExtensions, selectionMuted = false) {
   const dashed = line.routeRole === 'future' || line.routeRole === 'deadhead';
   const muted = selectionMuted || dashed && line.routeMuted === true;
@@ -32,7 +47,7 @@ export function routeLayers(line, PathLayer, routeDashExtensions, selectionMuted
     data: line.data,
     visible: line.visible !== false,
     opacity: muted ? metrics.routeMutedOpacity : 1,
-    getPath: path => path,
+    getPath: (/** @type {unknown} */ path) => path,
     widthUnits: 'pixels',
     capRounded: true,
     jointRounded: true,
