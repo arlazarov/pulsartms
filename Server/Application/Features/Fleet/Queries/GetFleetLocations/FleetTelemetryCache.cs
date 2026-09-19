@@ -24,6 +24,7 @@ public sealed class FleetTelemetryCache(IMemoryCache cache) : IDisposable
       if (cache.TryGetValue(CacheKey, out value) && value is not null)
         return value;
       value = await load(cancellationToken);
+      value.Revision ??= Guid.NewGuid().ToString("N");
       Volatile.Write(ref latest, value);
       cache.Set(CacheKey, value, TimeSpan.FromSeconds(10));
       return value;

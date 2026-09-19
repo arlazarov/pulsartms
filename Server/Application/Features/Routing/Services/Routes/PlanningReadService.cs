@@ -9,7 +9,8 @@ using Microsoft.Extensions.Options;
 namespace Application.Features.Routing.Services.Routes;
 
 public sealed class PlanningReadService(RoutePlanningService routes, PlanningRefreshQueue refresh,
-  ISender mediator, IOptions<SynchronizationOptions> options, Application.Features.Eta.Services.EtaService eta, TruckFuelPlans fuelPlans)
+  Application.Features.Dispatch.Services.DispatchBoardService dispatchBoard, IOptions<SynchronizationOptions> options,
+  Application.Features.Eta.Services.EtaService eta, TruckFuelPlans fuelPlans)
 {
   public static void TrimForDisplay(RoutePlan plan, Guid? knownPlanId = null, int? knownVersion = null)
   {
@@ -26,12 +27,11 @@ public sealed class PlanningReadService(RoutePlanningService routes, PlanningRef
 
   public async Task<AutomaticPlanningResult> ForTruckAsync(Guid truckId, CancellationToken ct, Guid? knownPlanId = null, int? knownVersion = null)
   {
-    var board = await mediator.Send(new GetDispatchBoardQuery(TruckId: truckId, IncludeHos: true, IncludeFinancials: false), ct);
-    if (!board.Success) throw new RoutePlanningException("Dispatch assignments are temporarily unavailable.");
-    foreach (var load in board.Response?.Items.FirstOrDefault()?.Dispatches ?? [])
+    var board = await dispatchBoard.ReadAsync(new(TruckId: truckId, IncludeHos: true, IncludeFinancials: false), ct);
+    foreach (var load in board.Items.FirstOrDefault()?.Dispatches ?? [])
     {
-      var result = await ReadDispatchAsync(load.Id, board.Response?.Items.FirstOrDefault()?.Hos, ct, knownPlanId, knownVersion);
-      CheckAssignments(result.State?.Plan?.FuelPlan, board.Response?.Items.FirstOrDefault()?.Dispatches);
+      var result = await ReadDispatchAsync(load.Id, board.Items.FirstOrDefault()?.Hos, ct, knownPlanId, knownVersion);
+      CheckAssignments(result.State?.Plan?.FuelPlan, board.Items.FirstOrDefault()?.Dispatches);
       if (result.TruckId != truckId) return new(truckId, load.Id, load.LoadNumber, null, "This load has multiple truck assignments.");
       if (result.State?.Plan is not { Tracking.AllStopsPassed: true, InputsChanged: false })
       {
@@ -39,16 +39,16 @@ public sealed class PlanningReadService(RoutePlanningService routes, PlanningRef
         return result;
       }
     }
-    return new(truckId, null, null, null, "No remaining stops in current or upcoming dispatches.") { Hos = board.Response?.Items.FirstOrDefault()?.Hos };
+    return new(truckId, null, null, null, "No remaining stops in current or upcoming dispatches.") { Hos = board.Items.FirstOrDefault()?.Hos };
   }
 
   public async Task<AutomaticPlanningResult> ForDispatchAsync(Guid id, CancellationToken ct, Guid? knownPlanId = null, int? knownVersion = null)
   {
     var load = await routes.LoadAsync(id, ct);
-    var board = await mediator.Send(new GetDispatchBoardQuery(TruckId: load.TruckId, IncludeHos: true, IncludeFinancials: false), ct);
-    var clocks = board.Response?.Items.FirstOrDefault(x => x.TruckId == load.TruckId)?.Hos;
+    var board = await dispatchBoard.ReadAsync(new(TruckId: load.TruckId, IncludeHos: true, IncludeFinancials: false), ct);
+    var clocks = board.Items.FirstOrDefault(x => x.TruckId == load.TruckId)?.Hos;
     var result = await ReadDispatchAsync(id, clocks, ct, knownPlanId, knownVersion, load);
-    CheckAssignments(result.State?.Plan?.FuelPlan, board.Success ? board.Response?.Items.FirstOrDefault()?.Dispatches : null);
+    CheckAssignments(result.State?.Plan?.FuelPlan, board.Items.FirstOrDefault()?.Dispatches);
     await fuelPlans.ApplyAsync(result.State, ct);
     return result;
   }

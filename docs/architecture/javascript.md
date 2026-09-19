@@ -72,8 +72,9 @@ All maintained browser JavaScript lives in `Client/Scripts`:
 - `fleetMap/ui/`: shared inspector ownership, camera insets and distance labels.
 - `fleetMap/lifecycle/`: cooperative browser scheduling.
 - `dispatch/`: Dispatch browser interop.
-- `shared/`: reusable popup scroll locking, native dialog interop and atomic
-  authentication-session storage.
+- `shared/`: reusable popup scroll locking, native dialog interop, atomic
+  authentication-session storage and the document-visibility watcher that lets
+  `IPageVisibility` slow polling in hidden tabs.
 
 `build/javascript.mjs` bundles these entry points with ESM splitting. GPU code
 remains dynamically imported; shared chunks are generated, not hand-maintained.
@@ -114,9 +115,12 @@ the retained plan ID, version and truck ID; otherwise JavaScript returns false
 without mutation and Blazor resends full geometry. Accepted metadata replaces
 nullable fields while preserving only route and reference-route geometry. Clearing
 selection releases that retained plan. Late/disposed updates return false.
-`Client/jsconfig.json` checks the pure geometry, payload and next-load preparation
-modules and their imports. This is targeted JavaScript checking, not full Client
-JavaScript type coverage.
+`Client/jsconfig.json` lists the modules that `npm run js:check` type-checks under
+strict `checkJs`: geometry, payload and next-load preparation, plus the small
+appearance, appointment, ETA label, station price/quantity and shared helpers, and
+everything they import. A module joins the list once its exported functions carry
+JSDoc parameter types; the large layer and scene modules are not listed yet, so
+this remains targeted checking, not full Client JavaScript type coverage.
 
 Stop markers receive stable scene IDs. Each opaque 34px circle has a separate
 centered number layer; its shape does not depend on the digit count. Current stops

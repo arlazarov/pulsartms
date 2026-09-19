@@ -22,7 +22,7 @@ internal sealed class SavedFuelHorizonFixture : IAsyncDisposable
   public required Dispatch Future { get; init; }
   public required RoutePlanningState State { get; init; }
   public required ForbiddenRouter Router { get; init; }
-  public FuelHorizon Horizon => new(Services.Routes, Db, Services.Sender, Services.Deadheads);
+  public FuelHorizon Horizon => new(Services.Routes, Db, Services.BoardReader, Services.Deadheads);
 
   public static async Task<SavedFuelHorizonFixture> CreateAsync()
   {

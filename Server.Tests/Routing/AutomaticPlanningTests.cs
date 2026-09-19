@@ -69,9 +69,11 @@ public partial class AutomaticPlanningTests
   [Fact]
   public async Task ConcurrentFuelSearchesRespectTheSharedLimitAndCancelledWaitDoesNotCallRouting()
   {
-    await using var first = await Fixture.CreateAsync(pickedUp: true, truckId: Guid.Parse("00000001-0000-0000-0000-000000000000"));
-    await using var second = await Fixture.CreateAsync(pickedUp: true, truckId: Guid.Parse("00000002-0000-0000-0000-000000000000"));
-    await using var waiting = await Fixture.CreateAsync(pickedUp: true, truckId: Guid.Parse("00000003-0000-0000-0000-000000000000"));
+    // The search slots are process-wide in production; the three fixtures share one registry.
+    using var gates = new Application.Caching.ProcessGates();
+    await using var first = await Fixture.CreateAsync(pickedUp: true, truckId: Guid.Parse("00000001-0000-0000-0000-000000000000"), gates: gates);
+    await using var second = await Fixture.CreateAsync(pickedUp: true, truckId: Guid.Parse("00000002-0000-0000-0000-000000000000"), gates: gates);
+    await using var waiting = await Fixture.CreateAsync(pickedUp: true, truckId: Guid.Parse("00000003-0000-0000-0000-000000000000"), gates: gates);
     foreach (var fixture in new[] { first, second, waiting })
     {
       fixture.Location.FuelPercent = 40;
@@ -273,7 +275,7 @@ public partial class AutomaticPlanningTests
     Assert.Null(advanced.State!.Plan!.FuelPlan);
     var calls = fixture.Router.Calls;
     var options = Microsoft.Extensions.Options.Options.Create(new Application.Features.Synchronization.Options.SynchronizationOptions());
-    var reader = new PlanningReadService(fixture.Plans, new(fixture.Cache, options), fixture.Services.Sender,
+    var reader = new PlanningReadService(fixture.Plans, new(fixture.Cache, options), fixture.Services.BoardService,
       options, fixture.Services.Eta, fixture.Services.FuelPlans);
     var displayed = await reader.ForTruckAsync(fixture.Truck.Id, default);
     Assert.Equal(calls, fixture.Router.Calls);
@@ -521,7 +523,7 @@ public partial class AutomaticPlanningTests
     fixture.Load.Stops[0].Job = "Pick Up";
     fixture.Load.Stops[1].Job = "Drop Off";
     await fixture.Db.SaveChangesAsync();
-    var baseRoutes = new BaseRouteService(fixture.Db, fixture.Router);
+    var baseRoutes = new BaseRouteService(fixture.Db, fixture.Router, fixture.Services.Reads, fixture.Services.Gates);
     foreach (var id in ids.Skip(1))
     {
       var load = await fixture.Plans.LoadAsync(id, default);
@@ -530,7 +532,7 @@ public partial class AutomaticPlanningTests
     }
     var calls = fixture.Router.Calls;
     var horizon = new Application.Features.Routing.Services.FuelPlanning.FuelHorizon(fixture.Plans, fixture.Db,
-      fixture.Services.Sender, fixture.Services.Deadheads);
+      fixture.Services.BoardReader, fixture.Services.Deadheads);
 
     var result = await horizon.BuildAsync(current, current.Profile, default);
 
@@ -685,7 +687,7 @@ public partial class AutomaticPlanningTests
     Assert.Equal(calculatedAt, durable!.CalculatedAt);
     var options = Microsoft.Extensions.Options.Options.Create(new Application.Features.Synchronization.Options.SynchronizationOptions());
     var reader = new PlanningReadService(fixture.Plans, new(fixture.Cache, options),
-      fixture.Services.Sender, options, fixture.Services.Eta, fixture.Services.FuelPlans);
+      fixture.Services.BoardService, options, fixture.Services.Eta, fixture.Services.FuelPlans);
     var displayed = (await reader.ForTruckAsync(fixture.Truck.Id, default)).State!.Plan!.FuelPlan!;
     Assert.Equal(calculatedAt, displayed.CalculatedAt);
     Assert.True(displayed.NeedsRefresh);
@@ -1081,7 +1083,7 @@ public partial class AutomaticPlanningTests
       Services.Reads.Invalidate($"route:{Load.Id}");
     }
     public static async Task<Fixture> CreateAsync(List<FuelStationDto>? stations = null, bool pickedUp = false,
-      FuelCommitFailureProbe? failure = null, Guid? truckId = null)
+      FuelCommitFailureProbe? failure = null, Guid? truckId = null, Application.Caching.ProcessGates? gates = null)
     {
       var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
       var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection);
@@ -1102,16 +1104,15 @@ public partial class AutomaticPlanningTests
       stations ??= [station];
       var sender = new Sender(location, stations);
       var router = new FakeRouter();
-      var services = new PlanningTestServices(db, router, sender);
-      sender.Board = services.Board;
+      var services = new PlanningTestServices(db, router, sender, gates: gates);
       var plans = services.Routes;
       var cache = new MemoryCache(new MemoryCacheOptions());
       var synchronization = Microsoft.Extensions.Options.Options.Create(new Application.Features.Synchronization.Options.SynchronizationOptions());
-      var reader = new PlanningReadService(plans, new(cache, synchronization), sender, synchronization,
+      var reader = new PlanningReadService(plans, new(cache, synchronization), services.BoardService, synchronization,
         services.Eta, services.FuelPlans);
       return new() { Connection = connection, Db = db, Truck = truck, Load = load, Location = location,
         Router = router, Cache = cache, Plans = plans, Services = services, Stations = stations, Sender = sender,
-        Reader = reader, Service = new(plans, services.Fuel, sender, cache, reader) };
+        Reader = reader, Service = new(plans, services.Fuel, services.BoardService, cache, reader, services.Gates) };
     }
     public async ValueTask DisposeAsync() { Services.Dispose(); Cache.Dispose(); await Db.DisposeAsync(); await Connection.DisposeAsync(); }
   }
@@ -1144,7 +1145,6 @@ public partial class AutomaticPlanningTests
   {
     public int FuelCalls;
     public Func<CancellationToken, Task>? BeforeFuel;
-    public GetDispatchBoardHandler Board { private get; set; } = null!;
     public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default)
     {
       if (request is GetFuelStationsQuery)
@@ -1154,7 +1154,6 @@ public partial class AutomaticPlanningTests
       }
       object result = request switch
       {
-        GetDispatchBoardQuery board => await Board.Handle(board, ct),
         GetFleetLocationsQuery => RequestResponse<FleetLocationsResponse>.Ok(new() { Trucks = [location] }),
         GetFuelStationsQuery => RequestResponse<List<FuelStationDto>>.Ok(stations),
         _ => throw new NotSupportedException()

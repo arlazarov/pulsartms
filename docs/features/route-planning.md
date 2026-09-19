@@ -14,7 +14,9 @@ stops or vehicle profiles require signature validation before reuse.
 
 The initial per-truck preview reads saved data without requesting HOS, geocoding,
 fuel recommendations or provider routes. Normal planning then refreshes metadata.
-Matching revisions omit geometry from HTTP and JS updates. Pending future routes
+Matching revisions omit geometry from HTTP and JS updates, and an unchanged
+planning body is answered with `304` against the digest tag the Client sends
+(see [synchronization](synchronization.md)). Pending future routes
 can request bounded background preparation without blocking the display.
 
 See [base routes](base-routes.md), [empty mileage](dispatch-deadhead.md),

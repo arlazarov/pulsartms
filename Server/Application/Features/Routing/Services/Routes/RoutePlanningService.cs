@@ -18,9 +18,9 @@ using Application.Features.Routing.Models;
 namespace Application.Features.Routing.Services.Routes;
 
 public sealed class RoutePlanningService(IAppDbContext db, IRoutingProvider routing, ISender mediator, TruckPlanningProfileService profiles, RoutePlanStore store, RouteRecalculationBudget recalculationBudget, ReadCache reads, Microsoft.Extensions.Options.IOptions<FuelRegionOptions> regionOptions,
-  Microsoft.Extensions.Options.IOptions<SynchronizationOptions> syncOptions, RouteDisplayCache displays, BaseRouteService baseRoutes)
+  Microsoft.Extensions.Options.IOptions<SynchronizationOptions> syncOptions, RouteDisplayCache displays, BaseRouteService baseRoutes, ProcessGates processGates)
 {
-  private static readonly KeyedGates BuildGates = new();
+  private readonly KeyedGates buildGates = processGates.For<RoutePlanningService>();
   public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
   internal void InvalidateReadCache(Guid dispatchId) => store.Invalidate(dispatchId);
 
@@ -80,6 +80,15 @@ public sealed class RoutePlanningService(IAppDbContext db, IRoutingProvider rout
     return state;
   }
 
+  // Trail points carry only movement; stop tracking replays them as the truck's earlier positions.
+  private static TruckLocation Replay(TruckLocation truck, Application.Features.Fleet.Models.TruckLocationPoint point) => new()
+  {
+    TruckId = truck.TruckId, TruckExternalId = truck.TruckExternalId, UnitNumber = truck.UnitNumber,
+    DriverName = truck.DriverName, TrailerNumber = truck.TrailerNumber, Latitude = point.Latitude,
+    Longitude = point.Longitude, Speed = point.Speed, Heading = point.Heading, UpdatedAt = point.UpdatedAt,
+    ObservedAt = truck.ObservedAt, FormattedLocation = truck.FormattedLocation
+  };
+
   private static PlanStop EnrichStop(PlanStop stop, IEnumerable<Domain.Entities.Dispatch.DispatchStop> stops)
   {
     var source = stops.FirstOrDefault(x => x.Id == stop.Id);
@@ -98,7 +107,7 @@ public sealed class RoutePlanningService(IAppDbContext db, IRoutingProvider rout
   public async Task<RoutePlan> BuildAsync(Guid dispatchId, RouteBuildRequest request, CancellationToken ct)
   {
     if (request.Profile.Validate() is { } error) throw new RoutePlanningException(error);
-    var gate = BuildGates.For((await LoadAsync(dispatchId, ct)).TruckId!.Value);
+    var gate = buildGates.For((await LoadAsync(dispatchId, ct)).TruckId!.Value);
     await GateWait.WaitAsync(gate, "RouteBuild", ct);
     try
     {
@@ -159,7 +168,7 @@ public sealed class RoutePlanningService(IAppDbContext db, IRoutingProvider rout
 
   public async Task<FuelPlan> StoreFuelRouteAsync(Guid dispatchId, FuelPlan fuel, TruckRoute route, List<PlanStop> stops, double completedMiles, CancellationToken ct)
   {
-    var gate = BuildGates.For((await LoadAsync(dispatchId, ct)).TruckId!.Value);
+    var gate = buildGates.For((await LoadAsync(dispatchId, ct)).TruckId!.Value);
     await GateWait.WaitAsync(gate, "RouteBuild", ct);
     try
     {
@@ -191,7 +200,7 @@ public sealed class RoutePlanningService(IAppDbContext db, IRoutingProvider rout
 
   public async Task<bool> AdvanceAutomaticallyAsync(Guid dispatchId, CancellationToken ct, bool forceReroute = false)
   {
-    var gate = BuildGates.For((await LoadAsync(dispatchId, ct)).TruckId!.Value);
+    var gate = buildGates.For((await LoadAsync(dispatchId, ct)).TruckId!.Value);
     await GateWait.WaitAsync(gate, "RouteBuild", ct);
     try
     {
@@ -202,8 +211,9 @@ public sealed class RoutePlanningService(IAppDbContext db, IRoutingProvider rout
       var plan = JsonSerializer.Deserialize<RoutePlan>(entity.PlanJson, Json)!;
       var now = DateTime.UtcNow;
       var before = JsonSerializer.Serialize(plan.Tracking, Json);
-      foreach (var point in (recent.Response?.Points ?? []).Where(x => x.TruckId == load.TruckId && x.UpdatedAt <= truck?.UpdatedAt).OrderBy(x => x.UpdatedAt))
-        RouteStopTracker.Update(plan, load, point, now);
+      foreach (var point in (recent.Response?.Points ?? [])
+        .Where(x => truck is not null && x.TruckExternalId == truck.TruckExternalId && x.UpdatedAt <= truck.UpdatedAt).OrderBy(x => x.UpdatedAt))
+        RouteStopTracker.Update(plan, load, Replay(truck!, point), now);
       RouteStopTracker.Update(plan, load, truck, now);
       var progress = Progress(plan, truck, load);
       var fresh = progress is { LocationStale: false, Position: not null };

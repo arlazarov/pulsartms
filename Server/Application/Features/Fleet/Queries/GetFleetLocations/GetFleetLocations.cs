@@ -1,6 +1,5 @@
 using Application.Features.Fleet.Services;
 using Application.Features.Synchronization.Options;
-using Application.Features.Synchronization.Services;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Models;
 using Application.Models;
@@ -8,7 +7,10 @@ using Microsoft.Extensions.Options;
 
 namespace Application.Features.Fleet.Queries.GetFleetLocations;
 
-public record GetFleetLocationsQuery(bool CachedOnly = false) : IRequest<RequestResponse<FleetLocationsResponse>>;
+// KnownRevision with WaitSeconds holds the read until the published snapshot changes or the wait
+// (capped by SynchronizationOptions.LocationWaitSecondsMax) elapses, replacing blind polling.
+public record GetFleetLocationsQuery(bool CachedOnly = false, bool IncludePoints = true, string? KnownRevision = null, int WaitSeconds = 0)
+  : IRequest<RequestResponse<FleetLocationsResponse>>;
 
 public class GetFleetLocationsHandler(
   IAppDbContext dbContext,
@@ -25,13 +27,18 @@ public class GetFleetLocationsHandler(
     CancellationToken cancellationToken
   )
   {
-    if (syncOptions.Value.Enabled)
-      return RequestResponse<FleetLocationsResponse>.Ok(serverTelemetry.Current ?? new());
-    if (request.CachedOnly)
-      return RequestResponse<FleetLocationsResponse>.Ok(telemetryCache.Latest ?? new());
-    var response = await telemetryCache.GetAsync(LoadAsync, cancellationToken);
-    return RequestResponse<FleetLocationsResponse>.Ok(response);
+    if (syncOptions.Value.Enabled && request.WaitSeconds > 0 && request.KnownRevision is not null)
+      await serverTelemetry.WaitForChangeAsync(request.KnownRevision,
+        TimeSpan.FromSeconds(Math.Min(request.WaitSeconds, syncOptions.Value.LocationWaitSecondsMax)), cancellationToken);
+    var snapshot = syncOptions.Value.Enabled ? serverTelemetry.Current ?? new()
+      : request.CachedOnly ? telemetryCache.Latest ?? new()
+      : await telemetryCache.GetAsync(LoadAsync, cancellationToken);
+    return RequestResponse<FleetLocationsResponse>.Ok(request.IncludePoints ? snapshot : WithoutPoints(snapshot));
   }
+
+  // Board views need current positions only; the shared snapshot is neither copied nor mutated.
+  private static FleetLocationsResponse WithoutPoints(FleetLocationsResponse snapshot) =>
+    snapshot.Points.Count == 0 ? snapshot : new() { Trucks = snapshot.Trucks, Revision = snapshot.Revision };
 
   private async Task<FleetLocationsResponse> LoadAsync(CancellationToken cancellationToken)
   {

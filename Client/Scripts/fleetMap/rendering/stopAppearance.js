@@ -1,3 +1,4 @@
+// @ts-check
 /** @param {string | null | undefined} job */
 export function isDelivery(job) {
   return /^(delivery|dropoff)$/i.test((job || '').replace(/[\s_-]/g, ''));
@@ -10,6 +11,7 @@ export function stopAppearance(job, color = currentRouteColor) {
   return { fill: accent, border: white, text: white };
 }
 
+/** @param {readonly number[]} color */
 export function stopMarkerIcon(color) {
   const fill = `rgb(${color.slice(0, 3).join(',')})`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="136" height="136" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15.5" fill="${fill}" stroke="white" stroke-width="2.5"/></svg>`;

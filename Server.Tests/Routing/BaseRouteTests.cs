@@ -31,7 +31,9 @@ public sealed class BaseRouteTests
     db.Dispatches.Add(load);
     await db.SaveChangesAsync();
     var router = new Router();
-    var service = new BaseRouteService(db, router);
+    using var reads = TestCache.Create();
+    using var gates = new Application.Caching.ProcessGates();
+    var service = new BaseRouteService(db, router, reads, gates);
     var profile = new TruckRouteProfile { UsesFleetDefaults = true };
     await service.EnsureAsync(load, profile, default);
     var saved = await db.DispatchBaseRoutes.SingleAsync();
@@ -82,7 +84,9 @@ public sealed class BaseRouteTests
       PlanJson = savedState == "corrupt" ? "{" : JsonSerializer.Serialize(plan, RoutePlanningService.Json) });
     await db.SaveChangesAsync();
     var router = new Router();
-    var route = await new BaseRouteService(db, router).EnsureAsync(load, profile, default);
+    using var reads = TestCache.Create();
+    using var gates = new Application.Caching.ProcessGates();
+    var route = await new BaseRouteService(db, router, reads, gates).EnsureAsync(load, profile, default);
     Assert.Single(route.Legs);
     Assert.Equal(calls, router.Calls);
     Assert.Equal(calls * 2, router.Geocodes);

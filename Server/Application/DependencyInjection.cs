@@ -35,6 +35,8 @@ public static class DependencyInjection
     services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
     services.AddScoped<FleetCache>();
+    services.AddScoped<Features.Dispatch.Interfaces.IDispatchBoardReader, Features.Dispatch.Services.DispatchBoardReader>();
+    services.AddScoped<Features.Dispatch.Services.DispatchBoardService>();
     services.AddScoped<Features.Integrations.Services.IntegrationSettingsService>();
     services.AddScoped<Features.Integrations.Interfaces.IIntegrationCredentials>(sp =>
       sp.GetRequiredService<Features.Integrations.Services.IntegrationSettingsService>());
@@ -46,6 +48,8 @@ public static class DependencyInjection
     services.AddScoped<Features.Fuel.Services.FuelStationLookupService>();
     services.AddSingleton<Features.Synchronization.Interfaces.IGmailWatchOperation, Features.Fuel.Background.GmailWatchOperation>();
     services.AddSingleton<ReadCache>();
+    services.AddSingleton<Caching.ProcessGates>();
+    services.AddSingleton<Features.Synchronization.Services.SynchronizationGates>();
     services.AddSingleton<Application.Interfaces.IReadCache>(sp => sp.GetRequiredService<ReadCache>());
     services.AddSingleton<FleetSynchronizationOperation>();
     services.AddSingleton<Features.Synchronization.Interfaces.IFleetSynchronizationOperation>(sp => sp.GetRequiredService<FleetSynchronizationOperation>());

@@ -12,7 +12,7 @@ public record SyncFleetCommand : IRequest<RequestResponse<int>>;
 public class SyncFleetHandler(
   IAppDbContext dbContext,
   IFleetProvider fleetProvider,
-  IMemoryCache cache, ReadCache reads
+  IMemoryCache cache, ReadCache reads, SynchronizationGates gates
 ) : IRequestHandler<SyncFleetCommand, RequestResponse<int>>
 {
   public async Task<RequestResponse<int>> Handle(
@@ -20,9 +20,9 @@ public class SyncFleetHandler(
     CancellationToken cancellationToken
   )
   {
-    await SynchronizationGates.Fleet.WaitAsync(cancellationToken);
+    await gates.Fleet.WaitAsync(cancellationToken);
     try { return await SyncAsync(request, cancellationToken); }
-    finally { SynchronizationGates.Fleet.Release(); }
+    finally { gates.Fleet.Release(); }
   }
 
   private async Task<RequestResponse<int>> SyncAsync(

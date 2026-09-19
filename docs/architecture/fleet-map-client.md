@@ -16,7 +16,7 @@ Do not move methods between partials merely to reduce a file's line count.
 | `FuelPlanEditor` | Ordered draft, cancellable server previews, quantity controls and explicit save/reset | Open editor |
 | `MapRoutePublisher` | Version-aware current-route serialization and JS acknowledgement | Component |
 | `FleetRouteDisplayMemory` | Same-route ETA and displayed-progress retention during recalculation | Component |
-| `PlanningDisplayCache` | Saved planning snapshots and HTTP revision protocol | Existing Client service lifetime |
+| `PlanningDisplayCache` | Saved planning snapshots, HTTP revision protocol and per-entry `ETag` revalidation | Existing Client service lifetime |
 | `ArrivalDisplayMemory` | Bounded display-only ETA retention for the same stop | Component |
 
 Session startup is shared while in flight. An explicit retry after failure may

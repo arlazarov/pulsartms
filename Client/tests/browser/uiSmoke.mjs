@@ -304,8 +304,8 @@ try {
     await installReleaseArtifact(context, artifact, origin);
     await context.route('**/*', async route => {
       const url = new URL(route.request().url());
-      // The existing planning read uses POST; fulfill this exact fixture without forwarding it.
-      if (url.origin === origin && route.request().method() === 'POST' && url.pathname === `/api/fleet/trucks/${truckId}/planning`) {
+      // Planning polls are conditional GETs (older Clients used POST); fulfill this exact fixture without forwarding it.
+      if (url.origin === origin && ['GET', 'POST'].includes(route.request().method()) && url.pathname === `/api/fleet/trucks/${truckId}/planning`) {
         await route.fulfill({status: 200, json: success(planning())});
       } else if (url.origin !== origin || !['GET', 'HEAD'].includes(route.request().method())) {
         report.unexpectedRequests.push(`${route.request().method()} ${url.origin}${url.pathname}`);

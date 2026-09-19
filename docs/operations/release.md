@@ -38,8 +38,29 @@ image. These phases are CI composition points, not standalone release approval.
 unchanged. Neither deployment continues after a failed gate.
 The style build stamps `css/main.css?v=<content hash>` into `index.html`; the Client
 build also refreshes this stamp when SCSS compilation is incremental. Firebase
-responses revalidate cached assets with `Cache-Control: no-cache`. Publish the
-matching index and CSS together; do not manually copy one file from an older build.
+responses revalidate `index.html`, CSS and the generated JavaScript entry points
+with `Cache-Control: no-cache`. Content-fingerprinted files (`_framework/**` and
+`js/generated/chunks/**`) are served as immutable for one year; the later header
+rule wins for those paths because Firebase applies matching rules in order. Any
+new asset whose name does not change with its content must stay under the
+revalidated set. Publish the matching index and CSS together; do not manually copy
+one file from an older build.
+
+The API image is published framework-dependent for `linux-x64` with ReadyToRun
+precompilation, invariant globalization and workstation GC. ReadyToRun applies only
+when a runtime identifier is given, so `dotnet build`/`dotnet test` and the release
+gate are unaffected. Formatting and comparisons already use invariant culture
+explicitly; adding culture-specific formatting to the server requires reverting
+`InvariantGlobalization`.
+
+The default deployment is one Cloud Run service with `--max-instances 1` in role
+`All`. To split request serving from background work, deploy the same image twice:
+`amftms-workers` with `Hosting__Role=Workers`, `Database__ApplyMigrations=true`,
+`--max-instances 1` and a lower `Synchronization__CheckpointSeconds`; and the
+request tier with `Hosting__Role=Api`, `Database__ApplyMigrations=false` and as many
+instances as needed. Deploy the workers service first so migrations and the lease
+exist before request instances start following the checkpoint. See
+[synchronization](../features/synchronization.md) for the staleness bound of `Api`.
 
 Cloud Build tags the API with its unique `$BUILD_ID`. `deploy-server.sh` waits for
 that build, verifies its successful result and expected image name, and deploys

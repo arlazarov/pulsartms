@@ -1,3 +1,5 @@
+// @ts-check
+/** @param {{loadNumber: number, loadLabel?: string, orderNumber?: string}} reference */
 export function loadReferenceContent(reference) {
   const header = document.createElement('div');
   header.className = 'fleet-map-route-info__load';
@@ -6,6 +8,7 @@ export function loadReferenceContent(reference) {
   status.setAttribute('role', 'status');
   let copyVersion = 0;
 
+  /** @param {string} label @param {string} value @param {string} display */
   function number(label, value, display) {
     const caption = document.createElement('span');
     caption.textContent = label;

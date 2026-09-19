@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using Client.Models.DTO;
+using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
 namespace Client.Services;
 
@@ -20,6 +21,32 @@ public class ApiService(HttpClient httpClient)
       using var response = await httpClient.GetAsync(url, cancellationToken);
 
       return await ReadResponseAsync<T>(response, cancellationToken);
+    }
+    catch (Exception ex)
+    {
+      return Fail<T>(ex.Message);
+    }
+  }
+
+  // Conditional reads bypass the browser cache so a 304 reaches the caller instead of being
+  // replaced by a cached body it would deserialize again.
+  public async Task<RequestResponseDTO<T>> GetAsync<T>(
+    string url,
+    string? ifNoneMatch,
+    CancellationToken cancellationToken = default
+  )
+  {
+    try
+    {
+      using var request = new HttpRequestMessage(HttpMethod.Get, url);
+      request.SetBrowserRequestCache(BrowserRequestCache.NoStore);
+      if (!string.IsNullOrEmpty(ifNoneMatch)) request.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch);
+      using var response = await httpClient.SendAsync(request, cancellationToken);
+      if (response.StatusCode == System.Net.HttpStatusCode.NotModified && !string.IsNullOrEmpty(ifNoneMatch))
+        return new() { Success = true, NotModified = true, ETag = ifNoneMatch, HttpStatusCode = response.StatusCode };
+      var result = await ReadResponseAsync<T>(response, cancellationToken);
+      result.ETag = response.Headers.ETag?.ToString();
+      return result;
     }
     catch (Exception ex)
     {

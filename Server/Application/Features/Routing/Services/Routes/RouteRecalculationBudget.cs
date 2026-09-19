@@ -1,3 +1,4 @@
+using Application.Caching;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Models;
@@ -7,9 +8,9 @@ using Microsoft.Extensions.Options;
 
 namespace Application.Features.Routing.Services.Routes;
 
-public sealed class RouteRecalculationBudget(IAppDbContext db, IOptions<RouteRecalculationBudgetOptions> options)
+public sealed class RouteRecalculationBudget(IAppDbContext db, IOptions<RouteRecalculationBudgetOptions> options, ProcessGates gates)
 {
-  private static readonly SemaphoreSlim Gate = new(1);
+  private readonly SemaphoreSlim gate = gates.Single<RouteRecalculationBudget>();
 
   public static DateTime? BlockedUntil(IReadOnlyList<RouteRecalculationAttempt> attempts, RoutePoint position, DateTime now)
   {
@@ -27,7 +28,7 @@ public sealed class RouteRecalculationBudget(IAppDbContext db, IOptions<RouteRec
   {
     ct.ThrowIfCancellationRequested();
     if (!options.Value.Enabled) return;
-    await GateWait.WaitAsync(Gate, "RouteBudget", ct);
+    await GateWait.WaitAsync(gate, "RouteBudget", ct);
     try
     {
       await using var transaction = await db.Database.BeginTransactionAsync(ct);
@@ -45,6 +46,6 @@ public sealed class RouteRecalculationBudget(IAppDbContext db, IOptions<RouteRec
       await db.SaveChangesAsync(ct);
       await transaction.CommitAsync(ct);
     }
-    finally { Gate.Release(); }
+    finally { gate.Release(); }
   }
 }

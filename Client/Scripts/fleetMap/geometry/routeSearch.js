@@ -1,3 +1,5 @@
+// @ts-check
+/** @param {ArrayLike<number>} values @param {number} target */
 export function lowerBound(values, target) {
   let low = 0, high = values.length;
   while (low < high) {
@@ -8,6 +10,7 @@ export function lowerBound(values, target) {
   return low;
 }
 
+/** @param {ArrayLike<number>} cumulative @param {number} minimum @param {number} maximum */
 export function segmentRange(cumulative, minimum, maximum) {
   const start = Math.max(1, lowerBound(cumulative, minimum));
   let low = 0, high = cumulative.length;

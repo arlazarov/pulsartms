@@ -1,5 +1,4 @@
 using Application.Caching;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 
 namespace Application.Features.Fuel.Queries.GetFuelStations;
@@ -46,11 +45,13 @@ public class GetFuelStationsHandler(IAppDbContext dbContext, ReadCache reads)
     CancellationToken cancellationToken
   )
   {
-    var items = await reads.GetAsync("fuel", request.Date.ToString("O"), () => LoadAsync(request.Date, cancellationToken));
+    // Station records are immutable and no reader mutates their discount lists, so cached lists are
+    // shared and only the list itself is copied for each caller.
+    var items = await reads.GetSharedAsync("fuel", request.Date.ToString("O"), () => LoadAsync(request.Date, cancellationToken), Share);
     if (request.IncludeNextDay && request.Date < DateOnly.MaxValue)
     {
       var nextDate = request.Date.AddDays(1);
-      var next = await reads.GetAsync("fuel", nextDate.ToString("O"), () => LoadAsync(nextDate, cancellationToken));
+      var next = await reads.GetSharedAsync("fuel", nextDate.ToString("O"), () => LoadAsync(nextDate, cancellationToken), Share);
       var byId = next.ToDictionary(station => station.Id);
       items = items.Select(station => byId.TryGetValue(station.Id, out var tomorrow) ? station with
       {
@@ -61,6 +62,8 @@ public class GetFuelStationsHandler(IAppDbContext dbContext, ReadCache reads)
     }
     return RequestResponse<List<FuelStationDto>>.Ok(items);
   }
+
+  private static List<FuelStationDto> Share(List<FuelStationDto> stations) => new(stations);
 
   private async Task<List<FuelStationDto>> LoadAsync(DateOnly date, CancellationToken cancellationToken)
   {

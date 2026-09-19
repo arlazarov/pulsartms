@@ -169,6 +169,8 @@ public sealed class EtaChainInputTests
     Assert.All(Assert.Single(initial.Response!.Items).Dispatches, load => Assert.NotEmpty(load.Eta!.Stops));
     fixture.Next.Stops[0].ScheduledTime = new(14, 30);
     await fixture.Db.SaveChangesAsync();
+    // Dispatch synchronization and address verification bump this generation after writing stops.
+    fixture.Services.Reads.Invalidate("dispatch");
     var changed = await fixture.Services.Board.Handle(new(TruckId: fixture.Truck.Id, IncludeHos: false, IncludeFinancials: false), default);
     Assert.All(Assert.Single(changed.Response!.Items).Dispatches, load => Assert.Empty(load.Eta!.Stops));
     Assert.False(fixture.Services.EtaMemory.Results.ContainsKey(fixture.Current.Id));

@@ -6,7 +6,6 @@ using Application.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
 using Infrastructure.Persistence;
-using MediatR;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -39,7 +38,7 @@ public sealed class RoutePreviewTests
     using var memory = new MemoryCache(new MemoryCacheOptions());
     using var services = new PlanningTestServices(db, reads: reads);
     var sender = new Sender(new() { TruckId = truck.Id, Dispatches = [new() { Id = load.Id, TruckId = truck.Id }] });
-    var previews = new RoutePreviewService(db, sender, reads, displays, services.Routes, memory);
+    var previews = new RoutePreviewService(db, sender, reads, displays, services.Routes, memory, services.Gates);
     var result = await previews.GetAsync(default);
     Assert.Equal(truck.Id, Assert.Single(result).TruckId);
     Assert.Equal(new[] { 1, 2 }, sender.Pages);
@@ -84,7 +83,7 @@ public sealed class RoutePreviewTests
         await release.Task;
       }
     } };
-    var service = new RoutePreviewService(db, sender, reads, displays, services.Routes, memory);
+    var service = new RoutePreviewService(db, sender, reads, displays, services.Routes, memory, services.Gates);
     var first = service.GetAsync(default);
     await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
     var second = service.GetAsync(default);
@@ -94,22 +93,16 @@ public sealed class RoutePreviewTests
     Assert.Equal(new[] { 1, 2 }, sender.Pages);
   }
 
-  private sealed class Sender(TruckDispatchBoardResponse last) : ISender
+  private sealed class Sender(TruckDispatchBoardResponse last) : Application.Features.Dispatch.Interfaces.IDispatchBoardReader
   {
     public List<int> Pages { get; } = [];
     public Func<Task>? BeforeRequest { get; init; }
-    public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default)
+    public async Task<PaginatedList<TruckDispatchBoardResponse>> ReadAsync(GetDispatchBoardQuery board, CancellationToken ct)
     {
       if (BeforeRequest is not null) await BeforeRequest();
-      var board = Assert.IsType<GetDispatchBoardQuery>(request);
       Pages.Add(board.Page);
       var rows = board.Page == 1 ? Enumerable.Range(0, 100).Select(_ => new TruckDispatchBoardResponse()).ToList() : [last];
-      return (TResponse)(object)RequestResponse<PaginatedList<TruckDispatchBoardResponse>>.Ok(new()
-        { Items = rows, Page = board.Page, PageSize = 100, TotalCount = 101 });
+      return new() { Items = rows, Page = board.Page, PageSize = 100, TotalCount = 101 };
     }
-    public Task Send<TRequest>(TRequest request, CancellationToken ct = default) where TRequest : IRequest => throw new NotSupportedException();
-    public Task<object?> Send(object request, CancellationToken ct = default) => throw new NotSupportedException();
-    public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken ct = default) => throw new NotSupportedException();
-    public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken ct = default) => throw new NotSupportedException();
   }
 }

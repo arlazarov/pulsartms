@@ -76,6 +76,25 @@ public sealed class DispatchBoardPollingTests
     Assert.Empty(component.FindAll("[role=alert]"));
   }
 
+  [Fact]
+  public async Task TelemetryPollsRequestPositionsWithoutLocationHistory()
+  {
+    var clock = new FakeTimeProvider(new DateTimeOffset(2026, 9, 7, 12, 0, 0, TimeSpan.Zero));
+    var locations = new ConcurrentQueue<Uri>();
+    using var context = new ClientComponentContext((request, _) =>
+    {
+      if (request.RequestUri!.AbsolutePath == "/api/fleet/locations") locations.Enqueue(request.RequestUri);
+      return Task.FromResult(request.RequestUri.AbsolutePath == "/api/dispatch/board" ? Board(1) : Auxiliary(request.RequestUri));
+    });
+    context.Services.AddSingleton<TimeProvider>(clock);
+    context.JSInterop.Mode = JSRuntimeMode.Loose;
+    var component = context.Render<DispatchList>();
+    component.WaitForAssertion(() => Assert.Single(locations));
+    await component.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(10)));
+    component.WaitForAssertion(() => Assert.Equal(2, locations.Count));
+    Assert.All(locations, uri => Assert.Equal("?points=false&wait=25", uri.Query));
+  }
+
   private static HttpResponseMessage Board(int count) => new(HttpStatusCode.OK)
   {
     Content = JsonContent.Create(new { success = true, response = new { items = Array.Empty<object>(), page = 1, totalCount = count } })

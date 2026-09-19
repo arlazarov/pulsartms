@@ -37,7 +37,9 @@ invalidation. Geometry and optimization remain pure Algorithms.
 
 ReadCache retains at most 4,096 generation identities. Its monotonic eviction epoch
 prevents an evicted identity from reviving an older cached result. Cache byte limits
-are accounting bounds, not process working-set guarantees.
+are accounting bounds, not process working-set guarantees. Cached values are JSON
+copies unless a reader opts into `GetSharedAsync` with a caller-safe copy for
+immutable results; fuel station lists share their records and copy only the list.
 
 TruckFuelPlans owns the rolling fuel snapshot lifecycle through ITruckFuelPlanStore.
 Infrastructure stores the compact itinerary/purchases separately from the checked
@@ -111,8 +113,24 @@ a bounded per-load fallback because it does not support LATERAL. SQL translation
 and SQLite semantics are tested; production query plans and latency remain unmeasured.
 Application retains the assignment, chronology, and ambiguity checks.
 
-Fuel owns Gmail watch registration, renewal, retry timing, and periodic notification
-recovery. IGmailWatchStore persists typed lifecycle state in a dedicated existing
+`HostingOptions.Role` (`All`, `Workers`, `Api`) decides which workers a process hosts;
+an `Api` process follows the synchronization checkpoint instead of owning it, so the
+request tier can scale out while one `Workers` process owns provider polling.
+`HostingRoleRegistrationTests` checks the gating.
+
+Per-key concurrency stripes come from the `ProcessGates` singleton (`For<TOwner>()`),
+not static fields, so tests and any future multi-instance hosting own their gates
+explicitly; `Single<TOwner>()` and `Slots<TOwner>(n)` serve whole-operation and
+budgeted gates, and `SynchronizationGates` is an injected singleton over them.
+`ProcessStateTests` allows only the per-process request counter to remain static, and `FeatureDependencyTests` freezes the current
+cross-feature reference map (Routing, Eta, Dispatch, Fleet and Synchronization
+still form cycles) so it can only lose edges.
+
+Fuel discounts enter through `IFuelDiscountProvider`; `FuelDiscounts:Source` picks the
+Infrastructure implementation at startup (`bvd-gmail`, or `none` for customers without
+a fuel card), so another card program is a new provider and source name, not a change
+to import, station or planning code. Fuel owns Gmail watch registration, renewal, retry
+timing, and periodic notification recovery for the BVD mailbox source. IGmailWatchStore persists typed lifecycle state in a dedicated existing
 SynchronizationCheckpoints row. Its Infrastructure adapter shares the lease storage
 primitive with fleet synchronization, but not its row, owner, or schedule. Background
 Gmail work requires an explicit Admin registration and uses non-interactive credentials.
@@ -134,7 +152,7 @@ is constructed in Application.
 Documentation and comments are English-only. Comments explain non-obvious
 invariants, not routine statements. See [operational diagnostics](operations/diagnostics.md) for logging rules.
 
-- API controllers use MediatR requests and the existing `BaseController.HandleRequest` response contract. They do not call planning services, EF, or background worker implementations directly. The legacy synchronization status endpoint keeps its existing unwrapped JSON response, but obtains that response through its query handler.
+- API controllers use MediatR requests and the existing `BaseController.HandleRequest` response contract. They do not call planning services, EF, or background worker implementations directly. Response JSON uses the source-generated `ApiJsonContext` metadata with reflection as the fallback; `ApiJsonContextTests` requires every `RequestResponse<T>` shape to be listed and to serialize identically. `DependencyInjection.AddApiHttp` registers controllers, JSON and compression; `ApiContractTests` hosts exactly that registration in process to check routing, revalidation and compression without the rest of the composition root. The legacy synchronization status endpoint keeps its existing unwrapped JSON response, but obtains that response through its query handler.
 - Application owns Commands, Queries, validators, models, interfaces, and business logic. Routing orchestration services are under `Features/Routing/Services`; geometry and optimization are under `Algorithms`. They are shared by request handlers without duplicating calculations. FluentValidation runs through the existing pipeline. Expected planning errors and settings conflicts are translated into `RequestResponse` by `PlanningExceptionBehavior`.
 - Infrastructure implements provider interfaces, persistence, and hosted workers. Hosted workers access application operations through Application interfaces; command dispatch, when needed, remains inside Application. Worker status is exposed through an Application interface. Application services register in `AddApplication`; concrete external implementations and hosted workers register in `AddInfrastructure`. Configuration binding stays in API's composition root.
 - Domain remains persistence/business entities. HTTP request and response models are not Domain entities.
@@ -176,13 +194,23 @@ future loads. The clock charges driving plus once-per-new-shift PTI/fuel allowan
 it does not infer actual ELD changes or charge each saved fuel recommendation again.
 
 `EtaChainInputsService` validates the authoritative truck/load sequence and saved
-base/deadhead revisions. `EtaService` carries one clock across that chain;
+base/deadhead revisions. Board enrichment reuses the last description per truck
+while the `board`, `dispatch`, `profile:{truck}`, `route:{load}` and `chain:{load}`
+generations are unchanged, for at most `EtaMemory.DescriptionLifetime`;
+`BaseRouteService` and `DeadheadService` bump `chain:{load}` after each write.
+Refresh workers always describe the chain fresh. `EtaService` carries one clock across that chain;
 `EtaForecastService` publishes exact dispatch/stop identities and owns snapshot
 freshness. `IEtaForecastStore` is the Application persistence boundary;
 Infrastructure implements transactional, newer-only writes to `DispatchEtaForecasts`.
 Reads reuse saved forecasts but reject changed assignments, predecessors and
 schedules. A database snapshot is not an actual stop event or proof of HOS compliance.
 Internal board reads disable ETA enrichment to avoid recursive orchestration.
+`IDispatchBoardReader` (rows, details, HOS, financials) is the board read that
+planning, fuel, preview, synchronization and ETA services call directly;
+`DispatchBoardService` adds forecasts for `GetDispatchBoardHandler` and the
+planning reads. Only the HTTP request passes through the MediatR pipeline, so
+request metrics count browser reads rather than internal ones. Services do not
+inject `ISender`; `MediatorUsageTests` lists the remaining debt, which may only shrink.
 
 Next-load revision checks use saved-route metadata and input signatures before reading geometry. `INextLoadRouteReader` owns the joined persistence projection;
 unchanged and label-only reads do not retrieve route JSON, and cold reads skip

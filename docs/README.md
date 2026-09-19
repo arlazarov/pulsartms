@@ -35,6 +35,7 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
 
 - [Release verification and deployment](operations/release.md)
 - [Diagnostics and logging](operations/diagnostics.md)
+- [Load testing](operations/load-testing.md)
 - [Security rollout and recovery checks](operations/security-rollout.md)
 - [Gmail watch ownership and recovery](operations/gmail-watch.md)
 

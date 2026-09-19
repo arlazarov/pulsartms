@@ -71,21 +71,19 @@ public class FleetTelemetryTests
   }
 
   [Fact]
-  public async Task IncrementalWindowsRetainOldPointsReplaceCorrectionsAndDoNotShareMutableMetadata()
+  public async Task IncrementalWindowsRetainOldPointsReplaceCorrectionsAndDoNotShareProviderObjects()
   {
     var clock = new ManualTimeProvider();
     var initial = clock.GetUtcNow().UtcDateTime;
     using var stream = new FleetLocationStream(clock);
-    var truck = new FleetTruckInfo { TruckId = Guid.NewGuid(), TruckExternalId = "truck", IsActive = true, UnitNumber = "First" };
+    var truck = new FleetTruckInfo { TruckId = Guid.NewGuid(), TruckExternalId = "Truck", IsActive = true, UnitNumber = "First" };
     var oldPoint = new VehicleLocationPoint { ExternalId = "truck", UpdatedAt = initial.AddSeconds(-50), Latitude = 40 };
     var corrected = new VehicleLocationPoint { ExternalId = "truck", UpdatedAt = initial.AddSeconds(-5), Latitude = 41 };
     var provider = new StubFleetTelemetryProvider { Read = (_, _) => Task.FromResult(new VehicleLocationStream { Data = [oldPoint, corrected] }) };
     var first = await stream.GetAsync(provider, [truck]);
-    first[0].Latitude = 88;
-    first[0].DriverName = "Changed by caller";
+    Assert.Equal(40, first[0].Latitude);
     oldPoint.Latitude = 89;
     corrected.Latitude = 42;
-    truck.UnitNumber = "Second";
     clock.Advance(TimeSpan.FromSeconds(10));
     provider.Read = (_, _) => Task.FromResult(new VehicleLocationStream { Data = [corrected] });
     var second = await stream.GetAsync(provider, [truck]);
@@ -93,8 +91,8 @@ public class FleetTelemetryTests
     Assert.Equal(2, second.Count);
     Assert.Equal(40, second[0].Latitude);
     Assert.Equal(42, second[1].Latitude);
-    Assert.All(second, point => Assert.Equal("Second", point.UnitNumber));
-    Assert.All(second, point => Assert.Equal("", point.DriverName));
+    // Points carry the fleet's canonical external ID so the map groups them with the truck row.
+    Assert.All(second, point => Assert.Equal("Truck", point.TruckExternalId));
   }
 
   [Fact]

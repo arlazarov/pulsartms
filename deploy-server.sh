@@ -31,6 +31,8 @@ deploy_args=(
   --min 1
   --max-instances 1
   --no-cpu-throttling
+  # Held telemetry polls (wait=) each occupy a request slot; keep this above the open-tab count.
+  --concurrency 250
 )
 if [[ -n "${AMFTMS_DEPLOY_ENV_FILE:-}" ]]; then
   deploy_args+=(--env-vars-file "$AMFTMS_DEPLOY_ENV_FILE")

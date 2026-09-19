@@ -7,7 +7,7 @@ public sealed class PlanningDisplayCache(ApiService api, TimeProvider? timeProvi
   private const int MaximumEntries = 100;
   private const long MaximumGeometryUnits = 262_144;
   private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
-  private readonly Dictionary<string, (AutomaticPlanningResult Result, DateTimeOffset Expires, long GeometryUnits)> entries = [];
+  private readonly Dictionary<string, (AutomaticPlanningResult Result, DateTimeOffset Expires, long GeometryUnits, string? ETag)> entries = [];
   private readonly Dictionary<string, Task<Client.Models.DTO.RequestResponseDTO<AutomaticPlanningResult>>> refreshing = [];
 
   private Task? preload;
@@ -95,15 +95,22 @@ public sealed class PlanningDisplayCache(ApiService api, TimeProvider? timeProvi
     Task<Client.Models.DTO.RequestResponseDTO<AutomaticPlanningResult>> owner, CancellationToken ct)
   {
     var version = generation;
-    var previous = Get(url)?.State?.Plan;
+    var cached = Get(url);
+    var previous = cached?.State?.Plan;
     var requestUrl = previous is null ? url : $"{url}?knownPlanId={previous.Id}&knownVersion={previous.Version}";
-    var response = await api.PostAsync<object, AutomaticPlanningResult>(requestUrl, new { }, ct);
+    var response = await api.GetAsync<AutomaticPlanningResult>(requestUrl, cached is null ? null : Tag(url), ct);
+    if (response.NotModified)
+    {
+      // The server confirmed the tagged reply is current; a copy evicted meanwhile is read again in full.
+      if (cached is not null && Get(url) is not null) response.Response = cached;
+      else response = await api.GetAsync<AutomaticPlanningResult>(url, null, ct);
+    }
     if (response.Response?.State?.Plan is { GeometryOmitted: true } plan)
     {
       if (previous is null || plan.Id != previous.Id || plan.Version != previous.Version
         || plan.Route.Legs.Count != previous.Route.Legs.Count
         || plan.ReferenceRoute?.Legs.Count != previous.ReferenceRoute?.Legs.Count)
-        response = await api.PostAsync<object, AutomaticPlanningResult>(url, new { }, ct);
+        response = await api.GetAsync<AutomaticPlanningResult>(url, null, ct);
       else
       {
         plan.Route.Points = previous.Route.Points;
@@ -125,7 +132,7 @@ public sealed class PlanningDisplayCache(ApiService api, TimeProvider? timeProvi
       response.Response = result with { State = result.State with { Eta = eta with { RouteUpdatePending = true } } };
     }
     if (response.Success && version == generation && !ct.IsCancellationRequested
-      && refreshing.TryGetValue(url, out var current) && ReferenceEquals(current, owner)) Store(url, response.Response);
+      && refreshing.TryGetValue(url, out var current) && ReferenceEquals(current, owner)) Store(url, response.Response, response.ETag);
     return response;
   }
 
@@ -180,7 +187,9 @@ public sealed class PlanningDisplayCache(ApiService api, TimeProvider? timeProvi
     }
   }
 
-  public void Store(string url, AutomaticPlanningResult? result)
+  public string? Tag(string url) => entries.TryGetValue(url, out var entry) ? entry.ETag : null;
+
+  public void Store(string url, AutomaticPlanningResult? result, string? etag = null)
   {
     preloadRead?.Record(url);
     foreach (var preview in previews.Where(x => x.Url == url)) preview.Superseded = true;
@@ -193,7 +202,7 @@ public sealed class PlanningDisplayCache(ApiService api, TimeProvider? timeProvi
     if (weight > MaximumGeometryUnits) return;
     while (entries.Count >= MaximumEntries || geometryUnits + weight > MaximumGeometryUnits)
       Remove(entries.MinBy(x => x.Value.Expires).Key);
-    entries[url] = (result, now.AddMinutes(5), weight);
+    entries[url] = (result, now.AddMinutes(5), weight, etag);
     geometryUnits += weight;
   }
 

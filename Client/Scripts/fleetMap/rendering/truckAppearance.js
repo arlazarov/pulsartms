@@ -1,4 +1,7 @@
+// @ts-check
+/** @type {Map<string, {url: string, width: number, height: number, anchorX: number, anchorY: number, mask: boolean}>} */
 const icons = new Map();
+/** @param {string | null | undefined} engine @param {number} [speed] */
 export function truckIcon(engine, speed = 0) {
   const state = typeof engine === 'string' ? engine.trim().toLowerCase() : '';
   const key = Number.isFinite(speed) && speed >= 1 ? 'moving'

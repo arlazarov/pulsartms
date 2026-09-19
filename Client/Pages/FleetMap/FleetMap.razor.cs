@@ -27,6 +27,7 @@ public partial class FleetMap : IAsyncDisposable
     catch (JSException) { _addressCopyMessage = "Could not copy. Please try again."; }
   }
   [Inject] private PlanningDisplayCache PlanningCache { get; set; } = default!;
+  [Inject] private IPageVisibility Visibility { get; set; } = default!;
   [Inject]
   private HttpClient Http { get; set; } = default!;
 
@@ -57,7 +58,7 @@ public partial class FleetMap : IAsyncDisposable
   private bool _mobileDetailsOpen;
   private bool _selectionDismissed;
   private List<TruckLocationMapDto> _trucks = [];
-  private List<TruckLocationMapDto> _truckPoints = [];
+  private List<TruckLocationPointMapDto> _truckPoints = [];
   private string TruckSearch { get; set; } = "";
   private Guid? _searchFocused;
   private List<Client.Shared.Search.SearchSuggestion> SearchOptions => MatchingTrucks.Select(x => new Client.Shared.Search.SearchSuggestion(x.UnitNumber, $"{x.DriverName} · {x.TrailerNumber}")).ToList();
@@ -183,7 +184,7 @@ public partial class FleetMap : IAsyncDisposable
       async token =>
       {
         var result = await Http.GetFromJsonAsync<ApiResponse<FleetLocationsMapDto>>(
-          "api/fleet/locations", token);
+          "api/fleet/locations?wait=25", token);
         if (_disposed) return;
         if (result?.Success != true || result.Response is null)
           throw new HttpRequestException("Fleet locations are unavailable.");
@@ -205,7 +206,7 @@ public partial class FleetMap : IAsyncDisposable
         await InvokeAsync(StateHasChanged);
       },
       TimeSpan.FromSeconds(10),
-      cancellationToken, Clock);
+      cancellationToken, Clock, Visibility);
 
   [JSInvokable]
   public Task OnTruckSelected(string id)

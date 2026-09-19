@@ -8,7 +8,7 @@ namespace Application.Features.Fleet.Queries.GetFleetLocations;
 public record GetTruckHistoryQuery(Guid TruckId, DateTimeOffset From, DateTimeOffset To, bool Refresh = false)
   : IRequest<RequestResponse<IReadOnlyList<VehicleLocationPoint>>>;
 
-public class GetTruckHistoryHandler(IAppDbContext db, IFleetTelemetryProvider telemetry, IMemoryCache cache, TruckHistoryQueue queue)
+public class GetTruckHistoryHandler(IAppDbContext db, IFleetTelemetryProvider telemetry, IMemoryCache cache, TruckHistoryQueue queue, Application.Caching.ProcessGates gates)
   : IRequestHandler<GetTruckHistoryQuery, RequestResponse<IReadOnlyList<VehicleLocationPoint>>>
 {
   private sealed record Snapshot(IReadOnlyList<VehicleLocationPoint> Points, DateTime Through, DateTime FetchedAt)
@@ -16,7 +16,6 @@ public class GetTruckHistoryHandler(IAppDbContext db, IFleetTelemetryProvider te
     private readonly Lazy<IReadOnlyList<VehicleLocationPoint>> simplified = new(() => TruckHistoryGeometry.Simplify(Points));
     public IReadOnlyList<VehicleLocationPoint> Simplified => simplified.Value;
   }
-  private static readonly SemaphoreSlim[] Gates = Enumerable.Range(0, 32).Select(_ => new SemaphoreSlim(1)).ToArray();
   public async Task<RequestResponse<IReadOnlyList<VehicleLocationPoint>>> Handle(GetTruckHistoryQuery request, CancellationToken ct)
   {
     var from = request.From.UtcDateTime;
@@ -30,7 +29,7 @@ public class GetTruckHistoryHandler(IAppDbContext db, IFleetTelemetryProvider te
       if (current is null || DateTime.UtcNow - current.FetchedAt >= TimeSpan.FromMinutes(1)) queue.Enqueue(request);
       return RequestResponse<IReadOnlyList<VehicleLocationPoint>>.Ok(current?.Simplified ?? []);
     }
-    var gate = Gates[(request.TruckId.GetHashCode() & int.MaxValue) % Gates.Length];
+    var gate = gates.For<GetTruckHistoryHandler>().For(request.TruckId);
     await gate.WaitAsync(ct);
     try
     {

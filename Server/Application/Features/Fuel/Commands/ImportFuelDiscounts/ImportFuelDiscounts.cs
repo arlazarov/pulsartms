@@ -5,7 +5,6 @@ using Domain.Entities.Fuel;
 using Application.Features.Fuel.Services;
 using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Exceptions;
-using Application.Features.Synchronization.Services;
 
 namespace Application.Features.Fuel.Commands.ImportFuelDiscounts;
 

@@ -18,6 +18,7 @@ builder.Services.AddScoped<AppAuthenticationStateProvider>();
 
 builder.Services.AddScoped<ApiService>();
 builder.Services.AddScoped<PlanningDisplayCache>();
+builder.Services.AddScoped<IPageVisibility, PageVisibility>();
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddScoped<AuthenticationStateProvider>(sp =>

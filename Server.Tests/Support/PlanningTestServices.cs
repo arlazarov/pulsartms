@@ -3,6 +3,7 @@ using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Caching;
 using Application.Features.Dispatch.Queries;
+using Application.Features.Dispatch.Services;
 using Application.Features.Eta.Interfaces;
 using Application.Features.Eta.Models;
 using Application.Features.Eta.Options;
@@ -24,12 +25,15 @@ namespace Server.Tests.Support;
 
 internal sealed class PlanningTestServices : IDisposable
 {
-  private readonly bool ownsReads;
+  private readonly bool ownsReads, ownsGates;
   public ReadCache Reads { get; }
+  public ProcessGates Gates { get; }
   public RouteDisplayCache Displays { get; }
   public PlanningSettingsService Settings { get; }
   public RoutePlanningService Routes { get; }
   public DeadheadService Deadheads { get; }
+  public RecordingDispatchBoardReader BoardReader { get; }
+  public DispatchBoardService BoardService { get; }
   public GetDispatchBoardHandler Board { get; }
   public EtaService Eta { get; }
   public EtaForecastService Forecasts { get; }
@@ -41,44 +45,49 @@ internal sealed class PlanningTestServices : IDisposable
   public FuelPlanningService Fuel { get; }
   public ISender Sender { get; }
 
-  public PlanningTestServices(IAppDbContext db, IRoutingProvider? router = null, ISender? sender = null, ReadCache? reads = null)
+  public PlanningTestServices(IAppDbContext db, IRoutingProvider? router = null, ISender? sender = null, ReadCache? reads = null,
+    IDriverHosProvider? boardHos = null, ProcessGates? gates = null)
   {
     ownsReads = reads is null;
+    ownsGates = gates is null;
     Reads = reads ?? new(Options.Create(new SynchronizationOptions()));
+    Gates = gates ?? new();
     Displays = new(Reads);
-    Settings = new(db, Reads);
+    Settings = new(db, Reads, Gates);
     router ??= new NoRouter();
-    sender ??= new BoardSender(() => Board!);
+    sender ??= new UnsupportedSender();
     Sender = sender;
     var profiles = new TruckPlanningProfileService(db, Reads, Settings);
-    Routes = new(db, router, sender!, profiles, new(db, Reads, profiles), new(db, Options.Create(new RouteRecalculationBudgetOptions())), Reads, Options.Create(new FuelRegionOptions()),
-      Options.Create(new SynchronizationOptions()), Displays, new(db, router));
-    Deadheads = new(db, router, Routes, new(db), new Infrastructure.Persistence.DeadheadHistoryReader((Infrastructure.Persistence.AppDbContext)db));
+    Routes = new(db, router, sender!, profiles, new(db, Reads, profiles), new(db, Options.Create(new RouteRecalculationBudgetOptions()), Gates), Reads, Options.Create(new FuelRegionOptions()),
+      Options.Create(new SynchronizationOptions()), Displays, new(db, router, Reads, Gates), Gates);
+    Deadheads = new(db, router, Routes, new(db), new Infrastructure.Persistence.DeadheadHistoryReader((Infrastructure.Persistence.AppDbContext)db), Reads, Gates);
     var hos = new NoHos();
+    BoardReader = new(new DispatchBoardReader(db, Reads, boardHos ?? hos, Deadheads));
     EtaMemory = new();
     Eta = new(db, hos, new RouteRegionLookup(), EtaMemory, hos, Options.Create(new EtaPlanningOptions()));
     FuelMemory = new();
     FuelPlans = new(new Infrastructure.Persistence.TruckFuelPlanStore((Infrastructure.Persistence.AppDbContext)db),
-      Reads, FuelMemory, sender, Options.Create(new FuelRegionOptions()));
+      Reads, FuelMemory, sender, BoardReader, Options.Create(new FuelRegionOptions()));
     FuelSchedules = new(db, hos, hos, Eta);
-    Fuel = new(Routes, sender,
-      new(sender, Options.Create(new FuelRegionOptions()), Routes, Deadheads),
-      new(Routes, db, sender, Deadheads), Options.Create(new FuelRegionOptions()),
-      FuelPlans, FuelSchedules, db);
-    EtaInputs = new(db, sender, Routes, new Infrastructure.Persistence.EtaRootRouteReader((Infrastructure.Persistence.AppDbContext)db),
+    Fuel = new(Routes, sender, BoardReader,
+      new(BoardReader, Options.Create(new FuelRegionOptions()), Routes, Deadheads),
+      new(Routes, db, BoardReader, Deadheads), Options.Create(new FuelRegionOptions()),
+      FuelPlans, FuelSchedules, db, Gates);
+    EtaInputs = new(db, BoardReader, Routes, new Infrastructure.Persistence.EtaRootRouteReader((Infrastructure.Persistence.AppDbContext)db),
       new Infrastructure.Persistence.NextLoadRouteReader((Infrastructure.Persistence.AppDbContext)db),
       new Infrastructure.Persistence.DeadheadHistoryReader((Infrastructure.Persistence.AppDbContext)db), EtaMemory,
-      new RouteRegionLookup(), Options.Create(new EtaPlanningOptions()));
+      new RouteRegionLookup(), Options.Create(new EtaPlanningOptions()), Reads);
     Forecasts = new(EtaInputs, new Infrastructure.Persistence.EtaForecastStore((Infrastructure.Persistence.AppDbContext)db), EtaMemory, Eta, Routes);
-    Board = new(db, Reads, hos, Deadheads, Forecasts);
+    BoardService = new(BoardReader, Forecasts);
+    Board = new(BoardService);
   }
 
-  public void Dispose() { FuelMemory.Dispose(); EtaMemory.Dispose(); Displays.Dispose(); if (ownsReads) Reads.Dispose(); }
+  public void Dispose() { FuelMemory.Dispose(); EtaMemory.Dispose(); Displays.Dispose(); if (ownsGates) Gates.Dispose(); if (ownsReads) Reads.Dispose(); }
 
-  private sealed class BoardSender(Func<GetDispatchBoardHandler> board) : ISender
+  // Board reads no longer go through MediatR; remaining sends (fuel prices, telemetry) need a test-specific sender.
+  private sealed class UnsupportedSender : ISender
   {
-    public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default) =>
-      request is GetDispatchBoardQuery query ? (TResponse)(object)await board().Handle(query, ct) : throw new NotSupportedException();
+    public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default) => throw new NotSupportedException(request.GetType().Name);
     public Task Send<TRequest>(TRequest request, CancellationToken ct = default) where TRequest : IRequest => throw new NotSupportedException();
     public Task<object?> Send(object request, CancellationToken ct = default) => throw new NotSupportedException();
     public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken ct = default) => throw new NotSupportedException();

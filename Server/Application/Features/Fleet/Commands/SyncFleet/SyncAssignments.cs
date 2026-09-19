@@ -11,14 +11,14 @@ namespace Application.Features.Fleet.Commands.SyncFleet;
 
 public record SyncAssignmentsCommand : IRequest<RequestResponse<int>>;
 
-public sealed class SyncAssignmentsHandler(IAppDbContext db, IFleetProvider provider, IMemoryCache cache, ReadCache reads)
+public sealed class SyncAssignmentsHandler(IAppDbContext db, IFleetProvider provider, IMemoryCache cache, ReadCache reads, SynchronizationGates gates)
   : IRequestHandler<SyncAssignmentsCommand, RequestResponse<int>>
 {
   public async Task<RequestResponse<int>> Handle(SyncAssignmentsCommand request, CancellationToken ct)
   {
-    await SynchronizationGates.Fleet.WaitAsync(ct);
+    await gates.Fleet.WaitAsync(ct);
     try { return await SyncAsync(request, ct); }
-    finally { SynchronizationGates.Fleet.Release(); }
+    finally { gates.Fleet.Release(); }
   }
 
   private async Task<RequestResponse<int>> SyncAsync(SyncAssignmentsCommand request, CancellationToken ct)

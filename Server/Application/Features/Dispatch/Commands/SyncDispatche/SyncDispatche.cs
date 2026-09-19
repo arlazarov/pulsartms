@@ -14,7 +14,7 @@ public record SyncDispatchesCommand : IRequest<RequestResponse<int>>;
 public class SyncDispatchesCommandHandler(
   IAppDbContext dbContext,
   IDispatchProvider dispatchProvider,
-  ReadCache reads, IMemoryCache memory, RoutePreparationQueue preparation
+  ReadCache reads, IMemoryCache memory, RoutePreparationQueue preparation, SynchronizationGates gates
 ) : IRequestHandler<SyncDispatchesCommand, RequestResponse<int>>
 {
   public async Task<RequestResponse<int>> Handle(
@@ -22,9 +22,9 @@ public class SyncDispatchesCommandHandler(
     CancellationToken cancellationToken
   )
   {
-    await SynchronizationGates.Dispatch.WaitAsync(cancellationToken);
+    await gates.Dispatch.WaitAsync(cancellationToken);
     try { return await SyncAsync(request, cancellationToken); }
-    finally { SynchronizationGates.Dispatch.Release(); }
+    finally { gates.Dispatch.Release(); }
   }
 
   private async Task<RequestResponse<int>> SyncAsync(

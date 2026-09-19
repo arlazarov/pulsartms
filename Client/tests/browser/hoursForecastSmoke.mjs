@@ -95,7 +95,7 @@ const futureRoute = {id: futureId, loadNumber: 1442, status: 'planned', stopCoun
 const truck = {truckId, unitNumber: '11006', driverName: 'Fixture Driver', trailerNumber: 'TR-100',
   latitude: 41.8, longitude: -87.6, speed: 45, heading: 90, updatedAt: now, engineState: 'Driving', fuelPercent: 75};
 const success = response => ({success: true, response, errors: []});
-const viewportSource = await readFile(new URL('../../scripts/fleetMap/ui/cameraViewport.js', import.meta.url), 'utf8');
+const viewportSource = await readFile(new URL('../../Scripts/fleetMap/ui/cameraViewport.js', import.meta.url), 'utf8');
 const mapStub = `${viewportSource}
 export async function createFleetMap(element, _key, callbacks) {
   element.dataset.hoursFixture = 'offline-map-callbacks';
@@ -409,7 +409,7 @@ try {
       const request = route.request();
       const url = new URL(request.url());
       let fixture;
-      if (url.origin === origin && request.method() === 'POST' && url.pathname === `/api/fleet/trucks/${truckId}/planning`) {
+      if (url.origin === origin && ['GET', 'POST'].includes(request.method()) && url.pathname === `/api/fleet/trucks/${truckId}/planning`) {
         planningReads++;
         if (holdPlanning) {const held = holdPlanning; holdPlanning = null; await held.block();}
         await route.fulfill({status: 200, json: success(planning(pending, timing))});

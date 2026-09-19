@@ -16,7 +16,8 @@ public sealed class RouteRecalculationBudgetReservationTests
   public async Task DisabledBudgetDoesNotAccessAnUnconfiguredDatabase()
   {
     await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().Options);
-    var budget = new RouteRecalculationBudget(db, Options.Create(new RouteRecalculationBudgetOptions { Enabled = false }));
+    using var gates = new Application.Caching.ProcessGates();
+    var budget = new RouteRecalculationBudget(db, Options.Create(new RouteRecalculationBudgetOptions { Enabled = false }), gates);
     await budget.ReserveAsync(Guid.NewGuid(), new(40, -80), default);
     using var cancellation = new CancellationTokenSource();
     cancellation.Cancel();
@@ -30,18 +31,19 @@ public sealed class RouteRecalculationBudgetReservationTests
     await connection.OpenAsync();
     var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options;
     var truck = Guid.NewGuid();
+    using var gates = new Application.Caching.ProcessGates();
     await using (var db = new AppDbContext(options))
     {
       await db.Database.EnsureCreatedAsync();
-      await new RouteRecalculationBudget(db, Options.Create(new RouteRecalculationBudgetOptions()))
+      await new RouteRecalculationBudget(db, Options.Create(new RouteRecalculationBudgetOptions()), gates)
         .ReserveAsync(truck, new(40, -80), default);
     }
     await using var reloaded = new AppDbContext(options);
-    await new RouteRecalculationBudget(reloaded, Options.Create(new RouteRecalculationBudgetOptions { Enabled = false }))
+    await new RouteRecalculationBudget(reloaded, Options.Create(new RouteRecalculationBudgetOptions { Enabled = false }), gates)
       .ReserveAsync(truck, new(41, -80), default);
     Assert.Equal(1, await reloaded.RouteRecalculationAttempts.CountAsync());
     await Assert.ThrowsAsync<RoutePlanningException>(() => new RouteRecalculationBudget(reloaded,
-      Options.Create(new RouteRecalculationBudgetOptions())).ReserveAsync(truck, new(41, -80), default));
+      Options.Create(new RouteRecalculationBudgetOptions()), gates).ReserveAsync(truck, new(41, -80), default));
     Assert.Equal(1, await reloaded.RouteRecalculationAttempts.CountAsync());
   }
 }

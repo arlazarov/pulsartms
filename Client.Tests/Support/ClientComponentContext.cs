@@ -13,6 +13,14 @@ internal sealed class ClientComponentContext : BunitContext
     Services.AddSingleton<ApiService>();
     Services.AddSingleton<PlanningDisplayCache>();
     Services.AddSingleton(TimeProvider.System);
+    Services.AddSingleton<IPageVisibility, AlwaysVisible>();
+  }
+
+  internal sealed class AlwaysVisible : IPageVisibility
+  {
+    public bool Hidden => false;
+    public event Action? Changed { add { } remove { } }
+    public Task StartAsync() => Task.CompletedTask;
   }
 
   public void AddAuthenticationServices()

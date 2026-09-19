@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 
-public sealed class FuelRegionPlanner(ISender mediator, IOptions<FuelRegionOptions> options,
+public sealed class FuelRegionPlanner(Application.Features.Dispatch.Interfaces.IDispatchBoardReader board, IOptions<FuelRegionOptions> options,
   RoutePlanningService plans, DeadheadService deadheads)
 {
   public async Task<FuelArrivalPolicy> BuildAsync(RoutePlan plan, TruckRouteProfile profile,
@@ -29,9 +29,8 @@ public sealed class FuelRegionPlanner(ISender mediator, IOptions<FuelRegionOptio
     var poor = grid.Cell(delivery).Kind != "good" || local.Count < config.MinimumStations || local.Min(x => x.EconomicUsd) >= reference + config.ExpensivePremiumUsdPerGallon;
 
     // With an assigned pickup, examine fuel along that direction, not an arbitrary exit.
-    var board = await mediator.Send(new GetDispatchBoardQuery(TruckId: plan.TruckId, IncludeHos: false, IncludeFinancials: false, IncludeEta: false, IncludeOverdue: true), ct);
-    if (!board.Success) throw new RoutePlanningException("Upcoming dispatches are unavailable; retaining the saved fuel plan.");
-    var loads = board.Response?.Items.FirstOrDefault()?.Dispatches ?? [];
+    var loads = (await board.ReadAsync(new(TruckId: plan.TruckId, IncludeHos: false, IncludeFinancials: false, IncludeEta: false, IncludeOverdue: true), ct))
+      .Items.FirstOrDefault()?.Dispatches ?? [];
     var index = loads.FindIndex(x => x.Id == plan.DispatchId);
     var next = index >= 0 ? loads.Skip(index + 1).FirstOrDefault() : null;
     FuelSearchGeometry? onward = null;

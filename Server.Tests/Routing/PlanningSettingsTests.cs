@@ -22,10 +22,11 @@ public class PlanningSettingsTests
     await connection.OpenAsync();
     var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options;
     using var cache = new Application.Caching.ReadCache(Microsoft.Extensions.Options.Options.Create(new Application.Features.Synchronization.Options.SynchronizationOptions()));
+    using var gates = new Application.Caching.ProcessGates();
     await using (var db = new AppDbContext(options))
     {
       await db.Database.EnsureCreatedAsync();
-      var service = new PlanningSettingsService(db, cache);
+      var service = new PlanningSettingsService(db, cache, gates);
       var defaults = await service.GetAsync(default);
       Assert.True(defaults.Preferences.UseIfta);
       Assert.Equal(0, defaults.Revision);
@@ -38,7 +39,7 @@ public class PlanningSettingsTests
     }
     await using var reloaded = new AppDbContext(options);
     cache.Invalidate("settings");
-    var result = await new PlanningSettingsService(reloaded, cache).GetAsync(default);
+    var result = await new PlanningSettingsService(reloaded, cache, gates).GetAsync(default);
     Assert.False(result.Preferences.UseIfta);
     Assert.Equal(8, result.Preferences.MaxDetourMinutes);
     Assert.Equal(100, result.Preferences.FillPercent);
@@ -70,7 +71,7 @@ public class PlanningSettingsTests
     await first.Database.EnsureCreatedAsync();
     await using var second = new AppDbContext(options);
     using var services = new PlanningTestServices(first);
-    var otherSession = new PlanningSettingsService(second, services.Reads);
+    var otherSession = new PlanningSettingsService(second, services.Reads, services.Gates);
     var stale = await otherSession.GetAsync(default);
     await services.Settings.SaveAsync(new(new() { UseIfta = false }, 0), default);
     await Assert.ThrowsAsync<PlanningSettingsConflictException>(() => otherSession.SaveAsync(new(stale.Preferences, stale.Revision), default));

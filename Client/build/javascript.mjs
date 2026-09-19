@@ -9,7 +9,7 @@ const result = await build({
   absWorkingDir: client,
   entryPoints: ['Scripts/fleetMap/fleetMap.js', 'Scripts/fleetMap/rendering/gpuScene.js',
     'Scripts/shared/popup.js', 'Scripts/shared/cameraDialog.js', 'Scripts/shared/authStorage.js',
-    'Scripts/shared/reorderList.js', 'Scripts/shared/loadDialog.js', 'Scripts/dispatch/dispatch.js'],
+    'Scripts/shared/reorderList.js', 'Scripts/shared/loadDialog.js', 'Scripts/shared/visibility.js', 'Scripts/dispatch/dispatch.js'],
   outbase: 'Scripts', outdir: output, bundle: true, splitting: true, format: 'esm',
   minify: true, chunkNames: 'chunks/[name]-[hash]', write: false
 });

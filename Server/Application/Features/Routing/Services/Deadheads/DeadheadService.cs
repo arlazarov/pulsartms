@@ -12,9 +12,10 @@ using Application.Caching;
 
 namespace Application.Features.Routing.Services.Deadheads;
 
-public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, RoutePlanningService plans, DispatchRates financials, IDeadheadHistoryReader historyReader)
+public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, RoutePlanningService plans, DispatchRates financials,
+  IDeadheadHistoryReader historyReader, ReadCache reads, ProcessGates processGates)
 {
-  private static readonly KeyedGates Gates = new();
+  private readonly KeyedGates gates = processGates.For<DeadheadService>();
 
   public Task<IReadOnlyDictionary<Guid, DeadheadHistorySnapshot>> ReadHistoryAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct) =>
     historyReader.ReadAsync(ids, ct);
@@ -100,7 +101,7 @@ public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, 
     load = latestLoad;
     var pair = DeadheadConnection.Find(history.GetValueOrDefault(load.Id));
     var hash = pair is not null && profile.Validate() is null ? pair.Signature(profile) : "";
-    var gate = Gates.For(load.TruckId ?? load.Id);
+    var gate = gates.For(load.TruckId ?? load.Id);
     await GateWait.WaitAsync(gate, "Deadhead", ct);
     try
     {
@@ -124,7 +125,7 @@ public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, 
       // Persist the retry budget before making any billable provider requests.
       saved.ErrorMessage = null;
       saved.RetryAfter = DateTime.UtcNow.AddMinutes(5);
-      try { await db.SaveChangesAsync(ct); }
+      try { await db.SaveChangesAsync(ct); reads.Invalidate($"chain:{load.Id}"); }
       catch (DbUpdateConcurrencyException) { db.Entry(saved).State = EntityState.Detached; return; }
       try
       {
@@ -146,6 +147,7 @@ public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, 
         saved.RetryAfter = DateTime.MinValue;
         saved.ErrorMessage = null;
         await db.SaveChangesAsync(ct);
+        reads.Invalidate($"chain:{load.Id}");
         await financials.SaveAsync(current, saved.Miles, hash, ct);
       }
       catch (RoutePlanningException ex)
@@ -153,6 +155,7 @@ public sealed class DeadheadService(IAppDbContext db, IRoutingProvider routing, 
         saved.ErrorMessage = ex.Message;
         saved.RetryAfter = ex.RetryAfter;
         await db.SaveChangesAsync(ct);
+        reads.Invalidate($"chain:{load.Id}");
         throw;
       }
     }

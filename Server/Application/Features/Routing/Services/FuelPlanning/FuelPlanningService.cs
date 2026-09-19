@@ -11,24 +11,25 @@ using Application.Caching;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 
-public sealed partial class FuelPlanningService(RoutePlanningService plans, ISender mediator, FuelRegionPlanner regions, FuelHorizon horizons, IOptions<FuelRegionOptions> options,
-  TruckFuelPlans savedPlans, FuelScheduleEvaluator schedules, IAppDbContext db)
+public sealed partial class FuelPlanningService(RoutePlanningService plans, ISender mediator,
+  Application.Features.Dispatch.Interfaces.IDispatchBoardReader dispatchBoard, FuelRegionPlanner regions, FuelHorizon horizons, IOptions<FuelRegionOptions> options,
+  TruckFuelPlans savedPlans, FuelScheduleEvaluator schedules, IAppDbContext db, ProcessGates processGates)
 {
-  private static readonly KeyedGates TruckGates = new();
+  private readonly KeyedGates truckGates = processGates.For<FuelPlanningService>();
   // Manual searches share a small per-process budget; ordinary planning reads never acquire it.
-  private static readonly SemaphoreSlim SearchSlots = new(2, 2);
+  private readonly SemaphoreSlim searchSlots = processGates.Slots<FuelPlanningService>(2);
 
   public async Task<FuelPlan> BuildAsync(Guid dispatchId, FuelBuildRequest request, CancellationToken ct)
   {
     var truckId = (await plans.LoadAsync(dispatchId, ct)).TruckId
       ?? throw new RoutePlanningException("A truck assignment is required for fuel planning.");
-    var gate = TruckGates.For(truckId);
+    var gate = truckGates.For(truckId);
     await GateWait.WaitAsync(gate, "FuelTruck", ct);
     try
     {
-      await GateWait.WaitAsync(SearchSlots, "FuelSearch", ct);
+      await GateWait.WaitAsync(searchSlots, "FuelSearch", ct);
       try { return await BuildCoreAsync(dispatchId, request, ct); }
-      finally { SearchSlots.Release(); }
+      finally { searchSlots.Release(); }
     }
     finally { gate.Release(); }
   }
@@ -70,10 +71,9 @@ public sealed partial class FuelPlanningService(RoutePlanningService plans, ISen
     if (!response.Success || response.Response is null) throw new RoutePlanningException("Fuel prices are temporarily unavailable.");
     var prices = FuelRegionGrid.Prices(response.Response, p, today);
     var priceSignature = FuelPriceSignature.From(prices);
-    var board = await mediator.Send(new Application.Features.Dispatch.Queries.GetDispatchBoardQuery(TruckId: plan.TruckId,
+    var board = await dispatchBoard.ReadAsync(new(TruckId: plan.TruckId,
       IncludeHos: false, IncludeFinancials: false, IncludeEta: false, IncludeOverdue: true), ct);
-    if (!board.Success || board.Response is null) throw new RoutePlanningException("Dispatch assignments are temporarily unavailable.");
-    var loads = board.Response.Items.FirstOrDefault()?.Dispatches ?? [];
+    var loads = board.Items.FirstOrDefault()?.Dispatches ?? [];
     var assignmentSignatures = loads.ToDictionary(x => x.Id, FuelHorizon.LoadSignature);
     var horizon = await horizons.BuildAsync(state, p, ct);
     var terminal = new RoutePlan { TruckId = plan.TruckId, DispatchId = horizon.DispatchIds[^1], Route = horizon.Route };
@@ -202,11 +202,10 @@ public sealed partial class FuelPlanningService(RoutePlanningService plans, ISen
       accessMiles += candidate.ExtraInMiles + candidate.ExtraOutMiles;
     }
     fuel.StopArrivals = FuelStopArrivals.Calculate(fuel, itinerary, profile);
-    var latest = await mediator.Send(new Application.Features.Dispatch.Queries.GetDispatchBoardQuery(TruckId: plan.TruckId, IncludeHos: false, IncludeFinancials: false, IncludeEta: false, IncludeOverdue: true), ct);
-    if (!latest.Success || latest.Response is null || !FuelPlanProjection.AssignmentsMatch(fuel, plan.DispatchId,
-      latest.Response.Items.FirstOrDefault()?.Dispatches ?? [])
-      || !FuelPlanProjection.RemainingStopsMatch(itinerary, plan.DispatchId, plan.Tracking.NextStopId,
-        latest.Response.Items.FirstOrDefault()?.Dispatches ?? []))
+    var latest = (await dispatchBoard.ReadAsync(new(TruckId: plan.TruckId, IncludeHos: false, IncludeFinancials: false, IncludeEta: false, IncludeOverdue: true), ct))
+      .Items.FirstOrDefault()?.Dispatches ?? [];
+    if (!FuelPlanProjection.AssignmentsMatch(fuel, plan.DispatchId, latest)
+      || !FuelPlanProjection.RemainingStopsMatch(itinerary, plan.DispatchId, plan.Tracking.NextStopId, latest))
       throw new RoutePlanningException("Assignments changed during fuel calculation.");
     await using var transaction = await db.Database.BeginTransactionAsync(ct);
     await plans.StoreFuelAsync(plan.DispatchId, fuel, ct);

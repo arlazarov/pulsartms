@@ -66,9 +66,10 @@ public class SynchronizationTests
     services.AddScoped<Application.Interfaces.IAppDbContext>(p => p.GetRequiredService<AppDbContext>());
     services.AddScoped<Application.Features.Synchronization.Interfaces.ISynchronizationStore, SynchronizationStore>();
     services.AddSingleton<ISender>(sender); services.AddSingleton<IFleetTelemetryFeedProvider>(feed);
+    services.AddSingleton<Application.Features.Dispatch.Interfaces.IDispatchBoardReader>(sender);
     await using var provider = services.BuildServiceProvider();
     var telemetry = provider.GetRequiredService<ServerTelemetry>();
-    ApplicationWorker<Application.Features.Synchronization.Interfaces.IFleetSynchronizationOperation> Worker() => new(new FleetSynchronizationOperation(provider.GetRequiredService<IServiceScopeFactory>(), config, telemetry, NullLogger<FleetSynchronizationOperation>.Instance));
+    ApplicationWorker<Application.Features.Synchronization.Interfaces.IFleetSynchronizationOperation> Worker() => new(new FleetSynchronizationOperation(provider.GetRequiredService<IServiceScopeFactory>(), config, telemetry, NullLogger<FleetSynchronizationOperation>.Instance, Options.Create(new Application.Options.HostingOptions())));
     using (var worker = Worker())
     {
       await worker.StartAsync(default);
@@ -95,11 +96,53 @@ public class SynchronizationTests
   }
 
   [Fact]
+  public async Task ApiRoleFollowsTheOwnerCheckpointWithoutTakingTheLease()
+  {
+    await using var fixture = await Database.CreateAsync();
+    fixture.Db.Trucks.Add(new() { Id = Guid.NewGuid(), ExternalId = "truck", UnitNumber = "1", IsActive = true });
+    await fixture.Db.SaveChangesAsync();
+    var store = new SynchronizationStore(fixture.Db);
+    Assert.True(await store.AcquireAsync("owner", DateTime.UtcNow, default));
+    var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    var checkpoint = new SynchronizationState();
+    var at = DateTime.UtcNow.AddMinutes(-1);
+    checkpoint.Apply([new("truck", new() { Latitude = 40, Longitude = -80, UpdatedAt = at }, null, null, null, null)], "cursor-1");
+    await store.SaveAsync("owner", JsonSerializer.Serialize(checkpoint, json), default);
+    var config = Options.Create(new SynchronizationOptions { Enabled = true, HighFrequencyLocations = false, FollowSeconds = 1 });
+    var services = new ServiceCollection().AddMemoryCache();
+    services.AddSingleton<IOptions<SynchronizationOptions>>(config);
+    services.AddSingleton<ReadCache>(); services.AddSingleton<ServerTelemetry>();
+    services.AddScoped<FleetCache>();
+    services.AddDbContext<AppDbContext>(options => options.UseSqlite($"Data Source={fixture.Path}"));
+    services.AddScoped<Application.Interfaces.IAppDbContext>(p => p.GetRequiredService<AppDbContext>());
+    services.AddScoped<Application.Features.Synchronization.Interfaces.ISynchronizationStore, SynchronizationStore>();
+    await using var provider = services.BuildServiceProvider();
+    var telemetry = provider.GetRequiredService<ServerTelemetry>();
+    var operation = new FleetSynchronizationOperation(provider.GetRequiredService<IServiceScopeFactory>(), config, telemetry,
+      NullLogger<FleetSynchronizationOperation>.Instance, Options.Create(new Application.Options.HostingOptions { Role = Application.Options.HostingRole.Api }));
+    using var worker = new ApplicationWorker<Application.Features.Synchronization.Interfaces.IFleetSynchronizationOperation>(operation);
+    await worker.StartAsync(default);
+    await EventuallyAsync(() => telemetry.Current?.Trucks.Count == 1);
+    var revision = telemetry.Current!.Revision;
+    Assert.Equal(40, telemetry.Current.Trucks[0].Latitude);
+    await Task.Delay(TimeSpan.FromSeconds(2.5));
+    // An unchanged checkpoint keeps the revision so browser validators keep matching.
+    Assert.Equal(revision, telemetry.Current!.Revision);
+    Assert.False(operation.Status.Active);
+    Assert.True(await store.RenewAsync("owner", DateTime.UtcNow, default));
+    checkpoint.Apply([new("truck", new() { Latitude = 41, Longitude = -80, UpdatedAt = at.AddSeconds(30) }, null, null, null, null)], "cursor-2");
+    await store.SaveAsync("owner", JsonSerializer.Serialize(checkpoint, json), default);
+    await EventuallyAsync(() => telemetry.Current!.Revision != revision);
+    Assert.Equal(41, telemetry.Current!.Trucks[0].Latitude);
+    await worker.StopAsync(default);
+  }
+
+  [Fact]
   public async Task DisabledWorkerDoesNotResolveDatabaseOrProviders()
   {
     await using var services = new ServiceCollection().BuildServiceProvider();
     using var worker = new ApplicationWorker<Application.Features.Synchronization.Interfaces.IFleetSynchronizationOperation>(new FleetSynchronizationOperation(services.GetRequiredService<IServiceScopeFactory>(),
-      Options.Create(new SynchronizationOptions { Enabled = false }), new ServerTelemetry(), NullLogger<FleetSynchronizationOperation>.Instance));
+      Options.Create(new SynchronizationOptions { Enabled = false }), new ServerTelemetry(), NullLogger<FleetSynchronizationOperation>.Instance, Options.Create(new Application.Options.HostingOptions())));
     await worker.StartAsync(default);
     await worker.ExecuteTask!;
     await worker.StopAsync(default);
@@ -176,8 +219,9 @@ public class SynchronizationTests
     var source = new ExternalDispatch { LoadNumber = 1, Status = "assigned", Stops = [new() { Sequence = 1, Job = "Pick Up", City = "Buffalo" }] };
     using var reads = TestCache.Create();
     using var memory = new MemoryCache(new MemoryCacheOptions());
+    using var gates = new Application.Caching.ProcessGates();
     var handler = new SyncDispatchesCommandHandler(fixture.Db, new DispatchProvider(source), reads, memory,
-      new(Microsoft.Extensions.Options.Options.Create(new Application.Features.Routing.Options.RoutePreparationOptions()), TimeProvider.System));
+      new(Microsoft.Extensions.Options.Options.Create(new Application.Features.Routing.Options.RoutePreparationOptions()), TimeProvider.System), new(gates));
     await handler.Handle(new(), default);
     var load = await fixture.Db.Dispatches.Include(x => x.Stops).SingleAsync();
     var id = load.Stops.Single().Id;
@@ -278,7 +322,8 @@ public class SynchronizationTests
     await routes.GetAsync(load, default, displayOnly: true);
     var options = Options.Create(new SynchronizationOptions { Enabled = enabled });
     var queue = new PlanningRefreshQueue(memory, options);
-    var browser = new PlanningReadService(routes, queue, sender, options, services.Eta, services.FuelPlans);
+    // The warm-read budget covers route and progress reads; the board itself is stubbed empty here.
+    var browser = new PlanningReadService(routes, queue, new(sender, services.Forecasts), options, services.Eta, services.FuelPlans);
     Assert.NotNull((await browser.ForDispatchAsync(load.Id, default)).State?.Plan);
     var reads = fixture.Counter.Reads;
     for (var i = 0; i < 20; i++)
@@ -365,16 +410,17 @@ public class SynchronizationTests
     }
   }
 
-  internal sealed class Sender : ISender
+  internal sealed class Sender : ISender, Application.Features.Dispatch.Interfaces.IDispatchBoardReader
   {
     public FleetLocationsResponse Fleet { get; } = new();
     public int CatalogCalls, AssignmentCalls, DispatchCalls;
+    public Task<PaginatedList<TruckDispatchBoardResponse>> ReadAsync(GetDispatchBoardQuery request, CancellationToken ct) =>
+      Task.FromResult(new PaginatedList<TruckDispatchBoardResponse> { Items = [], Page = 1, PageSize = 100, TotalCount = 0 });
     public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default)
     {
       object result = request switch
       {
         GetFleetLocationsQuery => RequestResponse<FleetLocationsResponse>.Ok(Fleet),
-        GetDispatchBoardQuery => RequestResponse<PaginatedList<TruckDispatchBoardResponse>>.Ok(new() { Items = [], Page = 1, PageSize = 100, TotalCount = 0 }),
         SyncFleetCommand => RequestResponse<int>.Ok(Interlocked.Increment(ref CatalogCalls)),
         SyncAssignmentsCommand => RequestResponse<int>.Ok(Interlocked.Increment(ref AssignmentCalls)),
         SyncDispatchesCommand => RequestResponse<int>.Ok(Interlocked.Increment(ref DispatchCalls)),

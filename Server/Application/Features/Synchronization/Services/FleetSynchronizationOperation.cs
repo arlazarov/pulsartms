@@ -20,7 +20,8 @@ using Microsoft.Extensions.Options;
 namespace Application.Features.Synchronization.Services;
 
 public sealed class FleetSynchronizationOperation(IServiceScopeFactory scopes, IOptions<SynchronizationOptions> options,
-  ServerTelemetry telemetry, ILogger<FleetSynchronizationOperation> logger) : IFleetSynchronizationOperation, ISynchronizationStatusProvider
+  ServerTelemetry telemetry, ILogger<FleetSynchronizationOperation> logger, IOptions<Application.Options.HostingOptions> hosting)
+  : IFleetSynchronizationOperation, ISynchronizationStatusProvider
 {
   private volatile bool active;
   public SynchronizationStatus Status
@@ -41,6 +42,7 @@ public sealed class FleetSynchronizationOperation(IServiceScopeFactory scopes, I
   public async Task RunAsync(CancellationToken stoppingToken)
   {
     if (!config.Enabled) { logger.LogInformation("Server synchronization is disabled."); return; }
+    if (hosting.Value.Role == Application.Options.HostingRole.Api) { await RunFollowerAsync(stoppingToken); return; }
     while (!stoppingToken.IsCancellationRequested)
     {
       try
@@ -64,6 +66,35 @@ public sealed class FleetSynchronizationOperation(IServiceScopeFactory scopes, I
       catch (Exception ex) { logger.LogWarning(ex, "Synchronization will retry."); }
       try { await Task.Delay(TimeSpan.FromSeconds(config.RetrySeconds), stoppingToken); }
       catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+    }
+  }
+
+  // Api-role instances never take the lease; they republish the owner's checkpoint so reads and held
+  // polls see the shared snapshot. Unchanged checkpoints keep the revision, so validators still match.
+  private async Task RunFollowerAsync(CancellationToken ct)
+  {
+    logger.LogInformation("Server synchronization follows the owner checkpoint on this instance.");
+    DateTime? published = null;
+    while (!ct.IsCancellationRequested)
+    {
+      try
+      {
+        SynchronizationState latest;
+        using (var scope = scopes.CreateScope())
+          latest = await scope.ServiceProvider.GetRequiredService<ISynchronizationStore>().ReadAsync(ct);
+        var newest = latest.Vehicles.Values.SelectMany(x => new[] { x.UpdatedAt, x.EngineUpdatedAt ?? default, x.FuelUpdatedAt ?? default })
+          .DefaultIfEmpty().Max();
+        if (published != newest)
+        {
+          lock (stateGate) state = latest;
+          await PublishAsync([], ct);
+          published = newest;
+        }
+      }
+      catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
+      catch (Exception ex) { logger.LogWarning(ex, "Synchronization follower will retry."); }
+      try { await Task.Delay(TimeSpan.FromSeconds(config.FollowSeconds), ct); }
+      catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
     }
   }
 
@@ -186,14 +217,16 @@ public sealed class FleetSynchronizationOperation(IServiceScopeFactory scopes, I
       item.ObservedAt = x.ObservedAt; item.EngineState = x.EngineState; item.FuelPercent = x.FuelPercent; item.FuelUpdatedAt = x.FuelUpdatedAt;
       return item;
     }).ToList();
-    IReadOnlyList<TruckLocation> stream = [];
+    IReadOnlyList<TruckLocationPoint> stream = [];
     if (highFrequency)
     {
       try { stream = await services.GetRequiredService<FleetLocationStream>().GetAsync(services.GetRequiredService<IFleetTelemetryProvider>(), fleet, ct); }
       catch (HttpRequestException) { logger.LogWarning("High-frequency locations unavailable; using the telemetry feed."); }
     }
-    var points = (telemetry.Current?.Points ?? []).Concat(stream).Concat(updates.Where(x => active.ContainsKey(x.ExternalId)).Select(x => Map(active[x.ExternalId], x)))
-      .Where(x => x.UpdatedAt > DateTime.UtcNow.AddMinutes(-2)).DistinctBy(x => (x.TruckId, x.UpdatedAt)).OrderBy(x => x.UpdatedAt).ToList();
+    var points = (telemetry.Current?.Points ?? []).Concat(stream)
+      .Concat(updates.Where(x => active.ContainsKey(x.ExternalId)).Select(x => new TruckLocationPoint(
+        active[x.ExternalId].TruckExternalId, x.Latitude, x.Longitude, x.Speed, x.Heading, x.UpdatedAt)))
+      .Where(x => x.UpdatedAt > DateTime.UtcNow.AddMinutes(-2)).DistinctBy(x => (x.TruckExternalId, x.UpdatedAt)).OrderBy(x => x.UpdatedAt).ToList();
     telemetry.Set(new() { Trucks = trucks, Points = points });
   }
 
@@ -203,14 +236,13 @@ public sealed class FleetSynchronizationOperation(IServiceScopeFactory scopes, I
     {
       await RunJobAsync("planning", config.PlanningSeconds, async (services, token) =>
       {
-        var mediator = services.GetRequiredService<ISender>();
+        var board = services.GetRequiredService<Application.Features.Dispatch.Interfaces.IDispatchBoardReader>();
         var rows = new List<Application.Features.Dispatch.Models.TruckDispatchBoardResponse>();
         for (var page = 1; ; page++)
         {
-          var board = await mediator.Send(new GetDispatchBoardQuery(Page: page, PageSize: 100, IncludeHos: false, IncludeFinancials: false, IncludeEta: false), token);
-          if (!board.Success || board.Response is null) throw new InvalidOperationException("Dispatch board is unavailable.");
-          rows.AddRange(board.Response.Items.Where(x => x.TruckId.HasValue && x.Dispatches.Count > 0));
-          if (!board.Response.HasNextPage) break;
+          var rowsPage = await board.ReadAsync(new(Page: page, PageSize: 100, IncludeHos: false, IncludeFinancials: false, IncludeEta: false), token);
+          rows.AddRange(rowsPage.Items.Where(x => x.TruckId.HasValue && x.Dispatches.Count > 0));
+          if (!rowsPage.HasNextPage) break;
         }
         List<Guid> selected;
         lock (stateGate)

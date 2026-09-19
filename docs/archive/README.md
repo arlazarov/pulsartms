@@ -10,6 +10,7 @@ started again under the current project policy.
 
 ### Reviews and implementation records
 
+- [September 19 server load reduction and architecture hardening](2026-09/server-load-and-architecture-2026-09-19.md)
 - [September 11 explicit roles and fuel lifecycle hardening](2026-09/explicit-roles-fuel-lifecycle-2026-09-11.md)
 - [September 11 standards audit and unused-file cleanup](2026-09/full-standards-audit-2026-09-11.md)
 - [September 11 automatic artifact retention](2026-09/artifact-retention-2026-09-11.md)

@@ -7,6 +7,7 @@ namespace Client.Layout;
 public partial class MainLayout : IDisposable
 {
     [Inject] private ApiService Api { get; set; } = default!;
+    [Inject] private IPageVisibility Visibility { get; set; } = default!;
     private DispatchSettingsState? _dispatchSettings;
     private Action<DispatchSettingsState> _settingsChanged = default!;
     private readonly CancellationTokenSource _lifetime = new();
@@ -17,6 +18,11 @@ public partial class MainLayout : IDisposable
         _settingsChanged = ApplySettings;
         var result = await Api.GetAsync<DispatchSettingsState>("api/settings/dispatch", _lifetime.Token);
         if (!_disposed && result.Success && result.Response is { } settings) ApplySettings(settings);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await Visibility.StartAsync();
     }
 
     private void ApplySettings(DispatchSettingsState settings)

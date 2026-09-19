@@ -22,7 +22,8 @@ public class TruckHistoryTests
     db.Trucks.Add(truck); await db.SaveChangesAsync();
     using var cache = new MemoryCache(new MemoryCacheOptions());
     var provider = new Provider();
-    var handler = new GetTruckHistoryHandler(db, provider, cache, new());
+    using var gates = new Application.Caching.ProcessGates();
+    var handler = new GetTruckHistoryHandler(db, provider, cache, new(), gates);
     var query = new GetTruckHistoryQuery(truck.Id, DateTimeOffset.UtcNow.AddHours(-1), DateTimeOffset.UtcNow.AddHours(1));
     await handler.Handle(query, default);
     Assert.Equal(0, provider.Calls);

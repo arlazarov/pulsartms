@@ -21,7 +21,7 @@ public sealed record FuelHorizonResult(TruckRoute Route, List<PlanStop> Stops, i
   public double StartAccessMiles { get; init; }
 }
 
-public sealed class FuelHorizon(RoutePlanningService plans, IAppDbContext db, ISender mediator, DeadheadService deadheads)
+public sealed class FuelHorizon(RoutePlanningService plans, IAppDbContext db, Application.Features.Dispatch.Interfaces.IDispatchBoardReader board, DeadheadService deadheads)
 {
   private const int MaximumGeometryPoints = 200_000;
   public static string LoadSignature(DispatchResponse load) => Convert.ToHexString(SHA256.HashData(
@@ -42,10 +42,8 @@ public sealed class FuelHorizon(RoutePlanningService plans, IAppDbContext db, IS
   {
     ct.ThrowIfCancellationRequested();
     var plan = state.Plan!;
-    var board = await mediator.Send(new GetDispatchBoardQuery(TruckId: plan.TruckId, IncludeHos: false, IncludeFinancials: false, IncludeEta: false, IncludeOverdue: true), ct);
-    if (!board.Success || board.Response is null)
-      throw new RoutePlanningException("Dispatch assignments could not be verified. The saved fuel plan has been kept.");
-    var loads = board.Response.Items.FirstOrDefault()?.Dispatches ?? [];
+    var loads = (await board.ReadAsync(new(TruckId: plan.TruckId, IncludeHos: false, IncludeFinancials: false, IncludeEta: false, IncludeOverdue: true), ct))
+      .Items.FirstOrDefault()?.Dispatches ?? [];
     var index = loads.FindIndex(x => x.Id == plan.DispatchId);
     if (index < 0) throw new RoutePlanningException("Current dispatch assignment changed. Reload the route before finding fuel.");
     var current = await plans.LoadAsync(plan.DispatchId, ct);

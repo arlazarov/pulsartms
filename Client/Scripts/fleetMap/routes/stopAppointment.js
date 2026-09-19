@@ -1,18 +1,22 @@
+// @ts-check
 const dayFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const yearFormat = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
+/** @param {unknown} value */
 function calendarDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const date = new Date(`${value}T00:00:00Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? date : null;
 }
 
+/** @param {unknown} value */
 function clock(value) {
   if (typeof value !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?$/.test(value)) return '';
   const hour = Number(value.slice(0, 2));
   return `${String(hour % 12 || 12).padStart(2, '0')}:${value.slice(3, 5)} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
+/** @param {Pick<import('../contracts.d.ts').PlanStop, 'scheduledDate' | 'scheduledTime' | 'scheduledDate2' | 'scheduledTime2'>} stop */
 export function stopAppointment(stop) {
   const start = calendarDate(stop.scheduledDate);
   const end = calendarDate(stop.scheduledDate2 ?? (stop.scheduledTime2 ? stop.scheduledDate : null));

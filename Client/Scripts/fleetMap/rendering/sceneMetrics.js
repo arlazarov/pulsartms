@@ -1,3 +1,4 @@
+// @ts-check
 // CSS-pixel dimensions; the overlay handles device-pixel density separately.
 export const sceneMetrics = Object.freeze({
   labelSize: 16,
@@ -34,7 +35,7 @@ export const sceneMetrics = Object.freeze({
 // Rasterize at the displayed physical font size so small glyphs retain hinting.
 export function createLabelFonts(pixelRatio = 1, stopLabelSize = sceneMetrics.stopLabelSize) {
   const density = Number.isFinite(pixelRatio) && pixelRatio > 0 ? pixelRatio : 1;
-  const settings = size => ({ sdf: false, fontSize: Math.max(1, Math.round(size * density)) });
+  const settings = (/** @type {number} */ size) => ({ sdf: false, fontSize: Math.max(1, Math.round(size * density)) });
   return {
     label: settings(sceneMetrics.labelSize),
     stopLabel: settings(stopLabelSize),

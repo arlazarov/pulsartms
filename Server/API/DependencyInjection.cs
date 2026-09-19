@@ -1,5 +1,6 @@
 using Application;
 using Infrastructure;
+using Microsoft.AspNetCore.ResponseCompression;
 
 namespace API;
 
@@ -11,8 +12,9 @@ public static class DependencyInjection
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddApplicationOptions(builder.Configuration);
 
+    builder.Services.AddTelemetryExport(builder.Configuration);
     builder.Services.AddOpenApi();
-    builder.Services.AddControllers();
+    builder.Services.AddApiHttp();
 
     builder.Services.AddCors(options =>
     {
@@ -26,5 +28,22 @@ public static class DependencyInjection
     });
 
     return builder;
+  }
+
+  // Controllers, JSON and compression: the HTTP contract that ApiContractTests hosts without the rest.
+  public static IServiceCollection AddApiHttp(this IServiceCollection services)
+  {
+    services.AddControllers().AddJsonOptions(options =>
+      options.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, ApiJsonContext.Default));
+    services.ConfigureHttpJsonOptions(options =>
+      options.SerializerOptions.TypeInfoResolverChain.Insert(0, ApiJsonContext.Default));
+    services.AddResponseCompression(options =>
+    {
+      options.EnableForHttps = true;
+      options.Providers.Add<BrotliCompressionProvider>();
+      options.Providers.Add<GzipCompressionProvider>();
+      options.MimeTypes = [.. ResponseCompressionDefaults.MimeTypes, "application/problem+json"];
+    });
+    return services;
   }
 }

@@ -14,6 +14,7 @@ public partial class DispatchList : IDisposable
   [Inject] private PlanningDisplayCache PlanningCache { get; set; } = default!;
   [Inject] private IJSRuntime JS { get; set; } = default!;
   [Inject] private TimeProvider Clock { get; set; } = default!;
+  [Inject] private IPageVisibility Visibility { get; set; } = default!;
   private const string ViewStorageKey = "amftms.dispatch.view";
 
   protected override async Task OnInitializedAsync()
@@ -230,19 +231,24 @@ public partial class DispatchList : IDisposable
     }
   }
 
+  // The board shows current positions only; location history stays on the map.
+  // wait= holds the poll on the server until telemetry changes, so quiet fleets cost one request per wait.
+  internal const string TelemetryUrl = "api/fleet/locations?points=false&wait=25";
+
   private async Task PollTelemetryAsync(CancellationToken cancellationToken)
   {
     using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10), Clock);
+    using var pace = Visibility.Pace(timer, TimeSpan.FromSeconds(10));
     try
     {
-      var initial = await Api.GetAsync<FleetLocationsMapDto>("api/fleet/locations", cancellationToken);
+      var initial = await Api.GetAsync<FleetLocationsMapDto>(TelemetryUrl, cancellationToken);
       if (_disposed) return;
       if (initial.Success && initial.Response is not null) ApplyTelemetry(initial.Response);
       await InvokeAsync(StateHasChanged);
       while (await timer.WaitForNextTickAsync(cancellationToken))
       {
         if (_showCompleted) continue;
-        var fleet = await Api.GetAsync<FleetLocationsMapDto>("api/fleet/locations", cancellationToken);
+        var fleet = await Api.GetAsync<FleetLocationsMapDto>(TelemetryUrl, cancellationToken);
         if (_disposed) return;
         if (_showCompleted) continue;
         if (!_loading && _searchDelay is null && Clock.GetUtcNow().UtcDateTime - _lastBoardRefresh >= TimeSpan.FromMinutes(1))

@@ -44,10 +44,12 @@ foreach (var fleetSize in new[] {100, 300, 1000})
   builder.Logging.ClearProviders();
   builder.WebHost.UseUrls("http://127.0.0.1:0");
   await using var app = builder.Build();
-  using var cache = new ReadCache(Options.Create(new SynchronizationOptions {ReadCacheSeconds = 600}));
+  using var cache = new Application.Caching.ReadCache(Options.Create(new SynchronizationOptions {ReadCacheSeconds = 600}));
   app.MapGet("/board", async (int page, string? search) => {
     await using var db = new AppDbContext(options);
-    var response = await new GetDispatchBoardHandler(db, cache).Handle(new(Page: page, Search: search, Date: date, IncludeHos: false), default);
+    // HOS and financials are off, so the reader never touches its HOS provider or deadhead service.
+    var reader = new Application.Features.Dispatch.Services.DispatchBoardReader(db, cache, null!, null!);
+    var response = await reader.ReadAsync(new(Page: page, Search: search, Date: date, IncludeHos: false, IncludeFinancials: false), default);
     return Results.Json(response);
   });
   await app.StartAsync();

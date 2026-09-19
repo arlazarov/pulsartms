@@ -1,3 +1,4 @@
+// @ts-check
 const postalPattern = /^(?:\d{5}(?:-\d{4})?|[A-Z]\d[A-Z]\s?\d[A-Z]\d)$/i;
 const regionPattern = /^([A-Z]{2})\s*(\d{5}(?:-\d{4})?|[A-Z]\d[A-Z]\s?\d[A-Z]\d)$/i;
 const countryPattern = /^(?:US|USA|United States|Canada|CA)$/i;
@@ -5,6 +6,7 @@ const unitPattern = /^(?:apt|apartment|unit|suite|ste|building|bldg|floor|#)(?:\
 const regions = new Set(('AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY AS GU MP PR VI '
   + 'AB BC MB NB NL NS NT NU ON PE QC SK YT').split(' '));
 
+/** @param {string | null | undefined} address */
 export function addressLines(address) {
   const value = address?.trim() || '';
   const parts = value.split(',').map(part => part.trim()).filter(Boolean);
@@ -13,6 +15,7 @@ export function addressLines(address) {
     || split(parts, parts.length - 1, '') || { street: parts.join(', '), locality: '' };
 }
 
+/** @param {string[]} parts @param {number} end @param {string} country */
 function split(parts, end, country) {
   if (end < 2) return null;
   let postal = '', region;
