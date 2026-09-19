@@ -22,8 +22,9 @@ for category in "$@"; do
     dispatch) filter+='|Category=Dispatch|Category=Finance|Category=Routing'; dispatch=true ;;
     fuel) filter+='|Category=Fuel|Category=Routing' ;;
     identity) filter+='|Category=Identity'; identity=true ;;
-    synchronization) filter+='|Category=Synchronization|Category=Dispatch|Category=Addresses'; dispatch=true ;;
-    *) echo 'Usage: bash test.sh [all|map|styles|architecture|addresses|costs|routing|finance|eta|fleet|dispatch|fuel|identity|synchronization] ...' >&2; exit 2 ;;
+    caching) filter+='|Category=Caching' ;;
+    synchronization) filter+='|Category=Synchronization|Category=Caching|Category=Dispatch|Category=Addresses'; dispatch=true ;;
+    *) echo 'Usage: bash test.sh [all|map|styles|architecture|addresses|costs|routing|finance|eta|fleet|dispatch|fuel|identity|caching|synchronization] ...' >&2; exit 2 ;;
   esac
 done
 

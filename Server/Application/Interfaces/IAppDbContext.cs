@@ -1,4 +1,5 @@
 using Domain.Entities.Border;
+using Domain.Entities.Caching;
 using Domain.Entities.Costs;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
@@ -52,6 +53,7 @@ public interface IAppDbContext
   DbSet<MovementAllocationEvent> MovementAllocationEvents { get; }
   DbSet<DriverHosReading> DriverHosReadings { get; }
   DbSet<TruckLocationReading> TruckLocationReadings { get; }
+  DbSet<CacheInvalidation> CacheInvalidations { get; }
   DbSet<Expense> Expenses { get; }
   DbSet<ExpenseAttribution> ExpenseAttributions { get; }
   DbSet<ExpenseAttributionEvent> ExpenseAttributionEvents { get; }

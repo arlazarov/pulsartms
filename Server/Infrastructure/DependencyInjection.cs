@@ -2,12 +2,16 @@ using Application.Features.Addresses.Interfaces;
 using Application.Features.Auth.Interfaces;
 using Application.Features.Border.Interfaces;
 using Application.Features.Dispatch.Interfaces;
+using Application.Features.Eta.Background;
 using Application.Features.Eta.Interfaces;
 using Application.Features.Execution.Interfaces;
+using Application.Features.Fleet.Background;
 using Application.Features.Fleet.Interfaces;
+using Application.Features.Fuel.Background;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Integrations.Interfaces;
 using Application.Features.Mileage.Interfaces;
+using Application.Features.Routing.Background;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Options;
 using Application.Features.Synchronization.Interfaces;
@@ -33,10 +37,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Application.Features.Routing.Background;
-using Application.Features.Eta.Background;
-using Application.Features.Fleet.Background;
-using Application.Features.Fuel.Background;
 
 namespace Infrastructure;
 
@@ -125,6 +125,7 @@ public static class DependencyInjection
     services.AddScoped<IOdometerCaptureLease, OdometerCaptureLease>();
     services.AddScoped<IOdometerFeedProvider, SamsaraOdometerProvider>();
     services.AddHostedService<ApplicationWorker<IOdometerCaptureOperation>>();
+    services.AddHostedService<CacheInvalidationWorker>();
     services.AddScoped<INextLoadRouteReader, NextLoadRouteReader>();
     services.AddScoped<ITruckFuelPlanStore, TruckFuelPlanStore>();
     services.AddScoped<IDriverHosStore, DriverHosStore>();

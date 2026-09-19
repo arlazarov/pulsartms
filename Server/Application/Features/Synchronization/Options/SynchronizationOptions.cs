@@ -37,6 +37,11 @@ public sealed class SynchronizationOptions
   [Range(30, 600)]
   public int ReadCacheSeconds { get; set; } = 120;
 
+  // How long another instance's write may still be answered from this one's
+  // cache. Lower costs one small indexed query per instance per interval.
+  [Range(1, 60)]
+  public int CacheRelaySeconds { get; set; } = 2;
+
   [Range(1, 60)]
   public int SessionValidationSeconds { get; set; } = 30;
 

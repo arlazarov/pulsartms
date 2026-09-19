@@ -1,6 +1,7 @@
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Entities.Border;
+using Domain.Entities.Caching;
 using Domain.Entities.Costs;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
@@ -81,10 +82,11 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
     Set<MovementDistanceEvidence>();
   public DbSet<MovementAllocationEvent> MovementAllocationEvents =>
     Set<MovementAllocationEvent>();
-  public DbSet<DriverHosReading> DriverHosReadings =>
-    Set<DriverHosReading>();
+  public DbSet<DriverHosReading> DriverHosReadings => Set<DriverHosReading>();
   public DbSet<TruckLocationReading> TruckLocationReadings =>
     Set<TruckLocationReading>();
+  public DbSet<CacheInvalidation> CacheInvalidations =>
+    Set<CacheInvalidation>();
   public DbSet<Expense> Expenses => Set<Expense>();
   public DbSet<ExpenseAttribution> ExpenseAttributions =>
     Set<ExpenseAttribution>();

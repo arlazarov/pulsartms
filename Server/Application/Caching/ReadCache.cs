@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Application.Features.Dispatch.Models;
@@ -105,7 +106,38 @@ public sealed class ReadCache(IOptions<SynchronizationOptions> options)
     }
   }
 
-  public void Invalidate(string group) => generations.Invalidate(group);
+  // Invalidating stays local and synchronous: the request that wrote must
+  // read its own write back. Telling the other instances is the relay's work,
+  // so a command does not pay a round trip per group it drops.
+  public void Invalidate(string group)
+  {
+    generations.Invalidate(group);
+    unpublished[group] = Interlocked.Increment(ref stamp);
+  }
+
+  private readonly ConcurrentDictionary<string, long> unpublished = new(
+    StringComparer.Ordinal
+  );
+  private long stamp;
+
+  internal IReadOnlyCollection<KeyValuePair<string, long>> Unpublished() =>
+    unpublished.IsEmpty ? [] : [.. unpublished];
+
+  // Only the entries that were published are forgotten. A group invalidated
+  // again while the write was in flight carries a newer stamp and stays, so
+  // the later invalidation is published too rather than swallowed by the
+  // earlier one's acknowledgement.
+  internal void Published(
+    IReadOnlyCollection<KeyValuePair<string, long>> entries
+  )
+  {
+    foreach (var entry in entries)
+      ((ICollection<KeyValuePair<string, long>>)unpublished).Remove(entry);
+  }
+
+  // Another instance's invalidation. It must not enter the publication queue:
+  // the row that carried it here is already in the log.
+  internal void ApplyPublished(string group) => generations.Invalidate(group);
 
   public long Generation(string group) => generations.Get(group);
 

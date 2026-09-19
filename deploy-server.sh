@@ -48,10 +48,14 @@ deploy_args=(
   --format=none
   --port 8080
   --min 1
-  # One instance, because cache invalidation is per process: CacheGenerations
-  # holds its versions in memory, so a second instance would keep serving
-  # reads the first one already dropped. Raising this needs shared
-  # invalidation first; see docs/architecture/module-ownership.md.
+  # Still one instance, but no longer for the reason recorded here before.
+  # Read caches now agree: CacheInvalidationRelay carries invalidations
+  # between instances through the database, and RouteDisplayCache keys on the
+  # same generations, so it follows. What is untested is actually running two
+  # of them - the background operations assume they are alone unless
+  # BackgroundOperations:Roles names which instance runs them. Raise this
+  # after a deliberate two-instance run, not before.
+  # See docs/architecture/module-ownership.md.
   --max-instances 1
   --no-cpu-throttling
 )

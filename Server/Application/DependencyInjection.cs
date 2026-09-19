@@ -74,6 +74,7 @@ public static class DependencyInjection
     services.AddSingleton<IGmailWatchOperation, GmailWatchOperation>();
     services.AddSingleton<ReadCache>();
     services.AddSingleton<IReadCache>(sp => sp.GetRequiredService<ReadCache>());
+    services.AddSingleton<CacheInvalidationRelay>();
     services.AddSingleton<FleetSynchronizationOperation>();
     services.AddSingleton<IFleetSynchronizationOperation>(sp =>
       sp.GetRequiredService<FleetSynchronizationOperation>()

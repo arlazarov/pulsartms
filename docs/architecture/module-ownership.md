@@ -105,7 +105,8 @@ the providers again on its own.
 
 `deploy-server.sh` pins `--max-instances 1`. That is a consequence of this
 state, not a capacity decision, and moving the state out of process memory is a
-prerequisite for separating request serving from background work.
+prerequisite for separating request serving from background work. The cache
+half of that is now done; see below for what the pin still waits on.
 
 Two of these are no longer only in memory: the driver hours and the truck
 positions are recorded as they are collected, so an instance that runs no
@@ -114,11 +115,38 @@ age past which the reading means nothing.
 
 The rest are caches, and a cache does not want persisting. `ReadCache`,
 `FuelPlanMemory` and the provider caches all sit over data that is already
-stored; what they lack is a way to learn that another instance changed it.
+stored; what they lacked was a way to learn that another instance changed it.
 `CacheGenerations` holds its versions in process memory, so an instance that
-invalidates a group tells nobody. Serving requests from more than one instance
-therefore needs shared invalidation, not shared caches - a different change
-from the one the hours and positions needed, and the remaining one.
+invalidated a group told nobody. What that needed was shared invalidation, not
+shared caches - a different change from the one the hours and positions needed.
+
+`CacheInvalidationRelay` is that change. Each instance publishes the groups it
+dropped to `CacheInvalidations` and applies what the others published, so an
+invalidation reaches every instance within one interval instead of never.
+Three properties are worth knowing before relying on it:
+
+- It is not instant. Between another instance's write and the next poll this
+  one can still answer from cache. Bounded staleness replaces staleness that
+  never corrected itself; it does not replace reading through.
+- The log is read by time window, not by a cursor. A row inserted before
+  another can become visible after it, and a cursor past that point would
+  never see the late one.
+- It ignores `BackgroundOperations:Enabled` and `:Roles` on purpose. Those
+  decide which instance does which work, and an instance configured to serve
+  reads and nothing else is exactly the one that must not hold caches nobody
+  can clear.
+
+`RouteDisplayCache` needed nothing: it already keys its entries on
+`ReadCache.Generation`, so it follows the same invalidations.
+
+`FuelPlanMemory` and `EtaMemory` key their entries on assignment revisions and
+content hashes rather than on time, so a superseded entry is missed rather
+than served, and they need no relay for that reason. What is still genuinely
+per-process is `ProcessGates`, which keeps one instance from starting the same
+work twice; with two instances that work can be started twice again. Whether
+that only costs requests or can also collide on a write has not been checked,
+and nothing here has been run on two instances. That, not the caches, is what
+the pin now waits on.
 
 ## Open questions
 

@@ -28,6 +28,7 @@ DECLARE
     'BorderEquipment',
     'BorderSaveReceipts',
     'BorderShipments',
+    'CacheInvalidations',
     'Customers',
     'CustomsCommodities',
     'DispatchActivityEntries',
@@ -128,9 +129,9 @@ BEGIN
   SELECT string_agg(format('public.%I', name), ', ' ORDER BY name)
     INTO tables_sql FROM unnest(expected) AS names(name);
   EXECUTE 'LOCK TABLE ' || tables_sql || ' IN ACCESS EXCLUSIVE MODE NOWAIT';
-  IF (SELECT count(*) FROM "__EFMigrationsHistory") <> 47
+  IF (SELECT count(*) FROM "__EFMigrationsHistory") <> 48
     OR (SELECT max("MigrationId") FROM "__EFMigrationsHistory")
-      IS DISTINCT FROM '20260919162343_StoreTruckPositions' THEN
+      IS DISTINCT FROM '20260919164335_ShareCacheInvalidation' THEN
     RAISE EXCEPTION 'Reset requires the schema this inventory was reviewed for';
   END IF;
   FOREACH table_name IN ARRAY protected LOOP

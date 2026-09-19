@@ -29,6 +29,7 @@ public sealed class TestCategoryTests
     [
       "Addresses",
       "Architecture",
+      "Caching",
       "Costs",
       "Dispatch",
       "Eta",
