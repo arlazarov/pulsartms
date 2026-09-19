@@ -37,7 +37,9 @@ invalidation. Geometry and optimization remain pure Algorithms.
 
 ReadCache retains at most 4,096 generation identities. Its monotonic eviction epoch
 prevents an evicted identity from reviving an older cached result. Cache byte limits
-are accounting bounds, not process working-set guarantees.
+are accounting bounds, not process working-set guarantees. Cached values are JSON
+copies unless a reader opts into `GetSharedAsync` with a caller-safe copy for
+immutable results; fuel station lists share their records and copy only the list.
 
 TruckFuelPlans owns the rolling fuel snapshot lifecycle through ITruckFuelPlanStore.
 Infrastructure stores the compact itinerary/purchases separately from the checked
