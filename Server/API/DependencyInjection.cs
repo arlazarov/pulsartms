@@ -14,17 +14,7 @@ public static class DependencyInjection
 
     builder.Services.AddTelemetryExport(builder.Configuration);
     builder.Services.AddOpenApi();
-    builder.Services.AddControllers().AddJsonOptions(options =>
-      options.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, ApiJsonContext.Default));
-    builder.Services.ConfigureHttpJsonOptions(options =>
-      options.SerializerOptions.TypeInfoResolverChain.Insert(0, ApiJsonContext.Default));
-    builder.Services.AddResponseCompression(options =>
-    {
-      options.EnableForHttps = true;
-      options.Providers.Add<BrotliCompressionProvider>();
-      options.Providers.Add<GzipCompressionProvider>();
-      options.MimeTypes = [.. ResponseCompressionDefaults.MimeTypes, "application/problem+json"];
-    });
+    builder.Services.AddApiHttp();
 
     builder.Services.AddCors(options =>
     {
@@ -38,5 +28,22 @@ public static class DependencyInjection
     });
 
     return builder;
+  }
+
+  // Controllers, JSON and compression: the HTTP contract that ApiContractTests hosts without the rest.
+  public static IServiceCollection AddApiHttp(this IServiceCollection services)
+  {
+    services.AddControllers().AddJsonOptions(options =>
+      options.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, ApiJsonContext.Default));
+    services.ConfigureHttpJsonOptions(options =>
+      options.SerializerOptions.TypeInfoResolverChain.Insert(0, ApiJsonContext.Default));
+    services.AddResponseCompression(options =>
+    {
+      options.EnableForHttps = true;
+      options.Providers.Add<BrotliCompressionProvider>();
+      options.Providers.Add<GzipCompressionProvider>();
+      options.MimeTypes = [.. ResponseCompressionDefaults.MimeTypes, "application/problem+json"];
+    });
+    return services;
   }
 }

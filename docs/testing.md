@@ -73,6 +73,9 @@ transports in each test project's `Support` folder. Keep pure algorithm tests
 separate from tests that create a database/service provider or render a component;
 split a class when it mixes those responsibilities. Architecture checks belong in
 `Architecture`, including layer boundaries and dependency registration checks.
+`ApiContractTests` there drives the real MVC pipeline (routing, JSON, `ETag`/`304`,
+compression) through `ApiTestHost`, an in-process host with a scripted mediator and
+no database, identity or workers; add a case there when an HTTP contract changes.
 
 Every xUnit test class declares a feature `Category`. Keep existing category names
 stable so selection remains reliable. New or substantially changed classes also
