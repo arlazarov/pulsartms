@@ -148,6 +148,33 @@ that only costs requests or can also collide on a write has not been checked,
 and nothing here has been run on two instances. That, not the caches, is what
 the pin now waits on.
 
+## What the forecast description cannot be
+
+Describing a truck's chain is the largest single cost in a board request and
+in opening one load: about 460ms inside `ExecutionWorkReader.ReadBatchAsync`,
+reached through `EtaChainInputsService.DescribeTrucksAsync`. The board caches
+its own index and pays nothing on later calls; this path is asked again with
+different flags and pays in full, which is why the first click on a truck
+takes roughly a second and the second does not.
+
+Caching the description looks like the answer and is not. The description is
+the change detector: `InputHash` is compared against what a stored forecast
+was computed from, and a board read notices a moved appointment precisely
+because it recomputes the description and finds a different hash. A stop time
+changed directly in the database - which is how synchronisation writes
+arrive - invalidates no cache group, so a cached description would answer
+with the old hash and the board would keep showing a forecast for a schedule
+that no longer exists.
+
+`EtaChainInputTests.BoardReadInvalidatesTheRootWhenAFutureAppointmentChanges`
+fails on exactly that, which is how this was found rather than shipped.
+Splitting the reader into a display path that may cache and a publication
+path that may not does not help: the display path needs the freshness for the
+same reason.
+
+What is left is to make the read itself cheaper, which is a question about
+that query rather than about caching around it.
+
 ## Open questions
 
 These need a decision before the affected work starts; nothing here is settled
