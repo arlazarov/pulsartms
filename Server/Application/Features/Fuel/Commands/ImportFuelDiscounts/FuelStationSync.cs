@@ -134,6 +134,15 @@ public static class FuelStationSync
       station.Address = place?.Address ?? "";
       station.Latitude = place?.Latitude;
       station.Longitude = place?.Longitude;
+      // A station the provider reports as closed must not be planned into a
+      // driver's route. Recorded here because this is where the provider is
+      // already asked; stations that did not change are not asked again, so
+      // this alone does not keep the answer current.
+      if (place is not null)
+      {
+        station.BusinessStatus = place.BusinessStatus;
+        station.StatusCheckedAt = DateTime.UtcNow;
+      }
     }
   }
 

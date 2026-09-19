@@ -11,6 +11,14 @@ public class FuelStation : BaseEntity
   public string Country { get; set; } = string.Empty;
   public decimal? Latitude { get; set; }
   public decimal? Longitude { get; set; }
+
+  // What the place provider last said about the business still existing:
+  // OPERATIONAL, CLOSED_TEMPORARILY or CLOSED_PERMANENTLY. Empty means
+  // nobody has asked yet, which is not the same as open - an unasked station
+  // has not been cleared, only unasked, and planning must tell the two apart.
+  public string BusinessStatus { get; set; } = string.Empty;
+  public DateTime? StatusCheckedAt { get; set; }
+
   public ICollection<FuelDiscount> FuelDiscounts { get; set; } = [];
   public ICollection<FuelTransaction> FuelTransactions { get; set; } = [];
 }

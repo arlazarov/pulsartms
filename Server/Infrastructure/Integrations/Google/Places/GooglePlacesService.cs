@@ -31,7 +31,8 @@ public class GooglePlacesService(
     request.Headers.Add("X-Goog-Api-Key", apiKey);
     request.Headers.Add(
       "X-Goog-FieldMask",
-      "places.id,places.displayName,places.formattedAddress,places.location"
+      "places.id,places.displayName,places.formattedAddress,places.location,"
+        + "places.businessStatus"
     );
 
     request.Content = JsonContent.Create(new { textQuery = query });
@@ -51,6 +52,7 @@ public class GooglePlacesService(
       Address = place.FormattedAddress,
       Latitude = place.Location?.Latitude ?? 0,
       Longitude = place.Location?.Longitude ?? 0,
+      BusinessStatus = place.BusinessStatus,
     };
   }
 
@@ -73,6 +75,9 @@ public class GooglePlacesService(
 
     [JsonPropertyName("location")]
     public Location? Location { get; set; }
+
+    [JsonPropertyName("businessStatus")]
+    public string BusinessStatus { get; set; } = string.Empty;
   }
 
   private class DisplayName
