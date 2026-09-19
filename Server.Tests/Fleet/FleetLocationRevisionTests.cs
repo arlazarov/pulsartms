@@ -47,13 +47,21 @@ public sealed class FleetLocationRevisionTests
   }
 
   [Fact]
+  public void TrailPointsCarryOnlyPlaybackFields()
+  {
+    // Names, addresses and fuel belong to the truck row; repeating them per point multiplies the payload.
+    Assert.Equal(["TruckExternalId", "Latitude", "Longitude", "Speed", "Heading", "UpdatedAt"],
+      typeof(TruckLocationPoint).GetProperties().Select(x => x.Name).Where(x => x != "EqualityContract").ToArray());
+  }
+
+  [Fact]
   public async Task BoardReadsShareTheSnapshotRevisionWithoutLocationHistory()
   {
     var telemetry = new ServerTelemetry();
     var snapshot = new FleetLocationsResponse
     {
       Trucks = [new() { TruckId = Guid.NewGuid() }],
-      Points = [new() { TruckId = Guid.NewGuid() }, new() { TruckId = Guid.NewGuid() }]
+      Points = [new("a", 40, -80, 0, 0, DateTime.UtcNow), new("a", 40, -80, 0, 0, DateTime.UtcNow.AddSeconds(5))]
     };
     telemetry.Set(snapshot);
     using var memory = new MemoryCache(new MemoryCacheOptions());

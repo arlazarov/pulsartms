@@ -186,14 +186,16 @@ public sealed class FleetSynchronizationOperation(IServiceScopeFactory scopes, I
       item.ObservedAt = x.ObservedAt; item.EngineState = x.EngineState; item.FuelPercent = x.FuelPercent; item.FuelUpdatedAt = x.FuelUpdatedAt;
       return item;
     }).ToList();
-    IReadOnlyList<TruckLocation> stream = [];
+    IReadOnlyList<TruckLocationPoint> stream = [];
     if (highFrequency)
     {
       try { stream = await services.GetRequiredService<FleetLocationStream>().GetAsync(services.GetRequiredService<IFleetTelemetryProvider>(), fleet, ct); }
       catch (HttpRequestException) { logger.LogWarning("High-frequency locations unavailable; using the telemetry feed."); }
     }
-    var points = (telemetry.Current?.Points ?? []).Concat(stream).Concat(updates.Where(x => active.ContainsKey(x.ExternalId)).Select(x => Map(active[x.ExternalId], x)))
-      .Where(x => x.UpdatedAt > DateTime.UtcNow.AddMinutes(-2)).DistinctBy(x => (x.TruckId, x.UpdatedAt)).OrderBy(x => x.UpdatedAt).ToList();
+    var points = (telemetry.Current?.Points ?? []).Concat(stream)
+      .Concat(updates.Where(x => active.ContainsKey(x.ExternalId)).Select(x => new TruckLocationPoint(
+        active[x.ExternalId].TruckExternalId, x.Latitude, x.Longitude, x.Speed, x.Heading, x.UpdatedAt)))
+      .Where(x => x.UpdatedAt > DateTime.UtcNow.AddMinutes(-2)).DistinctBy(x => (x.TruckExternalId, x.UpdatedAt)).OrderBy(x => x.UpdatedAt).ToList();
     telemetry.Set(new() { Trucks = trucks, Points = points });
   }
 

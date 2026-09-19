@@ -13,7 +13,7 @@ public sealed class FleetLocationStream(TimeProvider clock) : IDisposable
   private DateTime? through;
   private DateTime? fullRefresh;
 
-  public async Task<IReadOnlyList<TruckLocation>> GetAsync(IFleetTelemetryProvider provider,
+  public async Task<IReadOnlyList<TruckLocationPoint>> GetAsync(IFleetTelemetryProvider provider,
     IReadOnlyList<FleetTruckInfo> fleet, CancellationToken ct = default)
   {
     await gate.WaitAsync(ct);
@@ -65,17 +65,8 @@ public sealed class FleetLocationStream(TimeProvider clock) : IDisposable
         retained = []; fleetIds.Clear(); through = fullRefresh = null;
       }
 
-      return ordered.Select(point =>
-      {
-        var truck = active[point.ExternalId];
-        return new TruckLocation
-        {
-          TruckId = truck.TruckId, TruckExternalId = truck.TruckExternalId, UnitNumber = truck.UnitNumber,
-          DriverName = truck.DriverName, TrailerNumber = truck.TrailerNumber, Latitude = point.Latitude,
-          Longitude = point.Longitude, Speed = point.Speed, Heading = point.Heading, UpdatedAt = point.UpdatedAt,
-          ObservedAt = end, FormattedLocation = point.FormattedLocation
-        };
-      }).ToArray();
+      return ordered.Select(point => new TruckLocationPoint(active[point.ExternalId].TruckExternalId,
+        point.Latitude, point.Longitude, point.Speed, point.Heading, point.UpdatedAt)).ToArray();
     }
     finally { gate.Release(); }
   }

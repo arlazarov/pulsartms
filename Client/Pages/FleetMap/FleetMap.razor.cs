@@ -57,7 +57,7 @@ public partial class FleetMap : IAsyncDisposable
   private bool _mobileDetailsOpen;
   private bool _selectionDismissed;
   private List<TruckLocationMapDto> _trucks = [];
-  private List<TruckLocationMapDto> _truckPoints = [];
+  private List<TruckLocationPointMapDto> _truckPoints = [];
   private string TruckSearch { get; set; } = "";
   private Guid? _searchFocused;
   private List<Client.Shared.Search.SearchSuggestion> SearchOptions => MatchingTrucks.Select(x => new Client.Shared.Search.SearchSuggestion(x.UnitNumber, $"{x.DriverName} · {x.TrailerNumber}")).ToList();
