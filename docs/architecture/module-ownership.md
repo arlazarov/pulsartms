@@ -249,6 +249,15 @@ refused for a closed station must be replaced, never emptied.
 Closed businesses are different and are already excluded, because
 `CLOSED_PERMANENTLY` and `CLOSED_TEMPORARILY` need no clock to decide.
 
+A smaller step was considered and is not free either: telling the dispatcher
+that a chosen station keeps limited hours, deciding nothing, so a person can
+act on it. `FuelPlanStop` has a `Warning`, which looks like the place for it
+and is not - that field carries the arrival reserve warning from
+`FuelReservePolicy.ArrivalWarning`, and it is assigned rather than appended
+in five places, so either message would silently replace the other. It needs
+a field of its own and a path to the client, which is a change rather than
+plumbing.
+
 ## What the forecast description cannot be
 
 Describing a truck's chain is the largest single cost in a board request and
