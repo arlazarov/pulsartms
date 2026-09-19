@@ -120,6 +120,12 @@ by reading the code.
 - How an expense and its allocation to a load are recorded, before tolls,
   actual costs and owner-operator pay exist.
 - Whether the two multi-writer tables keep two writers or gain one owner.
+- When the reviewed reset script is rebuilt for the current schema. It refuses
+  to run at all today, because it requires the 39-migration pre-rebuild schema
+  and the database has 46. Its operational list also omits eleven model tables,
+  among them `ExecutionLegStops` and `ExecutionLegRevisions`, so past that
+  guard it would leave accepted execution behind the loads it cleared. What it
+  protects is correct and checked by digest; only the list is stale.
 - Whether `FuelRoadsAreValidatedBeforeProfileAndResultWrites` is still earning
   its place. It asserts the order of literal strings by their position in one
   source file, so it fails when that sequence moves even though behaviour is
