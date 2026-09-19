@@ -135,7 +135,8 @@ public sealed class SettingsComponentTests
     var component = context.Render<SettingsPage>();
     await component.WaitForElement("[data-provider='samsara'] button").ClickAsync(new());
     component.Find("#integration-samsara-apiKey").Input("independent-secret-draft");
-    component.Find("#settings-ifta").Change(false);
+    // Integration and planning settings load independently; the form may render after the provider list.
+    component.WaitForElement("#settings-ifta").Change(false);
     await component.Find(".planning-settings__form").SubmitAsync(EventArgs.Empty);
     Assert.Equal("/api/settings/planning", Assert.Single(writes));
     Assert.Equal("independent-secret-draft", component.Find("#integration-samsara-apiKey").GetAttribute("value"));
