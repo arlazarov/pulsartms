@@ -110,4 +110,81 @@ public partial class AutomaticPlanningTests
     );
     Assert.Empty(await f.Db.Set<TruckFuelPlan>().ToListAsync());
   }
+
+  [Theory]
+  [InlineData(0)]
+  [InlineData(40)]
+  public async Task ChangedPositionBeforePublicationRejectsEitherOutcome(
+    double percent
+  )
+  {
+    await using var f = await Fixture.CreateAsync(pickedUp: true);
+    f.Location.FuelPercent = (decimal)percent;
+    f.Location.FuelUpdatedAt = DateTime.UtcNow;
+    await f.Service.ForTruckAsync(f.Truck.Id, default);
+    var before = (await f.Db.DispatchRoutePlans.SingleAsync()).PlanJson;
+    f.Publication.BeforeBegin = () =>
+    {
+      f.Location.Longitude -= .05m;
+      f.Location.UpdatedAt = DateTime.UtcNow;
+      return Task.CompletedTask;
+    };
+    var error = await Assert.ThrowsAsync<RoutePlanningException>(
+      () => f.Service.RecalculateFuelAsync(f.Load.Id, default)
+    );
+    Assert.Contains("telemetry changed", error.Message);
+    Assert.Null(f.Db.Database.CurrentTransaction);
+    Assert.Equal(
+      before,
+      (await f.Db.DispatchRoutePlans.SingleAsync()).PlanJson
+    );
+    Assert.Empty(await f.Db.Set<TruckFuelPlan>().ToListAsync());
+  }
+
+  [Theory]
+  [InlineData(0)]
+  [InlineData(40)]
+  public async Task NewerObservationWithTheSameValuesStillPublishes(
+    double percent
+  )
+  {
+    await using var f = await Fixture.CreateAsync(pickedUp: true);
+    f.Location.FuelPercent = (decimal)percent;
+    f.Location.FuelUpdatedAt = DateTime.UtcNow;
+    await f.Service.ForTruckAsync(f.Truck.Id, default);
+    f.Publication.BeforeBegin = () =>
+    {
+      f.Location.UpdatedAt = f.Location.UpdatedAt.AddSeconds(30);
+      f.Location.FuelUpdatedAt = f.Location.FuelUpdatedAt?.AddSeconds(30);
+      return Task.CompletedTask;
+    };
+    await f.Service.RecalculateFuelAsync(f.Load.Id, default);
+    var saved = SavedRouteReader.Plan(
+      (await f.Db.DispatchRoutePlans.SingleAsync()).PlanJson
+    )!;
+    if (percent == 0)
+      Assert.True(saved.FuelRecommendations!.AccessProblem);
+    else
+      Assert.NotNull(saved.FuelPlan);
+  }
+
+  [Theory]
+  [InlineData(0)]
+  [InlineData(40)]
+  public async Task PublicationNeverWaitsForTelemetryInsideItsTransaction(
+    double percent
+  )
+  {
+    await using var f = await Fixture.CreateAsync(pickedUp: true);
+    f.Location.FuelPercent = (decimal)percent;
+    f.Location.FuelUpdatedAt = DateTime.UtcNow;
+    await f.Service.ForTruckAsync(f.Truck.Id, default);
+    f.Sender.LocationReads.Clear();
+    await f.Service.RecalculateFuelAsync(f.Load.Id, default);
+    Assert.Contains(f.Sender.LocationReads, read => !read.InTransaction);
+    Assert.DoesNotContain(
+      f.Sender.LocationReads,
+      read => read.InTransaction && !read.CachedOnly
+    );
+  }
 }

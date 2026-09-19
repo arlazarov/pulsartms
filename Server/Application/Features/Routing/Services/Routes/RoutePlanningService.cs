@@ -75,6 +75,9 @@ public sealed partial class RoutePlanningService(
       metadataOnly
     );
 
+  // withoutProviderWait keeps the GPS eligibility rule and only limits the
+  // telemetry source to the latest known observation, so an open database
+  // transaction never waits for a provider.
   public async Task<RoutePlanningState> GetAsync(
     RouteWorkSnapshot load,
     CancellationToken ct,
@@ -82,7 +85,8 @@ public sealed partial class RoutePlanningService(
     bool displayOnly = false,
     Guid? knownPlanId = null,
     int? knownVersion = null,
-    bool metadataOnly = false
+    bool metadataOnly = false,
+    bool withoutProviderWait = false
   )
   {
     var dispatchId = load.Id;
@@ -147,7 +151,7 @@ public sealed partial class RoutePlanningService(
         truck = await LocationAsync(
           load.TruckId.Value,
           ct,
-          cachedTelemetryOnly
+          cachedTelemetryOnly || withoutProviderWait
         );
     }
     catch (HttpRequestException) { }

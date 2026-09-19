@@ -612,6 +612,10 @@ public sealed partial class FuelPlanningService(
       throw new RoutePlanningException(
         "Assignments changed during fuel calculation."
       );
+    RequireSameTelemetry(
+      FuelObservationStamp.Capture(state),
+      await plans.GetAsync(captured.Root(plan), ct)
+    );
     await using var transaction = await publication.BeginAsync(
       captured.Itinerary,
       history,
@@ -627,11 +631,10 @@ public sealed partial class FuelPlanningService(
     ];
     await roads.RequireCurrentAsync(dependencies, ct);
     await profiles.RequireCurrentAsync(plan.TruckId, state.Profile, ct);
-    var latestState = await plans.GetAsync(captured.Root(plan), ct);
-    if (!FuelObservationStamp.Capture(state).Matches(latestState))
-      throw new RoutePlanningException(
-        "Truck telemetry changed during fuel calculation. Recalculate."
-      );
+    RequireSameTelemetry(
+      FuelObservationStamp.Capture(state),
+      await plans.GetAsync(captured.Root(plan), ct, withoutProviderWait: true)
+    );
     await profiles.SaveAsync(plan.TruckId, profile, ct);
     await routeStore.StoreFuelAsync(
       plan.DispatchId,

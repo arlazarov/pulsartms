@@ -74,6 +74,10 @@ public sealed partial class FuelPlanningService
           },
         ],
     };
+    RequireSameTelemetry(
+      FuelObservationStamp.Capture(state),
+      await plans.GetAsync(captured.Root(plan), ct)
+    );
     await using var transaction = await publication.BeginAsync(
       captured.Itinerary,
       history,
@@ -90,11 +94,10 @@ public sealed partial class FuelPlanningService
       ct
     );
     await profiles.RequireCurrentAsync(plan.TruckId, state.Profile, ct);
-    var latest = await plans.GetAsync(captured.Root(plan), ct);
-    if (!recommendations.MatchesTelemetry(latest))
-      throw new RoutePlanningException(
-        "Truck telemetry changed during fuel calculation. Recalculate."
-      );
+    RequireSameTelemetry(
+      FuelObservationStamp.Capture(state),
+      await plans.GetAsync(captured.Root(plan), ct, withoutProviderWait: true)
+    );
     await profiles.SaveAsync(plan.TruckId, profile, ct);
     var entity =
       await routeStore.ReadForUpdateAsync(
@@ -110,5 +113,18 @@ public sealed partial class FuelPlanningService
     profiles.Invalidate(plan.TruckId);
     routeStore.Invalidate(plan.DispatchId, plan.ExecutionLegId);
     return recommendations;
+  }
+
+  // The provider may be consulted only before the publication transaction;
+  // inside it the same comparison uses the latest known observation.
+  private static void RequireSameTelemetry(
+    FuelObservationStamp captured,
+    RoutePlanningState latest
+  )
+  {
+    if (!captured.Matches(latest))
+      throw new RoutePlanningException(
+        "Truck telemetry changed during fuel calculation. Recalculate."
+      );
   }
 }

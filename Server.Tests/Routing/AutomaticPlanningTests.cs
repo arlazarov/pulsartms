@@ -2029,7 +2029,10 @@ public partial class AutomaticPlanningTests
         [new("USD", "Diesel", 4, 3.5m, .5m, today, today, 3, "US gal")]
       );
       stations ??= [station];
-      var sender = new Sender(location, stations);
+      var sender = new Sender(location, stations)
+      {
+        InTransaction = () => db.Database.CurrentTransaction is not null,
+      };
       var router = new FakeRouter();
       var publication = new PublicationProbe(db);
       var services = new PlanningTestServices(
@@ -2159,6 +2162,8 @@ public partial class AutomaticPlanningTests
     public int BoardCalls;
     public int FuelCalls;
     public Func<CancellationToken, Task>? BeforeFuel;
+    public Func<bool>? InTransaction;
+    public List<(bool CachedOnly, bool InTransaction)> LocationReads = [];
     public GetDispatchBoardHandler Board { private get; set; } = null!;
 
     public async Task<TResponse> Send<TResponse>(
@@ -2168,6 +2173,10 @@ public partial class AutomaticPlanningTests
     {
       if (request is GetDispatchBoardQuery)
         BoardCalls++;
+      if (request is GetFleetLocationsQuery locations)
+        LocationReads.Add(
+          (locations.CachedOnly, InTransaction?.Invoke() == true)
+        );
       if (request is GetFuelStationsQuery)
       {
         FuelCalls++;
