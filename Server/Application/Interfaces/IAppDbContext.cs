@@ -50,6 +50,7 @@ public interface IAppDbContext
   DbSet<Movement> Movements { get; }
   DbSet<MovementDistanceEvidence> MovementDistanceEvidence { get; }
   DbSet<MovementAllocationEvent> MovementAllocationEvents { get; }
+  DbSet<DriverHosReading> DriverHosReadings { get; }
   DbSet<Expense> Expenses { get; }
   DbSet<ExpenseAttribution> ExpenseAttributions { get; }
   DbSet<ExpenseAttributionEvent> ExpenseAttributionEvents { get; }

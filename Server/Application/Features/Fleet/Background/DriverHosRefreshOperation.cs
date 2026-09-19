@@ -71,5 +71,33 @@ public sealed class DriverHosRefreshOperation(
     {
       snapshot.Complete(clocks);
     }
+    if (clocks is { Count: > 0 })
+      await PersistAsync(clocks, ct);
+  }
+
+  // The readings outlive this process, so an instance that does not run this
+  // operation can still answer and a restart does not start blind. A failure
+  // to persist is not a failed refresh: the memory snapshot already holds it.
+  private async Task PersistAsync(
+    IReadOnlyDictionary<string, DriverHosClocks> clocks,
+    CancellationToken ct
+  )
+  {
+    try
+    {
+      await using var scope = scopes.CreateAsyncScope();
+      await scope
+        .ServiceProvider.GetRequiredService<IDriverHosStore>()
+        .WriteAsync(clocks, ct);
+    }
+    catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+    catch (Exception ex)
+    {
+      logger.LogWarning(
+        ex,
+        "Background operation {Operation} could not persist its readings.",
+        "driver-hos"
+      );
+    }
   }
 }

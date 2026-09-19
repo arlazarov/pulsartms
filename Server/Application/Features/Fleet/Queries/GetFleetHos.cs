@@ -18,7 +18,11 @@ public sealed class GetFleetHosValidator : AbstractValidator<GetFleetHosQuery>
   }
 }
 
-public sealed class GetFleetHosHandler(IAppDbContext db, IDriverHosProvider hos)
+public sealed class GetFleetHosHandler(
+  IAppDbContext db,
+  IDriverHosProvider hos,
+  IDriverHosStore store
+)
   : IRequestHandler<
     GetFleetHosQuery,
     RequestResponse<Dictionary<Guid, TruckHosSnapshot>>
@@ -30,8 +34,12 @@ public sealed class GetFleetHosHandler(IAppDbContext db, IDriverHosProvider hos)
   )
   {
     // Demand the shared snapshot before reading assignments; never wait for a
-    // route or call Samsara per viewer.
+    // route or call Samsara per viewer. An instance that does not run the
+    // refresh, or one that has just restarted, holds nothing in memory and
+    // reads what the last refresh recorded instead of reporting no hours.
     var clocks = await hos.GetClocksAsync(ct);
+    if (clocks.Count == 0)
+      clocks = await store.ReadAsync(ct);
     var trucks = db.Trucks.AsNoTracking();
     trucks = request.TruckIds is { } ids
       ? trucks.Where(x => ids.Contains(x.Id))

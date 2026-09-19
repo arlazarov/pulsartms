@@ -81,6 +81,8 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
     Set<MovementDistanceEvidence>();
   public DbSet<MovementAllocationEvent> MovementAllocationEvents =>
     Set<MovementAllocationEvent>();
+  public DbSet<DriverHosReading> DriverHosReadings =>
+    Set<DriverHosReading>();
   public DbSet<Expense> Expenses => Set<Expense>();
   public DbSet<ExpenseAttribution> ExpenseAttributions =>
     Set<ExpenseAttribution>();
