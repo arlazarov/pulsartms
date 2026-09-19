@@ -6,6 +6,8 @@
 - Meter `AMFTMS.Application`, histogram `amftms.request.duration` (milliseconds), tags `request`, `outcome`. Export through a metrics collector when one is configured. Slow requests and routing requests also emit `RequestTiming` logs, so diagnosing them does not depend on a collector.
 - `AdminAudit` is an Application pipeline behavior. It records caller identity ID, command name, target ID when present, outcome, trace ID and allowlisted role/activation/planning-setting values. It never serializes commands, profiles, passwords or tokens. These are action records, not before/after database snapshots. Hosting retention controls durability; no separate audit database is introduced.
 - Background route failures include dispatch ID and exception stack. Synchronization job failures include job name and exception stack.
+- `Microsoft.EntityFrameworkCore` logs at `Warning` outside Development, so executed SQL is not written to production logs. Development keeps `Information` for command inspection.
+- API responses are compressed with Brotli or Gzip when the client accepts it (`HostingTests`). Response sizes in logs or metrics captured before compression describe uncompressed JSON.
 - Unexpected exceptions are logged once at the HTTP or worker boundary, not again by request timing. Cancellation requested by the caller is not logged as a failure. Provider HTTP exceptions retain status codes without embedding response bodies or query strings. HOS fallback warnings are bounded by the existing one-minute retry cache.
 
 ## Dispatch data and search

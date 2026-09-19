@@ -18,6 +18,10 @@ Use the [managed artifact runner](artifact-retention.md) for other isolated buil
 and diagnostics. Browser/release outputs now have automatic bounded retention;
 do not create another permanent output directory for each iteration.
 
+Sandboxed sessions without a .NET SDK can install `dotnet-sdk-10.0` from the
+Microsoft apt repository (`packages.microsoft.com`); the `dotnet-install.sh`
+download host is not reachable from those sessions.
+
 The generated JavaScript and CSS under `Client/wwwroot` are also shared with the
 development server. After their contents change, stop the client, rebuild the
 Client project and restart it before reloading browser tabs. A JavaScript-only

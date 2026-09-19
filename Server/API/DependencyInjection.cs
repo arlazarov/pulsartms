@@ -1,5 +1,6 @@
 using Application;
 using Infrastructure;
+using Microsoft.AspNetCore.ResponseCompression;
 
 namespace API;
 
@@ -13,6 +14,13 @@ public static class DependencyInjection
 
     builder.Services.AddOpenApi();
     builder.Services.AddControllers();
+    builder.Services.AddResponseCompression(options =>
+    {
+      options.EnableForHttps = true;
+      options.Providers.Add<BrotliCompressionProvider>();
+      options.Providers.Add<GzipCompressionProvider>();
+      options.MimeTypes = [.. ResponseCompressionDefaults.MimeTypes, "application/problem+json"];
+    });
 
     builder.Services.AddCors(options =>
     {

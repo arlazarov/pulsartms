@@ -15,6 +15,7 @@ if (app.Environment.IsDevelopment())
   app.MapScalarApiReference().AllowAnonymous();
 }
 
+app.UseResponseCompression();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/api/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
