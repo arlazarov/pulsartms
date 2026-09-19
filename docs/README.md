@@ -67,6 +67,7 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
 ## Operations
 
 - [Release verification and deployment](operations/release.md)
+- [Verifying that a backup can be restored](operations/restore-verification.md)
 - [Core storage cutover](operations/core-storage-cutover.md)
 - [Diagnostics and logging](operations/diagnostics.md)
 - [Security rollout and recovery checks](operations/security-rollout.md)
