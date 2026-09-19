@@ -6,11 +6,10 @@ namespace Application.Behaviors;
 
 public static class RequestMetrics
 {
-  private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, RequestTiming> Totals = new();
-  public sealed record RequestTiming(long Count, long Failed, long Cancelled, double TotalMs, double MaxMs);
-  public static IReadOnlyDictionary<string, RequestTiming> Snapshot() => new Dictionary<string, RequestTiming>(Totals);
+  private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Application.Models.RequestTiming> Totals = new();
+  public static IReadOnlyDictionary<string, Application.Models.RequestTiming> Snapshot() => new Dictionary<string, Application.Models.RequestTiming>(Totals);
   internal static void Record(string name, string outcome, double elapsed) => Totals.AddOrUpdate(name,
-    new RequestTiming(1, outcome == "failed" ? 1 : 0, outcome == "cancelled" ? 1 : 0, elapsed, elapsed),
+    new Application.Models.RequestTiming(1, outcome == "failed" ? 1 : 0, outcome == "cancelled" ? 1 : 0, elapsed, elapsed),
     (_, old) => new(old.Count + 1, old.Failed + (outcome == "failed" ? 1 : 0),
       old.Cancelled + (outcome == "cancelled" ? 1 : 0), old.TotalMs + elapsed, Math.Max(old.MaxMs, elapsed)));
   internal static readonly Meter Meter = new("AMFTMS.Application");

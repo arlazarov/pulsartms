@@ -13,7 +13,10 @@ public static class DependencyInjection
     builder.Services.AddApplicationOptions(builder.Configuration);
 
     builder.Services.AddOpenApi();
-    builder.Services.AddControllers();
+    builder.Services.AddControllers().AddJsonOptions(options =>
+      options.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, ApiJsonContext.Default));
+    builder.Services.ConfigureHttpJsonOptions(options =>
+      options.SerializerOptions.TypeInfoResolverChain.Insert(0, ApiJsonContext.Default));
     builder.Services.AddResponseCompression(options =>
     {
       options.EnableForHttps = true;
