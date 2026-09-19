@@ -107,6 +107,19 @@ the providers again on its own.
 state, not a capacity decision, and moving the state out of process memory is a
 prerequisite for separating request serving from background work.
 
+Two of these are no longer only in memory: the driver hours and the truck
+positions are recorded as they are collected, so an instance that runs no
+background work still answers with what another recorded, each bounded by the
+age past which the reading means nothing.
+
+The rest are caches, and a cache does not want persisting. `ReadCache`,
+`FuelPlanMemory` and the provider caches all sit over data that is already
+stored; what they lack is a way to learn that another instance changed it.
+`CacheGenerations` holds its versions in process memory, so an instance that
+invalidates a group tells nobody. Serving requests from more than one instance
+therefore needs shared invalidation, not shared caches - a different change
+from the one the hours and positions needed, and the remaining one.
+
 ## Open questions
 
 These need a decision before the affected work starts; nothing here is settled
