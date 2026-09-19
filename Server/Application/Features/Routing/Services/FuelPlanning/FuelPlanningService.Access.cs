@@ -75,35 +75,15 @@ public sealed partial class FuelPlanningService
           },
         ],
     };
-    RequireSameTelemetry(
-      FuelObservationStamp.Capture(state),
-      await plans.GetAsync(captured.Root(plan), ct)
-    );
-    await using var transaction = await publication.BeginAsync(
-      captured.Itinerary,
+    await using var transaction = await BeginVerifiedPublicationAsync(
+      state,
+      captured,
+      plan,
+      profile,
+      savedRoads,
       history,
       ct
     );
-    await roads.RequireCurrentAsync(
-      [
-        .. savedRoads,
-        state.SavedRoad
-          ?? throw new InvalidOperationException(
-            "Fuel access publication requires the captured road."
-          ),
-      ],
-      ct
-    );
-    await profiles.RequireCurrentAsync(plan.TruckId, state.Profile, ct);
-    RequireSameTelemetry(
-      FuelObservationStamp.Capture(state),
-      await plans.GetAsync(
-        captured.Root(plan),
-        ct,
-        PlannedRouteTelemetry.WithoutProviderWait
-      )
-    );
-    await profiles.SaveAsync(plan.TruckId, profile, ct);
     var entity =
       await routeStore.ReadForUpdateAsync(
         plan.DispatchId,

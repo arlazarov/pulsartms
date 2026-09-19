@@ -11,6 +11,7 @@ using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Options;
 using Application.Features.Routing.Services.Routes;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
@@ -526,6 +527,59 @@ public sealed partial class FuelPlanningService(
     return FuelCalculationResult.Feasible(committed, p.ReserveGallons);
   }
 
+  // Opens the publication for the captured work and confirms, inside it, that
+  // every input the result was calculated from is still current: the truck
+  // itinerary, the saved roads used, the truck profile and the telemetry
+  // observation. Any mismatch throws and nothing is written. A provider may
+  // be consulted only before the transaction opens, never inside it.
+  private async Task<IDbContextTransaction> BeginVerifiedPublicationAsync(
+    RoutePlanningState state,
+    FuelWorkInputs captured,
+    RoutePlan plan,
+    TruckRouteProfile profile,
+    IReadOnlyCollection<SavedRoadVersion> savedRoads,
+    IReadOnlyCollection<DeadheadHistoryBatch> history,
+    CancellationToken ct
+  )
+  {
+    var stamp = FuelObservationStamp.Capture(state);
+    RequireSameTelemetry(stamp, await plans.GetAsync(captured.Root(plan), ct));
+    var transaction = await publication.BeginAsync(
+      captured.Itinerary,
+      history,
+      ct
+    );
+    try
+    {
+      await roads.RequireCurrentAsync(
+        [
+          .. savedRoads,
+          state.SavedRoad
+            ?? throw new InvalidOperationException(
+              "Fuel publication requires the captured current road."
+            ),
+        ],
+        ct
+      );
+      await profiles.RequireCurrentAsync(plan.TruckId, state.Profile, ct);
+      RequireSameTelemetry(
+        stamp,
+        await plans.GetAsync(
+          captured.Root(plan),
+          ct,
+          PlannedRouteTelemetry.WithoutProviderWait
+        )
+      );
+      await profiles.SaveAsync(plan.TruckId, profile, ct);
+      return transaction;
+    }
+    catch
+    {
+      await transaction.DisposeAsync();
+      throw;
+    }
+  }
+
   private async Task<FuelPlan> CommitAsync(
     FuelPlan fuel,
     IReadOnlyList<FuelCandidate> purchases,
@@ -614,12 +668,12 @@ public sealed partial class FuelPlanningService(
       throw new RoutePlanningException(
         "Assignments changed during fuel calculation."
       );
-    RequireSameTelemetry(
-      FuelObservationStamp.Capture(state),
-      await plans.GetAsync(captured.Root(plan), ct)
-    );
-    await using var transaction = await publication.BeginAsync(
-      captured.Itinerary,
+    await using var transaction = await BeginVerifiedPublicationAsync(
+      state,
+      captured,
+      plan,
+      profile,
+      savedRoads,
       history,
       ct
     );
@@ -631,17 +685,6 @@ public sealed partial class FuelPlanningService(
           "Fuel publication requires the captured current road."
         ),
     ];
-    await roads.RequireCurrentAsync(dependencies, ct);
-    await profiles.RequireCurrentAsync(plan.TruckId, state.Profile, ct);
-    RequireSameTelemetry(
-      FuelObservationStamp.Capture(state),
-      await plans.GetAsync(
-        captured.Root(plan),
-        ct,
-        PlannedRouteTelemetry.WithoutProviderWait
-      )
-    );
-    await profiles.SaveAsync(plan.TruckId, profile, ct);
     await routeStore.StoreFuelAsync(
       plan.DispatchId,
       fuel,
