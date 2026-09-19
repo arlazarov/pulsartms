@@ -15,7 +15,7 @@ using Microsoft.Extensions.Options;
 namespace Application.Features.Routing.Services.FuelPlanning;
 
 public sealed partial class FuelPlanningService(
-  RoutePlanningService plans,
+  IPlannedRouteReader plans,
   IFuelWorkInputsReader inputs,
   ISender mediator,
   FuelRegionPlanner regions,
@@ -634,7 +634,11 @@ public sealed partial class FuelPlanningService(
     await profiles.RequireCurrentAsync(plan.TruckId, state.Profile, ct);
     RequireSameTelemetry(
       FuelObservationStamp.Capture(state),
-      await plans.GetAsync(captured.Root(plan), ct, withoutProviderWait: true)
+      await plans.GetAsync(
+        captured.Root(plan),
+        ct,
+        PlannedRouteTelemetry.WithoutProviderWait
+      )
     );
     await profiles.SaveAsync(plan.TruckId, profile, ct);
     await routeStore.StoreFuelAsync(

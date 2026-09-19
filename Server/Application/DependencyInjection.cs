@@ -94,6 +94,9 @@ public static class DependencyInjection
     services.AddSingleton<RouteDisplayCache>();
     services.AddSingleton<ServerTelemetry>();
     services.AddScoped<RoutePlanningService>();
+    services.AddScoped<IPlannedRouteReader>(sp =>
+      sp.GetRequiredService<RoutePlanningService>()
+    );
     services.AddScoped<TruckPlanningProfileService>();
     services.AddScoped<RoutePlanStore>();
     services.AddScoped<BaseRouteService>();

@@ -36,7 +36,7 @@ public sealed partial class RoutePlanningService(
   BaseRouteService baseRoutes,
   TruckPlanningInputsReader inputs,
   PlanningWorkPublication publication
-)
+) : IPlannedRouteReader
 {
   private static readonly KeyedGates BuildGates = new();
 
@@ -1038,4 +1038,25 @@ public sealed partial class RoutePlanningService(
       position
     );
   }
+
+  // The contract keeps only what a consumer outside the route lifecycle
+  // needs; the wider overloads stay internal to routing.
+  Task<RoutePlanningState> IPlannedRouteReader.GetAsync(
+    RouteWorkSnapshot work,
+    CancellationToken ct,
+    PlannedRouteTelemetry telemetry
+  ) =>
+    GetAsync(
+      work,
+      ct,
+      cachedTelemetryOnly: telemetry is PlannedRouteTelemetry.Cached,
+      withoutProviderWait: telemetry
+        is PlannedRouteTelemetry.WithoutProviderWait
+    );
+
+  Task<RouteWorkSnapshot> IPlannedRouteReader.LoadAsync(
+    Guid dispatchId,
+    CancellationToken ct,
+    Guid? executionLegId
+  ) => LoadAsync(dispatchId, ct, executionLegId);
 }

@@ -1,5 +1,6 @@
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Exceptions;
+using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
 
@@ -96,7 +97,11 @@ public sealed partial class FuelPlanningService
     await profiles.RequireCurrentAsync(plan.TruckId, state.Profile, ct);
     RequireSameTelemetry(
       FuelObservationStamp.Capture(state),
-      await plans.GetAsync(captured.Root(plan), ct, withoutProviderWait: true)
+      await plans.GetAsync(
+        captured.Root(plan),
+        ct,
+        PlannedRouteTelemetry.WithoutProviderWait
+      )
     );
     await profiles.SaveAsync(plan.TruckId, profile, ct);
     var entity =

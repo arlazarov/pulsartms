@@ -3,6 +3,7 @@ using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Queries.GetFuelStations;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Exceptions;
+using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
 
@@ -131,7 +132,7 @@ public sealed partial class FuelPlanningService
     var state = await plans.GetAsync(
       assignedLoad,
       ct,
-      cachedTelemetryOnly: true
+      PlannedRouteTelemetry.Cached
     );
     var plan =
       state.Plan
