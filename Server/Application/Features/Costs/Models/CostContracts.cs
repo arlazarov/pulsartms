@@ -1,5 +1,26 @@
 namespace Application.Features.Costs.Models;
 
+public sealed record ExpenseEntry(
+  string Kind,
+  DateTime OccurredAt,
+  decimal Amount,
+  string Currency
+)
+{
+  public Guid IdempotencyKey { get; init; }
+  public string Location { get; init; } = "";
+  public decimal? Quantity { get; init; }
+  public string QuantityUnit { get; init; } = "";
+  public Guid? TruckId { get; init; }
+  public Guid? DriverId { get; init; }
+  public Guid? TrailerId { get; init; }
+  public Guid? ExecutionLegId { get; init; }
+  public string SourceTruckName { get; init; } = "";
+  public string SourceDriverName { get; init; } = "";
+  public string Source { get; init; } = "";
+  public string SourceReference { get; init; } = "";
+}
+
 public sealed record ExpenseShareUpdate(Guid DispatchId, decimal Amount);
 
 public sealed record ExpenseAttributionUpdate(

@@ -38,6 +38,7 @@ public sealed class DispatchAuthorizationTests
   [InlineData(typeof(CostsController), "ForLoad", "Dispatch", true)]
   [InlineData(typeof(CostsController), "ForLoad", "Admin", true)]
   [InlineData(typeof(CostsController), "SetAttribution", "Dispatch", true)]
+  [InlineData(typeof(CostsController), "Record", "Dispatch", true)]
   [InlineData(typeof(MileageController), "SavePolicy", "Admin", true)]
   [InlineData(typeof(MileageController), "SavePolicy", "Dispatch", false)]
   public async Task EndpointsUseCurrentApplicationRoleWithoutRequiringStandardRoleClaims(

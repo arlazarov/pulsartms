@@ -25,6 +25,11 @@ internal sealed class CostFixture : IAsyncDisposable
   public required Guid Actor { get; init; }
   public required SetExpenseAttributionHandler Attribution { get; init; }
   public required GetLoadCostsHandler Costs { get; init; }
+  public required RecordExpenseHandler Recording { get; init; }
+
+  public Task<RequestResponse<ExpenseAttributionRow>> RecordAsync(
+    ExpenseEntry entry
+  ) => Recording.Handle(new(entry), default);
 
   public Task<RequestResponse<ExpenseAttributionRow>> AttributeAsync(
     ExpenseShareUpdate[] shares,
@@ -94,6 +99,7 @@ internal sealed class CostFixture : IAsyncDisposable
       Actor = actor.Id,
       Attribution = new(db, caller, roles, TimeProvider.System),
       Costs = new(db, caller, roles),
+      Recording = new(db, caller, roles, TimeProvider.System),
     };
   }
 

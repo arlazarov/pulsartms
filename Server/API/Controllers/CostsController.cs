@@ -15,6 +15,12 @@ public sealed class CostsController : BaseController
   public Task<IActionResult> ForLoad(Guid id, CancellationToken ct) =>
     HandleRequest(new GetLoadCostsQuery(id), ct);
 
+  [HttpPost("expenses")]
+  public Task<IActionResult> Record(
+    [FromBody] ExpenseEntry entry,
+    CancellationToken ct
+  ) => HandleRequest(new RecordExpenseCommand(entry), ct);
+
   // The body states the complete set of shares, so this replaces the
   // attribution of the expense rather than adding to it.
   [HttpPut("expenses/{id:guid}/attribution")]
