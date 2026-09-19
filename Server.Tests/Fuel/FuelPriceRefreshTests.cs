@@ -711,7 +711,7 @@ public sealed class FuelPriceRefreshTests
       {
         PriceReads++;
         response = RequestResponse<List<FuelStationDto>>.Ok(
-          Days.GetValueOrDefault(query.Date) ?? Prices
+          (query.Date is { } day ? Days.GetValueOrDefault(day) : null) ?? Prices
         );
       }
       else

@@ -1,5 +1,9 @@
 using Application.Features.Fuel.Models;
-using Application.Features.Routing.Algorithms;
+using Application.Features.Fuel.Queries.GetFuelStations;
+using Domain.Entities.Fuel;
+using Infrastructure.Persistence;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 
 namespace Server.Tests.Fuel;
 
@@ -20,5 +24,66 @@ public class FuelPricingDateTests
       DateOnly.Parse(expected),
       FuelPricingDate.FromUtc(DateTime.Parse(utc).ToUniversalTime())
     );
+  }
+
+  // An omitted request date selects the pricing day, not the UTC day the
+  // server happens to run in.
+  [Theory]
+  [InlineData("2026-09-06T00:30:00Z", "2026-09-05")]
+  [InlineData("2026-09-06T04:00:00Z", "2026-09-06")]
+  public async Task AnOmittedRequestDateResolvesToTheBusinessDay(
+    string utc,
+    string expected
+  )
+  {
+    var day = DateOnly.Parse(expected);
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await db.Database.EnsureCreatedAsync();
+    using var reads = TestCache.Create();
+    db.FuelStations.Add(
+      new FuelStation
+      {
+        Id = Guid.NewGuid(),
+        ExternalId = "pricing-day",
+        Region = "ON",
+        Latitude = 43,
+        Longitude = -79,
+        FuelDiscounts =
+        [
+          new()
+          {
+            Id = Guid.NewGuid(),
+            Currency = "CAD",
+            Product = "Diesel",
+            DiscountPrice = 2m,
+            RetailPrice = 2.2m,
+            EffectiveFrom = day,
+            EffectiveTo = day,
+          },
+        ],
+      }
+    );
+    await db.SaveChangesAsync();
+
+    var response = await new GetFuelStationsHandler(
+      db,
+      reads,
+      new FixedClock(DateTime.Parse(utc).ToUniversalTime())
+    ).Handle(new(), default);
+
+    Assert.True(response.Success);
+    Assert.Equal(
+      day,
+      Assert.Single(Assert.Single(response.Response!).Discounts).EffectiveFrom
+    );
+  }
+
+  private sealed class FixedClock(DateTime utc) : TimeProvider
+  {
+    public override DateTimeOffset GetUtcNow() => new(utc, TimeSpan.Zero);
   }
 }

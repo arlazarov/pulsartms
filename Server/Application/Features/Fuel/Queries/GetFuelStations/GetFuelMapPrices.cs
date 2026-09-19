@@ -2,7 +2,7 @@ using Application.Models;
 
 namespace Application.Features.Fuel.Queries.GetFuelStations;
 
-public record GetFuelMapPricesQuery(DateOnly Date)
+public record GetFuelMapPricesQuery(DateOnly? Date = null)
   : IRequest<RequestResponse<List<FuelMapPriceDto>>>;
 
 public record FuelMapPriceDto(

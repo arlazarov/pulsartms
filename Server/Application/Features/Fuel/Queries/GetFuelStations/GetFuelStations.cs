@@ -1,11 +1,14 @@
 using Application.Caching;
+using Application.Features.Fuel.Models;
 using Application.Features.Synchronization.Services;
 using Application.Models;
 
 namespace Application.Features.Fuel.Queries.GetFuelStations;
 
-public record GetFuelStationsQuery(DateOnly Date, bool IncludeNextDay = false)
-  : IRequest<RequestResponse<List<FuelStationDto>>>;
+public record GetFuelStationsQuery(
+  DateOnly? Date = null,
+  bool IncludeNextDay = false
+) : IRequest<RequestResponse<List<FuelStationDto>>>;
 
 public record FuelStationDto(
   Guid Id,
@@ -39,22 +42,27 @@ public record FuelDiscountDto(
   string Unit = ""
 );
 
-public class GetFuelStationsHandler(IAppDbContext dbContext, ReadCache reads)
-  : IRequestHandler<GetFuelStationsQuery, RequestResponse<List<FuelStationDto>>>
+public class GetFuelStationsHandler(
+  IAppDbContext dbContext,
+  ReadCache reads,
+  TimeProvider clock
+) : IRequestHandler<GetFuelStationsQuery, RequestResponse<List<FuelStationDto>>>
 {
   public async Task<RequestResponse<List<FuelStationDto>>> Handle(
     GetFuelStationsQuery request,
     CancellationToken cancellationToken
   )
   {
+    var date =
+      request.Date ?? FuelPricingDate.FromUtc(clock.GetUtcNow().UtcDateTime);
     var items = await reads.GetAsync(
       "fuel",
-      request.Date.ToString("O"),
-      () => LoadAsync(request.Date, cancellationToken)
+      date.ToString("O"),
+      () => LoadAsync(date, cancellationToken)
     );
-    if (request.IncludeNextDay && request.Date < DateOnly.MaxValue)
+    if (request.IncludeNextDay && date < DateOnly.MaxValue)
     {
-      var nextDate = request.Date.AddDays(1);
+      var nextDate = date.AddDays(1);
       var next = await reads.GetAsync(
         "fuel",
         nextDate.ToString("O"),
@@ -67,12 +75,12 @@ public class GetFuelStationsHandler(IAppDbContext dbContext, ReadCache reads)
             ? station with
             {
               CashComparison = FuelPriceComparisonDto.Create(
-                request.Date,
+                date,
                 station.CashDiscount,
                 tomorrow.CashDiscount
               ),
               IftaComparison = FuelPriceComparisonDto.Create(
-                request.Date,
+                date,
                 station.IftaDiscount ?? station.CashDiscount,
                 tomorrow.IftaDiscount ?? tomorrow.CashDiscount
               ),

@@ -15,11 +15,7 @@ public class FuelController : BaseController
   public Task<IActionResult> GetPriceOverview(
     [FromQuery] DateOnly? date,
     CancellationToken cancellationToken
-  ) =>
-    HandleRequest(
-      new GetFuelMapPricesQuery(date ?? DateOnly.FromDateTime(DateTime.Today)),
-      cancellationToken
-    );
+  ) => HandleRequest(new GetFuelMapPricesQuery(date), cancellationToken);
 
   [HttpGet("stations")]
   public async Task<IActionResult> GetStations(
@@ -27,10 +23,7 @@ public class FuelController : BaseController
     CancellationToken cancellationToken
   ) =>
     await HandleRequest(
-      new GetFuelStationsQuery(
-        date ?? DateOnly.FromDateTime(DateTime.Today),
-        IncludeNextDay: true
-      ),
+      new GetFuelStationsQuery(date, IncludeNextDay: true),
       cancellationToken
     );
 

@@ -40,10 +40,11 @@ public class FuelStationTests
     );
     db.IftaTaxRates.Add(Rate(new(2026, 7, 1), "CAD", .2m));
     await db.SaveChangesAsync();
-    var response = await new GetFuelStationsHandler(db, reads).Handle(
-      new(date),
-      default
-    );
+    var response = await new GetFuelStationsHandler(
+      db,
+      reads,
+      TimeProvider.System
+    ).Handle(new(date), default);
     var station = Assert.Single(response.Response!);
     Assert.Equal(2, station.Discounts.Count);
     Assert.Equal("Diesel", station.CashDiscount!.Product);
@@ -94,10 +95,11 @@ public class FuelStationTests
       db.IftaTaxRates.Add(rate);
     }
     await db.SaveChangesAsync();
-    var response = await new GetFuelStationsHandler(db, reads).Handle(
-      new(date),
-      default
-    );
+    var response = await new GetFuelStationsHandler(
+      db,
+      reads,
+      TimeProvider.System
+    ).Handle(new(date), default);
     var actual = response.Response!.Single().Discounts.Single();
     Assert.Equal(
       expected is null
@@ -138,10 +140,11 @@ public class FuelStationTests
       }
     );
     await db.SaveChangesAsync();
-    var result = await new GetFuelStationsHandler(db, reads).Handle(
-      new(date),
-      default
-    );
+    var result = await new GetFuelStationsHandler(
+      db,
+      reads,
+      TimeProvider.System
+    ).Handle(new(date), default);
     Assert.Equal(
       expected,
       result.Response!.Single().Discounts.Single().Product
@@ -203,10 +206,11 @@ public class FuelStationTests
     if (published)
       db.IftaTaxRates.Add(Rate(quarter, "CAD", .3m));
     await db.SaveChangesAsync();
-    var response = await new GetFuelStationsHandler(db, reads).Handle(
-      new(date),
-      default
-    );
+    var response = await new GetFuelStationsHandler(
+      db,
+      reads,
+      TimeProvider.System
+    ).Handle(new(date), default);
     var discounts = response.Response!.SelectMany(x => x.Discounts).ToList();
     Assert.Equal(
       published ? 1.7m : 1.8m,
@@ -249,10 +253,11 @@ public class FuelStationTests
       other
     );
     await db.SaveChangesAsync();
-    var response = await new GetFuelStationsHandler(db, reads).Handle(
-      new(date),
-      default
-    );
+    var response = await new GetFuelStationsHandler(
+      db,
+      reads,
+      TimeProvider.System
+    ).Handle(new(date), default);
     Assert.Null(response.Response!.Single().Discounts.Single().PriceAfterIfta);
   }
 
@@ -296,10 +301,11 @@ public class FuelStationTests
       }
     );
     await db.SaveChangesAsync();
-    var response = await new GetFuelStationsHandler(db, reads).Handle(
-      new(date),
-      default
-    );
+    var response = await new GetFuelStationsHandler(
+      db,
+      reads,
+      TimeProvider.System
+    ).Handle(new(date), default);
     var discount = response.Response!.Single().Discounts.Single();
     Assert.Equal(expectedUnit, discount.Unit);
     Assert.Equal(
