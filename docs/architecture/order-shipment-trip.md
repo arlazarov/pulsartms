@@ -27,20 +27,41 @@ the execution: `TruckId`, `DriverId`, `TrailerId`, `TruckNumber`,
 
 ## What the dispatcher pays for that
 
-"Which truck is on this load" has several possible answers today:
-`Dispatch.TruckId`, `Dispatch.PlanningTruckId`, the leg's `TruckId`, and the
-truck named on each stop. Assigning a truck therefore writes to several
-places that must agree afterwards, which is why `SetTruckAssignment` spans
-Dispatch and Execution inside one transaction, and why the assignment carries
-a revision of its own.
+An earlier draft of this document said the truck was stored four times and
+could disagree, and that the first change worth making was to collapse them.
+That was wrong, and wrong in the direction that would have done damage, so
+it is corrected here rather than quietly removed.
 
-Anything that reads "the truck" has to know which of those answers is the
-real one. That is the headache: not that the data is missing, but that the
-same fact is stored four times and can disagree.
+The fields are not copies of one fact. They are different facts with a
+precedence rule applied the same way everywhere - `PlanningTruckId ?? TruckId`
+in `DispatchProjection`, `GetDispatche`, `SetStopOperation`,
+`UpdateDispatchWorkspace` and `SetTruckAssignment` alike:
 
-The fix is not new tables. It is that the leg owns the assignment and the
-load stops carrying it - the load says which leg it is on, and the leg says
-who is driving. One writer, one answer to the question.
+| Field | What it means |
+| --- | --- |
+| `Dispatch.TruckId` | what the broker's system says |
+| `Dispatch.PlanningTruckId` | what the dispatcher decided, overriding it |
+| `DispatchStop.TruckId` | the provider's per-stop assignment |
+| `ExecutionLeg.TruckId` | what is actually executing |
+
+`TruckAssignmentTests.ConfirmationIsSeparateFromProviderAssignmentsAndSurvivesSync`
+states the intent: a dispatcher's confirmation sets `PlanningTruckId` and
+deliberately leaves `TruckId` and the stops alone, so a later import cannot
+be mistaken for the decision and the decision cannot be mistaken for what
+the broker sent. That is the owner's own rule - an imported value is a source
+fact - applied to assignments.
+
+Checked against the working database: twelve loads linked to live legs, no
+disagreement between the load's truck and its leg's truck, and none between
+the planning assignment and the leg.
+
+So there is no duplication to subtract here. What is genuinely conflated in
+`Dispatch` is narrower than the earlier draft claimed: the commercial fields
+(`OrderNumber`, `CustomerName`, `Price`, `Currency`) sit on the same record
+as the execution state (`Status`, `ExecutionLegId`, `ExecutionStatus`,
+`AssignmentRevision`). That is one record with two lifetimes, which is a
+real question, and it is a smaller one than "the truck is stored four
+times".
 
 ## What accounting pays for that
 
@@ -79,12 +100,16 @@ tolls and lumper need separate records rather than being folded into fuel.
   different lifetimes.
 - Not rename anything as a first step. Renaming `Dispatch` to `Order` moves
   every reference in the codebase and changes nothing about who writes what.
-- Not introduce an `Order` table before the duplication is gone. While the
-  truck is stored in four places, a new table is a fifth.
+- Not collapse the assignment fields. They are a precedence rule over three
+  different facts, not one fact stored repeatedly, and flattening them would
+  lose the distinction between what the broker sent and what the dispatcher
+  decided.
 
-The first change worth making is subtraction, not addition: one owner for
-the assignment. Everything else is easier afterwards and most of it may turn
-out to be unnecessary.
+There is no obvious first change. The assignment fields are not duplication
+and must not be collapsed. What remains is the narrower question of one
+record carrying a commercial lifetime and an execution lifetime, and whether
+the accounting split should be derived from attributed miles - which is a
+change to how costs are read, not to how loads are stored.
 
 ## Decisions that are the owner's
 
