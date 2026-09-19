@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Queries.GetFuelStations;
 using Application.Features.Routing.Algorithms;
@@ -14,6 +15,7 @@ public sealed class FuelPriceRefreshService(
   ITruckFuelPlanStore store,
   IFuelWorkInputsReader inputs,
   ISender sender,
+  ICarrierFuelPrices carrierPrices,
   TimeProvider clock,
   IFuelSavedInputsValidation savedInputs
 )
@@ -77,10 +79,9 @@ public sealed class FuelPriceRefreshService(
     var days = new Dictionary<DateOnly, List<FuelStationDto>>();
     foreach (var date in saved.Plan.PriceDates.Append(today).Distinct())
     {
-      var prices = await sender.Send(new GetFuelStationsQuery(date), ct);
-      if (!prices.Success || prices.Response is null)
+      if (await carrierPrices.ReadAsync(date, ct) is not { } dayPrices)
         return;
-      days[date] = prices.Response;
+      days[date] = dayPrices;
     }
     var signature = UsFuelDiscountSignature.Calendar(days);
     if (saved.Plan.UsDiscountSignature == signature)

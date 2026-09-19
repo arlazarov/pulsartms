@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Application.Features.Fuel.Services;
 using Application.Features.Routing.Commands;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.FuelPlanning;
@@ -114,6 +115,7 @@ public sealed class FuelHistoricalValidityTests
       new TruckFuelPlanStore(f.Db),
       f.Services.FuelInputs,
       sender,
+      new CarrierFuelPrices(sender),
       TimeProvider.System,
       f.Services.SavedFuelInputs
     );

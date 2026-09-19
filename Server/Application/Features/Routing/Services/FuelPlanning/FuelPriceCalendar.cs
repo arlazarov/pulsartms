@@ -1,3 +1,4 @@
+using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Queries.GetFuelStations;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Exceptions;
@@ -6,7 +7,7 @@ using Application.Features.Routing.Models;
 namespace Application.Features.Routing.Services.FuelPlanning;
 
 public sealed class FuelPriceCalendar(
-  ISender sender,
+  ICarrierFuelPrices fuelPrices,
   DateOnly today,
   List<FuelStationDto> current
 )
@@ -53,12 +54,12 @@ public sealed class FuelPriceCalendar(
         : today;
       if (!days.TryGetValue(date, out var stations))
       {
-        var response = await sender.Send(new GetFuelStationsQuery(date), ct);
-        if (!response.Success || response.Response is null)
-          throw new RoutePlanningException(
+        var response =
+          await fuelPrices.ReadAsync(date, ct)
+          ?? throw new RoutePlanningException(
             "Fuel prices are temporarily unavailable."
           );
-        days[date] = stations = response.Response;
+        days[date] = stations = response;
       }
       var prices = Prices(date, stations, profile);
       var quote = prices.GetValueOrDefault(candidate.Station.StationId);

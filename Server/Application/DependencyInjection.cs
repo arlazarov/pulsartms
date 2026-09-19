@@ -11,6 +11,7 @@ using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Application.Features.Fleet.Services;
 using Application.Features.Fuel.Background;
+using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Services;
 using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Services;
@@ -123,6 +124,7 @@ public static class DependencyInjection
     services.AddScoped<FuelPriceRefreshService>();
     services.AddScoped<FuelHorizon>();
     services.AddScoped<IFuelWorkInputsReader, FuelWorkInputsReader>();
+    services.AddScoped<ICarrierFuelPrices, CarrierFuelPrices>();
     services.AddScoped<TruckFuelPlans>();
     services.AddSingleton<FuelPlanMemory>();
     services.AddScoped<FuelScheduleEvaluator>();

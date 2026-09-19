@@ -108,6 +108,7 @@ public sealed class SynchronizationCadenceTests
     services.AddSingleton<ISynchronizationStore>(new Store());
     services.AddSingleton<ISender>(sender);
     services.AddSingleton<ITruckFuelPlanStore>(fuel);
+    services.AddScoped<ICarrierFuelPrices, CarrierFuelPrices>();
     services.AddScoped<FuelPriceRefreshService>();
     services.AddScoped<ISavedRoadValidation>(provider =>
     {

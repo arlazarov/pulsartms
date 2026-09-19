@@ -2,6 +2,7 @@ using System.Text.Json;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Queries;
 using Application.Features.Fuel.Queries.GetFuelStations;
+using Application.Features.Fuel.Services;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Commands;
 using Application.Features.Routing.Exceptions;
@@ -36,6 +37,7 @@ public sealed class FuelPriceRefreshTests
       store,
       sender,
       sender,
+      new CarrierFuelPrices(sender),
       TimeProvider.System,
       sender
     );
@@ -68,7 +70,7 @@ public sealed class FuelPriceRefreshTests
       ],
     };
     var calendar = new FuelPriceCalendar(
-      sender,
+      new CarrierFuelPrices(sender),
       new(2026, 9, 14),
       sender.Prices
     );
@@ -121,7 +123,7 @@ public sealed class FuelPriceRefreshTests
   {
     var sender = new Sender();
     var calendar = new FuelPriceCalendar(
-      sender,
+      new CarrierFuelPrices(sender),
       new(2026, 9, 14),
       sender.Prices
     );
@@ -172,7 +174,11 @@ public sealed class FuelPriceRefreshTests
     {
       LegIndex = 0,
     };
-    var calendar = new FuelPriceCalendar(sender, today, sender.Prices);
+    var calendar = new FuelPriceCalendar(
+      new CarrierFuelPrices(sender),
+      today,
+      sender.Prices
+    );
     var at = new DateTimeOffset(2026, 9, 15, 0, 30, 0, TimeSpan.FromHours(-7));
     var dates = new Dictionary<string, DateTimeOffset>
     {
@@ -232,6 +238,7 @@ public sealed class FuelPriceRefreshTests
       store,
       sender,
       sender,
+      new CarrierFuelPrices(sender),
       new ManualTimeProvider(
         new DateTimeOffset(2026, 9, 14, 18, 0, 0, TimeSpan.Zero)
       ),
@@ -269,6 +276,7 @@ public sealed class FuelPriceRefreshTests
       store,
       sender,
       sender,
+      new CarrierFuelPrices(sender),
       clock,
       sender
     );
@@ -299,6 +307,7 @@ public sealed class FuelPriceRefreshTests
       store,
       sender,
       sender,
+      new CarrierFuelPrices(sender),
       clock,
       sender
     ).RefreshAsync(current, default);
@@ -344,6 +353,7 @@ public sealed class FuelPriceRefreshTests
       store,
       sender,
       sender,
+      new CarrierFuelPrices(sender),
       TimeProvider.System,
       sender
     ).RefreshAsync(current, default);
@@ -370,6 +380,7 @@ public sealed class FuelPriceRefreshTests
       store,
       sender,
       sender,
+      new CarrierFuelPrices(sender),
       clock,
       sender
     );
@@ -446,6 +457,7 @@ public sealed class FuelPriceRefreshTests
       store,
       sender,
       sender,
+      new CarrierFuelPrices(sender),
       TimeProvider.System,
       sender
     ).RefreshAsync(current, default);
@@ -481,6 +493,7 @@ public sealed class FuelPriceRefreshTests
       store,
       sender,
       sender,
+      new CarrierFuelPrices(sender),
       TimeProvider.System,
       sender
     ).RefreshAsync(Current(store), default);
@@ -508,6 +521,7 @@ public sealed class FuelPriceRefreshTests
       store,
       sender,
       sender,
+      new CarrierFuelPrices(sender),
       TimeProvider.System,
       sender
     ).RefreshAsync(Current(store), default);
@@ -532,6 +546,7 @@ public sealed class FuelPriceRefreshTests
       store,
       sender,
       sender,
+      new CarrierFuelPrices(sender),
       TimeProvider.System,
       sender
     );

@@ -187,7 +187,7 @@ internal sealed class PlanningTestServices : IDisposable
       Reads,
       FuelMemory,
       FuelInputs,
-      sender,
+      new CarrierFuelPrices(sender),
       Options.Create(new FuelRegionOptions()),
       SavedFuelInputs
     );
@@ -195,7 +195,7 @@ internal sealed class PlanningTestServices : IDisposable
     Fuel = new(
       Routes,
       FuelInputs,
-      sender,
+      new CarrierFuelPrices(sender),
       new(
         FuelInputs,
         Options.Create(new FuelRegionOptions()),

@@ -201,12 +201,12 @@ public sealed partial class FuelPlanningService
       )
       .ToList();
     var today = FuelPricingDate.FromUtc(DateTime.UtcNow);
-    var response = await mediator.Send(new GetFuelStationsQuery(today), ct);
-    if (!response.Success || response.Response is null)
-      throw new RoutePlanningException(
+    var response =
+      await fuelPrices.ReadAsync(today, ct)
+      ?? throw new RoutePlanningException(
         "Fuel prices are temporarily unavailable."
       );
-    var prices = FuelRegionGrid.Prices(response.Response, profile, today);
+    var prices = FuelRegionGrid.Prices(response, profile, today);
     var geometry = new FuelSearchGeometry(horizon.Route, ct);
     var edits = request.Stops ?? InitialEdits(editable, state, horizon);
     ValidateQuantities(edits, editable);
@@ -218,9 +218,7 @@ public sealed partial class FuelPlanningService
       .GroupBy(x => x.StationId)
       .ToDictionary(x => x.Key, x => x.First().Name);
     foreach (
-      var station in response.Response.Where(x =>
-        !string.IsNullOrWhiteSpace(x.Name)
-      )
+      var station in response.Where(x => !string.IsNullOrWhiteSpace(x.Name))
     )
       stationNames[station.Id] = station.Name;
     List<FuelCandidate> candidates;
@@ -290,9 +288,7 @@ public sealed partial class FuelPlanningService
                 || x.BeforeStopId == edit.BeforeStopId
               )
             );
-            var station = response.Response.FirstOrDefault(x =>
-              x.Id == edit.StationId
-            );
+            var station = response.FirstOrDefault(x => x.Id == edit.StationId);
             return new FuelPlanStop
             {
               Number = index + 1,

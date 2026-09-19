@@ -2,6 +2,7 @@ using System.Text.Json;
 using Application.Caching;
 using Application.Diagnostics;
 using Application.Features.Eta.Interfaces;
+using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Queries.GetFuelStations;
 using Application.Features.Routing.Algorithms;
@@ -17,7 +18,7 @@ namespace Application.Features.Routing.Services.FuelPlanning;
 public sealed partial class FuelPlanningService(
   IPlannedRouteReader plans,
   IFuelWorkInputsReader inputs,
-  ISender mediator,
+  ICarrierFuelPrices fuelPrices,
   FuelRegionPlanner regions,
   FuelHorizon horizons,
   IOptions<FuelRegionOptions> options,
@@ -184,12 +185,12 @@ public sealed partial class FuelPlanningService(
     if (FuelReservePolicy.StartingLevelError(gallons, p) is { } levelError)
       throw new RoutePlanningException(levelError);
     var today = FuelPricingDate.FromUtc(DateTime.UtcNow);
-    var response = await mediator.Send(new GetFuelStationsQuery(today), ct);
-    if (!response.Success || response.Response is null)
-      throw new RoutePlanningException(
+    var response =
+      await fuelPrices.ReadAsync(today, ct)
+      ?? throw new RoutePlanningException(
         "Fuel prices are temporarily unavailable."
       );
-    var prices = FuelRegionGrid.Prices(response.Response, p, today);
+    var prices = FuelRegionGrid.Prices(response, p, today);
     var priceSignature = FuelPriceSignature.From(prices);
     var loads = captured.Select(plan);
     var assignmentSignatures = loads.ToDictionary(
@@ -220,7 +221,7 @@ public sealed partial class FuelPlanningService(
       DateTime.UtcNow,
       ct
     );
-    var calendar = new FuelPriceCalendar(mediator, today, response.Response);
+    var calendar = new FuelPriceCalendar(fuelPrices, today, response);
     remaining = horizon.Route.Miles;
     var corridorStations = new HashSet<Guid>();
     var countries = new FuelAccessCountries(regionLookup);

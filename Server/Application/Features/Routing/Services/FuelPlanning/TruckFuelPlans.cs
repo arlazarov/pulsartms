@@ -1,5 +1,6 @@
 using Application.Caching;
 using Application.Features.Execution.Models;
+using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Queries.GetFuelStations;
 using Application.Features.Routing.Algorithms;
@@ -16,7 +17,7 @@ public sealed class TruckFuelPlans(
   ReadCache reads,
   FuelPlanMemory memory,
   IFuelWorkInputsReader inputs,
-  ISender mediator,
+  ICarrierFuelPrices fuelPrices,
   IOptions<FuelRegionOptions> options,
   IFuelSavedInputsValidation savedInputs
 )
@@ -158,11 +159,7 @@ public sealed class TruckFuelPlans(
         key,
         async () =>
         {
-          var response = await mediator.Send(
-            new GetFuelStationsQuery(date),
-            ct
-          );
-          return response.Success && response.Response is { } stations
+          return await fuelPrices.ReadAsync(date, ct) is { } stations
             ? FuelPriceSignature.From(
               FuelRegionGrid.Prices(stations, state.Profile, date)
             )
@@ -197,13 +194,9 @@ public sealed class TruckFuelPlans(
             var days = new Dictionary<DateOnly, List<FuelStationDto>>();
             foreach (var day in dates)
             {
-              var response = await mediator.Send(
-                new GetFuelStationsQuery(day),
-                ct
-              );
-              if (!response.Success || response.Response is null)
+              if (await fuelPrices.ReadAsync(day, ct) is not { } dayPrices)
                 return null;
-              days[day] = response.Response;
+              days[day] = dayPrices;
             }
             return UsFuelDiscountSignature.Calendar(days);
           },
