@@ -56,7 +56,7 @@ public static class PerformanceStages
     );
   }
 
-  private static void Record(string operation, string stage, double elapsed)
+  public static void Record(string operation, string stage, double elapsed)
   {
     Duration.Record(
       elapsed,

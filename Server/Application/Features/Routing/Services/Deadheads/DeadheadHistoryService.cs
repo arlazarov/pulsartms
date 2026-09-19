@@ -1,4 +1,6 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
+using Application.Diagnostics;
 using Application.Features.Execution.Interfaces;
 using Application.Features.Execution.Queries;
 using Application.Features.Routing.Exceptions;
@@ -21,9 +23,18 @@ public sealed class DeadheadHistoryService(
   ) =>
     scope.ReadAsync(
       async token =>
-        Freeze(
-          await ApplyExecutionAsync(await reader.ReadAsync(ids, token), token)
-        ),
+      {
+        var started = Stopwatch.GetTimestamp();
+        var sources = await reader.ReadAsync(ids, token);
+        PerformanceStages.Elapsed("deadhead-history", "reader", started);
+        started = Stopwatch.GetTimestamp();
+        var applied = await ApplyExecutionAsync(sources, token);
+        PerformanceStages.Elapsed("deadhead-history", "execution", started);
+        started = Stopwatch.GetTimestamp();
+        var frozen = Freeze(applied);
+        PerformanceStages.Elapsed("deadhead-history", "freeze", started);
+        return frozen;
+      },
       ct
     );
 
@@ -43,14 +54,22 @@ public sealed class DeadheadHistoryService(
   )
   {
     var captured = loads.Select(RouteWorkProjection.TruckItinerary).ToArray();
+    var opened = Stopwatch.GetTimestamp();
     return scope.ReadAsync(
       async token =>
-        Freeze(
-          await ApplyExecutionAsync(
-            await reader.ReadLoadedAsync(captured, token),
-            token
-          )
-        ),
+      {
+        PerformanceStages.Elapsed("deadhead-history", "scope", opened);
+        var started = Stopwatch.GetTimestamp();
+        var sources = await reader.ReadLoadedAsync(captured, token);
+        PerformanceStages.Elapsed("deadhead-history", "reader", started);
+        started = Stopwatch.GetTimestamp();
+        var applied = await ApplyExecutionAsync(sources, token);
+        PerformanceStages.Elapsed("deadhead-history", "execution", started);
+        started = Stopwatch.GetTimestamp();
+        var frozen = Freeze(applied);
+        PerformanceStages.Elapsed("deadhead-history", "freeze", started);
+        return frozen;
+      },
       ct
     );
   }
@@ -186,6 +205,7 @@ public sealed class DeadheadHistoryService(
       .Select(x => x.Id)
       .Distinct()
       .ToArray();
+    var legsStarted = Stopwatch.GetTimestamp();
     var nativeLegs = await db
       .ExecutionLegs.AsNoTracking()
       .Where(x =>
@@ -210,6 +230,7 @@ public sealed class DeadheadHistoryService(
         x.Status,
       })
       .ToListAsync(ct);
+    PerformanceStages.Elapsed("deadhead-history", "legs", legsStarted);
     if (nativeLegs.Count == 0)
       return history;
     var result = history.ToDictionary();
@@ -224,6 +245,7 @@ public sealed class DeadheadHistoryService(
         .Select(x => x.Id)
         .Distinct()
         .ToArray();
+      var perTruck = Stopwatch.GetTimestamp();
       var execution = await ExecutionLoads.ReadAsync(
         db,
         truck,
@@ -234,6 +256,8 @@ public sealed class DeadheadHistoryService(
           .Select(x => x.Id)
           .ToArray()
       );
+      PerformanceStages.Elapsed("deadhead-history", "per-truck", perTruck);
+      PerformanceStages.Count("deadhead-history", "truck-reads", 1);
       foreach (var snapshot in snapshots)
         result[snapshot.Current.Id] = snapshot with
         {

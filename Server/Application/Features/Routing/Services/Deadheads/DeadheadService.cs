@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Application.Caching;
+using Application.Diagnostics;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Services;
 using Application.Features.Routing.Algorithms;
@@ -8,6 +10,7 @@ using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Addresses;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Dispatch;
+using Microsoft.Extensions.Logging;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Routing.Services.Deadheads;
@@ -18,7 +21,8 @@ public sealed class DeadheadService(
   RoutePlanningService plans,
   DispatchRates financials,
   DeadheadHistoryService historyReader,
-  DeadheadHistoryPublication publication
+  DeadheadHistoryPublication publication,
+  ILogger<DeadheadService> logger
 )
 {
   private static readonly KeyedGates Gates = new();
@@ -171,12 +175,27 @@ public sealed class DeadheadService(
     if (items.Count == 0)
       return;
     var ids = items.Select(x => x.Id).ToArray();
+    // Totals are cumulative, so this request's share is the difference. A
+    // running total printed as if it were one request reads as a number that
+    // grows on its own.
+    var before = PerformanceStages.Snapshot();
+    var stage = Stopwatch.GetTimestamp();
     var history = await ReadHistoryAsync(ids, ct);
+    var historyMs = Stopwatch.GetElapsedTime(stage).TotalMilliseconds;
+    PerformanceStages.Record("deadhead-read", "history", historyMs);
+    stage = Stopwatch.GetTimestamp();
     var saved = await ReadSavedAsync(ids, ct);
+    var savedMs = Stopwatch.GetElapsedTime(stage).TotalMilliseconds;
+    PerformanceStages.Record("deadhead-read", "saved", savedMs);
+    stage = Stopwatch.GetTimestamp();
     var rates = await db
       .DispatchRates.AsNoTracking()
       .Where(x => ids.Contains(x.DispatchId))
       .ToDictionaryAsync(x => x.DispatchId, ct);
+    var ratesMs = Stopwatch.GetElapsedTime(stage).TotalMilliseconds;
+    PerformanceStages.Record("deadhead-read", "rates", ratesMs);
+    stage = Stopwatch.GetTimestamp();
+    var profilesElapsed = 0d;
     var profiles = new Dictionary<Guid, TruckRouteProfile>();
     foreach (var item in items)
     {
@@ -194,7 +213,13 @@ public sealed class DeadheadService(
         continue;
       var truck = load!.TruckId!.Value;
       if (!profiles.TryGetValue(truck, out var profile))
+      {
+        var profileStarted = Stopwatch.GetTimestamp();
         profiles[truck] = profile = await plans.ProfileAsync(truck, ct);
+        profilesElapsed += Stopwatch
+          .GetElapsedTime(profileStarted)
+          .TotalMilliseconds;
+      }
       item.EmptyMilesStatus = "pending";
       if (
         saved.TryGetValue(item.Id, out var entry)
@@ -226,6 +251,31 @@ public sealed class DeadheadService(
           );
       }
     }
+    var matchMs = Stopwatch.GetElapsedTime(stage).TotalMilliseconds;
+    PerformanceStages.Record("deadhead-read", "match", matchMs);
+    PerformanceStages.Record("deadhead-read", "profiles", profilesElapsed);
+    PerformanceStages.Count("deadhead-read", "loads", ids.Length);
+    PerformanceStages.Count("deadhead-read", "trucks", profiles.Count);
+
+    // This read is the largest single part of a board request that includes
+    // financials, so it says what it spent its time on rather than leaving
+    // the board's one number to be guessed at.
+    var total = historyMs + savedMs + ratesMs + matchMs;
+    if (total >= 500)
+      logger.LogInformation(
+        "DeadheadTiming TotalMs={Total} HistoryMs={History} SavedMs={Saved} "
+          + "RatesMs={Rates} MatchMs={Match} ProfilesMs={Profiles} "
+          + "Loads={Loads} Trucks={Trucks} Inside={Inside}",
+        Math.Round(total),
+        Math.Round(historyMs),
+        Math.Round(savedMs),
+        Math.Round(ratesMs),
+        Math.Round(matchMs),
+        Math.Round(profilesElapsed),
+        ids.Length,
+        profiles.Count,
+        Inside(before)
+      );
   }
 
   public Task EnsureAsync(
@@ -387,6 +437,33 @@ public sealed class DeadheadService(
       gate.Release();
     }
   }
+
+  // Totals are cumulative, so this request's share is the difference between
+  // the snapshot taken before it and the one taken after. A running total
+  // printed as though it were one request reads as a number that grows on
+  // its own.
+  private static string Inside(
+    IReadOnlyDictionary<string, PerformanceStages.StageTiming> before
+  ) =>
+    string.Join(
+      " ",
+      PerformanceStages
+        .Snapshot()
+        .Where(x =>
+          x.Key.StartsWith("deadhead-history/", StringComparison.Ordinal)
+        )
+        .Select(x =>
+        {
+          var was = before.GetValueOrDefault(x.Key);
+          return (
+            Name: x.Key["deadhead-history/".Length..],
+            Ms: x.Value.TotalMs - (was?.TotalMs ?? 0),
+            Calls: x.Value.Count - (was?.Count ?? 0)
+          );
+        })
+        .Where(x => x.Calls > 0)
+        .Select(x => $"{x.Name}={Math.Round(x.Ms)}/{x.Calls}")
+    );
 
   private static DispatchRateInputs RateInputs(RouteWorkSnapshot load) =>
     new(load.Id, load.Price, load.LoadedMiles, load.Currency);

@@ -154,7 +154,8 @@ internal sealed class PlanningTestServices : IDisposable
       new(
         DeadheadHistory,
         publicationScope ?? new PlanningPublicationScope((AppDbContext)db)
-      )
+      ),
+      NullLogger<DeadheadService>.Instance
     );
     var hos = Hos;
     EtaMemory = new();
