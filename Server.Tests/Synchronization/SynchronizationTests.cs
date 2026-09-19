@@ -440,6 +440,7 @@ public class SynchronizationTests
       telemetry,
       stream,
       new(),
+      new NoRecordedPositions(),
       Options.Create(new SynchronizationOptions())
     );
     Assert.Empty(
@@ -901,5 +902,16 @@ public class SynchronizationTests
       await Db.DisposeAsync();
       File.Delete(Path);
     }
+  }
+
+  private sealed class NoRecordedPositions : ITruckLocationStore
+  {
+    public Task<IReadOnlyList<TruckLocation>> ReadAsync(CancellationToken ct) =>
+      Task.FromResult<IReadOnlyList<TruckLocation>>([]);
+
+    public Task WriteAsync(
+      IReadOnlyList<TruckLocation> trucks,
+      CancellationToken ct
+    ) => Task.CompletedTask;
   }
 }

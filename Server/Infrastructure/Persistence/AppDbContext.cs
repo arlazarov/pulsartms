@@ -83,6 +83,8 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
     Set<MovementAllocationEvent>();
   public DbSet<DriverHosReading> DriverHosReadings =>
     Set<DriverHosReading>();
+  public DbSet<TruckLocationReading> TruckLocationReadings =>
+    Set<TruckLocationReading>();
   public DbSet<Expense> Expenses => Set<Expense>();
   public DbSet<ExpenseAttribution> ExpenseAttributions =>
     Set<ExpenseAttribution>();

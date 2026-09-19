@@ -379,7 +379,7 @@ public sealed class FleetSynchronizationOperation(
       if (feed is not null)
         lock (stateGate)
           state.Apply(feed.Updates, cursor!);
-      PublishSnapshot(updates, fleet, stream);
+      await PublishSnapshotAsync(updates, fleet, stream);
     }
     finally
     {
@@ -387,7 +387,7 @@ public sealed class FleetSynchronizationOperation(
     }
   }
 
-  private void PublishSnapshot(
+  private async Task PublishSnapshotAsync(
     IReadOnlyList<VehicleLocationPoint> updates,
     IReadOnlyList<FleetTruckInfo> fleet,
     IReadOnlyList<TruckLocation> stream
@@ -488,6 +488,30 @@ public sealed class FleetSynchronizationOperation(
       (telemetry.Current?.Trucks ?? []).Concat(stream)
     );
     telemetry.Set(new() { Trucks = trucks, Points = points });
+    await PersistPositionsAsync(trucks);
+  }
+
+  // Positions outlive this process, so an instance that does not collect
+  // telemetry can still draw the map and a restart does not start blind. The
+  // high-frequency points are not kept: they describe a trail, not a place.
+  // A failure to persist is not a failed cycle; the snapshot already holds it.
+  private async Task PersistPositionsAsync(IReadOnlyList<TruckLocation> trucks)
+  {
+    try
+    {
+      await using var scope = scopes.CreateAsyncScope();
+      await scope
+        .ServiceProvider.GetRequiredService<ITruckLocationStore>()
+        .WriteAsync(trucks, CancellationToken.None);
+    }
+    catch (Exception ex)
+    {
+      logger.LogWarning(
+        ex,
+        "Background operation {Operation} could not persist positions.",
+        "fleet-telemetry"
+      );
+    }
   }
 
   private async Task PlanningLoopAsync(CancellationToken ct)

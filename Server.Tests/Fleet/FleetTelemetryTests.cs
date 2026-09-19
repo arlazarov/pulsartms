@@ -399,6 +399,7 @@ public class FleetTelemetryTests
       telemetry,
       stream,
       new(),
+      new NoRecordedPositions(),
       Options.Create(
         new SynchronizationOptions
         {
@@ -461,5 +462,16 @@ public class FleetTelemetryTests
         }
       );
     }
+  }
+
+  private sealed class NoRecordedPositions : ITruckLocationStore
+  {
+    public Task<IReadOnlyList<TruckLocation>> ReadAsync(CancellationToken ct) =>
+      Task.FromResult<IReadOnlyList<TruckLocation>>([]);
+
+    public Task WriteAsync(
+      IReadOnlyList<TruckLocation> trucks,
+      CancellationToken ct
+    ) => Task.CompletedTask;
   }
 }

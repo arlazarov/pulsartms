@@ -128,6 +128,7 @@ public static class DependencyInjection
     services.AddScoped<INextLoadRouteReader, NextLoadRouteReader>();
     services.AddScoped<ITruckFuelPlanStore, TruckFuelPlanStore>();
     services.AddScoped<IDriverHosStore, DriverHosStore>();
+    services.AddScoped<ITruckLocationStore, TruckLocationStore>();
     services.AddScoped<IFuelExchangeRateStore, FuelExchangeRateStore>();
     services.AddScoped<ISavedRoutePlanReader, SavedRoutePlanReader>();
     services.AddScoped<IEtaForecastStore, EtaForecastStore>();

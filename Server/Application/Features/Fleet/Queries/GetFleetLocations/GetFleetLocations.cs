@@ -17,6 +17,7 @@ public class GetFleetLocationsHandler(
   FleetTelemetryCache telemetryCache,
   FleetLocationStream stream,
   ServerTelemetry serverTelemetry,
+  ITruckLocationStore positions,
   IOptions<SynchronizationOptions> syncOptions
 )
   : IRequestHandler<
@@ -29,13 +30,18 @@ public class GetFleetLocationsHandler(
     CancellationToken cancellationToken
   )
   {
+    // An instance that does not collect telemetry, or one that has just
+    // restarted, holds no snapshot and draws the last recorded positions
+    // instead of an empty map. The trail points are not recorded.
     if (syncOptions.Value.Enabled)
       return RequestResponse<FleetLocationsResponse>.Ok(
-        serverTelemetry.Current ?? new()
+        serverTelemetry.Current
+          ?? new() { Trucks = await positions.ReadAsync(cancellationToken) }
       );
     if (request.CachedOnly)
       return RequestResponse<FleetLocationsResponse>.Ok(
-        telemetryCache.Latest ?? new()
+        telemetryCache.Latest
+          ?? new() { Trucks = await positions.ReadAsync(cancellationToken) }
       );
     var response = await telemetryCache.GetAsync(LoadAsync, cancellationToken);
     return RequestResponse<FleetLocationsResponse>.Ok(response);

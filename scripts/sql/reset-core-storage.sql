@@ -85,6 +85,7 @@ DECLARE
     'SwitchParticipants',
     'SynchronizationCheckpoints',
     'TrailerCustodyIntervals',
+    'TruckLocationReadings',
     'Trailers',
     'Trips',
     'TruckFuelPlans',
@@ -127,9 +128,9 @@ BEGIN
   SELECT string_agg(format('public.%I', name), ', ' ORDER BY name)
     INTO tables_sql FROM unnest(expected) AS names(name);
   EXECUTE 'LOCK TABLE ' || tables_sql || ' IN ACCESS EXCLUSIVE MODE NOWAIT';
-  IF (SELECT count(*) FROM "__EFMigrationsHistory") <> 46
+  IF (SELECT count(*) FROM "__EFMigrationsHistory") <> 47
     OR (SELECT max("MigrationId") FROM "__EFMigrationsHistory")
-      IS DISTINCT FROM '20260919161023_StoreDriverHosReadings' THEN
+      IS DISTINCT FROM '20260919162343_StoreTruckPositions' THEN
     RAISE EXCEPTION 'Reset requires the schema this inventory was reviewed for';
   END IF;
   FOREACH table_name IN ARRAY protected LOOP
