@@ -39,7 +39,9 @@ public sealed class FleetMapComponentTests
     var route = component.Find("#fleet-map-route-details");
     Assert.False(telemetry.HasAttribute("hidden"));
     Assert.False(route.HasAttribute("hidden"));
-    Assert.Equal(route.Id, telemetry.NextElementSibling!.Id);
+    // Route first: what the dispatcher decides on. Telematics follows it in
+    // the document, not only on screen, so reading order matches.
+    Assert.Equal(telemetry.Id, route.NextElementSibling!.Id);
     Assert.Single(component.FindAll(".fleet-map-mobile-summary__toggle"));
     Assert.Empty(component.FindAll(".fleet-map-truck-info__more"));
   }
@@ -870,7 +872,7 @@ public sealed class FleetMapComponentTests
     Assert.False(summary.HasAttribute("hidden"));
     Assert.Equal(
       "fleet-map-telemetry-details",
-      summary.PreviousElementSibling!.Id
+      summary.NextElementSibling!.Id
     );
     Assert.NotNull(
       component.Find(
