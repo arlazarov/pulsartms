@@ -16,6 +16,7 @@ using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Options;
 using Application.Features.Synchronization.Interfaces;
 using Application.Interfaces;
+using Infrastructure.Diagnostics;
 using Infrastructure.Identity;
 using Infrastructure.Integrations;
 using Infrastructure.Integrations.BankOfCanada;
@@ -57,7 +58,10 @@ public static class DependencyInjection
     services.AddTransient<IStartupFilter, SessionStartupFilter>();
     services
       .AddHealthChecks()
-      .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
+      .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
+      // Tagged "live": a process whose background work has stopped is not
+      // alive in any useful sense, and the platform should replace it.
+      .AddCheck<BackgroundWorkHealthCheck>("background", tags: ["live"]);
 
     services
       .AddDataProtection()

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Diagnostics;
 using Application.Features.Dispatch.Commands.SyncDispatche;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Options;
@@ -76,10 +77,22 @@ public sealed class FleetSynchronizationOperation(
       logger.LogInformation("Server synchronization is disabled.");
       return;
     }
+    // An instance that stops synchronising is not alive in any useful sense,
+    // and nothing noticed the last time it happened. Registering here means
+    // only an instance actually told to synchronise is judged on it.
+    BackgroundHeartbeat.Expect(
+      "synchronization",
+      TimeSpan.FromSeconds(
+        Math.Max(config.CheckpointSeconds, config.RetrySeconds)
+      )
+    );
     while (!stoppingToken.IsCancellationRequested)
     {
       try
       {
+        // The outer loop turning is itself a sign of life, including for an
+        // instance that holds no lease and is only watching.
+        BackgroundHeartbeat.Beat("synchronization");
         using var scope = scopes.CreateScope();
         var store =
           scope.ServiceProvider.GetRequiredService<ISynchronizationStore>();
@@ -713,6 +726,9 @@ public sealed class FleetSynchronizationOperation(
       await scope
         .ServiceProvider.GetRequiredService<ISynchronizationStore>()
         .SaveAsync(owner, StateJson(), ct);
+      // The owning instance does its work inside RunOwnedAsync, which does
+      // not return for hours, so the outer loop cannot report for it.
+      BackgroundHeartbeat.Beat("synchronization");
     }
   }
 }

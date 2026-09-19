@@ -58,6 +58,15 @@ deploy_args=(
   # See docs/architecture/module-ownership.md.
   --max-instances 1
   --no-cpu-throttling
+  # Nothing was watching this instance. When it stopped, synchronization
+  # stopped with it and the fault surfaced seven and a half hours later as a
+  # missing fuel stop. /api/health/live now fails when a background loop this
+  # instance was told to run has gone quiet, and this is what asks it.
+  #
+  # Deliberately slow to act: four minutes before the first question, then
+  # five failures a minute apart. The check itself already allows ten cycles
+  # of silence. A restart loop would be worse than the stall it replaces.
+  --liveness-probe=httpGet.path=/api/health/live,initialDelaySeconds=240,periodSeconds=60,timeoutSeconds=10,failureThreshold=5
 )
 if [[ -n "$PULSARTMS_DEPLOY_ENV_FILE" ]]; then
   deploy_args+=(--env-vars-file "$PULSARTMS_DEPLOY_ENV_FILE")
