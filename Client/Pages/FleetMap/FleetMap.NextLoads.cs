@@ -14,6 +14,17 @@ public partial class FleetMap
   private int _nextLoadsVersion;
   private string? _nextLoadsMessage;
   private string? _nextLoadsRevision;
+
+  // The truck's position is polled every ten seconds and upcoming loads used
+  // to be asked about on the same beat. They change when a dispatcher changes
+  // them, and answering "nothing changed" costs the server about a dozen
+  // database round trips - most of a second, six times a minute, for every
+  // map left open on a truck. Anything this user does asks at once; only the
+  // idle beat waits. A road or an empty drive still being prepared keeps the
+  // fast beat, so it appears as soon as it is ready.
+  internal static readonly TimeSpan NextLoadsPollInterval =
+    TimeSpan.FromSeconds(30);
+  private DateTimeOffset _nextLoadsCheckedAt;
   private (
     Guid Truck,
     Guid? Dispatch,
@@ -57,7 +68,7 @@ public partial class FleetMap
     await RefreshNextLoadsAsync();
   }
 
-  private async Task RefreshNextLoadsAsync()
+  private async Task RefreshNextLoadsAsync(bool polled = false)
   {
     if (
       _map is null
@@ -70,6 +81,16 @@ public partial class FleetMap
     var executionLegId = SelectedExecutionLegId;
     var assignmentRevision = SelectedAssignmentRevision;
     var identity = (truckId, currentId, executionLegId, assignmentRevision);
+    if (
+      polled
+      && _nextLoadsIdentity == identity
+      && _nextLoadsRevision is not null
+      && _nextLoadRoutes.All(route =>
+        route.Status != "pending" && route.Deadhead is not null
+      )
+      && Clock.GetUtcNow() - _nextLoadsCheckedAt < NextLoadsPollInterval
+    )
+      return;
     if (
       _nextLoadsRequest is { IsCancellationRequested: false }
       && _nextLoadsIdentity == identity
@@ -141,6 +162,7 @@ public partial class FleetMap
         return;
       }
       _nextLoadsMessage = null;
+      _nextLoadsCheckedAt = Clock.GetUtcNow();
       if (response.Response.Unchanged)
       {
         if (

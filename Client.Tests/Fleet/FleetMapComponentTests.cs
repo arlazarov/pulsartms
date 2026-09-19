@@ -2649,6 +2649,21 @@ public sealed class FleetMapComponentTests
     await Toggle(component, "Next loads")
       .ChangeAsync(new ChangeEventArgs { Value = true });
     Assert.Single(fixture.Js.Calls, x => x.Name == "setNextLoadsBytes");
+    // Two position polls pass without asking about upcoming loads again.
+    for (var beat = 0; beat < 2; beat++)
+    {
+      var polls = fixture.Js.Calls.Count(x => x.Name == "setTrucks");
+      await component.InvokeAsync(
+        () => fixture.Clock.Advance(TimeSpan.FromSeconds(10))
+      );
+      component.WaitForAssertion(
+        () =>
+          Assert.True(
+            fixture.Js.Calls.Count(x => x.Name == "setTrucks") > polls
+          )
+      );
+    }
+    Assert.Equal(1, fixture.NextCalls);
     await component.InvokeAsync(
       () => fixture.Clock.Advance(TimeSpan.FromSeconds(10))
     );
@@ -2659,6 +2674,7 @@ public sealed class FleetMapComponentTests
           component.Markup
         )
     );
+    // A failed check is retried on the very next poll, not after the pause.
     await component.InvokeAsync(
       () => fixture.Clock.Advance(TimeSpan.FromSeconds(10))
     );
@@ -4341,10 +4357,11 @@ public sealed class FleetMapComponentTests
       },
     };
     fixture.SetPlanningResult(fixture.TruckA, pending);
+    // One position poll. Upcoming loads were checked moments ago, so this
+    // beat refreshes the route alone.
     await component.InvokeAsync(
       () => fixture.Clock.Advance(TimeSpan.FromSeconds(10))
     );
-    (await fixture.ReadNextAsync()).ReplyUnchanged("future");
     component.WaitForAssertion(() =>
     {
       Assert.True(
@@ -4428,10 +4445,11 @@ public sealed class FleetMapComponentTests
         State = saved.State! with { Eta = fresh },
       }
     );
+    // One position poll. Upcoming loads were checked moments ago, so this
+    // beat refreshes the route alone.
     await component.InvokeAsync(
       () => fixture.Clock.Advance(TimeSpan.FromSeconds(10))
     );
-    (await fixture.ReadNextAsync()).ReplyUnchanged("future");
     component.WaitForAssertion(() =>
     {
       Assert.Equal(

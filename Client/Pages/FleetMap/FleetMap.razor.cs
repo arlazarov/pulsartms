@@ -324,7 +324,7 @@ public partial class FleetMap : IAsyncDisposable
         _trucks = result.Response.Trucks;
         _truckPoints = result.Response.Points;
         await UpdateTruckSearchAsync();
-        var nextLoadsTask = RefreshNextLoadsAsync();
+        var nextLoadsTask = RefreshNextLoadsAsync(polled: true);
         await Task.WhenAll(nextLoadsTask, LoadRouteAsync(false));
         await FocusTruckAsync();
         if (
