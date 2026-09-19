@@ -2,6 +2,7 @@ using System.Text.Json;
 using Application.Caching;
 using Application.Diagnostics;
 using Application.Features.Eta.Interfaces;
+using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Queries.GetFuelStations;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Exceptions;

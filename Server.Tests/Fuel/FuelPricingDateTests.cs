@@ -1,3 +1,4 @@
+using Application.Features.Fuel.Models;
 using Application.Features.Routing.Algorithms;
 
 namespace Server.Tests.Fuel;

@@ -1,4 +1,4 @@
-namespace Application.Features.Routing.Algorithms;
+namespace Application.Features.Fuel.Models;
 
 public static class FuelPricingDate
 {

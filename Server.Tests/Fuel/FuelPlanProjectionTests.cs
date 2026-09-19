@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Application.Features.Dispatch.Models;
+using Application.Features.Fuel.Models;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.FuelPlanning;

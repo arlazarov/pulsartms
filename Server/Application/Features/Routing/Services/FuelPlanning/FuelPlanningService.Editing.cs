@@ -1,4 +1,5 @@
 using Application.Diagnostics;
+using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Queries.GetFuelStations;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Exceptions;

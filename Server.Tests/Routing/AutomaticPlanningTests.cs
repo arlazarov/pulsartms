@@ -25,6 +25,7 @@ using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Routing;
 
+using Application.Features.Fuel.Models;
 using Dispatch = global::Domain.Entities.Dispatch.Dispatch;
 
 [Trait("Category", "Routing")]

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Application.Features.Dispatch.Queries;
 using Application.Features.Execution.Models;
+using Application.Features.Fuel.Models;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Models;
