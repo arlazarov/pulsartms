@@ -357,6 +357,71 @@ public class PlanningDisplayCacheTests
     Assert.Empty(previous.Stops);
   }
 
+  [Fact]
+  public async Task RefreshRevalidatesWithTheStoredTagAndReusesTheCachedPlanOnNotModified()
+  {
+    var clock = new FakeTimeProvider(new DateTimeOffset(DateTime.UnixEpoch));
+    var result = ForecastResult(DateTime.UnixEpoch); result = result with { State = result.State! with { Eta = null } };
+    using var handler = new TaggedHandler(result, "W/\"digest-1\"");
+    using var client = new HttpClient(handler) { BaseAddress = new("https://local.test/") };
+    var cache = new PlanningDisplayCache(new ApiService(client), clock);
+    var first = await cache.RefreshAsync("planning", default);
+    Assert.True(first.Success);
+    Assert.Equal(HttpMethod.Get, handler.Requests[0].Method);
+    Assert.Null(handler.Requests[0].IfNoneMatch);
+    Assert.Equal("W/\"digest-1\"", cache.Tag("planning"));
+    clock.Advance(TimeSpan.FromMinutes(4));
+    var second = await cache.RefreshAsync("planning", default);
+    Assert.Equal("W/\"digest-1\"", handler.Requests[1].IfNoneMatch);
+    Assert.True(second.NotModified);
+    Assert.Same(cache.Get("planning"), second.Response);
+    Assert.Equal(HttpStatusCode.NotModified, second.HttpStatusCode);
+    // A confirmed entry stays valid for another full lifetime.
+    clock.Advance(TimeSpan.FromMinutes(4));
+    Assert.NotNull(cache.Get("planning"));
+    Assert.Equal(2, handler.Requests.Count);
+  }
+
+  [Fact]
+  public async Task NotModifiedWithoutACachedCopyReadsTheFullPlanAgain()
+  {
+    var clock = new FakeTimeProvider(new DateTimeOffset(DateTime.UnixEpoch));
+    var result = ForecastResult(DateTime.UnixEpoch); result = result with { State = result.State! with { Eta = null } };
+    using var handler = new TaggedHandler(result, "W/\"digest-1\"");
+    using var client = new HttpClient(handler) { BaseAddress = new("https://local.test/") };
+    var cache = new PlanningDisplayCache(new ApiService(client), clock);
+    await cache.RefreshAsync("planning", default);
+    handler.Hold = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    var refresh = cache.RefreshAsync("planning", default);
+    await handler.Started.Task;
+    clock.Advance(TimeSpan.FromMinutes(6));
+    handler.Hold.SetResult();
+    var second = await refresh;
+    Assert.False(second.NotModified);
+    Assert.Equal(3, handler.Requests.Count);
+    Assert.Null(handler.Requests[2].IfNoneMatch);
+    Assert.Equal("/planning", handler.Requests[2].Path);
+  }
+
+  private sealed class TaggedHandler(AutomaticPlanningResult result, string etag) : HttpMessageHandler
+  {
+    public readonly List<(HttpMethod Method, string Path, string? IfNoneMatch)> Requests = [];
+    public TaskCompletionSource? Hold;
+    public TaskCompletionSource Started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+      var sent = request.Headers.TryGetValues("If-None-Match", out var values) ? string.Join(",", values) : null;
+      Requests.Add((request.Method, request.RequestUri!.AbsolutePath, sent));
+      Started.TrySetResult();
+      if (Hold is { } hold) await hold.Task;
+      if (sent == etag) return new(HttpStatusCode.NotModified);
+      var response = new HttpResponseMessage(HttpStatusCode.OK)
+        { Content = JsonContent.Create(new RequestResponseDTO<AutomaticPlanningResult> { Success = true, Response = result }) };
+      response.Headers.ETag = System.Net.Http.Headers.EntityTagHeaderValue.Parse(etag);
+      return response;
+    }
+  }
+
   private sealed class Handler(AutomaticPlanningResult result) : HttpMessageHandler
   {
     public string Url = "";

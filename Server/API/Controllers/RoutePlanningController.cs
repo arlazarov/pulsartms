@@ -21,15 +21,18 @@ public class RoutePlanningController : BaseController
   public Task<IActionResult> TruckPreview(Guid truckId, CancellationToken cancellationToken) =>
     HandleRequest(new GetTruckRoutePreviewQuery(truckId), cancellationToken);
 
+  // POST remains for browsers still running a Client that polled planning with it.
+  [HttpGet("automatic")]
   [HttpPost("automatic")]
   public Task<IActionResult> Automatic(Guid dispatchId, CancellationToken cancellationToken,
     [FromQuery] Guid? knownPlanId = null, [FromQuery] int? knownVersion = null) =>
-    HandleRequest(new GetDispatchPlanningQuery(dispatchId, knownPlanId, knownVersion), cancellationToken);
+    HandleDigestedRequest(new GetDispatchPlanningQuery(dispatchId, knownPlanId, knownVersion), cancellationToken);
 
+  [HttpGet("/api/fleet/trucks/{truckId:guid}/planning")]
   [HttpPost("/api/fleet/trucks/{truckId:guid}/planning")]
   public Task<IActionResult> Truck(Guid truckId, CancellationToken cancellationToken,
     [FromQuery] Guid? knownPlanId = null, [FromQuery] int? knownVersion = null) =>
-    HandleRequest(new GetTruckPlanningQuery(truckId, knownPlanId, knownVersion), cancellationToken);
+    HandleDigestedRequest(new GetTruckPlanningQuery(truckId, knownPlanId, knownVersion), cancellationToken);
 
   [HttpGet]
   public Task<IActionResult> Get(Guid dispatchId, CancellationToken cancellationToken) =>
