@@ -5,6 +5,8 @@ export const sceneMetrics = Object.freeze({
   numberSize: 15,
   truckLabelSize: 13,
   truckLabelPadding: [9, 4],
+  truckClusterPadding: [12, 10],
+  truckClusterBadge: 12,
   stopRadius: 3,
   stopBadgeOffset: 0,
   stopBadgeDiameter: 34,

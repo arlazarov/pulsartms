@@ -162,11 +162,14 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   map.getZoom = () => 5;
   listeners.get('zoom_changed')();
   flush();
-  for (const id of ['truck-clusters', 'truck-cluster-anchors']) {
+  {
     now += 200;
     assert.equal(scene.consumeTruckClick(), false);
     clusterEvents.length = 0;
-    const layer = layers()[id];
+    const layer = layers()['truck-clusters'];
+    // On the cluster's own point: no offset, so no leader line to follow.
+    assert.equal(layer.props.getText(layer.props.data[0]), '2 trucks');
+    assert.equal(layer.props.getPixelOffset, undefined);
     layer.props.onClick({ object: layer.props.data[0] });
     assert.equal(clusterEvents[0], 'stop-follow');
     assert.ok(Math.abs(clusterEvents[1].center.lat - 35) < 1e-9);
@@ -175,7 +178,7 @@ test('scene reuses static layers across motion, invalidates only changed stops a
     assert.equal(
       scene.consumeTruckClick(),
       true,
-      'group labels and anchors must not dismiss the inspector',
+      'the group badge must not dismiss the inspector',
     );
   }
   neighbor.setVisible(false);
@@ -189,11 +192,13 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   assert.equal(initial['truck-numbers'].props.getSize, 13);
   assert.deepEqual(initial['truck-numbers'].props.backgroundPadding, [9, 4]);
   assert.equal(initial['truck-icons'].props.getSize({ unit: '11006' }), 28);
+  // The truck stands on the stop here, so its unit steps aside instead of
+  // covering the stop's badge.
   assert.deepEqual(
     initial['truck-numbers'].props.getPixelOffset(
       initial['truck-numbers'].props.data[0],
     ),
-    [0, -30],
+    [-60, 0],
   );
   assert.deepEqual(
     initial['route-stop-distances'].props.getPixelOffset(

@@ -1,5 +1,6 @@
 import { truckIcon } from './truckAppearance.js';
 import { markerAnchor } from './markerAnchor.js';
+import { clusterText } from './truckLabelLayout.js';
 import { memoizeLast } from './layerCache.js';
 import { routeLayers } from './routeAppearance.js';
 import { stopAppearance, stopMarkerIcon } from './stopAppearance.js';
@@ -26,7 +27,6 @@ export function createSceneLayers({
   const stopGroup = memoizeLast();
   const vehicleLayers = memoizeLast();
   const clusterLabels = memoizeLast();
-  const clusterAnchors = memoizeLast();
   const recommendationLayers = memoizeLast();
   const fuelVisitLabels = memoizeLast();
   const fuelEditingLayers = memoizeLast();
@@ -254,6 +254,43 @@ export function createSceneLayers({
         },
       ),
     );
+    // On the cluster's own point, and beneath the stops.
+    //
+    // It stays put: offsetting it to escape what it covered only trailed a
+    // leader line halfway across a state as the map zoomed out. What it used
+    // to cover was a stop of the route being read, so the stops are drawn
+    // over it and truck labels step around it instead.
+    truckLayers.push(
+      clusterLabels(
+        [clusters, selectCluster, setHover, fonts],
+        () =>
+          new TextLayer({
+            id: 'truck-clusters',
+            data: clusters,
+            characterSet: 'auto',
+            getPosition: d => d.position,
+            getText: clusterText,
+            getSize: metrics.truckLabelSize,
+            sizeUnits: 'pixels',
+            getColor: [255, 255, 255],
+            background: true,
+            getBackgroundColor: [30, 41, 59],
+            backgroundPadding: metrics.truckClusterPadding,
+            backgroundBorderRadius: metrics.truckClusterBadge,
+            getBorderColor: [255, 255, 255],
+            getBorderWidth: 2,
+            fontFamily: 'Arial, sans-serif',
+            fontSettings: fonts.truck,
+            _subLayerProps: labelSubLayers,
+            fontWeight: 'bold',
+            billboard: true,
+            pickable: true,
+            onHover: setHover,
+            onClick: selectCluster,
+            parameters: { depthCompare: 'always' },
+          }),
+      ),
+    );
     // Keep each geographic anchor and badge together when selection changes priority.
     truckLayers.push(
       ...stopGroup([stopData, setHover, selectStop, fonts], () => {
@@ -363,53 +400,6 @@ export function createSceneLayers({
       () => stopCardLayers(TextLayer, distanceData, stopLabelStyle, fonts),
     );
     truckLayers.push(
-      clusterAnchors(
-        [clusters, selectCluster, setHover],
-        () =>
-          new IconLayer({
-            id: 'truck-cluster-anchors',
-            data: clusters,
-            getPosition: d => d.position,
-            getIcon: d => markerAnchor(d.pixelOffset),
-            getSize: d => markerAnchor(d.pixelOffset).size,
-            sizeUnits: 'pixels',
-            billboard: true,
-            pickable: true,
-            onHover: setHover,
-            onClick: selectCluster,
-            parameters: { depthCompare: 'always' },
-          }),
-      ),
-      clusterLabels(
-        [clusters, selectCluster, setHover, fonts],
-        () =>
-          new TextLayer({
-            id: 'truck-clusters',
-            data: clusters,
-            characterSet: 'auto',
-            getPosition: d => d.position,
-            getText: d => `${d.count} trucks`,
-            getPixelOffset: d => d.pixelOffset ?? [0, 0],
-            getSize: metrics.truckLabelSize,
-            sizeUnits: 'pixels',
-            getColor: [255, 255, 255],
-            background: true,
-            getBackgroundColor: [30, 41, 59],
-            backgroundPadding: [12, 10],
-            backgroundBorderRadius: 12,
-            getBorderColor: [255, 255, 255],
-            getBorderWidth: 2,
-            fontFamily: 'Arial, sans-serif',
-            fontSettings: fonts.truck,
-            _subLayerProps: labelSubLayers,
-            fontWeight: 'bold',
-            billboard: true,
-            pickable: true,
-            onHover: setHover,
-            onClick: selectCluster,
-            parameters: { depthCompare: 'always' },
-          }),
-      ),
       ...vehicleLayers(
         [vehicles, hoveredTruck, fonts, hasSelectedTruck],
         () => [

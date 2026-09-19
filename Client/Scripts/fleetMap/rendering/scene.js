@@ -4,7 +4,7 @@ import { snapshotStops } from './stopData.js';
 import { pickNearbyStation } from './stationTouch.js';
 import { readStopLabelStyle } from './stopLabelStyle.js';
 import { clusterTrucks, clusterCamera } from './truckClusters.js';
-import { layoutTruckLabels } from './truckLabelLayout.js';
+import { layoutMapLabels } from './truckLabelLayout.js';
 import { createMapRepaint } from '../provider/mapRepaint.js';
 
 const hideUnsynchronizedLayers = () => false;
@@ -150,6 +150,7 @@ export function createScene(
       stationData = [...stations.values()];
       stationDirty = false;
     }
+    const previousStops = stopData;
     if (stopsDirty) {
       ({ stopData, distanceData } = snapshotStops(
         routeEditing
@@ -160,15 +161,24 @@ export function createScene(
       ));
       stopsDirty = false;
     }
-    if (vehiclesDirty) {
-      vehicles = [...trucks].filter(t => t.visible && t.position);
+    // Labels step aside from stops, so stops that moved move labels: a route
+    // that arrives after the trucks did used to leave them where they were.
+    // Row identity is the test, not the dirty flag - a distance label that
+    // changed must not rebuild the truck layers.
+    const stopsMoved =
+      stopData.length !== previousStops.length ||
+      stopData.some((row, index) => row !== previousStops[index]);
+    if (vehiclesDirty || stopsMoved) {
+      if (vehiclesDirty)
+        vehicles = [...trucks].filter(t => t.visible && t.position);
       const grouped = clusterTrucks(vehicles, Math.floor(clusterZoom));
-      grouped.vehicles = layoutTruckLabels(
-        grouped.vehicles,
-        clusterZoom,
-        vehicleDisplay.vehicles,
-      );
-      vehicleDisplay = grouped;
+      vehicleDisplay = layoutMapLabels({
+        vehicles: grouped.vehicles,
+        clusters: grouped.clusters,
+        stops: stopData,
+        zoom: clusterZoom,
+        previous: vehicleDisplay.vehicles,
+      });
       vehiclesDirty = false;
     }
     truckOverlay.setProps({
