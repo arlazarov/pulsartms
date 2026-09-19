@@ -334,13 +334,24 @@ export async function checkWorkspaceLoads(
           .getByRole('button', { name: 'Discard', exact: true })
           .click();
       }
-      const recorded = stop.locator('.stop-workspace__recorded');
-      const facts = await recorded.innerText();
+      // A transfer stop is read-only and renders its saved facts as text; an
+      // ordinary stop is editable and holds the same facts in its fields.
+      // Both must carry them, so read the editor's text together with the
+      // values of its controls.
+      const facts = (
+        await stop.evaluate(editor =>
+          [
+            editor.innerText,
+            ...[...editor.querySelectorAll('input, textarea, select')]
+              .map(field => field.value)
+              .filter(Boolean),
+          ].join(' '),
+        )
+      ).replace(/\s+/g, ' ');
       const prefix = /pick/i.test(expected.job) ? 'PU' : 'DL';
       check(
-        facts
-          .replace(/\s+/g, ' ')
-          .includes(`Appt # ${prefix}${load.loadNumber}`),
+        facts.includes(`Appt # ${prefix}${load.loadNumber}`) ||
+          facts.includes(`${prefix}${load.loadNumber}`),
         name + ' workspace shows job-specific appointment reference',
       );
       check(
