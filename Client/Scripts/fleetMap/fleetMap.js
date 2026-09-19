@@ -1,3 +1,4 @@
+import { releaseAll } from './lifecycle/release.js';
 import { createRouteLayer } from './routes/routeLayer.js';
 import { orderedStops } from './routes/pendingStops.js';
 import { loadGoogleMaps } from './provider/googleMapsLoader.js';
@@ -134,7 +135,7 @@ export async function createFleetMap(element, apiKey, callbacks) {
   function dispose() {
     if (disposed) return;
     disposed = true;
-    for (const release of cleanup.reverse()) release();
+    releaseAll(cleanup.reverse());
     cleanup.length = 0;
   }
   try {

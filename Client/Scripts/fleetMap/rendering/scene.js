@@ -1,3 +1,4 @@
+import { releaseAll } from '../lifecycle/release.js';
 import { createSceneLayers } from './sceneLayers.js';
 import { snapshotStops } from './stopData.js';
 import { pickNearbyStation } from './stationTouch.js';
@@ -497,26 +498,35 @@ export function createScene(
     dispose() {
       if (disposed) return;
       disposed = true;
-      if (frame !== null) cancelAnimationFrame(frame);
-      frame = null;
-      stationSelect = () => {};
-      clusterSelect = () => {};
-      hovered = null;
-      hoveredTruck = null;
-      stationData = [];
-      stopData = [];
-      distanceData = [];
-      vehicles = [];
-      modeListener.remove();
-      clusterZoomListener.remove();
-      themeObserver?.disconnect();
-      viewport?.removeEventListener('resize', densityChanged);
-      stops.clear();
-      repaint.dispose();
-      truckOverlay.finalize();
-      stations.clear();
-      trucks.clear();
-      lines.clear();
+      // The overlay holds a WebGL context and the observers hold this whole
+      // closure, so every one of these has to run even if an earlier one
+      // throws.
+      releaseAll([
+        () => {
+          if (frame !== null) cancelAnimationFrame(frame);
+          frame = null;
+        },
+        () => {
+          stationSelect = () => {};
+          clusterSelect = () => {};
+          hovered = null;
+          hoveredTruck = null;
+          stationData = [];
+          stopData = [];
+          distanceData = [];
+          vehicles = [];
+        },
+        () => modeListener.remove(),
+        () => clusterZoomListener.remove(),
+        () => themeObserver?.disconnect(),
+        () => viewport?.removeEventListener('resize', densityChanged),
+        () => stops.clear(),
+        () => repaint.dispose(),
+        () => truckOverlay.finalize(),
+        () => stations.clear(),
+        () => trucks.clear(),
+        () => lines.clear(),
+      ]);
     },
   };
 }

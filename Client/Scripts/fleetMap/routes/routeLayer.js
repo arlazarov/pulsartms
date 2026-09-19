@@ -1,3 +1,4 @@
+import { releaseAll } from '../lifecycle/release.js';
 import {
   fullRouteDetailZoom,
   routeDetailIndices,
@@ -425,15 +426,20 @@ export function createRouteLayer(
 
   function dispose() {
     if (disposed) return;
-    idleListener.remove();
-    dragListener.remove();
-    setPlan(null, false);
+    // Set before anything is torn down, not after clearing the plan: a throw
+    // inside setPlan used to leave this re-entrant and the polylines
+    // attached.
     disposed = true;
-    serverProgress = null;
-    popup.dispose();
-    remaining.setMap(null);
-    future.setMap(null);
-    tail.setMap(null);
+    releaseAll([
+      () => idleListener.remove(),
+      () => dragListener.remove(),
+      () => setPlan(null, false),
+      () => (serverProgress = null),
+      () => popup.dispose(),
+      () => remaining.setMap(null),
+      () => future.setMap(null),
+      () => tail.setMap(null),
+    ]);
   }
 
   return {
