@@ -238,6 +238,87 @@ public sealed class ExecutionWorkReaderTests
     return truck;
   }
 
+  // The board's current-or-upcoming rule decides which loads a dispatcher
+  // sees. These pin each branch, because the selection is applied in memory
+  // over loaded rows and any attempt to push it into SQL must keep every
+  // answer identical.
+  [Theory]
+  [InlineData(-3, false, false)]
+  [InlineData(-3, true, true)]
+  [InlineData(0, false, true)]
+  [InlineData(3, false, true)]
+  public async Task AnUnstartedLoadIsSelectedByItsDeliveryDate(
+    int days,
+    bool started,
+    bool selected
+  )
+  {
+    await using var f = await StopCompletionFixture.CreateAsync();
+    var truck = await AssignAsync(f);
+    // A leg-based load ignores dates, so the date branch needs a source load.
+    var load = ScheduledLoad(truck, 7, Today.AddDays(days));
+    if (started)
+      load.Status = "in_transit";
+    f.Db.Dispatches.Add(load);
+    await f.Db.SaveChangesAsync();
+
+    var work = await ReadCurrentAsync(f, truck);
+
+    Assert.Equal(
+      selected,
+      work.SelectMany(x => x.Loads).Any(x => x.Id == load.Id)
+    );
+  }
+
+  [Fact]
+  public async Task AStopActualStartsAnOverdueLoadAndKeepsItSelected()
+  {
+    await using var f = await StopCompletionFixture.CreateAsync();
+    var truck = await AssignAsync(f);
+    var load = ScheduledLoad(truck, 8, Today.AddDays(-3));
+    f.Db.Dispatches.Add(load);
+    await f.Db.SaveChangesAsync();
+    Assert.DoesNotContain(
+      (await ReadCurrentAsync(f, truck)).SelectMany(x => x.Loads),
+      x => x.Id == load.Id
+    );
+
+    load.Stops[0].PickedUpAt = Today.ToDateTime(TimeOnly.MinValue);
+    await f.Db.SaveChangesAsync();
+
+    Assert.Contains(
+      (await ReadCurrentAsync(f, truck)).SelectMany(x => x.Loads),
+      x => x.Id == load.Id
+    );
+  }
+
+  [Fact]
+  public async Task AnExplicitlyIncompleteDeliveryKeepsAStartedLoadSelected()
+  {
+    await using var f = await StopCompletionFixture.CreateAsync();
+    var truck = await AssignAsync(f);
+    f.Load.Status = "in_transit";
+    f.Load.Stops[^1].DeliveredAt = Today.ToDateTime(TimeOnly.MinValue);
+    f.Load.Stops[^1].CompletionOverride = false;
+    await f.Db.SaveChangesAsync();
+
+    var work = await ReadAsync(f, truck);
+
+    Assert.Equal(f.Load.Id, Assert.Single(work.Loads).Id);
+  }
+
+  [Fact]
+  public async Task AnOverriddenDeliveryCompletesALoadWithoutAnyActual()
+  {
+    await using var f = await StopCompletionFixture.CreateAsync();
+    var truck = await AssignAsync(f);
+    f.Load.Status = "in_transit";
+    f.Load.Stops[^1].CompletionOverride = true;
+    await f.Db.SaveChangesAsync();
+
+    Assert.Empty((await ReadAsync(f, truck)).Loads);
+  }
+
   private static Load ScheduledLoad(Truck truck, int number, DateOnly day) =>
     new()
     {
@@ -265,6 +346,20 @@ public sealed class ExecutionWorkReaderTests
         },
       ],
     };
+
+  // The board asks without overdue work; ReadAsync keeps it.
+  private static async Task<IReadOnlyList<TruckWorkSelection>> ReadCurrentAsync(
+    StopCompletionFixture f,
+    Truck truck
+  ) =>
+    await ExecutionWorkReader.ReadAsync(
+      f.Db,
+      Today,
+      truck.Id,
+      false,
+      false,
+      default
+    );
 
   private static async Task<TruckWorkSelection> ReadAsync(
     StopCompletionFixture f,

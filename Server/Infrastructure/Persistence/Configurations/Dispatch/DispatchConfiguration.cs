@@ -20,6 +20,9 @@ public class DispatchConfiguration : IEntityTypeConfiguration<DispatchEntity>
     builder.Property(x => x.Price).HasPrecision(18, 2);
     builder.Property(x => x.Currency).HasMaxLength(10);
     builder.HasIndex(x => x.LoadNumber).IsUnique();
+    // The board narrows unfinished work by status and delivery date on every
+    // read, and had only the load-number index to work with.
+    builder.HasIndex(x => new { x.Status, x.DeliveryDate });
     builder.Property(x => x.PlanningAssignmentRevision).IsConcurrencyToken();
     builder.Property(x => x.RouteChoiceRevision).IsConcurrencyToken();
     builder

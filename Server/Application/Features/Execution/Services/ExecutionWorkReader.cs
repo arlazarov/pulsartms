@@ -79,6 +79,26 @@ public static class ExecutionWorkReader
         || x.Status == "in_transit"
         || includePlanned && (x.Status == "planned" || x.Status == "unassigned")
       );
+    // IsCurrentOrUpcoming stays the authority: it reads completion state that
+    // is derived per read, not stored, so it cannot be expressed here. What
+    // can be is a superset of what it keeps, which stops the reader loading
+    // every unfinished load and its stops only to discard most of them. A
+    // load excluded below is one with no execution leg, no review, not in
+    // transit, no stop actual and a delivery date already past, which that
+    // rule also excludes.
+    if (!includeOverdue)
+      query = query.Where(x =>
+        dbContext.DispatchSourceLinks.Any(link =>
+          link.DispatchId == x.Id && link.ExecutionReviewReason != null
+        )
+        || dbContext.LoadExecutionLegs.Any(link => link.DispatchId == x.Id)
+        || x.Status == "in_transit"
+        || x.DeliveryDate == null
+        || x.DeliveryDate >= date
+        || x.Stops.Any(s =>
+          s.PickedUpAt != null || s.ManualCompletedAt != null
+        )
+      );
     if (requested is not null)
     {
       var knownIds = fleet.Select(x => x.Id).ToArray();
