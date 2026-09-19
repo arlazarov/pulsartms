@@ -1,95 +1,338 @@
-using Application.Features.Routing.Services.Routes;
-using Application.Features.Routing.Services.Deadheads;
+using System.Security.Cryptography;
+using System.Text.Json;
+using Application.Features.Execution.Queries;
+using Application.Features.Routing.Algorithms;
+using Application.Features.Routing.Background;
+using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services;
-using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Background;
+using Application.Features.Routing.Services.Deadheads;
+using Application.Features.Routing.Services.Routes;
 using Application.Models;
-using System.Text.Json;
-using System.Security.Cryptography;
 
 namespace Application.Features.Routing.Queries;
 
-public sealed record GetNextLoadRoutesQuery(Guid TruckId, Guid? CurrentDispatchId, string? Revision = null)
-  : IRequest<RequestResponse<NextLoadRoutesResponse>>;
+public sealed record GetNextLoadRoutesQuery(
+  Guid TruckId,
+  Guid? CurrentDispatchId,
+  string? Revision = null,
+  Guid? CurrentExecutionLegId = null
+) : IRequest<RequestResponse<NextLoadRoutesResponse>>;
 
-public sealed class GetNextLoadRoutesHandler(INextLoadRouteReader reader, IDeadheadHistoryReader historyReader,
-  RoutePlanningService planning, RoutePreparationQueue preparation)
-  : IRequestHandler<GetNextLoadRoutesQuery, RequestResponse<NextLoadRoutesResponse>>
+public sealed class GetNextLoadRoutesHandler(
+  INextLoadRouteReader reader,
+  DeadheadHistoryService historyReader,
+  RoutePlanningService planning,
+  SourceRoadDemand preparation,
+  ISender sender
+)
+  : IRequestHandler<
+    GetNextLoadRoutesQuery,
+    RequestResponse<NextLoadRoutesResponse>
+  >
 {
-  public async Task<RequestResponse<NextLoadRoutesResponse>> Handle(GetNextLoadRoutesQuery request, CancellationToken ct)
+  public async Task<RequestResponse<NextLoadRoutesResponse>> Handle(
+    GetNextLoadRoutesQuery request,
+    CancellationToken ct
+  )
   {
-    var loads = await reader.ReadLoadsAsync(request.TruckId, ct);
-    var upcoming = Algorithms.NextLoadSelection.Select(loads, request.CurrentDispatchId);
-    var ids = upcoming.Select(x => x.Id).ToList();
-    if (ids.Count == 0) return Respond([]);
+    var imported = await reader.ReadLoadsAsync(request.TruckId, ct);
+    var execution = await sender.Send(
+      new GetTruckExecutionLoadsQuery(
+        request.TruckId,
+        imported.Select(x => x.Id).ToArray()
+      ),
+      ct
+    );
+    var loads = imported
+      .Where(x => !execution.OwnedDispatchIds.Contains(x.Id))
+      .Select(x => RouteWorkProjection.Capture(x.TruckItinerary()))
+      .Concat(execution.Loads.Select(x => x.Work))
+      .ToArray();
+    if (
+      request.CurrentExecutionLegId.HasValue
+      && !loads.Any(x =>
+        x.Id == request.CurrentDispatchId
+        && x.ExecutionLegId == request.CurrentExecutionLegId
+      )
+    )
+      return RequestResponse<NextLoadRoutesResponse>.Fail(
+        "The current truck assignment changed. Refresh its route.",
+        409
+      );
+    var current = loads.FirstOrDefault(x =>
+      x.Id == request.CurrentDispatchId
+      && x.ExecutionLegId == request.CurrentExecutionLegId
+      && x.ExecutionLegId.HasValue
+      && PlanningWorkPolicy.CanUseGps(x)
+      && x.TruckId == request.TruckId
+    );
+    var end = current?.Stops.OrderBy(x => x.Sequence).LastOrDefault();
+    var action = end?.ManualAction ?? end?.Job;
+    if (
+      current is not null
+      && (
+        string.Equals(action, "Drop Off", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(action, "Delivery", StringComparison.OrdinalIgnoreCase)
+      )
+    )
+      loads = loads
+        .Where(x =>
+          x.Id != current.Id
+          || x.ExecutionStatus != "planned"
+          || x.TruckId != current.TruckId
+        )
+        .ToArray();
+    var upcoming = NextLoadSelection.Select(
+      loads,
+      request.CurrentDispatchId,
+      request.CurrentExecutionLegId
+    );
+    var ids = upcoming
+      .Where(x => !x.ExecutionLegId.HasValue)
+      .Select(x => x.Id)
+      .ToArray();
+    var legs = upcoming
+      .Where(x => x.ExecutionLegId.HasValue)
+      .Select(x => x.ExecutionLegId!.Value)
+      .ToArray();
+    if (upcoming.Count == 0)
+      return Respond([]);
     var profile = await planning.ProfileAsync(request.TruckId, ct);
-    var history = await historyReader.ReadLoadedAsync(upcoming, ct);
-    var signatures = upcoming.ToDictionary(x => x.Id, x => BaseRouteService.Signature(x, profile));
-    var connections = upcoming.ToDictionary(x => x.Id, x => DeadheadConnection.Find(history.GetValueOrDefault(x.Id)));
-    string GeometryRevision(IEnumerable<NextLoadRouteVersion> versions) => Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new {
-      Policy = 3, request.TruckId, request.CurrentDispatchId, Versions = versions.OrderBy(x => x.DispatchId),
-      Loads = upcoming.Select(load => new { load.Id, load.LoadNumber, load.Status,
-        Base = signatures[load.Id], Connection = connections[load.Id]?.Signature(profile),
-        Stops = load.Stops.OrderBy(s => s.Sequence).Select(s => new { s.Id, s.Job, s.Sequence }) })
-    })));
-    var labels = upcoming.Select(load => new NextLoadLabels(load.Id,
-      load.Stops.OrderBy(s => s.Sequence).Select(s => s.Name).ToList())).ToList();
+    var history = await historyReader.ReadSectionsAsync(upcoming.ToArray(), ct);
+    var signatures = upcoming.ToDictionary(
+      Key,
+      x => BaseRouteService.Signature(x, profile)
+    );
+    var connections = upcoming.ToDictionary(
+      Key,
+      x => DeadheadConnection.Find(history.GetValueOrDefault(Key(x)))
+    );
+    string GeometryRevision(IEnumerable<NextLoadRouteVersion> versions) =>
+      Convert.ToHexString(
+        SHA256.HashData(
+          JsonSerializer.SerializeToUtf8Bytes(
+            new
+            {
+              Policy = 3,
+              request.TruckId,
+              request.CurrentDispatchId,
+              request.CurrentExecutionLegId,
+              Versions = versions
+                .OrderBy(x => x.DispatchId)
+                .ThenBy(x => x.ExecutionLegId),
+              Loads = upcoming.Select(load => new
+              {
+                load.Id,
+                load.ExecutionLegId,
+                load.AssignmentRevision,
+                load.LoadNumber,
+                load.Status,
+                Base = signatures[Key(load)],
+                Connection = connections[Key(load)]?.Signature(profile),
+                Stops = load
+                  .Stops.OrderBy(s => s.Sequence)
+                  .Select(s => new
+                  {
+                    s.Id,
+                    s.Job,
+                    s.Sequence,
+                    s.StateAfter,
+                    s.OperationRevision,
+                  }),
+              }),
+            }
+          )
+        )
+      );
+    var labels = upcoming
+      .Select(load => new NextLoadLabels(
+        load.Id,
+        load.Stops.OrderBy(s => s.Sequence).Select(s => s.Name).ToList()
+      )
+      {
+        ExecutionLegId = load.ExecutionLegId,
+      })
+      .ToList();
     if (request.Revision is not null)
     {
-      var versions = await reader.ReadVersionsAsync(ids, ct);
+      var versions = await VersionsAsync();
       var geometry = GeometryRevision(versions);
       var known = NextLoadRoutesResponse.MetadataRevision(geometry, labels);
-      var byId = versions.ToDictionary(x => x.DispatchId);
+      var byId = versions.ToDictionary(x => (x.DispatchId, x.ExecutionLegId));
       for (var index = 0; index < upcoming.Count; index++)
       {
         var load = upcoming[index];
-        var version = byId.GetValueOrDefault(load.Id);
-        var pair = connections[load.Id];
-        if (version?.BaseInputHash != signatures[load.Id] || pair is not null
-          && (version?.DeadheadInputHash != pair.Signature(profile) || version?.EmptyMiles is null))
-          preparation.Request(load.Id, geometry, index);
+        var version = byId.GetValueOrDefault(Key(load));
+        var pair = connections[Key(load)];
+        if (
+          version?.BaseInputHash != signatures[Key(load)]
+          || pair is not null
+            && (
+              version?.DeadheadInputHash != pair.Signature(profile)
+              || version?.EmptyMiles is null
+            )
+        )
+          await preparation.RequestAsync(load.Id, geometry, index, ct);
       }
-      if (request.Revision == known) return RequestResponse<NextLoadRoutesResponse>.Ok(new(known, true, null));
+      if (request.Revision == known)
+        return RequestResponse<NextLoadRoutesResponse>.Ok(
+          new(known, true, null)
+        );
       if (NextLoadRoutesResponse.HasGeometry(request.Revision, geometry))
-        return RequestResponse<NextLoadRoutesResponse>.Ok(new(known, false, null, labels));
+        return RequestResponse<NextLoadRoutesResponse>.Ok(
+          new(known, false, null, labels)
+        );
     }
-    var saved = await reader.ReadGeometryAsync(ids, ct);
-    var geometryRevision = GeometryRevision(upcoming.Select(load =>
-    {
-      var item = saved.GetValueOrDefault(load.Id);
-      return new NextLoadRouteVersion(load.Id, item?.BaseRoute?.InputHash, item?.BaseRoute?.CalculatedAt,
-        item?.Deadhead?.PreviousDispatchId, item?.Deadhead?.InputHash, item?.Deadhead?.CalculatedAt, item?.Deadhead?.Miles);
-    }));
-    var revision = NextLoadRoutesResponse.MetadataRevision(geometryRevision, labels);
+    var saved = await GeometryAsync();
+    var geometryRevision = GeometryRevision(
+      upcoming.Select(load =>
+        NextLoadRouteVersion.From(
+          load.Id,
+          load.ExecutionLegId,
+          saved.GetValueOrDefault(Key(load))
+        )
+      )
+    );
+    var revision = NextLoadRoutesResponse.MetadataRevision(
+      geometryRevision,
+      labels
+    );
     var previousId = request.CurrentDispatchId;
+    var previousLeg = request.CurrentExecutionLegId;
     var result = new List<NextLoadRoute>();
     foreach (var load in upcoming)
     {
-      var entry = saved.GetValueOrDefault(load.Id);
-      var pair = connections[load.Id];
-      var connection = pair is not null && pair.Previous.Id == previousId ? pair.ReadRoute(entry?.Deadhead, profile) : null;
-      var deadhead = connection is null ? null : NextLoadConnection.From(connection);
+      var entry = saved.GetValueOrDefault(Key(load));
+      var pair = connections[Key(load)];
+      var connection =
+        pair is not null
+        && pair.Previous.ExecutionLegId == previousLeg
+        && pair.Previous.Id == previousId
+          ? pair.ReadRoute(entry?.Deadhead, profile)
+          : null;
+      var deadhead = connection is null
+        ? null
+        : NextLoadConnection.From(connection);
       previousId = load.Id;
-      var route = entry?.BaseRoute is { } baseRoute && baseRoute.InputHash == signatures[load.Id]
-        ? SavedRouteReader.Route(baseRoute.RouteJson, load.Stops.Count - 1) : null;
-      if (pair is not null && connection is null) preparation.Request(load.Id, geometryRevision, result.Count);
+      previousLeg = load.ExecutionLegId;
+      var route =
+        entry?.BaseRoute is { } baseRoute
+        && baseRoute.ExecutionLegId == load.ExecutionLegId
+        && baseRoute.InputHash == signatures[Key(load)]
+          ? SavedRouteReader.Route(baseRoute.RouteJson, load.Stops.Length - 1)
+          : null;
+      if (pair is not null && connection is null)
+        await preparation.RequestAsync(
+          load.Id,
+          geometryRevision,
+          result.Count,
+          ct
+        );
       var stops = load.Stops.OrderBy(s => s.Sequence).ToList();
       if (stops.Count < 2 || route is null)
       {
-        preparation.Request(load.Id, geometryRevision, result.Count);
-        result.Add(new(load.Id, load.LoadNumber, "pending", [], [], deadhead, stops.Count));
+        await preparation.RequestAsync(
+          load.Id,
+          geometryRevision,
+          result.Count,
+          ct
+        );
+        result.Add(
+          new(
+            load.Id,
+            load.LoadNumber,
+            "pending",
+            [],
+            [],
+            deadhead,
+            stops.Count
+          )
+          {
+            ExecutionLegId = load.ExecutionLegId,
+          }
+        );
         continue;
       }
-      result.Add(new(load.Id, load.LoadNumber, "ready", route.Legs, stops.Select((s, i) =>
-      {
-        var point = i == 0 ? route.Legs[0].Points[0] : route.Legs[i - 1].Points[^1];
-        return new NextLoadStop(point.Latitude, point.Longitude, s.Job, s.Name) { Id = s.Id };
-      }).ToList(), deadhead, stops.Count));
+      result.Add(
+        new(
+          load.Id,
+          load.LoadNumber,
+          "ready",
+          route.Legs,
+          stops
+            .Select(
+              (s, i) =>
+              {
+                var point =
+                  i == 0
+                    ? route.Legs[0].Points[0]
+                    : route.Legs[i - 1].Points[^1];
+                return new NextLoadStop(
+                  point.Latitude,
+                  point.Longitude,
+                  s.Job,
+                  s.Name
+                )
+                {
+                  Id = s.Id,
+                  StateAfter = s.StateAfter,
+                  OperationRevision = s.OperationRevision,
+                };
+              }
+            )
+            .ToList(),
+          deadhead,
+          stops.Count
+        )
+        {
+          ExecutionLegId = load.ExecutionLegId,
+        }
+      );
     }
-    return RequestResponse<NextLoadRoutesResponse>.Ok(new(revision, false, result, labels));
+    return RequestResponse<NextLoadRoutesResponse>.Ok(
+      new(revision, false, result, labels)
+    );
 
-    RequestResponse<NextLoadRoutesResponse> Respond(IReadOnlyList<NextLoadRoute> routes) =>
-      RequestResponse<NextLoadRoutesResponse>.Ok(NextLoadRoutesResponse.Create(request.TruckId, request.CurrentDispatchId, routes, request.Revision));
+    async Task<List<NextLoadRouteVersion>> VersionsAsync()
+    {
+      List<NextLoadRouteVersion> values = [];
+      if (ids.Length > 0)
+        values.AddRange(await reader.ReadVersionsAsync(ids, ct));
+      if (legs.Length > 0)
+        values.AddRange(await reader.ReadExecutionVersionsAsync(legs, ct));
+      return values;
+    }
+
+    async Task<Dictionary<(Guid, Guid?), SavedNextLoadRoute>> GeometryAsync()
+    {
+      var values = new Dictionary<(Guid, Guid?), SavedNextLoadRoute>();
+      if (ids.Length > 0)
+        foreach (var saved in (await reader.ReadGeometryAsync(ids, ct)).Values)
+          values[(saved.DispatchId, null)] = saved;
+      if (legs.Length > 0)
+        foreach (
+          var saved in (
+            await reader.ReadExecutionGeometryAsync(legs, ct)
+          ).Values
+        )
+          values[(saved.DispatchId, saved.ExecutionLegId)] = saved;
+      return values;
+    }
+
+    RequestResponse<NextLoadRoutesResponse> Respond(
+      IReadOnlyList<NextLoadRoute> routes
+    ) =>
+      RequestResponse<NextLoadRoutesResponse>.Ok(
+        NextLoadRoutesResponse.Create(
+          request.TruckId,
+          request.CurrentDispatchId,
+          routes,
+          request.Revision
+        )
+      );
   }
+
+  private static (Guid, Guid?) Key(RouteWorkSnapshot load) =>
+    (load.Id, load.ExecutionLegId);
 }

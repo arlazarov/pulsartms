@@ -1,0 +1,30 @@
+<section class="stop-workspace__recorded" aria-label="Saved stop information">
+    <div class="stop-workspace__address">
+        <h3><ActionIcon Kind="location" /> Location</h3>
+        <p>@DispatchWorkspaceStopDisplay.Address(Stop)</p>
+    </div>
+    <dl class="stop-workspace__facts">
+        <div>
+            <dt><ActionIcon Kind="calendar" /> Appointment</dt>
+            <dd>@DispatchWorkspaceStopDisplay.Schedule(Stop)</dd>
+            @if (!string.IsNullOrWhiteSpace(Stop.TimeZoneId))
+            {
+                <dd class="stop-workspace__hint">@Stop.TimeZoneId</dd>
+            }
+        </div>
+        @foreach (var fact in Facts)
+        {
+            <div>
+                <dt><ActionIcon Kind="@FactIcon(fact.Label)" /> @fact.Label</dt>
+                <dd>@fact.Value</dd>
+            </div>
+        }
+    </dl>
+    @if (!string.IsNullOrWhiteSpace(Stop.Notes))
+    {
+        <div class="stop-workspace__instructions">
+            <h3><ActionIcon Kind="edit" /> Stop instructions</h3>
+            <p>@Stop.Notes</p>
+        </div>
+    }
+</section>

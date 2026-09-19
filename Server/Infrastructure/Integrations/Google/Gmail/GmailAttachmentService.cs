@@ -1,4 +1,5 @@
 using Google.Apis.Gmail.v1;
+using Google.Apis.Gmail.v1.Data;
 
 namespace Infrastructure.Integrations.Google.Gmail;
 
@@ -9,15 +10,20 @@ public class GmailAttachmentService(GmailServiceFactory gmailServiceFactory)
     CancellationToken cancellationToken = default
   )
   {
-    using var gmailService = await gmailServiceFactory.CreateAsync(cancellationToken);
-    var imported = importedMessageIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+    using var gmailService = await gmailServiceFactory.CreateAsync(
+      cancellationToken
+    );
+    var imported = importedMessageIds.ToHashSet(
+      StringComparer.OrdinalIgnoreCase
+    );
     var result = new List<GmailAttachment>();
     string? pageToken = null;
 
     do
     {
       var listRequest = gmailService.Users.Messages.List("me");
-      listRequest.Q = "label:fleet-bvd-fuel newer_than:2d has:attachment filename:csv";
+      listRequest.Q =
+        "label:fleet-bvd-fuel newer_than:2d has:attachment filename:csv";
       listRequest.MaxResults = 500;
       listRequest.PageToken = pageToken;
 
@@ -27,13 +33,23 @@ public class GmailAttachmentService(GmailServiceFactory gmailServiceFactory)
       {
         foreach (var messageInfo in messages.Messages)
         {
-          if (string.IsNullOrWhiteSpace(messageInfo.Id) || imported.Contains(messageInfo.Id))
+          if (
+            string.IsNullOrWhiteSpace(messageInfo.Id)
+            || imported.Contains(messageInfo.Id)
+          )
           {
             continue;
           }
 
-          var messageRequest = gmailService.Users.Messages.Get("me", messageInfo.Id);
-          messageRequest.Format = UsersResource.MessagesResource.GetRequest.FormatEnum.Full;
+          var messageRequest = gmailService.Users.Messages.Get(
+            "me",
+            messageInfo.Id
+          );
+          messageRequest.Format = UsersResource
+            .MessagesResource
+            .GetRequest
+            .FormatEnum
+            .Full;
 
           var message = await messageRequest.ExecuteAsync(cancellationToken);
           var parts = GetAllParts(message.Payload);
@@ -45,7 +61,12 @@ public class GmailAttachmentService(GmailServiceFactory gmailServiceFactory)
               continue;
             }
 
-            if (!part.Filename.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+            if (
+              !part.Filename.EndsWith(
+                ".csv",
+                StringComparison.OrdinalIgnoreCase
+              )
+            )
             {
               continue;
             }
@@ -61,7 +82,9 @@ public class GmailAttachmentService(GmailServiceFactory gmailServiceFactory)
               part.Body.AttachmentId
             );
 
-            var attachment = await attachmentRequest.ExecuteAsync(cancellationToken);
+            var attachment = await attachmentRequest.ExecuteAsync(
+              cancellationToken
+            );
             var content = DecodeBase64Url(attachment.Data);
 
             result.Add(
@@ -82,9 +105,7 @@ public class GmailAttachmentService(GmailServiceFactory gmailServiceFactory)
     return result;
   }
 
-  private static IEnumerable<global::Google.Apis.Gmail.v1.Data.MessagePart> GetAllParts(
-    global::Google.Apis.Gmail.v1.Data.MessagePart? part
-  )
+  private static IEnumerable<MessagePart> GetAllParts(MessagePart? part)
   {
     if (part is null)
     {

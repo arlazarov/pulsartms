@@ -1,0 +1,65 @@
+@implements IDisposable
+@using Client.Models.DTO.Addresses
+
+<div class="stop-workspace__address-search">
+  <label for="@Id">Find address</label>
+  <input id="@Id" type="search" maxlength="300" value="@_query"
+         @oninput="QueryChanged" @onkeydown="KeyAsync" @onblur="Cancel"
+         autocomplete="off" disabled="@Disabled"
+         role="combobox" aria-autocomplete="list"
+         aria-expanded="@(_items.Count > 0 ? "true" : "false")"
+         aria-controls="@(Id + "-results")"
+         aria-activedescendant="@ActiveId"
+         placeholder="Start typing a street, city or facility" />
+  @if (_loading || _items.Count > 0 || _message is not null)
+  {
+    <div class="stop-workspace__address-dropdown">
+      @if (_loading)
+      {
+        <LoadingIndicator />
+      }
+      @if (_items.Count > 0)
+      {
+        <div id="@(Id + "-results")" role="listbox"
+             aria-label="Address suggestions">
+          @for (var index = 0; index < _items.Count; index++)
+          {
+            var position = index;
+            var item = _items[index];
+            var postal = item.SavedAddress?.PostalCode ?? item.PostalCode;
+            <button type="button" role="option" tabindex="-1"
+                    @onmousedown:preventDefault="true"
+                    id="@(Id + "-option-" + index)"
+                    aria-selected="@(_active == index ? "true" : "false")"
+                    class="btn stop-workspace__address-result"
+                    disabled="@Disabled"
+                    @onclick="() => SelectAsync(position)">
+              <ActionIcon Kind="location" />
+              <span>@item.Label</span>
+              @if (!string.IsNullOrWhiteSpace(postal))
+              {
+                <span class="stop-workspace__address-postal">
+                  ZIP / postal: @postal
+                </span>
+              }
+              @if (item.SavedAddress is not null)
+              {
+                <span>Previously used</span>
+              }
+            </button>
+          }
+        </div>
+      }
+      @if (_message is not null)
+      {
+        <p class="stop-workspace__hint" role="status">@_message</p>
+      }
+      @if (_items.Any(x => x.SavedAddress is null))
+      {
+        <div class="stop-workspace__address-attribution" translate="no">
+          Google Maps
+        </div>
+      }
+    </div>
+  }
+</div>

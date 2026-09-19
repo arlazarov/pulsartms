@@ -3,10 +3,19 @@ using Domain.Entities.Dispatch;
 
 namespace Application.Features.Dispatch.Models;
 
-public sealed record StopAddress(string Address, string City, string Province, string Country, string ZipCode)
+public sealed record StopAddress(
+  string Address,
+  string City,
+  string Province,
+  string Country,
+  string ZipCode
+)
 {
-  public static StopAddress From(DispatchStop stop) => new(stop.Address, stop.City, stop.Province, stop.Country, stop.ZipCode);
+  public static StopAddress From(DispatchStop stop) =>
+    new(stop.Address, stop.City, stop.Province, stop.Country, stop.ZipCode);
+
   public string Serialize() => JsonSerializer.Serialize(this);
+
   public void Apply(DispatchStop stop)
   {
     stop.Address = Address;

@@ -2,13 +2,13 @@
 @layout AuthLayout
 @using Client.Components.Form
 
-<PageTitle>Login</PageTitle>
+<PageTitle>Login · PulsR</PageTitle>
 
 @if (!IsCheckingSession)
 {
 <div class="login-page">
     <div class="container">
-        <div class="login-page__brand">AMF Carrier</div>
+        <div class="login-page__brand"><BrandLogo Prominent="true" /></div>
         <h1>Welcome back</h1>
         <p class="login-page__intro">Sign in to manage your fleet.</p>
         <EditForm Model="@Model" OnValidSubmit="LoginAsync">

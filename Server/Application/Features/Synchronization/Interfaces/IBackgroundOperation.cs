@@ -6,8 +6,15 @@ public interface IBackgroundOperation
 }
 
 public interface IFleetSynchronizationOperation : IBackgroundOperation;
+
 public interface IPlanningRefreshOperation : IBackgroundOperation;
+
 public interface IEtaRefreshOperation : IBackgroundOperation;
+
 public interface ITruckHistoryOperation : IBackgroundOperation;
+
 public interface IBaseRouteOperation : IBackgroundOperation;
+
 public interface IGmailWatchOperation : IBackgroundOperation;
+
+public interface IDriverHosRefreshOperation : IBackgroundOperation;

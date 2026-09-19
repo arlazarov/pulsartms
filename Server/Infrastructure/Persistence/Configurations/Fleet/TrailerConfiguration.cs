@@ -19,5 +19,8 @@ public class TrailerConfiguration : IEntityTypeConfiguration<Trailer>
     builder.HasIndex(x => x.UnitNumber).IsUnique();
 
     builder.Property(x => x.Vin).HasMaxLength(17);
+    builder.Property(x => x.ImportedVin).HasMaxLength(17);
+    builder.Property(x => x.ConfiguredBy).HasMaxLength(200);
+    builder.Property(x => x.ConfigurationRevision).IsConcurrencyToken();
   }
 }

@@ -40,7 +40,9 @@
     &:hover {
       background: ui.theme(surface-soft);
     }
-    &:focus-within { background: ui.theme(selected); }
+    &:focus-within {
+      background: ui.theme(selected);
+    }
   }
 
   &__header > div {

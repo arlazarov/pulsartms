@@ -1,5 +1,5 @@
-using Infrastructure.Integrations.Bvd;
 using System.Text;
+using Infrastructure.Integrations.Bvd;
 
 namespace Server.Tests.Fuel;
 
@@ -16,8 +16,11 @@ public sealed class BvdProvinceTests
   [InlineData("STATE,PROV", "ON,ON")]
   public void ReadsRegionWithoutChangingPrices(string headers, string values)
   {
-    var csv = $",,,,,,,2026-09-09\nSITE,NAME,CITY,{headers},RETAIL PRICE,YOUR PRICE\n1,Station,Town,{values},1.799,1.459\n";
-    var row = Assert.Single(BvdFuelCsvParser.Parse(Encoding.UTF8.GetBytes(csv)).Rows);
+    var csv =
+      $",,,,,,,2026-09-09\nSITE,NAME,CITY,{headers},RETAIL PRICE,YOUR PRICE\n1,Station,Town,{values},1.799,1.459\n";
+    var row = Assert.Single(
+      BvdFuelCsvParser.Parse(Encoding.UTF8.GetBytes(csv)).Rows
+    );
     Assert.Equal(values.Split(',').Last().Trim().ToUpperInvariant(), row.State);
     Assert.Equal(1.799m, row.RetailPrice);
     Assert.Equal(1.459m, row.DiscountPrice);
@@ -27,9 +30,15 @@ public sealed class BvdProvinceTests
   [InlineData("STATE", "")]
   [InlineData("REGION", "ON")]
   [InlineData("STATE,PROV", "ON,QC")]
-  public void MissingOrConflictingRegionCannotSilentlyEraseSavedProvince(string headers, string values)
+  public void MissingOrConflictingRegionCannotSilentlyEraseSavedProvince(
+    string headers,
+    string values
+  )
   {
-    var csv = $",,,,,,,2026-09-09\nSITE,NAME,CITY,{headers},RETAIL PRICE,YOUR PRICE\n1,Station,Town,{values},1.799,1.459\n";
-    Assert.Throws<FormatException>(() => BvdFuelCsvParser.Parse(Encoding.UTF8.GetBytes(csv)));
+    var csv =
+      $",,,,,,,2026-09-09\nSITE,NAME,CITY,{headers},RETAIL PRICE,YOUR PRICE\n1,Station,Town,{values},1.799,1.459\n";
+    Assert.Throws<FormatException>(
+      () => BvdFuelCsvParser.Parse(Encoding.UTF8.GetBytes(csv))
+    );
   }
 }

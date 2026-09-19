@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations.Fuel;
 
-public class FuelTransactionConfiguration : IEntityTypeConfiguration<FuelTransaction>
+public class FuelTransactionConfiguration
+  : IEntityTypeConfiguration<FuelTransaction>
 {
   public void Configure(EntityTypeBuilder<FuelTransaction> builder)
   {

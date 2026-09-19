@@ -1,0 +1,81 @@
+@using Client.Shared.Customers.BrokerTerms
+
+<section class="dispatch-details__panel dispatch-broker">
+  <h2>Broker &amp; contacts</h2>
+  <div class="dispatch-broker__search">
+    <label>Find saved broker
+      <input @bind="_search" maxlength="200" disabled="@Busy"
+             placeholder="Broker name" />
+    </label>
+    <button type="button" class="btn" @onclick="SearchAsync"
+            disabled="@(!CanEdit || Busy)">Search brokers</button>
+  </div>
+  @if (_error is not null)
+  {
+    <p role="alert">@_error</p>
+  }
+  @if (_notice is not null)
+  {
+    <p role="status">@_notice</p>
+  }
+  @foreach (var broker in _matches)
+  {
+    <button type="button" class="btn" @key="broker.Id"
+            @onclick="() => SelectAsync(broker)" disabled="@(!CanEdit || Busy)">
+      Use @broker.Name
+    </button>
+  }
+  <fieldset class="dispatch-details__execution"
+            disabled="@(!CanEdit || Busy)">
+    <div class="dispatch-broker__columns">
+      <section>
+      <h3>Contact details</h3>
+      <div class="dispatch-details__fields">
+        <label>
+          Broker company
+          <input @bind="Metadata.BrokerCompany" maxlength="200"
+                 @bind:event="oninput" @bind:after="CompanyChanged" />
+        </label>
+        <label>
+          Broker load #
+          <input @bind="Metadata.BrokerReference" maxlength="100"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>
+          Contact name
+          <input @bind="Metadata.BrokerContact" maxlength="200"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>
+          Phone
+          <input type="tel" @bind="Metadata.BrokerPhone" maxlength="60"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>
+          Email
+          <input type="email" @bind="Metadata.BrokerEmail" maxlength="254"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>
+          Bill to
+          <input @bind="Metadata.BillTo" maxlength="200"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+      </div>
+      </section>
+      <section>
+      <h3>Payment terms for this load</h3>
+      <BrokerTerms Terms="Metadata.PaymentTerms" CanEdit="CanEdit"
+                   Changed="NotifyChanged" />
+      <p>Quick Pay terms are recorded only. No fee or payment is automatic.</p>
+      </section>
+    </div>
+    <div class="dispatch-broker__footer">
+      <button type="button" class="btn" @onclick="SaveProfileAsync">
+        Save as broker defaults
+      </button>
+      <p>Broker defaults are shared. Existing loads keep their saved terms.</p>
+      <p>Use Save changes at the top to save these fields.</p>
+    </div>
+  </fieldset>
+</section>

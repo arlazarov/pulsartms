@@ -1,16 +1,32 @@
-using Application.Features.Routing.Services.Routes;
+using Application.Behaviors;
+using Application.Caching;
+using Application.Features.Dispatch.Services;
+using Application.Features.Eta.Background;
+using Application.Features.Eta.Services;
+using Application.Features.Execution.Background;
+using Application.Features.Execution.Interfaces;
+using Application.Features.Execution.Services;
+using Application.Features.Fleet.Background;
+using Application.Features.Fleet.Interfaces;
+using Application.Features.Fleet.Queries.GetFleetLocations;
+using Application.Features.Fleet.Services;
+using Application.Features.Fuel.Background;
+using Application.Features.Fuel.Services;
+using Application.Features.Integrations.Interfaces;
+using Application.Features.Integrations.Services;
+using Application.Features.Mileage.Background;
+using Application.Features.Mileage.Interfaces;
+using Application.Features.Mileage.Services;
+using Application.Features.Routing.Algorithms;
+using Application.Features.Routing.Background;
+using Application.Features.Routing.Interfaces;
+using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Addresses;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.FuelPlanning;
-using Application.Caching;
-using Application.Features.Fleet.Services;
-using Application.Features.Routing.Background;
-using Application.Features.Eta.Background;
-using Application.Features.Fleet.Background;
+using Application.Features.Routing.Services.Routes;
+using Application.Features.Synchronization.Interfaces;
 using Application.Features.Synchronization.Services;
-using Application.Features.Routing.Services;
-using Application.Features.Fleet.Queries.GetFleetLocations;
-using Application.Behaviors;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;
@@ -35,24 +51,45 @@ public static class DependencyInjection
     services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
     services.AddScoped<FleetCache>();
-    services.AddScoped<Features.Integrations.Services.IntegrationSettingsService>();
-    services.AddScoped<Features.Integrations.Interfaces.IIntegrationCredentials>(sp =>
-      sp.GetRequiredService<Features.Integrations.Services.IntegrationSettingsService>());
+    services.AddScoped<IntegrationSettingsService>();
+    services.AddScoped<IIntegrationCredentials>(sp =>
+      sp.GetRequiredService<IntegrationSettingsService>()
+    );
     services.AddSingleton<FleetTelemetryCache>();
+    services.AddSingleton<DriverHosSnapshot>();
+    services.AddSingleton<IDriverHosProvider>(sp =>
+      sp.GetRequiredService<DriverHosSnapshot>()
+    );
+    services.AddSingleton<
+      IDriverHosRefreshOperation,
+      DriverHosRefreshOperation
+    >();
     services.AddSingleton<FleetLocationStream>();
     services.AddMemoryCache();
     services.AddSingleton(TimeProvider.System);
-    services.AddScoped<Features.Fuel.Services.GmailWatchLifecycle>();
-    services.AddScoped<Features.Fuel.Services.FuelStationLookupService>();
-    services.AddSingleton<Features.Synchronization.Interfaces.IGmailWatchOperation, Features.Fuel.Background.GmailWatchOperation>();
+    services.AddScoped<GmailWatchLifecycle>();
+    services.AddScoped<FuelStationLookupService>();
+    services.AddScoped<FuelExchangeRateService>();
+    services.AddSingleton<IGmailWatchOperation, GmailWatchOperation>();
     services.AddSingleton<ReadCache>();
-    services.AddSingleton<Application.Interfaces.IReadCache>(sp => sp.GetRequiredService<ReadCache>());
+    services.AddSingleton<IReadCache>(sp => sp.GetRequiredService<ReadCache>());
     services.AddSingleton<FleetSynchronizationOperation>();
-    services.AddSingleton<Features.Synchronization.Interfaces.IFleetSynchronizationOperation>(sp => sp.GetRequiredService<FleetSynchronizationOperation>());
-    services.AddSingleton<Features.Synchronization.Interfaces.ISynchronizationStatusProvider>(sp => sp.GetRequiredService<FleetSynchronizationOperation>());
-    services.AddSingleton<Features.Synchronization.Interfaces.IPlanningRefreshOperation, PlanningRefreshOperation>();
-    services.AddSingleton<Features.Synchronization.Interfaces.IEtaRefreshOperation, EtaRefreshOperation>();
-    services.AddSingleton<Features.Synchronization.Interfaces.ITruckHistoryOperation, TruckHistoryOperation>();
+    services.AddSingleton<IFleetSynchronizationOperation>(sp =>
+      sp.GetRequiredService<FleetSynchronizationOperation>()
+    );
+    services.AddSingleton<ISynchronizationStatusProvider>(sp =>
+      sp.GetRequiredService<FleetSynchronizationOperation>()
+    );
+    services.AddSingleton<
+      IPlanningRefreshOperation,
+      PlanningRefreshOperation
+    >();
+    services.AddSingleton<IEtaRefreshOperation, EtaRefreshOperation>();
+    services.AddSingleton<
+      IExecutionPlanningOperation,
+      ExecutionPlanningOperation
+    >();
+    services.AddSingleton<ITruckHistoryOperation, TruckHistoryOperation>();
     services.AddSingleton<TruckHistoryQueue>();
     services.AddSingleton<RouteDisplayCache>();
     services.AddSingleton<ServerTelemetry>();
@@ -60,29 +97,49 @@ public static class DependencyInjection
     services.AddScoped<TruckPlanningProfileService>();
     services.AddScoped<RoutePlanStore>();
     services.AddScoped<BaseRouteService>();
+    services.AddScoped<RouteChoiceService>();
+    services.AddScoped<RouteChoiceDrafts>();
     services.AddScoped<StopAddressService>();
+    services.AddScoped<ExecutionStopAddressService>();
+    services.AddScoped<DeadheadHistoryService>();
+    services.AddScoped<DeadheadHistoryPublication>();
     services.AddScoped<DeadheadService>();
-    services.AddScoped<Application.Features.Dispatch.Services.DispatchRates>();
+    services.AddScoped<DispatchRates>();
+    services.AddScoped<IAutomaticMileageRecorder, AutomaticMileageRecorder>();
+    services.AddSingleton<
+      IOdometerCaptureOperation,
+      OdometerCaptureOperation
+    >();
     services.AddScoped<RouteRecalculationBudget>();
-    services.AddSingleton<Features.Synchronization.Interfaces.IBaseRouteOperation, BaseRouteOperation>();
-    services.AddSingleton<Features.Routing.Interfaces.IRouteRequestValidator, RouteRequestValidator>();
-    services.AddSingleton<Features.Routing.Interfaces.IRouteSectionValidator, Features.Routing.Algorithms.RouteSectionValidator>();
+    services.AddSingleton<IBaseRouteOperation, BaseRouteOperation>();
+    services.AddSingleton<IRouteRequestValidator, RouteRequestValidator>();
+    services.AddSingleton<IRouteSectionValidator, RouteSectionValidator>();
     services.AddScoped<PlanningSettingsService>();
     services.AddScoped<FuelRegionPlanner>();
     services.AddScoped<FuelPlanningService>();
+    services.AddScoped<FuelPriceRefreshService>();
     services.AddScoped<FuelHorizon>();
+    services.AddScoped<IFuelWorkInputsReader, FuelWorkInputsReader>();
     services.AddScoped<TruckFuelPlans>();
     services.AddSingleton<FuelPlanMemory>();
     services.AddScoped<FuelScheduleEvaluator>();
     services.AddScoped<AutomaticPlanningService>();
     services.AddScoped<PlanningReadService>();
-    services.AddScoped<Application.Features.Eta.Services.EtaService>();
-    services.AddScoped<Application.Features.Eta.Services.EtaChainInputsService>();
-    services.AddScoped<Application.Features.Eta.Services.EtaForecastService>();
-    services.AddSingleton<Application.Features.Eta.Services.EtaMemory>();
+    services.AddScoped<TruckPlanningInputsReader>();
+    services.AddScoped<PlanningWorkPublication>();
+    services.AddScoped<ISavedRoadValidation, SavedRoadValidation>();
+    services.AddScoped<IFuelSavedInputsValidation, FuelSavedInputsValidation>();
+    services.AddScoped<EtaService>();
+    services.AddScoped<EtaChainInputsService>();
+    services.AddScoped<TruckItineraryReader>();
+    services.AddScoped<EtaForecastService>();
+    services.AddSingleton<EtaMemory>();
     services.AddScoped<RoutePreviewService>();
-    services.AddSingleton<PlanningRefreshQueue>();
+    services.AddScoped<PlanningRefreshQueue>();
+    services.AddSingleton<PlanningRefreshSignal>();
     services.AddSingleton<RoutePreparationQueue>();
+    services.AddScoped<SourceRoadInputs>();
+    services.AddScoped<SourceRoadDemand>();
 
     return services;
   }

@@ -1,0 +1,241 @@
+@page "/settings/fleet/{Kind?}"
+@attribute [Authorize(Roles = "Admin")]
+@using Client.Components.DataTable
+
+<PageTitle>@Title · PulsR</PageTitle>
+
+<section class="settings-page fleet-resources">
+    <PageHeader Title="@Title"
+                Description="Fleet configuration. Assignments are separate." />
+    <nav class="settings-page__actions" aria-label="Fleet configuration">
+        <NavLink class="@(Kind == "trucks" ? "btn active" : "btn")"
+                 aria-current="@(Kind == "trucks" ? "page" : null)"
+                 href="/settings/fleet/trucks">Trucks</NavLink>
+        <NavLink class="btn" href="/settings/fleet/trailers">Trailers</NavLink>
+        <NavLink class="btn" href="/settings/fleet/drivers">Drivers</NavLink>
+    </nav>
+    @if (!ValidKind)
+    {
+        <p role="alert">Choose Trucks, Trailers or Drivers.</p>
+    }
+    @if (_error is not null)
+    {
+        <p class="settings-page__error" role="alert">
+            @_error
+            @if (_editing is { } selected)
+            {
+                <button class="btn" type="button" disabled="@_saving"
+                        @onclick="() => EditAsync(selected.Resource.Id)">
+                    Reload resource
+                </button>
+            }
+            else
+            {
+                <button class="btn" type="button" disabled="@_loading"
+                        @onclick="LoadAsync">Retry</button>
+            }
+        </p>
+    }
+    @if (_saved is not null)
+    {
+        <p class="settings-page__saved" role="status">@_saved</p>
+    }
+    @if (_loading)
+    {
+        <p role="status"><LoadingIndicator /></p>
+    }
+    @if (_editing is { } editing)
+    {
+        <section class="settings-page__card fleet-resources__editor">
+            <h2>Edit @editing.Resource.Name</h2>
+            <EditForm Model="_form" OnValidSubmit="SaveAsync">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <fieldset class="settings-page__form" disabled="@_saving">
+                    <legend class="visually-hidden">Resource configuration</legend>
+                    <div class="settings-page__fields">
+                        <label for="resource-name">
+                            @(IsDriver ? "Name" : "Unit number")
+                            <InputText id="resource-name" maxlength="200"
+                                       readonly="@(!IsDriver)"
+                                       @bind-Value="_form.Name" />
+                            @if (!IsDriver)
+                            {
+                                <small>
+                                    Imported unit number. Change it at source
+                                    to preserve assignment matching.
+                                </small>
+                            }
+                        </label>
+                        @if (IsDriver)
+                        {
+                            <label for="resource-fuel-card">
+                                Fuel card
+                                <InputText id="resource-fuel-card"
+                                           type="password" maxlength="50"
+                                           autocomplete="off"
+                                           @bind-Value="_form.FuelCard" />
+                                <small>Visible only in Admin configuration.</small>
+                            </label>
+                        }
+                        else
+                        {
+                            <label for="resource-vin">
+                                VIN
+                                <InputText id="resource-vin" maxlength="17"
+                                           @bind-Value="_form.Vin" />
+                            </label>
+                        }
+                    </div>
+                    <label class="settings-page__toggle" for="resource-active">
+                        <span>
+                            <strong>Active</strong>
+                            <small>
+                                Resolve fleet and unfinished dispatch
+                                assignments before making a resource inactive.
+                                History is retained.
+                            </small>
+                        </span>
+                        <InputCheckbox id="resource-active"
+                                       @bind-Value="_form.IsActive" />
+                    </label>
+                    <p class="settings-page__hint">
+                        Saved configuration overrides import. This does not
+                        change assignments, execute a switch or change ELD
+                        identity. Provider mappings remain read-only.
+                    </p>
+                    @if (Kind == "trucks")
+                    {
+                        <p class="settings-page__hint">
+                            Planning retains the existing truck profile and
+                            effective fleet defaults.
+                            <a href="/settings">Fleet planning preferences</a>
+                        </p>
+                    }
+                    <div class="settings-page__actions">
+                        <button class="btn btn--primary" type="submit">
+                            @(_saving ? "Saving…" : "Save")
+                        </button>
+                        <button class="btn" type="button" @onclick="CancelEdit">
+                            Cancel
+                        </button>
+                        @if (editing.Resource.IsLocallyConfigured)
+                        {
+                            <button class="btn btn--text" type="button"
+                                    @onclick="() => _restore = !_restore">
+                                Return to import
+                            </button>
+                        }
+                    </div>
+                    @if (_restore)
+                    {
+                        <div class="fleet-resources__restore" role="group"
+                             aria-label="Restore imported configuration">
+                            <p>
+                                Replace local configuration with the latest
+                                imported values? Future imports will control
+                                these fields again.
+                            </p>
+                            <div class="settings-page__actions">
+                                <button class="btn btn--primary" type="button"
+                                        @onclick="() => SaveAsync(true)">
+                                    Restore imported values
+                                </button>
+                                <button class="btn" type="button"
+                                        @onclick="() => _restore = false">
+                                    Keep local configuration
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </fieldset>
+            </EditForm>
+            <div class="fleet-resources__references">
+                <h3>Current fleet links</h3>
+                @if (editing.CurrentAssignments.Length == 0)
+                {
+                    <p>No current fleet links.</p>
+                }
+                @foreach (var assignment in editing.CurrentAssignments)
+                {
+                    <p>@assignment</p>
+                }
+                @if (editing.ReferencedDispatches.Length > 0)
+                {
+                    <h3>Unfinished dispatch references</h3>
+                    <p class="settings-page__hint">
+                        These include planned assignments, not confirmed
+                        switches. Up to 30 references are shown.
+                    </p>
+                    <div class="settings-page__actions">
+                        @foreach (var load in editing.ReferencedDispatches)
+                        {
+                            <a class="btn btn--small"
+                               href="@($"/dispatch/{load.Id}")">
+                                <LoadNumber Value="load.LoadNumber" />
+                            </a>
+                        }
+                    </div>
+                }
+            </div>
+        </section>
+    }
+    else if (ValidKind)
+    {
+        <form class="fleet-resources__search" @onsubmit="SearchAsync"
+              @onsubmit:preventDefault="true">
+            <div class="settings-page__fields">
+                <label for="resource-search">
+                    Search @Title.ToLowerInvariant()
+                    <input id="resource-search" type="search" maxlength="100"
+                           @bind="_search" placeholder="Name, unit or VIN" />
+                </label>
+            </div>
+            <button class="btn" type="submit" disabled="@_loading">Search</button>
+        </form>
+        @if (_list is { } list)
+        {
+            <DataTablePagination
+                Columns="minmax(150px, 2fr) minmax(130px, 1fr) 130px 100px"
+                Page="_page"
+                TotalPages="@(Math.Max(1, (list.TotalCount + 29) / 30))"
+                HasPreviousPage="@(_page > 1)"
+                HasNextPage="@(_page * 30 < list.TotalCount)"
+                OnPageChanged="PageAsync">
+                <Header>
+                    <div>@(IsDriver ? "Name" : "Unit / VIN")</div>
+                    <div>Configuration</div>
+                    <div>Status</div>
+                    <div>Actions</div>
+                </Header>
+                <Rows>
+                    @foreach (var row in list.Items)
+                    {
+                        <div class="data-table__row" @key="row.Id">
+                            <div class="fleet-resources__identity">
+                                <strong>@row.Name</strong>
+                                @if (!IsDriver) { <small>@row.Vin</small> }
+                            </div>
+                            <div>
+                                @(row.IsLocallyConfigured ? "Local" : "Import")
+                            </div>
+                            <div>@(row.IsActive ? "Active" : "Inactive")</div>
+                            <div class="data-table__actions">
+                                <button class="btn btn--table" type="button"
+                                        disabled="@_loading"
+                                        aria-label="@($"Edit {row.Name}")"
+                                        @onclick="() => EditAsync(row.Id)">
+                                    Edit
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </Rows>
+            </DataTablePagination>
+            @if (list.Items.Count == 0 && !_loading)
+            {
+                <p>No matching resources.</p>
+            }
+        }
+    }
+</section>

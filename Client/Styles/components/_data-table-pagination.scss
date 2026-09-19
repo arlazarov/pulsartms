@@ -27,9 +27,14 @@
 
   &__button {
     @include ui.button-control;
-    & { width: ui.size(control); padding: 0; }
+    & {
+      width: ui.size(control);
+      padding: 0;
+    }
 
-    @media (max-width: ui.breakpoint(md, max)) { width: ui.size(control-touch); }
+    @media (max-width: ui.breakpoint(md, max)) {
+      width: ui.size(control-touch);
+    }
   }
 
   &__info {

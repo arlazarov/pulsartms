@@ -25,7 +25,10 @@ public static class DispatchComparer
     return false;
   }
 
-  private static bool StopEquals(DispatchStop current, ExternalDispatchStop source)
+  private static bool StopEquals(
+    DispatchStop current,
+    ExternalDispatchStop source
+  )
   {
     return current.Sequence == source.Sequence
       && current.Job == source.Job

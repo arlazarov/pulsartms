@@ -4,18 +4,20 @@ using Infrastructure.Integrations.Google.Gmail;
 
 namespace Infrastructure.Integrations.Bvd;
 
-public class BvdFuelDiscountProvider(GmailAttachmentService gmailAttachmentService)
-  : IFuelDiscountProvider
+public class BvdFuelDiscountProvider(
+  GmailAttachmentService gmailAttachmentService
+) : IFuelDiscountProvider
 {
   public async Task<IReadOnlyList<FuelDiscountImportData>> GetDiscountsAsync(
     IReadOnlyCollection<string> importedMessageIds,
     CancellationToken cancellationToken = default
   )
   {
-    var attachments = await gmailAttachmentService.GetFuelDiscountAttachmentsAsync(
-      importedMessageIds,
-      cancellationToken
-    );
+    var attachments =
+      await gmailAttachmentService.GetFuelDiscountAttachmentsAsync(
+        importedMessageIds,
+        cancellationToken
+      );
 
     var imports = new List<FuelDiscountImportData>();
 
@@ -28,7 +30,9 @@ public class BvdFuelDiscountProvider(GmailAttachmentService gmailAttachmentServi
         continue;
       }
 
-      var (EffectiveDate, EffectiveTo, Rows) = BvdFuelCsvParser.Parse(attachment.Content);
+      var (EffectiveDate, EffectiveTo, Rows) = BvdFuelCsvParser.Parse(
+        attachment.Content
+      );
 
       imports.Add(
         new FuelDiscountImportData

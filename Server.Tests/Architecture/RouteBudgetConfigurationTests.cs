@@ -1,3 +1,4 @@
+using API;
 using Application.Features.Routing.Options;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -16,11 +17,23 @@ public sealed class RouteBudgetConfigurationTests
   {
     var builder = WebApplication.CreateBuilder();
     builder.Configuration.Sources.Clear();
-    builder.Configuration.AddJsonFile(Path.Combine(RepositoryFiles.Root(), "Server/API/appsettings.json"));
-    API.DependencyInjection.AddApplicationServices(builder);
+    builder.Configuration.AddJsonFile(
+      Path.Combine(RepositoryFiles.Root(), "Server/API/appsettings.json")
+    );
+    DependencyInjection.AddApplicationServices(builder);
     await using var services = builder.Services.BuildServiceProvider();
-    Assert.False(services.GetRequiredService<IOptions<RouteRecalculationBudgetOptions>>().Value.Enabled);
-    Assert.Equal(1000, builder.Configuration.GetValue<int>("TomTom:DailyRequestLimit"));
-    Assert.Equal(30, builder.Configuration.GetValue<int>("TomTom:RequestsPerMinute"));
+    Assert.False(
+      services
+        .GetRequiredService<IOptions<RouteRecalculationBudgetOptions>>()
+        .Value.Enabled
+    );
+    Assert.Equal(
+      1000,
+      builder.Configuration.GetValue<int>("TomTom:DailyRequestLimit")
+    );
+    Assert.Equal(
+      30,
+      builder.Configuration.GetValue<int>("TomTom:RequestsPerMinute")
+    );
   }
 }

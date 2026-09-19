@@ -4,14 +4,14 @@
 @using Client.Pages.Base
 @inherits FormPage
 
-<PageTitle>Edit User</PageTitle>
+<PageTitle>Edit User · PulsR</PageTitle>
 
 <section class="add-user-page">
     <PageHeader Title="Edit User" />
 
     @if (IsLoading)
     {
-        <div>Loading...</div>
+        <div><LoadingIndicator /></div>
     }
     else if (!string.IsNullOrWhiteSpace(LoadError))
     {

@@ -22,7 +22,7 @@ jobs:
         working-directory: Client
       - run: bash verify-release.sh
         env:
-          AMFTMS_RELEASE_UI: '1'
+          PULSARTMS_RELEASE_UI: '1'
       - uses: actions/upload-artifact@v4
         if: always()
         with:

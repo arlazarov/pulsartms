@@ -1,78 +1,312 @@
-using Application.Features.Routing.Services.FuelPlanning;
-using Application.Features.Synchronization.Options;
+using Application.Features.Dispatch.Queries;
+using Application.Features.Eta.Services;
+using Application.Features.Execution.Models;
+using Application.Features.Fleet.Models;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Models;
-using Application.Features.Dispatch.Queries;
+using Application.Features.Routing.Services.FuelPlanning;
+using Application.Features.Synchronization.Options;
 using Microsoft.Extensions.Options;
 
 namespace Application.Features.Routing.Services.Routes;
 
-public sealed class PlanningReadService(RoutePlanningService routes, PlanningRefreshQueue refresh,
-  ISender mediator, IOptions<SynchronizationOptions> options, Application.Features.Eta.Services.EtaService eta, TruckFuelPlans fuelPlans)
+public sealed class PlanningReadService(
+  RoutePlanningService routes,
+  TruckPlanningInputsReader inputs,
+  PlanningRefreshQueue refresh,
+  ISender mediator,
+  IOptions<SynchronizationOptions> options,
+  EtaService eta,
+  TruckFuelPlans fuelPlans
+)
 {
-  public static void TrimForDisplay(RoutePlan plan, Guid? knownPlanId = null, int? knownVersion = null)
+  public static void TrimForDisplay(
+    RoutePlan plan,
+    Guid? knownPlanId = null,
+    int? knownVersion = null
+  )
   {
-    if (plan.FuelPlan is { } fuel) fuel.RouteChecks = [];
-    plan.GeometryOmitted = knownPlanId == plan.Id && knownVersion == plan.Version;
+    if (plan.FuelPlan is { } fuel)
+      fuel.RouteChecks = [];
+    plan.GeometryOmitted =
+      knownPlanId == plan.Id && knownVersion == plan.Version;
     if (plan.ReferenceRoute is { } reference)
     {
       reference.Points = [];
-      reference.Legs = reference.Legs.Select(leg => leg with { Points = plan.GeometryOmitted ? [] : DisplayRouteGeometry.Simplify(leg.Points) }).ToList();
+      reference.Legs = reference
+        .Legs.Select(leg =>
+          leg with
+          {
+            Points = plan.GeometryOmitted
+              ? []
+              : DisplayRouteGeometry.Simplify(leg.Points),
+          }
+        )
+        .ToList();
     }
     plan.Route.Points = [];
-    plan.Route.Legs = plan.Route.Legs.Select(leg => leg with { Points = plan.GeometryOmitted ? [] : DisplayRouteGeometry.Simplify(leg.Points) }).ToList();
+    plan.Route.Legs = plan
+      .Route.Legs.Select(leg =>
+        leg with
+        {
+          Points = plan.GeometryOmitted
+            ? []
+            : DisplayRouteGeometry.Simplify(leg.Points),
+        }
+      )
+      .ToList();
   }
 
-  public async Task<AutomaticPlanningResult> ForTruckAsync(Guid truckId, CancellationToken ct, Guid? knownPlanId = null, int? knownVersion = null)
+  public async Task<AutomaticPlanningResult> ForTruckAsync(
+    Guid truckId,
+    CancellationToken ct,
+    Guid? knownPlanId = null,
+    int? knownVersion = null
+  )
   {
-    var board = await mediator.Send(new GetDispatchBoardQuery(TruckId: truckId, IncludeHos: true, IncludeFinancials: false), ct);
-    if (!board.Success) throw new RoutePlanningException("Dispatch assignments are temporarily unavailable.");
-    foreach (var load in board.Response?.Items.FirstOrDefault()?.Dispatches ?? [])
-    {
-      var result = await ReadDispatchAsync(load.Id, board.Response?.Items.FirstOrDefault()?.Hos, ct, knownPlanId, knownVersion);
-      CheckAssignments(result.State?.Plan?.FuelPlan, board.Response?.Items.FirstOrDefault()?.Dispatches);
-      if (result.TruckId != truckId) return new(truckId, load.Id, load.LoadNumber, null, "This load has multiple truck assignments.");
-      if (result.State?.Plan is not { Tracking.AllStopsPassed: true, InputsChanged: false })
+    var work = await inputs.ReadAsync(truckId, ct);
+    return work is null
+      ? NoRemaining(truckId, null)
+      : await ForItineraryAsync(work, ct, knownPlanId, knownVersion);
+  }
+
+  public async Task<List<AutomaticPlanningResult>> ForBoardAsync(
+    GetDispatchBoardQuery query,
+    CancellationToken ct
+  )
+  {
+    var board = await mediator.Send(
+      query with
       {
-        await fuelPlans.ApplyAsync(result.State, ct);
-        return result;
+        PageSize = 12,
+        IncludeFinancials = false,
+        IncludeHos = false,
+        IncludeEta = false,
+        IncludePlanned = false,
+        IdentitiesOnly = false,
+      },
+      ct
+    );
+    if (!board.Success)
+      throw new RoutePlanningException(
+        "Dispatch assignments are temporarily unavailable."
+      );
+    var snapshots = await inputs.ReadManyAsync(
+      (board.Response?.Items ?? [])
+        .Where(x => x.TruckId.HasValue)
+        .Select(x => x.TruckId!.Value)
+        .Distinct()
+        .ToArray(),
+      ct
+    );
+    var results = new List<AutomaticPlanningResult>();
+    foreach (var work in snapshots.Values)
+    {
+      var first = PlanningWorkPolicy
+        .Candidates(work.Itinerary)
+        .FirstOrDefault();
+      if (first is null)
+        continue;
+      try
+      {
+        results.Add(await ForItineraryAsync(work, ct, metadataOnly: true));
+      }
+      catch (RoutePlanningException ex)
+      {
+        results.Add(
+          new(
+            work.Itinerary.TruckId,
+            first.Work.DispatchId,
+            first.LoadNumber,
+            null,
+            ex.Message
+          )
+          {
+            Hos = work.Hos,
+            ExecutionLegId = first.Work.ExecutionLegId,
+            AssignmentRevision = first.Work.ExecutionLegId.HasValue
+              ? first.AssignmentRevision
+              : 0,
+          }
+        );
       }
     }
-    return new(truckId, null, null, null, "No remaining stops in current or upcoming dispatches.") { Hos = board.Response?.Items.FirstOrDefault()?.Hos };
+    return results;
   }
 
-  public async Task<AutomaticPlanningResult> ForDispatchAsync(Guid id, CancellationToken ct, Guid? knownPlanId = null, int? knownVersion = null)
+  private async Task<AutomaticPlanningResult> ForItineraryAsync(
+    TruckPlanningInputs work,
+    CancellationToken ct,
+    Guid? knownPlanId = null,
+    int? knownVersion = null,
+    bool metadataOnly = false
+  )
   {
-    var load = await routes.LoadAsync(id, ct);
-    var board = await mediator.Send(new GetDispatchBoardQuery(TruckId: load.TruckId, IncludeHos: true, IncludeFinancials: false), ct);
-    var clocks = board.Response?.Items.FirstOrDefault(x => x.TruckId == load.TruckId)?.Hos;
-    var result = await ReadDispatchAsync(id, clocks, ct, knownPlanId, knownVersion, load);
-    CheckAssignments(result.State?.Plan?.FuelPlan, board.Success ? board.Response?.Items.FirstOrDefault()?.Dispatches : null);
-    await fuelPlans.ApplyAsync(result.State, ct);
-    return result;
+    var snapshot = work.Itinerary;
+    foreach (var segment in PlanningWorkPolicy.Candidates(snapshot))
+    {
+      var load = PlanningWorkPolicy.Resolve(snapshot, segment);
+      var result = await ReadDispatchAsync(
+        load,
+        work.Hos,
+        snapshot.InputSignature,
+        ct,
+        knownPlanId,
+        knownVersion,
+        metadataOnly
+      );
+      CheckAssignments(result.State?.Plan, snapshot);
+      if (!PlanningWorkPolicy.IsCompleted(result.State?.Plan, load))
+      {
+        await ApplyFuelAsync(result.State, ct, snapshot);
+        if (metadataOnly && result.State?.Plan is { } plan)
+        {
+          TrimForDisplay(plan, plan.Id, plan.Version);
+          plan.FuelRecommendations = null;
+        }
+        return PlanningWorkPolicy.WithWarnings(result, segment);
+      }
+    }
+    return NoRemaining(snapshot.TruckId, work.Hos);
   }
 
-  private static void CheckAssignments(FuelPlan? fuel, IEnumerable<Application.Features.Dispatch.Models.DispatchResponse>? loads)
+  private static AutomaticPlanningResult NoRemaining(
+    Guid truckId,
+    DriverHosClocks? clocks
+  ) =>
+    new(
+      truckId,
+      null,
+      null,
+      null,
+      "No remaining stops in current or upcoming dispatches."
+    )
+    {
+      Hos = clocks,
+    };
+
+  public async Task<AutomaticPlanningResult> ForDispatchAsync(
+    Guid id,
+    CancellationToken ct,
+    Guid? knownPlanId = null,
+    int? knownVersion = null,
+    Guid? executionLegId = null,
+    Guid? truckId = null
+  )
   {
-    if (fuel is null) return;
-    if (loads is null || FuelHorizon.Signature(loads) != fuel.AssignmentSignature)
+    var load = await routes.LoadAsync(id, ct, executionLegId, truckId);
+    var work = await inputs.ReadAsync(load.TruckId!.Value, ct);
+    var segment = work?.Itinerary.Segments.FirstOrDefault(x =>
+      x.Work.DispatchId == id && x.Work.ExecutionLegId == load.ExecutionLegId
+    );
+    if (segment is not null)
+      load = PlanningWorkPolicy.Resolve(work!.Itinerary, segment);
+    else if (work?.Itinerary.Segments.Any(x => x.Work.DispatchId == id) == true)
+      throw new RoutePlanningException(
+        "The truck assignment changed. Refresh the route."
+      );
+    var result = await ReadDispatchAsync(
+      load,
+      work?.Hos,
+      work?.Itinerary.InputSignature,
+      ct,
+      knownPlanId,
+      knownVersion
+    );
+    CheckAssignments(result.State?.Plan, work?.Itinerary);
+    await ApplyFuelAsync(result.State, ct, work?.Itinerary);
+    return PlanningWorkPolicy.WithWarnings(result, segment);
+  }
+
+  private async Task ApplyFuelAsync(
+    RoutePlanningState? state,
+    CancellationToken ct,
+    TruckItinerarySnapshot? itinerary
+  )
+  {
+    await fuelPlans.ApplyAsync(state, ct, itinerary);
+    if (state is not null)
+      state.FuelStopArrivals = FuelArrivalForecast.Calculate(state);
+  }
+
+  private static void CheckAssignments(
+    RoutePlan? plan,
+    TruckItinerarySnapshot? itinerary
+  )
+  {
+    if (plan?.FuelPlan is not { } fuel)
+      return;
+    var loads = itinerary is null
+      ? null
+      : new FuelWorkInputs(itinerary).SelectForDisplay(plan);
+    if (
+      loads is null
+      || FuelHorizon.Signature(loads) != fuel.AssignmentSignature
+    )
     {
       fuel.NeedsRefresh = true;
-      fuel.RefreshReasons.Add(loads is null ? "Dispatch assignments could not be verified." : "Assigned trips changed. Recalculate fuel.");
+      fuel.RefreshReasons.Add(
+        loads is null
+          ? "Dispatch assignments could not be verified."
+          : "Assigned trips changed. Recalculate fuel."
+      );
     }
   }
 
-  private async Task<AutomaticPlanningResult> ReadDispatchAsync(Guid id,
-    Application.Features.Fleet.Models.DriverHosClocks? clocks, CancellationToken ct,
-    Guid? knownPlanId, int? knownVersion, Domain.Entities.Dispatch.Dispatch? loaded = null)
+  private async Task<AutomaticPlanningResult> ReadDispatchAsync(
+    RouteWorkSnapshot load,
+    DriverHosClocks? clocks,
+    string? inputSignature,
+    CancellationToken ct,
+    Guid? knownPlanId,
+    int? knownVersion,
+    bool metadataOnly = false
+  )
   {
-    var load = loaded ?? await routes.LoadAsync(id, ct);
-    var state = await routes.GetAsync(load, ct, cachedTelemetryOnly: true, displayOnly: true,
-      knownPlanId: knownPlanId, knownVersion: knownVersion);
-    if (!options.Value.Enabled) refresh.Enqueue(id, state);
+    var id = load.Id;
+    var state = await routes.GetAsync(
+      load,
+      ct,
+      cachedTelemetryOnly: true,
+      displayOnly: true,
+      knownPlanId: knownPlanId,
+      knownVersion: knownVersion,
+      metadataOnly: metadataOnly
+    );
+    var identity =
+      inputSignature ?? RoutePlanningService.HashInputs(load, state.Profile);
+    PlanningRefreshState? requested = null;
+    if (
+      !options.Value.Enabled
+      || state.Plan is null
+      || state.Plan.InputsChanged
+    )
+      requested = await refresh.EnqueueAsync(
+        new(id, load.ExecutionLegId, load.AssignmentRevision),
+        state,
+        identity,
+        ct
+      );
     state = state with { Eta = eta.GetCached(state) };
-    return new(load.TruckId!.Value, id, load.LoadNumber, state,
-      refresh.Message(id, state)) { Hos = clocks };
+    return new(
+      load.TruckId!.Value,
+      id,
+      load.LoadNumber,
+      state,
+      refresh.Message(
+        id,
+        state,
+        identity,
+        load.ExecutionLegId,
+        load.AssignmentRevision,
+        requested?.Pending == true
+      )
+    )
+    {
+      Hos = clocks,
+      ExecutionLegId = load.ExecutionLegId,
+      AssignmentRevision = load.AssignmentRevision,
+    };
   }
 }

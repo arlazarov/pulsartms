@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Application.Interfaces;
 using Infrastructure.Identity;
 using Infrastructure.Integrations.Google.Gmail;
 using Microsoft.AspNetCore.Authorization;
@@ -16,8 +17,15 @@ public class AuthorizationTests
   public async Task OnlyAdminRoleCanAdminister(string id, bool allowed)
   {
     var requirement = new AdminRequirement();
-    var user = new ClaimsPrincipal(new ClaimsIdentity(
-      [new Claim(ClaimTypes.NameIdentifier, id), new Claim(ClaimTypes.Email, "anton@amfcarrier.com")], "Bearer"));
+    var user = new ClaimsPrincipal(
+      new ClaimsIdentity(
+        [
+          new Claim(ClaimTypes.NameIdentifier, id),
+          new Claim(ClaimTypes.Email, "anton@amfcarrier.com"),
+        ],
+        "Bearer"
+      )
+    );
     var context = new AuthorizationHandlerContext([requirement], user, null);
     await new AdminAuthorizationHandler(new TestRoles()).HandleAsync(context);
     Assert.Equal(allowed, context.HasSucceeded);
@@ -32,19 +40,36 @@ public class AuthorizationTests
     Assert.False(validator.IsExpectedMailbox("someone@example.com"));
   }
 
-  private sealed class TestRoles : Application.Interfaces.IUserRoleService
+  private sealed class TestRoles : IUserRoleService
   {
-    public Task<string?> GetAsync(string id, CancellationToken ct = default) => Task.FromResult<string?>(id == "admin-id" ? "Admin" : "Dispatch");
-    public Task<Dictionary<Guid, string>> GetAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default) => throw new NotImplementedException();
-    public Task SetAsync(string id, string role, CancellationToken ct = default) => throw new NotImplementedException();
+    public Task<string?> GetAsync(string id, CancellationToken ct = default) =>
+      Task.FromResult<string?>(id == "admin-id" ? "Admin" : "Dispatch");
+
+    public Task<Dictionary<Guid, string>> GetAsync(
+      IReadOnlyCollection<Guid> ids,
+      CancellationToken ct = default
+    ) => throw new NotImplementedException();
+
+    public Task SetAsync(
+      string id,
+      string role,
+      CancellationToken ct = default
+    ) => throw new NotImplementedException();
   }
 
   [Fact]
   public async Task PushRequiresTokenAndExpectedMailbox()
   {
-    var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-    { ["Gmail:PushAudience"] = "https://example.com/push", ["Gmail:PushServiceAccountEmail"] = "push@example.com",
-      ["Gmail:MailboxEmail"] = "fuel@example.com" }).Build();
+    var config = new ConfigurationBuilder()
+      .AddInMemoryCollection(
+        new Dictionary<string, string?>
+        {
+          ["Gmail:PushAudience"] = "https://example.com/push",
+          ["Gmail:PushServiceAccountEmail"] = "push@example.com",
+          ["Gmail:MailboxEmail"] = "fuel@example.com",
+        }
+      )
+      .Build();
     var validator = new GmailPushValidator(config);
     Assert.True(validator.IsConfigured);
     Assert.False(await validator.ValidateAsync(""));

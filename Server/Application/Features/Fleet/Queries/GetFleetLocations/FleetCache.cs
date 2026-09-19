@@ -14,7 +14,8 @@ public class FleetCache(IMemoryCache cache)
   )
   {
     if (
-      cache.TryGetValue(CacheKey, out IReadOnlyList<FleetTruckInfo>? cached) && cached is not null
+      cache.TryGetValue(CacheKey, out IReadOnlyList<FleetTruckInfo>? cached)
+      && cached is not null
     )
     {
       return cached;

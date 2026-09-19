@@ -17,8 +17,12 @@ export function createTruckPoint(value) {
     latitude: position.lat,
     longitude: position.lng,
     gpsTime,
-    speed: Number.isFinite(Number(value.speed)) ? Math.max(0, Number(value.speed)) : 0,
-    heading: Number.isFinite(Number(value.heading)) ? normalizeHeading(Number(value.heading)) : 0,
+    speed: Number.isFinite(Number(value.speed))
+      ? Math.max(0, Number(value.speed))
+      : 0,
+    heading: Number.isFinite(Number(value.heading))
+      ? normalizeHeading(Number(value.heading))
+      : 0,
   };
 }
 
@@ -28,6 +32,10 @@ export function mergeTruckPoints(existing, incoming, current, renderTime) {
   if (current) points.set(current.gpsTime, current);
   const sorted = [...points.values()].sort((a, b) => a.gpsTime - b.gpsTime);
   let first = 0;
-  while (first < sorted.length - 2 && sorted[first + 1].gpsTime < renderTime - 60000) first++;
+  while (
+    first < sorted.length - 2 &&
+    sorted[first + 1].gpsTime < renderTime - 60000
+  )
+    first++;
   return sorted.slice(Math.max(first, sorted.length - 300));
 }

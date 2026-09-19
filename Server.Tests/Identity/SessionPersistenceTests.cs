@@ -19,17 +19,31 @@ public class SessionPersistenceTests
       var services = new ServiceCollection();
       services.AddLogging();
       services.AddDbContext<AppDbContext>(o => o.UseSqlite(connection));
-      services.AddDataProtection().SetApplicationName("AMFTMS").PersistKeysToDbContext<AppDbContext>();
+      services
+        .AddDataProtection()
+        .SetApplicationName("AMFTMS")
+        .PersistKeysToDbContext<AppDbContext>();
       return services.BuildServiceProvider();
     }
     string token;
     using (var first = Create())
     {
       using var scope = first.CreateScope();
-      scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreated();
-      token = first.GetRequiredService<IDataProtectionProvider>().CreateProtector("session-test").Protect("session");
+      scope
+        .ServiceProvider.GetRequiredService<AppDbContext>()
+        .Database.EnsureCreated();
+      token = first
+        .GetRequiredService<IDataProtectionProvider>()
+        .CreateProtector("session-test")
+        .Protect("session");
     }
     using var second = Create();
-    Assert.Equal("session", second.GetRequiredService<IDataProtectionProvider>().CreateProtector("session-test").Unprotect(token));
+    Assert.Equal(
+      "session",
+      second
+        .GetRequiredService<IDataProtectionProvider>()
+        .CreateProtector("session-test")
+        .Unprotect(token)
+    );
   }
 }

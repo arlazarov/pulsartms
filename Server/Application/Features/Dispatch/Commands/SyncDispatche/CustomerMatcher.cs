@@ -28,6 +28,8 @@ public static class CustomerMatcher
 
   public static string Normalize(string value)
   {
-    return new string([.. value.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant)]);
+    return new string(
+      [.. value.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant)]
+    );
   }
 }

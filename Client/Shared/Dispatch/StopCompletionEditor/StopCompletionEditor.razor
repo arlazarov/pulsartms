@@ -1,0 +1,45 @@
+@implements IDisposable
+
+<div class="stop-completion" aria-label="Stop completion">
+    @if (Stop.CompletionOverride.HasValue)
+    {
+        <p>Completion was corrected in the load workspace.</p>
+    }
+    @if (Stop.ManualCompletedAt is { } actual)
+    {
+        <p class="stop-completion__record">Manually completed <strong>@Timestamp(actual)</strong><span>by @Stop.ManualCompletedByName</span></p>
+        @if (ProviderCompleted) { <p>Also confirmed by the source.</p> }
+    }
+    @if (_editing)
+    {
+        <div class="stop-completion__form">
+            @if (!_undo)
+            {
+                <label for="@($"completion-date-{Stop.Id}")">Actual date
+                    <input id="@($"completion-date-{Stop.Id}")" type="date" @bind="_date" disabled="@_saving" />
+                </label>
+                <label for="@($"completion-time-{Stop.Id}")">Actual time
+                    <input id="@($"completion-time-{Stop.Id}")" type="text" placeholder="02:00 PM" @bind="_time" disabled="@_saving" />
+                </label>
+                <p class="stop-completion__hint">Your local time · This confirms only stop @Stop.Sequence.</p>
+            }
+            else
+            {
+                <p>@(ProviderCompleted ? "Remove the manual confirmation? The source still marks this stop completed." : "Undo this manual confirmation and return the stop to the remaining itinerary?")</p>
+            }
+            <div class="stop-completion__actions">
+                <button type="button" class="btn btn--primary btn--small" disabled="@_saving" @onclick="SaveAsync">@(_saving ? "Saving…" : _undo ? "Confirm undo" : "Confirm completed")</button>
+                <button type="button" class="btn btn--small" disabled="@_saving" @onclick="Cancel">Cancel</button>
+            </div>
+        </div>
+    }
+    else if (Stop.ManualCompletedAt.HasValue && !Stop.CompletionOverride.HasValue)
+    {
+        <button type="button" class="btn btn--text btn--small" disabled="@_saving" @onclick="() => Begin(true)">Undo manual completion</button>
+    }
+    else if (!ProviderCompleted && !CompletedLoad && !Stop.CompletionOverride.HasValue)
+    {
+        <button type="button" class="btn btn--text btn--small" disabled="@_saving" @onclick="() => Begin(false)">Mark completed</button>
+    }
+    @if (_error is not null) { <p class="stop-completion__error" role="alert">@_error</p> }
+</div>

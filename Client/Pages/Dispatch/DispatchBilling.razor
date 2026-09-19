@@ -1,0 +1,50 @@
+<section class="dispatch-details__panel">
+  <h2>Load &amp; billing information</h2>
+  <div class="dispatch-details__fields">
+    <label>
+      Order number
+      <input @bind="Metadata.OrderNumber" maxlength="100"
+             @bind:event="oninput" @bind:after="NotifyChanged"
+             disabled="@(!CanEdit)" />
+    </label>
+    <label>
+      Customer
+      <input @bind="Metadata.CustomerName" maxlength="200"
+             @bind:event="oninput" @bind:after="NotifyChanged"
+             disabled="@(!CanEdit)" />
+    </label>
+    <label>
+      Load rate
+      <input type="number" min="0" step="0.01" @bind="Metadata.Price"
+             @bind:after="NotifyChanged" disabled="@(!CanEdit)" />
+    </label>
+    <label>
+      Currency
+      <select @bind="Metadata.Currency" @bind:after="NotifyChanged"
+              disabled="@(!CanEdit)">
+        <option value="">Not specified</option>
+        <option value="USD">USD</option>
+        <option value="CAD">CAD</option>
+      </select>
+    </label>
+  </div>
+  <dl class="dispatch-details__financials">
+    <div><dt>Loaded distance</dt><dd>
+      <DistanceText Miles="@((double?)Load.LoadedMiles)" />
+    </dd></div>
+    <div><dt>Empty distance</dt><dd>
+      <DistanceText Miles="@((double?)Load.EmptyMiles)" />
+    </dd></div>
+    <div><dt>Total distance</dt><dd>
+      <DistanceText Miles="@((double?)Load.TotalMiles)" />
+    </dd></div>
+    <div><dt>Loaded RPM</dt><dd>
+      @DispatchFinancialDisplay.Money(Load.LoadedRatePerMile, Load.Currency)
+    </dd></div>
+    <div><dt>Total RPM</dt><dd>
+      @DispatchFinancialDisplay.Money(Load.TotalRatePerMile, Load.Currency)
+    </dd></div>
+  </dl>
+  <p>Distances and RPM are server-calculated saved values.</p>
+  <p>This is load billing information, not driver pay or payment processing.</p>
+</section>

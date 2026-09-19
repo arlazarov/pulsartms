@@ -1,8 +1,12 @@
 using System.Text.Json.Serialization;
+using FluentValidation.Results;
 
 namespace Application.Models;
 
-public interface IRequestOutcome { bool Success { get; } }
+public interface IRequestOutcome
+{
+  bool Success { get; }
+}
 
 public record RequestResponse<T>(
   bool Success,
@@ -14,8 +18,10 @@ public record RequestResponse<T>(
   public static RequestResponse<T> Ok(T response, int statusCode = 200) =>
     new(true, response, null, statusCode);
 
-  public static RequestResponse<T> Fail(ValidationErrors errors, int statusCode = 400) =>
-    new(false, default, errors, statusCode);
+  public static RequestResponse<T> Fail(
+    ValidationErrors errors,
+    int statusCode = 400
+  ) => new(false, default, errors, statusCode);
 
   public static RequestResponse<T> Fail(string error, int statusCode = 400) =>
     new(false, default, new ValidationErrors(error), statusCode);
@@ -33,7 +39,7 @@ public class ValidationErrors : List<string>
 public static partial class Extensions
 {
   public static ValidationErrors ToRequestErrors(
-    this List<FluentValidation.Results.ValidationFailure> errors
+    this List<ValidationFailure> errors
   )
   {
     return new ValidationErrors(

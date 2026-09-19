@@ -52,7 +52,9 @@ public sealed class GmailWatchLifecycleTests
     var fixture = new Fixture();
     await fixture.Run(true);
     var expiration = fixture.Store.State!.ExpiresAt;
-    fixture.Watch.Error = new InvalidOperationException("Credentials are unavailable");
+    fixture.Watch.Error = new InvalidOperationException(
+      "Credentials are unavailable"
+    );
     fixture.Clock.Now = new(fixture.Store.State.NextRenewalAt, TimeSpan.Zero);
     foreach (var delay in new[] { 15, 30, 60, 120, 240, 360, 360 })
     {
@@ -75,10 +77,16 @@ public sealed class GmailWatchLifecycleTests
   {
     var fixture = new Fixture();
     fixture.Watch.Result = new() { HistoryId = 42 };
-    Assert.Equal(nameof(InvalidOperationException), (await fixture.Run(true)).RenewalError);
+    Assert.Equal(
+      nameof(InvalidOperationException),
+      (await fixture.Run(true)).RenewalError
+    );
     Assert.Null(fixture.Store.State!.LastRenewedAt);
     Assert.Null(fixture.Store.State.ExpiresAt);
-    Assert.Equal(fixture.Clock.Now.UtcDateTime.AddMinutes(15), fixture.Store.State.NextRenewalAt);
+    Assert.Equal(
+      fixture.Clock.Now.UtcDateTime.AddMinutes(15),
+      fixture.Store.State.NextRenewalAt
+    );
   }
 
   [Fact]
@@ -88,11 +96,16 @@ public sealed class GmailWatchLifecycleTests
     using var cancellation = new CancellationTokenSource();
     fixture.Watch.BeforeCall = () =>
     {
-      Assert.Equal(fixture.Clock.Now.UtcDateTime.AddMinutes(15), fixture.Store.State!.NextRenewalAt);
+      Assert.Equal(
+        fixture.Clock.Now.UtcDateTime.AddMinutes(15),
+        fixture.Store.State!.NextRenewalAt
+      );
       cancellation.Cancel();
       throw new OperationCanceledException(cancellation.Token);
     };
-    await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fixture.Run(true, cancellation.Token));
+    await Assert.ThrowsAnyAsync<OperationCanceledException>(
+      () => fixture.Run(true, cancellation.Token)
+    );
     fixture.Watch.BeforeCall = null;
     await fixture.Run();
     Assert.Equal(1, fixture.Watch.Calls);
@@ -105,9 +118,15 @@ public sealed class GmailWatchLifecycleTests
     var fixture = new Fixture();
     await fixture.Run(true);
     fixture.Sender.Success = false;
-    Assert.Equal(nameof(InvalidOperationException), (await fixture.Run()).RecoveryError);
+    Assert.Equal(
+      nameof(InvalidOperationException),
+      (await fixture.Run()).RecoveryError
+    );
     var state = fixture.Store.State!;
-    Assert.Equal(fixture.Clock.Now.UtcDateTime.AddMinutes(15), state.NextRecoveryAt);
+    Assert.Equal(
+      fixture.Clock.Now.UtcDateTime.AddMinutes(15),
+      state.NextRecoveryAt
+    );
     Assert.Equal(fixture.Clock.Now.UtcDateTime.AddDays(1), state.NextRenewalAt);
     await fixture.Run();
     Assert.Equal(1, fixture.Sender.Calls);
@@ -145,14 +164,28 @@ public sealed class GmailWatchLifecycleTests
     public Store Store { get; } = new();
     public Watch Watch { get; } = new();
     public Sender Sender { get; } = new();
-    public Fixture() => Watch.Result = new() { HistoryId = 42, Expiration = Clock.Now.AddDays(7).ToUnixTimeMilliseconds() };
-    public Task<GmailWatchRunResult> Run(bool register = false, CancellationToken ct = default) =>
-      new GmailWatchLifecycle(Store, Watch, Sender, Clock).RunAsync(register, ct);
+
+    public Fixture() =>
+      Watch.Result = new()
+      {
+        HistoryId = 42,
+        Expiration = Clock.Now.AddDays(7).ToUnixTimeMilliseconds(),
+      };
+
+    public Task<GmailWatchRunResult> Run(
+      bool register = false,
+      CancellationToken ct = default
+    ) =>
+      new GmailWatchLifecycle(Store, Watch, Sender, Clock).RunAsync(
+        register,
+        ct
+      );
   }
 
   private sealed class Clock : TimeProvider
   {
     public DateTimeOffset Now = new(2026, 9, 7, 12, 0, 0, TimeSpan.Zero);
+
     public override DateTimeOffset GetUtcNow() => Now;
   }
 
@@ -161,21 +194,44 @@ public sealed class GmailWatchLifecycleTests
     private string? json;
     public GmailWatchState? State
     {
-      get => json is null ? null : JsonSerializer.Deserialize<GmailWatchState>(json);
+      get =>
+        json is null ? null : JsonSerializer.Deserialize<GmailWatchState>(json);
       set => json = JsonSerializer.Serialize(value);
     }
     public bool Busy;
-    public int Acquisitions, Releases;
+    public int Acquisitions,
+      Releases;
     public Action? BeforeAcquire;
-    public Task<bool> AcquireAsync(string owner, DateTime now, CancellationToken ct)
+
+    public Task<bool> AcquireAsync(
+      string owner,
+      DateTime now,
+      CancellationToken ct
+    )
     {
       Acquisitions++;
       BeforeAcquire?.Invoke();
       return Task.FromResult(!Busy);
     }
-    public Task<GmailWatchState?> ReadAsync(CancellationToken ct) => Task.FromResult(State);
-    public Task SaveAsync(string owner, GmailWatchState state, CancellationToken ct) { State = state; return Task.CompletedTask; }
-    public Task ReleaseAsync(string owner, CancellationToken ct) { Releases++; return Task.CompletedTask; }
+
+    public Task<GmailWatchState?> ReadAsync(CancellationToken ct) =>
+      Task.FromResult(State);
+
+    public Task SaveAsync(
+      string owner,
+      GmailWatchState state,
+      CancellationToken ct
+    )
+    {
+      State = state;
+      return Task.CompletedTask;
+    }
+
+    public Task ReleaseAsync(string owner, CancellationToken ct)
+    {
+      Releases++;
+      return Task.CompletedTask;
+    }
   }
 
   private sealed class Watch : IGmailWatchService
@@ -184,11 +240,16 @@ public sealed class GmailWatchLifecycleTests
     public Action? BeforeCall;
     public Exception? Error;
     public GmailWatchResult Result = new();
-    public Task<GmailWatchResult> StartAsync(CancellationToken cancellationToken = default)
+
+    public Task<GmailWatchResult> StartAsync(
+      CancellationToken cancellationToken = default
+    )
     {
       Calls++;
       BeforeCall?.Invoke();
-      return Error is null ? Task.FromResult(Result) : Task.FromException<GmailWatchResult>(Error);
+      return Error is null
+        ? Task.FromResult(Result)
+        : Task.FromException<GmailWatchResult>(Error);
     }
   }
 
@@ -196,16 +257,34 @@ public sealed class GmailWatchLifecycleTests
   {
     public int Calls;
     public bool Success = true;
-    public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default)
+
+    public Task<TResponse> Send<TResponse>(
+      IRequest<TResponse> request,
+      CancellationToken ct = default
+    )
     {
       Assert.IsType<ImportFuelDiscountsCommand>(request);
       Calls++;
-      object response = Success ? RequestResponse<int>.Ok(0) : RequestResponse<int>.Fail("Import unavailable", 503);
+      object response = Success
+        ? RequestResponse<int>.Ok(0)
+        : RequestResponse<int>.Fail("Import unavailable", 503);
       return Task.FromResult((TResponse)response);
     }
-    public Task Send<TRequest>(TRequest request, CancellationToken ct = default) where TRequest : IRequest => throw new NotSupportedException();
-    public Task<object?> Send(object request, CancellationToken ct = default) => throw new NotSupportedException();
-    public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken ct = default) => throw new NotSupportedException();
-    public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken ct = default) => throw new NotSupportedException();
+
+    public Task Send<TRequest>(TRequest request, CancellationToken ct = default)
+      where TRequest : IRequest => throw new NotSupportedException();
+
+    public Task<object?> Send(object request, CancellationToken ct = default) =>
+      throw new NotSupportedException();
+
+    public IAsyncEnumerable<TResponse> CreateStream<TResponse>(
+      IStreamRequest<TResponse> request,
+      CancellationToken ct = default
+    ) => throw new NotSupportedException();
+
+    public IAsyncEnumerable<object?> CreateStream(
+      object request,
+      CancellationToken ct = default
+    ) => throw new NotSupportedException();
   }
 }

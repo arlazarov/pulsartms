@@ -1,9 +1,9 @@
-using Application.Features.Routing.Services.Routes;
-using Application.Caching;
 using System.Text.Json;
+using Application.Caching;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services;
+using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Options;
 using Application.Features.Synchronization.Services;
 using Domain.Entities.Dispatch;
@@ -20,22 +20,34 @@ public class RouteDisplayCacheTests
   [Fact]
   public async Task ColdLoadsAreBoundedWithoutBlockingHotSnapshotsOrCancellation()
   {
-    using var reads = new ReadCache(Options.Create(new SynchronizationOptions()));
+    using var reads = new ReadCache(
+      Options.Create(new SynchronizationOptions())
+    );
     using var cache = new RouteDisplayCache(reads);
     var stripes = new HashSet<uint>();
     var ids = new List<Guid>();
     while (ids.Count < 4)
     {
       var id = Guid.NewGuid();
-      if (stripes.Add((uint)id.GetHashCode() % 64)) ids.Add(id);
+      if (stripes.Add((uint)id.GetHashCode() % 64))
+        ids.Add(id);
     }
-    var hot = await cache.GetAsync(ids[0], () => Task.FromResult<DispatchRoutePlan?>(new() { PlanJson = "{}" }), default);
+    var hot = await cache.GetAsync(
+      ids[0],
+      () => Task.FromResult<DispatchRoutePlan?>(new() { PlanJson = "{}" }),
+      default
+    );
     var opened = 0;
-    var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-    var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    var started = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    var release = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
     async Task<DispatchRoutePlan?> Load()
     {
-      if (Interlocked.Increment(ref opened) == 2) started.TrySetResult();
+      if (Interlocked.Increment(ref opened) == 2)
+        started.TrySetResult();
       await release.Task;
       return new() { PlanJson = "{}" };
     }
@@ -48,12 +60,23 @@ public class RouteDisplayCacheTests
       var waiting = cache.GetAsync(ids[3], Load, cancellation.Token);
       Assert.Equal(2, Volatile.Read(ref opened));
       Assert.False(waiting.IsCompleted);
-      Assert.Same(hot, await cache.GetAsync(ids[0], () => throw new InvalidOperationException(), default));
+      Assert.Same(
+        hot,
+        await cache.GetAsync(
+          ids[0],
+          () => throw new InvalidOperationException(),
+          default
+        )
+      );
       cancellation.Cancel();
       await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting);
       Assert.Equal(2, Volatile.Read(ref opened));
     }
-    finally { release.TrySetResult(); await Task.WhenAll(first, second); }
+    finally
+    {
+      release.TrySetResult();
+      await Task.WhenAll(first, second);
+    }
     Assert.NotNull(await cache.GetAsync(ids[3], Load, default));
     Assert.Equal(3, opened);
   }
@@ -61,18 +84,51 @@ public class RouteDisplayCacheTests
   [Fact]
   public async Task ProjectionPreservesExactMatchingAndReloadsAfterInvalidation()
   {
-    using var reads = new ReadCache(Options.Create(new SynchronizationOptions()));
+    using var reads = new ReadCache(
+      Options.Create(new SynchronizationOptions())
+    );
     using var cache = new RouteDisplayCache(reads);
     var id = Guid.NewGuid();
-    var points = Enumerable.Range(0, 10001).Select(i => new RoutePoint(40 + Math.Sin(i / 100d) * .00001, -80 + i / 10000d)).ToList();
-    var plan = new RoutePlan { Id = Guid.NewGuid(), DispatchId = id, Version = 1,
-      Route = new() { Miles = 100, Seconds = 7200, Points = points, Legs = [new(100, 7200, points)] } };
-    var entity = new DispatchRoutePlan { DispatchId = id, PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json) };
+    var points = Enumerable
+      .Range(0, 10001)
+      .Select(i => new RoutePoint(
+        40 + Math.Sin(i / 100d) * .00001,
+        -80 + i / 10000d
+      ))
+      .ToList();
+    var plan = new RoutePlan
+    {
+      Id = Guid.NewGuid(),
+      DispatchId = id,
+      Version = 1,
+      Route = new()
+      {
+        Miles = 100,
+        Seconds = 7200,
+        Points = points,
+        Legs = [new(100, 7200, points)],
+      },
+    };
+    var entity = new DispatchRoutePlan
+    {
+      DispatchId = id,
+      PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json),
+    };
     var calls = 0;
-    Task<DispatchRoutePlan?> Load() { calls++; return Task.FromResult<DispatchRoutePlan?>(entity); }
+    Task<DispatchRoutePlan?> Load()
+    {
+      calls++;
+      return Task.FromResult<DispatchRoutePlan?>(entity);
+    }
     var snapshot = (await cache.GetAsync(id, Load, default))!;
     var exact = new RouteGeometry(plan.Route);
-    foreach (var position in new[] { new RoutePoint(40, -79.5), new RoutePoint(40.01, -79.2) })
+    foreach (
+      var position in new[]
+      {
+        new RoutePoint(40, -79.5),
+        new RoutePoint(40.01, -79.2),
+      }
+    )
       Assert.Equal(exact.Match(position), snapshot.Geometry.Match(position));
     Assert.True(snapshot.DisplayBytes < entity.PlanJson.Length / 10);
     var display = snapshot.ReadPlan();
@@ -92,15 +148,43 @@ public class RouteDisplayCacheTests
   [InlineData(true, 3, true)]
   [InlineData(true, 2, false)]
   [InlineData(false, 3, false)]
-  public void SnapshotSelectsOnlyExactKnownGeometryAndClonesAllMutableMetadata(bool sameId, int version, bool omitted)
+  public void SnapshotSelectsOnlyExactKnownGeometryAndClonesAllMutableMetadata(
+    bool sameId,
+    int version,
+    bool omitted
+  )
   {
-    var plan = new RoutePlan { Id = Guid.NewGuid(), DispatchId = Guid.NewGuid(), TruckId = Guid.NewGuid(), Version = 3,
-      Route = new() { Miles = 10, Seconds = 600, Legs = [new(10, 600, [new(40, -80), new(41, -80)])] },
-      ReferenceRoute = new() { Miles = 20, Legs = [new(20, 1200, [new(39, -80), new(41, -80)])] },
+    var plan = new RoutePlan
+    {
+      Id = Guid.NewGuid(),
+      DispatchId = Guid.NewGuid(),
+      TruckId = Guid.NewGuid(),
+      Version = 3,
+      Route = new()
+      {
+        Miles = 10,
+        Seconds = 600,
+        Legs = [new(10, 600, [new(40, -80), new(41, -80)])],
+      },
+      ReferenceRoute = new()
+      {
+        Miles = 20,
+        Legs = [new(20, 1200, [new(39, -80), new(41, -80)])],
+      },
       Stops = [new(Guid.NewGuid(), "Saved", "Address", 1, new(41, -80))],
-      FuelPlan = new() { Notes = ["Saved note"] }, Tracking = new() { NextStopLabel = "Saved stop" } };
-    var snapshot = RouteDisplayCache.Create(new() { Id = plan.Id, DispatchId = plan.DispatchId, TruckId = plan.TruckId,
-      InputHash = "saved-input", PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json) });
+      FuelPlan = new() { Notes = ["Saved note"] },
+      Tracking = new() { NextStopLabel = "Saved stop" },
+    };
+    var snapshot = RouteDisplayCache.Create(
+      new()
+      {
+        Id = plan.Id,
+        DispatchId = plan.DispatchId,
+        TruckId = plan.TruckId,
+        InputHash = "saved-input",
+        PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json),
+      }
+    );
     var display = snapshot.ReadPlan(sameId ? plan.Id : Guid.NewGuid(), version);
     Assert.Equal(omitted, display.GeometryOmitted);
     Assert.Equal(omitted ? 0 : 2, display.Route.Legs[0].Points.Count);
@@ -133,42 +217,112 @@ public class RouteDisplayCacheTests
   [InlineData(false, false)]
   [InlineData(false, true)]
   [InlineData(true, false)]
-  public void MetadataOnlyRecommendationProjectionKeepsFullGeometryFallbackForFreshAndOffRoutePositions(bool stale, bool offRoute)
+  public void MetadataOnlyRecommendationProjectionKeepsFullGeometryFallbackForFreshAndOffRoutePositions(
+    bool stale,
+    bool offRoute
+  )
   {
-    var plan = new RoutePlan { Id = Guid.NewGuid(), Version = 1,
-      Route = new() { Miles = 100, Legs = [new(100, 6000, [new(40, -80), new(40, -79)])] },
-      InputsChanged = true, FuelRecommendations = new() { Stations = [
-        new() { Name = "Behind", RouteMile = 20 }, new() { Name = "Ahead", RouteMile = 80 }] } };
-    var snapshot = RouteDisplayCache.Create(new() { PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json) });
-    var progress = new RouteProgress(null, null, null, offRoute ? 2 : 0, offRoute, stale, DateTime.UtcNow,
-      new(offRoute ? 40.02 : 40, -79.5));
-    var full = new RoutePlanningState(new(), snapshot.ReadPlan(), progress, null, null, true);
-    var metadata = full with { Plan = snapshot.ReadPlan(plan.Id, plan.Version) };
+    var plan = new RoutePlan
+    {
+      Id = Guid.NewGuid(),
+      Version = 1,
+      Route = new()
+      {
+        Miles = 100,
+        Legs = [new(100, 6000, [new(40, -80), new(40, -79)])],
+      },
+      InputsChanged = true,
+      FuelRecommendations = new()
+      {
+        Stations =
+        [
+          new() { Name = "Behind", RouteMile = 20 },
+          new() { Name = "Ahead", RouteMile = 80 },
+        ],
+      },
+    };
+    var snapshot = RouteDisplayCache.Create(
+      new()
+      {
+        PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json),
+      }
+    );
+    var progress = new RouteProgress(
+      null,
+      null,
+      null,
+      offRoute ? 2 : 0,
+      offRoute,
+      stale,
+      DateTime.UtcNow,
+      new(offRoute ? 40.02 : 40, -79.5)
+    );
+    var full = new RoutePlanningState(
+      new(),
+      snapshot.ReadPlan(),
+      progress,
+      null,
+      null,
+      true
+    );
+    var metadata = full with
+    {
+      Plan = snapshot.ReadPlan(plan.Id, plan.Version),
+    };
     AutomaticPlanningService.ProjectRecommendations(full);
-    AutomaticPlanningService.ProjectRecommendations(metadata, snapshot.Geometry);
-    Assert.Equal(full.Plan!.FuelRecommendations!.Stations.Select(x => x.Name), metadata.Plan!.FuelRecommendations!.Stations.Select(x => x.Name));
-    Assert.Equal(stale ? 2 : 1, metadata.Plan.FuelRecommendations.Stations.Count);
-    Assert.All(metadata.Plan.FuelRecommendations.Stations, station => Assert.Null(station.MilesAhead));
+    AutomaticPlanningService.ProjectRecommendations(
+      metadata,
+      snapshot.Geometry
+    );
+    Assert.Equal(
+      full.Plan!.FuelRecommendations!.Stations.Select(x => x.Name),
+      metadata.Plan!.FuelRecommendations!.Stations.Select(x => x.Name)
+    );
+    Assert.Equal(
+      stale ? 2 : 1,
+      metadata.Plan.FuelRecommendations.Stations.Count
+    );
+    Assert.All(
+      metadata.Plan.FuelRecommendations.Stations,
+      station => Assert.Null(station.MilesAhead)
+    );
     Assert.Empty(metadata.Plan.Route.Legs[0].Points);
   }
 
   [Fact]
   public async Task IndependentColdKeysLoadConcurrentlyAndSameKeySharesTheLoadWithCancelledWaiters()
   {
-    using var reads = new ReadCache(Options.Create(new SynchronizationOptions()));
+    using var reads = new ReadCache(
+      Options.Create(new SynchronizationOptions())
+    );
     using var cache = new RouteDisplayCache(reads);
     var firstId = Guid.NewGuid();
-    var otherId = Enumerable.Range(0, 1000).Select(_ => Guid.NewGuid())
-      .First(id => (uint)id.GetHashCode() % 64 != (uint)firstId.GetHashCode() % 64);
-    var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-    var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    var otherId = Enumerable
+      .Range(0, 1000)
+      .Select(_ => Guid.NewGuid())
+      .First(id =>
+        (uint)id.GetHashCode() % 64 != (uint)firstId.GetHashCode() % 64
+      );
+    var started = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    var release = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
     var calls = 0;
     async Task<DispatchRoutePlan?> Load()
     {
       Interlocked.Increment(ref calls);
       started.TrySetResult();
       await release.Task;
-      return new() { DispatchId = firstId, PlanJson = JsonSerializer.Serialize(new RoutePlan { DispatchId = firstId }, RoutePlanningService.Json) };
+      return new()
+      {
+        DispatchId = firstId,
+        PlanJson = JsonSerializer.Serialize(
+          new RoutePlan { DispatchId = firstId },
+          RoutePlanningService.Json
+        ),
+      };
     }
     var first = cache.GetAsync(firstId, Load, default);
     await started.Task;
@@ -179,13 +333,24 @@ public class RouteDisplayCacheTests
     var same = cache.GetAsync(firstId, Load, default);
     try
     {
-      var unrelated = await cache.GetAsync(otherId, () => Task.FromResult<DispatchRoutePlan?>(new()
-        { DispatchId = otherId, PlanJson = "{}" }), default).WaitAsync(TimeSpan.FromSeconds(2));
+      var unrelated = await cache
+        .GetAsync(
+          otherId,
+          () =>
+            Task.FromResult<DispatchRoutePlan?>(
+              new() { DispatchId = otherId, PlanJson = "{}" }
+            ),
+          default
+        )
+        .WaitAsync(TimeSpan.FromSeconds(2));
       Assert.NotNull(unrelated);
       Assert.False(first.IsCompleted);
       Assert.False(same.IsCompleted);
     }
-    finally { release.TrySetResult(); }
+    finally
+    {
+      release.TrySetResult();
+    }
     Assert.Same(await first, await same);
     Assert.Equal(1, calls);
   }
@@ -193,16 +358,40 @@ public class RouteDisplayCacheTests
   [Fact]
   public async Task InvalidationDuringColdLoadCannotPopulateTheNewGeneration()
   {
-    using var reads = new ReadCache(Options.Create(new SynchronizationOptions()));
+    using var reads = new ReadCache(
+      Options.Create(new SynchronizationOptions())
+    );
     using var cache = new RouteDisplayCache(reads);
     var id = Guid.NewGuid();
-    var reply = new TaskCompletionSource<DispatchRoutePlan?>(TaskCreationOptions.RunContinuationsAsynchronously);
+    var reply = new TaskCompletionSource<DispatchRoutePlan?>(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
     var old = cache.GetAsync(id, () => reply.Task, default);
     reads.Invalidate($"route:{id}");
-    reply.SetResult(new() { PlanJson = JsonSerializer.Serialize(new RoutePlan { Id = id, Version = 1 }, RoutePlanningService.Json) });
+    reply.SetResult(
+      new()
+      {
+        PlanJson = JsonSerializer.Serialize(
+          new RoutePlan { Id = id, Version = 1 },
+          RoutePlanningService.Json
+        ),
+      }
+    );
     var first = await old;
-    var latest = await cache.GetAsync(id, () => Task.FromResult<DispatchRoutePlan?>(new()
-      { PlanJson = JsonSerializer.Serialize(new RoutePlan { Id = id, Version = 2 }, RoutePlanningService.Json) }), default);
+    var latest = await cache.GetAsync(
+      id,
+      () =>
+        Task.FromResult<DispatchRoutePlan?>(
+          new()
+          {
+            PlanJson = JsonSerializer.Serialize(
+              new RoutePlan { Id = id, Version = 2 },
+              RoutePlanningService.Json
+            ),
+          }
+        ),
+      default
+    );
     Assert.NotSame(first, latest);
     Assert.False(latest!.ReadPlan(id, 1).GeometryOmitted);
     Assert.True(latest.ReadPlan(id, 2).GeometryOmitted);
@@ -211,14 +400,30 @@ public class RouteDisplayCacheTests
   [Fact]
   public async Task OversizedSnapshotsAndFailedLoadsAreNotRetained()
   {
-    using var reads = new ReadCache(Options.Create(new SynchronizationOptions()));
+    using var reads = new ReadCache(
+      Options.Create(new SynchronizationOptions())
+    );
     using var cache = new RouteDisplayCache(reads);
     var id = Guid.NewGuid();
-    await Assert.ThrowsAsync<InvalidOperationException>(() => cache.GetAsync(id,
-      () => throw new InvalidOperationException("synthetic failure"), default));
-    var entity = new DispatchRoutePlan { InputHash = new string('x', 16 * 1024 * 1024), PlanJson = "{}" };
+    await Assert.ThrowsAsync<InvalidOperationException>(
+      () =>
+        cache.GetAsync(
+          id,
+          () => throw new InvalidOperationException("synthetic failure"),
+          default
+        )
+    );
+    var entity = new DispatchRoutePlan
+    {
+      InputHash = new string('x', 16 * 1024 * 1024),
+      PlanJson = "{}",
+    };
     var calls = 0;
-    Task<DispatchRoutePlan?> Load() { calls++; return Task.FromResult<DispatchRoutePlan?>(entity); }
+    Task<DispatchRoutePlan?> Load()
+    {
+      calls++;
+      return Task.FromResult<DispatchRoutePlan?>(entity);
+    }
     var first = await cache.GetAsync(id, Load, default);
     var second = await cache.GetAsync(id, Load, default);
     Assert.True(first!.Size > 32 * 1024 * 1024);

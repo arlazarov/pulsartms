@@ -70,7 +70,11 @@ qualifying daily rest preserves cycle consumption, with recap credited at verifi
 home-day boundaries. A future cycle restart is an explicit alternative, not an
 assumed part of road ETA. US alternatives retain the 34-hour restart threshold;
 Canada retains conservative daily spacing and configured restart thresholds.
-Missing or stale cycle history cannot produce a verified restart or recap alternative.
+Missing or stale recent history cannot produce a verified restart or recap
+alternative. Missing older days alone do not hide projected consumption from a
+known ELD Cycle: a fresh continuous suffix supports that anchor without adding
+historical recap. Only an explicit fully observed qualifying restart can replace
+the anchor; missing history is never treated as rest.
 When a usable timeline's totals disagree with current ELD Cycle, the ELD balance
 still anchors projected consumption. Historical recap remains unverified; an
 explicit completed restart can establish a new full-cycle baseline.

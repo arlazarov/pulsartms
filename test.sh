@@ -28,7 +28,7 @@ done
 
 node scripts/artifacts.mjs prune --apply
 
-dotnet_args=(AMFTMS.slnx -warnaserror -p:UseSharedCompilation=false --artifacts-path "$PWD/artifacts/tests")
+dotnet_args=(pulsartms.slnx -warnaserror -p:UseSharedCompilation=false --artifacts-path "$PWD/artifacts/tests")
 if ! $all; then dotnet_args+=(--filter "$filter"); fi
 dotnet test "${dotnet_args[@]}"
 

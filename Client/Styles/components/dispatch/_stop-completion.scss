@@ -1,0 +1,55 @@
+@use '../../base' as ui;
+
+.stop-completion {
+  display: grid;
+  gap: ui.pg(sm);
+  min-width: 0;
+  padding-top: ui.pg(sm);
+  border-top: 1px solid ui.theme(border-subtle);
+  font-size: ui.fs(small);
+  p {
+    margin: 0;
+  }
+  &__record {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(xs) ui.pg(sm);
+    color: ui.theme(text-secondary);
+  }
+  &__record strong {
+    color: ui.theme(success-text);
+  }
+  &__form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: ui.pg(sm);
+    min-width: 0;
+  }
+  label {
+    display: grid;
+    gap: ui.pg(xs);
+    flex: 1 1 9rem;
+    min-width: 0;
+  }
+  input {
+    width: 100%;
+    min-width: 0;
+    @include ui.input-control;
+  }
+  &__hint,
+  &__actions {
+    flex-basis: 100%;
+  }
+  &__hint {
+    color: ui.theme(text-muted);
+  }
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+  }
+  &__error {
+    color: ui.theme(danger-text);
+  }
+}

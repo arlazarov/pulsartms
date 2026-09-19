@@ -1,0 +1,68 @@
+@page "/dispatch/new"
+@using Client.Components.Form
+@attribute [Authorize(Roles = "Admin,Dispatch")]
+
+<PageTitle>New load · PulsR</PageTitle>
+<NavigationLock ConfirmExternalNavigation="@_dirty"
+                OnBeforeInternalNavigation="BeforeNavigation" />
+<section class="dispatch-page dispatch-details dispatch-create">
+  @if (_pendingNavigation is not null)
+  {
+    <section class="dispatch-details__leave" role="alertdialog"
+             aria-label="Unsaved load">
+      <strong>Leave this load?</strong>
+      <span>@(_pending is null ? "Your draft will be discarded."
+        : "The save result is unknown. Retry saving to check it before leaving.")</span>
+      <button class="btn" @onclick="Stay">Keep editing</button>
+      <button class="btn btn--danger" @onclick="Leave">Leave</button>
+    </section>
+  }
+  <header class="dispatch-details__header">
+    <a href="/dispatch">← Back to Dispatch</a>
+    <div class="dispatch-details__save">
+      <button class="btn btn--primary" disabled="@_saving"
+              @onclick="SaveAsync">
+        @(_saving ? "Creating…" : _pending is null ? "Create load" : "Retry save")
+      </button>
+    </div>
+    <div class="dispatch-details__title">
+      <h1>New load</h1>
+      <span>Assign equipment after saving.</span>
+    </div>
+  <fieldset class="dispatch-create__fields" disabled="@Locked">
+    <legend class="visually-hidden">Load details</legend>
+    <FormField Label="Order number" For="new-order">
+      <input id="new-order" maxlength="100"
+             @bind="_draft.OrderNumber" @bind:after="Changed" />
+    </FormField>
+    <FormField Label="Customer" For="new-customer">
+      <input id="new-customer" maxlength="200"
+             @bind="_draft.CustomerName" @bind:after="Changed" />
+    </FormField>
+    <FormField Label="Rate" For="new-rate">
+      <input id="new-rate" type="number" step="0.01"
+             @bind="_draft.Price" @bind:after="Changed" />
+    </FormField>
+    <FormField Label="Currency" For="new-currency">
+      <select id="new-currency" @bind="_draft.Currency"
+              @bind:after="Changed">
+        <option value="USD">USD</option>
+        <option value="CAD">CAD</option>
+      </select>
+    </FormField>
+  </fieldset>
+  </header>
+  @if (_error is not null)
+  {
+    <p class="dispatch-details__notice" role="alert">@_error</p>
+  }
+  <div class="dispatch-details__body dispatch-details__body--overview">
+    <div class="dispatch-details__workspace">
+      <div class="dispatch-details__route">
+        <DispatchStopWorkspace @ref="_stops" Stops="_draft.Stops"
+            CanEdit="true" Disabled="@Locked" DraftChanged="true"
+            Changed="Changed" AddressLookup="LookupAddressAsync" />
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,258 @@
+@use '../../base' as ui;
+
+@media (max-width: ui.breakpoint(map-mobile, max)) {
+  .fleet-map-inspector[data-inspector-mode='truck'] {
+    .fleet-map-truck-info {
+      display: grid;
+      grid-template-columns: max-content minmax(0, 1fr);
+      align-items: start;
+      column-gap: ui.pg(sm);
+
+      &__telemetry {
+        display: grid;
+        grid-column: 1;
+        grid-row: 1;
+        grid-template-columns: repeat(2, 6ch);
+        font-size: ui.fs(body);
+        align-items: start;
+        gap: ui.pg(sm);
+        --fuel-reading-columns: max-content;
+        --fuel-reading-icon-row: auto;
+        --fuel-reading-value-column: 1;
+        --fuel-reading-row-gap: 0;
+        --fuel-reading-column-gap: #{ui.pg(xs)};
+        --fuel-reading-icon-size: #{ui.size(telemetry-icon-compact)};
+        --fuel-reading-value-size: #{ui.fs(body)};
+      }
+      &__reading {
+        grid-template-columns: max-content;
+        column-gap: ui.pg(xs);
+        row-gap: 0;
+        padding: 0;
+        border: 0;
+
+        > small {
+          display: contents;
+          > svg {
+            grid-row: 1;
+            align-self: center;
+            width: ui.size(telemetry-icon-compact);
+            height: ui.size(telemetry-icon-compact);
+          }
+          > span {
+            grid-row: 2;
+            color: ui.theme(text-secondary);
+            font-size: ui.fs(small);
+          }
+        }
+        > strong {
+          grid-column: 1;
+          grid-row: 3;
+          font-size: ui.fs(body);
+        }
+        &--fuel {
+          display: block;
+        }
+      }
+      &__outside {
+        display: grid;
+        grid-template-rows:
+          ui.size(telemetry-icon-compact)
+          calc(#{ui.fs(small)} * 1.4) auto;
+        grid-column: auto;
+        padding: 0;
+        border: 0;
+        margin: 0;
+        gap: 0;
+        align-items: center;
+        flex-wrap: nowrap;
+        > strong {
+          grid-row: 3;
+          font-size: ui.fs(body);
+        }
+        > small {
+          display: contents;
+          > svg {
+            grid-row: 1;
+            width: ui.size(telemetry-icon-compact);
+            height: ui.size(telemetry-icon-compact);
+          }
+          > span {
+            grid-row: 2;
+          }
+        }
+      }
+      &__hours {
+        display: grid;
+        grid-column: 2;
+        grid-row: 1;
+        width: auto;
+        padding-inline: ui.pg(sm) 0;
+        border-left: 1px solid ui.theme(border-subtle);
+        border-right: 0;
+        --hos-display: grid;
+        container-type: inline-size;
+        --hos-columns: repeat(4, minmax(0, 1fr));
+        --hos-dial-size: min(
+          #{ui.size(hos-dial)},
+          calc((100cqi - 3 * #{ui.pg(sm)}) / 4)
+        );
+        --hos-clock-min-width: 0;
+        > .driver-hours-panel {
+          width: 100%;
+        }
+      }
+      &__duty {
+        // Keep pending duty data from shifting the expanded route section.
+        min-block-size: calc(#{ui.fs(body)} * 1.4 * 2);
+      }
+      &__location {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        padding: ui.pg(sm) 0 0;
+        border-top: 1px solid ui.theme(border-subtle);
+        border-left: 0;
+        margin-top: ui.pg(sm);
+        display: grid;
+        gap: ui.pg(xs);
+        contain: inline-size;
+      }
+    }
+
+    .fleet-map-route-info {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      row-gap: ui.pg(sm);
+      padding-block: ui.pg(xs);
+      &__metric {
+        display: grid;
+        gap: ui.pg(xs);
+      }
+      > .fleet-map-route-info__load {
+        grid-column: 1 / span 3;
+        grid-row: 1;
+        gap: ui.pg(micro) ui.pg(sm);
+        padding-bottom: 0;
+        border-bottom: 0;
+      }
+      &__load-reference > .fleet-map-route-info__secondary {
+        min-inline-size: 0;
+      }
+      > .fleet-map-route-info__distances {
+        display: grid;
+        grid-column: 4 / span 3;
+        grid-row: 1;
+      }
+      &__distances::before {
+        display: block;
+        inset-block: 0;
+        inset-inline-start: calc(0px - #{ui.pg(sm)});
+        border-left: 1px solid ui.theme(border-subtle);
+      }
+      > .fleet-map-route-info__visit {
+        grid-column: 1 / span 3;
+        grid-row: 2;
+      }
+      > .fleet-map-route-info__timing {
+        grid-column: 4 / span 3;
+        grid-row: 2;
+        --stop-hours-road-display: block;
+        --stop-hours-road-value-display: inline;
+        --stop-hours-road-label-gap: #{ui.pg(xs)};
+        --stop-hours-road-status-display: block;
+      }
+      &__appointment {
+        display: block;
+
+        > .fleet-map-route-info__label {
+          margin-inline-end: ui.pg(xs);
+        }
+
+        > strong {
+          overflow-wrap: normal;
+        }
+      }
+      &__timing::before {
+        inset-block: 0;
+        inset-inline: calc(0px - #{ui.pg(sm)}) auto;
+        border-top: 0;
+        border-left: 1px solid ui.theme(border-subtle);
+      }
+    }
+
+    @container map-truck-header (width < #{ui.breakpoint(map-info-stacked)}) {
+      .fleet-map-route-info {
+        grid-template-columns: minmax(0, 1fr);
+        > .fleet-map-route-info__load,
+        > .fleet-map-route-info__visit,
+        > .fleet-map-route-info__timing {
+          grid-column: 1;
+        }
+        > .fleet-map-route-info__distances {
+          grid-column: 1;
+          grid-row: 2;
+        }
+        &__distances::before {
+          display: none;
+        }
+        > .fleet-map-route-info__visit {
+          grid-row: 3;
+        }
+        > .fleet-map-route-info__timing {
+          grid-row: 4;
+        }
+        &__timing::before {
+          display: none;
+        }
+        &__metric {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: baseline;
+          gap: ui.pg(xs) ui.pg(sm);
+        }
+      }
+    }
+
+    @container map-truck-header (width < #{ui.breakpoint(map-info-stacked)}) {
+      .fleet-map-truck-info {
+        grid-template-columns: minmax(0, 1fr);
+        &__telemetry {
+          grid-row: auto;
+          display: flex;
+          flex-wrap: wrap;
+        }
+        &__hours {
+          grid-column: 1;
+          grid-row: auto;
+          padding: ui.pg(sm) 0 0;
+          border-left: 0;
+          border-top: 1px solid ui.theme(border-subtle);
+          --hos-display: grid;
+        }
+        &__location {
+          grid-column: 1;
+          grid-row: auto;
+          padding-left: 0;
+          border-left: 0;
+        }
+        &__reading {
+          grid-template-columns: minmax(0, 1fr);
+          > small {
+            display: flex;
+            > svg {
+              grid-row: auto;
+            }
+          }
+          > strong {
+            grid-column: 1;
+          }
+        }
+        &__reading--fuel {
+          --fuel-reading-columns: max-content max-content;
+          --fuel-reading-icon-row: auto;
+          --fuel-reading-value-column: 1 / -1;
+          --fuel-reading-row-gap: 0;
+        }
+      }
+    }
+  }
+}

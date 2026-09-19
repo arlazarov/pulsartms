@@ -1,0 +1,68 @@
+<div class="broker-terms">
+  <label>Billing email
+    <input type="email" maxlength="254" @bind="Terms.BillingEmail"
+           @bind:after="NotifyChanged" disabled="@(!CanEdit)" />
+  </label>
+  <label>Quick Pay email
+    <input type="email" maxlength="254" @bind="Terms.QuickPayEmail"
+           @bind:after="NotifyChanged" disabled="@(!CanEdit)" />
+  </label>
+  <label>Payment days
+    <input type="number" min="0" max="365" @bind="Terms.PaymentDays"
+           @bind:after="NotifyChanged" disabled="@(!CanEdit)" />
+  </label>
+  <label>Quick Pay days
+    <input type="number" min="0" max="365" @bind="Terms.QuickPayDays"
+           @bind:after="NotifyChanged" disabled="@(!CanEdit)" />
+  </label>
+  <label>Quick Pay fee (%)
+    <input type="number" min="0" max="100" step="0.01"
+           @bind="Terms.QuickPayPercent"
+           @bind:after="NotifyChanged" disabled="@(!CanEdit)" />
+  </label>
+  <label>Quick Pay fixed fee
+    <input type="number" min="0" step="0.01" @bind="Terms.QuickPayFlatFee"
+           @bind:after="NotifyChanged" disabled="@(!CanEdit)" />
+  </label>
+  <label>Fixed fee currency
+    <select @bind="Terms.QuickPayFeeCurrency" @bind:after="NotifyChanged"
+            disabled="@(!CanEdit)">
+      <option value="">Not specified</option>
+      <option value="USD">USD</option>
+      <option value="CAD">CAD</option>
+    </select>
+  </label>
+  <label>Payment schedule
+    <select @bind="Terms.PaymentCadence" @bind:after="NotifyChanged"
+            disabled="@(!CanEdit)">
+      <option value="unspecified">Not specified</option>
+      <option value="per_invoice">Per invoice</option>
+      <option value="weekly">Weekly</option>
+      <option value="biweekly">Every two weeks</option>
+      <option value="monthly">Monthly</option>
+      <option value="other">Other — see terms</option>
+    </select>
+  </label>
+  <label>Payment days counted from
+    <select @bind="Terms.PaymentClock" @bind:after="NotifyChanged"
+            disabled="@(!CanEdit)">
+      <option value="unspecified">Not specified</option>
+      <option value="invoice">Invoice date</option>
+      <option value="documents_received">Receipt of complete documents</option>
+      <option value="delivery">Delivery date</option>
+    </select>
+  </label>
+  <label>Quick Pay percentage applies to
+    <select @bind="Terms.QuickPayBasis" @bind:after="NotifyChanged"
+            disabled="@(!CanEdit)">
+      <option value="unspecified">Not specified</option>
+      <option value="linehaul">Linehaul</option>
+      <option value="invoice">Invoice total</option>
+    </select>
+  </label>
+  <label>Payment terms
+    <textarea rows="2" maxlength="2000" @bind="Terms.Notes"
+              @bind:event="oninput" @bind:after="NotifyChanged"
+              disabled="@(!CanEdit)" />
+  </label>
+</div>

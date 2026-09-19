@@ -36,8 +36,13 @@ export function loadReferenceContent(reference) {
     header.append(caption, button);
   }
 
-  number('Load ', String(reference.loadNumber), reference.loadLabel ?? String(reference.loadNumber));
-  if (reference.orderNumber) number(' · Order: ', reference.orderNumber, reference.orderNumber);
+  number(
+    'Load ',
+    String(reference.loadNumber),
+    reference.loadLabel ?? String(reference.loadNumber),
+  );
+  if (reference.orderNumber)
+    number(' · Order: ', reference.orderNumber, reference.orderNumber);
   header.append(status);
   return header;
 }

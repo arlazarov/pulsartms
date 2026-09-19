@@ -6,7 +6,18 @@
 @use 'themes' as themes;
 
 @function clr($group, $shade, $alpha: null) {
-  @if $alpha != null and (meta.type-of($alpha) != 'number' or not math.is-unitless($alpha) or $alpha < 0 or $alpha > 1) {
+  @if $alpha !=
+    null and
+    (
+      meta.type-of($alpha) !=
+        'number' or not
+        math.is-unitless($alpha) or
+        $alpha <
+        0 or
+        $alpha >
+        1
+    )
+  {
     @error 'Color alpha must be a number between 0 and 1.';
   }
   @if not map.has-key(colors.$colors, $group, $shade) {
@@ -33,30 +44,55 @@
 }
 
 @function fs($step) {
-  @if map.has-key(vars.$font-sizes, $step) { @return var(--type-#{$step}); }
-  @if meta.type-of($step) != 'number' { @error 'Unknown font token: #{$step}'; }
+  @if map.has-key(vars.$font-sizes, $step) {
+    @return var(--type-#{$step});
+  }
+  @if meta.type-of($step) != 'number' {
+    @error 'Unknown font token: #{$step}';
+  }
   @return _scale(fs, vars.$font-base, vars.$scale-font, $step);
 }
 
 @function pg($step) {
-  @if map.has-key(vars.$spaces, $step) { @return var(--space-#{$step}); }
+  @if map.has-key(vars.$spaces, $step) {
+    @return var(--space-#{$step});
+  }
   @error 'Unknown spacing token: #{$step}. Use a named spacing token.';
 }
 
 @function breakpoint($key, $edge: min) {
-  @if not map.has-key(vars.$breakpoints, $key) { @error 'Unknown breakpoint: #{$key}'; }
-  @if $edge == min { @return map.get(vars.$breakpoints, $key); }
-  @if $edge == max { @return map.get(vars.$breakpoints, $key) - 1px; }
+  @if not map.has-key(vars.$breakpoints, $key) {
+    @error 'Unknown breakpoint: #{$key}';
+  }
+  @if $edge == min {
+    @return map.get(vars.$breakpoints, $key);
+  }
+  @if $edge == max {
+    @return map.get(vars.$breakpoints, $key) - 1px;
+  }
   @error 'Breakpoint edge must be min or max.';
 }
 
 @function theme($role, $alpha: null) {
-  @if not map.has-key(themes.$roles, $role) { @error 'Unknown theme role: #{$role}'; }
+  @if not map.has-key(themes.$roles, $role) {
+    @error 'Unknown theme role: #{$role}';
+  }
   @if $alpha != null {
-    @if meta.type-of($alpha) != 'number' or not math.is-unitless($alpha) or $alpha < 0 or $alpha > 1 {
+    @if meta.type-of($alpha) !=
+      'number' or not
+      math.is-unitless($alpha) or
+      $alpha <
+      0 or
+      $alpha >
+      1
+    {
       @error 'Theme alpha must be a number between 0 and 1.';
     }
-    @return color-mix(in srgb, var(--ui-#{$role}) #{$alpha * 100%}, transparent);
+    @return color-mix(
+      in srgb,
+      var(--ui-#{$role}) #{$alpha * 100%},
+      transparent
+    );
   }
   @return var(--ui-#{$role});
 }
@@ -76,6 +112,8 @@
 }
 
 @function size($key) {
-  @if not map.has-key(vars.$sizes, $key) { @error 'Unknown size token: #{$key}'; }
+  @if not map.has-key(vars.$sizes, $key) {
+    @error 'Unknown size token: #{$key}';
+  }
   @return var(--size-#{$key});
 }

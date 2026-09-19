@@ -1,18 +1,33 @@
+using System.Text.Json;
 using Client.Models.DTO.Planning;
 using Client.Services;
 using Microsoft.JSInterop;
-using System.Text.Json;
 
 namespace Client.Pages.FleetMap;
 
 public partial class FleetMap
 {
-  private static readonly JsonSerializerOptions MapJsonOptions = new(JsonSerializerDefaults.Web);
+  private static readonly JsonSerializerOptions MapJsonOptions = new(
+    JsonSerializerDefaults.Web
+  );
   private bool ShowNextLoads { get; set; }
   private int _nextLoadsVersion;
   private string? _nextLoadsMessage;
   private string? _nextLoadsRevision;
-  private (Guid Truck, Guid? Dispatch)? _nextLoadsIdentity;
+  private (
+    Guid Truck,
+    Guid? Dispatch,
+    Guid? ExecutionLeg,
+    long AssignmentRevision
+  )? _nextLoadsIdentity;
+  private Guid? _planningExecutionLegId;
+  private long _planningAssignmentRevision;
+  private Guid? SelectedExecutionLegId =>
+    _planningExecutionLegId ?? _routeState?.Plan?.ExecutionLegId;
+  private long SelectedAssignmentRevision =>
+    _planningExecutionLegId.HasValue
+      ? _planningAssignmentRevision
+      : _routeState?.Plan?.AssignmentRevision ?? 0;
   private CancellationTokenSource? _nextLoadsRequest;
   private readonly NextLoadDisplayCache _nextLoadsCache = new();
   private IReadOnlyList<NextLoadRoute> _nextLoadRoutes = [];
@@ -33,38 +48,72 @@ public partial class FleetMap
     ++_nextLoadsVersion;
     _nextLoadsRequest?.Cancel();
     _nextLoadsMessage = null;
-    if (!ShowNextLoads) ResetInspectedLoad();
-    if (_map is null || _disposed) return;
+    if (!ShowNextLoads)
+      ResetInspectedLoad();
+    await SaveMapPreferencesAsync();
+    if (_map is null || _disposed)
+      return;
     await _map.InvokeVoidAsync("setNextLoadsVisible", ShowNextLoads);
     await RefreshNextLoadsAsync();
   }
 
   private async Task RefreshNextLoadsAsync()
   {
-    if (_map is null || _disposed || !ShowNextLoads || _activeTruckId is not { } truckId) return;
+    if (
+      _map is null
+      || _disposed
+      || !ShowNextLoads
+      || _activeTruckId is not { } truckId
+    )
+      return;
     var currentId = SelectedDispatchId;
-    if (_nextLoadsRequest is { IsCancellationRequested: false } && _nextLoadsIdentity == (truckId, currentId)) return;
+    var executionLegId = SelectedExecutionLegId;
+    var assignmentRevision = SelectedAssignmentRevision;
+    var identity = (truckId, currentId, executionLegId, assignmentRevision);
+    if (
+      _nextLoadsRequest is { IsCancellationRequested: false }
+      && _nextLoadsIdentity == identity
+    )
+      return;
     _nextLoadsRequest?.Cancel();
     var version = ++_nextLoadsVersion;
-    using var request = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+    using var request = CancellationTokenSource.CreateLinkedTokenSource(
+      _lifetime.Token
+    );
     _nextLoadsRequest = request;
     try
     {
-      if (_nextLoadsIdentity != (truckId, currentId))
+      if (_nextLoadsIdentity != identity)
       {
         _nextLoadRoutes = [];
         ResetInspectedLoad();
-        _nextLoadsIdentity = (truckId, currentId);
+        _nextLoadsIdentity = identity;
         _nextLoadsRevision = null;
         await _map.InvokeVoidAsync("clearNextLoads");
-        if (!IsCurrentNextLoads(version, truckId, currentId)) return;
-        if (currentId is { } dispatchId && _nextLoadsCache.Get((truckId, dispatchId), Clock.GetUtcNow()) is { } cached)
+        if (!IsCurrentNextLoads(version, identity))
+          return;
+        if (
+          currentId is { } dispatchId
+          && _nextLoadsCache.Get(
+            (truckId, dispatchId),
+            Clock.GetUtcNow(),
+            executionLegId,
+            assignmentRevision
+          )
+            is { } cached
+        )
         {
-          if (!IsCurrentNextLoads(version, truckId, currentId)) return;
+          if (!IsCurrentNextLoads(version, identity))
+            return;
           using var savedJson = JsonDocument.Parse(cached.Payload);
-          RememberNextLoadRoutes(savedJson.RootElement.GetProperty("routes").Deserialize<List<NextLoadRoute>>(MapJsonOptions) ?? []);
+          RememberNextLoadRoutes(
+            savedJson
+              .RootElement.GetProperty("routes")
+              .Deserialize<List<NextLoadRoute>>(MapJsonOptions) ?? []
+          );
           await _map.InvokeVoidAsync("setNextLoadsBytes", cached.Payload);
-          if (!IsCurrentNextLoads(version, truckId, currentId)) return;
+          if (!IsCurrentNextLoads(version, identity))
+            return;
           _nextLoadsRevision = cached.Revision;
         }
       }
@@ -73,10 +122,19 @@ public partial class FleetMap
         _nextLoadsMessage = null;
         return;
       }
-      if (!IsCurrentNextLoads(version, truckId, currentId)) return;
+      if (!IsCurrentNextLoads(version, identity))
+        return;
+      var legQuery = executionLegId is { } legId
+        ? $"&currentExecutionLegId={legId}"
+        : "";
       var response = await Api.GetAsync<NextLoadRoutesResponse>(
-        $"api/dispatch/truck/{truckId}/next-routes?currentDispatchId={currentId}&revision={Uri.EscapeDataString(_nextLoadsRevision ?? "")}", request.Token);
-      if (_disposed || version != _nextLoadsVersion || truckId != _activeTruckId || currentId != SelectedDispatchId) return;
+        $"api/dispatch/truck/{truckId}/next-routes"
+          + $"?currentDispatchId={currentId}{legQuery}"
+          + $"&revision={Uri.EscapeDataString(_nextLoadsRevision ?? "")}",
+        request.Token
+      );
+      if (!IsCurrentNextLoads(version, identity))
+        return;
       if (!response.Success || response.Response is null)
       {
         _nextLoadsMessage = "Next load routes could not be loaded.";
@@ -85,58 +143,173 @@ public partial class FleetMap
       _nextLoadsMessage = null;
       if (response.Response.Unchanged)
       {
-        if (_nextLoadsCache.Get((truckId, currentId.Value), Clock.GetUtcNow()) is { } saved
-          && saved.Revision == response.Response.Revision)
-          _nextLoadsCache.Store((truckId, currentId.Value), saved.Revision, saved.Payload, Clock.GetUtcNow());
+        if (
+          _nextLoadsCache.Get(
+            (truckId, currentId.Value),
+            Clock.GetUtcNow(),
+            executionLegId,
+            assignmentRevision
+          )
+            is { } saved
+          && saved.Revision == response.Response.Revision
+        )
+          _nextLoadsCache.Store(
+            (truckId, currentId.Value),
+            saved.Revision,
+            saved.Payload,
+            Clock.GetUtcNow(),
+            executionLegId,
+            assignmentRevision
+          );
         return;
       }
-      if (response.Response.Routes is null && response.Response.Labels is null) return;
-      var upcoming = response.Response.Routes?.Where(x => x.Id != currentId).ToList();
+      if (response.Response.Routes is null && response.Response.Labels is null)
+        return;
+      var upcoming = response
+        .Response.Routes?.Where(x =>
+          x.Id != currentId || x.ExecutionLegId != executionLegId
+        )
+        .ToList();
+      if (
+        response.Response.Labels?.Any(label =>
+          !(upcoming ?? _nextLoadRoutes).Any(route =>
+            route.Id == label.Id && route.ExecutionLegId == label.ExecutionLegId
+          )
+        ) == true
+      )
+        return;
       using var buffer = new ResponsiveWriteStream();
-      await JsonSerializer.SerializeAsync(buffer, new { Routes = upcoming, response.Response.Labels,
-        TruckId = truckId, CurrentDispatchId = currentId }, MapJsonOptions, request.Token);
+      await JsonSerializer.SerializeAsync(
+        buffer,
+        new
+        {
+          Routes = upcoming,
+          response.Response.Labels,
+          TruckId = truckId,
+          CurrentDispatchId = currentId,
+          CurrentExecutionLegId = executionLegId,
+          CurrentAssignmentRevision = assignmentRevision,
+        },
+        MapJsonOptions,
+        request.Token
+      );
       var payload = buffer.ToArray();
-      var snapshot = upcoming is not null ? payload
-        : await MergeNextLoadLabelsAsync(truckId, currentId.Value, response.Response.Labels, request.Token);
-      if (!_disposed && version == _nextLoadsVersion && truckId == _activeTruckId && currentId == SelectedDispatchId)
+      var snapshot = upcoming is not null
+        ? payload
+        : await MergeNextLoadLabelsAsync(
+          truckId,
+          currentId.Value,
+          response.Response.Labels,
+          request.Token,
+          executionLegId,
+          assignmentRevision
+        );
+      if (IsCurrentNextLoads(version, identity))
       {
-        if (upcoming is not null) RememberNextLoadRoutes(upcoming);
+        if (upcoming is not null)
+          RememberNextLoadRoutes(upcoming);
         await _map.InvokeVoidAsync("setNextLoadsBytes", payload);
-        if (IsCurrentNextLoads(version, truckId, currentId))
+        if (IsCurrentNextLoads(version, identity))
         {
           _nextLoadsRevision = response.Response.Revision;
           if (snapshot is not null)
-            _nextLoadsCache.Store((truckId, currentId.Value), response.Response.Revision, snapshot, Clock.GetUtcNow());
+            _nextLoadsCache.Store(
+              (truckId, currentId.Value),
+              response.Response.Revision,
+              snapshot,
+              Clock.GetUtcNow(),
+              executionLegId,
+              assignmentRevision
+            );
         }
       }
     }
-    catch (OperationCanceledException) when (request.IsCancellationRequested) { }
-    finally { if (ReferenceEquals(_nextLoadsRequest, request)) _nextLoadsRequest = null; }
+    catch (OperationCanceledException) when (request.IsCancellationRequested)
+    { }
+    finally
+    {
+      if (ReferenceEquals(_nextLoadsRequest, request))
+        _nextLoadsRequest = null;
+    }
   }
 
-  private bool IsCurrentNextLoads(int version, Guid truckId, Guid? currentId) =>
-    !_disposed && version == _nextLoadsVersion && truckId == _activeTruckId && currentId == SelectedDispatchId;
+  private bool IsCurrentNextLoads(
+    int version,
+    (
+      Guid Truck,
+      Guid? Dispatch,
+      Guid? ExecutionLeg,
+      long AssignmentRevision
+    ) identity
+  ) =>
+    !_disposed
+    && version == _nextLoadsVersion
+    && identity.Truck == _activeTruckId
+    && identity.Dispatch == SelectedDispatchId
+    && identity.ExecutionLeg == SelectedExecutionLegId
+    && identity.AssignmentRevision == SelectedAssignmentRevision;
 
-  private async Task<byte[]?> MergeNextLoadLabelsAsync(Guid truckId, Guid dispatchId,
-    IReadOnlyList<NextLoadLabels>? labels, CancellationToken cancellationToken)
+  private async Task<byte[]?> MergeNextLoadLabelsAsync(
+    Guid truckId,
+    Guid dispatchId,
+    IReadOnlyList<NextLoadLabels>? labels,
+    CancellationToken cancellationToken,
+    Guid? executionLegId,
+    long assignmentRevision
+  )
   {
-    if (_nextLoadsCache.Get((truckId, dispatchId), Clock.GetUtcNow()) is not { } cached) return null;
+    if (
+      _nextLoadsCache.Get(
+        (truckId, dispatchId),
+        Clock.GetUtcNow(),
+        executionLegId,
+        assignmentRevision
+      )
+      is not { } cached
+    )
+      return null;
     using var json = JsonDocument.Parse(cached.Payload);
     using var buffer = new ResponsiveWriteStream();
     // Cache complete geometry, but keep the live interop update metadata-only.
-    await JsonSerializer.SerializeAsync(buffer, new { Routes = json.RootElement.GetProperty("routes"), Labels = labels,
-      TruckId = truckId, CurrentDispatchId = dispatchId },
-      MapJsonOptions, cancellationToken);
+    await JsonSerializer.SerializeAsync(
+      buffer,
+      new
+      {
+        Routes = json.RootElement.GetProperty("routes"),
+        Labels = labels,
+        TruckId = truckId,
+        CurrentDispatchId = dispatchId,
+        CurrentExecutionLegId = executionLegId,
+        CurrentAssignmentRevision = assignmentRevision,
+      },
+      MapJsonOptions,
+      cancellationToken
+    );
     return buffer.ToArray();
   }
 
   private void RememberNextLoadRoutes(IReadOnlyList<NextLoadRoute> routes)
   {
-    _nextLoadRoutes = routes.Select(route => route with
-    {
-      Legs = route.Legs.Select(leg => leg with { Points = [] }).ToArray(),
-      Deadhead = route.Deadhead is { } deadhead ? deadhead with { Points = [] } : null
-    }).ToArray();
-    if (_inspectedLoadId is { } id && !_nextLoadRoutes.Any(route => route.Id == id)) ResetInspectedLoad();
+    _nextLoadRoutes = routes
+      .Select(route =>
+        route with
+        {
+          Legs = route.Legs.Select(leg => leg with { Points = [] }).ToArray(),
+          Deadhead = route.Deadhead is { } deadhead
+            ? deadhead with
+            {
+              Points = [],
+            }
+            : null,
+        }
+      )
+      .ToArray();
+    if (
+      _inspectedLoadId is { } id
+      && !_nextLoadRoutes.Any(route =>
+        route.Id == id && route.ExecutionLegId == _inspectedExecutionLegId
+      )
+    )
+      ResetInspectedLoad();
   }
 }

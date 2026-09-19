@@ -1,0 +1,43 @@
+<section class="stop-workspace__transfer" aria-label="@Heading">
+    <header class="stop-workspace__section-heading">
+        <h3>@Heading</h3>
+        <span class="stop-workspace__badge">@Status</span>
+    </header>
+    <div class="stop-workspace__transfer-parties">
+        <section aria-label="Releasing resources">
+            <h4>From</h4>
+            <dl class="stop-workspace__resources">
+                <div><dt>Truck</dt>
+                    <dd>@Text(Transfer.OutgoingTruckNumber)</dd></div>
+                <div><dt>Trailer</dt>
+                    <dd>@Text(Transfer.OutgoingTrailerNumber)</dd></div>
+                <div><dt>Driver</dt>
+                    <dd>@Text(Transfer.OutgoingDriverName)</dd></div>
+            </dl>
+        </section>
+        <section aria-label="Receiving resources">
+            <h4>To</h4>
+            <dl class="stop-workspace__resources">
+                <div><dt>Truck</dt>
+                    <dd>@Text(Transfer.IncomingTruckNumber)</dd></div>
+                <div><dt>Trailer</dt>
+                    <dd>@Text(Transfer.IncomingTrailerNumber)</dd></div>
+                <div><dt>Driver</dt>
+                    <dd>@Text(Transfer.IncomingDriverName)</dd></div>
+            </dl>
+        </section>
+    </div>
+    @if (Transfer.Kind == "drop_hook")
+    {
+        <p class="stop-workspace__hint">
+            Drop and hook stay separate stops and may happen at different times.
+        </p>
+    }
+    @if (Transfer.Status != "confirmed" && ManageRequested.HasDelegate)
+    {
+        <button type="button" class="btn btn--small" disabled="@Disabled"
+                @onclick="() => ManageRequested.InvokeAsync(StopId)">
+            @(Transfer.Action is "drop" or "release" ? "Confirm Drop…" : "Confirm Hook…")
+        </button>
+    }
+</section>

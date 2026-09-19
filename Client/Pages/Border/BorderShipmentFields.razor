@@ -1,0 +1,57 @@
+<fieldset disabled="@Disabled" class="dispatch-details__panel">
+  <legend>Shipment @(Value.Snapshot?.BillOfLading ?? "draft")</legend>
+  @if (Value.Snapshot is { } source)
+  {
+    <p>@source.Shipper.Name → @source.Consignee.Name</p>
+    <p>@source.Commodities.Count commodity lines · selected revision
+      @Value.ShipmentRevision</p>
+  }
+  <div class="dispatch-details__fields">
+    <label>Procedure
+      <select @bind="Value.Procedure" @bind:after="NotifyChanged">
+        <option value="">Not selected</option>
+        <option value="PARS">PARS</option>
+        <option value="PAPS">PAPS</option>
+      </select>
+    </label>
+    <label>PARS number
+      <input @bind="Value.ParsNumber" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>PAPS number
+      <input @bind="Value.PapsNumber" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Release office
+      <input @bind="Value.ReleaseOffice" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Loading city
+      <input @bind="Value.LoadingCity" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Loading state / province
+      <input @bind="Value.LoadingRegion" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Loading country
+      <input @bind="Value.LoadingCountry" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Loaded on
+      <select @bind="Value.EquipmentId" @bind:after="NotifyChanged">
+        <option value="">Not selected</option>
+        @foreach (var vehicle in Equipment)
+        {
+          <option value="@vehicle.Id">@vehicle.Kind · @vehicle.UnitNumber</option>
+        }
+      </select>
+    </label>
+    <label><input type="checkbox" @bind="Value.Consolidated"
+                  @bind:after="NotifyChanged" /> Consolidated freight</label>
+  </div>
+</fieldset>
+<ShipmentPartyEditor Value="Value.Importer" Title="Importer"
+                    Disabled="Disabled" Changed="Changed" />
+<ShipmentPartyEditor Value="Value.CustomsBroker" Title="Customs broker"
+                    Disabled="Disabled" Changed="Changed" />

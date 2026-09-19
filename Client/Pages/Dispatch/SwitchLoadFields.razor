@@ -1,0 +1,111 @@
+<fieldset class="dispatch-switch__participant">
+    <legend>Load <LoadNumber Value="Draft.Source.LoadNumber" /></legend>
+    @if (Draft.Source.SourceReviewReason is { } review)
+    {
+        <p class="dispatch-switch__hint" role="status">@review</p>
+    }
+    <div class="dispatch-switch__fields">
+        <label for="@(Id + "-kind")">
+            Transfer
+            <select id="@(Id + "-kind")" @bind="Draft.TransferKind">
+                <option value="drop_hook">Drop / Hook trailer</option>
+                <option value="resource_handoff">Driver / truck handoff</option>
+            </select>
+        </label>
+        <label for="@(Id + "-boundary")">
+            Place in this load's itinerary
+            <select id="@(Id + "-boundary")" @bind="Draft.Boundary">
+                <option value="pair">Use two existing transfer visits</option>
+                <option value="after">Add transfer after a visit</option>
+            </select>
+        </label>
+        @if (Draft.Boundary == "pair")
+        {
+            <label for="@(Id + "-release")">
+                Exact release visit
+                <select id="@(Id + "-release")" @bind="Draft.ReleaseId">
+                    <option value="">Select visit</option>
+                    @foreach (var visit in Draft.Source.Visits)
+                    {
+                        <option value="@visit.Id"
+                                disabled="@(visit.IsCompleted && !Completed)">
+                            @Visit(visit)
+                        </option>
+                    }
+                </select>
+            </label>
+            <label for="@(Id + "-receive")">
+                Exact receive visit
+                <select id="@(Id + "-receive")" @bind="Draft.ReceiveId">
+                    <option value="">Select visit</option>
+                    @foreach (var visit in Draft.Source.Visits)
+                    {
+                        <option value="@visit.Id"
+                                disabled="@(visit.IsCompleted && !Completed)">
+                            @Visit(visit)
+                        </option>
+                    }
+                </select>
+            </label>
+        }
+        else
+        {
+            <label for="@(Id + "-split")">
+                Transfer after
+                <select id="@(Id + "-split")" @bind="Draft.SplitId">
+                    <option value="">Select visit</option>
+                    @foreach (var visit in Draft.Source.Visits)
+                    {
+                        <option value="@visit.Id">@Visit(visit)</option>
+                    }
+                </select>
+            </label>
+        }
+    </div>
+    <p class="dispatch-switch__hint">
+        Existing transfer visits must be consecutive. Identical addresses or
+        Pick Up labels do not identify an exchange: choose the exact visits.
+    </p>
+    <div class="dispatch-switch__comparison">
+        <section>
+            <h4>Before</h4>
+            <SwitchResourceSelect Id="@(Id + "-out-truck")" Label="Truck"
+                Options="Workspace.Trucks" @bind-Value="Draft.OutTruck"
+                Disabled="Confirmed" />
+            <SwitchResourceSelect Id="@(Id + "-out-driver")" Label="Driver"
+                Options="Workspace.Drivers" @bind-Value="Draft.OutDriver"
+                Disabled="Confirmed" />
+            <SwitchResourceSelect Id="@(Id + "-out-co-driver")"
+                Label="Co-driver" Options="Workspace.Drivers"
+                @bind-Value="Draft.OutCoDriver" Disabled="Confirmed" />
+        </section>
+        <section>
+            <h4>After</h4>
+            <SwitchResourceSelect Id="@(Id + "-in-truck")" Label="Truck"
+                Options="Workspace.Trucks" @bind-Value="Draft.InTruck" />
+            <SwitchResourceSelect Id="@(Id + "-in-driver")" Label="Driver"
+                Options="Workspace.Drivers" @bind-Value="Draft.InDriver" />
+            <SwitchResourceSelect Id="@(Id + "-in-co-driver")"
+                Label="Co-driver" Options="Workspace.Drivers"
+                @bind-Value="Draft.InCoDriver" />
+        </section>
+    </div>
+    <SwitchResourceSelect Id="@(Id + "-trailer")"
+        Label="Trailer carrying this load (before and after)"
+        Options="Workspace.Trailers" @bind-Value="Draft.Trailer"
+        Disabled="Confirmed" />
+    <p class="dispatch-switch__hint">
+        The trailer stays with its load. For a trailer exchange, add the other
+        load and select the receiving truck for each one. Use driver / truck
+        handoff for a driver change or truck-only travel without a trailer.
+        Confirm the assignments; current fleet data is not proof of history.
+    </p>
+    <MileageTimeFields Draft="Draft.ReleaseTime" Id="@(Id + "-release-plan")"
+                       Label="Planned release" />
+    <MileageTimeFields Draft="Draft.ReceiveTime" Id="@(Id + "-receive-plan")"
+                       Label="Planned receipt" />
+    <p class="dispatch-switch__hint">
+        Optional, in your local time. Drop and Hook may happen on different
+        days. Planning does not confirm either actual event.
+    </p>
+</fieldset>

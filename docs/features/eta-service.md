@@ -7,8 +7,8 @@ and persistence through `IEtaForecastStore`.
 
 ## One forecast for the truck's ordered loads
 
-The authoritative dispatch board supplies the current load and ordered future
-loads. An unfinished in-transit load or recorded pickup stays current even after
+The complete captured truck itinerary supplies the current and future loads
+through the explicit ETA subset; Board rows only select trucks. An unfinished in-transit load or recorded pickup stays current even after
 its scheduled delivery date; a calendar rollover is not completion. Preview and
 live map reads use the same selection, so a missed appointment cannot silently
 move the forecast root to the next load. A single HOS clock continues through the remaining current stops, each
@@ -50,6 +50,46 @@ forecast. Migration `20260908160522_StoreDispatchEtaForecasts` is additive. Save
 base/deadhead route JSON already includes travel seconds; no duplicate travel-time
 columns or provider calls are needed. Financial RPM remains a separate server-owned
 calculation.
+
+Before persistence, PlanningWorkPublication compares canonical work and
+captured historical predecessor batches inside the same protected transaction
+that writes the forecast batch. ETA calculation policy 16 includes historical
+signatures in InputHash, including unavailable connections. Completed-history
+changes can invalidate a forecast while leaving GeometryHash and compiled road
+timing intact. The original historical lookup batches are retained through
+validation. The memory entry is considered committed only after the
+transaction commits. A validation or commit failure removes that calculation's
+unpublished entry and preserves saved data. Provider/HOS work happens before
+this transaction. Before writing the batch, ETA also validates the captured
+routing dimensions against an uncached profile in the protected transaction.
+It reuses the existing route-input signature; fuel-only preferences, exchange
+rates and confirmation flags do not reject road ETA. Truck/fleet settings stay
+protected through commit. Display descriptions retain their bounded profile
+cache. ETA also compares captured saved-road metadata inside this transaction.
+The current plan used by calculation must match the selected root metadata,
+including plan/leg ownership, version and stop tracking. A newer database
+description cannot certify an older cached current plan. Completed roots
+skipped during selection remain dependencies; changing one rejects the old
+selection. A missing road is also captured, so its arrival during calculation
+requires a fresh forecast. Fuel-only root writes do not change road identity.
+Routing owns the shared compact saved-plan metadata reader used by ETA and
+fuel. Visited-stop dictionary keys are sorted before signature calculation;
+JSON object key order does not invalidate an unchanged road. Policy 16 prevents
+reuse of signatures generated before this normalization.
+
+Cold future-timing compilation compares the actual loaded base/deadhead
+metadata with the captured versions before filling the cache. Version metadata
+includes geometry presence: clearing geometry while retaining financial miles
+and its calculation date still invalidates the timing identity. Root and future
+metadata are checked again under the publication lock, without transferring
+geometry or calling providers. A conflict preserves saved forecasts and removes
+the unpublished memory result; normal refresh can retry. Stale current-route
+cache entries retain their existing bounded expiry/invalidation policy.
+
+Telemetry retains its separate freshness rules; this boundary does not make
+external observations transactional. The shared source lock and its PostgreSQL
+performance limits are described in [route
+planning](route-planning.md#captured-work-for-route-mutations).
 
 Each stop also carries an optional `CycleAfterDeparture` snapshot from the same
 simulation, after appointment waiting and service. Dispatch and map cards show a
@@ -166,6 +206,11 @@ Cards label this arrival time simply `ETA`; the shorter label does not change
 the road-only calculation or its separate cycle-feasibility warnings.
 
 Each stop's additive `Hours` object contains signed `CycleAtArrivalMinutes` and
+an optional `CurrentCycleMinutes` for an already observed, still-active facility
+visit. A live clock cannot reconstruct an earlier arrival balance. The arrival
+field stays null for that case; UI shows the separately supplied current balance
+under Cycle remaining, with a current-stop tooltip. It never borrows the later
+departure balance or another stop's clocks. The object also contains
 `CycleAfterStopMinutes`, `CycleVerified`, `FirstCycleShortageAt` and
 `DrivingShortfallMinutes`. The shortfall is peak projected driving debt in the
 preceding chain, not elapsed lateness and not the minimum additional capacity
@@ -176,15 +221,22 @@ Cycle; the after-service balance can increase when a verified recap occurs durin
 the stop. A negative balance carried into the stop is not silently cleared.
 
 Current Samsara Cycle is the authoritative starting balance, not a value
-reconstructed from historical totals. With a continuous, fresh timeline and a
-supported rule, a totals mismatch does not discard that balance: forecast driving
+reconstructed from historical totals. With a continuous, fresh observed suffix
+and a supported rule, missing older days or a totals mismatch do not discard
+that balance: forecast driving
 and on-duty work subtract from it, while rest does not. History must reconcile
 within 15 minutes to enable recap. Larger mismatches keep signed balances available
 but do not release historical credits or advertise a recap date. This is a
 conservative projection, not verified future availability from unreconciled logs.
 An explicit completed restart establishes a new full-cycle anchor; baseline waits
-never silently do so. Missing/stale history, unknown rules or jurisdiction changes
-still leave signed feasibility unknown. Daily-HOS road timing remains available when its own
+never silently do so. Cycle projection can trim only a missing leading interval;
+it never fills that interval with invented duty/rest. Historical recap requires
+coverage of the applicable cycle window and reconciliation with ELD. The full
+timeline used for daily/split-rest credits is unchanged. Missing/stale recent
+history, internal gaps, conflicting records, unknown rules or jurisdiction changes
+still leave signed feasibility unknown. Canada's additional Cycle 2 history
+constraint remains enforced. No extra label is added to the normal balance row.
+Daily-HOS road timing remains available when its own
 inputs are valid. Independently known road lateness remains visible even when
 cycle feasibility is unknown. Old payloads without `Hours` retain the legacy ETA
 presentation rather than being mislabeled as road-only forecasts.

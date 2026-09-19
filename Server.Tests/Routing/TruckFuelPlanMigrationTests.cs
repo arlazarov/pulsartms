@@ -29,7 +29,8 @@ public sealed class TruckFuelPlanMigrationTests
     var index = Array.IndexOf(migrations, Migration);
     Assert.True(index > 0);
 
-    var sql = db.GetService<IMigrator>().GenerateScript(migrations[index - 1], Migration);
+    var sql = db.GetService<IMigrator>()
+      .GenerateScript(migrations[index - 1], Migration);
 
     Assert.Contains("CREATE TABLE \"TruckFuelPlans\"", sql);
     Assert.Contains("CREATE UNIQUE INDEX \"IX_TruckFuelPlans_TruckId\"", sql);
@@ -40,6 +41,10 @@ public sealed class TruckFuelPlanMigrationTests
     Assert.Equal(ConnectionState.Closed, db.Database.GetDbConnection().State);
   }
 
-  private static AppDbContext Context() => new(new DbContextOptionsBuilder<AppDbContext>()
-    .UseNpgsql("Host=unused;Database=unused;Username=unused").Options);
+  private static AppDbContext Context() =>
+    new(
+      new DbContextOptionsBuilder<AppDbContext>()
+        .UseNpgsql("Host=unused;Database=unused;Username=unused")
+        .Options
+    );
 }

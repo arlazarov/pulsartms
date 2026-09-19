@@ -8,14 +8,15 @@ public static class FleetFuelDefaults
   public const double DriverHourlyCostUsd = 35;
   public const double StopCostUsd = 0;
 
-  public static PlanningPreferences Apply(PlanningPreferences source) => new()
-  {
-    UseIfta = source.UseIfta,
-    MaxDetourMinutes = source.MaxDetourMinutes,
-    StopCostUsd = StopCostUsd,
-    CadToUsd = source.CadToUsd,
-    ReserveGallons = ReserveGallons,
-    FillPercent = FillPercent,
-    DriverHourlyCostUsd = DriverHourlyCostUsd
-  };
+  public static PlanningPreferences Apply(PlanningPreferences source) =>
+    new()
+    {
+      UseIfta = source.UseIfta,
+      MaxDetourMinutes = source.MaxDetourMinutes,
+      StopCostUsd = StopCostUsd,
+      CadToUsd = source.CadToUsd,
+      ReserveGallons = ReserveGallons,
+      FillPercent = FillPercent,
+      DriverHourlyCostUsd = DriverHourlyCostUsd,
+    };
 }

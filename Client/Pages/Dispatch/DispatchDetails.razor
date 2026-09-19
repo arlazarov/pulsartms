@@ -1,56 +1,290 @@
 @page "/dispatch/{Id:guid}"
 @attribute [Authorize]
 
-<PageTitle>Dispatch details</PageTitle>
+<PageTitle>@PageTitle</PageTitle>
+<NavigationLock ConfirmExternalNavigation="@AnyDraft"
+                OnBeforeInternalNavigation="BeforeNavigation" />
 <section class="dispatch-page dispatch-details">
-    <a href="/dispatch">← Dispatch</a>
-    @if (_loading) { <p role="status">Loading dispatch...</p> }
-    else if (_error is not null)
+  @if (_pendingNavigation is not null)
+  {
+    <section class="dispatch-details__leave" role="alertdialog"
+             aria-label="Unsaved changes">
+      <strong>You have unsaved changes.</strong>
+      <span>Leave this page and discard your drafts?</span>
+      <button class="btn" @onclick="Stay">Keep editing</button>
+      <button class="btn btn--danger" @onclick="Leave">
+        Discard and leave
+      </button>
+    </section>
+  }
+  <header class="dispatch-details__header">
+    <div class="dispatch-details__navigation">
+      <a href="/dispatch">← Back to Dispatch</a>
+      @if (_workspace is not null)
+      {
+        <nav class="dispatch-details__tabs" aria-label="Load sections">
+          @foreach (var tab in VisibleTabs)
+          {
+            <button class="dispatch-details__tab" type="button"
+                    aria-current="@(_tab == tab ? "page" : null)"
+                    @onclick="() => SelectTab(tab)">@tab</button>
+          }
+        </nav>
+      }
+    </div>
+    @if (_workspace is not null)
     {
-        <p class="dispatch-page__error" role="alert">@_error</p>
-        <button class="btn" @onclick="LoadAsync">Retry</button>
-    }
-    else if (_item is not null)
-    {
-        <div class="dispatch-page__header">
-            <div class="dispatch-details__title"><h1>Load <LoadNumber Value="_item.LoadNumber" /></h1><span class="dispatch-details__status">@_item.Status.Replace('_', ' ')</span></div>
-            @if (_item.TruckId.HasValue)
-            { <a class="btn" href="@($"/fleet/map?truckId={_item.TruckId}")">Show truck on map</a> }
-        </div>
-        <dl class="dispatch-page__summary">
-            <div><dt>Order</dt><dd>@Value(_item.OrderNumber)</dd></div>
-            <div><dt>Customer</dt><dd>@Value(_item.CustomerName)</dd></div>
-            <div><dt>Driver</dt><dd>@Value(_item.DriverName)</dd></div>
-            <div><dt>Truck / Trailer</dt><dd>@Value(_item.TruckNumber) / @Value(_item.TrailerNumber)</dd></div>
-            <div><dt>Ship / Delivery</dt><dd>@Date(_item.ShipDate) / @Date(_item.DeliveryDate)</dd></div>
-            <div><dt>Loaded miles</dt><dd>@(_item.LoadedMiles?.ToString("N1") ?? "—")</dd></div>
-            <div><dt>Charge</dt><dd>@(_item.Price?.ToString("N2") ?? "—") @_item.Currency</dd></div>
-            <div><dt>Last synced</dt><dd>@Timestamp(_item.LastSyncedAt)</dd></div>
-        </dl>
-        <h2>Stops</h2>
-        @if (_item.Stops.Count == 0) { <p>No stops provided.</p> }
-        @foreach (var stop in _item.Stops.OrderBy(x => x.Sequence))
+      <div class="dispatch-details__save">
+        <span role="status">@SaveStatus</span>
+        <button class="btn" disabled="@(!HasToolbarDraft || ToolbarSaving)"
+                @onclick="DiscardToolbarAsync">Discard</button>
+        <button class="btn btn--primary" disabled="@(!CanSave)"
+                @onclick="SaveToolbarAsync">
+          @(ToolbarSaving ? "Saving…" : ToolbarRetry ? "Retry save" : "Save changes")
+        </button>
+      </div>
+      <div class="dispatch-details__title">
+        <h1><LoadNumber Value="_workspace.Load.LoadNumber" /></h1>
+        <span class="dispatch-details__status">
+          @_workspace.Load.Status.Replace('_', ' ')
+        </span>
+      <div class="dispatch-details__summary">
+        <span>Order <strong>@Value(_workspace.Metadata.OrderNumber)</strong></span>
+        <span><strong>@Value(_workspace.Metadata.CustomerName)</strong></span>
+        <span>
+          Rate <strong>@DispatchFinancialDisplay.Money(
+            _workspace.Metadata.Price, _workspace.Metadata.Currency)</strong>
+        </span>
+        <span><strong>@_workspace.Stops.Count</strong> stops</span>
+        <a class="btn btn--text btn--small"
+           href="@($"/dispatch/{Id}/shipments")">Shipments</a>
+        @if (CurrentTruckId is { } truckId)
         {
-            <article class="dispatch-page__stop">
-                <header class="dispatch-details__stop-heading"><span class="dispatch-details__sequence">@stop.Sequence</span><div><span class="dispatch-details__job">@stop.Job</span><h3>@Value(stop.Name)</h3></div></header>
-                <p>@stop.Address @stop.City @stop.Province @stop.ZipCode @stop.Country</p>
-                <dl class="dispatch-page__summary">
-                    <div><dt>Scheduled</dt><dd>@Date(stop.ScheduledDate) @stop.ScheduledTime?.ToString("hh:mm tt", System.Globalization.CultureInfo.InvariantCulture)
-                        @if (stop.IsWindow) { <span> – @Date(stop.ScheduledDate2) @stop.ScheduledTime2?.ToString("hh:mm tt", System.Globalization.CultureInfo.InvariantCulture)</span> }
-                    </dd></div>
-                    <div><dt>Driver / Co-driver</dt><dd>@Value(stop.DriverName) / @Value(stop.CoDriverName)</dd></div>
-                    <div><dt>Truck / Trailer</dt><dd>@Value(stop.TruckNumber) / @Value(stop.TrailerNumber)</dd></div>
-                    <div><dt>Commodity</dt><dd>@Commodity(stop.Commodity)</dd></div>
-                    <div><dt>Weight</dt><dd>@stop.Weight @stop.WeightUnit</dd></div>
-                    <div><dt>Pieces / Pallets</dt><dd>@stop.Pieces / @stop.Pallets</dd></div>
-                    <div><dt>Temperature</dt><dd>@Value(stop.Temperature) @stop.TemperatureUnit</dd></div>
-                    <div><dt>Arrived</dt><dd>@Timestamp(stop.ArrivedAt)</dd></div>
-                    <div><dt>Picked up</dt><dd>@Timestamp(stop.PickedUpAt)</dd></div>
-                    <div><dt>Delivered</dt><dd>@Timestamp(stop.DeliveredAt)</dd></div>
-                    <div><dt>Departed</dt><dd>@Timestamp(stop.DepartedAt)</dd></div>
-                </dl>
-                @if (!string.IsNullOrWhiteSpace(stop.Notes)) { <p class="dispatch-page__notes">@stop.Notes</p> }
-            </article>
+          <a class="btn btn--text btn--small"
+             href="@($"/fleet/map?truckId={truckId}")">Show truck on map</a>
         }
+      </div>
+      </div>
+    @if (_workspace.SourceReviewReason is not null && _tab != "Assignments")
+    {
+      <div class="dispatch-details__notice" role="status">
+        <p>@_workspace.SourceReviewReason</p>
+        @if (_workspace.SourceAssignment is not null)
+        {
+          <button type="button" class="btn btn--small"
+                  @onclick='() => _tab = "Assignments"'>
+            Compare assignments
+          </button>
+        }
+      </div>
     }
+    }
+  </header>
+  @if (_error is not null)
+  {
+    <div class="dispatch-details__notice" role="alert">
+      <p>@_error</p>
+      @if (_workspace is null)
+      {
+        <button class="btn" @onclick="LoadAsync">Retry</button>
+      }
+      else if (_conflict)
+      {
+        <p>Your draft is still here. Review or copy it before reloading.</p>
+        <button class="btn" @onclick="RequestReload">
+          Reload saved version
+        </button>
+      }
+    </div>
+  }
+  @if (_confirmReload)
+  {
+    <div class="dispatch-details__notice" role="alert">
+      <p>Reloading will discard your unsaved draft.</p>
+      <button class="btn" @onclick="CancelReload">Keep editing</button>
+      <button class="btn btn--danger" @onclick="ReloadAsync">
+        Discard draft and reload
+      </button>
+    </div>
+  }
+  @if (_loading && _workspace is null)
+  {
+    <div class="dispatch-details__loading" role="status"><LoadingIndicator /></div>
+  }
+  @if (_workspace is not null)
+  {
+    @if (!_workspace.CanEdit)
+    {
+      <p class="dispatch-details__notice">@_workspace.ReadOnlyReason</p>
+    }
+    <div class="dispatch-details__body dispatch-details__body--overview" hidden="@(_tab != "Overview")">
+      <div class="dispatch-details__workspace">
+        <div class="dispatch-details__route">
+          <DispatchStopWorkspace @key="_identity"
+              @ref="_stopEditor" Stops="_workspace.Stops"
+              Load="_workspace.Load" DraftChanged="@(_dirty || _stopDrafts.HasChanges)"
+              CanEdit="_workspace.CanEdit" Disabled="@DraftLocked"
+              StopDrafts="_stopDrafts"
+              AllowSelection="@(_stopDrafts.HasChanges && !ToolbarSaving
+                && !_stopDrafts.PendingStopId.HasValue)"
+              SelectedStopId="_selectedStop"
+              SelectedStopIdChanged="SelectStop"
+              StopActivated="ActivateStop"
+              Changed="MarkChanged" SwitchRequested="OpenSwitch"
+              TransferRequested="StartTransferAsync"
+              AddressLookup="LookupAddressAsync"
+              VerifyAddressRequested="VerifyAddressAsync">
+            <SelectedStopActions>
+              @if (_selectedStop is { } selectedId
+                && _workspace.Load.Stops.FirstOrDefault(x => x.Id == selectedId)
+                  is { } actualStop)
+              {
+                <fieldset class="stop-workspace__actions" disabled="@(HasUnsaved || _saving || _brokerBusy || _transferDirty)">
+                  <legend class="visually-hidden">Actions for the selected stop</legend>
+                  @if (!Completed && _workspace.Stops.All(x => x.Id != selectedId || x.Transfer is null))
+                  {
+                    <fieldset class="dispatch-details__execution" disabled="@(_correctionDirty || _stopDrafts.HasChanges)">
+                    <StopOperationEditor @ref="_operationEditor" DispatchId="Id" Stop="actualStop"
+                                         PageActions="true"
+                                         Inline="true" DraftChanged="OperationDraftChanged"
+                                         Changed="ExecutionChangedAsync" />
+                    </fieldset>
+                  }
+                  @if (_workspace.Stops.FirstOrDefault(x => x.Id == selectedId)
+                    is { CanCorrect: true } correctionStop)
+                  {
+                    <DispatchStopCorrection @key="(Id, actualStop.Id, _draftGeneration)" @ref="_correctionEditor"
+                      PageActions="true" StopDrafts="_stopDrafts"
+                      ResourceOptions="_resourceOptions"
+                      ResourceCancellation="_identityRequest.Token"
+                      Workspace="_workspace" Stop="correctionStop"
+                      Disabled="@(HasUnsaved || _saving || _transferDirty || _operationDirty
+                        || _stopDrafts.PendingStopId.HasValue)"
+                      DraftChanged="CorrectionDraftChanged"
+                      Changed="ExecutionChangedAsync" />
+                  }
+                  else if (_workspace.Stops.All(x => x.Id != selectedId || x.Transfer is null))
+                  {
+                  <fieldset class="dispatch-details__execution" disabled="@_operationDirty">
+                  <StopCompletionEditor @key="(Id, actualStop.Id)"
+                      DispatchId="Id" Stop="actualStop"
+                      CompletedLoad="Completed"
+                      Changed="ExecutionChangedAsync" />
+                  </fieldset>
+                  }
+                </fieldset>
+              }
+            </SelectedStopActions>
+            <MapContent>
+              <DispatchStopMap @ref="_stopMap" Stops="_workspace.Stops"
+                  SelectedStopId="_selectedStop" TruckId="CurrentTruckId"
+                  Load="_workspace.Load"
+                  SourceFingerprint="_workspace.SourceFingerprint"
+                  DraftChanged="@(HasUnsaved || _stopDrafts.HasChanges)" />
+            </MapContent>
+            <RouteContent>
+
+          <fieldset class="dispatch-details__execution"
+                    disabled="@(HasUnsaved || _saving || _transferDirty || _operationDirty || _stopDrafts.HasChanges)">
+            <DispatchMileageBreakdown
+                @key="(typeof(DispatchMileageBreakdown), _workspace.Load.Id)"
+                DispatchId="_workspace.Load.Id"
+                DefaultTruckId="CurrentTruckId" />
+          </fieldset>
+          <section class="dispatch-details__panel">
+            <h2>Load instructions</h2>
+            <label class="visually-hidden" for="load-instructions">
+              Instructions for this load
+            </label>
+            <textarea id="load-instructions" rows="3" maxlength="4000"
+                      disabled="@(!_workspace.CanEdit || DraftLocked)"
+                      @bind="_workspace.Metadata.LoadInstructions"
+                      @bind:event="oninput" @bind:after="MarkChanged"
+                      placeholder="Instructions for carrying this load" />
+            <p>Saved with the load; not sent automatically.</p>
+          </section>
+            </RouteContent>
+            <SupportingContent>
+
+
+          <DispatchActivityPanel @key="(typeof(DispatchActivityPanel), Id)"
+              DispatchId="Id" DraftChanged="ActivityDraftChanged" />
+          <DispatchDocuments @key="(typeof(DispatchDocuments), Id)"
+              DispatchId="Id" CanEdit="true"
+              DraftChanged="DocumentDraftChanged" />
+
+
+            </SupportingContent>
+            <OperationsContent>
+          @if (_verifying)
+          {
+            <p role="status">Verifying the selected address…</p>
+          }
+          <section class="dispatch-details__resources">
+            <fieldset disabled="@(HasUnsaved || _saving || _brokerBusy)"
+                      class="dispatch-details__execution">
+              <fieldset class="dispatch-details__execution" disabled="@(_correctionDirty || _operationDirty || _stopDrafts.HasChanges)">
+              <DispatchSwitchSection
+                  @ref="_switchEditor" Contextual="true"
+                  DraftChanged="TransferDraftChanged"
+                  @key="(typeof(DispatchSwitchSection), _workspace.Load.Id)"
+                  DispatchId="_workspace.Load.Id"
+                  Changed="ExecutionChangedAsync" />
+              </fieldset>
+            </fieldset>
+          </section>
+
+            </OperationsContent>
+          </DispatchStopWorkspace>
+        </div>
+
+      </div>
+    </div>
+    @if (_workspace.SourceAssignment is { } proposal)
+    {
+      <div class="dispatch-details__body" hidden='@(_tab != "Assignments")'>
+        <DispatchAssignmentReview Source="proposal"
+            Reason="@_workspace.SourceReviewReason"
+            Accepted="_workspace.AcceptedAssignments" />
+      </div>
+    }
+    <div class="dispatch-details__body" hidden="@(_tab != "Broker & billing")">
+      <div class="dispatch-details__commercial">
+        <DispatchBroker @key="(typeof(DispatchBroker), Id)"
+                        Metadata="_workspace.Metadata"
+                        BusyChanged="BrokerBusyChanged"
+                        CanEdit="@(_workspace.CanEdit && !DraftLocked)"
+                        Changed="MarkChanged" />
+        <DispatchBilling Metadata="_workspace.Metadata" Load="_workspace.Load"
+                         CanEdit="@(_workspace.CanEdit && !DraftLocked)"
+                         Changed="MarkChanged" />
+      <LoadAdjustments @key="(typeof(LoadAdjustments), Id)"
+                       Metadata="_workspace.Metadata"
+                       Totals="_workspace.BillingTotals"
+                       Currency="_workspace.Load.Currency"
+                       CanEdit="@(_workspace.CanEdit && !DraftLocked)"
+                       Changed="MarkChanged" />
+      </div>
+    </div>
+    <div class="dispatch-details__body" hidden="@(_tab != "History")">
+      <section class="dispatch-details__panel">
+        <h2>Load change history</h2>
+        <p>Automatic audit of saved edits, separate from Notes.</p>
+        @if (_workspace.History.Count == 0)
+        {
+          <p>No local load edits recorded.</p>
+        }
+        <ol class="dispatch-details__history">
+          @foreach (var entry in _workspace.History)
+          {
+            <li @key="entry.Revision">
+              <strong>@entry.Summary</strong>
+              <span>@entry.ActorName · @Timestamp(entry.RecordedAt)</span>
+              <span>Revision @entry.Revision</span>
+            </li>
+          }
+        </ol>
+      </section>
+    </div>
+  }
 </section>

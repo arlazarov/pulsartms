@@ -42,7 +42,9 @@ public sealed class PlanningDisplayCacheBudgetTests
   {
     using var fixture = new CacheFixture();
     var result = Result(0);
-    result.State!.Plan!.Route.Legs = Enumerable.Repeat(new RouteLeg(0, 0, []), 17_000).ToList();
+    result.State!.Plan!.Route.Legs = Enumerable
+      .Repeat(new RouteLeg(0, 0, []), 17_000)
+      .ToList();
     fixture.Cache.Store("empty-legs", result);
 
     Assert.Null(fixture.Cache.Get("empty-legs"));
@@ -83,7 +85,8 @@ public sealed class PlanningDisplayCacheBudgetTests
     var replacement = Result(0);
     fixture.Cache.Store("route-99", replacement);
 
-    for (var i = 0; i < 100; i++) Assert.NotNull(fixture.Cache.Get($"route-{i}"));
+    for (var i = 0; i < 100; i++)
+      Assert.NotNull(fixture.Cache.Get($"route-{i}"));
     Assert.Same(replacement, fixture.Cache.Get("route-99"));
 
     fixture.Cache.Store("route-100", Result(0));
@@ -134,7 +137,10 @@ public sealed class PlanningDisplayCacheBudgetTests
     var b = Result(120_000);
     fixture.Cache.Store("a", Result(120_000));
     fixture.Cache.Store("b", b);
-    fixture.Cache.Store("a", nullResult ? null : Result(0) with { State = null });
+    fixture.Cache.Store(
+      "a",
+      nullResult ? null : Result(0) with { State = null }
+    );
     var c = Result(120_000);
     fixture.Cache.Store("c", c);
 
@@ -154,7 +160,8 @@ public sealed class PlanningDisplayCacheBudgetTests
     var b = Result(120_000);
     fixture.Cache.Store("b", b);
     fixture.Clock.Advance(TimeSpan.FromMinutes(4));
-    if (readExpired) Assert.Null(fixture.Cache.Get("a"));
+    if (readExpired)
+      Assert.Null(fixture.Cache.Get("a"));
     var c = Result(120_000);
     fixture.Cache.Store("c", c);
 
@@ -197,10 +204,12 @@ public sealed class PlanningDisplayCacheBudgetTests
       {
         Plan = new()
         {
-          Id = previous.Id, Version = previous.Version, GeometryOmitted = true,
-          Route = new() { Miles = 11, Legs = [new(11, 650, [])] }
-        }
-      }
+          Id = previous.Id,
+          Version = previous.Version,
+          GeometryOmitted = true,
+          Route = new() { Miles = 11, Legs = [new(11, 650, [])] },
+        },
+      },
     };
 
     for (var i = 0; i < 3; i++)
@@ -220,16 +229,32 @@ public sealed class PlanningDisplayCacheBudgetTests
   [Fact]
   public async Task CompletedRefreshIsReleasedBeforeAReentrantAwaiterStartsAnother()
   {
-    var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    var release = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
     var calls = 0;
-    using var client = new HttpClient(new StubHttpMessageHandler(async (_, _) =>
+    using var client = new HttpClient(
+      new StubHttpMessageHandler(
+        async (_, _) =>
+        {
+          if (Interlocked.Increment(ref calls) == 1)
+            await release.Task;
+          return new(HttpStatusCode.OK)
+          {
+            Content = JsonContent.Create(
+              new RequestResponseDTO<AutomaticPlanningResult>
+              {
+                Success = true,
+                Response = Result(0),
+              }
+            ),
+          };
+        }
+      )
+    )
     {
-      if (Interlocked.Increment(ref calls) == 1) await release.Task;
-      return new(HttpStatusCode.OK)
-      {
-        Content = JsonContent.Create(new RequestResponseDTO<AutomaticPlanningResult> { Success = true, Response = Result(0) })
-      };
-    })) { BaseAddress = new("https://local.test/") };
+      BaseAddress = new("https://local.test/"),
+    };
     var cache = new PlanningDisplayCache(new ApiService(client));
     async Task ReadTwiceAsync()
     {
@@ -240,10 +265,15 @@ public sealed class PlanningDisplayCacheBudgetTests
     Task reads;
     try
     {
-      SynchronizationContext.SetSynchronizationContext(new InlineSynchronizationContext());
+      SynchronizationContext.SetSynchronizationContext(
+        new InlineSynchronizationContext()
+      );
       reads = ReadTwiceAsync();
     }
-    finally { SynchronizationContext.SetSynchronizationContext(previous); }
+    finally
+    {
+      SynchronizationContext.SetSynchronizationContext(previous);
+    }
     release.SetResult();
     await reads;
 
@@ -252,34 +282,70 @@ public sealed class PlanningDisplayCacheBudgetTests
 
   private sealed class InlineSynchronizationContext : SynchronizationContext
   {
-    public override void Post(SendOrPostCallback callback, object? state) => callback(state);
+    public override void Post(SendOrPostCallback callback, object? state) =>
+      callback(state);
   }
 
-  private static AutomaticPlanningResult Result(int points) => new(Guid.NewGuid(), Guid.NewGuid(), 1,
-    new(new(), new()
-    {
-      Id = Guid.NewGuid(), Version = 1,
-      Route = new() { Points = Enumerable.Repeat(new RoutePoint(40, -80), points).ToList() }
-    }, null, null, null, true), null);
+  private static AutomaticPlanningResult Result(int points) =>
+    new(
+      Guid.NewGuid(),
+      Guid.NewGuid(),
+      1,
+      new(
+        new(),
+        new()
+        {
+          Id = Guid.NewGuid(),
+          Version = 1,
+          Route = new()
+          {
+            Points = Enumerable
+              .Repeat(new RoutePoint(40, -80), points)
+              .ToList(),
+          },
+        },
+        null,
+        null,
+        null,
+        true
+      ),
+      null
+    );
 
   private sealed class CacheFixture : IDisposable
   {
     private readonly HttpClient client;
-    public FakeTimeProvider Clock { get; } = new(new DateTimeOffset(2026, 9, 8, 12, 0, 0, TimeSpan.Zero));
+    public FakeTimeProvider Clock { get; } =
+      new(new DateTimeOffset(2026, 9, 8, 12, 0, 0, TimeSpan.Zero));
     public PlanningDisplayCache Cache { get; }
     public AutomaticPlanningResult? Response { get; set; }
     public int Calls { get; private set; }
 
     public CacheFixture()
     {
-      client = new(new StubHttpMessageHandler((_, _) =>
+      client = new(
+        new StubHttpMessageHandler(
+          (_, _) =>
+          {
+            Calls++;
+            return Task.FromResult(
+              new HttpResponseMessage(HttpStatusCode.OK)
+              {
+                Content = JsonContent.Create(
+                  new RequestResponseDTO<AutomaticPlanningResult>
+                  {
+                    Success = true,
+                    Response = Response,
+                  }
+                ),
+              }
+            );
+          }
+        )
+      )
       {
-        Calls++;
-        return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-        {
-          Content = JsonContent.Create(new RequestResponseDTO<AutomaticPlanningResult> { Success = true, Response = Response })
-        });
-      })) { BaseAddress = new("https://local.test/") };
+        BaseAddress = new("https://local.test/"),
+      };
       Cache = new(new ApiService(client), Clock);
     }
 

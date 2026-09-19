@@ -9,7 +9,8 @@ public partial class Home
   protected AuthService AuthService { get; set; } = default!;
 
   [Inject]
-  protected AppAuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
+  protected AppAuthenticationStateProvider AuthenticationStateProvider { get; set; } =
+    default!;
 
   [Inject]
   protected NavigationManager Navigation { get; set; } = default!;

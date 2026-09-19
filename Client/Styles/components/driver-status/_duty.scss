@@ -1,6 +1,24 @@
 @use '../../base' as ui;
 
-.driver-duty { display: grid; gap: ui.pg(xs); font-size: ui.fs(caption); color: ui.theme(text-secondary); line-height: 1.4; }
-.driver-duty__current { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 ui.pg(xs); font-size: ui.fs(small); color: ui.theme(text); }
-.driver-duty__label { color: ui.theme(text-secondary); }
-.driver-duty small { color: ui.theme(text-muted); font-size: ui.fs(micro); }
+.driver-duty {
+  display: grid;
+  gap: ui.pg(xs);
+  font-size: ui.fs(caption);
+  color: ui.theme(text-secondary);
+  line-height: 1.4;
+}
+.driver-duty__current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 ui.pg(xs);
+  font-size: ui.fs(small);
+  color: ui.theme(text);
+}
+.driver-duty__label {
+  color: ui.theme(text-secondary);
+}
+.driver-duty small {
+  color: ui.theme(text-muted);
+  font-size: ui.fs(micro);
+}

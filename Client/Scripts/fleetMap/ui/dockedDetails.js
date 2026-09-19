@@ -1,7 +1,17 @@
 // Blazor owns the persistent inspector shell; JavaScript owns only this empty host.
-export function createDockedDetails(host, onChange = () => {}, dismissMode = () => 'closed', focusTarget = null) {
+export function createDockedDetails(
+  host,
+  onChange = () => {},
+  dismissMode = () => 'closed',
+  focusTarget = null,
+) {
   const ports = new Map();
-  let owner = null, mode = 'closed', revision = 0, content = null, disposed = false;
+  let owner = null,
+    mode = 'closed',
+    revision = 0,
+    content = null,
+    disposed = false;
+  let suspended = false;
 
   function clear() {
     if (content !== null) host?.replaceChildren();
@@ -9,8 +19,13 @@ export function createDockedDetails(host, onChange = () => {}, dismissMode = () 
   }
 
   function switchMode(next, nextOwner = null, restoreFocus = false) {
-    if (disposed) return;
-    if (restoreFocus && host?.closest?.('.fleet-map-inspector')?.contains(host.ownerDocument?.activeElement))
+    if (disposed || (suspended && next !== 'closed')) return;
+    if (
+      restoreFocus &&
+      host
+        ?.closest?.('.fleet-map-inspector')
+        ?.contains(host.ownerDocument?.activeElement)
+    )
       focusTarget?.focus?.({ preventScroll: true });
     owner = nextOwner;
     mode = next;
@@ -28,26 +43,50 @@ export function createDockedDetails(host, onChange = () => {}, dismissMode = () 
   host?.addEventListener('keydown', dismiss);
 
   return {
-    get mode() { return mode; },
+    get mode() {
+      return mode;
+    },
+    get revision() {
+      return revision;
+    },
+    get suspended() {
+      return suspended;
+    },
+    setSuspended(value) {
+      if (disposed || suspended === value) return;
+      suspended = value;
+      if (suspended) switchMode('closed');
+    },
     activate(kind) {
       const port = ports.get(kind);
       if (port && !port.disposed) switchMode(kind, port);
     },
-    setMode(kind, restoreFocus = false) { switchMode(kind, null, restoreFocus); },
+    setMode(kind, restoreFocus = false) {
+      switchMode(kind, null, restoreFocus);
+    },
     popupFactory(kind) {
-      return (_map, {onClose = () => {}} = {}) => {
-        const port = {onClose, disposed: false};
+      return (_map, { onClose = () => {} } = {}) => {
+        const port = { onClose, disposed: false };
         ports.set(kind, port);
         return {
           show(nextContent) {
             if (disposed || port.disposed || owner !== port) return;
-            if (content !== nextContent) { content = nextContent; host?.replaceChildren(content); }
+            if (content !== nextContent) {
+              content = nextContent;
+              host?.replaceChildren(content);
+            }
           },
-          hide() { if (!disposed && owner === port) switchMode('closed'); },
+          hide() {
+            if (!disposed && owner === port) switchMode('closed');
+          },
           dispose() {
             if (port.disposed) return;
             port.disposed = true;
-            if (owner === port) { owner = null; mode = 'closed'; clear(); }
+            if (owner === port) {
+              owner = null;
+              mode = 'closed';
+              clear();
+            }
             if (ports.get(kind) === port) ports.delete(kind);
           },
         };

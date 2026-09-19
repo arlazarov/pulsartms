@@ -3,7 +3,15 @@
     "public": "Client/bin/Release/net10.0/publish/wwwroot",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "headers": [
-      { "source": "**", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+      { "source": "**", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+      {
+        "regex": "^/(_framework|js/generated)/.+\\.[a-z0-9]{10}\\.(js|wasm|dat)(\\.(br|gz))?$",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      },
+      {
+        "regex": "^/js/generated/chunks/chunk-[A-Z0-9]{8}\\.js$",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      }
     ],
     "rewrites": [
       {

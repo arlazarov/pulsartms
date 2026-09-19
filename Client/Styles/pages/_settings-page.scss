@@ -2,48 +2,255 @@
 
 .settings-page {
   width: 100%;
+  color: ui.theme(text);
   display: grid;
   gap: ui.pg(md);
-  > form, > .settings-page__card { max-width: ui.size(content-form); width: 100%; }
-  &__hint { color: ui.theme(text-muted); font-size: ui.fs(body); line-height: 1.5; }
-  &__form { padding: 0; margin: 0; border: 0; display: grid; gap: ui.pg(lg); min-width: 0; }
-  &__card { padding: ui.pg(lg) ui.pg(xl); border: 1px solid ui.theme(border-subtle); border-radius: ui.radius(sm); background: ui.theme(surface); min-width: 0; }
-  &__card h2 { margin: 0 0 ui.pg(lg); padding-bottom: ui.pg(md); border-bottom: 1px solid ui.theme(border-subtle); font-size: ui.fs(body); font-weight: 650; color: ui.theme(text); }
-  &__card > p { margin: ui.pg(md) 0 0; }
-  &__toggle { display: flex; justify-content: space-between; align-items: center; gap: ui.pg(xxl); cursor: pointer; }
-  &__toggle > span { display: grid; gap: ui.pg(xs); }
-  &__toggle input { @include ui.checkbox-control; }
-  small { color: ui.theme(text-muted); font-size: ui.fs(small); line-height: 1.5; font-weight: 400; }
-  &__fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); gap: ui.pg(xl); }
-  &__fields label { display: grid; align-content: start; gap: ui.pg(sm); font-size: ui.fs(body); font-weight: 600; min-width: 0; }
-  &__fields input { width: 100%; @include ui.input-control; }
-  &__actions { display: flex; gap: ui.pg(md); align-items: center; flex-wrap: wrap; }
-  &__card &__actions { padding-top: ui.pg(md); border-top: 1px solid ui.theme(border-subtle); }
-  > .settings-page__hint { max-width: ui.size(content-form); }
-  &__saved { color: ui.theme(success-text); font-size: ui.fs(body); }
-  &__error, .validation-summary-errors { color: ui.theme(danger-text); font-size: ui.fs(body); }
-  &__error { display: flex; gap: ui.pg(md); align-items: center; flex-wrap: wrap; }
+  &__theme {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+  }
+  &__fleet {
+    display: grid;
+    gap: ui.pg(md);
+
+    > form,
+    > .settings-page__card,
+    > .settings-page__hint {
+      max-width: ui.size(content-form);
+      width: 100%;
+    }
+  }
+  > form,
+  > .settings-page__card {
+    max-width: ui.size(content-form);
+    width: 100%;
+  }
+  &__hint {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(body);
+    line-height: 1.5;
+  }
+  &__form {
+    padding: 0;
+    margin: 0;
+    border: 0;
+    display: grid;
+    gap: ui.pg(lg);
+    min-width: 0;
+  }
+  &__card {
+    padding: ui.pg(lg) ui.pg(xl);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface);
+    color: ui.theme(text);
+    min-width: 0;
+  }
+  &__card h2 {
+    margin: 0 0 ui.pg(lg);
+    padding-bottom: ui.pg(md);
+    border-bottom: 1px solid ui.theme(border-subtle);
+    font-size: ui.fs(body);
+    font-weight: 650;
+    color: ui.theme(text);
+  }
+  &__card > p {
+    margin: ui.pg(md) 0 0;
+  }
+  &__toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: ui.pg(xxl);
+    cursor: pointer;
+  }
+  &__toggle > span {
+    display: grid;
+    gap: ui.pg(xs);
+  }
+  &__toggle input {
+    @include ui.checkbox-control;
+  }
+  small {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+    line-height: 1.5;
+    font-weight: 400;
+  }
+  &__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+    gap: ui.pg(xl);
+  }
+  &__fields label {
+    display: grid;
+    align-content: start;
+    gap: ui.pg(sm);
+    font-size: ui.fs(body);
+    font-weight: 600;
+    min-width: 0;
+  }
+  &__fields input,
+  &__fields select {
+    width: 100%;
+    @include ui.input-control;
+  }
+  &__actions {
+    display: flex;
+    gap: ui.pg(md);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  &__card &__actions {
+    padding-top: ui.pg(md);
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+  > .settings-page__hint {
+    max-width: ui.size(content-form);
+  }
+  &__saved {
+    color: ui.theme(success-text);
+    font-size: ui.fs(body);
+  }
+  &__error,
+  .validation-summary-errors {
+    color: ui.theme(danger-text);
+    font-size: ui.fs(body);
+  }
+  &__error {
+    display: flex;
+    gap: ui.pg(md);
+    align-items: center;
+    flex-wrap: wrap;
+  }
   @media (max-width: ui.breakpoint(md, max)) {
-    &__card { padding: ui.pg(lg); }
-    &__fields { gap: ui.pg(lg); }
-    &__toggle { gap: ui.pg(lg); }
+    &__card {
+      padding: ui.pg(lg);
+    }
+    &__fields {
+      gap: ui.pg(lg);
+    }
+    &__toggle {
+      gap: ui.pg(lg);
+    }
   }
 }
 
 .integration-settings {
-  display: grid; gap: ui.pg(md); min-width: 0;
-  &__heading { display: grid; gap: ui.pg(xs); }
-  &__heading h2 { font-size: ui.fs(heading); color: ui.theme(text); }
-  &__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: ui.pg(md); align-items: start; }
-  &__card { display: grid; gap: ui.pg(md); }
-  &__card > p { margin: 0; }
-  &__card-heading { display: flex; align-items: center; flex-wrap: wrap; gap: ui.pg(sm) ui.pg(md); }
-  &__card-heading h3 { font-size: ui.fs(lead); color: ui.theme(text); margin: 0; }
-  &__status { padding: ui.pg(micro) ui.pg(sm); border-radius: ui.radius(pill); background: ui.theme(surface-soft); color: ui.theme(text-secondary); font-size: ui.fs(small); }
-  &__status.is-configured { background: ui.theme(success-surface); color: ui.theme(success-text); }
-  &__source { color: ui.theme(text-muted); font-size: ui.fs(small); }
-  &__form, &__confirmation { display: grid; gap: ui.pg(md); min-width: 0; }
-  &__confirmation { font-size: ui.fs(body); }
-  .settings-page__fields { grid-template-columns: minmax(0, 1fr); gap: ui.pg(md); }
-  @media (max-width: ui.breakpoint(bg, max)) { &__grid { grid-template-columns: minmax(0, 1fr); } }
+  display: grid;
+  gap: ui.pg(md);
+  min-width: 0;
+  &__heading {
+    display: grid;
+    gap: ui.pg(xs);
+  }
+  &__heading h2 {
+    font-size: ui.fs(heading);
+    color: ui.theme(text);
+  }
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: ui.pg(md);
+    align-items: start;
+  }
+  &__card {
+    display: grid;
+    gap: ui.pg(md);
+  }
+  &__card > p {
+    margin: 0;
+  }
+  &__card-heading {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: ui.pg(sm) ui.pg(md);
+  }
+  &__card-heading h3 {
+    font-size: ui.fs(lead);
+    color: ui.theme(text);
+    margin: 0;
+  }
+  &__status {
+    padding: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface-soft);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  &__status.is-configured {
+    background: ui.theme(success-surface);
+    color: ui.theme(success-text);
+  }
+  &__source {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  &__form,
+  &__confirmation {
+    display: grid;
+    gap: ui.pg(md);
+    min-width: 0;
+  }
+  &__confirmation {
+    font-size: ui.fs(body);
+  }
+  .settings-page__fields {
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.pg(md);
+  }
+  @media (max-width: ui.breakpoint(bg, max)) {
+    &__grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+.fleet-resources {
+  &__search {
+    display: flex;
+    align-items: end;
+    flex-wrap: wrap;
+    gap: ui.pg(md);
+  }
+  &__search .settings-page__fields {
+    flex: 1;
+  }
+  &__identity {
+    display: grid;
+    gap: ui.pg(xs);
+    overflow-wrap: anywhere;
+  }
+  &__references,
+  &__restore {
+    display: grid;
+    gap: ui.pg(md);
+    border-top: 1px solid ui.theme(border-subtle);
+    padding-top: ui.pg(md);
+    margin-top: ui.pg(md);
+  }
+  &__references h3 {
+    font-size: ui.fs(body);
+  }
+  nav .active {
+    background: ui.theme(action);
+    color: ui.theme(on-accent);
+  }
+  @media (max-width: ui.breakpoint(md, max)) {
+    .data-table__header {
+      display: none;
+    }
+    .data-table__row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: ui.pg(md);
+    }
+  }
+}
+
+.mileage-policy {
+  form {
+    margin-top: ui.pg(lg);
+  }
 }

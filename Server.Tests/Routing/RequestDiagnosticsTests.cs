@@ -14,10 +14,28 @@ public sealed class RequestDiagnosticsTests
   public async Task SuccessfulPollsRecordMetricsWithoutInformationLogs()
   {
     var logger = new CaptureLogger();
-    var behavior = new RequestDiagnosticsBehavior<GetRoutePlanningQuery, RequestResponse<RoutePlanningState>>(logger);
-    var count = RequestMetrics.Snapshot().GetValueOrDefault(nameof(GetRoutePlanningQuery))?.Count ?? 0;
-    await behavior.Handle(new(Guid.NewGuid()), _ => Task.FromResult(RequestResponse<RoutePlanningState>.Ok(new(new(), null, null, null, null, true))), default);
-    Assert.True(RequestMetrics.Snapshot()[nameof(GetRoutePlanningQuery)].Count > count);
+    var behavior = new RequestDiagnosticsBehavior<
+      GetRoutePlanningQuery,
+      RequestResponse<RoutePlanningState>
+    >(logger);
+    var count =
+      RequestMetrics
+        .Snapshot()
+        .GetValueOrDefault(nameof(GetRoutePlanningQuery))
+        ?.Count ?? 0;
+    await behavior.Handle(
+      new(Guid.NewGuid()),
+      _ =>
+        Task.FromResult(
+          RequestResponse<RoutePlanningState>.Ok(
+            new(new(), null, null, null, null, true)
+          )
+        ),
+      default
+    );
+    Assert.True(
+      RequestMetrics.Snapshot()[nameof(GetRoutePlanningQuery)].Count > count
+    );
     Assert.Empty(logger.Levels);
   }
 
@@ -25,19 +43,39 @@ public sealed class RequestDiagnosticsTests
   public async Task UnexpectedFailuresPropagateToTheBoundaryWithoutDuplicateLogging()
   {
     var logger = new CaptureLogger();
-    var behavior = new RequestDiagnosticsBehavior<GetRoutePlanningQuery, RequestResponse<RoutePlanningState>>(logger);
+    var behavior = new RequestDiagnosticsBehavior<
+      GetRoutePlanningQuery,
+      RequestResponse<RoutePlanningState>
+    >(logger);
     var failure = new InvalidOperationException("Test failure");
-    var actual = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-      behavior.Handle(new(Guid.NewGuid()), _ => throw failure, default));
+    var actual = await Assert.ThrowsAsync<InvalidOperationException>(
+      () => behavior.Handle(new(Guid.NewGuid()), _ => throw failure, default)
+    );
     Assert.Same(failure, actual);
     Assert.Empty(logger.Levels);
   }
 
-  private sealed class CaptureLogger : ILogger<RequestDiagnosticsBehavior<GetRoutePlanningQuery, RequestResponse<RoutePlanningState>>>
+  private sealed class CaptureLogger
+    : ILogger<
+      RequestDiagnosticsBehavior<
+        GetRoutePlanningQuery,
+        RequestResponse<RoutePlanningState>
+      >
+    >
   {
     public List<LogLevel> Levels { get; } = [];
-    public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+    public IDisposable? BeginScope<TState>(TState state)
+      where TState : notnull => null;
+
     public bool IsEnabled(LogLevel level) => true;
-    public void Log<TState>(LogLevel level, EventId id, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => Levels.Add(level);
+
+    public void Log<TState>(
+      LogLevel level,
+      EventId id,
+      TState state,
+      Exception? exception,
+      Func<TState, Exception?, string> formatter
+    ) => Levels.Add(level);
   }
 }

@@ -14,6 +14,9 @@ public class TruckConfiguration : IEntityTypeConfiguration<Truck>
     builder.Property(x => x.UnitNumber).HasMaxLength(50).IsRequired();
     builder.HasIndex(x => x.UnitNumber).IsUnique();
     builder.Property(x => x.Vin).HasMaxLength(17);
+    builder.Property(x => x.ImportedVin).HasMaxLength(17);
+    builder.Property(x => x.ConfiguredBy).HasMaxLength(200);
+    builder.Property(x => x.ConfigurationRevision).IsConcurrencyToken();
     builder
       .HasOne(x => x.Driver)
       .WithOne()

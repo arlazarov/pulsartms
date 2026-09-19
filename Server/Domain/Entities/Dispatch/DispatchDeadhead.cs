@@ -3,7 +3,9 @@ namespace Domain.Entities.Dispatch;
 public sealed class DispatchDeadhead : BaseEntity
 {
   public Guid DispatchId { get; set; }
+  public Guid? ExecutionLegId { get; set; }
   public Guid PreviousDispatchId { get; set; }
+  public Guid? PreviousExecutionLegId { get; set; }
   public string InputHash { get; set; } = "";
   public decimal? Miles { get; set; }
   public DateTime? CalculatedAt { get; set; }

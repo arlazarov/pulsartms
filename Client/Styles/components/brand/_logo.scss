@@ -1,0 +1,20 @@
+@use '../../base' as ui;
+
+.brand-logo {
+  display: block;
+  width: var(--brand-logo-width, #{ui.size(brand-logo)});
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 480 / 104;
+  flex-shrink: 0;
+  color: ui.theme(text);
+  fill: currentColor;
+  stroke: none;
+
+  &--reversed {
+    color: ui.theme(on-accent);
+  }
+  &--prominent {
+    --brand-logo-width: #{ui.size(brand-logo-prominent)};
+  }
+}

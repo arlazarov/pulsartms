@@ -1,0 +1,91 @@
+@use '../../base' as ui;
+
+.dispatch-switch {
+  display: grid;
+  gap: ui.pg(md);
+  min-width: 0;
+  padding: ui.pg(lg);
+  background: ui.theme(surface);
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(sm);
+
+  &__heading,
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(md);
+  }
+  &__body,
+  &__editor,
+  &__operation,
+  &__participant,
+  &__comparison > section,
+  &__comparison > div {
+    display: grid;
+    align-content: start;
+    gap: ui.pg(md);
+    min-width: 0;
+  }
+  &__editor {
+    padding: ui.pg(md);
+    background: ui.theme(surface-soft);
+    border-radius: ui.radius(sm);
+  }
+  &__operation,
+  &__participant {
+    border-top: 1px solid ui.theme(border-subtle);
+    padding-top: ui.pg(md);
+  }
+  &__fields,
+  &__comparison,
+  .dispatch-mileage__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
+    gap: ui.pg(md);
+  }
+  h2,
+  h3,
+  h4 {
+    margin: 0;
+    font-size: ui.fs(body);
+  }
+  p {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  ol {
+    margin: 0;
+    padding-left: ui.pg(lg);
+  }
+  &__hint {
+    font-size: ui.fs(small);
+    color: ui.theme(text-secondary);
+  }
+  &__error {
+    color: ui.theme(danger-text);
+  }
+  fieldset {
+    display: grid;
+    gap: ui.pg(md);
+    border: 0;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+  }
+  legend {
+    font-weight: 600;
+    padding-bottom: ui.pg(md);
+  }
+  label {
+    display: grid;
+    gap: ui.pg(sm);
+    min-width: 0;
+  }
+  input,
+  select {
+    width: 100%;
+    min-width: 0;
+    @include ui.input-control;
+  }
+}

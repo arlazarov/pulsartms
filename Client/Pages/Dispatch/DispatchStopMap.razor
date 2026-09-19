@@ -1,0 +1,42 @@
+@using Client.Models.DTO.Dispatch
+@using Client.Models.DTO.Dispatch.Workspace
+@implements IAsyncDisposable
+
+<section class="dispatch-stop-map">
+    <header>
+        <h2><ActionIcon Kind="route" /> Route</h2>
+        <span class="loading-slot @(_routeLoading && !DraftChanged ? "is-loading" : "")"><LoadingIndicator /></span>
+        @if (TruckId is { } truckId)
+        {
+            <a class="btn btn--text btn--small" href="@($"/fleet/map?truckId={truckId}")"
+               title="Open Fleet Map" aria-label="Open Fleet Map"><ActionIcon Kind="external-link" /></a>
+        }
+    </header>
+    <div class="dispatch-stop-map__canvas" @ref="_element" aria-label="Route and stops on map" hidden="@(_error is not null || !HasCoordinates)"></div>
+    @if (_error is not null)
+    {
+        <p class="dispatch-stop-map__unavailable">@_error</p>
+    }
+    else if (!HasCoordinates)
+    {
+        <p class="dispatch-stop-map__unavailable">Stop locations are not available yet.</p>
+    }
+    @if (!DraftChanged && _error is null && HasCoordinates)
+    {
+        @if (!_routeLoading && (_routeError is not null || _route?.MissingSections > 0))
+        {
+            <p class="dispatch-stop-map__hint">
+                @(_routeError ?? "Some road sections are not available yet.")
+                <button class="btn btn--text btn--small" type="button" @onclick="RetryRouteAsync">Retry</button>
+            </p>
+        }
+    }
+    <dl>
+        <div><dt>Loaded</dt><dd><DistanceText Miles="@((double?)Load?.LoadedMiles)" /></dd></div>
+        <div><dt>Total</dt><dd><DistanceText Miles="@((double?)Load?.TotalMiles)" /></dd></div>
+    </dl>
+    @if (DraftChanged)
+    {
+        <p class="dispatch-stop-map__hint">Route and mileage update after saving.</p>
+    }
+</section>

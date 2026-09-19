@@ -1,0 +1,94 @@
+<section class="dispatch-documents" aria-labelledby="documents-heading">
+  <header>
+    <h2 id="documents-heading"><ActionIcon Kind="document" />Documents</h2>
+    <span>RC · BOL · POD</span>
+  </header>
+  <p>Internal documents. Files are not sent to the broker or driver.</p>
+  @if (CanEdit)
+  {
+    <div class="dispatch-documents__upload">
+      <label>
+        Document type
+        <select @bind="_kind"
+                disabled="@UploadDisabled">
+          <option value="rc">Rate confirmation</option>
+          <option value="bol">Bill of lading</option>
+          <option value="pod">Proof of delivery</option>
+          <option value="other">Other</option>
+        </select>
+      </label>
+      <label class="dispatch-documents__dropzone"
+             aria-disabled="@(UploadDisabled ? "true" : "false")"
+             @ondragover:preventDefault="UploadDisabled"
+             @ondrop:preventDefault="UploadDisabled">
+        <strong>Drop files here or choose files</strong>
+        <span>PDF, PNG or JPEG · up to 5 MB each</span>
+        <span>Files upload immediately.</span>
+        <InputFile @key="_fileKey" OnChange="SelectFileAsync"
+                   accept=".pdf,.png,.jpg,.jpeg"
+                   multiple="true"
+                   aria-label="Choose or drop documents to upload"
+                   disabled="@UploadDisabled" />
+      </label>
+      @if (_batchCount > 0)
+      {
+        <div class="dispatch-documents__progress" role="status">
+          <span>
+            @(_busy ? _selecting ? "Reading" : "Uploading" : "Paused")
+            @(_completed + 1) of @_batchCount · @PendingName
+          </span>
+          <progress value="@_completed" max="@_batchCount"
+                    aria-label="Documents uploaded"></progress>
+        </div>
+        @if (_uploadFailed)
+        {
+          <div class="dispatch-documents__retry">
+            <button type="button" class="btn btn--primary"
+                    disabled="@(_busy || _loading)" @onclick="UploadAsync">
+              Retry upload
+            </button>
+            <button type="button" class="btn" disabled="@_busy"
+                    @onclick="ClearSelectionAsync">
+              Discard remaining files
+            </button>
+          </div>
+        }
+      }
+    </div>
+  }
+  @if (_error is not null)
+  {
+    <p class="dispatch-page__error" role="alert">@_error</p>
+  }
+  @if (_notice is not null)
+  {
+    <p role="status">@_notice</p>
+  }
+  @if (_loading)
+  {
+    <p role="status"><LoadingIndicator /></p>
+  }
+  else if (_documents.Count == 0)
+  {
+    <p>No documents attached.</p>
+  }
+  <ul class="dispatch-documents__list">
+    @foreach (var document in _documents)
+    {
+      <li @key="document.Id">
+        <span class="dispatch-documents__kind">@Kind(document.Kind)</span>
+        <div>
+          <strong>@document.FileName</strong>
+          <span>@document.ActorName · @Time(document.RecordedAt)</span>
+          <span>@((document.Length / 1024d).ToString("N0")) KB</span>
+        </div>
+        <button class="btn btn--small" disabled="@_busy"
+                @onclick="() => DownloadAsync(document)">
+          Download
+        </button>
+      </li>
+    }
+  </ul>
+  <button class="btn btn--text" disabled="@(_busy || _loading)"
+          @onclick="LoadAsync">Refresh documents</button>
+</section>

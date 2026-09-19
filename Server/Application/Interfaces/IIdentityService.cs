@@ -2,7 +2,11 @@ using Application.Models;
 
 namespace Application.Interfaces;
 
-public record IdentityServiceResult(bool Success, string? UserId, ValidationErrors? Errors = null);
+public record IdentityServiceResult(
+  bool Success,
+  string? UserId,
+  ValidationErrors? Errors = null
+);
 
 public interface IIdentityService
 {

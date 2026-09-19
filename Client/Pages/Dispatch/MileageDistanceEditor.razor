@@ -1,0 +1,78 @@
+<EditForm Model="_form" OnValidSubmit="SaveAsync"
+          class="dispatch-mileage__editor">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <fieldset disabled="@_saving">
+        <legend>Add manual distance evidence</legend>
+        <p class="dispatch-mileage__hint">
+            This is an explicit manual record, not GPS or telemetry data.
+            A planned estimate never fills actual mileage. Replacing a distance
+            keeps its previous evidence in the audit history.
+        </p>
+        <div class="dispatch-mileage__fields">
+            <label for="@(FieldId + "-source")">
+                Evidence type
+                <InputSelect id="@(FieldId + "-source")"
+                             @bind-Value="_form.Source">
+                    <option value="manual-estimate">Planned manual estimate
+                    </option>
+                    <option value="manual-odometer">Actual odometer record
+                    </option>
+                    <option value="manual-distance-record">
+                        Actual documented distance
+                    </option>
+                </InputSelect>
+            </label>
+            <label for="@(FieldId + "-value")">
+                Distance (@Unit)
+                <InputNumber id="@(FieldId + "-value")"
+                             @bind-Value="_form.Distance" min="0"
+                             step="0.001" />
+            </label>
+        </div>
+        <label for="@(FieldId + "-reference")">
+            Evidence reference
+            <InputText id="@(FieldId + "-reference")" maxlength="300"
+                       @bind-Value="_form.Reference" />
+        </label>
+        <p class="dispatch-mileage__hint">
+            Identify the estimate or actual distance record. For odometer
+            evidence, enter the distance from the documented readings above.
+        </p>
+        <MileageTimeFields Draft="_observed" Id="@(FieldId + "-observed")"
+                           Label="Evidence observed" Disabled="_saving" />
+        @if (Actual)
+        {
+            <MileageTimeFields Draft="_start" Id="@(FieldId + "-start")"
+                               Label="Actual start"
+                               Disabled="@Movement.StartedAt.HasValue" />
+            <MileageTimeFields Draft="_end" Id="@(FieldId + "-end")"
+                               Label="Actual end"
+                               Disabled="@Movement.EndedAt.HasValue" />
+        }
+        <p class="dispatch-mileage__hint">
+            Your local time. Actual mileage requires confirmed start and end;
+            existing confirmed boundaries cannot be changed here.
+        </p>
+        <label for="@(FieldId + "-reason")">
+            Reason
+            <InputTextArea id="@(FieldId + "-reason")" maxlength="500"
+                           rows="2" @bind-Value="_form.Reason" />
+        </label>
+        @if (_error is not null)
+        {
+            <p class="dispatch-page__error" role="alert">@_error</p>
+            <p class="dispatch-mileage__hint">
+                Your draft is retained. If this record changed, cancel and
+                refresh the breakdown before editing its latest revision.
+            </p>
+        }
+        <div class="dispatch-mileage__actions">
+            <button type="submit" class="btn btn--primary">
+                @(_saving ? "Saving…" : "Save distance evidence")
+            </button>
+            <button type="button" class="btn"
+                    @onclick="CancelAsync">Cancel</button>
+        </div>
+    </fieldset>
+</EditForm>

@@ -1,0 +1,152 @@
+<div class="dispatch-mileage__editor">
+    @if (_loading)
+    {
+        <p role="status"><LoadingIndicator /></p>
+    }
+    @if (_loadError is not null)
+    {
+        <p class="dispatch-page__error" role="alert">@_loadError</p>
+        <button type="button" class="btn" disabled="@_loading"
+                @onclick="LoadFleetAsync">Retry fleet resources</button>
+    }
+    @if (_trucks is not null && _drivers is not null && _trailers is not null)
+    {
+        <EditForm Model="_form" OnValidSubmit="SaveAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <fieldset disabled="@Locked">
+                <legend>Record movement</legend>
+                <p class="dispatch-mileage__hint">
+                    Record a trip home, to the yard, for repair
+                    or repositioning.
+                    Pickup approach is already automatic. Select the resources
+                    that actually made this movement; current assignments are
+                    not historical evidence.
+                </p>
+                <div class="dispatch-mileage__fields">
+                    <label for="@(FieldId + "-purpose")">
+                        Purpose
+                        <InputSelect id="@(FieldId + "-purpose")"
+                                     @bind-Value="_form.Purpose">
+                            <option value="home">Home</option>
+                            <option value="yard-return">Yard return</option>
+                            <option value="maintenance">Repair / maintenance
+                            </option>
+                            <option value="reposition">Reposition</option>
+                        </InputSelect>
+                    </label>
+                    <label for="@(FieldId + "-context")">
+                        Relation to this load
+                        <InputSelect id="@(FieldId + "-context")"
+                                     @bind-Value="_form.Context">
+                            <option value="after">After this load</option>
+                            <option value="toward">Toward this load</option>
+                        </InputSelect>
+                    </label>
+                    <label for="@(FieldId + "-truck")">
+                        Truck
+                        <InputSelect id="@(FieldId + "-truck")"
+                                     @bind-Value="_form.TruckId">
+                            <option value="">Select truck</option>
+                            @foreach (var item in _trucks)
+                            {
+                                <option value="@item.Id">@Unit(item)</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label for="@(FieldId + "-trailer")">
+                        Trailer
+                        <InputSelect id="@(FieldId + "-trailer")"
+                                     @bind-Value="_form.TrailerId">
+                            <option value="">None / not recorded</option>
+                            @foreach (var item in _trailers)
+                            {
+                                <option value="@item.Id">@Unit(item)</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label for="@(FieldId + "-driver")">
+                        Driver
+                        <InputSelect id="@(FieldId + "-driver")"
+                                     @bind-Value="_form.DriverId">
+                            <option value="">Not recorded</option>
+                            @foreach (var item in _drivers)
+                            {
+                                <option value="@item.Id">@Driver(item)</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label for="@(FieldId + "-co-driver")">
+                        Co-driver
+                        <InputSelect id="@(FieldId + "-co-driver")"
+                                     @bind-Value="_form.CoDriverId">
+                            <option value="">Not recorded</option>
+                            @foreach (var item in _drivers)
+                            {
+                                <option value="@item.Id">@Driver(item)</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label for="@(FieldId + "-cargo")">
+                        Cargo state
+                        <InputSelect id="@(FieldId + "-cargo")"
+                                     @bind-Value="_form.CargoState">
+                            <option value="unknown">Not recorded</option>
+                            <option value="empty">Empty trailer</option>
+                            <option value="bobtail">Bobtail (no trailer)
+                            </option>
+                            <option value="loaded">Carrying this load</option>
+                        </InputSelect>
+                    </label>
+                </div>
+                <div class="dispatch-mileage__fields">
+                    <label for="@(FieldId + "-from")">
+                        From
+                        <InputText id="@(FieldId + "-from")" maxlength="500"
+                                   @bind-Value="_form.From" />
+                    </label>
+                    <label for="@(FieldId + "-to")">
+                        To
+                        <InputText id="@(FieldId + "-to")" maxlength="500"
+                                   @bind-Value="_form.To" />
+                    </label>
+                </div>
+                <MileageTimeFields Draft="_start" Id="@(FieldId + "-start")"
+                                   Label="Actual start" Disabled="Locked" />
+                <MileageTimeFields Draft="_end" Id="@(FieldId + "-end")"
+                                   Label="Actual end" Disabled="Locked" />
+                <p class="dispatch-mileage__hint">
+                    Dates and times are optional. Enter both start and end in
+                    your local time, or leave both blank. Mileage evidence can
+                    be added after saving; a route estimate is not actual miles.
+                </p>
+            </fieldset>
+            @if (_error is not null)
+            {
+                <p class="dispatch-page__error" role="alert">@_error</p>
+            }
+            @if (_submitted is not null && !_saving)
+            {
+                <p class="dispatch-mileage__hint" role="status">
+                    The result is not confirmed. Retry sends the same movement,
+                    without creating a duplicate. Check existing records before
+                    cancelling and creating another movement.
+                </p>
+            }
+            <div class="dispatch-mileage__actions">
+                <button type="submit" class="btn btn--primary"
+                        disabled="@_saving">
+                    @(_saving ? "Saving…" : _submitted is null
+                        ? "Save movement" : "Retry same movement")
+                </button>
+                <button type="button" class="btn" disabled="@_saving"
+                        @onclick="CancelAsync">Cancel</button>
+            </div>
+        </EditForm>
+    }
+    else
+    {
+        <button type="button" class="btn"
+                @onclick="CancelAsync">Cancel</button>
+    }
+</div>

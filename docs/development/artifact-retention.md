@@ -43,7 +43,9 @@ node scripts/artifacts.mjs run scratch -- dotnet build Client/Client.csproj --ar
 ```
 
 The command runner substitutes `{artifacts}` in arguments and also exposes the
-same absolute directory as `AMFTMS_ARTIFACT_DIR`. The allowed manual kinds are
+same absolute directory as `PULSARTMS_ARTIFACT_DIR` and its legacy alias
+`AMFTMS_ARTIFACT_DIR`. Both identify the current managed run, even when the parent
+environment contains an older value. The allowed manual kinds are
 `scratch` and `diagnostic`; do not invent a kind per task, which would defeat
 latest-result retention. The wrapper returns the child's failure status and
 forwards termination signals. It marks completion and prunes after the command.
@@ -58,8 +60,15 @@ that marker when the run is no longer needed; the next cleanup evaluates it.
 `bash test.sh` prunes before using its shared build cache. Default
 `bash verify-release.sh` and `bash deploy-client.sh` use the managed release runner;
 the deployment wrapper keeps the lease through the Firebase operation. An explicit
-`AMFTMS_RELEASE_DIR` remains caller-owned, unchanged and outside automatic deletion.
+`PULSARTMS_RELEASE_DIR` remains caller-owned, unchanged and outside automatic deletion.
+Release scripts accept `AMFTMS_RELEASE_DIR` only when the canonical variable is
+unset. An explicitly configured canonical value always wins.
 The existing staged integrity and test gates are not skipped or reordered.
+
+New runs use `.pulsartms-artifact.json`. Retention still recognizes existing
+`.amftms-artifact.json` markers under the same policy. If both exist, the canonical
+marker wins; a malformed or linked canonical marker never falls back to a legacy
+marker to authorize deletion.
 
 Browser probes allocate a fresh managed output by default, log its absolute path,
 and finish the lease on process exit. Reports, screenshots and optional heap dumps

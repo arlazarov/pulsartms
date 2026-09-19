@@ -50,7 +50,7 @@
             <div class="fuel-plan-editor__selection">
                 @if (_loading)
                 {
-                    <p class="fuel-plan-editor__empty" role="status">Loading…</p>
+                    <p class="fuel-plan-editor__empty" role="status"><LoadingIndicator /></p>
                 }
                 else if (_preview is null)
                 {
@@ -82,12 +82,12 @@
                     <div class="fuel-plan-editor__quantity">
                         <div class="fuel-plan-editor__quantity-heading">
                             <label for="fuel-edit-quantity">Quantity @if (!selected.Edit.FillToTarget) { <strong>@Quantity(selected.Edit.BuyGallons) US gal</strong> }</label>
-                            <label class="fuel-plan-editor__full"><input type="checkbox" checked="@selected.Edit.FillToTarget" disabled="@(Busy || (selected.Edit.FillToTarget && !CanBuyPartial))" @onchange="FullTankAsync" /> Full tank</label>
+                            <label class="fuel-plan-editor__full"><input type="checkbox" checked="@selected.Edit.FillToTarget" disabled="@(Busy || !CanEditQuantity || (selected.Edit.FillToTarget && !CanBuyPartial))" @onchange="FullTankAsync" /> Full tank</label>
                         </div>
-                        <input id="fuel-edit-quantity" type="range" min="10" max="@SliderMaximum" step="10" value="@(selected.Edit.FillToTarget ? SliderMaximum : selected.SliderGallons)"
+                        <input id="fuel-edit-quantity" type="range" min="25" max="@SliderMaximum" step="5" value="@(selected.Edit.FillToTarget ? SliderMaximum : selected.SliderGallons)"
                             aria-label="Gallons to buy" aria-valuetext="@(selected.Edit.FillToTarget ? "Full tank" : $"{Quantity(selected.SliderGallons)} US gallons")"
                             disabled="@(Busy || !CanEditQuantity)" title="@(!CanEditQuantity ? "Quantity is unavailable for this route position." : null)" @oninput="QuantityAsync" />
-                        <div class="fuel-plan-editor__range-labels"><span>10 gal</span><span>Full tank</span></div>
+                        <div class="fuel-plan-editor__range-labels"><span>25 gal</span><span>Full tank</span></div>
                     </div>
                     <div class="fuel-plan-editor__price"><span>Your price</span><strong>@SelectedPrice</strong></div>
                     <div class="fuel-plan-editor__cost"><span>Estimated cost</span><strong>@(CostFor(selected) is { } amount ? $"≈ {Money(amount)} USD" : "—")</strong></div>
@@ -105,17 +105,10 @@
                 <span>At finish <strong>@Quantity(_valuesCurrent ? preview.Plan.ArrivalGallons : null) US gal</strong></span>
             </div>
         }
-        @if (_confirmReset)
-        {
-            <div class="fuel-plan-editor__confirmation" role="group" aria-label="Replace fuel plan confirmation">
-                <p>Replace these stops and quantities with a new automatic plan? Unsaved changes will be discarded.</p>
-                <button type="button" class="btn" disabled="@Busy" @onclick="() => _confirmReset = false">Keep editing</button>
-                <button type="button" class="btn btn--danger" disabled="@Busy" @onclick="ResetAsync">Replace with automatic plan</button>
-            </div>
-        }
     </div>
     <footer class="fuel-plan-editor__footer">
-        <button type="button" class="btn btn--text" disabled="@(Busy || _preview is null)" @onclick="() => { _confirmReset = true; _mobileView = MobileView.Fuel; }">Automatic plan</button>
+        <button type="button" class="btn" disabled="@Busy"
+            @onclick="ResetAsync">Calculate automatically</button>
         <div><button type="button" class="btn" disabled="@_saving" @onclick="CloseAsync">Cancel</button>
             <button type="button" class="btn btn--primary fuel-plan-editor__save" disabled="@(!CanSave)" @onclick="SaveAsync">Save plan</button></div>
     </footer>

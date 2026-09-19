@@ -13,18 +13,26 @@ public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
   }
 }
 
-public record RegisterUserCommand(string Name, string Email, string Password, string Role = "Dispatch")
-  : IRequest<RequestResponse<Guid>>;
+public record RegisterUserCommand(
+  string Name,
+  string Email,
+  string Password,
+  string Role = "Dispatch"
+) : IRequest<RequestResponse<Guid>>;
 
-public class RegisterUserHandler(IIdentityService identityService, IAppDbContext dbContext, IUserRoleService roles)
-  : IRequestHandler<RegisterUserCommand, RequestResponse<Guid>>
+public class RegisterUserHandler(
+  IIdentityService identityService,
+  IAppDbContext dbContext,
+  IUserRoleService roles
+) : IRequestHandler<RegisterUserCommand, RequestResponse<Guid>>
 {
   public async Task<RequestResponse<Guid>> Handle(
     RegisterUserCommand request,
     CancellationToken cancellationToken
   )
   {
-    await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+    await using var transaction =
+      await dbContext.Database.BeginTransactionAsync(cancellationToken);
     var identityResult = await identityService.CreateUserAsync(
       request.Email,
       request.Password,

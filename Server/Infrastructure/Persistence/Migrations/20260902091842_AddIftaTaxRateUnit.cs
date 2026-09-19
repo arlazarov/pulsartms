@@ -4,27 +4,26 @@
 
 namespace Infrastructure.Persistence.Migrations
 {
+  /// <inheritdoc />
+  public partial class AddIftaTaxRateUnit : Migration
+  {
     /// <inheritdoc />
-    public partial class AddIftaTaxRateUnit : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<string>(
-                name: "Unit",
-                table: "IftaTaxRates",
-                type: "character varying(3)",
-                maxLength: 3,
-                nullable: false,
-                defaultValue: "");
-        }
-
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "Unit",
-                table: "IftaTaxRates");
-        }
+      migrationBuilder.AddColumn<string>(
+        name: "Unit",
+        table: "IftaTaxRates",
+        type: "character varying(3)",
+        maxLength: 3,
+        nullable: false,
+        defaultValue: ""
+      );
     }
+
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+      migrationBuilder.DropColumn(name: "Unit", table: "IftaTaxRates");
+    }
+  }
 }

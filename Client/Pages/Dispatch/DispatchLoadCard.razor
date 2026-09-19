@@ -2,7 +2,10 @@
     <span class="dispatch-load__connector" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6" /></svg></span>
     <div class="dispatch-load__heading">
         <div class="dispatch-load__title">
-            <button type="button" class="btn btn--text btn--small dispatch-load__number" @onclick="OpenDetails" aria-label="@($"Open load {LoadLabel}")"><LoadNumber Value="Load.LoadNumber" /></button>
+            <a class="btn btn--text btn--small dispatch-load__number"
+               href="@LoadUrl" aria-label="@($"Open load {LoadLabel}")">
+                <LoadNumber Value="Load.LoadNumber" />
+            </a>
             <span class="dispatch-load__phase">@Phase</span>
         </div>
         @if (!string.IsNullOrWhiteSpace(Load.OrderNumber))
@@ -29,25 +32,28 @@
         </div>
     }
     <div class="dispatch-load__overview">
-        <ol class="dispatch-load__route" aria-label="Stops and arrival estimates">
-            @foreach (var stop in OrderedStops)
+        @if (OrderedStops.Count > 2) { <p class="dispatch-load__stop-summary">@StopSummary</p> }
+        <ol class="dispatch-load__route @(CompletedStopCount > 0 ? "has-history" : "")" style="@($"--completed-stop-count: {Math.Max(1, CompletedStopCount)}")" aria-label="Stops and arrival estimates">
+            @foreach (var visit in StopVisits)
             {
-                <li @key="(Load.Id, stop.Id, stop.Sequence)" class="dispatch-load__route-stop">
-                    <DispatchLoadStop DispatchId="Load.Id" Stop="stop" Number="@(OrderedStops.IndexOf(stop) + 1)"
-                        FallbackDate="FallbackDate(stop)" Eta="Load.Eta" Refreshing="Refreshing" CompletedLoad="Completed" Detailed="false" />
+                var stop = visit.Stop;
+                <li @key="(Load.Id, stop.Id, stop.Sequence, DispatchStopPresentation.CompletionRevision(Load.Stops))" class="dispatch-load__route-stop @(stop.IsCompleted || Completed && !stop.DriverOnly ? "is-history" : "is-remaining")">
+                    <DispatchLoadStop DispatchId="Load.Id" Stop="stop" Number="visit.Number" VisitLabel="@visit.VisitLabel"
+                        FallbackDate="FallbackDate(stop)" Eta="Load.Eta"
+                        Refreshing="Refreshing" CompletedLoad="Completed"
+                        Detailed="false" DetailsHref="@StopUrl(stop.Id)" />
                 </li>
             }
         </ol>
         @if (OrderedStops.Count == 0) { <p class="dispatch-load__empty">Stops not provided</p> }
     </div>
     <footer class="dispatch-load__footer">
-        @if (ShowRemaining) { <span class="dispatch-load__remaining">@RemainingMiles!.Value.ToString("N0") mi remaining</span> }
+        @if (ShowRemaining) { <span class="dispatch-load__remaining"><DistanceText Miles="RemainingMiles" /> remaining</span> }
         @if (ShowFuelStops) { <span class="dispatch-load__fuel-count"><ActionIcon Kind="fuel" /> Fuel stops <strong>@FuelStopCount</strong></span> }
         @if (!ShowRemaining && !ShowFuelStops) { <span>@(OrderedStops.Count == 1 ? "1 stop" : $"{OrderedStops.Count} stops")</span> }
-        <button type="button" class="btn btn--text btn--small dispatch-load__details" @onclick="OpenDetails" aria-label="@($"Details for load {LoadLabel}")">Details <span aria-hidden="true">↗</span></button>
+        <a class="btn btn--text btn--small dispatch-load__details"
+           href="@LoadUrl" aria-label="@($"Details for load {LoadLabel}")">
+            Details <span aria-hidden="true">↗</span>
+        </a>
     </footer>
 </section>
-@if (_showDetails)
-{
-    <DispatchLoadDialog @key="Load.Id" Load="Load" Truck="Truck" Phase="@Phase" Completed="Completed" Refreshing="Refreshing" Closed="CloseDetails" />
-}

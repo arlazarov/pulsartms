@@ -5,38 +5,48 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace Infrastructure.Persistence.Migrations
 {
+  /// <inheritdoc />
+  public partial class AddRouteRecalculationBudget : Migration
+  {
     /// <inheritdoc />
-    public partial class AddRouteRecalculationBudget : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
+      migrationBuilder.CreateTable(
+        name: "RouteRecalculationAttempts",
+        columns: table => new
         {
-            migrationBuilder.CreateTable(
-                name: "RouteRecalculationAttempts",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    TruckId = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    Latitude = table.Column<double>(type: "double precision", nullable: false),
-                    Longitude = table.Column<double>(type: "double precision", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_RouteRecalculationAttempts", x => x.Id);
-                });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_RouteRecalculationAttempts_TruckId_CreatedAt",
-                table: "RouteRecalculationAttempts",
-                columns: new[] { "TruckId", "CreatedAt" });
-        }
-
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
+          Id = table.Column<Guid>(type: "uuid", nullable: false),
+          TruckId = table.Column<Guid>(type: "uuid", nullable: false),
+          CreatedAt = table.Column<DateTime>(
+            type: "timestamp with time zone",
+            nullable: false
+          ),
+          Latitude = table.Column<double>(
+            type: "double precision",
+            nullable: false
+          ),
+          Longitude = table.Column<double>(
+            type: "double precision",
+            nullable: false
+          ),
+        },
+        constraints: table =>
         {
-            migrationBuilder.DropTable(
-                name: "RouteRecalculationAttempts");
+          table.PrimaryKey("PK_RouteRecalculationAttempts", x => x.Id);
         }
+      );
+
+      migrationBuilder.CreateIndex(
+        name: "IX_RouteRecalculationAttempts_TruckId_CreatedAt",
+        table: "RouteRecalculationAttempts",
+        columns: new[] { "TruckId", "CreatedAt" }
+      );
     }
+
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+      migrationBuilder.DropTable(name: "RouteRecalculationAttempts");
+    }
+  }
 }

@@ -1,10 +1,25 @@
+using Application.Features.Eta.Models;
+using Domain.Entities.Execution;
+
 namespace Application.Features.Dispatch.Models;
 
-public class DispatchResponse
+public class DispatchResponse : IWorkFacts
 {
-  public Application.Features.Eta.Models.DispatchEta? Eta { get; set; }
+  IReadOnlyList<IWorkStopFacts> IWorkFacts.Stops => Stops;
+
+  public DispatchEta? Eta { get; set; }
   public Guid Id { get; set; }
+  public Guid? ExecutionLegId { get; set; }
+  public long AssignmentRevision { get; set; }
+  public string? ExecutionStatus { get; set; }
+  public bool AwaitingReceipt { get; set; }
+  public Guid? DriverId { get; set; }
   public Guid? TruckId { get; set; }
+  public Guid? PlanningTruckId { get; set; }
+  public Guid? PlanningFromStopId { get; set; }
+  public long PlanningAssignmentRevision { get; set; }
+  public long RouteChoiceRevision { get; set; }
+  public DateTime? PlanningAssignmentRecordedAt { get; set; }
   public int LoadNumber { get; set; }
   public string OrderNumber { get; set; } = string.Empty;
   public string Status { get; set; } = string.Empty;
@@ -29,7 +44,8 @@ public class DispatchResponse
 
   internal DispatchResponse CopyForBoardRow()
   {
-    // Conflicting assignments can place one load in multiple rows; each row owns its forecast.
+    // Conflicting assignments can place one load in multiple rows; each row
+    // owns its forecast.
     var copy = (DispatchResponse)MemberwiseClone();
     copy.Eta = null;
     return copy;

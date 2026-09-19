@@ -2,18 +2,33 @@ import { createSceneLayers } from './sceneLayers.js';
 import { snapshotStops } from './stopData.js';
 import { pickNearbyStation } from './stationTouch.js';
 import { readStopLabelStyle } from './stopLabelStyle.js';
+import { clusterTrucks, clusterCamera } from './truckClusters.js';
+import { layoutTruckLabels } from './truckLabelLayout.js';
+import { createMapRepaint } from '../provider/mapRepaint.js';
 
-const xy = (p) => [
+const hideUnsynchronizedLayers = () => false;
+
+const xy = p => [
   typeof p.lng === 'function' ? p.lng() : p.lng,
   typeof p.lat === 'function' ? p.lat() : p.lat,
 ];
-const rgb = (c) =>
+const rgb = c =>
   c
     .replace(/^rgb\(|\)$/g, '')
     .split(',')
     .map(Number);
 
-export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLayer, IconLayer, TextLayer, routeDashExtensions }) {
+export function createScene(
+  map,
+  {
+    GoogleMapsOverlay,
+    ScatterplotLayer,
+    PathLayer,
+    IconLayer,
+    TextLayer,
+    routeDashExtensions,
+  },
+) {
   const stations = new Map(),
     trucks = new Set(),
     lines = new Set();
@@ -26,37 +41,87 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
     distanceData = [];
   let vehiclesDirty = true,
     vehicles = [];
-  const buildLayers = createSceneLayers({ ScatterplotLayer, PathLayer, IconLayer, TextLayer, routeDashExtensions });
+  let vehicleDisplay = { vehicles: [], clusters: [] },
+    clusterZoom = map.getZoom?.() ?? 12;
+  const clusterZoomListener = map.addListener('zoom_changed', () => {
+    const next = map.getZoom?.() ?? 12;
+    if (next === clusterZoom) return;
+    clusterZoom = next;
+    invalidateVehicles();
+  });
+  const buildLayers = createSceneLayers({
+    ScatterplotLayer,
+    PathLayer,
+    IconLayer,
+    TextLayer,
+    routeDashExtensions,
+  });
   const viewport = map.getDiv().ownerDocument?.defaultView;
   let stopLabelStyle = readStopLabelStyle(map.getDiv());
-  const themeObserver = viewport?.MutationObserver ? new viewport.MutationObserver(() => {
-    stopLabelStyle = readStopLabelStyle(map.getDiv());
-    schedule();
-  }) : null;
-  for (const element of [map.getDiv().ownerDocument?.documentElement, map.getDiv().ownerDocument?.body])
-    if (element) themeObserver?.observe(element, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+  const themeObserver = viewport?.MutationObserver
+    ? new viewport.MutationObserver(() => {
+        stopLabelStyle = readStopLabelStyle(map.getDiv());
+        schedule();
+      })
+    : null;
+  for (const element of [
+    map.getDiv().ownerDocument?.documentElement,
+    map.getDiv().ownerDocument?.body,
+  ])
+    if (element)
+      themeObserver?.observe(element, {
+        attributes: true,
+        attributeFilter: ['data-theme', 'class', 'style'],
+      });
   let pixelRatio = viewport?.devicePixelRatio || 1;
   let frame = null,
     disposed = false,
     hovered = null,
     truckClickAt = -Infinity;
   let stationSelect = () => {};
+  let clusterSelect = () => {};
+  let routeEditing = false;
   let hoveredTruck = null;
+  const repaint = createMapRepaint(map);
+  let cameraReady = false;
   // All fleet layers share one foreground canvas, with explicit drawing order.
   // On vector maps this overlay receives the same onDraw camera transformer.
   const truckOverlay = new GoogleMapsOverlay({
     id: 'fleet-top-layer',
     interleaved: false,
     useDevicePixels: true,
-    style: { top: '0', left: '0', width: '100%', height: '100%', zIndex: '1', pointerEvents: 'none' },
+    layerFilter: cameraReady ? null : hideUnsynchronizedLayers,
+    onLoad: () => {
+      if (disposed) return;
+      cameraReady = false;
+      truckOverlay.setProps({ layerFilter: hideUnsynchronizedLayers });
+      repaint.request(() => {
+        cameraReady = true;
+        schedule();
+      });
+    },
+    style: {
+      top: '0',
+      left: '0',
+      width: '100%',
+      height: '100%',
+      zIndex: '1',
+      pointerEvents: 'none',
+    },
     layers: [],
     onClick: (info, event) => {
-      if (disposed || !stationsVisible && !stationData.some(station => station.editing || station.recommended)) return;
+      if (
+        disposed ||
+        routeEditing ||
+        (!stationsVisible &&
+          !stationData.some(station => station.editing || station.recommended))
+      )
+        return;
       const nearby = pickNearbyStation(truckOverlay, info, event);
       if (nearby?.object) selectStation(nearby);
     },
   });
-  // GoogleMapsOverlay owns camera synchronization; zoom does not change data.
+  // The provider owns camera sync; grouping and label spacing depend on zoom.
   truckOverlay.setMap(map);
   const densityChanged = () => {
     const next = viewport.devicePixelRatio || 1;
@@ -69,7 +134,8 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
   const modeListener = map.addListener('renderingtype_changed', () => {
     const mode = map.getRenderingType();
     map.getDiv().dataset.renderer = `gpu-${mode}`;
-    if (mode !== 'VECTOR') console.warn(`[Fleet map] Vector renderer unavailable: ${mode}`);
+    if (mode !== 'VECTOR')
+      console.warn(`[Fleet map] Vector renderer unavailable: ${mode}`);
   });
 
   function schedule() {
@@ -84,21 +150,40 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
       stationDirty = false;
     }
     if (stopsDirty) {
-      ({ stopData, distanceData } = snapshotStops(stops, stopData, distanceData));
+      ({ stopData, distanceData } = snapshotStops(
+        routeEditing
+          ? [...stops].filter(stop => stop.routeRole === 'preview')
+          : stops,
+        stopData,
+        distanceData,
+      ));
       stopsDirty = false;
     }
     if (vehiclesDirty) {
-      vehicles = [...trucks].filter((t) => t.visible && t.position);
+      vehicles = [...trucks].filter(t => t.visible && t.position);
+      const grouped = clusterTrucks(vehicles, Math.floor(clusterZoom));
+      grouped.vehicles = layoutTruckLabels(
+        grouped.vehicles,
+        clusterZoom,
+        vehicleDisplay.vehicles,
+      );
+      vehicleDisplay = grouped;
       vehiclesDirty = false;
     }
     truckOverlay.setProps({
+      layerFilter: cameraReady ? null : hideUnsynchronizedLayers,
       layers: buildLayers({
-        lines,
-        stationData,
+        lines: routeEditing
+          ? [...lines].filter(line => line.routeRole === 'preview')
+          : lines,
+        stationData: routeEditing ? [] : stationData,
         stationsVisible,
         stopData,
         distanceData,
-        vehicles,
+        vehicles: vehicleDisplay.vehicles,
+        clusters: vehicleDisplay.clusters,
+        hasSelectedTruck: vehicles.some(truck => truck.selected),
+        selectCluster,
         hoveredTruck,
         setHover,
         selectStop,
@@ -117,7 +202,8 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
       hovered?.onHover?.(false);
       next?.onHover?.(true);
     }
-    if (!!hovered !== !!next) map.setOptions({ draggableCursor: next ? 'pointer' : 'default' });
+    if (!!hovered !== !!next)
+      map.setOptions({ draggableCursor: next ? 'pointer' : 'default' });
     hovered = next;
   }
   function hoverTruck(info) {
@@ -128,7 +214,12 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
     schedule();
   }
   function selectStation(info) {
-    if (disposed || !info.object || !stationsVisible && !info.object.editing && !info.object.recommended) return false;
+    if (
+      disposed ||
+      !info.object ||
+      (!stationsVisible && !info.object.editing && !info.object.recommended)
+    )
+      return false;
     truckClickAt = performance.now();
     stationSelect(info.object.id);
     return true;
@@ -139,7 +230,22 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
     info.object.onSelect();
     return true;
   }
-  let lineId = 0, stopId = 0;
+  function selectCluster(info) {
+    if (disposed || !info.object) return false;
+    truckClickAt = performance.now();
+    const padding = clusterSelect();
+    const element = map.getDiv?.();
+    const camera = clusterCamera(
+      info.object.members,
+      element?.clientWidth,
+      element?.clientHeight,
+      padding,
+    );
+    if (camera) map.moveCamera(camera);
+    return true;
+  }
+  let lineId = 0,
+    stopId = 0;
   function selectStop(info) {
     if (disposed || !info.object) return false;
     truckClickAt = performance.now();
@@ -157,6 +263,12 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
   class Polyline {
     constructor(options) {
       Object.assign(this, options);
+      this.onMapClick = (...args) => {
+        if (disposed) return false;
+        if (!routeEditing) truckClickAt = performance.now();
+        this.onClick?.(...args);
+        return true;
+      };
       this.id = `route-${++lineId}`;
       this.path = [];
       this.data = [this.path];
@@ -180,7 +292,7 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
     }
     getPath() {
       return {
-        removeAt: (i) => {
+        removeAt: i => {
           this.path = this.path.filter((_, index) => index !== i);
           this.data = [this.path];
           schedule();
@@ -196,6 +308,17 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
   }
   return {
     Polyline,
+    setClusterSelect(callback) {
+      clusterSelect = callback;
+    },
+    setRouteEditing(value) {
+      if (routeEditing === value) return;
+      routeEditing = value;
+      // Removed Deck layers are finalized; keep geometry, not their renderer instances.
+      for (const line of lines) line.cachedLayer = null;
+      setHover({ object: null });
+      invalidateStops();
+    },
     StopMarker: class {
       constructor(options) {
         this.id = ++stopId;
@@ -206,14 +329,19 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
         this.onHover = options.onHover;
         this.transientLabel = options.transientLabel;
         this.job = options.job;
+        this.routeRole = options.routeRole;
         this.distance = null;
         this.distanceTones = [];
         stops.add(this);
         invalidateStops();
       }
       setDistance(value, tones = []) {
-        if (this.distance === value && this.distanceTones.length === tones.length
-          && tones.every((tone, index) => tone === this.distanceTones[index])) return;
+        if (
+          this.distance === value &&
+          this.distanceTones.length === tones.length &&
+          tones.every((tone, index) => tone === this.distanceTones[index])
+        )
+          return;
         this.distance = value;
         this.distanceTones = tones;
         invalidateStops();
@@ -221,7 +349,8 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
       setVisible(value) {
         if (this.visible === value) return;
         this.visible = value;
-        if (!value && hovered?.onHover === this.onHover) setHover({ object: null });
+        if (!value && hovered?.onHover === this.onHover)
+          setHover({ object: null });
         invalidateStops();
       }
       setNumber(value) {
@@ -234,7 +363,9 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
         this.job = value;
         invalidateStops();
       }
-      get highlighted() { return this._highlighted === true; }
+      get highlighted() {
+        return this._highlighted === true;
+      }
       set highlighted(value) {
         if (this.highlighted === value) return;
         this._highlighted = value;
@@ -242,7 +373,8 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
       }
       set map(value) {
         if (!value) {
-          if (hovered?.onHover && hovered.onHover === this.onHover) setHover({ object: null });
+          if (hovered?.onHover && hovered.onHover === this.onHover)
+            setHover({ object: null });
           this.onHover = null;
           this.onSelect = null;
           stops.delete(this);
@@ -254,7 +386,15 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
       return performance.now() - truckClickAt < 100;
     },
     createTruckMarker(_, onSelect) {
-      const t = { onSelect, visible: true, unit: '', engine: '', position: null, heading: 0, speed: 0 };
+      const t = {
+        onSelect,
+        visible: true,
+        unit: '',
+        engine: '',
+        position: null,
+        heading: 0,
+        speed: 0,
+      };
       trucks.add(t);
       return {
         update(value) {
@@ -298,7 +438,16 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
     createStationPointLayer(_, onSelect) {
       stationSelect = onSelect;
       return {
-        setPoint(id, p, c, recommended, selected, numbers = '', editing = false, price = null) {
+        setPoint(
+          id,
+          p,
+          c,
+          recommended,
+          selected,
+          numbers = '',
+          editing = false,
+          price = null,
+        ) {
           const old = stations.get(id);
           if (
             old &&
@@ -306,7 +455,10 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
             old.position[1] === p.lat &&
             old.sourceColor === c &&
             old.recommended === recommended &&
-            old.selected === selected && old.numbers === numbers && old.editing === editing && old.price === price
+            old.selected === selected &&
+            old.numbers === numbers &&
+            old.editing === editing &&
+            old.price === price
           )
             return;
           stations.set(id, {
@@ -329,6 +481,7 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
         setVisible(value) {
           if (stationsVisible === value) return;
           stationsVisible = value;
+          vehiclesDirty = true;
           schedule();
         },
         hitTest() {
@@ -347,13 +500,19 @@ export function createScene(map, { GoogleMapsOverlay, ScatterplotLayer, PathLaye
       if (frame !== null) cancelAnimationFrame(frame);
       frame = null;
       stationSelect = () => {};
+      clusterSelect = () => {};
       hovered = null;
       hoveredTruck = null;
-      stationData = []; stopData = []; distanceData = []; vehicles = [];
+      stationData = [];
+      stopData = [];
+      distanceData = [];
+      vehicles = [];
       modeListener.remove();
+      clusterZoomListener.remove();
       themeObserver?.disconnect();
       viewport?.removeEventListener('resize', densityChanged);
       stops.clear();
+      repaint.dispose();
       truckOverlay.finalize();
       stations.clear();
       trucks.clear();

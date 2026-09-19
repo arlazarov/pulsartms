@@ -1,7 +1,7 @@
-using Application.Features.Routing.Services.Routes;
 using System.Text.Json;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services;
+using Application.Features.Routing.Services.Routes;
 
 namespace Server.Tests.Routing;
 
@@ -12,21 +12,39 @@ public class RoutePlanStorageTests
   [Fact]
   public void RoutePointSerializesCoordinatesButRecomputesValidationForLegacyJson()
   {
-    var json = JsonSerializer.Serialize(new RoutePoint(40, -80), RoutePlanningService.Json);
+    var json = JsonSerializer.Serialize(
+      new RoutePoint(40, -80),
+      RoutePlanningService.Json
+    );
     Assert.DoesNotContain("isValid", json);
-    var legacy = JsonSerializer.Deserialize<RoutePoint>("{\"latitude\":40,\"longitude\":-80,\"isValid\":false}", RoutePlanningService.Json)!;
+    var legacy = JsonSerializer.Deserialize<RoutePoint>(
+      "{\"latitude\":40,\"longitude\":-80,\"isValid\":false}",
+      RoutePlanningService.Json
+    )!;
     Assert.True(legacy.IsValid);
   }
 
   [Fact]
   public void StorageOmitsOnlyDuplicateAggregatePointsWithoutMutatingOriginal()
   {
-    var points = Enumerable.Range(0, 1000).Select(i => new RoutePoint(40, -80 + i / 1000d)).ToList();
-    var route = new TruckRoute { Points = points, Legs = [new(100, 6000, points)], Miles = 100, Seconds = 6000 };
+    var points = Enumerable
+      .Range(0, 1000)
+      .Select(i => new RoutePoint(40, -80 + i / 1000d))
+      .ToList();
+    var route = new TruckRoute
+    {
+      Points = points,
+      Legs = [new(100, 6000, points)],
+      Miles = 100,
+      Seconds = 6000,
+    };
     var plan = new RoutePlan { Route = route, ReferenceRoute = route };
     var old = JsonSerializer.Serialize(plan, RoutePlanningService.Json);
     var stored = RoutePlanStorage.Serialize(plan);
-    var restored = JsonSerializer.Deserialize<RoutePlan>(stored, RoutePlanningService.Json)!;
+    var restored = JsonSerializer.Deserialize<RoutePlan>(
+      stored,
+      RoutePlanningService.Json
+    )!;
     Assert.True(stored.Length < old.Length * .6);
     Assert.Empty(restored.Route.Points);
     Assert.Empty(restored.ReferenceRoute!.Points);
@@ -34,14 +52,29 @@ public class RoutePlanStorageTests
     Assert.Equal(points, restored.ReferenceRoute.Legs[0].Points);
     Assert.Equal(6000, restored.Route.Seconds);
     Assert.Same(points, plan.Route.Points);
-    Assert.Equal(points, JsonSerializer.Deserialize<RoutePlan>(old, RoutePlanningService.Json)!.Route.Points);
+    Assert.Equal(
+      points,
+      JsonSerializer
+        .Deserialize<RoutePlan>(old, RoutePlanningService.Json)!
+        .Route.Points
+    );
   }
 
   [Fact]
   public void StandaloneBaseAndDeadheadStoragePreservesExactLegsWithoutDuplicateAggregateCoordinates()
   {
-    var points = Enumerable.Range(0, 1000).Select(index => new RoutePoint(40, -80 + index / 1000d)).ToList();
-    var route = new TruckRoute { Points = points, Legs = [new(100, 6000, points)], Miles = 100, Seconds = 6000, Warnings = ["Access warning"] };
+    var points = Enumerable
+      .Range(0, 1000)
+      .Select(index => new RoutePoint(40, -80 + index / 1000d))
+      .ToList();
+    var route = new TruckRoute
+    {
+      Points = points,
+      Legs = [new(100, 6000, points)],
+      Miles = 100,
+      Seconds = 6000,
+      Warnings = ["Access warning"],
+    };
     var stored = RoutePlanStorage.Serialize(route);
     var restored = SavedRouteReader.Route(stored, 1)!;
     using var json = JsonDocument.Parse(stored);

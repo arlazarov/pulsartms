@@ -1,0 +1,157 @@
+@use '../../base' as ui;
+
+.dispatch-mileage {
+  display: grid;
+  gap: ui.pg(md);
+  padding: ui.pg(lg);
+  background: ui.theme(surface);
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(sm);
+  min-width: 0;
+
+  &__heading,
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(md);
+  }
+  &__heading h2,
+  &__heading h3 {
+    margin: 0;
+    font-size: ui.fs(body);
+  }
+  &__body,
+  &__basis,
+  &__movement,
+  &__movements {
+    display: grid;
+    gap: ui.pg(md);
+    min-width: 0;
+  }
+  &__bases {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
+    gap: ui.pg(lg);
+  }
+  &__basis {
+    align-content: start;
+    background: ui.theme(surface-soft);
+    border-radius: ui.radius(sm);
+    padding: ui.pg(md);
+  }
+  &__basis h3 {
+    font-size: ui.fs(body);
+    margin: 0;
+  }
+  &__totals,
+  &__row-values {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: ui.pg(md);
+    margin: 0;
+  }
+  &__totals > div,
+  &__row-values > div {
+    display: grid;
+    align-content: start;
+    gap: ui.pg(xs);
+    min-width: 0;
+  }
+  dt,
+  &__hint {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    line-height: 1.5;
+  }
+  dd {
+    margin: 0;
+    font-size: ui.fs(body);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  p {
+    margin: 0;
+  }
+  &__saved {
+    color: ui.theme(success-text);
+  }
+  &__movements {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  &__movement {
+    border-top: 1px solid ui.theme(border-subtle);
+    padding-top: ui.pg(lg);
+  }
+  &__reason {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    font-size: ui.fs(small);
+  }
+  &__locations {
+    overflow-wrap: anywhere;
+  }
+  dd small {
+    display: block;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    font-weight: 400;
+  }
+  &__editor {
+    background: ui.theme(surface-soft);
+    padding: ui.pg(md);
+    border-radius: ui.radius(sm);
+  }
+  &__editor fieldset {
+    display: grid;
+    gap: ui.pg(md);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+  &__editor legend {
+    font-weight: 600;
+    padding-bottom: ui.pg(md);
+  }
+  &__editor label {
+    display: grid;
+    gap: ui.pg(sm);
+  }
+  &__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+    gap: ui.pg(md);
+  }
+  &__editor form,
+  &__editor > .dispatch-mileage__actions {
+    display: grid;
+    gap: ui.pg(md);
+  }
+  &__editor .dispatch-mileage__actions {
+    margin-top: ui.pg(md);
+  }
+  &__editor input,
+  &__editor select,
+  &__editor textarea {
+    width: 100%;
+    @include ui.input-control;
+  }
+  &__editor textarea {
+    height: auto;
+    resize: vertical;
+  }
+  .validation-summary-errors {
+    color: ui.theme(danger-text);
+  }
+  @media (max-width: ui.breakpoint(md, max)) {
+    &__row-values {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    &__row-values > div:last-child {
+      grid-column: 1 / -1;
+    }
+  }
+}

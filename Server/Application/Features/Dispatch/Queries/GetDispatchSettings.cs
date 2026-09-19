@@ -4,17 +4,33 @@ using Domain.Entities.Dispatch;
 
 namespace Application.Features.Dispatch.Queries;
 
-public sealed record GetDispatchSettingsQuery : IRequest<RequestResponse<DispatchSettingsState>>;
+public sealed record GetDispatchSettingsQuery
+  : IRequest<RequestResponse<DispatchSettingsState>>;
 
 public sealed class GetDispatchSettingsHandler(IAppDbContext db)
-  : IRequestHandler<GetDispatchSettingsQuery, RequestResponse<DispatchSettingsState>>
+  : IRequestHandler<
+    GetDispatchSettingsQuery,
+    RequestResponse<DispatchSettingsState>
+  >
 {
-  public async Task<RequestResponse<DispatchSettingsState>> Handle(GetDispatchSettingsQuery request, CancellationToken cancellationToken)
+  public async Task<RequestResponse<DispatchSettingsState>> Handle(
+    GetDispatchSettingsQuery request,
+    CancellationToken cancellationToken
+  )
   {
-    var saved = await db.DispatchSettings.AsNoTracking()
+    var saved = await db
+      .DispatchSettings.AsNoTracking()
       .Where(x => x.Id == DispatchSettings.SingletonId)
-      .Select(x => new DispatchSettingsState(x.LoadNumberPrefix, x.Revision, x.UpdatedAt))
+      .Select(x => new DispatchSettingsState(
+        x.LoadNumberPrefix,
+        x.Revision,
+        x.UpdatedAt,
+        x.TemperatureUnit,
+        x.DistanceUnit
+      ))
       .SingleOrDefaultAsync(cancellationToken);
-    return RequestResponse<DispatchSettingsState>.Ok(saved ?? new("AMF", 0, null));
+    return RequestResponse<DispatchSettingsState>.Ok(
+      saved ?? new("AMF", 0, null)
+    );
   }
 }

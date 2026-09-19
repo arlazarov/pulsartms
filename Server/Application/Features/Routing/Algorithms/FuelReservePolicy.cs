@@ -4,19 +4,40 @@ namespace Application.Features.Routing.Algorithms;
 
 public static class FuelReservePolicy
 {
-  public static string? StartingLevelError(double gallons, TruckRouteProfile profile)
+  public static string? StartingLevelError(
+    double gallons,
+    TruckRouteProfile profile
+  )
   {
-    if (!double.IsFinite(gallons) || gallons < 0 || gallons > profile.TankGallons)
+    if (
+      !double.IsFinite(gallons)
+      || gallons < 0
+      || gallons > profile.TankGallons
+    )
       return "Confirm the current fuel quantity; it must be within the truck's tank capacity.";
-    return gallons == 0
-      ? "The reported tank is empty. Confirm the fuel level or arrange refueling before driving."
-      : null;
+    return null;
   }
 
-  // Only the initial trip to a purchase may use reserve that is already depleted.
-  public static double FirstArrivalMinimum(double startingGallons, TruckRouteProfile profile) =>
-    startingGallons < profile.ReserveGallons ? 0 : Math.Ceiling(profile.ReserveGallons);
+  public const double PhysicalArrivalMinimumGallons = 0;
 
-  public static bool PurchaseNotPassed(double milesAhead, double progressMiles) =>
-    milesAhead >= progressMiles - .05;
+  public static string ArrivalWarning(double gallons, TruckRouteProfile profile)
+  {
+    if (gallons >= profile.ReserveGallons)
+      return "";
+    return gallons < 0
+      ? FormattableString.Invariant(
+        $"Cannot reach this station: {-gallons:N1} US gal short. Refuel before driving to it."
+      )
+      : FormattableString.Invariant(
+        $"Below reserve: estimated arrival {gallons:N1} US gal; "
+      )
+        + FormattableString.Invariant(
+          $"{profile.ReserveGallons - gallons:N1} US gal below the configured reserve."
+        );
+  }
+
+  public static bool PurchaseNotPassed(
+    double milesAhead,
+    double progressMiles
+  ) => milesAhead >= progressMiles - .05;
 }

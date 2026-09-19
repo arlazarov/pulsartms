@@ -1,48 +1,180 @@
 @use '../../base' as ui;
 
+.fleet-map-page__background {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ui.pg(sm) ui.pg(md);
+
+  > .page-header {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+  > .fleet-map-page__message {
+    flex-basis: 100%;
+  }
+}
+
 .fleet-map-toolbar {
+  flex: 1 1 32rem;
+  position: relative;
+  z-index: 20;
+  container: fleet-toolbar / inline-size;
+  .fleet-map-search {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+  .search-input {
+    width: 100%;
+  }
+  .fleet-map-date {
+    flex-shrink: 0;
+  }
   input[type='date'] {
     max-width: 100%;
     @include ui.input-control;
   }
-
+  &__status {
+    flex-basis: 100%;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  .fleet-map-toggle {
+    position: relative;
+    --button-bg: #{ui.theme(surface-soft)};
+    --button-border: #{ui.theme(border-subtle)};
+    --button-hover-border: #{ui.theme(border)};
+    font-weight: 500;
+    max-width: 100%;
+    white-space: normal;
+    span {
+      overflow-wrap: anywhere;
+    }
+    svg {
+      width: ui.size(checkbox);
+      height: ui.size(checkbox);
+      flex-shrink: 0;
+    }
+    &:has(input:checked) {
+      --button-bg: #{ui.theme(action)};
+      --button-border: #{ui.theme(action)};
+      --button-hover-bg: #{ui.theme(action-hover)};
+      --button-hover-border: #{ui.theme(action-hover)};
+      --button-hover-text: #{ui.theme(on-accent)};
+      color: ui.theme(on-accent);
+    }
+    &:has(input:disabled) {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
 }
 
-.fleet-map-filters { display: contents; }
-.fleet-map-mobile-filters, .fleet-map-mobile-summary { display: none; }
+@media (min-width: ui.breakpoint(map-mobile, min)) {
+  .fleet-map-toolbar {
+    .fleet-map-date > label,
+    .fleet-map-layers .fleet-map-toggle > span {
+      display: none;
+    }
+    .fleet-map-layers .fleet-map-toggle {
+      justify-content: center;
+      width: ui.size(control);
+      padding-inline: 0;
+    }
+  }
+}
+
+.fleet-map-filters {
+  display: contents;
+}
+.fleet-map-layer-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ui.pg(xs);
+  min-width: 0;
+  &[aria-busy='true'] {
+    visibility: hidden;
+  }
+}
+.fleet-map-layers {
+  display: contents;
+}
+.fleet-map-layer-controls {
+  padding-inline-start: ui.pg(md);
+  border-inline-start: 1px solid ui.theme(border-subtle);
+}
+.fleet-map-mobile-filters,
+.fleet-map-mobile-summary {
+  display: none;
+}
 
 @media (max-width: ui.breakpoint(map-mobile, max)) {
   .fleet-map-page {
     position: relative;
     gap: ui.pg(sm);
-    > h1 { display: none; }
+    .fleet-map-page__background > .page-header {
+      display: none;
+    }
   }
   .fleet-map-toolbar {
-    position: relative;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     padding: ui.pg(sm);
-    z-index: 20;
-    > .fleet-map-date { flex: 1; min-width: 0; margin: 0; }
-    > .fleet-map-date > [role='status'] { display: none; }
-    .search-input { width: 100%; min-width: 0; }
+    .fleet-map-search {
+      flex: 1;
+    }
   }
-  .fleet-map-mobile-filters { display: inline-flex; flex-shrink: 0; }
+  .fleet-map-mobile-filters {
+    display: inline-flex;
+    flex-shrink: 0;
+    svg {
+      width: ui.size(checkbox);
+      height: ui.size(checkbox);
+      flex-shrink: 0;
+    }
+  }
   .fleet-map-filters {
     display: none;
-    .fleet-map-date { flex-wrap: wrap; max-width: 100%; }
-    &.is-open {
-      display: flex;
+    .fleet-map-date {
       flex-wrap: wrap;
+      min-width: 0;
+      max-width: 100%;
+    }
+    .fleet-map-layers {
+      border: 0;
+      padding: 0;
+    }
+    .fleet-map-layer-controls {
+      border: 0;
+      padding: 0;
+    }
+    &.is-open {
+      display: grid;
       gap: ui.pg(sm);
       position: absolute;
-      top: calc(100% + 4px);
+      top: calc(100% + #{ui.pg(xs)});
       left: 0;
       right: 0;
+      max-height: 50dvh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
       padding: ui.pg(md);
       background: ui.theme(surface);
       border: 1px solid ui.theme(border-subtle);
       border-radius: ui.radius(sm);
       box-shadow: ui.shadow(popup);
+    }
+  }
+  @container fleet-toolbar (max-width: 14rem) {
+    .fleet-map-toolbar .fleet-map-search {
+      flex-basis: 100%;
+    }
+    .fleet-map-mobile-filters {
+      margin-inline-start: auto;
+    }
+    .fleet-map-layers .fleet-map-toggle svg {
+      display: none;
     }
   }
 }

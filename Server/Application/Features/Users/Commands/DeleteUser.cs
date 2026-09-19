@@ -6,17 +6,25 @@ namespace Application.Features.Users.Commands;
 
 public record DeleteUserCommand(Guid Id) : IRequest<RequestResponse<Guid>>;
 
-public class DeleteUserHandler(IAppDbContext dbContext, IIdentityService identityService, ICurrentUser currentUser, ReadCache reads)
-  : IRequestHandler<DeleteUserCommand, RequestResponse<Guid>>
+public class DeleteUserHandler(
+  IAppDbContext dbContext,
+  IIdentityService identityService,
+  ICurrentUser currentUser,
+  ReadCache reads
+) : IRequestHandler<DeleteUserCommand, RequestResponse<Guid>>
 {
   public async Task<RequestResponse<Guid>> Handle(
     DeleteUserCommand request,
     CancellationToken cancellationToken
   )
   {
-    if (!currentUser.IsAuthenticated || string.IsNullOrWhiteSpace(currentUser.IdentityUserId))
+    if (
+      !currentUser.IsAuthenticated
+      || string.IsNullOrWhiteSpace(currentUser.IdentityUserId)
+    )
       return RequestResponse<Guid>.Fail("Unauthorized.", 401);
-    await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+    await using var transaction =
+      await dbContext.Database.BeginTransactionAsync(cancellationToken);
     var user = await dbContext.Users.FirstOrDefaultAsync(
       x => x.Id == request.Id,
       cancellationToken
@@ -38,7 +46,8 @@ public class DeleteUserHandler(IAppDbContext dbContext, IIdentityService identit
     if (!identityResult.Success)
     {
       return RequestResponse<Guid>.Fail(
-        identityResult.Errors ?? new ValidationErrors("Failed to delete identity user.")
+        identityResult.Errors
+          ?? new ValidationErrors("Failed to delete identity user.")
       );
     }
 

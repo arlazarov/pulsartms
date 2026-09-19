@@ -4,7 +4,10 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Infrastructure.Identity;
 
-public class IdentityService(UserManager<AppUser> userManager, IReadCache? reads = null) : IIdentityService
+public class IdentityService(
+  UserManager<AppUser> userManager,
+  IReadCache? reads = null
+) : IIdentityService
 {
   public async Task<IdentityServiceResult> CreateUserAsync(
     string email,
@@ -18,7 +21,11 @@ public class IdentityService(UserManager<AppUser> userManager, IReadCache? reads
 
     if (!result.Succeeded)
     {
-      return new IdentityServiceResult(false, null, [.. result.Errors.Select(x => x.Description)]);
+      return new IdentityServiceResult(
+        false,
+        null,
+        [.. result.Errors.Select(x => x.Description)]
+      );
     }
 
     reads?.Invalidate($"session:{user.Id}");
@@ -87,11 +94,19 @@ public class IdentityService(UserManager<AppUser> userManager, IReadCache? reads
 
     var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
 
-    var result = await userManager.ResetPasswordAsync(user, resetToken, password);
+    var result = await userManager.ResetPasswordAsync(
+      user,
+      resetToken,
+      password
+    );
 
     if (!result.Succeeded)
     {
-      return new IdentityServiceResult(false, null, [.. result.Errors.Select(x => x.Description)]);
+      return new IdentityServiceResult(
+        false,
+        null,
+        [.. result.Errors.Select(x => x.Description)]
+      );
     }
 
     reads?.Invalidate($"session:{user.Id}");
@@ -117,7 +132,11 @@ public class IdentityService(UserManager<AppUser> userManager, IReadCache? reads
 
     var enableResult = await userManager.SetLockoutEnabledAsync(user, true);
     if (!enableResult.Succeeded)
-      return new IdentityServiceResult(false, null, [.. enableResult.Errors.Select(x => x.Description)]);
+      return new IdentityServiceResult(
+        false,
+        null,
+        [.. enableResult.Errors.Select(x => x.Description)]
+      );
 
     DateTimeOffset? lockoutEnd = isActive ? null : DateTimeOffset.MaxValue;
 
@@ -125,14 +144,23 @@ public class IdentityService(UserManager<AppUser> userManager, IReadCache? reads
 
     if (!result.Succeeded)
     {
-      return new IdentityServiceResult(false, null, [.. result.Errors.Select(x => x.Description)]);
+      return new IdentityServiceResult(
+        false,
+        null,
+        [.. result.Errors.Select(x => x.Description)]
+      );
     }
 
     var stampResult = await userManager.UpdateSecurityStampAsync(user);
-    if (stampResult.Succeeded) reads?.Invalidate($"session:{user.Id}");
+    if (stampResult.Succeeded)
+      reads?.Invalidate($"session:{user.Id}");
     return stampResult.Succeeded
       ? new IdentityServiceResult(true, user.Id)
-      : new IdentityServiceResult(false, null, [.. stampResult.Errors.Select(x => x.Description)]);
+      : new IdentityServiceResult(
+        false,
+        null,
+        [.. stampResult.Errors.Select(x => x.Description)]
+      );
   }
 
   public async Task<IdentityServiceResult> DeleteUserAsync(
@@ -155,7 +183,11 @@ public class IdentityService(UserManager<AppUser> userManager, IReadCache? reads
 
     if (!result.Succeeded)
     {
-      return new IdentityServiceResult(false, null, [.. result.Errors.Select(x => x.Description)]);
+      return new IdentityServiceResult(
+        false,
+        null,
+        [.. result.Errors.Select(x => x.Description)]
+      );
     }
 
     reads?.Invalidate($"session:{user.Id}");

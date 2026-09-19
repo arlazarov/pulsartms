@@ -6,8 +6,9 @@ import {spawn, spawnSync} from 'node:child_process';
 export const policy = {maxBytes: 1024 ** 3, maxAgeMs: 7 * 86400000, keepPerKind: 2, graceMs: 3600000};
 const root = fileURLToPath(new URL('../', import.meta.url));
 const defaultPool = path.join(root, 'artifacts/managed');
-const marker = '.amftms-artifact.json';
-const kinds = new Set(['release', 'scratch', 'diagnostic', 'browser-ui', 'browser-fuel-editor',
+const marker = '.pulsartms-artifact.json';
+const legacyMarker = '.amftms-artifact.json';
+const kinds = new Set(['release', 'scratch', 'diagnostic', 'browser-ui', 'browser-fuel-editor', 'browser-route-editor',
   'browser-native-inspector', 'browser-stop-details', 'browser-map-startup', 'browser-map-markers',
   'browser-station-popup', 'browser-stop-cards', 'browser-hours-forecast', 'browser-map-lifecycle']);
 const validKind = value => kinds.has(value);
@@ -35,6 +36,20 @@ function treeBytes(directory) {
     bytes += entry.isDirectory() ? treeBytes(file) : fs.lstatSync(file).size;
   }
   return bytes;
+}
+
+function readMarker(directory) {
+  for (const name of [marker, legacyMarker]) {
+    const file = path.join(directory, name);
+    try {
+      if (fs.lstatSync(file).isSymbolicLink()) throw new Error('Linked artifact marker');
+    } catch (error) {
+      if (error.code === 'ENOENT') continue;
+      throw error;
+    }
+    return {name, saved: JSON.parse(fs.readFileSync(file, 'utf8'))};
+  }
+  throw new Error('Artifact marker not found');
 }
 
 export function selectExpired(entries, now = Date.now(), limits = policy) {
@@ -66,11 +81,10 @@ export function prune({pool = defaultPool, apply = false, now = Date.now(), limi
     if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
     const directory = path.join(pool, entry.name);
     try {
-      if (fs.lstatSync(path.join(directory, marker)).isSymbolicLink()) continue;
-      const saved = JSON.parse(fs.readFileSync(path.join(directory, marker), 'utf8'));
+      const {name, saved} = readMarker(directory);
       if (saved.version !== 1 || saved.id !== entry.name || !validKind(saved.kind)
         || !Number.isFinite(saved.createdAt) || (saved.completedAt != null && !Number.isFinite(saved.completedAt))) continue;
-      entries.push({id: entry.name, kind: saved.kind, time: saved.completedAt ?? saved.createdAt, success: saved.success === true,
+      entries.push({id: entry.name, marker: name, kind: saved.kind, time: saved.completedAt ?? saved.createdAt, success: saved.success === true,
         bytes: treeBytes(directory), protected: fs.existsSync(path.join(directory, '.keep')) || alive(saved.pid) || inUse(directory)});
     } catch { /* Unrecognized, changing or linked trees are never cleanup targets. */ }
   }
@@ -80,8 +94,9 @@ export function prune({pool = defaultPool, apply = false, now = Date.now(), limi
     const directory = path.join(pool, item.id);
     try {
       if (fs.lstatSync(directory).isSymbolicLink() || fs.existsSync(path.join(directory, '.keep'))) continue;
-      const saved = JSON.parse(fs.readFileSync(path.join(directory, marker), 'utf8'));
-      if (saved.id !== item.id || alive(saved.pid) || inUse(directory)) continue;
+      const {name, saved} = readMarker(directory);
+      if (name !== item.marker || saved.version !== 1 || saved.id !== item.id || saved.kind !== item.kind
+        || (saved.completedAt ?? saved.createdAt) !== item.time || alive(saved.pid) || inUse(directory)) continue;
       treeBytes(directory);
       fs.rmSync(directory, {recursive: true});
       removed.push(item.id);
@@ -123,6 +138,10 @@ export function browserOutput(kind, override) {
   return run.directory;
 }
 
+export function artifactEnvironment(directory, environment = process.env) {
+  return {...environment, PULSARTMS_ARTIFACT_DIR: directory, AMFTMS_ARTIFACT_DIR: directory};
+}
+
 async function main(args) {
   if (args[0] === 'prune' && args.slice(1).every(x => x === '--apply')) {
     console.log(JSON.stringify(prune({apply: args.includes('--apply')}), null, 2));
@@ -135,7 +154,7 @@ async function main(args) {
   let success = false;
   try {
     const [command, ...commandArgs] = args.slice(3).map(x => x.replaceAll('{artifacts}', run.directory));
-    const child = spawn(command, commandArgs, {stdio: 'inherit', env: {...process.env, AMFTMS_ARTIFACT_DIR: run.directory}});
+    const child = spawn(command, commandArgs, {stdio: 'inherit', env: artifactEnvironment(run.directory)});
     const forward = signal => child.kill(signal);
     const onInt = () => forward('SIGINT'), onTerm = () => forward('SIGTERM');
     process.on('SIGINT', onInt); process.on('SIGTERM', onTerm);

@@ -1,17 +1,26 @@
+using System.Text.Json.Serialization;
+using Application.Features.Routing.Algorithms;
+
 namespace Application.Features.Routing.Models;
 
 public sealed class RoutePlan
 {
   public Guid Id { get; set; }
   public Guid DispatchId { get; set; }
+  public Guid? ExecutionLegId { get; set; }
+  public long AssignmentRevision { get; set; }
   public Guid TruckId { get; set; }
   public int Version { get; set; }
-  [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
   public bool GeometryOmitted { get; set; }
   public DateTime CalculatedAt { get; set; }
   public double OriginalPlannedMiles { get; set; }
   public bool FromCurrentPosition { get; set; }
   public List<PlanStop> Stops { get; set; } = [];
+  public List<RouteSegmentMeaning> Segments =>
+    RouteSegmentClassification.Read(this);
+  public string ReferenceGeometrySource => "EstimatedRoad";
   public TruckRoute Route { get; set; } = new();
   public TruckRouteProfile Profile { get; set; } = new();
   public bool InputsChanged { get; set; }

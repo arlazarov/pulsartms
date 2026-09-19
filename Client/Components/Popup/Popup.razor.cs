@@ -29,7 +29,10 @@ public partial class Popup : IAsyncDisposable
 
   protected override async Task OnAfterRenderAsync(bool firstRender)
   {
-    _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/generated/shared/popup.js");
+    _module ??= await JS.InvokeAsync<IJSObjectReference>(
+      "import",
+      "./js/generated/shared/popup.js"
+    );
 
     if (IsOpen && !_scrollLocked)
     {

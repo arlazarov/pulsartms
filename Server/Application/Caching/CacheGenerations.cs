@@ -3,8 +3,12 @@ namespace Application.Caching;
 internal sealed class CacheGenerations
 {
   private const int Capacity = 4096;
+
   private sealed record Entry(string Group, long Version);
-  private readonly Dictionary<string, LinkedListNode<Entry>> entries = new(StringComparer.Ordinal);
+
+  private readonly Dictionary<string, LinkedListNode<Entry>> entries = new(
+    StringComparer.Ordinal
+  );
   private readonly LinkedList<Entry> recency = new();
   private readonly object gate = new();
   private long revision;
@@ -12,7 +16,8 @@ internal sealed class CacheGenerations
 
   public long Get(string group)
   {
-    lock (gate) return Touch(group).Value.Version;
+    lock (gate)
+      return Touch(group).Value.Version;
   }
 
   public void Invalidate(string group)
@@ -36,7 +41,8 @@ internal sealed class CacheGenerations
     {
       entries.Remove(recency.First!.Value.Group);
       recency.RemoveFirst();
-      // A forgotten key must never revive a still-cached snapshot with its previous generation.
+      // A forgotten key must never revive a still-cached snapshot with its
+      // previous generation.
       epoch = ++revision;
     }
     node = recency.AddLast(new Entry(group, epoch));

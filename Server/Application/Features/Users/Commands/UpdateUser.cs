@@ -46,17 +46,26 @@ public record UpdateUserCommand(
   string? Role = null
 ) : IRequest<RequestResponse<Guid>>;
 
-public class UpdateUserHandler(IAppDbContext dbContext, IIdentityService identityService, IUserRoleService roles, ICurrentUser currentUser, ReadCache reads)
-  : IRequestHandler<UpdateUserCommand, RequestResponse<Guid>>
+public class UpdateUserHandler(
+  IAppDbContext dbContext,
+  IIdentityService identityService,
+  IUserRoleService roles,
+  ICurrentUser currentUser,
+  ReadCache reads
+) : IRequestHandler<UpdateUserCommand, RequestResponse<Guid>>
 {
   public async Task<RequestResponse<Guid>> Handle(
     UpdateUserCommand request,
     CancellationToken cancellationToken
   )
   {
-    if (!currentUser.IsAuthenticated || string.IsNullOrWhiteSpace(currentUser.IdentityUserId))
+    if (
+      !currentUser.IsAuthenticated
+      || string.IsNullOrWhiteSpace(currentUser.IdentityUserId)
+    )
       return RequestResponse<Guid>.Fail("Unauthorized.", 401);
-    await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+    await using var transaction =
+      await dbContext.Database.BeginTransactionAsync(cancellationToken);
     var user = await dbContext.Users.FirstOrDefaultAsync(
       x => x.Id == request.Id,
       cancellationToken
@@ -69,8 +78,14 @@ public class UpdateUserHandler(IAppDbContext dbContext, IIdentityService identit
 
     if (user.IdentityUserId == currentUser.IdentityUserId)
     {
-      if (request.Role == "Dispatch") return RequestResponse<Guid>.Fail("You cannot remove your own Admin role.");
-      if (request.IsActive == false) return RequestResponse<Guid>.Fail("You cannot deactivate your own account.");
+      if (request.Role == "Dispatch")
+        return RequestResponse<Guid>.Fail(
+          "You cannot remove your own Admin role."
+        );
+      if (request.IsActive == false)
+        return RequestResponse<Guid>.Fail(
+          "You cannot deactivate your own account."
+        );
     }
 
     if (request.Email is not null && request.Email != user.Email)
@@ -84,7 +99,8 @@ public class UpdateUserHandler(IAppDbContext dbContext, IIdentityService identit
       if (!identityResult.Success)
       {
         return RequestResponse<Guid>.Fail(
-          identityResult.Errors ?? new ValidationErrors("Failed to update email.")
+          identityResult.Errors
+            ?? new ValidationErrors("Failed to update email.")
         );
       }
 
@@ -102,7 +118,8 @@ public class UpdateUserHandler(IAppDbContext dbContext, IIdentityService identit
       if (!identityResult.Success)
       {
         return RequestResponse<Guid>.Fail(
-          identityResult.Errors ?? new ValidationErrors("Failed to update password.")
+          identityResult.Errors
+            ?? new ValidationErrors("Failed to update password.")
         );
       }
     }
@@ -118,7 +135,8 @@ public class UpdateUserHandler(IAppDbContext dbContext, IIdentityService identit
       if (!identityResult.Success)
       {
         return RequestResponse<Guid>.Fail(
-          identityResult.Errors ?? new ValidationErrors("Failed to update user status.")
+          identityResult.Errors
+            ?? new ValidationErrors("Failed to update user status.")
         );
       }
 
@@ -131,7 +149,12 @@ public class UpdateUserHandler(IAppDbContext dbContext, IIdentityService identit
     }
 
     await dbContext.SaveChangesAsync(cancellationToken);
-    if (request.Role is not null) await roles.SetAsync(user.IdentityUserId, request.Role, cancellationToken);
+    if (request.Role is not null)
+      await roles.SetAsync(
+        user.IdentityUserId,
+        request.Role,
+        cancellationToken
+      );
     await transaction.CommitAsync(cancellationToken);
     reads.Invalidate($"session:{user.IdentityUserId}");
 

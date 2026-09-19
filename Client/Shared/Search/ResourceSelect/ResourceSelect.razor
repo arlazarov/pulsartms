@@ -1,0 +1,39 @@
+<div class="search-input search-input--resource">
+  <input id="@Id" type="text" value="@(_open ? _query : SelectedLabel)"
+         placeholder="@(_open ? SelectedLabel : Placeholder)"
+         autocomplete="off" disabled="@Disabled"
+         role="combobox" aria-autocomplete="list"
+         aria-expanded="@(_open ? "true" : "false")"
+         aria-controls="@(Id + "-options")"
+         aria-activedescendant="@ActiveId"
+         @onfocus="Open" @onclick="Open" @onblur="Close"
+         @oninput="Input" @onkeydown="KeyAsync" />
+  @if (_open && !Disabled)
+  {
+    <div id="@(Id + "-options")" class="search-input__options"
+         role="listbox">
+      @for (var index = 0; index < Matches.Count; index++)
+      {
+        var option = Matches[index];
+        var active = index == _active;
+        <button id="@($"{Id}-option-{index}")"
+                type="button" role="option" tabindex="-1"
+                aria-selected="@(active ? "true" : "false")"
+                @onmousedown:preventDefault="true"
+                @onclick="() => ChooseAsync(option.Key)">
+          <strong>@option.Value</strong>
+        </button>
+      }
+      @if (Matches.Count == 0)
+      {
+        <span class="search-input__empty" role="status">No matches found</span>
+      }
+      @if (_matchCount > Matches.Count)
+      {
+        <span class="search-input__empty" role="status">
+          @_matchCount matches. Type to narrow the list.
+        </span>
+      }
+    </div>
+  }
+</div>

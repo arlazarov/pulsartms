@@ -3,7 +3,7 @@
         <h2 id="integration-settings-title">Integrations</h2>
         <p class="settings-page__hint">Configured means credentials are present, not that the connection has been tested.</p>
     </header>
-    @if (_loading) { <p role="status">Loading integrations…</p> }
+    @if (_loading) { <p role="status"><LoadingIndicator /></p> }
     @if (_loadError is not null)
     {
         <p class="settings-page__error" role="alert">@_loadError

@@ -15,4 +15,19 @@ public sealed class FuelArrivalPolicy
   public string PolicySignature { get; set; } = "";
   public string Reason { get; set; } = "";
   public List<FuelRegionCell> Regions { get; set; } = [];
+
+  public bool HasValidReplacementValue() =>
+    double.IsFinite(ReplacementPriceUsd)
+    && (
+      ReplacementPriceUsd > 0
+      || ReplacementPriceUsd == 0
+        && PoorArea
+        && EconomicPurchasesOnly
+        && EscapeStationId == Guid.Empty
+        && string.IsNullOrEmpty(EscapeStationName)
+        && EscapeMiles == 0
+        && double.IsFinite(MinimumGallons)
+        && MinimumGallons >= 0
+        && TargetGallons == MinimumGallons
+    );
 }

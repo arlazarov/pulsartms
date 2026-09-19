@@ -15,6 +15,12 @@ public class SettingsController : BaseController
     HandleRequest(new GetPlanningSettingsQuery(), cancellationToken);
 
   [HttpPut]
-  public Task<IActionResult> Save(PlanningSettingsUpdate request, CancellationToken cancellationToken) =>
-    HandleRequest(new UpdatePlanningSettingsCommand(request), cancellationToken);
+  public Task<IActionResult> Save(
+    PlanningSettingsUpdate request,
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(
+      new UpdatePlanningSettingsCommand(request),
+      cancellationToken
+    );
 }

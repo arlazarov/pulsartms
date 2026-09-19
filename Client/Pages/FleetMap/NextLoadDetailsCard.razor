@@ -1,65 +1,177 @@
-<section class="@(Embedded ? "fleet-map-inspector__next" : "fleet-map-details-card") fleet-map-next-load-card" role="@(Embedded ? "region" : "dialog")" aria-label="Selected next load"
-         tabindex="-1" @onkeydown="OnKeyDownAsync" @onkeydown:stopPropagation="@(!Embedded)">
+<section class="@(Embedded
+             ? "fleet-map-inspector__next" : "fleet-map-details-card")
+             fleet-map-next-load-card"
+         role="@(Embedded ? "region" : "dialog")"
+         aria-label="Selected next load" tabindex="-1"
+         @onkeydown="OnKeyDownAsync"
+         @onkeydown:stopPropagation="@(!Embedded)">
     @if (!Embedded)
     {
-    <button type="button" class="fleet-map-details-card__close" aria-label="Close next load details" @onclick="OnClose">×</button>
+        <button type="button" class="fleet-map-details-card__close"
+                aria-label="Close next load details" @onclick="OnClose">
+            ×
+        </button>
     }
-    <div class="@(Embedded ? "fleet-map-inspector__body" : "fleet-map-details-card__body")">
+    <div id="@(Embedded ? "fleet-map-next-load-details" : null)"
+         class="@(Embedded
+             ? "fleet-map-inspector__body" : "fleet-map-details-card__body")">
         <div class="fleet-route-popup fleet-route-popup--stop">
             <div class="fleet-route-popup__location">
                 <header class="fleet-map-next-load-card__header">
-                    <span class="fleet-map-route-info__load" aria-busy="@(Loading ? "true" : "false")">
-                        <LoadReference LoadNumber="Route.LoadNumber" OrderNumber="@(Details?.OrderNumber ?? "")" OnCopy="OnCopy" />
+                    <span class="fleet-map-route-info__load"
+                          aria-busy="@(Loading ? "true" : "false")">
+                        <LoadReference LoadNumber="Route.LoadNumber"
+                            OrderNumber="@(Details?.OrderNumber ?? "")"
+                            OnCopy="OnCopy" />
                     </span>
-                    @if (!string.IsNullOrWhiteSpace(Details?.CustomerName))
-                    { <span class="fleet-map-route-info__secondary">@Details.CustomerName</span> }
+                    <span class="loading-slot @(Loading ? "is-loading" : "")"><LoadingIndicator /></span>
                 </header>
-                <span class="fleet-route-popup__kind">@Stop?.Job · Stop @(StopIndex + 1) of @Math.Max(Route.StopCount, Route.Stops.Count)</span>
+                <span class="fleet-route-popup__kind">
+                    @Stop?.Job · @StopPosition
+                    @if (Stop?.StateAfter is not null and not "Unknown")
+                    {
+                        <span hidden="@(!Expanded)">
+                            After: @Stop.StateAfter
+                        </span>
+                    }
+                    @if (VisitLabel.Length > 0)
+                    {
+                        <span class="fleet-route-popup__visit"
+                              title="@(VisitLabel + " at this address")">
+                            @VisitLabel
+                        </span>
+                    }
+                </span>
                 @if (Stop is { } stop)
                 {
                     <strong>@stop.Name</strong>
                     @if (!string.IsNullOrWhiteSpace(stop.Address))
                     {
-                        <button type="button" class="fleet-map-route-info__copy-address" title="Copy full address" @onclick="() => OnCopy.InvokeAsync(stop.Address)">
+                        <button type="button"
+                                class="fleet-map-route-info__copy-address"
+                                title="Copy full address"
+                                @onclick="() =>
+                                    OnCopy.InvokeAsync(stop.Address)">
                             <span class="fleet-map-route-info__address">
-                                <span class="fleet-route-popup__address-line">@Address.Street</span>
-                                @if (Address.Locality.Length > 0) { <span class="fleet-route-popup__address-line">@Address.Locality</span> }
+                                <span class="fleet-route-popup__address-line">
+                                    @Address.Street
+                                </span>
+                                @if (Address.Locality.Length > 0)
+                                {
+                                    <span
+                                        class="fleet-route-popup__address-line">
+                                        @Address.Locality
+                                    </span>
+                                }
                             </span>
                         </button>
                     }
                 }
+                @if (StopReference is { } reference)
+                {
+                    <div hidden="@(!Expanded)"
+                         class="fleet-route-popup__reference
+                             fleet-route-popup__section-start">
+                        <span class="fleet-route-popup__label">
+                            @StopReferenceLabel
+                        </span>
+                        <button type="button"
+                                class="fleet-map-route-info__copy-number"
+                                title="Copy stop reference"
+                                @onclick="() => OnCopy.InvokeAsync(reference)">
+                            <strong>@reference</strong>
+                        </button>
+                    </div>
+                }
                 @if (AppointmentReferences.Count > 0)
                 {
-                    <div class="fleet-route-popup__reference fleet-route-popup__section-start">
-                        <span class="fleet-route-popup__label">Appt #</span><span>@string.Join(", ", AppointmentReferences)</span>
+                    <div hidden="@(!Expanded)"
+                         class="fleet-route-popup__reference
+                             fleet-route-popup__section-start">
+                        <span class="fleet-route-popup__label">Appt #</span>
+                        <span>@string.Join(", ", AppointmentReferences)</span>
                     </div>
+                }
+                <dl hidden="@(!Expanded)"
+                    class="fleet-map-next-load-card__assignment"
+                    aria-label="Stop assignment">
+                    <div><dt>Truck</dt><dd>@AssignmentTruck</dd></div>
+                    <div><dt>Trailer</dt><dd>@AssignmentTrailer</dd></div>
+                    <div><dt>Driver</dt><dd>@AssignmentDriver</dd></div>
+                </dl>
+                @if (!string.IsNullOrWhiteSpace(Details?.CustomerName))
+                {
+                    <span hidden="@(!Expanded)"
+                          class="fleet-map-route-info__secondary">
+                        @Details.CustomerName
+                    </span>
                 }
             </div>
             <div class="fleet-route-popup__information">
                 <dl class="fleet-route-popup__facts">
-                    <div class="fleet-route-popup__field fleet-route-popup__appointment">
+                    <div class="fleet-route-popup__field
+                        fleet-route-popup__appointment">
                         <dt class="fleet-route-popup__label">Appointment</dt>
                         <dd class="fleet-route-popup__value">@Appointment</dd>
                     </div>
                 </dl>
-                <div class="fleet-route-popup__fuel @(ArrivalFuel is null ? "fleet-route-popup__fuel--unknown" : "")" title="Estimated from the current fuel plan">
+                <div class="fleet-route-popup__fuel @(ArrivalFuel is null
+                         ? "fleet-route-popup__fuel--unknown" : "")"
+                     title="Estimated from the current fuel plan">
                     @if (ArrivalFuel is { } arrivalFuel)
-                    { <FuelGauge Label="Fuel on arrival" Gallons="arrivalFuel.Gallons" PercentValue="arrivalFuel.Percent" /> }
+                    {
+                        <FuelGauge Label="Fuel on arrival"
+                            Gallons="arrivalFuel.Gallons"
+                            PercentValue="arrivalFuel.Percent" />
+                    }
                     else
-                    { <span class="fleet-route-popup__label">Fuel on arrival</span><span class="fleet-fuel-visit__percent">—</span> }
+                    {
+                        <span class="fleet-route-popup__label">
+                            Fuel on arrival
+                        </span>
+                        <span class="fleet-fuel-visit__percent">—</span>
+                    }
                 </div>
-                <ArrivalEstimate @key="(Route.Id, StopIndex)" Eta="Eta" Stop="Stop" DispatchId="Route.Id"
-                    Memory="_arrivalMemory" Completed="StopCompleted" Refreshing="Refreshing" ShowDutyStatus="false" ShowAppointment="false" ShowRecap="true" />
-                @if (!HasDisplayedEta) { <span class="fleet-route-popup__eta fleet-route-popup__eta--eta">ETA —</span> }
-                <dl class="fleet-map-next-load-card__metrics fleet-route-popup__section-start">
-                    <div><dt>@(StopIndex == 0 ? "Empty" : "Leg")</dt><dd>@Distance(LegMiles)</dd></div>
-                    <div><dt>Total</dt><dd>@Distance(DistanceMiles)</dd></div>
+                <ArrivalEstimate @key="(Route.Id, StopIndex)"
+                    Eta="Eta" Stop="Stop" DispatchId="Route.Id"
+                    Memory="_arrivalMemory" Completed="StopCompleted"
+                    Refreshing="Refreshing" ShowDutyStatus="false"
+                    ShowAppointment="false" ShowRecap="true"
+                    ShowDetails="Expanded" />
+                @if (!HasDisplayedEta)
+                {
+                    <span class="fleet-route-popup__eta
+                        fleet-route-popup__eta--eta">ETA —</span>
+                }
+                <dl hidden="@(!Expanded)"
+                    class="fleet-map-next-load-card__metrics
+                        fleet-route-popup__section-start">
+                    <div>
+                        <dt>@(StopIndex == 0 ? "Empty" : "Leg")</dt>
+                        <dd><DistanceText Miles="LegMiles" /></dd>
+                    </div>
+                    <div>
+                        <dt>Total</dt>
+                        <dd><DistanceText Miles="DistanceMiles" /></dd>
+                    </div>
                 </dl>
-                <a class="fleet-route-popup__details-link" href="@($"/dispatch/{Route.Id}")">Route &amp; load details ↗</a>
+                <a class="fleet-route-popup__details-link"
+                   href="@($"/dispatch/{Route.Id}")">
+                    Route &amp; load details ↗
+                </a>
             </div>
         </div>
-        @if (CopyMessage is not null) { <span class="fleet-map-route-info__secondary" role="status">@CopyMessage</span> }
-        @if (Loading) { <span class="fleet-map-route-info__secondary" role="status">Loading load details…</span> }
-        @if (Error is not null) { <span class="fleet-map-route-info__error" role="status">@Error</span> }
+        @if (CopyMessage is not null)
+        {
+            <span class="fleet-map-route-info__secondary" role="status">
+                @CopyMessage
+            </span>
+        }
+        @if (Error is not null)
+        {
+            <span class="fleet-map-route-info__error" role="status">
+                @Error
+            </span>
+        }
     </div>
 </section>

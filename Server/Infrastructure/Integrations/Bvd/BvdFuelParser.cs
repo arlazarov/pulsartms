@@ -8,7 +8,11 @@ namespace Infrastructure.Integrations.Bvd;
 
 public static class BvdFuelCsvParser
 {
-  public static (DateOnly EffectiveDate, DateOnly EffectiveTo, List<FuelDiscountImportRow> Rows) Parse(byte[] content)
+  public static (
+    DateOnly EffectiveDate,
+    DateOnly EffectiveTo,
+    List<FuelDiscountImportRow> Rows
+  ) Parse(byte[] content)
   {
     using var stream = new MemoryStream(content);
     using var reader = new StreamReader(stream, Encoding.UTF8);
@@ -28,12 +32,19 @@ public static class BvdFuelCsvParser
       return (default, default, []);
     }
 
-    var dates = (csv.GetField(7) ?? throw new InvalidOperationException("Effective Date is missing."))
-      .Split(" to ", StringSplitOptions.TrimEntries);
-    if (dates.Length is < 1 or > 2) throw new FormatException("Invalid fuel price date range.");
+    var dates = (
+      csv.GetField(7)
+      ?? throw new InvalidOperationException("Effective Date is missing.")
+    ).Split(" to ", StringSplitOptions.TrimEntries);
+    if (dates.Length is < 1 or > 2)
+      throw new FormatException("Invalid fuel price date range.");
     var effectiveDate = DateOnly.Parse(dates[0], CultureInfo.InvariantCulture);
-    var effectiveTo = dates.Length == 2 ? DateOnly.Parse(dates[1], CultureInfo.InvariantCulture) : effectiveDate;
-    if (effectiveTo < effectiveDate) throw new FormatException("Fuel price end date precedes start date.");
+    var effectiveTo =
+      dates.Length == 2
+        ? DateOnly.Parse(dates[1], CultureInfo.InvariantCulture)
+        : effectiveDate;
+    if (effectiveTo < effectiveDate)
+      throw new FormatException("Fuel price end date precedes start date.");
 
     if (!csv.Read())
     {
@@ -48,8 +59,13 @@ public static class BvdFuelCsvParser
     {
       var regions = new[] { "STATE", "PROV", "PROVINCE" }
         .Select(header => csv.GetField(header)?.Trim().ToUpperInvariant())
-        .Where(value => !string.IsNullOrWhiteSpace(value)).Distinct().ToArray();
-      if (regions.Length != 1) throw new FormatException("Fuel station state/province is missing or conflicting.");
+        .Where(value => !string.IsNullOrWhiteSpace(value))
+        .Distinct()
+        .ToArray();
+      if (regions.Length != 1)
+        throw new FormatException(
+          "Fuel station state/province is missing or conflicting."
+        );
       rows.Add(
         new FuelDiscountImportRow
         {

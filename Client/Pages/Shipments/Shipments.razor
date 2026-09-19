@@ -1,0 +1,165 @@
+@page "/dispatch/{LoadId:guid}/shipments"
+@attribute [Authorize]
+
+<PageTitle>Shipments · PulsR</PageTitle>
+<NavigationLock ConfirmExternalNavigation="@_dirty"
+                OnBeforeInternalNavigation="BeforeNavigation" />
+<section class="dispatch-page dispatch-details">
+  <header class="dispatch-details__header">
+    <a href="@($"/dispatch/{LoadId}")">← Back to load</a>
+    <h1>Shipments</h1>
+    <p>Cargo for this load. Each broker’s order keeps its own load and billing.</p>
+  </header>
+  @if (_error is not null)
+  {
+    <p role="alert">@_error</p>
+  }
+  @if (_navigationBlocked)
+  {
+    <p role="alert">Save or discard your draft before leaving.</p>
+  }
+  @if (_loading)
+  {
+    <LoadingIndicator />
+  }
+  else if (_draft is null)
+  {
+    <section class="dispatch-details__panel">
+      <button class="btn btn--primary" @onclick="Create">Add shipment</button>
+      <button class="btn" @onclick="LoadAsync">Reload</button>
+      @foreach (var row in _rows)
+      {
+        <div class="dispatch-details__fields" @key="row.Id">
+          <span>@Display(row)</span>
+          <button class="btn" @onclick="() => Edit(row)">Edit shipment</button>
+        </div>
+      }
+      @if (_rows.Count == 0)
+      {
+        <p>No shipments have been saved for this load.</p>
+      }
+    </section>
+  }
+  else
+  {
+    <div class="dispatch-details__save">
+      <button class="btn" disabled="@_saving" @onclick="Discard">
+        Discard draft
+      </button>
+      <button class="btn btn--primary" disabled="@(!_dirty || _saving)"
+              @onclick="SaveAsync">
+        @(_saving ? "Saving…" : _pending is null ? "Save draft" : "Retry save")
+      </button>
+      <button class="btn" disabled="@Locked" @onclick="CheckAsync">
+        Check missing fields
+      </button>
+    </div>
+    @if (_checked)
+    {
+      <section class="dispatch-details__panel" role="status">
+        @if (_issues.Count == 0)
+        {
+          <p>Basic shipment fields are filled.</p>
+        }
+        @foreach (var issue in _issues)
+        {
+          <p>@issue.Message</p>
+        }
+      </section>
+    }
+    <fieldset disabled="@Locked" class="dispatch-details__panel">
+      <legend>Shipment</legend>
+      <div class="dispatch-details__fields">
+        <label>Bill of lading
+          <input @bind="_draft.BillOfLading" maxlength="200"
+                 @bind:event="oninput" @bind:after="Changed" />
+        </label>
+        <label>Pickup
+          <select @bind="_draft.PickupStopId" @bind:after="Changed">
+            <option value="">Not selected</option>
+            @foreach (var stop in _stops.Where(x =>
+              x.Job is "Pick Up" or "Pickup"))
+            {
+              <option value="@stop.Id">@stop.Name · @stop.Address</option>
+            }
+          </select>
+        </label>
+        <label>Delivery
+          <select @bind="_draft.DeliveryStopId" @bind:after="Changed">
+            <option value="">Not selected</option>
+            @foreach (var stop in _stops.Where(x =>
+              x.Job is "Drop Off" or "Delivery"))
+            {
+              <option value="@stop.Id">@stop.Name · @stop.Address</option>
+            }
+          </select>
+        </label>
+      </div>
+    </fieldset>
+    <button class="btn" disabled="@(Locked || !_draft.PickupStopId.HasValue)"
+            @onclick="() => CopyParty(true)">Copy pickup to shipper</button>
+    <button class="btn" disabled="@(Locked || !_draft.DeliveryStopId.HasValue)"
+            @onclick="() => CopyParty(false)">Copy delivery to consignee</button>
+    <ShipmentPartyEditor Value="_draft.Shipper" Title="Shipper"
+                        Disabled="Locked" Changed="Changed" />
+    <ShipmentPartyEditor Value="_draft.Consignee" Title="Consignee"
+                        Disabled="Locked" Changed="Changed" />
+    <fieldset disabled="@Locked" class="dispatch-details__panel">
+      <legend>Commodities</legend>
+      <p>Quantity counts the lowest external packaging. Pallets used only
+        for handling are not automatically the package quantity.</p>
+      @foreach (var row in _draft.Commodities)
+      {
+        <fieldset @key="row.Id" class="dispatch-details__panel">
+          <legend>Commodity @(_draft.Commodities.IndexOf(row) + 1)</legend>
+          <div class="dispatch-details__fields">
+            <label>Description of goods
+              <input @bind="row.Description" maxlength="500"
+                     @bind:event="oninput" @bind:after="Changed" />
+            </label>
+            <label>Marks / numbers
+              <input @bind="row.Marks" maxlength="500"
+                     @bind:event="oninput" @bind:after="Changed" />
+            </label>
+            <label>Classification
+              <input @bind="row.Classification" maxlength="500"
+                     @bind:event="oninput" @bind:after="Changed" />
+            </label>
+            <label>Country of origin
+              <input @bind="row.OriginCountry" maxlength="500"
+                     @bind:event="oninput" @bind:after="Changed" />
+            </label>
+            <label>Quantity
+              <input type="number" min="1" step="1" @bind="row.Quantity"
+                     @bind:after="Changed" />
+            </label>
+            <label>Package type
+              <select @bind="row.PackageType" @bind:after="Changed">
+                <option value="">Not confirmed</option>
+                @foreach (var package in Packages)
+                {
+                  <option value="@package">@package</option>
+                }
+              </select>
+            </label>
+            <label>Weight
+              <input type="number" min="0.001" step="0.001"
+                     @bind="row.Weight" @bind:after="Changed" />
+            </label>
+            <label>Weight unit
+              <select @bind="row.WeightUnit" @bind:after="Changed">
+                <option value="">Not selected</option>
+                <option value="kg">kg</option>
+                <option value="lb">lb</option>
+              </select>
+            </label>
+          </div>
+          <button class="btn" @onclick="() => Remove(row)">
+            Remove commodity from draft
+          </button>
+        </fieldset>
+      }
+      <button class="btn" @onclick="AddCommodity">Add commodity</button>
+    </fieldset>
+  }
+</section>

@@ -11,23 +11,41 @@ public sealed class FuelExactFillTests
   [Theory]
   [InlineData(100)]
   [InlineData(90)]
-  public void FullPurchaseReachesExactConfiguredTargetAndChargesItsEntireQuantity(double fillPercent)
+  public void FullPurchaseReachesExactConfiguredTargetAndChargesItsEntireQuantity(
+    double fillPercent
+  )
   {
     var profile = Profile(211.33764188651872);
     profile.FillPercent = fillPercent;
     profile.ReserveGallons = 25;
     var target = profile.TankGallons!.Value * (fillPercent / 100);
     var station = Station("Full fill", 10, 3) with { EconomicPriceUsd = 2.5 };
-    var plan = FuelOptimizer.Optimize(100, 36, profile, [station], 1, true, compare: false,
-      arrivalPolicy: Arrival(profile, target, 6));
+    var plan = FuelOptimizer.Optimize(
+      100,
+      36,
+      profile,
+      [station],
+      1,
+      true,
+      compare: false,
+      arrivalPolicy: Arrival(profile, target, 6)
+    );
 
     var purchase = Assert.Single(plan.Stops);
     Assert.True(purchase.FillToTarget);
     Assert.Equal(34, purchase.ArrivalGallons);
     Assert.Equal(target, purchase.DepartureGallons);
     Assert.Equal(target - 34, purchase.BuyGallons, 10);
-    Assert.Equal(purchase.DepartureGallons, purchase.ArrivalGallons + purchase.BuyGallons, 10);
-    Assert.Equal(fillPercent, purchase.DepartureGallons / profile.TankGallons.Value * 100, 10);
+    Assert.Equal(
+      purchase.DepartureGallons,
+      purchase.ArrivalGallons + purchase.BuyGallons,
+      10
+    );
+    Assert.Equal(
+      fillPercent,
+      purchase.DepartureGallons / profile.TankGallons.Value * 100,
+      10
+    );
     Assert.True(purchase.DepartureGallons <= profile.TankGallons.Value);
     Assert.Equal(target - 18, plan.ArrivalGallons, 10);
     Assert.Equal(purchase.BuyGallons, plan.PurchaseGallons);
@@ -42,9 +60,16 @@ public sealed class FuelExactFillTests
     var profile = Profile(211.33764188651872);
     profile.ReserveGallons = 25;
     var target = profile.TankGallons!.Value;
-    var plan = FuelOptimizer.Optimize(1000, 36, profile,
-      [Station("Cheaper first fill", 10, 2), Station("Later fill", 910, 3)], 1, false, compare: false,
-      arrivalPolicy: Arrival(profile, target, 6));
+    var plan = FuelOptimizer.Optimize(
+      1000,
+      36,
+      profile,
+      [Station("Cheaper first fill", 10, 2), Station("Later fill", 910, 3)],
+      1,
+      false,
+      compare: false,
+      arrivalPolicy: Arrival(profile, target, 6)
+    );
 
     Assert.Equal(2, plan.Stops.Count);
     Assert.All(plan.Stops, purchase => Assert.True(purchase.FillToTarget));
@@ -62,9 +87,19 @@ public sealed class FuelExactFillTests
   public void RequiredSmallBridgeStaysPartialBeforeExactCheaperFullFill()
   {
     var profile = Profile(100.5);
-    var plan = FuelOptimizer.Optimize(500, 30, profile,
-      [Station("Expensive bridge", 70, 6), Station("Cheaper full fill", 200, 2)], 1, false, compare: false,
-      arrivalPolicy: Arrival(profile, 100.5, 6));
+    var plan = FuelOptimizer.Optimize(
+      500,
+      30,
+      profile,
+      [
+        Station("Expensive bridge", 70, 6),
+        Station("Cheaper full fill", 200, 2),
+      ],
+      1,
+      false,
+      compare: false,
+      arrivalPolicy: Arrival(profile, 100.5, 6)
+    );
 
     Assert.Equal(2, plan.Stops.Count);
     Assert.False(plan.Stops[0].FillToTarget);
@@ -82,9 +117,19 @@ public sealed class FuelExactFillTests
   public void PartialPurchaseAfterFullFillKeepsTheFractionWithoutChangingItsWholeGallons()
   {
     var profile = Profile(100.5);
-    var plan = FuelOptimizer.Optimize(720, 30, profile,
-      [Station("First full fill", 70, 1), Station("Later partial fill", 500, 5)], 1, false, compare: false,
-      arrivalPolicy: Arrival(profile, 10, 5));
+    var plan = FuelOptimizer.Optimize(
+      720,
+      30,
+      profile,
+      [
+        Station("First full fill", 70, 1),
+        Station("Later partial fill", 500, 5),
+      ],
+      1,
+      false,
+      compare: false,
+      arrivalPolicy: Arrival(profile, 10, 5)
+    );
 
     Assert.Equal(2, plan.Stops.Count);
     Assert.True(plan.Stops[0].FillToTarget);
@@ -94,24 +139,83 @@ public sealed class FuelExactFillTests
     Assert.Equal(40, plan.Stops[1].BuyGallons);
     Assert.Equal(54.5, plan.Stops[1].DepartureGallons);
     Assert.Equal(10.5, plan.ArrivalGallons);
-    Assert.All(plan.Stops, purchase => Assert.Equal(purchase.DepartureGallons,
-      purchase.ArrivalGallons + purchase.BuyGallons));
+    Assert.All(
+      plan.Stops,
+      purchase =>
+        Assert.Equal(
+          purchase.DepartureGallons,
+          purchase.ArrivalGallons + purchase.BuyGallons
+        )
+    );
   }
 
   [Fact]
   public void FractionCannotInventEnoughFuelToBreakTheReserve()
   {
     var profile = Profile(100.9);
-    Assert.Throws<RoutePlanningException>(() => FuelOptimizer.Optimize(455, 20, profile,
-      [Station("Current fuel station", 0, 1)], 1, false, compare: false,
-      arrivalPolicy: Arrival(profile, 10, 5)));
+    Assert.Throws<RoutePlanningException>(
+      () =>
+        FuelOptimizer.Optimize(
+          455,
+          20,
+          profile,
+          [Station("Current fuel station", 0, 1)],
+          1,
+          false,
+          compare: false,
+          arrivalPolicy: Arrival(profile, 10, 5)
+        )
+    );
   }
 
-  private static TruckRouteProfile Profile(double tank) => new() { Confirmed = true, TankGallons = tank, Mpg = 5,
-    ReserveGallons = 10, FillPercent = 100, StopCostUsd = 20, DriverHourlyCostUsd = 35 };
-  private static FuelArrivalPolicy Arrival(TruckRouteProfile profile, double target, double price) => new()
-    { MinimumGallons = profile.ReserveGallons, TargetGallons = target, ReplacementPriceUsd = price, EconomicPurchasesOnly = true };
-  private static FuelCandidate Station(string name, double miles, double price) => new(new()
-    { StationId = Guid.NewGuid(), Name = name, Point = new(40, -80), YourPrice = price,
-      EconomicPrice = price, Unit = "US gal", Currency = "USD" }, miles, 0, 0, price, price) { LegIndex = 0 };
+  private static TruckRouteProfile Profile(double tank) =>
+    new()
+    {
+      Confirmed = true,
+      TankGallons = tank,
+      Mpg = 5,
+      ReserveGallons = 10,
+      FillPercent = 100,
+      StopCostUsd = 20,
+      DriverHourlyCostUsd = 35,
+    };
+
+  private static FuelArrivalPolicy Arrival(
+    TruckRouteProfile profile,
+    double target,
+    double price
+  ) =>
+    new()
+    {
+      MinimumGallons = profile.ReserveGallons,
+      TargetGallons = target,
+      ReplacementPriceUsd = price,
+      EconomicPurchasesOnly = true,
+    };
+
+  private static FuelCandidate Station(
+    string name,
+    double miles,
+    double price
+  ) =>
+    new(
+      new()
+      {
+        StationId = Guid.NewGuid(),
+        Name = name,
+        Point = new(40, -80),
+        YourPrice = price,
+        EconomicPrice = price,
+        Unit = "US gal",
+        Currency = "USD",
+      },
+      miles,
+      0,
+      0,
+      price,
+      price
+    )
+    {
+      LegIndex = 0,
+    };
 }

@@ -3,8 +3,12 @@ namespace Application.Features.Routing.Models;
 public sealed class FuelPlan
 {
   public Guid TruckId { get; set; }
+  public Guid? ExecutionLegId { get; set; }
+  public long AssignmentRevision { get; set; }
   public DateOnly PricingDate { get; set; }
   public string PriceSignature { get; set; } = "";
+  public string UsDiscountSignature { get; set; } = "";
+  public List<DateOnly> PriceDates { get; set; } = [];
   public Dictionary<Guid, string> DispatchSignatures { get; set; } = [];
   public DateTime? FuelObservedAt { get; set; }
   public bool ManualStartingFuel { get; set; }

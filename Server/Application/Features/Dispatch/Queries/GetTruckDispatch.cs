@@ -7,7 +7,10 @@ public record GetTruckDispatchQuery(Guid TruckId)
   : IRequest<RequestResponse<List<DispatchResponse>>>;
 
 public class GetTruckDispatchQueryHandler(IAppDbContext dbContext)
-  : IRequestHandler<GetTruckDispatchQuery, RequestResponse<List<DispatchResponse>>>
+  : IRequestHandler<
+    GetTruckDispatchQuery,
+    RequestResponse<List<DispatchResponse>>
+  >
 {
   public async Task<RequestResponse<List<DispatchResponse>>> Handle(
     GetTruckDispatchQuery request,
@@ -17,14 +20,22 @@ public class GetTruckDispatchQueryHandler(IAppDbContext dbContext)
     var dispatches = await dbContext
       .Dispatches.AsNoTracking()
       .Where(x =>
-        (x.TruckId == request.TruckId || x.Stops.Any(s => s.TruckId == request.TruckId)) && (x.Status == "assigned" || x.Status == "in_transit")
+        (
+          x.PlanningTruckId == request.TruckId
+          || x.TruckId == request.TruckId
+          || x.Stops.Any(s => s.TruckId == request.TruckId)
+        ) && (x.Status == "assigned" || x.Status == "in_transit")
       )
       .Select(DispatchProjection.Details)
       .ToListAsync(cancellationToken);
+    foreach (var load in dispatches)
+      DispatchProjection.Complete(load);
 
     dispatches =
     [
-      .. dispatches.OrderBy(x => x.Status == "in_transit" ? 0 : 1).ThenBy(GetNextStopDateTime),
+      .. dispatches
+        .OrderBy(x => x.Status == "in_transit" ? 0 : 1)
+        .ThenBy(GetNextStopDateTime),
     ];
 
     return RequestResponse<List<DispatchResponse>>.Ok(dispatches);
@@ -33,14 +44,14 @@ public class GetTruckDispatchQueryHandler(IAppDbContext dbContext)
   private static DateTime GetNextStopDateTime(DispatchResponse dispatch)
   {
     var stop = dispatch.Stops.FirstOrDefault(x =>
-      x.Job == "Pick Up" ? x.PickedUpAt is null
-      : x.Job == "Drop Off" ? x.DeliveredAt is null
-      : x.DepartedAt is null
+      !x.DriverOnly && !x.IsCompleted
     );
 
     if (stop?.ScheduledDate is null)
       return DateTime.MaxValue;
 
-    return stop.ScheduledDate.Value.ToDateTime(stop.ScheduledTime ?? TimeOnly.MinValue);
+    return stop.ScheduledDate.Value.ToDateTime(
+      stop.ScheduledTime ?? TimeOnly.MinValue
+    );
   }
 }

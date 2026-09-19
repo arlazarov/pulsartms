@@ -1,0 +1,38 @@
+<section class="dispatch-mileage__basis">
+    <h3>@Title</h3>
+    <dl class="dispatch-mileage__totals">
+        <div>
+            <dt>Empty</dt>
+            <dd><DistanceText Miles="@((double?)Totals.EmptyMiles)" /></dd>
+        </div>
+        <div>
+            <dt>Loaded</dt>
+            <dd><DistanceText Miles="@((double?)Totals.LoadedMiles)" /></dd>
+        </div>
+        <div>
+            <dt>Total</dt>
+            <dd><DistanceText Miles="@((double?)Totals.TotalMiles)" /></dd>
+        </div>
+    </dl>
+    @if (Totals.BobtailMiles is > 0)
+    {
+        <p class="dispatch-mileage__hint">
+            Bobtail: <DistanceText Miles="@((double?)Totals.BobtailMiles)" />
+            (already included in Empty)
+        </p>
+    }
+    @if (Totals.UnknownMiles is > 0)
+    {
+        <p class="dispatch-mileage__hint">
+            Cargo state not recorded:
+            <DistanceText Miles="@((double?)Totals.UnknownMiles)" />
+        </p>
+    }
+    @if (Totals.MissingEvidence > 0)
+    {
+        <p class="dispatch-mileage__hint">
+            Missing distance evidence for @Totals.MissingEvidence
+            @(Totals.MissingEvidence == 1 ? "movement." : "movements.")
+        </p>
+    }
+</section>

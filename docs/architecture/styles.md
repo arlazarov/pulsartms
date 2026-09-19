@@ -114,7 +114,8 @@ is still required before treating the dark theme as production-ready.
 The HOS component owns its clocks and responsive dial/type scaling in
 `components/driver-status/_hours.scss`. Consumers configure `--hos-gap`,
 `--hos-dial-size`, `--hos-wrap`, `--hos-clock-min-width`, `--hos-value-font-size`,
-`--hos-label-font-size`, `--hos-label-line-height` and `--hos-ring-width` on their
+`--hos-label-font-size`, `--hos-label-line-height`, `--hos-ring-width`,
+`--hos-display` and `--hos-columns` on their
 own wrapper. Defaults use the shared `hos-dial` and `hos-dial-compact` size tokens.
 The private `--_hos-dial-size` resolves the actual diameter once for both geometry
 and value text. Page styles may place the outer `.driver-hours-panel`, but must
@@ -124,10 +125,14 @@ Arrival estimates expose `--arrival-font-size` and `--arrival-detail-font-size`
 for composition; Dispatch uses body-sized estimates without changing map popup
 typography. Dispatch load cards use vertical stop timelines above a compact
 remaining-mileage and fuel-stop footer. Loaded, empty and total mileage, financial
-values, supporting stop details and cycle forecasts open in the shared native load
-modal. Its width uses `size(content-load-dialog)`; stop cards share a responsive
-grid, and native disclosures hold supplemental fields without expanding the
-underlying Dispatch board. Financial values remain server-provided.
+values, supporting stop details and cycle forecasts belong in the
+[full-page load workspace](../features/dispatch-workspace.md). Cards, Table and
+Papers use native links to `/dispatch/{id}`; exact-stop links include `stopId`.
+Financial values remain server-provided. The workspace shell belongs to
+`pages/dispatch/_details.scss`, its selected-stop editor to
+`pages/dispatch/_stop-workspace.scss`, and activity and document panels to the
+adjacent `_activity.scss` and `_documents.scss` partials. These page-specific
+styles reuse shared control metrics and semantic themes, not dialog geometry.
 
 `Shared/PageHeader` owns the primary page heading and optional description/actions.
 Primary headings use the main layout's content edge. Dispatch keeps its heading
@@ -147,8 +152,13 @@ Dispatch Papers column, stack, tabs and entry each have one base definition;
 do not append a second base block to override the first.
 Papers uses plain status columns and separated cards. Decorative folded corners,
 rotated sheets, negative overlap margins and folder pseudo-elements were removed.
-The selected reader opens in `Shared/Dispatch/DispatchLoadDialog/DispatchLoadDialog.razor` after explicit selection,
-with native modal focus, Escape and focus restoration. Its styles belong to
-`components/_dispatch-load-dialog.scss`; document-stop business presentation reuses
-the Dispatch stop and cycle components. Table and Papers share the same phase resolver as Cards
-while retaining the load's underlying operational status separately.
+Explicit selection opens the same full-page load workspace as Cards and Table.
+Table and Papers share the same phase resolver as Cards while retaining the
+load's underlying operational status separately.
+
+The retained `Shared/Dispatch/DispatchLoadDialog/DispatchLoadDialog.razor` is a
+compatibility presentation only; board navigation does not mount it. Its styles
+remain in `components/_dispatch-load-dialog.scss`, with
+`size(content-load-dialog)` width and a responsive stop grid. Native modal focus,
+Escape and focus restoration belong to this legacy dialog, not the load page.
+Its stop/cycle presentations continue to use the shared Dispatch components.

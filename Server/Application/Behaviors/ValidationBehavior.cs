@@ -2,8 +2,9 @@ using Application.Models;
 
 namespace Application.Behaviors;
 
-public class ValidationBehavior<TRequest, TData>(IEnumerable<IValidator<TRequest>> validators)
-  : IPipelineBehavior<TRequest, RequestResponse<TData>>
+public class ValidationBehavior<TRequest, TData>(
+  IEnumerable<IValidator<TRequest>> validators
+) : IPipelineBehavior<TRequest, RequestResponse<TData>>
   where TRequest : IRequest<RequestResponse<TData>>
 {
   public async Task<RequestResponse<TData>> Handle(
@@ -21,7 +22,10 @@ public class ValidationBehavior<TRequest, TData>(IEnumerable<IValidator<TRequest
       validators.Select(x => x.ValidateAsync(context, cancellationToken))
     );
 
-    var failures = results.SelectMany(x => x.Errors).Where(x => x is not null).ToList();
+    var failures = results
+      .SelectMany(x => x.Errors)
+      .Where(x => x is not null)
+      .ToList();
 
     if (failures.Count == 0)
       return await next(cancellationToken);

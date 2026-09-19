@@ -11,7 +11,9 @@ public static class DriverSync
     CancellationToken cancellationToken = default
   )
   {
-    var existingDrivers = await dbContext.Drivers.ToListAsync(cancellationToken);
+    var existingDrivers = await dbContext.Drivers.ToListAsync(
+      cancellationToken
+    );
 
     var existingByExternalId = existingDrivers
       .Where(x => !string.IsNullOrWhiteSpace(x.ExternalId))
@@ -21,9 +23,12 @@ public static class DriverSync
     {
       if (existingByExternalId.TryGetValue(driver.ExternalId, out var existing))
       {
-        existing.Name = driver.Name;
-        existing.FuelCard = driver.FuelCard;
-        existing.IsActive = driver.IsActive;
+        FleetConfigurationImport.Apply(
+          existing,
+          driver.Name,
+          driver.FuelCard,
+          driver.IsActive
+        );
         continue;
       }
 
@@ -35,6 +40,9 @@ public static class DriverSync
           Name = driver.Name,
           FuelCard = driver.FuelCard,
           IsActive = driver.IsActive,
+          ImportedName = driver.Name,
+          ImportedFuelCard = driver.FuelCard,
+          ImportedIsActive = driver.IsActive,
         }
       );
     }

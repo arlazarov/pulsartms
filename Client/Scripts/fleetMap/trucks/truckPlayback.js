@@ -1,17 +1,21 @@
 import { headingDifference, normalizeHeading } from './truckPoints.js';
 
 // Server telemetry is published roughly once a minute. Keep enough headroom for
-// the publish duration and the client's snapshot polling phase so playback never
-// reaches the end of an otherwise continuous high-frequency GPS stream.
-export const truckPlaybackDelay = 75000;
+// the publish duration and snapshot polling jitter. Missing telemetry still holds
+// the last measured point; playback never extrapolates a truck's movement.
+export const truckPlaybackDelay = 90000;
 export const truckTransitionDuration = 6000;
+export const truckPlaybackResumeGap = 1000;
 
 export function advancePlaybackTime(current, latest, target, elapsed) {
   if (!Number.isFinite(latest) || !Number.isFinite(target)) return current;
-  if (!Number.isFinite(current)) return Math.min(latest, target);
-  const behind = target - current;
-  const rate = behind > 1000 ? 1.1 : 1;
-  return Math.min(latest, current + Math.max(0, Math.min(250, elapsed)) * rate);
+  if (!Number.isFinite(current) || elapsed > truckPlaybackResumeGap)
+    return Math.min(latest, target);
+  return Math.min(
+    latest,
+    Math.max(current, target),
+    current + Math.max(0, elapsed),
+  );
 }
 
 export function getTruckPosition(points, time) {
@@ -34,7 +38,9 @@ export function getTruckPosition(points, time) {
       return {
         latitude: from.latitude + (to.latitude - from.latitude) * progress,
         longitude: from.longitude + (to.longitude - from.longitude) * progress,
-        heading: normalizeHeading(from.heading + headingDifference(from.heading, to.heading) * progress),
+        heading: normalizeHeading(
+          from.heading + headingDifference(from.heading, to.heading) * progress,
+        ),
         speed: from.speed + (to.speed - from.speed) * progress,
         gpsTime: time,
       };
@@ -50,7 +56,9 @@ export function blendTruckPosition(from, to, progress) {
     ...to,
     latitude: from.latitude + (to.latitude - from.latitude) * amount,
     longitude: from.longitude + (to.longitude - from.longitude) * amount,
-    heading: normalizeHeading(from.heading + headingDifference(from.heading, to.heading) * amount),
+    heading: normalizeHeading(
+      from.heading + headingDifference(from.heading, to.heading) * amount,
+    ),
     speed: from.speed + (to.speed - from.speed) * amount,
   };
 }

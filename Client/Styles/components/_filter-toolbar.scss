@@ -19,7 +19,16 @@
     gap: ui.pg(xs);
     border-radius: ui.radius(sm);
     background: ui.theme(surface-soft);
-    svg { width: ui.size(checkbox); height: ui.size(checkbox); flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    svg {
+      width: ui.size(checkbox);
+      height: ui.size(checkbox);
+      flex-shrink: 0;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
 
     button {
       --button-bg: transparent;
@@ -45,9 +54,20 @@
     --button-border: transparent;
     --button-hover-border: transparent;
     @include ui.button-control;
-    & { justify-content: flex-start; font-weight: 400; white-space: nowrap; }
-    &:has(input:checked) { color: ui.theme(text); }
-    &:has(input:focus-visible) { outline: 3px solid ui.theme(focus); outline-offset: 2px; }
-    input { @include ui.checkbox-control; }
+    & {
+      justify-content: flex-start;
+      font-weight: 400;
+      white-space: nowrap;
+    }
+    &:has(input:checked) {
+      color: ui.theme(text);
+    }
+    &:has(input:focus-visible) {
+      outline: 3px solid ui.theme(focus);
+      outline-offset: 2px;
+    }
+    input {
+      @include ui.checkbox-control;
+    }
   }
 }

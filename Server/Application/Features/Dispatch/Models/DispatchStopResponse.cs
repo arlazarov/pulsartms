@@ -1,11 +1,22 @@
+using System.Text.Json.Serialization;
+using Domain.Entities.Execution;
+
 namespace Application.Features.Dispatch.Models;
 
-public class DispatchStopResponse
+public class DispatchStopResponse : IWorkStopFacts
 {
+  public bool DriverOnly { get; set; }
+  public bool ExecutionCompleted { get; set; }
   public Guid Id { get; set; }
   public Guid? TruckId { get; set; }
   public int Sequence { get; set; }
   public string Job { get; set; } = string.Empty;
+  public string? ImportedJob { get; set; }
+  public string? ManualAction { get; set; }
+  public string? ManualStateAfter { get; set; }
+  public string StateAfter { get; set; } = "Unknown";
+  public long OperationRevision { get; set; }
+  public DateTime? OperationRecordedAt { get; set; }
   public string Name { get; set; } = string.Empty;
   public string Address { get; set; } = string.Empty;
   public string City { get; set; } = string.Empty;
@@ -32,8 +43,37 @@ public class DispatchStopResponse
   public DateOnly? ScheduledDate2 { get; set; }
   public TimeOnly? ScheduledTime2 { get; set; }
   public bool IsWindow { get; set; }
+  public string AppointmentTimeZoneId { get; set; } = "";
   public DateTime? ArrivedAt { get; set; }
   public DateTime? PickedUpAt { get; set; }
   public DateTime? DeliveredAt { get; set; }
   public DateTime? DepartedAt { get; set; }
+  public DateTime? ManualCompletedAt { get; set; }
+  public bool? CompletionOverride { get; set; }
+  public Guid? ManualCompletedBy { get; set; }
+  public string? ManualCompletedByName { get; set; }
+  public DateTime? ManualCompletionRecordedAt { get; set; }
+  public long ManualCompletionRevision { get; set; }
+  public string CompletionIdentity =>
+    StopCompletionIdentity.Create(
+      Id,
+      Sequence,
+      ImportedJob ?? Job,
+      Address,
+      City,
+      Province,
+      Country,
+      Name,
+      TruckId,
+      ScheduledDate,
+      ScheduledTime
+    );
+
+  [JsonIgnore]
+  public bool IsCompleted =>
+    CompletionOverride
+    ?? (
+      ExecutionCompleted
+      || (DepartedAt ?? DeliveredAt ?? PickedUpAt ?? ManualCompletedAt).HasValue
+    );
 }

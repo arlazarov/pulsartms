@@ -1,8 +1,10 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 
 namespace Domain.Entities.Dispatch;
 
-public class Dispatch : BaseEntity
+public class Dispatch : BaseEntity, IWorkFacts
 {
   public int LoadNumber { get; set; }
   public string OrderNumber { get; set; } = string.Empty;
@@ -29,4 +31,43 @@ public class Dispatch : BaseEntity
   public string Currency { get; set; } = string.Empty;
   public DateTime LastSyncedAt { get; set; }
   public List<DispatchStop> Stops { get; set; } = [];
+  public Guid? PlanningTruckId { get; set; }
+  public Truck? PlanningTruck { get; set; }
+  public Guid? PlanningFromStopId { get; set; }
+  public DateTime? PlanningAssignmentRecordedAt { get; set; }
+  public Guid? PlanningAssignmentRecordedBy { get; set; }
+  public long PlanningAssignmentRevision { get; set; }
+  public long RouteChoiceRevision { get; set; }
+
+  [NotMapped]
+  public Guid? ExecutionLegId { get; set; }
+
+  [NotMapped]
+  public long AssignmentRevision { get; set; }
+
+  [NotMapped]
+  public string? ExecutionStatus { get; set; }
+
+  IReadOnlyList<IWorkStopFacts> IWorkFacts.Stops => Stops;
+  bool IWorkFacts.AwaitingReceipt =>
+    Stops.FirstOrDefault()?.AwaitingHandoff == true;
+
+  public Dispatch TruckItinerary()
+  {
+    if (ExecutionLegId.HasValue)
+      return this;
+    var copy = (Dispatch)MemberwiseClone();
+    var path = TruckPath.Resolve(
+      TruckId,
+      TruckNumber,
+      PlanningTruckId,
+      PlanningFromStopId,
+      Stops,
+      (stop, job, state) => stop.WithOperation(job, state)
+    );
+    copy.TruckId = path.TruckId;
+    copy.TruckNumber = path.TruckNumber;
+    copy.Stops = path.Stops.ToList();
+    return copy;
+  }
 }

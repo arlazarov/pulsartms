@@ -2,6 +2,12 @@
 
 `DispatchBaseRoutes` stores the full ordered stop-to-stop route independently of
 `DispatchRoutePlans`, which owns live progress, rerouting and fuel planning.
+For native execution, preparation and the Dispatch map share the same ordered,
+non-cancelled execution sections, including completed legs before a handoff.
+Each section retains its assignment revision and routing profile. Preparing a
+historical section does not reopen it or replace the current-position plan.
+The map reads saved roads only; missing sections enqueue deduplicated background
+work, including for completed loads outside the speculative scan horizon.
 Base route signatures include stop locations, order and routing dimensions, but
 exclude GPS, elapsed time, fuel prices and truck identity. Reassignment with the
 same routing profile does not invalidate the base route.
@@ -12,6 +18,35 @@ background-prepared. Unassigned loads use fleet-default
 dimensions. Routing uses the existing provider cache and daily request budget.
 Unchanged routes have no age-based expiry. Invalid stops are skipped and unexpected
 failures are logged by the worker. A failed replacement keeps the saved route.
+
+Preparation checks the supplied routing dimensions against an uncached
+effective profile before geocoding or routing. Before writing, it repeats the
+check inside the shared protected publication scope. A warm display cache
+cannot hide a changed height, weight, axle or hazardous-cargo setting. This
+applies to assigned and historical native sections; work without a truck uses
+the default-profile identity. Fuel-only settings do not invalidate road
+geometry.
+
+Standalone preparation owns a fresh publication transaction. It does not join
+a caller transaction or call a provider inside that transaction. Existing
+native assignment locking and result ownership checks remain. Preparation
+invoked by a manual live build distinguishes the requested dimensions from the
+stored profile observed by its caller, so intentional dimension edits work
+while intervening changes reject publication. Provider or validation failure
+keeps the previous base; a commit failure also rolls back the native planning
+request. This does not make the base-cache write atomic with the later live
+plan/profile commit. Standalone work, observed routing settings and the saved
+road identity are captured and revalidated before publication. PostgreSQL
+writer revisions protect the owning truck, including new membership; unrelated
+trucks can progress concurrently. Production contention remains unmeasured.
+
+Base preparation, route-choice reads, coordinates and geometry hashes consume
+immutable RouteWorkSnapshot/RouteWorkStop values throughout calculation.
+Persistence entities are captured at entry and never reconstructed as calculation
+inputs. Accepted sections and ordinary truck paths share the same road contract.
+TruckPath and StopOperation own source-path selection for both immutable reads
+and source editing; missing anchors, conflicting trucks and personal-travel gaps
+retain their existing rejection rules.
 
 A matching input signature alone is insufficient: geometry must reach each
 confirmed facility within 0.5 mile, with adjacent road ends within 0.05 mile.
@@ -65,14 +100,33 @@ detaches only its own audit entity, preserving unrelated tracked work and the
 committed reservation/budget semantics.
 
 `GET api/dispatch/{id}/planning/base` reads saved geometry without telemetry or
-routing requests. `Next loads` uses this endpoint for the selected truck's following
-assigned loads. Future stop markers require saved geometry; imported city coordinates
-are not used as temporary destinations.
+routing requests. `Next loads` reads the selected truck's following loads through
+`GET api/dispatch/truck/{truckId}/next-routes`, including both assigned and in-transit
+loads after the current dispatch. The current load and preceding loads are not
+duplicated. A following load is not hidden merely because pickup activity has
+already moved it into transit. Future stop markers require saved geometry;
+imported city coordinates are not used as temporary destinations.
+
+Saved-route metadata includes base/deadhead geometry presence as well as input
+signatures and calculation dates. Clearing a connection while preserving its
+financial mileage therefore changes the geometry revision. Metadata reads
+project these flags in the database without transferring route JSON. Next Loads
+and ETA derive loaded versions through the same projection; ETA rejects a cold
+timing fill whose loaded road differs from its captured metadata.
 
 Migration `AddDispatchBaseRoutes` was applied to the shared database on September 7, 2026.
 Street addresses take precedence over imported coordinates, which may be city
 centroids. Coordinate-only stops remain supported. The location policy participates
 in route signatures so older address-based routes are invalidated.
+
+Native transfer sites are explicitly selected coordinates, with a descriptive
+site label rather than a required postal address. Routing uses the visit location
+only when a non-cancelled switch participant binds that exact visit to the load
+and execution leg, and its coordinates still match the leg snapshot. This applies
+to base preparation, live planning and route-choice previews. Ordinary imported
+stops still require the existing street-address validation; a native label does
+not grant a global geocoding bypass. Concurrent assignment writes retain the
+execution revision lock before a road is saved.
 
 Google Geocoding resolves street addresses through `IAddressGeocoder`; TomTom remains
 the truck-routing provider. The Google lookup uses the server-side `GooglePlaces:ApiKey`

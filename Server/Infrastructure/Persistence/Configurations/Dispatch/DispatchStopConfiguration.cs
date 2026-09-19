@@ -10,6 +10,9 @@ public class DispatchStopConfiguration : IEntityTypeConfiguration<DispatchStop>
   {
     builder.HasKey(x => x.Id);
     builder.Property(x => x.Job).HasMaxLength(50);
+    builder.Property(x => x.ManualAction).HasMaxLength(50);
+    builder.Property(x => x.ManualStateAfter).HasMaxLength(20);
+    builder.Property(x => x.OperationRevision).IsConcurrencyToken();
     builder.Property(x => x.Name).HasMaxLength(300);
     builder.Property(x => x.Address).HasMaxLength(500);
     builder.Property(x => x.City).HasMaxLength(150);
@@ -17,6 +20,8 @@ public class DispatchStopConfiguration : IEntityTypeConfiguration<DispatchStop>
     builder.Property(x => x.Country).HasMaxLength(100);
     builder.Property(x => x.ZipCode).HasMaxLength(50);
     builder.Property(x => x.SourceAddressJson).IsConcurrencyToken();
+    builder.Property(x => x.ManualCompletionRevision).IsConcurrencyToken();
+    builder.Property(x => x.ManualCompletedByName).HasMaxLength(200);
     builder.Property(x => x.DriverName).HasMaxLength(200);
     builder.Property(x => x.CoDriverName).HasMaxLength(200);
     builder.Property(x => x.CarrierName).HasMaxLength(200);
@@ -24,6 +29,7 @@ public class DispatchStopConfiguration : IEntityTypeConfiguration<DispatchStop>
     builder.Property(x => x.TrailerNumber).HasMaxLength(50);
     builder.Property(x => x.Commodity).HasColumnType("text");
     builder.Property(x => x.StopNo).HasMaxLength(100);
+    builder.Property(x => x.AppointmentTimeZoneId).HasMaxLength(100);
     builder.Property(x => x.WeightUnit).HasMaxLength(20);
     builder.Property(x => x.Temperature).HasMaxLength(50);
     builder.Property(x => x.TemperatureUnit).HasMaxLength(20);

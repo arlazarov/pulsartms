@@ -1,0 +1,18 @@
+<dl>
+  @foreach (var field in Fields)
+  {
+    <dt>@field.Label</dt>
+    <dd>
+      @(string.IsNullOrWhiteSpace(field.Name)
+        ? field.Id.HasValue ? "Unavailable resource" : "Not specified"
+        : field.Name)
+      @if (Proposed && !string.IsNullOrWhiteSpace(field.Name)
+        && !field.Id.HasValue)
+      {
+        <span class="assignment-review__unresolved">
+          · Not matched to a fleet resource
+        </span>
+      }
+    </dd>
+  }
+</dl>

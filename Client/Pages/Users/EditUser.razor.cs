@@ -1,3 +1,4 @@
+using Client.Models.DTO;
 using Client.Pages.Base;
 using Client.Services;
 using Microsoft.AspNetCore.Components;
@@ -33,7 +34,7 @@ public partial class EditUser : FormPage
     IsLoading = true;
     LoadError = null;
 
-    var result = await Api.GetAsync<Models.DTO.UserDTO>($"api/users/{Id}");
+    var result = await Api.GetAsync<UserDTO>($"api/users/{Id}");
 
     if (!result.Success || result.Response is null)
     {
@@ -61,10 +62,15 @@ public partial class EditUser : FormPage
       Role = Model.Role,
       Name = Model.Name,
       Email = Model.Email,
-      Password = string.IsNullOrWhiteSpace(Model.Password) ? null : Model.Password,
+      Password = string.IsNullOrWhiteSpace(Model.Password)
+        ? null
+        : Model.Password,
     };
 
-    var result = await Api.PatchAsync<UpdateUserRequest, Guid>($"api/users/{Id}", request);
+    var result = await Api.PatchAsync<UpdateUserRequest, Guid>(
+      $"api/users/{Id}",
+      request
+    );
 
     if (!result.Success)
     {

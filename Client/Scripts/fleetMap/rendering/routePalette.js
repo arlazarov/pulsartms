@@ -19,7 +19,9 @@ const palette = Object.freeze({
 const futureColors = Object.freeze(Object.values(palette));
 
 /** @param {number} red @param {number} green @param {number} blue @returns {RouteColor} */
-function rgba(red, green, blue) { return Object.freeze([red, green, blue, 255]); }
+function rgba(red, green, blue) {
+  return Object.freeze([red, green, blue, 255]);
+}
 
 /** @param {number} index @returns {RouteColor} */
 export function futureRouteColor(index) {

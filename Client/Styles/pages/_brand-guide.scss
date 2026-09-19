@@ -1,0 +1,212 @@
+@use '../base' as ui;
+
+.brand-guide {
+  max-width: ui.size(content-form);
+  margin: 0 auto;
+  padding: ui.pg(xxl) ui.pg(section);
+  color: ui.theme(text);
+
+  &__header,
+  &__footer,
+  &__section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: ui.pg(lg);
+    flex-wrap: wrap;
+  }
+  &__header,
+  &__footer {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  &__header {
+    padding-bottom: ui.pg(xxl);
+    border-bottom: 1px solid ui.theme(border);
+  }
+  &__hero {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    align-items: center;
+    gap: ui.pg(section);
+    padding: calc(2 * #{ui.pg(section)}) 0;
+  }
+  &__hero .brand-logo {
+    --brand-logo-width: 100%;
+  }
+  &__eyebrow {
+    font-size: ui.fs(small);
+    color: ui.theme(text-muted);
+    letter-spacing: 0.1em;
+    margin-bottom: ui.pg(xxl);
+  }
+  &__introduction {
+    max-width: ui.size(content-login);
+    justify-self: end;
+  }
+  h1 {
+    font-size: ui.fs(page-title);
+    line-height: 1.15;
+    margin-bottom: ui.pg(lg);
+  }
+  h2 {
+    font-size: ui.fs(subtitle);
+  }
+  h3 {
+    font-size: ui.fs(lead);
+    margin-bottom: ui.pg(sm);
+  }
+  p {
+    line-height: 1.6;
+  }
+  &__introduction p,
+  &__principles p {
+    font-size: ui.fs(body);
+    color: ui.theme(text-secondary);
+  }
+  &__section {
+    padding: ui.pg(section) 0;
+    border-top: 1px solid ui.theme(border);
+  }
+  &__section-heading {
+    margin-bottom: ui.pg(xl);
+  }
+  &__section-heading > span {
+    font-size: ui.fs(small);
+    color: ui.theme(text-muted);
+  }
+  &__logos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: ui.pg(lg);
+  }
+  &__reversed,
+  &__icon {
+    display: grid;
+    place-items: center;
+    gap: ui.pg(xxl);
+    padding: calc(2 * #{ui.pg(section)}) ui.pg(section) ui.pg(xxl);
+    border-radius: ui.radius(md);
+  }
+  &__reversed {
+    background: ui.theme(navigation);
+    color: ui.theme(navigation-text);
+  }
+  &__reversed p {
+    color: ui.theme(navigation-muted);
+  }
+  &__icon {
+    background: ui.theme(surface-muted);
+  }
+  &__icon > img {
+    width: calc(3 * #{ui.size(control)});
+    height: auto;
+  }
+  &__icon-sizes {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(xxl);
+  }
+  &__icon-sizes figure {
+    display: grid;
+    justify-items: center;
+    gap: ui.pg(sm);
+    margin: 0;
+  }
+  &__icon-sizes figcaption {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  &__logos p {
+    font-size: ui.fs(small);
+  }
+  &__note {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+    margin-top: ui.pg(lg);
+  }
+  &__palette {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: ui.pg(lg);
+  }
+  &__palette strong,
+  &__palette span {
+    display: block;
+    font-size: ui.fs(small);
+  }
+  &__palette strong {
+    margin: ui.pg(md) 0 ui.pg(xs);
+  }
+  &__palette span {
+    color: ui.theme(text-muted);
+  }
+  &__swatch {
+    height: calc(2 * #{ui.size(control)});
+    border-radius: ui.radius(sm);
+  }
+  &__swatch--red {
+    background: ui.theme(pulse-red);
+  }
+  &__swatch--coral {
+    background: ui.theme(pulse-coral);
+  }
+  &__swatch--ink {
+    background: ui.theme(text);
+  }
+  &__swatch--navy {
+    background: ui.theme(navigation);
+  }
+  &__swatch--canvas {
+    background: ui.theme(canvas);
+    border: 1px solid ui.theme(border);
+  }
+  &__swatch--white {
+    background: ui.theme(surface);
+    border: 1px solid ui.theme(border);
+  }
+  &__principles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: ui.pg(xxl);
+  }
+  &__footer {
+    padding-top: ui.pg(xxl);
+    border-top: 1px solid ui.theme(border);
+  }
+  &__footer > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(xl);
+  }
+  a {
+    display: inline-flex;
+    align-items: center;
+    min-height: ui.size(control-touch);
+  }
+
+  @media (max-width: ui.breakpoint(md, max)) {
+    padding: ui.pg(lg);
+    &__hero {
+      grid-template-columns: 1fr;
+      padding: ui.pg(section) 0;
+    }
+    &__hero .brand-logo {
+      --brand-logo-width: #{ui.size(content-login)};
+    }
+    &__introduction {
+      justify-self: start;
+    }
+    &__logos,
+    &__principles {
+      grid-template-columns: 1fr;
+    }
+    &__palette {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    &__reversed,
+    &__icon {
+      padding-top: ui.pg(section);
+    }
+  }
+}

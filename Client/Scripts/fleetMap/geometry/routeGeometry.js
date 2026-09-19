@@ -5,14 +5,17 @@ export function routeGeometry(legs) {
   /** @type {import('../contracts.d.ts').MapPoint[]} */
   const path = [];
   /** @type {number[]} */
-  const cumulative = [], anchors = [];
+  const cumulative = [],
+    anchors = [];
   let miles = 0;
   for (const leg of legs) {
-    const lengths = leg.points.slice(1).map((p, i) => angularDistance(leg.points[i], p));
+    const lengths = leg.points
+      .slice(1)
+      .map((p, i) => angularDistance(leg.points[i], p));
     const total = lengths.reduce((a, b) => a + b, 0);
     leg.points.forEach((p, i) => {
       // Provider mileage, rather than geodesic mileage, defines route progress.
-      if (i > 0) miles += total ? lengths[i - 1] / total * leg.miles : 0;
+      if (i > 0) miles += total ? (lengths[i - 1] / total) * leg.miles : 0;
       if (i === 0 && path.length) return;
       path.push({ lat: p.latitude, lng: p.longitude });
       cumulative.push(miles);
@@ -27,6 +30,18 @@ function angularDistance(a, b) {
   const r = Math.PI / 180;
   const dlat = (b.latitude - a.latitude) * r;
   const dlng = (b.longitude - a.longitude) * r;
-  return 2 * Math.asin(Math.sqrt(Math.min(1, Math.sin(dlat / 2) ** 2
-    + Math.cos(a.latitude * r) * Math.cos(b.latitude * r) * Math.sin(dlng / 2) ** 2)));
+  return (
+    2 *
+    Math.asin(
+      Math.sqrt(
+        Math.min(
+          1,
+          Math.sin(dlat / 2) ** 2 +
+            Math.cos(a.latitude * r) *
+              Math.cos(b.latitude * r) *
+              Math.sin(dlng / 2) ** 2,
+        ),
+      ),
+    )
+  );
 }

@@ -2,34 +2,57 @@ using Application.Features.Fuel.Commands;
 using Application.Features.Fuel.Commands.ImportFuelDiscounts;
 using Application.Features.Fuel.Commands.SyncIftaTaxRates;
 using Application.Features.Fuel.Queries.GetFuelStations;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
 [Route("api/[controller]")]
+[CompressResponse]
 public class FuelController : BaseController
 {
+  [HttpGet("price-overview")]
+  public Task<IActionResult> GetPriceOverview(
+    [FromQuery] DateOnly? date,
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(
+      new GetFuelMapPricesQuery(date ?? DateOnly.FromDateTime(DateTime.Today)),
+      cancellationToken
+    );
+
   [HttpGet("stations")]
   public async Task<IActionResult> GetStations(
     [FromQuery] DateOnly? date,
     CancellationToken cancellationToken
   ) =>
     await HandleRequest(
-      new GetFuelStationsQuery(date ?? DateOnly.FromDateTime(DateTime.Today), IncludeNextDay: true),
+      new GetFuelStationsQuery(
+        date ?? DateOnly.FromDateTime(DateTime.Today),
+        IncludeNextDay: true
+      ),
       cancellationToken
     );
 
   [HttpPost("gmail-watch/start")]
   [Authorize(Policy = "Admin")]
-  public async Task<IActionResult> StartGmailWatch(CancellationToken cancellationToken) =>
-    await HandleRequest(new StartGmailWatchCommand(), cancellationToken);
+  public async Task<IActionResult> StartGmailWatch(
+    CancellationToken cancellationToken
+  ) => await HandleRequest(new StartGmailWatchCommand(), cancellationToken);
 
   [AllowAnonymous]
   [HttpPost("gmail-notifications")]
   [RequestSizeLimit(16384)]
-  public Task<IActionResult> GmailNotifications(CancellationToken cancellationToken) =>
-    HandleRequest(new ReceiveGmailNotificationCommand(Request.Headers.Authorization.ToString(), Request.Body), cancellationToken);
+  public Task<IActionResult> GmailNotifications(
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(
+      new ReceiveGmailNotificationCommand(
+        Request.Headers.Authorization.ToString(),
+        Request.Body
+      ),
+      cancellationToken
+    );
 
   [Authorize(Policy = "Admin")]
   [HttpPost("import")]
@@ -42,6 +65,9 @@ public class FuelController : BaseController
     int year,
     int quarter,
     CancellationToken cancellationToken
-  ) => await HandleRequest(new SyncIftaTaxRatesCommand(year, quarter), cancellationToken);
-
+  ) =>
+    await HandleRequest(
+      new SyncIftaTaxRatesCommand(year, quarter),
+      cancellationToken
+    );
 }

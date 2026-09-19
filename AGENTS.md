@@ -5,6 +5,12 @@ before changing UI or styles. These are requirements, not optional recommendatio
 
 ## Execution environment
 
+- Publish or deploy only after the user explicitly requests it or approves a
+  deployment. Local implementation and verification do not authorize deployment.
+- Work locally by default. Earlier cutover approval does not authorize further
+  releases; wait for a new explicit publication request. During iteration use
+  affected test groups and existing build caches, with full checks at the
+  boundaries required below. See `docs/development/setup.md`.
 - Docker is permitted for builds, tooling and deployment, including the existing
   Cloud Build/Cloud Run workflow.
 - Do not deploy or start local SQL database servers in Docker, through
@@ -17,6 +23,19 @@ before changing UI or styles. These are requirements, not optional recommendatio
 
 ## Documentation, comments and logging
 
+- Follow the project's established code style in every change. Before editing,
+  check the owning guide, formatter settings and nearby maintained code. Reuse
+  existing naming, layout, shared implementations and UI tokens instead of
+  introducing a parallel style. Existing violations do not override these rules.
+- Prefer namespace imports over fully qualified C# type names in code. Use a
+  meaningful type alias when names conflict; keep qualification only when needed
+  for unambiguous binding. Do not change type identity to shorten a name.
+- Use an 80-column target for all maintained source, styles, markup,
+  configuration and documentation, including C#, JavaScript, SCSS and Razor.
+  Wrap expressions, attributes and prose without changing behavior or content.
+  Do not hand-format generated files; indivisible identifiers, URLs and literal
+  contents that cannot safely be split may exceed the target.
+- Format maintained C# with the pinned CSharpier tool and two-space indentation.
 - Temporary builds and diagnostics must use `node scripts/artifacts.mjs run
   scratch -- COMMAND ...` (or the fixed `diagnostic` kind), with `{artifacts}` in
   output arguments. Do not create new task-named build directories under

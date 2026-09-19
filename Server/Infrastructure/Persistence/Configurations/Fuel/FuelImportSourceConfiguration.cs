@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations.Fuel;
 
-public class FuelImportSourceConfiguration : IEntityTypeConfiguration<FuelImportSource>
+public class FuelImportSourceConfiguration
+  : IEntityTypeConfiguration<FuelImportSource>
 {
   public void Configure(EntityTypeBuilder<FuelImportSource> builder)
   {

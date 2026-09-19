@@ -17,6 +17,10 @@ public class DriverConfiguration : IEntityTypeConfiguration<Driver>
     builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
 
     builder.Property(x => x.FuelCard).HasMaxLength(50);
+    builder.Property(x => x.ImportedName).HasMaxLength(200);
+    builder.Property(x => x.ImportedFuelCard).HasMaxLength(50);
+    builder.Property(x => x.ConfiguredBy).HasMaxLength(200);
+    builder.Property(x => x.ConfigurationRevision).IsConcurrencyToken();
 
     builder.HasIndex(x => x.FuelCard);
   }

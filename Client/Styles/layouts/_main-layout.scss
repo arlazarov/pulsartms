@@ -14,12 +14,32 @@
     padding: ui.pg(md);
   }
 
+  @media (prefers-reduced-motion: no-preference) {
+    @each $phase in a, b {
+      &__content[data-page-transition='#{$phase}'] {
+        animation: page-enter-#{$phase} 180ms ease-out;
+      }
+    }
+  }
+
   @include ui.mq(md) {
     grid-template-columns: 192px minmax(0, 1fr);
     grid-template-rows: 1fr;
 
     &__content {
       padding: ui.pg(xl);
+    }
+  }
+}
+
+// Opacity leaves map projection, fixed positioning and layout bounds unchanged.
+@each $phase in a, b {
+  @keyframes page-enter-#{$phase} {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
 }

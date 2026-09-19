@@ -2,7 +2,9 @@ namespace Application.Features.Fuel.Interfaces;
 
 public interface IGmailWatchService
 {
-  Task<GmailWatchResult> StartAsync(CancellationToken cancellationToken = default);
+  Task<GmailWatchResult> StartAsync(
+    CancellationToken cancellationToken = default
+  );
 }
 
 public class GmailWatchResult

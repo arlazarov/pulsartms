@@ -1,4 +1,5 @@
 @using Client.Models.DTO.Planning
+@using System.Globalization
 @if (DisplayEta?.Stops.Count > 0 || (ShowAppointment && Stop?.ScheduledDate is not null)
     || (ShowDutyStatus && DisplayEta?.DutyStatus is not null))
 {
@@ -19,9 +20,27 @@
             {
             @if (ShowSummary)
             {
-            <span>ETA <strong>@StopHoursDisplay.Timestamp(next.Arrival)</strong> @if (ShowDetails) { <small>local · @($"UTC{next.Arrival:zzz}")</small> }</span>
+            <div class="stop-hours">
+            <div class="stop-hours__row stop-hours__road">
+            <span class="stop-hours__label">ETA</span>
+            <span class="stop-hours__value"><span class="stop-hours__arrival">
+            <time datetime="@(next.Arrival.ToString(
+                "O", CultureInfo.InvariantCulture))">
+                <span class="stop-hours__date" data-separator="· "
+                    >@StopHoursDisplay.RecapDate(next.Arrival)</span><span
+                    class="stop-hours__date-separator"> · </span><span
+                    class="stop-hours__date-break" aria-hidden="true"></span><span
+                    class="stop-hours__clock"
+                    >@(next.Arrival.ToString(
+                        "hh:mm tt", CultureInfo.InvariantCulture))</span>
+            </time>
+            @if (ShowDetails) { <small>local · @($"UTC{next.Arrival:zzz}")</small> }
             @if (next.LateMinutes is > 0) { <strong class="arrival-estimate__late">Late by @Duration(next.LateMinutes.Value)</strong> }
             else if (next.LateMinutes == 0) { <span class="arrival-estimate__ontime">On time</span> }
+            </span>
+            </span>
+            </div>
+            </div>
             }
             else if (ShowDetails) { <span class="arrival-estimate__timezone">Arrival time zone <strong>@($"UTC{next.Arrival:zzz}")</strong></span> }
             }

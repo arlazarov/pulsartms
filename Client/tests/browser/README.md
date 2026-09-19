@@ -10,7 +10,119 @@ Explicit `*_OUTPUT_DIR` overrides remain caller-owned and bypass cleanup.
 
 ## Offline staged UI smoke
 
-`AMFTMS_RELEASE_UI=1 bash verify-release.sh` from the repository root runs the
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/dispatchCreationSmoke.mjs`
+checks the compiled New load workflow at 1440/390/320px, light/dark themes and
+200% root text. Synthetic address lookups and creation are intercepted in memory;
+typing sends no requests, two selected addresses populate the stops, and one
+explicit save opens the resulting workspace. It checks horizontal overflow and
+captures screenshots. No live account, provider or database is involved.
+
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/dispatchWorkspaceSmoke.mjs`
+from Client exercises the actual compiled full-page Dispatch workspace. Use a
+strict release publish; no running application server is required. The default
+matrix covers 1440/390/320px in both themes and 200% root text at 390px. Set
+`UI_TEST_BROWSER_CHANNEL=chrome` for installed Chrome or
+`DISPATCH_WORKSPACE_CASE=1440-light-100` for one diagnostic case.
+
+Synthetic identity, load, stops, forecasts, activity and document responses are
+intercepted in memory. The probe verifies exact-stop navigation, native up/down
+and drag reorder, deferred load Save, invalid-clock Discard, ETA invalidation for
+draft changes, load-wide notes and retained issue resolution, immediate upload
+after choosing files, and
+the unsaved-navigation guard. Address/contact editors use native disclosures;
+appointments and references remain visible. Unknown APIs and external requests
+are blocked. It checks visible control bounds and captures screenshots plus a
+JSON report in managed `browser-ui` output. This does not exercise production
+data, real address verification, database transactions, document storage,
+authentication, browser zoom or complete visual correctness.
+
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/stationQuoteSizingSmoke.mjs`
+checks single-day and comparison station quotes in a representative inspector
+shell using the production popup module and staged CSS. Sixteen cases cover
+320–1440px, both themes and 100%/200% text, including compact width restoration
+when tomorrow's quote disappears. Back replaces Close when a truck is selected;
+standalone quotes retain Close. Prices are synthetic; no APIs or writes occur.
+
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/pageTransitionSmoke.mjs`
+checks real Blazor navigation among Users, Settings, Fleet Map and Dispatch on
+desktop and phone, in both themes, with normal and reduced motion. It pauses the
+180ms opacity entrance at deterministic positions to verify unchanged geometry,
+a retained layout/sidebar and only one page surface. Delayed settings responses
+must not replay the effect. All APIs and the map provider are read-only synthetic
+fixtures; no live authentication, database or external calls occur. Output uses
+`browser-ui`; `PAGE_TRANSITION_TEST_OUTPUT_DIR` is an optional explicit override.
+
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/mapToolbarSmoke.mjs`
+from Client checks the actual Fleet Map toolbar at 1440/900/390/320px, in both
+themes and with 100%/200% root text. It exercises native keyboard and pointer
+toggles, date changes, search suggestions, active chip styles and the mobile
+filter disclosure while checking that the map node and bounds remain unchanged.
+It also verifies that IFTA precedes Fuel Stations and uses the same chip treatment
+without an exposed square checkbox. Each case saves all four map preferences,
+reloads the page and checks the restored controls and initial map options while
+the date and search reset. A held storage read verifies that unconfirmed layer
+states stay hidden without replacing controls or moving the toolbar.
+All API responses and the provider module are
+deterministic substitutes; no live requests or business writes occur.
+Screenshots and the report use `browser-ui`.
+
+`HOURS_TEST_LIFECYCLE=1 MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/hoursForecastSmoke.mjs`
+also exercises sixteen SPA transitions between Dispatch and the selected-truck
+map, using the existing synthetic read-only fixtures. This mode runs one desktop
+light-theme scenario, not the default responsive matrix. It verifies that disposed
+maps stop route polling, captures post-GC JavaScript heap/DOM/listener counts and
+checks settled document/listener bounds. No heap files, live authentication,
+provider calls or database operations are involved. JavaScript heap readings do
+not establish .NET WASM heap, GPU or production memory retention.
+
+The default hours forecast matrix also checks bounded phone truck scrolling.
+On phones, the compact truck row retains title, remaining distance, Details and
+Close. Details reveals telemetry, HOS, GPS location and route facts in the bounded
+inspector; Hide returns to the compact row. Portrait, short-screen and 200% text
+checks retain keyboard access to the truck actions and unchanged map bounds
+without clipping overflow.
+Readings also sweep 320–767px at 100% and 200% text: telemetry stays compact,
+HOS sits beside it when space permits, and whole groups wrap without shrinking
+icons or clocks. Screenshots cover the stacked phone and adjacent wider layout.
+The Fleet-only matrix also checks explicit Show route interop without selection
+auto-fit, repeated background clicks retaining the truck and both panels,
+Back replacing Close, and equal rendered text gaps for appointments and ETA.
+Map-provider behavior is covered separately by the map JavaScript tests.
+
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/brandSmoke.mjs`
+from Client checks the actual staged anonymous Login and authenticated Users/sidebar
+at 1440/768/390/320px, in both themes and at 100%/200% root font size. Set
+`UI_TEST_BROWSER_CHANNEL=chrome` to use installed Chrome; otherwise it uses
+Playwright Chromium. Use an artifact from a strict release publish. The probe
+requires no local server, account, credentials or database: its identity and four
+read-only API responses are synthetic, and every other API, write and external
+request is blocked. It does not sign in or contact a map provider.
+Anonymous Login normally resets to Light. Its dark artwork cases explicitly
+apply the dark theme after mount; authenticated cases use the account fixture.
+
+The 32 application cases verify accessible shared SVG references, logo/container
+bounds, preserved sidebar account identity and reachable sign-in controls without
+document-level horizontal overflow. Two standalone brand-guide cases cover desktop
+and mobile in fixed light mode. A separate sizing fixture displays the staged
+favicon at actual 16px and 32px sizes. Screenshot pixel counts check that the
+wordmark body, TMS descriptor, red/coral pulse and small icons actually paint;
+tiny-icon checks include antialiased colors against the supplied white backing.
+An SVG bounding box alone cannot establish that an external symbol rendered.
+The managed
+`browser-ui` run retains a JSON report, full-page screenshots and logo/icon
+crops for inspection. These checks do not establish exact reference-image fidelity,
+complete visual correctness, browser zoom, real authentication or live API behavior.
+
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/routeEditorSmoke.mjs`
+from Client exercises the production Blazor load route editor at 1440/768/390/320px
+in both themes. It selects alternatives through the map callback contract, adds
+an address and a simulated dragged via point, checks responsive bounds and the
+unchanged map element, and confirms an intercepted save. APIs and the Google
+map are explicit deterministic substitutes; no real writes, provider requests,
+GPU interaction or native Google drag behavior are tested. Screenshots and the
+report use the managed `browser-route-editor` artifact kind.
+
+`PULSARTMS_RELEASE_UI=1 bash verify-release.sh` from the repository root runs the
 offline release gate and then `test:ui`. Install Playwright Chromium first with
 `npx playwright install chromium` from Client, or set `UI_TEST_BROWSER_CHANNEL=chrome`
 to use installed Chrome. GitHub Actions installs Chromium and enables this check.
@@ -33,11 +145,35 @@ and all network/writes are blocked. No local server, provider credentials or log
 is needed. Results, 44 page screenshots and initial/scrolled Dispatch dialog screenshots
 are saved to the managed `browser-ui` run.
 This does not validate the GPU map, live authentication, browser zoom or all layouts.
+Each Dispatch scenario also imports a five-stop fixture with three separate visits
+to the same Webster address. Cards and Details retain every identity in route
+order, each visit's 12-hour appointment, the completed first pickup, visit context
+and pickup/delivery counts. Additional screenshots cover the expanded timeline
+and the scrolled load dialog at both font scales. Manual completion probes open an
+individual repeated visit, validate an invalid actual time locally, check control
+bounds, capture the form and cancel without sending a write. Component and server
+tests cover confirmed writes, undo, authorization, stale revisions and sync retention.
+More details opens a full-width stop view inside the existing dialog. Keyboard
+checks verify that All stops restores the overview scroll position and opener
+focus. A separate single-load fixture verifies the same card width as a multi-load
+row and a compact No next load placeholder beside it (below on phones), absent
+during initial loading, in the archive and when a next load exists. It retains
+four completed visits as short numbered rows beside remaining work on wide cards
+and above it on narrow cards.
+Screenshots include this completed-history layout at both font scales.
+Table probes keep multi-stop rows bounded to one visible visit per group, with
+total/completed counts and the next unfinished visit's original position. Keyboard
+activation of the count opens all five visits in the shared dialog without growing
+the table row. Separate checks retain later delivery appointment windows there.
 
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/fuelEditorSmoke.mjs`
 from Client exercises the actual staged fuel editor at 1440px/390px in both themes.
-It checks full-tank gauges, adding and ordering visits, ten-gallon input, displayed
+It checks full-tank gauges, adding and ordering visits, five-gallon manual input
+from a 25-gallon minimum, and server-prepared 25→35 / 100→90 redistribution with no
+quantity-preview HTTP request. It also checks displayed
 server errors, save/cancel behavior, stale dispatch callbacks and horizontal bounds.
+Calculate automatically submits one reset immediately without a confirmation;
+opening the editor, Cancel and Escape do not write.
 Real mouse and touch pointer drags cross fixed pickup/delivery anchors and fuel
 rows; keyboard arrows exercise the same ordering contract. It also checks
 server-provided purchase costs, selected-station focus callbacks, visit-number
@@ -60,6 +196,10 @@ reach a server or map provider. Initial and scrolled screenshots plus the JSON r
 are saved to the managed `browser-stop-details` run; `STOP_DETAILS_OUTPUT_DIR` overrides
 that path. This covers Razor layout and selection interaction, not Google Maps,
 geographic rendering, live authentication or real route calculations.
+The next-stop checks also start with a compact card, expand and collapse it using
+Enter, Space and pointer input, and verify stable controls, the retained map and
+card nodes, hidden supplemental fields and no disclosure-triggered API requests.
+Selecting another stop starts compact again.
 
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/nativeInspectorSmoke.mjs`
 checks the real docked inspector controller with the production current-stop and
@@ -72,6 +212,9 @@ clipping. Map and marker ports are deterministic substitutes; the fixture does
 not render Blazor or Google Maps and does not calculate fuel economics. All
 network calls are blocked. `INSPECTOR_OUTPUT_DIR` overrides the default managed
 `browser-native-inspector` report and screenshot directory.
+The same eight cases also select all five stops of a repeated-site route. They
+check distinct visit appointments, full-load positions, repeated-visit labels,
+reachable inspector content and the retained map bounds.
 
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/hoursForecastSmoke.mjs`
 from Client checks the shared Road ETA/cycle display in the actual staged Dispatch
@@ -79,13 +222,46 @@ cards, the shared load popup and selected future pickup/delivery inspector. Ten 
 both themes: signed cycle balances, Cycle short without a green ETA, known
 lateness alongside unknown cycle data, conditional recap alternatives, explicit
 absence of reset alternatives even when supplied by the server fixture, and
-the current-driver next recap with only its local date and credited hours. The selected
-truck header checks fresh HOS clocks beside duty/rest text on wide screens, wrapping
+the Dispatch current-driver next recap with only its local date and credited hours. The selected
+truck header checks fresh HOS clocks above current duty text, wrapping
 without clipping on smaller screens, and fuel readings without maintenance wording.
 Its selected truck and route panels form one width-bounded surface centered at the
 map's top edge with the shared shadow and corners. The top inset is capped by
 actual side clearance and disappears at full width; truck and route rows retain
-their shared surface without a gap between them. First selection,
+their shared surface without a gap between them. The default desktop compact view keeps
+speed, fuel and engine readings aligned and visible, fuel controls reachable,
+trailer beside the driver, enlarged equal-sized telemetry icons, and current duty
+directly below all four unchanged HOS clocks without Next recap. The GPS block retains
+its timestamp and Route & load details link. Outside temperature uses one compact Fahrenheit/Celsius row directly
+below the three telemetry readings, with no new action or column. The load link retains
+its disabled placeholder while the load identity is pending. Desktop Details reveals only
+the lower load section: adjacent load/order metadata, three-line remaining distance,
+destination and inline appointment/ETA columns on wide cards, with metadata above
+the other groups at intermediate widths. The upper content and clock dimensions
+stay fixed through desktop disclosure. On phones, selection starts with a narrow
+truck title strip, centered remaining distance in the configured primary unit, and
+accessible Details/Close controls. The distance stays visible with a stable slot
+through pending data, Details and Hide; it adds no desktop duplicate. Details opens
+the retained readings, HOS, GPS location and route/load information; Hide restores
+the strip without clearing the selection or moving the map. Title, remaining
+distance, Details/Hide and Close retain the same bounds in every state. The one
+disclosure supports keyboard activation and retains the map bounds. Its collapsed
+state and stable title controls are checked in both themes; desktop keeps all
+content visible.
+Neutral address and forecast placeholders reserve
+the ordinary loaded geometry while the lower section is open during a pending read.
+The saved preview intentionally omits appointment dates: Delivery retains the same
+timing-row element and position while the load reference supplies its date and the
+live plan catches up. It never renders under Load. The single appointment above ETA
+belongs to the tracked next stop, not a later delivery.
+Intermediate-stop layout probes place the distance in its pickup/delivery heading,
+not in another vertical metric below Remaining. Cloned inspector screenshots isolate
+that layout from live route calculations, checking inline alignment on wide cards
+and overflow at narrow widths in both unit configurations.
+Narrow cards stack the readings, HOS and action groups;
+expanding retains the shared width cap without changing the map bounds. Both densities retain the selected truck's
+provider-supplied GPS address and exact observation timestamp independently of
+the next route stop. First selection,
 pending/complete reads, repeated selection and clearing must retain the same map
 element, native inspector host and exact viewport rectangle at desktop and mobile
 widths. Future-stop details replace the visible truck content in that same top
@@ -118,9 +294,24 @@ the JSON report are local under `test-results/ui-smoke`, not committed baselines
 
 ## Offline GPU trucks and stop cards
 
+`node tests/browser/mapRemountSmoke.mjs` uses the production retained map host,
+scene and installed GoogleMapsOverlay/Deck adapter. A synthetic stationary map
+holds its first camera frame after GPU initialization, then honors the public
+redraw request. Four mounts at each of DPR 1 and 2 verify hidden startup layers,
+correct camera projection without panning, and zero remaining overlays, canvases
+or listeners after disposal. The fixture reads adapter internals for assertions
+only; production does not. Screenshots and the report use `browser-map-markers`.
+This isolates adapter startup/remount ordering, not live Google Maps or API data.
+
+`node tests/browser/fuelMarkerVisibilitySmoke.mjs` checks the production station
+controller and GPU points using the offline stop-card fixture. Four light/dark,
+DPR1/2 cases hide ordinary stations, retain the planned price color and visit
+badge, open its popup with a real pointer click and restore the full layer. No
+provider or API requests are made. Evidence uses the managed `browser-stop-cards`
+directory; the broader stop-card suite remains a separate check.
+
 `node tests/browser/mapMarkersSmoke.mjs` renders the actual GPU truck, stop and
-fuel-station layers on a synthetic geographic viewport at device pixel ratios 1 and
-2. It checks the moving green heading arrow, gray engine-off circle and green
+fuel-station layers on a synthetic geographic viewport at device pixel ratios 1 and 2. It checks the moving green heading arrow, gray engine-off circle and green
 stationary circle (both explicit Idle and engine On at zero speed), with independent unit labels,
 fixed round stop numbers, uniform 16px fuel circles without inside price text,
 unchanged price colors and distinct `Fuel 1` badges. Mouse and touch clicks near
@@ -128,7 +319,23 @@ a circle's edge must select its station. Separate dense 161-point route probes
 verify a continuous bright-blue current route and rounded future dashes with an
 aligned white keyline; gaps expose the map and neither stroke adds route points.
 Selecting a next load keeps its road bright and subdues the current and all other
-roads; clearing selection restores their original appearance without widening them.
+roads; clearing selection restores their thinner dashed appearance. Overview groups
+exclude the selected truck and expand through real mouse and touch clicks;
+close zoom restores individual identities. Group labels sit directly at their
+geographic center. Pixel checks verify the label at both densities, and clicks
+zoom to that same geographic point without any label displacement.
+Group expansion preserves the selected truck and both displayed roads without
+selecting a group member. Component/interop tests separately retain the inspector
+and open Details while Follow stops, without data requests or deselection.
+Close-zoom probes place 11005 and 54777 a few pixels apart, retaining both GPS
+positions while separating their labels. Mouse and touch activate each label
+independently; screenshots show the short connector at both pixel densities.
+Saved-route probes also exercise the production route layer with unknown, known
+and subsequently missing progress. GPU pixel checks verify that the cold saved
+road paints, valid progress trims it, and a later gap retains that trimmed road
+without publishing fabricated mileage.
+Three consecutive edit/cancel cycles must restore the same trimmed road without
+re-publishing geometry; GPU pixel checks verify the road actually paints again.
 The cached high-precision dash extension computes offsets for existing vertices,
 not extra route geometry. These checks do not measure production memory or
 exercise Google Maps or live business data. Screenshots and
@@ -138,7 +345,14 @@ the report go to the managed `browser-map-markers` run; `MARKER_TEST_OUTPUT_DIR`
 and mobile widths with production host/truck code and a deterministic provider.
 The measurable map host stays hidden through its first fleet fit, a truck deep link
 skips the fleet-wide fit, reuse does not reset the camera, and empty/failed initial
-data reveals safely without overriding a later user pan. All requests are intercepted;
+data reveals safely without overriding a later user pan. Real ResizeObservers exercise
+the first inspector appearance, Details/Hide and delayed content before any map gesture:
+none may mutate the camera, while subsequent explicit focus uses the updated insets.
+With Follow enabled, subsequent synthetic truck movement must keep the captured
+screen anchor through disclosure and delayed content on both screen widths.
+Explicit reactivation and actual map resizing must capture the new free region;
+further disclosures cannot change that updated anchor.
+All requests are intercepted;
 this does not verify Google Maps animation behavior. Results go to
 the managed `browser-map-startup` run; `MAP_STARTUP_OUTPUT_DIR` overrides the directory.
 
@@ -197,6 +411,18 @@ crowded stop placement or the Blazor selection panel.
 
 ## Authenticated map lifecycle
 
+`node tests/browser/truckPlaybackSmoke.mjs` from Client opens a separate Chrome
+window with synthetic GPS and the production truck playback layer. It switches
+to another tab, advances the fixture clock by ten minutes, and tests snapshots
+both before and after visibility restoration. It also minimizes the browser
+while the GPS buffer is exhausted and resumes with new telemetry. It checks no hidden paints,
+normal-time playback after rebasing, and retained Follow camera alignment.
+The isolated browser connects without Playwright's default focus emulation so
+Chrome really marks background/minimized documents hidden. The provider is a
+deterministic substitute; no API calls or business writes occur.
+Results use a managed `browser-map-startup` directory. This checks real Chrome
+visibility, not Google Maps rendering or live provider delivery latency.
+
 `MAP_TEST_SOAK=1 MAP_TEST_HEAP=1 npm run test:browser` runs 30 full page cycles.
 Each selects truck 11006, follows for five seconds, zooms out manually, resumes
 Follow for five seconds, and leaves for Dispatch. Active and post-disposal heap
@@ -218,7 +444,7 @@ multiple runs with the same fleet data and inspect a sustained upward trend befo
 setting a project-specific CI threshold. Authentication and provider access are
 required; this probe is separate from the offline unit suite.
 
-For a release, `AMFTMS_RELEASE_BROWSER=1 MAP_TEST_URL=http://localhost:5067 bash
+For a release, `PULSARTMS_RELEASE_BROWSER=1 MAP_TEST_URL=http://localhost:5067 bash
 verify-release.sh` from the repository root runs the offline gate first, then this
 probe against its exact staged Client artifact. `MAP_TEST_ARTIFACT_DIR` is supplied
 by the gate: Playwright serves that directory's static files at the local origin
@@ -251,13 +477,13 @@ six seconds; it requires that truck in local data.
 
 Retained JS heap growth between mean cycles 3–5 and 9–11, after explicit GC:
 
-| Scenario | Growth (MiB) |
-| --- | ---: |
-| Plain provider, clear listeners | 9.99 |
-| Plain provider, keep listeners | 9.96 |
-| Provider with empty GPU scene | 10.08 |
-| Provider with traffic layer | 10.54 |
-| Full SPA map lifecycle, earlier run | 27.46 |
+| Scenario                            | Growth (MiB) |
+| ----------------------------------- | -----------: |
+| Plain provider, clear listeners     |         9.99 |
+| Plain provider, keep listeners      |         9.96 |
+| Provider with empty GPU scene       |        10.08 |
+| Provider with traffic layer         |        10.54 |
+| Full SPA map lifecycle, earlier run |        27.46 |
 
 The provider controls reproduce sustained retention without fleet data. Empty GPU
 and traffic overlays do not explain the full SPA difference in these runs. Full
@@ -291,3 +517,13 @@ was 7.44 MiB. Across the final ten cycles, endpoint growth was 0.61 MiB and the
 first/last three-sample mean difference was 0.36 MiB. Retention slowed but did not
 reach a proven zero-growth plateau. This run supports that the context accumulation
 is fixed; it does not rule out every leak or prove all remaining growth is caching.
+
+## Account appearance
+
+Run `node Client/tests/browser/appearanceSmoke.mjs` from the repository root
+with `MAP_TEST_ARTIFACT_DIR` pointing to a staged Client `wwwroot`. It checks
+Light/Dark and unit selection, account-menu navigation, account isolation,
+restoration in a new browser context and desktop/mobile controls using synthetic
+authenticated APIs. It never writes
+to the application database or calls providers. Other staged UI fixtures also
+serve the chosen theme through the account appearance endpoint.

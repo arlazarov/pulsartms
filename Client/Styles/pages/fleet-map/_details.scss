@@ -1,30 +1,11 @@
 @use '../../base' as ui;
 
-.fleet-map-reveal {
-  display: grid;
-  grid-template-rows: 1fr;
-  flex-shrink: 0;
-  animation: fleet-map-reveal 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
-
-  &__inner { min-height: 0; overflow: hidden; }
-}
-
-@keyframes fleet-map-reveal {
-  from { grid-template-rows: 0fr; opacity: 0; transform: translateY(-4px); }
-  to { grid-template-rows: 1fr; opacity: 1; transform: translateY(0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fleet-map-reveal { animation: none; }
-}
-
 .fleet-map-stage {
   position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
   isolation: isolate;
-
 }
 
 .fleet-map-info-reserved {
@@ -42,16 +23,22 @@
   background: ui.theme(surface);
   border-radius: ui.radius(sm);
   box-shadow: ui.shadow(card);
+  animation: none;
+  transition: none;
 
-  .fleet-map-truck-info, .fleet-map-route-info {
+  .fleet-map-truck-info,
+  .fleet-map-route-info {
     border: 0;
     border-radius: 0;
     background: transparent;
   }
-  .fleet-map-route-info { border-top: 1px solid ui.theme(border-subtle); }
+  .fleet-map-route-info {
+    border-top: 1px solid ui.theme(border-subtle);
+  }
 
-  &:not(.has-selection):not(:has(.fleet-map-info-reopen)) { display: none; }
-
+  &:not(.has-selection):not(:has(.fleet-map-info-reopen)) {
+    display: none;
+  }
 }
 
 .fleet-map-info-content {
@@ -59,25 +46,70 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  animation: fleet-map-info-fade 180ms ease-out;
-  .fleet-map-reveal { animation: none; }
+  animation: none;
+  transition: none;
+
+  > div {
+    flex-shrink: 0;
+  }
 }
 
 .fleet-map-inspector {
-  [hidden] { display: none !important; }
-  &[data-inspector-mode="stop"], &[data-inspector-mode="nextstop"] {
+  [hidden] {
+    display: none !important;
+  }
+  &[data-inspector-mode='stop'],
+  &[data-inspector-mode='nextstop'] {
     width: min(100%, #{ui.size(map-stop-inspector)});
   }
-  &[data-inspector-mode="fuel"]:has(.fleet-station-popup--planned) {
+  &[data-inspector-mode='nextstop'] {
+    container: next-stop-inspection / inline-size;
+    .fleet-map-inspector__header {
+      flex-wrap: wrap;
+    }
+    .fleet-map-inspector__controls {
+      flex-shrink: 0;
+    }
+
+    @media (max-width: ui.breakpoint(map-mobile, max)) {
+      .fleet-map-inspector__header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0 ui.pg(xs);
+      }
+      .fleet-map-inspector__controls {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      .fleet-map-inspector__back {
+        grid-column: 1 / -1;
+        justify-self: start;
+        margin-left: 0;
+      }
+    }
+    @container next-stop-inspection (width < 18rem) {
+      .fleet-map-inspector__header {
+        position: static;
+      }
+    }
+  }
+  &[data-inspector-mode='fuel']:has(.fleet-station-popup--planned) {
     width: min(100%, #{ui.size(map-fuel-inspector)});
   }
 
-  &[data-inspector-mode="fuel"]:not(:has(.fleet-station-popup--planned)) {
+  &[data-inspector-mode='fuel']:not(:has(.fleet-station-popup--planned)) {
     width: fit-content;
     min-width: min(100%, #{ui.size(map-fuel-quote)});
     max-width: min(100%, #{ui.size(map-fuel-card)});
-    .fleet-map-inspector__native { container-type: normal; }
-    .fleet-station-popup { display: block; }
+    .fleet-map-inspector__header {
+      flex-wrap: wrap;
+    }
+    .fleet-map-inspector__native {
+      container-type: normal;
+    }
+    .fleet-station-popup {
+      display: block;
+    }
     .fleet-station-popup__prices {
       margin-top: ui.pg(sm);
       padding: 0;
@@ -95,26 +127,37 @@
     padding: ui.pg(xs) ui.pg(md);
     background: ui.theme(surface);
     border-bottom: 1px solid ui.theme(border-subtle);
-    .fleet-map-mobile-summary__toggle { display: none; }
   }
-  &__title { margin-right: auto; font-size: ui.fs(body); color: ui.theme(text); }
-  &__close { flex-shrink: 0; width: ui.size(control-compact); }
-  &__back { margin-left: auto; }
-  &__native, &__body { padding: ui.pg(md); }
-  &__next { position: static; width: auto; max-width: none; border: 0; box-shadow: none; }
+  &__title {
+    @include ui.overlay-title;
+    margin-right: auto;
+  }
+  &__close {
+    @include ui.icon-control;
+  }
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(xs);
+  }
+  &__back {
+    margin-left: auto;
+  }
+  &__native,
+  &__body {
+    padding: ui.pg(md);
+  }
+  &__next {
+    position: static;
+    width: auto;
+    max-width: none;
+    border: 0;
+    box-shadow: none;
+  }
 }
 
 .fleet-map-info-reopen {
   @include ui.button-control;
-}
-
-@keyframes fleet-map-info-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fleet-map-info-content { animation: none; }
 }
 
 .fleet-map-info-empty {
@@ -129,66 +172,53 @@
   border: 1px solid ui.theme(border-subtle);
   border-radius: ui.radius(sm);
   font-size: ui.fs(label);
-  svg { flex-shrink: 0; color: ui.theme(accent); }
-  div { display: flex; align-items: baseline; flex-wrap: wrap; gap: ui.pg(xs) ui.pg(md); }
-  strong { color: ui.theme(text); font-size: ui.fs(body); font-weight: 600; }
-  .fleet-map-info-reopen { margin-left: auto; flex-shrink: 0; }
+  svg {
+    flex-shrink: 0;
+    color: ui.theme(accent);
+  }
+  div {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: ui.pg(xs) ui.pg(md);
+  }
+  strong {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
+  }
+  .fleet-map-info-reopen {
+    margin-left: auto;
+    flex-shrink: 0;
+  }
 }
 
 @media (max-width: ui.breakpoint(map-mobile, max)) {
   .fleet-map-inspector {
-    &[data-inspector-mode="fuel"]:has(.fleet-station-popup--planned),
-    &[data-inspector-mode="fuel"]:not(:has(.fleet-station-popup--planned)) {
+    &[data-inspector-mode='fuel']:has(.fleet-station-popup--planned),
+    &[data-inspector-mode='fuel']:not(:has(.fleet-station-popup--planned)) {
       width: 100%;
       min-width: 0;
       max-width: 100%;
     }
     &__header {
       padding: 0 ui.pg(sm);
-      .fleet-map-mobile-summary__toggle { display: flex; border: 0; background: transparent; }
     }
-    &__desktop-title { display: none; }
-    &__close { width: ui.size(control-touch); }
-    &__title { font-size: ui.fs(small); }
-    &__native, &__body { padding: ui.pg(sm); }
+    &__desktop-title {
+      display: none;
+    }
+    &__close {
+      width: ui.size(control-touch);
+    }
+    &__native,
+    &__body {
+      padding: ui.pg(sm);
+    }
   }
   .fleet-map-info-reserved {
     max-height: 60%;
-    .fleet-map-info-empty { display: none; }
-    .fleet-map-info-content { display: none; }
-    &.is-expanded {
-      .fleet-map-info-content {
-        display: flex;
-        padding: 0;
-        animation: none;
-      }
-    }
-  }
-  .fleet-map-mobile-summary {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: ui.pg(sm);
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    width: 100%;
-    min-height: 42px;
-    padding: 0;
-    background: ui.theme(surface);
-    color: ui.theme(text);
-    border: 0;
-    font-size: ui.fs(small);
-    &__toggle {
-      @include ui.button-control;
-      & {
-      justify-content: space-between;
-      flex: 1;
-      min-width: 0;
-      }
-      > strong, > span:last-child { flex-shrink: 0; }
-      > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      > span:last-child { color: ui.theme(link); }
+    .fleet-map-info-empty {
+      display: none;
     }
   }
 }

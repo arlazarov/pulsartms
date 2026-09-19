@@ -1,0 +1,129 @@
+<article class="dispatch-switch__operation">
+    <header class="dispatch-switch__heading">
+        <h3>@Operation.SiteName</h3>
+        <span class="dispatch-switch__hint">@Operation.Status</span>
+    </header>
+    @foreach (var row in Operation.Participants)
+    {
+        <section class="dispatch-switch__participant">
+            <h4>Load <LoadNumber Value="row.LoadNumber" /></h4>
+            @if (row.SourceReviewReason is { } reason)
+            {
+                <SwitchSourceReview
+                    @key="(row.Id, row.OutgoingRevision, row.IncomingRevision)"
+                    DispatchId="row.DispatchId"
+                    ExecutionLegId="row.SourceReviewExecutionLegId"
+                    Reason="@reason" Locked="@(Locked || _kind is not null
+                        || _reviewParticipant.HasValue
+                            && _reviewParticipant != row.Id)"
+                    BusyChanged="BusyChanged"
+                    EditingChanged="@(value =>
+                        ReviewEditingAsync(row.Id, value))"
+                    Accepted="SourceAcceptedAsync" />
+            }
+            <div class="dispatch-switch__comparison">
+                <div>
+                    <strong>Before</strong>
+                    <p>@Assignment(row.Outgoing)</p>
+                    <p>@EventLabel(row, false) ·
+                        @EventTime(row.ReleasedAt, row.Released)</p>
+                    @if (row.PlannedReleaseAt.HasValue)
+                    {
+                        <p class="dispatch-switch__hint">
+                            Planned: @Time(row.PlannedReleaseAt)
+                        </p>
+                    }
+                    @if (row.CanRelease)
+                    {
+                        <button class="btn btn--small" type="button"
+                                disabled="@(Locked || _kind is not null
+                                    || _reviewParticipant.HasValue)"
+                                @onclick="@(() => BeginAsync("release", row))">
+                            Record @EventLabel(row, false)
+                        </button>
+                    }
+                </div>
+                <div>
+                    <strong>After</strong>
+                    <p>@Assignment(row.Incoming)</p>
+                    <p>@EventLabel(row, true) ·
+                        @EventTime(row.ReceivedAt, row.Received)</p>
+                    @if (row.PlannedReceiveAt.HasValue)
+                    {
+                        <p class="dispatch-switch__hint">
+                            Planned: @Time(row.PlannedReceiveAt)
+                        </p>
+                    }
+                    @if (row.CanReceive)
+                    {
+                        <button class="btn btn--small" type="button"
+                                disabled="@(Locked || _kind is not null
+                                    || _reviewParticipant.HasValue)"
+                                @onclick="@(() => BeginAsync("receive", row))">
+                            Record @EventLabel(row, true)
+                        </button>
+                    }
+                    else if (!row.Received
+                        && Operation.Status != "cancelled")
+                    {
+                        <p class="dispatch-switch__hint">
+                            Receipt waits for release and available resources.
+                        </p>
+                    }
+                </div>
+            </div>
+        </section>
+    }
+    @if (Operation.CanCancel && _kind is null)
+    {
+        <button class="btn btn--small" type="button"
+                disabled="@(Locked || _reviewParticipant.HasValue)"
+                @onclick="@(() => BeginAsync("cancel", null))">
+            Cancel planned Switch
+        </button>
+    }
+    @if (_kind is not null)
+    {
+        <div class="dispatch-switch__editor">
+            <h4>@ActionLabel</h4>
+            @if (_participant is not null)
+            {
+                <p>Load <LoadNumber Value="_participant.LoadNumber" /></p>
+            }
+            @if (_kind == "cancel")
+            {
+                <p>
+                    Cancel this plan for all its loads? This is allowed only
+                    before any actual release or receipt is recorded.
+                </p>
+            }
+            else
+            {
+                <MileageTimeFields Draft="_occurred" Id="FieldId"
+                    Label="Actual event (optional)" Disabled="@(_saving
+                        || _request is not null)" />
+                <p class="dispatch-switch__hint">
+                    Leave both fields blank if the exact time is unknown.
+                    Confirm only this event, not the other load or its Hook.
+                </p>
+            }
+            @if (_error is not null)
+            {
+                <p class="dispatch-switch__error" role="alert">@_error</p>
+                <p class="dispatch-switch__hint">
+                    Retry reuses the same request. If the Switch changed,
+                    close this editor and refresh before a new confirmation.
+                </p>
+            }
+            <div class="dispatch-switch__actions">
+                <button class="@(_kind == "cancel"
+                            ? "btn btn--danger" : "btn btn--primary")"
+                        type="button" disabled="@_saving" @onclick="SaveAsync">
+                    @(_saving ? "Saving…" : "Confirm " + ActionLabel)
+                </button>
+                <button class="btn" type="button" disabled="@_saving"
+                        @onclick="CloseAsync">Close editor</button>
+            </div>
+        </div>
+    }
+</article>

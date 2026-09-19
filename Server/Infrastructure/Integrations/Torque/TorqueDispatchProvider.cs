@@ -1,11 +1,16 @@
+using System.Globalization;
 using Application.Features.Dispatch.Interfaces;
 using Application.Features.Dispatch.Models;
 using Infrastructure.Integrations.Torque.Models;
 
 namespace Infrastructure.Integrations.Torque;
 
-public class TorqueDispatchProvider(TorqueApiService apiService) : IDispatchProvider
+public class TorqueDispatchProvider(TorqueApiService apiService)
+  : IDispatchProvider
 {
+  public string Key => "torqueai";
+  public string DisplayName => "TorqueAI";
+
   public async Task<IReadOnlyList<ExternalDispatch>> GetDispatchesAsync(
     CancellationToken cancellationToken = default
   )
@@ -20,7 +25,11 @@ public class TorqueDispatchProvider(TorqueApiService apiService) : IDispatchProv
     CancellationToken cancellationToken = default
   )
   {
-    var dispatches = await apiService.GetDispatchesAsync(from, to, cancellationToken);
+    var dispatches = await apiService.GetDispatchesAsync(
+      from,
+      to,
+      cancellationToken
+    );
     return [.. dispatches.Select(MapDispatch)];
   }
 
@@ -28,6 +37,7 @@ public class TorqueDispatchProvider(TorqueApiService apiService) : IDispatchProv
   {
     return new ExternalDispatch
     {
+      ExternalId = source.LoadNumber.ToString(CultureInfo.InvariantCulture),
       LoadNumber = source.LoadNumber,
       OrderNumber = source.OrderNumber,
       Status = source.Status,

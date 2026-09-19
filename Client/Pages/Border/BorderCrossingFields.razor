@@ -1,0 +1,56 @@
+<fieldset disabled="@Disabled" class="dispatch-details__panel">
+  <legend>Crossing</legend>
+  <div class="dispatch-details__fields">
+    <label>Destination
+      <select @bind="Value.DestinationCountry" @bind:after="DestinationChanged">
+        <option value="">Not selected</option>
+        <option value="CA">Canada</option>
+        <option value="US">United States</option>
+      </select>
+    </label>
+    <label>Crossing reference
+      <input @bind="Value.Reference" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Port of entry
+      <select @bind="Value.PortOfEntry" @bind:after="NotifyChanged"
+              disabled="@(Value.DestinationCountry.Length == 0)">
+        <option value="">Not selected</option>
+        @foreach (var port in Ports.Where(x =>
+          x.Country == Value.DestinationCountry))
+        {
+          <option value="@port.Code">@port.Name · @port.Code</option>
+        }
+      </select>
+    </label>
+    <label>Arrival time zone
+      <input @bind="Value.ArrivalTimeZone" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Legal carrier name
+      <input @bind="Value.CarrierName" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>SCAC
+      <input @bind="Value.Scac" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Canadian carrier code
+      <input @bind="Value.CanadianCarrierCode" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Arrival date
+      <input type="date" @bind="Value.ArrivalDate"
+             @bind:after="NotifyChanged" />
+    </label>
+    <label>Arrival time
+      <input type="time" @bind="Value.ArrivalTime"
+             @bind:after="NotifyChanged" />
+    </label>
+    <label><input type="checkbox" @bind="Value.EmptyConveyance"
+                  @bind:after="NotifyChanged" /> Empty conveyance</label>
+  </div>
+  <p>Enter a time zone such as America/Toronto or America/Chicago.</p>
+</fieldset>
+<ShipmentPartyEditor Value="Value.CarrierAddress" Title="Carrier address"
+                    Disabled="Disabled" Changed="Changed" />

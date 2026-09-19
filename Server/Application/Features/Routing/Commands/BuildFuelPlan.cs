@@ -1,14 +1,18 @@
-using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services;
+using Application.Features.Routing.Services.FuelPlanning;
 using Application.Models;
 
 namespace Application.Features.Routing.Commands;
 
-public sealed record BuildFuelPlanCommand(Guid DispatchId, FuelBuildRequest Fuel) : IRequest<RequestResponse<FuelPlan>>, IPlanningRequest;
+public sealed record BuildFuelPlanCommand(
+  Guid DispatchId,
+  FuelBuildRequest Fuel
+) : IRequest<RequestResponse<FuelCalculationResult>>, IPlanningRequest;
 
-public sealed class BuildFuelPlanValidator : AbstractValidator<BuildFuelPlanCommand>
+public sealed class BuildFuelPlanValidator
+  : AbstractValidator<BuildFuelPlanCommand>
 {
   public BuildFuelPlanValidator()
   {
@@ -19,8 +23,20 @@ public sealed class BuildFuelPlanValidator : AbstractValidator<BuildFuelPlanComm
 }
 
 public sealed class BuildFuelPlanHandler(FuelPlanningService service)
-  : IRequestHandler<BuildFuelPlanCommand, RequestResponse<FuelPlan>>
+  : IRequestHandler<
+    BuildFuelPlanCommand,
+    RequestResponse<FuelCalculationResult>
+  >
 {
-  public async Task<RequestResponse<FuelPlan>> Handle(BuildFuelPlanCommand request, CancellationToken cancellationToken)
-    => RequestResponse<FuelPlan>.Ok(await service.BuildAsync(request.DispatchId, request.Fuel, cancellationToken));
+  public async Task<RequestResponse<FuelCalculationResult>> Handle(
+    BuildFuelPlanCommand request,
+    CancellationToken cancellationToken
+  ) =>
+    RequestResponse<FuelCalculationResult>.Ok(
+      await service.BuildAsync(
+        request.DispatchId,
+        request.Fuel,
+        cancellationToken
+      )
+    );
 }

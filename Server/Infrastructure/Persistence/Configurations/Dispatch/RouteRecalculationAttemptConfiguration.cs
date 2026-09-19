@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations.Dispatch;
 
-public sealed class RouteRecalculationAttemptConfiguration : IEntityTypeConfiguration<RouteRecalculationAttempt>
+public sealed class RouteRecalculationAttemptConfiguration
+  : IEntityTypeConfiguration<RouteRecalculationAttempt>
 {
   public void Configure(EntityTypeBuilder<RouteRecalculationAttempt> b)
   {

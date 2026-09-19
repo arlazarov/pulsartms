@@ -11,32 +11,115 @@
   grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
 
-  &__header { display: flex; align-items: center; justify-content: flex-start; gap: ui.pg(md); padding: ui.pg(lg); min-width: 0; }
-  &__identity { display: flex; align-items: center; flex-wrap: wrap; gap: ui.pg(sm) ui.pg(md); min-width: 0; }
-  &__identity h2 { font-size: ui.fs(title); letter-spacing: -.02em; line-height: 1.25; font-variant-numeric: tabular-nums; }
-  &__icon { width: ui.size(control-compact); height: ui.size(control-compact); flex-shrink: 0; fill: ui.theme(text-secondary); stroke: ui.theme(surface); stroke-width: 1.5; }
-  &__header-driver { color: ui.theme(text); font-size: ui.fs(body); font-weight: 500; overflow-wrap: anywhere; }
-  &__trailer { color: ui.theme(text-secondary); font-size: ui.fs(body); padding-left: ui.pg(md); border-left: 1px solid ui.theme(border); }
-  &__trailer strong { font-weight: 500; }
-  &__status { display: inline-flex; align-items: center; gap: ui.pg(sm); min-height: ui.size(control-compact); padding: ui.pg(xs) ui.pg(md); margin: 0; border-radius: ui.radius(pill); background: ui.theme(surface-muted); color: ui.theme(text-secondary); font-size: ui.fs(body); font-weight: 600; white-space: nowrap; }
-  &__status.is-moving { background: ui.theme(success-surface); color: ui.theme(success-text); }
-  &__status.is-moving.is-low { background: ui.theme(warning-surface); color: ui.theme(warning-text); }
-  &__status.is-moving.is-low > span { color: ui.theme(telemetry-warning-icon); }
-  &__status.is-moving.is-critical { background: ui.theme(warning-surface); color: ui.theme(telemetry-critical-icon); }
-  &__status.is-idling { background: ui.theme(warning-surface); color: ui.theme(warning-text); }
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: ui.pg(md);
+    padding: ui.pg(lg);
+    min-width: 0;
+  }
+  &__identity {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: ui.pg(sm) ui.pg(md);
+    min-width: 0;
+  }
+  &__identity h2 {
+    font-size: ui.fs(title);
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+  }
+  &__icon {
+    width: ui.size(control-compact);
+    height: ui.size(control-compact);
+    flex-shrink: 0;
+    fill: ui.theme(text-secondary);
+    stroke: ui.theme(surface);
+    stroke-width: 1.5;
+  }
+  &__header-driver {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+  &__trailer {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+    padding-left: ui.pg(md);
+    border-left: 1px solid ui.theme(border);
+  }
+  &__trailer strong {
+    font-weight: 500;
+  }
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-height: ui.size(control-compact);
+    padding: ui.pg(xs) ui.pg(md);
+    margin: 0;
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface-muted);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  &__status.is-moving {
+    background: ui.theme(success-surface);
+    color: ui.theme(success-text);
+  }
+  &__status.is-moving.is-low {
+    background: ui.theme(warning-surface);
+    color: ui.theme(warning-text);
+  }
+  &__status.is-moving.is-low > span {
+    color: ui.theme(telemetry-warning-icon);
+  }
+  &__status.is-moving.is-critical {
+    background: ui.theme(warning-surface);
+    color: ui.theme(telemetry-critical-icon);
+  }
+  &__status.is-idling {
+    background: ui.theme(warning-surface);
+    color: ui.theme(warning-text);
+  }
   a.dispatch-truck__map {
     --button-bg: #{ui.theme(selected)};
     --button-text: #{ui.theme(link)};
     @include ui.icon-control;
-    & { align-self: flex-start; }
+    & {
+      align-self: flex-start;
+    }
   }
-  &__map svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  &__equipment { min-width: 0; padding: ui.pg(lg); }
+  &__map svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  &__equipment {
+    min-width: 0;
+    padding: ui.pg(lg);
+  }
   &__loads {
     grid-column: 1 / -1;
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: min(100%, max(#{ui.size(dispatch-load-card)}, calc((100% - #{ui.pg(section)} * 2) / 3)));
+    grid-auto-columns: min(
+      100%,
+      max(
+        #{ui.size(dispatch-load-card)},
+        calc((100% - #{ui.pg(section)} * 2) / 3)
+      )
+    );
     align-items: stretch;
     gap: ui.pg(section);
     padding: ui.pg(md);
@@ -45,19 +128,52 @@
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     scroll-snap-type: x proximity;
-    > .dispatch-load { scroll-snap-align: start; }
-    > .dispatch-load + .dispatch-load .dispatch-load__connector { display: grid; }
-    &:focus-visible { outline: 2px solid ui.theme(focus); outline-offset: -2px; }
+    > .dispatch-load {
+      scroll-snap-align: start;
+    }
+    > .dispatch-load + .dispatch-load .dispatch-load__connector {
+      display: grid;
+    }
+    &:focus-visible {
+      outline: 2px solid ui.theme(focus);
+      outline-offset: -2px;
+    }
   }
-  &__available { display: flex; gap: ui.pg(lg); padding: ui.pg(lg); color: ui.theme(text-muted); background: ui.theme(surface); border: 1px solid ui.theme(border-subtle); border-radius: ui.radius(sm); font-size: ui.fs(label); }
-  &__available > span { font-size: ui.fs(title); }
-  &__available strong { color: ui.theme(text); }
-  &__available p { margin-top: ui.pg(xs); }
+  &__available {
+    display: flex;
+    gap: ui.pg(lg);
+    padding: ui.pg(lg);
+    color: ui.theme(text-muted);
+    background: ui.theme(surface);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    font-size: ui.fs(label);
+  }
+  &__available > span {
+    font-size: ui.fs(title);
+  }
+  &__available strong {
+    color: ui.theme(text);
+  }
+  &__available p {
+    margin-top: ui.pg(xs);
+  }
+  &__available--next {
+    align-self: start;
+    min-width: 0;
+    border-style: dashed;
+    background: transparent;
+    font-size: ui.fs(body);
+  }
 }
 
 @media (max-width: ui.breakpoint(truck-details, max)) {
-  .dispatch-truck { grid-template-columns: minmax(0, 1fr); }
-  .dispatch-truck__equipment { padding-top: 0; }
+  .dispatch-truck {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dispatch-truck__equipment {
+    padding-top: 0;
+  }
 }
 
 .dispatch-truck + .dispatch-truck {
@@ -66,11 +182,25 @@
 
 .dispatch-truck__equipment > .dispatch-planning--board {
   grid-template-columns: minmax(0, 1fr) max-content;
-  .dispatch-truck__status { max-width: 100%; box-sizing: border-box; white-space: normal; }
+  .dispatch-truck__status {
+    max-width: 100%;
+    box-sizing: border-box;
+    white-space: normal;
+  }
   --hos-wrap: wrap;
   --hos-clock-min-width: 5ch;
-  .dispatch-planning__content { grid-column: 1; grid-row: 1; border: 0; padding-top: 0; }
-  > .driver-hours-panel { grid-column: 2; grid-row: 1; padding: 0; border: 0; }
+  .dispatch-planning__content {
+    grid-column: 1;
+    grid-row: 1;
+    border: 0;
+    padding-top: 0;
+  }
+  > .driver-hours-panel {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 0;
+    border: 0;
+  }
   .dispatch-planning__driver {
     grid-column: 1 / -1;
     grid-row: 2;
@@ -82,15 +212,39 @@
     padding: 0;
     border: 0;
   }
-  .driver-duty { display: flex; flex-wrap: wrap; align-items: baseline; gap: ui.pg(xs) ui.pg(sm); max-width: 100%; }
-  .driver-next-recap { display: flex; flex-wrap: wrap; align-items: baseline; gap: ui.pg(xs) ui.pg(sm); }
-  .driver-duty > *, .driver-next-recap { padding: ui.pg(micro) ui.pg(sm); border-radius: ui.radius(sm); background: ui.theme(surface-soft); max-width: 100%; }
+  .driver-duty {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(sm);
+    max-width: 100%;
+  }
+  .driver-next-recap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(sm);
+  }
+  .driver-duty > *,
+  .driver-next-recap {
+    padding: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-soft);
+    max-width: 100%;
+  }
 }
 
 @media (min-width: ui.breakpoint(truck-details, min)) {
   .dispatch-truck:has(> .dispatch-truck__equipment) {
     grid-template-columns: repeat(3, minmax(0, max-content)) minmax(0, 1fr);
-    > .dispatch-truck__header { grid-column: 1; grid-row: 1; align-self: center; padding-bottom: ui.pg(sm); position: relative; z-index: 1; }
+    > .dispatch-truck__header {
+      grid-column: 1;
+      grid-row: 1;
+      align-self: center;
+      padding-bottom: ui.pg(sm);
+      position: relative;
+      z-index: 1;
+    }
     > .dispatch-truck__equipment {
       grid-column: 1 / -1;
       grid-row: 1 / span 2;
@@ -105,27 +259,79 @@
         grid-template-columns: subgrid;
         grid-template-rows: subgrid;
         gap: 0;
-        .dispatch-planning__content { grid-column: 2; grid-row: 1; justify-self: start; width: fit-content; max-width: 100%; box-sizing: border-box; padding: ui.pg(md) ui.pg(lg) ui.pg(sm); }
-        > .driver-hours-panel { grid-column: 3; grid-row: 1 / span 2; align-self: center; justify-self: start; margin: 0; padding: ui.pg(md) ui.pg(lg); max-width: 100%; box-sizing: border-box; }
-        .dispatch-planning__driver { grid-column: 1 / span 2; grid-row: 2; padding: 0 ui.pg(lg) ui.pg(md); }
+        .dispatch-planning__content {
+          grid-column: 2;
+          grid-row: 1;
+          justify-self: start;
+          width: fit-content;
+          max-width: 100%;
+          box-sizing: border-box;
+          padding: ui.pg(md) ui.pg(lg) ui.pg(sm);
+        }
+        > .driver-hours-panel {
+          grid-column: 3;
+          grid-row: 1 / span 2;
+          align-self: center;
+          justify-self: start;
+          margin: 0;
+          padding: ui.pg(md) ui.pg(lg);
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        .dispatch-planning__driver {
+          grid-column: 1 / span 2;
+          grid-row: 2;
+          padding: 0 ui.pg(lg) ui.pg(md);
+        }
       }
     }
-    > .dispatch-truck__loads { grid-row: 3; }
+    > .dispatch-truck__loads {
+      grid-row: 3;
+    }
   }
 }
 
 @media (max-width: ui.breakpoint(narrow-card, max)) {
-  .dispatch-truck__header { padding-inline: ui.pg(lg); }
-  .dispatch-truck__identity { column-gap: ui.pg(sm); }
-  .dispatch-truck__header-driver { flex-basis: calc(100% - #{ui.size(control-compact)} - #{ui.pg(sm)}); margin-left: calc(#{ui.size(control-compact)} + #{ui.pg(sm)}); }
-  .dispatch-truck__trailer { padding-left: 0; border: 0; }
-  .dispatch-truck__loads { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); align-items: start; gap: ui.pg(md); }
-  .dispatch-truck__loads > .dispatch-load + .dispatch-load .dispatch-load__connector { display: none; }
+  .dispatch-truck__header {
+    padding-inline: ui.pg(lg);
+  }
+  .dispatch-truck__identity {
+    column-gap: ui.pg(sm);
+  }
+  .dispatch-truck__header-driver {
+    flex-basis: calc(100% - #{ui.size(control-compact)} - #{ui.pg(sm)});
+    margin-left: calc(#{ui.size(control-compact)} + #{ui.pg(sm)});
+  }
+  .dispatch-truck__trailer {
+    padding-left: 0;
+    border: 0;
+  }
+  .dispatch-truck__loads {
+    grid-auto-flow: row;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: ui.pg(md);
+  }
+  .dispatch-truck__loads
+    > .dispatch-load
+    + .dispatch-load
+    .dispatch-load__connector {
+    display: none;
+  }
   .dispatch-truck__equipment > .dispatch-planning--board {
     grid-template-columns: minmax(0, 1fr);
     --hos-gap: #{ui.pg(sm)};
-    .dispatch-planning__content { grid-column: 1; grid-row: 1; }
-    .dispatch-planning__driver { grid-column: 1; grid-row: 2; }
-    > .driver-hours-panel { grid-column: 1; grid-row: 3; }
+    .dispatch-planning__content {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    .dispatch-planning__driver {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    > .driver-hours-panel {
+      grid-column: 1;
+      grid-row: 3;
+    }
   }
 }

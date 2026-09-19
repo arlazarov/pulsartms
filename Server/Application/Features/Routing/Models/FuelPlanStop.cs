@@ -2,6 +2,7 @@ namespace Application.Features.Routing.Models;
 
 public sealed class FuelPlanStop
 {
+  public string Warning { get; set; } = "";
   public int Number { get; set; }
   public string VisitKey { get; set; } = "";
   public Guid DispatchId { get; set; }
@@ -12,14 +13,20 @@ public sealed class FuelPlanStop
   public Guid StationId { get; set; }
   public string Name { get; set; } = "";
   public string Address { get; set; } = "";
+  public string Country { get; set; } = "";
   public RoutePoint Point { get; set; } = new(0, 0);
   public double MilesAhead { get; set; }
   public double? RouteMilesAhead { get; set; }
   public double ArrivalGallons { get; set; }
   public double BuyGallons { get; set; }
-  public double? PurchaseCostUsd => double.IsFinite(BuyGallons) && BuyGallons >= 0
-    && double.IsFinite(CashUsdPerGallon) && CashUsdPerGallon > 0
-    && double.IsFinite(BuyGallons * CashUsdPerGallon) ? BuyGallons * CashUsdPerGallon : null;
+  public double? PurchaseCostUsd =>
+    double.IsFinite(BuyGallons)
+    && BuyGallons >= 0
+    && double.IsFinite(CashUsdPerGallon)
+    && CashUsdPerGallon > 0
+    && double.IsFinite(BuyGallons * CashUsdPerGallon)
+      ? BuyGallons * CashUsdPerGallon
+      : null;
   public double DepartureGallons { get; set; }
   public bool FillToTarget { get; set; }
   public double YourPrice { get; set; }
@@ -29,4 +36,6 @@ public sealed class FuelPlanStop
   public double DetourMiles { get; set; }
   public double DetourMinutes { get; set; }
   public DateOnly PriceDate { get; set; }
+  public DateTimeOffset? EstimatedArrival { get; set; }
+  public bool PriceEstimated { get; set; }
 }

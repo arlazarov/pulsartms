@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 
 namespace Infrastructure.Persistence.Configurations.Dispatch;
 
-public class DispatchConfiguration : IEntityTypeConfiguration<Domain.Entities.Dispatch.Dispatch>
+public class DispatchConfiguration : IEntityTypeConfiguration<DispatchEntity>
 {
-  public void Configure(EntityTypeBuilder<Domain.Entities.Dispatch.Dispatch> builder)
+  public void Configure(EntityTypeBuilder<DispatchEntity> builder)
   {
     builder.HasKey(x => x.Id);
     builder.Property(x => x.OrderNumber).HasMaxLength(100);
@@ -19,6 +20,13 @@ public class DispatchConfiguration : IEntityTypeConfiguration<Domain.Entities.Di
     builder.Property(x => x.Price).HasPrecision(18, 2);
     builder.Property(x => x.Currency).HasMaxLength(10);
     builder.HasIndex(x => x.LoadNumber).IsUnique();
+    builder.Property(x => x.PlanningAssignmentRevision).IsConcurrencyToken();
+    builder.Property(x => x.RouteChoiceRevision).IsConcurrencyToken();
+    builder
+      .HasOne(x => x.PlanningTruck)
+      .WithMany()
+      .HasForeignKey(x => x.PlanningTruckId)
+      .OnDelete(DeleteBehavior.Restrict);
 
     builder
       .HasOne(x => x.Customer)

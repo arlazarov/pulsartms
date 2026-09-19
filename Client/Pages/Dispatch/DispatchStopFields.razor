@@ -1,0 +1,240 @@
+<fieldset class="stop-workspace__fields" disabled="@Disabled">
+    <legend class="visually-hidden">Stop @Stop.Sequence details</legend>
+    <div class="stop-workspace__column">
+    <section class="stop-workspace__location-editor">
+        <h3><ActionIcon Kind="location" /> Location</h3>
+        @if (AddressLookup is not null)
+        {
+            <DispatchAddressSearch @key="Stop.Id" Id="@(Id + "-search")"
+                Lookup="AddressLookup" Disabled="Disabled" Selected="ApplyAddressAsync" />
+        }
+        <div class="stop-workspace__field-grid">
+            @if (Stop.IsNew)
+            {
+            <label for="@(Id + "-job")">
+                Stop type
+                <select id="@(Id + "-job")" @bind="Stop.Job"
+                        @bind:after="NotifyAsync" disabled="@(!Stop.IsNew)">
+                    @if (Stop.Job is not ("Pick Up" or "Delivery"))
+                    {
+                        <option value="@Stop.Job">@Stop.Job</option>
+                    }
+                    <option value="Pick Up">Pickup</option>
+                    <option value="Delivery">Delivery</option>
+                </select>
+            </label>
+            }
+            <label class="@(!Stop.IsNew ? "stop-workspace__full" : null)" for="@(Id + "-facility")">
+                Facility
+                <input id="@(Id + "-facility")" @bind="Stop.Name"
+                       @bind:event="oninput" @bind:after="NotifyAsync" />
+            </label>
+            <label class="stop-workspace__full" for="@(Id + "-street")">
+                Street address
+                <input id="@(Id + "-street")" @bind="Stop.Address"
+                       @bind:event="oninput"
+                       @bind:after="LocationChangedAsync" />
+            </label>
+            <label for="@(Id + "-city")">
+                City
+                <input id="@(Id + "-city")" @bind="Stop.City"
+                       @bind:event="oninput"
+                       @bind:after="LocationChangedAsync" />
+            </label>
+            <label for="@(Id + "-region")">
+                State / province
+                <input id="@(Id + "-region")" @bind="Stop.Province"
+                       @bind:event="oninput"
+                       @bind:after="LocationChangedAsync" />
+            </label>
+            <label for="@(Id + "-postal")">
+                Postal code
+                <input id="@(Id + "-postal")" @bind="Stop.ZipCode"
+                       @bind:event="oninput"
+                       @bind:after="LocationChangedAsync" />
+            </label>
+            <label for="@(Id + "-country")">
+                Country
+                <input id="@(Id + "-country")" @bind="Stop.Country"
+                       @bind:event="oninput"
+                       @bind:after="LocationChangedAsync" />
+            </label>
+            <p class="stop-workspace__hint stop-workspace__full">
+                Search and select an address to set its location automatically.
+            </p>
+        </div>
+    </section>
+    </div>
+    <div class="stop-workspace__column">
+    <section class="stop-workspace__section stop-workspace__appointment">
+        <h3><ActionIcon Kind="calendar" /> Appointment</h3>
+        <div class="stop-workspace__field-grid">
+            <label for="@(Id + "-mode")">
+                Schedule
+                <select id="@(Id + "-mode")" @bind="Stop.AppointmentMode"
+                        @bind:after="ModeChangedAsync">
+                    <option value="at">Date / appointment</option>
+                    <option value="window">Date and time window</option>
+                    <option value="unscheduled">Not scheduled</option>
+                </select>
+            </label>
+            <label for="@(Id + "-timezone")">
+                Time zone
+                <input id="@(Id + "-timezone")" @bind="Stop.TimeZoneId"
+                       @bind:event="oninput" @bind:after="NotifyAsync"
+                       placeholder="Location time zone" />
+            </label>
+        </div>
+        @if (Stop.AppointmentMode != "unscheduled")
+        {
+            <div class="stop-workspace__field-grid
+                        stop-workspace__appointment-times">
+                <label for="@(Id + "-date")">
+                    @(Stop.AppointmentMode == "window" ? "From date" : "Date")
+                    <input id="@(Id + "-date")" type="date"
+                           @bind="Stop.ScheduledDate"
+                           @bind:after="NotifyAsync" />
+                </label>
+                <label for="@(Id + "-time")">
+                    @(Stop.AppointmentMode == "window" ? "From time" : "Time")
+                    <input id="@(Id + "-time")" @bind="Clock.Start"
+                           @bind:event="oninput" @bind:after="TimeChangedAsync"
+                           placeholder="02:00 PM (optional)"
+                           aria-invalid="@(_clockError is not null)" />
+                </label>
+                @if (Stop.AppointmentMode == "window")
+                {
+                    <label for="@(Id + "-end-date")">
+                        To date
+                        <input id="@(Id + "-end-date")" type="date"
+                               @bind="Stop.ScheduledDate2"
+                               @bind:after="NotifyAsync" />
+                    </label>
+                    <label for="@(Id + "-end-time")">
+                        To time
+                        <input id="@(Id + "-end-time")" @bind="Clock.End"
+                               @bind:event="oninput"
+                               @bind:after="TimeChangedAsync"
+                               placeholder="08:00 PM (optional)"
+                               aria-invalid="@(_clockError is not null)" />
+                    </label>
+                }
+            </div>
+        }
+        @if (_clockError is not null)
+        {
+            <p class="stop-workspace__error" role="alert">@_clockError</p>
+        }
+        <p class="stop-workspace__hint">
+            Times use the stop's time zone, not your device's time zone.
+            Leave the time zone blank to use the location's time zone.
+        </p>
+    </section>
+    <section class="stop-workspace__section stop-workspace__references-card">
+        <h3><ActionIcon Kind="reference" /> References</h3>
+        <div class="stop-workspace__field-grid">
+            <label for="@(Id + "-reference")">
+                @ReferenceLabel
+                <input id="@(Id + "-reference")" @bind="Stop.StopNo"
+                       @bind:event="oninput" @bind:after="NotifyAsync" />
+            </label>
+            <label for="@(Id + "-appointment-reference")">
+                Appt #
+                <input id="@(Id + "-appointment-reference")"
+                       @bind="Stop.AppointmentReference"
+                       @bind:event="oninput" @bind:after="NotifyAsync" />
+            </label>
+        </div>
+    <label class="stop-workspace__full" for="@(Id + "-instructions")">
+        Stop instructions
+        <textarea id="@(Id + "-instructions")" rows="3" @bind="Stop.Notes"
+                  @bind:event="oninput" @bind:after="NotifyAsync"></textarea>
+        <span class="stop-workspace__hint">
+            Keep pickup and delivery instructions here. Dispatcher call notes
+            belong in Notes.
+        </span>
+    </label>
+    </section>
+    @if (Cargo)
+    {
+        <section class="stop-workspace__section stop-workspace__cargo-card">
+            <h3><ActionIcon Kind="cargo" /> Cargo</h3>
+            <div class="stop-workspace__field-grid">
+                <label class="stop-workspace__full" for="@(Id + "-cargo")">
+                    Commodity
+                    <input id="@(Id + "-cargo")" @bind="Stop.Commodity"
+                           @bind:event="oninput" @bind:after="NotifyAsync" />
+                </label>
+                <label for="@(Id + "-weight")">
+                    Weight
+                    <input id="@(Id + "-weight")" type="number" step="any"
+                           min="0" @bind="Stop.Weight"
+                           @bind:after="NotifyAsync" />
+                </label>
+                <label for="@(Id + "-weight-unit")">
+                    Weight unit
+                    <input id="@(Id + "-weight-unit")" @bind="Stop.WeightUnit"
+                           @bind:event="oninput" @bind:after="NotifyAsync" />
+                </label>
+                <label for="@(Id + "-pieces")">
+                    Pieces
+                    <input id="@(Id + "-pieces")" type="number" step="any"
+                           min="0" @bind="Stop.Pieces"
+                           @bind:after="NotifyAsync" />
+                </label>
+                <label for="@(Id + "-pallets")">
+                    Pallets
+                    <input id="@(Id + "-pallets")" type="number" step="any"
+                           min="0" @bind="Stop.Pallets"
+                           @bind:after="NotifyAsync" />
+                </label>
+                <label for="@(Id + "-temperature")">
+                    Temperature / range
+                    <input id="@(Id + "-temperature")"
+                           @bind="Stop.Temperature" @bind:event="oninput"
+                           @bind:after="NotifyAsync" />
+                </label>
+                <label for="@(Id + "-temperature-unit")">
+                    Temperature unit
+                    <select id="@(Id + "-temperature-unit")"
+                            @bind="Stop.TemperatureUnit"
+                            @bind:after="NotifyAsync">
+                        <option value="">Not specified</option>
+                        @if (Stop.TemperatureUnit is not ("" or "C" or "F"))
+                        {
+                            <option value="@Stop.TemperatureUnit">
+                                @Stop.TemperatureUnit
+                            </option>
+                        }
+                        <option value="C">°C</option>
+                        <option value="F">°F</option>
+                    </select>
+                </label>
+            </div>
+        </section>
+    }
+    <section class="stop-workspace__section stop-workspace__contact-card">
+        <h3><ActionIcon Kind="contact" /> Contact</h3>
+        <div class="stop-workspace__field-grid">
+            <label for="@(Id + "-contact")">
+                Contact name
+                <input id="@(Id + "-contact")" @bind="Stop.ContactName"
+                       @bind:event="oninput" @bind:after="NotifyAsync" />
+            </label>
+            <label for="@(Id + "-phone")">
+                Phone
+                <input id="@(Id + "-phone")" type="tel"
+                       @bind="Stop.ContactPhone" @bind:event="oninput"
+                       @bind:after="NotifyAsync" />
+            </label>
+            <label class="stop-workspace__full" for="@(Id + "-email")">
+                Email
+                <input id="@(Id + "-email")" type="email"
+                       @bind="Stop.ContactEmail" @bind:event="oninput"
+                       @bind:after="NotifyAsync" />
+            </label>
+        </div>
+    </section>
+    </div>
+
+</fieldset>

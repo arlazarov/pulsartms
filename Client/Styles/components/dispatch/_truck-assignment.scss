@@ -1,0 +1,33 @@
+@use '../../base' as ui;
+
+.truck-assignment {
+  display: grid;
+  gap: ui.pg(sm);
+  margin-block: ui.pg(sm);
+  font-size: ui.fs(small);
+  p {
+    margin: 0;
+    color: ui.theme(text-secondary);
+  }
+  &__fields,
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+  }
+  label {
+    display: grid;
+    gap: ui.pg(xs);
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+  input,
+  select {
+    width: 100%;
+    min-width: 0;
+    @include ui.input-control;
+  }
+  p.truck-assignment__error {
+    color: ui.theme(danger-text);
+  }
+}

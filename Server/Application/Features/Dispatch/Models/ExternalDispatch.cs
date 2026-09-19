@@ -2,6 +2,7 @@ namespace Application.Features.Dispatch.Models;
 
 public class ExternalDispatch
 {
+  public string ExternalId { get; set; } = "";
   public int LoadNumber { get; set; }
   public string OrderNumber { get; set; } = string.Empty;
   public string Status { get; set; } = string.Empty;

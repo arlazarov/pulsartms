@@ -12,16 +12,39 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
 [UI controls](ui-controls.md). The mandatory working rules are in
 [AGENTS.md](../AGENTS.md).
 
+## Design
+
+- [PulsR TMS brand design](design/brand-design.md) is the authoritative visual
+  identity guide. Follow it alongside UI controls for new and changed product UI.
+- [Visual brand guide](../Client/wwwroot/brand/index.html) uses the shared artwork
+  and compiled tokens; open `/brand/index.html` in the running client.
+
 ## Development and architecture
 
+- [Core rebuild specification](architecture/core-rebuild.md) and
+  [acceptance scenarios](architecture/core-rebuild-scenarios.md) define the
+  staged replacement plan; they do not describe deployed functionality.
+- [Customs data preparation](architecture/customs-preparation.md) defines the
+  planned shipment, crossing and fleet data for future ACE/ACI manifests.
 - [Build, run and development workflow](development/setup.md)
+- [PulsR product naming and compatibility](development/product-branding.md)
 - [Temporary outputs and automatic retention](development/artifact-retention.md)
 - [JavaScript ownership and boundaries](architecture/javascript.md)
 - [SCSS tokens, themes and ownership](architecture/styles.md)
 - [Fleet Map component responsibilities](architecture/fleet-map-client.md)
+- [SaaS evolution plan: retain TorqueAI and migrate incrementally](architecture/saas-evolution-plan.md)
+- [Fleet configuration and dispatch execution][dispatch-execution]
+  covers Trucks, Trailers, Drivers and Switch; settlement design is deferred.
+
+[dispatch-execution]: architecture/dispatch-execution-and-settlements.md
 
 ## Features
 
+- [Optional load imports and provider independence](features/dispatch-import.md)
+- [Dispatch load editor, activity and documents](features/dispatch-workspace.md)
+- [Shipments and independent Border preparation](features/border-preparation.md)
+- [Trucks, Trailers and Drivers configuration][fleet-configuration]
+- [Operational mileage and load attribution](features/mileage-attribution.md)
 - [Integration credentials in Settings](features/integration-settings.md)
 - [Load numbering and optional prefixes](features/load-numbering.md)
 - [Route planning](features/route-planning.md), [saved base routes](features/base-routes.md),
@@ -30,10 +53,14 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
 - [ETA forecasting](features/eta-service.md) and [HOS/ETA rules](features/hos-eta-planning.md)
 - [Fuel selection rules](features/fuel-planning-rules.md) and [onward fuel planning](features/fuel-regions.md)
 - [Synchronization](features/synchronization.md) and [truck cameras](features/truck-camera.md)
+- [Truck weather](features/truck-weather.md)
+
+[fleet-configuration]: features/fleet-resource-configuration.md
 
 ## Operations
 
 - [Release verification and deployment](operations/release.md)
+- [Core storage cutover](operations/core-storage-cutover.md)
 - [Diagnostics and logging](operations/diagnostics.md)
 - [Security rollout and recovery checks](operations/security-rollout.md)
 - [Gmail watch ownership and recovery](operations/gmail-watch.md)

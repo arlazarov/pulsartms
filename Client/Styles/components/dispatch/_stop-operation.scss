@@ -1,0 +1,64 @@
+@use '../../base' as ui;
+
+.stop-operation {
+  display: grid;
+  gap: ui.pg(sm);
+  min-width: 0;
+  margin-top: ui.pg(sm);
+  &--inline {
+    margin-top: 0;
+    .stop-operation__fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      > :only-child {
+        grid-column: 1 / -1;
+      }
+    }
+    .stop-operation__field > label {
+      display: flex;
+    }
+    @container stop-editor (max-width: 22rem) {
+      .stop-operation__fields {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+  }
+  &__field > label {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(xs);
+    font-weight: 600;
+    color: ui.theme(text);
+    svg {
+      color: ui.theme(link);
+    }
+  }
+  &__fields,
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+  }
+  &__field {
+    display: grid;
+    gap: ui.pg(xs);
+    flex: 1 1 ui.size(dispatch-dialog-metric);
+    min-width: 0;
+    font-size: ui.fs(label);
+  }
+  select {
+    width: 100%;
+    min-width: 0;
+    @include ui.input-control;
+  }
+  &__hint {
+    margin: 0;
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  &__error {
+    margin: 0;
+    color: ui.theme(danger-text);
+    font-size: ui.fs(label);
+  }
+}

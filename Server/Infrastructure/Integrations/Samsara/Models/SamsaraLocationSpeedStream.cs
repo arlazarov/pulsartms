@@ -22,6 +22,7 @@ public class SamsaraLocationSpeedAsset
 
 public class SamsaraLocationSpeedLocation
 {
+  public SamsaraLocationSpeedAddress? Address { get; set; }
   public decimal Latitude { get; set; }
   public decimal Longitude { get; set; }
   public decimal HeadingDegrees { get; set; }
@@ -37,6 +38,12 @@ public class SamsaraLocationSpeedSpeed
 public class SamsaraLocationSpeedAddress
 {
   public string FormattedAddress { get; set; } = string.Empty;
+  public string StreetNumber { get; set; } = string.Empty;
+  public string Street { get; set; } = string.Empty;
+  public string City { get; set; } = string.Empty;
+  public string State { get; set; } = string.Empty;
+  public string PostalCode { get; set; } = string.Empty;
+  public string Country { get; set; } = string.Empty;
 }
 
 public class SamsaraStreamPagination

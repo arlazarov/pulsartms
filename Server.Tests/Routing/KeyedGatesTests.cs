@@ -15,7 +15,11 @@ public sealed class KeyedGatesTests
     var held = gates.For(key);
     Assert.Same(held, gates.For(key));
     Assert.NotSame(held, otherOwner.For(key));
-    var stripes = Enumerable.Range(0, 10000).Select(i => gates.For(i.ToString())).Distinct().ToArray();
+    var stripes = Enumerable
+      .Range(0, 10000)
+      .Select(i => gates.For(i.ToString()))
+      .Distinct()
+      .ToArray();
     Assert.InRange(stripes.Length, 2, 64);
     var independent = stripes.First(x => !ReferenceEquals(x, held));
     await held.WaitAsync();
@@ -25,6 +29,9 @@ public sealed class KeyedGatesTests
       Assert.True(await independent.WaitAsync(0));
       independent.Release();
     }
-    finally { held.Release(); }
+    finally
+    {
+      held.Release();
+    }
   }
 }

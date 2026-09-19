@@ -12,6 +12,10 @@
 - `truckAppearance.js`: three cached 28px states: moving green heading arrow,
   stationary green idle circle, and gray off/unknown circle. Speed determines
   movement; truck number typography is independent.
+- `truckLabelLayout.js`: bounded screen-space label placement, with a local
+  spatial index and retained per-truck offsets. Geographic positions stay exact.
+  `markerProjection.js` shares the north-up projection with overview grouping;
+  `markerAnchor.js` shares cached connectors for truck and group labels.
 - Station fills use uniform 16px price-colored circles. Prices remain in the
   station popup; map text is limited to fuel-order and active-edit badges.
   Camera changes do not scan stations or invalidate their cached layers.

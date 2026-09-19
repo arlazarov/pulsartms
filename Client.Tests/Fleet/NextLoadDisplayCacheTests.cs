@@ -6,7 +6,31 @@ namespace Client.Tests.Fleet;
 [Trait("Kind", "Unit")]
 public sealed class NextLoadDisplayCacheTests
 {
-  private static readonly DateTimeOffset Start = new(2026, 9, 8, 12, 0, 0, TimeSpan.Zero);
+  private static readonly DateTimeOffset Start = new(
+    2026,
+    9,
+    8,
+    12,
+    0,
+    0,
+    TimeSpan.Zero
+  );
+
+  [Fact]
+  public void SameTruckAndLoadKeepExecutionLegsAndRevisionsSeparate()
+  {
+    var cache = new NextLoadDisplayCache();
+    var identity = (Guid.NewGuid(), Guid.NewGuid());
+    var first = Guid.NewGuid();
+    var second = Guid.NewGuid();
+    cache.Store(identity, "first", [1], Start, first, 1);
+    cache.Store(identity, "second", [2], Start, second, 1);
+    cache.Store(identity, "reassigned", [3], Start, first, 2);
+    Assert.Equal("first", cache.Get(identity, Start, first, 1)?.Revision);
+    Assert.Equal("second", cache.Get(identity, Start, second, 1)?.Revision);
+    Assert.Equal("reassigned", cache.Get(identity, Start, first, 2)?.Revision);
+    Assert.Null(cache.Get(identity, Start));
+  }
 
   [Fact]
   public void ReadsDoNotExtendExpirationButValidatedReplacementDoes()

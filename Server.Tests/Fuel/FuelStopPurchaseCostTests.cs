@@ -10,11 +10,21 @@ public sealed class FuelStopPurchaseCostTests
   [Theory]
   [InlineData("USD", "US gal", 5.50)]
   [InlineData("CAD", "L", 1.98)]
-  public void CostUsesNormalizedCashPriceNotDisplayOrIftaPrice(string currency, string unit, double displayPrice)
+  public void CostUsesNormalizedCashPriceNotDisplayOrIftaPrice(
+    string currency,
+    string unit,
+    double displayPrice
+  )
   {
-    var stop = new FuelPlanStop {
-      BuyGallons = 160, CashUsdPerGallon = 5.50, EconomicUsdPerGallon = 4.90,
-      YourPrice = displayPrice, EconomicPrice = 1.70, Currency = currency, Unit = unit
+    var stop = new FuelPlanStop
+    {
+      BuyGallons = 160,
+      CashUsdPerGallon = 5.50,
+      EconomicUsdPerGallon = 4.90,
+      YourPrice = displayPrice,
+      EconomicPrice = 1.70,
+      Currency = currency,
+      Unit = unit,
     };
 
     Assert.Equal(880, stop.PurchaseCostUsd);
@@ -23,7 +33,12 @@ public sealed class FuelStopPurchaseCostTests
   [Fact]
   public void ProjectedQuantityUpdatesCostWithoutRetainingAnOldTotal()
   {
-    var stop = new FuelPlanStop { BuyGallons = 160, CashUsdPerGallon = 5.50, FillToTarget = true };
+    var stop = new FuelPlanStop
+    {
+      BuyGallons = 160,
+      CashUsdPerGallon = 5.50,
+      FillToTarget = true,
+    };
     Assert.Equal(880, stop.PurchaseCostUsd);
 
     stop.BuyGallons = 30;
@@ -43,9 +58,16 @@ public sealed class FuelStopPurchaseCostTests
   [InlineData(30, double.NaN)]
   [InlineData(30, double.PositiveInfinity)]
   [InlineData(double.MaxValue, 2)]
-  public void MissingOrInvalidPricingDoesNotPublishAMisleadingCost(double gallons, double price)
+  public void MissingOrInvalidPricingDoesNotPublishAMisleadingCost(
+    double gallons,
+    double price
+  )
   {
-    var stop = new FuelPlanStop { BuyGallons = gallons, CashUsdPerGallon = price };
+    var stop = new FuelPlanStop
+    {
+      BuyGallons = gallons,
+      CashUsdPerGallon = price,
+    };
     Assert.Null(stop.PurchaseCostUsd);
   }
 
@@ -54,10 +76,17 @@ public sealed class FuelStopPurchaseCostTests
   {
     var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
     var stop = JsonSerializer.Deserialize<FuelPlanStop>(
-      """{"buyGallons":30,"cashUsdPerGallon":5.5,"purchaseCostUsd":999}""", options)!;
+      """{"buyGallons":30,"cashUsdPerGallon":5.5,"purchaseCostUsd":999}""",
+      options
+    )!;
 
     Assert.Equal(165, stop.PurchaseCostUsd);
-    using var payload = JsonDocument.Parse(JsonSerializer.Serialize(stop, options));
-    Assert.Equal(165, payload.RootElement.GetProperty("purchaseCostUsd").GetDouble());
+    using var payload = JsonDocument.Parse(
+      JsonSerializer.Serialize(stop, options)
+    );
+    Assert.Equal(
+      165,
+      payload.RootElement.GetProperty("purchaseCostUsd").GetDouble()
+    );
   }
 }

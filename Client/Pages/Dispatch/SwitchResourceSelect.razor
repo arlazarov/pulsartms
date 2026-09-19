@@ -1,0 +1,11 @@
+<label for="@Id">
+    @Label
+    <select id="@Id" @bind="Selected" @bind:after="NotifyAsync"
+            disabled="@Disabled">
+        <option value="">Not selected</option>
+        @foreach (var item in Options)
+        {
+            <option value="@item.Id">@item.Name</option>
+        }
+    </select>
+</label>

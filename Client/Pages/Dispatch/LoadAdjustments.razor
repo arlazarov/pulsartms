@@ -1,0 +1,84 @@
+<section class="dispatch-details__panel">
+  <h2>Additions &amp; deductions</h2>
+  <p>New entries use the load currency. Driver entries are records, not Pay.</p>
+  @if (_error is not null)
+  {
+    <p role="alert">@_error</p>
+  }
+  @foreach (var row in Metadata.Adjustments)
+  {
+    <fieldset @key="row.Id" class="dispatch-details__execution"
+              disabled="@(!CanEdit)">
+      <div class="dispatch-details__fields">
+        <label>Recipient
+          <select @bind="row.Target" @bind:after="() => RecipientAsync(row)">
+            <option value="broker">Broker invoice</option>
+            <option value="driver">Driver adjustment</option>
+          </select>
+        </label>
+        @if (row.Target == "driver")
+        {
+          <label>Driver
+            <select @bind="row.DriverId" @bind:after="NotifyChanged">
+              <option value="">Select driver</option>
+              @if (row.DriverId.HasValue
+                && !_drivers.Any(x => x.Id == row.DriverId))
+              {
+                <option value="@row.DriverId">@row.DriverName</option>
+              }
+              @foreach (var driver in _drivers)
+              {
+                <option value="@driver.Id">@driver.Name</option>
+              }
+            </select>
+          </label>
+          <button type="button" class="btn" @onclick="LoadDriversAsync"
+                  disabled="@_loading">Load drivers</button>
+        }
+        <label>Type
+          <select @bind="row.Direction" @bind:after="NotifyChanged">
+            <option value="addition">Addition</option>
+            <option value="deduction">Deduction</option>
+          </select>
+        </label>
+        <label>Amount (@row.Currency)
+          <input type="number" min="0.01" step="0.01"
+                 @bind="row.Amount" @bind:after="NotifyChanged" />
+        </label>
+        <label>Reason
+          <input maxlength="500" @bind="row.Reason"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <button type="button" class="btn" @onclick="() => RemoveAsync(row)">
+          Remove adjustment
+        </button>
+      </div>
+    </fieldset>
+  }
+  <button type="button" class="btn" @onclick="AddAsync"
+          disabled="@(!CanEdit || Metadata.Adjustments.Count >= 100)">
+    Add adjustment
+  </button>
+  @if (Totals is { } totals)
+  {
+    @if (totals.CurrencyMismatch)
+    {
+      <p role="alert">
+        The load currency differs from saved broker adjustments.
+        Review their amounts and currencies before billing.
+      </p>
+    }
+    <dl class="dispatch-details__financials">
+      <div><dt>Saved broker additions</dt><dd>
+        @DispatchFinancialDisplay.Money(totals.BrokerAdditions, Currency)
+      </dd></div>
+      <div><dt>Saved broker deductions</dt><dd>
+        @DispatchFinancialDisplay.Money(totals.BrokerDeductions, Currency)
+      </dd></div>
+      <div><dt>Saved invoice amount</dt><dd>
+        @DispatchFinancialDisplay.Money(totals.InvoiceAmount, Currency)
+      </dd></div>
+    </dl>
+  }
+  <p>Save changes to update totals. Quick Pay fees are not applied.</p>
+</section>

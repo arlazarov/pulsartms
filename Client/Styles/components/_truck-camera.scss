@@ -14,9 +14,29 @@
   background: ui.theme(surface);
   color: ui.theme(text);
   box-shadow: ui.shadow(modal);
-  &::backdrop { background: ui.theme(overlay, .35); }
-  header, footer { display: flex; align-items: center; justify-content: space-between; gap: ui.pg(md); }
-  footer { justify-content: flex-end; }
+  &::backdrop {
+    background: ui.theme(overlay, 0.35);
+  }
+  header,
+  footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: ui.pg(md);
+  }
+  header {
+    padding-bottom: ui.pg(sm);
+    border-bottom: 1px solid ui.theme(border-subtle);
+  }
+  header > strong {
+    @include ui.overlay-title;
+  }
+  header > button {
+    @include ui.icon-control;
+  }
+  footer {
+    justify-content: flex-end;
+  }
   &__spinner {
     display: inline-block;
     width: 14px;
@@ -25,12 +45,27 @@
     border: 2px solid currentColor;
     border-right-color: transparent;
     border-radius: 50%;
-    animation: camera-refresh-spin .8s linear infinite;
+    animation: camera-refresh-spin 0.8s linear infinite;
   }
-  img { display: block; width: 100%; height: auto; margin-top: ui.pg(md); border-radius: ui.radius(sm); }
-  p { margin: ui.pg(md) 0; font-size: ui.fs(body); }
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-top: ui.pg(md);
+    border-radius: ui.radius(sm);
+  }
+  p {
+    margin: ui.pg(md) 0;
+    font-size: ui.fs(body);
+  }
 }
-@keyframes camera-refresh-spin { to { transform: rotate(360deg); } }
+@keyframes camera-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .truck-camera__spinner { animation: none; }
+  .truck-camera__spinner {
+    animation: none;
+  }
 }

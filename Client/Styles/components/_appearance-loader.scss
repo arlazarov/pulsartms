@@ -1,0 +1,68 @@
+@use '../base' as ui;
+
+.appearance-loader {
+  display: grid;
+  place-items: center;
+  padding: ui.pg(section);
+  color: ui.theme(brand);
+
+  &--inline {
+    display: inline-grid;
+    vertical-align: middle;
+    padding: 0;
+    block-size: 1lh;
+  }
+
+  &__dots {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    padding-block: ui.pg(sm);
+
+    > span {
+      width: ui.pg(sm);
+      height: ui.pg(sm);
+      border-radius: ui.radius(pill);
+      background: currentColor;
+      animation: appearance-loading-pulse 1.2s ease-in-out infinite;
+
+      &:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+
+      &:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+    }
+  }
+}
+
+@keyframes appearance-loading-pulse {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+
+  30% {
+    opacity: 1;
+    transform: translateY(calc(0px - #{ui.pg(xs)}));
+  }
+}
+
+.loading-slot {
+  display: inline-flex;
+  flex: 0 0 auto;
+  visibility: hidden;
+
+  &.is-loading {
+    visibility: visible;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appearance-loader__dots > span {
+    animation: none;
+  }
+}

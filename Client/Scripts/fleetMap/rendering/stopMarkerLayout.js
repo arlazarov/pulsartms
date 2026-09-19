@@ -17,11 +17,18 @@ export function layoutStopMarkers(rows) {
   }
   for (const group of groups.values()) {
     if (group.length < 2) continue;
-    group.sort((a, b) => (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0));
+    group.sort(
+      (a, b) => (parseInt(a.number, 10) || 0) - (parseInt(b.number, 10) || 0),
+    );
     const width = metrics.stopBadgeDiameter + metrics.stopBadgeGap;
     group.forEach((row, index) => {
-      row.markerOffsetX = index === group.length - 1 && group.length % 2 ? 0 : (index % 2 ? 1 : -1) * width / 2;
-      row.markerOffsetY -= Math.floor(index / 2) * metrics.stopBadgeRowHeight;
+      const finalOdd = index === group.length - 1 && group.length % 2;
+      row.markerOffsetX = finalOdd ? 0 : ((index % 2 ? 1 : -1) * width) / 2;
+      const rowIndex = Math.floor(index / 2);
+      // The centered last badge forms an equilateral triangle with the pair below.
+      row.markerOffsetY -= finalOdd
+        ? (rowIndex - 1) * width + (Math.sqrt(3) * width) / 2
+        : rowIndex * width;
     });
   }
 }

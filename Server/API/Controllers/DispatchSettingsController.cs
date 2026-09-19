@@ -15,6 +15,8 @@ public sealed class DispatchSettingsController : BaseController
 
   [HttpPut]
   [Authorize(Policy = "Admin")]
-  public Task<IActionResult> Save(UpdateDispatchSettingsCommand request, CancellationToken cancellationToken) =>
-    HandleRequest(request, cancellationToken);
+  public Task<IActionResult> Save(
+    UpdateDispatchSettingsCommand request,
+    CancellationToken cancellationToken
+  ) => HandleRequest(request, cancellationToken);
 }

@@ -1,40 +1,136 @@
+using System.Text.Json;
 using Application.Caching;
+using Application.Features.Fuel.Services;
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Models;
 using Application.Features.Synchronization.Services;
 using Domain.Entities.Fleet;
-using System.Text.Json;
+using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Routing.Services.Routes;
 
-public sealed class TruckPlanningProfileService(IAppDbContext db, ReadCache reads, PlanningSettingsService settings)
+public sealed class TruckPlanningProfileService(
+  IAppDbContext db,
+  ReadCache reads,
+  PlanningSettingsService settings,
+  FuelExchangeRateService exchangeRates
+)
 {
-  public async Task<TruckRouteProfile> GetAsync(Guid truckId, CancellationToken ct)
+  public Task<TruckRouteProfile> GetAsync(Guid truckId, CancellationToken ct) =>
+    ReadAsync(truckId, ct, cached: true);
+
+  public Task<TruckRouteProfile> GetUncachedAsync(
+    Guid truckId,
+    CancellationToken ct
+  ) => ReadAsync(truckId, ct, cached: false);
+
+  private async Task<TruckRouteProfile> ReadAsync(
+    Guid truckId,
+    CancellationToken ct,
+    bool cached
+  )
   {
-    Task<TruckPlanningProfile?> Load() => db.TruckPlanningProfiles.AsNoTracking().SingleOrDefaultAsync(x => x.TruckId == truckId, ct);
-    var entity = await reads.GetAsync($"profile:{truckId}", "value", Load);
-    var profile = entity is null ? new() : JsonSerializer.Deserialize<TruckRouteProfile>(entity.SettingsJson, RoutePlanningService.Json) ?? new();
+    ct.ThrowIfCancellationRequested();
+    Task<TruckPlanningProfile?> Load() =>
+      db
+        .TruckPlanningProfiles.AsNoTracking()
+        .SingleOrDefaultAsync(x => x.TruckId == truckId, ct);
+    var entity = cached
+      ? await reads.GetAsync($"profile:{truckId}", "value", Load)
+      : await Load();
+    var profile = entity is null
+      ? new()
+      : JsonSerializer.Deserialize<TruckRouteProfile>(
+        entity.SettingsJson,
+        RoutePlanningService.Json
+      ) ?? new();
     profile.TrailerLengthFeet = TruckRouteProfile.StandardTrailerFeet;
     profile.LengthFeet = TruckRouteProfile.StandardTrailerFeet + 19;
     profile.UsesFleetDefaults = true;
     profile.Mpg = 235.214583 / 35;
     profile.TankGallons = FleetFuelDefaults.TankGallons;
-    (await settings.GetAsync(ct)).Preferences.ApplyTo(profile);
+    var preferences = cached
+      ? await settings.GetAsync(ct)
+      : await settings.GetUncachedAsync(ct);
+    preferences.Preferences.ApplyTo(profile);
+    var rate =
+      profile.CadToUsd.HasValue ? null
+      : cached ? await exchangeRates.ReadAsync(ct)
+      : await exchangeRates.ReadUncachedAsync(ct);
+    if (profile.CadToUsd is null && rate is not null)
+      profile.CadToUsd = (double)rate.UsdPerCad;
     return profile;
   }
 
-  public async Task<TruckRouteProfile> SaveAsync(Guid truckId, TruckRouteProfile profile, CancellationToken ct)
+  internal async Task RequireCurrentAsync(
+    Guid truckId,
+    TruckRouteProfile expected,
+    CancellationToken ct
+  )
   {
-    if (profile.Validate() is { } error) throw new RoutePlanningException(error);
-    var entity = await db.TruckPlanningProfiles.SingleOrDefaultAsync(x => x.TruckId == truckId, ct);
+    var current = await GetUncachedAsync(truckId, ct);
+    if (
+      JsonSerializer.Serialize(current, RoutePlanningService.Json)
+      != JsonSerializer.Serialize(expected, RoutePlanningService.Json)
+    )
+      throw new RoutePlanningException(
+        "Truck planning settings changed. Recalculate the plan."
+      );
+  }
+
+  internal Task RequireRoutingCurrentAsync(
+    Load load,
+    TruckRouteProfile expected,
+    CancellationToken ct
+  ) =>
+    RequireRoutingCurrentAsync(
+      RouteWorkProjection.Capture(load.TruckItinerary()),
+      expected,
+      ct
+    );
+
+  internal async Task RequireRoutingCurrentAsync(
+    RouteWorkSnapshot load,
+    TruckRouteProfile expected,
+    CancellationToken ct
+  )
+  {
+    var current = await GetUncachedAsync(load.TruckId ?? Guid.Empty, ct);
+    if (
+      RoutePlanningService.HashInputs(load, current)
+      != RoutePlanningService.HashInputs(load, expected)
+    )
+      throw new RoutePlanningException(
+        "Truck routing settings changed. Recalculate the plan."
+      );
+  }
+
+  internal async Task<TruckRouteProfile> SaveAsync(
+    Guid truckId,
+    TruckRouteProfile profile,
+    CancellationToken ct
+  )
+  {
+    if (db.Database.CurrentTransaction is null)
+      throw new InvalidOperationException(
+        "Profile writes require a planning publication transaction."
+      );
+    if (profile.Validate() is { } error)
+      throw new RoutePlanningException(error);
+    var entity = await db.TruckPlanningProfiles.SingleOrDefaultAsync(
+      x => x.TruckId == truckId,
+      ct
+    );
     if (entity is null)
     {
       entity = new() { Id = Guid.NewGuid(), TruckId = truckId };
       db.TruckPlanningProfiles.Add(entity);
     }
-    entity.SettingsJson = JsonSerializer.Serialize(profile, RoutePlanningService.Json);
+    entity.SettingsJson = JsonSerializer.Serialize(
+      profile,
+      RoutePlanningService.Json
+    );
     await db.SaveChangesAsync(ct);
-    Invalidate(truckId);
     return profile;
   }
 

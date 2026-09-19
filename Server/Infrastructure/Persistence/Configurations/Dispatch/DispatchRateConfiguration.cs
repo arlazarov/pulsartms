@@ -1,10 +1,12 @@
 using Domain.Entities.Dispatch;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 
 namespace Infrastructure.Persistence.Configurations.Dispatch;
 
-public sealed class DispatchRateConfiguration : IEntityTypeConfiguration<DispatchRate>
+public sealed class DispatchRateConfiguration
+  : IEntityTypeConfiguration<DispatchRate>
 {
   public void Configure(EntityTypeBuilder<DispatchRate> b)
   {
@@ -17,6 +19,9 @@ public sealed class DispatchRateConfiguration : IEntityTypeConfiguration<Dispatc
     b.Property(x => x.TotalRatePerMile).HasPrecision(18, 6);
     b.Property(x => x.Currency).HasMaxLength(10);
     b.Property(x => x.ConnectionHash).HasMaxLength(64);
-    b.HasOne<Domain.Entities.Dispatch.Dispatch>().WithMany().HasForeignKey(x => x.DispatchId).OnDelete(DeleteBehavior.Cascade);
+    b.HasOne<DispatchEntity>()
+      .WithMany()
+      .HasForeignKey(x => x.DispatchId)
+      .OnDelete(DeleteBehavior.Cascade);
   }
 }

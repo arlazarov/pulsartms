@@ -8,7 +8,10 @@ public interface IAuthService
     CancellationToken cancellationToken = default
   );
 
-  Task<bool> RefreshAsync(string refreshToken, CancellationToken cancellationToken = default);
+  Task<bool> RefreshAsync(
+    string refreshToken,
+    CancellationToken cancellationToken = default
+  );
 
   Task LogoutAsync();
 }

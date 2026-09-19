@@ -1,0 +1,37 @@
+<div class="stop-workspace__forecast">
+    @if (_completed)
+    {
+        @if (!Detailed)
+        {
+            <span class="stop-workspace__hint">✓ Completed</span>
+        }
+    }
+    else if (_driverOnly)
+    {
+        <span class="stop-workspace__hint">Driver only · No truck</span>
+    }
+    else if (DraftChanged)
+    {
+        @if (!Detailed)
+        {
+            <span class="stop-workspace__hint">ETA updates after save</span>
+        }
+    }
+    else if (_eta is not null)
+    {
+        <ArrivalEstimate Stop="_stop" Eta="_eta" DispatchId="Load.Id"
+                         ShowAppointment="false" ShowDutyStatus="false"
+                         ShowSummary="@(!Detailed)" ShowDetails="Detailed" />
+        @if (Detailed && LegacyCycle?.RemainingMinutes is >= 0)
+        {
+            <p class="stop-workspace__legacy-cycle">
+                <span>Cycle after stop</span>
+                <strong>@DispatchCycleDisplay.Remaining(LegacyCycle)</strong>
+            </p>
+        }
+    }
+    else if (!Detailed)
+    {
+        <span class="stop-workspace__hint">ETA —</span>
+    }
+</div>

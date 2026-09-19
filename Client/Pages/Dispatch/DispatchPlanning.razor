@@ -11,7 +11,7 @@
             @if (DisplayResult?.State?.FuelPercent is { } percent) { <span class="dispatch-planning__fuel"><FuelReading Percent="percent" /></span> }
         </div>
     </div>
-    @if (_loading && _result is null) { <p role="status">Loading saved route…</p> }
+    @if (_loading && _result is null) { <p role="status"><LoadingIndicator /></p> }
     @if (ShowRefreshError) { <p class="dispatch-planning__hint" role="status">@RouteMessageDisplay.Concise(_error)</p> }
     @if (DisplayMessage is { } message) { <p class="dispatch-planning__hint" role="status">@message</p> }
     @if (DisplayResult?.State is { Plan: { } plan } state)
@@ -19,9 +19,9 @@
         @foreach (var warning in plan.Route.Warnings)
         { <p class="dispatch-planning__hint" role="status">@RouteMessageDisplay.Concise(warning)</p> }
         <div class="dispatch-planning__metrics" role="group" aria-label="Route distances">
-            <div class="dispatch-planning__metric"><span>Total Distance</span><strong><span class="dispatch-planning__miles">@plan.OriginalPlannedMiles.ToString("N0") mi</span><br /><small>@((plan.OriginalPlannedMiles * 1.609344).ToString("N0")) km</small></strong></div>
-            <div class="dispatch-planning__metric"><span>Remaining</span><strong><span class="dispatch-planning__miles">@(state.Progress?.RemainingMiles?.ToString("N0") ?? "—") mi</span><br /><small>@((state.Progress?.RemainingMiles * 1.609344)?.ToString("N0") ?? "—") km</small></strong></div>
-            <div class="dispatch-planning__metric dispatch-planning__next-distance"><span>Next Stop</span><strong><span class="dispatch-planning__miles">@(plan.RemainingToNextStop(state.Progress?.ProgressMiles)?.ToString("N0") ?? "—") mi</span><br /><small>@((plan.RemainingToNextStop(state.Progress?.ProgressMiles) * 1.609344)?.ToString("N0") ?? "—") km</small></strong></div>
+            <div class="dispatch-planning__metric"><span>Total Distance</span><strong><span class="dispatch-planning__miles">@Units.DistanceValue(plan.OriginalPlannedMiles) @Units.DistanceUnit</span>@if (Units.BothDistances) { <br /><small>@Units.Kilometers(plan.OriginalPlannedMiles) km</small> }</strong></div>
+            <div class="dispatch-planning__metric"><span>Remaining</span><strong><span class="dispatch-planning__miles">@Units.DistanceValue(state.Progress?.RemainingMiles) @Units.DistanceUnit</span>@if (Units.BothDistances) { <br /><small>@Units.Kilometers(state.Progress?.RemainingMiles) km</small> }</strong></div>
+            <div class="dispatch-planning__metric dispatch-planning__next-distance"><span>Next Stop</span><strong><span class="dispatch-planning__miles">@Units.DistanceValue(plan.RemainingToNextStop(state.Progress?.ProgressMiles)) @Units.DistanceUnit</span>@if (Units.BothDistances) { <br /><small>@Units.Kilometers(plan.RemainingToNextStop(state.Progress?.ProgressMiles)) km</small> }</strong></div>
             @if (state.Progress?.OffRoute == true) { <span class="dispatch-planning__hint">Off planned route</span> }
         </div>
         @if (!Compact)

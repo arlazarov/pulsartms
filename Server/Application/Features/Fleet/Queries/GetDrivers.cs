@@ -2,9 +2,16 @@ using Application.Models;
 
 namespace Application.Features.Fleet.Queries;
 
-public record GetDriversQuery : IRequest<RequestResponse<ListResult<DriverDto>>>;
+public record GetDriversQuery
+  : IRequest<RequestResponse<ListResult<DriverDto>>>;
 
-public record DriverDto(Guid Id, string ExternalId, string Name, string FuelCard, bool IsActive);
+public record DriverDto(
+  Guid Id,
+  string ExternalId,
+  string Name,
+  string FuelCard,
+  bool IsActive
+);
 
 public class GetDriversHandler(IAppDbContext dbContext)
   : IRequestHandler<GetDriversQuery, RequestResponse<ListResult<DriverDto>>>
@@ -17,7 +24,13 @@ public class GetDriversHandler(IAppDbContext dbContext)
     var items = await dbContext
       .Drivers.AsNoTracking()
       .OrderBy(x => x.Name)
-      .Select(x => new DriverDto(x.Id, x.ExternalId, x.Name, x.FuelCard, x.IsActive))
+      .Select(x => new DriverDto(
+        x.Id,
+        x.ExternalId,
+        x.Name,
+        x.FuelCard,
+        x.IsActive
+      ))
       .ToListAsync(cancellationToken);
 
     return RequestResponse<ListResult<DriverDto>>.Ok(

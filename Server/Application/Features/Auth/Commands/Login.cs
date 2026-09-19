@@ -12,7 +12,8 @@ public class LoginValidator : AbstractValidator<LoginCommand>
   }
 }
 
-public record LoginCommand(string Email, string Password) : IRequest<RequestResponse<bool>>;
+public record LoginCommand(string Email, string Password)
+  : IRequest<RequestResponse<bool>>;
 
 public class LoginHandler(IAuthService authService)
   : IRequestHandler<LoginCommand, RequestResponse<bool>>
@@ -22,7 +23,11 @@ public class LoginHandler(IAuthService authService)
     CancellationToken cancellationToken
   )
   {
-    var success = await authService.LoginAsync(request.Email, request.Password, cancellationToken);
+    var success = await authService.LoginAsync(
+      request.Email,
+      request.Password,
+      cancellationToken
+    );
 
     return success
       ? RequestResponse<bool>.Ok(true)

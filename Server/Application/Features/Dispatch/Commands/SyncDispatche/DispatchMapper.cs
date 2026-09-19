@@ -1,13 +1,14 @@
 using Application.Features.Dispatch.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
+using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Dispatch.Commands.SyncDispatche;
 
 public static class DispatchMapper
 {
   public static void Update(
-    Domain.Entities.Dispatch.Dispatch dispatch,
+    DispatchEntity dispatch,
     ExternalDispatch source,
     Customer? customer,
     Driver? driver,
@@ -38,7 +39,6 @@ public static class DispatchMapper
     dispatch.LoadedMiles = source.LoadedMiles;
     dispatch.Price = source.Price;
     dispatch.Currency = source.Currency;
-
   }
 
   public static DispatchStop CreateStop(
@@ -54,12 +54,25 @@ public static class DispatchMapper
     return stop;
   }
 
-  public static void UpdateStop(DispatchStop stop, ExternalDispatchStop source, Driver? driver, Driver? coDriver, Truck? truck, Trailer? trailer)
+  public static void UpdateStop(
+    DispatchStop stop,
+    ExternalDispatchStop source,
+    Driver? driver,
+    Driver? coDriver,
+    Truck? truck,
+    Trailer? trailer
+  )
   {
     stop.Sequence = source.Sequence;
     stop.Job = source.Job;
     stop.Name = source.Name;
-    var address = new StopAddress(source.Address, source.City, source.Province, source.Country, source.ZipCode);
+    var address = new StopAddress(
+      source.Address,
+      source.City,
+      source.Province,
+      source.Country,
+      source.ZipCode
+    );
     var sourceJson = address.Serialize();
     if (stop.SourceAddressJson != sourceJson)
     {

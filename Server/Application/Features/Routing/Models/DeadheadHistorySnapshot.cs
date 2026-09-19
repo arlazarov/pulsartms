@@ -1,5 +1,14 @@
-using Load = Domain.Entities.Dispatch.Dispatch;
+using System.Collections.Immutable;
 
 namespace Application.Features.Routing.Models;
 
-public sealed record DeadheadHistorySnapshot(Load Current, IReadOnlyList<Load> Predecessors, bool HasUnknownStart);
+public sealed record DeadheadHistoryBatch(
+  ImmutableArray<DeadheadHistorySnapshot> Snapshots
+);
+
+public sealed record DeadheadHistorySnapshot(
+  RouteWorkSnapshot Current,
+  ImmutableArray<RouteWorkSnapshot> Predecessors,
+  bool HasUnknownStart,
+  string InputSignature
+);

@@ -24,12 +24,22 @@ public sealed class SavedRouteReaderTests
   [Fact]
   public void CompleteGeometryIsValidatedForItsExpectedLegCount()
   {
-    var route = new TruckRoute { Miles = 10, Seconds = 100, Legs = [new(10, 100, [new(40, -80), new(41, -79)])] };
+    var route = new TruckRoute
+    {
+      Miles = 10,
+      Seconds = 100,
+      Legs = [new(10, 100, [new(40, -80), new(41, -79)])],
+    };
     var json = JsonSerializer.Serialize(route, RoutePlanningService.Json);
     Assert.NotNull(SavedRouteReader.Route(json, 1));
     Assert.Null(SavedRouteReader.Route(json, 2));
     route.Legs[0].Points[0] = new(91, -80);
-    Assert.Null(SavedRouteReader.Route(JsonSerializer.Serialize(route, RoutePlanningService.Json), 1));
+    Assert.Null(
+      SavedRouteReader.Route(
+        JsonSerializer.Serialize(route, RoutePlanningService.Json),
+        1
+      )
+    );
     Assert.Null(SavedRouteReader.Plan("{"));
   }
 }

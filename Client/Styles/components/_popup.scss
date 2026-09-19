@@ -49,12 +49,8 @@ html.popup-open {
   }
 
   &__title {
+    @include ui.overlay-title;
     margin-bottom: ui.pg(md);
-
-    color: ui.theme(text);
-
-    font-size: ui.fs(lead);
-    font-weight: 600;
   }
 
   &__body {

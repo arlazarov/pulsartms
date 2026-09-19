@@ -9,6 +9,7 @@ public class SamsaraVehicleAssignment
   public string AssignmentType { get; set; } = string.Empty;
   public bool IsPassenger { get; set; }
   public DateTime StartTime { get; set; }
+
   [JsonConverter(typeof(OptionalSamsaraTimeConverter))]
   public DateTime? EndTime { get; set; }
 }
@@ -24,6 +25,7 @@ public class SamsaraTrailerAssignment
   public SamsaraTrailerAssignmentDriver Driver { get; set; } = new();
   public SamsaraTrailerAssignmentTrailer Trailer { get; set; } = new();
   public DateTime StartTime { get; set; }
+
   [JsonConverter(typeof(OptionalSamsaraTimeConverter))]
   public DateTime? EndTime { get; set; }
 }

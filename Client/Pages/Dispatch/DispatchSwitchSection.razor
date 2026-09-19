@@ -1,0 +1,96 @@
+<AuthorizeView Roles="Admin,Dispatch">
+    @if (!Contextual || _expanded)
+    {
+    <section class="dispatch-switch" aria-labelledby="@(Id + "-title")">
+        <header class="dispatch-switch__heading">
+            <h2 id="@(Id + "-title")" @ref="_heading" tabindex="-1">
+                @(Contextual ? "Transfer at selected stop" : "Switch")
+            </h2>
+            <button class="btn btn--small" type="button"
+                    aria-expanded="@(_expanded ? "true" : "false")"
+                    aria-controls="@(Id + "-body")"
+                    disabled="@(Busy || Editing)" @onclick="ToggleAsync">
+                @(Contextual ? "Close" : _expanded
+                    ? "Hide Switch" : "Manage Switch")
+            </button>
+        </header>
+        @if (_expanded)
+        {
+            <div id="@(Id + "-body")" class="dispatch-switch__body">
+                <p class="dispatch-switch__hint">
+                    Plan changes of truck, trailer custody or drivers here.
+                    Drop and Hook are confirmed separately, even on different
+                    days; one participant never confirms the other.
+                </p>
+                @if (_notice is not null)
+                {
+                    <p role="status">@_notice</p>
+                }
+                @if (_reading)
+                {
+                    <p role="status"><LoadingIndicator /></p>
+                }
+                @if (_error is not null)
+                {
+                    <p class="dispatch-switch__error" role="alert">@_error</p>
+                }
+                @if (_workspace is not null)
+                {
+                    @foreach (var load in _workspace.Loads.Where(x =>
+                        x.SourceReviewReason is not null
+                        && !HasOperationReview(x)))
+                    {
+                        <SwitchSourceReview
+                            @key="(load.DispatchId, load.OutgoingLegId,
+                                load.ExpectedOutgoingRevision)"
+                            DispatchId="load.DispatchId"
+                            ExecutionLegId="load.OutgoingLegId"
+                            Reason="@(load.SourceReviewReason!)"
+                            Locked="@(Busy || _planning
+                                || _openOperation.HasValue)"
+                            BusyChanged="SetBusy" EditingChanged="SetReview"
+                            Accepted="SourceAcceptedAsync" />
+                    }
+                    @if (_planning)
+                    {
+                        <SwitchPlanEditor @key="DispatchId"
+                            DispatchId="DispatchId" Workspace="_workspace"
+                            AfterStopId="_anchorId" TransferKind="_transferKind"
+                            Saved="SavedAsync" Cancelled="CancelPlan"
+                            BusyChanged="SetBusy" />
+                    }
+                    else if (!Contextual)
+                    {
+                        <button class="btn btn--primary" type="button"
+                                disabled="@(Busy || Editing
+                                    || _pendingRefresh.HasValue)"
+                                @onclick="BeginPlanAsync">Plan a Switch</button>
+                    }
+                    @foreach (var operation in VisibleOperations)
+                    {
+                        <SwitchOperationCard
+                            @key="(operation.Id, operation.Revision)"
+                            Operation="operation" Drivers="_workspace.Drivers"
+                            Locked="@(Busy || _planning || _reviewing
+                                || _openOperation.HasValue
+                                    && _openOperation != operation.Id)"
+                            Updated="SavedAsync" BusyChanged="SetBusy"
+                            EditorChanged="SetEditor"
+                            SourceUpdated="SourceAcceptedAsync" />
+                    }
+                    @if (_operations.Count == 0 && !_pendingRefresh.HasValue)
+                    {
+                        <p class="dispatch-switch__hint">
+                            No Switch has been recorded for this load.
+                        </p>
+                    }
+                }
+                <button class="btn btn--small" type="button"
+                        disabled="@(Busy || Editing)" @onclick="RetryAsync">
+                    Refresh Switch
+                </button>
+            </div>
+        }
+    </section>
+    }
+</AuthorizeView>

@@ -16,8 +16,15 @@ public static class SavedRouteReader
 
   private static T? Read<T>(string? json)
   {
-    if (string.IsNullOrWhiteSpace(json)) return default;
-    try { return JsonSerializer.Deserialize<T>(json, RoutePlanningService.Json); }
-    catch (JsonException) { return default; }
+    if (string.IsNullOrWhiteSpace(json))
+      return default;
+    try
+    {
+      return JsonSerializer.Deserialize<T>(json, RoutePlanningService.Json);
+    }
+    catch (JsonException)
+    {
+      return default;
+    }
   }
 }

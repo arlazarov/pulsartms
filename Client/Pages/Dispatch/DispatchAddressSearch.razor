@@ -1,0 +1,12 @@
+@implements IDisposable
+
+<AddressAutocomplete Id="@Id" Disabled="@(Disabled || _loading)"
+                     Selected="SelectAsync" />
+@if (_loading)
+{
+  <LoadingIndicator />
+}
+@if (_error is not null)
+{
+  <p class="stop-workspace__error" role="alert">@_error</p>
+}

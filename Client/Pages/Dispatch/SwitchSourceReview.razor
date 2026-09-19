@@ -1,0 +1,94 @@
+<section class="dispatch-switch__editor">
+    @if (_saved)
+    {
+        <p role="status">
+            Source changes accepted. Refresh Switch if its details are stale;
+            do not submit this acceptance again.
+        </p>
+    }
+    else
+    {
+        <p class="dispatch-switch__hint">@Reason</p>
+        @if (ExecutionLegId.HasValue && !_opened)
+        {
+            <button class="btn btn--small" type="button" disabled="@Locked"
+                    @onclick="PreviewAsync">Review source changes</button>
+        }
+        @if (_opened)
+        {
+            <h4>Review imported changes</h4>
+            <p class="dispatch-switch__hint">
+                Only the shown future location and appointment changes can be
+                accepted. Assignments, transfer boundaries and recorded events
+                remain unchanged. Appointments use the source stop's local time.
+            </p>
+            @if (_review is not null)
+            {
+                @foreach (var problem in _review.Problems)
+                {
+                    <p class="dispatch-switch__error">@problem</p>
+                }
+                @foreach (var change in _review.Changes)
+                {
+                    <div class="dispatch-switch__comparison">
+                        <div>
+                            <strong>Before · Stop @change.Before.Sequence</strong>
+                            <p>@change.Before.Job · @change.Before.Name</p>
+                            <p>@change.Before.Address</p>
+                            <p>Appointment @Schedule(change.Before)</p>
+                            <p class="dispatch-switch__hint">
+                                Coordinates: @change.Before.Latitude,
+                                @change.Before.Longitude
+                            </p>
+                        </div>
+                        <div>
+                            <strong>After · Stop @change.After.Sequence</strong>
+                            <p>@change.After.Job · @change.After.Name</p>
+                            <p>@change.After.Address</p>
+                            <p>Appointment @Schedule(change.After)</p>
+                            <p class="dispatch-switch__hint">
+                                Coordinates: @change.After.Latitude,
+                                @change.After.Longitude
+                            </p>
+                        </div>
+                    </div>
+                }
+            }
+            @if (_error is not null)
+            {
+                <p class="dispatch-switch__error" role="alert">@_error</p>
+                @if (_request is not null)
+                {
+                    <p class="dispatch-switch__hint">
+                        @(_conflict
+                            ? "The source changed. Cancel and review it again."
+                            : "Retry keeps the same change and request key. "
+                                + "After closing, inspect current details "
+                                + "before another acceptance.")
+                    </p>
+                }
+            }
+            <div class="dispatch-switch__actions">
+                @if (_review is { CanApply: true })
+                {
+                    <button class="btn btn--primary" type="button"
+                            disabled="@(_busy || Locked || _conflict)"
+                            @onclick="AcceptAsync">
+                        @(_busy ? "Saving…" : _request is null
+                            ? "Accept shown changes" : "Retry same acceptance")
+                    </button>
+                }
+                else if (_review is null)
+                {
+                    <button class="btn btn--small" type="button"
+                            disabled="@(_busy || Locked)"
+                            @onclick="PreviewAsync">
+                        Retry preview
+                    </button>
+                }
+                <button class="btn" type="button" disabled="@_busy"
+                        @onclick="CancelAsync">Cancel review</button>
+            </div>
+        }
+    }
+</section>

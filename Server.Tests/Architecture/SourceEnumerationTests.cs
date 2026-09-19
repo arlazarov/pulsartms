@@ -9,16 +9,38 @@ public sealed class SourceEnumerationTests
   [Fact]
   public void ArchitectureScansExcludeBuildArtifactsAndDependenciesBeforeRecursing()
   {
-    var directory = Path.Combine(Path.GetTempPath(), "amftms-source-scan-" + Guid.NewGuid().ToString("N"));
+    var directory = Path.Combine(
+      Path.GetTempPath(),
+      "pulsartms-source-scan-" + Guid.NewGuid().ToString("N")
+    );
     try
     {
-      foreach (var name in new[] { "source", "bin", "obj", "node_modules", ".git", ".cache", "artifacts", "test-results" })
+      foreach (
+        var name in new[]
+        {
+          "source",
+          "bin",
+          "obj",
+          "node_modules",
+          ".git",
+          ".cache",
+          "artifacts",
+          "test-results",
+        }
+      )
       {
         var child = Directory.CreateDirectory(Path.Combine(directory, name));
         File.WriteAllText(Path.Combine(child.FullName, "example.cs"), "");
       }
-      Assert.Equal([Path.Combine(directory, "source", "example.cs")], RepositoryFiles.Sources(directory, "*.cs").ToArray());
+      Assert.Equal(
+        [Path.Combine(directory, "source", "example.cs")],
+        RepositoryFiles.Sources(directory, "*.cs").ToArray()
+      );
     }
-    finally { if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true); }
+    finally
+    {
+      if (Directory.Exists(directory))
+        Directory.Delete(directory, recursive: true);
+    }
   }
 }

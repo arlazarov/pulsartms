@@ -22,6 +22,108 @@ namespace Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Domain.Entities.Border.BorderCrossing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly?>("ArrivalDate")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly?>("ArrivalTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<string>("ArrivalTimeZone")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("CanadianCarrierCode")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("CarrierName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("DestinationCountry")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<bool>("EmptyConveyance")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PortOfEntry")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Scac")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("SourceLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long?>("SourceRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("SourceStopId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BorderCrossings");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Border.BorderSaveReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CrossingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ProtectedResponse")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CrossingId");
+
+                    b.ToTable("BorderSaveReceipts");
+                });
+
             modelBuilder.Entity("Domain.Entities.Dispatch.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -37,6 +139,16 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ProfileJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("{}");
+
+                    b.Property<long>("ProfileRevision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -102,9 +214,29 @@ namespace Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<DateTime?>("PlanningAssignmentRecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PlanningAssignmentRecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("PlanningAssignmentRevision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("PlanningFromStopId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PlanningTruckId")
+                        .HasColumnType("uuid");
+
                     b.Property<decimal?>("Price")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<long>("RouteChoiceRevision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
 
                     b.Property<DateOnly?>("ShipDate")
                         .HasColumnType("date");
@@ -139,11 +271,110 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasIndex("LoadNumber")
                         .IsUnique();
 
+                    b.HasIndex("PlanningTruckId");
+
                     b.HasIndex("TrailerId");
 
                     b.HasIndex("TruckId");
 
                     b.ToTable("Dispatches");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchActivityEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("AddOperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreatedRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DriverName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<bool>("NeedsAttention")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ResolveOperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ResolvedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ResolvedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("StopId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StopLabel")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DispatchId", "AddOperationId")
+                        .IsUnique();
+
+                    b.HasIndex("DispatchId", "CreatedRevision")
+                        .IsUnique();
+
+                    b.HasIndex("DispatchId", "NeedsAttention", "ResolvedAt", "CreatedRevision");
+
+                    b.ToTable("DispatchActivityEntries");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchActivityThread", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DispatchActivityThreads");
                 });
 
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchBaseRoute", b =>
@@ -158,6 +389,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid>("DispatchId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("InputHash")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -170,7 +404,12 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DispatchId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"ExecutionLegId\" IS NULL");
+
+                    b.HasIndex("ExecutionLegId")
+                        .IsUnique()
+                        .HasFilter("\"ExecutionLegId\" IS NOT NULL");
 
                     b.ToTable("DispatchBaseRoutes");
                 });
@@ -190,6 +429,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<string>("ErrorMessage")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("InputHash")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -202,6 +444,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid>("PreviousDispatchId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("PreviousExecutionLegId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("RetryAfter")
                         .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone");
@@ -212,9 +457,70 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DispatchId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"ExecutionLegId\" IS NULL");
+
+                    b.HasIndex("ExecutionLegId")
+                        .IsUnique()
+                        .HasFilter("\"ExecutionLegId\" IS NOT NULL");
+
+                    b.HasIndex("PreviousExecutionLegId");
 
                     b.ToTable("DispatchDeadheads");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("Length")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DispatchId", "RecordedAt");
+
+                    b.ToTable("DispatchDocuments");
                 });
 
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchEtaForecast", b =>
@@ -222,6 +528,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<long>("AssignmentRevision")
+                        .HasColumnType("bigint");
 
                     b.Property<DateTime>("CalculatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -233,6 +542,9 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<Guid?>("ExecutionLegId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("ForecastJson")
                         .IsRequired()
@@ -246,6 +558,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid>("RootDispatchId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("RootExecutionLegId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("TruckId")
                         .HasColumnType("uuid");
 
@@ -255,13 +570,35 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DispatchId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"ExecutionLegId\" IS NULL");
+
+                    b.HasIndex("ExecutionLegId")
+                        .IsUnique()
+                        .HasFilter("\"ExecutionLegId\" IS NOT NULL");
 
                     b.HasIndex("RootDispatchId");
+
+                    b.HasIndex("RootExecutionLegId");
 
                     b.HasIndex("TruckId");
 
                     b.ToTable("DispatchEtaForecasts", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchNumberCounter", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<long>("NextNumber")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DispatchNumberCounters");
                 });
 
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchRate", b =>
@@ -314,16 +651,66 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("DispatchRates");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchRouteChoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChoiceJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("InputHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DispatchId")
+                        .IsUnique()
+                        .HasFilter("\"ExecutionLegId\" IS NULL");
+
+                    b.HasIndex("ExecutionLegId")
+                        .IsUnique()
+                        .HasFilter("\"ExecutionLegId\" IS NOT NULL");
+
+                    b.ToTable("DispatchRouteChoices");
+                });
+
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchRoutePlan", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<long>("AssignmentRevision")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ExecutionLegId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("InputHash")
@@ -342,11 +729,44 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DispatchId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"ExecutionLegId\" IS NULL");
+
+                    b.HasIndex("ExecutionLegId")
+                        .IsUnique()
+                        .HasFilter("\"ExecutionLegId\" IS NOT NULL");
 
                     b.HasIndex("TruckId");
 
                     b.ToTable("DispatchRoutePlans");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchRoutePreview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DraftJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PreviewId")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecutionLegId");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.ToTable("DispatchRoutePreviews");
                 });
 
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchSettings", b =>
@@ -354,6 +774,13 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("DistanceUnit")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("both");
 
                     b.Property<string>("LoadNumberPrefix")
                         .IsRequired()
@@ -364,12 +791,58 @@ namespace Infrastructure.Persistence.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
+                    b.Property<string>("TemperatureUnit")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("both");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
                     b.ToTable("DispatchSettings");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchSourceLink", b =>
+                {
+                    b.Property<string>("Provider")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("AssignmentProposalJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("AssignmentSignature")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ExecutionReviewReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Provider", "ExternalId");
+
+                    b.HasIndex("DispatchId")
+                        .IsUnique();
+
+                    b.ToTable("DispatchSourceLinks");
                 });
 
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchStop", b =>
@@ -388,6 +861,11 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime?>("AddressVerifiedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AppointmentTimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<DateTime?>("ArrivedAt")
                         .HasColumnType("timestamp with time zone");
@@ -413,6 +891,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<string>("Commodity")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool?>("CompletionOverride")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Country")
                         .IsRequired()
@@ -452,6 +933,31 @@ namespace Infrastructure.Persistence.Migrations
                         .HasPrecision(10, 7)
                         .HasColumnType("numeric(10,7)");
 
+                    b.Property<string>("ManualAction")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("ManualCompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ManualCompletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ManualCompletedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("ManualCompletionRecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("ManualCompletionRevision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ManualStateAfter")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -460,6 +966,16 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<string>("Notes")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("OperationRecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("OperationRecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("OperationRevision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
 
                     b.Property<decimal?>("Pallets")
                         .HasPrecision(18, 2)
@@ -559,6 +1075,202 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("DispatchStops");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchStopCompletionEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("StopId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StopId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("DispatchStopCompletionEvents");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchWorkspace", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MetadataJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("OwnsCommercial")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("OwnsStops")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceCommercialJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SourceReviewReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("SourceStopsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("StopExtrasJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("DispatchWorkspaces");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchWorkspaceRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("BeforeJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("DispatchId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("DispatchWorkspaceRevisions");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.PlanningInputRevision", b =>
+                {
+                    b.Property<Guid>("TruckId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("TruckId");
+
+                    b.ToTable("PlanningInputRevisions");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.PlanningRefreshRequest", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<long>("AssignmentRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("AvailableAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("CompletedVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("InputSignature")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("LeaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("RequestedVersion")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestedAt");
+
+                    b.HasIndex("AvailableAt", "LeaseUntil");
+
+                    b.ToTable("PlanningRefreshRequests");
+                });
+
             modelBuilder.Entity("Domain.Entities.Dispatch.RouteRecalculationAttempt", b =>
                 {
                     b.Property<Guid>("Id")
@@ -621,11 +1333,788 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("RoutingApiCalls");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Dispatch.SourceRoadRequest", b =>
+                {
+                    b.Property<Guid>("DispatchId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("AvailableAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("CompletedVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("DemandIdentity")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Explicit")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("InputSignature")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("LeaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("RequestedVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("TruckId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("DispatchId");
+
+                    b.HasIndex("RequestedAt");
+
+                    b.HasIndex("Priority", "AvailableAt", "LeaseUntil");
+
+                    b.ToTable("SourceRoadRequests");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.DispatchSwitchOperation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CompletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Latitude")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Longitude")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime?>("PlannedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SiteName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("DispatchSwitchOperations");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.ExecutionActionReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ParticipantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ResultJson")
+                        .IsRequired()
+                        .HasMaxLength(65536)
+                        .HasColumnType("character varying(65536)");
+
+                    b.Property<Guid>("SwitchId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("ParticipantId");
+
+                    b.HasIndex("SwitchId");
+
+                    b.ToTable("ExecutionActionReceipts");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.ExecutionLeg", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CoDriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("EndSwitchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("RouteChoiceRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SourceAssignmentSignature")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SourceObservedSignature")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SourceReviewReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("SourceSignature")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("StartSwitchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("TrailerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TripId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TruckId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CoDriverId");
+
+                    b.HasIndex("DriverId");
+
+                    b.HasIndex("EndSwitchId");
+
+                    b.HasIndex("StartSwitchId");
+
+                    b.HasIndex("TrailerId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 'active' AND \"TrailerId\" IS NOT NULL");
+
+                    b.HasIndex("TripId");
+
+                    b.HasIndex("TruckId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 'active'");
+
+                    b.HasIndex("TruckId", "Status");
+
+                    b.ToTable("ExecutionLegs");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.ExecutionLegRevision", b =>
+                {
+                    b.Property<Guid>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("CorrelationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TruckId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("ExecutionLegId", "Revision");
+
+                    b.HasIndex("CorrelationId");
+
+                    b.HasIndex("TruckId", "RecordedAt");
+
+                    b.ToTable("ExecutionLegRevisions");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.ExecutionLegStop", b =>
+                {
+                    b.Property<Guid>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("AddressRetryAfter")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("AddressVerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AppointmentTimeZoneId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ArrivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CarrierName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("CoDriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CoDriverName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Commodity")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool?>("CompletionOverride")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DeliveredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DepartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DriverName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("ExecutionCompleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("HasDriverOverride")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsWindow")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Job")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime?>("ManualCompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ManualCompletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ManualCompletedByName")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ManualCompletionRecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("ManualCompletionRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("OperationRecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("OperationRecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("OperationRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal?>("Pallets")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime?>("PickedUpAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("Pieces")
+                        .HasColumnType("numeric");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Province")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly?>("ScheduledDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ScheduledDate2")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly?>("ScheduledTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly?>("ScheduledTime2")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<string>("SourceAddressJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("SourceDispatchStopId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StateAfter")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("StopNo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Temperature")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TemperatureUnit")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TrailerNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("Weight")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("WeightUnit")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ZipCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("ExecutionLegId", "Id");
+
+                    b.HasIndex("DispatchId");
+
+                    b.HasIndex("ExecutionLegId", "Position");
+
+                    b.ToTable("ExecutionLegStops", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.ExecutionPlanningChange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("AssignmentRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("AvailableAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LeaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("MileageOnly")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TruckId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompletedAt");
+
+                    b.HasIndex("AvailableAt", "LeaseUntil")
+                        .HasFilter("\"CompletedAt\" IS NULL");
+
+                    b.HasIndex("ExecutionLegId", "AssignmentRevision", "DispatchId");
+
+                    b.ToTable("ExecutionPlanningChanges");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.ExecutionSourceReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ResultJson")
+                        .IsRequired()
+                        .HasMaxLength(65536)
+                        .HasColumnType("character varying(65536)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecutionLegId");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("ExecutionSourceReceipts");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.LoadExecutionLeg", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EndVisitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("StartVisitId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecutionLegId");
+
+                    b.HasIndex("DispatchId", "ExecutionLegId")
+                        .IsUnique();
+
+                    b.HasIndex("DispatchId", "Sequence")
+                        .IsUnique();
+
+                    b.ToTable("LoadExecutionLegs");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.SwitchParticipant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("IncomingLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("OutgoingLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OutgoingRestoreJson")
+                        .IsRequired()
+                        .HasMaxLength(4194304)
+                        .HasColumnType("character varying(4194304)");
+
+                    b.Property<DateTime?>("PlannedReceiveAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("PlannedReleaseAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ReceiveVisitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReceivedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ReleaseVisitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReleasedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("SwitchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TransferKind")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DispatchId");
+
+                    b.HasIndex("IncomingLegId")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsCancelled\"");
+
+                    b.HasIndex("OutgoingLegId")
+                        .IsUnique()
+                        .HasFilter("NOT \"IsCancelled\"");
+
+                    b.HasIndex("SwitchId", "DispatchId")
+                        .IsUnique();
+
+                    b.ToTable("SwitchParticipants");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.TrailerCustodyInterval", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ParticipantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ReceiveVisitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReceivedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ReleaseVisitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ReleasedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TrailerId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParticipantId")
+                        .IsUnique();
+
+                    b.HasIndex("TrailerId")
+                        .IsUnique()
+                        .HasFilter("\"ReceivedBy\" IS NULL");
+
+                    b.ToTable("TrailerCustodyIntervals");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.Trip", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Trips");
+                });
+
             modelBuilder.Entity("Domain.Entities.Fleet.Driver", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<long>("ConfigurationRevision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ConfiguredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConfiguredBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("ExternalId")
                         .IsRequired()
@@ -637,7 +2126,21 @@ namespace Infrastructure.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<string>("ImportedFuelCard")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool?>("ImportedIsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ImportedName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsLocallyConfigured")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
@@ -709,12 +2212,33 @@ namespace Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<long>("ConfigurationRevision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ConfiguredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConfiguredBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<string>("ExternalId")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool?>("ImportedIsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ImportedVin")
+                        .HasMaxLength(17)
+                        .HasColumnType("character varying(17)");
+
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsLocallyConfigured")
                         .HasColumnType("boolean");
 
                     b.Property<string>("UnitNumber")
@@ -744,6 +2268,17 @@ namespace Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<long>("ConfigurationRevision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ConfiguredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConfiguredBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<Guid?>("DriverId")
                         .HasColumnType("uuid");
 
@@ -752,7 +2287,17 @@ namespace Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool?>("ImportedIsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("ImportedVin")
+                        .HasMaxLength(17)
+                        .HasColumnType("character varying(17)");
+
                     b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsLocallyConfigured")
                         .HasColumnType("boolean");
 
                     b.Property<Guid?>("TrailerId")
@@ -1081,11 +2626,557 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("IntegrationCredentialSettings", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entities.Mileage.MileageAllocationPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Home")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Maintenance")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Reposition")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("YardReturn")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MileageAllocationPolicies");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Mileage.MileageCaptureGap", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TruckId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExecutionLegId", "EndedAt");
+
+                    b.HasIndex("TruckId", "EndedAt");
+
+                    b.ToTable("MileageCaptureGaps");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Mileage.Movement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ActualAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ActualEvidenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("ActualMiles")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("ActualSource")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ActualSourceReference")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid?>("AllocatedDispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AllocationReason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("AllocationTarget")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("CargoState")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid?>("CarriedDispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CoDriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FromLocation")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("FromVisitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("ManualOverride")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("NextDispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime?>("PlannedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PlannedEvidenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("PlannedMiles")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("PlannedSource")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PlannedSourceReference")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<bool>("PlannedSuperseded")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("PolicyRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("PreviousDispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ToLocation")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("ToVisitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TrailerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TruckId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CarriedDispatchId");
+
+                    b.HasIndex("CoDriverId");
+
+                    b.HasIndex("DriverId");
+
+                    b.HasIndex("ExecutionLegId");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("NextDispatchId");
+
+                    b.HasIndex("PreviousDispatchId");
+
+                    b.HasIndex("TrailerId");
+
+                    b.HasIndex("TruckId", "StartedAt");
+
+                    b.HasIndex("AllocatedDispatchId", "RecordedAt", "Id");
+
+                    b.ToTable("Movements");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Mileage.MovementAllocationEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AllocatedDispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("ManualOverride")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("MovementId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("PolicyRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("PreviousAllocationDispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MovementId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("MovementAllocationEvents");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Mileage.MovementDistanceEvidence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Basis")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<decimal?>("EndOdometerMeters")
+                        .HasPrecision(21, 3)
+                        .HasColumnType("numeric(21,3)");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Miles")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<Guid>("MovementId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ObservedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SourceReference")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<decimal?>("StartOdometerMeters")
+                        .HasPrecision(21, 3)
+                        .HasColumnType("numeric(21,3)");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MovementId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("MovementDistanceEvidence");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Mileage.OdometerCaptureCheckpoint", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Cursor")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("OdometerCaptureCheckpoints");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Mileage.OdometerInterval", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("EndMeters")
+                        .HasPrecision(21, 3)
+                        .HasColumnType("numeric(21,3)");
+
+                    b.Property<DateTime>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExternalTruckId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("GapId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("MovementId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("StartMeters")
+                        .HasPrecision(21, 3)
+                        .HasColumnType("numeric(21,3)");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("TruckId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "CheckedAt", "EndedAt");
+
+                    b.HasIndex("TruckId", "StartedAt", "EndedAt")
+                        .IsUnique();
+
+                    b.ToTable("OdometerIntervals");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Mileage.OdometerPosition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ExternalTruckId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<decimal>("Meters")
+                        .HasPrecision(21, 3)
+                        .HasColumnType("numeric(21,3)");
+
+                    b.Property<DateTime>("ObservedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TruckId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TruckId")
+                        .IsUnique();
+
+                    b.ToTable("OdometerPositions");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Shipments.Shipment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BillOfLading")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("DeliveryStopId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LoadId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PickupStopId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LoadId");
+
+                    b.ToTable("Shipments");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Shipments.ShipmentSaveReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AggregateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ResponseJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AggregateId");
+
+                    b.ToTable("ShipmentSaveReceipts");
+                });
+
             modelBuilder.Entity("Domain.Entities.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("DistanceUnit")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("both");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -1101,6 +3192,20 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("TemperatureUnit")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("both");
+
+                    b.Property<string>("Theme")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasDefaultValue("light");
 
                     b.HasKey("Id");
 
@@ -1330,6 +3435,419 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entities.Border.BorderCrossing", b =>
+                {
+                    b.OwnsOne("Domain.Entities.Shipments.ShipmentParty", "CarrierAddress", b1 =>
+                        {
+                            b1.Property<Guid>("BorderCrossingId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("AddressLine1")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("AddressLine2")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("City")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("ContactName")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Country")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Email")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Phone")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("PostalCode")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Region")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.HasKey("BorderCrossingId");
+
+                            b1.ToTable("BorderCrossings");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BorderCrossingId");
+                        });
+
+                    b.OwnsMany("Domain.Entities.Border.BorderCrew", "Crew", b1 =>
+                        {
+                            b1.Property<Guid>("CrossingId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("DisplayName")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<Guid?>("DriverId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("ProtectedDetails")
+                                .IsRequired()
+                                .HasMaxLength(64000)
+                                .HasColumnType("character varying(64000)");
+
+                            b1.Property<string>("Role")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)");
+
+                            b1.HasKey("CrossingId", "Id");
+
+                            b1.HasIndex("DriverId");
+
+                            b1.ToTable("BorderCrew", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("CrossingId");
+
+                            b1.HasOne("Domain.Entities.Fleet.Driver", null)
+                                .WithMany()
+                                .HasForeignKey("DriverId")
+                                .OnDelete(DeleteBehavior.Restrict);
+                        });
+
+                    b.OwnsMany("Domain.Entities.Border.BorderEquipment", "Equipment", b1 =>
+                        {
+                            b1.Property<Guid>("CrossingId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("ContainerNumber")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("EquipmentType")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Kind")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("PlateCountry")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("PlateNumber")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("PlateRegion")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("SealNumbers")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<Guid?>("TrailerId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid?>("TruckId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("UnitNumber")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Vin")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.HasKey("CrossingId", "Id");
+
+                            b1.HasIndex("TrailerId");
+
+                            b1.HasIndex("TruckId");
+
+                            b1.ToTable("BorderEquipment", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("CrossingId");
+
+                            b1.HasOne("Domain.Entities.Fleet.Trailer", null)
+                                .WithMany()
+                                .HasForeignKey("TrailerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.HasOne("Domain.Entities.Fleet.Truck", null)
+                                .WithMany()
+                                .HasForeignKey("TruckId")
+                                .OnDelete(DeleteBehavior.Restrict);
+                        });
+
+                    b.OwnsMany("Domain.Entities.Border.BorderShipment", "Shipments", b1 =>
+                        {
+                            b1.Property<Guid>("CrossingId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid");
+
+                            b1.Property<bool>("Consolidated")
+                                .HasColumnType("boolean");
+
+                            b1.Property<Guid?>("EquipmentId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("LoadingCity")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("LoadingCountry")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("LoadingRegion")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("PapsNumber")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("ParsNumber")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Procedure")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("ReleaseOffice")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<Guid>("ShipmentId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<long>("ShipmentRevision")
+                                .HasColumnType("bigint");
+
+                            b1.Property<string>("ShipmentSnapshotJson")
+                                .IsRequired()
+                                .HasColumnType("text");
+
+                            b1.HasKey("CrossingId", "Id");
+
+                            b1.HasIndex("ShipmentId");
+
+                            b1.HasIndex("CrossingId", "ShipmentId")
+                                .IsUnique();
+
+                            b1.ToTable("BorderShipments", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("CrossingId");
+
+                            b1.HasOne("Domain.Entities.Shipments.Shipment", null)
+                                .WithMany()
+                                .HasForeignKey("ShipmentId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired();
+
+                            b1.OwnsOne("Domain.Entities.Shipments.ShipmentParty", "CustomsBroker", b2 =>
+                                {
+                                    b2.Property<Guid>("BorderShipmentCrossingId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<Guid>("BorderShipmentId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<string>("AddressLine1")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("AddressLine2")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("City")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("ContactName")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("Country")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("Email")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("Name")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("Phone")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("PostalCode")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("Region")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.HasKey("BorderShipmentCrossingId", "BorderShipmentId");
+
+                                    b2.ToTable("BorderShipments");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BorderShipmentCrossingId", "BorderShipmentId");
+                                });
+
+                            b1.OwnsOne("Domain.Entities.Shipments.ShipmentParty", "Importer", b2 =>
+                                {
+                                    b2.Property<Guid>("BorderShipmentCrossingId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<Guid>("BorderShipmentId")
+                                        .HasColumnType("uuid");
+
+                                    b2.Property<string>("AddressLine1")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("AddressLine2")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("City")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("ContactName")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("Country")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("Email")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("Name")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("Phone")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("PostalCode")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.Property<string>("Region")
+                                        .IsRequired()
+                                        .HasMaxLength(300)
+                                        .HasColumnType("character varying(300)");
+
+                                    b2.HasKey("BorderShipmentCrossingId", "BorderShipmentId");
+
+                                    b2.ToTable("BorderShipments");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("BorderShipmentCrossingId", "BorderShipmentId");
+                                });
+
+                            b1.Navigation("CustomsBroker")
+                                .IsRequired();
+
+                            b1.Navigation("Importer")
+                                .IsRequired();
+                        });
+
+                    b.Navigation("CarrierAddress")
+                        .IsRequired();
+
+                    b.Navigation("Crew");
+
+                    b.Navigation("Equipment");
+
+                    b.Navigation("Shipments");
+                });
+
             modelBuilder.Entity("Domain.Entities.Dispatch.Dispatch", b =>
                 {
                     b.HasOne("Domain.Entities.Dispatch.Customer", "Customer")
@@ -1341,6 +3859,11 @@ namespace Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("DriverId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Domain.Entities.Fleet.Truck", "PlanningTruck")
+                        .WithMany()
+                        .HasForeignKey("PlanningTruckId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Domain.Entities.Fleet.Trailer", "Trailer")
                         .WithMany()
@@ -1356,9 +3879,29 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Navigation("Driver");
 
+                    b.Navigation("PlanningTruck");
+
                     b.Navigation("Trailer");
 
                     b.Navigation("Truck");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchActivityEntry", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.DispatchActivityThread", null)
+                        .WithMany()
+                        .HasForeignKey("DispatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchActivityThread", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
+                        .WithOne()
+                        .HasForeignKey("Domain.Entities.Dispatch.DispatchActivityThread", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchBaseRoute", b =>
@@ -1368,6 +3911,11 @@ namespace Infrastructure.Persistence.Migrations
                         .HasForeignKey("DispatchId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionLegId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchDeadhead", b =>
@@ -1376,6 +3924,25 @@ namespace Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("DispatchId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionLegId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("PreviousExecutionLegId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchDocument", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
+                        .WithMany()
+                        .HasForeignKey("DispatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -1387,11 +3954,21 @@ namespace Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionLegId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
                         .WithMany()
                         .HasForeignKey("RootDispatchId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("RootExecutionLegId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Domain.Entities.Fleet.Truck", null)
                         .WithMany()
@@ -1409,6 +3986,20 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchRouteChoice", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
+                        .WithMany()
+                        .HasForeignKey("DispatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionLegId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchRoutePlan", b =>
                 {
                     b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
@@ -1417,11 +4008,41 @@ namespace Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionLegId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("Domain.Entities.Fleet.Truck", null)
                         .WithMany()
                         .HasForeignKey("TruckId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchRoutePreview", b =>
+                {
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionLegId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Domain.Entities.User", null)
+                        .WithOne()
+                        .HasForeignKey("Domain.Entities.Dispatch.DispatchRoutePreview", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchSourceLink", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", "Dispatch")
+                        .WithOne()
+                        .HasForeignKey("Domain.Entities.Dispatch.DispatchSourceLink", "DispatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Dispatch");
                 });
 
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchStop", b =>
@@ -1461,6 +4082,169 @@ namespace Infrastructure.Persistence.Migrations
                     b.Navigation("Trailer");
 
                     b.Navigation("Truck");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchWorkspace", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
+                        .WithOne()
+                        .HasForeignKey("Domain.Entities.Dispatch.DispatchWorkspace", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchWorkspaceRevision", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
+                        .WithMany()
+                        .HasForeignKey("DispatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.ExecutionActionReceipt", b =>
+                {
+                    b.HasOne("Domain.Entities.Execution.SwitchParticipant", null)
+                        .WithMany()
+                        .HasForeignKey("ParticipantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Execution.DispatchSwitchOperation", null)
+                        .WithMany()
+                        .HasForeignKey("SwitchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.ExecutionLeg", b =>
+                {
+                    b.HasOne("Domain.Entities.Fleet.Driver", null)
+                        .WithMany()
+                        .HasForeignKey("CoDriverId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Fleet.Driver", null)
+                        .WithMany()
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Execution.DispatchSwitchOperation", null)
+                        .WithMany()
+                        .HasForeignKey("EndSwitchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Execution.DispatchSwitchOperation", null)
+                        .WithMany()
+                        .HasForeignKey("StartSwitchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Fleet.Trailer", null)
+                        .WithMany()
+                        .HasForeignKey("TrailerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Execution.Trip", "Trip")
+                        .WithMany()
+                        .HasForeignKey("TripId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Fleet.Truck", null)
+                        .WithMany()
+                        .HasForeignKey("TruckId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Trip");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.ExecutionLegRevision", b =>
+                {
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionLegId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.ExecutionLegStop", b =>
+                {
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany("Stops")
+                        .HasForeignKey("ExecutionLegId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.ExecutionSourceReceipt", b =>
+                {
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionLegId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.LoadExecutionLeg", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
+                        .WithMany()
+                        .HasForeignKey("DispatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", "ExecutionLeg")
+                        .WithMany("Loads")
+                        .HasForeignKey("ExecutionLegId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ExecutionLeg");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.SwitchParticipant", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
+                        .WithMany()
+                        .HasForeignKey("DispatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("IncomingLegId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("OutgoingLegId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Execution.DispatchSwitchOperation", "Switch")
+                        .WithMany("Participants")
+                        .HasForeignKey("SwitchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Switch");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.TrailerCustodyInterval", b =>
+                {
+                    b.HasOne("Domain.Entities.Execution.SwitchParticipant", null)
+                        .WithMany()
+                        .HasForeignKey("ParticipantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Fleet.Trailer", null)
+                        .WithMany()
+                        .HasForeignKey("TrailerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Domain.Entities.Fleet.Truck", b =>
@@ -1526,6 +4310,304 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Domain.Entities.Mileage.MileageCaptureGap", b =>
+                {
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionLegId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Fleet.Truck", null)
+                        .WithMany()
+                        .HasForeignKey("TruckId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Mileage.Movement", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
+                        .WithMany()
+                        .HasForeignKey("AllocatedDispatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
+                        .WithMany()
+                        .HasForeignKey("CarriedDispatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Fleet.Driver", null)
+                        .WithMany()
+                        .HasForeignKey("CoDriverId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Fleet.Driver", null)
+                        .WithMany()
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Execution.ExecutionLeg", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutionLegId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
+                        .WithMany()
+                        .HasForeignKey("NextDispatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
+                        .WithMany()
+                        .HasForeignKey("PreviousDispatchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Fleet.Trailer", null)
+                        .WithMany()
+                        .HasForeignKey("TrailerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Domain.Entities.Fleet.Truck", null)
+                        .WithMany()
+                        .HasForeignKey("TruckId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Mileage.MovementAllocationEvent", b =>
+                {
+                    b.HasOne("Domain.Entities.Mileage.Movement", null)
+                        .WithMany()
+                        .HasForeignKey("MovementId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Mileage.MovementDistanceEvidence", b =>
+                {
+                    b.HasOne("Domain.Entities.Mileage.Movement", null)
+                        .WithMany()
+                        .HasForeignKey("MovementId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Mileage.OdometerInterval", b =>
+                {
+                    b.HasOne("Domain.Entities.Fleet.Truck", null)
+                        .WithMany()
+                        .HasForeignKey("TruckId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Mileage.OdometerPosition", b =>
+                {
+                    b.HasOne("Domain.Entities.Fleet.Truck", null)
+                        .WithMany()
+                        .HasForeignKey("TruckId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Shipments.Shipment", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
+                        .WithMany()
+                        .HasForeignKey("LoadId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("Domain.Entities.Shipments.ShipmentParty", "Consignee", b1 =>
+                        {
+                            b1.Property<Guid>("ShipmentId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("AddressLine1")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("AddressLine2")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("City")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("ContactName")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Country")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Email")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Phone")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("PostalCode")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Region")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.HasKey("ShipmentId");
+
+                            b1.ToTable("Shipments");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ShipmentId");
+                        });
+
+                    b.OwnsOne("Domain.Entities.Shipments.ShipmentParty", "Shipper", b1 =>
+                        {
+                            b1.Property<Guid>("ShipmentId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("AddressLine1")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("AddressLine2")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("City")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("ContactName")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Country")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Email")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Phone")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("PostalCode")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.Property<string>("Region")
+                                .IsRequired()
+                                .HasMaxLength(300)
+                                .HasColumnType("character varying(300)");
+
+                            b1.HasKey("ShipmentId");
+
+                            b1.ToTable("Shipments");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ShipmentId");
+                        });
+
+                    b.OwnsMany("Domain.Entities.Shipments.ShipmentCommodity", "Commodities", b1 =>
+                        {
+                            b1.Property<Guid>("ShipmentId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Classification")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)");
+
+                            b1.Property<string>("Description")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)");
+
+                            b1.Property<string>("Marks")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)");
+
+                            b1.Property<string>("OriginCountry")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)");
+
+                            b1.Property<string>("PackageType")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)");
+
+                            b1.Property<int>("Position")
+                                .HasColumnType("integer");
+
+                            b1.Property<int?>("Quantity")
+                                .HasColumnType("integer");
+
+                            b1.Property<decimal?>("Weight")
+                                .HasPrecision(18, 3)
+                                .HasColumnType("numeric(18,3)");
+
+                            b1.Property<string>("WeightUnit")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)");
+
+                            b1.HasKey("ShipmentId", "Id");
+
+                            b1.ToTable("CustomsCommodities", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("ShipmentId");
+                        });
+
+                    b.Navigation("Commodities");
+
+                    b.Navigation("Consignee")
+                        .IsRequired();
+
+                    b.Navigation("Shipper")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -1584,6 +4666,18 @@ namespace Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Domain.Entities.Dispatch.Dispatch", b =>
                 {
+                    b.Navigation("Stops");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.DispatchSwitchOperation", b =>
+                {
+                    b.Navigation("Participants");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Execution.ExecutionLeg", b =>
+                {
+                    b.Navigation("Loads");
+
                     b.Navigation("Stops");
                 });
 

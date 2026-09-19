@@ -1,0 +1,28 @@
+@use '../base' as ui;
+
+.broker-terms {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, ui.size(form-field)), 1fr)
+  );
+  gap: ui.pg(sm);
+  > label {
+    display: grid;
+    align-content: start;
+    gap: ui.pg(xs);
+    min-width: 0;
+    padding: 0;
+    font-size: ui.fs(small);
+    color: ui.theme(text-secondary);
+  }
+  > label:has(textarea) {
+    grid-column: 1 / -1;
+  }
+  input,
+  select,
+  textarea {
+    width: 100%;
+    @include ui.input-control;
+  }
+}

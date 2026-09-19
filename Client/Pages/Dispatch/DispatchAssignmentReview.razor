@@ -1,0 +1,45 @@
+<section class="assignment-review" aria-labelledby="assignment-review-title">
+  <h2 id="assignment-review-title">Assignments</h2>
+  @if (Reason is not null)
+  {
+    <p role="status">@Reason</p>
+  }
+  <p>
+    Compare the latest imported resources with accepted work. Select a stop
+    in Overview and choose a scope to correct its drivers. Use Switch for an
+    actual equipment transfer; release and receipt are confirmed separately.
+  </p>
+  <div class="assignment-review__columns">
+    <section aria-label="Accepted assignments">
+      <h3>Accepted work</h3>
+      @if (Accepted.Count == 0)
+      {
+        <p>No resource assignment has been accepted.</p>
+      }
+      @foreach (var assignment in Accepted)
+      {
+        <article class="assignment-review__item" @key="(assignment.ExecutionLegId, assignment.FromStopId)">
+          <h4>@Place(assignment.From) → @Place(assignment.Through)</h4>
+          <p>@assignment.Status</p>
+          <DispatchAssignmentResources Resources="assignment.Resources" />
+        </article>
+      }
+    </section>
+    <section aria-label="Imported assignment proposal">
+      <h3>Latest imported proposal</h3>
+      <p>Imported resources do not confirm a transfer or change accepted work.</p>
+      <article class="assignment-review__item">
+        <h4>Load header</h4>
+        <DispatchAssignmentResources Resources="Source.Header" Proposed="true" />
+      </article>
+      @foreach (var visit in Source.Visits)
+      {
+        <article class="assignment-review__item">
+          <h4>Stop @visit.Sequence · @visit.Job</h4>
+          <p>@Place(visit.Name)</p>
+          <DispatchAssignmentResources Resources="visit.Resources" Proposed="true" />
+        </article>
+      }
+    </section>
+  </div>
+</section>

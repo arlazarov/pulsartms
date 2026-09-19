@@ -17,4 +17,6 @@ public class TruckLocation
   public string EngineState { get; set; } = string.Empty;
   public decimal? FuelPercent { get; set; }
   public DateTime? FuelUpdatedAt { get; set; }
+  public decimal? OutsideTemperatureCelsius { get; set; }
+  public DateTime? OutsideTemperatureUpdatedAt { get; set; }
 }

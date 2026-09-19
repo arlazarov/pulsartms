@@ -18,22 +18,39 @@ public static class TruckSync
 
     foreach (var truck in trucks)
     {
-      if (string.IsNullOrWhiteSpace(truck.UnitNumber) || truck.UnitNumber.Length > 10)
+      if (
+        string.IsNullOrWhiteSpace(truck.UnitNumber)
+        || truck.UnitNumber.Length > 10
+      )
       {
-        if (existingByExternalId.TryGetValue(truck.ExternalId, out var invalidExisting))
-          invalidExisting.IsActive = false;
+        if (
+          existingByExternalId.TryGetValue(
+            truck.ExternalId,
+            out var invalidExisting
+          )
+        )
+          FleetConfigurationImport.Apply(
+            invalidExisting,
+            invalidExisting.ImportedVin ?? invalidExisting.Vin,
+            false
+          );
 
         continue;
       }
 
       if (existingByExternalId.TryGetValue(truck.ExternalId, out var existing))
       {
-        existing.IsActive = truck.IsActive;
+        FleetConfigurationImport.Apply(
+          existing,
+          truck.IsActive ? truck.Vin : existing.ImportedVin ?? existing.Vin,
+          truck.IsActive
+        );
 
         if (truck.IsActive)
         {
+          if (existing.UnitNumber != truck.UnitNumber)
+            existing.ConfigurationRevision++;
           existing.UnitNumber = truck.UnitNumber;
-          existing.Vin = truck.Vin;
         }
 
         continue;
@@ -50,6 +67,8 @@ public static class TruckSync
           UnitNumber = truck.UnitNumber,
           Vin = truck.Vin,
           IsActive = true,
+          ImportedVin = truck.Vin,
+          ImportedIsActive = true,
         }
       );
     }

@@ -3,13 +3,20 @@ using Application.Features.Fleet.Models;
 
 namespace Infrastructure.Integrations.Samsara;
 
-public class SamsaraFleetProvider(SamsaraApiService samsaraApi, SamsaraDriverCatalogCache catalog) : IFleetProvider
+public class SamsaraFleetProvider(
+  SamsaraApiService samsaraApi,
+  SamsaraDriverCatalogCache catalog
+) : IFleetProvider
 {
   public async Task<IReadOnlyList<ExternalDriver>> GetDriversAsync(
     CancellationToken cancellationToken = default
   )
   {
-    var drivers = await catalog.GetAsync(samsaraApi, cancellationToken, forceRefresh: true);
+    var drivers = await catalog.GetAsync(
+      samsaraApi,
+      cancellationToken,
+      forceRefresh: true
+    );
 
     return
     [
@@ -22,7 +29,10 @@ public class SamsaraFleetProvider(SamsaraApiService samsaraApi, SamsaraDriverCat
               a.Name.Equals("BVD Card", StringComparison.OrdinalIgnoreCase)
             )
             ?.StringValues.FirstOrDefault() ?? string.Empty,
-        IsActive = x.DriverActivationStatus.Equals("active", StringComparison.OrdinalIgnoreCase),
+        IsActive = x.DriverActivationStatus.Equals(
+          "active",
+          StringComparison.OrdinalIgnoreCase
+        ),
       }),
     ];
   }
@@ -45,7 +55,11 @@ public class SamsaraFleetProvider(SamsaraApiService samsaraApi, SamsaraDriverCat
 
         var isActive =
           !x.Name.StartsWith("Deactivated", StringComparison.OrdinalIgnoreCase)
-          && !string.Equals(assetStatus, "Scrapped", StringComparison.OrdinalIgnoreCase);
+          && !string.Equals(
+            assetStatus,
+            "Scrapped",
+            StringComparison.OrdinalIgnoreCase
+          );
 
         return new ExternalVehicle
         {
@@ -73,7 +87,9 @@ public class SamsaraFleetProvider(SamsaraApiService samsaraApi, SamsaraDriverCat
         Vin = x.Vin,
         IsActive =
           !x.Name.StartsWith("Deactivated,", StringComparison.OrdinalIgnoreCase)
-          && x.Tags.Any(t => t.Name.Equals("AMF Carrier", StringComparison.OrdinalIgnoreCase)),
+          && x.Tags.Any(t =>
+            t.Name.Equals("AMF Carrier", StringComparison.OrdinalIgnoreCase)
+          ),
       }),
     ];
   }
@@ -84,31 +100,46 @@ public class SamsaraFleetProvider(SamsaraApiService samsaraApi, SamsaraDriverCat
     CancellationToken cancellationToken = default
   )
   {
-    var assignments = await samsaraApi.GetAssignmentsAsync(startTime, endTime, cancellationToken);
-    return [.. assignments.Select(x => new ExternalFleetAssignment
-    {
-      DriverExternalId = x.Driver.Id,
-      VehicleExternalId = x.Vehicle.Id,
-      VehicleName = x.Vehicle.Name,
-      AssignmentType = x.AssignmentType,
-      IsPassenger = x.IsPassenger,
-      StartTime = x.StartTime,
-      EndTime = x.EndTime,
-    })];
+    var assignments = await samsaraApi.GetAssignmentsAsync(
+      startTime,
+      endTime,
+      cancellationToken
+    );
+    return
+    [
+      .. assignments.Select(x => new ExternalFleetAssignment
+      {
+        DriverExternalId = x.Driver.Id,
+        VehicleExternalId = x.Vehicle.Id,
+        VehicleName = x.Vehicle.Name,
+        AssignmentType = x.AssignmentType,
+        IsPassenger = x.IsPassenger,
+        StartTime = x.StartTime,
+        EndTime = x.EndTime,
+      }),
+    ];
   }
 
-  public async Task<IReadOnlyList<ExternalTrailerAssignment>> GetTrailerAssignmentsAsync(
+  public async Task<
+    IReadOnlyList<ExternalTrailerAssignment>
+  > GetTrailerAssignmentsAsync(
     IReadOnlyCollection<string> driverIds,
     CancellationToken cancellationToken = default
   )
   {
-    var assignments = await samsaraApi.GetTrailerAssignmentsAsync(driverIds, cancellationToken);
-    return [.. assignments.Select(x => new ExternalTrailerAssignment
-    {
-      DriverExternalId = x.Driver.DriverId,
-      TrailerExternalId = x.Trailer.TrailerId,
-      StartTime = x.StartTime,
-      EndTime = x.EndTime,
-    })];
+    var assignments = await samsaraApi.GetTrailerAssignmentsAsync(
+      driverIds,
+      cancellationToken
+    );
+    return
+    [
+      .. assignments.Select(x => new ExternalTrailerAssignment
+      {
+        DriverExternalId = x.Driver.DriverId,
+        TrailerExternalId = x.Trailer.TrailerId,
+        StartTime = x.StartTime,
+        EndTime = x.EndTime,
+      }),
+    ];
   }
 }

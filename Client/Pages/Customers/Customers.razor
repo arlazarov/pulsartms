@@ -1,0 +1,64 @@
+@page "/customers"
+@attribute [Authorize]
+@using Client.Shared.Customers.BrokerTerms
+
+<PageTitle>Customers &amp; brokers · PulsR</PageTitle>
+<NavigationLock ConfirmExternalNavigation="@(_dirty || _saving)" OnBeforeInternalNavigation="BeforeNavigation" />
+
+<section class="settings-page customers-page">
+    <PageHeader Title="Customers & brokers" Description="Company contacts and shared billing defaults." />
+    @if (_navigationBlocked)
+    {
+        <p role="alert">Save or discard the company changes before leaving.</p>
+    }
+    @if (_error is not null) { <p role="alert" class="settings-page__error">@_error</p> }
+    @if (_notice is not null) { <p role="status">@_notice</p> }
+    @if (_editing is { } company)
+    {
+        <form class="settings-page__card" @onsubmit="SaveAsync" @onsubmit:preventDefault>
+            <div class="settings-page__actions">
+                <h2>@(company.Revision == 0 ? "New company" : company.Name)</h2>
+                <button class="btn btn--primary" type="submit" disabled="@(!_dirty || _saving)">@(_saving ? "Saving…" : "Save changes")</button>
+                <button class="btn" type="button" disabled="@_saving" @onclick="Discard">@(_dirty ? "Discard" : "Back to companies")</button>
+            </div>
+            <fieldset class="settings-page__form" disabled="@_saving">
+                <legend><ActionIcon Kind="contact" /> Company &amp; contacts</legend>
+                <div class="settings-page__fields">
+                    <label>Company name<input id="company-name" required maxlength="200" @bind="company.Name" @bind:event="oninput" @bind:after="Changed" /></label>
+                    <label>Bill to<input id="company-bill-to" maxlength="500" @bind="company.BillTo" @bind:event="oninput" @bind:after="Changed" /></label>
+                    <label>Contact<input id="company-contact" maxlength="200" @bind="company.Contact" @bind:event="oninput" @bind:after="Changed" /></label>
+                    <label>Phone<input id="company-phone" type="tel" maxlength="100" @bind="company.Phone" @bind:event="oninput" @bind:after="Changed" /></label>
+                    <label>Contact email<input id="company-email" type="email" maxlength="254" @bind="company.Email" @bind:event="oninput" @bind:after="Changed" /></label>
+                </div>
+                <h3><ActionIcon Kind="document" /> Billing &amp; Quick Pay</h3>
+                <BrokerTerms Terms="company.Terms" CanEdit="@(!_saving)" Changed="Changed" />
+                <p class="settings-page__hint">Shared defaults for new selections. Existing loads keep their saved terms.</p>
+            </fieldset>
+        </form>
+    }
+    else
+    {
+        <form class="settings-page__actions" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+            <label>Find company<input id="company-search" type="search" minlength="2" maxlength="200" required placeholder="Company name — at least 2 characters" @bind="_search" /></label>
+            <button type="submit" class="btn" disabled="@_loading"><ActionIcon Kind="search" /> Search</button>
+            <button type="button" class="btn btn--primary" disabled="@_loading" @onclick="Create">+ Add company</button>
+        </form>
+        @if (_loading) { <p role="status"><LoadingIndicator /></p> }
+        @if (_searched)
+        {
+            <p class="settings-page__hint">@_matches.Count matches · up to 20 results. Refine the company name to narrow the list.</p>
+            <div class="customers-page__results">
+                @foreach (var match in _matches)
+                {
+                    <section class="settings-page__card" @key="match.Id">
+                        <h2>@match.Name</h2>
+                        <p>@match.Contact @match.Phone</p>
+                        <p>@match.Email</p>
+                        <p>Billing: @(string.IsNullOrWhiteSpace(match.Terms.BillingEmail) ? "Not set" : match.Terms.BillingEmail)</p>
+                        <button type="button" class="btn" disabled="@_loading" @onclick="() => Edit(match)">Edit company</button>
+                    </section>
+                }
+            </div>
+        }
+    }
+</section>

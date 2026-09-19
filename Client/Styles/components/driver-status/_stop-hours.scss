@@ -20,17 +20,106 @@
     border-top: 1px solid ui.theme(border-subtle);
     min-width: 0;
   }
-  &__heading { margin: 0; font-size: inherit; font-weight: 600; }
-  &__row.stop-hours__recap { display: flex; flex-wrap: wrap; gap: 0 ui.pg(sm); }
-  &__recap .stop-hours__value { flex-wrap: nowrap; white-space: nowrap; }
-  &__recap .stop-hours__value > span { white-space: nowrap; }
-  &__row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; column-gap: ui.pg(sm); align-items: baseline; }
-  &__label { color: ui.theme(text-secondary); font-weight: 400; }
-  .stop-hours__value { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 ui.pg(sm); min-width: 0; margin: 0; font-weight: 500; font-variant-numeric: tabular-nums; }
-  &__status { font-size: ui.fs(small); font-weight: 400; }
-  &__arrival { display: contents; }
-  .stop-hours__value--danger, &__status--danger { color: ui.theme(danger-text); }
-  &__status--success { color: ui.theme(success-text); }
-  &__status--conditional { color: ui.theme(warning-text); }
-  .stop-hours__value--muted, &__status--muted { color: ui.theme(text-secondary); }
+  &__heading {
+    margin: 0;
+    font-size: inherit;
+    font-weight: 600;
+  }
+  &__row.stop-hours__recap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 ui.pg(sm);
+  }
+  &__recap .stop-hours__value {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+  &__recap .stop-hours__value > span {
+    white-space: nowrap;
+  }
+  &__row {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    column-gap: ui.pg(sm);
+    align-items: baseline;
+  }
+  &__label {
+    color: ui.theme(text-secondary);
+    font-weight: 400;
+  }
+  .stop-hours__value {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 ui.pg(sm);
+    min-width: 0;
+    margin: 0;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  &__status {
+    font-size: ui.fs(small);
+    font-weight: 400;
+  }
+  &__arrival {
+    display: contents;
+  }
+  &__road {
+    display: var(--stop-hours-road-display, grid);
+    flex-wrap: wrap;
+    white-space: var(--stop-hours-road-white-space, normal);
+
+    > .stop-hours__label {
+      margin-inline-end: var(--stop-hours-road-label-gap, 0);
+    }
+
+    > .stop-hours__value {
+      display: var(--stop-hours-road-value-display, flex);
+    }
+
+    time {
+      font-weight: 600;
+    }
+
+    .stop-hours__status,
+    .arrival-estimate__late,
+    .arrival-estimate__ontime {
+      display: var(--stop-hours-road-status-display, inline);
+      margin-inline-start: var(--stop-hours-road-status-gap, 0);
+      white-space: normal;
+    }
+  }
+  &__date::before {
+    content: attr(data-separator);
+    display: var(--stop-hours-date-prefix-display, none);
+    font-weight: 400;
+  }
+  &__cycle-status {
+    flex-basis: 100%;
+  }
+  &__date-separator {
+    display: var(--stop-hours-date-separator-display, inline);
+  }
+  &__date-break {
+    display: var(--stop-hours-date-break-display, none);
+    margin-top: ui.pg(xs);
+  }
+  &__clock {
+    white-space: nowrap;
+  }
+  .stop-hours__value--danger,
+  &__status--danger {
+    color: ui.theme(danger-text);
+  }
+  &__status--success {
+    color: ui.theme(success-text);
+  }
+  &__status--conditional {
+    color: ui.theme(warning-text);
+  }
+  .stop-hours__value--muted,
+  &__status--muted {
+    color: ui.theme(text-secondary);
+  }
 }

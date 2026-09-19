@@ -1,0 +1,47 @@
+@using Client.Models.DTO.Shipments
+<fieldset disabled="@Disabled" class="dispatch-details__panel">
+  <legend>@Title</legend>
+  <AddressAutocomplete Disabled="Disabled" Selected="ApplyAddress" />
+  <div class="dispatch-details__fields">
+    <label>Legal name
+      <input @bind="Value.Name" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Address
+      <input @bind="Value.AddressLine1" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Address line 2
+      <input @bind="Value.AddressLine2" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>City
+      <input @bind="Value.City" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>State / province
+      <input @bind="Value.Region" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Country code
+      <input @bind="Value.Country" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Postal code
+      <input @bind="Value.PostalCode" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Contact
+      <input @bind="Value.ContactName" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Phone
+      <input @bind="Value.Phone" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+    <label>Email
+      <input @bind="Value.Email" maxlength="300"
+             @bind:event="oninput" @bind:after="NotifyChanged" />
+    </label>
+  </div>
+</fieldset>

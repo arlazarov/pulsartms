@@ -4,9 +4,13 @@ using Client.Models.DTO.Planning;
 
 namespace Client.Services;
 
-[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-  PropertyNameCaseInsensitive = true, GenerationMode = JsonSourceGenerationMode.Metadata)]
+[JsonSourceGenerationOptions(
+  PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+  PropertyNameCaseInsensitive = true,
+  GenerationMode = JsonSourceGenerationMode.Metadata
+)]
 [JsonSerializable(typeof(RequestResponseDTO<AutomaticPlanningResult>))]
 [JsonSerializable(typeof(RequestResponseDTO<List<AutomaticPlanningResult>>))]
 [JsonSerializable(typeof(RequestResponseDTO<FuelPlanEditPreview>))]
+[JsonSerializable(typeof(RequestResponseDTO<DispatchMapRoute>))]
 internal partial class PlanningJsonContext : JsonSerializerContext;

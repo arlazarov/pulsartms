@@ -6,5 +6,7 @@
   flex-wrap: wrap;
   gap: ui.pg(sm);
   flex-shrink: 0;
-  .btn { white-space: nowrap; }
+  .btn {
+    white-space: nowrap;
+  }
 }

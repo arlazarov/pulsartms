@@ -1,5 +1,5 @@
-using Application.Features.Routing.Models;
 using System.Text.Json;
+using Application.Features.Routing.Models;
 
 namespace Server.Tests.Routing;
 
@@ -10,7 +10,12 @@ public sealed class NextLoadConnectionTests
   public void MapConnectionUsesOneGeometryWithoutFullRouteMetadata()
   {
     var points = new List<RoutePoint> { new(40, -80), new(41, -79) };
-    var route = new TruckRoute { Miles = 161, Points = points, Legs = [new(161, 3600, points)] };
+    var route = new TruckRoute
+    {
+      Miles = 161,
+      Points = points,
+      Legs = [new(161, 3600, points)],
+    };
     var connection = NextLoadConnection.From(route)!;
     Assert.Same(points, connection.Points);
     Assert.Equal(161, connection.Miles);
@@ -25,7 +30,15 @@ public sealed class NextLoadConnectionTests
   {
     Assert.Null(NextLoadConnection.From(null));
     Assert.Null(NextLoadConnection.From(new() { Miles = 10 }));
-    Assert.Null(NextLoadConnection.From(new() { Miles = double.NaN, Points = [new(40, -80), new(41, -79)] }));
-    Assert.Null(NextLoadConnection.From(new() { Miles = 10, Points = [new(40, -80), new(91, -79)] }));
+    Assert.Null(
+      NextLoadConnection.From(
+        new() { Miles = double.NaN, Points = [new(40, -80), new(41, -79)] }
+      )
+    );
+    Assert.Null(
+      NextLoadConnection.From(
+        new() { Miles = 10, Points = [new(40, -80), new(91, -79)] }
+      )
+    );
   }
 }

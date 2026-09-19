@@ -11,7 +11,8 @@ public class RefreshValidator : AbstractValidator<RefreshCommand>
   }
 }
 
-public record RefreshCommand(string RefreshToken) : IRequest<RequestResponse<bool>>;
+public record RefreshCommand(string RefreshToken)
+  : IRequest<RequestResponse<bool>>;
 
 public class RefreshHandler(IAuthService authService)
   : IRequestHandler<RefreshCommand, RequestResponse<bool>>
@@ -21,7 +22,10 @@ public class RefreshHandler(IAuthService authService)
     CancellationToken cancellationToken
   )
   {
-    var success = await authService.RefreshAsync(request.RefreshToken, cancellationToken);
+    var success = await authService.RefreshAsync(
+      request.RefreshToken,
+      cancellationToken
+    );
 
     return success
       ? RequestResponse<bool>.Ok(true)

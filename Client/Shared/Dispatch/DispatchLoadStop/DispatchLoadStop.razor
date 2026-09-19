@@ -18,13 +18,45 @@
     </div>;
 }
 
-<div class="dispatch-load__stop @(Completed ? "dispatch-load__stop--completed" : "")" data-stop-id="@Stop.Id">
+<div class="dispatch-load__stop @(!Detailed ? "dispatch-load__stop--summary" : "") @(Completed ? "dispatch-load__stop--completed" : "")" data-stop-id="@Stop.Id">
+    @if (!Detailed && Completed)
+    {
+        @if (DetailsHref is { } href)
+        {
+            <a class="btn btn--text dispatch-load__history-stop" href="@href"
+               title="@($"{Job} · {VisitLabel} · Completed · {Stop.Address}")">
+                <span class="dispatch-load__stop-number"
+                      aria-label="@($"Stop {Number}, completed")">@Number</span>
+                <span class="dispatch-load__history-check"
+                      aria-label="Completed">✓</span>
+                <strong class="dispatch-load__location">@Location</strong>
+                <span class="dispatch-load__history-time"
+                      title="Scheduled appointment">
+                    @Client.Services.StopAppointmentDisplay.Format(PlannedStop)
+                </span>
+            </a>
+        }
+        else
+        {
+        <button type="button" class="btn btn--text dispatch-load__history-stop" @onclick="OpenDetails" title="@($"{Job} · {VisitLabel} · Completed · {Stop.Address}")">
+            <span class="dispatch-load__stop-number" aria-label="@($"Stop {Number}, completed")">@Number</span>
+            <span class="dispatch-load__history-check" aria-label="Completed">✓</span>
+            <strong class="dispatch-load__location">@Location</strong>
+            <span class="dispatch-load__history-time" title="Scheduled appointment">@Client.Services.StopAppointmentDisplay.Format(PlannedStop)</span>
+        </button>
+        }
+    }
+    else
+    {
     <div class="dispatch-load__stop-heading">
         <span class="dispatch-load__stop-number" aria-label="@($"Stop {Number}")">@Number</span>
         <span class="dispatch-load__stop-job">@Job</span>
+        @if (VisitLabel.Length > 0) { <span class="dispatch-load__stop-visit" title="@($"{VisitLabel} at this address")">@VisitLabel</span> }
         @if (Completed) { <span class="dispatch-load__completed">Completed</span> }
+        @if (Stop.DriverOnly) { <span class="dispatch-load__stop-visit" title="Excluded from truck route and fuel; completion is tracked separately">Driver only · No truck</span> }
+        else if (Detailed && Stop.StateAfter != "Unknown") { <span class="dispatch-load__stop-visit">After: @Stop.StateAfter</span> }
     </div>
-    <strong class="dispatch-load__location">@Location</strong>
+    <strong class="dispatch-load__location" title="@Stop.Name">@Location</strong>
     @if ((!Detailed || CollapsibleDetails) && HasStreet) { <span class="dispatch-load__street">@Stop.Address</span> }
     @if ((Detailed || !HasStreet) && !string.IsNullOrWhiteSpace(Stop.Name)) { <span class="dispatch-load__facility">@Stop.Name</span> }
     <div class="dispatch-load__stop-times">
@@ -34,14 +66,19 @@
         }
         <ArrivalEstimate Stop="PlannedStop" Eta="StopEstimate" DispatchId="DispatchId" Memory="Memory"
             Completed="Completed" Refreshing="Refreshing" ShowDutyStatus="false" ShowDetails="false" />
-        @if (!Completed && !HasDisplayEstimate)
+        @if (!Stop.DriverOnly && !Completed && !HasDisplayEstimate)
         {
             <span class="dispatch-load__eta-missing">ETA <strong>—</strong></span>
         }
     </div>
     @if (Detailed && HasDetails)
     {
-        @if (CollapsibleDetails)
+        @if (OpenDetails.HasDelegate)
+        {
+            <button type="button" hidden="@DetailsOpen" class="btn btn--text dispatch-load__more-details" @onclick="OpenDetails">More details <span aria-hidden="true">↗</span></button>
+            <div hidden="@(!DetailsOpen)">@detailContent</div>
+        }
+        else if (CollapsibleDetails)
         {
             <details class="dispatch-load__stop-details">
                 <summary>More details</summary>
@@ -49,5 +86,7 @@
             </details>
         }
         else { @detailContent }
+    }
+    @StopActions
     }
 </div>

@@ -1,0 +1,309 @@
+<section class="dispatch-mileage">
+    <div class="dispatch-mileage__heading">
+        <h2>Mileage allocation</h2>
+        <button class="btn btn--small" type="button"
+                disabled="@(Writing || EditorOpen)"
+                aria-expanded="@(_expanded ? "true" : "false")"
+                aria-controls="@PanelId" @onclick="ToggleAsync">
+            @(_expanded ? "Hide breakdown" : "Mileage breakdown")
+        </button>
+    </div>
+    @if (_expanded)
+    {
+        <div id="@PanelId" class="dispatch-mileage__body">
+            <p class="dispatch-mileage__hint">
+                Movements allocated to this load. Planned estimates and
+                recorded actual mileage are separate from the route figures.
+                These totals cover the recorded breakdown, not necessarily
+                every mile of the complete load.
+            </p>
+            @if (_saved)
+            {
+                <p class="dispatch-mileage__saved" role="status">
+                    Allocation saved.
+                </p>
+            }
+            @if (_notice is not null)
+            {
+                <p class="dispatch-mileage__saved" role="status">@_notice</p>
+            }
+            @if (_loading)
+            {
+                <p role="status"><LoadingIndicator /></p>
+            }
+            @if (_error is not null)
+            {
+                <p class="dispatch-page__error" role="alert">@_error</p>
+                <button class="btn" type="button"
+                        disabled="@Busy"
+                        @onclick="ReloadAsync">Reload mileage</button>
+            }
+            @if (_state is { } state)
+            {
+                <div class="dispatch-mileage__bases">
+                    <DispatchMileageTotals Title="Planned estimates"
+                                           Totals="state.Planned" />
+                    <DispatchMileageTotals
+                        Title="@(state.ActualIsPartial
+                            ? "Recorded actual subtotal"
+                            : "Recorded actual mileage")"
+                                           Totals="state.Actual" />
+                </div>
+                @if (state.ActualIsPartial)
+                {
+                    <p class="dispatch-mileage__hint" role="status">
+                        Actual mileage covers recorded intervals only, not the
+                        complete trip. Missing coverage is not estimated from
+                        the planned route.
+                    </p>
+                }
+                @if (state.PendingObservedIntervals > 0)
+                {
+                    <p class="dispatch-mileage__hint">
+                        @state.PendingObservedIntervals observed intervals
+                        await confirmed movement context and are not included.
+                    </p>
+                }
+                @if (state.CaptureGaps.Count > 0)
+                {
+                    <div class="dispatch-mileage__basis">
+                        <h3>Actual mileage coverage gaps</h3>
+                        <ul>
+                            @foreach (var gap in state.CaptureGaps)
+                            {
+                                <li>@Timestamp(gap.StartedAt)
+                                    – @Timestamp(gap.EndedAt)
+                                    · @Label(gap.Reason)</li>
+                            }
+                        </ul>
+                    </div>
+                }
+                <AuthorizeView Roles="Admin,Dispatch">
+                    <button class="btn btn--small" type="button"
+                            disabled="@(Busy || EditorOpen)"
+                            @onclick="BeginRecording">Record movement</button>
+                    @if (_recording)
+                    {
+                        <MileageMovementEditor @key="DispatchId"
+                            DispatchId="DispatchId"
+                            DefaultTruckId="DefaultTruckId"
+                            Saved="MovementSavedAsync"
+                            Cancelled="CancelRecording"
+                            BusyChanged="SetEditorBusy" />
+                    }
+                </AuthorizeView>
+                @if (state.Truncated)
+                {
+                    <p class="dispatch-mileage__hint" role="status">
+                        This is a limited breakdown. Not all movements are
+                        shown; do not treat the displayed rows as a complete
+                        mileage history.
+                    </p>
+                }
+                <ul class="dispatch-mileage__movements">
+                    @foreach (var row in Rows)
+                    {
+                        var planned = (double?)row.PlannedMiles;
+                        var actual = (double?)row.ActualMiles;
+                        var assignment = Assignment(row);
+                        <li class="dispatch-mileage__movement">
+                            @if (row.AllocatedDispatchId != DispatchId
+                                && row.MovementId.HasValue)
+                            {
+                                <p class="dispatch-mileage__hint">
+                                    Saved this session, but not allocated to
+                                    this load. Excluded from its totals above.
+                                </p>
+                            }
+                            <header class="dispatch-mileage__heading">
+                                <h3>@Purpose(row.Purpose)</h3>
+                                <span class="dispatch-mileage__hint">
+                                    @Label(row.CargoState)
+                                </span>
+                            </header>
+                            @if (!string.IsNullOrEmpty(assignment))
+                            {
+                                <p class="dispatch-mileage__hint">
+                                    @assignment
+                                </p>
+                            }
+                            @if (HasLocations(row))
+                            {
+                                <p class="dispatch-mileage__locations">
+                                    @Location(row.FromLocation)
+                                    <span aria-label="to">→</span>
+                                    @Location(row.ToLocation)
+                                </p>
+                            }
+                            <dl class="dispatch-mileage__row-values">
+                                <div>
+                                    <dt>Planned</dt>
+                                    <dd title="@Timestamp(row.PlannedAt)">
+                                        <DistanceText
+                                            Miles="planned" />
+                                        @if (row.PlannedSource
+                                            is { } plannedSource)
+                                        {
+                                            <small>@Label(plannedSource)</small>
+                                        }
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Actual</dt>
+                                    <dd title="@Timestamp(row.ActualAt)">
+                                        <DistanceText
+                                            Miles="actual" />
+                                        @if (row.ActualSource
+                                            is { } actualSource)
+                                        {
+                                            <small>@Label(actualSource)</small>
+                                        }
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>Allocated to</dt>
+                                    <dd>
+                                        @if (row.AllocatedDispatchId is { } id)
+                                        {
+                                            <a href="@($"/dispatch/{id}")">
+                                                @if (row.AllocatedLoadNumber
+                                                    is { } number)
+                                                {
+                                                    <LoadNumber
+                                                        Value="number" />
+                                                }
+                                                else
+                                                {
+                                                    <span>Load details</span>
+                                                }
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span>Unallocated</span>
+                                        }
+                                    </dd>
+                                </div>
+                            </dl>
+                            <div class="dispatch-mileage__heading">
+                                <span class="dispatch-mileage__hint">
+                                    @(row.ManualOverride
+                                        ? "Manual exception" : "Automatic")
+                                    · @Label(row.Source)
+                                </span>
+                                <AuthorizeView Roles="Admin,Dispatch">
+                                    @if (row.Editable
+                                        && row.MovementId.HasValue)
+                                    {
+                                        <button class="btn btn--small"
+                                                type="button"
+                                                disabled="@(Busy || EditorOpen)"
+                                                @onclick="() => BeginEdit(row)">
+                                            Change allocation
+                                        </button>
+                                        @if (row.CanEditDistance
+                                            && row.Origin == "manual")
+                                        {
+                                            <button class="btn btn--small"
+                                                type="button"
+                                                disabled="@(Busy || EditorOpen)"
+                                                @onclick="() =>
+                                                    BeginDistance(row)">
+                                                Add distance evidence
+                                            </button>
+                                        }
+                                    }
+                                </AuthorizeView>
+                            </div>
+                            @if (HasReason(row))
+                            {
+                                <p class="dispatch-mileage__reason">
+                                    @row.AllocationReason
+                                </p>
+                            }
+                            @if (_distanceEditing is { } distanceRow
+                                && distanceRow.MovementId == row.MovementId)
+                            {
+                                <MileageDistanceEditor
+                                    @key="(row.MovementId, row.Revision)"
+                                    Movement="row" Saved="DistanceSavedAsync"
+                                    Cancelled="CancelDistance"
+                                    BusyChanged="SetEditorBusy" />
+                            }
+                            @if (_editing is { } editing
+                                && editing.MovementId == row.MovementId)
+                            {
+                                <EditForm @key="_form" Model="_form"
+                                          OnValidSubmit="SaveAsync"
+                                          class="dispatch-mileage__editor">
+                                    <DataAnnotationsValidator />
+                                    <ValidationSummary />
+                                    <fieldset disabled="@_saving">
+                                        <legend>Change allocation</legend>
+                                        <label for="@(PanelId + "-target")">
+                                            Allocate to
+                                            <InputSelect
+                                                id="@(PanelId + "-target")"
+                                                @bind-Value="_form.Target">
+                                                @foreach (var target
+                                                    in Targets(row))
+                                                {
+                                                    <option value="@target">
+                                                        @TargetText(target, row)
+                                                    </option>
+                                                }
+                                            </InputSelect>
+                                        </label>
+                                        <label for="@(PanelId + "-reason")">
+                                            Reason
+                                            <InputTextArea
+                                                id="@(PanelId + "-reason")"
+                                                maxlength="400" rows="2"
+                                                @bind-Value="_form.Reason" />
+                                        </label>
+                                        <p class="dispatch-mileage__hint">
+                                            Only allocation changes. Distances
+                                            and recorded evidence stay intact.
+                                            Automatic applies the current
+                                            policy.
+                                        </p>
+                                        @if (_editError is not null)
+                                        {
+                                            <p class="dispatch-page__error"
+                                               role="alert">@_editError</p>
+                                        }
+                                        <div class="dispatch-mileage__actions">
+                                            <button class="btn btn--primary"
+                                                    type="submit">
+                                                @SaveLabel
+                                            </button>
+                                            <button class="btn" type="button"
+                                                    @onclick="CancelEdit">
+                                                Cancel
+                                            </button>
+                                            @if (_editError is not null)
+                                            {
+                                                <button class="btn"
+                                                        type="button"
+                                                        @onclick="ReloadAsync">
+                                                    Reload mileage
+                                                </button>
+                                            }
+                                        </div>
+                                    </fieldset>
+                                </EditForm>
+                            }
+                        </li>
+                    }
+                </ul>
+                @if (!Rows.Any() && !_loading)
+                {
+                    <p>No recorded movements are available for this load.</p>
+                }
+                <button class="btn btn--small" type="button"
+                        disabled="@(Busy || EditorOpen)"
+                        @onclick="ReloadAsync">Refresh breakdown</button>
+            }
+        </div>
+    }
+</section>

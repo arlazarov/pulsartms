@@ -11,7 +11,9 @@ public sealed class FuelPriceComparisonTests
   [Theory]
   [InlineData(-1)]
   [InlineData(0)]
-  public void UsesSelectedDateAndFollowingDateWithServerCalculatedDifferences(int offset)
+  public void UsesSelectedDateAndFollowingDateWithServerCalculatedDifferences(
+    int offset
+  )
   {
     var date = Date.AddDays(offset);
     var current = Quote(date, 5m, 4.5m);
@@ -36,13 +38,14 @@ public sealed class FuelPriceComparisonTests
   public void MissingOrUnlikeQuotesAreNotCompared(string condition)
   {
     var next = Quote(Date.AddDays(1), 4m, 3m);
-    next = condition switch {
+    next = condition switch
+    {
       "missing" => null,
       "currency" => next with { Currency = "CAD" },
       "unit" => next with { Unit = "L" },
       "expired" => next with { EffectiveTo = Date },
       "future" => next with { EffectiveFrom = Date.AddDays(2) },
-      _ => next
+      _ => next,
     };
     Assert.Null(FuelPriceComparisonDto.Create(Date, Quote(Date, 5m, 4m), next));
   }
@@ -71,6 +74,10 @@ public sealed class FuelPriceComparisonTests
     Assert.Null(result.SavingsChangePercent);
   }
 
-  private static FuelDiscountDto Quote(DateOnly date, decimal price, decimal? ifta) =>
+  private static FuelDiscountDto Quote(
+    DateOnly date,
+    decimal price,
+    decimal? ifta
+  ) =>
     new("USD", "Diesel", price + .5m, price, .5m, date, date, ifta, "US gal");
 }

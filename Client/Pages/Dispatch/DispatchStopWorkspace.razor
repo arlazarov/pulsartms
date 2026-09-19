@@ -1,0 +1,310 @@
+@using Client.Models.DTO.Dispatch.Workspace
+
+<section class="stop-workspace @(!HasSupport ? "stop-workspace--single" : null)"
+         aria-labelledby="stop-workspace-title" data-mobile-pane="@_mobilePane">
+    <nav class="stop-workspace__mobile-tabs" aria-label="Workspace panels">
+        @foreach (var pane in AvailablePanes)
+        {
+            <button type="button" class="btn btn--small" aria-pressed="@(_mobilePane == pane.Key ? "true" : "false")"
+                    @onclick="() => ShowMobilePane(pane.Key)">@pane.Label</button>
+        }
+    </nav>
+    <div class="stop-workspace__main">
+    <header class="stop-workspace__table-heading">
+        <div class="stop-workspace__table-labels">
+            <span aria-hidden="true">#</span>
+            <h2 id="stop-workspace-title"><span class="stop-workspace__column-name">Stop &amp; location</span><span class="stop-workspace__count">@Stops.Count stops</span></h2>
+            <span>Appointment</span><span>Truck / Trailer / Driver</span>
+        </div>
+        <span class="stop-workspace__eta-label">ETA</span>
+        <button type="button" class="btn btn--text stop-workspace__add-button"
+                aria-label="+ Add stop" title="Add stop after the selected stop"
+                aria-expanded="@(_adding ? "true" : "false")"
+                disabled="@(!Editable || SelectedStop is null)"
+                @onclick="ToggleAdd">
+            +<span class="visually-hidden"> Add stop</span>
+        </button>
+    </header>
+    @if (_adding && SelectedStop is { } anchor)
+    {
+        <div class="stop-workspace__add" aria-label="Add after selected stop">
+            <strong>After stop @anchor.Sequence · @DispatchWorkspaceStopDisplay.Name(anchor)</strong>
+            <div class="stop-workspace__add-actions">
+                <button class="btn btn--small" disabled="@(!CanAdd)"
+                        @onclick='() => AddAsync("Pick Up")'>Pickup</button>
+                <button class="btn btn--small" disabled="@(!CanAdd)"
+                        @onclick='() => AddAsync("Delivery")'>Delivery</button>
+                <button class="btn btn--small" disabled="@(!CanTransfer)"
+                        @onclick='() => TransferAsync("drop_hook")'>
+                    Drop / Hook trailer
+                </button>
+                <button class="btn btn--small" disabled="@(!CanTransfer)"
+                        @onclick='() => TransferAsync("resource_handoff")'>
+                    Switch truck / driver
+                </button>
+                <button class="btn btn--text btn--small"
+                        @onclick="ToggleAdd">Cancel</button>
+            </div>
+            @if (DraftChanged)
+            {
+                <p>Save load edits before planning a transfer.</p>
+            }
+            @if (!CanAdd)
+            {
+                <p>Pickups and deliveries require an editable route segment.</p>
+            }
+        </div>
+    }
+    <p class="visually-hidden" role="status">@_announcement</p>
+    @if (_error is not null)
+    {
+        <p class="stop-workspace__error" role="alert">@_error</p>
+    }
+    @if (Stops.Count == 0)
+    {
+        <p class="stop-workspace__empty">No stops available.</p>
+    }
+    <ol class="stop-workspace__list" @ref="_listElement" aria-label="Stops in route order">
+        @foreach (var stop in Stops)
+        {
+            var index = Stops.IndexOf(stop);
+            var selected = _selected == stop.Id;
+            var recorded = RecordedStop(stop.Id);
+            var completed = StopDrafts?.IsCompleted(
+                stop, Stops, recorded?.IsCompleted == true)
+                ?? recorded?.IsCompleted == true;
+            var drivers = StopDrafts?.Names(stop, Stops)
+                ?? (DriverId: stop.DriverId, CoDriverId: stop.CoDriverId,
+                    Driver: stop.DriverName, CoDriver: stop.CoDriverName);
+            <li @key="stop.Id" data-stop-id="@stop.Id"
+                class="stop-workspace__stop @(selected ? "is-selected" : "") @(completed ? "is-completed" : "") @DropPreviewClass(stop) @(_dragged == stop.Id ? "is-dragging" : "")"
+                @ondragenter="() => PreviewDrop(stop)"
+                @ondragover="() => PreviewDrop(stop)"
+                @ondragover:preventDefault="CanDrop(stop)"
+                @ondrop="() => DropAsync(stop)">
+                @if (_dropTarget == stop.Id && CanDrop(stop))
+                {
+                    <span class="stop-workspace__drop-marker" aria-hidden="true">Insert here</span>
+                }
+                <div class="stop-workspace__row">
+                    <button type="button" class="stop-workspace__select"
+                            disabled="@(Disabled && !AllowSelection)"
+                            aria-pressed="@(selected ? "true" : "false")"
+                            aria-controls="@_detailsId"
+                            @onclick="() => SelectAsync(stop.Id)"
+                            title="Click again to toggle satellite view">
+                        <span class="stop-workspace__number">
+                            @(index + 1)
+                        </span>
+                        <span class="stop-workspace__identity">
+                            <span class="stop-workspace__heading">
+                                <span class="stop-workspace__kind @StopTone(stop)">
+                                    <ActionIcon Kind="@StopIcon(stop)" />
+                                    @DispatchWorkspaceStopDisplay.Action(stop)
+                                    @if (stop.IsNew)
+                                    {
+                                        <span class="stop-workspace__badge">
+                                            New
+                                        </span>
+                                    }
+                                    @if (completed)
+                                    {
+                                        <span class="stop-workspace__badge stop-workspace__badge--complete">
+                                            Completed
+                                        </span>
+                                    }
+                                    else if (!stop.CanEdit)
+                                    {
+                                        <span class="stop-workspace__badge"
+                                              title="@stop.LockReason">
+                                            Locked
+                                        </span>
+                                    }
+                                </span>
+                                <strong>@DispatchWorkspaceStopDisplay.Name(stop)</strong>
+                            </span>
+                            <span>@Location(stop)</span>
+                        </span>
+                        <span class="stop-workspace__schedule">
+                            <span class="stop-workspace__label visually-hidden">
+                                Appointment
+                            </span>
+                            <span>
+                                @DispatchWorkspaceStopDisplay.Schedule(stop)
+                            </span>
+                            @if (!string.IsNullOrWhiteSpace(stop.StopNo))
+                            {
+                                <span class="stop-workspace__reference visually-hidden">
+                                    Ref # @stop.StopNo
+                                </span>
+                            }
+                        </span>
+                        <span class="stop-workspace__assignment-preview">
+                            <span class="stop-workspace__equipment">
+                                <span>Truck <strong>
+                                    @Text(stop.TruckNumber)
+                                </strong></span>
+                                <span>Trailer <strong>
+                                    @Text(stop.TrailerNumber)
+                                </strong></span>
+                            </span>
+                            <span class="stop-workspace__driver">
+                                Driver <strong>@Text(drivers.Driver)</strong>
+                            </span>
+                            @if (!string.IsNullOrWhiteSpace(drivers.CoDriver))
+                            {
+                                <span class="stop-workspace__co-driver">
+                                    Co-driver <strong>
+                                        @stop.CoDriverName
+                                    </strong>
+                                </span>
+                            }
+                        </span>
+                    </button>
+                    @if (Load is not null && recorded?.IsCompleted != true)
+                    {
+                        <DispatchStopForecast @key="(Load.Id, stop.Id, false)"
+                            Load="Load" StopId="stop.Id" DraftChanged="DraftChanged" />
+                    }
+                    else { <span></span> }
+                    @if (stop.CanMove && CanEdit)
+                    {
+                        <div class="stop-workspace__order"
+                             aria-label="@($"Reorder stop {index + 1}")">
+                            <button type="button" class="btn btn--text stop-workspace__drag"
+                                  disabled="@(!Editable || !stop.CanMove)"
+                                  draggable="@(Editable && stop.CanMove
+                                      ? "true" : "false")"
+                                  title="Drag to reorder, or select this handle then a destination. Keyboard: Up / Down."
+                                  aria-label="@($"Reorder stop {index + 1}")"
+                                  aria-pressed="@(_dragged == stop.Id ? "true" : "false")"
+                                  @onclick="() => PickForMove(stop.Id)"
+                                  @onkeydown="e => ReorderKeyAsync(stop.Id, e)"
+                                  @ondragstart="() => BeginDrag(stop.Id)"
+                                  @ondragend="EndDrag">⠿</button>
+                        </div>
+                    }
+                </div>
+            </li>
+        }
+    </ol>
+    @if (CanEdit)
+    {
+        <footer class="stop-workspace__hint visually-hidden">
+            Drag the handle to reorder, or select it and then a destination.
+        </footer>
+    }
+    <div class="stop-workspace__working-area">
+    <section class="stop-workspace__details" id="@_detailsId" @key="SelectedStop?.Id"
+             aria-labelledby="@($"{_detailsId}-title")">
+        <h3 class="visually-hidden" id="@($"{_detailsId}-title")">
+            @if (SelectedStop is { } selectedStop)
+            {
+                <text>Stop @(Stops.IndexOf(selectedStop) + 1) ·
+                    @DispatchWorkspaceStopDisplay.Action(selectedStop) ·
+                    @DispatchWorkspaceStopDisplay.Name(selectedStop)</text>
+            }
+            else { <text>Stop details</text> }
+        </h3>
+        @if (SelectedStop is { } activeStop)
+        {
+            <div class="stop-workspace__editor" @key="activeStop.Id"
+                 id="@($"stop-editor-{activeStop.Id}")">
+                @if (!activeStop.CanEdit
+                    && activeStop.LockReason is { } reason)
+                {
+                    <p class="stop-workspace__lock">@reason</p>
+                }
+                @SelectedStopActions
+                @if (activeStop.Transfer is { } transfer)
+                {
+                    <DispatchStopTransfer Transfer="transfer"
+                        StopId="activeStop.Id" Disabled="@(!Editable)"
+                        ManageRequested="SwitchRequested" />
+                }
+                else if (!activeStop.CanCorrect || SelectedStopActions is null)
+                {
+                    <section class="stop-workspace__assignment"
+                             aria-label="Assignment at this stop">
+                        <dl class="stop-workspace__resources">
+                            <div><dt>Truck</dt>
+                                <dd>@Text(activeStop.TruckNumber)</dd></div>
+                            <div><dt>Trailer</dt>
+                                <dd>@Text(activeStop.TrailerNumber)</dd></div>
+                            <div><dt>Driver</dt>
+                                <dd>@Text(activeStop.DriverName)</dd></div>
+                            @if (!string.IsNullOrWhiteSpace(
+                                activeStop.CoDriverName))
+                            {
+                                <div><dt>Co-driver</dt>
+                                    <dd>@activeStop.CoDriverName</dd></div>
+                            }
+                        </dl>
+                    </section>
+                }
+                @if (activeStop.Transfer is null)
+                {
+                    <DispatchStopFields @key="activeStop"
+                        Stop="activeStop" Clock="Clock(activeStop)"
+                        Disabled="@(!Editable || !activeStop.CanEdit)"
+                        Changed="NotifyAsync"
+                        AddressLookup="AddressLookup"
+                        VerifyAddressRequested="VerifyAddressRequested" />
+                }
+                else
+                {
+                    <DispatchStopSummary Stop="activeStop"
+                        Recorded="RecordedStop(activeStop.Id)" />
+                }
+                @if (activeStop.CanRemove && CanEdit)
+                {
+                    <div class="stop-workspace__remove">
+                        @if (_removing == activeStop.Id)
+                        {
+                            <span>Remove this stop from the draft?</span>
+                            <button type="button"
+                                    class="btn btn--danger btn--small"
+                                    disabled="@Disabled"
+                                    @onclick="() => RemoveAsync(activeStop)">
+                                Remove stop
+                            </button>
+                            <button type="button" class="btn btn--small"
+                                    @onclick="() => _removing = null">
+                                Keep stop
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button"
+                                    class="btn btn--text btn--small"
+                                    disabled="@Disabled"
+                                    @onclick="() => _removing = activeStop.Id">
+                                Remove stop…
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="stop-workspace__empty">
+                Select a stop above to view its details.
+            </p>
+        }
+        @OperationsContent
+    </section>
+    </div>
+    </div>
+    @if (HasSupport)
+    {
+        <aside class="dispatch-details__aside" aria-label="Route, notes and documents">
+            @if (MapContent is not null)
+            {
+                <div class="stop-workspace__route-support">@MapContent</div>
+            }
+            <div class="stop-workspace__support">@SupportingContent</div>
+            <div class="stop-workspace__route-support">@RouteContent</div>
+        </aside>
+    }
+</section>

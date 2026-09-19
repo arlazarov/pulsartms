@@ -11,9 +11,17 @@ public sealed class DispatchMileageTests
   [InlineData(100d, null, null)]
   [InlineData(null, 20d, null)]
   [InlineData(null, null, null)]
-  public void TotalUsesUnroundedMilesAndRequiresBothDistances(double? loaded, double? empty, double? total)
+  public void TotalUsesUnroundedMilesAndRequiresBothDistances(
+    double? loaded,
+    double? empty,
+    double? total
+  )
   {
-    var response = new DispatchResponse { LoadedMiles = (decimal?)loaded, EmptyMiles = (decimal?)empty };
+    var response = new DispatchResponse
+    {
+      LoadedMiles = (decimal?)loaded,
+      EmptyMiles = (decimal?)empty,
+    };
     Assert.Equal((decimal?)total, response.TotalMiles);
   }
 }

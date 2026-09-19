@@ -14,4 +14,6 @@ public class VehicleTelemetry
   public DateTime? EngineUpdatedAt { get; set; }
   public decimal? FuelPercent { get; set; }
   public DateTime? FuelUpdatedAt { get; set; }
+  public decimal? OutsideTemperatureCelsius { get; set; }
+  public DateTime? OutsideTemperatureUpdatedAt { get; set; }
 }

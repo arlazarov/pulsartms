@@ -35,7 +35,7 @@ are historical results, not an approved workflow for future runs.
 | Shared contracts, persistence, DI, authentication, test infrastructure | `bash test.sh all` | Both .NET test assemblies and all Node suites |
 
 Every category runs the server and Client C# `Architecture` category and the
-Client JavaScript architecture suite. The .NET command targets `AMFTMS.slnx`, so
+Client JavaScript architecture suite. The .NET command targets `pulsartms.slnx`, so
 feature categories include matching tests from both assemblies. Category filters
 select tests, not source projects to compile.
 
@@ -81,6 +81,13 @@ declare an orthogonal `Kind`: `Unit`, `Integration`, `Component`, `Architecture`
 in their feature category and full suite; timing output is diagnostic and is not a
 production performance claim.
 
+Thread-allocation measurements use the non-parallel `Allocation measurements`
+collection in `Support/AllocationMeasurementCollection.cs`. Concurrent
+allocation pressure was reproduced contaminating the fuel matcher measurement;
+only this sensitive fixture is isolated. Keep its measured loop and byte
+limits intact. Isolation does not skip the feature/full-suite checks or
+establish production memory usage under load.
+
 For a narrow debugging run use `dotnet test Client.Tests -warnaserror --artifacts-path artifacts/tests --filter
 'Category=Identity'` or `dotnet test Server.Tests -warnaserror --artifacts-path artifacts/tests --filter
 'Category=Routing&Kind=Integration'`. These do not replace the runner's dependency
@@ -89,7 +96,7 @@ Do not rename, skip or remove tests to make a filter pass.
 
 The bUnit suite renders production Login, Settings, DispatchList, FleetMap and
 ArrivalEstimate components. It exercises pending submissions, settings conflicts,
-view-specific polling, cancelled searches, truck visibility, next-route error
+view-specific polling, cancelled searches, truck focus, next-route error
 recovery, delayed Next Loads on/off/on and A→B→A selection, current-load exclusion,
 revision retention and ETA freshness. Next Loads regressions also hold planning,
 details and next-route HTTP responses pending: enabled-before-selection can load

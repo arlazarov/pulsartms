@@ -1,0 +1,125 @@
+@implements IDisposable
+
+<section class="stop-correction" aria-label="Stop status and assignment">
+  @if (Stop.Transfer is { } transfer)
+  {
+    <strong>@(transfer.Action is "drop" or "release" ? "Drop · releasing resources" : "Hook · receiving resources")</strong>
+  }
+  <fieldset disabled="@(Disabled || _saving || _pending is not null)">
+    <div class="stop-correction__fields">
+      @if (Stop.Transfer is null)
+      {
+      <div class="stop-correction__status-field"><span class="stop-correction__label"><ActionIcon Kind="check" /> Status</span>
+        <button type="button" id="correction-status" class="stop-correction__status"
+                value="@_status" aria-pressed="@(_status == "completed" ? "true" : "false")"
+                title="@(_status == "completed" ? "Mark not completed" : "Mark completed")"
+                @onclick="ToggleStatusAsync">Completed</button>
+      </div>
+      }
+      <div class="stop-correction__resource-field">
+        <label for="correction-truck">
+          <span class="stop-correction__label">
+            <ActionIcon Kind="truck" /> Truck
+          </span>
+        </label>
+        <ResourceSelect Id="correction-truck" @bind-Value="_truck"
+          @bind-Value:after="DraftChangedAsync"
+          Options="@TruckOptions" Placeholder="Search truck number"
+          Disabled="@(EditingStops || _loading || _resourceError is not null)" />
+      </div>
+      <div class="stop-correction__resource-field">
+        <label for="correction-trailer">
+          <span class="stop-correction__label">
+            <ActionIcon Kind="cargo" /> Trailer
+          </span>
+        </label>
+        <ResourceSelect Id="correction-trailer" @bind-Value="_trailer"
+          @bind-Value:after="DraftChangedAsync" Options="@TrailerOptions"
+          EmptyLabel="No trailer" Placeholder="Search trailer"
+          Disabled="@(EditingStops || _loading || _resourceError is not null)" />
+      </div>
+      <div class="stop-correction__resource-field">
+        <label for="correction-driver">
+          <span class="stop-correction__label">
+            <ActionIcon Kind="contact" /> Driver
+          </span>
+        </label>
+        <ResourceSelect Id="correction-driver" @bind-Value="_driver"
+          @bind-Value:after="DriverChangedAsync" Options="@DriverOptions"
+          EmptyLabel="No driver" Placeholder="Search driver"
+          Disabled="@(_loading || _resourceError is not null)" />
+      </div>
+      <div class="stop-correction__resource-field">
+        <label for="correction-codriver">
+          <span class="stop-correction__label">
+            <ActionIcon Kind="contact" /> Co-driver
+          </span>
+        </label>
+        <ResourceSelect Id="correction-codriver" @bind-Value="_coDriver"
+          @bind-Value:after="DriverChangedAsync" Options="@DriverOptions"
+          EmptyLabel="No co-driver" Placeholder="Search co-driver"
+          Disabled="@(_loading || _resourceError is not null)" />
+      </div>
+    </div>
+    @if (!AssignmentChanged && Stop.Transfer is null)
+    {
+      <p>Resource changes apply to the selected assignment scope.
+        Choose one stop, onward, or a range for driver changes.</p>
+    }
+    @if (AssignmentChanged)
+    {
+      <div class="stop-correction__scope">
+        <label for="correction-scope">Apply changed resources to
+          <select id="correction-scope" @bind="_scope" @bind:after="DraftChangedAsync">
+            <option value="stop">This stop only</option>
+            <option value="current">Current assignment</option>
+            <option value="all">Entire load</option>
+            <option value="onward">From this stop onward</option>
+            <option value="range">Selected range</option>
+          </select>
+        </label>
+        @if (_scope == "range")
+        {
+          <label for="correction-from">From
+            <select id="correction-from" @bind="_from" @bind:after="DraftChangedAsync">
+              @foreach (var item in Workspace.Stops) { <option value="@item.Id">@item.Sequence · @item.Name</option> }
+            </select>
+          </label>
+          <label for="correction-to">Through
+            <select id="correction-to" @bind="_to" @bind:after="DraftChangedAsync">
+              @foreach (var item in Workspace.Stops) { <option value="@item.Id">@item.Sequence · @item.Name</option> }
+            </select>
+          </label>
+        }
+      </div>
+      <p>@AssignmentPreview</p>
+      @if (ScopeError is { } problem)
+      {
+        <p role="alert">@problem</p>
+      }
+    }
+  </fieldset>
+  @if (!PageActions && (Dirty || _pending is not null))
+  {
+    <div class="stop-correction__actions">
+      <button type="button" class="btn btn--primary btn--small"
+              disabled="@(Disabled || _saving || AssignmentChanged && (_loading || ScopeError is not null))" @onclick="SaveAsync">
+        @(_saving ? "Saving…" : _pending is not null ? "Retry save" : "Save")
+      </button>
+      <button type="button" class="btn btn--small" disabled="@_saving" @onclick="CancelAsync">Cancel</button>
+    </div>
+  }
+  @if (StopDrafts?.HasChanges == true)
+  {
+    <p>Select other stops to change their status or drivers, then save all changes
+      at the top of this page.</p>
+  }
+  @if (_loading) { <p role="status"><LoadingIndicator /></p> }
+  @if (_resourceError is not null)
+  {
+    <p role="alert">@_resourceError</p>
+    <button type="button" class="btn btn--small" disabled="@_loading" @onclick="LoadResourcesAsync">Retry resources</button>
+  }
+  @if (_pending is not null && !_saving) { <p>Save is not confirmed. Retry, or cancel to reload the saved version.</p> }
+  @if (_error is not null) { <p role="alert">@_error</p> }
+</section>

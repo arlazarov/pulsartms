@@ -1,6 +1,11 @@
-import { nextLoadDisplay } from './nextLoadDisplay.js';
+import { nextLoadDisplay, nextLoadKey } from './nextLoadDisplay.js';
 
-export function createNextLoadsLayer(map, Polyline, StopMarker, onSelection = () => {}) {
+export function createNextLoadsLayer(
+  map,
+  Polyline,
+  StopMarker,
+  onSelection = () => {},
+) {
   const objects = [];
   const markerUpdates = [];
   let previous = null;
@@ -12,15 +17,21 @@ export function createNextLoadsLayer(map, Polyline, StopMarker, onSelection = ()
   let selectedStopIndex = null;
   let markerGroups = [];
   let renderedLines = [];
-  const identity = row => row.loadId ?? row.loadNumber;
+  const identity = row =>
+    nextLoadKey(row.loadId ?? row.loadNumber, row.executionLegId);
 
   function applySelection() {
     for (const group of markerGroups)
-      group.marker.highlighted = group.members.some(row => identity(row) === selectedId);
+      group.marker.highlighted = group.members.some(
+        row => identity(row) === selectedId,
+      );
     for (const { line, loadId } of renderedLines)
-      line?.setOptions({ strokeWeight: 2, zIndex: loadId === selectedId ? 10 : 0,
+      line?.setOptions({
+        strokeWeight: 2,
+        zIndex: loadId === selectedId ? 10 : 0,
         routeSelected: selectedId !== null && loadId === selectedId,
-        routeMuted: selectedId !== null && loadId !== selectedId });
+        routeMuted: selectedId !== null && loadId !== selectedId,
+      });
   }
   function clearSelection() {
     if (selectedId === null) return;
@@ -70,33 +81,66 @@ export function createNextLoadsLayer(map, Polyline, StopMarker, onSelection = ()
     set(loads) {
       if (disposed) return;
       cachedLoads = loads;
-      if (!loads.some(load => (load.id ?? load.loadNumber) === selectedId)) clearSelection();
-      if (!visible) { clearObjects(); return; }
+      if (
+        !loads.some(
+          load =>
+            nextLoadKey(load.id ?? load.loadNumber, load.executionLegId) ===
+            selectedId,
+        )
+      )
+        clearSelection();
+      if (!visible) {
+        clearObjects();
+        return;
+      }
       const signature = JSON.stringify(loads);
       if (signature === previous) return;
       clearObjects();
       previous = signature;
       const display = nextLoadDisplay(loads);
-      renderedLines = display.lines.map(({ points, role, loadId, routeColor }) => {
-        const line = new Polyline({ map, routeRole: role, routeColor, strokeWeight: 2 });
-        line.setPath(points.map(p => ({ lat: p.latitude, lng: p.longitude })));
-        objects.push(line);
-        return { line, loadId };
-      });
+      renderedLines = display.lines.map(
+        ({ points, role, loadId, routeColor }) => {
+          const line = new Polyline({
+            map,
+            routeRole: role,
+            routeColor,
+            strokeWeight: 2,
+          });
+          line.setPath(
+            points.map(p => ({ lat: p.latitude, lng: p.longitude })),
+          );
+          objects.push(line);
+          return { line, loadId };
+        },
+      );
       for (const { stop, numbers, members, color } of display.groups) {
-        const marker = new StopMarker({ map, job: stop.job,
+        const marker = new StopMarker({
+          map,
+          job: stop.job,
           position: { lat: stop.latitude, lng: stop.longitude },
-          number: [...numbers].map(number => number + offset).join('/'), color, transientLabel: true,
+          number: [...numbers].map(number => number + offset).join('/'),
+          color,
+          transientLabel: true,
           onSelect: () => {
             if (disposed || !visible || previous !== signature) return;
-            const current = members.findIndex(row => identity(row) === selectedId && row.index === selectedStopIndex);
+            const current = members.findIndex(
+              row =>
+                identity(row) === selectedId && row.index === selectedStopIndex,
+            );
             const row = members[(current + 1) % members.length];
             selectedId = identity(row);
             selectedStopIndex = row.index;
             applySelection();
-            onSelection(row.loadId ?? null, row.index);
-          } });
-        markerUpdates.push(() => marker.setNumber([...numbers].map(number => number + offset).join('/')));
+            if (row.executionLegId)
+              onSelection(row.loadId ?? null, row.index, row.executionLegId);
+            else onSelection(row.loadId ?? null, row.index);
+          },
+        });
+        markerUpdates.push(() =>
+          marker.setNumber(
+            [...numbers].map(number => number + offset).join('/'),
+          ),
+        );
         markerGroups.push({ marker, members });
         objects.push(marker);
       }

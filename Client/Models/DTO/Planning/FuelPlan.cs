@@ -3,6 +3,8 @@ namespace Client.Models.DTO.Planning;
 public sealed class FuelPlan
 {
   public Guid TruckId { get; set; }
+  public Guid? ExecutionLegId { get; set; }
+  public long AssignmentRevision { get; set; }
   public DateOnly PricingDate { get; set; }
   public bool ReusedCheckedRoute { get; set; }
   public bool EstimatedStationAccess { get; set; }

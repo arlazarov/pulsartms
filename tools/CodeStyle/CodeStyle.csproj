@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RoslynToolPath>$(MSBuildSDKsPath)/../DotnetTools/dotnet-format</RoslynToolPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(RoslynToolPath)/*.dll"
+               Exclude="$(RoslynToolPath)/dotnet-format.dll" />
+    <Reference Include="$(RoslynToolPath)/BuildHost-netcore/Microsoft.Build.Locator.dll" />
+    <Content Include="$(RoslynToolPath)/BuildHost-netcore/**">
+      <Link>BuildHost-netcore/%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>

@@ -2,6 +2,7 @@ using API.Controllers;
 using Application;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using InfrastructureServices = Infrastructure.DependencyInjection;
 
 namespace Server.Tests.Architecture;
 
@@ -17,23 +18,37 @@ public sealed class CompositionTests
     services.AddRouting();
     services.AddDataProtection();
     services.AddApplication();
-    Infrastructure.DependencyInjection.AddInfrastructure(services, builder.Configuration);
-    await using var provider = services.BuildServiceProvider(new ServiceProviderOptions
-    {
-      ValidateOnBuild = true,
-      ValidateScopes = true
-    });
+    InfrastructureServices.AddInfrastructure(services, builder.Configuration);
+    await using var provider = services.BuildServiceProvider(
+      new ServiceProviderOptions
+      {
+        ValidateOnBuild = true,
+        ValidateScopes = true,
+      }
+    );
   }
 
   [Fact]
   public void PlanningControllersHaveNoBusinessOrInfrastructureDependencies()
   {
-    foreach (var type in new[] { typeof(RoutePlanningController), typeof(SettingsController), typeof(SynchronizationController) })
+    foreach (
+      var type in new[]
+      {
+        typeof(RoutePlanningController),
+        typeof(SettingsController),
+        typeof(SynchronizationController),
+      }
+    )
     {
       Assert.True(typeof(BaseController).IsAssignableFrom(type));
-      Assert.All(type.GetConstructors(), constructor => Assert.Empty(constructor.GetParameters()));
+      Assert.All(
+        type.GetConstructors(),
+        constructor => Assert.Empty(constructor.GetParameters())
+      );
     }
-    Assert.DoesNotContain(typeof(DependencyInjection).Assembly.GetReferencedAssemblies(),
-      assembly => assembly.Name is "Shared" or "Infrastructure" or "API");
+    Assert.DoesNotContain(
+      typeof(DependencyInjection).Assembly.GetReferencedAssemblies(),
+      assembly => assembly.Name is "Shared" or "Infrastructure" or "API"
+    );
   }
 }

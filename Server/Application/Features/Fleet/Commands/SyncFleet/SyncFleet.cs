@@ -1,7 +1,7 @@
 using Application.Caching;
-using Application.Features.Synchronization.Services;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Queries.GetFleetLocations;
+using Application.Features.Synchronization.Services;
 using Application.Models;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -12,7 +12,8 @@ public record SyncFleetCommand : IRequest<RequestResponse<int>>;
 public class SyncFleetHandler(
   IAppDbContext dbContext,
   IFleetProvider fleetProvider,
-  IMemoryCache cache, ReadCache reads
+  IMemoryCache cache,
+  ReadCache reads
 ) : IRequestHandler<SyncFleetCommand, RequestResponse<int>>
 {
   public async Task<RequestResponse<int>> Handle(
@@ -21,8 +22,14 @@ public class SyncFleetHandler(
   )
   {
     await SynchronizationGates.Fleet.WaitAsync(cancellationToken);
-    try { return await SyncAsync(request, cancellationToken); }
-    finally { SynchronizationGates.Fleet.Release(); }
+    try
+    {
+      return await SyncAsync(request, cancellationToken);
+    }
+    finally
+    {
+      SynchronizationGates.Fleet.Release();
+    }
   }
 
   private async Task<RequestResponse<int>> SyncAsync(
@@ -35,17 +42,28 @@ public class SyncFleetHandler(
     var trailers = await fleetProvider.GetTrailersAsync(cancellationToken);
     var snapshotTime = DateTime.UtcNow;
     var assignments = await fleetProvider.GetAssignmentsAsync(
-      snapshotTime, snapshotTime, cancellationToken);
+      snapshotTime,
+      snapshotTime,
+      cancellationToken
+    );
     var trailerAssignments = await fleetProvider.GetTrailerAssignmentsAsync(
-      drivers.Select(x => x.ExternalId).ToArray(), cancellationToken);
+      drivers.Select(x => x.ExternalId).ToArray(),
+      cancellationToken
+    );
 
-    await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+    await using var transaction =
+      await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
     await DriverSync.SyncAsync(dbContext, drivers, cancellationToken);
     await TruckSync.SyncAsync(dbContext, trucks, cancellationToken);
     await TrailerSync.SyncAsync(dbContext, trailers, cancellationToken);
     var count = await FleetAssignmentSync.SyncAsync(
-      dbContext, assignments, trailerAssignments, snapshotTime, cancellationToken);
+      dbContext,
+      assignments,
+      trailerAssignments,
+      snapshotTime,
+      cancellationToken
+    );
 
     count += await dbContext.SaveChangesAsync(cancellationToken);
     await transaction.CommitAsync(cancellationToken);
@@ -55,6 +73,7 @@ public class SyncFleetHandler(
       cache.Remove("fleet-driver-ids");
       cache.Remove("assignment-sync-signature");
       cache.Remove("dispatch-sync-signature");
+      reads.Invalidate("fleet-catalog");
       reads.Invalidate("board");
     }
 

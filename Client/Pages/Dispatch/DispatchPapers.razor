@@ -11,16 +11,26 @@
                 <div class="dispatch-paper-tabs">
                 @foreach (var row in rows)
                 {
-                    var active = _selected == row.Load.Id;
-                    <div @key="row.Load.Id" class="dispatch-paper-tab-entry @(active ? "is-selected" : "")">
-                        <button class="dispatch-paper__tab" type="button" aria-expanded="@(active ? "true" : "false")" aria-controls="@($"dispatch-load-dialog-{row.Load.Id}")" @onclick="() => Select(row.Load.Id)">
+                    var phase = Phase(row);
+                    <div @key="row.Load.Id" class="dispatch-paper-tab-entry">
+                        <a class="dispatch-paper__tab"
+                           href="@($"/dispatch/{row.Load.Id}")"
+                           aria-label="@($"Open load {LoadLabel(
+                               row.Load.LoadNumber)}")">
                             <svg class="dispatch-paper__folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" /></svg>
                             <span class="dispatch-paper__tab-content">
+                                @if (!string.IsNullOrEmpty(phase)
+                                    && phase != row.Status)
+                                {
+                                    <span class="dispatch-paper__phase">
+                                        @phase
+                                    </span>
+                                }
                                 <span class="dispatch-paper__tab-line"><strong class="dispatch-paper__tab-number"><LoadNumber Value="row.Load.LoadNumber" /></strong><span class="dispatch-paper__tab-equipment">Truck @row.TruckNumber</span><span class="dispatch-paper__tab-schedule" aria-label="@($"{EventLabel(row)} {EventSchedule(row)}")">@EventSchedule(row)</span></span>
                                 <span class="dispatch-paper__tab-line"><span class="dispatch-paper__tab-driver">@row.DriverName</span><span class="dispatch-paper__tab-status @(row.Completed ? "is-completed" : row.InTransit ? "is-moving" : "")">@row.Status</span></span>
-                                <span class="dispatch-paper__tab-financials"><strong class="dispatch-paper__tab-miles">@DispatchFinancialDisplay.Miles(row.Load.TotalMiles) total</strong><span>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency) · Total RPM @DispatchFinancialDisplay.Money(row.Load.TotalRatePerMile, row.Load.Currency)</span></span>
+                                <span class="dispatch-paper__tab-financials"><strong class="dispatch-paper__tab-miles"><DistanceText Miles="@((double?)row.Load.TotalMiles)" /> total</strong><span>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency) · Total RPM @DispatchFinancialDisplay.Money(row.Load.TotalRatePerMile, row.Load.Currency)</span></span>
                             </span>
-                        </button>
+                        </a>
                     </div>
                 }
                 </div>
@@ -28,8 +38,4 @@
         </section>
     }
     </div>
-    @if (SelectedRow is { } selectedRow)
-    {
-        <DispatchLoadDialog @key="selectedRow.Load.Id" Load="selectedRow.Load" Truck="selectedRow.Truck" Phase="@Phase(selectedRow)" Completed="Completed" Refreshing="Refreshing" Closed="Close" />
-    }
 </div>

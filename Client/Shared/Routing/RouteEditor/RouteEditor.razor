@@ -1,0 +1,77 @@
+@implements IDisposable
+
+<section class="route-editor" aria-label="Load route editor" aria-busy="@(Busy ? "true" : "false")" @onkeydown="KeyDown">
+    <header class="route-editor__header">
+        <strong>@if (_preview is not null) { <LoadNumber Value="_preview.LoadNumber" /> } else { <span>Load route</span> }</strong>
+        <span>Truck @TruckNumber</span>
+        @if (_preview is not null) { <small>@(_changed ? "Unsaved changes" : "Preview · not saved")</small> }
+        <button class="btn btn--small" aria-label="Close route editor" disabled="@_saving" @onclick="Close">×</button>
+    </header>
+    <nav class="route-editor__tabs" aria-label="Route editing mode">
+        <button class="btn @(!_editing ? "btn--primary" : "btn--text")" aria-pressed="@(!_editing ? "true" : "false")" disabled="@Busy" @onclick="() => SetEditing(false)">Route options</button>
+        <button class="btn @(_editing ? "btn--primary" : "btn--text")" aria-pressed="@(_editing ? "true" : "false")" disabled="@Busy" @onclick="() => SetEditing(true)">Edit route</button>
+    </nav>
+    <div class="route-editor__body">
+        @if (_preview is { } preview)
+        {
+            @if (preview.OriginUpdatedAt is { } origin)
+            {
+                <p class="route-editor__hint">From current truck location · Remaining stops only · GPS @Client.Shared.DriverStatus.StopHoursDisplay.Timestamp(origin.ToLocalTime())</p>
+            }
+            @if (!_editing)
+            {
+                <div class="route-editor__options" role="group" aria-label="Available routes">
+                    @foreach (var option in preview.Options)
+                    {
+                        <button class="btn route-editor__option route-editor__option--@option.Number @(_selected == option.Number ? "is-selected" : "")" aria-pressed="@(_selected == option.Number ? "true" : "false")" disabled="@Busy" @onclick="() => Select(option.Number)">
+                            <span>Route @option.Number</span><strong><DistanceText Miles="option.Route.Miles" /></strong>
+                            <span>@Duration(option.Route.Seconds) driving</span>
+                            <small>@Units.FormatDistanceDelta(option.DifferenceMiles) · @TimeDifference(option.DifferenceSeconds)</small>
+                        </button>
+                    }
+                </div>
+                <p class="route-editor__hint">Click a road to compare. @if (preview.Options.Count == 1) { <span>Only one suitable route was returned.</span> }</p>
+                <p class="route-editor__hint">Driving time only, without HOS or service time. ETA updates after saving; recalculate fuel for the new road.</p>
+            }
+            else
+            {
+                <ol class="route-editor__itinerary" aria-label="Load stops and via points">
+                    @foreach (var stop in preview.Stops)
+                    {
+                        @foreach (var via in _via.Where(v => v.BeforeStopId == stop.Id))
+                        {
+                            <li class="route-editor__via" @key="via.Id"><span>◇</span><div><strong>@via.Label</strong><small>Via point</small></div>
+                                <button class="btn btn--small" disabled="@(Busy || Neighbor(via, -1) is null)" aria-label="@($"Move {via.Label} earlier")" @onclick="() => Move(via, -1)">↑</button>
+                                <button class="btn btn--small" disabled="@(Busy || Neighbor(via, 1) is null)" aria-label="@($"Move {via.Label} later")" @onclick="() => Move(via, 1)">↓</button>
+                                <button class="btn btn--small" disabled="@Busy" aria-label="@($"Remove {via.Label}")" @onclick="() => Remove(via)">×</button>
+                            </li>
+                        }
+                        <li><span class="route-editor__number">@(preview.Stops.IndexOf(stop) + 1)</span><div><strong>@StopLabel(stop)</strong><small>@stop.Job</small></div></li>
+                    }
+                </ol>
+                <div class="route-editor__add">
+                    <label>Before stop<select @bind="_beforeStop" disabled="@Busy">@foreach (var stop in preview.Stops.Skip(1)) { <option value="@stop.Id">@StopLabel(stop)</option> }</select></label>
+                    <label>City or address<input @bind="_address" @bind:event="oninput" maxlength="200" placeholder="City, state or address" disabled="@Busy" /></label>
+                    <button class="btn btn--small" disabled="@(Busy || string.IsNullOrWhiteSpace(_address))" @onclick="AddCity">Add</button>
+                    <button class="btn btn--small @(_addingPoint ? "btn--primary" : "")" aria-pressed="@(_addingPoint ? "true" : "false")" disabled="@Busy" @onclick="TogglePoint">Add on map</button>
+                </div>
+                <p class="route-editor__hint">Drag a diamond on the road to change it. Via points do not add stops or service time.</p>
+            }
+            @if (Selected is { } selected)
+            {
+                @foreach (var warning in selected.Route.Warnings) { <p class="route-editor__warning">@Client.Shared.RouteMessageDisplay.Concise(warning)</p> }
+            }
+        }
+        @if (_loading) { <p role="status">Calculating truck routes…</p> }
+        @if (_error is not null) { <p class="route-editor__error" role="alert">@_error</p><button class="btn btn--small" disabled="@Busy" @onclick="() => Calculate(!_editing)">Retry</button> }
+    </div>
+    <footer class="route-editor__footer">
+        @if (_preview?.SavedRoute is { } saved) { <div><small>@(_preview.OriginUpdatedAt.HasValue ? "Saved remaining route" : "Saved route")</small><span><DistanceText Miles="saved.Miles" /> · @Duration(saved.Seconds)</span></div> }
+        @if (Selected is { } choice) { <div><small>@(_valid ? "Preview" : "Preview needs updating")</small><strong><DistanceText Miles="choice.Route.Miles" /> · @Duration(choice.Route.Seconds)</strong></div> }
+        <div class="route-editor__actions">
+            <button class="btn btn--small" disabled="@Busy" @onclick="Close">Cancel</button>
+            @if (!_valid) { <button class="btn btn--primary btn--small" disabled="@Busy" @onclick="() => Calculate(!_editing)">Preview route</button> }
+            else { <button class="btn btn--primary btn--small" disabled="@(Busy || Selected is null)" @onclick="Save">@(_saving ? "Saving…" : "Use this route")</button> }
+        </div>
+    </footer>
+</section>

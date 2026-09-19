@@ -2,6 +2,7 @@ namespace Client.Models.DTO.Planning;
 
 public sealed class FuelPlanStop
 {
+  public string Warning { get; set; } = "";
   public int Number { get; set; }
   public string VisitKey { get; set; } = "";
   public Guid DispatchId { get; set; }
@@ -27,4 +28,6 @@ public sealed class FuelPlanStop
   public double DetourMiles { get; set; }
   public double DetourMinutes { get; set; }
   public DateOnly PriceDate { get; set; }
+  public DateTimeOffset? EstimatedArrival { get; set; }
+  public bool PriceEstimated { get; set; }
 }

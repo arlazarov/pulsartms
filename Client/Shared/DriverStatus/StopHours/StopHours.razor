@@ -5,7 +5,17 @@
     {
     <div class="stop-hours__row stop-hours__road">
         <span class="stop-hours__label">ETA</span>
-        <span class="stop-hours__value"><span class="stop-hours__arrival"><time datetime="@Estimate.Arrival.ToString("O", CultureInfo.InvariantCulture)">@StopHoursDisplay.Timestamp(Estimate.Arrival)</time>
+        <span class="stop-hours__value"><span class="stop-hours__arrival">
+            <time datetime="@(Estimate.Arrival.ToString(
+                "O", CultureInfo.InvariantCulture))">
+                <span class="stop-hours__date" data-separator="· "
+                    >@StopHoursDisplay.RecapDate(Estimate.Arrival)</span><span
+                    class="stop-hours__date-separator"> · </span><span
+                    class="stop-hours__date-break" aria-hidden="true"></span><span
+                    class="stop-hours__clock"
+                    >@(Estimate.Arrival.ToString(
+                        "hh:mm tt", CultureInfo.InvariantCulture))</span>
+            </time>
             @if (Status.Length > 0) { <span class="stop-hours__status stop-hours__status--@StatusTone">@Status</span> }</span>
             @if (CycleStatus.Length > 0)
             { <span class="stop-hours__status stop-hours__cycle-status stop-hours__status--@CycleStatusTone">@CycleStatus</span> }
@@ -16,8 +26,10 @@
     {
     <section class="stop-hours__cycle" aria-label="Cycle at this stop">
         <div class="stop-hours__row stop-hours__arrival-cycle">
-            <h3 class="stop-hours__heading" title="Estimated cycle remaining on arrival">Cycle remaining</h3>
-            <strong class="@CycleClass(Hours.CycleAtArrivalMinutes)">@CycleValue(Hours.CycleAtArrivalMinutes)</strong>
+            <h3 class="stop-hours__heading"
+                title="@CycleTitle">Cycle remaining</h3>
+            <strong class="@CycleClass(RemainingCycle)"
+                >@CycleValue(RemainingCycle)</strong>
         </div>
         @if (ShowRecap)
         {

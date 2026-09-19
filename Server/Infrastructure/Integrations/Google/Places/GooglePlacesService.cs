@@ -1,15 +1,16 @@
-using Infrastructure.Integrations.Http;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Models;
+using Infrastructure.Integrations.Http;
 using Microsoft.Extensions.Configuration;
 
 namespace Infrastructure.Integrations.Google.Places;
 
-public class GooglePlacesService(HttpClient httpClient, IConfiguration configuration)
-  : BaseApiService(httpClient),
-    IPlaceSearchService
+public class GooglePlacesService(
+  HttpClient httpClient,
+  IConfiguration configuration
+) : BaseApiService(httpClient), IPlaceSearchService
 {
   public async Task<PlaceSearchResult?> SearchAsync(
     string query,
@@ -18,7 +19,9 @@ public class GooglePlacesService(HttpClient httpClient, IConfiguration configura
   {
     var apiKey =
       configuration["GooglePlaces:ApiKey"]
-      ?? throw new InvalidOperationException("Google Places API key is not configured.");
+      ?? throw new InvalidOperationException(
+        "Google Places API key is not configured."
+      );
 
     using var request = new HttpRequestMessage(
       HttpMethod.Post,

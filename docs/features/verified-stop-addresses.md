@@ -5,6 +5,19 @@ Application's `StopAddressService` owns correction persistence. Infrastructure's
 precise point; it does not write dispatch data. API and Client require no new
 endpoint or financial/address business logic.
 
+Accepted execution uses `ExecutionStopAddressService` before native base-road
+preparation. Both owners reuse `StopAddressResolution`; provider calls happen
+outside the acceptance transaction. The native owner compares the captured leg
+revision, applies the verified address through `ExecutionAcceptance`, records an
+immutable revision and queues planning together. A late result cannot overwrite
+a changed assignment. Recorded mileage prevents automatic location replacement;
+explicit transfer sites retain their selected coordinates.
+
+The original imported address remains separate from its verified location.
+Replaying that original source preserves the accepted verified address and may
+still supply valid appointment/actual facts. A different source address remains
+under review. Source stop rows are not rewritten by native address verification.
+
 `DispatchStops.SourceAddressJson` preserves the imported address components.
 The normal address columns contain the verified components and therefore flow
 through existing dispatch projections and map planning responses. Verification

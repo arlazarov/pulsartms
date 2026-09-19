@@ -1,13 +1,15 @@
 using Application.Caching;
 using Application.Features.Fuel.Interfaces;
-using Application.Models;
 using Application.Features.Synchronization.Services;
+using Application.Models;
 
 namespace Application.Features.Fuel.Commands.SyncIftaTaxRates;
 
-public record SyncIftaTaxRatesCommand(int Year, int Quarter) : IRequest<RequestResponse<int>>;
+public record SyncIftaTaxRatesCommand(int Year, int Quarter)
+  : IRequest<RequestResponse<int>>;
 
-public class SyncIftaTaxRatesValidator : AbstractValidator<SyncIftaTaxRatesCommand>
+public class SyncIftaTaxRatesValidator
+  : AbstractValidator<SyncIftaTaxRatesCommand>
 {
   public SyncIftaTaxRatesValidator()
   {
@@ -16,8 +18,11 @@ public class SyncIftaTaxRatesValidator : AbstractValidator<SyncIftaTaxRatesComma
   }
 }
 
-public class SyncIftaTaxRatesHandler(IAppDbContext dbContext, IIftaApiService iftaApiService, ReadCache reads)
-  : IRequestHandler<SyncIftaTaxRatesCommand, RequestResponse<int>>
+public class SyncIftaTaxRatesHandler(
+  IAppDbContext dbContext,
+  IIftaApiService iftaApiService,
+  ReadCache reads
+) : IRequestHandler<SyncIftaTaxRatesCommand, RequestResponse<int>>
 {
   public async Task<RequestResponse<int>> Handle(
     SyncIftaTaxRatesCommand request,
@@ -41,7 +46,8 @@ public class SyncIftaTaxRatesHandler(IAppDbContext dbContext, IIftaApiService if
     );
 
     var count = await dbContext.SaveChangesAsync(cancellationToken);
-    if (count > 0) reads.Invalidate("fuel");
+    if (count > 0)
+      reads.Invalidate("fuel");
 
     return RequestResponse<int>.Ok(count);
   }

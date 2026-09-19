@@ -16,6 +16,11 @@
   }
 }
 
+.fleet-map-weather-source {
+  font-size: inherit;
+  color: ui.theme(text-secondary);
+}
+
 .fleet-map-key {
   position: absolute;
   left: ui.pg(md);
@@ -32,22 +37,84 @@
   font-size: ui.fs(caption);
   line-height: 1.3;
 
-  &__routes, &__fuel { display: flex; flex-wrap: wrap; align-items: center; gap: ui.pg(sm) ui.pg(md); }
-  &__routes > span, &__missing, &__scale { display: inline-flex; align-items: center; gap: ui.pg(xs); }
-  &__line { width: ui.pg(lg); height: ui.pg(xs); border-radius: ui.radius(pill); background: ui.theme(map-route-current); }
-  &__line--next { background: ui.theme(map-route-future); }
-  &__stop { display: grid; place-items: center; width: ui.pg(lg); height: ui.pg(lg); border: 1px solid ui.theme(on-accent); border-radius: 50%; background: ui.theme(map-route-current); color: ui.theme(on-accent); font-size: ui.fs(micro); font-style: normal; font-weight: 700; }
-  &__planned { padding: ui.pg(micro) ui.pg(xs); border-radius: ui.radius(sm); background: ui.theme(navigation); color: ui.theme(navigation-text); font-size: ui.fs(micro); font-style: normal; font-weight: 650; }
-  &__fuel-label { color: ui.theme(text); font-weight: 600; }
-  &__scale > i { width: ui.size(control-touch); height: ui.pg(xs); border-radius: ui.radius(pill); background: linear-gradient(to right, ui.theme(map-price-low), ui.theme(map-price-middle), ui.theme(map-price-high)); }
-  &__note { color: ui.theme(text-muted); }
-  &__missing > i { width: ui.pg(sm); height: ui.pg(sm); border-radius: 50%; background: ui.theme(map-price-unavailable); }
+  &__routes,
+  &__fuel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(sm) ui.pg(md);
+  }
+  &__routes > span,
+  &__missing,
+  &__scale {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(xs);
+  }
+  &__line {
+    width: ui.pg(lg);
+    height: ui.pg(xs);
+    border-radius: ui.radius(pill);
+    background: ui.theme(map-route-current);
+  }
+  &__line--next {
+    background: ui.theme(map-route-future);
+  }
+  &__stop {
+    display: grid;
+    place-items: center;
+    width: ui.pg(lg);
+    height: ui.pg(lg);
+    border: 1px solid ui.theme(on-accent);
+    border-radius: 50%;
+    background: ui.theme(map-route-current);
+    color: ui.theme(on-accent);
+    font-size: ui.fs(micro);
+    font-style: normal;
+    font-weight: 700;
+  }
+  &__planned {
+    padding: ui.pg(micro) ui.pg(xs);
+    border-radius: ui.radius(sm);
+    background: ui.theme(navigation);
+    color: ui.theme(navigation-text);
+    font-size: ui.fs(micro);
+    font-style: normal;
+    font-weight: 650;
+  }
+  &__fuel-label {
+    color: ui.theme(text);
+    font-weight: 600;
+  }
+  &__scale > i {
+    width: ui.size(control-touch);
+    height: ui.pg(xs);
+    border-radius: ui.radius(pill);
+    background: linear-gradient(
+      to right,
+      ui.theme(map-price-low),
+      ui.theme(map-price-middle),
+      ui.theme(map-price-high)
+    );
+  }
+  &__note {
+    color: ui.theme(text-muted);
+  }
+  &__missing > i {
+    width: ui.pg(sm);
+    height: ui.pg(sm);
+    border-radius: 50%;
+    background: ui.theme(map-price-unavailable);
+  }
 
   @media (max-width: ui.breakpoint(map-mobile, max)) {
     gap: ui.pg(xs);
     padding: ui.pg(sm);
     font-size: ui.fs(micro);
-    &__routes, &__fuel { gap: ui.pg(xs) ui.pg(sm); }
+    &__routes,
+    &__fuel {
+      gap: ui.pg(xs) ui.pg(sm);
+    }
   }
 }
 
@@ -59,8 +126,6 @@
   min-height: 0;
   gap: ui.pg(md);
   min-width: 0;
-  &__background { display: contents; }
-
   &__message {
     display: flex;
     align-items: center;
@@ -88,6 +153,8 @@
   .fleet-map-host {
     position: absolute;
     inset: 0;
-    &--initializing { visibility: hidden; }
+    &--initializing {
+      visibility: hidden;
+    }
   }
 }

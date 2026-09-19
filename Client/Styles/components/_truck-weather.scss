@@ -1,0 +1,24 @@
+@use '../base' as ui;
+
+.truck-weather {
+  > small > svg {
+    color: ui.theme(text-muted);
+  }
+
+  &--sun > small > svg {
+    color: ui.theme(telemetry-warning-icon);
+  }
+
+  &--rain > small > svg,
+  &--moon > small > svg {
+    color: ui.theme(link);
+  }
+
+  &--snow > small > svg {
+    color: ui.theme(accent);
+  }
+
+  &--thunder > small > svg {
+    color: ui.theme(telemetry-critical-icon);
+  }
+}

@@ -1,0 +1,17 @@
+namespace Domain.Entities.Dispatch;
+
+public sealed class PlanningRefreshRequest
+{
+  public string Id { get; set; } = "";
+  public Guid DispatchId { get; set; }
+  public Guid? ExecutionLegId { get; set; }
+  public long AssignmentRevision { get; set; }
+  public string InputSignature { get; set; } = "";
+  public long RequestedVersion { get; set; }
+  public long CompletedVersion { get; set; }
+  public DateTime RequestedAt { get; set; }
+  public DateTime AvailableAt { get; set; }
+  public Guid? LeaseId { get; set; }
+  public DateTime? LeaseUntil { get; set; }
+  public int Attempts { get; set; }
+}

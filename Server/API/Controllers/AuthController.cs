@@ -1,7 +1,7 @@
 using Application.Features.Auth.Commands;
+using Application.Features.Auth.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Application.Features.Auth.Queries;
 
 namespace API.Controllers;
 
@@ -20,7 +20,9 @@ public class AuthController : BaseController
   )
   {
     var result = await Mediator.Send(command, cancellationToken);
-    return result.Success ? new EmptyResult() : StatusCode(result.StatusCode, result);
+    return result.Success
+      ? new EmptyResult()
+      : StatusCode(result.StatusCode, result);
   }
 
   [AllowAnonymous]
@@ -31,11 +33,14 @@ public class AuthController : BaseController
   )
   {
     var result = await Mediator.Send(command, cancellationToken);
-    return result.Success ? new EmptyResult() : StatusCode(result.StatusCode, result);
+    return result.Success
+      ? new EmptyResult()
+      : StatusCode(result.StatusCode, result);
   }
 
   [Authorize]
   [HttpPost("logout")]
-  public async Task<IActionResult> Logout(CancellationToken cancellationToken) =>
-    await HandleRequest(new LogoutCommand(), cancellationToken);
+  public async Task<IActionResult> Logout(
+    CancellationToken cancellationToken
+  ) => await HandleRequest(new LogoutCommand(), cancellationToken);
 }

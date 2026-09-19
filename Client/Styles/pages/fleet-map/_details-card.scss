@@ -20,13 +20,16 @@
   &__close {
     @include ui.icon-control;
     & {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    z-index: 1;
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: 1;
     }
   }
-  &__body { padding: ui.pg(md); padding-right: calc(#{ui.size(control-touch)} + #{ui.pg(md)}); }
+  &__body {
+    padding: ui.pg(md);
+    padding-right: calc(#{ui.size(control-touch)} + #{ui.pg(md)});
+  }
   @media (max-width: ui.breakpoint(map-mobile, max)) {
     top: auto;
     bottom: 0;
@@ -35,6 +38,9 @@
     width: auto;
     transform: none;
     border-radius: ui.radius(sm) ui.radius(sm) 0 0;
-    max-height: min(calc(100% - #{ui.size(control-touch)}), calc(100dvh - #{ui.size(control-touch)}));
+    max-height: min(
+      calc(100% - #{ui.size(control-touch)}),
+      calc(100dvh - #{ui.size(control-touch)})
+    );
   }
 }

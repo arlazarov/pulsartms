@@ -1,10 +1,22 @@
+using Client.Models.DTO.Planning;
+
 namespace Client.Models.DTO.Dispatch;
 
 public class DispatchResponse
 {
-  public Client.Models.DTO.Planning.DispatchEta? Eta { get; set; }
+  public DispatchEta? Eta { get; set; }
   public Guid Id { get; set; }
+  public Guid? ExecutionLegId { get; set; }
+  public long AssignmentRevision { get; set; }
+  public string? ExecutionStatus { get; set; }
+  public bool AwaitingReceipt { get; set; }
+  public Guid? DriverId { get; set; }
   public Guid? TruckId { get; set; }
+  public Guid? PlanningTruckId { get; set; }
+  public Guid? PlanningFromStopId { get; set; }
+  public long PlanningAssignmentRevision { get; set; }
+  public long RouteChoiceRevision { get; set; }
+  public DateTime? PlanningAssignmentRecordedAt { get; set; }
   public int LoadNumber { get; set; }
   public string OrderNumber { get; set; } = string.Empty;
   public string Status { get; set; } = string.Empty;

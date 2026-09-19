@@ -9,13 +9,20 @@ public abstract class BaseController : ControllerBase
 {
   private IMediator? _mediator;
 
-  // Existing endpoints expose an unwrapped success body; keep their wire contract.
+  // Existing endpoints expose an unwrapped success body; keep their wire
+  // contract.
   protected async Task<IActionResult> HandleUnwrappedRequest<TData>(
-    IRequest<RequestResponse<TData>> request, CancellationToken cancellationToken = default)
+    IRequest<RequestResponse<TData>> request,
+    CancellationToken cancellationToken = default
+  )
   {
     var result = await Mediator.Send(request, cancellationToken);
-    if (result.StatusCode == 401) return Unauthorized();
-    return StatusCode(result.StatusCode, result.Success ? (object?)result.Response : result);
+    if (result.StatusCode == 401)
+      return Unauthorized();
+    return StatusCode(
+      result.StatusCode,
+      result.Success ? (object?)result.Response : result
+    );
   }
 
   protected IMediator Mediator =>

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 104"
+     role="img" aria-label="PulsR TMS" color="#172438">
+  <defs>
+    <linearGradient id="pulse-color" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#ec354b"/>
+      <stop offset="1" stop-color="#ff6371"/>
+    </linearGradient>
+    <path id="pulse" d="M5 43V61M22 31V73M39 13V91M56 31V73M73 43V61"
+          fill="none" stroke="url(#pulse-color)" stroke-width="10"
+          stroke-linecap="round"/>
+    <symbol id="wordmark" viewBox="0 0 480 104">
+      <use href="#pulse" transform="translate(4)"/>
+      <g fill="currentColor" transform="translate(104 12) scale(.72)">
+        <path fill-rule="evenodd" d="
+          M2 0H50C73 0 88 14 88 34C88 55 73 69 50 69H22V102
+          Q22 104 20 104H2Q0 104 0 102V2Q0 0 2 0Z
+          M22 20V49H49C60 49 67 44 67 34C67 25 60 20 49 20Z"/>
+        <path d="
+          M96 28H116V72C116 82 121 87 132 87C143 87 148 82 148 72
+          V28H168V73C168 94 155 106 132 106C109 106 96 94 96 73Z"/>
+        <path d="
+          M180 0H198Q200 0 200 2V102Q200 104 198 104H180
+          Q178 104 178 102V2Q178 0 180 0Z"/>
+        <path d="
+          M280 28H238C221 28 211 38 211 53C211 69 221 77 236 77H252
+          C258 77 261 79 261 83C261 87 258 89 252 89H211V104H254
+          C273 104 283 96 283 80C283 64 273 56 258 56H240
+          C234 56 231 54 231 51C231 48 234 47 240 47H280Z"/>
+        <path transform="translate(284)" d="
+          M2 0H48C71 0 86 14 86 34C86 51 76 63 62 67L96 104H68
+          L30 62V49H47C58 49 65 44 65 34C65 25 58 20 47 20H22V104
+          H0V2Q0 0 2 0Z"/>
+      </g>
+      <path fill="currentColor" transform="translate(391 63)" d="
+        M0 0H21V5H13V24H8V5H0Z
+        M26 0H32L39 12L46 0H52V24H47V8L39 21L31 8V24H26Z
+        M79 0H65C60 0 57 3 57 7C57 11 60 14 65 14H72
+        C74 14 75 15 75 17C75 19 74 19 72 19H57V24H73
+        C78 24 81 21 81 17C81 12 78 9 73 9H66C64 9 63 8 63 7
+        C63 5 64 5 66 5H79Z"/>
+    </symbol>
+  </defs>
+  <use href="#wordmark"/>
+</svg>

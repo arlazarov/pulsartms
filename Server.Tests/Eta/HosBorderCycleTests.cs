@@ -8,15 +8,31 @@ namespace Server.Tests.Eta;
 [Trait("Kind", "Unit")]
 public sealed class HosBorderCycleTests
 {
-  private static readonly DateTimeOffset Now = new(2026, 9, 10, 12, 0, 0, TimeSpan.Zero);
+  private static readonly DateTimeOffset Now = new(
+    2026,
+    9,
+    10,
+    12,
+    0,
+    0,
+    TimeSpan.Zero
+  );
 
   [Theory]
   [InlineData("CA", "US")]
   [InlineData("US", "CA")]
-  public void ReconciledJurisdictionsPreserveTheAnchorAndProjectedDriving(string origin, string destination)
+  public void ReconciledJurisdictionsPreserveTheAnchorAndProjectedDriving(
+    string origin,
+    string destination
+  )
   {
     var history = History();
-    var ledger = new HosCycleFeasibility(Now, HosForecastFixture.Clocks(Now, history), origin, history);
+    var ledger = new HosCycleFeasibility(
+      Now,
+      HosForecastFixture.Clocks(Now, history),
+      origin,
+      history
+    );
     var starting = ledger.BalanceMinutes(Now);
     ledger.Observe(Now, Now.AddHours(2), "driving");
     ledger.Enter(destination);
@@ -30,8 +46,20 @@ public sealed class HosBorderCycleTests
   [Fact]
   public void DifferentHistoricalWindowsDoNotTransferTheOtherJurisdictionsHours()
   {
-    var history = HosForecastFixture.History(Now, cycleHours: 20, firstDayHours: 3) with { CanadaCycle = new(7, 70, 36) };
-    var ledger = new HosCycleFeasibility(Now, HosForecastFixture.Clocks(Now, history), "US", history);
+    var history = HosForecastFixture.History(
+      Now,
+      cycleHours: 20,
+      firstDayHours: 3
+    ) with
+    {
+      CanadaCycle = new(7, 70, 36),
+    };
+    var ledger = new HosCycleFeasibility(
+      Now,
+      HosForecastFixture.Clocks(Now, history),
+      "US",
+      history
+    );
     ledger.Enter("CA");
     Assert.False(ledger.Verified);
     Assert.Null(ledger.BalanceMinutes(Now));
@@ -43,7 +71,12 @@ public sealed class HosBorderCycleTests
   public void BorderKeepsEarlierDrivingShortage()
   {
     var history = History();
-    var ledger = new HosCycleFeasibility(Now, HosForecastFixture.Clocks(Now, history), "CA", history);
+    var ledger = new HosCycleFeasibility(
+      Now,
+      HosForecastFixture.Clocks(Now, history),
+      "CA",
+      history
+    );
     ledger.Observe(Now, Now.AddHours(40), "driving");
     var shortage = ledger.DrivingShortfallMinutes;
     ledger.Enter("US");
@@ -52,6 +85,9 @@ public sealed class HosBorderCycleTests
     Assert.Equal(shortage, ledger.DrivingShortfallMinutes);
   }
 
-  private static HosHistory History() => HosForecastFixture.History(Now, cycleHours: 20)
-    with { CanadaCycle = new(7, 70, 36) };
+  private static HosHistory History() =>
+    HosForecastFixture.History(Now, cycleHours: 20) with
+    {
+      CanadaCycle = new(7, 70, 36),
+    };
 }

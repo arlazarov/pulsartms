@@ -19,7 +19,10 @@
       width: 100%;
       @include ui.input-control;
     }
-    textarea { min-height: 96px; resize: vertical; }
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
 
     &--error {
       input,
@@ -36,5 +39,7 @@
   align-items: center;
   gap: ui.pg(md);
   min-height: ui.size(control-touch);
-  input { @include ui.checkbox-control; }
+  input {
+    @include ui.checkbox-control;
+  }
 }

@@ -4,25 +4,27 @@
 
 namespace Infrastructure.Persistence.Migrations
 {
+  /// <inheritdoc />
+  public partial class StoreDeadheadGeometry : Migration
+  {
     /// <inheritdoc />
-    public partial class StoreDeadheadGeometry : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<string>(
-                name: "RouteJson",
-                table: "DispatchDeadheads",
-                type: "text",
-                nullable: true);
-        }
-
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "RouteJson",
-                table: "DispatchDeadheads");
-        }
+      migrationBuilder.AddColumn<string>(
+        name: "RouteJson",
+        table: "DispatchDeadheads",
+        type: "text",
+        nullable: true
+      );
     }
+
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+      migrationBuilder.DropColumn(
+        name: "RouteJson",
+        table: "DispatchDeadheads"
+      );
+    }
+  }
 }

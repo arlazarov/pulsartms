@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Client.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace Client.Pages.Auth;
 
@@ -12,7 +14,8 @@ public partial class Login : IDisposable
   protected AuthService AuthService { get; set; } = default!;
 
   [Inject]
-  protected AppAuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
+  protected AppAuthenticationStateProvider AuthenticationStateProvider { get; set; } =
+    default!;
 
   [Inject]
   protected NavigationManager Navigation { get; set; } = default!;
@@ -27,7 +30,8 @@ public partial class Login : IDisposable
   {
     var loginUri = Navigation.Uri;
     var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-    if (_disposed || Navigation.Uri != loginUri) return;
+    if (_disposed || Navigation.Uri != loginUri)
+      return;
     if (state.User.Identity?.IsAuthenticated == true)
       Navigation.NavigateTo("/fleet/map", replace: true);
     else
@@ -52,15 +56,24 @@ public partial class Login : IDisposable
       AuthenticationStateProvider.NotifyUserAuthentication();
       Navigation.NavigateTo("/fleet/map");
     }
-    catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
+    catch (Exception ex)
+      when (ex
+          is HttpRequestException
+            or OperationCanceledException
+            or JsonException
+      )
     {
       Error = "Could not reach the server. Please try again.";
     }
-    catch (Microsoft.JSInterop.JSException)
+    catch (JSException)
     {
-      Error = "Secure sign-in storage is unavailable. Use a current browser over HTTPS or localhost.";
+      Error =
+        "Secure sign-in storage is unavailable. Use a current browser over HTTPS or localhost.";
     }
-    finally { IsLoading = false; }
+    finally
+    {
+      IsLoading = false;
+    }
   }
 
   protected sealed class LoginModel

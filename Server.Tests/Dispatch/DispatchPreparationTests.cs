@@ -18,21 +18,69 @@ public sealed class DispatchPreparationTests
   {
     await using var connection = new SqliteConnection("Data Source=:memory:");
     await connection.OpenAsync();
-    await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options);
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
     await db.Database.EnsureCreatedAsync();
-    var truck = new Truck { Id = Guid.NewGuid(), ExternalId = "preparation", UnitNumber = "101", IsActive = true };
+    var truck = new Truck
+    {
+      Id = Guid.NewGuid(),
+      ExternalId = "preparation",
+      UnitNumber = "101",
+      IsActive = true,
+    };
     db.Trucks.Add(truck);
     await db.SaveChangesAsync();
-    var source = new ExternalDispatch { LoadNumber = 1, TruckNumber = "101", Status = "assigned",
-      Stops = [new() { Sequence = 1, TruckNumber = "101", Address = "1 raw road", City = "Raw city", Latitude = 1, Longitude = 2 }] };
-    var successor = new ExternalDispatch { LoadNumber = 2, TruckNumber = "101", Status = "assigned",
-      Stops = [new() { Sequence = 1, TruckNumber = "101", Address = "2 raw road", Latitude = 3, Longitude = 4 }] };
+    var source = new ExternalDispatch
+    {
+      LoadNumber = 1,
+      TruckNumber = "101",
+      Status = "assigned",
+      Stops =
+      [
+        new()
+        {
+          Sequence = 1,
+          TruckNumber = "101",
+          Address = "1 raw road",
+          City = "Raw city",
+          Latitude = 1,
+          Longitude = 2,
+        },
+      ],
+    };
+    var successor = new ExternalDispatch
+    {
+      LoadNumber = 2,
+      TruckNumber = "101",
+      Status = "assigned",
+      Stops =
+      [
+        new()
+        {
+          Sequence = 1,
+          TruckNumber = "101",
+          Address = "2 raw road",
+          Latitude = 3,
+          Longitude = 4,
+        },
+      ],
+    };
     using var reads = TestCache.Create();
     using var memory = new MemoryCache(new MemoryCacheOptions());
     var preparation = TestCache.Preparation();
-    var handler = new SyncDispatchesCommandHandler(db, new Provider([source, successor]), reads, memory, preparation);
+    var handler = new SyncDispatchesCommandHandler(
+      db,
+      [new Provider([source, successor])],
+      DispatchImportTestData.Options,
+      reads,
+      memory,
+      preparation
+    );
     await handler.Handle(new(), default);
-    var load = await db.Dispatches.Include(x => x.Stops).SingleAsync(x => x.LoadNumber == 1);
+    var load = await db
+      .Dispatches.Include(x => x.Stops)
+      .SingleAsync(x => x.LoadNumber == 1);
     var stop = Assert.Single(load.Stops);
     stop.Address = "1 Canonical Road";
     stop.City = "Canonical City";
@@ -40,10 +88,12 @@ public sealed class DispatchPreparationTests
     stop.Longitude = -80;
     stop.AddressVerifiedAt = DateTime.UtcNow;
     await db.SaveChangesAsync();
-    foreach (var work in preparation.Take(10)) preparation.Complete(work, "prepared", truck.Id);
+    foreach (var work in preparation.Take(10))
+      preparation.Complete(work, "prepared", truck.Id);
     Assert.Equal(0, preparation.PendingCount);
 
-    source.Stops[0].Notes = "Display-only change forces a fresh provider batch.";
+    source.Stops[0].Notes =
+      "Display-only change forces a fresh provider batch.";
     await handler.Handle(new(), default);
     Assert.Equal(0, preparation.PendingCount);
     Assert.Equal("1 Canonical Road", stop.Address);
@@ -53,15 +103,29 @@ public sealed class DispatchPreparationTests
 
     source.Stops[0].Address = "3 different road";
     await handler.Handle(new(), default);
-    Assert.Null(stop.AddressVerifiedAt);
-    Assert.Equal("3 different road", stop.Address);
+    var replacement = Assert.Single(load.Stops);
+    Assert.NotEqual(stop.Id, replacement.Id);
+    Assert.False(await db.DispatchStops.AnyAsync(s => s.Id == stop.Id));
+    Assert.Null(replacement.AddressVerifiedAt);
+    Assert.Equal("3 different road", replacement.Address);
     Assert.Equal(2, preparation.PendingCount);
     Assert.Equal(2, preparation.Take(10).Count);
   }
 
-  private sealed class Provider(IReadOnlyList<ExternalDispatch> sources) : IDispatchProvider
+  private sealed class Provider(IReadOnlyList<ExternalDispatch> sources)
+    : IDispatchProvider
   {
-    public Task<IReadOnlyList<ExternalDispatch>> GetDispatchesAsync(CancellationToken ct = default) => Task.FromResult(sources);
-    public Task<IReadOnlyList<ExternalDispatch>> GetDispatchesAsync(DateOnly from, DateOnly to, CancellationToken ct = default) => Task.FromResult(sources);
+    public string Key => DispatchImportTestData.Key;
+    public string DisplayName => DispatchImportTestData.DisplayName;
+
+    public Task<IReadOnlyList<ExternalDispatch>> GetDispatchesAsync(
+      CancellationToken ct = default
+    ) => Task.FromResult(DispatchImportTestData.Identify(sources));
+
+    public Task<IReadOnlyList<ExternalDispatch>> GetDispatchesAsync(
+      DateOnly from,
+      DateOnly to,
+      CancellationToken ct = default
+    ) => Task.FromResult(DispatchImportTestData.Identify(sources));
   }
 }

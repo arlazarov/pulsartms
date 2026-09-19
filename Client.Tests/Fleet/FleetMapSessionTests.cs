@@ -12,10 +12,20 @@ public sealed class FleetMapSessionTests
   public async Task ConcurrentStartsShareInitializationAndDisposalReleasesEveryOwnedReferenceOnce()
   {
     var fixture = new Fixture();
-    var options = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+    var options = new TaskCompletionSource<object?>(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
     fixture.Map.Respond = (_, _) => options.Task;
-    var start = fixture.Session.StartAsync(default, "key", new { trucksVisible = true });
-    var duplicate = fixture.Session.StartAsync(default, "key", new { trucksVisible = false });
+    var start = fixture.Session.StartAsync(
+      default,
+      "key",
+      new { trafficVisible = true }
+    );
+    var duplicate = fixture.Session.StartAsync(
+      default,
+      "key",
+      new { trafficVisible = false }
+    );
     Assert.Same(start, duplicate);
     Assert.Single(fixture.Module.Calls);
     options.SetResult(null);
@@ -36,12 +46,19 @@ public sealed class FleetMapSessionTests
   public async Task FailedDynamicImportRetriesOnceWithANewUrl()
   {
     var fixture = new Fixture();
-    fixture.Runtime.Respond = (_, _) => fixture.Runtime.Calls.Count == 1
-      ? Task.FromException<object?>(new JSException("Failed to fetch dynamically imported module: resource"))
-      : Task.FromResult<object?>(fixture.Module);
+    fixture.Runtime.Respond = (_, _) =>
+      fixture.Runtime.Calls.Count == 1
+        ? Task.FromException<object?>(
+          new JSException(
+            "Failed to fetch dynamically imported module: resource"
+          )
+        )
+        : Task.FromResult<object?>(fixture.Module);
     await using var session = fixture.Session;
     await session.StartAsync(default, "key", new { });
-    var urls = fixture.Runtime.Calls.Select(x => Assert.IsType<string>(x.Args![0])).ToArray();
+    var urls = fixture
+      .Runtime.Calls.Select(x => Assert.IsType<string>(x.Args![0]))
+      .ToArray();
     Assert.Equal(2, urls.Length);
     Assert.Equal("./js/generated/fleetMap/fleetMap.js", urls[0]);
     Assert.StartsWith(urls[0] + "?retry=", urls[1]);
@@ -51,11 +68,15 @@ public sealed class FleetMapSessionTests
   public async Task OtherImportFailuresAreNotAutomaticallyRetriedButAllowExplicitRetry()
   {
     var fixture = new Fixture();
-    fixture.Runtime.Respond = (_, _) => Task.FromException<object?>(new JSException("Access denied"));
+    fixture.Runtime.Respond = (_, _) =>
+      Task.FromException<object?>(new JSException("Access denied"));
     await using var session = fixture.Session;
-    await Assert.ThrowsAsync<JSException>(() => session.StartAsync(default, "key", new { }));
+    await Assert.ThrowsAsync<JSException>(
+      () => session.StartAsync(default, "key", new { })
+    );
     Assert.Single(fixture.Runtime.Calls);
-    fixture.Runtime.Respond = (_, _) => Task.FromResult<object?>(fixture.Module);
+    fixture.Runtime.Respond = (_, _) =>
+      Task.FromResult<object?>(fixture.Module);
     await session.StartAsync(default, "key", new { });
     Assert.Same(fixture.Map, session.Map);
   }
@@ -64,10 +85,14 @@ public sealed class FleetMapSessionTests
   public async Task FailedOptionsReleaseThePartialMapAndAllowRetryWithoutReimporting()
   {
     var fixture = new Fixture();
-    fixture.Map.Respond = (method, _) => method == "setOptions"
-      ? Task.FromException<object?>(new JSException("Options failed")) : Task.FromResult<object?>(null);
+    fixture.Map.Respond = (method, _) =>
+      method == "setOptions"
+        ? Task.FromException<object?>(new JSException("Options failed"))
+        : Task.FromResult<object?>(null);
     await using var session = fixture.Session;
-    await Assert.ThrowsAsync<JSException>(() => session.StartAsync(default, "key", new { }));
+    await Assert.ThrowsAsync<JSException>(
+      () => session.StartAsync(default, "key", new { })
+    );
     Assert.Null(session.Map);
     Assert.Equal(1, fixture.Map.DisposeCount);
     var replacement = new MapInteropStub();
@@ -80,12 +105,18 @@ public sealed class FleetMapSessionTests
   [Theory]
   [InlineData(true)]
   [InlineData(false)]
-  public async Task DisposalDuringStartupWaitsForResourcesAndDoesNotInitializeALateMap(bool duringImport)
+  public async Task DisposalDuringStartupWaitsForResourcesAndDoesNotInitializeALateMap(
+    bool duringImport
+  )
   {
     var fixture = new Fixture();
-    var pending = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
-    if (duringImport) fixture.Runtime.Respond = (_, _) => pending.Task;
-    else fixture.Module.Respond = (_, _) => pending.Task;
+    var pending = new TaskCompletionSource<object?>(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    if (duringImport)
+      fixture.Runtime.Respond = (_, _) => pending.Task;
+    else
+      fixture.Module.Respond = (_, _) => pending.Task;
     var start = fixture.Session.StartAsync(default, "key", new { });
     var dispose = fixture.Session.DisposeAsync().AsTask();
     Assert.False(dispose.IsCompleted);

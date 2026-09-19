@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Infrastructure.Integrations.Torque.Models;
 
 public class TorqueDispatchStopDto
@@ -19,13 +21,15 @@ public class TorqueDispatchStopDto
   public string TrailerNumber { get; set; } = string.Empty;
   public string Commodity { get; set; } = string.Empty;
   public string Notes { get; set; } = string.Empty;
-  [System.Text.Json.Serialization.JsonConverter(typeof(TorqueScalarTextConverter))]
+
+  [JsonConverter(typeof(TorqueScalarTextConverter))]
   public string StopNo { get; set; } = string.Empty;
   public decimal? Weight { get; set; }
   public string WeightUnit { get; set; } = string.Empty;
   public decimal? Pieces { get; set; }
   public decimal? Pallets { get; set; }
-  [System.Text.Json.Serialization.JsonConverter(typeof(TorqueScalarTextConverter))]
+
+  [JsonConverter(typeof(TorqueScalarTextConverter))]
   public string Temperature { get; set; } = string.Empty;
   public string TemperatureUnit { get; set; } = string.Empty;
   public TorqueScheduledDto? Scheduled { get; set; }

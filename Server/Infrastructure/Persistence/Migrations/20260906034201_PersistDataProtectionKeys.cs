@@ -5,29 +5,33 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace Infrastructure.Persistence.Migrations
 {
-    public partial class PersistDataProtectionKeys : Migration
+  public partial class PersistDataProtectionKeys : Migration
+  {
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        protected override void Up(MigrationBuilder migrationBuilder)
+      migrationBuilder.CreateTable(
+        name: "DataProtectionKeys",
+        columns: table => new
         {
-            migrationBuilder.CreateTable(
-                name: "DataProtectionKeys",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    FriendlyName = table.Column<string>(type: "text", nullable: true),
-                    Xml = table.Column<string>(type: "text", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_DataProtectionKeys", x => x.Id);
-                });
-        }
-
-        protected override void Down(MigrationBuilder migrationBuilder)
+          Id = table
+            .Column<int>(type: "integer", nullable: false)
+            .Annotation(
+              "Npgsql:ValueGenerationStrategy",
+              NpgsqlValueGenerationStrategy.IdentityByDefaultColumn
+            ),
+          FriendlyName = table.Column<string>(type: "text", nullable: true),
+          Xml = table.Column<string>(type: "text", nullable: true),
+        },
+        constraints: table =>
         {
-            migrationBuilder.DropTable(
-                name: "DataProtectionKeys");
+          table.PrimaryKey("PK_DataProtectionKeys", x => x.Id);
         }
+      );
     }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+      migrationBuilder.DropTable(name: "DataProtectionKeys");
+    }
+  }
 }

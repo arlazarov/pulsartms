@@ -1,0 +1,36 @@
+@implements IDisposable
+
+<section class="stop-operation @(Inline ? "stop-operation--inline" : "")" aria-label="Stop operation">
+    @if (!_editing)
+    {
+        <button type="button" class="btn btn--text btn--small" @onclick="Begin"><ActionIcon Kind="edit" /> @ButtonLabel</button>
+        @if (Stop.ManualAction is not null) { <span class="stop-operation__hint">Confirmed: @Stop.ManualAction → @Stop.ManualStateAfter</span> }
+    }
+    else
+    {
+        <div class="stop-operation__fields">
+            <div class="stop-operation__field"><label for="@ActionId"><ActionIcon Kind="route" /> Type</label><select id="@ActionId" value="@_action" @onchange="ActionChanged" disabled="@_saving">
+                @foreach (var action in Actions) { <option value="@action">@(action == "Drop Off" ? "Delivery" : action == "Pick Up" ? "Pickup" : action)</option> }
+            </select></div>
+        </div>
+        @if (!Inline || IsDirty || Stop.ManualAction is not null)
+        {
+        @if (_action == "Driver start")
+        {
+            <p class="stop-operation__hint">Personal travel without a truck is excluded from truck routing and fuel.</p>
+        }
+        <div class="stop-operation__actions">
+            @if (!PageActions && (!Inline || IsDirty))
+            {
+            <button type="button" class="btn btn--primary btn--small" disabled="@_saving" @onclick="() => SaveAsync(false)">@(Inline ? "Save" : "Confirm operation")</button>
+            }
+            @if (Stop.ManualAction is not null) { <button type="button" class="btn btn--small" disabled="@_saving" @onclick="() => SaveAsync(true)">Use imported operation</button> }
+            @if (!PageActions && (!Inline || IsDirty))
+            {
+            <button type="button" class="btn btn--small" disabled="@_saving" @onclick="Cancel">Cancel</button>
+            }
+        </div>
+        }
+        @if (_error is not null) { <p class="stop-operation__error" role="alert">@_error</p> }
+    }
+</section>

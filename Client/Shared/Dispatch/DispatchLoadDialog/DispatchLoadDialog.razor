@@ -1,6 +1,6 @@
 @implements IAsyncDisposable
 
-<dialog @ref="_dialog" id="@DialogId" class="dispatch-load-dialog" aria-labelledby="@TitleId" @onclose="NotifyClosedAsync">
+<dialog @ref="_dialog" id="@DialogId" class="dispatch-load-dialog @(_selectedStopId.HasValue ? "is-stop-view" : "")" aria-labelledby="@TitleId" @onclose="NotifyClosedAsync">
     <header class="dispatch-paper__identity" tabindex="-1" autofocus>
         <div class="dispatch-paper__heading">
             <div class="dispatch-paper__title"><h2 id="@TitleId"><LoadNumber Value="Load.LoadNumber" /></h2>@if (!string.IsNullOrEmpty(DisplayPhase) && DisplayPhase != Row.Status) { <span class="dispatch-paper__phase @(DisplayPhase == "Current" ? "is-current" : DisplayPhase == "Next" ? "is-next" : "")">@DisplayPhase</span> }<span class="dispatch-paper__tab-status @(IsCompleted ? "is-completed" : Row.InTransit ? "is-moving" : "")">@(IsCompleted ? "Completed" : Row.Status)</span></div>
@@ -10,33 +10,65 @@
         <button class="dispatch-paper__close" type="button" aria-label="Close load details" @onclick="CloseAsync">×</button>
     </header>
     <div class="dispatch-load-dialog__content">
+        @if (_selectedStopId.HasValue)
+        {
+            <button type="button" class="btn btn--text dispatch-load-dialog__back" @onclick="AllStopsAsync">← All stops</button>
+        }
+        <div hidden="@_selectedStopId.HasValue">
+        @if (!IsCompleted && StopChanged.HasDelegate)
+        {
+            <TruckAssignmentEditor Load="Load" Changed="StopChangedAsync" />
+        }
         <dl class="dispatch-paper__financials" aria-label="Load mileage and rate">
-            <div class="dispatch-paper__mileage"><dt>Loaded miles</dt><dd>@DispatchFinancialDisplay.Miles(Load.LoadedMiles)<small>Total @DispatchFinancialDisplay.Miles(Load.TotalMiles) · <span class="dispatch-paper__empty-miles" title="@EmptyMilesHint">Empty @DispatchFinancialDisplay.Miles(Load.EmptyMiles)</span></small></dd></div>
+            <div class="dispatch-paper__mileage"><dt>Loaded distance</dt><dd><DistanceText Miles="@((double?)Load.LoadedMiles)" /><small>Total <DistanceText Miles="@((double?)Load.TotalMiles)" /> · <span class="dispatch-paper__empty-miles" title="@EmptyMilesHint">Empty <DistanceText Miles="@((double?)Load.EmptyMiles)" /></span></small></dd></div>
             <div><dt>Rate</dt><dd>@DispatchFinancialDisplay.Money(Load.Price, Load.Currency)</dd></div>
             <div><dt>Loaded RPM</dt><dd>@DispatchFinancialDisplay.Money(Load.LoadedRatePerMile, Load.Currency)</dd></div>
             <div><dt>Total RPM</dt><dd>@DispatchFinancialDisplay.Money(Load.TotalRatePerMile, Load.Currency)</dd></div>
         </dl>
-        <ol class="dispatch-paper__stops">
-        @foreach (var (stop, index) in OrderedStops.Select((stop, index) => (stop, index)))
+        @if (OrderedStops.Count > 2) { <p class="dispatch-load__stop-summary">@StopSummary</p> }
+        </div>
+        <ol class="dispatch-paper__stops" aria-label="Stops in route order">
+        @foreach (var visit in StopVisits)
         {
-            <li @key="stop.Id" class="@(IsPickup(stop) ? "is-pickup" : "is-delivery")">
-                <DispatchLoadStop DispatchId="Load.Id" Stop="stop" Number="@(index + 1)" FallbackDate="FallbackDate(index)" Eta="Load.Eta" CompletedLoad="IsCompleted" Refreshing="Refreshing" Detailed="true" CollapsibleDetails="true">
+            var stop = visit.Stop;
+            <li @key="(stop.Id, DispatchStopPresentation.CompletionRevision(Load.Stops))" hidden="@(_selectedStopId.HasValue && _selectedStopId != stop.Id)" class="@(IsPickup(stop) ? "is-pickup" : stop.Job is "Drop Off" or "Delivery" ? "is-delivery" : "is-waypoint")">
+                <DispatchLoadStop DispatchId="Load.Id" Stop="stop" Number="visit.Number" VisitLabel="@visit.VisitLabel" FallbackDate="FallbackDate(visit.Number - 1)" Eta="Load.Eta" CompletedLoad="IsCompleted" Refreshing="Refreshing" Detailed="true" CollapsibleDetails="true" OpenDetails="() => OpenStopAsync(stop.Id)" DetailsOpen="@(_selectedStopId == stop.Id)" HasAdditionalDetails="DispatchStopPresentation.HasSupplementalFacts(stop)">
                 <AdditionalDetails>
                 <div class="dispatch-paper__stop-metadata">
-                    @if (!string.IsNullOrWhiteSpace(stop.ZipCode) || !string.IsNullOrWhiteSpace(stop.Country)) { <span>@string.Join(" · ", new[] { stop.ZipCode, stop.Country }.Where(value => !string.IsNullOrWhiteSpace(value)))</span> }
-                    @if (!string.IsNullOrWhiteSpace(stop.Commodity)) { <span>Commodity: @stop.Commodity</span> }
-                    @if (stop.Weight.HasValue) { <span>@stop.Weight?.ToString("N0") @stop.WeightUnit</span> }
-                    @if (stop.Pieces.HasValue || stop.Pallets.HasValue) { <span>Pieces: @(stop.Pieces?.ToString("N0") ?? "—") · Pallets: @(stop.Pallets?.ToString("N0") ?? "—")</span> }
-                    @if (!string.IsNullOrWhiteSpace(stop.Temperature)) { <span>Temperature: @stop.Temperature @stop.TemperatureUnit</span> }
-                    @if (!string.IsNullOrWhiteSpace(stop.Notes)) { <p class="dispatch-paper__notes">@stop.Notes</p> }
+                    <dl class="dispatch-paper__stop-facts">
+                        @if (!string.IsNullOrWhiteSpace(stop.ZipCode) || !string.IsNullOrWhiteSpace(stop.Country)) { <div><dt>Postal / country</dt><dd>@string.Join(" · ", new[] { stop.ZipCode, stop.Country }.Where(value => !string.IsNullOrWhiteSpace(value)))</dd></div> }
+                        @if (DispatchStopPresentation.ShowsCargo(stop))
+                        {
+                        @if (!string.IsNullOrWhiteSpace(stop.Commodity)) { <div><dt>Commodity</dt><dd>@stop.Commodity</dd></div> }
+                        @if (stop.Weight.HasValue) { <div><dt>Weight</dt><dd>@stop.Weight?.ToString("N0") @stop.WeightUnit</dd></div> }
+                        @if (stop.Pieces.HasValue) { <div><dt>Pieces</dt><dd>@stop.Pieces?.ToString("N0")</dd></div> }
+                        @if (stop.Pallets.HasValue) { <div><dt>Pallets</dt><dd>@stop.Pallets?.ToString("N0")</dd></div> }
+                        @if (!string.IsNullOrWhiteSpace(stop.Temperature)) { <div><dt>Temperature</dt><dd>@stop.Temperature @stop.TemperatureUnit</dd></div> }
+                        }
+                    </dl>
+                    @if (!string.IsNullOrWhiteSpace(stop.Notes))
+                    {
+                        <section class="dispatch-paper__stop-notes" aria-label="Stop notes"><h3>Notes</h3><p class="dispatch-paper__notes">@stop.Notes</p></section>
+                    }
                 </div>
                 </AdditionalDetails>
+                <StopActions>
+                    @if (StopChanged.HasDelegate)
+                    {
+                        <div class="dispatch-paper__stop-actions">
+                        @if (!IsCompleted) { <StopOperationEditor DispatchId="Load.Id" Stop="stop" Changed="StopChangedAsync" /> }
+                        <StopCompletionEditor @key="stop.Id" DispatchId="Load.Id" Stop="stop" CompletedLoad="IsCompleted" Changed="StopChangedAsync" />
+                        </div>
+                    }
+                </StopActions>
                 </DispatchLoadStop>
             </li>
         }
         </ol>
         @if (OrderedStops.Count == 0) { <p>Stop details pending</p> }
-        @if (!IsCompleted) { <DispatchCycleForecast Load="Load" Refreshing="Refreshing" Detailed="true" /> }
-        <footer class="dispatch-paper__footer"><a href="@($"/dispatch/{Load.Id}")">Open full load ↗</a>@if ((Load.TruckId ?? Truck?.TruckId).HasValue) { <a href="@Row.MapUrl">Map ↗</a> }</footer>
+        <div hidden="@_selectedStopId.HasValue">
+            @if (!IsCompleted) { <DispatchCycleForecast Load="Load" Refreshing="Refreshing" Detailed="true" /> }
+            <footer class="dispatch-paper__footer"><a href="@($"/dispatch/{Load.Id}")">Open full load ↗</a>@if ((Load.TruckId ?? Truck?.TruckId).HasValue) { <a href="@Row.MapUrl">Map ↗</a> }</footer>
+        </div>
     </div>
 </dialog>

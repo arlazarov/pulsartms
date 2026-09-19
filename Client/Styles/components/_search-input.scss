@@ -10,10 +10,26 @@
     appearance: none;
     -webkit-appearance: none;
     @include ui.input-control;
-    & { padding-left: calc(#{ui.size(checkbox)} + 2 * #{ui.pg(md)}); }
-    &::-webkit-calendar-picker-indicator { display: none !important; }
+    & {
+      padding-left: calc(#{ui.size(checkbox)} + 2 * #{ui.pg(md)});
+    }
+    &::-webkit-calendar-picker-indicator {
+      display: none !important;
+    }
   }
-  &__icon { position: absolute; left: ui.pg(md); top: calc(#{ui.size(control)} / 2); transform: translateY(-50%); width: ui.size(checkbox); height: ui.size(checkbox); fill: none; stroke: ui.theme(text-muted); stroke-width: 1.5; stroke-linecap: round; pointer-events: none; }
+  &__icon {
+    position: absolute;
+    left: ui.pg(md);
+    top: calc(#{ui.size(control)} / 2);
+    transform: translateY(-50%);
+    width: ui.size(checkbox);
+    height: ui.size(checkbox);
+    fill: none;
+    stroke: ui.theme(text-muted);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    pointer-events: none;
+  }
   &__options {
     position: absolute;
     top: calc(100% + 6px);
@@ -28,15 +44,50 @@
     border-radius: ui.radius(sm);
     box-shadow: ui.shadow(popup);
     button {
-      display: flex; flex-direction: column; align-items: flex-start;
-      width: 100%; min-height: ui.size(control-touch); padding: ui.pg(sm) ui.pg(md); gap: ui.pg(xs);
-      border: 0; border-radius: ui.radius(sm); background: transparent;
-      color: ui.theme(text); font-size: ui.fs(body); text-align: left; cursor: pointer;
-      strong { font-weight: 600; }
-      span { color: ui.theme(text-muted); overflow-wrap: anywhere; }
-      &:hover, &[aria-selected='true'] { background: ui.theme(selected); }
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+      min-height: ui.size(control-touch);
+      padding: ui.pg(sm) ui.pg(md);
+      gap: ui.pg(xs);
+      border: 0;
+      border-radius: ui.radius(sm);
+      background: transparent;
+      color: ui.theme(text);
+      font-size: ui.fs(body);
+      text-align: left;
+      cursor: pointer;
+      strong {
+        font-weight: 600;
+      }
+      span {
+        color: ui.theme(text-muted);
+        overflow-wrap: anywhere;
+      }
+      &:hover,
+      &[aria-selected='true'] {
+        background: ui.theme(selected);
+      }
     }
   }
-  &__empty { display: block; padding: ui.pg(md); color: ui.theme(text-muted); }
-  @media (max-width: ui.breakpoint(md, max)) { &__icon { top: calc(#{ui.size(control-touch)} / 2); } }
+  &__empty {
+    display: block;
+    padding: ui.pg(md);
+    color: ui.theme(text-muted);
+  }
+  @media (max-width: ui.breakpoint(md, max)) {
+    &__icon {
+      top: calc(#{ui.size(control-touch)} / 2);
+    }
+  }
+}
+
+.search-input--resource {
+  width: 100%;
+
+  > input {
+    min-width: 0;
+    padding-left: ui.pg(md);
+  }
 }

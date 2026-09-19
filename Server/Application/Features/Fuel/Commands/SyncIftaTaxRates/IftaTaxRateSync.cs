@@ -16,13 +16,18 @@ public static class IftaTaxRateSync
     var effectiveTo = effectiveFrom.AddMonths(3).AddDays(-1);
 
     var existing = await dbContext
-      .IftaTaxRates.Where(x => x.EffectiveFrom == effectiveFrom && x.EffectiveTo == effectiveTo)
+      .IftaTaxRates.Where(x =>
+        x.EffectiveFrom == effectiveFrom && x.EffectiveTo == effectiveTo
+      )
       .ToListAsync(cancellationToken);
 
     foreach (var rate in rates)
     {
       var current = existing.FirstOrDefault(x =>
-        x.Jurisdiction.Equals(rate.Jurisdiction, StringComparison.OrdinalIgnoreCase)
+        x.Jurisdiction.Equals(
+          rate.Jurisdiction,
+          StringComparison.OrdinalIgnoreCase
+        )
         && x.FuelType.Equals(rate.FuelType, StringComparison.OrdinalIgnoreCase)
       );
 

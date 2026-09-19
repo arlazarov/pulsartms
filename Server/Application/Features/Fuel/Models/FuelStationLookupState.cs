@@ -11,4 +11,7 @@ public sealed class FuelStationLookupState
   public PlaceSearchResult? Result { get; set; }
 }
 
-public sealed record FuelStationLookupResult(string Revision, PlaceSearchResult? Place);
+public sealed record FuelStationLookupResult(
+  string Revision,
+  PlaceSearchResult? Place
+);

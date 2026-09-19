@@ -10,5 +10,8 @@ public sealed class SynchronizationController : BaseController
 {
   [HttpGet]
   public Task<IActionResult> Get(CancellationToken cancellationToken) =>
-    HandleUnwrappedRequest(new GetSynchronizationStatusQuery(), cancellationToken);
+    HandleUnwrappedRequest(
+      new GetSynchronizationStatusQuery(),
+      cancellationToken
+    );
 }

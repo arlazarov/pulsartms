@@ -11,26 +11,43 @@ public static class TrailerSync
     CancellationToken cancellationToken = default
   )
   {
-    var existingTrailers = await dbContext.Trailers.ToListAsync(cancellationToken);
+    var existingTrailers = await dbContext.Trailers.ToListAsync(
+      cancellationToken
+    );
     var existingByExternalId = existingTrailers
       .Where(x => !string.IsNullOrWhiteSpace(x.ExternalId))
       .ToDictionary(x => x.ExternalId, StringComparer.OrdinalIgnoreCase);
 
     foreach (var trailer in trailers)
     {
-      if (string.IsNullOrWhiteSpace(trailer.UnitNumber) || trailer.UnitNumber.Length > 10)
+      if (
+        string.IsNullOrWhiteSpace(trailer.UnitNumber)
+        || trailer.UnitNumber.Length > 10
+      )
       {
-        if (existingByExternalId.TryGetValue(trailer.ExternalId, out var invalidExisting))
-          invalidExisting.IsActive = false;
+        if (
+          existingByExternalId.TryGetValue(
+            trailer.ExternalId,
+            out var invalidExisting
+          )
+        )
+          FleetConfigurationImport.Apply(
+            invalidExisting,
+            invalidExisting.ImportedVin ?? invalidExisting.Vin,
+            false
+          );
 
         continue;
       }
 
-      if (existingByExternalId.TryGetValue(trailer.ExternalId, out var existing))
+      if (
+        existingByExternalId.TryGetValue(trailer.ExternalId, out var existing)
+      )
       {
+        if (existing.UnitNumber != trailer.UnitNumber)
+          existing.ConfigurationRevision++;
         existing.UnitNumber = trailer.UnitNumber;
-        existing.Vin = trailer.Vin;
-        existing.IsActive = trailer.IsActive;
+        FleetConfigurationImport.Apply(existing, trailer.Vin, trailer.IsActive);
         continue;
       }
 
@@ -42,6 +59,8 @@ public static class TrailerSync
           UnitNumber = trailer.UnitNumber,
           Vin = trailer.Vin,
           IsActive = trailer.IsActive,
+          ImportedVin = trailer.Vin,
+          ImportedIsActive = trailer.IsActive,
         }
       );
     }

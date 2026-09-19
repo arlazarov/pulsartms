@@ -1,0 +1,144 @@
+<section class="dispatch-activity" aria-labelledby="@(Id + "-title")">
+    <header class="dispatch-activity__heading">
+        <h2 id="@(Id + "-title")"><ActionIcon Kind="note" />Notes</h2>
+    </header>
+    @if (_error is not null)
+    {
+        <p class="dispatch-activity__error" role="alert">@_error</p>
+        @if (!Unconfirmed)
+        {
+            <button class="btn btn--small" type="button"
+                    disabled="@Busy" @onclick="RefreshAsync">
+                Reload notes
+            </button>
+        }
+    }
+    @if (_notice is not null)
+    {
+        <p role="status">@_notice</p>
+    }
+    @if (!_loaded && _reading)
+    {
+        <p class="dispatch-activity__hint" role="status"><LoadingIndicator /></p>
+    }
+    @if (_loaded)
+    {
+        <form @onsubmit="AddAsync" @onsubmit:preventDefault>
+            <fieldset disabled="@(Busy || Unconfirmed)">
+                <legend class="visually-hidden">Add note</legend>
+                <label class="visually-hidden" for="@(Id + "-text")">
+                    Note
+                </label>
+                <textarea id="@(Id + "-text")" @bind="_text"
+                          @bind:event="oninput" @bind:after="PublishDraftAsync"
+                          maxlength="4000" rows="3"
+                          placeholder="Write a note…"></textarea>
+            </fieldset>
+            <button class="btn btn--primary btn--small" type="submit"
+                    disabled="@(Busy || _pendingIssue is not null)">
+                @(_pendingAdd is null ? "Add note" : "Retry note")
+            </button>
+        </form>
+        @if (_openCount > 0)
+        {
+            <section class="dispatch-activity__issues"
+                     aria-label="Unresolved issues">
+                <h3>Needs attention · @_openCount</h3>
+                @foreach (var item in _openItems)
+                {
+                    <article class="dispatch-activity__entry
+                                    dispatch-activity__entry--issue"
+                             @key="item.Id">
+                        <p class="dispatch-activity__text">@item.Text</p>
+                        <p class="dispatch-activity__hint">
+                            @item.ActorName · @LocalTime(item.RecordedAt)
+                        </p>
+                        @if (item.StopLabel is not null)
+                        {
+                            <p class="dispatch-activity__hint">
+                                @item.StopLabel
+                            </p>
+                        }
+                        @if (item.DriverName is not null)
+                        {
+                            <p class="dispatch-activity__hint">
+                                Driver · @item.DriverName
+                            </p>
+                        }
+                        <button type="button" class="btn btn--small"
+                                disabled="@(Busy || _pendingAdd is not null
+                                    || _pendingIssue is not null
+                                        && _pendingIssue.Id != item.Id)"
+                                @onclick="() => ResolveAsync(item)">
+                            @(_pendingIssue?.Id == item.Id
+                                ? "Retry Resolve" : "Resolve")
+                        </button>
+                    </article>
+                }
+                <div class="dispatch-activity__paging">
+                    @if (_nextOpen.HasValue)
+                    {
+                        <button type="button" class="btn btn--small"
+                                disabled="@(Busy || Unconfirmed)"
+                                @onclick="OlderOpenAsync">More issues</button>
+                    }
+                    @if (_olderOpen)
+                    {
+                        <button type="button" class="btn btn--small"
+                                disabled="@(Busy || Unconfirmed)"
+                                @onclick="NewestOpenAsync">
+                            Newest issues
+                        </button>
+                    }
+                </div>
+            </section>
+        }
+        <section class="dispatch-activity__history" aria-label="Saved notes">
+            @foreach (var item in _items.Where(x =>
+                !x.NeedsAttention || x.ResolvedAt.HasValue))
+            {
+                <article class="dispatch-activity__entry" @key="item.Id">
+                    <p class="dispatch-activity__text">@item.Text</p>
+                    <p class="dispatch-activity__hint">
+                        @item.ActorName · @LocalTime(item.RecordedAt)
+                    </p>
+                    @if (item.StopLabel is not null)
+                    {
+                        <p class="dispatch-activity__hint">@item.StopLabel</p>
+                    }
+                    @if (item.DriverName is not null)
+                    {
+                        <p class="dispatch-activity__hint">
+                            Driver · @item.DriverName
+                        </p>
+                    }
+                    @if (item.ResolvedAt is { } resolved)
+                    {
+                        <p class="dispatch-activity__resolved">
+                            Resolved · @item.ResolvedByName
+                            · @LocalTime(resolved)
+                        </p>
+                    }
+                </article>
+            }
+            @if (_items.Count == 0)
+            {
+                <p class="dispatch-activity__hint">No notes yet.</p>
+            }
+            <div class="dispatch-activity__paging">
+                @if (_next.HasValue)
+                {
+                    <button type="button" class="btn btn--small"
+                            disabled="@(Busy || Unconfirmed)"
+                            @onclick="OlderAsync">Older notes</button>
+                }
+                @if (_older)
+                {
+                    <button type="button" class="btn btn--small"
+                            disabled="@(Busy || Unconfirmed)"
+                            @onclick="RefreshAsync">Newest notes</button>
+                }
+            </div>
+        </section>
+    }
+</section>

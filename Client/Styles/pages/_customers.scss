@@ -1,0 +1,43 @@
+@use '../base' as ui;
+
+.customers-page {
+  .settings-page__actions > label {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    gap: ui.pg(xs);
+  }
+  .settings-page__actions input {
+    width: 100%;
+    @include ui.input-control;
+  }
+  .settings-page__actions {
+    align-items: end;
+  }
+  .settings-page__card > .settings-page__actions {
+    margin-bottom: ui.pg(lg);
+  }
+  .settings-page__actions h2 {
+    flex: 1;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  h3,
+  legend {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    font-size: ui.fs(body);
+    font-weight: 600;
+  }
+  &__results {
+    display: grid;
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(100%, ui.size(content-account)), 1fr)
+    );
+    gap: ui.pg(md);
+    overflow-wrap: anywhere;
+  }
+}

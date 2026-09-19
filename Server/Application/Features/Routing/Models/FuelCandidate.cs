@@ -1,7 +1,13 @@
 namespace Application.Features.Routing.Models;
 
-public sealed record FuelCandidate(FuelPlanStop Station, double AlongMiles, double ExtraInMiles,
-  double ExtraOutMiles, double PriceUsd, double EconomicPriceUsd)
+public sealed record FuelCandidate(
+  FuelPlanStop Station,
+  double AlongMiles,
+  double ExtraInMiles,
+  double ExtraOutMiles,
+  double PriceUsd,
+  double EconomicPriceUsd
+)
 {
   public int LegIndex { get; init; } = -1;
   public string VisitKey => $"{Station.StationId:N}:{LegIndex}";

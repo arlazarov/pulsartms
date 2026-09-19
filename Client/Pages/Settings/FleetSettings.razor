@@ -1,0 +1,66 @@
+<section class="settings-page__fleet">
+    <IntegrationSettings />
+    <DispatchNumberSettings />
+    <MileagePolicySettings />
+    @if (_loading)
+    {
+        <p role="status"><LoadingIndicator /></p>
+    }
+    @if (_error is not null)
+    {
+        <p class="settings-page__error" role="alert">
+            @_error
+            <button class="btn btn--small" type="button"
+                    disabled="@(_loading || _saving)" @onclick="LoadAsync">
+                Reload settings
+            </button>
+        </p>
+    }
+    @if (_context is not null)
+    {
+        <EditForm @key="_context" EditContext="_context"
+                  OnValidSubmit="SaveAsync" class="planning-settings__form">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <fieldset disabled="@(_loading || _saving)"
+                      class="settings-page__form">
+                <legend class="visually-hidden">
+                    Fuel planning preferences
+                </legend>
+                <section class="settings-page__card">
+                    <h2>Fuel prices</h2>
+                    <label class="settings-page__toggle" for="settings-ifta">
+                        <span>
+                            <strong>Use IFTA for fuel planning</strong>
+                            <small>
+                                Choose recommended fuel stops using prices
+                                after IFTA.
+                            </small>
+                        </span>
+                        <InputCheckbox id="settings-ifta"
+                                       @bind-Value="_form.UseIfta" />
+                    </label>
+                    <p class="settings-page__hint">
+                        When turned off, recommendations use your discounted
+                        pump price. Fleet Map uses the same price basis.
+                    </p>
+                </section>
+                <div class="settings-page__actions">
+                    <button class="btn btn--primary" type="submit">
+                        @(_saving ? "Saving…" : "Save settings")
+                    </button>
+                    @if (_saved)
+                    {
+                        <span class="settings-page__saved" role="status">
+                            Settings saved.
+                        </span>
+                    }
+                </div>
+            </fieldset>
+        </EditForm>
+        <p class="settings-page__hint">
+            Routes use standard 53 ft trailers. Pickup and delivery progress
+            is determined automatically.
+        </p>
+    }
+</section>

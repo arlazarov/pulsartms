@@ -4,9 +4,13 @@ namespace Application.Features.Routing.Algorithms;
 
 public static class DisplayRouteGeometry
 {
-  public static List<RoutePoint> Simplify(IReadOnlyList<RoutePoint> points, double toleranceMeters = 2)
+  public static List<RoutePoint> Simplify(
+    IReadOnlyList<RoutePoint> points,
+    double toleranceMeters = 2
+  )
   {
-    if (points.Count < 3) return points.ToList();
+    if (points.Count < 3)
+      return points.ToList();
     var keep = new bool[points.Count];
     keep[0] = keep[^1] = true;
     var pending = new Stack<(int Start, int End)>();
@@ -27,9 +31,14 @@ public static class DisplayRouteGeometry
         var y = (points[i].Latitude - a.Latitude) * 111320;
         var t = length > 0 ? Math.Clamp((x * dx + y * dy) / length, 0, 1) : 0;
         var distance = Math.Pow(x - t * dx, 2) + Math.Pow(y - t * dy, 2);
-        if (distance > max) { max = distance; selected = i; }
+        if (distance > max)
+        {
+          max = distance;
+          selected = i;
+        }
       }
-      if (selected < 0) continue;
+      if (selected < 0)
+        continue;
       keep[selected] = true;
       pending.Push((segment.Start, selected));
       pending.Push((selected, segment.End));

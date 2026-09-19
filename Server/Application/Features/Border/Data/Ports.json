@@ -1,0 +1,2887 @@
+[
+  {
+    "Country": "CA",
+    "Code": "0817",
+    "Name": "ABBOTSFORD-HUNTINGDON"
+  },
+  {
+    "Country": "CA",
+    "Code": "0318",
+    "Name": "ABERCORN"
+  },
+  {
+    "Country": "CA",
+    "Code": "0706",
+    "Name": "ADEN"
+  },
+  {
+    "Country": "CA",
+    "Code": "0841",
+    "Name": "ALDERGROVE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0214",
+    "Name": "ANDOVER"
+  },
+  {
+    "Country": "CA",
+    "Code": "0329",
+    "Name": "ARMSTRONG"
+  },
+  {
+    "Country": "CA",
+    "Code": "0892",
+    "Name": "BEAVER CREEK"
+  },
+  {
+    "Country": "CA",
+    "Code": "0614",
+    "Name": "BIG BEAVER"
+  },
+  {
+    "Country": "CA",
+    "Code": "0507",
+    "Name": "BOISSEVAIN"
+  },
+  {
+    "Country": "CA",
+    "Code": "0815",
+    "Name": "BOUNDARY BAY"
+  },
+  {
+    "Country": "CA",
+    "Code": "0225",
+    "Name": "CAMPOBELLO"
+  },
+  {
+    "Country": "CA",
+    "Code": "0612",
+    "Name": "CARIEVALE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0834",
+    "Name": "CARSON"
+  },
+  {
+    "Country": "CA",
+    "Code": "0521",
+    "Name": "CARTWRIGHT"
+  },
+  {
+    "Country": "CA",
+    "Code": "0707",
+    "Name": "CARWAY"
+  },
+  {
+    "Country": "CA",
+    "Code": "0816",
+    "Name": "CASCADE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0215",
+    "Name": "CENTREVILLE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0365",
+    "Name": "CHARTIERVILLE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0709",
+    "Name": "CHIEF MOUNTAIN"
+  },
+  {
+    "Country": "CA",
+    "Code": "0836",
+    "Name": "CHOPAKA"
+  },
+  {
+    "Country": "CA",
+    "Code": "0216",
+    "Name": "CLAIR"
+  },
+  {
+    "Country": "CA",
+    "Code": "0337",
+    "Name": "CLARENCEVILLE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0619",
+    "Name": "CLIMAX"
+  },
+  {
+    "Country": "CA",
+    "Code": "0409",
+    "Name": "CORNWALL"
+  },
+  {
+    "Country": "CA",
+    "Code": "0615",
+    "Name": "CORONACH"
+  },
+  {
+    "Country": "CA",
+    "Code": "0524",
+    "Name": "COULTER"
+  },
+  {
+    "Country": "CA",
+    "Code": "0705",
+    "Name": "COUTTS"
+  },
+  {
+    "Country": "CA",
+    "Code": "0311",
+    "Name": "COVEY HILL"
+  },
+  {
+    "Country": "CA",
+    "Code": "0520",
+    "Name": "CRYSTAL CITY"
+  },
+  {
+    "Country": "CA",
+    "Code": "0708",
+    "Name": "DEL BONITA"
+  },
+  {
+    "Country": "CA",
+    "Code": "0330",
+    "Name": "DUNDEE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0362",
+    "Name": "EAST HEREFORD"
+  },
+  {
+    "Country": "CA",
+    "Code": "0369",
+    "Name": "EAST PINNACLE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0213",
+    "Name": "EDMUNSTON"
+  },
+  {
+    "Country": "CA",
+    "Code": "0502",
+    "Name": "EMERSON"
+  },
+  {
+    "Country": "CA",
+    "Code": "0610",
+    "Name": "ESTEVAN HIGHWAY"
+  },
+  {
+    "Country": "CA",
+    "Code": "0410",
+    "Name": "FORT ERIE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0478",
+    "Name": "FORT FRANCES BRIDGE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0893",
+    "Name": "FRASER"
+  },
+  {
+    "Country": "CA",
+    "Code": "0332",
+    "Name": "FRELIGHSBURG"
+  },
+  {
+    "Country": "CA",
+    "Code": "0219",
+    "Name": "GILLESPIE PORTAGE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0370",
+    "Name": "GLEN SUTTON"
+  },
+  {
+    "Country": "CA",
+    "Code": "0508",
+    "Name": "GOODLANDS"
+  },
+  {
+    "Country": "CA",
+    "Code": "0217",
+    "Name": "GRAND FALLS"
+  },
+  {
+    "Country": "CA",
+    "Code": "0503",
+    "Name": "GRETNA"
+  },
+  {
+    "Country": "CA",
+    "Code": "0333",
+    "Name": "HEMMINGFORD"
+  },
+  {
+    "Country": "CA",
+    "Code": "0302",
+    "Name": "HERDMAN"
+  },
+  {
+    "Country": "CA",
+    "Code": "0366",
+    "Name": "HEREFORD ROAD"
+  },
+  {
+    "Country": "CA",
+    "Code": "0334",
+    "Name": "HIGHWATER"
+  },
+  {
+    "Country": "CA",
+    "Code": "0818",
+    "Name": "KINGSGATE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0420",
+    "Name": "KINGSTON"
+  },
+  {
+    "Country": "CA",
+    "Code": "0351",
+    "Name": "LACOLLE - ST BERNARD DE LACOLLE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0456",
+    "Name": "LANSDOWNE - THOUSAND ISLANDS BRIDGE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0522",
+    "Name": "LENA"
+  },
+  {
+    "Country": "CA",
+    "Code": "0895",
+    "Name": "LITTLE GOLD CREEK"
+  },
+  {
+    "Country": "CA",
+    "Code": "0523",
+    "Name": "LYLETON"
+  },
+  {
+    "Country": "CA",
+    "Code": "0835",
+    "Name": "MIDWAY"
+  },
+  {
+    "Country": "CA",
+    "Code": "0620",
+    "Name": "MONCHY"
+  },
+  {
+    "Country": "CA",
+    "Code": "0367",
+    "Name": "MORSES LINE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0828",
+    "Name": "NELWAY"
+  },
+  {
+    "Country": "CA",
+    "Code": "0427",
+    "Name": "NIAGARA FALLS - QUEENSTON LEWISTON BRIDGE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0602",
+    "Name": "NORTH PORTAL"
+  },
+  {
+    "Country": "CA",
+    "Code": "0613",
+    "Name": "NORTHGATE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0368",
+    "Name": "NOYAN"
+  },
+  {
+    "Country": "CA",
+    "Code": "0819",
+    "Name": "OSOYOOS"
+  },
+  {
+    "Country": "CA",
+    "Code": "0616",
+    "Name": "OUNGRE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0813",
+    "Name": "PACIFIC HIGHWAY"
+  },
+  {
+    "Country": "CA",
+    "Code": "0832",
+    "Name": "PATERSON"
+  },
+  {
+    "Country": "CA",
+    "Code": "0475",
+    "Name": "PIGEON RIVER"
+  },
+  {
+    "Country": "CA",
+    "Code": "0517",
+    "Name": "PINEY"
+  },
+  {
+    "Country": "CA",
+    "Code": "0891",
+    "Name": "PLEASANT CAMP"
+  },
+  {
+    "Country": "CA",
+    "Code": "0331",
+    "Name": "POHENEGAMOOK"
+  },
+  {
+    "Country": "CA",
+    "Code": "0439",
+    "Name": "PRESCOTT"
+  },
+  {
+    "Country": "CA",
+    "Code": "0488",
+    "Name": "RAINY RIVER"
+  },
+  {
+    "Country": "CA",
+    "Code": "0607",
+    "Name": "REGWAY"
+  },
+  {
+    "Country": "CA",
+    "Code": "0824",
+    "Name": "ROOSVILLE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0324",
+    "Name": "ROUTE 221: LACOLLE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0341",
+    "Name": "ROUTE 223: LACOLLE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0822",
+    "Name": "RYKERTS"
+  },
+  {
+    "Country": "CA",
+    "Code": "0440",
+    "Name": "SARNIA"
+  },
+  {
+    "Country": "CA",
+    "Code": "0441",
+    "Name": "SAULT STE. MARIE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0509",
+    "Name": "SNOWFLAKE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0506",
+    "Name": "SOUTH JUNCTION"
+  },
+  {
+    "Country": "CA",
+    "Code": "0505",
+    "Name": "SPRAGUE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0328",
+    "Name": "ST ARMAND/PHILIPSBURG"
+  },
+  {
+    "Country": "CA",
+    "Code": "0335",
+    "Name": "ST PAMPHILE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0336",
+    "Name": "ST-JUST DE BRETENIERES"
+  },
+  {
+    "Country": "CA",
+    "Code": "0205",
+    "Name": "ST. CROIX"
+  },
+  {
+    "Country": "CA",
+    "Code": "0218",
+    "Name": "ST. LEONARD"
+  },
+  {
+    "Country": "CA",
+    "Code": "0231",
+    "Name": "ST. STEPHEN 3RD BRIDGE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0354",
+    "Name": "STANHOPE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0314",
+    "Name": "STANSTEAD 55"
+  },
+  {
+    "Country": "CA",
+    "Code": "0376",
+    "Name": "STANSTEAD BEEBE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0375",
+    "Name": "STANSTEAD RTE 143"
+  },
+  {
+    "Country": "CA",
+    "Code": "0339",
+    "Name": "Ste Aurelie"
+  },
+  {
+    "Country": "CA",
+    "Code": "0516",
+    "Name": "TOLSTOI"
+  },
+  {
+    "Country": "CA",
+    "Code": "0617",
+    "Name": "TORQUAY"
+  },
+  {
+    "Country": "CA",
+    "Code": "0307",
+    "Name": "TROUT RIVER"
+  },
+  {
+    "Country": "CA",
+    "Code": "0811",
+    "Name": "VICTORIA"
+  },
+  {
+    "Country": "CA",
+    "Code": "0833",
+    "Name": "WANETA"
+  },
+  {
+    "Country": "CA",
+    "Code": "0618",
+    "Name": "WEST POPLAR RIVER"
+  },
+  {
+    "Country": "CA",
+    "Code": "0711",
+    "Name": "WILD HORSE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0621",
+    "Name": "WILLOW CREEK"
+  },
+  {
+    "Country": "CA",
+    "Code": "0453",
+    "Name": "WINDSOR AMBASSADOR BRIDGE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0455",
+    "Name": "WINDSOR GORDIE HOWE BRIDGE"
+  },
+  {
+    "Country": "CA",
+    "Code": "0452",
+    "Name": "WINDSOR TUNNEL"
+  },
+  {
+    "Country": "CA",
+    "Code": "0519",
+    "Name": "WINDYGATES"
+  },
+  {
+    "Country": "CA",
+    "Code": "0518",
+    "Name": "WINKLER"
+  },
+  {
+    "Country": "CA",
+    "Code": "0308",
+    "Name": "WOBURN"
+  },
+  {
+    "Country": "CA",
+    "Code": "0212",
+    "Name": "WOODSTOCK"
+  },
+  {
+    "Country": "CA",
+    "Code": "0025",
+    "Name": "YARMOUTH"
+  },
+  {
+    "Country": "US",
+    "Code": "3003",
+    "Name": "Aberdeen, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "5584",
+    "Name": "Addison Airport, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "4901",
+    "Name": "Aguadilla, PR"
+  },
+  {
+    "Country": "US",
+    "Code": "4774",
+    "Name": "Air France, Jamaica, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "1002",
+    "Name": "Albany, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "2407",
+    "Name": "Albuquerque, NM"
+  },
+  {
+    "Country": "US",
+    "Code": "3104",
+    "Name": "Alcan, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "0708",
+    "Name": "Alexandria Bay, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "5402",
+    "Name": "Alexandria, VI"
+  },
+  {
+    "Country": "US",
+    "Code": "3814",
+    "Name": "Algonac, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "1119",
+    "Name": "Allentown, PA"
+  },
+  {
+    "Country": "US",
+    "Code": "5583",
+    "Name": "Alliance Airport, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "5502",
+    "Name": "Amarillo, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "3410",
+    "Name": "Ambrose, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "3010",
+    "Name": "Anacortes, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "3126",
+    "Name": "Anchorage, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "1301",
+    "Name": "Annapolis, MD"
+  },
+  {
+    "Country": "US",
+    "Code": "3413",
+    "Name": "Antler, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "1817",
+    "Name": "Apalachicola, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "3781",
+    "Name": "Appleton International Airport, WI"
+  },
+  {
+    "Country": "US",
+    "Code": "3602",
+    "Name": "Ashland, WI"
+  },
+  {
+    "Country": "US",
+    "Code": "4122",
+    "Name": "Ashtabula, OH"
+  },
+  {
+    "Country": "US",
+    "Code": "2901",
+    "Name": "Astoria, OR"
+  },
+  {
+    "Country": "US",
+    "Code": "1704",
+    "Name": "Atlanta, GA"
+  },
+  {
+    "Country": "US",
+    "Code": "1182",
+    "Name": "Atlantic City User Fee Airport, NJ"
+  },
+  {
+    "Country": "US",
+    "Code": "5506",
+    "Name": "Austin, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "3015",
+    "Name": "BOUNDARY, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "1305",
+    "Name": "Balitmore- Washington International Airport, MD"
+  },
+  {
+    "Country": "US",
+    "Code": "1303",
+    "Name": "Baltimore, MD"
+  },
+  {
+    "Country": "US",
+    "Code": "0102",
+    "Name": "Bangor, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "0112",
+    "Name": "Bar Harbor, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "0111",
+    "Name": "Bath, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "2004",
+    "Name": "Baton Rouge, LA"
+  },
+  {
+    "Country": "US",
+    "Code": "3805",
+    "Name": "Battle Creek, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "3424",
+    "Name": "Baudette, MN"
+  },
+  {
+    "Country": "US",
+    "Code": "2104",
+    "Name": "Beaumont, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "0206",
+    "Name": "Beecher Falls, VT"
+  },
+  {
+    "Country": "US",
+    "Code": "0132",
+    "Name": "Belfast, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "3005",
+    "Name": "Bellingham, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "0981",
+    "Name": "Binghamton, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "1904",
+    "Name": "Birmingham, AL"
+  },
+  {
+    "Country": "US",
+    "Code": "3004",
+    "Name": "Blaine, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "1807",
+    "Name": "Boca Grande, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "2907",
+    "Name": "Boise, ID"
+  },
+  {
+    "Country": "US",
+    "Code": "3450",
+    "Name": "Border Patrol Sector, Grand Forks, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "0401",
+    "Name": "Boston, MA"
+  },
+  {
+    "Country": "US",
+    "Code": "3386",
+    "Name": "Bozeman Yellowstone User Fee Airport, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "0410",
+    "Name": "Bridgeport, CT"
+  },
+  {
+    "Country": "US",
+    "Code": "0127",
+    "Name": "Bridgewater, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "3383",
+    "Name": "Broomfield, CO"
+  },
+  {
+    "Country": "US",
+    "Code": "2301",
+    "Name": "Brownsville/Los Indios, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "1701",
+    "Name": "Brunswick, GA"
+  },
+  {
+    "Country": "US",
+    "Code": "0901",
+    "Name": "Buffalo, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "4170",
+    "Name": "Burlington Air Express, Toledo, OH"
+  },
+  {
+    "Country": "US",
+    "Code": "0207",
+    "Name": "Burlington International Airport"
+  },
+  {
+    "Country": "US",
+    "Code": "3305",
+    "Name": "Butte Airport, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "2830",
+    "Name": "CARQUINEZ STRAIT, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "7421",
+    "Name": "CBP Bermuda Preclearance, Washington, DC"
+  },
+  {
+    "Country": "US",
+    "Code": "7422",
+    "Name": "CBP Freeport Preclearance, Washington, DC"
+  },
+  {
+    "Country": "US",
+    "Code": "7404",
+    "Name": "CBP St. Croix Preclearance, St. Croix, Virgin Islands"
+  },
+  {
+    "Country": "US",
+    "Code": "2815",
+    "Name": "CROCKETT, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "0115",
+    "Name": "Calais, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "2507",
+    "Name": "Calexico East, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2503",
+    "Name": "Calexico West, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "1302",
+    "Name": "Cambridge, MD"
+  },
+  {
+    "Country": "US",
+    "Code": "1107",
+    "Name": "Camden, NJ"
+  },
+  {
+    "Country": "US",
+    "Code": "1816",
+    "Name": "Cape Canaveral, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "1406",
+    "Name": "Cape Charles, VA"
+  },
+  {
+    "Country": "US",
+    "Code": "0706",
+    "Name": "Cape Vincent, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "3883",
+    "Name": "Capital Region International Airport Lansing, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "3421",
+    "Name": "Carbury, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "1806",
+    "Name": "Carrabelle, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "0712",
+    "Name": "Champlain, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "1601",
+    "Name": "Charleston, SC"
+  },
+  {
+    "Country": "US",
+    "Code": "1409",
+    "Name": "Charleston, WV"
+  },
+  {
+    "Country": "US",
+    "Code": "1512",
+    "Name": "Charlotte, NC"
+  },
+  {
+    "Country": "US",
+    "Code": "1581",
+    "Name": "Charlotte-Monroe Airport, NC"
+  },
+  {
+    "Country": "US",
+    "Code": "2008",
+    "Name": "Chattanooga, TN"
+  },
+  {
+    "Country": "US",
+    "Code": "1102",
+    "Name": "Chester, PA"
+  },
+  {
+    "Country": "US",
+    "Code": "3901",
+    "Name": "Chicago, IL"
+  },
+  {
+    "Country": "US",
+    "Code": "4102",
+    "Name": "Cincinnati, OH"
+  },
+  {
+    "Country": "US",
+    "Code": "0714",
+    "Name": "Clayton, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "4101",
+    "Name": "Cleveland, OH"
+  },
+  {
+    "Country": "US",
+    "Code": "1604",
+    "Name": "Columbia, SC"
+  },
+  {
+    "Country": "US",
+    "Code": "2406",
+    "Name": "Columbus, NM"
+  },
+  {
+    "Country": "US",
+    "Code": "4103",
+    "Name": "Columbus, OH"
+  },
+  {
+    "Country": "US",
+    "Code": "5382",
+    "Name": "Conroe, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "2903",
+    "Name": "Coos Bay, OR"
+  },
+  {
+    "Country": "US",
+    "Code": "5312",
+    "Name": "Corpus Christi, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "5102",
+    "Name": "Cruz Bay, VI"
+  },
+  {
+    "Country": "US",
+    "Code": "9900",
+    "Name": "Customs HQ"
+  },
+  {
+    "Country": "US",
+    "Code": "4772",
+    "Name": "DHL Airways, Jamaica, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "4197",
+    "Name": "DHL Courier, Cincinnati, OH"
+  },
+  {
+    "Country": "US",
+    "Code": "5296",
+    "Name": "DHL WORLDWIDE EXPRESS, MIAMI, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "2791",
+    "Name": "DHL-HUB LOS ANGELES, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "5501",
+    "Name": "Dallas/Fort Worth, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "3106",
+    "Name": "Dalton Cache, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "3012",
+    "Name": "Danville, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "3908",
+    "Name": "Davenport, IA"
+  },
+  {
+    "Country": "US",
+    "Code": "4104",
+    "Name": "Dayton, OH"
+  },
+  {
+    "Country": "US",
+    "Code": "1884",
+    "Name": "Daytona Beach, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "3985",
+    "Name": "Decatur Airport"
+  },
+  {
+    "Country": "US",
+    "Code": "3322",
+    "Name": "Del Bonita, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "2302",
+    "Name": "Del Rio, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "3307",
+    "Name": "Denver, CO"
+  },
+  {
+    "Country": "US",
+    "Code": "0209",
+    "Name": "Derby Line, VT"
+  },
+  {
+    "Country": "US",
+    "Code": "3513",
+    "Name": "Des Moines, IA"
+  },
+  {
+    "Country": "US",
+    "Code": "3819",
+    "Name": "Detour City, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "3807",
+    "Name": "Detroit Metro Airport"
+  },
+  {
+    "Country": "US",
+    "Code": "3801",
+    "Name": "Detroit, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "2601",
+    "Name": "Douglas, AZ"
+  },
+  {
+    "Country": "US",
+    "Code": "3510",
+    "Name": "Duluth, MN"
+  },
+  {
+    "Country": "US",
+    "Code": "3422",
+    "Name": "Dunseith, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "3972",
+    "Name": "ECCF IBC Chicago, IL"
+  },
+  {
+    "Country": "US",
+    "Code": "2303",
+    "Name": "Eagle Pass, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "3302",
+    "Name": "Eastport, ID"
+  },
+  {
+    "Country": "US",
+    "Code": "0103",
+    "Name": "Eastport, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "2402",
+    "Name": "El Paso, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "4195",
+    "Name": "Emery Courier, Vandalia, OH"
+  },
+  {
+    "Country": "US",
+    "Code": "4773",
+    "Name": "Emery Worldwide, Jamaica, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "3384",
+    "Name": "Englewood, CO"
+  },
+  {
+    "Country": "US",
+    "Code": "4106",
+    "Name": "Erie, PA"
+  },
+  {
+    "Country": "US",
+    "Code": "3808",
+    "Name": "Escanaba, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "2802",
+    "Name": "Eureka, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "4116",
+    "Name": "Evansville, IN"
+  },
+  {
+    "Country": "US",
+    "Code": "3006",
+    "Name": "Everett, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "3195",
+    "Name": "FEDERAL EXPRESS, ANCHORAGE, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "2895",
+    "Name": "FEDERAL EXPRESS, OAKLAND, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "3013",
+    "Name": "FERRY, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "3111",
+    "Name": "Fairbanks, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "4904",
+    "Name": "Fajardo, PR"
+  },
+  {
+    "Country": "US",
+    "Code": "0407",
+    "Name": "Fall River, MA"
+  },
+  {
+    "Country": "US",
+    "Code": "3411",
+    "Name": "Fargo-Hector International Airport, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "2095",
+    "Name": "Federal Express Courier, Memphis, TN"
+  },
+  {
+    "Country": "US",
+    "Code": "4198",
+    "Name": "Federal Express Hub, Indianapolis, IN"
+  },
+  {
+    "Country": "US",
+    "Code": "5297",
+    "Name": "Fedex Courier Hub, Miami, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "1805",
+    "Name": "Fernandina Beach, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "0107",
+    "Name": "Fort Fairfield, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "0110",
+    "Name": "Fort Kent, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "5210",
+    "Name": "Fort Lauderdale International Airport, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "5203",
+    "Name": "Fort Lauderdale, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "1822",
+    "Name": "Fort Myers, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "5205",
+    "Name": "Fort Pierce, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "4183",
+    "Name": "Fort Wayne, IN"
+  },
+  {
+    "Country": "US",
+    "Code": "3417",
+    "Name": "Fortuna, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "5311",
+    "Name": "Freeport, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "2803",
+    "Name": "Fresno, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "3014",
+    "Name": "Friday Harbor, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "1410",
+    "Name": "Front Royal, VA"
+  },
+  {
+    "Country": "US",
+    "Code": "3020",
+    "Name": "Frontier, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "5310",
+    "Name": "Galveston, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "3905",
+    "Name": "Gary, IN"
+  },
+  {
+    "Country": "US",
+    "Code": "1602",
+    "Name": "Georgetown, SC"
+  },
+  {
+    "Country": "US",
+    "Code": "0404",
+    "Name": "Gloucester, MA"
+  },
+  {
+    "Country": "US",
+    "Code": "2010",
+    "Name": "Gramercy, LA"
+  },
+  {
+    "Country": "US",
+    "Code": "3427",
+    "Name": "Grand Forks, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "3613",
+    "Name": "Grand Portage, MN"
+  },
+  {
+    "Country": "US",
+    "Code": "3806",
+    "Name": "Grand Rapids, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "3082",
+    "Name": "Grant County Airport, Moses Lake, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "3304",
+    "Name": "Great Falls, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "3703",
+    "Name": "Green Bay, WI"
+  },
+  {
+    "Country": "US",
+    "Code": "2011",
+    "Name": "Greenville, MS"
+  },
+  {
+    "Country": "US",
+    "Code": "1603",
+    "Name": "Greenville-Spartanburg, SC"
+  },
+  {
+    "Country": "US",
+    "Code": "1902",
+    "Name": "Gulfport, MS"
+  },
+  {
+    "Country": "US",
+    "Code": "3385",
+    "Name": "Gypsum, CO"
+  },
+  {
+    "Country": "US",
+    "Code": "3408",
+    "Name": "Hannah, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "3415",
+    "Name": "Hansboro, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "0481",
+    "Name": "Hanscom User Fee Airport, Bedford, MA"
+  },
+  {
+    "Country": "US",
+    "Code": "2383",
+    "Name": "Harlingen Valley International Airport, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "1109",
+    "Name": "Harrisburg, PA"
+  },
+  {
+    "Country": "US",
+    "Code": "0411",
+    "Name": "Hartford, CT"
+  },
+  {
+    "Country": "US",
+    "Code": "2305",
+    "Name": "Hidalgo/Pharr, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "0212",
+    "Name": "Highgate Springs, VT"
+  },
+  {
+    "Country": "US",
+    "Code": "3202",
+    "Name": "Hilo, HI"
+  },
+  {
+    "Country": "US",
+    "Code": "3205",
+    "Name": "Honolulu International Airport, HI"
+  },
+  {
+    "Country": "US",
+    "Code": "3201",
+    "Name": "Honolulu, HI"
+  },
+  {
+    "Country": "US",
+    "Code": "0106",
+    "Name": "Houlton, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "5309",
+    "Name": "Houston Intercontinental Airport, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "5301",
+    "Name": "Houston, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "4185",
+    "Name": "Hulman Regional Airport, Terre Haute, IN"
+  },
+  {
+    "Country": "US",
+    "Code": "4906",
+    "Name": "Humacao, PR"
+  },
+  {
+    "Country": "US",
+    "Code": "1910",
+    "Name": "Huntsville, AL"
+  },
+  {
+    "Country": "US",
+    "Code": "4117",
+    "Name": "Huron, OH"
+  },
+  {
+    "Country": "US",
+    "Code": "5298",
+    "Name": "IBC Courier Hub, Miami, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "2776",
+    "Name": "IBC PACIFIC, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "4110",
+    "Name": "Indianapolis, IN"
+  },
+  {
+    "Country": "US",
+    "Code": "5270",
+    "Name": "International Courier Association, Miami, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "3604",
+    "Name": "International Falls, MN"
+  },
+  {
+    "Country": "US",
+    "Code": "0104",
+    "Name": "Jackman, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "2081",
+    "Name": "Jackson Airport, Jackson, MS"
+  },
+  {
+    "Country": "US",
+    "Code": "1803",
+    "Name": "Jacksonville, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "4701",
+    "Name": "John F Kennedy International Airport, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "0122",
+    "Name": "Jonesport, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "3101",
+    "Name": "Juneau, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "3206",
+    "Name": "KAILUA-KONA, HI"
+  },
+  {
+    "Country": "US",
+    "Code": "2909",
+    "Name": "KALAMA, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "3203",
+    "Name": "Kahului, HI"
+  },
+  {
+    "Country": "US",
+    "Code": "3324",
+    "Name": "Kalispell, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "4501",
+    "Name": "Kansas City"
+  },
+  {
+    "Country": "US",
+    "Code": "3018",
+    "Name": "Kenmore Air Harbor, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "3102",
+    "Name": "Ketchikan, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "5202",
+    "Name": "Key West, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "2016",
+    "Name": "Knoxville, TN"
+  },
+  {
+    "Country": "US",
+    "Code": "3127",
+    "Name": "Kodiak, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "2017",
+    "Name": "Lake Charles, LA"
+  },
+  {
+    "Country": "US",
+    "Code": "2020",
+    "Name": "Lake Charles, LA"
+  },
+  {
+    "Country": "US",
+    "Code": "1881",
+    "Name": "Lakeland Linder Airport, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "3430",
+    "Name": "Lancaster, MN"
+  },
+  {
+    "Country": "US",
+    "Code": "2304",
+    "Name": "Laredo, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "2722",
+    "Name": "Las Vegas, NV"
+  },
+  {
+    "Country": "US",
+    "Code": "3016",
+    "Name": "Laurier, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "0416",
+    "Name": "Lawrence, MA"
+  },
+  {
+    "Country": "US",
+    "Code": "1887",
+    "Name": "Leesburg International Airport (UFA), FL"
+  },
+  {
+    "Country": "US",
+    "Code": "4184",
+    "Name": "Lexington, KY"
+  },
+  {
+    "Country": "US",
+    "Code": "0118",
+    "Name": "Limestone, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "2003",
+    "Name": "Little Rock, AR"
+  },
+  {
+    "Country": "US",
+    "Code": "0417",
+    "Name": "Logan Airport"
+  },
+  {
+    "Country": "US",
+    "Code": "2709",
+    "Name": "Long Beach, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2905",
+    "Name": "Longview, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "2704",
+    "Name": "Los Angeles, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2720",
+    "Name": "Los Angeles, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "4115",
+    "Name": "Louisville, KY"
+  },
+  {
+    "Country": "US",
+    "Code": "5503",
+    "Name": "Lubbock, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "4913",
+    "Name": "Luis Munoz Marin International Airport"
+  },
+  {
+    "Country": "US",
+    "Code": "2602",
+    "Name": "Lukeville, AZ"
+  },
+  {
+    "Country": "US",
+    "Code": "3023",
+    "Name": "Lynden, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "2820",
+    "Name": "MARTINEZ, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2786",
+    "Name": "MEADOWS FIELD AIRPORT, BAKERSFIELD, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "0109",
+    "Name": "Madawaska, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "3416",
+    "Name": "Maida, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "0182",
+    "Name": "Manchester, NH"
+  },
+  {
+    "Country": "US",
+    "Code": "3706",
+    "Name": "Manitowoc, WI"
+  },
+  {
+    "Country": "US",
+    "Code": "3702",
+    "Name": "Marinette, WI"
+  },
+  {
+    "Country": "US",
+    "Code": "4581",
+    "Name": "Mascoutah Airport"
+  },
+  {
+    "Country": "US",
+    "Code": "0704",
+    "Name": "Massena, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "4907",
+    "Name": "Mayaguez, PR"
+  },
+  {
+    "Country": "US",
+    "Code": "5585",
+    "Name": "Mckinney, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "1885",
+    "Name": "Melbourne, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "0503",
+    "Name": "Mellville, RI"
+  },
+  {
+    "Country": "US",
+    "Code": "2006",
+    "Name": "Memphis, TN"
+  },
+  {
+    "Country": "US",
+    "Code": "2682",
+    "Name": "Mesa, AZ"
+  },
+  {
+    "Country": "US",
+    "Code": "3025",
+    "Name": "Metaline Falls, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "5206",
+    "Name": "Miami International Airport, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "5201",
+    "Name": "Miami Seaport, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "5582",
+    "Name": "Midland, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "3910",
+    "Name": "Midway International Airport, Chicago, IL"
+  },
+  {
+    "Country": "US",
+    "Code": "3701",
+    "Name": "Milwaukee, WI"
+  },
+  {
+    "Country": "US",
+    "Code": "3501",
+    "Name": "Minneapolis, MN"
+  },
+  {
+    "Country": "US",
+    "Code": "3434",
+    "Name": "Minot International Airport, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "1901",
+    "Name": "Mobile, AL"
+  },
+  {
+    "Country": "US",
+    "Code": "2805",
+    "Name": "Monterey, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "1511",
+    "Name": "Morehead City, NC"
+  },
+  {
+    "Country": "US",
+    "Code": "2001",
+    "Name": "Morgan City, LA"
+  },
+  {
+    "Country": "US",
+    "Code": "3319",
+    "Name": "Morgan, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "4681",
+    "Name": "Morristown Airport, NJ"
+  },
+  {
+    "Country": "US",
+    "Code": "3815",
+    "Name": "Muskegon, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "1681",
+    "Name": "Myrtle Beach International Airport, SC"
+  },
+  {
+    "Country": "US",
+    "Code": "4771",
+    "Name": "NYACC, Jamaica, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "2603",
+    "Name": "Naco, AZ"
+  },
+  {
+    "Country": "US",
+    "Code": "1880",
+    "Name": "Naples, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "2007",
+    "Name": "Nashville, TN"
+  },
+  {
+    "Country": "US",
+    "Code": "2921",
+    "Name": "Natrona County Airport"
+  },
+  {
+    "Country": "US",
+    "Code": "3204",
+    "Name": "Nawiliwili-Port Allen"
+  },
+  {
+    "Country": "US",
+    "Code": "3027",
+    "Name": "Neah Bay, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "3404",
+    "Name": "Neche, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "0405",
+    "Name": "New Bedford, MA"
+  },
+  {
+    "Country": "US",
+    "Code": "0412",
+    "Name": "New Haven, CT"
+  },
+  {
+    "Country": "US",
+    "Code": "0413",
+    "Name": "New London, CT"
+  },
+  {
+    "Country": "US",
+    "Code": "2002",
+    "Name": "New Orleans, LA"
+  },
+  {
+    "Country": "US",
+    "Code": "1481",
+    "Name": "New River Valley Airport"
+  },
+  {
+    "Country": "US",
+    "Code": "1412",
+    "Name": "New River Valley Airport, VA"
+  },
+  {
+    "Country": "US",
+    "Code": "1001",
+    "Name": "New York, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "4601",
+    "Name": "Newark, NJ"
+  },
+  {
+    "Country": "US",
+    "Code": "1402",
+    "Name": "Newport News, VA"
+  },
+  {
+    "Country": "US",
+    "Code": "2902",
+    "Name": "Newport, OR"
+  },
+  {
+    "Country": "US",
+    "Code": "0501",
+    "Name": "Newport, RI"
+  },
+  {
+    "Country": "US",
+    "Code": "3011",
+    "Name": "Nighthawk, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "3991",
+    "Name": "Nippon Courier Hub, Chicago, IL"
+  },
+  {
+    "Country": "US",
+    "Code": "2604",
+    "Name": "Nogales, AZ"
+  },
+  {
+    "Country": "US",
+    "Code": "3420",
+    "Name": "Noonan, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "1401",
+    "Name": "Norfolk, VA"
+  },
+  {
+    "Country": "US",
+    "Code": "3406",
+    "Name": "Northgate, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "0211",
+    "Name": "Norton, VT"
+  },
+  {
+    "Country": "US",
+    "Code": "3402",
+    "Name": "Noyes, MN"
+  },
+  {
+    "Country": "US",
+    "Code": "3026",
+    "Name": "OLYMPIA, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "2811",
+    "Name": "Oakland, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "3881",
+    "Name": "Oakland-Pontiac Airport Waterford, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "0701",
+    "Name": "Ogdensburg, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "5504",
+    "Name": "Oklahoma City, OK"
+  },
+  {
+    "Country": "US",
+    "Code": "3512",
+    "Name": "Omaha, NE"
+  },
+  {
+    "Country": "US",
+    "Code": "2721",
+    "Name": "Ontario, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "3317",
+    "Name": "Opheim, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "1888",
+    "Name": "Orlando Executive Airport (UFA), FL"
+  },
+  {
+    "Country": "US",
+    "Code": "1808",
+    "Name": "Orlando, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "3019",
+    "Name": "Oroville Area Port, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "0904",
+    "Name": "Oswego, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "2506",
+    "Name": "Otay Mesa, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2781",
+    "Name": "Palm Springs, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2581",
+    "Name": "Palomar Airport, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "1818",
+    "Name": "Panama City"
+  },
+  {
+    "Country": "US",
+    "Code": "1903",
+    "Name": "Pascagoula, MS"
+  },
+  {
+    "Country": "US",
+    "Code": "3401",
+    "Name": "Pembina, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "1819",
+    "Name": "Pensacola, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "3902",
+    "Name": "Peoria, IL"
+  },
+  {
+    "Country": "US",
+    "Code": "4602",
+    "Name": "Perth Amboy, NJ"
+  },
+  {
+    "Country": "US",
+    "Code": "1108",
+    "Name": "Philadelphia International Airport"
+  },
+  {
+    "Country": "US",
+    "Code": "1101",
+    "Name": "Philadelphia, PA"
+  },
+  {
+    "Country": "US",
+    "Code": "2605",
+    "Name": "Phoenix, AZ"
+  },
+  {
+    "Country": "US",
+    "Code": "3316",
+    "Name": "Piegan, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "3425",
+    "Name": "Pinecreek, MN"
+  },
+  {
+    "Country": "US",
+    "Code": "1104",
+    "Name": "Pittsburgh, PA"
+  },
+  {
+    "Country": "US",
+    "Code": "0406",
+    "Name": "Plymouth, MA"
+  },
+  {
+    "Country": "US",
+    "Code": "0606",
+    "Name": "Plymouth, MA"
+  },
+  {
+    "Country": "US",
+    "Code": "3017",
+    "Name": "Point Roberts, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "4908",
+    "Name": "Ponce, PR"
+  },
+  {
+    "Country": "US",
+    "Code": "3007",
+    "Name": "Port Angeles, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "2101",
+    "Name": "Port Arthur, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "5101",
+    "Name": "Port Charlotte, VI"
+  },
+  {
+    "Country": "US",
+    "Code": "2713",
+    "Name": "Port Hueneme, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "3802",
+    "Name": "Port Huron, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "5313",
+    "Name": "Port Lavaca/Point Comfort, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "1821",
+    "Name": "Port Manatee, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "2707",
+    "Name": "Port San Luis, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "1820",
+    "Name": "Port St. Joe, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "3008",
+    "Name": "Port Townsend, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "3452",
+    "Name": "Portal ND Border Patrol Station, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "3403",
+    "Name": "Portal, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "3308",
+    "Name": "Porthill, ID"
+  },
+  {
+    "Country": "US",
+    "Code": "2910",
+    "Name": "Portland International Airport, Portland, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "0101",
+    "Name": "Portland, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "2904",
+    "Name": "Portland, OR"
+  },
+  {
+    "Country": "US",
+    "Code": "0131",
+    "Name": "Portsmouth, NH"
+  },
+  {
+    "Country": "US",
+    "Code": "2403",
+    "Name": "Presidio, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "2309",
+    "Name": "Progreso, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "0502",
+    "Name": "Providence, RI"
+  },
+  {
+    "Country": "US",
+    "Code": "2821",
+    "Name": "REDWOOD CITY, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "3708",
+    "Name": "Racine, WI"
+  },
+  {
+    "Country": "US",
+    "Code": "1503",
+    "Name": "Raleigh-Durham, NC"
+  },
+  {
+    "Country": "US",
+    "Code": "3301",
+    "Name": "Raymond, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "2833",
+    "Name": "Reno, NV"
+  },
+  {
+    "Country": "US",
+    "Code": "0203",
+    "Name": "Richford, VT"
+  },
+  {
+    "Country": "US",
+    "Code": "2812",
+    "Name": "Richmond, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "1404",
+    "Name": "Richmond-Petersburg, VA"
+  },
+  {
+    "Country": "US",
+    "Code": "4182",
+    "Name": "Rickenbacker Airport, Columbus, OH"
+  },
+  {
+    "Country": "US",
+    "Code": "2307",
+    "Name": "Rio Grande City/Los Ebanos, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "3581",
+    "Name": "Rochester, MN"
+  },
+  {
+    "Country": "US",
+    "Code": "0903",
+    "Name": "Rochester, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "3909",
+    "Name": "Rockford, IL"
+  },
+  {
+    "Country": "US",
+    "Code": "0121",
+    "Name": "Rockland, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "2084",
+    "Name": "Rogers Municipal Airport/Carter, Rogers, AR"
+  },
+  {
+    "Country": "US",
+    "Code": "2310",
+    "Name": "Roma/ Falcon Dam, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "0982",
+    "Name": "Rome, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "3318",
+    "Name": "Roosville, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "3426",
+    "Name": "Roseau, MN"
+  },
+  {
+    "Country": "US",
+    "Code": "2482",
+    "Name": "Roswell Industrial Airport, Roswell, NM"
+  },
+  {
+    "Country": "US",
+    "Code": "2835",
+    "Name": "SACRAMENTO INTL AIRPORT, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2828",
+    "Name": "SAN JUAQUIN RIVER, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2829",
+    "Name": "SAN PABLO BAY, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2827",
+    "Name": "SELBY, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2102",
+    "Name": "Sabine, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "2816",
+    "Name": "Sacramento, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "3804",
+    "Name": "Saginaw/Bay City/Flint, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "5104",
+    "Name": "Saint Croix, VI"
+  },
+  {
+    "Country": "US",
+    "Code": "0408",
+    "Name": "Salem, MA"
+  },
+  {
+    "Country": "US",
+    "Code": "3303",
+    "Name": "Salt Lake City, UT"
+  },
+  {
+    "Country": "US",
+    "Code": "5507",
+    "Name": "San Antonio, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "2782",
+    "Name": "San Bernardino International Airport, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2501",
+    "Name": "San Diego, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2801",
+    "Name": "San Francisco, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2809",
+    "Name": "San Francisco, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2834",
+    "Name": "San Jose, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "4909",
+    "Name": "San Juan, PR"
+  },
+  {
+    "Country": "US",
+    "Code": "2608",
+    "Name": "San Luis, AZ"
+  },
+  {
+    "Country": "US",
+    "Code": "2504",
+    "Name": "San Ysidro, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "1809",
+    "Name": "Sanford, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "2481",
+    "Name": "Santa Teresa Airport, NM"
+  },
+  {
+    "Country": "US",
+    "Code": "2408",
+    "Name": "Santa Teresa, NM"
+  },
+  {
+    "Country": "US",
+    "Code": "1883",
+    "Name": "Sarasota, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "3409",
+    "Name": "Sarles, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "2606",
+    "Name": "Sasabe, AZ"
+  },
+  {
+    "Country": "US",
+    "Code": "3803",
+    "Name": "Sault Sainte Marie, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "1703",
+    "Name": "Savannah, GA"
+  },
+  {
+    "Country": "US",
+    "Code": "3309",
+    "Name": "Scobey, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "2681",
+    "Name": "Scottsdale, AZ"
+  },
+  {
+    "Country": "US",
+    "Code": "0152",
+    "Name": "Searsport, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "3001",
+    "Name": "Seattle, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "3707",
+    "Name": "Sheboygan, WI"
+  },
+  {
+    "Country": "US",
+    "Code": "3414",
+    "Name": "Sherwood, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "2018",
+    "Name": "Shreveport, LA"
+  },
+  {
+    "Country": "US",
+    "Code": "3502",
+    "Name": "Sioux Falls, SD"
+  },
+  {
+    "Country": "US",
+    "Code": "3115",
+    "Name": "Sitka, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "3103",
+    "Name": "Skagway, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "0905",
+    "Name": "Sodus Point, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "4506",
+    "Name": "Spirit of St.Louis Aiport"
+  },
+  {
+    "Country": "US",
+    "Code": "3022",
+    "Name": "Spokane, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "0402",
+    "Name": "Springfield, MA"
+  },
+  {
+    "Country": "US",
+    "Code": "4505",
+    "Name": "Springfield, MO"
+  },
+  {
+    "Country": "US",
+    "Code": "0201",
+    "Name": "St. Albans, VT"
+  },
+  {
+    "Country": "US",
+    "Code": "1889",
+    "Name": "St. Augustine, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "3405",
+    "Name": "St. John, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "4503",
+    "Name": "St. Louis, MO"
+  },
+  {
+    "Country": "US",
+    "Code": "1814",
+    "Name": "St. Petersburg, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "5401",
+    "Name": "Sterling, VA"
+  },
+  {
+    "Country": "US",
+    "Code": "2810",
+    "Name": "Stockton, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "5381",
+    "Name": "Sugar Land, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "3009",
+    "Name": "Sumas, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "0214",
+    "Name": "Swanton, VT"
+  },
+  {
+    "Country": "US",
+    "Code": "3310",
+    "Name": "Sweetgrass, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "0906",
+    "Name": "Syracuse, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "3971",
+    "Name": "TNT EXPRESS CONSIGNMENT, CHICAGO, IL"
+  },
+  {
+    "Country": "US",
+    "Code": "2775",
+    "Name": "TNT Express Worldwide, Los Angeles, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "4778",
+    "Name": "TNT Skypak, Jamaica, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "3029",
+    "Name": "Tacoma International Airport, Seattle, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "3002",
+    "Name": "Tacoma, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "1801",
+    "Name": "Tampa, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "2505",
+    "Name": "Tecate, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "8888",
+    "Name": "Test District"
+  },
+  {
+    "Country": "US",
+    "Code": "5306",
+    "Name": "Texas City, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "4105",
+    "Name": "Toledo-Sandusky, OH"
+  },
+  {
+    "Country": "US",
+    "Code": "2404",
+    "Name": "Tornillo, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "1183",
+    "Name": "Trenton/Mercer Country User Fee Airport, NJ"
+  },
+  {
+    "Country": "US",
+    "Code": "2082",
+    "Name": "Tri-City Airport, TN"
+  },
+  {
+    "Country": "US",
+    "Code": "2027",
+    "Name": "Tri-City User Fee Airport, Blountville, TN"
+  },
+  {
+    "Country": "US",
+    "Code": "0715",
+    "Name": "Trout River, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "2609",
+    "Name": "Tucson, AZ"
+  },
+  {
+    "Country": "US",
+    "Code": "5505",
+    "Name": "Tulsa, OK"
+  },
+  {
+    "Country": "US",
+    "Code": "3306",
+    "Name": "Turner, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "1195",
+    "Name": "UPS Courier Hub Facility, PA"
+  },
+  {
+    "Country": "US",
+    "Code": "3196",
+    "Name": "UPS Courier, Anchorage, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "4196",
+    "Name": "UPS Courier, Louisville, KY"
+  },
+  {
+    "Country": "US",
+    "Code": "5295",
+    "Name": "UPS Miami International Airport, Miami, FL"
+  },
+  {
+    "Country": "US",
+    "Code": "2795",
+    "Name": "UPS, ONTARIO, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "3071",
+    "Name": "UPS, SEATTLE, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "9997",
+    "Name": "Unknown Port Location"
+  },
+  {
+    "Country": "US",
+    "Code": "0907",
+    "Name": "Utica, NY"
+  },
+  {
+    "Country": "US",
+    "Code": "3107",
+    "Name": "Valdez, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "0108",
+    "Name": "Van Buren, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "0105",
+    "Name": "Vanceboro, ME"
+  },
+  {
+    "Country": "US",
+    "Code": "2908",
+    "Name": "Vancouver, WA"
+  },
+  {
+    "Country": "US",
+    "Code": "2015",
+    "Name": "Vicksburg, MS"
+  },
+  {
+    "Country": "US",
+    "Code": "2783",
+    "Name": "Victorville, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "2774",
+    "Name": "Virgin Atlantic Cargo, Los Angeles, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "3407",
+    "Name": "Walhalla, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "3423",
+    "Name": "Warroad, MN"
+  },
+  {
+    "Country": "US",
+    "Code": "3981",
+    "Name": "Waukegan, IL"
+  },
+  {
+    "Country": "US",
+    "Code": "3984",
+    "Name": "West Chicago Airport"
+  },
+  {
+    "Country": "US",
+    "Code": "5204",
+    "Name": "West Palm Beach"
+  },
+  {
+    "Country": "US",
+    "Code": "3419",
+    "Name": "Westhope, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "3983",
+    "Name": "Wheeling Airport"
+  },
+  {
+    "Country": "US",
+    "Code": "3321",
+    "Name": "Whitlash, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "4504",
+    "Name": "Wichita, KS"
+  },
+  {
+    "Country": "US",
+    "Code": "3323",
+    "Name": "Wild Horse, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "1106",
+    "Name": "Wilkes-Barre Scranton, PA"
+  },
+  {
+    "Country": "US",
+    "Code": "3433",
+    "Name": "Williston-Sloulin Field International Airport, ND"
+  },
+  {
+    "Country": "US",
+    "Code": "3325",
+    "Name": "Willow Creek, MT"
+  },
+  {
+    "Country": "US",
+    "Code": "3882",
+    "Name": "Willow Run Airport Ypsilanti, MI"
+  },
+  {
+    "Country": "US",
+    "Code": "1103",
+    "Name": "Wilmington, DE"
+  },
+  {
+    "Country": "US",
+    "Code": "1501",
+    "Name": "Wilmington, NC"
+  },
+  {
+    "Country": "US",
+    "Code": "4181",
+    "Name": "Wilmington, OH"
+  },
+  {
+    "Country": "US",
+    "Code": "3428",
+    "Name": "Winnipeg International Airport"
+  },
+  {
+    "Country": "US",
+    "Code": "1502",
+    "Name": "Winston-Salem, NC"
+  },
+  {
+    "Country": "US",
+    "Code": "2502",
+    "Name": "Winterhaven, CA"
+  },
+  {
+    "Country": "US",
+    "Code": "0403",
+    "Name": "Worcester, MA"
+  },
+  {
+    "Country": "US",
+    "Code": "3105",
+    "Name": "Wrangell, AK"
+  },
+  {
+    "Country": "US",
+    "Code": "2401",
+    "Name": "Ysleta, TX"
+  },
+  {
+    "Country": "US",
+    "Code": "9999",
+    "Name": "ZZZZZZZZZZZ"
+  }
+]

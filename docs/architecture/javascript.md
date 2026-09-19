@@ -130,6 +130,12 @@ are evicted from the scene cache, and camera/truck motion reuses the unchanged g
 Truck markers use a green heading arrow at speeds of at least 1 mph. Stationary
 trucks use green circles while idling and gray circles when off or unknown.
 These three shapes are cached; unit labels remain upright and independent.
+Truck playback keeps a 90-second telemetry buffer for minute publication and
+client polling jitter, and advances at normal time without catch-up acceleration.
+Hidden tabs stop frames. Visibility restoration, a frame suspension over one
+second or history pruning rebases playback before painting; missing journeys
+must not become correction animations. Follow retains its captured screen anchor.
+When GPS runs out, hold the last measured point rather than invent movement.
 Fuel circles retain their existing price colors and every original selectable point.
 All fills are 16px across; the popup retains the complete price quote, while map
 labels show only fuel order or active editing. Camera changes do not rebuild the
@@ -147,12 +153,20 @@ Route fitting checks the truck layer's current Follow state at the point of came
 mutation. A delayed planning response may update geometry without overriding an
 active Follow camera; no duplicate Follow state is kept in the route layer.
 
+Clicking a truck group frames only that group's positions inside the unobscured
+map viewport, capped at zoom 18 for coincident trucks. It preserves the selected
+truck and route, releases Follow and cancels a pending initial fleet fit. Route
+geometry and other trucks never enter the group camera bounds.
+
 `ui/cameraViewport.js` caches the map and top-info/fuel-editor rectangles, choosing
 the largest unobscured region for intentional camera focus and route-fit padding.
 Resize observers include the persistent info wrapper while hidden; a direct-child
 observer tracks inserted or removed cards without watching provider DOM churn.
-Follow frames use cached geometry only. A changed layout may reframe an active
-truck focus, but manual gestures and route fits release that temporary focus.
+Follow frames use cached geometry only. Overlay appearance, disclosure and data
+loading refresh cached insets without moving the current camera, including an
+untouched first truck focus. Only an actual map width/height change notifies the
+active focus to reframe. Later explicit focus and route-fit actions use the updated
+insets; manual gestures and route fits release temporary truck focus.
 All observers and the window resize listener are disconnected with the map session.
 
 `ui/dockedDetails.js` targets one persistent, explicitly JavaScript-owned native

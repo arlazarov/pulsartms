@@ -2,6 +2,10 @@ namespace Application.Features.Routing.Models;
 
 public sealed class RecommendedFuelStation
 {
+  public double ShortfallGallons { get; set; }
+  public double ArrivalGallons { get; set; }
+  public double PreferredReserveGallons { get; set; }
+  public string Warning { get; set; } = "";
   public Guid StationId { get; set; }
   public string Name { get; set; } = "";
   public string Address { get; set; } = "";

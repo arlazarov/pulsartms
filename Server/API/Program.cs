@@ -1,4 +1,5 @@
 using API;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,10 +17,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseAuthorization();
+app.UseOperationalCompression();
 app.MapControllers();
-app.MapHealthChecks("/api/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-  { Predicate = _ => false }).AllowAnonymous();
-app.MapHealthChecks("/api/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-  { Predicate = check => check.Tags.Contains("ready") }).RequireAuthorization("Admin");
+app.MapHealthChecks(
+    "/api/health/live",
+    new HealthCheckOptions { Predicate = _ => false }
+  )
+  .AllowAnonymous();
+app.MapHealthChecks(
+    "/api/health/ready",
+    new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") }
+  )
+  .RequireAuthorization("Admin");
 
 app.Run();

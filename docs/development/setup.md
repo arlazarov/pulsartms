@@ -4,8 +4,155 @@ Read [architecture](../ARCHITECTURE.md), [UI controls](../ui-controls.md), and t
 
 ## Build and run
 
+### Local iteration and release boundaries
+
+Develop and verify locally by default. Previous cutover approval does not cover
+future releases. Publish a reviewed batch only after a new explicit user request;
+do not run Cloud Build or deployment scripts for each edit.
+
+Use this iteration loop:
+
+1. Reproduce the affected invariant in the existing feature tests. For Dispatch,
+   run `bash test.sh dispatch`; use the other groups in [test selection][tests]
+   when appropriate. The runner reuses `artifacts/tests` and includes dependent
+   categories and architecture checks.
+2. Build the Client when changing Razor or Client C#. Reuse the running local
+   application only with an isolated development database. A localhost address
+   does not make a configured remote database safe for experimental writes.
+   Check the effective database configuration before starting the API; do not
+   reuse production credentials or enable migrations against the working DB.
+3. Use existing offline browser fixtures for UI scenarios without live data.
+   For a narrow Dispatch inspection, use `dispatchWorkspaceSmoke.mjs` with
+   `DISPATCH_WORKSPACE_CASE=1440-light-100` and a current staged Client, following
+   [the browser guide][browser]. Rebuild the stage after Client changes; an old
+   stage cannot verify new source. Run the required matrix before release.
+4. Run the full suite for shared contracts, persistence, dependency injection,
+   authentication or test infrastructure changes, even during local iteration.
+   Before an authorized release, run the complete release gate. Targeted checks
+   are iteration feedback, not a replacement for release verification.
+
+Do not start the full API against production to obtain a convenient local preview:
+background workers can write even when the browser only reads. Until a separate
+development database is configured, use isolated test fixtures and offline
+browser scenarios. Follow the database restrictions in [test selection][tests].
+These steps avoid per-edit cloud publication; no fixed speedup is claimed.
+
+[tests]: ../testing.md
+[browser]: ../../Client/tests/browser/README.md
+
+### Explicit local takeover of the working database
+
+A local takeover requires an explicit user request to stop the cloud API and
+use its database locally. Preserve the previous Cloud Run scaling/traffic
+configuration and local User Secrets privately before switching. Stop cloud
+instances, including any tagged revisions, before enabling local workers.
+Do not use the working database as an automated test fixture.
+
+`BackgroundOperations:Enabled=false` disables all hosted application operations
+through the shared Infrastructure worker. It defaults to true; it does not
+disable HTTP commands or database startup migrations. Keep
+`Database:ApplyMigrations=false` and apply only reviewed pending migrations
+explicitly during a cutover. The ordinary development database remains the
+default for subsequent implementation and automated verification.
+
+### Current workstation override
+
+The explicitly requested local takeover is active: local API User Secrets point
+to the working `neondb` database with background operations and synchronization
+enabled. Cloud Run `amftms-api` in `amftms/us-east4` is stopped with manual
+scaling set to zero. Automatic local migrations remain disabled.
+
+The isolated databases below remain available, but are not the current interactive
+API target. Restore `before-local-takeover-secrets.json` from the private
+workstation development directory before experimental writes or test data setup.
+Do not resume Cloud Run workers while the local working-database API is running.
+Original cloud configuration is saved privately as
+`cloud-before-local-takeover.json`; it used automatic scaling, minimum one and
+maximum twenty instances. Stop the local API before restoring those settings.
+
+The stop-driver and Shipment/Border migrations dated 2026-09-18 were applied
+additively in one transaction after cloud shutdown. No user data was reset.
+Gmail push webhooks cannot reach localhost; the registered periodic catch-up
+mechanism remains available through local maintenance. No public tunnel exists.
+
+### Dedicated development and test databases
+
+This workstation uses `pulsr_development` on the existing remote PostgreSQL
+server. The local API's `pulsartms-api-local` User Secrets now select that
+database, with a dedicated `pulsr_developer` login. This is database isolation,
+not a PostgreSQL server running on localhost; network access is still required.
+Current migrations are applied. No production rows or users were copied.
+
+The development database also contains synthetic manual-testing data: three
+`DEMO-` trucks, two trailers, three `Demo Driver` records and three loads.
+`DEMO-CHANGE-DRIVER` starts with one assignment, `DEMO-YARD-HANDOFF` has
+confirmed release/receipt and separate drivers before/after the yard, and
+`DEMO-UNASSIGNED` supports testing initial assignment. These are fabricated
+facilities and coordinates, not copies of production loads. Their IDs are in
+`~/.local/share/pulsartms/development/demo-workspace.json`. They are editable;
+do not reset them automatically on application startup. No live GPS or HOS
+observations are supplied by this seed, so Fleet Map is not a live fleet demo.
+
+Local User Secrets disable synchronization, Gmail background maintenance,
+Dispatch imports and automatic migrations. Starting the API does not opt back
+into those integrations. Review explicit provider calls separately when adding
+development data. Restart an already running API to load the new settings.
+
+A separate `pulsr_core_fixture_` database with a random suffix belongs to
+`pulsr_test_runner`. Use it only for disposable synthetic checks, never for the
+interactive development workspace. Both logins lack superuser, role creation
+and database creation privileges and have no table privileges on production.
+
+Connection records are stored only in the private workstation file
+`~/.local/share/pulsartms/development/databases.json`; the previous local
+configuration is backed up alongside it. These files contain secrets: do not
+commit them, print them or copy them into disposable artifacts. The first record
+is development; the second is the migration fixture. Supply the fixture's
+connection in `PULSR_MIGRATION_TEST_CONNECTION` to the existing
+[migration probe](../../tools/CoreMigrationProbe/README.md). It requires an empty
+fixture and populates synthetic data. Clear only the explicitly identified
+fixture between runs; never point the probe at `pulsr_development`.
+
+### Formatting
+
+The 80-column target applies to all maintained files, including C#, JavaScript,
+SCSS, Razor, configuration and documentation. `.editorconfig` declares it in
+the global section so editors apply the same ruler regardless of language.
+Wrap expressions, attributes and prose safely. Do not hand-format generated
+output or change literal contents, URLs or indivisible identifiers to fit.
+
+#### C#
+
+Run `dotnet tool restore`, then `dotnet csharpier Client Server Client.Tests
+Server.Tests tools` from the repository root. Use the same paths with `--check`
+for verification. The pinned tool uses `.csharpierrc.json`: two-space indentation
+and an 80-column print width. `.editorconfig` gives editors the same defaults.
+Generated sources are excluded by the formatter. Preserve literal text, URLs and
+indivisible identifiers even when they exceed the print-width target.
+
+Use namespace imports instead of repeating fully qualified type names in method
+bodies or signatures. Prefer a meaningful alias when two types have the same name.
+For a repository-wide semantic cleanup, run
+`node scripts/artifacts.mjs run scratch -- dotnet run --project tools/CodeStyle
+--artifacts-path '{artifacts}' -- REPOSITORY_DIRECTORY` before formatting. The
+helper uses Roslyn from the installed .NET SDK, resolves names in their actual
+projects and rejects new compiler errors before writing, while reporting any
+pre-existing compiler errors separately. Run `bash test.sh all` and a
+strict Client build after a broad cleanup; formatting does not authorize a deploy.
+The helper's `--comments REPOSITORY_DIRECTORY` mode wraps standalone C# comments
+at the same width using syntax trivia, without touching strings or XML comments.
+
+### Application commands
+
+JavaScript, TypeScript, SCSS, build scripts and browser fixtures use pinned
+Prettier 3.6.2 with the same 80-column target, two spaces and single quotes.
+Run `npm run format --prefix Client` to format these maintained files and
+`npm run format:check --prefix Client` to verify them. The release gate rejects
+formatting failures before building. String contents, URLs and regex literals
+remain intact even when indivisible lines exceed the target.
+
 Run `npm ci --prefix Client` before the first client build. Sass and deck.gl versions
-are pinned by package-lock.json. `dotnet build AMFTMS.slnx` builds changed SCSS and
+are pinned by package-lock.json. `dotnet build pulsartms.slnx` builds changed SCSS and
 GPU sources. Use `npm run styles:watch --prefix Client` for style development.
 Never edit generated CSS, source maps, or files under `wwwroot/js/generated`.
 
@@ -40,9 +187,12 @@ enable this against a shared database without reviewing the pending migrations.
 
 ## Configuration and access
 
-Development uses .NET User Secrets ID `amftms-api-local`. Production uses
+Development uses .NET User Secrets ID `pulsartms-api-local`. Production uses
 environment configuration or Secret Manager; it does not load User Secrets.
 Nested environment keys use double underscores.
+The existing local secret store moved with the technical rename from
+`amftms-api-local`; other checkouts must migrate that directory before starting
+the API. See [product naming and compatibility](product-branding.md).
 
 Required integration settings include ConnectionStrings:DefaultConnection,
 Samsara:ApiToken, TorqueAI:BaseUrl, TorqueAI:ApiKey, GooglePlaces:ApiKey and
@@ -105,10 +255,13 @@ CSV dates accept a single date or an inclusive range such as
 
 ## Dispatch and map
 
-Torque is the source of truth; local dispatch editing is not implemented.
-The default import window is seven days before and after today, not full history.
-Dispatch supports search, pagination, details, stops and links to the fleet map.
-Truck dispatch selection includes stop-level assignments.
+TorqueAI supplies imported data during the transition to native Dispatch.
+The full-page [load workspace](../features/dispatch-workspace.md) supports
+editing existing loads. Import ownership and explicit native overrides keep
+provider refreshes from overwriting dispatcher changes or confirmed execution.
+The default import window is seven days before and after today, not full
+history. Dispatch supports search, pagination, ordered stops and Fleet Map
+links. Truck selection includes confirmed execution and stop-level assignments.
 
 The production renderer uses one foreground deck.gl canvas for ordinary fuel
 stations, routes, stops, trucks and labels. Details are fixed HTML cards.

@@ -4,6 +4,9 @@ namespace Application.Features.Dispatch.Interfaces;
 
 public interface IDispatchProvider
 {
+  string Key { get; }
+  string DisplayName { get; }
+
   Task<IReadOnlyList<ExternalDispatch>> GetDispatchesAsync(
     CancellationToken cancellationToken = default
   );

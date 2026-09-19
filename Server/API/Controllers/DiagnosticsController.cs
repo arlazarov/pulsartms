@@ -9,5 +9,6 @@ namespace API.Controllers;
 public sealed class DiagnosticsController : BaseController
 {
   [HttpGet]
-  public Task<IActionResult> Get(CancellationToken cancellationToken) => HandleUnwrappedRequest(new GetRequestDiagnosticsQuery(), cancellationToken);
+  public Task<IActionResult> Get(CancellationToken cancellationToken) =>
+    HandleUnwrappedRequest(new GetRequestDiagnosticsQuery(), cancellationToken);
 }

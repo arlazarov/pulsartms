@@ -18,7 +18,9 @@ public sealed class PlanningPipelineTests
   {
     await using var fixture = await PlanningPipelineFixture.CreateAsync();
     var sender = fixture.Services.GetRequiredService<ISender>();
-    var response = await sender.Send(new RecalculateFuelPlanCommand(Guid.Empty));
+    var response = await sender.Send(
+      new RecalculateFuelPlanCommand(Guid.Empty)
+    );
     Assert.False(response.Success);
     Assert.Equal(400, response.StatusCode);
     Assert.Contains(response.Errors!, error => error.Contains("DispatchId"));
@@ -37,13 +39,25 @@ public sealed class PlanningPipelineTests
     Assert.True(defaults.Success);
     var controller = new SettingsController
     {
-      ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { RequestServices = fixture.Services } }
+      ControllerContext = new ControllerContext
+      {
+        HttpContext = new DefaultHttpContext
+        {
+          RequestServices = fixture.Services,
+        },
+      },
     };
-    var saved = Assert.IsType<ObjectResult>(await controller.Save(new(new() { UseIfta = false }, 0), default));
+    var saved = Assert.IsType<ObjectResult>(
+      await controller.Save(new(new() { UseIfta = false }, 0), default)
+    );
     Assert.Equal(200, saved.StatusCode);
-    var conflict = Assert.IsType<ObjectResult>(await controller.Save(new(new() { UseIfta = true }, 0), default));
+    var conflict = Assert.IsType<ObjectResult>(
+      await controller.Save(new(new() { UseIfta = true }, 0), default)
+    );
     Assert.Equal(409, conflict.StatusCode);
-    var invalid = Assert.IsType<ObjectResult>(await controller.Save(new(new() { FillPercent = 101 }, 1), default));
+    var invalid = Assert.IsType<ObjectResult>(
+      await controller.Save(new(new() { FillPercent = 101 }, 1), default)
+    );
     Assert.Equal(400, invalid.StatusCode);
     var current = await sender.Send(new GetPlanningSettingsQuery());
     Assert.False(current.Response!.Preferences.UseIfta);

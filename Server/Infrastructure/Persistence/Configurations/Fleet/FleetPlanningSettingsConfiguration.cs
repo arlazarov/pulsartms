@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations.Fleet;
 
-public class FleetPlanningSettingsConfiguration : IEntityTypeConfiguration<FleetPlanningSettings>
+public class FleetPlanningSettingsConfiguration
+  : IEntityTypeConfiguration<FleetPlanningSettings>
 {
   public void Configure(EntityTypeBuilder<FleetPlanningSettings> builder)
   {

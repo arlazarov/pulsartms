@@ -1,9 +1,13 @@
 @page "/dispatch"
 @attribute [Authorize]
 
-<PageTitle>Dispatch</PageTitle>
+<PageTitle>Dispatch · PulsR</PageTitle>
 <section class="dispatch-page dispatch-board">
-    <PageHeader Title="Dispatch" />
+    <PageHeader Title="Dispatch">
+        <AuthorizeView Roles="Admin,Dispatch">
+            <a class="btn btn--primary" href="/dispatch/new">New load</a>
+        </AuthorizeView>
+    </PageHeader>
     <div class="dispatch-page__filters dispatch-board__filters filter-toolbar">
         <SearchInput Id="dispatch-search" Placeholder="Truck, driver, trailer or load" Value="@_search"
                      Options="SearchOptions" Loading="@(_loadedSearch != _search)" Changed="OnSearchInput" Selected="ChooseSearchAsync" Enter="SubmitSearchAsync" />
@@ -23,13 +27,21 @@
     {
         <p class="dispatch-board__message dispatch-page__error" role="alert">@_error <button class="btn" @onclick="() => LoadAsync(_page)">Retry</button></p>
     }
-    @if (_loading && _data is null) { <p class="dispatch-board__message" role="status">@(_showCompleted ? "Loading completed loads..." : "Loading trucks and dispatches...")</p> }
+    @if (_loading && _data is null) { <p class="dispatch-board__message" role="status"><LoadingIndicator /></p> }
     else if (_data is not null)
     {
         <div class="dispatch-board__count">@_data.TotalCount @(_showCompleted ? _data.TotalCount == 1 ? "completed load" : "completed loads" : _data.TotalCount == 1 ? "truck" : "trucks")<span>@(_showCompleted ? "Newest load numbers first" : _view == 2 ? "Loads on this page" : "Ordered by truck number")</span></div>
         @if (_data.Items.Count == 0) { <div class="dispatch-board__empty">@(_showCompleted ? "No completed loads match this search." : "No trucks or upcoming loads match this search.")</div> }
-        @if (_view == 1) { <DispatchTable Trucks="_data.Items" Completed="_showCompleted" LoadPhase="LoadPhase" Refreshing="RefreshingEstimates" /> }
-        else if (_view == 2) { <DispatchPapers Trucks="_data.Items" Completed="_showCompleted" LoadPhase="LoadPhase" Refreshing="RefreshingEstimates" /> }
+        @if (_view == 1)
+        {
+            <DispatchTable Trucks="_data.Items" Completed="_showCompleted"
+                LoadPhase="LoadPhase" Refreshing="RefreshingEstimates" />
+        }
+        else if (_view == 2)
+        {
+            <DispatchPapers Trucks="_data.Items" Completed="_showCompleted"
+                LoadPhase="LoadPhase" Refreshing="RefreshingEstimates" />
+        }
         else
         {
         @foreach (var truck in _data.Items)
@@ -60,9 +72,13 @@
                 {
                 <div class="dispatch-truck__equipment">
                     @if (truck.TruckId.HasValue && truck.Dispatches.Count > 0)
-                    { <DispatchPlanning @key="truck.Key" TruckId="truck.TruckId" Load="truck.Dispatches[0]" Compact="true" BoardHeader="true" Hos="truck.Hos" CurrentCycle="truck.CurrentCycle" Refreshing="RefreshingEstimates"
+                    { <DispatchPlanning @key="PlanningIdentity(truck)"
+                        TruckId="truck.TruckId" Load="truck.Dispatches[0]"
+                        Compact="true" BoardHeader="true" Hos="truck.Hos"
+                        CurrentCycle="truck.CurrentCycle"
+                        Refreshing="RefreshingEstimates"
                         MotionState="@TruckMotion(truck)" MotionLabel="@TruckMotionLabel(truck)" Speed="truck.Speed"
-                        DisplayChanged="RefreshCardSummaries"
+                        Managed="true" Snapshot="_planningSummaries.GetValueOrDefault(truck.TruckId.Value)"
                         ForecastChanged="forecast => OnForecastChanged(truck, truck.Dispatches[0].Id, forecast)" /> }
                     else if (truck.TruckId.HasValue)
                     {
@@ -85,9 +101,18 @@
                         var current = index == 0 && IsCurrent(load);
                         var order = index + (IsCurrent(truck.Dispatches.FirstOrDefault()) ? 0 : 1);
                         var summary = CardPlanningSummary(truck, load);
-                        <DispatchLoadCard @key="load.Id" Load="load" Truck="truck" Current="current" Order="order" Refreshing="RefreshingEstimates"
+                        <DispatchLoadCard @key="LoadIdentity(load)" Load="load"
+                            Truck="truck" Current="current" Order="order"
+                            Refreshing="RefreshingEstimates"
+                            StopChanged="() => StopChangedAsync(load)"
                             RemainingMiles="summary.RemainingMiles" FuelStopCount="summary.FuelStopCount"
                             HeaderDriverName="@truck.DriverName" HeaderTrailerNumber="@truck.TrailerNumber" />
+                    }
+                    @if (truck.TruckId.HasValue && truck.Dispatches.Count == 1 && IsCurrent(truck.Dispatches[0]))
+                    {
+                        <div class="dispatch-truck__available dispatch-truck__available--next" role="note" aria-label="Next load">
+                            <div><strong>No next load</strong><p>Nothing scheduled after this load.</p></div>
+                        </div>
                     }
                 </div>
             </article>

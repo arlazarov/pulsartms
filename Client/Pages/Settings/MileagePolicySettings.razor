@@ -1,0 +1,117 @@
+<section class="settings-page__card mileage-policy"
+         aria-labelledby="mileage-policy-title">
+    <h2 id="mileage-policy-title">Mileage allocation</h2>
+    <p class="settings-page__hint">
+        Travel to the next pickup belongs to the next load automatically.
+        Choose how to allocate the other movements below.
+    </p>
+    @if (_loading)
+    {
+        <p role="status"><LoadingIndicator /></p>
+    }
+    @if (_error is not null)
+    {
+        <p class="settings-page__error" role="alert">
+            @_error
+            <button class="btn btn--small" type="button"
+                    disabled="@(_loading || _saving)" @onclick="LoadAsync">
+                Reload policy
+            </button>
+        </p>
+    }
+    @if (_confirmed is not null)
+    {
+        <EditForm @key="_form" Model="_form" OnValidSubmit="SaveAsync">
+            <fieldset class="settings-page__form"
+                      disabled="@(_loading || _saving)">
+                <legend class="visually-hidden">
+                    Mileage allocation policy
+                </legend>
+                <div class="settings-page__fields">
+                    <label for="mileage-yard">
+                        Yard return
+                        <InputSelect id="mileage-yard" disabled="@(!_editing)"
+                                     @bind-Value="_form.YardReturn">
+                            @foreach (var target in Targets)
+                            {
+                                <option value="@target.Value">
+                                    @target.Label
+                                </option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label for="mileage-home">
+                        Home
+                        <InputSelect id="mileage-home" disabled="@(!_editing)"
+                                     @bind-Value="_form.Home">
+                            @foreach (var target in Targets)
+                            {
+                                <option value="@target.Value">
+                                    @target.Label
+                                </option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label for="mileage-maintenance">
+                        Maintenance / repair
+                        <InputSelect id="mileage-maintenance"
+                                     disabled="@(!_editing)"
+                                     @bind-Value="_form.Maintenance">
+                            @foreach (var target in Targets)
+                            {
+                                <option value="@target.Value">
+                                    @target.Label
+                                </option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <label for="mileage-reposition">
+                        Reposition
+                        <InputSelect id="mileage-reposition"
+                                     disabled="@(!_editing)"
+                                     @bind-Value="_form.Reposition">
+                            @foreach (var target in Targets)
+                            {
+                                <option value="@target.Value">
+                                    @target.Label
+                                </option>
+                            }
+                        </InputSelect>
+                    </label>
+                </div>
+                <p class="settings-page__hint">
+                    Unallocated mileage stays outside load totals.
+                    A dispatcher can record an exception with a reason in
+                    the load's mileage breakdown.
+                </p>
+                <p class="settings-page__hint">
+                    Changes apply to new movements and explicit automatic
+                    resets. Existing allocations stay as recorded.
+                </p>
+                <div class="settings-page__actions">
+                    @if (_editing)
+                    {
+                        <button class="btn btn--primary" type="submit">
+                            @(_saving ? "Saving…" : "Save mileage policy")
+                        </button>
+                        <button class="btn" type="button" @onclick="Cancel">
+                            Cancel
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn" type="button" @onclick="Edit">
+                            Edit policy
+                        </button>
+                    }
+                    @if (_saved)
+                    {
+                        <span class="settings-page__saved" role="status">
+                            Mileage policy saved.
+                        </span>
+                    }
+                </div>
+            </fieldset>
+        </EditForm>
+    }
+</section>

@@ -1,23 +1,41 @@
-import {build} from 'esbuild';
-import {mkdir, writeFile} from 'node:fs/promises';
-import {dirname, resolve, relative} from 'node:path';
-import {fileURLToPath} from 'node:url';
+import { build } from 'esbuild';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const client = fileURLToPath(new URL('../', import.meta.url));
 const output = resolve(client, 'wwwroot/js/generated');
 const result = await build({
   absWorkingDir: client,
-  entryPoints: ['Scripts/fleetMap/fleetMap.js', 'Scripts/fleetMap/rendering/gpuScene.js',
-    'Scripts/shared/popup.js', 'Scripts/shared/cameraDialog.js', 'Scripts/shared/authStorage.js',
-    'Scripts/shared/reorderList.js', 'Scripts/shared/loadDialog.js', 'Scripts/dispatch/dispatch.js'],
-  outbase: 'Scripts', outdir: output, bundle: true, splitting: true, format: 'esm',
-  minify: true, chunkNames: 'chunks/[name]-[hash]', write: false
+  entryPoints: [
+    'Scripts/fleetMap/fleetMap.js',
+    'Scripts/fleetMap/rendering/gpuScene.js',
+    'Scripts/shared/popup.js',
+    'Scripts/shared/cameraDialog.js',
+    'Scripts/shared/authStorage.js',
+    'Scripts/shared/appearance.js',
+    'Scripts/shared/reorderList.js',
+    'Scripts/shared/loadDialog.js',
+    'Scripts/shared/pageVisibility.js',
+    'Scripts/dispatch/dispatch.js',
+    'Scripts/dispatch/documents.js',
+  ],
+  outbase: 'Scripts',
+  outdir: output,
+  bundle: true,
+  splitting: true,
+  format: 'esm',
+  minify: true,
+  chunkNames: 'chunks/[name]-[hash]',
+  write: false,
 });
 
-await mkdir(output, {recursive: true});
-const current = new Set(result.outputFiles.map(file => relative(output, file.path)));
+await mkdir(output, { recursive: true });
+const current = new Set(
+  result.outputFiles.map(file => relative(output, file.path)),
+);
 for (const file of result.outputFiles) {
-  await mkdir(dirname(file.path), {recursive: true});
+  await mkdir(dirname(file.path), { recursive: true });
   await writeFile(file.path, file.contents);
 }
 // Open tabs may still import content-hashed chunks from an earlier build.

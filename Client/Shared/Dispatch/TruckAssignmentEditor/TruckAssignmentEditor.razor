@@ -1,0 +1,35 @@
+@implements IDisposable
+
+<section class="truck-assignment" aria-label="Truck route assignment">
+    @if (!_editing)
+    {
+        @if (Load.PlanningFromStopId is { } anchor)
+        {
+            <span>Confirmed truck @Load.TruckNumber from stop @Load.Stops.FirstOrDefault(s => s.Id == anchor)?.Sequence</span>
+        }
+        <button type="button" class="btn btn--text btn--small" @onclick="Begin">Truck starting stop</button>
+    }
+    else
+    {
+        <div class="truck-assignment__fields">
+            <label>Truck number<input type="text" @bind="_truckNumber" disabled="@_saving" maxlength="50" /></label>
+            <label>Starts at<select @bind="_stopId" disabled="@_saving">
+                <option value="">Choose stop</option>
+                @foreach (var stop in Load.Stops.OrderBy(s => s.Sequence))
+                {
+                    <option value="@stop.Id">@stop.Sequence · @stop.City · @stop.Name</option>
+                }
+            </select></label>
+        </div>
+        <p>Earlier stops remain in Dispatch but are excluded from this truck's route and fuel. Imported assignments are kept.</p>
+        <div class="truck-assignment__actions">
+            <button type="button" class="btn btn--primary btn--small" disabled="@_saving" @onclick="() => SaveAsync(false)">Confirm assignment</button>
+            @if (Load.PlanningTruckId.HasValue)
+            {
+                <button type="button" class="btn btn--small" disabled="@_saving" @onclick="() => SaveAsync(true)">Use imported assignments</button>
+            }
+            <button type="button" class="btn btn--small" disabled="@_saving" @onclick="Cancel">Cancel</button>
+        </div>
+        @if (_error is not null) { <p class="truck-assignment__error" role="alert">@_error</p> }
+    }
+</section>

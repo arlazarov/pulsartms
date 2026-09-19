@@ -1,0 +1,72 @@
+@if (Appearance is not null)
+{
+    <section class="settings-page__card" aria-labelledby="appearance-title">
+        <h2 id="appearance-title">Appearance</h2>
+        <div class="settings-page__theme" role="group" aria-label="Theme"
+             aria-busy="@(Appearance.Busy ? "true" : "false")">
+            @foreach (var theme in new[] { "light", "dark" })
+            {
+                <button type="button" disabled="@Appearance.Busy"
+                        class="btn @(Appearance.Theme == theme
+                            ? "btn--primary" : "")"
+                        aria-pressed="@(Appearance.Theme == theme
+                            ? "true" : "false")"
+                        @onclick="() => Appearance.SaveAsync(theme)">
+                    @(theme == "light" ? "Light" : "Dark")
+                </button>
+            }
+        </div>
+        <p class="settings-page__hint">
+            Your theme is saved to your account and used on all devices.
+            Other users keep their own theme.
+        </p>
+        @if (Appearance.Busy)
+        {
+            <p role="status">Saving personal preferences…</p>
+        }
+        else if (Appearance.Error is not null)
+        {
+            <p class="settings-page__error" role="alert">
+                @Appearance.Error
+                <button class="btn btn--small" type="button"
+                        @onclick="Appearance.ReloadAsync">Reload</button>
+            </p>
+        }
+        else if (Appearance.Saved)
+        {
+            <p class="settings-page__saved" role="status">
+                Preferences saved to your account.
+            </p>
+        }
+    </section>
+    <section class="settings-page__card" aria-labelledby="personal-units">
+        <h2 id="personal-units">Units</h2>
+        <fieldset class="settings-page__form" disabled="@Appearance.Busy">
+            <legend class="visually-hidden">Personal display units</legend>
+            <div class="settings-page__fields">
+                <label for="personal-temperature">Temperature
+                    <select id="personal-temperature"
+                            @bind:get="Appearance.Units.Temperature"
+                            @bind:set="ChangeTemperatureAsync">
+                        <option value="fahrenheit">Fahrenheit (°F)</option>
+                        <option value="celsius">Celsius (°C)</option>
+                    </select>
+                </label>
+                <label for="personal-distance">Distance
+                    <select id="personal-distance"
+                            @bind:get="Appearance.Units.Distance"
+                            @bind:set="ChangeDistanceAsync">
+                        <option value="miles">Miles (mi)</option>
+                        <option value="kilometers">Kilometers (km)</option>
+                        <option value="both">Both (mi and km)</option>
+                    </select>
+                </label>
+            </div>
+        </fieldset>
+        <p class="settings-page__hint">
+            Changes save automatically to your account on all devices.
+            Other users keep their own units. Speed, MPG and rate per mile
+            retain their labeled units; routes and fuel plans do not change.
+        </p>
+    </section>
+}

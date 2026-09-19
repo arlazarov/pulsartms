@@ -13,11 +13,24 @@ public sealed class FuelInitialAccessTests
   {
     var profile = Profile();
     var station = Station(10);
-    var policy = new FuelArrivalPolicy { MinimumGallons = 10, TargetGallons = 100.5,
-      ReplacementPriceUsd = 6, EconomicPurchasesOnly = true };
+    var policy = new FuelArrivalPolicy
+    {
+      MinimumGallons = 10,
+      TargetGallons = 100.5,
+      ReplacementPriceUsd = 6,
+      EconomicPurchasesOnly = true,
+    };
 
-    var plan = FuelOptimizer.Optimize(50, 30, profile, [station], 1, false,
-      arrivalPolicy: policy, initialAccessMiles: 5);
+    var plan = FuelOptimizer.Optimize(
+      50,
+      30,
+      profile,
+      [station],
+      1,
+      false,
+      arrivalPolicy: policy,
+      initialAccessMiles: 5
+    );
 
     var purchase = Assert.Single(plan.Stops);
     Assert.Equal(30, plan.StartingGallons);
@@ -29,17 +42,40 @@ public sealed class FuelInitialAccessTests
     Assert.Equal(92.5, plan.ArrivalGallons);
     Assert.Equal(73.5 * 2 + 20, plan.EconomicCostUsd);
     Assert.Equal(0, plan.ExtraMinutes);
-    var comparison = FuelOptimizer.Optimize(50, 30, profile, [station], 1, false,
-      fewestStops: true, compare: false, arrivalPolicy: policy, initialAccessMiles: 5);
-    Assert.Equal(comparison.EconomicCostUsd + comparison.ExpectedFutureFuelCostUsd
-      - plan.EconomicCostUsd - plan.ExpectedFutureFuelCostUsd, plan.SavingsUsd!.Value, 8);
+    var comparison = FuelOptimizer.Optimize(
+      50,
+      30,
+      profile,
+      [station],
+      1,
+      false,
+      fewestStops: true,
+      compare: false,
+      arrivalPolicy: policy,
+      initialAccessMiles: 5
+    );
+    Assert.Equal(
+      comparison.EconomicCostUsd
+        + comparison.ExpectedFutureFuelCostUsd
+        - plan.EconomicCostUsd
+        - plan.ExpectedFutureFuelCostUsd,
+      plan.SavingsUsd!.Value,
+      8
+    );
   }
 
   [Fact]
   public void DirectArrivalPaysInitialAccessOnlyOnce()
   {
-    var (plan, visits) = FuelOptimizer.OptimizeWithVisits(50, 30, Profile(), [], 1, false,
-      initialAccessMiles: 10);
+    var (plan, visits) = FuelOptimizer.OptimizeWithVisits(
+      50,
+      30,
+      Profile(),
+      [],
+      1,
+      false,
+      initialAccessMiles: 10
+    );
 
     Assert.Empty(visits);
     Assert.Empty(plan.Stops);
@@ -51,28 +87,51 @@ public sealed class FuelInitialAccessTests
   }
 
   [Fact]
-  public void StartingAtReserveDoesNotBecomeARecoveryExceptionAfterInitialAccess()
+  public void StartingAtReserveCanReachFirstPurchaseUsingReserve()
   {
-    var profile = Profile();
-    Assert.Single(FuelOptimizer.Optimize(20, 10, profile, [Station(0)], 1, false).Stops);
-
-    Assert.Throws<RoutePlanningException>(() => FuelOptimizer.Optimize(20, 10, profile,
-      [Station(0)], 1, false, initialAccessMiles: 5));
+    var plan = FuelOptimizer.Optimize(
+      20,
+      10,
+      Profile(),
+      [Station(0)],
+      1,
+      false,
+      initialAccessMiles: 5
+    );
+    Assert.Equal(9, Assert.Single(plan.Stops).ArrivalGallons);
+    Assert.True(plan.ArrivalGallons >= 10);
   }
 
   [Fact]
   public void AlreadyDepletedReserveCanReachFirstPurchaseButNotInventInitialFuel()
   {
     var profile = Profile();
-    var recovered = FuelOptimizer.Optimize(20, 1, profile, [Station(0)], 1, false,
-      initialAccessMiles: 5);
+    var recovered = FuelOptimizer.Optimize(
+      20,
+      1,
+      profile,
+      [Station(0)],
+      1,
+      false,
+      initialAccessMiles: 5
+    );
 
     var purchase = Assert.Single(recovered.Stops);
     Assert.Equal(0, purchase.ArrivalGallons);
     Assert.True(purchase.DepartureGallons >= profile.ReserveGallons);
     Assert.True(recovered.ArrivalGallons >= profile.ReserveGallons);
-    Assert.Throws<RoutePlanningException>(() => FuelOptimizer.Optimize(20, 1, profile,
-      [Station(0)], 1, false, initialAccessMiles: 5.1));
+    Assert.Throws<RoutePlanningException>(
+      () =>
+        FuelOptimizer.Optimize(
+          20,
+          1,
+          profile,
+          [Station(0)],
+          1,
+          false,
+          initialAccessMiles: 5.1
+        )
+    );
   }
 
   [Theory]
@@ -81,15 +140,63 @@ public sealed class FuelInitialAccessTests
   [InlineData(double.PositiveInfinity)]
   public void InvalidInitialAccessIsRejected(double access)
   {
-    Assert.Throws<RoutePlanningException>(() => FuelOptimizer.Optimize(50, 30, Profile(), [],
-      1, false, initialAccessMiles: access));
-    Assert.Throws<RoutePlanningException>(() => FuelOptimizer.OptimizeWithVisits(50, 30, Profile(), [],
-      1, false, initialAccessMiles: access));
+    Assert.Throws<RoutePlanningException>(
+      () =>
+        FuelOptimizer.Optimize(
+          50,
+          30,
+          Profile(),
+          [],
+          1,
+          false,
+          initialAccessMiles: access
+        )
+    );
+    Assert.Throws<RoutePlanningException>(
+      () =>
+        FuelOptimizer.OptimizeWithVisits(
+          50,
+          30,
+          Profile(),
+          [],
+          1,
+          false,
+          initialAccessMiles: access
+        )
+    );
   }
 
-  private static TruckRouteProfile Profile() => new() { Confirmed = true, TankGallons = 100.5, Mpg = 5,
-    ReserveGallons = 10, FillPercent = 100, StopCostUsd = 20, DriverHourlyCostUsd = 35 };
-  private static FuelCandidate Station(double miles) => new(new() { StationId = Guid.NewGuid(),
-    Name = "Fuel", Point = new(40, -80), YourPrice = 2, EconomicPrice = 2, Currency = "USD", Unit = "US gal" },
-    miles, 0, 0, 2, 2) { LegIndex = 0 };
+  private static TruckRouteProfile Profile() =>
+    new()
+    {
+      Confirmed = true,
+      TankGallons = 100.5,
+      Mpg = 5,
+      ReserveGallons = 10,
+      FillPercent = 100,
+      StopCostUsd = 20,
+      DriverHourlyCostUsd = 35,
+    };
+
+  private static FuelCandidate Station(double miles) =>
+    new(
+      new()
+      {
+        StationId = Guid.NewGuid(),
+        Name = "Fuel",
+        Point = new(40, -80),
+        YourPrice = 2,
+        EconomicPrice = 2,
+        Currency = "USD",
+        Unit = "US gal",
+      },
+      miles,
+      0,
+      0,
+      2,
+      2
+    )
+    {
+      LegIndex = 0,
+    };
 }

@@ -7,12 +7,24 @@
 :root {
   @include tokens.base-root();
   @include tokens.export-colors(colors.$colors);
-  @each $name, $value in themes.$roles { --ui-#{$name}: #{$value}; }
-  @each $name, $value in vars.$spaces { --space-#{$name}: #{$value}; }
-  @each $name, $value in vars.$font-sizes { --type-#{$name}: #{$value}; }
-  @each $name, $value in vars.$sizes { --size-#{$name}: #{$value}; }
-  @each $name, $value in vars.$radii { --radius-#{$name}: #{$value}; }
-  @each $name, $value in vars.$shadows { --shadow-#{$name}: #{$value}; }
+  @each $name, $value in themes.$roles {
+    --ui-#{$name}: #{$value};
+  }
+  @each $name, $value in vars.$spaces {
+    --space-#{$name}: #{$value};
+  }
+  @each $name, $value in vars.$font-sizes {
+    --type-#{$name}: #{$value};
+  }
+  @each $name, $value in vars.$sizes {
+    --size-#{$name}: #{$value};
+  }
+  @each $name, $value in vars.$radii {
+    --radius-#{$name}: #{$value};
+  }
+  @each $name, $value in vars.$shadows {
+    --shadow-#{$name}: #{$value};
+  }
   color-scheme: light;
   font-size: 100%;
   -webkit-tap-highlight-color: transparent;
@@ -24,16 +36,20 @@
 
 [data-theme='dark'] {
   color-scheme: dark;
-  @each $name, $value in themes.$dark-roles { --ui-#{$name}: #{$value}; }
+  @each $name, $value in themes.$dark-roles {
+    --ui-#{$name}: #{$value};
+  }
 }
 
 [data-theme='light'] {
   color-scheme: light;
-  @each $name, $value in themes.$roles { --ui-#{$name}: #{$value}; }
+  @each $name, $value in themes.$roles {
+    --ui-#{$name}: #{$value};
+  }
 }
 
 body {
-  min-width: 320px;
+  min-width: min(320px, 100%);
   background: fn.theme(canvas);
   color: fn.theme(text);
 }
@@ -65,7 +81,9 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }

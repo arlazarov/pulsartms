@@ -13,6 +13,7 @@
 
   .container {
     width: 100%;
+    min-width: 0;
     max-width: ui.size(content-login);
 
     padding: ui.pg(xxl);
@@ -24,9 +25,21 @@
     box-shadow: ui.shadow(card);
   }
 
-  &__brand { color: ui.theme(link); font-weight: 700; letter-spacing: -.02em; font-size: ui.fs(lead); margin-bottom: ui.pg(xxl); }
-  h1 { margin-bottom: ui.pg(sm); font-size: ui.fs(title); }
-  &__intro { color: ui.theme(text-muted); margin-bottom: ui.pg(xl); font-size: ui.fs(body); line-height: 1.5; }
+  &__brand {
+    padding: ui.pg(sm) 0;
+    margin-bottom: ui.pg(section);
+  }
+  h1 {
+    margin-bottom: ui.pg(sm);
+    font-size: ui.fs(title);
+    overflow-wrap: anywhere;
+  }
+  &__intro {
+    color: ui.theme(text-muted);
+    margin-bottom: ui.pg(xl);
+    font-size: ui.fs(body);
+    line-height: 1.5;
+  }
 
   form {
     display: grid;
@@ -36,5 +49,12 @@
     color: ui.theme(danger-text);
     font-size: ui.fs(body);
     line-height: 1.5;
+  }
+
+  @media (max-width: ui.breakpoint(sm, max)) {
+    padding: ui.pg(md);
+    .container {
+      padding: ui.pg(lg);
+    }
   }
 }

@@ -1,5 +1,8 @@
 @implements IAsyncDisposable
-<button type="button" class="btn map-action-icon" title="Camera" aria-label="Camera" disabled="@(TruckId == Guid.Empty)" @onclick="OpenAsync"><ActionIcon Kind="camera" /></button>
+@if (ShowTrigger)
+{
+    <button type="button" class="btn map-action-icon" title="Camera" aria-label="Camera" disabled="@(TruckId == Guid.Empty)" @onclick="OpenAsync"><ActionIcon Kind="camera" /></button>
+}
 @if (_open)
 {
     <dialog @ref="_dialog" class="truck-camera" aria-label="Road-facing camera" @onclose="Close" @onkeydown="OnKeyDown">

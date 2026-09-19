@@ -1,8 +1,25 @@
 @use '../../base' as ui;
 
-.arrival-estimate { display: flex; align-items: baseline; flex-wrap: wrap; gap: ui.pg(xs) ui.pg(md); font-size: var(--arrival-font-size, #{ui.fs(small)}); }
-.arrival-estimate small { color: ui.theme(text-muted); font-size: var(--arrival-detail-font-size, #{ui.fs(micro)}); }
-.arrival-estimate__late { color: ui.theme(danger-text); }
-.arrival-estimate__ontime { color: ui.theme(success-text); }
-.arrival-estimate__appointment { flex-basis: 100%; }
-.arrival-estimate > .driver-duty { flex-basis: 100%; }
+.arrival-estimate {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: ui.pg(xs) ui.pg(md);
+  font-size: var(--arrival-font-size, #{ui.fs(small)});
+}
+.arrival-estimate small {
+  color: ui.theme(text-muted);
+  font-size: var(--arrival-detail-font-size, #{ui.fs(micro)});
+}
+.arrival-estimate__late {
+  color: ui.theme(danger-text);
+}
+.arrival-estimate__ontime {
+  color: ui.theme(success-text);
+}
+.arrival-estimate__appointment {
+  flex-basis: 100%;
+}
+.arrival-estimate > .driver-duty {
+  flex-basis: 100%;
+}

@@ -23,16 +23,23 @@ public class UsersController : BaseController
     );
 
   [HttpGet("{id:guid}")]
-  public Task<IActionResult> GetUser(Guid id) => HandleRequest(new GetUserByIdQuery(id));
+  public Task<IActionResult> GetUser(Guid id) =>
+    HandleRequest(new GetUserByIdQuery(id));
 
   [HttpPost]
-  public Task<IActionResult> Register(RegisterUserCommand command) => HandleRequest(command);
+  public Task<IActionResult> Register(RegisterUserCommand command) =>
+    HandleRequest(command);
 
   [HttpPatch("{id:guid}")]
-  public Task<IActionResult> UpdateUser(Guid id, UpdateUserCommand command, CancellationToken cancellationToken) =>
-    HandleRequest(command with { Id = id }, cancellationToken);
+  public Task<IActionResult> UpdateUser(
+    Guid id,
+    UpdateUserCommand command,
+    CancellationToken cancellationToken
+  ) => HandleRequest(command with { Id = id }, cancellationToken);
 
   [HttpDelete("{id:guid}")]
-  public Task<IActionResult> DeleteUser(Guid id, CancellationToken cancellationToken) =>
-    HandleRequest(new DeleteUserCommand(id), cancellationToken);
+  public Task<IActionResult> DeleteUser(
+    Guid id,
+    CancellationToken cancellationToken
+  ) => HandleRequest(new DeleteUserCommand(id), cancellationToken);
 }

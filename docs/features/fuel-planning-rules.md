@@ -1,5 +1,30 @@
 # Route and fuel selection rules
 
+## Calculation outcomes and validity
+
+Fuel builds and resets return `FuelCalculationResult`. `Feasible` and
+`FeasibleBelowReserve` include a complete plan; `UnreachableStation` and
+`NoFeasiblePlan` include diagnostic access information without purchase or
+financial totals. Automatic recalculation exposes the same `FuelStatus`.
+Expected infeasibility is not an exception after a successful write. Invalid
+inputs, changed dependencies and technical failures still reject publication.
+
+Physical arrival fuel at the first purchase may be zero. Preferred reserve,
+post-purchase reserve and the regional terminal arrival requirement remain
+separate constraints. A reachable first purchase below preferred reserve is a
+valid plan with a warning; a negative physical arrival is a diagnostic candidate.
+The regional half-tank terminal policy is unchanged.
+
+Diagnostic quantities use the requested effective profile. Publication validates
+captured work, every selected road and predecessor-history dependency, observed
+settings and the current fuel/GPS values. Reads invalidate diagnostics when those
+inputs change. Observation times remain provenance; a repeated observation with
+identical quantities and position does not invalidate the calculation. A short
+age limit also bounds price-based diagnostics, but does not replace input checks.
+The map formats numeric shortfall values and never treats a diagnostic candidate
+as an executable fuel purchase. A valid diagnostic suppresses older feasible-plan
+financials while preserving the saved truck snapshot for subsequent recovery.
+
 ## Inputs
 
 Use fresh GPS, every remaining assigned load in dispatch order (including overdue
@@ -14,6 +39,129 @@ future clock skew. Explicit manual gallons take precedence over older observatio
 for at most 30 minutes and expire after an unconfirmed passed purchase.
 
 Application owns financial formulas. Client formats server quantities only.
+An explicit fleet CAD-to-USD preference takes precedence. Otherwise effective
+profiles read the dated, stored Bank of Canada daily-average rate. The existing
+fleet synchronization cycle checks the fixed public FX feed hourly under a
+separate checkpoint lease; profile, route and map reads never call that provider.
+Invert the published USD-to-CAD observation, retaining its observation and
+retrieval dates. Reject invalid, future or more-than-seven-day-old observations.
+Provider failures retain the last usable rate without inventing a conversion or
+overwriting fleet preferences. See the official
+[Bank of Canada Valet API](https://www.bankofcanada.ca/valet/docs).
+Changed effective fuel preferences, including an updated exchange rate, refresh
+automatic fuel snapshots through the existing revision guard. They do not rebuild
+unchanged roads or invalidate an unchanged road-choice preview. Manual fuel plans
+remain protected.
+Automatic searches price each station occurrence for its estimated local arrival
+date, replaying the captured HOS and appointment waits. Candidate screening uses
+road-only arrival estimates; shortlisted chains are repriced with their estimated
+access driving before quantity optimization. Missing arrival-date quotes fall back
+to today's eligible quote and are marked estimated. Unknown ETA also uses an
+estimated current quote, never an invented arrival date. Reads are shared per date
+within a search and use the existing server price cache, without provider calls.
+
+The lease-owned fleet planning cycle refreshes existing automatic fuel
+snapshots when the USD diesel quote fingerprint changes for today or any
+pricing date used by the saved search. This includes newly published tomorrow
+prices before they become effective today. Identical quotes and Canadian-only
+changes do not trigger that refresh. The fingerprint is saved with the
+successful plan, so failed work retries and application restarts do not lose
+pending refreshes. Legacy snapshots without a fingerprint are refreshed once
+when eligible. Manual edits and manual starting fuel are preserved; the opened
+revision is rechecked inside the truck calculation gate. Missing GPS, invalid
+routes or failed calculations never erase the saved plan. Cadence follows the
+existing bounded per-truck planning scan, not a guarantee that every truck
+recalculates immediately after an email arrives. An older automatic
+selection-policy version also triggers a refresh, even when the quote calendar
+is unchanged. Manual snapshots are never reset by that upgrade. The refresh
+also compares saved assignment signatures against the authoritative truck
+itinerary. Added, removed or edited future loads therefore request a new
+automatic plan without waiting for new prices. Eligibility uses the bounded
+captured-work display cache without HOS, financial or ETA hydration. The
+calculation itself captures fresh work and does not trust that cache to
+certify publication. PlanningWorkPublication repeats the complete signature
+comparison inside the protected transaction that replaces both saved fuel
+copies. It also replays captured historical predecessor batches for horizon
+connections and the onward arrival policy, after validating their current
+work. Completed-history changes reject automatic and manual saves before
+profile or result writes. This protects captured work membership and facts
+through commit; prices and telemetry keep their separate policies.
+No route provider is called for this check. See [route
+planning](route-planning.md#captured-work-for-route-mutations) for the current
+publication lock scope and unmeasured PostgreSQL contention.
+
+Calculation captures immutable versions of the actual saved roads it consumes:
+the current plan, future base roads or full-plan fallbacks, connecting deadhead
+and any onward connection used by arrival policy. An absent base remains a
+dependency when it selects the fallback. Onward roads remain dependencies even
+when no eligible exit price is found. Every repeated observation is checked;
+deduplicating lookup keys must not discard an earlier version.
+
+SavedRoadValidation compares these versions inside the same publication
+transaction, before profile or fuel writes. The root version comes from the row
+that supplied its geometry, including a cached row. A changed owner, plan
+version, tracking state, connection or base-road version rejects automatic
+calculation, manual edits and reset to automatic. Final validation reads compact
+metadata without geometry or provider calls. Fuel-only annotations and visited
+dictionary key order do not change road identity. Existing optimistic result
+checks remain required; this guard does not permit overwriting a newer result.
+
+New truck snapshots retain a versioned road-dependency list in their existing
+summary JSON. It contains the consumed root, future base/fallback and connecting
+roads, including absent base selection and any onward connection. No geometry
+is duplicated. Ordinary progress is a separate publication observation and is
+not persisted as a road dependency. A changed plan version, owner, assignment,
+input hash, base/connection timestamp or geometry presence invalidates reuse;
+tracking-only and fuel-only writes do not.
+
+TruckFuelPlans validates dependencies for the remaining dispatch blocks and
+onward connection through uncached compact metadata in one execution read
+snapshot. Completed earlier blocks no longer participate. A mismatch, missing
+legacy evidence or unsupported dependency version marks the retained projection
+NeedsRefresh, removes schedule impact and purchase-dependent stop arrivals, and
+leaves the stored plan unchanged. Existing consumers withhold stale
+recommendations. This read calls no route/geocoding provider and does not repair
+roads. The saved-summary and geometry caches retain their existing bounds.
+
+The existing automatic refresh cycle uses the same road validation before
+checking quotes. It requests recalculation even when prices are unchanged;
+manual purchases and manual starting fuel remain excluded. A failed refresh
+keeps the old plan for retry under the existing opened-revision check. Legacy
+automatic snapshots receive dependency evidence on their next successful
+calculation. No immediate refresh, production throughput gain or continuously
+valid snapshot across separate HTTP requests is promised.
+
+Historical corrections that do not yet change saved road metadata still need
+persisted historical selection evidence and a separate refresh rule. The
+publication history guard remains active; road dependencies alone do not close
+that post-commit gap.
+
+Calculation does not save the requested truck profile before price reads or
+optimization. Successful publication commits that profile with both fuel copies;
+provider failure, changed work, result conflict or failed commit preserves all
+three previous records. Manual edits use the same publication owner. Low-level
+profile and route-copy fuel writers require an existing transaction and are not
+public service entry points.
+
+Before writing, the effective profile observed at calculation start is compared
+with uncached stored profile, fleet settings and exchange-rate reads. Fleet
+defaults, explicit exchange-rate precedence and saved-rate validity rules apply
+identically to display and uncached reads. Uncached validation neither requests a
+provider nor publishes values into the display cache. A changed effective value
+rejects the calculation; it cannot be hidden by a warm cache or overwritten by
+the requested profile. The publication scope protects TruckPlanningProfiles
+and FleetPlanningSettings through commit, including initially absent rows.
+Automatic exchange-rate saves join the same protected publication scope, so a
+stored observation cannot change between final validation and result commit.
+This includes the first usable observation after a missing rate. The exchange checkpoint writer participates in the global planning guard;
+other SynchronizationCheckpoints rows remain independent. Lease acquisition/release and the bank
+request stay outside the protected write. Cache invalidation follows commit;
+a failed write keeps the previous saved and cached observation. Explicit fleet
+rates retain precedence, and refreshing an unused automatic observation does
+not invalidate that effective profile. Clock-based rate age checks remain the
+existing read-time policy; this does not freeze time or add a durable financial
+rate record.
+
 Application uses a 250-US-gallon total tank capacity and fleet defaults of a 100% fill limit, a 25-US-gallon reserve
 and $35 per driving hour, with zero fixed purchase-stop charge. Legacy saved overrides for these fields are
 ignored when reading effective settings; reading does not rewrite stored settings.
@@ -24,10 +172,33 @@ Consumption and the remaining preferences come from the effective profile.
 
 ## Saved-route planning without fuel routing requests
 
+An automatic calculation reuses its converted station quotes per pricing date
+across candidate chains. IFTA or exchange-rate changes invalidate that local
+conversion cache. Candidate purchases receive independent mutable stop objects;
+the cache lives only for that calculation and does not survive price imports.
+
 Manual fuel calculation does not call routing/geocoding providers, rebuild roads,
 repair connections or advance route tracking. Read the current saved road and saved
 base/deadhead geometry for all remaining assignments. Ordinary route preparation
 and tracking remain separate responsibilities.
+
+FuelWorkInputs selects work from the complete immutable truck itinerary. Search
+and edit capture fresh facts once; horizon assembly and terminal fuel access use
+that same capture. They do not query screen rows or resolve assignments again.
+The current per-dispatch lookup locates the requested truck/leg, after which
+captured facts supply the route input. Unresolved selected work fails without
+replacing the saved result. Legacy planned work remains outside fuel scope;
+overdue assigned work remains included.
+
+An active execution received through a confirmed Hook may continue into the
+truck's uniquely assigned future loads when it ends at an ordinary Delivery.
+Preserve the execution leg and revision on each itinerary stop; future legacy
+loads do not inherit the current leg. Drop, Switch and unconfirmed or different
+native legs remain boundaries. A planned duplicate of the current commercial
+load is not a second fuel itinerary. Saved-plan validation checks every included
+assignment and stop before reuse, including progression to a saved future load.
+The connection after native delivery uses that execution's truck and endpoint,
+not the older trucks retained in its source load.
 
 Saved paths must match profiles, confirmed facilities, assignments and remaining
 stop identities. Facility snapping remains within 0.5 mile and adjacent endpoints
@@ -39,6 +210,25 @@ Consider station occurrences within forty geographic miles of the saved road.
 These are nearby candidates, not verified truck approaches. Preserve mandatory-leg
 identity, including outbound and return visits to the same station. Original road
 geometry and provider mileage determine along-route distance.
+Estimated station access stays in the country of its matched saved road point.
+Resolve both points through the existing local region lookup; unknown geography
+or conflicting station country data cannot certify access. Cross-border assigned
+routes retain stations on each country's own road sections. Post-delivery access
+stays in the destination country unless a matching saved onward route already
+crosses the border toward the next pickup. Fuel prices alone must not introduce
+an international border crossing.
+Manual previews and saves enforce the same country guard. Retained invalid saved
+choices remain editable but cannot display valid purchase-dependent balances or
+be saved until the station occurrence is corrected.
+If no eligible post-delivery quote exists, price coverage is unknown, not proof
+that the mandatory trip is impossible. Use a reserve-only terminal policy: the
+greater of half the physical tank and reserve plus the configured poor-area or
+after-delivery buffer, whichever buffer is larger. Do not invent an exit station,
+access road, border crossing or replacement price. Set the economic target to
+that safety floor; unknown future purchases are excluded from cost valuation and
+identified in the plan reason. Current-trip fuel and per-stop arrival estimates
+remain available only if actual starting fuel and priced route purchases can
+satisfy the full reserve-only policy.
 
 Station access is a separate planning allowance: zero within 0.05 mile, otherwise
 the larger of 0.5 mile and 1.5 times geographic distance, in each direction.
@@ -62,6 +252,9 @@ backbone before selecting price/access alternatives across all route sections.
 Start with the cheapest normalized economic-price tier and admit dearer prices
 until a complete estimated chain is possible. Retain competing near-road and
 economic chains: the first feasible cheap tier is not automatically the winner.
+For equal estimated access within a route section, retain the lower normalized
+price first. Input order must not let a dearer roadside station consume the
+section's near-road shortlist slot.
 
 Local optimization includes both sides of every access, reserve, terminal policy,
 small bridge purchases and useful fuel after delivery. Memoize identical subsets
@@ -122,10 +315,13 @@ saved schedule impact is dated estimated information, not live HOS authorization
   ordering). Retain unrounded balances and prices in every label. This and the
   candidate/chain limits make selection a bounded local search, not an exhaustive
   global-optimum guarantee. The final score uses the retained actual arrival fuel.
-- A positive level below reserve may reach its first purchase with nonnegative
-  estimated arrival, then must restore reserve. Later legs and final arrival keep
-  normal reserve. Empty fuel or an unreachable first station does not produce a
-  driveable recommendation; confirm fuel or arrange refueling.
+- The first purchase may be reached below reserve from any starting level,
+  provided estimated arrival is nonnegative. Warn about the reserve shortfall,
+  then restore reserve; later legs and final arrival keep normal reserve. If no
+  station is reachable, show the nearest priced candidate with the additional
+  fuel required. This access warning is separate from a feasible fuel plan and
+  cannot create purchases, cost totals or a driving recommendation. A truck
+  already at the pump can refuel with an empty tank.
 
 Post-delivery fuel is estimated without provider requests, using local prices and
 the saved onward direction when one exists. Preserve the configured buffer and at
@@ -147,9 +343,32 @@ access and arrival at the station. Detour miles/time remain explicit. Mandatory
 stop boundaries and GPS matching use baseline mileage, never accumulated access.
 
 Atomically save the compact truck-owned itinerary, purchases, signatures and
-baseline with the current route compatibility copy. Future fuel geometry must not
-replace the current dispatch road or mileage. Failed writes retain prior data;
-normal reads independently reject invalidated or unsafe recommendations.
+baseline with the current route compatibility copy. Future fuel geometry must
+not replace the current dispatch road or mileage. Failed writes retain prior
+data; normal reads independently reject invalidated or unsafe recommendations.
+Before saving, compare a fresh complete itinerary signature with the original
+capture and recheck included assignments/stops. This catches changes during
+automatic searches and manual edits even without cache invalidation. The early
+comparison precedes the result transaction. The shared publication guard then
+compares canonical work, historical connection batches and captured saved-road
+versions inside the owned transaction before writing. Existing replacement
+revision guards remain required. Road versions and historical selection seeds
+persist for later reads and automatic refresh. The latter preserve lookup batch
+membership and accepted signatures without copying predecessor geometry.
+Validation replays relevant batches together with compact road-version checks
+inside one read snapshot, including when the fuel summary cache is warm.
+Historical corrections require refresh even when saved roads are unchanged.
+An incoming connection stops influencing remaining fuel after the first visit
+of its load is behind the current next stop. Completed earlier blocks are also
+excluded. Missing legacy evidence requires refresh while retaining saved choices;
+manual plans remain excluded from automatic replacement. Operational captures
+are not accounting evidence.
+
+Persistence retains the root execution scope only on that dispatch's stop block;
+subsequent legacy blocks retain their own null execution scope and zero execution
+revision. All included dispatches have ordered, unique ownership, and mixed-scope
+snapshots require each dispatch's signature. Any onward terminal hint belongs to
+the last legacy block, never to a native transfer boundary or an included load.
 
 Projection is provider-free. Match fresh GPS to the saved leg, trim visits by
 baseline coordinates and rebase from the latest valid tank observation. Charge
@@ -162,18 +381,33 @@ only remaining purchases owned by that mandatory leg or earlier legs. Future-leg
 purchases must not increase pickup arrival fuel. Rebase from the latest accepted
 starting balance and clear these estimates when the plan cannot be validated.
 
-Version 27 retains valid legacy checked versions 11–20 and estimated versions 21–26
-on normal reads, using their declared geometry basis. Automatic selection searches
-the saved baseline again rather than locking onto the old fuel chain. Removing
-the fixed stop charge changes the fuel-settings signature, so affected saved fuel
-plans need recalculation; it does not change the mandatory road input hash.
+Normal reads retain legacy checked versions 11–20, using their declared
+geometry basis; missing road evidence now requires recalculation before reuse. Estimated-access snapshots require version 28 or later because
+older searches did not constrain access to the matched road's country. Preserve
+those older saved choices for recovery, but mark them for recalculation and do
+not publish their recommendations or purchase-dependent arrival estimates.
+Automatic selection searches the saved baseline again rather than locking onto
+the old fuel chain. Removing the fixed stop charge changes the fuel-settings
+signature, so affected saved fuel plans need recalculation; it does not change
+the mandatory road input hash.
+
+When no valid purchase plan is available, current-stop arrival estimates may use
+the latest valid timestamped fuel reading and remaining saved road mileage
+without crediting purchases. They still require unchanged route inputs and fresh,
+valid, on-route GPS progress. Do not assume zero progress when GPS is missing,
+or show the current tank as historical arrival fuel at passed stops. A previously
+validated manual starting-fuel projection does not require a telemetry fuel
+reading. Valid projected access estimates remain available at off-road facilities
+or stations; off-route positions cannot create a road-only fallback estimate.
+Reading age alone does not invalidate the latest reported level.
 
 ## Editing the current plan
 
 The map editor changes the same truck-owned plan as automatic selection. There is
 one current snapshot, no revision history, and no BVD transaction matching yet.
-An edit specifies the complete remaining visit order, partial quantities in ten
-US-gallon steps, or an exact configured full-tank target. Unchanged legacy partial
+An edit specifies the complete remaining visit order, partial quantities, or an
+exact configured full-tank target. Manual slider choices use five US-gallon steps
+starting at 25 gallons. Unchanged legacy partial
 quantities may retain their original precision. Stop identity includes the mandatory
 leg so outbound and return visits remain distinct.
 
@@ -188,15 +422,31 @@ Each preview edit returns a server-calculated purchase limit from that visit's
 arrival balance and configured fill target. Incoming limit values are ignored.
 Unresolved or physically unknown balances return no limit; an excessive current
 purchase still returns its corrective limit, but cannot establish downstream
-headroom. The slider uses ten-gallon partial steps and maps its final endpoint to
+headroom. The slider maps its final endpoint to
 the exact full-tank target, rather than offering the whole tank capacity as a
 purchase at every visit.
+
+For the selected visit, the server prepares bounded quantity choices with the
+downstream balances, costs and validation errors. An increase is absorbed by
+reducing later partial purchases in order, down to 25 gallons per visit. A decrease is
+absorbed by increasing later purchases within capacity. Later Full tank visits keep
+their target mode: replay buys the exact headroom after earlier changes, including
+fractions and amounts below the 25-gallon partial minimum. Reaching that target
+absorbs the balance difference before later visits; the target flag survives
+preview, saving and reopening. Normal replay reserve and minimum-purchase checks
+still apply. Unabsorbed surplus stays
+at the finish; no visit is silently removed. For example, 25/100/50 can become
+35/90/50 without a new search or slider HTTP request. Client only copies the
+prepared values. Changing the selected visit, station or order obtains a new
+table; mismatched/pending choices disable quantity controls. Older API responses
+without choices use the cancellable preview compatibility path.
 
 Preview does not write either saved copy or call routing providers. Application
 replays the ordered quantities with continuous saved-road/access consumption,
 as normal projection does. Automatic purchase steps do not rewrite saved manual
-quantities; existing manual editing and legacy projection retain the 10-gallon
-minimum. Invalid drafts retain their editable rows
+quantities. Newly edited partial purchases require at least 25 gallons; unchanged
+legacy values retain their original precision and replay validation. Automatic
+selection retains ten-gallon upward rounding. Invalid drafts retain their editable rows
 and actionable errors. Unresolved prices or station occurrences omit calculated
 values; unsafe but calculable drafts display their balances and cannot be saved.
 Only verified unchanged remaining road geometry may silently trim passed visits

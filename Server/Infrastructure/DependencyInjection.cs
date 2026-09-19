@@ -1,27 +1,38 @@
-using Application.Features.Synchronization.Interfaces;
-using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Options;
+using Application.Features.Addresses.Interfaces;
 using Application.Features.Auth.Interfaces;
-using Infrastructure.Synchronization;
-using Infrastructure.Integrations.TomTom;
+using Application.Features.Border.Interfaces;
 using Application.Features.Dispatch.Interfaces;
+using Application.Features.Eta.Interfaces;
+using Application.Features.Execution.Interfaces;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fuel.Interfaces;
+using Application.Features.Integrations.Interfaces;
+using Application.Features.Mileage.Interfaces;
+using Application.Features.Routing.Interfaces;
+using Application.Features.Routing.Options;
+using Application.Features.Synchronization.Interfaces;
 using Application.Interfaces;
 using Infrastructure.Identity;
+using Infrastructure.Integrations;
+using Infrastructure.Integrations.BankOfCanada;
 using Infrastructure.Integrations.Bvd;
+using Infrastructure.Integrations.GeoTimeZone;
+using Infrastructure.Integrations.Google.Gmail;
+using Infrastructure.Integrations.Google.Places;
+using Infrastructure.Integrations.Google.Weather;
+using Infrastructure.Integrations.Ifta;
 using Infrastructure.Integrations.Samsara;
+using Infrastructure.Integrations.TomTom;
 using Infrastructure.Integrations.Torque;
 using Infrastructure.Persistence;
-using Infrastructure.Integrations.Google.Gmail;
-using Infrastructure.Integrations.Ifta;
-using Infrastructure.Integrations.Google.Places;
-using Microsoft.AspNetCore.Identity;
+using Infrastructure.Synchronization;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.DataProtection;
 
 namespace Infrastructure;
 
@@ -37,11 +48,16 @@ public static class DependencyInjection
       options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"));
     });
 
+    services.AddScoped<IBorderDataProtection, BorderDataProtection>();
     services.AddHostedService<DatabaseInitializer>();
-    services.AddTransient<Microsoft.AspNetCore.Hosting.IStartupFilter, SessionStartupFilter>();
-    services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
+    services.AddTransient<IStartupFilter, SessionStartupFilter>();
+    services
+      .AddHealthChecks()
+      .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
-    services.AddDataProtection().SetApplicationName("AMFTMS")
+    services
+      .AddDataProtection()
+      .SetApplicationName("AMFTMS")
       .PersistKeysToDbContext<AppDbContext>();
 
     services
@@ -50,8 +66,23 @@ public static class DependencyInjection
 
     services.AddAuthorization(options =>
     {
-      options.AddPolicy("Admin", policy => policy.RequireAuthenticatedUser().AddRequirements(new AdminRequirement()));
-      options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+      options.AddPolicy(
+        "Admin",
+        policy =>
+          policy
+            .RequireAuthenticatedUser()
+            .AddRequirements(new AdminRequirement())
+      );
+      options.AddPolicy(
+        "Dispatch",
+        policy =>
+          policy
+            .RequireAuthenticatedUser()
+            .AddRequirements(new DispatchRequirement())
+      );
+      options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
     });
 
     services
@@ -72,16 +103,35 @@ public static class DependencyInjection
       .AddDefaultTokenProviders();
 
     services.AddScoped<IAuthorizationHandler, AdminAuthorizationHandler>();
+    services.AddScoped<IAuthorizationHandler, DispatchAuthorizationHandler>();
     services.AddHttpContextAccessor();
 
-    services.AddScoped<IAppDbContext>(provider => provider.GetRequiredService<AppDbContext>());
-    services.AddSingleton<Application.Features.Integrations.Interfaces.IIntegrationCredentialStore, IntegrationCredentialStore>();
-    services.AddSingleton<Application.Features.Integrations.Interfaces.IIntegrationDeploymentCredentials, Infrastructure.Integrations.IntegrationDeploymentCredentials>();
+    services.AddScoped<IAppDbContext>(provider =>
+      provider.GetRequiredService<AppDbContext>()
+    );
+    services.AddSingleton<
+      IIntegrationCredentialStore,
+      IntegrationCredentialStore
+    >();
+    services.AddSingleton<
+      IIntegrationDeploymentCredentials,
+      IntegrationDeploymentCredentials
+    >();
     services.AddScoped<IDeadheadHistoryReader, DeadheadHistoryReader>();
+    services.AddScoped<IOdometerCaptureLease, OdometerCaptureLease>();
+    services.AddScoped<IOdometerFeedProvider, SamsaraOdometerProvider>();
+    services.AddHostedService<ApplicationWorker<IOdometerCaptureOperation>>();
     services.AddScoped<INextLoadRouteReader, NextLoadRouteReader>();
     services.AddScoped<ITruckFuelPlanStore, TruckFuelPlanStore>();
-    services.AddScoped<Application.Features.Eta.Interfaces.IEtaRootRouteReader, EtaRootRouteReader>();
-    services.AddScoped<Application.Features.Eta.Interfaces.IEtaForecastStore, EtaForecastStore>();
+    services.AddScoped<IFuelExchangeRateStore, FuelExchangeRateStore>();
+    services.AddScoped<ISavedRoutePlanReader, SavedRoutePlanReader>();
+    services.AddScoped<IEtaForecastStore, EtaForecastStore>();
+    services.AddScoped<IExecutionPlanningStore, ExecutionPlanningStore>();
+    services.AddScoped<IPlanningRefreshStore, PlanningRefreshStore>();
+    services.AddScoped<ISourceRoadStore, SourceRoadStore>();
+    services.AddScoped<IExecutionReadScope, ExecutionReadScope>();
+    services.AddScoped<IPlanningPublicationScope, PlanningPublicationScope>();
+    services.AddHostedService<ApplicationWorker<IExecutionPlanningOperation>>();
 
     services.AddScoped<IIdentityService, IdentityService>();
     services.AddScoped<IUserRoleService, UserRoleService>();
@@ -89,42 +139,87 @@ public static class DependencyInjection
     services.AddScoped<IAuthService, AuthService>();
 
     services.AddScoped<GmailServiceFactory>();
-    services.AddScoped<Application.Features.Fuel.Interfaces.IGmailPushValidator, GmailPushValidator>();
+    services.AddScoped<IGmailPushValidator, GmailPushValidator>();
     services.AddScoped<GmailAttachmentService>();
     services.AddScoped<IGmailWatchService, GmailWatchService>();
     services.AddScoped<IGmailWatchStore, GmailWatchStore>();
-    services.AddScoped<IFuelStationLookupStore, Infrastructure.Integrations.Google.Places.FuelStationLookupStore>();
+    services.AddScoped<IFuelStationLookupStore, FuelStationLookupStore>();
     if (configuration.GetValue("Gmail:BackgroundMaintenanceEnabled", true))
       services.AddHostedService<ApplicationWorker<IGmailWatchOperation>>();
     services.AddScoped<IFuelDiscountProvider, BvdFuelDiscountProvider>();
 
-
     services.AddScoped<ISynchronizationStore, SynchronizationStore>();
-    services.AddHostedService<ApplicationWorker<IFleetSynchronizationOperation>>();
+    services.AddHostedService<
+      ApplicationWorker<IFleetSynchronizationOperation>
+    >();
 
     services.AddHttpClient<IPlaceSearchService, GooglePlacesService>();
+    services
+      .AddHttpClient<IWeatherProvider, GoogleWeatherProvider>()
+      .RemoveAllLoggers();
     services.AddHttpClient<IIftaApiService, IftaApiService>();
+    services
+      .AddHttpClient<
+        IFuelExchangeRateProvider,
+        BankOfCanadaExchangeRateProvider
+      >(client => client.Timeout = TimeSpan.FromSeconds(10))
+      .RemoveAllLoggers();
 
-    services.AddSingleton<Application.Features.Eta.Interfaces.IRouteRegionLookup, Infrastructure.Eta.RouteRegionLookup>();
+    services.AddSingleton<IRouteRegionLookup, RouteRegionLookup>();
     services.AddHostedService<ApplicationWorker<IEtaRefreshOperation>>();
     services.AddHostedService<ApplicationWorker<ITruckHistoryOperation>>();
-    services.AddHttpClient<SamsaraApiService>();
+    services.AddHttpClient<SamsaraApiService>().RemoveAllLoggers();
     services.AddSingleton<SamsaraHosHistoryCache>();
     services.AddSingleton<SamsaraDriverCatalogCache>();
     services.AddScoped<ITruckCameraProvider, SamsaraTruckCameraProvider>();
     services.AddScoped<IFleetProvider, SamsaraFleetProvider>();
-    services.AddScoped<IDriverHosProvider, SamsaraDriverHosProvider>();
-    services.AddScoped<Application.Features.Eta.Interfaces.IHosHistoryProvider, SamsaraHosHistoryProvider>();
-    services.AddScoped<IFleetTelemetryProvider, SamsaraFleetTelemetryProvider>();
-    services.AddScoped<IFleetTelemetryFeedProvider, SamsaraFleetTelemetryProvider>();
+    services.AddScoped<IDriverHosRefreshProvider, SamsaraDriverHosProvider>();
+    services.AddHostedService<ApplicationWorker<IDriverHosRefreshOperation>>();
+    services.AddScoped<IHosHistoryProvider, SamsaraHosHistoryProvider>();
+    services.AddScoped<
+      IFleetTelemetryProvider,
+      SamsaraFleetTelemetryProvider
+    >();
+    services.AddScoped<
+      IFleetTelemetryFeedProvider,
+      SamsaraFleetTelemetryProvider
+    >();
 
-    services.AddHttpClient<IAddressGeocoder, GoogleAddressGeocoder>(client => client.Timeout = TimeSpan.FromSeconds(15)).RemoveAllLoggers();
-    services.AddHttpClient<IRoutingProvider, TomTomRoutingProvider>(client => client.Timeout = TimeSpan.FromSeconds(30)).RemoveAllLoggers();
+    services
+      .AddHttpClient<IAddressSuggestionsProvider, GoogleAddressSuggestions>(
+        client => client.Timeout = TimeSpan.FromSeconds(5)
+      )
+      .RemoveAllLoggers();
+    services
+      .AddHttpClient<IAddressGeocoder, GoogleAddressGeocoder>(client =>
+        client.Timeout = TimeSpan.FromSeconds(15)
+      )
+      .RemoveAllLoggers();
+    services
+      .AddHttpClient<IRoutingProvider, TomTomRoutingProvider>(client =>
+        client.Timeout = TimeSpan.FromSeconds(30)
+      )
+      .RemoveAllLoggers();
+    services
+      .AddHttpClient<IRouteAlternativesProvider, TomTomRoutingProvider>(
+        client => client.Timeout = TimeSpan.FromSeconds(30)
+      )
+      .RemoveAllLoggers();
     services.AddHostedService<ApplicationWorker<IPlanningRefreshOperation>>();
     services.AddHostedService<ApplicationWorker<IBaseRouteOperation>>();
 
-    services.AddHttpClient<TorqueApiService>();
-    services.AddScoped<IDispatchProvider, TorqueDispatchProvider>();
+    var dispatchImport = configuration["DispatchImport:Provider"]?.Trim();
+    if (!string.IsNullOrEmpty(dispatchImport))
+    {
+      if (
+        !dispatchImport.Equals("torqueai", StringComparison.OrdinalIgnoreCase)
+      )
+        throw new InvalidOperationException(
+          "Unsupported dispatch import provider."
+        );
+      services.AddHttpClient<TorqueApiService>();
+      services.AddScoped<IDispatchProvider, TorqueDispatchProvider>();
+    }
 
     return services;
   }

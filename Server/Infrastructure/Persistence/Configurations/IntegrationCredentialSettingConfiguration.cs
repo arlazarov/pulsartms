@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations;
 
-public sealed class IntegrationCredentialSettingConfiguration : IEntityTypeConfiguration<IntegrationCredentialSetting>
+public sealed class IntegrationCredentialSettingConfiguration
+  : IEntityTypeConfiguration<IntegrationCredentialSetting>
 {
   public void Configure(EntityTypeBuilder<IntegrationCredentialSetting> builder)
   {

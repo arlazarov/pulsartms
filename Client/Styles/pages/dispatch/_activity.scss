@@ -1,0 +1,104 @@
+@use '../../base' as ui;
+
+.dispatch-activity {
+  display: grid;
+  align-content: start;
+  gap: ui.pg(md);
+  min-width: 0;
+  padding: ui.pg(lg);
+  background: ui.theme(surface);
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(sm);
+
+  h2,
+  h3 {
+    margin: 0;
+    font-size: ui.fs(body);
+  }
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    font-size: ui.fs(lead);
+    svg {
+      color: ui.theme(link);
+    }
+  }
+  p {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  &__heading,
+  &__paging {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+  }
+  &__heading {
+    justify-content: space-between;
+  }
+  form,
+  fieldset,
+  &__history,
+  &__issues,
+  &__entry {
+    display: grid;
+    gap: ui.pg(sm);
+    min-width: 0;
+  }
+  form {
+    justify-items: start;
+  }
+  fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    width: 100%;
+  }
+  label {
+    display: grid;
+    gap: ui.pg(xs);
+    min-width: 0;
+    font-size: ui.fs(small);
+  }
+  textarea {
+    width: 100%;
+    min-width: 0;
+    @include ui.input-control;
+  }
+  textarea {
+    min-height: ui.size(control-touch);
+    height: auto;
+    resize: vertical;
+  }
+  &__entry {
+    padding-block: ui.pg(md);
+    border-top: 1px solid ui.theme(border-subtle);
+
+    > button {
+      justify-self: start;
+    }
+  }
+  &__entry--issue {
+    border: 1px solid ui.theme(border-subtle);
+    border-left: 3px solid ui.theme(warning-text);
+    border-radius: ui.radius(sm);
+    padding: ui.pg(md);
+    background: ui.theme(warning-surface);
+  }
+  &__text {
+    white-space: pre-wrap;
+  }
+  &__hint,
+  &__resolved {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  &__resolved {
+    color: ui.theme(success-text);
+  }
+  &__error {
+    color: ui.theme(danger-text);
+  }
+}

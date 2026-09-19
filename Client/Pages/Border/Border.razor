@@ -1,0 +1,126 @@
+@page "/border"
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>Border · PulsR</PageTitle>
+<NavigationLock ConfirmExternalNavigation="@_dirty"
+                OnBeforeInternalNavigation="BeforeNavigation" />
+<section class="dispatch-page dispatch-details">
+  <header class="dispatch-details__header">
+    <h1>Border</h1>
+    <p>Prepare a crossing using shipments from one or several loads.</p>
+    <p>Drafts stay in PulsR. Filing is not connected.</p>
+  </header>
+  @if (_error is not null) { <p role="alert">@_error</p> }
+  @if (_navigationBlocked)
+  {
+    <p role="alert">Save or discard your draft before leaving.</p>
+  }
+  @if (_loading) { <LoadingIndicator /> }
+  else if (_draft is null)
+  {
+    <section class="dispatch-details__panel">
+      <button class="btn btn--primary" @onclick="Create">New crossing</button>
+      <button class="btn" @onclick="LoadAsync">Reload</button>
+      @foreach (var row in _rows)
+      {
+        <div class="dispatch-details__fields" @key="row.Id">
+          <span>@Label(row)</span>
+          <button class="btn" @onclick="() => Open(row.Id)">Open draft</button>
+        </div>
+      }
+      <button class="btn" disabled="@(_offset == 0)" @onclick="Previous">
+        Previous
+      </button>
+      <button class="btn" disabled="@(_rows.Count < 25)" @onclick="Next">
+        Next
+      </button>
+    </section>
+  }
+  else
+  {
+    <div class="dispatch-details__save">
+      <button class="btn" disabled="@_saving" @onclick="Discard">
+        @(_dirty ? "Discard draft" : "Back to crossings")
+      </button>
+      <button class="btn btn--primary" disabled="@(!_dirty || _saving)"
+              @onclick="SaveAsync">
+        @(_saving ? "Saving…" : _pending is null ? "Save draft" : "Retry save")
+      </button>
+      <button class="btn" disabled="@Locked" @onclick="CheckAsync">
+        Check missing fields
+      </button>
+    </div>
+    <nav class="dispatch-details__tabs" aria-label="Crossing sections">
+      @foreach (var tab in Tabs)
+      {
+        <button class="dispatch-details__tab"
+                aria-current="@(_tab == tab ? "page" : null)"
+                @onclick="() => _tab = tab">@tab</button>
+      }
+    </nav>
+    @if (_checked)
+    {
+      <section class="dispatch-details__panel" role="status">
+        @if (_issues.Count == 0)
+        {
+          <p>Basic fields are filled. Provider and customs validation
+            will still be required before filing.</p>
+        }
+        @foreach (var issue in _issues) { <p>@issue.Message</p> }
+      </section>
+    }
+    <div hidden="@(_tab != "Crossing")">
+      <BorderCrossingFields Value="_draft" Ports="_ports" Disabled="Locked"
+          Changed="Changed" />
+    </div>
+    <div hidden="@(_tab != "Shipments")">
+      <fieldset disabled="@Locked" class="dispatch-details__panel">
+        <legend>Select shipments</legend>
+        <label>Load number, BOL or customer
+          <input @bind="_search" maxlength="100" />
+        </label>
+        <button class="btn" @onclick="Search">Search</button>
+        @foreach (var match in _matches)
+        {
+          <div class="dispatch-details__fields" @key="match.Id">
+            <span>Load @match.LoadNumber · @match.BillOfLading</span>
+            <button class="btn" @onclick="() => AddShipment(match)"
+                    disabled="@_draft.Shipments.Any(x => x.ShipmentId == match.Id)">
+              Select shipment
+            </button>
+          </div>
+        }
+        <p>Create cargo in a load's Shipments section first.</p>
+      </fieldset>
+      @foreach (var shipment in _draft.Shipments)
+      {
+        <BorderShipmentFields @key="shipment.Id" Value="shipment"
+            Equipment="_draft.Equipment" Disabled="Locked" Changed="Changed" />
+        <button class="btn" disabled="@Locked"
+                @onclick="() => RemoveShipment(shipment)">Remove from crossing</button>
+        @if (shipment.Snapshot is { } snapshot)
+        {
+          <a href="@($"/dispatch/{snapshot.LoadId}/shipments")">Open source load</a>
+          <button class="btn" disabled="@Locked"
+                  @onclick="() => RefreshShipment(shipment)">
+            Use latest shipment version
+          </button>
+          <button class="btn" disabled="@Locked"
+                  @onclick="() => Assignments(snapshot.LoadId)">
+            Choose execution assignment
+          </button>
+        }
+      }
+    </div>
+    <div hidden="@(_tab != "Crew & equipment")">
+      @foreach (var option in _assignments)
+      {
+        <button class="btn" disabled="@Locked"
+                @onclick="() => UseAssignment(option)">@option.Label</button>
+      }
+      <BorderResources Value="_draft" Drivers="_drivers" Trucks="_trucks"
+          Trailers="_trailers" Disabled="Locked" Changed="Changed"
+          AssignmentChanged="ResourceChanged" />
+    </div>
+  }
+</section>

@@ -1,7 +1,8 @@
+using System.Globalization;
+using System.Security.Claims;
 using Client.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
-using System.Security.Claims;
 
 namespace Client.Layout;
 
@@ -11,7 +12,8 @@ public partial class Sidebar
   protected AuthService AuthService { get; set; } = default!;
 
   [Inject]
-  protected AppAuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
+  protected AppAuthenticationStateProvider AuthenticationStateProvider { get; set; } =
+    default!;
 
   [Inject]
   protected NavigationManager Navigation { get; set; } = default!;
@@ -22,26 +24,41 @@ public partial class Sidebar
   private ElementReference AccountToggle;
 
   private static string AccountName(ClaimsPrincipal user) =>
-    string.IsNullOrWhiteSpace(user.Identity?.Name) ? "Account" : user.Identity.Name;
+    string.IsNullOrWhiteSpace(user.Identity?.Name)
+      ? "Account"
+      : user.Identity.Name;
 
   private static string AccountInitials(ClaimsPrincipal user) =>
-    string.Concat(AccountName(user).Split(' ', StringSplitOptions.RemoveEmptyEntries)
-      .Take(2).Select(part => System.Globalization.StringInfo.GetNextTextElement(part))).ToUpperInvariant();
+    string.Concat(
+        AccountName(user)
+          .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+          .Take(2)
+          .Select(part => StringInfo.GetNextTextElement(part))
+      )
+      .ToUpperInvariant();
 
   private void ToggleMenu() => MenuOpen = !MenuOpen;
+
   private void ToggleAccount() => AccountOpen = !AccountOpen;
-  private void CloseMenu() { MenuOpen = false; AccountOpen = false; }
+
+  private void CloseMenu()
+  {
+    MenuOpen = false;
+    AccountOpen = false;
+  }
 
   private async Task HandleMenuKeyAsync(KeyboardEventArgs args)
   {
-    if (args.Key != "Escape") return;
+    if (args.Key != "Escape")
+      return;
     if (AccountOpen)
     {
       AccountOpen = false;
       await AccountToggle.FocusAsync();
       return;
     }
-    if (!MenuOpen) return;
+    if (!MenuOpen)
+      return;
     CloseMenu();
     await MenuToggle.FocusAsync();
   }
@@ -52,9 +69,8 @@ public partial class Sidebar
     {
       await AuthService.LogoutAsync();
     }
-    catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
-    {
-    }
+    catch (Exception ex)
+      when (ex is HttpRequestException or OperationCanceledException) { }
     finally
     {
       if (!await AuthenticationStateProvider.NotifyCurrentSessionAsync())

@@ -1,0 +1,160 @@
+<fieldset disabled="@Disabled" class="dispatch-details__panel">
+  <legend>Crew at the border</legend>
+  @foreach (var person in Value.Crew)
+  {
+    <fieldset @key="person.Id" class="dispatch-details__panel">
+      <legend>@person.Role · @person.DisplayName</legend>
+      <div class="dispatch-details__fields">
+        @if (person.Role != "passenger")
+        {
+          <label>Fleet driver
+            <select @bind="person.DriverId"
+                    @bind:after="() => DriverSelected(person)">
+              <option value="">Not selected</option>
+              @foreach (var driver in Drivers)
+              {
+                <option value="@driver.Id">@driver.Name</option>
+              }
+            </select>
+          </label>
+        }
+        <label>Legal first name
+          <input @bind="person.Details.FirstName" maxlength="300"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>Middle name
+          <input @bind="person.Details.MiddleName" maxlength="300"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>Legal last name
+          <input @bind="person.Details.LastName" maxlength="300"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>Citizenship country code
+          <input @bind="person.Details.CitizenshipCountry" maxlength="300"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>Sex / gender code
+          <input @bind="person.Details.Sex" maxlength="300"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>FAST card number
+          <input @bind="person.Details.FastCardNumber" maxlength="300"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>Date of birth
+          <input type="date" @bind="person.Details.DateOfBirth"
+                 @bind:after="NotifyChanged" />
+        </label>
+      </div>
+      @foreach (var document in person.Details.Documents)
+      {
+        <fieldset @key="document.Id" class="dispatch-details__panel">
+          <legend>Travel document</legend>
+          <div class="dispatch-details__fields">
+            <label>Document type
+              <input @bind="document.Type" maxlength="300"
+                     @bind:event="oninput" @bind:after="NotifyChanged" />
+            </label>
+            <label>Document number
+              <input @bind="document.Number" maxlength="300"
+                     @bind:event="oninput" @bind:after="NotifyChanged" />
+            </label>
+            <label>Issuing country
+              <input @bind="document.IssuingCountry" maxlength="300"
+                     @bind:event="oninput" @bind:after="NotifyChanged" />
+            </label>
+            <label>Issuing state / province
+              <input @bind="document.IssuingRegion" maxlength="300"
+                     @bind:event="oninput" @bind:after="NotifyChanged" />
+            </label>
+            <label>Expires on
+              <input type="date" @bind="document.ExpiresOn"
+                     @bind:after="NotifyChanged" />
+            </label>
+          </div>
+          <button class="btn" @onclick="() => RemoveDocument(person, document)">
+            Remove document from draft
+          </button>
+        </fieldset>
+      }
+      <button class="btn" @onclick="() => AddDocument(person)">
+        Add travel document
+      </button>
+      <button class="btn" @onclick="() => RemovePerson(person)">
+        Remove person from crossing
+      </button>
+    </fieldset>
+  }
+  <button class="btn" @onclick='() => AddPerson("driver")'>Add driver</button>
+  <button class="btn" @onclick='() => AddPerson("co-driver")'>Add co-driver</button>
+  <button class="btn" @onclick='() => AddPerson("passenger")'>Add passenger</button>
+</fieldset>
+<fieldset disabled="@Disabled" class="dispatch-details__panel">
+  <legend>Equipment at the border</legend>
+  @foreach (var vehicle in Value.Equipment)
+  {
+    <fieldset @key="vehicle.Id" class="dispatch-details__panel">
+      <legend>@vehicle.Kind · @vehicle.UnitNumber</legend>
+      <div class="dispatch-details__fields">
+        @if (vehicle.Kind == "truck")
+        {
+          <label>Truck
+            <select @bind="vehicle.TruckId"
+                    @bind:after="() => VehicleSelected(vehicle)">
+              <option value="">Not selected</option>
+              @foreach (var truck in Trucks)
+              {
+                <option value="@truck.Id">@truck.UnitNumber</option>
+              }
+            </select>
+          </label>
+        }
+        @if (vehicle.Kind == "trailer")
+        {
+          <label>Trailer
+            <select @bind="vehicle.TrailerId"
+                    @bind:after="() => VehicleSelected(vehicle)">
+              <option value="">Not selected</option>
+              @foreach (var trailer in Trailers)
+              {
+                <option value="@trailer.Id">@trailer.UnitNumber</option>
+              }
+            </select>
+          </label>
+        }
+        <label>Equipment type
+          <input @bind="vehicle.EquipmentType" maxlength="300"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>Plate number
+          <input @bind="vehicle.PlateNumber" maxlength="300"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>Plate state / province
+          <input @bind="vehicle.PlateRegion" maxlength="300"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>Plate country
+          <input @bind="vehicle.PlateCountry" maxlength="300"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>Container number
+          <input @bind="vehicle.ContainerNumber" maxlength="300"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+        <label>Seal numbers
+          <input @bind="vehicle.SealNumbers" maxlength="300"
+                 @bind:event="oninput" @bind:after="NotifyChanged" />
+        </label>
+      </div>
+      <p>VIN: @vehicle.Vin</p>
+      <button class="btn" @onclick="() => RemoveVehicle(vehicle)">
+        Remove equipment from crossing
+      </button>
+    </fieldset>
+  }
+  <button class="btn" @onclick='() => AddVehicle("truck")'>Add truck</button>
+  <button class="btn" @onclick='() => AddVehicle("trailer")'>Add trailer</button>
+  <button class="btn" @onclick='() => AddVehicle("container")'>Add container</button>
+</fieldset>

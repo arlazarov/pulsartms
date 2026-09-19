@@ -52,17 +52,70 @@ $colors: (
     800: #991b1b,
     900: #7f1d1d,
   ),
-  blue-gray: (50: #e5edff, 100: #e6edf8, 200: #b6c4da, 300: #9aaecb, 400: #a8b7cb, 500: #5f6e84, 600: #43536d, 700: #294c9c, 800: #2a3950, 850: #334155, 900: #1e304c, 950: #111e33, 1000: #101827),
-  brand: (300: #81a7ff, 500: #3564ed, 600: #345ec1, 650: #284cdc, 700: #2e50e7),
-  'green': (50: #eaf7ed, 200: #86efac, 700: #147d3b, 950: #153323),
-  amber: (50: #fff3dc, 300: #fbbf24, 700: #b05009, 950: #3d2b14),
-  rose: (50: #fff1f2, 200: #fecdd3, 300: #fca5a5, 700: #9f3450, 950: #451b24),
-  'brown': (300: #d6b77e, 700: #806032),
-  'teal': (300: #7fdbbc, 700: #207a63),
-  'violet': (50: #f5f0ff, 300: #c4a7f5, 700: #7c3aed, 950: #2e1654),
+  blue-gray: (
+    50: #e5edff,
+    100: #e6edf8,
+    200: #b6c4da,
+    300: #9aaecb,
+    400: #a8b7cb,
+    500: #5f6e84,
+    600: #43536d,
+    700: #294c9c,
+    800: #2a3950,
+    850: #334155,
+    900: #1e304c,
+    950: #111e33,
+    1000: #101827,
+  ),
+  pulse: (
+    400: #ff6371,
+    500: #ec354b,
+  ),
+  brand: (
+    300: #81a7ff,
+    500: #3564ed,
+    600: #345ec1,
+    650: #284cdc,
+    700: #2e50e7,
+  ),
+  'green': (
+    50: #eaf7ed,
+    200: #86efac,
+    700: #147d3b,
+    950: #153323,
+  ),
+  amber: (
+    50: #fff3dc,
+    300: #fbbf24,
+    700: #b05009,
+    950: #3d2b14,
+  ),
+  rose: (
+    50: #fff1f2,
+    200: #fecdd3,
+    300: #fca5a5,
+    700: #9f3450,
+    950: #451b24,
+  ),
+  'brown': (
+    300: #d6b77e,
+    700: #806032,
+  ),
+  'teal': (
+    300: #7fdbbc,
+    700: #207a63,
+  ),
+  'violet': (
+    50: #f5f0ff,
+    300: #c4a7f5,
+    700: #7c3aed,
+    950: #2e1654,
+  ),
 );
 
 @function value($group, $shade) {
-  @if not map.has-key($colors, $group, $shade) { @error 'Unknown palette color: #{$group} #{$shade}'; }
+  @if not map.has-key($colors, $group, $shade) {
+    @error 'Unknown palette color: #{$group} #{$shade}';
+  }
   @return map.get($colors, $group, $shade);
 }

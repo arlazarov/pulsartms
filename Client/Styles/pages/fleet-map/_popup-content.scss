@@ -12,12 +12,24 @@
   font-family: Arial, sans-serif;
   font-size: ui.fs(body);
   font-weight: 400;
-  &--pickup { color: ui.theme(pickup); }
-  &--delivery { color: ui.theme(delivery); }
-  &--eta { color: ui.theme(link); }
-  &--success { color: ui.theme(success-text); }
-  &--danger { color: ui.theme(danger-text); }
-  &--muted { color: ui.theme(text-secondary); }
+  &--pickup {
+    color: ui.theme(pickup);
+  }
+  &--delivery {
+    color: ui.theme(delivery);
+  }
+  &--eta {
+    color: ui.theme(link);
+  }
+  &--success {
+    color: ui.theme(success-text);
+  }
+  &--danger {
+    color: ui.theme(danger-text);
+  }
+  &--muted {
+    color: ui.theme(text-secondary);
+  }
 }
 
 .fleet-route-popup {
@@ -26,48 +38,126 @@
   font-size: ui.fs(label);
   line-height: 1.5;
   overflow-wrap: anywhere;
-  strong { display: block; }
-  .arrival-estimate { row-gap: 0; strong { display: inline; } }
-  .stop-hours__road > .stop-hours__value, .fleet-route-popup__value--cycle { display: contents; }
-  .stop-hours__arrival, &__arrival {
+  strong {
+    display: block;
+  }
+  .arrival-estimate {
+    row-gap: 0;
+    strong {
+      display: inline;
+    }
+  }
+  .stop-hours__road > .stop-hours__value,
+  .fleet-route-popup__value--cycle {
+    display: contents;
+  }
+  .stop-hours__arrival,
+  &__arrival {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0 ui.pg(sm);
   }
-  .stop-hours__cycle-status, &__cycle-status { grid-column: 1 / -1; }
-  &__location, &__information { min-width: 0; display: flex; flex-direction: column; }
+  .stop-hours__cycle-status,
+  &__cycle-status {
+    grid-column: 1 / -1;
+  }
+  &__location,
+  &__information {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
   &__fuel {
     padding-block: ui.pg(xs);
     margin-block: ui.pg(xs);
     border-block: 1px solid ui.theme(border-subtle);
-    &--unknown { display: flex; align-items: center; gap: ui.pg(sm); }
-    .fleet-fuel-visit__gauge { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: ui.pg(sm); row-gap: 0; justify-items: start; align-items: center; }
-    .fleet-fuel-visit__dial { grid-column: 1; grid-row: 1 / 3; width: ui.size(map-arrival-fuel-dial); height: ui.size(map-arrival-fuel-dial); }
-    .fleet-fuel-visit__percent { font-size: ui.fs(small); }
-    .fleet-fuel-visit__label { grid-column: 2; grid-row: 1; align-self: end; }
-    .fleet-fuel-visit__quantity { grid-column: 2; grid-row: 2; align-self: start; font-weight: 600; color: ui.theme(text); }
+    &--unknown {
+      display: flex;
+      align-items: center;
+      gap: ui.pg(sm);
+    }
+    .fleet-fuel-visit__gauge {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      column-gap: ui.pg(sm);
+      row-gap: 0;
+      justify-items: start;
+      align-items: center;
+    }
+    .fleet-fuel-visit__dial {
+      grid-column: 1;
+      grid-row: 1 / 3;
+      width: ui.size(map-arrival-fuel-dial);
+      height: ui.size(map-arrival-fuel-dial);
+    }
+    .fleet-fuel-visit__percent {
+      font-size: ui.fs(small);
+    }
+    .fleet-fuel-visit__label {
+      grid-column: 2;
+      grid-row: 1;
+      align-self: end;
+    }
+    .fleet-fuel-visit__quantity {
+      grid-column: 2;
+      grid-row: 2;
+      align-self: start;
+      font-weight: 600;
+      color: ui.theme(text);
+    }
   }
   &__eta {
-    &--eta { color: ui.theme(link); }
-    &--success { color: ui.theme(success-text); }
-    &--danger { color: ui.theme(danger-text); }
+    &--eta {
+      color: ui.theme(link);
+    }
+    &--success {
+      color: ui.theme(success-text);
+    }
+    &--danger {
+      color: ui.theme(danger-text);
+    }
   }
-  &--stop { font-size: ui.fs(body); }
-  &__kind, &__label { color: ui.theme(text-secondary); font-size: ui.fs(small); }
+  &--stop {
+    font-size: ui.fs(body);
+  }
+  &__kind,
+  &__label {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
   &__kind {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(micro) ui.pg(sm);
     color: ui.theme(link);
     margin-bottom: ui.pg(micro);
     padding-bottom: ui.pg(micro);
     border-bottom: 1px solid ui.theme(border-subtle);
   }
+  &__visit {
+    color: ui.theme(text-secondary);
+    background: ui.theme(surface-soft);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    padding-inline: ui.pg(xs);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
   &__section-start {
     padding-top: ui.pg(micro);
     border-top: 1px solid ui.theme(border-subtle);
   }
-  &__company { font-size: ui.fs(body); }
-  &__address { color: ui.theme(text-secondary); }
-  &__address-line { display: block; }
+  &__company {
+    font-size: ui.fs(body);
+  }
+  &__address {
+    color: ui.theme(text-secondary);
+  }
+  &__address-line {
+    display: block;
+  }
   &__reference {
     display: flex;
     flex-wrap: wrap;
@@ -75,10 +165,20 @@
     gap: 0 ui.pg(sm);
     font-variant-numeric: tabular-nums;
   }
-  &__facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: ui.pg(sm); margin: 0; }
-  &__appointment { grid-column: 1 / -1; }
-  &__field { min-width: 0; }
-  &__eta.fleet-route-popup__field, &__distance {
+  &__facts {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: ui.pg(sm);
+    margin: 0;
+  }
+  &__appointment {
+    grid-column: 1 / -1;
+  }
+  &__field {
+    min-width: 0;
+  }
+  &__eta.fleet-route-popup__field,
+  &__distance {
     display: grid;
     grid-column: 1 / -1;
     grid-template-columns: subgrid;
@@ -121,16 +221,31 @@
     font: inherit;
     text-align: left;
     cursor: copy;
-    &:hover { text-decoration: underline; }
-    &:focus-visible { outline: 2px solid currentColor; }
+    &:hover {
+      text-decoration: underline;
+    }
+    &:focus-visible {
+      outline: 2px solid currentColor;
+    }
   }
 
-  &__address-line:not([hidden]) { display: block; }
-  &__actions:not([hidden]) { display: flex; gap: ui.pg(sm); flex-wrap: wrap; grid-column: 1 / -1; margin-top: ui.pg(sm); }
+  &__address-line:not([hidden]) {
+    display: block;
+  }
+  &__actions:not([hidden]) {
+    display: flex;
+    gap: ui.pg(sm);
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+    margin-top: ui.pg(sm);
+  }
 
   &__visits:not([hidden]) {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, #{ui.size(fuel-visit)}), 1fr));
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(100%, #{ui.size(fuel-visit)}), 1fr)
+    );
     gap: ui.pg(sm);
     grid-column: 1 / -1;
     margin-top: ui.pg(sm);
@@ -164,7 +279,11 @@
     }
   }
 
-  &__price-unit { grid-column: 1 / -1; color: ui.theme(text-secondary); font-size: ui.fs(small); }
+  &__price-unit {
+    grid-column: 1 / -1;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
 
   &__savings-label,
   &__savings {
@@ -189,7 +308,6 @@
   &__discount {
     font-size: ui.fs(body);
   }
-
 }
 
 .fleet-fuel-visit {
@@ -197,7 +315,17 @@
   width: 100%;
   justify-self: start;
   font-variant-numeric: tabular-nums;
-  &__heading, &__name { display: flex; align-items: center; gap: ui.pg(xs); }
+  &__warning {
+    color: ui.theme(danger-text);
+    margin: ui.pg(xs) 0;
+    font-size: ui.fs(body);
+  }
+  &__heading,
+  &__name {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(xs);
+  }
   &__heading {
     justify-content: space-between;
     flex-wrap: wrap;
@@ -206,7 +334,10 @@
     margin-bottom: ui.pg(sm);
     border-bottom: 1px solid ui.theme(border-subtle);
   }
-  &__name { flex: 0 0 auto; font-size: ui.fs(label); }
+  &__name {
+    flex: 0 0 auto;
+    font-size: ui.fs(label);
+  }
   &__number {
     display: grid;
     place-items: center;
@@ -219,7 +350,11 @@
     font-size: ui.fs(small);
     line-height: 1;
   }
-  &__distance { color: ui.theme(text-secondary); font-size: ui.fs(small); white-space: nowrap; }
+  &__distance {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    white-space: nowrap;
+  }
   &__levels {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -229,17 +364,45 @@
     max-width: ui.size(fuel-levels);
     margin-inline: auto;
   }
-  &__gauge { display: grid; justify-items: center; gap: ui.pg(micro); min-width: 0; }
-  &__dial { --hos-dial-size: #{ui.size(fuel-dial)}; }
-  &__label { color: ui.theme(text-secondary); font-size: ui.fs(small); white-space: nowrap; }
-  &__quantity { color: ui.theme(text-secondary); font-size: ui.fs(small); white-space: nowrap; }
-  &__action { display: grid; justify-items: center; gap: ui.pg(micro); text-align: center; }
-  &__buy { font-size: ui.fs(body); white-space: nowrap; }
-  &__arrow { color: ui.theme(link); font-size: ui.fs(heading); line-height: 1; }
+  &__gauge {
+    display: grid;
+    justify-items: center;
+    gap: ui.pg(micro);
+    min-width: 0;
+  }
+  &__dial {
+    --hos-dial-size: #{ui.size(fuel-dial)};
+  }
+  &__label {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    white-space: nowrap;
+  }
+  &__quantity {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    white-space: nowrap;
+  }
+  &__action {
+    display: grid;
+    justify-items: center;
+    gap: ui.pg(micro);
+    text-align: center;
+  }
+  &__buy {
+    font-size: ui.fs(body);
+    white-space: nowrap;
+  }
+  &__arrow {
+    color: ui.theme(link);
+    font-size: ui.fs(heading);
+    line-height: 1;
+  }
 }
 
 @include ui.mq(map-mobile) {
-  .fleet-route-popup, .fleet-station-popup:not(.fleet-station-popup--planned) {
+  .fleet-route-popup,
+  .fleet-station-popup:not(.fleet-station-popup--planned) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     column-gap: ui.pg(lg);
@@ -250,7 +413,11 @@
     padding-left: ui.pg(lg);
   }
   .fleet-station-popup:not(.fleet-station-popup--planned) {
-    > :not(.fleet-station-popup__prices):not(.fleet-station-popup__visits):not(.fleet-station-popup__actions) { grid-column: 1; }
+    > :not(.fleet-station-popup__prices):not(.fleet-station-popup__visits):not(
+        .fleet-station-popup__actions
+      ) {
+      grid-column: 1;
+    }
     > .fleet-station-popup__prices {
       grid-column: 2;
       grid-row: 1 / span 3;
@@ -264,7 +431,9 @@
 }
 
 .fleet-map-details-card:has(.fleet-station-popup--planned) {
-  .fleet-map-details-card__body { padding: ui.pg(lg); }
+  .fleet-map-details-card__body {
+    padding: ui.pg(lg);
+  }
   @media (min-width: ui.breakpoint(map-mobile, min)) {
     left: auto;
     right: ui.pg(lg);
@@ -279,8 +448,16 @@
   grid-template-columns: minmax(0, 1fr) max-content;
   gap: ui.pg(sm) ui.pg(md);
 
-  > :not(.fleet-station-popup__title):not(.fleet-station-popup__plan-label) { grid-column: 1 / -1; }
-  .fleet-station-popup__title { grid-column: 1; grid-row: 1; margin: 0; font-size: ui.fs(heading); align-self: center; }
+  > :not(.fleet-station-popup__title):not(.fleet-station-popup__plan-label) {
+    grid-column: 1 / -1;
+  }
+  .fleet-station-popup__title {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+    font-size: ui.fs(heading);
+    align-self: center;
+  }
   .fleet-station-popup__plan-label {
     grid-column: 2;
     grid-row: 1;
@@ -293,9 +470,17 @@
     font-weight: 600;
     align-self: center;
   }
-  .fleet-station-popup__address { color: ui.theme(text-secondary); font-size: ui.fs(body); }
-  .fleet-station-popup__address-line:last-child { color: ui.theme(text); font-weight: 600; }
-  .fleet-station-popup__copy-status:empty { display: none; }
+  .fleet-station-popup__address {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+  }
+  .fleet-station-popup__address-line:last-child {
+    color: ui.theme(text);
+    font-weight: 600;
+  }
+  .fleet-station-popup__copy-status:empty {
+    display: none;
+  }
   .fleet-station-popup__prices {
     grid-row: auto;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -306,25 +491,86 @@
     border-inline: 0;
     border-block: 1px solid ui.theme(border-subtle);
     font-size: ui.fs(caption);
-    dd { text-align: left; font-size: ui.fs(lead); font-variant-numeric: tabular-nums; }
+    dd {
+      text-align: left;
+      font-size: ui.fs(lead);
+      font-variant-numeric: tabular-nums;
+    }
   }
-  .fleet-station-popup__price-unit { grid-column: 1 / -1; grid-row: 1; font-size: ui.fs(caption); }
+  .fleet-station-popup__price-unit {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    font-size: ui.fs(caption);
+  }
   @each $name, $column in (retail: 1, discount: 2, ifta: 3, savings: 4) {
-    .fleet-station-popup__#{$name}-label { grid-column: $column; grid-row: 2; padding-block: 0; }
-    .fleet-station-popup__#{$name} { grid-column: $column; grid-row: 3; padding-block: 0; }
+    .fleet-station-popup__#{$name}-label {
+      grid-column: $column;
+      grid-row: 2;
+      padding-block: 0;
+    }
+    .fleet-station-popup__#{$name} {
+      grid-column: $column;
+      grid-row: 3;
+      padding-block: 0;
+    }
   }
-  .fleet-station-popup__visits { margin: 0; }
-  .fleet-station-popup__visit { padding: 0; border: 0; }
-  .fleet-fuel-visit__levels { max-width: none; padding-block: ui.pg(sm); }
-  .fleet-fuel-visit__dial { --hos-dial-size: #{ui.size(map-fuel-dial)}; width: ui.size(map-fuel-dial); height: ui.size(map-fuel-dial); }
-  .fleet-fuel-visit__dial strong { font-size: ui.fs(lead); }
-  .fleet-fuel-visit__buy { font-size: ui.fs(subtitle); }
-  .fleet-station-popup__visit-cost { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: ui.pg(xs); margin-top: ui.pg(sm); }
-  .fleet-station-popup__cost-value { font-size: ui.fs(lead); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .fleet-station-popup__actions:not([hidden]) { align-items: center; justify-content: flex-end; gap: ui.pg(sm); margin: 0; padding-top: ui.pg(sm); border-top: 1px solid ui.theme(border-subtle); }
-  .fleet-station-popup__cost:not([hidden]) { display: grid; gap: ui.pg(micro); order: -1; margin-right: auto; }
-  .fleet-station-popup__cost > span { color: ui.theme(text-secondary); font-size: ui.fs(caption); }
-  .fleet-station-popup__actions .btn--text { order: 1; font-size: ui.fs(caption); }
+  .fleet-station-popup__visits {
+    margin: 0;
+  }
+  .fleet-station-popup__visit {
+    padding: 0;
+    border: 0;
+  }
+  .fleet-fuel-visit__levels {
+    max-width: none;
+    padding-block: ui.pg(sm);
+  }
+  .fleet-fuel-visit__dial {
+    --hos-dial-size: #{ui.size(map-fuel-dial)};
+    width: ui.size(map-fuel-dial);
+    height: ui.size(map-fuel-dial);
+  }
+  .fleet-fuel-visit__dial strong {
+    font-size: ui.fs(lead);
+  }
+  .fleet-fuel-visit__buy {
+    font-size: ui.fs(subtitle);
+  }
+  .fleet-station-popup__visit-cost {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: ui.pg(xs);
+    margin-top: ui.pg(sm);
+  }
+  .fleet-station-popup__cost-value {
+    font-size: ui.fs(lead);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .fleet-station-popup__actions:not([hidden]) {
+    align-items: center;
+    justify-content: flex-end;
+    gap: ui.pg(sm);
+    margin: 0;
+    padding-top: ui.pg(sm);
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+  .fleet-station-popup__cost:not([hidden]) {
+    display: grid;
+    gap: ui.pg(micro);
+    order: -1;
+    margin-right: auto;
+  }
+  .fleet-station-popup__cost > span {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+  }
+  .fleet-station-popup__actions .btn--text {
+    order: 1;
+    font-size: ui.fs(caption);
+  }
 }
 
 .fleet-station-popup__comparison {
@@ -333,51 +579,118 @@
   max-width: 100%;
   margin-top: ui.pg(sm);
   overflow-x: auto;
-  table { width: auto; border-collapse: separate; border-spacing: 0; font-size: ui.fs(label); }
-  caption { text-align: left; color: ui.theme(text-secondary); padding-bottom: ui.pg(xs); }
-  th, td { padding: ui.pg(micro) ui.pg(sm); }
-  th { text-align: left; font-weight: 400; }
-  td { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  thead th { color: ui.theme(text-secondary); font-size: ui.fs(small); padding-bottom: ui.pg(xs); }
-  thead th:not(:first-child) { text-align: right; }
-  th:first-child { padding-left: 0; }
-  td:last-child { font-weight: 600; }
-  th:nth-child(n + 3), td:nth-child(n + 3) { border-left: 1px solid ui.theme(border-subtle); }
-  .fleet-station-popup__change.is-increase, .fleet-station-popup__change.is-decrease.is-savings { color: ui.theme(telemetry-critical-icon); }
-  .fleet-station-popup__change.is-decrease, .fleet-station-popup__change.is-increase.is-savings { color: ui.theme(success-text); }
+  table {
+    width: auto;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: ui.fs(label);
+  }
+  caption {
+    text-align: left;
+    color: ui.theme(text-secondary);
+    padding-bottom: ui.pg(xs);
+  }
+  th,
+  td {
+    padding: ui.pg(micro) ui.pg(sm);
+  }
+  th {
+    text-align: left;
+    font-weight: 400;
+  }
+  td {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  thead th {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    padding-bottom: ui.pg(xs);
+  }
+  thead th:not(:first-child) {
+    text-align: right;
+  }
+  th:first-child {
+    padding-left: 0;
+  }
+  td:last-child {
+    font-weight: 600;
+  }
+  th:nth-child(n + 3),
+  td:nth-child(n + 3) {
+    border-left: 1px solid ui.theme(border-subtle);
+  }
+  .fleet-station-popup__change.is-increase,
+  .fleet-station-popup__change.is-decrease.is-savings {
+    color: ui.theme(telemetry-critical-icon);
+  }
+  .fleet-station-popup__change.is-decrease,
+  .fleet-station-popup__change.is-increase.is-savings {
+    color: ui.theme(success-text);
+  }
 }
-.fleet-station-popup > .fleet-station-popup__comparison { grid-column: 1 / -1; }
+.fleet-station-popup > .fleet-station-popup__comparison {
+  grid-column: 1 / -1;
+}
 
 .fleet-station-popup--single {
-  .fleet-fuel-visit__name { display: none; }
-  .fleet-fuel-visit__heading { margin-bottom: ui.pg(xs); padding-bottom: 0; border: 0; justify-content: center; }
+  .fleet-fuel-visit__name {
+    display: none;
+  }
+  .fleet-fuel-visit__heading {
+    margin-bottom: ui.pg(xs);
+    padding-bottom: 0;
+    border: 0;
+    justify-content: center;
+  }
 }
 
 @media (max-width: ui.breakpoint(map-mobile, max)) {
-  .fleet-station-popup--planned:not(.fleet-station-popup--single) .fleet-fuel-visit__levels {
+  .fleet-station-popup--planned:not(.fleet-station-popup--single)
+    .fleet-fuel-visit__levels {
     padding-block: ui.pg(xs);
   }
 }
 
-.fleet-map-inspector__native { container: map-inspector / inline-size; }
+.fleet-map-inspector__native {
+  container: map-inspector / inline-size;
+}
 
 .fleet-map-inspector__native .fleet-station-popup--planned {
-  .fleet-station-popup__title { font-size: ui.fs(subtitle); }
-  .fleet-station-popup__plan-label { margin-right: 0; }
-  .fleet-fuel-visit__levels { max-width: ui.size(fuel-levels); padding-block: ui.pg(xs); }
+  .fleet-station-popup__title {
+    font-size: ui.fs(subtitle);
+  }
+  .fleet-station-popup__plan-label {
+    margin-right: 0;
+  }
+  .fleet-fuel-visit__levels {
+    max-width: ui.size(fuel-levels);
+    padding-block: ui.pg(xs);
+  }
   .fleet-fuel-visit__dial {
     --hos-dial-size: #{ui.size(fuel-dial)};
     width: ui.size(fuel-dial);
     height: ui.size(fuel-dial);
   }
-  .fleet-fuel-visit__buy { font-size: ui.fs(body); }
+  .fleet-fuel-visit__buy {
+    font-size: ui.fs(body);
+  }
 }
 
 @container map-inspector (width < #{ui.breakpoint(map-fuel-levels)}) {
   .fleet-map-inspector__native .fleet-fuel-visit {
-    &__levels { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    &__gauge { grid-row: 1; }
-    &__label, &__quantity { white-space: normal; text-align: center; }
+    &__levels {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    &__gauge {
+      grid-row: 1;
+    }
+    &__label,
+    &__quantity {
+      white-space: normal;
+      text-align: center;
+    }
     &__action {
       grid-column: 1 / -1;
       grid-row: 2;
@@ -387,7 +700,9 @@
       justify-content: center;
       gap: ui.pg(xs) ui.pg(sm);
     }
-    &__buy { white-space: normal; }
+    &__buy {
+      white-space: normal;
+    }
   }
 }
 
@@ -398,10 +713,23 @@
     row-gap: ui.pg(xs);
     align-items: start;
 
-    > .fleet-station-popup__title { grid-column: 1; grid-row: 1; }
-    > .fleet-station-popup__plan-label { grid-column: 1; grid-row: 2; justify-self: start; }
-    > .fleet-station-popup__address { grid-column: 1; grid-row: 3; }
-    > .fleet-station-popup__copy-status { grid-column: 1; grid-row: 4; }
+    > .fleet-station-popup__title {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    > .fleet-station-popup__plan-label {
+      grid-column: 1;
+      grid-row: 2;
+      justify-self: start;
+    }
+    > .fleet-station-popup__address {
+      grid-column: 1;
+      grid-row: 3;
+    }
+    > .fleet-station-popup__copy-status {
+      grid-column: 1;
+      grid-row: 4;
+    }
     > .fleet-station-popup__prices {
       grid-column: 2;
       grid-row: 1 / span 4;
@@ -410,16 +738,38 @@
       border-block: 0;
       border-inline: 1px solid ui.theme(border-subtle);
       font-size: ui.fs(small);
-      dd { font-size: ui.fs(body); }
-      dt, dd { grid-row: auto; }
-      dt { grid-column: 1; }
-      dd { grid-column: 2; text-align: right; }
-      .fleet-station-popup__price-unit { grid-column: 1 / -1; }
+      dd {
+        font-size: ui.fs(body);
+      }
+      dt,
+      dd {
+        grid-row: auto;
+      }
+      dt {
+        grid-column: 1;
+      }
+      dd {
+        grid-column: 2;
+        text-align: right;
+      }
+      .fleet-station-popup__price-unit {
+        grid-column: 1 / -1;
+      }
     }
-    > .fleet-station-popup__visits { grid-column: 3; grid-row: 1 / span 4; }
-    > .fleet-station-popup__actions { grid-column: 1 / -1; grid-row: 5; }
+    > .fleet-station-popup__visits {
+      grid-column: 3;
+      grid-row: 1 / span 4;
+    }
+    > .fleet-station-popup__actions {
+      grid-column: 1 / -1;
+      grid-row: 5;
+    }
     &:has(> .fleet-station-popup__comparison:not([hidden])) {
-      > .fleet-station-popup__comparison { grid-column: 2; grid-row: 1 / span 4; margin-top: 0; }
+      > .fleet-station-popup__comparison {
+        grid-column: 2;
+        grid-row: 1 / span 4;
+        margin-top: 0;
+      }
     }
   }
 }

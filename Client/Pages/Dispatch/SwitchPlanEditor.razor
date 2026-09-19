@@ -1,0 +1,165 @@
+<div class="dispatch-switch__editor">
+    <h3>Switch</h3>
+    @if (_snapshot is null)
+    {
+        <fieldset disabled="@_busy">
+            <legend class="visually-hidden">Transfer plan</legend>
+            <label for="@(Id + "-completed")">
+                <input id="@(Id + "-completed")" type="checkbox"
+                       @bind="_completed" />
+                This transfer already happened
+            </label>
+            @if (_completed)
+            {
+                <p class="dispatch-switch__hint">
+                    Confirm both Drop and Hook for every selected load.
+                    Exact event times remain unknown, not estimated.
+                </p>
+            }
+            <div class="dispatch-switch__actions">
+                @if (_second is null)
+                {
+                    <label for="@(Id + "-search")">
+                        Other load number (optional)
+                        <input id="@(Id + "-search")" type="text"
+                               inputmode="numeric" maxlength="10"
+                               placeholder="1377" @bind="_search" />
+                    </label>
+                    <button class="btn" type="button"
+                            @onclick="SearchAsync">Find load</button>
+                }
+                else
+                {
+                    <button class="btn" type="button"
+                            @onclick="() => SelectSecondAsync(null)">
+                        Remove second load
+                    </button>
+                }
+                @foreach (var match in _matches)
+                {
+                    <button class="btn" type="button"
+                            @onclick="() => SelectSecondAsync(match.Id)">
+                        Add <LoadNumber Value="match.LoadNumber" />
+                        · @match.TruckNumber · @match.DriverName
+                    </button>
+                }
+            </div>
+            <div class="dispatch-switch__fields">
+                <label for="@(Id + "-site-visit")">
+                    Exact transfer location
+                    <select id="@(Id + "-site-visit")" @bind="_siteVisit"
+                            @bind:after="SelectSite">
+                        <option value="">Choose an existing visit's location
+                        </option>
+                        @foreach (var site in Sites)
+                        {
+                            <option value="@site.Id">
+                                #@site.Sequence · @site.Name @site.Address
+                            </option>
+                        }
+                    </select>
+                </label>
+                <label for="@(Id + "-site")">
+                    Site name / address
+                    <input id="@(Id + "-site")" type="text" maxlength="500"
+                           @bind="_site" />
+                </label>
+            </div>
+            <p class="dispatch-switch__hint">
+                The selected visit supplies the exact map location. Visits
+                without coordinates cannot be used as a transfer site yet.
+            </p>
+            @foreach (var load in _loads)
+            {
+                <SwitchLoadFields @key="load.Source.DispatchId"
+                                  Draft="load" Workspace="_workspace"
+                                  Completed="_completed" />
+            }
+        </fieldset>
+    }
+    else
+    {
+        <p><strong>@_snapshot.SiteName</strong></p>
+        <p class="dispatch-switch__hint">
+            @(_snapshot.ConfirmCompleted
+                ? "Confirm all displayed transfers as already completed. "
+                    + "Exact event times will not be invented."
+                : "Plan only. Each actual Drop / Hook needs confirmation.")
+        </p>
+        @foreach (var load in _preview!.Loads)
+        {
+            var request = _snapshot.Loads.First(x =>
+                x.DispatchId == load.DispatchId);
+            <section class="dispatch-switch__participant">
+                <h4>Load <LoadNumber Value="@LoadNumber(load.DispatchId)" /></h4>
+                <p class="dispatch-switch__hint">
+                    Planned release: @PlannedTime(request.PlannedReleaseAt)
+                    · Planned receipt: @PlannedTime(request.PlannedReceiveAt)
+                    · Your local time
+                </p>
+                <div class="dispatch-switch__comparison">
+                    <div>
+                        <strong>Before</strong>
+                        <p>@Assignment(load.Outgoing)</p>
+                        <ol>
+                            @foreach (var visit in load.Before)
+                            {
+                                <li>@visit.Job · @visit.Name @visit.Address</li>
+                            }
+                        </ol>
+                    </div>
+                    <div>
+                        <strong>After</strong>
+                        <p>@Assignment(load.Incoming)</p>
+                        <ol>
+                            @foreach (var visit in load.After)
+                            {
+                                <li>@visit.Job · @visit.Name @visit.Address</li>
+                            }
+                        </ol>
+                    </div>
+                </div>
+            </section>
+        }
+    }
+    @if (_preview is { CanPlan: false })
+    {
+        <ul class="dispatch-switch__error" role="alert">
+            @foreach (var problem in _preview.Problems)
+            {
+                <li>@problem</li>
+            }
+        </ul>
+    }
+    @if (_error is not null)
+    {
+        <p class="dispatch-switch__error" role="alert">@_error</p>
+    }
+    @if (_uncertain)
+    {
+        <p class="dispatch-switch__hint">
+            The save result is unknown. Retry sends the same plan and key.
+            Check saved switches before cancelling and starting another plan.
+        </p>
+    }
+    <div class="dispatch-switch__actions">
+        @if (_snapshot is null)
+        {
+            <button class="btn btn--primary" type="button" disabled="@_busy"
+                    @onclick="PreviewAsync">Preview Switch</button>
+        }
+        else
+        {
+            <button class="btn btn--primary" type="button" disabled="@_busy"
+                    @onclick="SaveAsync">
+                @(_busy ? "Saving…" : _uncertain ? "Retry same plan"
+                    : _snapshot.ConfirmCompleted
+                        ? "Confirm completed Switch" : "Plan Switch")
+            </button>
+            <button class="btn" type="button" disabled="@(_busy || _uncertain)"
+                    @onclick="EditAgain">Back to edit</button>
+        }
+        <button class="btn" type="button" disabled="@_busy"
+                @onclick="CancelAsync">Cancel draft</button>
+    </div>
+</div>

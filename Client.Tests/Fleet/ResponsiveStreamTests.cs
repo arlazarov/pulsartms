@@ -12,7 +12,10 @@ public class ResponsiveStreamTests
   [Fact]
   public async Task LargeJsonRoundTripsThroughYieldingStreams()
   {
-    var expected = Enumerable.Range(0, 20000).Select(i => $"Stop {i} · Montréal 🚚").ToArray();
+    var expected = Enumerable
+      .Range(0, 20000)
+      .Select(i => $"Stop {i} · Montréal 🚚")
+      .ToArray();
     var writeClock = new ScheduledDelayClock();
     using var output = new ResponsiveWriteStream(writeClock);
     var writing = JsonSerializer.SerializeAsync(output, expected);
@@ -34,12 +37,15 @@ public class ResponsiveStreamTests
   [Theory]
   [InlineData(false)]
   [InlineData(true)]
-  public async Task BothOverloadsYieldBeforeReadingOrWritingAlreadyBufferedData(bool arrayOverload)
+  public async Task BothOverloadsYieldBeforeReadingOrWritingAlreadyBufferedData(
+    bool arrayOverload
+  )
   {
     var clock = new FakeTimeProvider();
     var bytes = new byte[] { 1, 2, 3 };
     using var output = new ResponsiveWriteStream(clock);
-    var writing = arrayOverload ? output.WriteAsync(bytes, 0, bytes.Length)
+    var writing = arrayOverload
+      ? output.WriteAsync(bytes, 0, bytes.Length)
       : output.WriteAsync(bytes.AsMemory()).AsTask();
     Assert.False(writing.IsCompleted);
     Assert.Equal(0, output.Length);
@@ -48,7 +54,8 @@ public class ResponsiveStreamTests
     output.Position = 0;
     using var input = new ResponsiveReadStream(output, clock);
     var buffer = new byte[bytes.Length];
-    var reading = arrayOverload ? input.ReadAsync(buffer, 0, buffer.Length)
+    var reading = arrayOverload
+      ? input.ReadAsync(buffer, 0, buffer.Length)
       : input.ReadAsync(buffer.AsMemory()).AsTask();
     Assert.False(reading.IsCompleted);
     Assert.Equal(0, output.Position);
@@ -65,7 +72,10 @@ public class ResponsiveStreamTests
     using var stream = new ResponsiveReadStream(source);
     var buffer = new byte[40000];
     Assert.Equal(16384, await stream.ReadAsync(buffer.AsMemory()));
-    Assert.Equal(16384, await stream.ReadAsync(buffer, 0, buffer.Length, default));
+    Assert.Equal(
+      16384,
+      await stream.ReadAsync(buffer, 0, buffer.Length, default)
+    );
     Assert.Equal(7232, await stream.ReadAsync(buffer.AsMemory()));
     Assert.Equal(0, await stream.ReadAsync(buffer.AsMemory()));
   }
@@ -78,8 +88,12 @@ public class ResponsiveStreamTests
     using var source = new MemoryStream(new byte[100]);
     using var input = new ResponsiveReadStream(source, clock);
     using var output = new ResponsiveWriteStream(clock);
-    var reading = input.ReadAsync(new byte[100].AsMemory(), cancellation.Token).AsTask();
-    var writing = output.WriteAsync(new byte[100].AsMemory(), cancellation.Token).AsTask();
+    var reading = input
+      .ReadAsync(new byte[100].AsMemory(), cancellation.Token)
+      .AsTask();
+    var writing = output
+      .WriteAsync(new byte[100].AsMemory(), cancellation.Token)
+      .AsTask();
     Assert.False(reading.IsCompleted);
     Assert.False(writing.IsCompleted);
 
@@ -99,10 +113,14 @@ public class ResponsiveStreamTests
     using var source = new MemoryStream(new byte[100]);
     using var input = new ResponsiveReadStream(source);
     using var output = new ResponsiveWriteStream();
-    await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-      _ = await input.ReadAsync(new byte[100].AsMemory(), cancellation.Token));
-    await Assert.ThrowsAnyAsync<OperationCanceledException>(async () =>
-      await output.WriteAsync(new byte[100].AsMemory(), cancellation.Token));
+    await Assert.ThrowsAnyAsync<OperationCanceledException>(
+      async () =>
+        _ = await input.ReadAsync(new byte[100].AsMemory(), cancellation.Token)
+    );
+    await Assert.ThrowsAnyAsync<OperationCanceledException>(
+      async () =>
+        await output.WriteAsync(new byte[100].AsMemory(), cancellation.Token)
+    );
     Assert.Equal(0, source.Position);
     Assert.Equal(0, output.Length);
   }

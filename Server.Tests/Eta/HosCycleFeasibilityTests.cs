@@ -7,7 +7,15 @@ namespace Server.Tests.Eta;
 [Trait("Kind", "Unit")]
 public sealed class HosCycleFeasibilityTests
 {
-  private static readonly DateTimeOffset Now = new(2026, 9, 8, 23, 0, 0, TimeSpan.Zero);
+  private static readonly DateTimeOffset Now = new(
+    2026,
+    9,
+    8,
+    23,
+    0,
+    0,
+    TimeSpan.Zero
+  );
 
   [Fact]
   public void HistoricalRestartEndingAtTheAnchorDoesNotOverrideCurrentEldHours()
@@ -15,7 +23,7 @@ public sealed class HosCycleFeasibilityTests
     var history = HosForecastFixture.History(Now) with
     {
       From = Now.AddDays(-16),
-      Periods = [new(Now.AddDays(-16), Now, "offDuty")]
+      Periods = [new(Now.AddDays(-16), Now, "offDuty")],
     };
     var clocks = HosForecastFixture.Clocks(Now, history);
     clocks.CycleMs -= 10 * 60_000;
@@ -26,14 +34,28 @@ public sealed class HosCycleFeasibilityTests
     Assert.Equal(4190, ledger.BalanceMinutes(Now));
     ledger.Observe(Now, Now.AddHours(1), "onDuty");
     Assert.Equal(4130, ledger.BalanceMinutes(Now.AddHours(1)));
-    Assert.Equal(4200, ledger.BalanceMinutes(new DateTimeOffset(Now.Date.AddDays(8), TimeSpan.Zero)));
+    Assert.Equal(
+      4200,
+      ledger.BalanceMinutes(
+        new DateTimeOffset(Now.Date.AddDays(8), TimeSpan.Zero)
+      )
+    );
   }
 
   [Fact]
   public void RecapBeforeDepletionDoesNotCreateDrivingShortage()
   {
-    var history = HosForecastFixture.History(Now, cycleHours: 1, firstDayHours: 185d / 60);
-    var ledger = new HosCycleFeasibility(Now, HosForecastFixture.Clocks(Now, history), "US", history);
+    var history = HosForecastFixture.History(
+      Now,
+      cycleHours: 1,
+      firstDayHours: 185d / 60
+    );
+    var ledger = new HosCycleFeasibility(
+      Now,
+      HosForecastFixture.Clocks(Now, history),
+      "US",
+      history
+    );
     ledger.Observe(Now, Now.AddHours(2), "driving");
     Assert.True(ledger.Verified);
     Assert.Equal(125, ledger.BalanceMinutes(Now.AddHours(2)));
@@ -44,8 +66,17 @@ public sealed class HosCycleFeasibilityTests
   [Fact]
   public void LaterPositiveRecapDoesNotEraseEarlierBlockedDriving()
   {
-    var history = HosForecastFixture.History(Now, cycleHours: .5, firstDayHours: 185d / 60);
-    var ledger = new HosCycleFeasibility(Now, HosForecastFixture.Clocks(Now, history), "US", history);
+    var history = HosForecastFixture.History(
+      Now,
+      cycleHours: .5,
+      firstDayHours: 185d / 60
+    );
+    var ledger = new HosCycleFeasibility(
+      Now,
+      HosForecastFixture.Clocks(Now, history),
+      "US",
+      history
+    );
     ledger.Observe(Now, Now.AddHours(2), "driving");
     Assert.Equal(95, ledger.BalanceMinutes(Now.AddHours(2)));
     Assert.Equal(30, ledger.DrivingShortfallMinutes);
@@ -56,7 +87,12 @@ public sealed class HosCycleFeasibilityTests
   public void NonDrivingWorkMayBeNegativeWithoutInventingEarlierDrivingViolation()
   {
     var history = HosForecastFixture.History(Now, cycleHours: 1);
-    var ledger = new HosCycleFeasibility(Now, HosForecastFixture.Clocks(Now, history), "US", history);
+    var ledger = new HosCycleFeasibility(
+      Now,
+      HosForecastFixture.Clocks(Now, history),
+      "US",
+      history
+    );
     ledger.Observe(Now, Now.AddHours(2), "onDuty");
     Assert.Equal(-60, ledger.BalanceMinutes(Now.AddHours(2)));
     Assert.Equal(0, ledger.DrivingShortfallMinutes);
@@ -71,8 +107,14 @@ public sealed class HosCycleFeasibilityTests
   {
     var now = new DateTimeOffset(Now.Date.AddHours(13), TimeSpan.Zero);
     var history = HosForecastFixture.History(now, firstDayHours: 10);
-    var clock = new HosTravelClock(now, HosForecastFixture.Clocks(now, history, shift: 13), "US", history,
-      planning: new(), cycleMode: HosCycleMode.Recap);
+    var clock = new HosTravelClock(
+      now,
+      HosForecastFixture.Clocks(now, history, shift: 13),
+      "US",
+      history,
+      planning: new(),
+      cycleMode: HosCycleMode.Recap
+    );
     clock.Drive(3, "US");
     Assert.Equal(now.AddHours(14).AddMinutes(20), clock.Now);
     Assert.Equal(11, clock.RestHours);
@@ -83,25 +125,42 @@ public sealed class HosCycleFeasibilityTests
   [Fact]
   public void RecapScenarioSkipsAnEmptyBoundaryWithoutAssumingRestart()
   {
-    var clock = HosForecastFixture.Clock(Now, HosCycleMode.Recap, planning: new());
+    var clock = HosForecastFixture.Clock(
+      Now,
+      HosCycleMode.Recap,
+      planning: new()
+    );
     clock.Drive(1, "US");
     Assert.Equal(Now.AddHours(26).AddMinutes(20), clock.Now);
     Assert.Equal(25, clock.RestHours);
     Assert.Equal(Now.AddHours(25), clock.CycleResumeAt);
     Assert.Null(clock.CycleFeasibility.FirstShortageAt);
-    Assert.InRange(clock.CycleFeasibility.BalanceMinutes(clock.Now)!.Value, 519, 520);
+    Assert.InRange(
+      clock.CycleFeasibility.BalanceMinutes(clock.Now)!.Value,
+      519,
+      520
+    );
   }
 
   [Fact]
   public void ExplicitRestartCreditsExistingRestOnce()
   {
-    var clock = HosForecastFixture.Clock(Now, HosCycleMode.Restart, ongoingRestHours: 8, planning: new());
+    var clock = HosForecastFixture.Clock(
+      Now,
+      HosCycleMode.Restart,
+      ongoingRestHours: 8,
+      planning: new()
+    );
     clock.Drive(1, "US");
     Assert.Equal(Now.AddHours(27).AddMinutes(20), clock.Now);
     Assert.Equal(26, clock.RestHours);
     Assert.Equal(Now.AddHours(-8), clock.CycleRestStartedAt);
     Assert.Equal(Now.AddHours(26), clock.CycleResumeAt);
-    Assert.InRange(clock.CycleFeasibility.BalanceMinutes(clock.Now)!.Value, 4119, 4120);
+    Assert.InRange(
+      clock.CycleFeasibility.BalanceMinutes(clock.Now)!.Value,
+      4119,
+      4120
+    );
   }
 
   [Fact]

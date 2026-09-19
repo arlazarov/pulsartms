@@ -14,7 +14,10 @@ internal static class FuelPriceCalculator
     foreach (var rate in iftaRates)
     {
       rates.TryAdd(
-        (rate.Jurisdiction.ToUpperInvariant(), rate.Currency.ToUpperInvariant()),
+        (
+          rate.Jurisdiction.ToUpperInvariant(),
+          rate.Currency.ToUpperInvariant()
+        ),
         rate
       );
     }
@@ -29,7 +32,10 @@ internal static class FuelPriceCalculator
             .. station.Discounts.Select(discount =>
             {
               var hasIftaRate = rates.TryGetValue(
-                (station.Region.ToUpperInvariant(), discount.Currency.ToUpperInvariant()),
+                (
+                  station.Region.ToUpperInvariant(),
+                  discount.Currency.ToUpperInvariant()
+                ),
                 out var iftaRate
               );
 
@@ -39,23 +45,38 @@ internal static class FuelPriceCalculator
                 "USD" => "US gal",
                 _ => "",
               };
-              var sourceVolume = hasIftaRate ? LitresPerUnit(iftaRate!.Unit) : null;
+              var sourceVolume = hasIftaRate
+                ? LitresPerUnit(iftaRate!.Unit)
+                : null;
               var targetVolume = LitresPerUnit(unit);
-              var product = string.IsNullOrWhiteSpace(discount.Product) ? "Diesel" : discount.Product;
-              // Oregon weight-mile diesel has no per-gallon IFTA deduction; unknown rates elsewhere stay unknown.
-              var oregonDiesel = !hasIftaRate
-                && station.Region.Trim().Equals("OR", StringComparison.OrdinalIgnoreCase)
-                && discount.Currency.Trim().Equals("USD", StringComparison.OrdinalIgnoreCase)
-                && product.Trim().Equals("Diesel", StringComparison.OrdinalIgnoreCase);
+              var product = string.IsNullOrWhiteSpace(discount.Product)
+                ? "Diesel"
+                : discount.Product;
+              // Oregon weight-mile diesel has no per-gallon IFTA deduction;
+              // unknown rates elsewhere stay unknown.
+              var oregonDiesel =
+                !hasIftaRate
+                && station
+                  .Region.Trim()
+                  .Equals("OR", StringComparison.OrdinalIgnoreCase)
+                && discount
+                  .Currency.Trim()
+                  .Equals("USD", StringComparison.OrdinalIgnoreCase)
+                && product
+                  .Trim()
+                  .Equals("Diesel", StringComparison.OrdinalIgnoreCase);
 
               return discount with
               {
                 Product = product,
                 Savings = discount.RetailPrice - discount.DiscountPrice,
                 Unit = unit,
-                PriceAfterIfta = sourceVolume.HasValue && targetVolume.HasValue
-                  ? discount.DiscountPrice - iftaRate!.Rate * targetVolume.Value / sourceVolume.Value
-                  : oregonDiesel ? discount.DiscountPrice : null,
+                PriceAfterIfta =
+                  sourceVolume.HasValue && targetVolume.HasValue
+                    ? discount.DiscountPrice
+                      - iftaRate!.Rate * targetVolume.Value / sourceVolume.Value
+                  : oregonDiesel ? discount.DiscountPrice
+                  : null,
               };
             }),
           ],
@@ -63,10 +84,18 @@ internal static class FuelPriceCalculator
       ),
     ];
   }
-  private static decimal? LitresPerUnit(string unit) => unit.Trim().ToUpperInvariant() switch
-  {
-    "L" or "LITER" or "LITERS" or "LITRE" or "LITRES" => 1m,
-    "G" or "GAL" or "GALLON" or "GALLONS" or "US GAL" or "US GALLON" or "US GALLONS" => 3.785411784m,
-    _ => null,
-  };
+
+  private static decimal? LitresPerUnit(string unit) =>
+    unit.Trim().ToUpperInvariant() switch
+    {
+      "L" or "LITER" or "LITERS" or "LITRE" or "LITRES" => 1m,
+      "G"
+      or "GAL"
+      or "GALLON"
+      or "GALLONS"
+      or "US GAL"
+      or "US GALLON"
+      or "US GALLONS" => 3.785411784m,
+      _ => null,
+    };
 }

@@ -1,6 +1,6 @@
 # Load number display
 
-Settings has an independent **Load numbers** card. Admins can save a fleet-wide
+Settings has an independent **Load numbering** card. Admins can save a fleet-wide
 prefix of at most 16 characters. Surrounding whitespace is trimmed; empty is a
 valid choice and does not become `AMF` or `#`. Control characters and null write
 values are rejected. The initial default is `AMF` only when no settings row exists.
@@ -13,8 +13,8 @@ locale-dependent grouping; the Client never invents a prefix while settings are
 unavailable.
 
 `GET /api/settings/dispatch` is available to authenticated users. Admin-only `PUT`
-accepts `{ loadNumberPrefix, revision }`; both use the standard response wrapper
-with `{ loadNumberPrefix, revision, updatedAt }`. Optimistic concurrency rejects
+accepts `{ loadNumberPrefix, revision, temperatureUnit, distanceUnit }`; both use the standard response wrapper
+with `{ loadNumberPrefix, revision, updatedAt, temperatureUnit, distanceUnit }`. Optimistic concurrency rejects
 stale or competing saves with HTTP 409. The UI retains the draft on failure and
 requires an explicit reload to adopt another session's changes.
 
@@ -30,3 +30,22 @@ revision before editing. Successful saves update the current layout immediately;
 late reads cannot overwrite a newer revision. Other open browser sessions read a
 new value when their layout is recreated or the page is reloaded. Map updates send
 only the formatted load reference, preserving route geometry and truck selection.
+
+Temperature accepts `fahrenheit`, `celsius` or `both`; distance accepts `miles`,
+`kilometers` or `both`. These now belong to each account under Personal settings
+in the account menu beside Logout. The authenticated appearance endpoint stores
+them on Users; omitted unit fields preserve the caller's saved choices. New
+accounts default to Both. `20260913142839_AddUserDisplayUnits` seeds existing
+accounts from the former shared preferences without changing route/fuel data.
+The old DispatchSettings columns and API fields remain for compatibility, but
+company forms no longer edit units and the Client does not use those fields.
+
+The Client converts normalized Celsius and saved miles only while formatting.
+Fleet inspectors, Dispatch distances, load details, route choices and station/stop
+distance labels share those preferences. Dual Remaining stays in three rows:
+label, miles, kilometers. Single-unit mode omits the secondary row. Outside shows
+Fahrenheit first when both are selected. Missing sensor values remain unavailable.
+Speed stays in mph; MPG, rate per mile and provider quote units keep their labeled
+bases. No financial formula or planning input is converted. The JavaScript map owns
+its formatter per mount; changing units refreshes open stop/fuel text without
+rebuilding roads, changing selection, fetching providers or recalculating purchases.

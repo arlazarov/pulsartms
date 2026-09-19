@@ -1,13 +1,43 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 
 namespace Domain.Entities.Dispatch;
 
-public class DispatchStop : BaseEntity
+public class DispatchStop : BaseEntity, ITruckPathStop, IWorkStopFacts
 {
+  [NotMapped]
+  public bool HasDriverOverride { get; set; }
+
   public Guid DispatchId { get; set; }
   public Dispatch Dispatch { get; set; } = null!;
   public int Sequence { get; set; }
   public string Job { get; set; } = string.Empty;
+  public string? ManualAction { get; set; }
+  public string? ManualStateAfter { get; set; }
+  public long OperationRevision { get; set; }
+  public DateTime? OperationRecordedAt { get; set; }
+  public Guid? OperationRecordedBy { get; set; }
+
+  [NotMapped]
+  public string StateAfter { get; set; } = "Unknown";
+
+  [NotMapped]
+  public bool AwaitingHandoff { get; set; }
+
+  [NotMapped]
+  public bool ExecutionCompleted { get; set; }
+
+  public DispatchStop WithOperation(string job, string state)
+  {
+    if (Job == job && StateAfter == state)
+      return this;
+    var copy = (DispatchStop)MemberwiseClone();
+    copy.Job = job;
+    copy.StateAfter = state;
+    return copy;
+  }
+
   public string Name { get; set; } = string.Empty;
   public string Address { get; set; } = string.Empty;
   public string City { get; set; } = string.Empty;
@@ -46,8 +76,26 @@ public class DispatchStop : BaseEntity
   public DateOnly? ScheduledDate2 { get; set; }
   public TimeOnly? ScheduledTime2 { get; set; }
   public bool IsWindow { get; set; }
+  public string AppointmentTimeZoneId { get; set; } = "";
   public DateTime? ArrivedAt { get; set; }
   public DateTime? PickedUpAt { get; set; }
   public DateTime? DeliveredAt { get; set; }
   public DateTime? DepartedAt { get; set; }
+  public DateTime? ManualCompletedAt { get; set; }
+  public bool? CompletionOverride { get; set; }
+  public Guid? ManualCompletedBy { get; set; }
+  public string? ManualCompletedByName { get; set; }
+  public DateTime? ManualCompletionRecordedAt { get; set; }
+  public long ManualCompletionRevision { get; set; }
+
+  bool IWorkStopFacts.DriverOnly => StateAfter == "No truck";
+
+  [NotMapped]
+  public bool IsCompleted =>
+    StopCompletion.IsCompleted(
+      AwaitingHandoff,
+      CompletionOverride,
+      ExecutionCompleted,
+      (DepartedAt ?? DeliveredAt ?? PickedUpAt ?? ManualCompletedAt).HasValue
+    );
 }

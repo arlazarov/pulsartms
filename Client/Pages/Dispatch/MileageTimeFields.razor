@@ -1,0 +1,12 @@
+<div class="dispatch-mileage__fields">
+    <label for="@(Id + "-date")">
+        @Label date
+        <input id="@(Id + "-date")" type="date" @bind="Draft.Date"
+               disabled="@Disabled" />
+    </label>
+    <label for="@(Id + "-time")">
+        @Label time
+        <input id="@(Id + "-time")" type="text" @bind="Draft.Time"
+               placeholder="02:00 PM" disabled="@Disabled" />
+    </label>
+</div>

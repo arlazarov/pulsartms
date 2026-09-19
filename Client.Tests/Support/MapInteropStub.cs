@@ -9,10 +9,16 @@ internal sealed class MapInteropStub : IJSRuntime, IJSObjectReference
   public Func<string, object?[]?, Task<object?>>? Respond { get; set; }
   public int DisposeCount { get; private set; }
 
-  public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args) =>
-    InvokeAsync<TValue>(identifier, default, args);
+  public ValueTask<TValue> InvokeAsync<TValue>(
+    string identifier,
+    object?[]? args
+  ) => InvokeAsync<TValue>(identifier, default, args);
 
-  public async ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+  public async ValueTask<TValue> InvokeAsync<TValue>(
+    string identifier,
+    CancellationToken cancellationToken,
+    object?[]? args
+  )
   {
     cancellationToken.ThrowIfCancellationRequested();
     Calls.Enqueue((identifier, args));
@@ -20,5 +26,9 @@ internal sealed class MapInteropStub : IJSRuntime, IJSObjectReference
     return result is null ? default! : (TValue)result;
   }
 
-  public ValueTask DisposeAsync() { DisposeCount++; return ValueTask.CompletedTask; }
+  public ValueTask DisposeAsync()
+  {
+    DisposeCount++;
+    return ValueTask.CompletedTask;
+  }
 }

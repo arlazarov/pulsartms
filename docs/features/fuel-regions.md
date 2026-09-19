@@ -21,6 +21,22 @@ Changes to assignment, profile or stops invalidate reuse; ordinary movement does
 not change a fixed delivery-to-pickup connection. The final assignment signature
 is checked again before storing recommendations.
 
+Calculation and edit inputs now come from a fresh complete truck itinerary.
+Horizon assembly and terminal access share its captured visits and assignment
+facts. Screen paging/filtering cannot change fuel scope. Saved-plan display and
+automatic-refresh eligibility use the same input owner with bounded display
+caching; publication always rereads fresh facts. See the
+[core consumer boundary](../architecture/core-rebuild.md#fuel-consumer-boundary)
+for remaining history, compatibility and concurrency limits.
+
+The horizon retains immutable versions of every consumed saved base, fallback
+plan and connecting road. Arrival policy retains any onward connection it
+consults, even when no eligible exit prices exist and reserve-only policy is
+selected. The current road's version travels with its loaded geometry. All
+versions are rechecked inside publication before the profile and both fuel
+copies are written. A late road change preserves the previous result. These
+tokens are calculation inputs, not new persisted automatic-refresh evidence.
+
 ## Route and purchase safety
 
 Variants keep identical mandatory endpoints and ordered stop boundaries.

@@ -13,10 +13,14 @@ public sealed class FleetTelemetryCache(IMemoryCache cache) : IDisposable
 
   public async Task<FleetLocationsResponse> GetAsync(
     Func<CancellationToken, Task<FleetLocationsResponse>> load,
-    CancellationToken cancellationToken)
+    CancellationToken cancellationToken
+  )
   {
     cancellationToken.ThrowIfCancellationRequested();
-    if (cache.TryGetValue(CacheKey, out FleetLocationsResponse? value) && value is not null)
+    if (
+      cache.TryGetValue(CacheKey, out FleetLocationsResponse? value)
+      && value is not null
+    )
       return value;
     await gate.WaitAsync(cancellationToken);
     try
@@ -28,7 +32,10 @@ public sealed class FleetTelemetryCache(IMemoryCache cache) : IDisposable
       cache.Set(CacheKey, value, TimeSpan.FromSeconds(10));
       return value;
     }
-    finally { gate.Release(); }
+    finally
+    {
+      gate.Release();
+    }
   }
 
   public void Dispose() => gate.Dispose();

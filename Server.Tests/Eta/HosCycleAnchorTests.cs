@@ -9,14 +9,25 @@ namespace Server.Tests.Eta;
 [Trait("Kind", "Unit")]
 public sealed class HosCycleAnchorTests
 {
-  private static readonly DateTimeOffset Now = new(2026, 9, 8, 23, 0, 0, TimeSpan.Zero);
+  private static readonly DateTimeOffset Now = new(
+    2026,
+    9,
+    8,
+    23,
+    0,
+    0,
+    TimeSpan.Zero
+  );
 
   [Fact]
   public void ExactEldSecondsArePreservedWhenHistoryDiffersByThirtyThreeMinutes()
   {
     const long historySeconds = 49 * 3600 + 29 * 60 + 32;
     const long eldSeconds = 50 * 3600 + 2 * 60 + 38;
-    var history = HosForecastFixture.History(Now, cycleHours: historySeconds / 3600d);
+    var history = HosForecastFixture.History(
+      Now,
+      cycleHours: historySeconds / 3600d
+    );
     var clocks = HosForecastFixture.Clocks(Now, history);
     Assert.Equal(historySeconds * 1000, clocks.CycleMs);
     clocks.CycleMs = eldSeconds * 1000;
@@ -48,8 +59,17 @@ public sealed class HosCycleAnchorTests
   [Fact]
   public void ExplicitRestartRestoresAvailableHoursWithoutErasingAnEarlierDrivingShortage()
   {
-    var history = HosForecastFixture.History(Now, cycleHours: 1, firstDayHours: 3);
-    var ledger = new HosCycleFeasibility(Now, OffsetClocks(history, -33), "US", history);
+    var history = HosForecastFixture.History(
+      Now,
+      cycleHours: 1,
+      firstDayHours: 3
+    );
+    var ledger = new HosCycleFeasibility(
+      Now,
+      OffsetClocks(history, -33),
+      "US",
+      history
+    );
     ledger.Observe(Now, Now.AddHours(1), "driving");
     Assert.Equal(Now.AddMinutes(27), ledger.FirstShortageAt);
     Assert.Equal(33, ledger.DrivingShortfallMinutes);
@@ -61,7 +81,12 @@ public sealed class HosCycleAnchorTests
     Assert.True(ledger.Verified);
     Assert.True(ledger.RecapVerified);
     Assert.Equal(70 * 60, ledger.BalanceMinutes(restart));
-    Assert.Equal(70 * 60, Assert.IsType<StopCycleForecast>(ledger.Snapshot(restart)).RemainingMinutes);
+    Assert.Equal(
+      70 * 60,
+      Assert
+        .IsType<StopCycleForecast>(ledger.Snapshot(restart))
+        .RemainingMinutes
+    );
     Assert.Equal(Now.AddMinutes(27), ledger.FirstShortageAt);
     Assert.Equal(33, ledger.DrivingShortfallMinutes);
   }
@@ -69,13 +94,19 @@ public sealed class HosCycleAnchorTests
   [Theory]
   [InlineData(-33)]
   [InlineData(33)]
-  public void CurrentEldAnchorsTheExactBalanceDespiteHistoryMismatch(int offsetMinutes)
+  public void CurrentEldAnchorsTheExactBalanceDespiteHistoryMismatch(
+    int offsetMinutes
+  )
   {
     var (ledger, _) = Ledger(offsetMinutes);
 
     Assert.True(ledger.Verified);
     Assert.False(ledger.RecapVerified);
-    Assert.Equal((600 + offsetMinutes) / 60d, ledger.BalanceHours(Now)!.Value, 9);
+    Assert.Equal(
+      (600 + offsetMinutes) / 60d,
+      ledger.BalanceHours(Now)!.Value,
+      9
+    );
     Assert.Equal(600 + offsetMinutes, ledger.BalanceMinutes(Now));
     AssertUnknownRecap(ledger, Now, 600 + offsetMinutes);
     Assert.Null(ledger.NextUsableRecap(Now));
@@ -90,7 +121,10 @@ public sealed class HosCycleAnchorTests
   [InlineData("offDuty", 0)]
   [InlineData("sleeperBerth", 0)]
   [InlineData("personalConveyance", 0)]
-  public void FutureDutyDebitsTheAnchorWithoutUnverifiedMidnightCredits(string status, int debitMinutes)
+  public void FutureDutyDebitsTheAnchorWithoutUnverifiedMidnightCredits(
+    string status,
+    int debitMinutes
+  )
   {
     var (ledger, _) = Ledger(33);
     var end = Now.AddHours(2);
@@ -107,7 +141,11 @@ public sealed class HosCycleAnchorTests
   [Fact]
   public void SignedShortageUsesTheEldAnchorAndSurvivesLaterRest()
   {
-    var history = HosForecastFixture.History(Now, cycleHours: 1, firstDayHours: 3);
+    var history = HosForecastFixture.History(
+      Now,
+      cycleHours: 1,
+      firstDayHours: 3
+    );
     var clocks = OffsetClocks(history, -33);
     var ledger = new HosCycleFeasibility(Now, clocks, "US", history);
 
@@ -157,10 +195,15 @@ public sealed class HosCycleAnchorTests
     Assert.Null(restarted.NextRecapMinutes);
 
     ledger.Observe(restart, restart.AddHours(1), "onDuty");
-    var worked = Assert.IsType<StopCycleForecast>(ledger.Snapshot(restart.AddHours(1)));
+    var worked = Assert.IsType<StopCycleForecast>(
+      ledger.Snapshot(restart.AddHours(1))
+    );
     Assert.Equal(69 * 60, worked.RemainingMinutes);
     Assert.True(worked.RecapVerified);
-    Assert.Equal(new DateTimeOffset(2026, 9, 18, 0, 0, 0, TimeSpan.Zero), worked.NextRecapAt);
+    Assert.Equal(
+      new DateTimeOffset(2026, 9, 18, 0, 0, 0, TimeSpan.Zero),
+      worked.NextRecapAt
+    );
     Assert.Equal(60, worked.NextRecapMinutes);
   }
 
@@ -171,7 +214,9 @@ public sealed class HosCycleAnchorTests
     var incomplete = Now.AddHours(34).AddMinutes(-1);
     ledger.Observe(Now, incomplete, "sleeperBerth");
 
-    Assert.Throws<InvalidOperationException>(() => ledger.CreditRestart(incomplete));
+    Assert.Throws<InvalidOperationException>(
+      () => ledger.CreditRestart(incomplete)
+    );
 
     Assert.True(ledger.Verified);
     Assert.Equal(633, ledger.BalanceMinutes(incomplete));
@@ -181,7 +226,10 @@ public sealed class HosCycleAnchorTests
   [Theory]
   [InlineData(-10, 770)]
   [InlineData(10, 780)]
-  public void SmallVerifiedOffsetsDoNotDoubleCreditRecapOrOutliveTheirAnchorDay(int offsetMinutes, int firstRecapBalance)
+  public void SmallVerifiedOffsetsDoNotDoubleCreditRecapOrOutliveTheirAnchorDay(
+    int offsetMinutes,
+    int firstRecapBalance
+  )
   {
     var (ledger, _) = Ledger(offsetMinutes);
     Assert.True(ledger.Verified);
@@ -191,11 +239,16 @@ public sealed class HosCycleAnchorTests
     ledger.Observe(Now, Now.AddHours(2), "offDuty");
     Assert.Equal(firstRecapBalance, ledger.BalanceMinutes(Now.AddHours(2)));
     ledger.Observe(Now.AddHours(2), Now.AddHours(3), "onDuty");
-    Assert.Equal(firstRecapBalance - 60, ledger.BalanceMinutes(Now.AddHours(3)));
+    Assert.Equal(
+      firstRecapBalance - 60,
+      ledger.BalanceMinutes(Now.AddHours(3))
+    );
 
     var anchorExpiry = new DateTimeOffset(Now.Date.AddDays(8), TimeSpan.Zero);
     Assert.Equal(69 * 60, ledger.BalanceMinutes(anchorExpiry));
-    var remainingProjectedWork = Assert.IsType<StopCycleForecast>(ledger.Snapshot(anchorExpiry));
+    var remainingProjectedWork = Assert.IsType<StopCycleForecast>(
+      ledger.Snapshot(anchorExpiry)
+    );
     Assert.Equal(69 * 60, remainingProjectedWork.RemainingMinutes);
     Assert.True(remainingProjectedWork.RecapVerified);
     Assert.Equal(anchorExpiry.AddDays(1), remainingProjectedWork.NextRecapAt);
@@ -203,7 +256,9 @@ public sealed class HosCycleAnchorTests
 
     var allWorkExpired = anchorExpiry.AddDays(1);
     Assert.Equal(70 * 60, ledger.BalanceMinutes(allWorkExpired));
-    var full = Assert.IsType<StopCycleForecast>(ledger.Snapshot(allWorkExpired));
+    var full = Assert.IsType<StopCycleForecast>(
+      ledger.Snapshot(allWorkExpired)
+    );
     Assert.Equal(70 * 60, full.RemainingMinutes);
     Assert.Null(full.NextRecapAt);
     Assert.Null(full.NextRecapMinutes);
@@ -221,7 +276,7 @@ public sealed class HosCycleAnchorTests
     {
       "stale" => history with { Through = Now.AddMinutes(-4) },
       "missing-rule" => history with { UsCycle = null },
-      _ => null
+      _ => null,
     };
     var ledger = new HosCycleFeasibility(Now, clocks, "US", supplied);
 
@@ -248,20 +303,36 @@ public sealed class HosCycleAnchorTests
     Assert.Null(ledger.NextUsableRecap(Now));
   }
 
-  private static (HosCycleFeasibility Ledger, HosHistory History) Ledger(int offsetMinutes)
+  private static (HosCycleFeasibility Ledger, HosHistory History) Ledger(
+    int offsetMinutes
+  )
   {
-    var history = HosForecastFixture.History(Now, cycleHours: 10, firstDayHours: 3);
-    return (new(Now, OffsetClocks(history, offsetMinutes), "US", history), history);
+    var history = HosForecastFixture.History(
+      Now,
+      cycleHours: 10,
+      firstDayHours: 3
+    );
+    return (
+      new(Now, OffsetClocks(history, offsetMinutes), "US", history),
+      history
+    );
   }
 
-  private static DriverHosClocks OffsetClocks(HosHistory history, int offsetMinutes)
+  private static DriverHosClocks OffsetClocks(
+    HosHistory history,
+    int offsetMinutes
+  )
   {
     var clocks = HosForecastFixture.Clocks(Now, history);
     clocks.CycleMs += offsetMinutes * 60_000L;
     return clocks;
   }
 
-  private static void AssertUnknownRecap(HosCycleFeasibility ledger, DateTimeOffset at, int remainingMinutes)
+  private static void AssertUnknownRecap(
+    HosCycleFeasibility ledger,
+    DateTimeOffset at,
+    int remainingMinutes
+  )
   {
     var snapshot = Assert.IsType<StopCycleForecast>(ledger.Snapshot(at));
     Assert.Equal(remainingMinutes, snapshot.RemainingMinutes);

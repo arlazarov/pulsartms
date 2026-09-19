@@ -4,6 +4,12 @@ The page coordinates selection, current/next-load identity, polling and renderin
 Its partial files share that component state; they are not separate services.
 Do not move methods between partials merely to reduce a file's line count.
 
+Planning cache reset cancels all HTTP work from its previous session lifetime,
+including forced refreshes no longer present in the coalescing dictionary.
+Per-consumer cancellation still leaves another active consumer's read running.
+Disposal clears bounded snapshots and cancels transports; it does not persist
+geometry or add a background cleanup timer.
+
 | Owner | Responsibility | Lifetime |
 | --- | --- | --- |
 | `FleetMap` | Razor state, truck selection, query parameters, polling and coordination of current/next routes | Component |
@@ -13,16 +19,40 @@ Do not move methods between partials merely to reduce a file's line count.
 | `FleetMap.NextLoadDetails` | Pinned future-load inspection, cancellable detail reads and bounded detail reuse | Component |
 | `FleetMap.Inspector` | One top-panel mode, revisioned native callbacks and current-truck ownership checks | Component |
 | `FleetMap.FuelEditor` | Selected-truck editor identity, station callbacks and saved-plan publication | Component |
-| `FuelPlanEditor` | Ordered draft, cancellable server previews, quantity controls and explicit save/reset | Open editor |
+| `FuelPlanEditor` | Ordered draft, selected-visit server quantity table, cancellable structural previews and explicit save/reset | Open editor |
+| `FleetMap.RouteEditor` | Selected-load editing session, guarded map callbacks and scoped cache invalidation | Component |
+| `RouteEditor` | Alternative selection, via inputs, cancellable server previews and explicit save | Open editor |
 | `MapRoutePublisher` | Version-aware current-route serialization and JS acknowledgement | Component |
 | `FleetRouteDisplayMemory` | Same-route ETA and displayed-progress retention during recalculation | Component |
 | `PlanningDisplayCache` | Saved planning snapshots and HTTP revision protocol | Existing Client service lifetime |
 | `ArrivalDisplayMemory` | Bounded display-only ETA retention for the same stop | Component |
+| `PageVisibility` | Browser visibility subscription and wake signal for coordinated polling | Component |
 
 Session startup is shared while in flight. An explicit retry after failure may
 create a replacement map; a failed dynamic import has one cache-busting retry.
 Disposal waits for in-flight resource acquisition, releases the map and module,
 and disposes its callback reference. It never starts API polling or chooses loads.
+
+The provider host retains one map across page navigation, while each mount owns
+and disposes its GPU scene. Scene layers stay filtered until Deck has loaded and
+the provider has supplied a current camera frame. On vector maps, a transient
+empty `WebGLOverlayView` requests that frame through `requestRedraw`; it detaches
+after drawing or when the scene is disposed. Deferred callbacks cannot revive a
+disposed scene. This handshake does not pan, zoom, refit, allocate another canvas
+or start polling. The provider adapter remains the sole camera-transform owner;
+production code does not access its private Deck or native-overlay fields.
+
+The truck layer captures the camera viewport's free-region screen offset when
+Follow starts. Playback applies that captured offset to each displayed position,
+not the latest inspector dimensions. Details/Hide and delayed content still update
+cached insets for future explicit focus, without shifting the active Follow
+anchor. Actual map resizing or explicit Follow reactivation captures a new offset.
+Stopping Follow or disposing the layer releases its captured centering function.
+
+Truck-group clicks stop Follow through the existing truck-layer method before
+zooming to the group's geographic center. They retain the selected marker,
+inspector, disclosure and current/next routes, without a page deselection callback
+or new data requests. Both count labels and anchors consume the map click.
 
 The station layer does not own the selected date or visibility toggles. The page
 decides when to request data, reuses the loaded date on visibility changes, and
@@ -30,8 +60,26 @@ passes its lifetime cancellation token. New dates, hiding stations and disposal
 cancel pending work. Late responses cannot replace newer station data or mark an
 obsolete date as loaded. A failure retains the last successful stations/date.
 
-`Next loads` also controls recommended fuel visits. The map starts with future
-loads hidden and filters each purchase by dispatch ownership before grouping
+The same owner independently reads the small daily `fuel/price-overview` snapshot
+on map initialization and date changes, even with ordinary stations hidden. This
+contains station IDs and selected cash/IFTA prices, without addresses, locations
+or complete discounts. Its last successful date is cached; date changes and disposal
+cancel superseded requests. Hiding ordinary stations does not cancel price colors.
+Both planned and ordinary points use the same all-station currency scale; missing
+daily comparison data stays neutral rather than ranking only planned purchases.
+Detailed station reads replace the same-day overview as the richer price source.
+
+`FleetMap.Preferences` owns four browser-local map preferences, keyed by the
+authenticated account ID from the existing cascading authentication state.
+It restores once before session initialization without additional API reads.
+Defaults remain usable if storage is unavailable or malformed. Explicit changes
+save the four booleans; map retries reuse the current selection without restoring
+over newer input. No route, date, search, user profile or provider data is stored.
+
+`Next loads` also controls recommended fuel visits. Future loads are hidden by
+default unless the account's browser preference enables them. The page applies
+that choice before telemetry or routes are published. Each purchase is filtered
+by dispatch ownership before grouping
 visits at a physical station. Legacy purchases require a matching current stop ID;
 unknown ownership is not inferred from mileage. Toggling reuses the saved plan and
 latest displayed progress, without recalculation or changing prices, quantities,
@@ -45,11 +93,26 @@ clickable; price, purchase quantity and arrival/departure fuel stay in the card.
 Station cards offer add/edit actions for the selected truck's current plan; repeat
 visits can be added independently. The editor keeps a frozen snapshot timestamp
 until dismissed and never merges polling responses into the draft. Truck/current
-dispatch changes discard it. A cancellable, debounced server preview owns balances
-and costs; Client only formats values and controls ten-gallon input steps.
+dispatch changes discard it. The server prepares five-gallon slider choices for
+the selected stop, including downstream redistribution, balances, costs and errors.
+Client copies those values without an HTTP request or financial calculations.
+Station/order changes and selecting another visit request fresh choices; the
+matching table must be ready before quantity controls are enabled. Responses
+from an older API without choices retain the debounced preview compatibility path.
 Unresolved rows retain identity and removal controls without invented gauges.
-Save/reset callbacks recheck truck and dispatch ownership before publishing. A
-manual plan requires an explicit confirmed reset before automatic replacement.
+Save/reset callbacks recheck truck and dispatch ownership before publishing.
+Calculate automatically directly requests a replacement with the opened version
+token, including manual plans and edited drafts. No second confirmation is shown;
+the busy guard prevents duplicate submission and failures retain the draft.
+
+Dispatch Cards reads one bounded planning-summary batch for the visible page,
+not geometry-bearing plans per card. Its page-scoped summary store is separate
+from the map's complete-geometry cache. Dispatch telemetry requests only visible
+truck status fields; it does not download map coordinates or playback history.
+Unchanged status responses do not trigger a whole-board render. Stop edits
+invalidate only affected truck/load cache entries. Fleet Map and Dispatch pause
+periodic HTTP work while hidden and wake their existing coordinated loops when
+visible; no additional polling loop is started on resume.
 
 The Calculate Fuel control captures its dispatch and request ownership before
 notifying the page. Switching dispatches cancels that ownership, including A→B→A;
@@ -70,7 +133,10 @@ element or its bounds. Truck information and the current route retain their
 mounted display components while another mode is visible. A cold route read uses
 the same mileage, address and ETA slots as the ready view, without a lifecycle
 message. The bounded panel scrolls internally; mobile truck information keeps its
-summary toggle. No selection reserves no map space. Empty placeholders must not
+summary toggle. Truck inspection starts with driver, fuel, route controls and a
+compact remaining-distance/next-stop/ETA row. Details expands the same mounted
+components on every screen size without requesting another calculation.
+No selection reserves no map space. Empty placeholders must not
 retain an invalidated route, ETA or ownership identity.
 
 JavaScript exclusively owns the persistent `.fleet-map-inspector__native` subtree,
@@ -78,21 +144,52 @@ reusing the existing current-stop and station HTML renderers. Explicit marker
 activation selects its owner; polling cannot activate an inactive renderer or
 reopen dismissed content. Each intentional transition has a monotonic revision.
 The page rejects older callbacks and callbacks for another selected truck. Back
-and Escape return to the truck when one is selected; explicit Close hides the
-inspector without clearing the current route. A truck click restores its view.
+and Escape from stop/fuel details return to the selected truck. Close or Escape
+on the truck card uses the page's full deselection flow, cancelling pending reads
+and clearing route/follow state. Closing stop/fuel details hides only the inspector.
+Blank-map clicks collapse truck Details without deselecting, or return a
+stop/fuel inspector to its truck. Back replaces Close when a truck is available.
+Marker clicks still select new content. A truck click retains its road without
+fitting it. Show route beside Follow explicitly fits the retained remaining
+geometry, turns Follow off and makes no HTTP request. Polling does not refit the
+camera. Overview zooms group nearby
+unselected trucks in stable screen-distance buckets; selected trucks remain
+individual. Clicking a group zooms into its approximate center. Group labels sit
+directly at that center, without collision displacement. Nearby station and stop
+updates do not rebuild truck groups. Zoom changes retain station and road layer
+caches; individual truck label spacing also responds to fractional zoom.
+Future routes use a thinner dashed stroke until selected.
 The fuel editor remains a separate explicit editing action on the same map.
+The page suspends inspector ownership while fuel/route editing or the camera is
+open, retaining the mounted truck data but hiding its shell. Native marker callbacks
+cannot reacquire it while suspended; delayed Blazor callbacks are rejected too.
+Closing resumes the selected truck inspector without requesting a route fit.
+Camera content is mounted beside the inspector, not inside its hidden subtree.
+The route editor is mutually exclusive with fuel editing. Its session ID rejects
+callbacks from older editors; polling cannot replace the preview. Ordinary scene
+objects remain mounted but hidden while preview roads are visible. The small
+transient draggable via/road handles use native Advanced Markers, while preview
+roads and numbered load stops use the shared GPU scene. Closing releases their
+listeners and objects and restores the normal scene.
 
 Route identity and selection-version guards remain in the page. This extraction
 does not change endpoint contracts, route calculations, geometry revisions,
 Next Loads cache limits, polling cadence or ETA freshness.
 
 Current geometry and progress enter the route layer together. A cold saved preview
-without finite progress does not draw or fit the whole road; the first valid
-progress renders the remaining section and fulfills a pending fit once. Missing
+without finite progress draws the saved road and fulfills an explicit fit once.
+The first valid progress trims it to the remaining section without moving the
+camera again. This visual fallback does not publish measured progress. Missing
 progress on the same warm geometry preserves its already-trimmed road without
 reporting retained mileage as a new measurement. Truck, dispatch or geometry
 changes clear the draw position. Manual dragging, following and disposal cancel
 pending route fits.
+
+An explicit `InputsChanged` result clears the current map route and stop metadata
+until a matching route is ready. It also discards retained ETA and mileage even if
+old stop IDs survive an import. New stop names must never be attached to stale
+coordinates. The raw planning identity remains available for the existing fuel
+actions; a later valid response republishes full geometry.
 
 Inspecting a future stop leaves the selected truck's authoritative current dispatch,
 route, polling and Next Loads identity unchanged. The panel reads the existing
@@ -103,7 +200,11 @@ values to its exact selected stop and dispatch, using a fresh current chain or s
 detail ETA; the detail cache does not extend ETA validity. `NextLoadDetailsCard`
 uses its embedded region variant inside the shared inspector without a second
 close control or popup positioning. Standalone callers retain the original card
-contract. Back/Escape cancels the detail request and clears only future-load
+contract. Embedded future stops start compact. The page owns their Details state,
+resetting it on a new inspection or stop, but not when held details or a forecast
+arrive. The card reuses its existing arrival display memory in either density;
+disclosure never publishes map state or requests more data. Back/Escape cancels
+the detail request and clears only future-load
 inspection; selecting a current stop or fuel station also dismisses it. The
 current truck and route remain selected. Future distance includes
 current remaining distance and all preceding saved legs/connections; an unknown
@@ -137,7 +238,14 @@ Current and future stops use fixed 30px circles with centered 13px white digits
 and borders on opaque route colors. Current-load stops are blue; each future load
 shares one palette color between its stops and loaded road. Empty connections
 retain their separate amber role. Every stop occurrence, including repeat visits
-within one load, keeps its own circle and exact selection identity. Coincident
+within one load, keeps its own circle and exact selection identity. Stop inspectors
+show the stable full-load position as `Load stop N of total`, separate from the
+existing remaining/current or cross-load map marker numbering. Repeat visits to a
+known complete address show `Visit N of total`; missing or incomplete addresses,
+matching names and coincident coordinates alone never establish that label.
+Current visit context includes passed reference stops, and future context requires
+matching dispatch details and an exact stop ID. This metadata does not rebuild roads.
+Coincident
 circles use an evenly spaced screen-space layout without changing geographic
 anchors. A small dot retains the road anchor when a circle is offset. Circle
 backgrounds use small prepacked square icons, independent of text width. The whole
