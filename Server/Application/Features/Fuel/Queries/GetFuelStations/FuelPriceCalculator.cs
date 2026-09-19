@@ -66,16 +66,25 @@ internal static class FuelPriceCalculator
                   .Trim()
                   .Equals("Diesel", StringComparison.OrdinalIgnoreCase);
 
+              // The carrier pays the program price where a program applies
+              // and the known retail price otherwise. With neither known the
+              // station has no price and stays out of cost comparison.
+              var paid =
+                discount.DiscountPrice > 0 ? discount.DiscountPrice
+                : discount.RetailPrice > 0 ? discount.RetailPrice
+                : 0m;
               return discount with
               {
                 Product = product,
-                Savings = discount.RetailPrice - discount.DiscountPrice,
+                DiscountPrice = paid,
+                Savings = discount.RetailPrice - paid,
                 Unit = unit,
                 PriceAfterIfta =
-                  sourceVolume.HasValue && targetVolume.HasValue
-                    ? discount.DiscountPrice
+                  paid <= 0 ? null
+                  : sourceVolume.HasValue && targetVolume.HasValue
+                    ? paid
                       - iftaRate!.Rate * targetVolume.Value / sourceVolume.Value
-                  : oregonDiesel ? discount.DiscountPrice
+                  : oregonDiesel ? paid
                   : null,
               };
             }),
