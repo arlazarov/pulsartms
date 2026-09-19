@@ -113,6 +113,47 @@ public sealed class FleetLocationRevisionTests
   }
 
   [Fact]
+  public async Task HeldReadsReturnOnTheNextPublicationOrAfterTheWait()
+  {
+    var telemetry = new ServerTelemetry();
+    telemetry.Set(new());
+    var revision = telemetry.Current!.Revision;
+    Assert.True(await telemetry.WaitForChangeAsync("other", TimeSpan.FromSeconds(5), default));
+    Assert.False(await telemetry.WaitForChangeAsync(revision, TimeSpan.FromMilliseconds(50), default));
+    var held = telemetry.WaitForChangeAsync(revision, TimeSpan.FromSeconds(30), default);
+    Assert.False(held.IsCompleted);
+    telemetry.Set(new());
+    Assert.True(await held.WaitAsync(TimeSpan.FromSeconds(5)));
+
+    var handler = new GetFleetLocationsHandler(null!, null!, null!, null!, null!, telemetry,
+      Microsoft.Extensions.Options.Options.Create(new Application.Features.Synchronization.Options.SynchronizationOptions { Enabled = true }));
+    var current = telemetry.Current!.Revision;
+    var read = handler.Handle(new(KnownRevision: current, WaitSeconds: 30), default);
+    Assert.False(read.IsCompleted);
+    telemetry.Set(new());
+    Assert.NotEqual(current, (await read.WaitAsync(TimeSpan.FromSeconds(5))).Response!.Revision);
+    // Without a known revision the read never waits.
+    Assert.True(handler.Handle(new(WaitSeconds: 30), default).IsCompleted);
+  }
+
+  [Fact]
+  public async Task HeldPollsCarryThePresentedRevisionAndWait()
+  {
+    var mediator = new StubMediator(RequestResponse<FleetLocationsResponse>.Ok(new() { Revision = "rev-8" }));
+    var context = new DefaultHttpContext
+    {
+      RequestServices = new ServiceCollection().AddSingleton<IMediator>(mediator).BuildServiceProvider()
+    };
+    context.Request.Headers.IfNoneMatch = "W/\"rev-7\"";
+    var controller = new FleetController { ControllerContext = new() { HttpContext = context } };
+    Assert.Equal(200, (await controller.GetLocations(default, points: false, wait: 90) as IStatusCodeActionResult)?.StatusCode);
+    var query = Assert.IsType<GetFleetLocationsQuery>(mediator.LastRequest);
+    Assert.Equal(("rev-7", 60, false), (query.KnownRevision, query.WaitSeconds, query.IncludePoints));
+    Assert.Null(EntityTags.Revision(default));
+    Assert.Equal("abc", EntityTags.Revision("\"abc\""));
+  }
+
+  [Fact]
   public async Task FailedReadsAreNotRevisioned()
   {
     var mediator = new StubMediator(RequestResponse<FleetLocationsResponse>.Fail("Unavailable.", 503));
@@ -130,9 +171,10 @@ public sealed class FleetLocationRevisionTests
   private sealed class StubMediator(RequestResponse<FleetLocationsResponse> result) : IMediator
   {
     public RequestResponse<FleetLocationsResponse> Result => result;
+    public object? LastRequest { get; private set; }
     public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
     {
-      Assert.IsType<GetFleetLocationsQuery>(request);
+      LastRequest = Assert.IsType<GetFleetLocationsQuery>(request);
       return Task.FromResult((TResponse)(object)result);
     }
     public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default) where TRequest : IRequest => throw new NotSupportedException();

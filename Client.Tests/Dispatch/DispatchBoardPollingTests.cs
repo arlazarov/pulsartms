@@ -92,7 +92,7 @@ public sealed class DispatchBoardPollingTests
     component.WaitForAssertion(() => Assert.Single(locations));
     await component.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(10)));
     component.WaitForAssertion(() => Assert.Equal(2, locations.Count));
-    Assert.All(locations, uri => Assert.Equal("?points=false", uri.Query));
+    Assert.All(locations, uri => Assert.Equal("?points=false&wait=25", uri.Query));
   }
 
   private static HttpResponseMessage Board(int count) => new(HttpStatusCode.OK)

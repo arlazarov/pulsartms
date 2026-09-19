@@ -1,7 +1,6 @@
 using Application.Caching;
 using Application.Features.Fuel.Interfaces;
 using Application.Models;
-using Application.Features.Synchronization.Services;
 
 namespace Application.Features.Fuel.Commands.SyncIftaTaxRates;
 

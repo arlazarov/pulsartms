@@ -34,6 +34,14 @@ artifact check and the offline UI smoke), except where noted below.
 - `FuelDiscounts:Source` selects the fuel discount provider (`bvd-gmail` or
   `none`), so customers without a fuel card run no Gmail worker.
 - Twenty more Fleet Map helper modules are type-checked.
+- Telemetry polls are held on the server (`wait=25`) until the next published
+  snapshot, so quiet fleets cost one request per wait and changes reach open tabs
+  within a second; the deploy script sets `--concurrency 250` for the held slots.
+  This is the push-style delivery the plan called SSE, done over ordinary requests
+  because Firebase Hosting rewrites to Cloud Run buffer streamed responses and
+  time out at 60 seconds.
+- Stale `Synchronization.Services` usings left over from the `ReadCache` move were
+  removed from Users and Fuel, so Users no longer references another feature.
 - Per-service `KeyedGates` statics moved to the `ProcessGates` DI singleton; both
   test projects carry an explicit `xunit.runner.json`; `ProcessStateTests` and
   `FeatureDependencyTests` freeze the remaining static state and the
@@ -57,3 +65,13 @@ latency, CPU or egress numbers. The k6 scenario has no baseline yet and the
 OTLP export has not been pointed at a collector. The planning handler still
 runs in full on every poll; only the response transfer is skipped on `304`.
 The in-process `LoadProbe` harness was not rerun.
+
+## Worker split: assessed, not built
+
+Moving the synchronization, ETA, planning and Gmail workers to a second Cloud Run
+service would need the telemetry snapshot, ETA memory and planning caches to move
+out of process (a shared store or Redis), because `ServerTelemetry`,
+`EtaMemory`, `FuelPlanMemory` and `ReadCache` are per instance and the
+synchronization checkpoint persists cursors, not the snapshot. That is a separate
+project with its own measurements; the single-instance `--max-instances 1`
+deployment does not need it at the current fleet size.

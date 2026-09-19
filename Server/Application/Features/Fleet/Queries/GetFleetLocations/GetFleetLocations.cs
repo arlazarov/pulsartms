@@ -1,6 +1,5 @@
 using Application.Features.Fleet.Services;
 using Application.Features.Synchronization.Options;
-using Application.Features.Synchronization.Services;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Models;
 using Application.Models;
@@ -8,7 +7,9 @@ using Microsoft.Extensions.Options;
 
 namespace Application.Features.Fleet.Queries.GetFleetLocations;
 
-public record GetFleetLocationsQuery(bool CachedOnly = false, bool IncludePoints = true)
+// KnownRevision with WaitSeconds holds the read until the published snapshot changes or the wait
+// (capped by SynchronizationOptions.LocationWaitSecondsMax) elapses, replacing blind polling.
+public record GetFleetLocationsQuery(bool CachedOnly = false, bool IncludePoints = true, string? KnownRevision = null, int WaitSeconds = 0)
   : IRequest<RequestResponse<FleetLocationsResponse>>;
 
 public class GetFleetLocationsHandler(
@@ -26,6 +27,9 @@ public class GetFleetLocationsHandler(
     CancellationToken cancellationToken
   )
   {
+    if (syncOptions.Value.Enabled && request.WaitSeconds > 0 && request.KnownRevision is not null)
+      await serverTelemetry.WaitForChangeAsync(request.KnownRevision,
+        TimeSpan.FromSeconds(Math.Min(request.WaitSeconds, syncOptions.Value.LocationWaitSecondsMax)), cancellationToken);
     var snapshot = syncOptions.Value.Enabled ? serverTelemetry.Current ?? new()
       : request.CachedOnly ? telemetryCache.Latest ?? new()
       : await telemetryCache.GetAsync(LoadAsync, cancellationToken);

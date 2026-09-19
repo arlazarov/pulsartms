@@ -17,7 +17,6 @@ public sealed partial class FeatureDependencyTests
     ["Fuel"] = ["Synchronization"],
     ["Routing"] = ["Dispatch", "Eta", "Fleet", "Fuel", "Synchronization"],
     ["Synchronization"] = ["Dispatch", "Fleet", "Routing"],
-    ["Users"] = ["Synchronization"],
   };
 
   [GeneratedRegex(@"\bApplication\.Features\.(\w+)")]

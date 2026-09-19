@@ -1,5 +1,4 @@
 using Application.Caching;
-using Application.Features.Synchronization.Services;
 using Application.Models;
 
 namespace Application.Features.Fuel.Queries.GetFuelStations;

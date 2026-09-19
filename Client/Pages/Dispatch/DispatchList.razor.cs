@@ -232,7 +232,8 @@ public partial class DispatchList : IDisposable
   }
 
   // The board shows current positions only; location history stays on the map.
-  internal const string TelemetryUrl = "api/fleet/locations?points=false";
+  // wait= holds the poll on the server until telemetry changes, so quiet fleets cost one request per wait.
+  internal const string TelemetryUrl = "api/fleet/locations?points=false&wait=25";
 
   private async Task PollTelemetryAsync(CancellationToken cancellationToken)
   {

@@ -10,6 +10,9 @@ public sealed class SynchronizationOptions
   [Range(30, 86400)] public int DispatchSeconds { get; set; } = 60;
   [Range(300, 86400)] public int CatalogSeconds { get; set; } = 3600;
   [Range(5, 300)] public int TelemetrySeconds { get; set; } = 60;
+  // Longest a browser telemetry poll is held waiting for a new snapshot; must stay under the hosting
+  // rewrite timeout (Firebase Hosting to Cloud Run: 60 seconds). 0 disables holding.
+  [Range(0, 55)] public int LocationWaitSecondsMax { get; set; } = 25;
   [Range(30, 3600)] public int CheckpointSeconds { get; set; } = 120;
   [Range(15, 3600)] public int PlanningSeconds { get; set; } = 30;
   [Range(30, 3600)] public int OnDemandPlanningSeconds { get; set; } = 120;

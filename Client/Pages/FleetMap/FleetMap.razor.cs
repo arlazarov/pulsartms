@@ -184,7 +184,7 @@ public partial class FleetMap : IAsyncDisposable
       async token =>
       {
         var result = await Http.GetFromJsonAsync<ApiResponse<FleetLocationsMapDto>>(
-          "api/fleet/locations", token);
+          "api/fleet/locations?wait=25", token);
         if (_disposed) return;
         if (result?.Success != true || result.Response is null)
           throw new HttpRequestException("Fleet locations are unavailable.");

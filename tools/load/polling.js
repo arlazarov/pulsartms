@@ -64,7 +64,7 @@ export default function () {
       const rows = board.json('response.items') || [];
       state.trucks = rows.map(row => row.truckId).filter(Boolean);
     }
-    poll('telemetry', `${base}/api/fleet/locations${map ? '' : '?points=false'}`, state);
+    poll('telemetry', `${base}/api/fleet/locations?wait=25${map ? '' : '&points=false'}`, state);
     if (state.trucks.length > 0) {
       const truck = state.trucks[(__VU + __ITER) % state.trucks.length];
       poll('planning', `${base}/api/fleet/trucks/${truck}/planning`, state);
