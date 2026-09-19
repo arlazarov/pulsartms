@@ -24,6 +24,7 @@ using Infrastructure.Integrations.GeoTimeZone;
 using Infrastructure.Persistence;
 using MediatR;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Support;
@@ -232,7 +233,14 @@ internal sealed class PlanningTestServices : IDisposable
       Routes,
       Publication
     );
-    Board = new(db, Reads, hos, Deadheads, Forecasts);
+    Board = new(
+      db,
+      Reads,
+      hos,
+      Deadheads,
+      Forecasts,
+      NullLogger<GetDispatchBoardHandler>.Instance
+    );
   }
 
   public void Dispose()

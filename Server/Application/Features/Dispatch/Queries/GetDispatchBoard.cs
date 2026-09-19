@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Application.Caching;
+using Application.Diagnostics;
 using Application.Features.Dispatch.Models;
 using Application.Features.Eta.Services;
 using Application.Features.Execution.Queries;
@@ -6,6 +8,7 @@ using Application.Features.Execution.Services;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Dispatch.Queries;
 
@@ -39,7 +42,8 @@ public class GetDispatchBoardHandler(
   ReadCache reads,
   IDriverHosProvider hos,
   DeadheadService deadhead,
-  EtaForecastService eta
+  EtaForecastService eta,
+  ILogger<GetDispatchBoardHandler> logger
 )
   : IRequestHandler<
     GetDispatchBoardQuery,
@@ -64,11 +68,13 @@ public class GetDispatchBoardHandler(
           )
         ).Select(DispatchWorkProjection.ToBoardRow)
       );
+    var stage = Stopwatch.GetTimestamp();
     var index = await reads.GetAsync(
       "board",
       $"index:{date:O}:{request.TruckId}:{request.IncludePlanned}:{request.IncludeOverdue}",
       LoadIndex
     );
+    var indexMs = Take("index", ref stage);
     var result = index.SelectPage(
       request.Page,
       request.PageSize,
@@ -96,6 +102,7 @@ public class GetDispatchBoardHandler(
         ),
       })
       .ToListAsync(cancellationToken);
+    var detailsMs = Take("details", ref stage);
     var details = detailRows.ToDictionary(x => x.Detail.Id, x => x.Detail);
     foreach (var detail in details.Values)
       DispatchProjection.Complete(detail);
@@ -120,6 +127,7 @@ public class GetDispatchBoardHandler(
           cancellationToken,
           legIds
         );
+    var executionMs = Take("execution", ref stage);
     if (request.IncludeFinancials)
       await deadhead.ReadAsync(
         details
@@ -127,6 +135,7 @@ public class GetDispatchBoardHandler(
           .ToArray(),
         cancellationToken
       );
+    var financialsMs = Take("financials", ref stage);
     var scopedDetails = details
       .Values.Where(x => !native.OwnedDispatchIds.Contains(x.Id))
       .Concat(native.Loads.Select(DispatchProjection.FromExecution))
@@ -191,14 +200,46 @@ public class GetDispatchBoardHandler(
       )
         row.Hos = clocks.GetValueOrDefault(driver);
     }
+    var rowsMs = Take("rows", ref stage);
     if (request.IncludeEta)
       await eta.PopulateAsync(
         scopedDetails.Values.ToArray(),
         cancellationToken,
         page
       );
+    var etaMs = Take("eta", ref stage);
+
+    // A slow board says what it spent its time on. Without this the only
+    // measurement available was the total, which cannot tell a cold index
+    // from a slow forecast, and the stage meters had no reader at all.
+    var total =
+      indexMs + detailsMs + executionMs + financialsMs + rowsMs + etaMs;
+    if (total >= 1000)
+      logger.LogInformation(
+        "BoardTiming TotalMs={Total} IndexMs={Index} DetailsMs={Details} "
+          + "ExecutionMs={Execution} FinancialsMs={Financials} RowsMs={Rows} "
+          + "EtaMs={Eta} Loads={Loads} Financials={WithFinancials} Eta={WithEta}",
+        Math.Round(total),
+        Math.Round(indexMs),
+        Math.Round(detailsMs),
+        Math.Round(executionMs),
+        Math.Round(financialsMs),
+        Math.Round(rowsMs),
+        Math.Round(etaMs),
+        loadIds.Length,
+        request.IncludeFinancials,
+        request.IncludeEta
+      );
     return RequestResponse<PaginatedList<TruckDispatchBoardResponse>>.Ok(
       result
     );
+  }
+
+  private static double Take(string name, ref long since)
+  {
+    var elapsed = Stopwatch.GetElapsedTime(since).TotalMilliseconds;
+    PerformanceStages.Elapsed("dispatch-board", name, since);
+    since = Stopwatch.GetTimestamp();
+    return elapsed;
   }
 }

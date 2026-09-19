@@ -3,6 +3,7 @@ using Application.Features.Dispatch.Queries;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Dispatch;
@@ -139,7 +140,8 @@ public sealed class DispatchSyncDeltaTests
       fixture.Reads,
       null!,
       null!,
-      null!
+      null!,
+      NullLogger<GetDispatchBoardHandler>.Instance
     );
     var query = new GetDispatchBoardQuery(
       IncludeHos: false,

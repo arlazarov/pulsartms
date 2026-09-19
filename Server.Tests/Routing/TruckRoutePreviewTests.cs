@@ -23,6 +23,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Routing;
@@ -966,7 +967,8 @@ public sealed class TruckRoutePreviewTests
         fixture.Services.Reads,
         fixture.Hos,
         fixture.Services.Deadheads,
-        fixture.Services.Forecasts
+        fixture.Services.Forecasts,
+        NullLogger<GetDispatchBoardHandler>.Instance
       );
       fixture.TelemetryCache = new(fixture.Memory);
       fixture.Preview = new(

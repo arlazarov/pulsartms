@@ -75,10 +75,7 @@ public sealed class ResetInventoryTests
       @"__EFMigrationsHistory""\s*\)\s*<>\s*(?<count>\d+)"
     );
     Assert.True(count.Success, "The reset script checks no migration count.");
-    Assert.Equal(
-      migrations.Count,
-      int.Parse(count.Groups["count"].Value)
-    );
+    Assert.Equal(migrations.Count, int.Parse(count.Groups["count"].Value));
 
     var latest = Regex.Match(
       sql,
