@@ -42,6 +42,7 @@ internal sealed class PlanningTestServices : IDisposable
   ) => new(refreshStore, refreshSignal, cache, options, TimeProvider.System);
 
   public FleetNames Names { get; private set; } = null!;
+  public ActiveTransfers Transfers { get; private set; } = null!;
   public ReadCache Reads { get; }
   public RouteDisplayCache Displays { get; }
   public PlanningSettingsService Settings { get; }
@@ -100,7 +101,13 @@ internal sealed class PlanningTestServices : IDisposable
       ExchangeRates
     );
     Names = new(db);
-    Itineraries = new(db, new ExecutionReadScope((AppDbContext)db), Names);
+    Transfers = new(db);
+    Itineraries = new(
+      db,
+      new ExecutionReadScope((AppDbContext)db),
+      Names,
+      Transfers
+    );
     PlanningInputs = new(
       db,
       Itineraries,
@@ -114,7 +121,8 @@ internal sealed class PlanningTestServices : IDisposable
       db,
       new DeadheadHistoryReader((AppDbContext)db),
       new ExecutionReadScope((AppDbContext)db),
-      Names
+      Names,
+      Transfers
     );
     Publication = new(
       Itineraries,
@@ -246,6 +254,7 @@ internal sealed class PlanningTestServices : IDisposable
       Deadheads,
       Forecasts,
       Names,
+      Transfers,
       NullLogger<GetDispatchBoardHandler>.Instance
     );
   }
@@ -278,7 +287,8 @@ internal sealed class PlanningTestServices : IDisposable
         GetTruckExecutionLoadsQuery query =>
           await new GetTruckExecutionLoadsHandler(
             db,
-            new FleetNames(db)
+            new FleetNames(db),
+            new ActiveTransfers(db)
           ).Handle(query, ct),
         _ when supplied is not null => await supplied.Send(request, ct),
         GetDispatchBoardQuery query => await board().Handle(query, ct),

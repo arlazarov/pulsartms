@@ -206,7 +206,8 @@ public sealed class ExecutionImportAcceptanceTests
       var itinerary = await new TruckItineraryReader(
         f.Db,
         new ExecutionReadScope(f.Db),
-        new FleetNames(f.Db)
+        new FleetNames(f.Db),
+        new ActiveTransfers(f.Db)
       ).ReadAsync(truck.Id, DateTimeOffset.UtcNow, default);
       Assert.NotNull(itinerary);
       Assert.Contains(

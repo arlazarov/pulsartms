@@ -16,7 +16,8 @@ namespace Application.Features.Execution.Services;
 public sealed class TruckItineraryReader(
   IAppDbContext db,
   IExecutionReadScope scope,
-  FleetNames names
+  FleetNames names,
+  ActiveTransfers transfers
 )
 {
   public async Task<TruckItinerarySnapshot?> ReadAsync(
@@ -61,6 +62,7 @@ public sealed class TruckItineraryReader(
       db,
       day,
       names,
+      transfers,
       null,
       includePlanned: true,
       includeOverdue: true,

@@ -969,6 +969,7 @@ public sealed class TruckRoutePreviewTests
         fixture.Services.Deadheads,
         fixture.Services.Forecasts,
         fixture.Services.Names,
+        fixture.Services.Transfers,
         NullLogger<GetDispatchBoardHandler>.Instance
       );
       fixture.TelemetryCache = new(fixture.Memory);

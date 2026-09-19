@@ -45,6 +45,7 @@ public class GetDispatchBoardHandler(
   DeadheadService deadhead,
   EtaForecastService eta,
   FleetNames names,
+  ActiveTransfers transfers,
   ILogger<GetDispatchBoardHandler> logger
 )
   : IRequestHandler<
@@ -64,6 +65,7 @@ public class GetDispatchBoardHandler(
             dbContext,
             date,
             names,
+            transfers,
             request.TruckId,
             request.IncludePlanned,
             request.IncludeOverdue,
@@ -126,6 +128,7 @@ public class GetDispatchBoardHandler(
         : await ExecutionLoads.ReadAsync(
           dbContext,
           names,
+          transfers,
           request.TruckId,
           loadIds,
           cancellationToken,

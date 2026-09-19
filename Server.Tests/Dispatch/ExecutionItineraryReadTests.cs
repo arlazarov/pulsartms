@@ -123,7 +123,8 @@ public sealed class ExecutionItineraryReadTests
     );
     var board = await new GetTruckExecutionLoadsHandler(
       f.Db,
-      new FleetNames(f.Db)
+      new FleetNames(f.Db),
+      new ActiveTransfers(f.Db)
     ).Handle(new(state.Truck.Id), default);
 
     Assert.NotNull(itinerary);
@@ -215,7 +216,8 @@ public sealed class ExecutionItineraryReadTests
 
     var board = await new GetTruckExecutionLoadsHandler(
       f.Db,
-      new FleetNames(f.Db)
+      new FleetNames(f.Db),
+      new ActiveTransfers(f.Db)
     ).Handle(new(state.Truck.Id), default);
     var current = Assert.Single(board.Loads).Work;
     Assert.Equal(8, current.AssignmentRevision);

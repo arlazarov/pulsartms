@@ -358,7 +358,12 @@ public sealed class TruckItineraryReaderTests
   }
 
   private static TruckItineraryReader Reader(StopCompletionFixture f) =>
-    new(f.Db, new ExecutionReadScope(f.Db), new FleetNames(f.Db));
+    new(
+      f.Db,
+      new ExecutionReadScope(f.Db),
+      new FleetNames(f.Db),
+      new ActiveTransfers(f.Db)
+    );
 
   private static async Task<TruckItinerarySnapshot> ReadAsync(
     StopCompletionFixture f,

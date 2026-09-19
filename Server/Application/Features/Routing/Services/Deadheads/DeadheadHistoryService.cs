@@ -16,7 +16,8 @@ public sealed class DeadheadHistoryService(
   IAppDbContext db,
   IDeadheadHistoryReader reader,
   IExecutionReadScope scope,
-  FleetNames names
+  FleetNames names,
+  ActiveTransfers transfers
 )
 {
   public Task<IReadOnlyDictionary<Guid, DeadheadHistorySnapshot>> ReadAsync(
@@ -256,6 +257,7 @@ public sealed class DeadheadHistoryService(
     var execution = await ExecutionLoads.ReadAsync(
       db,
       names,
+      transfers,
       null,
       byTruck
         .Values.SelectMany(snapshots =>

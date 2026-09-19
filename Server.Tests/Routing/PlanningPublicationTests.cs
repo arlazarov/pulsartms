@@ -299,7 +299,8 @@ public sealed class PlanningPublicationTests
     var reader = new TruckItineraryReader(
       db,
       new ExecutionReadScope(db),
-      new FleetNames(db)
+      new FleetNames(db),
+      new ActiveTransfers(db)
     );
     var work = (
       await reader.ReadAsync(truck.Id, DateTimeOffset.UtcNow, default)
@@ -311,7 +312,8 @@ public sealed class PlanningPublicationTests
         db,
         new DeadheadHistoryReader(db),
         new ExecutionReadScope(db),
-        new FleetNames(db)
+        new FleetNames(db),
+        new ActiveTransfers(db)
       )
     );
     await using var writer = new AppDbContext(

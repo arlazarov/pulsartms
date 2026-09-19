@@ -21,7 +21,8 @@ public sealed class WorkSequenceReaderTests
     var reader = new TruckItineraryReader(
       f.Db,
       new ExecutionReadScope(f.Db),
-      new FleetNames(f.Db)
+      new FleetNames(f.Db),
+      new ActiveTransfers(f.Db)
     );
     var snapshot = await reader.ReadAsync(
       truck.Id,
@@ -64,6 +65,7 @@ public sealed class WorkSequenceReaderTests
         f.Db,
         DateOnly.FromDateTime(DateTime.UtcNow),
         new FleetNames(f.Db),
+        new ActiveTransfers(f.Db),
         truck.Id,
         false,
         false,

@@ -25,7 +25,8 @@ public sealed record GetTruckExecutionLoadsQuery(
 
 public sealed class GetTruckExecutionLoadsHandler(
   IAppDbContext db,
-  FleetNames names
+  FleetNames names,
+  ActiveTransfers transfers
 ) : IRequestHandler<GetTruckExecutionLoadsQuery, TruckExecutionLoads>
 {
   public Task<TruckExecutionLoads> Handle(
@@ -35,6 +36,7 @@ public sealed class GetTruckExecutionLoadsHandler(
     ExecutionLoads.ReadAsync(
       db,
       names,
+      transfers,
       request.TruckId,
       request.CandidateDispatchIds,
       ct
@@ -46,6 +48,7 @@ public static class ExecutionLoads
   public static async Task<TruckExecutionLoads> ReadAsync(
     IAppDbContext db,
     FleetNames names,
+    ActiveTransfers transfers,
     Guid? truckId,
     IReadOnlyCollection<Guid>? candidates,
     CancellationToken ct,
@@ -94,15 +97,7 @@ public static class ExecutionLoads
       .ToArray();
     var snapshots = legs.ToDictionary(x => x.Id, ReadSnapshot);
     var legIds = legs.Select(x => x.Id).ToArray();
-    var participants = await db
-      .SwitchParticipants.AsNoTracking()
-      .Where(x =>
-        !x.IsCancelled
-        && (
-          legIds.Contains(x.OutgoingLegId) || legIds.Contains(x.IncomingLegId)
-        )
-      )
-      .ToListAsync(ct);
+    var participants = await transfers.ForLegsAsync(legIds, ct);
     var visits = ExecutionTransfers.Project(legs, participants);
     var outgoing = participants.ToDictionary(x => x.OutgoingLegId);
     var incoming = participants.ToDictionary(x => x.IncomingLegId);

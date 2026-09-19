@@ -134,6 +134,7 @@ public sealed class InitialExecutionAssignmentTests
       f.Db,
       DateOnly.FromDateTime(f.Clock.GetUtcNow().UtcDateTime),
       new FleetNames(f.Db),
+      new ActiveTransfers(f.Db),
       null,
       true,
       true,

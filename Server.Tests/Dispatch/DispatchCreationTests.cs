@@ -96,6 +96,7 @@ public sealed class DispatchCreationTests
       f.Db,
       DateOnly.FromDateTime(f.Clock.GetUtcNow().UtcDateTime),
       new FleetNames(f.Db),
+      new ActiveTransfers(f.Db),
       null,
       true,
       true,

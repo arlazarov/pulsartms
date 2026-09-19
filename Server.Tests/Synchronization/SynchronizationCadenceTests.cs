@@ -131,7 +131,8 @@ public sealed class SynchronizationCadenceTests
           db,
           new DeadheadHistoryReader(db),
           new ExecutionReadScope(db),
-          new FleetNames(db)
+          new FleetNames(db),
+          new ActiveTransfers(db)
         ),
         new ExecutionReadScope(db)
       );
