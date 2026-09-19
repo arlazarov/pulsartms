@@ -48,6 +48,10 @@ deploy_args=(
   --format=none
   --port 8080
   --min 1
+  # One instance, because cache invalidation is per process: CacheGenerations
+  # holds its versions in memory, so a second instance would keep serving
+  # reads the first one already dropped. Raising this needs shared
+  # invalidation first; see docs/architecture/module-ownership.md.
   --max-instances 1
   --no-cpu-throttling
 )
