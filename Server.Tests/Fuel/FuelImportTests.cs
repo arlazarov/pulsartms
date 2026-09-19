@@ -116,6 +116,12 @@ public class FuelImportTests
 
   private sealed class Places : IPlaceSearchService
   {
+    // Reading by id is not what these exercise; they place stations by name.
+    public Task<PlaceSearchResult?> ReadAsync(
+      string placeId,
+      CancellationToken cancellationToken = default
+    ) => Task.FromResult<PlaceSearchResult?>(null);
+
     public Task<PlaceSearchResult?> SearchAsync(
       string query,
       CancellationToken ct = default

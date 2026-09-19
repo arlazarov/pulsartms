@@ -76,6 +76,18 @@ public sealed class FuelPriceRefreshService(
       return;
     }
     var today = FuelPricingDate.FromUtc(clock.GetUtcNow().UtcDateTime);
+    // A plan priced on an earlier day is recalculated because of that alone.
+    // Without this the refresh and the reader disagree about what "stale"
+    // means: the reader calls a plan stale when its PricingDate is not
+    // today, while this decided only by whether the discounts had changed.
+    // Unchanged discounts therefore left a plan priced yesterday forever -
+    // permanently marked stale by one half of the system and never repaired
+    // by the other. Truck 11007 sat like that for a day.
+    if (saved.Plan.PricingDate != today)
+    {
+      await RecalculateAsync(saved, current, dispatchId, ct);
+      return;
+    }
     var days = new Dictionary<DateOnly, List<FuelStationDto>>();
     foreach (var date in saved.Plan.PriceDates.Append(today).Distinct())
     {

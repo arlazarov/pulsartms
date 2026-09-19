@@ -169,9 +169,11 @@ public sealed partial class RoutePlanningService(
         || fuel.RouteVersion != plan.Version;
       fuel.RefreshReasons = [];
       // A reason that invalidates the plan hides it; one that only ages its
-      // prices leaves it readable. Both still ask for a recalculation.
+      // prices, or leaves the truck's position unknown, keeps it readable.
+      // All of them still ask for a recalculation.
       var invalid = false;
       var priced = false;
+      var unverified = false;
       if (changed || fuel.DispatchIds.Count == 0)
       {
         fuel.RefreshReasons.Add("Route or fuel settings changed.");
@@ -184,8 +186,12 @@ public sealed partial class RoutePlanningService(
       }
       if (progress?.LocationStale == true)
       {
+        // An old GPS fix says how far along he is is unknown. It does not say
+        // where he has to fuel: the stations, volumes and prices are
+        // unchanged. Hiding the plan leaves the driver with no fuel stop at
+        // all, which is the worse answer.
         fuel.RefreshReasons.Add("Fresh GPS is needed to verify the plan.");
-        invalid = true;
+        unverified = true;
       }
       if (DateTime.UtcNow - fuel.CalculatedAt > TimeSpan.FromMinutes(30))
       {
@@ -216,6 +222,8 @@ public sealed partial class RoutePlanningService(
       }
       fuel.NeedsRefresh = fuel.RefreshReasons.Count > 0;
       fuel.PricesOutOfDate = !invalid && (priced || fuel.PricesOutOfDate);
+      fuel.PositionUnverified =
+        !invalid && (unverified || fuel.PositionUnverified);
     }
     var state = new RoutePlanningState(
       profile,

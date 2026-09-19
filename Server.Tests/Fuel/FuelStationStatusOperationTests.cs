@@ -116,6 +116,13 @@ public sealed class FuelStationStatusOperationTests
     public string Status { get; set; } = FuelStationStatus.Operational;
     public PlaceSearchResult? Result { get; set; } = new();
 
+    // Re-reading a known place answers the same way as a search here, so the
+    // tests cover both routes without caring which one ran.
+    public Task<PlaceSearchResult?> ReadAsync(
+      string placeId,
+      CancellationToken ct = default
+    ) => SearchAsync(placeId, ct);
+
     public Task<PlaceSearchResult?> SearchAsync(
       string query,
       CancellationToken ct = default
@@ -204,6 +211,7 @@ public sealed class FuelStationStatusOperationTests
       var services = new ServiceCollection()
         .AddSingleton<IAppDbContext>(db)
         .AddSingleton(lookups)
+        .AddSingleton<IPlaceSearchService>(places)
         .BuildServiceProvider();
       var options = new FuelStationStatusOptions();
       return new Fixture

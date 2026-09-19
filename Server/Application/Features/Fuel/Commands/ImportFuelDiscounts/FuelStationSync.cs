@@ -140,6 +140,7 @@ public static class FuelStationSync
       // this alone does not keep the answer current.
       if (place is not null)
       {
+        station.PlaceId = place.PlaceId;
         station.BusinessStatus = place.BusinessStatus;
         station.OpeningHoursJson = place.OpeningHoursJson;
         station.UtcOffsetMinutes = place.UtcOffsetMinutes;

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Queries;
+using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Queries.GetFuelStations;
 using Application.Features.Fuel.Services;
 using Application.Features.Routing.Algorithms;
@@ -628,6 +629,13 @@ public sealed class FuelPriceRefreshTests
       Snapshot.Plan.ProfileSignature = JsonSerializer.Serialize(
         new TruckRouteProfile(),
         RoutePlanningService.Json
+      );
+      // The refresh recalculates a plan priced on an earlier day whatever the
+      // discounts say, so a plan that is meant to be current has to be priced
+      // for the day these tests call today. A test about stale prices sets
+      // its own.
+      Snapshot.Plan.PricingDate = FuelPricingDate.FromUtc(
+        new DateTime(2026, 9, 14, 18, 0, 0, DateTimeKind.Utc)
       );
     }
 

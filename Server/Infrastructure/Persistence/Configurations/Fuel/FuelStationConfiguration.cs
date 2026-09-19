@@ -22,6 +22,7 @@ public class FuelStationConfiguration : IEntityTypeConfiguration<FuelStation>
 
     builder.Property(x => x.PostalCode).HasMaxLength(20);
     builder.Property(x => x.BusinessStatus).HasMaxLength(32);
+    builder.Property(x => x.PlaceId).HasMaxLength(128);
 
     builder.Property(x => x.Country).HasMaxLength(2);
 

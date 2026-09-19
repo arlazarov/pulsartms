@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Options;
 using Application.Features.Fuel.Services;
 using Application.Interfaces;
@@ -30,10 +32,16 @@ public sealed class FuelStationStatusOperation(
   {
     while (!ct.IsCancellationRequested)
     {
+      var backlog = false;
       if (options.Value.Enabled)
         try
         {
-          await RunOnceAsync(ct);
+          // A full pass means there is probably more waiting. While that is
+          // true the next one follows in seconds, so the first sweep and any
+          // newly imported station are done with in minutes.
+          backlog =
+            await RunOnceAsync(ct)
+            >= Math.Clamp(options.Value.BatchSize, 1, 200);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -46,9 +54,13 @@ public sealed class FuelStationStatusOperation(
       try
       {
         await Task.Delay(
-          TimeSpan.FromMinutes(
-            Math.Clamp(options.Value.IntervalMinutes, 1, 1440)
-          ),
+          backlog
+            ? TimeSpan.FromSeconds(
+              Math.Clamp(options.Value.BacklogSeconds, 1, 600)
+            )
+            : TimeSpan.FromMinutes(
+              Math.Clamp(options.Value.IntervalMinutes, 1, 1440)
+            ),
           clock,
           ct
         );
@@ -60,15 +72,69 @@ public sealed class FuelStationStatusOperation(
     }
   }
 
+  // The stations the saved fuel plans currently send trucks to. There are a
+  // handful of plans, so this is read whole and picked apart in memory.
+  private static async Task<HashSet<Guid>> PlannedStationIdsAsync(
+    IAppDbContext db,
+    CancellationToken ct
+  )
+  {
+    var ids = new HashSet<Guid>();
+    foreach (
+      var json in await db
+        .TruckFuelPlans.AsNoTracking()
+        .Select(x => x.SummaryJson)
+        .ToListAsync(ct)
+    )
+    {
+      if (string.IsNullOrWhiteSpace(json))
+        continue;
+      try
+      {
+        using var document = JsonDocument.Parse(json);
+        if (
+          !document.RootElement.TryGetProperty("plan", out var plan)
+          || !plan.TryGetProperty("stops", out var stops)
+          || stops.ValueKind != JsonValueKind.Array
+        )
+          continue;
+        foreach (var stop in stops.EnumerateArray())
+          if (
+            stop.TryGetProperty("stationId", out var station)
+            && station.TryGetGuid(out var id)
+          )
+            ids.Add(id);
+      }
+      catch (JsonException)
+      {
+        // A plan nobody can read names no station; the sweep still runs.
+      }
+    }
+    return ids;
+  }
+
   public async Task<int> RunOnceAsync(CancellationToken ct)
   {
     await using var scope = scopes.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<IAppDbContext>();
     var lookups =
       scope.ServiceProvider.GetRequiredService<FuelStationLookupService>();
+    var places =
+      scope.ServiceProvider.GetRequiredService<IPlaceSearchService>();
     var now = clock.GetUtcNow().UtcDateTime;
     var stale = now.AddDays(-Math.Clamp(options.Value.RecheckDays, 1, 365));
     var today = DateOnly.FromDateTime(now);
+
+    // Stations a driver is being sent to right now come first and are asked
+    // about far more often. A station nobody is heading for can wait its turn
+    // in a sweep that takes about a day; one in a live plan cannot, and
+    // waiting a day is how two trucks were routed to a travel stop the
+    // provider had already marked closed.
+    var planned = await PlannedStationIdsAsync(db, ct);
+    var plannedStale = now.AddMinutes(
+      -Math.Clamp(options.Value.PlannedRecheckMinutes, 5, 1440)
+    );
+    var budget = Math.Clamp(options.Value.BatchSize, 1, 200);
 
     // Only stations somebody could actually be sent to: one with no current
     // price is not a candidate, and asking about it would spend the budget
@@ -77,12 +143,18 @@ public sealed class FuelStationStatusOperation(
       .FuelStations.Where(x =>
         x.FuelDiscounts.Any(d =>
           d.EffectiveFrom <= today && d.EffectiveTo >= today
-        ) && (x.StatusCheckedAt == null || x.StatusCheckedAt < stale)
+        )
+        && (
+          planned.Contains(x.Id)
+            ? x.StatusCheckedAt == null || x.StatusCheckedAt < plannedStale
+            : x.StatusCheckedAt == null || x.StatusCheckedAt < stale
+        )
       )
-      .OrderBy(x => x.StatusCheckedAt == null ? 0 : 1)
+      .OrderBy(x => planned.Contains(x.Id) ? 0 : 1)
+      .ThenBy(x => x.StatusCheckedAt == null ? 0 : 1)
       .ThenBy(x => x.StatusCheckedAt)
       .ThenBy(x => x.Id)
-      .Take(Math.Clamp(options.Value.BatchSize, 1, 200))
+      .Take(budget)
       .ToListAsync(ct);
     if (due.Count == 0)
       return 0;
@@ -94,11 +166,15 @@ public sealed class FuelStationStatusOperation(
       ct.ThrowIfCancellationRequested();
       try
       {
-        var place = await lookups.FindAsync(
-          station.ExternalId,
-          $"{station.Name}, {station.City}, {station.Region}",
-          ct
-        );
+        // A station already identified is re-read by that identifier. Only
+        // one nobody has placed yet is searched for by name.
+        var place = string.IsNullOrWhiteSpace(station.PlaceId)
+          ? await lookups.FindAsync(
+            station.ExternalId,
+            $"{station.Name}, {station.City}, {station.Region}",
+            ct
+          )
+          : await places.ReadAsync(station.PlaceId, ct);
         // A provider that answers nothing has not said the station is shut.
         // Recording the attempt still matters, or the same station is asked
         // about again on every pass and no other station is ever reached.
@@ -106,6 +182,8 @@ public sealed class FuelStationStatusOperation(
           place?.BusinessStatus ?? station.BusinessStatus;
         if (place is not null)
         {
+          if (!string.IsNullOrWhiteSpace(place.PlaceId))
+            station.PlaceId = place.PlaceId;
           station.OpeningHoursJson = place.OpeningHoursJson;
           station.UtcOffsetMinutes = place.UtcOffsetMinutes;
         }

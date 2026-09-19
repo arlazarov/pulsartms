@@ -19,6 +19,12 @@ public class FuelStation : BaseEntity
   public string BusinessStatus { get; set; } = string.Empty;
   public DateTime? StatusCheckedAt { get; set; }
 
+  // The provider's own identifier for this place, kept so a re-check reads
+  // the same place rather than searching for it again. A repeated text
+  // search can land on a different business next door and replace one
+  // station's status with another's.
+  public string PlaceId { get; set; } = string.Empty;
+
   // The provider's weekly opening periods and the station's offset from UTC,
   // kept together because the periods are local time and mean nothing alone.
   // Null is "not stated", which FuelStationHours answers Unknown for rather

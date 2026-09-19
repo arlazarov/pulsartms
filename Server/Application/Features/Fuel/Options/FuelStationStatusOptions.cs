@@ -19,8 +19,26 @@ public sealed class FuelStationStatusOptions
   [Range(1, 200)]
   public int BatchSize { get; set; } = 15;
 
-  // How stale an answer may be before it is asked again. A station that shut
-  // is found within this long at worst.
+  // While stations remain that have never been asked about, passes follow
+  // each other at this instead of the full interval. The first sweep of
+  // several hundred, and any station added since, therefore finishes in
+  // minutes rather than a day - the routine re-ask stays gentle.
+  [Range(1, 600)]
+  public int BacklogSeconds { get; set; } = 10;
+
+  // How stale an answer may be before it is asked again, and therefore the
+  // longest a station can be shut before this notices. A fortnight was the
+  // first guess and it was too long: a travel stop that closes would be
+  // planned into routes for two weeks before anyone found out. This applies
+  // to the routine re-ask only - a station nobody has asked about yet, which
+  // includes every newly imported one, is not made to wait for it.
   [Range(1, 365)]
-  public int RecheckDays { get; set; } = 14;
+  public int RecheckDays { get; set; } = 7;
+
+  // Stations a saved plan is currently sending a truck to. These are few and
+  // they are the ones a driver is about to arrive at, so they are asked about
+  // on their own, far shorter, clock rather than waiting out a sweep of
+  // several hundred.
+  [Range(5, 1440)]
+  public int PlannedRecheckMinutes { get; set; } = 60;
 }
