@@ -30,6 +30,7 @@ are historical results, not an approved workflow for future runs.
 | Fleet telemetry or map payload | `bash test.sh fleet` | ETA, map JS, both architecture suites |
 | Dispatch | `bash test.sh dispatch` | Finance, routing, server architecture |
 | Fuel | `bash test.sh fuel` | Routing, server architecture |
+| Expenses, load attribution | `bash test.sh costs` | Finance, architecture |
 | Identity helpers | `bash test.sh identity` | Auth storage JS, both architecture suites |
 | Synchronization | `bash test.sh synchronization` | Dispatch, addresses, server architecture |
 | Shared contracts, persistence, DI, authentication, test infrastructure | `bash test.sh all` | Both .NET test assemblies and all Node suites |

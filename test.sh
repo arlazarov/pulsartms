@@ -16,13 +16,14 @@ for category in "$@"; do
     styles) styles=true ;;
     architecture) ;;
     addresses) filter+='|Category=Addresses|Category=Routing|Category=Finance' ;;
+    costs) filter+='|Category=Costs|Category=Finance' ;;
     routing|finance|eta) filter+='|Category=Routing|Category=Finance|Category=Eta|Category=Addresses' ;;
     fleet) filter+='|Category=Fleet|Category=Eta'; map=true ;;
     dispatch) filter+='|Category=Dispatch|Category=Finance|Category=Routing'; dispatch=true ;;
     fuel) filter+='|Category=Fuel|Category=Routing' ;;
     identity) filter+='|Category=Identity'; identity=true ;;
     synchronization) filter+='|Category=Synchronization|Category=Dispatch|Category=Addresses'; dispatch=true ;;
-    *) echo 'Usage: bash test.sh [all|map|styles|architecture|addresses|routing|finance|eta|fleet|dispatch|fuel|identity|synchronization] ...' >&2; exit 2 ;;
+    *) echo 'Usage: bash test.sh [all|map|styles|architecture|addresses|costs|routing|finance|eta|fleet|dispatch|fuel|identity|synchronization] ...' >&2; exit 2 ;;
   esac
 done
 

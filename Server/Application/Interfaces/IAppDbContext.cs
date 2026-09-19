@@ -1,4 +1,5 @@
 using Domain.Entities.Border;
+using Domain.Entities.Costs;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
@@ -49,6 +50,9 @@ public interface IAppDbContext
   DbSet<Movement> Movements { get; }
   DbSet<MovementDistanceEvidence> MovementDistanceEvidence { get; }
   DbSet<MovementAllocationEvent> MovementAllocationEvents { get; }
+  DbSet<Expense> Expenses { get; }
+  DbSet<ExpenseAttribution> ExpenseAttributions { get; }
+  DbSet<ExpenseAttributionEvent> ExpenseAttributionEvents { get; }
   DbSet<MileageAllocationPolicy> MileageAllocationPolicies { get; }
   DbSet<OdometerPosition> OdometerPositions { get; }
   DbSet<OdometerCaptureCheckpoint> OdometerCaptureCheckpoints { get; }

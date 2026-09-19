@@ -1,6 +1,7 @@
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Entities.Border;
+using Domain.Entities.Costs;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
@@ -80,6 +81,11 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
     Set<MovementDistanceEvidence>();
   public DbSet<MovementAllocationEvent> MovementAllocationEvents =>
     Set<MovementAllocationEvent>();
+  public DbSet<Expense> Expenses => Set<Expense>();
+  public DbSet<ExpenseAttribution> ExpenseAttributions =>
+    Set<ExpenseAttribution>();
+  public DbSet<ExpenseAttributionEvent> ExpenseAttributionEvents =>
+    Set<ExpenseAttributionEvent>();
   public DbSet<MileageAllocationPolicy> MileageAllocationPolicies =>
     Set<MileageAllocationPolicy>();
   public DbSet<OdometerPosition> OdometerPositions => Set<OdometerPosition>();
