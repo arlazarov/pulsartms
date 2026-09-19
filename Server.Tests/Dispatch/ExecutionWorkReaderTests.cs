@@ -1,10 +1,13 @@
+using System.Data.Common;
 using Application.Features.Dispatch.Queries;
 using Application.Features.Execution.Models;
+using Application.Features.Execution.Queries;
 using Application.Features.Execution.Services;
 using Application.Reference;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Server.Tests.Support;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
@@ -223,6 +226,78 @@ public sealed class ExecutionWorkReaderTests
       Assert.Single((await ReadAsync(f, truck)).Loads).Id
     );
     Assert.Empty(f.Db.ChangeTracker.Entries());
+  }
+
+  // Every read of this database costs a round trip whatever it asks for, and
+  // one request for upcoming loads performs this read twice. The link table
+  // used to be asked twice within each of them - once for which dispatches
+  // execution owns, once for the legs to show.
+  [Fact]
+  public async Task ReadingATruckExecutionAsksTheLinkTableOnce()
+  {
+    var commands = new CommandLog();
+    await using var f = await StopCompletionFixture.CreateAsync(commands);
+    var truck = await AssignAsync(f);
+    f.Db.LoadExecutionLegs.Add(
+      new LoadExecutionLeg
+      {
+        Id = Guid.NewGuid(),
+        DispatchId = f.Load.Id,
+        ExecutionLeg = new()
+        {
+          Id = Guid.NewGuid(),
+          Trip = new() { Id = Guid.NewGuid() },
+          TruckId = truck.Id,
+          Status = "active",
+          Revision = 3,
+          Stops = ExecutionStopRows.Capture(f.Load.Stops),
+        },
+        Sequence = 1,
+      }
+    );
+    await f.Db.SaveChangesAsync();
+
+    commands.Clear();
+    var execution = await ExecutionLoads.ReadAsync(
+      f.Db,
+      new FleetNames(f.Db),
+      new ActiveTransfers(f.Db),
+      truck.Id,
+      [f.Load.Id],
+      default
+    );
+
+    Assert.Equal(f.Load.Id, Assert.Single(execution.Loads).Work.Id);
+    Assert.Contains(f.Load.Id, execution.OwnedDispatchIds);
+    Assert.Single(commands.Text, x => x.Contains("LoadExecutionLegs"));
+    // The link read, the dispatches those links name, live handovers, and
+    // the three name tables.
+    Assert.Equal(6, commands.Text.Count);
+  }
+
+  private sealed class CommandLog : DbCommandInterceptor
+  {
+    public List<string> Text { get; } = [];
+
+    public void Clear() => Text.Clear();
+
+    public override ValueTask<
+      InterceptionResult<DbDataReader>
+    > ReaderExecutingAsync(
+      DbCommand command,
+      CommandEventData eventData,
+      InterceptionResult<DbDataReader> result,
+      CancellationToken cancellationToken = default
+    )
+    {
+      Text.Add(command.CommandText);
+      return base.ReaderExecutingAsync(
+        command,
+        eventData,
+        result,
+        cancellationToken
+      );
+    }
   }
 
   private static async Task<Truck> AssignAsync(StopCompletionFixture f)

@@ -10,6 +10,7 @@ using Domain.Entities.Dispatch;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 
@@ -194,15 +195,18 @@ internal sealed class StopCompletionFixture : IAsyncDisposable
     );
   }
 
-  public static async Task<StopCompletionFixture> CreateAsync()
+  public static async Task<StopCompletionFixture> CreateAsync(
+    IInterceptor? interceptor = null
+  )
   {
     var fixture = new StopCompletionFixture();
     await fixture.connection.OpenAsync();
-    fixture.Db = new(
-      new DbContextOptionsBuilder<AppDbContext>()
-        .UseSqlite(fixture.connection)
-        .Options
+    var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(
+      fixture.connection
     );
+    if (interceptor is not null)
+      options.AddInterceptors(interceptor);
+    fixture.Db = new(options.Options);
     await fixture.Db.Database.EnsureCreatedAsync();
     fixture.Db.Users.Add(fixture.Actor);
     fixture.Db.Dispatches.Add(fixture.Load);

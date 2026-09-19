@@ -125,7 +125,7 @@ public sealed class ExecutionItineraryReadTests
       f.Db,
       new FleetNames(f.Db),
       new ActiveTransfers(f.Db)
-    ).Handle(new(state.Truck.Id), default);
+    ).Handle(new(state.Truck.Id, [f.Load.Id]), default);
 
     Assert.NotNull(itinerary);
     Assert.Equal(expected, itinerary.Stops.Select(x => x.Id));
@@ -218,7 +218,7 @@ public sealed class ExecutionItineraryReadTests
       f.Db,
       new FleetNames(f.Db),
       new ActiveTransfers(f.Db)
-    ).Handle(new(state.Truck.Id), default);
+    ).Handle(new(state.Truck.Id, []), default);
     var current = Assert.Single(board.Loads).Work;
     Assert.Equal(8, current.AssignmentRevision);
     Assert.Equal(stops.Select(x => x.Id), current.Stops.Select(x => x.Id));

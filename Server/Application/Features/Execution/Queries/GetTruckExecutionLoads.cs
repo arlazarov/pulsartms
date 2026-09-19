@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Application.Diagnostics;
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
 using Application.Reference;
@@ -20,7 +22,7 @@ public sealed record TruckExecutionLoads(
 
 public sealed record GetTruckExecutionLoadsQuery(
   Guid TruckId,
-  IReadOnlyCollection<Guid>? CandidateDispatchIds = null
+  IReadOnlyCollection<Guid> CandidateDispatchIds
 ) : IRequest<TruckExecutionLoads>;
 
 public sealed class GetTruckExecutionLoadsHandler(
@@ -50,40 +52,70 @@ public static class ExecutionLoads
     FleetNames names,
     ActiveTransfers transfers,
     Guid? truckId,
-    IReadOnlyCollection<Guid>? candidates,
+    IReadOnlyCollection<Guid> candidates,
     CancellationToken ct,
     IReadOnlyCollection<Guid>? executionLegIds = null,
     IReadOnlyCollection<Guid>? completedLegIds = null,
     IReadOnlyCollection<Guid>? truckIds = null
   )
   {
-    var ownedQuery = db.LoadExecutionLegs.AsNoTracking();
-    if (candidates is not null)
-      ownedQuery = ownedQuery.Where(x => candidates.Contains(x.DispatchId));
-    var owned = (
-      await ownedQuery.Select(x => x.DispatchId).Distinct().ToListAsync(ct)
-    ).ToHashSet();
-    var completed = completedLegIds ?? [];
-    var query = db
+    // One read of the link table where there were two. The rows that say
+    // which dispatches execution owns and the rows this caller wants to see
+    // come from the same table and overlap; each read of this database costs
+    // a round trip whatever it asks for, and this runs twice in a single
+    // request for upcoming loads.
+    var wanted = candidates.ToHashSet();
+    var completed = completedLegIds?.ToHashSet() ?? [];
+    // Both truck filters are applied together where a caller gives both, so
+    // they narrow to one set. Null stays null: the board reads every truck.
+    var trucks = truckIds?.ToHashSet();
+    if (truckId is { } single)
+      trucks =
+        trucks is null || trucks.Contains(single)
+          ? [single]
+          : new HashSet<Guid>();
+    var legFilter = executionLegIds?.ToHashSet();
+    var anyTruck = trucks is null;
+    var truckSet = trucks ?? new HashSet<Guid>();
+    var anyLeg = legFilter is null;
+    var legSet = legFilter ?? new HashSet<Guid>();
+    var started = Stopwatch.GetTimestamp();
+    var rows = await db
       .LoadExecutionLegs.AsNoTracking()
       .Where(x =>
-        x.ExecutionLeg.Status == "active"
-        || x.ExecutionLeg.Status == "planned"
-        || x.ExecutionLeg.Status == "completed"
-          && completed.Contains(x.ExecutionLegId)
-      );
-    if (truckId.HasValue)
-      query = query.Where(x => x.ExecutionLeg.TruckId == truckId);
-    if (truckIds is not null)
-      query = query.Where(x => truckIds.Contains(x.ExecutionLeg.TruckId));
-    if (executionLegIds is not null)
-      query = query.Where(x => executionLegIds.Contains(x.ExecutionLegId));
-    var links = await query
+        wanted.Contains(x.DispatchId)
+        || (
+          (
+            x.ExecutionLeg.Status == "active"
+            || x.ExecutionLeg.Status == "planned"
+            || x.ExecutionLeg.Status == "completed"
+              && completed.Contains(x.ExecutionLegId)
+          )
+          && (anyTruck || truckSet.Contains(x.ExecutionLeg.TruckId))
+          && (anyLeg || legSet.Contains(x.ExecutionLegId))
+        )
+      )
       .Include(x => x.ExecutionLeg)
       .OrderBy(x => x.ExecutionLeg.Status == "active" ? 0 : 1)
       .ThenBy(x => x.Sequence)
       .ThenBy(x => x.Id)
       .ToListAsync(ct);
+    started = Mark("links", started);
+    var owned = rows.Where(x => wanted.Contains(x.DispatchId))
+      .Select(x => x.DispatchId)
+      .ToHashSet();
+    // The order the database returned is kept: filtering does not disturb it.
+    var links = rows.Where(x =>
+        (
+          x.ExecutionLeg.Status == "active"
+          || x.ExecutionLeg.Status == "planned"
+          || x.ExecutionLeg.Status == "completed"
+            && completed.Contains(x.ExecutionLegId)
+        )
+        && (anyTruck || truckSet.Contains(x.ExecutionLeg.TruckId))
+        && (anyLeg || legSet.Contains(x.ExecutionLegId))
+      )
+      .ToList();
     if (links.Count == 0)
       return new([], owned);
     var ids = links.Select(x => x.DispatchId).Distinct().ToArray();
@@ -91,6 +123,7 @@ public static class ExecutionLoads
       .Dispatches.AsNoTracking()
       .Where(x => ids.Contains(x.Id))
       .ToDictionaryAsync(x => x.Id, ct);
+    started = Mark("loads", started);
     var legs = links
       .Select(x => x.ExecutionLeg)
       .DistinctBy(x => x.Id)
@@ -98,12 +131,14 @@ public static class ExecutionLoads
     var snapshots = legs.ToDictionary(x => x.Id, ReadSnapshot);
     var legIds = legs.Select(x => x.Id).ToArray();
     var participants = await transfers.ForLegsAsync(legIds, ct);
+    started = Mark("transfers", started);
     var visits = ExecutionTransfers.Project(legs, participants);
     var outgoing = participants.ToDictionary(x => x.OutgoingLegId);
     var incoming = participants.ToDictionary(x => x.IncomingLegId);
     var truckNames = await names.TrucksAsync(ct);
     var driverNames = await names.DriversAsync(ct);
     var trailerNames = await names.TrailersAsync(ct);
+    Mark("names", started);
     var result = new List<ExecutionLoadSnapshot>();
     foreach (var link in links)
     {
@@ -168,5 +203,11 @@ public static class ExecutionLoads
       && stops.Select(x => x.Id).Distinct().Count() == stops.Count
       ? stops
       : [];
+  }
+
+  private static long Mark(string stage, long since)
+  {
+    PerformanceStages.Elapsed("execution-loads", stage, since);
+    return Stopwatch.GetTimestamp();
   }
 }
