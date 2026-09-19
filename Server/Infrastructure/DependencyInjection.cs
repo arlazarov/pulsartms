@@ -153,11 +153,17 @@ public static class DependencyInjection
       ApplicationWorker<IFleetSynchronizationOperation>
     >();
 
-    services.AddHttpClient<IPlaceSearchService, GooglePlacesService>();
+    services.AddHttpClient<IPlaceSearchService, GooglePlacesService>(client =>
+      client.Timeout = TimeSpan.FromSeconds(10)
+    );
     services
-      .AddHttpClient<IWeatherProvider, GoogleWeatherProvider>()
+      .AddHttpClient<IWeatherProvider, GoogleWeatherProvider>(client =>
+        client.Timeout = TimeSpan.FromSeconds(10)
+      )
       .RemoveAllLoggers();
-    services.AddHttpClient<IIftaApiService, IftaApiService>();
+    services.AddHttpClient<IIftaApiService, IftaApiService>(client =>
+      client.Timeout = TimeSpan.FromSeconds(30)
+    );
     services
       .AddHttpClient<
         IFuelExchangeRateProvider,
@@ -168,7 +174,11 @@ public static class DependencyInjection
     services.AddSingleton<IRouteRegionLookup, RouteRegionLookup>();
     services.AddHostedService<ApplicationWorker<IEtaRefreshOperation>>();
     services.AddHostedService<ApplicationWorker<ITruckHistoryOperation>>();
-    services.AddHttpClient<SamsaraApiService>().RemoveAllLoggers();
+    services
+      .AddHttpClient<SamsaraApiService>(client =>
+        client.Timeout = TimeSpan.FromSeconds(30)
+      )
+      .RemoveAllLoggers();
     services.AddSingleton<SamsaraHosHistoryCache>();
     services.AddSingleton<SamsaraDriverCatalogCache>();
     services.AddScoped<ITruckCameraProvider, SamsaraTruckCameraProvider>();
