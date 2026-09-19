@@ -161,21 +161,36 @@ by reading the code.
 - How an expense and its allocation to a load are recorded, before tolls,
   actual costs and owner-operator pay exist.
 - Whether the two multi-writer tables keep two writers or gain one owner.
-- When the reviewed reset script is rebuilt for the current schema. It refuses
-  to run at all today, because it requires the 39-migration pre-rebuild schema
-  and the database has 46. Its operational list also omits eleven model tables,
-  among them `ExecutionLegStops` and `ExecutionLegRevisions`, so past that
-  guard it would leave accepted execution behind the loads it cleared. What it
-  protects is correct and checked by digest; only the list is stale.
-- Whether `FuelRoadsAreValidatedBeforeProfileAndResultWrites` is still earning
-  its place. It asserts the order of literal strings by their position in one
-  source file, so it fails when that sequence moves even though behaviour is
-  unchanged, and it blocks giving fuel publication a contract of its own. The
-  same guarantee is already covered by what the code does rather than how it
-  reads: `LateRoadChangesKeepProfileAndBothFuelCopies` and
-  `FailedFuelCalculationPreservesProfileAndBothSavedCopies` prove a rejected
-  publication writes nothing, `ProfileSaveOnlyInvalidatesTheCacheAfterCommit`
-  proves caches drop only after the commit, and
-  `FuelSuccessCommitsTheRequestedProfileWithBothCopies` proves a successful one
-  commits the profile and both copies together. Replacing it is a decision
-  about the checks, not a licence to relax one.
+- Whether the two multi-writer tables keep two writers or gain one owner.
+
+## Settled
+
+- The reset script is rebuilt for the current schema, and both its migration
+  count and the schema it acknowledges are now read from the model by
+  `ResetInventoryTests` rather than restated by hand. Counting migration files
+  had counted `RebuildExecutionStorage` twice, because it is written across
+  two files, so the guard demanded one migration more than any current
+  database has.
+- `FuelRoadsAreValidatedBeforeProfileAndResultWrites` is removed. It asserted
+  the order of six calls by their position in `FuelPlanningService.cs`, and
+  three of those orderings were not properties of the program: the profile,
+  route and truck-plan writes share one transaction, so which ran first is not
+  observable. The two that mattered are now asked of behaviour, including a
+  refusal between the writes, which nothing covered before.
+- Fuel publication does not become a contract of its own. With the positional
+  test gone it could, and examining what that contract would carry says it
+  should not: the publication needs the planning state, the captured inputs,
+  the plan, the profile, the saved roads, the deadhead history, the fuel
+  result, the itinerary, the baseline route and the expected revision, plus a
+  verification step that has to run inside the transaction. Two of those are
+  aggregates of everything else. A parameter object that wide is evidence the
+  seam is not there.
+
+  It would also cross no module boundary. `ModuleDependencyTests` records one
+  edge between these modules, `Routing -> Fuel`, in one direction; fuel
+  planning already lives inside Routing and writes Routing's own tables. The
+  contract would be an abstraction inside one module, which is the move that
+  removes folder references without removing coupling.
+
+  What blocked the move is gone, so the day fuel planning has a reason to
+  leave Routing, it can. Until then the sequence keeps the owner it has.
