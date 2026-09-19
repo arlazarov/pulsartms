@@ -183,6 +183,12 @@ Infrastructure implements transactional, newer-only writes to `DispatchEtaForeca
 Reads reuse saved forecasts but reject changed assignments, predecessors and
 schedules. A database snapshot is not an actual stop event or proof of HOS compliance.
 Internal board reads disable ETA enrichment to avoid recursive orchestration.
+`IDispatchBoardReader` (rows, details, HOS, financials) is the board read that
+planning, fuel, preview, synchronization and ETA services call directly;
+`DispatchBoardService` adds forecasts for `GetDispatchBoardHandler` and the
+planning reads. Only the HTTP request passes through the MediatR pipeline, so
+request metrics count browser reads rather than internal ones. Services do not
+inject `ISender`; `MediatorUsageTests` lists the remaining debt, which may only shrink.
 
 Next-load revision checks use saved-route metadata and input signatures before reading geometry. `INextLoadRouteReader` owns the joined persistence projection;
 unchanged and label-only reads do not retrieve route JSON, and cold reads skip

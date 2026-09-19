@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 namespace Application.Features.Routing.Services.FuelPlanning;
 
 public sealed class TruckFuelPlans(ITruckFuelPlanStore store, ReadCache reads, FuelPlanMemory memory,
-  ISender mediator, IOptions<FuelRegionOptions> options)
+  ISender mediator, Application.Features.Dispatch.Interfaces.IDispatchBoardReader dispatchBoard, IOptions<FuelRegionOptions> options)
 {
   public Task<TruckFuelPlanSnapshot?> ReadAsync(Guid truckId, CancellationToken ct) =>
     reads.GetAsync($"truck-fuel:{truckId}", "summary", () => store.ReadAsync(truckId, false, ct), TimeSpan.FromSeconds(30));
@@ -39,9 +39,8 @@ public sealed class TruckFuelPlans(ITruckFuelPlanStore store, ReadCache reads, F
     if (state?.Plan is not { } plan || plan.Tracking.AllStopsPassed) return;
     var saved = await ReadAsync(plan.TruckId, ct);
     if (saved is null) return;
-    var board = await mediator.Send(new GetDispatchBoardQuery(TruckId: plan.TruckId,
-      IncludeHos: false, IncludeFinancials: false, IncludeEta: false, IncludeOverdue: true), ct);
-    var loads = board.Success ? board.Response?.Items.FirstOrDefault()?.Dispatches : null;
+    var loads = (await dispatchBoard.ReadAsync(new(TruckId: plan.TruckId,
+      IncludeHos: false, IncludeFinancials: false, IncludeEta: false, IncludeOverdue: true), ct)).Items.FirstOrDefault()?.Dispatches;
     var index = saved.Stops.ToList().FindIndex(x => x.DispatchId == plan.DispatchId && x.Stop.Id == plan.Tracking.NextStopId);
     var geometry = index >= 0 && loads is not null && FuelPlanProjection.AssignmentsMatch(saved.Plan, plan.DispatchId, loads)
       && FuelPlanProjection.RemainingStopsMatch(saved.Stops, plan.DispatchId, plan.Tracking.NextStopId, loads)

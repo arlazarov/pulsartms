@@ -9,15 +9,14 @@ using Application.Caching;
 namespace Application.Features.Routing.Services.Routes;
 
 public sealed class AutomaticPlanningService(RoutePlanningService plans, FuelPlanningService fuel,
-  ISender mediator, IMemoryCache cache, PlanningReadService planningReads)
+  Application.Features.Dispatch.Services.DispatchBoardService dispatchBoard, IMemoryCache cache, PlanningReadService planningReads)
 {
   private static readonly KeyedGates Gates = new();
 
   public async Task<AutomaticPlanningResult> ForTruckAsync(Guid truckId, CancellationToken ct)
   {
-    var board = await mediator.Send(new GetDispatchBoardQuery(TruckId: truckId, IncludeHos: true, IncludeFinancials: false), ct);
-    if (!board.Success) throw new RoutePlanningException("Dispatch assignments are temporarily unavailable.");
-    var loads = board.Response?.Items.FirstOrDefault()?.Dispatches;
+    var board = await dispatchBoard.ReadAsync(new(TruckId: truckId, IncludeHos: true, IncludeFinancials: false), ct);
+    var loads = board.Items.FirstOrDefault()?.Dispatches;
     foreach (var load in loads ?? [])
     {
       var resolved = await plans.LoadAsync(load.Id, ct);
@@ -26,9 +25,9 @@ public sealed class AutomaticPlanningService(RoutePlanningService plans, FuelPla
       var result = await ForDispatchAsync(load.Id, ct,
         connectFromTruck: load.Status.Equals("assigned", StringComparison.OrdinalIgnoreCase));
       if (result.State?.Plan is not { Tracking.AllStopsPassed: true, InputsChanged: false })
-        return result with { Hos = board.Response?.Items.FirstOrDefault()?.Hos };
+        return result with { Hos = board.Items.FirstOrDefault()?.Hos };
     }
-    return new(truckId, null, null, null, "No remaining stops in current or upcoming dispatches.") { Hos = board.Response?.Items.FirstOrDefault()?.Hos };
+    return new(truckId, null, null, null, "No remaining stops in current or upcoming dispatches.") { Hos = board.Items.FirstOrDefault()?.Hos };
   }
 
   public async Task<AutomaticPlanningResult> ForDispatchAsync(Guid dispatchId, CancellationToken ct, bool connectFromTruck = false)

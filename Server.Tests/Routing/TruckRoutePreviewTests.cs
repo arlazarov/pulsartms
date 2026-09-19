@@ -50,7 +50,7 @@ public sealed class TruckRoutePreviewTests
     Assert.Equal(current.Id, Assert.Single(await fixture.Preview.GetAsync(default)).DispatchId);
     fixture.Hos.Allow = fixture.Sender.AllowTelemetry = true;
     var options = Options.Create(new SynchronizationOptions { Enabled = true });
-    var reader = new PlanningReadService(fixture.Services.Routes, new(fixture.Memory, options), fixture.Sender,
+    var reader = new PlanningReadService(fixture.Services.Routes, new(fixture.Memory, options), fixture.Services.BoardService,
       options, fixture.Services.Eta, fixture.Services.FuelPlans);
     Assert.Equal(current.Id, (await reader.ForTruckAsync(fixture.Truck.Id, default)).DispatchId);
     var chain = await fixture.Services.EtaInputs.DescribeAsync(fixture.Truck.Id, default);
@@ -79,7 +79,7 @@ public sealed class TruckRoutePreviewTests
     await fixture.Db.SaveChangesAsync();
     fixture.Hos.Allow = fixture.Sender.AllowTelemetry = true;
     var options = Options.Create(new SynchronizationOptions { Enabled = true });
-    var reader = new PlanningReadService(fixture.Services.Routes, new(fixture.Memory, options), fixture.Sender, options, fixture.Services.Eta, fixture.Services.FuelPlans);
+    var reader = new PlanningReadService(fixture.Services.Routes, new(fixture.Memory, options), fixture.Services.BoardService, options, fixture.Services.Eta, fixture.Services.FuelPlans);
     var initial = (await reader.ForDispatchAsync(load.Id, default)).State!.Plan!;
     Assert.False(initial.GeometryOmitted);
     Assert.Equal(2, initial.Route.Legs[0].Points.Count);
@@ -111,7 +111,7 @@ public sealed class TruckRoutePreviewTests
     var current = await fixture.SavePlanAsync(next);
     fixture.Hos.Allow = fixture.Sender.AllowTelemetry = true;
     var options = Options.Create(new SynchronizationOptions { Enabled = true });
-    var reader = new PlanningReadService(fixture.Services.Routes, new(fixture.Memory, options), fixture.Sender, options, fixture.Services.Eta, fixture.Services.FuelPlans);
+    var reader = new PlanningReadService(fixture.Services.Routes, new(fixture.Memory, options), fixture.Services.BoardService, options, fixture.Services.Eta, fixture.Services.FuelPlans);
     var changed = await reader.ForTruckAsync(fixture.Truck.Id, default, completed.Id, 1);
     Assert.Equal(next.Id, changed.DispatchId);
     Assert.False(changed.State!.Plan!.GeometryOmitted);
@@ -182,7 +182,7 @@ public sealed class TruckRoutePreviewTests
     Assert.Equal(0, fixture.Router.Calls);
     Assert.Equal(0, fixture.Hos.Calls);
     Assert.Equal(0, fixture.Sender.TelemetryCalls);
-    Assert.All(fixture.Sender.Requests, request =>
+    Assert.All(fixture.Services.BoardReader.Requests, request =>
     {
       Assert.Equal(fixture.Truck.Id, request.TruckId);
       Assert.False(request.IncludeHos);
@@ -224,7 +224,7 @@ public sealed class TruckRoutePreviewTests
     Assert.Equal(0, fixture.Sender.TelemetryCalls);
     fixture.Hos.Allow = fixture.Sender.AllowTelemetry = true;
     var options = Options.Create(new SynchronizationOptions { Enabled = true });
-    var normal = new PlanningReadService(fixture.Services.Routes, new(fixture.Memory, options), fixture.Sender, options, fixture.Services.Eta, fixture.Services.FuelPlans);
+    var normal = new PlanningReadService(fixture.Services.Routes, new(fixture.Memory, options), fixture.Services.BoardService, options, fixture.Services.Eta, fixture.Services.FuelPlans);
     var live = await normal.ForTruckAsync(fixture.Truck.Id, default);
     Assert.Equal(preview.DispatchId, live.DispatchId);
     Assert.Equal(0, fixture.Router.Calls);
@@ -247,7 +247,7 @@ public sealed class TruckRoutePreviewTests
     Assert.Empty(await fixture.Preview.GetAsync(default));
     fixture.Hos.Allow = fixture.Sender.AllowTelemetry = true;
     var options = Options.Create(new SynchronizationOptions { Enabled = true });
-    var reader = new PlanningReadService(fixture.Services.Routes, new(fixture.Memory, options), fixture.Sender, options, fixture.Services.Eta, fixture.Services.FuelPlans);
+    var reader = new PlanningReadService(fixture.Services.Routes, new(fixture.Memory, options), fixture.Services.BoardService, options, fixture.Services.Eta, fixture.Services.FuelPlans);
     var live = await reader.ForTruckAsync(fixture.Truck.Id, default);
     Assert.Equal(first.Id, live.DispatchId);
     Assert.True(live.State!.Plan!.InputsChanged);
@@ -399,9 +399,8 @@ public sealed class TruckRoutePreviewTests
       var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).AddInterceptors(probe).Options);
       await db.Database.EnsureCreatedAsync();
       var fixture = new Fixture(connection, db, probe);
-      fixture.Services = new(db, fixture.Router, fixture.Sender);
-      fixture.Sender.Board = new(db, fixture.Services.Reads, fixture.Hos, fixture.Services.Deadheads, fixture.Services.Forecasts);
-      fixture.Preview = new(db, fixture.Sender, fixture.Services.Reads, fixture.Services.Displays, fixture.Services.Routes, fixture.Memory);
+      fixture.Services = new(db, fixture.Router, fixture.Sender, boardHos: fixture.Hos);
+      fixture.Preview = new(db, fixture.Services.BoardReader, fixture.Services.Reads, fixture.Services.Displays, fixture.Services.Routes, fixture.Memory);
       db.Trucks.Add(fixture.Truck);
       await db.SaveChangesAsync();
       return fixture;
@@ -446,22 +445,15 @@ public sealed class TruckRoutePreviewTests
 
   private sealed class BoardSender : ISender
   {
-    public GetDispatchBoardHandler Board { get; set; } = null!;
-    public List<GetDispatchBoardQuery> Requests { get; } = [];
     public bool AllowTelemetry { get; set; }
     public int TelemetryCalls { get; private set; }
     public FleetLocationsResponse Telemetry { get; set; } = new();
-    public async Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default)
+    public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default)
     {
-      if (request is GetDispatchBoardQuery board)
-      {
-        Requests.Add(board);
-        return (TResponse)(object)await Board.Handle(board, ct);
-      }
       if (AllowTelemetry && request is GetFleetLocationsQuery { CachedOnly: true })
       {
         TelemetryCalls++;
-        return (TResponse)(object)RequestResponse<FleetLocationsResponse>.Ok(Telemetry);
+        return Task.FromResult((TResponse)(object)RequestResponse<FleetLocationsResponse>.Ok(Telemetry));
       }
       throw new InvalidOperationException("The preview must not request live planning data.");
     }

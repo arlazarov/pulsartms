@@ -9,7 +9,7 @@ using System.Text.Json;
 
 namespace Application.Features.Routing.Services.Routes;
 
-public sealed class RoutePreviewService(IAppDbContext db, ISender mediator, ReadCache reads,
+public sealed class RoutePreviewService(IAppDbContext db, Application.Features.Dispatch.Interfaces.IDispatchBoardReader board, ReadCache reads,
   RouteDisplayCache displays, RoutePlanningService routes, IMemoryCache cache)
 {
   private const string CacheKey = "route-preview:fleet";
@@ -44,11 +44,8 @@ public sealed class RoutePreviewService(IAppDbContext db, ISender mediator, Read
   public async Task<AutomaticPlanningResult> ForTruckAsync(Guid truckId, CancellationToken ct)
   {
     ct.ThrowIfCancellationRequested();
-    var board = await mediator.Send(new GetDispatchBoardQuery(TruckId: truckId,
-      IncludeHos: false, IncludeFinancials: false, IncludeEta: false), ct);
-    if (!board.Success || board.Response is null)
-      throw new RoutePlanningException("Dispatch assignments are temporarily unavailable.");
-    var row = board.Response.Items.FirstOrDefault(x => x.TruckId == truckId);
+    var page = await board.ReadAsync(new(TruckId: truckId, IncludeHos: false, IncludeFinancials: false, IncludeEta: false), ct);
+    var row = page.Items.FirstOrDefault(x => x.TruckId == truckId);
     return row is null ? NoRemaining(truckId) : await ReadRowAsync(row, id => routes.LoadAsync(id, ct), null, ct);
   }
 
@@ -57,10 +54,9 @@ public sealed class RoutePreviewService(IAppDbContext db, ISender mediator, Read
     var rows = new List<Application.Features.Dispatch.Models.TruckDispatchBoardResponse>();
     for (var page = 1; ; page++)
     {
-      var board = await mediator.Send(new GetDispatchBoardQuery(Page: page, PageSize: 100, IncludeHos: false, IncludeFinancials: false, IncludeEta: false), ct);
-      if (!board.Success || board.Response is null) throw new RoutePlanningException("Dispatch assignments are temporarily unavailable.");
-      rows.AddRange(board.Response.Items);
-      if (!board.Response.HasNextPage) break;
+      var boardPage = await board.ReadAsync(new(Page: page, PageSize: 100, IncludeHos: false, IncludeFinancials: false, IncludeEta: false), ct);
+      rows.AddRange(boardPage.Items);
+      if (!boardPage.HasNextPage) break;
     }
     var ids = rows.SelectMany(x => x.Dispatches).Select(x => x.Id).Distinct().ToArray();
     var saved = (await db.DispatchRoutePlans.AsNoTracking().Where(x => ids.Contains(x.DispatchId))

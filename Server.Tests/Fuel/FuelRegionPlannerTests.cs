@@ -6,7 +6,6 @@ using Application.Features.Routing.Services;
 using Application.Features.Routing.Models;
 using Application.Features.Dispatch.Models;
 using Application.Models;
-using MediatR;
 using Microsoft.Extensions.Options;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
@@ -255,7 +254,7 @@ public class FuelRegionPlannerTests
         }
       }
       await db.SaveChangesAsync();
-      var services = new PlanningTestServices(db, router, sender);
+      var services = new PlanningTestServices(db, router);
       return new(connection, db, services, new(sender, Options.Create(new FuelRegionOptions()), services.Routes, services.Deadheads));
     }
     public async ValueTask DisposeAsync()
@@ -283,14 +282,10 @@ public class FuelRegionPlannerTests
     }
   }
 
-  private sealed class Sender : ISender
+  private sealed class Sender : Application.Features.Dispatch.Interfaces.IDispatchBoardReader
   {
     public List<TruckDispatchBoardResponse> Rows { get; set; } = [];
-    public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default) =>
-      Task.FromResult((TResponse)(object)RequestResponse<PaginatedList<TruckDispatchBoardResponse>>.Ok(new() { Items = Rows, Page = 1, PageSize = 12 }));
-    public Task Send<TRequest>(TRequest request, CancellationToken ct = default) where TRequest : IRequest => throw new NotSupportedException();
-    public Task<object?> Send(object request, CancellationToken ct = default) => throw new NotSupportedException();
-    public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken ct = default) => throw new NotSupportedException();
-    public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken ct = default) => throw new NotSupportedException();
+    public Task<PaginatedList<TruckDispatchBoardResponse>> ReadAsync(Application.Features.Dispatch.Queries.GetDispatchBoardQuery request, CancellationToken ct) =>
+      Task.FromResult(new PaginatedList<TruckDispatchBoardResponse> { Items = Rows, Page = 1, PageSize = 12 });
   }
 }

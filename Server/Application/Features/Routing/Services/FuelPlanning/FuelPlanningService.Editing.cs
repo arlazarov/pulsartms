@@ -128,10 +128,9 @@ public sealed partial class FuelPlanningService
       fuel.EconomicCostUsd += Math.Max(0, FuelScheduleRanking.DelayCost(fuel.ScheduleImpact,
         extraMiles, fuel.ExtraMinutes, profile.DriverHourlyCostUsd)
         - fuel.ExtraMinutes / 60 * profile.DriverHourlyCostUsd);
-      var board = await mediator.Send(new GetDispatchBoardQuery(TruckId: plan.TruckId,
+      var board = await dispatchBoard.ReadAsync(new(TruckId: plan.TruckId,
         IncludeHos: false, IncludeFinancials: false, IncludeEta: false, IncludeOverdue: true), ct);
-      if (!board.Success || board.Response is null) throw new RoutePlanningException("Assignments could not be verified. Your existing plan has been kept.");
-      var signatures = (board.Response.Items.FirstOrDefault()?.Dispatches ?? []).ToDictionary(x => x.Id, FuelHorizon.LoadSignature);
+      var signatures = (board.Items.FirstOrDefault()?.Dispatches ?? []).ToDictionary(x => x.Id, FuelHorizon.LoadSignature);
       fuel = await CommitAsync(fuel, candidates, horizon.Route, horizon.Itinerary, horizon.DispatchIds,
         horizon.DispatchSignatures, horizon.AssignmentSignature, signatures, state, profile, false,
         FuelPriceSignature.From(prices), today, request.ExpectedCalculatedAt, ct);
@@ -142,8 +141,8 @@ public sealed partial class FuelPlanningService
 
   private async Task RequireCurrentAsync(Guid dispatchId, Guid truckId, CancellationToken ct)
   {
-    var board = await mediator.Send(new GetDispatchBoardQuery(TruckId: truckId, IncludeHos: false, IncludeFinancials: false, IncludeEta: false), ct);
-    if (!board.Success || board.Response?.Items.FirstOrDefault()?.Dispatches.FirstOrDefault()?.Id != dispatchId)
+    var board = await dispatchBoard.ReadAsync(new(TruckId: truckId, IncludeHos: false, IncludeFinancials: false, IncludeEta: false), ct);
+    if (board.Items.FirstOrDefault()?.Dispatches.FirstOrDefault()?.Id != dispatchId)
       throw new RoutePlanningException("The truck's current load changed. Reopen its fuel plan.");
   }
 

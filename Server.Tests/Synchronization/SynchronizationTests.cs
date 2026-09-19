@@ -66,6 +66,7 @@ public class SynchronizationTests
     services.AddScoped<Application.Interfaces.IAppDbContext>(p => p.GetRequiredService<AppDbContext>());
     services.AddScoped<Application.Features.Synchronization.Interfaces.ISynchronizationStore, SynchronizationStore>();
     services.AddSingleton<ISender>(sender); services.AddSingleton<IFleetTelemetryFeedProvider>(feed);
+    services.AddSingleton<Application.Features.Dispatch.Interfaces.IDispatchBoardReader>(sender);
     await using var provider = services.BuildServiceProvider();
     var telemetry = provider.GetRequiredService<ServerTelemetry>();
     ApplicationWorker<Application.Features.Synchronization.Interfaces.IFleetSynchronizationOperation> Worker() => new(new FleetSynchronizationOperation(provider.GetRequiredService<IServiceScopeFactory>(), config, telemetry, NullLogger<FleetSynchronizationOperation>.Instance));
@@ -278,7 +279,8 @@ public class SynchronizationTests
     await routes.GetAsync(load, default, displayOnly: true);
     var options = Options.Create(new SynchronizationOptions { Enabled = enabled });
     var queue = new PlanningRefreshQueue(memory, options);
-    var browser = new PlanningReadService(routes, queue, sender, options, services.Eta, services.FuelPlans);
+    // The warm-read budget covers route and progress reads; the board itself is stubbed empty here.
+    var browser = new PlanningReadService(routes, queue, new(sender, services.Forecasts), options, services.Eta, services.FuelPlans);
     Assert.NotNull((await browser.ForDispatchAsync(load.Id, default)).State?.Plan);
     var reads = fixture.Counter.Reads;
     for (var i = 0; i < 20; i++)
@@ -365,16 +367,17 @@ public class SynchronizationTests
     }
   }
 
-  internal sealed class Sender : ISender
+  internal sealed class Sender : ISender, Application.Features.Dispatch.Interfaces.IDispatchBoardReader
   {
     public FleetLocationsResponse Fleet { get; } = new();
     public int CatalogCalls, AssignmentCalls, DispatchCalls;
+    public Task<PaginatedList<TruckDispatchBoardResponse>> ReadAsync(GetDispatchBoardQuery request, CancellationToken ct) =>
+      Task.FromResult(new PaginatedList<TruckDispatchBoardResponse> { Items = [], Page = 1, PageSize = 100, TotalCount = 0 });
     public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken ct = default)
     {
       object result = request switch
       {
         GetFleetLocationsQuery => RequestResponse<FleetLocationsResponse>.Ok(Fleet),
-        GetDispatchBoardQuery => RequestResponse<PaginatedList<TruckDispatchBoardResponse>>.Ok(new() { Items = [], Page = 1, PageSize = 100, TotalCount = 0 }),
         SyncFleetCommand => RequestResponse<int>.Ok(Interlocked.Increment(ref CatalogCalls)),
         SyncAssignmentsCommand => RequestResponse<int>.Ok(Interlocked.Increment(ref AssignmentCalls)),
         SyncDispatchesCommand => RequestResponse<int>.Ok(Interlocked.Increment(ref DispatchCalls)),

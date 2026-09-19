@@ -24,7 +24,7 @@ public sealed record EtaChainDescription(Guid TruckId, Guid RootDispatchId, stri
 public sealed record EtaFutureTiming(Guid DispatchId, EtaRouteTiming? Connection, EtaRouteTiming? Route,
   ImmutableArray<RoutePoint> StopPoints, string? UnavailableReason);
 
-public sealed class EtaChainInputsService(IAppDbContext db, ISender mediator, RoutePlanningService routes,
+public sealed class EtaChainInputsService(IAppDbContext db, Application.Features.Dispatch.Interfaces.IDispatchBoardReader board, RoutePlanningService routes,
   IEtaRootRouteReader rootRoutes, INextLoadRouteReader savedRoutes, IDeadheadHistoryReader history,
   EtaMemory memory, IRouteRegionLookup regions, IOptions<EtaPlanningOptions> options)
 {
@@ -33,9 +33,8 @@ public sealed class EtaChainInputsService(IAppDbContext db, ISender mediator, Ro
   {
     if (ordered is null)
     {
-      var board = await mediator.Send(new GetDispatchBoardQuery(TruckId: truckId,
-        IncludeHos: false, IncludeFinancials: false, IncludeEta: false), ct);
-      ordered = board.Response?.Items.FirstOrDefault(x => x.TruckId == truckId)?.Dispatches;
+      var page = await board.ReadAsync(new(TruckId: truckId, IncludeHos: false, IncludeFinancials: false, IncludeEta: false), ct);
+      ordered = page.Items.FirstOrDefault(x => x.TruckId == truckId)?.Dispatches;
     }
     if (ordered is null || ordered.Count == 0) return null;
     var ids = ordered.Select(x => x.Id).ToArray();

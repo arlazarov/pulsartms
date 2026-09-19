@@ -35,6 +35,8 @@ public static class DependencyInjection
     services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
     services.AddScoped<FleetCache>();
+    services.AddScoped<Features.Dispatch.Interfaces.IDispatchBoardReader, Features.Dispatch.Services.DispatchBoardReader>();
+    services.AddScoped<Features.Dispatch.Services.DispatchBoardService>();
     services.AddScoped<Features.Integrations.Services.IntegrationSettingsService>();
     services.AddScoped<Features.Integrations.Interfaces.IIntegrationCredentials>(sp =>
       sp.GetRequiredService<Features.Integrations.Services.IntegrationSettingsService>());

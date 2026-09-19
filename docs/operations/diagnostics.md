@@ -2,7 +2,7 @@
 
 - `GET /api/health/live`: process liveness, anonymous, no database or upstream calls.
 - `GET /api/health/ready`: database connectivity, Admin policy, health status only (no connection details).
-- `GET /api/diagnostics/requests`: Admin-only request count, failures, cancellations, total and maximum milliseconds by request type. Counters are per process and reset on restart; they are not fleet-wide or durable metrics.
+- `GET /api/diagnostics/requests`: Admin-only request count, failures, cancellations, total and maximum milliseconds by request type. Counters are per process and reset on restart; they are not fleet-wide or durable metrics. `GetDispatchBoardQuery` counts browser board reads only; planning and fuel services read the board directly through `IDispatchBoardReader`.
 - Meter `AMFTMS.Application`, histogram `amftms.request.duration` (milliseconds), tags `request`, `outcome`. Export through a metrics collector when one is configured. Slow requests and routing requests also emit `RequestTiming` logs, so diagnosing them does not depend on a collector.
 - `AdminAudit` is an Application pipeline behavior. It records caller identity ID, command name, target ID when present, outcome, trace ID and allowlisted role/activation/planning-setting values. It never serializes commands, profiles, passwords or tokens. These are action records, not before/after database snapshots. Hosting retention controls durability; no separate audit database is introduced.
 - Background route failures include dispatch ID and exception stack. Synchronization job failures include job name and exception stack.

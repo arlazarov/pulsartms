@@ -205,14 +205,13 @@ public sealed class FleetSynchronizationOperation(IServiceScopeFactory scopes, I
     {
       await RunJobAsync("planning", config.PlanningSeconds, async (services, token) =>
       {
-        var mediator = services.GetRequiredService<ISender>();
+        var board = services.GetRequiredService<Application.Features.Dispatch.Interfaces.IDispatchBoardReader>();
         var rows = new List<Application.Features.Dispatch.Models.TruckDispatchBoardResponse>();
         for (var page = 1; ; page++)
         {
-          var board = await mediator.Send(new GetDispatchBoardQuery(Page: page, PageSize: 100, IncludeHos: false, IncludeFinancials: false, IncludeEta: false), token);
-          if (!board.Success || board.Response is null) throw new InvalidOperationException("Dispatch board is unavailable.");
-          rows.AddRange(board.Response.Items.Where(x => x.TruckId.HasValue && x.Dispatches.Count > 0));
-          if (!board.Response.HasNextPage) break;
+          var rowsPage = await board.ReadAsync(new(Page: page, PageSize: 100, IncludeHos: false, IncludeFinancials: false, IncludeEta: false), token);
+          rows.AddRange(rowsPage.Items.Where(x => x.TruckId.HasValue && x.Dispatches.Count > 0));
+          if (!rowsPage.HasNextPage) break;
         }
         List<Guid> selected;
         lock (stateGate)
