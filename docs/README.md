@@ -26,6 +26,8 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
   staged replacement plan; they do not describe deployed functionality.
 - [Customs data preparation](architecture/customs-preparation.md) defines the
   planned shipment, crossing and fleet data for future ACE/ACI manifests.
+- [Costs, and separating the order from the work][costs] decides how an
+  expense, its attribution to a load and the commercial order are recorded.
 - [How mileage is attributed to a load](architecture/mileage-allocation.md)
   records the existing attribution mechanism and what it cannot express.
 - [Module ownership and save boundaries](architecture/module-ownership.md)
@@ -40,6 +42,7 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
 - [Fleet configuration and dispatch execution][dispatch-execution]
   covers Trucks, Trailers, Drivers and Switch; settlement design is deferred.
 
+[costs]: architecture/costs-and-commercial-work.md
 [dispatch-execution]: architecture/dispatch-execution-and-settlements.md
 
 ## Features
