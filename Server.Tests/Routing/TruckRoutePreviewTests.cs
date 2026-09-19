@@ -400,7 +400,7 @@ public sealed class TruckRoutePreviewTests
       await db.Database.EnsureCreatedAsync();
       var fixture = new Fixture(connection, db, probe);
       fixture.Services = new(db, fixture.Router, fixture.Sender, boardHos: fixture.Hos);
-      fixture.Preview = new(db, fixture.Services.BoardReader, fixture.Services.Reads, fixture.Services.Displays, fixture.Services.Routes, fixture.Memory);
+      fixture.Preview = new(db, fixture.Services.BoardReader, fixture.Services.Reads, fixture.Services.Displays, fixture.Services.Routes, fixture.Memory, fixture.Services.Gates);
       db.Trucks.Add(fixture.Truck);
       await db.SaveChangesAsync();
       return fixture;

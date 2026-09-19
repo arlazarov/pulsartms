@@ -10,10 +10,10 @@ using System.Text.Json;
 namespace Application.Features.Routing.Services.Routes;
 
 public sealed class RoutePreviewService(IAppDbContext db, Application.Features.Dispatch.Interfaces.IDispatchBoardReader board, ReadCache reads,
-  RouteDisplayCache displays, RoutePlanningService routes, IMemoryCache cache)
+  RouteDisplayCache displays, RoutePlanningService routes, IMemoryCache cache, ProcessGates gates)
 {
   private const string CacheKey = "route-preview:fleet";
-  private static readonly SemaphoreSlim FleetGate = new(1);
+  private readonly SemaphoreSlim fleetGate = gates.Single<RoutePreviewService>();
   private sealed record SavedPreview(string Generation, byte[] Json);
 
   public async Task<List<AutomaticPlanningResult>> GetAsync(CancellationToken ct)
@@ -21,7 +21,7 @@ public sealed class RoutePreviewService(IAppDbContext db, Application.Features.D
     ct.ThrowIfCancellationRequested();
     var generation = Generation();
     if (ReadCached(generation) is { } hit) return hit;
-    await FleetGate.WaitAsync(ct);
+    await fleetGate.WaitAsync(ct);
     try
     {
       generation = Generation();
@@ -32,7 +32,7 @@ public sealed class RoutePreviewService(IAppDbContext db, Application.Features.D
         cache.Set(CacheKey, new SavedPreview(generation, json), TimeSpan.FromSeconds(30));
       return result;
     }
-    finally { FleetGate.Release(); }
+    finally { fleetGate.Release(); }
   }
 
   private string Generation() => $"{DateOnly.FromDateTime(DateTime.UtcNow):O}:{reads.Generation("board")}:{reads.Generation("dispatch")}:{reads.Generation("settings")}:{reads.Generation("route-previews")}";

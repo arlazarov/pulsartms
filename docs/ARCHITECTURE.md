@@ -115,8 +115,9 @@ Application retains the assignment, chronology, and ambiguity checks.
 
 Per-key concurrency stripes come from the `ProcessGates` singleton (`For<TOwner>()`),
 not static fields, so tests and any future multi-instance hosting own their gates
-explicitly. `ProcessStateTests` lists the remaining static gates and counters as
-debt that may only shrink, and `FeatureDependencyTests` freezes the current
+explicitly; `Single<TOwner>()` and `Slots<TOwner>(n)` serve whole-operation and
+budgeted gates, and `SynchronizationGates` is an injected singleton over them.
+`ProcessStateTests` allows only the per-process request counter to remain static, and `FeatureDependencyTests` freezes the current
 cross-feature reference map (Routing, Eta, Dispatch, Fleet and Synchronization
 still form cycles) so it can only lose edges.
 

@@ -17,7 +17,7 @@ public sealed partial class FuelPlanningService(RoutePlanningService plans, ISen
 {
   private readonly KeyedGates truckGates = processGates.For<FuelPlanningService>();
   // Manual searches share a small per-process budget; ordinary planning reads never acquire it.
-  private static readonly SemaphoreSlim SearchSlots = new(2, 2);
+  private readonly SemaphoreSlim searchSlots = processGates.Slots<FuelPlanningService>(2);
 
   public async Task<FuelPlan> BuildAsync(Guid dispatchId, FuelBuildRequest request, CancellationToken ct)
   {
@@ -27,9 +27,9 @@ public sealed partial class FuelPlanningService(RoutePlanningService plans, ISen
     await GateWait.WaitAsync(gate, "FuelTruck", ct);
     try
     {
-      await GateWait.WaitAsync(SearchSlots, "FuelSearch", ct);
+      await GateWait.WaitAsync(searchSlots, "FuelSearch", ct);
       try { return await BuildCoreAsync(dispatchId, request, ct); }
-      finally { SearchSlots.Release(); }
+      finally { searchSlots.Release(); }
     }
     finally { gate.Release(); }
   }

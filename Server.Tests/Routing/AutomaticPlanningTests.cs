@@ -69,9 +69,11 @@ public partial class AutomaticPlanningTests
   [Fact]
   public async Task ConcurrentFuelSearchesRespectTheSharedLimitAndCancelledWaitDoesNotCallRouting()
   {
-    await using var first = await Fixture.CreateAsync(pickedUp: true, truckId: Guid.Parse("00000001-0000-0000-0000-000000000000"));
-    await using var second = await Fixture.CreateAsync(pickedUp: true, truckId: Guid.Parse("00000002-0000-0000-0000-000000000000"));
-    await using var waiting = await Fixture.CreateAsync(pickedUp: true, truckId: Guid.Parse("00000003-0000-0000-0000-000000000000"));
+    // The search slots are process-wide in production; the three fixtures share one registry.
+    using var gates = new Application.Caching.ProcessGates();
+    await using var first = await Fixture.CreateAsync(pickedUp: true, truckId: Guid.Parse("00000001-0000-0000-0000-000000000000"), gates: gates);
+    await using var second = await Fixture.CreateAsync(pickedUp: true, truckId: Guid.Parse("00000002-0000-0000-0000-000000000000"), gates: gates);
+    await using var waiting = await Fixture.CreateAsync(pickedUp: true, truckId: Guid.Parse("00000003-0000-0000-0000-000000000000"), gates: gates);
     foreach (var fixture in new[] { first, second, waiting })
     {
       fixture.Location.FuelPercent = 40;
@@ -1081,7 +1083,7 @@ public partial class AutomaticPlanningTests
       Services.Reads.Invalidate($"route:{Load.Id}");
     }
     public static async Task<Fixture> CreateAsync(List<FuelStationDto>? stations = null, bool pickedUp = false,
-      FuelCommitFailureProbe? failure = null, Guid? truckId = null)
+      FuelCommitFailureProbe? failure = null, Guid? truckId = null, Application.Caching.ProcessGates? gates = null)
     {
       var connection = new SqliteConnection("Data Source=:memory:"); await connection.OpenAsync();
       var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection);
@@ -1102,7 +1104,7 @@ public partial class AutomaticPlanningTests
       stations ??= [station];
       var sender = new Sender(location, stations);
       var router = new FakeRouter();
-      var services = new PlanningTestServices(db, router, sender);
+      var services = new PlanningTestServices(db, router, sender, gates: gates);
       var plans = services.Routes;
       var cache = new MemoryCache(new MemoryCacheOptions());
       var synchronization = Microsoft.Extensions.Options.Options.Create(new Application.Features.Synchronization.Options.SynchronizationOptions());

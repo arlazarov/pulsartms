@@ -38,7 +38,7 @@ public sealed class RoutePreviewTests
     using var memory = new MemoryCache(new MemoryCacheOptions());
     using var services = new PlanningTestServices(db, reads: reads);
     var sender = new Sender(new() { TruckId = truck.Id, Dispatches = [new() { Id = load.Id, TruckId = truck.Id }] });
-    var previews = new RoutePreviewService(db, sender, reads, displays, services.Routes, memory);
+    var previews = new RoutePreviewService(db, sender, reads, displays, services.Routes, memory, services.Gates);
     var result = await previews.GetAsync(default);
     Assert.Equal(truck.Id, Assert.Single(result).TruckId);
     Assert.Equal(new[] { 1, 2 }, sender.Pages);
@@ -83,7 +83,7 @@ public sealed class RoutePreviewTests
         await release.Task;
       }
     } };
-    var service = new RoutePreviewService(db, sender, reads, displays, services.Routes, memory);
+    var service = new RoutePreviewService(db, sender, reads, displays, services.Routes, memory, services.Gates);
     var first = service.GetAsync(default);
     await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
     var second = service.GetAsync(default);

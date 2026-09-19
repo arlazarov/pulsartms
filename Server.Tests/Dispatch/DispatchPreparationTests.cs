@@ -30,7 +30,8 @@ public sealed class DispatchPreparationTests
     using var reads = TestCache.Create();
     using var memory = new MemoryCache(new MemoryCacheOptions());
     var preparation = TestCache.Preparation();
-    var handler = new SyncDispatchesCommandHandler(db, new Provider([source, successor]), reads, memory, preparation);
+    using var gates = new Application.Caching.ProcessGates();
+    var handler = new SyncDispatchesCommandHandler(db, new Provider([source, successor]), reads, memory, preparation, new(gates));
     await handler.Handle(new(), default);
     var load = await db.Dispatches.Include(x => x.Stops).SingleAsync(x => x.LoadNumber == 1);
     var stop = Assert.Single(load.Stops);

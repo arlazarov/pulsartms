@@ -25,9 +25,9 @@ namespace Server.Tests.Support;
 
 internal sealed class PlanningTestServices : IDisposable
 {
-  private readonly bool ownsReads;
+  private readonly bool ownsReads, ownsGates;
   public ReadCache Reads { get; }
-  public ProcessGates Gates { get; } = new();
+  public ProcessGates Gates { get; }
   public RouteDisplayCache Displays { get; }
   public PlanningSettingsService Settings { get; }
   public RoutePlanningService Routes { get; }
@@ -46,17 +46,19 @@ internal sealed class PlanningTestServices : IDisposable
   public ISender Sender { get; }
 
   public PlanningTestServices(IAppDbContext db, IRoutingProvider? router = null, ISender? sender = null, ReadCache? reads = null,
-    IDriverHosProvider? boardHos = null)
+    IDriverHosProvider? boardHos = null, ProcessGates? gates = null)
   {
     ownsReads = reads is null;
+    ownsGates = gates is null;
     Reads = reads ?? new(Options.Create(new SynchronizationOptions()));
+    Gates = gates ?? new();
     Displays = new(Reads);
-    Settings = new(db, Reads);
+    Settings = new(db, Reads, Gates);
     router ??= new NoRouter();
     sender ??= new UnsupportedSender();
     Sender = sender;
     var profiles = new TruckPlanningProfileService(db, Reads, Settings);
-    Routes = new(db, router, sender!, profiles, new(db, Reads, profiles), new(db, Options.Create(new RouteRecalculationBudgetOptions())), Reads, Options.Create(new FuelRegionOptions()),
+    Routes = new(db, router, sender!, profiles, new(db, Reads, profiles), new(db, Options.Create(new RouteRecalculationBudgetOptions()), Gates), Reads, Options.Create(new FuelRegionOptions()),
       Options.Create(new SynchronizationOptions()), Displays, new(db, router, Reads, Gates), Gates);
     Deadheads = new(db, router, Routes, new(db), new Infrastructure.Persistence.DeadheadHistoryReader((Infrastructure.Persistence.AppDbContext)db), Reads, Gates);
     var hos = new NoHos();
@@ -80,7 +82,7 @@ internal sealed class PlanningTestServices : IDisposable
     Board = new(BoardService);
   }
 
-  public void Dispose() { FuelMemory.Dispose(); EtaMemory.Dispose(); Displays.Dispose(); Gates.Dispose(); if (ownsReads) Reads.Dispose(); }
+  public void Dispose() { FuelMemory.Dispose(); EtaMemory.Dispose(); Displays.Dispose(); if (ownsGates) Gates.Dispose(); if (ownsReads) Reads.Dispose(); }
 
   // Board reads no longer go through MediatR; remaining sends (fuel prices, telemetry) need a test-specific sender.
   private sealed class UnsupportedSender : ISender

@@ -17,9 +17,9 @@ public sealed partial class FuelPlanningService
     await GateWait.WaitAsync(gate, "FuelTruck", ct);
     try
     {
-      await GateWait.WaitAsync(SearchSlots, "FuelEdit", ct);
+      await GateWait.WaitAsync(searchSlots, "FuelEdit", ct);
       try { return await EditCoreAsync(dispatchId, request, save, ct); }
-      finally { SearchSlots.Release(); }
+      finally { searchSlots.Release(); }
     }
     finally { gate.Release(); }
   }
@@ -32,14 +32,14 @@ public sealed partial class FuelPlanningService
     await GateWait.WaitAsync(gate, "FuelTruck", ct);
     try
     {
-      await GateWait.WaitAsync(SearchSlots, "FuelSearch", ct);
+      await GateWait.WaitAsync(searchSlots, "FuelSearch", ct);
       try
       {
         await RequireCurrentAsync(dispatchId, truckId, ct);
         var state = await plans.GetAsync(dispatchId, ct);
         return await BuildCoreAsync(dispatchId, new(state.Profile), ct, true, expectedCalculatedAt);
       }
-      finally { SearchSlots.Release(); }
+      finally { searchSlots.Release(); }
     }
     finally { gate.Release(); }
   }

@@ -49,6 +49,7 @@ public static class DependencyInjection
     services.AddSingleton<Features.Synchronization.Interfaces.IGmailWatchOperation, Features.Fuel.Background.GmailWatchOperation>();
     services.AddSingleton<ReadCache>();
     services.AddSingleton<Caching.ProcessGates>();
+    services.AddSingleton<Features.Synchronization.Services.SynchronizationGates>();
     services.AddSingleton<Application.Interfaces.IReadCache>(sp => sp.GetRequiredService<ReadCache>());
     services.AddSingleton<FleetSynchronizationOperation>();
     services.AddSingleton<Features.Synchronization.Interfaces.IFleetSynchronizationOperation>(sp => sp.GetRequiredService<FleetSynchronizationOperation>());

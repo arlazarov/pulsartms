@@ -25,7 +25,8 @@ public class DispatchTests
     using var memory = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
     var preparation = new Application.Features.Routing.Background.RoutePreparationQueue(
       Microsoft.Extensions.Options.Options.Create(new Application.Features.Routing.Options.RoutePreparationOptions()), TimeProvider.System);
-    var handler = new SyncDispatchesCommandHandler(db, new Provider([source]), reads, memory, preparation);
+    using var gates = new Application.Caching.ProcessGates();
+    var handler = new SyncDispatchesCommandHandler(db, new Provider([source]), reads, memory, preparation, new(gates));
     await handler.Handle(new(), default);
     var stop = await db.DispatchStops.SingleAsync();
     var stopId = stop.Id;

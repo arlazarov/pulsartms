@@ -42,10 +42,16 @@ artifact check and the offline UI smoke), except where noted below.
   time out at 60 seconds.
 - Stale `Synchronization.Services` usings left over from the `ReadCache` move were
   removed from Users and Fuel, so Users no longer references another feature.
-- Per-service `KeyedGates` statics moved to the `ProcessGates` DI singleton; both
-  test projects carry an explicit `xunit.runner.json`; `ProcessStateTests` and
-  `FeatureDependencyTests` freeze the remaining static state and the
-  cross-feature reference map as debt that may only shrink.
+- Every static gate moved to the `ProcessGates` DI singleton (per-key stripes,
+  single slots and the two-slot fuel search budget); `SynchronizationGates` is an
+  injected singleton. Both test projects carry an explicit `xunit.runner.json`.
+  `ProcessStateTests` leaves only the per-process request counter behind the
+  diagnostics endpoint, and `FeatureDependencyTests` freezes the cross-feature
+  reference map; both lists may only shrink.
+- `FuelSearchGeometryAllocationTests` (25001 points per leg) failed once in a
+  local full run on its per-thread allocation bound and passed on every rerun;
+  it measures allocations under parallel collections and may need a wider bound
+  if it recurs in CI.
 
 ## CI failures seen and fixed on the branch
 

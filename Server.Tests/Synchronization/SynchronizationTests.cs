@@ -177,8 +177,9 @@ public class SynchronizationTests
     var source = new ExternalDispatch { LoadNumber = 1, Status = "assigned", Stops = [new() { Sequence = 1, Job = "Pick Up", City = "Buffalo" }] };
     using var reads = TestCache.Create();
     using var memory = new MemoryCache(new MemoryCacheOptions());
+    using var gates = new Application.Caching.ProcessGates();
     var handler = new SyncDispatchesCommandHandler(fixture.Db, new DispatchProvider(source), reads, memory,
-      new(Microsoft.Extensions.Options.Options.Create(new Application.Features.Routing.Options.RoutePreparationOptions()), TimeProvider.System));
+      new(Microsoft.Extensions.Options.Options.Create(new Application.Features.Routing.Options.RoutePreparationOptions()), TimeProvider.System), new(gates));
     await handler.Handle(new(), default);
     var load = await fixture.Db.Dispatches.Include(x => x.Stops).SingleAsync();
     var id = load.Stops.Single().Id;

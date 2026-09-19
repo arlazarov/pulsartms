@@ -10,10 +10,10 @@ using Domain.Entities.Fleet;
 
 namespace Application.Features.Routing.Services.Routes;
 
-public sealed class PlanningSettingsService(IAppDbContext db, ReadCache reads)
+public sealed class PlanningSettingsService(IAppDbContext db, ReadCache reads, ProcessGates gates)
 {
   private static readonly Guid SettingsId = new("6f65ae4c-a62e-47cf-b84b-e1d5f89b908f");
-  private static readonly SemaphoreSlim SaveGate = new(1);
+  private readonly SemaphoreSlim saveGate = gates.Single<PlanningSettingsService>();
 
   public async Task<PlanningSettingsState> GetAsync(CancellationToken ct)
   {
@@ -29,7 +29,7 @@ public sealed class PlanningSettingsService(IAppDbContext db, ReadCache reads)
     if (request.Preferences is null || !Validator.TryValidateObject(request.Preferences, new ValidationContext(request.Preferences), errors, true))
       throw new RoutePlanningException(string.Join(" ", errors.Select(x => x.ErrorMessage).DefaultIfEmpty("Planning preferences are required.")));
     var preferences = FleetFuelDefaults.Apply(request.Preferences);
-    await SaveGate.WaitAsync(ct);
+    await saveGate.WaitAsync(ct);
     try
     {
       var entity = await db.FleetPlanningSettings.SingleOrDefaultAsync(x => x.Id == SettingsId, ct);
@@ -49,7 +49,7 @@ public sealed class PlanningSettingsService(IAppDbContext db, ReadCache reads)
       reads.Invalidate("settings");
       return new(preferences, entity.Revision, entity.UpdatedAt);
     }
-    finally { SaveGate.Release(); }
+    finally { saveGate.Release(); }
   }
 
   public static string Signature(TruckRouteProfile profile) => Convert.ToHexString(SHA256.HashData(
