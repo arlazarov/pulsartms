@@ -4,7 +4,10 @@ namespace Domain.Entities.Costs;
 // bears it, so an expense makes no claim about a load; see ExpenseAttribution.
 public sealed class Expense : BaseEntity
 {
-  public Guid IdempotencyKey { get; init; }
+  // Only an imported expense has a natural key; one entered by hand has
+  // none, and several such expenses must be able to exist. Null is distinct
+  // in a unique index, so both cases hold.
+  public Guid? IdempotencyKey { get; init; }
 
   // fuel, toll, lumper, maintenance, other.
   public string Kind { get; init; } = "other";

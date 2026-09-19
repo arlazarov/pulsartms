@@ -16,7 +16,7 @@ namespace Infrastructure.Persistence.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    IdempotencyKey = table.Column<Guid>(type: "uuid", nullable: false),
+                    IdempotencyKey = table.Column<Guid>(type: "uuid", nullable: true),
                     Kind = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     OccurredAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     Location = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),

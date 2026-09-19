@@ -25,3 +25,28 @@ public sealed record ExpenseAttributionRow(
   decimal Unattributed,
   IReadOnlyList<ExpenseShareRow> Shares
 );
+
+public sealed record LoadCostRow(
+  Guid ExpenseId,
+  string Kind,
+  DateTime OccurredAt,
+  string Location,
+  decimal Amount,
+  string Currency,
+  decimal ExpenseAmount,
+  string Basis,
+  bool ManualOverride
+);
+
+public sealed record LoadCostTotal(
+  string Currency,
+  string Kind,
+  decimal Amount
+);
+
+public sealed record LoadCostBreakdown(
+  Guid DispatchId,
+  IReadOnlyList<LoadCostTotal> Totals,
+  IReadOnlyList<LoadCostRow> Rows,
+  bool Truncated
+);

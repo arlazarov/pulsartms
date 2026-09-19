@@ -145,7 +145,7 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ExecutionLegId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("IdempotencyKey")
+                    b.Property<Guid?>("IdempotencyKey")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Kind")

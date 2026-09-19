@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260919145809_AddExpenseAttribution")]
+    [Migration("20260919150613_AddExpenseAttribution")]
     partial class AddExpenseAttribution
     {
         /// <inheritdoc />
@@ -148,7 +148,7 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ExecutionLegId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("IdempotencyKey")
+                    b.Property<Guid?>("IdempotencyKey")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Kind")
