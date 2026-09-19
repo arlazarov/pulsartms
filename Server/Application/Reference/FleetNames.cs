@@ -16,35 +16,59 @@ namespace Application.Reference;
 // four, nine and seven rows. That is around two seconds of a page spent
 // fetching twenty rows over and over.
 //
-// Scoped, so the names cannot drift inside one request, and reloaded on the
-// next one.
-public sealed class FleetNames(IAppDbContext db)
+// Scoped, so the names cannot drift inside one request.
+//
+// Across requests they come from the read cache, under the group both of
+// their writers already invalidate: the fleet settings command and the
+// provider sync each drop "fleet-catalog" whenever they change a row, and the
+// relay carries that to the other instances. Once per request was still three
+// round trips for every request that touched execution - a map left open on
+// a truck asked for these twenty rows three times every ten seconds.
+public sealed class FleetNames(IAppDbContext db, IReadCache? reads = null)
 {
-  private IReadOnlyDictionary<Guid, string>? trucks;
-  private IReadOnlyDictionary<Guid, string>? drivers;
-  private IReadOnlyDictionary<Guid, string>? trailers;
+  public sealed record Catalog(
+    Dictionary<Guid, string> Trucks,
+    Dictionary<Guid, string> Drivers,
+    Dictionary<Guid, string> Trailers
+  );
+
+  private Catalog? catalog;
 
   public async Task<IReadOnlyDictionary<Guid, string>> TrucksAsync(
     CancellationToken ct
-  ) =>
-    trucks ??= await db
-      .Trucks.AsNoTracking()
-      .Select(x => new { x.Id, Name = x.UnitNumber })
-      .ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+  ) => (await ReadAsync(ct)).Trucks;
 
   public async Task<IReadOnlyDictionary<Guid, string>> DriversAsync(
     CancellationToken ct
-  ) =>
-    drivers ??= await db
-      .Drivers.AsNoTracking()
-      .Select(x => new { x.Id, x.Name })
-      .ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+  ) => (await ReadAsync(ct)).Drivers;
 
   public async Task<IReadOnlyDictionary<Guid, string>> TrailersAsync(
     CancellationToken ct
-  ) =>
-    trailers ??= await db
-      .Trailers.AsNoTracking()
-      .Select(x => new { x.Id, Name = x.UnitNumber })
-      .ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+  ) => (await ReadAsync(ct)).Trailers;
+
+  private async Task<Catalog> ReadAsync(CancellationToken ct) =>
+    catalog ??= reads is null
+      ? await LoadAsync(ct)
+      : await reads.GetAsync(
+        "fleet-catalog",
+        "names",
+        () => LoadAsync(ct),
+        ct: ct
+      );
+
+  private async Task<Catalog> LoadAsync(CancellationToken ct) =>
+    new(
+      await db
+        .Trucks.AsNoTracking()
+        .Select(x => new { x.Id, Name = x.UnitNumber })
+        .ToDictionaryAsync(x => x.Id, x => x.Name, ct),
+      await db
+        .Drivers.AsNoTracking()
+        .Select(x => new { x.Id, x.Name })
+        .ToDictionaryAsync(x => x.Id, x => x.Name, ct),
+      await db
+        .Trailers.AsNoTracking()
+        .Select(x => new { x.Id, Name = x.UnitNumber })
+        .ToDictionaryAsync(x => x.Id, x => x.Name, ct)
+    );
 }

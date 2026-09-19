@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Application.Diagnostics;
 using Application.Features.Execution.Queries;
 using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Background;
@@ -36,7 +38,9 @@ public sealed class GetNextLoadRoutesHandler(
     CancellationToken ct
   )
   {
+    var started = Stopwatch.GetTimestamp();
     var imported = await reader.ReadLoadsAsync(request.TruckId, ct);
+    started = Mark("loads", started);
     var execution = await sender.Send(
       new GetTruckExecutionLoadsQuery(
         request.TruckId,
@@ -44,6 +48,7 @@ public sealed class GetNextLoadRoutesHandler(
       ),
       ct
     );
+    started = Mark("execution", started);
     var loads = imported
       .Where(x => !execution.OwnedDispatchIds.Contains(x.Id))
       .Select(x => RouteWorkProjection.Capture(x.TruckItinerary()))
@@ -98,8 +103,11 @@ public sealed class GetNextLoadRoutesHandler(
       .ToArray();
     if (upcoming.Count == 0)
       return Respond([]);
+    started = Stopwatch.GetTimestamp();
     var profile = await planning.ProfileAsync(request.TruckId, ct);
+    started = Mark("profile", started);
     var history = await historyReader.ReadSectionsAsync(upcoming.ToArray(), ct);
+    started = Mark("history", started);
     var signatures = upcoming.ToDictionary(
       Key,
       x => BaseRouteService.Signature(x, profile)
@@ -156,7 +164,9 @@ public sealed class GetNextLoadRoutesHandler(
       .ToList();
     if (request.Revision is not null)
     {
+      started = Stopwatch.GetTimestamp();
       var versions = await VersionsAsync();
+      started = Mark("versions", started);
       var geometry = GeometryRevision(versions);
       var known = NextLoadRoutesResponse.MetadataRevision(geometry, labels);
       var byId = versions.ToDictionary(x => (x.DispatchId, x.ExecutionLegId));
@@ -184,7 +194,9 @@ public sealed class GetNextLoadRoutesHandler(
           new(known, false, null, labels)
         );
     }
+    started = Stopwatch.GetTimestamp();
     var saved = await GeometryAsync();
+    started = Mark("geometry", started);
     var geometryRevision = GeometryRevision(
       upcoming.Select(load =>
         NextLoadRouteVersion.From(
@@ -306,9 +318,16 @@ public sealed class GetNextLoadRoutesHandler(
         }
       );
     }
+    Mark("assemble", started);
     return RequestResponse<NextLoadRoutesResponse>.Ok(
       new(revision, false, result, labels)
     );
+
+    static long Mark(string stage, long since)
+    {
+      PerformanceStages.Elapsed("next-routes", stage, since);
+      return Stopwatch.GetTimestamp();
+    }
 
     async Task<List<NextLoadRouteVersion>> VersionsAsync()
     {
