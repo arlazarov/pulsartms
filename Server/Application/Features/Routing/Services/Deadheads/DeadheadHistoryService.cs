@@ -7,6 +7,7 @@ using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
+using Application.Reference;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Routing.Services.Deadheads;
@@ -14,7 +15,8 @@ namespace Application.Features.Routing.Services.Deadheads;
 public sealed class DeadheadHistoryService(
   IAppDbContext db,
   IDeadheadHistoryReader reader,
-  IExecutionReadScope scope
+  IExecutionReadScope scope,
+  FleetNames names
 )
 {
   public Task<IReadOnlyDictionary<Guid, DeadheadHistorySnapshot>> ReadAsync(
@@ -253,6 +255,7 @@ public sealed class DeadheadHistoryService(
     var read = Stopwatch.GetTimestamp();
     var execution = await ExecutionLoads.ReadAsync(
       db,
+      names,
       null,
       byTruck
         .Values.SelectMany(snapshots =>

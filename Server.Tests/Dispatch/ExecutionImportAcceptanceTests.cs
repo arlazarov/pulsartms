@@ -2,6 +2,7 @@ using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Services;
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
+using Application.Reference;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
 using Infrastructure.Persistence;
@@ -204,7 +205,8 @@ public sealed class ExecutionImportAcceptanceTests
     {
       var itinerary = await new TruckItineraryReader(
         f.Db,
-        new ExecutionReadScope(f.Db)
+        new ExecutionReadScope(f.Db),
+        new FleetNames(f.Db)
       ).ReadAsync(truck.Id, DateTimeOffset.UtcNow, default);
       Assert.NotNull(itinerary);
       Assert.Contains(

@@ -28,6 +28,7 @@ using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Interfaces;
 using Application.Features.Synchronization.Services;
+using Application.Reference;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;
@@ -52,6 +53,7 @@ public static class DependencyInjection
     services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
     services.AddScoped<FleetCache>();
+    services.AddScoped<FleetNames>();
     services.AddScoped<IntegrationSettingsService>();
     services.AddScoped<IIntegrationCredentials>(sp =>
       sp.GetRequiredService<IntegrationSettingsService>()

@@ -20,6 +20,7 @@ using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Options;
 using Application.Interfaces;
+using Application.Reference;
 using Infrastructure.Integrations.GeoTimeZone;
 using Infrastructure.Persistence;
 using MediatR;
@@ -40,6 +41,7 @@ internal sealed class PlanningTestServices : IDisposable
     IOptions<SynchronizationOptions> options
   ) => new(refreshStore, refreshSignal, cache, options, TimeProvider.System);
 
+  public FleetNames Names { get; private set; } = null!;
   public ReadCache Reads { get; }
   public RouteDisplayCache Displays { get; }
   public PlanningSettingsService Settings { get; }
@@ -97,7 +99,8 @@ internal sealed class PlanningTestServices : IDisposable
       Settings,
       ExchangeRates
     );
-    Itineraries = new(db, new ExecutionReadScope((AppDbContext)db));
+    Names = new(db);
+    Itineraries = new(db, new ExecutionReadScope((AppDbContext)db), Names);
     PlanningInputs = new(
       db,
       Itineraries,
@@ -110,7 +113,8 @@ internal sealed class PlanningTestServices : IDisposable
     DeadheadHistory = new(
       db,
       new DeadheadHistoryReader((AppDbContext)db),
-      new ExecutionReadScope((AppDbContext)db)
+      new ExecutionReadScope((AppDbContext)db),
+      Names
     );
     Publication = new(
       Itineraries,
@@ -241,6 +245,7 @@ internal sealed class PlanningTestServices : IDisposable
       hos,
       Deadheads,
       Forecasts,
+      Names,
       NullLogger<GetDispatchBoardHandler>.Instance
     );
   }
@@ -271,7 +276,10 @@ internal sealed class PlanningTestServices : IDisposable
         GetExecutionItineraryQuery query =>
           await new GetExecutionItineraryHandler(db).Handle(query, ct),
         GetTruckExecutionLoadsQuery query =>
-          await new GetTruckExecutionLoadsHandler(db).Handle(query, ct),
+          await new GetTruckExecutionLoadsHandler(
+            db,
+            new FleetNames(db)
+          ).Handle(query, ct),
         _ when supplied is not null => await supplied.Send(request, ct),
         GetDispatchBoardQuery query => await board().Handle(query, ct),
         _ => throw new NotSupportedException(),

@@ -8,6 +8,7 @@ using Application.Features.Execution.Services;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Models;
+using Application.Reference;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Dispatch.Queries;
@@ -43,6 +44,7 @@ public class GetDispatchBoardHandler(
   IDriverHosProvider hos,
   DeadheadService deadhead,
   EtaForecastService eta,
+  FleetNames names,
   ILogger<GetDispatchBoardHandler> logger
 )
   : IRequestHandler<
@@ -61,6 +63,7 @@ public class GetDispatchBoardHandler(
           await ExecutionWorkReader.ReadAsync(
             dbContext,
             date,
+            names,
             request.TruckId,
             request.IncludePlanned,
             request.IncludeOverdue,
@@ -122,6 +125,7 @@ public class GetDispatchBoardHandler(
         )
         : await ExecutionLoads.ReadAsync(
           dbContext,
+          names,
           request.TruckId,
           loadIds,
           cancellationToken,

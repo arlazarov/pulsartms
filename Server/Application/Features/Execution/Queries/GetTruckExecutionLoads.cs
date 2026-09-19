@@ -1,5 +1,6 @@
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
+using Application.Reference;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 
@@ -22,8 +23,10 @@ public sealed record GetTruckExecutionLoadsQuery(
   IReadOnlyCollection<Guid>? CandidateDispatchIds = null
 ) : IRequest<TruckExecutionLoads>;
 
-public sealed class GetTruckExecutionLoadsHandler(IAppDbContext db)
-  : IRequestHandler<GetTruckExecutionLoadsQuery, TruckExecutionLoads>
+public sealed class GetTruckExecutionLoadsHandler(
+  IAppDbContext db,
+  FleetNames names
+) : IRequestHandler<GetTruckExecutionLoadsQuery, TruckExecutionLoads>
 {
   public Task<TruckExecutionLoads> Handle(
     GetTruckExecutionLoadsQuery request,
@@ -31,6 +34,7 @@ public sealed class GetTruckExecutionLoadsHandler(IAppDbContext db)
   ) =>
     ExecutionLoads.ReadAsync(
       db,
+      names,
       request.TruckId,
       request.CandidateDispatchIds,
       ct
@@ -41,6 +45,7 @@ public static class ExecutionLoads
 {
   public static async Task<TruckExecutionLoads> ReadAsync(
     IAppDbContext db,
+    FleetNames names,
     Guid? truckId,
     IReadOnlyCollection<Guid>? candidates,
     CancellationToken ct,
@@ -101,30 +106,9 @@ public static class ExecutionLoads
     var visits = ExecutionTransfers.Project(legs, participants);
     var outgoing = participants.ToDictionary(x => x.OutgoingLegId);
     var incoming = participants.ToDictionary(x => x.IncomingLegId);
-    var trucks = legs.Select(x => x.TruckId).Distinct().ToArray();
-    var truckNames = await db
-      .Trucks.AsNoTracking()
-      .Where(x => trucks.Contains(x.Id))
-      .ToDictionaryAsync(x => x.Id, x => x.UnitNumber, ct);
-    var drivers = snapshots
-      .Values.SelectMany(x => x)
-      .SelectMany(x => new[] { x.DriverId, x.CoDriverId })
-      .Where(x => x.HasValue)
-      .Select(x => x!.Value)
-      .Distinct()
-      .ToArray();
-    var driverNames = await db
-      .Drivers.AsNoTracking()
-      .Where(x => drivers.Contains(x.Id))
-      .ToDictionaryAsync(x => x.Id, x => x.Name, ct);
-    var trailers = legs.Where(x => x.TrailerId.HasValue)
-      .Select(x => x.TrailerId!.Value)
-      .Distinct()
-      .ToArray();
-    var trailerNames = await db
-      .Trailers.AsNoTracking()
-      .Where(x => trailers.Contains(x.Id))
-      .ToDictionaryAsync(x => x.Id, x => x.UnitNumber, ct);
+    var truckNames = await names.TrucksAsync(ct);
+    var driverNames = await names.DriversAsync(ct);
+    var trailerNames = await names.TrailersAsync(ct);
     var result = new List<ExecutionLoadSnapshot>();
     foreach (var link in links)
     {

@@ -26,6 +26,7 @@ using Application.Features.Synchronization.Options;
 using Application.Features.Synchronization.Services;
 using Application.Interfaces;
 using Application.Models;
+using Application.Reference;
 using Infrastructure.Persistence;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -129,7 +130,8 @@ public sealed class SynchronizationCadenceTests
         new DeadheadHistoryService(
           db,
           new DeadheadHistoryReader(db),
-          new ExecutionReadScope(db)
+          new ExecutionReadScope(db),
+          new FleetNames(db)
         ),
         new ExecutionReadScope(db)
       );

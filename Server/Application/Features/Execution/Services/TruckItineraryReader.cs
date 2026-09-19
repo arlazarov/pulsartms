@@ -7,6 +7,7 @@ using Application.Features.Execution.Interfaces;
 using Application.Features.Execution.Models;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
+using Application.Reference;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 
@@ -14,7 +15,8 @@ namespace Application.Features.Execution.Services;
 
 public sealed class TruckItineraryReader(
   IAppDbContext db,
-  IExecutionReadScope scope
+  IExecutionReadScope scope,
+  FleetNames names
 )
 {
   public async Task<TruckItinerarySnapshot?> ReadAsync(
@@ -58,6 +60,7 @@ public sealed class TruckItineraryReader(
     var batch = await ExecutionWorkReader.ReadBatchAsync(
       db,
       day,
+      names,
       null,
       includePlanned: true,
       includeOverdue: true,

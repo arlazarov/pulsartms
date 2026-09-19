@@ -5,6 +5,7 @@ using Application.Features.Execution.Services;
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Models;
+using Application.Reference;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
@@ -120,10 +121,10 @@ public sealed class ExecutionItineraryReadTests
       new(f.Load.Id, state.Incoming.Id, state.Truck.Id),
       default
     );
-    var board = await new GetTruckExecutionLoadsHandler(f.Db).Handle(
-      new(state.Truck.Id),
-      default
-    );
+    var board = await new GetTruckExecutionLoadsHandler(
+      f.Db,
+      new FleetNames(f.Db)
+    ).Handle(new(state.Truck.Id), default);
 
     Assert.NotNull(itinerary);
     Assert.Equal(expected, itinerary.Stops.Select(x => x.Id));
@@ -212,10 +213,10 @@ public sealed class ExecutionItineraryReadTests
     );
     await transaction.CommitAsync();
 
-    var board = await new GetTruckExecutionLoadsHandler(f.Db).Handle(
-      new(state.Truck.Id),
-      default
-    );
+    var board = await new GetTruckExecutionLoadsHandler(
+      f.Db,
+      new FleetNames(f.Db)
+    ).Handle(new(state.Truck.Id), default);
     var current = Assert.Single(board.Loads).Work;
     Assert.Equal(8, current.AssignmentRevision);
     Assert.Equal(stops.Select(x => x.Id), current.Stops.Select(x => x.Id));

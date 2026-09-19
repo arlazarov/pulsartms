@@ -1,6 +1,7 @@
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Queries;
 using Application.Features.Execution.Services;
+using Application.Reference;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Infrastructure.Persistence;
@@ -357,7 +358,7 @@ public sealed class TruckItineraryReaderTests
   }
 
   private static TruckItineraryReader Reader(StopCompletionFixture f) =>
-    new(f.Db, new ExecutionReadScope(f.Db));
+    new(f.Db, new ExecutionReadScope(f.Db), new FleetNames(f.Db));
 
   private static async Task<TruckItinerarySnapshot> ReadAsync(
     StopCompletionFixture f,

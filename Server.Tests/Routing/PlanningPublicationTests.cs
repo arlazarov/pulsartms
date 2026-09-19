@@ -2,6 +2,7 @@ using System.Data;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Services.Routes;
+using Application.Reference;
 using Domain.Entities.Fleet;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
@@ -295,14 +296,23 @@ public sealed class PlanningPublicationTests
     var truck = new Truck { Id = Guid.NewGuid(), ExternalId = "publication" };
     db.Trucks.Add(truck);
     await db.SaveChangesAsync();
-    var reader = new TruckItineraryReader(db, new ExecutionReadScope(db));
+    var reader = new TruckItineraryReader(
+      db,
+      new ExecutionReadScope(db),
+      new FleetNames(db)
+    );
     var work = (
       await reader.ReadAsync(truck.Id, DateTimeOffset.UtcNow, default)
     )!;
     var publication = new PlanningWorkPublication(
       reader,
       new PlanningPublicationScope(db),
-      new(db, new DeadheadHistoryReader(db), new ExecutionReadScope(db))
+      new(
+        db,
+        new DeadheadHistoryReader(db),
+        new ExecutionReadScope(db),
+        new FleetNames(db)
+      )
     );
     await using var writer = new AppDbContext(
       new DbContextOptionsBuilder<AppDbContext>()

@@ -215,8 +215,7 @@ public sealed partial class RoutePlanningService(
         }
       }
       fuel.NeedsRefresh = fuel.RefreshReasons.Count > 0;
-      fuel.PricesOutOfDate =
-        !invalid && (priced || fuel.PricesOutOfDate);
+      fuel.PricesOutOfDate = !invalid && (priced || fuel.PricesOutOfDate);
     }
     var state = new RoutePlanningState(
       profile,

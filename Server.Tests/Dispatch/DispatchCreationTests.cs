@@ -2,6 +2,7 @@ using Application.Features.Dispatch.Commands;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Services;
 using Application.Features.Execution.Services;
+using Application.Reference;
 using Domain.Entities.Fleet;
 using Microsoft.EntityFrameworkCore;
 
@@ -94,6 +95,7 @@ public sealed class DispatchCreationTests
     var work = await ExecutionWorkReader.ReadAsync(
       f.Db,
       DateOnly.FromDateTime(f.Clock.GetUtcNow().UtcDateTime),
+      new FleetNames(f.Db),
       null,
       true,
       true,

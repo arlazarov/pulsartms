@@ -1,5 +1,6 @@
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
+using Application.Reference;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Infrastructure.Persistence;
@@ -17,7 +18,11 @@ public sealed class WorkSequenceReaderTests
     await using var f = await StopCompletionFixture.CreateAsync();
     var (truck, participant) = await SeedAsync(f);
     var before = await f.Planning.EtaInputs.DescribeAsync(truck.Id, default);
-    var reader = new TruckItineraryReader(f.Db, new ExecutionReadScope(f.Db));
+    var reader = new TruckItineraryReader(
+      f.Db,
+      new ExecutionReadScope(f.Db),
+      new FleetNames(f.Db)
+    );
     var snapshot = await reader.ReadAsync(
       truck.Id,
       DateTimeOffset.UtcNow,
@@ -58,6 +63,7 @@ public sealed class WorkSequenceReaderTests
       await ExecutionWorkReader.ReadAsync(
         f.Db,
         DateOnly.FromDateTime(DateTime.UtcNow),
+        new FleetNames(f.Db),
         truck.Id,
         false,
         false,

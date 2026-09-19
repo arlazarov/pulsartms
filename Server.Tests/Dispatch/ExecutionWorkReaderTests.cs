@@ -1,6 +1,7 @@
 using Application.Features.Dispatch.Queries;
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
+using Application.Reference;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Microsoft.EntityFrameworkCore;
@@ -355,6 +356,7 @@ public sealed class ExecutionWorkReaderTests
     await ExecutionWorkReader.ReadAsync(
       f.Db,
       Today,
+      new FleetNames(f.Db),
       truck.Id,
       false,
       false,
@@ -369,6 +371,7 @@ public sealed class ExecutionWorkReaderTests
       await ExecutionWorkReader.ReadAsync(
         f.Db,
         Today,
+        new FleetNames(f.Db),
         truck.Id,
         false,
         true,

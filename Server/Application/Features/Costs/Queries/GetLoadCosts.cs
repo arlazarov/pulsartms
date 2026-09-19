@@ -53,8 +53,7 @@ public sealed class GetLoadCostsHandler(
     // Totals stay within one currency. A load that bears costs in more than
     // one currency gets one total per currency rather than a converted sum,
     // because the rate and the moment it applied belong to the conversion.
-    var totals = rows
-      .GroupBy(x => new { x.Currency, x.Kind })
+    var totals = rows.GroupBy(x => new { x.Currency, x.Kind })
       .Select(x => new LoadCostTotal(
         x.Key.Currency,
         x.Key.Kind,

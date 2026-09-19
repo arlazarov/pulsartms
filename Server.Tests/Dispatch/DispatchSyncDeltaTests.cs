@@ -1,5 +1,6 @@
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Queries;
+using Application.Reference;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
 using Microsoft.EntityFrameworkCore;
@@ -141,6 +142,7 @@ public sealed class DispatchSyncDeltaTests
       null!,
       null!,
       null!,
+      new FleetNames(fixture.Db),
       NullLogger<GetDispatchBoardHandler>.Instance
     );
     var query = new GetDispatchBoardQuery(

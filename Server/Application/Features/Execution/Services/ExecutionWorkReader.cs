@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Queries;
 using Application.Features.Routing.Models;
+using Application.Reference;
 using Domain.Entities.Dispatch;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
@@ -18,6 +19,7 @@ public static class ExecutionWorkReader
   public static async Task<IReadOnlyList<TruckWorkSelection>> ReadAsync(
     IAppDbContext dbContext,
     DateOnly date,
+    FleetNames names,
     Guid? truckId,
     bool includePlanned,
     bool includeOverdue,
@@ -27,6 +29,7 @@ public static class ExecutionWorkReader
       await ReadBatchAsync(
         dbContext,
         date,
+        names,
         truckId,
         includePlanned,
         includeOverdue,
@@ -37,6 +40,7 @@ public static class ExecutionWorkReader
   internal static async Task<ExecutionWorkBatch> ReadBatchAsync(
     IAppDbContext dbContext,
     DateOnly date,
+    FleetNames names,
     Guid? truckId,
     bool includePlanned,
     bool includeOverdue,
@@ -95,9 +99,7 @@ public static class ExecutionWorkReader
         || x.Status == "in_transit"
         || x.DeliveryDate == null
         || x.DeliveryDate >= date
-        || x.Stops.Any(s =>
-          s.PickedUpAt != null || s.ManualCompletedAt != null
-        )
+        || x.Stops.Any(s => s.PickedUpAt != null || s.ManualCompletedAt != null)
       );
     if (requested is not null)
     {
@@ -181,6 +183,7 @@ public static class ExecutionWorkReader
     var native = fleet.Any(x => x.HasNativeExecution)
       ? await ExecutionLoads.ReadAsync(
         dbContext,
+        names,
         truckId,
         loads.Select(x => x.Work.Id).ToArray(),
         cancellationToken,
