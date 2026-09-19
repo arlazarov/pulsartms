@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Application.Interfaces;
 
 namespace Server.Tests.Architecture;
@@ -26,10 +27,7 @@ public sealed class ModuleDependencyTests
     "Eta -> Routing",
     "Execution -> Dispatch",
     "Execution -> Routing",
-    "Fleet -> Routing",
     "Fleet -> Synchronization",
-    "Mileage -> Dispatch",
-    "Mileage -> Execution",
     "Mileage -> Routing",
     "Routing -> Dispatch",
     "Routing -> Eta",
@@ -39,7 +37,6 @@ public sealed class ModuleDependencyTests
     "Routing -> Synchronization",
     "Synchronization -> Dispatch",
     "Synchronization -> Fleet",
-    "Synchronization -> Routing",
   ];
 
   [Fact]
@@ -60,9 +57,19 @@ public sealed class ModuleDependencyTests
 
   private static HashSet<string> Edges()
   {
+    // Compiler-generated types - async state machines, closures, iterator
+    // classes - hoist locals into fields, and how many they hoist depends on
+    // the build configuration. Only types the code actually declares count.
     var types = typeof(IBackgroundOperation)
       .Assembly.GetTypes()
-      .Where(type => Feature(type) is not null)
+      .Where(type =>
+        Feature(type) is not null
+        && !type.IsDefined(typeof(CompilerGeneratedAttribute), false)
+        && type.DeclaringType?.IsDefined(
+          typeof(CompilerGeneratedAttribute),
+          false
+        ) != true
+      )
       .ToArray();
     var edges = new HashSet<string>();
     foreach (var type in types)

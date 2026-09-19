@@ -11,10 +11,12 @@ the dependency list honest; the other counts are not yet enforced by a check.
 
 ## Dependencies between feature modules
 
-Twenty-five dependencies exist between the modules under
-`Server/Application/Features`, measured from compiled signatures: base types,
-interfaces, fields, properties, parameters and returns. Nine pairs depend on
-each other in both directions.
+Twenty-one dependencies exist between the modules under
+`Server/Application/Features`, measured from the compiled signatures of the
+types the code declares: base types, interfaces, fields, properties,
+parameters and returns. Compiler-generated types are excluded, because how
+many locals an async state machine hoists into fields depends on the build
+configuration. Seven pairs depend on each other in both directions.
 
 | Pair | Direction that is the harder one to remove |
 | --- | --- |
@@ -22,13 +24,12 @@ each other in both directions.
 | Dispatch and Execution | Dispatch commands drive accepted execution |
 | Dispatch and Routing | Dispatch commands queue route preparation |
 | Routing and Execution | Routing reads the captured itinerary |
-| Fleet and Routing | Routing reads telemetry and HOS |
 | Fleet and Synchronization | Fleet reads synchronization status |
 | Routing and Synchronization | Shared synchronization options |
 | Dispatch and Synchronization | Synchronization sends dispatch commands |
 | Dispatch and Eta | Board enrichment |
 
-`ModuleDependencyTests` records the twenty-five and fails on a twenty-sixth. It
+`ModuleDependencyTests` records the twenty-one and fails on a twenty-second. It
 also fails when a recorded dependency disappears without being removed from the
 record, so the list can only shrink.
 
