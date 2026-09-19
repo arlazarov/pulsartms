@@ -1,4 +1,4 @@
-export function createMapHost(createMap) {
+export function createMapHost(createMap, discardMap) {
   let cached;
   let mounted = false;
   return (element, options) => {
@@ -9,8 +9,17 @@ export function createMapHost(createMap) {
       const center = cached.map.getCenter?.();
       const zoom = cached.map.getZoom?.();
       options = { ...options, ...(center ? { center, zoom } : {}) };
-      cached.host.remove();
+      const replaced = cached;
       cached = null;
+      replaced.host.remove();
+      // The provider has no way to destroy a map, so whatever still listens
+      // to the old one keeps it, and everything those listeners close over,
+      // alive. A failure here must not stop the new map from mounting.
+      try {
+        discardMap?.(replaced.map);
+      } catch (error) {
+        console.warn('[Fleet map] The replaced map was not released.', error);
+      }
     }
     if (!cached) {
       const host = element.ownerDocument.createElement('div');

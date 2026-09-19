@@ -19,6 +19,7 @@ import { distanceLabel } from './ui/distanceLabel.js';
 // Only the provider map is retained; fleet state belongs to the current mount.
 const mountMap = createMapHost(
   (host, options) => new google.maps.Map(host, options),
+  map => google.maps.event.clearInstanceListeners(map),
 );
 
 export async function createFleetMap(element, apiKey, callbacks) {
@@ -77,68 +78,73 @@ export async function createFleetMap(element, apiKey, callbacks) {
   });
   const map = mountedMap.map;
   const cleanup = [() => mountedMap.release()];
-  const cameraViewport = createCameraViewport(element, map);
-  cleanup.push(() => cameraViewport.dispose());
-  const viewport = element.ownerDocument?.defaultView;
-  let inspectionTruckId = null;
-  const inspector = createDockedDetails(
-    element.parentElement?.querySelector?.('.fleet-map-inspector__native'),
-    (kind, revision) =>
-      notify('OnMapInspectorChanged', kind, inspectionTruckId, revision),
-    () => (inspectionTruckId ? 'truck' : 'closed'),
-    element,
-  );
-  cleanup.push(() => inspector.dispose());
-  let fuelFocusFrame = null;
-  let fuelFocusVersion = 0;
-  let fuelEditorOpener = null;
-  let fuelReturnFrame = null;
-  function cancelFuelReturn() {
-    if (fuelReturnFrame !== null)
-      viewport?.cancelAnimationFrame(fuelReturnFrame);
-    fuelReturnFrame = null;
-  }
-  function restoreFuelEditorFocus() {
-    const document = element.ownerDocument;
-    const target = fuelEditorOpener;
-    fuelEditorOpener = null;
-    const closingFocus = document?.activeElement;
-    if (!target || !closingFocus?.closest?.('.fuel-plan-editor')) return;
-    cancelFuelReturn();
-    const restore = () => {
-      fuelReturnFrame = null;
-      if (
-        disposed ||
-        document.querySelector('.fuel-plan-editor') ||
-        (document.activeElement !== document.body &&
-          document.activeElement !== closingFocus)
-      )
-        return;
-      const connected =
-        target.isConnected && !target.closest?.('[inert]') && !target.disabled;
-      (connected ? target : element).focus?.({ preventScroll: true });
-    };
-    if (viewport?.requestAnimationFrame)
-      fuelReturnFrame = viewport.requestAnimationFrame(restore);
-    else restore();
-  }
-  cleanup.push(() => {
-    cancelFuelReturn();
-    fuelEditorOpener = null;
-  });
-  function cancelFuelFocus() {
-    fuelFocusVersion++;
-    if (fuelFocusFrame !== null) viewport?.cancelAnimationFrame(fuelFocusFrame);
-    fuelFocusFrame = null;
-  }
-  cleanup.push(cancelFuelFocus);
   function dispose() {
     if (disposed) return;
     disposed = true;
     releaseAll(cleanup.reverse());
     cleanup.length = 0;
   }
+  // Everything from here on is inside the try: a mount that is not released
+  // stays mounted, and every later attempt is then refused until a reload.
   try {
+    const cameraViewport = createCameraViewport(element, map);
+    cleanup.push(() => cameraViewport.dispose());
+    const viewport = element.ownerDocument?.defaultView;
+    let inspectionTruckId = null;
+    const inspector = createDockedDetails(
+      element.parentElement?.querySelector?.('.fleet-map-inspector__native'),
+      (kind, revision) =>
+        notify('OnMapInspectorChanged', kind, inspectionTruckId, revision),
+      () => (inspectionTruckId ? 'truck' : 'closed'),
+      element,
+    );
+    cleanup.push(() => inspector.dispose());
+    let fuelFocusFrame = null;
+    let fuelFocusVersion = 0;
+    let fuelEditorOpener = null;
+    let fuelReturnFrame = null;
+    function cancelFuelReturn() {
+      if (fuelReturnFrame !== null)
+        viewport?.cancelAnimationFrame(fuelReturnFrame);
+      fuelReturnFrame = null;
+    }
+    function restoreFuelEditorFocus() {
+      const document = element.ownerDocument;
+      const target = fuelEditorOpener;
+      fuelEditorOpener = null;
+      const closingFocus = document?.activeElement;
+      if (!target || !closingFocus?.closest?.('.fuel-plan-editor')) return;
+      cancelFuelReturn();
+      const restore = () => {
+        fuelReturnFrame = null;
+        if (
+          disposed ||
+          document.querySelector('.fuel-plan-editor') ||
+          (document.activeElement !== document.body &&
+            document.activeElement !== closingFocus)
+        )
+          return;
+        const connected =
+          target.isConnected &&
+          !target.closest?.('[inert]') &&
+          !target.disabled;
+        (connected ? target : element).focus?.({ preventScroll: true });
+      };
+      if (viewport?.requestAnimationFrame)
+        fuelReturnFrame = viewport.requestAnimationFrame(restore);
+      else restore();
+    }
+    cleanup.push(() => {
+      cancelFuelReturn();
+      fuelEditorOpener = null;
+    });
+    function cancelFuelFocus() {
+      fuelFocusVersion++;
+      if (fuelFocusFrame !== null)
+        viewport?.cancelAnimationFrame(fuelFocusFrame);
+      fuelFocusFrame = null;
+    }
+    cleanup.push(cancelFuelFocus);
     await yieldToBrowser();
     const gpuScene = gpuModule?.createGpuScene(map);
     cleanup.push(() => gpuScene?.dispose());

@@ -45,6 +45,26 @@ test('theme changes replace the map once and preserve its last camera', () => {
   third.release();
 });
 
+test('a replaced map is handed back exactly once, and a failing release cannot block the new map', t => {
+  t.mock.method(console, 'warn', () => {});
+  const discarded = [];
+  const mount = createMapHost(
+    () => ({ setOptions() {} }),
+    map => {
+      discarded.push(map);
+      throw new Error('provider refused');
+    },
+  );
+  const first = mount(container(), { colorScheme: 'LIGHT' });
+  first.release();
+  assert.deepEqual(discarded, []);
+  const second = mount(container(), { colorScheme: 'DARK' });
+  assert.deepEqual(discarded, [first.map]);
+  second.release();
+  mount(container(), { colorScheme: 'DARK' }).release();
+  assert.deepEqual(discarded, [first.map]);
+});
+
 test('provider host is bounded and reuse does not move the camera before fleet data arrives', () => {
   let creations = 0,
     host;

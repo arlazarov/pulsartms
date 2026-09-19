@@ -34,7 +34,7 @@ const ports = {
   'provider/googleMapsLoader': 'export const loadGoogleMaps = async () => {};',
   'provider/mapHost': `export const createMapHost = () => (_element, options) => {
     globalThis.fleetInteropFixture.mapOptions = options;
-    return {map: globalThis.fleetInteropFixture.map, show() {}, initialCamera(change) { change?.(); }, release() {}};
+    return {map: globalThis.fleetInteropFixture.map, show() {}, initialCamera(change) { change?.(); }, release() { globalThis.fleetInteropFixture.released = (globalThis.fleetInteropFixture.released ?? 0) + 1; }};
   };`,
   'rendering/gpuScene':
     'export const createGpuScene = () => globalThis.fleetInteropFixture.gpuScene;',
@@ -71,7 +71,7 @@ const { createFleetMap } = await import(
     Buffer.from(bundle.outputFiles[0].text).toString('base64')
 );
 
-async function fixture(t) {
+async function fixture(t, { failInspector = false } = {}) {
   const originalGoogle = globalThis.google,
     originalFixture = globalThis.fleetInteropFixture;
   t.after(() => {
@@ -230,6 +230,7 @@ async function fixture(t) {
       this.children = content;
     },
     addEventListener(name, callback) {
+      if (failInspector) throw new Error('inspector refused');
       this.events.set(name, callback);
     },
     removeEventListener(name) {
@@ -246,10 +247,24 @@ async function fixture(t) {
   };
   native.ownerDocument = element.ownerDocument;
   native.closest = () => ({ contains: node => node?.insideInspector === true });
+  if (failInspector) {
+    await assert.rejects(
+      createFleetMap(element, 'fixture', callbacks),
+      /inspector refused/,
+    );
+    return { state };
+  }
   const api = await createFleetMap(element, 'fixture', callbacks);
   t.after(() => api.dispose());
   return { api, calls, state, listeners, element, viewport, native };
 }
+
+test('a mount that fails before the layers exist still gives the provider map back', async t => {
+  // Unreleased, the host stays mounted and refuses every later attempt until
+  // the page is reloaded.
+  const { state } = await fixture(t, { failInspector: true });
+  assert.equal(state.released, 1);
+});
 const bytes = value => new TextEncoder().encode(JSON.stringify(value));
 test('map options retain station controls without a truck visibility API', async t => {
   const { api, calls } = await fixture(t);

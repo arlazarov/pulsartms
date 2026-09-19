@@ -426,14 +426,14 @@ export function createRouteLayer(
 
   function dispose() {
     if (disposed) return;
-    // Set before anything is torn down, not after clearing the plan: a throw
-    // inside setPlan used to leave this re-entrant and the polylines
-    // attached.
-    disposed = true;
+    // The plan has to be cleared while this is still live - setPlan does
+    // nothing once disposed, and the stop markers would stay on the map. The
+    // flag is its own step so that a throw inside setPlan cannot skip it.
     releaseAll([
       () => idleListener.remove(),
       () => dragListener.remove(),
       () => setPlan(null, false),
+      () => (disposed = true),
       () => (serverProgress = null),
       () => popup.dispose(),
       () => remaining.setMap(null),
