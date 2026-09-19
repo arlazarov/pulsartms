@@ -1,4 +1,8 @@
--- Run only during the approved nonrolling cutover, after verified backup.
+-- Clears operational data and proves the identity boundary is untouched.
+-- Run only with writers stopped, after a verified backup, and only against the
+-- schema named below: the table list is explicit so an unfamiliar table
+-- rejects the run instead of being truncated silently. ResetInventoryTests
+-- keeps that list matching the model; update both together.
 -- Connection settings acknowledge the target, backup and stopped writers.
 BEGIN;
 SET LOCAL lock_timeout = '5s';
@@ -19,18 +23,26 @@ DECLARE
     '__EFMigrationsHistory'
   ];
   operational text[] := ARRAY[
+    'BorderCrew',
+    'BorderCrossings',
+    'BorderEquipment',
+    'BorderSaveReceipts',
+    'BorderShipments',
     'Customers',
+    'CustomsCommodities',
     'DispatchActivityEntries',
     'DispatchActivityThreads',
     'DispatchBaseRoutes',
     'DispatchDeadheads',
     'DispatchDocuments',
     'DispatchEtaForecasts',
+    'DispatchNumberCounters',
     'DispatchRates',
     'DispatchRouteChoices',
     'DispatchRoutePlans',
     'DispatchRoutePreviews',
     'DispatchSettings',
+    'DispatchSourceLinks',
     'DispatchStopCompletionEvents',
     'DispatchStops',
     'DispatchSwitchOperations',
@@ -39,10 +51,14 @@ DECLARE
     'Dispatches',
     'Drivers',
     'ExecutionActionReceipts',
+    'ExecutionLegRevisions',
+    'ExecutionLegStops',
     'ExecutionLegs',
     'ExecutionPlanningChanges',
     'ExecutionSourceReceipts',
-    'ExecutionVisits',
+    'ExpenseAttributionEvents',
+    'ExpenseAttributions',
+    'Expenses',
     'FleetPlanningSettings',
     'FuelDiscounts',
     'FuelImportSources',
@@ -58,8 +74,13 @@ DECLARE
     'OdometerCaptureCheckpoints',
     'OdometerIntervals',
     'OdometerPositions',
+    'PlanningInputRevisions',
+    'PlanningRefreshRequests',
     'RouteRecalculationAttempts',
     'RoutingApiCalls',
+    'ShipmentSaveReceipts',
+    'Shipments',
+    'SourceRoadRequests',
     'SwitchParticipants',
     'SynchronizationCheckpoints',
     'TrailerCustodyIntervals',
@@ -105,10 +126,10 @@ BEGIN
   SELECT string_agg(format('public.%I', name), ', ' ORDER BY name)
     INTO tables_sql FROM unnest(expected) AS names(name);
   EXECUTE 'LOCK TABLE ' || tables_sql || ' IN ACCESS EXCLUSIVE MODE NOWAIT';
-  IF (SELECT count(*) FROM "__EFMigrationsHistory") <> 39
+  IF (SELECT count(*) FROM "__EFMigrationsHistory") <> 45
     OR (SELECT max("MigrationId") FROM "__EFMigrationsHistory")
-      IS DISTINCT FROM '20260914214701_AddStopCorrections' THEN
-    RAISE EXCEPTION 'Reset requires the reviewed pre-rebuild schema';
+      IS DISTINCT FROM '20260919152929_IndexLoadStatusAndDeliveryDate' THEN
+    RAISE EXCEPTION 'Reset requires the schema this inventory was reviewed for';
   END IF;
   FOREACH table_name IN ARRAY protected LOOP
     EXECUTE format(
