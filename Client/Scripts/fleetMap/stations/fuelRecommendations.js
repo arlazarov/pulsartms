@@ -33,8 +33,11 @@ export function fuelRecommendations(plan, progress, showNextLoads = true) {
         })),
       }
     : plan?.fuelPlan;
-  if (!plan || !fuel || (!access && plan.fuelPlan?.needsRefresh))
-    return { key: '', stops: [] };
+  // A plan whose prices are merely out of date still names the station to
+  // drive to; only an invalid plan is withheld.
+  const unusable =
+    plan?.fuelPlan?.needsRefresh && !plan?.fuelPlan?.pricesOutOfDate;
+  if (!plan || !fuel || (!access && unusable)) return { key: '', stops: [] };
   const current = finite(progress?.progressMiles);
   const dispatchId = identity(plan.dispatchId);
   const currentStopIds = showNextLoads

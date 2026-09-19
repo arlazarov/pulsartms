@@ -168,14 +168,30 @@ public sealed partial class RoutePlanningService(
         || plan.InputsChanged
         || fuel.RouteVersion != plan.Version;
       fuel.RefreshReasons = [];
+      // A reason that invalidates the plan hides it; one that only ages its
+      // prices leaves it readable. Both still ask for a recalculation.
+      var invalid = false;
+      var priced = false;
       if (changed || fuel.DispatchIds.Count == 0)
+      {
         fuel.RefreshReasons.Add("Route or fuel settings changed.");
+        invalid = true;
+      }
       if (progress?.OffRoute == true)
+      {
         fuel.RefreshReasons.Add("Truck is off the calculated route.");
+        invalid = true;
+      }
       if (progress?.LocationStale == true)
+      {
         fuel.RefreshReasons.Add("Fresh GPS is needed to verify the plan.");
+        invalid = true;
+      }
       if (DateTime.UtcNow - fuel.CalculatedAt > TimeSpan.FromMinutes(30))
+      {
         fuel.RefreshReasons.Add("Check current fuel prices and quantities.");
+        priced = true;
+      }
       if (
         progress?.ProgressMiles is { } along
         && truck?.FuelPercent is { } level
@@ -191,11 +207,16 @@ public sealed partial class RoutePlanningService(
           Math.Abs(actual - expected)
           > Math.Max(10, profile.TankGallons.Value * .08)
         )
+        {
           fuel.RefreshReasons.Add(
             "Fuel level differs from the plan. Recalculate from the latest reading."
           );
+          invalid = true;
+        }
       }
       fuel.NeedsRefresh = fuel.RefreshReasons.Count > 0;
+      fuel.PricesOutOfDate =
+        !invalid && (priced || fuel.PricesOutOfDate);
     }
     var state = new RoutePlanningState(
       profile,

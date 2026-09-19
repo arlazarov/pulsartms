@@ -130,7 +130,8 @@ export function createRouteStops(
       dispatchId = plan?.dispatchId;
       fuelArrivals =
         plan?.fuelStopArrivals ??
-        (plan?.fuelPlan && !plan.fuelPlan.needsRefresh
+        (plan?.fuelPlan &&
+        (!plan.fuelPlan.needsRefresh || plan.fuelPlan.pricesOutOfDate)
           ? (plan.fuelPlan.stopArrivals ?? [])
           : []);
       const detailsHref =

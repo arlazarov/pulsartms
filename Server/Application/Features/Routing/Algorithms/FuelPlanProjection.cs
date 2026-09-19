@@ -192,10 +192,22 @@ public static class FuelPlanProjection
     void Invalid(string reason)
     {
       fuel.NeedsRefresh = true;
+      fuel.PricesOutOfDate = false;
       fuel.ScheduleImpact = null;
       fuel.RefreshReasons.Add(reason);
     }
+    // The prices belong to an earlier pricing day. A recalculation is still
+    // wanted, but the plan itself holds, so it stays readable until one
+    // arrives and says why its cost is provisional.
+    void Repriced(string reason)
+    {
+      if (!fuel.NeedsRefresh)
+        fuel.PricesOutOfDate = true;
+      fuel.NeedsRefresh = true;
+      fuel.RefreshReasons.Add(reason);
+    }
     fuel.NeedsRefresh = false;
+    fuel.PricesOutOfDate = false;
     if (
       fuel.EstimatedStationAccess
       && fuel.SelectionVersion < MinimumEstimatedAccessVersion
@@ -226,7 +238,7 @@ public static class FuelPlanProjection
       return fuel;
     }
     if (fuel.PricingDate != FuelPricingDate.FromUtc(now))
-      Invalid("Fuel prices need to be checked for today.");
+      Repriced("Fuel prices need to be checked for today.");
     if (
       state.Progress
         is not { LocationStale: false, Position: { IsValid: true } position }

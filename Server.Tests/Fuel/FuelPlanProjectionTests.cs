@@ -1424,4 +1424,54 @@ public sealed class FuelPlanProjectionTests
       );
     }
   }
+
+  // Yesterday's prices do not invalidate a plan: the station and the volume
+  // are unchanged, only what the fuel costs. A dispatcher must be able to
+  // tell that from a plan that no longer applies.
+  [Fact]
+  public void AnEarlierPricingDayLeavesThePlanReadable()
+  {
+    var fixture = new Fixture();
+    fixture.Saved.Plan.PricingDate = FuelPricingDate
+      .FromUtc(fixture.Now)
+      .AddDays(-1);
+
+    var result = FuelPlanProjection.Project(
+      fixture.Saved,
+      fixture.State(0),
+      fixture.Loads,
+      fixture.Leg(0),
+      fixture.Now
+    );
+
+    Assert.True(result.NeedsRefresh);
+    Assert.True(result.PricesOutOfDate);
+    Assert.NotEmpty(result.Stops);
+    Assert.Contains(
+      "Fuel prices need to be checked for today.",
+      result.RefreshReasons
+    );
+  }
+
+  [Fact]
+  public void AnInvalidPlanIsNotMerelyRepricedEvenWhenItsPricesAreOld()
+  {
+    var fixture = new Fixture();
+    fixture.Saved.Plan.PricingDate = FuelPricingDate
+      .FromUtc(fixture.Now)
+      .AddDays(-1);
+    fixture.Saved.Plan.SelectionVersion =
+      FuelOptimizer.MinimumProjectionVersion - 1;
+
+    var result = FuelPlanProjection.Project(
+      fixture.Saved,
+      fixture.State(0),
+      fixture.Loads,
+      fixture.Leg(0),
+      fixture.Now
+    );
+
+    Assert.True(result.NeedsRefresh);
+    Assert.False(result.PricesOutOfDate);
+  }
 }

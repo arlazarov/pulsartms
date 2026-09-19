@@ -457,7 +457,7 @@
                     @if (ShowNextLoads)
                     { <span><i class="fleet-map-key__line fleet-map-key__line--next" aria-hidden="true"></i>Next loads · color by load</span> }
                     <span><i class="fleet-map-key__stop" aria-hidden="true">1</i>Pickup / delivery</span>
-                    @if (ShowFuelStations || _routeState?.Plan?.FuelPlan is { NeedsRefresh: false, Stops.Count: > 0 })
+                    @if (ShowFuelStations || Usable(_routeState?.Plan?.FuelPlan))
                     { <span><i class="fleet-map-key__planned" aria-hidden="true">Fuel</i>Planned fuel</span> }
                 </div>
             }

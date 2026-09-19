@@ -20,6 +20,9 @@ public sealed class FuelPlan
   public int RouteVersion { get; set; }
   public double StartProgressMiles { get; set; }
   public bool NeedsRefresh { get; set; }
+
+  // The plan still holds; only its prices belong to an earlier pricing day.
+  public bool PricesOutOfDate { get; set; }
   public bool ManuallyEdited { get; set; }
   public string ProfileSignature { get; set; } = "";
   public double StartingGallons { get; set; }

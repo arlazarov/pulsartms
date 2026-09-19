@@ -40,7 +40,8 @@ public readonly record struct DispatchCardPlanningSummary(
         : null;
     int? count = null;
     if (
-      plan.FuelPlan is { NeedsRefresh: false } fuel
+      plan.FuelPlan is { } fuel
+      && (!fuel.NeedsRefresh || fuel.PricesOutOfDate)
       && fuel.TruckId == truck
       && fuel.DispatchIds.Contains(current)
       && fuel.DispatchIds.Contains(load)

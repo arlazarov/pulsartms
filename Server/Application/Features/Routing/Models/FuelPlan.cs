@@ -29,6 +29,12 @@ public sealed class FuelPlan
   public int RouteVersion { get; set; }
   public double StartProgressMiles { get; set; }
   public bool NeedsRefresh { get; set; }
+
+  // A plan whose route, assignments and truck position still hold but whose
+  // prices belong to an earlier pricing day remains the plan to drive: the
+  // station and the volume do not change, only what the fuel costs. Hiding it
+  // leaves a dispatcher unable to tell "recalculating" from "nowhere to go".
+  public bool PricesOutOfDate { get; set; }
   public string ProfileSignature { get; set; } = "";
   public double StartingGallons { get; set; }
   public double RemainingMiles { get; set; }

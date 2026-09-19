@@ -84,6 +84,7 @@ export interface RouteMetadata {
     })[];
   } | null;
   fuelPlan?: {
+    pricesOutOfDate?: boolean;
     needsRefresh?: boolean;
     stops: FuelStop[];
     stopArrivals?: FuelStopArrival[];
