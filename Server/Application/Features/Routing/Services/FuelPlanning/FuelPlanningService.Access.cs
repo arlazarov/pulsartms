@@ -31,7 +31,7 @@ public sealed partial class FuelPlanningService
     var missing = Math.Max(0, needed - gallons);
     var warning =
       nearest is null
-        ? "No complete fuel plan or suitable priced station was found."
+        ? "No complete fuel plan was found, and no station on this route could be reached."
       : missing > 0
         ? FormattableString.Invariant(
           $"Cannot reach {nearest.Station.Name}: estimated {distance:N1} mi; "

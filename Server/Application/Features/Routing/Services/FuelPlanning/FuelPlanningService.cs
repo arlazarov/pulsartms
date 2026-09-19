@@ -191,7 +191,8 @@ public sealed partial class FuelPlanningService(
       ?? throw new RoutePlanningException(
         "Fuel prices are temporarily unavailable."
       );
-    var prices = FuelRegionGrid.Prices(response, p, today);
+    var unpricedStations = new List<PricedFuelStation>();
+    var prices = FuelRegionGrid.Prices(response, p, today, unpricedStations);
     var priceSignature = FuelPriceSignature.From(prices);
     var loads = captured.Select(plan);
     var assignmentSignatures = loads.ToDictionary(
@@ -227,22 +228,34 @@ public sealed partial class FuelPlanningService(
     var corridorStations = new HashSet<Guid>();
     var countries = new FuelAccessCountries(regionLookup);
     List<FuelCandidate> shortList;
+    List<FuelCandidate> reachable;
     using (PerformanceStages.Start("fuel", "station-matching"))
-      shortList = FuelAccessEstimate.Nearby(
-        FuelRouteOccurrences
-          .Create(
-            horizon.Route,
-            prices,
-            config,
-            ct,
-            geometry,
-            FuelAccessEstimate.NearbyMiles,
-            corridorStations
-          )
-          .Where(x =>
-            countries.Matches(geometry.At(x.AlongMiles, ct), x.Station)
-          )
-      );
+    {
+      List<FuelCandidate> Match(IReadOnlyList<PricedFuelStation> stations) =>
+        FuelAccessEstimate.Nearby(
+          FuelRouteOccurrences
+            .Create(
+              horizon.Route,
+              stations,
+              config,
+              ct,
+              geometry,
+              FuelAccessEstimate.NearbyMiles,
+              corridorStations
+            )
+            .Where(x =>
+              countries.Matches(geometry.At(x.AlongMiles, ct), x.Station)
+            )
+        );
+      shortList = Match(prices);
+      // Cost comparison sees priced stations only. Reachability sees every
+      // station on the road, so a driver is told where he can get to even
+      // where no price is known.
+      reachable =
+        unpricedStations.Count == 0
+          ? shortList
+          : [.. shortList, .. Match(unpricedStations)];
+    }
     shortList = await calendar.PriceAsync(
       shortList,
       schedule.Arrivals(
@@ -457,7 +470,7 @@ public sealed partial class FuelPlanningService(
         await ReportFuelAccessAsync(
           state,
           captured,
-          shortList,
+          reachable,
           gallons,
           horizon.StartAccessMiles,
           p,

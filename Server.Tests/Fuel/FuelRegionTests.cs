@@ -482,4 +482,74 @@ public class FuelRegionTests
     Assert.Equal(1.3 * 3.785411784 * .75, normalized.EconomicUsd, 6);
     Assert.Empty(FuelRegionGrid.Prices([ca], p, date.AddDays(1)));
   }
+
+  // Reaching a station and comparing its cost are separate questions. A
+  // station whose price cannot be used is never a candidate for cost, but a
+  // driver still has to be told it is there.
+  [Fact]
+  public void AStationWithNoUsablePriceIsReachableButNeverCheapest()
+  {
+    var date = new DateOnly(2026, 9, 5);
+    var priced = new FuelStationDto(
+      Guid.NewGuid(),
+      "1",
+      "Priced",
+      "",
+      "",
+      "NY",
+      "",
+      "US",
+      40,
+      -80,
+      [new("USD", "Diesel", 4m, 3.5m, .5m, date, date, 3m, "US gal")]
+    );
+    var none = new FuelStationDto(
+      Guid.NewGuid(),
+      "2",
+      "No price",
+      "",
+      "",
+      "NY",
+      "",
+      "US",
+      41,
+      -81,
+      []
+    );
+    var unpriced = new List<PricedFuelStation>();
+
+    var result = FuelRegionGrid.Prices(
+      [priced, none],
+      Profile(),
+      date,
+      unpriced
+    );
+
+    Assert.Equal(priced.Id, Assert.Single(result).Station.StationId);
+    var reachable = Assert.Single(unpriced);
+    Assert.Equal(none.Id, reachable.Station.StationId);
+    Assert.Equal(0, reachable.EconomicUsd);
+    Assert.Equal("", reachable.Station.Currency);
+  }
+
+  [Fact]
+  public void CollectingReachableStationsIsOptional()
+  {
+    var date = new DateOnly(2026, 9, 5);
+    var none = new FuelStationDto(
+      Guid.NewGuid(),
+      "2",
+      "No price",
+      "",
+      "",
+      "NY",
+      "",
+      "US",
+      41,
+      -81,
+      []
+    );
+
+    Assert.Empty(FuelRegionGrid.Prices([none], Profile(), date));
+  }
 }

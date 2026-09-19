@@ -79,10 +79,13 @@ public sealed class FuelRegionGrid(
     return cells.Values.ToList();
   }
 
+  // unpriced collects the stations this read finds on the road but cannot
+  // price. They are never returned as candidates for cost comparison.
   public static List<PricedFuelStation> Prices(
     IEnumerable<FuelStationDto> stations,
     TruckRouteProfile p,
-    DateOnly date
+    DateOnly date,
+    List<PricedFuelStation>? unpriced = null
   )
   {
     var result = new List<PricedFuelStation>();
@@ -132,6 +135,26 @@ public sealed class FuelRegionGrid(
       }
       if (prices.Count > 0)
         result.Add(prices.MinBy(x => x.EconomicUsd)!);
+      else if (unpriced is not null)
+        // Reaching a station and comparing its cost are separate questions.
+        // Without a usable price it can never be the cheapest, but a driver
+        // still has to know it is there.
+        unpriced.Add(
+          new(
+            new()
+            {
+              StationId = station.Id,
+              Name = station.Name,
+              Address = station.Address,
+              Country = station.Country,
+              Point = point,
+              Currency = "",
+              Unit = "",
+            },
+            0,
+            0
+          )
+        );
     }
     return result.DistinctBy(x => x.Station.StationId).ToList();
   }
