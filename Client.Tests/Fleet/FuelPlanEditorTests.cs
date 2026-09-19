@@ -1339,6 +1339,48 @@ public sealed class FuelPlanEditorTests
     );
   }
 
+  // Closing cancels the request but used to leave it in the field; its own
+  // completion then disposed it, and the component's teardown threw on the
+  // dead source before releasing anything it holds in the browser.
+  [Fact]
+  public async Task DisposingAfterClosingOverAPendingPreviewStillReleasesTheBrowserSide()
+  {
+    using var fixture = new Fixture();
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Equal(2, component.FindAll(".fuel-plan-editor__stop").Count)
+    );
+    fixture.DeferPreview = true;
+    var editing = component.InvokeAsync(
+      () =>
+        component
+          .Find("input[type='checkbox']")
+          .ChangeAsync(new ChangeEventArgs { Value = false })
+    );
+    var pending = await fixture
+      .Pending.Reader.ReadAsync()
+      .AsTask()
+      .WaitAsync(TimeSpan.FromSeconds(5));
+    await component.InvokeAsync(
+      () =>
+        component
+          .FindAll("button")
+          .Single(button => button.TextContent == "Cancel")
+          .ClickAsync(new MouseEventArgs())
+    );
+    pending.Reply(fixture.Preview(pending.Body, arrival: 199));
+    await editing;
+
+    await component.InvokeAsync(
+      () => component.Instance.DisposeAsync().AsTask()
+    );
+
+    Assert.Single(
+      fixture.Reorder.Invocations,
+      call => call.Identifier == "dispose"
+    );
+  }
+
   [Theory]
   [InlineData(false)]
   [InlineData(true)]

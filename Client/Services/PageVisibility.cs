@@ -56,10 +56,12 @@ public sealed class PageVisibility : IAsyncDisposable
       return;
     disposed = true;
     changed.Cancel();
-    if (starting is not null)
-      await starting;
     try
     {
+      // Awaited inside: a start that faulted with anything but a JSException
+      // used to leave before the releases below ever ran.
+      if (starting is not null)
+        await starting;
       if (observer is not null)
       {
         await observer.InvokeVoidAsync("dispose");

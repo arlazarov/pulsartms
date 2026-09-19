@@ -110,10 +110,9 @@ public sealed class BackgroundHeartbeatTests
     {
       BackgroundHeartbeat.Beat(name);
 
-      Assert.Empty(
-        BackgroundHeartbeat
-          .Stalled(DateTimeOffset.UtcNow.AddMinutes(30))
-          .Where(x => x == name)
+      Assert.DoesNotContain(
+        name,
+        BackgroundHeartbeat.Stalled(DateTimeOffset.UtcNow.AddMinutes(30))
       );
     }
     finally

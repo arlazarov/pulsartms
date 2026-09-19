@@ -295,9 +295,8 @@ public partial class FuelPlanEditor : IAsyncDisposable
       if (Owns(request, generation))
       {
         _loading = false;
-        _request = null;
       }
-      request.Dispose();
+      Forget(request);
     }
   }
 
@@ -578,9 +577,8 @@ public partial class FuelPlanEditor : IAsyncDisposable
       if (Owns(request, generation))
       {
         _previewing = false;
-        _request = null;
       }
-      request.Dispose();
+      Forget(request);
     }
   }
 
@@ -668,9 +666,8 @@ public partial class FuelPlanEditor : IAsyncDisposable
       if (Owns(request, generation))
       {
         _saving = false;
-        _request = null;
       }
-      request.Dispose();
+      Forget(request);
     }
   }
 
@@ -723,10 +720,9 @@ public partial class FuelPlanEditor : IAsyncDisposable
       if (Owns(request, generation))
       {
         _saving = false;
-        _request = null;
         await BusyChanged.InvokeAsync(false);
       }
-      request.Dispose();
+      Forget(request);
     }
   }
 
@@ -766,6 +762,21 @@ public partial class FuelPlanEditor : IAsyncDisposable
     && (
       !ExecutionLegId.HasValue || plan.AssignmentRevision == AssignmentRevision
     );
+
+  // Disposing a source while the field still points at it left Dispose
+  // calling Cancel on a disposed object. That threw out of DisposeAsync
+  // before the JS module and the component reference were released, and
+  // _interopDisposed was already set, so nothing retried. Closing the editor
+  // during a preview was enough.
+  //
+  // Ownership decides whose flags to clear; forgetting is about this source
+  // and is unconditional.
+  private void Forget(CancellationTokenSource request)
+  {
+    if (ReferenceEquals(request, _request))
+      _request = null;
+    request.Dispose();
+  }
 
   private bool Owns(CancellationTokenSource request, long generation) =>
     !_disposed
