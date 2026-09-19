@@ -409,7 +409,7 @@ try {
       const request = route.request();
       const url = new URL(request.url());
       let fixture;
-      if (url.origin === origin && request.method() === 'POST' && url.pathname === `/api/fleet/trucks/${truckId}/planning`) {
+      if (url.origin === origin && ['GET', 'POST'].includes(request.method()) && url.pathname === `/api/fleet/trucks/${truckId}/planning`) {
         planningReads++;
         if (holdPlanning) {const held = holdPlanning; holdPlanning = null; await held.block();}
         await route.fulfill({status: 200, json: success(planning(pending, timing))});

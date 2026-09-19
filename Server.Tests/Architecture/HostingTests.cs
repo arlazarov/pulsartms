@@ -44,4 +44,23 @@ public sealed class HostingTests
     Assert.Contains("-r linux-x64", dockerfile.Split("dotnet publish", 2)[1]);
     Assert.Contains("--self-contained false", dockerfile);
   }
+
+  [Fact]
+  public void MetricsAreExportedOnlyWhenAnOtlpEndpointIsConfigured()
+  {
+    var silent = WebApplication.CreateBuilder();
+    silent.Configuration[TelemetryExport.EndpointSetting] = null;
+    silent.AddApplicationServices();
+    using var silentProvider = silent.Services.BuildServiceProvider();
+    Assert.Null(silentProvider.GetService<OpenTelemetry.Metrics.MeterProvider>());
+
+    var exporting = WebApplication.CreateBuilder();
+    exporting.Configuration[TelemetryExport.EndpointSetting] = "http://127.0.0.1:4317";
+    exporting.AddApplicationServices();
+    using var exportingProvider = exporting.Services.BuildServiceProvider();
+    Assert.NotNull(exportingProvider.GetService<OpenTelemetry.Metrics.MeterProvider>());
+    Assert.Equal("AMFTMS.Application", Application.Diagnostics.ApplicationMeter.Name);
+    // Traces are not exported: HTTP client spans would carry provider URLs whose query strings can hold keys.
+    Assert.Null(exportingProvider.GetService<OpenTelemetry.Trace.TracerProvider>());
+  }
 }

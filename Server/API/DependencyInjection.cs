@@ -12,6 +12,7 @@ public static class DependencyInjection
     builder.Services.AddInfrastructure(builder.Configuration);
     builder.Services.AddApplicationOptions(builder.Configuration);
 
+    builder.Services.AddTelemetryExport(builder.Configuration);
     builder.Services.AddOpenApi();
     builder.Services.AddControllers().AddJsonOptions(options =>
       options.JsonSerializerOptions.TypeInfoResolverChain.Insert(0, ApiJsonContext.Default));
