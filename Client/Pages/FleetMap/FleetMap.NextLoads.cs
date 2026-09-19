@@ -294,11 +294,14 @@ public partial class FleetMap
       .Select(route =>
         route with
         {
-          Legs = route.Legs.Select(leg => leg with { Points = [] }).ToArray(),
+          Legs = route
+            .Legs.Select(leg => leg with { Points = [], Path = null })
+            .ToArray(),
           Deadhead = route.Deadhead is { } deadhead
             ? deadhead with
             {
               Points = [],
+              Path = null,
             }
             : null,
         }

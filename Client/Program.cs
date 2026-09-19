@@ -34,7 +34,11 @@ builder.Services.AddScoped(sp =>
     ? "http://localhost:5086/"
     : builder.HostEnvironment.BaseAddress;
 
-  return new HttpClient(handler) { BaseAddress = new Uri(baseAddress) };
+  var client = new HttpClient(handler) { BaseAddress = new Uri(baseAddress) };
+  // Tells the server this client reads route geometry as an encoded string.
+  // A server that does not know the header ignores it and sends points.
+  client.DefaultRequestHeaders.Add("X-Route-Geometry", "encoded");
+  return client;
 });
 
 builder.Services.AddScoped<AuthService>();

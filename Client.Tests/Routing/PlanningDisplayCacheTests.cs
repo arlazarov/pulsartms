@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.Channels;
 using Client.Models.DTO;
 using Client.Models.DTO.Planning;
@@ -746,6 +747,70 @@ public class PlanningDisplayCacheTests
     Assert.Equal("Updated stop", Assert.Single(plan.Stops).Name);
     Assert.Same(response.Response, cache.Get(url));
     Assert.Empty(previous.Stops);
+  }
+
+  [Fact]
+  public async Task RefreshRestoresEncodedGeometryForBothRoads()
+  {
+    var id = Guid.NewGuid();
+    RoutePlan Plan(bool geometry) =>
+      new()
+      {
+        Id = id,
+        Version = 1,
+        GeometryOmitted = !geometry,
+        FromCurrentPosition = true,
+        Route = new()
+        {
+          Legs = [new(10, 600, []) { Path = geometry ? "route" : null }],
+        },
+        ReferenceRoute = new()
+        {
+          Legs = [new(20, 900, []) { Path = geometry ? "behind" : null }],
+        },
+      };
+    AutomaticPlanningResult Result(RoutePlan plan) =>
+      new(
+        Guid.NewGuid(),
+        Guid.NewGuid(),
+        1,
+        new(new(), plan, null, 50, null, true),
+        null
+      );
+    using var handler = new Handler(Result(Plan(false)));
+    using var client = new HttpClient(handler)
+    {
+      BaseAddress = new("https://local.test/"),
+    };
+    var cache = new PlanningDisplayCache(new ApiService(client));
+    const string url = "api/fleet/trucks/test/planning";
+    cache.Store(url, Result(Plan(true)));
+
+    var plan = (await cache.RefreshAsync(url, default)).Response!.State!.Plan!;
+
+    Assert.False(plan.GeometryOmitted);
+    Assert.Equal("route", plan.Route.Legs[0].Path);
+    Assert.Equal("behind", plan.ReferenceRoute!.Legs[0].Path);
+    Assert.True(plan.Route.Legs[0].HasGeometry);
+  }
+
+  [Fact]
+  public void APathIsSentOnToTheMapAndAnAbsentOneIsNotWritten()
+  {
+    var encoded = JsonSerializer.Serialize(
+      new RouteLeg(1, 2, []) { Path = "abc" },
+      JsonSerializerOptions.Web
+    );
+    Assert.Contains("\"path\":\"abc\"", encoded);
+    Assert.DoesNotContain("hasGeometry", encoded);
+    Assert.DoesNotContain(
+      "path",
+      JsonSerializer.Serialize(
+        new RouteLeg(1, 2, [new(1, 2), new(3, 4)]),
+        JsonSerializerOptions.Web
+      )
+    );
+    Assert.False(new RouteLeg(1, 2, [new(1, 2)]).HasGeometry);
   }
 
   private sealed class Handler(AutomaticPlanningResult result)

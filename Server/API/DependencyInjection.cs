@@ -1,3 +1,4 @@
+using API.Serialization;
 using Application;
 using Infrastructure;
 
@@ -17,6 +18,16 @@ public static class DependencyInjection
 
     builder.Services.AddOpenApi();
     builder.Services.AddControllers();
+    builder
+      .Services.AddOptions<Microsoft.AspNetCore.Mvc.JsonOptions>()
+      .Configure<IHttpContextAccessor>(
+        (json, http) =>
+        {
+          var converters = json.JsonSerializerOptions.Converters;
+          converters.Add(new RouteLegJsonConverter(http));
+          converters.Add(new NextLoadConnectionJsonConverter(http));
+        }
+      );
     builder.Services.AddOperationalCompression();
 
     builder.Services.AddCors(options =>

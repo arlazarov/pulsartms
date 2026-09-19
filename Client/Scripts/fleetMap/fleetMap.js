@@ -7,6 +7,7 @@ import { createStationLayer } from './stations/stationLayer.js';
 import { fuelRecommendations } from './stations/fuelRecommendations.js';
 import { yieldToBrowser } from './lifecycle/backgroundWork.js';
 import { createNextLoadsLayer } from './routes/nextLoads.js';
+import { parseMapPayload } from './geometry/encodedPath.js';
 import { createMapHost } from './provider/mapHost.js';
 import { mergeRoutePayload } from './routes/routePayload.js';
 import { stopEtaDeadline, stopEtaLabels } from './routes/stopEtaLabels.js';
@@ -447,9 +448,7 @@ export async function createFleetMap(element, apiKey, callbacks) {
       },
       setRouteEditor(bytes) {
         if (disposed) return;
-        const payload = bytes
-          ? JSON.parse(new TextDecoder().decode(bytes))
-          : null;
+        const payload = bytes ? parseMapPayload(bytes) : null;
         routeEditor.set(payload);
         if (routeEditor.active) cancelFuelFocus();
         gpuScene.setRouteEditing?.(routeEditor.active);
@@ -604,7 +603,7 @@ export async function createFleetMap(element, apiKey, callbacks) {
       },
       setNextLoadsBytes(bytes) {
         if (!disposed) {
-          const payload = JSON.parse(new TextDecoder().decode(bytes));
+          const payload = parseMapPayload(bytes);
           if (Array.isArray(payload)) nextLoads.set(payload);
           else {
             if (payload.truckId && payload.currentDispatchId) {
@@ -638,11 +637,7 @@ export async function createFleetMap(element, apiKey, callbacks) {
        * @returns {Promise<boolean>}
        */
       async setRouteBytes(bytes, progress, fit) {
-        return this.setRoute(
-          JSON.parse(new TextDecoder().decode(bytes)),
-          progress,
-          fit,
-        );
+        return this.setRoute(parseMapPayload(bytes), progress, fit);
       },
       /**
        * @param {import('./contracts.d.ts').RoutePayload} payload

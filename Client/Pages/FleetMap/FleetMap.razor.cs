@@ -384,7 +384,7 @@ public partial class FleetMap : IAsyncDisposable
     && DisplayRouteState?.Plan is { InputsChanged: false } plan
     && !plan.Tracking.AllStopsPassed
     && (
-      plan.Route.Legs.Any(leg => leg.Points.Count > 1)
+      plan.Route.Legs.Any(leg => leg.HasGeometry)
       || _routePublisher.HasGeometry(_map, plan)
     );
 

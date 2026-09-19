@@ -254,6 +254,7 @@ public sealed class PlanningDisplayCache(
               leg with
               {
                 Points = previous.Route.Legs[index].Points,
+                Path = previous.Route.Legs[index].Path,
               }
           )
           .ToList();
@@ -265,7 +266,12 @@ public sealed class PlanningDisplayCache(
           reference.Points = saved.Points;
           reference.Legs = reference
             .Legs.Select(
-              (leg, index) => leg with { Points = saved.Legs[index].Points }
+              (leg, index) =>
+                leg with
+                {
+                  Points = saved.Legs[index].Points,
+                  Path = saved.Legs[index].Path,
+                }
             )
             .ToList();
         }
@@ -480,7 +486,8 @@ public sealed class PlanningDisplayCache(
     var weight = 32L + route.Points.Count;
     foreach (var leg in route.Legs)
     {
-      weight += 16L + leg.Points.Count;
+      // An encoded point is about six characters.
+      weight += 16L + leg.Points.Count + (leg.Path?.Length ?? 0) / 6;
       if (weight > MaximumGeometryUnits)
         break;
     }
