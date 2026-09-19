@@ -231,6 +231,7 @@ public static class DispatchProjection
             ManualCompletionRecordedAt = extra.ManualCompletionRecordedAt,
             ManualCompletionRevision = s.ManualCompletionRevision,
             ExecutionCompleted = s.ExecutionCompleted,
+            AwaitingHandoff = s.AwaitingHandoff,
           };
         })
         .ToList(),

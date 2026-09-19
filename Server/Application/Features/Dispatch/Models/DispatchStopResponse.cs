@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 
 namespace Application.Features.Dispatch.Models;
@@ -7,6 +8,9 @@ public class DispatchStopResponse : IWorkStopFacts
 {
   public bool DriverOnly { get; set; }
   public bool ExecutionCompleted { get; set; }
+
+  // An unconfirmed handoff keeps the stop open; see StopCompletion.
+  public bool AwaitingHandoff { get; set; }
   public Guid Id { get; set; }
   public Guid? TruckId { get; set; }
   public int Sequence { get; set; }
@@ -71,9 +75,10 @@ public class DispatchStopResponse : IWorkStopFacts
 
   [JsonIgnore]
   public bool IsCompleted =>
-    CompletionOverride
-    ?? (
-      ExecutionCompleted
-      || (DepartedAt ?? DeliveredAt ?? PickedUpAt ?? ManualCompletedAt).HasValue
+    StopCompletion.IsCompleted(
+      AwaitingHandoff,
+      CompletionOverride,
+      ExecutionCompleted,
+      (DepartedAt ?? DeliveredAt ?? PickedUpAt ?? ManualCompletedAt).HasValue
     );
 }
