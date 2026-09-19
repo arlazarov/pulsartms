@@ -81,6 +81,61 @@ public sealed class DriverHosStoreTests
     Assert.NotEqual(observed, row.RecordedAt);
   }
 
+  // Hours decide whether a driver may legally drive. A reading nobody has
+  // refreshed for long enough is absence of information, not current hours.
+  [Theory]
+  [InlineData(5, true)]
+  [InlineData(14, true)]
+  [InlineData(16, false)]
+  [InlineData(120, false)]
+  public async Task AReadingIsOnlyAnsweredWithWhileItIsRecent(
+    int ageMinutes,
+    bool answered
+  )
+  {
+    await using var f = await Fixture.CreateAsync();
+    await f.Store.WriteAsync(
+      new Dictionary<string, DriverHosClocks>
+      {
+        ["driver-1"] = new()
+        {
+          DriveMs = 100,
+          UpdatedAt = DateTime.UtcNow.AddMinutes(-ageMinutes),
+        },
+      },
+      default
+    );
+
+    var stored = await f.Store.ReadAsync(default);
+
+    Assert.Equal(answered, stored.ContainsKey("driver-1"));
+  }
+
+  [Fact]
+  public async Task AnInstanceWithoutTheRefreshReportsNoHoursRatherThanOldOnes()
+  {
+    await using var f = await Fixture.CreateAsync();
+    await f.Store.WriteAsync(
+      new Dictionary<string, DriverHosClocks>
+      {
+        ["driver-1"] = new()
+        {
+          DriveMs = 100,
+          UpdatedAt = DateTime.UtcNow.AddHours(-2),
+        },
+      },
+      default
+    );
+
+    var result = await new GetFleetHosHandler(
+      f.Db,
+      new DriverHosSnapshotStub(),
+      f.Store
+    ).Handle(new(), default);
+
+    Assert.Null(Assert.Single(result.Response!).Value.Hos);
+  }
+
   private static Dictionary<string, DriverHosClocks> Clocks(
     string driver,
     long driveMs

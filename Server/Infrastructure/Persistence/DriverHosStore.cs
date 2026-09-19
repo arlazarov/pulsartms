@@ -8,11 +8,22 @@ namespace Infrastructure.Persistence;
 
 public sealed class DriverHosStore(IAppDbContext db) : IDriverHosStore
 {
+  // Hours decide whether a driver may legally drive, so a reading is only
+  // worth answering with while it is recent. The in-memory snapshot keeps a
+  // minute because a refresh is running beside it; an instance reading what
+  // another recorded needs longer, but not unbounded. Fifteen minutes matches
+  // the bound the board already applies, so nothing is handed out that a
+  // reader would be right to reject.
+  public static readonly TimeSpan Freshness = TimeSpan.FromMinutes(15);
+
   public async Task<IReadOnlyDictionary<string, DriverHosClocks>> ReadAsync(
     CancellationToken ct
-  ) =>
-    await db
+  )
+  {
+    var since = DateTime.UtcNow - Freshness;
+    return await db
       .DriverHosReadings.AsNoTracking()
+      .Where(x => x.ObservedAt > since)
       .ToDictionaryAsync(
         x => x.DriverExternalId,
         x => new DriverHosClocks
@@ -27,6 +38,7 @@ public sealed class DriverHosStore(IAppDbContext db) : IDriverHosStore
         StringComparer.Ordinal,
         ct
       );
+  }
 
   // The provider returns the complete set each time, so the stored set is
   // replaced rather than merged: a driver the provider stopped reporting must
