@@ -1,6 +1,7 @@
 @use '../base' as ui;
 
 .add-user-page {
+  --form-actions-space: #{ui.pg(xs)};
   display: grid;
   gap: ui.pg(md);
   min-width: 0;
@@ -17,13 +18,6 @@
     background: ui.theme(surface);
   }
 
-  .form__actions {
-    flex-wrap: wrap;
-    margin-top: ui.pg(xs);
-    padding-top: ui.pg(lg);
-    border-top: 1px solid ui.theme(border-subtle);
-  }
-
   &__error {
     color: ui.theme(danger-text);
     font-size: ui.fs(body);
@@ -32,9 +26,6 @@
   @include ui.below(md) {
     form {
       padding: ui.pg(lg);
-    }
-    .form__actions > .btn {
-      flex: 1 1 auto;
     }
   }
 }

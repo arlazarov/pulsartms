@@ -44,7 +44,7 @@
                 </span>
                 @if (Stop is { } stop)
                 {
-                    <strong>@stop.Name</strong>
+                    <strong class="fleet-route-popup__company">@stop.Name</strong>
                     @if (!string.IsNullOrWhiteSpace(stop.Address))
                     {
                         <button type="button"
@@ -79,7 +79,7 @@
                                 class="fleet-map-route-info__copy-number"
                                 title="Copy stop reference"
                                 @onclick="() => OnCopy.InvokeAsync(reference)">
-                            <strong>@reference</strong>
+                            <strong class="fleet-route-popup__reference">@reference</strong>
                         </button>
                     </div>
                 }

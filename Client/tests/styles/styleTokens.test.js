@@ -313,7 +313,7 @@ test('a layout changes at a named width, never at a number', () => {
   )) {
     const source = readFileSync(new URL(file, root), 'utf8');
     if (file.startsWith('base/')) continue;
-    for (const [query] of source.matchAll(/@container[^\n]*/g))
+    for (const [query] of source.matchAll(/@container(?:[^{#]|#\{[^}]*\})*\{/g))
       assert.match(query, /breakpoint\(/, `${file}: ${query.trim()}`);
     assert.doesNotMatch(
       source,

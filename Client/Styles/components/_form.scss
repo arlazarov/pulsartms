@@ -6,9 +6,16 @@
     align-items: center;
     flex-wrap: wrap;
     gap: ui.pg(sm);
-    margin-top: ui.pg(md);
+    // A form that sits in a card of its own wants them tighter to it.
+    margin-top: var(--form-actions-space, #{ui.pg(md)});
     padding-top: ui.pg(lg);
     border-top: 1px solid ui.theme(border-subtle);
+    // With no room for both on a line, each takes the width it can.
+    @include ui.below(md) {
+      > .btn {
+        flex: 1 1 auto;
+      }
+    }
   }
 
   &__errors {

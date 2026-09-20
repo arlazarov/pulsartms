@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
 import { compileString } from 'sass';
 import { fileURLToPath } from 'node:url';
 
@@ -14,6 +15,39 @@ test('pages compose HOS through custom properties instead of internal selectors'
   // is drawn.
   assert.match(css, /--hos-display: flex;/);
   assert.match(css, /--hos-wrap: wrap;/);
+});
+
+// A component owns what is inside it. A page places it - where it stands in
+// the page's own grid, how wide, how close to what is above - and asks for
+// one of the readings the component publishes; it does not reach past the
+// root to restyle the parts. This was written for the HOS clocks alone, and
+// five other components were being rewritten from the outside: the arrival
+// forecast from five page stylesheets, the data table from two, the form's
+// actions from one.
+test('no page rewrites the inside of a component it only places', () => {
+  const root = new URL('../../Styles/', import.meta.url);
+  const roots = new Set();
+  for (const file of readdirSync(new URL('components/', root), {
+    recursive: true,
+  }).filter(x => x.endsWith('.scss')))
+    for (const [, name] of readFileSync(
+      new URL(`components/${file}`, root),
+      'utf8',
+    ).matchAll(/^\.([a-z][a-z0-9-]*)\s*[,{]/gm))
+      roots.add(name);
+  assert.ok(roots.size > 20, 'component roots were not found');
+  for (const folder of ['pages', 'layouts'])
+    for (const file of readdirSync(new URL(`${folder}/`, root), {
+      recursive: true,
+    }).filter(x => x.endsWith('.scss'))) {
+      const source = readFileSync(new URL(`${folder}/${file}`, root), 'utf8');
+      for (const name of roots)
+        assert.doesNotMatch(
+          source,
+          new RegExp(`\\.${name}__`),
+          `${folder}/${file}: .${name}__… belongs to the component`,
+        );
+    }
 });
 
 test('HOS diameter and text use the same component-owned responsive value', () => {

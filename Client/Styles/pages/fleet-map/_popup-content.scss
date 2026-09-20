@@ -42,14 +42,15 @@
   // per line - so words break only where they must, and the facts below
   // never break at all.
   overflow-wrap: break-word;
-  strong {
+  // The company and the reference stand on lines of their own. This said
+  // "every bold word on the card", which reached into the forecast placed
+  // here and had to be taken back again a rule later.
+  &__company,
+  &__reference {
     display: block;
   }
   .arrival-estimate {
     row-gap: 0;
-    strong {
-      display: inline;
-    }
   }
   .fleet-route-popup__value--cycle {
     display: contents;

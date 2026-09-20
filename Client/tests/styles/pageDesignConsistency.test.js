@@ -55,10 +55,17 @@ test('account forms stay content-sized and their actions can wrap on small scree
     rule('.login-page .container'),
     /max-width: var\(--size-content-login\);/,
   );
-  assert.match(rule('.add-user-page .form__actions'), /flex-wrap: wrap;/);
+  // How the form's own actions wrap is the form's business; the page only
+  // says how close to the card they sit.
   assert.match(
-    css,
-    /@media \(width < 800px\)[\s\S]*\.add-user-page \.form__actions > \.btn\s*\{\s*flex: 1 1 auto;/,
+    rule('.add-user-page'),
+    /--form-actions-space: var\(--space-xs\);/,
+  );
+  const form = compileString("@use 'components/form';", { loadPaths }).css;
+  assert.match(form, /\.form__actions\s*\{[^}]*flex-wrap: wrap;/);
+  assert.match(
+    form,
+    /@media \(width < 800px\)[\s\S]*\.form__actions > \.btn\s*\{\s*flex: 1 1 auto;/,
   );
 });
 
