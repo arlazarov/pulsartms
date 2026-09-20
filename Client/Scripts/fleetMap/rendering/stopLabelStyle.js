@@ -1,6 +1,8 @@
 import { sceneMetrics } from './sceneMetrics.js';
 
-// Fallbacks mirror the semantic light-theme roles; mounted scenes read their CSS tokens.
+// Fallbacks mirror the semantic light-theme roles; mounted scenes read their
+// CSS tokens off the probe element. The two are held together by
+// tests/fleetMap/mapColors.test.js.
 export const defaultStopLabelStyle = Object.freeze({
   color: [23, 36, 56],
   background: [255, 255, 255, 255],

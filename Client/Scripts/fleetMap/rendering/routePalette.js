@@ -8,7 +8,11 @@ export const currentRouteColor = Object.freeze([40, 76, 220, 255]);
 /** @type {RouteColor} */
 export const currentRouteLineColor = Object.freeze([0, 106, 235, 255]);
 
-// Fixed map series mirror the named UI palette.
+// Fixed map series mirror the named UI palette: the first three roads are
+// the map-route-option roles in order, and the series runs on through the
+// palette those roles are chosen from. The GPU takes numbers, not custom
+// properties, so the values are written out here and held to the roles by
+// tests/fleetMap/mapColors.test.js.
 const palette = Object.freeze({
   violet700: rgba(124, 58, 237),
   teal700: rgba(32, 122, 99),
