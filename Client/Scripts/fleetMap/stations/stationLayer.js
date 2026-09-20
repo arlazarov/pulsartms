@@ -5,6 +5,7 @@ import {
   priceColor,
 } from './stationPrices.js';
 import { createStationPopup } from './stationPopup.js';
+import { fuelVisitLabel } from './stationQuantity.js';
 import { yieldToBrowser } from '../lifecycle/backgroundWork.js';
 import { createDetailsCard } from '../ui/detailsCard.js';
 import { coordinates } from '../geometry/coordinates.js';
@@ -85,7 +86,7 @@ export function createStationLayer(
       entry.color,
       recommended.has(id),
       selected,
-      quantities.get(id)?.numbers,
+      fuelVisitLabel(quantities.get(id), entry.item.station),
       editing?.stationId === id,
       entry.price,
     );
@@ -355,7 +356,10 @@ export function createStationLayer(
             quantities.delete(id);
             recommended.delete(id);
           }
-          if (quantity.numbers !== next?.numbers) {
+          const station = entry?.item?.station;
+          if (
+            fuelVisitLabel(quantity, station) !== fuelVisitLabel(next, station)
+          ) {
             if (entry) updatePoint(id, entry);
             pointLayer.redraw();
           }

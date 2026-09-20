@@ -35,3 +35,33 @@ test('full refill hides quantities in both countries', async () => {
     'Buy 50 US gal',
   );
 });
+
+// The map badge is read at a glance from a distance, so the unit is short
+// and the stop number keeps its place in the route order.
+test('a planned stop badge names its place in the order and what is bought', async () => {
+  const { fuelVisitLabel } = await import(
+    '../../Scripts/fleetMap/stations/stationQuantity.js'
+  );
+  assert.equal(
+    fuelVisitLabel({ numbers: '2', gallons: 119.6 }, { country: 'US' }),
+    '2 · 120 gal',
+  );
+  assert.equal(
+    fuelVisitLabel({ numbers: '1/3', gallons: 50 }, { country: 'CA' }),
+    '1/3 · 189 L',
+  );
+  assert.equal(
+    fuelVisitLabel(
+      { numbers: '4', gallons: 50, unit: 'gal' },
+      { country: 'CA' },
+    ),
+    '4 · 50 gal',
+    'the quoted unit still wins over the country',
+  );
+  // An access-only stop buys nothing, and a station with nothing planned
+  // carries no badge at all rather than an empty one.
+  assert.equal(fuelVisitLabel({ numbers: '5', gallons: 0 }, {}), '5 · 0 gal');
+  assert.equal(fuelVisitLabel({ numbers: '5' }, {}), '5');
+  assert.equal(fuelVisitLabel({ gallons: 40 }, {}), undefined);
+  assert.equal(fuelVisitLabel(null, {}), undefined);
+});

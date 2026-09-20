@@ -175,6 +175,19 @@ test('recommendations keep rings on the scene and distances only in the selected
   await layer.setVisible(true);
   assert.equal(recommendations.length, 0);
   assert.equal(points.get('b').label, undefined);
+  // A planned stop carries its place in the order and what is bought there;
+  // the number alone never said why the stop exists.
+  await layer.setVisible(false);
+  await layer.setRecommended([
+    { id: 'b', numbers: '2', gallons: 30, routeMile: 100, miles: 10 },
+  ]);
+  await layer.setVisible(true);
+  assert.equal(points.get('b').label, '2 · 30 gal');
+  await layer.setVisible(false);
+  await layer.setRecommended([
+    { id: 'b', gallons: 30, routeMile: 100, miles: 10 },
+  ]);
+  await layer.setVisible(true);
   assert.equal(layer.handleMapClick({ latLng: { lat: 40, lng: -78 } }), true);
   const distance = infoWindow.content.children.find(
     node => node.textContent === '10 mi · 16 km away',

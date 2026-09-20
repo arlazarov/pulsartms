@@ -160,7 +160,9 @@ export function createSceneLayers({
                 d.numbers.trim(),
             ),
             visible: true,
-            characterSet: 'Fuel 0123456789/',
+            // The badge now carries how much is bought there, so its
+            // alphabet is whatever the quantity and its unit need.
+            characterSet: 'auto',
             getPosition: d => d.position,
             getText: d => `Fuel ${d.numbers}`,
             getSize: metrics.fuelVisitLabelSize,
