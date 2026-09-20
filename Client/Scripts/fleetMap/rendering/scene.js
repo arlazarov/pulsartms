@@ -1,7 +1,6 @@
 import { releaseAll } from '../lifecycle/release.js';
 import { createSceneLayers } from './sceneLayers.js';
 import { snapshotStops } from './stopData.js';
-import { truckColor } from './truckAppearance.js';
 import { pickNearbyStation } from './stationTouch.js';
 import { readStopLabelStyle } from './stopLabelStyle.js';
 import { clusterTrucks, clusterCamera } from './truckClusters.js';
@@ -166,14 +165,14 @@ export function createScene(
     if (vehiclesDirty) {
       vehicles = [...trucks].filter(t => t.visible && t.position);
       // A truck standing on a stop is drawn as the ring around that stop's
-      // badge, so which trucks are standing, where, and in what colour is
-      // part of what the stops are laid out against. Without this a badge
-      // kept a ring for a truck that had since driven off, until something
-      // else happened to move the stops. A truck in motion is not in the
-      // key, so driving relays nothing.
+      // badge, so which trucks are standing and where is part of what the
+      // stops are laid out against. Without this a badge kept a ring for a
+      // truck that had since driven off, until something else happened to
+      // move the stops. A truck in motion is not in the key, so driving
+      // relays nothing.
       const standing = vehicles
         .filter(t => !(t.speed > 0))
-        .map(t => `${t.position.join(',')}:${truckColor(t.engine, t.speed)}`)
+        .map(t => t.position.join(','))
         .join(';');
       if (standing !== standingTrucks) {
         standingTrucks = standing;

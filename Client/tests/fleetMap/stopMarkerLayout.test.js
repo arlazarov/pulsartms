@@ -212,7 +212,10 @@ test('a truck standing on a stop becomes a ring around its badge', () => {
   assert.ok(Math.hypot(dx, dy) < 2, 'the unit number sits over the badge');
   const off = snapshotStops(stops, [], [], zoom, [{ ...truck, engine: 'off' }])
     .stopData[0];
-  assert.equal(off.standing, '#64748b', 'a truck with the engine off is grey');
+  // One colour, whatever the engine is doing: painted by engine state the
+  // ring was grey as often as green, and a grey ring on a blue badge reads
+  // as an edge of the badge rather than as a truck standing on the stop.
+  assert.equal(off.standing, '#16a34a');
 });
 
 // The badge a truck stands on gives way to nothing: its neighbour parts
