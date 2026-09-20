@@ -312,7 +312,7 @@ export function createSceneLayers({
         const activeStops = new Set(stopData.map(stop => stop.id));
         for (const id of stopLayers.keys())
           if (!activeStops.has(id)) stopLayers.delete(id);
-        return stopData.flatMap(stop => {
+        const drawn = stopData.flatMap(stop => {
           const id = `route-stop-${stop.id}`;
           const cached = stopLayers.get(stop.id);
           if (
@@ -413,6 +413,11 @@ export function createSceneLayers({
           });
           return layers;
         });
+        // Every dot that marks where a stop really is lies under every
+        // badge. Drawn stop by stop, the dot of a later stop landed on the
+        // badge of an earlier one - two coloured specks across the "3".
+        const dot = layer => (layer.id ?? layer.props?.id)?.endsWith('-anchor');
+        return [...drawn.filter(dot), ...drawn.filter(layer => !dot(layer))];
       }),
     );
     const distanceLayer = distanceLabels(

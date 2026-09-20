@@ -436,11 +436,13 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   const paired = Object.keys(layers()).filter(id =>
     /^route-stop-\d+-/.test(id),
   );
+  // Every dot that marks where a stop really is lies under every badge:
+  // drawn stop by stop, the dot of a later stop landed on an earlier badge.
   assert.deepEqual(paired, [
     'route-stop-2-anchor',
+    'route-stop-3-anchor',
     'route-stop-2-points',
     'route-stop-2-numbers',
-    'route-stop-3-anchor',
     'route-stop-3-points',
     'route-stop-3-numbers',
   ]);
