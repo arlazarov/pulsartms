@@ -149,7 +149,9 @@ test('a badge that touches nothing stands on its anchor', () => {
 // the next a few miles apart, and their badges were one blot. They used to
 // be set out in a grid that had nothing to do with where the stops are.
 test('two that touch part along the line between them, equally, just far enough', () => {
-  const zoom = 5;
+  // Close enough to touch, far enough apart that the line between them
+  // means something.
+  const zoom = 8;
   const stops = [
     { id: 'a', number: '3', position: [-80.84, 35.22] },
     // East and north of the first.
@@ -259,4 +261,66 @@ test('the same stops always give the same layout', () => {
     once.map(row => [row.markerOffsetX, row.markerOffsetY]),
     again.map(row => [row.markerOffsetX, row.markerOffsetY]),
   );
+});
+
+// Seen at the zoom of half the country: four stops and the truck within a
+// few pixels of each other, "3" shot off into Tennessee and "2" not under
+// the truck. Miles are a pixel there, so there is no line between the stops
+// to part along - only noise, and the pushes of several neighbours added up.
+test('stops that run together with a standing truck hang under it in stop order', () => {
+  const zoom = 5;
+  const truck = { position: [-80.95, 35.22] };
+  const stops = [
+    { id: '7', number: '7', position: [-80.72, 35.3] },
+    { id: '2', number: '2', position: [-80.95, 35.22] },
+    { id: '6', number: '6', position: [-80.47, 35.21] },
+    { id: '3', number: '3', position: [-80.77, 35.25] },
+  ];
+  const rows = snapshotStops(stops, [], [], zoom, [truck]).stopData;
+  const [tx, ty] = screen(truck.position, zoom);
+  const at = id =>
+    drawnAt(
+      rows.find(row => row.id === id),
+      zoom,
+    ).map((value, axis) => Math.round(value - [tx, ty][axis]));
+  // The unit number above; under the truck "2 3", and under those "6 7".
+  assert.deepEqual(at('2'), [-18, 33]);
+  assert.deepEqual(at('3'), [18, 33]);
+  assert.deepEqual(at('6'), [-18, 69]);
+  assert.deepEqual(at('7'), [18, 69]);
+});
+
+test('stops that are one place on the screen stand as a pair, in stop order', () => {
+  const zoom = 5;
+  const stops = [
+    { id: 'b', number: '7', position: [-80.7, 35.28] },
+    { id: 'a', number: '3', position: [-80.84, 35.22] },
+  ];
+  const rows = snapshotStops(stops, [], [], zoom).stopData;
+  const [a, b] = ['a', 'b'].map(id =>
+    drawnAt(
+      rows.find(row => row.id === id),
+      zoom,
+    ),
+  );
+  assert.ok(Math.abs(b[0] - a[0] - 36) < 0.01, 'side by side, lower first');
+  assert.ok(Math.abs(b[1] - a[1]) < 0.01, 'level with each other');
+});
+
+test('no badge is ever thrown far from the place it marks', () => {
+  for (const zoom of [4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+    const truck = { position: [-80.95, 35.22] };
+    const stops = [
+      { id: '2', number: '2', position: [-80.95, 35.22] },
+      { id: '3', number: '3', position: [-80.77, 35.25] },
+      { id: '6', number: '6', position: [-80.47, 35.21] },
+      { id: '7', number: '7', position: [-80.72, 35.3] },
+    ];
+    const rows = snapshotStops(stops, [], [], zoom, [truck]).stopData;
+    for (const row of rows)
+      assert.ok(
+        Math.hypot(row.markerOffsetX, row.markerOffsetY) < 36 * 3,
+        `zoom ${zoom}, stop ${row.number}`,
+      );
+  }
 });

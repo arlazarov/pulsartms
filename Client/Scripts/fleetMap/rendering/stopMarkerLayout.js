@@ -18,84 +18,111 @@ export function stopMarkerLabel(_job, number) {
 // 1. A badge stands on its anchor while it touches nothing.
 // 2. Two that touch part along the line between them, equally, just far
 //    enough to clear. North of stays north of.
-// 3. Stops at the very same address have no line between them, so they keep
-//    the formation they always had: a pair, a triangle, rows of two.
-// 4. The stop a truck is standing on stands directly under the truck. Not
-//    wherever is free - always under: the unit number above, the stop
+// 3. Stops at one place have no line between them, so they keep the
+//    formation they always had: a pair, a triangle, rows of two, in stop
+//    order. One place means one place on the screen - the same address, or
+//    miles apart at a zoom where miles are a pixel.
+// 4. What has run together with a standing truck hangs directly under it.
+//    Not wherever is free - always under: the unit number above, the stops
 //    below. It stops being layout and becomes a sign for "the truck is at
-//    this stop". The truck and its number are fixed, and other badges part
-//    from them by rule 2.
+//    these stops". The truck and its number are fixed, and other badges
+//    part from them by rule 2.
 //
 // Only a standing truck counts. One driving past a stop is over it for a
 // moment and gone, and laying badges out for every frame of that would
 // rebuild the map for nothing anyone could read.
-const passes = 32;
+const passes = 48;
 const most = 80;
+// Closer than this on screen, two stops are one place to the eye: there is
+// no line between them worth parting along, only noise, and parting along
+// noise shot a badge across two states.
+const onePlace = 10;
 
 export function layoutStopMarkers(rows, zoom, trucks = []) {
   const project = markerProjection(zoom);
   const radius = metrics.stopBadgeDiameter / 2;
   const apart = metrics.stopBadgeDiameter + metrics.stopBadgeGap;
   const clearOfTruck = radius + metrics.truckSize / 2 + metrics.stopBadgeGap;
-  // The unit number above a truck: half its width and height, and how far
-  // a badge's centre has to stay from it.
   // A badge may come right up to the number - the pill has an edge of its
   // own - so the gap kept between badges is not asked for here. Asking for
   // it moved a badge that stood a pixel and a half clear of the number.
   const numberHalf = [36, 12];
   const clearOfNumber = radius;
+  const byNumber = (a, b) =>
+    (parseInt(a.row.number, 10) || 0) - (parseInt(b.row.number, 10) || 0);
 
-  const places = new Map();
+  const clumps = [];
   const items = rows.map(row => {
     row.markerLabel = stopMarkerLabel(row.job, row.number);
     row.markerOffsetX = 0;
     row.markerOffsetY = 0 - metrics.stopBadgeOffset;
     const anchor = project(row.position);
     const item = { row, anchor, at: [...anchor], held: false };
-    const key = row.position.map(value => value.toFixed(3)).join(',');
-    if (!places.has(key)) places.set(key, []);
-    places.get(key).push(item);
+    // Measured from the first of a clump, not from any of it, or a road of
+    // stops chains into one clump the length of the road.
+    const clump = clumps.find(
+      members =>
+        Math.hypot(
+          members[0].anchor[0] - anchor[0],
+          members[0].anchor[1] - anchor[1],
+        ) < onePlace,
+    );
+    if (clump) clump.push(item);
+    else clumps.push([item]);
     return item;
   });
   const parked = trucks
     .filter(truck => truck.position && !(truck.speed > 0))
     .map(truck => project(truck.position));
-
-  // Rule 3, and rule 4 where the address is the one a truck stands on.
-  for (const group of places.values()) {
-    group.sort(
-      (a, b) =>
-        (parseInt(a.row.number, 10) || 0) - (parseInt(b.row.number, 10) || 0),
-    );
-    const truck = parked.find(
-      at =>
-        Math.hypot(at[0] - group[0].anchor[0], at[1] - group[0].anchor[1]) <
-        metrics.truckSize / 2,
-    );
-    if (!truck && group.length < 2) continue;
-    group.forEach((item, index) => {
-      const finalOdd = index === group.length - 1 && group.length % 2;
-      const x =
-        group.length < 2 || finalOdd ? 0 : ((index % 2 ? 1 : -1) * apart) / 2;
+  const middle = members => [
+    members.reduce((sum, item) => sum + item.anchor[0], 0) / members.length,
+    members.reduce((sum, item) => sum + item.anchor[1], 0) / members.length,
+  ];
+  // The formation stops at one place have always had - a pair, a triangle,
+  // rows of two - in stop order. Rising from its place, or hanging under a
+  // truck.
+  const form = (members, [x, y], hang) => {
+    members.sort(byNumber);
+    members.forEach((item, index) => {
+      const finalOdd = index === members.length - 1 && members.length % 2;
+      const across =
+        members.length < 2 || finalOdd ? 0 : ((index % 2 ? 1 : -1) * apart) / 2;
       const rowIndex = Math.floor(index / 2);
       // The centered last badge forms an equilateral triangle with the pair
       // beside it.
       const rise =
-        finalOdd && group.length > 1
+        finalOdd && members.length > 1
           ? (rowIndex - 1) * apart + (Math.sqrt(3) * apart) / 2
           : rowIndex * apart;
-      if (truck) {
-        // Hung under the truck: the same formation, growing downward.
-        item.at = [truck[0] + x, truck[1] + clearOfTruck + rise];
-        item.held = true;
-      } else item.at = [item.anchor[0] + x, item.anchor[1] - rise];
+      item.at = [x + across, hang ? y + clearOfTruck + rise : y - rise];
+      item.held = hang;
     });
-  }
+  };
 
-  // Rule 2, against each other and against what does not move.
+  // Rule 4: everything that has run together with a standing truck hangs
+  // under it as one formation. Rule 3 for the clumps left over.
+  const free = [];
+  const hung = new Map(parked.map(truck => [truck, []]));
+  for (const clump of clumps) {
+    const [x, y] = middle(clump);
+    const truck = parked.find(
+      at => Math.hypot(at[0] - x, at[1] - y) < clearOfTruck,
+    );
+    if (truck) hung.get(truck).push(...clump);
+    else free.push(clump);
+  }
+  for (const [truck, members] of hung)
+    if (members.length) form(members, truck, true);
+  for (const clump of free)
+    if (clump.length > 1) form(clump, middle(clump), false);
+
+  // Rule 2, against each other and against what does not move. Every push
+  // of a pass is added up before any is made, and half of it is made: a
+  // badge with three neighbours was otherwise pushed three times over.
   if (items.length <= most)
     for (let pass = 0; pass < passes; pass++) {
       let moved = false;
+      const pushes = items.map(() => [0, 0]);
       for (let i = 0; i < items.length; i++)
         for (let j = i + 1; j < items.length; j++) {
           const a = items[i],
@@ -117,15 +144,19 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
           const share = a.held || b.held ? 1 : 0.5;
           const step = [(dx / length) * push, (dy / length) * push];
           if (!a.held) {
-            a.at[0] -= step[0] * share;
-            a.at[1] -= step[1] * share;
+            pushes[i][0] -= step[0] * share;
+            pushes[i][1] -= step[1] * share;
           }
           if (!b.held) {
-            b.at[0] += step[0] * share;
-            b.at[1] += step[1] * share;
+            pushes[j][0] += step[0] * share;
+            pushes[j][1] += step[1] * share;
           }
           moved = true;
         }
+      items.forEach((item, index) => {
+        item.at[0] += pushes[index][0] * 0.5;
+        item.at[1] += pushes[index][1] * 0.5;
+      });
       for (const item of items) {
         if (item.held) continue;
         for (const truck of parked) {
