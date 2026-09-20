@@ -431,3 +431,43 @@ test('planned purchase cards show server USD totals even at Canadian stations an
   );
   popup.dispose();
 });
+
+// Most of the map has no price after IFTA, and the row for it read "N/A" in
+// the colour of a saving. A price that does not exist is not a row.
+test('a price after IFTA that does not exist is not a row', t => {
+  const previous = globalThis.document;
+  const element = () => ({
+    children: [],
+    append(...nodes) {
+      this.children.push(...nodes);
+    },
+    replaceChildren(...nodes) {
+      this.children = nodes;
+    },
+    setAttribute() {},
+    addEventListener() {},
+    removeEventListener() {},
+  });
+  globalThis.document = { createElement: element, createElementNS: element };
+  t.after(() => {
+    globalThis.document = previous;
+  });
+  const popup = createStationPopup();
+  const station = { id: 'station', name: 'Stop', country: 'US' };
+  const find = className =>
+    popup.element.children
+      .flatMap(node => [node, ...node.children])
+      .find(node => node.className?.split(' ').includes(className));
+  popup.update({ station, discount: { unit: 'gal', discountPrice: 4 } });
+  assert.equal(find('fleet-station-popup__ifta').hidden, true);
+  assert.equal(find('fleet-station-popup__ifta-label').hidden, true);
+  assert.ok(find('fleet-station-popup__prices--no-ifta'));
+  // Where there is one, it is said.
+  popup.update({
+    station,
+    discount: { unit: 'gal', discountPrice: 4, priceAfterIfta: 3.6 },
+  });
+  assert.equal(find('fleet-station-popup__ifta').hidden, false);
+  assert.equal(find('fleet-station-popup__ifta').textContent, '3.600');
+  assert.equal(find('fleet-station-popup__prices--no-ifta'), undefined);
+});

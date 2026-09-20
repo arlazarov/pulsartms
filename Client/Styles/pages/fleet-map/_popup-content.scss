@@ -379,7 +379,11 @@
     padding-inline-start: ui.pg(xs);
     border-radius: ui.radius(sm) 0 0 ui.radius(sm);
   }
-  &__discount {
+  // Named through the list, or the list's own "dd { margin: 0 }" outranks
+  // this and takes the margin back while the padding stays - which is how
+  // the price being paid came to stand four pixels left of the figures
+  // above and below it.
+  &__prices &__discount {
     margin-inline-end: calc(-1 * #{ui.pg(xs)});
     padding-inline-end: ui.pg(xs);
     border-radius: 0 ui.radius(sm) ui.radius(sm) 0;
@@ -603,6 +607,15 @@
     grid-row: 1;
     font-size: ui.fs(caption);
   }
+  // Without a price after IFTA the savings move up beside the price being
+  // paid rather than standing a column away across a hole.
+  .fleet-station-popup__prices--no-ifta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    .fleet-station-popup__savings-label,
+    .fleet-station-popup__savings {
+      grid-column: 3;
+    }
+  }
   @each $name, $column in (retail: 1, discount: 2, ifta: 3, savings: 4) {
     .fleet-station-popup__#{$name}-label {
       grid-column: $column;
@@ -689,11 +702,16 @@
   padding-top: ui.pg(sm);
   border-top: 1px solid ui.theme(border-subtle);
 }
+// The words of each day start on the same edge as the names in the list
+// above. The cells are padded for today's ground, so the line is drawn that
+// much wider than its column - the ground reaches past the edge, the way the
+// band behind the price being paid does, and the words do not.
 .fleet-station-popup__days {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   gap: ui.pg(sm);
+  margin-inline: calc(-1 * #{ui.pg(xs)});
 }
 .fleet-station-popup__day {
   display: grid;

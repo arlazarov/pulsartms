@@ -174,10 +174,13 @@ test('every station has the same 16px circle with no inside price, regardless of
     plannedPoints = byId.get('fuel-recommendation-points').props;
   assert.equal(points.data[0], ordinary);
   assert.equal(points.getRadius, 8);
-  assert.equal(plannedPoints.getRadius, 13);
+  // A step larger than the stations it was chosen from, and its ring still
+  // narrower than a stop's badge: a fuel stop is not more than a stop.
+  assert.equal(plannedPoints.getRadius, 10);
   assert.equal(plannedPoints.getFillColor(planned), planned.color);
   const ring = byId.get('fuel-recommendation-rings').props;
-  assert.equal(ring.getRadius, 19);
+  assert.equal(ring.getRadius, 14);
+  assert.ok(ring.getRadius * 2 < 34, 'narrower than a stop badge');
   const order = byId.get('fuel-recommendation-numbers').props;
   assert.equal(order.getText(planned), 'Fuel 1/3');
   assert.deepEqual(order.getPixelOffset, [0, -21]);

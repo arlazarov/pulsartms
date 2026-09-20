@@ -48,6 +48,7 @@ export function createStationPopup(
   priceUnit.hidden = true;
   prices.append(priceUnit);
   const fields = {};
+  const terms = {};
   const comparison = document.createElement('div');
   comparison.className = 'fleet-station-popup__comparison';
   comparison.hidden = true;
@@ -64,6 +65,7 @@ export function createStationPopup(
     const value = document.createElement('dd');
     value.className = `fleet-station-popup__${name}`;
     fields[name] = value;
+    terms[name] = term;
     prices.append(term, value);
   }
   const distance = document.createElement('p');
@@ -250,6 +252,18 @@ export function createStationPopup(
       set(fields.retail, 'textContent', format(discount.retailPrice));
       set(fields.discount, 'textContent', format(discount.discountPrice));
       set(fields.ifta, 'textContent', format(discount.priceAfterIfta));
+      // A price after IFTA that does not exist is not a row reading "N/A":
+      // it said nothing, in the colour of a saving, on most of the map.
+      const noIfta =
+        discount.priceAfterIfta == null ||
+        !Number.isFinite(Number(discount.priceAfterIfta));
+      set(terms.ifta, 'hidden', noIfta);
+      set(fields.ifta, 'hidden', noIfta);
+      set(
+        prices,
+        'className',
+        `fleet-station-popup__prices${noIfta ? ' fleet-station-popup__prices--no-ifta' : ''}`,
+      );
       set(fields.savings, 'textContent', format(discount.savings));
       const nextComparisonKey = JSON.stringify([discount, discount.comparison]);
       if (nextComparisonKey !== comparisonKey) {

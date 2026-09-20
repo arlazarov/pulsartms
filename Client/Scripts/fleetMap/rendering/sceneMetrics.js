@@ -21,9 +21,11 @@ export const sceneMetrics = Object.freeze({
   stationRadius: 8,
   stationHitRadius: 10,
   // A planned stop is the only station the plan is about, so its dot is
-  // drawn larger than the ones it was chosen from, inside its ring.
-  recommendationDotRadius: 13,
-  recommendationRadius: 19,
+  // drawn larger than the ones it was chosen from, inside its ring - but a
+  // step larger, not the largest thing on the map. At 13 inside 19 the ring
+  // was wider than a stop's badge, and a fuel stop is not more than a stop.
+  recommendationDotRadius: 10,
+  recommendationRadius: 14,
   fuelEditingRadius: 14,
   fuelEditingLabelOffset: 25,
   fuelVisitLabelSize: 12,
