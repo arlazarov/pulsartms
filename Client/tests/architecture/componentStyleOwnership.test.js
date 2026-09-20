@@ -50,6 +50,61 @@ test('no page rewrites the inside of a component it only places', () => {
     }
 });
 
+// A page may write a component's markup - the truck card writes two rows of
+// the arrival forecast itself, so that a truck with nothing forecast still
+// shows the shape of the answer - but then it must ask for the same reading
+// its neighbours were given. One that did not fell back to the component's
+// default and stood in bold beside the quiet rows it was standing in for.
+// The stylesheet check above cannot see this: the page names the parts in
+// Razor, not in a stylesheet.
+test('markup that writes a component asks for one of its readings', () => {
+  const styles = new URL('../../Styles/components/', import.meta.url);
+  const readings = new Map();
+  for (const file of readdirSync(styles, { recursive: true }).filter(x =>
+    x.endsWith('.scss'),
+  ))
+    for (const [, root] of readFileSync(new URL(file, styles), 'utf8').matchAll(
+      /^\.([a-z][a-z0-9-]*)--[a-z0-9-]+\s*[,{]/gm,
+    ))
+      readings.set(root, true);
+  assert.ok(readings.size > 3, 'components with readings were not found');
+  const owner = root =>
+    root
+      .split('-')
+      .map(part => part[0].toUpperCase() + part.slice(1))
+      .join('');
+  const client = new URL('../../', import.meta.url);
+  const sources = readdirSync(client, { recursive: true }).filter(
+    x =>
+      (x.endsWith('.razor') || x.endsWith('.js')) &&
+      (x.startsWith('Pages/') ||
+        x.startsWith('Shared/') ||
+        x.startsWith('Components/') ||
+        x.startsWith('Scripts/')),
+  );
+  for (const file of sources) {
+    const source = readFileSync(new URL(file, client), 'utf8');
+    for (const root of readings.keys()) {
+      if (file.includes(owner(root))) continue;
+      // The root as a whole class name - not stop-hours__row, not
+      // stop-hours--compact - with the reading it asks for beside it.
+      for (const written of source.matchAll(
+        new RegExp(`(?<![\\w-])${root}(?![\\w-])`, 'g'),
+      )) {
+        const around = source.slice(
+          Math.max(0, written.index - 60),
+          written.index + 60,
+        );
+        assert.match(
+          around,
+          new RegExp(`${root}--[a-z]`),
+          `${file}: .${root} written here without asking for a reading`,
+        );
+      }
+    }
+  }
+});
+
 test('HOS diameter and text use the same component-owned responsive value', () => {
   const css = compile("@use 'components/driver-status';");
   assert.match(
