@@ -42,7 +42,7 @@ const byId = layers =>
 
 // A dispatcher who picked a truck is reading its route. Everything else on
 // the map is context, and context that is as loud as the subject is noise.
-test('choosing a truck quiets the rest of the fleet and nothing else', () => {
+test('choosing a truck makes the rest smaller, and leaves them solid', () => {
   const chosen = truck('11006', true),
     other = truck('54777');
   const layers = byId(draw([chosen, other]));
@@ -51,24 +51,18 @@ test('choosing a truck quiets the rest of the fleet and nothing else', () => {
     quiet = layers['truck-icons-quiet'];
   assert.deepEqual(loud.props.data, [chosen]);
   assert.deepEqual(quiet.props.data, [other]);
+  // Smaller, not faded: a truck half there reads as a truck whose position
+  // is doubtful, and every one of them is equally real.
   assert.equal(loud.props.opacity, 1);
-  assert.equal(quiet.props.opacity, metrics.truckMutedOpacity);
+  assert.equal(quiet.props.opacity, 1);
   assert.equal(quiet.props.getSize(other), metrics.truckSecondarySize);
   assert.equal(loud.props.getSize(chosen), metrics.truckSize);
 
-  // The unit numbers fade with the arrows they name.
   const numbers = layers['truck-numbers'].props;
-  const faded = Math.round(255 * metrics.truckMutedOpacity);
-  assert.deepEqual(numbers.getColor(other), [255, 255, 255, faded]);
-  assert.deepEqual(numbers.getColor(chosen), [255, 255, 255, 255]);
+  assert.deepEqual(numbers.getColor, [255, 255, 255, 255]);
   assert.deepEqual(numbers.getBackgroundColor(chosen), [49, 94, 234, 255]);
-  assert.deepEqual(numbers.getBackgroundColor(other), [30, 41, 59, faded]);
-  assert.deepEqual(numbers.getBorderColor(other), [
-    255,
-    255,
-    255,
-    Math.round(220 * metrics.truckMutedOpacity),
-  ]);
+  assert.deepEqual(numbers.getBackgroundColor(other), [30, 41, 59, 255]);
+  assert.deepEqual(numbers.getBorderColor, [255, 255, 255, 220]);
 });
 
 test('with nothing chosen every truck is drawn at full strength', () => {
@@ -77,16 +71,16 @@ test('with nothing chosen every truck is drawn at full strength', () => {
   assert.equal(layers['truck-icons'].props.data.length, 2);
   assert.equal(layers['truck-icons'].props.opacity, 1);
   const numbers = layers['truck-numbers'].props;
-  assert.deepEqual(numbers.getColor(truck('11006')), [255, 255, 255, 255]);
-  assert.deepEqual(
-    numbers.getBorderColor(truck('54777')),
-    [255, 255, 255, 220],
-  );
+  assert.deepEqual(numbers.getColor, [255, 255, 255, 255]);
+  assert.deepEqual(numbers.getBorderColor, [255, 255, 255, 220]);
 });
 
 // From the design: zoomed out, only planned stops; everything else waits
 // until the camera is close enough for a dot to mean a place.
-test('ordinary stations wait for the camera; planned stops never do', () => {
+// Holding stations back until the camera was close enough read as them
+// having gone missing, and the map is where fuel is decided before the
+// route is.
+test('stations are drawn wherever the camera is', () => {
   const ordinary = { id: 'a', position: [-79, 40], color: [0, 128, 0] };
   const planned = {
     id: 'b',
@@ -108,15 +102,11 @@ test('ordinary stations wait for the camera; planned stops never do', () => {
       }),
     );
 
-  const far = draw(metrics.stationMinZoom - 1);
-  assert.equal(far['fuel-points'], undefined, 'no sea of dots at a glance');
-  assert.deepEqual(far['fuel-recommendation-points'].props.data, [planned]);
-  assert.equal(far['fuel-recommendation-numbers'].props.visible, true);
-
-  const near = draw(metrics.stationMinZoom);
-  assert.deepEqual(near['fuel-points'].props.data, [ordinary]);
-  assert.equal(near['fuel-points'].props.visible, true);
-
-  // A scene that has not been told where the camera is draws them.
-  assert.deepEqual(draw(undefined)['fuel-points'].props.data, [ordinary]);
+  for (const zoom of [4, 12, undefined]) {
+    const drawn = draw(zoom);
+    assert.deepEqual(drawn['fuel-points'].props.data, [ordinary]);
+    assert.equal(drawn['fuel-points'].props.visible, true);
+    assert.deepEqual(drawn['fuel-recommendation-points'].props.data, [planned]);
+    assert.equal(drawn['fuel-recommendation-numbers'].props.visible, true);
+  }
 });

@@ -79,11 +79,10 @@ export function createSceneLayers({
     zoom = null,
     stopLabelStyle = defaultStopLabelStyle,
   }) => {
-    // Ordinary stations wait until the camera is close enough for them to
-    // mean something; a planned stop is drawn at every zoom.
-    const stationsInReach =
-      stationsVisible &&
-      (!Number.isFinite(zoom) || zoom >= metrics.stationMinZoom);
+    // Stations are drawn wherever the camera is. Holding them back until it
+    // was close enough read as them having gone missing, and the map is
+    // where fuel is decided before the route is.
+    const stationsInReach = stationsVisible;
     const fonts = labelFonts([pixelRatio, stopLabelStyle.size], () =>
       createLabelFonts(pixelRatio, stopLabelStyle.size),
     );
@@ -340,6 +339,7 @@ export function createSceneLayers({
           const { url: iconAtlas, ...circle } = stopMarkerIcon(
             appearance.fill,
             appearance.border,
+            stop.done ? metrics.stopBadgeDoneRadius : undefined,
           );
           const layers = [
             ...(stop.markerOffsetX || stop.markerOffsetY
@@ -419,12 +419,6 @@ export function createSceneLayers({
       [distanceData, fonts, stopLabelStyle],
       () => stopCardLayers(TextLayer, distanceData, stopLabelStyle, fonts),
     );
-    // Text carries its own alpha per row, so the unit numbers fade with the
-    // arrows they belong to rather than needing a layer of their own.
-    const quietAlpha = (truck, full) =>
-      hasSelectedTruck && !truck.selected
-        ? Math.round(full * metrics.truckMutedOpacity)
-        : full;
     truckLayers.push(
       ...vehicleLayers(
         [vehicles, hoveredTruck, fonts, hasSelectedTruck],
@@ -447,9 +441,10 @@ export function createSceneLayers({
             onClick: selectTruck,
             parameters: { depthCompare: 'always' },
           }),
-          // Two icon layers, not one: the arrows are drawn images, so only
-          // a whole layer can be faded. With a truck chosen the rest of the
-          // fleet steps back instead of competing with its route.
+          // Two icon layers, not one: with a truck chosen the rest of the
+          // fleet is drawn smaller so it does not compete with the route.
+          // Smaller, not faded - a truck half there reads as a truck whose
+          // position is doubtful, and every one of them is equally real.
           ...[false, true].map(
             quiet =>
               new IconLayer({
@@ -457,7 +452,7 @@ export function createSceneLayers({
                 data: vehicles.filter(
                   t => (hasSelectedTruck && !t.selected) === quiet,
                 ),
-                opacity: quiet ? metrics.truckMutedOpacity : 1,
+                opacity: 1,
                 getPosition: t => t.position,
                 getIcon: t => truckIcon(t.engine, t.speed),
                 getSize: t =>
@@ -481,7 +476,7 @@ export function createSceneLayers({
             getText: t => t.unit,
             getSize: metrics.truckLabelSize,
             sizeUnits: 'pixels',
-            getColor: t => [255, 255, 255, quietAlpha(t, 255)],
+            getColor: [255, 255, 255, 255],
             getPixelOffset: t =>
               t.labelOffset ?? [0, -metrics.truckLabelOffset],
             background: true,
@@ -489,11 +484,11 @@ export function createSceneLayers({
               ...(t.selected || t.unit === hoveredTruck
                 ? [49, 94, 234]
                 : [30, 41, 59]),
-              quietAlpha(t, 255),
+              255,
             ],
             backgroundPadding: metrics.truckLabelPadding,
             backgroundBorderRadius: 5,
-            getBorderColor: t => [255, 255, 255, quietAlpha(t, 220)],
+            getBorderColor: [255, 255, 255, 220],
             getBorderWidth: 1,
             updateTriggers: {
               getColor: hasSelectedTruck,

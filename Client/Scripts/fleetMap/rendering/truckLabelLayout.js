@@ -32,22 +32,30 @@ function space() {
     return keys;
   };
   return {
-    reserve(box) {
+    reserve(box, owner = null) {
+      const taken = { box, owner };
       for (const key of cells(box)) {
         if (!occupied.has(key)) occupied.set(key, []);
-        occupied.get(key).push(box);
+        occupied.get(key).push(taken);
       }
     },
-    overlap(box) {
+    // A label sits beside the marker it names; that is where it belongs, not
+    // a collision. Counting its own marker against it left every position
+    // overlapping something, so no position ever scored clear, the choice
+    // fell to whichever was tried first, and the label went under the truck
+    // on a leader line and stayed there.
+    overlap(box, owner = null) {
       const [x, y, hw, hh] = box;
       const nearby = new Set(
         cells(box).flatMap(key => occupied.get(key) ?? []),
       );
       return [...nearby].reduce(
-        (sum, [ox, oy, ohw, ohh]) =>
-          sum +
-          Math.max(0, hw + ohw - Math.abs(x - ox)) *
-            Math.max(0, hh + ohh - Math.abs(y - oy)),
+        (sum, taken) =>
+          taken.owner !== null && taken.owner === owner
+            ? sum
+            : sum +
+              Math.max(0, hw + taken.box[2] - Math.abs(x - taken.box[0])) *
+                Math.max(0, hh + taken.box[3] - Math.abs(y - taken.box[1])),
         0,
       );
     },
@@ -75,19 +83,26 @@ export function layoutMapLabels({
     [...vehicles, ...clusters].map(item => [item, project(item.position)]),
   );
   // Markers stay where they are; only what is written beside them moves.
-  for (const point of points.values())
-    area.reserve([...point, metrics.truckSize / 2, metrics.truckSize / 2]);
+  for (const [item, point] of points)
+    area.reserve(
+      [...point, metrics.truckSize / 2, metrics.truckSize / 2],
+      item,
+    );
 
   const place = (item, text, padding, old) => {
     const [x, y] = points.get(item);
     const halfWidth = labelWidth(text, padding[0]) / 2;
     const halfHeight = metrics.truckLabelSize / 2 + padding[1] + 3;
     const box = ([dx, dy]) => [x + dx, y + dy, halfWidth, halfHeight];
-    const candidates = old ? [old, ...offsets] : offsets;
+    // The place above the marker is tried first, always: a label that was
+    // once pushed aside must come back when the way is clear. Where it was
+    // last comes second, so that a label which still cannot have its own
+    // place at least stops hopping between the alternatives.
+    const candidates = old ? [offsets[0], old, ...offsets] : offsets;
     let chosen = candidates[0],
       best = Infinity;
     for (const candidate of candidates) {
-      const overlap = area.overlap(box(candidate));
+      const overlap = area.overlap(box(candidate), item);
       if (overlap < best) {
         chosen = candidate;
         best = overlap;

@@ -16,10 +16,19 @@ export function stopAppearance(job, color = currentRouteColor, done = false) {
     : { fill: accent, border: white, text: white };
 }
 
-export function stopMarkerIcon(color, border = [255, 255, 255, 255]) {
+// A filled badge shows as the disc inside its white ring; an outlined one
+// shows as the ring itself, at the outer edge. Drawn at the same radius the
+// outlined badge therefore reads as the larger and louder of the two, which
+// is backwards for a stop already behind the truck. Its ring is drawn where
+// the filled badge's edge is instead.
+export function stopMarkerIcon(
+  color,
+  border = [255, 255, 255, 255],
+  radius = 15.5,
+) {
   const paint = value => `rgb(${value.slice(0, 3).join(',')})`;
   const fill = paint(color);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="136" height="136" viewBox="0 0 34 34"><circle cx="17" cy="17" r="15.5" fill="${fill}" stroke="${paint(border)}" stroke-width="2.5"/></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="136" height="136" viewBox="0 0 34 34"><circle cx="17" cy="17" r="${radius}" fill="${fill}" stroke="${paint(border)}" stroke-width="2.5"/></svg>`;
   return {
     url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
     width: 136,

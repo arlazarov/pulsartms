@@ -10,15 +10,15 @@ export const sceneMetrics = Object.freeze({
   stopRadius: 3,
   stopBadgeOffset: 0,
   stopBadgeDiameter: 34,
+  // Where the filled badge's edge falls, so an outlined one does not read as
+  // the larger of the two.
+  stopBadgeDoneRadius: 13,
   stopBadgeGap: 2,
   // Past a handful, stops close together are a corridor of them rather than
   // a pin-up at one place, and standing them in a tower says less than
   // letting them sit where they are.
   stopBadgeCluster: 6,
   stationRadius: 8,
-  // Below this the map is a sea of dots that hides the route under them.
-  // Planned stops are exempt: those are the ones a plan was made about.
-  stationMinZoom: 6,
   stationHitRadius: 10,
   // A planned stop is the only station the plan is about, so its dot is
   // drawn larger than the ones it was chosen from, inside its ring.
@@ -35,7 +35,6 @@ export const sceneMetrics = Object.freeze({
   truckClusterRadius: 64,
   truckClusterMaxZoom: 12,
   truckHoverScale: 1.1,
-  truckMutedOpacity: 0.45,
   truckLabelOffset: 30,
   routeWidthScale: 1.75,
   routeMinWidth: 5,

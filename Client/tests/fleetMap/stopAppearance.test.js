@@ -61,7 +61,15 @@ test('a stop already visited is drawn outlined, like its badge in the card', () 
   assert.deepEqual(done.border, pending.fill);
   assert.deepEqual(done.text, color, 'and the number is the colour itself');
   assert.match(
-    decodeURIComponent(stopMarkerIcon(done.fill, done.border).url),
-    /fill="rgb\(255,255,255\)" stroke="rgb\(32,122,99\)"/,
+    decodeURIComponent(stopMarkerIcon(done.fill, done.border, 13).url),
+    /r="13" fill="rgb\(255,255,255\)" stroke="rgb\(32,122,99\)"/,
+  );
+  // A filled badge shows as the disc inside its white ring; an outlined one
+  // shows as the ring itself, at the outer edge. At one radius the outlined
+  // one reads as the larger, which is backwards for a stop already behind
+  // the truck.
+  assert.match(
+    decodeURIComponent(stopMarkerIcon(pending.fill, pending.border).url),
+    /r="15.5"/,
   );
 });
