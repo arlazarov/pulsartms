@@ -128,8 +128,12 @@ test('current equipment stop shows the confirmed action and state without callin
   const { stops, markers, state } = fixture(t);
   stops.setPlan(plan([stop({ job: 'Collect truck', stateAfter: 'Bobtail' })]));
   markers[0].onSelect();
+  // The job names the head; what the truck is left in stays below it.
+  assert.equal(
+    row(state.shown, 'fleet-route-popup__job').textContent,
+    'Collect truck',
+  );
   const kind = row(state.shown, 'fleet-route-popup__kind');
-  assert.ok(kind.textContent.includes('Collect truck'));
   assert.equal(kind.children[0].textContent, 'After: Bobtail');
   assert.equal(markers[0].job, 'Collect truck');
 });
@@ -705,19 +709,30 @@ test('current-stop details show the local appointment window, exact ETA status a
     ['fleet-route-popup__location', 'fleet-route-popup__information'],
   );
   const [location, information] = state.shown.children;
+  // The card opens with its place in the run, the job, and where it stands.
+  const head = location.children[0];
+  assert.equal(head.className, 'fleet-route-popup__head');
   assert.deepEqual(
-    location.children.slice(0, 2).map(node => node.textContent),
-    ['Pickup · Load stop 1 of 1', 'Warehouse'],
+    head.children.map(node => [node.className, node.textContent]),
+    [
+      ['fleet-route-popup__number', '1'],
+      ['fleet-route-popup__job', 'Pickup'],
+      ['fleet-route-popup__state fleet-route-popup__state--danger', 'Late'],
+    ],
   );
-  assert.equal(location.children[2].className, 'fleet-route-popup__address');
   assert.deepEqual(
-    location.children[2].children.map(node => node.textContent),
+    location.children.slice(1, 3).map(node => node.textContent),
+    ['Load stop 1 of 1', 'Warehouse'],
+  );
+  assert.equal(location.children[3].className, 'fleet-route-popup__address');
+  assert.deepEqual(
+    location.children[3].children.map(node => node.textContent),
     ['123 Main Street'],
   );
   assert.equal(
     location.children.length,
-    3,
-    'only the stop identity and address belong to the destination column',
+    4,
+    'only the head, the stop identity and its address belong here',
   );
   assert.deepEqual(
     rows(information)
@@ -799,7 +814,7 @@ test('five load occurrences keep exact appointments and repeat context without m
     markers[index].onSelect();
     assert.equal(
       row(state.shown, 'fleet-route-popup__kind').textContent,
-      `Pickup · Load stop ${index + 1} of 5`,
+      `Load stop ${index + 1} of 5`,
     );
     assert.equal(
       row(state.shown, 'fleet-route-popup__visit').textContent,
@@ -837,7 +852,7 @@ test('five load occurrences keep exact appointments and repeat context without m
   );
   assert.equal(
     row(state.shown, 'fleet-route-popup__kind').textContent,
-    'Pickup · Load stop 4 of 5',
+    'Load stop 4 of 5',
   );
   assert.equal(
     row(state.shown, 'fleet-route-popup__visit').textContent,
@@ -1121,6 +1136,33 @@ test('ETA expiry and unknown distance stay explicit, and a closed or passed stop
   assert.equal(calls.shows.length, passedCount);
 });
 
+// A stop the truck has already worked reads as finished at a glance, and
+// says so instead of forecasting an arrival it has already made.
+test('a passed stop is marked done and its badge is outlined, not filled', t => {
+  const { stops, markers, state } = fixture(t);
+  const route = plan([
+    stop({ id: 'pickup', job: 'Pickup' }),
+    stop({ id: 'drop', job: 'Delivery' }),
+  ]);
+  stops.setPlan({
+    ...route,
+    referenceStops: route.stops,
+    tracking: { passedStopIds: ['pickup'] },
+  });
+  markers[0].onSelect();
+  const head = row(state.shown, 'fleet-route-popup__head');
+  assert.equal(head.children[0].className, 'fleet-route-popup__number is-done');
+  assert.equal(head.children[0].textContent, '1');
+  assert.deepEqual(
+    [head.children[2].className, head.children[2].textContent],
+    ['fleet-route-popup__state fleet-route-popup__state--success', 'Done'],
+  );
+  markers[1].onSelect();
+  const next = row(state.shown, 'fleet-route-popup__head');
+  assert.equal(next.children[0].className, 'fleet-route-popup__number');
+  assert.equal(next.children.length, 2, 'no state is claimed without an ETA');
+});
+
 test('reference-stop details keep unknown distance and render provider text as text', t => {
   const { stops, markers, calls, state } = fixture(t);
   const name = '<img src=x onerror=alert(1)>',
@@ -1136,8 +1178,12 @@ test('reference-stop details keep unknown distance and render provider text as t
   stops.setProgress(20);
   markers[0].onSelect();
   assert.deepEqual(
-    state.shown.children[0].children.slice(0, 2).map(node => node.textContent),
-    ['Pickup · Load stop 1 of 2', name],
+    state.shown.children[0].children.slice(1, 3).map(node => node.textContent),
+    ['Load stop 1 of 2', name],
+  );
+  assert.equal(
+    row(state.shown, 'fleet-route-popup__job').textContent,
+    'Pickup',
   );
   assert.deepEqual(
     row(state.shown, 'fleet-route-popup__address').children.map(

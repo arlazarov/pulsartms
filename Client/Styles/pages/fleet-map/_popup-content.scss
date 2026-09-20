@@ -135,6 +135,61 @@
     margin-bottom: ui.pg(micro);
     padding-bottom: ui.pg(micro);
     border-bottom: 1px solid ui.theme(border-subtle);
+    &:empty {
+      display: none;
+    }
+  }
+  // The stop's own heading: its place in the run, what happens there, and
+  // where it stands - read before any of the detail below it.
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-width: 0;
+    margin-bottom: ui.pg(xs);
+  }
+  &__number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    inline-size: ui.size(popup-stop-badge);
+    block-size: ui.size(popup-stop-badge);
+    border: 2px solid ui.theme(link);
+    border-radius: 50%;
+    background: ui.theme(link);
+    color: ui.theme(on-accent);
+    font-size: ui.fs(small);
+    font-variant-numeric: tabular-nums;
+    // A stop behind the truck is outlined, not filled: it no longer asks
+    // for anything.
+    &.is-done {
+      background: transparent;
+      color: ui.theme(link);
+    }
+  }
+  &__job {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    overflow-wrap: anywhere;
+  }
+  &__state {
+    margin-inline-start: auto;
+    flex-shrink: 0;
+    padding: ui.pg(micro) ui.pg(xs);
+    border-radius: ui.radius(sm);
+    font-size: ui.fs(small);
+    white-space: nowrap;
+    background: ui.theme(surface-soft);
+    color: ui.theme(text-secondary);
+    &--success {
+      background: ui.theme(success-surface);
+      color: ui.theme(success-text);
+    }
+    &--danger {
+      background: ui.theme(danger-surface);
+      color: ui.theme(danger-text);
+    }
   }
   &__visit {
     color: ui.theme(text-secondary);

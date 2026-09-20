@@ -169,7 +169,13 @@ export function createRouteStops(
           this.close();
         entry.completed = completed;
         entry.stop = stop;
-        entry.details = stopDetails(stop, detailsHref, visits.get(stop.id));
+        entry.details = stopDetails(
+          stop,
+          detailsHref,
+          visits.get(stop.id),
+          `${index + 1}`,
+          completed,
+        );
         entry.metadata = JSON.stringify(entry.details);
         entry.marker.setNumber?.(`${index + 1}`);
         entry.marker.setJob?.(stop.job);
@@ -210,8 +216,10 @@ export function createRouteStops(
   };
 }
 
-function stopDetails(stop, detailsHref, visit) {
+function stopDetails(stop, detailsHref, visit, number, done) {
   return {
+    number: number ?? '',
+    done: done === true,
     job: stop.job || '',
     stateAfter: stop.stateAfter || 'Unknown',
     name: stop.name || '',
@@ -257,11 +265,34 @@ function stopContent(
     address.append(
       element('span', 'fleet-route-popup__address-line', stop.address.locality),
     );
-  const kind = element(
-    'div',
-    'fleet-route-popup__kind',
-    [stop.job, stop.position].filter(Boolean).join(' · '),
-  );
+  // The card opens with what a dispatcher scans for: which stop this is in
+  // the run, what happens there, and whether it is already behind them.
+  const head = element('div', 'fleet-route-popup__head');
+  if (stop.number)
+    head.append(
+      element(
+        'span',
+        `fleet-route-popup__number${stop.done ? ' is-done' : ''}`,
+        stop.number,
+      ),
+    );
+  head.append(element('span', 'fleet-route-popup__job', stop.job));
+  const state = stop.done ? 'Done' : etaStatus;
+  if (state)
+    head.append(
+      element(
+        'span',
+        `fleet-route-popup__state fleet-route-popup__state--${
+          stop.done || etaTone === 'success'
+            ? 'success'
+            : etaTone === 'danger'
+              ? 'danger'
+              : 'neutral'
+        }`,
+        state,
+      ),
+    );
+  const kind = element('div', 'fleet-route-popup__kind', stop.position);
   if (stop.stateAfter && stop.stateAfter !== 'Unknown')
     kind.append(element('span', '', `After: ${stop.stateAfter}`));
   if (stop.visit) {
@@ -270,6 +301,7 @@ function stopContent(
     kind.append(visit);
   }
   location.append(
+    head,
     kind,
     element('strong', 'fleet-route-popup__company', stop.name),
     address,
