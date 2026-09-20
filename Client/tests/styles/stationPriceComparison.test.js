@@ -53,6 +53,29 @@ test('ordinary fuel inspector fits its quote without changing truck or planned f
   );
 });
 
+// Drawn, the list and the line of days kept the same two edges. Built, the
+// list was as narrow as its longest name while the days ran the width of the
+// card, and the band behind the price being paid was a name and a figure with
+// a gap between them.
+test('the price list keeps the edges the days keep, and its band is one band', () => {
+  assert.match(
+    css,
+    /\.fleet-station-popup__prices\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto;[^}]*gap: var\(--space-micro\) 0;/,
+  );
+  assert.doesNotMatch(
+    css,
+    /\.fleet-station-popup__prices\s*\{[^}]*justify-content: start;/,
+  );
+  assert.match(
+    css,
+    /\.fleet-station-popup__discount-label\s*\{[^}]*margin-inline-start: calc\(-1 \* var\(--space-xs\)\);/,
+  );
+  assert.match(
+    css,
+    /\.fleet-station-popup__discount\s*\{[^}]*margin-inline-end: calc\(-1 \* var\(--space-xs\)\);/,
+  );
+});
+
 test('a price that fell is green and one that rose is not', () => {
   assert.match(
     css,

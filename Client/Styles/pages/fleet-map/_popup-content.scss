@@ -302,11 +302,15 @@
     margin-bottom: ui.pg(xs);
   }
 
+  // The list runs the width of its card: names on the left, figures at the
+  // right edge, the same edges the line of days under it keeps. It was as
+  // narrow as its longest name, so the two never lined up. The columns
+  // touch, so the band behind the price being paid is one band and not a
+  // name and a figure with a gap between them.
   &__prices {
     display: grid;
-    grid-template-columns: max-content auto;
-    justify-content: start;
-    gap: ui.pg(micro) ui.pg(md);
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: ui.pg(micro) 0;
     margin: ui.pg(sm) 0 0;
     padding-top: ui.pg(sm);
     border-top: 1px solid ui.theme(border-subtle);
@@ -314,6 +318,7 @@
     dd {
       text-align: right;
       margin: 0;
+      padding-left: ui.pg(md);
       // A price is one number. It was coming apart as "4.01" over "9".
       white-space: nowrap;
       font-variant-numeric: tabular-nums;
@@ -366,6 +371,18 @@
     background: ui.theme(selected);
     font-weight: 650;
     padding-block: ui.pg(xs);
+  }
+  // The band reaches a little past the text on both sides, so the words
+  // stay on the same edges as the rows around them.
+  &__discount-label {
+    margin-inline-start: calc(-1 * #{ui.pg(xs)});
+    padding-inline-start: ui.pg(xs);
+    border-radius: ui.radius(sm) 0 0 ui.radius(sm);
+  }
+  &__discount {
+    margin-inline-end: calc(-1 * #{ui.pg(xs)});
+    padding-inline-end: ui.pg(xs);
+    border-radius: 0 ui.radius(sm) ui.radius(sm) 0;
   }
 
   &__discount {
@@ -510,7 +527,7 @@
       padding: 0 0 0 ui.pg(lg);
       border-top: 0;
       border-left: 1px solid ui.theme(border-subtle);
-      gap: ui.pg(xs) ui.pg(sm);
+      gap: ui.pg(xs) 0;
     }
   }
 }
