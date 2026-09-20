@@ -416,8 +416,8 @@
     padding-block: ui.pg(sm);
     font-size: ui.fs(small);
   }
-  &__row > &__forecast .stop-hours__road {
-    font-size: ui.fs(small);
+  &__row > &__forecast {
+    --stop-hours-road-size: #{ui.fs(small)};
   }
 
   &__working-area {

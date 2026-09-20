@@ -128,7 +128,7 @@
                         Completed="@(_routeState?.Plan?.Tracking
                             .AllStopsPassed == true)"
                         ShowDutyStatus="false" ShowAppointment="false"
-                        ShowDetails="false" />
+                        ShowDetails="false" Reading="compact" />
                     @* No forecast is not always nothing to say: a truck
                        that has run out of route is standing at its stop. *@
                     <div class="fleet-map-inspector__arrival-placeholder
@@ -357,7 +357,7 @@
                    cycle, next to the delivery window it is measured against.
                    Inspecting a next stop takes the head over; the route then
                    carries its own arrival again rather than losing it. *@
-                <ArrivalEstimate Eta="@(routePlan is null ? null : DisplayRouteState?.Eta)" Stop="ScheduledStop" Memory="_arrivalMemory" DispatchId="SelectedDispatchId" Refreshing="_etaRefreshPending" Completed="@(routePlan?.Tracking.AllStopsPassed == true)" ShowDutyStatus="false" ShowAppointment="false" ShowSummary="@(_inspectorMode != MapInspectorMode.Truck)" />
+                <ArrivalEstimate Eta="@(routePlan is null ? null : DisplayRouteState?.Eta)" Stop="ScheduledStop" Memory="_arrivalMemory" DispatchId="SelectedDispatchId" Refreshing="_etaRefreshPending" Completed="@(routePlan?.Tracking.AllStopsPassed == true)" ShowDutyStatus="false" ShowAppointment="false" ShowSummary="@(_inspectorMode != MapInspectorMode.Truck)" Reading="compact" />
                 <div class="fleet-map-route-info__eta-placeholder stop-hours">
                     <section class="stop-hours__cycle" aria-label="Cycle at this stop"><div class="stop-hours__row stop-hours__arrival-cycle"><h3 class="stop-hours__heading">Cycle remaining</h3><strong class="stop-hours__value">—</strong></div></section>
                 </div>

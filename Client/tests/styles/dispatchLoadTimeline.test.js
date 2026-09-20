@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { compileString } from 'sass';
 import { fileURLToPath } from 'node:url';
 
@@ -125,25 +126,45 @@ test('copy confirmation uses a fixed icon instead of adding a status line to the
 });
 
 test('summary cycle warnings start under the ETA label while lateness stays grouped with arrival', () => {
+  // A stop shown in summary asks the forecast for its inline reading; the
+  // forecast owns what that reading is. This page used to name the
+  // component's own elements to say the same thing.
+  const hours = compileString("@use 'components/driver-status';", {
+    loadPaths,
+  }).css;
   assert.match(
-    css,
-    /\.dispatch-load__stop--summary \.stop-hours__road > \.stop-hours__value\s*\{\s*display: contents;/,
+    hours,
+    /\.stop-hours--inline\s*\{[^}]*--stop-hours-road-value-display: contents;/,
   );
   assert.match(
-    css,
-    /\.dispatch-load__stop--summary \.stop-hours__arrival\s*\{[^}]*display: flex;[^}]*flex-wrap: wrap;[^}]*align-items: baseline;/,
+    hours,
+    /\.stop-hours--inline \.stop-hours__arrival\s*\{[^}]*display: flex;[^}]*flex-wrap: wrap;[^}]*align-items: baseline;/,
   );
   assert.match(
-    css,
-    /\.dispatch-load__stop--summary \.stop-hours__cycle-status\s*\{\s*grid-column: 1\s*\/\s*-1;/,
+    hours,
+    /\.stop-hours__cycle-status\s*\{[^}]*grid-column: 1\s*\/\s*-1;/,
   );
+  assert.match(
+    readFileSync(
+      new URL(
+        '../../Shared/Dispatch/DispatchLoadStop/DispatchLoadStop.razor.cs',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+    /StopReading => Detailed \? string\.Empty : "inline";/,
+  );
+  assert.doesNotMatch(css, /\.stop-hours__/);
 });
 
 test('narrow stop forecasts wrap their label without splitting clocks', () => {
   const hours = compileString("@use 'components/driver-status';", {
     loadPaths,
   }).css;
-  assert.match(css, /__stop-times\s*\{[^}]*--stop-hours-road-display: flex;/);
+  assert.match(
+    hours,
+    /\.stop-hours--inline\s*\{[^}]*--stop-hours-road-display: flex;/,
+  );
   assert.match(hours, /__road\s*\{[^}]*flex-wrap: wrap;/);
   assert.match(hours, /__clock\s*\{[^}]*white-space: nowrap;/);
   assert.match(hours, /__cycle-status\s*\{[^}]*flex-basis: 100%;/);

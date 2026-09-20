@@ -22,6 +22,15 @@ public partial class StopHours
 
   [Parameter]
   public StopCycleForecast? Recap { get; set; }
+
+  // How the same facts are read where they stand: "inline" runs the ETA as
+  // one line, "compact" is the quieter reading a card on the map uses. The
+  // stylesheet that owns the component owns both; a page asks for one
+  // instead of restyling what is inside.
+  [Parameter]
+  public string Reading { get; set; } = string.Empty;
+  private string ReadingClass =>
+    Reading.Length > 0 ? $"stop-hours stop-hours--{Reading}" : "stop-hours";
   private StopHoursForecast Hours => Estimate.Hours!;
   private int? RemainingCycle =>
     Hours.CycleAtArrivalMinutes ?? Hours.CurrentCycleMinutes;

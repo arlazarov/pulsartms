@@ -12,17 +12,28 @@ test('popup secondary cycle warnings span both columns without changing the inli
     { loadPaths },
   ).css;
   assert.match(css, /\.stop-hours__arrival\s*\{\s*display: contents;/);
+  // The popup asks the forecast for its inline reading and styles only the
+  // rows it builds itself; it used to name the component's elements beside
+  // its own and say the same thing twice.
   assert.match(
     css,
-    /\.fleet-route-popup \.stop-hours__road > \.stop-hours__value,\s*\.fleet-route-popup \.fleet-route-popup__value--cycle\s*\{\s*display: contents;/,
+    /\.stop-hours--inline\s*\{[^}]*--stop-hours-road-value-display: contents;/,
   );
   assert.match(
     css,
-    /\.fleet-route-popup \.stop-hours__cycle-status, \.fleet-route-popup__cycle-status\s*\{\s*grid-column: 1\s*\/\s*-1;/,
+    /\.fleet-route-popup__value--cycle\s*\{\s*display: contents;/,
   );
   assert.match(
     css,
-    /\.fleet-route-popup \.stop-hours__arrival, \.fleet-route-popup__arrival\s*\{\s*display: flex;/,
+    /\.fleet-route-popup__cycle-status\s*\{\s*grid-column: 1\s*\/\s*-1;/,
+  );
+  assert.match(css, /\.fleet-route-popup__arrival\s*\{\s*display: flex;/);
+  assert.match(
+    readFileSync(
+      new URL('../../Scripts/fleetMap/routes/routeStops.js', import.meta.url),
+      'utf8',
+    ),
+    /'stop-hours stop-hours--inline'/,
   );
 });
 

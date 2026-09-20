@@ -37,6 +37,10 @@ public partial class DispatchLoadStop
   [Parameter]
   public bool Detailed { get; set; } = true;
 
+  // Shown in summary, the forecast runs its ETA as one line; opened in
+  // full it reads the way it does everywhere else.
+  private string StopReading => Detailed ? string.Empty : "inline";
+
   [Parameter]
   public bool CollapsibleDetails { get; set; }
 

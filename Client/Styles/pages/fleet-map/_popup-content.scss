@@ -51,18 +51,15 @@
       display: inline;
     }
   }
-  .stop-hours__road > .stop-hours__value,
   .fleet-route-popup__value--cycle {
     display: contents;
   }
-  .stop-hours__arrival,
   &__arrival {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0 ui.pg(sm);
   }
-  .stop-hours__cycle-status,
   &__cycle-status {
     grid-column: 1 / -1;
   }

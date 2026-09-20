@@ -122,10 +122,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  > .arrival-estimate .stop-hours__road time {
-    font-size: ui.fs(body);
-    font-weight: 600;
-  }
   &__messages {
     flex-basis: 100%;
     display: flex;
@@ -175,12 +171,9 @@
       grid-column: 2;
       grid-row: 3;
     }
-    .stop-hours__cycle {
-      font-size: ui.fs(caption);
-    }
-    .stop-hours__cycle .stop-hours__value {
-      white-space: nowrap;
-    }
+    // Narrow: the cycle reads smaller, and a time does not break in two.
+    --stop-hours-cycle-size: #{ui.fs(caption)};
+    --stop-hours-value-white-space: nowrap;
     &__metric,
     > .fleet-map-route-info__load,
     &__next,

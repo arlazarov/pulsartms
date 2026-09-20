@@ -332,8 +332,6 @@
     font-weight: 500;
   }
   &__stop-times {
-    --stop-hours-road-display: flex;
-
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: ui.pg(micro);
@@ -344,18 +342,6 @@
   }
   &__stop-times .arrival-estimate {
     gap: ui.pg(micro) ui.pg(sm);
-  }
-  &__stop--summary .stop-hours__road > .stop-hours__value {
-    display: contents;
-  }
-  &__stop--summary .stop-hours__arrival {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0 ui.pg(sm);
-  }
-  &__stop--summary .stop-hours__cycle-status {
-    grid-column: 1 / -1;
   }
   @container dispatch-load (width >= #{ui.breakpoint(dispatch-load-columns)}) {
     &__stop--summary {

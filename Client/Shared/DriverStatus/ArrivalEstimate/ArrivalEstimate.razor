@@ -14,13 +14,13 @@
         {
             @if (next.Hours is not null)
             {
-                <StopHours Estimate="next" Recap="DisplayEta.CycleAtCalculation" ShowRecap="ShowRecap" ShowSummary="ShowSummary" ShowDetails="ShowDetails" />
+                <StopHours Estimate="next" Recap="DisplayEta.CycleAtCalculation" ShowRecap="ShowRecap" ShowSummary="ShowSummary" ShowDetails="ShowDetails" Reading="@Reading" />
             }
             else
             {
             @if (ShowSummary)
             {
-            <div class="stop-hours">
+            <div class="@ReadingClass">
             <div class="stop-hours__row stop-hours__road">
             <span class="stop-hours__label">ETA</span>
             <span class="stop-hours__value"><span class="stop-hours__arrival">

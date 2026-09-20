@@ -40,6 +40,12 @@ public partial class ArrivalEstimate
   [Parameter]
   public bool Completed { get; set; }
 
+  // Passed through to the forecast: which reading of it this place wants.
+  [Parameter]
+  public string Reading { get; set; } = string.Empty;
+  private string ReadingClass =>
+    Reading.Length > 0 ? $"stop-hours stop-hours--{Reading}" : "stop-hours";
+
   [Parameter]
   public bool Refreshing { get; set; }
   private DispatchEta? DisplayEta =>

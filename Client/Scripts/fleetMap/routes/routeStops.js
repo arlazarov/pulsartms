@@ -390,7 +390,7 @@ function stopContent(
   }
   information.append(facts);
   if (hours?.length) {
-    const block = element('div', 'stop-hours');
+    const block = element('div', 'stop-hours stop-hours--inline');
     const cycle = element('section', 'stop-hours__cycle');
     cycle.setAttribute('aria-label', 'Cycle at this stop');
     for (const [index, row] of hours.entries()) {

@@ -12,6 +12,7 @@
   line-height: 1.4;
   &__cycle {
     display: grid;
+    font-size: var(--stop-hours-cycle-size, inherit);
     grid-column: 1 / -1;
     grid-template-columns: max-content minmax(0, 1fr);
     gap: ui.pg(xs) ui.pg(sm);
@@ -50,7 +51,8 @@
   }
   .stop-hours__value {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: var(--stop-hours-value-wrap, wrap);
+    white-space: var(--stop-hours-value-white-space, normal);
     align-items: baseline;
     gap: 0 ui.pg(sm);
     min-width: 0;
@@ -67,6 +69,7 @@
   }
   &__road {
     display: var(--stop-hours-road-display, grid);
+    font-size: var(--stop-hours-road-size, inherit);
     flex-wrap: wrap;
     white-space: var(--stop-hours-road-white-space, normal);
 
@@ -95,8 +98,10 @@
     display: var(--stop-hours-date-prefix-display, none);
     font-weight: 400;
   }
+  // Whatever holds it, a word about the cycle takes a row of its own.
   &__cycle-status {
     flex-basis: 100%;
+    grid-column: 1 / -1;
   }
   &__date-separator {
     display: var(--stop-hours-date-separator-display, inline);
@@ -121,5 +126,86 @@
   .stop-hours__value--muted,
   &__status--muted {
     color: ui.theme(text-secondary);
+  }
+}
+
+// Two readings of the same forecast, both owned here. Pages used to write
+// them into their own stylesheets, naming this component's elements from
+// five files: the same "the ETA runs as one line" was written three times,
+// and the map card's quieter reading of the cycle was written where the
+// card is laid out.
+
+// The ETA is one line: the value stops being a cell of the grid and its
+// parts sit side by side, with anything said about the cycle wrapping to
+// a row of its own.
+.stop-hours--inline {
+  --stop-hours-road-display: flex;
+  --stop-hours-road-value-display: contents;
+  .stop-hours__arrival {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 ui.pg(sm);
+  }
+}
+
+// Inside a card on the map there is less room and less to say: the labels
+// are small and quiet, the hour is what stands out, and the cycle is a
+// column of plain rows rather than a section with a rule above it.
+.stop-hours--compact {
+  --stop-hours-road-display: flex;
+  .stop-hours__label {
+    font-size: ui.fs(small);
+  }
+  .stop-hours__arrival {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    font-weight: 600;
+  }
+  .stop-hours__heading {
+    margin: 0;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    font-weight: 400;
+  }
+  .stop-hours__arrival-cycle {
+    display: grid;
+    grid-template-columns: var(--route-fact-label) minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: ui.pg(sm);
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .stop-hours__arrival-cycle > .stop-hours__value,
+  .stop-hours__arrival-cycle > strong {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .stop-hours__cycle {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.pg(xs);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: ui.fs(small);
+  }
+  .stop-hours__road {
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs);
+  }
+  .stop-hours__road > .stop-hours__label {
+    font-size: ui.fs(small);
+  }
+  .stop-hours__road time {
+    font-size: ui.fs(body);
+    font-weight: 600;
   }
 }

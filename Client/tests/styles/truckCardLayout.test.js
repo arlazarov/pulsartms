@@ -147,13 +147,31 @@ test('the open card is two columns: the stop, then facts on one label column', (
       card,
       new RegExp(`__${group}\\s*\\{[^}]*grid-column: 2;[^}]*grid-row: ${row};`),
     );
-  // Every fact is the same two cells, sharing one label width.
+  // Every fact is the same two cells, sharing one label width - the
+  // forecast's cycle row included, which reads that width from the card
+  // through its compact reading rather than being restyled from here.
   assert.match(
     card,
-    /__metric,[^{}]*__arrival-fuel,[^{}]*\.stop-hours__arrival-cycle\s*\{[^}]*grid-template-columns: var\(--route-fact-label\) minmax\(0, 1fr\);/,
+    /__metric,[^{}]*__arrival-fuel\s*\{[^}]*grid-template-columns: var\(--route-fact-label\) minmax\(0, 1fr\);/,
+  );
+  assert.doesNotMatch(card, /\.stop-hours__/);
+  const hours = compile('components/driver-status/stop-hours');
+  assert.match(
+    hours,
+    /\.stop-hours--compact \.stop-hours__arrival-cycle\s*\{[^}]*grid-template-columns: var\(--route-fact-label\) minmax\(0, 1fr\);/,
   );
   // The cycle is a row among rows, not a section under its own rule.
-  assert.match(card, /\.stop-hours__cycle\s*\{[^}]*border: 0;/);
+  assert.match(
+    hours,
+    /\.stop-hours--compact \.stop-hours__cycle\s*\{[^}]*border: 0;/,
+  );
+  assert.match(
+    readFileSync(
+      new URL('../../Pages/FleetMap/FleetMap.razor', import.meta.url),
+      'utf8',
+    ),
+    /Reading="compact"/,
+  );
 });
 
 test('the stop keeps its children in its own column and fits four lines', () => {

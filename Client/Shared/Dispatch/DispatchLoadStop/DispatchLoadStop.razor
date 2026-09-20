@@ -65,7 +65,8 @@
             <span class="dispatch-load__appointment">Appointment <strong>—</strong></span>
         }
         <ArrivalEstimate Stop="PlannedStop" Eta="StopEstimate" DispatchId="DispatchId" Memory="Memory"
-            Completed="Completed" Refreshing="Refreshing" ShowDutyStatus="false" ShowDetails="false" />
+            Completed="Completed" Refreshing="Refreshing" ShowDutyStatus="false" ShowDetails="false"
+            Reading="@StopReading" />
         @if (!Stop.DriverOnly && !Completed && !HasDisplayEstimate)
         {
             <span class="dispatch-load__eta-missing">ETA <strong>—</strong></span>
