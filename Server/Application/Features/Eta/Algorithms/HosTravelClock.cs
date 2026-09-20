@@ -103,7 +103,17 @@ public sealed class HosTravelClock
       || (status.ObservedAt - start).TotalHours < 3
     )
       return;
-    Rest(Math.Max(0, 10 - (Now - start).TotalHours));
+    var remaining = Math.Max(0, 10 - (Now - start).TotalHours);
+    // A rest the ELD has not credited is not a shift this may invent. Where
+    // the driver has stood ten hours and the clocks still read a shift in
+    // progress, the feed is behind the yard, and resetting here would award
+    // hours nobody granted - and with them a pre-trip and a fuel allowance
+    // the driver already spent this morning. Waiting out a rest that has not
+    // finished is a different thing, and still allowed: those hours are
+    // spent in the forecast before they are used.
+    if (remaining <= 0 && (shiftDrive > .000001 || shiftDuty > .000001))
+      return;
+    Rest(remaining);
     driveLeft = 11;
     shiftLeft = 14;
     breakLeft = 8;

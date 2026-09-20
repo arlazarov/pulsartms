@@ -1,5 +1,6 @@
 using Application.Features.Eta.Algorithms;
 using Application.Features.Eta.Models;
+using Application.Features.Eta.Options;
 using Application.Features.Fleet.Models;
 using Infrastructure.Integrations.Samsara;
 
@@ -235,6 +236,66 @@ public class HosDutyStatusTests
     Assert.Equal(5, clock.RestHours);
     Assert.Equal(0, clock.SnapshotCycle().RemainingMinutes);
     Assert.Null(clock.CycleResumeAt);
+  }
+
+  // 54777 stood two miles from its delivery with 7:43 of drive left - three
+  // and a quarter hours already driven that day - and the forecast answered
+  // twenty minutes for the two miles: fifteen for a pre-trip the driver did
+  // in the morning and five for a fuel stop nobody was making. The rest had
+  // run past ten hours while the clocks still read a shift in progress, and
+  // the reset was taken from the duty status alone.
+  [Fact]
+  public void AnElapsedRestTheClocksHaveNotCreditedDoesNotStartAFreshShift()
+  {
+    var clocks = new DriverHosClocks
+    {
+      DriveMs = (long)(7.72 * 3600000),
+      ShiftMs = (long)(7.72 * 3600000),
+      CycleMs = (long)(7.72 * 3600000),
+      BreakMs = 8 * 3600000L,
+    };
+    var clock = new HosTravelClock(
+      Now,
+      clocks,
+      "US",
+      planning: new EtaPlanningOptions()
+    );
+    clock.CompleteOngoingDailyRest(
+      new("offDuty", Now.AddHours(-12), Now.AddHours(-12), Now)
+    );
+    clock.Drive(.05, "US");
+    Assert.False(clock.CompletedOngoingRest);
+    Assert.Equal(0, clock.RestHours);
+    Assert.Equal(0, clock.PreTripHours);
+    Assert.Equal(0, clock.FuelHours);
+    Assert.Equal(Now.AddMinutes(3), clock.Now);
+  }
+
+  // The same rest, still owed time, is waited out and does start a shift:
+  // those hours are spent in the forecast before any of them are used.
+  [Fact]
+  public void ARestStillOwedTimeIsWaitedOutAndDoesStartAFreshShift()
+  {
+    var clocks = new DriverHosClocks
+    {
+      DriveMs = (long)(7.72 * 3600000),
+      ShiftMs = (long)(7.72 * 3600000),
+      CycleMs = 40 * 3600000L,
+      BreakMs = 8 * 3600000L,
+    };
+    var clock = new HosTravelClock(
+      Now,
+      clocks,
+      "US",
+      planning: new EtaPlanningOptions()
+    );
+    clock.CompleteOngoingDailyRest(
+      new("offDuty", Now.AddHours(-6), Now.AddHours(-6), Now)
+    );
+    clock.Drive(.05, "US");
+    Assert.True(clock.CompletedOngoingRest);
+    Assert.Equal(4, clock.RestHours);
+    Assert.Equal(15 / 60d, clock.PreTripHours);
   }
 
   [Fact]
