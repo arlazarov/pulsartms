@@ -23,6 +23,36 @@ namespace Client.Tests.Fleet;
 [Trait("Kind", "Component")]
 public sealed class FuelPlanEditorTests
 {
+  // Reading a plan used to mean opening each stop in turn to find out
+  // whether any of them arrived near empty.
+  [Fact]
+  public void EveryPlannedStopShowsTheTankItArrivesAndLeavesWith()
+  {
+    using var fixture = new Fixture();
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Equal(2, component.FindAll(".fuel-plan-editor__stop").Count)
+    );
+    var readings = component
+      .FindAll(".fuel-plan-editor__stop-tank")
+      .Select(row => row.TextContent.Trim())
+      .ToArray();
+    // 13 and 43 gallons of a 211.3 gallon tank, on both planned stops.
+    Assert.Equal(["6% \u2192 20%", "6% \u2192 20%"], readings);
+  }
+
+  [Fact]
+  public void AnUnpricedPlanShowsNoTankReadingRatherThanAWrongOne()
+  {
+    using var fixture = new Fixture();
+    fixture.Initial = fixture.Initial with { ValuesAvailable = false };
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Equal(2, component.FindAll(".fuel-plan-editor__stop").Count)
+    );
+    Assert.Empty(component.FindAll(".fuel-plan-editor__stop-tank"));
+  }
+
   [Fact]
   public async Task SelectingAnotherStopBlocksQuantityUntilItsServerChoicesArrive()
   {

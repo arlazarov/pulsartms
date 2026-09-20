@@ -23,7 +23,9 @@ public sealed class FleetResourceNavigationTests
     Assert.Equal("Settings", component.Find("h1").TextContent.Trim());
     Assert.Empty(component.FindAll("nav[aria-label='Fleet configuration']"));
     Assert.Empty(component.FindAll("a[href^='/settings/fleet/']"));
-    Assert.Single(component.FindComponents<Bunit.TestDoubles.Stub<FleetSettings>>());
+    Assert.Single(
+      component.FindComponents<Bunit.TestDoubles.Stub<FleetSettings>>()
+    );
   }
 
   [Fact]

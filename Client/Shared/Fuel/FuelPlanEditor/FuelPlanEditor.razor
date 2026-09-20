@@ -26,7 +26,9 @@
                             <button type="button" class="fuel-plan-editor__stop-select" aria-pressed="@(stopIndex == _selected ? "true" : "false")" disabled="@Busy" @onclick="() => SelectRowAsync(stopIndex)">
                                 <span class="fuel-plan-editor__stop-heading"><span class="fleet-fuel-visit__number">@(stopIndex + 1)</span><ActionIcon Kind="fuel" /><strong>@row.Name</strong></span>
                                 <span class="fuel-plan-editor__stop-meta"><small>@(row.Edit.FillToTarget ? "Full tank" : $"{Quantity(row.Edit.BuyGallons)} US gal")</small>
-                                <small class="fuel-plan-editor__stop-cost">@(CostFor(row) is { } cost ? $"≈ {Money(cost)} USD" : "Cost —")</small></span>
+                                <small class="fuel-plan-editor__stop-cost">@(CostFor(row) is { } cost ? $"≈ {Money(cost)} USD" : "Cost —")</small>
+                                @if (TankReading(row) is { Length: > 0 } tank)
+                                { <small class="fuel-plan-editor__stop-tank" title="Tank on arrival and after fueling">@tank</small> }</span>
                             </button>
                         </div>
                     }

@@ -793,6 +793,29 @@ public partial class FuelPlanEditor : IAsyncDisposable
   private double? CostFor(DraftStop row) =>
     _valuesCurrent ? ResultFor(row)?.PurchaseCostUsd : null;
 
+  // What the tank holds arriving and leaving, on every row rather than only
+  // the one opened: reading the plan meant clicking each stop in turn to
+  // find out whether any of them arrived near empty.
+  private string TankReading(DraftStop row)
+  {
+    if (
+      !_valuesCurrent
+      || _preview is not { TankGallons: > 0 } preview
+      || ResultFor(row) is not { } result
+    )
+      return "";
+    var arriving = TankPercent(result.ArrivalGallons, preview.TankGallons);
+    var leaving = TankPercent(result.DepartureGallons, preview.TankGallons);
+    return arriving is null || leaving is null
+      ? ""
+      : $"{arriving}% → {leaving}%";
+  }
+
+  private static int? TankPercent(double gallons, double tank) =>
+    gallons >= 0 && gallons <= tank
+      ? (int)Math.Round(gallons / tank * 100)
+      : null;
+
   private string PositionFor(DraftStop row)
   {
     var segment = Segments.FirstOrDefault(item =>

@@ -210,9 +210,13 @@
       font-size: ui.fs(caption);
       font-weight: 400;
     }
-    small.fuel-plan-editor__stop-cost {
+    small.fuel-plan-editor__stop-cost,
+    small.fuel-plan-editor__stop-tank {
       color: ui.theme(text);
       font-variant-numeric: tabular-nums;
+    }
+    small.fuel-plan-editor__stop-tank {
+      white-space: nowrap;
     }
   }
   &__stop-heading {
