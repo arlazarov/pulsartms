@@ -74,3 +74,67 @@
     gap: ui.pg(sm);
   }
 }
+
+// Where there is no room for columns, the table is read another way. Both
+// ways used to be written in the stylesheets of the two pages that wanted
+// them, naming this component's own rows and cells from outside.
+
+// Each row becomes a card: no frame around the table, no heading row, and
+// the cells stack with room to breathe.
+.data-table--cards {
+  @include ui.below(md) {
+    & {
+      display: grid;
+      gap: ui.pg(md);
+      border: 0;
+      background: transparent;
+      overflow: visible;
+    }
+    .data-table__header {
+      display: none;
+    }
+    .data-table__body {
+      display: grid;
+      gap: ui.pg(md);
+    }
+    .data-table__row {
+      grid-template-columns: minmax(0, 1fr);
+      border: 1px solid ui.theme(border-subtle);
+      border-radius: ui.radius(sm);
+      padding: ui.pg(lg);
+      gap: ui.pg(md);
+      background: ui.theme(surface);
+      &:hover {
+        background: ui.theme(surface);
+      }
+      > div {
+        padding: 0;
+        overflow: visible;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+      > .data-table__actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: ui.pg(md);
+        margin-top: ui.pg(xs);
+        padding-top: ui.pg(md);
+        border-top: 1px solid ui.theme(border-subtle);
+      }
+    }
+  }
+}
+
+// The rows stay rows and lose their heading: a name, and what can be done
+// with it.
+.data-table--stacked {
+  @include ui.below(md) {
+    .data-table__header {
+      display: none;
+    }
+    .data-table__row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: ui.pg(md);
+    }
+  }
+}

@@ -4,6 +4,13 @@ namespace Client.Components.DataTable;
 
 public partial class DataTablePagination : DataTable
 {
+  // The reading the table was asked for names the frame around it too: on
+  // a narrow screen the pages control moves above the cards.
+  private string ReadingClass =>
+    Reading.Length > 0
+      ? $"data-table-pagination data-table-pagination--{Reading}"
+      : "data-table-pagination";
+
   [Parameter]
   public int Page { get; set; }
 

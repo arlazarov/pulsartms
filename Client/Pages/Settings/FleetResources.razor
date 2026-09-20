@@ -197,6 +197,7 @@
         {
             <DataTablePagination
                 Columns="minmax(150px, 2fr) minmax(130px, 1fr) 130px 100px"
+                Reading="stacked"
                 Page="_page"
                 TotalPages="@(Math.Max(1, (list.TotalCount + 29) / 30))"
                 HasPreviousPage="@(_page > 1)"

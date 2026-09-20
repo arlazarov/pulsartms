@@ -1,6 +1,6 @@
 @inherits DataTable
 
-<div class="data-table-pagination">
+<div class="@ReadingClass">
     <div class="data-table-pagination__navigation">
         <button
             class="data-table-pagination__button"
@@ -36,5 +36,6 @@
     <DataTable
         Header="@Header"
         Rows="@Rows"
-        Columns="@Columns" />
+        Columns="@Columns"
+        Reading="@Reading" />
 </div>

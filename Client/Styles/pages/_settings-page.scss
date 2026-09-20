@@ -238,15 +238,6 @@
     background: ui.theme(action);
     color: ui.theme(on-accent);
   }
-  @include ui.below(md) {
-    .data-table__header {
-      display: none;
-    }
-    .data-table__row {
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: ui.pg(md);
-    }
-  }
 }
 
 .mileage-policy {

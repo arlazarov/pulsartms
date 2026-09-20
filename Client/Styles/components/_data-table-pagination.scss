@@ -62,3 +62,20 @@
     color: ui.theme(border);
   }
 }
+
+// Read as cards, the table's pages control comes first and stands as a
+// column of its own: on a narrow screen there is no row to share.
+.data-table-pagination--cards {
+  @include ui.below(md) {
+    & {
+      display: flex;
+      flex-direction: column;
+      gap: ui.pg(lg);
+    }
+    .data-table-pagination__navigation {
+      order: 1;
+      margin-bottom: 0;
+      flex-wrap: wrap;
+    }
+  }
+}
