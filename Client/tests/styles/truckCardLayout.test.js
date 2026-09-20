@@ -270,3 +270,15 @@ test('sections are separated by hairlines and actions read as buttons', () => {
     /__actions \.map-action-icon,[^{}]*__close\s*\{[^}]*border-color: transparent/,
   );
 });
+
+// The card writes two rows of its own: the dash where an ETA would be, and
+// the dash where the cycle would be. They stand beside rows the forecast
+// renders, so they must read the same way - once the card's own stylesheet
+// stopped restyling the forecast, a row that did not ask for the compact
+// reading went back to the component's default and stood out in bold.
+test("the card's own dashes read like the forecast they stand in for", () => {
+  for (const [, placeholder] of markup.matchAll(
+    /class="[^"]*(?:arrival|eta)-placeholder([^"]*)"/g,
+  ))
+    assert.match(placeholder, /stop-hours stop-hours--compact/);
+});
