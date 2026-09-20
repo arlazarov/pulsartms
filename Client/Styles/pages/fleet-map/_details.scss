@@ -89,7 +89,7 @@
         margin-left: 0;
       }
     }
-    @container next-stop-inspection (width < 18rem) {
+    @container next-stop-inspection (width < #{ui.breakpoint(map-next-stop-tight)}) {
       .fleet-map-inspector__header {
         position: static;
       }

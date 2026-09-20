@@ -265,6 +265,27 @@ test('hiding an element by attribute is said once, for the whole app', () => {
     );
 });
 
+// Every width at which something changes shape is a name in one map, read
+// the same way whether the thing measured is the window or a card's own
+// box. These were written three ways: through the name, in bare rem, and
+// once in bare pixels that the map had never heard of.
+test('a layout changes at a named width, never at a number', () => {
+  const root = new URL('../../Styles/', import.meta.url);
+  for (const file of readdirSync(root, { recursive: true }).filter(x =>
+    x.endsWith('.scss'),
+  )) {
+    const source = readFileSync(new URL(file, root), 'utf8');
+    if (file.startsWith('base/')) continue;
+    for (const [query] of source.matchAll(/@container[^\n]*/g))
+      assert.match(query, /breakpoint\(/, `${file}: ${query.trim()}`);
+    assert.doesNotMatch(
+      source,
+      /@media \((?:max|min)-width:/,
+      `${file}: say below() or above()`,
+    );
+  }
+});
+
 test('all SCSS modules are reachable from the main stylesheet', async () => {
   const { compile } = await import('sass');
   const root = new URL('../../Styles/', import.meta.url);

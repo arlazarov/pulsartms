@@ -511,7 +511,7 @@
   }
 }
 
-@container dispatch-workspace (max-width: 62rem) {
+@container dispatch-workspace (width < #{ui.breakpoint(dispatch-workspace-columns)}) {
   .dispatch-details__workspace,
   .dispatch-details__commercial {
     grid-template-columns: minmax(0, 1fr);
@@ -522,7 +522,7 @@
   }
 }
 
-@container dispatch-workspace (max-width: 38rem) {
+@container dispatch-workspace (width < #{ui.breakpoint(dispatch-workspace-stacked)}) {
   .dispatch-details__header,
   .dispatch-details__aside {
     grid-template-columns: minmax(0, 1fr);

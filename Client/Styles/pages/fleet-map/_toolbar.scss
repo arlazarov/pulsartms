@@ -153,7 +153,7 @@
       box-shadow: ui.shadow(popup);
     }
   }
-  @container fleet-toolbar (max-width: 14rem) {
+  @container fleet-toolbar (width < #{ui.breakpoint(map-toolbar-stacked)}) {
     .fleet-map-toolbar .fleet-map-search {
       flex-basis: 100%;
     }

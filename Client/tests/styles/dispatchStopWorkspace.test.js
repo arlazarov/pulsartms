@@ -29,8 +29,8 @@ test('stop rows align their facts and wrap full resource names', () => {
   assert.match(resources, /overflow-wrap: anywhere;/);
   assert.match(resources, /font-size: var\(--type-small\);/);
   assert.doesNotMatch(resources, /ellipsis|nowrap|hidden|display: none/);
-  assert.match(css, /@container stop-workspace \(max-width: 65rem\)/);
-  assert.match(css, /@container stop-editor \(max-width: 22rem\)/);
+  assert.match(css, /@container stop-workspace \(width < 65rem\)/);
+  assert.match(css, /@container stop-editor \(width < 22rem\)/);
 });
 
 test('medium rows keep one accessible reorder handle beside their facts', () => {

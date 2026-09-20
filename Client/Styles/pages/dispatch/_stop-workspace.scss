@@ -783,7 +783,7 @@
     font-size: ui.fs(small);
   }
 
-  @container stop-workspace (max-width: 65rem) {
+  @container stop-workspace (width < #{ui.breakpoint(stop-table-compact)}) {
     &__table-heading {
       grid-template-columns: minmax(0, 1fr) ui.size(control-touch);
     }
@@ -826,7 +826,7 @@
   &__details {
     container: stop-editor / inline-size;
   }
-  @container stop-editor (max-width: 34rem) {
+  @container stop-editor (width < #{ui.breakpoint(stop-editor-columns)}) {
     &__fields {
       grid-template-columns: minmax(0, 1fr);
       grid-template-areas: 'appointment' 'references' 'location' 'cargo' 'contact';
@@ -841,14 +841,14 @@
       border-top: 1px solid ui.theme(border-subtle);
     }
   }
-  @container stop-editor (max-width: 22rem) {
+  @container stop-editor (width < #{ui.breakpoint(stop-editor-fields)}) {
     &__field-grid {
       grid-template-columns: minmax(0, 1fr);
     }
   }
 }
 
-@container dispatch-workspace (max-width: 55rem) {
+@container dispatch-workspace (width < #{ui.breakpoint(dispatch-workspace-panes)}) {
   .stop-workspace {
     display: flex;
     flex-direction: column;
@@ -922,7 +922,7 @@
   border-left: 1px solid ui.theme(border-subtle);
   padding-left: ui.pg(md);
 }
-@container stop-editor (max-width: 34rem) {
+@container stop-editor (width < #{ui.breakpoint(stop-editor-columns)}) {
   .stop-workspace__fields
     .stop-workspace__column
     > .stop-workspace__contact-card,

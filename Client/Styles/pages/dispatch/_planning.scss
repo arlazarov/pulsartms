@@ -239,7 +239,7 @@
     gap: ui.pg(xs);
   }
 }
-@container dispatch-truck (max-width: 1050px) {
+@container dispatch-truck (width < #{ui.breakpoint(dispatch-truck-compact)}) {
   .dispatch-planning--compact {
     grid-template-columns: minmax(0, 1fr) max-content;
     .dispatch-planning__content {

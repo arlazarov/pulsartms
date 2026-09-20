@@ -97,7 +97,7 @@ test('stop details and footer shrink within the card instead of overflowing at t
 });
 
 test('wide summary stops put arrival facts beside the address without changing the detailed dialog', () => {
-  assert.match(css, /@container dispatch-load \(min-width: 32rem\)/);
+  assert.match(css, /@container dispatch-load \(width >= 32rem\)/);
   assert.match(
     css,
     /\.dispatch-load__stop--summary\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);[^}]*column-gap: var\(--space-lg\);/,

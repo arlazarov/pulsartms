@@ -216,7 +216,7 @@
   &__route-stop.is-history {
     padding-bottom: ui.pg(xs);
   }
-  @container dispatch-load (min-width: 48rem) {
+  @container dispatch-load (width >= #{ui.breakpoint(dispatch-load-history)}) {
     &__route.has-history {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       column-gap: ui.pg(section);
@@ -357,7 +357,7 @@
   &__stop--summary .stop-hours__cycle-status {
     grid-column: 1 / -1;
   }
-  @container dispatch-load (min-width: 32rem) {
+  @container dispatch-load (width >= #{ui.breakpoint(dispatch-load-columns)}) {
     &__stop--summary {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       column-gap: ui.pg(lg);
