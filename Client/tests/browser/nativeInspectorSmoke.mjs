@@ -233,7 +233,7 @@ try {
               height: map.height,
             },
             capToken: rootStyle
-              .getPropertyValue('--size-map-fuel-inspector')
+              .getPropertyValue('--size-map-stop-inspector')
               .trim(),
             rootFont: parseFloat(rootStyle.fontSize),
             topGapToken: rootStyle.getPropertyValue('--space-md').trim(),

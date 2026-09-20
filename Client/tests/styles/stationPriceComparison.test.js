@@ -100,20 +100,18 @@ test('single-day quotes retain the ordinary fuel inspector sizing', () => {
   );
 });
 
-test('a planned fuel stop keeps its bounded width, and the days stay with the prices', () => {
-  assert.match(css, /width: min\(100%, var\(--size-map-fuel-inspector\)\);/);
+test('a stop, a next stop and a planned fuel stop share one bounded width', () => {
+  // One width for every card that is a place and a plan for it: a stop, a
+  // stop on a load still to come, and a planned fuel stop.
+  assert.match(
+    css,
+    /\[data-inspector-mode=stop\],[^{]*\[data-inspector-mode=nextstop\],[^{]*\[data-inspector-mode=fuel\]:has\(\.fleet-station-popup--planned\)\s*\{\s*width: min\(100%, var\(--size-map-stop-inspector\)\);/,
+  );
   // The days stand under the prices they are about, which puts them in the
   // half of the card that is about the place - by being inside it, not by
   // being sent to a column.
   assert.match(
     css,
     /\.fleet-station-popup--planned > \.fleet-station-popup__place\s*\{[^}]*padding-right: var\(--space-lg\);/,
-  );
-});
-
-test('current and future route stop inspectors share a compact bounded width', () => {
-  assert.match(
-    css,
-    /\.fleet-map-inspector\[data-inspector-mode=stop\],\s*\.fleet-map-inspector\[data-inspector-mode=nextstop\]\s*\{[^}]*width: min\(100%,\s*var\(--size-map-stop-inspector\)\);/,
   );
 });

@@ -57,8 +57,14 @@
   [hidden] {
     display: none !important;
   }
+  // A stop, a stop on a load still to come, and a planned fuel stop are one
+  // kind of card - a place, and what is planned there - so they are one
+  // width. The fuel card carried a width of its own, half as wide again,
+  // from when it held three columns of dials; emptied of those it was a
+  // card with room left over.
   &[data-inspector-mode='stop'],
-  &[data-inspector-mode='nextstop'] {
+  &[data-inspector-mode='nextstop'],
+  &[data-inspector-mode='fuel']:has(.fleet-station-popup--planned) {
     width: min(100%, #{ui.size(map-stop-inspector)});
   }
   &[data-inspector-mode='nextstop'] {
@@ -92,10 +98,6 @@
       }
     }
   }
-  &[data-inspector-mode='fuel']:has(.fleet-station-popup--planned) {
-    width: min(100%, #{ui.size(map-fuel-inspector)});
-  }
-
   &[data-inspector-mode='fuel']:not(:has(.fleet-station-popup--planned)) {
     width: fit-content;
     min-width: min(100%, #{ui.size(map-fuel-quote)});
