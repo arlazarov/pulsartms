@@ -25,19 +25,30 @@ export function createStationPopup(
   locality.hidden = true;
   address.append(street, locality);
   const copyStatus = document.createElement('span');
-  copyStatus.className = 'fleet-station-popup__copy-status';
+  const statusClass = 'fleet-station-popup__copy-status';
+  copyStatus.className = statusClass;
   copyStatus.setAttribute('role', 'status');
   let addressText = '';
   let copyVersion = 0;
+  // A copy that worked answers on the control that was pressed, the way the
+  // load number on the truck card does: the address keeps its place and its
+  // tooltip says "Copied". As a line of its own the word stood under the
+  // address for as long as the card was open, moving everything below it
+  // down to say that something had already happened. A copy that failed is
+  // still said out loud, because nothing else on the card would show it.
   async function copyAddress(event) {
     event.stopPropagation();
     const version = ++copyVersion;
     try {
       await navigator.clipboard.writeText(addressText);
-      if (version === copyVersion) copyStatus.textContent = 'Copied';
+      if (version !== copyVersion) return;
+      copyStatus.className = `${statusClass} visually-hidden`;
+      copyStatus.textContent = 'Copied';
+      address.title = 'Copied';
     } catch {
-      if (version === copyVersion)
-        copyStatus.textContent = 'Could not copy. Try again.';
+      if (version !== copyVersion) return;
+      copyStatus.className = statusClass;
+      copyStatus.textContent = 'Could not copy. Try again.';
     }
   }
   address.addEventListener('click', copyAddress);
@@ -234,7 +245,9 @@ export function createStationPopup(
       const nextAddress = station.address || '';
       if (nextAddress !== addressText) {
         copyVersion++;
+        copyStatus.className = statusClass;
         copyStatus.textContent = '';
+        set(address, 'title', 'Copy address');
         addressText = nextAddress;
         const lines = addressLines(addressText);
         set(street, 'textContent', lines.street);

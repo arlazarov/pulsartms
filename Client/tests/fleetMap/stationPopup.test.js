@@ -365,6 +365,13 @@ test('station address uses separate street and locality lines while copying the 
   assert.equal(address.children[1].hidden, false);
   await address.listeners.click({ stopPropagation() {} });
   assert.equal(copied, fullAddress);
+  // A copy that worked answers on the control that was pressed. As a line of
+  // its own the word "Copied" stood under the address for as long as the
+  // card stayed open, moving everything below it down.
+  assert.equal(address.title, 'Copied');
+  const status = part(popup, 'fleet-station-popup__copy-status');
+  assert.equal(status.textContent, 'Copied');
+  assert.match(status.className, /visually-hidden/);
   popup.update({
     ...data,
     station: { ...data.station, address: 'Warehouse entrance' },
