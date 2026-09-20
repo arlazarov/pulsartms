@@ -43,15 +43,28 @@ test('a planned fuel stop is two halves: the place, and the visit', () => {
   );
 });
 
-// The tank is one bar - what is in it on arrival, and what the stop adds -
-// and the fill is facts on one label column. The last dials on the map went
-// with this.
-test('the tank is one bar and the fill is facts on one label column', () => {
+// The tank is said and then drawn: the two levels on a line, the bar under
+// them, the gallons under its ends. Bare, the bar stood under "Left" and
+// read as the road to the pump. The last dials on the map went before it.
+test('the tank is named, then one bar, and the purchase is a fact', () => {
+  assert.match(css, /\.fleet-fuel-visit__tank\s*\{[^}]*display: grid;/);
   assert.match(
     css,
-    /\.fleet-fuel-visit__tank\s*\{[^}]*display: flex;[^}]*overflow: hidden;/,
+    /\.fleet-fuel-visit__levels\s*\{[^}]*display: flex;[^}]*align-items: baseline;/,
   );
-  assert.match(css, /\.fleet-fuel-visit__tank-add\s*\{[^}]*opacity: 0\.35;/);
+  assert.match(
+    css,
+    /\.fleet-fuel-visit__added\s*\{[^}]*margin-inline-start: auto;/,
+  );
+  assert.match(
+    css,
+    /\.fleet-fuel-visit__bar\s*\{[^}]*display: flex;[^}]*overflow: hidden;/,
+  );
+  assert.match(css, /\.fleet-fuel-visit__bar-add\s*\{[^}]*opacity: 0\.35;/);
+  assert.match(
+    css,
+    /\.fleet-fuel-visit__ends\s*\{[^}]*justify-content: space-between;/,
+  );
   assert.match(
     css,
     /\.fleet-fuel-visit__facts\s*\{[^}]*grid-template-columns: max-content minmax\(0, 1fr\);/,
@@ -60,7 +73,7 @@ test('the tank is one bar and the fill is facts on one label column', () => {
     css,
     /\.fleet-fuel-visit__fact\s*\{[^}]*grid-template-columns: subgrid;/,
   );
-  assert.doesNotMatch(css, /fleet-fuel-visit__(dial|gauge|levels|arrow|buy)/);
+  assert.doesNotMatch(css, /fleet-fuel-visit__(dial|gauge|buy)/);
 });
 
 test('too narrow for two halves, the visit goes under the place and the head still reads first', () => {

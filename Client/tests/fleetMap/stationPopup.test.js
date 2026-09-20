@@ -48,13 +48,13 @@ test('planned and ordinary fuel distances follow units without changing purchase
       ).textContent,
       expected,
     );
-    // The fill is one of the facts of the visit, and no unit of distance
+    // What the stop adds is said with the tank, and no unit of distance
     // touches it.
     assert.ok(
       all(popup.element).some(
         node =>
-          node.className === 'fleet-fuel-visit__value' &&
-          node.textContent === '25 US gal',
+          node.className === 'fleet-fuel-visit__added' &&
+          node.textContent === '+ 25 US gal',
       ),
     );
     // One visit says what is left to it in the head of the card.
@@ -281,21 +281,23 @@ test('return visits display distinct numbers quantities and distances without po
     visits.children[1].children[0].children[1].children[1].textContent,
     '927 mi · 1,492 km',
   );
-  // The tank as one bar, then the fill as facts: a name, a figure, and a
-  // quiet note where there is one. No dials.
-  const [, tank, facts] = visits.children[0].children;
+  // The tank is said before it is drawn - the two levels and what the stop
+  // adds - then the bar, then the gallons under its two ends. The bar alone
+  // stood under "Left" and read as the road to the pump.
+  const [, tank] = visits.children[0].children;
   assert.equal(tank.className, 'fleet-fuel-visit__tank');
+  const [levels, bar, ends] = tank.children;
   assert.deepEqual(
-    facts.children.map(line => [
-      line.children[0].textContent,
-      ...line.children[1].children.map(part => part.textContent),
-    ]),
-    [
-      ['On arrival', '22%', '· 44 US gal'],
-      ['Buy', '66 US gal'],
-      ['After fueling', '55%', '· 110 US gal'],
-    ],
+    levels.children.map(part => part.textContent),
+    ['Tank', '22%', '\u2192', '55%', '+ 66 US gal'],
   );
+  assert.equal(bar.className, 'fleet-fuel-visit__bar');
+  assert.deepEqual(
+    ends.children.map(part => part.textContent),
+    ['44 US gal on arrival', '110 US gal after'],
+  );
+  // No purchase, no price: nothing under the tank, not an empty list.
+  assert.equal(visits.children[0].children.length, 2);
   for (let i = 0; i < 20; i++) popup.update(data);
   assert.equal(replacements, 1);
   data.fuel.visits[0].arrivalGallons = 42;

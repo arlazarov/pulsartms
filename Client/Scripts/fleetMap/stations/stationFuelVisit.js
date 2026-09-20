@@ -84,52 +84,69 @@ export function createFuelVisit(
     row.append(warning);
   }
   if (visit.accessOnly) return row;
-  // The tank as one bar: what is in it on arrival, and what the stop adds.
-  // It is the same device as the bar under "Left" on the truck card, and it
-  // replaced two dials with an arrow between them - the last dials on the
-  // map, a row of three towers where everything else is a named figure.
+  // The tank, said before it is drawn: "Tank 63% -> 100%", what the stop
+  // adds at the far end, the bar under those words, and the gallons under
+  // the two ends of it. A bare bar stood here directly under "Left 42 mi",
+  // where the truck card draws how much of the road is behind - so it read
+  // as the way to the pump. Before that it was two dials and an arrow.
   const had = fuelGaugeValue(visit.arrivalGallons, visit.tankGallons);
   const after = fuelGaugeValue(visit.departureGallons, visit.tankGallons);
   const quantity = gallons =>
     stationQuantity(gallons, station, unit, Math.round) || '\u2014';
+  const known = had !== null && after !== null;
   const tank = node('div', 'fleet-fuel-visit__tank');
-  tank.setAttribute('role', 'img');
-  tank.setAttribute(
-    'aria-label',
-    `Tank: ${had ?? '\u2014'}% on arrival, ${after ?? '\u2014'}% after fueling`,
+  const levels = node('div', 'fleet-fuel-visit__levels');
+  const arrow = node('span', 'fleet-fuel-visit__arrow', '\u2192');
+  arrow.setAttribute('aria-hidden', 'true');
+  const added = stationQuantity(visit.gallons, station, unit);
+  levels.append(
+    node('span', 'fleet-fuel-visit__label', 'Tank'),
+    node(
+      'strong',
+      'fleet-fuel-visit__level',
+      known ? `${had}%` : quantity(visit.arrivalGallons),
+    ),
+    arrow,
+    node(
+      'strong',
+      'fleet-fuel-visit__level',
+      known ? `${after}%` : quantity(visit.departureGallons),
+    ),
+    node('span', 'fleet-fuel-visit__added', added ? `+ ${added}` : ''),
   );
-  const hadBar = node('span', 'fleet-fuel-visit__tank-had');
-  hadBar.setAttribute('style', `inline-size:${had ?? 0}%`);
-  const addBar = node('span', 'fleet-fuel-visit__tank-add');
-  addBar.setAttribute(
-    'style',
-    `inline-size:${Math.max(0, (after ?? had ?? 0) - (had ?? 0))}%`,
-  );
-  tank.append(hadBar, addBar);
+  tank.append(levels);
+  // Without the size of the tank there is no scale to draw the bar on, and
+  // the gallons are already the two figures above.
+  if (known) {
+    const bar = node('div', 'fleet-fuel-visit__bar');
+    bar.setAttribute('role', 'img');
+    bar.setAttribute(
+      'aria-label',
+      `Tank: ${had}% on arrival, ${after}% after fueling`,
+    );
+    const hadBar = node('span', 'fleet-fuel-visit__bar-had');
+    hadBar.setAttribute('style', `inline-size:${had}%`);
+    const addBar = node('span', 'fleet-fuel-visit__bar-add');
+    addBar.setAttribute('style', `inline-size:${Math.max(0, after - had)}%`);
+    bar.append(hadBar, addBar);
+    const ends = node('div', 'fleet-fuel-visit__ends');
+    ends.append(
+      node('span', '', `${quantity(visit.arrivalGallons)} on arrival`),
+      node('span', '', `${quantity(visit.departureGallons)} after`),
+    );
+    tank.append(bar, ends);
+  }
   row.append(tank);
 
   const facts = node('dl', 'fleet-fuel-visit__facts');
-  const fact = (label, value, note, total = false) => {
-    const line = node(
-      'div',
-      `fleet-fuel-visit__fact${total ? ' fleet-fuel-visit__fact--total' : ''}`,
-    );
+  const fact = (label, value, note) => {
+    const line = node('div', 'fleet-fuel-visit__fact');
     const figure = node('dd', 'fleet-fuel-visit__figure');
     figure.append(node('strong', 'fleet-fuel-visit__value', value));
     if (note) figure.append(node('span', 'fleet-fuel-visit__note', note));
     line.append(node('dt', 'fleet-fuel-visit__label', label), figure);
     facts.append(line);
   };
-  const level = (percent, gallons) =>
-    percent === null
-      ? [quantity(gallons), '']
-      : [`${percent}%`, `\u00b7 ${quantity(gallons)}`];
-  fact('On arrival', ...level(had, visit.arrivalGallons));
-  fact(
-    visit.full ? 'Fill up' : 'Buy',
-    stationQuantity(visit.gallons, station, unit) || '\u2014',
-  );
-  fact('After fueling', ...level(after, visit.departureGallons));
   // The purchase and the price it is made at are one fact. The price stood
   // as a sentence of its own next to "Your price" saying the same number.
   const price = plannedPrice(visit);
@@ -138,8 +155,8 @@ export function createFuelVisit(
     ? `\u00b7 at ${price.value.split(' ')[0]}${price.note ? `, ${price.note}` : ''}`
     : '';
   if (showCost && costLabel) {
-    fact('Purchase', costLabel, priceNote, true);
+    fact('Purchase', costLabel, priceNote);
   } else if (price) fact(price.label, price.value, price.note);
-  row.append(facts);
+  if (facts.children.length) row.append(facts);
   return row;
 }

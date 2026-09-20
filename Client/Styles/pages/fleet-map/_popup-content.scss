@@ -325,7 +325,6 @@
     }
   }
 
-
   &__price-unit {
     grid-column: 1 / -1;
     color: ui.theme(text-secondary);
@@ -431,41 +430,73 @@
     font-weight: 600;
     white-space: nowrap;
   }
+  // The tank is said, then drawn: the two levels and what the stop adds on
+  // one line, the bar under them, the gallons under its two ends. Bare, the
+  // bar stood under "Left" and read as the road to the pump.
   &__tank {
+    display: grid;
+    gap: ui.pg(micro);
+  }
+  &__levels {
     display: flex;
-    block-size: ui.pg(sm);
-    margin-block: ui.pg(micro) ui.pg(sm);
+    align-items: baseline;
+    gap: ui.pg(xs);
+    min-width: 0;
+  }
+  &__level {
+    color: ui.theme(text);
+    font-size: ui.fs(subtitle);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  &__arrow {
+    color: ui.theme(text-secondary);
+  }
+  &__added {
+    margin-inline-start: auto;
+    color: ui.theme(success-text);
+    font-size: ui.fs(small);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  &__bar {
+    display: flex;
+    block-size: ui.pg(xs);
     border-radius: ui.radius(pill);
     background: ui.theme(surface-soft);
     overflow: hidden;
   }
   // What is in the tank on arrival is solid; what the stop adds is the same
   // colour held back, so the two read as one tank filling.
-  &__tank-had {
+  &__bar-had {
     background: ui.theme(success-text);
   }
-  &__tank-add {
+  &__bar-add {
     background: ui.theme(success-text);
     opacity: 0.35;
   }
+  &__ends {
+    display: flex;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  // The purchase is what the fill comes to, set off under a hairline.
   &__facts {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
     column-gap: ui.pg(md);
     row-gap: ui.pg(micro);
-    margin: 0;
+    margin: ui.pg(sm) 0 0;
+    padding-top: ui.pg(xs);
+    border-top: 1px solid ui.theme(border-subtle);
   }
   &__fact {
     display: grid;
     grid-column: 1 / -1;
     grid-template-columns: subgrid;
     align-items: baseline;
-    // The purchase is what the fill comes to, set off under a hairline.
-    &--total {
-      margin-top: ui.pg(xs);
-      padding-top: ui.pg(xs);
-      border-top: 1px solid ui.theme(border-subtle);
-    }
   }
   &__figure {
     display: flex;

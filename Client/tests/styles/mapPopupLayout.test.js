@@ -74,7 +74,7 @@ test('a price stays one number', () => {
 test('the purchase is a fact of the visit, not a footer of the card', () => {
   assert.match(
     popups,
-    /\.fleet-fuel-visit__fact--total\s*\{[^}]*border-top: 1px solid/,
+    /\.fleet-fuel-visit__facts\s*\{[^}]*border-top: 1px solid/,
   );
   assert.doesNotMatch(popups, /fleet-station-popup__(visit-)?cost/);
 });
