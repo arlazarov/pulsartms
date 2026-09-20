@@ -251,6 +251,88 @@ public sealed class TruckFuelPlanReplacementTests
       Assert.Null(await store.ReadAsync(fixture.TruckId, true, default));
   }
 
+  // A load chained after the root carries its own assignment: an execution
+  // leg where it has already been accepted, nothing where it has not. Read
+  // as "nothing after the root", this refused to keep a plan over a truck's
+  // own accepted work - 11006 had three such loads and two thousand miles
+  // ahead of it, and no fuel plan could be saved for any of it.
+  [Fact]
+  public async Task AChainedLoadKeepsItsOwnExecutionAssignment()
+  {
+    await using var fixture = await TruckFuelPlanFixture.CreateAsync();
+    var store = new TruckFuelPlanStore(fixture.Db);
+    var accepted = Accepted(fixture.Snapshot(), Guid.NewGuid(), 2);
+
+    Assert.True(await store.SaveAsync(accepted, default));
+
+    var read = Assert.IsType<TruckFuelPlanSnapshot>(
+      await store.ReadAsync(fixture.TruckId, true, default)
+    );
+    Assert.Equal(
+      accepted.Stops[^1].ExecutionLegId,
+      read.Stops[^1].ExecutionLegId
+    );
+    Assert.Equal(2, read.Stops[^1].AssignmentRevision);
+  }
+
+  [Theory]
+  [InlineData("revision-without-leg")]
+  [InlineData("two-assignments-in-one-load")]
+  public async Task AStopCannotDisagreeWithItsOwnLoad(string failure)
+  {
+    await using var fixture = await TruckFuelPlanFixture.CreateAsync();
+    var store = new TruckFuelPlanStore(fixture.Db);
+    var snapshot = fixture.Snapshot();
+    var broken =
+      failure == "revision-without-leg"
+        ? Accepted(snapshot, null, 3)
+        : snapshot with
+        {
+          Stops =
+          [
+            .. snapshot.Stops,
+            new(
+              snapshot.Stops[^1].DispatchId,
+              snapshot.Stops[^1].Stop with
+              {
+                Id = Guid.NewGuid(),
+              },
+              snapshot.Stops[^1].EndMiles
+            )
+            {
+              ExecutionLegId = Guid.NewGuid(),
+              AssignmentRevision = 9,
+            },
+          ],
+        };
+
+    await Assert.ThrowsAsync<ArgumentException>(
+      () => store.SaveAsync(broken, default)
+    );
+  }
+
+  private static TruckFuelPlanSnapshot Accepted(
+    TruckFuelPlanSnapshot snapshot,
+    Guid? leg,
+    long revision
+  ) =>
+    snapshot with
+    {
+      Stops =
+      [
+        .. snapshot.Stops.Take(snapshot.Stops.Count - 1),
+        new(
+          snapshot.Stops[^1].DispatchId,
+          snapshot.Stops[^1].Stop,
+          snapshot.Stops[^1].EndMiles
+        )
+        {
+          ExecutionLegId = leg,
+          AssignmentRevision = revision,
+        },
+      ],
+    };
+
   [Theory]
   [InlineData("non-utc-revision")]
   [InlineData("default-revision")]

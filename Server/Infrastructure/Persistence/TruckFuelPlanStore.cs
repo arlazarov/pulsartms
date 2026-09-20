@@ -251,23 +251,34 @@ public sealed class TruckFuelPlanStore(AppDbContext db) : ITruckFuelPlanStore
     var owners = new List<Guid>();
     var intervals =
       new Dictionary<Guid, (Guid DispatchId, double Start, double End)>();
+    // A stop carries the assignment of the load it belongs to. The root
+    // carries this plan's; a load chained after it carries its own, which is
+    // an execution leg where that load has already been accepted and nothing
+    // where it has not - and every stop of one load says the same thing.
+    // Read as "nothing after the root", this refused to keep a plan over a
+    // truck's own accepted work, which is how the loads ahead of it are held
+    // now: 11006 stood at its delivery with three of them and two thousand
+    // miles to drive, and no fuel plan could be saved for any of it.
+    var assignments = new Dictionary<Guid, (Guid? Leg, long Revision)>
+    {
+      [value.RootDispatchId] = (
+        value.RootExecutionLegId,
+        value.AssignmentRevision
+      ),
+    };
     foreach (var item in stops)
     {
       if (
         item?.Stop is not { } stop
-        || item.ExecutionLegId
-          != (
-            item.DispatchId == value.RootDispatchId
-              ? value.RootExecutionLegId
-              : null
-          )
-        || item.AssignmentRevision
-          != (
-            item.DispatchId == value.RootDispatchId
-              ? value.AssignmentRevision
-              : 0
-          )
         || !dispatches.Contains(item.DispatchId)
+        || !assignments.TryAdd(
+          item.DispatchId,
+          (item.ExecutionLegId, item.AssignmentRevision)
+        )
+          && assignments[item.DispatchId]
+            != (item.ExecutionLegId, item.AssignmentRevision)
+        || !item.ExecutionLegId.HasValue && item.AssignmentRevision != 0
+        || item.AssignmentRevision < 0
         || stop.Id == Guid.Empty
         || !seen.Add(stop.Id)
         || stop.Point?.IsValid != true
@@ -329,10 +340,13 @@ public sealed class TruckFuelPlanStore(AppDbContext db) : ITruckFuelPlanStore
           || road.ProgressSignature is not null
           || road.Signature is not { Length: 64 } signature
           || !signature.All(Uri.IsHexDigit)
+          // A saved road belongs to a load, and carries that load's
+          // assignment - the root's for the root, its own for a load
+          // chained after it, none for a load not yet accepted.
           || road.Work.ExecutionLegId
             != (
-              road.Work.DispatchId == value.RootDispatchId
-                ? value.RootExecutionLegId
+              assignments.TryGetValue(road.Work.DispatchId, out var owner)
+                ? owner.Leg
                 : null
             )
           || !dispatches.Contains(road.Work.DispatchId)

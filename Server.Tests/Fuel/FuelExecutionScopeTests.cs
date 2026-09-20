@@ -190,32 +190,40 @@ public sealed class FuelExecutionScopeTests
 
   // 11006 stood at its delivery with three more loads accepted for it and
   // two thousand miles to drive, and had nothing to plan fuel for: the chain
-  // stops at the first load carrying an execution leg of its own. Chaining
-  // them was tried, and the route came out right; the plan could not be
-  // kept, because a saved fuel plan is scoped to one leg - the store and the
-  // schedule check both require every stop after the root to carry no leg.
-  // This pins the boundary as it stands, so that widening the scope is a
-  // decision taken deliberately and everywhere at once.
+  // stopped at the first load carrying an execution leg of its own. A leg is
+  // how a load is taken on now, not a boundary - the boundary is a transfer,
+  // told apart by the truck, by a status still open, and by a receipt still
+  // outstanding.
   [Fact]
-  public void AnAcceptedFutureLegEndsTheHorizonWhileTheScopeIsOneLeg()
+  public void AcceptedFutureLoadsOnTheSameTruckStayInTheHorizon()
   {
     var plan = Plan();
     var current = Delivery(Load(plan));
-    var accepted = Delivery(
-      new()
-      {
-        Id = Guid.NewGuid(),
-        TruckId = plan.TruckId,
-        ExecutionLegId = Guid.NewGuid(),
-        AssignmentRevision = 1,
-        ExecutionStatus = "planned",
-        Status = "assigned",
-      }
-    );
+    var accepted = Accepted(plan);
+    var later = Legacy(plan);
+    var chosen = FuelHorizon.SelectLoads(plan, [current, accepted, later]);
+    Assert.Equal(new[] { current, accepted, later }, chosen);
+  }
+
+  [Theory]
+  [InlineData("truck")]
+  [InlineData("completed")]
+  [InlineData("receipt")]
+  public void ATransferEndsTheHorizonWhereAcceptedWorkWouldNot(string kind)
+  {
+    var plan = Plan();
+    var current = Delivery(Load(plan));
+    var boundary = Accepted(plan);
+    if (kind == "truck")
+      boundary.TruckId = Guid.NewGuid();
+    if (kind == "completed")
+      boundary.ExecutionStatus = "completed";
+    if (kind == "receipt")
+      boundary.AwaitingReceipt = true;
     Assert.Same(
       current,
       Assert.Single(
-        FuelHorizon.SelectLoads(plan, [current, accepted, Legacy(plan)])
+        FuelHorizon.SelectLoads(plan, [current, boundary, Legacy(plan)])
       )
     );
   }
@@ -363,6 +371,19 @@ public sealed class FuelExecutionScopeTests
     ];
     return load;
   }
+
+  private static DispatchResponse Accepted(RoutePlan plan) =>
+    Delivery(
+      new()
+      {
+        Id = Guid.NewGuid(),
+        TruckId = plan.TruckId,
+        ExecutionLegId = Guid.NewGuid(),
+        AssignmentRevision = 1,
+        ExecutionStatus = "planned",
+        Status = "assigned",
+      }
+    );
 
   private static DispatchResponse Legacy(RoutePlan plan) =>
     Delivery(

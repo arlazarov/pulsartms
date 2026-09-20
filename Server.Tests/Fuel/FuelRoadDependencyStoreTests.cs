@@ -50,6 +50,43 @@ public sealed class FuelRoadDependencyStoreTests
     Assert.Equal(f.FutureId, Assert.Single(remaining!).Work.DispatchId);
   }
 
+  // A saved road belongs to a load and carries that load's assignment. Read
+  // as "the root's leg, or none", this refused every road of a load already
+  // accepted into execution - which is how the work ahead of a truck is held
+  // now, so no plan covering it could be kept at all.
+  [Fact]
+  public async Task ARoadOfAnAcceptedChainedLoadKeepsItsOwnLeg()
+  {
+    await using var f = await TruckFuelPlanFixture.CreateAsync();
+    var store = new TruckFuelPlanStore(f.Db);
+    var leg = Guid.NewGuid();
+    var original = f.Snapshot();
+    var snapshot = original with
+    {
+      Stops =
+      [
+        original.Stops[0],
+        new(f.FutureId, original.Stops[^1].Stop, original.Stops[^1].EndMiles)
+        {
+          ExecutionLegId = leg,
+          AssignmentRevision = 2,
+        },
+      ],
+      RoadDependencies = FuelRoadDependencies.Capture(
+        [
+          new(new(f.CurrentId, null), SavedRoadKind.Plan, new string('A', 64)),
+          new(new(f.FutureId, leg), SavedRoadKind.Base, new string('B', 64)),
+        ]
+      ),
+    };
+
+    Assert.True(await store.SaveAsync(snapshot, default));
+
+    var read = await store.ReadAsync(f.TruckId, false, default);
+    Assert.Equal(leg, read!.Stops[^1].ExecutionLegId);
+    Assert.Equal(leg, read.RoadDependencies!.Roads[^1].Work.ExecutionLegId);
+  }
+
   [Theory]
   [InlineData("empty")]
   [InlineData("unknown-kind")]

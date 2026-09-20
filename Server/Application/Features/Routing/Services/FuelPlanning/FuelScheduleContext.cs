@@ -128,6 +128,7 @@ public sealed partial class FuelScheduleContext
     if (itinerary[0].DispatchId != plan.DispatchId)
       return false;
     var seen = new HashSet<Guid>();
+    var assignments = new Dictionary<Guid, (Guid? Leg, long Revision)>();
     Guid? previous = null;
     foreach (var stop in itinerary)
     {
@@ -137,14 +138,30 @@ public sealed partial class FuelScheduleContext
           return false;
         previous = stop.DispatchId;
       }
-      if (
-        (
-          stop.DispatchId == plan.DispatchId
-            ? stop.ExecutionLegId != plan.ExecutionLegId
-              || stop.AssignmentRevision != plan.AssignmentRevision
-            : stop.ExecutionLegId.HasValue || stop.AssignmentRevision != 0
+      // A stop carries the assignment of the load it belongs to: the one
+      // being planned carries this plan's, and every load chained after it
+      // carries its own - which is a leg of its own where that load has
+      // already been accepted into execution, and nothing where it has not.
+      // Read as "nothing after the first", this refused a truck's own
+      // accepted work, which is now how the loads ahead of it are held.
+      if (stop.DispatchId == plan.DispatchId)
+      {
+        if (
+          stop.ExecutionLegId != plan.ExecutionLegId
+          || stop.AssignmentRevision != plan.AssignmentRevision
         )
+          return false;
+      }
+      else if (
+        !assignments.TryAdd(
+          stop.DispatchId,
+          (stop.ExecutionLegId, stop.AssignmentRevision)
+        )
+        && assignments[stop.DispatchId]
+          != (stop.ExecutionLegId, stop.AssignmentRevision)
       )
+        return false;
+      if (!stop.ExecutionLegId.HasValue && stop.AssignmentRevision != 0)
         return false;
     }
     return true;

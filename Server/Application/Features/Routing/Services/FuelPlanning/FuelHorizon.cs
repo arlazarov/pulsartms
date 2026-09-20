@@ -420,15 +420,21 @@ public sealed class FuelHorizon(
             && next.TruckId == plan.TruckId
           )
             continue;
-          // A load with an execution leg of its own ends the horizon, even
-          // when it is this truck's next work. Chaining it was tried: the
-          // route came out right - 2,528 miles over four dispatches - and
-          // the plan could not be kept. A saved fuel plan is scoped to one
-          // leg, and both the store and the schedule check say so in the
-          // same words: every stop after the root must carry no leg and
-          // revision zero. Widening that scope is a piece of work in itself,
-          // not a line here.
-          break;
+          // Work already accepted into execution ahead of this load is
+          // still this truck's work, and the tank does not know the
+          // difference: a leg of its own is how a load is taken on now, not
+          // a boundary. Stopping at the first of them left 11006 - arrived,
+          // with three accepted loads and two thousand miles ahead of it -
+          // with nothing to plan fuel for. What does end the horizon is a
+          // leg that is not this truck's, one no longer open, or one still
+          // waiting to be received: that is a transfer, and fuel beyond it
+          // is not ours to plan.
+          if (
+            next.TruckId != plan.TruckId
+            || next.ExecutionStatus is not "planned"
+            || next.AwaitingReceipt
+          )
+            break;
         }
         if (
           next.TruckId != plan.TruckId
