@@ -18,25 +18,31 @@ export function stopMarkerLabel(_job, number) {
 // 1. A badge stands on its anchor while it touches nothing.
 // 2. Two that touch part along the line between them, equally, just far
 //    enough to clear. North of stays north of.
-// 3. Stops at one place have no line between them, so they keep the
-//    formation they always had: a pair, a triangle, rows of two, in stop
-//    order. One place means one place on the screen - the same address, or
-//    miles apart at a zoom where miles are a pixel.
-// 4. What has run together with a standing truck hangs directly under it.
-//    Not wherever is free - always under: the unit number above, the stops
+// 3. Stops at the very same address have no line between them, so they keep
+//    the formation they always had: a pair, a triangle, rows of two.
+// 4. The stop a truck is standing on stands directly under the truck. Not
+//    wherever is free - always under: the unit number above, the stop
 //    below. It stops being layout and becomes a sign for "the truck is at
-//    these stops". The truck and its number are fixed, and other badges
-//    part from them by rule 2.
+//    this stop". The truck and its number are fixed, and other badges part
+//    from them by rule 2.
+//
+// The picture is the same constellation at every zoom, only tighter. Which
+// way two stops part is read from where they are on the ground, not from
+// the screen, so "7" is north-east of "3" however far out the camera is;
+// and which stop a truck is standing on is a distance on the ground too. A
+// grid by stop number was tried for the far zooms, and the badges changed
+// places as the camera crossed from one way of laying out to the other.
 //
 // Only a standing truck counts. One driving past a stop is over it for a
 // moment and gone, and laying badges out for every frame of that would
 // rebuild the map for nothing anyone could read.
 const passes = 48;
 const most = 80;
-// Closer than this on screen, two stops are one place to the eye: there is
-// no line between them worth parting along, only noise, and parting along
-// noise shot a badge across two states.
-const onePlace = 10;
+// Where things are on the ground is read at one fixed zoom, where a pixel is
+// about thirty metres: directions and the question "is the truck at this
+// stop" must not change with the camera.
+const groundZoom = 12;
+const atTheStop = 20;
 
 export function layoutStopMarkers(rows, zoom, trucks = []) {
   const project = markerProjection(zoom);
@@ -51,36 +57,34 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
   const byNumber = (a, b) =>
     (parseInt(a.row.number, 10) || 0) - (parseInt(b.row.number, 10) || 0);
 
-  const clumps = [];
+  const ground = markerProjection(groundZoom);
+  const places = new Map();
   const items = rows.map(row => {
     row.markerLabel = stopMarkerLabel(row.job, row.number);
     row.markerOffsetX = 0;
     row.markerOffsetY = 0 - metrics.stopBadgeOffset;
     const anchor = project(row.position);
-    const item = { row, anchor, at: [...anchor], held: false };
-    // Measured from the first of a clump, not from any of it, or a road of
-    // stops chains into one clump the length of the road.
-    const clump = clumps.find(
-      members =>
-        Math.hypot(
-          members[0].anchor[0] - anchor[0],
-          members[0].anchor[1] - anchor[1],
-        ) < onePlace,
-    );
-    if (clump) clump.push(item);
-    else clumps.push([item]);
+    const item = {
+      row,
+      anchor,
+      at: [...anchor],
+      ground: ground(row.position),
+      held: false,
+    };
+    const key = row.position.map(value => value.toFixed(3)).join(',');
+    if (!places.has(key)) places.set(key, []);
+    places.get(key).push(item);
     return item;
   });
   const parked = trucks
     .filter(truck => truck.position && !(truck.speed > 0))
-    .map(truck => project(truck.position));
-  const middle = members => [
-    members.reduce((sum, item) => sum + item.anchor[0], 0) / members.length,
-    members.reduce((sum, item) => sum + item.anchor[1], 0) / members.length,
-  ];
-  // The formation stops at one place have always had - a pair, a triangle,
-  // rows of two - in stop order. Rising from its place, or hanging under a
-  // truck.
+    .map(truck => ({
+      at: project(truck.position),
+      ground: ground(truck.position),
+    }));
+  // The formation stops at one address have always had - a pair, a
+  // triangle, rows of two - in stop order. Rising from its place, or hanging
+  // under a truck.
   const form = (members, [x, y], hang) => {
     members.sort(byNumber);
     members.forEach((item, index) => {
@@ -99,22 +103,21 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
     });
   };
 
-  // Rule 4: everything that has run together with a standing truck hangs
-  // under it as one formation. Rule 3 for the clumps left over.
-  const free = [];
+  // Rule 4 for the stops a truck is standing on; rule 3 for the rest.
   const hung = new Map(parked.map(truck => [truck, []]));
-  for (const clump of clumps) {
-    const [x, y] = middle(clump);
+  for (const group of places.values()) {
     const truck = parked.find(
-      at => Math.hypot(at[0] - x, at[1] - y) < clearOfTruck,
+      standing =>
+        Math.hypot(
+          standing.ground[0] - group[0].ground[0],
+          standing.ground[1] - group[0].ground[1],
+        ) < atTheStop,
     );
-    if (truck) hung.get(truck).push(...clump);
-    else free.push(clump);
+    if (truck) hung.get(truck).push(...group);
+    else if (group.length > 1) form(group, group[0].anchor, false);
   }
   for (const [truck, members] of hung)
-    if (members.length) form(members, truck, true);
-  for (const clump of free)
-    if (clump.length > 1) form(clump, middle(clump), false);
+    if (members.length) form(members, truck.at, true);
 
   // Rule 2, against each other and against what does not move. Every push
   // of a pass is added up before any is made, and half of it is made: a
@@ -132,8 +135,18 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
             dy = b.at[1] - a.at[1];
           const gap = Math.hypot(dx, dy);
           if (gap >= apart - 0.01) continue;
-          let length = gap;
-          if (gap < 0.01) {
+          // Which way they part is where they are on the ground, so it is
+          // the same way at every zoom. If other pushes have carried one
+          // past the other, this is also what carries it back: parting the
+          // way they happened to lie kept them in the wrong order for good.
+          const gx = b.ground[0] - a.ground[0],
+            gy = b.ground[1] - a.ground[1];
+          if (Math.hypot(gx, gy) > 0.5) {
+            dx = gx;
+            dy = gy;
+          }
+          let length = Math.hypot(dx, dy);
+          if (length < 0.01) {
             // No line between them to part along; any fixed one will do.
             const angle = (i * 7 + j) * 2.399963;
             dx = Math.cos(angle);
@@ -153,25 +166,40 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
           }
           moved = true;
         }
+      // A standing truck parts badges from itself the same way, as one more
+      // push among the others. Set on its clearance outright each pass, it
+      // fought the pushes between badges, and the badge nearest the truck on
+      // the ground did not end up nearest it on the screen.
+      items.forEach((item, index) => {
+        if (item.held) return;
+        for (const { at: truck, ground: truckGround } of parked) {
+          const dx = item.at[0] - truck[0],
+            dy = item.at[1] - truck[1];
+          const distance = Math.hypot(dx, dy);
+          if (distance >= clearOfTruck - 0.01) continue;
+          // Away from the truck the way the stop lies from it on the
+          // ground, so a stop east of the truck is east of it at any zoom.
+          const gx = item.ground[0] - truckGround[0],
+            gy = item.ground[1] - truckGround[1];
+          const far = Math.hypot(gx, gy);
+          const [ux, uy] =
+            far > 0.5
+              ? [gx / far, gy / far]
+              : distance < 0.01
+                ? [0, 1]
+                : [dx / distance, dy / distance];
+          pushes[index][0] += ux * (clearOfTruck - distance) * 2;
+          pushes[index][1] += uy * (clearOfTruck - distance) * 2;
+          moved = true;
+        }
+      });
       items.forEach((item, index) => {
         item.at[0] += pushes[index][0] * 0.5;
         item.at[1] += pushes[index][1] * 0.5;
       });
       for (const item of items) {
         if (item.held) continue;
-        for (const truck of parked) {
-          const dx = item.at[0] - truck[0],
-            dy = item.at[1] - truck[1];
-          const distance = Math.hypot(dx, dy);
-          if (distance < clearOfTruck - 0.01) {
-            const [ux, uy] =
-              distance < 0.01 ? [0, 1] : [dx / distance, dy / distance];
-            item.at = [
-              truck[0] + ux * clearOfTruck,
-              truck[1] + uy * clearOfTruck,
-            ];
-            moved = true;
-          }
+        for (const { at: truck } of parked) {
           // The unit number, measured as the pill it is: how far the badge
           // is from the nearest point of it, not from a box drawn round it.
           // A badge that only clips a corner moves a few pixels, not the
