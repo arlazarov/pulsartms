@@ -86,7 +86,7 @@ export function createStationLayer(
       entry.color,
       recommended.has(id),
       selected,
-      fuelVisitLabel(quantities.get(id), entry.item.station),
+      fuelVisitLabel(quantities.get(id)),
       editing?.stationId === id,
       entry.price,
     );
@@ -357,9 +357,7 @@ export function createStationLayer(
             recommended.delete(id);
           }
           const station = entry?.item?.station;
-          if (
-            fuelVisitLabel(quantity, station) !== fuelVisitLabel(next, station)
-          ) {
+          if (fuelVisitLabel(quantity) !== fuelVisitLabel(next)) {
             if (entry) updatePoint(id, entry);
             pointLayer.redraw();
           }

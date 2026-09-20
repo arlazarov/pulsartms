@@ -175,14 +175,15 @@ test('recommendations keep rings on the scene and distances only in the selected
   await layer.setVisible(true);
   assert.equal(recommendations.length, 0);
   assert.equal(points.get('b').label, undefined);
-  // A planned stop carries its place in the order and what is bought there;
-  // the number alone never said why the stop exists.
+  // A planned stop carries its place in the order, and only that: the
+  // gallons rode along on the badge for a while and made it a sentence
+  // across the map. The card says them, where there is room to.
   await layer.setVisible(false);
   await layer.setRecommended([
     { id: 'b', numbers: '2', gallons: 30, routeMile: 100, miles: 10 },
   ]);
   await layer.setVisible(true);
-  assert.equal(points.get('b').label, '2 · 30 gal');
+  assert.equal(points.get('b').label, '2');
   await layer.setVisible(false);
   await layer.setRecommended([
     { id: 'b', gallons: 30, routeMile: 100, miles: 10 },

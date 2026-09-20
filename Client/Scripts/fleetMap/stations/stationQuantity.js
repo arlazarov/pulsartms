@@ -24,17 +24,14 @@ export function stationQuantity(
     : `${rounding(gallons)} US gal`;
 }
 
-// What the badge over a planned stop says. The stop number alone told the
-// dispatcher where in the order it falls but not what it is for; how much
-// is bought there is the reason the stop exists.
-export function fuelVisitLabel(fuel, station) {
+// What the badge over a planned stop says: which stop of the fuel plan it
+// is, and nothing else. How much is bought there rode along for a while and
+// made the badge a sentence across the map; the card says it, in a place
+// where there is room to say it properly.
+export function fuelVisitLabel(fuel) {
   const numbers = typeof fuel?.numbers === 'string' ? fuel.numbers.trim() : '';
   // Nothing planned here carries no badge, exactly as before.
-  if (!numbers) return undefined;
-  const quantity = stationQuantity(fuel.gallons, station, fuel.unit, Math.round)
-    .replace(' US gal', ' gal')
-    .trim();
-  return quantity ? `${numbers} · ${quantity}` : numbers;
+  return numbers || undefined;
 }
 
 export function stationPurchase(fuel, station) {
