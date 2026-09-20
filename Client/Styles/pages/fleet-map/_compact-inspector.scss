@@ -166,6 +166,7 @@
     }
     &::after {
       content: '\25be';
+      font-size: ui.fs(lead);
       line-height: 1;
       transition: transform 120ms ease;
     }
@@ -177,6 +178,10 @@
         transition: none;
       }
     }
+  }
+  .fleet-map-mobile-summary__remaining > .fleet-map-route-info__copy-number {
+    color: ui.theme(text);
+    font-weight: 600;
   }
   .fleet-map-mobile-summary__order,
   .fleet-map-mobile-summary__distance {
@@ -267,11 +272,26 @@
         }
       }
     }
+    // "mph" and the degree sign say what they measure. The words stay for
+    // a screen reader and leave the line, which is what lets the address
+    // keep its place at the end of it.
+    &__reading--speed > small,
+    &__outside > small {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
     &__location {
       display: flex;
       align-items: baseline;
       gap: ui.pg(xs);
       min-width: 0;
+      // The page-wide rule gives the address a full row of its own; here it
+      // ends the vehicle's line, and drops below only when it cannot fit.
+      flex: 0 1 auto;
       margin-inline-start: auto;
       padding: 0;
       border: 0;
@@ -291,7 +311,7 @@
   // make; right is the load, as rows of label and value on one shared
   // label column so the eye runs down the values.
   .fleet-map-route-info {
-    --route-fact-label: 8rem;
+    --route-fact-label: 7rem;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     // The last row takes the slack when the stop is taller than the facts,
@@ -502,9 +522,12 @@
     }
     &__appointment {
       display: flex;
+      // The page-wide rule stacks the label over the window; here there is
+      // room for both on one line, and the stop stays four lines tall.
+      flex-direction: row;
       flex-wrap: wrap;
       align-items: baseline;
-      gap: ui.pg(xs);
+      gap: 0 ui.pg(xs);
       > strong {
         overflow-wrap: anywhere;
       }

@@ -215,6 +215,8 @@
                             <Client.Shared.Dispatch.LoadNumber.LoadNumber
                                 Value="runningLoad.LoadNumber" />
                         </button>
+                        <span class="fleet-map-mobile-summary__label"
+                              aria-hidden="true">·</span>
                         <span class="fleet-map-mobile-summary__order">
                             <span class="fleet-map-mobile-summary__label">Order</span>
                             <button type="button"
@@ -420,6 +422,7 @@
             <div class="fleet-map-truck-info__telemetry"
                  aria-label="Current truck readings">
                 <span class="fleet-map-truck-info__reading
+                             fleet-map-truck-info__reading--speed
                              @TelemetryTone.Speed(truck.Speed)">
                     <small><ActionIcon Kind="speed" /><span>Speed</span></small>
                     <strong>@truck.Speed.ToString("N0") <small>mph</small>

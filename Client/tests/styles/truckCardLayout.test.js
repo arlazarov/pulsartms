@@ -128,6 +128,27 @@ test('the vehicle is one line: every reading the same shape, place at the end', 
   assert.doesNotMatch(card, /__reading\s*\{[^}]*display: none/);
 });
 
+// Seen on the owner's own screen at full card width: "Delivery" had dropped
+// under its label, the address missed the vehicle line by a few pixels, and
+// the load number was the faintest thing on a line that is about the load.
+test('the lines that should be one line are one line', () => {
+  assert.match(card, /__appointment\s*\{[^}]*flex-direction: row;/);
+  // The page-wide rule gives the address a row of its own; the card must
+  // take that back or the address never joins the vehicle line.
+  assert.match(card, /__location\s*\{[^}]*flex: 0 1 auto;/);
+  // "mph" and the degree sign name themselves; their words leave the line
+  // but stay in the document for a screen reader.
+  assert.match(
+    card,
+    /__reading--speed > small,[^{}]*__outside > small\s*\{[^}]*clip-path: inset\(50%\);/,
+  );
+  assert.match(markup, /fleet-map-truck-info__reading--speed/);
+  assert.match(
+    card,
+    /__remaining\s*>\s*\.fleet-map-route-info__copy-number\s*\{[^}]*font-weight: 600;/,
+  );
+});
+
 test('sections are separated by hairlines and actions read as buttons', () => {
   assert.match(card, /__actions\s*\{[^}]*border-top: 1px solid/);
   assert.match(card, /\.fleet-map-truck-info\s*\{[^}]*border-top: 1px solid/);
