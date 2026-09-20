@@ -73,3 +73,30 @@ test('a stop already visited is drawn outlined, like its badge in the card', () 
     /r="15.5"/,
   );
 });
+
+// Two marks on one point meant one had to be moved off the place it names,
+// so neither moves any more: a truck standing on a stop is drawn as a ring
+// around its badge, and a truck it has not reached yet is a disc behind a
+// badge wearing a wider white rim. The gap between them stays the distance.
+test('a truck at a stop is its ring, and a truck near it stands behind', () => {
+  const blue = [40, 76, 220, 255];
+  const { fill, border } = stopAppearance('Delivery', blue);
+  const at = decodeURIComponent(
+    stopMarkerIcon(fill, border, undefined, '#16a34a').url,
+  );
+  assert.match(at, /viewBox="0 0 46 46"/);
+  assert.match(at, /r="21.75" fill="#16a34a"/, 'the ring is the truck');
+  // Inside a ring the badge keeps a thinner white edge: at full width the
+  // ring was too narrow to see, and dropped altogether a stop on a teal
+  // route inside a green ring was one blot.
+  assert.match(at, /r="15.5"[^/]*stroke-width="1.5"/);
+  const near = decodeURIComponent(
+    stopMarkerIcon(fill, border, undefined, null, true).url,
+  );
+  assert.match(near, /viewBox="0 0 38 38"/);
+  assert.match(near, /r="18" fill="rgb\(255,255,255\)"/, 'the wider rim');
+  assert.match(near, /r="15.5"[^/]*stroke-width="2.5"/);
+  const plain = decodeURIComponent(stopMarkerIcon(fill, border).url);
+  assert.match(plain, /viewBox="0 0 34 34"/);
+  assert.doesNotMatch(plain, /fill="rgb\(255,255,255\)"/);
+});

@@ -30,6 +30,7 @@ export function snapshotStops(
     'markerOffsetX',
     'markerOffsetY',
     'standing',
+    'stacked',
   ];
   for (const stop of stops) {
     if (stop.visible === false) continue;

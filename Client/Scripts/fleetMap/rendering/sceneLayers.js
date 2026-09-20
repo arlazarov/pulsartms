@@ -342,6 +342,7 @@ export function createSceneLayers({
               'markerOffsetX',
               'markerOffsetY',
               'standing',
+              'stacked',
             ].every(field => cached.stop[field] === stop[field])
           )
             return cached.layers;
@@ -352,6 +353,7 @@ export function createSceneLayers({
             appearance.border,
             stop.done ? metrics.stopBadgeDoneRadius : undefined,
             stop.standing,
+            stop.stacked,
           );
           const layers = [
             ...(stop.markerOffsetX || stop.markerOffsetY
@@ -385,7 +387,9 @@ export function createSceneLayers({
               getIcon: () => 'circle',
               getSize: stop.standing
                 ? metrics.stopBadgeStandingDiameter
-                : metrics.stopBadgeDiameter,
+                : stop.stacked
+                  ? metrics.stopBadgeStackedDiameter
+                  : metrics.stopBadgeDiameter,
               sizeUnits: 'pixels',
               getPixelOffset: s => [s.markerOffsetX, s.markerOffsetY],
               billboard: true,

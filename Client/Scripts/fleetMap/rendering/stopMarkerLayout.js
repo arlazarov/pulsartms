@@ -199,6 +199,18 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
       if (!moved) break;
     }
 
+  // A badge that ends up drawn over a truck says so, and is drawn with the
+  // rim that makes the two read as two. Only a standing truck is asked
+  // about: one driving past covers a badge for a frame and is gone.
+  for (const item of items) {
+    if (item.row.standing) continue;
+    item.row.stacked = parked.some(
+      ({ at: truck }) =>
+        Math.hypot(item.at[0] - truck[0], item.at[1] - truck[1]) <
+        radius + metrics.truckSize / 2,
+    );
+  }
+
   for (const { row, anchor, at } of items) {
     // Rounded so that the same stops give the same numbers and an unchanged
     // badge is recognised as unchanged; "|| 0" keeps a minus off zero.

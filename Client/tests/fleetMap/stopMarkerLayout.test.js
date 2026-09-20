@@ -259,6 +259,11 @@ test('a badge never gives way to a truck, so the gap stays the distance', () => 
     Math.hypot(drawn[0] - sx, drawn[1] - sy) < 0.05,
     'and the badge is still drawn on its own point',
   );
+  // Drawn over the truck, it says so: the wider white rim is what makes the
+  // disc behind it read as a truck and not a smudge.
+  assert.equal(row.stacked, true);
+  const apart = snapshotStops(stops, [], [], 13, [truck]).stopData[0];
+  assert.equal(apart.stacked, false, 'zoomed in, they no longer touch');
 });
 
 // A truck driving past a stop is over it for a moment and gone.

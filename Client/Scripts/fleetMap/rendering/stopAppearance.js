@@ -30,10 +30,11 @@ export function stopMarkerIcon(
   border = [255, 255, 255, 255],
   radius = 15.5,
   ring = null,
+  stacked = false,
 ) {
   const paint = value =>
     typeof value === 'string' ? value : `rgb(${value.slice(0, 3).join(',')})`;
-  const span = ring ? 46 : 34;
+  const span = ring ? 46 : stacked ? 38 : 34;
   const half = span / 2;
   // Inside a ring a filled badge keeps a thinner white edge: at full width
   // it left a band of the truck's colour too narrow to see, and dropped
@@ -44,7 +45,14 @@ export function stopMarkerIcon(
   const around = ring
     ? `<circle cx="${half}" cy="${half}" r="${half - 1.25}" fill="${paint(ring)}" stroke="rgb(255,255,255)" stroke-width="2.5"/>`
     : '';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${span * 4}" height="${span * 4}" viewBox="0 0 ${span} ${span}">${around}${badge}</svg>`;
+  // A badge drawn over a truck it has not reached yet stands on a wider
+  // white rim, so the disc behind it reads as a truck and not a smudge.
+  // Neither mark may be moved to make room: the gap between them is how far
+  // the truck still has to go.
+  const halo = stacked
+    ? `<circle cx="${half}" cy="${half}" r="${radius + 2.5}" fill="rgb(255,255,255)"/>`
+    : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${span * 4}" height="${span * 4}" viewBox="0 0 ${span} ${span}">${around}${halo}${badge}</svg>`;
   return {
     url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
     width: span * 4,

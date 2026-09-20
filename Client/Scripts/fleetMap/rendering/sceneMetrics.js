@@ -12,6 +12,9 @@ export const sceneMetrics = Object.freeze({
   stopBadgeDiameter: 34,
   // The same badge with the truck's ring around it.
   stopBadgeStandingDiameter: 46,
+  // And with a wider white rim, for a badge drawn over a truck it is near
+  // but not at.
+  stopBadgeStackedDiameter: 38,
   // Where the filled badge's edge falls, so an outlined one does not read as
   // the larger of the two.
   stopBadgeDoneRadius: 13,
