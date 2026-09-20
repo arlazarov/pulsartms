@@ -147,16 +147,18 @@ export function createFuelVisit(
     line.append(node('dt', 'fleet-fuel-visit__label', label), figure);
     facts.append(line);
   };
-  // The purchase and the price it is made at are one fact. The price stood
-  // as a sentence of its own next to "Your price" saying the same number.
-  const price = plannedPrice(visit);
+  // What the fill comes to, and nothing after it: the price it is made at
+  // is the figure the other half of the card is built around, and the day
+  // it was quoted on is the day the whole card is showing. Said here as
+  // well, it read as a second, smaller total.
+  //
+  // Where the total cannot be worked out, the price takes its place - a
+  // fact that is otherwise missing from a visit on a card that is not the
+  // planned one.
   const costLabel = fuelPurchaseCostLabel(visit.purchaseCostUsd);
-  const priceNote = price
-    ? `\u00b7 at ${price.value.split(' ')[0]}${price.note ? `, ${price.note}` : ''}`
-    : '';
-  if (showCost && costLabel) {
-    fact('Purchase', costLabel, priceNote);
-  } else if (price) fact(price.label, price.value, price.note);
+  const price = showCost && costLabel ? null : plannedPrice(visit);
+  if (price) fact(price.label, price.value, price.note);
+  else if (showCost && costLabel) fact('Purchase', costLabel);
   if (facts.children.length) row.append(facts);
   return row;
 }

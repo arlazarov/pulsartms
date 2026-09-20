@@ -407,12 +407,18 @@ test('planned purchase cards show server USD totals even at Canadian stations an
   // said in the currency the server totals in, by name: at a Canadian
   // station the prices around it are CAD a litre, and a bare "$" would be
   // read as those.
-  const purchase = visit =>
+  const purchaseFigure = visit =>
     visit.children
       .flatMap(part => part.children ?? [])
-      .find(line => line.children?.[0]?.textContent === 'Purchase')?.children[1]
-      .children[0].textContent;
+      .find(line => line.children?.[0]?.textContent === 'Purchase')
+      ?.children[1];
+  const purchase = visit => purchaseFigure(visit)?.children[0].textContent;
   assert.equal(purchase(visits.children[0]), '\u2248 $287.64 USD');
+  // The total, and nothing after it. The price the fill is made at is the
+  // figure the other half of the card is built around, and the day it was
+  // quoted on is the day the card is showing; repeated here in small type
+  // it read as a second, smaller total.
+  assert.equal(purchaseFigure(visits.children[0]).children.length, 1);
   // Without permission to edit there is nothing under the card to press,
   // and the purchase does not depend on that row any more.
   assert.equal(actions.hidden, true);
