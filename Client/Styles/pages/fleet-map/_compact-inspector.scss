@@ -305,15 +305,29 @@
       --fuel-reading-row-gap: 0;
       --fuel-reading-value-size: #{ui.fs(body)};
     }
-    // The icons repeated what the words already say on this line.
-    &__telemetry svg {
+    // Speed, fuel and engine name themselves in words, so their icons only
+    // repeat. The sky does not: 25 °C is a different day in rain than in
+    // sun, and the icon is the only thing on this line that says which.
+    &__reading svg {
       display: none;
+    }
+    &__outside > small > svg {
+      // Sized to the line, not to the panel it came from: the telemetry
+      // icon is 28px and made this row half again as tall.
+      inline-size: ui.fs(heading);
+      block-size: ui.fs(heading);
+      align-self: center;
     }
     &__reading,
     &__outside {
       display: flex;
       align-items: baseline;
       gap: ui.pg(xs);
+      > small {
+        display: inline-flex;
+        align-items: baseline;
+        gap: ui.pg(xs);
+      }
       min-width: 0;
       margin: 0;
       padding: 0;
@@ -336,9 +350,10 @@
     }
     // "mph" and the degree sign say what they measure. The words stay for
     // a screen reader and leave the line, which is what lets the address
-    // keep its place at the end of it.
+    // keep its place at the end of it. The weather's icon stays: it is the
+    // reading, not a label for one.
     &__reading--speed > small,
-    &__outside > small {
+    &__outside > small > span {
       position: absolute;
       inline-size: 1px;
       block-size: 1px;

@@ -175,8 +175,16 @@ test('the vehicle is one line: every reading the same shape, place at the end', 
     /__reading,[^{}]*__outside\s*\{[^}]*display: flex;[^}]*align-items: baseline;[^}]*border: 0;/,
   );
   assert.match(card, /__location\s*\{[^}]*margin-inline-start: auto;/);
-  // Only the icons the words repeat are hidden; a reading never is.
-  assert.match(card, /__telemetry svg\s*\{\s*display: none;/);
+  // Speed, fuel and engine say themselves in words, so their icons only
+  // repeat. The sky does not: the same degrees are a different day in rain
+  // than in sun, so the weather keeps its icon - sun, moon, cloud, rain,
+  // snow or thunder - and only the word "Temp" leaves the line.
+  assert.match(card, /__reading svg\s*\{\s*display: none;/);
+  assert.match(
+    card,
+    /__outside > small > svg\s*\{[^}]*inline-size: var\(--type-heading\);/,
+  );
+  assert.doesNotMatch(card, /__outside > small > svg\s*\{[^}]*display: none/);
   assert.doesNotMatch(card, /__reading\s*\{[^}]*display: none/);
 });
 
@@ -192,7 +200,7 @@ test('the lines that should be one line are one line', () => {
   // but stay in the document for a screen reader.
   assert.match(
     card,
-    /__reading--speed > small,[^{}]*__outside > small\s*\{[^}]*clip-path: inset\(50%\);/,
+    /__reading--speed > small,[^{}]*__outside > small > span\s*\{[^}]*clip-path: inset\(50%\);/,
   );
   assert.match(markup, /fleet-map-truck-info__reading--speed/);
   assert.match(
