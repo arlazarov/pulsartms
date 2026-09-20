@@ -29,6 +29,7 @@ export function snapshotStops(
     'markerLabel',
     'markerOffsetX',
     'markerOffsetY',
+    'standing',
   ];
   for (const stop of stops) {
     if (stop.visible === false) continue;

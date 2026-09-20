@@ -184,20 +184,10 @@ test('scene reuses static layers across motion, invalidates only changed stops a
       'the group badge must not dismiss the inspector',
     );
   }
-  // Far enough out a badge covers a county, so the stops are not drawn at
-  // all and the road says where the truck is going. Their layers are kept
-  // for the stops still being on the route, so coming back is not a rebuild.
-  assert.equal(layers()['route-stop-1-points'], undefined);
-  assert.equal(layers()['route-stop-distances'], undefined);
-  assert.ok(
-    Object.keys(layers()).some(id => !/^route-stop/.test(id)),
-    'the road is still drawn',
-  );
   neighbor.setVisible(false);
   map.getZoom = () => 12;
   listeners.get('zoom_changed')();
   flush();
-  assert.ok(layers()['route-stop-1-points'], 'and come back with the ground');
   assert.equal(initial['fuel-points'].props.getRadius, 8);
   assert.equal(initial['route-stop-1-points'].props.getSize, 34);
   assert.equal(initial['route-stop-1-numbers'].props.getSize, 15);
@@ -464,10 +454,10 @@ test('scene reuses static layers across motion, invalidates only changed stops a
     pairedLayers,
     'camera movement reuses marker pairs',
   );
-  // A truck standing on a stop steps aside so the badge can keep the point
-  // it marks, so trucks arriving and leaving are part of what the stops are
-  // laid out against. Without that a truck that had since driven off left
-  // its step behind, until something else happened to move the stops.
+  // A truck standing on a stop is drawn as a ring around that stop's badge
+  // and not as a mark of its own, so trucks arriving and leaving are part of
+  // what the stops are laid out against. Without that a badge kept a ring
+  // for a truck that had since driven off.
   {
     const far = new scene.StopMarker({
       position: { lng: -70, lat: 40 },
@@ -480,20 +470,27 @@ test('scene reuses static layers across motion, invalidates only changed stops a
           /^route-stop-\d+-points$/.test(layer.props.id) &&
           layer.props.data[0].number === '9',
       ).props.data[0];
-    const parked = () =>
+    const drawnTrucks = () =>
       Object.values(layers())
         .filter(layer => /^truck-icons/.test(layer.props.id ?? ''))
         .flatMap(layer => layer.props.data)
-        .find(row => row.unit === '20001')?.markerOffset;
+        .map(row => row.unit);
     assert.equal(badge().markerOffsetY, 0);
+    assert.equal(badge().standing, undefined);
     const visitor = scene.createTruckMarker(map, () => {});
-    visitor.update({ unitNumber: '20001' });
+    visitor.update({ unitNumber: '20001', engineState: 'On' });
     visitor.render({ longitude: -70, latitude: 40 });
     flush();
     assert.equal(badge().markerOffsetY, 0, 'the badge keeps its point');
-    assert.ok(parked()?.[0] > 0, 'a truck that parks on a stop steps aside');
+    assert.equal(badge().standing, '#16a34a', 'and wears the truck as a ring');
+    assert.equal(
+      drawnTrucks().includes('20001'),
+      false,
+      'the truck is not drawn a second time beside it',
+    );
     visitor.setVisible(false);
     flush();
+    assert.equal(badge().standing, undefined, 'the ring goes with the truck');
     assert.equal(badge().markerOffsetY, 0, 'and the badge never moved');
     far.map = null;
     flush();

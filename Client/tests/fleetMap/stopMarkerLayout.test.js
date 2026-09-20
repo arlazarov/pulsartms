@@ -193,10 +193,10 @@ test('stops along a road stay on the line of it, in order', () => {
 // beside a place means nothing unless it is on that place. Hung under the
 // truck instead, the badge sat over open ground with the point it marks
 // hidden under the truck above it.
-test('the stop a truck stands on keeps its point, and the truck steps aside', () => {
+test('a truck standing on a stop becomes a ring around its badge', () => {
   const zoom = 13;
   const stops = [{ id: 'a', number: '2', position: [-82.55, 35.38] }];
-  const truck = { position: [-82.5501, 35.3799] };
+  const truck = { position: [-82.5501, 35.3799], engine: 'on' };
   const [row] = snapshotStops(stops, [], [], zoom, [truck]).stopData;
   assert.deepEqual(
     [row.markerOffsetX, row.markerOffsetY],
@@ -204,11 +204,15 @@ test('the stop a truck stands on keeps its point, and the truck steps aside', ()
     'the badge stands on the stop, not beside it',
   );
   assert.deepEqual(row.position, stops[0].position, 'the stop has not moved');
-  // Up and to the right, far enough for the two to clear each other, and
-  // always the same way: arriving looks the same everywhere on the map.
+  // One mark on one point: the badge in a ring of the truck's colour, with
+  // the truck's own icon not drawn and its unit number over the ring.
+  assert.equal(row.standing, '#16a34a');
+  assert.equal(truck.merged, true);
   const [dx, dy] = truck.markerOffset;
-  assert.ok(dx > 0 && dy < 0, 'up and to the right');
-  assert.ok(Math.abs(Math.hypot(dx, dy) - 33) < 1, 'a badge and a gap clear');
+  assert.ok(Math.hypot(dx, dy) < 2, 'the unit number sits over the badge');
+  const off = snapshotStops(stops, [], [], zoom, [{ ...truck, engine: 'off' }])
+    .stopData[0];
+  assert.equal(off.standing, '#64748b', 'a truck with the engine off is grey');
 });
 
 // The badge a truck stands on gives way to nothing: its neighbour parts
@@ -252,6 +256,24 @@ test('a stop beside a parked truck clears the truck and the number above it', ()
 });
 
 // A truck driving past a stop is over it for a moment and gone.
+// A truck that drove off from a stop kept its ring and was never drawn as
+// a truck again: what is cleared each pass is every truck, not the parked.
+test('a truck that leaves a stop is a truck again', () => {
+  const stops = [{ id: 'a', number: '2', position: [-82.55, 35.38] }];
+  const truck = { position: [-82.5501, 35.3799], engine: 'on' };
+  assert.equal(
+    snapshotStops(stops, [], [], 13, [truck]).stopData[0].standing,
+    '#16a34a',
+  );
+  assert.equal(truck.merged, true);
+  truck.speed = 40;
+  truck.position = [-82.4, 35.3];
+  const [row] = snapshotStops(stops, [], [], 13, [truck]).stopData;
+  assert.equal(row.standing, undefined, 'the badge is a badge again');
+  assert.equal(truck.merged, false, 'and the truck is drawn again');
+  assert.equal(truck.markerOffset, null);
+});
+
 test('a truck driving past moves nothing', () => {
   const stops = [{ id: 'a', number: '2', position: [-82.55, 35.38] }];
   const [row] = snapshotStops(stops, [], [], 13, [

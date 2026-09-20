@@ -10,6 +10,8 @@ export const sceneMetrics = Object.freeze({
   stopRadius: 3,
   stopBadgeOffset: 0,
   stopBadgeDiameter: 34,
+  // The same badge with the truck's ring around it.
+  stopBadgeStandingDiameter: 46,
   // Where the filled badge's edge falls, so an outlined one does not read as
   // the larger of the two.
   stopBadgeDoneRadius: 13,
@@ -32,9 +34,6 @@ export const sceneMetrics = Object.freeze({
   truckSecondarySize: 23,
   truckClusterRadius: 64,
   truckClusterMaxZoom: 12,
-  // Nearer than this the badges are read; further out a number stands over a
-  // county and says nothing a road does not.
-  stopMinZoom: 7,
   truckHoverScale: 1.1,
   truckLabelOffset: 30,
   routeWidthScale: 1.75,

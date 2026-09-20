@@ -1,5 +1,6 @@
 import { sceneMetrics as metrics } from './sceneMetrics.js';
 import { markerProjection } from './markerProjection.js';
+import { truckColor } from './truckAppearance.js';
 
 export function stopMarkerLabel(_job, number) {
   return String(number ?? '');
@@ -20,14 +21,11 @@ export function stopMarkerLabel(_job, number) {
 //    enough to clear. North of stays north of.
 // 3. Stops at the very same address have no line between them, so they keep
 //    the formation they always had: a pair, a triangle, rows of two.
-// 4. Where a truck is standing on a stop, the badge keeps the point and the
-//    truck steps aside - up and to the right, far enough to clear, always
-//    the same way. Of the two marks only one can have the point, and it
-//    must be the stop's: a truck is known by the unit number it carries and
-//    is read as being wherever it is drawn, while a number beside a place
-//    means nothing unless it is on that place. Hung under the truck instead,
-//    the badge sat over open ground with the point it marks hidden under
-//    the truck above it.
+// 4. Where a truck is standing on a stop the two become one mark on that
+//    point: the badge inside a ring of the truck's colour, with the unit
+//    number above it as ever. Two marks on one point meant one of them had
+//    to be moved off the place it names - under the truck, or aside from
+//    it - and whichever moved then pointed at nothing.
 //
 // The picture is the same constellation at every zoom, only tighter. Which
 // way two stops part is read from where they are on the ground, not from
@@ -50,7 +48,6 @@ const atTheStop = 20;
 export function layoutStopMarkers(rows, zoom, trucks = []) {
   const project = markerProjection(zoom);
   const radius = metrics.stopBadgeDiameter / 2;
-  const apart = metrics.stopBadgeDiameter + metrics.stopBadgeGap;
   const clearOfTruck = radius + metrics.truckSize / 2 + metrics.stopBadgeGap;
   // A badge may come right up to the number - the pill has an edge of its
   // own - so the gap kept between badges is not asked for here. Asking for
@@ -61,9 +58,11 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
     (parseInt(a.row.number, 10) || 0) - (parseInt(b.row.number, 10) || 0);
 
   const ground = markerProjection(groundZoom);
-  // The one direction a truck ever steps, so that arriving at a stop looks
-  // the same everywhere on the map.
-  const aside = [Math.SQRT1_2 * clearOfTruck, -Math.SQRT1_2 * clearOfTruck];
+  // How wide a badge is depends on whether it is wearing a truck.
+  const spread = item =>
+    (item.row.standing
+      ? metrics.stopBadgeStandingDiameter
+      : metrics.stopBadgeDiameter) / 2;
   const places = new Map();
   const items = rows.map(row => {
     row.markerLabel = stopMarkerLabel(row.job, row.number);
@@ -82,6 +81,13 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
     places.get(key).push(item);
     return item;
   });
+  // Every truck starts the pass as a truck drawn on its own; one standing
+  // on a stop is then merged into it. Cleared only for the parked, a truck
+  // that drove off from a stop kept the ring and was never drawn again.
+  for (const truck of trucks) {
+    truck.merged = false;
+    truck.markerOffset = null;
+  }
   const parked = trucks
     .filter(truck => truck.position && !(truck.speed > 0))
     .map(truck => ({
@@ -91,7 +97,7 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
     }));
   // The formation stops at one address have always had - a pair, a
   // triangle, rows of two - in stop order, rising from the place they mark.
-  const form = (members, [x, y]) => {
+  const form = (members, [x, y], apart) => {
     members.sort(byNumber);
     members.forEach((item, index) => {
       const finalOdd = index === members.length - 1 && members.length % 2;
@@ -108,10 +114,9 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
     });
   };
 
-  // Rule 3, and then rule 4: a truck standing on a stop steps aside from it,
-  // and the badges there are held on their own ground.
+  // Rule 3, and then rule 4: a truck standing on a stop is drawn as a ring
+  // around that stop's badge, which keeps its point and gives way to nothing.
   for (const group of places.values()) {
-    if (group.length > 1) form(group, group[0].anchor);
     const truck = parked.find(
       standing =>
         Math.hypot(
@@ -119,20 +124,27 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
           standing.ground[1] - group[0].ground[1],
         ) < atTheStop,
     );
-    if (!truck) continue;
-    // One step, however many stops of the load are at this address.
-    if (!truck.moved) {
-      truck.moved = true;
-      truck.at = [truck.at[0] + aside[0], truck.at[1] + aside[1]];
+    if (truck) {
+      truck.holds ??= group[0];
+      for (const item of group) {
+        item.held = true;
+        item.row.standing = truckColor(truck.truck.engine, truck.truck.speed);
+      }
     }
-    for (const item of group) item.held = true;
+    // Ringed badges stand further apart than bare ones, so the formation is
+    // measured after it is known which of the two they are.
+    if (group.length > 1)
+      form(group, group[0].anchor, spread(group[0]) * 2 + metrics.stopBadgeGap);
   }
-  // The truck rows carry the step to the layers that draw them, so the unit
-  // number goes with the truck and a badge is drawn where the truck was.
-  for (const { truck, moved } of parked)
-    truck.markerOffset = moved
-      ? [Math.round(aside[0]), Math.round(aside[1])]
+  // The unit number belongs over the mark the truck has become, so the truck
+  // rows carry the way from where the truck is to the badge it is drawn in.
+  // Its own icon is not drawn at all while it is there.
+  for (const { truck, at, holds } of parked) {
+    truck.merged = !!holds;
+    truck.markerOffset = holds
+      ? [Math.round(holds.at[0] - at[0]), Math.round(holds.at[1] - at[1])]
       : null;
+  }
 
   // Rule 2, against each other and against what does not move. Every push
   // of a pass is added up before any is made, and half of it is made: a
@@ -149,7 +161,8 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
           let dx = b.at[0] - a.at[0],
             dy = b.at[1] - a.at[1];
           const gap = Math.hypot(dx, dy);
-          if (gap >= apart - 0.01) continue;
+          const needed = spread(a) + spread(b) + metrics.stopBadgeGap;
+          if (gap >= needed - 0.01) continue;
           // Which way they part is where they are on the ground, so it is
           // the same way at every zoom. If other pushes have carried one
           // past the other, this is also what carries it back: parting the
@@ -168,7 +181,7 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
             dy = Math.sin(angle);
             length = 1;
           }
-          const push = apart - gap;
+          const push = needed - gap;
           const share = a.held || b.held ? 1 : 0.5;
           const step = [(dx / length) * push, (dy / length) * push];
           if (!a.held) {
@@ -187,7 +200,10 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
       // the ground did not end up nearest it on the screen.
       items.forEach((item, index) => {
         if (item.held) return;
-        for (const { at: truck, ground: truckGround } of parked) {
+        // A truck drawn as a ring on a badge is that badge, and parts from
+        // the rest as a badge does; only one still drawn on its own pushes.
+        for (const { at: truck, ground: truckGround, holds } of parked) {
+          if (holds) continue;
           const dx = item.at[0] - truck[0],
             dy = item.at[1] - truck[1];
           const distance = Math.hypot(dx, dy);
@@ -214,7 +230,8 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
       });
       for (const item of items) {
         if (item.held) continue;
-        for (const { at: truck } of parked) {
+        for (const { at: truckAt, holds } of parked) {
+          const truck = holds ? holds.at : truckAt;
           // The unit number, measured as the pill it is: how far the badge
           // is from the nearest point of it, not from a box drawn round it.
           // A badge that only clips a corner moves a few pixels, not the
