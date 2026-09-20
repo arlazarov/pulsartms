@@ -44,12 +44,20 @@ export function createScene(
     vehicles = [];
   let vehicleDisplay = { vehicles: [], clusters: [] },
     clusterZoom = map.getZoom?.() ?? 12;
+  // Badges are laid out against the screen, so a new zoom is a new layout -
+  // but a zoom gesture reports a new zoom on every frame of itself, and
+  // relaying every badge on each of them made the map crawl. Whole zoom
+  // levels are a factor of two apart; nothing about the layout turns on
+  // less than that.
+  let stopZoom = Math.round(clusterZoom);
   const clusterZoomListener = map.addListener('zoom_changed', () => {
     const next = map.getZoom?.() ?? 12;
     if (next === clusterZoom) return;
     clusterZoom = next;
-    // Badges are laid out against the screen, so a new zoom is a new layout.
-    stopsDirty = true;
+    if (Math.round(next) !== stopZoom) {
+      stopZoom = Math.round(next);
+      stopsDirty = true;
+    }
     invalidateVehicles();
   });
   const buildLayers = createSceneLayers({
@@ -160,7 +168,7 @@ export function createScene(
           : stops,
         stopData,
         distanceData,
-        clusterZoom,
+        stopZoom,
       ));
       stopsDirty = false;
     }
