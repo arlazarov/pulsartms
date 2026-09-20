@@ -437,6 +437,7 @@ export function createSceneLayers({
                   t.labelOffset[1] !== -metrics.truckLabelOffset),
             ),
             getPosition: t => t.position,
+            getPixelOffset: t => t.markerOffset ?? [0, 0],
             getIcon: t => markerAnchor(t.labelOffset),
             getSize: t => markerAnchor(t.labelOffset).size,
             sizeUnits: 'pixels',
@@ -459,6 +460,9 @@ export function createSceneLayers({
                 ),
                 opacity: 1,
                 getPosition: t => t.position,
+                // A truck standing on a stop steps aside so the badge can
+                // keep the point it marks.
+                getPixelOffset: t => t.markerOffset ?? [0, 0],
                 getIcon: t => truckIcon(t.engine, t.speed),
                 getSize: t =>
                   (quiet ? metrics.truckSecondarySize : metrics.truckSize) *
@@ -482,8 +486,11 @@ export function createSceneLayers({
             getSize: metrics.truckLabelSize,
             sizeUnits: 'pixels',
             getColor: [255, 255, 255, 255],
-            getPixelOffset: t =>
-              t.labelOffset ?? [0, -metrics.truckLabelOffset],
+            getPixelOffset: t => {
+              const [dx, dy] = t.labelOffset ?? [0, -metrics.truckLabelOffset];
+              const [ax, ay] = t.markerOffset ?? [0, 0];
+              return [dx + ax, dy + ay];
+            },
             background: true,
             getBackgroundColor: t => [
               ...(t.selected || t.unit === hoveredTruck

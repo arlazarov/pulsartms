@@ -20,11 +20,14 @@ export function stopMarkerLabel(_job, number) {
 //    enough to clear. North of stays north of.
 // 3. Stops at the very same address have no line between them, so they keep
 //    the formation they always had: a pair, a triangle, rows of two.
-// 4. The stop a truck is standing on stands directly under the truck. Not
-//    wherever is free - always under: the unit number above, the stop
-//    below. It stops being layout and becomes a sign for "the truck is at
-//    this stop". The truck and its number are fixed, and other badges part
-//    from them by rule 2.
+// 4. Where a truck is standing on a stop, the badge keeps the point and the
+//    truck steps aside - up and to the right, far enough to clear, always
+//    the same way. Of the two marks only one can have the point, and it
+//    must be the stop's: a truck is known by the unit number it carries and
+//    is read as being wherever it is drawn, while a number beside a place
+//    means nothing unless it is on that place. Hung under the truck instead,
+//    the badge sat over open ground with the point it marks hidden under
+//    the truck above it.
 //
 // The picture is the same constellation at every zoom, only tighter. Which
 // way two stops part is read from where they are on the ground, not from
@@ -58,6 +61,9 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
     (parseInt(a.row.number, 10) || 0) - (parseInt(b.row.number, 10) || 0);
 
   const ground = markerProjection(groundZoom);
+  // The one direction a truck ever steps, so that arriving at a stop looks
+  // the same everywhere on the map.
+  const aside = [Math.SQRT1_2 * clearOfTruck, -Math.SQRT1_2 * clearOfTruck];
   const places = new Map();
   const items = rows.map(row => {
     row.markerLabel = stopMarkerLabel(row.job, row.number);
@@ -79,13 +85,13 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
   const parked = trucks
     .filter(truck => truck.position && !(truck.speed > 0))
     .map(truck => ({
+      truck,
       at: project(truck.position),
       ground: ground(truck.position),
     }));
   // The formation stops at one address have always had - a pair, a
-  // triangle, rows of two - in stop order. Rising from its place, or hanging
-  // under a truck.
-  const form = (members, [x, y], hang) => {
+  // triangle, rows of two - in stop order, rising from the place they mark.
+  const form = (members, [x, y]) => {
     members.sort(byNumber);
     members.forEach((item, index) => {
       const finalOdd = index === members.length - 1 && members.length % 2;
@@ -98,14 +104,14 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
         finalOdd && members.length > 1
           ? (rowIndex - 1) * apart + (Math.sqrt(3) * apart) / 2
           : rowIndex * apart;
-      item.at = [x + across, hang ? y + clearOfTruck + rise : y - rise];
-      item.held = hang;
+      item.at = [x + across, y - rise];
     });
   };
 
-  // Rule 4 for the stops a truck is standing on; rule 3 for the rest.
-  const hung = new Map(parked.map(truck => [truck, []]));
+  // Rule 3, and then rule 4: a truck standing on a stop steps aside from it,
+  // and the badges there are held on their own ground.
   for (const group of places.values()) {
+    if (group.length > 1) form(group, group[0].anchor);
     const truck = parked.find(
       standing =>
         Math.hypot(
@@ -113,11 +119,20 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
           standing.ground[1] - group[0].ground[1],
         ) < atTheStop,
     );
-    if (truck) hung.get(truck).push(...group);
-    else if (group.length > 1) form(group, group[0].anchor, false);
+    if (!truck) continue;
+    // One step, however many stops of the load are at this address.
+    if (!truck.moved) {
+      truck.moved = true;
+      truck.at = [truck.at[0] + aside[0], truck.at[1] + aside[1]];
+    }
+    for (const item of group) item.held = true;
   }
-  for (const [truck, members] of hung)
-    if (members.length) form(members, truck.at, true);
+  // The truck rows carry the step to the layers that draw them, so the unit
+  // number goes with the truck and a badge is drawn where the truck was.
+  for (const { truck, moved } of parked)
+    truck.markerOffset = moved
+      ? [Math.round(aside[0]), Math.round(aside[1])]
+      : null;
 
   // Rule 2, against each other and against what does not move. Every push
   // of a pass is added up before any is made, and half of it is made: a
