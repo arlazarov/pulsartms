@@ -1,0 +1,131 @@
+@use '../../../base' as ui;
+
+// The load as a paper: who it is for, what it pays, and the phase it is
+// in.
+.dispatch-load-dialog {
+  .dispatch-paper__identity {
+    position: sticky;
+    top: 0;
+    z-index: ui.layer(raised);
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto;
+    align-items: start;
+    gap: ui.pg(lg);
+    padding: ui.pg(lg);
+    border-bottom: 1px solid ui.theme(border-subtle);
+    background: ui.theme(surface);
+  }
+  .dispatch-paper__identity[tabindex='-1']:focus-visible {
+    outline: none;
+  }
+  .dispatch-paper__heading {
+    display: grid;
+    gap: ui.pg(xs);
+    min-width: 0;
+  }
+  .dispatch-paper__title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+  }
+  .dispatch-paper__title h2 {
+    @include ui.overlay-title;
+    margin: 0;
+  }
+  .dispatch-paper__tab-status {
+    display: inline-flex;
+    align-items: center;
+    padding: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface-muted);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    &.is-moving {
+      color: ui.theme(link);
+      background: ui.theme(selected);
+    }
+    &.is-completed {
+      color: ui.theme(success-text);
+    }
+  }
+  .dispatch-paper__equipment {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+    overflow-wrap: anywhere;
+  }
+  .dispatch-paper__customer {
+    display: grid;
+    gap: ui.pg(xs);
+    padding-left: ui.pg(lg);
+    border-left: 1px solid ui.theme(border-subtle);
+    overflow-wrap: anywhere;
+    font-size: ui.fs(body);
+  }
+  .dispatch-paper__customer > span {
+    font-size: ui.fs(small);
+    color: ui.theme(text-secondary);
+  }
+  .dispatch-paper__close {
+    @include ui.icon-control;
+  }
+  .dispatch-paper__phase {
+    padding: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-muted);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    font-weight: 600;
+    &.is-current {
+      background: ui.theme(action);
+      color: ui.theme(on-accent);
+    }
+    &.is-next {
+      background: ui.theme(route-next-surface);
+      color: ui.theme(route-next);
+    }
+  }
+  .dispatch-paper__financials {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: ui.pg(md) 0;
+    padding: ui.pg(md) 0;
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+  }
+  .dispatch-paper__financials > div {
+    display: grid;
+    align-content: start;
+    gap: ui.pg(xs);
+    min-width: 0;
+    padding: 0 ui.pg(lg);
+  }
+  .dispatch-paper__financials > div + div {
+    border-left: 1px solid ui.theme(border-subtle);
+  }
+  .dispatch-paper__financials dt {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  .dispatch-paper__financials dd {
+    margin: 0;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+  .dispatch-paper__financials .dispatch-paper__mileage dd {
+    color: ui.theme(text);
+    font-size: ui.fs(heading);
+    font-weight: 700;
+  }
+  .dispatch-paper__financials dd small {
+    display: block;
+    margin-top: ui.pg(xs);
+    font-size: ui.fs(small);
+    font-weight: 400;
+    color: ui.theme(text-secondary);
+  }
+}

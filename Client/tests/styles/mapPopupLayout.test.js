@@ -5,9 +5,12 @@ import { compileString } from 'sass';
 import { fileURLToPath } from 'node:url';
 
 const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
-const popups = compileString(`@use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';`, {
-  loadPaths,
-}).css;
+const popups = compileString(
+  `@use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';`,
+  {
+    loadPaths,
+  },
+).css;
 
 // The stop and the station windows are the same card language as the truck
 // card: a fact is a muted name and a figure on one label column, sections
@@ -52,9 +55,12 @@ test('every stop fact is the same two cells on one label column', () => {
 // cards that set different type sizes. It was inheriting theirs, so the same
 // control read larger on a stop than on a truck.
 test('the close control is the same size on every card', () => {
-  const details = compileString(`@use 'pages/fleet-map/details';`, {
-    loadPaths,
-  }).css;
+  const details = compileString(
+    `@use 'pages/fleet-map/stage'; @use 'pages/fleet-map/inspector';`,
+    {
+      loadPaths,
+    },
+  ).css;
   assert.match(
     details,
     /__close\s*\{[^}]*\}[\s\S]{0,120}?font-size: var\(--type-heading\);[^}]*line-height: 1;/,

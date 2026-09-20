@@ -6,12 +6,18 @@ import { fileURLToPath } from 'node:url';
 
 const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
 const css = compileString(
-  "@use 'shared/driver-status'; @use 'pages/fleet-map/truck-info'; @use 'pages/fleet-map/route-info'; @use 'pages/fleet-map/details'; @use 'pages/fleet-map/layout'; @use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';",
+  "@use 'shared/driver-status'; @use 'pages/fleet-map/truck-info'; @use 'pages/fleet-map/route-info'; @use 'pages/fleet-map/stage'; @use 'pages/fleet-map/inspector'; @use 'pages/fleet-map/layout'; @use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';",
   { loadPaths },
 ).css;
-const compact = compileString("@use 'pages/fleet-map/inspector';", {
-  loadPaths,
-}).css;
+// The truck card is these four files; the rest of the inspector folder is
+// the shell every card shares and the other modes' own rules.
+const compact = compileString(
+  "@use 'pages/fleet-map/inspector/card';" +
+    " @use 'pages/fleet-map/inspector/hours-line';" +
+    " @use 'pages/fleet-map/inspector/route-facts';" +
+    " @use 'pages/fleet-map/inspector/narrow';",
+  { loadPaths },
+).css;
 
 test('supporting truck values have semantic contrast without another font size or spacing scale', () => {
   const rule = compact.match(/\.fleet-map-inspector__value\s*\{([^}]*)\}/)?.[1];

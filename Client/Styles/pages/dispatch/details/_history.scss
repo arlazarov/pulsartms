@@ -1,0 +1,107 @@
+@use '../../../base' as ui;
+
+// What the load is carrying, what has been done to it, and the stretch of
+// history under that.
+.dispatch-details {
+  &__financials {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+    gap: ui.pg(lg);
+    margin: 0;
+    padding-top: ui.pg(lg);
+    border-top: 1px solid ui.theme(border-subtle);
+
+    > div {
+      display: grid;
+      align-content: start;
+      gap: ui.pg(sm);
+    }
+
+    dt {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+
+    dd {
+      margin: 0;
+      font-size: ui.fs(body);
+      font-weight: 600;
+    }
+  }
+
+  &__notice,
+  &__leave,
+  &__loading {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: ui.pg(md);
+    padding: ui.pg(md) ui.pg(lg);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-soft);
+    color: ui.theme(text-secondary);
+
+    p {
+      margin: 0;
+    }
+  }
+
+  &__leave {
+    border-color: ui.theme(warning-text);
+  }
+
+  &__execution {
+    display: grid;
+    gap: ui.pg(lg);
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+    border: 0;
+  }
+
+  &__resources {
+    display: grid;
+    gap: ui.pg(md);
+    min-width: 0;
+  }
+
+  &__section-heading {
+    display: grid;
+    gap: ui.pg(sm);
+
+    h2,
+    p {
+      margin: 0;
+    }
+
+    h2 {
+      font-size: ui.fs(lead);
+    }
+
+    p {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+  }
+
+  &__history {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: ui.pg(lg);
+
+    li {
+      display: grid;
+      gap: ui.pg(xs);
+      padding-block: ui.pg(sm);
+      border-bottom: 1px solid ui.theme(border-subtle);
+    }
+
+    span {
+      font-size: ui.fs(small);
+      color: ui.theme(text-secondary);
+    }
+  }
+}

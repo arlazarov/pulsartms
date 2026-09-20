@@ -1,6 +1,9 @@
-// The load page: the workspace it opens into, and the editors that live on
-// it.
-@use 'workspace';
+// The load page: the page itself, the panes it opens into, the history it
+// carries, its editors, and how it folds.
+@use 'page';
+@use 'panes';
+@use 'history';
+@use 'narrow';
 @use 'stop-correction';
 @use 'broker';
 @use 'create';

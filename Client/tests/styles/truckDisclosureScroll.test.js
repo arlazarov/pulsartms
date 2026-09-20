@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
 const { css } = compileString(
-  "@use 'pages/fleet-map/details'; @use 'pages/fleet-map/inspector';",
+  "@use 'pages/fleet-map/stage'; @use 'pages/fleet-map/inspector';",
   { loadPaths },
 );
 const selector =

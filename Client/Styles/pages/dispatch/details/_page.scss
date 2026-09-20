@@ -1,0 +1,139 @@
+@use '../../../base' as ui;
+
+// The page a load opens on: the frame it fills, its head, the tabs across
+// it and the summary under them.
+.main-layout:has(.dispatch-details) {
+  position: relative;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  grid-template-rows: auto minmax(0, 1fr);
+
+  .main-layout__content {
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  @include ui.above(md) {
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+.dispatch-details {
+  container: dispatch-workspace / inline-size;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  gap: ui.pg(sm);
+
+  > :not(.dispatch-details__body) {
+    flex-shrink: 0;
+  }
+
+  &__body {
+    min-height: 0;
+    flex: 1;
+    overflow: auto;
+    scrollbar-gutter: stable;
+  }
+
+  &__body--overview {
+    overflow: hidden;
+    scrollbar-gutter: auto;
+  }
+
+  &__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: ui.pg(sm) ui.pg(md);
+    min-width: 0;
+    max-height: 35dvh;
+    overflow: auto;
+  }
+
+  &__save,
+  &__navigation,
+  &__title,
+  &__summary,
+  &__tabs,
+  &__panel > header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: ui.pg(md);
+    min-width: 0;
+  }
+
+  &__save {
+    justify-content: flex-end;
+
+    > span {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+  }
+
+  &__header > &__notice,
+  &__title {
+    grid-column: 1 / -1;
+  }
+
+  &__title h1 {
+    margin: 0;
+    font-size: ui.fs(title);
+  }
+
+  &__status {
+    padding: ui.pg(xs) ui.pg(sm);
+    border-radius: ui.radius(pill);
+    font-size: ui.fs(small);
+  }
+
+  &__status {
+    background: ui.theme(selected);
+    color: ui.theme(link);
+    text-transform: capitalize;
+  }
+
+  &__summary {
+    gap: ui.pg(sm);
+    flex: 1 1 auto;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    overflow-wrap: anywhere;
+    > span {
+      border-inline-start: 1px solid ui.theme(border-subtle);
+      padding-inline-start: ui.pg(sm);
+    }
+
+    strong {
+      font-weight: 600;
+      color: ui.theme(text);
+    }
+  }
+
+  &__tabs {
+    gap: ui.pg(xs);
+    border-inline-start: 1px solid ui.theme(border-subtle);
+    padding-inline-start: ui.pg(sm);
+  }
+
+  &__tab {
+    --button-border: transparent;
+    --button-bg: transparent;
+    @include ui.button-control;
+    @include ui.compact-control;
+
+    &[aria-current='page'] {
+      --button-text: #{ui.theme(link)};
+      --button-bg: #{ui.theme(selected)};
+      --button-border: #{ui.theme(selection-border)};
+    }
+  }
+}

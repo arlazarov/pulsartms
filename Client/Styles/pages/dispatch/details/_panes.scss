@@ -1,0 +1,110 @@
+@use '../../../base' as ui;
+
+// The two columns the page opens into, and the panels standing in them.
+.dispatch-details {
+  &__workspace,
+  &__commercial {
+    display: grid;
+    align-items: start;
+    gap: ui.pg(lg);
+    min-width: 0;
+  }
+
+  &__workspace {
+    grid-template-columns: minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+    align-items: stretch;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  &__commercial {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  &__route,
+  &__aside {
+    display: grid;
+    align-content: start;
+    gap: ui.pg(lg);
+    min-width: 0;
+    min-height: 0;
+  }
+
+  &__route {
+    display: flex;
+    flex-direction: column;
+    gap: ui.pg(sm);
+
+    > .stop-workspace {
+      block-size: auto;
+      max-block-size: none;
+      min-height: 0;
+      flex: 1;
+    }
+  }
+
+  &__aside {
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+  }
+
+  &__resources {
+    max-height: 45%;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  &__panel {
+    display: grid;
+    gap: ui.pg(md);
+    min-width: 0;
+    padding: ui.pg(lg);
+    background: ui.theme(surface);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+
+    h2 {
+      margin: 0;
+      font-size: ui.fs(lead);
+    }
+
+    > header {
+      justify-content: space-between;
+    }
+
+    p {
+      margin: 0;
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      @include ui.input-control;
+    }
+
+    textarea {
+      height: auto;
+      resize: vertical;
+    }
+  }
+
+  &__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: ui.pg(md);
+    min-width: 0;
+
+    label {
+      display: grid;
+      gap: ui.pg(xs);
+      min-width: 0;
+      font-size: ui.fs(small);
+      color: ui.theme(text-secondary);
+    }
+  }
+}

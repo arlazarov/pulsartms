@@ -4,9 +4,12 @@ import { compileString } from 'sass';
 import { fileURLToPath } from 'node:url';
 
 const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
-const css = compileString("@use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';", {
-  loadPaths,
-}).css;
+const css = compileString(
+  "@use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';",
+  {
+    loadPaths,
+  },
+).css;
 
 // A planned fuel stop, in the truck card's language: two halves under one
 // head - the place on the left, the plan for it on the right, each ending

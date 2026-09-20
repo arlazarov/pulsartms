@@ -1,0 +1,62 @@
+@use '../../../base' as ui;
+
+// What the price did on either side of today: three cells on one line,
+// today set apart by a quiet ground.
+// The days are one line under the price list: three cells of one height,
+// today set apart by a quiet ground, and no rules between them.
+.fleet-station-popup__comparison {
+  min-width: 0;
+  margin-top: ui.pg(sm);
+  padding-top: ui.pg(sm);
+  border-top: 1px solid ui.theme(border-subtle);
+}
+
+// One line: each day is its name, its price and what the price did on it,
+// and the line breaks between days rather than inside one. Stacked in three
+// columns, the strip stood two lines tall under a list of one-line rows.
+//
+// The words of each day start on the same edge as the names in the list
+// above. The cells are padded for today's ground, so the line is drawn that
+// much wider than its column - the ground reaches past the edge, the way the
+// band behind the price being paid does, and the words do not.
+.fleet-station-popup__days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 ui.pg(sm);
+  margin-inline: calc(-1 * #{ui.pg(xs)});
+}
+
+.fleet-station-popup__day {
+  display: flex;
+  align-items: baseline;
+  gap: ui.pg(xs);
+  min-width: 0;
+  white-space: nowrap;
+  padding: ui.pg(micro) ui.pg(xs);
+  border-radius: ui.radius(sm);
+  font-variant-numeric: tabular-nums;
+  &.is-current {
+    background: ui.theme(surface-soft);
+  }
+  &-label {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+  }
+  &-price {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
+  }
+  .fleet-station-popup__change {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+    font-weight: 600;
+    white-space: nowrap;
+    &.is-increase {
+      color: ui.theme(telemetry-critical-icon);
+    }
+    &.is-decrease {
+      color: ui.theme(success-text);
+    }
+  }
+}

@@ -9,8 +9,13 @@ const compile = name => compileString(`@use '${name}';`, { loadPaths }).css;
 // The card, and the vehicle line that stands on it - each described in one
 // place, neither overriding the other.
 const card =
-  compile('pages/fleet-map/inspector') +
-  compile('pages/fleet-map/truck-info');
+  compileString(
+    "@use 'pages/fleet-map/inspector/card';" +
+      " @use 'pages/fleet-map/inspector/hours-line';" +
+      " @use 'pages/fleet-map/inspector/route-facts';" +
+      " @use 'pages/fleet-map/inspector/narrow';",
+    { loadPaths },
+  ).css + compile('pages/fleet-map/truck-info');
 const markup = readFileSync(
   new URL('../../Pages/FleetMap/FleetMap.razor', import.meta.url),
   'utf8',

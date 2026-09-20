@@ -1,0 +1,112 @@
+@use '../../../base' as ui;
+
+// The same card when the truck is planned to stop there: the place on one
+// side, the plan on the other, with the visits and what they buy.
+// A planned fuel stop, in the truck card's language. Two halves under one
+// head: on the left the place - its name, where it is, what fuel costs there
+// and what the price did; on the right the plan for it - which stop it is,
+// what is left to it, the tank, what the fill comes to, and at the foot of
+// that half the buttons that change the plan.
+//
+// The halves were laid out by placing the card's flat children into two
+// columns, which left the buttons stranded across the bottom of both and a
+// hole in the corner above them. They are two elements now, each ending
+// where the card does.
+.fleet-station-popup--planned {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+  > .fleet-station-popup__place,
+  > .fleet-station-popup__plan {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  > .fleet-station-popup__place {
+    padding-right: ui.pg(lg);
+  }
+  > .fleet-station-popup__plan {
+    padding-left: ui.pg(lg);
+    border-left: 1px solid ui.theme(border-subtle);
+  }
+  // The head of the plan: which stop, and what is left to it.
+  .fleet-station-popup__plan-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+    margin-bottom: ui.pg(xs);
+  }
+  .fleet-station-popup__title {
+    font-size: ui.fs(subtitle);
+  }
+  .fleet-station-popup__plan-label {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  .fleet-station-popup__distance:not([hidden]) {
+    margin: 0;
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    // The line names a thing before it says it.
+    &::before {
+      content: 'Left ';
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+      font-weight: 400;
+    }
+  }
+  .fleet-station-popup__address {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(label);
+  }
+  .fleet-station-popup__copy-status:empty {
+    display: none;
+  }
+  .fleet-station-popup__prices {
+    margin-top: ui.pg(xs);
+    padding-top: ui.pg(xs);
+  }
+  .fleet-station-popup__visits:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.pg(md);
+    margin: 0;
+  }
+  .fleet-station-popup__visit {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  // At the foot of the half they act on, however tall the other half is.
+  .fleet-station-popup__actions:not([hidden]) {
+    margin-top: auto;
+    padding-top: ui.pg(md);
+    justify-content: flex-start;
+    gap: ui.pg(xs);
+  }
+}
+
+// One visit has its stop and its distance in the head of the card, so the
+// visit does not say them again.
+.fleet-station-popup--single {
+  --fuel-visit-heading-display: none;
+}
+
+@container map-inspector (width < #{ui.breakpoint(map-fuel-halves)}) {
+  .fleet-map-inspector__native .fleet-station-popup--planned {
+    grid-template-columns: minmax(0, 1fr);
+    > .fleet-station-popup__place {
+      padding-right: 0;
+    }
+    > .fleet-station-popup__plan {
+      margin-top: ui.pg(sm);
+      padding: ui.pg(sm) 0 0;
+      border-left: 0;
+      border-top: 1px solid ui.theme(border-subtle);
+    }
+  }
+}

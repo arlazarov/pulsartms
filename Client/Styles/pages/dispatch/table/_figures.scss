@@ -1,0 +1,61 @@
+@use '../../../base' as ui;
+
+// What a row measures: the miles, the money, and what is already done.
+.dispatch-page .dispatch-table {
+  .dispatch-table__equipment > span {
+    margin-top: ui.pg(xs);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+  }
+  .dispatch-table__map {
+    @include ui.icon-control;
+    & {
+      --button-bg: transparent;
+      --button-border: transparent;
+      color: ui.theme(link);
+    }
+    svg {
+      width: ui.pg(lg);
+      height: ui.pg(lg);
+    }
+  }
+  .dispatch-table__money {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  td.dispatch-table__money {
+    color: ui.theme(text-secondary);
+  }
+  .dispatch-table__money strong {
+    font-size: ui.fs(body);
+    font-weight: 500;
+  }
+  .dispatch-table__mileage {
+    font-variant-numeric: tabular-nums;
+  }
+  .dispatch-table__mileage-values {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    color: ui.theme(text);
+  }
+  .dispatch-table__mileage-values strong {
+    font-size: ui.fs(lead);
+    font-weight: 700;
+  }
+  .dispatch-table__mileage-values > span {
+    color: ui.theme(text-muted);
+  }
+  .dispatch-table__stop-completed {
+    display: block;
+    margin-top: ui.pg(xs);
+    font-size: ui.fs(small);
+    color: ui.theme(success-text);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dispatch-table__row > td {
+      transition: none;
+    }
+  }
+}

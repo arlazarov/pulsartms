@@ -1,0 +1,149 @@
+@use '../../../base' as ui;
+
+// The stops on that paper, and what each one records.
+.dispatch-load-dialog {
+  .dispatch-paper__stops {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(100%, ui.size(dispatch-load-card)), 1fr)
+    );
+    align-items: start;
+    gap: ui.pg(md);
+  }
+  .dispatch-load__stop-summary {
+    margin-block: ui.pg(md);
+  }
+  .dispatch-paper__stops > li {
+    --dialog-stop-color: #{ui.theme(delivery)};
+    min-width: 0;
+    padding: ui.pg(md);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface);
+    &.is-pickup {
+      --dialog-stop-color: #{ui.theme(pickup)};
+    }
+    &.is-waypoint {
+      --dialog-stop-color: #{ui.theme(text-secondary)};
+    }
+  }
+  .dispatch-paper__stops .dispatch-load__stop-number {
+    position: static;
+    flex-shrink: 0;
+    background: ui.theme(surface);
+    color: var(--dialog-stop-color);
+    border-color: var(--dialog-stop-color);
+  }
+  .dispatch-paper__stops .dispatch-load__stop-job {
+    color: var(--dialog-stop-color);
+  }
+  .dispatch-load__stop {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .dispatch-load__stop-detail-content {
+    padding: ui.pg(sm) ui.pg(md);
+    border: 0;
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-soft);
+    gap: ui.pg(sm);
+  }
+  .dispatch-paper__stop-metadata {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: ui.pg(sm);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+    overflow-wrap: anywhere;
+  }
+  .dispatch-paper__stop-metadata:not(
+    :has(.dispatch-paper__stop-facts > div, .dispatch-paper__stop-notes)
+  ) {
+    display: none;
+  }
+  .dispatch-paper__stop-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(sm) ui.pg(lg);
+    margin: 0;
+    min-width: 0;
+    &:not(:has(> div)) {
+      display: none;
+    }
+    > div {
+      display: grid;
+      gap: ui.pg(micro);
+      min-width: 0;
+      max-width: 100%;
+    }
+    dt {
+      color: ui.theme(text-muted);
+      font-size: ui.fs(label);
+    }
+    dd {
+      margin: 0;
+      color: ui.theme(text);
+    }
+  }
+  .dispatch-paper__stop-notes {
+    min-width: 0;
+    padding-top: ui.pg(sm);
+    border-top: 1px solid ui.theme(border-subtle);
+    h3 {
+      margin: 0 0 ui.pg(xs);
+      font-size: ui.fs(label);
+      font-weight: 600;
+      color: ui.theme(text-muted);
+    }
+  }
+  .dispatch-paper__notes {
+    margin: 0;
+    white-space: pre-wrap;
+  }
+  .dispatch-paper__stop-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: start;
+    gap: ui.pg(xs) ui.pg(md);
+    margin-top: ui.pg(sm);
+    padding-top: ui.pg(xs);
+    border-top: 1px solid ui.theme(border-subtle);
+    > .stop-operation,
+    > .stop-completion {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      justify-items: start;
+    }
+    > :has(
+      .stop-operation__fields,
+      .stop-completion__form,
+      .stop-completion__record
+    ) {
+      flex-basis: 100%;
+      justify-items: stretch;
+    }
+  }
+  .dispatch-paper__footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(lg);
+    margin-top: ui.pg(lg);
+    padding-top: ui.pg(md);
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+  .dispatch-paper__footer a {
+    display: inline-flex;
+    align-items: center;
+    min-height: ui.size(control);
+    font-size: ui.fs(body);
+  }
+}

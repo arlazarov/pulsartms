@@ -1,0 +1,25 @@
+@use '../../../base' as ui;
+
+// With no room for two columns the panes stack and the save follows them.
+@container dispatch-workspace (width < #{ui.breakpoint(dispatch-workspace-columns)}) {
+  .dispatch-details__workspace,
+  .dispatch-details__commercial {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dispatch-broker__columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container dispatch-workspace (width < #{ui.breakpoint(dispatch-workspace-stacked)}) {
+  .dispatch-details__header,
+  .dispatch-details__aside {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .dispatch-details__save {
+    justify-content: flex-start;
+    grid-row: 3;
+  }
+}

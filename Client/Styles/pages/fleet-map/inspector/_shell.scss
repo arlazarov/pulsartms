@@ -1,57 +1,8 @@
-@use '../../base' as ui;
+@use '../../../base' as ui;
 
-.fleet-map-stage {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  isolation: isolate;
-}
-
-.fleet-map-info-reserved {
-  position: absolute;
-  top: min(#{ui.pg(md)}, var(--map-inspector-side-gap, 0px));
-  left: 0;
-  right: 0;
-  width: min(100%, #{ui.size(map-inspector)});
-  margin-inline: auto;
-  z-index: ui.layer(map-inspector);
-  min-height: 0;
-  max-height: 55%;
-  overflow: auto;
-  overscroll-behavior: contain;
-  background: ui.theme(surface);
-  border-radius: ui.radius(sm);
-  box-shadow: ui.shadow(card);
-  animation: none;
-  transition: none;
-
-  .fleet-map-route-info {
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-  }
-  .fleet-map-route-info {
-    border-top: 1px solid ui.theme(border-subtle);
-  }
-
-  &:not(.has-selection):not(:has(.fleet-map-info-reopen)) {
-    display: none;
-  }
-}
-
-.fleet-map-info-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  animation: none;
-  transition: none;
-
-  > div {
-    flex-shrink: 0;
-  }
-}
-
+// The card itself, whatever it is showing: its width, its sticky head and
+// the close it carries. A truck, a stop, a next stop and a planned fuel
+// stop are all this card with different content.
 .fleet-map-inspector {
   // A stop, a stop on a load still to come, and a planned fuel stop are one
   // kind of card - a place, and what is planned there - so they are one
@@ -172,72 +123,5 @@
     max-width: none;
     border: 0;
     box-shadow: none;
-  }
-}
-
-.fleet-map-info-reopen {
-  @include ui.button-control;
-}
-
-.fleet-map-info-empty {
-  display: flex;
-  align-items: center;
-  gap: ui.pg(md);
-  min-height: calc(#{ui.size(control-touch)} + #{ui.pg(sm)});
-  padding: ui.pg(md);
-  box-sizing: border-box;
-  color: ui.theme(text-muted);
-  background: ui.theme(surface);
-  border: 1px solid ui.theme(border-subtle);
-  border-radius: ui.radius(sm);
-  font-size: ui.fs(label);
-  svg {
-    flex-shrink: 0;
-    color: ui.theme(accent);
-  }
-  div {
-    display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: ui.pg(xs) ui.pg(md);
-  }
-  strong {
-    color: ui.theme(text);
-    font-size: ui.fs(body);
-    font-weight: 600;
-  }
-  .fleet-map-info-reopen {
-    margin-left: auto;
-    flex-shrink: 0;
-  }
-}
-
-@include ui.below(map-mobile) {
-  .fleet-map-inspector {
-    &[data-inspector-mode='fuel']:has(.fleet-station-popup--planned),
-    &[data-inspector-mode='fuel']:not(:has(.fleet-station-popup--planned)) {
-      width: 100%;
-      min-width: 0;
-      max-width: 100%;
-    }
-    &__header {
-      padding: 0 ui.pg(sm);
-    }
-    &__desktop-title {
-      display: none;
-    }
-    &__close {
-      width: ui.size(control-touch);
-    }
-    &__native,
-    &__body {
-      padding: ui.pg(sm);
-    }
-  }
-  .fleet-map-info-reserved {
-    max-height: 60%;
-    .fleet-map-info-empty {
-      display: none;
-    }
   }
 }

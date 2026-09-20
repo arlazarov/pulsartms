@@ -8,7 +8,8 @@ const compile = name => compileString(`@use '${name}';`, { loadPaths }).css;
 const header = compile('pages/fleet-map/inspector');
 
 test('mobile card expands both panels inside the bounded inspector', () => {
-  const details = compile('pages/fleet-map/details');
+  const details =
+    compile('pages/fleet-map/stage') + compile('pages/fleet-map/inspector');
   assert.match(details, /\.fleet-map-info-reserved\s*\{[^}]*max-height: 55%;/);
   assert.match(details, /\.fleet-map-info-reserved\s*\{[^}]*overflow: auto;/);
   assert.match(details, /\.fleet-map-info-reserved\s*\{[^}]*max-height: 60%;/);

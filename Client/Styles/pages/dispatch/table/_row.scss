@@ -1,0 +1,117 @@
+@use '../../../base' as ui;
+
+// A load as a row: the control that opens it, the stops it runs, and the
+// state it is in.
+.dispatch-page .dispatch-table {
+  .dispatch-table__open {
+    @include ui.button-control;
+    @include ui.compact-control;
+    & {
+      --button-bg: transparent;
+      --button-border: transparent;
+      --button-text: #{ui.theme(text)};
+      --button-hover-bg: #{ui.theme(surface)};
+      --button-hover-text: #{ui.theme(link)};
+      justify-content: flex-start;
+      max-width: 100%;
+      padding-inline: ui.pg(xs);
+      margin-inline-start: calc(-1 * #{ui.pg(xs)});
+      font-size: ui.fs(lead);
+      font-weight: 700;
+    }
+    svg {
+      width: ui.pg(md);
+      height: ui.pg(md);
+      flex-shrink: 0;
+      color: ui.theme(text-muted);
+    }
+  }
+  .dispatch-table__truck > strong,
+  .dispatch-table__equipment > strong,
+  .dispatch-table__stop-entry > strong {
+    font-size: ui.fs(lead);
+  }
+  .dispatch-table__stop-entry > strong {
+    display: block;
+    color: ui.theme(text);
+  }
+  .dispatch-table__stops-summary {
+    justify-content: flex-start;
+    text-align: left;
+    white-space: normal;
+    padding-inline: ui.pg(xs);
+    margin-inline-start: calc(-1 * #{ui.pg(xs)});
+  }
+  .dispatch-table__stop-context {
+    display: block;
+    color: ui.theme(text-secondary);
+  }
+  .dispatch-table__stop-position {
+    display: block;
+    margin-top: 0;
+    margin-bottom: ui.pg(xs);
+    color: ui.theme(text-secondary);
+  }
+  .dispatch-table__stop .dispatch-table__schedule {
+    font-size: ui.fs(body);
+  }
+  .dispatch-table__labels {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(xs) ui.pg(sm);
+    margin-top: ui.pg(xs);
+  }
+  .dispatch-table__status {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    line-height: 1.5;
+    white-space: nowrap;
+    &.is-moving {
+      color: ui.theme(text-secondary);
+    }
+    &.is-completed {
+      color: ui.theme(success-text);
+    }
+  }
+  .dispatch-table__phase {
+    display: inline-flex;
+    align-items: center;
+    padding: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-muted);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    font-weight: 600;
+    &.is-current {
+      background: ui.theme(action);
+      color: ui.theme(on-accent);
+    }
+    &.is-next {
+      background: ui.theme(route-next-surface);
+      color: ui.theme(route-next);
+    }
+  }
+  .dispatch-table__customer {
+    display: block;
+    margin-top: ui.pg(sm);
+    font-size: ui.fs(body);
+    color: ui.theme(text-secondary);
+  }
+  .dispatch-table__order,
+  .dispatch-table__trailer,
+  .dispatch-table__street {
+    color: ui.theme(text-muted);
+  }
+  .dispatch-table__equipment > strong,
+  .dispatch-table__equipment > span {
+    display: block;
+  }
+  .dispatch-table__truck {
+    display: flex;
+    align-items: center;
+    min-height: ui.size(control-compact);
+    justify-content: space-between;
+    gap: ui.pg(xs);
+  }
+}

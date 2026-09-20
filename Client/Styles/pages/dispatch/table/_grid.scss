@@ -1,0 +1,95 @@
+@use '../../../base' as ui;
+
+// The table's columns and the cells that stand in them.
+.dispatch-table-wrap {
+  overflow: auto;
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(sm);
+  background: ui.theme(surface);
+  &:focus-visible {
+    outline: 2px solid ui.theme(focus);
+    outline-offset: 2px;
+  }
+}
+
+.dispatch-page .dispatch-table {
+  font-size: ui.fs(body);
+  min-width: ui.size(content-form);
+  table-layout: fixed;
+  .dispatch-table__column-load {
+    width: 13%;
+  }
+  .dispatch-table__column-truck {
+    width: 15%;
+  }
+  .dispatch-table__column-stop {
+    width: 17%;
+  }
+  .dispatch-table__column-miles {
+    width: 14%;
+  }
+  .dispatch-table__column-rate {
+    width: 10%;
+  }
+  .dispatch-table__column-rpm {
+    width: 7%;
+  }
+  th {
+    font-size: ui.fs(label);
+    font-weight: 600;
+    color: ui.theme(text-secondary);
+    background: ui.theme(surface-soft);
+  }
+  th,
+  td {
+    padding: ui.pg(md);
+    vertical-align: top;
+  }
+  td {
+    padding-block: ui.pg(md);
+  }
+  th:nth-child(3),
+  td:nth-child(3),
+  th:nth-child(5),
+  td:nth-child(5),
+  th:nth-child(6),
+  td:nth-child(6) {
+    border-left: 1px solid ui.theme(border-subtle);
+  }
+  td {
+    overflow-wrap: anywhere;
+  }
+  strong {
+    font-weight: 600;
+  }
+  small {
+    margin-top: ui.pg(xs);
+    font-size: ui.fs(small);
+  }
+  .dispatch-table__row {
+    cursor: pointer;
+  }
+  .dispatch-table__row > td {
+    transition: background 150ms ease;
+  }
+  tr.is-current td {
+    background: ui.theme(selected);
+  }
+  tr.is-current td:first-child {
+    box-shadow: inset 3px 0 ui.theme(accent);
+  }
+  tr.is-planned td {
+    background: ui.theme(surface);
+  }
+  tr.is-next td:first-child {
+    box-shadow: inset 3px 0 ui.theme(route-next);
+  }
+  tr.dispatch-table__row:hover td,
+  tr.dispatch-table__row:focus-within td {
+    background: ui.theme(surface-soft);
+  }
+  tr.is-current:hover td,
+  tr.is-current:focus-within td {
+    background: ui.theme(selected);
+  }
+}

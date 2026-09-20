@@ -1,0 +1,110 @@
+@use '../../../base' as ui;
+
+// The dialog itself: how it opens over the page, and the two views it
+// switches between.
+.dispatch-load-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  padding: 0;
+  width: min(ui.size(content-load-dialog), calc(100vw - ui.pg(section) * 2));
+  max-width: none;
+  max-height: calc(100dvh - ui.pg(section) * 2);
+  overflow: hidden;
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(md);
+  background: ui.theme(surface);
+  color: ui.theme(text);
+  box-shadow: ui.shadow(modal);
+  &[open] {
+    display: flex;
+    flex-direction: column;
+  }
+  &__back {
+    align-self: start;
+    margin-block: ui.pg(sm);
+  }
+  .dispatch-load__more-details {
+    justify-self: start;
+    margin-top: ui.pg(sm);
+  }
+  &.is-stop-view {
+    .dispatch-paper__stops {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .dispatch-load__stop-detail-content {
+      grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, ui.size(dispatch-dialog-metric)), 1fr)
+      );
+      margin-top: ui.pg(md);
+      padding: ui.pg(md);
+    }
+    .dispatch-paper__stop-metadata {
+      grid-column: 1 / -1;
+      gap: ui.pg(md);
+    }
+    .dispatch-paper__stop-facts {
+      gap: ui.pg(md) ui.pg(section);
+    }
+    .dispatch-paper__stop-actions {
+      margin-top: ui.pg(md);
+    }
+  }
+  &::backdrop {
+    background: ui.theme(overlay, 0.45);
+  }
+  &__content {
+    min-height: 0;
+    overflow-y: auto;
+    overflow-anchor: none;
+    overscroll-behavior: contain;
+    padding: 0 ui.pg(lg) ui.pg(lg);
+  }
+}
+
+
+@include ui.below(md) {
+  .dispatch-load-dialog {
+    width: calc(100vw - ui.pg(sm) * 2);
+    max-height: calc(100dvh - ui.pg(sm) * 2);
+    border-radius: ui.radius(sm);
+    .dispatch-paper__identity {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: ui.pg(md);
+      padding: ui.pg(lg);
+    }
+    .dispatch-paper__customer {
+      grid-column: 1;
+      grid-row: 2;
+      padding-left: 0;
+      border-left: 0;
+    }
+    .dispatch-paper__close {
+      grid-column: 2;
+      grid-row: 1;
+    }
+    &__content {
+      padding: 0 ui.pg(lg) ui.pg(lg);
+    }
+    .dispatch-paper__financials {
+      grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, ui.size(dispatch-dialog-metric)), 1fr)
+      );
+      row-gap: ui.pg(lg);
+    }
+    .dispatch-paper__financials > div + div {
+      border-left: 0;
+    }
+    .dispatch-paper__financials > div {
+      padding-inline: ui.pg(md);
+    }
+    .dispatch-paper__financials .dispatch-paper__mileage dd {
+      font-size: ui.fs(lead);
+    }
+    .dispatch-paper__footer a {
+      min-height: ui.size(control-touch);
+    }
+  }
+}
