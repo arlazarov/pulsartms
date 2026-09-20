@@ -49,33 +49,33 @@ test('one stop update preserves other GPU data; hover only reorders opaque pairs
   snapshot = snapshotStops(stops, snapshot.stopData);
   allocations = 0;
   const hovered = build({ ...input, stopData: snapshot.stopData });
-  // One allocation: the ring that names the load being looked at. The badges
-  // themselves are untouched - not rebuilt, not resized, not moved - because
-  // badges that shuffle when a load is picked are what made one hard to
-  // follow in the first place.
-  assert.equal(
-    allocations,
-    1,
-    'highlight adds its ring without rebuilding a single badge',
+  // The picked badge is drawn again because it looks different - its edge
+  // darkens to name the load being looked at - and nothing else is: no
+  // neighbour is rebuilt, resized or moved, because badges that shuffle
+  // when a load is picked are what made one hard to follow.
+  assert.equal(allocations, 2, 'only the picked badge is drawn again');
+  const picked = hovered.find(
+    layer => layer.props.id === 'route-stop-1-points',
   );
-  const ring = hovered.find(layer => layer.props.id === 'route-stop-highlight');
   assert.deepEqual(
-    ring.props.data.map(stop => stop.id),
-    [next.id],
+    decodeURIComponent(picked.props.iconAtlas).match(/stroke="([^"]+)"/)[1],
+    'rgb(30,41,59)',
   );
-  assert.ok(
-    hovered.indexOf(ring) <
-      hovered.findIndex(layer => layer.props.id === 'route-stop-1-points'),
-    'under the badge it names',
-  );
+  assert.equal(picked.props.getSize, 34, 'and it is not a size larger');
   assert.deepEqual(
     hovered.slice(-2).map(layer => layer.props.id),
     ['route-stop-1-points', 'route-stop-1-numbers'],
   );
   for (const layer of hovered)
-    if (layer !== ring) assert.equal(layer, byId.get(layer.props.id));
+    if (!layer.props.id.startsWith('route-stop-1-'))
+      assert.equal(layer, byId.get(layer.props.id));
   const delivery = hovered.at(-2);
-  assert.equal(delivery.props.iconAtlas, stopMarkerIcon(currentRouteColor).url);
+  // The picked badge is the same circle with a darker edge; everything else
+  // about it - fill, size, the number on it - is unchanged.
+  assert.equal(
+    delivery.props.iconAtlas,
+    stopMarkerIcon(currentRouteColor, [30, 41, 59, 255]).url,
+  );
   assert.equal(delivery.props.getIcon(delivery.props.data[0]), 'circle');
   assert.equal(delivery.props.getSize, 34);
   assert.equal(delivery.props.sizeUnits, 'pixels');
@@ -103,7 +103,7 @@ test('one stop update preserves other GPU data; hover only reorders opaque pairs
   const renumbered = build({ ...input, stopData: snapshot.stopData });
   assert.equal(allocations, 2, 'only the changed stop pair receives new data');
   for (const layer of renumbered.slice(0, -2)) {
-    if (layer.props.id === 'route-stop-highlight') continue;
+    if (layer.props.id.startsWith('route-stop-1-')) continue;
     assert.equal(layer, byId.get(layer.props.id));
     assert.equal(layer.props.data, byId.get(layer.props.id).props.data);
   }

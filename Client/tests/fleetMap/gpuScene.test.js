@@ -418,10 +418,21 @@ test('scene reuses static layers across motion, invalidates only changed stops a
     highlightedOrder.indexOf('route-stop-1-numbers') >
       highlightedOrder.indexOf('route-stop-1-points'),
   );
-  assert.equal(
+  // A picked badge is drawn again because it looks different - its edge
+  // darkens to name the load being looked at - and it keeps its place and
+  // its size, so nothing around it moves.
+  assert.notEqual(
     layers()['route-stop-1-points'],
     initial['route-stop-1-points'],
-    'highlight preserves the stable pair',
+  );
+  assert.equal(layers()['route-stop-1-points'].props.getSize, 34);
+  assert.deepEqual(
+    layers()['route-stop-1-points'].props.getPixelOffset(
+      layers()['route-stop-1-points'].props.data[0],
+    ),
+    initial['route-stop-1-points'].props.getPixelOffset(
+      initial['route-stop-1-points'].props.data[0],
+    ),
   );
   stop.highlighted = false;
   flush();

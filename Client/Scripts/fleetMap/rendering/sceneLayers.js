@@ -23,7 +23,6 @@ export function createSceneLayers({
 }) {
   const stationLayer = memoizeLast(),
     distanceLabels = memoizeLast();
-  const stopHighlight = memoizeLast();
   const stopLayers = new Map();
   const stopGroup = memoizeLast();
   const vehicleLayers = memoizeLast();
@@ -321,49 +320,6 @@ export function createSceneLayers({
     );
     const isIcon = layer => /^truck-icons/.test(layer.props?.id ?? '');
     truckLayers.push(...vehicleParts.filter(isIcon));
-    // The load being looked at is named by a ring round its badges. Its road
-    // was emphasised and its circles were not, so picking a load lit
-    // everything except the stops it was picked for. The ring is a layer of
-    // its own, drawn under the badges: a larger badge would have pushed its
-    // neighbours aside, and badges that shuffle when a load is picked are
-    // what made one hard to follow in the first place.
-    const chosen = stopData.filter(stop => stop.highlighted);
-    truckLayers.push(
-      ...stopHighlight(
-        [
-          // Only what the ring is drawn from: renumbering some other stop is
-          // not a reason to make it again.
-          chosen
-            .map(
-              stop => `${stop.id}:${stop.markerOffsetX}:${stop.markerOffsetY}`,
-            )
-            .join('|'),
-        ],
-        () =>
-          chosen.length
-            ? [
-                new ScatterplotLayer({
-                  id: 'route-stop-highlight',
-                  data: chosen,
-                  getPosition: stop => stop.position,
-                  getPixelOffset: stop => [
-                    stop.markerOffsetX,
-                    stop.markerOffsetY,
-                  ],
-                  getRadius: metrics.stopBadgeHighlightRadius,
-                  radiusUnits: 'pixels',
-                  filled: false,
-                  stroked: true,
-                  getLineColor: [30, 41, 59],
-                  getLineWidth: 2,
-                  lineWidthUnits: 'pixels',
-                  pickable: false,
-                  parameters: { depthCompare: 'always' },
-                }),
-              ]
-            : [],
-      ),
-    );
     // Keep each geographic anchor and badge together when selection changes priority.
     truckLayers.push(
       ...stopGroup([stopData, setHover, selectStop, fonts], () => {
@@ -391,14 +347,22 @@ export function createSceneLayers({
               'markerOffsetY',
               'standing',
               'stacked',
+              'highlighted',
             ].every(field => cached.stop[field] === stop[field])
           )
             return cached.layers;
           const data = [stop];
           const appearance = stopAppearance(stop.job, stop.color, stop.done);
+          // The load being looked at is named on its own circles: the road
+          // was emphasised and the badges were not, so picking a load lit
+          // everything except the stops it was picked for. It is the badge's
+          // own edge that darkens - nothing is added beside it and nothing
+          // grows, because a badge that grows pushes its neighbours aside,
+          // and badges that shuffle when a load is picked are what made one
+          // hard to follow in the first place.
           const { url: iconAtlas, ...circle } = stopMarkerIcon(
             appearance.fill,
-            appearance.border,
+            stop.highlighted ? metrics.stopBadgePickedEdge : appearance.border,
             stop.done ? metrics.stopBadgeDoneRadius : undefined,
             stop.standing,
             stop.stacked,
