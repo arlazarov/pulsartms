@@ -307,7 +307,9 @@ test('selection emphasizes the chosen road and subdues others without replacing 
     [3, 3, 3, 5, 5, 5],
   );
   layer.clearSelection();
-  assert.ok(render().every(pair => pair.every(part => part.opacity === 1)));
+  // Clearing the selection restores the upcoming roads to their resting
+  // strength, which is a step behind the road being driven, not equal to it.
+  assert.ok(render().every(pair => pair.every(part => part.opacity === 0.7)));
   assert.ok(render().every(pair => pair[1].getWidth === 3));
   assert.ok(current.cachedLayer.every(part => part.opacity === 1));
   assert.equal(current.cachedLayer[1].getWidth, 5);

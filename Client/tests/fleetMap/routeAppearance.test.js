@@ -430,6 +430,7 @@ test('selected next routes dim every other road and restore their appearance whe
   assert.deepEqual(
     selected.map(layer => layer.opacity),
     [0.4, 0.4, 1, 1],
+    'the chosen upcoming load is the one road at full strength',
   );
   const dimmedCurrent = current.cachedLayer;
   assert.equal(current.routeMuted, undefined);
@@ -458,7 +459,12 @@ test('selected next routes dim every other road and restore their appearance whe
     roads().map(layer => layer.id),
     ['future-outline', 'future', 'current-outline', 'current'],
   );
-  assert.ok(roads().every(layer => layer.opacity === 1));
+  // With nothing chosen the current road is at full strength and the
+  // upcoming one stays a step behind it rather than matching it.
+  assert.deepEqual(
+    roads().map(layer => layer.opacity),
+    [0.7, 0.7, 1, 1],
+  );
   assert.ok(roads().every(layer => layer.data === data));
 });
 

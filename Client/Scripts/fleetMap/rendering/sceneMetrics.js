@@ -33,6 +33,7 @@ export const sceneMetrics = Object.freeze({
   routeCurrentMinWidth: 5,
   routeCurrentWidthScale: 1.25,
   routeMutedOpacity: 0.4,
+  routeFutureOpacity: 0.7,
   routeTraveledOpacity: 0.22,
   routeOutlineWidth: 2,
   routeDashArray: Object.freeze([4, 4]),

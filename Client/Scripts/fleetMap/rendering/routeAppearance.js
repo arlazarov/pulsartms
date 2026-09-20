@@ -56,12 +56,16 @@ export function routeLayers(
   const shared = {
     data: line.data,
     visible: line.visible !== false,
+    // Work that is not today's steps back by default: upcoming loads and
+    // their empty miles were drawn as strongly as the road being driven.
     opacity:
       line.routeRole === 'traveled' || line.routeRole === 'traveled-empty'
         ? metrics.routeTraveledOpacity
         : muted
           ? metrics.routeMutedOpacity
-          : 1,
+          : dashed && !line.routeSelected
+            ? metrics.routeFutureOpacity
+            : 1,
     getPath: path => path,
     widthUnits: 'pixels',
     capRounded: true,
