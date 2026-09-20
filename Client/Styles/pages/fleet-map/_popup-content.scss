@@ -413,9 +413,23 @@
     font-size: ui.fs(small);
     line-height: 1;
   }
-  &__distance {
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(small);
+  // A muted name, then the figure - the shape of every fact on these cards.
+  &__away,
+  &__price {
+    display: flex;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    white-space: nowrap;
+  }
+  &__price {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  &__distance,
+  &__price-value {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
     white-space: nowrap;
   }
   &__levels {
@@ -521,16 +535,15 @@
     font-size: ui.fs(heading);
     align-self: center;
   }
+  // Which stop this is, said the way the route stop says "Load stop 2 of
+  // 2": a quiet line. It was a dark pill, a shape nothing else on these
+  // cards uses, shouting the least important thing on the card.
   .fleet-station-popup__plan-label {
     grid-column: 2;
     grid-row: 1;
     margin-right: ui.size(control-compact);
-    padding: ui.pg(xs) ui.pg(sm);
-    border-radius: ui.radius(pill);
-    color: ui.theme(navigation-text);
-    background: ui.theme(navigation);
-    font-size: ui.fs(caption);
-    font-weight: 600;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
     align-self: center;
   }
   .fleet-station-popup__address {
@@ -608,7 +621,7 @@
     margin-top: ui.pg(sm);
   }
   .fleet-station-popup__cost-value {
-    font-size: ui.fs(lead);
+    font-size: ui.fs(body);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
@@ -620,15 +633,22 @@
     padding-top: ui.pg(sm);
     border-top: 1px solid ui.theme(border-subtle);
   }
+  // The purchase is a named figure on one line, like the facts on the truck
+  // card. It was a caption over a headline-sized sum, the loudest thing on
+  // a card where it is one number among several.
   .fleet-station-popup__cost:not([hidden]) {
-    display: grid;
-    gap: ui.pg(micro);
+    display: flex;
+    align-items: baseline;
+    gap: ui.pg(sm);
     order: -1;
-    margin-right: auto;
+    inline-size: auto;
+    margin: 0 auto 0 0;
+    padding: 0;
+    border: 0;
   }
   .fleet-station-popup__cost > span {
     color: ui.theme(text-secondary);
-    font-size: ui.fs(caption);
+    font-size: ui.fs(small);
   }
   .fleet-station-popup__actions .btn--text {
     order: 1;

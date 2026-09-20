@@ -78,15 +78,26 @@ export function fuelPurchaseCostLabel(costUsd) {
     : '';
 }
 
-export function plannedPriceLabel(visit) {
+// A named figure, the way every other fact on these cards is written. This
+// was one sentence about itself - "Estimated price: 6.112 USD/US gal · quote
+// 2026-09-20" - which is a third way of saying a labelled number.
+export function plannedPrice(visit) {
   if (
     !Number.isFinite(visit.yourPrice) ||
     visit.yourPrice <= 0 ||
     !visit.priceDate
   )
-    return '';
+    return null;
   const day = visit.estimatedArrival?.slice(0, 10);
-  return `${visit.priceEstimated ? 'Estimated price' : 'Arrival price'}${day ? ` · ${day}` : ''}: ${visit.yourPrice.toFixed(3)} ${visit.currency || ''}/${visit.unit || 'US gal'}${visit.priceEstimated ? ` · quote ${visit.priceDate}` : ''}`;
+  return {
+    label: visit.priceEstimated ? 'Estimated price' : 'Arrival price',
+    value: `${visit.yourPrice.toFixed(3)} ${visit.currency || ''}/${visit.unit || 'US gal'}`,
+    note: visit.priceEstimated
+      ? `quoted ${visit.priceDate}`
+      : day
+        ? `on ${day}`
+        : '',
+  };
 }
 
 export function createFuelVisit(
@@ -105,14 +116,19 @@ export function createFuelVisit(
     node('span', 'fleet-fuel-visit__number', String(visit.number)),
     node('span', 'fleet-fuel-visit__title', 'Fuel stop'),
   );
+  // The card names a thing before it says it, this one included: the number
+  // stood on its own in the corner with nothing to say what it measured.
   const distance = node(
-    'span',
+    'strong',
     'fleet-fuel-visit__distance',
     Number.isFinite(visit.miles) ? formatDistance(visit.miles) : '',
   );
-  if (Number.isFinite(visit.miles))
+  const away = node('span', 'fleet-fuel-visit__away');
+  if (Number.isFinite(visit.miles)) {
     distance.setAttribute('aria-label', `${formatDistance(visit.miles)} away`);
-  heading.append(name, distance);
+    away.append(node('span', 'fleet-fuel-visit__label', 'Left'), distance);
+  }
+  heading.append(name, away);
   row.append(heading);
   if (visit.warning) {
     const warning = node('p', 'fleet-fuel-visit__warning', visit.warning);
@@ -145,9 +161,17 @@ export function createFuelVisit(
     ),
   );
   row.append(levels);
-  const priceLabel = plannedPriceLabel(visit);
-  if (priceLabel)
-    row.append(node('div', 'fleet-fuel-visit__label', priceLabel));
+  const price = plannedPrice(visit);
+  if (price) {
+    const line = node('div', 'fleet-fuel-visit__price');
+    line.append(
+      node('span', 'fleet-fuel-visit__label', price.label),
+      node('strong', 'fleet-fuel-visit__price-value', price.value),
+    );
+    if (price.note)
+      line.append(node('span', 'fleet-fuel-visit__label', price.note));
+    row.append(line);
+  }
   const costLabel = fuelPurchaseCostLabel(visit.purchaseCostUsd);
   if (showCost && costLabel) {
     const cost = node('div', 'fleet-station-popup__visit-cost');

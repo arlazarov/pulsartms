@@ -263,12 +263,12 @@ test('return visits display distinct numbers quantities and distances without po
     ).textContent,
     'Fuel stops 1, 2',
   );
+  // The distance is named before it is said, like every fact on the card.
+  const away = visits.children[0].children[0].children[1];
+  assert.equal(away.children[0].textContent, 'Left');
+  assert.equal(away.children[1].textContent, '369 mi · 594 km');
   assert.equal(
-    visits.children[0].children[0].children[1].textContent,
-    '369 mi · 594 km',
-  );
-  assert.equal(
-    visits.children[1].children[0].children[1].textContent,
+    visits.children[1].children[0].children[1].children[1].textContent,
     '927 mi · 1,492 km',
   );
   const first = visits.children[0].children[1];

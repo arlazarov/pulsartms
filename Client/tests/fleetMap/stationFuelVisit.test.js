@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createFuelVisit,
   fuelGaugeValue,
-  plannedPriceLabel,
+  plannedPrice,
 } from '../../Scripts/fleetMap/stations/stationFuelVisit.js';
 
 test('planned prices retain the station arrival day and distinguish fallback quotes', () => {
@@ -15,15 +15,19 @@ test('planned prices retain the station arrival day and distinguish fallback quo
     estimatedArrival: '2026-09-15T00:30:00-07:00',
     priceEstimated: true,
   };
-  assert.equal(
-    plannedPriceLabel(visit),
-    'Estimated price · 2026-09-15: 3.250 USD/US gal · quote 2026-09-14',
-  );
-  assert.equal(
-    plannedPriceLabel({ ...visit, priceEstimated: false }),
-    'Arrival price · 2026-09-15: 3.250 USD/US gal',
-  );
-  assert.equal(plannedPriceLabel({}), '');
+  // A named figure, the way every other fact on these cards is written,
+  // rather than one sentence about itself.
+  assert.deepEqual(plannedPrice(visit), {
+    label: 'Estimated price',
+    value: '3.250 USD/US gal',
+    note: 'quoted 2026-09-14',
+  });
+  assert.deepEqual(plannedPrice({ ...visit, priceEstimated: false }), {
+    label: 'Arrival price',
+    value: '3.250 USD/US gal',
+    note: 'on 2026-09-15',
+  });
+  assert.equal(plannedPrice({}), null);
 });
 
 test('fuel gauges use physical tank capacity rather than the fill target', () => {
