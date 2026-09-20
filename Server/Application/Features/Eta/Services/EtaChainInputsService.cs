@@ -294,16 +294,24 @@ public sealed partial class EtaChainInputsService(
   // Reading only the first kind was right while work ahead was never
   // accepted in advance; now it is, and that read answered "no roads" for a
   // load whose roads were sitting under its leg.
-  private async Task<IReadOnlyList<NextLoadRouteVersion>> FutureVersionsAsync(
+  private Task<IReadOnlyList<NextLoadRouteVersion>> FutureVersionsAsync(
     IReadOnlyList<RouteWorkSnapshot> future,
+    CancellationToken ct
+  ) => FutureVersionsAsync(Plain(future), Accepted(future), ct);
+
+  private async Task<IReadOnlyList<NextLoadRouteVersion>> FutureVersionsAsync(
+    Guid[] plain,
+    Guid[] accepted,
     CancellationToken ct
   )
   {
     var values = new List<NextLoadRouteVersion>();
-    if (Plain(future) is { Length: > 0 } plain)
+    if (plain.Length > 0)
       values.AddRange(await savedRoutes.ReadVersionsAsync(plain, ct));
-    if (Accepted(future) is { Length: > 0 } legs)
-      values.AddRange(await savedRoutes.ReadExecutionVersionsAsync(legs, ct));
+    if (accepted.Length > 0)
+      values.AddRange(
+        await savedRoutes.ReadExecutionVersionsAsync(accepted, ct)
+      );
     return values;
   }
 

@@ -46,24 +46,20 @@ public sealed partial class EtaChainInputsService
       throw RoadsChanged();
     var future = expected.Roads.Future;
     if (!future.IsEmpty)
-    {
-      // Each future load is checked where its roads live: under its leg once
-      // it has been accepted, under its dispatch while it is only assigned.
-      var actual = new List<NextLoadRouteVersion>();
-      var plain = future
-        .Where(x => !x.ExecutionLegId.HasValue)
-        .Select(x => x.DispatchId)
-        .ToArray();
-      var legs = future
-        .Where(x => x.ExecutionLegId.HasValue)
-        .Select(x => x.ExecutionLegId!.Value)
-        .ToArray();
-      if (plain.Length > 0)
-        actual.AddRange(await savedRoutes.ReadVersionsAsync(plain, ct));
-      if (legs.Length > 0)
-        actual.AddRange(await savedRoutes.ReadExecutionVersionsAsync(legs, ct));
-      RequireFutureRoads(future, actual);
-    }
+      RequireFutureRoads(
+        future,
+        await FutureVersionsAsync(
+          future
+            .Where(x => !x.ExecutionLegId.HasValue)
+            .Select(x => x.DispatchId)
+            .ToArray(),
+          future
+            .Where(x => x.ExecutionLegId.HasValue)
+            .Select(x => x.ExecutionLegId!.Value)
+            .ToArray(),
+          ct
+        )
+      );
   }
 
   private static void RequireFutureRoads(
