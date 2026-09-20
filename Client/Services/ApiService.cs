@@ -194,7 +194,7 @@ public class ApiService(HttpClient httpClient)
           return result;
       }
       if (json.RootElement.TryGetProperty("title", out var title))
-        return Fail<T>(title.GetString() ?? "The request failed.");
+        return Fail<T>(Readable(title.GetString()));
     }
     catch (JsonException) { }
     return Fail<T>(
@@ -206,4 +206,13 @@ public class ApiService(HttpClient httpClient)
   {
     return new RequestResponseDTO<T> { Success = false, Errors = [error] };
   }
+
+  // A server that crashed answers with the name of the class that threw, and
+  // a dispatcher was shown "System.ArgumentException" where a sentence
+  // belongs. A title is passed on only when it reads as one.
+  private static string Readable(string? title) =>
+    title?.Trim() is { Length: > 0 } text
+    && (text.Contains(' ') || !text.Contains('.'))
+      ? text
+      : "The request failed. Please try again.";
 }

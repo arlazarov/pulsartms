@@ -395,6 +395,45 @@ public sealed class ExecutionWorkReaderTests
     Assert.Empty((await ReadAsync(f, truck)).Loads);
   }
 
+  // 11005 carried a cancelled load across the map. The source had cancelled
+  // it, the import had brought that through, and the load was still the
+  // truck's current work because the execution leg it had been accepted into
+  // was still open - and the rule asked the leg, never the load.
+  [Fact]
+  public async Task ACancelledLoadIsNotWorkEvenWithAnOpenExecutionLeg()
+  {
+    await using var f = await StopCompletionFixture.CreateAsync();
+    var truck = await AssignAsync(f);
+    f.Load.Status = "assigned";
+    f.Db.LoadExecutionLegs.Add(
+      new LoadExecutionLeg
+      {
+        Id = Guid.NewGuid(),
+        DispatchId = f.Load.Id,
+        ExecutionLeg = new()
+        {
+          Id = Guid.NewGuid(),
+          Trip = new() { Id = Guid.NewGuid() },
+          TruckId = truck.Id,
+          Status = "active",
+          Revision = 1,
+          Stops = ExecutionStopRows.Capture(f.Load.Stops),
+        },
+        Sequence = 1,
+      }
+    );
+    await f.Db.SaveChangesAsync();
+    Assert.Equal(
+      f.Load.Id,
+      Assert.Single((await ReadAsync(f, truck)).Loads).Id
+    );
+
+    f.Load.Status = "cancelled";
+    await f.Db.SaveChangesAsync();
+
+    Assert.Empty((await ReadAsync(f, truck)).Loads);
+  }
+
   private static Load ScheduledLoad(Truck truck, int number, DateOnly day) =>
     new()
     {

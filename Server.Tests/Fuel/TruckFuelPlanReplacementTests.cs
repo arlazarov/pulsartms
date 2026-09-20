@@ -256,6 +256,7 @@ public sealed class TruckFuelPlanReplacementTests
   [InlineData("default-revision")]
   [InlineData("identity")]
   [InlineData("geometry")]
+  [InlineData("no-miles")]
   [InlineData("summary-size")]
   [InlineData("geometry-size")]
   [InlineData("cancellation")]
@@ -283,6 +284,14 @@ public sealed class TruckFuelPlanReplacementTests
         break;
       case "geometry":
         changed.CheckedRoute!.Miles++;
+        break;
+      // A route of no miles is not a route: a truck standing on its last
+      // stop has nothing left to drive, and a plan cannot be kept against
+      // it. The planner answers that before it gets this far - it used to
+      // walk into this guard, and the dispatcher was shown the name of the
+      // class that threw.
+      case "no-miles":
+        changed.CheckedRoute!.Miles = 0;
         break;
       case "summary-size":
         changed.Plan.Notes = [new string('x', 512 * 1024)];

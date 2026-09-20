@@ -338,6 +338,14 @@ public static class ExecutionWorkReader
     bool includeOverdue
   )
   {
+    // A load the source has cancelled is not work, whatever its execution
+    // leg still says. The leg is left alone - a cancellation reversed in the
+    // source brings the same trip back, with its accepted itinerary and its
+    // recorded events - but until then the truck is not driving it. 11005
+    // carried a cancelled load across the map because the leg it was
+    // accepted into was still open, and nothing asked the load itself.
+    if (load.Status is "cancelled" or "canceled")
+      return false;
     if (load.ExecutionLegId.HasValue)
       return load.ExecutionStatus is "active" or "planned";
     var final = load.Stops.LastOrDefault(x =>

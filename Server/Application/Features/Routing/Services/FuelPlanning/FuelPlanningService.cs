@@ -200,6 +200,16 @@ public sealed partial class FuelPlanningService(
       FuelHorizon.LoadSignature
     );
     var horizon = await horizons.BuildAsync(state, p, ct, captured);
+    // Nothing left to drive is nothing to fuel. A truck standing on the last
+    // stop of its last load has a route of zero miles, which is not a route:
+    // the store refuses to keep a plan against one, and refused it by
+    // throwing - so pressing "Calculate automatically" on 11006, parked at
+    // its delivery with a full tank, answered a dispatcher with the name of
+    // an exception class.
+    if (!(horizon.Route.Miles > 0))
+      throw new RoutePlanningException(
+        "There is no distance left on this assignment to plan fuel for."
+      );
     var terminal = new RoutePlan
     {
       TruckId = plan.TruckId,

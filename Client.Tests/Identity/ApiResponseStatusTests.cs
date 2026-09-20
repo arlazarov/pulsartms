@@ -64,4 +64,40 @@ public sealed class ApiResponseStatusTests
     Assert.True(result.Success);
     Assert.Equal(HttpStatusCode.OK, result.HttpStatusCode);
   }
+
+  // A crashed server answers with the name of the class that threw. The
+  // dispatcher pressing "Calculate automatically" on a truck parked at its
+  // delivery was shown "System.ArgumentException" where a sentence belongs.
+  [Theory]
+  [InlineData("System.ArgumentException", false)]
+  [InlineData("Npgsql.PostgresException", false)]
+  [InlineData("The fuel plan changed in another session.", true)]
+  [InlineData("Validation failed", true)]
+  public async Task AnExceptionTypeIsNeverShownAsAMessage(
+    string title,
+    bool kept
+  )
+  {
+    using var client = new HttpClient(
+      new StubHttpMessageHandler(
+        (_, _) =>
+          Task.FromResult(
+            new HttpResponseMessage(HttpStatusCode.InternalServerError)
+            {
+              Content = JsonContent.Create(new { title, status = 500 }),
+            }
+          )
+      )
+    )
+    {
+      BaseAddress = new("http://localhost/"),
+    };
+    var result = await new ApiService(client).GetAsync<object>("api/anything");
+    Assert.False(result.Success);
+    var message = Assert.Single(result.Errors!);
+    Assert.Equal(
+      kept ? title : "The request failed. Please try again.",
+      message
+    );
+  }
 }

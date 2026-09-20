@@ -172,12 +172,18 @@ public static class ExecutionLoads
       {
         Work = captured.Work with
         {
-          Status = leg.Status switch
-          {
-            "active" => "in_transit",
-            "completed" => "completed",
-            _ => "assigned",
-          },
+          // The leg says how far along the work is; the load says whether
+          // there is work at all. A load the source has cancelled keeps
+          // saying so, or its open leg would answer for it - which is how
+          // 11005 kept a cancelled trip on the map.
+          Status = source.Status is "cancelled" or "canceled"
+            ? source.Status
+            : leg.Status switch
+            {
+              "active" => "in_transit",
+              "completed" => "completed",
+              _ => "assigned",
+            },
           TruckNumber = truckNames.GetValueOrDefault(leg.TruckId, ""),
         },
         Details = captured.Details with
