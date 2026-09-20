@@ -51,10 +51,12 @@ public sealed class HosTravelClock
     string initialCountry,
     HosHistory? history = null,
     EtaPlanningOptions? planning = null,
-    HosCycleMode cycleMode = HosCycleMode.Observe
+    HosCycleMode cycleMode = HosCycleMode.Observe,
+    int fuelStopsAhead = int.MaxValue
   )
   {
     this.planning = planning;
+    fuelStopsLeft = Math.Max(0, fuelStopsAhead);
     this.cycleMode = cycleMode;
     calculationStartedAt = now;
     CycleFeasibility = new(now, clocks, initialCountry, history);
@@ -76,8 +78,15 @@ public sealed class HosTravelClock
     );
     plannedBreakLeft = 8;
     preTripPending = planning is not null && shiftDrive < .000001;
-    plannedFuelTaken = planning is not null && !preTripPending;
+    plannedFuelTaken = planning is not null && (!preTripPending || NoFuelAhead);
   }
+
+  // The allowance buys the minutes a fuel stop costs beyond the driving, so
+  // it is owed as many times as the plan stops to fuel and no more. A shift
+  // that passes no pump - the last two miles into a delivery, or any run
+  // that starts with a full tank - pays nothing for one.
+  private int fuelStopsLeft;
+  private bool NoFuelAhead => fuelStopsLeft == 0;
 
   public void Enter(string nextCountry)
   {
@@ -129,15 +138,17 @@ public sealed class HosTravelClock
     plannedDriveLeft = planning?.DrivingHoursPerShift ?? double.MaxValue;
     plannedBreakLeft = 8;
     plannedBreakTaken = false;
-    plannedFuelTaken = false;
+    plannedFuelTaken = NoFuelAhead;
     preTripPending = planning is not null;
   }
 
   public void Fuel()
   {
-    if (planning is not null && plannedFuelTaken)
+    if (planning is not null && (plannedFuelTaken || NoFuelAhead))
       return;
     plannedFuelTaken = true;
+    if (fuelStopsLeft is > 0 and < int.MaxValue)
+      fuelStopsLeft--;
     var hours = (planning?.FuelStopMinutes ?? 15) / 60d;
     FuelHours += hours;
     Service(hours);

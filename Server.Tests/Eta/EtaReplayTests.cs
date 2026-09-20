@@ -99,6 +99,34 @@ public sealed class EtaReplayTests
     Assert.Equal(60, stop.DrivingMinutes);
   }
 
+  // The allowance buys the minutes a fuel stop costs beyond the driving, so
+  // a shift that passes no pump owes nothing for one. A plan that has not
+  // been fuelled yet has decided nothing, and keeps its allowance rather
+  // than having one quietly taken away.
+  [Theory]
+  [InlineData(0d, 0)]
+  [InlineData(90d, 5)]
+  [InlineData(null, 5)]
+  public void TheFuelAllowanceIsOwedOncePerStopThePlanMakesToFuel(
+    double? milesAhead,
+    int fuel
+  )
+  {
+    var plan = Plan(120, 7200);
+    if (milesAhead is { } ahead)
+      plan.FuelPlan = new() { Stops = [new() { MilesAhead = ahead }] };
+    var fresh = Clocks;
+    fresh.DriveMs = 11 * 3600000L;
+    fresh.ShiftMs = 14 * 3600000L;
+    var stop = Assert.Single(
+      Service(new Regions()).Calculate(State(plan, 60), fresh, Now.UtcDateTime)
+        .Stops
+    );
+    Assert.Equal(fuel, stop.FuelMinutes);
+    // The pre-trip belongs to the shift starting, not to the fuelling.
+    Assert.Equal(15, stop.PreTripMinutes);
+  }
+
   [Fact]
   public void UnsupportedRegionBehindProgressDoesNotBlockRemainingSupportedTravel()
   {

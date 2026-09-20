@@ -361,13 +361,23 @@ public sealed class EtaService(
       return Missing(
         "ETA unavailable: this regional ruleset needs verification."
       );
+    // The fuel allowance is owed once per stop the plan makes to fuel, so a
+    // run with a fuel plan and no pump ahead of the truck - the last miles
+    // into a delivery - is not charged for one. No fuel plan is not the same
+    // answer: nothing has been decided yet, and the shift keeps its
+    // allowance rather than having one quietly taken away.
+    var fuelStopsAhead =
+      plan.FuelPlan is { } fuelPlan
+        ? fuelPlan.Stops.Count(stop => stop.MilesAhead > 0)
+        : int.MaxValue;
     var clock = new HosTravelClock(
       now,
       clocks,
       initial.Country,
       history,
       planning,
-      cycleMode
+      cycleMode,
+      fuelStopsAhead
     );
     var cycleAtCalculation = clock.SnapshotCycle();
     try
