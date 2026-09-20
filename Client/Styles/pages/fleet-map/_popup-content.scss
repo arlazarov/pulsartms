@@ -37,7 +37,11 @@
   gap: ui.pg(md);
   font-size: ui.fs(label);
   line-height: 1.5;
-  overflow-wrap: anywhere;
+  // A long address may break inside a word because nothing else will fit.
+  // "anywhere" broke everything else too - "Drop Off" came apart one letter
+  // per line - so words break only where they must, and the facts below
+  // never break at all.
+  overflow-wrap: break-word;
   strong {
     display: block;
   }
@@ -171,7 +175,9 @@
   &__job {
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);
-    overflow-wrap: anywhere;
+    // This is where "Drop Off" came apart one letter per line, between the
+    // badge and the state chip that share the row with it.
+    overflow-wrap: break-word;
   }
   &__state {
     margin-inline-start: auto;
@@ -226,12 +232,13 @@
     column-gap: ui.pg(sm);
     margin: 0;
   }
-  &__appointment {
-    grid-column: 1 / -1;
-  }
   &__field {
     min-width: 0;
   }
+  // Every fact is the same two cells sharing one label column: the
+  // appointment used to put its label on a line of its own, which read as a
+  // different kind of thing from the ETA directly under it.
+  &__appointment,
   &__eta.fleet-route-popup__field,
   &__distance {
     display: grid;
@@ -265,7 +272,7 @@
   font-size: ui.fs(label);
   line-height: 1.4;
   color: ui.theme(text);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 
   &__address {
     display: block;
@@ -331,7 +338,32 @@
     dd {
       text-align: right;
       margin: 0;
+      // A price is one number. It was coming apart as "4.01" over "9".
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
     }
+  }
+
+  // The card's shape for a named figure: the name muted on the left, the
+  // figure at the end. The two were running together as one word.
+  &__cost {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+    inline-size: 100%;
+    margin-top: ui.pg(xs);
+    padding-top: ui.pg(xs);
+    border-top: 1px solid ui.theme(border-subtle);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+
+  &__cost-value {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   &__price-unit {

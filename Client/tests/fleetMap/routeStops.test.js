@@ -494,7 +494,8 @@ test('current pickup and delivery link only to the authoritative dispatch and pr
     const link = row(state.shown, 'fleet-route-popup__details-link');
     assert.equal(link.tagName, 'a');
     assert.equal(link.href, `/dispatch/${dispatchId}`);
-    assert.equal(link.textContent, 'Route & load details ↗');
+    // The arrow is tied to the last word so it never lands on a line alone.
+    assert.equal(link.textContent, 'Route & load details\u00a0↗');
     assert.equal(
       state.shown.children[1].children.at(-1),
       link,

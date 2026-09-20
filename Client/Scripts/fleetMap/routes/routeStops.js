@@ -414,7 +414,9 @@ function stopContent(
     const link = element(
       'a',
       'fleet-route-popup__details-link',
-      'Route & load details ↗',
+      // The arrow belongs to the last word; on its own line it reads as a
+      // stray mark rather than as a link that leaves the map.
+      'Route & load details ↗',
     );
     link.href = stop.detailsHref;
     information.append(link);
