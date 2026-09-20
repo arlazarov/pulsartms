@@ -11,6 +11,10 @@ export const sceneMetrics = Object.freeze({
   stopBadgeOffset: 0,
   stopBadgeDiameter: 34,
   stopBadgeGap: 2,
+  // Past a handful, stops close together are a corridor of them rather than
+  // a pin-up at one place, and standing them in a tower says less than
+  // letting them sit where they are.
+  stopBadgeCluster: 6,
   stationRadius: 8,
   // Below this the map is a sea of dots that hides the route under them.
   // Planned stops are exempt: those are the ones a plan was made about.

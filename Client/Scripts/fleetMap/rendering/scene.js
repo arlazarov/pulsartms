@@ -48,6 +48,8 @@ export function createScene(
     const next = map.getZoom?.() ?? 12;
     if (next === clusterZoom) return;
     clusterZoom = next;
+    // Badges are laid out against the screen, so a new zoom is a new layout.
+    stopsDirty = true;
     invalidateVehicles();
   });
   const buildLayers = createSceneLayers({
@@ -158,6 +160,7 @@ export function createScene(
           : stops,
         stopData,
         distanceData,
+        clusterZoom,
       ));
       stopsDirty = false;
     }

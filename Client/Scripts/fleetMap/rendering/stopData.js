@@ -9,6 +9,7 @@ export function snapshotStops(
   stops,
   previousStops = [],
   previousDistances = [],
+  zoom,
 ) {
   const stopData = [],
     distanceData = [];
@@ -63,7 +64,7 @@ export function snapshotStops(
         transient: !!stop.transientLabel,
       });
   }
-  layoutStopMarkers(stopData);
+  layoutStopMarkers(stopData, zoom);
   for (let index = 0; index < stopData.length; index++) {
     const row = stopData[index],
       previous = previousById.get(row.id);

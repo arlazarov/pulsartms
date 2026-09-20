@@ -108,3 +108,37 @@ test('three shared-site visits form a compact triangle with equal non-overlappin
   }
   assert.ok(Math.max(...rows.map(row => -row.markerOffsetY)) < 32);
 });
+
+// 11006 stood at Charlotte with the last stop of one load and the first of
+// the next a few miles apart, and their badges were one blot: separation
+// grouped by coordinate, and those two do not share one. Zoomed in far
+// enough to tell the two places apart, they stand where they are.
+test('badges that cover each other are parted, at the zoom they cover it', () => {
+  const stops = [
+    { id: 'a', number: '3', position: [-80.84, 35.22] },
+    { id: 'b', number: '7', position: [-80.7, 35.28] },
+  ];
+  const offsets = zoom =>
+    snapshotStops(stops, [], [], zoom).stopData.map(row => row.markerOffsetX);
+  assert.deepEqual(
+    offsets(5),
+    [-18, 18],
+    'one blot at the zoom of a whole run',
+  );
+  assert.deepEqual(offsets(13), [0, 0], 'two places, told apart, left alone');
+});
+
+// A run whose stops line a corridor is not a pin-up at one place, and a
+// tower of badges down the side of it says less than the stops themselves.
+test('a corridor of stops is left where it is rather than stacked', () => {
+  const stops = Array.from({ length: 12 }, (_, id) => ({
+    id,
+    number: String(id + 1),
+    position: [-80 + id * 0.01, 40],
+  }));
+  const rows = snapshotStops(stops, [], [], 12).stopData;
+  assert.deepEqual(
+    [...new Set(rows.map(row => `${row.markerOffsetX},${row.markerOffsetY}`))],
+    ['0,0'],
+  );
+});
