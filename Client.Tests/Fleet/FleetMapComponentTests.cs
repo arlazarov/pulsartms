@@ -416,7 +416,17 @@ public sealed class FleetMapComponentTests
       "km",
       heading.QuerySelector(".fleet-map-route-info__distance")!.TextContent
     );
-    // The card's second line names what its number counts.
+    // The card's second line leads with the load being run and what is
+    // left of it, then the clocks that say whether it can be finished.
+    var second = component.Find(".fleet-map-inspector__hours");
+    Assert.Equal(
+      [
+        "fleet-map-mobile-summary__remaining",
+        "fleet-map-inspector__hours-label",
+        "driver-hours-panel",
+      ],
+      second.Children.Select(node => node.ClassName)
+    );
     Assert.Equal(
       "mi left",
       component.FindAll(".fleet-map-mobile-summary__label")[^1].TextContent

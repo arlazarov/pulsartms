@@ -104,11 +104,12 @@
     color: ui.theme(text-muted);
     font-size: ui.fs(small);
   }
+  // The load leads the line: what the truck is running, and how far is
+  // left of it, before the clocks that say whether it can be finished.
   .fleet-map-mobile-summary__remaining {
     display: flex;
     align-items: baseline;
     gap: ui.pg(xs);
-    margin-inline-start: auto;
     white-space: nowrap;
     color: ui.theme(text-secondary);
     font-variant-numeric: tabular-nums;
@@ -657,7 +658,6 @@
       grid-row: 4;
       .fleet-map-mobile-summary__remaining {
         flex-basis: 100%;
-        margin-inline-start: 0;
       }
     }
     .fleet-map-inspector__actions {

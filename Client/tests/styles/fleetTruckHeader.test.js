@@ -538,9 +538,9 @@ test('next-stop distance rides the clocks line at every width', () => {
     /\.fleet-map-mobile-summary__remaining\s*\{\s*display: flex;/,
   );
   const mobile = compact.slice(compact.indexOf('@media (max-width: 767px)'));
-  // The distance rides at the end of the clocks line, not in a chip of
-  // its own, and it is labelled at every width.
-  assert.match(compact, /__remaining\s*\{[^}]*margin-inline-start: auto;/);
+  // The load leads the clocks line rather than sitting in a chip of its
+  // own, and its number is labelled at every width.
+  assert.doesNotMatch(compact, /__remaining\s*\{[^}]*margin-inline-start/);
   assert.match(mobile, /__hours[^{]*__remaining\s*\{[^}]*flex-basis: 100%;/);
   assert.match(compact, /__label\s*\{\s*display: inline;/);
   assert.doesNotMatch(compact, /__label\s*\{\s*display: none;/);
