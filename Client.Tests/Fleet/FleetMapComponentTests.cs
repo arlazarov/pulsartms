@@ -4348,7 +4348,7 @@ public sealed class FleetMapComponentTests
           "[aria-label='Selected next load'] .fleet-route-popup__information .fleet-map-next-load-card__metrics"
         );
         Assert.Equal(
-          new[] { stop == 0 ? "Empty" : "Leg", "Total" },
+          new[] { stop == 0 ? "Empty" : "Leg", "Left" },
           metrics.QuerySelectorAll("dt").Select(x => x.TextContent)
         );
         Assert.Equal(leg, metrics.QuerySelector("dd")!.TextContent);
@@ -4737,7 +4737,7 @@ public sealed class FleetMapComponentTests
           "[aria-label='Selected next load'] .fleet-route-popup__information"
         )
         .TextContent;
-      Assert.Matches(@"Total\s*—", information);
+      Assert.Matches(@"Left\s*—", information);
       Assert.Matches(@"Leg\s*10\u00a0mi\s*·\s*16\u00a0km", information);
     });
   }
@@ -4767,7 +4767,7 @@ public sealed class FleetMapComponentTests
     );
     var metrics = component.Find(".fleet-map-next-load-card__metrics");
     Assert.Equal(
-      new[] { "Leg", "Total" },
+      new[] { "Leg", "Left" },
       metrics.QuerySelectorAll("dt").Select(x => x.TextContent)
     );
     Assert.Equal(

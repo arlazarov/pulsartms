@@ -262,15 +262,6 @@
     .fleet-map-inspector__header {
       gap: ui.pg(sm);
     }
-    // Actions are outlined so they read as buttons now that they carry
-    // words; only the close control stays bare.
-    .fleet-map-inspector__close {
-      border-color: transparent;
-      background: transparent;
-      &:hover {
-        background: ui.theme(surface-soft);
-      }
-    }
     .fleet-map-inspector__actions .map-action-icon.btn--primary {
       background: ui.theme(action);
     }

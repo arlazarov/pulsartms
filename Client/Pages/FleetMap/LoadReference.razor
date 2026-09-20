@@ -1,1 +1,4 @@
-Load <button type="button" class="fleet-map-route-info__copy-number" title="Copy load number" @onclick="CopyLoadAsync"><strong><Client.Shared.Dispatch.LoadNumber.LoadNumber Value="LoadNumber" /></strong></button> · Order: <button type="button" class="fleet-map-route-info__copy-number" title="Copy order number" disabled="@(string.IsNullOrWhiteSpace(OrderNumber))" @onclick="CopyOrderAsync"><strong>@OrderNumber</strong></button>
+@* The card stands the load on its own and only names the order before
+   saying it. This said "Load AMF1398 · Order: 568567408" - a third way of
+   writing the same two numbers. *@
+<button type="button" class="fleet-map-route-info__copy-number" title="Copy load number" @onclick="CopyLoadAsync"><strong><Client.Shared.Dispatch.LoadNumber.LoadNumber Value="LoadNumber" /></strong></button> <span class="fleet-map-route-info__label">Order</span> <button type="button" class="fleet-map-route-info__copy-number" title="Copy order number" disabled="@(string.IsNullOrWhiteSpace(OrderNumber))" @onclick="CopyOrderAsync"><strong>@OrderNumber</strong></button>

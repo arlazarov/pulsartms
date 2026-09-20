@@ -210,28 +210,30 @@ public sealed class NextLoadDetailsRetentionTests
     Assert.Empty(
       component.FindAll(".fleet-route-popup__location .fleet-route-popup__fuel")
     );
+    // The card says fuel as a named figure on its line, on the same label
+    // column as the appointment above it, not as a dial in its own block.
+    var fuel = () =>
+      component
+        .Find(".fleet-route-popup__fuel .fleet-route-popup__value")
+        .TextContent;
     Assert.Equal(
-      "33%",
-      component.Find(".fleet-fuel-visit__percent").TextContent
+      "Fuel on arrival",
+      component
+        .Find(".fleet-route-popup__fuel .fleet-route-popup__label")
+        .TextContent.Trim()
     );
-    Assert.Equal(
-      "82 US gal",
-      component.Find(".fleet-fuel-visit__quantity").TextContent
-    );
-    Assert.Equal(
-      "33 100",
-      component.Find(".driver-hours__arc").GetAttribute("stroke-dasharray")
-    );
+    Assert.Equal("33% · 82 US gal", fuel());
+    Assert.Empty(component.FindAll(".driver-hours__arc"));
     component.Render(p =>
       p.Add(x => x.FuelArrival, arrival with { StopId = Guid.NewGuid() })
     );
-    Assert.Equal("—", component.Find(".fleet-fuel-visit__percent").TextContent);
+    Assert.Equal("—", fuel());
     component.Render(p =>
       p.Add(x => x.FuelArrival, arrival with { DispatchId = Guid.NewGuid() })
     );
-    Assert.Equal("—", component.Find(".fleet-fuel-visit__percent").TextContent);
+    Assert.Equal("—", fuel());
     component.Render(p => p.Add(x => x.FuelArrival, null));
-    Assert.Equal("—", component.Find(".fleet-fuel-visit__percent").TextContent);
+    Assert.Equal("—", fuel());
   }
 
   [Theory]

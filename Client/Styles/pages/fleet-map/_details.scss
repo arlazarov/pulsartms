@@ -132,14 +132,22 @@
     @include ui.overlay-title;
     margin-right: auto;
   }
+  // Actions are outlined so they read as buttons now that they carry words;
+  // only the close control stays bare. It was bare on the truck alone, so
+  // the same control was a boxed button on every other card.
   &__close {
     @include ui.icon-control;
     & {
+      border-color: transparent;
+      background: transparent;
       // The box is the same everywhere, but the glyph is a character and
       // was inheriting whichever type size the card around it had set, so
       // the same control read larger on a stop than on a truck.
       font-size: ui.fs(heading);
       line-height: 1;
+    }
+    &:hover {
+      background: ui.theme(surface-soft);
     }
   }
   &__controls {
