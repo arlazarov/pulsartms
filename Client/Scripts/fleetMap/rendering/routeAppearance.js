@@ -16,15 +16,12 @@ const colors = {
 const emptyRoles = new Set(['deadhead', 'current-empty', 'traveled-empty']);
 const outline = [255, 255, 255, 210];
 
-// Each load further down the chain steps back again, so the order of the
-// week reads off the map without counting colours.
-function futureOpacity(depth) {
-  const step = Number.isFinite(depth) ? Math.max(0, Math.trunc(depth)) : 0;
-  return Math.max(
-    metrics.routeFutureMinOpacity,
-    metrics.routeFutureOpacity - step * metrics.routeFutureDepthFade,
-  );
-}
+// Each load further down the chain used to step back again. The only thing
+// tying a badge to the road it belongs to is the colour they share, so
+// fading the later loads faded the one signal that says which is which -
+// and it was the later loads that were hardest to follow. Everything that
+// is not today is quiet by the same amount, and no quieter for being
+// further off.
 
 export function routeLayers(
   line,
@@ -82,7 +79,7 @@ export function routeLayers(
         : muted
           ? metrics.routeMutedOpacity
           : dashed && !line.routeSelected
-            ? futureOpacity(line.routeDepth)
+            ? metrics.routeFutureOpacity
             : 1,
     getPath: path => path,
     widthUnits: 'pixels',

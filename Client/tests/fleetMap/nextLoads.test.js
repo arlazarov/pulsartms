@@ -308,11 +308,13 @@ test('selection emphasizes the chosen road and subdues others without replacing 
   );
   layer.clearSelection();
   // Clearing the selection restores the upcoming roads to their resting
-  // strength: a step behind the road being driven, and a further step for
-  // each load further down the chain.
+  // strength: one step behind the road being driven, and no further step
+  // for being further off. The colour a road shares with its badges is the
+  // only thing saying which load they are, and fading the later loads faded
+  // exactly the ones that were hardest to follow.
   assert.deepEqual(
     render().map(pair => pair[1].opacity),
-    [0.7, 0.7, 0.7, 0.58, 0.58, 0.58],
+    [0.7, 0.7, 0.7, 0.7, 0.7, 0.7],
   );
   assert.ok(render().every(pair => pair[1].getWidth === 3));
   assert.ok(current.cachedLayer.every(part => part.opacity === 1));
