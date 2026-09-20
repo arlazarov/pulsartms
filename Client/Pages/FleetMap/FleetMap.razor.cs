@@ -103,6 +103,17 @@ public partial class FleetMap : IAsyncDisposable
       ? Math.Clamp(1 - remaining / total, 0, 1)
       : null;
 
+  // The truck has run out of route but its stop is still open: it is
+  // standing at the stop, waiting on the appointment. There is nothing left
+  // to forecast, which is why the server sends an ETA with no stops in it.
+  private bool AtNextStop =>
+    _routeState?.Plan
+      is { InputsChanged: false, Tracking.AllStopsPassed: false } plan
+    && plan.Tracking.NextStopId is not null
+    && RemainingMiles is { } remaining
+    && double.IsFinite(remaining)
+    && remaining < 0.5;
+
   private bool _showTruckInfo;
   private bool _followingTruck;
   private bool _mobileFiltersOpen;

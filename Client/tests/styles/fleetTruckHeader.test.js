@@ -364,7 +364,10 @@ test('next-stop distance rides the clocks line at every width', () => {
   // The load leads the clocks line rather than sitting in a chip of its
   // own, and its number is labelled at every width.
   assert.doesNotMatch(compact, /__remaining\s*\{[^}]*margin-inline-start/);
-  assert.match(mobile, /__hours[^{]*__remaining\s*\{[^}]*flex-basis: 100%;/);
+  assert.match(
+    mobile,
+    /__hours[^{]*__remaining,[^{}]*__distance,[^{}]*__clocks\s*\{[^}]*flex-basis: 100%;/,
+  );
   assert.match(compact, /__label\s*\{\s*display: inline;/);
   assert.doesNotMatch(compact, /__label\s*\{\s*display: none;/);
   assert.doesNotMatch(mobile, /is-mobile-collapsed[^{}]*__remaining/);

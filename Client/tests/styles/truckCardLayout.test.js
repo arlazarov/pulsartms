@@ -35,7 +35,12 @@ test('the card says the load, its order and the miles once, in the head', () => 
   // The line names a thing before it says it, this one included.
   assert.match(head, /__label">Left&#160;<\/span>/);
   assert.match(head, /fleet-map-mobile-summary__bar/);
-  assert.match(head, /RouteCovered is \{ \} covered/);
+  // The track is always drawn, so a run whose progress is not known yet
+  // reserves the same height as one that is.
+  assert.match(head, /RouteCovered \?\? 0/);
+  // A truck that has run out of route is standing at its stop; the server
+  // sends no forecast for it, which is not the same as nothing to say.
+  assert.doesNotMatch(head, /@if \(RouteCovered/);
   const body = markup.slice(markup.indexOf('id="fleet-map-route-details"'));
   assert.doesNotMatch(body, /Copy load number|Copy order number/);
   assert.doesNotMatch(body, /fleet-map-route-info__load"/);
@@ -61,6 +66,25 @@ test('what is left sits between the load and the clocks, said and drawn', () => 
   );
   assert.match(card, /__bar\s*\{[^}]*block-size: 3px;/);
   assert.match(card, /__bar > span\s*\{[^}]*background: var\(--ui-action\);/);
+});
+
+// 11006 had driven its whole route and was standing at the delivery waiting
+// on tomorrow's window. The server sends an ETA with no stops in it, because
+// there is nothing left to drive - which is not the same as nothing to say.
+test('a truck that has run out of route says so instead of a dash', () => {
+  const header = markup.slice(
+    markup.indexOf('fleet-map-inspector__arrival'),
+    markup.indexOf('</header>'),
+  );
+  assert.match(header, /AtNextStop[\s\S]{0,40}"At stop"/);
+  const code = readFileSync(
+    new URL('../../Pages/FleetMap/FleetMap.razor.cs', import.meta.url),
+    'utf8',
+  );
+  // Only when the route is spent and the stop is still open.
+  assert.match(code, /Tracking\.AllStopsPassed: false \} plan/);
+  assert.match(code, /plan\.Tracking\.NextStopId is not null/);
+  assert.match(code, /remaining < 0\.5/);
 });
 
 test('HOS travels with its clocks, at the far end under the arrival', () => {

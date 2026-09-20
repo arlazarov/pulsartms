@@ -249,8 +249,8 @@
     overflow-wrap: anywhere;
   }
   .dispatch-paper__stop-metadata:not(
-      :has(.dispatch-paper__stop-facts > div, .dispatch-paper__stop-notes)
-    ) {
+    :has(.dispatch-paper__stop-facts > div, .dispatch-paper__stop-notes)
+  ) {
     display: none;
   }
   .dispatch-paper__stop-facts {
@@ -308,10 +308,10 @@
       justify-items: start;
     }
     > :has(
-        .stop-operation__fields,
-        .stop-completion__form,
-        .stop-completion__record
-      ) {
+      .stop-operation__fields,
+      .stop-completion__form,
+      .stop-completion__record
+    ) {
       flex-basis: 100%;
       justify-items: stretch;
     }

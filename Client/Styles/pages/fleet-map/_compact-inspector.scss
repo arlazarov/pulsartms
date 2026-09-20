@@ -62,10 +62,12 @@
     border-top: 1px solid ui.theme(border-subtle);
     .map-action-icon {
       @include ui.compact-control;
-      display: inline-flex;
-      align-items: center;
-      gap: ui.pg(xs);
-      white-space: nowrap;
+      & {
+        display: inline-flex;
+        align-items: center;
+        gap: ui.pg(xs);
+        white-space: nowrap;
+      }
     }
   }
   .fleet-map-inspector__arrival {
@@ -94,9 +96,12 @@
   // the hours to finish it.
   .fleet-map-inspector__hours {
     flex-basis: 100%;
-    display: flex;
+    // Three columns, not a flow: the outer two share what is left over, so
+    // the middle one is dead centre and stays there while the load number
+    // and the clocks arrive and change width beside it.
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: baseline;
-    flex-wrap: wrap;
     gap: ui.pg(xs) ui.pg(md);
     min-width: 0;
     padding-top: ui.pg(xs);
@@ -120,7 +125,15 @@
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: ui.pg(xs) ui.pg(md);
+    justify-content: end;
+    // Tighter between the clocks than between the three groups, so the
+    // line reads as three things and still fits across the card. The group
+    // never splits: "HOS" on one row with its clocks on the next was the
+    // worst way this line could break.
+    flex-wrap: nowrap;
+    gap: ui.pg(xs);
+    --hos-wrap: nowrap;
+    --hos-gap: #{ui.pg(xs)};
     min-width: 0;
     margin-inline-start: auto;
     > .driver-hours-panel {
@@ -180,6 +193,13 @@
       }
     }
   }
+  // The load group reserves the room its numbers will need. An empty group
+  // here is a hole that everything right of it slides across when the load
+  // lands.
+  .fleet-map-mobile-summary__remaining {
+    min-inline-size: ui.size(route-load);
+    flex-shrink: 0;
+  }
   .fleet-map-mobile-summary__remaining > .fleet-map-route-info__copy-number {
     color: ui.theme(text);
     font-weight: 600;
@@ -197,6 +217,10 @@
     justify-items: center;
     gap: ui.pg(micro);
     margin-inline: auto;
+    // A width of its own, wide enough for the longest run this can read.
+    // Without it the group is as wide as whatever has arrived so far, and
+    // it changes size as the numbers come in.
+    inline-size: ui.size(route-progress);
     min-width: 0;
   }
   // One phrase: it never breaks between a number and the unit it belongs
@@ -207,10 +231,16 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+    // The chosen unit is the reading; the other one is an echo of it and
+    // steps back, so the eye lands on the number that was asked for.
+    .fleet-map-mobile-summary__alternate {
+      color: ui.theme(text-muted);
+      font-size: ui.fs(caption);
+    }
   }
   .fleet-map-mobile-summary__bar {
     display: block;
-    inline-size: min(100%, #{ui.size(route-progress)});
+    inline-size: 100%;
     block-size: 3px;
     border-radius: ui.radius(pill);
     background: ui.theme(border-subtle);
@@ -641,11 +671,20 @@
       grid-column: 1 / -1;
       grid-row: 3;
     }
+    // A phone has no room for three abreast: each takes its own row.
+    // A phone has no room for three abreast: each takes a row of its own.
     .fleet-map-inspector__hours {
       grid-column: 1 / -1;
       grid-row: 4;
-      .fleet-map-mobile-summary__remaining {
+      .fleet-map-mobile-summary__remaining,
+      .fleet-map-mobile-summary__distance,
+      .fleet-map-inspector__clocks {
         flex-basis: 100%;
+        min-inline-size: 0;
+        margin-inline: 0;
+      }
+      .fleet-map-mobile-summary__distance {
+        justify-items: start;
       }
     }
 

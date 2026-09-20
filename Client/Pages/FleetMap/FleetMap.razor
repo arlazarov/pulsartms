@@ -129,12 +129,15 @@
                             .AllStopsPassed == true)"
                         ShowDutyStatus="false" ShowAppointment="false"
                         ShowDetails="false" />
+                    @* No forecast is not always nothing to say: a truck
+                       that has run out of route is standing at its stop. *@
                     <div class="fleet-map-inspector__arrival-placeholder
                                 stop-hours">
                         <div class="stop-hours__row stop-hours__road">
                             <span class="stop-hours__label">ETA</span>
                             <span class="stop-hours__value"><span
-                                class="stop-hours__arrival"><strong>—</strong>
+                                class="stop-hours__arrival"><strong>@(AtNextStop
+                                    ? "At stop" : "—")</strong>
                             </span></span>
                         </div>
                     </div>
@@ -203,8 +206,11 @@
                 @* What the truck is running, said once: the load, its order,
                    and what is left to the next stop in both units. Each
                    number is also the control that copies it. *@
+                @* Drawn whether or not the numbers have arrived: a group
+                   that appears out of nothing pushes everything right of it
+                   across the card as the load lands. *@
                 <span class="fleet-map-mobile-summary__remaining"
-                      aria-label="Load, order and distance to the next stop"
+                      aria-label="Load and order"
                       aria-busy="@(_loadDetails is null ? "true" : "false")">
                     @if (_loadDetails is { } runningLoad)
                     {
@@ -215,43 +221,45 @@
                             <Client.Shared.Dispatch.LoadNumber.LoadNumber
                                 Value="runningLoad.LoadNumber" />
                         </button>
-                        <span class="fleet-map-mobile-summary__label"
-                              aria-hidden="true">·</span>
-                        <span class="fleet-map-mobile-summary__order">
-                            <span class="fleet-map-mobile-summary__label">Order</span>
-                            <button type="button"
-                                    class="fleet-map-route-info__copy-number"
-                                    title="Copy order number"
-                                    disabled="@(string.IsNullOrWhiteSpace(runningLoad.OrderNumber))"
-                                    @onclick="() => CopyTextAsync(runningLoad.OrderNumber)">
-                                <strong class="fleet-map-inspector__value">@(string.IsNullOrWhiteSpace(runningLoad.OrderNumber) ? "—" : runningLoad.OrderNumber)</strong>
-                            </button>
-                        </span>
-                        <span class="fleet-map-mobile-summary__label"
-                              aria-hidden="true">·</span>
                     }
+                    else
+                    {
+                        <span class="fleet-map-inspector__value">—</span>
+                    }
+                    <span class="fleet-map-mobile-summary__order">
+                        <span class="fleet-map-mobile-summary__label">Order</span>
+                        <button type="button"
+                                class="fleet-map-route-info__copy-number"
+                                title="Copy order number"
+                                disabled="@(string.IsNullOrWhiteSpace(_loadDetails?.OrderNumber))"
+                                @onclick="() => CopyTextAsync(_loadDetails?.OrderNumber ?? string.Empty)">
+                            <strong class="fleet-map-inspector__value">@(string.IsNullOrWhiteSpace(_loadDetails?.OrderNumber) ? "—" : _loadDetails.OrderNumber)</strong>
+                        </button>
+                    </span>
                 </span>
                 @* What is left, in the middle of the line and shown as well
                    as said: the bar is how much of the run is behind the
                    truck. It reads as one phrase, so it never breaks
                    between a number and its unit. *@
                 <span class="fleet-map-mobile-summary__distance"
-                      aria-label="@($"{Units.FormatDistance(RemainingMiles)} left of the run")">
+                      aria-label="@(AtNextStop
+                          ? "At the stop, no distance left of the run"
+                          : $"{Units.FormatDistance(RemainingMiles)} left of the run")">
                     @* The line names a thing before it says it - Order,
                        Break, Drive - and this is no different. *@
                     <span class="fleet-map-mobile-summary__distance-text"
                           aria-hidden="true"><span
                             class="fleet-map-mobile-summary__label">Left&#160;</span><strong>@Units.DistanceValue(RemainingMiles)</strong><span
                             class="fleet-map-mobile-summary__label">&#160;@Units.DistanceUnit</span>@if (Units.BothDistances)
-                        {<span class="fleet-map-mobile-summary__label">&#160;·&#160;@Units.Kilometers(RemainingMiles)&#160;km</span>}
+                        {<span class="fleet-map-mobile-summary__label fleet-map-mobile-summary__alternate">&#160;·&#160;@Units.Kilometers(RemainingMiles)&#160;km</span>}
                     </span>
-                    @if (RouteCovered is { } covered)
-                    {
-                        <span class="fleet-map-mobile-summary__bar"
-                              aria-hidden="true">
-                            <span style="inline-size: @(Math.Round(covered * 100))%"></span>
-                        </span>
-                    }
+                    @* The track is always drawn, so a run whose progress is
+                       not known yet reserves the same height as one that
+                       is, and the card does not grow under the pointer. *@
+                    <span class="fleet-map-mobile-summary__bar"
+                          aria-hidden="true">
+                        <span style="inline-size: @(Math.Round((RouteCovered ?? 0) * 100))%"></span>
+                    </span>
                 </span>
                 @* The label travels with the clocks it names. Apart, "HOS"
                    sat beside the load and the clocks sat a card-width away. *@

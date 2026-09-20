@@ -34,6 +34,8 @@ public partial class TruckCamera
     DateTimeOffset? CapturedAt
   );
 
+  private const string WaitingMessage =
+    "Taking a new snapshot. This is the last one until it arrives.";
   private CameraImage? _image;
   private bool _open;
   private bool _refreshing;
@@ -97,6 +99,29 @@ public partial class TruckCamera
       && image.CapturedAt >= earliestCapture
       && (previousCapture is null || image.CapturedAt > previousCapture);
     _message = null;
+    var waiting = false;
+    // Show the last snapshot there is while the new one is being taken.
+    // Waiting for a fresh capture is the better part of a minute of nothing,
+    // and the road a minute ago answers most of what the dispatcher opened
+    // this for. Its own timestamp says how old it is.
+    if (_image is null)
+      try
+      {
+        var known = await Api.GetAsync<CameraImage>(
+          $"api/fleet/trucks/{TruckId}/camera",
+          request.Token
+        );
+        request.Token.ThrowIfCancellationRequested();
+        if (known is { Success: true, Response: { Url: not null } previous })
+        {
+          _image = previous;
+          waiting = true;
+          _message = WaitingMessage;
+          await InvokeAsync(StateHasChanged);
+        }
+      }
+      catch (Exception ex) when (ex is HttpRequestException or JsonException)
+      { }
     try
     {
       var started = await Api.PostAsync<object, Guid>(
@@ -138,6 +163,7 @@ public partial class TruckCamera
           _message = null;
           return;
         }
+        waiting = _image is not null;
         var latest = await Api.GetAsync<CameraImage>(
           $"api/fleet/trucks/{TruckId}/camera",
           request.Token
@@ -155,7 +181,7 @@ public partial class TruckCamera
             "No snapshot available. The camera may be offline or not recording.";
           return;
         }
-        _message = null;
+        _message = waiting ? WaitingMessage : null;
         await InvokeAsync(StateHasChanged);
       }
       _message = "Samsara did not deliver a new snapshot. Try Refresh.";
