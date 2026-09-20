@@ -12,6 +12,9 @@ import {
 import { defaultStopLabelStyle } from './stopLabelStyle.js';
 import { stopCardLayers } from './stopCardLayers.js';
 const emptyClusters = Object.freeze([]);
+// One array, so that a scene with nothing to draw is the same scene as the
+// frame before and the layers behind it are not rebuilt.
+const nothing = Object.freeze([]);
 
 // One cache per scene. Zoom-driven truck groups do not rebuild roads or stations.
 export function createSceneLayers({
@@ -83,6 +86,13 @@ export function createSceneLayers({
     // was close enough read as them having gone missing, and the map is
     // where fuel is decided before the route is.
     const stationsInReach = stationsVisible;
+    // The stops are not. Far enough out, a badge covers a county and the
+    // stops of a run are a handful of numbers in a heap that no amount of
+    // laying out can tell apart; the road already says where the truck is
+    // going. They come back with the ground they stand on.
+    const stops =
+      zoom === null || zoom >= metrics.stopMinZoom ? stopData : nothing;
+    const distances = stops === nothing ? nothing : distanceData;
     const fonts = labelFonts([pixelRatio, stopLabelStyle.size], () =>
       createLabelFonts(pixelRatio, stopLabelStyle.size),
     );
@@ -308,11 +318,14 @@ export function createSceneLayers({
     );
     // Keep each geographic anchor and badge together when selection changes priority.
     truckLayers.push(
-      ...stopGroup([stopData, setHover, selectStop, fonts], () => {
+      ...stopGroup([stops, stopData, setHover, selectStop, fonts], () => {
+        // What a stop's layers are kept for is the stop still being on the
+        // route, not the camera being near enough to draw it: a glance out
+        // to the whole country and back rebuilt every badge on the map.
         const activeStops = new Set(stopData.map(stop => stop.id));
         for (const id of stopLayers.keys())
           if (!activeStops.has(id)) stopLayers.delete(id);
-        const drawn = stopData.flatMap(stop => {
+        const drawn = stops.flatMap(stop => {
           const id = `route-stop-${stop.id}`;
           const cached = stopLayers.get(stop.id);
           if (
@@ -421,8 +434,8 @@ export function createSceneLayers({
       }),
     );
     const distanceLayer = distanceLabels(
-      [distanceData, fonts, stopLabelStyle],
-      () => stopCardLayers(TextLayer, distanceData, stopLabelStyle, fonts),
+      [distances, fonts, stopLabelStyle],
+      () => stopCardLayers(TextLayer, distances, stopLabelStyle, fonts),
     );
     truckLayers.push(
       ...vehicleLayers(

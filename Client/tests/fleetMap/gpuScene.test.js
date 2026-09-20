@@ -184,10 +184,20 @@ test('scene reuses static layers across motion, invalidates only changed stops a
       'the group badge must not dismiss the inspector',
     );
   }
+  // Far enough out a badge covers a county, so the stops are not drawn at
+  // all and the road says where the truck is going. Their layers are kept
+  // for the stops still being on the route, so coming back is not a rebuild.
+  assert.equal(layers()['route-stop-1-points'], undefined);
+  assert.equal(layers()['route-stop-distances'], undefined);
+  assert.ok(
+    Object.keys(layers()).some(id => !/^route-stop/.test(id)),
+    'the road is still drawn',
+  );
   neighbor.setVisible(false);
   map.getZoom = () => 12;
   listeners.get('zoom_changed')();
   flush();
+  assert.ok(layers()['route-stop-1-points'], 'and come back with the ground');
   assert.equal(initial['fuel-points'].props.getRadius, 8);
   assert.equal(initial['route-stop-1-points'].props.getSize, 34);
   assert.equal(initial['route-stop-1-numbers'].props.getSize, 15);

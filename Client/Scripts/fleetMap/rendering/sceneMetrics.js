@@ -32,6 +32,9 @@ export const sceneMetrics = Object.freeze({
   truckSecondarySize: 23,
   truckClusterRadius: 64,
   truckClusterMaxZoom: 12,
+  // Nearer than this the badges are read; further out a number stands over a
+  // county and says nothing a road does not.
+  stopMinZoom: 7,
   truckHoverScale: 1.1,
   truckLabelOffset: 30,
   routeWidthScale: 1.75,
