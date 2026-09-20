@@ -18,6 +18,10 @@ export const sceneMetrics = Object.freeze({
   // a pin-up at one place, and standing them in a tower says less than
   // letting them sit where they are.
   stopBadgeCluster: 6,
+  // Close enough that two stops still touching are at one place: a yard and
+  // its dock, several visits to one address. Coming closer will never part
+  // them, so they are stood side by side rather than gathered under a count.
+  stopClusterPartZoom: 16,
   stationRadius: 8,
   stationHitRadius: 10,
   // A planned stop is the only station the plan is about, so its dot is

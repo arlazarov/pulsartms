@@ -12,7 +12,7 @@ export function snapshotStops(
   zoom,
   trucks = [],
 ) {
-  const stopData = [],
+  let stopData = [],
     distanceData = [];
   const previousById = new Map(previousStops.map(row => [row.id, row]));
   const fields = [
@@ -61,6 +61,7 @@ export function snapshotStops(
     stopData.push(row);
     if (distance)
       distanceData.push({
+        row,
         position,
         text: distance,
         tones: distanceTones,
@@ -68,7 +69,13 @@ export function snapshotStops(
         transient: !!stop.transientLabel,
       });
   }
-  layoutStopMarkers(stopData, zoom, trucks);
+  // Stops gathered under a count are not drawn themselves, and neither is
+  // the distance that would otherwise float beside a badge that is not there.
+  const { clusters, clustered } = layoutStopMarkers(stopData, zoom, trucks);
+  stopData = stopData.filter(row => !clustered.has(row));
+  distanceData = distanceData
+    .filter(entry => !clustered.has(entry.row))
+    .map(({ row: _row, ...entry }) => entry);
   for (let index = 0; index < stopData.length; index++) {
     const row = stopData[index],
       previous = previousById.get(row.id);
@@ -89,5 +96,6 @@ export function snapshotStops(
     ])
       ? previousDistances
       : distanceData,
+    stopClusters: clusters,
   };
 }

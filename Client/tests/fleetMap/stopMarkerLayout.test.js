@@ -110,37 +110,55 @@ test('three shared-site visits form a compact triangle with equal non-overlappin
 });
 
 // 11006 stood at Charlotte with the last stop of one load and the first of
-// the next a few miles apart, and their badges were one blot: separation
-// grouped by coordinate, and those two do not share one. Zoomed in far
-// enough to tell the two places apart, they stand where they are.
-test('badges that cover each other are parted, at the zoom they cover it', () => {
+// the next a few miles apart, and their badges were one blot. Coming closer
+// parts them, so at the zoom of a whole run they are gathered under a count,
+// the way trucks are; close enough to tell the two places apart, each stands
+// where it is.
+test('stops the camera can part are gathered under a count until it does', () => {
   const stops = [
     { id: 'a', number: '3', position: [-80.84, 35.22] },
     { id: 'b', number: '7', position: [-80.7, 35.28] },
   ];
-  const offsets = zoom =>
-    snapshotStops(stops, [], [], zoom).stopData.map(row => row.markerOffsetX);
+  const far = snapshotStops(stops, [], [], 5);
+  assert.deepEqual(far.stopData, [], 'neither circle stands under the other');
+  assert.equal(far.stopClusters.length, 1);
+  assert.equal(far.stopClusters[0].count, 2);
   assert.deepEqual(
-    offsets(5),
-    [-18, 18],
-    'one blot at the zoom of a whole run',
+    far.stopClusters[0].members.map(row => row.id),
+    ['a', 'b'],
+    'a click goes in to where these part',
   );
-  assert.deepEqual(offsets(13), [0, 0], 'two places, told apart, left alone');
+  const near = snapshotStops(stops, [], [], 13);
+  assert.deepEqual(near.stopClusters, []);
+  assert.deepEqual(
+    near.stopData.map(row => row.markerOffsetX),
+    [0, 0],
+  );
 });
 
-// A run whose stops line a corridor is not a pin-up at one place, and a
-// tower of badges down the side of it says less than the stops themselves.
-test('a corridor of stops is left where it is rather than stacked', () => {
+// A stop the dispatcher has picked is the one thing on the map they are
+// looking at; it is never folded away into a count.
+test('a picked stop is never folded into a count', () => {
+  const stops = [
+    { id: 'a', number: '3', position: [-80.84, 35.22], highlighted: true },
+    { id: 'b', number: '7', position: [-80.7, 35.28] },
+  ];
+  const far = snapshotStops(stops, [], [], 5);
+  assert.deepEqual(far.stopClusters, []);
+  assert.equal(far.stopData.length, 2);
+});
+
+// Measured from the first of a group, not from any of it, or a corridor of
+// stops chains into one count the length of the road.
+test('a corridor of stops gathers in pairs, not into one count for the road', () => {
   const stops = Array.from({ length: 12 }, (_, id) => ({
     id,
     number: String(id + 1),
     position: [-80 + id * 0.01, 40],
   }));
-  const rows = snapshotStops(stops, [], [], 12).stopData;
-  assert.deepEqual(
-    [...new Set(rows.map(row => `${row.markerOffsetX},${row.markerOffsetY}`))],
-    ['0,0'],
-  );
+  const { stopClusters } = snapshotStops(stops, [], [], 12);
+  assert.ok(stopClusters.length > 1);
+  assert.ok(stopClusters.every(cluster => cluster.count <= 3));
 });
 
 // 11006 stood on its own delivery and the badge for it was underneath the

@@ -29,7 +29,9 @@ test('one stop update preserves other GPU data; hover only reorders opaque pairs
   const stops = new Set(
     Array.from({ length: 100 }, (_, id) => ({
       id,
-      position: [-80 + id * 0.01, 40],
+      // Far enough apart that none of them touch: this is about reusing
+      // layers, and stops that touch are gathered under a count instead.
+      position: [-80 + id * 0.1, 40],
       number: String(id + 1),
       job: id % 2 ? 'Delivery' : 'Pickup',
       transientLabel: id > 0,

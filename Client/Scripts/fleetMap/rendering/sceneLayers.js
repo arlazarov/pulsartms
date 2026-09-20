@@ -1,6 +1,7 @@
 import { truckIcon } from './truckAppearance.js';
 import { markerAnchor } from './markerAnchor.js';
 import { clusterText } from './truckLabelLayout.js';
+import { stopClusterText } from './stopMarkerLayout.js';
 import { memoizeLast } from './layerCache.js';
 import { routeLayers } from './routeAppearance.js';
 import { stopAppearance, stopMarkerIcon } from './stopAppearance.js';
@@ -27,6 +28,7 @@ export function createSceneLayers({
   const stopGroup = memoizeLast();
   const vehicleLayers = memoizeLast();
   const clusterLabels = memoizeLast();
+  const stopClusterLabels = memoizeLast();
   const recommendationLayers = memoizeLast();
   const fuelVisitLabels = memoizeLast();
   const fuelEditingLayers = memoizeLast();
@@ -64,6 +66,7 @@ export function createSceneLayers({
     stationData,
     stationsVisible,
     stopData,
+    stopClusters = emptyClusters,
     distanceData,
     vehicles,
     clusters = emptyClusters,
@@ -293,6 +296,39 @@ export function createSceneLayers({
             backgroundPadding: metrics.truckClusterPadding,
             backgroundBorderRadius: metrics.truckClusterBadge,
             getBorderColor: [255, 255, 255],
+            getBorderWidth: 2,
+            fontFamily: 'Arial, sans-serif',
+            fontSettings: fonts.truck,
+            _subLayerProps: labelSubLayers,
+            fontWeight: 'bold',
+            billboard: true,
+            pickable: true,
+            onHover: setHover,
+            onClick: selectCluster,
+            parameters: { depthCompare: 'always' },
+          }),
+      ),
+    );
+    // Stops gathered under a count. Light where the truck count is dark, so
+    // a glance tells the two kinds of count apart before the words are read.
+    truckLayers.push(
+      stopClusterLabels(
+        [stopClusters, selectCluster, setHover, fonts],
+        () =>
+          new TextLayer({
+            id: 'stop-clusters',
+            data: stopClusters,
+            characterSet: 'auto',
+            getPosition: d => d.position,
+            getText: stopClusterText,
+            getSize: metrics.truckLabelSize,
+            sizeUnits: 'pixels',
+            getColor: [30, 41, 59],
+            background: true,
+            getBackgroundColor: [255, 255, 255],
+            backgroundPadding: metrics.truckClusterPadding,
+            backgroundBorderRadius: metrics.truckClusterBadge,
+            getBorderColor: [30, 41, 59],
             getBorderWidth: 2,
             fontFamily: 'Arial, sans-serif',
             fontSettings: fonts.truck,
