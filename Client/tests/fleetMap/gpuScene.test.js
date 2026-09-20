@@ -192,13 +192,14 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   assert.equal(initial['truck-numbers'].props.getSize, 13);
   assert.deepEqual(initial['truck-numbers'].props.backgroundPadding, [9, 4]);
   assert.equal(initial['truck-icons'].props.getSize({ unit: '11006' }), 28);
-  // The truck stands on the stop here, so its unit steps aside instead of
-  // covering the stop's badge.
+  // The truck stands on the stop here and keeps its unit above its own
+  // marker: sending the number off on a leader line reads far worse than
+  // the overlap, and the stop is drawn over the badge instead.
   assert.deepEqual(
     initial['truck-numbers'].props.getPixelOffset(
       initial['truck-numbers'].props.data[0],
     ),
-    [-60, 0],
+    [0, -30],
   );
   assert.deepEqual(
     initial['route-stop-distances'].props.getPixelOffset(

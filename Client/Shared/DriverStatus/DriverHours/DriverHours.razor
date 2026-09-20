@@ -5,6 +5,8 @@
     {
         <div class="driver-hours__clock @(clock.Item2 is null ? "is-unavailable" : clock.Item2 <= 3600000 ? "is-low" : "")"
              aria-label="@($"{clock.Item1}: {Format(clock.Item2)} remaining")">
+            @if (Dials)
+            {
             <span class="driver-hours__dial" title="@($"{Format(clock.Item2)} remaining · {clock.Item3}h scale (US)")">
                 <svg viewBox="0 0 64 64" aria-hidden="true">
                     <circle class="driver-hours__track" cx="32" cy="32" r="28" />
@@ -13,7 +15,14 @@
                 </svg>
                 <strong>@Format(clock.Item2)</strong>
             </span>
+            }
             <span class="driver-hours__label">@clock.Item1</span>
+            @if (!Dials)
+            {
+                <strong class="driver-hours__reading"
+                        title="@($"{Format(clock.Item2)} remaining · {clock.Item3}h scale (US)")"
+                    >@Format(clock.Item2)</strong>
+            }
         </div>
     }
 </div>

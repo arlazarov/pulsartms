@@ -57,14 +57,14 @@ function space() {
 /**
  * Where every label on the map goes, in one pass.
  *
- * Only truck labels move. Stops and cluster badges mark real places and stay
- * on them, so they are obstacles: a truck label that would cover a stop, or
- * the count of trucks gathered nearby, steps aside instead.
+ * Only truck labels move, and only to get out of each other's way. Stops are
+ * deliberately not obstacles: a truck parked on its own delivery would send
+ * its unit number off across the map on a leader line, which is worse than
+ * the overlap it avoids. Stops are drawn over the badges instead.
  */
 export function layoutMapLabels({
   vehicles = [],
   clusters = [],
-  stops = [],
   zoom,
   previous = [],
 }) {
@@ -77,15 +77,6 @@ export function layoutMapLabels({
   // Markers stay where they are; only what is written beside them moves.
   for (const point of points.values())
     area.reserve([...point, metrics.truckSize / 2, metrics.truckSize / 2]);
-  for (const stop of stops) {
-    const [x, y] = project(stop.position);
-    area.reserve([
-      x + (stop.markerOffsetX ?? 0),
-      y + (stop.markerOffsetY ?? 0),
-      metrics.stopBadgeDiameter / 2,
-      metrics.stopBadgeDiameter / 2,
-    ]);
-  }
 
   const place = (item, text, padding, old) => {
     const [x, y] = points.get(item);

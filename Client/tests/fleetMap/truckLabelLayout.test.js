@@ -97,9 +97,11 @@ test('polling and reordered inputs retain clear offsets; removed trucks are evic
 // The owner's report: with a truck selected and its next loads drawn, the
 // "2 trucks" badge sat on a stop of the route being read - and offsetting it
 // to escape only trailed a leader line across a state as the map zoomed out.
-// It keeps its point and its wording; the stops are drawn over it, and truck
-// labels step aside from it.
-test('a truck label steps off a cluster badge and off the stops', () => {
+// It keeps its point and its wording, and the stops are drawn over it.
+//
+// A truck's own unit number stays put for the same reason: a truck standing
+// on its delivery used to shove its number aside on a leader line.
+test('a truck label steps off a cluster badge but never off a stop', () => {
   const zoom = 10;
   const project = markerProjection(zoom);
   const cluster = {
@@ -113,7 +115,6 @@ test('a truck label steps off a cluster badge and off the stops', () => {
   const placed = layoutMapLabels({
     vehicles: [near],
     clusters: [cluster],
-    stops: [stop],
     zoom,
   });
 
@@ -124,11 +125,19 @@ test('a truck label steps off a cluster badge and off the stops', () => {
   const [lx, ly] = project(near.position).map(
     (value, axis) => value + label[axis],
   );
-  const [sx, sy] = project(stop.position);
+  const [bx, by] = project(cluster.position);
   assert.ok(
-    Math.abs(lx - sx) >= 30 + 17 || Math.abs(ly - sy) >= 13 + 17,
-    `label at ${lx},${ly} still covers the badge and stop at ${sx},${sy}`,
+    Math.abs(lx - bx) >= 30 + 17 || Math.abs(ly - by) >= 13 + 17,
+    `label at ${lx},${ly} still covers the badge at ${bx},${by}`,
   );
+
+  // A truck on top of a stop keeps its number above its own marker.
+  const parked = layoutMapLabels({
+    vehicles: [{ ...truck('11009'), selected: true }],
+    zoom,
+  });
+  assert.deepEqual(parked.vehicles[0].labelOffset, [0, -30]);
+  assert.equal(stop.position.length, 2, 'the stop itself is never moved');
 });
 
 test('displaced truck labels reuse bounded geographic connectors', () => {

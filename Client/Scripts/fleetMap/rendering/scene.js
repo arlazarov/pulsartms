@@ -175,7 +175,6 @@ export function createScene(
       vehicleDisplay = layoutMapLabels({
         vehicles: grouped.vehicles,
         clusters: grouped.clusters,
-        stops: stopData,
         zoom: clusterZoom,
         previous: vehicleDisplay.vehicles,
       });

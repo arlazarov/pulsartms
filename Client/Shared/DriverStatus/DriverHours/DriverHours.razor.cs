@@ -12,6 +12,12 @@ public partial class DriverHours
   [Parameter]
   public bool ShowDutyStatus { get; set; } = true;
 
+  // Dials carry a clock's shape at a glance and cost the height of one.
+  // Where four of them would take a row the card cannot spare, the same
+  // four clocks read as text on one line.
+  [Parameter]
+  public bool Dials { get; set; } = true;
+
   [Parameter]
   public DriverDutyStatus? Status { get; set; }
 
