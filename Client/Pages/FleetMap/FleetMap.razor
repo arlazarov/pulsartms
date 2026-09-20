@@ -253,10 +253,6 @@
                         </div>
                     }
                 <span class="fleet-map-route-info__total fleet-map-route-info__secondary">Total <strong class="fleet-map-inspector__value">@if (routePlan is not null) { <DistanceText Miles="routePlan.OriginalPlannedMiles" /> } else { <text>— @Units.DistanceUnit</text>@if (Units.BothDistances) { <span> · — km</span> } }</strong></span>
-                <span class="fleet-map-inspector__hours-label">HOS</span>
-                <Client.Shared.DriverStatus.DriverHours.DriverHours
-                    @key="_activeTruckId" Clocks="_hos"
-                    Dials="false" ShowDutyStatus="false" />
             </div>
             <div class="fleet-map-route-info__visit">
             <div class="fleet-map-route-info__next">

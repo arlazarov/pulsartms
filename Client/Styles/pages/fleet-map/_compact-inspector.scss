@@ -559,31 +559,16 @@
         }
       }
     }
+    // Wide keeps the two columns it was drawn with; the extra room goes to
+    // the addresses, not into a third and fourth column.
     .fleet-map-route-info {
-      grid-template-columns:
-        minmax(0, 0.85fr) #{ui.size(route-metric)} minmax(0, 1.15fr)
-        minmax(0, 1.35fr);
       > .fleet-map-route-info__load {
-        grid-column: 1;
-        grid-row: 1;
         gap: ui.pg(xs);
         padding-bottom: 0;
         border-bottom: 0;
       }
-      &__distances {
-        grid-column: 2;
-        grid-row: 1;
-      }
       &__distances::before {
         display: block;
-      }
-      &__visit {
-        grid-column: 3;
-        grid-row: 1;
-      }
-      &__timing {
-        grid-column: 4;
-        grid-row: 1;
       }
     }
   }

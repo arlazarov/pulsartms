@@ -611,25 +611,17 @@ test('wide truck details use one row of adjacent groups without shrinking text o
     compact.indexOf('@container map-truck-inspection (width >= 52rem)'),
     compact.indexOf('@container map-truck-inspection (width < 40rem)'),
   );
-  assert.match(
+  // Wide keeps the two columns the card was drawn with: the extra room
+  // goes to the addresses rather than into more columns.
+  assert.doesNotMatch(
     wide,
-    /grid-template-columns: minmax\(0,\s*0\.85fr\) var\(--size-route-metric\) minmax\(0,\s*1\.15fr\) minmax\(0,\s*1\.35fr\);/,
+    /\.fleet-map-route-info\s*\{[^}]*grid-template-columns:/,
   );
+  assert.match(wide, /__load\s*\{[^}]*border-bottom: 0;/);
   assert.match(
-    wide,
-    /__load\s*\{[^}]*grid-column: 1;\s*grid-row: 1;[^}]*border-bottom: 0;/,
+    compact,
+    /\.fleet-map-route-info\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/,
   );
-  for (const [group, column] of [
-    ['distances', 2],
-    ['visit', 3],
-    ['timing', 4],
-  ])
-    assert.match(
-      wide,
-      new RegExp(
-        `__${group}\\s*\\{\\s*grid-column: ${column};\\s*grid-row: 1;`,
-      ),
-    );
   assert.match(compact, /__load-reference\s*\{\s*display: contents;/);
   assert.doesNotMatch(
     wide,
