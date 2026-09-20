@@ -89,10 +89,17 @@
     flex-basis: 100%;
     display: grid;
     min-width: 0;
+    // Four dials abreast at any card width: they shrink with the card
+    // rather than wrapping into a second row that pushes the map down.
+    container-type: inline-size;
     --hos-display: grid;
     --hos-columns: repeat(4, minmax(0, 1fr));
-    --hos-dial-size: #{ui.size(control-touch)};
+    --hos-dial-size: min(
+      #{ui.size(hos-dial)},
+      calc((100cqi - 3 * #{ui.pg(sm)}) / 4)
+    );
     --hos-clock-min-width: 0;
+    --hos-ring-width: 5;
     > .driver-hours-panel {
       width: 100%;
     }

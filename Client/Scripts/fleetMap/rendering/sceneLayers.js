@@ -399,6 +399,12 @@ export function createSceneLayers({
       [distanceData, fonts, stopLabelStyle],
       () => stopCardLayers(TextLayer, distanceData, stopLabelStyle, fonts),
     );
+    // Text carries its own alpha per row, so the unit numbers fade with the
+    // arrows they belong to rather than needing a layer of their own.
+    const quietAlpha = (truck, full) =>
+      hasSelectedTruck && !truck.selected
+        ? Math.round(full * metrics.truckMutedOpacity)
+        : full;
     truckLayers.push(
       ...vehicleLayers(
         [vehicles, hoveredTruck, fonts, hasSelectedTruck],
@@ -421,25 +427,32 @@ export function createSceneLayers({
             onClick: selectTruck,
             parameters: { depthCompare: 'always' },
           }),
-          new IconLayer({
-            id: 'truck-icons',
-            data: vehicles,
-            getPosition: t => t.position,
-            getIcon: t => truckIcon(t.engine, t.speed),
-            getSize: t =>
-              (hasSelectedTruck && !t.selected
-                ? metrics.truckSecondarySize
-                : metrics.truckSize) *
-              (t.unit === hoveredTruck ? metrics.truckHoverScale : 1),
-            sizeUnits: 'pixels',
-            billboard: true,
-            getAngle: t => -t.heading,
-            updateTriggers: { getSize: [hoveredTruck, hasSelectedTruck] },
-            pickable: true,
-            onHover: hoverTruck,
-            onClick: selectTruck,
-            parameters: { depthCompare: 'always' },
-          }),
+          // Two icon layers, not one: the arrows are drawn images, so only
+          // a whole layer can be faded. With a truck chosen the rest of the
+          // fleet steps back instead of competing with its route.
+          ...[false, true].map(
+            quiet =>
+              new IconLayer({
+                id: quiet ? 'truck-icons-quiet' : 'truck-icons',
+                data: vehicles.filter(
+                  t => (hasSelectedTruck && !t.selected) === quiet,
+                ),
+                opacity: quiet ? metrics.truckMutedOpacity : 1,
+                getPosition: t => t.position,
+                getIcon: t => truckIcon(t.engine, t.speed),
+                getSize: t =>
+                  (quiet ? metrics.truckSecondarySize : metrics.truckSize) *
+                  (t.unit === hoveredTruck ? metrics.truckHoverScale : 1),
+                sizeUnits: 'pixels',
+                billboard: true,
+                getAngle: t => -t.heading,
+                updateTriggers: { getSize: [hoveredTruck, hasSelectedTruck] },
+                pickable: true,
+                onHover: hoverTruck,
+                onClick: selectTruck,
+                parameters: { depthCompare: 'always' },
+              }),
+          ),
           new TextLayer({
             id: 'truck-numbers',
             characterSet: 'auto',
@@ -448,19 +461,25 @@ export function createSceneLayers({
             getText: t => t.unit,
             getSize: metrics.truckLabelSize,
             sizeUnits: 'pixels',
-            getColor: [255, 255, 255],
+            getColor: t => [255, 255, 255, quietAlpha(t, 255)],
             getPixelOffset: t =>
               t.labelOffset ?? [0, -metrics.truckLabelOffset],
             background: true,
-            getBackgroundColor: t =>
-              t.selected || t.unit === hoveredTruck
+            getBackgroundColor: t => [
+              ...(t.selected || t.unit === hoveredTruck
                 ? [49, 94, 234]
-                : [30, 41, 59],
+                : [30, 41, 59]),
+              quietAlpha(t, 255),
+            ],
             backgroundPadding: metrics.truckLabelPadding,
             backgroundBorderRadius: 5,
-            getBorderColor: [255, 255, 255, 220],
+            getBorderColor: t => [255, 255, 255, quietAlpha(t, 220)],
             getBorderWidth: 1,
-            updateTriggers: { getBackgroundColor: hoveredTruck },
+            updateTriggers: {
+              getColor: hasSelectedTruck,
+              getBorderColor: hasSelectedTruck,
+              getBackgroundColor: [hoveredTruck, hasSelectedTruck],
+            },
             fontFamily: 'Arial, sans-serif',
             fontSettings: fonts.truck,
             _subLayerProps: labelSubLayers,

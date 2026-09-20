@@ -25,6 +25,7 @@ export const sceneMetrics = Object.freeze({
   truckClusterRadius: 64,
   truckClusterMaxZoom: 12,
   truckHoverScale: 1.1,
+  truckMutedOpacity: 0.45,
   truckLabelOffset: 30,
   routeWidthScale: 1.75,
   routeMinWidth: 5,

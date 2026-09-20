@@ -370,7 +370,7 @@ test('scene reuses static layers across motion, invalidates only changed stops a
     layers()['truck-numbers'].props.getBackgroundColor(
       layers()['truck-numbers'].props.data[0],
     ),
-    [49, 94, 234],
+    [49, 94, 234, 255],
   );
   stations.setPoint(
     'fuel',

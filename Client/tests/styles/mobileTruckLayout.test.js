@@ -30,15 +30,18 @@ test('mobile card expands both panels inside the bounded inspector', () => {
   assert.match(header, /__header\s*\{\s*position: static;/);
 });
 
-test('mobile truck places two-by-two readings beside one HOS row', () => {
+test('mobile truck places two-by-two readings under the header clocks', () => {
   assert.match(mobile, /^@media \(max-width: 767px\)/);
-  assert.match(mobile, /--hos-display: grid;/);
-  assert.match(mobile, /--hos-columns: repeat\(4, minmax\(0, 1fr\)\);/);
-  assert.match(mobile, /container-type: inline-size;/);
-  assert.match(mobile, /100cqi - 3 \* var\(--space-sm\)/);
+  // The clocks read from the card head, at every width, so their sizing
+  // lives with the header rather than in the mobile override.
+  assert.match(header, /__hours\s*\{[^}]*--hos-display: grid;/);
+  assert.match(header, /--hos-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+  assert.match(header, /__hours\s*\{[^}]*container-type: inline-size;/);
+  assert.match(header, /100cqi - 3 \* var\(--space-sm\)/);
+  assert.doesNotMatch(mobile, /--hos-/);
   assert.match(mobile, /__telemetry\s*\{[^}]*repeat\(2, 6ch\);/);
-  assert.match(mobile, /--hos-dial-size: min\(/);
-  assert.match(mobile, /var\(--size-hos-dial\)/);
+  assert.match(header, /--hos-dial-size: min\(/);
+  assert.match(header, /var\(--size-hos-dial\)/);
   assert.match(
     mobile,
     /--fuel-reading-icon-size: var\(--size-telemetry-icon-compact\);/,

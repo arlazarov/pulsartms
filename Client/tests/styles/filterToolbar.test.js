@@ -83,15 +83,12 @@ test('Fleet and Dispatch keep their native bindings and use the same toolbar cla
   assert.equal(
     (fleet.match(/class="fleet-map-toggle filter-toolbar__toggle"/g) ?? [])
       .length,
-    4,
+    3,
   );
   assert.doesNotMatch(fleet, /ShowTrucks|OnTrucksToggleChanged/);
-  for (const value of [
-    'UseIfta',
-    'ShowFuelStations',
-    'ShowTraffic',
-    'ShowNextLoads',
-  ])
+  // The fuel price basis is the fleet's setting, not a map switch.
+  assert.doesNotMatch(fleet, /UseIfta|IFTA/);
+  for (const value of ['ShowFuelStations', 'ShowTraffic', 'ShowNextLoads'])
     assert.match(
       fleet,
       new RegExp(`type="checkbox"[\\s\\S]*?@bind="${value}"`),
@@ -135,18 +132,7 @@ test('Fleet layer chips use shared control metrics, native keyboard focus and th
     razor,
     /class="fleet-map-layers" role="group" aria-label="Map layers"/,
   );
-  assert.match(
-    razor,
-    /class="fleet-map-pricing" role="group" aria-label="Fuel price mode"/,
-  );
-  assert.ok(
-    razor.indexOf('class="fleet-map-pricing"') <
-      razor.indexOf('class="fleet-map-layers"'),
-  );
-  assert.match(
-    razor,
-    /type="checkbox" class="visually-hidden" @bind="UseIfta"/,
-  );
+  assert.doesNotMatch(razor, /fleet-map-pricing|fleet-map-date/);
   assert.match(
     razor,
     /class="visually-hidden" role="status">@MatchingTrucks.Count found/,
