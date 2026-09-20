@@ -29,23 +29,6 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
     if (near) near.push({ row, point });
     else groups.push([{ row, point }]);
   }
-  // A truck parked at its own stop hid the badge for it underneath itself.
-  // The badge steps up out of the way; the dot that marks where the stop
-  // really is stays where it is, so nothing is said that is not true.
-  const parked = trucks
-    .filter(truck => truck.position)
-    .map(truck => project(truck.position));
-  if (parked.length)
-    for (const group of groups)
-      for (const member of group)
-        if (
-          parked.some(
-            truck =>
-              Math.abs(truck[0] - member.point[0]) < width &&
-              Math.abs(truck[1] - member.point[1]) < width,
-          )
-        )
-          member.row.markerOffsetY -= width;
   for (const group of groups) {
     if (group.length < 2 || group.length > metrics.stopBadgeCluster) continue;
     group.sort(
@@ -62,4 +45,25 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
         : rowIndex * width;
     });
   }
+  // A truck parked at its own stop hid the badge for it underneath itself.
+  // The badge steps aside rather than up: above the truck is where its own
+  // unit number goes, and the two were covering each other in turn. The dot
+  // marking where the stop really is stays put, so nothing is said that is
+  // not true.
+  const parked = trucks
+    .filter(truck => truck.position)
+    .map(truck => project(truck.position));
+  if (!parked.length) return;
+  for (const group of groups)
+    for (const member of group)
+      if (
+        parked.some(
+          truck =>
+            Math.abs(truck[0] - member.point[0] - member.row.markerOffsetX) <
+              width &&
+            Math.abs(truck[1] - member.point[1] - member.row.markerOffsetY) <
+              width,
+        )
+      )
+        member.row.markerOffsetX += width;
 }
