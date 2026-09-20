@@ -7,9 +7,10 @@
   --arrival-font-size: #{ui.fs(body)};
   --arrival-detail-font-size: #{ui.fs(small)};
 
-  @media (min-width: ui.breakpoint(map-mobile, min)) {
-    scrollbar-gutter: stable;
-  }
+  // Reserved at every width: without it the scrollbar that appears when the
+  // card opens takes 15px off the header and shifts every row that was
+  // already on screen.
+  scrollbar-gutter: stable;
   .fleet-map-inspector__value {
     color: ui.theme(text);
     font-weight: 600;
@@ -38,19 +39,13 @@
   }
   .fleet-map-inspector__driver,
   .fleet-map-inspector__trailer {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: ui.pg(xs);
     min-width: 0;
     color: ui.theme(text-secondary);
-    font-size: ui.fs(small);
-    strong {
-      color: ui.theme(text);
-      font-size: ui.fs(body);
-      font-weight: 600;
-      overflow-wrap: anywhere;
-    }
+    font-size: ui.fs(body);
+    overflow-wrap: anywhere;
+  }
+  .fleet-map-inspector__trailer + .fleet-map-inspector__driver::before {
+    content: '· ';
   }
   .fleet-map-inspector__actions {
     display: flex;
@@ -85,28 +80,41 @@
       display: none;
     }
   }
+  // The card's second line: clocks as text, left to right, with the load
+  // being run at the far end. It reads as a sentence, not as a dashboard.
   .fleet-map-inspector__hours {
     flex-basis: 100%;
-    display: grid;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: ui.pg(xs) ui.pg(md);
     min-width: 0;
-    // Four dials abreast at any card width: they shrink with the card
-    // rather than wrapping into a second row that pushes the map down.
-    container-type: inline-size;
-    --hos-display: grid;
-    --hos-columns: repeat(4, minmax(0, 1fr));
-    --hos-dial-size: min(
-      #{ui.size(hos-dial)},
-      calc((100cqi - 3 * #{ui.pg(sm)}) / 4)
-    );
+    padding-top: ui.pg(xs);
+    border-top: 1px solid ui.theme(border-subtle);
+    --hos-display: flex;
+    --hos-wrap: wrap;
+    --hos-gap: #{ui.pg(md)};
     --hos-clock-min-width: 0;
-    --hos-ring-width: 5;
+    --hos-label-font-size: #{ui.fs(small)};
     > .driver-hours-panel {
-      width: 100%;
+      min-width: 0;
     }
   }
+  .fleet-map-inspector__hours-label {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
   .fleet-map-mobile-summary__remaining {
-    display: grid;
+    display: flex;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    margin-inline-start: auto;
     white-space: nowrap;
+    color: ui.theme(text-secondary);
+    font-variant-numeric: tabular-nums;
+    > strong {
+      color: ui.theme(text);
+    }
     small {
       color: ui.theme(text-secondary);
       font-size: ui.fs(small);
@@ -144,29 +152,15 @@
       }
     }
   }
-  // "18 mi" on its own says nothing. The label costs one small line and
-  // tells the dispatcher what the number is measuring.
+  // "18" on its own says nothing; the words around it say what it counts.
   .fleet-map-mobile-summary__label {
-    display: block;
+    display: inline;
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);
   }
   @media (min-width: ui.breakpoint(map-mobile, min)) {
     .fleet-map-inspector__header {
       gap: ui.pg(sm);
-    }
-    .fleet-map-inspector__driver strong,
-    .fleet-map-inspector__trailer strong {
-      font-weight: 500;
-    }
-    .fleet-map-mobile-summary__remaining {
-      padding: ui.pg(xs) ui.pg(md);
-      border-radius: ui.radius(sm);
-      background: ui.theme(surface-soft);
-      line-height: 1.2;
-      strong {
-        font-size: ui.fs(lead);
-      }
     }
     .fleet-map-inspector__actions {
       padding-left: ui.pg(sm);
@@ -625,10 +619,12 @@
         display: none;
       }
     }
+    // A phone has room for the unit and the controls abreast; everything
+    // the wide card fits on the same line takes a line of its own below.
     .fleet-map-inspector__header {
       position: static;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+      grid-template-columns: minmax(0, 1fr) max-content;
       gap: ui.pg(xs);
     }
     .fleet-map-inspector__identity {
@@ -638,24 +634,8 @@
       grid-column: 1;
       grid-row: 1;
     }
-    .fleet-map-mobile-summary__remaining {
-      grid-column: 2;
-      grid-row: 1;
-      display: grid;
-      justify-items: center;
-      inline-size: 10ch;
-      font-size: ui.fs(body);
-      font-variant-numeric: tabular-nums;
-      > strong {
-        font-weight: 600;
-      }
-      small {
-        font: inherit;
-        font-weight: 400;
-      }
-    }
     .fleet-map-inspector__controls {
-      grid-column: 3;
+      grid-column: 2;
       grid-row: 1;
       justify-self: end;
     }
@@ -668,12 +648,6 @@
       grid-row: 2;
       min-width: 0;
     }
-    .fleet-map-inspector__driver-label {
-      display: none;
-    }
-    .fleet-map-inspector__trailer::before {
-      content: '·';
-    }
     .fleet-map-inspector__arrival {
       grid-column: 1 / -1;
       grid-row: 3;
@@ -681,6 +655,10 @@
     .fleet-map-inspector__hours {
       grid-column: 1 / -1;
       grid-row: 4;
+      .fleet-map-mobile-summary__remaining {
+        flex-basis: 100%;
+        margin-inline-start: 0;
+      }
     }
     .fleet-map-inspector__actions {
       grid-column: 1 / -1;

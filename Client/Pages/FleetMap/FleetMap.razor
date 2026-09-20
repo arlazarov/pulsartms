@@ -94,32 +94,23 @@
         <header class="fleet-map-inspector__header">
         @if (_inspectorMode == MapInspectorMode.Truck)
         {
+            @* The unit names the card. Trailer and driver read as one quiet
+               line beside it, the way a dispatcher says them out loud. *@
             <div class="fleet-map-inspector__identity">
-                <strong class="fleet-map-inspector__title fleet-map-inspector__desktop-title">@InspectorTitle</strong>
+                <strong class="fleet-map-inspector__title fleet-map-inspector__desktop-title">@(SelectedTruck is { } named ? named.UnitNumber : InspectorTitle)</strong>
                 @if (SelectedTruck is { } identityTruck)
                 {
                     <span class="fleet-map-inspector__crew">
-                        <span class="fleet-map-inspector__driver">
-                            <span class="fleet-map-inspector__driver-label">
-                                Driver
-                            </span>
-                            <strong>@(string.IsNullOrWhiteSpace(
-                                HosDriverName(identityTruck))
-                                ? "—" : HosDriverName(identityTruck))</strong>
-                        </span>
-                        <span class="fleet-map-inspector__trailer">
-                            Trailer
-                            <strong>@(string.IsNullOrWhiteSpace(
-                                identityTruck.TrailerNumber)
-                                ? "—" : identityTruck.TrailerNumber)</strong>
-                        </span>
+                        <span class="fleet-map-inspector__trailer"
+                              title="Trailer">@(string.IsNullOrWhiteSpace(
+                            identityTruck.TrailerNumber)
+                            ? "—" : identityTruck.TrailerNumber)</span>
+                        <span class="fleet-map-inspector__driver"
+                              title="Driver">@(string.IsNullOrWhiteSpace(
+                            HosDriverName(identityTruck))
+                            ? "—" : HosDriverName(identityTruck))</span>
                     </span>
                 }
-            </div>
-            <div class="fleet-map-mobile-summary__remaining" aria-label="Distance to next stop"
-                 title="Distance to next stop">
-                <span class="fleet-map-mobile-summary__label">Next stop</span>
-                <strong>@(NextStopMiles?.ToString("N0") ?? "—") <small>mi</small></strong>
             </div>
             @if (SelectedTruck is not null)
             {
@@ -234,15 +225,29 @@
         }
         @if (_inspectorMode == MapInspectorMode.Truck && SelectedTruck is not null)
         {
-            @* The clocks belong beside the truck's name, not behind a
-               disclosure: whether the driver has hours left decides whether
-               any of the rest is worth reading. Last in the header so the
-               row order on screen is the row order in the document. *@
-            <div class="fleet-map-inspector__hours"
-                 aria-label="Driver hours remaining">
+            @* Second line of the card, under a rule: the four clocks as
+               text, and at the far end the load being run and what is left
+               of it. Whether the driver has hours decides whether any of
+               the rest is worth reading, so it is never behind a
+               disclosure. Last in the header, so the order on screen is
+               the order in the document. *@
+            <div class="fleet-map-inspector__hours">
+                <span class="fleet-map-inspector__hours-label">HOS</span>
                 <Client.Shared.DriverStatus.DriverHours.DriverHours
                     @key="_activeTruckId" Clocks="_hos"
-                    ShowDutyStatus="false" />
+                    Dials="false" ShowDutyStatus="false" />
+                <span class="fleet-map-mobile-summary__remaining"
+                      aria-label="Load and distance to the next stop">
+                    @if (_loadDetails is { } runningLoad)
+                    {
+                        <Client.Shared.Dispatch.LoadNumber.LoadNumber
+                            Value="runningLoad.LoadNumber" />
+                        <span class="fleet-map-mobile-summary__label"
+                              aria-hidden="true">·</span>
+                    }
+                    <strong>@(NextStopMiles?.ToString("N0") ?? "—")</strong>
+                    <span class="fleet-map-mobile-summary__label">mi left</span>
+                </span>
             </div>
         }
         </header>

@@ -1,5 +1,5 @@
 <div class="driver-hours-panel">
-<div class="driver-hours" role="group" aria-label="Driver hours remaining"
+<div class="driver-hours @(Dials ? "" : "driver-hours--text")" role="group" aria-label="Driver hours remaining"
      title="@(Clocks is null ? "Samsara HOS unavailable" : "Samsara · updated " + Clocks.UpdatedAt.ToLocalTime().ToString("hh:mm tt", System.Globalization.CultureInfo.InvariantCulture))">
     @foreach (var clock in new[] { ("Break", Clocks?.BreakMs, 8), ("Drive", Clocks?.DriveMs, 11), ("Shift", Clocks?.ShiftMs, 14), ("Cycle", Clocks?.CycleMs, 70) })
     {

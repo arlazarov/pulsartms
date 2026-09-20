@@ -416,9 +416,10 @@ public sealed class FleetMapComponentTests
       "km",
       heading.QuerySelector(".fleet-map-route-info__distance")!.TextContent
     );
+    // The card's second line names what its number counts.
     Assert.Equal(
-      "Next stop",
-      component.Find(".fleet-map-mobile-summary__label").TextContent
+      "mi left",
+      component.FindAll(".fleet-map-mobile-summary__label")[^1].TextContent
     );
     Assert.All(
       route.QuerySelectorAll(".fleet-map-route-info__metric"),
@@ -430,7 +431,7 @@ public sealed class FleetMapComponentTests
     );
     Assert.Single(
       component.FindAll(
-        ".fleet-map-inspector__hours[aria-label='Driver hours remaining']"
+        ".fleet-map-inspector__hours [aria-label='Driver hours remaining']"
       )
     );
     Assert.Equal(0, fixture.FuelWrites);
@@ -548,7 +549,7 @@ public sealed class FleetMapComponentTests
     AssertTruckPanelsVisible(component);
     Assert.Single(
       component.FindAll(
-        ".fleet-map-inspector__hours[aria-label='Driver hours remaining']"
+        ".fleet-map-inspector__hours [aria-label='Driver hours remaining']"
       )
     );
     fixture.DeferDetails = false;
@@ -745,7 +746,7 @@ public sealed class FleetMapComponentTests
       component.Find(".fleet-map-route-info__metric strong").TextContent
     );
     Assert.Equal(
-      "10 mi",
+      "10",
       component.Find(".fleet-map-mobile-summary__remaining strong").TextContent
     );
     Assert.Empty(
@@ -778,7 +779,7 @@ public sealed class FleetMapComponentTests
         .AddChildContent<FleetMap>()
     );
     Assert.Equal(
-      "10 mi",
+      "10",
       component.Find(".fleet-map-mobile-summary__remaining strong").TextContent
     );
     Assert.Equal(
@@ -1052,7 +1053,7 @@ public sealed class FleetMapComponentTests
       () =>
         component.Instance.OnRouteProgress(fixture.TruckA.ToString(), 1617, 10)
     );
-    Assert.Equal("20 mi", summary.QuerySelector("strong")!.TextContent);
+    Assert.Equal("20", summary.QuerySelector("strong")!.TextContent);
     for (var i = 0; i < 2; i++)
     {
       await component.InvokeAsync(
@@ -1066,13 +1067,13 @@ public sealed class FleetMapComponentTests
       var current = Assert.Single(
         component.FindAll(".fleet-map-mobile-summary__remaining")
       );
-      Assert.Equal("20 mi", current.QuerySelector("strong")!.TextContent);
+      Assert.Equal("20", current.QuerySelector("strong")!.TextContent);
     }
     await component.InvokeAsync(
       () =>
         component.Instance.OnRouteProgress(fixture.TruckA.ToString(), 0, 1627)
     );
-    Assert.Equal("0 mi", summary.QuerySelector("strong")!.TextContent);
+    Assert.Equal("0", summary.QuerySelector("strong")!.TextContent);
     Assert.Equal(calls, fixture.HttpCalls);
   }
 
@@ -1894,9 +1895,10 @@ public sealed class FleetMapComponentTests
     );
     component.WaitForAssertion(() =>
     {
-      Assert.Contains(
-        "Truck 54777",
-        component.Find(".fleet-map-inspector__header").TextContent
+      // The unit names the card; "Truck" in front of it said nothing.
+      Assert.Equal(
+        "54777",
+        component.Find(".fleet-map-inspector__title").TextContent
       );
       Assert.Equal(
         3,

@@ -385,14 +385,15 @@ test('HOS circles keep the same compact gap instead of stretching across wide or
     /\.fleet-map-truck-info\s*\{[^}]*--hos-gap: var\(--space-sm\);/,
   );
   assert.match(css, /\.driver-hours\s*\{[^}]*min-width: 0;\s*max-width: 100%;/);
-  assert.match(
-    compact,
-    /\.fleet-map-inspector__hours > \.driver-hours-panel\s*\{\s*width: 100%;/,
-  );
+  // The clocks read as one line of text, not as a row of dials.
+  assert.match(compact, /__hours\s*\{[^}]*--hos-display: flex;/);
   assert.match(
     compact,
     /\.fleet-map-inspector__hours\s*\{[^}]*--hos-clock-min-width: 0;/,
   );
+  assert.doesNotMatch(compact, /__hours\s*\{[^}]*--hos-dial-size/);
+  // How a text clock is drawn belongs to the component, not to this page.
+  assert.doesNotMatch(compact, /\.driver-hours__/);
   assert.doesNotMatch(
     css,
     /\.fleet-map-truck-info[^{}]*\.driver-hours\s*\{[^}]*justify-content: space-between;/,
@@ -509,10 +510,11 @@ test('intermediate stop distance is inline with the visit heading instead of ano
 
 test('mobile keeps one compact row until Details is selected', () => {
   const mobile = compact.slice(compact.indexOf('@media (max-width: 767px)'));
+  // On a phone the top line is the unit and the controls; the distance
+  // rides the clocks line below with the load it belongs to.
   for (const [selector, column] of [
     ['fleet-map-inspector__title', 1],
-    ['fleet-map-mobile-summary__remaining', 2],
-    ['fleet-map-inspector__controls', 3],
+    ['fleet-map-inspector__controls', 2],
   ])
     assert.match(
       mobile,
@@ -530,18 +532,17 @@ test('mobile keeps one compact row until Details is selected', () => {
   );
 });
 
-test('next-stop distance stays visible on desktop and centered on phones', () => {
+test('next-stop distance rides the clocks line at every width', () => {
   assert.match(
     compact,
-    /\.fleet-map-mobile-summary__remaining\s*\{\s*display: grid;/,
+    /\.fleet-map-mobile-summary__remaining\s*\{\s*display: flex;/,
   );
   const mobile = compact.slice(compact.indexOf('@media (max-width: 767px)'));
-  assert.match(
-    mobile,
-    /__remaining\s*\{[^}]*display: grid;[^}]*justify-items: center;[^}]*inline-size: 10ch;[^}]*font-size: var\(--type-body\);/,
-  );
-  // The number is labelled at every width: "18 mi" alone says nothing.
-  assert.match(compact, /__label\s*\{\s*display: block;/);
+  // The distance rides at the end of the clocks line, not in a chip of
+  // its own, and it is labelled at every width.
+  assert.match(compact, /__remaining\s*\{[^}]*margin-inline-start: auto;/);
+  assert.match(mobile, /__hours[^{]*__remaining\s*\{[^}]*flex-basis: 100%;/);
+  assert.match(compact, /__label\s*\{\s*display: inline;/);
   assert.doesNotMatch(compact, /__label\s*\{\s*display: none;/);
   assert.doesNotMatch(mobile, /is-mobile-collapsed[^{}]*__remaining/);
   // Opening the card must not move it: no width re-columns the header.
@@ -551,8 +552,9 @@ test('next-stop distance stays visible on desktop and centered on phones', () =>
 test('truck metadata stays aligned and disclosure does not restyle the primary summary', () => {
   assert.match(
     compact,
-    /\.fleet-map-inspector__driver,\s*[^{}]*\.fleet-map-inspector__trailer\s*\{[^}]*font-size: var\(--type-small\);/,
+    /\.fleet-map-inspector__driver,\s*[^{}]*\.fleet-map-inspector__trailer\s*\{[^}]*color: var\(--ui-text-secondary\);/,
   );
+  assert.match(compact, /__trailer \+ [^{]*__driver::before\s*\{\s*content:/);
   assert.match(
     compact,
     /\.fleet-map-truck-info\s*\{[^}]*align-items: flex-start;/,
@@ -622,7 +624,6 @@ test('wide truck details use one row of adjacent groups without shrinking text o
     compact,
     /\.fleet-map-truck-info\s*\{[^}]*padding: var\(--space-xs\) var\(--space-md\);/,
   );
-  assert.match(compact, /__hours\s*\{[^}]*--hos-dial-size: min\(/);
   assert.doesNotMatch(wide, /font-size:|--hos-dial-size:/);
 });
 

@@ -10,8 +10,10 @@ test('pages compose HOS through custom properties instead of internal selectors'
   const css = compile("@use 'pages';");
   assert.doesNotMatch(css, /\.driver-hours__/);
   assert.doesNotMatch(css, /\.driver-hours(?=[\s.:#[])[^{]*\{/);
-  assert.match(css, /--hos-dial-size: min\(\s*var\(--size-hos-dial\)/);
-  assert.match(css, /--hos-ring-width: 5/);
+  // Pages say what they want - flex, wrap, a gap - and never how a clock
+  // is drawn.
+  assert.match(css, /--hos-display: flex;/);
+  assert.match(css, /--hos-wrap: wrap;/);
 });
 
 test('HOS diameter and text use the same component-owned responsive value', () => {

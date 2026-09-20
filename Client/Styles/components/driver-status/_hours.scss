@@ -89,3 +89,30 @@
     height: var(--_hos-dial-size, #{ui.size(hos-dial-compact)});
   }
 }
+
+// The text reading of the same four clocks, for a card that cannot spare
+// the height of a dial. The component owns how it looks; a page only says
+// it wants text.
+.driver-hours--text {
+  .driver-hours__clock {
+    display: flex;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    min-width: 0;
+  }
+  .driver-hours__label {
+    color: ui.theme(text-secondary);
+  }
+  .driver-hours__reading {
+    font-size: ui.fs(body);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  // An hour or less left is the one thing on this line worth a colour.
+  .driver-hours__clock.is-low .driver-hours__reading {
+    color: ui.theme(warning-text);
+  }
+  .driver-hours__clock.is-unavailable .driver-hours__reading {
+    color: ui.theme(text-muted);
+  }
+}
