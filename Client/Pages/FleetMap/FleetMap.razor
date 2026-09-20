@@ -152,47 +152,43 @@
                 <button type="button" class="btn btn--text btn--small fleet-map-inspector__back" @onclick="BackToTruckAsync">Back to truck</button>
             }
         }
-        @if (_inspectorMode is MapInspectorMode.Truck
-            or MapInspectorMode.NextStop || !HasTruckInspection)
-        {
-            <div class="fleet-map-inspector__controls">
-                @if (_inspectorMode == MapInspectorMode.NextStop)
-                {
-                    <button type="button"
-                            class="btn btn--text btn--small"
-                            aria-expanded="@(_nextStopDetailsOpen
-                                ? "true" : "false")"
-                            aria-controls="fleet-map-next-load-details"
-                            @onclick="ToggleNextStopDetails">
-                        Details
-                        <span aria-hidden="true">
-                            @(_nextStopDetailsOpen ? "▴" : "▾")
-                        </span>
-                    </button>
-                }
-                @if (_inspectorMode == MapInspectorMode.Truck
-                    || !HasTruckInspection)
-                {
-                    @if (_inspectorMode == MapInspectorMode.Truck)
-                    {
-                        @* A chevron, not a word: "Details"/"Hide" are
-                           different widths, so the row moved as it opened. *@
-                        <button type="button"
-                                class="btn btn--text btn--small
-                                    fleet-map-mobile-summary__toggle"
-                                aria-expanded="@(_mobileTruckDetailsOpen
-                                    ? "true" : "false")"
-                                aria-controls="fleet-map-details"
-                                aria-label="Truck details"
-                                @onclick="ToggleMobileTruckDetails">
-                        </button>
-                    }
-                    <button type="button"
-                            class="btn btn--small fleet-map-inspector__close"
-                            aria-label="Close map information"
-                            @onclick="CloseInspectorAsync">×</button>
-                }
-            </div>
+        @* The close control belongs to every card. A stop opened from the
+           map used to offer only "Back to truck", which is a different
+           thing: it goes somewhere, and closing leaves the map clear. *@
+        <div class="fleet-map-inspector__controls">
+            @if (_inspectorMode == MapInspectorMode.NextStop)
+            {
+                <button type="button"
+                        class="btn btn--text btn--small"
+                        aria-expanded="@(_nextStopDetailsOpen
+                            ? "true" : "false")"
+                        aria-controls="fleet-map-next-load-details"
+                        @onclick="ToggleNextStopDetails">
+                    Details
+                    <span aria-hidden="true">
+                        @(_nextStopDetailsOpen ? "▴" : "▾")
+                    </span>
+                </button>
+            }
+            @if (_inspectorMode == MapInspectorMode.Truck)
+            {
+                @* A chevron, not a word: "Details"/"Hide" are
+                   different widths, so the row moved as it opened. *@
+                <button type="button"
+                        class="btn btn--text btn--small
+                            fleet-map-mobile-summary__toggle"
+                        aria-expanded="@(_mobileTruckDetailsOpen
+                            ? "true" : "false")"
+                        aria-controls="fleet-map-details"
+                        aria-label="Truck details"
+                        @onclick="ToggleMobileTruckDetails">
+                </button>
+            }
+            <button type="button"
+                    class="btn btn--small fleet-map-inspector__close"
+                    aria-label="Close map information"
+                    @onclick="CloseInspectorAsync">×</button>
+        </div>
         }
         @if (_inspectorMode == MapInspectorMode.Truck && SelectedTruck is not null)
         {

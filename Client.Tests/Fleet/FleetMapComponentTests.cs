@@ -2112,6 +2112,37 @@ public sealed class FleetMapComponentTests
     Assert.Single(fixture.Js.Calls, call => call.Name == "createFleetMap");
   }
 
+  // Back to truck goes somewhere; closing leaves the map clear. A stop
+  // opened from the map offered only the first, so the only way out of it
+  // was through the truck card.
+  [Theory]
+  [InlineData("stop")]
+  [InlineData("fuel")]
+  [InlineData("next-stop")]
+  public async Task ClosingFromAStopLeavesTheMapClearRatherThanTheTruckCard(
+    string kind
+  )
+  {
+    using var fixture = new SelectionFixture();
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, c => c.Name == "setTrucks")
+    );
+    var truck = fixture.TruckA.ToString();
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(truck)
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnMapInspectorChanged(kind, truck, 10)
+    );
+    await component.Find(".fleet-map-inspector__close").ClickAsync(new());
+    Assert.Equal(
+      "closed",
+      component.Find(".fleet-map-inspector").GetAttribute("data-inspector-mode")
+    );
+    Assert.Contains(fixture.Js.Calls, c => c.Name == "clearMapInspection");
+  }
+
   [Theory]
   [InlineData("fuel")]
   [InlineData("stop")]
@@ -2130,7 +2161,9 @@ public sealed class FleetMapComponentTests
     await component.InvokeAsync(
       () => component.Instance.OnMapInspectorChanged(kind, truck, 10)
     );
-    Assert.Empty(component.FindAll(".fleet-map-inspector__close"));
+    // Going back to the truck and closing the card are different things, and
+    // a stop opened from the map used to offer only the first of them.
+    Assert.Single(component.FindAll(".fleet-map-inspector__close"));
     Assert.Single(component.FindAll(".fleet-map-inspector__back"));
     var requests = fixture.HttpCalls;
     var clears = fixture.Js.Calls.Count(c => c.Name == "clearSelection");
