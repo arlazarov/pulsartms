@@ -34,9 +34,13 @@ export const sceneMetrics = Object.freeze({
   routeCurrentWidthScale: 1.25,
   routeMutedOpacity: 0.4,
   routeFutureOpacity: 0.7,
+  routeFutureDepthFade: 0.12,
+  routeFutureMinOpacity: 0.34,
   routeTraveledOpacity: 0.22,
   routeOutlineWidth: 2,
   routeDashArray: Object.freeze([4, 4]),
+  // Empty miles read as dots, not dashes: nothing is on board.
+  routeDotArray: Object.freeze([1, 3]),
 });
 
 // Rasterize at the displayed physical font size so small glyphs retain hinting.

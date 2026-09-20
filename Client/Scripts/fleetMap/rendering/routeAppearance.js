@@ -1,15 +1,30 @@
 import { sceneMetrics as metrics } from './sceneMetrics.js';
 import { currentRouteLineColor } from './routePalette.js';
 
+// Empty miles are grey wherever they appear: no load is on board, and the
+// orange they used to share with a live route claimed attention they never
+// deserved.
+const emptyColor = [100, 116, 139, 235];
 const colors = {
   current: currentRouteLineColor,
   traveled: currentRouteLineColor,
   future: [145, 105, 201, 240],
-  deadhead: [220, 145, 48, 190],
-  'current-empty': [220, 145, 48, 255],
-  'traveled-empty': [220, 145, 48, 255],
+  deadhead: emptyColor,
+  'current-empty': emptyColor,
+  'traveled-empty': emptyColor,
 };
+const emptyRoles = new Set(['deadhead', 'current-empty', 'traveled-empty']);
 const outline = [255, 255, 255, 210];
+
+// Each load further down the chain steps back again, so the order of the
+// week reads off the map without counting colours.
+function futureOpacity(depth) {
+  const step = Number.isFinite(depth) ? Math.max(0, Math.trunc(depth)) : 0;
+  return Math.max(
+    metrics.routeFutureMinOpacity,
+    metrics.routeFutureOpacity - step * metrics.routeFutureDepthFade,
+  );
+}
 
 export function routeLayers(
   line,
@@ -17,7 +32,8 @@ export function routeLayers(
   routeDashExtensions,
   selectionMuted = false,
 ) {
-  const dashed = line.routeRole === 'future' || line.routeRole === 'deadhead';
+  const empty = emptyRoles.has(line.routeRole);
+  const dashed = line.routeRole === 'future' || empty;
   const muted =
     selectionMuted ||
     line.routeRole === 'traveled' ||
@@ -40,6 +56,7 @@ export function routeLayers(
     line.cachedHover === line.onHover &&
     line.cachedMuted === muted &&
     line.cachedSelected === line.routeSelected &&
+    line.cachedDepth === line.routeDepth &&
     line.cachedVisible === (line.visible !== false)
   )
     return line.cachedLayer;
@@ -52,6 +69,7 @@ export function routeLayers(
   line.cachedHover = line.onHover;
   line.cachedMuted = muted;
   line.cachedSelected = line.routeSelected;
+  line.cachedDepth = line.routeDepth;
   line.cachedVisible = line.visible !== false;
   const shared = {
     data: line.data,
@@ -64,7 +82,7 @@ export function routeLayers(
         : muted
           ? metrics.routeMutedOpacity
           : dashed && !line.routeSelected
-            ? metrics.routeFutureOpacity
+            ? futureOpacity(line.routeDepth)
             : 1,
     getPath: path => path,
     widthUnits: 'pixels',
@@ -89,10 +107,9 @@ export function routeLayers(
         );
   const outlineWidth = width + metrics.routeOutlineWidth;
   const dash = dashed ? { extensions, dashJustified: false } : {};
+  const pattern = empty ? metrics.routeDotArray : metrics.routeDashArray;
   // Dash units use half-width. Both strokes must share physical dash boundaries.
-  const outlineDash = metrics.routeDashArray.map(
-    value => (value * width) / outlineWidth,
-  );
+  const outlineDash = pattern.map(value => (value * width) / outlineWidth);
   return (line.cachedLayer = [
     new PathLayer({
       ...shared,
@@ -108,7 +125,7 @@ export function routeLayers(
       id: line.id,
       getColor: color,
       getWidth: width,
-      ...(dashed ? { getDashArray: metrics.routeDashArray } : {}),
+      ...(dashed ? { getDashArray: pattern } : {}),
     }),
   ]);
 }

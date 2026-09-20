@@ -87,7 +87,8 @@ test('per-load route colors invalidate only changed appearance and keep role def
   delete line.routeColor;
   assert.deepEqual(routeLayers(line, Layer)[1].getColor, [145, 105, 201, 240]);
   line.routeRole = 'deadhead';
-  assert.deepEqual(routeLayers(line, Layer)[1].getColor, [220, 145, 48, 190]);
+  // Empty miles carry no load, so they are grey wherever they appear.
+  assert.deepEqual(routeLayers(line, Layer)[1].getColor, [100, 116, 139, 235]);
 });
 
 test('route outline shares geometry and cached layers survive camera-only updates', () => {
@@ -158,7 +159,7 @@ test('future routes retain their hue with a secondary stroke and bounded white o
   );
   assert.deepEqual(
     routeLayers({ ...future, routeRole: 'deadhead' }, Layer)[1].getColor,
-    [220, 145, 48, 190],
+    [100, 116, 139, 235],
   );
 });
 

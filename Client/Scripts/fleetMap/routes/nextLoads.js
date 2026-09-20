@@ -99,11 +99,12 @@ export function createNextLoadsLayer(
       previous = signature;
       const display = nextLoadDisplay(loads);
       renderedLines = display.lines.map(
-        ({ points, role, loadId, routeColor }) => {
+        ({ points, role, loadId, routeColor, routeDepth }) => {
           const line = new Polyline({
             map,
             routeRole: role,
             routeColor,
+            routeDepth,
             strokeWeight: 2,
           });
           line.setPath(

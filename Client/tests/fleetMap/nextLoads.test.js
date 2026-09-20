@@ -308,8 +308,12 @@ test('selection emphasizes the chosen road and subdues others without replacing 
   );
   layer.clearSelection();
   // Clearing the selection restores the upcoming roads to their resting
-  // strength, which is a step behind the road being driven, not equal to it.
-  assert.ok(render().every(pair => pair.every(part => part.opacity === 0.7)));
+  // strength: a step behind the road being driven, and a further step for
+  // each load further down the chain.
+  assert.deepEqual(
+    render().map(pair => pair[1].opacity),
+    [0.7, 0.7, 0.7, 0.58, 0.58, 0.58],
+  );
   assert.ok(render().every(pair => pair[1].getWidth === 3));
   assert.ok(current.cachedLayer.every(part => part.opacity === 1));
   assert.equal(current.cachedLayer[1].getWidth, 5);
