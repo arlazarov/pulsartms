@@ -161,6 +161,8 @@ export function createScene(
       stationDirty = false;
     }
     const previousStops = stopData;
+    if (vehiclesDirty)
+      vehicles = [...trucks].filter(t => t.visible && t.position);
     if (stopsDirty) {
       ({ stopData, distanceData } = snapshotStops(
         routeEditing
@@ -169,6 +171,7 @@ export function createScene(
         stopData,
         distanceData,
         stopZoom,
+        vehicles,
       ));
       stopsDirty = false;
     }
@@ -180,8 +183,6 @@ export function createScene(
       stopData.length !== previousStops.length ||
       stopData.some((row, index) => row !== previousStops[index]);
     if (vehiclesDirty || stopsMoved) {
-      if (vehiclesDirty)
-        vehicles = [...trucks].filter(t => t.visible && t.position);
       const grouped = clusterTrucks(vehicles, Math.floor(clusterZoom));
       vehicleDisplay = layoutMapLabels({
         vehicles: grouped.vehicles,
@@ -383,6 +384,11 @@ export function createScene(
       setJob(value) {
         if (this.job === value) return;
         this.job = value;
+        invalidateStops();
+      }
+      setDone(value) {
+        if (this.done === value) return;
+        this.done = value;
         invalidateStops();
       }
       get highlighted() {

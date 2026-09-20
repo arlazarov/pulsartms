@@ -169,6 +169,14 @@
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
   }
+  // The load and the order are separate elements now that the words between
+  // them are gone. Without a gap they read as one long number.
+  .fleet-map-route-info__load {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs);
+  }
   .fleet-map-route-info__label {
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);

@@ -10,6 +10,7 @@ export function snapshotStops(
   previousStops = [],
   previousDistances = [],
   zoom,
+  trucks = [],
 ) {
   const stopData = [],
     distanceData = [];
@@ -21,6 +22,7 @@ export function snapshotStops(
     'onHover',
     'number',
     'color',
+    'done',
     'highlighted',
     'priority',
     'job',
@@ -41,6 +43,7 @@ export function snapshotStops(
       color,
       highlighted,
       job,
+      done,
     } = stop;
     const priority = highlighted ? 2 : stop.transientLabel ? 0 : 1;
     const row = {
@@ -53,6 +56,7 @@ export function snapshotStops(
       highlighted,
       priority,
       job,
+      done: done === true,
     };
     stopData.push(row);
     if (distance)
@@ -64,7 +68,7 @@ export function snapshotStops(
         transient: !!stop.transientLabel,
       });
   }
-  layoutStopMarkers(stopData, zoom);
+  layoutStopMarkers(stopData, zoom, trucks);
   for (let index = 0; index < stopData.length; index++) {
     const row = stopData[index],
       previous = previousById.get(row.id);

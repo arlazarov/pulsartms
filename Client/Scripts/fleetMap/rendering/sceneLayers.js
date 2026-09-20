@@ -326,6 +326,7 @@ export function createSceneLayers({
               'number',
               'job',
               'color',
+              'done',
               'onSelect',
               'onHover',
               'markerLabel',
@@ -335,8 +336,11 @@ export function createSceneLayers({
           )
             return cached.layers;
           const data = [stop];
-          const appearance = stopAppearance(stop.job, stop.color);
-          const { url: iconAtlas, ...circle } = stopMarkerIcon(appearance.fill);
+          const appearance = stopAppearance(stop.job, stop.color, stop.done);
+          const { url: iconAtlas, ...circle } = stopMarkerIcon(
+            appearance.fill,
+            appearance.border,
+          );
           const layers = [
             ...(stop.markerOffsetX || stop.markerOffsetY
               ? [

@@ -178,6 +178,7 @@ export function createRouteStops(
         entry.metadata = JSON.stringify(entry.details);
         entry.marker.setNumber?.(`${index + 1}`);
         entry.marker.setJob?.(stop.job);
+        entry.marker.setDone?.(completed);
         const stopIndex = plan.stops.findIndex(s => s.id === stop.id);
         entry.miles =
           completed || stopIndex < 0

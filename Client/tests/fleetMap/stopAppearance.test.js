@@ -45,7 +45,23 @@ test('stop backgrounds are high-density circles with centered square bounds, not
   assert.match(svg, /<circle cx="17" cy="17" r="15.5"/);
   assert.match(
     svg,
-    /fill="rgb\(32,122,99\)" stroke="white" stroke-width="2.5"/,
+    /fill="rgb\(32,122,99\)" stroke="rgb\(255,255,255\)" stroke-width="2.5"/,
   );
   assert.doesNotMatch(svg, /<(?:rect|ellipse|text)\b/);
+});
+
+// A stop behind the truck is outlined, not filled: it no longer asks for
+// anything. The card has said it that way all along, while the map drew it
+// with the same filled circle as the stop still to come.
+test('a stop already visited is drawn outlined, like its badge in the card', () => {
+  const color = [32, 122, 99, 255];
+  const pending = stopAppearance('Pickup', color);
+  const done = stopAppearance('Pickup', color, true);
+  assert.deepEqual(done.fill, pending.border, 'the fill and the ring swap');
+  assert.deepEqual(done.border, pending.fill);
+  assert.deepEqual(done.text, color, 'and the number is the colour itself');
+  assert.match(
+    decodeURIComponent(stopMarkerIcon(done.fill, done.border).url),
+    /fill="rgb\(255,255,255\)" stroke="rgb\(32,122,99\)"/,
+  );
 });

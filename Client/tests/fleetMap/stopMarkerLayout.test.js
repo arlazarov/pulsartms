@@ -142,3 +142,23 @@ test('a corridor of stops is left where it is rather than stacked', () => {
     ['0,0'],
   );
 });
+
+// 11006 stood on its own delivery and the badge for it was underneath the
+// truck, which is the one stop a dispatcher is looking for.
+test('a badge under a parked truck steps up, and its anchor stays put', () => {
+  const stops = [{ id: 'a', number: '2', position: [-82.55, 35.38] }];
+  const trucks = [{ position: [-82.5501, 35.3799] }];
+  const clear = snapshotStops(stops, [], [], 13).stopData[0];
+  const [row] = snapshotStops(stops, [], [], 13, trucks).stopData;
+  assert.equal(row.markerOffsetX, 0, 'straight up, not sideways');
+  assert.equal(row.markerOffsetY, clear.markerOffsetY - 36);
+  assert.deepEqual(row.position, stops[0].position, 'the stop has not moved');
+});
+
+test('a truck nowhere near a stop moves nothing', () => {
+  const stops = [{ id: 'a', number: '2', position: [-82.55, 35.38] }];
+  const rows = snapshotStops(stops, [], [], 13, [
+    { position: [-80.84, 35.22] },
+  ]).stopData;
+  assert.equal(rows[0].markerOffsetY, 0);
+});
