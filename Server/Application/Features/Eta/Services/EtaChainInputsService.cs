@@ -369,16 +369,9 @@ public sealed partial class EtaChainInputsService(
     // Work accepted into execution ahead of this one is still this truck's
     // work, and the forecast can follow it: those stops carry their own
     // appointments and service, and the clock keeps its rests across them.
-    // The rule used to end the chain at the first leg of any kind, which was
-    // written when loads were accepted one at a time; accepted days ahead,
-    // as they are now, it left every truck without a forecast beyond the
-    // load in hand. What still ends the chain is a transfer: a leg waiting
-    // to be received belongs to the handover, not to this run.
-    if (
-      selected.Count > 0
-      && segment.Work.ExecutionLegId.HasValue
-      && segment.Visits.FirstOrDefault()?.Actuals.AwaitingHandoff == true
-    )
+    // Where a run ends is one question, asked in one place - here and in the
+    // fuel horizon alike.
+    if (selected.Count > 0 && !PlanningWorkPolicy.ContinuesTheRun(segment))
       return EtaWorkExclusionReason.NativeConnectionRequired;
     return PlanningWorkPolicy.BlockingProblem(segment) is null
       ? null

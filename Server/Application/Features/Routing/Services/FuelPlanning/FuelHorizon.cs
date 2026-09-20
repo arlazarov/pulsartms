@@ -422,18 +422,9 @@ public sealed class FuelHorizon(
             continue;
           // Work already accepted into execution ahead of this load is
           // still this truck's work, and the tank does not know the
-          // difference: a leg of its own is how a load is taken on now, not
-          // a boundary. Stopping at the first of them left 11006 - arrived,
-          // with three accepted loads and two thousand miles ahead of it -
-          // with nothing to plan fuel for. What does end the horizon is a
-          // leg that is not this truck's, one no longer open, or one still
-          // waiting to be received: that is a transfer, and fuel beyond it
-          // is not ours to plan.
-          if (
-            next.TruckId != plan.TruckId
-            || next.ExecutionStatus is not "planned"
-            || next.AwaitingReceipt
-          )
+          // difference. Where a run ends is one question, asked in one
+          // place - here and in the arrival forecast alike.
+          if (!PlanningWorkPolicy.ContinuesTheRun(next, plan.TruckId))
             break;
         }
         if (

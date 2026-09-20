@@ -205,6 +205,8 @@ public sealed class FuelExecutionScopeTests
     Assert.Equal(new[] { current, accepted, later }, chosen);
   }
 
+  // Where a run ends is one sentence, asked in one place: this pins it for
+  // the fuel horizon, and the arrival forecast reads the same answer.
   [Theory]
   [InlineData("truck")]
   [InlineData("completed")]

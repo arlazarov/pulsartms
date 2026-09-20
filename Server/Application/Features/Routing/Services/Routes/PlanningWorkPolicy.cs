@@ -28,6 +28,20 @@ internal static class PlanningWorkPolicy
   public static bool HasOpenAssignment(TruckWorkSegment segment) =>
     HasOpenAssignment(segment.Work.ExecutionLegId, segment.Status);
 
+  // Where a truck's run ends, asked once for everything that follows a run:
+  // the fuel plan chaining its loads, and the arrival forecast chaining
+  // theirs. Work accepted into execution ahead of the load in hand is still
+  // this truck's work - a leg is how a load is taken on, not a boundary. The
+  // boundary is a transfer: a leg that is not this truck's, one no longer
+  // open, or one still waiting to be received.
+  //
+  // It is the same question as whether GPS may be matched to that work, and
+  // so the same answer: is this the truck's to be driving.
+  public static bool ContinuesTheRun(IWorkFacts next, Guid truckId) =>
+    next.TruckId == truckId && CanUseGps(next);
+
+  public static bool ContinuesTheRun(TruckWorkSegment next) => CanUseGps(next);
+
   private static bool HasOpenAssignment(Guid? legId, string? status) =>
     !legId.HasValue || status is "active" or "planned";
 
