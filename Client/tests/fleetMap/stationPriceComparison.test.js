@@ -58,7 +58,7 @@ test('the days are one line of the price being paid: yesterday, today, tomorrow'
   assert.equal(strip.className, 'fleet-station-popup__days');
   // Yesterday is what today was before it moved: 5.000 less the 0.250 rise.
   assert.deepEqual(days(strip), [
-    ['Yesterday', '4.750', '\u00a0'],
+    ['Yesterday', '4.750'],
     ['Today', '5.000', '\u25b2 0.250'],
     ['Tomorrow', '4.800', '\u25bc 0.200'],
   ]);
@@ -67,9 +67,10 @@ test('the days are one line of the price being paid: yesterday, today, tomorrow'
   assert.match(now.children[2].className, /is-increase/);
   assert.equal(now.children[2].title, '+5.26%');
   assert.match(tomorrow.children[2].className, /is-decrease/);
-  // Every day carries the line for its mark, moved or not, so the three
-  // stand at one height.
-  assert.ok(strip.children.every(cell => cell.children.length === 3));
+  // The first day of the line has nothing behind it to have moved from, so
+  // it says nothing: on one line, on one baseline, that is a shorter phrase
+  // and not a cell of another height.
+  assert.equal(strip.children[0].children.length, 2);
 });
 
 test('the line says what it can when only one side of today is known', t => {
@@ -87,7 +88,7 @@ test('the line says what it can when only one side of today is known', t => {
     new Date(2026, 8, 10),
   );
   assert.deepEqual(days(forward), [
-    ['Today', '5.000', '\u00a0'],
+    ['Today', '5.000'],
     ['Tomorrow', '5.000', 'same'],
   ]);
   const back = createPriceComparison(
@@ -103,7 +104,7 @@ test('the line says what it can when only one side of today is known', t => {
     new Date(2026, 8, 10),
   );
   assert.deepEqual(days(back), [
-    ['Yesterday', '5.100', '\u00a0'],
+    ['Yesterday', '5.100'],
     ['Today', '5.000', '\u25bc 0.100'],
   ]);
   assert.equal(createPriceComparison(quote), null);

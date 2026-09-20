@@ -10,13 +10,19 @@ const css = compileString(
   },
 ).css;
 
-// The days are one line under the price list: three cells of one height,
-// today set apart by a quiet ground, and no rules between them. A table of
-// every price by day was a grid of rules with rows of two heights.
+// The days are one line under the price list: each day its name, its price
+// and what the price did, today set apart by a quiet ground, and no rules
+// between them. The line breaks between days, never inside one. Stacked in
+// three columns it stood two lines tall under a list of one-line rows; a
+// table of every price by day, before that, was a grid of rules.
 test('the days are one even line under the prices, and the prices keep their accents', () => {
   assert.match(
     css,
-    /\.fleet-station-popup__days\s*\{[^}]*display: grid;[^}]*grid-auto-flow: column;[^}]*grid-auto-columns: minmax\(0, 1fr\);/,
+    /\.fleet-station-popup__days\s*\{[^}]*display: flex;[^}]*flex-wrap: wrap;/,
+  );
+  assert.match(
+    css,
+    /\.fleet-station-popup__day\s*\{[^}]*display: flex;[^}]*align-items: baseline;[^}]*white-space: nowrap;/,
   );
   assert.match(
     css,
@@ -96,11 +102,12 @@ test('single-day quotes retain the ordinary fuel inspector sizing', () => {
 
 test('a planned fuel stop keeps its bounded width, and the days stay with the prices', () => {
   assert.match(css, /width: min\(100%, var\(--size-map-fuel-inspector\)\);/);
-  // The days stand under the prices they are about, in the half of the card
-  // that is about the place - not in a column of their own.
+  // The days stand under the prices they are about, which puts them in the
+  // half of the card that is about the place - by being inside it, not by
+  // being sent to a column.
   assert.match(
     css,
-    /\.fleet-station-popup--planned > \.fleet-station-popup__address,[^{]*\.fleet-station-popup--planned > \.fleet-station-popup__comparison\s*\{[^}]*grid-column: 1;/,
+    /\.fleet-station-popup--planned > \.fleet-station-popup__place\s*\{[^}]*padding-right: var\(--space-lg\);/,
   );
 });
 

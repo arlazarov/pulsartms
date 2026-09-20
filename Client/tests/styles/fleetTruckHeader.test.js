@@ -423,7 +423,7 @@ test('the planned stop has its own title size, and no dials or illustration are 
   assert.doesNotMatch(css, /truck-illustration/);
   assert.match(
     css,
-    /\.fleet-station-popup--planned > \.fleet-station-popup__title\s*\{[^}]*font-size: var\(--type-subtitle\);/,
+    /\.fleet-station-popup--planned \.fleet-station-popup__title\s*\{[^}]*font-size: var\(--type-subtitle\);/,
   );
   // The dials that used to be sized here are gone from the map.
   assert.doesNotMatch(css, /fleet-fuel-visit__dial/);

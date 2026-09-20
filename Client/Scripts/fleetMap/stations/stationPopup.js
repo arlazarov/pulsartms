@@ -71,6 +71,7 @@ export function createStationPopup(
   const distance = document.createElement('p');
   distance.hidden = true;
   const purchase = document.createElement('strong');
+  purchase.className = 'fleet-station-popup__purchase';
   purchase.hidden = true;
   const visits = document.createElement('div');
   visits.className = 'fleet-station-popup__visits';
@@ -100,18 +101,23 @@ export function createStationPopup(
   edit.addEventListener('click', editClick);
   addVisit.addEventListener('click', addClick);
   actions.append(edit, addVisit);
-  element.append(
-    title,
-    planLabel,
-    address,
-    copyStatus,
-    prices,
-    comparison,
-    visits,
-    purchase,
-    distance,
-    actions,
-  );
+  // The card is two halves, and they are two elements because they are two
+  // halves on the screen: the place - its name, where it is, what fuel costs
+  // there and what the price did - and the plan for it, which ends with the
+  // buttons that change the plan. Laid out flat, those buttons could only
+  // stand across the foot of both halves, leaving the corner above them
+  // empty. An ordinary quote has no plan, so the halves dissolve and the
+  // card is the single column it has always been.
+  const place = document.createElement('div');
+  place.className = 'fleet-station-popup__place';
+  place.append(title, address, copyStatus, prices, comparison);
+  const planHead = document.createElement('div');
+  planHead.className = 'fleet-station-popup__plan-head';
+  planHead.append(planLabel, distance);
+  const plan = document.createElement('div');
+  plan.className = 'fleet-station-popup__plan';
+  plan.append(planHead, visits, purchase, actions);
+  element.append(place, plan);
 
   function format(value) {
     return value == null || !Number.isFinite(Number(value))

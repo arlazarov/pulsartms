@@ -189,7 +189,10 @@ test('recommendations keep rings on the scene and distances only in the selected
   ]);
   await layer.setVisible(true);
   assert.equal(layer.handleMapClick({ latLng: { lat: 40, lng: -78 } }), true);
-  const distance = infoWindow.content.children.find(
+  // The card is two halves now, and what is left to the stop is said in the
+  // head of the second one.
+  const parts = node => [node, ...(node.children ?? []).flatMap(parts)];
+  const distance = parts(infoWindow.content).find(
     node => node.textContent === '10 mi · 16 km away',
   );
   assert.equal(distance.textContent, '10 mi · 16 km away');

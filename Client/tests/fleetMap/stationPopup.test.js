@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import { createStationPopup } from '../../Scripts/fleetMap/stations/stationPopup.js';
 import { distanceLabel } from '../../Scripts/fleetMap/ui/distanceLabel.js';
 
+// The card is two halves in the DOM - the place, and the plan for it - so a
+// part of it is looked for through the card and not among its own children.
+const parts = node => [node, ...(node.children ?? []).flatMap(parts)];
+const part = (popup, className) =>
+  parts(popup.element).find(node =>
+    node.className?.split(' ').includes(className),
+  );
+
 test('planned and ordinary fuel distances follow units without changing purchases', t => {
   const previous = globalThis.document;
   const element = () => ({
@@ -102,9 +110,7 @@ test('station editing is explicit, uses occurrence identity and disappears witho
   const station = { id: 'station-id', name: 'A station', address: 'A road' };
   const data = { station, discount: {}, canEdit: true };
   popup.update(data);
-  const actions = popup.element.children.find(
-    node => node.className === 'fleet-station-popup__actions',
-  );
+  const actions = part(popup, 'fleet-station-popup__actions');
   assert.equal(calls.length, 0, 'opening a station never changes a plan');
   assert.equal(actions.hidden, false);
   assert.equal(actions.children[0].textContent, 'Add to fuel plan');
@@ -125,9 +131,7 @@ test('station editing is explicit, uses occurrence identity and disappears witho
     'fleet-station-popup fleet-station-popup--planned fleet-station-popup--single',
   );
   assert.equal(
-    popup.element.children.find(
-      node => node.className === 'fleet-station-popup__plan-label',
-    ).textContent,
+    part(popup, 'fleet-station-popup__plan-label').textContent,
     'Fuel stop 3',
   );
   assert.equal(actions.children[1].hidden, false);
@@ -179,7 +183,7 @@ test('unchanged polling does not mutate popup content or trigger InfoWindow layo
   };
   const popup = createStationPopup();
   assert.equal(
-    popup.element.children.filter(
+    parts(popup.element).filter(
       node => node.className === 'fleet-station-popup__close',
     ).length,
     0,
@@ -251,9 +255,7 @@ test('return visits display distinct numbers quantities and distances without po
   globalThis.document.createElementNS = () =>
     globalThis.document.createElement();
   popup.update(data);
-  const visits = popup.element.children.find(
-    node => node.className === 'fleet-station-popup__visits',
-  );
+  const visits = part(popup, 'fleet-station-popup__visits');
   assert.equal(visits.hidden, false);
   assert.deepEqual(
     visits.children.map(
@@ -268,9 +270,7 @@ test('return visits display distinct numbers quantities and distances without po
     ['Fuel stop', 'Fuel stop'],
   );
   assert.equal(
-    popup.element.children.find(
-      node => node.className === 'fleet-station-popup__plan-label',
-    ).textContent,
+    part(popup, 'fleet-station-popup__plan-label').textContent,
     'Fuel stops 1, 2',
   );
   // The distance is named before it is said, like every fact on the card.
@@ -359,9 +359,7 @@ test('station address uses separate street and locality lines while copying the 
     discount: {},
   };
   popup.update(data);
-  const address = popup.element.children.find(
-    node => node.className === 'fleet-station-popup__address',
-  );
+  const address = part(popup, 'fleet-station-popup__address');
   assert.equal(address.children[0].textContent, '3499 Lee Jackson Hwy');
   assert.equal(address.children[1].textContent, 'Staunton, VA 24401, USA');
   assert.equal(address.children[1].hidden, false);
@@ -403,12 +401,8 @@ test('planned purchase cards show server USD totals even at Canadian stations an
     fuel: { visits: [visit] },
   };
   popup.update(data);
-  const visits = popup.element.children.find(
-    node => node.className === 'fleet-station-popup__visits',
-  );
-  const actions = popup.element.children.find(
-    node => node.className === 'fleet-station-popup__actions',
-  );
+  const visits = part(popup, 'fleet-station-popup__visits');
+  const actions = part(popup, 'fleet-station-popup__actions');
   // The purchase is a fact of the visit, beside the fill it pays for. It is
   // said in the currency the server totals in, by name: at a Canadian
   // station the prices around it are CAD a litre, and a bare "$" would be
@@ -471,10 +465,7 @@ test('a price after IFTA that does not exist is not a row', t => {
   });
   const popup = createStationPopup();
   const station = { id: 'station', name: 'Stop', country: 'US' };
-  const find = className =>
-    popup.element.children
-      .flatMap(node => [node, ...node.children])
-      .find(node => node.className?.split(' ').includes(className));
+  const find = className => part(popup, className);
   popup.update({ station, discount: { unit: 'gal', discountPrice: 4 } });
   assert.equal(find('fleet-station-popup__ifta').hidden, true);
   assert.equal(find('fleet-station-popup__ifta-label').hidden, true);

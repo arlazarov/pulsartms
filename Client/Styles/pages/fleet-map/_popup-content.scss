@@ -270,6 +270,14 @@
   &__address-line:not([hidden]) {
     display: block;
   }
+
+  // The two halves of a planned stop. An ordinary quote has no plan for the
+  // station, so they dissolve and the card is one column of facts.
+  &__place,
+  &__plan,
+  &__plan-head {
+    display: contents;
+  }
   &__actions:not([hidden]) {
     display: flex;
     gap: ui.pg(sm);
@@ -531,20 +539,25 @@
     padding-left: ui.pg(lg);
   }
   .fleet-station-popup:not(.fleet-station-popup--planned) {
-    > :not(.fleet-station-popup__prices):not(.fleet-station-popup__visits):not(
-        .fleet-station-popup__actions
-      ):not(.fleet-station-popup__comparison) {
+    // Named, because the halves are elements now and a child of the card is
+    // not the same thing as a part of it.
+    .fleet-station-popup__title,
+    .fleet-station-popup__address,
+    .fleet-station-popup__copy-status,
+    .fleet-station-popup__plan-label,
+    .fleet-station-popup__distance,
+    .fleet-station-popup__purchase {
       grid-column: 1;
     }
     // The days stand under the prices they are about, not under the address.
-    > .fleet-station-popup__comparison {
+    .fleet-station-popup__comparison {
       grid-column: 2;
       grid-row: 4;
       margin: 0;
       padding-left: ui.pg(lg);
       border-left: 1px solid ui.theme(border-subtle);
     }
-    > .fleet-station-popup__prices {
+    .fleet-station-popup__prices {
       grid-column: 2;
       grid-row: 1 / span 3;
       margin: 0;
@@ -571,49 +584,54 @@
 
 // A planned fuel stop, in the truck card's language. Two halves under one
 // head: on the left the place - its name, where it is, what fuel costs there
-// and what the price did; on the right the visit - which stop it is, what is
-// left to it, the tank, and the facts of the fill on one label column. The
-// actions stand under both, outlined, the way the truck card's do.
+// and what the price did; on the right the plan for it - which stop it is,
+// what is left to it, the tank, what the fill comes to, and at the foot of
+// that half the buttons that change the plan.
 //
-// It was three unequal columns with a hole in the first, two dials and an
-// arrow where everything else on the map is a named figure, the price said
-// twice an inch apart, and a filled button no other card uses.
+// The halves were laid out by placing the card's flat children into two
+// columns, which left the buttons stranded across the bottom of both and a
+// hole in the corner above them. They are two elements now, each ending
+// where the card does.
 .fleet-station-popup--planned {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: 0;
-  row-gap: ui.pg(xs);
-  align-items: start;
 
-  > .fleet-station-popup__title {
-    grid-column: 1;
-    grid-row: 1;
-    margin: 0;
-    padding-right: ui.pg(lg);
-    font-size: ui.fs(subtitle);
-    align-self: baseline;
+  > .fleet-station-popup__place,
+  > .fleet-station-popup__plan {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
-  // The head of the visit: which stop, and what is left to it.
-  > .fleet-station-popup__plan-label {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: start;
-    align-self: baseline;
+  > .fleet-station-popup__place {
+    padding-right: ui.pg(lg);
+  }
+  > .fleet-station-popup__plan {
     padding-left: ui.pg(lg);
+    border-left: 1px solid ui.theme(border-subtle);
+  }
+  // The head of the plan: which stop, and what is left to it.
+  .fleet-station-popup__plan-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+    margin-bottom: ui.pg(xs);
+  }
+  .fleet-station-popup__title {
+    font-size: ui.fs(subtitle);
+  }
+  .fleet-station-popup__plan-label {
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);
   }
-  > .fleet-station-popup__distance:not([hidden]) {
-    grid-column: 2;
-    grid-row: 1;
-    justify-self: end;
-    align-self: baseline;
+  .fleet-station-popup__distance:not([hidden]) {
     margin: 0;
     color: ui.theme(text);
     font-size: ui.fs(body);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
+    // The line names a thing before it says it.
     &::before {
       content: 'Left ';
       color: ui.theme(text-secondary);
@@ -621,51 +639,34 @@
       font-weight: 400;
     }
   }
-  > .fleet-station-popup__address,
-  > .fleet-station-popup__copy-status,
-  > .fleet-station-popup__prices,
-  > .fleet-station-popup__comparison {
-    grid-column: 1;
-    margin-right: ui.pg(lg);
-  }
-  > .fleet-station-popup__address {
+  .fleet-station-popup__address {
     color: ui.theme(text-secondary);
     font-size: ui.fs(label);
   }
-  > .fleet-station-popup__copy-status:empty {
+  .fleet-station-popup__copy-status:empty {
     display: none;
   }
-  > .fleet-station-popup__prices {
+  .fleet-station-popup__prices {
     margin-top: ui.pg(xs);
     padding-top: ui.pg(xs);
   }
-  > .fleet-station-popup__comparison {
-    margin-top: 0;
-  }
-  > .fleet-station-popup__visits:not([hidden]) {
-    grid-column: 2;
-    grid-row: 2 / span 5;
+  .fleet-station-popup__visits:not([hidden]) {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: ui.pg(md);
     margin: 0;
-    padding-left: ui.pg(lg);
-    border-left: 1px solid ui.theme(border-subtle);
-    align-self: stretch;
-    align-content: start;
   }
   .fleet-station-popup__visit {
     padding: 0;
     border: 0;
     background: transparent;
   }
-  > .fleet-station-popup__actions:not([hidden]) {
-    grid-column: 1 / -1;
+  // At the foot of the half they act on, however tall the other half is.
+  .fleet-station-popup__actions:not([hidden]) {
+    margin-top: auto;
+    padding-top: ui.pg(md);
     justify-content: flex-start;
     gap: ui.pg(xs);
-    margin: ui.pg(xs) 0 0;
-    padding-top: ui.pg(sm);
-    border-top: 1px solid ui.theme(border-subtle);
   }
 }
 
@@ -683,21 +684,26 @@
   padding-top: ui.pg(sm);
   border-top: 1px solid ui.theme(border-subtle);
 }
+// One line: each day is its name, its price and what the price did on it,
+// and the line breaks between days rather than inside one. Stacked in three
+// columns, the strip stood two lines tall under a list of one-line rows.
+//
 // The words of each day start on the same edge as the names in the list
 // above. The cells are padded for today's ground, so the line is drawn that
 // much wider than its column - the ground reaches past the edge, the way the
 // band behind the price being paid does, and the words do not.
 .fleet-station-popup__days {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
-  gap: ui.pg(sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 ui.pg(sm);
   margin-inline: calc(-1 * #{ui.pg(xs)});
 }
 .fleet-station-popup__day {
-  display: grid;
-  gap: 0;
+  display: flex;
+  align-items: baseline;
+  gap: ui.pg(xs);
   min-width: 0;
+  white-space: nowrap;
   padding: ui.pg(micro) ui.pg(xs);
   border-radius: ui.radius(sm);
   font-variant-numeric: tabular-nums;
@@ -731,38 +737,16 @@
   container: map-inspector / inline-size;
 }
 
-// Too narrow for two halves side by side: the visit goes under the place.
+// Too narrow for two halves side by side: the plan goes under the place.
 @container map-inspector (width < #{ui.breakpoint(map-fuel-halves)}) {
   .fleet-map-inspector__native .fleet-station-popup--planned {
     grid-template-columns: minmax(0, 1fr);
-    > .fleet-station-popup__title,
-    > .fleet-station-popup__plan-label,
-    > .fleet-station-popup__distance:not([hidden]),
-    > .fleet-station-popup__address,
-    > .fleet-station-popup__copy-status,
-    > .fleet-station-popup__prices,
-    > .fleet-station-popup__comparison,
-    > .fleet-station-popup__visits:not([hidden]) {
-      grid-column: 1;
-      grid-row: auto;
-      margin-right: 0;
-      padding-left: 0;
+    > .fleet-station-popup__place {
       padding-right: 0;
     }
-    // Stacked, the head still reads first: the place, which stop it is,
-    // and what is left to it - not wherever the markup happens to put them.
-    > .fleet-station-popup__title {
-      order: -3;
-    }
-    > .fleet-station-popup__plan-label {
-      order: -2;
-    }
-    > .fleet-station-popup__distance:not([hidden]) {
-      order: -1;
-      justify-self: start;
-    }
-    > .fleet-station-popup__visits:not([hidden]) {
-      padding-top: ui.pg(sm);
+    > .fleet-station-popup__plan {
+      margin-top: ui.pg(sm);
+      padding: ui.pg(sm) 0 0;
       border-left: 0;
       border-top: 1px solid ui.theme(border-subtle);
     }

@@ -9,37 +9,39 @@ const css = compileString("@use 'pages/fleet-map/popup-content';", {
 }).css;
 
 // A planned fuel stop, in the truck card's language: two halves under one
-// head - the place on the left, the visit on the right - with the actions
-// under both. It was three unequal columns, two dials and an arrow, the price
-// said twice an inch apart, and a filled button no other card uses.
-test('a planned fuel stop is two halves: the place, and the visit', () => {
+// head - the place on the left, the plan for it on the right, each ending
+// where the card does. The halves are two elements; laid out as eight flat
+// children in two columns, the buttons could only stand across the foot of
+// both, with an empty corner above them.
+test('a planned fuel stop is two halves: the place, and the plan', () => {
   assert.match(
     css,
     /\.fleet-station-popup--planned\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/,
   );
-  for (const part of ['address', 'prices', 'comparison'])
-    assert.match(
-      css,
-      new RegExp(
-        `\\.fleet-station-popup--planned > \\.fleet-station-popup__${part}[^{]*\\{[^}]*grid-column: 1;`,
-      ),
-    );
+  // A quote has no plan for the station, so the halves dissolve and the card
+  // is the one column of facts it has always been.
   assert.match(
     css,
-    /\.fleet-station-popup--planned > \.fleet-station-popup__visits:not\(\[hidden\]\)\s*\{[^}]*grid-column: 2;[^}]*border-left: 1px solid/,
-  );
-  // The head of the visit: which stop it is, and what is left to it.
-  assert.match(
-    css,
-    /\.fleet-station-popup--planned > \.fleet-station-popup__plan-label\s*\{[^}]*grid-column: 2;[^}]*grid-row: 1;[^}]*justify-self: start;/,
+    /\.fleet-station-popup__place,\s*\.fleet-station-popup__plan,\s*\.fleet-station-popup__plan-head\s*\{\s*display: contents;/,
   );
   assert.match(
     css,
-    /\.fleet-station-popup--planned > \.fleet-station-popup__distance:not\(\[hidden\]\)\s*\{[^}]*grid-column: 2;[^}]*grid-row: 1;[^}]*justify-self: end;/,
+    /\.fleet-station-popup--planned > \.fleet-station-popup__place,\s*\.fleet-station-popup--planned > \.fleet-station-popup__plan\s*\{[^}]*display: flex;[^}]*flex-direction: column;/,
   );
   assert.match(
     css,
-    /\.fleet-station-popup--planned > \.fleet-station-popup__actions:not\(\[hidden\]\)\s*\{[^}]*grid-column: 1\s*\/\s*-1;[^}]*justify-content: flex-start;/,
+    /\.fleet-station-popup--planned > \.fleet-station-popup__plan\s*\{[^}]*border-left: 1px solid/,
+  );
+  // The head of the plan: which stop it is, and what is left to it.
+  assert.match(
+    css,
+    /\.fleet-station-popup--planned \.fleet-station-popup__plan-head\s*\{[^}]*display: flex;[^}]*justify-content: space-between;/,
+  );
+  // The buttons change the plan, so they stand at the foot of the half they
+  // act on - however tall the other half is.
+  assert.match(
+    css,
+    /\.fleet-station-popup--planned \.fleet-station-popup__actions:not\(\[hidden\]\)\s*\{[^}]*margin-top: auto;[^}]*justify-content: flex-start;/,
   );
 });
 
@@ -76,7 +78,7 @@ test('the tank is named, then one bar, and the purchase is a fact', () => {
   assert.doesNotMatch(css, /fleet-fuel-visit__(dial|gauge|buy)/);
 });
 
-test('too narrow for two halves, the visit goes under the place and the head still reads first', () => {
+test('too narrow for two halves, the plan goes under the place', () => {
   assert.match(
     css,
     /\.fleet-map-inspector__native\s*\{\s*container: map-inspector\s*\/\s*inline-size;/,
@@ -89,7 +91,9 @@ test('too narrow for two halves, the visit goes under the place and the head sti
     narrow,
     /\.fleet-station-popup--planned\s*\{\s*grid-template-columns: minmax\(0, 1fr\);/,
   );
-  assert.match(narrow, /__title\s*\{\s*order: -3;/);
-  assert.match(narrow, /__plan-label\s*\{\s*order: -2;/);
-  assert.match(narrow, /__distance:not\(\[hidden\]\)\s*\{[^}]*order: -1;/);
+  // Stacked, the hairline between the halves is the line above the plan.
+  assert.match(
+    narrow,
+    /__plan\s*\{[^}]*border-left: 0;[^}]*border-top: 1px solid/,
+  );
 });

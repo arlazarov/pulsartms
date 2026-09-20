@@ -1,9 +1,10 @@
 // Whether to fuel now or wait is read off both sides of today: what the
 // price did since yesterday, and what it does tomorrow. One price decides
 // that - the one being paid - so the days are a single line of it under the
-// price list. A table of every price by day was tried first, and it was a
-// grid of rules with rows of two heights and a row of dashes; what retail
-// and the savings did follows from this number and only made noise.
+// price list, each day a name, the price, and what it did. A table of every
+// price by day was tried first, and it was a grid of rules with rows of two
+// heights and a row of dashes; what retail and the savings did follows from
+// this number and only made noise.
 export function createPriceComparison(discount, today = new Date()) {
   const next = discount?.comparison?.next ? discount.comparison : null;
   const previous = discount?.previous ?? null;
@@ -36,21 +37,25 @@ export function createPriceComparison(discount, today = new Date()) {
     const value = document.createElement('strong');
     value.className = 'fleet-station-popup__day-price';
     value.textContent = format(price);
-    // Every day carries the line for its mark, moved or not, so the three
-    // stand at one height and nothing in the row steps up or down.
-    const mark = document.createElement('small');
+    // A day says what the price did on it; the first day of the line has
+    // nothing behind it to have moved from, and says nothing. The days sit
+    // on one line now, on one baseline, so a day without a mark is not a
+    // cell of another height - it is a shorter phrase.
     const moved = comparison?.discountChange;
     const known = moved != null && Number.isFinite(Number(moved));
-    mark.className = `fleet-station-popup__change${known && moved > 0 ? ' is-increase' : known && moved < 0 ? ' is-decrease' : ''}`;
-    mark.textContent = !known
-      ? '\u00a0'
-      : moved === 0
-        ? 'same'
-        : `${moved > 0 ? '\u25b2' : '\u25bc'} ${format(Math.abs(moved))}`;
-    const percentage = comparison?.discountChangePercent;
-    if (known && moved !== 0 && Number.isFinite(Number(percentage)))
-      mark.title = `${percentage > 0 ? '+' : ''}${Number(percentage).toFixed(2)}%`;
-    cell.append(label, value, mark);
+    cell.append(label, value);
+    if (known) {
+      const mark = document.createElement('small');
+      mark.className = `fleet-station-popup__change${moved > 0 ? ' is-increase' : moved < 0 ? ' is-decrease' : ''}`;
+      mark.textContent =
+        moved === 0
+          ? 'same'
+          : `${moved > 0 ? '\u25b2' : '\u25bc'} ${format(Math.abs(moved))}`;
+      const percentage = comparison?.discountChangePercent;
+      if (moved !== 0 && Number.isFinite(Number(percentage)))
+        mark.title = `${percentage > 0 ? '+' : ''}${Number(percentage).toFixed(2)}%`;
+      cell.append(mark);
+    }
     strip.append(cell);
   };
   const price = discount.discountPrice;
