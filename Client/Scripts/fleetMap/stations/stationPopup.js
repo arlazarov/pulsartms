@@ -1,7 +1,7 @@
 import { stationPurchase } from './stationQuantity.js';
 import { distanceLabel } from '../ui/distanceLabel.js';
 import { addressLines } from '../ui/addressLines.js';
-import { createFuelVisit, fuelPurchaseCostLabel } from './stationFuelVisit.js';
+import { createFuelVisit } from './stationFuelVisit.js';
 import { createPriceComparison } from './stationPriceComparison.js';
 export function createStationPopup(
   onEdit = () => {},
@@ -80,20 +80,12 @@ export function createStationPopup(
   const actions = document.createElement('div');
   actions.className = 'fleet-station-popup__actions';
   actions.hidden = true;
-  const cost = document.createElement('div');
-  cost.className = 'fleet-station-popup__cost';
-  cost.hidden = true;
-  const costLabel = document.createElement('span');
-  costLabel.textContent = 'Estimated purchase';
-  const costValue = document.createElement('strong');
-  costValue.className = 'fleet-station-popup__cost-value';
-  cost.append(costLabel, costValue);
   const edit = document.createElement('button');
   edit.type = 'button';
   edit.className = 'btn btn--small';
   const addVisit = document.createElement('button');
   addVisit.type = 'button';
-  addVisit.className = 'btn btn--small btn--text';
+  addVisit.className = 'btn btn--small';
   addVisit.textContent = 'Add another visit';
   addVisit.hidden = true;
   function editClick(event) {
@@ -107,7 +99,7 @@ export function createStationPopup(
   }
   edit.addEventListener('click', editClick);
   addVisit.addEventListener('click', addClick);
-  actions.append(edit, addVisit, cost);
+  actions.append(edit, addVisit);
   element.append(
     title,
     planLabel,
@@ -136,9 +128,6 @@ export function createStationPopup(
       const plannedVisits = fuel?.visits ?? [];
       canEdit &&= !plannedVisits.some(visit => visit.accessOnly);
       const singleVisit = plannedVisits.length === 1;
-      const purchaseCost = singleVisit
-        ? fuelPurchaseCostLabel(plannedVisits[0].purchaseCostUsd)
-        : '';
       set(
         element,
         'className',
@@ -160,20 +149,18 @@ export function createStationPopup(
             addNew: plannedVisits.length === 0,
           }
         : null;
-      set(actions, 'hidden', !canEdit && !purchaseCost);
+      // The purchase is a fact of the visit now, beside the fill it pays
+      // for, so down here there are only the actions - outlined, the way
+      // the truck card's are. A filled button is a shape no other card on
+      // the map uses.
+      set(actions, 'hidden', !canEdit);
       set(edit, 'hidden', !canEdit);
-      set(
-        edit,
-        'className',
-        plannedVisits.length ? 'btn btn--small btn--primary' : 'btn btn--small',
-      );
+      set(edit, 'className', 'btn btn--small');
       set(
         edit,
         'textContent',
         plannedVisits.length ? 'Edit fuel plan' : 'Add to fuel plan',
       );
-      set(cost, 'hidden', !purchaseCost);
-      set(costValue, 'textContent', purchaseCost);
       set(addVisit, 'hidden', !canEdit || plannedVisits.length === 0);
       const key = JSON.stringify(
         plannedVisits.map(visit => [
@@ -199,26 +186,32 @@ export function createStationPopup(
       if (key !== visitsKey) {
         visitsKey = key;
         const rows = plannedVisits.map(visit =>
-          createFuelVisit(
-            visit,
-            station,
-            discount,
-            !singleVisit,
-            formatDistance,
-          ),
+          createFuelVisit(visit, station, discount, true, formatDistance),
         );
         visits.replaceChildren(...rows);
       }
       set(visits, 'hidden', plannedVisits.length === 0);
+      // One visit: what is left to it is said in the head of the card,
+      // where the truck card says its own. Several visits each say theirs.
+      const headMiles = singleVisit ? plannedVisits[0].miles : fuel?.miles;
       set(
         distance,
         'hidden',
-        plannedVisits.length > 0 || !Number.isFinite(fuel?.miles),
+        plannedVisits.length > 1 || !Number.isFinite(headMiles),
+      );
+      set(
+        distance,
+        'className',
+        `fleet-station-popup__distance${singleVisit ? ' fleet-station-popup__distance--left' : ''}`,
       );
       set(
         distance,
         'textContent',
-        distance.hidden ? '' : `${formatDistance(fuel.miles)} away`,
+        distance.hidden
+          ? ''
+          : singleVisit
+            ? formatDistance(headMiles)
+            : `${formatDistance(headMiles)} away`,
       );
       set(purchase, 'hidden', plannedVisits.length > 0 || !fuel);
       set(

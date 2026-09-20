@@ -325,27 +325,6 @@
     }
   }
 
-  // The card's shape for a named figure: the name muted on the left, the
-  // figure at the end. The two were running together as one word.
-  &__cost {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: ui.pg(sm);
-    inline-size: 100%;
-    margin-top: ui.pg(xs);
-    padding-top: ui.pg(xs);
-    border-top: 1px solid ui.theme(border-subtle);
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(small);
-  }
-
-  &__cost-value {
-    color: ui.theme(text);
-    font-size: ui.fs(body);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
 
   &__price-unit {
     grid-column: 1 / -1;
@@ -394,6 +373,8 @@
   }
 }
 
+// One visit to a fuel stop: which stop and what is left to it, the tank as
+// one bar, and the facts of the fill on one label column.
 .fleet-fuel-visit {
   min-width: 0;
   width: 100%;
@@ -414,9 +395,7 @@
     justify-content: space-between;
     flex-wrap: wrap;
     column-gap: ui.pg(sm);
-    padding-bottom: ui.pg(xs);
-    margin-bottom: ui.pg(sm);
-    border-bottom: 1px solid ui.theme(border-subtle);
+    margin-bottom: ui.pg(xs);
   }
   &__name {
     flex: 0 0 auto;
@@ -434,67 +413,77 @@
     font-size: ui.fs(small);
     line-height: 1;
   }
-  // A muted name, then the figure - the shape of every fact on these cards.
-  &__away,
-  &__price {
-    display: flex;
-    align-items: baseline;
-    gap: ui.pg(xs);
-    white-space: nowrap;
-  }
-  &__price {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  &__distance,
-  &__price-value {
-    color: ui.theme(text);
-    font-size: ui.fs(body);
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  &__levels {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    gap: ui.pg(xs);
-    align-items: center;
-    width: 100%;
-    max-width: ui.size(fuel-levels);
-    margin-inline: auto;
-  }
-  &__gauge {
-    display: grid;
-    justify-items: center;
-    gap: ui.pg(micro);
-    min-width: 0;
-  }
-  &__dial {
-    --hos-dial-size: #{ui.size(fuel-dial)};
-  }
   &__label {
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);
     white-space: nowrap;
   }
-  &__quantity {
+  // A muted name, then the figure - the shape of every fact on these cards.
+  &__away {
+    display: flex;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    white-space: nowrap;
+  }
+  &__distance {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  &__tank {
+    display: flex;
+    block-size: ui.pg(sm);
+    margin-block: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface-soft);
+    overflow: hidden;
+  }
+  // What is in the tank on arrival is solid; what the stop adds is the same
+  // colour held back, so the two read as one tank filling.
+  &__tank-had {
+    background: ui.theme(success-text);
+  }
+  &__tank-add {
+    background: ui.theme(success-text);
+    opacity: 0.35;
+  }
+  &__facts {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: ui.pg(md);
+    row-gap: ui.pg(micro);
+    margin: 0;
+  }
+  &__fact {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: baseline;
+    // The purchase is what the fill comes to, set off under a hairline.
+    &--total {
+      margin-top: ui.pg(xs);
+      padding-top: ui.pg(xs);
+      border-top: 1px solid ui.theme(border-subtle);
+    }
+  }
+  &__figure {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 ui.pg(xs);
+    margin: 0;
+    min-width: 0;
+  }
+  &__value {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  &__note {
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);
-    white-space: nowrap;
-  }
-  &__action {
-    display: grid;
-    justify-items: center;
-    gap: ui.pg(micro);
-    text-align: center;
-  }
-  &__buy {
-    font-size: ui.fs(body);
-    white-space: nowrap;
-  }
-  &__arrow {
-    color: ui.theme(link);
-    font-size: ui.fs(heading);
-    line-height: 1;
   }
 }
 
@@ -549,149 +538,110 @@
   }
 }
 
+// A planned fuel stop, in the truck card's language. Two halves under one
+// head: on the left the place - its name, where it is, what fuel costs there
+// and what the price did; on the right the visit - which stop it is, what is
+// left to it, the tank, and the facts of the fill on one label column. The
+// actions stand under both, outlined, the way the truck card's do.
+//
+// It was three unequal columns with a hole in the first, two dials and an
+// arrow where everything else on the map is a named figure, the price said
+// twice an inch apart, and a filled button no other card uses.
 .fleet-station-popup--planned {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
-  gap: ui.pg(sm) ui.pg(md);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 0;
+  row-gap: ui.pg(xs);
+  align-items: start;
 
-  > :not(.fleet-station-popup__title):not(.fleet-station-popup__plan-label) {
-    grid-column: 1 / -1;
-  }
-  .fleet-station-popup__title {
+  > .fleet-station-popup__title {
     grid-column: 1;
     grid-row: 1;
     margin: 0;
-    font-size: ui.fs(heading);
-    align-self: center;
+    padding-right: ui.pg(lg);
+    font-size: ui.fs(subtitle);
+    align-self: baseline;
   }
-  // Which stop this is, said the way the route stop says "Load stop 2 of
-  // 2": a quiet line. It was a dark pill, a shape nothing else on these
-  // cards uses, shouting the least important thing on the card.
-  .fleet-station-popup__plan-label {
+  // The head of the visit: which stop, and what is left to it.
+  > .fleet-station-popup__plan-label {
     grid-column: 2;
     grid-row: 1;
-    margin-right: ui.size(control-compact);
+    justify-self: start;
+    align-self: baseline;
+    padding-left: ui.pg(lg);
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);
-    align-self: center;
   }
-  .fleet-station-popup__address {
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(body);
-  }
-  .fleet-station-popup__address-line:last-child {
+  > .fleet-station-popup__distance:not([hidden]) {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: baseline;
+    margin: 0;
     color: ui.theme(text);
+    font-size: ui.fs(body);
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    &::before {
+      content: 'Left ';
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+      font-weight: 400;
+    }
   }
-  .fleet-station-popup__copy-status:empty {
+  > .fleet-station-popup__address,
+  > .fleet-station-popup__copy-status,
+  > .fleet-station-popup__prices,
+  > .fleet-station-popup__comparison {
+    grid-column: 1;
+    margin-right: ui.pg(lg);
+  }
+  > .fleet-station-popup__address {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(label);
+  }
+  > .fleet-station-popup__copy-status:empty {
     display: none;
   }
-  .fleet-station-popup__prices {
-    grid-row: auto;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    column-gap: ui.pg(sm);
-    row-gap: ui.pg(xs);
+  > .fleet-station-popup__prices {
+    margin-top: ui.pg(xs);
+    padding-top: ui.pg(xs);
+  }
+  > .fleet-station-popup__comparison {
+    margin-top: 0;
+  }
+  > .fleet-station-popup__visits:not([hidden]) {
+    grid-column: 2;
+    grid-row: 2 / span 5;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.pg(md);
     margin: 0;
-    padding: ui.pg(sm) 0;
-    border-inline: 0;
-    border-block: 1px solid ui.theme(border-subtle);
-    font-size: ui.fs(caption);
-    dd {
-      text-align: left;
-      font-size: ui.fs(lead);
-      font-variant-numeric: tabular-nums;
-    }
-  }
-  .fleet-station-popup__price-unit {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    font-size: ui.fs(caption);
-  }
-  // Without a price after IFTA the savings move up beside the price being
-  // paid rather than standing a column away across a hole.
-  .fleet-station-popup__prices--no-ifta {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    .fleet-station-popup__savings-label,
-    .fleet-station-popup__savings {
-      grid-column: 3;
-    }
-  }
-  @each $name, $column in (retail: 1, discount: 2, ifta: 3, savings: 4) {
-    .fleet-station-popup__#{$name}-label {
-      grid-column: $column;
-      grid-row: 2;
-      padding-block: 0;
-    }
-    .fleet-station-popup__#{$name} {
-      grid-column: $column;
-      grid-row: 3;
-      padding-block: 0;
-    }
-  }
-  .fleet-station-popup__visits {
-    margin: 0;
+    padding-left: ui.pg(lg);
+    border-left: 1px solid ui.theme(border-subtle);
+    align-self: stretch;
+    align-content: start;
   }
   .fleet-station-popup__visit {
     padding: 0;
     border: 0;
+    background: transparent;
   }
-  .fleet-fuel-visit__levels {
-    max-width: none;
-    padding-block: ui.pg(sm);
-  }
-  .fleet-fuel-visit__dial {
-    --hos-dial-size: #{ui.size(map-fuel-dial)};
-    width: ui.size(map-fuel-dial);
-    height: ui.size(map-fuel-dial);
-  }
-  .fleet-fuel-visit__dial strong {
-    font-size: ui.fs(lead);
-  }
-  .fleet-fuel-visit__buy {
-    font-size: ui.fs(subtitle);
-  }
-  .fleet-station-popup__visit-cost {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
+  > .fleet-station-popup__actions:not([hidden]) {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
     gap: ui.pg(xs);
-    margin-top: ui.pg(sm);
-  }
-  .fleet-station-popup__cost-value {
-    font-size: ui.fs(body);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-  .fleet-station-popup__actions:not([hidden]) {
-    align-items: center;
-    justify-content: flex-end;
-    gap: ui.pg(sm);
-    margin: 0;
+    margin: ui.pg(xs) 0 0;
     padding-top: ui.pg(sm);
     border-top: 1px solid ui.theme(border-subtle);
   }
-  // The purchase is a named figure on one line, like the facts on the truck
-  // card. It was a caption over a headline-sized sum, the loudest thing on
-  // a card where it is one number among several.
-  .fleet-station-popup__cost:not([hidden]) {
-    display: flex;
-    align-items: baseline;
-    gap: ui.pg(sm);
-    order: -1;
-    inline-size: auto;
-    margin: 0 auto 0 0;
-    padding: 0;
-    border: 0;
-  }
-  .fleet-station-popup__cost > span {
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(small);
-  }
-  .fleet-station-popup__actions .btn--text {
-    order: 1;
-    font-size: ui.fs(caption);
-  }
+}
+
+// One visit has its stop and its distance in the head of the card, so the
+// visit does not say them again.
+.fleet-station-popup--single .fleet-fuel-visit__heading {
+  display: none;
 }
 
 // The days are one line under the price list: three cells of one height,
@@ -746,149 +696,44 @@
   }
 }
 
-.fleet-station-popup--single {
-  .fleet-fuel-visit__name {
-    display: none;
-  }
-  .fleet-fuel-visit__heading {
-    margin-bottom: ui.pg(xs);
-    padding-bottom: 0;
-    border: 0;
-    justify-content: center;
-  }
-}
-
-@media (max-width: ui.breakpoint(map-mobile, max)) {
-  .fleet-station-popup--planned:not(.fleet-station-popup--single)
-    .fleet-fuel-visit__levels {
-    padding-block: ui.pg(xs);
-  }
-}
-
 .fleet-map-inspector__native {
   container: map-inspector / inline-size;
 }
 
-.fleet-map-inspector__native .fleet-station-popup--planned {
-  .fleet-station-popup__title {
-    font-size: ui.fs(subtitle);
-  }
-  .fleet-station-popup__plan-label {
-    margin-right: 0;
-  }
-  .fleet-fuel-visit__levels {
-    max-width: ui.size(fuel-levels);
-    padding-block: ui.pg(xs);
-  }
-  .fleet-fuel-visit__dial {
-    --hos-dial-size: #{ui.size(fuel-dial)};
-    width: ui.size(fuel-dial);
-    height: ui.size(fuel-dial);
-  }
-  .fleet-fuel-visit__buy {
-    font-size: ui.fs(body);
-  }
-}
-
-@container map-inspector (width < #{ui.breakpoint(map-fuel-levels)}) {
-  .fleet-map-inspector__native .fleet-fuel-visit {
-    &__levels {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    &__gauge {
-      grid-row: 1;
-    }
-    &__label,
-    &__quantity {
-      white-space: normal;
-      text-align: center;
-    }
-    &__action {
-      grid-column: 1 / -1;
-      grid-row: 2;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-      gap: ui.pg(xs) ui.pg(sm);
-    }
-    &__buy {
-      white-space: normal;
-    }
-  }
-}
-
-@container map-inspector (min-width: #{ui.breakpoint(map-fuel-inspector-columns)}) {
+// Too narrow for two halves side by side: the visit goes under the place.
+@container map-inspector (width < #{ui.breakpoint(map-fuel-halves)}) {
   .fleet-map-inspector__native .fleet-station-popup--planned {
-    grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
-    column-gap: ui.pg(lg);
-    row-gap: ui.pg(xs);
-    align-items: start;
-
-    > .fleet-station-popup__title {
+    grid-template-columns: minmax(0, 1fr);
+    > .fleet-station-popup__title,
+    > .fleet-station-popup__plan-label,
+    > .fleet-station-popup__distance:not([hidden]),
+    > .fleet-station-popup__address,
+    > .fleet-station-popup__copy-status,
+    > .fleet-station-popup__prices,
+    > .fleet-station-popup__comparison,
+    > .fleet-station-popup__visits:not([hidden]) {
       grid-column: 1;
-      grid-row: 1;
+      grid-row: auto;
+      margin-right: 0;
+      padding-left: 0;
+      padding-right: 0;
+    }
+    // Stacked, the head still reads first: the place, which stop it is,
+    // and what is left to it - not wherever the markup happens to put them.
+    > .fleet-station-popup__title {
+      order: -3;
     }
     > .fleet-station-popup__plan-label {
-      grid-column: 1;
-      grid-row: 2;
+      order: -2;
+    }
+    > .fleet-station-popup__distance:not([hidden]) {
+      order: -1;
       justify-self: start;
     }
-    > .fleet-station-popup__address {
-      grid-column: 1;
-      grid-row: 3;
-    }
-    > .fleet-station-popup__copy-status {
-      grid-column: 1;
-      grid-row: 4;
-    }
-    > .fleet-station-popup__prices {
-      grid-column: 2;
-      grid-row: 1 / span 4;
-      grid-template-columns: minmax(0, 1fr) auto;
-      padding: 0 ui.pg(lg);
-      border-block: 0;
-      border-inline: 1px solid ui.theme(border-subtle);
-      font-size: ui.fs(small);
-      dd {
-        font-size: ui.fs(body);
-      }
-      dt,
-      dd {
-        grid-row: auto;
-      }
-      dt {
-        grid-column: 1;
-      }
-      dd {
-        grid-column: 2;
-        text-align: right;
-      }
-      .fleet-station-popup__price-unit {
-        grid-column: 1 / -1;
-      }
-    }
-    > .fleet-station-popup__visits {
-      grid-column: 3;
-      grid-row: 1 / span 4;
-    }
-    > .fleet-station-popup__actions {
-      grid-column: 1 / -1;
-      grid-row: 5;
-    }
-    // The days go under the prices, in the prices' own column.
-    &:has(> .fleet-station-popup__comparison:not([hidden])) {
-      > .fleet-station-popup__prices {
-        grid-row: 1 / span 3;
-      }
-      > .fleet-station-popup__comparison {
-        grid-column: 2;
-        grid-row: 4;
-        margin: 0;
-        padding: ui.pg(xs) ui.pg(lg) 0;
-        border-top: 0;
-        border-inline: 1px solid ui.theme(border-subtle);
-      }
+    > .fleet-station-popup__visits:not([hidden]) {
+      padding-top: ui.pg(sm);
+      border-left: 0;
+      border-top: 1px solid ui.theme(border-subtle);
     }
   }
 }

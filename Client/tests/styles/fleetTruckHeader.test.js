@@ -443,39 +443,19 @@ test('map key stays over the map and uses the actual fixed station comparison pa
   );
 });
 
-test('selected header illustration and planned-popup gauges have their own presentation without resizing editor gauges', () => {
+test('the selected truck illustration takes the action colour, and the planned stop its own title size', () => {
   assert.match(
     css,
     /\.fleet-map-truck-info \.truck-illustration__trailer,\s*\.fleet-map-truck-info \.truck-illustration__cab\s*\{\s*fill: var\(--ui-action\);/,
   );
   assert.match(
     css,
-    /\.fleet-station-popup--planned \.fleet-fuel-visit__dial\s*\{[^}]*width: var\(--size-map-fuel-dial\);\s*height: var\(--size-map-fuel-dial\);/,
+    /\.fleet-station-popup--planned > \.fleet-station-popup__title\s*\{[^}]*font-size: var\(--type-subtitle\);/,
   );
-  assert.match(
-    css,
-    /\.fleet-station-popup--planned \.fleet-station-popup__title\s*\{[^}]*font-size: var\(--type-heading\);/,
-  );
-  assert.match(
-    css,
-    /\.fleet-fuel-visit__dial\s*\{\s*--hos-dial-size: var\(--size-fuel-dial\);/,
-  );
+  // The dials that used to be sized here are gone from the map.
+  assert.doesNotMatch(css, /fleet-fuel-visit__dial/);
 });
 
-test('mobile multi-visit fuel cards tighten only level padding while keeping full-size single and desktop gauges', () => {
-  assert.match(
-    css,
-    /@media \(max-width: 767px\)\s*\{\s*\.fleet-station-popup--planned:not\(\.fleet-station-popup--single\) \.fleet-fuel-visit__levels\s*\{\s*padding-block: var\(--space-xs\);/,
-  );
-  assert.match(
-    css,
-    /\.fleet-station-popup--planned \.fleet-fuel-visit__levels\s*\{[^}]*padding-block: var\(--space-sm\);/,
-  );
-  assert.match(
-    css,
-    /\.fleet-station-popup--planned \.fleet-fuel-visit__dial\s*\{[^}]*width: var\(--size-map-fuel-dial\);\s*height: var\(--size-map-fuel-dial\);/,
-  );
-});
 test('route streets ellipsize without a location icon taking column width', () => {
   assert.match(
     css,

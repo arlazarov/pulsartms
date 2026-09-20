@@ -68,12 +68,15 @@ test('a price stays one number', () => {
   );
 });
 
-test('the purchase is a named figure, not one run-together word', () => {
+// The purchase is a fact of the visit, beside the fill it pays for, set off
+// under a hairline. It was a caption run into its own figure at the foot of
+// the card, and then a footer of its own; both are gone.
+test('the purchase is a fact of the visit, not a footer of the card', () => {
   assert.match(
     popups,
-    /__cost\s*\{[^}]*justify-content: space-between;[^}]*border-top: 1px solid/,
+    /\.fleet-fuel-visit__fact--total\s*\{[^}]*border-top: 1px solid/,
   );
-  assert.match(popups, /__cost-value\s*\{[^}]*white-space: nowrap;/);
+  assert.doesNotMatch(popups, /fleet-station-popup__(visit-)?cost/);
 });
 
 test('the link out of the map keeps its arrow on the last word', () => {

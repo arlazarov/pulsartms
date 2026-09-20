@@ -94,21 +94,13 @@ test('single-day quotes retain the ordinary fuel inspector sizing', () => {
   );
 });
 
-test('planned fuel inspector bounds width and keeps prices beside purchase gauges', () => {
+test('a planned fuel stop keeps its bounded width, and the days stay with the prices', () => {
   assert.match(css, /width: min\(100%, var\(--size-map-fuel-inspector\)\);/);
-  assert.match(css, /@container map-inspector \(min-width: 52rem\)/);
+  // The days stand under the prices they are about, in the half of the card
+  // that is about the place - not in a column of their own.
   assert.match(
     css,
-    /grid-template-columns: minmax\(0,\s*1fr\) max-content minmax\(0,\s*1fr\);/,
-  );
-  // The days go under the prices, in the prices' own column.
-  assert.match(
-    css,
-    /:has\(> \.fleet-station-popup__comparison:not\(\[hidden\]\)\) > \.fleet-station-popup__comparison\s*\{[^}]*grid-column: 2;[^}]*grid-row: 4;/,
-  );
-  assert.match(
-    css,
-    /:has\(> \.fleet-station-popup__comparison:not\(\[hidden\]\)\) > \.fleet-station-popup__prices\s*\{[^}]*grid-row: 1\s*\/\s*span 3;/,
+    /\.fleet-station-popup--planned > \.fleet-station-popup__address,[^{]*\.fleet-station-popup--planned > \.fleet-station-popup__comparison\s*\{[^}]*grid-column: 1;/,
   );
 });
 

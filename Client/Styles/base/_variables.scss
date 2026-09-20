@@ -51,7 +51,6 @@ $sizes: (
   route-load: 20rem,
   fuel-dial: 3.5rem,
   fuel-visit: 14rem,
-  fuel-levels: 17rem,
   fuel-visit-number: 1.375rem,
   popup-stop-badge: 1.625rem,
   hos-dial: 3.625rem,
@@ -77,12 +76,10 @@ $sizes: (
   fuel-editor-wide: 54rem,
   fuel-editor-route: 20rem,
   fuel-editor-height: 40rem,
-  map-arrival-fuel-dial: 2.5rem,
   map-fuel-card: 32rem,
   map-fuel-quote: 22.5rem,
   map-fuel-inspector: 60rem,
   map-stop-inspector: 46rem,
-  map-fuel-dial: 4rem,
 );
 
 $breakpoints: (
@@ -92,8 +89,9 @@ $breakpoints: (
   map-mobile: 768px,
   map-truck-wide: 1400px,
   map-truck-spacious: 1800px,
-  map-fuel-levels: 20rem,
-  map-fuel-inspector-columns: 52rem,
+  // Narrower than this a planned fuel stop cannot hold its two halves side
+  // by side, and the visit goes under the place.
+  map-fuel-halves: 34rem,
   map-info-stacked: 20rem,
   map-telemetry-tight: 16rem,
   map-compact-columns: 40rem,

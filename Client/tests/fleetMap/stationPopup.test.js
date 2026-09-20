@@ -48,11 +48,21 @@ test('planned and ordinary fuel distances follow units without changing purchase
       ).textContent,
       expected,
     );
+    // The fill is one of the facts of the visit, and no unit of distance
+    // touches it.
+    assert.ok(
+      all(popup.element).some(
+        node =>
+          node.className === 'fleet-fuel-visit__value' &&
+          node.textContent === '25 US gal',
+      ),
+    );
+    // One visit says what is left to it in the head of the card.
     assert.equal(
-      all(popup.element).find(
-        node => node.className === 'fleet-fuel-visit__buy',
+      all(popup.element).find(node =>
+        node.className?.startsWith('fleet-station-popup__distance'),
       ).textContent,
-      '25 US gal',
+      expected,
     );
   }
   unit = 'kilometers';
@@ -271,10 +281,21 @@ test('return visits display distinct numbers quantities and distances without po
     visits.children[1].children[0].children[1].children[1].textContent,
     '927 mi · 1,492 km',
   );
-  const first = visits.children[0].children[1];
-  assert.equal(first.children[0].children[1].children[1].textContent, '22%');
-  assert.equal(first.children[1].children[1].textContent, '66 US gal');
-  assert.equal(first.children[2].children[1].children[1].textContent, '55%');
+  // The tank as one bar, then the fill as facts: a name, a figure, and a
+  // quiet note where there is one. No dials.
+  const [, tank, facts] = visits.children[0].children;
+  assert.equal(tank.className, 'fleet-fuel-visit__tank');
+  assert.deepEqual(
+    facts.children.map(line => [
+      line.children[0].textContent,
+      ...line.children[1].children.map(part => part.textContent),
+    ]),
+    [
+      ['On arrival', '22%', '· 44 US gal'],
+      ['Buy', '66 US gal'],
+      ['After fueling', '55%', '· 110 US gal'],
+    ],
+  );
   for (let i = 0; i < 20; i++) popup.update(data);
   assert.equal(replacements, 1);
   data.fuel.visits[0].arrivalGallons = 42;
@@ -386,49 +407,43 @@ test('planned purchase cards show server USD totals even at Canadian stations an
   const actions = popup.element.children.find(
     node => node.className === 'fleet-station-popup__actions',
   );
-  const cost = actions.children.find(
-    node => node.className === 'fleet-station-popup__cost',
-  );
-  assert.equal(cost.children[1].textContent, '≈ $287.64 USD');
+  // The purchase is a fact of the visit, beside the fill it pays for. It is
+  // said in the currency the server totals in, by name: at a Canadian
+  // station the prices around it are CAD a litre, and a bare "$" would be
+  // read as those.
+  const purchase = visit =>
+    visit.children
+      .flatMap(part => part.children ?? [])
+      .find(line => line.children?.[0]?.textContent === 'Purchase')?.children[1]
+      .children[0].textContent;
+  assert.equal(purchase(visits.children[0]), '\u2248 $287.64 USD');
+  // Without permission to edit there is nothing under the card to press,
+  // and the purchase does not depend on that row any more.
+  assert.equal(actions.hidden, true);
   assert.equal(
-    actions.hidden,
+    actions.children.some(node =>
+      node.className?.includes('fleet-station-popup__cost'),
+    ),
     false,
-    'the cost remains visible without edit permission',
-  );
-  assert.equal(actions.children[0].hidden, true);
-  assert.equal(
-    visits.children[0].children.length,
-    2,
-    'a single visit has one cost footer, not a duplicate inside the gauges',
+    'one purchase, in the visit - no second copy under the card',
   );
   visit.purchaseCostUsd = 289.5;
   popup.update(data);
-  assert.equal(cost.children[1].textContent, '≈ $289.50 USD');
+  assert.equal(purchase(visits.children[0]), '\u2248 $289.50 USD');
   for (const value of [null, undefined, NaN, Infinity, -1]) {
     visit.purchaseCostUsd = value;
     popup.update(data);
-    assert.equal(cost.hidden, true);
-    assert.equal(cost.children[1].textContent, '');
+    assert.equal(purchase(visits.children[0]), undefined);
   }
   visit.purchaseCostUsd = 120;
   popup.update({
     ...data,
     fuel: { visits: [visit, { ...visit, number: 2, purchaseCostUsd: 230 }] },
   });
-  assert.equal(
-    cost.hidden,
-    true,
-    'return visits do not fabricate an aggregate client total',
-  );
-  assert.deepEqual(
-    visits.children.map(
-      row =>
-        row.children.find(
-          node => node.className === 'fleet-station-popup__visit-cost',
-        ).children[1].textContent,
-    ),
-    ['≈ $120.00 USD', '≈ $230.00 USD'],
-  );
+  assert.deepEqual(visits.children.map(purchase), [
+    '\u2248 $120.00 USD',
+    '\u2248 $230.00 USD',
+  ]);
   popup.dispose();
 });
 
