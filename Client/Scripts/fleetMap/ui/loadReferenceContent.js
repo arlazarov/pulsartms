@@ -6,13 +6,18 @@ export function loadReferenceContent(reference) {
   status.setAttribute('role', 'status');
   let copyVersion = 0;
 
-  function number(label, value, display) {
+  // The card says this line as "AMF1397  Order 568269862": the load stands
+  // on its own, and only the order is named before it is said. The popup
+  // used to prefix both and punctuate them, which read as a third way of
+  // writing the same two numbers.
+  function number(kind, label, value, display) {
     const caption = document.createElement('span');
+    caption.className = label ? 'fleet-map-route-info__label' : '';
     caption.textContent = label;
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'fleet-map-route-info__copy-number';
-    button.title = `Copy ${label.startsWith('Load') ? 'load' : 'order'} number`;
+    button.title = `Copy ${kind} number`;
     const text = document.createElement('strong');
     text.textContent = display;
     button.append(text);
@@ -37,12 +42,13 @@ export function loadReferenceContent(reference) {
   }
 
   number(
-    'Load ',
+    'load',
+    '',
     String(reference.loadNumber),
     reference.loadLabel ?? String(reference.loadNumber),
   );
   if (reference.orderNumber)
-    number(' · Order: ', reference.orderNumber, reference.orderNumber);
+    number('order', 'Order', reference.orderNumber, reference.orderNumber);
   header.append(status);
   return header;
 }

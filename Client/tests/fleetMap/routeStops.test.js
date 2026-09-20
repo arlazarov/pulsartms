@@ -168,30 +168,30 @@ test('arrival fuel is always visible, uses exact stop identity and clears invali
     ),
     undefined,
   );
+  // The card says fuel as a named figure on its line, not as a dial, so the
+  // stop says it the same way - one more fact on the same label column.
   assert.equal(
-    row(state.shown, 'fleet-fuel-visit__percent').textContent,
-    '33%',
+    row(row(state.shown, 'fleet-route-popup__fuel'), 'fleet-route-popup__label')
+      .textContent,
+    'Fuel on arrival',
   );
   assert.equal(
-    row(state.shown, 'fleet-fuel-visit__quantity').textContent,
-    '82 US gal',
+    fieldValue(state.shown, 'fleet-route-popup__fuel'),
+    '33% · 82 US gal',
   );
-  assert.equal(
-    row(state.shown, 'driver-hours__arc')['stroke-dasharray'],
-    '33 100',
-  );
+  assert.equal(row(state.shown, 'driver-hours__arc'), undefined);
   stops.setPlan({
     ...value,
     fuelPlan: { ...value.fuelPlan, needsRefresh: true },
   });
   assert.equal(
-    row(state.shown, 'fleet-fuel-visit__percent').textContent,
-    '33%',
+    fieldValue(state.shown, 'fleet-route-popup__fuel'),
+    '33% · 82 US gal',
   );
   stops.setPlan({ ...value, fuelPlan: null });
   assert.equal(
-    row(state.shown, 'fleet-fuel-visit__percent').textContent,
-    '33%',
+    fieldValue(state.shown, 'fleet-route-popup__fuel'),
+    '33% · 82 US gal',
   );
   assert.equal(markers.length, 1);
 });
@@ -739,13 +739,13 @@ test('current-stop details show the local appointment window, exact ETA status a
     rows(information)
       .filter(node => node.tagName === 'dt')
       .map(node => node.textContent),
-    ['Appointment', 'ETA', 'Total'],
+    ['Appointment', 'ETA', 'Left', 'Fuel on arrival'],
   );
   assert.deepEqual(
     rows(state.shown)
       .filter(node => node.tagName === 'dt')
       .map(node => node.textContent),
-    ['Appointment', 'ETA', 'Total'],
+    ['Appointment', 'ETA', 'Left', 'Fuel on arrival'],
   );
   assert.equal(
     fieldValue(state.shown, 'fleet-route-popup__appointment'),

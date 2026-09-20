@@ -5,7 +5,6 @@ import { stopAppointment } from './stopAppointment.js';
 import { addressLines } from '../ui/addressLines.js';
 import { stopAppointmentReference } from './stopAppointmentReference.js';
 import { loadReferenceContent } from '../ui/loadReferenceContent.js';
-import { createFuelGauge } from '../stations/stationFuelVisit.js';
 
 const point = p => ({ lat: p.latitude, lng: p.longitude });
 
@@ -354,28 +353,27 @@ function stopContent(
     );
   } else if (etaStatus)
     eta.append(element('span', 'fleet-route-popup__status', etaStatus));
+  // What is left to this stop, and the card calls it Left. Labelling it
+  // Total said the length of the whole run, which it is not.
   field(
     facts,
-    'Total',
+    'Left',
     remaining ?? '—',
     'fleet-route-popup__distance fleet-route-popup__section-start',
   );
-  information.append(facts);
+  // The card says fuel as a named figure on its line, not as a dial. This is
+  // one more fact about the stop, so it reads as one: the same label column
+  // as the appointment and the ETA above it.
   if (fuelText !== null) {
-    const fuel = element('div', 'fleet-route-popup__fuel');
-    fuel.title = 'Estimated from the current fuel plan';
-    if (fuelText === '—') {
-      fuel.className += ' fleet-route-popup__fuel--unknown';
-      fuel.append(
-        element('span', 'fleet-route-popup__label', 'Fuel on arrival'),
-        element('span', 'fleet-fuel-visit__percent', '—'),
-      );
-    } else
-      fuel.append(
-        createFuelGauge('Fuel on arrival', fuelText.percent, fuelText.quantity),
-      );
-    information.append(fuel);
+    const value = field(
+      facts,
+      'Fuel on arrival',
+      fuelText === '—' ? '—' : `${fuelText.percent}% · ${fuelText.quantity}`,
+      'fleet-route-popup__fuel fleet-route-popup__section-start',
+    );
+    value.title = 'Estimated from the current fuel plan';
   }
+  information.append(facts);
   if (hours?.length) {
     const block = element('div', 'stop-hours');
     const cycle = element('section', 'stop-hours__cycle');

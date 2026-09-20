@@ -30,10 +30,18 @@ test('a word breaks only where it must, so short ones stay whole', () => {
 test('every stop fact is the same two cells on one label column', () => {
   // The appointment used to give its label a line of its own, which read as
   // a different kind of thing from the ETA directly under it.
+  // The fuel on arrival is a fact about the stop too, so it is a row here
+  // rather than a dial in a block of its own.
   assert.match(
     popups,
-    /__appointment,[^{}]*__eta\.fleet-route-popup__field,[^{}]*__distance\s*\{[^}]*grid-template-columns: subgrid;/,
+    /__appointment,[^{}]*__eta\.fleet-route-popup__field,[^{}]*__distance,[^{}]*__fuel\s*\{[^}]*grid-template-columns: subgrid;/,
   );
+  const stops = readFileSync(
+    new URL('../../Scripts/fleetMap/routes/routeStops.js', import.meta.url),
+    'utf8',
+  );
+  assert.doesNotMatch(stops, /createFuelGauge/);
+  assert.match(stops, /'Fuel on arrival',[\s\S]{0,120}fleet-route-popup__fuel/);
   assert.match(
     popups,
     /__facts\s*\{[^}]*grid-template-columns: max-content minmax\(0, 1fr\);/,
