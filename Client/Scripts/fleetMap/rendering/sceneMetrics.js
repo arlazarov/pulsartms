@@ -14,10 +14,6 @@ export const sceneMetrics = Object.freeze({
   // the larger of the two.
   stopBadgeDoneRadius: 13,
   stopBadgeGap: 2,
-  // Past a handful, stops close together are a corridor of them rather than
-  // a pin-up at one place, and standing them in a tower says less than
-  // letting them sit where they are.
-  stopBadgeCluster: 6,
   stationRadius: 8,
   stationHitRadius: 10,
   // A planned stop is the only station the plan is about, so its dot is

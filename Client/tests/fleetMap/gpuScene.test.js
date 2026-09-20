@@ -468,15 +468,15 @@ test('scene reuses static layers across motion, invalidates only changed stops a
           /^route-stop-\d+-points$/.test(layer.props.id) &&
           layer.props.data[0].number === '9',
       ).props.data[0];
-    assert.equal(badge().markerOffsetX, 0);
+    assert.equal(badge().markerOffsetY, 0);
     const visitor = scene.createTruckMarker(map, () => {});
     visitor.update({ unitNumber: '20001' });
     visitor.render({ longitude: -70, latitude: 40 });
     flush();
-    assert.ok(badge().markerOffsetX > 0, 'steps aside when a truck parks');
+    assert.ok(badge().markerOffsetY > 0, 'stands under a truck that parks');
     visitor.setVisible(false);
     flush();
-    assert.equal(badge().markerOffsetX, 0, 'and comes back when it leaves');
+    assert.equal(badge().markerOffsetY, 0, 'and comes back when it leaves');
     far.map = null;
     flush();
   }

@@ -109,44 +109,9 @@ test('three shared-site visits form a compact triangle with equal non-overlappin
   assert.ok(Math.max(...rows.map(row => -row.markerOffsetY)) < 32);
 });
 
-// 11006 stood at Charlotte with the last stop of one load and the first of
-// the next a few miles apart, and their badges were one blot: separation
-// grouped by coordinate, and those two do not share one. Zoomed in far
-// enough to tell the two places apart, they stand where they are.
-test('badges that cover each other are parted, at the zoom they cover it', () => {
-  const stops = [
-    { id: 'a', number: '3', position: [-80.84, 35.22] },
-    { id: 'b', number: '7', position: [-80.7, 35.28] },
-  ];
-  const offsets = zoom =>
-    snapshotStops(stops, [], [], zoom).stopData.map(row => row.markerOffsetX);
-  assert.deepEqual(
-    offsets(5),
-    [-18, 18],
-    'one blot at the zoom of a whole run',
-  );
-  assert.deepEqual(offsets(13), [0, 0], 'two places, told apart, left alone');
-});
-
-// A run whose stops line a corridor is not a pin-up at one place, and a
-// tower of badges down the side of it says less than the stops themselves.
-test('a corridor of stops is left where it is rather than stacked', () => {
-  const stops = Array.from({ length: 12 }, (_, id) => ({
-    id,
-    number: String(id + 1),
-    position: [-80 + id * 0.01, 40],
-  }));
-  const rows = snapshotStops(stops, [], [], 12).stopData;
-  assert.deepEqual(
-    [...new Set(rows.map(row => `${row.markerOffsetX},${row.markerOffsetY}`))],
-    ['0,0'],
-  );
-});
-
-// 11006 stood on its own delivery and the badge for it was underneath the
-// truck, which is the one stop a dispatcher is looking for. It steps aside
-// rather than up: above the truck is where its own unit number goes, and
-// the two took turns covering each other there.
+// A badge stands on the place it marks, and moves only when it must and only
+// as far as it must. These pin the four rules that replaced a grid, a jump
+// and a row that between them sent the badges every which way.
 const screen = (position, zoom) => {
   const world = 256 * 2 ** zoom;
   const sin = Math.sin((position[1] * Math.PI) / 180);
@@ -159,30 +124,89 @@ const drawnAt = (row, zoom) => {
   const [x, y] = screen(row.position, zoom);
   return [x + row.markerOffsetX, y + row.markerOffsetY];
 };
+const gap = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
-test('a badge under a parked truck stands beside it, and its anchor stays put', () => {
+test('a badge that touches nothing stands on its anchor', () => {
+  const rows = snapshotStops(
+    [
+      { id: 'a', number: '3', position: [-80.84, 35.22] },
+      { id: 'b', number: '7', position: [-80.7, 35.28] },
+    ],
+    [],
+    [],
+    13,
+  ).stopData;
+  assert.deepEqual(
+    rows.map(row => [row.markerOffsetX, row.markerOffsetY]),
+    [
+      [0, 0],
+      [0, 0],
+    ],
+  );
+});
+
+// 11006 stood at Charlotte with the last stop of one load and the first of
+// the next a few miles apart, and their badges were one blot. They used to
+// be set out in a grid that had nothing to do with where the stops are.
+test('two that touch part along the line between them, equally, just far enough', () => {
+  const zoom = 5;
+  const stops = [
+    { id: 'a', number: '3', position: [-80.84, 35.22] },
+    // East and north of the first.
+    { id: 'b', number: '7', position: [-80.7, 35.28] },
+  ];
+  const rows = snapshotStops(stops, [], [], zoom).stopData;
+  const [a, b] = ['a', 'b'].map(id => rows.find(row => row.id === id));
+  const [at, bt] = [drawnAt(a, zoom), drawnAt(b, zoom)];
+  assert.ok(Math.abs(gap(at, bt) - 36) < 0.05, 'a badge and its gap apart');
+  assert.ok(bt[0] > at[0] && bt[1] < at[1], 'east and north of stays so');
+  assert.ok(
+    Math.abs(a.markerOffsetX + b.markerOffsetX) < 0.05 &&
+      Math.abs(a.markerOffsetY + b.markerOffsetY) < 0.05,
+    'each gives way by the same amount',
+  );
+});
+
+test('stops along a road stay on the line of it, in order', () => {
+  const zoom = 12;
+  const stops = Array.from({ length: 12 }, (_, id) => ({
+    id,
+    number: String(id + 1),
+    position: [-80 + id * 0.01, 40],
+  }));
+  const rows = snapshotStops(stops, [], [], zoom).stopData;
+  const drawn = stops.map(stop =>
+    drawnAt(
+      rows.find(row => row.id === stop.id),
+      zoom,
+    ),
+  );
+  assert.ok(rows.every(row => row.markerOffsetY === 0));
+  for (let i = 1; i < drawn.length; i++)
+    assert.ok(drawn[i][0] > drawn[i - 1][0], 'never out of stop order');
+});
+
+// Not wherever is free - always under: the unit number above, the stop
+// below, so a badge under a truck is a sign for "the truck is at this stop".
+test('the stop a truck stands on stands directly under the truck', () => {
+  const zoom = 13;
   const stops = [{ id: 'a', number: '2', position: [-82.55, 35.38] }];
   const truck = { position: [-82.5501, 35.3799] };
-  const [row] = snapshotStops(stops, [], [], 13, [truck]).stopData;
-  const [x, y] = drawnAt(row, 13);
-  const [tx, ty] = screen(truck.position, 13);
-  assert.ok(Math.abs(x - (tx + 36)) < 0.01, 'one badge to the side of it');
-  assert.ok(Math.abs(y - ty) < 0.01, 'level with it, not above');
+  const [row] = snapshotStops(stops, [], [], zoom, [truck]).stopData;
+  const [x, y] = drawnAt(row, zoom);
+  const [tx, ty] = screen(truck.position, zoom);
+  assert.ok(Math.abs(x - tx) < 0.05, 'directly under, not beside');
+  assert.ok(Math.abs(y - (ty + 33)) < 0.05, 'clear of the truck by the gap');
   assert.deepEqual(row.position, stops[0].position, 'the stop has not moved');
 });
 
-// Sent to one fixed side, the badge came out from under the truck and landed
-// on the stop standing there - "2" square on top of "3". Standing them all in
-// a row beside the truck took "3" off the place it is at for the sake of one
-// that was hidden. Only the hidden badge moves, to the first place beside
-// the truck where it touches nothing.
-test('only the hidden badge moves, to a place where it touches nothing', () => {
+// Sent to a fixed side the badge landed on the stop standing there, "2"
+// square on "3"; stood in a row the neighbours left their places for it.
+test('the neighbours of a parked truck stay where they are', () => {
   const zoom = 9;
   const truck = { position: [-80.95, 35.22] };
   const stops = [
     { id: 'two', number: '2', position: [-80.95, 35.22] },
-    // Clear of the truck where it really is, and exactly where "2" would
-    // land if it simply stepped to the right.
     { id: 'three', number: '3', position: [-80.84, 35.22] },
   ];
   const rows = snapshotStops(stops, [], [], zoom, [truck]).stopData;
@@ -190,18 +214,28 @@ test('only the hidden badge moves, to a place where it touches nothing', () => {
   assert.deepEqual(
     [row('three').markerOffsetX, row('three').markerOffsetY],
     [0, 0],
-    'the neighbour stays where it is',
   );
-  const two = drawnAt(row('two'), zoom);
-  const three = drawnAt(row('three'), zoom);
+  assert.ok(
+    gap(drawnAt(row('two'), zoom), drawnAt(row('three'), zoom)) >= 36 - 0.05,
+  );
+});
+
+// A stop beside a parked truck parts from the truck and from its number
+// the way it would from another badge, and never ends up on either.
+test('a stop beside a parked truck clears the truck and the number above it', () => {
+  const zoom = 12;
+  const truck = { position: [-80.95, 35.22] };
   const [tx, ty] = screen(truck.position, zoom);
-  const apart = (a, b) =>
-    Math.abs(a[0] - b[0]) >= 36 || Math.abs(a[1] - b[1]) >= 36;
-  assert.ok(apart(two, three), 'clear of its neighbour');
-  assert.ok(apart(two, [tx, ty]), 'clear of the truck');
-  assert.ok(two[1] >= ty - 0.01, 'and never above it, where the number goes');
-  // The right was taken, so it stands on the left.
-  assert.ok(Math.abs(two[0] - (tx - 36)) < 0.01);
+  const stops = [
+    // A little north-east of the truck: on it, and under its number.
+    { id: 'near', number: '5', position: [-80.946, 35.2235] },
+  ];
+  const [row] = snapshotStops(stops, [], [], zoom, [truck]).stopData;
+  const at = drawnAt(row, zoom);
+  assert.ok(gap(at, [tx, ty]) >= 33 - 0.05, 'clear of the truck');
+  const inNumber =
+    Math.abs(at[0] - tx) < 36 + 17 && Math.abs(at[1] - (ty - 30)) < 12 + 17;
+  assert.equal(inNumber, false, 'and not standing on the unit number');
 });
 
 // A truck driving past a stop is over it for a moment and gone.
@@ -213,10 +247,16 @@ test('a truck driving past moves nothing', () => {
   assert.deepEqual([row.markerOffsetX, row.markerOffsetY], [0, 0]);
 });
 
-test('a truck nowhere near a stop moves nothing', () => {
-  const stops = [{ id: 'a', number: '2', position: [-82.55, 35.38] }];
-  const rows = snapshotStops(stops, [], [], 13, [
-    { position: [-80.84, 35.22] },
-  ]).stopData;
-  assert.equal(rows[0].markerOffsetX, 0);
+test('the same stops always give the same layout', () => {
+  const stops = () => [
+    { id: 'a', number: '3', position: [-80.84, 35.22] },
+    { id: 'b', number: '7', position: [-80.7, 35.28] },
+    { id: 'c', number: '6', position: [-80.76, 35.2] },
+  ];
+  const once = snapshotStops(stops(), [], [], 5).stopData;
+  const again = snapshotStops(stops(), [], [], 5).stopData;
+  assert.deepEqual(
+    once.map(row => [row.markerOffsetX, row.markerOffsetY]),
+    again.map(row => [row.markerOffsetX, row.markerOffsetY]),
+  );
 });
