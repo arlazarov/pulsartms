@@ -190,6 +190,18 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   flush();
   assert.equal(initial['fuel-points'].props.getRadius, 8);
   assert.equal(initial['route-stop-1-points'].props.getSize, 34);
+  // Marks in this order: a truck under the badges, its label over them. A
+  // badge is never moved to clear a truck - the gap between the two is how
+  // far the stop is - so where they overlap the badge must stay readable.
+  {
+    const order = Object.keys(initial);
+    assert.ok(
+      order.indexOf('truck-icons') < order.indexOf('route-stop-1-points'),
+    );
+    assert.ok(
+      order.indexOf('route-stop-1-points') < order.indexOf('truck-numbers'),
+    );
+  }
   assert.equal(initial['route-stop-1-numbers'].props.getSize, 15);
   assert.equal(initial['route-stop-distances'].props.getSize, 14);
   assert.equal(initial['truck-numbers'].props.getSize, 13);
@@ -197,7 +209,7 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   assert.equal(initial['truck-icons'].props.getSize({ unit: '11006' }), 28);
   // The truck stands on the stop here and keeps its unit above its own
   // marker: sending the number off on a leader line reads far worse than
-  // the overlap, and the stop is drawn over the badge instead.
+  // the overlap, and the badge is drawn over the truck instead.
   assert.deepEqual(
     initial['truck-numbers'].props.getPixelOffset(
       initial['truck-numbers'].props.data[0],

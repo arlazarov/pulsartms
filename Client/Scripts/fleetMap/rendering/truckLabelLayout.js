@@ -65,11 +65,13 @@ function space() {
 /**
  * Where every label on the map goes, in one pass.
  *
- * Only truck labels move, and only to get out of each other's way. Stops are
- * deliberately not obstacles: a truck parked on its own delivery would send
- * its unit number off across the map on a leader line, which is worse than
- * the overlap it avoids. A truck standing on a stop has already stepped
- * aside from it by then, and its label is measured from where it stepped to.
+ * Marks stay where they are - a truck on its point, a badge on the stop's -
+ * because the gap between them is how far the truck is from the stop. Only
+ * what is written beside them moves, and only to get out of each other's
+ * way. Stops are deliberately not obstacles: a truck parked on its own
+ * delivery would send its unit number off across the map on a leader line,
+ * which reads far worse than the overlap it avoids. The badges are drawn
+ * over the trucks and under the labels instead.
  */
 export function layoutMapLabels({
   vehicles = [],
@@ -93,7 +95,6 @@ export function layoutMapLabels({
       [...point, metrics.truckSize / 2, metrics.truckSize / 2],
       item,
     );
-
   const place = (item, text, padding, old) => {
     const [x, y] = points.get(item);
     const halfWidth = labelWidth(text, padding[0]) / 2;

@@ -237,22 +237,28 @@ test('the badge a truck stands on holds its ground and its neighbour parts', () 
   );
 });
 
-// A stop beside a parked truck parts from the truck and from its number
-// the way it would from another badge, and never ends up on either.
-test('a stop beside a parked truck clears the truck and the number above it', () => {
-  const zoom = 12;
-  const truck = { position: [-80.95, 35.22] };
-  // Another load's stop nearby - near enough to collide on the screen, far
-  // enough on the ground that the truck is not standing at it.
-  const stops = [{ id: 'near', number: '5', position: [-80.937, 35.229] }];
+// How far a badge is drawn from a truck is how far the stop is from the
+// truck, and "he is nearly there" is read off that gap. 54777 was parked a
+// mile and a half short of its delivery in Gansevoort; at a state-wide zoom
+// the two marks overlapped, so the badge was pushed a badge's width clear of
+// the truck - off the place it names, and a mile and a half drawn as ten.
+test('a badge never gives way to a truck, so the gap stays the distance', () => {
+  const zoom = 9;
+  const truck = { position: [-73.71563, 43.167812], engine: 'on' };
+  const stops = [
+    { id: 'ace', number: '2', position: [-73.7418915, 43.1753532] },
+  ];
   const [row] = snapshotStops(stops, [], [], zoom, [truck]).stopData;
-  assert.equal(truck.markerOffset, null, 'the truck is at no stop here');
+  assert.deepEqual([row.markerOffsetX, row.markerOffsetY], [0, 0]);
+  assert.equal(row.standing, undefined, 'a mile and a half is not "at it"');
   const [tx, ty] = screen(truck.position, zoom);
-  const at = drawnAt(row, zoom);
-  assert.ok(gap(at, [tx, ty]) >= 33 - 0.05, 'clear of the truck');
-  const inNumber =
-    Math.abs(at[0] - tx) < 36 + 17 && Math.abs(at[1] - (ty - 30)) < 12 + 17;
-  assert.equal(inNumber, false, 'and not standing on the unit number');
+  const [sx, sy] = screen(stops[0].position, zoom);
+  const drawn = drawnAt(row, zoom);
+  assert.ok(Math.hypot(sx - tx, sy - ty) < 34, 'the marks do overlap here');
+  assert.ok(
+    Math.hypot(drawn[0] - sx, drawn[1] - sy) < 0.05,
+    'and the badge is still drawn on its own point',
+  );
 });
 
 // A truck driving past a stop is over it for a moment and gone.

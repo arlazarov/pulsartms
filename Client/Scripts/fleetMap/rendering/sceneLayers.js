@@ -306,6 +306,16 @@ export function createSceneLayers({
           }),
       ),
     );
+    // Trucks under the stops, their labels over them. A badge is never moved
+    // to clear a truck - the gap between them is how far the stop is - so
+    // where the two overlap the badge must be the one that stays readable,
+    // and the unit number, which is free to move, steps around it.
+    const vehicleParts = vehicleLayers(
+      [vehicles, hoveredTruck, fonts, hasSelectedTruck],
+      () => truckIconLayers(),
+    );
+    const isIcon = layer => /^truck-icons/.test(layer.props?.id ?? '');
+    truckLayers.push(...vehicleParts.filter(isIcon));
     // Keep each geographic anchor and badge together when selection changes priority.
     truckLayers.push(
       ...stopGroup([stopData, setHover, selectStop, fonts], () => {
@@ -428,107 +438,106 @@ export function createSceneLayers({
       [distanceData, fonts, stopLabelStyle],
       () => stopCardLayers(TextLayer, distanceData, stopLabelStyle, fonts),
     );
-    truckLayers.push(
-      ...vehicleLayers(
-        [vehicles, hoveredTruck, fonts, hasSelectedTruck],
-        () => [
-          new IconLayer({
-            id: 'truck-label-anchors',
-            data: vehicles.filter(
-              t =>
-                t.labelOffset &&
-                (t.labelOffset[0] !== 0 ||
-                  t.labelOffset[1] !== -metrics.truckLabelOffset),
-            ),
-            getPosition: t => t.position,
-            getPixelOffset: t => t.markerOffset ?? [0, 0],
-            getIcon: t => markerAnchor(t.labelOffset),
-            getSize: t => markerAnchor(t.labelOffset).size,
-            sizeUnits: 'pixels',
-            billboard: true,
-            pickable: true,
-            onHover: hoverTruck,
-            onClick: selectTruck,
-            parameters: { depthCompare: 'always' },
-          }),
-          // Two icon layers, not one: with a truck chosen the rest of the
-          // fleet is drawn smaller so it does not compete with the route.
-          // Smaller, not faded - a truck half there reads as a truck whose
-          // position is doubtful, and every one of them is equally real.
-          ...[false, true].map(
-            quiet =>
-              new IconLayer({
-                id: quiet ? 'truck-icons-quiet' : 'truck-icons',
-                // A truck standing on a stop is drawn as the ring around
-                // that stop's badge, so it is not drawn again here.
-                data: vehicles.filter(
-                  t => !t.merged && (hasSelectedTruck && !t.selected) === quiet,
-                ),
-                opacity: 1,
-                getPosition: t => t.position,
-                // A truck standing on a stop steps aside so the badge can
-                // keep the point it marks.
-                getPixelOffset: t => t.markerOffset ?? [0, 0],
-                getIcon: t => truckIcon(t.engine, t.speed),
-                getSize: t =>
-                  (quiet ? metrics.truckSecondarySize : metrics.truckSize) *
-                  (t.unit === hoveredTruck ? metrics.truckHoverScale : 1),
-                sizeUnits: 'pixels',
-                billboard: true,
-                getAngle: t => -t.heading,
-                updateTriggers: { getSize: [hoveredTruck, hasSelectedTruck] },
-                pickable: true,
-                onHover: hoverTruck,
-                onClick: selectTruck,
-                parameters: { depthCompare: 'always' },
-              }),
-          ),
-          new TextLayer({
-            id: 'truck-numbers',
-            characterSet: 'auto',
-            data: vehicles,
-            getPosition: t => t.position,
-            getText: t => t.unit,
-            getSize: metrics.truckLabelSize,
-            sizeUnits: 'pixels',
-            getColor: [255, 255, 255, 255],
-            getPixelOffset: t => {
-              const [dx, dy] = t.labelOffset ?? [0, -metrics.truckLabelOffset];
-              const [ax, ay] = t.markerOffset ?? [0, 0];
-              return [dx + ax, dy + ay];
-            },
-            background: true,
-            getBackgroundColor: t => [
-              ...(t.selected || t.unit === hoveredTruck
-                ? [49, 94, 234]
-                : [30, 41, 59]),
-              255,
-            ],
-            backgroundPadding: metrics.truckLabelPadding,
-            backgroundBorderRadius: 5,
-            getBorderColor: [255, 255, 255, 220],
-            getBorderWidth: 1,
-            updateTriggers: {
-              getColor: hasSelectedTruck,
-              getBorderColor: hasSelectedTruck,
-              getBackgroundColor: [hoveredTruck, hasSelectedTruck],
-            },
-            fontFamily: 'Arial, sans-serif',
-            fontSettings: fonts.truck,
-            _subLayerProps: labelSubLayers,
-            fontWeight: 'bold',
-            billboard: true,
-            pickable: true,
-            onHover: hoverTruck,
-            onClick: selectTruck,
-            parameters: { depthCompare: 'always' },
-          }),
-        ],
-      ),
-    );
+    truckLayers.push(...vehicleParts.filter(layer => !isIcon(layer)));
     truckLayers.push(...distanceLayer);
     return truckLayers.filter(
       layer => layer.props.visible !== false && layer.props.data?.length > 0,
     );
+
+    function truckIconLayers() {
+      return [
+        new IconLayer({
+          id: 'truck-label-anchors',
+          data: vehicles.filter(
+            t =>
+              t.labelOffset &&
+              (t.labelOffset[0] !== 0 ||
+                t.labelOffset[1] !== -metrics.truckLabelOffset),
+          ),
+          getPosition: t => t.position,
+          getPixelOffset: t => t.markerOffset ?? [0, 0],
+          getIcon: t => markerAnchor(t.labelOffset),
+          getSize: t => markerAnchor(t.labelOffset).size,
+          sizeUnits: 'pixels',
+          billboard: true,
+          pickable: true,
+          onHover: hoverTruck,
+          onClick: selectTruck,
+          parameters: { depthCompare: 'always' },
+        }),
+        // Two icon layers, not one: with a truck chosen the rest of the
+        // fleet is drawn smaller so it does not compete with the route.
+        // Smaller, not faded - a truck half there reads as a truck whose
+        // position is doubtful, and every one of them is equally real.
+        ...[false, true].map(
+          quiet =>
+            new IconLayer({
+              id: quiet ? 'truck-icons-quiet' : 'truck-icons',
+              // A truck standing on a stop is drawn as the ring around
+              // that stop's badge, so it is not drawn again here.
+              data: vehicles.filter(
+                t => !t.merged && (hasSelectedTruck && !t.selected) === quiet,
+              ),
+              opacity: 1,
+              getPosition: t => t.position,
+              // A truck standing on a stop steps aside so the badge can
+              // keep the point it marks.
+              getPixelOffset: t => t.markerOffset ?? [0, 0],
+              getIcon: t => truckIcon(t.engine, t.speed),
+              getSize: t =>
+                (quiet ? metrics.truckSecondarySize : metrics.truckSize) *
+                (t.unit === hoveredTruck ? metrics.truckHoverScale : 1),
+              sizeUnits: 'pixels',
+              billboard: true,
+              getAngle: t => -t.heading,
+              updateTriggers: { getSize: [hoveredTruck, hasSelectedTruck] },
+              pickable: true,
+              onHover: hoverTruck,
+              onClick: selectTruck,
+              parameters: { depthCompare: 'always' },
+            }),
+        ),
+        new TextLayer({
+          id: 'truck-numbers',
+          characterSet: 'auto',
+          data: vehicles,
+          getPosition: t => t.position,
+          getText: t => t.unit,
+          getSize: metrics.truckLabelSize,
+          sizeUnits: 'pixels',
+          getColor: [255, 255, 255, 255],
+          getPixelOffset: t => {
+            const [dx, dy] = t.labelOffset ?? [0, -metrics.truckLabelOffset];
+            const [ax, ay] = t.markerOffset ?? [0, 0];
+            return [dx + ax, dy + ay];
+          },
+          background: true,
+          getBackgroundColor: t => [
+            ...(t.selected || t.unit === hoveredTruck
+              ? [49, 94, 234]
+              : [30, 41, 59]),
+            255,
+          ],
+          backgroundPadding: metrics.truckLabelPadding,
+          backgroundBorderRadius: 5,
+          getBorderColor: [255, 255, 255, 220],
+          getBorderWidth: 1,
+          updateTriggers: {
+            getColor: hasSelectedTruck,
+            getBorderColor: hasSelectedTruck,
+            getBackgroundColor: [hoveredTruck, hasSelectedTruck],
+          },
+          fontFamily: 'Arial, sans-serif',
+          fontSettings: fonts.truck,
+          _subLayerProps: labelSubLayers,
+          fontWeight: 'bold',
+          billboard: true,
+          pickable: true,
+          onHover: hoverTruck,
+          onClick: selectTruck,
+          parameters: { depthCompare: 'always' },
+        }),
+      ];
+    }
   };
 }

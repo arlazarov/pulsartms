@@ -17,8 +17,12 @@ export function stopMarkerLabel(_job, number) {
 // together the badges went every which way.
 //
 // 1. A badge stands on its anchor while it touches nothing.
-// 2. Two that touch part along the line between them, equally, just far
-//    enough to clear. North of stays north of.
+// 2. Two badges that touch part along the line between them, equally, just
+//    far enough to clear. North of stays north of. Nothing else moves a
+//    badge - a truck least of all: how far a badge is drawn from a truck is
+//    how far the stop is from the truck, and a dispatcher reads "he is
+//    nearly there" off that gap. Parting from the truck by a badge's width
+//    turned a mile and a half into ten.
 // 3. Stops at the very same address have no line between them, so they keep
 //    the formation they always had: a pair, a triangle, rows of two.
 // 4. Where a truck is standing on a stop the two become one mark on that
@@ -48,12 +52,6 @@ const atTheStop = 20;
 export function layoutStopMarkers(rows, zoom, trucks = []) {
   const project = markerProjection(zoom);
   const radius = metrics.stopBadgeDiameter / 2;
-  const clearOfTruck = radius + metrics.truckSize / 2 + metrics.stopBadgeGap;
-  // A badge may come right up to the number - the pill has an edge of its
-  // own - so the gap kept between badges is not asked for here. Asking for
-  // it moved a badge that stood a pixel and a half clear of the number.
-  const numberHalf = [36, 12];
-  const clearOfNumber = radius;
   const byNumber = (a, b) =>
     (parseInt(a.row.number, 10) || 0) - (parseInt(b.row.number, 10) || 0);
 
@@ -194,81 +192,10 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
           }
           moved = true;
         }
-      // A standing truck parts badges from itself the same way, as one more
-      // push among the others. Set on its clearance outright each pass, it
-      // fought the pushes between badges, and the badge nearest the truck on
-      // the ground did not end up nearest it on the screen.
-      items.forEach((item, index) => {
-        if (item.held) return;
-        // A truck drawn as a ring on a badge is that badge, and parts from
-        // the rest as a badge does; only one still drawn on its own pushes.
-        for (const { at: truck, ground: truckGround, holds } of parked) {
-          if (holds) continue;
-          const dx = item.at[0] - truck[0],
-            dy = item.at[1] - truck[1];
-          const distance = Math.hypot(dx, dy);
-          if (distance >= clearOfTruck - 0.01) continue;
-          // Away from the truck the way the stop lies from it on the
-          // ground, so a stop east of the truck is east of it at any zoom.
-          const gx = item.ground[0] - truckGround[0],
-            gy = item.ground[1] - truckGround[1];
-          const far = Math.hypot(gx, gy);
-          const [ux, uy] =
-            far > 0.5
-              ? [gx / far, gy / far]
-              : distance < 0.01
-                ? [0, 1]
-                : [dx / distance, dy / distance];
-          pushes[index][0] += ux * (clearOfTruck - distance) * 2;
-          pushes[index][1] += uy * (clearOfTruck - distance) * 2;
-          moved = true;
-        }
-      });
       items.forEach((item, index) => {
         item.at[0] += pushes[index][0] * 0.5;
         item.at[1] += pushes[index][1] * 0.5;
       });
-      for (const item of items) {
-        if (item.held) continue;
-        for (const { at: truckAt, holds } of parked) {
-          const truck = holds ? holds.at : truckAt;
-          // The unit number, measured as the pill it is: how far the badge
-          // is from the nearest point of it, not from a box drawn round it.
-          // A badge that only clips a corner moves a few pixels, not the
-          // width of the corner.
-          const lx = item.at[0] - truck[0],
-            ly = item.at[1] - (truck[1] - metrics.truckLabelOffset);
-          const ex = lx - Math.max(-numberHalf[0], Math.min(numberHalf[0], lx)),
-            ey = ly - Math.max(-numberHalf[1], Math.min(numberHalf[1], ly));
-          const reach = Math.hypot(ex, ey);
-          if (reach < clearOfNumber - 0.01) {
-            const short = clearOfNumber - reach;
-            // The least it can move is straight away from the nearest point
-            // of the number. That is taken unless it lands the badge on the
-            // truck - down is where the truck is, the truck sends it
-            // straight back up, and the two took turns with the badge. Then,
-            // and when the badge sits on the number itself, out to the side
-            // is the only way that ends.
-            const away =
-              reach > 0.01
-                ? [
-                    item.at[0] + (ex / reach) * short,
-                    item.at[1] + (ey / reach) * short,
-                  ]
-                : null;
-            if (
-              away &&
-              Math.hypot(away[0] - truck[0], away[1] - truck[1]) >=
-                clearOfTruck - 0.01
-            )
-              item.at = away;
-            else
-              item.at[0] =
-                truck[0] + (lx < 0 ? -1 : 1) * (numberHalf[0] + clearOfNumber);
-            moved = true;
-          }
-        }
-      }
       if (!moved) break;
     }
 
