@@ -64,6 +64,39 @@
       @include ui.icon-control;
     }
   }
+  .fleet-map-inspector__arrival {
+    display: grid;
+    min-width: 0;
+    font-size: ui.fs(body);
+    --stop-hours-road-display: flex;
+    .stop-hours__label {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+    .stop-hours__arrival {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: ui.pg(xs);
+      font-weight: 600;
+    }
+    // The real estimate replaces the dash rather than joining it.
+    &:has(> .arrival-estimate) > .fleet-map-inspector__arrival-placeholder {
+      display: none;
+    }
+  }
+  .fleet-map-inspector__hours {
+    flex-basis: 100%;
+    display: grid;
+    min-width: 0;
+    --hos-display: grid;
+    --hos-columns: repeat(4, minmax(0, 1fr));
+    --hos-dial-size: #{ui.size(control-touch)};
+    --hos-clock-min-width: 0;
+    > .driver-hours-panel {
+      width: 100%;
+    }
+  }
   .fleet-map-mobile-summary__remaining {
     display: grid;
     white-space: nowrap;
@@ -198,12 +231,6 @@
     &__reading:last-of-type {
       padding-right: 0;
     }
-    &__hours {
-      width: auto;
-      padding-inline: ui.pg(sm);
-      gap: ui.pg(xs);
-      --hos-dial-size: #{ui.size(control-touch)};
-    }
     &__location {
       > span,
       > small {
@@ -213,10 +240,6 @@
         font-size: ui.fs(body);
         font-weight: 600;
       }
-    }
-    &__duty {
-      display: grid;
-      gap: ui.pg(xs);
     }
   }
   .fleet-map-route-info {
@@ -533,10 +556,6 @@
     }
   }
   @container map-truck-inspection (width < #{ui.breakpoint(map-compact-columns)}) {
-    .fleet-map-truck-info__hours {
-      padding: 0;
-      border: 0;
-    }
     .fleet-map-route-info {
       grid-template-columns: minmax(0, 1fr);
       .stop-hours__cycle .stop-hours__row {
@@ -649,9 +668,17 @@
     .fleet-map-inspector__trailer::before {
       content: '·';
     }
-    .fleet-map-inspector__actions {
+    .fleet-map-inspector__arrival {
       grid-column: 1 / -1;
       grid-row: 3;
+    }
+    .fleet-map-inspector__hours {
+      grid-column: 1 / -1;
+      grid-row: 4;
+    }
+    .fleet-map-inspector__actions {
+      grid-column: 1 / -1;
+      grid-row: 5;
       margin-left: 0;
     }
     // Nothing here re-columns on open. The header a dispatcher reads while

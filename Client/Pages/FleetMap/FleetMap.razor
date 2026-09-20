@@ -121,6 +121,34 @@
                 <span class="fleet-map-mobile-summary__label">Next stop</span>
                 <strong>@(NextStopMiles?.ToString("N0") ?? "—") <small>mi</small></strong>
             </div>
+            @if (SelectedTruck is not null)
+            {
+                @* When the truck arrives, and whether that is late, is the
+                   one number the dispatcher is asked about. It reads in the
+                   closed card; the cycle stays with the route below. *@
+                <div class="fleet-map-inspector__arrival arrival-estimate"
+                     aria-label="Estimated arrival at the next stop">
+                    <ArrivalEstimate
+                        Eta="@(_routeState?.Plan is { InputsChanged: false }
+                            ? DisplayRouteState?.Eta : null)"
+                        Stop="ScheduledStop" Memory="_headArrivalMemory"
+                        DispatchId="SelectedDispatchId"
+                        Refreshing="_etaRefreshPending"
+                        Completed="@(_routeState?.Plan?.Tracking
+                            .AllStopsPassed == true)"
+                        ShowDutyStatus="false" ShowAppointment="false"
+                        ShowDetails="false" />
+                    <div class="fleet-map-inspector__arrival-placeholder
+                                stop-hours">
+                        <div class="stop-hours__row stop-hours__road">
+                            <span class="stop-hours__label">ETA</span>
+                            <span class="stop-hours__value"><span
+                                class="stop-hours__arrival"><strong>—</strong>
+                            </span></span>
+                        </div>
+                    </div>
+                </div>
+            }
             @if (SelectedTruck is { } headerTruck)
             {
                 <div class="fleet-map-inspector__actions" role="group" aria-label="Truck actions">
@@ -202,6 +230,19 @@
                             aria-label="Close map information"
                             @onclick="CloseInspectorAsync">×</button>
                 }
+            </div>
+        }
+        @if (_inspectorMode == MapInspectorMode.Truck && SelectedTruck is not null)
+        {
+            @* The clocks belong beside the truck's name, not behind a
+               disclosure: whether the driver has hours left decides whether
+               any of the rest is worth reading. Last in the header so the
+               row order on screen is the row order in the document. *@
+            <div class="fleet-map-inspector__hours"
+                 aria-label="Driver hours remaining">
+                <Client.Shared.DriverStatus.DriverHours.DriverHours
+                    @key="_activeTruckId" Clocks="_hos"
+                    ShowDutyStatus="false" />
             </div>
         }
         </header>
@@ -302,9 +343,12 @@
                 </strong>
             </div>
             <div class="arrival-estimate">
-                <ArrivalEstimate Eta="@(routePlan is null ? null : DisplayRouteState?.Eta)" Stop="nextStop" Memory="_arrivalMemory" DispatchId="SelectedDispatchId" Refreshing="_etaRefreshPending" Completed="@(routePlan?.Tracking.AllStopsPassed == true)" ShowDutyStatus="false" ShowAppointment="false" />
+                @* ETA reads in the card head, so this section keeps only the
+                   cycle, next to the delivery window it is measured against.
+                   Inspecting a next stop takes the head over; the route then
+                   carries its own arrival again rather than losing it. *@
+                <ArrivalEstimate Eta="@(routePlan is null ? null : DisplayRouteState?.Eta)" Stop="nextStop" Memory="_arrivalMemory" DispatchId="SelectedDispatchId" Refreshing="_etaRefreshPending" Completed="@(routePlan?.Tracking.AllStopsPassed == true)" ShowDutyStatus="false" ShowAppointment="false" ShowSummary="@(_inspectorMode != MapInspectorMode.Truck)" />
                 <div class="fleet-map-route-info__eta-placeholder stop-hours">
-                    <div class="stop-hours__row stop-hours__road"><span class="stop-hours__label">ETA</span> <span class="stop-hours__value"><span class="stop-hours__arrival"><strong>—</strong></span></span></div>
                     <section class="stop-hours__cycle" aria-label="Cycle at this stop"><div class="stop-hours__row stop-hours__arrival-cycle"><h3 class="stop-hours__heading">Cycle remaining</h3><strong class="stop-hours__value">—</strong></div></section>
                 </div>
             </div>
@@ -369,17 +413,6 @@
                     OwnerCancellation="_lifetime.Token"
                     Current="@(SelectedDate == DateOnly.FromDateTime(
                         DateTime.Today))" />
-            </div>
-            <div class="fleet-map-truck-info__hours">
-                <Client.Shared.DriverStatus.DriverHours.DriverHours
-                    @key="_activeTruckId" Clocks="_hos"
-                    ShowDutyStatus="false" />
-                <div class="fleet-map-truck-info__duty">
-                    <DriverDutySummary Compact="true" ShowRestDetails="false"
-                        Status="DisplayRouteState?.Eta?.DutyStatus"
-                        CurrentStatus="@(_hos?.CurrentDutyStatus)"
-                        ClockUpdatedAt="@(_hos?.UpdatedAt)" />
-                </div>
             </div>
             <div id="fleet-map-truck-location"
                  class="fleet-map-truck-info__location"

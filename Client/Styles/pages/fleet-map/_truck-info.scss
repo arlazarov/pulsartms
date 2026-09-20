@@ -146,42 +146,6 @@
     }
   }
 
-  &__hours {
-    display: grid;
-    gap: ui.pg(sm);
-    min-width: 0;
-    > .driver-hours-panel {
-      grid-template-columns: minmax(0, 1fr);
-      margin-left: 0;
-      max-width: none;
-    }
-    --hos-wrap: wrap;
-    --hos-clock-min-width: 5ch;
-    --hos-label-font-size: #{ui.fs(small)};
-    --hos-label-line-height: 1.4;
-    --hos-value-font-size: #{ui.fs(body)};
-    --hos-ring-width: 5;
-  }
-  &__duty {
-    display: grid;
-    align-content: center;
-    gap: ui.pg(sm);
-    min-width: 0;
-    overflow-wrap: anywhere;
-    .driver-duty {
-      align-content: start;
-      font-size: ui.fs(small);
-      line-height: 1.4;
-    }
-    .driver-duty__current {
-      font-size: ui.fs(body);
-      line-height: 1.4;
-    }
-    .driver-duty__current strong {
-      font-weight: 600;
-    }
-  }
-
   &__actions {
     display: flex;
     flex-direction: column;
@@ -236,13 +200,6 @@
     }
   }
 
-  @media (min-width: ui.breakpoint(map-mobile, min)) {
-    &__hours {
-      padding-inline: ui.pg(md);
-      border-inline: 1px solid ui.theme(border-subtle);
-    }
-  }
-
   @media (min-width: ui.breakpoint(truck-details, min)) {
     gap: ui.pg(sm) ui.pg(md);
     --hos-dial-size: #{ui.size(control-touch)};
@@ -257,8 +214,7 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     &__identity,
     &__telemetry,
-    &__actions,
-    &__hours {
+    &__actions {
       grid-column: 1 / -1;
     }
     &__identity {
@@ -288,16 +244,6 @@
     &__reading .fuel-reading {
       row-gap: var(--fuel-reading-row-gap, #{ui.pg(xs)});
       column-gap: var(--fuel-reading-column-gap, #{ui.pg(xs)});
-    }
-    &__duty {
-      grid-column: 1 / -1;
-    }
-    &__hours,
-    &__hours > .driver-hours-panel {
-      width: 100%;
-    }
-    &__hours {
-      --hos-dial-size: #{ui.size(hos-dial-compact)};
     }
     &__actions {
       flex-direction: row;

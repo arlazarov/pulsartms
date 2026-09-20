@@ -464,6 +464,7 @@ public partial class FleetMap : IAsyncDisposable
     _fuelRevalidationPending = false;
     _activeTruckId = null;
     _arrivalMemory.Update(null, null, null);
+    _headArrivalMemory.Update(null, null, null);
     _loadDetailsVersion++;
     _loadDetails = null;
     ResetNextLoads();
@@ -526,6 +527,7 @@ public partial class FleetMap : IAsyncDisposable
     _recalculatingFuel = false;
     _fuelRevalidationPending = false;
     _arrivalMemory.Update(null, null, null);
+    _headArrivalMemory.Update(null, null, null);
     _activeTruckId = truckId;
     _activeDispatchId = dispatchId;
     _planningDispatchId = null;

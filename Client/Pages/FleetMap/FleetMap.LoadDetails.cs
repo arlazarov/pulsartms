@@ -9,6 +9,11 @@ public partial class FleetMap
   private DispatchResponse? _loadDetails;
   private int _loadDetailsVersion;
   private readonly ArrivalDisplayMemory _arrivalMemory = new();
+
+  // The card head shows the same arrival as the route section, but keeps its
+  // own memory: one instance updated twice per render would advance its
+  // "stop changed" state twice for a single change.
+  private readonly ArrivalDisplayMemory _headArrivalMemory = new();
   private bool NextStopIsFinal =>
     _routeState?.Plan
       is { InputsChanged: false, Tracking.AllStopsPassed: false } plan

@@ -14,7 +14,6 @@ using Client.Models.DTO.Planning;
 using Client.Pages.FleetMap;
 using Client.Services;
 using Client.Shared.DriverStatus.ArrivalEstimate;
-using Client.Shared.DriverStatus.DriverDutySummary;
 using Client.Shared.Fuel.FuelPlanEditor;
 using Client.Tests.Support;
 using Microsoft.AspNetCore.Components;
@@ -431,7 +430,7 @@ public sealed class FleetMapComponentTests
     );
     Assert.Single(
       component.FindAll(
-        ".fleet-map-truck-info__hours [aria-label='Driver hours remaining']"
+        ".fleet-map-inspector__hours[aria-label='Driver hours remaining']"
       )
     );
     Assert.Equal(0, fixture.FuelWrites);
@@ -549,7 +548,7 @@ public sealed class FleetMapComponentTests
     AssertTruckPanelsVisible(component);
     Assert.Single(
       component.FindAll(
-        ".fleet-map-truck-info__hours [aria-label='Driver hours remaining']"
+        ".fleet-map-inspector__hours[aria-label='Driver hours remaining']"
       )
     );
     fixture.DeferDetails = false;
@@ -883,17 +882,15 @@ public sealed class FleetMapComponentTests
         ".fleet-map-inspector__identity .fleet-map-inspector__trailer"
       )
     );
+    // The clocks read from the header; "hours are enough" and the recap are
+    // not on the card at all.
     Assert.Single(
       component.FindAll(
-        ".fleet-map-truck-info__hours > .fleet-map-truck-info__duty > .driver-duty"
+        ".fleet-map-inspector__header > .fleet-map-inspector__hours"
       )
     );
-    Assert.Empty(
-      component.FindAll(".fleet-map-truck-info__hours .driver-next-recap")
-    );
-    Assert.False(
-      component.FindComponent<DriverDutySummary>().Instance.ShowRestDetails
-    );
+    Assert.Empty(component.FindAll(".driver-duty"));
+    Assert.Empty(component.FindAll(".driver-next-recap"));
     var loadLink = component.Find(
       ".fleet-map-inspector__header a[aria-label='Route & load details']"
     );
@@ -1558,11 +1555,16 @@ public sealed class FleetMapComponentTests
           ".fleet-map-route-info__total > strong.fleet-map-inspector__value"
         )
       );
+      // ETA is reserved in the card head now; the route keeps the cycle.
       Assert.Contains(
-        "ETA",
+        "Cycle remaining",
         panel
           .QuerySelector(".fleet-map-route-info__eta-placeholder")!
           .TextContent
+      );
+      Assert.Contains(
+        "ETA",
+        component.Find(".fleet-map-inspector__arrival-placeholder").TextContent
       );
       Assert.Equal(
         new[] { "Remaining" },
@@ -1905,17 +1907,10 @@ public sealed class FleetMapComponentTests
           .Count
       );
       Assert.Single(
-        component.FindAll(".fleet-map-truck-info__hours > .driver-hours-panel")
+        component.FindAll(".fleet-map-inspector__hours > .driver-hours-panel")
       );
       Assert.Empty(component.FindAll(".fleet-map-truck-info__hours-label"));
-      Assert.Single(
-        component.FindAll(
-          ".fleet-map-truck-info__hours > .driver-hours-panel + .fleet-map-truck-info__duty"
-        )
-      );
-      Assert.Empty(
-        component.FindAll(".fleet-map-truck-info .driver-next-recap")
-      );
+      Assert.Empty(component.FindAll(".driver-next-recap"));
       Assert.Single(
         component.FindAll(
           ".fleet-map-truck-info__reading--fuel > .fuel-reading"
@@ -1943,12 +1938,7 @@ public sealed class FleetMapComponentTests
           )
           .Count
       );
-      Assert.Single(
-        component.FindAll(".fleet-map-truck-info__duty > .driver-duty")
-      );
-      Assert.True(
-        component.FindComponent<DriverDutySummary>().Instance.Compact
-      );
+      Assert.Empty(component.FindAll(".driver-duty"));
       Assert.DoesNotContain(
         "Next recap",
         component.Find(".fleet-map-truck-info").TextContent
@@ -1959,13 +1949,9 @@ public sealed class FleetMapComponentTests
     );
     component.WaitForAssertion(() =>
     {
-      Assert.Empty(
-        component.FindAll(".fleet-map-truck-info .driver-next-recap")
-      );
+      Assert.Empty(component.FindAll(".driver-next-recap"));
       Assert.Single(
-        component.FindAll(
-          ".fleet-map-truck-info__hours > .driver-hours-panel + .fleet-map-truck-info__duty"
-        )
+        component.FindAll(".fleet-map-inspector__hours > .driver-hours-panel")
       );
     });
   }

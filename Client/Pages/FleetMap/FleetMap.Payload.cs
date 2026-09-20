@@ -83,6 +83,7 @@ public partial class FleetMap
       _retainedProgressUntil = null;
       if (!sameStops || state?.Plan?.InputsChanged == true)
         _arrivalMemory.Update(null, null, null);
+      _headArrivalMemory.Update(null, null, null);
     }
     var previousPlan = _routeState?.Plan;
     _routeState = state;
