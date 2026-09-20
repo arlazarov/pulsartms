@@ -541,7 +541,7 @@ public sealed class FleetMapComponentTests
     Assert.Empty(summary.QuerySelectorAll(".fleet-map-route-info__delivery"));
     var appointment = Assert.Single(
       component.FindAll(
-        ".fleet-map-route-info__timing > .fleet-map-route-info__appointment"
+        ".fleet-map-route-info__visit > .fleet-map-route-info__appointment"
       )
     );
     Assert.Equal(
@@ -1012,8 +1012,10 @@ public sealed class FleetMapComponentTests
       var row = Assert.Single(
         component.FindAll(".fleet-map-route-info__delivery")
       );
+      // The window the stop has to make belongs with the stop, not with
+      // the load facts in the other column.
       Assert.Contains(
-        "fleet-map-route-info__timing",
+        "fleet-map-route-info__visit",
         row.ParentElement!.ClassList
       );
       Assert.Equal(
@@ -1603,18 +1605,24 @@ public sealed class FleetMapComponentTests
           ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__next"
         )
       );
-      Assert.Single(
-        panel.QuerySelectorAll(":scope > .fleet-map-route-info__visit > *")
+      // The stop column reserves its two rows - where it is going and the
+      // window it has to make - before either has an answer.
+      Assert.Equal(
+        2,
+        panel
+          .QuerySelectorAll(":scope > .fleet-map-route-info__visit > *")
+          .Length
       );
       Assert.NotNull(
         panel.QuerySelector(
-          ":scope > .fleet-map-route-info__timing > .fleet-map-route-info__appointment"
+          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__appointment"
         )
       );
       Assert.Contains("Total — mi · — km", panel.TextContent);
+      // The load column opens with the arrival the stop is measured by.
       Assert.NotNull(
         panel.QuerySelector(
-          ":scope > .fleet-map-route-info__timing > .fleet-map-route-info__appointment + .arrival-estimate"
+          ":scope > .fleet-map-route-info__timing > .arrival-estimate"
         )
       );
       Assert.DoesNotContain("Loading saved route", component.Markup);
@@ -1672,17 +1680,20 @@ public sealed class FleetMapComponentTests
           ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__next"
         )
       );
-      Assert.Single(
-        panel.QuerySelectorAll(":scope > .fleet-map-route-info__visit > *")
+      Assert.Equal(
+        2,
+        panel
+          .QuerySelectorAll(":scope > .fleet-map-route-info__visit > *")
+          .Length
       );
       Assert.NotNull(
         panel.QuerySelector(
-          ":scope > .fleet-map-route-info__timing > .fleet-map-route-info__appointment"
+          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__appointment"
         )
       );
       Assert.NotNull(
         panel.QuerySelector(
-          ":scope > .fleet-map-route-info__timing > .fleet-map-route-info__appointment + .arrival-estimate"
+          ":scope > .fleet-map-route-info__timing > .arrival-estimate"
         )
       );
       Assert.Contains(

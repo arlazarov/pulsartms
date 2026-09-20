@@ -89,7 +89,7 @@ test('Remaining keeps three rows and data loading does not resize the metric col
   );
   assert.match(
     compact,
-    /grid-template-columns: var\(--size-route-metric\) minmax\(0,\s*1fr\) minmax\(0,\s*1fr\);/,
+    /\.fleet-map-route-info\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/,
   );
   assert.match(
     compact,
@@ -441,7 +441,7 @@ test('route summary groups load distances next visit and ETA without changing it
   assert.match(compact, /\.fleet-map-route-info\s*\{[^}]*align-items: start;/);
   assert.match(
     compact,
-    /\.fleet-map-route-info > \.fleet-map-route-info__load\s*\{[^}]*display: grid;[^}]*grid-column: 1\s*\/\s*-1;[^}]*grid-row: 1;/,
+    /\.fleet-map-route-info > \.fleet-map-route-info__load\s*\{[^}]*display: grid;[^}]*grid-column: 2;[^}]*grid-row: 1;/,
   );
   assert.match(
     css,

@@ -331,8 +331,6 @@
                     </span>
                 }
             </div>
-            </div>
-            <div class="fleet-map-route-info__timing">
             @{ var appointment = FleetAppointmentDisplay.Split(ScheduledStop); }
             <div class="fleet-map-route-info__appointment fleet-map-route-info__delivery">
                 <span class="fleet-map-route-info__label">@(ScheduledStop?.Job.Contains("pick", StringComparison.OrdinalIgnoreCase) == true ? "Pickup" : ScheduledStop?.Job.Contains("drop", StringComparison.OrdinalIgnoreCase) == true || ScheduledStop?.Job.Contains("deliver", StringComparison.OrdinalIgnoreCase) == true ? "Delivery" : "Stop")</span>
@@ -351,6 +349,8 @@
                     >@appointment.Value</span>
                 </strong>
             </div>
+            </div>
+            <div class="fleet-map-route-info__timing">
             <div class="arrival-estimate">
                 @* ETA reads in the card head, so this section keeps only the
                    cycle, next to the delivery window it is measured against.
