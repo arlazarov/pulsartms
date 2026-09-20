@@ -1,5 +1,6 @@
-@use '../base' as ui;
+@use '../../base' as ui;
 
+// The sign-in card, centred on its own page.
 .login-page {
   width: 100%;
   min-height: 100%;

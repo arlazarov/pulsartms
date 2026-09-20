@@ -1,5 +1,7 @@
-@use '../base' as ui;
+@use '../../base' as ui;
 
+// The brand guide at wwwroot/brand/index.html - a static page, not a
+// screen of the app, which is why nothing here is shared with one.
 .brand-guide {
   max-width: ui.size(content-form);
   margin: 0 auto;

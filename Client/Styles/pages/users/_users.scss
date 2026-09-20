@@ -1,5 +1,6 @@
-@use '../base' as ui;
+@use '../../base' as ui;
 
+// The people who can sign in, as a table that becomes cards.
 .users-page {
   display: grid;
   gap: ui.pg(md);

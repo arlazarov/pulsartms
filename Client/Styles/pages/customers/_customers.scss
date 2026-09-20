@@ -1,5 +1,6 @@
-@use '../base' as ui;
+@use '../../base' as ui;
 
+// Customers and brokers.
 .customers-page {
   .settings-page__actions > label {
     display: grid;

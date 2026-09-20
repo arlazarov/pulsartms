@@ -1,5 +1,6 @@
-@use '../base' as ui;
+@use '../../base' as ui;
 
+// Adding one of them.
 .add-user-page {
   --form-actions-space: #{ui.pg(xs)};
   display: grid;

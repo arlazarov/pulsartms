@@ -1,7 +1,7 @@
-@use 'login-page';
+// One folder per screen, named the way Client/Pages names it.
+@use 'auth';
 @use 'brand-guide';
-@use 'users-page';
-@use 'add-user-page';
+@use 'users';
 @use 'fleet-map';
 @use 'dispatch';
 @use 'settings';
