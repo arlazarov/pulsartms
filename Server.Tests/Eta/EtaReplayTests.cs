@@ -119,7 +119,8 @@ public sealed class EtaReplayTests
     fresh.DriveMs = 11 * 3600000L;
     fresh.ShiftMs = 14 * 3600000L;
     var stop = Assert.Single(
-      Service(new Regions()).Calculate(State(plan, 60), fresh, Now.UtcDateTime)
+      Service(new Regions())
+        .Calculate(State(plan, 60), fresh, Now.UtcDateTime)
         .Stops
     );
     Assert.Equal(fuel, stop.FuelMinutes);

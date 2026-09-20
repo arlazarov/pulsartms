@@ -119,6 +119,61 @@ public sealed class WorkSequencePolicyTests
     );
   }
 
+  // Accepting work into execution was taken to carry its own order, so the
+  // appointments of accepted loads were not read at all. Accepted days
+  // ahead, as they now are, three loads with three ship dates had no order
+  // between them and blocked the whole forecast: 11006 could be told nothing
+  // about the loads it was to drive on the 21st, the 23rd and the 25th.
+  [Fact]
+  public void AcceptedLoadsAreOrderedByTheAppointmentsTheyAreBookedFor()
+  {
+    var first = Future(8);
+    var second = Future(12);
+    first.ExecutionLegId = Guid.NewGuid();
+    second.ExecutionLegId = Guid.NewGuid();
+    first.ExecutionStatus = "planned";
+    second.ExecutionStatus = "planned";
+
+    var result = WorkSequencePolicy.Assess(
+      [first, second],
+      new([Position(first, 1), Position(second, 1)], [])
+    );
+
+    Assert.Empty(result.Issues);
+    Assert.Equal(
+      WorkPrecedenceBasis.ScheduledStart,
+      Assert.Single(result.Precedence).Basis
+    );
+  }
+
+  // And where the schedule does not say, nothing is guessed - not for
+  // accepted work either.
+  [Theory]
+  [InlineData("equal")]
+  [InlineData("no-time")]
+  [InlineData("other-zone")]
+  public void AnAcceptedLoadWithoutAScheduleStillHasNoOrder(string missing)
+  {
+    var first = Future(8);
+    var second = Future(missing == "equal" ? 8 : 12);
+    first.ExecutionLegId = Guid.NewGuid();
+    second.ExecutionLegId = Guid.NewGuid();
+    if (missing == "no-time")
+      first.Stops[0].ScheduledTime = null;
+    if (missing == "other-zone")
+      second.Stops[0].AppointmentTimeZoneId = "America/Vancouver";
+
+    var result = WorkSequencePolicy.Assess(
+      [first, second],
+      new([Position(first, 1), Position(second, 1)], [])
+    );
+
+    Assert.Equal(
+      WorkSequenceProblem.UnknownOrder,
+      Assert.Single(result.Issues).Problem
+    );
+  }
+
   [Fact]
   public void ExplicitLegSequenceTakesPrecedenceOverAppointments()
   {

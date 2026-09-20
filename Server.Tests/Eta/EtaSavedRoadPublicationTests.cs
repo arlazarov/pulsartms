@@ -281,7 +281,9 @@ public sealed partial class EtaChainInputTests
     await f.Db.SaveChangesAsync();
     await f.Services.Forecasts.RefreshAsync(f.Current.Id, default);
     var before = await SavedForecastsAsync(f);
-    Assert.Single(before);
+    // The accepted load in hand and the one assigned after it: the forecast
+    // follows the truck's own work instead of stopping at the first leg.
+    Assert.Equal(2, before.Length);
     var key = f.Services.EtaMemory.Scope(f.Current.Id, leg.Id);
     f.Publication.BeforeBegin = () =>
       ChangeRootAsync(f, value => value.AssignmentRevision++);

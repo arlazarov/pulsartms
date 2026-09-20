@@ -75,11 +75,17 @@ public static class WorkSequencePolicy
       return nativeOrder < 0 ? WorkPrecedenceBasis.ExecutionLink : null;
     if (Started(previous) && !Started(next))
       return WorkPrecedenceBasis.CurrentActivity;
+    // Two loads neither of which has started are ordered by the appointments
+    // they are booked for. This used to be asked only of loads with no
+    // execution leg, on the understanding that accepting work into execution
+    // would carry its own order; accepted days ahead, as they now are, three
+    // loads with three ship dates had no order at all and blocked the whole
+    // forecast. Where the schedule does not say - equal dates and no times,
+    // a missing date, two time zones - it still returns nothing, and nothing
+    // is guessed.
     if (
       !Started(previous)
       && !Started(next)
-      && !previous.ExecutionLegId.HasValue
-      && !next.ExecutionLegId.HasValue
       && ScheduleOrder(previous, next) < 0
     )
       return WorkPrecedenceBasis.ScheduledStart;
@@ -93,9 +99,7 @@ public static class WorkSequencePolicy
   ) =>
     NativeOrder(previous, next, evidence) > 0
     || !Started(previous) && Started(next)
-    || !previous.ExecutionLegId.HasValue
-      && !next.ExecutionLegId.HasValue
-      && ScheduleOrder(previous, next) > 0;
+    || ScheduleOrder(previous, next) > 0;
 
   private static int? NativeOrder(
     IWorkFacts previous,

@@ -235,7 +235,11 @@ public sealed partial class EtaChainInputTests
     Assert.Equal("receiving", actual.DriverExternalId);
     Assert.Equal(expected!.InputHash, actual.InputHash);
     Assert.Equal(expected.GeometryHash, actual.GeometryHash);
-    Assert.Single(actual.Loads);
+    // The accepted load in hand and the one assigned after it: the forecast
+    // follows the truck's own work rather than stopping at the first leg.
+    Assert.Equal(2, actual.Loads.Length);
+    Assert.Equal(leg.Id, actual.Loads[0].ExecutionLegId);
+    Assert.Null(actual.Loads[1].ExecutionLegId);
     Assert.Equal(0, sender.Calls);
     Assert.Equal(0, fixture.Services.Hos.ClockCalls);
   }
@@ -259,12 +263,15 @@ public sealed partial class EtaChainInputTests
     Assert.Equal(0, fixture.Probe.GeometryReads);
   }
 
+  // Work accepted into execution ahead of the load in hand is still this
+  // truck's work, and the forecast follows it. The chain used to end at the
+  // first leg of any kind - a rule written when loads were accepted one at a
+  // time; accepted days ahead, as they are now, it left every truck without
+  // an arrival beyond the load it was driving.
   [Theory]
   [InlineData("planned")]
   [InlineData("active")]
-  public async Task NativeWorkUsesStoredPriorityAndCannotJoinAnImplicitChain(
-    string nativeStatus
-  )
+  public async Task AcceptedWorkAheadJoinsTheChain(string nativeStatus)
   {
     await using var fixture = await Fixture.CreateAsync();
     var leg = new ExecutionLeg
@@ -300,22 +307,22 @@ public sealed partial class EtaChainInputTests
       nativeRoot ? fixture.Next.Id : fixture.Current.Id,
       description.RootDispatchId
     );
-    Assert.Equal(
-      nativeRoot ? leg.Id : (Guid?)null,
-      description.RootExecutionLegId
-    );
-    Assert.Single(description.Loads);
     Assert.Equal(2, description.Itinerary.Segments.Length);
-    Assert.Equal(
-      EtaWorkExclusionReason.NativeConnectionRequired,
-      Assert.Single(description.Exclusions).Reason
-    );
-    Assert.Empty(description.Connections);
+    Assert.Equal(2, description.Loads.Length);
+    Assert.Empty(description.Exclusions);
+
     var prepared = await fixture.Services.EtaInputs.PrepareAsync(
       description,
       default
     );
-    Assert.Empty(prepared.Future);
+
+    // The load ahead is carried, with a reason where a road of its own or
+    // the connection to it has not been saved yet - a sentence, not a blank.
+    var ahead = Assert.Single(prepared.Future);
+    Assert.Equal(
+      nativeRoot ? fixture.Current.Id : fixture.Next.Id,
+      ahead.DispatchId
+    );
   }
 
   [Fact]

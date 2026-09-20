@@ -366,7 +366,9 @@ public sealed class EtaService(
     // into a delivery - is not charged for one. No fuel plan is not the same
     // answer: nothing has been decided yet, and the shift keeps its
     // allowance rather than having one quietly taken away.
-    var fuelStopsAhead = plan.FuelPlan?.Stops.Count(stop => stop.MilesAhead > 0);
+    var fuelStopsAhead = plan.FuelPlan?.Stops.Count(stop =>
+      stop.MilesAhead > 0
+    );
     var clock = new HosTravelClock(
       now,
       clocks,

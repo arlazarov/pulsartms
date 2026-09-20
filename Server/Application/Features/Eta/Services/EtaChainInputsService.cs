@@ -218,9 +218,7 @@ public sealed partial class EtaChainInputsService(
     var future = loads.Skip(1).ToArray();
     var futureIds = future.Select(x => x.Id).ToArray();
     var versions =
-      future.Length == 0
-        ? []
-        : await savedRoutes.ReadVersionsAsync(futureIds, ct);
+      future.Length == 0 ? [] : await FutureVersionsAsync(future, ct);
     var predecessors =
       future.Length == 0
         ? new Dictionary<Guid, DeadheadHistorySnapshot>()
@@ -291,6 +289,58 @@ public sealed partial class EtaChainInputsService(
     );
   }
 
+  // A load's saved roads live where the load does: under its dispatch while
+  // it is only assigned, under its execution leg once it has been accepted.
+  // Reading only the first kind was right while work ahead was never
+  // accepted in advance; now it is, and that read answered "no roads" for a
+  // load whose roads were sitting under its leg.
+  private async Task<IReadOnlyList<NextLoadRouteVersion>> FutureVersionsAsync(
+    IReadOnlyList<RouteWorkSnapshot> future,
+    CancellationToken ct
+  )
+  {
+    var values = new List<NextLoadRouteVersion>();
+    if (Plain(future) is { Length: > 0 } plain)
+      values.AddRange(await savedRoutes.ReadVersionsAsync(plain, ct));
+    if (Accepted(future) is { Length: > 0 } legs)
+      values.AddRange(await savedRoutes.ReadExecutionVersionsAsync(legs, ct));
+    return values;
+  }
+
+  private async Task<
+    IReadOnlyDictionary<Guid, SavedNextLoadRoute>
+  > FutureGeometryAsync(
+    IReadOnlyList<RouteWorkSnapshot> future,
+    CancellationToken ct
+  )
+  {
+    var values = new Dictionary<Guid, SavedNextLoadRoute>();
+    if (Plain(future) is { Length: > 0 } plain)
+      foreach (
+        var (id, route) in await savedRoutes.ReadGeometryAsync(plain, ct)
+      )
+        values[id] = route;
+    // Asked for by leg and answered by leg; the chain knows loads, so the
+    // answer is put back under the load it belongs to.
+    if (Accepted(future) is { Length: > 0 } legs)
+      foreach (
+        var route in (
+          await savedRoutes.ReadExecutionGeometryAsync(legs, ct)
+        ).Values
+      )
+        values[route.DispatchId] = route;
+    return values;
+  }
+
+  private static Guid[] Plain(IReadOnlyList<RouteWorkSnapshot> loads) =>
+    loads.Where(x => !x.ExecutionLegId.HasValue).Select(x => x.Id).ToArray();
+
+  private static Guid[] Accepted(IReadOnlyList<RouteWorkSnapshot> loads) =>
+    loads
+      .Where(x => x.ExecutionLegId.HasValue)
+      .Select(x => x.ExecutionLegId!.Value)
+      .ToArray();
+
   private static EtaWorkExclusionReason? Exclusion(
     TruckWorkSegment segment,
     IReadOnlyList<RouteWorkSnapshot> selected,
@@ -308,12 +358,18 @@ public sealed partial class EtaChainInputsService(
     }
     else if (!PlanningWorkPolicy.HasOpenAssignment(segment))
       return EtaWorkExclusionReason.NativeNotActive;
+    // Work accepted into execution ahead of this one is still this truck's
+    // work, and the forecast can follow it: those stops carry their own
+    // appointments and service, and the clock keeps its rests across them.
+    // The rule used to end the chain at the first leg of any kind, which was
+    // written when loads were accepted one at a time; accepted days ahead,
+    // as they are now, it left every truck without a forecast beyond the
+    // load in hand. What still ends the chain is a transfer: a leg waiting
+    // to be received belongs to the handover, not to this run.
     if (
       selected.Count > 0
-      && (
-        segment.Work.ExecutionLegId.HasValue
-        || selected[0].ExecutionLegId.HasValue
-      )
+      && segment.Work.ExecutionLegId.HasValue
+      && segment.Visits.FirstOrDefault()?.Actuals.AwaitingHandoff == true
     )
       return EtaWorkExclusionReason.NativeConnectionRequired;
     return PlanningWorkPolicy.BlockingProblem(segment) is null
@@ -331,10 +387,7 @@ public sealed partial class EtaChainInputsService(
       async () =>
       {
         var future = description.Loads.Skip(1).ToArray();
-        var saved = await savedRoutes.ReadGeometryAsync(
-          future.Select(x => x.Id).ToArray(),
-          ct
-        );
+        var saved = await FutureGeometryAsync(future, ct);
         RequireFutureRoads(
           description.Roads.Future,
           future.Select(load =>
