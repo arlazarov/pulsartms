@@ -1,0 +1,11 @@
+// The stop workspace, area by area: the frame, the itinerary, what a row
+// says, the editor, what a stop records, and how it all folds when there is
+// no room for two panes.
+@use 'shell';
+@use 'address-search';
+@use 'list';
+@use 'identity';
+@use 'table-head';
+@use 'editor';
+@use 'facts';
+@use 'narrow';

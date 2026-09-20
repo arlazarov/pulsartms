@@ -1,0 +1,16 @@
+@use '../../../base' as ui;
+
+// The fields shown while a load is being created by hand.
+.dispatch-create__fields {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, ui.size(form-field)), 1fr)
+  );
+  gap: ui.pg(sm) ui.pg(md);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

@@ -1,0 +1,77 @@
+@use '../../../base' as ui;
+
+// Reviewing what the importer assigned before it is accepted.
+.assignment-review {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  gap: ui.pg(md);
+  padding: ui.pg(md);
+  color: ui.theme(text);
+  font-size: ui.fs(body);
+
+  h2,
+  h3,
+  h4,
+  p,
+  dl {
+    margin: 0;
+  }
+
+  h2 {
+    font-size: ui.fs(lead);
+  }
+
+  h3,
+  h4 {
+    font-size: ui.fs(body);
+  }
+
+  p,
+  dt {
+    color: ui.theme(text-secondary);
+  }
+
+  &__columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.pg(lg);
+
+    @include ui.above(md) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    > section {
+      display: grid;
+      align-content: start;
+      gap: ui.pg(md);
+      min-width: 0;
+    }
+  }
+
+  &__item {
+    display: grid;
+    gap: ui.pg(sm);
+    padding: ui.pg(md);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface);
+    overflow-wrap: anywhere;
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: ui.pg(xs) ui.pg(sm);
+  }
+
+  dd {
+    margin: 0;
+  }
+
+  &__unresolved {
+    color: ui.theme(warning-text);
+    font-size: ui.fs(small);
+  }
+}

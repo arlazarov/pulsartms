@@ -1,0 +1,67 @@
+@use '../../../base' as ui;
+
+// The workspace frame: the two panes it is divided into and the headings
+// inside them.
+.stop-workspace {
+  container: stop-workspace / inline-size;
+  min-width: 0;
+  border: 0;
+  background: ui.theme(canvas);
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr);
+  gap: ui.pg(md);
+  block-size: 76dvh;
+  max-block-size: calc(100dvh - #{ui.pg(lg)} * 2);
+
+  &--single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  &__mobile-tabs {
+    display: none;
+  }
+  &__support {
+    display: contents;
+  }
+
+  &__main {
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__main > :not(.stop-workspace__list):not(.stop-workspace__working-area) {
+    flex-shrink: 0;
+  }
+
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+
+  h2 {
+    font-size: ui.fs(lead);
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    svg {
+      color: ui.theme(link);
+    }
+  }
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    font-size: ui.fs(body);
+    font-weight: 600;
+  }
+
+  h3 > svg {
+    color: ui.theme(link);
+    flex-shrink: 0;
+  }
+}

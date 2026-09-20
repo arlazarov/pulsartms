@@ -1,0 +1,155 @@
+@use '../../../base' as ui;
+
+// With no room for two panes the workspace shows one at a time, under a row
+// of tabs; narrower still, the editor's fields go to one column.
+.stop-workspace {
+  @container stop-workspace (width < #{ui.breakpoint(stop-table-compact)}) {
+    &__table-heading {
+      grid-template-columns: minmax(0, 1fr) ui.size(control-touch);
+    }
+    &__table-labels {
+      display: block;
+      > span,
+      .stop-workspace__column-name {
+        display: none;
+      }
+    }
+    &__count {
+      color: ui.theme(text);
+      font-size: ui.fs(small);
+      font-weight: 600;
+    }
+    &__eta-label {
+      display: none;
+    }
+    &__row {
+      grid-template-columns: minmax(0, 1fr) ui.size(control-touch);
+    }
+    &__select {
+      grid-template-columns: auto minmax(0, 1fr);
+    }
+    &__schedule,
+    &__assignment-preview {
+      grid-column: 2;
+    }
+    &__row > &__forecast {
+      grid-column: 1;
+      grid-row: 2;
+      padding-inline: ui.pg(md);
+    }
+    &__order {
+      grid-column: 2;
+      grid-row: 1;
+    }
+  }
+
+  &__details {
+    container: stop-editor / inline-size;
+  }
+  @container stop-editor (width < #{ui.breakpoint(stop-editor-columns)}) {
+    &__fields {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: 'appointment' 'references' 'location' 'cargo' 'contact';
+    }
+    &__transfer-parties {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    &__transfer-parties > section + section {
+      padding-left: 0;
+      padding-top: ui.pg(md);
+      border-left: 0;
+      border-top: 1px solid ui.theme(border-subtle);
+    }
+  }
+  @container stop-editor (width < #{ui.breakpoint(stop-editor-fields)}) {
+    &__field-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+@container dispatch-workspace (width < #{ui.breakpoint(dispatch-workspace-panes)}) {
+  .stop-workspace {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .stop-workspace__mobile-tabs {
+    display: flex;
+    flex: none;
+    gap: ui.pg(xs);
+    overflow-x: auto;
+    padding: ui.pg(xs);
+    button {
+      flex: none;
+      white-space: nowrap;
+    }
+    button[aria-pressed='true'] {
+      --button-bg: #{ui.theme(action)};
+      --button-text: #{ui.theme(on-accent)};
+      --button-border: #{ui.theme(action)};
+      --button-hover-bg: #{ui.theme(action-hover)};
+      --button-hover-text: #{ui.theme(on-accent)};
+    }
+  }
+  .stop-workspace__main {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .stop-workspace__list {
+    max-block-size: none;
+    flex: 1;
+  }
+  .stop-workspace__working-area {
+    flex: 1;
+    margin: 0;
+  }
+  .stop-workspace__details:not(:has(.dispatch-switch__editor)) {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    > .stop-workspace__editor {
+      flex: none;
+      overflow: visible;
+      scrollbar-gutter: auto;
+    }
+  }
+  .stop-workspace .dispatch-details__aside {
+    flex: 1;
+    max-height: none;
+    margin: 0;
+  }
+  .stop-workspace:not([data-mobile-pane='stops']) {
+    .stop-workspace__table-heading,
+    .stop-workspace__list,
+    .stop-workspace__add {
+      display: none;
+    }
+  }
+  .stop-workspace[data-mobile-pane='stops'] .stop-workspace__working-area,
+  .stop-workspace[data-mobile-pane='stops'] .dispatch-details__aside,
+  .stop-workspace[data-mobile-pane='details'] .dispatch-details__aside,
+  .stop-workspace[data-mobile-pane='notes'] .stop-workspace__main,
+  .stop-workspace[data-mobile-pane='route'] .stop-workspace__main,
+  .stop-workspace[data-mobile-pane='notes'] .stop-workspace__route-support,
+  .stop-workspace[data-mobile-pane='route'] .stop-workspace__support {
+    display: none;
+  }
+}
+
+.stop-workspace__fields .stop-workspace__column > .stop-workspace__contact-card,
+.stop-workspace__fields .stop-workspace__column > .stop-workspace__appointment {
+  border-left: 1px solid ui.theme(border-subtle);
+  padding-left: ui.pg(md);
+}
+@container stop-editor (width < #{ui.breakpoint(stop-editor-columns)}) {
+  .stop-workspace__fields
+    .stop-workspace__column
+    > .stop-workspace__contact-card,
+  .stop-workspace__fields
+    .stop-workspace__column
+    > .stop-workspace__appointment {
+    border-left: 0;
+    padding-left: 0;
+  }
+}

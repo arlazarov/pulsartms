@@ -1,0 +1,6 @@
+@use '../../../base' as ui;
+
+// A row of the itinerary stands on four columns, so the words in the
+// heading line up with the values under them.
+$row-columns: ui.size(dispatch-stop-marker) minmax(0, 2.1fr) minmax(0, 1.3fr)
+  minmax(0, 1.2fr);

@@ -1,0 +1,137 @@
+@use '../../../base' as ui;
+
+// The pane the selected stop opens into, and the fields it is edited with.
+.stop-workspace {
+  &__working-area {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1 1 0;
+    margin-top: ui.pg(md);
+    overflow: hidden;
+  }
+
+  &__details:has(.dispatch-switch__editor) {
+    > .stop-workspace__editor {
+      display: none;
+    }
+    > .dispatch-details__resources {
+      flex: 1 1 0;
+      min-height: 0;
+      max-height: none;
+    }
+  }
+
+  &__route-support {
+    display: grid;
+    gap: ui.pg(md);
+    min-width: 0;
+  }
+
+  &__details {
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    min-width: 0;
+    min-block-size: 0;
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__editor {
+    display: grid;
+    gap: ui.pg(md);
+    padding: ui.pg(md) ui.pg(lg);
+    background: ui.theme(surface);
+    min-width: 0;
+    min-block-size: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+    align-content: start;
+    flex: 1 1 auto;
+  }
+
+  &__stop > &__forecast {
+    padding: 0 ui.pg(lg) ui.pg(md);
+  }
+
+  &__forecast:empty {
+    display: none;
+  }
+
+  &__forecast .stop-hours {
+    margin: 0;
+  }
+
+  &__legacy-cycle {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(sm);
+  }
+
+  &__fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: ui.pg(md);
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+    border: 0;
+  }
+
+  &__column {
+    display: contents;
+  }
+
+  &__fields {
+    align-items: start;
+    grid-template-areas:
+      'location appointment'
+      'location references'
+      'cargo contact';
+  }
+  &__appointment {
+    grid-area: appointment;
+  }
+  &__references-card {
+    grid-area: references;
+  }
+  &__location-editor {
+    grid-area: location;
+  }
+  &__contact-card {
+    grid-area: contact;
+  }
+  &__cargo-card {
+    grid-area: cargo;
+  }
+
+  &__fields .stop-workspace__column > section {
+    padding: ui.pg(sm) 0;
+    border: 0;
+    background: ui.theme(surface);
+
+    h3 {
+      margin: 0;
+      padding-bottom: ui.pg(sm);
+      border-bottom: 1px solid ui.theme(border-subtle);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: start;
+    gap: ui.pg(sm) ui.pg(lg);
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+  }
+
+  &__actions > .dispatch-details__execution:has(.stop-operation--inline) {
+    flex: 1 1 ui.size(dispatch-dialog-metric);
+  }
+}

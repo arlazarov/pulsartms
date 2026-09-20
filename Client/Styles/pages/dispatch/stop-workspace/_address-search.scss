@@ -1,0 +1,69 @@
+@use '../../../base' as ui;
+
+// Looking up an address while a stop is being written.
+.stop-workspace {
+  &__address-search {
+    position: relative;
+    display: grid;
+    gap: ui.pg(sm);
+    min-width: 0;
+  }
+
+  &__address-dropdown {
+    position: absolute;
+    inset-block-start: 100%;
+    inset-inline: 0;
+    z-index: ui.layer(dropdown);
+    max-block-size: min(40dvh, #{ui.size(address-suggestions)});
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: ui.pg(xs);
+    background: ui.theme(surface);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    box-shadow: ui.shadow(popup);
+  }
+
+  &__address-attribution {
+    padding: ui.pg(xs) ui.pg(sm);
+    border-top: 1px solid ui.theme(border-subtle);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    font-weight: 400;
+    white-space: nowrap;
+    text-align: end;
+  }
+
+  &__address-postal {
+    white-space: nowrap;
+  }
+
+  &__address-search [role='listbox'] {
+    display: grid;
+    gap: ui.pg(sm);
+  }
+
+  &__address-result[aria-selected='true'] {
+    background: ui.theme(selected);
+    border-color: ui.theme(selection-border);
+  }
+
+  &__search-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: ui.pg(sm);
+  }
+
+  &__address-result {
+    width: 100%;
+    flex-wrap: wrap;
+    white-space: normal;
+    text-align: left;
+
+    > span:first-of-type {
+      display: grid;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+}

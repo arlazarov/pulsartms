@@ -1,0 +1,44 @@
+@use '../../../base' as ui;
+
+// The heading over the itinerary, with the count and the control that adds
+// a stop.
+.stop-workspace {
+  &__table-heading {
+    flex-shrink: 0;
+    align-items: center;
+    background: ui.theme(surface-soft);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm) ui.radius(sm) 0 0;
+    font-size: ui.fs(small);
+    font-weight: 600;
+    color: ui.theme(text-secondary);
+  }
+  &__table-labels {
+    cursor: default;
+    align-items: center;
+
+    h2 {
+      flex-wrap: wrap;
+      font-size: ui.fs(small);
+      gap: ui.pg(xs) ui.pg(sm);
+    }
+  }
+  &__count {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(caption);
+    font-weight: 400;
+  }
+  &__add-button {
+    @include ui.icon-control;
+    & {
+      color: ui.theme(link);
+    }
+  }
+  &__row > &__forecast {
+    padding-block: ui.pg(sm);
+    font-size: ui.fs(small);
+  }
+  &__row > &__forecast {
+    --stop-hours-road-size: #{ui.fs(small)};
+  }
+}

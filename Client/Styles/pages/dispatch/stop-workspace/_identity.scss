@@ -1,0 +1,120 @@
+@use '../../../base' as ui;
+
+// What a row says a stop is: its number, the job done there, and the truck
+// and trailer assigned to it.
+.stop-workspace {
+  &__identity,
+  &__schedule,
+  &__assignment-preview {
+    display: grid;
+    align-content: start;
+    gap: ui.pg(xs);
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: ui.fs(small);
+    color: ui.theme(text-secondary);
+  }
+
+  &__identity strong {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
+  }
+
+  &__assignment-preview {
+    strong {
+      color: ui.theme(text);
+      font-weight: 600;
+    }
+  }
+
+  &__kind,
+  &__heading,
+  &__equipment {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+  }
+
+  &__heading {
+    flex-direction: row;
+    align-items: center;
+    gap: ui.pg(xs) ui.pg(sm);
+  }
+
+  &__heading > strong {
+    order: -1;
+  }
+
+  &__kind {
+    font-weight: 600;
+    gap: ui.pg(xs);
+    svg {
+      width: ui.fs(body);
+      height: ui.fs(body);
+      flex-shrink: 0;
+    }
+    &.is-pickup {
+      color: ui.theme(pickup);
+    }
+    &.is-delivery {
+      color: ui.theme(delivery);
+    }
+    &.is-transfer {
+      color: ui.theme(text-secondary);
+    }
+  }
+
+  &__equipment {
+    column-gap: ui.pg(md);
+    row-gap: ui.pg(xs);
+  }
+
+  &__label {
+    color: ui.theme(text-muted);
+  }
+
+  &__badge {
+    padding: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface-soft);
+    font-size: ui.fs(caption);
+    font-weight: 400;
+    color: ui.theme(text-secondary);
+  }
+
+  &__badge--complete {
+    color: ui.theme(success-text);
+    background: ui.theme(success-surface);
+  }
+
+  &__order {
+    display: grid;
+    grid-template-columns: auto;
+    align-items: center;
+    gap: ui.pg(xs);
+    padding-top: ui.pg(sm);
+  }
+
+  &__order button {
+    grid-column: 1;
+    @include ui.icon-control;
+  }
+
+  &__drag {
+    padding: ui.pg(xs);
+    color: ui.theme(text-muted);
+    cursor: grab;
+    font-size: ui.fs(lead);
+  }
+
+  &__drag[draggable='false'] {
+    visibility: hidden;
+  }
+
+  &__drag[aria-pressed='true'] {
+    color: ui.theme(link);
+    background: ui.theme(selected);
+  }
+}

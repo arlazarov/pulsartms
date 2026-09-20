@@ -1,0 +1,103 @@
+@use '../../../base' as ui;
+
+// Correcting a stop the importer got wrong, in place on the load page.
+.stop-correction {
+  display: grid;
+  gap: ui.pg(sm);
+  flex: 1 1 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+
+  &__label {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(xs);
+    font-weight: 600;
+    color: ui.theme(text);
+
+    svg {
+      color: ui.theme(link);
+      flex-shrink: 0;
+    }
+  }
+
+  fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+  label {
+    display: grid;
+    gap: ui.pg(xs);
+    min-width: 0;
+  }
+  &__resource-field {
+    min-width: 0;
+  }
+  &__resource-field,
+  &__status-field {
+    display: grid;
+    gap: ui.pg(xs);
+    align-content: start;
+  }
+  &__status {
+    @include ui.button-control;
+    &[aria-pressed='true'] {
+      --button-bg: #{ui.theme(action)};
+      --button-text: #{ui.theme(on-accent)};
+      --button-border: #{ui.theme(action)};
+      --button-hover-bg: #{ui.theme(action)};
+      --button-hover-text: #{ui.theme(on-accent)};
+      --button-hover-border: #{ui.theme(action)};
+    }
+  }
+  input:not([type='checkbox']),
+  select {
+    width: 100%;
+    @include ui.input-control;
+  }
+  input[type='checkbox'] {
+    @include ui.checkbox-control;
+  }
+  p {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+
+  &__fields {
+    display: grid;
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(100%, ui.size(dispatch-metric)), 1fr)
+    );
+    gap: ui.pg(sm);
+  }
+
+  &__fields > label {
+    padding: 0;
+  }
+
+  &__scope {
+    display: grid;
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(100%, ui.size(dispatch-dialog-metric)), 1fr)
+    );
+    gap: ui.pg(sm);
+    margin-block: ui.pg(sm);
+    padding-block-start: ui.pg(sm);
+    border-block-start: 1px solid ui.theme(border-subtle);
+  }
+
+  &__actions,
+  label.stop-correction__toggle {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(sm);
+    margin-block: ui.pg(sm);
+  }
+}

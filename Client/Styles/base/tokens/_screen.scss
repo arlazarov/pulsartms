@@ -42,7 +42,7 @@ $screen-places: (
   stop-editor-fields: 22rem,
 
   // The fuel plan editor.
-  fuel-editor-columns: 1000px,
+  fuel-editor-columns: 1000px
 );
 
 $breakpoints: map.merge($screen-scale, $screen-places);

@@ -1,0 +1,235 @@
+@use '../../../base' as ui;
+
+// What a stop records once it has happened: the facts, the resources it
+// used, and what was written down.
+.stop-workspace {
+  &__field-grid,
+  &__resources,
+  &__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: ui.pg(md);
+    min-width: 0;
+  }
+
+  &__full {
+    grid-column: 1 / -1;
+  }
+
+  &__resources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(sm) ui.pg(lg);
+
+    > div {
+      display: flex;
+      align-items: baseline;
+      gap: ui.pg(sm);
+      max-width: 100%;
+    }
+  }
+
+  &__recorded {
+    display: grid;
+    gap: ui.pg(md);
+    max-width: 64rem;
+  }
+
+  &__recorded &__facts {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+    gap: ui.pg(sm) ui.pg(lg);
+
+    dt {
+      display: flex;
+      align-items: center;
+      gap: ui.pg(xs);
+
+      svg {
+        color: ui.theme(link);
+        flex-shrink: 0;
+      }
+    }
+  }
+
+  &__instructions {
+    display: grid;
+    gap: ui.pg(xs);
+    max-width: 90ch;
+    overflow-wrap: anywhere;
+  }
+
+  &__add {
+    max-block-size: 35%;
+    overflow-y: auto;
+    display: grid;
+    gap: ui.pg(sm);
+    padding: ui.pg(md) ui.pg(lg);
+    background: ui.theme(surface-soft);
+    border-bottom: 1px solid ui.theme(border-subtle);
+    overflow-wrap: anywhere;
+    font-size: ui.fs(small);
+  }
+
+  &__add-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+  }
+
+  &__appointment-times {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+  }
+
+  label {
+    display: grid;
+    gap: ui.pg(xs);
+    min-width: 0;
+    font-size: ui.fs(small);
+    color: ui.theme(text-secondary);
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    min-width: 0;
+    @include ui.input-control;
+  }
+
+  textarea {
+    height: auto;
+    resize: vertical;
+  }
+
+  &__section,
+  &__assignment,
+  &__contact,
+  &__location-editor,
+  &__cargo {
+    display: grid;
+    gap: ui.pg(md);
+    padding-top: ui.pg(md);
+    border-top: 1px solid ui.theme(border-subtle);
+    min-width: 0;
+  }
+
+  &__address {
+    display: grid;
+    gap: ui.pg(xs);
+    overflow-wrap: anywhere;
+  }
+
+  &__recorded,
+  &__instructions {
+    display: grid;
+    gap: ui.pg(md);
+    min-width: 0;
+  }
+
+  &__instructions p {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  &__transfer {
+    display: grid;
+    gap: ui.pg(md);
+    padding: ui.pg(md);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-soft);
+    min-width: 0;
+
+    h4 {
+      margin: 0 0 ui.pg(sm);
+      font-size: ui.fs(body);
+      font-weight: 600;
+    }
+  }
+
+  &__transfer-parties {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: ui.pg(md);
+
+    > section {
+      min-width: 0;
+    }
+
+    > section + section {
+      border-left: 1px solid ui.theme(border-subtle);
+      padding-left: ui.pg(md);
+    }
+  }
+
+  &__transfer &__resources {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  &__transfer > button {
+    justify-self: start;
+  }
+
+  &__assignment:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  &__location-editor {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  &__resources,
+  &__facts {
+    margin: 0;
+
+    > div {
+      display: grid;
+      gap: ui.pg(xs);
+      min-width: 0;
+    }
+
+    dt {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+
+    dd {
+      margin: 0;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__hint,
+  &__lock {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    overflow-wrap: anywhere;
+  }
+
+  &__assignment &__resources > div {
+    display: flex;
+    align-items: baseline;
+    gap: ui.pg(sm);
+  }
+
+  > .stop-workspace__hint,
+  > .stop-workspace__empty,
+  > .stop-workspace__error,
+  &__details > &__empty {
+    padding: ui.pg(md) ui.pg(lg);
+  }
+
+  &__error {
+    color: ui.theme(danger-text);
+    overflow-wrap: anywhere;
+  }
+
+  &__remove {
+    justify-content: flex-end;
+    font-size: ui.fs(small);
+  }
+}

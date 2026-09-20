@@ -8,7 +8,7 @@ const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
 
 test('popup secondary cycle warnings span both columns without changing the inline arrival status', () => {
   const css = compileString(
-    "@use 'shared/driver-status'; @use 'pages/fleet-map/popup-content';",
+    "@use 'shared/driver-status'; @use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';",
     { loadPaths },
   ).css;
   assert.match(css, /\.stop-hours__arrival\s*\{\s*display: contents;/);

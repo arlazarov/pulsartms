@@ -4,7 +4,7 @@ import { compileString } from 'sass';
 import { fileURLToPath } from 'node:url';
 
 const css = compileString(
-  "@use 'pages/fleet-map/details'; @use 'pages/fleet-map/popup-content';",
+  "@use 'pages/fleet-map/details'; @use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';",
   {
     loadPaths: [fileURLToPath(new URL('../../Styles/', import.meta.url))],
   },

@@ -1,0 +1,141 @@
+@use '../../../base' as ui;
+@use 'grid';
+
+// The itinerary down the left: one row per stop, in an order that can be
+// dragged.
+.stop-workspace {
+  &__section-heading,
+  &__remove {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: ui.pg(md);
+  }
+
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: block;
+    max-block-size: min(30%, ui.size(dispatch-stop-list-compact));
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: 0 0 ui.radius(sm) ui.radius(sm);
+    min-block-size: 0;
+    flex: 0 1 auto;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+  }
+
+  &__stop {
+    position: relative;
+    min-width: 0;
+    border-bottom: 1px solid ui.theme(border-subtle);
+    background: ui.theme(surface);
+  }
+
+  &__stop.is-dragging {
+    opacity: 0.55;
+  }
+
+  &__stop.is-drop-before,
+  &__stop.is-drop-after {
+    background: ui.theme(selected);
+  }
+
+  &__drop-marker {
+    position: absolute;
+    inset-inline: 0;
+    max-width: 100%;
+    z-index: ui.layer(sticky);
+    pointer-events: none;
+    border-color: ui.theme(link);
+    color: ui.theme(link);
+    font-size: ui.fs(caption);
+    font-weight: 600;
+    text-align: right;
+    padding-inline: ui.pg(sm);
+    line-height: 1.2;
+  }
+
+  &__stop.is-drop-before > &__drop-marker {
+    top: 0;
+    border-top: 3px solid;
+  }
+
+  &__stop.is-drop-after > &__drop-marker {
+    bottom: 0;
+    border-bottom: 3px solid;
+  }
+
+  &__stop.is-selected {
+    background: ui.theme(selected);
+    box-shadow: inset 3px 0 ui.theme(action);
+  }
+
+  &__table-heading,
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(0, 4.6fr) minmax(0, 0.65fr) ui.size(
+        control-compact
+      );
+    align-items: start;
+    min-width: 0;
+    gap: ui.pg(sm);
+    padding-right: 0;
+  }
+
+  &__table-labels,
+  &__select {
+    display: grid;
+    grid-template-columns: grid.$row-columns;
+    align-items: start;
+    gap: ui.pg(sm);
+    min-width: 0;
+    min-height: ui.size(control-touch);
+    padding: ui.pg(sm);
+    border: 0;
+    border-radius: ui.radius(sm);
+    background: transparent;
+    color: ui.theme(text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid ui.theme(selection-border);
+      outline-offset: -2px;
+    }
+
+    &:hover {
+      background: ui.theme(surface-soft);
+    }
+  }
+
+  &__number {
+    display: grid;
+    place-items: center;
+    width: ui.size(dispatch-stop-marker);
+    height: ui.size(dispatch-stop-marker);
+    border-radius: ui.radius(pill);
+    background: ui.theme(selected);
+    color: ui.theme(link);
+    font-size: ui.fs(small);
+    font-weight: 600;
+  }
+
+  .is-selected &__number {
+    background: ui.theme(action);
+    color: ui.theme(on-accent);
+  }
+
+  .is-completed:not(.is-selected) &__number {
+    background: ui.theme(surface-soft);
+    color: ui.theme(text-secondary);
+  }
+
+  .is-selected &__select:hover {
+    background: ui.theme(selected);
+  }
+}

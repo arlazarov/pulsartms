@@ -1,0 +1,259 @@
+@use '../../../base' as ui;
+
+// The card a stop opens on the map: where it is, what is planned there, and
+// what the forecast says about it.
+.fleet-route-popup {
+  display: grid;
+  gap: ui.pg(md);
+  font-size: ui.fs(label);
+  line-height: 1.5;
+  // A long address may break inside a word because nothing else will fit.
+  // "anywhere" broke everything else too - "Drop Off" came apart one letter
+  // per line - so words break only where they must, and the facts below
+  // never break at all.
+  overflow-wrap: break-word;
+  // The company and the reference stand on lines of their own. This said
+  // "every bold word on the card", which reached into the forecast placed
+  // here and had to be taken back again a rule later.
+  &__company,
+  &__reference {
+    display: block;
+  }
+  .arrival-estimate {
+    row-gap: 0;
+  }
+  .fleet-route-popup__value--cycle {
+    display: contents;
+  }
+  &__arrival {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 ui.pg(sm);
+  }
+  &__cycle-status {
+    grid-column: 1 / -1;
+  }
+  &__location,
+  &__information {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  &__eta {
+    &--eta {
+      color: ui.theme(link);
+    }
+    &--success {
+      color: ui.theme(success-text);
+    }
+    &--danger {
+      color: ui.theme(danger-text);
+    }
+  }
+  &--stop {
+    font-size: ui.fs(body);
+  }
+  &__kind,
+  &__label {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  &__kind {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(micro) ui.pg(sm);
+    // Blue is what you can click. This line only says where the stop sits in
+    // the load, and the card keeps its own secondary lines muted.
+    color: ui.theme(text-secondary);
+    margin-bottom: ui.pg(micro);
+    padding-bottom: ui.pg(micro);
+    border-bottom: 1px solid ui.theme(border-subtle);
+    &:empty {
+      display: none;
+    }
+  }
+  // The stop's own heading: its place in the run, what happens there, and
+  // where it stands - read before any of the detail below it.
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-width: 0;
+    margin-bottom: ui.pg(xs);
+  }
+  &__number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    inline-size: ui.size(popup-stop-badge);
+    block-size: ui.size(popup-stop-badge);
+    border: 2px solid ui.theme(link);
+    border-radius: 50%;
+    background: ui.theme(link);
+    color: ui.theme(on-accent);
+    font-size: ui.fs(small);
+    font-variant-numeric: tabular-nums;
+    // A stop behind the truck is outlined, not filled: it no longer asks
+    // for anything.
+    &.is-done {
+      background: transparent;
+      color: ui.theme(link);
+    }
+  }
+  &__job {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    // This is where "Drop Off" came apart one letter per line, between the
+    // badge and the state chip that share the row with it.
+    overflow-wrap: break-word;
+  }
+  &__state {
+    margin-inline-start: auto;
+    flex-shrink: 0;
+    padding: ui.pg(micro) ui.pg(xs);
+    border-radius: ui.radius(sm);
+    font-size: ui.fs(small);
+    white-space: nowrap;
+    background: ui.theme(surface-soft);
+    color: ui.theme(text-secondary);
+    &--success {
+      background: ui.theme(success-surface);
+      color: ui.theme(success-text);
+    }
+    &--danger {
+      background: ui.theme(danger-surface);
+      color: ui.theme(danger-text);
+    }
+  }
+  &__visit {
+    color: ui.theme(text-secondary);
+    background: ui.theme(surface-soft);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    padding-inline: ui.pg(xs);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  // The load and the order are separate elements now that the words between
+  // them are gone. Without a gap they read as one long number.
+  .fleet-map-route-info__load {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs);
+  }
+  .fleet-map-route-info__label {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  &__section-start {
+    padding-top: ui.pg(micro);
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+  &__company {
+    font-size: ui.fs(body);
+  }
+  &__address {
+    color: ui.theme(text-secondary);
+  }
+  &__address-line {
+    display: block;
+  }
+  &__reference {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 ui.pg(sm);
+    font-variant-numeric: tabular-nums;
+  }
+  &__facts {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: ui.pg(sm);
+    margin: 0;
+  }
+  &__field {
+    min-width: 0;
+  }
+  // Every fact is the same two cells sharing one label column: the
+  // appointment used to put its label on a line of its own, which read as a
+  // different kind of thing from the ETA directly under it.
+  &__appointment,
+  &__eta.fleet-route-popup__field,
+  &__distance,
+  &__fuel {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: baseline;
+  }
+  &__value {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 ui.pg(sm);
+    margin: 0;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  &__status {
+    font-size: ui.fs(small);
+    font-weight: 400;
+  }
+  &__details-link {
+    display: block;
+    margin-top: ui.pg(xs);
+    padding-top: ui.pg(xs);
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+}
+
+@include ui.above(map-mobile) {
+  .fleet-route-popup,
+  .fleet-station-popup:not(.fleet-station-popup--planned) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: ui.pg(lg);
+    align-items: start;
+  }
+  .fleet-route-popup__information {
+    border-left: 1px solid ui.theme(border-subtle);
+    padding-left: ui.pg(lg);
+  }
+  .fleet-station-popup:not(.fleet-station-popup--planned) {
+    // Named, because the halves are elements now and a child of the card is
+    // not the same thing as a part of it.
+    .fleet-station-popup__title,
+    .fleet-station-popup__address,
+    .fleet-station-popup__copy-status,
+    .fleet-station-popup__plan-label,
+    .fleet-station-popup__distance,
+    .fleet-station-popup__purchase {
+      grid-column: 1;
+    }
+    // The days stand under the prices they are about, not under the address.
+    .fleet-station-popup__comparison {
+      grid-column: 2;
+      grid-row: 4;
+      margin: 0;
+      padding-left: ui.pg(lg);
+      border-left: 1px solid ui.theme(border-subtle);
+    }
+    .fleet-station-popup__prices {
+      grid-column: 2;
+      grid-row: 1 / span 3;
+      margin: 0;
+      padding: 0 0 0 ui.pg(lg);
+      border-top: 0;
+      border-left: 1px solid ui.theme(border-subtle);
+      gap: ui.pg(xs) 0;
+    }
+  }
+}
+
+.fleet-map-inspector__native {
+  container: map-inspector / inline-size;
+}

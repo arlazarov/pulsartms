@@ -1,0 +1,35 @@
+@use '../../../base' as ui;
+
+// The label the map draws beside a stop, measured off-screen before it is
+// painted onto the canvas.
+.fleet-map-stop-label-style {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  color: ui.theme(text);
+  background: ui.theme(surface);
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(sm);
+  padding: ui.pg(sm) ui.pg(md);
+  font-family: Arial, sans-serif;
+  font-size: ui.fs(body);
+  font-weight: 400;
+  &--pickup {
+    color: ui.theme(pickup);
+  }
+  &--delivery {
+    color: ui.theme(delivery);
+  }
+  &--eta {
+    color: ui.theme(link);
+  }
+  &--success {
+    color: ui.theme(success-text);
+  }
+  &--danger {
+    color: ui.theme(danger-text);
+  }
+  &--muted {
+    color: ui.theme(text-secondary);
+  }
+}
