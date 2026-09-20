@@ -1,5 +1,6 @@
 // @ts-check
 import { futureRouteColor } from '../rendering/routePalette.js';
+import { markSharedRoads } from './sharedRoads.js';
 
 /** @typedef {{loadId: string | undefined, executionLegId?: string | null, loadNumber: number, index: number}} StopSelection */
 /** @typedef {{stop: import('../contracts.d.ts').NextLoadStop, numbers: Set<number>, members: StopSelection[], color: import('../rendering/routePalette.js').RouteColor}} StopGroup */
@@ -58,7 +59,7 @@ export function nextLoadDisplay(loads) {
       (load.stopCount ?? load.stops.length) - stops.length,
     );
   }
-  return { lines, groups };
+  return { lines: markSharedRoads(lines), groups };
 }
 
 /** @param {string | number} id

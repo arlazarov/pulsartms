@@ -115,12 +115,13 @@ export function createNextLoadsLayer(
       previous = signature;
       const display = nextLoadDisplay(loads);
       renderedLines = display.lines.map(
-        ({ points, role, loadId, routeColor, routeDepth }) => {
+        ({ points, role, loadId, routeColor, routeDepth, routeShared }) => {
           const line = new Polyline({
             map,
             routeRole: role,
             routeColor,
             routeDepth,
+            routeShared,
             strokeWeight: 2,
             onHover: info => hover(loadId, !!info?.object),
           });

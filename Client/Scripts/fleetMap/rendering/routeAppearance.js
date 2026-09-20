@@ -37,10 +37,15 @@ export function routeLayers(
     line.routeRole === 'traveled-empty' ||
     (dashed && line.routeMuted === true);
   const extensions = dashed ? routeDashExtensions : undefined;
+  // A road several loads share is not any one of their colours. Pointing at
+  // one of them lifts its own colour back out of the shared stretch.
+  const sharedRoad = line.routeShared === true && !line.routeSelected;
   const color =
     line.routeRole === 'current'
       ? colors.current
-      : line.routeColor || colors[line.routeRole] || colors.current;
+      : sharedRoad
+        ? emptyColor
+        : line.routeColor || colors[line.routeRole] || colors.current;
   const colorKey = color.join(',');
   if (
     line.cachedLayer &&
@@ -53,6 +58,7 @@ export function routeLayers(
     line.cachedHover === line.onHover &&
     line.cachedMuted === muted &&
     line.cachedSelected === line.routeSelected &&
+    line.cachedShared === line.routeShared &&
     line.cachedDepth === line.routeDepth &&
     line.cachedVisible === (line.visible !== false)
   )
@@ -66,6 +72,7 @@ export function routeLayers(
   line.cachedHover = line.onHover;
   line.cachedMuted = muted;
   line.cachedSelected = line.routeSelected;
+  line.cachedShared = line.routeShared;
   line.cachedDepth = line.routeDepth;
   line.cachedVisible = line.visible !== false;
   const shared = {
