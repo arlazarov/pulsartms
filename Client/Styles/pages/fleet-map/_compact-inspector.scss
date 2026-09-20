@@ -2,6 +2,11 @@
 
 .fleet-map-inspector[data-inspector-mode='truck'] {
   width: min(100%, #{ui.size(map-compact-inspector)});
+  // Everything on this card - its head and its body - changes shape at one
+  // width, and it is the card's own. The head used to read the window
+  // instead, in a stylesheet of its own, so the two halves of the same card
+  // could be told different things about the same moment.
+  container: map-truck-card / inline-size;
   font-size: ui.fs(body);
   line-height: 1.4;
   --arrival-font-size: #{ui.fs(body)};
@@ -236,7 +241,7 @@
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);
   }
-  @include ui.above(map-mobile) {
+  @container map-truck-card (width >= #{ui.breakpoint(map-compact-columns)}) {
     .fleet-map-inspector__header {
       gap: ui.pg(sm);
     }
@@ -452,10 +457,15 @@
     }
   }
   // Too narrow for two columns: the stop, then the facts under a rule.
-  @container map-truck-inspection (width < #{ui.breakpoint(map-compact-columns)}) {
+  // Said once, and to the card itself - a phone was told the same thing a
+  // second time, by its screen width, and the two could disagree: a window
+  // 700px wide has room for both columns and was stacked anyway.
+  @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
     .fleet-map-route-info {
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: none;
+      row-gap: ui.pg(xs);
+      padding-block: ui.pg(xs);
       > .fleet-map-route-info__visit,
       > .fleet-map-route-info__distances,
       > .fleet-map-route-info__timing,
@@ -469,10 +479,12 @@
         border-inline-end: 0;
         border-block-end: 1px solid ui.theme(border-subtle);
       }
+      .fleet-map-route-info__appointment > strong {
+        overflow-wrap: normal;
+      }
     }
   }
-  @include ui.below(map-mobile) {
-    container: map-truck-header / inline-size;
+  @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
     .fleet-map-inspector__desktop-title {
       display: block;
     }

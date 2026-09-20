@@ -151,6 +151,9 @@
   @include ui.below(map-route-columns) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    // Narrow: the cycle reads smaller, and a time does not break in two.
+    --stop-hours-cycle-size: #{ui.fs(caption)};
+    --stop-hours-value-white-space: nowrap;
     &__metric {
       grid-row: 1;
       min-width: 0;
@@ -171,9 +174,6 @@
       grid-column: 2;
       grid-row: 3;
     }
-    // Narrow: the cycle reads smaller, and a time does not break in two.
-    --stop-hours-cycle-size: #{ui.fs(caption)};
-    --stop-hours-value-white-space: nowrap;
     &__metric,
     > .fleet-map-route-info__load,
     &__next,
@@ -191,7 +191,7 @@
   }
 }
 
-@container map-truck-inspection (width < #{ui.breakpoint(map-info-stacked)}) {
+@container map-truck-card (width < #{ui.breakpoint(map-info-stacked)}) {
   .fleet-map-route-info {
     > .fleet-map-route-info__load,
     > .fleet-map-route-info__next,

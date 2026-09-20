@@ -11,7 +11,6 @@ const compile = name => compileString(`@use '${name}';`, { loadPaths }).css;
 const card =
   compile('pages/fleet-map/compact-inspector') +
   compile('pages/fleet-map/truck-info');
-const phone = compile('pages/fleet-map/mobile-inspector');
 const markup = readFileSync(
   new URL('../../Pages/FleetMap/FleetMap.razor', import.meta.url),
   'utf8',
@@ -187,22 +186,26 @@ test('the stop keeps its children in its own column and fits four lines', () => 
   assert.match(card, /__street:not\(:last-child\)::after\s*\{\s*content: ",";/);
 });
 
-test('narrow cards and phones stack the stop over the facts', () => {
+// A card too narrow for two columns stacks - and that is decided once, by
+// the card's own width. A phone used to be told the same thing a second
+// time by its screen width, in a stylesheet of its own, and the two could
+// disagree: a 700px window has room for both columns and stacked anyway.
+test('a card too narrow for two columns stacks, wherever it stands', () => {
   const narrow = card.slice(
-    card.indexOf('@container map-truck-inspection (width < 40rem)'),
+    card.indexOf('@container map-truck-card (width < 40rem)'),
   );
-  for (const css of [narrow, phone]) {
-    assert.match(
-      css,
-      /\.fleet-map-route-info\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);[^}]*grid-template-rows: none;/,
-    );
-    assert.match(
-      css,
-      /__visit\s*\{[^}]*border-inline-end: 0;[^}]*border-block-end: 1px solid/,
-    );
-  }
-  // The phone no longer lays the vehicle out as a grid of towers.
-  assert.doesNotMatch(phone, /fleet-map-truck-info/);
+  assert.match(
+    narrow,
+    /\.fleet-map-route-info\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);[^}]*grid-template-rows: none;/,
+  );
+  assert.match(
+    narrow,
+    /__visit\s*\{[^}]*border-inline-end: 0;[^}]*border-block-end: 1px solid/,
+  );
+  assert.match(
+    narrow,
+    /__appointment > strong\s*\{[^}]*overflow-wrap: normal;/,
+  );
 });
 
 test('the vehicle is one line: every reading the same shape, place at the end', () => {

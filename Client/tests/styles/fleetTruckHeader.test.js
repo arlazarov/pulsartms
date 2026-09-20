@@ -69,10 +69,13 @@ test('truck inspector uses one disclosure control on every screen size', () => {
     compact,
     /.fleet-map-mobile-summary__toggle\s*\{\s*display: inline-flex;/,
   );
+  // Narrow is narrow wherever the card stands: it reads its own width,
+  // not the window's.
   assert.match(
     compact,
-    /@media \(width < 768px\)[\s\S]*\.fleet-map-mobile-summary__toggle\s*\{\s*display: inline-flex;/,
+    /@container map-truck-card \(width < 40rem\)[\s\S]*\.fleet-map-mobile-summary__toggle\s*\{\s*display: inline-flex;/,
   );
+  assert.doesNotMatch(compact, /@media \(width < 768px\)/);
   assert.doesNotMatch(css, /fleet-map-reveal/);
 });
 
@@ -301,7 +304,9 @@ test('intermediate stop distance is inline with the visit heading instead of ano
 });
 
 test('mobile keeps one compact row until Details is selected', () => {
-  const mobile = compact.slice(compact.indexOf('@media (width < 768px)'));
+  const narrow = compact.slice(
+    compact.indexOf('@container map-truck-card (width < 40rem)'),
+  );
   // On a phone the top line is the unit and the controls; the distance
   // rides the clocks line below with the load it belongs to.
   for (const [selector, column] of [
@@ -309,17 +314,17 @@ test('mobile keeps one compact row until Details is selected', () => {
     ['fleet-map-inspector__controls', 2],
   ])
     assert.match(
-      mobile,
+      narrow,
       new RegExp(
         `${selector}\\s*\\{\\s*grid-column: ${column};\\s*grid-row: 1;`,
       ),
     );
   assert.match(
-    mobile,
+    narrow,
     /\.is-mobile-collapsed[\s\S]*\.fleet-map-info-content\s*\{\s*display: none;/,
   );
   assert.match(
-    mobile,
+    narrow,
     /\.fleet-map-inspector__desktop-title\s*\{\s*display: block;/,
   );
 });
@@ -329,7 +334,9 @@ test('next-stop distance rides the clocks line at every width', () => {
     compact,
     /\.fleet-map-mobile-summary__remaining\s*\{\s*display: flex;/,
   );
-  const mobile = compact.slice(compact.indexOf('@media (width < 768px)'));
+  const narrow = compact.slice(
+    compact.indexOf('@container map-truck-card (width < 40rem)'),
+  );
   // The load leads the clocks line rather than sitting in a chip of its
   // own, and its number is labelled at every width.
   assert.doesNotMatch(compact, /__remaining\s*\{[^}]*margin-inline-start/);
@@ -337,15 +344,15 @@ test('next-stop distance rides the clocks line at every width', () => {
   // of a grid, which does nothing: the three stayed abreast and the clocks
   // folded into a tower.
   assert.match(
-    mobile,
+    narrow,
     /\.fleet-map-inspector__hours\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/,
   );
   assert.doesNotMatch(compact, /flex-basis: 100%;\s*min-inline-size: 0;/);
   assert.match(compact, /__label\s*\{\s*display: inline;/);
   assert.doesNotMatch(compact, /__label\s*\{\s*display: none;/);
-  assert.doesNotMatch(mobile, /is-mobile-collapsed[^{}]*__remaining/);
+  assert.doesNotMatch(narrow, /is-mobile-collapsed[^{}]*__remaining/);
   // Opening the card must not move it: no width re-columns the header.
-  assert.doesNotMatch(mobile, /is-mobile-expanded/);
+  assert.doesNotMatch(narrow, /is-mobile-expanded/);
 });
 
 test('truck metadata stays aligned and disclosure does not restyle the primary summary', () => {
