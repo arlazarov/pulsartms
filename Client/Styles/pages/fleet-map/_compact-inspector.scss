@@ -179,18 +179,47 @@
       background: ui.theme(action);
     }
   }
+  // The vehicle reads as one line: what it is doing, then where it is.
   .fleet-map-truck-info {
     display: flex;
-    align-items: flex-start;
-    gap: ui.pg(sm) ui.pg(md);
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(md);
     min-height: 0;
     padding: ui.pg(xs) ui.pg(md);
+    &__kind {
+      color: ui.theme(text-muted);
+      font-size: ui.fs(small);
+    }
     &__telemetry {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, max-content));
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: ui.pg(xs) ui.pg(md);
       padding: 0;
       border: 0;
       --fuel-reading-icon-size: #{ui.size(telemetry-icon)};
+    }
+    // The icons repeated what the words already say on this line.
+    &__reading > small svg,
+    &__telemetry svg {
+      display: none;
+    }
+    &__reading {
+      display: flex;
+      align-items: baseline;
+      gap: ui.pg(xs);
+      > small {
+        color: ui.theme(text-secondary);
+        font-size: ui.fs(small);
+      }
+    }
+    &__location {
+      margin-inline-start: auto;
+      display: flex;
+      align-items: baseline;
+      gap: ui.pg(xs);
+      white-space: nowrap;
+      min-width: 0;
     }
     &__outside {
       display: grid;

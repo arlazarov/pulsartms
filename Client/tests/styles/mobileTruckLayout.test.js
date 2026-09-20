@@ -8,11 +8,12 @@ const compile = name => compileString(`@use '${name}';`, { loadPaths }).css;
 const mobile = compile('pages/fleet-map/mobile-inspector');
 const header = compile('pages/fleet-map/compact-inspector');
 
-test('desktop temperature shares the four-column telemetry row', () => {
-  assert.match(
-    header,
-    /__telemetry\s*\{[^}]*repeat\(4, minmax\(0, max-content\)\)/,
-  );
+test('desktop vehicle reads as one line with its place at the end', () => {
+  // The four readings and the address share a line; the icons are off it,
+  // because the words beside them already said the same thing.
+  assert.match(header, /__telemetry\s*\{[^}]*display: flex;/);
+  assert.match(header, /__location\s*\{[^}]*margin-inline-start: auto;/);
+  assert.match(header, /__kind\s*\{[^}]*color: var\(--ui-text-muted\);/);
   const outside = header.match(/__outside\s*\{([^}]*)\}/)?.[1];
   assert.match(outside, /display: grid;/);
   assert.doesNotMatch(outside, /grid-column: 1 \/ -1|padding-top:/);

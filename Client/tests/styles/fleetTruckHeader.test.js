@@ -22,8 +22,10 @@ test('supporting truck values have semantic contrast without another font size o
 });
 
 test('compact truck inspection retains content-sized telemetry and HOS', () => {
-  assert.doesNotMatch(compact, /__reading[^{}]*\{[^}]*display: none/);
-  assert.match(compact, /__telemetry\s*\{[^}]*display: grid;/);
+  // Only the icons the words repeat are hidden on the vehicle line; a
+  // reading itself is never dropped.
+  assert.doesNotMatch(compact, /__reading\s*\{[^}]*display: none/);
+  assert.match(compact, /__telemetry\s*\{[^}]*display: flex;/);
   assert.match(
     compact,
     /width: min\(100%,\s*var\(--size-map-compact-inspector\)\);/,
@@ -38,7 +40,9 @@ test('compact truck inspection retains content-sized telemetry and HOS', () => {
     /__metric > \.fleet-map-route-info__secondary[^{}]*\{[^}]*display: none;/,
   );
   const telemetry = compact.match(/__telemetry\s*\{([^}]*)\}/)?.[1];
-  assert.match(telemetry, /repeat\(4, minmax\(0, max-content\)\)/);
+  // The vehicle's readings sit on one line and wrap only if they must.
+  assert.match(telemetry, /display: flex;/);
+  assert.match(telemetry, /flex-wrap: wrap;/);
   // The clocks take the header's own row, full width, under the identity.
   assert.match(
     compact,
@@ -557,7 +561,7 @@ test('truck metadata stays aligned and disclosure does not restyle the primary s
   assert.match(compact, /__trailer \+ [^{]*__driver::before\s*\{\s*content:/);
   assert.match(
     compact,
-    /\.fleet-map-truck-info\s*\{[^}]*align-items: flex-start;/,
+    /\.fleet-map-truck-info\s*\{[^}]*align-items: baseline;/,
   );
   assert.doesNotMatch(compact, /__duty/);
 });

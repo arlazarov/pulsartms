@@ -395,7 +395,11 @@
     @if (SelectedTruck is { } truck)
     {
         <div id="fleet-map-telemetry-details">
+        @* One line for the vehicle itself: what it is doing right now, and
+           where it is. It is the last thing a dispatcher reads, so it gets
+           one line rather than a block of its own. *@
         <div class="fleet-map-truck-info" aria-label="Selected truck">
+            <span class="fleet-map-truck-info__kind">Vehicle</span>
             <div class="fleet-map-truck-info__telemetry"
                  aria-label="Current truck readings">
                 <span class="fleet-map-truck-info__reading
