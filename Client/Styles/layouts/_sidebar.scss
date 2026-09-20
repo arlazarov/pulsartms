@@ -138,7 +138,7 @@
 
   @include ui.below(md) {
     position: relative;
-    z-index: 1000;
+    z-index: ui.layer(dialog);
     flex-wrap: nowrap;
     justify-content: space-between;
     padding: 0;
@@ -152,7 +152,7 @@
       min-width: 0;
       padding: ui.pg(sm) ui.pg(md);
       position: relative;
-      z-index: 2;
+      z-index: ui.layer(sticky);
       background: inherit;
     }
     &__brand {
@@ -178,7 +178,7 @@
       top: 100%;
       left: 0;
       right: 0;
-      z-index: 2;
+      z-index: ui.layer(sticky);
       max-height: calc(100dvh - 100%);
       overflow-y: auto;
       padding: ui.pg(md);
@@ -220,7 +220,7 @@
       display: block;
       position: fixed;
       inset: 0;
-      z-index: 1;
+      z-index: ui.layer(raised);
       border: 0;
       background: ui.theme(overlay, 0.35);
       cursor: default;

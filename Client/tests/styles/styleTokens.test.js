@@ -265,6 +265,32 @@ test('hiding an element by attribute is said once, for the whole app', () => {
     );
 });
 
+// What stands in front of what is decided in one map. Picking the next
+// number by looking at a neighbour is how two unrelated components both
+// came to claim a thousand.
+test('standing in front of something is a named layer', () => {
+  const root = new URL('../../Styles/', import.meta.url);
+  for (const file of readdirSync(root, { recursive: true }).filter(
+    x => x.endsWith('.scss') && !x.startsWith('base/'),
+  ))
+    for (const [declaration] of readFileSync(
+      new URL(file, root),
+      'utf8',
+    ).matchAll(/z-index:[^;]*/g))
+      assert.match(
+        declaration,
+        /ui\.layer\(|var\(/,
+        `${file}: ${declaration.trim()} - use a named layer`,
+      );
+  assert.throws(
+    () =>
+      compileString("@use 'base' as ui; .x { z-index: ui.layer(above); }", {
+        loadPaths,
+      }),
+    /Unknown layer/,
+  );
+});
+
 // Every width at which something changes shape is a name in one map, read
 // the same way whether the thing measured is the window or a card's own
 // box. These were written three ways: through the name, in bare rem, and

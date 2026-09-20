@@ -5,7 +5,7 @@
   position: absolute;
   right: ui.pg(md);
   bottom: ui.pg(md);
-  z-index: 12;
+  z-index: ui.layer(map-editor);
   width: min(#{ui.size(fuel-editor-wide)}, calc(100% - #{ui.pg(md)} * 2));
   height: min(#{ui.size(fuel-editor-height)}, calc(100% - #{ui.pg(md)} * 2));
   max-height: calc(100% - #{ui.pg(md)} * 2);

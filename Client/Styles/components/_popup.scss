@@ -18,7 +18,7 @@ html.popup-open {
 .popup {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: ui.layer(dialog);
 
   display: grid;
   place-items: center;
@@ -34,7 +34,7 @@ html.popup-open {
 
   &__content {
     position: relative;
-    z-index: 1;
+    z-index: ui.layer(raised);
 
     width: 100%;
     max-width: 420px;

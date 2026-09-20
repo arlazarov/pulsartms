@@ -15,7 +15,7 @@
   right: 0;
   width: min(100%, #{ui.size(map-inspector)});
   margin-inline: auto;
-  z-index: 4;
+  z-index: ui.layer(map-inspector);
   min-height: 0;
   max-height: 55%;
   overflow: auto;
@@ -125,7 +125,7 @@
   &__header {
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: ui.layer(raised);
     display: flex;
     align-items: center;
     gap: ui.pg(sm);

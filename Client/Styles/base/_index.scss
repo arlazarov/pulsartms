@@ -1,3 +1,4 @@
-@forward 'functions' show pg, fs, theme, clr, size, radius, shadow, breakpoint;
+@forward 'functions' show pg, fs, theme, clr, size, radius, shadow, breakpoint,
+  layer;
 @forward 'mixins' show below, above, input-control, invalid-control,
   button-control, compact-control, checkbox-control, icon-control, overlay-title;

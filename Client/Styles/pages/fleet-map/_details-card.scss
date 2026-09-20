@@ -2,7 +2,7 @@
 
 .fleet-map-details-card {
   position: absolute;
-  z-index: 5;
+  z-index: ui.layer(map-card);
   bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
@@ -23,7 +23,7 @@
       position: absolute;
       top: 6px;
       right: 6px;
-      z-index: 1;
+      z-index: ui.layer(raised);
     }
   }
   &__body {

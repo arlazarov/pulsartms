@@ -19,7 +19,7 @@
 .fleet-map-toolbar {
   flex: 1 1 32rem;
   position: relative;
-  z-index: 20;
+  z-index: ui.layer(map-controls);
   container: fleet-toolbar / inline-size;
   .fleet-map-search {
     flex: 1 1 12rem;

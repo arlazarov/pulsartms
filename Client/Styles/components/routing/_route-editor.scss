@@ -8,7 +8,7 @@
   width: min(100%, ui.size(content-load-dialog));
   top: min(ui.pg(md), var(--map-inspector-side-gap, 0px));
   max-height: calc(100% - ui.pg(md));
-  z-index: 5;
+  z-index: ui.layer(map-card);
   display: flex;
   flex-direction: column;
   min-height: 0;

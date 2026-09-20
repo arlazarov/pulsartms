@@ -62,7 +62,7 @@
   .dispatch-paper__identity {
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: ui.layer(raised);
     flex-shrink: 0;
     display: grid;
     grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto;

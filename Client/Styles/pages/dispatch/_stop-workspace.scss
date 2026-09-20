@@ -77,7 +77,7 @@
     position: absolute;
     inset-block-start: 100%;
     inset-inline: 0;
-    z-index: 100;
+    z-index: ui.layer(dropdown);
     max-block-size: min(40dvh, #{ui.size(address-suggestions)});
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -175,7 +175,7 @@
     position: absolute;
     inset-inline: 0;
     max-width: 100%;
-    z-index: 2;
+    z-index: ui.layer(sticky);
     pointer-events: none;
     border-color: ui.theme(link);
     color: ui.theme(link);

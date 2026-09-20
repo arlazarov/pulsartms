@@ -103,6 +103,13 @@
   @return var(--shadow-#{$key});
 }
 
+@function layer($key) {
+  @if not map.has-key(vars.$layers, $key) {
+    @error 'Unknown layer: #{$key}. Use a named layer.';
+  }
+  @return map.get(vars.$layers, $key);
+}
+
 @function radius($key) {
   @if not map.has-key(vars.$radii, $key) {
     @error 'Unknown radius: #{$key}';

@@ -243,7 +243,7 @@
       align-self: center;
       padding-bottom: ui.pg(sm);
       position: relative;
-      z-index: 1;
+      z-index: ui.layer(raised);
     }
     > .dispatch-truck__equipment {
       grid-column: 1 / -1;

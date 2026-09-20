@@ -13,7 +13,7 @@
   left: 38.95%;
   transform: translateX(-50%);
   white-space: nowrap;
-  z-index: 1;
+  z-index: ui.layer(raised);
   display: inline-flex;
   align-items: center;
   gap: ui.pg(sm);
