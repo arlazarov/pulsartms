@@ -5,7 +5,8 @@ html.popup-open {
 }
 
 @include ui.below(md) {
-  // Mobile scroll locking needs a fixed body; desktop sticky navigation must remain in flow.
+  // Mobile scroll locking needs a fixed body; desktop sticky navigation
+  // must remain in flow.
   body.popup-open {
     position: fixed;
     inset-inline: 0;
