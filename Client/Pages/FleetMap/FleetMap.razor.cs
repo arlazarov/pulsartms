@@ -93,6 +93,9 @@ public partial class FleetMap : IAsyncDisposable
   private bool _showTruckInfo;
   private bool _followingTruck;
   private bool _mobileFiltersOpen;
+
+  // Only a phone hides the key behind its chip; wider screens ignore this.
+  private bool _keyOpen;
   private bool _selectionDismissed;
   private List<TruckLocationMapDto> _trucks = [];
   private List<TruckLocationMapDto> _truckPoints = [];

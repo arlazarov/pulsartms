@@ -144,8 +144,12 @@
       }
     }
   }
+  // "18 mi" on its own says nothing. The label costs one small line and
+  // tells the dispatcher what the number is measuring.
   .fleet-map-mobile-summary__label {
-    display: none;
+    display: block;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
   }
   @media (min-width: ui.breakpoint(map-mobile, min)) {
     .fleet-map-inspector__header {
@@ -163,11 +167,6 @@
       strong {
         font-size: ui.fs(lead);
       }
-    }
-    .fleet-map-mobile-summary__label {
-      display: block;
-      color: ui.theme(text-secondary);
-      font-size: ui.fs(small);
     }
     .fleet-map-inspector__actions {
       padding-left: ui.pg(sm);
@@ -644,7 +643,7 @@
       grid-row: 1;
       display: grid;
       justify-items: center;
-      inline-size: 8ch;
+      inline-size: 10ch;
       font-size: ui.fs(body);
       font-variant-numeric: tabular-nums;
       > strong {

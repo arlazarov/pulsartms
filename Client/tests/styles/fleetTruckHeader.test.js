@@ -538,8 +538,11 @@ test('next-stop distance stays visible on desktop and centered on phones', () =>
   const mobile = compact.slice(compact.indexOf('@media (max-width: 767px)'));
   assert.match(
     mobile,
-    /__remaining\s*\{[^}]*display: grid;[^}]*justify-items: center;[^}]*inline-size: 8ch;[^}]*font-size: var\(--type-body\);/,
+    /__remaining\s*\{[^}]*display: grid;[^}]*justify-items: center;[^}]*inline-size: 10ch;[^}]*font-size: var\(--type-body\);/,
   );
+  // The number is labelled at every width: "18 mi" alone says nothing.
+  assert.match(compact, /__label\s*\{\s*display: block;/);
+  assert.doesNotMatch(compact, /__label\s*\{\s*display: none;/);
   assert.doesNotMatch(mobile, /is-mobile-collapsed[^{}]*__remaining/);
   // Opening the card must not move it: no width re-columns the header.
   assert.doesNotMatch(mobile, /is-mobile-expanded/);

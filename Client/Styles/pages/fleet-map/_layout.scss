@@ -107,13 +107,41 @@
     background: ui.theme(map-price-unavailable);
   }
 
+  &__content {
+    display: grid;
+    gap: ui.pg(sm);
+  }
+  // Wider than a phone the key is always open, so its chip is not rendered
+  // to assistive technology either.
+  &__toggle {
+    display: none;
+  }
+
   @media (max-width: ui.breakpoint(map-mobile, max)) {
     gap: ui.pg(xs);
     padding: ui.pg(sm);
     font-size: ui.fs(micro);
+    &__content {
+      gap: ui.pg(xs);
+    }
     &__routes,
     &__fuel {
       gap: ui.pg(xs) ui.pg(sm);
+    }
+    &__toggle {
+      @include ui.icon-control;
+      display: inline-flex;
+      font-weight: 700;
+    }
+    // Shut, the key is the chip: it stops covering the corner of the map
+    // it is there to explain.
+    &:not(.is-open) {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      .fleet-map-key__content {
+        display: none;
+      }
     }
   }
 }

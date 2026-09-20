@@ -467,7 +467,16 @@
     @if (!_fuelEditorOpen && (ShowFuelStations
         || _routeState?.Plan is not null || SelectedTruck is not null))
     {
-        <aside class="fleet-map-key" aria-label="Map key">
+        @* On a phone the key ate the corner of the map it explains, so it
+           folds behind one chip there and stays open everywhere else. *@
+        <aside class="fleet-map-key @(_keyOpen ? "is-open" : "")"
+               aria-label="Map key">
+            <button type="button" class="btn fleet-map-key__toggle"
+                    aria-expanded="@(_keyOpen ? "true" : "false")"
+                    aria-controls="fleet-map-key-content"
+                    aria-label="Map key"
+                    @onclick="() => _keyOpen = !_keyOpen">?</button>
+            <div id="fleet-map-key-content" class="fleet-map-key__content">
             @if (_routeState?.Plan is not null)
             {
                 <div class="fleet-map-key__routes">
@@ -495,6 +504,7 @@
                     Source: Includes weather data from Google
                 </small>
             }
+            </div>
         </aside>
     }
     @if (_fuelEditorOpen && _fuelEditorIdentity is { } editorIdentity)
