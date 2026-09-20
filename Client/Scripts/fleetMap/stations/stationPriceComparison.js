@@ -1,6 +1,10 @@
+// Whether to fuel now or wait is read off both sides of today: what the
+// price did since yesterday, and what it does tomorrow. The day before used
+// to be compared by opening the map on it and remembering the number.
 export function createPriceComparison(discount, today = new Date()) {
-  const comparison = discount?.comparison;
-  if (!comparison?.next) return null;
+  const next = discount?.comparison?.next ? discount.comparison : null;
+  const previous = discount?.previous ?? null;
+  if (!next && !previous) return null;
   const table = document.createElement('table');
   const caption = document.createElement('caption');
   caption.textContent = [discount.currency, discount.unit]
@@ -26,12 +30,15 @@ export function createPriceComparison(discount, today = new Date()) {
       }).format(day)
     );
   };
+  // Days run left to right, one column each. What a day's price did since
+  // the day before is a small mark under that price, not columns of its own:
+  // six columns did not fit where the prices stand, and the table arrived
+  // cut off behind a scrollbar.
   for (const label of [
     'Price',
-    dateLabel(comparison.date),
-    dateLabel(comparison.nextDate),
-    'Change',
-    'Change %',
+    ...(previous ? [dateLabel(previous.date)] : []),
+    dateLabel(previous?.nextDate ?? next.date),
+    ...(next ? [dateLabel(next.nextDate)] : []),
   ]) {
     const cell = document.createElement('th');
     cell.scope = 'col';
@@ -41,9 +48,9 @@ export function createPriceComparison(discount, today = new Date()) {
   head.append(heading);
   const body = document.createElement('tbody');
   for (const [label, field, change, role] of [
-    ['Retail price', 'retailPrice', 'retailChange', 'retail'],
+    ['Retail', 'retailPrice', 'retailChange', 'retail'],
     ['Your price', 'discountPrice', 'discountChange', 'discount'],
-    ['Price after IFTA', 'priceAfterIfta', 'iftaChange', 'ifta'],
+    ['After IFTA', 'priceAfterIfta', 'iftaChange', 'ifta'],
     ['Savings', 'savings', 'savingsChange', 'savings'],
   ]) {
     const row = document.createElement('tr');
@@ -52,31 +59,34 @@ export function createPriceComparison(discount, today = new Date()) {
     title.textContent = label;
     title.className = `fleet-station-popup__${role}-label`;
     row.append(title);
-    const value = comparison[change];
-    const changeClass = `fleet-station-popup__change${value > 0 ? ' is-increase' : value < 0 ? ' is-decrease' : ''}${role === 'savings' ? ' is-savings' : ''}`;
-    for (const [index, quote] of [
-      discount[field],
-      comparison.next[field],
-    ].entries()) {
+    const day = (quote, comparison) => {
       const cell = document.createElement('td');
-      cell.textContent = format(quote);
-      cell.className =
-        index === 0 ? `fleet-station-popup__${role}` : changeClass;
+      cell.className = `fleet-station-popup__${role}`;
+      const value = document.createElement('span');
+      value.textContent = format(quote);
+      cell.append(value);
+      const moved = comparison?.[change];
+      if (moved != null && Number.isFinite(Number(moved)) && moved !== 0) {
+        const mark = document.createElement('small');
+        mark.className = `fleet-station-popup__change${moved > 0 ? ' is-increase' : ' is-decrease'}${role === 'savings' ? ' is-savings' : ''}`;
+        mark.textContent = `${moved > 0 ? '\u25b2' : '\u25bc'}${format(Math.abs(moved))}`;
+        const percentage = comparison[`${change}Percent`];
+        if (percentage != null && Number.isFinite(Number(percentage)))
+          mark.title = `${percentage > 0 ? '+' : ''}${Number(percentage).toFixed(2)}%`;
+        cell.append(mark);
+      }
       row.append(cell);
-    }
-    const delta = document.createElement('td');
-    delta.className = changeClass;
-    delta.textContent =
-      value == null ? '—' : `${value > 0 ? '+' : ''}${format(value)}`;
-    row.append(delta);
-    const percent = document.createElement('td');
-    const percentage = comparison[`${change}Percent`];
-    percent.className = delta.className;
-    percent.textContent =
-      percentage == null || !Number.isFinite(Number(percentage))
-        ? '—'
-        : `${percentage > 0 ? '+' : ''}${Number(percentage).toFixed(2)}%`;
-    row.append(percent);
+    };
+    if (previous)
+      // Yesterday is what today was before it moved.
+      day(
+        previous[change] == null || discount[field] == null
+          ? null
+          : Number(discount[field]) - Number(previous[change]),
+        null,
+      );
+    day(discount[field], previous);
+    if (next) day(next.next[field], next);
     body.append(row);
   }
   table.append(head, body);

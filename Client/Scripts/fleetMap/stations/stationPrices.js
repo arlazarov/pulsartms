@@ -23,12 +23,21 @@ export function selectStationPrices(stations, date, useIfta = false) {
     const comparison = useIfta
       ? station.iftaComparison
       : station.cashComparison;
+    // The day before, against the day being looked at. It belongs to this
+    // date only if this date is the one it ends on.
+    const previous = useIfta
+      ? station.iftaPreviousComparison
+      : station.cashPreviousComparison;
+    const compared = {
+      ...(comparison?.date === date ? { comparison } : {}),
+      ...(previous?.nextDate === date ? { previous } : {}),
+    };
     return [
       {
         station,
         discount: active(selected)
-          ? comparison?.date === date
-            ? { ...selected, comparison }
+          ? Object.keys(compared).length
+            ? { ...selected, ...compared }
             : selected
           : unavailableDiscount,
         position,

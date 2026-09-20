@@ -28,6 +28,12 @@ public record FuelStationDto(
   public FuelDiscountDto? IftaDiscount { get; init; }
   public FuelPriceComparisonDto? CashComparison { get; init; }
   public FuelPriceComparisonDto? IftaComparison { get; init; }
+
+  // The same comparison one day back: yesterday against the day asked for.
+  // Whether to fuel now or wait is read off both sides of today, and the
+  // day before used to be compared by opening the map on it and remembering.
+  public FuelPriceComparisonDto? CashPreviousComparison { get; init; }
+  public FuelPriceComparisonDto? IftaPreviousComparison { get; init; }
 }
 
 public record FuelDiscountDto(
@@ -71,24 +77,48 @@ public class GetFuelStationsHandler(
         ct: cancellationToken
       );
       var byId = next.ToDictionary(station => station.Id);
+      var before = new Dictionary<Guid, FuelStationDto>();
+      if (date > DateOnly.MinValue)
+      {
+        var previousDate = date.AddDays(-1);
+        before = (
+          await reads.GetAsync(
+            "fuel",
+            previousDate.ToString("O"),
+            () => LoadAsync(previousDate, cancellationToken),
+            ct: cancellationToken
+          )
+        ).ToDictionary(station => station.Id);
+      }
       items = items
         .Select(station =>
-          byId.TryGetValue(station.Id, out var tomorrow)
-            ? station with
-            {
-              CashComparison = FuelPriceComparisonDto.Create(
-                date,
-                station.CashDiscount,
-                tomorrow.CashDiscount
-              ),
-              IftaComparison = FuelPriceComparisonDto.Create(
-                date,
-                station.IftaDiscount ?? station.CashDiscount,
-                tomorrow.IftaDiscount ?? tomorrow.CashDiscount
-              ),
-            }
-            : station
-        )
+        {
+          byId.TryGetValue(station.Id, out var tomorrow);
+          before.TryGetValue(station.Id, out var yesterday);
+          return station with
+          {
+            CashComparison = FuelPriceComparisonDto.Create(
+              date,
+              station.CashDiscount,
+              tomorrow?.CashDiscount
+            ),
+            IftaComparison = FuelPriceComparisonDto.Create(
+              date,
+              station.IftaDiscount ?? station.CashDiscount,
+              tomorrow?.IftaDiscount ?? tomorrow?.CashDiscount
+            ),
+            CashPreviousComparison = FuelPriceComparisonDto.Create(
+              date.AddDays(-1),
+              yesterday?.CashDiscount,
+              station.CashDiscount
+            ),
+            IftaPreviousComparison = FuelPriceComparisonDto.Create(
+              date.AddDays(-1),
+              yesterday?.IftaDiscount ?? yesterday?.CashDiscount,
+              station.IftaDiscount ?? station.CashDiscount
+            ),
+          };
+        })
         .ToList();
     }
     return RequestResponse<List<FuelStationDto>>.Ok(items);

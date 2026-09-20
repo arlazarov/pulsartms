@@ -74,6 +74,35 @@ public sealed class FuelPriceComparisonTests
     Assert.Null(result.SavingsChangePercent);
   }
 
+  // The day before is the same comparison stepped back one day: it starts
+  // on yesterday, ends on the day being looked at, and its changes are what
+  // the price did to get to today. Whether to fuel now or wait is read off
+  // both sides of today, and this is the other side.
+  [Fact]
+  public void TheDayBeforeIsTheSameComparisonOneDayBack()
+  {
+    var yesterday = Quote(Date.AddDays(-1), 4.75m, 4.2m);
+    var today = Quote(Date, 5m, 4.5m);
+    var result = FuelPriceComparisonDto.Create(
+      Date.AddDays(-1),
+      yesterday,
+      today
+    )!;
+    Assert.Equal(Date.AddDays(-1), result.Date);
+    Assert.Equal(Date, result.NextDate);
+    Assert.Equal(.25m, result.DiscountChange);
+    // Yesterday's price is recoverable from today's and the change, which
+    // is how the table writes it without being sent a second quote.
+    Assert.Equal(4.75m, today.DiscountPrice - result.DiscountChange);
+  }
+
+  // No price the day before is nothing to compare, not a change from zero.
+  [Fact]
+  public void NoQuoteTheDayBeforeIsNoComparison() =>
+    Assert.Null(
+      FuelPriceComparisonDto.Create(Date.AddDays(-1), null, Quote(Date, 5m, 4m))
+    );
+
   private static FuelDiscountDto Quote(
     DateOnly date,
     decimal price,

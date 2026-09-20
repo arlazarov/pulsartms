@@ -16,4 +16,6 @@ public class FuelStationMapDto
   public FuelDiscountMapDto? IftaDiscount { get; set; }
   public FuelPriceComparisonMapDto? CashComparison { get; set; }
   public FuelPriceComparisonMapDto? IftaComparison { get; set; }
+  public FuelPriceComparisonMapDto? CashPreviousComparison { get; set; }
+  public FuelPriceComparisonMapDto? IftaPreviousComparison { get; set; }
 }

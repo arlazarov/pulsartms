@@ -673,9 +673,11 @@
     color: ui.theme(text-secondary);
     padding-bottom: ui.pg(xs);
   }
+  // Tight enough that three days fit where the price list stood: a table
+  // that arrives behind a scrollbar is worse than no table.
   th,
   td {
-    padding: ui.pg(micro) ui.pg(sm);
+    padding: ui.pg(micro) ui.pg(xs);
   }
   th {
     text-align: left;
@@ -697,8 +699,23 @@
   th:first-child {
     padding-left: 0;
   }
-  td:last-child {
-    font-weight: 600;
+  // A day is its price with what it did since the day before marked small
+  // under it, so three days stand in three columns.
+  td {
+    vertical-align: top;
+    > span {
+      display: block;
+    }
+    > small {
+      display: block;
+      font-size: ui.fs(caption);
+      font-weight: 600;
+      line-height: 1.2;
+    }
+  }
+  th[scope='row'] {
+    white-space: nowrap;
+    vertical-align: top;
   }
   th:nth-child(n + 3),
   td:nth-child(n + 3) {
