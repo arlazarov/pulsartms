@@ -15,6 +15,10 @@ export const sceneMetrics = Object.freeze({
   // And with a wider white rim, for a badge drawn over a truck it is near
   // but not at.
   stopBadgeStackedDiameter: 38,
+  // How much of a truck must show from behind a badge for the crescent to
+  // read as a truck. Less than this and the badge wears the truck as a ring
+  // instead: a white rim with nothing behind it says the stop is alone.
+  truckCrescent: 6,
   // Where the filled badge's edge falls, so an outlined one does not read as
   // the larger of the two.
   stopBadgeDoneRadius: 13,

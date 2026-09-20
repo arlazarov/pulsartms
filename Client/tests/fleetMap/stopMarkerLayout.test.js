@@ -246,7 +246,7 @@ test('the badge a truck stands on holds its ground and its neighbour parts', () 
 // the two marks overlapped, so the badge was pushed a badge's width clear of
 // the truck - off the place it names, and a mile and a half drawn as ten.
 test('a badge never gives way to a truck, so the gap stays the distance', () => {
-  const zoom = 9;
+  const zoom = 10;
   const truck = { position: [-73.71563, 43.167812], engine: 'on' };
   const stops = [
     { id: 'ace', number: '2', position: [-73.7418915, 43.1753532] },
@@ -267,6 +267,22 @@ test('a badge never gives way to a truck, so the gap stays the distance', () => 
   assert.equal(row.stacked, true);
   const apart = snapshotStops(stops, [], [], 13, [truck]).stopData[0];
   assert.equal(apart.stacked, false, 'zoomed in, they no longer touch');
+});
+
+// Further out still, the badge covers the truck altogether, and a white rim
+// with nothing behind it says the stop stands alone. So the badge wears the
+// truck as a ring - the same mark as a truck actually standing on the stop,
+// which at that zoom is what the picture is saying either way.
+test('a badge that would hide a truck wears it as a ring instead', () => {
+  const truck = { position: [-73.71563, 43.167812], engine: 'on' };
+  const stops = [
+    { id: 'ace', number: '2', position: [-73.7418915, 43.1753532] },
+  ];
+  for (const zoom of [7, 8, 9]) {
+    const [row] = snapshotStops(stops, [], [], zoom, [truck]).stopData;
+    assert.equal(row.standing, '#16a34a', `zoom ${zoom}`);
+    assert.deepEqual([row.markerOffsetX, row.markerOffsetY], [0, 0]);
+  }
 });
 
 // A truck driving past a stop is over it for a moment and gone.
@@ -372,7 +388,13 @@ test('only the stop the truck is at holds it aside, however far out', () => {
     4,
   );
   assert.ok(Math.abs(here[0] - tx) < 0.05 && Math.abs(here[1] - ty) < 0.05);
-  assert.ok(miles[0] > tx + 30, 'beside the truck, where it lies, not on it');
+  // One ring to a truck, around the stop it is nearest. Far enough out a
+  // truck covers half a state's worth of badges, and ringing every one of
+  // them says it is standing on all of them at once - and holds them all
+  // where they are, on top of each other.
+  const rings = rows.filter(row => row.standing).map(row => row.id);
+  assert.deepEqual(rings, ['here']);
+  assert.ok(miles[0] > tx, 'the far one is beside the truck, where it lies');
 });
 
 test('no badge is ever thrown far from the place it marks', () => {

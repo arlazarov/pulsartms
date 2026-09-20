@@ -25,11 +25,13 @@ export function stopMarkerLabel(_job, number) {
 //    turned a mile and a half into ten.
 // 3. Stops at the very same address have no line between them, so they keep
 //    the formation they always had: a pair, a triangle, rows of two.
-// 4. Where a truck is standing on a stop the two become one mark on that
-//    point: the badge inside a ring of the truck's colour, with the unit
-//    number above it as ever. Two marks on one point meant one of them had
-//    to be moved off the place it names - under the truck, or aside from
-//    it - and whichever moved then pointed at nothing.
+// 4. A truck the badge would hide is drawn as a ring around it instead: one
+//    mark on one point, the badge inside a ring of the truck's colour, with
+//    the unit number above it as ever. That is a truck standing on the stop,
+//    and it is also a truck near enough that at this zoom the badge covers
+//    it - a white rim with nothing behind it says the stop stands alone.
+//    Two marks on one point meant one of them had to be moved off the place
+//    it names, and whichever moved then pointed at nothing.
 //
 // The picture is the same constellation at every zoom, only tighter. Which
 // way two stops part is read from where they are on the ground, not from
@@ -114,26 +116,38 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
 
   // Rule 3, and then rule 4: a truck standing on a stop is drawn as a ring
   // around that stop's badge, which keeps its point and gives way to nothing.
-  for (const group of places.values()) {
-    const truck = parked.find(
-      standing =>
-        Math.hypot(
-          standing.ground[0] - group[0].ground[0],
-          standing.ground[1] - group[0].ground[1],
-        ) < atTheStop,
+  const away = (truck, item) =>
+    Math.hypot(
+      truck.ground[0] - item.ground[0],
+      truck.ground[1] - item.ground[1],
     );
-    if (truck) {
-      truck.holds ??= group[0];
-      for (const item of group) {
-        item.held = true;
-        item.row.standing = truckHereColor;
-      }
+  const covered = (truck, item) =>
+    Math.hypot(truck.at[0] - item.at[0], truck.at[1] - item.at[1]) +
+      metrics.truckSize / 2 <
+    metrics.stopBadgeStackedDiameter / 2 + metrics.truckCrescent;
+  // One ring to a truck, around the stop it is nearest. Far enough out a
+  // truck covers half a state's worth of badges, and ringing every one of
+  // them says it is standing on all of them at once - and holds them all
+  // where they are, on top of each other.
+  const groups = [...places.values()];
+  for (const truck of parked) {
+    const reached = groups
+      .filter(
+        group => away(truck, group[0]) < atTheStop || covered(truck, group[0]),
+      )
+      .sort((a, b) => away(truck, a[0]) - away(truck, b[0]))[0];
+    if (!reached) continue;
+    truck.holds = reached[0];
+    for (const item of reached) {
+      item.held = true;
+      item.row.standing = truckHereColor;
     }
-    // Ringed badges stand further apart than bare ones, so the formation is
-    // measured after it is known which of the two they are.
+  }
+  // Ringed badges stand further apart than bare ones, so a formation is
+  // measured after it is known which of the two its badges are.
+  for (const group of groups)
     if (group.length > 1)
       form(group, group[0].anchor, spread(group[0]) * 2 + metrics.stopBadgeGap);
-  }
   // The unit number belongs over the mark the truck has become, so the truck
   // rows carry the way from where the truck is to the badge it is drawn in.
   // Its own icon is not drawn at all while it is there.
