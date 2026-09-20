@@ -4,10 +4,6 @@
   font-size: ui.fs(label);
   overflow-wrap: anywhere;
 
-  [hidden] {
-    display: none !important;
-  }
-
   &__header {
     display: grid;
     font-size: ui.fs(label);

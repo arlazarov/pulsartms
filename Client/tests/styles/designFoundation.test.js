@@ -21,7 +21,7 @@ test('shared foundation preserves control and touch dimensions independently of 
     @if map.get(v.$sizes, control-touch) != 2.75rem { @error 'Touch control changed'; }
     @if map.get(v.$radii, sm) != .5rem { @error 'Control radius changed'; }
     @if map.get(v.$sizes, fuel-editor) != 46rem { @error 'Editor width changed'; }
-    @if map.get(v.$sizes, fuel-editor-list) != 15rem { @error 'Timeline width changed'; }
+    @if map.get(v.$sizes, fuel-editor-route) != 20rem { @error 'Timeline width changed'; }
     @if map.get(v.$sizes, content-account) != 36rem { @error 'Account form width changed'; }
     @if map.get(v.$sizes, content-login) != 25rem { @error 'Sign-in width changed'; }`),
   );

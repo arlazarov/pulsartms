@@ -191,10 +191,9 @@ test('map information caps its top gap by actual side clearance rather than view
 });
 
 test('one map inspector retains hidden content and gives native and future details no popup positioning', () => {
-  assert.match(
-    css,
-    /\.fleet-map-inspector \[hidden\]\s*\{\s*display: none !important;/,
-  );
+  // Hidden content stays in the card and the app hides it; the card does
+  // not repeat that rule - see the style-token checks.
+  assert.doesNotMatch(css, /\[hidden\]\s*\{\s*display: none/);
   assert.match(
     css,
     /\.fleet-map-inspector__header\s*\{\s*position: sticky;\s*top: 0;[^}]*display: flex;/,

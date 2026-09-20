@@ -54,9 +54,6 @@
 }
 
 .fleet-map-inspector {
-  [hidden] {
-    display: none !important;
-  }
   // A stop, a stop on a load still to come, and a planned fuel stop are one
   // kind of card - a place, and what is planned there - so they are one
   // width. The fuel card carried a width of its own, half as wide again,

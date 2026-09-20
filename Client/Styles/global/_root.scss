@@ -64,6 +64,9 @@ body {
   outline-offset: 3px;
 }
 
+// Said once, for the whole app. Because it is important, it beats any
+// display a card sets on its own children whatever that card's selector
+// weighs - so a component repeating this rule inside itself adds nothing.
 [hidden] {
   display: none !important;
 }

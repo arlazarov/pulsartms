@@ -18,9 +18,6 @@
     display: flex;
     flex-direction: column;
   }
-  [hidden] {
-    display: none !important;
-  }
   &__back {
     align-self: start;
     margin-block: ui.pg(sm);

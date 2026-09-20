@@ -259,10 +259,9 @@ test('modal stop navigation uses shared buttons and retains hidden overview cont
     rule('.dispatch-load-dialog .dispatch-load__more-details'),
     /justify-self: start;/,
   );
-  assert.match(
-    rule('.dispatch-load-dialog [hidden]'),
-    /display: none !important;/,
-  );
+  // The dialog keeps hidden content and lets the app hide it; it no longer
+  // repeats that rule - see the style-token checks.
+  assert.doesNotMatch(css, /\[hidden\]\s*\{\s*display: none/);
   assert.match(
     rule('.dispatch-load-dialog__content'),
     /overflow-anchor: none;/,

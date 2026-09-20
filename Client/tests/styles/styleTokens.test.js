@@ -232,6 +232,26 @@ test('all UI partials use semantic colors and named interface dimensions', () =>
   }
 });
 
+// An element carrying the attribute is hidden by one rule, in the app's own
+// stylesheet. Because that rule is important it already beats any display a
+// card sets on its children, whatever the card's selector weighs, so cards
+// that repeated it inside themselves were saying nothing - three of them did.
+test('hiding an element by attribute is said once, for the whole app', () => {
+  const root = new URL('../../Styles/', import.meta.url);
+  assert.match(
+    readFileSync(new URL('global/_root.scss', root), 'utf8'),
+    /\[hidden\]\s*\{\s*display: none !important;/,
+  );
+  for (const file of readdirSync(root, { recursive: true }).filter(
+    x => x.endsWith('.scss') && !x.startsWith('global/'),
+  ))
+    assert.doesNotMatch(
+      readFileSync(new URL(file, root), 'utf8'),
+      /\[hidden\]\s*\{\s*display: none/,
+      `${file}: the app already hides it`,
+    );
+});
+
 test('all SCSS modules are reachable from the main stylesheet', async () => {
   const { compile } = await import('sass');
   const root = new URL('../../Styles/', import.meta.url);
