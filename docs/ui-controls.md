@@ -80,6 +80,30 @@ compile time. New reusable sizes belong in the token maps, not repeated literals
 Pixel values remain appropriate for hairline borders, exact map geometry and
 viewport breakpoints; do not replace them with unrelated spacing tokens.
 
+A width at which a layout changes shape is a name in `$breakpoints`, read the
+same way whether what is measured is the window or an element's own box.
+`ui.breakpoint(name)` answers that one width; `@include ui.below(name)` and
+`@include ui.above(name)` write the media query, and a container query names
+the width the same way: `@container <name> (width < #{ui.breakpoint(name)})`.
+Do not hand-write `@media (max-width: …)` or put a bare rem or pixel width in
+a container query; checks reject both. Prefer the element's own width over the
+window's wherever what changes is how that element is laid out.
+
+What stands in front of what is a name in `$layers`, read with `ui.layer(name)`:
+from `raised` and `sticky` inside a card, through the three things that float
+over the map, to `dropdown`, `dialog` and `viewer`. Bare `z-index` numbers are
+rejected; a new rung belongs in the map, where the order can be read.
+
+A component owns how it is read. Where a place needs the same facts said
+differently - the arrival forecast as one inline line, the same forecast
+quieter inside a map card, a table whose rows become cards when there is no
+room for columns - the variant belongs in the component's own stylesheet, and
+the place asks for it by name (`Reading="inline"`, `Reading="cards"`). Anything
+finer is a custom property the component publishes, such as
+`--stop-hours-road-size` or `--hos-clock-min-width`. A page must not name
+another component's `__element` classes; checks pin this for the HOS clocks,
+and the same rule applies to every shared component.
+
 ## Shared visual hierarchy
 
 Use white `surface` cards on the blue-gray `canvas`, with `surface-soft` for quiet
