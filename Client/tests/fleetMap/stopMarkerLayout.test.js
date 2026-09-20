@@ -171,28 +171,37 @@ test('a badge under a parked truck stands beside it, and its anchor stays put', 
   assert.deepEqual(row.position, stops[0].position, 'the stop has not moved');
 });
 
-// Stepping aside on its own, the badge came out from under the truck and
-// landed on the stop standing next to it - "2" square on top of "3".
-test('a badge that steps aside for a truck does not land on its neighbour', () => {
+// Sent to one fixed side, the badge came out from under the truck and landed
+// on the stop standing there - "2" square on top of "3". Standing them all in
+// a row beside the truck took "3" off the place it is at for the sake of one
+// that was hidden. Only the hidden badge moves, to the first place beside
+// the truck where it touches nothing.
+test('only the hidden badge moves, to a place where it touches nothing', () => {
   const zoom = 9;
   const truck = { position: [-80.95, 35.22] };
   const stops = [
     { id: 'two', number: '2', position: [-80.95, 35.22] },
-    // Far enough that the two badges do not touch where they really are,
-    // and exactly where "2" would stand once it has stepped aside.
-    { id: 'three', number: '3', position: [-80.88, 35.22] },
+    // Clear of the truck where it really is, and exactly where "2" would
+    // land if it simply stepped to the right.
+    { id: 'three', number: '3', position: [-80.84, 35.22] },
   ];
   const rows = snapshotStops(stops, [], [], zoom, [truck]).stopData;
-  const [two, three] = ['two', 'three'].map(id =>
-    drawnAt(
-      rows.find(row => row.id === id),
-      zoom,
-    ),
+  const row = id => rows.find(item => item.id === id);
+  assert.deepEqual(
+    [row('three').markerOffsetX, row('three').markerOffsetY],
+    [0, 0],
+    'the neighbour stays where it is',
   );
-  const [tx] = screen(truck.position, zoom);
-  assert.ok(Math.abs(two[0] - three[0]) >= 36, 'a full badge apart');
-  assert.ok(two[0] - tx >= 36 && three[0] - tx >= 36, 'and both clear of it');
-  assert.ok(two[0] < three[0], 'in stop order, reading away from the truck');
+  const two = drawnAt(row('two'), zoom);
+  const three = drawnAt(row('three'), zoom);
+  const [tx, ty] = screen(truck.position, zoom);
+  const apart = (a, b) =>
+    Math.abs(a[0] - b[0]) >= 36 || Math.abs(a[1] - b[1]) >= 36;
+  assert.ok(apart(two, three), 'clear of its neighbour');
+  assert.ok(apart(two, [tx, ty]), 'clear of the truck');
+  assert.ok(two[1] >= ty - 0.01, 'and never above it, where the number goes');
+  // The right was taken, so it stands on the left.
+  assert.ok(Math.abs(two[0] - (tx - 36)) < 0.01);
 });
 
 // A truck driving past a stop is over it for a moment and gone.
