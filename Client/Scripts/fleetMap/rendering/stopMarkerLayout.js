@@ -1,6 +1,6 @@
 import { sceneMetrics as metrics } from './sceneMetrics.js';
 import { markerProjection } from './markerProjection.js';
-import { truckHereColor } from './truckAppearance.js';
+import { truckColor } from './truckAppearance.js';
 
 export function stopMarkerLabel(_job, number) {
   return String(number ?? '');
@@ -141,7 +141,7 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
     truck.holds = reached[0];
     for (const item of reached) {
       item.held = true;
-      item.row.standing = truckHereColor;
+      item.row.standing = truckColor(truck.truck.engine, truck.truck.speed);
     }
   }
   // Ringed badges stand further apart than bare ones, so a formation is

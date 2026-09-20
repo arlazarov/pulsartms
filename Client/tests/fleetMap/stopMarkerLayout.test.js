@@ -202,7 +202,9 @@ test('the ring opens into two marks when there is room for both', () => {
   const truck = { position: [-78.9, 35.9], speed: 0, engine: 'Off' };
   const stops = [{ id: 's', number: '2', position: [-78.8963, 35.9] }];
   const ringed = snapshotStops(stops, [], [], 11, [truck]).stopData[0];
-  assert.equal(ringed.standing, '#16a34a');
+  // The ring is the truck, so it is the truck's colour: this one is shut
+  // down for the night at the dock.
+  assert.equal(ringed.standing, '#64748b');
   assert.equal(truck.merged, true, 'and the truck is that ring');
   const near = snapshotStops(stops, [], [], 13, [truck]).stopData[0];
   assert.equal(near.standing, undefined);
@@ -232,10 +234,9 @@ test('a truck standing on a stop becomes a ring around its badge', () => {
   assert.ok(Math.hypot(dx, dy) < 2, 'the unit number sits over the badge');
   const off = snapshotStops(stops, [], [], zoom, [{ ...truck, engine: 'off' }])
     .stopData[0];
-  // One colour, whatever the engine is doing: painted by engine state the
-  // ring was grey as often as green, and a grey ring on a blue badge reads
-  // as an edge of the badge rather than as a truck standing on the stop.
-  assert.equal(off.standing, '#16a34a');
+  // The ring is the truck, so it says what the truck says: green with the
+  // engine running, grey with it shut down.
+  assert.equal(off.standing, '#64748b');
 });
 
 // The badge a truck stands on gives way to nothing: its neighbour parts

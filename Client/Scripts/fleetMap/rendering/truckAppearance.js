@@ -1,7 +1,9 @@
 const icons = new Map();
 
 // Moving, standing with the engine on, standing with it off - and the colour
-// that says which.
+// that says which. The ring a badge wears while a truck stands on it is
+// painted this colour too: the ring is the truck, so it says what the truck
+// says - green with the engine running, grey with it off.
 export function truckState(engine, speed = 0) {
   const state = typeof engine === 'string' ? engine.trim().toLowerCase() : '';
   return Number.isFinite(speed) && speed >= 1
@@ -17,12 +19,6 @@ export function truckColor(engine, speed = 0) {
 
 const truckRunning = '#16a34a';
 const truckStopped = '#64748b';
-
-// The ring a stop wears while a truck stands on it says one thing - a truck
-// is here - and says it the same way every time. Painted by engine state it
-// was grey as often as green, and a grey ring on a blue badge reads as an
-// edge of the badge rather than as a truck.
-export const truckHereColor = truckRunning;
 
 export function truckIcon(engine, speed = 0) {
   const key = truckState(engine, speed);
