@@ -23,7 +23,7 @@ public class FuelController : BaseController
     CancellationToken cancellationToken
   ) =>
     await HandleRequest(
-      new GetFuelStationsQuery(date, IncludeNextDay: true),
+      new GetFuelStationsQuery(date, CompareDays: true),
       cancellationToken
     );
 

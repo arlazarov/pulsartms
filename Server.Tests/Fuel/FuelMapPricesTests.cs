@@ -76,7 +76,7 @@ public sealed class FuelMapPricesTests
     );
 
     Assert.Equal(
-      new GetFuelStationsQuery(date, IncludeNextDay: false),
+      new GetFuelStationsQuery(date, CompareDays: false),
       sender.Query
     );
     Assert.Equal(cancellation.Token, sender.Cancellation);

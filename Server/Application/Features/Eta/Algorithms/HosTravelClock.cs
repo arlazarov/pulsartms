@@ -45,6 +45,15 @@ public sealed class HosTravelClock
   private bool plannedBreakTaken;
   private bool plannedFuelTaken;
 
+  // The allowance buys the minutes a fuel stop costs beyond the driving, so
+  // it is owed once a shift, as many times as the plan stops to fuel and no
+  // more. A shift that passes no pump - the last two miles into a delivery,
+  // or any run that starts with a full tank - pays nothing for one. Where no
+  // fuel plan has been made the count is unknown, and every shift owes one.
+  private int? fuelStopsLeft;
+  private bool FuelOwed =>
+    planning is not null && !plannedFuelTaken && fuelStopsLeft is not 0;
+
   public HosTravelClock(
     DateTimeOffset now,
     DriverHosClocks clocks,
@@ -52,11 +61,11 @@ public sealed class HosTravelClock
     HosHistory? history = null,
     EtaPlanningOptions? planning = null,
     HosCycleMode cycleMode = HosCycleMode.Observe,
-    int fuelStopsAhead = int.MaxValue
+    int? fuelStopsAhead = null
   )
   {
     this.planning = planning;
-    fuelStopsLeft = Math.Max(0, fuelStopsAhead);
+    fuelStopsLeft = fuelStopsAhead;
     this.cycleMode = cycleMode;
     calculationStartedAt = now;
     CycleFeasibility = new(now, clocks, initialCountry, history);
@@ -78,15 +87,8 @@ public sealed class HosTravelClock
     );
     plannedBreakLeft = 8;
     preTripPending = planning is not null && shiftDrive < .000001;
-    plannedFuelTaken = planning is not null && (!preTripPending || NoFuelAhead);
+    plannedFuelTaken = planning is not null && !preTripPending;
   }
-
-  // The allowance buys the minutes a fuel stop costs beyond the driving, so
-  // it is owed as many times as the plan stops to fuel and no more. A shift
-  // that passes no pump - the last two miles into a delivery, or any run
-  // that starts with a full tank - pays nothing for one.
-  private int fuelStopsLeft;
-  private bool NoFuelAhead => fuelStopsLeft == 0;
 
   public void Enter(string nextCountry)
   {
@@ -120,7 +122,8 @@ public sealed class HosTravelClock
     // the driver already spent this morning. Waiting out a rest that has not
     // finished is a different thing, and still allowed: those hours are
     // spent in the forecast before they are used.
-    if (remaining <= 0 && (shiftDrive > .000001 || shiftDuty > .000001))
+    // Duty counts the driving in it, so it alone says a shift is in progress.
+    if (remaining <= 0 && shiftDuty > .000001)
       return;
     Rest(remaining);
     driveLeft = 11;
@@ -138,17 +141,16 @@ public sealed class HosTravelClock
     plannedDriveLeft = planning?.DrivingHoursPerShift ?? double.MaxValue;
     plannedBreakLeft = 8;
     plannedBreakTaken = false;
-    plannedFuelTaken = NoFuelAhead;
+    plannedFuelTaken = false;
     preTripPending = planning is not null;
   }
 
   public void Fuel()
   {
-    if (planning is not null && (plannedFuelTaken || NoFuelAhead))
+    if (planning is not null && !FuelOwed)
       return;
     plannedFuelTaken = true;
-    if (fuelStopsLeft is > 0 and < int.MaxValue)
-      fuelStopsLeft--;
+    fuelStopsLeft--;
     var hours = (planning?.FuelStopMinutes ?? 15) / 60d;
     FuelHours += hours;
     Service(hours);
@@ -330,7 +332,7 @@ public sealed class HosTravelClock
         Service(preTrip);
         continue;
       }
-      if (planning is not null && !plannedFuelTaken)
+      if (FuelOwed)
       {
         Fuel();
         continue;

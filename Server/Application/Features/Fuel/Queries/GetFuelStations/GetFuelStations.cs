@@ -7,7 +7,7 @@ namespace Application.Features.Fuel.Queries.GetFuelStations;
 
 public record GetFuelStationsQuery(
   DateOnly? Date = null,
-  bool IncludeNextDay = false
+  bool CompareDays = false
 ) : IRequest<RequestResponse<List<FuelStationDto>>>;
 
 public record FuelStationDto(
@@ -30,8 +30,6 @@ public record FuelStationDto(
   public FuelPriceComparisonDto? IftaComparison { get; init; }
 
   // The same comparison one day back: yesterday against the day asked for.
-  // Whether to fuel now or wait is read off both sides of today, and the
-  // day before used to be compared by opening the map on it and remembering.
   public FuelPriceComparisonDto? CashPreviousComparison { get; init; }
   public FuelPriceComparisonDto? IftaPreviousComparison { get; init; }
 }
@@ -61,67 +59,73 @@ public class GetFuelStationsHandler(
   {
     var date =
       request.Date ?? FuelPricingDate.FromUtc(clock.GetUtcNow().UtcDateTime);
-    var items = await reads.GetAsync(
+    var items = await DayAsync(date, cancellationToken);
+    if (!request.CompareDays)
+      return RequestResponse<List<FuelStationDto>>.Ok(items);
+
+    // Whether to fuel now or wait is read off both sides of the day asked
+    // for, so each station carries the step into it and the step out of it.
+    // A day nobody has priced is an empty list, and the step to it is null.
+    var yesterday = await NeighbourAsync(date, -1, cancellationToken);
+    var tomorrow = await NeighbourAsync(date, 1, cancellationToken);
+    items = items
+      .Select(station =>
+      {
+        yesterday.TryGetValue(station.Id, out var before);
+        tomorrow.TryGetValue(station.Id, out var after);
+        return station with
+        {
+          CashComparison = FuelPriceComparisonDto.Create(
+            date,
+            station.CashDiscount,
+            after?.CashDiscount
+          ),
+          IftaComparison = FuelPriceComparisonDto.Create(
+            date,
+            Ifta(station),
+            Ifta(after)
+          ),
+          CashPreviousComparison = FuelPriceComparisonDto.Create(
+            date.AddDays(-1),
+            before?.CashDiscount,
+            station.CashDiscount
+          ),
+          IftaPreviousComparison = FuelPriceComparisonDto.Create(
+            date.AddDays(-1),
+            Ifta(before),
+            Ifta(station)
+          ),
+        };
+      })
+      .ToList();
+    return RequestResponse<List<FuelStationDto>>.Ok(items);
+  }
+
+  private static FuelDiscountDto? Ifta(FuelStationDto? station) =>
+    station?.IftaDiscount ?? station?.CashDiscount;
+
+  private Task<List<FuelStationDto>> DayAsync(
+    DateOnly date,
+    CancellationToken cancellationToken
+  ) =>
+    reads.GetAsync(
       "fuel",
       date.ToString("O"),
       () => LoadAsync(date, cancellationToken),
       ct: cancellationToken
     );
-    if (request.IncludeNextDay && date < DateOnly.MaxValue)
-    {
-      var nextDate = date.AddDays(1);
-      var next = await reads.GetAsync(
-        "fuel",
-        nextDate.ToString("O"),
-        () => LoadAsync(nextDate, cancellationToken),
-        ct: cancellationToken
-      );
-      var byId = next.ToDictionary(station => station.Id);
-      var before = new Dictionary<Guid, FuelStationDto>();
-      if (date > DateOnly.MinValue)
-      {
-        var previousDate = date.AddDays(-1);
-        before = (
-          await reads.GetAsync(
-            "fuel",
-            previousDate.ToString("O"),
-            () => LoadAsync(previousDate, cancellationToken),
-            ct: cancellationToken
-          )
-        ).ToDictionary(station => station.Id);
-      }
-      items = items
-        .Select(station =>
-        {
-          byId.TryGetValue(station.Id, out var tomorrow);
-          before.TryGetValue(station.Id, out var yesterday);
-          return station with
-          {
-            CashComparison = FuelPriceComparisonDto.Create(
-              date,
-              station.CashDiscount,
-              tomorrow?.CashDiscount
-            ),
-            IftaComparison = FuelPriceComparisonDto.Create(
-              date,
-              station.IftaDiscount ?? station.CashDiscount,
-              tomorrow?.IftaDiscount ?? tomorrow?.CashDiscount
-            ),
-            CashPreviousComparison = FuelPriceComparisonDto.Create(
-              date.AddDays(-1),
-              yesterday?.CashDiscount,
-              station.CashDiscount
-            ),
-            IftaPreviousComparison = FuelPriceComparisonDto.Create(
-              date.AddDays(-1),
-              yesterday?.IftaDiscount ?? yesterday?.CashDiscount,
-              station.IftaDiscount ?? station.CashDiscount
-            ),
-          };
-        })
-        .ToList();
-    }
-    return RequestResponse<List<FuelStationDto>>.Ok(items);
+
+  private async Task<Dictionary<Guid, FuelStationDto>> NeighbourAsync(
+    DateOnly date,
+    int days,
+    CancellationToken cancellationToken
+  )
+  {
+    // The calendar ends somewhere; past its end there is no day to compare.
+    if (days < 0 ? date == DateOnly.MinValue : date == DateOnly.MaxValue)
+      return [];
+    var stations = await DayAsync(date.AddDays(days), cancellationToken);
+    return stations.ToDictionary(station => station.Id);
   }
 
   private async Task<List<FuelStationDto>> LoadAsync(
