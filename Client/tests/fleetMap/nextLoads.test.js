@@ -134,7 +134,16 @@ test('stop click pins every road and marker for its load without floating labels
     lines.map(line => line.routeSelected),
     [true, true, true, false, false, false],
   );
-  assert.ok(markers.every(marker => marker.onHover === undefined));
+  // Pointing at a load says which road its badges belong to, without a
+  // label floating out of the badge to say it.
+  assert.ok(markers.every(marker => typeof marker.onHover === 'function'));
+  markers[3].onHover(true);
+  assert.deepEqual(
+    lines.map(line => line.routeSelected),
+    [true, true, true, false, false, false],
+    'a load picked on purpose outranks whatever the cursor is over',
+  );
+  markers[3].onHover(false);
   markers[3].onSelect();
   assert.deepEqual(selections.at(-1), ['second', 0]);
   assert.deepEqual(
@@ -473,7 +482,7 @@ test('a pending pickup remains selectable without labels or a loaded route', () 
   assert.equal(markers.length, 1);
 });
 
-test('click pins all stop circles by load identity without road geometry, labels or hover callbacks', () => {
+test('click pins all stop circles by load identity without road geometry or labels', () => {
   const markers = [];
   const selections = [];
   class Line {}
@@ -501,7 +510,12 @@ test('click pins all stop circles by load identity without road geometry, labels
       ],
     },
   ]);
-  assert.ok(markers.every(marker => marker.onHover === undefined));
+  // Pointing at a load lights it; it never puts a label on the badge.
+  assert.ok(markers.every(marker => typeof marker.onHover === 'function'));
+  markers[0].onHover(true);
+  assert.ok(markers.every(marker => marker.highlighted));
+  markers[0].onHover(false);
+  assert.ok(markers.every(marker => !marker.highlighted));
   markers[1].onSelect();
   assert.ok(markers.every(marker => marker.highlighted));
   assert.deepEqual(
@@ -846,7 +860,15 @@ test('coincident stops from different loads stay separately selectable in their 
   assert.equal(markers[0].color, futureRouteColor(0));
   assert.equal(markers[2].color, futureRouteColor(1));
   assert.equal(markers[0].label, null);
-  assert.ok(markers.every(marker => marker.onHover === undefined));
+  // Pointing at one of two loads that meet here lights that one alone, and
+  // still puts no label on the badge.
+  assert.ok(markers.every(marker => typeof marker.onHover === 'function'));
+  markers[2].onHover(true);
+  assert.equal(markers[0].highlighted, false);
+  assert.equal(markers[2].highlighted, true);
+  assert.equal(markers[2].label, null);
+  markers[2].onHover(false);
+  assert.equal(markers[2].highlighted, false);
   markers[0].onSelect();
   assert.equal(markers[0].label, null);
   assert.equal(markers[1].highlighted, true);
@@ -995,4 +1017,36 @@ test('each coincident occurrence selects its own stop while load colors and refr
     'dismissal does not change which occurrence a circle opens',
   );
   layer.dispose();
+});
+
+// Colour is the only thing saying which road a badge belongs to, and three
+// upcoming loads in one corner of the map is a lot to ask of it. Pointing
+// at either the badge or the road answers it outright, while the eye is
+// already there and without picking anything.
+test('pointing at a load lights its road and its badges, and lets go when the cursor does', () => {
+  const { layer, markers, lines, selections } = selectionFixture();
+  const roads = () => lines.map(line => line.routeSelected === true);
+  const badges = () => markers.map(marker => marker.highlighted === true);
+
+  lines[0].onHover({ object: lines[0] });
+  assert.deepEqual(roads(), [true, true, true, false, false, false]);
+  assert.deepEqual(badges(), [true, true, true, false, false, false]);
+  assert.deepEqual(selections, [], 'pointing picks nothing');
+
+  // Arriving is reported before leaving, so the departure of the road just
+  // left must not put out the one the cursor is on now.
+  lines[3].onHover({ object: lines[3] });
+  lines[0].onHover({ object: null });
+  assert.deepEqual(roads(), [false, false, false, true, true, true]);
+
+  lines[3].onHover({ object: null });
+  assert.deepEqual(roads(), [false, false, false, false, false, false]);
+  assert.deepEqual(badges(), [false, false, false, false, false, false]);
+
+  // A load picked on purpose outranks the cursor, and outlives it.
+  markers[0].onSelect();
+  lines[3].onHover({ object: lines[3] });
+  assert.deepEqual(roads(), [true, true, true, false, false, false]);
+  lines[3].onHover({ object: null });
+  assert.deepEqual(roads(), [true, true, true, false, false, false]);
 });

@@ -15,23 +15,38 @@ export function createNextLoadsLayer(
   let visible = true;
   let selectedId = null;
   let selectedStopIndex = null;
+  let hoveredId = null;
   let markerGroups = [];
   let renderedLines = [];
   const identity = row =>
     nextLoadKey(row.loadId ?? row.loadNumber, row.executionLegId);
 
+  // Pointing at a load answers the same question as picking one - which
+  // road these badges belong to - and answers it while the eye is already
+  // there. A load picked on purpose outranks whatever the cursor is over,
+  // so hover speaks only when nothing is picked.
   function applySelection() {
+    const shown = selectedId ?? hoveredId;
     for (const group of markerGroups)
       group.marker.highlighted = group.members.some(
-        row => identity(row) === selectedId,
+        row => identity(row) === shown,
       );
     for (const { line, loadId } of renderedLines)
       line?.setOptions({
         strokeWeight: 2,
-        zIndex: loadId === selectedId ? 10 : 0,
-        routeSelected: selectedId !== null && loadId === selectedId,
-        routeMuted: selectedId !== null && loadId !== selectedId,
+        zIndex: loadId === shown ? 10 : 0,
+        routeSelected: shown !== null && loadId === shown,
+        routeMuted: shown !== null && loadId !== shown,
       });
+  }
+  // Leaving is reported by the thing being left, and the next thing can
+  // report arriving first, so a departure only counts for what is current.
+  function hover(key, over) {
+    if (disposed) return;
+    const next = over ? key : hoveredId === key ? null : hoveredId;
+    if (hoveredId === next) return;
+    hoveredId = next;
+    if (selectedId === null) applySelection();
   }
   function clearSelection() {
     if (selectedId === null) return;
@@ -50,6 +65,7 @@ export function createNextLoadsLayer(
     markerUpdates.length = 0;
     markerGroups = [];
     renderedLines = [];
+    hoveredId = null;
   }
   return {
     clearSelection,
@@ -106,6 +122,7 @@ export function createNextLoadsLayer(
             routeColor,
             routeDepth,
             strokeWeight: 2,
+            onHover: info => hover(loadId, !!info?.object),
           });
           line.setPath(
             points.map(p => ({ lat: p.latitude, lng: p.longitude })),
@@ -122,6 +139,7 @@ export function createNextLoadsLayer(
           number: [...numbers].map(number => number + offset).join('/'),
           color,
           transientLabel: true,
+          onHover: over => hover(identity(members[0]), over === true),
           onSelect: () => {
             if (disposed || !visible || previous !== signature) return;
             const current = members.findIndex(
