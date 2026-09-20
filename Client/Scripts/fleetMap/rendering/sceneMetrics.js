@@ -12,6 +12,9 @@ export const sceneMetrics = Object.freeze({
   stopBadgeDiameter: 34,
   stopBadgeGap: 2,
   stationRadius: 8,
+  // Below this the map is a sea of dots that hides the route under them.
+  // Planned stops are exempt: those are the ones a plan was made about.
+  stationMinZoom: 6,
   stationHitRadius: 10,
   recommendationRadius: 12,
   fuelEditingRadius: 14,

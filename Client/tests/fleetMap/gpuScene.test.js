@@ -268,6 +268,11 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   assert.ok(order.indexOf('fuel-points') < order.indexOf('truck-icons'));
   assert.ok(order.indexOf(route.id) < order.indexOf('route-stop-1-points'));
   assert.ok(order.indexOf(route.id) < order.indexOf('truck-icons'));
+  // The zoom changes above legitimately rebuilt the station layer - ordinary
+  // stations are held back when the camera is far out - so motion is measured
+  // from where the camera has come to rest.
+  const resting = layers();
+  assert.equal(resting[route.id], initial[route.id]);
   for (let i = 1; i <= 120; i++) {
     truck.render({
       longitude: -80 + i / 10000,
@@ -284,7 +289,7 @@ test('scene reuses static layers across motion, invalidates only changed stops a
       'route-stop-distances',
       'route-stop-distances-content',
     ]) {
-      assert.equal(layers()[id], initial[id], id);
+      assert.equal(layers()[id], resting[id], id);
     }
   }
   assert.equal(reads, initialReads, 'motion never queries stop DOM');

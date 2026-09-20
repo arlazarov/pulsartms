@@ -83,3 +83,40 @@ test('with nothing chosen every truck is drawn at full strength', () => {
     [255, 255, 255, 220],
   );
 });
+
+// From the design: zoomed out, only planned stops; everything else waits
+// until the camera is close enough for a dot to mean a place.
+test('ordinary stations wait for the camera; planned stops never do', () => {
+  const ordinary = { id: 'a', position: [-79, 40], color: [0, 128, 0] };
+  const planned = {
+    id: 'b',
+    position: [-78, 40],
+    color: [0, 128, 0],
+    recommended: true,
+    numbers: '1',
+  };
+  const draw = zoom =>
+    byId(
+      scene()({
+        lines: [],
+        stationData: [ordinary, planned],
+        stationsVisible: true,
+        stopData: [],
+        distanceData: [],
+        vehicles: [],
+        zoom,
+      }),
+    );
+
+  const far = draw(metrics.stationMinZoom - 1);
+  assert.equal(far['fuel-points'], undefined, 'no sea of dots at a glance');
+  assert.deepEqual(far['fuel-recommendation-points'].props.data, [planned]);
+  assert.equal(far['fuel-recommendation-numbers'].props.visible, true);
+
+  const near = draw(metrics.stationMinZoom);
+  assert.deepEqual(near['fuel-points'].props.data, [ordinary]);
+  assert.equal(near['fuel-points'].props.visible, true);
+
+  // A scene that has not been told where the camera is draws them.
+  assert.deepEqual(draw(undefined)['fuel-points'].props.data, [ordinary]);
+});

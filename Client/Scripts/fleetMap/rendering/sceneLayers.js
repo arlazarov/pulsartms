@@ -69,8 +69,14 @@ export function createSceneLayers({
     selectTruck,
     selectStation,
     pixelRatio = 1,
+    zoom = null,
     stopLabelStyle = defaultStopLabelStyle,
   }) => {
+    // Ordinary stations wait until the camera is close enough for them to
+    // mean something; a planned stop is drawn at every zoom.
+    const stationsInReach =
+      stationsVisible &&
+      (!Number.isFinite(zoom) || zoom >= metrics.stationMinZoom);
     const fonts = labelFonts([pixelRatio, stopLabelStyle.size], () =>
       createLabelFonts(pixelRatio, stopLabelStyle.size),
     );
@@ -95,12 +101,12 @@ export function createSceneLayers({
     const truckLayers = [...layers];
     truckLayers.push(
       stationLayer(
-        [stationData, stationsVisible, setHover, selectStation],
+        [stationData, stationsInReach, setHover, selectStation],
         () =>
           stationPoints(
             'fuel-points',
             stationData.filter(d => !d.recommended),
-            stationsVisible,
+            stationsInReach,
             setHover,
             selectStation,
           ),

@@ -2541,7 +2541,7 @@ public sealed class FleetMapComponentTests
       component.Find(".fleet-map-key__fuel-label").TextContent
     );
     Assert.Equal(
-      "Within each currency",
+      "Within each currency · zoom in for stations",
       component.Find(".fleet-map-key__note").TextContent
     );
     Assert.Equal(

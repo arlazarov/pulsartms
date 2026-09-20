@@ -202,6 +202,7 @@ export function createScene(
         selectTruck,
         selectStation,
         pixelRatio,
+        zoom: clusterZoom,
         stopLabelStyle,
       }),
     });
