@@ -7,7 +7,7 @@ import { markSharedRoads } from './sharedRoads.js';
 
 /** @param {import('../contracts.d.ts').NextLoad[]} loads */
 export function nextLoadDisplay(loads) {
-  /** @type {{points: import('../contracts.d.ts').RoutePoint[], role: 'deadhead' | 'future', loadId: string | number, routeColor?: import('../rendering/routePalette.js').RouteColor, routeDepth?: number}[]} */
+  /** @type {{points: import('../contracts.d.ts').RoutePoint[], role: 'deadhead' | 'future', loadId: string | number, routeColor?: import('../rendering/routePalette.js').RouteColor}[]} */
   const lines = [];
   /** @type {StopGroup[]} */
   const groups = [];
@@ -16,10 +16,7 @@ export function nextLoadDisplay(loads) {
     const points = load.deadhead?.points || [];
     const loadId = nextLoadKey(load.id ?? load.loadNumber, load.executionLegId);
     const color = futureRouteColor(loadIndex);
-    // How far down the chain a load sits is drawn, not only coloured: the
-    // second load after this one matters less than the first.
-    if (points.length > 1)
-      lines.push({ points, role: 'deadhead', loadId, routeDepth: loadIndex });
+    if (points.length > 1) lines.push({ points, role: 'deadhead', loadId });
     for (const leg of load.legs || []) {
       if (leg.points.length > 1)
         lines.push({
@@ -27,7 +24,6 @@ export function nextLoadDisplay(loads) {
           role: 'future',
           loadId,
           routeColor: color,
-          routeDepth: loadIndex,
         });
     }
     const lastPoint = points.at(-1);

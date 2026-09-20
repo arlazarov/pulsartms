@@ -59,15 +59,6 @@
     font-size: ui.fs(caption);
     overflow-wrap: anywhere;
   }
-  &__load-reference {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: ui.pg(xs) ui.pg(sm);
-  }
-  &__load-reference > .fleet-map-route-info__copy-number {
-    font-size: ui.fs(lead);
-  }
   &__total {
     margin-top: ui.pg(micro);
   }

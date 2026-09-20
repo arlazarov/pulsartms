@@ -59,7 +59,6 @@ export function routeLayers(
     line.cachedMuted === muted &&
     line.cachedSelected === line.routeSelected &&
     line.cachedShared === line.routeShared &&
-    line.cachedDepth === line.routeDepth &&
     line.cachedVisible === (line.visible !== false)
   )
     return line.cachedLayer;
@@ -73,7 +72,6 @@ export function routeLayers(
   line.cachedMuted = muted;
   line.cachedSelected = line.routeSelected;
   line.cachedShared = line.routeShared;
-  line.cachedDepth = line.routeDepth;
   line.cachedVisible = line.visible !== false;
   const shared = {
     data: line.data,

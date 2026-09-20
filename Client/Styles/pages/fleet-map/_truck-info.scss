@@ -1,262 +1,117 @@
 @use '../../base' as ui;
 
-.fleet-map-truck-info .truck-illustration {
-  &__trailer,
-  &__cab {
-    fill: ui.theme(action);
-  }
-  &__panel {
-    fill: ui.theme(on-accent);
-    opacity: 0.12;
-  }
-  &__window {
-    fill: ui.theme(surface-soft);
-  }
-  &__trim {
-    fill: ui.theme(text-secondary);
-  }
-  &__lamp {
-    fill: ui.theme(on-accent);
-  }
-  &__tires {
-    fill: ui.theme(navigation);
-  }
-  &__hubs {
-    fill: ui.theme(text-muted);
-    stroke: ui.theme(surface-soft);
-    stroke-width: 1.5;
-  }
-}
-
-.fleet-map-truck-info {
+// The vehicle, on the truck card: one line that says what it is doing and
+// then where it is. Every reading has the same shape - a quiet word, then its
+// value - so the line has one baseline instead of four little towers.
+//
+// This file used to describe the panel the card had before: a grid of towers
+// with an icon over a label over a value, an illustration, a driver block and
+// a column of actions. The card then overrode nearly every property of it
+// from another file. The panel is gone and this is the only description of
+// the line there is. It is named through the card it stands on so that the
+// card's own reset of its sections does not outrank it.
+.fleet-map-inspector[data-inspector-mode='truck'] .fleet-map-truck-info {
+  font-size: ui.fs(body);
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-start;
-  align-items: center;
-  gap: ui.pg(sm) ui.pg(md);
-  padding: ui.pg(sm) ui.pg(md);
-  border: 1px solid ui.theme(border-subtle);
-  border-radius: ui.radius(sm);
-  background: ui.theme(surface);
-  font-size: ui.fs(body);
+  align-items: baseline;
+  gap: ui.pg(xs) ui.pg(lg);
   min-height: 0;
-  --hos-gap: #{ui.pg(sm)};
-  --hos-dial-size: #{ui.size(fuel-dial)};
-  > * {
-    flex: 0 1 auto;
-    max-width: 100%;
-  }
-
-  &__identity {
-    display: flex;
-    align-items: center;
-    gap: ui.pg(md);
-    min-width: 0;
-  }
-  &__illustration {
-    display: grid;
-    place-items: center;
-    width: ui.size(fuel-dial);
-    flex: 0 0 ui.size(fuel-dial);
-    color: ui.theme(action);
-  }
-  &__illustration > svg {
-    width: 100%;
-    height: auto;
-    transform: scaleX(-1);
-  }
-  &__vehicle {
-    display: grid;
-    gap: ui.pg(xs);
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-  &__vehicle > strong {
-    font-size: ui.fs(heading);
-    font-variant-numeric: tabular-nums;
-    line-height: 1.2;
-  }
-  &__vehicle > span {
+  margin-inline: ui.pg(md);
+  padding: ui.pg(sm) 0;
+  border-top: 1px solid ui.theme(border-subtle);
+  &__kind {
+    color: ui.theme(text-muted);
     font-size: ui.fs(small);
-    color: ui.theme(text-secondary);
   }
-  &__vehicle b {
-    font-weight: 500;
-    color: ui.theme(text);
-  }
-  &__driver {
-    display: grid;
-    gap: ui.pg(micro);
-  }
-  &__driver strong {
-    color: ui.theme(text);
-    font-size: ui.fs(lead);
-    font-weight: 650;
-    overflow-wrap: anywhere;
-  }
-
   &__telemetry {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, max-content));
-    align-items: center;
-  }
-  &__reading {
-    display: grid;
-    gap: ui.pg(xs);
-    min-width: 0;
-    padding-inline: ui.pg(md);
-    border-left: 1px solid ui.theme(border-subtle);
-    > small {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: ui.pg(xs);
-      color: ui.theme(text-secondary);
-      font-size: ui.fs(small);
-      line-height: 1.4;
-    }
-    > small svg {
-      width: ui.fs(heading);
-      height: ui.fs(heading);
-      flex: 0 0 auto;
-    }
-    &.is-normal > small svg {
-      color: ui.theme(success-text);
-    }
-    &.is-low > small svg {
-      color: ui.theme(telemetry-warning-icon);
-    }
-    &.is-critical > small svg {
-      color: ui.theme(telemetry-critical-icon);
-    }
-    > strong {
-      color: ui.theme(text);
-      font-size: ui.fs(lead);
-      font-weight: 600;
-      line-height: 1.4;
-      font-variant-numeric: tabular-nums;
-      overflow-wrap: anywhere;
-    }
-    strong small {
-      font: inherit;
-      font-weight: 400;
-    }
-    .fuel-reading {
-      font-size: inherit;
-    }
-  }
-
-  &__actions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: ui.pg(sm);
-    min-width: 0;
-    max-width: 100%;
-  }
-  &__actions > a {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: ui.pg(xs);
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(caption);
-  }
-  &__actions > a svg {
-    width: ui.fs(body);
-    height: ui.fs(body);
-  }
-  &__buttons {
-    display: flex;
-    flex-wrap: wrap;
-    min-width: 0;
-    max-width: 100%;
-    align-items: center;
-    justify-content: flex-start;
-    gap: ui.pg(xs);
-  }
-  &__location {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: ui.pg(xs) ui.pg(sm);
-    flex-basis: 100%;
-    grid-column: 1 / -1;
+    gap: ui.pg(xs) ui.pg(lg);
+    --fuel-reading-columns: max-content max-content;
+    --fuel-reading-value-column: auto;
+    --fuel-reading-row-gap: 0;
+    --fuel-reading-value-size: #{ui.fs(body)};
+  }
+  // Speed, fuel and engine name themselves in words, so their icons only
+  // repeat. The sky does not: 25 °C is a different day in rain than in
+  // sun, and the icon is the only thing on this line that says which.
+  &__reading svg {
+    display: none;
+  }
+  // Every reading is the same shape: a quiet word, then its value, on one
+  // baseline.
+  &__reading,
+  &__outside {
+    display: flex;
+    align-items: baseline;
+    gap: ui.pg(xs);
     min-width: 0;
-    padding-top: ui.pg(sm);
-    border-top: 1px solid ui.theme(border-subtle);
-    font-size: ui.fs(body);
-    overflow-wrap: anywhere;
-    > span,
     > small {
+      display: inline;
       color: ui.theme(text-secondary);
-    }
-    > strong {
-      font-weight: 600;
-      color: ui.theme(text);
-    }
-    > small {
       font-size: ui.fs(small);
     }
+    > strong {
+      color: ui.theme(text);
+      font-size: ui.fs(body);
+      font-weight: 600;
+      white-space: nowrap;
+      > small {
+        font: inherit;
+        font-weight: 400;
+      }
+    }
   }
-
-  @media (min-width: ui.breakpoint(truck-details, min)) {
-    gap: ui.pg(sm) ui.pg(md);
-    --hos-dial-size: #{ui.size(control-touch)};
+  // The weather differs in one thing: its word is an icon. The degrees
+  // keep the baseline, which is what puts them on the level of the speed
+  // and the fuel beside them; the icon steps off it and centres itself on
+  // the line, because a 20px glyph on the baseline of 14px text stands
+  // above the words. It is sized to the line, not to the panel it came
+  // from - the telemetry icon is 28px and made this row half again as tall.
+  &__outside > small {
+    display: inline-flex;
+    align-self: center;
+    > svg {
+      inline-size: ui.fs(heading);
+      block-size: ui.fs(heading);
+    }
   }
-
-  @media (min-width: ui.breakpoint(map-truck-wide, min)) {
-    --hos-dial-size: #{ui.size(fuel-dial)};
+  // "mph" and the degree sign say what they measure. The words stay for
+  // a screen reader and leave the line, which is what lets the address
+  // keep its place at the end of it. The weather's icon stays: it is the
+  // reading, not a label for one.
+  &__reading--speed > small,
+  &__outside > small > span {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
-
-  @media (max-width: ui.breakpoint(map-mobile, max)) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    &__identity,
-    &__telemetry,
-    &__actions {
-      grid-column: 1 / -1;
+  &__location {
+    display: flex;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    min-width: 0;
+    // The address ends the vehicle's line, and drops below only when it
+    // cannot fit.
+    margin-inline-start: auto;
+    > span {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+      white-space: nowrap;
     }
-    &__identity {
-      gap: ui.pg(sm);
-    }
-    &__driver {
-      display: flex;
-      flex-wrap: wrap;
-      gap: ui.pg(xs);
-    }
-    &__telemetry {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      padding-block: ui.pg(md);
-      border-block: 1px solid ui.theme(border-subtle);
-    }
-    &__reading {
-      padding-inline: ui.pg(sm);
-      gap: ui.pg(xs);
-    }
-    &__reading:first-child {
-      padding-left: 0;
-      border-left: 0;
-    }
-    &__reading:last-child {
-      padding-right: 0;
-    }
-    &__reading .fuel-reading {
-      row-gap: var(--fuel-reading-row-gap, #{ui.pg(xs)});
-      column-gap: var(--fuel-reading-column-gap, #{ui.pg(xs)});
-    }
-    &__actions {
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: flex-start;
-      width: 100%;
-    }
-    &__buttons {
-      display: flex;
-      flex-wrap: wrap;
+    > strong {
+      font-size: ui.fs(body);
+      font-weight: 400;
       min-width: 0;
-      max-width: 100%;
     }
+  }
+  > * {
+    flex: 0 1 auto;
+    max-width: 100%;
   }
 }

@@ -22,7 +22,6 @@ test('application page cards share neutral surfaces and compact semantic corners
     '.dispatch-truck',
     '.dispatch-load',
     '.dispatch-table-wrap',
-    '.fleet-map-truck-info',
     '.fleet-map-details-card',
   ]) {
     const body = rule(selector);

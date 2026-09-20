@@ -92,13 +92,14 @@
     }
   }
   // The card's second line reads left to right as a sentence: what the
-  // truck is running, how much of it is left, and whether the driver has
-  // the hours to finish it.
+  // truck is running, how much is left to the stop it is heading for, and
+  // whether the driver has the hours for it.
+  //
+  // Three columns, not a flow: the outer two share what is left over, so the
+  // middle one is dead centre and stays there while the load number and the
+  // clocks arrive and change width beside it.
   .fleet-map-inspector__hours {
     flex-basis: 100%;
-    // Three columns, not a flow: the outer two share what is left over, so
-    // the middle one is dead centre and stays there while the load number
-    // and the clocks arrive and change width beside it.
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: baseline;
@@ -106,49 +107,42 @@
     min-width: 0;
     padding-top: ui.pg(xs);
     border-top: 1px solid ui.theme(border-subtle);
-    --hos-display: flex;
-    --hos-wrap: wrap;
-    --hos-gap: #{ui.pg(md)};
-    --hos-clock-min-width: 0;
-    --hos-label-font-size: #{ui.fs(small)};
-    > .driver-hours-panel {
-      min-width: 0;
-    }
   }
   .fleet-map-inspector__hours-label {
     color: ui.theme(text-muted);
     font-size: ui.fs(small);
   }
-  // Left of the card says what: the truck, then its load. Right says when:
-  // the arrival, and under it the hours that arrival depends on.
+  // The clocks stand at the far end, under the arrival they decide. Tighter
+  // between the clocks than between the three groups, so the line reads as
+  // three things and still fits across the card; and the group never
+  // splits - "HOS" on one row with its clocks on the next was the worst way
+  // this line could break.
   .fleet-map-inspector__clocks {
     display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: end;
-    // Tighter between the clocks than between the three groups, so the
-    // line reads as three things and still fits across the card. The group
-    // never splits: "HOS" on one row with its clocks on the next was the
-    // worst way this line could break.
     flex-wrap: nowrap;
+    align-items: baseline;
+    justify-self: end;
     gap: ui.pg(xs);
+    min-width: 0;
+    --hos-display: flex;
     --hos-wrap: nowrap;
     --hos-gap: #{ui.pg(xs)};
-    min-width: 0;
-    margin-inline-start: auto;
+    --hos-clock-min-width: 0;
+    --hos-label-font-size: #{ui.fs(small)};
     > .driver-hours-panel {
       min-width: 0;
       margin-left: 0;
     }
   }
-  // The load leads the line: what the truck is running, and how far is
-  // left of it, before the clocks that say whether it can be finished.
+  // The load leads the line. It keeps the room its numbers will need: an
+  // empty group here is a hole that everything right of it slides across
+  // when the load lands.
   .fleet-map-mobile-summary__remaining {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     gap: ui.pg(xs);
-    flex-wrap: wrap;
-    min-width: 0;
+    min-inline-size: min(100%, #{ui.size(route-load)});
     color: ui.theme(text-secondary);
     font-variant-numeric: tabular-nums;
     strong {
@@ -193,13 +187,6 @@
       }
     }
   }
-  // The load group reserves the room its numbers will need. An empty group
-  // here is a hole that everything right of it slides across when the load
-  // lands.
-  .fleet-map-mobile-summary__remaining {
-    min-inline-size: ui.size(route-load);
-    flex-shrink: 0;
-  }
   .fleet-map-mobile-summary__remaining > .fleet-map-route-info__copy-number {
     color: ui.theme(text);
     font-weight: 600;
@@ -216,10 +203,9 @@
     display: grid;
     justify-items: center;
     gap: ui.pg(micro);
-    margin-inline: auto;
-    // A width of its own, wide enough for the longest run this can read.
-    // Without it the group is as wide as whatever has arrived so far, and
-    // it changes size as the numbers come in.
+    // A width of its own, wide enough for the longest distance this can
+    // read. Without it the group is as wide as whatever has arrived so far,
+    // and it changes size as the numbers come in.
     inline-size: ui.size(route-progress);
     min-width: 0;
   }
@@ -266,128 +252,7 @@
       background: ui.theme(action);
     }
   }
-  // The vehicle reads as one line: what it is doing, then where it is.
-  // Every reading has the same shape - a quiet word, then its value - so
-  // the line has one baseline instead of four little towers.
-  .fleet-map-truck-info {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: ui.pg(xs) ui.pg(lg);
-    min-height: 0;
-    margin-inline: ui.pg(md);
-    padding: ui.pg(sm) 0;
-    border: 0;
-    border-top: 1px solid ui.theme(border-subtle);
-    border-radius: 0;
-    &__kind {
-      color: ui.theme(text-muted);
-      font-size: ui.fs(small);
-    }
-    &__telemetry {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: ui.pg(xs) ui.pg(lg);
-      padding: 0;
-      border: 0;
-      --fuel-reading-columns: max-content max-content;
-      --fuel-reading-value-column: auto;
-      --fuel-reading-row-gap: 0;
-      --fuel-reading-value-size: #{ui.fs(body)};
-    }
-    // Speed, fuel and engine name themselves in words, so their icons only
-    // repeat. The sky does not: 25 °C is a different day in rain than in
-    // sun, and the icon is the only thing on this line that says which.
-    &__reading svg {
-      display: none;
-    }
-    // The weather arrives as a three-row grid - icon over label over value -
-    // and a plain element selector for it loses to the grouped rule below by
-    // source order, so it is named by both of the classes it carries.
-    //
-    // The degrees keep the baseline, which is what puts them on the level of
-    // the speed and the fuel beside them; the icon steps out of the baseline
-    // and centres itself on the line, because a 20px glyph sitting on the
-    // baseline of 14px text stands above the words.
-    &__outside.truck-weather {
-      display: flex;
-      flex-direction: row;
-      align-items: baseline;
-      gap: ui.pg(xs);
-      grid-template-rows: none;
-      > small {
-        display: inline-flex;
-        align-self: center;
-      }
-    }
-    &__outside > small > svg {
-      // Sized to the line, not to the panel it came from: the telemetry
-      // icon is 28px and made this row half again as tall.
-      inline-size: ui.fs(heading);
-      block-size: ui.fs(heading);
-    }
-    &__reading,
-    &__outside {
-      display: flex;
-      align-items: baseline;
-      gap: ui.pg(xs);
-      min-width: 0;
-      margin: 0;
-      padding: 0;
-      border: 0;
-      > small {
-        display: inline;
-        color: ui.theme(text-secondary);
-        font-size: ui.fs(small);
-      }
-      > strong {
-        color: ui.theme(text);
-        font-size: ui.fs(body);
-        font-weight: 600;
-        white-space: nowrap;
-        > small {
-          font: inherit;
-          font-weight: 400;
-        }
-      }
-    }
-    // "mph" and the degree sign say what they measure. The words stay for
-    // a screen reader and leave the line, which is what lets the address
-    // keep its place at the end of it. The weather's icon stays: it is the
-    // reading, not a label for one.
-    &__reading--speed > small,
-    &__outside > small > span {
-      position: absolute;
-      inline-size: 1px;
-      block-size: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
-    }
-    &__location {
-      display: flex;
-      align-items: baseline;
-      gap: ui.pg(xs);
-      min-width: 0;
-      // The page-wide rule gives the address a full row of its own; here it
-      // ends the vehicle's line, and drops below only when it cannot fit.
-      flex: 0 1 auto;
-      margin-inline-start: auto;
-      padding: 0;
-      border: 0;
-      > span {
-        color: ui.theme(text-secondary);
-        font-size: ui.fs(small);
-        white-space: nowrap;
-      }
-      > strong {
-        font-size: ui.fs(body);
-        font-weight: 400;
-        min-width: 0;
-      }
-    }
-  }
+
   // Two columns of equal weight. Left is the stop and the window it has to
   // make; right is the load, as rows of label and value on one shared
   // label column so the eye runs down the values.
@@ -690,20 +555,24 @@
       grid-column: 1 / -1;
       grid-row: 3;
     }
-    // A phone has no room for three abreast: each takes its own row.
-    // A phone has no room for three abreast: each takes a row of its own.
+    // A phone has no room for three abreast: the line becomes one column and
+    // each group takes a row of its own, from the same edge. This asked for
+    // it with flex-basis on the children of a grid, which does nothing, so
+    // the three stayed abreast and the clocks folded into a tower.
     .fleet-map-inspector__hours {
       grid-column: 1 / -1;
       grid-row: 4;
-      .fleet-map-mobile-summary__remaining,
-      .fleet-map-mobile-summary__distance,
-      .fleet-map-inspector__clocks {
-        flex-basis: 100%;
+      grid-template-columns: minmax(0, 1fr);
+      .fleet-map-mobile-summary__remaining {
         min-inline-size: 0;
-        margin-inline: 0;
       }
       .fleet-map-mobile-summary__distance {
         justify-items: start;
+      }
+      .fleet-map-inspector__clocks {
+        justify-self: start;
+        flex-wrap: wrap;
+        --hos-wrap: wrap;
       }
     }
 

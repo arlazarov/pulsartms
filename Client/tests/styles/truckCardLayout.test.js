@@ -6,7 +6,11 @@ import { fileURLToPath } from 'node:url';
 
 const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
 const compile = name => compileString(`@use '${name}';`, { loadPaths }).css;
-const card = compile('pages/fleet-map/compact-inspector');
+// The card, and the vehicle line that stands on it - each described in one
+// place, neither overriding the other.
+const card =
+  compile('pages/fleet-map/compact-inspector') +
+  compile('pages/fleet-map/truck-info');
 const phone = compile('pages/fleet-map/mobile-inspector');
 const markup = readFileSync(
   new URL('../../Pages/FleetMap/FleetMap.razor', import.meta.url),
@@ -58,10 +62,14 @@ test('the card says the load, its order and the miles once, in the head', () => 
 });
 
 test('what is left sits between the load and the clocks, said and drawn', () => {
+  // The line is three columns and this is the middle one, so it is centred
+  // by where it stands - it carries no margin to centre itself with.
   assert.match(
     card,
-    /__distance\s*\{[^}]*justify-items: center;[^}]*margin-inline: auto;/,
+    /__hours\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto minmax\(0, 1fr\);/,
   );
+  assert.match(card, /__distance\s*\{[^}]*justify-items: center;/);
+  assert.doesNotMatch(card, /__distance\s*\{[^}]*margin-inline: auto;/);
   // One phrase: it shortens by ellipsis rather than folding a number away
   // from the unit it belongs to.
   assert.match(
@@ -96,7 +104,13 @@ test('HOS travels with its clocks, at the far end under the arrival', () => {
     markup,
     /fleet-map-inspector__clocks">\s*<span class="fleet-map-inspector__hours-label">HOS<\/span>\s*<Client\.Shared\.DriverStatus\.DriverHours\.DriverHours/,
   );
-  assert.match(card, /__clocks\s*\{[^}]*margin-inline-start: auto;/);
+  assert.match(card, /__clocks\s*\{[^}]*justify-self: end;/);
+  // Said once: a second flex-wrap lower in the same rule used to take back
+  // the first.
+  assert.equal(
+    card.match(/__clocks\s*\{([^}]*)\}/)[1].match(/flex-wrap:/g).length,
+    1,
+  );
   // The component pushes itself right on its own; inside the group it must
   // not, or the label is orphaned again.
   assert.match(
@@ -176,7 +190,7 @@ test('the vehicle is one line: every reading the same shape, place at the end', 
   assert.match(card, /__telemetry\s*\{[^}]*--fuel-reading-value-column: auto;/);
   assert.match(
     card,
-    /__reading,[^{}]*__outside\s*\{[^}]*display: flex;[^}]*align-items: baseline;[^}]*border: 0;/,
+    /__reading,[^{}]*__outside\s*\{[^}]*display: flex;[^}]*align-items: baseline;/,
   );
   assert.match(card, /__location\s*\{[^}]*margin-inline-start: auto;/);
   // Speed, fuel and engine say themselves in words, so their icons only
@@ -191,14 +205,10 @@ test('the vehicle is one line: every reading the same shape, place at the end', 
   // The degrees keep the baseline, which is what puts them on the level of
   // the speed and the fuel beside them; only the icon steps off it, or a
   // 20px glyph on the baseline of 14px text stands above the words.
-  assert.match(
-    card,
-    /__outside\.truck-weather\s*\{[^}]*align-items: baseline;/,
-  );
-  assert.match(
-    card,
-    /__outside\.truck-weather > small\s*\{[^}]*align-self: center;/,
-  );
+  assert.match(card, /__outside > small\s*\{[^}]*align-self: center;/);
+  // Named plainly, after the rule it differs from. It used to be named by
+  // two classes at once, only to outrank a rule that stood below it.
+  assert.doesNotMatch(card, /__outside\.truck-weather/);
   assert.doesNotMatch(card, /__outside > small > svg\s*\{[^}]*display: none/);
   assert.doesNotMatch(card, /__reading\s*\{[^}]*display: none/);
 });
@@ -210,7 +220,7 @@ test('the lines that should be one line are one line', () => {
   assert.match(card, /__appointment\s*\{[^}]*flex-direction: row;/);
   // The page-wide rule gives the address a row of its own; the card must
   // take that back or the address never joins the vehicle line.
-  assert.match(card, /__location\s*\{[^}]*flex: 0 1 auto;/);
+  assert.match(card, /__location\s*\{[^}]*margin-inline-start: auto;/);
   // "mph" and the degree sign name themselves; their words leave the line
   // but stay in the document for a screen reader.
   assert.match(

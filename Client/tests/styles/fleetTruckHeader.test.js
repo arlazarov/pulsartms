@@ -25,7 +25,9 @@ test('compact truck inspection retains content-sized telemetry and HOS', () => {
   // Only the icons the words repeat are hidden on the vehicle line; a
   // reading itself is never dropped.
   assert.doesNotMatch(compact, /__reading\s*\{[^}]*display: none/);
-  assert.match(compact, /__telemetry\s*\{[^}]*display: flex;/);
+  // The vehicle line has one owner, and it is not the card's stylesheet.
+  assert.match(css, /__telemetry\s*\{[^}]*display: flex;/);
+  assert.doesNotMatch(compact, /fleet-map-truck-info/);
   assert.match(
     compact,
     /width: min\(100%,\s*var\(--size-map-compact-inspector\)\);/,
@@ -36,15 +38,11 @@ test('compact truck inspection retains content-sized telemetry and HOS', () => {
     compact,
     /__actions \.map-action-icon\s*\{[^}]*white-space: nowrap;/,
   );
-  assert.match(
-    css,
-    /__telemetry\s*\{[^}]*grid-template-columns: repeat\(3,\s*minmax\(0,\s*max-content\)\);/,
-  );
   assert.doesNotMatch(
     compact,
     /__metric > \.fleet-map-route-info__secondary[^{}]*\{[^}]*display: none;/,
   );
-  const telemetry = compact.match(/__telemetry\s*\{([^}]*)\}/)?.[1];
+  const telemetry = css.match(/__telemetry\s*\{([^}]*)\}/)?.[1];
   // The vehicle's readings sit on one line and wrap only if they must.
   assert.match(telemetry, /display: flex;/);
   assert.match(telemetry, /flex-wrap: wrap;/);
@@ -83,19 +81,9 @@ test('map inspector content updates without reveal or fade animation', () => {
     assert.match(css, new RegExp(`\\.${selector}\\s*\\{[^}]*animation: none;`));
   assert.match(css, /\.fleet-map-info-reserved\s*\{[^}]*transition: none;/);
   assert.doesNotMatch(css, /@keyframes fleet-map-(?:reveal|info-fade)/);
-  for (const selector of ['fleet-map-truck-info', 'fleet-map-route-info'])
-    assert.match(
-      css,
-      new RegExp(
-        `\\.${selector}\\s*\\{[^}]*padding: var\\(--space-sm\\) var\\(--space-md\\);`,
-      ),
-    );
-});
-
-test('only the selected header truck illustration faces right', () => {
   assert.match(
     css,
-    /\.fleet-map-truck-info__illustration > svg\s*\{[^}]*transform: scaleX\(-1\);/,
+    /\.fleet-map-route-info\s*\{[^}]*padding: var\(--space-sm\) var\(--space-md\);/,
   );
 });
 
@@ -148,9 +136,12 @@ test('selected truck and route panels overlay one stable map with bounded scroll
     assert.doesNotMatch(
       css,
       new RegExp(
+        // Nothing in a panel is clipped, except the street, which shortens
+        // by ellipsis, and a word kept only for a screen reader, which is
+        // hidden by being clipped to nothing.
         `\\.${selector}\\s*\\{[^}]*[;{]\\s*height:|` +
           `\\.${selector}(?!__street\\b)[^{}]*\\{` +
-          `[^}]*overflow(?:-y)?: (?:hidden|clip);`,
+          `(?![^}]*clip-path: inset)[^}]*overflow(?:-y)?: (?:hidden|clip);`,
       ),
     );
 });
@@ -179,7 +170,7 @@ test('map information caps its top gap by actual side clearance rather than view
   assert.match(css, /\.fleet-map-info-content\s*\{[^}]*gap: 0;/);
   assert.match(
     css,
-    /\.fleet-map-info-reserved \.fleet-map-truck-info,\s*\.fleet-map-info-reserved \.fleet-map-route-info\s*\{\s*border: 0;\s*border-radius: 0;\s*background: transparent;/,
+    /\.fleet-map-info-reserved \.fleet-map-route-info\s*\{\s*border: 0;\s*border-radius: 0;\s*background: transparent;/,
   );
   assert.match(
     css,
@@ -197,17 +188,6 @@ test('map information caps its top gap by actual side clearance rather than view
     'the mobile inspector inherits continuous shared placement',
   );
   assert.doesNotMatch(mobilePanel[1], /(?:top|left|right):/);
-});
-
-test('truck action buttons wrap naturally instead of forcing two columns', () => {
-  assert.match(
-    css,
-    /\.fleet-map-truck-info__buttons\s*\{\s*display: flex;\s*flex-wrap: wrap;/,
-  );
-  assert.doesNotMatch(
-    css,
-    /\.fleet-map-truck-info__buttons\s*\{[^}]*grid-template-columns:/,
-  );
 });
 
 test('one map inspector retains hidden content and gives native and future details no popup positioning', () => {
@@ -236,7 +216,7 @@ test('one map inspector retains hidden content and gives native and future detai
 test('selected-truck header left-packs identity readings clocks duty and actions without elastic spacers', () => {
   assert.match(
     css,
-    /\.fleet-map-truck-info\s*\{\s*display: flex;\s*flex-wrap: wrap;\s*justify-content: flex-start;/,
+    /\.fleet-map-truck-info\s*\{[^}]*display: flex;\s*flex-wrap: wrap;/,
   );
   assert.match(
     css,
@@ -245,10 +225,6 @@ test('selected-truck header left-packs identity readings clocks duty and actions
   assert.doesNotMatch(
     css,
     /\.fleet-map-truck-info\s*\{[^}]*grid-template-columns:[^;]*max-content[^;]*fr/,
-  );
-  assert.match(
-    css,
-    /\.fleet-map-truck-info__actions\s*\{[^}]*align-items: flex-start;/,
   );
   assert.doesNotMatch(
     css,
@@ -262,24 +238,25 @@ test('selected-truck header left-packs identity readings clocks duty and actions
       ),
     );
   assert.match(css, /\.driver-hours-panel\s*\{\s*display: grid;/);
-  assert.match(
+  // A reading is a word and a value on one baseline - no frame, and no rule
+  // between it and the next, which is what the towers had.
+  assert.doesNotMatch(
     css,
-    /\.fleet-map-truck-info__reading\s*\{[^}]*border-left: 1px solid var\(--ui-border-subtle\);/,
+    /\.fleet-map-truck-info__reading[^{]*\{[^}]*border-left:/,
   );
   assert.doesNotMatch(css, /--hos-dial-size: var\(--size-map-hos-dial\)/);
 });
 
 test('HOS circles keep the same compact gap instead of stretching across wide or mobile headers', () => {
-  assert.match(
-    css,
-    /\.fleet-map-truck-info\s*\{[^}]*--hos-gap: var\(--space-sm\);/,
-  );
   assert.match(css, /\.driver-hours\s*\{[^}]*min-width: 0;\s*max-width: 100%;/);
   // The clocks read as one line of text, not as a row of dials.
-  assert.match(compact, /__hours\s*\{[^}]*--hos-display: flex;/);
+  // Said once, on the group that holds the clocks - not on the line and
+  // then again, differently, on the group.
+  assert.match(compact, /__clocks\s*\{[^}]*--hos-display: flex;/);
+  assert.doesNotMatch(compact, /__hours\s*\{[^}]*--hos-/);
   assert.match(
     compact,
-    /\.fleet-map-inspector__hours\s*\{[^}]*--hos-clock-min-width: 0;/,
+    /\.fleet-map-inspector__clocks\s*\{[^}]*--hos-clock-min-width: 0;/,
   );
   assert.doesNotMatch(compact, /__hours\s*\{[^}]*--hos-dial-size/);
   // How a text clock is drawn belongs to the component, not to this page.
@@ -302,10 +279,7 @@ test('HOS circles keep the same compact gap instead of stretching across wide or
 });
 
 test('desktop and mobile actions wrap without reserving blank reference rows', () => {
-  assert.match(
-    css,
-    /\.fleet-map-truck-info__buttons\s*\{[^}]*display: flex;[^}]*flex-wrap: wrap;/,
-  );
+  assert.doesNotMatch(css, /fleet-map-truck-info__buttons/);
   assert.doesNotMatch(
     css,
     /min-height: (?:calc\()?var\(--size-map-route-address-stacked-min\)/,
@@ -364,10 +338,14 @@ test('next-stop distance rides the clocks line at every width', () => {
   // The load leads the clocks line rather than sitting in a chip of its
   // own, and its number is labelled at every width.
   assert.doesNotMatch(compact, /__remaining\s*\{[^}]*margin-inline-start/);
+  // One column on a phone. It asked for this with flex-basis on the children
+  // of a grid, which does nothing: the three stayed abreast and the clocks
+  // folded into a tower.
   assert.match(
     mobile,
-    /__hours[^{]*__remaining,[^{}]*__distance,[^{}]*__clocks\s*\{[^}]*flex-basis: 100%;/,
+    /\.fleet-map-inspector__hours\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/,
   );
+  assert.doesNotMatch(compact, /flex-basis: 100%;\s*min-inline-size: 0;/);
   assert.match(compact, /__label\s*\{\s*display: inline;/);
   assert.doesNotMatch(compact, /__label\s*\{\s*display: none;/);
   assert.doesNotMatch(mobile, /is-mobile-collapsed[^{}]*__remaining/);
@@ -381,10 +359,7 @@ test('truck metadata stays aligned and disclosure does not restyle the primary s
     /\.fleet-map-inspector__driver,\s*[^{}]*\.fleet-map-inspector__trailer\s*\{[^}]*color: var\(--ui-text-secondary\);/,
   );
   assert.match(compact, /__trailer \+ [^{]*__driver::before\s*\{\s*content:/);
-  assert.match(
-    compact,
-    /\.fleet-map-truck-info\s*\{[^}]*align-items: baseline;/,
-  );
+  assert.match(css, /\.fleet-map-truck-info\s*\{[^}]*align-items: baseline;/);
   assert.doesNotMatch(compact, /__duty/);
 });
 
@@ -443,11 +418,9 @@ test('map key stays over the map and uses the actual fixed station comparison pa
   );
 });
 
-test('the selected truck illustration takes the action colour, and the planned stop its own title size', () => {
-  assert.match(
-    css,
-    /\.fleet-map-truck-info \.truck-illustration__trailer,\s*\.fleet-map-truck-info \.truck-illustration__cab\s*\{\s*fill: var\(--ui-action\);/,
-  );
+test('the planned stop has its own title size, and no dials or illustration are left', () => {
+  // The illustration left the map with the panel it stood in.
+  assert.doesNotMatch(css, /truck-illustration/);
   assert.match(
     css,
     /\.fleet-station-popup--planned > \.fleet-station-popup__title\s*\{[^}]*font-size: var\(--type-subtitle\);/,
