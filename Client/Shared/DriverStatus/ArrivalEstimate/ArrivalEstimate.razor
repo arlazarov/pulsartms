@@ -12,38 +12,14 @@
         }
         @if (DisplayEta?.Stops.FirstOrDefault() is { } next)
         {
-            @if (next.Hours is not null)
+            @* One row, wherever it comes from: the forecast renders the hour
+               with or without hours behind it. This used to carry a second
+               copy of that row for a stop the server could not forecast. *@
+            @if (ShowSummary || next.Hours is not null)
             {
                 <StopHours Estimate="next" Recap="DisplayEta.CycleAtCalculation" ShowRecap="ShowRecap" ShowSummary="ShowSummary" ShowDetails="ShowDetails" Reading="@Reading" />
             }
-            else
-            {
-            @if (ShowSummary)
-            {
-            <div class="@ReadingClass">
-            <div class="stop-hours__row stop-hours__road">
-            <span class="stop-hours__label">ETA</span>
-            <span class="stop-hours__value"><span class="stop-hours__arrival">
-            <time datetime="@(next.Arrival.ToString(
-                "O", CultureInfo.InvariantCulture))">
-                <span class="stop-hours__date" data-separator="· "
-                    >@StopHoursDisplay.RecapDate(next.Arrival)</span><span
-                    class="stop-hours__date-separator"> · </span><span
-                    class="stop-hours__date-break" aria-hidden="true"></span><span
-                    class="stop-hours__clock"
-                    >@(next.Arrival.ToString(
-                        "hh:mm tt", CultureInfo.InvariantCulture))</span>
-            </time>
-            @if (ShowDetails) { <small>local · @($"UTC{next.Arrival:zzz}")</small> }
-            @if (next.LateMinutes is > 0) { <strong class="arrival-estimate__late">Late by @Duration(next.LateMinutes.Value)</strong> }
-            else if (next.LateMinutes == 0) { <span class="arrival-estimate__ontime">On time</span> }
-            </span>
-            </span>
-            </div>
-            </div>
-            }
             else if (ShowDetails) { <span class="arrival-estimate__timezone">Arrival time zone <strong>@($"UTC{next.Arrival:zzz}")</strong></span> }
-            }
         }
         @if (ShowDutyStatus && DisplayEta?.DutyStatus is { } status) { <DriverDutySummary Status="status" /> }
     </div>

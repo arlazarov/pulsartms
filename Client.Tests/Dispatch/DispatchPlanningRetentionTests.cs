@@ -292,7 +292,9 @@ public sealed class DispatchPlanningRetentionTests
       "Sep 8 · 01:00 PM",
       component.Find(".dispatch-planning").TextContent
     );
-    Assert.Empty(component.FindAll(".arrival-estimate__ontime"));
+    Assert.Empty(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
   }
 
   [Fact]
@@ -340,7 +342,9 @@ public sealed class DispatchPlanningRetentionTests
         component.Find(".dispatch-planning").TextContent
       );
       Assert.DoesNotContain("Updating", component.Markup);
-      Assert.Single(component.FindAll(".arrival-estimate__ontime"));
+      Assert.Single(
+        component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+      );
     });
     clock.Advance(TimeSpan.FromMinutes(18));
     component.Render();

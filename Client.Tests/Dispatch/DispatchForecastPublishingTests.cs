@@ -264,7 +264,12 @@ public sealed class DispatchForecastPublishingTests
     Assert.Empty(cards[1].Instance.Load.Eta!.Stops);
     Assert.True(cards[1].Instance.Load.Eta!.RouteUpdatePending);
     Assert.Equal(previousMarkup, cards[1].Markup);
-    Assert.Equal(2, cards[1].FindAll(".arrival-estimate__ontime").Count);
+    Assert.Equal(
+      2,
+      cards[1]
+        .FindAll(".stop-hours__arrival .stop-hours__status--success")
+        .Count
+    );
     Assert.DoesNotContain("Updating", cards[1].Markup);
   }
 

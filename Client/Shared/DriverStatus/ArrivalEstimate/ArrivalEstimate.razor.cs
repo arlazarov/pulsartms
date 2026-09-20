@@ -43,8 +43,6 @@ public partial class ArrivalEstimate
   // Passed through to the forecast: which reading of it this place wants.
   [Parameter]
   public string Reading { get; set; } = string.Empty;
-  private string ReadingClass =>
-    Reading.Length > 0 ? $"stop-hours stop-hours--{Reading}" : "stop-hours";
 
   [Parameter]
   public bool Refreshing { get; set; }
@@ -55,7 +53,4 @@ public partial class ArrivalEstimate
   {
     Memory.Update(DispatchId, Stop, Eta, Completed);
   }
-
-  private static string Duration(int minutes) =>
-    minutes >= 60 ? $"{minutes / 60}h {minutes % 60:00}m" : $"{minutes}m";
 }

@@ -11,12 +11,6 @@
   color: ui.theme(text-muted);
   font-size: var(--arrival-detail-font-size, #{ui.fs(micro)});
 }
-.arrival-estimate__late {
-  color: ui.theme(danger-text);
-}
-.arrival-estimate__ontime {
-  color: ui.theme(success-text);
-}
 .arrival-estimate__appointment {
   flex-basis: 100%;
 }

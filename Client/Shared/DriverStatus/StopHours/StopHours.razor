@@ -16,13 +16,17 @@
                     >@(Estimate.Arrival.ToString(
                         "hh:mm tt", CultureInfo.InvariantCulture))</span>
             </time>
+            @if (!HasForecast && ShowDetails)
+            { <small>local · @($"UTC{Estimate.Arrival:zzz}")</small> }
             @if (Status.Length > 0) { <span class="stop-hours__status stop-hours__status--@StatusTone">@Status</span> }</span>
             @if (CycleStatus.Length > 0)
             { <span class="stop-hours__status stop-hours__cycle-status stop-hours__status--@CycleStatusTone">@CycleStatus</span> }
         </span>
     </div>
     }
-    @if (ShowDetails)
+    @* Without an hours forecast there is no cycle to show, only the hour
+       itself and whether it is late. *@
+    @if (ShowDetails && HasForecast)
     {
     <section class="stop-hours__cycle" aria-label="Cycle at this stop">
         <div class="stop-hours__row stop-hours__arrival-cycle">

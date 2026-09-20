@@ -12,6 +12,50 @@ namespace Client.Tests.Routing;
 [Trait("Kind", "Component")]
 public sealed class ArrivalEstimateComponentTests
 {
+  // A stop the server could not forecast still has an hour and may still be
+  // late. That row used to be a second copy of the forecast's markup, kept
+  // here; the two drifted - under an hour one said "Late by 45m" and the
+  // other "Late by 0h 45m" - and a stylesheet had to name both.
+  [Fact]
+  public void AStopWithNoHoursIsDrawnByTheForecast_NotByACopyOfIt()
+  {
+    using var context = new BunitContext();
+    var clock = new FakeTimeProvider(
+      new DateTimeOffset(2026, 9, 8, 12, 0, 0, TimeSpan.Zero)
+    );
+    context.Services.AddSingleton<TimeProvider>(clock);
+    var now = clock.GetUtcNow().UtcDateTime;
+    var stop = new PlanStop(
+      Guid.NewGuid(),
+      "Delivery",
+      "Warehouse",
+      1,
+      new(40, -80)
+    );
+    var eta = new DispatchEta(
+      now,
+      now.AddMinutes(2),
+      [new(stop.Id, clock.GetUtcNow().AddHours(1), "UTC", null, 45, 60, 0)],
+      null,
+      []
+    );
+    var component = context.Render<ArrivalEstimate>(p =>
+      p.Add(x => x.Stop, stop).Add(x => x.Eta, eta)
+    );
+    Assert.Single(component.FindAll(".stop-hours"));
+    Assert.Single(component.FindAll(".stop-hours__road"));
+    Assert.Empty(component.FindAll(".stop-hours__cycle"));
+    Assert.Equal(
+      "Late by 45m",
+      component
+        .Find(".stop-hours__arrival .stop-hours__status--danger")
+        .TextContent
+    );
+    // The reading a place asks for reaches this row too.
+    component.Render(p => p.Add(x => x.Reading, "compact"));
+    Assert.Single(component.FindAll(".stop-hours.stop-hours--compact"));
+  }
+
   [Fact]
   public void SummaryAndDetailsCanBeSeparatedWithoutChangingTheDefaultDisplay()
   {
@@ -93,7 +137,9 @@ public sealed class ArrivalEstimateComponentTests
     var component = context.Render<ArrivalEstimate>(p =>
       p.Add(x => x.Stop, stop).Add(x => x.Eta, eta)
     );
-    Assert.Single(component.FindAll(".arrival-estimate__ontime"));
+    Assert.Single(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
     clock.Advance(TimeSpan.FromMinutes(2));
     component.Render(p => p.Add(x => x.Eta, eta));
     Assert.Empty(component.FindAll(".arrival-estimate"));
@@ -280,7 +326,9 @@ public sealed class ArrivalEstimateComponentTests
     );
     Assert.Contains("Driving", component.Find(".driver-duty").TextContent);
     Assert.Equal(previousMarkup, component.Markup);
-    Assert.Single(component.FindAll(".arrival-estimate__ontime"));
+    Assert.Single(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
     Assert.DoesNotContain("Updating", component.Markup);
     component.Render(p => p.Add(x => x.Completed, true));
     Assert.Empty(component.FindAll(".arrival-estimate"));
@@ -322,7 +370,9 @@ public sealed class ArrivalEstimateComponentTests
     );
     Assert.Contains(
       "Late by 2h 05m",
-      component.Find(".arrival-estimate__late").TextContent
+      component
+        .Find(".stop-hours__arrival .stop-hours__status--danger")
+        .TextContent
     );
     var previousMarkup = component.Markup;
     clock.Advance(TimeSpan.FromMinutes(3));
@@ -336,7 +386,9 @@ public sealed class ArrivalEstimateComponentTests
     Assert.Equal(previousMarkup, component.Markup);
     Assert.Equal(
       "Late by 2h 05m",
-      component.Find(".arrival-estimate__late").TextContent
+      component
+        .Find(".stop-hours__arrival .stop-hours__status--danger")
+        .TextContent
     );
     Assert.DoesNotContain("Updating", component.Markup);
 
@@ -349,7 +401,9 @@ public sealed class ArrivalEstimateComponentTests
     component.Render(p => p.Add(x => x.Eta, refreshed));
     Assert.Equal(
       "Late by 15m",
-      component.Find(".arrival-estimate__late").TextContent
+      component
+        .Find(".stop-hours__arrival .stop-hours__status--danger")
+        .TextContent
     );
     Assert.Empty(component.FindAll(".arrival-estimate__previous-late"));
     Assert.DoesNotContain("Updating", component.Markup);
@@ -392,8 +446,8 @@ public sealed class ArrivalEstimateComponentTests
     Assert.Single(
       component.FindAll(
         lateMinutes > 0
-          ? ".arrival-estimate__late"
-          : ".arrival-estimate__ontime"
+          ? ".stop-hours__arrival .stop-hours__status--danger"
+          : ".stop-hours__arrival .stop-hours__status--success"
       )
     );
     Assert.Empty(component.FindAll(".arrival-estimate__previous-late"));
@@ -456,7 +510,9 @@ public sealed class ArrivalEstimateComponentTests
       "Sep 9 · 08:00 AM",
       component.Find(".arrival-estimate").TextContent
     );
-    Assert.Single(component.FindAll(".arrival-estimate__ontime"));
+    Assert.Single(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
     var previousMarkup = component.Markup;
 
     clock.Advance(TimeSpan.FromMinutes(3));
@@ -470,7 +526,9 @@ public sealed class ArrivalEstimateComponentTests
     );
     Assert.Equal(previousMarkup, component.Markup);
     Assert.DoesNotContain("Updating", component.Markup);
-    Assert.Single(component.FindAll(".arrival-estimate__ontime"));
+    Assert.Single(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
 
     clock.Advance(TimeSpan.FromMinutes(15));
     component.Render(p => p.Add(x => x.Eta, eta));
@@ -533,7 +591,9 @@ public sealed class ArrivalEstimateComponentTests
     );
     Assert.Contains("ETA", component.Markup);
     Assert.DoesNotContain("Updating", component.Markup);
-    Assert.Single(component.FindAll(".arrival-estimate__ontime"));
+    Assert.Single(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
   }
 
   [Fact]
@@ -562,17 +622,23 @@ public sealed class ArrivalEstimateComponentTests
     var component = context.Render<ArrivalEstimate>(p =>
       p.Add(x => x.Stop, stop).Add(x => x.Eta, eta)
     );
-    Assert.Single(component.FindAll(".arrival-estimate__ontime"));
+    Assert.Single(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
     clock.Advance(TimeSpan.FromMinutes(3));
     component.Render(p =>
       p.Add(x => x.Eta, eta with { Stops = [], RouteUpdatePending = true })
     );
     Assert.Contains("ETA", component.Markup);
     Assert.DoesNotContain("Updating", component.Markup);
-    Assert.Single(component.FindAll(".arrival-estimate__ontime"));
+    Assert.Single(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
     clock.Advance(TimeSpan.FromMinutes(15));
     component.Render(p => p.Add(x => x.Eta, eta));
     Assert.DoesNotContain("ETA", component.Markup);
-    Assert.Empty(component.FindAll(".arrival-estimate__ontime"));
+    Assert.Empty(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
   }
 }

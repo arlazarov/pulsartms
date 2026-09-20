@@ -85,9 +85,7 @@
       font-weight: 600;
     }
 
-    .stop-hours__status,
-    .arrival-estimate__late,
-    .arrival-estimate__ontime {
+    .stop-hours__status {
       display: var(--stop-hours-road-status-display, inline);
       margin-inline-start: var(--stop-hours-road-status-gap, 0);
       white-space: normal;

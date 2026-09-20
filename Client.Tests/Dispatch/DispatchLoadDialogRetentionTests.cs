@@ -170,13 +170,13 @@ public sealed class DispatchLoadDialogRetentionTests
       Assert.False(ViewState(component, view).Refreshing);
       SyncDialog(component, view, dialog);
       Assert.False(dialog.Instance.Refreshing);
+      // One selector for both: a stop with no hours behind it is drawn by
+      // the same forecast component, so lateness is marked the same way.
       Assert.Equal(
         2,
         dialog
           .FindAll(
-            legacyCycle
-              ? ".arrival-estimate__late"
-              : ".stop-hours__road .stop-hours__arrival .stop-hours__status--danger"
+            ".stop-hours__road .stop-hours__arrival .stop-hours__status--danger"
           )
           .Count
       );

@@ -1303,7 +1303,11 @@ public sealed class FleetMapComponentTests
         panel.QuerySelectorAll(".fleet-map-route-info__metric strong"),
         value => Assert.Equal("—", value.TextContent)
       );
-      Assert.Empty(panel.QuerySelectorAll(".arrival-estimate__ontime"));
+      Assert.Empty(
+        panel.QuerySelectorAll(
+          ".stop-hours__arrival .stop-hours__status--success"
+        )
+      );
       Assert.False(
         component
           .Find("button[aria-label='Fuel plan']")
@@ -2142,7 +2146,9 @@ public sealed class FleetMapComponentTests
     // A brace left over from a removed @if renders as text, and did.
     Assert.DoesNotContain(
       '}',
-      component.Find(".fleet-map-inspector__controls").ParentElement!.TextContent
+      component
+        .Find(".fleet-map-inspector__controls")
+        .ParentElement!.TextContent
     );
     await component.Find(".fleet-map-inspector__close").ClickAsync(new());
     Assert.Equal(
@@ -4517,7 +4523,12 @@ public sealed class FleetMapComponentTests
         .Find("[aria-label='Selected next load'] .arrival-estimate")
         .OuterHtml
     );
-    Assert.Equal(2, component.FindAll(".arrival-estimate__ontime").Count);
+    Assert.Equal(
+      2,
+      component
+        .FindAll(".stop-hours__arrival .stop-hours__status--success")
+        .Count
+    );
     Assert.DoesNotContain("Updating", component.Markup);
     var progress = Assert.IsType<RouteProgress>(
       fixture.Js.Calls.Last(x => x.Name == "setRouteBytes").Args![1]
@@ -4678,7 +4689,11 @@ public sealed class FleetMapComponentTests
         panel.QuerySelectorAll(".fleet-map-route-info__metric strong"),
         value => Assert.Equal("—", value.TextContent)
       );
-      Assert.Empty(panel.QuerySelectorAll(".arrival-estimate__ontime"));
+      Assert.Empty(
+        panel.QuerySelectorAll(
+          ".stop-hours__arrival .stop-hours__status--success"
+        )
+      );
       Assert.DoesNotContain("Warehouse", panel.TextContent);
       using var payload = fixture.LastCurrentPayload();
       Assert.Equal(JsonValueKind.Null, payload.RootElement.ValueKind);

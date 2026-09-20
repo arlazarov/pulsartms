@@ -161,7 +161,9 @@ public sealed class DispatchLoadCardTests
         .Count
     );
     Assert.Single(
-      component.FindAll(".dispatch-load__stop-times .arrival-estimate__late")
+      component.FindAll(
+        ".dispatch-load__stop-times .stop-hours__arrival .stop-hours__status--danger"
+      )
     );
     Assert.Empty(component.FindAll(".arrival-estimate__timezone"));
     var dialog = RenderDetails(context, component);
@@ -196,7 +198,7 @@ public sealed class DispatchLoadCardTests
     );
     Assert.Empty(
       dialog.FindAll(
-        ".dispatch-load-dialog .dispatch-load__stop-detail-content .arrival-estimate__late, .dispatch-load-dialog .dispatch-load__stop-detail-content .arrival-estimate__ontime"
+        ".dispatch-load-dialog .dispatch-load__stop-detail-content .stop-hours__arrival .stop-hours__status--danger, .dispatch-load-dialog .dispatch-load__stop-detail-content .stop-hours__arrival .stop-hours__status--success"
       )
     );
     Assert.Equal(0, requests);
@@ -510,10 +512,19 @@ public sealed class DispatchLoadCardTests
     Assert.Contains("Sep 8 · 12:00 PM", stops[2].TextContent);
     Assert.Contains("Intermediate warehouse", stops[1].TextContent);
     Assert.Contains("City 2, ON", stops[1].TextContent);
-    Assert.Single(stops[1].QuerySelectorAll(".arrival-estimate__late"));
+    Assert.Single(
+      stops[1]
+        .QuerySelectorAll(".stop-hours__arrival .stop-hours__status--danger")
+    );
     Assert.Contains("Late by 25m", stops[1].TextContent);
-    Assert.Empty(stops[0].QuerySelectorAll(".arrival-estimate__late"));
-    Assert.Empty(stops[2].QuerySelectorAll(".arrival-estimate__late"));
+    Assert.Empty(
+      stops[0]
+        .QuerySelectorAll(".stop-hours__arrival .stop-hours__status--danger")
+    );
+    Assert.Empty(
+      stops[2]
+        .QuerySelectorAll(".stop-hours__arrival .stop-hours__status--danger")
+    );
     Assert.Single(component.FindAll(".dispatch-load--current"));
     Assert.Empty(
       component.FindAll(".dispatch-load__summary, .dispatch-load__metrics")
@@ -538,7 +549,10 @@ public sealed class DispatchLoadCardTests
       detailedStops,
       stop => Assert.Contains("Arrival time zone UTC-04:00", stop.TextContent)
     );
-    Assert.Single(detailedStops[1].QuerySelectorAll(".arrival-estimate__late"));
+    Assert.Single(
+      detailedStops[1]
+        .QuerySelectorAll(".stop-hours__arrival .stop-hours__status--danger")
+    );
     Assert.Contains("Late by 25m", detailedStops[1].TextContent);
   }
 
@@ -574,8 +588,12 @@ public sealed class DispatchLoadCardTests
 
     Assert.Equal(3, component.FindAll(".dispatch-load__eta-missing").Count);
     Assert.DoesNotContain("local ·", component.Markup);
-    Assert.Empty(component.FindAll(".arrival-estimate__ontime"));
-    Assert.Empty(component.FindAll(".arrival-estimate__late"));
+    Assert.Empty(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
+    Assert.Empty(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--danger")
+    );
   }
 
   [Fact]
@@ -588,7 +606,12 @@ public sealed class DispatchLoadCardTests
     var component = context.Render<DispatchLoadCard>(parameters =>
       parameters.Add(card => card.Load, load)
     );
-    Assert.Equal(2, component.FindAll(".arrival-estimate__ontime").Count);
+    Assert.Equal(
+      2,
+      component
+        .FindAll(".stop-hours__arrival .stop-hours__status--success")
+        .Count
+    );
     var previousMarkup = component.Markup;
     clock.Advance(TimeSpan.FromMinutes(3));
     load.Eta = load.Eta! with { Stops = [], RouteUpdatePending = true };
@@ -609,14 +632,23 @@ public sealed class DispatchLoadCardTests
       component.Find(".dispatch-load").TextContent
     );
     Assert.Empty(component.FindAll(".dispatch-load__eta-missing"));
-    Assert.Equal(2, component.FindAll(".arrival-estimate__ontime").Count);
-    Assert.Single(component.FindAll(".arrival-estimate__late"));
+    Assert.Equal(
+      2,
+      component
+        .FindAll(".stop-hours__arrival .stop-hours__status--success")
+        .Count
+    );
+    Assert.Single(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--danger")
+    );
 
     clock.Advance(TimeSpan.FromMinutes(15));
     component.Render(parameters => parameters.Add(card => card.Load, load));
     Assert.Equal(3, component.FindAll(".dispatch-load__eta-missing").Count);
     Assert.DoesNotContain("local ·", component.Markup);
-    Assert.Empty(component.FindAll(".arrival-estimate__ontime"));
+    Assert.Empty(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
   }
 
   [Fact]
@@ -646,8 +678,12 @@ public sealed class DispatchLoadCardTests
     Assert.DoesNotContain("11:00 UTC", component.Markup);
     Assert.DoesNotContain("ETA", component.Markup);
     Assert.Empty(component.FindAll(".dispatch-load__eta-missing"));
-    Assert.Empty(component.FindAll(".arrival-estimate__late"));
-    Assert.Empty(component.FindAll(".arrival-estimate__ontime"));
+    Assert.Empty(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--danger")
+    );
+    Assert.Empty(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
 
     load.Eta = load.Eta! with { Stops = [], RouteUpdatePending = true };
     component.Render(parameters => parameters.Add(card => card.Load, load));

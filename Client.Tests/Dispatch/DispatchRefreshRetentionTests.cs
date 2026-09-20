@@ -17,7 +17,12 @@ public sealed class DispatchRefreshRetentionTests
     var component = fixture.Render();
     component.WaitForAssertion(
       () =>
-        Assert.Equal(2, component.FindAll(".arrival-estimate__ontime").Count)
+        Assert.Equal(
+          2,
+          component
+            .FindAll(".stop-hours__arrival .stop-hours__status--success")
+            .Count
+        )
     );
     var card = component.FindComponent<DispatchLoadCard>().Instance;
     var previous = component.FindComponent<DispatchLoadCard>().Markup;
@@ -69,11 +74,17 @@ public sealed class DispatchRefreshRetentionTests
     fixture.Load.Eta = fixture.Forecast(5);
     replacement.SetResult(fixture.Board());
     component.WaitForAssertion(
-      () => Assert.Equal(2, component.FindAll(".arrival-estimate__late").Count)
+      () =>
+        Assert.Equal(
+          2,
+          component
+            .FindAll(".stop-hours__arrival .stop-hours__status--danger")
+            .Count
+        )
     );
     Assert.Empty(
       component.FindAll(
-        ".arrival-estimate__ontime, .dispatch-load__eta-missing"
+        ".stop-hours__arrival .stop-hours__status--success, .dispatch-load__eta-missing"
       )
     );
     Assert.Same(card, component.FindComponent<DispatchLoadCard>().Instance);
@@ -92,7 +103,12 @@ public sealed class DispatchRefreshRetentionTests
     var component = fixture.Render();
     component.WaitForAssertion(
       () =>
-        Assert.Equal(2, component.FindAll(".arrival-estimate__ontime").Count)
+        Assert.Equal(
+          2,
+          component
+            .FindAll(".stop-hours__arrival .stop-hours__status--success")
+            .Count
+        )
     );
     var previous = component.FindComponent<DispatchLoadCard>().Markup;
     fixture.DeferBoard = true;
@@ -124,7 +140,9 @@ public sealed class DispatchRefreshRetentionTests
     {
       component.WaitForAssertion(() =>
       {
-        Assert.Empty(component.FindAll(".arrival-estimate__ontime"));
+        Assert.Empty(
+          component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+        );
         Assert.False(
           component
             .FindComponent<DispatchLoadCard>()
@@ -144,7 +162,9 @@ public sealed class DispatchRefreshRetentionTests
       () => fixture.Clock.Advance(TimeSpan.FromMinutes(15))
     );
     component.FindComponent<DispatchLoadCard>().Render();
-    Assert.Empty(component.FindAll(".arrival-estimate__ontime"));
+    Assert.Empty(
+      component.FindAll(".stop-hours__arrival .stop-hours__status--success")
+    );
   }
 
   [Theory]

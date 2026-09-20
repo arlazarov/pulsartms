@@ -275,7 +275,8 @@ public sealed class StopHoursComponentTests
       component.FindAll(".stop-hours__status--danger").Count
     );
     if (late)
-      Assert.Contains("Late by 0h 45m", component.Markup);
+      // Lateness is a sentence; under an hour it does not say "0h".
+      Assert.Contains("Late by 45m", component.Markup);
   }
 
   [Fact]

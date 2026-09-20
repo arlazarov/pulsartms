@@ -31,6 +31,11 @@ public partial class StopHours
   public string Reading { get; set; } = string.Empty;
   private string ReadingClass =>
     Reading.Length > 0 ? $"stop-hours stop-hours--{Reading}" : "stop-hours";
+
+  // A stop may arrive with no hours behind it: an older dispatch, or one
+  // the server could not forecast. The hour and whether it is late are still
+  // worth saying, and are said here rather than copied into a second block.
+  private bool HasForecast => Estimate.Hours is not null;
   private StopHoursForecast Hours => Estimate.Hours!;
   private int? RemainingCycle =>
     Hours.CycleAtArrivalMinutes ?? Hours.CurrentCycleMinutes;
@@ -42,13 +47,15 @@ public partial class StopHours
   private bool CycleShort => StopHoursDisplay.CycleShort(Hours);
   private string Status =>
     Estimate.LateMinutes is > 0
-      ? $"Late by {StopHoursDisplay.Duration(Estimate.LateMinutes.Value)}"
-    : Estimate.LateMinutes == 0 && CycleKnown && !CycleShort ? "On time"
+      ? $"Late by {StopHoursDisplay.Lateness(Estimate.LateMinutes.Value)}"
+    : Estimate.LateMinutes == 0 && (!HasForecast || (CycleKnown && !CycleShort))
+      ? "On time"
     : "";
   private string StatusTone =>
     Estimate.LateMinutes is > 0 ? "danger" : "success";
   private string CycleStatus =>
-    !CycleKnown ? "Cycle unknown"
+    !HasForecast ? ""
+    : !CycleKnown ? "Cycle unknown"
     : CycleShort ? "Cycle short"
     : "";
   private string CycleStatusTone => !CycleKnown ? "muted" : "danger";
@@ -83,6 +90,6 @@ public partial class StopHours
   private string AlternativeStatus(StopHoursAlternative alternative) =>
     alternative.LateMinutes == 0 ? "On time with recap"
     : alternative.LateMinutes is > 0
-      ? $"Late by {StopHoursDisplay.Duration(alternative.LateMinutes.Value)}"
+      ? $"Late by {StopHoursDisplay.Lateness(alternative.LateMinutes.Value)}"
     : "With recap";
 }

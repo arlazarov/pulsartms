@@ -19,6 +19,18 @@ public static class StopHoursDisplay
     );
   }
 
+  // Said in a sentence rather than read off a column, an hour that is not
+  // there is not said: "Late by 45m", while the cycle keeps its aligned
+  // "0h 45m" beside figures of other sizes. The estimate used to carry its
+  // own wording for this, and the two differed under an hour.
+  public static string Lateness(int minutes) =>
+    Math.Abs((long)minutes) < 60
+      ? string.Create(
+        CultureInfo.InvariantCulture,
+        $"{Math.Abs((long)minutes)}m"
+      )
+      : Duration(minutes);
+
   public static string Timestamp(DateTimeOffset value) =>
     value.ToString("MMM d · hh:mm tt", CultureInfo.InvariantCulture);
 

@@ -1349,7 +1349,7 @@ try {
                   ),
                   late:
                     stop
-                      .querySelector('.arrival-estimate__late')
+                      .querySelector('.stop-hours__arrival .stop-hours__status--danger')
                       ?.textContent.trim() ?? null,
                   actual:
                     stop
