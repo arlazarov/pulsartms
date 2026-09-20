@@ -2,7 +2,7 @@
 @use '../base/themes' as themes;
 @use '../base/functions' as fn;
 @use '../base/colors' as colors;
-@use '../base/variables' as vars;
+@use '../base/tokens' as vars;
 
 :root {
   @include tokens.base-root();

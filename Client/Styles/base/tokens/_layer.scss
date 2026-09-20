@@ -1,0 +1,18 @@
+// What stands in front of what, said once. These were twenty-one bare
+// numbers spread over fifteen files, with two different components both
+// claiming a thousand and nothing to consult before picking the next one.
+//
+// The order reads top to bottom: inside a card, then above a list, then the
+// three things that float over the map, then what opens over the page.
+$layers: (
+  raised: 1,
+  sticky: 2,
+  map-legend: 3,
+  map-inspector: 4,
+  map-card: 5,
+  map-editor: 12,
+  map-controls: 20,
+  dropdown: 100,
+  dialog: 1000,
+  viewer: 2000,
+);

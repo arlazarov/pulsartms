@@ -1,0 +1,63 @@
+// A fixed dimension that more than one rule needs to agree on, grouped by
+// what it belongs to. A name here is not a saving of keystrokes: it is the
+// only place the number can be changed, and the only place to look for it.
+//
+// A width used by exactly one rule still belongs here rather than in that
+// rule, because the alternative is a bare number in a stylesheet - which is
+// what this map exists to prevent.
+$sizes: (
+  // Controls and the things drawn at their scale.
+  control: 2.5rem,
+  control-compact: 2rem,
+  control-touch: 2.75rem,
+  checkbox: 1.25rem,
+
+  // Identity.
+  brand-logo: 8.75rem,
+  brand-logo-prominent: 14rem,
+
+  // How wide a page lets its content grow.
+  content-form: 65rem,
+  content-account: 36rem,
+  content-login: 25rem,
+  content-load-dialog: 56rem,
+  form-field: 15rem,
+  address-suggestions: 20rem,
+
+  // The map's floating cards.
+  map-inspector: 76rem,
+  map-compact-inspector: 56rem,
+  map-stop-inspector: 46rem,
+  map-details-card: 37.5rem,
+  map-fuel-card: 32rem,
+  map-fuel-quote: 22.5rem,
+  map-driver-duty-width: 11rem,
+
+  // Facts read off a route: each figure keeps its column.
+  route-metric: 5.5rem,
+  route-progress: 10rem,
+  route-load: 20rem,
+
+  // Dispatch.
+  dispatch-metric: 8rem,
+  dispatch-dialog-metric: 10rem,
+  dispatch-load-card: 22.5rem,
+  dispatch-stop-marker: 1.5rem,
+  dispatch-stop-list: 22rem,
+  dispatch-stop-list-compact: 15rem,
+  dispatch-stop-map: 20rem,
+
+  // Fuel: the plan editor, and a visit on a card.
+  fuel-editor: 46rem,
+  fuel-editor-wide: 54rem,
+  fuel-editor-height: 40rem,
+  fuel-editor-card: 26rem,
+  fuel-editor-route: 20rem,
+  fuel-visit: 14rem,
+  fuel-visit-number: 1.375rem,
+  popup-stop-badge: 1.625rem,
+
+  // Hours of service.
+  hos-dial: 3.625rem,
+  hos-dial-compact: 3.25rem,
+);

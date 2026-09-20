@@ -27,14 +27,16 @@ test('pages compose HOS through custom properties instead of internal selectors'
 test('no page rewrites the inside of a component it only places', () => {
   const root = new URL('../../Styles/', import.meta.url);
   const roots = new Set();
-  for (const file of readdirSync(new URL('components/', root), {
-    recursive: true,
-  }).filter(x => x.endsWith('.scss')))
-    for (const [, name] of readFileSync(
-      new URL(`components/${file}`, root),
-      'utf8',
-    ).matchAll(/^\.([a-z][a-z0-9-]*)\s*[,{]/gm))
-      roots.add(name);
+  // Both layers of reusable UI: the generic controls and the shared ones.
+  for (const layer of ['components/', 'shared/'])
+    for (const file of readdirSync(new URL(layer, root), {
+      recursive: true,
+    }).filter(x => x.endsWith('.scss')))
+      for (const [, name] of readFileSync(
+        new URL(`${layer}${file}`, root),
+        'utf8',
+      ).matchAll(/^\.([a-z][a-z0-9-]*)\s*[,{]/gm))
+        roots.add(name);
   assert.ok(roots.size > 20, 'component roots were not found');
   for (const folder of ['pages', 'layouts'])
     for (const file of readdirSync(new URL(`${folder}/`, root), {
@@ -58,15 +60,18 @@ test('no page rewrites the inside of a component it only places', () => {
 // The stylesheet check above cannot see this: the page names the parts in
 // Razor, not in a stylesheet.
 test('markup that writes a component asks for one of its readings', () => {
-  const styles = new URL('../../Styles/components/', import.meta.url);
   const readings = new Map();
-  for (const file of readdirSync(styles, { recursive: true }).filter(x =>
-    x.endsWith('.scss'),
-  ))
-    for (const [, root] of readFileSync(new URL(file, styles), 'utf8').matchAll(
-      /^\.([a-z][a-z0-9-]*)--[a-z0-9-]+\s*[,{]/gm,
+  for (const layer of ['components/', 'shared/']) {
+    const styles = new URL(`../../Styles/${layer}`, import.meta.url);
+    for (const file of readdirSync(styles, { recursive: true }).filter(x =>
+      x.endsWith('.scss'),
     ))
-      readings.set(root, true);
+      for (const [, root] of readFileSync(
+        new URL(file, styles),
+        'utf8',
+      ).matchAll(/^\.([a-z][a-z0-9-]*)--[a-z0-9-]+\s*[,{]/gm))
+        readings.set(root, true);
+  }
   assert.ok(readings.size > 3, 'components with readings were not found');
   const owner = root =>
     root
@@ -106,7 +111,7 @@ test('markup that writes a component asks for one of its readings', () => {
 });
 
 test('HOS diameter and text use the same component-owned responsive value', () => {
-  const css = compile("@use 'components/driver-status';");
+  const css = compile("@use 'shared/driver-status';");
   assert.match(
     css,
     /--_hos-dial-size: var\(--hos-dial-size, var\(--size-hos-dial\)\)/,
@@ -129,7 +134,7 @@ test('HOS diameter and text use the same component-owned responsive value', () =
 // Squeezed, "Break" came apart into three rows of single letters, because a
 // label under a dial is a column head allowed to break anywhere to fit.
 test('a clock read on a line keeps its label whole', () => {
-  const css = compile("@use 'components/driver-status';");
+  const css = compile("@use 'shared/driver-status';");
   const text = css.slice(css.indexOf('.driver-hours--text'));
   assert.match(
     text,
@@ -143,7 +148,7 @@ test('a clock read on a line keeps its label whole', () => {
 });
 
 test('component folders keep fuel module entry points emitting each component once', () => {
-  const css = compile("@use 'components';");
+  const css = compile("@use 'components';\n@use 'shared';");
   for (const selector of [
     'fuel-plan-editor',
     'fuel-reading',

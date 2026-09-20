@@ -4,7 +4,7 @@ import { compileString } from 'sass';
 import { fileURLToPath } from 'node:url';
 
 const css = compileString(
-  "@use 'pages/dispatch/views'; @use 'components/dispatch-load-dialog'; @use 'pages/dispatch/load';",
+  "@use 'pages/dispatch/views'; @use 'shared/dispatch/load-dialog'; @use 'pages/dispatch/load';",
   {
     loadPaths: [fileURLToPath(new URL('../../Styles/', import.meta.url))],
   },

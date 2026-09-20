@@ -129,7 +129,7 @@ test('summary cycle warnings start under the ETA label while lateness stays grou
   // A stop shown in summary asks the forecast for its inline reading; the
   // forecast owns what that reading is. This page used to name the
   // component's own elements to say the same thing.
-  const hours = compileString("@use 'components/driver-status';", {
+  const hours = compileString("@use 'shared/driver-status';", {
     loadPaths,
   }).css;
   assert.match(
@@ -158,7 +158,7 @@ test('summary cycle warnings start under the ETA label while lateness stays grou
 });
 
 test('narrow stop forecasts wrap their label without splitting clocks', () => {
-  const hours = compileString("@use 'components/driver-status';", {
+  const hours = compileString("@use 'shared/driver-status';", {
     loadPaths,
   }).css;
   assert.match(

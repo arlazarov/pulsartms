@@ -4,7 +4,7 @@ import { compileString } from 'sass';
 import { fileURLToPath } from 'node:url';
 
 const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
-const { css } = compileString("@use 'components/truck-weather';", {
+const { css } = compileString("@use 'shared/trucks/weather';", {
   loadPaths,
 });
 

@@ -1,0 +1,7 @@
+// What a thing you can press or type into measures. Shared by every
+// control mixin, so a button and a field are the same height everywhere.
+$control-height: var(--size-control);
+$control-compact-height: var(--size-control-compact);
+$control-touch-height: var(--size-control-touch);
+$control-font-size: var(--type-body);
+$control-padding: var(--space-sm) var(--space-md);

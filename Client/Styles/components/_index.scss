@@ -1,20 +1,8 @@
-@use 'buttons';
-@use 'brand';
-@use 'appearance-loader';
-@use 'page-header';
+// Generic controls, the ones no feature owns: a button, a form, a table of
+// rows, a popup. These mirror Client/Components.
+@use 'button';
 @use 'form';
-@use 'form-fields';
-@use 'broker-terms';
-@use 'search-input';
-@use 'filter-toolbar';
-@use 'data-table';
-@use 'data-table-pagination';
 @use 'popup';
-@use 'fuel';
-
-@use 'driver-status';
-@use 'truck-camera';
-@use 'truck-weather';
-@use 'dispatch-load-dialog';
-@use 'dispatch';
-@use 'routing/route-editor';
+@use 'data-table';
+@use 'filter-toolbar';
+@use 'appearance-loader';

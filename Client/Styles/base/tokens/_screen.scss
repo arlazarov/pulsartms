@@ -1,0 +1,48 @@
+@use 'sass:map';
+
+// A width at which a layout changes shape. Two kinds live here, and the
+// difference matters when you are adding one.
+
+// The scale: a handful of steps about the window itself, used all over.
+// Adding a step here changes how the whole product breathes.
+$screen-scale: (
+  sm: 500px,
+  md: 800px,
+  bg: 1000px,
+  narrow-card: 551px,
+  map-mobile: 768px,
+);
+
+// A place: the width at which one named thing runs out of room. It is read
+// against that thing's own box wherever possible, which is why most of
+// these are in rem - they measure text, not screens. Adding one here
+// changes only the thing it names.
+$screen-places: (
+  // The map's cards.
+  map-compact-columns: 40rem,
+  map-info-stacked: 20rem,
+  map-fuel-halves: 34rem,
+  map-next-stop-tight: 18rem,
+  map-toolbar-stacked: 14rem,
+  map-route-columns: 1101px,
+
+  // Dispatch.
+  dispatch-load-history: 48rem,
+  dispatch-load-columns: 32rem,
+  dispatch-truck-compact: 1050px,
+  dispatch-workspace-columns: 62rem,
+  dispatch-workspace-panes: 55rem,
+  dispatch-workspace-stacked: 38rem,
+  truck-details: 1200px,
+  paper-columns: 1101px,
+
+  // The stop workspace and its editor.
+  stop-table-compact: 65rem,
+  stop-editor-columns: 34rem,
+  stop-editor-fields: 22rem,
+
+  // The fuel plan editor.
+  fuel-editor-columns: 1000px,
+);
+
+$breakpoints: map.merge($screen-scale, $screen-places);

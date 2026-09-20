@@ -4,7 +4,7 @@ import { compileString } from 'sass';
 import { fileURLToPath } from 'node:url';
 
 const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
-const css = compileString("@use 'components/fuel/reading';", { loadPaths }).css;
+const css = compileString("@use 'shared/fuel/reading';", { loadPaths }).css;
 
 test('the shared pump pill uses soft semantic fuel states and compact typography', () => {
   assert.match(

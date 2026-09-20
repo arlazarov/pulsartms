@@ -1,0 +1,17 @@
+// Every size text is set in. The names say the job, not the number, so a
+// label is a label wherever it stands.
+$font-base: 1rem;
+$scale-font: 1.333;
+
+$font-sizes: (
+  caption: 0.6875rem,
+  small: 0.75rem,
+  label: 0.8125rem,
+  body: 0.875rem,
+  lead: 1rem,
+  subtitle: 1.125rem,
+  heading: 1.25rem,
+  title: 1.5rem,
+  page-title: 2rem,
+  micro: 0.625rem,
+);

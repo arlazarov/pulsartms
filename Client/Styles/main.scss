@@ -1,5 +1,8 @@
+// The whole stylesheet, layer by layer. Nothing else imports across layers:
+// a rule lower down may lean on a name from above, never the other way.
 @use 'global';
 
 @use 'layouts';
 @use 'components';
+@use 'shared';
 @use 'pages';

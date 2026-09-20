@@ -16,7 +16,7 @@ test('settings surfaces pair their background with themed text', () => {
 
 test('shared foundation preserves control and touch dimensions independently of editor widths', () => {
   assert.doesNotThrow(() =>
-    compile(`@use 'sass:map'; @use 'base/variables' as v;
+    compile(`@use 'sass:map'; @use 'base/tokens' as v;
     @if map.get(v.$sizes, control) != 2.5rem { @error 'Standard control changed'; }
     @if map.get(v.$sizes, control-touch) != 2.75rem { @error 'Touch control changed'; }
     @if map.get(v.$radii, sm) != .5rem { @error 'Control radius changed'; }
@@ -28,7 +28,7 @@ test('shared foundation preserves control and touch dimensions independently of 
 });
 
 test('input hover does not increase specificity over error or focus states', () => {
-  const css = compile("@use 'components/form-fields';");
+  const css = compile("@use 'components/form/fields';");
   assert.match(css, /input:where\(:hover:not\(:disabled\):not\(:focus\)\)/);
   assert.match(
     css,
@@ -46,7 +46,7 @@ test('input hover does not increase specificity over error or focus states', () 
 
 test('quiet table rows keep keyboard selection and destructive action affordances', () => {
   const css = compile(
-    "@use 'components/data-table'; @use 'components/buttons';",
+    "@use 'components/data-table'; @use 'components/button';",
   );
   assert.match(
     css,
@@ -101,7 +101,7 @@ test('form and dialog actions wrap instead of clipping when text grows', () => {
 });
 
 test('page titles keep the same control-height row with or without a description', () => {
-  const css = compile("@use 'components/page-header';");
+  const css = compile("@use 'shared/page-header';");
   assert.match(
     css,
     /\.page-header h1\s*\{\s*display: flex;\s*align-items: center;\s*min-height: var\(--size-control\);/,

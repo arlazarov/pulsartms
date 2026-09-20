@@ -1,5 +1,5 @@
 @use 'sass:map';
-@use 'variables' as vars;
+@use 'tokens' as vars;
 @use 'functions' as fn;
 
 @mixin overlay-title {

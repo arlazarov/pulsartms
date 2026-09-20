@@ -1,0 +1,14 @@
+// The one ladder of space in the product. A gap, a padding or a margin is a
+// rung of this ladder; nothing in the interface measures itself in pixels
+// except a hairline border or the exact geometry of the map.
+$spaces: (
+  hair: 0.0625rem,
+  micro: 0.125rem,
+  xs: 0.25rem,
+  sm: 0.5rem,
+  md: 0.75rem,
+  lg: 1rem,
+  xl: 1.25rem,
+  xxl: 1.5rem,
+  section: 2rem,
+);

@@ -154,7 +154,7 @@ test('the open card is two columns: the stop, then facts on one label column', (
     /__metric,[^{}]*__arrival-fuel\s*\{[^}]*grid-template-columns: var\(--route-fact-label\) minmax\(0, 1fr\);/,
   );
   assert.doesNotMatch(card, /\.stop-hours__/);
-  const hours = compile('components/driver-status/stop-hours');
+  const hours = compile('shared/driver-status/stop-hours');
   assert.match(
     hours,
     /\.stop-hours--compact \.stop-hours__arrival-cycle\s*\{[^}]*grid-template-columns: var\(--route-fact-label\) minmax\(0, 1fr\);/,

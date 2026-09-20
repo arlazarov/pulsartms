@@ -1,0 +1,10 @@
+// Every name the interface measures itself in. One map to a file: space,
+// type, the size of a thing, the width where a layout turns, what stands in
+// front of what, corners and shadows, and what a control measures.
+@forward 'space';
+@forward 'type';
+@forward 'control';
+@forward 'size';
+@forward 'screen';
+@forward 'layer';
+@forward 'shape';

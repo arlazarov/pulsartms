@@ -1,5 +1,5 @@
 @use 'sass:color';
-@use '../base/variables' as vars;
+@use '../base/tokens' as vars;
 @use '../base/functions' as fn;
 
 @mixin set-scale($prefix, $base, $scale) {

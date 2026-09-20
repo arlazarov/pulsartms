@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 
 const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
 const css = compileString(
-  "@use 'components/fuel/plan-editor'; @use 'pages/fleet-map/details';",
+  "@use 'shared/fuel/plan-editor'; @use 'pages/fleet-map/details';",
   { loadPaths },
 ).css;
 

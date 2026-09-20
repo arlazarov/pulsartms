@@ -1,0 +1,13 @@
+// The corner an element turns and the shadow it casts. Cards and controls
+// share one radius; only something floating over the page may use more.
+$radii: (
+  sm: 0.5rem,
+  md: 0.75rem,
+  pill: 999rem,
+);
+
+$shadows: (
+  card: 0 2px 6px color-mix(in srgb, var(--ui-shadow) 8%, transparent),
+  popup: 0 4px 16px color-mix(in srgb, var(--ui-shadow) 12%, transparent),
+  modal: 0 12px 40px color-mix(in srgb, var(--ui-shadow) 16%, transparent),
+);

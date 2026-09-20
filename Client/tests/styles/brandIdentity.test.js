@@ -150,7 +150,7 @@ test('product surfaces and guide reference the shared artwork', () => {
   assert.ok(component.includes(`href="brand/${artworkUrl}"`));
   assert.ok(guide.includes(`href="${artworkUrl}"`));
   assert.match(component, /viewBox="0 0 480 104"/);
-  const style = read('../../Styles/components/brand/_logo.scss');
+  const style = read('../../Styles/shared/_brand-logo.scss');
   assert.match(style, /aspect-ratio:\s*480\s*\/\s*104/);
   assert.match(guide, /favicon\.svg/);
   assert.doesNotMatch(

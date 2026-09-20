@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
 const css = compileString(
-  "@use 'components/driver-status'; @use 'pages/fleet-map/truck-info'; @use 'pages/fleet-map/route-info'; @use 'pages/fleet-map/details'; @use 'pages/fleet-map/layout'; @use 'pages/fleet-map/popup-content';",
+  "@use 'shared/driver-status'; @use 'pages/fleet-map/truck-info'; @use 'pages/fleet-map/route-info'; @use 'pages/fleet-map/details'; @use 'pages/fleet-map/layout'; @use 'pages/fleet-map/popup-content';",
   { loadPaths },
 ).css;
 const compact = compileString("@use 'pages/fleet-map/compact-inspector';", {
