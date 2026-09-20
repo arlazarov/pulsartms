@@ -188,6 +188,38 @@ public sealed class FuelExecutionScopeTests
     );
   }
 
+  // 11006 stood at its delivery with three more loads accepted for it and
+  // two thousand miles to drive, and had nothing to plan fuel for: the chain
+  // stops at the first load carrying an execution leg of its own. Chaining
+  // them was tried, and the route came out right; the plan could not be
+  // kept, because a saved fuel plan is scoped to one leg - the store and the
+  // schedule check both require every stop after the root to carry no leg.
+  // This pins the boundary as it stands, so that widening the scope is a
+  // decision taken deliberately and everywhere at once.
+  [Fact]
+  public void AnAcceptedFutureLegEndsTheHorizonWhileTheScopeIsOneLeg()
+  {
+    var plan = Plan();
+    var current = Delivery(Load(plan));
+    var accepted = Delivery(
+      new()
+      {
+        Id = Guid.NewGuid(),
+        TruckId = plan.TruckId,
+        ExecutionLegId = Guid.NewGuid(),
+        AssignmentRevision = 1,
+        ExecutionStatus = "planned",
+        Status = "assigned",
+      }
+    );
+    Assert.Same(
+      current,
+      Assert.Single(
+        FuelHorizon.SelectLoads(plan, [current, accepted, Legacy(plan)])
+      )
+    );
+  }
+
   [Fact]
   public void AnotherNativeAssignmentEndsTheSupportedHorizon()
   {
