@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.js';
+import { sceneMetrics as metrics } from '../../Scripts/fleetMap/rendering/sceneMetrics.js';
 
 test('recommendation rings retain anchors and selection without floating distance labels', () => {
   class Layer {
@@ -332,7 +333,8 @@ test('fuel visits use compact rectangular order badges without changing selectab
     const badge = result[2].props;
     assert.equal(badge.getText(badge.data[0]), `Fuel ${badge.data[0].numbers}`);
     assert.equal(badge.getPosition(station), station.position);
-    assert.deepEqual(badge.getPixelOffset, [0, -21]);
+    // Above the ring, clear of it: the label used to sit on the marker.
+    assert.deepEqual(badge.getPixelOffset, [0, -27]);
     assert.equal(badge.getSize, 12);
     assert.deepEqual(badge.backgroundPadding, [6, 4]);
     assert.equal(
@@ -412,6 +414,15 @@ test('ordinary stations and recommendations without visit numbers never receive 
     ['numbered'],
   );
   assert.equal(labels.getText(labels.data[0]), 'Fuel 4');
+  // Above the ring it names, not on it: the offset clears the ring's radius
+  // and half the label's own height, with a gap left over. At twenty-one it
+  // sat across the marker.
+  const half =
+    metrics.fuelVisitLabelSize / 2 + metrics.fuelVisitLabelPadding[1];
+  assert.deepEqual(labels.getPixelOffset, [0, -metrics.fuelVisitLabelOffset]);
+  assert.ok(
+    metrics.fuelVisitLabelOffset - half - metrics.recommendationRadius >= 2,
+  );
   assert.deepEqual(
     stations.map(station => station.numbers),
     ['2', undefined, ' ', '4'],

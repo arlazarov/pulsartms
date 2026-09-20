@@ -34,7 +34,9 @@ export const sceneMetrics = Object.freeze({
   fuelEditingRadius: 14,
   fuelEditingLabelOffset: 25,
   fuelVisitLabelSize: 12,
-  fuelVisitLabelOffset: 21,
+  // Clear of the ring it names: its radius, half the label's own height,
+  // and a gap. At twenty-one the label sat on the marker.
+  fuelVisitLabelOffset: 27,
   fuelVisitLabelPadding: [6, 4],
   labelOffset: 34,
   truckSize: 28,

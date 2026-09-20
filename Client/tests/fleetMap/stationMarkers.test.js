@@ -183,7 +183,8 @@ test('every station has the same 16px circle with no inside price, regardless of
   assert.ok(ring.getRadius * 2 < 34, 'narrower than a stop badge');
   const order = byId.get('fuel-recommendation-numbers').props;
   assert.equal(order.getText(planned), 'Fuel 1/3');
-  assert.deepEqual(order.getPixelOffset, [0, -21]);
+  // Above the ring, clear of it: the label used to sit on the marker.
+  assert.deepEqual(order.getPixelOffset, [0, -27]);
   for (const props of [points, plannedPoints, ring, order])
     props.onClick({ object: props.data[0] });
   assert.deepEqual(selected, ['ordinary', 'planned', 'planned', 'planned']);
