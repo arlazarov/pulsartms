@@ -211,6 +211,23 @@ export async function createFleetMap(element, apiKey, callbacks) {
           );
         }
       },
+      // A load picked on the map is one the dispatcher wants to look at, and
+      // its badges stand at its own pickup and delivery - which can be a day's
+      // drive from the truck. The camera moves only when none of the load is
+      // on the screen already, and never while the map is following or being
+      // edited: otherwise picking a road under the cursor would jump away
+      // from the very place that was being looked at.
+      geometry => {
+        if (!geometry?.length || fuelEditing || routeEditor.active) return;
+        if (trucks.isFollowing()) return;
+        const view = map.getBounds?.();
+        if (view && geometry.some(point => view.contains(point))) return;
+        const bounds = new google.maps.LatLngBounds();
+        for (const point of geometry) bounds.extend(point);
+        trucks.clearViewportFocus?.();
+        cameraViewport.refresh();
+        map.fitBounds(bounds, cameraViewport.padding(55));
+      },
     );
     cleanup.push(() => nextLoads.dispose());
     nextLoads.setVisible(false);

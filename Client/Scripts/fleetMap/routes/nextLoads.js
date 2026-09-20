@@ -5,6 +5,7 @@ export function createNextLoadsLayer(
   Polyline,
   StopMarker,
   onSelection = () => {},
+  reveal = () => {},
 ) {
   const objects = [];
   const markerUpdates = [];
@@ -18,6 +19,9 @@ export function createNextLoadsLayer(
   let hoveredId = null;
   let markerGroups = [];
   let renderedLines = [];
+  // Where each load is on the ground: its roads and the stops at their ends.
+  let loadGeometry = new Map();
+  let loadMembers = new Map();
   const identity = row =>
     nextLoadKey(row.loadId ?? row.loadNumber, row.executionLegId);
 
@@ -55,6 +59,20 @@ export function createNextLoadsLayer(
     applySelection();
     if (!disposed) onSelection(null, 0);
   }
+  // A load picked on the map is a load the dispatcher wants to see. Its
+  // badges stand at its own pickup and delivery, which can be several hundred
+  // miles from the truck - so picking the road highlighted nothing but the
+  // road, and the circles it was picked for were off the screen entirely.
+  function select(member, loadId) {
+    if (disposed || !visible || !member) return;
+    selectedId = identity(member);
+    selectedStopIndex = member.index;
+    applySelection();
+    reveal(loadGeometry.get(loadId ?? selectedId) ?? null);
+    if (member.executionLegId)
+      onSelection(member.loadId ?? null, member.index, member.executionLegId);
+    else onSelection(member.loadId ?? null, member.index);
+  }
   function clearObjects() {
     for (const object of objects) {
       if (object.setMap) object.setMap(null);
@@ -65,6 +83,8 @@ export function createNextLoadsLayer(
     markerUpdates.length = 0;
     markerGroups = [];
     renderedLines = [];
+    loadGeometry = new Map();
+    loadMembers = new Map();
     hoveredId = null;
   }
   return {
@@ -114,8 +134,15 @@ export function createNextLoadsLayer(
       clearObjects();
       previous = signature;
       const display = nextLoadDisplay(loads);
+      const remember = (loadId, point) => {
+        const known = loadGeometry.get(loadId);
+        if (known) known.push(point);
+        else loadGeometry.set(loadId, [point]);
+      };
       renderedLines = display.lines.map(
         ({ points, role, loadId, routeColor, routeShared }) => {
+          for (const p of points)
+            remember(loadId, { lat: p.latitude, lng: p.longitude });
           const line = new Polyline({
             map,
             routeRole: role,
@@ -123,6 +150,7 @@ export function createNextLoadsLayer(
             routeShared,
             strokeWeight: 2,
             onHover: info => hover(loadId, !!info?.object),
+            onClick: () => select(loadMembers.get(loadId), loadId),
           });
           line.setPath(
             points.map(p => ({ lat: p.latitude, lng: p.longitude })),
@@ -132,6 +160,9 @@ export function createNextLoadsLayer(
         },
       );
       for (const { stop, numbers, members, color } of display.groups) {
+        const loadId = identity(members[0]);
+        remember(loadId, { lat: stop.latitude, lng: stop.longitude });
+        if (!loadMembers.has(loadId)) loadMembers.set(loadId, members[0]);
         const marker = new StopMarker({
           map,
           job: stop.job,
@@ -147,12 +178,7 @@ export function createNextLoadsLayer(
                 identity(row) === selectedId && row.index === selectedStopIndex,
             );
             const row = members[(current + 1) % members.length];
-            selectedId = identity(row);
-            selectedStopIndex = row.index;
-            applySelection();
-            if (row.executionLegId)
-              onSelection(row.loadId ?? null, row.index, row.executionLegId);
-            else onSelection(row.loadId ?? null, row.index);
+            select(row, identity(row));
           },
         });
         markerUpdates.push(() =>

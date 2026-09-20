@@ -1050,3 +1050,80 @@ test('pointing at a load lights its road and its badges, and lets go when the cu
   lines[3].onHover({ object: null });
   assert.deepEqual(roads(), [true, true, true, false, false, false]);
 });
+
+// A next load's badges stand at its own pickup and delivery, which can be a
+// day's drive from the truck. Picking its road lit the road and nothing
+// else: the circles it was picked for were off the screen, and there was no
+// way to ask the map for them.
+test('picking a load road selects that load and offers it to be revealed', () => {
+  const revealed = [];
+  const markers = [],
+    lines = [],
+    selections = [];
+  class Line {
+    constructor(options) {
+      Object.assign(this, options);
+      lines.push(this);
+    }
+    setPath(path) {
+      this.path = path;
+    }
+    setOptions(options) {
+      Object.assign(this, options);
+    }
+  }
+  class Stop {
+    constructor(options) {
+      Object.assign(this, options);
+      markers.push(this);
+    }
+    setNumber() {}
+    setVisible() {}
+  }
+  const layer = createNextLoadsLayer(
+    {},
+    Line,
+    Stop,
+    (...args) => selections.push(args),
+    geometry => revealed.push(geometry),
+  );
+  layer.set([
+    {
+      id: 'far',
+      loadNumber: 1385,
+      executionLegId: 'leg',
+      stops: [
+        { latitude: 35.6, longitude: -80.8, job: 'Pick Up' },
+        { latitude: 42.9, longitude: -74.2, job: 'Drop Off' },
+      ],
+      legs: [
+        {
+          points: [
+            { latitude: 35.6, longitude: -80.8 },
+            { latitude: 42.9, longitude: -74.2 },
+          ],
+        },
+      ],
+    },
+  ]);
+  assert.equal(markers.length, 2, 'a circle at each end of the load');
+
+  lines[0].onClick();
+
+  assert.deepEqual(selections, [['far', 0, 'leg']]);
+  assert.ok(markers.every(marker => marker.highlighted));
+  // Everything the load stands on: its road and the stops at its ends, so
+  // the map can decide whether any of it is on the screen already.
+  const geometry = revealed.at(-1);
+  assert.ok(geometry.length >= 4);
+  assert.ok(
+    geometry.some(point => point.lat === 35.6 && point.lng === -80.8) &&
+      geometry.some(point => point.lat === 42.9 && point.lng === -74.2),
+  );
+
+  // A badge picked by hand reveals its load the same way.
+  revealed.length = 0;
+  markers[1].onSelect();
+  assert.equal(selections.length, 2);
+  assert.ok(revealed.at(-1).length >= 4);
+});
