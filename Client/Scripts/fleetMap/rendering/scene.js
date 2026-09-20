@@ -41,7 +41,8 @@ export function createScene(
     stopData = [],
     distanceData = [];
   let vehiclesDirty = true,
-    vehicles = [];
+    vehicles = [],
+    standingTrucks = '';
   let vehicleDisplay = { vehicles: [], clusters: [] },
     clusterZoom = map.getZoom?.() ?? 12;
   // Badges are laid out against the screen, so a new zoom is a new layout -
@@ -161,8 +162,22 @@ export function createScene(
       stationDirty = false;
     }
     const previousStops = stopData;
-    if (vehiclesDirty)
+    if (vehiclesDirty) {
       vehicles = [...trucks].filter(t => t.visible && t.position);
+      // Badges stand clear of a truck that is standing, so which trucks are
+      // standing, and where, is part of what the stops are laid out against.
+      // Without this a badge stayed stepped aside for a truck that had
+      // since driven off, until something else happened to move the stops.
+      // A truck in motion is not in the key, so driving relays nothing.
+      const standing = vehicles
+        .filter(t => !(t.speed > 0))
+        .map(t => t.position.join(','))
+        .join(';');
+      if (standing !== standingTrucks) {
+        standingTrucks = standing;
+        stopsDirty = true;
+      }
+    }
     if (stopsDirty) {
       ({ stopData, distanceData } = snapshotStops(
         routeEditing

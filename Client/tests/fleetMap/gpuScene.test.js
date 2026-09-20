@@ -158,7 +158,10 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   scene.setClusterSelect(() => clusterEvents.push('stop-follow'));
   const neighbor = scene.createTruckMarker(map, () => {});
   neighbor.update({ unitNumber: '11007' });
-  neighbor.render({ longitude: -80, latitude: 35 });
+  // Driving, not standing: a truck standing on a stop makes its badge step
+  // aside, which is a real reason to lay the stop out again. This test is
+  // about layers surviving motion and zoom, so its neighbour keeps moving.
+  neighbor.render({ longitude: -80, latitude: 35, speed: 30 });
   map.getZoom = () => 5;
   listeners.get('zoom_changed')();
   flush();
@@ -449,6 +452,34 @@ test('scene reuses static layers across motion, invalidates only changed stops a
     pairedLayers,
     'camera movement reuses marker pairs',
   );
+  // Badges stand clear of a standing truck, so trucks arriving and leaving
+  // are part of what stops are laid out against. Without that a badge stayed
+  // stepped aside for a truck that had since driven off, until something
+  // else happened to move the stops.
+  {
+    const far = new scene.StopMarker({
+      position: { lng: -70, lat: 40 },
+      number: '9',
+    });
+    flush();
+    const badge = () =>
+      Object.values(layers()).find(
+        layer =>
+          /^route-stop-\d+-points$/.test(layer.props.id) &&
+          layer.props.data[0].number === '9',
+      ).props.data[0];
+    assert.equal(badge().markerOffsetX, 0);
+    const visitor = scene.createTruckMarker(map, () => {});
+    visitor.update({ unitNumber: '20001' });
+    visitor.render({ longitude: -70, latitude: 40 });
+    flush();
+    assert.ok(badge().markerOffsetX > 0, 'steps aside when a truck parks');
+    visitor.setVisible(false);
+    flush();
+    assert.equal(badge().markerOffsetX, 0, 'and comes back when it leaves');
+    far.map = null;
+    flush();
+  }
   stations.setPoint(
     'fuel',
     { lng: -80, lat: 35 },
