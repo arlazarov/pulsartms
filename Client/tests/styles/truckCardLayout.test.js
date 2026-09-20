@@ -32,6 +32,8 @@ test('the card says the load, its order and the miles once, in the head', () => 
     head,
     /Units\.BothDistances[\s\S]*Units\.Kilometers\(RemainingMiles\)/,
   );
+  // The line names a thing before it says it, this one included.
+  assert.match(head, /__label">Left&#160;<\/span>/);
   assert.match(head, /fleet-map-mobile-summary__bar/);
   assert.match(head, /RouteCovered is \{ \} covered/);
   const body = markup.slice(markup.indexOf('id="fleet-map-route-details"'));

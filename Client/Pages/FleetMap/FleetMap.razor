@@ -237,12 +237,13 @@
                    between a number and its unit. *@
                 <span class="fleet-map-mobile-summary__distance"
                       aria-label="@($"{Units.FormatDistance(RemainingMiles)} left of the run")">
+                    @* The line names a thing before it says it - Order,
+                       Break, Drive - and this is no different. *@
                     <span class="fleet-map-mobile-summary__distance-text"
-                          aria-hidden="true">
-                        <strong>@Units.DistanceValue(RemainingMiles)</strong><span
+                          aria-hidden="true"><span
+                            class="fleet-map-mobile-summary__label">Left&#160;</span><strong>@Units.DistanceValue(RemainingMiles)</strong><span
                             class="fleet-map-mobile-summary__label">&#160;@Units.DistanceUnit</span>@if (Units.BothDistances)
-                        {<span class="fleet-map-mobile-summary__label">&#160;·&#160;@Units.Kilometers(RemainingMiles)&#160;km</span>}<span
-                            class="fleet-map-mobile-summary__label">&#160;left</span>
+                        {<span class="fleet-map-mobile-summary__label">&#160;·&#160;@Units.Kilometers(RemainingMiles)&#160;km</span>}
                     </span>
                     @if (RouteCovered is { } covered)
                     {

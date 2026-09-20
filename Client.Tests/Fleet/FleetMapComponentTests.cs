@@ -451,9 +451,9 @@ public sealed class FleetMapComponentTests
       ["fleet-map-inspector__hours-label", "driver-hours-panel"],
       second.Children[2].Children.Select(node => node.ClassName)
     );
-    // What is left is the middle of the line, said and drawn.
-    Assert.EndsWith(
-      "left",
+    // What is left is the middle of the line: named, said and drawn.
+    Assert.StartsWith(
+      "Left",
       component.Find(".fleet-map-mobile-summary__distance-text").TextContent
     );
     Assert.All(
