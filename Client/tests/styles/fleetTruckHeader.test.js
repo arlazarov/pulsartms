@@ -30,7 +30,12 @@ test('compact truck inspection retains content-sized telemetry and HOS', () => {
     compact,
     /width: min\(100%,\s*var\(--size-map-compact-inspector\)\);/,
   );
-  assert.match(compact, /__actions\s*\{[^}]*margin-left: 0;/);
+  // The actions live under the detail they act on and say what they do.
+  assert.doesNotMatch(compact, /__actions\s*\{[^}]*margin-left/);
+  assert.match(
+    compact,
+    /__actions \.map-action-icon\s*\{[^}]*white-space: nowrap;/,
+  );
   assert.match(
     css,
     /__telemetry\s*\{[^}]*grid-template-columns: repeat\(3,\s*minmax\(0,\s*max-content\)\);/,
@@ -581,18 +586,24 @@ test('load details uses an accessible header icon with shared action sizing', ()
   assert.ok(
     markup.indexOf('fleet-map-inspector__actions') < markup.indexOf(link),
   );
+  // The actions sit under the detail they act on, below the header's own
+  // controls rather than crowded into them.
   assert.ok(
-    markup.indexOf(link) < markup.indexOf('fleet-map-inspector__controls'),
+    markup.indexOf('fleet-map-inspector__controls') < markup.indexOf(link),
   );
   assert.doesNotMatch(markup, /fleet-map-truck-info__load-link/);
+  assert.match(link, /<span>Open load<\/span>/);
   assert.match(
     compact,
-    /__actions \.map-action-icon\s*\{[^}]*width: var\(--size-control-compact\);[^}]*padding: 0;/,
+    /__actions \.map-action-icon\s*\{[^}]*display: inline-flex;[^}]*gap: var\(--space-xs\);/,
   );
+  // A labelled action is as wide as its words; only its height is shared
+  // with the other controls, and it grows for a finger.
   assert.match(
     compact,
-    /__actions \.map-action-icon\s*\{[^}]*width: var\(--size-control-touch\);/,
+    /__actions \.map-action-icon\s*\{[^}]*min-height: var\(--size-control-touch\);/,
   );
+  assert.doesNotMatch(compact, /__actions \.map-action-icon\s*\{[^}]*width:/);
 });
 
 test('wide truck details use one row of adjacent groups without shrinking text or clocks', () => {

@@ -140,38 +140,6 @@
                     </div>
                 </div>
             }
-            @if (SelectedTruck is { } headerTruck)
-            {
-                <div class="fleet-map-inspector__actions" role="group" aria-label="Truck actions">
-                    <button type="button"
-                            class="btn map-action-icon
-                                @(_followingTruck ? "btn--primary" : "")"
-                            title="Follow" aria-label="Follow"
-                            aria-pressed="@(_followingTruck ? "true" : "false")"
-                            @onclick="ToggleFollowAsync">
-                        <ActionIcon Kind="follow" />
-                    </button>
-                    <button type="button" class="btn map-action-icon"
-                            title="Show route" aria-label="Show route"
-                            disabled="@(!CanShowRoute)"
-                            @onclick="ShowRouteAsync">
-                        <ActionIcon Kind="route-overview" />
-                    </button>
-                    <button type="button" class="btn map-action-icon" title="Fuel plan" aria-label="Fuel plan" disabled="@(!CanEditFuel || _fuelEditorOpen || _recalculatingFuel)" @onclick="OpenFuelEditorAsync"><ActionIcon Kind="fuel" /></button>
-                    <button type="button" class="btn map-action-icon" title="Camera" aria-label="Camera" @onclick="OpenCameraAsync"><ActionIcon Kind="camera" /></button>
-                    <button type="button" class="btn map-action-icon" title="Route options" aria-label="Route options"
-                            disabled="@(_fuelEditorOpen || SelectedDispatchId is null)" @onclick="OpenSelectedRouteEditorAsync"><ActionIcon Kind="route" /></button>
-                    <a class="btn map-action-icon"
-                       href="@(SelectedDispatchId is { } detailsDispatchId
-                           ? $"/dispatch/{detailsDispatchId}" : null)"
-                       title="@("Route & load details")"
-                       aria-label="@("Route & load details")"
-                       aria-disabled="@(SelectedDispatchId is null
-                           ? "true" : null)">
-                        <ActionIcon Kind="external-link" />
-                    </a>
-                </div>
-            }
         }
         else
         {
@@ -392,6 +360,40 @@
     }
     @if (VisibleRouteError is { } emptyRouteError && _routeState?.Plan is null && _loadDetails is null) { <p class="fleet-map-route-info__error" role="status">@emptyRouteError</p> }
     </div>
+    @* The drawing puts the actions under the detail they act on, with the
+       words that say what they do rather than six bare icons. *@
+    @if (SelectedTruck is { } headerTruck)
+    {
+        <div class="fleet-map-inspector__actions" role="group" aria-label="Truck actions">
+            <button type="button"
+                    class="btn map-action-icon
+                        @(_followingTruck ? "btn--primary" : "")"
+                    title="Follow" aria-label="Follow"
+                    aria-pressed="@(_followingTruck ? "true" : "false")"
+                    @onclick="ToggleFollowAsync">
+                <ActionIcon Kind="follow" /><span>Follow</span>
+            </button>
+            <button type="button" class="btn map-action-icon"
+                    title="Show route" aria-label="Show route"
+                    disabled="@(!CanShowRoute)"
+                    @onclick="ShowRouteAsync">
+                <ActionIcon Kind="route-overview" /><span>Fit route</span>
+            </button>
+            <button type="button" class="btn map-action-icon" title="Fuel plan" aria-label="Fuel plan" disabled="@(!CanEditFuel || _fuelEditorOpen || _recalculatingFuel)" @onclick="OpenFuelEditorAsync"><ActionIcon Kind="fuel" /><span>Fuel</span></button>
+            <button type="button" class="btn map-action-icon" title="Camera" aria-label="Camera" @onclick="OpenCameraAsync"><ActionIcon Kind="camera" /><span>Camera</span></button>
+            <button type="button" class="btn map-action-icon" title="Route options" aria-label="Route options"
+                    disabled="@(_fuelEditorOpen || SelectedDispatchId is null)" @onclick="OpenSelectedRouteEditorAsync"><ActionIcon Kind="route" /><span>Route options</span></button>
+            <a class="btn map-action-icon"
+               href="@(SelectedDispatchId is { } detailsDispatchId
+                   ? $"/dispatch/{detailsDispatchId}" : null)"
+               title="@("Route & load details")"
+               aria-label="@("Route & load details")"
+               aria-disabled="@(SelectedDispatchId is null
+                   ? "true" : null)">
+                <ActionIcon Kind="external-link" /><span>Open load</span>
+            </a>
+        </div>
+    }
     @if (SelectedTruck is { } truck)
     {
         <div id="fleet-map-telemetry-details">

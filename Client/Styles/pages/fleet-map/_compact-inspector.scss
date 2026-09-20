@@ -47,16 +47,23 @@
   .fleet-map-inspector__trailer + .fleet-map-inspector__driver::before {
     content: '· ';
   }
+  // The actions read as words, under the detail they act on. They were six
+  // bare icons in the header, where the row had no room to say what any of
+  // them did.
   .fleet-map-inspector__actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: ui.pg(xs);
-    margin-left: auto;
     min-width: 0;
     max-width: 100%;
+    padding: ui.pg(xs) ui.pg(md);
     .map-action-icon {
-      @include ui.icon-control;
+      @include ui.compact-control;
+      display: inline-flex;
+      align-items: center;
+      gap: ui.pg(xs);
+      white-space: nowrap;
     }
   }
   .fleet-map-inspector__arrival {
@@ -162,10 +169,6 @@
   @media (min-width: ui.breakpoint(map-mobile, min)) {
     .fleet-map-inspector__header {
       gap: ui.pg(sm);
-    }
-    .fleet-map-inspector__actions {
-      padding-left: ui.pg(sm);
-      border-left: 1px solid ui.theme(border-subtle);
     }
     .fleet-map-inspector__actions .map-action-icon,
     .fleet-map-inspector__close {
@@ -688,11 +691,7 @@
         flex-basis: 100%;
       }
     }
-    .fleet-map-inspector__actions {
-      grid-column: 1 / -1;
-      grid-row: 5;
-      margin-left: 0;
-    }
+
     // Nothing here re-columns on open. The header a dispatcher reads while
     // the card is shut keeps every row and every column when it opens;
     // opening only adds the actions and the detail below them.

@@ -38,9 +38,18 @@ public sealed class FleetMapComponentTests
     var route = component.Find("#fleet-map-route-details");
     Assert.False(telemetry.HasAttribute("hidden"));
     Assert.False(route.HasAttribute("hidden"));
-    // Route first: what the dispatcher decides on. Telematics follows it in
-    // the document, not only on screen, so reading order matches.
-    Assert.Equal(telemetry.Id, route.NextElementSibling!.Id);
+    // Route first: what the dispatcher decides on, then what can be done
+    // about it, then the vehicle - in the document, not only on screen, so
+    // reading order matches.
+    Assert.Equal(
+      ["fleet-map-inspector__actions", "fleet-map-telemetry-details"],
+      new[]
+      {
+        route.NextElementSibling!.ClassName ?? "",
+        route.NextElementSibling!.NextElementSibling!.Id ?? "",
+      }
+    );
+    Assert.Equal("fleet-map-telemetry-details", telemetry.Id);
     Assert.Single(component.FindAll(".fleet-map-mobile-summary__toggle"));
     Assert.Empty(component.FindAll(".fleet-map-truck-info__more"));
   }
@@ -887,7 +896,10 @@ public sealed class FleetMapComponentTests
     AssertTruckPanelsVisible(component);
     var summary = component.Find("#fleet-map-route-details");
     Assert.False(summary.HasAttribute("hidden"));
-    Assert.Equal("fleet-map-telemetry-details", summary.NextElementSibling!.Id);
+    Assert.Equal(
+      "fleet-map-inspector__actions",
+      summary.NextElementSibling!.ClassName
+    );
     Assert.NotNull(
       component.Find(
         ".fleet-map-inspector__identity .fleet-map-inspector__trailer"
@@ -903,11 +915,11 @@ public sealed class FleetMapComponentTests
     Assert.Empty(component.FindAll(".driver-duty"));
     Assert.Empty(component.FindAll(".driver-next-recap"));
     var loadLink = component.Find(
-      ".fleet-map-inspector__header a[aria-label='Route & load details']"
+      "#fleet-map-details a[aria-label='Route & load details']"
     );
     Assert.Equal("Route & load details", loadLink.GetAttribute("title"));
     Assert.Single(loadLink.QuerySelectorAll("svg"));
-    Assert.True(string.IsNullOrWhiteSpace(loadLink.TextContent));
+    Assert.Equal("Open load", loadLink.TextContent.Trim());
     Assert.Equal(
       $"/dispatch/{fixture.Plan(fixture.TruckA).DispatchId}",
       loadLink.GetAttribute("href")
@@ -1547,7 +1559,8 @@ public sealed class FleetMapComponentTests
       Assert.True(routeOptions.HasAttribute("disabled"));
       Assert.Contains("map-action-icon", routeOptions.ClassList);
       Assert.Single(routeOptions.QuerySelectorAll("svg"));
-      Assert.Empty(routeOptions.TextContent.Trim());
+      // The action says what it does rather than leaving the icon to.
+      Assert.Equal("Route options", routeOptions.TextContent.Trim());
       Assert.Equal("Route options", routeOptions.GetAttribute("title"));
       Assert.Contains(
         "Order —",
@@ -1948,9 +1961,7 @@ public sealed class FleetMapComponentTests
         component.FindAll(".fleet-map-truck-info .truck-illustration")
       );
       Assert.Single(
-        component.FindAll(
-          ".fleet-map-inspector__header [aria-label='Truck actions']"
-        )
+        component.FindAll("#fleet-map-details [aria-label='Truck actions']")
       );
       Assert.Single(component.FindAll(".fleet-map-inspector__driver"));
       Assert.Equal(
@@ -3658,7 +3669,9 @@ public sealed class FleetMapComponentTests
         component.Find(".fleet-map-inspector__header").TextContent
       );
       Assert.Empty(component.FindAll(".fleet-map-details-card"));
-      Assert.Empty(component.FindAll("#fleet-map-details a"));
+      // The truck's own detail, actions included, is out of the way while a
+      // next stop is being read.
+      Assert.True(component.Find("#fleet-map-details").HasAttribute("hidden"));
       Assert.Contains(
         "Back to truck",
         component.Find(".fleet-map-inspector__header").TextContent
