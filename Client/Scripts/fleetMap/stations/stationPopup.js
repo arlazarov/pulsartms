@@ -257,8 +257,9 @@ export function createStationPopup(
         const table = createPriceComparison(discount);
         if (table || comparison.children.length)
           comparison.replaceChildren(...(table ? [table] : []));
+        // The price list stays: the days are a line under it, not a table
+        // in place of it.
         set(comparison, 'hidden', !table);
-        set(prices, 'hidden', !!table);
       }
     },
     dispose() {

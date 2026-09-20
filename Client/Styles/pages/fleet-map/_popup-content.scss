@@ -492,8 +492,16 @@
   .fleet-station-popup:not(.fleet-station-popup--planned) {
     > :not(.fleet-station-popup__prices):not(.fleet-station-popup__visits):not(
         .fleet-station-popup__actions
-      ) {
+      ):not(.fleet-station-popup__comparison) {
       grid-column: 1;
+    }
+    // The days stand under the prices they are about, not under the address.
+    > .fleet-station-popup__comparison {
+      grid-column: 2;
+      grid-row: 4;
+      margin: 0;
+      padding-left: ui.pg(lg);
+      border-left: 1px solid ui.theme(border-subtle);
     }
     > .fleet-station-popup__prices {
       grid-column: 2;
@@ -656,82 +664,51 @@
   }
 }
 
+// The days are one line under the price list: three cells of one height,
+// today set apart by a quiet ground, and no rules between them.
 .fleet-station-popup__comparison {
   min-width: 0;
-  width: fit-content;
-  max-width: 100%;
   margin-top: ui.pg(sm);
-  overflow-x: auto;
-  table {
-    width: auto;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: ui.fs(label);
-  }
-  caption {
-    text-align: left;
-    color: ui.theme(text-secondary);
-    padding-bottom: ui.pg(xs);
-  }
-  // Tight enough that three days fit where the price list stood: a table
-  // that arrives behind a scrollbar is worse than no table.
-  th,
-  td {
-    padding: ui.pg(micro) ui.pg(xs);
-  }
-  th {
-    text-align: left;
-    font-weight: 400;
-  }
-  td {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-  thead th {
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(small);
-    padding-bottom: ui.pg(xs);
-  }
-  thead th:not(:first-child) {
-    text-align: right;
-  }
-  th:first-child {
-    padding-left: 0;
-  }
-  // A day is its price with what it did since the day before marked small
-  // under it, so three days stand in three columns.
-  td {
-    vertical-align: top;
-    > span {
-      display: block;
-    }
-    > small {
-      display: block;
-      font-size: ui.fs(caption);
-      font-weight: 600;
-      line-height: 1.2;
-    }
-  }
-  th[scope='row'] {
-    white-space: nowrap;
-    vertical-align: top;
-  }
-  th:nth-child(n + 3),
-  td:nth-child(n + 3) {
-    border-left: 1px solid ui.theme(border-subtle);
-  }
-  .fleet-station-popup__change.is-increase,
-  .fleet-station-popup__change.is-decrease.is-savings {
-    color: ui.theme(telemetry-critical-icon);
-  }
-  .fleet-station-popup__change.is-decrease,
-  .fleet-station-popup__change.is-increase.is-savings {
-    color: ui.theme(success-text);
-  }
+  padding-top: ui.pg(sm);
+  border-top: 1px solid ui.theme(border-subtle);
 }
-.fleet-station-popup > .fleet-station-popup__comparison {
-  grid-column: 1 / -1;
+.fleet-station-popup__days {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: ui.pg(sm);
+}
+.fleet-station-popup__day {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  padding: ui.pg(micro) ui.pg(xs);
+  border-radius: ui.radius(sm);
+  font-variant-numeric: tabular-nums;
+  &.is-current {
+    background: ui.theme(surface-soft);
+  }
+  &-label {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+  }
+  &-price {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
+  }
+  .fleet-station-popup__change {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+    font-weight: 600;
+    white-space: nowrap;
+    &.is-increase {
+      color: ui.theme(telemetry-critical-icon);
+    }
+    &.is-decrease {
+      color: ui.theme(success-text);
+    }
+  }
 }
 
 .fleet-station-popup--single {
@@ -864,11 +841,18 @@
       grid-column: 1 / -1;
       grid-row: 5;
     }
+    // The days go under the prices, in the prices' own column.
     &:has(> .fleet-station-popup__comparison:not([hidden])) {
+      > .fleet-station-popup__prices {
+        grid-row: 1 / span 3;
+      }
       > .fleet-station-popup__comparison {
         grid-column: 2;
-        grid-row: 1 / span 4;
-        margin-top: 0;
+        grid-row: 4;
+        margin: 0;
+        padding: ui.pg(xs) ui.pg(lg) 0;
+        border-top: 0;
+        border-inline: 1px solid ui.theme(border-subtle);
       }
     }
   }

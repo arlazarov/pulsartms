@@ -10,15 +10,19 @@ const css = compileString(
   },
 ).css;
 
-test('station comparison keeps content-sized columns and reuses the original quote accents', () => {
+// The days are one line under the price list: three cells of one height,
+// today set apart by a quiet ground, and no rules between them. A table of
+// every price by day was a grid of rules with rows of two heights.
+test('the days are one even line under the prices, and the prices keep their accents', () => {
   assert.match(
     css,
-    /\.fleet-station-popup__comparison\s*\{[^}]*width: fit-content;[^}]*max-width: 100%;/,
+    /\.fleet-station-popup__days\s*\{[^}]*display: grid;[^}]*grid-auto-flow: column;[^}]*grid-auto-columns: minmax\(0, 1fr\);/,
   );
   assert.match(
     css,
-    /\.fleet-station-popup__comparison table\s*\{[^}]*width: auto;/,
+    /\.fleet-station-popup__day\.is-current\s*\{[^}]*background: var\(--ui-surface-soft\);/,
   );
+  assert.doesNotMatch(css, /\.fleet-station-popup__comparison (table|td|th)/);
   assert.match(
     css,
     /\.fleet-station-popup__discount-label,\s*\.fleet-station-popup__discount\s*\{[^}]*color: var\(--ui-link\);[^}]*background: var\(--ui-selected\);/,
@@ -49,10 +53,14 @@ test('ordinary fuel inspector fits its quote without changing truck or planned f
   );
 });
 
-test('quote comparison separates the next-day price and both change columns', () => {
+test('a price that fell is green and one that rose is not', () => {
   assert.match(
     css,
-    /\.fleet-station-popup__comparison th:nth-child\(n\+3\),\s*\.fleet-station-popup__comparison td:nth-child\(n\+3\)\s*\{[^}]*border-left: 1px solid var\(--ui-border-subtle\);/,
+    /\.fleet-station-popup__change\.is-decrease\s*\{[^}]*color: var\(--ui-success-text\);/,
+  );
+  assert.match(
+    css,
+    /\.fleet-station-popup__change\.is-increase\s*\{[^}]*color: var\(--ui-telemetry-critical-icon\);/,
   );
 });
 
@@ -70,9 +78,14 @@ test('planned fuel inspector bounds width and keeps prices beside purchase gauge
     css,
     /grid-template-columns: minmax\(0,\s*1fr\) max-content minmax\(0,\s*1fr\);/,
   );
+  // The days go under the prices, in the prices' own column.
   assert.match(
     css,
-    /:has\(> \.fleet-station-popup__comparison:not\(\[hidden\]\)\) > \.fleet-station-popup__comparison\s*\{[^}]*grid-column: 2;[^}]*grid-row: 1\s*\/\s*span 4;/,
+    /:has\(> \.fleet-station-popup__comparison:not\(\[hidden\]\)\) > \.fleet-station-popup__comparison\s*\{[^}]*grid-column: 2;[^}]*grid-row: 4;/,
+  );
+  assert.match(
+    css,
+    /:has\(> \.fleet-station-popup__comparison:not\(\[hidden\]\)\) > \.fleet-station-popup__prices\s*\{[^}]*grid-row: 1\s*\/\s*span 3;/,
   );
 });
 
