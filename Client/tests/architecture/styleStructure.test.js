@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { compileString } from 'sass';
 import { fileURLToPath } from 'node:url';
 
+const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
 const root = new URL('../../Styles/', import.meta.url);
 const sheets = readdirSync(root, { recursive: true }).filter(
   x => typeof x === 'string' && x.endsWith('.scss'),
@@ -114,5 +116,72 @@ test('shared groups match the groups the markup uses', () => {
       markup.has(group),
       `shared/${group} names no group under Client/Shared`,
     );
+  }
+});
+
+// The index order is the cascade, so a folder is only safe to reorder if no
+// two of its files decide the same thing. They collide when both declare the
+// same property, on the same selector, in the same at-rule - then whichever
+// the index names last wins, and moving a line silently changes the page.
+// The reset and the typography both set the line a body reads at, and the
+// reset lost every time; it says it no longer.
+test('two stylesheets in a folder never decide the same thing', () => {
+  const compiled = new Map();
+  const emitted = module => {
+    if (compiled.has(module)) return compiled.get(module);
+    let css = '';
+    try {
+      css = compileString(`@use '${module}';`, { loadPaths }).css;
+    } catch {
+      css = '';
+    }
+    const rules = new Map();
+    const stack = [];
+    for (const [, text, brace] of css.matchAll(/([^{}]*)([{}])/g)) {
+      const head = text.trim().split(/\s+/).join(' ');
+      if (brace === '{') {
+        stack.push(head);
+        continue;
+      }
+      if (!stack.length) continue;
+      const key = stack.join(' | ');
+      const properties = rules.get(key) ?? new Set();
+      for (const declaration of text.split(';'))
+        if (declaration.includes(':'))
+          properties.add(declaration.split(':')[0].trim());
+      rules.set(key, properties);
+      stack.pop();
+    }
+    compiled.set(module, rules);
+    return rules;
+  };
+  const moduleOf = file => file.slice(0, -5).replace(/(^|\/)_/, '$1');
+  const own = new Map();
+  for (const file of sheets) {
+    if (file.endsWith('_index.scss') || file.startsWith('base/')) continue;
+    const mine = new Map(
+      [...emitted(moduleOf(file))].map(([k, v]) => [k, new Set(v)]),
+    );
+    for (const [, dependency] of read(file).matchAll(/@use '([^']+)'/g)) {
+      if (dependency.startsWith('..') || dependency.startsWith('sass:'))
+        continue;
+      const folder = file.split('/').slice(0, -1).join('/');
+      for (const [key, properties] of emitted(`${folder}/${dependency}`))
+        for (const property of properties) mine.get(key)?.delete(property);
+    }
+    own.set(file, mine);
+  }
+  for (const folder of folders) {
+    const inside = [...own.keys()].filter(
+      f => f.split('/').slice(0, -1).join('/') === folder,
+    );
+    for (let i = 0; i < inside.length; i++)
+      for (let j = i + 1; j < inside.length; j++)
+        for (const [key, properties] of own.get(inside[i]))
+          for (const property of properties)
+            assert.ok(
+              !own.get(inside[j]).get(key)?.has(property),
+              `${inside[i]} and ${inside[j]} both set ${property} on ${key}`,
+            );
   }
 });

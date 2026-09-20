@@ -154,6 +154,26 @@ test('spacing rejects the obsolete numeric scale and breakpoints retain exact bo
   );
 });
 
+// A role that keeps its light value in dark is a decision, and the decision
+// is written above the map. These are the three kinds it may belong to; a
+// new one outside them is an oversight until the reasoning is extended.
+test('a role that stays light in dark is one we said would', () => {
+  const source = readFileSync(
+    new URL('../../Styles/base/_themes.scss', import.meta.url),
+    'utf8',
+  );
+  const light = source.slice(0, source.indexOf('$dark-roles'));
+  const dark = source.slice(source.indexOf('$dark-roles'));
+  const names = body =>
+    [...body.matchAll(/^\s+([a-z][a-z0-9-]*):/gm)].map(m => m[1]);
+  const unchanged = names(light).filter(role => !names(dark).includes(role));
+  const expected =
+    /^(?:map-|navigation|brand|pulse-|telemetry-)|^(?:action|action-hover|danger-action|danger-action-hover|shadow|overlay)$/;
+  for (const role of unchanged)
+    assert.match(role, expected, `${role} keeps its light value unexplained`);
+  assert.ok(unchanged.length > 20, 'the light-kept roles were not found');
+});
+
 test('both themes export the same role contract', () => {
   assert.doesNotThrow(() =>
     compileString(

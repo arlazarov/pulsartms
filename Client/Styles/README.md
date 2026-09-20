@@ -65,6 +65,19 @@ Read a token with `ui.pg`, `ui.fs`, `ui.size`, `ui.theme`, `ui.radius`,
 `@container <name> (width < #{ui.breakpoint(name)})`. Checks reject bare
 numbers for all of these.
 
+## Light and dark
+
+`base/_themes.scss` holds one contract: `$roles` is light, and `$dark-roles`
+is that map with the roles that must change, changed. A role can therefore
+never exist in one theme and not the other.
+
+Twenty-eight roles keep their light value in dark on purpose - the map's
+operational colours (fuel price, route, pickup and delivery), the
+navigation bar, which is dark in both, and the action roles, whose contrast
+on dark surfaces is checked. That reasoning is written above the map, and
+the checks in `styleTokens.test.js` hold the contract and the contrast in
+both themes.
+
 ## A component owns how it is read
 
 A page places a component - where it stands, how wide, how close to what is

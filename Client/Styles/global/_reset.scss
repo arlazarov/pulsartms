@@ -10,7 +10,9 @@
 }
 
 body {
-  line-height: 1.5;
+  // The line the product reads at is set in typography, which is the only
+  // place that should say it; this said 1.5 and was overruled by 1.45 two
+  // files later.
   text-rendering: optimizeSpeed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

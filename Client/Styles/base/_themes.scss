@@ -61,6 +61,19 @@ $roles: (
   shadow: colors.value(neutral, 1000),
   overlay: colors.value(neutral, 1000),
 );
+// Dark is the light contract with the roles that must change, changed. A
+// role missing from this map is not an oversight: it keeps its light value
+// on purpose, and there are three kinds of those.
+//
+//   * operational colour - what fuel costs, where a route goes, which end
+//     of a stop is which. These mean the same thing on any background and
+//     are read against the map, which has its own scheme.
+//   * navigation - the bar is dark in both themes, so its roles already
+//     are.
+//   * the action roles and the shadow, which are checked for contrast on
+//     dark surfaces by the theme checks and pass as they stand.
+//
+// Adding a role here is how a role stops being one of those.
 $dark-roles: map.merge(
   $roles,
   (
