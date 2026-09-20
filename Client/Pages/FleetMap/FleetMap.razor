@@ -200,22 +200,52 @@
                disclosure. Last in the header, so the order on screen is
                the order in the document. *@
             <div class="fleet-map-inspector__hours">
+                @* What the truck is running, said once: the load, its order,
+                   and what is left to the next stop in both units. Each
+                   number is also the control that copies it. *@
                 <span class="fleet-map-mobile-summary__remaining"
-                      aria-label="Load and distance to the next stop">
+                      aria-label="Load, order and distance to the next stop"
+                      aria-busy="@(_loadDetails is null ? "true" : "false")">
                     @if (_loadDetails is { } runningLoad)
                     {
-                        <Client.Shared.Dispatch.LoadNumber.LoadNumber
-                            Value="runningLoad.LoadNumber" />
+                        <button type="button"
+                                class="fleet-map-route-info__copy-number"
+                                title="Copy load number"
+                                @onclick="() => CopyTextAsync(runningLoad.LoadNumber.ToString(System.Globalization.CultureInfo.InvariantCulture))">
+                            <Client.Shared.Dispatch.LoadNumber.LoadNumber
+                                Value="runningLoad.LoadNumber" />
+                        </button>
+                        <span class="fleet-map-mobile-summary__order">
+                            <span class="fleet-map-mobile-summary__label">Order</span>
+                            <button type="button"
+                                    class="fleet-map-route-info__copy-number"
+                                    title="Copy order number"
+                                    disabled="@(string.IsNullOrWhiteSpace(runningLoad.OrderNumber))"
+                                    @onclick="() => CopyTextAsync(runningLoad.OrderNumber)">
+                                <strong class="fleet-map-inspector__value">@(string.IsNullOrWhiteSpace(runningLoad.OrderNumber) ? "—" : runningLoad.OrderNumber)</strong>
+                            </button>
+                        </span>
                         <span class="fleet-map-mobile-summary__label"
                               aria-hidden="true">·</span>
                     }
-                    <strong>@(NextStopMiles?.ToString("N0") ?? "—")</strong>
-                    <span class="fleet-map-mobile-summary__label">mi left</span>
+                    <span class="fleet-map-mobile-summary__distance">
+                        <strong>@Units.DistanceValue(NextStopMiles)</strong>
+                        <span class="fleet-map-mobile-summary__label">@Units.DistanceUnit</span>
+                        @if (Units.BothDistances)
+                        {
+                            <span class="fleet-map-mobile-summary__label">· @Units.Kilometers(NextStopMiles) km</span>
+                        }
+                        <span class="fleet-map-mobile-summary__label">left</span>
+                    </span>
                 </span>
-                <span class="fleet-map-inspector__hours-label">HOS</span>
-                <Client.Shared.DriverStatus.DriverHours.DriverHours
-                    @key="_activeTruckId" Clocks="_hos"
-                    Dials="false" ShowDutyStatus="false" />
+                @* The label travels with the clocks it names. Apart, "HOS"
+                   sat beside the load and the clocks sat a card-width away. *@
+                <span class="fleet-map-inspector__clocks">
+                    <span class="fleet-map-inspector__hours-label">HOS</span>
+                    <Client.Shared.DriverStatus.DriverHours.DriverHours
+                        @key="_activeTruckId" Clocks="_hos"
+                        Dials="false" ShowDutyStatus="false" />
+                </span>
             </div>
         }
         </header>
@@ -229,31 +259,6 @@
         var routePlan = _routeState?.Plan is { InputsChanged: false } availablePlan ? availablePlan : null;
         var nextStop = ScheduledStop;
         <div class="fleet-map-route-info @(routePlan is null ? "is-awaiting-route" : "") @(NextStopIsFinal ? "has-final-stop" : "")" aria-label="Current dispatch route" aria-busy="@(_routeLoading ? "true" : "false")">
-            <div class="fleet-map-route-info__distances">
-            <div class="fleet-map-route-info__metric">
-                <span class="fleet-map-route-info__label">Remaining</span>
-                <strong>@Units.DistanceValue(routePlan is null ? null : RemainingMiles) <small>@Units.DistanceUnit</small></strong>
-                @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">@Units.Kilometers(routePlan is null ? null : RemainingMiles) km</span> }
-            </div>
-            </div>
-            <div class="fleet-map-route-info__load" aria-busy="@(_loadDetails is null ? "true" : "false")">
-                <span class="fleet-map-route-info__label">Load</span>
-                    @if (_loadDetails is { } details)
-                    {
-                        <div class="fleet-map-route-info__load-reference">
-                        <button type="button" class="fleet-map-route-info__copy-number" title="Copy load number" @onclick="() => CopyTextAsync(details.LoadNumber.ToString(System.Globalization.CultureInfo.InvariantCulture))"><strong><Client.Shared.Dispatch.LoadNumber.LoadNumber Value="details.LoadNumber" /></strong></button>
-                        <span class="fleet-map-route-info__secondary">Order <button type="button" class="fleet-map-route-info__copy-number" title="Copy order number" disabled="@(string.IsNullOrWhiteSpace(details.OrderNumber))" @onclick="() => CopyTextAsync(details.OrderNumber)"><strong class="fleet-map-inspector__value">@(string.IsNullOrWhiteSpace(details.OrderNumber) ? "—" : details.OrderNumber)</strong></button></span>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="fleet-map-route-info__load-reference">
-                            <strong class="fleet-map-route-info__load-placeholder">—</strong>
-                            <span class="fleet-map-route-info__secondary">Order <strong class="fleet-map-inspector__value">—</strong></span>
-                        </div>
-                    }
-                <span class="fleet-map-route-info__total fleet-map-route-info__secondary">Total <strong class="fleet-map-inspector__value">@if (routePlan is not null) { <DistanceText Miles="routePlan.OriginalPlannedMiles" /> } else { <text>— @Units.DistanceUnit</text>@if (Units.BothDistances) { <span> · — km</span> } }</strong></span>
-            </div>
             <div class="fleet-map-route-info__visit">
             <div class="fleet-map-route-info__next">
                 <div class="fleet-map-route-info__visit-heading">
@@ -314,6 +319,18 @@
                 </strong>
             </div>
             </div>
+            @* The load, its order and the distance to the next stop are in
+               the card head, so none of them is said again here. *@
+            <div class="fleet-map-route-info__distances">
+            <div class="fleet-map-route-info__metric">
+                <span class="fleet-map-route-info__label">Remaining</span>
+                <span class="fleet-map-route-info__progress">
+                    <strong>@Units.DistanceValue(routePlan is null ? null : RemainingMiles)</strong>
+                    <span class="fleet-map-route-info__total">of <strong class="fleet-map-inspector__value">@Units.DistanceValue(routePlan?.OriginalPlannedMiles)</strong> @Units.DistanceUnit</span>
+                    @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">@Units.Kilometers(routePlan is null ? null : RemainingMiles) of @Units.Kilometers(routePlan?.OriginalPlannedMiles) km</span> }
+                </span>
+            </div>
+            </div>
             <div class="fleet-map-route-info__timing">
             <div class="arrival-estimate">
                 @* ETA reads in the card head, so this section keeps only the
@@ -327,6 +344,7 @@
             </div>
             <div class="fleet-map-route-info__arrival-fuel">
                 <span class="fleet-map-route-info__label">Fuel on arrival</span>
+                <span class="fleet-map-route-info__fuel-value">
                 @if (ScheduledFuelArrival is { } fuelArrival)
                 {
                     <strong>@Math.Round(fuelArrival.Percent)%</strong>
@@ -336,6 +354,7 @@
                 {
                     <strong>—</strong>
                 }
+                </span>
             </div>
             </div>
             <div class="fleet-map-route-info__messages">

@@ -57,7 +57,9 @@
     gap: ui.pg(xs);
     min-width: 0;
     max-width: 100%;
-    padding: ui.pg(xs) ui.pg(md);
+    margin-inline: ui.pg(md);
+    padding: ui.pg(sm) 0;
+    border-top: 1px solid ui.theme(border-subtle);
     .map-action-icon {
       @include ui.compact-control;
       display: inline-flex;
@@ -111,17 +113,33 @@
     color: ui.theme(text-muted);
     font-size: ui.fs(small);
   }
+  // Left of the card says what: the truck, then its load. Right says when:
+  // the arrival, and under it the hours that arrival depends on.
+  .fleet-map-inspector__clocks {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(md);
+    min-width: 0;
+    margin-inline-start: auto;
+    > .driver-hours-panel {
+      min-width: 0;
+      margin-left: 0;
+    }
+  }
   // The load leads the line: what the truck is running, and how far is
   // left of it, before the clocks that say whether it can be finished.
   .fleet-map-mobile-summary__remaining {
     display: flex;
     align-items: baseline;
     gap: ui.pg(xs);
-    white-space: nowrap;
+    flex-wrap: wrap;
+    min-width: 0;
     color: ui.theme(text-secondary);
     font-variant-numeric: tabular-nums;
-    > strong {
+    strong {
       color: ui.theme(text);
+      font-weight: 600;
     }
     small {
       color: ui.theme(text-secondary);
@@ -160,6 +178,13 @@
       }
     }
   }
+  .fleet-map-mobile-summary__order,
+  .fleet-map-mobile-summary__distance {
+    display: inline-flex;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    white-space: nowrap;
+  }
   // "18" on its own says nothing; the words around it say what it counts.
   .fleet-map-mobile-summary__label {
     display: inline;
@@ -170,7 +195,8 @@
     .fleet-map-inspector__header {
       gap: ui.pg(sm);
     }
-    .fleet-map-inspector__actions .map-action-icon,
+    // Actions are outlined so they read as buttons now that they carry
+    // words; only the close control stays bare.
     .fleet-map-inspector__close {
       border-color: transparent;
       background: transparent;
@@ -183,12 +209,19 @@
     }
   }
   // The vehicle reads as one line: what it is doing, then where it is.
+  // Every reading has the same shape - a quiet word, then its value - so
+  // the line has one baseline instead of four little towers.
   .fleet-map-truck-info {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: ui.pg(xs) ui.pg(md);
+    gap: ui.pg(xs) ui.pg(lg);
     min-height: 0;
-    padding: ui.pg(xs) ui.pg(md);
+    margin-inline: ui.pg(md);
+    padding: ui.pg(sm) 0;
+    border: 0;
+    border-top: 1px solid ui.theme(border-subtle);
+    border-radius: 0;
     &__kind {
       color: ui.theme(text-muted);
       font-size: ui.fs(small);
@@ -197,129 +230,206 @@
       display: flex;
       flex-wrap: wrap;
       align-items: baseline;
-      gap: ui.pg(xs) ui.pg(md);
+      gap: ui.pg(xs) ui.pg(lg);
       padding: 0;
       border: 0;
-      --fuel-reading-icon-size: #{ui.size(telemetry-icon)};
+      --fuel-reading-columns: max-content max-content;
+      --fuel-reading-value-column: auto;
+      --fuel-reading-row-gap: 0;
+      --fuel-reading-value-size: #{ui.fs(body)};
     }
     // The icons repeated what the words already say on this line.
-    &__reading > small svg,
     &__telemetry svg {
       display: none;
     }
-    &__reading {
+    &__reading,
+    &__outside {
       display: flex;
       align-items: baseline;
       gap: ui.pg(xs);
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
       > small {
+        display: inline;
         color: ui.theme(text-secondary);
         font-size: ui.fs(small);
       }
+      > strong {
+        color: ui.theme(text);
+        font-size: ui.fs(body);
+        font-weight: 600;
+        white-space: nowrap;
+        > small {
+          font: inherit;
+          font-weight: 400;
+        }
+      }
     }
     &__location {
-      margin-inline-start: auto;
       display: flex;
       align-items: baseline;
       gap: ui.pg(xs);
-      white-space: nowrap;
       min-width: 0;
-    }
-    &__outside {
-      display: grid;
-      gap: ui.pg(xs);
-      padding-left: ui.pg(sm);
-      margin-left: ui.pg(sm);
-      border-left: 1px solid ui.theme(border-subtle);
-      color: ui.theme(text-secondary);
-      font-size: ui.fs(small);
-      strong {
-        font-size: ui.fs(lead);
-        font-weight: 600;
-        color: ui.theme(text);
+      margin-inline-start: auto;
+      padding: 0;
+      border: 0;
+      > span {
+        color: ui.theme(text-secondary);
+        font-size: ui.fs(small);
         white-space: nowrap;
-      }
-      > small {
-        display: flex;
-        align-items: center;
-        gap: ui.pg(xs);
-        font-size: ui.fs(small);
-      }
-      > small svg {
-        width: ui.size(telemetry-icon);
-        height: ui.size(telemetry-icon);
-        align-self: center;
-      }
-    }
-    &__reading {
-      padding-inline: ui.pg(sm);
-    }
-    &__reading > small svg {
-      width: ui.size(telemetry-icon);
-      height: ui.size(telemetry-icon);
-    }
-    &__reading:first-child {
-      padding-left: 0;
-      border-left: 0;
-    }
-    &__reading:last-of-type {
-      padding-right: 0;
-    }
-    &__location {
-      > span,
-      > small {
-        font-size: ui.fs(small);
       }
       > strong {
         font-size: ui.fs(body);
-        font-weight: 600;
+        font-weight: 400;
+        min-width: 0;
       }
     }
   }
-  // Two columns, as drawn: the stop on the left with the window it has to
-  // make, the load it is running on the right.
+  // Two columns of equal weight. Left is the stop and the window it has to
+  // make; right is the load, as rows of label and value on one shared
+  // label column so the eye runs down the values.
   .fleet-map-route-info {
+    --route-fact-label: 8rem;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    // The last row takes the slack when the stop is taller than the facts,
+    // so the facts stay packed at the top instead of drifting apart.
+    grid-template-rows: auto auto 1fr;
     align-items: start;
-    gap: ui.pg(sm) ui.pg(lg);
+    gap: ui.pg(xs) ui.pg(lg);
     min-height: 0;
     padding: ui.pg(sm) ui.pg(md);
-    &__distances,
-    &__visit,
-    &__timing {
-      display: grid;
-      align-content: start;
-      gap: ui.pg(xs);
-      min-width: 0;
-      position: relative;
-    }
-    &__visit::before,
-    &__timing::before,
-    &__distances::before {
-      content: '';
-      position: absolute;
-      pointer-events: none;
-      inset-block: 0;
-      inset-inline-start: calc(0px - #{ui.pg(sm)});
-      border-inline-start: 1px solid ui.theme(border-subtle);
-    }
-    &__distances::before {
-      display: none;
-    }
-    &__distances {
-      grid-column: 2;
-      grid-row: 2;
-      gap: ui.pg(sm);
-    }
     &__visit {
       grid-column: 1;
       grid-row: 1 / span 3;
+      align-self: stretch;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      align-content: start;
+      gap: ui.pg(xs);
+      min-width: 0;
+      padding-inline-end: ui.pg(lg);
+      border-inline-end: 1px solid ui.theme(border-subtle);
     }
+    &__distances {
+      grid-column: 2;
+      grid-row: 1;
+      min-width: 0;
+    }
+    &__timing {
+      grid-column: 2;
+      grid-row: 2;
+      display: grid;
+      gap: ui.pg(xs);
+      min-width: 0;
+    }
+    &__messages {
+      grid-column: 1 / -1;
+      grid-row: 4;
+    }
+    // Every fact is the same two cells: a quiet label, then its value.
     &__metric,
-    > .fleet-map-route-info__load,
+    &__arrival-fuel,
+    .stop-hours__arrival-cycle {
+      display: grid;
+      grid-template-columns: var(--route-fact-label) minmax(0, 1fr);
+      align-items: baseline;
+      column-gap: ui.pg(sm);
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+    &__label,
+    .stop-hours__heading {
+      margin: 0;
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+      font-weight: 400;
+    }
+    &__secondary {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+    &__progress {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 ui.pg(xs);
+      min-width: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    &__total {
+      margin: 0;
+      color: ui.theme(text-secondary);
+    }
+    &__metric strong,
+    &__arrival-fuel > strong,
+    .stop-hours__arrival-cycle > .stop-hours__value,
+    .stop-hours__arrival-cycle > strong {
+      color: ui.theme(text);
+      font-size: ui.fs(body);
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    // The gallons ride behind the percentage, in the same value cell.
+    &__fuel-value {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 ui.pg(xs);
+      min-width: 0;
+      > strong {
+        color: ui.theme(text);
+        font-size: ui.fs(body);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+    }
+    &__timing > .arrival-estimate {
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+    }
+    &__eta-placeholder {
+      font-size: ui.fs(body);
+    }
+    &__timing
+      > .arrival-estimate:has(> .arrival-estimate)
+      > .fleet-map-route-info__eta-placeholder {
+      display: none;
+    }
+    // The cycle is one more fact in the column, not a section under a
+    // rule of its own.
+    .stop-hours__cycle {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: ui.pg(xs);
+      margin: 0;
+      padding: 0;
+      border: 0;
+      font-size: ui.fs(small);
+    }
+    .stop-hours__road {
+      display: var(--stop-hours-road-display, flex);
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: ui.pg(xs);
+    }
+    .stop-hours__road > .stop-hours__label {
+      font-size: ui.fs(small);
+    }
+    .stop-hours__road time {
+      font-weight: 600;
+    }
+    // The stop: what happens there, who it is, where, and by when. The
+    // wider page layout places these two by grid line; here they simply
+    // follow one another down the stop's own column.
     &__next,
-    &__appointment,
-    .fleet-map-route-info__timing > .arrival-estimate {
+    &__appointment {
       grid-column: auto;
       grid-row: auto;
       min-width: 0;
@@ -327,77 +437,8 @@
       padding: 0;
       border: 0;
     }
-    &__metric {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      align-items: start;
-      gap: ui.pg(xs);
-      strong {
-        font-size: ui.fs(body);
-        font-weight: 600;
-        line-height: 1.4;
-      }
-      small {
-        font-size: inherit;
-        font-weight: 400;
-      }
-      > .fleet-map-route-info__secondary {
-        font-size: ui.fs(body);
-      }
-    }
-    > .fleet-map-route-info__load {
-      display: grid;
-      grid-template-columns: max-content minmax(0, 1fr);
-      grid-column: 2;
-      grid-row: 1;
-      align-items: baseline;
-      gap: ui.pg(xs) ui.pg(sm);
-      padding-bottom: ui.pg(sm);
-      border-bottom: 1px solid ui.theme(border-subtle);
-    }
-    &__load > .fleet-map-route-info__label {
-      grid-column: 1;
-      grid-row: 1;
-    }
-    &__load-reference {
-      display: contents;
-    }
-    &__load-reference > .fleet-map-route-info__copy-number,
-    &__load-reference > .fleet-map-route-info__load-placeholder {
-      grid-column: 2;
-      grid-row: 1;
-    }
-    &__load-reference > .fleet-map-route-info__secondary,
-    &__total {
-      grid-column: 1 / -1;
-    }
-    &__load-reference > .fleet-map-route-info__copy-number,
-    &__load-placeholder {
-      font-size: ui.fs(lead);
-      min-inline-size: 6ch;
-    }
-    &__load-reference > .fleet-map-route-info__secondary {
-      min-inline-size: 16ch;
-      max-width: 100%;
-    }
-    &__load-reference strong {
-      font-weight: 600;
-    }
-    &__load .fleet-map-inspector__value {
-      font-size: ui.fs(body);
-    }
-    &__load .fleet-map-route-info__secondary,
-    &__secondary,
-    &__label {
-      font-size: ui.fs(small);
-    }
-    &__label {
-      color: ui.theme(text-secondary);
-    }
-    &__total {
-      margin: 0;
-    }
     &__next {
+      display: grid;
       gap: ui.pg(xs);
     }
     &__visit-heading {
@@ -428,8 +469,7 @@
       }
     }
     &__next strong,
-    &__appointment > strong,
-    &__next-appointment > strong {
+    &__appointment > strong {
       font-size: ui.fs(body);
       font-weight: 600;
     }
@@ -438,183 +478,60 @@
       align-items: center;
       gap: ui.pg(xs);
     }
+    // Street and city share a line when the column has room for both, so
+    // the stop takes the same four lines as the facts beside it.
     &__address-lines {
-      gap: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 ui.pg(xs);
+      text-align: start;
+    }
+    &__street:not(:last-child)::after {
+      content: ',';
     }
     &__address-lines > span {
       font-size: ui.fs(body);
       color: ui.theme(text-secondary);
     }
     &__address-lines > .fleet-map-route-info__facility {
+      flex-basis: 100%;
       color: ui.theme(text);
       font-weight: 600;
       overflow-wrap: anywhere;
     }
-    &__appointment,
-    &__next-appointment {
-      display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: ui.pg(xs);
-    }
-    &__appointment > strong,
-    &__next-appointment > strong {
-      overflow-wrap: anywhere;
-    }
-    &__timing {
-      grid-column: 2;
-      grid-row: 3;
-    }
-    &__eta-placeholder {
-      font-size: ui.fs(body);
-    }
-    &__arrival-fuel {
+    &__appointment {
       display: flex;
       flex-wrap: wrap;
       align-items: baseline;
       gap: ui.pg(xs);
-      min-width: 0;
-
       > strong {
-        color: ui.theme(text);
-        font-size: ui.fs(body);
-        font-weight: 650;
-        white-space: nowrap;
+        overflow-wrap: anywhere;
       }
-
-      > .fleet-map-route-info__secondary {
-        white-space: nowrap;
-      }
-    }
-    &__timing
-      > .arrival-estimate:has(> .arrival-estimate)
-      > .fleet-map-route-info__eta-placeholder {
-      display: none;
-    }
-    .stop-hours__road {
-      display: var(--stop-hours-road-display, flex);
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: ui.pg(xs);
-    }
-    .stop-hours__road > .stop-hours__label {
-      font-size: ui.fs(small);
-    }
-    .stop-hours__road time {
-      font-weight: 600;
-    }
-    .stop-hours__cycle {
-      font-size: ui.fs(small);
-    }
-    &__messages {
-      grid-column: 1 / -1;
     }
     &.has-final-stop .fleet-map-route-info__distance,
     &.is-awaiting-route .fleet-map-route-info__distance {
       display: none;
     }
   }
-  @container map-truck-inspection (width >= #{ui.breakpoint(map-compact-columns)}) and (width < 52rem) {
-    .fleet-map-route-info {
-      > .fleet-map-route-info__load {
-        grid-template-columns:
-          max-content minmax(0, 0.6fr) minmax(0, 1fr)
-          minmax(0, 1fr);
-      }
-      &__load-reference > .fleet-map-route-info__secondary {
-        grid-column: 3;
-        grid-row: 1;
-      }
-      &__total {
-        grid-column: 4;
-        grid-row: 1;
-      }
-    }
-  }
-  @container map-truck-inspection (width >= 52rem) {
-    .fleet-map-truck-info {
-      display: grid;
-      grid-template-columns: max-content max-content minmax(0, 1fr);
-      &__location {
-        grid-column: 3;
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        gap: ui.pg(xs);
-        align-content: start;
-        padding-top: 0;
-        border-top: 0;
-        > span {
-          grid-column: 1;
-          grid-row: 1;
-        }
-        > strong {
-          grid-column: 1;
-          grid-row: 2;
-        }
-        > a {
-          grid-column: 1;
-          grid-row: 3;
-          margin-top: ui.pg(xs);
-        }
-      }
-    }
-    // Wide keeps the two columns it was drawn with; the extra room goes to
-    // the addresses, not into a third and fourth column.
-    .fleet-map-route-info {
-      > .fleet-map-route-info__load {
-        gap: ui.pg(xs);
-        padding-bottom: 0;
-        border-bottom: 0;
-      }
-      &__distances::before {
-        display: block;
-      }
-    }
-  }
+  // Too narrow for two columns: the stop, then the facts under a rule.
   @container map-truck-inspection (width < #{ui.breakpoint(map-compact-columns)}) {
     .fleet-map-route-info {
       grid-template-columns: minmax(0, 1fr);
-      .stop-hours__cycle .stop-hours__row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: ui.pg(xs) ui.pg(sm);
-      }
-      > .fleet-map-route-info__distances,
+      grid-template-rows: none;
       > .fleet-map-route-info__visit,
-      > .fleet-map-route-info__timing {
+      > .fleet-map-route-info__distances,
+      > .fleet-map-route-info__timing,
+      > .fleet-map-route-info__messages {
         grid-column: 1;
         grid-row: auto;
       }
-      > .fleet-map-route-info__load {
-        grid-row: 1;
+      > .fleet-map-route-info__visit {
+        padding-inline-end: 0;
+        padding-block-end: ui.pg(sm);
+        border-inline-end: 0;
+        border-block-end: 1px solid ui.theme(border-subtle);
       }
-      &__distances {
-        display: flex;
-        flex-wrap: wrap;
-        gap: ui.pg(sm) ui.pg(lg);
-      }
-      &__visit::before,
-      &__timing::before {
-        inset-inline: 0;
-        inset-block: calc(0px - #{ui.pg(xs)}) auto;
-        border-inline-start: 0;
-        border-block-start: 1px solid ui.theme(border-subtle);
-      }
-    }
-  }
-  @container map-truck-inspection (width < #{ui.breakpoint(
-    map-telemetry-tight
-  )}) {
-    .fleet-map-truck-info__reading {
-      padding-inline: ui.pg(xs);
-    }
-  }
-  @container map-truck-inspection (width < #{ui.breakpoint(map-info-stacked)}) {
-    .fleet-map-truck-info__telemetry {
-      display: flex;
-      flex-wrap: wrap;
-      gap: ui.pg(sm) 0;
     }
   }
   @media (max-width: ui.breakpoint(map-mobile, max)) {

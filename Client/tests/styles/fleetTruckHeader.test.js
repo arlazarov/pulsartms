@@ -78,96 +78,6 @@ test('truck inspector uses one disclosure control on every screen size', () => {
   assert.doesNotMatch(css, /fleet-map-reveal/);
 });
 
-test('Remaining keeps three rows and data loading does not resize the metric column', () => {
-  assert.match(compact, /scrollbar-gutter: stable;/);
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__metric\s*\{[^}]*grid-template-columns: minmax\(0,\s*1fr\);/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__metric > \.fleet-map-route-info__secondary\s*\{[^}]*font-size: var\(--type-body\);/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__metric small\s*\{[^}]*font-size: inherit;/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__load-placeholder\s*\{[^}]*font-size: var\(--type-lead\);/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__timing > \.arrival-estimate:has\(> \.arrival-estimate\) > \.fleet-map-route-info__eta-placeholder\s*\{[^}]*display: none;/,
-  );
-});
-
-test('delivery remains in the timing column during preview and reference loading', () => {
-  assert.doesNotMatch(
-    compact,
-    /(?:has-next-delivery|is-awaiting-route)[^{}]*__delivery/,
-  );
-  assert.doesNotMatch(
-    css,
-    /\.fleet-map-route-info__delivery\s*\{[^}]*display: none;/,
-  );
-  assert.match(
-    compact,
-    /__next-appointment\s*\{[^}]*display: flex;[^}]*align-items: baseline;/,
-  );
-});
-
-test('load references use assigned grid slots instead of content-dependent flex wrapping', () => {
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__load\s*\{[^}]*display: grid;[^}]*grid-template-columns: max-content minmax\(0,\s*1fr\);/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__load-reference\s*\{\s*display: contents;/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__load-placeholder\s*\{\s*grid-column: 2;\s*grid-row: 1;/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__total\s*\{\s*grid-column: 4;\s*grid-row: 1;/,
-  );
-});
-
-test('the stop facility remains a readable supporting value without widening the inspector', () => {
-  assert.match(
-    compact,
-    /__address-lines > \.fleet-map-route-info__facility\s*\{\s*color: var\(--ui-text\);\s*font-weight: 600;\s*overflow-wrap: anywhere;/,
-  );
-  assert.doesNotMatch(
-    compact,
-    /__facility\s*\{[^}]*(?:font-size:|white-space: nowrap|text-overflow: ellipsis)/,
-  );
-});
-
-test('distance and visit groups remain independent of expanded forecast row heights', () => {
-  for (const group of ['distances', 'visit', 'timing'])
-    assert.match(
-      compact,
-      new RegExp(
-        `\\.fleet-map-route-info__${group}[^{}]*\\{[^}]*align-content: start;`,
-      ),
-    );
-  assert.doesNotMatch(compact, /grid-row:[^;]*span 2;/);
-  assert.doesNotMatch(
-    compact,
-    /\.fleet-map-route-info__visit[^{}]*\{[^}]*min-height: (?!0;)/,
-  );
-  assert.match(compact, /--arrival-font-size: var\(--type-body\);/);
-  assert.match(compact, /--arrival-detail-font-size: var\(--type-small\);/);
-});
-
 test('map inspector content updates without reveal or fade animation', () => {
   for (const selector of ['fleet-map-info-reserved', 'fleet-map-info-content'])
     assert.match(css, new RegExp(`\\.${selector}\\s*\\{[^}]*animation: none;`));
@@ -359,35 +269,6 @@ test('selected-truck header left-packs identity readings clocks duty and actions
   assert.doesNotMatch(css, /--hos-dial-size: var\(--size-map-hos-dial\)/);
 });
 
-test('mobile selected-truck header keeps full-width hours and compact labeled readings', () => {
-  const mobile = css.slice(css.indexOf('@media (max-width: 767px)'));
-  assert.match(
-    mobile,
-    /grid-template-columns: minmax\(0,\s*1fr\) minmax\(0,\s*1fr\);/,
-  );
-  assert.match(
-    mobile,
-    /\.fleet-map-truck-info__identity,\s*\.fleet-map-truck-info__telemetry,\s*\.fleet-map-truck-info__actions\s*\{\s*grid-column: 1\s*\/\s*-1;/,
-  );
-  assert.doesNotMatch(mobile, /\.fleet-map-truck-info__hours/);
-  assert.match(
-    mobile,
-    /\.fleet-map-truck-info__telemetry\s*\{\s*grid-template-columns: repeat\(3,\s*minmax\(0,\s*1fr\)\);/,
-  );
-  assert.match(
-    mobile,
-    /\.fleet-map-truck-info__actions\s*\{\s*flex-direction: row;\s*flex-wrap: wrap;/,
-  );
-  assert.match(
-    mobile,
-    /\.fleet-map-truck-info__buttons\s*\{\s*display: flex;\s*flex-wrap: wrap;\s*min-width: 0;\s*max-width: 100%;/,
-  );
-  assert.match(
-    compact,
-    /@container map-truck-inspection \(width < 40rem\)[\s\S]*\.fleet-map-route-info__distances\s*\{[^}]*display: flex;[^}]*flex-wrap: wrap;/,
-  );
-});
-
 test('HOS circles keep the same compact gap instead of stretching across wide or mobile headers', () => {
   assert.match(
     css,
@@ -420,17 +301,6 @@ test('HOS circles keep the same compact gap instead of stretching across wide or
   );
 });
 
-test('cramped route details use full rows according to root-font-relative available width', () => {
-  assert.match(
-    css,
-    /\.fleet-map-info-content\s*\{\s*container: map-truck-inspection\s*\/\s*inline-size;/,
-  );
-  assert.match(
-    compact,
-    /@container map-truck-inspection \(width < 40rem\)[\s\S]*\.fleet-map-route-info > \.fleet-map-route-info__distances,[^{}]*\.fleet-map-route-info > \.fleet-map-route-info__visit,[^{}]*\.fleet-map-route-info > \.fleet-map-route-info__timing\s*\{\s*grid-column: 1;\s*grid-row: auto;/,
-  );
-});
-
 test('desktop and mobile actions wrap without reserving blank reference rows', () => {
   assert.match(
     css,
@@ -439,62 +309,6 @@ test('desktop and mobile actions wrap without reserving blank reference rows', (
   assert.doesNotMatch(
     css,
     /min-height: (?:calc\()?var\(--size-map-route-address-stacked-min\)/,
-  );
-});
-
-test('route summary groups load distances next visit and ETA without changing its type scale', () => {
-  assert.match(compact, /\.fleet-map-route-info\s*\{[^}]*align-items: start;/);
-  assert.match(
-    compact,
-    /\.fleet-map-route-info > \.fleet-map-route-info__load\s*\{[^}]*display: grid;[^}]*grid-column: 2;[^}]*grid-row: 1;/,
-  );
-  assert.match(
-    css,
-    /\.fleet-map-route-info__load-reference\s*\{\s*display: flex;\s*flex-wrap: wrap;/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__metric strong\s*\{[^}]*font-size: var\(--type-body\);[^}]*font-weight: 600;/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__metric\s*\{[^}]*grid-template-columns: minmax\(0,\s*1fr\);/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__load \.fleet-map-route-info__secondary[^{}]*\{\s*font-size: var\(--type-small\);/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__copy-address\s*\{\s*flex-direction: row;/,
-  );
-  assert.match(
-    css,
-    /\.fleet-map-route-info__address-lines\s*\{\s*display: grid;/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__address-lines > span\s*\{[^}]*font-size: var\(--type-body\);/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-route-info__load \.fleet-map-inspector__value\s*\{[^}]*font-size: var\(--type-body\);/,
-  );
-  assert.match(
-    css,
-    /\.fleet-map-truck-info__reading strong small\s*\{[^}]*font: inherit;[^}]*font-weight: 400;/,
-  );
-  assert.match(
-    compact,
-    /\.stop-hours__road > \.stop-hours__label\s*\{\s*font-size: var\(--type-small\);/,
-  );
-  assert.match(
-    compact,
-    /\.stop-hours__road\s*\{\s*display: var\(--stop-hours-road-display, flex\);\s*flex-wrap: wrap;\s*align-items: baseline;/,
-  );
-  assert.doesNotMatch(
-    compact.slice(0, compact.indexOf('@media (max-width: 767px)')),
-    /:not\(\.is-expanded\)/,
   );
 });
 
@@ -604,81 +418,6 @@ test('load details uses an accessible header icon with shared action sizing', ()
     /__actions \.map-action-icon\s*\{[^}]*min-height: var\(--size-control-touch\);/,
   );
   assert.doesNotMatch(compact, /__actions \.map-action-icon\s*\{[^}]*width:/);
-});
-
-test('wide truck details use one row of adjacent groups without shrinking text or clocks', () => {
-  const wide = compact.slice(
-    compact.indexOf('@container map-truck-inspection (width >= 52rem)'),
-    compact.indexOf('@container map-truck-inspection (width < 40rem)'),
-  );
-  // Wide keeps the two columns the card was drawn with: the extra room
-  // goes to the addresses rather than into more columns.
-  assert.doesNotMatch(
-    wide,
-    /\.fleet-map-route-info\s*\{[^}]*grid-template-columns:/,
-  );
-  assert.match(wide, /__load\s*\{[^}]*border-bottom: 0;/);
-  assert.match(
-    compact,
-    /\.fleet-map-route-info\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/,
-  );
-  assert.match(compact, /__load-reference\s*\{\s*display: contents;/);
-  assert.doesNotMatch(
-    wide,
-    /__load-reference\s*\{[^}]*display: (?:flex|block);/,
-  );
-  assert.match(
-    compact,
-    /\.fleet-map-truck-info\s*\{[^}]*padding: var\(--space-xs\) var\(--space-md\);/,
-  );
-  assert.doesNotMatch(wide, /font-size:|--hos-dial-size:/);
-});
-
-test('selected truck enlarges only its three telemetry icons through a shared size token', () => {
-  assert.match(
-    compact,
-    /__telemetry\s*\{[^}]*--fuel-reading-icon-size: var\(--size-telemetry-icon\);/,
-  );
-  assert.match(
-    compact,
-    /__reading > small svg\s*\{\s*width: var\(--size-telemetry-icon\);\s*height: var\(--size-telemetry-icon\);/,
-  );
-  assert.doesNotMatch(compact, /__status\s*\{/);
-  assert.doesNotMatch(css, /__hours-label/);
-});
-
-test('route groups have responsive dividers inside existing gaps without consuming content width', () => {
-  assert.match(
-    compact,
-    /__distances::before\s*\{[^}]*position: absolute;[^}]*pointer-events: none;[^}]*inset-inline-start: calc\(0px - var\(--space-sm\)\);[^}]*border-inline-start: 1px solid var\(--ui-border-subtle\);/,
-  );
-  assert.match(compact, /__distances::before\s*\{\s*display: none;/);
-  assert.match(
-    compact,
-    /@container map-truck-inspection \(width >= 52rem\)[\s\S]*__distances::before\s*\{\s*display: block;/,
-  );
-  assert.match(
-    compact,
-    /@container map-truck-inspection \(width < 40rem\)[\s\S]*__timing::before\s*\{\s*inset-inline: 0;\s*inset-block: calc\(0px - var\(--space-xs\)\) auto;\s*border-inline-start: 0;\s*border-block-start: 1px solid var\(--ui-border-subtle\);/,
-  );
-});
-
-test('truck appointment labels do not reserve empty fixed-width space', () => {
-  const rule =
-    compact.match(
-      /__appointment > \.fleet-map-route-info__label\s*\{([^}]*)\}/,
-    )?.[1] ?? '';
-  assert.doesNotMatch(rule, /(?:width|inline-size|flex-basis|flex)\s*:/);
-  assert.match(compact, /__next-appointment\s*\{[^}]*gap: var\(--space-xs\);/);
-  assert.match(compact, /\.stop-hours__road\s*\{[^}]*gap: var\(--space-xs\);/);
-});
-
-test('the last telemetry metric has no trailing padding after Outside', () => {
-  assert.match(compact, /__reading:last-of-type\s*\{\s*padding-right: 0;/);
-  const tight = compact.slice(
-    compact.indexOf('@container map-truck-inspection (width < 16rem)'),
-  );
-  assert.match(tight, /__reading\s*\{\s*padding-inline: var\(--space-xs\);/);
 });
 
 test('map key stays over the map and uses the actual fixed station comparison palette', () => {

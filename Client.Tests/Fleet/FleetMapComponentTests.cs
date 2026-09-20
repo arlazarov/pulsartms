@@ -80,9 +80,19 @@ public sealed class FleetMapComponentTests
     // The header is what stays on screen either way, so opening the card may
     // not rewrite a word of it - a "Details"/"Hide" toggle used to, and the
     // row shifted under the dispatcher's finger as it opened.
+    // Blazor renumbers its event handler ids on every render; they are not
+    // on screen, so they are not part of what must stay the same.
+    static string Visible(string html) =>
+      System.Text.RegularExpressions.Regex.Replace(
+        html,
+        "\\sblazor:[a-z]+=\"\\d+\"",
+        ""
+      );
     Assert.Equal(
-      closed.Replace("aria-expanded=\"false\"", "aria-expanded=\"true\""),
-      component.Find(".fleet-map-inspector__header").InnerHtml
+      Visible(
+        closed.Replace("aria-expanded=\"false\"", "aria-expanded=\"true\"")
+      ),
+      Visible(component.Find(".fleet-map-inspector__header").InnerHtml)
     );
     Assert.Equal("Truck details", toggle.GetAttribute("aria-label"));
   }
@@ -429,15 +439,16 @@ public sealed class FleetMapComponentTests
     // left of it, then the clocks that say whether it can be finished.
     var second = component.Find(".fleet-map-inspector__hours");
     Assert.Equal(
-      [
-        "fleet-map-mobile-summary__remaining",
-        "fleet-map-inspector__hours-label",
-        "driver-hours-panel",
-      ],
+      ["fleet-map-mobile-summary__remaining", "fleet-map-inspector__clocks"],
       second.Children.Select(node => node.ClassName)
     );
+    // "HOS" travels with the clocks it names.
     Assert.Equal(
-      "mi left",
+      ["fleet-map-inspector__hours-label", "driver-hours-panel"],
+      second.Children[1].Children.Select(node => node.ClassName)
+    );
+    Assert.Equal(
+      "left",
       component.FindAll(".fleet-map-mobile-summary__label")[^1].TextContent
     );
     Assert.All(
@@ -522,9 +533,17 @@ public sealed class FleetMapComponentTests
       }
     );
     await selection;
-    var summary = component.Find(".fleet-map-route-info__load");
-    Assert.Contains("1376", summary.TextContent);
+    // The load's number is said once, in the card head, where it is also
+    // the control that copies it; the facts column carries the order.
+    Assert.Contains(
+      "1376",
+      component.Find(".fleet-map-mobile-summary__remaining").TextContent
+    );
+    // The order rides beside the load in the head; the facts column does
+    // not say either of them again.
+    var summary = component.Find(".fleet-map-mobile-summary__remaining");
     Assert.Contains("ORDER-5678", summary.TextContent);
+    Assert.Empty(component.FindAll(".fleet-map-route-info__load"));
     Assert.Equal(
       "ORDER-5678",
       summary
@@ -534,8 +553,8 @@ public sealed class FleetMapComponentTests
         .TextContent
     );
     Assert.NotNull(
-      summary.QuerySelector(
-        ".fleet-map-route-info__total > strong.fleet-map-inspector__value"
+      component.Find(
+        ".fleet-map-route-info__metric .fleet-map-route-info__total > strong.fleet-map-inspector__value"
       )
     );
     await component
@@ -762,11 +781,17 @@ public sealed class FleetMapComponentTests
     );
     Assert.Contains(
       "km",
-      component.Find(".fleet-map-route-info__metric strong").TextContent
+      component.Find(".fleet-map-route-info__metric").TextContent
     );
+    // The card head follows the chosen unit too: ten miles is sixteen
+    // kilometres to a dispatcher who works in them.
     Assert.Equal(
-      "10",
-      component.Find(".fleet-map-mobile-summary__remaining strong").TextContent
+      "16",
+      component.Find(".fleet-map-mobile-summary__distance strong").TextContent
+    );
+    Assert.Contains(
+      "km",
+      component.Find(".fleet-map-mobile-summary__distance").TextContent
     );
     Assert.Empty(
       component.FindAll(
@@ -799,10 +824,10 @@ public sealed class FleetMapComponentTests
     );
     Assert.Equal(
       "10",
-      component.Find(".fleet-map-mobile-summary__remaining strong").TextContent
+      component.Find(".fleet-map-mobile-summary__distance strong").TextContent
     );
-    Assert.Equal(
-      "16 km",
+    Assert.StartsWith(
+      "16 of",
       component
         .Find(".fleet-map-route-info__metric .fleet-map-route-info__secondary")
         .TextContent
@@ -1077,7 +1102,12 @@ public sealed class FleetMapComponentTests
       () =>
         component.Instance.OnRouteProgress(fixture.TruckA.ToString(), 1617, 10)
     );
-    Assert.Equal("20", summary.QuerySelector("strong")!.TextContent);
+    Assert.Equal(
+      "20",
+      summary
+        .QuerySelector(".fleet-map-mobile-summary__distance strong")!
+        .TextContent
+    );
     for (var i = 0; i < 2; i++)
     {
       await component.InvokeAsync(
@@ -1091,13 +1121,23 @@ public sealed class FleetMapComponentTests
       var current = Assert.Single(
         component.FindAll(".fleet-map-mobile-summary__remaining")
       );
-      Assert.Equal("20", current.QuerySelector("strong")!.TextContent);
+      Assert.Equal(
+        "20",
+        current
+          .QuerySelector(".fleet-map-mobile-summary__distance strong")!
+          .TextContent
+      );
     }
     await component.InvokeAsync(
       () =>
         component.Instance.OnRouteProgress(fixture.TruckA.ToString(), 0, 1627)
     );
-    Assert.Equal("0", summary.QuerySelector("strong")!.TextContent);
+    Assert.Equal(
+      "0",
+      summary
+        .QuerySelector(".fleet-map-mobile-summary__distance strong")!
+        .TextContent
+    );
     Assert.Equal(calls, fixture.HttpCalls);
   }
 
@@ -1254,7 +1294,7 @@ public sealed class FleetMapComponentTests
       Assert.Contains("02:00\u00a0AM", panel.TextContent);
       Assert.All(
         panel.QuerySelectorAll(".fleet-map-route-info__metric strong"),
-        value => Assert.Equal("— mi", value.TextContent)
+        value => Assert.Equal("—", value.TextContent)
       );
       Assert.Empty(panel.QuerySelectorAll(".arrival-estimate__ontime"));
       Assert.False(
@@ -1269,7 +1309,7 @@ public sealed class FleetMapComponentTests
     );
     Assert.All(
       component.FindAll(".fleet-map-route-info__metric strong"),
-      value => Assert.Equal("— mi", value.TextContent)
+      value => Assert.Equal("—", value.TextContent)
     );
     await component
       .Find("button[aria-label='Fuel plan']")
@@ -1562,19 +1602,13 @@ public sealed class FleetMapComponentTests
       // The action says what it does rather than leaving the icon to.
       Assert.Equal("Route options", routeOptions.TextContent.Trim());
       Assert.Equal("Route options", routeOptions.GetAttribute("title"));
-      Assert.Contains(
-        "Order —",
-        panel
-          .QuerySelector(".fleet-map-route-info__load-reference")!
-          .TextContent
-      );
+      // The load and its order are said in the head; while they are still
+      // being read the head says so rather than leaving a hole in the body.
       Assert.Equal(
-        "—",
-        panel
-          .QuerySelector(
-            ".fleet-map-route-info__load-reference .fleet-map-inspector__value"
-          )!
-          .TextContent
+        "true",
+        component
+          .Find(".fleet-map-mobile-summary__remaining")
+          .GetAttribute("aria-busy")
       );
       Assert.NotNull(
         panel.QuerySelector(
@@ -1610,9 +1644,7 @@ public sealed class FleetMapComponentTests
           ".fleet-map-route-info__visit-heading > .fleet-map-route-info__distance"
         )
       );
-      Assert.NotNull(
-        panel.QuerySelector(":scope > .fleet-map-route-info__load")
-      );
+      Assert.Null(panel.QuerySelector(":scope > .fleet-map-route-info__load"));
       Assert.NotNull(
         panel.QuerySelector(
           ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__next"
@@ -1631,7 +1663,7 @@ public sealed class FleetMapComponentTests
           ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__appointment"
         )
       );
-      Assert.Contains("Total — mi · — km", panel.TextContent);
+      Assert.Contains("of —", panel.TextContent);
       // The load column opens with the arrival the stop is measured by.
       Assert.NotNull(
         panel.QuerySelector(
@@ -1685,9 +1717,7 @@ public sealed class FleetMapComponentTests
           ".fleet-map-route-info__visit-heading > .fleet-map-route-info__distance"
         )
       );
-      Assert.NotNull(
-        panel.QuerySelector(":scope > .fleet-map-route-info__load")
-      );
+      Assert.Null(panel.QuerySelector(":scope > .fleet-map-route-info__load"));
       Assert.NotNull(
         panel.QuerySelector(
           ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__next"
@@ -1943,7 +1973,7 @@ public sealed class FleetMapComponentTests
           .Count
       );
       Assert.Single(
-        component.FindAll(".fleet-map-inspector__hours > .driver-hours-panel")
+        component.FindAll(".fleet-map-inspector__clocks > .driver-hours-panel")
       );
       Assert.Empty(component.FindAll(".fleet-map-truck-info__hours-label"));
       Assert.Empty(component.FindAll(".driver-next-recap"));
@@ -1985,7 +2015,7 @@ public sealed class FleetMapComponentTests
     {
       Assert.Empty(component.FindAll(".driver-next-recap"));
       Assert.Single(
-        component.FindAll(".fleet-map-inspector__hours > .driver-hours-panel")
+        component.FindAll(".fleet-map-inspector__clocks > .driver-hours-panel")
       );
     });
   }
@@ -4602,7 +4632,7 @@ public sealed class FleetMapComponentTests
       );
       Assert.All(
         panel.QuerySelectorAll(".fleet-map-route-info__metric strong"),
-        value => Assert.Equal("— mi", value.TextContent)
+        value => Assert.Equal("—", value.TextContent)
       );
       Assert.Empty(panel.QuerySelectorAll(".arrival-estimate__ontime"));
       Assert.DoesNotContain("Warehouse", panel.TextContent);
