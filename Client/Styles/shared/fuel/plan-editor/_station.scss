@@ -1,0 +1,165 @@
+@use '../../../base' as ui;
+
+// The selected station on the right: what is known about it, how much is
+// being bought there, and what that comes to.
+.fuel-plan-editor {
+  &__selection {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: ui.pg(sm);
+  }
+  &__station-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    gap: ui.pg(sm);
+  }
+  &__station-identity {
+    min-width: 0;
+    display: grid;
+    gap: ui.pg(sm);
+  }
+  &__station-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+  }
+  &__station-heading > div {
+    display: grid;
+    gap: ui.pg(xs);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  &__station-heading small {
+    font-size: ui.fs(small);
+    color: ui.theme(text-secondary);
+  }
+  &__address {
+    margin: 0;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    line-height: 1.5;
+  }
+  &__position {
+    margin: 0;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+  }
+  &__price,
+  &__cost {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: ui.pg(sm);
+    border-top: 1px solid ui.theme(border-subtle);
+    padding-top: ui.pg(sm);
+    font-size: ui.fs(small);
+  }
+  &__price strong {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  &__cost > span {
+    display: grid;
+    gap: ui.pg(micro);
+  }
+  &__cost small {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+  }
+  &__cost strong {
+    color: ui.theme(text);
+    font-size: ui.fs(lead);
+    font-variant-numeric: tabular-nums;
+  }
+  &__quantity {
+    display: grid;
+    gap: ui.pg(xs);
+  }
+  &__quantity-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+    flex-wrap: wrap;
+  }
+  &__quantity-heading > label:first-child {
+    display: flex;
+    gap: ui.pg(sm);
+  }
+  &__quantity input[type='range'] {
+    width: 100%;
+    min-height: ui.size(control);
+    margin: 0;
+    accent-color: ui.theme(action);
+    cursor: pointer;
+  }
+  &__quantity input[type='range']:focus-visible {
+    outline: 2px solid ui.theme(focus);
+    outline-offset: 2px;
+  }
+  &__range-labels {
+    display: flex;
+    justify-content: space-between;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  &__full {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-height: ui.size(control);
+  }
+  &__full input {
+    @include ui.checkbox-control;
+  }
+  &__hint,
+  &__empty {
+    font-size: ui.fs(small);
+    color: ui.theme(text-secondary);
+    line-height: 1.5;
+    margin: ui.pg(sm) 0;
+  }
+  &__totals {
+    display: grid;
+    gap: ui.pg(xs);
+    border-top: 1px solid ui.theme(border-subtle);
+    padding: ui.pg(sm) 0;
+    margin-top: ui.pg(sm);
+  }
+  &__totals > span {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: ui.pg(xs);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  &__totals strong {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-variant-numeric: tabular-nums;
+  }
+  &__errors {
+    color: ui.theme(danger-text);
+    font-size: ui.fs(small);
+    margin-bottom: ui.pg(md);
+  }
+  &__errors p {
+    margin: 0 0 ui.pg(sm);
+  }
+  &__footer {
+    grid-area: footer;
+    border-top: 1px solid ui.theme(border-subtle);
+    flex-wrap: wrap;
+  }
+  &__footer > div {
+    display: flex;
+    gap: ui.pg(sm);
+  }
+}

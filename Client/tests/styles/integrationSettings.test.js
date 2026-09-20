@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { compileString } from 'sass';
 import { fileURLToPath } from 'node:url';
 
-const css = compileString("@use 'pages/settings-page';", {
+const css = compileString("@use 'pages/settings';", {
   loadPaths: [fileURLToPath(new URL('../../Styles/', import.meta.url))],
 }).css;
 

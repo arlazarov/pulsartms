@@ -1,0 +1,128 @@
+@use '../../../base' as ui;
+
+// With no room abreast, everything takes a row of its own.
+@container dispatch-truck (width < #{ui.breakpoint(dispatch-truck-compact)}) {
+  .dispatch-planning--compact {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    .dispatch-planning__content {
+      grid-column: 1 / -1;
+    }
+    .dispatch-planning__driver {
+      padding-left: 0;
+      border-left: 0;
+    }
+    > .driver-hours-panel {
+      padding-left: ui.pg(md);
+    }
+  }
+  .dispatch-planning--board {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    .dispatch-planning__content {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      border-top: 1px solid ui.theme(border-subtle);
+      padding-top: ui.pg(sm);
+    }
+    > .driver-hours-panel {
+      grid-column: 1;
+      grid-row: 1;
+      padding-left: 0;
+    }
+    .dispatch-planning__driver {
+      grid-column: 2;
+      grid-row: 1;
+      padding-left: ui.pg(md);
+      border-left: 1px solid ui.theme(border-subtle);
+    }
+  }
+}
+
+@include ui.below(narrow-card) {
+  .dispatch-planning--compact {
+    grid-template-columns: minmax(0, 1fr);
+    > .driver-hours-panel {
+      padding: ui.pg(md) 0 0;
+      border-left: 0;
+      border-top: 1px solid ui.theme(border-subtle);
+    }
+    .dispatch-planning__heading {
+      align-items: baseline;
+      justify-content: space-between;
+      gap: ui.pg(xs) ui.pg(sm);
+    }
+    .dispatch-planning__identity {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: ui.pg(xs) ui.pg(sm);
+    }
+    .dispatch-planning__identity > strong {
+      font-size: ui.fs(body);
+    }
+    .dispatch-planning__identity > span,
+    .dispatch-planning__fuel {
+      font-size: ui.fs(small);
+    }
+    .dispatch-planning__telemetry {
+      gap: ui.pg(sm);
+    }
+    .dispatch-planning__metrics {
+      display: grid;
+      grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, #{ui.size(route-metric)}), 1fr)
+      );
+      gap: ui.pg(xs) ui.pg(sm);
+      align-items: start;
+      padding-top: ui.pg(sm);
+      border-top: 1px solid ui.theme(border-subtle);
+    }
+    .dispatch-planning__metrics > div {
+      display: grid;
+      grid-template-rows: subgrid;
+      grid-row: span 2;
+      min-width: 0;
+      gap: ui.pg(xs);
+    }
+    .dispatch-planning__metrics > div > span {
+      font-size: ui.fs(small);
+    }
+    .dispatch-planning__metrics strong {
+      display: grid;
+      gap: ui.pg(micro);
+      overflow-wrap: anywhere;
+    }
+    .dispatch-planning__metrics small {
+      margin-left: 0;
+    }
+    .dispatch-planning__metrics > .dispatch-planning__hint {
+      grid-column: 1 / -1;
+    }
+  }
+  .dispatch-planning--board {
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.pg(sm);
+    > .driver-hours-panel {
+      grid-column: 1;
+      grid-row: 1;
+      padding: 0;
+      border: 0;
+    }
+    .dispatch-planning__driver {
+      grid-column: 1;
+      grid-row: 2;
+      padding: ui.pg(sm) 0;
+      border: 0;
+    }
+    .dispatch-planning__content {
+      grid-column: 1;
+      grid-row: 3;
+    }
+    .dispatch-planning__metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: ui.pg(sm) ui.pg(lg);
+      border: 0;
+    }
+  }
+}

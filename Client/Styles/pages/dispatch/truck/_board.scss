@@ -1,0 +1,56 @@
+@use '../../../base' as ui;
+
+// The planning block as it reads inside a truck row on the board.
+.dispatch-truck__equipment > .dispatch-planning--board {
+  grid-template-columns: minmax(0, 1fr) max-content;
+  .dispatch-truck__status {
+    max-width: 100%;
+    box-sizing: border-box;
+    white-space: normal;
+  }
+  --hos-wrap: wrap;
+  --hos-clock-min-width: 5ch;
+  .dispatch-planning__content {
+    grid-column: 1;
+    grid-row: 1;
+    border: 0;
+    padding-top: 0;
+  }
+  > .driver-hours-panel {
+    grid-column: 2;
+    grid-row: 1;
+    padding: 0;
+    border: 0;
+  }
+  .dispatch-planning__driver {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(xs) ui.pg(sm);
+    max-width: none;
+    padding: 0;
+    border: 0;
+  }
+  .driver-duty {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(sm);
+    max-width: 100%;
+  }
+  .driver-next-recap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(sm);
+  }
+  .driver-duty > *,
+  .driver-next-recap {
+    padding: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-soft);
+    max-width: 100%;
+  }
+}

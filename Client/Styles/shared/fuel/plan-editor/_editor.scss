@@ -1,0 +1,78 @@
+@use '../../../base' as ui;
+
+// The editor's frame over the map: where it sits, the three areas it is
+// divided into, and its head and foot.
+.fuel-plan-editor {
+  box-sizing: border-box;
+  position: absolute;
+  right: ui.pg(md);
+  bottom: ui.pg(md);
+  z-index: ui.layer(map-editor);
+  width: min(#{ui.size(fuel-editor-wide)}, calc(100% - #{ui.pg(md)} * 2));
+  height: min(#{ui.size(fuel-editor-height)}, calc(100% - #{ui.pg(md)} * 2));
+  max-height: calc(100% - #{ui.pg(md)} * 2);
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, #{ui.size(fuel-editor-route)}) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: 'header header' 'timeline content' 'footer footer';
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(md);
+  background: ui.theme(surface);
+  box-shadow: ui.shadow(popup);
+  overflow: hidden;
+  color: ui.theme(text);
+  font-size: ui.fs(body);
+  &__views {
+    display: none;
+  }
+  &__header,
+  &__timeline,
+  &__content,
+  &__footer {
+    background: ui.theme(surface);
+    min-width: 0;
+    min-height: 0;
+  }
+  &__header,
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: ui.pg(sm);
+    padding: ui.pg(sm) ui.pg(md);
+    flex: 0 0 auto;
+  }
+  &__header {
+    grid-area: header;
+    border-bottom: 1px solid ui.theme(border-subtle);
+  }
+  &__header > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(sm) ui.pg(lg);
+  }
+  &__header > div > strong {
+    @include ui.overlay-title;
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+  }
+  &__header > button {
+    @include ui.icon-control;
+  }
+  &__header span {
+    font-size: ui.fs(small);
+    color: ui.theme(text-secondary);
+  }
+  &__draft {
+    padding: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface-muted);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+    font-weight: 500;
+  }
+}

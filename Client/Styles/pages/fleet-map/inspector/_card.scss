@@ -1,0 +1,95 @@
+@use '../../../base' as ui;
+
+// The truck card itself: how wide it is, the width everything on it reads,
+// and the head that names the truck.
+.fleet-map-inspector[data-inspector-mode='truck'] {
+  width: min(100%, #{ui.size(map-compact-inspector)});
+  // Everything on this card - its head and its body - changes shape at one
+  // width, and it is the card's own. The head used to read the window
+  // instead, in a stylesheet of its own, so the two halves of the same card
+  // could be told different things about the same moment.
+  container: map-truck-card / inline-size;
+  font-size: ui.fs(body);
+  line-height: 1.4;
+  --arrival-font-size: #{ui.fs(body)};
+  --arrival-detail-font-size: #{ui.fs(small)};
+
+  // Reserved at every width: without it the scrollbar that appears when the
+  // card opens takes 15px off the header and shifts every row that was
+  // already on screen.
+  scrollbar-gutter: stable;
+  .fleet-map-inspector__value {
+    color: ui.theme(text);
+    font-weight: 600;
+  }
+  .fleet-map-inspector__crew {
+    display: contents;
+  }
+  .fleet-map-info-content {
+    display: flex;
+  }
+  .fleet-map-inspector__header {
+    flex-wrap: wrap;
+  }
+  .fleet-map-inspector__identity {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(sm);
+    min-width: 0;
+    flex: 1;
+  }
+  .fleet-map-inspector__title {
+    @include ui.overlay-title;
+    display: block;
+    margin-right: 0;
+  }
+  .fleet-map-inspector__driver,
+  .fleet-map-inspector__trailer {
+    min-width: 0;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+    overflow-wrap: anywhere;
+  }
+  .fleet-map-inspector__trailer + .fleet-map-inspector__driver::before {
+    content: '· ';
+  }
+  // The actions read as words, under the detail they act on. They were six
+  // bare icons in the header, where the row had no room to say what any of
+  // them did.
+  .fleet-map-inspector__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(xs);
+    min-width: 0;
+    max-width: 100%;
+    margin-inline: ui.pg(md);
+    padding: ui.pg(sm) 0;
+    border-top: 1px solid ui.theme(border-subtle);
+    .map-action-icon {
+      @include ui.compact-control;
+      & {
+        display: inline-flex;
+        align-items: center;
+        gap: ui.pg(xs);
+        white-space: nowrap;
+      }
+    }
+  }
+  .fleet-map-inspector__arrival {
+    display: grid;
+    min-width: 0;
+    font-size: ui.fs(body);
+    // The real estimate replaces the dash rather than joining it.
+    &:has(> .arrival-estimate) > .fleet-map-inspector__arrival-placeholder {
+      display: none;
+    }
+  }
+  // The card's second line reads left to right as a sentence: what the
+  // truck is running, how much is left to the stop it is heading for, and
+  // whether the driver has the hours for it.
+  //
+  // Three columns, not a flow: the outer two share what is left over, so the
+  // middle one is dead centre and stays there while the load number and the
+}

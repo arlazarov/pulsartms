@@ -9,7 +9,7 @@ const css = compileString(
   "@use 'shared/driver-status'; @use 'pages/fleet-map/truck-info'; @use 'pages/fleet-map/route-info'; @use 'pages/fleet-map/details'; @use 'pages/fleet-map/layout'; @use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';",
   { loadPaths },
 ).css;
-const compact = compileString("@use 'pages/fleet-map/compact-inspector';", {
+const compact = compileString("@use 'pages/fleet-map/inspector';", {
   loadPaths,
 }).css;
 

@@ -1,0 +1,107 @@
+@use '../../../base' as ui;
+
+// Too narrow for two columns: the head stacks, the clocks take a row, and
+// the facts go under the stop.
+.fleet-map-inspector[data-inspector-mode='truck'] {
+  // 700px wide has room for both columns and was stacked anyway.
+  @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
+    .fleet-map-route-info {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: none;
+      row-gap: ui.pg(xs);
+      padding-block: ui.pg(xs);
+      > .fleet-map-route-info__visit,
+      > .fleet-map-route-info__distances,
+      > .fleet-map-route-info__timing,
+      > .fleet-map-route-info__messages {
+        grid-column: 1;
+        grid-row: auto;
+      }
+      > .fleet-map-route-info__visit {
+        padding-inline-end: 0;
+        padding-block-end: ui.pg(sm);
+        border-inline-end: 0;
+        border-block-end: 1px solid ui.theme(border-subtle);
+      }
+      .fleet-map-route-info__appointment > strong {
+        overflow-wrap: normal;
+      }
+    }
+  }
+  @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
+    .fleet-map-inspector__desktop-title {
+      display: block;
+    }
+    .fleet-map-mobile-summary__toggle {
+      display: inline-flex;
+    }
+    // The driver and the trailer stay in the closed card: they are half of
+    // what a dispatcher looks a truck up by.
+    &.is-mobile-collapsed {
+      .fleet-map-inspector__header {
+        border-bottom: 0;
+      }
+      .fleet-map-inspector__actions,
+      .fleet-map-info-content {
+        display: none;
+      }
+    }
+    // A phone has room for the unit and the controls abreast; everything
+    // the wide card fits on the same line takes a line of its own below.
+    .fleet-map-inspector__header {
+      position: static;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) max-content;
+      gap: ui.pg(xs);
+    }
+    .fleet-map-inspector__identity {
+      display: contents;
+    }
+    .fleet-map-inspector__title {
+      grid-column: 1;
+      grid-row: 1;
+    }
+    .fleet-map-inspector__controls {
+      grid-column: 2;
+      grid-row: 1;
+      justify-self: end;
+    }
+    .fleet-map-inspector__crew {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: ui.pg(xs) ui.pg(sm);
+      grid-column: 1 / -1;
+      grid-row: 2;
+      min-width: 0;
+    }
+    .fleet-map-inspector__arrival {
+      grid-column: 1 / -1;
+      grid-row: 3;
+    }
+    // A phone has no room for three abreast: the line becomes one column and
+    // each group takes a row of its own, from the same edge. This asked for
+    // it with flex-basis on the children of a grid, which does nothing, so
+    // the three stayed abreast and the clocks folded into a tower.
+    .fleet-map-inspector__hours {
+      grid-column: 1 / -1;
+      grid-row: 4;
+      grid-template-columns: minmax(0, 1fr);
+      .fleet-map-mobile-summary__remaining {
+        min-inline-size: 0;
+      }
+      .fleet-map-mobile-summary__distance {
+        justify-items: start;
+      }
+      .fleet-map-inspector__clocks {
+        justify-self: start;
+        flex-wrap: wrap;
+        --hos-wrap: wrap;
+      }
+    }
+
+    // Nothing here re-columns on open. The header a dispatcher reads while
+    // the card is shut keeps every row and every column when it opens;
+    // opening only adds the actions and the detail below them.
+  }
+}

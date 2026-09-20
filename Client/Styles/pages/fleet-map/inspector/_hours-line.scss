@@ -1,0 +1,168 @@
+@use '../../../base' as ui;
+
+// The line under the name: what the truck is running, how far is left, and
+// whether the driver has the hours for it.
+.fleet-map-inspector[data-inspector-mode='truck'] {
+  // clocks arrive and change width beside it.
+  .fleet-map-inspector__hours {
+    flex-basis: 100%;
+    display: grid;
+    // The clocks are read as numbers and never shrink below what they say;
+    // the load number, which can ellipsize, gives way instead. Given a
+    // share of the line like any other column, they were squeezed on a card
+    // with nothing else to show, and "Break" came apart into three rows of
+    // letters.
+    grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr);
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(md);
+    min-width: 0;
+    padding-top: ui.pg(xs);
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+  .fleet-map-inspector__hours-label {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  // The clocks stand at the far end, under the arrival they decide. Tighter
+  // between the clocks than between the three groups, so the line reads as
+  // three things and still fits across the card; and the group never
+  // splits - "HOS" on one row with its clocks on the next was the worst way
+  // this line could break.
+  .fleet-map-inspector__clocks {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: baseline;
+    justify-self: end;
+    gap: ui.pg(xs);
+    --hos-display: flex;
+    --hos-wrap: nowrap;
+    --hos-gap: #{ui.pg(xs)};
+    --hos-clock-min-width: 0;
+    --hos-label-font-size: #{ui.fs(small)};
+    > .driver-hours-panel {
+      min-width: 0;
+      margin-left: 0;
+    }
+  }
+  // The load leads the line. It keeps the room its numbers will need: an
+  // empty group here is a hole that everything right of it slides across
+  // when the load lands.
+  .fleet-map-mobile-summary__remaining {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    min-inline-size: min(100%, #{ui.size(route-load)});
+    color: ui.theme(text-secondary);
+    font-variant-numeric: tabular-nums;
+    strong {
+      color: ui.theme(text);
+      font-weight: 600;
+    }
+    small {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+  }
+  &.is-mobile-collapsed .fleet-map-info-content {
+    display: none;
+  }
+  &.is-mobile-collapsed .fleet-map-inspector__header {
+    border-bottom: 0;
+  }
+  // The only thing that may change when the card opens is the chevron's
+  // angle: a word would change the row's width and push the rest of the
+  // header sideways on the way open.
+  .fleet-map-mobile-summary__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: ui.size(control-compact);
+    color: ui.theme(text-secondary);
+    @include ui.below(md) {
+      min-inline-size: ui.size(control-touch);
+    }
+    &::after {
+      content: '\25be';
+      font-size: ui.fs(lead);
+      line-height: 1;
+      transition: transform 120ms ease;
+    }
+    &[aria-expanded='true']::after {
+      transform: rotate(180deg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      &::after {
+        transition: none;
+      }
+    }
+  }
+  .fleet-map-mobile-summary__remaining > .fleet-map-route-info__copy-number {
+    color: ui.theme(text);
+    font-weight: 600;
+  }
+  .fleet-map-mobile-summary__order {
+    display: inline-flex;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    white-space: nowrap;
+  }
+  // What is left sits between the load and the clocks, in the room the
+  // line has going spare, with the covered share drawn under it.
+  .fleet-map-mobile-summary__distance {
+    display: grid;
+    justify-items: center;
+    gap: ui.pg(micro);
+    // A width of its own, wide enough for the longest distance this can
+    // read. Without it the group is as wide as whatever has arrived so far,
+    // and it changes size as the numbers come in.
+    inline-size: ui.size(route-progress);
+    min-width: 0;
+  }
+  // One phrase: it never breaks between a number and the unit it belongs
+  // to, and it shrinks by ellipsis rather than by folding.
+  .fleet-map-mobile-summary__distance-text {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    // The chosen unit is the reading; the other one is an echo of it and
+    // steps back, so the eye lands on the number that was asked for.
+    .fleet-map-mobile-summary__alternate {
+      color: ui.theme(text-muted);
+      font-size: ui.fs(caption);
+    }
+  }
+  .fleet-map-mobile-summary__bar {
+    display: block;
+    inline-size: 100%;
+    block-size: 3px;
+    border-radius: ui.radius(pill);
+    background: ui.theme(border-subtle);
+    overflow: hidden;
+    > span {
+      display: block;
+      block-size: 100%;
+      border-radius: inherit;
+      background: ui.theme(action);
+    }
+  }
+  // "18" on its own says nothing; the words around it say what it counts.
+  .fleet-map-mobile-summary__label {
+    display: inline;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  @container map-truck-card (width >= #{ui.breakpoint(map-compact-columns)}) {
+    .fleet-map-inspector__header {
+      gap: ui.pg(sm);
+    }
+    .fleet-map-inspector__actions .map-action-icon.btn--primary {
+      background: ui.theme(action);
+    }
+  }
+
+  // Two columns of equal weight. Left is the stop and the window it has to
+  // make; right is the load, as rows of label and value on one shared
+}

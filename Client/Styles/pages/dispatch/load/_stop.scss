@@ -1,0 +1,172 @@
+@use '../../../base' as ui;
+
+// A stop on that route: its number, the job, where it is, and when it is
+// expected.
+.dispatch-load {
+  &__stop {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: ui.pg(micro);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  &__stop > * {
+    min-width: 0;
+  }
+  &__stop-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(xs) ui.pg(sm);
+    min-height: ui.size(dispatch-stop-marker);
+  }
+  &__stop-number {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: grid;
+    place-items: center;
+    width: ui.size(dispatch-stop-marker);
+    height: ui.size(dispatch-stop-marker);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(pill);
+    background: ui.theme(navigation-control);
+    color: ui.theme(on-accent);
+    font-size: ui.fs(small);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  &--current &__stop-number {
+    background: ui.theme(action);
+    border-color: ui.theme(action);
+    color: ui.theme(on-accent);
+  }
+  &--next &__stop-number {
+    background: ui.theme(route-next);
+    border-color: ui.theme(route-next);
+    color: ui.theme(surface);
+  }
+  &--next &__route-stop::before {
+    background: ui.theme(route-next, 0.25);
+  }
+  &__stop--completed &__stop-number {
+    background: ui.theme(success-text);
+    border-color: ui.theme(success-text);
+    color: ui.theme(surface);
+  }
+  &__stop-job {
+    font-size: ui.fs(body);
+    font-weight: 500;
+    color: ui.theme(text-secondary);
+  }
+  &__stop-visit {
+    padding-left: ui.pg(sm);
+    border-left: 1px solid ui.theme(border-subtle);
+    font-size: ui.fs(caption);
+    color: ui.theme(text-secondary);
+  }
+  &__completed {
+    margin-left: auto;
+    color: ui.theme(success-text);
+    font-size: ui.fs(caption);
+  }
+  &__location {
+    font-size: ui.fs(lead);
+    font-weight: 650;
+    color: ui.theme(text);
+  }
+  &__street,
+  &__facility {
+    font-size: ui.fs(body);
+    color: ui.theme(text-secondary);
+    line-height: 1.4;
+  }
+  &__reference-number,
+  &__appointment-reference {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(caption);
+    font-variant-numeric: tabular-nums;
+  }
+  &__reference-number strong,
+  &__appointment-reference strong {
+    color: ui.theme(text-secondary);
+    font-weight: 500;
+  }
+  &__stop-times {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.pg(micro);
+    margin-top: ui.pg(micro);
+    font-size: ui.fs(body);
+    color: ui.theme(text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  &__stop-times .arrival-estimate {
+    gap: ui.pg(micro) ui.pg(sm);
+  }
+  @container dispatch-load (width >= #{ui.breakpoint(dispatch-load-columns)}) {
+    &__stop--summary {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      column-gap: ui.pg(lg);
+      > .dispatch-load__stop-heading,
+      > .dispatch-load__location,
+      > .dispatch-load__street,
+      > .dispatch-load__facility {
+        grid-column: 1;
+      }
+      > .dispatch-load__stop-times {
+        grid-column: 2;
+        grid-row: 1 / span 3;
+        align-content: start;
+        margin-top: 0;
+      }
+    }
+  }
+  &__stop-cycle {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: ui.pg(xs) ui.pg(sm);
+    margin-top: ui.pg(xs);
+    padding-top: ui.pg(sm);
+    border-top: 1px solid ui.theme(border-subtle);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+  }
+  &__stop-cycle strong {
+    color: ui.theme(text);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  &__stop-cycle small {
+    font-size: ui.fs(caption);
+  }
+  &__eta-missing small {
+    margin-left: ui.pg(xs);
+    color: ui.theme(text-muted);
+    font-size: ui.fs(micro);
+  }
+  &__empty {
+    margin: 0;
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  &__stop-detail-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+    gap: ui.pg(sm);
+    padding: ui.pg(sm);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-soft);
+  }
+  &__stop-detail-content .dispatch-load__reference-number,
+  &__stop-detail-content .dispatch-load__appointment-reference {
+    font-size: ui.fs(label);
+  }
+  &__stop-detail-content .arrival-estimate {
+    font-size: ui.fs(label);
+  }
+}

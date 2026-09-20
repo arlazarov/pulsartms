@@ -1,0 +1,60 @@
+@use '../../../base' as ui;
+
+// What is planned for a truck: the readings, the metrics and the hint
+// under them.
+.dispatch-planning {
+  margin: ui.pg(lg) 0;
+  padding: ui.pg(lg);
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(sm);
+  background: ui.theme(surface);
+  display: grid;
+  gap: ui.pg(md);
+  min-width: 0;
+  p {
+    margin: 0;
+  }
+  &__heading {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(lg);
+    flex-wrap: wrap;
+  }
+  &__telemetry {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: ui.pg(md);
+    min-width: 0;
+  }
+  &__fuel {
+    display: inline-flex;
+    align-items: center;
+  }
+  &__identity {
+    display: contents;
+  }
+  &__heading > span,
+  &__identity > span,
+  &__hint {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(label);
+  }
+  &__metrics {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: ui.pg(md) ui.pg(xxl);
+  }
+  &__metrics > div {
+    display: grid;
+    gap: ui.pg(xs);
+  }
+  &__metrics > div > span {
+    font-size: ui.fs(label);
+    color: ui.theme(text-muted);
+  }
+  &__metrics strong {
+    font-size: ui.fs(lead);
+  }
+}

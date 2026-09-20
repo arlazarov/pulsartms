@@ -1,0 +1,66 @@
+@use '../../../base' as ui;
+
+// The board reading, where the block shares a row with the truck.
+.dispatch-planning--board {
+  grid-template-columns: minmax(0, max-content) max-content minmax(
+      0,
+      max-content
+    );
+  gap: ui.pg(md) ui.pg(lg);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  .dispatch-planning__content {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  > .driver-hours-panel {
+    grid-column: 2;
+    grid-row: 1;
+    padding-left: 0;
+    border: 0;
+  }
+  .dispatch-planning__driver {
+    grid-column: 3;
+    grid-row: 1;
+    padding-left: ui.pg(lg);
+    max-width: ui.size(map-driver-duty-width);
+  }
+  .dispatch-planning__metrics {
+    gap: ui.pg(sm) ui.pg(lg);
+    padding: ui.pg(xs) 0 0;
+  }
+  .dispatch-planning__metrics > div {
+    display: grid;
+    gap: ui.pg(micro);
+  }
+  .dispatch-planning__metrics > div > span {
+    font-size: ui.fs(caption);
+  }
+  .dispatch-planning__metrics strong {
+    font-size: ui.fs(body);
+    font-weight: 600;
+  }
+  .dispatch-planning__metrics small {
+    font-size: ui.fs(caption);
+  }
+  .dispatch-planning__heading {
+    gap: ui.pg(md);
+  }
+  .dispatch-planning__identity {
+    font-size: ui.fs(small);
+  }
+  .dispatch-planning__identity > strong {
+    display: none;
+  }
+  .dispatch-planning__identity > span {
+    font-size: ui.fs(small);
+  }
+  .dispatch-planning__identity {
+    display: none;
+  }
+  .driver-next-recap {
+    display: grid;
+    gap: ui.pg(xs);
+  }
+}

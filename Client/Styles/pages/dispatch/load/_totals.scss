@@ -1,0 +1,78 @@
+@use '../../../base' as ui;
+
+// What the load comes to: the cycle it costs, the fuel planned on it, and
+// the foot of the card.
+.dispatch-load {
+
+  &__cycle {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(sm);
+    padding-top: ui.pg(sm);
+    border-top: 1px solid ui.theme(border-subtle);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+  }
+  &__cycle dl {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(xs) ui.pg(sm);
+    margin: 0;
+  }
+  &__cycle dl > div,
+  &__cycle dd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(sm);
+  }
+  &__cycle dd {
+    margin: 0;
+    color: ui.theme(text);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  &__cycle small {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+    font-weight: 400;
+  }
+  &__footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(xs) ui.pg(sm);
+    align-items: center;
+    margin-top: ui.pg(md);
+    padding-top: ui.pg(sm);
+    border-top: 1px solid ui.theme(border-subtle);
+    font-size: ui.fs(caption);
+    color: ui.theme(text-muted);
+  }
+  &__footer .dispatch-load__details {
+    margin-left: auto;
+  }
+  &__remaining,
+  &__fuel-count {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(xs);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+    font-variant-numeric: tabular-nums;
+  }
+  &__fuel-count svg {
+    width: ui.pg(lg);
+    height: ui.pg(lg);
+  }
+  &__fuel-count strong {
+    font-weight: 600;
+  }
+  &__details {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(xs);
+    color: ui.theme(link);
+    font-size: ui.fs(small);
+  }
+}

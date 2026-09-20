@@ -1,0 +1,158 @@
+@use '../../../base' as ui;
+
+// A load as a card: what it is, its number and order, who it is for, and
+// the state it is in.
+.dispatch-load {
+  --arrival-font-size: #{ui.fs(body)};
+  --arrival-detail-font-size: #{ui.fs(small)};
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+  container: dispatch-load / inline-size;
+  padding: ui.pg(md);
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(sm);
+  background: ui.theme(surface);
+
+  &__connector {
+    position: absolute;
+    top: 50%;
+    left: calc(0px - #{ui.pg(section)});
+    transform: translateY(-50%);
+    display: none;
+    place-items: center;
+    width: ui.pg(section);
+    height: ui.pg(section);
+    color: ui.theme(text-muted);
+    pointer-events: none;
+  }
+  &__connector svg {
+    width: ui.pg(xl);
+    height: ui.pg(xl);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  &--current {
+    border-color: ui.theme(link);
+    box-shadow: 0 0 0 1px ui.theme(link);
+  }
+  &__heading {
+    display: flex;
+    align-items: start;
+    flex-wrap: wrap;
+    gap: ui.pg(xs) ui.pg(sm);
+  }
+  &__title {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: ui.pg(xs) ui.pg(sm);
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 0 auto;
+  }
+  &__number {
+    font-size: ui.fs(subtitle);
+    font-weight: 700;
+    color: ui.theme(text);
+    overflow-wrap: anywhere;
+    text-decoration: none;
+    padding-inline: 0;
+  }
+  &__number:hover {
+    text-decoration: underline;
+  }
+  &__phase {
+    padding: ui.pg(micro) ui.pg(xs);
+    border-radius: ui.radius(sm);
+    font-size: ui.fs(small);
+    font-weight: 600;
+    color: ui.theme(text-secondary);
+    background: ui.theme(surface-muted);
+    white-space: nowrap;
+  }
+  &--current &__phase {
+    color: ui.theme(link);
+    background: ui.theme(selected);
+  }
+  &--next &__phase {
+    color: ui.theme(route-next);
+    background: ui.theme(route-next-surface);
+  }
+  &__order {
+    flex-wrap: wrap;
+    max-width: 100%;
+    padding-inline: ui.pg(xs);
+    overflow-wrap: anywhere;
+    white-space: normal;
+    font-size: ui.fs(label);
+  }
+  &__copy-icon {
+    width: ui.pg(lg);
+    height: ui.pg(lg);
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    opacity: 0.45;
+  }
+  &__order:hover &__copy-icon,
+  &__order:focus-visible &__copy-icon {
+    opacity: 1;
+  }
+  &__copy-icon.is-copied {
+    color: ui.theme(success-text);
+    opacity: 1;
+  }
+  &__copy-error {
+    color: ui.theme(danger-text);
+    font-size: ui.fs(caption);
+    margin-top: ui.pg(xs);
+  }
+  &__reference {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: ui.pg(xs) ui.pg(sm);
+    margin-top: ui.pg(xs);
+    font-size: ui.fs(body);
+  }
+  &__reference > span:first-child {
+    min-width: 0;
+    color: ui.theme(text-secondary);
+    overflow-wrap: anywhere;
+  }
+  &__status {
+    font-size: ui.fs(caption);
+    color: ui.theme(text-muted);
+  }
+  &__status.is-moving {
+    color: ui.theme(success-text);
+  }
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(xs) ui.pg(sm);
+    margin-top: ui.pg(sm);
+    min-width: 0;
+    font-size: ui.fs(caption);
+    color: ui.theme(text-secondary);
+  }
+  &__assignment {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: ui.pg(xs);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  &__assignment strong {
+    color: ui.theme(text);
+    font-weight: 500;
+  }
+}

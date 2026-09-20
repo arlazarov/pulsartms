@@ -1,0 +1,228 @@
+@use '../../../base' as ui;
+
+// The route down the left: pickup and delivery at the ends, a row per
+// planned stop between them, in an order that can be dragged.
+.fuel-plan-editor {
+  &__timeline {
+    grid-area: timeline;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  &__content {
+    grid-area: content;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: ui.pg(md);
+    border-left: 1px solid ui.theme(border-subtle);
+  }
+  &__stops {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: ui.pg(xs);
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: ui.pg(sm) ui.pg(md);
+  }
+  &__stops > * {
+    flex-shrink: 0;
+  }
+  &__timeline-heading {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: ui.pg(xs);
+    margin-bottom: ui.pg(xs);
+  }
+  &__timeline-heading strong {
+    font-size: ui.fs(small);
+  }
+  &__timeline-heading small {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+    line-height: 1.4;
+  }
+  &__origin {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    padding: ui.pg(xs) ui.pg(sm);
+  }
+  &__origin > svg {
+    color: ui.theme(action);
+    width: ui.size(control-compact);
+    height: ui.size(control-compact);
+    flex-shrink: 0;
+  }
+  &__stop,
+  &__anchor {
+    position: relative;
+    flex-shrink: 0;
+    &.drop-before::before,
+    &.drop-after::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 2px;
+      border-radius: ui.radius(pill);
+      background: ui.theme(focus);
+    }
+    &.drop-before::before {
+      top: calc(-1 * #{ui.pg(xs)});
+    }
+    &.drop-after::after {
+      bottom: calc(-1 * #{ui.pg(xs)});
+    }
+  }
+  &__stop {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface);
+    &.is-selected {
+      background: ui.theme(selected);
+      border-color: ui.theme(selection-border);
+      box-shadow: inset 3px 0 ui.theme(action);
+    }
+    &.is-dragging {
+      opacity: 0.5;
+    }
+  }
+  &__grip {
+    @include ui.icon-control;
+    & {
+      --button-bg: transparent;
+      --button-border: transparent;
+      align-self: stretch;
+      height: auto;
+      touch-action: none;
+      cursor: grab;
+    }
+    &:active {
+      cursor: grabbing;
+    }
+    svg {
+      width: ui.size(checkbox);
+      height: ui.size(checkbox);
+      fill: currentColor;
+      pointer-events: none;
+    }
+  }
+  &__stop-select {
+    @include ui.button-control;
+    & {
+      --button-bg: transparent;
+      --button-border: transparent;
+      display: grid;
+      justify-content: stretch;
+      gap: ui.pg(micro);
+      flex: 1;
+      min-width: 0;
+      padding: ui.pg(sm) ui.pg(sm) ui.pg(sm) 0;
+      text-align: left;
+    }
+    strong {
+      color: ui.theme(text);
+      font-size: ui.fs(small);
+      overflow-wrap: anywhere;
+    }
+    small {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(caption);
+      font-weight: 400;
+    }
+    small.fuel-plan-editor__stop-cost,
+    small.fuel-plan-editor__stop-tank {
+      color: ui.theme(text);
+      font-variant-numeric: tabular-nums;
+    }
+    small.fuel-plan-editor__stop-tank {
+      white-space: nowrap;
+    }
+  }
+  &__stop-heading {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+  }
+  &__stop-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: ui.pg(xs) ui.pg(sm);
+  }
+  &__stop-heading > svg {
+    flex-shrink: 0;
+    width: ui.pg(lg);
+    height: ui.pg(lg);
+    color: ui.theme(text-secondary);
+  }
+  &__stop-heading .fleet-fuel-visit__number {
+    flex-shrink: 0;
+    background: ui.theme(navigation);
+    color: ui.theme(navigation-text);
+  }
+  &__anchor {
+    display: flex;
+    align-items: flex-start;
+    gap: ui.pg(sm);
+    padding: ui.pg(sm);
+    border-left: 1px solid ui.theme(border);
+    margin-left: ui.pg(md);
+  }
+  &__anchor-symbol {
+    display: grid;
+    place-items: center;
+    width: ui.size(control-compact);
+    height: ui.size(control-compact);
+    border: 1px solid currentColor;
+    border-radius: ui.radius(pill);
+    flex-shrink: 0;
+    background: ui.theme(surface);
+    font-size: ui.fs(body);
+    font-weight: 600;
+  }
+  &__anchor > div {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: ui.pg(micro) ui.pg(sm);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  &__anchor small {
+    font-size: ui.fs(caption);
+    font-weight: 600;
+  }
+  &__anchor strong {
+    color: ui.theme(text);
+    font-size: ui.fs(small);
+  }
+  &__anchor > div > span {
+    grid-column: 1 / -1;
+    font-size: ui.fs(caption);
+    color: ui.theme(text-secondary);
+  }
+  &__anchor.is-pickup {
+    color: ui.theme(pickup);
+  }
+  &__anchor.is-delivery {
+    color: ui.theme(delivery);
+  }
+  &__announcement {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

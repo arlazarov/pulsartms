@@ -1,5 +1,6 @@
-@use '../base' as ui;
+@use '../../base' as ui;
 
+// The settings page itself: its cards and the navigation between them.
 .settings-page {
   width: 100%;
   color: ui.theme(text);
@@ -134,114 +135,5 @@
     &__toggle {
       gap: ui.pg(lg);
     }
-  }
-}
-
-.integration-settings {
-  display: grid;
-  gap: ui.pg(md);
-  min-width: 0;
-  &__heading {
-    display: grid;
-    gap: ui.pg(xs);
-  }
-  &__heading h2 {
-    font-size: ui.fs(heading);
-    color: ui.theme(text);
-  }
-  &__grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: ui.pg(md);
-    align-items: start;
-  }
-  &__card {
-    display: grid;
-    gap: ui.pg(md);
-  }
-  &__card > p {
-    margin: 0;
-  }
-  &__card-heading {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: ui.pg(sm) ui.pg(md);
-  }
-  &__card-heading h3 {
-    font-size: ui.fs(lead);
-    color: ui.theme(text);
-    margin: 0;
-  }
-  &__status {
-    padding: ui.pg(micro) ui.pg(sm);
-    border-radius: ui.radius(pill);
-    background: ui.theme(surface-soft);
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(small);
-  }
-  &__status.is-configured {
-    background: ui.theme(success-surface);
-    color: ui.theme(success-text);
-  }
-  &__source {
-    color: ui.theme(text-muted);
-    font-size: ui.fs(small);
-  }
-  &__form,
-  &__confirmation {
-    display: grid;
-    gap: ui.pg(md);
-    min-width: 0;
-  }
-  &__confirmation {
-    font-size: ui.fs(body);
-  }
-  .settings-page__fields {
-    grid-template-columns: minmax(0, 1fr);
-    gap: ui.pg(md);
-  }
-  @include ui.below(bg) {
-    &__grid {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-}
-
-.fleet-resources {
-  &__search {
-    display: flex;
-    align-items: end;
-    flex-wrap: wrap;
-    gap: ui.pg(md);
-  }
-  &__search .settings-page__fields {
-    flex: 1;
-  }
-  &__identity {
-    display: grid;
-    gap: ui.pg(xs);
-    overflow-wrap: anywhere;
-  }
-  &__references,
-  &__restore {
-    display: grid;
-    gap: ui.pg(md);
-    border-top: 1px solid ui.theme(border-subtle);
-    padding-top: ui.pg(md);
-    margin-top: ui.pg(md);
-  }
-  &__references h3 {
-    font-size: ui.fs(body);
-  }
-  nav .active {
-    background: ui.theme(action);
-    color: ui.theme(on-accent);
-  }
-}
-
-.mileage-policy {
-  form {
-    margin-top: ui.pg(lg);
   }
 }

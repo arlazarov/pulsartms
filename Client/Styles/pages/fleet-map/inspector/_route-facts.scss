@@ -1,0 +1,213 @@
+@use '../../../base' as ui;
+
+// What the card says about the run when it is opened: the stop on the left,
+// the facts about it on the right.
+.fleet-map-inspector[data-inspector-mode='truck'] {
+  // label column so the eye runs down the values.
+  .fleet-map-route-info {
+    --route-fact-label: 7rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    // The last row takes the slack when the stop is taller than the facts,
+    // so the facts stay packed at the top instead of drifting apart.
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+    gap: ui.pg(xs) ui.pg(lg);
+    min-height: 0;
+    padding: ui.pg(sm) ui.pg(md);
+    &__visit {
+      grid-column: 1;
+      grid-row: 1 / span 3;
+      align-self: stretch;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      align-content: start;
+      gap: ui.pg(xs);
+      min-width: 0;
+      padding-inline-end: ui.pg(lg);
+      border-inline-end: 1px solid ui.theme(border-subtle);
+    }
+    &__distances {
+      grid-column: 2;
+      grid-row: 1;
+      min-width: 0;
+    }
+    &__timing {
+      grid-column: 2;
+      grid-row: 2;
+      display: grid;
+      gap: ui.pg(xs);
+      min-width: 0;
+    }
+    &__messages {
+      grid-column: 1 / -1;
+      grid-row: 4;
+    }
+    // Every fact is the same two cells: a quiet label, then its value.
+    // The forecast's cycle row is the same shape, said in its own
+    // stylesheet, which reads the label width from here.
+    &__metric,
+    &__arrival-fuel {
+      display: grid;
+      grid-template-columns: var(--route-fact-label) minmax(0, 1fr);
+      align-items: baseline;
+      column-gap: ui.pg(sm);
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+    &__label {
+      margin: 0;
+      font-weight: 400;
+    }
+    &__label,
+    &__secondary {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+    &__progress {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 ui.pg(xs);
+      min-width: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    &__total {
+      margin: 0;
+      color: ui.theme(text-secondary);
+    }
+    &__metric strong,
+    &__arrival-fuel > strong {
+      color: ui.theme(text);
+      font-size: ui.fs(body);
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    // The gallons ride behind the percentage, in the same value cell.
+    &__fuel-value {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 ui.pg(xs);
+      min-width: 0;
+      > strong {
+        color: ui.theme(text);
+        font-size: ui.fs(body);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+    }
+    &__timing > .arrival-estimate {
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+    }
+    &__eta-placeholder {
+      font-size: ui.fs(body);
+    }
+    &__timing
+      > .arrival-estimate:has(> .arrival-estimate)
+      > .fleet-map-route-info__eta-placeholder {
+      display: none;
+    }
+    // The cycle is one more fact in the column, not a section under a
+    // rule of its own.
+    // The stop: what happens there, who it is, where, and by when. The
+    // wider page layout places these two by grid line; here they simply
+    // follow one another down the stop's own column.
+    &__next,
+    &__appointment {
+      grid-column: auto;
+      grid-row: auto;
+      min-width: 0;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+    }
+    &__next {
+      display: grid;
+      gap: ui.pg(xs);
+    }
+    &__visit-heading {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: ui.pg(xs);
+      min-width: 0;
+    }
+    &__distance {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: ui.pg(xs);
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(body);
+      > strong {
+        color: ui.theme(text);
+        white-space: nowrap;
+      }
+      small {
+        font: inherit;
+        font-weight: 400;
+      }
+      > .fleet-map-route-info__secondary {
+        font-size: inherit;
+        white-space: nowrap;
+      }
+    }
+    &__next strong,
+    &__appointment > strong {
+      font-size: ui.fs(body);
+      font-weight: 600;
+    }
+    &__copy-address {
+      flex-direction: row;
+      align-items: center;
+      gap: ui.pg(xs);
+    }
+    // Street and city share a line when the column has room for both, so
+    // the stop takes the same four lines as the facts beside it.
+    &__address-lines {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 ui.pg(xs);
+      text-align: start;
+    }
+    &__street:not(:last-child)::after {
+      content: ',';
+    }
+    &__address-lines > span {
+      font-size: ui.fs(body);
+      color: ui.theme(text-secondary);
+    }
+    &__address-lines > .fleet-map-route-info__facility {
+      flex-basis: 100%;
+      color: ui.theme(text);
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+    &__appointment {
+      display: flex;
+      // The page-wide rule stacks the label over the window; here there is
+      // room for both on one line, and the stop stays four lines tall.
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 ui.pg(xs);
+      > strong {
+        overflow-wrap: anywhere;
+      }
+    }
+    &.has-final-stop .fleet-map-route-info__distance,
+    &.is-awaiting-route .fleet-map-route-info__distance {
+      display: none;
+    }
+  }
+  // Too narrow for two columns: the stop, then the facts under a rule.
+  // Said once, and to the card itself - a phone was told the same thing a
+  // second time, by its screen width, and the two could disagree: a window
+}

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
 const compile = name => compileString(`@use '${name}';`, { loadPaths }).css;
-const header = compile('pages/fleet-map/compact-inspector');
+const header = compile('pages/fleet-map/inspector');
 
 test('mobile card expands both panels inside the bounded inspector', () => {
   const details = compile('pages/fleet-map/details');

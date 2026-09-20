@@ -52,7 +52,7 @@ test('public style API emits no CSS and exposes only the intended controls and t
       ),
     /Undefined function/,
   );
-  for (const folder of ['pages', 'components', 'layouts']) {
+  for (const folder of ['pages', 'components', 'shared', 'layouts']) {
     const root = new URL(`../../Styles/${folder}/`, import.meta.url);
     for (const file of readdirSync(root, { recursive: true }).filter(x =>
       x.endsWith('.scss'),
@@ -186,7 +186,7 @@ test('semantic transparency is validated', () => {
 });
 
 test('UI styles use palette functions instead of raw color literals', () => {
-  for (const folder of ['pages', 'components', 'layouts']) {
+  for (const folder of ['pages', 'components', 'shared', 'layouts']) {
     const root = new URL(`../../Styles/${folder}/`, import.meta.url);
     for (const file of readdirSync(root, { recursive: true }).filter(x =>
       x.endsWith('.scss'),
@@ -211,19 +211,8 @@ test('UI styles use palette functions instead of raw color literals', () => {
   }
 });
 
-test('dispatch card typography and spacing use named tokens', () => {
-  const source = readFileSync(
-    new URL('../../Styles/pages/dispatch/_load.scss', import.meta.url),
-    'utf8',
-  );
-  const cards = source.slice(source.indexOf('.dispatch-load {'));
-  assert.ok(cards.length > 100);
-  assert.doesNotMatch(cards, /(?:font-size|border-radius):\s*[\d.]+px/);
-  assert.doesNotMatch(cards, /(?:padding(?:-\w+)?|gap):[^;{}]*\dpx/);
-});
-
 test('all UI partials use semantic colors and named interface dimensions', () => {
-  for (const folder of ['pages', 'components', 'layouts']) {
+  for (const folder of ['pages', 'components', 'shared', 'layouts']) {
     const root = new URL(`../../Styles/${folder}/`, import.meta.url);
     for (const file of readdirSync(root, { recursive: true }).filter(x =>
       x.endsWith('.scss'),

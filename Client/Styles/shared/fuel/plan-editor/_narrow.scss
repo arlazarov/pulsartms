@@ -1,0 +1,105 @@
+@use '../../../base' as ui;
+
+// Wide enough, the editor centres itself; narrow, the two columns become
+// one pane at a time, and a phone gives it the whole map.
+.fuel-plan-editor {
+  @include ui.above(fuel-editor-columns) {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+  @include ui.below(fuel-editor-columns) {
+    position: absolute;
+    width: min(#{ui.size(fuel-editor-card)}, calc(100% - #{ui.pg(md)} * 2));
+    height: min(70dvh, 75%);
+    max-height: min(70dvh, 75%);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 9fr) minmax(0, 11fr) auto;
+    grid-template-areas: 'header' 'timeline' 'content' 'footer';
+    &__content {
+      border-left: 0;
+      border-top: 1px solid ui.theme(border-subtle);
+    }
+    &__origin > svg {
+      width: ui.pg(lg);
+      height: ui.pg(lg);
+    }
+    &__station-heading > div {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: ui.pg(sm);
+    }
+    &__station-heading small {
+      font-size: ui.fs(caption);
+    }
+    &__station-heading strong {
+      font-size: ui.fs(body);
+    }
+    &__footer > div {
+      margin-left: auto;
+    }
+  }
+  @include ui.below(map-mobile) {
+    top: 0;
+    right: 0;
+    bottom: auto;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: 'header' 'views' 'content' 'footer';
+    &__views {
+      grid-area: views;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: ui.pg(xs);
+      padding: ui.pg(xs) ui.pg(sm);
+      border-bottom: 1px solid ui.theme(border-subtle);
+    }
+    &__views .btn {
+      padding-inline: ui.pg(xs);
+    }
+    &__timeline {
+      display: none;
+    }
+    &__content {
+      border-top: 0;
+    }
+    &__footer {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: ui.pg(xs);
+    }
+    &__footer > div {
+      display: contents;
+    }
+    &__footer .btn {
+      min-width: 0;
+      min-height: ui.size(control-touch);
+      padding-inline: ui.pg(xs);
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    &.is-route {
+      grid-template-areas: 'header' 'views' 'timeline' 'footer';
+    }
+    &.is-route &__timeline {
+      display: flex;
+    }
+    &.is-route &__content {
+      display: none;
+    }
+    &.is-map {
+      height: auto;
+      grid-template-rows: auto auto;
+      grid-template-areas: 'header' 'views';
+    }
+    &.is-map &__timeline,
+    &.is-map &__content,
+    &.is-map &__footer {
+      display: none;
+    }
+  }
+}

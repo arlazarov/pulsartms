@@ -1,0 +1,34 @@
+@use '../../base' as ui;
+
+// Trucks, trailers and drivers as editable lists.
+.fleet-resources {
+  &__search {
+    display: flex;
+    align-items: end;
+    flex-wrap: wrap;
+    gap: ui.pg(md);
+  }
+  &__search .settings-page__fields {
+    flex: 1;
+  }
+  &__identity {
+    display: grid;
+    gap: ui.pg(xs);
+    overflow-wrap: anywhere;
+  }
+  &__references,
+  &__restore {
+    display: grid;
+    gap: ui.pg(md);
+    border-top: 1px solid ui.theme(border-subtle);
+    padding-top: ui.pg(md);
+    margin-top: ui.pg(md);
+  }
+  &__references h3 {
+    font-size: ui.fs(body);
+  }
+  nav .active {
+    background: ui.theme(action);
+    color: ui.theme(on-accent);
+  }
+}

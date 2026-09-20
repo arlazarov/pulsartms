@@ -1,0 +1,8 @@
+@use '../../base' as ui;
+
+// How miles are counted for pay.
+.mileage-policy {
+  form {
+    margin-top: ui.pg(lg);
+  }
+}
