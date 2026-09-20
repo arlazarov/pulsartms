@@ -193,6 +193,26 @@ test('stops along a road stay on the line of it, in order', () => {
 // beside a place means nothing unless it is on that place. Hung under the
 // truck instead, the badge sat over open ground with the point it marks
 // hidden under the truck above it.
+// The ring does not ask whether the truck has arrived. Asked that, 11006 -
+// parked three hundred metres short of its delivery - was drawn as a ring at
+// every zoom, so zooming in on it took the truck off the yard it stands in
+// and put it on the dock. The ring says these are one place at this zoom;
+// zoom in far enough and it opens into two marks.
+test('the ring opens into two marks when there is room for both', () => {
+  const truck = { position: [-78.9, 35.9], speed: 0, engine: 'Off' };
+  const stops = [{ id: 's', number: '2', position: [-78.8963, 35.9] }];
+  const ringed = snapshotStops(stops, [], [], 11, [truck]).stopData[0];
+  assert.equal(ringed.standing, '#16a34a');
+  assert.equal(truck.merged, true, 'and the truck is that ring');
+  const near = snapshotStops(stops, [], [], 13, [truck]).stopData[0];
+  assert.equal(near.standing, undefined);
+  assert.equal(near.stacked, true, 'a crescent of truck shows behind it');
+  const apart = snapshotStops(stops, [], [], 15, [truck]).stopData[0];
+  assert.equal(apart.stacked, false, 'and further in, two plain marks');
+  assert.equal(truck.merged, false, 'the truck is back on its own yard');
+  assert.deepEqual([apart.markerOffsetX, apart.markerOffsetY], [0, 0]);
+});
+
 test('a truck standing on a stop becomes a ring around its badge', () => {
   const zoom = 13;
   const stops = [{ id: 'a', number: '2', position: [-82.55, 35.38] }];

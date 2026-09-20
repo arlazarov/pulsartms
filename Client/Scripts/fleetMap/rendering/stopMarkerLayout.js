@@ -27,11 +27,15 @@ export function stopMarkerLabel(_job, number) {
 //    the formation they always had: a pair, a triangle, rows of two.
 // 4. A truck the badge would hide is drawn as a ring around it instead: one
 //    mark on one point, the badge inside a ring of the truck's colour, with
-//    the unit number above it as ever. That is a truck standing on the stop,
-//    and it is also a truck near enough that at this zoom the badge covers
-//    it - a white rim with nothing behind it says the stop stands alone.
-//    Two marks on one point meant one of them had to be moved off the place
-//    it names, and whichever moved then pointed at nothing.
+//    the unit number above it as ever. A white rim with nothing behind it
+//    says the stop stands alone, which is the one thing that is not so.
+//
+//    That is the whole of the rule - it does not ask whether the truck has
+//    arrived. Asked that, a truck parked three hundred metres short was
+//    drawn as a ring at every zoom, so zooming in on it took the truck off
+//    the yard it is standing in and put it on the dock. What the ring says
+//    is that at this zoom these are one place; zoom in far enough and it
+//    opens into two marks, the gap between them the distance it always was.
 //
 // The picture is the same constellation at every zoom, only tighter. Which
 // way two stops part is read from where they are on the ground, not from
@@ -45,11 +49,10 @@ export function stopMarkerLabel(_job, number) {
 // rebuild the map for nothing anyone could read.
 const passes = 48;
 const most = 80;
-// Where things are on the ground is read at one fixed zoom, where a pixel is
-// about thirty metres: directions and the question "is the truck at this
-// stop" must not change with the camera.
+// Which way two stops part is read from where they are on the ground, at one
+// fixed zoom where a pixel is about thirty metres, so that the constellation
+// does not rearrange itself as the camera moves.
 const groundZoom = 12;
-const atTheStop = 20;
 
 export function layoutStopMarkers(rows, zoom, trucks = []) {
   const project = markerProjection(zoom);
@@ -132,9 +135,7 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
   const groups = [...places.values()];
   for (const truck of parked) {
     const reached = groups
-      .filter(
-        group => away(truck, group[0]) < atTheStop || covered(truck, group[0]),
-      )
+      .filter(group => covered(truck, group[0]))
       .sort((a, b) => away(truck, a[0]) - away(truck, b[0]))[0];
     if (!reached) continue;
     truck.holds = reached[0];
