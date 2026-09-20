@@ -91,26 +91,41 @@ public partial class FleetMap : IAsyncDisposable
         ?? _routeState?.Progress?.ProgressMiles
     );
 
-  // How much of the run is behind the truck, 0 to 1. Both ends have to be
-  // real and the total has to be larger than the remainder, or the bar
-  // would claim progress nobody measured.
-  private double? RouteCovered =>
-    _routeState?.Plan is { InputsChanged: false } plan
-    && plan.OriginalPlannedMiles is var total and > 0
-    && RemainingMiles is { } remaining
-    && double.IsFinite(remaining)
-    && remaining <= total
-      ? Math.Clamp(1 - remaining / total, 0, 1)
-      : null;
+  // What the head of the card says is left: to the stop the truck is heading
+  // for, because that is the stop its ETA beside it is for. It was the
+  // remainder of the whole run, so a truck on its way to a pickup read the
+  // miles to its delivery next to the hour of its pickup. Only where no next
+  // stop is known is the run's remainder said instead.
+  private double? LeftMiles => NextStopMiles ?? RemainingMiles;
 
-  // The truck has run out of route but its stop is still open: it is
-  // standing at the stop, waiting on the appointment. There is nothing left
-  // to forecast, which is why the server sends an ETA with no stops in it.
+  // How much of the way to that stop is behind the truck, 0 to 1 - the same
+  // thing the number beside it measures, so one cannot contradict the other.
+  // Both ends have to be real and the whole has to be larger than the
+  // remainder, or the bar would claim progress nobody measured.
+  private double? RouteCovered
+  {
+    get
+    {
+      if (_routeState?.Plan is not { InputsChanged: false } plan)
+        return null;
+      var (left, whole) = NextStopMiles is { } next
+        ? (next, plan.NextStopDistance ?? 0)
+        : (RemainingMiles ?? double.NaN, plan.OriginalPlannedMiles);
+      return whole > 0 && double.IsFinite(left) && left <= whole
+        ? Math.Clamp(1 - left / whole, 0, 1)
+        : null;
+    }
+  }
+
+  // The truck has reached the stop it was heading for and the stop is still
+  // open: it is standing there, waiting on the appointment. There is nothing
+  // left to forecast, which is why the server sends an ETA with no stops in
+  // it.
   private bool AtNextStop =>
     _routeState?.Plan
       is { InputsChanged: false, Tracking.AllStopsPassed: false } plan
     && plan.Tracking.NextStopId is not null
-    && RemainingMiles is { } remaining
+    && LeftMiles is { } remaining
     && double.IsFinite(remaining)
     && remaining < 0.5;
 

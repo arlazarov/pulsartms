@@ -239,14 +239,14 @@
                 <span class="fleet-map-mobile-summary__distance"
                       aria-label="@(AtNextStop
                           ? "At the stop, no distance left of the run"
-                          : $"{Units.FormatDistance(RemainingMiles)} left of the run")">
+                          : $"{Units.FormatDistance(LeftMiles)} left to the next stop")">
                     @* The line names a thing before it says it - Order,
                        Break, Drive - and this is no different. *@
                     <span class="fleet-map-mobile-summary__distance-text"
                           aria-hidden="true"><span
-                            class="fleet-map-mobile-summary__label">Left&#160;</span><strong>@Units.DistanceValue(RemainingMiles)</strong><span
+                            class="fleet-map-mobile-summary__label">Left&#160;</span><strong>@Units.DistanceValue(LeftMiles)</strong><span
                             class="fleet-map-mobile-summary__label">&#160;@Units.DistanceUnit</span>@if (Units.BothDistances)
-                        {<span class="fleet-map-mobile-summary__label fleet-map-mobile-summary__alternate">&#160;·&#160;@Units.Kilometers(RemainingMiles)&#160;km</span>}
+                        {<span class="fleet-map-mobile-summary__label fleet-map-mobile-summary__alternate">&#160;·&#160;@Units.Kilometers(LeftMiles)&#160;km</span>}
                     </span>
                     @* The track is always drawn, so a run whose progress is
                        not known yet reserves the same height as one that

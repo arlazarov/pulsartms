@@ -1110,9 +1110,13 @@ public sealed class FleetMapComponentTests
       () =>
         component.Instance.OnRouteProgress(fixture.TruckA.ToString(), 1617, 10)
     );
-    // The head says what is left of the run, from the same progress.
+    // The head says what is left to the stop the truck is heading for - the
+    // stop its ETA beside it is for. The leg to it is 30 miles and 10 are
+    // driven. It used to say the 1,617 left of the whole run, so a truck on
+    // its way to a pickup read the miles to its delivery next to the hour of
+    // its pickup.
     Assert.Equal(
-      "1,617",
+      "20",
       component.Find(".fleet-map-mobile-summary__distance strong").TextContent
     );
     for (var i = 0; i < 2; i++)
@@ -1129,7 +1133,7 @@ public sealed class FleetMapComponentTests
         component.FindAll(".fleet-map-mobile-summary__remaining")
       );
       Assert.Equal(
-        "1,617",
+        "20",
         component.Find(".fleet-map-mobile-summary__distance strong").TextContent
       );
     }

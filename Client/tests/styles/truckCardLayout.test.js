@@ -25,13 +25,17 @@ test('the card says the load, its order and the miles once, in the head', () => 
   );
   assert.match(head, /title="Copy load number"/);
   assert.match(head, /title="Copy order number"/);
-  // The number and the bar under it measure the same thing - the run - so
-  // one cannot contradict the other.
-  assert.match(head, /Units\.DistanceValue\(RemainingMiles\)/);
+  // The number and the bar under it measure the same thing - the way to the
+  // stop the truck is heading for, which is the stop the ETA beside them is
+  // for - so none of the three can contradict another. It was the remainder
+  // of the whole run: a truck on its way to a pickup read the miles to its
+  // delivery next to the hour of its pickup.
+  assert.match(head, /Units\.DistanceValue\(LeftMiles\)/);
   assert.match(
     head,
-    /Units\.BothDistances[\s\S]*Units\.Kilometers\(RemainingMiles\)/,
+    /Units\.BothDistances[\s\S]*Units\.Kilometers\(LeftMiles\)/,
   );
+  assert.doesNotMatch(head, /DistanceValue\(RemainingMiles\)/);
   // The line names a thing before it says it, this one included.
   assert.match(head, /__label">Left&#160;<\/span>/);
   assert.match(head, /fleet-map-mobile-summary__bar/);
