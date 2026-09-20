@@ -140,7 +140,20 @@ export function createRouteStops(
           ? `/dispatch/${dispatchId}`
           : null;
       const visits = stopVisits(orderedStops(plan));
-      for (const [index, stop] of orderedStops(plan).entries()) {
+      // The two stops the truck is between: the one it has just left and the
+      // one it is driving to. They are what a dispatcher looks for first, so
+      // they are named on the map the way a picked load's stops are - unless
+      // a truck is standing on one, where the mark it makes with the truck
+      // says it already.
+      const ordered = orderedStops(plan);
+      const nextId = plan?.tracking?.nextStopId ?? null;
+      const nextIndex = ordered.findIndex(stop => stop.id === nextId);
+      const previousId =
+        ordered
+          .slice(0, nextIndex < 0 ? ordered.length : nextIndex)
+          .filter(stop => passed.has(stop.id))
+          .at(-1)?.id ?? null;
+      for (const [index, stop] of ordered.entries()) {
         active.add(stop.id);
         let entry = entries.get(stop.id);
         if (!entry) {
@@ -179,6 +192,7 @@ export function createRouteStops(
         entry.marker.setNumber?.(`${index + 1}`);
         entry.marker.setJob?.(stop.job);
         entry.marker.setDone?.(completed);
+        entry.marker.highlighted = stop.id === nextId || stop.id === previousId;
         const stopIndex = plan.stops.findIndex(s => s.id === stop.id);
         entry.miles =
           completed || stopIndex < 0

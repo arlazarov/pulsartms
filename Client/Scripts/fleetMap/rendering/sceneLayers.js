@@ -362,7 +362,9 @@ export function createSceneLayers({
           // hard to follow in the first place.
           const { url: iconAtlas, ...circle } = stopMarkerIcon(
             appearance.fill,
-            stop.highlighted ? metrics.stopBadgePickedEdge : appearance.border,
+            stop.highlighted && !stop.standing
+              ? metrics.stopBadgePickedEdge
+              : appearance.border,
             stop.done ? metrics.stopBadgeDoneRadius : undefined,
             stop.standing,
             stop.stacked,

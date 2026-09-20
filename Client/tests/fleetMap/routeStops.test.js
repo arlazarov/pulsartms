@@ -1278,3 +1278,38 @@ test('current popup renders signed hours and explicit alternatives with metadata
   assert.equal(markers.length, 1);
   assert.equal(calls.opens, 1);
 });
+
+// The two stops a truck is between - the one it has just left and the one it
+// is driving to - are what a dispatcher looks for first, so the map names
+// them the way it names a picked load's stops.
+test('the stop just left and the stop being driven to are named', t => {
+  const { stops, markers } = fixture(t);
+  const route = [
+    stop({ id: 'one', job: 'Pickup' }),
+    stop({ id: 'two', job: 'Delivery' }),
+    stop({ id: 'three', job: 'Pickup' }),
+    stop({ id: 'four', job: 'Delivery' }),
+  ];
+  stops.setPlan({
+    ...plan(route),
+    tracking: { passedStopIds: ['one', 'two'], nextStopId: 'three' },
+  });
+  const marked = () =>
+    markers.filter(marker => marker.highlighted).map(marker => marker.number);
+
+  assert.deepEqual(marked(), ['2', '3']);
+
+  // Driving on moves both marks along with the truck.
+  stops.setPlan({
+    ...plan(route),
+    tracking: { passedStopIds: ['one', 'two', 'three'], nextStopId: 'four' },
+  });
+  assert.deepEqual(marked(), ['3', '4']);
+
+  // Nothing driven yet: there is a stop ahead and none behind.
+  stops.setPlan({
+    ...plan(route),
+    tracking: { passedStopIds: [], nextStopId: 'one' },
+  });
+  assert.deepEqual(marked(), ['1']);
+});
