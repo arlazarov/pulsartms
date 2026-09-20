@@ -311,23 +311,36 @@
     &__reading svg {
       display: none;
     }
+    // The weather arrives as a three-row grid - icon over label over value -
+    // and a plain element selector for it loses to the grouped rule below by
+    // source order, so it is named by both of the classes it carries.
+    //
+    // The degrees keep the baseline, which is what puts them on the level of
+    // the speed and the fuel beside them; the icon steps out of the baseline
+    // and centres itself on the line, because a 20px glyph sitting on the
+    // baseline of 14px text stands above the words.
+    &__outside.truck-weather {
+      display: flex;
+      flex-direction: row;
+      align-items: baseline;
+      gap: ui.pg(xs);
+      grid-template-rows: none;
+      > small {
+        display: inline-flex;
+        align-self: center;
+      }
+    }
     &__outside > small > svg {
       // Sized to the line, not to the panel it came from: the telemetry
       // icon is 28px and made this row half again as tall.
       inline-size: ui.fs(heading);
       block-size: ui.fs(heading);
-      align-self: center;
     }
     &__reading,
     &__outside {
       display: flex;
       align-items: baseline;
       gap: ui.pg(xs);
-      > small {
-        display: inline-flex;
-        align-items: baseline;
-        gap: ui.pg(xs);
-      }
       min-width: 0;
       margin: 0;
       padding: 0;

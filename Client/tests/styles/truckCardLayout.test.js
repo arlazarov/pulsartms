@@ -184,6 +184,17 @@ test('the vehicle is one line: every reading the same shape, place at the end', 
     card,
     /__outside > small > svg\s*\{[^}]*inline-size: var\(--type-heading\);/,
   );
+  // The degrees keep the baseline, which is what puts them on the level of
+  // the speed and the fuel beside them; only the icon steps off it, or a
+  // 20px glyph on the baseline of 14px text stands above the words.
+  assert.match(
+    card,
+    /__outside\.truck-weather\s*\{[^}]*align-items: baseline;/,
+  );
+  assert.match(
+    card,
+    /__outside\.truck-weather > small\s*\{[^}]*align-self: center;/,
+  );
   assert.doesNotMatch(card, /__outside > small > svg\s*\{[^}]*display: none/);
   assert.doesNotMatch(card, /__reading\s*\{[^}]*display: none/);
 });
