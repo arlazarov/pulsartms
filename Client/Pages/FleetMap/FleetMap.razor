@@ -230,15 +230,27 @@
                         <span class="fleet-map-mobile-summary__label"
                               aria-hidden="true">·</span>
                     }
-                    <span class="fleet-map-mobile-summary__distance">
-                        <strong>@Units.DistanceValue(NextStopMiles)</strong>
-                        <span class="fleet-map-mobile-summary__label">@Units.DistanceUnit</span>
-                        @if (Units.BothDistances)
-                        {
-                            <span class="fleet-map-mobile-summary__label">· @Units.Kilometers(NextStopMiles) km</span>
-                        }
-                        <span class="fleet-map-mobile-summary__label">left</span>
+                </span>
+                @* What is left, in the middle of the line and shown as well
+                   as said: the bar is how much of the run is behind the
+                   truck. It reads as one phrase, so it never breaks
+                   between a number and its unit. *@
+                <span class="fleet-map-mobile-summary__distance"
+                      aria-label="@($"{Units.FormatDistance(RemainingMiles)} left of the run")">
+                    <span class="fleet-map-mobile-summary__distance-text"
+                          aria-hidden="true">
+                        <strong>@Units.DistanceValue(RemainingMiles)</strong><span
+                            class="fleet-map-mobile-summary__label">&#160;@Units.DistanceUnit</span>@if (Units.BothDistances)
+                        {<span class="fleet-map-mobile-summary__label">&#160;·&#160;@Units.Kilometers(RemainingMiles)&#160;km</span>}<span
+                            class="fleet-map-mobile-summary__label">&#160;left</span>
                     </span>
+                    @if (RouteCovered is { } covered)
+                    {
+                        <span class="fleet-map-mobile-summary__bar"
+                              aria-hidden="true">
+                            <span style="inline-size: @(Math.Round(covered * 100))%"></span>
+                        </span>
+                    }
                 </span>
                 @* The label travels with the clocks it names. Apart, "HOS"
                    sat beside the load and the clocks sat a card-width away. *@
@@ -325,11 +337,13 @@
                the card head, so none of them is said again here. *@
             <div class="fleet-map-route-info__distances">
             <div class="fleet-map-route-info__metric">
-                <span class="fleet-map-route-info__label">Remaining</span>
+                @* What is left is in the card head, drawn against this
+                   total; here the total itself, which the bar cannot say. *@
+                <span class="fleet-map-route-info__label">Run</span>
                 <span class="fleet-map-route-info__progress">
-                    <strong>@Units.DistanceValue(routePlan is null ? null : RemainingMiles)</strong>
-                    <span class="fleet-map-route-info__total">of <strong class="fleet-map-inspector__value">@Units.DistanceValue(routePlan?.OriginalPlannedMiles)</strong> @Units.DistanceUnit</span>
-                    @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">@Units.Kilometers(routePlan is null ? null : RemainingMiles) of @Units.Kilometers(routePlan?.OriginalPlannedMiles) km</span> }
+                    <strong>@Units.DistanceValue(routePlan?.OriginalPlannedMiles)</strong>
+                    <span class="fleet-map-route-info__total">@Units.DistanceUnit</span>
+                    @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">· @Units.Kilometers(routePlan?.OriginalPlannedMiles) km</span> }
                 </span>
             </div>
             </div>

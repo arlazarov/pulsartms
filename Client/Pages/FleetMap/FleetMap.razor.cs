@@ -90,6 +90,19 @@ public partial class FleetMap : IAsyncDisposable
       (DisplayedProgressIsCurrent ? _displayProgressMiles : null)
         ?? _routeState?.Progress?.ProgressMiles
     );
+
+  // How much of the run is behind the truck, 0 to 1. Both ends have to be
+  // real and the total has to be larger than the remainder, or the bar
+  // would claim progress nobody measured.
+  private double? RouteCovered =>
+    _routeState?.Plan is { InputsChanged: false } plan
+    && plan.OriginalPlannedMiles is var total and > 0
+    && RemainingMiles is { } remaining
+    && double.IsFinite(remaining)
+    && remaining <= total
+      ? Math.Clamp(1 - remaining / total, 0, 1)
+      : null;
+
   private bool _showTruckInfo;
   private bool _followingTruck;
   private bool _mobileFiltersOpen;

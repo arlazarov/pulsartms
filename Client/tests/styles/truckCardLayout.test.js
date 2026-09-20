@@ -25,14 +25,40 @@ test('the card says the load, its order and the miles once, in the head', () => 
   );
   assert.match(head, /title="Copy load number"/);
   assert.match(head, /title="Copy order number"/);
-  assert.match(head, /Units\.DistanceValue\(NextStopMiles\)/);
+  // The number and the bar under it measure the same thing - the run - so
+  // one cannot contradict the other.
+  assert.match(head, /Units\.DistanceValue\(RemainingMiles\)/);
   assert.match(
     head,
-    /Units\.BothDistances[\s\S]*Units\.Kilometers\(NextStopMiles\)/,
+    /Units\.BothDistances[\s\S]*Units\.Kilometers\(RemainingMiles\)/,
   );
+  assert.match(head, /fleet-map-mobile-summary__bar/);
+  assert.match(head, /RouteCovered is \{ \} covered/);
   const body = markup.slice(markup.indexOf('id="fleet-map-route-details"'));
   assert.doesNotMatch(body, /Copy load number|Copy order number/);
   assert.doesNotMatch(body, /fleet-map-route-info__load"/);
+  // The body carries the total the bar is drawn against, not the remainder
+  // the head already says.
+  assert.match(body, /__label">Run</);
+  assert.doesNotMatch(
+    body,
+    /DistanceValue\(routePlan is null \? null : RemainingMiles\)/,
+  );
+});
+
+test('what is left sits between the load and the clocks, said and drawn', () => {
+  assert.match(
+    card,
+    /__distance\s*\{[^}]*justify-items: center;[^}]*margin-inline: auto;/,
+  );
+  // One phrase: it shortens by ellipsis rather than folding a number away
+  // from the unit it belongs to.
+  assert.match(
+    card,
+    /__distance-text\s*\{[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap;/,
+  );
+  assert.match(card, /__bar\s*\{[^}]*block-size: 3px;/);
+  assert.match(card, /__bar > span\s*\{[^}]*background: var\(--ui-action\);/);
 });
 
 test('HOS travels with its clocks, at the far end under the arrival', () => {

@@ -89,8 +89,9 @@
       display: none;
     }
   }
-  // The card's second line: clocks as text, left to right, with the load
-  // being run at the far end. It reads as a sentence, not as a dashboard.
+  // The card's second line reads left to right as a sentence: what the
+  // truck is running, how much of it is left, and whether the driver has
+  // the hours to finish it.
   .fleet-map-inspector__hours {
     flex-basis: 100%;
     display: flex;
@@ -183,12 +184,43 @@
     color: ui.theme(text);
     font-weight: 600;
   }
-  .fleet-map-mobile-summary__order,
-  .fleet-map-mobile-summary__distance {
+  .fleet-map-mobile-summary__order {
     display: inline-flex;
     align-items: baseline;
     gap: ui.pg(xs);
     white-space: nowrap;
+  }
+  // What is left sits between the load and the clocks, in the room the
+  // line has going spare, with the covered share drawn under it.
+  .fleet-map-mobile-summary__distance {
+    display: grid;
+    justify-items: center;
+    gap: ui.pg(micro);
+    margin-inline: auto;
+    min-width: 0;
+  }
+  // One phrase: it never breaks between a number and the unit it belongs
+  // to, and it shrinks by ellipsis rather than by folding.
+  .fleet-map-mobile-summary__distance-text {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .fleet-map-mobile-summary__bar {
+    display: block;
+    inline-size: min(100%, #{ui.size(route-progress)});
+    block-size: 3px;
+    border-radius: ui.radius(pill);
+    background: ui.theme(border-subtle);
+    overflow: hidden;
+    > span {
+      display: block;
+      block-size: 100%;
+      border-radius: inherit;
+      background: ui.theme(action);
+    }
   }
   // "18" on its own says nothing; the words around it say what it counts.
   .fleet-map-mobile-summary__label {
