@@ -16,7 +16,10 @@ export const sceneMetrics = Object.freeze({
   // Planned stops are exempt: those are the ones a plan was made about.
   stationMinZoom: 6,
   stationHitRadius: 10,
-  recommendationRadius: 12,
+  // A planned stop is the only station the plan is about, so its dot is
+  // drawn larger than the ones it was chosen from, inside its ring.
+  recommendationDotRadius: 13,
+  recommendationRadius: 19,
   fuelEditingRadius: 14,
   fuelEditingLabelOffset: 25,
   fuelVisitLabelSize: 12,

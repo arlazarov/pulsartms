@@ -31,7 +31,14 @@ export function createSceneLayers({
   const fuelVisitLabels = memoizeLast();
   const fuelEditingLayers = memoizeLast();
   const labelFonts = memoizeLast();
-  const stationPoints = (id, data, visible, onHover, onClick) =>
+  const stationPoints = (
+    id,
+    data,
+    visible,
+    onHover,
+    onClick,
+    radius = metrics.stationRadius,
+  ) =>
     new ScatterplotLayer({
       id,
       data,
@@ -39,7 +46,7 @@ export function createSceneLayers({
       pickable: true,
       getPosition: d => d.position,
       radiusUnits: 'pixels',
-      getRadius: metrics.stationRadius,
+      getRadius: radius,
       stroked: true,
       lineWidthUnits: 'pixels',
       getLineWidth: d => (d.selected ? 3 : 2),
@@ -124,6 +131,7 @@ export function createSceneLayers({
               true,
               setHover,
               selectStation,
+              metrics.recommendationDotRadius,
             ),
             new ScatterplotLayer({
               id: 'fuel-recommendation-rings',

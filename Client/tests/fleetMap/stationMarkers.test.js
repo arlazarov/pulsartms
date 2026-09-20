@@ -174,10 +174,10 @@ test('every station has the same 16px circle with no inside price, regardless of
     plannedPoints = byId.get('fuel-recommendation-points').props;
   assert.equal(points.data[0], ordinary);
   assert.equal(points.getRadius, 8);
-  assert.equal(plannedPoints.getRadius, 8);
+  assert.equal(plannedPoints.getRadius, 13);
   assert.equal(plannedPoints.getFillColor(planned), planned.color);
   const ring = byId.get('fuel-recommendation-rings').props;
-  assert.equal(ring.getRadius, 12);
+  assert.equal(ring.getRadius, 19);
   const order = byId.get('fuel-recommendation-numbers').props;
   assert.equal(order.getText(planned), 'Fuel 1/3');
   assert.deepEqual(order.getPixelOffset, [0, -21]);
