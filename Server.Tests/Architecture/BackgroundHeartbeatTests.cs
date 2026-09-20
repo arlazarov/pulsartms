@@ -13,15 +13,12 @@ namespace Server.Tests.Architecture;
 [Trait("Kind", "Unit")]
 public sealed class BackgroundHeartbeatTests
 {
-  private static readonly DateTimeOffset Now = new(
-    2026,
-    9,
-    19,
-    12,
-    0,
-    0,
-    TimeSpan.Zero
-  );
+  // A heartbeat is written by the real clock, so a question about it has to
+  // be asked of the real clock too. This was a date fixed on the day the
+  // tests were written: "a day after it" stayed ahead of the beats for
+  // exactly one day, and from noon the next the beat was in the future of
+  // the question, nothing was stalled, and the test failed for good.
+  private static DateTimeOffset Now => DateTimeOffset.UtcNow;
 
   [Fact]
   public void WorkNobodyRegisteredIsNeverCalledStalled()
