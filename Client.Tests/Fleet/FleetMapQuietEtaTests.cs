@@ -339,4 +339,29 @@ public sealed class FleetMapQuietEtaTests
     JsonSerializer.SerializeToElement(
       fixture.Js.Calls.Last(call => call.Name == "setStopEtas").Args![0]
     );
+
+  // 11005 had its load cancelled and nothing to drive. Every poll put the
+  // skeleton of a route back over that answer for as long as the request
+  // took: the empty card grew a table of dashes and shrank again, about
+  // once every ten seconds, which reads as a fault rather than a fact.
+  [Fact]
+  public async Task ATruckWithNothingToDriveKeepsItsAnswerWhileThePollRuns()
+  {
+    using var fixture = new QuietEtaMapFixture();
+    var component = await fixture.SelectWithoutWorkAsync();
+    component.WaitForAssertion(
+      () => Assert.Contains("No remaining stops", component.Markup)
+    );
+    Assert.Empty(component.FindAll(".fleet-map-route-info"));
+
+    fixture.HoldPlanning = true;
+    await component.InvokeAsync(
+      () => fixture.Clock.Advance(TimeSpan.FromSeconds(10))
+    );
+    var pending = await fixture.ReadPendingAsync();
+
+    Assert.Empty(component.FindAll(".fleet-map-route-info"));
+    Assert.Contains("No remaining stops", component.Markup);
+    QuietEtaMapFixture.Reply(pending, fixture.Planning);
+  }
 }

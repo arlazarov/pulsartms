@@ -272,7 +272,7 @@
         {
             <div id="fleet-map-details" class="fleet-map-info-content" hidden="@(_inspectorMode != MapInspectorMode.Truck)">
     <div id="fleet-map-route-details" class="fleet-map-route-details">
-    @if (_routeLoading || _loadDetails is not null || ScheduledStop is not null || _routeState?.Plan is not null)
+    @if (!NothingToDrive && (_routeLoading || _loadDetails is not null || ScheduledStop is not null || _routeState?.Plan is not null))
     {
         var routePlan = _routeState?.Plan is { InputsChanged: false } availablePlan ? availablePlan : null;
         var nextStop = ScheduledStop;
@@ -393,7 +393,7 @@
 
         </div>
     }
-    @if (VisibleRouteError is { } emptyRouteError && _routeState?.Plan is null && _loadDetails is null) { <p class="fleet-map-route-info__error" role="status">@emptyRouteError</p> }
+    @if (NothingToDrive && VisibleRouteError is { } emptyRouteError) { <p class="fleet-map-route-info__error" role="status">@emptyRouteError</p> }
     </div>
     @* The drawing puts the actions under the detail they act on, with the
        words that say what they do rather than six bare icons. *@

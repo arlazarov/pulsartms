@@ -121,6 +121,31 @@ internal sealed class QuietEtaMapFixture : IDisposable
       );
   }
 
+  // A truck with no work at all: the server answers in words and has no
+  // route to send. Selecting it is all this needs - there is no next load to
+  // pick and no progress to report.
+  public async Task<IRenderedComponent<FleetMap>> SelectWithoutWorkAsync()
+  {
+    Planning = new(
+      TruckId,
+      null,
+      0,
+      null,
+      "No remaining stops in current or upcoming dispatches."
+    );
+    context
+      .Services.GetRequiredService<PlanningDisplayCache>()
+      .Store($"api/fleet/trucks/{TruckId}/planning", Planning);
+    var component = context.Render<FleetMap>();
+    component.WaitForAssertion(
+      () => Assert.Contains(Js.Calls, call => call.Name == "setTrucks")
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(TruckId.ToString())
+    );
+    return component;
+  }
+
   public async Task<IRenderedComponent<FleetMap>> SelectAsync()
   {
     var component = context.Render<FleetMap>();

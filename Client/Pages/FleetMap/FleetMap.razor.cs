@@ -174,6 +174,17 @@ public partial class FleetMap : IAsyncDisposable
   private string? RouteError;
   private string? _routeValidationUrl;
   private DateTimeOffset _routeValidationRetryAt;
+
+  // A truck with nothing to drive has an answer, not a gap in one. Every
+  // poll used to put the skeleton of a route back over that answer for as
+  // long as the request took - the empty card grew a table of dashes and
+  // shrank again, about once every ten seconds, which reads as a fault.
+  private bool NothingToDrive =>
+    VisibleRouteError is not null
+    && _routeState?.Plan is null
+    && _loadDetails is null
+    && ScheduledStop is null;
+
   private string? VisibleRouteError =>
     RouteMessageDisplay.For(
       RouteError,
