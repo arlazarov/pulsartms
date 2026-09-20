@@ -39,7 +39,6 @@ export function createScene(
     stationDirty = true;
   let stopsDirty = true,
     stopData = [],
-    stopClusters = [],
     distanceData = [];
   let vehiclesDirty = true,
     vehicles = [];
@@ -165,7 +164,7 @@ export function createScene(
     if (vehiclesDirty)
       vehicles = [...trucks].filter(t => t.visible && t.position);
     if (stopsDirty) {
-      ({ stopData, distanceData, stopClusters } = snapshotStops(
+      ({ stopData, distanceData } = snapshotStops(
         routeEditing
           ? [...stops].filter(stop => stop.routeRole === 'preview')
           : stops,
@@ -202,7 +201,6 @@ export function createScene(
         stationData: routeEditing ? [] : stationData,
         stationsVisible,
         stopData,
-        stopClusters: routeEditing ? [] : stopClusters,
         distanceData,
         vehicles: vehicleDisplay.vehicles,
         clusters: vehicleDisplay.clusters,

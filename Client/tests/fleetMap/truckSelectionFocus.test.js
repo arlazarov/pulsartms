@@ -110,34 +110,3 @@ test('stations are drawn wherever the camera is', () => {
     assert.equal(drawn['fuel-recommendation-numbers'].props.visible, true);
   }
 });
-
-// Two kinds of count can stand on one map. The stop count is light where the
-// truck count is dark, so a glance tells them apart before the words do, and
-// it goes in to where its stops part exactly as a truck count does.
-test('stops under a count are one light pill that opens like a truck count', () => {
-  const members = [
-    { id: 'a', position: [-80.84, 35.22] },
-    { id: 'b', position: [-80.7, 35.28] },
-  ];
-  const cluster = { id: 'a+b', count: 2, members, position: [-80.77, 35.25] };
-  const open = () => true;
-  const layers = byId(
-    scene()({
-      lines: [],
-      stationData: [],
-      stationsVisible: false,
-      stopData: [],
-      stopClusters: [cluster],
-      distanceData: [],
-      vehicles: [],
-      selectCluster: open,
-    }),
-  );
-  const pill = layers['stop-clusters'].props;
-  assert.deepEqual(pill.data, [cluster]);
-  assert.equal(pill.getText(cluster), '2 stops');
-  assert.deepEqual(pill.getBackgroundColor, [255, 255, 255]);
-  assert.deepEqual(pill.getColor, [30, 41, 59]);
-  assert.equal(pill.pickable, true);
-  assert.equal(pill.onClick, open, 'the same way in as a truck count');
-});
