@@ -48,6 +48,19 @@ test('every stop fact is the same two cells on one label column', () => {
   );
 });
 
+// The close control is a character in a fixed box, and the box sits on
+// cards that set different type sizes. It was inheriting theirs, so the same
+// control read larger on a stop than on a truck.
+test('the close control is the same size on every card', () => {
+  const details = compileString(`@use 'pages/fleet-map/details';`, {
+    loadPaths,
+  }).css;
+  assert.match(
+    details,
+    /__close\s*\{[^}]*\}[\s\S]{0,120}?font-size: var\(--type-heading\);[^}]*line-height: 1;/,
+  );
+});
+
 test('a price stays one number', () => {
   assert.match(
     popups,

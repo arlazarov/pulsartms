@@ -166,18 +166,23 @@ public partial class FleetMap
   private void ToggleMobileTruckDetails() =>
     _mobileTruckDetailsOpen = !_mobileTruckDetailsOpen;
 
+  // Closing puts the map back the way it was before anything was picked.
+  // From a stop it used to leave the truck selected behind the card it had
+  // just dismissed, so the map stayed on one truck with nothing to say why.
+  // A station nobody reached through a truck is its own case: there is no
+  // selection to drop, and dropping one would empty the search with it.
   private async Task CloseInspectorAsync()
   {
-    if (_inspectorMode == MapInspectorMode.Truck)
+    ResetInspectedLoad();
+    if (_map is not null && !_disposed)
+      await _map.InvokeVoidAsync("clearMapInspection");
+    if (HasTruckInspection)
     {
       await DeselectTruckAsync();
       return;
     }
-    ResetInspectedLoad();
     _inspectorMode = MapInspectorMode.Closed;
     _showTruckInfo = false;
-    if (_map is not null && !_disposed)
-      await _map.InvokeVoidAsync("clearMapInspection");
   }
 
   private Task OnInspectorKeyDownAsync(KeyboardEventArgs args) =>

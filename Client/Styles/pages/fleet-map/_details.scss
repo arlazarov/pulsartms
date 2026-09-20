@@ -134,6 +134,13 @@
   }
   &__close {
     @include ui.icon-control;
+    & {
+      // The box is the same everywhere, but the glyph is a character and
+      // was inheriting whichever type size the card around it had set, so
+      // the same control read larger on a stop than on a truck.
+      font-size: ui.fs(heading);
+      line-height: 1;
+    }
   }
   &__controls {
     display: flex;

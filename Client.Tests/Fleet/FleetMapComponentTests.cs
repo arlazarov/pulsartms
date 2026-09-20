@@ -2135,12 +2135,20 @@ public sealed class FleetMapComponentTests
     await component.InvokeAsync(
       () => component.Instance.OnMapInspectorChanged(kind, truck, 10)
     );
+    // A brace left over from a removed @if renders as text, and did.
+    Assert.DoesNotContain(
+      '}',
+      component.Find(".fleet-map-inspector__controls").ParentElement!.TextContent
+    );
     await component.Find(".fleet-map-inspector__close").ClickAsync(new());
     Assert.Equal(
       "closed",
       component.Find(".fleet-map-inspector").GetAttribute("data-inspector-mode")
     );
+    // Closing puts the map back the way it was: no card, and no truck left
+    // selected behind it.
     Assert.Contains(fixture.Js.Calls, c => c.Name == "clearMapInspection");
+    Assert.Contains(fixture.Js.Calls, c => c.Name == "clearSelection");
   }
 
   [Theory]
