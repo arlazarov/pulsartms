@@ -36,6 +36,23 @@ test('HOS diameter and text use the same component-owned responsive value', () =
   );
 });
 
+// The map's truck card reads the clocks as text: "Break 0:00" on a line.
+// Squeezed, "Break" came apart into three rows of single letters, because a
+// label under a dial is a column head allowed to break anywhere to fit.
+test('a clock read on a line keeps its label whole', () => {
+  const css = compile("@use 'components/driver-status';");
+  const text = css.slice(css.indexOf('.driver-hours--text'));
+  assert.match(
+    text,
+    /\.driver-hours--text \.driver-hours__label\s*\{[^}]*overflow-wrap: normal;[^}]*white-space: nowrap;/,
+  );
+  // Under a dial it still may: there it is narrower than the word.
+  assert.match(
+    css.slice(0, css.indexOf('.driver-hours--text')),
+    /\.driver-hours__label\s*\{[^}]*overflow-wrap: anywhere;/,
+  );
+});
+
 test('component folders keep fuel module entry points emitting each component once', () => {
   const css = compile("@use 'components';");
   for (const selector of [

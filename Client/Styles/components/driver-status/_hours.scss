@@ -100,8 +100,14 @@
     gap: ui.pg(xs);
     min-width: 0;
   }
+  // Read along a line, a label is a word beside its number. Under a dial it
+  // is a column head narrower than itself and may break anywhere to fit;
+  // here that rule turned "Break" into three rows of letters as soon as the
+  // line was short of room.
   .driver-hours__label {
     color: ui.theme(text-secondary);
+    overflow-wrap: normal;
+    white-space: nowrap;
   }
   .driver-hours__reading {
     font-size: ui.fs(body);

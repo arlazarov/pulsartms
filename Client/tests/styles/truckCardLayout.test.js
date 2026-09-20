@@ -63,10 +63,16 @@ test('the card says the load, its order and the miles once, in the head', () => 
 
 test('what is left sits between the load and the clocks, said and drawn', () => {
   // The line is three columns and this is the middle one, so it is centred
-  // by where it stands - it carries no margin to centre itself with.
+  // by where it stands - it carries no margin to centre itself with. The
+  // clocks column never goes under what it says: on a card with no work to
+  // show it was squeezed and "Break" came apart into letters.
   assert.match(
     card,
-    /__hours\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto minmax\(0, 1fr\);/,
+    /__hours\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto minmax\(max-content, 1fr\);/,
+  );
+  assert.doesNotMatch(
+    card.match(/__clocks\s*\{([^}]*)\}/)[1],
+    /^\s*min-width:/m,
   );
   assert.match(card, /__distance\s*\{[^}]*justify-items: center;/);
   assert.doesNotMatch(card, /__distance\s*\{[^}]*margin-inline: auto;/);

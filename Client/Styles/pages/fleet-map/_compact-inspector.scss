@@ -101,7 +101,12 @@
   .fleet-map-inspector__hours {
     flex-basis: 100%;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    // The clocks are read as numbers and never shrink below what they say;
+    // the load number, which can ellipsize, gives way instead. Given a
+    // share of the line like any other column, they were squeezed on a card
+    // with nothing else to show, and "Break" came apart into three rows of
+    // letters.
+    grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr);
     align-items: baseline;
     gap: ui.pg(xs) ui.pg(md);
     min-width: 0;
@@ -123,7 +128,6 @@
     align-items: baseline;
     justify-self: end;
     gap: ui.pg(xs);
-    min-width: 0;
     --hos-display: flex;
     --hos-wrap: nowrap;
     --hos-gap: #{ui.pg(xs)};
