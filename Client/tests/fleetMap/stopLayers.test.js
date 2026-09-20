@@ -49,16 +49,31 @@ test('one stop update preserves other GPU data; hover only reorders opaque pairs
   snapshot = snapshotStops(stops, snapshot.stopData);
   allocations = 0;
   const hovered = build({ ...input, stopData: snapshot.stopData });
+  // One allocation: the ring that names the load being looked at. The badges
+  // themselves are untouched - not rebuilt, not resized, not moved - because
+  // badges that shuffle when a load is picked are what made one hard to
+  // follow in the first place.
   assert.equal(
     allocations,
-    0,
-    'highlight changes drawing order without rebuilding data or layers',
+    1,
+    'highlight adds its ring without rebuilding a single badge',
+  );
+  const ring = hovered.find(layer => layer.props.id === 'route-stop-highlight');
+  assert.deepEqual(
+    ring.props.data.map(stop => stop.id),
+    [next.id],
+  );
+  assert.ok(
+    hovered.indexOf(ring) <
+      hovered.findIndex(layer => layer.props.id === 'route-stop-1-points'),
+    'under the badge it names',
   );
   assert.deepEqual(
     hovered.slice(-2).map(layer => layer.props.id),
     ['route-stop-1-points', 'route-stop-1-numbers'],
   );
-  for (const layer of hovered) assert.equal(layer, byId.get(layer.props.id));
+  for (const layer of hovered)
+    if (layer !== ring) assert.equal(layer, byId.get(layer.props.id));
   const delivery = hovered.at(-2);
   assert.equal(delivery.props.iconAtlas, stopMarkerIcon(currentRouteColor).url);
   assert.equal(delivery.props.getIcon(delivery.props.data[0]), 'circle');
@@ -88,6 +103,7 @@ test('one stop update preserves other GPU data; hover only reorders opaque pairs
   const renumbered = build({ ...input, stopData: snapshot.stopData });
   assert.equal(allocations, 2, 'only the changed stop pair receives new data');
   for (const layer of renumbered.slice(0, -2)) {
+    if (layer.props.id === 'route-stop-highlight') continue;
     assert.equal(layer, byId.get(layer.props.id));
     assert.equal(layer.props.data, byId.get(layer.props.id).props.data);
   }

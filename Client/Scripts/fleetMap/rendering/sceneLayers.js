@@ -23,6 +23,7 @@ export function createSceneLayers({
 }) {
   const stationLayer = memoizeLast(),
     distanceLabels = memoizeLast();
+  const stopHighlight = memoizeLast();
   const stopLayers = new Map();
   const stopGroup = memoizeLast();
   const vehicleLayers = memoizeLast();
@@ -124,10 +125,14 @@ export function createSceneLayers({
         () => {
           const data = stationData.filter(d => d.recommended && !d.editing);
           return [
+            // The stops of the fuel plan belong to the fuel layer: they are
+            // shown while fuel is being looked at and not otherwise. Drawn
+            // always, they put rings and labels over a map that had been
+            // asked to be about something else.
             stationPoints(
               'fuel-recommendation-points',
               data,
-              true,
+              stationsVisible,
               setHover,
               selectStation,
               metrics.recommendationDotRadius,
@@ -135,7 +140,7 @@ export function createSceneLayers({
             new ScatterplotLayer({
               id: 'fuel-recommendation-rings',
               data,
-              visible: true,
+              visible: stationsVisible,
               getPosition: d => d.position,
               getRadius: metrics.recommendationRadius,
               radiusUnits: 'pixels',
@@ -172,7 +177,7 @@ export function createSceneLayers({
                 typeof d.numbers === 'string' &&
                 d.numbers.trim(),
             ),
-            visible: true,
+            visible: stationsVisible,
             // The badge now carries how much is bought there, so its
             // alphabet is whatever the quantity and its unit need.
             characterSet: 'auto',
@@ -316,6 +321,49 @@ export function createSceneLayers({
     );
     const isIcon = layer => /^truck-icons/.test(layer.props?.id ?? '');
     truckLayers.push(...vehicleParts.filter(isIcon));
+    // The load being looked at is named by a ring round its badges. Its road
+    // was emphasised and its circles were not, so picking a load lit
+    // everything except the stops it was picked for. The ring is a layer of
+    // its own, drawn under the badges: a larger badge would have pushed its
+    // neighbours aside, and badges that shuffle when a load is picked are
+    // what made one hard to follow in the first place.
+    const chosen = stopData.filter(stop => stop.highlighted);
+    truckLayers.push(
+      ...stopHighlight(
+        [
+          // Only what the ring is drawn from: renumbering some other stop is
+          // not a reason to make it again.
+          chosen
+            .map(
+              stop => `${stop.id}:${stop.markerOffsetX}:${stop.markerOffsetY}`,
+            )
+            .join('|'),
+        ],
+        () =>
+          chosen.length
+            ? [
+                new ScatterplotLayer({
+                  id: 'route-stop-highlight',
+                  data: chosen,
+                  getPosition: stop => stop.position,
+                  getPixelOffset: stop => [
+                    stop.markerOffsetX,
+                    stop.markerOffsetY,
+                  ],
+                  getRadius: metrics.stopBadgeHighlightRadius,
+                  radiusUnits: 'pixels',
+                  filled: false,
+                  stroked: true,
+                  getLineColor: [30, 41, 59],
+                  getLineWidth: 2,
+                  lineWidthUnits: 'pixels',
+                  pickable: false,
+                  parameters: { depthCompare: 'always' },
+                }),
+              ]
+            : [],
+      ),
+    );
     // Keep each geographic anchor and badge together when selection changes priority.
     truckLayers.push(
       ...stopGroup([stopData, setHover, selectStop, fonts], () => {

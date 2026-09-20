@@ -126,11 +126,23 @@ test('hidden active edits retain their original selectable point, color and sepa
       assert.equal(layers[index], initial[index]);
   }
   assert.equal(unrelatedPriceReads, 0);
+  // With fuel off, closing the editor leaves nothing behind: the plan's own
+  // stops belong to the fuel layer like everything else in it.
   assert.deepEqual(
     build({
       ...input,
       stationData: [ordinary, { ...edited, editing: false }],
     }).map(layer => layer.props.id),
+    [],
+  );
+  assert.deepEqual(
+    build({
+      ...input,
+      stationsVisible: true,
+      stationData: [ordinary, { ...edited, editing: false }],
+    })
+      .map(layer => layer.props.id)
+      .filter(id => id.startsWith('fuel-recommendation')),
     ['fuel-recommendation-points', 'fuel-recommendation-rings'],
   );
 });

@@ -548,6 +548,12 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   flush();
   assert.equal(layers()['fuel-editing-points'], undefined);
   assert.equal(layers()['fuel-editing-label'], undefined);
+  // Out of the editor, a planned stop is part of the fuel layer again, and
+  // the fuel layer is off - it comes back with it.
+  assert.equal(layers()['fuel-recommendation-points'], undefined);
+  stations.setVisible(true);
+  stations.redraw();
+  flush();
   const plannedPoint = layers()['fuel-recommendation-points'].props.data[0];
   overlays[0].pickObject = () => ({ object: plannedPoint });
   selectedStation = null;
