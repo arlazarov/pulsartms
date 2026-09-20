@@ -120,14 +120,27 @@ test('spacing rejects the obsolete numeric scale and breakpoints retain exact bo
         ),
       /Unknown spacing/,
     );
+  // A boundary is read from one side or the other, by name, and the width
+  // it stands for is the one in the map - not a pixel short of it. Asking
+  // for that shortened width used to fail outright on the rem boundaries
+  // in the same map, because a pixel cannot be taken from a rem.
   const css = compileString(
-    `@use 'base/functions' as fn;
-    @media (max-width: fn.breakpoint(md, max)) { .x { display:none; } }
-    @media (min-width: fn.breakpoint(map-mobile)) { .y { display:block; } }`,
+    `@use 'base' as ui;
+    @include ui.below(md) { .x { display:none; } }
+    @include ui.above(map-mobile) { .y { display:block; } }
+    @include ui.below(map-fuel-halves) { .z { display:none; } }`,
     { loadPaths },
   ).css;
-  assert.match(css, /max-width: 799px/);
-  assert.match(css, /min-width: 768px/);
+  assert.match(css, /@media \(width < 800px\)/);
+  assert.match(css, /@media \(width >= 768px\)/);
+  assert.match(css, /@media \(width < 34rem\)/);
+  assert.throws(
+    () =>
+      compileString(`@use 'base' as ui; @include ui.below(nowhere) { .x {} }`, {
+        loadPaths,
+      }),
+    /Unknown breakpoint/,
+  );
 });
 
 test('both themes export the same role contract', () => {

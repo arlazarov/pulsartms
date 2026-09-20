@@ -22,7 +22,7 @@ test('integration cards use three bounded columns and stack on narrow screens', 
   assert.match(rule('.settings-page__card'), /min-width: 0;/);
   assert.match(
     css,
-    /@media \(max-width: 999px\)[\s\S]*\.integration-settings__grid\s*\{\s*grid-template-columns: minmax\(0, 1fr\);/,
+    /@media \(width < 1000px\)[\s\S]*\.integration-settings__grid\s*\{\s*grid-template-columns: minmax\(0, 1fr\);/,
   );
   assert.match(rule('.integration-settings__card-heading'), /flex-wrap: wrap;/);
   assert.match(

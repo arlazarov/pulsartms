@@ -30,7 +30,7 @@
     padding: ui.pg(md);
     padding-right: calc(#{ui.size(control-touch)} + #{ui.pg(md)});
   }
-  @media (max-width: ui.breakpoint(map-mobile, max)) {
+  @include ui.below(map-mobile) {
     top: auto;
     bottom: 0;
     left: 0;

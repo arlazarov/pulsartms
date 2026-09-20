@@ -33,7 +33,7 @@
     gap: ui.pg(sm);
   }
 
-  @media (max-width: ui.breakpoint(md, max)) {
+  @include ui.below(md) {
     min-height: ui.size(control-touch);
     h1 {
       min-height: ui.size(control-touch);

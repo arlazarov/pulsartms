@@ -71,7 +71,7 @@ test('truck inspector uses one disclosure control on every screen size', () => {
   );
   assert.match(
     compact,
-    /@media \(max-width: 767px\)[\s\S]*\.fleet-map-mobile-summary__toggle\s*\{\s*display: inline-flex;/,
+    /@media \(width < 768px\)[\s\S]*\.fleet-map-mobile-summary__toggle\s*\{\s*display: inline-flex;/,
   );
   assert.doesNotMatch(css, /fleet-map-reveal/);
 });
@@ -113,7 +113,7 @@ test('selected truck and route panels overlay one stable map with bounded scroll
   );
   assert.match(
     css,
-    /@media \(max-width: 767px\)[\s\S]*\.fleet-map-info-reserved\s*\{[^}]*max-height: 60%;/,
+    /@media \(width < 768px\)[\s\S]*\.fleet-map-info-reserved\s*\{[^}]*max-height: 60%;/,
   );
   assert.doesNotMatch(
     css,
@@ -264,15 +264,11 @@ test('HOS circles keep the same compact gap instead of stretching across wide or
     css,
     /\.fleet-map-truck-info[^{}]*\.driver-hours\s*\{[^}]*justify-content: space-between;/,
   );
-  const spacious = css.slice(
-    css.indexOf('@media (min-width: 1800px)'),
-    css.indexOf(
-      '@media (max-width: 767px)',
-      css.indexOf('@media (min-width: 1800px)'),
-    ),
-  );
+  // A wide screen does not re-column the readings into three towers. This
+  // once looked for that rule inside a window no stylesheet opens, so it
+  // was reading an empty string and could never have found anything.
   assert.doesNotMatch(
-    spacious,
+    css,
     /\.fleet-map-truck-info__telemetry\s*\{[^}]*grid-template-columns: repeat\(3,\s*minmax/,
   );
 });
@@ -305,7 +301,7 @@ test('intermediate stop distance is inline with the visit heading instead of ano
 });
 
 test('mobile keeps one compact row until Details is selected', () => {
-  const mobile = compact.slice(compact.indexOf('@media (max-width: 767px)'));
+  const mobile = compact.slice(compact.indexOf('@media (width < 768px)'));
   // On a phone the top line is the unit and the controls; the distance
   // rides the clocks line below with the load it belongs to.
   for (const [selector, column] of [
@@ -333,7 +329,7 @@ test('next-stop distance rides the clocks line at every width', () => {
     compact,
     /\.fleet-map-mobile-summary__remaining\s*\{\s*display: flex;/,
   );
-  const mobile = compact.slice(compact.indexOf('@media (max-width: 767px)'));
+  const mobile = compact.slice(compact.indexOf('@media (width < 768px)'));
   // The load leads the clocks line rather than sitting in a chip of its
   // own, and its number is labelled at every width.
   assert.doesNotMatch(compact, /__remaining\s*\{[^}]*margin-inline-start/);

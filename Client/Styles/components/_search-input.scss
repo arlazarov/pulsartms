@@ -76,7 +76,7 @@
     padding: ui.pg(md);
     color: ui.theme(text-muted);
   }
-  @media (max-width: ui.breakpoint(md, max)) {
+  @include ui.below(md) {
     &__icon {
       top: calc(#{ui.size(control-touch)} / 2);
     }

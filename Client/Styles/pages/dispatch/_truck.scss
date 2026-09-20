@@ -167,7 +167,7 @@
   }
 }
 
-@media (max-width: ui.breakpoint(truck-details, max)) {
+@include ui.below(truck-details) {
   .dispatch-truck {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -234,7 +234,7 @@
   }
 }
 
-@media (min-width: ui.breakpoint(truck-details, min)) {
+@include ui.above(truck-details) {
   .dispatch-truck:has(> .dispatch-truck__equipment) {
     grid-template-columns: repeat(3, minmax(0, max-content)) minmax(0, 1fr);
     > .dispatch-truck__header {
@@ -291,7 +291,7 @@
   }
 }
 
-@media (max-width: ui.breakpoint(narrow-card, max)) {
+@include ui.below(narrow-card) {
   .dispatch-truck__header {
     padding-inline: ui.pg(lg);
   }

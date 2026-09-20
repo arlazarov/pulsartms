@@ -152,7 +152,7 @@
     font-size: ui.fs(small);
   }
 
-  @media (max-width: ui.breakpoint(map-route-columns, max)) {
+  @include ui.below(map-route-columns) {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     &__metric {

@@ -200,11 +200,11 @@ test('Paper financial strip keeps four desktop columns and adapts mobile columns
   );
   assert.match(
     css,
-    /@media \(max-width: 799px\)[\s\S]*\.dispatch-paper__financials\s*\{\s*grid-template-columns: repeat\(auto-fit,\s*minmax\(min\(100%,\s*var\(--size-dispatch-dialog-metric\)\),\s*1fr\)\);/,
+    /@media \(width < 800px\)[\s\S]*\.dispatch-paper__financials\s*\{\s*grid-template-columns: repeat\(auto-fit,\s*minmax\(min\(100%,\s*var\(--size-dispatch-dialog-metric\)\),\s*1fr\)\);/,
   );
   assert.match(
     css,
-    /@media \(max-width: 799px\)[\s\S]*\.dispatch-paper__financials > div \+ div\s*\{\s*border-left: 0;/,
+    /@media \(width < 800px\)[\s\S]*\.dispatch-paper__financials > div \+ div\s*\{\s*border-left: 0;/,
   );
 });
 
@@ -223,7 +223,7 @@ test('Paper modal reuses the circular semantic stop markers and fills the mobile
   assert.match(css, /--dialog-stop-color: var\(--ui-delivery\);/);
   assert.match(
     css,
-    /@media \(max-width: 799px\)[\s\S]*\.dispatch-load-dialog\s*\{[^}]*width: calc\(100vw - var\(--space-sm\) \* 2\);[^}]*max-height: calc\(100dvh - var\(--space-sm\) \* 2\);/,
+    /@media \(width < 800px\)[\s\S]*\.dispatch-load-dialog\s*\{[^}]*width: calc\(100vw - var\(--space-sm\) \* 2\);[^}]*max-height: calc\(100dvh - var\(--space-sm\) \* 2\);/,
   );
 });
 

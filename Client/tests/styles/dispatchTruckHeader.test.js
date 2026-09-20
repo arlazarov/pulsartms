@@ -24,7 +24,7 @@ test('dispatch board uses horizontal load lanes and a compact icon-led truck ide
   );
   assert.match(
     truckCss,
-    /@media \(max-width: 550px\)[\s\S]*\.dispatch-truck__loads\s*\{\s*grid-auto-flow: row;/,
+    /@media \(width < 551px\)[\s\S]*\.dispatch-truck__loads\s*\{\s*grid-auto-flow: row;/,
   );
   assert.match(
     css,
@@ -50,7 +50,7 @@ test('moving status and fuel share a wrapping pill group while connector arrows 
     truckCss,
     /\.dispatch-truck__loads > \.dispatch-load \+ \.dispatch-load \.dispatch-load__connector\s*\{\s*display: grid;/,
   );
-  const mobile = truckCss.slice(truckCss.indexOf('@media (max-width: 550px)'));
+  const mobile = truckCss.slice(truckCss.indexOf('@media (width < 551px)'));
   assert.match(mobile, /\.dispatch-load__connector\s*\{\s*display: none;/);
 });
 
@@ -63,7 +63,7 @@ test('horizontal load cards share their tallest natural height while stacked car
     truckCss,
     /\.dispatch-truck__loads\s*\{[^}]*(?:min-height|height|grid-auto-rows):/,
   );
-  const mobile = truckCss.slice(truckCss.indexOf('@media (max-width: 550px)'));
+  const mobile = truckCss.slice(truckCss.indexOf('@media (width < 551px)'));
   assert.match(
     mobile,
     /\.dispatch-truck__loads\s*\{[^}]*grid-auto-flow: row;[^}]*align-items: start;/,
@@ -120,7 +120,7 @@ test('wide Dispatch summary keeps route, driver status and HOS in adjacent conte
 });
 
 test('narrow Dispatch summaries wrap to one column while preserving clocks and recap', () => {
-  const mobile = css.slice(css.indexOf('@media (max-width: 550px)'));
+  const mobile = css.slice(css.indexOf('@media (width < 551px)'));
   assert.match(
     mobile,
     /\.dispatch-planning--compact\s*\{\s*grid-template-columns: minmax\(0,\s*1fr\);/,
@@ -151,7 +151,7 @@ test('narrow Dispatch summaries wrap to one column while preserving clocks and r
 test('active Dispatch puts duty and recap beneath identity and route while clocks span the right column', () => {
   assert.match(
     truckCss,
-    /@media \(min-width: 1200px\)[\s\S]*\.dispatch-truck:has\(> \.dispatch-truck__equipment\)\s*\{\s*grid-template-columns: repeat\(3,\s*minmax\(0,\s*max-content\)\) minmax\(0,\s*1fr\);/,
+    /@media \(width >= 1200px\)[\s\S]*\.dispatch-truck:has\(> \.dispatch-truck__equipment\)\s*\{\s*grid-template-columns: repeat\(3,\s*minmax\(0,\s*max-content\)\) minmax\(0,\s*1fr\);/,
   );
   assert.match(
     truckCss,
@@ -177,7 +177,7 @@ test('active Dispatch puts duty and recap beneath identity and route while clock
     truckCss,
     /\.dispatch-truck__equipment > \.dispatch-planning--board[^{}]*\{[^}]*(?:display: none|height:|max-height:|overflow: hidden)/,
   );
-  const mobile = truckCss.slice(truckCss.indexOf('@media (max-width: 550px)'));
+  const mobile = truckCss.slice(truckCss.indexOf('@media (width < 551px)'));
   assert.match(
     mobile,
     /\.dispatch-truck__equipment > \.dispatch-planning--board \.dispatch-planning__driver\s*\{\s*grid-column: 1;\s*grid-row: 2;/,
@@ -214,7 +214,7 @@ test('truck header telemetry and clocks wrap locally instead of clipping enlarge
   );
   assert.match(
     truckCss,
-    /@media \(max-width: 550px\)[\s\S]*\.dispatch-truck__equipment > \.dispatch-planning--board\s*\{[^}]*--hos-gap: var\(--space-sm\);/,
+    /@media \(width < 551px\)[\s\S]*\.dispatch-truck__equipment > \.dispatch-planning--board\s*\{[^}]*--hos-gap: var\(--space-sm\);/,
   );
 });
 

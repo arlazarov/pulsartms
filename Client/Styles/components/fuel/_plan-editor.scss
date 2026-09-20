@@ -454,12 +454,12 @@
     display: flex;
     gap: ui.pg(sm);
   }
-  @media (min-width: ui.breakpoint(fuel-editor-columns)) {
+  @include ui.above(fuel-editor-columns) {
     left: 50%;
     right: auto;
     transform: translateX(-50%);
   }
-  @media (max-width: ui.breakpoint(fuel-editor-columns, max)) {
+  @include ui.below(fuel-editor-columns) {
     position: absolute;
     width: min(#{ui.size(fuel-editor-card)}, calc(100% - #{ui.pg(md)} * 2));
     height: min(70dvh, 75%);
@@ -491,7 +491,7 @@
       margin-left: auto;
     }
   }
-  @media (max-width: ui.breakpoint(map-mobile, max)) {
+  @include ui.below(map-mobile) {
     top: 0;
     right: 0;
     bottom: auto;

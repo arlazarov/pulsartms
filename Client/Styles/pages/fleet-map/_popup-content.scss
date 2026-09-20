@@ -526,7 +526,7 @@
   }
 }
 
-@include ui.mq(map-mobile) {
+@include ui.above(map-mobile) {
   .fleet-route-popup,
   .fleet-station-popup:not(.fleet-station-popup--planned) {
     display: grid;
@@ -573,7 +573,7 @@
   .fleet-map-details-card__body {
     padding: ui.pg(lg);
   }
-  @media (min-width: ui.breakpoint(map-mobile, min)) {
+  @include ui.above(map-mobile) {
     left: auto;
     right: ui.pg(lg);
     transform: none;

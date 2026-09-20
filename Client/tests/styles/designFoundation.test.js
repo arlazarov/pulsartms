@@ -108,6 +108,6 @@ test('page titles keep the same control-height row with or without a description
   );
   assert.match(
     css,
-    /@media \(max-width: 799px\)[\s\S]*?\.page-header h1\s*\{\s*min-height: var\(--size-control-touch\);/,
+    /@media \(width < 800px\)[\s\S]*?\.page-header h1\s*\{\s*min-height: var\(--size-control-touch\);/,
   );
 });

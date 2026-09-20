@@ -146,7 +146,7 @@
   .validation-summary-errors {
     color: ui.theme(danger-text);
   }
-  @media (max-width: ui.breakpoint(md, max)) {
+  @include ui.below(md) {
     &__row-values {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }

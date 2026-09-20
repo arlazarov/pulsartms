@@ -275,7 +275,7 @@
   }
 }
 
-@media (max-width: ui.breakpoint(narrow-card, max)) {
+@include ui.below(narrow-card) {
   .dispatch-planning--compact {
     grid-template-columns: minmax(0, 1fr);
     > .driver-hours-panel {

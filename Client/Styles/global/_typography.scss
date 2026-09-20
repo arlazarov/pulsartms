@@ -1,4 +1,4 @@
-@use '../base/functions' as fn;
+@use '../base' as ui;
 body {
   font-family:
     Inter,
@@ -6,7 +6,7 @@ body {
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  font-size: fn.fs(body);
+  font-size: ui.fs(body);
   line-height: 1.45;
 }
 h1,
@@ -17,13 +17,13 @@ h3 {
 }
 h1 {
   margin: 0;
-  font-size: fn.fs(page-title);
+  font-size: ui.fs(page-title);
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.025em;
 }
-@media (max-width: fn.breakpoint(map-mobile, max)) {
+@include ui.below(map-mobile) {
   h1 {
-    font-size: fn.fs(title);
+    font-size: ui.fs(title);
   }
 }

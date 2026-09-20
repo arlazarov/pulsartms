@@ -1,6 +1,6 @@
 @use '../../base' as ui;
 
-@media (max-width: ui.breakpoint(map-mobile, max)) {
+@include ui.below(map-mobile) {
   .fleet-map-inspector[data-inspector-mode='truck'] {
     // On a phone the stop and the facts stack; the rows keep their shared
     // label column so the values still line up.

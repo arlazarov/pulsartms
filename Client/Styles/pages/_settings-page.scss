@@ -124,7 +124,7 @@
     align-items: center;
     flex-wrap: wrap;
   }
-  @media (max-width: ui.breakpoint(md, max)) {
+  @include ui.below(md) {
     &__card {
       padding: ui.pg(lg);
     }
@@ -201,7 +201,7 @@
     grid-template-columns: minmax(0, 1fr);
     gap: ui.pg(md);
   }
-  @media (max-width: ui.breakpoint(bg, max)) {
+  @include ui.below(bg) {
     &__grid {
       grid-template-columns: minmax(0, 1fr);
     }
@@ -238,7 +238,7 @@
     background: ui.theme(action);
     color: ui.theme(on-accent);
   }
-  @media (max-width: ui.breakpoint(md, max)) {
+  @include ui.below(md) {
     .data-table__header {
       display: none;
     }

@@ -103,7 +103,7 @@
     font-size: ui.fs(small);
     color: ui.theme(navigation-muted);
   }
-  @include ui.mq(md) {
+  @include ui.above(md) {
     position: sticky;
     top: 0;
     height: 100dvh;
@@ -136,7 +136,7 @@
     display: none;
   }
 
-  @media (max-width: ui.breakpoint(md, max)) {
+  @include ui.below(md) {
     position: relative;
     z-index: 1000;
     flex-wrap: nowrap;
@@ -227,7 +227,7 @@
     }
   }
 
-  @media (max-width: ui.breakpoint(sm, max)) {
+  @include ui.below(sm) {
     &__toggle {
       min-width: ui.size(control-touch);
       padding: ui.pg(sm);

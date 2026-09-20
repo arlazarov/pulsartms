@@ -173,7 +173,7 @@
     justify-content: center;
     min-inline-size: ui.size(control-compact);
     color: ui.theme(text-secondary);
-    @media (max-width: ui.breakpoint(md, max)) {
+    @include ui.below(md) {
       min-inline-size: ui.size(control-touch);
     }
     &::after {
@@ -248,7 +248,7 @@
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);
   }
-  @media (min-width: ui.breakpoint(map-mobile, min)) {
+  @include ui.above(map-mobile) {
     .fleet-map-inspector__header {
       gap: ui.pg(sm);
     }
@@ -507,7 +507,7 @@
       }
     }
   }
-  @media (max-width: ui.breakpoint(map-mobile, max)) {
+  @include ui.below(map-mobile) {
     container: map-truck-header / inline-size;
     .fleet-map-inspector__desktop-title {
       display: block;

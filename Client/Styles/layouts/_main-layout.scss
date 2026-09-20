@@ -22,7 +22,7 @@
     }
   }
 
-  @include ui.mq(md) {
+  @include ui.above(md) {
     grid-template-columns: 192px minmax(0, 1fr);
     grid-template-rows: 1fr;
 

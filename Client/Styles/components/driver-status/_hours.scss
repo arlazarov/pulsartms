@@ -77,7 +77,7 @@
 .driver-hours .is-unavailable .driver-hours__dial {
   color: ui.theme(border);
 }
-@media (max-width: ui.breakpoint(narrow-card, max)) {
+@include ui.below(narrow-card) {
   .driver-hours-panel {
     margin-left: 0;
     width: fit-content;

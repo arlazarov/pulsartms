@@ -29,7 +29,7 @@
     font-size: ui.fs(body);
   }
 
-  @media (max-width: ui.breakpoint(md, max)) {
+  @include ui.below(md) {
     form {
       padding: ui.pg(lg);
     }

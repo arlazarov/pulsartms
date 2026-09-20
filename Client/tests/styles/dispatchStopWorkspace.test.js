@@ -105,7 +105,7 @@ test('editor density preserves shared control sizes', () => {
     declarations('.stop-workspace input'),
     /min-height: var\(--size-control\);/,
   );
-  const mobile = css.slice(css.indexOf('@media (max-width: 799px)'));
+  const mobile = css.slice(css.indexOf('@media (width < 800px)'));
   assert.match(mobile, /min-height: var\(--size-control-touch\);/);
   assert.doesNotMatch(
     declarations('.stop-workspace__details'),

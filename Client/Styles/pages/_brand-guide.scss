@@ -185,7 +185,7 @@
     min-height: ui.size(control-touch);
   }
 
-  @media (max-width: ui.breakpoint(md, max)) {
+  @include ui.below(md) {
     padding: ui.pg(lg);
     &__hero {
       grid-template-columns: 1fr;

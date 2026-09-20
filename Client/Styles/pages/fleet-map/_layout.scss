@@ -11,7 +11,7 @@
     min-height: 0;
   }
 
-  @include ui.mq(md) {
+  @include ui.above(md) {
     grid-template-rows: minmax(0, 1fr);
   }
 }
@@ -117,7 +117,7 @@
     display: none;
   }
 
-  @media (max-width: ui.breakpoint(map-mobile, max)) {
+  @include ui.below(map-mobile) {
     gap: ui.pg(xs);
     padding: ui.pg(sm);
     font-size: ui.fs(micro);

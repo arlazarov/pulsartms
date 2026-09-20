@@ -12,7 +12,7 @@ const selector =
   String.raw`\.fleet-map-inspector` + String.raw`\[data-inspector-mode=truck\]`;
 
 test('mobile truck panels scroll normally within the bounded map inspector', () => {
-  const mobile = css.slice(css.indexOf('@media (max-width: 767px)'));
+  const mobile = css.slice(css.indexOf('@media (width < 768px)'));
   const rule = mobile.match(/\.fleet-map-info-reserved\s*\{([^}]*)\}/);
   assert.ok(rule);
   assert.match(rule[1], /max-height: 60%;/);
@@ -40,7 +40,7 @@ test('mobile truck panels scroll normally within the bounded map inspector', () 
     ),
   );
   assert.doesNotMatch(
-    css.slice(0, css.indexOf('@media (max-width: 767px)')),
+    css.slice(0, css.indexOf('@media (width < 768px)')),
     /scrollbar-width: none;/,
   );
 });

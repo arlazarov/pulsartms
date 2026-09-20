@@ -4,7 +4,7 @@ html.popup-open {
   overflow: hidden;
 }
 
-@media (max-width: ui.breakpoint(md, max)) {
+@include ui.below(md) {
   // Mobile scroll locking needs a fixed body; desktop sticky navigation must remain in flow.
   body.popup-open {
     position: fixed;

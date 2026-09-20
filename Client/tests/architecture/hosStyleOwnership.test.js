@@ -24,7 +24,7 @@ test('HOS diameter and text use the same component-owned responsive value', () =
   );
   assert.match(
     css,
-    /@media \(max-width: 550px\)[\s\S]*--_hos-dial-size: var\(--hos-dial-size, var\(--size-hos-dial-compact\)\)/,
+    /@media \(width < 551px\)[\s\S]*--_hos-dial-size: var\(--hos-dial-size, var\(--size-hos-dial-compact\)\)/,
   );
   for (const dimension of ['width', 'height'])
     assert.match(css, new RegExp(dimension + ': var\\(--_hos-dial-size,'));

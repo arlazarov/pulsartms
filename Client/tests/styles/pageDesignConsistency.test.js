@@ -58,7 +58,7 @@ test('account forms stay content-sized and their actions can wrap on small scree
   assert.match(rule('.add-user-page .form__actions'), /flex-wrap: wrap;/);
   assert.match(
     css,
-    /@media \(max-width: 799px\)[\s\S]*\.add-user-page \.form__actions > \.btn\s*\{\s*flex: 1 1 auto;/,
+    /@media \(width < 800px\)[\s\S]*\.add-user-page \.form__actions > \.btn\s*\{\s*flex: 1 1 auto;/,
   );
 });
 

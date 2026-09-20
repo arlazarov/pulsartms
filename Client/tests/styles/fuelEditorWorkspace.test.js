@@ -13,7 +13,7 @@ const css = compileString(
 test('wide fuel editor gives route and station independent adjacent columns over the unchanged map', () => {
   assert.match(
     css,
-    /@media \(min-width: 1000px\)[\s\S]*\.fuel-plan-editor\s*\{[^}]*left: 50%;[^}]*right: auto;[^}]*transform: translateX\(-50%\);/,
+    /@media \(width >= 1000px\)[\s\S]*\.fuel-plan-editor\s*\{[^}]*left: 50%;[^}]*right: auto;[^}]*transform: translateX\(-50%\);/,
   );
   assert.doesNotMatch(css, /top: 50%|translate\(-50%, -50%\)/);
   assert.match(
@@ -66,7 +66,7 @@ test('the timeline and selected controls scroll independently while header and f
   );
   assert.match(
     css,
-    /@media \(max-width: 999px\)[\s\S]*\.fuel-plan-editor\s*\{[^}]*max-height: min\(70dvh, 75%\);[^}]*grid-template-rows: auto minmax\(0, 9fr\) minmax\(0, 11fr\) auto;/,
+    /@media \(width < 1000px\)[\s\S]*\.fuel-plan-editor\s*\{[^}]*max-height: min\(70dvh, 75%\);[^}]*grid-template-rows: auto minmax\(0, 9fr\) minmax\(0, 11fr\) auto;/,
   );
   assert.match(
     css,
@@ -81,7 +81,7 @@ test('the timeline and selected controls scroll independently while header and f
 test('phone editing uses one full-height pane and can expose the map without closing the draft', () => {
   assert.match(css, /\.fuel-plan-editor\s*\{\s*box-sizing: border-box;/);
   const mobile = css.slice(
-    css.indexOf('@media (max-width: 767px)', css.indexOf('.fuel-plan-editor')),
+    css.indexOf('@media (width < 768px)', css.indexOf('.fuel-plan-editor')),
   );
   assert.match(
     mobile,
@@ -105,7 +105,7 @@ test('phone editing uses one full-height pane and can expose the map without clo
 
 test('phone fuel actions share a row without shrinking targets or text', () => {
   const mobile = css.slice(
-    css.indexOf('@media (max-width: 767px)', css.indexOf('.fuel-plan-editor')),
+    css.indexOf('@media (width < 768px)', css.indexOf('.fuel-plan-editor')),
   );
   const footer = mobile.match(/\.fuel-plan-editor__footer\s*\{([^}]+)\}/)?.[1];
   assert.ok(footer);

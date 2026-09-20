@@ -64,7 +64,7 @@
   }
 }
 
-@media (min-width: ui.breakpoint(map-mobile, min)) {
+@include ui.above(map-mobile) {
   .fleet-map-toolbar {
     .fleet-map-layers .fleet-map-toggle > span {
       display: none;
@@ -102,7 +102,7 @@
   display: none;
 }
 
-@media (max-width: ui.breakpoint(map-mobile, max)) {
+@include ui.below(map-mobile) {
   .fleet-map-page {
     position: relative;
     gap: ui.pg(sm);

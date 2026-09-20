@@ -9,11 +9,17 @@
   line-height: 1.4;
 }
 
-@mixin mq($key) {
-  @if not map.has-key(vars.$breakpoints, $key) {
-    @error 'Unknown breakpoint: #{$key}';
+// A boundary is named once and read from one side. Written by hand, the
+// same boundary appeared as both a min-width and a max-width a pixel
+// short of it, and only one of the two had a mixin.
+@mixin below($key) {
+  @media (width < #{fn.breakpoint($key)}) {
+    @content;
   }
-  @media (min-width: map.get(vars.$breakpoints, $key)) {
+}
+
+@mixin above($key) {
+  @media (width >= #{fn.breakpoint($key)}) {
     @content;
   }
 }
@@ -57,7 +63,7 @@
   &[aria-invalid='true'] {
     @include invalid-control;
   }
-  @media (max-width: fn.breakpoint(md, max)) {
+  @include below(md) {
     min-height: vars.$control-touch-height;
     font-size: fn.fs(lead);
   }
@@ -107,7 +113,7 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
-  @media (max-width: fn.breakpoint(md, max)) {
+  @include below(md) {
     min-height: vars.$control-touch-height;
   }
 }
@@ -117,7 +123,7 @@
     min-height: vars.$control-compact-height;
     padding: fn.pg(xs) fn.pg(md);
   }
-  @media (max-width: fn.breakpoint(md, max)) {
+  @include below(md) {
     min-height: vars.$control-touch-height;
   }
 }
@@ -143,7 +149,7 @@
     padding: 0;
     flex-shrink: 0;
   }
-  @media (max-width: fn.breakpoint(md, max)) {
+  @include below(md) {
     width: fn.size(control-touch);
     min-width: fn.size(control-touch);
   }

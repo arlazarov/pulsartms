@@ -28,7 +28,7 @@
     font-weight: 500;
   }
 
-  @media (max-width: ui.breakpoint(md, max)) {
+  @include ui.below(md) {
     .data-table-pagination {
       display: flex;
       flex-direction: column;

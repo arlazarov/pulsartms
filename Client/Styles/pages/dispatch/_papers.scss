@@ -160,7 +160,7 @@
   }
 }
 
-@media (max-width: ui.breakpoint(paper-columns, max)) {
+@include ui.below(paper-columns) {
   .dispatch-papers {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -330,7 +330,7 @@
   }
 }
 
-@media (max-width: ui.breakpoint(md, max)) {
+@include ui.below(md) {
   .dispatch-load-dialog {
     width: calc(100vw - ui.pg(sm) * 2);
     max-height: calc(100dvh - ui.pg(sm) * 2);

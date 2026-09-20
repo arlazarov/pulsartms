@@ -85,7 +85,7 @@
   }
 }
 
-@media (max-width: ui.breakpoint(narrow-card, max)) {
+@include ui.below(narrow-card) {
   .dispatch-board__scope,
   .dispatch-board__filters .dispatch-board__scope {
     margin-left: 0;

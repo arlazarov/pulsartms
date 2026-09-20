@@ -13,7 +13,7 @@ test('Fleet heading shares a wrapping row with an elastic icon toolbar', () => {
   assert.match(css, /__background\s*\{[^}]*display: flex;/);
   assert.match(css, /__background\s*\{[^}]*flex-wrap: wrap;/);
   assert.match(css, /\.fleet-map-search\s*\{[^}]*flex: 1 1 12rem;/);
-  assert.match(css, /@media \(min-width: 768px\)/);
+  assert.match(css, /@media \(width >= 768px\)/);
   assert.match(
     css,
     /\.fleet-map-layers \.fleet-map-toggle > span\s*\{\s*display: none;/,

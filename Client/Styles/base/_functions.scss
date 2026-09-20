@@ -60,17 +60,16 @@
   @error 'Unknown spacing token: #{$step}. Use a named spacing token.';
 }
 
-@function breakpoint($key, $edge: min) {
+// The width a name stands for. Which side of it a rule wants is said by
+// the below()/above() mixins, in the query itself. This used to answer a
+// second, "max" width a pixel short of the real one, which cannot be
+// subtracted from the rem widths in the same map: asking for the max edge
+// of one of those failed to compile.
+@function breakpoint($key) {
   @if not map.has-key(vars.$breakpoints, $key) {
     @error 'Unknown breakpoint: #{$key}';
   }
-  @if $edge == min {
-    @return map.get(vars.$breakpoints, $key);
-  }
-  @if $edge == max {
-    @return map.get(vars.$breakpoints, $key) - 1px;
-  }
-  @error 'Breakpoint edge must be min or max.';
+  @return map.get(vars.$breakpoints, $key);
 }
 
 @function theme($role, $alpha: null) {

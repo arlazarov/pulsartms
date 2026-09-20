@@ -73,7 +73,7 @@
       flex-shrink: 0;
     }
 
-    @media (max-width: ui.breakpoint(map-mobile, max)) {
+    @include ui.below(map-mobile) {
       .fleet-map-inspector__header {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
@@ -213,7 +213,7 @@
   }
 }
 
-@media (max-width: ui.breakpoint(map-mobile, max)) {
+@include ui.below(map-mobile) {
   .fleet-map-inspector {
     &[data-inspector-mode='fuel']:has(.fleet-station-popup--planned),
     &[data-inspector-mode='fuel']:not(:has(.fleet-station-popup--planned)) {

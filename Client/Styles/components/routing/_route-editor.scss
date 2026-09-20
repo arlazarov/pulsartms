@@ -169,7 +169,7 @@
   &__actions {
     margin-left: auto;
   }
-  @media (max-width: ui.breakpoint(map-mobile, max)) {
+  @include ui.below(map-mobile) {
     max-height: 65%;
     width: 100%;
     top: 0;
