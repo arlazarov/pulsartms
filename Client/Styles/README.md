@@ -43,15 +43,15 @@ things that want separating.
 
 One map to a file, and the file says what belongs in it.
 
-| file | what it names |
-| --- | --- |
-| `_space.scss` | every gap, padding and margin |
-| `_type.scss` | every size text is set in |
-| `_control.scss` | what a thing you press or type into measures |
-| `_size.scss` | fixed dimensions more than one rule must agree on |
-| `_screen.scss` | the widths at which a layout changes shape |
-| `_layer.scss` | what stands in front of what |
-| `_shape.scss` | corners and shadows |
+| file            | what it names                                     |
+| --------------- | ------------------------------------------------- |
+| `_space.scss`   | every gap, padding and margin                     |
+| `_type.scss`    | every size text is set in                         |
+| `_control.scss` | what a thing you press or type into measures      |
+| `_size.scss`    | fixed dimensions more than one rule must agree on |
+| `_screen.scss`  | the widths at which a layout changes shape        |
+| `_layer.scss`   | what stands in front of what                      |
+| `_shape.scss`   | corners and shadows                               |
 
 `_screen.scss` holds two maps on purpose: `$screen-scale` is a handful of
 steps about the window, used all over; `$screen-places` is the width at
@@ -77,3 +77,8 @@ checked, in `Client/tests/architecture/componentStyleOwnership.test.js`.
 Anything finer than a reading is a custom property the component publishes
 and documents by its default: `--stop-hours-road-size`,
 `--fuel-visit-heading-display`, `--form-actions-space`.
+
+Publish one only when a place actually sets it. Sixteen of these were
+`var(--knob, default)` that nothing anywhere turned - an indirection that
+read like a contract and was not one. A knob with no hand on it is a
+default written twice.

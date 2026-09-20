@@ -51,7 +51,7 @@ test('the metric variant stacks its reading below a pump label without a pill su
   );
   assert.match(
     css,
-    /\.fuel-reading--metric \.fuel-reading__icon\s*\{[^}]*width: var\(--fuel-reading-icon-size, var\(--type-heading\)\);[^}]*height: var\(--fuel-reading-icon-size, var\(--type-heading\)\);/,
+    /\.fuel-reading--metric \.fuel-reading__icon\s*\{[^}]*width: var\(--type-heading\);[^}]*height: var\(--type-heading\);/,
   );
   assert.match(
     css,

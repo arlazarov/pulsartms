@@ -9,7 +9,7 @@
 }
 .driver-hours {
   display: var(--hos-display, flex);
-  grid-template-columns: var(--hos-columns, none);
+  grid-template-columns: none;
   gap: var(--hos-gap, #{ui.pg(md)});
   flex-shrink: 0;
   flex-wrap: var(--hos-wrap, nowrap);
@@ -25,11 +25,11 @@
   min-width: var(--hos-clock-min-width, 0);
 }
 .driver-hours__dial {
-  --_hos-dial-size: var(--hos-dial-size, #{ui.size(hos-dial)});
+  --_hos-dial-size: #{ui.size(hos-dial)};
   display: grid;
   place-items: center;
-  width: var(--_hos-dial-size, var(--hos-dial-size, #{ui.size(hos-dial)}));
-  height: var(--_hos-dial-size, var(--hos-dial-size, #{ui.size(hos-dial)}));
+  width: var(--_hos-dial-size, #{ui.size(hos-dial)});
+  height: var(--_hos-dial-size, #{ui.size(hos-dial)});
   position: relative;
   color: ui.theme(success-text);
 }
@@ -42,7 +42,7 @@
 }
 .driver-hours__dial circle {
   fill: none;
-  stroke-width: var(--hos-ring-width, 4);
+  stroke-width: 4;
 }
 .driver-hours__track {
   stroke: ui.theme(border-subtle);
@@ -57,10 +57,7 @@
   color: ui.theme(text);
 }
 .driver-hours__clock .driver-hours__dial strong {
-  font-size: min(
-    var(--hos-value-font-size, #{ui.fs(label)}),
-    calc(var(--_hos-dial-size) * 0.24)
-  );
+  font-size: min(#{ui.fs(label)}, calc(var(--_hos-dial-size) * 0.24));
   line-height: 1;
   white-space: nowrap;
 }
@@ -68,7 +65,7 @@
   max-width: 100%;
   overflow-wrap: anywhere;
   font-size: var(--hos-label-font-size, #{ui.fs(micro)});
-  line-height: var(--hos-label-line-height, inherit);
+  line-height: inherit;
   color: ui.theme(text-muted);
 }
 .driver-hours .is-low .driver-hours__dial {
@@ -84,7 +81,7 @@
     max-width: 100%;
   }
   .driver-hours__dial {
-    --_hos-dial-size: var(--hos-dial-size, #{ui.size(hos-dial-compact)});
+    --_hos-dial-size: #{ui.size(hos-dial-compact)};
     width: var(--_hos-dial-size, #{ui.size(hos-dial-compact)});
     height: var(--_hos-dial-size, #{ui.size(hos-dial-compact)});
   }

@@ -51,7 +51,7 @@
   }
   .stop-hours__value {
     display: flex;
-    flex-wrap: var(--stop-hours-value-wrap, wrap);
+    flex-wrap: wrap;
     white-space: var(--stop-hours-value-white-space, normal);
     align-items: baseline;
     gap: 0 ui.pg(sm);
@@ -71,10 +71,10 @@
     display: var(--stop-hours-road-display, grid);
     font-size: var(--stop-hours-road-size, inherit);
     flex-wrap: wrap;
-    white-space: var(--stop-hours-road-white-space, normal);
+    white-space: normal;
 
     > .stop-hours__label {
-      margin-inline-end: var(--stop-hours-road-label-gap, 0);
+      margin-inline-end: 0;
     }
 
     > .stop-hours__value {
@@ -86,14 +86,14 @@
     }
 
     .stop-hours__status {
-      display: var(--stop-hours-road-status-display, inline);
-      margin-inline-start: var(--stop-hours-road-status-gap, 0);
+      display: inline;
+      margin-inline-start: 0;
       white-space: normal;
     }
   }
   &__date::before {
     content: attr(data-separator);
-    display: var(--stop-hours-date-prefix-display, none);
+    display: none;
     font-weight: 400;
   }
   // Whatever holds it, a word about the cycle takes a row of its own.
@@ -102,10 +102,10 @@
     grid-column: 1 / -1;
   }
   &__date-separator {
-    display: var(--stop-hours-date-separator-display, inline);
+    display: inline;
   }
   &__date-break {
-    display: var(--stop-hours-date-break-display, none);
+    display: none;
     margin-top: ui.pg(xs);
   }
   &__clock {

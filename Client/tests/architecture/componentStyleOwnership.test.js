@@ -114,11 +114,14 @@ test('HOS diameter and text use the same component-owned responsive value', () =
   const css = compile("@use 'shared/driver-status';");
   assert.match(
     css,
-    /--_hos-dial-size: var\(--hos-dial-size, var\(--size-hos-dial\)\)/,
+    // One value, read by the dial and by the number inside it. It used to
+    // be reachable from outside through --hos-dial-size, which nothing ever
+    // set.
+    /--_hos-dial-size: var\(--size-hos-dial\)/,
   );
   assert.match(
     css,
-    /@media \(width < 551px\)[\s\S]*--_hos-dial-size: var\(--hos-dial-size, var\(--size-hos-dial-compact\)\)/,
+    /@media \(width < 551px\)[\s\S]*--_hos-dial-size: var\(--size-hos-dial-compact\)/,
   );
   for (const dimension of ['width', 'height'])
     assert.match(css, new RegExp(dimension + ': var\\(--_hos-dial-size,'));

@@ -53,7 +53,7 @@
     justify-content: start;
     gap: ui.pg(xs);
     row-gap: var(--fuel-reading-row-gap, #{ui.pg(xs)});
-    column-gap: var(--fuel-reading-column-gap, #{ui.pg(xs)});
+    column-gap: #{ui.pg(xs)};
     line-height: 1.4;
     min-height: 0;
     padding: 0;
@@ -73,9 +73,9 @@
       display: contents;
     }
     .fuel-reading__icon {
-      width: var(--fuel-reading-icon-size, #{ui.fs(heading)});
-      height: var(--fuel-reading-icon-size, #{ui.fs(heading)});
-      grid-row: var(--fuel-reading-icon-row, auto);
+      width: #{ui.fs(heading)};
+      height: #{ui.fs(heading)};
+      grid-row: auto;
       align-self: center;
     }
     &.is-normal .fuel-reading__icon {

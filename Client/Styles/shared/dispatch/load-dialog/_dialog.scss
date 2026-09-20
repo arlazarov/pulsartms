@@ -63,7 +63,6 @@
   }
 }
 
-
 @include ui.below(md) {
   .dispatch-load-dialog {
     width: calc(100vw - ui.pg(sm) * 2);
