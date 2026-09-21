@@ -1,8 +1,8 @@
 import { truckIcon } from './truckAppearance.ts';
 import { markerAnchor } from './markerAnchor.ts';
-import { clusterText } from './truckLabelLayout.js';
+import { clusterText } from './truckLabelLayout.ts';
 import { memoizeLast } from './layerCache.ts';
-import { routeLayers } from './routeAppearance.js';
+import { routeLayers } from './routeAppearance.ts';
 import { stopAppearance, stopMarkerIcon } from './stopAppearance.ts';
 import {
   sceneMetrics as metrics,

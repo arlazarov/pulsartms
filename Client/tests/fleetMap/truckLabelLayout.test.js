@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   layoutMapLabels,
   clusterText,
-} from '../../Scripts/fleetMap/rendering/truckLabelLayout.js';
+} from '../../Scripts/fleetMap/rendering/truckLabelLayout.ts';
 import { markerProjection } from '../../Scripts/fleetMap/rendering/markerProjection.ts';
 import { markerAnchor } from '../../Scripts/fleetMap/rendering/markerAnchor.ts';
 

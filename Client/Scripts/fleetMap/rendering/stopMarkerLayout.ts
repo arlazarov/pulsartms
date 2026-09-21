@@ -1,8 +1,42 @@
+import type { LabelledTruck, MarkPoint } from './truckClusters.ts';
 import { sceneMetrics as metrics } from './sceneMetrics.ts';
 import { markerProjection } from './markerProjection.ts';
 import { truckColor } from './truckAppearance.ts';
 
-export function stopMarkerLabel(_job, number) {
+// A stop as the layout receives it: where it stands, what its badge says,
+// and the three things the layout writes back onto it - the badge's text
+// and how far the badge has had to move from the point it marks.
+export type StopRow = {
+  position: MarkPoint;
+  number?: string | number;
+  job?: string;
+  markerLabel?: string;
+  markerOffsetX?: number;
+  markerOffsetY?: number;
+  // The colour of the truck standing on this stop, once one is known to be.
+  standing?: unknown;
+  stacked?: boolean;
+  [key: string]: any;
+};
+
+// One badge being laid out: the stop, the point it marks, where it has been
+// pushed to, that point at a fixed zoom, and whether a truck is holding it.
+type Badge = {
+  row: StopRow;
+  anchor: MarkPoint;
+  at: MarkPoint;
+  ground: MarkPoint;
+  held: boolean;
+};
+
+type ParkedTruck = {
+  truck: LabelledTruck;
+  at: MarkPoint;
+  ground: MarkPoint;
+  holds: Badge | undefined;
+};
+
+export function stopMarkerLabel(_job: unknown, number: unknown) {
   return String(number ?? '');
 }
 
@@ -54,34 +88,39 @@ const most = 80;
 // does not rearrange itself as the camera moves.
 const groundZoom = 12;
 
-export function layoutStopMarkers(rows, zoom, trucks = []) {
+export function layoutStopMarkers(
+  rows: StopRow[],
+  zoom: number,
+  trucks: LabelledTruck[] = [],
+) {
   const project = markerProjection(zoom);
   const radius = metrics.stopBadgeDiameter / 2;
-  const byNumber = (a, b) =>
-    (parseInt(a.row.number, 10) || 0) - (parseInt(b.row.number, 10) || 0);
+  const byNumber = (a: Badge, b: Badge) =>
+    (parseInt(String(a.row.number ?? ''), 10) || 0) -
+    (parseInt(String(b.row.number ?? ''), 10) || 0);
 
   const ground = markerProjection(groundZoom);
   // How wide a badge is depends on whether it is wearing a truck.
-  const spread = item =>
+  const spread = (item: Badge) =>
     (item.row.standing
       ? metrics.stopBadgeStandingDiameter
       : metrics.stopBadgeDiameter) / 2;
-  const places = new Map();
+  const places = new Map<string, Badge[]>();
   const items = rows.map(row => {
     row.markerLabel = stopMarkerLabel(row.job, row.number);
     row.markerOffsetX = 0;
     row.markerOffsetY = 0 - metrics.stopBadgeOffset;
     const anchor = project(row.position);
-    const item = {
+    const item: Badge = {
       row,
       anchor,
-      at: [...anchor],
+      at: [anchor[0], anchor[1]],
       ground: ground(row.position),
       held: false,
     };
     const key = row.position.map(value => value.toFixed(3)).join(',');
     if (!places.has(key)) places.set(key, []);
-    places.get(key).push(item);
+    places.get(key)!.push(item);
     return item;
   });
   // Every truck starts the pass as a truck drawn on its own; one standing
@@ -97,12 +136,11 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
       truck,
       at: project(truck.position),
       ground: ground(truck.position),
-      /** @type {{ at: number[], row: { standing: unknown } } | undefined} */
-      holds: undefined,
+      holds: undefined as Badge | undefined,
     }));
   // The formation stops at one address have always had - a pair, a
   // triangle, rows of two - in stop order, rising from the place they mark.
-  const form = (members, [x, y], apart) => {
+  const form = (members: Badge[], [x, y]: MarkPoint, apart: number) => {
     members.sort(byNumber);
     members.forEach((item, index) => {
       const finalOdd = index === members.length - 1 && members.length % 2;
@@ -121,12 +159,12 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
 
   // Rule 3, and then rule 4: a truck standing on a stop is drawn as a ring
   // around that stop's badge, which keeps its point and gives way to nothing.
-  const away = (truck, item) =>
+  const away = (truck: ParkedTruck, item: Badge) =>
     Math.hypot(
       truck.ground[0] - item.ground[0],
       truck.ground[1] - item.ground[1],
     );
-  const covered = (truck, item) =>
+  const covered = (truck: ParkedTruck, item: Badge) =>
     Math.hypot(truck.at[0] - item.at[0], truck.at[1] - item.at[1]) +
       metrics.truckSize / 2 <
     metrics.stopBadgeStackedDiameter / 2 + metrics.truckCrescent;
@@ -167,7 +205,7 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
   if (items.length <= most)
     for (let pass = 0; pass < passes; pass++) {
       let moved = false;
-      const pushes = items.map(() => [0, 0]);
+      const pushes = items.map(() => [0, 0] as MarkPoint);
       for (let i = 0; i < items.length; i++)
         for (let j = i + 1; j < items.length; j++) {
           const a = items[i],

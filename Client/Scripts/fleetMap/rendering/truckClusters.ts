@@ -1,21 +1,43 @@
 import { sceneMetrics as metrics } from './sceneMetrics.ts';
 import { markerProjection } from './markerProjection.ts';
 
+// Where a mark or its label stands, in the pixels of the north-up
+// projection the layout works in.
+export type MarkPoint = [number, number];
+
+// One truck as the map draws it: its number, where it is, and - once the
+// layout has run - where its label ended up beside it.
+export type LabelledTruck = {
+  unit: string;
+  position: MarkPoint;
+  markerOffset?: MarkPoint | null;
+  selected?: boolean;
+  labelOffset?: MarkPoint;
+  [key: string]: any;
+};
+
+// Several trucks close enough together to be drawn as one mark.
+export type LabelledCluster = {
+  count: number;
+  position: MarkPoint;
+  members: LabelledTruck[];
+  markerOffset?: MarkPoint;
+  [key: string]: any;
+};
+
 // Trucks close enough together at this zoom to be drawn as one mark, and
 // those that stand alone.
-type Vehicle = Record<string, any>;
-
 export function clusterTrucks(
-  vehicles: Vehicle[],
+  vehicles: LabelledTruck[],
   zoom: number,
-): { vehicles: Vehicle[]; clusters: Record<string, any>[] } {
+): { vehicles: LabelledTruck[]; clusters: LabelledCluster[] } {
   if (!Number.isFinite(zoom) || zoom >= metrics.truckClusterMaxZoom)
     return { vehicles, clusters: [] };
   const radius = metrics.truckClusterRadius;
   const project = markerProjection(zoom);
   const buckets = new Map<string, any[]>(),
     groups: any[] = [],
-    separate: Vehicle[] = [];
+    separate: LabelledTruck[] = [];
   for (const truck of [...vehicles].sort((a, b) =>
     a.unit.localeCompare(b.unit),
   )) {
@@ -46,7 +68,7 @@ export function clusterTrucks(
       buckets.get(key)!.push(group);
     }
   }
-  const clusters: Record<string, any>[] = [];
+  const clusters: LabelledCluster[] = [];
   for (const group of groups) {
     if (group.members.length === 1) {
       separate.push(group.members[0]);
@@ -56,20 +78,24 @@ export function clusterTrucks(
       members: group.members,
       count: group.members.length,
       pixelOffset: [0, 0],
-      position: [0, 1].map(
+      // The mark stands at the average of the trucks it holds.
+      position: ([0, 1] as const).map(
         axis =>
           group.members.reduce(
-            (sum: number, truck: Vehicle) => sum + truck.position[axis],
+            (sum: number, truck: LabelledTruck) => sum + truck.position[axis],
             0,
           ) / group.members.length,
-      ),
+      ) as MarkPoint,
     });
   }
   return { vehicles: separate, clusters };
 }
 
 // The zoom at which a cluster would come apart into its trucks.
-export function clusterExpansionZoom(members: Vehicle[], zoom: number): number {
+export function clusterExpansionZoom(
+  members: LabelledTruck[],
+  zoom: number,
+): number {
   for (
     let target = Math.floor(zoom) + 1;
     target < metrics.truckClusterMaxZoom;
@@ -82,7 +108,7 @@ export function clusterExpansionZoom(members: Vehicle[], zoom: number): number {
 // Where the camera must stand to hold a whole cluster, given the room the
 // map has and what must stay clear around it.
 export function clusterCamera(
-  members: Vehicle[],
+  members: LabelledTruck[],
   width: number | undefined,
   height: number | undefined,
   padding:

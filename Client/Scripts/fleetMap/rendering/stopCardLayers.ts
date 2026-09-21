@@ -1,3 +1,4 @@
+import type { DeckLayerFactory } from './deckLayer.ts';
 import type { StopLabelStyle } from './stopLabelStyle.ts';
 import { isDelivery } from './stopAppearance.ts';
 import { sceneMetrics, labelSubLayers } from './sceneMetrics.ts';
@@ -39,7 +40,7 @@ function accent(job: string | undefined, style: StopLabelStyle) {
 }
 
 export function stopCardLayers(
-  TextLayer: new (props: any) => unknown,
+  TextLayer: DeckLayerFactory,
   distanceData: StopCard[],
   style: StopLabelStyle,
   fonts: { stopLabel: unknown },

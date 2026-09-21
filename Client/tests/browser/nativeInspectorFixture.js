@@ -3,7 +3,7 @@ import { createRouteLayer } from '../../Scripts/fleetMap/routes/routeLayer.ts';
 import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.ts';
 import { stopEtaLabels } from '../../Scripts/fleetMap/routes/stopEtaLabels.ts';
 import { fuelRecommendations } from '../../Scripts/fleetMap/stations/fuelRecommendations.ts';
-import { createCameraViewport } from '../../Scripts/fleetMap/ui/cameraViewport.js';
+import { createCameraViewport } from '../../Scripts/fleetMap/ui/cameraViewport.ts';
 
 const host = document.querySelector('.fleet-map-inspector__native');
 const shell = host.closest('.fleet-map-inspector');

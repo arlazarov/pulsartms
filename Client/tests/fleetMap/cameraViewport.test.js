@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createCameraViewport } from '../../Scripts/fleetMap/ui/cameraViewport.js';
+import { createCameraViewport } from '../../Scripts/fleetMap/ui/cameraViewport.ts';
 
 const rect = (left, top, width, height) => ({
   left,

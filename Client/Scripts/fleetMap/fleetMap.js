@@ -12,7 +12,7 @@ import { createMapHost } from './provider/mapHost.ts';
 import { mergeRoutePayload } from './routes/routePayload.ts';
 import { stopEtaDeadline, stopEtaLabels } from './routes/stopEtaLabels.ts';
 import { etaStops, stopEtaIdentity } from './routes/stopEtaIdentity.ts';
-import { createCameraViewport } from './ui/cameraViewport.js';
+import { createCameraViewport } from './ui/cameraViewport.ts';
 import { createDockedDetails } from './ui/dockedDetails.ts';
 import { createRouteEditor } from './routes/routeEditor.js';
 import { distanceLabel } from './ui/distanceLabel.ts';

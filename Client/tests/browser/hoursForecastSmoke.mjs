@@ -341,7 +341,7 @@ const truck = {
 };
 const success = response => ({ success: true, response, errors: [] });
 const viewportSource = await readFile(
-  new URL('../../scripts/fleetMap/ui/cameraViewport.js', import.meta.url),
+  new URL('../../scripts/fleetMap/ui/cameraViewport.ts', import.meta.url),
   'utf8',
 );
 const mapStub = `${viewportSource}

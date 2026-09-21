@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { routeLayers } from '../../Scripts/fleetMap/rendering/routeAppearance.js';
+import { routeLayers } from '../../Scripts/fleetMap/rendering/routeAppearance.ts';
 import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.js';
 import {
   currentRouteColor,

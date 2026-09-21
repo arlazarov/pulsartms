@@ -13,7 +13,7 @@ const bundle = await build({
     contents: `
 import {createMapHost} from './Scripts/fleetMap/provider/mapHost.ts';
 import {createTruckLayer} from './Scripts/fleetMap/trucks/truckLayer.ts';
-import {createCameraViewport} from './Scripts/fleetMap/ui/cameraViewport.js';
+import {createCameraViewport} from './Scripts/fleetMap/ui/cameraViewport.ts';
 const camera = [], events = new Map();
 let mounted, layer, host, viewport, creations = 0;
 let zoom = 5, movement = 0;

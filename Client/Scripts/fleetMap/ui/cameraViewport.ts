@@ -1,18 +1,24 @@
+// A rectangle of the map's own element, in its pixels.
+type Area = { x: number; y: number; width: number; height: number };
+
 const selectors = [
   '.fleet-map-info-reserved',
   '.fuel-plan-editor',
   '.route-editor',
 ];
 
-export function createCameraViewport(element, map) {
+export function createCameraViewport(
+  element: HTMLElement,
+  map: google.maps.Map,
+) {
   const view = element.ownerDocument?.defaultView;
   const stage = element.parentElement;
-  let bounds = null,
-    region = null,
+  let bounds: DOMRect | null = null,
+    region: Area | null = null,
     disposed = false;
   let signature = '',
-    changed = () => {};
-  const observed = new Set();
+    changed: () => void = () => {};
+  const observed = new Set<HTMLElement>();
   const Resize = view?.ResizeObserver;
   const Mutation = view?.MutationObserver;
   const resize = typeof Resize === 'function' ? new Resize(refresh) : null;
@@ -34,8 +40,8 @@ export function createCameraViewport(element, map) {
     const inspector = stage?.querySelector?.(selectors[0]);
     const overlays = selectors
       .map(selector => stage?.querySelector?.(selector))
-      .filter(Boolean);
-    const nodes = [element, ...overlays];
+      .filter((overlay): overlay is HTMLElement => Boolean(overlay));
+    const nodes: HTMLElement[] = [element, ...overlays];
     for (const node of observed)
       if (!nodes.includes(node)) {
         resize?.unobserve(node);
@@ -50,14 +56,18 @@ export function createCameraViewport(element, map) {
     bounds = next?.width > 0 && next?.height > 0 ? next : null;
     region = null;
     if (!bounds) return;
-    let areas = [{ x: 0, y: 0, width: bounds.width, height: bounds.height }];
+    let areas: Area[] = [
+      { x: 0, y: 0, width: bounds.width, height: bounds.height },
+    ];
     let covered = false;
     for (const overlay of overlays) {
       let box = overlay.getBoundingClientRect?.();
+      // The panel is told how far it stands from the edge, so its own rule
+      // can keep that gap; measuring it again is what that may have changed.
       if (
         (overlay === inspector || overlay.matches?.('.route-editor')) &&
         box?.width > 0 &&
-        overlay.style?.setProperty
+        overlay.style
       ) {
         const inset = `${Math.max(0, Math.min(box.left - bounds.left, bounds.right - box.right))}px`;
         if (
@@ -124,7 +134,11 @@ export function createCameraViewport(element, map) {
     };
   }
 
-  function center(position, zoom = map.getZoom?.(), offset = centerOffset()) {
+  function center(
+    position: google.maps.LatLngLiteral,
+    zoom: number | undefined = map.getZoom?.(),
+    offset: { x: number; y: number } | null = centerOffset(),
+  ): google.maps.LatLng | google.maps.LatLngLiteral {
     const projection = map.getProjection?.();
     if (disposed || !offset || !projection || !Number.isFinite(zoom))
       return position;
@@ -132,7 +146,7 @@ export function createCameraViewport(element, map) {
       new google.maps.LatLng(position),
     );
     if (!point) return position;
-    const scale = 2 ** zoom;
+    const scale = 2 ** zoom!;
     return (
       projection.fromPointToLatLng(
         new google.maps.Point(
@@ -149,15 +163,16 @@ export function createCameraViewport(element, map) {
   refresh();
   return {
     refresh,
-    onChange(callback) {
+    onChange(callback: () => void) {
       changed = callback;
     },
     center,
     captureCenter() {
       const offset = centerOffset();
-      return (position, zoom) => center(position, zoom, offset);
+      return (position: google.maps.LatLngLiteral, zoom?: number) =>
+        center(position, zoom, offset);
     },
-    padding(base) {
+    padding(base: number) {
       if (disposed || !bounds || !region) return base;
       const gap = Math.min(base, region.width / 4, region.height / 4);
       return {

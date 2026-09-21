@@ -1,7 +1,17 @@
+import type {
+  LabelledCluster,
+  LabelledTruck,
+  MarkPoint,
+} from './truckClusters.ts';
 import { sceneMetrics as metrics } from './sceneMetrics.ts';
 import { markerProjection } from './markerProjection.ts';
 
-const offsets = Object.freeze([
+// Where a label stands relative to the mark it names, in screen pixels.
+export type LabelOffset = MarkPoint;
+// A box on the screen: its middle, then half its width and half its height.
+type Box = [number, number, number, number];
+
+const offsets: readonly LabelOffset[] = Object.freeze<LabelOffset[]>([
   [0, -metrics.truckLabelOffset],
   [0, metrics.truckLabelOffset],
   [-60, 0],
@@ -15,7 +25,7 @@ const offsets = Object.freeze([
 ]);
 
 // Conservative Arial glyph bounds, including padding and a collision gap.
-function labelWidth(text, padding) {
+function labelWidth(text: string, padding: number) {
   return [...text].reduce(
     (sum, char) => sum + metrics.truckLabelSize * (/\d/.test(char) ? 0.65 : 1),
     padding * 2 + 4,
@@ -23,20 +33,20 @@ function labelWidth(text, padding) {
 }
 
 function space() {
-  const occupied = new Map();
-  const cells = ([x, y, hw, hh]) => {
-    const keys = [];
+  const occupied = new Map<string, { box: Box; owner: unknown }[]>();
+  const cells = ([x, y, hw, hh]: Box) => {
+    const keys: string[] = [];
     for (let cx = Math.floor((x - hw) / 128); cx <= (x + hw) / 128; cx++)
       for (let cy = Math.floor((y - hh) / 128); cy <= (y + hh) / 128; cy++)
         keys.push(`${cx}:${cy}`);
     return keys;
   };
   return {
-    reserve(box, owner = null) {
+    reserve(box: Box, owner: unknown = null) {
       const taken = { box, owner };
       for (const key of cells(box)) {
         if (!occupied.has(key)) occupied.set(key, []);
-        occupied.get(key).push(taken);
+        occupied.get(key)!.push(taken);
       }
     },
     // A label sits beside the marker it names; that is where it belongs, not
@@ -44,7 +54,7 @@ function space() {
     // overlapping something, so no position ever scored clear, the choice
     // fell to whichever was tried first, and the label went under the truck
     // on a leader line and stayed there.
-    overlap(box, owner = null) {
+    overlap(box: Box, owner: unknown = null) {
       const [x, y, hw, hh] = box;
       const nearby = new Set(
         cells(box).flatMap(key => occupied.get(key) ?? []),
@@ -78,15 +88,20 @@ export function layoutMapLabels({
   clusters = [],
   zoom,
   previous = [],
+}: {
+  vehicles?: LabelledTruck[];
+  clusters?: LabelledCluster[];
+  zoom: number;
+  previous?: LabelledTruck[];
 }) {
   const project = markerProjection(zoom);
   const area = space();
   const retained = new Map(previous.map(truck => [truck.unit, truck]));
-  const points = new Map(
+  const points = new Map<LabelledTruck | LabelledCluster, [number, number]>(
     [...vehicles, ...clusters].map(item => {
       const [x, y] = project(item.position);
       const [dx, dy] = item.markerOffset ?? [0, 0];
-      return [item, [x + dx, y + dy]];
+      return [item, [x + dx, y + dy] as [number, number]];
     }),
   );
   // Markers stay where they are; only what is written beside them moves.
@@ -95,11 +110,21 @@ export function layoutMapLabels({
       [...point, metrics.truckSize / 2, metrics.truckSize / 2],
       item,
     );
-  const place = (item, text, padding, old) => {
-    const [x, y] = points.get(item);
+  const place = (
+    item: LabelledTruck,
+    text: string,
+    padding: number[],
+    old: LabelOffset | undefined,
+  ) => {
+    const [x, y] = points.get(item)!;
     const halfWidth = labelWidth(text, padding[0]) / 2;
     const halfHeight = metrics.truckLabelSize / 2 + padding[1] + 3;
-    const box = ([dx, dy]) => [x + dx, y + dy, halfWidth, halfHeight];
+    const box = ([dx, dy]: LabelOffset): Box => [
+      x + dx,
+      y + dy,
+      halfWidth,
+      halfHeight,
+    ];
     // The place above the marker is tried first, always: a label that was
     // once pushed aside must come back when the way is clear. Where it was
     // last comes second, so that a label which still cannot have its own
@@ -128,7 +153,7 @@ export function layoutMapLabels({
   );
   const selected = ordered.filter(truck => truck.selected);
   const rest = ordered.filter(truck => !truck.selected);
-  const placed = new Map();
+  const placed = new Map<LabelledTruck, LabelledTruck>();
   for (const truck of selected)
     placed.set(truck, {
       ...truck,
@@ -149,9 +174,9 @@ export function layoutMapLabels({
         retained.get(truck.unit)?.labelOffset,
       ),
     });
-  return { vehicles: vehicles.map(truck => placed.get(truck)), clusters };
+  return { vehicles: vehicles.map(truck => placed.get(truck)!), clusters };
 }
 
-export function clusterText(cluster) {
+export function clusterText(cluster: { count: number }) {
   return `${cluster.count} trucks`;
 }

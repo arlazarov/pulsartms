@@ -1,11 +1,52 @@
+import type { DeckLayer, DeckLayerFactory } from './deckLayer.ts';
 import { sceneMetrics as metrics } from './sceneMetrics.ts';
 import { currentRouteLineColor } from './routePalette.ts';
+
+// What a stretch of road is: the one being driven, the one behind, a load
+// still to come, or miles driven with nothing on board.
+export type RouteRole =
+  | 'current'
+  | 'traveled'
+  | 'future'
+  | 'deadhead'
+  | 'current-empty'
+  | 'traveled-empty';
+
+// A route line as the scene holds it: what to draw, how it should look, and
+// the layers last built for it. The cached fields are what those layers were
+// built from, so a line nothing has changed about is not built again.
+export type SceneRouteLine = {
+  id: string;
+  data: unknown;
+  strokeWeight: number;
+  routeRole: RouteRole;
+  routeColor?: readonly number[];
+  routeMuted?: boolean;
+  routeShared?: boolean;
+  routeSelected?: boolean;
+  visible?: boolean;
+  onClick?: unknown;
+  onHover?: unknown;
+  onMapClick?: unknown;
+  cachedLayer?: DeckLayer[] | null;
+  cachedData?: unknown;
+  cachedWidth?: number;
+  cachedRole?: string;
+  cachedColor?: string;
+  cachedExtensions?: unknown;
+  cachedClick?: unknown;
+  cachedHover?: unknown;
+  cachedMuted?: boolean;
+  cachedSelected?: boolean;
+  cachedShared?: boolean;
+  cachedVisible?: boolean;
+};
 
 // Empty miles are grey wherever they appear: no load is on board, and the
 // orange they used to share with a live route claimed attention they never
 // deserved.
 const emptyColor = [100, 116, 139, 235];
-const colors = {
+const colors: Record<string, readonly number[]> = {
   current: currentRouteLineColor,
   traveled: currentRouteLineColor,
   future: [145, 105, 201, 240],
@@ -24,9 +65,9 @@ const outline = [255, 255, 255, 210];
 // further off.
 
 export function routeLayers(
-  line,
-  PathLayer,
-  routeDashExtensions,
+  line: SceneRouteLine,
+  PathLayer: DeckLayerFactory,
+  routeDashExtensions: unknown,
   selectionMuted = false,
 ) {
   const empty = emptyRoles.has(line.routeRole);
@@ -86,7 +127,7 @@ export function routeLayers(
           : dashed && !line.routeSelected
             ? metrics.routeFutureOpacity
             : 1,
-    getPath: path => path,
+    getPath: (path: unknown) => path,
     widthUnits: 'pixels',
     capRounded: true,
     jointRounded: true,
@@ -111,7 +152,9 @@ export function routeLayers(
   const dash = dashed ? { extensions, dashJustified: false } : {};
   const pattern = empty ? metrics.routeDotArray : metrics.routeDashArray;
   // Dash units use half-width. Both strokes must share physical dash boundaries.
-  const outlineDash = pattern.map(value => (value * width) / outlineWidth);
+  const outlineDash = pattern.map(
+    (value: number) => (value * width) / outlineWidth,
+  );
   return (line.cachedLayer = [
     new PathLayer({
       ...shared,

@@ -1,8 +1,11 @@
-import { layoutStopMarkers } from './stopMarkerLayout.js';
+import type { StopCard } from './stopCardLayers.ts';
+import type { StopRow } from './stopMarkerLayout.ts';
+import type { LabelledTruck } from './truckClusters.ts';
+import { layoutStopMarkers } from './stopMarkerLayout.ts';
 
 // A row of stop data as the layers read it. The scene hands these straight
 // to the GPU, so a row is plain values and nothing else.
-type Row = Record<string, unknown>;
+type Row = Record<string, any>;
 
 const sameRows = (left: Row[], right: Row[], fields: string[]) =>
   left.length === right.length &&
@@ -11,13 +14,13 @@ const sameRows = (left: Row[], right: Row[], fields: string[]) =>
 // Snapshot plain stop data only when changed. Distances preserve geometry layers.
 export function snapshotStops(
   stops: Iterable<Row>,
-  previousStops: Row[] = [],
-  previousDistances: Row[] = [],
+  previousStops: StopRow[] = [],
+  previousDistances: StopCard[] = [],
   zoom: number,
-  trucks: Row[] = [],
-): { stopData: Row[]; distanceData: Row[] } {
-  const stopData: Row[] = [],
-    distanceData: Row[] = [];
+  trucks: LabelledTruck[] = [],
+): { stopData: StopRow[]; distanceData: StopCard[] } {
+  const stopData: StopRow[] = [],
+    distanceData: StopCard[] = [];
   const previousById = new Map(previousStops.map(row => [row.id, row]));
   const fields = [
     'id',
