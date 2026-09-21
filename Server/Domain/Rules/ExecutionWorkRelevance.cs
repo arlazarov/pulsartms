@@ -29,6 +29,8 @@ public static class ExecutionWorkRelevance
       return false;
     if (load.ExecutionLegId.HasValue)
       return load.ExecutionStatus is "active" or "planned";
+    if (load.Status.Equals("completed", StringComparison.OrdinalIgnoreCase))
+      return false;
     var final = load.Stops.LastOrDefault(x =>
       x.StateAfter != "No truck"
       && (

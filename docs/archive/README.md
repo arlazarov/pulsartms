@@ -10,6 +10,8 @@ started again under the current project policy.
 
 ### Reviews and implementation records
 
+- [Completed Dispatch review](2026-09/completed-dispatch-review-2026-09-21.md)
+
 - [Fuel connection recovery](2026-09/fuel-connections-2026-09-21.md)
 
 - [Company isolation release](2026-09/company-isolation-release-2026-09-21.md)

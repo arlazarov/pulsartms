@@ -10,6 +10,13 @@ PulsR-owned load without importing it first, preserves uncertain-save retry
 identity, and opens the saved workspace for assignments. All active Dispatch views
 include planned/unassigned loads. See [optional imports](dispatch-import.md).
 
+Source-assignment review keeps unfinished overdue work visible in the active
+board. It does not bypass completion or cancellation checks. Review notices
+remain on the load without returning finished work to the truck's queue.
+Conflicting actual visit order remains visible for review rather than proving
+completion. The Completed list includes recorded final deliveries even when an
+import retains a non-completed header status, unless the delivery was reopened.
+
 ## Shipment preparation
 
 The load header links to its ordinary Shipments editor. Cargo and party drafts

@@ -57,6 +57,12 @@ public class GetDispatchQueryHandler(
       query = query.Where(x =>
         x.Status == "completed"
         || x.Stops.Any(s =>
+          !x.Stops.Any(later => later.Sequence > s.Sequence)
+          && (s.Job.ToLower() == "drop off" || s.Job.ToLower() == "delivery")
+          && s.CompletionOverride != false
+          && (s.DeliveredAt != null || s.DepartedAt != null)
+        )
+        || x.Stops.Any(s =>
           s.ManualCompletedAt != null || s.CompletionOverride == true
         )
           && x.Stops.All(s =>

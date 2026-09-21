@@ -12,6 +12,49 @@ namespace Server.Tests.Dispatch;
 [Trait("Kind", "Integration")]
 public sealed class CompletedDispatchReadTests
 {
+  [Theory]
+  [InlineData("Drop Off", false, true)]
+  [InlineData("DELIVERY", false, true)]
+  [InlineData("Drop Off", true, false)]
+  [InlineData("Pick Up", false, false)]
+  public async Task SourceDeliveryAppearsInHistoryUnlessReopened(
+    string job,
+    bool reopened,
+    bool visible
+  )
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await db.Database.EnsureCreatedAsync();
+    var load = Completed(
+      new() { Id = Guid.NewGuid(), ExternalId = "delivered" },
+      1370,
+      new(2026, 9, 12)
+    );
+    load.Status = "sent";
+    var final = load.Stops.Last();
+    final.Job = job;
+    final.DeliveredAt = final.DepartedAt;
+    final.DepartedAt = null;
+    final.CompletionOverride = reopened ? false : null;
+    db.Dispatches.Add(load);
+    await db.SaveChangesAsync();
+    using var services = new PlanningTestServices(db);
+
+    var response = (
+      await new GetDispatchQueryHandler(db, services.Deadheads).Handle(
+        new(Status: "completed"),
+        default
+      )
+    ).Response!;
+
+    Assert.Equal(visible ? 1 : 0, response.TotalCount);
+    Assert.All(response.Items, item => Assert.True(item.Completed));
+  }
+
   [Fact]
   public async Task CompletedPageReturnsStopsAndSavedFinancialsWithoutProvidersOrWrites()
   {
@@ -33,6 +76,7 @@ public sealed class CompletedDispatchReadTests
     current.Price = 1000;
     var active = Completed(truck, 300, new(2026, 8, 5));
     active.Status = "assigned";
+    active.Stops.Last().DepartedAt = null;
     db.Dispatches.AddRange(previous, current, active);
     await db.SaveChangesAsync();
     using var services = new PlanningTestServices(db);

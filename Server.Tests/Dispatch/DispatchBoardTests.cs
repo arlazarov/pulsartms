@@ -17,6 +17,75 @@ using Dispatch = global::Domain.Entities.Dispatch.Dispatch;
 public class DispatchBoardTests
 {
   [Theory]
+  [InlineData("sent", true, false)]
+  [InlineData("completed", false, false)]
+  [InlineData("cancelled", false, false)]
+  [InlineData("canceled", false, false)]
+  [InlineData("sent", false, true)]
+  public async Task SourceReviewRetainsOnlyUnfinishedWork(
+    string status,
+    bool delivered,
+    bool visible
+  )
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await db.Database.EnsureCreatedAsync();
+    var date = new DateOnly(2026, 9, 21);
+    var load = new Dispatch
+    {
+      Id = Guid.NewGuid(),
+      LoadNumber = 1370,
+      Status = status,
+      DeliveryDate = date.AddDays(-9),
+      Stops =
+      [
+        new()
+        {
+          Id = Guid.NewGuid(),
+          Sequence = 1,
+          Job = "Pick Up",
+        },
+        new()
+        {
+          Id = Guid.NewGuid(),
+          Sequence = 2,
+          Job = "Drop Off",
+          DeliveredAt = delivered
+            ? date.AddDays(-9).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)
+            : null,
+        },
+      ],
+    };
+    db.DispatchSourceLinks.Add(
+      new()
+      {
+        Dispatch = load,
+        Provider = "test",
+        ExternalId = "reviewed-load",
+        ExecutionReviewReason = "Review source assignments.",
+      }
+    );
+    await db.SaveChangesAsync();
+    using var services = new PlanningTestServices(db);
+
+    var board = (
+      await services.Board.Handle(
+        new(Date: date, IncludeHos: false, IncludeEta: false),
+        default
+      )
+    ).Response!;
+
+    Assert.Equal(visible ? 1 : 0, board.Items.Sum(x => x.Dispatches.Count));
+    Assert.NotNull(
+      (await db.DispatchSourceLinks.SingleAsync()).ExecutionReviewReason
+    );
+  }
+
+  [Theory]
   [InlineData("in_transit", false)]
   [InlineData("assigned", true)]
   public async Task StartedLoadRemainsCurrentAcrossCalendarRolloverUntilActualDelivery(

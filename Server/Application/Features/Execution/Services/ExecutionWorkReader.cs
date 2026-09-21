@@ -170,6 +170,7 @@ public static partial class ExecutionWorkReader
               Name = s.Name,
               ScheduledDate = s.ScheduledDate,
               ScheduledTime = s.ScheduledTime,
+              ArrivedAt = s.ArrivedAt,
               PickedUpAt = s.PickedUpAt,
               DeliveredAt = s.DeliveredAt,
               DepartedAt = s.DepartedAt,
@@ -182,6 +183,12 @@ public static partial class ExecutionWorkReader
       .ToListAsync(cancellationToken);
     var pendingReview = sourceRows
       .Where(x => x.RequiresReview)
+      .Select(x => x.Load.Id)
+      .ToHashSet();
+    var conflictingActuals = sourceRows
+      .Where(x =>
+        x.RequiresReview && !ExecutionActualChronology.Ordered(x.Load.Stops)
+      )
       .Select(x => x.Load.Id)
       .ToHashSet();
     var loads = sourceRows.Select(x => CaptureSource(x.Load)).ToList();
@@ -219,11 +226,11 @@ public static partial class ExecutionWorkReader
     foreach (
       var snapshot in loads
         .Where(x =>
-          pendingReview.Contains(x.Work.Id)
+          conflictingActuals.Contains(x.Work.Id)
           || ExecutionWorkRelevance.IsCurrentOrUpcoming(
             x.Work,
             date,
-            includeOverdue
+            includeOverdue || pendingReview.Contains(x.Work.Id)
           )
         )
         .OrderBy(x => Order(x.Work))
