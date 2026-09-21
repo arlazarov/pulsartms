@@ -1,7 +1,7 @@
 import { popupFixture } from './popupFixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.js';
+import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.ts';
 
 test('recommendations keep rings on the scene and distances only in the selected popup', async () => {
   const points = new Map();

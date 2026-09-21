@@ -5,7 +5,7 @@ import {
   comparisonPrice,
   priceStatistics,
 } from '../../Scripts/fleetMap/stations/stationPrices.ts';
-import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.js';
+import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.ts';
 
 const date = '2026-09-09';
 const quote = (overrides = {}) => ({

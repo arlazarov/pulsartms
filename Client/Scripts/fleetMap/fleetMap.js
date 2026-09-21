@@ -3,7 +3,7 @@ import { createRouteLayer } from './routes/routeLayer.js';
 import { orderedStops } from './routes/pendingStops.ts';
 import { loadGoogleMaps } from './provider/googleMapsLoader.ts';
 import { createTruckLayer } from './trucks/truckLayer.ts';
-import { createStationLayer } from './stations/stationLayer.js';
+import { createStationLayer } from './stations/stationLayer.ts';
 import { fuelRecommendations } from './stations/fuelRecommendations.ts';
 import { yieldToBrowser } from './lifecycle/backgroundWork.ts';
 import { createNextLoadsLayer } from './routes/nextLoads.js';

@@ -30,7 +30,8 @@ const written = new Map([
   ['fleetMap/rendering/scene', 592],
   ['fleetMap/rendering/sceneLayers', 562],
   ['fleetMap/routes/routeLayer', 496],
-  ['fleetMap/stations/stationLayer', 458],
+  ['fleetMap/stations/stationLayer', 405], // 458 before its prices and its plan
+
   ['fleetMap/stations/stationPopup', 327], // 309 before its types
 ]);
 

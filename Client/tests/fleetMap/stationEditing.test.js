@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.js';
+import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.ts';
 
 const truckId = '10000000-0000-0000-0000-000000000001';
 const dispatchId = '10000000-0000-0000-0000-000000000002';
