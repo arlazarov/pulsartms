@@ -1,4 +1,4 @@
-using Application.Features.Eta.Models;
+using Domain.Models.Eta;
 
 namespace Application.Features.Eta.Interfaces;
 

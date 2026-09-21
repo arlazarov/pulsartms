@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Threading.Channels;
-using Application.Features.Eta.Models;
+using Domain.Models.Eta;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Eta.Services;

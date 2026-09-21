@@ -1,8 +1,8 @@
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
+using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 
 namespace Server.Tests.Routing;

@@ -1,4 +1,4 @@
-using Application.Features.Eta.Models;
+using Domain.Models.Eta;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Infrastructure.Integrations.Samsara;

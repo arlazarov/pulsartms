@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Application.Features.Fuel.Models;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Services.Routes;
+using Domain.Rules;
 using Infrastructure.Persistence;
 
 namespace Server.Tests.Routing;

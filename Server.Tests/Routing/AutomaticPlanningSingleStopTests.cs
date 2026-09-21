@@ -1,5 +1,5 @@
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
+using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 

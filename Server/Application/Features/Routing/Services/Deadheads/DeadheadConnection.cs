@@ -1,11 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Addresses;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Dispatch;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Routing.Services.Deadheads;

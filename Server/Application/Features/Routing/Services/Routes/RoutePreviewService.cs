@@ -2,13 +2,13 @@ using System.Text.Json;
 using Application.Caching;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Queries;
-using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Application.Features.Fleet.Services;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
+using Domain.Models.Execution;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Routing.Services.Routes;

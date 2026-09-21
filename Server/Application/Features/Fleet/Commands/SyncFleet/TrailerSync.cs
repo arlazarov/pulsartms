@@ -1,5 +1,5 @@
-using Application.Features.Fleet.Models;
 using Domain.Entities.Fleet;
+using Domain.Models.Fleet;
 
 namespace Application.Features.Fleet.Commands.SyncFleet;
 

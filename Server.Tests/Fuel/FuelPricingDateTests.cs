@@ -1,6 +1,7 @@
 using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Queries.GetFuelStations;
 using Domain.Entities.Fuel;
+using Domain.Rules;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

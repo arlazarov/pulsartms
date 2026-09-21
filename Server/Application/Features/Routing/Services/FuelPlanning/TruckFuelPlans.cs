@@ -1,13 +1,15 @@
 using Application.Caching;
-using Application.Features.Execution.Models;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Queries.GetFuelStations;
-using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
-using Application.Features.Routing.Options;
 using Application.Features.Routing.Services.Routes;
+using Domain.Models.Execution;
+using Domain.Models.Fuel;
+using Domain.Models.Routing;
+using Domain.Policies;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.Options;
 
 namespace Application.Features.Routing.Services.FuelPlanning;

@@ -1,7 +1,7 @@
 using System.Globalization;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 using Infrastructure.Integrations.TomTom;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;

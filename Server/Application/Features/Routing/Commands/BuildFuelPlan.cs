@@ -1,8 +1,8 @@
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Models;
+using Domain.Models.Routing;
 
 namespace Application.Features.Routing.Commands;
 

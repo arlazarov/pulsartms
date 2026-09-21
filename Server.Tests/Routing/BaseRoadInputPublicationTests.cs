@@ -1,6 +1,7 @@
 using Application.Features.Execution.Services;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Services.Routes;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Microsoft.EntityFrameworkCore;
 using Server.Tests.Support;
 

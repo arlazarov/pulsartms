@@ -1,6 +1,6 @@
 using Application.Features.Dispatch.Models;
-using Application.Features.Eta.Models;
 using Domain.Entities.Fleet;
+using Domain.Models.Eta;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

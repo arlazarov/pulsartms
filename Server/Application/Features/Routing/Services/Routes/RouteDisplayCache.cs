@@ -1,8 +1,9 @@
 using System.Text.Json;
 using Application.Caching;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Models;
 using Domain.Entities.Dispatch;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Routing.Services.Routes;

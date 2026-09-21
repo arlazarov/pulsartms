@@ -3,20 +3,17 @@ using System.Text;
 using System.Text.Json;
 using Application.Caching;
 using Application.Features.Dispatch.Models;
-using Application.Features.Execution.Models;
 using Application.Features.Execution.Queries;
 using Application.Features.Execution.Services;
-using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Queries.GetFleetLocations;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
-using Application.Features.Routing.Options;
 using Application.Features.Routing.Services.Addresses;
 using Application.Features.Synchronization.Options;
 using Domain.Entities.Dispatch;
-using Domain.Entities.Fleet;
+using Domain.Models.Execution;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.Options;
 using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 
@@ -51,7 +48,7 @@ public sealed partial class RoutePlanningService
       var load = PlanningWorkPolicy.Resolve(work, dispatchId, executionLegId);
       var profile = await ProfileAsync(work.TruckId, ct);
       if (
-        !await PlanningWorkPolicy.IsCurrentAsync(work, load, store, profile, ct)
+        !await PlanningCurrency.IsCurrentAsync(work, load, store, profile, ct)
       )
         return false;
       var recent = await mediator.Send(new GetFleetLocationsQuery(), ct);

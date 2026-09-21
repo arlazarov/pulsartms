@@ -1,5 +1,5 @@
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Addresses;
+using Domain.Models.Routing;
 
 namespace Application.Features.Routing.Services.Routes;
 

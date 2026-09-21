@@ -1,8 +1,8 @@
 using Application.Features.Execution.Interfaces;
 using Application.Features.Execution.Services;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.Routes;
+using Domain.Rules;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 

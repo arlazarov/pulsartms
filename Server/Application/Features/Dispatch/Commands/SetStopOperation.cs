@@ -6,6 +6,7 @@ using Application.Features.Dispatch.Services;
 using Application.Features.Routing.Background;
 using Application.Models;
 using Domain.Entities.Dispatch;
+using Domain.Rules;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Dispatch.Commands;

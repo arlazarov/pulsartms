@@ -1,5 +1,5 @@
 using System.Net;
-using Application.Features.Routing.Exceptions;
+using Domain.Rules;
 
 namespace Infrastructure.Integrations.TomTom;
 

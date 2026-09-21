@@ -4,6 +4,7 @@ using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
+using Domain.Rules.Routing;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

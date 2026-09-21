@@ -1,6 +1,6 @@
 using System.Globalization;
 using Application.Features.Fleet.Interfaces;
-using Application.Features.Fleet.Models;
+using Domain.Models.Fleet;
 using Infrastructure.Integrations.Http;
 using Microsoft.Extensions.Configuration;
 

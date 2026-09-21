@@ -1,11 +1,11 @@
 using System.Reflection;
 using API.Controllers;
 using Application.Caching;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Options;
+using Domain.Models.Routing;
+using Domain.Rules;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Data.Sqlite;

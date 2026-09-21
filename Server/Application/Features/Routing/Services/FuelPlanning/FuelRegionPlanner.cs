@@ -1,11 +1,12 @@
 using Application.Features.Eta.Interfaces;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
-using Application.Features.Routing.Options;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
+using Domain.Models.Routing;
+using Domain.Policies;
+using Domain.Rules;
+using Domain.Rules.Ports;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.Options;
 
 namespace Application.Features.Routing.Services.FuelPlanning;

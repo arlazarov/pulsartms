@@ -1,9 +1,9 @@
 using System.Text.Json.Nodes;
 using Application.Features.Fuel.Services;
 using Application.Features.Routing.Commands;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Models;
+using Domain.Models.Routing;
 using Infrastructure.Persistence;
 using MediatR;
 using Microsoft.EntityFrameworkCore;

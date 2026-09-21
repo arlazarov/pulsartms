@@ -1,5 +1,5 @@
-using Application.Features.Routing.Models;
 using Domain.Entities.Fuel;
+using Domain.Models.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 

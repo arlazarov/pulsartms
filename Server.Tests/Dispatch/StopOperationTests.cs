@@ -1,6 +1,6 @@
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Dispatch;
+using Domain.Models.Routing;
 using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Dispatch;

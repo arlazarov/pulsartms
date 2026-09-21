@@ -1,10 +1,12 @@
 using System.Text.Json;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

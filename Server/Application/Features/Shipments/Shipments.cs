@@ -1,10 +1,10 @@
 using System.Data;
 using System.Text.Json;
-using Application.Features.Execution.Models;
 using Application.Features.Shipments.Models;
 using Application.Features.Shipments.Services;
 using Application.Models;
 using Domain.Entities.Shipments;
+using Domain.Models.Execution;
 using Shipment = Application.Features.Shipments.Models.Shipment;
 using ShipmentEntity = Domain.Entities.Shipments.Shipment;
 

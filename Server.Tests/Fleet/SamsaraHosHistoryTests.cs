@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json;
-using Application.Features.Eta.Algorithms;
+using Domain.Rules.Eta;
 using Infrastructure.Integrations.Samsara;
 using Microsoft.Extensions.Logging.Abstractions;
 

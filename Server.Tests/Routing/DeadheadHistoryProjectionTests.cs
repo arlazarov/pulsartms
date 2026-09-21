@@ -1,9 +1,10 @@
 using System.Collections.Immutable;
 using System.Text.Json;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Execution;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Routing;

@@ -1,9 +1,9 @@
 using Application.Diagnostics;
-using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
 using Application.Models;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Commands;
 

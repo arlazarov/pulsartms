@@ -1,6 +1,6 @@
 using System.Data.Common;
-using Application.Features.Routing.Models;
 using Domain.Entities.Fleet;
+using Domain.Models.Routing;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

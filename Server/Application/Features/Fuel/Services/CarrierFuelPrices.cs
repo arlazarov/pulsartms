@@ -1,5 +1,6 @@
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Queries.GetFuelStations;
+using Domain.Models.Fuel;
 
 namespace Application.Features.Fuel.Services;
 

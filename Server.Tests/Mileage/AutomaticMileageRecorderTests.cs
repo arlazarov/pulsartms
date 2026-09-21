@@ -1,14 +1,16 @@
 using System.Text.Json;
-using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
 using Application.Features.Mileage.Models;
 using Application.Features.Mileage.Services;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Domain.Entities.Mileage;
+using Domain.Models.Execution;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Microsoft.EntityFrameworkCore;
 
 namespace Server.Tests.Mileage;

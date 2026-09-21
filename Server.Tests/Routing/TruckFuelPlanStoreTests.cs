@@ -1,8 +1,8 @@
 using System.Text.Json.Nodes;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.FuelPlanning;
 using Domain.Entities.Fuel;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 

@@ -1,10 +1,10 @@
 using Application.Features.Dispatch.Activity;
 using Application.Features.Dispatch.Commands.SyncDispatche;
 using Application.Features.Dispatch.Models;
-using Application.Features.Execution.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
+using Domain.Models.Execution;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Server.Tests.Support;

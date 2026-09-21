@@ -1,11 +1,12 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Application.Caching;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Options;
 using Domain.Entities.Dispatch;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.Options;
 using Xunit.Abstractions;
 

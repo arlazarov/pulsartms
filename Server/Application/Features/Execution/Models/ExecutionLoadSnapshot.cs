@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
 
-namespace Application.Features.Execution.Models;
+namespace Domain.Models.Execution;
 
 public sealed record ExecutionLoadSnapshot(
   RouteWorkSnapshot Work,

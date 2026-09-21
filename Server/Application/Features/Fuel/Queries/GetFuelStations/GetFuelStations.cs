@@ -2,6 +2,8 @@ using Application.Caching;
 using Application.Features.Fuel.Models;
 using Application.Models;
 using Domain.Entities.Fuel;
+using Domain.Models.Fuel;
+using Domain.Rules;
 
 namespace Application.Features.Fuel.Queries.GetFuelStations;
 
@@ -9,42 +11,6 @@ public record GetFuelStationsQuery(
   DateOnly? Date = null,
   bool CompareDays = false
 ) : IRequest<RequestResponse<List<FuelStationDto>>>;
-
-public record FuelStationDto(
-  Guid Id,
-  string ExternalId,
-  string Name,
-  string Address,
-  string City,
-  string Region,
-  string PostalCode,
-  string Country,
-  decimal? Latitude,
-  decimal? Longitude,
-  List<FuelDiscountDto> Discounts
-)
-{
-  public FuelDiscountDto? CashDiscount { get; init; }
-  public FuelDiscountDto? IftaDiscount { get; init; }
-  public FuelPriceComparisonDto? CashComparison { get; init; }
-  public FuelPriceComparisonDto? IftaComparison { get; init; }
-
-  // The same comparison one day back: yesterday against the day asked for.
-  public FuelPriceComparisonDto? CashPreviousComparison { get; init; }
-  public FuelPriceComparisonDto? IftaPreviousComparison { get; init; }
-}
-
-public record FuelDiscountDto(
-  string Currency,
-  string Product,
-  decimal RetailPrice,
-  decimal DiscountPrice,
-  decimal Savings,
-  DateOnly EffectiveFrom,
-  DateOnly EffectiveTo,
-  decimal? PriceAfterIfta,
-  string Unit = ""
-);
 
 public class GetFuelStationsHandler(
   IAppDbContext dbContext,

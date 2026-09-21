@@ -7,6 +7,7 @@ using Application.Features.Routing.Background;
 using Application.Features.Routing.Services.Routes;
 using Application.Models;
 using Domain.Entities.Dispatch;
+using Domain.Rules;
 
 namespace Application.Features.Dispatch.Commands;
 

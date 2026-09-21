@@ -18,7 +18,6 @@ public sealed class ModuleDependencyTests
   [
     "Border -> Shipments",
     "Dispatch -> Eta",
-    "Dispatch -> Execution",
     "Dispatch -> Fleet",
     "Dispatch -> Routing",
     "Eta -> Dispatch",

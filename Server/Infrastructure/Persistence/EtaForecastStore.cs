@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Application.Features.Eta.Interfaces;
-using Application.Features.Eta.Models;
 using Domain.Entities.Dispatch;
+using Domain.Models.Eta;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence;

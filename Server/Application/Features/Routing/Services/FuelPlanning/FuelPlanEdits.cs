@@ -1,8 +1,9 @@
 using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Queries.GetFuelStations;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
+using Domain.Models.Fuel;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 

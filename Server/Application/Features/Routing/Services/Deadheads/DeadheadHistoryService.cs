@@ -3,11 +3,12 @@ using System.Diagnostics;
 using Application.Diagnostics;
 using Application.Features.Execution.Interfaces;
 using Application.Features.Execution.Queries;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
 using Application.Reference;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Routing.Services.Deadheads;

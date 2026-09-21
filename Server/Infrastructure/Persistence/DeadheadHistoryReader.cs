@@ -1,8 +1,8 @@
 using System.Collections.Immutable;
 using System.Linq.Expressions;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Domain.Entities.Dispatch;
+using Domain.Models.Routing;
 using Microsoft.EntityFrameworkCore;
 using Load = Domain.Entities.Dispatch.Dispatch;
 

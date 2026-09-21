@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
+using Domain.Rules;
 
 namespace Application.Features.Routing.Services.Routes;
 

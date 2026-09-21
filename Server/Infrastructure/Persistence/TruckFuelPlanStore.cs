@@ -2,8 +2,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Domain.Entities.Fuel;
+using Domain.Models.Routing;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence;

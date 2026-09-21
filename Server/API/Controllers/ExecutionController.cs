@@ -1,6 +1,6 @@
 using Application.Features.Execution.Commands;
-using Application.Features.Execution.Models;
 using Application.Features.Execution.Queries;
+using Domain.Models.Execution;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

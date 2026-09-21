@@ -1,7 +1,7 @@
 using Application.Features.Fleet.Interfaces;
-using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Domain.Entities.Fleet;
+using Domain.Models.Fleet;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

@@ -1,7 +1,7 @@
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
 
 namespace API.Serialization;
 

@@ -1,7 +1,7 @@
 using Domain.Entities.Dispatch;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 
-namespace Application.Features.Execution.Models;
+namespace Domain.Models.Execution;
 
 public static class SwitchPlanningRules
 {

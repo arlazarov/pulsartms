@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Models;
-using Domain.Entities;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

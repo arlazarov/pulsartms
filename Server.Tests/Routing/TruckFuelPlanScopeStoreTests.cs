@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Application.Features.Routing.Models;
 using Domain.Entities.Fuel;
+using Domain.Models.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 

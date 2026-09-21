@@ -1,10 +1,10 @@
 using Application.Features.Eta.Interfaces;
-using Application.Features.Eta.Models;
 using Application.Features.Eta.Services;
 using Application.Features.Fleet.Interfaces;
-using Application.Features.Fleet.Models;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
+using Domain.Models.Eta;
+using Domain.Models.Fleet;
+using Domain.Models.Routing;
+using Domain.Rules;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 

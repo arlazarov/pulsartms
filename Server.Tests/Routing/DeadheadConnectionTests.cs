@@ -1,7 +1,7 @@
 using Application.Features.Dispatch.Models;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Deadheads;
 using Domain.Entities.Dispatch;
+using Domain.Models.Routing;
 
 namespace Server.Tests.Routing;
 

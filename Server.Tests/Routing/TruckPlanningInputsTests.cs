@@ -1,7 +1,7 @@
-using Application.Features.Execution.Models;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
+using Domain.Models.Execution;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 

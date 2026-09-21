@@ -1,4 +1,4 @@
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;

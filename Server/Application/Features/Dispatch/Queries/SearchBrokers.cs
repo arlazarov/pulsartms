@@ -1,8 +1,8 @@
 using Application.Features.Dispatch.Commands.SyncDispatche;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Services;
-using Application.Features.Execution.Models;
 using Application.Models;
+using Domain.Models.Execution;
 
 namespace Application.Features.Dispatch.Queries;
 

@@ -1,7 +1,7 @@
 using Application.Features.Fleet.Interfaces;
-using Application.Features.Fleet.Models;
 using Application.Interfaces;
 using Domain.Entities.Fleet;
+using Domain.Models.Fleet;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence;

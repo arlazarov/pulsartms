@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Application.Features.Eta.Interfaces;
-using Application.Features.Eta.Models;
+using Domain.Models.Eta;
 using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Integrations.Samsara;

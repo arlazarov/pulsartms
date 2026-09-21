@@ -3,6 +3,7 @@ using Application.Features.Dispatch.Models;
 using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
 using Domain.Entities;
+using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 
 namespace Server.Tests.Routing;

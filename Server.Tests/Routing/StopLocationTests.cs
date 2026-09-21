@@ -1,9 +1,9 @@
 using Application.Features.Dispatch.Models;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Addresses;
 using Domain.Entities.Dispatch;
+using Domain.Models.Routing;
 
 namespace Server.Tests.Routing;
 

@@ -1,8 +1,8 @@
 using System.Reflection;
 using Application.Features.Dispatch.Models;
-using Application.Features.Routing.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
+using Domain.Models.Routing;
 using StopEntity = Domain.Entities.Dispatch.DispatchStop;
 
 namespace Server.Tests.Dispatch;

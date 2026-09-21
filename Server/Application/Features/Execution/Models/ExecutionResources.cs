@@ -1,4 +1,4 @@
-namespace Application.Features.Execution.Models;
+namespace Domain.Models.Execution;
 
 internal static class ExecutionResources
 {

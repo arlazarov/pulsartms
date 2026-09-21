@@ -1,4 +1,5 @@
 using Application.Features.Fuel.Queries.GetFuelStations;
+using Domain.Models.Fuel;
 
 namespace Server.Tests.Fuel;
 

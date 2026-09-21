@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using Application.Features.Dispatch.Models;
-using Application.Features.Execution.Models;
 using Application.Features.Routing.Services.FuelPlanning;
+using Domain.Models.Execution;
 
 namespace Server.Tests.Support;
 

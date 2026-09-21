@@ -1,9 +1,9 @@
-using Application.Features.Execution.Models;
-using Application.Features.Fleet.Models;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
 using Domain.Entities.Dispatch;
+using Domain.Models.Execution;
+using Domain.Models.Fleet;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Services.Routes;
 
@@ -27,7 +27,7 @@ public sealed partial class RouteChoiceService
   )
   {
     if (
-      !await PlanningWorkPolicy.IsCurrentAsync(work, load, plans, profile, ct)
+      !await PlanningCurrency.IsCurrentAsync(work, load, plans, profile, ct)
       || !Fresh(await planning.LocationAsync(load.TruckId!.Value, ct))
     )
       return false;
@@ -56,9 +56,7 @@ public sealed partial class RouteChoiceService
     CancellationToken ct
   )
   {
-    if (
-      !await PlanningWorkPolicy.IsCurrentAsync(work, load, plans, profile, ct)
-    )
+    if (!await PlanningCurrency.IsCurrentAsync(work, load, plans, profile, ct))
       return null;
     var entity = await plans.ReadAsync(load.Id, ct, load.ExecutionLegId);
     var old = entity is null ? null : SavedRouteReader.Plan(entity.PlanJson);
@@ -166,9 +164,7 @@ public sealed partial class RouteChoiceService
   )
   {
     var context = draft.Current!;
-    if (
-      !await PlanningWorkPolicy.IsCurrentAsync(work, load, plans, profile, ct)
-    )
+    if (!await PlanningCurrency.IsCurrentAsync(work, load, plans, profile, ct))
       throw new RoutePlanningException(
         "The current load changed. Calculate the preview again."
       );

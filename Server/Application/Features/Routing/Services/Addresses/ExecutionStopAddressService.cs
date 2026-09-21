@@ -1,10 +1,10 @@
 using System.Data;
 using Application.Caching;
-using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Background;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
+using Domain.Models.Execution;
+using Domain.Rules;
 
 namespace Application.Features.Routing.Services.Addresses;
 

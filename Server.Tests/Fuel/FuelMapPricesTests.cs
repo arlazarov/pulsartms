@@ -1,5 +1,6 @@
 using Application.Features.Fuel.Queries.GetFuelStations;
 using Application.Models;
+using Domain.Models.Fuel;
 using MediatR;
 
 namespace Server.Tests.Fuel;

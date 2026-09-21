@@ -2,13 +2,13 @@ using System.Text.Json;
 using Application.Caching;
 using Application.Concurrency;
 using Application.Features.Execution.Services;
-using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Background;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Addresses;
 using Domain.Entities.Dispatch;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Routing.Services.Routes;
@@ -259,13 +259,7 @@ public sealed partial class RouteChoiceService(
       if (
         draft.Current is null
         && (load.Status == "in_transit" || load.Stops.Any(s => s.IsCompleted))
-        && await PlanningWorkPolicy.IsCurrentAsync(
-          work,
-          load,
-          plans,
-          profile,
-          ct
-        )
+        && await PlanningCurrency.IsCurrentAsync(work, load, plans, profile, ct)
       )
         throw new RoutePlanningException(
           "This load has started. Calculate its remaining route again."

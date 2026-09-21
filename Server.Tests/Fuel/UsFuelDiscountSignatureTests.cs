@@ -1,5 +1,6 @@
 using Application.Features.Fuel.Queries.GetFuelStations;
-using Application.Features.Routing.Algorithms;
+using Domain.Models.Fuel;
+using Domain.Rules.Routing;
 
 namespace Server.Tests.Fuel;
 

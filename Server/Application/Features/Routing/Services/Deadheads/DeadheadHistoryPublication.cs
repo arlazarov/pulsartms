@@ -1,6 +1,6 @@
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
+using Domain.Rules;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Application.Features.Routing.Services.Deadheads;

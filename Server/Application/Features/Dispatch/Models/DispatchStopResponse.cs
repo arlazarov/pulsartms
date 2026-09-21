@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
+using Domain.Rules;
 
 namespace Application.Features.Dispatch.Models;
 

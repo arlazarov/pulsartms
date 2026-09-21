@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using Application.Diagnostics;
 using Application.Features.Fleet.Interfaces;
-using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Services;
 using Application.Features.Synchronization.Interfaces;
 using Application.Features.Synchronization.Options;
+using Domain.Models.Fleet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

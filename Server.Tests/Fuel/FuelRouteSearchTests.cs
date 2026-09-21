@@ -1,7 +1,7 @@
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
-using Application.Features.Routing.Options;
+using Domain.Models.Routing;
+using Domain.Policies;
+using Domain.Rules;
+using Domain.Rules.Routing;
 
 namespace Server.Tests.Fuel;
 

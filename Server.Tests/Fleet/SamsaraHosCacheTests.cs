@@ -1,4 +1,4 @@
-using Application.Features.Eta.Models;
+using Domain.Models.Eta;
 using Infrastructure.Integrations.Samsara;
 
 namespace Server.Tests.Fleet;

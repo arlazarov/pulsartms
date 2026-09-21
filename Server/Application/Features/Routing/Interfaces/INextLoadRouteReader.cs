@@ -1,4 +1,4 @@
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Routing.Interfaces;

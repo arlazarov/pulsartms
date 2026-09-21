@@ -1,6 +1,6 @@
-using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Application.Models;
+using Domain.Models.Fleet;
 using MediatR;
 
 namespace Server.Tests.Support;

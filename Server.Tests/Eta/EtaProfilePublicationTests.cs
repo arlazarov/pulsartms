@@ -1,8 +1,8 @@
 using System.Text.Json;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Dispatch;
+using Domain.Models.Routing;
+using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 using Server.Tests.Support;
 

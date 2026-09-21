@@ -1,5 +1,5 @@
-using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Services;
+using Domain.Models.Fleet;
 
 namespace Server.Tests.Fleet;
 

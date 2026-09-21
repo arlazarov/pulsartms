@@ -3,15 +3,15 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Application.Diagnostics;
 using Application.Features.Execution.Queries;
-using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
 using Application.Models;
+using Domain.Models.Routing;
 using Domain.Rules;
+using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Queries;
 

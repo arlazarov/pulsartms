@@ -1,6 +1,6 @@
 using Application.Caching;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Routing.Services.FuelPlanning;

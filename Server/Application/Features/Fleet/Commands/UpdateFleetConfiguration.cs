@@ -1,10 +1,10 @@
 using System.Data;
 using Application.Caching;
-using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Application.Features.Fleet.Services;
 using Application.Models;
 using Domain.Entities.Fleet;
+using Domain.Models.Fleet;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Fleet.Commands;

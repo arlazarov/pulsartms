@@ -1,7 +1,7 @@
 using Application.Behaviors;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Queries;
 using Application.Models;
+using Domain.Models.Routing;
 using Microsoft.Extensions.Logging;
 
 namespace Server.Tests.Routing;

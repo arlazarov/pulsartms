@@ -2,7 +2,7 @@ using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 
-namespace Application.Features.Execution.Models;
+namespace Domain.Models.Execution;
 
 public sealed record ExecutionSourceTopology(
   IReadOnlyDictionary<Guid, List<DispatchStop>> Stops,

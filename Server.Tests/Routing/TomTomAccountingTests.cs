@@ -1,6 +1,6 @@
 using System.Net;
-using Application.Features.Routing.Exceptions;
 using Domain.Entities.Dispatch;
+using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 using Server.Tests.Support;
 

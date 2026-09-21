@@ -1,5 +1,3 @@
-using Application.Features.Fleet.Models;
-
 namespace Application.Features.Synchronization.Models;
 
 public sealed class SyncJobState

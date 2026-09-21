@@ -1,7 +1,7 @@
 using Application.Features.Dispatch.Models;
-using Application.Features.Execution.Models;
 using Application.Features.Routing.Interfaces;
 using Application.Models;
+using Domain.Models.Execution;
 
 namespace Application.Features.Dispatch.Commands;
 

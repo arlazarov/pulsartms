@@ -1,6 +1,6 @@
 using System.Text.Json;
-using Application.Features.Fleet.Models;
 using Application.Features.Synchronization.Models;
+using Domain.Models.Fleet;
 
 namespace Server.Tests.Synchronization;
 

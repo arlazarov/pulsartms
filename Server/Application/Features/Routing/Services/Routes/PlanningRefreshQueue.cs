@@ -3,8 +3,9 @@ using System.Text;
 using System.Text.Json;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Synchronization.Options;
+using Domain.Models.Routing;
+using Domain.Rules;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 

@@ -1,6 +1,6 @@
 using Application.Features.Fleet.Interfaces;
-using Application.Features.Fleet.Models;
 using Application.Models;
+using Domain.Models.Fleet;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Fleet.Queries.GetFleetLocations;

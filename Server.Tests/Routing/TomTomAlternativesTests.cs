@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text.Json;
-using Application.Features.Routing.Exceptions;
+using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 using Server.Tests.Support;
 

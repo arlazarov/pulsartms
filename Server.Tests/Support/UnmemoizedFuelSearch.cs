@@ -1,6 +1,6 @@
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 
 namespace Server.Tests.Support;
 

@@ -4,12 +4,13 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Application.Diagnostics;
 using Application.Features.Execution.Interfaces;
-using Application.Features.Execution.Models;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
 using Application.Reference;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
+using Domain.Models.Execution;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 
 namespace Application.Features.Execution.Services;
 

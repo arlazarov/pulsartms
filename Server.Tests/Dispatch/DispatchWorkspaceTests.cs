@@ -2,13 +2,13 @@ using Application.Features.Dispatch.Commands;
 using Application.Features.Dispatch.Commands.SyncDispatche;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Services;
-using Application.Features.Execution.Models;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Interfaces;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
+using Domain.Models.Execution;
+using Domain.Models.Routing;
 using Microsoft.EntityFrameworkCore;
 
 namespace Server.Tests.Dispatch;

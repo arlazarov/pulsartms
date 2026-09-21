@@ -1,7 +1,7 @@
-using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Queries;
 using Application.Features.Fleet.Services;
 using Domain.Entities.Fleet;
+using Domain.Models.Fleet;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

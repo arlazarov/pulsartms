@@ -1,5 +1,5 @@
-using Application.Features.Execution.Models;
 using Application.Models;
+using Domain.Models.Execution;
 
 namespace Application.Features.Dispatch.Documents;
 

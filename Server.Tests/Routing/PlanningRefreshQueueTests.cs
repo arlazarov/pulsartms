@@ -1,5 +1,5 @@
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
+using Domain.Models.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;

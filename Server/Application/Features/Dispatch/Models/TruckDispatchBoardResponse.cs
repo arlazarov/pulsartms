@@ -1,5 +1,5 @@
-using Application.Features.Eta.Models;
-using Application.Features.Fleet.Models;
+using Domain.Models.Eta;
+using Domain.Models.Fleet;
 
 namespace Application.Features.Dispatch.Models;
 

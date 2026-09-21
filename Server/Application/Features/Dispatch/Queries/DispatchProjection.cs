@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using Application.Features.Dispatch.Models;
-using Application.Features.Execution.Models;
 using Domain.Entities.Dispatch;
+using Domain.Models.Execution;
 using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Dispatch.Queries;

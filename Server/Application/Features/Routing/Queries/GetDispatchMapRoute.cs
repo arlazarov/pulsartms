@@ -1,10 +1,10 @@
-using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Background;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
 using Application.Models;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Queries;
 

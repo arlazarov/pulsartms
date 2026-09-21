@@ -5,11 +5,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Application.Diagnostics;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Interfaces;
 using Domain.Entities.Dispatch;
+using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 

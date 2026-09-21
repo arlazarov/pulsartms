@@ -1,7 +1,9 @@
 using System.Globalization;
 using Application.Features.Fuel.Queries.GetFuelStations;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Models;
+using Domain.Models.Fuel;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 
 namespace Server.Tests.Fuel;
 

@@ -1,7 +1,7 @@
 using Application.Features.Routing.Commands;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
 using Application.Models;
+using Domain.Rules;
 
 namespace Application.Behaviors;
 

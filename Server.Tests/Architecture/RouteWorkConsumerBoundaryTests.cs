@@ -3,12 +3,13 @@ using System.Reflection;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Services;
 using Application.Features.Eta.Services;
-using Application.Features.Execution.Models;
 using Application.Features.Execution.Queries;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
+using Domain.Models.Execution;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 
 namespace Server.Tests.Architecture;
 

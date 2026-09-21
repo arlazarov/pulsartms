@@ -18,7 +18,6 @@ using Application.Features.Integrations.Services;
 using Application.Features.Mileage.Background;
 using Application.Features.Mileage.Interfaces;
 using Application.Features.Mileage.Services;
-using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services;
@@ -29,6 +28,8 @@ using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Interfaces;
 using Application.Features.Synchronization.Services;
 using Application.Reference;
+using Domain.Rules.Ports;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;

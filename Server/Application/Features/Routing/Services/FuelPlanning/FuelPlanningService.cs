@@ -5,12 +5,13 @@ using Application.Features.Eta.Interfaces;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Queries.GetFuelStations;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
-using Application.Features.Routing.Options;
 using Application.Features.Routing.Services.Routes;
+using Domain.Models.Routing;
+using Domain.Policies;
+using Domain.Rules;
+using Domain.Rules.Ports;
+using Domain.Rules.Routing;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 

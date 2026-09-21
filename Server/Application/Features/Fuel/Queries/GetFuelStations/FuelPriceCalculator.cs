@@ -1,4 +1,5 @@
 using Domain.Entities.Fuel;
+using Domain.Models.Fuel;
 
 namespace Application.Features.Fuel.Queries.GetFuelStations;
 

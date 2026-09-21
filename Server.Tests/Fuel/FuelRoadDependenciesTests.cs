@@ -1,4 +1,4 @@
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
 
 namespace Server.Tests.Fuel;
 

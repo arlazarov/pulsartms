@@ -1,4 +1,4 @@
-using Application.Features.Eta.Algorithms;
+using Domain.Rules.Eta;
 using Server.Tests.Support;
 
 namespace Server.Tests.Eta;

@@ -1,12 +1,12 @@
 using Application.Features.Eta.Interfaces;
-using Application.Features.Eta.Models;
-using Application.Features.Eta.Options;
 using Application.Features.Eta.Services;
 using Application.Features.Fleet.Interfaces;
-using Application.Features.Fleet.Models;
-using Application.Features.Routing.Models;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
+using Domain.Models.Eta;
+using Domain.Models.Fleet;
+using Domain.Models.Routing;
+using Domain.Policies;
 using Infrastructure.Integrations.GeoTimeZone;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;

@@ -1,8 +1,7 @@
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
+using Domain.Models.Routing;
+using Domain.Rules;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 

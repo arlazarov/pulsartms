@@ -1,7 +1,7 @@
 using Application.Features.Fleet.Interfaces;
-using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Application.Features.Synchronization.Options;
+using Domain.Models.Fleet;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 

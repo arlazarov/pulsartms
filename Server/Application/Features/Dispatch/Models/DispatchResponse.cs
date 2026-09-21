@@ -1,5 +1,5 @@
-using Application.Features.Eta.Models;
 using Domain.Entities.Execution;
+using Domain.Models.Eta;
 using Domain.Rules;
 
 namespace Application.Features.Dispatch.Models;

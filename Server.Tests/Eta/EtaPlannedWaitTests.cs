@@ -1,5 +1,5 @@
-using Application.Features.Eta.Algorithms;
-using Application.Features.Fleet.Models;
+using Domain.Models.Fleet;
+using Domain.Rules.Eta;
 using Server.Tests.Support;
 
 namespace Server.Tests.Eta;

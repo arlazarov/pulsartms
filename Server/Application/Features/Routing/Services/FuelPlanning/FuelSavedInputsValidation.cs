@@ -1,7 +1,7 @@
 using Application.Features.Execution.Interfaces;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Deadheads;
+using Domain.Models.Routing;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 

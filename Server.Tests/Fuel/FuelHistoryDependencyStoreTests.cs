@@ -1,7 +1,8 @@
 using System.Collections.Immutable;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 using Infrastructure.Persistence;
 using Server.Tests.Support;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;

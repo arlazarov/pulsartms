@@ -1,9 +1,10 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Application.Features.Execution.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Background;
 

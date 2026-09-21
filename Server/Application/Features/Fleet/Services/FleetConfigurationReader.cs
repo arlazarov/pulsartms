@@ -1,5 +1,5 @@
-using Application.Features.Fleet.Models;
 using Domain.Entities.Fleet;
+using Domain.Models.Fleet;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Fleet.Services;

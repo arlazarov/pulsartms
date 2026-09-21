@@ -1,8 +1,8 @@
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
-using Application.Features.Routing.Options;
 using Domain.Entities.Dispatch;
+using Domain.Models.Routing;
+using Domain.Policies;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.Options;
 
 namespace Application.Features.Routing.Services.Routes;

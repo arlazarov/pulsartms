@@ -1,15 +1,15 @@
 using Application.Features.Dispatch.Models;
-using Application.Features.Execution.Models;
 using Application.Features.Execution.Queries;
 using Application.Features.Execution.Services;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Reference;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Domain.Entities.Fuel;
+using Domain.Models.Execution;
+using Domain.Models.Routing;
+using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 using Server.Tests.Support;
 

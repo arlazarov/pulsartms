@@ -1,8 +1,8 @@
 using Application.Caching;
 using Application.Features.Fleet.Interfaces;
-using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Queries;
 using Application.Features.Synchronization.Options;
+using Domain.Models.Fleet;
 using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Fleet;

@@ -1,6 +1,6 @@
 using Application.Features.Fleet.Commands;
-using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Queries;
+using Domain.Models.Fleet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

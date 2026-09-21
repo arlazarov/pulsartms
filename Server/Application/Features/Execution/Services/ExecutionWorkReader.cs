@@ -1,9 +1,9 @@
 using System.Collections.Immutable;
-using Application.Features.Execution.Models;
 using Application.Features.Execution.Queries;
-using Application.Features.Routing.Models;
 using Application.Reference;
 using Domain.Entities.Dispatch;
+using Domain.Models.Execution;
+using Domain.Models.Routing;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Execution.Services;

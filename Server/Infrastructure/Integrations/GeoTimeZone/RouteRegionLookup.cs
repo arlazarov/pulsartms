@@ -1,5 +1,6 @@
 using Application.Features.Eta.Interfaces;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
+using Domain.Rules.Ports;
 using GeoTimeZone;
 
 namespace Infrastructure.Integrations.GeoTimeZone;

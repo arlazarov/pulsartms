@@ -3,6 +3,7 @@ using Application.Features.Dispatch.Queries;
 using Application.Features.Eta.Services;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
+using Domain.Rules.Routing;
 using static Server.Tests.Support.RepositoryFiles;
 
 namespace Server.Tests.Architecture;
@@ -27,7 +28,12 @@ public class LayerBoundaryTests
     {
       var path = Path.Combine(
         Root(),
-        $"Server/Application/Features/Execution/Models/{name}.cs"
+        Directory.Exists(Path.Combine(Root(), "Server/Domain/Models/Execution"))
+        && File.Exists(
+          Path.Combine(Root(), $"Server/Domain/Models/Execution/{name}.cs")
+        )
+          ? $"Server/Domain/Models/Execution/{name}.cs"
+          : $"Server/Application/Features/Execution/Models/{name}.cs"
       );
       Assert.DoesNotMatch(
         @"\bDispatchResponse\b|\bTruckDispatchBoardResponse\b|Application\.Features\.Dispatch",
@@ -218,7 +224,10 @@ public class LayerBoundaryTests
     foreach (var file in Sources(Path.Combine(root, "Server/API"), "*.cs"))
     {
       var source = File.ReadAllText(file);
-      Assert.DoesNotMatch(@"\bDomain\.", source);
+      // The web layer may name the vocabulary - the models and policies the
+      // whole server speaks in - but never a stored entity: what the
+      // database holds is not what a controller answers with.
+      Assert.DoesNotMatch(@"\bDomain\.Entities\b", source);
       if (Path.GetFileName(file) != "DependencyInjection.cs")
         Assert.DoesNotMatch(@"\bInfrastructure(?:\.|;)", source);
       Assert.DoesNotMatch(

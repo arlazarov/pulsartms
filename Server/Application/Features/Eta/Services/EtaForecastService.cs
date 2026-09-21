@@ -2,10 +2,11 @@ using System.Diagnostics;
 using Application.Diagnostics;
 using Application.Features.Dispatch.Models;
 using Application.Features.Eta.Interfaces;
-using Application.Features.Eta.Models;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
+using Domain.Models.Eta;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Eta.Services;

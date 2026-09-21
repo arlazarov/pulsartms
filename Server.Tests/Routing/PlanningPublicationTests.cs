@@ -1,9 +1,9 @@
 using System.Data;
 using Application.Features.Execution.Services;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Services.Routes;
 using Application.Reference;
 using Domain.Entities.Fleet;
+using Domain.Rules;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

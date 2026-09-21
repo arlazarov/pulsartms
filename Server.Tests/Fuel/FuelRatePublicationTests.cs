@@ -1,5 +1,5 @@
 using Application.Features.Fuel.Models;
-using Application.Features.Routing.Exceptions;
+using Domain.Rules;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

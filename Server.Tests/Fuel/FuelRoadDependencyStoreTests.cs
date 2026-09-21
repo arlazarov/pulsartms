@@ -1,5 +1,5 @@
 using System.Collections.Immutable;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
 using Infrastructure.Persistence;
 using Server.Tests.Support;
 

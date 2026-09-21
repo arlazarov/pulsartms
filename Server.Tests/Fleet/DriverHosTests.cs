@@ -1,11 +1,11 @@
 using System.Net;
 using Application.Features.Fleet.Background;
 using Application.Features.Fleet.Interfaces;
-using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Services;
 using Application.Features.Synchronization.Interfaces;
 using Application.Features.Synchronization.Models;
 using Application.Features.Synchronization.Options;
+using Domain.Models.Fleet;
 using Infrastructure.Integrations.Samsara;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;

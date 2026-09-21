@@ -1,8 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Domain.Entities.Dispatch;
+using Domain.Models.Routing;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence;

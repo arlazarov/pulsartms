@@ -1,12 +1,12 @@
 using Application.Features.Dispatch.Queries;
 using Application.Features.Eta.Services;
-using Application.Features.Execution.Models;
-using Application.Features.Fleet.Models;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Synchronization.Options;
+using Domain.Models.Execution;
+using Domain.Models.Fleet;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.Options;
 
 namespace Application.Features.Routing.Services.Routes;

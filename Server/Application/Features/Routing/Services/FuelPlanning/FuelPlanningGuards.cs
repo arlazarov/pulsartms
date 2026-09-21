@@ -1,5 +1,5 @@
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
+using Domain.Rules;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 

@@ -1,8 +1,8 @@
 using System.Text.Json;
 using API.Serialization;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 using Microsoft.AspNetCore.Http;
 
 namespace Server.Tests.Routing;

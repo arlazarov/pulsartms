@@ -1,8 +1,8 @@
 using System.Threading.Channels;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Commands;
-using Application.Features.Routing.Models;
 using Application.Models;
+using Domain.Models.Routing;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

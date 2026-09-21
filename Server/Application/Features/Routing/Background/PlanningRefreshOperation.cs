@@ -1,8 +1,8 @@
 using Application.Diagnostics;
 using Application.Features.Routing.Commands;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Synchronization.Options;
+using Domain.Models.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

@@ -1,9 +1,9 @@
 using System.Text.Json;
-using Application.Features.Eta.Models;
 using Application.Features.Eta.Services;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Models;
 using Domain.Entities.Execution;
+using Domain.Models.Eta;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 using Microsoft.EntityFrameworkCore;
 using Server.Tests.Support;
 

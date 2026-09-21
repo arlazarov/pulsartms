@@ -1,6 +1,6 @@
 using Domain.Entities.Execution;
 
-namespace Application.Features.Execution.Models;
+namespace Domain.Models.Execution;
 
 internal static class CompletedSwitchBootstrap
 {

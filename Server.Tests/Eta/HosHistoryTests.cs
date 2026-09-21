@@ -1,6 +1,6 @@
-using Application.Features.Eta.Algorithms;
-using Application.Features.Eta.Models;
-using Application.Features.Fleet.Models;
+using Domain.Models.Eta;
+using Domain.Models.Fleet;
+using Domain.Rules.Eta;
 using Infrastructure.Integrations.Samsara;
 
 namespace Server.Tests.Eta;

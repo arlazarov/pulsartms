@@ -7,6 +7,7 @@ using Application.Features.Routing.Background;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Entities.Dispatch;
+using Domain.Rules;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

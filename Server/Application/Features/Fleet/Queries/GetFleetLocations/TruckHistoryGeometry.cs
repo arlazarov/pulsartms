@@ -1,6 +1,6 @@
-using Application.Features.Fleet.Models;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Models;
+using Domain.Models.Fleet;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 
 namespace Application.Features.Fleet.Queries.GetFleetLocations;
 

@@ -1,8 +1,8 @@
 using Application.Features.Dispatch.Models;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.FuelPlanning;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 
 namespace Server.Tests.Fuel;
 

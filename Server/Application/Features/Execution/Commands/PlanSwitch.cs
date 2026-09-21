@@ -1,12 +1,12 @@
 using System.Data;
 using Application.Caching;
 using Application.Concurrency;
-using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Background;
 using Application.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
+using Domain.Models.Execution;
 using Microsoft.Extensions.Logging;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 

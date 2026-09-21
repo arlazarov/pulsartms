@@ -1,8 +1,8 @@
 using Application.Features.Dispatch.Models;
-using Application.Features.Execution.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
+using Domain.Models.Execution;
 using Microsoft.EntityFrameworkCore;
 using Server.Tests.Support;
 

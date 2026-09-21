@@ -1,10 +1,11 @@
 using System.Text.Json;
 using Application.Features.Dispatch.Models;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Dispatch;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Routing.Services.Addresses;

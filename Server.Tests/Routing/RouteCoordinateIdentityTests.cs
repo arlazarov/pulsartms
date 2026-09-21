@@ -1,6 +1,6 @@
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
 using Application.Models;
+using Domain.Models.Routing;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Routing;

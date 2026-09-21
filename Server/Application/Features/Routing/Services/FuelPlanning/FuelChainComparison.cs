@@ -1,7 +1,8 @@
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
+using Application.Diagnostics;
+using Domain.Models.Routing;
 using Domain.Rules;
+using Domain.Rules;
+using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 
@@ -90,7 +91,8 @@ public static class FuelChainComparison
       List<FuelCandidate> purchases;
       try
       {
-        (fuel, purchases) = optimization.Take(ordered);
+        using (PerformanceStages.Start("fuel", "optimizer"))
+          (fuel, purchases) = optimization.Take(ordered);
       }
       catch (RoutePlanningException)
       {

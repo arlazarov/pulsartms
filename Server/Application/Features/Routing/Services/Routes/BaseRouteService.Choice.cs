@@ -1,7 +1,7 @@
 using System.Text.Json;
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Routing.Services.Routes;

@@ -1,6 +1,6 @@
 using System.Data;
-using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Interfaces;
+using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;

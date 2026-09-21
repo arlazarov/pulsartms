@@ -1,4 +1,4 @@
-using Application.Features.Routing.Algorithms;
+using Domain.Rules.Routing;
 using Server.Tests.Support;
 using Xunit.Abstractions;
 

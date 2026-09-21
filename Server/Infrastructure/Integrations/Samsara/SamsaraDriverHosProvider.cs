@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Application.Features.Fleet.Interfaces;
-using Application.Features.Fleet.Models;
+using Domain.Models.Fleet;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 

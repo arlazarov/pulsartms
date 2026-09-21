@@ -1,8 +1,9 @@
 using System.Text.Json;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Routes;
 using Application.Models;
+using Domain.Models.Routing;
+using Domain.Rules;
 
 namespace Application.Features.Routing.Queries;
 

@@ -1,5 +1,5 @@
-using Application.Features.Routing.Algorithms;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 
 namespace Server.Tests.Fuel;
 

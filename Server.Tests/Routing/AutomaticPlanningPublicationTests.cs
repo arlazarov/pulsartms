@@ -1,5 +1,5 @@
-using Application.Features.Routing.Exceptions;
 using Domain.Entities.Dispatch;
+using Domain.Rules;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Server.Tests.Support;

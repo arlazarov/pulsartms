@@ -1,7 +1,8 @@
-using Application.Features.Eta.Algorithms;
 using Application.Features.Eta.Interfaces;
 using Application.Features.Eta.Services;
-using Application.Features.Routing.Models;
+using Domain.Models.Routing;
+using Domain.Rules.Eta;
+using Domain.Rules.Ports;
 
 namespace Server.Tests.Eta;
 

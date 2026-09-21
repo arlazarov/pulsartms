@@ -1,4 +1,4 @@
-using Application.Features.Routing.Exceptions;
+using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 using Server.Tests.Support;
 

@@ -1,7 +1,7 @@
-using Application.Features.Execution.Models;
-using Application.Features.Routing.Exceptions;
-using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
+using Domain.Models.Routing;
+using Domain.Rules;
+using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 
@@ -78,7 +78,7 @@ public sealed partial class FuelPlanningService
           current.AssignmentRevision != assignmentRevision
           || current.Stops.FirstOrDefault()?.AwaitingHandoff == true
         )
-      || !await PlanningWorkPolicy.IsCurrentAsync(
+      || !await PlanningCurrency.IsCurrentAsync(
         captured.Itinerary,
         current,
         routeStore,
