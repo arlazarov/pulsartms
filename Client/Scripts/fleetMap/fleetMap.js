@@ -6,7 +6,7 @@ import { createTruckLayer } from './trucks/truckLayer.ts';
 import { createStationLayer } from './stations/stationLayer.ts';
 import { fuelRecommendations } from './stations/fuelRecommendations.ts';
 import { yieldToBrowser } from './lifecycle/backgroundWork.ts';
-import { createNextLoadsLayer } from './routes/nextLoads.js';
+import { createNextLoadsLayer } from './routes/nextLoads.ts';
 import * as payload from './geometry/encodedPath.ts';
 import { createMapHost } from './provider/mapHost.ts';
 import { mergeRoutePayload } from './routes/routePayload.ts';
@@ -14,7 +14,7 @@ import { stopEtaDeadline, stopEtaLabels } from './routes/stopEtaLabels.ts';
 import { etaStops, stopEtaIdentity } from './routes/stopEtaIdentity.ts';
 import { createCameraViewport } from './ui/cameraViewport.ts';
 import { createDockedDetails } from './ui/dockedDetails.ts';
-import { createRouteEditor } from './routes/routeEditor.js';
+import { createRouteEditor } from './routes/routeEditor.ts';
 import { distanceLabel } from './ui/distanceLabel.ts';
 
 // Only the provider map is retained; fleet state belongs to the current mount.

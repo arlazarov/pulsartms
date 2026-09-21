@@ -107,6 +107,54 @@ export interface MetadataPayload extends RouteMetadata {
   geometryOmitted: true;
 }
 export type RoutePayload = MapPlan | MetadataPayload | null;
+// Mirrors RouteViaPoint in Client/Models/DTO/Planning/RouteChoice.cs: a
+// point a dispatcher has pulled the route through.
+export interface RouteViaPoint {
+  id: string;
+  beforeStopId: string;
+  label: string;
+  point: RoutePoint;
+}
+export interface RouteChoiceOption {
+  number: number;
+  route: {
+    calculatedAt?: string;
+    miles?: number;
+    seconds?: number;
+    legs: RouteLeg[];
+    warnings?: string[];
+  };
+  differenceMiles?: number;
+  differenceSeconds?: number;
+}
+// Mirrors RouteChoicePreview: the roads on offer for one load, the stops
+// they serve, and the via points already placed.
+export interface RouteChoicePreview {
+  id: string;
+  dispatchId: string;
+  truckId: string;
+  loadNumber: number;
+  revision: number;
+  expiresAt?: string;
+  stops: PlanStop[];
+  viaPoints: RouteViaPoint[];
+  options: RouteChoiceOption[];
+  savedRoute?: { miles: number; seconds: number } | null;
+  originUpdatedAt?: string | null;
+  executionLegId?: string | null;
+}
+// Mirrors RouteEditorUpdate: what the page sends the map while a road is
+// being chosen. The preview is left out when the map already holds that one,
+// which is why it may be missing - it is not optional in the sense of
+// absent, it means "the one you have".
+export interface RouteEditorUpdate {
+  session: string;
+  previewId: string;
+  selected: number;
+  editing: boolean;
+  addPoint: boolean;
+  preview?: RouteChoicePreview | null;
+}
 export interface RouteProgress {
   progressMiles?: number | null;
 }

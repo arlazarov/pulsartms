@@ -1,7 +1,7 @@
 import type {
-  MapPlan,
   NextLoad,
   NextLoadsPayload,
+  RouteEditorUpdate,
   RoutePayload,
   RoutePoint,
 } from '../contracts.d.ts';
@@ -49,7 +49,7 @@ export function decodePath(encoded: string | null | undefined): RoutePoint[] {
  */
 export function parseMapPayload(
   bytes: Uint8Array,
-): RoutePayload | MapPlan | NextLoadsPayload | NextLoad[] {
+): RoutePayload | RouteEditorUpdate | NextLoadsPayload | NextLoad[] {
   return JSON.parse(new TextDecoder().decode(bytes), (_key, value) =>
     value &&
     typeof value.path === 'string' &&
@@ -63,8 +63,8 @@ export function parseMapPayload(
 // Each port names the payload it carries, so no caller has to say it twice.
 export function parseRouteEditorPayload(
   bytes: Uint8Array | null | undefined,
-): MapPlan | null {
-  return bytes ? (parseMapPayload(bytes) as MapPlan) : null;
+): RouteEditorUpdate | null {
+  return bytes ? (parseMapPayload(bytes) as RouteEditorUpdate) : null;
 }
 
 export function parseRoutePayload(bytes: Uint8Array): RoutePayload {

@@ -1,27 +1,39 @@
-const rowSelector = '[data-reorder-key]';
+import type { DropTarget } from './reorderDrop.ts';
+import { dropTarget, reorderRows, rowSelector } from './reorderDrop.ts';
+// The drag in progress: which row is being carried, by which handle and
+// pointer, from where, and whether it has yet moved far enough to count.
+type Drag = {
+  pointerId: number;
+  handle: HTMLElement;
+  source: HTMLElement;
+  key: string;
+  startX: number;
+  startY: number;
+  x: number;
+  y: number;
+  dragging: boolean;
+};
+
 const handleSelector = '[data-reorder-handle]';
 const dragThreshold = 6;
 
-export function attachReorderList(surface, callbacks) {
+export function attachReorderList(
+  surface: HTMLElement,
+  callbacks: {
+    invokeMethodAsync(name: string, ...args: unknown[]): Promise<unknown>;
+  },
+) {
   const document = surface.ownerDocument;
-  const view = document.defaultView;
+  const view = document.defaultView!;
   let disposed = false;
-  let active = null;
-  let target = null;
-  let frame = null;
-  let suppressedClick = null;
+  let active: Drag | null = null;
+  let target: DropTarget | null = null;
+  let frame: number | null = null;
+  let suppressedClick: HTMLElement | null = null;
 
-  function rows() {
-    return [...surface.querySelectorAll(rowSelector)].filter(
-      row =>
-        row.closest('[data-reorder-surface]') === surface ||
-        !row.closest('[data-reorder-surface]'),
-    );
-  }
-
-  function enabled(handle) {
+  function enabled(handle: HTMLElement) {
     return (
-      !handle.disabled &&
+      !(handle as HTMLButtonElement).disabled &&
       !handle.matches(':disabled') &&
       handle.getAttribute('aria-disabled') !== 'true'
     );
@@ -32,54 +44,11 @@ export function attachReorderList(surface, callbacks) {
     target = null;
   }
 
-  function axis(items) {
-    if (surface.dataset.reorderAxis === 'horizontal') return 'x';
-    if (surface.dataset.reorderAxis === 'vertical') return 'y';
-    const first = items[0].getBoundingClientRect();
-    const last = items.at(-1).getBoundingClientRect();
-    return Math.abs(last.left - first.left) > Math.abs(last.top - first.top)
-      ? 'x'
-      : 'y';
-  }
-
   function updateTarget() {
     clearTarget();
     if (!active?.dragging) return;
-    const bounds = surface.getBoundingClientRect();
-    if (
-      active.x < bounds.left ||
-      active.x > bounds.right ||
-      active.y < bounds.top ||
-      active.y > bounds.bottom
-    )
-      return;
-    const items = rows();
-    const sourceIndex = items.indexOf(active.source);
-    if (sourceIndex < 0 || items.length < 2) return;
-    const direction = axis(items);
-    const point = direction === 'x' ? active.x : active.y;
-    let nearest = null;
-    for (const row of items) {
-      const rect = row.getBoundingClientRect();
-      const start = direction === 'x' ? rect.left : rect.top;
-      const end = direction === 'x' ? rect.right : rect.bottom;
-      const distance = Math.max(start - point, point - end, 0);
-      if (!nearest || distance < nearest.distance) {
-        nearest = {
-          row,
-          distance,
-          after:
-            row.dataset.reorderAfter !== 'false' && point >= (start + end) / 2,
-        };
-      }
-    }
-    if (!nearest || nearest.row === active.source) return;
-    const targetIndex = items.indexOf(nearest.row);
-    const insertion =
-      targetIndex + Number(nearest.after) - Number(targetIndex > sourceIndex);
-    if (insertion === sourceIndex) return;
-    target = nearest;
-    target.row.classList.add(target.after ? 'drop-after' : 'drop-before');
+    target = dropTarget(surface, active.source, active.x, active.y);
+    target?.row.classList.add(target.after ? 'drop-after' : 'drop-before');
   }
 
   function validSource() {
@@ -99,7 +68,7 @@ export function attachReorderList(surface, callbacks) {
       return;
     }
     const bounds = surface.getBoundingClientRect();
-    const speed = (point, start, end) =>
+    const speed = (point: number, start: number, end: number) =>
       point < start + 36
         ? -Math.min(12, (start + 36 - point) / 3)
         : point > end - 36
@@ -124,12 +93,12 @@ export function attachReorderList(surface, callbacks) {
     }
   }
 
-  function consume(event) {
+  function consume(event: Event) {
     event.preventDefault();
     event.stopPropagation();
   }
 
-  function onMove(event) {
+  function onMove(event: PointerEvent) {
     if (!active || event.pointerId !== active.pointerId) return;
     consume(event);
     if (!validSource()) {
@@ -151,7 +120,7 @@ export function attachReorderList(surface, callbacks) {
       frame = view.requestAnimationFrame(scrollFrame);
   }
 
-  function finish(commit) {
+  function finish(commit: boolean) {
     const previous = active;
     if (!previous) return;
     const moved =
@@ -162,11 +131,18 @@ export function attachReorderList(surface, callbacks) {
     clearTarget();
     previous.source.classList.remove('is-dragging');
     if (previous.dragging) suppressedClick = previous.handle;
-    document.removeEventListener('pointermove', onMove, true);
-    document.removeEventListener('pointerup', onUp, true);
-    document.removeEventListener('pointercancel', onCancel, true);
-    document.removeEventListener('keydown', onKey, true);
-    previous.handle.removeEventListener('lostpointercapture', onCancel);
+    document.removeEventListener('pointermove', onMove as EventListener, true);
+    document.removeEventListener('pointerup', onUp as EventListener, true);
+    document.removeEventListener(
+      'pointercancel',
+      onCancel as EventListener,
+      true,
+    );
+    document.removeEventListener('keydown', onKey as EventListener, true);
+    previous.handle.removeEventListener(
+      'lostpointercapture',
+      onCancel as EventListener,
+    );
     view.removeEventListener('blur', onBlur);
     if (frame !== null) view.cancelAnimationFrame(frame);
     frame = null;
@@ -188,7 +164,7 @@ export function attachReorderList(surface, callbacks) {
     }
   }
 
-  function onUp(event) {
+  function onUp(event: PointerEvent) {
     if (!active || event.pointerId !== active.pointerId) return;
     if (active.dragging) consume(event);
     if (!validSource()) {
@@ -201,7 +177,7 @@ export function attachReorderList(surface, callbacks) {
     finish(true);
   }
 
-  function onCancel(event) {
+  function onCancel(event: PointerEvent) {
     if (active && event.pointerId === active.pointerId) finish(false);
   }
 
@@ -209,21 +185,27 @@ export function attachReorderList(surface, callbacks) {
     finish(false);
   }
 
-  function onKey(event) {
+  function onKey(event: KeyboardEvent) {
     if (event.key === 'Escape') {
       consume(event);
       finish(false);
     }
   }
 
-  function onDown(event) {
+  function onDown(event: PointerEvent) {
     suppressedClick = null;
     if (disposed || active || event.button !== 0 || event.isPrimary === false)
       return;
-    const handle = event.target.closest?.(handleSelector);
+    const handle = (event.target as Element)?.closest?.<HTMLElement>(
+      handleSelector,
+    );
     if (!handle || !surface.contains(handle) || !enabled(handle)) return;
-    const source = handle.closest(rowSelector);
-    if (!source || !rows().includes(source) || !source.dataset.reorderKey)
+    const source = handle.closest<HTMLElement>(rowSelector);
+    if (
+      !source ||
+      !reorderRows(surface).includes(source) ||
+      !source.dataset.reorderKey
+    )
       return;
     consume(event);
     handle.focus({ preventScroll: true });
@@ -231,21 +213,21 @@ export function attachReorderList(surface, callbacks) {
       pointerId: event.pointerId,
       handle,
       source,
-      key: source.dataset.reorderKey,
+      key: source.dataset.reorderKey!,
       startX: event.clientX,
       startY: event.clientY,
       x: event.clientX,
       y: event.clientY,
       dragging: false,
     };
-    document.addEventListener('pointermove', onMove, {
+    document.addEventListener('pointermove', onMove as EventListener, {
       capture: true,
       passive: false,
     });
-    document.addEventListener('pointerup', onUp, true);
-    document.addEventListener('pointercancel', onCancel, true);
-    document.addEventListener('keydown', onKey, true);
-    handle.addEventListener('lostpointercapture', onCancel);
+    document.addEventListener('pointerup', onUp as EventListener, true);
+    document.addEventListener('pointercancel', onCancel as EventListener, true);
+    document.addEventListener('keydown', onKey as EventListener, true);
+    handle.addEventListener('lostpointercapture', onCancel as EventListener);
     view.addEventListener('blur', onBlur);
     try {
       handle.setPointerCapture?.(event.pointerId);
@@ -254,24 +236,26 @@ export function attachReorderList(surface, callbacks) {
     }
   }
 
-  function onClick(event) {
-    if (event.detail !== 0 && suppressedClick?.contains(event.target)) {
+  function onClick(event: MouseEvent) {
+    if (event.detail !== 0 && suppressedClick?.contains(event.target as Node)) {
       consume(event);
       suppressedClick = null;
     }
   }
 
-  function onHandleKey(event) {
+  function onHandleKey(event: KeyboardEvent) {
     if (
       !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)
     )
       return;
-    const handle = event.target.closest?.(handleSelector);
+    const handle = (event.target as Element)?.closest?.<HTMLElement>(
+      handleSelector,
+    );
     if (handle && surface.contains(handle) && enabled(handle))
       event.preventDefault();
   }
 
-  surface.addEventListener('pointerdown', onDown, {
+  surface.addEventListener('pointerdown', onDown as EventListener, {
     capture: true,
     passive: false,
   });
@@ -283,7 +267,7 @@ export function attachReorderList(surface, callbacks) {
       disposed = true;
       finish(false);
       suppressedClick = null;
-      surface.removeEventListener('pointerdown', onDown, true);
+      surface.removeEventListener('pointerdown', onDown as EventListener, true);
       surface.removeEventListener('click', onClick, true);
       surface.removeEventListener('keydown', onHandleKey, true);
     },

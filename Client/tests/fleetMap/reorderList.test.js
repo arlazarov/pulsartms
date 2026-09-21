@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { attachReorderList } from '../../Scripts/shared/reorderList.js';
+import { attachReorderList } from '../../Scripts/shared/reorderList.ts';
 
 class Events {
   listeners = new Map();

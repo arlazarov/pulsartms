@@ -5,16 +5,7 @@ import { resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { brotliDecompressSync, gunzipSync } from 'node:zlib';
 import { build } from 'esbuild';
-
-const entryPoints = [
-  'fleetMap/fleetMap.js',
-  'fleetMap/rendering/gpuScene.js',
-  'shared/popup.js',
-  'shared/cameraDialog.js',
-  'shared/authStorage.ts',
-  'shared/reorderList.js',
-  'dispatch/dispatch.js',
-];
+import { builtNames as entryPoints } from './sources.mjs';
 
 export function assetPath(root, name) {
   const path = resolve(root, name);

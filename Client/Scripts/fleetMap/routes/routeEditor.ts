@@ -1,28 +1,65 @@
+import type {
+  RouteChoicePreview,
+  RouteEditorUpdate,
+  RoutePoint,
+} from '../contracts.d.ts';
 import {
   currentRouteLineColor,
   futureRouteColor,
 } from '../rendering/routePalette.ts';
 
-const literal = p => ({ lat: p.latitude, lng: p.longitude });
-const value = (p, key) => (typeof p[key] === 'function' ? p[key]() : p[key]);
+// What the editor is holding: the update the page last sent, with the
+// preview it refers to - an update that leaves the preview out means the
+// one already on the map.
+type EditorPayload = RouteEditorUpdate & { preview: RouteChoicePreview };
+
+type EditorLine = {
+  setOptions(options: Record<string, unknown>): void;
+  setPath(path: google.maps.LatLngLiteral[]): void;
+  setMap(map: google.maps.Map | null): void;
+};
+
+// A marker the dispatcher can take hold of. The leg it belongs to is the
+// editor's own bookkeeping, hung on the marker itself.
+type MapMarker = {
+  position?: google.maps.LatLngLiteral | google.maps.LatLng | null;
+  addListener(event: string, handler: () => void): { remove(): void };
+  setMap?(map: google.maps.Map | null): void;
+  map?: google.maps.Map | null;
+};
+type DragHandle = MapMarker & { leg: number | null };
+
+const literal = (p: RoutePoint) => ({ lat: p.latitude, lng: p.longitude });
+const value = (p: any, key: 'lat' | 'lng') =>
+  typeof p[key] === 'function' ? p[key]() : p[key];
 
 export function createRouteEditor(
-  map,
-  Polyline,
-  StopMarker,
-  Marker,
-  notify,
-  fitPadding,
+  map: google.maps.Map,
+  Polyline: new (options: Record<string, unknown>) => EditorLine,
+  StopMarker: new (options: Record<string, unknown>) => {
+    setMap?(map: google.maps.Map | null): void;
+    map?: google.maps.Map | null;
+  },
+  Marker: (new (options: Record<string, unknown>) => MapMarker) | null,
+  notify: (method: string, ...args: unknown[]) => void,
+  fitPadding: (value: number) => number | google.maps.Padding,
 ) {
-  let payload = null,
-    lines = [],
-    stops = [],
-    markers = [],
-    listeners = [],
-    handle = null,
+  let payload: EditorPayload | null = null,
+    lines: {
+      line: EditorLine;
+      number: number;
+      hover: (info: { coordinate?: number[] } | null) => void;
+    }[] = [],
+    stops: {
+      setMap?: (map: google.maps.Map | null) => void;
+      map?: google.maps.Map | null;
+    }[] = [],
+    markers: DragHandle[] = [],
+    listeners: { remove(): void }[] = [],
+    handle: DragHandle | null = null,
     dragging = false,
     disposed = false;
-  let fitted = null;
+  let fitted: string | null = null;
   function clearHandles() {
     for (const marker of markers) {
       if (marker.setMap) marker.setMap(null);
@@ -44,21 +81,26 @@ export function createRouteEditor(
     lines = [];
     stops = [];
   }
-  function dragMarker(point, id, leg, title) {
+  function dragMarker(
+    point: RoutePoint,
+    id: string | null,
+    leg: number | null,
+    title: string,
+  ) {
     const document = map.getDiv().ownerDocument;
     const content = document.createElement('span');
     content.className = 'route-editor-handle';
     content.textContent = '◇';
-    const marker = new Marker({
+    const marker = new Marker!({
       map,
       position: literal(point),
       content,
       title,
       gmpDraggable: true,
       zIndex: 100,
-    });
+    }) as DragHandle;
     marker.leg = leg;
-    const session = payload.session;
+    const session = payload!.session;
     listeners.push(
       marker.addListener('dragstart', () => {
         dragging = true;
@@ -85,9 +127,9 @@ export function createRouteEditor(
     markers.push(marker);
     return marker;
   }
-  function hover(info, leg) {
+  function hover(info: { coordinate?: number[] } | null, leg: number) {
     if (!Marker || !payload?.editing || dragging || !info?.coordinate) return;
-    const [longitude, latitude] = info.coordinate;
+    const [longitude, latitude] = info.coordinate!;
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
     if (!handle)
       handle = dragMarker(
@@ -106,7 +148,7 @@ export function createRouteEditor(
     get truckId() {
       return payload?.preview.truckId ?? null;
     },
-    set(next) {
+    set(next: RouteEditorUpdate | null) {
       if (disposed) return;
       if (!next) {
         clear();
@@ -120,14 +162,14 @@ export function createRouteEditor(
           next.previewId !== payload?.preview.id)
       )
         return;
-      const preview = next.preview ?? payload.preview;
+      const preview = next.preview ?? payload!.preview;
       const { selected, editing, session } = next;
       const sameGeometry =
         payload?.session === session && payload.preview.id === preview.id;
       const handlesChanged =
         !sameGeometry ||
-        payload.selected !== selected ||
-        payload.editing !== editing;
+        payload!.selected !== selected ||
+        payload!.editing !== editing;
       if (!sameGeometry) clear();
       payload = { ...next, preview };
       if (!sameGeometry) {
@@ -149,7 +191,7 @@ export function createRouteEditor(
             lines.push({
               line,
               number: option.number,
-              hover: info => {
+              hover: (info: { coordinate?: number[] } | null) => {
                 if (lines.some(entry => entry.line === line))
                   hover(info, index);
               },
@@ -191,7 +233,7 @@ export function createRouteEditor(
           const first = preview.options.find(
             option => option.number === selected,
           )?.route.legs[0];
-          if (first?.points.length > 1) {
+          if (first && first.points.length > 1) {
             handle = dragMarker(
               first.points[Math.floor(first.points.length / 2)],
               null,
@@ -211,7 +253,7 @@ export function createRouteEditor(
         fitted = session;
       }
     },
-    click(event) {
+    click(event: { latLng?: unknown } | undefined) {
       if (!payload) return false;
       if (payload.editing && payload.addPoint && event?.latLng)
         notify(

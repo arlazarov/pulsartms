@@ -5,7 +5,7 @@ import {
   selectStopMap,
   activateStopMap,
   disposeStopMap,
-} from '../../Scripts/dispatch/dispatch.js';
+} from '../../Scripts/dispatch/dispatch.ts';
 
 test('stop map retains the basemap and camera across selection, then releases markers', async () => {
   const original = {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { revealStop } from '../../Scripts/dispatch/dispatch.js';
+import { revealStop } from '../../Scripts/dispatch/dispatch.ts';
 
 function list(top, height) {
   return {

@@ -1,38 +1,60 @@
+import type { NextLoad } from '../contracts.d.ts';
+import type { StopSelection } from './nextLoadDisplay.ts';
 import { nextLoadDisplay, nextLoadKey } from './nextLoadDisplay.ts';
+
+// What this layer draws with. Both come from the scene, which owns the
+// vendor; the layer asks only for what it uses.
+type NextLoadLine = {
+  setOptions(options: Record<string, unknown>): void;
+  setPath(path: google.maps.LatLngLiteral[]): void;
+  setMap?(map: google.maps.Map | null): void;
+  setVisible?(visible: boolean): void;
+  map?: google.maps.Map | null;
+};
+type NextLoadMarker = {
+  setNumber(number: string): void;
+  highlighted: boolean;
+  setMap?(map: google.maps.Map | null): void;
+  setOptions?(options: Record<string, unknown>): void;
+  setVisible?(visible: boolean): void;
+  map?: google.maps.Map | null;
+};
 
 /**
  * The loads a truck could take next, drawn over the map.
  *
- * @param {(loadId: string | null, stopIndex: number,
- *   executionLegId?: string) => void} onSelection
+ * @param onSelection
  *   Which load is picked, which of its stops the card should open on, and -
  *   when the stop belongs to a leg already being driven - which leg.
- * @param {(geometry: google.maps.LatLngLiteral[] | null) => void} reveal
- *   Asks the map to bring that load's road into view.
+ * @param reveal Asks the map to bring that load's road into view.
  */
 export function createNextLoadsLayer(
-  map,
-  Polyline,
-  StopMarker,
-  onSelection = () => {},
-  reveal = () => {},
+  map: google.maps.Map,
+  Polyline: new (options: Record<string, unknown>) => NextLoadLine,
+  StopMarker: new (options: Record<string, unknown>) => NextLoadMarker,
+  onSelection: (
+    loadId: string | null,
+    stopIndex: number,
+    executionLegId?: string,
+  ) => void = () => {},
+  reveal: (geometry: google.maps.LatLngLiteral[] | null) => void = () => {},
 ) {
-  const objects = [];
-  const markerUpdates = [];
-  let previous = null;
+  const objects: (NextLoadLine | NextLoadMarker)[] = [];
+  const markerUpdates: (() => void)[] = [];
+  let previous: string | null = null;
   let disposed = false;
   let offset = 0;
-  let cachedLoads = null;
+  let cachedLoads: NextLoad[] | null = null;
   let visible = true;
-  let selectedId = null;
-  let selectedStopIndex = null;
-  let hoveredId = null;
-  let markerGroups = [];
-  let renderedLines = [];
+  let selectedId: string | null = null;
+  let selectedStopIndex: number | null = null;
+  let hoveredId: string | null = null;
+  let markerGroups: { marker: NextLoadMarker; members: StopSelection[] }[] = [];
+  let renderedLines: { line: NextLoadLine; loadId: string }[] = [];
   // Where each load is on the ground: its roads and the stops at their ends.
-  let loadGeometry = new Map();
-  let loadMembers = new Map();
-  const identity = row =>
+  let loadGeometry = new Map<string, google.maps.LatLngLiteral[]>();
+  let loadMembers = new Map<string, StopSelection>();
+  const identity = (row: StopSelection) =>
     nextLoadKey(row.loadId ?? row.loadNumber, row.executionLegId);
 
   // Pointing at a load answers the same question as picking one - which
@@ -55,7 +77,7 @@ export function createNextLoadsLayer(
   }
   // Leaving is reported by the thing being left, and the next thing can
   // report arriving first, so a departure only counts for what is current.
-  function hover(key, over) {
+  function hover(key: string, over: boolean) {
     if (disposed) return;
     const next = over ? key : hoveredId === key ? null : hoveredId;
     if (hoveredId === next) return;
@@ -73,12 +95,12 @@ export function createNextLoadsLayer(
   // badges stand at its own pickup and delivery, which can be several hundred
   // miles from the truck - so picking the road highlighted nothing but the
   // road, and the circles it was picked for were off the screen entirely.
-  function select(member, loadId) {
+  function select(member: StopSelection | undefined, loadId: string | null) {
     if (disposed || !visible || !member) return;
     selectedId = identity(member);
     selectedStopIndex = member.index;
     applySelection();
-    reveal(loadGeometry.get(loadId ?? selectedId) ?? null);
+    reveal(loadGeometry.get(loadId ?? selectedId!) ?? null);
     if (member.executionLegId)
       onSelection(member.loadId ?? null, member.index, member.executionLegId);
     else onSelection(member.loadId ?? null, member.index);
@@ -104,17 +126,17 @@ export function createNextLoadsLayer(
       clearObjects();
       cachedLoads = null;
     },
-    setVisible(value) {
+    setVisible(value: boolean) {
       if (disposed || visible === value) return;
       visible = value;
       if (!visible) clearSelection();
       for (const object of objects) {
-        if (object.setMap) object.setOptions({ visible });
-        else object.setVisible(visible);
+        if (object.setMap) object.setOptions?.({ visible });
+        else object.setVisible?.(visible);
       }
       if (visible && cachedLoads && previous === null) this.set(cachedLoads);
     },
-    setStopOffset(value) {
+    setStopOffset(value: number) {
       if (disposed || offset === value) return;
       offset = value;
       markerUpdates.forEach(update => update());
@@ -124,7 +146,7 @@ export function createNextLoadsLayer(
       disposed = true;
       this.clear();
     },
-    set(loads) {
+    set(loads: NextLoad[]) {
       if (disposed) return;
       cachedLoads = loads;
       if (
@@ -144,7 +166,7 @@ export function createNextLoadsLayer(
       clearObjects();
       previous = signature;
       const display = nextLoadDisplay(loads);
-      const remember = (loadId, point) => {
+      const remember = (loadId: string, point: google.maps.LatLngLiteral) => {
         const known = loadGeometry.get(loadId);
         if (known) known.push(point);
         else loadGeometry.set(loadId, [point]);
@@ -159,7 +181,8 @@ export function createNextLoadsLayer(
             routeColor,
             routeShared,
             strokeWeight: 2,
-            onHover: info => hover(loadId, !!info?.object),
+            onHover: (info: { object?: unknown } | null) =>
+              hover(loadId, !!info?.object),
             onClick: () => select(loadMembers.get(loadId), loadId),
           });
           line.setPath(
@@ -180,7 +203,8 @@ export function createNextLoadsLayer(
           number: [...numbers].map(number => number + offset).join('/'),
           color,
           transientLabel: true,
-          onHover: over => hover(identity(members[0]), over === true),
+          onHover: (over: unknown) =>
+            hover(identity(members[0]), over === true),
           onSelect: () => {
             if (disposed || !visible || previous !== signature) return;
             const current = members.findIndex(

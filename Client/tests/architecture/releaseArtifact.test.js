@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { brotliCompressSync, gzipSync } from 'node:zlib';
 import { assetPath, verifyRelease } from '../../build/verifyRelease.mjs';
+import { builtNames } from '../../build/sources.mjs';
 import { installReleaseArtifact } from '../browser/releaseArtifact.mjs';
 
 const hash = bytes =>
@@ -23,14 +24,12 @@ async function fixture(
       `export const open = () => import('./${missingImport ? 'missing' : 'later'}.js');`,
     ],
     ['js/generated/fleetMap/later.js', 'export const value = 1;'],
-    ...[
-      'fleetMap/rendering/gpuScene.js',
-      'shared/popup.js',
-      'shared/cameraDialog.js',
-      'shared/authStorage.ts',
-      'shared/reorderList.js',
-      'dispatch/dispatch.js',
-    ].map(name => [`js/generated/${name}`, 'export const value = 1;']),
+    // Every built module but the map, which the two entries above stand
+    // in for. Taken from the build's own list, so a module that moves to
+    // TypeScript cannot leave this fixture behind.
+    ...builtNames
+      .filter(name => name !== 'fleetMap/fleetMap.js')
+      .map(name => [`js/generated/${name}`, 'export const value = 1;']),
     ['_framework/dotnet.hash.js', 'export const boot = true;'],
     ['_framework/Client.hash.wasm', Buffer.from([0, 97, 115, 109])],
     ['css/main.css', 'body { color: black; }'],
@@ -87,7 +86,9 @@ test('release artifact verifies bootstrap, compressed/uncompressed assets and ge
   await fixture(async ({ directory, endpoints }) => {
     assert.deepEqual(await verifyRelease(directory), {
       assets: new Set(endpoints.map(item => item.AssetFile)).size,
-      entryPoints: 7,
+      // Every module the page loads, not a number written down beside the
+      // list: four of them were missing from the copy this replaced.
+      entryPoints: builtNames.length,
     });
   });
 });

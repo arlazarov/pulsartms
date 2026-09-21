@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRouteEditor } from '../../Scripts/fleetMap/routes/routeEditor.js';
+import { createRouteEditor } from '../../Scripts/fleetMap/routes/routeEditor.ts';
 
 test('route editing preserves map, bounds handle count and isolates stale callbacks', t => {
   const previous = globalThis.google;

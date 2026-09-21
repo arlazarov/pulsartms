@@ -3,27 +3,14 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sources } from './sources.mjs';
 
 const client = fileURLToPath(new URL('../', import.meta.url));
 const output = resolve(client, 'wwwroot/js/generated');
-// Each entry is named without its extension: a module may be TypeScript or
-// JavaScript while the tree is being converted, and the built file keeps
-// the same name either way.
-const sources = [
-  'Scripts/fleetMap/fleetMap',
-  'Scripts/fleetMap/rendering/gpuScene',
-  'Scripts/shared/popup',
-  'Scripts/shared/cameraDialog',
-  'Scripts/shared/authStorage',
-  'Scripts/shared/appearance',
-  'Scripts/shared/reorderList',
-  'Scripts/shared/loadDialog',
-  'Scripts/shared/pageVisibility',
-  'Scripts/dispatch/dispatch',
-  'Scripts/dispatch/documents',
-];
 const entryPoints = sources.map(name =>
-  existsSync(resolve(client, `${name}.ts`)) ? `${name}.ts` : `${name}.js`,
+  existsSync(resolve(client, `Scripts/${name}.ts`))
+    ? `Scripts/${name}.ts`
+    : `Scripts/${name}.js`,
 );
 const result = await build({
   absWorkingDir: client,

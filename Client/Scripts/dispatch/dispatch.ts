@@ -1,10 +1,46 @@
+import { loadGoogleMaps } from '../fleetMap/provider/googleMapsLoader.ts';
+
+// A stop as the dispatch pages hand it over: which stop, what its pin says
+// and where it is.
+export type StopMapPoint = {
+  id: string;
+  number: string;
+  name?: string;
+  latitude: number;
+  longitude: number;
+};
+
+// What a leg of the road means, which decides the colour it is drawn in.
+type RoadMeaning = { cargoState?: string };
+
+// One stop map: the map itself, what is drawn on it, and what was asked for
+// while it was still loading.
+type StopMap = {
+  // The latest call. An earlier one that finishes afterwards sees that it
+  // is no longer the latest and does nothing.
+  request: object;
+  markers: google.maps.marker.AdvancedMarkerElement[];
+  lines: google.maps.Polyline[];
+  roads: string | null;
+  geometry: string | null;
+  map: google.maps.Map | null;
+  selected?: string | null;
+  points?: StopMapPoint[];
+  paths?: StopMapPoint[][];
+  satellite?: boolean;
+  activatedStop?: string | null;
+  pendingView?: { selected: string; satellite: boolean } | null;
+};
+
 export function isMobile() {
   return window.matchMedia('(max-width: 799px)').matches;
 }
 
-export function revealStop(list, stopId) {
+export function revealStop(list: HTMLElement | null, stopId: string) {
   if (!list?.isConnected) return;
-  const row = [...list.children].find(item => item.dataset.stopId === stopId);
+  const row = [...list.children].find(
+    item => (item as HTMLElement).dataset.stopId === stopId,
+  );
   if (!row) return;
   const viewport = list.getBoundingClientRect();
   const bounds = row.getBoundingClientRect();
@@ -15,15 +51,15 @@ export function revealStop(list, stopId) {
   }
 }
 
-const stopMaps = new WeakMap();
+const stopMaps = new WeakMap<HTMLElement, StopMap>();
 
 export async function showStopMap(
-  element,
-  key,
-  points,
-  selected,
-  paths = [],
-  meanings = [],
+  element: HTMLElement,
+  key: string,
+  points: StopMapPoint[],
+  selected: string | null,
+  paths: StopMapPoint[][] = [],
+  meanings: RoadMeaning[] = [],
 ) {
   const request = {};
   let state = stopMaps.get(element);
@@ -67,11 +103,11 @@ export async function showStopMap(
     state.markers.forEach(marker => {
       marker.map = null;
     });
-    const locations = new Map();
+    const locations = new Map<string, StopMapPoint[]>();
     points.forEach(point => {
       const location = `${point.latitude.toFixed(6)},${point.longitude.toFixed(6)}`;
       if (!locations.has(location)) locations.set(location, []);
-      locations.get(location).push(point);
+      locations.get(location)!.push(point);
     });
     state.markers = [...locations.values()].map(group => {
       const labels = group.map(point => {
@@ -81,7 +117,7 @@ export async function showStopMap(
         label.dataset.stopId = point.id;
         return label;
       });
-      let content = labels[0];
+      let content: HTMLElement = labels[0];
       if (labels.length > 1) {
         content = document.createElement('span');
         content.className = 'dispatch-stop-map__pin-group';
@@ -125,7 +161,9 @@ export async function showStopMap(
               lat: point.latitude,
               lng: point.longitude,
             })),
-            strokeColor: ['Empty', 'Bobtail'].includes(path.meaning?.cargoState)
+            strokeColor: ['Empty', 'Bobtail'].includes(
+              path.meaning?.cargoState ?? '',
+            )
               ? emptyColor
               : color,
             strokeOpacity: 0.9,
@@ -138,25 +176,26 @@ export async function showStopMap(
   if (state.pendingView) applyStopMapView(state);
 }
 
-export function selectStopMap(element, selected) {
+export function selectStopMap(element: HTMLElement, selected: string | null) {
   const state = stopMaps.get(element);
   if (!state) return;
   state.selected = selected;
   state.markers.forEach(marker => {
-    const labels = marker.content.dataset.stopId
-      ? [marker.content]
-      : marker.content.querySelectorAll('[data-stop-id]');
+    const content = marker.content as HTMLElement;
+    const labels: Iterable<HTMLElement> = content.dataset.stopId
+      ? [content]
+      : content.querySelectorAll<HTMLElement>('[data-stop-id]');
     let active = false;
-    labels.forEach(label => {
+    for (const label of labels) {
       const matches = label.dataset.stopId === selected;
       label.classList.toggle('is-selected', matches);
       active ||= matches;
-    });
+    }
     marker.zIndex = active ? 1 : 0;
   });
 }
 
-export function activateStopMap(element, selected) {
+export function activateStopMap(element: HTMLElement, selected: string) {
   const state = stopMaps.get(element);
   if (!state) return;
   state.satellite = state.activatedStop === selected ? !state.satellite : false;
@@ -165,20 +204,20 @@ export function activateStopMap(element, selected) {
   applyStopMapView(state);
 }
 
-function applyStopMapView(state) {
+function applyStopMapView(state: StopMap) {
   if (!state.map || !state.points || !state.pendingView) return;
   const { selected, satellite } = state.pendingView;
   state.pendingView = null;
   if (satellite) {
     const point = state.points.find(point => point.id === selected);
     if (!point) return;
-    state.map.setMapTypeId('satellite');
-    state.map.setCenter({ lat: point.latitude, lng: point.longitude });
-    state.map.setZoom(18);
-    state.map.setTilt(0);
+    state.map!.setMapTypeId('satellite');
+    state.map!.setCenter({ lat: point.latitude, lng: point.longitude });
+    state.map!.setZoom(18);
+    state.map!.setTilt(0);
     return;
   }
-  state.map.setMapTypeId('roadmap');
+  state.map!.setMapTypeId('roadmap');
   const points = [...state.points, ...(state.paths ?? []).flat()];
   if (!points.length) return;
   const bounds = new google.maps.LatLngBounds();
@@ -188,7 +227,7 @@ function applyStopMapView(state) {
       lng: point.longitude,
     }),
   );
-  state.map.fitBounds(bounds, 32);
+  state.map!.fitBounds(bounds, 32);
   if (
     points.every(
       point =>
@@ -196,10 +235,10 @@ function applyStopMapView(state) {
         point.longitude === points[0].longitude,
     )
   )
-    state.map.setZoom(12);
+    state.map!.setZoom(12);
 }
 
-export function disposeStopMap(element) {
+export function disposeStopMap(element: HTMLElement) {
   const state = stopMaps.get(element);
   if (!state) return;
   stopMaps.delete(element);
@@ -209,4 +248,3 @@ export function disposeStopMap(element) {
   state.lines.forEach(line => line.setMap(null));
   if (state.map) google.maps.event.clearInstanceListeners(state.map);
 }
-import { loadGoogleMaps } from '../fleetMap/provider/googleMapsLoader.ts';

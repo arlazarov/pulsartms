@@ -105,21 +105,21 @@ function settle(flags: boolean[]): boolean[] {
   return settled;
 }
 
-export function markSharedRoads(lines: RoadLine[]): RoadLine[] {
+export function markSharedRoads<T extends RoadLine>(lines: T[]): T[] {
   const owners = new Map<string, Set<string | number>>();
   for (const line of lines) {
     if (line.role !== 'future') continue;
     for (let index = 1; index < line.points.length; index++)
       claim(owners, line.loadId!, line.points[index - 1], line.points[index]);
   }
-  const result: RoadLine[] = [];
+  const result: T[] = [];
   for (const line of lines) {
     if (line.role !== 'future') {
       result.push(line);
       continue;
     }
     const flags = settle(line.points.map(point => claimed(owners, point)));
-    let run: RoadLine | null = null;
+    let run: T | null = null;
     for (const [index, point] of line.points.entries()) {
       if (run && run.routeShared === flags[index]) {
         run.points.push(point);
@@ -127,9 +127,9 @@ export function markSharedRoads(lines: RoadLine[]): RoadLine[] {
       }
       // The point that changes the answer belongs to both runs, or the road
       // would show a gap where one ends and the next begins.
-      const previous: RoutePoint | undefined = (
-        run as RoadLine | null
-      )?.points.at(-1);
+      const previous: RoutePoint | undefined = (run as T | null)?.points.at(
+        -1,
+      );
       run = {
         ...line,
         points: previous ? [previous, point] : [point],

@@ -1,16 +1,39 @@
-// @ts-check
+import type { NextLoad, NextLoadStop, RoutePoint } from '../contracts.d.ts';
+import type { RouteColor } from '../rendering/routePalette.ts';
+import type { RoadLine } from './sharedRoads.ts';
 import { futureRouteColor } from '../rendering/routePalette.ts';
 import { markSharedRoads } from './sharedRoads.ts';
 
-/** @typedef {{loadId: string | undefined, executionLegId?: string | null, loadNumber: number, index: number}} StopSelection */
-/** @typedef {{stop: import('../contracts.d.ts').NextLoadStop, numbers: Set<number>, members: StopSelection[], color: import('../rendering/routePalette.ts').RouteColor}} StopGroup */
+// Which load a badge stands for, and which of its stops the card opens on.
+// A stop on a leg already being driven names that leg as well.
+export type StopSelection = {
+  loadId: string | undefined;
+  executionLegId?: string | null;
+  loadNumber: number;
+  index: number;
+};
 
-/** @param {import('../contracts.d.ts').NextLoad[]} loads */
-export function nextLoadDisplay(loads: any[]) {
-  /** @type {{points: import('../contracts.d.ts').RoutePoint[], role: 'deadhead' | 'future', loadId: string | number, routeColor?: import('../rendering/routePalette.ts').RouteColor}[]} */
-  const lines = [];
-  /** @type {StopGroup[]} */
-  const groups = [];
+// Stops of several loads that fall on the same place are one badge, which
+// says every number it stands for.
+export type StopGroup = {
+  stop: NextLoadStop;
+  numbers: Set<number>;
+  members: StopSelection[];
+  color: RouteColor;
+};
+
+// One stretch of road drawn for an upcoming load: the empty miles to its
+// pickup, or a leg of the load itself.
+export type DisplayLine = RoadLine & {
+  points: RoutePoint[];
+  role: 'deadhead' | 'future';
+  loadId: string;
+  routeColor?: RouteColor;
+};
+
+export function nextLoadDisplay(loads: NextLoad[]) {
+  const lines: DisplayLine[] = [];
+  const groups: StopGroup[] = [];
   let stopNumber = 0;
   for (const [loadIndex, load] of loads.entries()) {
     const points = load.deadhead?.points || [];

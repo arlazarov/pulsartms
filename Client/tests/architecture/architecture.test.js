@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { builtNames } from '../../build/sources.mjs';
 
 const client = new URL('../../', import.meta.url);
 const read = path => readFileSync(new URL(path, client), 'utf8');
@@ -31,16 +32,10 @@ test('browser sources do not depend on generated output and relative imports res
 });
 
 test('every generated module referenced by Client C# or Razor has a JavaScript build entry point', () => {
-  const build = read('build/javascript.mjs');
-  // The build names its sources without an extension while the tree is
-  // being moved to TypeScript; what ships keeps the .js name either way.
-  const entryBlock = build.match(/const sources = \[([\s\S]*?)\]/)?.[1];
-  assert.ok(entryBlock, 'JavaScript build must declare its entry points');
-  const entries = new Set(
-    [...entryBlock.matchAll(/['"]Scripts\/([^'"]+)['"]/g)].map(
-      match => `${match[1]}.js`,
-    ),
-  );
+  // Read from the build's own list rather than scraped out of its source:
+  // the list moved once and the pattern that read it went on finding
+  // nothing, which is a rule that passes by saying nothing.
+  const entries = new Set(builtNames);
   let checked = 0;
   for (const folder of [
     'Components',
