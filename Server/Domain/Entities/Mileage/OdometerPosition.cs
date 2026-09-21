@@ -11,10 +11,8 @@ public sealed class OdometerPosition : BaseEntity, ICompanyOwned
   public long Revision { get; set; }
 }
 
-public sealed class OdometerCaptureCheckpoint : BaseEntity, ICompanyOwned
+public sealed class OdometerCaptureCheckpoint : BaseEntity
 {
-  public Guid CompanyId { get; set; }
-
   public static readonly Guid SingletonId = Guid.Parse(
     "0d332d2b-f0bf-4e07-97b7-f2805f684219"
   );

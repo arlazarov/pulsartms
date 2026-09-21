@@ -38,6 +38,19 @@ public static class SharedTables
       // planning inputs - a counter beside the data, not part of it.
       ["PlanningInputRevision"] =
         "a change counter kept by a database trigger, one per truck",
+      // The lease that decides which instance synchronizes, and the state
+      // of its stages. Claimed before any carrier is chosen - it is what
+      // decides whether this instance works at all - so filtering it by
+      // carrier hid the existing row and the claim tried to insert a
+      // second one over the same primary key.
+      ["SynchronizationCheckpoint"] =
+        "the lease that picks the working instance",
+      // Where the server has read up to in the odometer feed it polls.
+      // One row with a fixed id, taken before a carrier is chosen. When a
+      // second carrier brings its own telematics account this has to
+      // become one cursor per account - a fixed id cannot hold two.
+      ["OdometerCaptureCheckpoint"] =
+        "the server's position in the feed it polls",
       // How server instances tell each other to drop what they have
       // cached. About the servers, not about any carrier's work.
       ["CacheInvalidation"] = "server talking to server",

@@ -1,5 +1,6 @@
 using Application.Interfaces;
 using Domain.Entities;
+using Domain.Entities.Mileage;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
@@ -139,4 +140,44 @@ public sealed class CompanyPassTests
     );
     await db.SaveChangesAsync();
   }
+
+  // What actually broke production. A server lease is claimed before any
+  // carrier is chosen. Filtered by carrier, the read could not see the row
+  // that was already there, so the claim inserted a second one over the
+  // same key and every request answered 503.
+  [Fact]
+  public async Task AServerLeaseIsFoundByAPassThatHasNotChosenACarrierYet()
+  {
+    await using var connection = new SqliteConnection("DataSource=:memory:");
+    await connection.OpenAsync();
+    await using var provider = Server(connection);
+    await SeedAsync(connection);
+    await using (var owner = new AppDbContext(Options(connection)))
+    {
+      owner.SynchronizationCheckpoints.Add(
+        new() { Id = Guid.NewGuid(), Owner = "the-first-instance" }
+      );
+      owner.OdometerCaptureCheckpoints.Add(
+        new() { Id = OdometerCaptureCheckpoint.SingletonId }
+      );
+      await owner.SaveChangesAsync();
+    }
+
+    // Nobody signed in, no carrier chosen - exactly how a worker starts.
+    await using var scope = provider.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    Assert.Null(db.ServingCompany);
+
+    Assert.NotEmpty(await db.SynchronizationCheckpoints.ToListAsync());
+    Assert.NotNull(
+      await db.OdometerCaptureCheckpoints.SingleOrDefaultAsync(x =>
+        x.Id == OdometerCaptureCheckpoint.SingletonId
+      )
+    );
+  }
+
+  private static DbContextOptions<AppDbContext> Options(
+    SqliteConnection connection
+  ) =>
+    new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options;
 }

@@ -1,9 +1,7 @@
 namespace Domain.Entities.Fleet;
 
-public class SynchronizationCheckpoint : BaseEntity, ICompanyOwned
+public class SynchronizationCheckpoint : BaseEntity
 {
-  public Guid CompanyId { get; set; }
-
   public string Owner { get; set; } = "";
   public DateTime LeaseUntil { get; set; }
   public DateTime UpdatedAt { get; set; }
