@@ -67,10 +67,12 @@ default for subsequent implementation and automated verification.
 
 ### Current workstation override
 
-The explicitly requested local takeover is active: local API User Secrets point
-to the working `neondb` database with background operations and synchronization
-enabled. Cloud Run `amftms-api` in `amftms/us-east4` is stopped with manual
-scaling set to zero. Automatic local migrations remain disabled.
+The local takeover ended with the authorized September 21 release. Cloud Run
+`amftms-api` in `amftms/us-east4` serves the new revision with automatic scaling
+and a one-instance revision limit. Local API and Client processes remain stopped.
+Local API User Secrets still point to the working `neondb` database with
+background operations and synchronization enabled. Automatic local migrations
+remain disabled. Do not start that local API while cloud workers are running.
 
 The isolated databases below remain available, but are not the current interactive
 API target. Restore `before-local-takeover-secrets.json` from the private
@@ -78,18 +80,23 @@ workstation development directory before experimental writes or test data setup.
 Do not resume Cloud Run workers while the local working-database API is running.
 Original cloud configuration is saved privately as
 `cloud-before-local-takeover.json`; it used automatic scaling, minimum one and
-maximum twenty instances. Stop the local API before restoring those settings.
+maximum twenty instances. The current release uses the narrower revision limit
+in `deploy-server.sh`; do not restore the old settings as a routine startup step.
 
 The stop-driver and Shipment/Border migrations dated 2026-09-18 were applied
 additively in one transaction after cloud shutdown. No user data was reset.
-Gmail push webhooks cannot reach localhost; the registered periodic catch-up
-mechanism remains available through local maintenance. No public tunnel exists.
+Gmail push webhooks now reach the cloud API again. No public localhost tunnel
+exists. See the [September 21 release record][company-release] for migration and
+verification evidence.
+
+[company-release]: ../archive/2026-09/company-isolation-release-2026-09-21.md
 
 ### Dedicated development and test databases
 
 This workstation uses `pulsr_development` on the existing remote PostgreSQL
-server. The local API's `pulsartms-api-local` User Secrets now select that
-database, with a dedicated `pulsr_developer` login. This is database isolation,
+server, with a dedicated `pulsr_developer` login. The saved development
+configuration selects that database; restore it before local iteration as
+described above. This is database isolation,
 not a PostgreSQL server running on localhost; network access is still required.
 Current migrations are applied. No production rows or users were copied.
 
@@ -103,8 +110,9 @@ facilities and coordinates, not copies of production loads. Their IDs are in
 do not reset them automatically on application startup. No live GPS or HOS
 observations are supplied by this seed, so Fleet Map is not a live fleet demo.
 
-Local User Secrets disable synchronization, Gmail background maintenance,
-Dispatch imports and automatic migrations. Starting the API does not opt back
+The saved development configuration disables synchronization, Gmail background
+maintenance, Dispatch imports and automatic migrations. Starting the API with
+that configuration does not opt back
 into those integrations. Review explicit provider calls separately when adding
 development data. Restart an already running API to load the new settings.
 

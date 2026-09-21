@@ -10,6 +10,8 @@ started again under the current project policy.
 
 ### Reviews and implementation records
 
+- [Company isolation release](2026-09/company-isolation-release-2026-09-21.md)
+
 - [Refactor audit, September 21][refactor-audit-2026-09-21]
 
 - [Company boundary corrections][company-boundary-fixes-2026-09-21]
