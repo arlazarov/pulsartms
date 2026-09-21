@@ -25,7 +25,10 @@ const written = new Map([
 
 test('a module written as a whole screen may only get smaller', () => {
   for (const [file, budget] of written) {
-    assert.ok(modules.includes(file), `${file} is gone - drop it from the list`);
+    assert.ok(
+      modules.includes(file),
+      `${file} is gone - drop it from the list`,
+    );
     const now = length(file);
     assert.ok(
       now <= budget,
@@ -50,6 +53,6 @@ test('the browser sources explain themselves', () => {
     withFileTypes: true,
   }).filter(entry => entry.isDirectory()))
     assert.match(guide, new RegExp(`${folder.name}/`), folder.name);
-  assert.match(guide, /jsconfig\.json/);
+  assert.match(guide, /tsconfig\.json/);
   assert.match(guide, /contracts\.d\.ts/);
 });

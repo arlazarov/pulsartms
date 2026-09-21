@@ -30,11 +30,13 @@ test('browser sources do not depend on generated output and relative imports res
 
 test('every generated module referenced by Client C# or Razor has a JavaScript build entry point', () => {
   const build = read('build/javascript.mjs');
-  const entryBlock = build.match(/entryPoints:\s*\[([\s\S]*?)\]/)?.[1];
+  // The build names its sources without an extension while the tree is
+  // being moved to TypeScript; what ships keeps the .js name either way.
+  const entryBlock = build.match(/const sources = \[([\s\S]*?)\]/)?.[1];
   assert.ok(entryBlock, 'JavaScript build must declare its entry points');
   const entries = new Set(
-    [...entryBlock.matchAll(/['"]Scripts\/([^'"]+\.js)['"]/g)].map(
-      match => match[1],
+    [...entryBlock.matchAll(/['"]Scripts\/([^'"]+)['"]/g)].map(
+      match => `${match[1]}.js`,
     ),
   );
   let checked = 0;

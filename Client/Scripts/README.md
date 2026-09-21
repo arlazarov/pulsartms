@@ -23,7 +23,7 @@ hand. `rendering/README.md` says what each renderer module owns.
 
 ## Types
 
-`jsconfig.json` type-checks every file here: `npm run js:check`, and
+`tsconfig.json` type-checks every file here: `npm run js:check`, and
 `bash test.sh` runs it before the tests. It is not decoration - it has
 caught a contract that named two of six fields, positions read as `lat`
 that arrive as `latitude`, and a style object that gained half its keys
@@ -46,6 +46,11 @@ export function createNextLoadsLayer(map, Polyline, StopMarker, onSelection) {
 A default of `() => {}` tells the checker the callback takes nothing, and
 every call with arguments then passes unseen. That is how five of these
 boundaries were undocumented.
+
+The tree is being moved to TypeScript, module by module. A module may be
+`.ts` or `.js` while that is going on; both are checked, both are bundled,
+and an import names the file it means - `./stopCardContent.ts` - so that
+Node can run the tests without a build step.
 
 ## One module, one thing
 

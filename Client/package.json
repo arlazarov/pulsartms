@@ -13,7 +13,7 @@
     "test:browser": "node tests/browser/mapLifecycle.mjs",
     "test:ui": "node tests/browser/uiSmoke.mjs",
     "js:build": "node build/javascript.mjs",
-    "js:check": "tsc -p jsconfig.json",
+    "js:check": "tsc -p tsconfig.json",
     "map:build": "npm run js:build",
     "styles:build": "sass --style=expanded Styles/main.scss:wwwroot/css/main.css && node build/styleVersion.mjs",
     "styles:watch": "sass --style=expanded --watch Styles/main.scss:wwwroot/css/main.css",

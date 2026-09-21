@@ -4,6 +4,7 @@
     "checkJs": true,
     "strict": false,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -18,6 +19,6 @@
   },
   "include": [
     "Scripts/**/*.js",
-    "Scripts/**/*.d.ts"
+    "Scripts/**/*.ts"
   ]
 }
