@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createLabelFonts,
   sceneMetrics,
-} from '../../Scripts/fleetMap/rendering/sceneMetrics.js';
+} from '../../Scripts/fleetMap/rendering/sceneMetrics.ts';
 import { createScene } from '../../Scripts/fleetMap/rendering/scene.js';
 
 test('label atlases match physical font sizes without enlarging CSS text', () => {

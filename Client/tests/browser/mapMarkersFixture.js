@@ -10,7 +10,7 @@ import { createScene } from '../../Scripts/fleetMap/rendering/scene.js';
 import {
   currentRouteColor,
   futureRouteColor,
-} from '../../Scripts/fleetMap/rendering/routePalette.js';
+} from '../../Scripts/fleetMap/rendering/routePalette.ts';
 import { createRouteLayer } from '../../Scripts/fleetMap/routes/routeLayer.js';
 
 const host = document.getElementById('map');

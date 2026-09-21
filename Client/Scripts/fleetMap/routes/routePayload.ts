@@ -1,17 +1,17 @@
-// @ts-check
+import type { MapPlan, RoutePayload } from '../contracts.d.ts';
 
-/**
- * @param {import('../contracts.d.ts').MapPlan | null} current
- * @param {import('../contracts.d.ts').RoutePayload} payload
- * @returns {{ accepted: true, plan: import('../contracts.d.ts').MapPlan | null } | { accepted: false }}
- */
-export function mergeRoutePayload(current, payload) {
+// A payload without geometry is only accepted for the plan it belongs to:
+// the road it leaves out is the one already on the map.
+export function mergeRoutePayload(
+  current: MapPlan | null,
+  payload: RoutePayload,
+): { accepted: true; plan: MapPlan | null } | { accepted: false } {
   // Geometry not omitted means the payload carries the road itself, which
   // is what makes it a plan rather than the metadata around one.
   if (!payload?.geometryOmitted)
     return {
       accepted: true,
-      plan: /** @type {import('../contracts.d.ts').MapPlan} */ (payload),
+      plan: payload as MapPlan,
     };
   if (
     !current ||

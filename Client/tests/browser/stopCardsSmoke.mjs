@@ -7,7 +7,7 @@ import { chromium } from 'playwright';
 import {
   currentRouteColor,
   futureRouteColor,
-} from '../../Scripts/fleetMap/rendering/routePalette.js';
+} from '../../Scripts/fleetMap/rendering/routePalette.ts';
 
 const output = browserOutput('stop-cards', process.env.STOP_CARD_OUTPUT_DIR);
 const origin = 'http://stop-cards.invalid';

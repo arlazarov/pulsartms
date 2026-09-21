@@ -1,7 +1,7 @@
 import { releaseAll } from '../lifecycle/release.ts';
 import { createSceneLayers } from './sceneLayers.js';
 import { snapshotStops } from './stopData.js';
-import { pickNearbyStation } from './stationTouch.js';
+import { pickNearbyStation } from './stationTouch.ts';
 import { readStopLabelStyle } from './stopLabelStyle.js';
 import { clusterTrucks, clusterCamera } from './truckClusters.js';
 import { layoutMapLabels } from './truckLabelLayout.js';

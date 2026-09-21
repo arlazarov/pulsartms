@@ -1,5 +1,5 @@
-import { truckIcon } from './truckAppearance.js';
-import { markerAnchor } from './markerAnchor.js';
+import { truckIcon } from './truckAppearance.ts';
+import { markerAnchor } from './markerAnchor.ts';
 import { clusterText } from './truckLabelLayout.js';
 import { memoizeLast } from './layerCache.ts';
 import { routeLayers } from './routeAppearance.js';
@@ -8,7 +8,7 @@ import {
   sceneMetrics as metrics,
   createLabelFonts,
   labelSubLayers,
-} from './sceneMetrics.js';
+} from './sceneMetrics.ts';
 import { defaultStopLabelStyle } from './stopLabelStyle.js';
 import { stopCardLayers } from './stopCardLayers.js';
 const emptyClusters = Object.freeze([]);

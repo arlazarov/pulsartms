@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createScene } from '../../Scripts/fleetMap/rendering/scene.js';
-import { currentRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.js';
+import { currentRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.ts';
 import { stopMarkerIcon } from '../../Scripts/fleetMap/rendering/stopAppearance.js';
 
 test('scene reuses static layers across motion, invalidates only changed stops and cleans up', t => {

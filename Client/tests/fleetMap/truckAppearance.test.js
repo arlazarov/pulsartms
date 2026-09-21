@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { truckIcon } from '../../Scripts/fleetMap/rendering/truckAppearance.js';
+import { truckIcon } from '../../Scripts/fleetMap/rendering/truckAppearance.ts';
 
 test('GPU trucks use the original north-facing arrow in green with its original heading anchor', () => {
   for (const state of ['on', 'idle', 'off']) {

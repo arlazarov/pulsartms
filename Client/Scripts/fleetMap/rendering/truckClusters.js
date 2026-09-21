@@ -1,4 +1,4 @@
-import { sceneMetrics as metrics } from './sceneMetrics.js';
+import { sceneMetrics as metrics } from './sceneMetrics.ts';
 import { markerProjection } from './markerProjection.ts';
 
 export function clusterTrucks(vehicles, zoom) {

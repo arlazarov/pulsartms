@@ -1,10 +1,10 @@
-const icons = new Map();
+const icons = new Map<string, unknown>();
 
 // Moving, standing with the engine on, standing with it off - and the colour
 // that says which. The ring a badge wears while a truck stands on it is
 // painted this colour too: the ring is the truck, so it says what the truck
 // says - green with the engine running, grey with it off.
-export function truckState(engine, speed = 0) {
+export function truckState(engine: unknown, speed = 0): string {
   const state = typeof engine === 'string' ? engine.trim().toLowerCase() : '';
   return Number.isFinite(speed) && speed >= 1
     ? 'moving'
@@ -13,14 +13,14 @@ export function truckState(engine, speed = 0) {
       : 'off';
 }
 
-export function truckColor(engine, speed = 0) {
+export function truckColor(engine: unknown, speed = 0): string {
   return truckState(engine, speed) === 'off' ? truckStopped : truckRunning;
 }
 
 const truckRunning = '#16a34a';
 const truckStopped = '#64748b';
 
-export function truckIcon(engine, speed = 0) {
+export function truckIcon(engine: unknown, speed = 0) {
   const key = truckState(engine, speed);
   if (!icons.has(key)) {
     // Preserve the original heading anchor; the unit label remains upright.

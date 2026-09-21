@@ -1,6 +1,14 @@
-import { sceneMetrics } from './sceneMetrics.js';
+import { sceneMetrics } from './sceneMetrics.ts';
 
-export function pickNearbyStation(overlay, info, event) {
+// A tap near a station counts as a tap on it: fingers are wider than the
+// dot, and the miss would otherwise land on the map.
+export function pickNearbyStation(
+  overlay: {
+    pickObject(options: Record<string, unknown>): { object?: unknown } | null;
+  },
+  info: { object?: unknown; x?: number; y?: number },
+  event: Record<string, any> | undefined,
+) {
   if (info.object || event?.tapCount > 1) return null;
   const source = event?.srcEvent?.domEvent ?? event?.srcEvent;
   if (source?.button > 0) return null;

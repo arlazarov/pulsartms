@@ -1,7 +1,7 @@
 import {
   currentRouteLineColor,
   futureRouteColor,
-} from '../rendering/routePalette.js';
+} from '../rendering/routePalette.ts';
 
 const literal = p => ({ lat: p.latitude, lng: p.longitude });
 const value = (p, key) => (typeof p[key] === 'function' ? p[key]() : p[key]);

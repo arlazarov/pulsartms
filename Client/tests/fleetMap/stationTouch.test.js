@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { pickNearbyStation } from '../../Scripts/fleetMap/rendering/stationTouch.js';
+import { pickNearbyStation } from '../../Scripts/fleetMap/rendering/stationTouch.ts';
 
 test('touch misses query ordinary and recommended fuel points in CSS pixels', () => {
   const result = { object: { id: 'nearest' } };

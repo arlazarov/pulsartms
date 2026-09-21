@@ -6,7 +6,7 @@ import {
   currentRouteColor,
   currentRouteLineColor,
   futureRouteColor,
-} from '../../Scripts/fleetMap/rendering/routePalette.js';
+} from '../../Scripts/fleetMap/rendering/routePalette.ts';
 
 test('load palette reuses opaque named colors with readable contrast on white', () => {
   const colors = [

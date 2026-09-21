@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { nextLoadDisplay } from '../../Scripts/fleetMap/routes/nextLoadDisplay.js';
-import { futureRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.js';
+import { futureRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.ts';
 
 test('pending loads reserve numbers without changing inputs or calculating popup display values', () => {
   const loads = [

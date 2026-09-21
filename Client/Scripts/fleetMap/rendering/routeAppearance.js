@@ -1,5 +1,5 @@
-import { sceneMetrics as metrics } from './sceneMetrics.js';
-import { currentRouteLineColor } from './routePalette.js';
+import { sceneMetrics as metrics } from './sceneMetrics.ts';
+import { currentRouteLineColor } from './routePalette.ts';
 
 // Empty miles are grey wherever they appear: no load is on board, and the
 // orange they used to share with a live route claimed attention they never

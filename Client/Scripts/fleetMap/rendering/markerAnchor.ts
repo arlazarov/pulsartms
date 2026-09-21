@@ -1,6 +1,18 @@
-const icons = new Map();
+type Anchor = {
+  url: string;
+  width: number;
+  height: number;
+  anchorX: number;
+  anchorY: number;
+  mask: boolean;
+  size: number;
+};
 
-export function markerAnchor(pixelOffset) {
+const icons = new Map<string, Anchor>();
+
+// The line drawn from where a thing really is to where its marker had to be
+// moved, cached by that offset.
+export function markerAnchor(pixelOffset: [number, number]): Anchor {
   const [dx, dy] = pixelOffset;
   const key = `${dx}:${dy}`;
   if (!icons.has(key)) {
@@ -23,5 +35,5 @@ export function markerAnchor(pixelOffset) {
       size: height,
     });
   }
-  return icons.get(key);
+  return icons.get(key)!;
 }

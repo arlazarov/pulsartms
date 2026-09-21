@@ -62,4 +62,4 @@ export function stopMarkerIcon(
     mask: false,
   };
 }
-import { currentRouteColor } from './routePalette.js';
+import { currentRouteColor } from './routePalette.ts';

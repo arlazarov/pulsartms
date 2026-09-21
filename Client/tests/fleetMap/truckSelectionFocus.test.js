@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.js';
-import { sceneMetrics as metrics } from '../../Scripts/fleetMap/rendering/sceneMetrics.js';
+import { sceneMetrics as metrics } from '../../Scripts/fleetMap/rendering/sceneMetrics.ts';
 
 class Layer {
   constructor(props) {

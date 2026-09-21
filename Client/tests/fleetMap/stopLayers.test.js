@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.js';
 import { snapshotStops } from '../../Scripts/fleetMap/rendering/stopData.js';
-import { currentRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.js';
+import { currentRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.ts';
 import { stopMarkerIcon } from '../../Scripts/fleetMap/rendering/stopAppearance.js';
 
 test('one stop update preserves other GPU data; hover only reorders opaque pairs', () => {

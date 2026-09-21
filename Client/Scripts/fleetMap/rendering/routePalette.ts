@@ -1,12 +1,10 @@
-// @ts-check
+export type RouteColor = readonly [number, number, number, number];
 
-/** @typedef {readonly [number, number, number, number]} RouteColor */
+export const currentRouteColor: RouteColor = Object.freeze([40, 76, 220, 255]);
 
-/** @type {RouteColor} */
-export const currentRouteColor = Object.freeze([40, 76, 220, 255]);
-
-/** @type {RouteColor} */
-export const currentRouteLineColor = Object.freeze([0, 106, 235, 255]);
+export const currentRouteLineColor: RouteColor = Object.freeze([
+  0, 106, 235, 255,
+]);
 
 // Fixed map series mirror the named UI palette: the first three roads are
 // the map-route-option roles in order, and the series runs on through the
@@ -22,13 +20,11 @@ const palette = Object.freeze({
 });
 const futureColors = Object.freeze(Object.values(palette));
 
-/** @param {number} red @param {number} green @param {number} blue @returns {RouteColor} */
-function rgba(red, green, blue) {
+function rgba(red: number, green: number, blue: number): RouteColor {
   return Object.freeze([red, green, blue, 255]);
 }
 
-/** @param {number} index @returns {RouteColor} */
-export function futureRouteColor(index) {
+export function futureRouteColor(index: number): RouteColor {
   const position = Number.isFinite(index) ? Math.max(0, Math.trunc(index)) : 0;
   return futureColors[position % futureColors.length];
 }

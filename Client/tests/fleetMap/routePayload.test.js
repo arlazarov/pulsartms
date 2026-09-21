@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeRoutePayload } from '../../Scripts/fleetMap/routes/routePayload.js';
+import { mergeRoutePayload } from '../../Scripts/fleetMap/routes/routePayload.ts';
 
 test('metadata refresh preserves only matching geometry and replaces nullable metadata', () => {
   const full = {

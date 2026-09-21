@@ -1,13 +1,13 @@
 // @ts-check
-import { futureRouteColor } from '../rendering/routePalette.js';
+import { futureRouteColor } from '../rendering/routePalette.ts';
 import { markSharedRoads } from './sharedRoads.js';
 
 /** @typedef {{loadId: string | undefined, executionLegId?: string | null, loadNumber: number, index: number}} StopSelection */
-/** @typedef {{stop: import('../contracts.d.ts').NextLoadStop, numbers: Set<number>, members: StopSelection[], color: import('../rendering/routePalette.js').RouteColor}} StopGroup */
+/** @typedef {{stop: import('../contracts.d.ts').NextLoadStop, numbers: Set<number>, members: StopSelection[], color: import('../rendering/routePalette.ts').RouteColor}} StopGroup */
 
 /** @param {import('../contracts.d.ts').NextLoad[]} loads */
 export function nextLoadDisplay(loads) {
-  /** @type {{points: import('../contracts.d.ts').RoutePoint[], role: 'deadhead' | 'future', loadId: string | number, routeColor?: import('../rendering/routePalette.js').RouteColor}[]} */
+  /** @type {{points: import('../contracts.d.ts').RoutePoint[], role: 'deadhead' | 'future', loadId: string | number, routeColor?: import('../rendering/routePalette.ts').RouteColor}[]} */
   const lines = [];
   /** @type {StopGroup[]} */
   const groups = [];

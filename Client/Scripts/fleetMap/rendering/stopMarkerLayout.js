@@ -1,6 +1,6 @@
-import { sceneMetrics as metrics } from './sceneMetrics.js';
+import { sceneMetrics as metrics } from './sceneMetrics.ts';
 import { markerProjection } from './markerProjection.ts';
-import { truckColor } from './truckAppearance.js';
+import { truckColor } from './truckAppearance.ts';
 
 export function stopMarkerLabel(_job, number) {
   return String(number ?? '');

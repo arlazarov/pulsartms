@@ -1,4 +1,4 @@
-import { sceneMetrics } from './sceneMetrics.js';
+import { sceneMetrics } from './sceneMetrics.ts';
 
 // Fallbacks mirror the semantic light-theme roles; mounted scenes read their
 // CSS tokens off the probe element. The two are held together by

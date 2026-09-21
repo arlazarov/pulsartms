@@ -7,7 +7,7 @@ import {
   currentRouteColor,
   currentRouteLineColor,
   futureRouteColor,
-} from '../../Scripts/fleetMap/rendering/routePalette.js';
+} from '../../Scripts/fleetMap/rendering/routePalette.ts';
 import { defaultStopLabelStyle } from '../../Scripts/fleetMap/rendering/stopLabelStyle.js';
 
 // The map draws on the GPU, which takes numbers, not custom properties, so
@@ -96,8 +96,8 @@ test('every colour a rendering module draws with is accounted for', () => {
     import.meta.url,
   );
   const claimed = new Set();
-  for (const file of readdirSync(directory).filter(name =>
-    name.endsWith('.js'),
+  for (const file of readdirSync(directory).filter(
+    name => name.endsWith('.js') || name.endsWith('.ts'),
   )) {
     const source = readFileSync(new URL(file, directory), 'utf8');
     for (const [literal, red, green, blue] of source.matchAll(
