@@ -127,9 +127,7 @@ export function markSharedRoads<T extends RoadLine>(lines: T[]): T[] {
       }
       // The point that changes the answer belongs to both runs, or the road
       // would show a gap where one ends and the next begins.
-      const previous: RoutePoint | undefined = (run as T | null)?.points.at(
-        -1,
-      );
+      const previous: RoutePoint | undefined = (run as T | null)?.points.at(-1);
       run = {
         ...line,
         points: previous ? [previous, point] : [point],

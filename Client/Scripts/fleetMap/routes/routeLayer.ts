@@ -8,6 +8,7 @@ import type { RouteLineFactory } from './routeRoad.ts';
 import type { TruckPoint } from '../trucks/truckPoints.ts';
 import type { StopEtaLabel } from './stopEtaLabels.ts';
 import { releaseAll } from '../lifecycle/release.ts';
+import { createProgressReports } from './progressReports.ts';
 import { createRouteRoad } from './routeRoad.ts';
 import { createRouteStops } from './routeStops.ts';
 import { createRouteSnapper } from '../trucks/routeSnap.ts';
@@ -15,8 +16,6 @@ import { createDetailsCard } from '../ui/detailsCard.ts';
 import { pendingStops } from './pendingStops.ts';
 import { emptyRouteLegs } from './emptyRouteLegs.ts';
 import { stopEtaIdentity } from './stopEtaIdentity.ts';
-
-const PROGRESS_DISPLAY_INTERVAL_MS = 60_000;
 
 /**
  * The road a truck is driving, its stops, and what it has covered. The road
@@ -66,16 +65,16 @@ export function createRouteLayer(
   let identity = '';
   let stopIdentity = '';
   let etaIdentity = '';
-  let totalMiles = 0;
   let serverProgress: RouteProgress | null = null;
   let lastPositionUpdate = 0;
   let lastMatchedPositionAt: number | null = null;
   let matchedSegment: number | null = null,
     lastFullMatchAt = -Infinity;
-  let lastProgressNotification = -Infinity;
-  let displayedProgress: number | null = null;
-  let displayPending = false;
   let pendingFit = false;
+  // The road follows the truck every frame; the mileage beside it steps.
+  const reports = createProgressReports(onProgress, miles =>
+    stops.setProgress(miles),
+  );
   const dragListener = map.addListener('dragstart', () => {
     pendingFit = false;
   });
@@ -112,13 +111,12 @@ export function createRouteLayer(
     )
       .map(stop => stop.id)
       .join(':')}`;
-    if (key !== identity || nextStops !== stopIdentity)
-      lastProgressNotification = -Infinity;
+    if (key !== identity || nextStops !== stopIdentity) reports.sayNext();
     stopIdentity = nextStops;
     if (key === identity) {
       if (!preserveStops) {
         stops.setEtas(new Map());
-        displayPending = false;
+        reports.setWaiting(false);
       }
       plan = value;
       stops.setPlan(value);
@@ -130,11 +128,11 @@ export function createRouteLayer(
     identity = key;
     if (!preserveStops) {
       stops.clear();
-      displayPending = false;
-      displayedProgress = null;
+      reports.forget();
     }
-    totalMiles =
-      value?.route.legs.reduce((sum, leg) => sum + leg.miles, 0) ?? 0;
+    reports.setTotal(
+      value?.route.legs.reduce((sum, leg) => sum + leg.miles, 0) ?? 0,
+    );
     serverProgress = null;
     pendingFit = Boolean(value && fit && canFit());
     lastMatchedPositionAt = null;
@@ -174,25 +172,7 @@ export function createRouteLayer(
     )
       return;
     const nextProgress = progress?.progressMiles ?? null;
-    // Display mileage is sampled separately from the animated road.
-    const now = performance.now();
-    if (!displayPending && !Number.isFinite(nextProgress)) {
-      if (displayedProgress !== null) stops.setProgress(null);
-      displayedProgress = null;
-      lastProgressNotification = -Infinity;
-    } else if (
-      !displayPending &&
-      now - lastProgressNotification >= PROGRESS_DISPLAY_INTERVAL_MS
-    ) {
-      lastProgressNotification = now;
-      displayedProgress = nextProgress;
-      stops.setProgress(nextProgress!);
-      onProgress(
-        plan.truckId,
-        nextProgress!,
-        Math.max(0, totalMiles - nextProgress!),
-      );
-    }
+    reports.publish(plan.truckId, nextProgress, performance.now());
     // Show a cold route without GPS; retain its trimmed road on later gaps.
     // This display fallback must not report zero as measured truck progress.
     if (!Number.isFinite(nextProgress)) {
@@ -285,11 +265,10 @@ export function createRouteLayer(
     },
     setEtas(labels: Map<string, StopEtaLabel>, pending = false) {
       if (disposed) return;
-      const resumed = displayPending && !pending;
-      displayPending = pending;
+      const resumed = reports.setWaiting(pending);
       stops.setEtas(labels);
       if (resumed) {
-        lastProgressNotification = -Infinity;
+        reports.sayNext();
         setProgress(
           Number.isFinite(serverProgress?.progressMiles) &&
             Number.isFinite(road.drawnMiles())
