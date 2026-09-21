@@ -2,22 +2,61 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Persistence;
 
 public sealed class DatabaseInitializer(
   IServiceScopeFactory scopes,
-  IConfiguration configuration
+  IConfiguration configuration,
+  ILogger<DatabaseInitializer> logger
 ) : IHostedService
 {
+  private readonly CancellationTokenSource stopping = new();
+  private Task adoption = Task.CompletedTask;
+
   public async Task StartAsync(CancellationToken cancellationToken)
   {
     if (!configuration.GetValue<bool>("Database:ApplyMigrations"))
       return;
-    await using var scope = scopes.CreateAsyncScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync(cancellationToken);
-    await AdoptRowsWrittenDuringTheRolloutAsync(db, cancellationToken);
+    await using (var scope = scopes.CreateAsyncScope())
+    {
+      var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+      await db.Database.MigrateAsync(cancellationToken);
+      await AdoptRowsWrittenDuringTheRolloutAsync(db, cancellationToken);
+    }
+    // Once at startup is not enough: this revision migrates before it is
+    // given any traffic, and the previous one goes on writing until it is
+    // drained. So the question is asked again every few minutes. It costs
+    // one cheap look per table and changes nothing unless a row is found.
+    adoption = Task.Run(() => KeepAdoptingAsync(stopping.Token));
+  }
+
+  private async Task KeepAdoptingAsync(CancellationToken ct)
+  {
+    using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
+    try
+    {
+      while (await timer.WaitForNextTickAsync(ct))
+      {
+        try
+        {
+          await using var scope = scopes.CreateAsyncScope();
+          await AdoptRowsWrittenDuringTheRolloutAsync(
+            scope.ServiceProvider.GetRequiredService<AppDbContext>(),
+            ct
+          );
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+          logger.LogWarning(
+            ex,
+            "Ownerless rows could not be adopted this round"
+          );
+        }
+      }
+    }
+    catch (OperationCanceledException) { }
   }
 
   // While a release rolls out, the previous version is still running and
@@ -27,7 +66,7 @@ public sealed class DatabaseInitializer(
   // is no doubt whose those rows are, so they are handed to it. With two
   // carriers nothing is guessed - an ownerless row stays hidden until a
   // person decides whose it is.
-  private static async Task AdoptRowsWrittenDuringTheRolloutAsync(
+  private async Task AdoptRowsWrittenDuringTheRolloutAsync(
     AppDbContext db,
     CancellationToken ct
   )
@@ -50,6 +89,22 @@ public sealed class DatabaseInitializer(
         .Distinct()
     )
     {
+      var ownerless = await db
+        .Database.SqlQueryRaw<bool>(
+          $$"""
+          SELECT EXISTS (
+            SELECT 1 FROM "{{table}}" WHERE "CompanyId" = {0}
+          ) AS "Value"
+          """,
+          Guid.Empty
+        )
+        .SingleAsync(ct);
+      if (!ownerless)
+        continue;
+      logger.LogWarning(
+        "Adopting rows in {Table} written without a carrier",
+        table
+      );
       // Accepted history is held immutable by a trigger. Saying whose a
       // revision is changes nothing that was accepted, so the trigger
       // stands aside for that one statement and is put straight back.
@@ -74,6 +129,9 @@ public sealed class DatabaseInitializer(
     }
   }
 
-  public Task StopAsync(CancellationToken cancellationToken) =>
-    Task.CompletedTask;
+  public async Task StopAsync(CancellationToken cancellationToken)
+  {
+    await stopping.CancelAsync();
+    await adoption;
+  }
 }
