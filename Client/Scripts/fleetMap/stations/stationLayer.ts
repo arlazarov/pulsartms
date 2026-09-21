@@ -1,10 +1,9 @@
 import type { MapPoint, RoutePoint } from '../contracts.d.ts';
 import type { StationEdit } from './stationPopup.ts';
 import type { StationItem } from './stationPriceBook.ts';
-import type { PlannedFuel } from './stationPlan.ts';
 import { createStationPopup } from './stationPopup.ts';
 import { createStationPriceBook, stationId } from './stationPriceBook.ts';
-import { createStationPlan } from './stationPlan.ts';
+import { createStationPlan, type PlannedFuel } from './stationPlan.ts';
 import { fuelVisitLabel } from './stationQuantity.ts';
 import { yieldToBrowser } from '../lifecycle/backgroundWork.ts';
 import { createDetailsCard } from '../ui/detailsCard.ts';

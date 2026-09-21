@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRouteLayer } from '../../Scripts/fleetMap/routes/routeLayer.js';
+import { createRouteLayer } from '../../Scripts/fleetMap/routes/routeLayer.ts';
 
 const point = longitude => ({ latitude: 40, longitude });
 const plan = () => ({

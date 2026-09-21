@@ -55,8 +55,13 @@ Node can run the tests without a build step.
 ## One module, one thing
 
 A module is one thing you can name: the road a truck drives, the card a
-station opens, the words on that card. Four modules are still whole screens
-written as one closure - `fleetMap.js`, `rendering/scene.js`,
-`rendering/sceneLayers.js`, `routes/routeLayer.js`. They are pinned at
+station opens, the words on that card. Anything else is two modules - the
+trucks on the map and the camera over them, the stations and what fuel
+costs at them, the road and the shape of the route it draws.
+
+A few modules are still whole screens written as one closure -
+`fleetMap.js`, `rendering/scene.js`, `rendering/sceneLayers.js`,
+`routes/routeLayer.ts`, `stations/stationLayer.ts`. They are pinned at
 their current length by `tests/architecture/scriptStructure.test.js`: they
-may shrink, never grow, and nothing new may start out that large.
+may shrink, never grow, and nothing new may start out over 300 lines. A
+module leaves that list by getting under 300, as the truck layer did.

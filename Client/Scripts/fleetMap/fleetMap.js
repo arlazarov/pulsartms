@@ -1,5 +1,5 @@
 import { releaseAll } from './lifecycle/release.ts';
-import { createRouteLayer } from './routes/routeLayer.js';
+import { createRouteLayer } from './routes/routeLayer.ts';
 import { orderedStops } from './routes/pendingStops.ts';
 import { loadGoogleMaps } from './provider/googleMapsLoader.ts';
 import { createTruckLayer } from './trucks/truckLayer.ts';

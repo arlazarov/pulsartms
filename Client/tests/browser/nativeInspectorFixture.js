@@ -1,5 +1,5 @@
 import { createDockedDetails } from '../../Scripts/fleetMap/ui/dockedDetails.js';
-import { createRouteLayer } from '../../Scripts/fleetMap/routes/routeLayer.js';
+import { createRouteLayer } from '../../Scripts/fleetMap/routes/routeLayer.ts';
 import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.ts';
 import { stopEtaLabels } from '../../Scripts/fleetMap/routes/stopEtaLabels.ts';
 import { fuelRecommendations } from '../../Scripts/fleetMap/stations/fuelRecommendations.ts';

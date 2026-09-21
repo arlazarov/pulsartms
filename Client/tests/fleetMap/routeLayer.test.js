@@ -1,7 +1,7 @@
 import { popupFixture } from './popupFixture.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRouteLayer } from '../../Scripts/fleetMap/routes/routeLayer.js';
+import { createRouteLayer } from '../../Scripts/fleetMap/routes/routeLayer.ts';
 
 const textValues = node =>
   [node.textContent, ...(node.children ?? []).flatMap(textValues)].filter(

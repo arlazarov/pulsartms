@@ -12,12 +12,13 @@ export function matchRoute(
   position: TruckPoint | null,
   path: MapPoint[],
   cumulative: number[],
-  progress: number,
+  progress: number | null | undefined,
 ): RouteNudge | null {
   if (
     !position ||
     position.speed < 5 ||
     !Number.isFinite(position.heading) ||
+    progress == null ||
     !Number.isFinite(progress)
   )
     return null;

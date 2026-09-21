@@ -228,7 +228,7 @@ export function createRouteStops(
         if (selectedId === id) this.close();
       }
     },
-    setProgress(value: number) {
+    setProgress(value: number | null) {
       progress = value;
       for (const entry of entries.values()) updateDistance(entry);
     },

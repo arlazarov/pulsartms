@@ -11,7 +11,7 @@ import {
   currentRouteColor,
   futureRouteColor,
 } from '../../Scripts/fleetMap/rendering/routePalette.ts';
-import { createRouteLayer } from '../../Scripts/fleetMap/routes/routeLayer.js';
+import { createRouteLayer } from '../../Scripts/fleetMap/routes/routeLayer.ts';
 
 const host = document.getElementById('map');
 const listeners = new Map();
