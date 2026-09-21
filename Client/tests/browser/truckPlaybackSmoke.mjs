@@ -16,7 +16,7 @@ const bundle = await build({
     resolveDir: process.cwd(),
     contents: `
 import { createTruckLayer } from './Scripts/fleetMap/trucks/truckLayer.js';
-import { truckPlaybackDelay } from './Scripts/fleetMap/trucks/truckPlayback.js';
+import { truckPlaybackDelay } from './Scripts/fleetMap/trucks/truckPlayback.ts';
 const realNow = Date.now.bind(Date);
 let offset = 0, camera, paints = [], visibility = [];
 Date.now = () => realNow() + offset;

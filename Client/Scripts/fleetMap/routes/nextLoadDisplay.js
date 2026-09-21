@@ -1,6 +1,6 @@
 // @ts-check
 import { futureRouteColor } from '../rendering/routePalette.ts';
-import { markSharedRoads } from './sharedRoads.js';
+import { markSharedRoads } from './sharedRoads.ts';
 
 /** @typedef {{loadId: string | undefined, executionLegId?: string | null, loadNumber: number, index: number}} StopSelection */
 /** @typedef {{stop: import('../contracts.d.ts').NextLoadStop, numbers: Set<number>, members: StopSelection[], color: import('../rendering/routePalette.ts').RouteColor}} StopGroup */

@@ -1,21 +1,34 @@
-// @ts-check
-
+import type { DispatchEta } from '../contracts.d.ts';
+import type { HoursRow } from './stopHoursLabels.js';
 import { cycleStatus, stopHoursLabels } from './stopHoursLabels.js';
+
+// What a card says about one stop's arrival: the hour, whether it is late,
+// and the cycle behind it.
+export type StopEtaLabel = {
+  text: string;
+  arrivalText: string;
+  statusText: string;
+  arrivalStatusText?: string;
+  cycleStatusText?: string;
+  tone: 'eta' | 'success' | 'danger';
+  etaLabel?: string;
+  hours?: HoursRow[];
+};
 
 const PENDING_DISPLAY_GRACE_MS = 15 * 60_000;
 
-/** @param {import('../contracts.d.ts').DispatchEta | null | undefined} eta */
-export function stopEtaDeadline(eta) {
+export function stopEtaDeadline(eta: DispatchEta | null | undefined): number {
   return (
     Date.parse(eta?.validUntil ?? '') +
     (eta?.routeUpdatePending ? PENDING_DISPLAY_GRACE_MS : 0)
   );
 }
 
-/** @param {import('../contracts.d.ts').DispatchEta | null | undefined} eta @param {number} [now] */
-export function stopEtaLabels(eta, now = Date.now()) {
-  /** @type {Map<string, {text: string, arrivalText: string, statusText: string, arrivalStatusText?: string, cycleStatusText?: string, tone: 'eta'|'success'|'danger', etaLabel?: string, hours?: import('./stopHoursLabels.js').HoursRow[]}>} */
-  const labels = new Map();
+export function stopEtaLabels(
+  eta: DispatchEta | null | undefined,
+  now = Date.now(),
+): Map<string, StopEtaLabel> {
+  const labels = new Map<string, StopEtaLabel>();
   if (!eta || !(stopEtaDeadline(eta) > now)) return labels;
   for (const stop of eta.stops || []) {
     if (
@@ -41,7 +54,7 @@ export function stopEtaLabels(eta, now = Date.now()) {
         stop.lateMinutes >= 0;
       const cycle = cycleStatus(stop);
       const known = hasStatus && !cycle;
-      const late = hasStatus && stop.lateMinutes > 0;
+      const late = hasStatus && (stop.lateMinutes ?? 0) > 0;
       const hours = stopHoursLabels(stop, eta, now);
       const etaLabel = 'ETA';
       const arrivalText = hours ? local.replace(',', ' ·') : local;

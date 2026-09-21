@@ -1,19 +1,23 @@
 import { layoutStopMarkers } from './stopMarkerLayout.js';
 
-const sameRows = (left, right, fields) =>
+// A row of stop data as the layers read it. The scene hands these straight
+// to the GPU, so a row is plain values and nothing else.
+type Row = Record<string, unknown>;
+
+const sameRows = (left: Row[], right: Row[], fields: string[]) =>
   left.length === right.length &&
   left.every((row, i) => fields.every(field => row[field] === right[i][field]));
 
 // Snapshot plain stop data only when changed. Distances preserve geometry layers.
 export function snapshotStops(
-  stops,
-  previousStops = [],
-  previousDistances = [],
-  zoom,
-  trucks = [],
-) {
-  const stopData = [],
-    distanceData = [];
+  stops: Iterable<Row>,
+  previousStops: Row[] = [],
+  previousDistances: Row[] = [],
+  zoom: number,
+  trucks: Row[] = [],
+): { stopData: Row[]; distanceData: Row[] } {
+  const stopData: Row[] = [],
+    distanceData: Row[] = [];
   const previousById = new Map(previousStops.map(row => [row.id, row]));
   const fields = [
     'id',
@@ -77,7 +81,7 @@ export function snapshotStops(
     if (previous && fields.every(field => previous[field] === row[field]))
       stopData[index] = previous;
   }
-  stopData.sort((a, b) => a.priority - b.priority);
+  stopData.sort((a, b) => Number(a.priority) - Number(b.priority));
   return {
     stopData: sameRows(stopData, previousStops, fields)
       ? previousStops

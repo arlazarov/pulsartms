@@ -4,7 +4,7 @@ import {
   stopAppearance,
   stopMarkerIcon,
   isDelivery,
-} from '../../Scripts/fleetMap/rendering/stopAppearance.js';
+} from '../../Scripts/fleetMap/rendering/stopAppearance.ts';
 
 test('number badges use opaque route colors with a white border and readable digits', () => {
   for (const color of [

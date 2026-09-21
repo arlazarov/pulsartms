@@ -4,7 +4,7 @@ import {
   clusterTrucks,
   clusterExpansionZoom,
   clusterCamera,
-} from '../../Scripts/fleetMap/rendering/truckClusters.js';
+} from '../../Scripts/fleetMap/rendering/truckClusters.ts';
 import { markerAnchor } from '../../Scripts/fleetMap/rendering/markerAnchor.ts';
 
 const truck = (unit, lng, selected = false) => ({

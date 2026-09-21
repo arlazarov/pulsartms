@@ -1,7 +1,7 @@
 import { createDockedDetails } from '../../Scripts/fleetMap/ui/dockedDetails.js';
 import { createRouteLayer } from '../../Scripts/fleetMap/routes/routeLayer.js';
 import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.js';
-import { stopEtaLabels } from '../../Scripts/fleetMap/routes/stopEtaLabels.js';
+import { stopEtaLabels } from '../../Scripts/fleetMap/routes/stopEtaLabels.ts';
 import { fuelRecommendations } from '../../Scripts/fleetMap/stations/fuelRecommendations.js';
 import { createCameraViewport } from '../../Scripts/fleetMap/ui/cameraViewport.js';
 

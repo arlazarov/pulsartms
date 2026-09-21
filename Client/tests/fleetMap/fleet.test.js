@@ -9,7 +9,7 @@ import {
   advancePlaybackTime,
   getTruckPosition,
   truckPlaybackDelay,
-} from '../../Scripts/fleetMap/trucks/truckPlayback.js';
+} from '../../Scripts/fleetMap/trucks/truckPlayback.ts';
 import {
   selectStationPrices,
   comparisonPrice,
@@ -175,7 +175,7 @@ test('global scale keeps a nineteen-cent price difference visually distinct', ()
 
 test('new telemetry blends from the displayed position without snapping or rotating the long way', async () => {
   const { blendTruckPosition } = await import(
-    '../../Scripts/fleetMap/trucks/truckPlayback.js'
+    '../../Scripts/fleetMap/trucks/truckPlayback.ts'
   );
   const from = { latitude: 40, longitude: -80, heading: 350, speed: 40 };
   const to = { latitude: 42, longitude: -78, heading: 10, speed: 60 };

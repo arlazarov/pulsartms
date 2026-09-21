@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTruckLayer } from '../../Scripts/fleetMap/trucks/truckLayer.js';
-import { truckPlaybackDelay } from '../../Scripts/fleetMap/trucks/truckPlayback.js';
+import { truckPlaybackDelay } from '../../Scripts/fleetMap/trucks/truckPlayback.ts';
 
 function playback(t) {
   let now = Date.UTC(2026, 8, 15, 5),

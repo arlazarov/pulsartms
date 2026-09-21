@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { stopMarkerLabel } from '../../Scripts/fleetMap/rendering/stopMarkerLayout.js';
-import { snapshotStops } from '../../Scripts/fleetMap/rendering/stopData.js';
+import { snapshotStops } from '../../Scripts/fleetMap/rendering/stopData.ts';
 
 test('compact markers show only ordered numbers while stop type remains in the card', () => {
   for (const job of ['Pickup', 'Pick Up', 'pick_up'])

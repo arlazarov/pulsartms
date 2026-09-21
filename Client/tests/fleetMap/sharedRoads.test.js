@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { markSharedRoads } from '../../Scripts/fleetMap/routes/sharedRoads.js';
+import { markSharedRoads } from '../../Scripts/fleetMap/routes/sharedRoads.ts';
 
 const at = (latitude, longitude) => ({ latitude, longitude });
 const road = (loadId, points, role = 'future') => ({ points, role, loadId });

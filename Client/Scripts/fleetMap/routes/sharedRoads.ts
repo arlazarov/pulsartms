@@ -1,4 +1,15 @@
-// @ts-check
+import type { RoutePoint } from '../contracts.d.ts';
+
+// A road drawn on the map: the points it runs through, whose load it is,
+// and - once this module has been through them - whether more than one load
+// runs that stretch.
+export type RoadLine = {
+  role?: string;
+  loadId?: string | number;
+  points: RoutePoint[];
+  routeShared?: boolean;
+  [key: string]: unknown;
+};
 
 // Several upcoming loads can run the same highway. Their geometry is the
 // same road, so drawing one on top of the other loses whichever is beneath,
@@ -15,7 +26,7 @@
 // different points, and the carriageways of a divided road are the same road
 // to a truck.
 const cellSize = 0.001;
-const key = (latitude, longitude) =>
+const key = (latitude: number, longitude: number) =>
   `${Math.round(latitude / cellSize)},${Math.round(longitude / cellSize)}`;
 
 // A road is claimed along its whole length, not at the points that happen to
@@ -25,7 +36,12 @@ const key = (latitude, longitude) =>
 const segmentStep = cellSize / 2;
 const segmentLimit = 4000;
 
-function claim(owners, loadId, from, to) {
+function claim(
+  owners: Map<string, Set<string | number>>,
+  loadId: string | number,
+  from: RoutePoint,
+  to: RoutePoint,
+): void {
   const span = Math.max(
     Math.abs(to.latitude - from.latitude),
     Math.abs(to.longitude - from.longitude),
@@ -49,7 +65,10 @@ function claim(owners, loadId, from, to) {
 // Whether the road is claimed is asked of the cell a point sits in and the
 // eight around it. Two walks of one line round to neighbouring cells here
 // and there, and without this the road parts company at each of them.
-function claimed(owners, point) {
+function claimed(
+  owners: Map<string, Set<string | number>>,
+  point: RoutePoint,
+): boolean {
   const latitude = Math.round(point.latitude / cellSize);
   const longitude = Math.round(point.longitude / cellSize);
   const loads = new Set();
@@ -67,8 +86,8 @@ function claimed(owners, point) {
 // line at every one of them costs a drawn object apiece.
 const shortestStretch = 8;
 
-function settle(flags) {
-  const runs = [];
+function settle(flags: boolean[]): boolean[] {
+  const runs: { flag: boolean; start: number; end: number }[] = [];
   for (const [index, flag] of flags.entries()) {
     const last = runs.at(-1);
     if (last && last.flag === flag) last.end = index + 1;
@@ -86,22 +105,21 @@ function settle(flags) {
   return settled;
 }
 
-/** @param {{points: import('../contracts.d.ts').RoutePoint[], role: string, loadId: string | number}[]} lines */
-export function markSharedRoads(lines) {
-  const owners = new Map();
+export function markSharedRoads(lines: RoadLine[]): RoadLine[] {
+  const owners = new Map<string, Set<string | number>>();
   for (const line of lines) {
     if (line.role !== 'future') continue;
     for (let index = 1; index < line.points.length; index++)
-      claim(owners, line.loadId, line.points[index - 1], line.points[index]);
+      claim(owners, line.loadId!, line.points[index - 1], line.points[index]);
   }
-  const result = [];
+  const result: RoadLine[] = [];
   for (const line of lines) {
     if (line.role !== 'future') {
       result.push(line);
       continue;
     }
     const flags = settle(line.points.map(point => claimed(owners, point)));
-    let run = null;
+    let run: RoadLine | null = null;
     for (const [index, point] of line.points.entries()) {
       if (run && run.routeShared === flags[index]) {
         run.points.push(point);
@@ -109,7 +127,9 @@ export function markSharedRoads(lines) {
       }
       // The point that changes the answer belongs to both runs, or the road
       // would show a gap where one ends and the next begins.
-      const previous = run?.points.at(-1);
+      const previous: RoutePoint | undefined = (
+        run as RoadLine | null
+      )?.points.at(-1);
       run = {
         ...line,
         points: previous ? [previous, point] : [point],

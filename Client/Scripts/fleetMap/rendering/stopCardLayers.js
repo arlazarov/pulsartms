@@ -1,4 +1,4 @@
-import { isDelivery } from './stopAppearance.js';
+import { isDelivery } from './stopAppearance.ts';
 import { sceneMetrics, labelSubLayers } from './sceneMetrics.ts';
 
 const backgroundSubLayers = {

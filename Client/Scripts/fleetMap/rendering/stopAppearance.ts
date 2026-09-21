@@ -1,11 +1,16 @@
-/** @param {string | null | undefined} job */
-export function isDelivery(job) {
+import type { RouteColor } from './routePalette.ts';
+
+export function isDelivery(job: string | null | undefined): boolean {
   return /^(delivery|dropoff)$/i.test((job || '').replace(/[\s_-]/g, ''));
 }
 
-/** @param {string | null | undefined} job @param {readonly number[]} [color]
- * @param {boolean} [done] */
-export function stopAppearance(job, color = currentRouteColor, done = false) {
+// How a stop's badge is painted: filled while it is still to come,
+// outlined once it is behind the truck.
+export function stopAppearance(
+  job: string | null | undefined,
+  color: readonly number[] = currentRouteColor,
+  done = false,
+): { fill: number[]; border: number[]; text: number[] } {
   const accent = [...color.slice(0, 3), 255];
   const white = [255, 255, 255, 255];
   // A stop behind the truck is outlined, not filled: it no longer asks for
@@ -26,13 +31,13 @@ export function stopAppearance(job, color = currentRouteColor, done = false) {
 // both things. Two marks on one point meant one of them had to be moved off
 // the place it names, and whichever was moved then pointed at nothing.
 export function stopMarkerIcon(
-  color,
-  border = [255, 255, 255, 255],
+  color: readonly number[],
+  border: readonly number[] = [255, 255, 255, 255],
   radius = 15.5,
   ring = null,
   stacked = false,
 ) {
-  const paint = value =>
+  const paint = (value: string | readonly number[]) =>
     typeof value === 'string' ? value : `rgb(${value.slice(0, 3).join(',')})`;
   const span = ring ? 46 : stacked ? 38 : 34;
   const half = span / 2;

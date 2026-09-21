@@ -6,7 +6,7 @@ import {
   truckPlaybackDelay,
   truckPlaybackResumeGap,
   truckTransitionDuration,
-} from './truckPlayback.js';
+} from './truckPlayback.ts';
 
 /**
  * Every truck on the map: where it is, where it is going, and which one the

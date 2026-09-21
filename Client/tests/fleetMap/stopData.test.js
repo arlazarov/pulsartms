@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { snapshotStops } from '../../Scripts/fleetMap/rendering/stopData.js';
+import { snapshotStops } from '../../Scripts/fleetMap/rendering/stopData.ts';
 
 test('current stops cover future stops until a future stop is highlighted', () => {
   const current = { position: [1, 2], number: '1' };

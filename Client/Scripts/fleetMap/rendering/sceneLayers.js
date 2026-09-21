@@ -3,7 +3,7 @@ import { markerAnchor } from './markerAnchor.ts';
 import { clusterText } from './truckLabelLayout.js';
 import { memoizeLast } from './layerCache.ts';
 import { routeLayers } from './routeAppearance.js';
-import { stopAppearance, stopMarkerIcon } from './stopAppearance.js';
+import { stopAppearance, stopMarkerIcon } from './stopAppearance.ts';
 import {
   sceneMetrics as metrics,
   createLabelFonts,

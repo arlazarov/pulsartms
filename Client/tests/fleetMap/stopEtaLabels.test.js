@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   stopEtaDeadline,
   stopEtaLabels,
-} from '../../Scripts/fleetMap/routes/stopEtaLabels.js';
+} from '../../Scripts/fleetMap/routes/stopEtaLabels.ts';
 
 const now = Date.parse('2026-09-08T12:00:00Z');
 const stop = {
