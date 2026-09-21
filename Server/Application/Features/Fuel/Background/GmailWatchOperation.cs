@@ -1,4 +1,6 @@
+using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Services;
+using Application.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -18,9 +20,17 @@ public sealed class GmailWatchOperation(
       try
       {
         await using var scope = scopes.CreateAsyncScope();
-        var result = await scope
-          .ServiceProvider.GetRequiredService<GmailWatchLifecycle>()
-          .RunAsync(false, ct);
+        // Each carrier watches its own mailbox, so maintenance runs once
+        // for each of them.
+        GmailWatchRunResult result = new();
+        await CompanyPasses.ForEachCompanyAsync(
+          scope.ServiceProvider,
+          async token =>
+            result = await scope
+              .ServiceProvider.GetRequiredService<GmailWatchLifecycle>()
+              .RunAsync(false, token),
+          ct
+        );
         if (result.RenewalError is not null || result.RecoveryError is not null)
           logger.LogWarning(
             "Gmail maintenance {RunId} failed; renewal {RenewalErrorCode}, recovery {RecoveryErrorCode}; persisted retry schedule retained",

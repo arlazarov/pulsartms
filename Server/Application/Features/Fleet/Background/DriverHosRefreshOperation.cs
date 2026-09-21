@@ -4,6 +4,7 @@ using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Services;
 using Application.Features.Synchronization.Interfaces;
 using Application.Features.Synchronization.Options;
+using Application.Interfaces;
 using Domain.Models.Fleet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -86,9 +87,17 @@ public sealed class DriverHosRefreshOperation(
     try
     {
       await using var scope = scopes.CreateAsyncScope();
-      await scope
-        .ServiceProvider.GetRequiredService<IDriverHosStore>()
-        .WriteAsync(clocks, ct);
+      // The readings arrive in one batch from the provider, but they are
+      // written into each carrier's own rows, so the write runs once per
+      // carrier and each one keeps what is theirs.
+      await CompanyPasses.ForEachCompanyAsync(
+        scope.ServiceProvider,
+        token =>
+          scope
+            .ServiceProvider.GetRequiredService<IDriverHosStore>()
+            .WriteAsync(clocks, token),
+        ct
+      );
     }
     catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
     catch (Exception ex)

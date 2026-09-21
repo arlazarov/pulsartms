@@ -1,4 +1,5 @@
 using Application.Features.Fleet.Queries.GetFleetLocations;
+using Application.Interfaces;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -20,9 +21,16 @@ public sealed class TruckHistoryOperation(
         await using var scope = scopes.CreateAsyncScope();
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
-        await scope
-          .ServiceProvider.GetRequiredService<ISender>()
-          .Send(query with { Refresh = true }, timeout.Token);
+        // Nothing here names a carrier, so the pass is run once for each
+        // of them and each run sees only that carrier's trucks.
+        await CompanyPasses.ForEachCompanyAsync(
+          scope.ServiceProvider,
+          token =>
+            scope
+              .ServiceProvider.GetRequiredService<ISender>()
+              .Send(query with { Refresh = true }, token),
+          timeout.Token
+        );
       }
       catch (OperationCanceledException) when (ct.IsCancellationRequested)
       {

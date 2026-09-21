@@ -235,7 +235,15 @@ public sealed partial class FleetSynchronizationOperation(
     try
     {
       using var scope = scopes.CreateScope();
-      await run(scope.ServiceProvider, timeout.Token);
+      // The lease is the server's - one instance synchronizes at a time -
+      // but a fleet belongs to a carrier. Every one of the loops runs its
+      // work through here, so this is the one place a pass starts, and
+      // the one place that has to say whose it is.
+      await CompanyPasses.ForEachCompanyAsync(
+        scope.ServiceProvider,
+        token => run(scope.ServiceProvider, token),
+        timeout.Token
+      );
       lock (stateGate)
         state.Jobs[name].Success(DateTime.UtcNow, interval);
     }

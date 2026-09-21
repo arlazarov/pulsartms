@@ -1,4 +1,5 @@
 using Application.Features.Mileage.Interfaces;
+using Application.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -32,28 +33,39 @@ public sealed class OdometerCaptureOperation(
             .AcquireAsync(owner, clock.GetUtcNow().UtcDateTime, timeout.Token)
         )
         {
-          var recorder =
-            services.GetRequiredService<IAutomaticMileageRecorder>();
-          var cursor = await recorder.ReadOdometerCursorAsync(timeout.Token);
-          var current = await recorder.CaptureOdometerAsync(
-            cursor,
-            new([], cursor ?? "", false),
+          // A carrier's own cursor, a carrier's own intervals. The lease
+          // above is the server's - only one instance captures at a time -
+          // but what is captured belongs to whoever is being served, so
+          // the capture is run once for each of them.
+          await CompanyPasses.ForEachCompanyAsync(
+            services,
+            async token =>
+            {
+              var recorder =
+                services.GetRequiredService<IAutomaticMileageRecorder>();
+              var cursor = await recorder.ReadOdometerCursorAsync(token);
+              var current = await recorder.CaptureOdometerAsync(
+                cursor,
+                new([], cursor ?? "", false),
+                token
+              );
+              if (current && clock.GetUtcNow().UtcDateTime >= nextProviderRead)
+              {
+                var page = await services
+                  .GetRequiredService<IOdometerFeedProvider>()
+                  .ReadAsync(cursor, token);
+                var accepted = await recorder.CaptureOdometerAsync(
+                  cursor,
+                  page,
+                  token
+                );
+                if (accepted && page.HasMore)
+                  delay = TimeSpan.FromSeconds(1);
+                failures = 0;
+              }
+            },
             timeout.Token
           );
-          if (current && clock.GetUtcNow().UtcDateTime >= nextProviderRead)
-          {
-            var page = await services
-              .GetRequiredService<IOdometerFeedProvider>()
-              .ReadAsync(cursor, timeout.Token);
-            var accepted = await recorder.CaptureOdometerAsync(
-              cursor,
-              page,
-              timeout.Token
-            );
-            if (accepted && page.HasMore)
-              delay = TimeSpan.FromSeconds(1);
-            failures = 0;
-          }
         }
       }
       catch (OperationCanceledException)

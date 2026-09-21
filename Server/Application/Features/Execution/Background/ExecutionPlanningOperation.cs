@@ -3,6 +3,7 @@ using Application.Features.Execution.Interfaces;
 using Application.Features.Mileage.Interfaces;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Commands;
+using Application.Interfaces;
 using Domain.Entities.Execution;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -38,6 +39,12 @@ public sealed class ExecutionPlanningOperation(
           await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
           continue;
         }
+        // The queue is the server's; the pass belongs to the carrier whose
+        // row was claimed. A host with no notion of carriers has nothing to
+        // switch to, and does not.
+        using var serving = services
+          .GetService<ICurrentCompany>()
+          ?.As(work.CompanyId);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(
           stoppingToken
         );

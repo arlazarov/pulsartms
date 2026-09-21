@@ -130,7 +130,15 @@ public sealed class FuelStationStatusOperation(
     // in a sweep that takes about a day; one in a live plan cannot, and
     // waiting a day is how two trucks were routed to a travel stop the
     // provider had already marked closed.
-    var planned = await PlannedStationIdsAsync(db, ct);
+    // Stations are shared, but which of them a driver is being sent to is
+    // read out of each carrier's own plans, so that part is asked once per
+    // carrier and the answers are put together.
+    var planned = new HashSet<Guid>();
+    await CompanyPasses.ForEachCompanyAsync(
+      scope.ServiceProvider,
+      async token => planned.UnionWith(await PlannedStationIdsAsync(db, token)),
+      ct
+    );
     var plannedStale = now.AddMinutes(
       -Math.Clamp(options.Value.PlannedRecheckMinutes, 5, 1440)
     );

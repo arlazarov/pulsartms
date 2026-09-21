@@ -1,6 +1,7 @@
 using Application.Features.Eta.Services;
 using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Routes;
+using Application.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -33,9 +34,17 @@ public sealed class EtaRefreshOperation(
             );
             timeout.CancelAfter(TimeSpan.FromSeconds(30));
             await using var scope = scopes.CreateAsyncScope();
-            await scope
-              .ServiceProvider.GetRequiredService<EtaForecastService>()
-              .RefreshAsync(id, timeout.Token);
+            // The queue holds ids without saying whose they are, so the
+            // refresh is offered to each carrier in turn and the filters
+            // decide which of them the load actually belongs to.
+            await CompanyPasses.ForEachCompanyAsync(
+              scope.ServiceProvider,
+              token =>
+                scope
+                  .ServiceProvider.GetRequiredService<EtaForecastService>()
+                  .RefreshAsync(id, token),
+              timeout.Token
+            );
           }
           catch (OperationCanceledException)
             when (stopping.IsCancellationRequested) { }

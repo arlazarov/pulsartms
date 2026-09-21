@@ -119,4 +119,53 @@ public sealed class CompanyOwnershipTests
 
     Assert.Contains("x.CompanyId", index);
   }
+
+  // Background work has nobody signed in, so it has to say whose pass it
+  // is running. A worker that says nothing reads an empty database and
+  // does nothing at all - safe, and silent, which is the worst way for
+  // this to break.
+  [Fact]
+  public void EveryBackgroundWorkerSaysWhichCarrierItsPassIsFor()
+  {
+    var workers = Directory
+      .GetFiles(
+        Path.Combine(Support.RepositoryFiles.Root(), "Server/Application"),
+        "*Operation.cs",
+        SearchOption.AllDirectories
+      )
+      .Where(file =>
+      {
+        var source = File.ReadAllText(file);
+        // The loop itself, not the interface naming it and not a command
+        // that happens to end in the same word.
+        return !Path.GetFileName(file).StartsWith('I')
+          && (
+            source.Contains("RunAsync(CancellationToken")
+            || source.Contains("RunOnceAsync(CancellationToken")
+          );
+      })
+      .ToArray();
+    Assert.True(
+      workers.Length >= 8,
+      $"this rule looked at {workers.Length} background workers and "
+        + "expected at least 8 - it is no longer reading what it is about"
+    );
+    var silent = workers
+      .Where(file =>
+      {
+        var source = File.ReadAllText(file);
+        return !source.Contains("ForEachCompanyAsync")
+          && !source.Contains("ICurrentCompany");
+      })
+      .Select(Path.GetFileNameWithoutExtension)
+      .Order()
+      .ToArray();
+
+    Assert.True(
+      silent.Length == 0,
+      "These background workers never say whose pass they are running, so "
+        + "on a server they read nothing and do nothing: "
+        + string.Join(", ", silent)
+    );
+  }
 }
