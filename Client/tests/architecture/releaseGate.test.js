@@ -263,10 +263,18 @@ test('Cloud Run deploys only the successful build result digest', () => {
     result.calls,
     /gcloud builds submit --project amftms --config cloudbuild.yaml --suppress-logs --format=value\(id\) \./,
   );
+  // On the beta track, which is where this gcloud keeps the liveness
+  // probe. Asked for exactly, because a deploy that silently loses the
+  // probe is how an instance stopped working unnoticed for seven and a
+  // half hours.
   assert.ok(
     result.calls.includes(
-      `gcloud run deploy amftms-api --image ${repository}@${digest}`,
+      `gcloud beta run deploy amftms-api --image ${repository}@${digest}`,
     ),
+  );
+  assert.match(
+    result.calls,
+    /--liveness-probe=httpGet\.path=\/api\/health\/live/,
   );
   assert.doesNotMatch(result.calls, /:latest/);
   assert.match(result.calls, /--revision-suffix b-build-123 --no-traffic/);
@@ -366,7 +374,7 @@ test('invalid build identities, mismatched images, failed builds and missing dig
   for (const options of cases) {
     const result = run('deploy-server.sh', options);
     assert.notEqual(result.status, 0);
-    assert.doesNotMatch(result.calls, /gcloud run deploy/);
+    assert.doesNotMatch(result.calls, /gcloud (beta )?run deploy/);
   }
 });
 
