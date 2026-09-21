@@ -18,8 +18,85 @@ namespace Server.Tests.Routing;
 using Dispatch = global::Domain.Entities.Dispatch.Dispatch;
 
 [Trait("Category", "Routing")]
+[Trait("Kind", "Integration")]
 public class RoutePlanningServiceTests
 {
+  [Fact]
+  public async Task CurrentPositionBuildPublishesTheNextStopBeforeTrackingRuns()
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await db.Database.EnsureCreatedAsync();
+    var truck = new Truck { Id = Guid.NewGuid(), ExternalId = "fuel-tracking" };
+    var load = new Dispatch
+    {
+      Id = Guid.NewGuid(),
+      Truck = truck,
+      Status = "in_transit",
+      Stops =
+      [
+        new()
+        {
+          Id = Guid.NewGuid(),
+          Sequence = 1,
+          Job = "Pick Up",
+          Latitude = 40,
+          Longitude = -80,
+          PickedUpAt = DateTime.UtcNow.AddHours(-1),
+        },
+        new()
+        {
+          Id = Guid.NewGuid(),
+          Sequence = 2,
+          Job = "Drop Off",
+          Latitude = 40,
+          Longitude = -79,
+        },
+      ],
+    };
+    db.Dispatches.Add(load);
+    await db.SaveChangesAsync();
+    var telemetry = new TruckLocation
+    {
+      TruckId = truck.Id,
+      Latitude = 40,
+      Longitude = -80,
+      UpdatedAt = DateTime.UtcNow,
+    };
+    using var services = new PlanningTestServices(
+      db,
+      new FakeRouter(),
+      new TelemetrySender(telemetry)
+    );
+
+    var built = await services.Routes.BuildAsync(
+      load.Id,
+      new(new() { Confirmed = true }, true, 2),
+      default
+    );
+    db.ChangeTracker.Clear();
+    var saved = SavedRouteReader.Plan(
+      (await db.DispatchRoutePlans.SingleAsync()).PlanJson
+    )!;
+
+    Assert.Equal(load.Stops[1].Id, built.Tracking.NextStopId);
+    Assert.Equal(built.Tracking.NextStopId, saved.Tracking.NextStopId);
+    Assert.False(saved.Tracking.AllStopsPassed);
+    Assert.True(
+      FuelPlanProjection.RemainingStopsMatch(
+        saved
+          .Stops.Select(stop => new FuelItineraryStop(load.Id, stop, 100))
+          .ToArray(),
+        load.Id,
+        saved.Tracking.NextStopId,
+        [RouteWorkProjection.Capture(load)]
+      )
+    );
+  }
+
   [Fact]
   public async Task HeaderTruckCannotRouteStopsAssignedToAnotherTruck()
   {

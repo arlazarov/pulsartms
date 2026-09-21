@@ -214,6 +214,7 @@ public sealed partial class RoutePlanningService
       }
       if (plan.FuelPlan is { } previousFuel)
         previousFuel.NeedsRefresh = true;
+      RouteStopTracker.Update(plan, load, null, DateTime.UtcNow);
       await using var transaction = await publication.BeginAsync(work, ct);
       await profiles.RequireCurrentAsync(work.TruckId, observedProfile, ct);
       await profiles.SaveAsync(plan.TruckId, request.Profile, ct);

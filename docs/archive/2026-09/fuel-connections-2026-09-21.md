@@ -23,7 +23,7 @@ to close the accepted delivery with the source's actual delivery timestamp,
 history under the caller's identity; no direct SQL repair or invented delivery
 time was used. The source topology was not silently rewritten.
 
-Both subsequent fuel recalculations returned HTTP 200 and success:
+Both initial fuel recalculations returned HTTP 200 and success:
 
 - 11007: `Feasible`.
 - 54777: `FeasibleBelowReserve`, a valid plan whose first purchase is reached
@@ -56,3 +56,32 @@ This prevention change is local and has not been deployed. The production
 completion and successful recalculations above used the already deployed API.
 No migration is required. Browser rendering and sustained production behavior
 were not verified by these checks.
+
+## Tracking initialization after a route rebuild
+
+The subsequent 11007 read marked fuel stale because the truck was off its saved
+road. Rebuilding from its current position exposed a separate invariant failure:
+the new plan was persisted with a null `Tracking.NextStopId`. Fuel publication
+then rejected the otherwise matching remaining itinerary as changed assignments.
+
+Route construction now invokes the existing stop tracker before publication,
+using accepted completion facts without requiring a later background GPS pass.
+The publication check remains unchanged. A regression builds from the current
+position after pickup completion, reads the persisted plan, and verifies both
+the next delivery ID and the fuel remaining-stop guard.
+
+After this change, `bash test.sh fuel` passed 1,731 server, 234 Client C# and
+64 JavaScript tests, including the dependent routing and architecture checks.
+Evidence: `artifacts/managed/diagnostic-LSJ7bP/check.log`. This was a targeted
+run; the full-suite result above predates the tracking initialization change.
+Neither local prevention fix has been deployed.
+
+The existing production route-preview and choice endpoints recovered 11007
+without deploying code or directly editing its stored plan. Preview, save and
+fuel recalculation succeeded; the final calculation was `FeasibleBelowReserve`.
+The read-back contained the correct next delivery and two fuel stops. It still
+reported `Truck is off the calculated route.`, so this recovery does not establish
+that its road stays current as telemetry changes. The 54777 read-back contained
+one fuel stop with `NeedsRefresh = false`. Evidence:
+`artifacts/managed/diagnostic-VPhhxu` and
+`artifacts/managed/diagnostic-tlk5yy`.
