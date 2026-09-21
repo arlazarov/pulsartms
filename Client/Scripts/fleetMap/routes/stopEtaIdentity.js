@@ -1,4 +1,4 @@
-import { pendingStops } from './pendingStops.js';
+import { pendingStops } from './pendingStops.ts';
 
 export function etaStops(plan) {
   return plan?.tracking?.allStopsPassed ? [] : pendingStops(plan);

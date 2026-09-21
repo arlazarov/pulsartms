@@ -1,7 +1,7 @@
-import { orderedStops } from './pendingStops.js';
+import { orderedStops } from './pendingStops.ts';
 import { stopVisits } from './stopVisits.js';
 import { stopContent, stopDetails } from './stopCardContent.js';
-import { distanceLabel } from '../ui/distanceLabel.js';
+import { distanceLabel } from '../ui/distanceLabel.ts';
 
 const point = p => ({ lat: p.latitude, lng: p.longitude });
 

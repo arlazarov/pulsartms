@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createStationPopup } from '../../Scripts/fleetMap/stations/stationPopup.js';
-import { distanceLabel } from '../../Scripts/fleetMap/ui/distanceLabel.js';
+import { distanceLabel } from '../../Scripts/fleetMap/ui/distanceLabel.ts';
 
 // The card is two halves in the DOM - the place, and the plan for it - so a
 // part of it is looked for through the card and not among its own children.

@@ -4,7 +4,7 @@ import {
   layoutMapLabels,
   clusterText,
 } from '../../Scripts/fleetMap/rendering/truckLabelLayout.js';
-import { markerProjection } from '../../Scripts/fleetMap/rendering/markerProjection.js';
+import { markerProjection } from '../../Scripts/fleetMap/rendering/markerProjection.ts';
 import { markerAnchor } from '../../Scripts/fleetMap/rendering/markerAnchor.js';
 
 const truck = (unit, dx = 0, dy = 0) => ({

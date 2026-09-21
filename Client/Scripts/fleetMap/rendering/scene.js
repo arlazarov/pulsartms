@@ -1,4 +1,4 @@
-import { releaseAll } from '../lifecycle/release.js';
+import { releaseAll } from '../lifecycle/release.ts';
 import { createSceneLayers } from './sceneLayers.js';
 import { snapshotStops } from './stopData.js';
 import { pickNearbyStation } from './stationTouch.js';

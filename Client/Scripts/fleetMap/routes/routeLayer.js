@@ -1,4 +1,4 @@
-import { releaseAll } from '../lifecycle/release.js';
+import { releaseAll } from '../lifecycle/release.ts';
 import {
   fullRouteDetailZoom,
   routeDetailIndices,
@@ -9,8 +9,8 @@ import { routePosition } from '../geometry/routePosition.ts';
 import { lowerBound, segmentRange } from '../geometry/routeSearch.ts';
 import { createRouteSnapper, matchRoute } from '../trucks/routeSnap.js';
 import { createDetailsCard } from '../ui/detailsCard.js';
-import { pendingStops } from './pendingStops.js';
-import { emptyRouteLegs } from './emptyRouteLegs.js';
+import { pendingStops } from './pendingStops.ts';
+import { emptyRouteLegs } from './emptyRouteLegs.ts';
 import { stopEtaIdentity } from './stopEtaIdentity.js';
 
 const PROGRESS_DISPLAY_INTERVAL_MS = 60_000;

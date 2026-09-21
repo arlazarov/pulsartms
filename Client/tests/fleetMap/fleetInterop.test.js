@@ -55,8 +55,10 @@ const bundle = await build({
     {
       name: 'fleet-ports',
       setup(build) {
-        build.onResolve({ filter: /\.js$/ }, args => {
-          const key = args.path.replace(/^\.\//, '').replace(/\.js$/, '');
+        // A port may be TypeScript or JavaScript while the tree is being
+        // converted; it is named here without its extension either way.
+        build.onResolve({ filter: /\.[jt]s$/ }, args => {
+          const key = args.path.replace(/^\.\//, '').replace(/\.[jt]s$/, '');
           return ports[key] ? { path: key, namespace: 'fixture' } : undefined;
         });
         build.onLoad({ filter: /.*/, namespace: 'fixture' }, args => ({

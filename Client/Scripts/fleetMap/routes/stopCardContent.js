@@ -2,7 +2,7 @@ import { stopAppointment } from './stopAppointment.js';
 import { addressLines } from '../ui/addressLines.js';
 import { stopAppointmentReference } from './stopAppointmentReference.js';
 import { loadReferenceContent } from '../ui/loadReferenceContent.js';
-import { distanceLabel } from '../ui/distanceLabel.js';
+import { distanceLabel } from '../ui/distanceLabel.ts';
 
 // What a stop's card says, as plain data: the facts the card is built from
 // and the words under them. Nothing here touches the map or the DOM - it is

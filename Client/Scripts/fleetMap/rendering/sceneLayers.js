@@ -1,7 +1,7 @@
 import { truckIcon } from './truckAppearance.js';
 import { markerAnchor } from './markerAnchor.js';
 import { clusterText } from './truckLabelLayout.js';
-import { memoizeLast } from './layerCache.js';
+import { memoizeLast } from './layerCache.ts';
 import { routeLayers } from './routeAppearance.js';
 import { stopAppearance, stopMarkerIcon } from './stopAppearance.js';
 import {

@@ -1,5 +1,5 @@
 import { sceneMetrics as metrics } from './sceneMetrics.js';
-import { markerProjection } from './markerProjection.js';
+import { markerProjection } from './markerProjection.ts';
 
 export function clusterTrucks(vehicles, zoom) {
   if (!Number.isFinite(zoom) || zoom >= metrics.truckClusterMaxZoom)

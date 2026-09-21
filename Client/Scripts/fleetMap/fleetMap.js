@@ -1,11 +1,11 @@
-import { releaseAll } from './lifecycle/release.js';
+import { releaseAll } from './lifecycle/release.ts';
 import { createRouteLayer } from './routes/routeLayer.js';
-import { orderedStops } from './routes/pendingStops.js';
+import { orderedStops } from './routes/pendingStops.ts';
 import { loadGoogleMaps } from './provider/googleMapsLoader.js';
 import { createTruckLayer } from './trucks/truckLayer.js';
 import { createStationLayer } from './stations/stationLayer.js';
 import { fuelRecommendations } from './stations/fuelRecommendations.js';
-import { yieldToBrowser } from './lifecycle/backgroundWork.js';
+import { yieldToBrowser } from './lifecycle/backgroundWork.ts';
 import { createNextLoadsLayer } from './routes/nextLoads.js';
 import * as payload from './geometry/encodedPath.ts';
 import { createMapHost } from './provider/mapHost.js';
@@ -15,7 +15,7 @@ import { etaStops, stopEtaIdentity } from './routes/stopEtaIdentity.js';
 import { createCameraViewport } from './ui/cameraViewport.js';
 import { createDockedDetails } from './ui/dockedDetails.js';
 import { createRouteEditor } from './routes/routeEditor.js';
-import { distanceLabel } from './ui/distanceLabel.js';
+import { distanceLabel } from './ui/distanceLabel.ts';
 
 // Only the provider map is retained; fleet state belongs to the current mount.
 const mountMap = createMapHost(

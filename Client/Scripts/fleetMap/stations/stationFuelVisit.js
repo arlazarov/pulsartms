@@ -1,5 +1,5 @@
 import { stationQuantity } from './stationQuantity.js';
-import { distanceLabel } from '../ui/distanceLabel.js';
+import { distanceLabel } from '../ui/distanceLabel.ts';
 
 function node(tag, className, text) {
   const element = document.createElement(tag);

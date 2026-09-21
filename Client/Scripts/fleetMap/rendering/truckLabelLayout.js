@@ -1,5 +1,5 @@
 import { sceneMetrics as metrics } from './sceneMetrics.js';
-import { markerProjection } from './markerProjection.js';
+import { markerProjection } from './markerProjection.ts';
 
 const offsets = Object.freeze([
   [0, -metrics.truckLabelOffset],

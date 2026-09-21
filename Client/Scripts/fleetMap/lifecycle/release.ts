@@ -8,8 +8,11 @@
 //
 // Each step runs on its own. The first failure is reported once, after
 // everything else has been released.
-export function releaseAll(steps, what = 'Fleet map') {
-  let failure = null;
+export function releaseAll(
+  steps: ((() => void) | null | undefined)[],
+  what = 'Fleet map',
+): void {
+  let failure: unknown = null;
   for (const step of steps) {
     try {
       step?.();

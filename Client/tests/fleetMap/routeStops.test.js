@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRouteStops } from '../../Scripts/fleetMap/routes/routeStops.js';
 import { stopEtaLabels } from '../../Scripts/fleetMap/routes/stopEtaLabels.js';
-import { distanceLabel } from '../../Scripts/fleetMap/ui/distanceLabel.js';
+import { distanceLabel } from '../../Scripts/fleetMap/ui/distanceLabel.ts';
 
 function fixture(t, formatDistance) {
   const originalDocument = globalThis.document;

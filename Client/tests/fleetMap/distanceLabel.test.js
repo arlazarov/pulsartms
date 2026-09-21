@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { distanceLabel } from '../../Scripts/fleetMap/ui/distanceLabel.js';
+import { distanceLabel } from '../../Scripts/fleetMap/ui/distanceLabel.ts';
 
 test('route and station labels share unit conversion and rounding', () => {
   assert.equal(distanceLabel(0), '0 mi · 0 km');
