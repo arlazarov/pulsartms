@@ -31,7 +31,7 @@ test('popup secondary cycle warnings span both columns without changing the inli
   assert.match(
     readFileSync(
       new URL(
-        '../../Scripts/fleetMap/routes/stopCardContent.js',
+        '../../Scripts/fleetMap/routes/stopCardContent.ts',
         import.meta.url,
       ),
       'utf8',

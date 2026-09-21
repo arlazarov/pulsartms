@@ -41,7 +41,7 @@ test('every stop fact is the same two cells on one label column', () => {
   );
   const stops = readFileSync(
     new URL(
-      '../../Scripts/fleetMap/routes/stopCardContent.js',
+      '../../Scripts/fleetMap/routes/stopCardContent.ts',
       import.meta.url,
     ),
     'utf8',
@@ -91,7 +91,7 @@ test('the purchase is a fact of the visit, not a footer of the card', () => {
 test('the link out of the map keeps its arrow on the last word', () => {
   const stops = readFileSync(
     new URL(
-      '../../Scripts/fleetMap/routes/stopCardContent.js',
+      '../../Scripts/fleetMap/routes/stopCardContent.ts',
       import.meta.url,
     ),
     'utf8',

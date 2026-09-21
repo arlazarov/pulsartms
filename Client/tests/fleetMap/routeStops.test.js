@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createRouteStops } from '../../Scripts/fleetMap/routes/routeStops.js';
+import { createRouteStops } from '../../Scripts/fleetMap/routes/routeStops.ts';
 import { stopEtaLabels } from '../../Scripts/fleetMap/routes/stopEtaLabels.ts';
 import { distanceLabel } from '../../Scripts/fleetMap/ui/distanceLabel.ts';
 

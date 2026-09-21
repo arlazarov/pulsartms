@@ -7,7 +7,7 @@ import {
 } from '@deck.gl/layers';
 import { createScene } from '../../Scripts/fleetMap/rendering/scene.js';
 import { PathStyleExtension } from '@deck.gl/extensions';
-import { createRouteStops } from '../../Scripts/fleetMap/routes/routeStops.js';
+import { createRouteStops } from '../../Scripts/fleetMap/routes/routeStops.ts';
 import { createNextLoadsLayer } from '../../Scripts/fleetMap/routes/nextLoads.js';
 import { stopEtaLabels } from '../../Scripts/fleetMap/routes/stopEtaLabels.ts';
 import { createStationPopup } from '../../Scripts/fleetMap/stations/stationPopup.js';

@@ -8,7 +8,33 @@ import { distanceLabel } from '../ui/distanceLabel.ts';
 // and the words under them. Nothing here touches the map or the DOM - it is
 // the sentence, not the drawing.
 
-export function stopDetails(stop, detailsHref, visit, number, done) {
+import type { PlanStop } from '../contracts.d.ts';
+import type { LoadReference } from '../contracts.d.ts';
+import type { StopVisit } from './stopVisits.ts';
+import type { HoursRow } from './stopHoursLabels.ts';
+
+// The facts a stop's card is built from.
+export type StopFacts = {
+  number: string | number;
+  done: boolean;
+  job: string;
+  stateAfter: string;
+  name: string;
+  address: { street: string; locality: string };
+  appointment: string;
+  references: string[];
+  detailsHref: string;
+  position: string;
+  visit: string;
+};
+
+export function stopDetails(
+  stop: PlanStop & { stateAfter?: string },
+  detailsHref: string,
+  visit: StopVisit | undefined,
+  number: string | number | undefined,
+  done: boolean,
+): StopFacts {
   return {
     number: number ?? '',
     done: done === true,
@@ -21,25 +47,45 @@ export function stopDetails(stop, detailsHref, visit, number, done) {
     detailsHref,
     position: visit ? `Load stop ${visit.number} of ${visit.count}` : '',
     visit:
-      visit?.visitCount > 1
-        ? `Visit ${visit.visitNumber} of ${visit.visitCount}`
+      (visit?.visitCount ?? 0) > 1
+        ? `Visit ${visit!.visitNumber} of ${visit!.visitCount}`
         : '',
   };
 }
 
+// What the card says about the stop, beside the facts themselves: when the
+// truck gets there, what that does to the cycle, and what it will have in
+// the tank. Eleven of these arrived as positional arguments, and adding one
+// meant counting commas at every call.
+export type StopCardWords = {
+  loadReference?: LoadReference | null;
+  etaText?: string;
+  etaStatus?: string;
+  cycleStatus?: string;
+  etaTone?: string;
+  remaining?: string;
+  etaLabel?: string;
+  hours?: HoursRow[] | null;
+  // What the tank will hold on arrival: the two figures, the em dash when
+  // the plan cannot say, or null when there is nothing to show at all.
+  fuelText?: { percent: number; quantity: string } | '—' | null;
+};
+
 export function stopContent(
-  stop,
-  loadReference,
-  etaText,
-  etaStatus,
-  cycleStatus,
-  etaTone,
-  remaining,
-  etaLabel,
-  hours,
-  fuelText,
-) {
-  function element(tag, className, text) {
+  stop: StopFacts,
+  {
+    loadReference,
+    etaText,
+    etaStatus,
+    cycleStatus,
+    etaTone,
+    remaining,
+    etaLabel,
+    hours,
+    fuelText,
+  }: StopCardWords,
+): HTMLElement {
+  function element(tag: string, className: string, text?: string) {
     const node = document.createElement(tag);
     node.className = className;
     if (text) node.textContent = text;
@@ -65,7 +111,7 @@ export function stopContent(
       element(
         'span',
         `fleet-route-popup__number${stop.done ? ' is-done' : ''}`,
-        stop.number,
+        String(stop.number),
       ),
     );
   head.append(element('span', 'fleet-route-popup__job', stop.job));
@@ -110,7 +156,12 @@ export function stopContent(
     location.append(references);
   }
   const facts = element('dl', 'fleet-route-popup__facts');
-  function field(parent, label, text, className) {
+  function field(
+    parent: HTMLElement,
+    label: string,
+    text: string,
+    className: string,
+  ) {
     const group = element('div', `fleet-route-popup__field ${className}`);
     const value = element('dd', 'fleet-route-popup__value');
     value.append(element('span', '', text));
@@ -126,8 +177,8 @@ export function stopContent(
   );
   const eta = field(
     facts,
-    etaLabel,
-    etaText,
+    etaLabel ?? 'ETA',
+    etaText ?? '',
     `fleet-route-popup__eta${etaTone ? ` fleet-route-popup__eta--${etaTone}` : ''}`,
   );
   if (cycleStatus) {
@@ -158,10 +209,14 @@ export function stopContent(
   // one more fact about the stop, so it reads as one: the same label column
   // as the appointment and the ETA above it.
   if (fuelText !== null) {
+    const tank =
+      fuelText === '—' || !fuelText
+        ? '—'
+        : `${fuelText.percent}% · ${fuelText.quantity}`;
     const value = field(
       facts,
       'Fuel on arrival',
-      fuelText === '—' ? '—' : `${fuelText.percent}% · ${fuelText.quantity}`,
+      tank,
       'fleet-route-popup__fuel fleet-route-popup__section-start',
     );
     value.title = 'Estimated from the current fuel plan';
@@ -209,7 +264,7 @@ export function stopContent(
       // stray mark rather than as a link that leaves the map.
       'Route & load details ↗',
     );
-    link.href = stop.detailsHref;
+    (link as HTMLAnchorElement).href = stop.detailsHref;
     information.append(link);
   }
   details.append(location, information);

@@ -4,7 +4,7 @@ import {
   routeDetailIndices,
 } from '../geometry/routeDetail.ts';
 import { routeGeometry } from '../geometry/routeGeometry.ts';
-import { createRouteStops } from './routeStops.js';
+import { createRouteStops } from './routeStops.ts';
 import { routePosition } from '../geometry/routePosition.ts';
 import { lowerBound, segmentRange } from '../geometry/routeSearch.ts';
 import { createRouteSnapper, matchRoute } from '../trucks/routeSnap.ts';
@@ -17,9 +17,9 @@ const PROGRESS_DISPLAY_INTERVAL_MS = 60_000;
 
 /**
  * The road a truck is driving, its stops, and what it has covered.
- *
  * @param {(truckId: string, miles: number, remaining: number) => void} onProgress
- * @param {(loadId: string, stopIndex: number, executionLegId?: string | null) => void} onOpen
+ * @param {() => void} onOpen a stop's card opened here; which stop it is
+ *   stays this layer's business
  */
 export function createRouteLayer(
   map,

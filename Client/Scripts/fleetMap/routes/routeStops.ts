@@ -1,34 +1,51 @@
+import type { LoadReference, PlanStop, RoutePoint } from '../contracts.d.ts';
+import type { StopEtaLabel } from './stopEtaLabels.ts';
+import type { StopFacts } from './stopCardContent.ts';
 import { orderedStops } from './pendingStops.ts';
 import { stopVisits } from './stopVisits.ts';
-import { stopContent, stopDetails } from './stopCardContent.js';
+import { stopContent, stopDetails } from './stopCardContent.ts';
 import { distanceLabel } from '../ui/distanceLabel.ts';
 
-const point = p => ({ lat: p.latitude, lng: p.longitude });
+const point = (p: RoutePoint) => ({ lat: p.latitude, lng: p.longitude });
+
+// One stop as this layer holds it: the stop itself, the marker drawn for
+// it, the facts its card is built from, and the card once it has been
+// built.
+type Entry = {
+  stop: PlanStop;
+  marker: any;
+  details?: StopFacts;
+  miles: number;
+  remaining: string | null;
+  content?: HTMLElement;
+  contentKey?: string;
+  [key: string]: unknown;
+};
 
 export function createRouteStops(
-  map,
-  StopMarker,
-  popup,
-  onOpen,
-  formatDistance = distanceLabel,
+  map: google.maps.Map,
+  StopMarker: any,
+  popup: { show(content: Node, position: unknown): void; hide(): void },
+  onOpen: () => void,
+  formatDistance: (miles: number) => string = distanceLabel,
 ) {
-  const entries = new Map();
-  let progress = null,
-    selectedId = null;
-  let etaLabels = new Map();
-  let dispatchId = null,
-    loadReference = null;
-  let fuelArrivals = [];
+  const entries = new Map<string, Entry>();
+  let progress: number | null = null,
+    selectedId: string | null = null;
+  let etaLabels = new Map<string, StopEtaLabel>();
+  let dispatchId: string | null = null,
+    loadReference: LoadReference | null = null;
+  let fuelArrivals: any[] = [];
 
-  function updateDistance(entry) {
+  function updateDistance(entry: Entry) {
     const valid = Number.isFinite(progress) && Number.isFinite(entry.miles);
     entry.remaining = valid
-      ? formatDistance(Math.max(0, entry.miles - progress))
+      ? formatDistance(Math.max(0, entry.miles - progress!))
       : null;
     refreshContent(entry);
   }
 
-  function refreshContent(entry, opening = false) {
+  function refreshContent(entry: Entry, opening = false) {
     if (selectedId !== entry.stop.id) return;
     const eta = etaLabels.get(entry.stop.id);
     const etaText = eta?.arrivalText || eta?.text || '—';
@@ -69,24 +86,23 @@ export function createRouteStops(
     ]);
     if (entry.contentKey === key && !opening) return;
     if (entry.contentKey !== key) {
-      entry.content = stopContent(
-        entry.details,
+      entry.content = stopContent(entry.details!, {
         loadReference,
         etaText,
         etaStatus,
         cycleStatus,
-        etaTone,
-        entry.remaining,
+        etaTone: etaTone ?? undefined,
+        remaining: entry.remaining ?? undefined,
         etaLabel,
         hours,
         fuelText,
-      );
+      });
       entry.contentKey = key;
     }
-    popup.show(entry.content, point(entry.stop.point));
+    popup.show(entry.content!, point(entry.stop.point!));
   }
 
-  function show(entry) {
+  function show(entry: Entry) {
     selectedId = entry.stop.id;
     onOpen();
     refreshContent(entry, true);
@@ -96,11 +112,12 @@ export function createRouteStops(
     refreshDistances() {
       for (const entry of entries.values()) updateDistance(entry);
     },
-    setLoadReference(value) {
+    setLoadReference(value: (LoadReference & { dispatchId?: string }) | null) {
       if (value && (!dispatchId || value.dispatchId !== dispatchId)) return;
       loadReference =
         value && Number.isInteger(value.loadNumber) && value.loadNumber > 0
           ? {
+              dispatchId: value.dispatchId ?? '',
               loadNumber: value.loadNumber,
               loadLabel:
                 typeof value.loadLabel === 'string'
@@ -110,17 +127,17 @@ export function createRouteStops(
                 typeof value.orderNumber === 'string' &&
                 value.orderNumber.trim()
                   ? value.orderNumber
-                  : null,
+                  : undefined,
             }
           : null;
       for (const entry of entries.values()) refreshContent(entry);
     },
-    setEtas(labels) {
+    setEtas(labels: Map<string, StopEtaLabel>) {
       etaLabels = labels;
       for (const entry of entries.values()) updateDistance(entry);
     },
-    setPlan(plan) {
-      const active = new Set();
+    setPlan(plan: any) {
+      const active = new Set<string>();
       const passed = new Set(plan?.tracking?.passedStopIds || []);
       if (dispatchId !== plan?.dispatchId) loadReference = null;
       dispatchId = plan?.dispatchId;
@@ -163,41 +180,46 @@ export function createRouteStops(
           entry = {
             marker,
             stop,
-            miles: null,
+            miles: Number.NaN,
             metadata: null,
             remaining: null,
-            content: null,
-            contentKey: null,
+            content: undefined,
+            contentKey: undefined,
           };
-          const selected = entry;
+          const selected: Entry = entry;
           marker.onSelect = () => show(selected);
           entries.set(stop.id, entry);
         }
+        const row: Entry = entry!;
         const completed = passed.has(stop.id);
-        if (completed && !entry.completed && selectedId === stop.id)
-          this.close();
-        entry.completed = completed;
-        entry.stop = stop;
-        entry.details = stopDetails(
+        if (completed && !row.completed && selectedId === stop.id) this.close();
+        row.completed = completed;
+        row.stop = stop;
+        row.details = stopDetails(
           stop,
-          detailsHref,
+          detailsHref ?? '',
           visits.get(stop.id),
           `${index + 1}`,
           completed,
         );
-        entry.metadata = JSON.stringify(entry.details);
-        entry.marker.setNumber?.(`${index + 1}`);
-        entry.marker.setJob?.(stop.job);
-        entry.marker.setDone?.(completed);
-        entry.marker.highlighted = stop.id === nextId || stop.id === previousId;
-        const stopIndex = plan.stops.findIndex(s => s.id === stop.id);
-        entry.miles =
+        row.metadata = JSON.stringify(row.details);
+        row.marker.setNumber?.(`${index + 1}`);
+        row.marker.setJob?.(stop.job);
+        row.marker.setDone?.(completed);
+        row.marker.highlighted = stop.id === nextId || stop.id === previousId;
+        const stopIndex = plan.stops.findIndex(
+          (s: PlanStop) => s.id === stop.id,
+        );
+        row.miles =
           completed || stopIndex < 0
-            ? null
+            ? Number.NaN
             : plan.route.legs
                 .slice(0, stopIndex + (plan.fromCurrentPosition ? 1 : 0))
-                .reduce((sum, leg) => sum + leg.miles, 0);
-        updateDistance(entry);
+                .reduce(
+                  (sum: number, leg: { miles: number }) => sum + leg.miles,
+                  0,
+                );
+        updateDistance(row);
       }
       for (const [id, entry] of entries) {
         if (active.has(id)) continue;
@@ -206,7 +228,7 @@ export function createRouteStops(
         if (selectedId === id) this.close();
       }
     },
-    setProgress(value) {
+    setProgress(value: number) {
       progress = value;
       for (const entry of entries.values()) updateDistance(entry);
     },

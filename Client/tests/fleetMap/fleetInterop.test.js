@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { build } from 'esbuild';
 import { fileURLToPath } from 'node:url';
-import { createRouteStops } from '../../Scripts/fleetMap/routes/routeStops.js';
+import { createRouteStops } from '../../Scripts/fleetMap/routes/routeStops.ts';
 
 const ports = {
   'routes/routeLayer': `export const createRouteLayer = (...args) => {
