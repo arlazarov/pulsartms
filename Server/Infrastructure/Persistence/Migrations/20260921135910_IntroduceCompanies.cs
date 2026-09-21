@@ -178,13 +178,6 @@ namespace Infrastructure.Persistence.Migrations
 
             migrationBuilder.AddColumn<Guid>(
                 name: "CompanyId",
-                table: "PlanningInputRevisions",
-                type: "uuid",
-                nullable: false,
-                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"));
-
-            migrationBuilder.AddColumn<Guid>(
-                name: "CompanyId",
                 table: "OdometerPositions",
                 type: "uuid",
                 nullable: false,
@@ -615,11 +608,6 @@ namespace Infrastructure.Persistence.Migrations
                 column: "CompanyId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_PlanningInputRevisions_CompanyId",
-                table: "PlanningInputRevisions",
-                column: "CompanyId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_OdometerPositions_CompanyId",
                 table: "OdometerPositions",
                 column: "CompanyId");
@@ -972,8 +960,17 @@ namespace Infrastructure.Persistence.Migrations
                 """UPDATE "Drivers" SET "CompanyId" = 'a0f0a0f0-0000-4000-8000-000000000001' WHERE "CompanyId" = '00000000-0000-0000-0000-000000000000';""");
             migrationBuilder.Sql(
                 """UPDATE "ExecutionActionReceipts" SET "CompanyId" = 'a0f0a0f0-0000-4000-8000-000000000001' WHERE "CompanyId" = '00000000-0000-0000-0000-000000000000';""");
+            // Accepted execution history is immutable, and a trigger holds
+            // it to that. Saying whose a revision is changes nothing that
+            // was accepted, so the trigger stands aside for this one
+            // statement - inside the migration's transaction, under the
+            // table lock the ALTER takes - and is put straight back.
             migrationBuilder.Sql(
-                """UPDATE "ExecutionLegRevisions" SET "CompanyId" = 'a0f0a0f0-0000-4000-8000-000000000001' WHERE "CompanyId" = '00000000-0000-0000-0000-000000000000';""");
+                """
+                ALTER TABLE "ExecutionLegRevisions" DISABLE TRIGGER execution_history_immutable;
+                UPDATE "ExecutionLegRevisions" SET "CompanyId" = 'a0f0a0f0-0000-4000-8000-000000000001' WHERE "CompanyId" = '00000000-0000-0000-0000-000000000000';
+                ALTER TABLE "ExecutionLegRevisions" ENABLE TRIGGER execution_history_immutable;
+                """);
             migrationBuilder.Sql(
                 """UPDATE "ExecutionLegStops" SET "CompanyId" = 'a0f0a0f0-0000-4000-8000-000000000001' WHERE "CompanyId" = '00000000-0000-0000-0000-000000000000';""");
             migrationBuilder.Sql(
@@ -1014,8 +1011,6 @@ namespace Infrastructure.Persistence.Migrations
                 """UPDATE "OdometerIntervals" SET "CompanyId" = 'a0f0a0f0-0000-4000-8000-000000000001' WHERE "CompanyId" = '00000000-0000-0000-0000-000000000000';""");
             migrationBuilder.Sql(
                 """UPDATE "OdometerPositions" SET "CompanyId" = 'a0f0a0f0-0000-4000-8000-000000000001' WHERE "CompanyId" = '00000000-0000-0000-0000-000000000000';""");
-            migrationBuilder.Sql(
-                """UPDATE "PlanningInputRevisions" SET "CompanyId" = 'a0f0a0f0-0000-4000-8000-000000000001' WHERE "CompanyId" = '00000000-0000-0000-0000-000000000000';""");
             migrationBuilder.Sql(
                 """UPDATE "PlanningRefreshRequests" SET "CompanyId" = 'a0f0a0f0-0000-4000-8000-000000000001' WHERE "CompanyId" = '00000000-0000-0000-0000-000000000000';""");
             migrationBuilder.Sql(
@@ -1121,10 +1116,6 @@ namespace Infrastructure.Persistence.Migrations
             migrationBuilder.DropIndex(
                 name: "IX_RouteRecalculationAttempts_CompanyId",
                 table: "RouteRecalculationAttempts");
-
-            migrationBuilder.DropIndex(
-                name: "IX_PlanningInputRevisions_CompanyId",
-                table: "PlanningInputRevisions");
 
             migrationBuilder.DropIndex(
                 name: "IX_OdometerPositions_CompanyId",
@@ -1409,10 +1400,6 @@ namespace Infrastructure.Persistence.Migrations
             migrationBuilder.DropColumn(
                 name: "CompanyId",
                 table: "PlanningRefreshRequests");
-
-            migrationBuilder.DropColumn(
-                name: "CompanyId",
-                table: "PlanningInputRevisions");
 
             migrationBuilder.DropColumn(
                 name: "CompanyId",

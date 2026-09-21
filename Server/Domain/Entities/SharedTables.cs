@@ -33,6 +33,11 @@ public static class SharedTables
         "the server's work list; each row names a carrier",
       ["ExecutionPlanningChange"] =
         "the server's work list; each row names a carrier",
+      // Written by a database trigger, which has never heard of carriers,
+      // and read by the publication lock. It counts changes to one truck's
+      // planning inputs - a counter beside the data, not part of it.
+      ["PlanningInputRevision"] =
+        "a change counter kept by a database trigger, one per truck",
       // How server instances tell each other to drop what they have
       // cached. About the servers, not about any carrier's work.
       ["CacheInvalidation"] = "server talking to server",

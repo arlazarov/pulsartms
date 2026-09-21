@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Domain.Entities.Dispatch;
 using Domain.Models.Routing;
 
@@ -13,7 +14,7 @@ public static class DeadheadFreshness
   // would shape the road is not usable, no provider is configured, or the
   // load is not assigned to anyone yet.
   public static bool NothingToConnect(
-    DeadheadConnection? pair,
+    [NotNullWhen(false)] DeadheadConnection? pair,
     string hash,
     bool routingConfigured,
     string status

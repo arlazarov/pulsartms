@@ -285,7 +285,13 @@ public sealed class ExecutionAcceptanceTests
 
     var saved = await f.Db.ExecutionLegs.SingleAsync();
     Assert.Equal(1, saved.Revision);
-    Assert.Equal(before[0].Address, saved.Stops[0].Address);
+    // By position, the way everything that reads a leg reads it. The rows
+    // of a collection come back in whatever order the engine finds them,
+    // and narrowing every read to a carrier changed which index it walks.
+    Assert.Equal(
+      before[0].Address,
+      saved.Stops.OrderBy(x => x.Position).First().Address
+    );
     Assert.False((await f.Db.Movements.SingleAsync()).PlannedSuperseded);
     Assert.Equal(0, await f.Db.ExecutionPlanningChanges.CountAsync());
     Assert.Equal(0, await f.Db.ExecutionLegRevisions.CountAsync());

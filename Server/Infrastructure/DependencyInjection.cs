@@ -152,7 +152,7 @@ public static class DependencyInjection
     services.AddScoped<IIdentityService, IdentityService>();
     services.AddScoped<IUserRoleService, UserRoleService>();
     services.AddScoped<ICurrentUser, CurrentUser>();
-    services.AddScoped<ICurrentCompany, CurrentCompany>();
+    services.AddSingleton<ICurrentCompany, CurrentCompany>();
     services.AddScoped<ICompanyRoster, CompanyRoster>();
     services.AddScoped<IAuthService, AuthService>();
 

@@ -52,7 +52,7 @@ public static class FuelScheduleRanking
     );
 
   public static double DelayCost(
-    FuelScheduleImpact impact,
+    FuelScheduleImpact? impact,
     double extraMiles,
     double extraMinutes,
     double hourlyCost
@@ -60,9 +60,9 @@ public static class FuelScheduleRanking
   {
     var roadMinutes = Math.Max(0, extraMinutes);
     var scheduledDelay = Math.Max(
-      impact.AddedMinutes ?? 0,
-      impact
-        .Stops.Select(stop => stop.AddedLateMinutes ?? 0)
+      impact?.AddedMinutes ?? 0,
+      (impact?.Stops ?? [])
+        .Select(stop => stop.AddedLateMinutes ?? 0)
         .DefaultIfEmpty(0)
         .Max()
     );

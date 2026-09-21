@@ -50,6 +50,13 @@ public class SessionValidationMiddleware(RequestDelegate next)
           ValidAsync,
           TimeSpan.FromSeconds(options?.Value.SessionValidationSeconds ?? 30)
         );
+      // A token issued before carriers existed names nobody's carrier. It
+      // is still a good token, but every query it made would be narrowed
+      // to no carrier at all and the person would be looking at an empty
+      // product. Answering 401 sends the browser down the refresh path it
+      // already has, and the token that comes back carries the carrier.
+      if (valid && context.User.FindFirstValue(CurrentCompany.Claim) is null)
+        valid = false;
       if (!valid)
       {
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;

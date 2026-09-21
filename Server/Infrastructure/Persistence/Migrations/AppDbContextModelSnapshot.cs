@@ -1592,15 +1592,10 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid>("TruckId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
-
                     b.Property<long>("Revision")
                         .HasColumnType("bigint");
 
                     b.HasKey("TruckId");
-
-                    b.HasIndex("CompanyId");
 
                     b.ToTable("PlanningInputRevisions");
                 });

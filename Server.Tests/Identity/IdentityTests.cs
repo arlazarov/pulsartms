@@ -136,6 +136,34 @@ public class IdentityTests
     );
     await db.SaveChangesAsync();
     var principal = await signIn.CreateUserPrincipalAsync(user);
+    // A token issued before carriers existed names nobody's, and is sent
+    // back through refresh rather than shown an empty product.
+    var before = new DefaultHttpContext
+    {
+      RequestServices = scope.ServiceProvider,
+      User = await signIn.CreateUserPrincipalAsync(user),
+    };
+    var reached = false;
+    await new SessionValidationMiddleware(_ =>
+    {
+      reached = true;
+      return Task.CompletedTask;
+    }).InvokeAsync(
+      before,
+      signIn,
+      db,
+      scope.ServiceProvider.GetRequiredService<ReadCache>()
+    );
+    Assert.False(reached);
+    Assert.Equal(401, before.Response.StatusCode);
+    principal
+      .Identities.First()
+      .AddClaim(
+        new(
+          Infrastructure.Identity.CurrentCompany.Claim,
+          Domain.Entities.Company.Amf.ToString()
+        )
+      );
     var context = new DefaultHttpContext
     {
       RequestServices = scope.ServiceProvider,

@@ -326,33 +326,27 @@ public sealed class EtaService(
       return Missing("ETA unavailable: incomplete road travel times.");
     var initial =
       currentRegion
-      ?? regions.Find(state.Progress.Position ?? plan.Route.Legs[0].Points[0]);
+      ?? regions.Find(state.Progress?.Position ?? plan.Route.Legs[0].Points[0]);
     if (initial.Country == "" || initial.NorthOf60)
       return Missing(
         "ETA unavailable: this regional ruleset needs verification."
       );
-    // The fuel allowance is owed once per stop the plan makes to fuel, so a
-    // run with a fuel plan and no pump ahead of the truck - the last miles
-    // into a delivery - is not charged for one. No fuel plan is not the same
-    // answer: nothing has been decided yet, and the shift keeps its
-    // allowance rather than having one quietly taken away.
-    var fuelStopsAhead = plan.FuelPlan?.Stops.Count(stop =>
-      stop.MilesAhead > 0
-    );
+    // EtaReadiness has already answered for missing hours: a forecast
+    // without them never reaches this line.
     var clock = new HosTravelClock(
       now,
-      clocks,
+      clocks!,
       initial.Country,
       history,
       planning,
       cycleMode,
-      fuelStopsAhead
+      EtaAssumptions.FuelStopsAhead(plan.FuelPlan)
     );
     var cycleAtCalculation = clock.SnapshotCycle();
     try
     {
       clock.CompleteOngoingDailyRest(dutyStatus);
-      if (state.Progress.OffRoute)
+      if (state.Progress?.OffRoute == true)
         clock.Drive(
           planning.TravelHours(
             state.Progress.DistanceFromRouteMiles
@@ -382,7 +376,11 @@ public sealed class EtaService(
     var results = walk.Results;
     var pending = walk.Pending;
     var blocked = walk.Blocked;
-    EtaAssumptions.Closing(assumptions, clock, state.Progress.OffRoute);
+    EtaAssumptions.Closing(
+      assumptions,
+      clock,
+      state.Progress?.OffRoute == true
+    );
     return new(
       now,
       now.AddMinutes(2),

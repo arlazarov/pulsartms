@@ -1,3 +1,4 @@
+using Domain.Models.Routing;
 using Domain.Policies;
 
 namespace Domain.Rules.Eta;
@@ -8,6 +9,14 @@ namespace Domain.Rules.Eta;
 // a dispatcher promising a customer a time is owed all of it.
 public static class EtaAssumptions
 {
+  // The fuel allowance is owed once per stop the plan makes to fuel, so a
+  // run with a fuel plan and no pump ahead of the truck - the last miles
+  // into a delivery - is not charged for one. No fuel plan is not the same
+  // answer: nothing has been decided yet, and the shift keeps its
+  // allowance rather than having one quietly taken away.
+  public static int? FuelStopsAhead(FuelPlan? plan) =>
+    plan?.Stops.Count(stop => stop.MilesAhead > 0);
+
   public static List<string> Opening(
     HosTravelClock clock,
     EtaPlanningOptions planning

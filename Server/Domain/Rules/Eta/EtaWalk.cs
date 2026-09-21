@@ -40,7 +40,7 @@ public sealed class EtaWalk(
       chain?.CurrentActivities.GetValueOrDefault(stop.Id)
         is { ArrivedAt: { } at, Completed: false }
       && at <= now
-      && state.Progress.Position is { } position
+      && state.Progress?.Position is { } position
       && RouteGeometry.Distance(position, stop.Point) <= .5
     );
     if (activeFacility is not null)
@@ -183,7 +183,7 @@ public sealed class EtaWalk(
     var atFacility =
       activity?.ArrivedAt is { } arrived
       && arrived <= now
-      && state.Progress.Position is { } position
+      && state.Progress?.Position is { } position
       && RouteGeometry.Distance(position, stop.Point) <= .5;
     if (atFacility)
       arrivalAt = new DateTimeOffset(

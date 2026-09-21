@@ -3,16 +3,23 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Application.Features.Dispatch.Models;
 using Application.Features.Synchronization.Options;
+using Application.Interfaces;
 using Domain.Entities.Dispatch;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace Application.Caching;
 
-public sealed class ReadCache(IOptions<SynchronizationOptions> options)
-  : IReadCache,
-    IDisposable
+public sealed class ReadCache(
+  IOptions<SynchronizationOptions> options,
+  ICurrentCompany? companies
+) : IReadCache, IDisposable
 {
+  // A host with no notion of carriers - a test, a tool - caches as the one
+  // carrier it serves.
+  public ReadCache(IOptions<SynchronizationOptions> options)
+    : this(options, null) { }
+
   private readonly MemoryCache bounded = new(
     new MemoryCacheOptions { SizeLimit = 32 * 1024 * 1024 }
   );
@@ -64,7 +71,11 @@ public sealed class ReadCache(IOptions<SynchronizationOptions> options)
   )
   {
     var version = generations.Get(group);
-    var cacheKey = $"read:{group}:{version}:{key}";
+    // The cache outlives every request, so what it holds has to say whose
+    // it is. "The board for today" is a different board for each carrier,
+    // and without the carrier in the key the second one to ask would be
+    // handed the first one's.
+    var cacheKey = $"read:{companies?.Id:N}:{group}:{version}:{key}";
     if (bounded.TryGetValue<Cached>(cacheKey, out var saved))
       return Restore<T>(saved!);
     var gate = gates[

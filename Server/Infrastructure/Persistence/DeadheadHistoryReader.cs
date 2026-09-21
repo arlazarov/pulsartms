@@ -62,7 +62,7 @@ public sealed class DeadheadHistoryReader(AppDbContext db)
           .Where(x =>
             x.TruckId.HasValue
             && truckIds.Contains(x.TruckId.Value)
-            && !SourceWords.Cancelled.Contains(x.Status.ToLower())
+            && !SourceWords.Cancelled.Contains((x.Status ?? "").ToLower())
             && x.Date == null
           )
           .Select(x => x.TruckId!.Value)
@@ -91,7 +91,7 @@ public sealed class DeadheadHistoryReader(AppDbContext db)
           .Where(x =>
             x.TruckId == load.TruckId
             && x.Id != load.Id
-            && !SourceWords.Cancelled.Contains(x.Status.ToLower())
+            && !SourceWords.Cancelled.Contains((x.Status ?? "").ToLower())
             && (x.Date < date || x.Date == date && x.Time <= time)
           )
           .OrderByDescending(x => x.Date)
@@ -158,7 +158,9 @@ public sealed class DeadheadHistoryReader(AppDbContext db)
               && current.Date != null
               && previous.TruckId == current.TruckId
               && previous.Id != current.Id
-              && !SourceWords.Cancelled.Contains(previous.Status.ToLower())
+              && !SourceWords.Cancelled.Contains(
+                (previous.Status ?? "").ToLower()
+              )
               && (
                 previous.Date < current.Date
                 || previous.Date == current.Date
@@ -179,7 +181,7 @@ public sealed class DeadheadHistoryReader(AppDbContext db)
             HasUnknownStart = Starts()
               .Any(x =>
                 x.TruckId == current.TruckId
-                && !SourceWords.Cancelled.Contains(x.Status.ToLower())
+                && !SourceWords.Cancelled.Contains((x.Status ?? "").ToLower())
                 && x.Date == null
               ),
           }
