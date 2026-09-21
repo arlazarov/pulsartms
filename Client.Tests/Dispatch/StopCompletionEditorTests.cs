@@ -69,7 +69,10 @@ public sealed class StopCompletionEditorTests
                 Guid.NewGuid(),
                 "Operator",
                 DateTime.UtcNow,
-                writes.Count
+                writes.Count,
+                // The server answers with its verdict, not only the facts.
+                body.CompletedAt
+                  is not null
               ),
             }
           ),

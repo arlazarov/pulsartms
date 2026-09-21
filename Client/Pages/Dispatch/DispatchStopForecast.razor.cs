@@ -36,10 +36,7 @@ public partial class DispatchStopForecast
     var source = Load.Stops.FirstOrDefault(stop => stop.Id == StopId);
     _completed =
       source is not null
-      && (
-        source.IsCompleted
-        || !source.DriverOnly && DispatchBoardRow.IsCompleted(Load)
-      );
+      && (source.IsCompleted || !source.DriverOnly && Load.Completed);
     _driverOnly = source?.DriverOnly == true;
     _stop = source is null
       ? null

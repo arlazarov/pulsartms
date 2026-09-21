@@ -44,7 +44,7 @@ public partial class DispatchLoadDialog
   private bool _viewChanged;
   private Guid _loadId;
   private DispatchBoardRow Row => new(Truck ?? new(), Load);
-  private bool IsCompleted => Completed || DispatchBoardRow.IsCompleted(Load);
+  private bool IsCompleted => Completed || Load.Completed;
   private string DisplayPhase => IsCompleted ? "Completed" : Phase;
   private string DialogId => $"dispatch-load-dialog-{Load.Id}";
   private string TitleId => $"{DialogId}-title";

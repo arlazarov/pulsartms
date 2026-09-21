@@ -70,8 +70,7 @@ public partial class DispatchDetails : IDisposable
   private bool _correctionDirty;
   private bool _operationDirty;
 
-  private bool Completed =>
-    _workspace is not null && DispatchBoardRow.IsCompleted(_workspace.Load);
+  private bool Completed => _workspace is not null && _workspace.Load.Completed;
   private Guid? CurrentTruckId
   {
     get

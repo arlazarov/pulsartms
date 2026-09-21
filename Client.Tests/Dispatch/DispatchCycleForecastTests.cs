@@ -405,6 +405,7 @@ public sealed class DispatchCycleForecastTests
       parameters.Add(card => card.Load, load)
     );
     load.Stops[^1].DeliveredAt = Start.UtcDateTime;
+    load.Stops[^1].IsCompleted = true;
     load.Eta = load.Eta! with { RouteUpdatePending = true };
     component.Render(parameters => parameters.Add(card => card.Load, load));
 

@@ -43,6 +43,7 @@ public sealed class DispatchLoadCardTests
     var load = Load();
     if (completed)
       load.Status = "completed";
+    load.Completed = completed;
     var component = context.Render<DispatchLoadCard>(p =>
       p.Add(card => card.Load, load)
         .Add(card => card.Current, current)
@@ -128,6 +129,7 @@ public sealed class DispatchLoadCardTests
         "Shipper appointment confirmation number: PU123. Receiver appointment confirmation number: DEL456.";
     }
     load.Stops[0].PickedUpAt = Start.AddHours(-1).UtcDateTime;
+    load.Stops[0].IsCompleted = true;
     var component = context.Render<DispatchLoadCard>(p =>
       p.Add(card => card.Load, load).Add(card => card.Current, true)
     );
@@ -236,6 +238,7 @@ public sealed class DispatchLoadCardTests
     context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
     var load = Load();
     load.Stops[0].PickedUpAt = Start.AddHours(-1).UtcDateTime;
+    load.Stops[0].IsCompleted = true;
     foreach (var stop in load.Stops)
       stop.Address = $"{stop.Sequence} Warehouse Road";
     var component = context.Render<DispatchLoadCard>(p =>
@@ -350,6 +353,7 @@ public sealed class DispatchLoadCardTests
     Assert.Empty(component.FindAll(".dispatch-load__street"));
 
     load.Stops[0].PickedUpAt = Start.UtcDateTime;
+    load.Stops[0].IsCompleted = true;
     component.Render(p => p.Add(card => card.Load, load));
     Assert.Empty(component.FindAll(".dispatch-load__stop-details"));
   }
@@ -661,8 +665,11 @@ public sealed class DispatchLoadCardTests
       parameters.Add(card => card.Load, load)
     );
     load.Stops[0].PickedUpAt = Start.AddHours(-3).UtcDateTime;
+    load.Stops[0].IsCompleted = true;
     load.Stops[1].DepartedAt = Start.AddHours(-2).UtcDateTime;
+    load.Stops[1].IsCompleted = true;
     load.Stops[2].DeliveredAt = Start.AddHours(-1).UtcDateTime;
+    load.Stops[2].IsCompleted = true;
     component.Render(parameters => parameters.Add(card => card.Load, load));
 
     Assert.Equal(3, component.FindAll(".dispatch-load__stop--completed").Count);
@@ -719,6 +726,7 @@ public sealed class DispatchLoadCardTests
     load.Stops[1].StopNo = "DL-REF / 456";
     if (current)
       load.Stops[0].PickedUpAt = Start.AddHours(-3).UtcDateTime;
+    load.Stops[0].IsCompleted = current;
 
     var component = context.Render<DispatchLoadCard>(parameters =>
       parameters.Add(card => card.Load, load).Add(card => card.Current, current)
@@ -942,7 +950,10 @@ public sealed class DispatchLoadCardTests
     context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
     var load = Load();
     foreach (var stop in load.Stops)
+    {
       stop.ExecutionCompleted = true;
+      stop.IsCompleted = true;
+    }
     var component = context.Render<DispatchLoadCard>(parameters =>
       parameters.Add(card => card.Load, load)
     );

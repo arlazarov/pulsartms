@@ -52,8 +52,11 @@ public sealed class DispatchStopSummaryTests
     Assert.Contains("Bottled water", component.Markup);
     Assert.Contains(stop.Notes, component.Markup);
     Assert.Empty(component.FindAll("input, select, textarea, button"));
-    Assert.All(component.FindAll("h3, dt"), heading =>
-      Assert.NotNull(heading.QuerySelector("svg[aria-hidden='true']")));
+    Assert.All(
+      component.FindAll("h3, dt"),
+      heading =>
+        Assert.NotNull(heading.QuerySelector("svg[aria-hidden='true']"))
+    );
   }
 
   [Fact]
@@ -65,6 +68,7 @@ public sealed class DispatchStopSummaryTests
     {
       Id = Guid.NewGuid(),
       DeliveredAt = new(2026, 9, 16, 15, 0, 0, DateTimeKind.Utc),
+      IsCompleted = true,
     };
     var component = context.Render<DispatchStopSummary>(p =>
       p.Add(x => x.Stop, stop).Add(x => x.Recorded, recorded)

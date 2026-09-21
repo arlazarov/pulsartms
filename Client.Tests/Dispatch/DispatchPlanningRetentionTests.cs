@@ -444,6 +444,7 @@ public sealed class DispatchPlanningRetentionTests
         )
     );
     load.Stops[0].DeliveredAt = Start.UtcDateTime;
+    load.Stops[0].IsCompleted = true;
     component.Render(p => p.Add(x => x.Load, load));
     Assert.Empty(
       component.FindAll(".dispatch-planning__metrics, .arrival-estimate")

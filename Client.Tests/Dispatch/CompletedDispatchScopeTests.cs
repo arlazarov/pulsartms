@@ -251,6 +251,7 @@ public sealed class CompletedDispatchScopeTests
   {
     var load = DispatchFinancialViewsTests.Load(number);
     load.Status = "completed";
+    load.Completed = true;
     return new(HttpStatusCode.OK)
     {
       Content = JsonContent.Create(

@@ -1,5 +1,6 @@
 using Application.Features.Eta.Models;
 using Domain.Entities.Execution;
+using Domain.Rules;
 
 namespace Application.Features.Dispatch.Models;
 
@@ -41,6 +42,24 @@ public class DispatchResponse : IWorkFacts
   public string Currency { get; set; } = string.Empty;
   public DateTime LastSyncedAt { get; set; }
   public List<DispatchStopResponse> Stops { get; set; } = [];
+
+  // Whether the load is done - decided here, once, and sent. The browser
+  // used to work this out for itself from its copy of the stops.
+  public bool Completed
+  {
+    get
+    {
+      var final = Stops.OrderBy(stop => stop.Sequence).LastOrDefault();
+      return LoadCompletion.IsCompleted(
+        Status,
+        final?.Job,
+        final?.CompletionOverride,
+        (final?.DeliveredAt ?? final?.DepartedAt).HasValue,
+        final?.ManualCompletedAt.HasValue == true,
+        Stops.Where(stop => !stop.DriverOnly).All(stop => stop.IsCompleted)
+      );
+    }
+  }
 
   internal DispatchResponse CopyForBoardRow()
   {

@@ -48,7 +48,7 @@ public partial class DispatchLoadCard
       Load.LoadNumber,
       DisplaySettings?.LoadNumberPrefix
     );
-  private bool Completed => DispatchBoardRow.IsCompleted(Load);
+  private bool Completed => Load.Completed;
   private bool Next => !Current && !Completed && Order <= 1;
   private bool ShowRemaining =>
     Current

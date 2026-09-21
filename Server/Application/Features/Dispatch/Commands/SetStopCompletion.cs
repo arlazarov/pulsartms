@@ -21,7 +21,10 @@ public sealed record StopCompletionState(
   Guid? CompletedBy,
   string? CompletedByName,
   DateTime? RecordedAt,
-  long Revision
+  long Revision,
+  // Whether the stop now counts as done - not always what was just asked
+  // for: one waiting for a handoff is not done however it is marked.
+  bool IsCompleted = false
 );
 
 public sealed record SetStopCompletionCommand(
@@ -292,7 +295,8 @@ public sealed class SetStopCompletionHandler(
       stop.ManualCompletedBy,
       stop.ManualCompletedByName,
       stop.ManualCompletionRecordedAt,
-      stop.ManualCompletionRevision
+      stop.ManualCompletionRevision,
+      stop.IsCompleted
     );
 
   private static RequestResponse<StopCompletionState> Conflict() =>

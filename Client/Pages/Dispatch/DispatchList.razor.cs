@@ -761,7 +761,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
   private bool IsCurrent(DispatchResponse? load) =>
     !_showCompleted
     && load is not null
-    && !DispatchBoardRow.IsCompleted(load)
+    && !load.Completed
     && (
       load.Status == "in_transit"
       || (load.Stops.FirstOrDefault()?.ScheduledDate ?? load.ShipDate)
@@ -773,7 +773,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     DispatchResponse load
   )
   {
-    if (_showCompleted || DispatchBoardRow.IsCompleted(load))
+    if (_showCompleted || load.Completed)
       return "Completed";
     var index = truck.Dispatches.TakeWhile(item => item.Id != load.Id).Count();
     var hasCurrent = IsCurrent(truck.Dispatches.FirstOrDefault());

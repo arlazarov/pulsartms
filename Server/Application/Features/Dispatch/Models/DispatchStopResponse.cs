@@ -73,7 +73,8 @@ public class DispatchStopResponse : IWorkStopFacts
       ScheduledTime
     );
 
-  [JsonIgnore]
+  // Sent, not left for the browser to work out: its own copy of this rule
+  // did not know a stop can be waiting for a handoff.
   public bool IsCompleted =>
     StopCompletion.IsCompleted(
       AwaitingHandoff,

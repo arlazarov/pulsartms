@@ -31,6 +31,9 @@ public class DispatchResponse
   public decimal? LoadedMiles { get; set; }
   public decimal? EmptyMiles { get; set; }
   public decimal? TotalMiles { get; set; }
+
+  // Whether the load is done, said by the server.
+  public bool Completed { get; set; }
   public decimal? LoadedRatePerMile { get; set; }
   public decimal? TotalRatePerMile { get; set; }
   public string EmptyMilesStatus { get; set; } = "unavailable";

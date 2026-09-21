@@ -233,11 +233,13 @@ public sealed class DispatchStopTimingTests
     var load = Load();
     var component = Render(context, load);
     load.Stops[^1].DeliveredAt = Start.UtcDateTime;
+    load.Stops[^1].IsCompleted = true;
     load.Eta = load.Eta! with { Stops = [], RouteUpdatePending = true };
     Update(component, load);
     Assert.Empty(component.FindAll(".stop-hours"));
 
     load.Stops[^1].DeliveredAt = null;
+    load.Stops[^1].IsCompleted = false;
     Update(component, load);
     Assert.Empty(component.FindAll(".stop-hours"));
   }

@@ -448,7 +448,12 @@ public sealed class NextLoadDetailsRetentionTests
           Id = route.Id,
           Stops =
           [
-            new() { Id = stop.Id, DeliveredAt = clock.GetUtcNow().UtcDateTime },
+            new()
+            {
+              Id = stop.Id,
+              DeliveredAt = clock.GetUtcNow().UtcDateTime,
+              IsCompleted = true,
+            },
           ],
         }
         : null;

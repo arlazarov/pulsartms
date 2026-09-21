@@ -77,6 +77,7 @@ public sealed class DispatchFinancialViewsTests
     using var context = new BunitContext();
     var load = Load();
     load.Status = "completed";
+    load.Completed = true;
     load.OrderNumber = "ORDER-19";
     load.Stops[0].Address = "123 Origin Street";
     var trucks = new[]
@@ -210,6 +211,7 @@ public sealed class DispatchFinancialViewsTests
     var second = Load(1373);
     second.Status = "planned";
     second.Stops[0].PickedUpAt = null;
+    second.Stops[0].IsCompleted = true;
     var trucks = new[]
     {
       new TruckDispatchBoardResponse
@@ -246,6 +248,7 @@ public sealed class DispatchFinancialViewsTests
 
     second.Status = "in_transit";
     second.Stops[0].PickedUpAt = DateTime.UtcNow;
+    second.Stops[0].IsCompleted = true;
     papers.Render(p => p.Add(x => x.Trucks, trucks));
     var after = papers
       .FindAll(".dispatch-paper-column--1 a")
@@ -291,6 +294,7 @@ public sealed class DispatchFinancialViewsTests
     var next = Load(1373);
     next.Status = "planned";
     next.Stops[0].PickedUpAt = null;
+    next.Stops[0].IsCompleted = true;
     var trucks = new[]
     {
       new TruckDispatchBoardResponse
@@ -365,6 +369,7 @@ public sealed class DispatchFinancialViewsTests
     );
 
     current.Status = "completed";
+    current.Completed = true;
     trucks[0].Dispatches = [current];
     table.Render(parameters =>
       parameters
@@ -401,8 +406,12 @@ public sealed class DispatchFinancialViewsTests
     context.Services.AddSingleton(TimeProvider.System);
     var load = Load();
     load.Status = "completed";
+    load.Completed = true;
     foreach (var stop in load.Stops)
+    {
       stop.PickedUpAt = null;
+      stop.IsCompleted = false;
+    }
     var card = context.Render<DispatchLoadCard>(parameters =>
       parameters.Add(view => view.Load, load).Add(view => view.Current, true)
     );
@@ -444,6 +453,7 @@ public sealed class DispatchFinancialViewsTests
           Job = "Pick Up",
           City = "Origin",
           PickedUpAt = DateTime.UtcNow.AddDays(-2),
+          IsCompleted = true,
         },
         new()
         {

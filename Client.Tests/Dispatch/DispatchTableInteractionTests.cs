@@ -169,6 +169,7 @@ public sealed class DispatchTableInteractionTests
     Assert.Empty(table.FindAll("details"));
     Assert.Equal(8, table.FindAll("tbody tr:first-child td").Count);
     load.Status = "completed";
+    load.Completed = true;
     table.Render();
     Assert.Equal(2, table.FindAll(".dispatch-table__stop-completed").Count);
     Assert.Equal(
@@ -199,6 +200,7 @@ public sealed class DispatchTableInteractionTests
     var pickup = load.Stops[0];
     pickup.StateAfter = "Loaded";
     pickup.PickedUpAt = completed ? DateTime.UtcNow.AddHours(-1) : null;
+    pickup.IsCompleted = completed;
     pickup.Address = "1 Arizona Way";
     pickup.ScheduledDate = new(2026, 9, 12);
     pickup.ScheduledTime = new(12, 0);

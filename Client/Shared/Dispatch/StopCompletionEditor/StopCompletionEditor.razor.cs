@@ -164,6 +164,7 @@ public partial class StopCompletionEditor
       Stop.ManualCompletedByName = state.CompletedByName;
       Stop.ManualCompletionRecordedAt = state.RecordedAt;
       Stop.ManualCompletionRevision = state.Revision;
+      Stop.IsCompleted = state.IsCompleted;
       _editing = false;
       await Changed.InvokeAsync();
     }

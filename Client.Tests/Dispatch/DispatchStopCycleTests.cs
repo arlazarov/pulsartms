@@ -286,11 +286,13 @@ public sealed class DispatchStopCycleTests
     var load = Load();
     var component = Render(context, load);
     load.Stops[0].PickedUpAt = Start.UtcDateTime;
+    load.Stops[0].IsCompleted = true;
     load.Eta = load.Eta! with { Stops = [], RouteUpdatePending = true };
     Update(component, load);
     Assert.Empty(component.FindAll(".dispatch-load__stop-cycle"));
 
     load.Stops[0].PickedUpAt = null;
+    load.Stops[0].IsCompleted = true;
     Update(component, load);
     Assert.Empty(component.FindAll(".dispatch-load__stop-cycle"));
   }

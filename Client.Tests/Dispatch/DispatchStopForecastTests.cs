@@ -110,6 +110,7 @@ public sealed class DispatchStopForecastTests
     var load = Load();
     load.Stops[0].DriverOnly = true;
     load.Status = "completed";
+    load.Completed = true;
     var component = Render(context, load);
     Assert.Contains("Driver only · No truck", component.Markup);
     Assert.DoesNotContain("Completed", component.Markup);
@@ -117,6 +118,7 @@ public sealed class DispatchStopForecastTests
 
     load.Stops[0].DriverOnly = false;
     load.Stops[0].ExecutionCompleted = true;
+    load.Stops[0].IsCompleted = true;
     component.Render(p => p.Add(x => x.Load, load));
 
     Assert.Contains("Completed", component.Markup);

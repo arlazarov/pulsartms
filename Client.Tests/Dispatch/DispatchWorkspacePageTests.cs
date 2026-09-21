@@ -70,7 +70,10 @@ public sealed class DispatchWorkspacePageTests
         );
         Assert.Equal("completed", body.Completion);
         foreach (var stop in data.Load.Stops)
+        {
           stop.CompletionOverride = true;
+          stop.IsCompleted = true;
+        }
         data.Revision++;
         return MileageComponentResponses.Ok(data);
       }
@@ -357,6 +360,7 @@ public sealed class DispatchWorkspacePageTests
           );
         }
         data.Load.Stops[0].CompletionOverride = true;
+        data.Load.Stops[0].IsCompleted = true;
         data.Revision++;
         return MileageComponentResponses.Ok(data);
       }

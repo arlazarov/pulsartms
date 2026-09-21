@@ -252,7 +252,12 @@ public sealed class DispatchStopWorkspaceTests
       Status = "in_transit",
       Stops =
       [
-        new() { Id = completed.Id, ExecutionCompleted = true },
+        new()
+        {
+          Id = completed.Id,
+          ExecutionCompleted = true,
+          IsCompleted = true,
+        },
         new() { Id = upcoming.Id },
       ],
     };

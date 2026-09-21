@@ -240,6 +240,7 @@ public sealed class DispatchMultiStopPresentationTests
       })
       .ToList();
     stops[0].PickedUpAt = new(2026, 9, 11, 2, 15, 0);
+    stops[0].IsCompleted = true;
     stops[1].Name = "Target DC #3802";
     stops[1].Address = "1730 NY-5S";
     stops[1].City = "Amsterdam";

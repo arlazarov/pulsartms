@@ -65,7 +65,10 @@ public sealed class DispatchWorkspaceMapLinkTests
   {
     var data = Workspace();
     foreach (var stop in data.Load.Stops)
+    {
       stop.ExecutionCompleted = true;
+      stop.IsCompleted = true;
+    }
     using var context = Context(data);
     var component = context.Render<DispatchDetails>(p =>
       p.Add(x => x.Id, data.Load.Id)
@@ -95,6 +98,7 @@ public sealed class DispatchWorkspaceMapLinkTests
   {
     var data = WithTransfer(action, status);
     data.Load.Stops[^1].ExecutionCompleted = incomingCompleted;
+    data.Load.Stops[^1].IsCompleted = incomingCompleted;
     var expected =
       status == "confirmed" ? data.Load.Stops[^1].TruckId : data.Load.TruckId;
     using var context = Context(data);
@@ -218,6 +222,7 @@ public sealed class DispatchWorkspaceMapLinkTests
     var transferId = Guid.NewGuid();
     var kind = action == "drop" ? "drop_hook" : "resource_handoff";
     data.Load.Stops[0].ExecutionCompleted = false;
+    data.Load.Stops[0].IsCompleted = false;
     data.Stops.Insert(
       1,
       new()
@@ -240,6 +245,7 @@ public sealed class DispatchWorkspaceMapLinkTests
         Id = id,
         TruckId = data.Load.TruckId,
         ExecutionCompleted = status == "confirmed",
+        IsCompleted = status == "confirmed",
       }
     );
     data.Stops[2].Transfer = new()
@@ -250,6 +256,7 @@ public sealed class DispatchWorkspaceMapLinkTests
       Status = status,
     };
     data.Load.Stops[2].ExecutionCompleted = status == "confirmed";
+    data.Load.Stops[2].IsCompleted = status == "confirmed";
     for (var index = 0; index < data.Stops.Count; index++)
     {
       data.Stops[index].Sequence = index + 1;
@@ -304,6 +311,7 @@ public sealed class DispatchWorkspaceMapLinkTests
                 Sequence = stop.Sequence,
                 TruckId = index == 0 ? outgoing : incoming,
                 ExecutionCompleted = index < 2,
+                IsCompleted = index < 2,
               }
           )
           .ToList(),

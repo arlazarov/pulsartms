@@ -46,6 +46,7 @@ public sealed class DispatchStopPresentationTests
     var delivery = Stop(5, "13077 SW Anthony F. Sansone Sr. Blvd");
     third.Name = "Provider spelling changed";
     first.PickedUpAt = new(2026, 9, 11, 2, 15, 0);
+    first.IsCompleted = true;
 
     var visits = DispatchStopPresentation.OrderedVisits(
       [fourth, delivery, second, third, first]

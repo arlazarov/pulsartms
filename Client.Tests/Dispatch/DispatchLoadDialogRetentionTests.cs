@@ -250,6 +250,7 @@ public sealed class DispatchLoadDialogRetentionTests
     dialog.Render();
     Assert.Equal(2, dialog.FindAll(".stop-hours__arrival-cycle").Count);
     fixture.Load.Status = "completed";
+    fixture.Load.Completed = true;
     dialog.Render();
     Assert.Equal(2, dialog.FindAll(".dispatch-load__stop--completed").Count);
     Assert.Empty(

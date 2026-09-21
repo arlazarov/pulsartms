@@ -180,7 +180,10 @@ public sealed class DispatchLoadDialogTests
       JSRuntimeMode.Loose;
     var load = DispatchFinancialViewsTests.Load();
     foreach (var stop in load.Stops)
+    {
       stop.PickedUpAt = null;
+      stop.IsCompleted = false;
+    }
     var component = context.Render<DispatchLoadDialog>(parameters =>
       parameters
         .Add(dialog => dialog.Load, load)

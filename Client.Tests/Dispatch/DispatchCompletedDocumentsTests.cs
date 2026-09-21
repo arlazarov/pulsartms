@@ -24,6 +24,7 @@ public sealed class DispatchCompletedDocumentsTests
         Id = Guid.NewGuid(),
         LoadNumber = 2060,
         Status = "completed",
+        Completed = true,
       },
       CanEdit = false,
       ReadOnlyReason = "Completed or cancelled loads are read-only.",
@@ -82,10 +83,14 @@ public sealed class DispatchCompletedDocumentsTests
     Assert.True(page.Find("#load-instructions").HasAttribute("disabled"));
     var documents = page.FindComponent<DispatchDocuments>();
     documents.WaitForAssertion(
-      () => Assert.False(documents.Find("input[type=file]").HasAttribute("disabled"))
+      () =>
+        Assert.False(
+          documents.Find("input[type=file]").HasAttribute("disabled")
+        )
     );
     await documents.Find(".dispatch-documents select").ChangeAsync("pod");
-    documents.FindComponent<InputFile>()
+    documents
+      .FindComponent<InputFile>()
       .UploadFiles(
         InputFileContent.CreateFromText(
           "%PDF-1.7 fixture",

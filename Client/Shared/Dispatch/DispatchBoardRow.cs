@@ -28,7 +28,7 @@ public sealed record DispatchBoardRow(
   public DateOnly? DeliveryDate =>
     Destination?.ScheduledDate ?? Load.DeliveryDate;
   public DateOnly? PickupDate => Origin?.ScheduledDate ?? Load.ShipDate;
-  public bool Completed => IsCompleted(Load);
+  public bool Completed => Load.Completed;
   public bool InTransit =>
     !Completed
     && (
@@ -61,23 +61,6 @@ public sealed record DispatchBoardRow(
     : "Awaiting pickup";
   public string MapUrl =>
     $"/fleet/map?truckId={Load.TruckId ?? Truck.TruckId}&dispatchId={Load.Id}";
-
-  public static bool IsCompleted(DispatchResponse load) =>
-    load.Status.Equals("completed", StringComparison.OrdinalIgnoreCase)
-    || load.Stops.OrderBy(stop => stop.Sequence).LastOrDefault() is { } final
-      && (
-        final.Job.Equals("Drop Off", StringComparison.OrdinalIgnoreCase)
-        || final.Job.Equals("Delivery", StringComparison.OrdinalIgnoreCase)
-      )
-      && (
-        final.CompletionOverride == true
-        || final.CompletionOverride != false
-          && (
-            (final.DeliveredAt ?? final.DepartedAt).HasValue
-            || final.ManualCompletedAt.HasValue
-              && load.Stops.Where(s => !s.DriverOnly).All(s => s.IsCompleted)
-          )
-      );
 
   private static bool StopCompleted(DispatchStopResponse? stop) =>
     stop?.IsCompleted == true;

@@ -11,5 +11,6 @@ public sealed record StopCompletionState(
   Guid? CompletedBy,
   string? CompletedByName,
   DateTime? RecordedAt,
-  long Revision
+  long Revision,
+  bool IsCompleted = false
 );

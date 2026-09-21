@@ -44,6 +44,7 @@ public partial class NextLoadDetailsCard
 
   [Parameter]
   public FuelStopArrival? FuelArrival { get; set; }
+
   // The card says fuel as a named figure on its line, not as a dial.
   private string ArrivalFuelText =>
     ArrivalFuel is { } fuel

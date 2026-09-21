@@ -82,7 +82,12 @@ public sealed class DispatchStopCorrectionTests
     var workspace = Workspace();
     workspace.Load.Stops =
     [
-      new() { Id = workspace.Stops[0].Id, ExecutionCompleted = true },
+      new()
+      {
+        Id = workspace.Stops[0].Id,
+        ExecutionCompleted = true,
+        IsCompleted = true,
+      },
     ];
     var states = new List<bool>();
     var cut = context.Render<DispatchStopCorrection>(p =>
@@ -289,20 +294,6 @@ public sealed class DispatchStopCorrectionTests
       cut.Find("#correction-status").GetAttribute("aria-pressed")
     );
     Assert.Empty(cut.FindAll(".btn--primary"));
-  }
-
-  [Fact]
-  public void CompletedOverrideWinsOverImportedDates()
-  {
-    var stop = new Client.Models.DTO.Dispatch.DispatchStopResponse
-    {
-      DeliveredAt = DateTime.UtcNow,
-      CompletionOverride = false,
-    };
-    Assert.False(stop.IsCompleted);
-    stop.DeliveredAt = null;
-    stop.CompletionOverride = true;
-    Assert.True(stop.IsCompleted);
   }
 
   [Fact]

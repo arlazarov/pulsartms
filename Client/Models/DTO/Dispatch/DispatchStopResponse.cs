@@ -55,11 +55,8 @@ public class DispatchStopResponse
   public long ManualCompletionRevision { get; set; }
   public string CompletionIdentity { get; set; } = "";
 
-  [JsonIgnore]
-  public bool IsCompleted =>
-    CompletionOverride
-    ?? (
-      ExecutionCompleted
-      || (DepartedAt ?? DeliveredAt ?? PickedUpAt ?? ManualCompletedAt).HasValue
-    );
+  // Said by the server. This used to be worked out here from the facts
+  // above, by a copy of the server's rule that had already drifted from it:
+  // it did not know a stop can be waiting for a handoff.
+  public bool IsCompleted { get; set; }
 }
