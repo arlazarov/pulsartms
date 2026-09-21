@@ -5,15 +5,15 @@ using Application.Models;
 namespace Application.Features.Fuel.Commands.SyncIftaTaxRates;
 
 public record SyncIftaTaxRatesCommand(int Year, int Quarter)
-  : IRequest<RequestResponse<int>>;
-
-public class SyncIftaTaxRatesValidator
-  : AbstractValidator<SyncIftaTaxRatesCommand>
+  : IRequest<RequestResponse<int>>,
+    IChecked
 {
-  public SyncIftaTaxRatesValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.Year).InclusiveBetween(2000, 2100);
-    RuleFor(x => x.Quarter).InclusiveBetween(1, 4);
+    if (Year is < 2000 or > 2100)
+      yield return "Choose a year between 2000 and 2100.";
+    if (Quarter is < 1 or > 4)
+      yield return "Choose a quarter from 1 to 4.";
   }
 }
 

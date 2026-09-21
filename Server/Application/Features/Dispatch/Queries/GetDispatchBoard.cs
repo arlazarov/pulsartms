@@ -25,16 +25,18 @@ public record GetDispatchBoardQuery(
   bool IncludeEta = true,
   bool IncludeOverdue = false,
   bool IdentitiesOnly = false
-) : IRequest<RequestResponse<PaginatedList<TruckDispatchBoardResponse>>>;
-
-public class GetDispatchBoardValidator
-  : AbstractValidator<GetDispatchBoardQuery>
+)
+  : IRequest<RequestResponse<PaginatedList<TruckDispatchBoardResponse>>>,
+    IChecked
 {
-  public GetDispatchBoardValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.Page).InclusiveBetween(1, 1000000);
-    RuleFor(x => x.PageSize).InclusiveBetween(1, 100);
-    RuleFor(x => x.Search).MaximumLength(200);
+    if (Page is < 1 or > 1000000)
+      yield return "Choose a page from 1 to 1000000.";
+    if (PageSize is < 1 or > 100)
+      yield return "Ask for between 1 and 100 rows at a time.";
+    if (Search?.Length > 200)
+      yield return "That search is too long.";
   }
 }
 

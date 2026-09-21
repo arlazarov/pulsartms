@@ -6,30 +6,29 @@ namespace Application.Features.Dispatch.Activity;
 public sealed record AddDispatchActivityCommand(
   Guid DispatchId,
   AddDispatchActivityUpdate Update
-) : IRequest<RequestResponse<DispatchActivityItem>>;
-
-public sealed class AddDispatchActivityValidator
-  : AbstractValidator<AddDispatchActivityCommand>
+) : IRequest<RequestResponse<DispatchActivityItem>>, IChecked
 {
-  public AddDispatchActivityValidator()
-  {
-    RuleFor(x => x.DispatchId).NotEmpty();
-    RuleFor(x => x.Update).NotNull();
-    When(
-      x => x.Update is not null,
-      () =>
-      {
-        RuleFor(x => x.Update.OperationId).NotEmpty();
-        RuleFor(x => x.Update.ExpectedRevision)
-          .InclusiveBetween(0, long.MaxValue - 1);
-        RuleFor(x => x.Update.Kind).Must(ValidKind);
-        RuleFor(x => x.Update.Text).NotEmpty().MaximumLength(4000);
-      }
-    );
-  }
-
   internal static bool ValidKind(string kind) =>
     kind is "driver-called" or "called-driver" or "note";
+
+  public IEnumerable<string> Wrong()
+  {
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
+    if (Update is null)
+      yield return "The note to save is missing.";
+    else
+    {
+      if (Update.OperationId == Guid.Empty)
+        yield return "Reopen the load before adding a note.";
+      if (Update.ExpectedRevision is < 0 or >= long.MaxValue)
+        yield return "Reopen the load before adding a note.";
+      if (!ValidKind(Update.Kind))
+        yield return "Choose a call or a note.";
+      if (string.IsNullOrWhiteSpace(Update.Text) || Update.Text.Length > 4000)
+        yield return "Write between 1 and 4000 characters.";
+    }
+  }
 }
 
 public sealed class AddDispatchActivityHandler(
@@ -57,7 +56,7 @@ public sealed class AddDispatchActivityHandler(
       || update.OperationId == Guid.Empty
       || update.ExpectedRevision < 0
       || update.ExpectedRevision == long.MaxValue
-      || !AddDispatchActivityValidator.ValidKind(update.Kind)
+      || !AddDispatchActivityCommand.ValidKind(update.Kind)
       || string.IsNullOrWhiteSpace(update.Text)
       || update.Text.Length > 4000
     )

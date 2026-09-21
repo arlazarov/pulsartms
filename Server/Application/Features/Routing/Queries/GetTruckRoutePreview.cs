@@ -7,12 +7,14 @@ namespace Application.Features.Routing.Queries;
 
 public sealed record GetTruckRoutePreviewQuery(Guid TruckId)
   : IRequest<RequestResponse<AutomaticPlanningResult>>,
-    IPlanningRequest;
-
-public sealed class GetTruckRoutePreviewValidator
-  : AbstractValidator<GetTruckRoutePreviewQuery>
+    IPlanningRequest,
+    IChecked
 {
-  public GetTruckRoutePreviewValidator() => RuleFor(x => x.TruckId).NotEmpty();
+  public IEnumerable<string> Wrong()
+  {
+    if (TruckId == Guid.Empty)
+      yield return "Choose a truck.";
+  }
 }
 
 public sealed class GetTruckRoutePreviewHandler(RoutePreviewService service)

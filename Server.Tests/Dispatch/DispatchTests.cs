@@ -109,11 +109,7 @@ public class DispatchTests
   [InlineData(1, 0)]
   [InlineData(1, 101)]
   public void InvalidPaginationIsRejected(int page, int pageSize) =>
-    Assert.False(
-      new GetDispatchValidator()
-        .Validate(new GetDispatchQuery(page, pageSize))
-        .IsValid
-    );
+    Assert.NotEmpty(new GetDispatchQuery(page, pageSize).Wrong());
 
   private sealed class Provider(IReadOnlyList<ExternalDispatch> sources)
     : IDispatchProvider

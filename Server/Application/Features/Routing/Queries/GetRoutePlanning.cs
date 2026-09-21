@@ -8,14 +8,13 @@ namespace Application.Features.Routing.Queries;
 
 public sealed record GetRoutePlanningQuery(Guid DispatchId)
   : IRequest<RequestResponse<RoutePlanningState>>,
-    IPlanningRequest;
-
-public sealed class GetRoutePlanningValidator
-  : AbstractValidator<GetRoutePlanningQuery>
+    IPlanningRequest,
+    IChecked
 {
-  public GetRoutePlanningValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.DispatchId).NotEmpty();
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
   }
 }
 

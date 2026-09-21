@@ -725,13 +725,7 @@ public sealed class TruckRoutePreviewTests
       () => fixture.Preview.ForTruckAsync(fixture.Truck.Id, cancellation.Token)
     );
     Assert.Equal(0, fixture.Probe.Reads);
-    Assert.False(
-      (
-        await new GetTruckRoutePreviewValidator().ValidateAsync(
-          new GetTruckRoutePreviewQuery(Guid.Empty)
-        )
-      ).IsValid
-    );
+    Assert.NotEmpty(new GetTruckRoutePreviewQuery(Guid.Empty).Wrong());
   }
 
   [Fact]

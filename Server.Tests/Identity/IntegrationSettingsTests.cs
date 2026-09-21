@@ -352,66 +352,44 @@ public sealed class IntegrationSettingsTests
         Fields = new() { [field] = value },
       }
     );
-    var result = new UpdateIntegrationCredentialsValidator().Validate(command);
-    Assert.False(result.IsValid);
-    Assert.DoesNotContain(
-      value,
-      string.Join(" ", result.Errors.Select(error => error.ErrorMessage))
-    );
+    var wrong = command.Wrong().ToArray();
+    Assert.NotEmpty(wrong);
+    Assert.DoesNotContain(value, string.Join(" ", wrong));
   }
 
   [Fact]
   public void NullOversizeAndRestoreWithReplacementRequestsAreRejected()
   {
-    var validator = new UpdateIntegrationCredentialsValidator();
-    Assert.False(
-      validator
-        .Validate(new UpdateIntegrationCredentialsCommand("samsara", null!))
-        .IsValid
+    Assert.NotEmpty(
+      new UpdateIntegrationCredentialsCommand("samsara", null!).Wrong()
     );
-    Assert.False(
-      validator
-        .Validate(
-          new UpdateIntegrationCredentialsCommand(
-            "samsara",
-            new() { Fields = null }
-          )
-        )
-        .IsValid
+    Assert.NotEmpty(
+      new UpdateIntegrationCredentialsCommand(
+        "samsara",
+        new() { Fields = null }
+      ).Wrong()
     );
-    Assert.False(
-      validator
-        .Validate(
-          new UpdateIntegrationCredentialsCommand(
-            "samsara",
-            Update("apiKey", new('x', 4097))
-          )
-        )
-        .IsValid
+    Assert.NotEmpty(
+      new UpdateIntegrationCredentialsCommand(
+        "samsara",
+        Update("apiKey", new('x', 4097))
+      ).Wrong()
     );
-    Assert.False(
-      validator
-        .Validate(
-          new UpdateIntegrationCredentialsCommand(
-            "samsara",
-            new()
-            {
-              RestoreDeployment = true,
-              Fields = new() { ["apiKey"] = "replacement" },
-            }
-          )
-        )
-        .IsValid
+    Assert.NotEmpty(
+      new UpdateIntegrationCredentialsCommand(
+        "samsara",
+        new()
+        {
+          RestoreDeployment = true,
+          Fields = new() { ["apiKey"] = "replacement" },
+        }
+      ).Wrong()
     );
-    Assert.True(
-      validator
-        .Validate(
-          new UpdateIntegrationCredentialsCommand(
-            "samsara",
-            Update("apiKey", "  replacement  ")
-          )
-        )
-        .IsValid
+    Assert.Empty(
+      new UpdateIntegrationCredentialsCommand(
+        "samsara",
+        Update("apiKey", "  replacement  ")
+      ).Wrong()
     );
   }
 

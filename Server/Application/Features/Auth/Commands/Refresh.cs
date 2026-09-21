@@ -3,16 +3,16 @@ using Application.Models;
 
 namespace Application.Features.Auth.Commands;
 
-public class RefreshValidator : AbstractValidator<RefreshCommand>
+public record RefreshCommand(string RefreshToken)
+  : IRequest<RequestResponse<bool>>,
+    IChecked
 {
-  public RefreshValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.RefreshToken).NotEmpty();
+    if (string.IsNullOrWhiteSpace(RefreshToken))
+      yield return "The session token is missing.";
   }
 }
-
-public record RefreshCommand(string RefreshToken)
-  : IRequest<RequestResponse<bool>>;
 
 public class RefreshHandler(IAuthService authService)
   : IRequestHandler<RefreshCommand, RequestResponse<bool>>

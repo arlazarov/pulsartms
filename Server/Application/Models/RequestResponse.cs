@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using FluentValidation.Results;
 
 namespace Application.Models;
 
@@ -34,22 +33,4 @@ public class ValidationErrors : List<string>
   public ValidationErrors(string error) => Add(error);
 
   public ValidationErrors(IEnumerable<string> errors) => AddRange(errors);
-}
-
-public static partial class Extensions
-{
-  public static ValidationErrors ToRequestErrors(
-    this List<ValidationFailure> errors
-  )
-  {
-    return new ValidationErrors(
-      [
-        .. errors.Select(e =>
-          string.IsNullOrWhiteSpace(e.PropertyName)
-            ? e.ErrorMessage
-            : $"{e.PropertyName}: {e.ErrorMessage}"
-        ),
-      ]
-    );
-  }
 }

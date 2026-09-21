@@ -29,27 +29,25 @@ public sealed record SetStopOperationCommand(
   Guid DispatchId,
   Guid StopId,
   StopOperationUpdate Update
-) : IRequest<RequestResponse<StopOperationState>>;
-
-public sealed class SetStopOperationValidator
-  : AbstractValidator<SetStopOperationCommand>
+) : IRequest<RequestResponse<StopOperationState>>, IChecked
 {
-  public SetStopOperationValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.DispatchId).NotEmpty();
-    RuleFor(x => x.StopId).NotEmpty();
-    RuleFor(x => x.Update).NotNull();
-    When(
-      x => x.Update is not null,
-      () =>
-      {
-        RuleFor(x => x.Update.Revision).InclusiveBetween(0, long.MaxValue - 1);
-        RuleFor(x => x.Update.StopIdentity).NotEmpty().Length(64);
-        RuleFor(x => x.Update)
-          .Must(x => StopOperation.Valid(x.Action, x.StateAfter))
-          .WithMessage("Choose a compatible action and state after the stop.");
-      }
-    );
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
+    if (StopId == Guid.Empty)
+      yield return "Choose a stop.";
+    if (Update is null)
+      yield return "The stop to save is missing.";
+    else
+    {
+      if (Update.Revision is < 0 or long.MaxValue)
+        yield return "Reopen the load before saving this stop.";
+      if (Update.StopIdentity is not { Length: 64 })
+        yield return "Reopen the load before saving this stop.";
+      if (!StopOperation.Valid(Update.Action, Update.StateAfter))
+        yield return "Choose a compatible action and state after the stop.";
+    }
   }
 }
 

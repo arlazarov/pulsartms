@@ -8,16 +8,16 @@ public sealed record GetFleetConfigurationQuery(
   string Kind,
   string? Search = null,
   int Page = 1
-) : IRequest<RequestResponse<ListResult<FleetConfigurationRow>>>;
-
-public sealed class GetFleetConfigurationValidator
-  : AbstractValidator<GetFleetConfigurationQuery>
+) : IRequest<RequestResponse<ListResult<FleetConfigurationRow>>>, IChecked
 {
-  public GetFleetConfigurationValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.Kind).Must(FleetConfigurationAccess.ValidKind);
-    RuleFor(x => x.Search).MaximumLength(100);
-    RuleFor(x => x.Page).InclusiveBetween(1, 10000);
+    if (!FleetConfigurationAccess.ValidKind(Kind))
+      yield return "Choose trucks, trailers or drivers.";
+    if (Search?.Length > 100)
+      yield return "That search is too long.";
+    if (Page is < 1 or > 10000)
+      yield return "Choose a page from 1 to 10000.";
   }
 }
 

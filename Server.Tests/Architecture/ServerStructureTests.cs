@@ -97,4 +97,46 @@ public sealed class ServerStructureTests
         File.ReadAllText(file)
       );
   }
+
+  [Fact]
+  public void RequestShapeIsAskedOfTheRequestWithoutAValidationPackage()
+  {
+    var checkers = 0;
+    var files = Sources(Path.Combine(Root(), "Server"), "*.cs")
+      .Where(file =>
+        !file.Contains(
+          $"{Path.DirectorySeparatorChar}Migrations{Path.DirectorySeparatorChar}"
+        )
+      )
+      .ToArray();
+    Assert.True(
+      files.Length >= 600,
+      $"this rule looked at {files.Length} files and expected at least 600 "
+        + "- it is no longer reading what it is about"
+    );
+    foreach (var file in files)
+    {
+      var source = File.ReadAllText(file);
+      Assert.DoesNotContain("AbstractValidator", source);
+      // Naming the package in prose is how the code explains why it is
+      // gone; using it is what this forbids.
+      Assert.DoesNotMatch(@"using FluentValidation|FluentValidation\.", source);
+      if (source.Contains("IEnumerable<string> Wrong()"))
+        checkers++;
+    }
+    // A request says what is wrong with its own shape. If this number
+    // falls, something stopped being checked before its handler runs.
+    Assert.True(
+      checkers >= 33,
+      $"{checkers} requests check their own shape; there were 33"
+    );
+    foreach (
+      var project in Directory.GetFiles(
+        Path.Combine(Root(), "Server"),
+        "*.csproj",
+        SearchOption.AllDirectories
+      )
+    )
+      Assert.DoesNotContain("FluentValidation", File.ReadAllText(project));
+  }
 }

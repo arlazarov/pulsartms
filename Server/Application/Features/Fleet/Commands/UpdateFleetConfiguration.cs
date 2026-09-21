@@ -13,36 +13,37 @@ public sealed record UpdateFleetConfigurationCommand(
   string Kind,
   Guid Id,
   FleetConfigurationUpdate Update
-) : IRequest<RequestResponse<FleetConfigurationState>>;
-
-public sealed class UpdateFleetConfigurationValidator
-  : AbstractValidator<UpdateFleetConfigurationCommand>
+) : IRequest<RequestResponse<FleetConfigurationState>>, IChecked
 {
-  public UpdateFleetConfigurationValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.Kind).Must(FleetConfigurationAccess.ValidKind);
-    RuleFor(x => x.Id).NotEmpty();
-    RuleFor(x => x.Update).NotNull();
-    When(
-      x => x.Update is not null,
-      () =>
-      {
-        RuleFor(x => x.Update.Revision).InclusiveBetween(0, long.MaxValue - 1);
-        RuleFor(x => x.Update.Name)
-          .NotEmpty()
-          .MaximumLength(200)
-          .Must(x => x is not null && !x.Any(char.IsControl));
-        RuleFor(x => x.Update.Vin)
-          .NotNull()
-          .MaximumLength(17)
-          .Must(x => x is not null && x.All(char.IsAsciiLetterOrDigit))
-          .WithMessage("VIN may contain only letters and digits.");
-        RuleFor(x => x.Update.FuelCard)
-          .NotNull()
-          .MaximumLength(50)
-          .Must(x => x is not null && !x.Any(char.IsControl));
-      }
-    );
+    if (!FleetConfigurationAccess.ValidKind(Kind))
+      yield return "Choose trucks, trailers or drivers.";
+    if (Id == Guid.Empty)
+      yield return "Choose what to change.";
+    if (Update is null)
+      yield return "The change to save is missing.";
+    else
+    {
+      if (Update.Revision is < 0 or long.MaxValue)
+        yield return "Reopen this before saving it.";
+      if (
+        string.IsNullOrWhiteSpace(Update.Name)
+        || Update.Name.Length > 200
+        || Update.Name.Any(char.IsControl)
+      )
+        yield return "Enter a name of at most 200 ordinary characters.";
+      if (Update.Vin is null || Update.Vin.Length > 17)
+        yield return "A VIN is at most 17 characters.";
+      else if (!Update.Vin.All(char.IsAsciiLetterOrDigit))
+        yield return "VIN may contain only letters and digits.";
+      if (
+        Update.FuelCard is null
+        || Update.FuelCard.Length > 50
+        || Update.FuelCard.Any(char.IsControl)
+      )
+        yield return "A fuel card is at most 50 ordinary characters.";
+    }
   }
 }
 

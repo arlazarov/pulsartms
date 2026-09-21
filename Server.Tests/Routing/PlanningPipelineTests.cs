@@ -23,7 +23,7 @@ public sealed class PlanningPipelineTests
     );
     Assert.False(response.Success);
     Assert.Equal(400, response.StatusCode);
-    Assert.Contains(response.Errors!, error => error.Contains("DispatchId"));
+    Assert.Contains("Choose a load.", response.Errors!);
     Assert.Equal(0, fixture.Router.Calls);
     var missing = await sender.Send(new GetRoutePlanningQuery(Guid.NewGuid()));
     Assert.False(missing.Success);

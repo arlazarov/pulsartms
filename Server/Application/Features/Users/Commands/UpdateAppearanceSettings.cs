@@ -7,22 +7,16 @@ public sealed record UpdateAppearanceSettingsCommand(
   string Theme,
   string? TemperatureUnit = null,
   string? DistanceUnit = null
-) : IRequest<RequestResponse<AppearanceSettings>>;
-
-public sealed class UpdateAppearanceSettingsValidator
-  : AbstractValidator<UpdateAppearanceSettingsCommand>
+) : IRequest<RequestResponse<AppearanceSettings>>, IChecked
 {
-  public UpdateAppearanceSettingsValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.Theme)
-      .Must(x => x is "light" or "dark")
-      .WithMessage("Choose the light or dark theme.");
-    RuleFor(x => x.TemperatureUnit)
-      .Must(x => x is null or "fahrenheit" or "celsius" or "both")
-      .WithMessage("Choose Fahrenheit, Celsius or both.");
-    RuleFor(x => x.DistanceUnit)
-      .Must(x => x is null or "miles" or "kilometers" or "both")
-      .WithMessage("Choose miles, kilometers or both.");
+    if (Theme is not ("light" or "dark"))
+      yield return "Choose the light or dark theme.";
+    if (TemperatureUnit is not (null or "fahrenheit" or "celsius" or "both"))
+      yield return "Choose Fahrenheit, Celsius or both.";
+    if (DistanceUnit is not (null or "miles" or "kilometers" or "both"))
+      yield return "Choose miles, kilometers or both.";
   }
 }
 

@@ -9,27 +9,22 @@ public sealed record UpdateDispatchSettingsCommand(
   long Revision,
   string? TemperatureUnit = null,
   string? DistanceUnit = null
-) : IRequest<RequestResponse<DispatchSettingsState>>;
-
-public sealed class UpdateDispatchSettingsValidator
-  : AbstractValidator<UpdateDispatchSettingsCommand>
+) : IRequest<RequestResponse<DispatchSettingsState>>, IChecked
 {
-  public UpdateDispatchSettingsValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.LoadNumberPrefix)
-      .Cascade(CascadeMode.Stop)
-      .NotNull()
-      .Must(prefix => prefix!.Trim().Length <= 16)
-      .WithMessage("Load number prefix must be at most 16 characters.")
-      .Must(prefix => !prefix!.Any(char.IsControl))
-      .WithMessage("Load number prefix cannot contain control characters.");
-    RuleFor(x => x.Revision).GreaterThanOrEqualTo(0).LessThan(long.MaxValue);
-    RuleFor(x => x.TemperatureUnit)
-      .Must(value => value is null or "fahrenheit" or "celsius" or "both")
-      .WithMessage("Choose Fahrenheit, Celsius or both.");
-    RuleFor(x => x.DistanceUnit)
-      .Must(value => value is null or "miles" or "kilometers" or "both")
-      .WithMessage("Choose miles, kilometers or both.");
+    if (LoadNumberPrefix is null)
+      yield return "The load number prefix is missing.";
+    else if (LoadNumberPrefix.Trim().Length > 16)
+      yield return "Load number prefix must be at most 16 characters.";
+    else if (LoadNumberPrefix.Any(char.IsControl))
+      yield return "Load number prefix cannot contain control characters.";
+    if (Revision is < 0 or long.MaxValue)
+      yield return "Reopen the settings before saving them.";
+    if (TemperatureUnit is not (null or "fahrenheit" or "celsius" or "both"))
+      yield return "Choose Fahrenheit, Celsius or both.";
+    if (DistanceUnit is not (null or "miles" or "kilometers" or "both"))
+      yield return "Choose miles, kilometers or both.";
   }
 }
 

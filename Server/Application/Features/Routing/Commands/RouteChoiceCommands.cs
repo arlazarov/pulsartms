@@ -10,61 +10,57 @@ namespace Application.Features.Routing.Commands;
 public sealed record PreviewRouteChoiceCommand(
   Guid DispatchId,
   RouteChoiceRequest Request
-) : IRequest<RequestResponse<RouteChoiceDisplayPreview>>, IPlanningRequest;
+)
+  : IRequest<RequestResponse<RouteChoiceDisplayPreview>>,
+    IPlanningRequest,
+    IChecked
+{
+  public IEnumerable<string> Wrong()
+  {
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
+    if (Request is null)
+      yield return "The route request is missing.";
+    else if (Request.ViaPoints is not { } via)
+      yield return "The list of via points is missing.";
+    else if (via.Count > 20 || via.Any(point => point is null))
+      yield return "A route may pass through at most 20 via points.";
+  }
+}
 
 public sealed record SaveRouteChoiceCommand(
   Guid DispatchId,
   RouteChoiceSave Request
-) : IRequest<RequestResponse<long>>, IPlanningRequest;
+) : IRequest<RequestResponse<long>>, IPlanningRequest, IChecked
+{
+  public IEnumerable<string> Wrong()
+  {
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
+    if (Request is null)
+      yield return "The route to save is missing.";
+    else
+    {
+      if (Request.PreviewId == Guid.Empty)
+        yield return "Preview the route before saving it.";
+      if (Request.Option is < 1 or > 3)
+        yield return "Choose one of the three routes.";
+      if (Request.Revision is < 0 or long.MaxValue)
+        yield return "Reopen the load before saving its route.";
+    }
+  }
+}
 
 public sealed record LocateRouteViaCommand(string Address)
   : IRequest<RequestResponse<RoutePoint>>,
-    IPlanningRequest;
-
-public sealed class PreviewRouteChoiceValidator
-  : AbstractValidator<PreviewRouteChoiceCommand>
+    IPlanningRequest,
+    IChecked
 {
-  public PreviewRouteChoiceValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.DispatchId).NotEmpty();
-    RuleFor(x => x.Request).NotNull();
-    When(
-      x => x.Request is not null,
-      () =>
-      {
-        RuleFor(x => x.Request.ViaPoints)
-          .NotNull()
-          .Must(x => x is null || x.Count <= 20);
-        RuleForEach(x => x.Request.ViaPoints).NotNull();
-      }
-    );
+    if (string.IsNullOrWhiteSpace(Address) || Address.Length > 300)
+      yield return "Enter an address of at most 300 characters.";
   }
-}
-
-public sealed class SaveRouteChoiceValidator
-  : AbstractValidator<SaveRouteChoiceCommand>
-{
-  public SaveRouteChoiceValidator()
-  {
-    RuleFor(x => x.DispatchId).NotEmpty();
-    RuleFor(x => x.Request).NotNull();
-    When(
-      x => x.Request is not null,
-      () =>
-      {
-        RuleFor(x => x.Request.PreviewId).NotEmpty();
-        RuleFor(x => x.Request.Option).InclusiveBetween(1, 3);
-        RuleFor(x => x.Request.Revision).InclusiveBetween(0, long.MaxValue - 1);
-      }
-    );
-  }
-}
-
-public sealed class LocateRouteViaValidator
-  : AbstractValidator<LocateRouteViaCommand>
-{
-  public LocateRouteViaValidator() =>
-    RuleFor(x => x.Address).NotEmpty().MaximumLength(300);
 }
 
 public sealed class PreviewRouteChoiceHandler(

@@ -2,23 +2,29 @@ using Application.Models;
 
 namespace Application.Features.Users.Commands;
 
-public class RegisterUserValidator : AbstractValidator<RegisterUserCommand>
-{
-  public RegisterUserValidator()
-  {
-    RuleFor(x => x.Name).NotEmpty().MaximumLength(35);
-    RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(50);
-    RuleFor(x => x.Password).NotEmpty();
-    RuleFor(x => x.Role).Must(x => x is "Admin" or "Dispatch");
-  }
-}
-
 public record RegisterUserCommand(
   string Name,
   string Email,
   string Password,
   string Role = "Dispatch"
-) : IRequest<RequestResponse<Guid>>;
+) : IRequest<RequestResponse<Guid>>, IChecked
+{
+  public IEnumerable<string> Wrong()
+  {
+    if (string.IsNullOrWhiteSpace(Name) || Name.Length > 35)
+      yield return "Enter a name of at most 35 characters.";
+    if (
+      string.IsNullOrWhiteSpace(Email)
+      || !Text.LooksLikeEmail(Email)
+      || Email.Length > 50
+    )
+      yield return "Enter a valid email address of at most 50 characters.";
+    if (string.IsNullOrWhiteSpace(Password))
+      yield return "Enter a password.";
+    if (Role is not ("Admin" or "Dispatch"))
+      yield return "Choose the Admin or Dispatch role.";
+  }
+}
 
 public class RegisterUserHandler(
   IIdentityService identityService,

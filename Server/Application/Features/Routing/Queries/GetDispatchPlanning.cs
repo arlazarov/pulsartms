@@ -10,14 +10,15 @@ public sealed record GetDispatchPlanningQuery(
   Guid DispatchId,
   Guid? KnownPlanId = null,
   int? KnownVersion = null
-) : IRequest<RequestResponse<AutomaticPlanningResult>>, IPlanningRequest;
-
-public sealed class GetDispatchPlanningValidator
-  : AbstractValidator<GetDispatchPlanningQuery>
+)
+  : IRequest<RequestResponse<AutomaticPlanningResult>>,
+    IPlanningRequest,
+    IChecked
 {
-  public GetDispatchPlanningValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.DispatchId).NotEmpty();
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
   }
 }
 

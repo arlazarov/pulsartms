@@ -8,14 +8,13 @@ namespace Application.Features.Routing.Commands;
 
 public sealed record PrepareTruckPlanningCommand(Guid TruckId)
   : IRequest<RequestResponse<AutomaticPlanningResult>>,
-    IPlanningRequest;
-
-public sealed class PrepareTruckPlanningValidator
-  : AbstractValidator<PrepareTruckPlanningCommand>
+    IPlanningRequest,
+    IChecked
 {
-  public PrepareTruckPlanningValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.TruckId).NotEmpty();
+    if (TruckId == Guid.Empty)
+      yield return "Choose a truck.";
   }
 }
 

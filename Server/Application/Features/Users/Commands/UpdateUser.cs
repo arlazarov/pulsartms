@@ -3,39 +3,6 @@ using Application.Models;
 
 namespace Application.Features.Users.Commands;
 
-public class UpdateUserValidator : AbstractValidator<UpdateUserCommand>
-{
-  public UpdateUserValidator()
-  {
-    RuleFor(x => x.Id).NotEmpty();
-    RuleFor(x => x.Role).Must(x => x is null or "Admin" or "Dispatch");
-
-    When(
-      x => x.Name is not null,
-      () =>
-      {
-        RuleFor(x => x.Name).NotEmpty().MaximumLength(35);
-      }
-    );
-
-    When(
-      x => x.Email is not null,
-      () =>
-      {
-        RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(50);
-      }
-    );
-
-    When(
-      x => x.Password is not null,
-      () =>
-      {
-        RuleFor(x => x.Password).NotEmpty();
-      }
-    );
-  }
-}
-
 public record UpdateUserCommand(
   Guid Id,
   string? Name,
@@ -43,7 +10,23 @@ public record UpdateUserCommand(
   string? Password,
   bool? IsActive,
   string? Role = null
-) : IRequest<RequestResponse<Guid>>;
+) : IRequest<RequestResponse<Guid>>, IChecked
+{
+  public IEnumerable<string> Wrong()
+  {
+    if (Id == Guid.Empty)
+      yield return "Choose a user.";
+    if (Role is not (null or "Admin" or "Dispatch"))
+      yield return "Choose the Admin or Dispatch role.";
+    if (
+      Name is not null
+      && (string.IsNullOrWhiteSpace(Name) || Name.Length > 35)
+    )
+      yield return "Enter a name of at most 35 characters.";
+    if (Email is not null && (!Text.LooksLikeEmail(Email) || Email.Length > 50))
+      yield return "Enter a valid email address of at most 50 characters.";
+  }
+}
 
 public class UpdateUserHandler(
   IAppDbContext dbContext,

@@ -125,9 +125,7 @@ public sealed class AppearanceSettingsTests
   public async Task InvalidThemesAreRejectedBeforePersistence(string? theme)
   {
     var command = new UpdateAppearanceSettingsCommand(theme!);
-    Assert.False(
-      new UpdateAppearanceSettingsValidator().Validate(command).IsValid
-    );
+    Assert.NotEmpty(command.Wrong());
     var result = await new UpdateAppearanceSettingsHandler(
       null!,
       new Caller(true, "first")
@@ -150,9 +148,7 @@ public sealed class AppearanceSettingsTests
       temperature,
       distance
     );
-    Assert.False(
-      new UpdateAppearanceSettingsValidator().Validate(command).IsValid
-    );
+    Assert.NotEmpty(command.Wrong());
     var result = await new UpdateAppearanceSettingsHandler(
       null!,
       new Caller(true, "first")

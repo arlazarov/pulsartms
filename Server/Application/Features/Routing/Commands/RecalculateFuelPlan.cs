@@ -10,25 +10,21 @@ public sealed record RecalculateFuelPlanCommand(
   Guid DispatchId,
   Guid? ExecutionLegId = null,
   long? AssignmentRevision = null
-) : IRequest<RequestResponse<AutomaticPlanningResult>>, IPlanningRequest
+)
+  : IRequest<RequestResponse<AutomaticPlanningResult>>,
+    IPlanningRequest,
+    IChecked
 {
   internal DateTime? AutomaticRefreshRevision { get; init; }
-}
 
-public sealed class RecalculateFuelPlanValidator
-  : AbstractValidator<RecalculateFuelPlanCommand>
-{
-  public RecalculateFuelPlanValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.DispatchId).NotEmpty();
-    When(
-      x => x.ExecutionLegId.HasValue,
-      () =>
-      {
-        RuleFor(x => x.ExecutionLegId).NotEqual(Guid.Empty);
-        RuleFor(x => x.AssignmentRevision).NotNull().GreaterThan(0);
-      }
-    );
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
+    if (ExecutionLegId == Guid.Empty)
+      yield return "Reopen the load before recalculating its fuel.";
+    if (ExecutionLegId.HasValue && AssignmentRevision is not > 0)
+      yield return "Reopen the load before recalculating its fuel.";
   }
 }
 

@@ -7,52 +7,40 @@ namespace Application.Features.Integrations.Commands;
 public sealed record UpdateIntegrationCredentialsCommand(
   string Provider,
   IntegrationCredentialsUpdate Update
-) : IRequest<RequestResponse<IntegrationConnectionState>>;
-
-public sealed class UpdateIntegrationCredentialsValidator
-  : AbstractValidator<UpdateIntegrationCredentialsCommand>
+) : IRequest<RequestResponse<IntegrationConnectionState>>, IChecked
 {
-  public UpdateIntegrationCredentialsValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(request => request.Provider)
-      .Must(IntegrationProviderCatalog.Contains)
-      .WithMessage("Unsupported integration.");
-    RuleFor(request => request.Update).NotNull();
-    When(
-      request => request.Update is not null,
-      () =>
-      {
-        RuleFor(request => request.Update.Revision)
-          .GreaterThanOrEqualTo(0)
-          .LessThan(long.MaxValue);
-        RuleFor(request => request.Update.Fields).NotNull();
-        RuleFor(request => request)
-          .Must(HasValidFields)
-          .WithMessage("Credential fields are invalid.")
-          .OverridePropertyName("Fields");
-      }
-    );
+    if (!IntegrationProviderCatalog.Contains(Provider))
+      yield return "Unsupported integration.";
+    if (Update is null)
+      yield return "The credentials to save are missing.";
+    else
+    {
+      if (Update.Revision is < 0 or long.MaxValue)
+        yield return "Reopen the integration before saving it.";
+      if (Update.Fields is null)
+        yield return "The credential fields are missing.";
+      else if (IntegrationProviderCatalog.Contains(Provider) && !ValidFields())
+        yield return "Credential fields are invalid.";
+    }
   }
 
-  private static bool HasValidFields(
-    UpdateIntegrationCredentialsCommand request
-  )
+  // A provider's own fields, at most three of them, each a single
+  // unbroken secret - and none of them supplied at all when the request
+  // is asking for the stored ones to be put back.
+  private bool ValidFields()
   {
-    if (
-      !IntegrationProviderCatalog.Contains(request.Provider)
-      || request.Update.Fields is null
-    )
-      return false;
-    var fields = request.Update.Fields;
+    var fields = Update.Fields;
     if (
       fields.Count > 3
       || fields.Keys.Any(field =>
-        !IntegrationProviderCatalog.Fields(request.Provider).Contains(field)
+        !IntegrationProviderCatalog.Fields(Provider).Contains(field)
       )
     )
       return false;
     if (
-      request.Update.RestoreDeployment
+      Update.RestoreDeployment
       && fields.Values.Any(value => !string.IsNullOrWhiteSpace(value))
     )
       return false;

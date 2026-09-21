@@ -10,15 +10,17 @@ public sealed record GetDispatchPlanningSummariesQuery(
   string? Search = null,
   Guid? TruckId = null,
   DateOnly? Date = null
-) : IRequest<RequestResponse<List<AutomaticPlanningResult>>>, IPlanningRequest;
-
-public sealed class GetDispatchPlanningSummariesValidator
-  : AbstractValidator<GetDispatchPlanningSummariesQuery>
+)
+  : IRequest<RequestResponse<List<AutomaticPlanningResult>>>,
+    IPlanningRequest,
+    IChecked
 {
-  public GetDispatchPlanningSummariesValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.Page).InclusiveBetween(1, 1000000);
-    RuleFor(x => x.Search).MaximumLength(200);
+    if (Page is < 1 or > 1000000)
+      yield return "Choose a page from 1 to 1000000.";
+    if (Search?.Length > 200)
+      yield return "That search is too long.";
   }
 }
 

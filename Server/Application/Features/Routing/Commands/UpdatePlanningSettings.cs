@@ -8,18 +8,14 @@ namespace Application.Features.Routing.Commands;
 
 public sealed record UpdatePlanningSettingsCommand(
   PlanningSettingsUpdate Settings
-) : IRequest<RequestResponse<PlanningSettingsState>>, IPlanningRequest;
-
-public sealed class UpdatePlanningSettingsValidator
-  : AbstractValidator<UpdatePlanningSettingsCommand>
+) : IRequest<RequestResponse<PlanningSettingsState>>, IPlanningRequest, IChecked
 {
-  public UpdatePlanningSettingsValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.Settings).NotNull();
-    When(
-      x => x.Settings is not null,
-      () => RuleFor(x => x.Settings.Preferences).NotNull()
-    );
+    if (Settings is null)
+      yield return "The settings to save are missing.";
+    else if (Settings.Preferences is null)
+      yield return "The planning preferences are missing.";
   }
 }
 

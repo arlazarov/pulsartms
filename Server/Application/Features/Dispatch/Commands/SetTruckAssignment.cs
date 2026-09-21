@@ -29,23 +29,21 @@ public sealed record TruckAssignmentState(
 public sealed record SetTruckAssignmentCommand(
   Guid DispatchId,
   TruckAssignmentUpdate Update
-) : IRequest<RequestResponse<TruckAssignmentState>>;
-
-public sealed class SetTruckAssignmentValidator
-  : AbstractValidator<SetTruckAssignmentCommand>
+) : IRequest<RequestResponse<TruckAssignmentState>>, IChecked
 {
-  public SetTruckAssignmentValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.DispatchId).NotEmpty();
-    RuleFor(x => x.Update).NotNull();
-    When(
-      x => x.Update is not null,
-      () =>
-      {
-        RuleFor(x => x.Update.Revision).InclusiveBetween(0, long.MaxValue - 1);
-        RuleFor(x => x.Update.TruckNumber).MaximumLength(50);
-      }
-    );
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
+    if (Update is null)
+      yield return "The assignment to save is missing.";
+    else
+    {
+      if (Update.Revision is < 0 or long.MaxValue)
+        yield return "Reopen the load before saving its assignment.";
+      if (Update.TruckNumber?.Length > 50)
+        yield return "That truck number is too long.";
+    }
   }
 }
 

@@ -32,26 +32,23 @@ public sealed record SetStopCompletionCommand(
   Guid DispatchId,
   Guid StopId,
   StopCompletionUpdate Update
-) : IRequest<RequestResponse<StopCompletionState>>;
-
-public sealed class SetStopCompletionValidator
-  : AbstractValidator<SetStopCompletionCommand>
+) : IRequest<RequestResponse<StopCompletionState>>, IChecked
 {
-  public SetStopCompletionValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.DispatchId).NotEmpty();
-    RuleFor(x => x.StopId).NotEmpty();
-    RuleFor(x => x.Update).NotNull();
-    When(
-      x => x.Update is not null,
-      () =>
-      {
-        RuleFor(x => x.Update.Revision)
-          .GreaterThanOrEqualTo(0)
-          .LessThan(long.MaxValue);
-        RuleFor(x => x.Update.CompletionIdentity).NotEmpty().Length(64);
-      }
-    );
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
+    if (StopId == Guid.Empty)
+      yield return "Choose a stop.";
+    if (Update is null)
+      yield return "The completion to save is missing.";
+    else
+    {
+      if (Update.Revision is < 0 or long.MaxValue)
+        yield return "Reopen the load before saving this stop.";
+      if (Update.CompletionIdentity is not { Length: 64 })
+        yield return "Reopen the load before saving this stop.";
+    }
   }
 }
 

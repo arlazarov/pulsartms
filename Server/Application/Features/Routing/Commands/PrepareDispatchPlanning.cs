@@ -10,14 +10,15 @@ public sealed record PrepareDispatchPlanningCommand(
   Guid DispatchId,
   Guid? ExecutionLegId = null,
   long? AssignmentRevision = null
-) : IRequest<RequestResponse<AutomaticPlanningResult>>, IPlanningRequest;
-
-public sealed class PrepareDispatchPlanningValidator
-  : AbstractValidator<PrepareDispatchPlanningCommand>
+)
+  : IRequest<RequestResponse<AutomaticPlanningResult>>,
+    IPlanningRequest,
+    IChecked
 {
-  public PrepareDispatchPlanningValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.DispatchId).NotEmpty();
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
   }
 }
 

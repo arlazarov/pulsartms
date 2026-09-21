@@ -10,16 +10,18 @@ public record GetDispatchQuery(
   string? Search = null,
   string? Status = null,
   Guid? TruckId = null
-) : IRequest<RequestResponse<PaginatedList<DispatchResponse>>>;
-
-public class GetDispatchValidator : AbstractValidator<GetDispatchQuery>
+) : IRequest<RequestResponse<PaginatedList<DispatchResponse>>>, IChecked
 {
-  public GetDispatchValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.Page).InclusiveBetween(1, 1000000);
-    RuleFor(x => x.PageSize).InclusiveBetween(1, 100);
-    RuleFor(x => x.Search).MaximumLength(200);
-    RuleFor(x => x.Status).MaximumLength(50);
+    if (Page is < 1 or > 1000000)
+      yield return "Choose a page from 1 to 1000000.";
+    if (PageSize is < 1 or > 100)
+      yield return "Ask for between 1 and 100 rows at a time.";
+    if (Search?.Length > 200)
+      yield return "That search is too long.";
+    if (Status?.Length > 50)
+      yield return "That status is too long.";
   }
 }
 

@@ -5,16 +5,15 @@ using Domain.Models.Fleet;
 namespace Application.Features.Fleet.Queries;
 
 public sealed record GetFleetHosQuery(Guid[]? TruckIds = null)
-  : IRequest<RequestResponse<Dictionary<Guid, TruckHosSnapshot>>>;
-
-public sealed class GetFleetHosValidator : AbstractValidator<GetFleetHosQuery>
+  : IRequest<RequestResponse<Dictionary<Guid, TruckHosSnapshot>>>,
+    IChecked
 {
-  public GetFleetHosValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.TruckIds)
-      .Must(ids =>
-        ids is null || ids.Length <= 100 && ids.All(id => id != Guid.Empty)
-      );
+    if (TruckIds is { Length: > 100 })
+      yield return "Ask for at most 100 trucks at a time.";
+    if (TruckIds?.Any(id => id == Guid.Empty) == true)
+      yield return "One of the trucks asked for was never chosen.";
   }
 }
 

@@ -9,16 +9,16 @@ namespace Application.Features.Routing.Commands;
 public sealed record BuildFuelPlanCommand(
   Guid DispatchId,
   FuelBuildRequest Fuel
-) : IRequest<RequestResponse<FuelCalculationResult>>, IPlanningRequest;
-
-public sealed class BuildFuelPlanValidator
-  : AbstractValidator<BuildFuelPlanCommand>
+) : IRequest<RequestResponse<FuelCalculationResult>>, IPlanningRequest, IChecked
 {
-  public BuildFuelPlanValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.DispatchId).NotEmpty();
-    RuleFor(x => x.Fuel).NotNull();
-    When(x => x.Fuel is not null, () => RuleFor(x => x.Fuel.Profile).NotNull());
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
+    if (Fuel is null)
+      yield return "The fuel request is missing.";
+    else if (Fuel.Profile is null)
+      yield return "The truck profile is missing.";
   }
 }
 

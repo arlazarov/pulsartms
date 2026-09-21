@@ -47,11 +47,9 @@ public static class DependencyInjection
       cfg.AddOpenBehavior(typeof(RequestDiagnosticsBehavior<,>));
       cfg.AddOpenBehavior(typeof(AdminAuditBehavior<,>));
       cfg.AddOpenBehavior(typeof(PlanningExceptionBehavior<,>));
-      cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+      cfg.AddOpenBehavior(typeof(ShapeBehavior<,>));
       cfg.LicenseKey = mediatrLicenseKey;
     });
-
-    services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
     services.AddScoped<FleetCache>();
     services.AddScoped<FleetNames>();

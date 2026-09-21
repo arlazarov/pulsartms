@@ -54,32 +54,17 @@ public sealed class DispatchTelemetryTests
   [Fact]
   public void PageBoundsAndEmptyIdentitiesAreValidated()
   {
-    var validator = new GetDispatchTelemetryValidator();
-    Assert.True(
-      validator
-        .Validate(
-          new GetDispatchTelemetryQuery(
-            Enumerable.Range(0, 12).Select(_ => Guid.NewGuid()).ToArray()
-          )
-        )
-        .IsValid
+    Assert.Empty(
+      new GetDispatchTelemetryQuery(
+        Enumerable.Range(0, 12).Select(_ => Guid.NewGuid()).ToArray()
+      ).Wrong()
     );
-    Assert.False(
-      validator
-        .Validate(
-          new GetDispatchTelemetryQuery(
-            Enumerable.Range(0, 13).Select(_ => Guid.NewGuid()).ToArray()
-          )
-        )
-        .IsValid
+    Assert.NotEmpty(
+      new GetDispatchTelemetryQuery(
+        Enumerable.Range(0, 13).Select(_ => Guid.NewGuid()).ToArray()
+      ).Wrong()
     );
-    Assert.False(
-      validator.Validate(new GetDispatchTelemetryQuery([Guid.Empty])).IsValid
-    );
-    Assert.False(
-      new GetDispatchPlanningSummariesValidator()
-        .Validate(new GetDispatchPlanningSummariesQuery(Page: 0))
-        .IsValid
-    );
+    Assert.NotEmpty(new GetDispatchTelemetryQuery([Guid.Empty]).Wrong());
+    Assert.NotEmpty(new GetDispatchPlanningSummariesQuery(Page: 0).Wrong());
   }
 }

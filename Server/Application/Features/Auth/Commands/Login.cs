@@ -3,17 +3,20 @@ using Application.Models;
 
 namespace Application.Features.Auth.Commands;
 
-public class LoginValidator : AbstractValidator<LoginCommand>
+public record LoginCommand(string Email, string Password)
+  : IRequest<RequestResponse<bool>>,
+    IChecked
 {
-  public LoginValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(50);
-    RuleFor(x => x.Password).NotEmpty();
+    if (string.IsNullOrWhiteSpace(Email) || !Text.LooksLikeEmail(Email))
+      yield return "Enter the email address you signed up with.";
+    if (Email?.Length > 50)
+      yield return "That email address is too long.";
+    if (string.IsNullOrWhiteSpace(Password))
+      yield return "Enter your password.";
   }
 }
-
-public record LoginCommand(string Email, string Password)
-  : IRequest<RequestResponse<bool>>;
 
 public class LoginHandler(IAuthService authService)
   : IRequestHandler<LoginCommand, RequestResponse<bool>>

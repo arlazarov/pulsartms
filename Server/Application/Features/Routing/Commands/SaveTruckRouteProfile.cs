@@ -9,15 +9,14 @@ namespace Application.Features.Routing.Commands;
 public sealed record SaveTruckRouteProfileCommand(
   Guid DispatchId,
   TruckRouteProfile Profile
-) : IRequest<RequestResponse<TruckRouteProfile>>, IPlanningRequest;
-
-public sealed class SaveTruckRouteProfileValidator
-  : AbstractValidator<SaveTruckRouteProfileCommand>
+) : IRequest<RequestResponse<TruckRouteProfile>>, IPlanningRequest, IChecked
 {
-  public SaveTruckRouteProfileValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.DispatchId).NotEmpty();
-    RuleFor(x => x.Profile).NotNull();
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
+    if (Profile is null)
+      yield return "The truck profile is missing.";
   }
 }
 

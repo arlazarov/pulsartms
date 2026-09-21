@@ -22,19 +22,14 @@ public sealed class DispatchActivityValidationTests
       Guid.NewGuid(),
       new(Guid.NewGuid(), 0, kind, text, null, null, false)
     );
-    Assert.Equal(
-      valid,
-      new AddDispatchActivityValidator().Validate(command).IsValid
-    );
-    Assert.False(
-      new AddDispatchActivityValidator()
-        .Validate(
-          command with
-          {
-            Update = command.Update with { Text = new string('x', 4001) },
-          }
-        )
-        .IsValid
+    Assert.Equal(valid, !command.Wrong().Any());
+    Assert.NotEmpty(
+      (
+        command with
+        {
+          Update = command.Update with { Text = new string('x', 4001) },
+        }
+      ).Wrong()
     );
   }
 }

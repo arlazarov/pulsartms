@@ -11,15 +11,15 @@ public sealed record DispatchTruckStatus(
 );
 
 public sealed record GetDispatchTelemetryQuery(Guid[] TruckIds)
-  : IRequest<RequestResponse<List<DispatchTruckStatus>>>;
-
-public sealed class GetDispatchTelemetryValidator
-  : AbstractValidator<GetDispatchTelemetryQuery>
+  : IRequest<RequestResponse<List<DispatchTruckStatus>>>,
+    IChecked
 {
-  public GetDispatchTelemetryValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.TruckIds).NotNull().Must(ids => ids is { Length: <= 12 });
-    RuleForEach(x => x.TruckIds).NotEmpty();
+    if (TruckIds is not { Length: <= 12 })
+      yield return "Ask for between one and twelve trucks.";
+    else if (TruckIds.Any(id => id == Guid.Empty))
+      yield return "One of the trucks asked for was never chosen.";
   }
 }
 

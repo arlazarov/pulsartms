@@ -9,14 +9,12 @@ public sealed record PrepareUpcomingPlanningCommand(
   Guid DispatchId,
   Guid? ExecutionLegId = null,
   Guid? TruckId = null
-) : IRequest<RequestResponse<bool>>, IPlanningRequest;
-
-public sealed class PrepareUpcomingPlanningValidator
-  : AbstractValidator<PrepareUpcomingPlanningCommand>
+) : IRequest<RequestResponse<bool>>, IPlanningRequest, IChecked
 {
-  public PrepareUpcomingPlanningValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.DispatchId).NotEmpty();
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
   }
 }
 

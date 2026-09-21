@@ -8,18 +8,17 @@ namespace Application.Features.Routing.Commands;
 
 public sealed record BuildRouteCommand(Guid DispatchId, RouteBuildRequest Route)
   : IRequest<RequestResponse<RoutePlan>>,
-    IPlanningRequest;
-
-public sealed class BuildRouteValidator : AbstractValidator<BuildRouteCommand>
+    IPlanningRequest,
+    IChecked
 {
-  public BuildRouteValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.DispatchId).NotEmpty();
-    RuleFor(x => x.Route).NotNull();
-    When(
-      x => x.Route is not null,
-      () => RuleFor(x => x.Route.Profile).NotNull()
-    );
+    if (DispatchId == Guid.Empty)
+      yield return "Choose a load.";
+    if (Route is null)
+      yield return "The route request is missing.";
+    else if (Route.Profile is null)
+      yield return "The truck profile is missing.";
   }
 }
 

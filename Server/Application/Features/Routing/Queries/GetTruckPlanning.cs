@@ -10,14 +10,15 @@ public sealed record GetTruckPlanningQuery(
   Guid TruckId,
   Guid? KnownPlanId = null,
   int? KnownVersion = null
-) : IRequest<RequestResponse<AutomaticPlanningResult>>, IPlanningRequest;
-
-public sealed class GetTruckPlanningValidator
-  : AbstractValidator<GetTruckPlanningQuery>
+)
+  : IRequest<RequestResponse<AutomaticPlanningResult>>,
+    IPlanningRequest,
+    IChecked
 {
-  public GetTruckPlanningValidator()
+  public IEnumerable<string> Wrong()
   {
-    RuleFor(x => x.TruckId).NotEmpty();
+    if (TruckId == Guid.Empty)
+      yield return "Choose a truck.";
   }
 }
 
