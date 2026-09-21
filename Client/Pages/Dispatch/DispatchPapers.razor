@@ -12,7 +12,7 @@
                 @foreach (var row in rows)
                 {
                     var phase = Phase(row);
-                    <div @key="row.Load.Id" class="dispatch-paper-tab-entry">
+                    <div @key="row.Key" class="dispatch-paper-tab-entry">
                         <a class="dispatch-paper__tab"
                            href="@($"/dispatch/{row.Load.Id}")"
                            aria-label="@($"Open load {LoadLabel(

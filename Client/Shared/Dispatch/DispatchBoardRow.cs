@@ -8,6 +8,14 @@ public sealed record DispatchBoardRow(
   DispatchResponse Load
 )
 {
+  // What makes a row on the board one row. A load handed from one truck to
+  // another stands under both of them, and a truck that drives two legs of
+  // the same load stands against it twice - so a row is the load, the truck
+  // it is on, and the leg that truck is driving. Keyed by the load alone,
+  // two such rows in one list were the same key, and Blazor threw on every
+  // render rather than diff them.
+  public string Key => $"{Truck.Key}:{Load.Id}:{Load.ExecutionLegId}";
+
   public string TruckNumber => Text(Load.TruckNumber, Truck.TruckNumber);
   public string TrailerNumber => Text(Load.TrailerNumber, Truck.TrailerNumber);
   public string DriverName => Text(Load.DriverName, Truck.DriverName);

@@ -8,7 +8,7 @@
     {
         var phase = Phase(row);
         var visits = DispatchStopPresentation.OrderedVisits(row.Load.Stops);
-        <tr @key="row.Load.Id" class="dispatch-table__row @(phase == "Current" ? "is-current" : phase == "Next" ? "is-next" : row.Planned ? "is-planned" : "")" @onclick="e => OpenFromRow(row, e)">
+        <tr @key="row.Key" class="dispatch-table__row @(phase == "Current" ? "is-current" : phase == "Next" ? "is-next" : row.Planned ? "is-planned" : "")" @onclick="e => OpenFromRow(row, e)">
             <td class="dispatch-table__load">
                 <a class="dispatch-table__open" href="@LoadUrl(row)"
                    aria-label="@($"Open load {LoadLabel(row.Load.LoadNumber)}")"
