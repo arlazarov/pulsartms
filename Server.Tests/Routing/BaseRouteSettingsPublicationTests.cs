@@ -110,10 +110,7 @@ public sealed class BaseRouteSettingsPublicationTests
         UseIfta = false,
         CadToUsd = .7,
       };
-      var json = JsonSerializer.Serialize(
-        preferences,
-        RoutePlanningService.Json
-      );
+      var json = JsonSerializer.Serialize(preferences, RoutingJson.Options);
       await f.Db.FleetPlanningSettings.ExecuteUpdateAsync(s =>
         s.SetProperty(x => x.SettingsJson, json)
       );

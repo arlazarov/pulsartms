@@ -22,7 +22,7 @@ public sealed class RouteChoiceDisplayTests(ITestOutputHelper output)
       DateTime.UtcNow
     );
     var preview = Preview(route);
-    var json = JsonSerializer.Serialize(preview, RoutePlanningService.Json);
+    var json = JsonSerializer.Serialize(preview, RoutingJson.Options);
     var display = RouteChoiceDisplay.Create(preview);
 
     Assert.Equal(route.CalculatedAt, display.Options[0].Route.CalculatedAt);
@@ -39,10 +39,7 @@ public sealed class RouteChoiceDisplayTests(ITestOutputHelper output)
     );
     display.Options[0].Route.Legs[0].Points.Clear();
     display.Options[0].Route.Warnings.Clear();
-    Assert.Equal(
-      json,
-      JsonSerializer.Serialize(preview, RoutePlanningService.Json)
-    );
+    Assert.Equal(json, JsonSerializer.Serialize(preview, RoutingJson.Options));
   }
 
   [Fact]
@@ -60,12 +57,12 @@ public sealed class RouteChoiceDisplayTests(ITestOutputHelper output)
     var preview = Preview(route);
     var original = JsonSerializer.SerializeToUtf8Bytes(
       preview,
-      RoutePlanningService.Json
+      RoutingJson.Options
     );
     var projected = RouteChoiceDisplay.Create(preview);
     var compact = JsonSerializer.SerializeToUtf8Bytes(
       projected,
-      RoutePlanningService.Json
+      RoutingJson.Options
     );
     using var json = JsonDocument.Parse(compact);
     Assert.False(

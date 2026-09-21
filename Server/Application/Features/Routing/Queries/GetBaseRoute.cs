@@ -32,7 +32,7 @@ public sealed class GetBaseRouteHandler(IAppDbContext db)
         ? null
         : JsonSerializer.Deserialize<TruckRoute>(
           saved.RouteJson,
-          RoutePlanningService.Json
+          RoutingJson.Options
         )
     );
   }

@@ -49,7 +49,7 @@ public sealed class RoutePreviewService(
       var result = await LoadAsync(ct);
       var json = JsonSerializer.SerializeToUtf8Bytes(
         result,
-        RoutePlanningService.Json
+        RoutingJson.Options
       );
       if (json.Length <= 8 * 1024 * 1024 && generation == Generation())
         cache.Set(
@@ -76,7 +76,7 @@ public sealed class RoutePreviewService(
     && saved!.Generation == generation
       ? JsonSerializer.Deserialize<List<AutomaticPlanningResult>>(
         saved.Json,
-        RoutePlanningService.Json
+        RoutingJson.Options
       )
       : null;
 
@@ -191,12 +191,7 @@ public sealed class RoutePreviewService(
         truck is null
         || load.ExecutionStatus == "planned" && !plan.FromCurrentPosition
           ? null
-          : RoutePlanningService.Progress(
-            plan,
-            truck,
-            load,
-            savedPlan.Geometry
-          );
+          : RouteProgressMeasure.Of(plan, truck, load, savedPlan.Geometry);
       return PlanningWorkPolicy.WithWarnings(
         Result(truckId, load.Id, load.LoadNumber, plan, progress) with
         {
@@ -242,7 +237,7 @@ public sealed class RoutePreviewService(
     )
       return null;
     var profile = await routes.ProfileAsync(truckId, ct);
-    if (!RoutePlanningService.MatchesInputs(snapshot.Metadata, load, profile))
+    if (!RoutePlanInputs.Matches(snapshot.Metadata, load, profile))
       return null;
     plan.Profile = profile;
     plan.InputsChanged = false;

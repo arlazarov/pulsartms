@@ -18,8 +18,6 @@ public sealed class ServerStructureTests
   // under the limit, where the ordinary rule holds it.
   private static readonly Dictionary<string, int> Written = new()
   {
-    ["Application/Features/Routing/Services/Routes/RoutePlanningService.cs"] =
-      1090,
     [
       "Application/Features/Routing/Services/FuelPlanning/FuelPlanningService.cs"
     ] = 782,

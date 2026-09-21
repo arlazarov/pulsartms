@@ -58,14 +58,11 @@ public sealed class RouteDisplayCache(ReadCache reads) : IDisposable
         knownPlanId == planId && knownVersion == planVersion
           ? metadataJson
           : displayJson,
-        RoutePlanningService.Json
+        RoutingJson.Options
       )!;
 
     public RoutePlan ReadMetadata() =>
-      JsonSerializer.Deserialize<RoutePlan>(
-        metadataJson,
-        RoutePlanningService.Json
-      )!;
+      JsonSerializer.Deserialize<RoutePlan>(metadataJson, RoutingJson.Options)!;
 
     private static DispatchRoutePlan Copy(DispatchRoutePlan entity) =>
       new()
@@ -83,19 +80,19 @@ public sealed class RouteDisplayCache(ReadCache reads) : IDisposable
   {
     var plan = JsonSerializer.Deserialize<RoutePlan>(
       entity.PlanJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     var geometry = new RouteGeometry(plan.Route);
     var points = plan.Route.Legs.Sum(x => (long)x.Points.Count);
     PlanningReadService.TrimForDisplay(plan);
     var displayJson = JsonSerializer.SerializeToUtf8Bytes(
       plan,
-      RoutePlanningService.Json
+      RoutingJson.Options
     );
     PlanningReadService.TrimForDisplay(plan, plan.Id, plan.Version);
     var metadataJson = JsonSerializer.SerializeToUtf8Bytes(
       plan,
-      RoutePlanningService.Json
+      RoutingJson.Options
     );
     var metadata = new DispatchRoutePlan
     {

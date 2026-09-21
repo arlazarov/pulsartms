@@ -34,7 +34,7 @@ public sealed partial class RouteChoiceService
     var saved = await plans.ReadAsync(load.Id, ct, load.ExecutionLegId);
     if (
       saved is not null
-      && RoutePlanningService.MatchesInputs(saved, load, profile)
+      && RoutePlanInputs.Matches(saved, load, profile)
       && SavedRouteReader.Plan(saved.PlanJson) is not null
     )
       return false;
@@ -80,7 +80,7 @@ public sealed partial class RouteChoiceService
       || entity!.TruckId != load.TruckId
       || old.TruckId != load.TruckId
       || old.DispatchId != load.Id
-      || !RoutePlanningService.MatchesInputs(entity, load, profile)
+      || !RoutePlanInputs.Matches(entity, load, profile)
     )
     {
       if (started)
@@ -183,7 +183,7 @@ public sealed partial class RouteChoiceService
       || plan.Id != context.PlanId
       || plan.Version != context.PlanVersion
       || entity!.TruckId != load.TruckId
-      || !RoutePlanningService.MatchesInputs(entity, load, profile)
+      || !RoutePlanInputs.Matches(entity, load, profile)
     )
       throw new RoutePlanningException(
         "The current route changed. Calculate the preview again."

@@ -49,7 +49,7 @@ public sealed class DeadheadTimingTests
       PreviousDispatchId = previous.Id,
       InputHash = pair.Signature(profile),
       Miles = 100,
-      RouteJson = JsonSerializer.Serialize(route, RoutePlanningService.Json),
+      RouteJson = JsonSerializer.Serialize(route, RoutingJson.Options),
     };
     for (var i = 0; i < 3; i++)
     {

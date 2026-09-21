@@ -265,7 +265,7 @@ public sealed partial class EtaChainInputsService(
         TruckId = truckId,
         Driver = driver,
         Roots = roads.Roots,
-        RootInput = RoutePlanningService.HashInputs(loads[0], profile),
+        RootInput = RoutePlanInputs.Hash(loads[0], profile),
         Sequence = sequence,
         Geometry = geometryHash,
         Planning = options.Value,

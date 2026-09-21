@@ -187,7 +187,7 @@ public partial class AutomaticPlanningTests
       (
         await fixture.Db.DispatchRoutePlans.AsNoTracking().SingleAsync()
       ).PlanJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     Assert.True(snapshot.Plan.ManuallyEdited);
     Assert.True(compatibility.FuelPlan!.ManuallyEdited);

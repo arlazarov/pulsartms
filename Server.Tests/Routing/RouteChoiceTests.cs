@@ -71,7 +71,7 @@ public sealed class RouteChoiceTests
     };
     Assert.True(
       Encoding.UTF8.GetByteCount(
-        JsonSerializer.Serialize(large, RoutePlanningService.Json)
+        JsonSerializer.Serialize(large, RoutingJson.Options)
       )
         > 8 * 1024 * 1024
     );
@@ -119,7 +119,7 @@ public sealed class RouteChoiceTests
     var selected = await f.Db.DispatchRouteChoices.AsNoTracking().SingleAsync();
     var saved = JsonSerializer.Deserialize<SavedRouteChoice>(
       selected.ChoiceJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     Assert.Equal(points, saved.Route.Legs[0].Points);
     Assert.Equal(route.Miles, saved.Route.Miles);
@@ -242,7 +242,7 @@ public sealed class RouteChoiceTests
     Assert.Equal(2, preview.Options.Count);
     Assert.Empty(await f.Db.DispatchRouteChoices.ToListAsync());
     Assert.Empty(await f.Db.DispatchBaseRoutes.ToListAsync());
-    var originalHash = RoutePlanningService.HashInputs(
+    var originalHash = RoutePlanInputs.Hash(
       f.Load,
       await f.Planning.Routes.ProfileAsync(f.Truck.Id, default)
     );
@@ -260,10 +260,7 @@ public sealed class RouteChoiceTests
     Assert.Equal(f.Clock.GetUtcNow().UtcDateTime, row.RecordedAt);
     var load = await f.Planning.Routes.LoadAsync(f.Load.Id, default);
     var profile = await f.Planning.Routes.ProfileAsync(f.Truck.Id, default);
-    Assert.NotEqual(
-      originalHash,
-      RoutePlanningService.HashInputs(load, profile)
-    );
+    Assert.NotEqual(originalHash, RoutePlanInputs.Hash(load, profile));
     var calls = f.Routing.Calls;
     var road = await f.Planning.BaseRoutes.EnsureAsync(load, profile, default);
     Assert.Equal(110, road.Miles);
@@ -286,7 +283,7 @@ public sealed class RouteChoiceTests
     );
     var saved = JsonSerializer.Deserialize<SavedRouteChoice>(
       row.ChoiceJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     Assert.Equal(2, saved.Stops.Count);
     Assert.Equal(

@@ -39,7 +39,7 @@ public sealed class PlanningSettingsService(IAppDbContext db, ReadCache reads)
       ? new()
       : JsonSerializer.Deserialize<PlanningPreferences>(
         entity.SettingsJson,
-        RoutePlanningService.Json
+        RoutingJson.Options
       )!;
     return new(
       FleetFuelDefaults.Apply(stored),
@@ -81,10 +81,7 @@ public sealed class PlanningSettingsService(IAppDbContext db, ReadCache reads)
       );
       if (request.Revision != (entity?.Revision ?? 0))
         throw new PlanningSettingsConflictException();
-      var json = JsonSerializer.Serialize(
-        preferences,
-        RoutePlanningService.Json
-      );
+      var json = JsonSerializer.Serialize(preferences, RoutingJson.Options);
       if (entity is not null && entity.SettingsJson == json)
         return new(preferences, entity.Revision, entity.UpdatedAt);
       if (entity is null)
@@ -111,7 +108,7 @@ public sealed class PlanningSettingsService(IAppDbContext db, ReadCache reads)
         Encoding.UTF8.GetBytes(
           JsonSerializer.Serialize(
             PlanningPreferences.From(profile),
-            RoutePlanningService.Json
+            RoutingJson.Options
           )
         )
       )

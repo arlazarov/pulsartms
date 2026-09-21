@@ -362,7 +362,7 @@ public sealed class NextLoadRouteReadTests
         Seconds = 6000,
         Legs = [new(100, 6000, dense)],
       },
-      RoutePlanningService.Json
+      RoutingJson.Options
     );
     await fixture.Db.SaveChangesAsync();
 
@@ -508,10 +508,7 @@ public sealed class NextLoadRouteReadTests
             DispatchId = load.Id,
             InputHash = BaseRouteService.Signature(load, profile),
             CalculatedAt = route.CalculatedAt,
-            RouteJson = JsonSerializer.Serialize(
-              route,
-              RoutePlanningService.Json
-            ),
+            RouteJson = JsonSerializer.Serialize(route, RoutingJson.Options),
           }
         );
         var pair = DeadheadConnection.Find(load, stored)!;
@@ -540,10 +537,7 @@ public sealed class NextLoadRouteReadTests
             InputHash = pair.Signature(profile),
             Miles = 10,
             CalculatedAt = route.CalculatedAt,
-            RouteJson = JsonSerializer.Serialize(
-              deadhead,
-              RoutePlanningService.Json
-            ),
+            RouteJson = JsonSerializer.Serialize(deadhead, RoutingJson.Options),
           }
         );
       }

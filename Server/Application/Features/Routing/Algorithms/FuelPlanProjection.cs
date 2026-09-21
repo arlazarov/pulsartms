@@ -183,8 +183,8 @@ public static class FuelPlanProjection
         RefreshReasons = ["Execution changed. Recalculate fuel."],
       };
     var fuel = JsonSerializer.Deserialize<FuelPlan>(
-      JsonSerializer.Serialize(saved.Plan, RoutePlanningService.Json),
-      RoutePlanningService.Json
+      JsonSerializer.Serialize(saved.Plan, RoutingJson.Options),
+      RoutingJson.Options
     )!;
     fuel.RefreshReasons = [];
     fuel.RouteChecks = [];
@@ -236,7 +236,7 @@ public static class FuelPlanProjection
       || fuel.SelectionVersion < FuelOptimizer.MinimumProjectionVersion
       || fuel.SelectionVersion > FuelOptimizer.SelectionVersion
       || fuel.ProfileSignature
-        != JsonSerializer.Serialize(state.Profile, RoutePlanningService.Json)
+        != JsonSerializer.Serialize(state.Profile, RoutingJson.Options)
       || !AssignmentsMatch(fuel, plan.DispatchId, loads)
       || !RemainingStopsMatch(
         saved.Stops,

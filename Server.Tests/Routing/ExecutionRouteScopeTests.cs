@@ -99,7 +99,7 @@ public sealed class ExecutionRouteScopeTests
           ExecutionLegId = leg,
           Version = version,
         },
-        RoutePlanningService.Json
+        RoutingJson.Options
       ),
     };
 }

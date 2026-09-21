@@ -15,7 +15,7 @@ internal static class PlanningProfileFixture
     TruckRouteProfile profile
   )
   {
-    var json = JsonSerializer.Serialize(profile, RoutePlanningService.Json);
+    var json = JsonSerializer.Serialize(profile, RoutingJson.Options);
     var changed = await db
       .TruckPlanningProfiles.Where(x => x.TruckId == truckId)
       .ExecuteUpdateAsync(s => s.SetProperty(x => x.SettingsJson, json));

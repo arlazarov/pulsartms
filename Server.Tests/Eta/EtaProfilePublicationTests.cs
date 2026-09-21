@@ -78,10 +78,7 @@ public sealed partial class EtaChainInputTests
           UseIfta = !profile.UseIfta,
           CadToUsd = .81,
         };
-        var json = JsonSerializer.Serialize(
-          preferences,
-          RoutePlanningService.Json
-        );
+        var json = JsonSerializer.Serialize(preferences, RoutingJson.Options);
         await f.Db.FleetPlanningSettings.ExecuteUpdateAsync(s =>
           s.SetProperty(x => x.SettingsJson, json)
         );

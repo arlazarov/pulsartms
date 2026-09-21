@@ -440,12 +440,12 @@ public sealed class FuelSavedRoadPublicationTests
       .SingleAsync();
     var root = JsonSerializer.Deserialize<RoutePlan>(
       json,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     var stored = await f.Db.Set<StoredFuel>().AsNoTracking().SingleAsync();
     return
     [
-      JsonSerializer.Serialize(root.FuelPlan, RoutePlanningService.Json),
+      JsonSerializer.Serialize(root.FuelPlan, RoutingJson.Options),
       stored.SummaryJson,
       stored.CheckedRouteJson ?? "",
       (
@@ -501,7 +501,7 @@ public sealed class FuelSavedRoadPublicationTests
     var json = await rows.Select(x => x.PlanJson).SingleAsync();
     var plan = JsonSerializer.Deserialize<RoutePlan>(
       json,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     change(plan);
     var updated = RoutePlanStorage.Serialize(plan);

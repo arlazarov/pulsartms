@@ -193,7 +193,7 @@ public sealed class AutomaticMileageRecorderTests
         ),
         profile
       ),
-      RouteJson = JsonSerializer.Serialize(road, RoutePlanningService.Json),
+      RouteJson = JsonSerializer.Serialize(road, RoutingJson.Options),
     };
     fixture.Db.DispatchBaseRoutes.Add(saved);
     await fixture.Db.SaveChangesAsync();
@@ -213,7 +213,7 @@ public sealed class AutomaticMileageRecorderTests
     Assert.Equal(1, await fixture.Db.MovementDistanceEvidence.CountAsync());
     road.Miles = 101;
     road.Legs = [new(101, 6000, points)];
-    saved.RouteJson = JsonSerializer.Serialize(road, RoutePlanningService.Json);
+    saved.RouteJson = JsonSerializer.Serialize(road, RoutingJson.Options);
     await fixture.Db.SaveChangesAsync();
     Assert.True(await recorder.CapturePlannedAsync(leg.Id, default));
     Assert.Equal(1, await fixture.Db.Movements.CountAsync());

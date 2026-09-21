@@ -144,10 +144,7 @@ public sealed class RouteDisplayCacheAllocationTests(ITestOutputHelper output)
         },
       };
       return RouteDisplayCache.Create(
-        new()
-        {
-          PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json),
-        }
+        new() { PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options) }
       );
     }
     var small = Create(3);

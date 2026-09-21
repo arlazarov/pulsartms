@@ -739,10 +739,7 @@ public class FuelRegionPlannerTests
           PreviousDispatchId = id,
           InputHash = pair.Signature(profile),
           Miles = 100,
-          RouteJson = JsonSerializer.Serialize(
-            route,
-            RoutePlanningService.Json
-          ),
+          RouteJson = JsonSerializer.Serialize(route, RoutingJson.Options),
         }
       );
     if (scenario == "intermediate")
@@ -932,10 +929,7 @@ public class FuelRegionPlannerTests
           PreviousDispatchId = plan.DispatchId,
           InputHash = pair.Signature(profile),
           Miles = 100,
-          RouteJson = JsonSerializer.Serialize(
-            route,
-            RoutePlanningService.Json
-          ),
+          RouteJson = JsonSerializer.Serialize(route, RoutingJson.Options),
         }
       );
       await db.SaveChangesAsync();

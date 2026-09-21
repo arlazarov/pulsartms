@@ -23,7 +23,7 @@ public sealed class StopCompletionTests
   public async Task ConfirmationAndUndoPersistActorHistoryAndOnlyChangeTheSelectedVisit()
   {
     await using var f = await StopCompletionFixture.CreateAsync();
-    var before = RoutePlanningService.HashInputs(f.Load, new());
+    var before = RoutePlanInputs.Hash(f.Load, new());
     var mark = await f.Handler()
       .Handle(f.Command(0, f.Clock.GetUtcNow().AddHours(-1)), default);
     Assert.True(mark.Success);
@@ -37,14 +37,14 @@ public sealed class StopCompletionTests
       .SingleAsync();
     Assert.True(load.Stops[0].IsCompleted);
     Assert.All(load.Stops.Skip(1), s => Assert.False(s.IsCompleted));
-    Assert.NotEqual(before, RoutePlanningService.HashInputs(f.Load, new()));
+    Assert.NotEqual(before, RoutePlanInputs.Hash(f.Load, new()));
     Assert.True(f.Reads.Generation("dispatch") > 0);
     Assert.Equal(1, f.Queue.PendingCount);
     var undo = await f.Handler().Handle(f.Command(0, null), default);
     Assert.True(undo.Success);
     Assert.Null(undo.Response!.CompletedAt);
     Assert.False(f.Load.Stops[0].IsCompleted);
-    Assert.NotEqual(before, RoutePlanningService.HashInputs(f.Load, new()));
+    Assert.NotEqual(before, RoutePlanInputs.Hash(f.Load, new()));
     var events = await f
       .Db.DispatchStopCompletionEvents.OrderBy(x => x.Revision)
       .ToArrayAsync();

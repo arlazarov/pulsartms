@@ -36,7 +36,7 @@ public sealed partial class BaseRouteService
       );
     var choice = JsonSerializer.Deserialize<SavedRouteChoice>(
       saved.ChoiceJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     );
     if (
       choice is null

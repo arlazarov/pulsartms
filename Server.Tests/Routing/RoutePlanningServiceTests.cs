@@ -92,9 +92,9 @@ public class RoutePlanningServiceTests
       Sequence = 1,
     };
     var load = new Dispatch { TruckId = truck, Stops = [stop] };
-    var previous = RoutePlanningService.HashInputs(load, new());
+    var previous = RoutePlanInputs.Hash(load, new());
     stop.TruckId = Guid.NewGuid();
-    Assert.NotEqual(previous, RoutePlanningService.HashInputs(load, new()));
+    Assert.NotEqual(previous, RoutePlanInputs.Hash(load, new()));
   }
 
   [Fact]

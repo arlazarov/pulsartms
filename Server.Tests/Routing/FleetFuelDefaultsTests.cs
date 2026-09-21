@@ -58,7 +58,7 @@ public sealed class FleetFuelDefaultsTests
     );
     await db.Database.EnsureCreatedAsync();
     var original = LegacyPreferences();
-    var json = JsonSerializer.Serialize(original, RoutePlanningService.Json);
+    var json = JsonSerializer.Serialize(original, RoutingJson.Options);
     var updatedAt = new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc);
     db.FleetPlanningSettings.Add(
       new()
@@ -96,8 +96,8 @@ public sealed class FleetFuelDefaultsTests
     );
     var load = new DispatchEntity { TruckId = Guid.NewGuid() };
     Assert.Equal(
-      RoutePlanningService.HashInputs(load, oldProfile),
-      RoutePlanningService.HashInputs(load, profile)
+      RoutePlanInputs.Hash(load, oldProfile),
+      RoutePlanInputs.Hash(load, profile)
     );
     FleetFuelDefaults.Apply(original).ApplyTo(oldProfile);
     Assert.Equal(
@@ -144,7 +144,7 @@ public sealed class FleetFuelDefaultsTests
     Assert.NotSame(requestPreferences, saved.Preferences);
     var stored = JsonSerializer.Deserialize<PlanningPreferences>(
       (await db.FleetPlanningSettings.SingleAsync()).SettingsJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     AssertFuelDefaults(stored);
     AssertOtherPreferences(stored);

@@ -104,7 +104,7 @@ public sealed partial class BaseRouteService(
                   s.ZipCode,
                 }),
             },
-            RoutePlanningService.Json
+            RoutingJson.Options
           )
         )
       )
@@ -223,7 +223,7 @@ public sealed partial class BaseRouteService(
           ct
         );
       var previous =
-        existing?.InputHash == RoutePlanningService.HashInputs(load, profile)
+        existing?.InputHash == RoutePlanInputs.Hash(load, profile)
         && existing.TruckId == load.TruckId
           ? SavedRouteReader.Plan(existing.PlanJson)
           : null;

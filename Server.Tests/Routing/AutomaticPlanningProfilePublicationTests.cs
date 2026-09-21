@@ -203,7 +203,7 @@ public partial class AutomaticPlanningTests
     var effective = await f.Plans.ProfileAsync(f.Truck.Id, default);
     Assert.Equal(profile.Confirmed, effective.Confirmed);
     Assert.Equal(
-      JsonSerializer.Serialize(effective, RoutePlanningService.Json),
+      JsonSerializer.Serialize(effective, RoutingJson.Options),
       fuel.Plan!.ProfileSignature
     );
     var route = await f.Plans.GetAsync(f.Load.Id, default);
@@ -251,7 +251,7 @@ public partial class AutomaticPlanningTests
       {
         var changed = PlanningPreferences.From(profile);
         changed.UseIfta = !changed.UseIfta;
-        var json = JsonSerializer.Serialize(changed, RoutePlanningService.Json);
+        var json = JsonSerializer.Serialize(changed, RoutingJson.Options);
         await f.Db.FleetPlanningSettings.ExecuteUpdateAsync(s =>
           s.SetProperty(x => x.SettingsJson, json)
         );
@@ -259,10 +259,7 @@ public partial class AutomaticPlanningTests
       else
       {
         profile.HeightFeet = 14;
-        changedProfile = JsonSerializer.Serialize(
-          profile,
-          RoutePlanningService.Json
-        );
+        changedProfile = JsonSerializer.Serialize(profile, RoutingJson.Options);
         await f.Db.TruckPlanningProfiles.ExecuteUpdateAsync(s =>
           s.SetProperty(x => x.SettingsJson, changedProfile)
         );

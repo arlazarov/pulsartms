@@ -115,7 +115,7 @@ public partial class AutomaticPlanningTests
     Assert.Equal(.82, profile.CadToUsd);
     Assert.NotNull(saved);
     Assert.Equal(
-      JsonSerializer.Serialize(profile, RoutePlanningService.Json),
+      JsonSerializer.Serialize(profile, RoutingJson.Options),
       saved.Plan.ProfileSignature
     );
     Assert.Equal(manual, saved.Plan.ManuallyEdited);

@@ -180,7 +180,7 @@ public sealed class TruckRoutePreviewTests
     var entry = await fixture.SavePlanAsync(load);
     var stored = JsonSerializer.Deserialize<RoutePlan>(
       entry.PlanJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     stored.Route.Legs =
     [
@@ -302,7 +302,7 @@ public sealed class TruckRoutePreviewTests
     var entry = await fixture.SavePlanAsync(load);
     var stored = JsonSerializer.Deserialize<RoutePlan>(
       entry.PlanJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     var profile = await fixture.Services.Routes.ProfileAsync(
       fixture.Truck.Id,
@@ -693,7 +693,7 @@ public sealed class TruckRoutePreviewTests
     {
       var plan = JsonSerializer.Deserialize<RoutePlan>(
         stored.PlanJson,
-        RoutePlanningService.Json
+        RoutingJson.Options
       )!;
       plan.TruckId = other.Id;
       stored.PlanJson = RoutePlanStorage.Serialize(plan);
@@ -896,13 +896,13 @@ public sealed class TruckRoutePreviewTests
     var saved = await fixture.SavePlanAsync(current);
     var plan = JsonSerializer.Deserialize<RoutePlan>(
       saved.PlanJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     plan.ExecutionLegId = leg.Id;
     plan.AssignmentRevision = leg.Revision;
     saved.ExecutionLegId = leg.Id;
     saved.AssignmentRevision = leg.Revision;
-    saved.InputHash = RoutePlanningService.HashInputs(
+    saved.InputHash = RoutePlanInputs.Hash(
       await fixture.Services.Routes.LoadAsync(current.Id, default, leg.Id),
       plan.Profile
     );
@@ -1071,7 +1071,7 @@ public sealed class TruckRoutePreviewTests
         Id = plan.Id,
         DispatchId = load.Id,
         TruckId = Truck.Id,
-        InputHash = RoutePlanningService.HashInputs(persisted, plan.Profile),
+        InputHash = RoutePlanInputs.Hash(persisted, plan.Profile),
         PlanJson = RoutePlanStorage.Serialize(plan),
       };
       Db.DispatchRoutePlans.Add(entry);

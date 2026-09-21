@@ -267,17 +267,17 @@ public sealed partial class EtaChainInputTests
     var row = await f.Db.DispatchRoutePlans.SingleAsync();
     var plan = JsonSerializer.Deserialize<RoutePlan>(
       row.PlanJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     plan.ExecutionLegId = leg.Id;
     plan.AssignmentRevision = leg.Revision;
     row.ExecutionLegId = leg.Id;
     row.AssignmentRevision = leg.Revision;
-    row.InputHash = RoutePlanningService.HashInputs(
+    row.InputHash = RoutePlanInputs.Hash(
       description.Loads[0],
       description.Profile
     );
-    row.PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json);
+    row.PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options);
     await f.Db.SaveChangesAsync();
     await f.Services.Forecasts.RefreshAsync(f.Current.Id, default);
     var before = await SavedForecastsAsync(f);
@@ -367,10 +367,10 @@ public sealed partial class EtaChainInputTests
       .SingleAsync();
     var plan = JsonSerializer.Deserialize<RoutePlan>(
       json,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     change(plan);
-    var updated = JsonSerializer.Serialize(plan, RoutePlanningService.Json);
+    var updated = JsonSerializer.Serialize(plan, RoutingJson.Options);
     await f.Db.DispatchRoutePlans.ExecuteUpdateAsync(s =>
       s.SetProperty(x => x.PlanJson, updated)
     );

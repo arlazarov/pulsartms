@@ -1159,7 +1159,7 @@ public partial class AutomaticPlanningTests
           .Db.DispatchRoutePlans.AsNoTracking()
           .SingleAsync(x => x.DispatchId == fixture.Load.Id)
       ).PlanJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     Assert.Equal(saved.Plan.DispatchIds, compatibility.FuelPlan!.DispatchIds);
   }
@@ -1941,10 +1941,7 @@ public partial class AutomaticPlanningTests
       var entity = await Db.DispatchRoutePlans.SingleAsync(x =>
         x.DispatchId == Load.Id
       );
-      entity.PlanJson = JsonSerializer.Serialize(
-        plan,
-        RoutePlanningService.Json
-      );
+      entity.PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options);
       await Db.SaveChangesAsync();
       Db.ChangeTracker.Clear();
       Services.Reads.Invalidate($"route:{Load.Id}");

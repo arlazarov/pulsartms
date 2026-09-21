@@ -111,10 +111,7 @@ public sealed class RouteChoiceSettingsPublicationTests
     if (change)
       f.Publication.BeforeBegin = async () =>
       {
-        var json = JsonSerializer.Serialize(
-          preferences,
-          RoutePlanningService.Json
-        );
+        var json = JsonSerializer.Serialize(preferences, RoutingJson.Options);
         await f.Db.FleetPlanningSettings.ExecuteUpdateAsync(s =>
           s.SetProperty(x => x.SettingsJson, json)
         );

@@ -157,7 +157,7 @@ public sealed partial class DeadheadGeometryRepairTests
     var row = await fixture.Db.DispatchDeadheads.SingleAsync();
     row.RouteJson = JsonSerializer.Serialize(
       Complete([new(41, -79), new(40 + 2.61 / 69, -80)]),
-      RoutePlanningService.Json
+      RoutingJson.Options
     );
     await fixture.Db.SaveChangesAsync();
     Assert.Null(

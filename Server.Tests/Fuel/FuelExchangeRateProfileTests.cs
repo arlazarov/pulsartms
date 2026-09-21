@@ -56,7 +56,7 @@ public sealed class FuelExchangeRateProfileTests
         TruckId = truck.Id,
         SettingsJson = JsonSerializer.Serialize(
           new TruckRouteProfile { HeightFeet = 14, TankGallons = 100 },
-          RoutePlanningService.Json
+          RoutingJson.Options
         ),
       }
     );
@@ -68,7 +68,7 @@ public sealed class FuelExchangeRateProfileTests
     };
     var settingsJson = JsonSerializer.Serialize(
       preferences,
-      RoutePlanningService.Json
+      RoutingJson.Options
     );
     await db.FleetPlanningSettings.ExecuteUpdateAsync(s =>
       s.SetProperty(x => x.SettingsJson, settingsJson)
@@ -181,8 +181,8 @@ public sealed class FuelExchangeRateProfileTests
     );
     var load = new DispatchEntity { TruckId = truckId };
     Assert.Equal(
-      RoutePlanningService.HashInputs(load, before),
-      RoutePlanningService.HashInputs(load, after)
+      RoutePlanInputs.Hash(load, before),
+      RoutePlanInputs.Hash(load, after)
     );
     Assert.Equal(1, provider.Calls);
     Assert.Equal(1, store.Saves);

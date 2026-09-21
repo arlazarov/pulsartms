@@ -98,7 +98,7 @@ public sealed class FuelHorizon(
                   s.AppointmentTimeZoneId,
                 }),
             },
-            RoutePlanningService.Json
+            RoutingJson.Options
           )
         )
       ),
@@ -121,7 +121,7 @@ public sealed class FuelHorizon(
               x.Status,
               Signature = LoadSignature(x),
             }),
-            RoutePlanningService.Json
+            RoutingJson.Options
           )
         )
       );
@@ -140,7 +140,7 @@ public sealed class FuelHorizon(
                 load.RouteChoiceRevision,
               }),
             },
-            RoutePlanningService.Json
+            RoutingJson.Options
           )
         )
       );
@@ -181,7 +181,7 @@ public sealed class FuelHorizon(
                     s.AppointmentTimeZoneId,
                   }),
               }),
-              RoutePlanningService.Json
+              RoutingJson.Options
             )
           )
         )
@@ -589,7 +589,7 @@ public sealed class FuelHorizon(
           ct
         );
       var previous =
-        stored?.InputHash == RoutePlanningService.HashInputs(load, profile)
+        stored?.InputHash == RoutePlanInputs.Hash(load, profile)
         && stored.TruckId == load.TruckId
         && stored.AssignmentRevision == load.AssignmentRevision
           ? SavedRouteReader.Plan(stored.PlanJson)

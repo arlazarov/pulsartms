@@ -228,13 +228,10 @@ public sealed class CurrentRouteChoiceTests
       plan.Route.Legs[0].Points
     );
     var load = await f.Planning.Routes.LoadAsync(f.Load.Id, default);
-    Assert.Equal(
-      RoutePlanningService.HashInputs(load, plan.Profile),
-      entity.InputHash
-    );
+    Assert.Equal(RoutePlanInputs.Hash(load, plan.Profile), entity.InputHash);
     var saved = JsonSerializer.Deserialize<SavedRouteChoice>(
       (await f.Db.DispatchRouteChoices.AsNoTracking().SingleAsync()).ChoiceJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     Assert.Equal(100, saved.Route.Miles);
     Assert.Equal(110, saved.Remaining!.Route.Miles);

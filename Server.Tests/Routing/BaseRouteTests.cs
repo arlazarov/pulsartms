@@ -159,11 +159,11 @@ public sealed class BaseRouteTests
         InputHash =
           savedState == "changed"
             ? "different"
-            : RoutePlanningService.HashInputs(load, profile),
+            : RoutePlanInputs.Hash(load, profile),
         PlanJson =
           savedState == "corrupt"
             ? "{"
-            : JsonSerializer.Serialize(plan, RoutePlanningService.Json),
+            : JsonSerializer.Serialize(plan, RoutingJson.Options),
       }
     );
     await db.SaveChangesAsync();

@@ -100,7 +100,7 @@ public sealed partial class RouteChoiceService(
           JsonSerializer
             .Deserialize<SavedRouteChoice>(
               choice.ChoiceJson,
-              RoutePlanningService.Json
+              RoutingJson.Options
             )
             ?.ViaPoints ?? [];
     }
@@ -141,7 +141,7 @@ public sealed partial class RouteChoiceService(
       .DistinctBy(route =>
         JsonSerializer.Serialize(
           route.Legs.Select(leg => leg.Points),
-          RoutePlanningService.Json
+          RoutingJson.Options
         )
       )
       .ToList();
@@ -182,8 +182,8 @@ public sealed partial class RouteChoiceService(
     await drafts.StoreAsync(
       new(
         owner,
-        RoutePlanningService.HashInputs(load, profile),
-        JsonSerializer.Serialize(profile, RoutePlanningService.Json),
+        RoutePlanInputs.Hash(load, profile),
+        JsonSerializer.Serialize(profile, RoutingJson.Options),
         preview
       )
       {
@@ -248,7 +248,7 @@ public sealed partial class RouteChoiceService(
         !load.ExecutionLegId.HasValue
           && source.RouteChoiceRevision != load.RouteChoiceRevision
         || load.RouteChoiceRevision != preview.Revision
-        || draft.Inputs != RoutePlanningService.HashInputs(load, profile)
+        || draft.Inputs != RoutePlanInputs.Hash(load, profile)
       )
         throw new RoutePlanningException(
           "The load or truck settings changed. Calculate the preview again."
@@ -367,7 +367,7 @@ public sealed partial class RouteChoiceService(
         await plans.SaveBuiltAsync(
           current.Entity,
           plan,
-          RoutePlanningService.HashInputs(load, profile),
+          RoutePlanInputs.Hash(load, profile),
           ct
         );
       }

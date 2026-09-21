@@ -107,7 +107,7 @@ public sealed class FuelSavedHorizonTests
         ExecutionLegId = leg.Id,
         AssignmentRevision = 1,
         TruckId = plan.TruckId,
-        InputHash = RoutePlanningService.HashInputs(work, profile),
+        InputHash = RoutePlanInputs.Hash(work, profile),
         PlanJson = RoutePlanStorage.Serialize(plan),
       }
     );
@@ -358,7 +358,7 @@ public sealed class FuelSavedHorizonTests
       (
         await fixture.Db.DispatchRoutePlans.AsNoTracking().SingleAsync()
       ).PlanJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     Assert.Equal(
       result.Plan!.CalculatedAt,

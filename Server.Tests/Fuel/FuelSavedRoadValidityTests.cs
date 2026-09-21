@@ -306,7 +306,7 @@ public sealed class FuelSavedRoadValidityTests
       .SingleAsync();
     var plan = JsonSerializer.Deserialize<RoutePlan>(
       json,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     change(plan);
     var updated = RoutePlanStorage.Serialize(plan);

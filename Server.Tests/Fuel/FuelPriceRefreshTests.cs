@@ -663,7 +663,7 @@ public sealed class FuelPriceRefreshTests
         FuelHorizon.LoadSignature(Loads[0]);
       Snapshot.Plan.ProfileSignature = JsonSerializer.Serialize(
         new TruckRouteProfile(),
-        RoutePlanningService.Json
+        RoutingJson.Options
       );
       // The refresh recalculates a plan priced on an earlier day whatever the
       // discounts say, so a plan that is meant to be current has to be priced

@@ -88,10 +88,7 @@ public partial class AutomaticPlanningTests
       {
         var preferences = PlanningPreferences.From(changed);
         preferences.UseIfta = !preferences.UseIfta;
-        var json = JsonSerializer.Serialize(
-          preferences,
-          RoutePlanningService.Json
-        );
+        var json = JsonSerializer.Serialize(preferences, RoutingJson.Options);
         await f.Db.FleetPlanningSettings.ExecuteUpdateAsync(s =>
           s.SetProperty(x => x.SettingsJson, json)
         );
@@ -223,9 +220,9 @@ public partial class AutomaticPlanningTests
   {
     var plan = JsonSerializer.Deserialize<RoutePlan>(
       json,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     plan.CalculatedAt = DateTime.UtcNow.AddMinutes(-10);
-    return JsonSerializer.Serialize(plan, RoutePlanningService.Json);
+    return JsonSerializer.Serialize(plan, RoutingJson.Options);
   }
 }

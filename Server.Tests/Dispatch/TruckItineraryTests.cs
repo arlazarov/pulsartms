@@ -25,17 +25,11 @@ public sealed class TruckItineraryTests
     Assert.Null(load.TruckId);
     Assert.All(load.Stops, s => Assert.False(s.IsCompleted));
     Assert.Equal(route.Stops, route.TruckItinerary().Stops);
-    var hash = RoutePlanningService.HashInputs(load, new TruckRouteProfile());
+    var hash = RoutePlanInputs.Hash(load, new TruckRouteProfile());
     load.Stops[0].Address = "Driver's private-car starting point changed";
-    Assert.Equal(
-      hash,
-      RoutePlanningService.HashInputs(load, new TruckRouteProfile())
-    );
+    Assert.Equal(hash, RoutePlanInputs.Hash(load, new TruckRouteProfile()));
     load.Stops[1].Address = "Truck starting point changed";
-    Assert.NotEqual(
-      hash,
-      RoutePlanningService.HashInputs(load, new TruckRouteProfile())
-    );
+    Assert.NotEqual(hash, RoutePlanInputs.Hash(load, new TruckRouteProfile()));
   }
 
   [Fact]

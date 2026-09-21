@@ -41,7 +41,7 @@ public sealed class TruckPlanningProfileService(
       ? new()
       : JsonSerializer.Deserialize<TruckRouteProfile>(
         entity.SettingsJson,
-        RoutePlanningService.Json
+        RoutingJson.Options
       ) ?? new();
     profile.TrailerLengthFeet = TruckRouteProfile.StandardTrailerFeet;
     profile.LengthFeet = TruckRouteProfile.StandardTrailerFeet + 19;
@@ -69,8 +69,8 @@ public sealed class TruckPlanningProfileService(
   {
     var current = await GetUncachedAsync(truckId, ct);
     if (
-      JsonSerializer.Serialize(current, RoutePlanningService.Json)
-      != JsonSerializer.Serialize(expected, RoutePlanningService.Json)
+      JsonSerializer.Serialize(current, RoutingJson.Options)
+      != JsonSerializer.Serialize(expected, RoutingJson.Options)
     )
       throw new RoutePlanningException(
         "Truck planning settings changed. Recalculate the plan."
@@ -96,8 +96,8 @@ public sealed class TruckPlanningProfileService(
   {
     var current = await GetUncachedAsync(load.TruckId ?? Guid.Empty, ct);
     if (
-      RoutePlanningService.HashInputs(load, current)
-      != RoutePlanningService.HashInputs(load, expected)
+      RoutePlanInputs.Hash(load, current)
+      != RoutePlanInputs.Hash(load, expected)
     )
       throw new RoutePlanningException(
         "Truck routing settings changed. Recalculate the plan."
@@ -127,7 +127,7 @@ public sealed class TruckPlanningProfileService(
     }
     entity.SettingsJson = JsonSerializer.Serialize(
       profile,
-      RoutePlanningService.Json
+      RoutingJson.Options
     );
     await db.SaveChangesAsync(ct);
     return profile;

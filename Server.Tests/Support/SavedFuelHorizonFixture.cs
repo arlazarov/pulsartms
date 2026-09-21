@@ -344,7 +344,7 @@ internal sealed class SavedFuelHorizonFixture : IAsyncDisposable
         Id = plan.Id,
         DispatchId = plan.DispatchId,
         TruckId = plan.TruckId,
-        InputHash = RoutePlanningService.HashInputs(future, profile),
+        InputHash = RoutePlanInputs.Hash(future, profile),
         PlanJson = RoutePlanStorage.Serialize(plan),
       }
     );
@@ -391,7 +391,7 @@ internal sealed class SavedFuelHorizonFixture : IAsyncDisposable
         AssignmentRevision = plan.AssignmentRevision,
         TruckId = plan.TruckId,
         CreatedAt = plan.CalculatedAt,
-        InputHash = RoutePlanningService.HashInputs(current, profile),
+        InputHash = RoutePlanInputs.Hash(current, profile),
         PlanJson = RoutePlanStorage.Serialize(plan),
       }
     );

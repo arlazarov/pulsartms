@@ -44,10 +44,7 @@ public sealed class FuelPriceRefreshService(
       || saved.AssignmentRevision != current.AssignmentRevision
       || saved.Plan.SelectionVersion < FuelOptimizer.SelectionVersion
       || saved.Plan.ProfileSignature
-        != JsonSerializer.Serialize(
-          current.State.Profile,
-          RoutePlanningService.Json
-        )
+        != JsonSerializer.Serialize(current.State.Profile, RoutingJson.Options)
     )
     {
       await RecalculateAsync(saved, current, dispatchId, ct);

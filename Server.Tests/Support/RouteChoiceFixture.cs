@@ -167,7 +167,7 @@ internal sealed class RouteChoiceFixture : IAsyncDisposable
     var saved = await Db.DispatchRoutePlans.SingleAsync(x =>
       x.DispatchId == Load.Id
     );
-    saved.InputHash = RoutePlanningService.HashInputs(load, profile);
+    saved.InputHash = RoutePlanInputs.Hash(load, profile);
     await Db.SaveChangesAsync();
     Db.ChangeTracker.Clear();
     Planning.Reads.Invalidate("dispatch");

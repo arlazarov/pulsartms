@@ -162,7 +162,7 @@ public sealed class RoutePlanStore(
       fuel.ProfileSignature
       != JsonSerializer.Serialize(
         await profiles.GetUncachedAsync(plan.TruckId, ct),
-        RoutePlanningService.Json
+        RoutingJson.Options
       )
     )
       throw new RoutePlanningException(
@@ -177,6 +177,6 @@ public sealed class RoutePlanStore(
   private static RoutePlan ReadPlan(DispatchRoutePlan entity) =>
     JsonSerializer.Deserialize<RoutePlan>(
       entity.PlanJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
 }

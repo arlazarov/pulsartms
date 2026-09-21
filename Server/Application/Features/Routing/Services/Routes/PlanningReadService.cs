@@ -283,8 +283,7 @@ public sealed class PlanningReadService(
       knownVersion: knownVersion,
       metadataOnly: metadataOnly
     );
-    var identity =
-      inputSignature ?? RoutePlanningService.HashInputs(load, state.Profile);
+    var identity = inputSignature ?? RoutePlanInputs.Hash(load, state.Profile);
     PlanningRefreshState? requested = null;
     if (
       !options.Value.Enabled

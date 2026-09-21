@@ -77,7 +77,7 @@ public sealed class RouteChoiceDrafts(IAppDbContext db, TimeProvider clock)
       );
     var value = JsonSerializer.Deserialize<RouteChoiceDraft>(
       json,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     if (
       value.Owner != owner

@@ -126,14 +126,24 @@ public class LayerBoundaryTests
         Assert.Contains("await transaction.CommitAsync(ct)", source);
       }
     }
-    var routes = File.ReadAllText(
-      Path.Combine(folder, "RoutePlanningService.cs")
-    );
+    // Each use of the service is a part of its own, named after what it
+    // does.
     foreach (
-      var method in new[] { "BuildAsync(", "AdvanceAutomaticallyAsync(" }
+      var (part, method) in new[]
+      {
+        ("Build", "BuildAsync("),
+        ("Tracking", "AdvanceAutomaticallyAsync("),
+      }
     )
     {
+      var routes = File.ReadAllText(
+        Path.Combine(folder, $"RoutePlanningService.{part}.cs")
+      );
       var start = routes.IndexOf(method, StringComparison.Ordinal);
+      Assert.True(
+        start >= 0,
+        $"{method} is not in RoutePlanningService.{part}"
+      );
       var end = routes.IndexOf("\n  }", start, StringComparison.Ordinal);
       var body = routes[start..end];
       Assert.Contains("PlanningWorkPolicy.Resolve", body);

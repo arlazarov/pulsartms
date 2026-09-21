@@ -111,7 +111,7 @@ public class RouteDisplayCacheTests
     var entity = new DispatchRoutePlan
     {
       DispatchId = id,
-      PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json),
+      PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options),
     };
     var calls = 0;
     Task<DispatchRoutePlan?> Load()
@@ -181,7 +181,7 @@ public class RouteDisplayCacheTests
         DispatchId = plan.DispatchId,
         TruckId = plan.TruckId,
         InputHash = "saved-input",
-        PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json),
+        PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options),
       }
     );
     var display = snapshot.ReadPlan(sameId ? plan.Id : Guid.NewGuid(), version);
@@ -241,10 +241,7 @@ public class RouteDisplayCacheTests
       },
     };
     var snapshot = RouteDisplayCache.Create(
-      new()
-      {
-        PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json),
-      }
+      new() { PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options) }
     );
     var progress = new RouteProgress(
       null,
@@ -319,7 +316,7 @@ public class RouteDisplayCacheTests
         DispatchId = firstId,
         PlanJson = JsonSerializer.Serialize(
           new RoutePlan { DispatchId = firstId },
-          RoutePlanningService.Json
+          RoutingJson.Options
         ),
       };
     }
@@ -372,7 +369,7 @@ public class RouteDisplayCacheTests
       {
         PlanJson = JsonSerializer.Serialize(
           new RoutePlan { Id = id, Version = 1 },
-          RoutePlanningService.Json
+          RoutingJson.Options
         ),
       }
     );
@@ -385,7 +382,7 @@ public class RouteDisplayCacheTests
           {
             PlanJson = JsonSerializer.Serialize(
               new RoutePlan { Id = id, Version = 2 },
-              RoutePlanningService.Json
+              RoutingJson.Options
             ),
           }
         ),

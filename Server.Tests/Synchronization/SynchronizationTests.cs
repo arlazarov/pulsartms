@@ -548,8 +548,8 @@ public class SynchronizationTests
         Id = plan.Id,
         DispatchId = load.Id,
         TruckId = truck.Id,
-        InputHash = RoutePlanningService.HashInputs(load, profile),
-        PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json),
+        InputHash = RoutePlanInputs.Hash(load, profile),
+        PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options),
       }
     );
     await db.SaveChangesAsync();

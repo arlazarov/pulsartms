@@ -371,10 +371,10 @@ public sealed partial class EtaChainInputTests
     var saved = await fixture.Db.DispatchRoutePlans.SingleAsync();
     var plan = JsonSerializer.Deserialize<RoutePlan>(
       saved.PlanJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     plan.FuelPlan = new() { CalculatedAt = DateTime.UtcNow };
-    saved.PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json);
+    saved.PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options);
     await fixture.Db.SaveChangesAsync();
     var updated = (
       await fixture.Services.EtaInputs.DescribeAsync(fixture.Truck.Id, default)
@@ -437,7 +437,7 @@ public sealed partial class EtaChainInputTests
     var saved = await fixture.Db.DispatchRoutePlans.SingleAsync();
     var plan = JsonSerializer.Deserialize<RoutePlan>(
       saved.PlanJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     var now = DateTime.UtcNow;
     plan.Tracking = new()
@@ -450,7 +450,7 @@ public sealed partial class EtaChainInputTests
       OffRouteSince = now,
     };
     plan.FuelPlan = new() { CalculatedAt = now };
-    saved.PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json);
+    saved.PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options);
     await fixture.Db.SaveChangesAsync();
     var metadata = (
       await new SavedRoutePlanReader(fixture.Db).ReadAsync(
@@ -474,7 +474,7 @@ public sealed partial class EtaChainInputTests
     );
     Assert.Equal(fixture.Next.Id, completed!.RootDispatchId);
     plan.TruckId = Guid.NewGuid();
-    saved.PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json);
+    saved.PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options);
     await fixture.Db.SaveChangesAsync();
     var wrongOwner = await fixture.Services.EtaInputs.DescribeAsync(
       fixture.Truck.Id,
@@ -802,8 +802,8 @@ public sealed partial class EtaChainInputTests
     )!;
     var projected = description.Loads.Single(x => x.Id == fixture.Next.Id);
     Assert.Equal(
-      RoutePlanningService.HashInputs(original, description.Profile),
-      RoutePlanningService.HashInputs(projected, description.Profile)
+      RoutePlanInputs.Hash(original, description.Profile),
+      RoutePlanInputs.Hash(projected, description.Profile)
     );
     Assert.Equal(
       BaseRouteService.Signature(original, description.Profile),
@@ -910,8 +910,8 @@ public sealed partial class EtaChainInputTests
       description.Loads[0].Stops.Select(x => x.Id)
     );
     Assert.Equal(
-      RoutePlanningService.HashInputs(original, description.Profile),
-      RoutePlanningService.HashInputs(description.Loads[0], description.Profile)
+      RoutePlanInputs.Hash(original, description.Profile),
+      RoutePlanInputs.Hash(description.Loads[0], description.Profile)
     );
   }
 
@@ -1114,11 +1114,8 @@ public sealed partial class EtaChainInputTests
           Id = plan.Id,
           DispatchId = current.Id,
           TruckId = truck.Id,
-          InputHash = RoutePlanningService.HashInputs(
-            persisted[current.Id],
-            profile
-          ),
-          PlanJson = JsonSerializer.Serialize(plan, RoutePlanningService.Json),
+          InputHash = RoutePlanInputs.Hash(persisted[current.Id], profile),
+          PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options),
         }
       );
       db.DispatchBaseRoutes.Add(
@@ -1130,7 +1127,7 @@ public sealed partial class EtaChainInputTests
           InputHash = BaseRouteService.Signature(persisted[next.Id], profile),
           RouteJson = JsonSerializer.Serialize(
             Road(-79, -78),
-            RoutePlanningService.Json
+            RoutingJson.Options
           ),
         }
       );
@@ -1149,7 +1146,7 @@ public sealed partial class EtaChainInputTests
           CalculatedAt = DateTime.UtcNow,
           RouteJson = JsonSerializer.Serialize(
             Road(-80, -79),
-            RoutePlanningService.Json
+            RoutingJson.Options
           ),
         }
       );

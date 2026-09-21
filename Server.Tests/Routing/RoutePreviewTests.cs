@@ -71,7 +71,7 @@ public sealed class RoutePreviewTests
         Id = plan.Id,
         DispatchId = load.Id,
         TruckId = truck.Id,
-        InputHash = RoutePlanningService.HashInputs(load, plan.Profile),
+        InputHash = RoutePlanInputs.Hash(load, plan.Profile),
         PlanJson = RoutePlanStorage.Serialize(plan),
       }
     );

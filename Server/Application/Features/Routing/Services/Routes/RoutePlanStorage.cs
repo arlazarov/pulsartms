@@ -18,7 +18,7 @@ public static class RoutePlanStorage
       foreach (var property in info.Properties.Where(x => x.Name == "points"))
         property.ShouldSerialize = (_, _) => false;
     });
-    return new(RoutePlanningService.Json) { TypeInfoResolver = resolver };
+    return new(RoutingJson.Options) { TypeInfoResolver = resolver };
   }
 
   public static string Serialize(RoutePlan plan) =>

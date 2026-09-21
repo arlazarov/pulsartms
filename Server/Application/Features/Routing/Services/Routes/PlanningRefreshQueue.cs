@@ -110,7 +110,7 @@ public sealed class PlanningRefreshQueue(
   private static string ProfileSignature(TruckRouteProfile profile) =>
     Convert.ToHexString(
       SHA256.HashData(
-        JsonSerializer.SerializeToUtf8Bytes(profile, RoutePlanningService.Json)
+        JsonSerializer.SerializeToUtf8Bytes(profile, RoutingJson.Options)
       )
     );
 }

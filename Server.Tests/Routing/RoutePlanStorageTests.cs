@@ -14,12 +14,12 @@ public class RoutePlanStorageTests
   {
     var json = JsonSerializer.Serialize(
       new RoutePoint(40, -80),
-      RoutePlanningService.Json
+      RoutingJson.Options
     );
     Assert.DoesNotContain("isValid", json);
     var legacy = JsonSerializer.Deserialize<RoutePoint>(
       "{\"latitude\":40,\"longitude\":-80,\"isValid\":false}",
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     Assert.True(legacy.IsValid);
   }
@@ -39,11 +39,11 @@ public class RoutePlanStorageTests
       Seconds = 6000,
     };
     var plan = new RoutePlan { Route = route, ReferenceRoute = route };
-    var old = JsonSerializer.Serialize(plan, RoutePlanningService.Json);
+    var old = JsonSerializer.Serialize(plan, RoutingJson.Options);
     var stored = RoutePlanStorage.Serialize(plan);
     var restored = JsonSerializer.Deserialize<RoutePlan>(
       stored,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
     Assert.True(stored.Length < old.Length * .6);
     Assert.Empty(restored.Route.Points);
@@ -55,7 +55,7 @@ public class RoutePlanStorageTests
     Assert.Equal(
       points,
       JsonSerializer
-        .Deserialize<RoutePlan>(old, RoutePlanningService.Json)!
+        .Deserialize<RoutePlan>(old, RoutingJson.Options)!
         .Route.Points
     );
   }

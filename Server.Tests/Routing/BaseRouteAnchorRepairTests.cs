@@ -181,10 +181,7 @@ public sealed class BaseRouteAnchorRepairTests
           Id = Guid.NewGuid(),
           DispatchId = load.Id,
           InputHash = BaseRouteService.Signature(load, fixture.Profile),
-          RouteJson = JsonSerializer.Serialize(
-            route,
-            RoutePlanningService.Json
-          ),
+          RouteJson = JsonSerializer.Serialize(route, RoutingJson.Options),
         };
         fixture.Db.DispatchBaseRoutes.Add(entity);
         await fixture.Db.SaveChangesAsync();
@@ -352,10 +349,7 @@ public sealed class BaseRouteAnchorRepairTests
           Id = Guid.NewGuid(),
           DispatchId = load.Id,
           InputHash = BaseRouteService.Signature(load, Profile),
-          RouteJson = JsonSerializer.Serialize(
-            route,
-            RoutePlanningService.Json
-          ),
+          RouteJson = JsonSerializer.Serialize(route, RoutingJson.Options),
         }
       );
       await db.SaveChangesAsync();

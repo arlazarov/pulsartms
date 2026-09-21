@@ -310,10 +310,7 @@ public sealed class FuelPlanProjectionTests
   public void LaterVisitToTheSameStationSurvivesRolloverAndOriginalSnapshotIsUnchanged()
   {
     var fixture = new Fixture();
-    var original = JsonSerializer.Serialize(
-      fixture.Saved,
-      RoutePlanningService.Json
-    );
+    var original = JsonSerializer.Serialize(fixture.Saved, RoutingJson.Options);
 
     var result = FuelPlanProjection.Project(
       fixture.Saved,
@@ -337,7 +334,7 @@ public sealed class FuelPlanProjectionTests
     Assert.Equal(result.ArrivalGallons, result.StopArrivals[^1].Gallons, 6);
     Assert.Equal(
       original,
-      JsonSerializer.Serialize(fixture.Saved, RoutePlanningService.Json)
+      JsonSerializer.Serialize(fixture.Saved, RoutingJson.Options)
     );
   }
 
@@ -379,10 +376,7 @@ public sealed class FuelPlanProjectionTests
   )
   {
     var fixture = new Fixture();
-    var original = JsonSerializer.Serialize(
-      fixture.Saved,
-      RoutePlanningService.Json
-    );
+    var original = JsonSerializer.Serialize(fixture.Saved, RoutingJson.Options);
     var state = fixture.State(0) with
     {
       FuelUpdatedAt = fixture.Now.AddMinutes(-ageMinutes),
@@ -426,7 +420,7 @@ public sealed class FuelPlanProjectionTests
     );
     Assert.Equal(
       original,
-      JsonSerializer.Serialize(fixture.Saved, RoutePlanningService.Json)
+      JsonSerializer.Serialize(fixture.Saved, RoutingJson.Options)
     );
   }
 
@@ -917,7 +911,7 @@ public sealed class FuelPlanProjectionTests
     fixture.Profile.TankGallons = 211.33764189;
     fixture.Saved.Plan.ProfileSignature = JsonSerializer.Serialize(
       fixture.Profile,
-      RoutePlanningService.Json
+      RoutingJson.Options
     );
     fixture.Saved.Plan.Stops[0].FillToTarget = true;
     fixture.Saved.Plan.Stops.RemoveAt(1);
@@ -1347,7 +1341,7 @@ public sealed class FuelPlanProjectionTests
         CalculatedAt = Now.AddMinutes(-1),
         ProfileSignature = JsonSerializer.Serialize(
           Profile,
-          RoutePlanningService.Json
+          RoutingJson.Options
         ),
         SelectionVersion = FuelOptimizer.SelectionVersion,
         StartingGallons = 50,

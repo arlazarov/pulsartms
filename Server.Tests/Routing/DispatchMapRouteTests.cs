@@ -129,7 +129,7 @@ public sealed class DispatchMapRouteTests
                 section,
                 await profiles.GetAsync(leg.TruckId, default)
               ),
-          RouteJson = JsonSerializer.Serialize(road, RoutePlanningService.Json),
+          RouteJson = JsonSerializer.Serialize(road, RoutingJson.Options),
           CalculatedAt = road.CalculatedAt,
         }
       );

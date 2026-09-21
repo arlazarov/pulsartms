@@ -644,7 +644,7 @@ public sealed partial class FuelPlanningService(
     }
     fuel.ProfileSignature = JsonSerializer.Serialize(
       profile,
-      RoutePlanningService.Json
+      RoutingJson.Options
     );
     fuel.PricingDate = today;
     fuel.PriceSignature = priceSignature;

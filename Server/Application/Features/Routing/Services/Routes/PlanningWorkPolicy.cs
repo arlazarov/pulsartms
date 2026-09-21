@@ -76,7 +76,7 @@ internal static class PlanningWorkPolicy
       saved.AssignmentRevision,
       load
     )
-    && saved.InputHash == RoutePlanningService.HashInputs(load, profile);
+    && saved.InputHash == RoutePlanInputs.Hash(load, profile);
 
   private static bool SameAssignment(
     Guid truckId,
@@ -110,11 +110,7 @@ internal static class PlanningWorkPolicy
       var plan = saved is null ? null : SavedRouteReader.Plan(saved.PlanJson);
       var resolved = Resolve(work, candidate);
       if (plan is not null && saved is not null)
-        plan.InputsChanged = !RoutePlanningService.MatchesInputs(
-          saved,
-          resolved,
-          profile
-        );
+        plan.InputsChanged = !RoutePlanInputs.Matches(saved, resolved, profile);
       if (IsCompleted(plan, resolved))
         continue;
       return candidate.Work == new WorkIdentity(load.Id, load.ExecutionLegId);

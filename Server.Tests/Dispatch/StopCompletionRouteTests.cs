@@ -61,7 +61,7 @@ public sealed class StopCompletionRouteTests
     );
     Assert.Equal(hash, saved.InputHash);
     Assert.NotEqual(
-      RoutePlanningService.HashInputs(f.Load, before.Profile),
+      RoutePlanInputs.Hash(f.Load, before.Profile),
       saved.InputHash
     );
     AssertRoadUnchanged(before, await ReadAsync(f));
@@ -83,10 +83,7 @@ public sealed class StopCompletionRouteTests
       (await f.Handler().Handle(f.Command(0, null), default)).Success
     );
     Assert.Equal(hash, (await f.Db.DispatchRoutePlans.SingleAsync()).InputHash);
-    Assert.NotEqual(
-      RoutePlanningService.HashInputs(f.Load, before.Profile),
-      hash
-    );
+    Assert.NotEqual(RoutePlanInputs.Hash(f.Load, before.Profile), hash);
   }
 
   [Theory]
@@ -121,10 +118,7 @@ public sealed class StopCompletionRouteTests
       ).Success
     );
     Assert.Equal(hash, (await f.Db.DispatchRoutePlans.SingleAsync()).InputHash);
-    Assert.NotEqual(
-      RoutePlanningService.HashInputs(f.Load, before.Profile),
-      hash
-    );
+    Assert.NotEqual(RoutePlanInputs.Hash(f.Load, before.Profile), hash);
   }
 
   [Fact]
@@ -221,7 +215,7 @@ public sealed class StopCompletionRouteTests
         Id = plan.Id,
         DispatchId = f.Load.Id,
         TruckId = truck.Id,
-        InputHash = RoutePlanningService.HashInputs(f.Load, profile),
+        InputHash = RoutePlanInputs.Hash(f.Load, profile),
         PlanJson = RoutePlanStorage.Serialize(plan),
         CreatedAt = plan.CalculatedAt,
       }
@@ -233,14 +227,14 @@ public sealed class StopCompletionRouteTests
   private static async Task<RoutePlan> ReadAsync(StopCompletionFixture f) =>
     JsonSerializer.Deserialize<RoutePlan>(
       (await f.Db.DispatchRoutePlans.AsNoTracking().SingleAsync()).PlanJson,
-      RoutePlanningService.Json
+      RoutingJson.Options
     )!;
 
   private static async Task AssertCurrentAsync(StopCompletionFixture f)
   {
     var saved = await f.Db.DispatchRoutePlans.AsNoTracking().SingleAsync();
     Assert.Equal(
-      RoutePlanningService.HashInputs(
+      RoutePlanInputs.Hash(
         f.Load,
         await f.Planning.Routes.ProfileAsync(f.Load.TruckId!.Value, default)
       ),

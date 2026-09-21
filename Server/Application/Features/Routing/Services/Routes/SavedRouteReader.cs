@@ -20,7 +20,7 @@ public static class SavedRouteReader
       return default;
     try
     {
-      return JsonSerializer.Deserialize<T>(json, RoutePlanningService.Json);
+      return JsonSerializer.Deserialize<T>(json, RoutingJson.Options);
     }
     catch (JsonException)
     {
