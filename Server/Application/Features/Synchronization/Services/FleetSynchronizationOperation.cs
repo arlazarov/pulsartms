@@ -17,6 +17,7 @@ using Application.Features.Synchronization.Models;
 using Application.Features.Synchronization.Options;
 using Application.Features.Synchronization.Services;
 using Application.Interfaces;
+using Domain.Entities;
 using Domain.Rules;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,7 +31,8 @@ public sealed partial class FleetSynchronizationOperation(
   IOptions<SynchronizationOptions> options,
   IOptions<DispatchImportOptions> imports,
   ServerTelemetry telemetry,
-  ILogger<FleetSynchronizationOperation> logger
+  ILogger<FleetSynchronizationOperation> logger,
+  ICurrentCompany companies
 ) : IFleetSynchronizationOperation, ISynchronizationStatusProvider
 {
   private volatile bool active;
@@ -63,7 +65,25 @@ public sealed partial class FleetSynchronizationOperation(
   private readonly string owner = Guid.NewGuid().ToString("N");
   private readonly object stateGate = new();
   private readonly SemaphoreSlim publishGate = new(1, 1);
-  private SynchronizationState state = new();
+  private SynchronizationState checkpoint = new();
+  private SynchronizationState state
+  {
+    get
+    {
+      lock (stateGate)
+      {
+        if (companies.Id is not { } company || company == Company.Amf)
+          return checkpoint;
+        if (!checkpoint.Companies.TryGetValue(company, out var value))
+        {
+          value = new();
+          checkpoint.Companies[company] = value;
+        }
+        return value;
+      }
+    }
+    set => checkpoint = value;
+  }
   private readonly SynchronizationOptions config = options.Value;
   private static readonly JsonSerializerOptions Json = new(
     JsonSerializerDefaults.Web
@@ -98,7 +118,7 @@ public sealed partial class FleetSynchronizationOperation(
         if (await store.AcquireAsync(owner, DateTime.UtcNow, stoppingToken))
         {
           state = await store.ReadAsync(stoppingToken);
-          await PublishAsync([], stoppingToken);
+          await RestoreSnapshotsAsync(stoppingToken);
           logger.LogInformation(
             "Server synchronization started with a database lease."
           );
@@ -107,7 +127,7 @@ public sealed partial class FleetSynchronizationOperation(
         else
         {
           state = await store.ReadAsync(stoppingToken);
-          await PublishAsync([], stoppingToken);
+          await RestoreSnapshotsAsync(stoppingToken);
         }
       }
       catch (OperationCanceledException)
@@ -223,6 +243,16 @@ public sealed partial class FleetSynchronizationOperation(
     CancellationToken ct
   )
   {
+    if (companies.Id is null)
+    {
+      using var rosterScope = scopes.CreateScope();
+      await CompanyPasses.ForEachCompanyAsync(
+        rosterScope.ServiceProvider,
+        token => RunJobAsync(name, interval, run, token),
+        ct
+      );
+      return;
+    }
     lock (stateGate)
     {
       if (!state.Jobs.TryGetValue(name, out var job))
@@ -235,15 +265,7 @@ public sealed partial class FleetSynchronizationOperation(
     try
     {
       using var scope = scopes.CreateScope();
-      // The lease is the server's - one instance synchronizes at a time -
-      // but a fleet belongs to a carrier. Every one of the loops runs its
-      // work through here, so this is the one place a pass starts, and
-      // the one place that has to say whose it is.
-      await CompanyPasses.ForEachCompanyAsync(
-        scope.ServiceProvider,
-        token => run(scope.ServiceProvider, token),
-        timeout.Token
-      );
+      await run(scope.ServiceProvider, timeout.Token);
       lock (stateGate)
         state.Jobs[name].Success(DateTime.UtcNow, interval);
     }
@@ -279,7 +301,17 @@ public sealed partial class FleetSynchronizationOperation(
   private string StateJson()
   {
     lock (stateGate)
-      return JsonSerializer.Serialize(state, Json);
+      return JsonSerializer.Serialize(checkpoint, Json);
+  }
+
+  private async Task RestoreSnapshotsAsync(CancellationToken ct)
+  {
+    using var scope = scopes.CreateScope();
+    await CompanyPasses.ForEachCompanyAsync(
+      scope.ServiceProvider,
+      token => PublishAsync([], token),
+      ct
+    );
   }
 
   private async Task CheckpointLoopAsync(CancellationToken ct)

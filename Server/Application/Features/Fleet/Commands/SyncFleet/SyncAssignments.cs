@@ -89,7 +89,7 @@ public sealed class SyncAssignmentsHandler(
     cache.Set("assignment-sync-signature", signature, TimeSpan.FromMinutes(30));
     if (count > 0)
     {
-      cache.Remove(FleetCache.CacheKey);
+      reads.Invalidate("fleet-catalog");
       reads.Invalidate("board");
     }
     return RequestResponse<int>.Ok(count);

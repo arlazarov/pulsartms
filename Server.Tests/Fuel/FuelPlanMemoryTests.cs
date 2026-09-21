@@ -11,7 +11,7 @@ public sealed class FuelPlanMemoryTests
   [Fact]
   public async Task EstimatedAccessCachesTheBaselineWithoutARecalculatedRoad()
   {
-    using var memory = new FuelPlanMemory();
+    using var memory = new FuelPlanMemory(new TestCompany());
     var snapshot = Snapshot();
     snapshot = snapshot with
     {
@@ -43,7 +43,7 @@ public sealed class FuelPlanMemoryTests
   [Fact]
   public async Task LegacyPlanKeepsItsCheckedRoadEvenWhenABaselineIsPresent()
   {
-    using var memory = new FuelPlanMemory();
+    using var memory = new FuelPlanMemory(new TestCompany());
     var snapshot = Snapshot();
     snapshot = snapshot with
     {
@@ -71,7 +71,7 @@ public sealed class FuelPlanMemoryTests
     bool estimated
   )
   {
-    using var memory = new FuelPlanMemory();
+    using var memory = new FuelPlanMemory(new TestCompany());
     var snapshot = Snapshot();
     snapshot = snapshot with
     {
@@ -92,7 +92,7 @@ public sealed class FuelPlanMemoryTests
   [Fact]
   public async Task ANewEstimatedVersionReplacesOnlyItsOwnLegacyCachedLeg()
   {
-    using var memory = new FuelPlanMemory();
+    using var memory = new FuelPlanMemory(new TestCompany());
     var legacy = Snapshot();
     var first = await memory.LegAsync(
       legacy,
@@ -141,7 +141,7 @@ public sealed class FuelPlanMemoryTests
   [Fact]
   public async Task ColdLoadsAreBoundedWhileCacheHitsAndCancellationRemainAvailable()
   {
-    using var memory = new FuelPlanMemory();
+    using var memory = new FuelPlanMemory(new TestCompany());
     var stripes = new HashSet<uint>();
     var snapshots = new List<TruckFuelPlanSnapshot>();
     while (snapshots.Count < 4)
@@ -221,7 +221,7 @@ public sealed class FuelPlanMemoryTests
   [Fact]
   public async Task ATruckRetainsOnlyItsCurrentLegAndOlderReadsCannotReplaceNewerGeometry()
   {
-    using var memory = new FuelPlanMemory();
+    using var memory = new FuelPlanMemory(new TestCompany());
     var original = Snapshot();
     var newer = original with
     {
@@ -269,7 +269,7 @@ public sealed class FuelPlanMemoryTests
   [Fact]
   public async Task DifferentTrucksRemainIndependentAndFailedRefreshKeepsTheValidLeg()
   {
-    using var memory = new FuelPlanMemory();
+    using var memory = new FuelPlanMemory(new TestCompany());
     var first = Snapshot();
     var second = Snapshot();
     var calls = 0;

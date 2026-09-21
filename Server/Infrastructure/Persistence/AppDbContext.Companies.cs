@@ -7,30 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure.Persistence;
 
-// Keeping one carrier's rows away from another's.
-//
-// Two rules, applied to every table that carries ICompanyOwned, neither of
-// which any query or command has to remember:
-//
-//   reading  - every query is narrowed to the carrier being served, by a
-//              filter EF puts into the SQL itself. A query cannot forget
-//              the filter, because there is nowhere to write it.
-//   writing  - every new row is stamped with that carrier on its way to
-//              the database, so a command cannot save into the wrong one
-//              by leaving a field unset.
-//
-// Who is being served depends on how the context was built, and the two
-// cases are different on purpose:
-//
-//   a host that knows about carriers - a server - and nobody has been
-//   identified yet: the filter matches nothing. Background work that
-//   forgot to say whose pass it is reads an empty database rather than
-//   everybody's, which is the safe way to be wrong.
-//
-//   a host that does not - a migration, a design-time tool, a test: there
-//   is no request and no tenancy, so it serves the one carrier this
-//   system was built for. A server never takes this path, because the
-//   server registers ICurrentCompany.
+// Runtime contexts require a company for writes. Design-time and explicit
+// tooling contexts without the identity service retain bootstrap access.
 public partial class AppDbContext
 {
   private bool asked;
@@ -94,10 +72,37 @@ public partial class AppDbContext
 
   private void StampNewRowsWithTheCompany()
   {
-    if (ServingCompany is not { } company)
-      return;
+    var company = ServingCompany;
     foreach (var entry in ChangeTracker.Entries<ICompanyOwned>())
+    {
+      if (
+        entry.State
+        is not (
+          EntityState.Added
+          or EntityState.Modified
+          or EntityState.Deleted
+        )
+      )
+        continue;
+      if (companies is not null && company is null)
+        throw new InvalidOperationException(
+          "Company-owned writes require a selected company."
+        );
       if (entry.State == EntityState.Added && entry.Entity.CompanyId == default)
-        entry.Entity.CompanyId = company;
+        entry.Entity.CompanyId = company!.Value;
+      // Design-time and fixture contexts have no company service. Runtime
+      // contexts must neither write a foreign row nor transfer its ownership.
+      if (
+        companies is not null
+        && (
+          entry.Entity.CompanyId != company
+          || entry.State != EntityState.Added
+            && entry.Property(x => x.CompanyId).OriginalValue != company
+        )
+      )
+        throw new InvalidOperationException(
+          "Company-owned writes cannot cross company boundaries."
+        );
+    }
   }
 }

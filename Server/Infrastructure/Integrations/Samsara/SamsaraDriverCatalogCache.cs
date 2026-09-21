@@ -1,10 +1,14 @@
 using System.Collections.Frozen;
 using System.Text.Json;
+using Application.Interfaces;
 using Infrastructure.Integrations.Samsara.Models;
 
 namespace Infrastructure.Integrations.Samsara;
 
-public sealed class SamsaraDriverCatalogCache(TimeProvider clock) : IDisposable
+public sealed class SamsaraDriverCatalogCache(
+  TimeProvider clock,
+  ICurrentCompany companies
+) : IDisposable
 {
   public sealed record HosSettings(
     string Timezone,
@@ -24,6 +28,7 @@ public sealed class SamsaraDriverCatalogCache(TimeProvider clock) : IDisposable
   );
   private readonly SemaphoreSlim gate = new(1, 1);
   private Snapshot? saved;
+  private Guid? savedCompany;
   private DateTimeOffset? retryAfter;
 
   public async Task<IReadOnlyList<SamsaraDriver>> GetAsync(
@@ -54,12 +59,20 @@ public sealed class SamsaraDriverCatalogCache(TimeProvider clock) : IDisposable
   )
   {
     ct.ThrowIfCancellationRequested();
-    var ready = Volatile.Read(ref saved);
-    if (!forceRefresh && Current(ready, clock.GetUtcNow()))
-      return ready!;
+    var company =
+      companies.Id
+      ?? throw new InvalidOperationException(
+        "Driver catalog requires a company."
+      );
     await gate.WaitAsync(ct);
     try
     {
+      if (savedCompany != company)
+      {
+        saved = null;
+        retryAfter = null;
+        savedCompany = company;
+      }
       var now = clock.GetUtcNow();
       var current = Current(saved, now);
       if (!forceRefresh && current)

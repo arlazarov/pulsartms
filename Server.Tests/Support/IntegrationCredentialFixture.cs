@@ -1,4 +1,5 @@
 using Application.Features.Integrations.Interfaces;
+using Application.Interfaces;
 using Domain.Entities;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.DataProtection;
@@ -14,6 +15,7 @@ public sealed class IntegrationCredentialFixture : IAsyncDisposable
   private readonly SqliteConnection connection;
   private readonly string connectionString;
   private readonly CredentialWrites writes = new();
+  internal TestCompany Companies { get; } = new();
   public ServiceProvider Services { get; private set; }
   public IIntegrationCredentialStore Store =>
     Services.GetRequiredService<IIntegrationCredentialStore>();
@@ -55,6 +57,7 @@ public sealed class IntegrationCredentialFixture : IAsyncDisposable
   {
     var services = new ServiceCollection();
     services.AddLogging();
+    services.AddSingleton<ICurrentCompany>(Companies);
     services.AddSingleton(TimeProvider.System);
     services.AddDbContext<AppDbContext>(options =>
       options.UseSqlite(connectionString).AddInterceptors(writes)

@@ -882,7 +882,7 @@ public sealed class FuelPlanProjectionTests
   public async Task GeometryMemoryReusesOnlyTheRequestedSavedVersion()
   {
     var fixture = new Fixture();
-    using var memory = new FuelPlanMemory();
+    using var memory = new FuelPlanMemory(new TestCompany());
     var calls = 0;
     Task<TruckFuelPlanSnapshot?> Load()
     {

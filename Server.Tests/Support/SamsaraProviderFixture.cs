@@ -31,8 +31,8 @@ public sealed class SamsaraProviderFixture : IDisposable
 
   public SamsaraProviderFixture()
   {
-    History = new(Clock);
-    Catalog = new(Clock);
+    History = new(Clock, new TestCompany());
+    Catalog = new(Clock, new TestCompany());
     handler = new(this);
     http = new(handler);
     Api = new(http, new StubProviderCredentials(("apiKey", "test")));

@@ -1,12 +1,21 @@
+using System.Collections.Concurrent;
+using Application.Interfaces;
 using Domain.Models.Fleet;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Fleet.Queries.GetFleetLocations;
 
-public sealed class FleetTelemetryCache(IMemoryCache cache) : IDisposable
+public sealed class FleetTelemetryCache(
+  IMemoryCache cache,
+  ICurrentCompany companies
+) : IDisposable
 {
-  private FleetLocationsResponse? latest;
-  public FleetLocationsResponse? Latest => Volatile.Read(ref latest);
+  private readonly ConcurrentDictionary<Guid, FleetLocationsResponse> latest =
+    new();
+  public FleetLocationsResponse? Latest =>
+    companies.Id is { } company && latest.TryGetValue(company, out var value)
+      ? value
+      : null;
 
   public const string CacheKey = "fleet-telemetry";
   private readonly SemaphoreSlim gate = new(1, 1);
@@ -17,19 +26,22 @@ public sealed class FleetTelemetryCache(IMemoryCache cache) : IDisposable
   )
   {
     cancellationToken.ThrowIfCancellationRequested();
+    if (companies.Id is not { } company)
+      return new();
+    var key = (CacheKey, company);
     if (
-      cache.TryGetValue(CacheKey, out FleetLocationsResponse? value)
+      cache.TryGetValue(key, out FleetLocationsResponse? value)
       && value is not null
     )
       return value;
     await gate.WaitAsync(cancellationToken);
     try
     {
-      if (cache.TryGetValue(CacheKey, out value) && value is not null)
+      if (cache.TryGetValue(key, out value) && value is not null)
         return value;
       value = await load(cancellationToken);
-      Volatile.Write(ref latest, value);
-      cache.Set(CacheKey, value, TimeSpan.FromSeconds(10));
+      latest[company] = value;
+      cache.Set(key, value, TimeSpan.FromSeconds(10));
       return value;
     }
     finally

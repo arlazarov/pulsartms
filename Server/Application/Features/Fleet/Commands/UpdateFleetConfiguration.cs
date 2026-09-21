@@ -126,7 +126,6 @@ public sealed class UpdateFleetConfigurationHandler(
     reads.Invalidate("fleet-catalog");
     reads.Invalidate("board");
     reads.Invalidate("route-previews");
-    memory.Remove(FleetCache.CacheKey);
     memory.Remove("fleet-driver-ids");
     memory.Remove("assignment-sync-signature");
     memory.Remove("dispatch-sync-signature");

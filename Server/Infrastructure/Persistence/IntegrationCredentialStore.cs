@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Models;
+using Domain.Entities;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -41,7 +42,7 @@ public sealed class IntegrationCredentialStore(
       row.UpdatedAt,
       row.ProtectedValues is null
         ? null
-        : Unprotect(provider, row.ProtectedValues)
+        : Unprotect(row.CompanyId, provider, row.ProtectedValues)
     );
   }
 
@@ -73,7 +74,16 @@ public sealed class IntegrationCredentialStore(
     }
     // Keep a revisioned tombstone on restore so an old first-save request
     // cannot overwrite it.
-    row.ProtectedValues = values is null ? null : Protect(provider, values);
+    row.ProtectedValues = values is null
+      ? null
+      : Protect(
+        db.ServingCompany
+          ?? throw new InvalidOperationException(
+            "Integration credentials require a company."
+          ),
+        provider,
+        values
+      );
     row.Revision = expectedRevision + 1;
     row.UpdatedAt = time.GetUtcNow().UtcDateTime;
     try
@@ -92,7 +102,11 @@ public sealed class IntegrationCredentialStore(
     }
   }
 
-  private string Protect(string provider, IntegrationCredentialValues values)
+  private string Protect(
+    Guid company,
+    string provider,
+    IntegrationCredentialValues values
+  )
   {
     var fields = IntegrationProviderCatalog
       .Fields(provider)
@@ -107,7 +121,7 @@ public sealed class IntegrationCredentialStore(
         "Integration credentials are too large.",
         nameof(values)
       );
-    var result = protection.CreateProtector(Purpose, provider).Protect(json);
+    var result = Protector(company, provider).Protect(json);
     if (result.Length > MaximumProtectedLength)
       throw new ArgumentException(
         "Integration credentials are too large.",
@@ -117,6 +131,7 @@ public sealed class IntegrationCredentialStore(
   }
 
   private IntegrationCredentialValues Unprotect(
+    Guid company,
     string provider,
     string encrypted
   )
@@ -125,9 +140,18 @@ public sealed class IntegrationCredentialStore(
       throw Unavailable();
     try
     {
-      var json = protection
-        .CreateProtector(Purpose, provider)
-        .Unprotect(encrypted);
+      string json;
+      try
+      {
+        json = Protector(company, provider).Unprotect(encrypted);
+      }
+      catch (CryptographicException) when (company == Company.Amf)
+      {
+        // Only the original carrier can read pre-isolation bundles.
+        json = protection
+          .CreateProtector(Purpose, provider)
+          .Unprotect(encrypted);
+      }
       if (json.Length > MaximumJsonLength)
         throw Unavailable();
       using var document = JsonDocument.Parse(json, new() { MaxDepth = 4 });
@@ -156,6 +180,9 @@ public sealed class IntegrationCredentialStore(
       throw Unavailable();
     }
   }
+
+  private IDataProtector Protector(Guid company, string provider) =>
+    protection.CreateProtector(Purpose, company.ToString("N"), provider);
 
   private static void RequireProvider(string provider)
   {

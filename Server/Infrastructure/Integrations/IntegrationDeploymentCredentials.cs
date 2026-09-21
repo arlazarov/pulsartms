@@ -1,15 +1,20 @@
 using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Models;
+using Application.Interfaces;
+using Domain.Entities;
 using Microsoft.Extensions.Configuration;
 
 namespace Infrastructure.Integrations;
 
 public sealed class IntegrationDeploymentCredentials(
-  IConfiguration configuration
+  IConfiguration configuration,
+  ICurrentCompany companies
 ) : IIntegrationDeploymentCredentials
 {
   public IntegrationCredentialValues Get(string provider)
   {
+    if (companies.Id != Company.Amf)
+      return new([]);
     var keys = provider switch
     {
       IntegrationProviderCatalog.Torque => new[]

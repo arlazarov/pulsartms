@@ -45,7 +45,7 @@ public sealed class FleetHosReadTests
     db.Trucks.Add(truck);
     await db.SaveChangesAsync();
     var time = new ManualTimeProvider();
-    var snapshot = new DriverHosSnapshot(time);
+    var snapshot = new DriverHosSnapshot(time, new TestCompany());
     var handler = new GetFleetHosHandler(db, snapshot, new DriverHosStore(db));
     Assert.Null(
       Assert.Single((await handler.Handle(new(), default)).Response!).Value.Hos

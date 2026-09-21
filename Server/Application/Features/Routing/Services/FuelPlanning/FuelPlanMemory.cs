@@ -1,11 +1,12 @@
 using Application.Caching;
+using Application.Interfaces;
 using Domain.Models.Routing;
 using Domain.Rules.Routing;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 
-public sealed class FuelPlanMemory : IDisposable
+public sealed class FuelPlanMemory(ICurrentCompany companies) : IDisposable
 {
   private readonly MemoryCache cache = new(
     new MemoryCacheOptions { SizeLimit = 8 * 1024 * 1024 }
@@ -29,6 +30,9 @@ public sealed class FuelPlanMemory : IDisposable
     CancellationToken ct
   )
   {
+    if (companies.Id is not { } company)
+      return null;
+    key = $"{company:N}:{key}";
     if (cache.TryGetValue<string>(key, out var found))
       return found;
     await priceGate.WaitAsync(ct);
@@ -62,7 +66,9 @@ public sealed class FuelPlanMemory : IDisposable
     CancellationToken ct
   )
   {
-    var key = snapshot.TruckId;
+    if (companies.Id is not { } company)
+      return null;
+    var key = (company, snapshot.TruckId);
     if (
       cache.TryGetValue<CachedLeg>(key, out var found)
       && found!.CalculatedAt == snapshot.CalculatedAt

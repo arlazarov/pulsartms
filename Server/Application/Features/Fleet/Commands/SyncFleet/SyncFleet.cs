@@ -69,7 +69,6 @@ public class SyncFleetHandler(
     await transaction.CommitAsync(cancellationToken);
     if (count > 0)
     {
-      cache.Remove(FleetCache.CacheKey);
       cache.Remove("fleet-driver-ids");
       cache.Remove("assignment-sync-signature");
       cache.Remove("dispatch-sync-signature");

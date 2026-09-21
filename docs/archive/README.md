@@ -10,6 +10,10 @@ started again under the current project policy.
 
 ### Reviews and implementation records
 
+- [Refactor audit, September 21][refactor-audit-2026-09-21]
+
+- [Company boundary corrections][company-boundary-fixes-2026-09-21]
+
 - [Planning consolidation implementation](2026-09/planning-consolidation-2026-09-18.md)
 
 - [Planning cohesion after Route, ETA and fuel fixes][planning-cohesion]
@@ -232,3 +236,7 @@ started again under the current project policy.
 [address-suggestions]: 2026-09/address-suggestions-2026-09-18.md
 
 [planning-cohesion]: 2026-09/planning-cohesion-review-2026-09-18.md
+
+[refactor-audit-2026-09-21]: 2026-09/refactor-audit-2026-09-21.md
+
+[company-boundary-fixes-2026-09-21]: 2026-09/company-boundary-fixes-2026-09-21.md

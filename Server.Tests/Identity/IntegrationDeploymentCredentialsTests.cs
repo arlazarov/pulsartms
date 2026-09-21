@@ -26,7 +26,10 @@ public sealed class IntegrationDeploymentCredentialsTests
         }
       )
       .Build();
-    var adapter = new IntegrationDeploymentCredentials(configuration);
+    var adapter = new IntegrationDeploymentCredentials(
+      configuration,
+      new TestCompany()
+    );
     Assert.Equal(
       "fixture-torque",
       adapter.Get(IntegrationProviderCatalog.Torque).Get("apiKey")
@@ -49,7 +52,8 @@ public sealed class IntegrationDeploymentCredentialsTests
   public void MissingDeploymentFieldsRemainUnconfiguredWithoutInventingValues()
   {
     var adapter = new IntegrationDeploymentCredentials(
-      new ConfigurationBuilder().Build()
+      new ConfigurationBuilder().Build(),
+      new TestCompany()
     );
     foreach (var provider in IntegrationProviderCatalog.Providers)
     {
@@ -70,7 +74,10 @@ public sealed class IntegrationDeploymentCredentialsTests
         }
       )
       .Build();
-    var adapter = new IntegrationDeploymentCredentials(configuration);
+    var adapter = new IntegrationDeploymentCredentials(
+      configuration,
+      new TestCompany()
+    );
     Assert.Equal(
       " fixture-original ",
       adapter.Get(IntegrationProviderCatalog.Samsara).Get("apiKey")

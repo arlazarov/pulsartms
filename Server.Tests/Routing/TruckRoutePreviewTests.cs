@@ -938,7 +938,7 @@ public sealed class TruckRoutePreviewTests
     public RejectingHos Hos { get; } = new();
     public BoardSender Sender { get; } = new();
     public MemoryCache Memory { get; } = new(new MemoryCacheOptions());
-    public ServerTelemetry Telemetry { get; } = new();
+    public ServerTelemetry Telemetry { get; } = new(new TestCompany());
     public FleetTelemetryCache TelemetryCache { get; private set; } = null!;
     public PlanningTestServices Services { get; private set; } = null!;
     public RoutePreviewService Preview { get; private set; } = null!;
@@ -967,7 +967,7 @@ public sealed class TruckRoutePreviewTests
         fixture.Services.Transfers,
         NullLogger<GetDispatchBoardHandler>.Instance
       );
-      fixture.TelemetryCache = new(fixture.Memory);
+      fixture.TelemetryCache = new(fixture.Memory, new TestCompany());
       fixture.Preview = new(
         db,
         fixture.Services.PlanningInputs,

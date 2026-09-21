@@ -31,6 +31,7 @@ internal sealed class PlanningPipelineFixture(
     var services = new ServiceCollection();
     services.AddLogging();
     services.AddApplication();
+    services.AddSingleton<ICurrentCompany>(new TestCompany());
     services.AddSingleton<IFuelExchangeRateStore>(
       new MemoryFuelExchangeRateStore()
     );

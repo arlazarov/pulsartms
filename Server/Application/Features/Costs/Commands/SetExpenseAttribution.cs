@@ -59,6 +59,13 @@ public sealed class SetExpenseAttributionHandler(
     if (ExpenseAttributionRules.Rejection(expense, intended) is { } rejection)
       return Fail(rejection, 400);
 
+    var loadIds = intended.Select(x => x.DispatchId).ToArray();
+    if (
+      await db.Dispatches.CountAsync(x => loadIds.Contains(x.Id), ct)
+      != loadIds.Length
+    )
+      return Fail("An attributed load was not found in this company.", 400);
+
     var existing = await db
       .ExpenseAttributions.Where(x => x.ExpenseId == expense.Id)
       .ToListAsync(ct);
@@ -71,7 +78,13 @@ public sealed class SetExpenseAttributionHandler(
       var current = existing.SingleOrDefault(x =>
         x.DispatchId == share.DispatchId
       );
-      if (current is not null && current.Amount == share.Amount)
+      if (
+        current is not null
+        && current.Amount == share.Amount
+        && current.Basis == update.Basis
+        && current.Reason == reason
+        && current.ManualOverride == manual
+      )
         continue;
       db.ExpenseAttributionEvents.Add(
         Event(

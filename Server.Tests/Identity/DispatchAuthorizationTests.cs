@@ -74,7 +74,12 @@ public sealed class DispatchAuthorizationTests
     };
     db.Set<AppUser>().Add(identity);
     db.Users.Add(user);
-    await db.SaveChangesAsync();
+    using (
+      scope
+        .ServiceProvider.GetRequiredService<ICurrentCompany>()
+        .As(Company.Amf)
+    )
+      await db.SaveChangesAsync();
     await scope
       .ServiceProvider.GetRequiredService<IUserRoleService>()
       .SetAsync(identity.Id, role);
@@ -119,7 +124,12 @@ public sealed class DispatchAuthorizationTests
       (await authorization.AuthorizeAsync(forged, null, policy!)).Succeeded
     );
     user.IsActive = false;
-    await db.SaveChangesAsync();
+    using (
+      scope
+        .ServiceProvider.GetRequiredService<ICurrentCompany>()
+        .As(Company.Amf)
+    )
+      await db.SaveChangesAsync();
     Assert.False(
       (await authorization.AuthorizeAsync(principal, null, policy!)).Succeeded
     );

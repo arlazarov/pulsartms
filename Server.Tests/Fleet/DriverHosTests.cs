@@ -54,7 +54,7 @@ public class DriverHosTests
   )
   {
     var time = new ManualTimeProvider();
-    var snapshot = new DriverHosSnapshot(time);
+    var snapshot = new DriverHosSnapshot(time, new TestCompany());
     var observed = time.GetUtcNow().UtcDateTime;
     snapshot.Complete(
       new Dictionary<string, DriverHosClocks>

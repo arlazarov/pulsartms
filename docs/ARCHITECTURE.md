@@ -15,6 +15,25 @@ belongs in Infrastructure. See [current behavior](features/border-preparation.md
 
 ## Dependency boundaries
 
+Company identity follows the authenticated request or an explicit background
+pass. Fleet metadata, telemetry snapshots, HOS clocks and fuel-price signatures
+must not reuse another company's cache entries. Provider cursors and refresh
+cooldowns belong to that same company. The fleet synchronization lease remains
+server-wide; its checkpoint retains independent company states. Legacy root
+checkpoint fields belong only to the original carrier.
+
+Runtime EF writes reject missing company context, foreign ownership and changes
+of ownership, including updates and deletes. Tooling contexts without a company
+service retain their explicit bootstrap behavior. Raw SQL has separate ownership
+checks. Expense commands validate resource and target-load references through
+scoped reads before writing; query filters alone do not validate foreign keys.
+
+Integration credentials use company/provider identity and protection purposes.
+Deployment credentials and the configured Gmail push mailbox belong to the
+original carrier. A validated push selects that owner before importing; arbitrary
+notification content cannot select another company. Gmail watch checkpoints are
+also company-specific. This does not add multi-mailbox push configuration.
+
 - Application has no dependency on API or concrete Infrastructure. Required
   external capabilities are expressed as Application interfaces.
 - Infrastructure has no dependency on API. It implements Application interfaces

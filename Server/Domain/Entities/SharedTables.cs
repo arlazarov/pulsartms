@@ -68,6 +68,5 @@ public static class SharedTables
       ["BorderShipment"] = "part of a border crossing",
       ["ShipmentCommodity"] = "part of a shipment",
       ["ShipmentParty"] = "part of a shipment or a crossing",
-      ["IntegrationCredentialSetting"] = "part of the stored credentials",
     };
 }

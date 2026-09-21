@@ -11,7 +11,8 @@ public record ReceiveGmailNotificationCommand(string Authorization, Stream Body)
 
 public sealed class ReceiveGmailNotificationHandler(
   IGmailPushValidator validator,
-  ISender sender
+  ISender sender,
+  ICurrentCompany companies
 ) : IRequestHandler<ReceiveGmailNotificationCommand, RequestResponse<int>>
 {
   private static readonly JsonSerializerOptions JsonOptions = new(
@@ -57,6 +58,7 @@ public sealed class ReceiveGmailNotificationHandler(
     {
       return InvalidNotification();
     }
+    using var serving = companies.As(validator.CompanyId);
     return await sender.Send(
       new ImportFuelDiscountsCommand(),
       cancellationToken

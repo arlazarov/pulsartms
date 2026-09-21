@@ -1,3 +1,6 @@
+using Application.Caching;
+using Application.Features.Fleet.Queries.GetFleetLocations;
+using Application.Features.Synchronization.Options;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Entities.Dispatch;
@@ -5,6 +8,7 @@ using Domain.Entities.Fleet;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Persistence;
 
@@ -90,6 +94,95 @@ public sealed class CompanyIsolationTests
 
     Assert.Single(await world.As(Amf).IftaTaxRates.ToListAsync());
     Assert.Single(await world.As(Other).IftaTaxRates.ToListAsync());
+  }
+
+  [Fact]
+  public async Task UnselectedAndForeignOwnedWritesAreRejected()
+  {
+    await using var world = await TwoCarriersAsync();
+    var unselected = world.As(null);
+    unselected.Trucks.Add(new() { Id = Guid.NewGuid() });
+    await Assert.ThrowsAsync<InvalidOperationException>(
+      () => unselected.SaveChangesAsync()
+    );
+    var db = world.As(Amf);
+    db.Trucks.Add(new() { Id = Guid.NewGuid(), CompanyId = Other });
+    await Assert.ThrowsAsync<InvalidOperationException>(
+      () => db.SaveChangesAsync()
+    );
+  }
+
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task ATrackedForeignRowCannotBeUpdatedOrDeleted(bool deleting)
+  {
+    await using var world = await TwoCarriersAsync();
+    var db = world.As(Amf);
+    var row = await db
+      .Dispatches.IgnoreQueryFilters()
+      .SingleAsync(x => x.CompanyId == Other);
+    if (deleting)
+      db.Dispatches.Remove(row);
+    else
+      row.OrderNumber = "Changed";
+    await Assert.ThrowsAsync<InvalidOperationException>(
+      () => db.SaveChangesAsync()
+    );
+  }
+
+  [Fact]
+  public async Task ChangingTheOwnerDoesNotAuthorizeAForeignWrite()
+  {
+    await using var world = await TwoCarriersAsync();
+    var db = world.As(Amf);
+    var row = await db
+      .Dispatches.IgnoreQueryFilters()
+      .SingleAsync(x => x.CompanyId == Other);
+    row.CompanyId = Amf;
+    await Assert.ThrowsAsync<InvalidOperationException>(
+      () => db.SaveChangesAsync()
+    );
+  }
+
+  [Fact]
+  public async Task FleetMetadataCacheDoesNotReuseAnotherCompanysCatalog()
+  {
+    await using var world = await TwoCarriersAsync();
+    world.Everything.Trucks.AddRange(
+      new()
+      {
+        Id = Guid.NewGuid(),
+        CompanyId = Amf,
+        UnitNumber = "mine",
+      },
+      new()
+      {
+        Id = Guid.NewGuid(),
+        CompanyId = Other,
+        UnitNumber = "theirs",
+      }
+    );
+    await world.Everything.SaveChangesAsync();
+    var companies = new TestCompany();
+    using var reads = new ReadCache(
+      Options.Create(new SynchronizationOptions()),
+      companies
+    );
+    var cache = new FleetCache(reads);
+    Assert.Equal(
+      "mine",
+      Assert.Single(await cache.GetAsync(world.As(Amf))).UnitNumber
+    );
+    using (companies.As(Other))
+      Assert.Equal(
+        "theirs",
+        Assert.Single(await cache.GetAsync(world.As(Other))).UnitNumber
+      );
+    Assert.Equal(
+      "mine",
+      Assert.Single(await cache.GetAsync(world.As(Amf))).UnitNumber
+    );
   }
 
   private static async Task<World> TwoCarriersAsync()

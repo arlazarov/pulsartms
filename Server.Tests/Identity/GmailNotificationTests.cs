@@ -4,7 +4,9 @@ using API.Controllers;
 using Application.Features.Fuel.Commands;
 using Application.Features.Fuel.Commands.ImportFuelDiscounts;
 using Application.Features.Fuel.Interfaces;
+using Application.Interfaces;
 using Application.Models;
+using Domain.Entities;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -82,6 +84,7 @@ public class GmailNotificationTests
     services.AddMediatR(options =>
       options.RegisterServicesFromAssemblyContaining<ReceiveGmailNotificationCommand>()
     );
+    services.AddSingleton<ICurrentCompany>(new TestCompany());
     services.AddSingleton<IGmailPushValidator>(
       new Validator(configured, authorized)
     );
@@ -101,6 +104,7 @@ public class GmailNotificationTests
   private sealed class Validator(bool configured, bool authorized)
     : IGmailPushValidator
   {
+    public Guid CompanyId => Company.Amf;
     public bool IsConfigured => configured;
 
     public Task<bool> ValidateAsync(string authorization) =>

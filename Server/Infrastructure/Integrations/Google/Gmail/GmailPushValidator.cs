@@ -1,4 +1,5 @@
 using Application.Features.Fuel.Interfaces;
+using Domain.Entities;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
 
@@ -7,6 +8,8 @@ namespace Infrastructure.Integrations.Google.Gmail;
 public sealed class GmailPushValidator(IConfiguration configuration)
   : IGmailPushValidator
 {
+  public Guid CompanyId => Company.Amf;
+
   public bool IsConfigured =>
     !string.IsNullOrWhiteSpace(configuration["Gmail:PushAudience"])
     && !string.IsNullOrWhiteSpace(

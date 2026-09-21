@@ -4,6 +4,8 @@ namespace Application.Features.Synchronization.Models;
 
 public sealed class SynchronizationState
 {
+  public Dictionary<Guid, SynchronizationState> Companies { get; set; } = new();
+
   public string? TelemetryCursor { get; set; }
   public Dictionary<string, VehicleTelemetry> Vehicles { get; set; } = new();
   public Dictionary<string, SyncJobState> Jobs { get; set; } = new();

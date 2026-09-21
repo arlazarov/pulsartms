@@ -1,6 +1,8 @@
+using Application.Caching;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Application.Features.Synchronization.Options;
+using Domain.Entities;
 using Domain.Models.Fleet;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -15,7 +17,10 @@ public class FleetTelemetryTests
   public async Task StreamReadsAllPagesWithTheSameStartTime()
   {
     var provider = new Provider();
-    using var stream = new FleetLocationStream(TimeProvider.System);
+    using var stream = new FleetLocationStream(
+      TimeProvider.System,
+      new TestCompany()
+    );
     var result = await stream.GetAsync(
       provider,
       [new FleetTruckInfo { TruckExternalId = "truck", IsActive = true }]
@@ -33,7 +38,10 @@ public class FleetTelemetryTests
   [Fact]
   public async Task RepeatedCursorFailsInsteadOfReturningPartialData()
   {
-    using var stream = new FleetLocationStream(TimeProvider.System);
+    using var stream = new FleetLocationStream(
+      TimeProvider.System,
+      new TestCompany()
+    );
     await Assert.ThrowsAsync<InvalidOperationException>(
       () =>
         stream.GetAsync(
@@ -47,7 +55,7 @@ public class FleetTelemetryTests
   public async Task ConcurrentClientsShareOneLoadAndFailuresCanRetry()
   {
     using var memory = new MemoryCache(new MemoryCacheOptions());
-    using var cache = new FleetTelemetryCache(memory);
+    using var cache = new FleetTelemetryCache(memory, new TestCompany());
     await Assert.ThrowsAsync<HttpRequestException>(
       () =>
         cache.GetAsync(
@@ -76,7 +84,7 @@ public class FleetTelemetryTests
     var results = await Task.WhenAll(requests);
     Assert.Equal(1, calls);
     Assert.All(results, value => Assert.Same(response, value));
-    memory.Remove(FleetTelemetryCache.CacheKey);
+    memory.Remove((FleetTelemetryCache.CacheKey, Company.Amf));
     await cache.GetAsync(Load, default);
     Assert.Equal(2, calls);
   }
@@ -85,7 +93,7 @@ public class FleetTelemetryTests
   public async Task ACancelledReaderDoesNotReceiveAWarmTelemetrySnapshot()
   {
     using var memory = new MemoryCache(new MemoryCacheOptions());
-    using var cache = new FleetTelemetryCache(memory);
+    using var cache = new FleetTelemetryCache(memory, new TestCompany());
     await cache.GetAsync(
       _ => Task.FromResult(new FleetLocationsResponse()),
       default
@@ -106,7 +114,7 @@ public class FleetTelemetryTests
   {
     var clock = new ManualTimeProvider();
     var initial = clock.GetUtcNow().UtcDateTime;
-    using var stream = new FleetLocationStream(clock);
+    using var stream = new FleetLocationStream(clock, new TestCompany());
     var truck = new FleetTruckInfo
     {
       TruckId = Guid.NewGuid(),
@@ -157,7 +165,7 @@ public class FleetTelemetryTests
   {
     var clock = new ManualTimeProvider();
     var initial = clock.GetUtcNow().UtcDateTime;
-    using var stream = new FleetLocationStream(clock);
+    using var stream = new FleetLocationStream(clock, new TestCompany());
     var fleet = new[]
     {
       new FleetTruckInfo { TruckExternalId = "truck", IsActive = true },
@@ -203,7 +211,7 @@ public class FleetTelemetryTests
   public async Task FullReconciliationRemovesPointsNoLongerPresentInTheProviderWindow()
   {
     var clock = new ManualTimeProvider();
-    using var stream = new FleetLocationStream(clock);
+    using var stream = new FleetLocationStream(clock, new TestCompany());
     var fleet = new[]
     {
       new FleetTruckInfo { TruckExternalId = "truck", IsActive = true },
@@ -233,7 +241,7 @@ public class FleetTelemetryTests
   {
     var clock = new ManualTimeProvider();
     var initial = clock.GetUtcNow().UtcDateTime;
-    using var stream = new FleetLocationStream(clock);
+    using var stream = new FleetLocationStream(clock, new TestCompany());
     var fleet = new[]
     {
       new FleetTruckInfo { TruckExternalId = "truck", IsActive = true },
@@ -278,7 +286,7 @@ public class FleetTelemetryTests
   )
   {
     var clock = new ManualTimeProvider();
-    using var stream = new FleetLocationStream(clock);
+    using var stream = new FleetLocationStream(clock, new TestCompany());
     var truck = new FleetTruckInfo
     {
       TruckExternalId = "truck",
@@ -304,7 +312,7 @@ public class FleetTelemetryTests
   public async Task OversizedWindowFailsWithoutAcknowledgingAnIncompleteIncrementalBaseline()
   {
     var clock = new ManualTimeProvider();
-    using var stream = new FleetLocationStream(clock);
+    using var stream = new FleetLocationStream(clock, new TestCompany());
     var fleet = new[]
     {
       new FleetTruckInfo { TruckExternalId = "truck", IsActive = true },
@@ -347,17 +355,25 @@ public class FleetTelemetryTests
   {
     using var memory = new MemoryCache(new MemoryCacheOptions());
     var truckId = Guid.NewGuid();
-    memory.Set(
+    using var reads = new ReadCache(
+      Options.Create(new SynchronizationOptions()),
+      new TestCompany()
+    );
+    await reads.GetAsync<IReadOnlyList<FleetTruckInfo>>(
+      "fleet-catalog",
       FleetCache.CacheKey,
-      new FleetTruckInfo[]
-      {
-        new()
-        {
-          TruckId = truckId,
-          TruckExternalId = "truck",
-          IsActive = true,
-        },
-      }
+      () =>
+        Task.FromResult<IReadOnlyList<FleetTruckInfo>>(
+          new FleetTruckInfo[]
+          {
+            new()
+            {
+              TruckId = truckId,
+              TruckExternalId = "truck",
+              IsActive = true,
+            },
+          }
+        )
     );
     var now = DateTime.UtcNow;
     var provider = new StubFleetTelemetryProvider
@@ -390,15 +406,18 @@ public class FleetTelemetryTests
           }
         ),
     };
-    using var stream = new FleetLocationStream(TimeProvider.System);
-    using var telemetry = new FleetTelemetryCache(memory);
+    using var stream = new FleetLocationStream(
+      TimeProvider.System,
+      new TestCompany()
+    );
+    using var telemetry = new FleetTelemetryCache(memory, new TestCompany());
     var handler = new GetFleetLocationsHandler(
       null!,
       provider,
-      new(memory),
+      new(reads),
       telemetry,
       stream,
-      new(),
+      new(new TestCompany()),
       new NoRecordedPositions(),
       Options.Create(
         new SynchronizationOptions

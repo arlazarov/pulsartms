@@ -16,8 +16,8 @@ public class SamsaraHosHistoryTests
     using var handler = new Handler();
     using var client = new HttpClient(handler);
     var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
-    using var cache = new SamsaraHosHistoryCache(clock);
-    using var catalog = new SamsaraDriverCatalogCache(clock);
+    using var cache = new SamsaraHosHistoryCache(clock, new TestCompany());
+    using var catalog = new SamsaraDriverCatalogCache(clock, new TestCompany());
     var provider = new SamsaraHosHistoryProvider(
       new(client, new StubProviderCredentials(("apiKey", "test"))),
       cache,

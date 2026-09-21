@@ -123,7 +123,8 @@ public sealed class TruckFuelPlanStore(
                 ON CONFLICT ("TruckId") DO UPDATE SET
                   "RootDispatchId" = excluded."RootDispatchId", "CalculatedAt" = excluded."CalculatedAt",
                   "SummaryJson" = excluded."SummaryJson", "CheckedRouteJson" = excluded."CheckedRouteJson"
-                WHERE "TruckFuelPlans"."CalculatedAt" < excluded."CalculatedAt"
+                WHERE "TruckFuelPlans"."CompanyId" = excluded."CompanyId"
+                  AND "TruckFuelPlans"."CalculatedAt" < excluded."CalculatedAt"
                 """,
         ct
       ) > 0;

@@ -11,7 +11,7 @@ public sealed class DriverHosSnapshotTests
   public async Task ReadsReturnImmediatelyWhileRefreshIsPendingAndNeverExtendFreshness()
   {
     var time = new ManualTimeProvider();
-    var snapshot = new DriverHosSnapshot(time);
+    var snapshot = new DriverHosSnapshot(time, new TestCompany());
     Assert.False(snapshot.TryBeginRefresh(false));
     Assert.Empty(await snapshot.GetClocksAsync(default));
     Assert.True(snapshot.TryBeginRefresh(false));
@@ -48,7 +48,7 @@ public sealed class DriverHosSnapshotTests
   public async Task FutureClocksAndOversizedSnapshotsAreNotReturned()
   {
     var time = new ManualTimeProvider();
-    var snapshot = new DriverHosSnapshot(time);
+    var snapshot = new DriverHosSnapshot(time, new TestCompany());
     snapshot.Complete(
       new Dictionary<string, DriverHosClocks>
       {

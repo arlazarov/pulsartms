@@ -1,6 +1,9 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Models;
+using Domain.Entities;
 using Infrastructure.Persistence;
 using Infrastructure.Synchronization;
 
@@ -9,7 +12,26 @@ namespace Infrastructure.Integrations.Google.Gmail;
 public sealed class GmailWatchStore(AppDbContext db) : IGmailWatchStore
 {
   public static readonly Guid Id = new("71067801-256e-47e1-b30b-4a559f0aac63");
-  private readonly CheckpointLeaseStore checkpoint = new(db, Id);
+  private CheckpointLeaseStore checkpoint
+  {
+    get
+    {
+      var company =
+        db.ServingCompany
+        ?? throw new InvalidOperationException(
+          "Gmail watch requires a company."
+        );
+      var key =
+        company == Company.Amf
+          ? Id
+          : new Guid(
+            SHA256
+              .HashData(Encoding.UTF8.GetBytes($"gmail-watch:{company:N}"))
+              .AsSpan(0, 16)
+          );
+      return new(db, key);
+    }
+  }
   private static readonly JsonSerializerOptions Json = new(
     JsonSerializerDefaults.Web
   );

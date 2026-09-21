@@ -1,12 +1,24 @@
+using System.Collections.Concurrent;
+using Application.Interfaces;
 using Domain.Models.Fleet;
 
 namespace Application.Features.Fleet.Services;
 
-public sealed class ServerTelemetry
+public sealed class ServerTelemetry(ICurrentCompany companies)
 {
-  private FleetLocationsResponse? value;
-  public FleetLocationsResponse? Current => Volatile.Read(ref value);
+  private readonly ConcurrentDictionary<Guid, FleetLocationsResponse> values =
+    new();
 
-  public void Set(FleetLocationsResponse snapshot) =>
-    Volatile.Write(ref value, snapshot);
+  public FleetLocationsResponse? Current =>
+    companies.Id is { } company && values.TryGetValue(company, out var value)
+      ? value
+      : null;
+
+  public void Set(FleetLocationsResponse snapshot)
+  {
+    var company =
+      companies.Id
+      ?? throw new InvalidOperationException("Telemetry requires a company.");
+    values[company] = snapshot;
+  }
 }

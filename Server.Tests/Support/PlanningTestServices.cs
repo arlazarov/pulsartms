@@ -186,7 +186,7 @@ internal sealed class PlanningTestServices : IDisposable
       new ExecutionReadScope((AppDbContext)db),
       PlanningInputs
     );
-    FuelMemory = new();
+    FuelMemory = new(new TestCompany());
     Roads = new(
       db,
       new NextLoadRouteReader((AppDbContext)db),

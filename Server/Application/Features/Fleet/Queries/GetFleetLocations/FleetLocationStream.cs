@@ -1,15 +1,20 @@
 using Application.Features.Fleet.Interfaces;
+using Application.Interfaces;
 using Domain.Models.Fleet;
 
 namespace Application.Features.Fleet.Queries.GetFleetLocations;
 
-public sealed class FleetLocationStream(TimeProvider clock) : IDisposable
+public sealed class FleetLocationStream(
+  TimeProvider clock,
+  ICurrentCompany companies
+) : IDisposable
 {
   private const int MaximumPoints = 65536;
   private const long MaximumBytes = 16 * 1024 * 1024;
   private readonly SemaphoreSlim gate = new(1, 1);
   private IReadOnlyList<VehicleLocationPoint> retained = [];
   private HashSet<string> fleetIds = new(StringComparer.OrdinalIgnoreCase);
+  private Guid? retainedCompany;
   private DateTime? through;
   private DateTime? fullRefresh;
 
@@ -19,9 +24,18 @@ public sealed class FleetLocationStream(TimeProvider clock) : IDisposable
     CancellationToken ct = default
   )
   {
+    if (companies.Id is not { } company)
+      return [];
     await gate.WaitAsync(ct);
     try
     {
+      if (retainedCompany != company)
+      {
+        retained = [];
+        fleetIds.Clear();
+        through = fullRefresh = null;
+        retainedCompany = company;
+      }
       var active = fleet
         .Where(x => x.IsActive && !string.IsNullOrWhiteSpace(x.TruckExternalId))
         .ToDictionary(

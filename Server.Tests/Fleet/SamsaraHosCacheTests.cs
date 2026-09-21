@@ -11,7 +11,7 @@ public sealed class SamsaraHosCacheTests
   public void IdleHistoryExpiresAndGateAllocationIsBounded()
   {
     var clock = new ManualTimeProvider();
-    using var cache = new SamsaraHosHistoryCache(clock);
+    using var cache = new SamsaraHosHistoryCache(clock, new TestCompany());
     cache.Store(
       "driver",
       new(null, clock.GetUtcNow(), clock.GetUtcNow(), false)
@@ -34,7 +34,7 @@ public sealed class SamsaraHosCacheTests
   public void OversizedHistoryIsNotRetained()
   {
     var clock = new ManualTimeProvider();
-    using var cache = new SamsaraHosHistoryCache(clock);
+    using var cache = new SamsaraHosHistoryCache(clock, new TestCompany());
     var now = clock.GetUtcNow();
     var history = new HosHistory(
       now.AddDays(-16),
@@ -53,7 +53,7 @@ public sealed class SamsaraHosCacheTests
   public void CachedPeriodsCannotBeChangedByTheSourceListOrAReader()
   {
     var clock = new ManualTimeProvider();
-    using var cache = new SamsaraHosHistoryCache(clock);
+    using var cache = new SamsaraHosHistoryCache(clock, new TestCompany());
     var now = clock.GetUtcNow();
     var periods = new List<HosPeriod> { new(now.AddDays(-1), now, "onDuty") };
     var history = new HosHistory(

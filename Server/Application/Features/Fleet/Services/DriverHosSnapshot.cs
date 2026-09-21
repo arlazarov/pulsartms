@@ -1,10 +1,14 @@
 using System.Threading.Channels;
 using Application.Features.Fleet.Interfaces;
+using Application.Interfaces;
 using Domain.Models.Fleet;
 
 namespace Application.Features.Fleet.Services;
 
-public sealed class DriverHosSnapshot(TimeProvider time) : IDriverHosProvider
+public sealed class DriverHosSnapshot(
+  TimeProvider time,
+  ICurrentCompany companies
+) : IDriverHosProvider
 {
   private sealed record Clock(
     long? Break,
@@ -23,23 +27,45 @@ public sealed class DriverHosSnapshot(TimeProvider time) : IDriverHosProvider
       FullMode = BoundedChannelFullMode.DropWrite,
     }
   );
-  private IReadOnlyDictionary<string, Clock> clocks =
-    new Dictionary<string, Clock>();
-  private DateTimeOffset requestedAt = DateTimeOffset.MinValue;
-  private DateTimeOffset nextRefresh = DateTimeOffset.MinValue;
-  private bool refreshing;
+
+  private sealed class CompanyState
+  {
+    public IReadOnlyDictionary<string, Clock> Clocks =
+      new Dictionary<string, Clock>();
+    public DateTimeOffset RequestedAt = DateTimeOffset.MinValue;
+    public DateTimeOffset NextRefresh = DateTimeOffset.MinValue;
+    public bool Refreshing;
+  }
+
+  private readonly Dictionary<Guid, CompanyState> states = new();
+  private CompanyState State
+  {
+    get
+    {
+      var id =
+        companies.Id
+        ?? throw new InvalidOperationException("HOS requires a company.");
+      if (!states.TryGetValue(id, out var state))
+        states[id] = state = new();
+      return state;
+    }
+  }
 
   public Task<IReadOnlyDictionary<string, DriverHosClocks>> GetClocksAsync(
     CancellationToken ct
   )
   {
     ct.ThrowIfCancellationRequested();
+    if (companies.Id is null)
+      return Task.FromResult<IReadOnlyDictionary<string, DriverHosClocks>>(
+        new Dictionary<string, DriverHosClocks>()
+      );
     var now = time.GetUtcNow();
     IReadOnlyDictionary<string, Clock> current;
     lock (gate)
     {
-      requestedAt = now;
-      current = clocks;
+      State.RequestedAt = now;
+      current = State.Clocks;
     }
     demand.Writer.TryWrite(true);
     return Task.FromResult<IReadOnlyDictionary<string, DriverHosClocks>>(
@@ -70,12 +96,12 @@ public sealed class DriverHosSnapshot(TimeProvider time) : IDriverHosProvider
     lock (gate)
     {
       if (
-        refreshing
-        || nextRefresh > now
-        || !keepWarm && requestedAt < now.AddMinutes(-10)
+        State.Refreshing
+        || State.NextRefresh > now
+        || !keepWarm && State.RequestedAt < now.AddMinutes(-10)
       )
         return false;
-      refreshing = true;
+      State.Refreshing = true;
       return true;
     }
   }
@@ -106,9 +132,9 @@ public sealed class DriverHosSnapshot(TimeProvider time) : IDriverHosProvider
     lock (gate)
     {
       if (captured is not null)
-        clocks = captured;
-      nextRefresh = now.AddSeconds(captured is { Count: > 0 } ? 45 : 60);
-      refreshing = false;
+        State.Clocks = captured;
+      State.NextRefresh = now.AddSeconds(captured is { Count: > 0 } ? 45 : 60);
+      State.Refreshing = false;
     }
   }
 

@@ -31,6 +31,16 @@ public sealed class DriverHosRefreshOperation(
 
   public async Task RunOnceAsync(CancellationToken ct)
   {
+    await using var scope = scopes.CreateAsyncScope();
+    await CompanyPasses.ForEachCompanyAsync(
+      scope.ServiceProvider,
+      RunCompanyAsync,
+      ct
+    );
+  }
+
+  private async Task RunCompanyAsync(CancellationToken ct)
+  {
     if (
       !snapshot.TryBeginRefresh(
         options.Value.Enabled && synchronization.Status.Active
@@ -87,17 +97,9 @@ public sealed class DriverHosRefreshOperation(
     try
     {
       await using var scope = scopes.CreateAsyncScope();
-      // The readings arrive in one batch from the provider, but they are
-      // written into each carrier's own rows, so the write runs once per
-      // carrier and each one keeps what is theirs.
-      await CompanyPasses.ForEachCompanyAsync(
-        scope.ServiceProvider,
-        token =>
-          scope
-            .ServiceProvider.GetRequiredService<IDriverHosStore>()
-            .WriteAsync(clocks, token),
-        ct
-      );
+      await scope
+        .ServiceProvider.GetRequiredService<IDriverHosStore>()
+        .WriteAsync(clocks, ct);
     }
     catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
     catch (Exception ex)

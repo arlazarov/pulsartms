@@ -20,7 +20,7 @@ public sealed class DriverHosRefreshTests
   public async Task RefreshIsCoalescedAndSlowProviderDoesNotBlockReaders()
   {
     var time = new ManualTimeProvider();
-    var snapshot = new DriverHosSnapshot(time);
+    var snapshot = new DriverHosSnapshot(time, new TestCompany());
     var refresh = new RefreshProvider();
     await using var services = new ServiceCollection()
       .AddSingleton<IDriverHosRefreshProvider>(refresh)
@@ -63,7 +63,7 @@ public sealed class DriverHosRefreshTests
   public async Task AnIdleNonOwnerDoesNotStartAnotherProactivePoller()
   {
     var time = new ManualTimeProvider();
-    var snapshot = new DriverHosSnapshot(time);
+    var snapshot = new DriverHosSnapshot(time, new TestCompany());
     var refresh = new RefreshProvider();
     await using var services = new ServiceCollection()
       .AddSingleton<IDriverHosRefreshProvider>(refresh)

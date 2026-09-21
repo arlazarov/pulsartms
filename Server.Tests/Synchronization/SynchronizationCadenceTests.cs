@@ -139,19 +139,24 @@ public sealed class SynchronizationCadenceTests
     });
     services.AddSingleton<IFleetTelemetryFeedProvider>(new Feed());
     await using var provider = services.BuildServiceProvider();
-    provider
-      .GetRequiredService<IMemoryCache>()
-      .Set(
+    await provider
+      .GetRequiredService<ReadCache>()
+      .GetAsync<IReadOnlyList<FleetTruckInfo>>(
+        "fleet-catalog",
         FleetCache.CacheKey,
-        Array.Empty<FleetTruckInfo>(),
+        () =>
+          Task.FromResult<IReadOnlyList<FleetTruckInfo>>(
+            Array.Empty<FleetTruckInfo>()
+          ),
         TimeSpan.FromHours(1)
       );
     var operation = new FleetSynchronizationOperation(
       provider.GetRequiredService<IServiceScopeFactory>(),
       options,
       DispatchImportTestData.Options,
-      new ServerTelemetry(),
-      NullLogger<FleetSynchronizationOperation>.Instance
+      new ServerTelemetry(new TestCompany()),
+      NullLogger<FleetSynchronizationOperation>.Instance,
+      new TestCompany()
     );
     using var cancellation = new CancellationTokenSource();
     var startedAt = DateTime.UtcNow;
@@ -233,6 +238,7 @@ public sealed class SynchronizationCadenceTests
     services.AddSingleton<IOptions<SynchronizationOptions>>(options);
     services.AddSingleton<ReadCache>();
     services.AddSingleton<TimeProvider>(TimeProvider.System);
+    services.AddSingleton<ICurrentCompany>(new TestCompany());
     services.AddSingleton<FleetLocationStream>();
     services.AddScoped<FleetCache>();
     services.AddScoped<IAppDbContext>(_ => new AppDbContext(
@@ -245,29 +251,34 @@ public sealed class SynchronizationCadenceTests
     services.AddSingleton<IFleetTelemetryFeedProvider>(feed);
     services.AddSingleton<IFleetTelemetryProvider>(stream);
     await using var provider = services.BuildServiceProvider();
-    provider
-      .GetRequiredService<IMemoryCache>()
-      .Set(
+    await provider
+      .GetRequiredService<ReadCache>()
+      .GetAsync<IReadOnlyList<FleetTruckInfo>>(
+        "fleet-catalog",
         FleetCache.CacheKey,
-        new FleetTruckInfo[]
-        {
-          new()
-          {
-            TruckId = Guid.NewGuid(),
-            TruckExternalId = "truck",
-            UnitNumber = "11006",
-            IsActive = true,
-          },
-        },
+        () =>
+          Task.FromResult<IReadOnlyList<FleetTruckInfo>>(
+            new FleetTruckInfo[]
+            {
+              new()
+              {
+                TruckId = Guid.NewGuid(),
+                TruckExternalId = "truck",
+                UnitNumber = "11006",
+                IsActive = true,
+              },
+            }
+          ),
         TimeSpan.FromHours(1)
       );
-    var telemetry = new ServerTelemetry();
+    var telemetry = new ServerTelemetry(new TestCompany());
     var operation = new FleetSynchronizationOperation(
       provider.GetRequiredService<IServiceScopeFactory>(),
       options,
       DispatchImportTestData.Options,
       telemetry,
-      NullLogger<FleetSynchronizationOperation>.Instance
+      NullLogger<FleetSynchronizationOperation>.Instance,
+      new TestCompany()
     );
     using var cancellation = new CancellationTokenSource();
     var pending = operation.RunAsync(cancellation.Token);
@@ -372,19 +383,24 @@ public sealed class SynchronizationCadenceTests
     services.AddSingleton<ISender>(sender);
     services.AddSingleton<IFleetTelemetryFeedProvider>(new Feed());
     await using var provider = services.BuildServiceProvider();
-    provider
-      .GetRequiredService<IMemoryCache>()
-      .Set(
+    await provider
+      .GetRequiredService<ReadCache>()
+      .GetAsync<IReadOnlyList<FleetTruckInfo>>(
+        "fleet-catalog",
         FleetCache.CacheKey,
-        Array.Empty<FleetTruckInfo>(),
+        () =>
+          Task.FromResult<IReadOnlyList<FleetTruckInfo>>(
+            Array.Empty<FleetTruckInfo>()
+          ),
         TimeSpan.FromHours(1)
       );
     var operation = new FleetSynchronizationOperation(
       provider.GetRequiredService<IServiceScopeFactory>(),
       options,
       DispatchImportTestData.Options,
-      new ServerTelemetry(),
-      NullLogger<FleetSynchronizationOperation>.Instance
+      new ServerTelemetry(new TestCompany()),
+      NullLogger<FleetSynchronizationOperation>.Instance,
+      new TestCompany()
     );
     using var cancellation = new CancellationTokenSource();
     var pending = operation.RunAsync(cancellation.Token);

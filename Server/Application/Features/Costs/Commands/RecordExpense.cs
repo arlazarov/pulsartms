@@ -43,6 +43,18 @@ public sealed class RecordExpenseHandler(
     if (entry.Quantity is <= 0)
       return Fail("A stated quantity must be above zero.", 400);
 
+    if (
+      entry.TruckId is { } truck
+        && !await db.Trucks.AnyAsync(x => x.Id == truck, ct)
+      || entry.DriverId is { } driver
+        && !await db.Drivers.AnyAsync(x => x.Id == driver, ct)
+      || entry.TrailerId is { } trailer
+        && !await db.Trailers.AnyAsync(x => x.Id == trailer, ct)
+      || entry.ExecutionLegId is { } leg
+        && !await db.ExecutionLegs.AnyAsync(x => x.Id == leg, ct)
+    )
+      return Fail("An expense resource was not found in this company.", 400);
+
     // An import supplies its own key so a replay is one expense; an expense
     // entered by hand has none and several of them may exist.
     if (

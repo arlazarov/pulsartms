@@ -1,9 +1,13 @@
+using Application.Interfaces;
 using Domain.Models.Eta;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Infrastructure.Integrations.Samsara;
 
-public sealed class SamsaraHosHistoryCache(TimeProvider clock) : IDisposable
+public sealed class SamsaraHosHistoryCache(
+  TimeProvider clock,
+  ICurrentCompany companies
+) : IDisposable
 {
   public sealed record Snapshot(
     HosHistory? Baseline,
@@ -28,6 +32,7 @@ public sealed class SamsaraHosHistoryCache(TimeProvider clock) : IDisposable
 
   public Snapshot? Get(string driverId)
   {
+    driverId = Key(driverId);
     if (!entries.TryGetValue<Entry>(driverId, out var entry))
       return null;
     if (entry!.Expires > clock.GetUtcNow())
@@ -38,6 +43,7 @@ public sealed class SamsaraHosHistoryCache(TimeProvider clock) : IDisposable
 
   public Snapshot Store(string driverId, Snapshot snapshot)
   {
+    driverId = Key(driverId);
     if (snapshot.Baseline is { } baseline)
       snapshot = snapshot with
       {
@@ -66,6 +72,9 @@ public sealed class SamsaraHosHistoryCache(TimeProvider clock) : IDisposable
     );
     return snapshot;
   }
+
+  private string Key(string driverId) =>
+    $"{companies.Id ?? throw new InvalidOperationException("HOS history requires a company."):N}:{driverId}";
 
   public void Dispose()
   {

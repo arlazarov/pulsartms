@@ -10,7 +10,7 @@ public sealed class IntegrationCredentialSettingConfiguration
   public void Configure(EntityTypeBuilder<IntegrationCredentialSetting> builder)
   {
     builder.ToTable("IntegrationCredentialSettings");
-    builder.HasKey(value => value.Provider);
+    builder.HasKey(value => new { value.CompanyId, value.Provider });
     builder.Property(value => value.Provider).HasMaxLength(32);
     builder.Property(value => value.ProtectedValues).HasMaxLength(65_536);
     builder.Property(value => value.Revision).IsConcurrencyToken();

@@ -88,7 +88,7 @@ public sealed class RoutePreviewTests
         Dispatches = [new() { Id = load.Id, TruckId = truck.Id }],
       }
     );
-    using var telemetry = new FleetTelemetryCache(memory);
+    using var telemetry = new FleetTelemetryCache(memory, new TestCompany());
     var previews = new RoutePreviewService(
       db,
       services.PlanningInputs,
@@ -97,7 +97,7 @@ public sealed class RoutePreviewTests
       displays,
       services.Routes,
       memory,
-      new ServerTelemetry(),
+      new ServerTelemetry(new TestCompany()),
       telemetry
     );
     var result = await previews.GetAsync(default);
@@ -165,7 +165,7 @@ public sealed class RoutePreviewTests
         }
       },
     };
-    using var telemetry = new FleetTelemetryCache(memory);
+    using var telemetry = new FleetTelemetryCache(memory, new TestCompany());
     var service = new RoutePreviewService(
       db,
       services.PlanningInputs,
@@ -174,7 +174,7 @@ public sealed class RoutePreviewTests
       displays,
       services.Routes,
       memory,
-      new ServerTelemetry(),
+      new ServerTelemetry(new TestCompany()),
       telemetry
     );
     var first = service.GetAsync(default);

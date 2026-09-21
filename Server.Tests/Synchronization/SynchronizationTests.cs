@@ -24,6 +24,7 @@ using Application.Features.Synchronization.Options;
 using Application.Features.Synchronization.Services;
 using Application.Interfaces;
 using Application.Models;
+using Domain.Entities;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
 using Domain.Models.Fleet;
@@ -106,6 +107,7 @@ public class SynchronizationTests
     var services = new ServiceCollection().AddMemoryCache();
     services.AddSingleton<IOptions<SynchronizationOptions>>(config);
     services.AddSingleton<ReadCache>();
+    services.AddSingleton<ICurrentCompany>(new TestCompany());
     services.AddSingleton<ServerTelemetry>();
     services.AddScoped<FleetCache>();
     services.AddDbContext<AppDbContext>(options =>
@@ -149,7 +151,8 @@ public class SynchronizationTests
             }
           ),
           telemetry,
-          NullLogger<FleetSynchronizationOperation>.Instance
+          NullLogger<FleetSynchronizationOperation>.Instance,
+          new TestCompany()
         ),
         new ConfigurationBuilder().Build()
       );
@@ -199,8 +202,9 @@ public class SynchronizationTests
         services.GetRequiredService<IServiceScopeFactory>(),
         Options.Create(new SynchronizationOptions { Enabled = false }),
         DispatchImportTestData.Options,
-        new ServerTelemetry(),
-        NullLogger<FleetSynchronizationOperation>.Instance
+        new ServerTelemetry(new TestCompany()),
+        NullLogger<FleetSynchronizationOperation>.Instance,
+        new TestCompany()
       ),
       new ConfigurationBuilder().Build()
     );
@@ -433,15 +437,18 @@ public class SynchronizationTests
   public async Task CachedTelemetryReadsNeverWaitForProviderOrExpiredCache()
   {
     using var memory = new MemoryCache(new MemoryCacheOptions());
-    using var telemetry = new FleetTelemetryCache(memory);
-    using var stream = new FleetLocationStream(TimeProvider.System);
+    using var telemetry = new FleetTelemetryCache(memory, new TestCompany());
+    using var stream = new FleetLocationStream(
+      TimeProvider.System,
+      new TestCompany()
+    );
     var handler = new GetFleetLocationsHandler(
       null!,
       null!,
       null!,
       telemetry,
       stream,
-      new(),
+      new(new TestCompany()),
       new NoRecordedPositions(),
       Options.Create(new SynchronizationOptions())
     );
@@ -453,7 +460,7 @@ public class SynchronizationTests
       Trucks = [new() { TruckId = Guid.NewGuid() }],
     };
     await telemetry.GetAsync(_ => Task.FromResult(snapshot), default);
-    memory.Remove(FleetTelemetryCache.CacheKey);
+    memory.Remove((FleetTelemetryCache.CacheKey, Company.Amf));
     Assert.Same(
       snapshot,
       (await handler.Handle(new(CachedOnly: true), default)).Response

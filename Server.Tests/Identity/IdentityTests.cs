@@ -19,6 +19,7 @@ using InfrastructureServices = Infrastructure.DependencyInjection;
 namespace Server.Tests.Identity;
 
 [Trait("Category", "Identity")]
+[Trait("Kind", "Integration")]
 public class IdentityTests
 {
   [Fact]
@@ -60,7 +61,12 @@ public class IdentityTests
         IsActive = true,
       }
     );
-    await db.SaveChangesAsync();
+    using (
+      scope
+        .ServiceProvider.GetRequiredService<ICurrentCompany>()
+        .As(Company.Amf)
+    )
+      await db.SaveChangesAsync();
     var context = new DefaultHttpContext
     {
       RequestServices = scope.ServiceProvider,
@@ -134,7 +140,12 @@ public class IdentityTests
         IsActive = true,
       }
     );
-    await db.SaveChangesAsync();
+    using (
+      scope
+        .ServiceProvider.GetRequiredService<ICurrentCompany>()
+        .As(Company.Amf)
+    )
+      await db.SaveChangesAsync();
     var principal = await signIn.CreateUserPrincipalAsync(user);
     // A token issued before carriers existed names nobody's, and is sent
     // back through refresh rather than shown an empty product.
@@ -207,7 +218,12 @@ public class IdentityTests
     Assert.False(await auth.LoginAsync(user.Email, "password123"));
     Assert.True((await identity.SetActiveAsync(user.Id, true)).Success);
     (await db.Users.IgnoreQueryFilters().SingleAsync()).IsActive = false;
-    await db.SaveChangesAsync();
+    using (
+      scope
+        .ServiceProvider.GetRequiredService<ICurrentCompany>()
+        .As(Company.Amf)
+    )
+      await db.SaveChangesAsync();
     Assert.False(await auth.LoginAsync(user.Email, "password123"));
   }
 }
