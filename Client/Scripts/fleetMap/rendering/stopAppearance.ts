@@ -34,7 +34,9 @@ export function stopMarkerIcon(
   color: readonly number[],
   border: readonly number[] = [255, 255, 255, 255],
   radius = 15.5,
-  ring = null,
+  // The colour of the truck standing on this stop, when one is; the badge
+  // is then drawn as a ring in that colour around it.
+  ring: string | readonly number[] | null = null,
   stacked = false,
 ) {
   const paint = (value: string | readonly number[]) =>

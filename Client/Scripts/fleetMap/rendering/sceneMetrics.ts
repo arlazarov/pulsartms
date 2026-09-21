@@ -63,6 +63,17 @@ export const sceneMetrics = Object.freeze({
 });
 
 // Rasterize at the displayed physical font size so small glyphs retain hinting.
+// The font settings each kind of label is drawn with, at this screen's
+// pixel density.
+export type LabelFonts = {
+  label: FontSettings;
+  stopLabel: FontSettings;
+  stop: FontSettings;
+  truck: FontSettings;
+  fuelVisit: FontSettings;
+};
+type FontSettings = { sdf: boolean; fontSize: number };
+
 export function createLabelFonts(
   pixelRatio = 1,
   stopLabelSize: number = sceneMetrics.stopLabelSize,

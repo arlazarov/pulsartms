@@ -28,7 +28,6 @@ const length = file =>
 const written = new Map([
   ['fleetMap/fleetMap', 788],
   ['fleetMap/rendering/scene', 592],
-  ['fleetMap/rendering/sceneLayers', 562],
   ['fleetMap/routes/routeLayer', 308], // 496 before its road and its shape
   ['fleetMap/stations/stationLayer', 405], // 458 before its prices and its plan
   ['fleetMap/stations/stationPopup', 327], // 309 before its types

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.js';
+import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.ts';
 import { sceneMetrics as metrics } from '../../Scripts/fleetMap/rendering/sceneMetrics.ts';
 
 test('recommendation rings retain anchors and selection without floating distance labels', () => {

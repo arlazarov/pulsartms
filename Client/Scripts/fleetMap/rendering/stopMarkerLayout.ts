@@ -14,7 +14,7 @@ export type StopRow = {
   markerOffsetX?: number;
   markerOffsetY?: number;
   // The colour of the truck standing on this stop, once one is known to be.
-  standing?: unknown;
+  standing?: string | readonly number[] | null;
   stacked?: boolean;
   [key: string]: any;
 };

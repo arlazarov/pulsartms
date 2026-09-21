@@ -60,7 +60,7 @@ trucks on the map and the camera over them, the stations and what fuel
 costs at them, the road and the shape of the route it draws.
 
 A few modules are still whole screens written as one closure -
-`fleetMap.js`, `rendering/scene.js`, `rendering/sceneLayers.js`,
+`fleetMap.js`, `rendering/scene.js`, `rendering/sceneLayers.ts`,
 `routes/routeLayer.ts`, `stations/stationLayer.ts`. They are pinned at
 their current length by `tests/architecture/scriptStructure.test.js`: they
 may shrink, never grow, and nothing new may start out over 300 lines. A

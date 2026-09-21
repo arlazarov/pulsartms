@@ -1,5 +1,5 @@
 import { releaseAll } from '../lifecycle/release.ts';
-import { createSceneLayers } from './sceneLayers.js';
+import { createSceneLayers } from './sceneLayers.ts';
 import { snapshotStops } from './stopData.ts';
 import { pickNearbyStation } from './stationTouch.ts';
 import { readStopLabelStyle } from './stopLabelStyle.ts';

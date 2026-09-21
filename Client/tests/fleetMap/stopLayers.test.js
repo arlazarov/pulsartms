@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.js';
+import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.ts';
 import { snapshotStops } from '../../Scripts/fleetMap/rendering/stopData.ts';
 import { currentRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.ts';
 import { stopMarkerIcon } from '../../Scripts/fleetMap/rendering/stopAppearance.ts';
