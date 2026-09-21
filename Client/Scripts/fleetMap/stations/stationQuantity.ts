@@ -1,9 +1,10 @@
+// How much fuel a card says, in the unit the country it stands in uses.
 export function stationQuantity(
-  gallons,
-  station,
+  gallons: number,
+  station: { country?: string } | null | undefined,
   unit = '',
-  rounding = Math.ceil,
-) {
+  rounding: (value: number) => number = Math.ceil,
+): string {
   if (!Number.isFinite(gallons) || gallons < 0) return '';
   const country = (station?.country || '').trim().toUpperCase();
   const normalized = unit.trim().toLowerCase();
@@ -28,14 +29,19 @@ export function stationQuantity(
 // is, and nothing else. How much is bought there rode along for a while and
 // made the badge a sentence across the map; the card says it, in a place
 // where there is room to say it properly.
-export function fuelVisitLabel(fuel) {
+export function fuelVisitLabel(
+  fuel: { numbers?: unknown } | null | undefined,
+): string | undefined {
   const numbers = typeof fuel?.numbers === 'string' ? fuel.numbers.trim() : '';
   // Nothing planned here carries no badge, exactly as before.
   return numbers || undefined;
 }
 
-export function stationPurchase(fuel, station) {
+export function stationPurchase(
+  fuel: { gallons?: number; unit?: string; full?: boolean } | null | undefined,
+  station: { country?: string } | null | undefined,
+): string {
   if (!Number.isFinite(fuel?.gallons)) return '';
-  const quantity = stationQuantity(fuel.gallons, station, fuel.unit);
-  return fuel.full ? 'Fill up' : `Buy ${quantity}`;
+  const quantity = stationQuantity(fuel!.gallons!, station, fuel!.unit);
+  return fuel!.full ? 'Fill up' : `Buy ${quantity}`;
 }

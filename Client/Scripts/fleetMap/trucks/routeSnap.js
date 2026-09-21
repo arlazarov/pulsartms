@@ -1,5 +1,5 @@
 import { segmentRange } from '../geometry/routeSearch.ts';
-import { headingDifference } from './truckPoints.js';
+import { headingDifference } from './truckPoints.ts';
 
 // Visual correction only. Never feed these coordinates back into GPS or ETA.
 export function matchRoute(position, path, cumulative, progress) {

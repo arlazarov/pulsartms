@@ -5,7 +5,7 @@ const reference =
 const dateOrOtherId =
   /^(?:\d{1,4}[-/_]\d{1,2}[-/_]\d{1,4}|\d{1,2}[-/]\d{1,2}|\d{1,4}(?:am|pm)|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[-_]?\d{1,2}[-_]?\d{2,4}|\d{1,2}[-_]?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[-_]?\d{2,4}|(?:bol|load|order)[-_]?\d.*)$/i;
 
-function kind(value) {
+function kind(value: unknown): 'pickup' | 'delivery' | null {
   const normalized = String(value ?? '')
     .replace(/[^a-z]/gi, '')
     .toLowerCase();
@@ -18,7 +18,7 @@ function kind(value) {
   return pickup === delivery ? null : pickup ? 'pickup' : 'delivery';
 }
 
-function endsClause(notes, index, limit) {
+function endsClause(notes: string, index: number, limit: number): boolean {
   if (index < limit && ['"', "'"].includes(notes[index])) index++;
   while (index < limit && [' ', '\t'].includes(notes[index])) index++;
   if (index === limit) return notes.length === limit;
@@ -30,7 +30,7 @@ function endsClause(notes, index, limit) {
   );
 }
 
-function isReference(value) {
+function isReference(value: string): boolean {
   if (!/\d/.test(value) || dateOrOtherId.test(value)) return false;
   if (/^(?:19|20)\d{2}$/.test(value)) return false;
   if (!/^\d{8}$/.test(value)) return true;
@@ -52,11 +52,16 @@ function isReference(value) {
   });
 }
 
-export function stopAppointmentReference(notes, job) {
+// The appointment numbers written into a stop's notes, for the job that
+// stop is.
+export function stopAppointmentReference(
+  notes: unknown,
+  job: unknown,
+): string[] {
   if (typeof notes !== 'string' || !notes.length) return [];
   const input = notes.slice(0, maximumInput),
     selectedKind = kind(job),
-    values = [];
+    values: string[] = [];
   for (const match of input.matchAll(reference)) {
     const [, qualifier, value] = match;
     if (

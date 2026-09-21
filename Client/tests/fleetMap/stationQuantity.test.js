@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stationQuantity } from '../../Scripts/fleetMap/stations/stationQuantity.js';
+import { stationQuantity } from '../../Scripts/fleetMap/stations/stationQuantity.ts';
 test('station quantity uses country and converts US gallons to liters for Canada', () => {
   assert.equal(stationQuantity(50, { country: 'Canada' }), '190 L');
   assert.equal(stationQuantity(50, { country: 'CA' }), '190 L');
@@ -20,7 +20,7 @@ test('quoted native volume unit takes precedence over missing or incorrect count
 
 test('full refill hides quantities in both countries', async () => {
   const { stationPurchase } = await import(
-    '../../Scripts/fleetMap/stations/stationQuantity.js'
+    '../../Scripts/fleetMap/stations/stationQuantity.ts'
   );
   assert.equal(
     stationPurchase({ gallons: 86, full: true }, { country: 'US' }),
@@ -41,7 +41,7 @@ test('full refill hides quantities in both countries', async () => {
 // for a while and made the badge a sentence across the map.
 test('a planned stop badge names its place in the order and nothing else', async () => {
   const { fuelVisitLabel } = await import(
-    '../../Scripts/fleetMap/stations/stationQuantity.js'
+    '../../Scripts/fleetMap/stations/stationQuantity.ts'
   );
   assert.equal(fuelVisitLabel({ numbers: '2', gallons: 119.6 }), '2');
   assert.equal(fuelVisitLabel({ numbers: '1/3', gallons: 50 }), '1/3');

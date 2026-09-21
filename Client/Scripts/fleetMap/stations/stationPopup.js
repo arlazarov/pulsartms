@@ -1,6 +1,6 @@
-import { stationPurchase } from './stationQuantity.js';
+import { stationPurchase } from './stationQuantity.ts';
 import { distanceLabel } from '../ui/distanceLabel.ts';
-import { addressLines } from '../ui/addressLines.js';
+import { addressLines } from '../ui/addressLines.ts';
 import { createFuelVisit } from './stationFuelVisit.js';
 import { createPriceComparison } from './stationPriceComparison.js';
 /**

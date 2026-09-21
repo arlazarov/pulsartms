@@ -11,7 +11,12 @@ const regions = new Set(
   ).split(' '),
 );
 
-export function addressLines(address) {
+// An address as the two lines a card shows: the street, and everything
+// that places it.
+export function addressLines(address: string | null | undefined): {
+  street: string;
+  locality: string;
+} {
   const value = address?.trim() || '';
   const parts = value
     .split(',')
@@ -29,10 +34,14 @@ export function addressLines(address) {
   );
 }
 
-function split(parts, end, country) {
+function split(
+  parts: string[],
+  end: number,
+  country: string,
+): { street: string; locality: string } | null {
   if (end < 2) return null;
   let postal = '',
-    region;
+    region: string | undefined;
   const combined = regionPattern.exec(parts[end]);
   if (combined) {
     [, region, postal] = combined;

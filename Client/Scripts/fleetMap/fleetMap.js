@@ -11,7 +11,7 @@ import * as payload from './geometry/encodedPath.ts';
 import { createMapHost } from './provider/mapHost.js';
 import { mergeRoutePayload } from './routes/routePayload.ts';
 import { stopEtaDeadline, stopEtaLabels } from './routes/stopEtaLabels.js';
-import { etaStops, stopEtaIdentity } from './routes/stopEtaIdentity.js';
+import { etaStops, stopEtaIdentity } from './routes/stopEtaIdentity.ts';
 import { createCameraViewport } from './ui/cameraViewport.js';
 import { createDockedDetails } from './ui/dockedDetails.js';
 import { createRouteEditor } from './routes/routeEditor.js';

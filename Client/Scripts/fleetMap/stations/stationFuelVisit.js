@@ -1,4 +1,4 @@
-import { stationQuantity } from './stationQuantity.js';
+import { stationQuantity } from './stationQuantity.ts';
 import { distanceLabel } from '../ui/distanceLabel.ts';
 
 function node(tag, className, text) {

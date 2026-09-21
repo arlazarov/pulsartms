@@ -1,4 +1,7 @@
-export function loadReferenceContent(reference) {
+import type { LoadReference } from '../contracts.d.ts';
+
+// The load and its order, said once each, with the number a click copies.
+export function loadReferenceContent(reference: LoadReference): HTMLElement {
   const header = document.createElement('div');
   header.className = 'fleet-map-route-info__load';
   const status = document.createElement('span');
@@ -10,7 +13,12 @@ export function loadReferenceContent(reference) {
   // on its own, and only the order is named before it is said. The popup
   // used to prefix both and punctuate them, which read as a third way of
   // writing the same two numbers.
-  function number(kind, label, value, display) {
+  function number(
+    kind: string,
+    label: string,
+    value: string,
+    display?: string,
+  ) {
     const caption = document.createElement('span');
     caption.className = label ? 'fleet-map-route-info__label' : '';
     caption.textContent = label;
@@ -19,7 +27,7 @@ export function loadReferenceContent(reference) {
     button.className = 'fleet-map-route-info__copy-number';
     button.title = `Copy ${kind} number`;
     const text = document.createElement('strong');
-    text.textContent = display;
+    text.textContent = display ?? value;
     button.append(text);
     button.addEventListener('click', async event => {
       event.stopPropagation();

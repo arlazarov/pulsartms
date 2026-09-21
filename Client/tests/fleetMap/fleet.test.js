@@ -4,7 +4,7 @@ import { coordinates } from '../../Scripts/fleetMap/geometry/coordinates.ts';
 import {
   createTruckPoint,
   mergeTruckPoints,
-} from '../../Scripts/fleetMap/trucks/truckPoints.js';
+} from '../../Scripts/fleetMap/trucks/truckPoints.ts';
 import {
   advancePlaybackTime,
   getTruckPosition,

@@ -101,7 +101,7 @@ test('every colour a rendering module draws with is accounted for', () => {
   )) {
     const source = readFileSync(new URL(file, directory), 'utf8');
     for (const [literal, red, green, blue] of source.matchAll(
-      /\[\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\s*(?:,\s*\d{1,3}\s*)?\]/g,
+      /\[\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\s*(?:,\s*\d{1,3}\s*)?,?\s*\]/g,
     )) {
       const value = hex([red, green, blue].map(Number));
       claimed.add(value);

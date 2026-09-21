@@ -1,4 +1,4 @@
-import { createTruckPoint, mergeTruckPoints } from './truckPoints.js';
+import { createTruckPoint, mergeTruckPoints } from './truckPoints.ts';
 import {
   advancePlaybackTime,
   blendTruckPosition,

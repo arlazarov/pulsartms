@@ -1,5 +1,5 @@
 import { orderedStops } from './pendingStops.ts';
-import { stopVisits } from './stopVisits.js';
+import { stopVisits } from './stopVisits.ts';
 import { stopContent, stopDetails } from './stopCardContent.js';
 import { distanceLabel } from '../ui/distanceLabel.ts';
 

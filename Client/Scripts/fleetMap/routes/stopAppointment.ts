@@ -1,3 +1,5 @@
+import type { PlanStop } from '../contracts.d.ts';
+
 const dayFormat = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   day: 'numeric',
@@ -10,7 +12,7 @@ const yearFormat = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 });
 
-function calendarDate(value) {
+function calendarDate(value: unknown): Date | null {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))
     return null;
   const date = new Date(`${value}T00:00:00Z`);
@@ -20,7 +22,7 @@ function calendarDate(value) {
     : null;
 }
 
-function clock(value) {
+function clock(value: unknown): string {
   if (
     typeof value !== 'string' ||
     !/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?$/.test(value)
@@ -30,7 +32,8 @@ function clock(value) {
   return `${String(hour % 12 || 12).padStart(2, '0')}:${value.slice(3, 5)} ${hour < 12 ? 'AM' : 'PM'}`;
 }
 
-export function stopAppointment(stop) {
+// The window a stop has to be made in, as the card says it.
+export function stopAppointment(stop: PlanStop): string {
   const start = calendarDate(stop.scheduledDate);
   const end = calendarDate(
     stop.scheduledDate2 ?? (stop.scheduledTime2 ? stop.scheduledDate : null),

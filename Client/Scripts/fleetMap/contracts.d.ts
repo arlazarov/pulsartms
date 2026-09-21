@@ -181,16 +181,18 @@ export interface NextLoadLabels {
   executionLegId?: string | null;
   names: string[];
 }
+// The load a card names: its number, what to show instead of the number,
+// and the order it was booked under.
+export interface LoadReference {
+  dispatchId: string;
+  loadNumber: number;
+  loadLabel?: string;
+  orderNumber?: string;
+}
+
 /** Blazor transports UTF-8 JSON bytes; geometry omission is accepted only for a retained matching plan. */
 export interface FleetRouteInterop {
-  setLoadReference(
-    reference: {
-      dispatchId: string;
-      loadNumber: number;
-      loadLabel?: string;
-      orderNumber?: string;
-    } | null,
-  ): void;
+  setLoadReference(reference: LoadReference | null): void;
   setDistanceUnit(unit: string): void;
   setRouteBytes(
     bytes: Uint8Array,

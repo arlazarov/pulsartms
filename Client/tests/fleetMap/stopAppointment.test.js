@@ -9,7 +9,7 @@ test('clock times distinguish midnight and noon while preserving the scheduled l
   ])
     assert.equal(stopAppointment({ scheduledTime }), expected);
 });
-import { stopAppointment } from '../../Scripts/fleetMap/routes/stopAppointment.js';
+import { stopAppointment } from '../../Scripts/fleetMap/routes/stopAppointment.ts';
 
 test('same-day appointment windows show the calendar date once', () => {
   const start = {

@@ -1,10 +1,11 @@
+import type { MapPlan, PlanStop } from '../contracts.d.ts';
 import { pendingStops } from './pendingStops.ts';
 
-export function etaStops(plan) {
+export function etaStops(plan: MapPlan | null | undefined): PlanStop[] {
   return plan?.tracking?.allStopsPassed ? [] : pendingStops(plan);
 }
 
-export function stopEtaIdentity(plan) {
+export function stopEtaIdentity(plan: MapPlan | null | undefined): string {
   if (!plan) return '';
   return JSON.stringify([
     plan.truckId,

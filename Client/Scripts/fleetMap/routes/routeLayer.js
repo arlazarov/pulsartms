@@ -11,7 +11,7 @@ import { createRouteSnapper, matchRoute } from '../trucks/routeSnap.js';
 import { createDetailsCard } from '../ui/detailsCard.js';
 import { pendingStops } from './pendingStops.ts';
 import { emptyRouteLegs } from './emptyRouteLegs.ts';
-import { stopEtaIdentity } from './stopEtaIdentity.js';
+import { stopEtaIdentity } from './stopEtaIdentity.ts';
 
 const PROGRESS_DISPLAY_INTERVAL_MS = 60_000;
 

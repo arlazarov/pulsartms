@@ -1,7 +1,7 @@
-import { stopAppointment } from './stopAppointment.js';
-import { addressLines } from '../ui/addressLines.js';
-import { stopAppointmentReference } from './stopAppointmentReference.js';
-import { loadReferenceContent } from '../ui/loadReferenceContent.js';
+import { stopAppointment } from './stopAppointment.ts';
+import { addressLines } from '../ui/addressLines.ts';
+import { stopAppointmentReference } from './stopAppointmentReference.ts';
+import { loadReferenceContent } from '../ui/loadReferenceContent.ts';
 import { distanceLabel } from '../ui/distanceLabel.ts';
 
 // What a stop's card says, as plain data: the facts the card is built from

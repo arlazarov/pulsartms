@@ -1,4 +1,4 @@
-import { headingDifference, normalizeHeading } from './truckPoints.js';
+import { headingDifference, normalizeHeading } from './truckPoints.ts';
 
 // Server telemetry is published roughly once a minute. Keep enough headroom for
 // the publish duration and snapshot polling jitter. Missing telemetry still holds

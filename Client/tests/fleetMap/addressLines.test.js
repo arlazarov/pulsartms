@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addressLines } from '../../Scripts/fleetMap/ui/addressLines.js';
+import { addressLines } from '../../Scripts/fleetMap/ui/addressLines.ts';
 
 test('stop addresses separate the street from the city, region, postal code and country', () => {
   assert.deepEqual(addressLines('530 Henry St, Rome, NY, 13440, US'), {

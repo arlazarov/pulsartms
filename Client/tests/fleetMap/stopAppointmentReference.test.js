@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stopAppointmentReference } from '../../Scripts/fleetMap/routes/stopAppointmentReference.js';
+import { stopAppointmentReference } from '../../Scripts/fleetMap/routes/stopAppointmentReference.ts';
 
 const shared =
   'Shipper appointment confirmation number: PU123456. Receiver appointment confirmation number: DL654321. Shipper BOL: 42845601. Service for Load sentinel.';
