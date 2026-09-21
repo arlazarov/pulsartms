@@ -1,7 +1,9 @@
 namespace Domain.Entities.Execution;
 
-public sealed class TrailerCustodyInterval : BaseEntity
+public sealed class TrailerCustodyInterval : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid TrailerId { get; set; }
   public Guid ParticipantId { get; set; }
   public Guid ReleaseVisitId { get; set; }

@@ -209,11 +209,11 @@ public sealed class EtaForecastStore(
       return db.Database.ExecuteSqlInterpolatedAsync(
         $"""
         INSERT INTO "DispatchEtaForecasts"
-          ("Id", "DispatchId", "ExecutionLegId", "AssignmentRevision",
+          ("Id", "CompanyId", "DispatchId", "ExecutionLegId", "AssignmentRevision",
            "TruckId",
            "RootDispatchId", "RootExecutionLegId", "InputHash",
            "DriverExternalId", "CalculatedAt", "ValidUntil", "ForecastJson")
-        VALUES ({id}, {value.DispatchId}, {value.ExecutionLegId},
+        VALUES ({id}, {Company()}, {value.DispatchId}, {value.ExecutionLegId},
           {value.AssignmentRevision},
           {value.TruckId}, {value.RootDispatchId}, {value.RootExecutionLegId},
           {value.InputHash}, {value.DriverExternalId}, {calculatedAt},
@@ -237,10 +237,10 @@ public sealed class EtaForecastStore(
     return db.Database.ExecuteSqlInterpolatedAsync(
       $"""
       INSERT INTO "DispatchEtaForecasts"
-        ("Id", "DispatchId", "AssignmentRevision", "TruckId",
+        ("Id", "CompanyId", "DispatchId", "AssignmentRevision", "TruckId",
          "RootDispatchId", "InputHash",
          "DriverExternalId", "CalculatedAt", "ValidUntil", "ForecastJson")
-      VALUES ({id}, {value.DispatchId}, 0, {value.TruckId}, {value.RootDispatchId},
+      VALUES ({id}, {Company()}, {value.DispatchId}, 0, {value.TruckId}, {value.RootDispatchId},
         {value.InputHash}, {value.DriverExternalId}, {calculatedAt},
         {validUntil}, {json})
       ON CONFLICT ("DispatchId") WHERE "ExecutionLegId" IS NULL DO UPDATE SET
@@ -257,6 +257,15 @@ public sealed class EtaForecastStore(
       ct
     );
   }
+
+  // Raw statements go around the filter and the stamp, so they name the
+  // carrier themselves. Writing without one is not a row with a missing
+  // field - it is a row that belongs to nobody, and it is refused.
+  private Guid Company() =>
+    db.ServingCompany
+    ?? throw new InvalidOperationException(
+      "An ETA forecast cannot be written without a company."
+    );
 
   private static DateTime DatabaseInstant(DateTime value) =>
     new(value.ToUniversalTime().Ticks / 10 * 10, DateTimeKind.Utc);

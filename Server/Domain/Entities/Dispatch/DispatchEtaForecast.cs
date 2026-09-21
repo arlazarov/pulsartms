@@ -1,7 +1,11 @@
+using Domain.Entities;
+
 namespace Domain.Entities.Dispatch;
 
-public sealed class DispatchEtaForecast : BaseEntity
+public sealed class DispatchEtaForecast : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid DispatchId { get; set; }
   public Guid? ExecutionLegId { get; set; }
   public long AssignmentRevision { get; set; }

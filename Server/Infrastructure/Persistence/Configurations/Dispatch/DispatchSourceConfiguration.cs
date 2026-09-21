@@ -9,7 +9,14 @@ public sealed class DispatchSourceConfiguration
 {
   public void Configure(EntityTypeBuilder<DispatchSourceLink> builder)
   {
-    builder.HasKey(x => new { x.Provider, x.ExternalId });
+    // The same broker gives two carriers the same external id for
+    // different loads; the key is the carrier plus that pair.
+    builder.HasKey(x => new
+    {
+      x.CompanyId,
+      x.Provider,
+      x.ExternalId,
+    });
     builder.Property(x => x.Provider).HasMaxLength(100);
     builder.Property(x => x.ExternalId).HasMaxLength(200);
     builder.Property(x => x.DisplayName).HasMaxLength(100).IsRequired();

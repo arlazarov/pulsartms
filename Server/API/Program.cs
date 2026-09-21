@@ -19,6 +19,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseAuthorization();
+
 // After authorization, so a signed-in person is counted as a person
 // rather than as whatever address they happen to be asking from.
 app.UseRateLimiter();

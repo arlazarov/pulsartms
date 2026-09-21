@@ -12,7 +12,7 @@ public class DriverConfiguration : IEntityTypeConfiguration<Driver>
 
     builder.Property(x => x.ExternalId).HasMaxLength(100).IsRequired();
 
-    builder.HasIndex(x => x.ExternalId).IsUnique();
+    builder.HasIndex(x => new { x.CompanyId, x.ExternalId }).IsUnique();
 
     builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
 

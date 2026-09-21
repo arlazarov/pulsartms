@@ -1,7 +1,9 @@
 namespace Domain.Entities.Mileage;
 
-public sealed class Movement : BaseEntity
+public sealed class Movement : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid IdempotencyKey { get; init; }
   public string RequestHash { get; init; } = "";
   public Guid TruckId { get; init; }

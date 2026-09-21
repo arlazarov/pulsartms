@@ -1,7 +1,9 @@
 namespace Domain.Entities.Execution;
 
-public sealed class DispatchSwitchOperation : BaseEntity
+public sealed class DispatchSwitchOperation : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public string Status { get; set; } = "planned";
   public long Revision { get; set; }
   public string SiteName { get; set; } = "";

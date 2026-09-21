@@ -1,7 +1,9 @@
 namespace Domain.Entities.Dispatch;
 
-public sealed class DispatchActivityEntry : BaseEntity
+public sealed class DispatchActivityEntry : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid DispatchId { get; set; }
   public long CreatedRevision { get; set; }
   public long Revision { get; set; }

@@ -1,7 +1,9 @@
 namespace Domain.Entities.Dispatch;
 
-public sealed class DispatchSourceLink
+public sealed class DispatchSourceLink : ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public string Provider { get; set; } = "";
   public string ExternalId { get; set; } = "";
   public string DisplayName { get; set; } = "";

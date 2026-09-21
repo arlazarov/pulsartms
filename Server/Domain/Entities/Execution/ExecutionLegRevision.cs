@@ -1,7 +1,9 @@
 namespace Domain.Entities.Execution;
 
-public sealed class ExecutionLegRevision
+public sealed class ExecutionLegRevision : ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid ExecutionLegId { get; init; }
   public long Revision { get; init; }
   public Guid TruckId { get; init; }

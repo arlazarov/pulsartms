@@ -4,8 +4,10 @@ using Domain.Entities.Fleet;
 
 namespace Domain.Entities.Dispatch;
 
-public class Dispatch : BaseEntity, IWorkFacts
+public class Dispatch : BaseEntity, IWorkFacts, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public int LoadNumber { get; set; }
   public string OrderNumber { get; set; } = string.Empty;
   public string Status { get; set; } = string.Empty;

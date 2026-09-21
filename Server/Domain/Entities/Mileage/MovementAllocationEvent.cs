@@ -1,7 +1,9 @@
 namespace Domain.Entities.Mileage;
 
-public sealed class MovementAllocationEvent : BaseEntity
+public sealed class MovementAllocationEvent : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid MovementId { get; init; }
   public long Revision { get; init; }
   public Guid? PreviousAllocationDispatchId { get; init; }

@@ -1,7 +1,9 @@
 namespace Domain.Entities.Fleet;
 
-public class Driver : BaseEntity, IFleetConfiguration
+public class Driver : BaseEntity, IFleetConfiguration, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public string ExternalId { get; set; } = string.Empty;
   public string Name { get; set; } = string.Empty;
   public string FuelCard { get; set; } = string.Empty;

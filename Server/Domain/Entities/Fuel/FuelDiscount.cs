@@ -1,7 +1,9 @@
 namespace Domain.Entities.Fuel;
 
-public class FuelDiscount : BaseEntity
+public class FuelDiscount : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid FuelStationId { get; set; }
   public FuelStation FuelStation { get; set; } = default!;
   public string Currency { get; set; } = string.Empty;

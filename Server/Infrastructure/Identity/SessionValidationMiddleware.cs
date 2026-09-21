@@ -33,10 +33,15 @@ public class SessionValidationMiddleware(RequestDelegate next)
         ) ?? "";
       async Task<bool> ValidAsync() =>
         await signInManager.ValidateSecurityStampAsync(context.User) is not null
-        && await dbContext.Users.AnyAsync(
-          x => x.IdentityUserId == id && x.IsActive,
-          context.RequestAborted
-        );
+        // Who someone is, and whether their account is still live, is
+        // asked before their carrier is known - it is the question that
+        // decides the carrier. Like signing in, it is not narrowed by one.
+        && await dbContext
+          .Users.IgnoreQueryFilters()
+          .AnyAsync(
+            x => x.IdentityUserId == id && x.IsActive,
+            context.RequestAborted
+          );
       var valid = reads is null
         ? await ValidAsync()
         : await reads.GetAsync(

@@ -33,14 +33,15 @@ public static class RequestLimits
       >(context =>
         RateLimitPartition.GetTokenBucketLimiter(
           Who(context),
-          _ => new()
-          {
-            TokenLimit = 600,
-            TokensPerPeriod = 300,
-            ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-            QueueLimit = 0,
-            AutoReplenishment = true,
-          }
+          _ =>
+            new()
+            {
+              TokenLimit = 600,
+              TokensPerPeriod = 300,
+              ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+              QueueLimit = 0,
+              AutoReplenishment = true,
+            }
         )
       );
 
@@ -49,14 +50,15 @@ public static class RequestLimits
         context =>
           RateLimitPartition.GetTokenBucketLimiter(
             Who(context),
-            _ => new()
-            {
-              TokenLimit = 40,
-              TokensPerPeriod = 20,
-              ReplenishmentPeriod = TimeSpan.FromMinutes(1),
-              QueueLimit = 0,
-              AutoReplenishment = true,
-            }
+            _ =>
+              new()
+              {
+                TokenLimit = 40,
+                TokensPerPeriod = 20,
+                ReplenishmentPeriod = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+              }
           )
       );
 
@@ -65,12 +67,13 @@ public static class RequestLimits
         context =>
           RateLimitPartition.GetFixedWindowLimiter(
             Address(context),
-            _ => new()
-            {
-              PermitLimit = 10,
-              Window = TimeSpan.FromMinutes(5),
-              QueueLimit = 0,
-            }
+            _ =>
+              new()
+              {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+              }
           )
       );
 
@@ -78,13 +81,10 @@ public static class RequestLimits
       {
         context.HttpContext.Response.StatusCode = 429;
         if (
-          context.Lease.TryGetMetadata(
-            MetadataName.RetryAfter,
-            out var after
-          )
+          context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var after)
         )
-          context.HttpContext.Response.Headers.RetryAfter = ((int)
-            after.TotalSeconds
+          context.HttpContext.Response.Headers.RetryAfter = (
+            (int)after.TotalSeconds
           ).ToString(CultureInfo.InvariantCulture);
         await context.HttpContext.Response.WriteAsJsonAsync(
           RequestResponse<object>.Fail(
@@ -101,7 +101,7 @@ public static class RequestLimits
   // is to go on before signing in.
   private static string Who(HttpContext context) =>
     context.User.FindFirstValue(ClaimTypes.NameIdentifier)
-    is { Length: > 0 } user
+      is { Length: > 0 } user
       ? "user:" + user
       : "address:" + Address(context);
 

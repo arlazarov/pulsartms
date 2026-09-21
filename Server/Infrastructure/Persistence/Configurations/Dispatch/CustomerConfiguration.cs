@@ -11,7 +11,7 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
     builder.HasKey(x => x.Id);
     builder.Property(x => x.Name).IsRequired().HasMaxLength(200);
     builder.Property(x => x.NormalizedName).IsRequired().HasMaxLength(200);
-    builder.HasIndex(x => x.NormalizedName).IsUnique();
+    builder.HasIndex(x => new { x.CompanyId, x.NormalizedName }).IsUnique();
     builder.Property(x => x.ProfileRevision).IsConcurrencyToken();
     builder.Property(x => x.ProfileJson).IsRequired().HasDefaultValue("{}");
   }

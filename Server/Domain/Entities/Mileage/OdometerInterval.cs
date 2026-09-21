@@ -1,7 +1,9 @@
 namespace Domain.Entities.Mileage;
 
-public sealed class OdometerInterval : BaseEntity
+public sealed class OdometerInterval : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid TruckId { get; init; }
   public string ExternalTruckId { get; init; } = "";
   public DateTime StartedAt { get; init; }

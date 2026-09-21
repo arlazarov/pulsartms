@@ -2,8 +2,10 @@ namespace Domain.Entities.Costs;
 
 // Money that was spent. The amount exists before anyone decides which load
 // bears it, so an expense makes no claim about a load; see ExpenseAttribution.
-public sealed class Expense : BaseEntity
+public sealed class Expense : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   // Only an imported expense has a natural key; one entered by hand has
   // none, and several such expenses must be able to exist. Null is distinct
   // in a unique index, so both cases hold.

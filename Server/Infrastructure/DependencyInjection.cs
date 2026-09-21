@@ -48,10 +48,14 @@ public static class DependencyInjection
     IConfiguration configuration
   )
   {
-    services.AddDbContext<AppDbContext>(options =>
-    {
-      options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"));
-    });
+    services.AddDbContext<AppDbContext>(
+      (provider, options) =>
+      {
+        options.UseNpgsql(
+          configuration.GetConnectionString("DefaultConnection")
+        );
+      }
+    );
 
     services.AddScoped<IBorderDataProtection, BorderDataProtection>();
     services.AddHostedService<DatabaseInitializer>();
@@ -148,6 +152,8 @@ public static class DependencyInjection
     services.AddScoped<IIdentityService, IdentityService>();
     services.AddScoped<IUserRoleService, UserRoleService>();
     services.AddScoped<ICurrentUser, CurrentUser>();
+    services.AddScoped<ICurrentCompany, CurrentCompany>();
+    services.AddScoped<ICompanyRoster, CompanyRoster>();
     services.AddScoped<IAuthService, AuthService>();
 
     services.AddScoped<GmailServiceFactory>();

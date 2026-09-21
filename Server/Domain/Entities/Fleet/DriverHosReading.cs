@@ -3,8 +3,10 @@ namespace Domain.Entities.Fleet;
 // The last hours reading observed for one driver, kept so an instance that
 // does not run the refresh can still answer, and so a restart does not start
 // blind. The provider remains the source; this is its latest observation.
-public sealed class DriverHosReading
+public sealed class DriverHosReading : ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public string DriverExternalId { get; set; } = "";
   public long? BreakMs { get; set; }
   public long? DriveMs { get; set; }

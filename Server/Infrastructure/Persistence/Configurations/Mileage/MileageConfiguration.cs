@@ -13,7 +13,7 @@ public sealed class MovementConfiguration : IEntityTypeConfiguration<Movement>
   public void Configure(EntityTypeBuilder<Movement> builder)
   {
     builder.HasKey(x => x.Id);
-    builder.HasIndex(x => x.IdempotencyKey).IsUnique();
+    builder.HasIndex(x => new { x.CompanyId, x.IdempotencyKey }).IsUnique();
     builder.HasIndex(x => new
     {
       x.AllocatedDispatchId,

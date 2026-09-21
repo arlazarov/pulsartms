@@ -8,6 +8,13 @@ namespace Infrastructure.Persistence;
 public sealed class PlanningRefreshStore(AppDbContext db)
   : IPlanningRefreshStore
 {
+  // A raw statement goes around the stamp, so it names the carrier itself.
+  private Guid Company() =>
+    db.ServingCompany
+    ?? throw new InvalidOperationException(
+      "Work cannot be queued without a company."
+    );
+
   public async Task<PlanningRefreshState> RequestAsync(
     PlanningScope scope,
     string inputSignature,
@@ -25,11 +32,11 @@ public sealed class PlanningRefreshStore(AppDbContext db)
     await db.Database.ExecuteSqlInterpolatedAsync(
       $"""
       INSERT INTO "PlanningRefreshRequests" AS request (
-        "Id", "DispatchId", "ExecutionLegId", "AssignmentRevision",
+        "Id", "CompanyId", "DispatchId", "ExecutionLegId", "AssignmentRevision",
         "InputSignature", "RequestedVersion", "CompletedVersion",
         "RequestedAt", "AvailableAt", "Attempts"
       ) VALUES (
-        {id}, {scope.DispatchId}, {scope.ExecutionLegId},
+        {id}, {Company()}, {scope.DispatchId}, {scope.ExecutionLegId},
         {scope.AssignmentRevision}, {inputSignature}, 1, 0, {now}, {now}, 0
       ) ON CONFLICT ("Id") DO UPDATE SET
         "InputSignature" = EXCLUDED."InputSignature",
@@ -63,6 +70,9 @@ public sealed class PlanningRefreshStore(AppDbContext db)
     PlanningRefreshRequest? work;
     if (db.Database.IsNpgsql())
     {
+      // Deliberately across carriers. This is the server's work list,
+      // not one carrier's: a worker claims whatever is next and then
+      // runs that pass as the carrier the claimed row belongs to.
       var rows = await db
         .PlanningRefreshRequests.FromSqlInterpolated(
           $"""
@@ -123,6 +133,7 @@ public sealed class PlanningRefreshStore(AppDbContext db)
       ? null
       : new(
         work.Id,
+        work.CompanyId,
         new(work.DispatchId, work.ExecutionLegId, work.AssignmentRevision),
         work.RequestedVersion,
         lease,

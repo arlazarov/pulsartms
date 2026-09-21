@@ -2,8 +2,8 @@ using Application.Features.Routing.Commands;
 using Application.Features.Routing.Queries;
 using Domain.Models.Routing;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace API.Controllers;
 

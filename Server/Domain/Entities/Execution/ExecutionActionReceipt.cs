@@ -1,7 +1,9 @@
 namespace Domain.Entities.Execution;
 
-public sealed class ExecutionActionReceipt : BaseEntity
+public sealed class ExecutionActionReceipt : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid IdempotencyKey { get; set; }
   public Guid SwitchId { get; set; }
   public Guid ParticipantId { get; set; }

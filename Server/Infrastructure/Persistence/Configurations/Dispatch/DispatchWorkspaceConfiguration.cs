@@ -28,7 +28,7 @@ public sealed class DispatchWorkspaceRevisionConfiguration
   {
     builder.HasKey(x => x.Id);
     builder.HasIndex(x => new { x.DispatchId, x.Revision }).IsUnique();
-    builder.HasIndex(x => x.IdempotencyKey).IsUnique();
+    builder.HasIndex(x => new { x.CompanyId, x.IdempotencyKey }).IsUnique();
     builder.Property(x => x.RequestHash).HasMaxLength(64);
     builder.Property(x => x.Summary).HasMaxLength(500);
     builder.Property(x => x.ActorName).HasMaxLength(200);

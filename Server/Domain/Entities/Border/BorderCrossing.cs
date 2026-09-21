@@ -46,8 +46,10 @@ public sealed class BorderCrew
   public string ProtectedDetails { get; set; } = "";
 }
 
-public sealed class BorderCrossing
+public sealed class BorderCrossing : ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid Id { get; set; }
   public long Revision { get; set; }
   public DateTime UpdatedAt { get; set; }
@@ -71,8 +73,10 @@ public sealed class BorderCrossing
   public List<BorderEquipment> Equipment { get; set; } = [];
 }
 
-public sealed class BorderSaveReceipt
+public sealed class BorderSaveReceipt : ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid Id { get; set; }
   public Guid ActorId { get; set; }
   public Guid CrossingId { get; set; }

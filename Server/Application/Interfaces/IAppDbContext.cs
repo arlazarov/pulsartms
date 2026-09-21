@@ -18,6 +18,7 @@ public interface IAppDbContext
   DbSet<BorderSaveReceipt> BorderSaveReceipts { get; }
   DbSet<Shipment> Shipments { get; }
   DbSet<ShipmentSaveReceipt> ShipmentSaveReceipts { get; }
+  DbSet<Company> Companies { get; }
   DbSet<User> Users { get; }
   DbSet<FuelStation> FuelStations { get; }
   DbSet<TruckFuelPlan> TruckFuelPlans { get; }

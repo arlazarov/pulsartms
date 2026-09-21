@@ -28,8 +28,10 @@ public sealed class ShipmentCommodity
   public decimal? Weight { get; set; }
 }
 
-public sealed class Shipment : BaseEntity
+public sealed class Shipment : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid LoadId { get; set; }
   public long Revision { get; set; }
   public DateTime UpdatedAt { get; set; }

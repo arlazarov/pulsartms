@@ -15,10 +15,12 @@ public sealed class UserRoleService(AppDbContext db) : IUserRoleService
   )
   {
     if (
-      !await db.Users.AnyAsync(
-        u => u.IdentityUserId == identityId && u.IsActive,
-        ct
-      )
+      // Who someone is, and whether their account is still live, is
+      // asked before their carrier is known - it is the question that
+      // decides the carrier. Like signing in, it is not narrowed by one.
+      !await db
+        .Users.IgnoreQueryFilters()
+        .AnyAsync(u => u.IdentityUserId == identityId && u.IsActive, ct)
     )
       return null;
     var roles = await db
@@ -34,7 +36,8 @@ public sealed class UserRoleService(AppDbContext db) : IUserRoleService
   )
   {
     var users = await db
-      .Users.AsNoTracking()
+      .Users.IgnoreQueryFilters()
+      .AsNoTracking()
       .Where(user => ids.Contains(user.Id))
       .Select(user => new { user.Id, user.IdentityUserId })
       .ToListAsync(ct);

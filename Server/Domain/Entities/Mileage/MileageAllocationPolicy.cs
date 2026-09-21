@@ -1,7 +1,9 @@
 namespace Domain.Entities.Mileage;
 
-public sealed class MileageAllocationPolicy : BaseEntity
+public sealed class MileageAllocationPolicy : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public static readonly Guid SingletonId = new(
     "ed1209a7-3d79-41e5-b183-19d59f8b2419"
   );

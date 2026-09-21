@@ -1,7 +1,9 @@
 namespace Domain.Entities.Fleet;
 
-public class Truck : BaseEntity, IFleetConfiguration
+public class Truck : BaseEntity, IFleetConfiguration, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public string ExternalId { get; set; } = string.Empty;
   public string UnitNumber { get; set; } = string.Empty;
   public string Vin { get; set; } = string.Empty;

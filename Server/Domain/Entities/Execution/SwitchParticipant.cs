@@ -1,7 +1,9 @@
 namespace Domain.Entities.Execution;
 
-public sealed class SwitchParticipant : BaseEntity
+public sealed class SwitchParticipant : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid SwitchId { get; set; }
   public DispatchSwitchOperation Switch { get; set; } = null!;
   public Guid DispatchId { get; set; }

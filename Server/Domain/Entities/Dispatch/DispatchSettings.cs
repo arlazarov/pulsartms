@@ -1,7 +1,9 @@
 namespace Domain.Entities.Dispatch;
 
-public sealed class DispatchSettings : BaseEntity
+public sealed class DispatchSettings : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public static readonly Guid SingletonId = new(
     "731f4d30-c85a-4af0-a14a-29db18bd4a47"
   );

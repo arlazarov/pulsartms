@@ -1,7 +1,9 @@
 namespace Domain.Entities.Execution;
 
-public sealed class ExecutionLeg : BaseEntity
+public sealed class ExecutionLeg : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid TripId { get; set; }
   public Trip Trip { get; set; } = null!;
   public Guid TruckId { get; set; }

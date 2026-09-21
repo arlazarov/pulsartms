@@ -1,7 +1,9 @@
 namespace Domain.Entities.Dispatch;
 
-public sealed class DispatchDocument
+public sealed class DispatchDocument : ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid Id { get; set; }
   public Guid DispatchId { get; set; }
   public string Kind { get; set; } = "other";

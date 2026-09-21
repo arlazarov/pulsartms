@@ -1,7 +1,9 @@
 namespace Domain.Entities.Execution;
 
-public sealed class ExecutionLegStop
+public sealed class ExecutionLegStop : ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid ExecutionLegId { get; set; }
   public int Position { get; set; }
   public Guid Id { get; set; }

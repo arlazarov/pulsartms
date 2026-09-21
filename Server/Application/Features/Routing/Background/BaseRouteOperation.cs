@@ -66,6 +66,14 @@ public sealed partial class BaseRouteOperation(
         );
         if (work is null)
           break;
+        // From here the pass belongs to the carrier whose work was
+        // claimed. A host with no notion of carriers has nothing to switch
+        // to, and does not. Every read it makes is narrowed to them and every row
+        // it writes is stamped with them, the same as if one of their
+        // dispatchers had asked for it.
+        using var serving = scope
+          .ServiceProvider.GetService<ICurrentCompany>()
+          ?.As(work.Company);
         await PrepareAsync(work, ct);
       }
       catch (OperationCanceledException) when (ct.IsCancellationRequested)

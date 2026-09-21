@@ -15,6 +15,6 @@ public class FuelImportSourceConfiguration
 
     builder.Property(x => x.AttachmentName).HasMaxLength(500).IsRequired();
 
-    builder.HasIndex(x => x.GmailMessageId).IsUnique();
+    builder.HasIndex(x => new { x.CompanyId, x.GmailMessageId }).IsUnique();
   }
 }

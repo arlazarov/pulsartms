@@ -11,7 +11,7 @@ public sealed class ExpenseConfiguration : IEntityTypeConfiguration<Expense>
   public void Configure(EntityTypeBuilder<Expense> builder)
   {
     builder.HasKey(x => x.Id);
-    builder.HasIndex(x => x.IdempotencyKey).IsUnique();
+    builder.HasIndex(x => new { x.CompanyId, x.IdempotencyKey }).IsUnique();
     builder.HasIndex(x => new { x.Kind, x.OccurredAt });
     builder.HasIndex(x => new { x.TruckId, x.OccurredAt });
     builder.HasIndex(x => x.ExecutionLegId);

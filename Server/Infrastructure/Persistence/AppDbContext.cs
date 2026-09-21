@@ -22,6 +22,7 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
     IAppDbContext,
     IDataProtectionKeyContext
 {
+  public DbSet<Company> Companies => Set<Company>();
   public DbSet<BorderCrossing> BorderCrossings => Set<BorderCrossing>();
   public DbSet<BorderSaveReceipt> BorderSaveReceipts =>
     Set<BorderSaveReceipt>();

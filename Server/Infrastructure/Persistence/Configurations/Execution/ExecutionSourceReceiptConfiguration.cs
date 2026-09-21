@@ -11,7 +11,7 @@ public sealed class ExecutionSourceReceiptConfiguration
   public void Configure(EntityTypeBuilder<ExecutionSourceReceipt> builder)
   {
     builder.HasKey(x => x.Id);
-    builder.HasIndex(x => x.IdempotencyKey).IsUnique();
+    builder.HasIndex(x => new { x.CompanyId, x.IdempotencyKey }).IsUnique();
     builder.Property(x => x.RequestHash).HasMaxLength(64).IsRequired();
     builder.Property(x => x.ResultJson).HasMaxLength(65536).IsRequired();
     builder

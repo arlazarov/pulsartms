@@ -1,7 +1,9 @@
 namespace Domain.Entities.Dispatch;
 
-public sealed class DispatchWorkspace : BaseEntity
+public sealed class DispatchWorkspace : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public long Revision { get; set; }
   public string MetadataJson { get; set; } = "{}";
   public string StopExtrasJson { get; set; } = "{}";
@@ -14,8 +16,10 @@ public sealed class DispatchWorkspace : BaseEntity
   public Guid RecordedBy { get; set; }
 }
 
-public sealed class DispatchWorkspaceRevision : BaseEntity
+public sealed class DispatchWorkspaceRevision : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid DispatchId { get; set; }
   public long Revision { get; set; }
   public Guid IdempotencyKey { get; set; }

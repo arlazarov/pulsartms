@@ -1,7 +1,9 @@
 namespace Domain.Entities.Mileage;
 
-public sealed class MovementDistanceEvidence : BaseEntity
+public sealed class MovementDistanceEvidence : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid MovementId { get; init; }
   public long Revision { get; init; }
   public string Basis { get; init; } = "planned";

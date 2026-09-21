@@ -1,7 +1,9 @@
 namespace Domain.Entities.Dispatch;
 
-public sealed class DispatchRate : BaseEntity
+public sealed class DispatchRate : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid DispatchId { get; set; }
   public decimal? Price { get; set; }
   public string Currency { get; set; } = "";

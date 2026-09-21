@@ -44,11 +44,13 @@ public sealed class PostgresFixtureTests
     await db.Database.ExecuteSqlRawAsync(
       """
       INSERT INTO "PlanningRefreshRequests" (
-        "Id", "DispatchId", "ExecutionLegId", "AssignmentRevision",
+        "Id", "CompanyId", "DispatchId", "ExecutionLegId",
+        "AssignmentRevision",
         "InputSignature", "RequestedVersion", "CompletedVersion",
         "RequestedAt", "AvailableAt", "Attempts"
       ) VALUES (
-        'isolation-probe', gen_random_uuid(), NULL, 0, 'probe', 1, 0,
+        'isolation-probe', 'a0f0a0f0-0000-4000-8000-000000000001',
+        gen_random_uuid(), NULL, 0, 'probe', 1, 0,
         now(), now(), 0
       )
       """

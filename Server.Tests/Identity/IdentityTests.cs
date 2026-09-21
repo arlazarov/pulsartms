@@ -178,7 +178,7 @@ public class IdentityTests
     Assert.False(await auth.RefreshAsync(refreshToken));
     Assert.False(await auth.LoginAsync(user.Email, "password123"));
     Assert.True((await identity.SetActiveAsync(user.Id, true)).Success);
-    (await db.Users.SingleAsync()).IsActive = false;
+    (await db.Users.IgnoreQueryFilters().SingleAsync()).IsActive = false;
     await db.SaveChangesAsync();
     Assert.False(await auth.LoginAsync(user.Email, "password123"));
   }

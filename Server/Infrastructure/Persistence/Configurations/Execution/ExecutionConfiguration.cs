@@ -108,7 +108,7 @@ public sealed class DispatchSwitchOperationConfiguration
     builder.Property(x => x.Revision).IsConcurrencyToken();
     builder.Property(x => x.SiteName).HasMaxLength(500).IsRequired();
     builder.Property(x => x.RequestHash).HasMaxLength(64).IsRequired();
-    builder.HasIndex(x => x.IdempotencyKey).IsUnique();
+    builder.HasIndex(x => new { x.CompanyId, x.IdempotencyKey }).IsUnique();
   }
 }
 
@@ -201,7 +201,7 @@ public sealed class ExecutionReceiptConfiguration
     builder.Property(x => x.Action).HasMaxLength(30).IsRequired();
     builder.Property(x => x.RequestHash).HasMaxLength(64).IsRequired();
     builder.Property(x => x.ResultJson).HasMaxLength(65536).IsRequired();
-    builder.HasIndex(x => x.IdempotencyKey).IsUnique();
+    builder.HasIndex(x => new { x.CompanyId, x.IdempotencyKey }).IsUnique();
     builder
       .HasOne<SwitchParticipant>()
       .WithMany()

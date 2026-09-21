@@ -113,6 +113,7 @@ public sealed class ResetInventoryTests
         "AspNetUserRoles",
         "AspNetRoles",
         "AspNetRoleClaims",
+        "Companies",
         "DataProtectionKeys",
         "IntegrationCredentialSettings",
       }

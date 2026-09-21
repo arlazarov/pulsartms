@@ -116,8 +116,8 @@ public sealed class TruckFuelPlanStore(
     // concurrent writers.
     return await db.Database.ExecuteSqlInterpolatedAsync(
         $"""
-                INSERT INTO "TruckFuelPlans" ("Id", "TruckId", "RootDispatchId", "CalculatedAt", "SummaryJson", "CheckedRouteJson")
-                VALUES ({snapshot.TruckId}, {snapshot.TruckId}, {snapshot.RootDispatchId}, {DatabaseInstant(
+                INSERT INTO "TruckFuelPlans" ("Id", "TruckId", "CompanyId", "RootDispatchId", "CalculatedAt", "SummaryJson", "CheckedRouteJson")
+                VALUES ({snapshot.TruckId}, {snapshot.TruckId}, {Company()}, {snapshot.RootDispatchId}, {DatabaseInstant(
                     snapshot.CalculatedAt
                 )}, {summary}, {checkedRoute})
                 ON CONFLICT ("TruckId") DO UPDATE SET
@@ -149,8 +149,8 @@ public sealed class TruckFuelPlanStore(
     if (expectedCalculatedAt is not { } revision)
       return await db.Database.ExecuteSqlInterpolatedAsync(
           $"""
-          INSERT INTO "TruckFuelPlans" ("Id", "TruckId", "RootDispatchId", "CalculatedAt", "SummaryJson", "CheckedRouteJson")
-          VALUES ({snapshot.TruckId}, {snapshot.TruckId}, {snapshot.RootDispatchId}, {calculatedAt}, {summary}, {checkedRoute})
+          INSERT INTO "TruckFuelPlans" ("Id", "TruckId", "CompanyId", "RootDispatchId", "CalculatedAt", "SummaryJson", "CheckedRouteJson")
+          VALUES ({snapshot.TruckId}, {snapshot.TruckId}, {Company()}, {snapshot.RootDispatchId}, {calculatedAt}, {summary}, {checkedRoute})
           ON CONFLICT ("TruckId") DO NOTHING
           """,
           ct
@@ -163,7 +163,8 @@ public sealed class TruckFuelPlanStore(
                 UPDATE "TruckFuelPlans"
                 SET "RootDispatchId" = {snapshot.RootDispatchId}, "CalculatedAt" = {calculatedAt},
                   "SummaryJson" = {summary}, "CheckedRouteJson" = {checkedRoute}
-                WHERE "TruckId" = {snapshot.TruckId} AND "CalculatedAt" = {DatabaseInstant(
+                WHERE "TruckId" = {snapshot.TruckId} AND "CompanyId" = {Company()}
+                  AND "CalculatedAt" = {DatabaseInstant(
                     revision
                 )}
                   AND "CalculatedAt" < {calculatedAt}
@@ -171,6 +172,15 @@ public sealed class TruckFuelPlanStore(
         ct
       ) > 0;
   }
+
+  // Raw statements go around the filter and the stamp, so they name the
+  // carrier themselves. Writing without one is not a row with a missing
+  // field - it is a row that belongs to nobody, and it is refused.
+  private Guid Company() =>
+    db.ServingCompany
+    ?? throw new InvalidOperationException(
+      "A truck fuel plan cannot be written without a company."
+    );
 
   private static (string Summary, string? CheckedRoute) Serialize(
     TruckFuelPlanSnapshot snapshot

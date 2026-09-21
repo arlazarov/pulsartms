@@ -4,8 +4,14 @@ using Domain.Entities.Fleet;
 
 namespace Domain.Entities.Dispatch;
 
-public class DispatchStop : BaseEntity, ITruckPathStop, IWorkStopFacts
+public class DispatchStop
+  : BaseEntity,
+    ITruckPathStop,
+    IWorkStopFacts,
+    ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   [NotMapped]
   public bool HasDriverOverride { get; set; }
 

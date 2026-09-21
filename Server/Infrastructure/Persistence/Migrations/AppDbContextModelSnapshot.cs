@@ -49,6 +49,9 @@ namespace Infrastructure.Persistence.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("DestinationCountry")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -93,6 +96,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.ToTable("BorderCrossings");
                 });
 
@@ -103,6 +108,9 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("CrossingId")
@@ -118,6 +126,8 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("CrossingId");
 
@@ -150,6 +160,36 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("CacheInvalidations");
                 });
 
+            modelBuilder.Entity("Domain.Entities.Company", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("Companies");
+                });
+
             modelBuilder.Entity("Domain.Entities.Costs.Expense", b =>
                 {
                     b.Property<Guid>("Id")
@@ -159,6 +199,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<decimal>("Amount")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Currency")
                         .IsRequired()
@@ -234,14 +277,16 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DriverId");
 
                     b.HasIndex("ExecutionLegId");
 
-                    b.HasIndex("IdempotencyKey")
-                        .IsUnique();
-
                     b.HasIndex("TrailerId");
+
+                    b.HasIndex("CompanyId", "IdempotencyKey")
+                        .IsUnique();
 
                     b.HasIndex("Kind", "OccurredAt");
 
@@ -264,6 +309,9 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("DispatchId")
                         .HasColumnType("uuid");
@@ -291,6 +339,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DispatchId");
 
                     b.HasIndex("ExpenseId", "DispatchId")
@@ -316,6 +366,9 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("DispatchId")
                         .HasColumnType("uuid");
@@ -346,6 +399,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("ExpenseId", "RecordedAt");
 
                     b.ToTable("ExpenseAttributionEvents");
@@ -355,6 +410,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Name")
@@ -379,7 +437,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("NormalizedName")
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CompanyId", "NormalizedName")
                         .IsUnique();
 
                     b.ToTable("Customers");
@@ -395,6 +455,9 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Currency")
                         .IsRequired()
@@ -491,18 +554,20 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("DriverId");
-
-                    b.HasIndex("LoadNumber")
-                        .IsUnique();
 
                     b.HasIndex("PlanningTruckId");
 
                     b.HasIndex("TrailerId");
 
                     b.HasIndex("TruckId");
+
+                    b.HasIndex("CompanyId", "LoadNumber")
+                        .IsUnique();
 
                     b.HasIndex("Status", "DeliveryDate");
 
@@ -524,6 +589,9 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)");
 
                     b.Property<Guid>("AddOperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<long>("CreatedRevision")
@@ -581,6 +649,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DispatchId", "AddOperationId")
                         .IsUnique();
 
@@ -597,11 +667,16 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<long>("Revision")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.ToTable("DispatchActivityThreads");
                 });
@@ -614,6 +689,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("CalculatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("DispatchId")
                         .HasColumnType("uuid");
@@ -631,6 +709,8 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("DispatchId")
                         .IsUnique()
@@ -651,6 +731,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime?>("CalculatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("DispatchId")
                         .HasColumnType("uuid");
@@ -685,6 +768,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DispatchId")
                         .IsUnique()
                         .HasFilter("\"ExecutionLegId\" IS NULL");
@@ -708,6 +793,9 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<byte[]>("Content")
                         .IsRequired()
@@ -747,6 +835,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DispatchId", "RecordedAt");
 
                     b.ToTable("DispatchDocuments");
@@ -763,6 +853,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("CalculatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("DispatchId")
                         .HasColumnType("uuid");
@@ -798,6 +891,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DispatchId")
                         .IsUnique()
                         .HasFilter("\"ExecutionLegId\" IS NULL");
@@ -821,11 +916,16 @@ namespace Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<long>("NextNumber")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.ToTable("DispatchNumberCounters");
                 });
@@ -838,6 +938,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("CalculatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("ConnectionHash")
                         .IsRequired()
@@ -874,6 +977,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DispatchId")
                         .IsUnique();
 
@@ -889,6 +994,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<string>("ChoiceJson")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("DispatchId")
                         .HasColumnType("uuid");
@@ -913,6 +1021,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DispatchId")
                         .IsUnique()
                         .HasFilter("\"ExecutionLegId\" IS NULL");
@@ -932,6 +1042,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Property<long>("AssignmentRevision")
                         .HasColumnType("bigint");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -957,6 +1070,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DispatchId")
                         .IsUnique()
                         .HasFilter("\"ExecutionLegId\" IS NULL");
@@ -975,6 +1090,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("DraftJson")
                         .IsRequired()
                         .HasColumnType("text");
@@ -991,6 +1109,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("ExecutionLegId");
 
                     b.HasIndex("ExpiresAt");
@@ -1002,6 +1122,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("DistanceUnit")
@@ -1032,11 +1155,16 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.ToTable("DispatchSettings");
                 });
 
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchSourceLink", b =>
                 {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Provider")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -1066,7 +1194,9 @@ namespace Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.HasKey("Provider", "ExternalId");
+                    b.HasKey("CompanyId", "Provider", "ExternalId");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("DispatchId")
                         .IsUnique();
@@ -1120,6 +1250,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<string>("Commodity")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool?>("CompletionOverride")
                         .HasColumnType("boolean");
@@ -1291,6 +1424,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CoDriverId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DispatchId");
 
                     b.HasIndex("DriverId");
@@ -1313,6 +1448,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ActorId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1330,6 +1468,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("StopId", "Revision")
                         .IsUnique();
 
@@ -1339,6 +1479,9 @@ namespace Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchWorkspace", b =>
                 {
                     b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("MetadataJson")
@@ -1379,6 +1522,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.ToTable("DispatchWorkspaces");
                 });
 
@@ -1396,6 +1541,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<string>("BeforeJson")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("DispatchId")
                         .HasColumnType("uuid");
@@ -1428,7 +1576,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IdempotencyKey")
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CompanyId", "IdempotencyKey")
                         .IsUnique();
 
                     b.HasIndex("DispatchId", "Revision")
@@ -1442,10 +1592,15 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid>("TruckId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<long>("Revision")
                         .HasColumnType("bigint");
 
                     b.HasKey("TruckId");
+
+                    b.HasIndex("CompanyId");
 
                     b.ToTable("PlanningInputRevisions");
                 });
@@ -1464,6 +1619,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("AvailableAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<long>("CompletedVersion")
                         .HasColumnType("bigint");
@@ -1506,6 +1664,9 @@ namespace Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1519,6 +1680,8 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("TruckId", "CreatedAt");
 
@@ -1574,6 +1737,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("AvailableAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<long>("CompletedVersion")
                         .HasColumnType("bigint");
 
@@ -1623,6 +1789,9 @@ namespace Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1668,7 +1837,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IdempotencyKey")
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CompanyId", "IdempotencyKey")
                         .IsUnique();
 
                     b.ToTable("DispatchSwitchOperations");
@@ -1684,6 +1855,9 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid>("IdempotencyKey")
                         .HasColumnType("uuid");
@@ -1712,12 +1886,14 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IdempotencyKey")
-                        .IsUnique();
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("ParticipantId");
 
                     b.HasIndex("SwitchId");
+
+                    b.HasIndex("CompanyId", "IdempotencyKey")
+                        .IsUnique();
 
                     b.ToTable("ExecutionActionReceipts");
                 });
@@ -1729,6 +1905,9 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("CoDriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime?>("CompletedAt")
@@ -1796,6 +1975,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CoDriverId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DriverId");
 
                     b.HasIndex("EndSwitchId");
@@ -1825,6 +2006,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<long>("Revision")
                         .HasColumnType("bigint");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("CorrelationId")
                         .HasColumnType("uuid");
 
@@ -1850,6 +2034,8 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("ExecutionLegId", "Revision");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("CorrelationId");
 
@@ -1901,6 +2087,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<string>("Commodity")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<bool?>("CompletionOverride")
                         .HasColumnType("boolean");
@@ -2044,6 +2233,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("ExecutionLegId", "Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DispatchId");
 
                     b.HasIndex("ExecutionLegId", "Position");
@@ -2065,6 +2256,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("AvailableAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2108,6 +2302,9 @@ namespace Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("ExecutionLegId")
                         .HasColumnType("uuid");
 
@@ -2132,9 +2329,11 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("ExecutionLegId");
 
-                    b.HasIndex("IdempotencyKey")
+                    b.HasIndex("CompanyId", "IdempotencyKey")
                         .IsUnique();
 
                     b.ToTable("ExecutionSourceReceipts");
@@ -2144,6 +2343,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("DispatchId")
@@ -2163,6 +2365,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("ExecutionLegId");
 
                     b.HasIndex("DispatchId", "ExecutionLegId")
@@ -2178,6 +2382,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("DispatchId")
@@ -2235,6 +2442,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DispatchId");
 
                     b.HasIndex("IncomingLegId")
@@ -2255,6 +2464,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("ParticipantId")
@@ -2287,6 +2499,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("ParticipantId")
                         .IsUnique();
 
@@ -2301,6 +2515,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Name")
@@ -2325,6 +2542,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.ToTable("Trips");
                 });
 
@@ -2332,6 +2551,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<long>("ConfigurationRevision")
@@ -2379,10 +2601,12 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ExternalId")
-                        .IsUnique();
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("FuelCard");
+
+                    b.HasIndex("CompanyId", "ExternalId")
+                        .IsUnique();
 
                     b.ToTable("Drivers");
                 });
@@ -2395,6 +2619,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Property<long?>("BreakMs")
                         .HasColumnType("bigint");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("CurrentDutyStatus")
                         .HasMaxLength(32)
@@ -2417,6 +2644,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("DriverExternalId");
 
+                    b.HasIndex("CompanyId");
+
                     b.ToTable("DriverHosReadings");
                 });
 
@@ -2424,6 +2653,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<long>("Revision")
@@ -2440,6 +2672,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.ToTable("FleetPlanningSettings");
                 });
 
@@ -2447,6 +2681,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("LeaseUntil")
@@ -2465,6 +2702,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.ToTable("SynchronizationCheckpoints");
                 });
 
@@ -2472,6 +2711,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<long>("ConfigurationRevision")
@@ -2515,10 +2757,12 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ExternalId")
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CompanyId", "ExternalId")
                         .IsUnique();
 
-                    b.HasIndex("UnitNumber")
+                    b.HasIndex("CompanyId", "UnitNumber")
                         .IsUnique();
 
                     b.ToTable("Trailers");
@@ -2528,6 +2772,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<long>("ConfigurationRevision")
@@ -2577,16 +2824,18 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DriverId")
-                        .IsUnique();
+                    b.HasIndex("CompanyId");
 
-                    b.HasIndex("ExternalId")
+                    b.HasIndex("DriverId")
                         .IsUnique();
 
                     b.HasIndex("TrailerId")
                         .IsUnique();
 
-                    b.HasIndex("UnitNumber")
+                    b.HasIndex("CompanyId", "ExternalId")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "UnitNumber")
                         .IsUnique();
 
                     b.ToTable("Trucks");
@@ -2595,6 +2844,9 @@ namespace Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Domain.Entities.Fleet.TruckLocationReading", b =>
                 {
                     b.Property<Guid>("TruckId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("EngineState")
@@ -2650,6 +2902,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("TruckId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("ObservedAt");
 
                     b.ToTable("TruckLocationReadings");
@@ -2661,6 +2915,9 @@ namespace Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("SettingsJson")
                         .IsRequired()
                         .HasColumnType("text");
@@ -2669,6 +2926,8 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("TruckId")
                         .IsUnique();
@@ -2680,6 +2939,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Currency")
@@ -2712,6 +2974,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("FuelStationId", "EffectiveFrom", "EffectiveTo");
 
                     b.ToTable("FuelDiscounts");
@@ -2728,6 +2992,9 @@ namespace Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("GmailMessageId")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -2738,7 +3005,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("GmailMessageId")
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CompanyId", "GmailMessageId")
                         .IsUnique();
 
                     b.ToTable("FuelImportSources");
@@ -2823,6 +3092,9 @@ namespace Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Currency")
                         .IsRequired()
                         .HasMaxLength(3)
@@ -2864,6 +3136,8 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("ExternalTransactionId");
 
@@ -2928,6 +3202,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<string>("CheckedRouteJson")
                         .HasColumnType("text");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("RootDispatchId")
                         .HasColumnType("uuid");
 
@@ -2939,6 +3216,8 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("RootDispatchId");
 
@@ -2976,6 +3255,9 @@ namespace Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Home")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -3008,6 +3290,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.ToTable("MileageAllocationPolicies");
                 });
 
@@ -3015,6 +3299,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("EndedAt")
@@ -3038,6 +3325,8 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("ExecutionLegId", "EndedAt");
 
@@ -3092,6 +3381,9 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("CoDriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("DriverId")
@@ -3195,18 +3487,20 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CoDriverId");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("DriverId");
 
                     b.HasIndex("ExecutionLegId");
-
-                    b.HasIndex("IdempotencyKey")
-                        .IsUnique();
 
                     b.HasIndex("NextDispatchId");
 
                     b.HasIndex("PreviousDispatchId");
 
                     b.HasIndex("TrailerId");
+
+                    b.HasIndex("CompanyId", "IdempotencyKey")
+                        .IsUnique();
 
                     b.HasIndex("TruckId", "StartedAt");
 
@@ -3222,6 +3516,9 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("AllocatedDispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("ManualOverride")
@@ -3257,6 +3554,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("MovementId", "Revision")
                         .IsUnique();
 
@@ -3273,6 +3572,9 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal?>("EndOdometerMeters")
                         .HasPrecision(21, 3)
@@ -3324,6 +3626,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("MovementId", "Revision")
                         .IsUnique();
 
@@ -3334,6 +3638,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Cursor")
@@ -3349,6 +3656,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.ToTable("OdometerCaptureCheckpoints");
                 });
 
@@ -3360,6 +3669,9 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime?>("CheckedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("EndMeters")
                         .HasPrecision(21, 3)
@@ -3400,6 +3712,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("Status", "CheckedAt", "EndedAt");
 
                     b.HasIndex("TruckId", "StartedAt", "EndedAt")
@@ -3412,6 +3726,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("ExternalTruckId")
@@ -3435,6 +3752,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("TruckId")
                         .IsUnique();
 
@@ -3451,6 +3770,9 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("DeliveryStopId")
                         .HasColumnType("uuid");
@@ -3473,6 +3795,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CompanyId");
+
                     b.HasIndex("LoadId");
 
                     b.ToTable("Shipments");
@@ -3488,6 +3812,9 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("AggregateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("RecordedAt")
@@ -3506,6 +3833,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AggregateId");
 
+                    b.HasIndex("CompanyId");
+
                     b.ToTable("ShipmentSaveReceipts");
                 });
 
@@ -3513,6 +3842,9 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("DistanceUnit")
@@ -3552,6 +3884,8 @@ namespace Infrastructure.Persistence.Migrations
                         .HasDefaultValue("light");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("IdentityUserId")
                         .IsUnique();

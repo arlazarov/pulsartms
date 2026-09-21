@@ -3,8 +3,10 @@ namespace Domain.Entities.Costs;
 // The part of an expense a load bears. An expense may have several, so one
 // purchase can be divided between loads for different brokers. What is not
 // attributed stays unattributed and is never implied by subtraction.
-public sealed class ExpenseAttribution : BaseEntity
+public sealed class ExpenseAttribution : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid ExpenseId { get; init; }
   public Guid DispatchId { get; init; }
 

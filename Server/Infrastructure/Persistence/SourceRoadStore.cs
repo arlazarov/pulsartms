@@ -9,6 +9,13 @@ namespace Infrastructure.Persistence;
 
 public sealed class SourceRoadStore(AppDbContext db) : ISourceRoadStore
 {
+  // A raw statement goes around the stamp, so it names the carrier itself.
+  private Guid Company() =>
+    db.ServingCompany
+    ?? throw new InvalidOperationException(
+      "Work cannot be queued without a company."
+    );
+
   public Task ObserveAsync(
     Guid dispatchId,
     Guid? truckId,
@@ -69,11 +76,11 @@ public sealed class SourceRoadStore(AppDbContext db) : ISourceRoadStore
     return db.Database.ExecuteSqlInterpolatedAsync(
       $"""
       INSERT INTO "SourceRoadRequests" AS request (
-        "DispatchId", "TruckId", "InputSignature", "DemandIdentity", "Explicit",
+        "DispatchId", "CompanyId", "TruckId", "InputSignature", "DemandIdentity", "Explicit",
         "Priority", "RequestedVersion", "CompletedVersion", "RequestedAt",
         "AvailableAt", "Attempts"
       ) VALUES (
-        {dispatchId}, {truckId}, {input}, {demand}, {explicitlyRequested},
+        {dispatchId}, {Company()}, {truckId}, {input}, {demand}, {explicitlyRequested},
         {priority}, 1, 0, {now}, {now}, 0
       ) ON CONFLICT ("DispatchId") DO UPDATE SET
         "TruckId" = CASE WHEN EXCLUDED."InputSignature" = ''
@@ -139,6 +146,9 @@ public sealed class SourceRoadStore(AppDbContext db) : ISourceRoadStore
     SourceRoadRequest? work;
     if (db.Database.IsNpgsql())
     {
+      // Deliberately across carriers. This is the server's work list,
+      // not one carrier's: a worker claims whatever is next and then
+      // runs that pass as the carrier the claimed row belongs to.
       var rows = await db
         .SourceRoadRequests.FromSqlInterpolated(
           $"""
@@ -200,6 +210,7 @@ public sealed class SourceRoadStore(AppDbContext db) : ISourceRoadStore
       ? null
       : new(
         work.DispatchId,
+        work.CompanyId,
         work.TruckId,
         work.RequestedVersion,
         lease,

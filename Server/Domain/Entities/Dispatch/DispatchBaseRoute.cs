@@ -1,7 +1,9 @@
 namespace Domain.Entities.Dispatch;
 
-public sealed class DispatchBaseRoute : BaseEntity
+public sealed class DispatchBaseRoute : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid DispatchId { get; set; }
   public Guid? ExecutionLegId { get; set; }
   public string InputHash { get; set; } = "";

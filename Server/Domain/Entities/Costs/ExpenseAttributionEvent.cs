@@ -2,8 +2,10 @@ namespace Domain.Entities.Costs;
 
 // Immutable history of one attribution decision, including the decision to
 // remove one. An amount of zero with no load records that a share was undone.
-public sealed class ExpenseAttributionEvent : BaseEntity
+public sealed class ExpenseAttributionEvent : BaseEntity, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid ExpenseId { get; init; }
   public Guid? AttributionId { get; init; }
   public Guid? DispatchId { get; init; }

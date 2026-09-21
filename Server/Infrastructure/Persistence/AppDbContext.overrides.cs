@@ -7,7 +7,7 @@ public partial class AppDbContext
 {
   public override int SaveChanges(bool acceptAllChangesOnSuccess)
   {
-    ProtectExecutionHistory();
+    BeforeSaving();
     return base.SaveChanges(acceptAllChangesOnSuccess);
   }
 
@@ -16,8 +16,14 @@ public partial class AppDbContext
     CancellationToken cancellationToken = default
   )
   {
-    ProtectExecutionHistory();
+    BeforeSaving();
     return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+  }
+
+  private void BeforeSaving()
+  {
+    ProtectExecutionHistory();
+    StampNewRowsWithTheCompany();
   }
 
   private void ProtectExecutionHistory()
@@ -37,5 +43,6 @@ public partial class AppDbContext
     base.OnModelCreating(modelBuilder);
 
     modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+    FilterEveryCompanyOwnedTable(modelBuilder);
   }
 }

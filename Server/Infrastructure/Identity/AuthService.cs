@@ -27,13 +27,18 @@ public class AuthService(
   {
     var user = await userManager.FindByEmailAsync(email);
 
-    if (
-      user is null
-      || !await dbContext.Users.AnyAsync(
-        x => x.IdentityUserId == user.Id && x.IsActive,
-        cancellationToken
-      )
-    )
+    // Signing in is the one read that cannot be narrowed to a carrier:
+    // it is the read that discovers which carrier this is. An address
+    // identifies a person across the whole system, and that person's
+    // company is what every later query is then narrowed by.
+    var account = user is null
+      ? null
+      : await dbContext
+        .Users.IgnoreQueryFilters()
+        .Where(x => x.IdentityUserId == user.Id && x.IsActive)
+        .Select(x => new { x.CompanyId })
+        .SingleOrDefaultAsync(cancellationToken);
+    if (user is null || account is null)
       return false;
 
     var result = await signInManager.CheckPasswordSignInAsync(
@@ -48,6 +53,7 @@ public class AuthService(
     }
 
     var principal = await signInManager.CreateUserPrincipalAsync(user);
+    Carry(principal, account.CompanyId);
 
     var httpContext = httpContextAccessor.HttpContext;
 
@@ -80,16 +86,18 @@ public class AuthService(
       refreshTicket.Principal
     );
 
-    if (
-      user is null
-      || !await dbContext.Users.AnyAsync(
-        x => x.IdentityUserId == user.Id && x.IsActive,
-        cancellationToken
-      )
-    )
+    var account = user is null
+      ? null
+      : await dbContext
+        .Users.IgnoreQueryFilters()
+        .Where(x => x.IdentityUserId == user.Id && x.IsActive)
+        .Select(x => new { x.CompanyId })
+        .SingleOrDefaultAsync(cancellationToken);
+    if (user is null || account is null)
       return false;
 
     var principal = await signInManager.CreateUserPrincipalAsync(user);
+    Carry(principal, account.CompanyId);
 
     var httpContext = httpContextAccessor.HttpContext;
 
@@ -99,6 +107,19 @@ public class AuthService(
     await httpContext.SignInAsync(IdentityConstants.BearerScheme, principal);
 
     return true;
+  }
+
+  // The carrier travels inside the token, so it is decided here and never
+  // taken from anything the caller sends.
+  private static void Carry(
+    System.Security.Claims.ClaimsPrincipal principal,
+    Guid company
+  )
+  {
+    var identity = principal.Identities.First();
+    foreach (var stale in identity.FindAll(CurrentCompany.Claim).ToArray())
+      identity.RemoveClaim(stale);
+    identity.AddClaim(new(CurrentCompany.Claim, company.ToString()));
   }
 
   public async Task LogoutAsync()

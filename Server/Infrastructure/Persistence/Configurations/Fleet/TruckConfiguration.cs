@@ -10,9 +10,9 @@ public class TruckConfiguration : IEntityTypeConfiguration<Truck>
   {
     builder.HasKey(x => x.Id);
     builder.Property(x => x.ExternalId).HasMaxLength(100).IsRequired();
-    builder.HasIndex(x => x.ExternalId).IsUnique();
+    builder.HasIndex(x => new { x.CompanyId, x.ExternalId }).IsUnique();
     builder.Property(x => x.UnitNumber).HasMaxLength(50).IsRequired();
-    builder.HasIndex(x => x.UnitNumber).IsUnique();
+    builder.HasIndex(x => new { x.CompanyId, x.UnitNumber }).IsUnique();
     builder.Property(x => x.Vin).HasMaxLength(17);
     builder.Property(x => x.ImportedVin).HasMaxLength(17);
     builder.Property(x => x.ConfiguredBy).HasMaxLength(200);

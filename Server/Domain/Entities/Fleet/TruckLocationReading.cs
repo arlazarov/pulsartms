@@ -4,8 +4,10 @@ namespace Domain.Entities.Fleet;
 // collect telemetry can still draw the map and a restart does not start blind.
 // GPS, fuel and temperature carry their own observation times because the
 // provider reports them independently; one being stale does not age the rest.
-public sealed class TruckLocationReading
+public sealed class TruckLocationReading : ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public Guid TruckId { get; set; }
   public decimal Latitude { get; set; }
   public decimal Longitude { get; set; }

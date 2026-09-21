@@ -1,7 +1,9 @@
 namespace Domain.Entities.Fleet;
 
-public class Trailer : BaseEntity, IFleetConfiguration
+public class Trailer : BaseEntity, IFleetConfiguration, ICompanyOwned
 {
+  public Guid CompanyId { get; set; }
+
   public string ExternalId { get; set; } = string.Empty;
 
   public string UnitNumber { get; set; } = string.Empty;
