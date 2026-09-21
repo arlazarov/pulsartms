@@ -47,10 +47,11 @@ A default of `() => {}` tells the checker the callback takes nothing, and
 every call with arguments then passes unseen. That is how five of these
 boundaries were undocumented.
 
-The tree is being moved to TypeScript, module by module. A module may be
-`.ts` or `.js` while that is going on; both are checked, both are bundled,
-and an import names the file it means - `./stopCardContent.ts` - so that
-Node can run the tests without a build step.
+Every module here is TypeScript, and `tsconfig.json` is strict: no
+implicit `any`, no silently missing field. An import names the file it
+means - `./stopCardContent.ts` - so Node runs the tests without a build
+step; what the build emits is `.js` either way, which is the name the page
+and the release check use.
 
 ## One module, one thing
 

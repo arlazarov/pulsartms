@@ -1,24 +1,14 @@
 {
   "compilerOptions": {
-    "allowJs": true,
-    "checkJs": true,
-    "strict": false,
+    "strict": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": [
-      "ES2023",
-      "DOM"
-    ],
-    "types": [
-      "google.maps"
-    ],
+    "lib": ["ES2023", "DOM"],
+    "types": ["google.maps"],
     "skipLibCheck": true
   },
-  "include": [
-    "Scripts/**/*.js",
-    "Scripts/**/*.ts"
-  ]
+  "include": ["Scripts/**/*.ts"]
 }
