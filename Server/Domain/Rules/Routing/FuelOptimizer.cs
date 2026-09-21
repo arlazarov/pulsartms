@@ -3,7 +3,7 @@ using Domain.Rules;
 
 namespace Domain.Rules.Routing;
 
-public static class FuelOptimizer
+public static partial class FuelOptimizer
 {
   public const int SelectionVersion = 32;
 
@@ -61,50 +61,26 @@ public static class FuelOptimizer
     double initialAccessMiles = 0
   )
   {
-    if (profile.Validate(true) is { } error)
-      throw new RoutePlanningException(error);
-    if (!double.IsFinite(initialAccessMiles) || initialAccessMiles < 0)
-      throw new RoutePlanningException(
-        "The estimated initial access distance is invalid."
-      );
-    var mpg = profile.Mpg!.Value;
-    var fillTarget = profile.TankGallons!.Value * (profile.FillPercent / 100);
-    var cap = fillTarget;
-    var reserve = (int)Math.Ceiling(profile.ReserveGallons);
-    if (
-      FuelReservePolicy.StartingLevelError(currentGallons, profile) is
-      { } levelError
-    )
-      throw new RoutePlanningException(levelError);
-    var firstMinimum = FuelReservePolicy.PhysicalArrivalMinimumGallons;
-    var arrivalMinimum = arrivalPolicy is null
-      ? reserve
-      : Math.Max(reserve, (int)Math.Ceiling(arrivalPolicy.MinimumGallons));
-    if (
-      arrivalPolicy is not null
-      && (
-        !double.IsFinite(arrivalPolicy.MinimumGallons)
-        || !double.IsFinite(arrivalPolicy.TargetGallons)
-        || !arrivalPolicy.HasValidReplacementValue()
-        || arrivalPolicy.TargetGallons < arrivalPolicy.MinimumGallons
-      )
-    )
-      throw new RoutePlanningException(
-        "Post-delivery fuel requirements are invalid."
-      );
-    var fillBeforeUnknownArea =
-      arrivalPolicy
-        is {
-          PoorArea: true,
-          NextDispatchId: null,
-          EconomicPurchasesOnly: false
-        };
-    var hasUsableExit =
-      arrivalPolicy is { PoorArea: false }
-      && arrivalPolicy.EscapeStationId != Guid.Empty
-      && double.IsFinite(arrivalPolicy.EscapeMiles)
-      && arrivalPolicy.EscapeMiles >= 0
-      && arrivalMinimum >= reserve + arrivalPolicy.EscapeMiles / mpg;
+    var (
+      mpg,
+      cap,
+      reserve,
+      firstMinimum,
+      arrivalMinimum,
+      fillBeforeUnknownArea,
+      hasUsableExit,
+      stations,
+      canFillBeforeDelivery,
+      topUpThreshold,
+      topUpStation
+    ) = FuelSearchSetup.From(
+      miles,
+      currentGallons,
+      profile,
+      candidates,
+      arrivalPolicy,
+      initialAccessMiles
+    );
     double FinalScore(State state) =>
       state.Cost
       + (
@@ -113,39 +89,6 @@ public static class FuelOptimizer
           : Math.Max(0, arrivalPolicy.TargetGallons - state.Fuel)
             * arrivalPolicy.ReplacementPriceUsd
       );
-    var stations = candidates
-      .Where(x =>
-        x.AlongMiles >= 0
-        && x.AlongMiles < miles
-        && x.PriceUsd > 0
-        && x.EconomicPriceUsd > 0
-      )
-      .GroupBy(x => x.VisitKey)
-      .Select(g => g.MinBy(x => x.EconomicPriceUsd)!)
-      .OrderBy(x => x.AlongMiles)
-      .ToList();
-    var canFillBeforeDelivery = stations.Any(x =>
-      currentGallons
-        - (initialAccessMiles + x.AlongMiles + x.ExtraInMiles) / mpg
-        >= firstMinimum
-      && currentGallons
-        - (initialAccessMiles + x.AlongMiles + x.ExtraInMiles) / mpg
-        <= cap - MinimumAutomaticPurchaseGallons
-      && cap - (miles - x.AlongMiles + x.ExtraOutMiles) / mpg >= arrivalMinimum
-    );
-    var topUpThreshold = profile.TankGallons.Value * .8;
-    var topUpStation = arrivalPolicy
-      is {
-        PoorArea: true,
-        TopUpPriceCeilingUsd: > 0,
-        EconomicPurchasesOnly: false
-      }
-      ? stations.LastOrDefault(x =>
-        x.EconomicPriceUsd <= arrivalPolicy.TopUpPriceCeilingUsd
-        && cap - (miles - x.AlongMiles + x.ExtraOutMiles) / mpg
-          >= arrivalMinimum
-      )
-      : null;
     var buckets = Enumerable
       .Range(0, stations.Count + 2)
       .Select(_ => new Dictionary<int, List<State>>())
