@@ -4,7 +4,7 @@ import {
   createFuelVisit,
   fuelGaugeValue,
   plannedPrice,
-} from '../../Scripts/fleetMap/stations/stationFuelVisit.js';
+} from '../../Scripts/fleetMap/stations/stationFuelVisit.ts';
 
 test('planned prices retain the station arrival day and distinguish fallback quotes', () => {
   const visit = {

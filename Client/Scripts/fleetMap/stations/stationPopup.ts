@@ -1,19 +1,21 @@
 import { stationPurchase } from './stationQuantity.ts';
 import { distanceLabel } from '../ui/distanceLabel.ts';
 import { addressLines } from '../ui/addressLines.ts';
-import { createFuelVisit } from './stationFuelVisit.js';
+import { createFuelVisit } from './stationFuelVisit.ts';
 import { createPriceComparison } from './stationPriceComparison.ts';
-/**
- * The card a fuel station opens.
- *
- * @param {(selection: { stationId: string, name: string,
- *   beforeStopId: string | null, addNew: boolean }) => void} onEdit
- *   What the page should open the plan editor on.
- * @param {(miles: number) => string} formatDistance
- */
+// What the page opens the plan editor on when the card asks for it.
+export type StationEdit = {
+  stationId: string;
+  name: string;
+  beforeStopId: string | null;
+  addNew: boolean;
+};
+
+// The card a fuel station opens: where it is, what fuel costs there, and
+// what the plan buys.
 export function createStationPopup(
-  onEdit = () => {},
-  formatDistance = distanceLabel,
+  onEdit: (selection: StationEdit) => void = () => {},
+  formatDistance: (miles: number) => string = distanceLabel,
 ) {
   const element = document.createElement('div');
   element.className = 'fleet-station-popup';
@@ -44,7 +46,7 @@ export function createStationPopup(
   // address for as long as the card was open, moving everything below it
   // down to say that something had already happened. A copy that failed is
   // still said out loud, because nothing else on the card would show it.
-  async function copyAddress(event) {
+  async function copyAddress(event: Event) {
     event.stopPropagation();
     const version = ++copyVersion;
     try {
@@ -66,8 +68,8 @@ export function createStationPopup(
   priceUnit.className = 'fleet-station-popup__price-unit';
   priceUnit.hidden = true;
   prices.append(priceUnit);
-  const fields = {};
-  const terms = {};
+  const fields: Record<string, HTMLElement> = {};
+  const terms: Record<string, HTMLElement> = {};
   const comparison = document.createElement('div');
   comparison.className = 'fleet-station-popup__comparison';
   comparison.hidden = true;
@@ -96,7 +98,7 @@ export function createStationPopup(
   visits.className = 'fleet-station-popup__visits';
   visits.hidden = true;
   let visitsKey = '[]';
-  let editSelection = null;
+  let editSelection: StationEdit | null = null;
   const actions = document.createElement('div');
   actions.className = 'fleet-station-popup__actions';
   actions.hidden = true;
@@ -108,11 +110,11 @@ export function createStationPopup(
   addVisit.className = 'btn btn--small';
   addVisit.textContent = 'Add another visit';
   addVisit.hidden = true;
-  function editClick(event) {
+  function editClick(event: Event) {
     event.stopPropagation();
     if (editSelection) onEdit(editSelection);
   }
-  function addClick(event) {
+  function addClick(event: Event) {
     event.stopPropagation();
     if (editSelection)
       onEdit({ ...editSelection, beforeStopId: null, addNew: true });
@@ -138,20 +140,36 @@ export function createStationPopup(
   plan.append(planHead, visits, purchase, actions);
   element.append(place, plan);
 
-  function format(value) {
+  function format(value: unknown): string {
     return value == null || !Number.isFinite(Number(value))
       ? 'N/A'
       : Number(value).toFixed(3);
   }
-  function set(node, property, value) {
+  // Writing a property only when it differs keeps the card from touching
+  // the DOM on every poll.
+  function set<T extends object, K extends keyof T>(
+    node: T,
+    property: K,
+    value: T[K],
+  ) {
     if (node[property] !== value) node[property] = value;
   }
 
   return {
     element,
-    update({ station, discount, fuel, canEdit = false }) {
+    update({
+      station,
+      discount,
+      fuel,
+      canEdit = false,
+    }: {
+      station: any;
+      discount: any;
+      fuel?: { visits?: any[]; miles?: number; unit?: string } | null;
+      canEdit?: boolean;
+    }) {
       const plannedVisits = fuel?.visits ?? [];
-      canEdit &&= !plannedVisits.some(visit => visit.accessOnly);
+      canEdit &&= !plannedVisits.some((visit: any) => visit.accessOnly);
       const singleVisit = plannedVisits.length === 1;
       set(
         element,

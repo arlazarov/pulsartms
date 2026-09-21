@@ -10,7 +10,7 @@ import { PathStyleExtension } from '@deck.gl/extensions';
 import { createRouteStops } from '../../Scripts/fleetMap/routes/routeStops.ts';
 import { createNextLoadsLayer } from '../../Scripts/fleetMap/routes/nextLoads.js';
 import { stopEtaLabels } from '../../Scripts/fleetMap/routes/stopEtaLabels.ts';
-import { createStationPopup } from '../../Scripts/fleetMap/stations/stationPopup.js';
+import { createStationPopup } from '../../Scripts/fleetMap/stations/stationPopup.ts';
 import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.js';
 import { fuelRecommendations } from '../../Scripts/fleetMap/stations/fuelRecommendations.ts';
 import { createDetailsCard } from '../../Scripts/fleetMap/ui/detailsCard.ts';

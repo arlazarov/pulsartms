@@ -17,7 +17,7 @@ const output = browserOutput(
 const client = resolve(import.meta.dirname, '../..');
 const css = await readFile(resolve(artifact, 'css/main.css'), 'utf8');
 const origin = 'http://station-popup.invalid';
-const fixture = `import {createStationPopup} from './Scripts/fleetMap/stations/stationPopup.js';
+const fixture = `import {createStationPopup} from './Scripts/fleetMap/stations/stationPopup.ts';
 import {createDetailsCard} from './Scripts/fleetMap/ui/detailsCard.ts';
 const host = document.getElementById('map');
 window.google = {maps: {OverlayView: {preventMapHitsAndGesturesFrom() {}}}};

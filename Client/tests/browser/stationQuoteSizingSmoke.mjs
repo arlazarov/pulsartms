@@ -12,7 +12,7 @@ const css = await readFile(resolve(artifact, 'css/main.css'), 'utf8');
 const origin = 'http://station-quote.invalid';
 const fixture = `
 import {createStationPopup}
-  from './Scripts/fleetMap/stations/stationPopup.js';
+  from './Scripts/fleetMap/stations/stationPopup.ts';
 const popup = createStationPopup();
 document.querySelector('.fleet-map-inspector__native').append(popup.element);
 const discount = {currency: 'USD', unit: 'US gal', retailPrice: 6.089,

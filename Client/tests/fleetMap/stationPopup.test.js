@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createStationPopup } from '../../Scripts/fleetMap/stations/stationPopup.js';
+import { createStationPopup } from '../../Scripts/fleetMap/stations/stationPopup.ts';
 import { distanceLabel } from '../../Scripts/fleetMap/ui/distanceLabel.ts';
 
 // The card is two halves in the DOM - the place, and the plan for it - so a

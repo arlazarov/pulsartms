@@ -4,7 +4,7 @@ import {
   priceStatistics,
   priceColor,
 } from './stationPrices.ts';
-import { createStationPopup } from './stationPopup.js';
+import { createStationPopup } from './stationPopup.ts';
 import { fuelVisitLabel } from './stationQuantity.ts';
 import { yieldToBrowser } from '../lifecycle/backgroundWork.ts';
 import { createDetailsCard } from '../ui/detailsCard.ts';
