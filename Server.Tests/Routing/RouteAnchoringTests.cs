@@ -56,11 +56,11 @@ public sealed class RouteAnchoringTests
     Assert.Equal(expected, RouteAnchoring.Continuous(first, next));
     if (!expected)
       Assert.Throws<RoutePlanningException>(
-        () => FuelHorizon.Join(first, next)
+        () => FuelHorizonRoad.Join(first, next)
       );
     else
     {
-      var result = FuelHorizon.Join(first, next);
+      var result = FuelHorizonRoad.Join(first, next);
       Assert.Equal(200, result.Miles);
       Assert.Equal(12000, result.Seconds);
       Assert.Same(first.Legs[0], result.Legs[0]);

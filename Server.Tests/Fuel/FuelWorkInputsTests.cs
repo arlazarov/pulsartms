@@ -1,5 +1,6 @@
 using System.Data;
 using Application.Features.Dispatch.Queries;
+using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.FuelPlanning;
@@ -33,7 +34,7 @@ public sealed class FuelWorkInputsTests
       ),
       default
     );
-    var previous = FuelHorizon.SelectLoads(
+    var previous = FuelHorizonLoads.SelectLoads(
       plan,
       Assert.Single(board.Response!.Items).Dispatches
     );
@@ -53,12 +54,12 @@ public sealed class FuelWorkInputsTests
       selected.SelectMany(x => x.Stops).Select(x => (x.Job, x.StateAfter))
     );
     Assert.Equal(
-      FuelHorizon.Signature(previous),
-      FuelHorizon.Signature(selected)
+      FuelWorkSignature.Signature(previous),
+      FuelWorkSignature.Signature(selected)
     );
     Assert.Equal(
-      previous.Select(FuelHorizon.LoadSignature),
-      selected.Select(FuelHorizon.LoadSignature)
+      previous.Select(FuelWorkSignature.LoadSignature),
+      selected.Select(FuelWorkSignature.LoadSignature)
     );
     Assert.Null(f.Db.Database.CurrentTransaction);
     Assert.Equal(0, f.Router.Calls);

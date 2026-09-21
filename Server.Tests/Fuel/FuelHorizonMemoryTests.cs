@@ -1,3 +1,4 @@
+using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.FuelPlanning;
@@ -14,9 +15,9 @@ public sealed class FuelHorizonMemoryTests(ITestOutputHelper output)
   {
     var first = Route(25_001);
     var next = Route(25_001);
-    GC.KeepAlive(FuelHorizon.Join(first, next));
+    GC.KeepAlive(FuelHorizonRoad.Join(first, next));
     var before = GC.GetAllocatedBytesForCurrentThread();
-    var joined = FuelHorizon.Join(first, next);
+    var joined = FuelHorizonRoad.Join(first, next);
     var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
     Assert.True(
       allocated < 4096,
@@ -39,7 +40,7 @@ public sealed class FuelHorizonMemoryTests(ITestOutputHelper output)
     var first = Route(100_000);
     var next = Route(100_001);
     var failure = Assert.Throws<RoutePlanningException>(
-      () => FuelHorizon.Join(first, next)
+      () => FuelHorizonRoad.Join(first, next)
     );
     Assert.Contains("geometry limit", failure.Message);
     Assert.Single(first.Legs);
@@ -48,7 +49,7 @@ public sealed class FuelHorizonMemoryTests(ITestOutputHelper output)
     Assert.Equal(100_001, next.Points.Count);
     Assert.Equal(
       200_000,
-      FuelHorizon.Join(first, first).Legs.Sum(leg => leg.Points.Count)
+      FuelHorizonRoad.Join(first, first).Legs.Sum(leg => leg.Points.Count)
     );
   }
 

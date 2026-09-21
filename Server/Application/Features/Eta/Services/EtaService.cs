@@ -309,40 +309,10 @@ public sealed class EtaService(
         DutyStatus = dutyStatus,
         RouteUpdatePending = routeUpdatePending,
       };
-    var plan = state.Plan;
-    if (plan is null)
-      return Missing("ETA unavailable: waiting for a current route.");
-    if (chain?.CurrentUnavailableReason is { } assignmentReason)
-      return Missing(assignmentReason);
-    if (plan.InputsChanged)
-      return Missing("ETA unavailable: route update in progress.", true);
-    if (
-      state.Progress?.LocationStale != false
-      || state.Progress.ProgressMiles is not { } progress
-      || !double.IsFinite(progress)
-      || progress < 0
-    )
-      return Missing("ETA unavailable: waiting for current GPS.");
-    if (
-      state.Progress.OffRoute
-      && (
-        !double.IsFinite(state.Progress.DistanceFromRouteMiles)
-        || state.Progress.DistanceFromRouteMiles
-          > planning.OffRouteEstimateMaxMiles
-      )
-    )
-      return Missing(
-        "ETA unavailable: off-route distance is too large; route update in progress.",
-        true
-      );
-    if (
-      clocks?.DriveMs is null
-      || clocks.ShiftMs is null
-      || clocks.CycleMs is null
-      || clocks.BreakMs is null
-      || clocks.UpdatedAt < now.AddMinutes(-3)
-    )
-      return Missing("ETA unavailable: waiting for driver HOS.");
+    if (EtaReadiness.Reason(state, clocks, chain, planning, now) is { } wait)
+      return Missing(wait.Reason, wait.RouteUpdatePending);
+    var plan = state.Plan!;
+    var progress = state.Progress!.ProgressMiles!.Value;
     if (plan.Route.Legs.Count == 0)
       return Missing("ETA unavailable: no route legs.");
     var timing = boundedPreview
@@ -396,272 +366,23 @@ public sealed class EtaService(
     {
       return Missing(error.Message);
     }
-    var results = new List<StopEta>();
-    var assumptions = new List<string>
-    {
-      "Estimated using saved truck travel time; future traffic and border delays may differ.",
-      clock.HistoryAvailable
-        ? "Verified HOS history: eligible split rest and ongoing rest are considered; no exemption assumptions."
-        : "HOS history incomplete: conservative full rests; no split credit.",
-      clock.RecapVerified
-        ? "Cycle starts from current ELD hours; recap uses reconciled home-day duty history."
-      : clock.CycleFeasibility.Verified
-        ? "Cycle starts from current ELD hours; unreconciled history does not add recap credits."
-      : "Cycle history or the current ELD cycle is unavailable; cycle feasibility is unknown.",
-      "Road ETA includes daily HOS and stop service but does not assume a cycle wait or restart. Cycle alternatives are conditional plans, not driver instructions.",
-      "Equipment-operation waits conservatively consume duty time without rest credit; cargo service durations do not apply to equipment collection.",
-      $"Planning: {planning.DrivingHoursPerShift}h driving per shift, {planning.PreTripMinutes}m PTI, one {planning.FuelStopMinutes}m fuel allowance per shift and a separate {planning.DailyBreakMinutes}m daily break. ELD limits can require stopping earlier.",
-      $"Road travel times retain routing speed/traffic assumptions; planning speed is capped at {planning.PlanningSpeedCapMph} mph with {planning.TravelTimeBufferPercent}% extra travel-time allowance, not a live traffic prediction.",
-      $"{planning.PickupMinutes} minutes at pickups and {planning.DeliveryMinutes} minutes at deliveries. Facility service and appointment waiting are planned sleeper time, not cycle duty or observed ELD status.",
-      "Configured cycles are used when available. Missing history keeps conservative rest assumptions; cross-border history credits require verification.",
-    };
-    var pending = new Dictionary<Guid, string>();
-    var visited = new HashSet<Guid>();
-    string? blocked = null;
-    bool Attempt(Action action)
-    {
-      if (blocked is not null)
-        return false;
-      try
-      {
-        action();
-        return true;
-      }
-      catch (CycleScenarioUnavailableException error)
-      {
-        blocked = error.Message;
-        return false;
-      }
-    }
-    bool Travel(EtaRouteTimingLeg leg, double remainingFrom)
-    {
-      if (leg.Miles == 0 && leg.Seconds == 0)
-        return true;
-      var hoursPerMile =
-        planning.TravelHours(leg.Miles, leg.Seconds) / leg.Miles;
-      foreach (var segment in leg.Segments)
-      {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (segment.EndMiles <= remainingFrom)
-          continue;
-        if (!segment.IsSupported)
-          return false;
-        var cursor = Math.Max(segment.StartMiles, remainingFrom);
-        var hours = (segment.EndMiles - cursor) * hoursPerMile;
-        if (!double.IsFinite(hours) || hours > 720)
-          return false;
-        if (!Attempt(() => clock.Drive(hours, segment.Country)))
-          return false;
-      }
-      return true;
-    }
-    void Visit(Guid dispatchId, PlanStop stop)
-    {
-      cancellationToken.ThrowIfCancellationRequested();
-      if (!visited.Add(stop.Id))
-        return;
-      var activity =
-        dispatchId == plan.DispatchId
-          ? chain?.CurrentActivities.GetValueOrDefault(stop.Id)
-          : null;
-      if (activity?.Completed == true)
-        return;
-      var timezone = string.IsNullOrWhiteSpace(stop.AppointmentTimeZoneId)
-        ? regions.Find(stop.Point).TimeZoneId
-        : stop.AppointmentTimeZoneId;
-      var zone = TimeZoneInfo.FindSystemTimeZoneById(timezone);
-      var endDate = stop.ScheduledDate2 ?? stop.ScheduledDate;
-      if (
-        stop.ScheduledDate2 is null
-        && stop.ScheduledTime2 is { } endTime
-        && stop.ScheduledTime is { } startTime
-        && endTime < startTime
-      )
-        endDate = endDate?.AddDays(1);
-      var due = Appointment(
-        endDate,
-        stop.ScheduledTime2 ?? stop.ScheduledTime,
-        zone
-      );
-      var arrivalAt = clock.Now;
-      var atFacility =
-        activity?.ArrivedAt is { } arrived
-        && arrived <= now
-        && state.Progress.Position is { } position
-        && RouteGeometry.Distance(position, stop.Point) <= .5;
-      if (atFacility)
-        arrivalAt = new DateTimeOffset(
-          DateTime.SpecifyKind(activity!.ArrivedAt!.Value, DateTimeKind.Utc)
-        );
-      var arrival = TimeZoneInfo.ConvertTime(arrivalAt, zone);
-      var drive = (int)Math.Ceiling(clock.DriveHours * 60);
-      var rest = (int)Math.Ceiling(clock.RestHours * 60);
-      var preTrip = (int)Math.Ceiling(clock.PreTripHours * 60);
-      var fuel = (int)Math.Ceiling(clock.FuelHours * 60);
-      // Live clocks cannot reconstruct the balance at an already observed
-      // arrival.
-      var cycleAtArrival = atFacility
-        ? null
-        : clock.CycleFeasibility.BalanceMinutes(clock.Now);
-      var currentCycle = atFacility
-        ? clock.CycleFeasibility.BalanceMinutes(clock.Now)
-        : null;
-      var earliest = Appointment(stop.ScheduledDate, stop.ScheduledTime, zone);
-      var serviceStart =
-        earliest.HasValue && earliest.Value > arrivalAt
-          ? earliest.Value
-          : arrivalAt;
-      StopServicePolicy.WaitUntil(clock, serviceStart, stop.Job);
-      if (!atFacility)
-        serviceStart = clock.Now;
-      var minutes = StopServicePolicy.Minutes(
-        stop.Job,
-        planning.PickupMinutes,
-        planning.DeliveryMinutes
-      );
-      var remaining = atFacility
-        ? Math.Max(0, (serviceStart.AddMinutes(minutes) - clock.Now).TotalHours)
-        : minutes / 60d;
-      clock.StopRest(remaining);
-      var lateMinutes = due is null
-        ? (int?)null
-        : (int)Math.Max(0, Math.Ceiling((arrivalAt - due.Value).TotalMinutes));
-      var departure = TimeZoneInfo.ConvertTime(clock.Now, zone);
-      var feasibility = clock.CycleFeasibility;
-      var cycleAfterStop = feasibility.BalanceMinutes(clock.Now);
-      IReadOnlyList<StopHoursAlternative> alternative =
-        cycleMode != HosCycleMode.Observe
-        && feasibility.Verified
-        && cycleAfterStop is { } cycle
-        && clock.CycleResumeAt is { } resume
-          ?
-          [
-            new(
-              cycleMode == HosCycleMode.Recap ? "recap" : "restart",
-              arrival,
-              departure,
-              lateMinutes,
-              cycle,
-              clock.CycleRestStartedAt is { } restStarted
-                ? TimeZoneInfo.ConvertTime(restStarted, zone)
-                : null,
-              TimeZoneInfo.ConvertTime(resume, zone)
-            ),
-          ]
-          : [];
-      results.Add(
-        new(stop.Id, arrival, timezone, due, lateMinutes, drive, rest)
-        {
-          DispatchId = dispatchId,
-          ServiceStart = TimeZoneInfo.ConvertTime(serviceStart, zone),
-          Departure = departure,
-          CycleAfterDeparture = clock.SnapshotCycle(),
-          Hours = new(
-            cycleAtArrival,
-            cycleAfterStop,
-            feasibility.DrivingShortfallMinutes,
-            feasibility.FirstShortageAt,
-            feasibility.Verified,
-            alternative,
-            feasibility.UnavailableReason,
-            currentCycle
-          ),
-          PreTripMinutes = preTrip,
-          FuelMinutes = fuel,
-        }
-      );
-    }
-    var activeFacility = plan.Stops.FirstOrDefault(stop =>
-      chain?.CurrentActivities.GetValueOrDefault(stop.Id)
-        is { ArrivedAt: { } at, Completed: false }
-      && at <= now
-      && state.Progress.Position is { } position
-      && RouteGeometry.Distance(position, stop.Point) <= .5
+    var assumptions = EtaAssumptions.Opening(clock, planning);
+    var walk = new EtaWalk(
+      clock,
+      regions,
+      planning,
+      state,
+      plan,
+      chain,
+      now,
+      cycleMode,
+      cancellationToken
     );
-    if (activeFacility is not null)
-      Attempt(() => Visit(plan.DispatchId, activeFacility));
-    if (
-      !plan.FromCurrentPosition
-      && progress <= .5
-      && plan.Stops.FirstOrDefault() is { } origin
-      && !plan.Tracking.PassedStopIds.Contains(origin.Id)
-    )
-      Attempt(() => Visit(plan.DispatchId, origin));
-    for (var i = 0; i < timing.Legs.Length && blocked is null; i++)
-    {
-      var leg = timing.Legs[i];
-      if (leg.EndMiles < progress)
-        continue;
-      if (!Travel(leg, progress))
-      {
-        blocked ??=
-          "ETA unavailable: this regional ruleset or travel horizon needs verification.";
-        break;
-      }
-      var stopIndex = i + (plan.FromCurrentPosition ? 0 : 1);
-      if (stopIndex >= plan.Stops.Count)
-        continue;
-      var stop = plan.Stops[stopIndex];
-      if (plan.Tracking.PassedStopIds.Contains(stop.Id))
-        continue;
-      Attempt(() => Visit(plan.DispatchId, stop));
-    }
-    if (blocked is not null)
-      pending[plan.DispatchId] = blocked;
-    foreach (var next in chain?.Future ?? [])
-    {
-      blocked ??= next.UnavailableReason;
-      if (blocked is null && next.Connection is { } connection)
-        foreach (var leg in connection.Legs)
-          if (!Travel(leg, 0))
-          {
-            blocked ??=
-              "ETA unavailable: the preceding connection needs regional verification.";
-            break;
-          }
-      if (
-        blocked is null
-        && (
-          next.Route is null || next.Stops.Count != next.Route.Legs.Length + 1
-        )
-      )
-        blocked =
-          "ETA unavailable: the saved route does not match this load's stops.";
-      if (blocked is null)
-      {
-        Attempt(() => Visit(next.DispatchId, next.Stops[0]));
-        for (var i = 0; i < next.Route!.Legs.Length && blocked is null; i++)
-        {
-          if (!Travel(next.Route.Legs[i], 0))
-          {
-            blocked ??=
-              "ETA unavailable: the saved route needs regional verification.";
-            break;
-          }
-          Attempt(() => Visit(next.DispatchId, next.Stops[i + 1]));
-        }
-      }
-      if (blocked is not null)
-        pending[next.DispatchId] = blocked;
-    }
-    if (clock.SplitRests > 0)
-      assumptions.Add($"{clock.SplitRests} split rest(s) included.");
-    if (clock.RecapWaits > 0)
-      assumptions.Add(
-        $"{clock.RecapWaits} wait(s) for returning cycle hours included."
-      );
-    if (clock.PlannedOffDutyWaitHours > 0)
-      assumptions.Add(
-        "Appointment waits are planned sleeper periods. Qualifying full daily rest is credited once; cycle rest remains a conditional alternative, not observed driver status."
-      );
-    if (clock.CompletedOngoingRest)
-      assumptions.Add(
-        "ETA assumes the current rest of at least 3 hours continues to a full 10-hour rest; cycle limits remain separate."
-      );
-    if (state.Progress.OffRoute)
-      assumptions.Add(
-        "Off-route ETA includes a conservative return to the saved route while route refresh continues."
-      );
+    walk.Run(timing, progress);
+    var results = walk.Results;
+    var pending = walk.Pending;
+    var blocked = walk.Blocked;
+    EtaAssumptions.Closing(assumptions, clock, state.Progress.OffRoute);
     return new(
       now,
       now.AddMinutes(2),
@@ -674,19 +395,5 @@ public sealed class EtaService(
       CycleAtCalculation = cycleAtCalculation,
       PendingDispatches = pending,
     };
-  }
-
-  public static DateTimeOffset? Appointment(
-    DateOnly? date,
-    TimeOnly? time,
-    TimeZoneInfo zone
-  )
-  {
-    if (date is null || time is null)
-      return null;
-    var local = date.Value.ToDateTime(time.Value, DateTimeKind.Unspecified);
-    if (zone.IsInvalidTime(local) || zone.IsAmbiguousTime(local))
-      return null;
-    return new DateTimeOffset(local, zone.GetUtcOffset(local));
   }
 }

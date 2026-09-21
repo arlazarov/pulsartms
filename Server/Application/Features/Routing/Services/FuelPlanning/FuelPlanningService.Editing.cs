@@ -294,7 +294,10 @@ public sealed partial class FuelPlanningService
           + candidates.Sum(x => x.ExtraInMiles + x.ExtraOutMiles),
         profile.DriverHourlyCostUsd
       );
-      var signatures = loads.ToDictionary(x => x.Id, FuelHorizon.LoadSignature);
+      var signatures = loads.ToDictionary(
+        x => x.Id,
+        FuelWorkSignature.LoadSignature
+      );
       fuel = await CommitAsync(
         fuel,
         candidates,

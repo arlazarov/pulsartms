@@ -222,7 +222,11 @@ public class FuelRouteVariantTests
           [new(start), new(stop.Point, Stop: stop)]
         )
     );
-    Assert.Throws<RoutePlanningException>(() => FuelHorizon.Join(route, valid));
-    Assert.Throws<RoutePlanningException>(() => FuelHorizon.Join(valid, route));
+    Assert.Throws<RoutePlanningException>(
+      () => FuelHorizonRoad.Join(route, valid)
+    );
+    Assert.Throws<RoutePlanningException>(
+      () => FuelHorizonRoad.Join(valid, route)
+    );
   }
 }

@@ -516,7 +516,7 @@ public sealed class TruckFuelPlanStoreTests
       new(points[5], Stop: second),
     ];
     var collapsed = FuelRouteVariant.Collapse(raw, waypoints);
-    var baseline = FuelHorizon.Join(
+    var baseline = FuelHorizonRoad.Join(
       new()
       {
         Miles = 90,

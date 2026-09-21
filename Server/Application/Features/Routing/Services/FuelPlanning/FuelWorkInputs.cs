@@ -1,4 +1,5 @@
 using Application.Features.Execution.Models;
+using Application.Features.Routing.Algorithms;
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.Routes;
@@ -14,7 +15,7 @@ public sealed record FuelWorkInputs(TruckItinerarySnapshot Itinerary)
     var candidates = Itinerary.Segments.Where(x =>
       x.Work.ExecutionLegId.HasValue || x.Status is "assigned" or "in_transit"
     );
-    var selected = FuelHorizon.SelectLoads(
+    var selected = FuelHorizonLoads.SelectLoads(
       plan,
       candidates
         .Select(x =>

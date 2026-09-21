@@ -134,7 +134,7 @@ public static class FuelPlanProjection
     if (
       actual.Any(load =>
         !fuel.DispatchSignatures.TryGetValue(load.Id, out var signature)
-        || signature != FuelHorizon.LoadSignature(load)
+        || signature != FuelWorkSignature.LoadSignature(load)
       )
     )
       return false;
@@ -143,7 +143,7 @@ public static class FuelPlanProjection
       && (
         next is null
         || fuel.DispatchSignatures.TryGetValue(next.Id, out var nextSignature)
-          && nextSignature == FuelHorizon.LoadSignature(next)
+          && nextSignature == FuelWorkSignature.LoadSignature(next)
       );
   }
 
@@ -155,7 +155,7 @@ public static class FuelPlanProjection
   {
     try
     {
-      selected = FuelHorizon.SelectLoads(plan, loads);
+      selected = FuelHorizonLoads.SelectLoads(plan, loads);
       return true;
     }
     catch (RoutePlanningException)

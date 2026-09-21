@@ -445,9 +445,8 @@ public sealed class FuelPriceRefreshTests
     Assert.Single(sender.Calculations);
 
     store.Snapshot.Plan.DispatchIds.Add(next.Id);
-    store.Snapshot.Plan.DispatchSignatures[next.Id] = FuelHorizon.LoadSignature(
-      next
-    );
+    store.Snapshot.Plan.DispatchSignatures[next.Id] =
+      FuelWorkSignature.LoadSignature(next);
     await service.RefreshAsync(current, default);
     Assert.Single(sender.Calculations);
 
@@ -660,7 +659,7 @@ public sealed class FuelPriceRefreshTests
       Snapshot.Plan.AssignmentRevision = Snapshot.AssignmentRevision;
       Snapshot.Plan.DispatchIds = [Snapshot.RootDispatchId];
       Snapshot.Plan.DispatchSignatures[Snapshot.RootDispatchId] =
-        FuelHorizon.LoadSignature(Loads[0]);
+        FuelWorkSignature.LoadSignature(Loads[0]);
       Snapshot.Plan.ProfileSignature = JsonSerializer.Serialize(
         new TruckRouteProfile(),
         RoutingJson.Options

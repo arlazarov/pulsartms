@@ -22,8 +22,6 @@ public sealed class ServerStructureTests
     [
       "Application/Features/Synchronization/Services/FleetSynchronizationOperation.cs"
     ] = 734,
-    ["Application/Features/Routing/Services/FuelPlanning/FuelHorizon.cs"] = 709,
-    ["Application/Features/Eta/Services/EtaService.cs"] = 692,
     ["Application/Features/Eta/Services/EtaChainInputsService.cs"] = 558,
     ["Infrastructure/Persistence/TruckFuelPlanStore.cs"] = 544,
     [

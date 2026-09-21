@@ -168,7 +168,7 @@ public sealed partial class FuelPlanningService(
     var loads = captured.Select(plan);
     var assignmentSignatures = loads.ToDictionary(
       x => x.Id,
-      FuelHorizon.LoadSignature
+      FuelWorkSignature.LoadSignature
     );
     var horizon = await horizons.BuildAsync(state, p, ct, captured);
     // Nothing left to drive is nothing to fuel. A truck standing on the last

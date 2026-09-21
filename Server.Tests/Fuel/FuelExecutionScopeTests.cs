@@ -28,11 +28,11 @@ public sealed class FuelExecutionScopeTests
     if (allowed)
       Assert.Same(
         current,
-        Assert.Single(FuelHorizon.SelectLoads(plan, [current]))
+        Assert.Single(FuelHorizonLoads.SelectLoads(plan, [current]))
       );
     else
       Assert.Throws<RoutePlanningException>(
-        () => FuelHorizon.SelectLoads(plan, [current])
+        () => FuelHorizonLoads.SelectLoads(plan, [current])
       );
   }
 
@@ -45,11 +45,11 @@ public sealed class FuelExecutionScopeTests
     future.ExecutionLegId = Guid.NewGuid();
     future.ExecutionStatus = "planned";
     future.AwaitingReceipt = true;
-    var chosen = FuelHorizon.SelectLoads(plan, [current, future]);
+    var chosen = FuelHorizonLoads.SelectLoads(plan, [current, future]);
     Assert.Same(current, Assert.Single(chosen));
     current.AssignmentRevision++;
     Assert.Throws<RoutePlanningException>(
-      () => FuelHorizon.SelectLoads(plan, [current, future])
+      () => FuelHorizonLoads.SelectLoads(plan, [current, future])
     );
   }
 
@@ -62,24 +62,27 @@ public sealed class FuelExecutionScopeTests
     plan.AssignmentRevision = 0;
     var legacy = Load(plan);
     Assert.Throws<RoutePlanningException>(
-      () => FuelHorizon.SelectLoads(plan, [legacy, native])
+      () => FuelHorizonLoads.SelectLoads(plan, [legacy, native])
     );
     Assert.Throws<RoutePlanningException>(
-      () => FuelHorizon.SelectLoads(plan, [legacy, legacy])
+      () => FuelHorizonLoads.SelectLoads(plan, [legacy, legacy])
     );
-    Assert.Same(legacy, Assert.Single(FuelHorizon.SelectLoads(plan, [legacy])));
+    Assert.Same(
+      legacy,
+      Assert.Single(FuelHorizonLoads.SelectLoads(plan, [legacy]))
+    );
   }
 
   [Fact]
   public void AssignmentSignatureChangesForSameLoadDifferentLegOrRevision()
   {
     var load = Load(Plan());
-    var initial = FuelHorizon.LoadSignature(load);
+    var initial = FuelWorkSignature.LoadSignature(load);
     load.AssignmentRevision++;
-    Assert.NotEqual(initial, FuelHorizon.LoadSignature(load));
-    var revised = FuelHorizon.LoadSignature(load);
+    Assert.NotEqual(initial, FuelWorkSignature.LoadSignature(load));
+    var revised = FuelWorkSignature.LoadSignature(load);
     load.ExecutionLegId = Guid.NewGuid();
-    Assert.NotEqual(revised, FuelHorizon.LoadSignature(load));
+    Assert.NotEqual(revised, FuelWorkSignature.LoadSignature(load));
   }
 
   [Fact]
@@ -91,9 +94,8 @@ public sealed class FuelExecutionScopeTests
     next.ExecutionLegId = Guid.NewGuid();
     next.ExecutionStatus = "planned";
     var saved = Snapshot(plan);
-    saved.Plan.DispatchSignatures[plan.DispatchId] = FuelHorizon.LoadSignature(
-      current
-    );
+    saved.Plan.DispatchSignatures[plan.DispatchId] =
+      FuelWorkSignature.LoadSignature(current);
     Assert.True(
       FuelPlanProjection.AssignmentsMatch(
         saved.Plan,
@@ -142,7 +144,7 @@ public sealed class FuelExecutionScopeTests
     duplicate.AwaitingReceipt = true;
     var next = Legacy(plan);
     var later = Legacy(plan);
-    var chosen = FuelHorizon.SelectLoads(
+    var chosen = FuelHorizonLoads.SelectLoads(
       plan,
       [current, duplicate, next, later]
     );
@@ -168,7 +170,7 @@ public sealed class FuelExecutionScopeTests
     else
       current.TruckId = Guid.NewGuid();
     Assert.Throws<RoutePlanningException>(
-      () => FuelHorizon.SelectLoads(plan, [current])
+      () => FuelHorizonLoads.SelectLoads(plan, [current])
     );
   }
 
@@ -184,7 +186,7 @@ public sealed class FuelExecutionScopeTests
     current.Stops[^1].Job = job;
     Assert.Same(
       current,
-      Assert.Single(FuelHorizon.SelectLoads(plan, [current, Legacy(plan)]))
+      Assert.Single(FuelHorizonLoads.SelectLoads(plan, [current, Legacy(plan)]))
     );
   }
 
@@ -201,7 +203,7 @@ public sealed class FuelExecutionScopeTests
     var current = Delivery(Load(plan));
     var accepted = Accepted(plan);
     var later = Legacy(plan);
-    var chosen = FuelHorizon.SelectLoads(plan, [current, accepted, later]);
+    var chosen = FuelHorizonLoads.SelectLoads(plan, [current, accepted, later]);
     Assert.Equal(new[] { current, accepted, later }, chosen);
   }
 
@@ -225,7 +227,7 @@ public sealed class FuelExecutionScopeTests
     Assert.Same(
       current,
       Assert.Single(
-        FuelHorizon.SelectLoads(plan, [current, boundary, Legacy(plan)])
+        FuelHorizonLoads.SelectLoads(plan, [current, boundary, Legacy(plan)])
       )
     );
   }
@@ -243,7 +245,7 @@ public sealed class FuelExecutionScopeTests
     Assert.Same(
       current,
       Assert.Single(
-        FuelHorizon.SelectLoads(plan, [current, boundary, Legacy(plan)])
+        FuelHorizonLoads.SelectLoads(plan, [current, boundary, Legacy(plan)])
       )
     );
   }
@@ -268,7 +270,7 @@ public sealed class FuelExecutionScopeTests
     if (change == "duplicate")
       loads.Add(next);
     Assert.Throws<RoutePlanningException>(
-      () => FuelHorizon.SelectLoads(plan, loads)
+      () => FuelHorizonLoads.SelectLoads(plan, loads)
     );
   }
 
@@ -290,7 +292,9 @@ public sealed class FuelExecutionScopeTests
     var saved = Snapshot(plan);
     saved.Plan.DispatchIds.Add(next.Id);
     foreach (var load in loads)
-      saved.Plan.DispatchSignatures[load.Id] = FuelHorizon.LoadSignature(load);
+      saved.Plan.DispatchSignatures[load.Id] = FuelWorkSignature.LoadSignature(
+        load
+      );
     var itinerary = loads
       .SelectMany(load =>
         load.Stops.Select(stop => new FuelItineraryStop(
@@ -335,7 +339,9 @@ public sealed class FuelExecutionScopeTests
     var next = Legacy(plan);
     var saved = Snapshot(plan);
     saved.Plan.DispatchIds.Add(next.Id);
-    saved.Plan.DispatchSignatures[next.Id] = FuelHorizon.LoadSignature(next);
+    saved.Plan.DispatchSignatures[next.Id] = FuelWorkSignature.LoadSignature(
+      next
+    );
     saved = saved with
     {
       Stops = next

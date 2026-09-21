@@ -185,11 +185,11 @@ public class EtaTests
     var zone = TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles");
     Assert.Equal(
       21,
-      EtaService
+      EtaWalk
         .Appointment(new(2026, 9, 10), new(14, 0), zone)!
         .Value.UtcDateTime.Hour
     );
-    Assert.Null(EtaService.Appointment(new(2026, 11, 1), new(1, 30), zone));
+    Assert.Null(EtaWalk.Appointment(new(2026, 11, 1), new(1, 30), zone));
   }
 
   [Fact]

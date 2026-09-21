@@ -330,11 +330,11 @@ public sealed class StopCompletionTests
         .Select(DispatchProjection.Details)
         .SingleAsync();
     var before = await Read();
-    var original = FuelHorizon.LoadSignature(before);
+    var original = FuelWorkSignature.LoadSignature(before);
     await f.Handler()
       .Handle(f.Command(0, f.Clock.GetUtcNow().AddHours(-1)), default);
     var after = await Read();
-    Assert.NotEqual(original, FuelHorizon.LoadSignature(after));
+    Assert.NotEqual(original, FuelWorkSignature.LoadSignature(after));
     Assert.True(
       new EtaStopActivity(
         null,
@@ -362,7 +362,7 @@ public sealed class StopCompletionTests
     );
     Assert.Null(after.Stops[0].DepartedAt);
     await f.Handler().Handle(f.Command(0, null), default);
-    Assert.NotEqual(original, FuelHorizon.LoadSignature(await Read()));
+    Assert.NotEqual(original, FuelWorkSignature.LoadSignature(await Read()));
   }
 
   private sealed class Provider(ExternalDispatch load) : IDispatchProvider

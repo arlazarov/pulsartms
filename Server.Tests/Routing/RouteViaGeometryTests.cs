@@ -65,13 +65,13 @@ public sealed class RouteViaGeometryTests
   {
     var current = new DispatchResponse { Id = Guid.NewGuid() };
     var next = new DispatchResponse { Id = Guid.NewGuid() };
-    var original = FuelHorizon.Signature([current, next]);
-    var currentSignature = FuelHorizon.LoadSignature(current);
-    var nextSignature = FuelHorizon.LoadSignature(next);
+    var original = FuelWorkSignature.Signature([current, next]);
+    var currentSignature = FuelWorkSignature.LoadSignature(current);
+    var nextSignature = FuelWorkSignature.LoadSignature(next);
     next.RouteChoiceRevision = 1;
-    Assert.NotEqual(original, FuelHorizon.Signature([current, next]));
-    Assert.NotEqual(nextSignature, FuelHorizon.LoadSignature(next));
-    Assert.Equal(currentSignature, FuelHorizon.LoadSignature(current));
+    Assert.NotEqual(original, FuelWorkSignature.Signature([current, next]));
+    Assert.NotEqual(nextSignature, FuelWorkSignature.LoadSignature(next));
+    Assert.Equal(currentSignature, FuelWorkSignature.LoadSignature(current));
   }
 
   private static List<PlanStop> Stops() =>

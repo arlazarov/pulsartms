@@ -29,7 +29,7 @@ public sealed class FuelPlanProjectionTests
     {
       load.Stops[^1].Job = "Drop Off";
       fixture.Saved.Plan.DispatchSignatures[load.Id] =
-        FuelHorizon.LoadSignature(load);
+        FuelWorkSignature.LoadSignature(load);
     }
     fixture.Saved.Plan.ExecutionLegId = leg;
     fixture.Saved.Plan.AssignmentRevision = 7;
@@ -228,9 +228,8 @@ public sealed class FuelPlanProjectionTests
       TruckId = fixture.TruckId,
     };
     fixture.Saved.Plan.ArrivalPolicy!.NextDispatchId = next.Id;
-    fixture.Saved.Plan.DispatchSignatures[next.Id] = FuelHorizon.LoadSignature(
-      next
-    );
+    fixture.Saved.Plan.DispatchSignatures[next.Id] =
+      FuelWorkSignature.LoadSignature(next);
     var loads = fixture.Loads.Append(next).ToList();
     Assert.True(
       FuelPlanProjection.AssignmentsMatch(
@@ -279,7 +278,7 @@ public sealed class FuelPlanProjectionTests
     if (!missingSignature)
     {
       fixture.Saved.Plan.DispatchSignatures[next.Id] =
-        FuelHorizon.LoadSignature(next);
+        FuelWorkSignature.LoadSignature(next);
       Assert.True(
         FuelPlanProjection.AssignmentsMatch(
           fixture.Saved.Plan,
@@ -1335,7 +1334,7 @@ public sealed class FuelPlanProjectionTests
         DispatchIds = Loads.Select(x => x.Id).ToList(),
         DispatchSignatures = Loads.ToDictionary(
           x => x.Id,
-          FuelHorizon.LoadSignature
+          FuelWorkSignature.LoadSignature
         ),
         PricingDate = FuelPricingDate.FromUtc(Now),
         CalculatedAt = Now.AddMinutes(-1),

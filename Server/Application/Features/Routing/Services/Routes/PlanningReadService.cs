@@ -251,7 +251,7 @@ public sealed class PlanningReadService(
       : new FuelWorkInputs(itinerary).SelectForDisplay(plan);
     if (
       loads is null
-      || FuelHorizon.Signature(loads) != fuel.AssignmentSignature
+      || FuelWorkSignature.Signature(loads) != fuel.AssignmentSignature
     )
     {
       fuel.NeedsRefresh = true;
