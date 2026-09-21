@@ -1,7 +1,6 @@
 using API;
 using Application.Features.Synchronization.Options;
 using Domain.Policies;
-using Domain.Policies;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;

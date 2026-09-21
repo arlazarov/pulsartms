@@ -31,7 +31,7 @@ public sealed record UpdateIntegrationCredentialsCommand(
   // is asking for the stored ones to be put back.
   private bool ValidFields()
   {
-    var fields = Update.Fields;
+    var fields = Update.Fields!;
     if (
       fields.Count > 3
       || fields.Keys.Any(field =>

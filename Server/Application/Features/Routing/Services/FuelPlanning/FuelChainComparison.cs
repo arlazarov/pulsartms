@@ -1,7 +1,6 @@
 using Application.Diagnostics;
 using Domain.Models.Routing;
 using Domain.Rules;
-using Domain.Rules;
 using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Services.FuelPlanning;

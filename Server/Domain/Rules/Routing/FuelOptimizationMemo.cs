@@ -1,5 +1,4 @@
 using Domain.Models.Routing;
-using Domain.Models.Routing;
 using Domain.Rules;
 using Domain.Rules.Routing;
 

@@ -84,7 +84,7 @@ public sealed partial class DeadheadService
           DeadheadFreshness.StillAnswers(
             saved,
             hash,
-            pair,
+            pair!,
             profile,
             DateTime.UtcNow
           )

@@ -20,7 +20,6 @@ using Domain.Models.Eta;
 using Domain.Models.Fleet;
 using Domain.Models.Routing;
 using Domain.Policies;
-using Domain.Policies;
 using Infrastructure.Integrations.GeoTimeZone;
 using Infrastructure.Persistence;
 using MediatR;
