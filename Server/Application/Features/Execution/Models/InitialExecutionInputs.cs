@@ -1,7 +1,8 @@
 using Domain.Entities.Dispatch;
+using Domain.Models.Execution;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 
-namespace Domain.Models.Execution;
+namespace Application.Features.Execution.Models;
 
 public sealed record InitialExecutionInputs(
   IReadOnlyList<DispatchStop> Stops,

@@ -4,7 +4,7 @@ using Application.Caching;
 using Application.Features.Routing.Background;
 using Domain.Entities.Execution;
 
-namespace Domain.Models.Execution;
+namespace Application.Features.Execution.Models;
 
 internal static class ExecutionCommandSupport
 {

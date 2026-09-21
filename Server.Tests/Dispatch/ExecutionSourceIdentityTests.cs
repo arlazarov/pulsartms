@@ -1,4 +1,4 @@
-using Domain.Models.Execution;
+using Application.Features.Execution.Models;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Dispatch;

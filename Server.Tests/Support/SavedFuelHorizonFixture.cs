@@ -22,6 +22,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Server.Tests.Support;
 
+using Application.Features.Execution.Models;
 using Dispatch = global::Domain.Entities.Dispatch.Dispatch;
 
 internal sealed class SavedFuelHorizonFixture : IAsyncDisposable

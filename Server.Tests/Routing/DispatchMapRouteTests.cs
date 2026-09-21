@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Queries;
@@ -6,7 +7,6 @@ using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
-using Domain.Models.Execution;
 using Domain.Models.Routing;
 using Domain.Rules;
 using Domain.Rules.Routing;

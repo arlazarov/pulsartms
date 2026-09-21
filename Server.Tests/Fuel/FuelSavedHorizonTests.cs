@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Application.Features.Dispatch.Queries;
+using Application.Features.Execution.Models;
 using Application.Features.Fuel.Models;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
@@ -7,7 +8,6 @@ using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Domain.Entities.Fuel;
-using Domain.Models.Execution;
 using Domain.Models.Routing;
 using Domain.Rules;
 using Domain.Rules.Routing;

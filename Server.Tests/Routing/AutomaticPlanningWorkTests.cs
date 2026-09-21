@@ -1,6 +1,6 @@
+using Application.Features.Execution.Models;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
-using Domain.Models.Execution;
 using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;

@@ -1,7 +1,7 @@
 using Application.Features.Dispatch.Commands.SyncDispatche;
 using Application.Features.Dispatch.Models;
+using Application.Features.Execution.Models;
 using Domain.Entities.Dispatch;
-using Domain.Models.Execution;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Dispatch.Services;

@@ -1,6 +1,6 @@
 using Domain.Entities.Dispatch;
 
-namespace Domain.Models.Execution;
+namespace Application.Features.Execution.Models;
 
 public sealed record ExecutionSourceChanges(
   IReadOnlyList<DispatchStop> Stops,

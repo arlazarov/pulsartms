@@ -3,10 +3,10 @@ using System.Text.Json;
 using Application.Features.Border.Interfaces;
 using Application.Features.Border.Models;
 using Application.Features.Border.Services;
+using Application.Features.Execution.Models;
 using Application.Features.Shipments.Models;
 using Application.Features.Shipments.Services;
 using Application.Models;
-using Domain.Models.Execution;
 using Entity = Domain.Entities.Border.BorderCrossing;
 
 namespace Application.Features.Border;

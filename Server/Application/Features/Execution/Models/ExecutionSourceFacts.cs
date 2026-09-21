@@ -2,9 +2,10 @@ using System.Text.Json;
 using Application.Features.Dispatch.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
+using Domain.Models.Execution;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 
-namespace Domain.Models.Execution;
+namespace Application.Features.Execution.Models;
 
 public sealed record ExecutionSourceUpdate(
   IReadOnlyList<DispatchStop> Stops,

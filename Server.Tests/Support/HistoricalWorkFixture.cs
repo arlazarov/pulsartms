@@ -1,5 +1,5 @@
+using Application.Features.Execution.Models;
 using Application.Features.Routing.Services.Deadheads;
-using Domain.Models.Execution;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Load = Domain.Entities.Dispatch.Dispatch;

@@ -183,15 +183,11 @@ public sealed partial class EtaChainInputsService(
     var blocked = false;
     foreach (var item in itinerary.Segments)
     {
-      var reason = Exclusion(item, loads, blocked);
+      var reason = EtaWorkSelection.Exclusion(item, loads, blocked);
       if (reason is { } excluded)
       {
         exclusions.Add(new(item.Work, excluded));
-        blocked |=
-          excluded
-            is EtaWorkExclusionReason.NativeNotActive
-              or EtaWorkExclusionReason.NativeConnectionRequired
-              or EtaWorkExclusionReason.UnresolvedWork;
+        blocked |= EtaWorkSelection.EndsTheRun(excluded);
         continue;
       }
       var load = RouteWorkProjection.Capture(
@@ -317,31 +313,6 @@ public sealed partial class EtaChainInputsService(
     return values;
   }
 
-  private async Task<
-    IReadOnlyDictionary<Guid, SavedNextLoadRoute>
-  > FutureGeometryAsync(
-    IReadOnlyList<RouteWorkSnapshot> future,
-    CancellationToken ct
-  )
-  {
-    var values = new Dictionary<Guid, SavedNextLoadRoute>();
-    if (Plain(future) is { Length: > 0 } plain)
-      foreach (
-        var (id, route) in await savedRoutes.ReadGeometryAsync(plain, ct)
-      )
-        values[id] = route;
-    // Asked for by leg and answered by leg; the chain knows loads, so the
-    // answer is put back under the load it belongs to.
-    if (Accepted(future) is { Length: > 0 } legs)
-      foreach (
-        var route in (
-          await savedRoutes.ReadExecutionGeometryAsync(legs, ct)
-        ).Values
-      )
-        values[route.DispatchId] = route;
-    return values;
-  }
-
   private static Guid[] Plain(IReadOnlyList<RouteWorkSnapshot> loads) =>
     loads.Where(x => !x.ExecutionLegId.HasValue).Select(x => x.Id).ToArray();
 
@@ -350,208 +321,6 @@ public sealed partial class EtaChainInputsService(
       .Where(x => x.ExecutionLegId.HasValue)
       .Select(x => x.ExecutionLegId!.Value)
       .ToArray();
-
-  private static EtaWorkExclusionReason? Exclusion(
-    TruckWorkSegment segment,
-    IReadOnlyList<RouteWorkSnapshot> selected,
-    bool blocked
-  )
-  {
-    if (blocked)
-      return EtaWorkExclusionReason.BlockedByEarlierWork;
-    if (!segment.Work.ExecutionLegId.HasValue)
-    {
-      if (segment.Status is not ("assigned" or "in_transit"))
-        return EtaWorkExclusionReason.LegacyNotAssigned;
-      if (segment.IsOverdue)
-        return EtaWorkExclusionReason.OverdueUpcoming;
-    }
-    else if (!PlanningWorkPolicy.HasOpenAssignment(segment))
-      return EtaWorkExclusionReason.NativeNotActive;
-    // Work accepted into execution ahead of this one is still this truck's
-    // work, and the forecast can follow it: those stops carry their own
-    // appointments and service, and the clock keeps its rests across them.
-    // Where a run ends is one question, asked in one place - here and in the
-    // fuel horizon alike.
-    if (selected.Count > 0 && !PlanningWorkPolicy.ContinuesTheRun(segment))
-      return EtaWorkExclusionReason.NativeConnectionRequired;
-    return PlanningWorkPolicy.BlockingProblem(segment) is null
-      ? null
-      : EtaWorkExclusionReason.UnresolvedWork;
-  }
-
-  public async Task<EtaChainPlan> PrepareAsync(
-    EtaChainDescription description,
-    CancellationToken ct
-  )
-  {
-    var timings = await memory.FutureTimingAsync(
-      description.GeometryHash,
-      async () =>
-      {
-        var future = description.Loads.Skip(1).ToArray();
-        var saved = await FutureGeometryAsync(future, ct);
-        RequireFutureRoads(
-          description.Roads.Future,
-          future.Select(load =>
-            NextLoadRouteVersion.From(
-              load.Id,
-              load.ExecutionLegId,
-              saved.GetValueOrDefault(load.Id)
-            )
-          )
-        );
-        var values = new List<EtaFutureTiming>();
-        var previous = description.RootDispatchId;
-        foreach (var load in future)
-        {
-          var item = saved.GetValueOrDefault(load.Id);
-          var pair = description.Connections.GetValueOrDefault(load.Id);
-          var connection =
-            pair?.Previous.Id == previous
-              ? pair.ReadRoute(item?.Deadhead, description.Profile)
-              : null;
-          var road =
-            item?.BaseRoute is { } baseRoute
-            && baseRoute.InputHash
-              == BaseRouteService.Signature(load, description.Profile)
-              ? SavedRouteReader.Route(
-                baseRoute.RouteJson,
-                load.Stops.Length - 1
-              )
-              : null;
-          string? reason =
-            connection is null
-              ? "ETA unavailable: waiting for the saved connection from the preceding load."
-            : road is null
-              ? "ETA unavailable: waiting for the saved load route."
-            : null;
-          var routeTiming = road is null
-            ? null
-            : EtaRouteTiming.Compile(road, regions);
-          var connectionTiming =
-            connection is null
-            || connection.Legs.All(leg => leg.Miles == 0 && leg.Seconds == 0)
-              ? null
-              : EtaRouteTiming.Compile(connection, regions);
-          if (
-            routeTiming?.HasCompleteTravelTimes == false
-            || connectionTiming?.HasCompleteTravelTimes == false
-          )
-            reason = "ETA unavailable: incomplete saved road travel times.";
-          var points =
-            road is null || road.Legs.Count == 0
-              ? ImmutableArray<RoutePoint>.Empty
-              : road
-                .Legs.Select(leg => leg.Points[^1])
-                .Prepend(road.Legs[0].Points[0])
-                .ToImmutableArray();
-          values.Add(
-            new(load.Id, connectionTiming, routeTiming, points, reason)
-          );
-          previous = load.Id;
-        }
-        return values.ToImmutableArray();
-      },
-      ct
-    );
-    var byId = timings.ToDictionary(x => x.DispatchId);
-    var result = description
-      .Loads.Skip(1)
-      .Select(load =>
-      {
-        var value = byId[load.Id];
-        var stops = load
-          .Stops.OrderBy(s => s.Sequence)
-          .Select(
-            (s, i) =>
-              new PlanStop(
-                s.Id,
-                s.Name,
-                s.Address,
-                s.Sequence,
-                i < value.StopPoints.Length ? value.StopPoints[i] : new(0, 0)
-              )
-              {
-                Job = s.Job,
-                StateAfter = s.StateAfter,
-                ScheduledDate = s.ScheduledDate,
-                ScheduledTime = s.ScheduledTime,
-                ScheduledDate2 = s.ScheduledDate2,
-                ScheduledTime2 = s.ScheduledTime2,
-                AppointmentTimeZoneId = s.AppointmentTimeZoneId,
-              }
-          )
-          .ToArray();
-        var driverChanged = DriverChanged(load, description.DriverId);
-        return new EtaFutureDispatch(
-          load.Id,
-          stops,
-          value.Connection,
-          value.Route,
-          SequenceReason(description, load)
-            ?? (
-              driverChanged
-                ? "ETA unavailable: the next load has a different driver assignment."
-                : value.UnavailableReason
-            )
-        );
-      })
-      .ToArray();
-    return new(
-      description.InputHash,
-      result,
-      description
-        .Loads[0]
-        .Stops.ToDictionary(
-          s => s.Id,
-          s => new EtaStopActivity(
-            s.ArrivedAt,
-            s.PickedUpAt,
-            s.DeliveredAt,
-            s.DepartedAt,
-            s.ManualCompletedAt,
-            s.CompletionOverride
-          )
-        )
-    )
-    {
-      CurrentUnavailableReason =
-        SequenceReason(description, description.Loads[0])
-        ?? (
-          DriverChanged(description.Loads[0], description.DriverId)
-            ? "ETA unavailable: waiting for the receiving driver's truck assignment and HOS."
-            : null
-        ),
-    };
-  }
-
-  private static string? SequenceReason(
-    EtaChainDescription description,
-    RouteWorkSnapshot load
-  ) =>
-    description
-      .Sequence.Issues.FirstOrDefault(x =>
-        x.Work == new WorkIdentity(load.Id, load.ExecutionLegId)
-      )
-      ?.Problem switch
-    {
-      WorkSequenceProblem.CompetingCurrentWork =>
-        "ETA unavailable: multiple loads have started; confirm the current work.",
-      WorkSequenceProblem.UnknownOrder =>
-        "ETA unavailable: the order of assigned work is unresolved.",
-      WorkSequenceProblem.ConflictingOrder =>
-        "ETA unavailable: assigned work conflicts with its predecessor order.",
-      WorkSequenceProblem.MissingExecutionLink =>
-        "ETA unavailable: the execution link is missing.",
-      WorkSequenceProblem.AwaitingTransfer =>
-        "ETA unavailable: waiting for confirmed release and receipt.",
-      _ => null,
-    };
-
-  private static bool DriverChanged(RouteWorkSnapshot load, Guid? driverId) =>
-    load.DriverId.HasValue && load.DriverId != driverId
-    || load.Stops.Any(s => !s.IsCompleted && s.DriverId != driverId);
 
   private static string Hash(object? value) =>
     Convert.ToHexString(

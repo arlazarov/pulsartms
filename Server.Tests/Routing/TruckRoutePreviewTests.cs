@@ -13,7 +13,6 @@ using Application.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
-using Domain.Models.Execution;
 using Domain.Models.Fleet;
 using Domain.Models.Routing;
 using Domain.Rules;
@@ -29,6 +28,7 @@ using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Routing;
 
+using Application.Features.Execution.Models;
 using Dispatch = global::Domain.Entities.Dispatch.Dispatch;
 
 [Trait("Category", "Routing")]

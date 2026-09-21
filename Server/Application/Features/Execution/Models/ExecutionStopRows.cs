@@ -2,7 +2,7 @@ using Application.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 
-namespace Domain.Models.Execution;
+namespace Application.Features.Execution.Models;
 
 public static class ExecutionStopRows
 {

@@ -1,4 +1,4 @@
-namespace Domain.Models.Execution;
+namespace Application.Features.Execution.Models;
 
 public sealed record SwitchLoadChange(
   Guid DispatchId,

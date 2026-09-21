@@ -1,7 +1,7 @@
 using Application.Features.Addresses.Interfaces;
 using Application.Features.Addresses.Models;
+using Application.Features.Execution.Models;
 using Application.Models;
-using Domain.Models.Execution;
 
 namespace Application.Features.Addresses;
 

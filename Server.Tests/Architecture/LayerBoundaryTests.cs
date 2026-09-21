@@ -62,17 +62,33 @@ public class LayerBoundaryTests
         "Application.Features.Execution.Services.ExecutionWorkProjection"
       )
     );
-    var eta = Path.Combine(
-      Root(),
-      "Server/Application/Features/Eta/Services/EtaChainInputsService.cs"
+    // Every part of the service, not the first one: the rule is about what
+    // the chain is allowed to read, and a part added later reads just as
+    // much as the part that was here when the rule was written.
+    var parts = Directory.GetFiles(
+      Path.Combine(Root(), "Server/Application/Features/Eta/Services"),
+      "EtaChainInputsService*.cs"
     );
-    var etaSource = File.ReadAllText(eta);
-    Assert.DoesNotMatch(
-      @"GetDispatchBoardQuery|ResolveAssignmentAsync|ExecutionWorkReader"
-        + @"|\.Dispatches\b|\.Trucks\b",
-      etaSource
+    Assert.True(
+      parts.Length >= 3,
+      $"this rule looked at {parts.Length} parts of the chain service "
+        + "and expected at least 3 - it is no longer reading what it is about"
     );
-    Assert.Contains("TruckItineraryReader", etaSource);
+    foreach (var part in parts)
+      Assert.DoesNotMatch(
+        @"GetDispatchBoardQuery|ResolveAssignmentAsync|ExecutionWorkReader"
+          + @"|\.Dispatches\b|\.Trucks\b",
+        File.ReadAllText(part)
+      );
+    Assert.Contains(
+      "TruckItineraryReader",
+      File.ReadAllText(
+        Path.Combine(
+          Root(),
+          "Server/Application/Features/Eta/Services/EtaChainInputsService.cs"
+        )
+      )
+    );
   }
 
   [Fact]
