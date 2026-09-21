@@ -209,4 +209,4 @@ export function disposeStopMap(element) {
   state.lines.forEach(line => line.setMap(null));
   if (state.map) google.maps.event.clearInstanceListeners(state.map);
 }
-import { loadGoogleMaps } from '../fleetMap/provider/googleMapsLoader.js';
+import { loadGoogleMaps } from '../fleetMap/provider/googleMapsLoader.ts';

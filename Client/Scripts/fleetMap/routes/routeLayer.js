@@ -8,7 +8,7 @@ import { createRouteStops } from './routeStops.js';
 import { routePosition } from '../geometry/routePosition.ts';
 import { lowerBound, segmentRange } from '../geometry/routeSearch.ts';
 import { createRouteSnapper, matchRoute } from '../trucks/routeSnap.ts';
-import { createDetailsCard } from '../ui/detailsCard.js';
+import { createDetailsCard } from '../ui/detailsCard.ts';
 import { pendingStops } from './pendingStops.ts';
 import { emptyRouteLegs } from './emptyRouteLegs.ts';
 import { stopEtaIdentity } from './stopEtaIdentity.ts';

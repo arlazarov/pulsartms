@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyTheme } from '../../Scripts/shared/appearance.js';
+import { applyTheme } from '../../Scripts/shared/appearance.ts';
 
 test('appearance applies only supported root themes without browser storage', t => {
   const original = Object.getOwnPropertyDescriptor(globalThis, 'document');

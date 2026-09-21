@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import * as storage from '../../Scripts/shared/authStorage.js';
+import * as storage from '../../Scripts/shared/authStorage.ts';
 
 const session = (id = randomUUID(), label = 'first') => ({
   Id: id,

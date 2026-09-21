@@ -7,7 +7,7 @@ import {
 import { createStationPopup } from './stationPopup.js';
 import { fuelVisitLabel } from './stationQuantity.ts';
 import { yieldToBrowser } from '../lifecycle/backgroundWork.ts';
-import { createDetailsCard } from '../ui/detailsCard.js';
+import { createDetailsCard } from '../ui/detailsCard.ts';
 import { coordinates } from '../geometry/coordinates.ts';
 
 const stationId = item => item.station.id || item.station.externalId;

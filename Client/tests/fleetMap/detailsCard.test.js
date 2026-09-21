@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createDetailsCard } from '../../Scripts/fleetMap/ui/detailsCard.js';
+import { createDetailsCard } from '../../Scripts/fleetMap/ui/detailsCard.ts';
 
 test('fixed popup reuses content, closes explicitly and releases listeners without querying station markup', t => {
   const oldDocument = globalThis.document,

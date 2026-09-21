@@ -9,7 +9,7 @@ import {
   createLabelFonts,
   labelSubLayers,
 } from './sceneMetrics.ts';
-import { defaultStopLabelStyle } from './stopLabelStyle.js';
+import { defaultStopLabelStyle } from './stopLabelStyle.ts';
 import { stopCardLayers } from './stopCardLayers.js';
 const emptyClusters = Object.freeze([]);
 

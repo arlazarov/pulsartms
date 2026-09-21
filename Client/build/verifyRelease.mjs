@@ -11,7 +11,7 @@ const entryPoints = [
   'fleetMap/rendering/gpuScene.js',
   'shared/popup.js',
   'shared/cameraDialog.js',
-  'shared/authStorage.js',
+  'shared/authStorage.ts',
   'shared/reorderList.js',
   'dispatch/dispatch.js',
 ];

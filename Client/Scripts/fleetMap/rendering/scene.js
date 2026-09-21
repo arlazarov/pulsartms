@@ -2,7 +2,7 @@ import { releaseAll } from '../lifecycle/release.ts';
 import { createSceneLayers } from './sceneLayers.js';
 import { snapshotStops } from './stopData.ts';
 import { pickNearbyStation } from './stationTouch.ts';
-import { readStopLabelStyle } from './stopLabelStyle.js';
+import { readStopLabelStyle } from './stopLabelStyle.ts';
 import { clusterTrucks, clusterCamera } from './truckClusters.ts';
 import { layoutMapLabels } from './truckLabelLayout.js';
 import { createMapRepaint } from '../provider/mapRepaint.ts';

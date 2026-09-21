@@ -1,7 +1,7 @@
 import { releaseAll } from './lifecycle/release.ts';
 import { createRouteLayer } from './routes/routeLayer.js';
 import { orderedStops } from './routes/pendingStops.ts';
-import { loadGoogleMaps } from './provider/googleMapsLoader.js';
+import { loadGoogleMaps } from './provider/googleMapsLoader.ts';
 import { createTruckLayer } from './trucks/truckLayer.js';
 import { createStationLayer } from './stations/stationLayer.js';
 import { fuelRecommendations } from './stations/fuelRecommendations.ts';

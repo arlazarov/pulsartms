@@ -3,16 +3,26 @@ import { sceneMetrics } from './sceneMetrics.ts';
 // Fallbacks mirror the semantic light-theme roles; mounted scenes read their
 // CSS tokens off the probe element. The two are held together by
 // tests/fleetMap/mapColors.test.js.
-/**
- * @typedef {{ color: number[], background: number[], border: number[],
- *   pickup: number[], delivery: number[], eta: number[], success: number[],
- *   danger: number[], muted: number[], size: number, padding: number[],
- *   radius: number, fontFamily: string, width: (text: string) => number }}
- *   StopLabelStyle
- */
+// Everything a stop label is drawn with. The fallbacks mirror the light
+// theme; a mounted scene reads the real values off a probe element.
+export type StopLabelStyle = {
+  color: number[];
+  background: number[];
+  border: number[];
+  pickup: number[];
+  delivery: number[];
+  eta: number[];
+  success: number[];
+  danger: number[];
+  muted: number[];
+  size: number;
+  padding: number[];
+  radius: number;
+  fontFamily: string;
+  width: (text: string) => number;
+};
 
-/** @type {Readonly<StopLabelStyle>} */
-export const defaultStopLabelStyle = Object.freeze({
+export const defaultStopLabelStyle: Readonly<StopLabelStyle> = Object.freeze({
   color: [23, 36, 56],
   background: [255, 255, 255, 255],
   border: [226, 232, 240],
@@ -29,7 +39,7 @@ export const defaultStopLabelStyle = Object.freeze({
   width: () => 0,
 });
 
-export function readStopLabelStyle(host) {
+export function readStopLabelStyle(host: HTMLElement): StopLabelStyle {
   const document = host.ownerDocument;
   const viewport = document?.defaultView;
   if (!document?.createElement || !viewport?.getComputedStyle || !host.append)
@@ -38,7 +48,7 @@ export function readStopLabelStyle(host) {
   probe.className = 'fleet-map-stop-label-style';
   host.append(probe);
   const computed = viewport.getComputedStyle(probe);
-  const color = value =>
+  const color = (value: string) =>
     value
       .match(/[\d.]+/g)
       ?.slice(0, 3)
@@ -72,7 +82,7 @@ export function readStopLabelStyle(host) {
     'success',
     'danger',
     'muted',
-  ]) {
+  ] as const) {
     probe.className = `fleet-map-stop-label-style fleet-map-stop-label-style--${role}`;
     style[role] =
       color(viewport.getComputedStyle(probe).color) ||
@@ -83,7 +93,7 @@ export function readStopLabelStyle(host) {
   if (context) context.font = `400 ${size}px ${fontFamily}`;
   return {
     ...style,
-    width: text =>
+    width: (text: string) =>
       context
         ? Math.max(
             ...text.split('\n').map(line => context.measureText(line).width),

@@ -35,7 +35,7 @@ test('only content-fingerprinted framework assets and generated chunks receive i
     '/_framework/blazor.webassembly.js',
     '/_framework/dotnet.js',
     '/js/generated/fleetMap/fleetMap.js',
-    '/js/generated/shared/authStorage.js',
+    '/js/generated/shared/authStorage.ts',
     '/brand/pulsr.svg',
   ])
     assert.equal(matches(path), false, path);

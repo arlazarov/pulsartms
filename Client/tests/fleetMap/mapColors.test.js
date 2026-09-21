@@ -8,7 +8,7 @@ import {
   currentRouteLineColor,
   futureRouteColor,
 } from '../../Scripts/fleetMap/rendering/routePalette.ts';
-import { defaultStopLabelStyle } from '../../Scripts/fleetMap/rendering/stopLabelStyle.js';
+import { defaultStopLabelStyle } from '../../Scripts/fleetMap/rendering/stopLabelStyle.ts';
 
 // The map draws on the GPU, which takes numbers, not custom properties, so
 // the colours it cannot read at run time are written into its own modules.

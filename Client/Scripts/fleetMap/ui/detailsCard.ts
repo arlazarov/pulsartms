@@ -1,5 +1,8 @@
 // Fixed HTML details: no camera callbacks, frame loops or GPU work.
-export function createDetailsCard(map, { onClose = () => {} } = {}) {
+export function createDetailsCard(
+  map: google.maps.Map,
+  { onClose = () => {} }: { onClose?: () => void } = {},
+) {
   const root = map.getDiv(),
     host = document.createElement('section');
   host.className = 'fleet-map-details-card';
@@ -14,14 +17,14 @@ export function createDetailsCard(map, { onClose = () => {} } = {}) {
   body.className = 'fleet-map-details-card__body';
   host.append(close, body);
   google.maps.OverlayView.preventMapHitsAndGesturesFrom(host);
-  let content = null;
+  let content: Node | null = null;
   let disposed = false;
   const api = {
-    show(nextContent) {
+    show(nextContent: Node) {
       if (disposed) return;
       if (content !== nextContent) {
         content = nextContent;
-        body.replaceChildren(content);
+        body.replaceChildren(content!);
       }
       if (!host.isConnected) root.append(host);
     },
@@ -43,7 +46,7 @@ export function createDetailsCard(map, { onClose = () => {} } = {}) {
     api.hide();
   }
   close.addEventListener('click', dismiss);
-  function onKeyDown(event) {
+  function onKeyDown(event: KeyboardEvent) {
     if (event.key === 'Escape') {
       event.stopPropagation();
       dismiss();

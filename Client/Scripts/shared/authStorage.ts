@@ -1,25 +1,30 @@
 const sessionKey = 'auth_session';
 const lockName = 'amftms:auth-session';
 
-function valid(session) {
+// The session as the app stores it: an id and the two tokens, all three
+// present and none of them empty.
+type Session = { Id: string; AccessToken: string; RefreshToken: string };
+
+function valid(session: unknown): session is Session {
+  const value = session as Partial<Session> | null;
   return (
-    session !== null &&
-    typeof session === 'object' &&
-    typeof session.Id === 'string' &&
+    value !== null &&
+    typeof value === 'object' &&
+    typeof value.Id === 'string' &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      session.Id,
+      value.Id,
     ) &&
-    session.Id !== '00000000-0000-0000-0000-000000000000' &&
-    typeof session.AccessToken === 'string' &&
-    session.AccessToken.trim().length > 0 &&
-    typeof session.RefreshToken === 'string' &&
-    session.RefreshToken.trim().length > 0
+    value.Id !== '00000000-0000-0000-0000-000000000000' &&
+    typeof value.AccessToken === 'string' &&
+    value.AccessToken.trim().length > 0 &&
+    typeof value.RefreshToken === 'string' &&
+    value.RefreshToken.trim().length > 0
   );
 }
 
-function parse(json) {
+function parse(json: string | null): Session | null {
   try {
-    const session = JSON.parse(json);
+    const session = JSON.parse(json ?? '');
     return valid(session)
       ? {
           Id: session.Id.toLowerCase(),
@@ -32,13 +37,13 @@ function parse(json) {
   }
 }
 
-function write(session) {
+function write(session: Session | null): void {
   localStorage.setItem(sessionKey, JSON.stringify(session));
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
 }
 
-function read() {
+function read(): Session | null {
   const json = localStorage.getItem(sessionKey);
   if (json !== null) return parse(json);
   const AccessToken = localStorage.getItem('access_token');
@@ -49,7 +54,7 @@ function read() {
   return session;
 }
 
-function locked(action) {
+function locked<T>(action: () => T | Promise<T>): Promise<T> {
   // The lock covers legacy migration and the entire compare-and-set across tabs.
   // An unlocked fallback can overwrite a newer login with a stale refresh.
   if (!globalThis.navigator?.locks?.request)
@@ -66,13 +71,18 @@ export function readSession() {
   });
 }
 
-export function setSession(json) {
+export function setSession(json: string): Promise<void> {
   const session = parse(json);
   if (session === null) throw new Error('Invalid authentication session.');
   return locked(() => write(session));
 }
 
-export function replaceSession(expectedJson, replacementJson) {
+// A refresh replaces one session with another only if what is stored is
+// still exactly what the caller last saw.
+export function replaceSession(
+  expectedJson: string,
+  replacementJson: string | null,
+): Promise<boolean> {
   const expected = parse(expectedJson);
   const replacement = replacementJson === null ? null : parse(replacementJson);
   if (expected === null || (replacementJson !== null && replacement === null))
@@ -93,7 +103,7 @@ export function replaceSession(expectedJson, replacementJson) {
   });
 }
 
-export function clearSession(id) {
+export function clearSession(id: string): Promise<boolean> {
   return locked(() => {
     if (read()?.Id !== id) return false;
     write(null);
@@ -101,6 +111,6 @@ export function clearSession(id) {
   });
 }
 
-export function clear() {
+export function clear(): Promise<void> {
   return locked(() => write(null));
 }

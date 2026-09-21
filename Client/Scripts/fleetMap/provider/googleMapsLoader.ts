@@ -1,7 +1,8 @@
-let loading = null;
+let loading: Promise<void> | null = null;
 
-/** @returns {Promise<void>} a promise that settles when the API is ready */
-export function loadGoogleMaps(apiKey) {
+// The provider script is loaded once for the life of the page; a failure
+// clears the promise so the next mount may try again.
+export function loadGoogleMaps(apiKey: string): Promise<void> {
   if (loading) return loading;
   if (!apiKey)
     return Promise.reject(new Error('Google Maps API key is missing.'));
@@ -14,8 +15,8 @@ export function loadGoogleMaps(apiKey) {
   return loading;
 }
 
-async function loadWithRetry(apiKey) {
-  let lastError;
+async function loadWithRetry(apiKey: string): Promise<void> {
+  let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       await loadScript(apiKey, attempt);
@@ -33,22 +34,27 @@ async function loadWithRetry(apiKey) {
   throw lastError;
 }
 
-function loadScript(apiKey, attempt) {
-  if (window.google?.maps?.importLibrary) return Promise.resolve();
+function loadScript(apiKey: string, attempt: number): Promise<void> {
+  // The provider hangs its callback on the window by name; nothing types
+  // that, so this one place says so.
+  const provider = window as unknown as Record<string, unknown> & {
+    google?: { maps?: { importLibrary?: unknown } };
+  };
+  if (provider.google?.maps?.importLibrary) return Promise.resolve();
 
   return new Promise((resolve, reject) => {
     document.getElementById('google-maps-script')?.remove();
     const script = document.createElement('script');
     const callback = `initializeGoogleFleetMap_${Date.now()}_${attempt}`;
-    let timeout;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     let settled = false;
 
-    const finish = error => {
+    const finish = (error?: unknown) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
       script.onerror = null;
-      delete window[callback];
+      delete provider[callback];
       if (error) {
         script.remove();
         reject(error);
@@ -57,7 +63,7 @@ function loadScript(apiKey, attempt) {
       }
     };
 
-    window[callback] = () => finish();
+    provider[callback] = () => finish();
     script.id = 'google-maps-script';
     script.src =
       'https://maps.googleapis.com/maps/api/js?' +

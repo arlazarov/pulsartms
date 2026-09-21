@@ -27,7 +27,7 @@ async function fixture(
       'fleetMap/rendering/gpuScene.js',
       'shared/popup.js',
       'shared/cameraDialog.js',
-      'shared/authStorage.js',
+      'shared/authStorage.ts',
       'shared/reorderList.js',
       'dispatch/dispatch.js',
     ].map(name => [`js/generated/${name}`, 'export const value = 1;']),

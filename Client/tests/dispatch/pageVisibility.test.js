@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { observeVisibility } from '../../Scripts/shared/pageVisibility.js';
+import { observeVisibility } from '../../Scripts/shared/pageVisibility.ts';
 
 test('visibility observer reports the current document and releases its callback', async () => {
   const document = new EventTarget();

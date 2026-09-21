@@ -59,8 +59,13 @@ test('every generated module referenced by Client C# or Razor has a JavaScript b
           entries.has(module),
           `${folder}/${name}: ${module} is missing from build entryPoints`,
         );
+        // The source may be TypeScript or JavaScript; what ships is .js
+        // either way.
         assert.ok(
-          existsSync(new URL(`Scripts/${module}`, client)),
+          existsSync(new URL(`Scripts/${module}`, client)) ||
+            existsSync(
+              new URL(`Scripts/${module.replace(/\.js$/, '.ts')}`, client),
+            ),
           `${module} has no source module`,
         );
         checked++;
@@ -93,7 +98,7 @@ test('fleet renderer has no legacy fallback imports, DOM stop observation or inl
     }
   }
   assert.doesNotMatch(
-    read('Scripts/fleetMap/ui/detailsCard.js'),
+    read('Scripts/fleetMap/ui/detailsCard.ts'),
     /InfoWindow|dataset|querySelector/,
   );
 });
