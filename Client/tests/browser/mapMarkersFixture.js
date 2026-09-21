@@ -6,7 +6,7 @@ import {
   TextLayer,
 } from '@deck.gl/layers';
 import { PathStyleExtension } from '@deck.gl/extensions';
-import { createScene } from '../../Scripts/fleetMap/rendering/scene.js';
+import { createScene } from '../../Scripts/fleetMap/rendering/scene.ts';
 import {
   currentRouteColor,
   futureRouteColor,

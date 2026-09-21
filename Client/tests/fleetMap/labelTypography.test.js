@@ -4,7 +4,7 @@ import {
   createLabelFonts,
   sceneMetrics,
 } from '../../Scripts/fleetMap/rendering/sceneMetrics.ts';
-import { createScene } from '../../Scripts/fleetMap/rendering/scene.js';
+import { createScene } from '../../Scripts/fleetMap/rendering/scene.ts';
 
 test('label atlases match physical font sizes without enlarging CSS text', () => {
   for (const density of [1, 1.25, 2, 3]) {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createScene } from '../../Scripts/fleetMap/rendering/scene.js';
+import { createScene } from '../../Scripts/fleetMap/rendering/scene.ts';
 
 function fixture(t, mode = 'VECTOR') {
   let frame, deck;

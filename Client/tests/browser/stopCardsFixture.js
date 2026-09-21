@@ -5,7 +5,7 @@ import {
   IconLayer,
   TextLayer,
 } from '@deck.gl/layers';
-import { createScene } from '../../Scripts/fleetMap/rendering/scene.js';
+import { createScene } from '../../Scripts/fleetMap/rendering/scene.ts';
 import { PathStyleExtension } from '@deck.gl/extensions';
 import { createRouteStops } from '../../Scripts/fleetMap/routes/routeStops.ts';
 import { createNextLoadsLayer } from '../../Scripts/fleetMap/routes/nextLoads.ts';

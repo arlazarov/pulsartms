@@ -5,7 +5,7 @@ import {
   IconLayer,
   TextLayer,
 } from '@deck.gl/layers';
-import { createScene } from '../../Scripts/fleetMap/rendering/scene.js';
+import { createScene } from '../../Scripts/fleetMap/rendering/scene.ts';
 import { createMapHost } from '../../Scripts/fleetMap/provider/mapHost.ts';
 
 const root = document.getElementById('map');

@@ -6,7 +6,7 @@ import {
   TextLayer,
 } from '@deck.gl/layers';
 import { PathStyleExtension } from '@deck.gl/extensions';
-import { createScene } from './scene.js';
+import { createScene } from './scene.ts';
 
 // Keep the vendor boundary separate so scene lifecycle is testable without WebGL.
 export function createGpuScene(map: google.maps.Map) {
