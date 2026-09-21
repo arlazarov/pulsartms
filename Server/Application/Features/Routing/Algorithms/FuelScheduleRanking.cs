@@ -31,6 +31,25 @@ public static class FuelScheduleRanking
     );
   }
 
+  // What a plan's schedule delay costs beyond the driving time the
+  // optimizer has already priced: access minutes are in the plan's cost
+  // once, and must not be charged again as delay.
+  public static void ChargeDelay(
+    FuelPlan fuel,
+    double extraMiles,
+    double driverHourlyCostUsd
+  ) =>
+    fuel.EconomicCostUsd += Math.Max(
+      0,
+      DelayCost(
+        fuel.ScheduleImpact,
+        extraMiles,
+        fuel.ExtraMinutes,
+        driverHourlyCostUsd
+      )
+        - fuel.ExtraMinutes / 60 * driverHourlyCostUsd
+    );
+
   public static double DelayCost(
     FuelScheduleImpact impact,
     double extraMiles,

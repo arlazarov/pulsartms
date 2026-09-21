@@ -138,11 +138,7 @@ public sealed partial class FuelPlanningService(
     var p = request.Profile;
     PlanningPreferences.From(state.Profile).ApplyTo(p);
     p.UsesFleetDefaults = state.Profile.UsesFleetDefaults;
-    if (p.Validate(true) is { } error)
-      throw new RoutePlanningException(error);
-    var plan =
-      state.Plan
-      ?? throw new RoutePlanningException("Build the truck route first.");
+    var plan = FuelPlanningGuards.RequirePlan(state, p);
     if (plan.ExecutionLegId.HasValue)
       await RequireCurrentAsync(
         captured,
@@ -152,39 +148,14 @@ public sealed partial class FuelPlanningService(
         state.Profile,
         ct
       );
-    if (plan.InputsChanged || !SameVehicle(p, plan.Profile))
-      throw new RoutePlanningException(
-        "The truck or stops changed. Rebuild the route before planning fuel."
-      );
-    if (
-      state.Progress?.RemainingMiles is not { } remaining
-      || state.Progress.ProgressMiles is null
-      || state.Progress.Position?.IsValid != true
-      || state.Progress.LocationStale
-    )
-      throw new RoutePlanningException(
-        "Fuel quantities will update when a fresh GPS position is available on the current route."
-      );
-    double gallons;
+    FuelPlanningGuards.RequireDrivable(state, plan, p);
     var manual = request.CurrentGallons.HasValue;
-    if (manual)
-      gallons = request.CurrentGallons!.Value;
-    else
-    {
-      if (
-        state.FuelPercent is not { } percent
-        || !double.IsFinite(percent)
-        || percent is < 0 or > 100
-        || state.FuelUpdatedAt is null
-        || state.FuelUpdatedAt > DateTime.UtcNow.AddMinutes(1)
-      )
-        throw new RoutePlanningException(
-          "No valid fuel level is available for this truck."
-        );
-      gallons = p.TankGallons!.Value * percent / 100;
-    }
-    if (FuelReservePolicy.StartingLevelError(gallons, p) is { } levelError)
-      throw new RoutePlanningException(levelError);
+    var gallons = FuelStartingLevel.Gallons(
+      request.CurrentGallons,
+      state,
+      p,
+      DateTime.UtcNow
+    );
     var today = FuelPricingDate.FromUtc(DateTime.UtcNow);
     var response =
       await fuelPrices.ReadAsync(today, ct)
@@ -234,7 +205,7 @@ public sealed partial class FuelPlanningService(
       ct
     );
     var calendar = new FuelPriceCalendar(fuelPrices, today, response);
-    remaining = horizon.Route.Miles;
+    var remaining = horizon.Route.Miles;
     var corridorStations = new HashSet<Guid>();
     var countries = new FuelAccessCountries(regionLookup);
     List<FuelCandidate> shortList;
@@ -305,9 +276,6 @@ public sealed partial class FuelPlanningService(
     if (stops.Count == 0)
       throw new RoutePlanningException("No remaining dispatch stops.");
     var baseline = horizon.Route;
-    var initialMinutes = FuelAccessEstimate.DrivingMinutes(
-      horizon.StartAccessMiles
-    );
     var optimization = new FuelOptimizationMemo(
       remaining,
       gallons,
@@ -330,145 +298,26 @@ public sealed partial class FuelPlanningService(
       ),
       FuelZoneSearch.Representatives(selected, config)
     );
-    FuelPlan? bestFuel = null;
-    List<FuelCandidate> bestPurchases = [];
-    (int Cycle, int Unknown, int Late) bestImpact = (
-      int.MaxValue,
-      int.MaxValue,
-      int.MaxValue
+    var comparison = await FuelChainComparison.RunAsync(
+      chains,
+      Math.Min(
+        config.CandidateRoadChecks,
+        horizon.StartAccessMiles > 0 ? 11 : 12
+      ),
+      calendar,
+      schedule,
+      baseline,
+      geometry,
+      horizon.StartAccessMiles,
+      optimization,
+      p,
+      ct
     );
-    double bestScore = double.PositiveInfinity;
-    var evaluatedRoutes = 0;
-    var seen = new HashSet<string>();
-    var checks = new List<FuelRouteCheck>();
-    FuelRouteCheck? winner = null;
-    var comparisonLimit = Math.Min(
-      config.CandidateRoadChecks,
-      horizon.StartAccessMiles > 0 ? 11 : 12
-    );
-    foreach (var chain in chains)
-    {
-      if (evaluatedRoutes >= comparisonLimit)
-        break;
-      var ordered = chain.OrderBy(x => x.AlongMiles).ToList();
-      ordered = await calendar.PriceAsync(
-        ordered,
-        schedule.Arrivals(
-          baseline,
-          ordered,
-          geometry,
-          horizon.StartAccessMiles,
-          true,
-          ct
-        ),
-        p,
-        ct
-      );
-      if (!seen.Add(string.Join(",", ordered.Select(x => x.VisitKey))))
-        continue;
-      var check = new FuelRouteCheck
-      {
-        Stations = ordered.Select(x => x.Station.Name).ToList(),
-      };
-      ct.ThrowIfCancellationRequested();
-      evaluatedRoutes++;
-      checks.Add(check);
-      var extraMiles =
-        horizon.StartAccessMiles
-        + ordered.Sum(x => x.ExtraInMiles + x.ExtraOutMiles);
-      var extraMinutes =
-        initialMinutes + ordered.Sum(x => x.Station.DetourMinutes);
-      check.ExtraMiles = extraMiles;
-      check.ExtraMinutes = extraMinutes;
-      FuelPlan fuel;
-      List<FuelCandidate> purchases;
-      try
-      {
-        (fuel, purchases) = optimization.Take(ordered);
-      }
-      catch (RoutePlanningException)
-      {
-        check.Result = "Cannot preserve fuel reserve";
-        continue;
-      }
-      // Do not keep an unnecessary waypoint when the optimizer buys nothing
-      // there.
-      if (fuel.Stops.Count != ordered.Count)
-      {
-        check.Result = "Includes a station without a useful purchase";
-        continue;
-      }
-      fuel.EconomicCostUsd += initialMinutes / 60 * p.DriverHourlyCostUsd;
-      if (
-        FuelScheduleRanking.CanSkipReplay(
-          fuel,
-          0,
-          p.DriverHourlyCostUsd,
-          bestFuel is null ? null : bestImpact,
-          bestScore,
-          bestFuel?.Stops.Count ?? 0
-        )
-      )
-      {
-        check.Result = "Higher estimated cost before schedule replay";
-        continue;
-      }
-      fuel.ScheduleImpact =
-        chain.Count == 0 && horizon.StartAccessMiles == 0
-          ? schedule.Baseline
-          : schedule.Evaluate(
-            FuelAccessEstimate.TimingRoute(
-              baseline,
-              purchases,
-              horizon.StartAccessMiles
-            ),
-            ct
-          );
-      var impact = FuelScheduleRanking.For(fuel.ScheduleImpact);
-      // Access driving time is already priced by the optimizer; add only
-      // further schedule delay.
-      var timeCost = Math.Max(
-        0,
-        FuelScheduleRanking.DelayCost(
-          fuel.ScheduleImpact,
-          extraMiles,
-          extraMinutes,
-          p.DriverHourlyCostUsd
-        )
-          - extraMinutes / 60 * p.DriverHourlyCostUsd
-      );
-      var score =
-        fuel.EconomicCostUsd + fuel.ExpectedFutureFuelCostUsd + timeCost;
-      check.CostUsd = score;
-      check.Result = "Higher total cost";
-      if (impact.CompareTo(bestImpact) > 0)
-      {
-        check.Result = "Worse schedule feasibility";
-        continue;
-      }
-      if (
-        impact.CompareTo(bestImpact) == 0
-        && FuelStopEconomy.Compare(
-          score,
-          fuel.Stops.Count,
-          bestScore,
-          bestFuel!.Stops.Count
-        ) >= 0
-      )
-      {
-        if (score < bestScore)
-          check.Result = "Additional stops save less than $20 each";
-        continue;
-      }
-      fuel.ExtraMinutes = extraMinutes;
-      fuel.EconomicCostUsd += timeCost;
-      fuel.SavingsUsd = null;
-      winner = check;
-      bestScore = score;
-      bestFuel = fuel;
-      bestPurchases = purchases;
-      bestImpact = impact;
-    }
+    var bestFuel = comparison.Fuel;
+    var bestPurchases = comparison.Purchases;
+    var checks = comparison.Checks;
+    var winner = comparison.Winner;
+    var evaluatedRoutes = comparison.Evaluated;
     PerformanceStages.Count(
       "fuel",
       "optimizer-calculations",
@@ -493,37 +342,15 @@ public sealed partial class FuelPlanningService(
           ct
         )
       );
-    if (
-      bestFuel.Stops.FirstOrDefault() is { } firstPurchase
-      && firstPurchase.ArrivalGallons < p.ReserveGallons
-    )
-    {
-      firstPurchase.Warning = FuelReservePolicy.ArrivalWarning(
-        firstPurchase.ArrivalGallons,
-        p
-      );
-      bestFuel.Notes.Add(firstPurchase.Warning);
-    }
-    winner!.Result = "Selected";
-    bestFuel.RouteChecks = checks;
-    bestFuel.UsDiscountSignature = calendar.Signature;
-    bestFuel.PriceDates = calendar.Dates;
-    if (bestFuel.Stops.Any(x => x.PriceEstimated))
-      bestFuel.Notes.Add(
-        "Prices without a published arrival-date quote are estimated using today's available price; unknown arrival times also use today's price."
-      );
-    bestFuel.EstimatedStationAccess = true;
-    bestFuel.StartAccessMiles = horizon.StartAccessMiles;
-    bestFuel.RemainingMiles =
-      baseline.Miles
-      + horizon.StartAccessMiles
-      + bestFuel.Stops.Sum(x => x.DetourMiles);
-    bestFuel.Notes.Add(
-      $"Compared {evaluatedRoutes} fuel chains on the saved route without routing requests. Station access distance and time are estimates, not verified truck approaches."
-    );
-    bestFuel.Notes.AddRange(horizon.Notes);
-    bestFuel.Notes.Add(
-      "Additional fuel stops must save at least $20 each against a feasible alternative with fewer stops and the same schedule rank. This is a selection threshold, not a stop charge."
+    FuelPlanSummary.Write(
+      bestFuel,
+      p,
+      checks,
+      winner!,
+      calendar,
+      horizon,
+      baseline,
+      evaluatedRoutes
     );
     var committed = await CommitAsync(
       bestFuel,
@@ -549,234 +376,4 @@ public sealed partial class FuelPlanningService(
     );
     return FuelCalculationResult.Feasible(committed, p.ReserveGallons);
   }
-
-  // Opens the publication for the captured work and confirms, inside it, that
-  // every input the result was calculated from is still current: the truck
-  // itinerary, the saved roads used, the truck profile and the telemetry
-  // observation. Any mismatch throws and nothing is written. A provider may
-  // be consulted only before the transaction opens, never inside it.
-  private async Task<IDbContextTransaction> BeginVerifiedPublicationAsync(
-    RoutePlanningState state,
-    FuelWorkInputs captured,
-    RoutePlan plan,
-    TruckRouteProfile profile,
-    IReadOnlyCollection<SavedRoadVersion> savedRoads,
-    IReadOnlyCollection<DeadheadHistoryBatch> history,
-    CancellationToken ct
-  )
-  {
-    var stamp = FuelObservationStamp.Capture(state);
-    RequireSameTelemetry(stamp, await plans.GetAsync(captured.Root(plan), ct));
-    var transaction = await publication.BeginAsync(
-      captured.Itinerary,
-      history,
-      ct
-    );
-    try
-    {
-      await roads.RequireCurrentAsync(
-        [
-          .. savedRoads,
-          state.SavedRoad
-            ?? throw new InvalidOperationException(
-              "Fuel publication requires the captured current road."
-            ),
-        ],
-        ct
-      );
-      await profiles.RequireCurrentAsync(plan.TruckId, state.Profile, ct);
-      RequireSameTelemetry(
-        stamp,
-        await plans.GetAsync(
-          captured.Root(plan),
-          ct,
-          PlannedRouteTelemetry.WithoutProviderWait
-        )
-      );
-      await profiles.SaveAsync(plan.TruckId, profile, ct);
-      return transaction;
-    }
-    catch
-    {
-      await transaction.DisposeAsync();
-      throw;
-    }
-  }
-
-  private async Task<FuelPlan> CommitAsync(
-    FuelPlan fuel,
-    IReadOnlyList<FuelCandidate> purchases,
-    TruckRoute baseline,
-    IReadOnlyList<FuelItineraryStop> itinerary,
-    List<Guid> ids,
-    Dictionary<Guid, string> signatures,
-    string assignmentSignature,
-    IReadOnlyDictionary<Guid, string> assignmentSignatures,
-    IReadOnlyCollection<DeadheadHistoryBatch> history,
-    IReadOnlyCollection<SavedRoadVersion> savedRoads,
-    FuelWorkInputs captured,
-    RoutePlanningState state,
-    TruckRouteProfile profile,
-    bool manual,
-    string priceSignature,
-    DateOnly today,
-    DateTime? expectedCalculatedAt,
-    CancellationToken ct
-  )
-  {
-    var plan = state.Plan!;
-    fuel.TruckId = plan.TruckId;
-    fuel.ExecutionLegId = plan.ExecutionLegId;
-    fuel.AssignmentRevision = plan.AssignmentRevision;
-    fuel.StartProgressMiles = state.Progress!.ProgressMiles!.Value;
-    fuel.DispatchIds = ids;
-    fuel.DispatchSignatures = signatures;
-    fuel.AssignmentSignature = assignmentSignature;
-    if (fuel.ArrivalPolicy?.NextDispatchId is { } nextDispatchId)
-    {
-      if (
-        !assignmentSignatures.TryGetValue(nextDispatchId, out var nextSignature)
-      )
-        throw new RoutePlanningException(
-          "The pickup after the fuel horizon changed during calculation."
-        );
-      fuel.DispatchSignatures[nextDispatchId] = nextSignature;
-    }
-    fuel.ProfileSignature = JsonSerializer.Serialize(
-      profile,
-      RoutingJson.Options
-    );
-    fuel.PricingDate = today;
-    fuel.PriceSignature = priceSignature;
-    fuel.ManualStartingFuel = manual;
-    fuel.FuelObservedAt = state.FuelUpdatedAt;
-    if (manual)
-      fuel.Notes.Add("Starting fuel was entered manually.");
-    fuel.Notes.Add(
-      "Cost comparison excludes toll differences. Fuel readings and schedule forecasts are estimates."
-    );
-    double accessMiles = fuel.StartAccessMiles;
-    for (var i = 0; i < fuel.Stops.Count; i++)
-    {
-      var candidate = purchases[i];
-      var owner = itinerary[candidate.LegIndex];
-      fuel.Stops[i].VisitKey = candidate.VisitKey;
-      fuel.Stops[i].DispatchId = owner.DispatchId;
-      fuel.Stops[i].BeforeStopId = owner.Stop.Id;
-      fuel.Stops[i].CurrentRouteMile = null;
-      fuel.Stops[i].CashUsdPerGallon = candidate.PriceUsd;
-      fuel.Stops[i].EconomicUsdPerGallon = candidate.EconomicPriceUsd;
-      fuel.Stops[i].RouteMilesAhead = candidate.AlongMiles;
-      fuel.Stops[i].MilesAhead =
-        candidate.AlongMiles + accessMiles + candidate.ExtraInMiles;
-      accessMiles += candidate.ExtraInMiles + candidate.ExtraOutMiles;
-    }
-    fuel.StopArrivals = FuelStopArrivals.Calculate(fuel, itinerary, profile);
-    var latest = await inputs.ReadFreshAsync(plan.TruckId, ct);
-    var latestLoads = latest.Select(plan);
-    if (
-      latest.Itinerary.InputSignature != captured.Itinerary.InputSignature
-      || !FuelPlanProjection.AssignmentsMatch(
-        fuel,
-        plan.DispatchId,
-        latestLoads
-      )
-      || !FuelPlanProjection.RemainingStopsMatch(
-        itinerary,
-        plan.DispatchId,
-        plan.Tracking.NextStopId,
-        latestLoads
-      )
-    )
-      throw new RoutePlanningException(
-        "Assignments changed during fuel calculation."
-      );
-    await using var transaction = await BeginVerifiedPublicationAsync(
-      state,
-      captured,
-      plan,
-      profile,
-      savedRoads,
-      history,
-      ct
-    );
-    SavedRoadVersion[] dependencies =
-    [
-      .. savedRoads,
-      state.SavedRoad
-        ?? throw new InvalidOperationException(
-          "Fuel publication requires the captured current road."
-        ),
-    ];
-    await routeStore.StoreFuelAsync(
-      plan.DispatchId,
-      fuel,
-      ct,
-      plan.ExecutionLegId
-    );
-    if (
-      !await savedPlans.ReplaceAsync(
-        new(
-          plan.TruckId,
-          plan.DispatchId,
-          fuel.CalculatedAt,
-          fuel,
-          itinerary,
-          null
-        )
-        {
-          BaselineRoute = baseline,
-          RoadDependencies = FuelRoadDependencies.Capture(dependencies),
-          HistoryDependencies = FuelHistoryDependencies.Capture(history),
-          RootExecutionLegId = plan.ExecutionLegId,
-          AssignmentRevision = plan.AssignmentRevision,
-        },
-        expectedCalculatedAt,
-        ct
-      )
-    )
-      throw new PlanningSettingsConflictException(
-        "The fuel plan changed in another session. Reopen it before saving."
-      );
-    await transaction.CommitAsync(ct);
-    profiles.Invalidate(plan.TruckId);
-    savedPlans.Invalidate(plan.TruckId);
-    routeStore.Invalidate(plan.DispatchId, plan.ExecutionLegId);
-    return fuel;
-  }
-
-  private async Task<RouteWorkSnapshot> FuelLoadAsync(
-    Guid dispatchId,
-    Guid? executionLegId,
-    long? assignmentRevision,
-    CancellationToken ct
-  )
-  {
-    var load = await plans.LoadAsync(dispatchId, ct, executionLegId);
-    if (
-      executionLegId == Guid.Empty
-      || assignmentRevision < 0
-      || load.ExecutionLegId.HasValue
-        && (
-          load.ExecutionLegId != executionLegId
-          || load.AssignmentRevision != assignmentRevision
-          || !PlanningWorkPolicy.CanUseGps(load)
-        )
-      || !load.ExecutionLegId.HasValue
-        && (executionLegId.HasValue || assignmentRevision is > 0)
-    )
-      throw new PlanningSettingsConflictException(
-        "Execution changed. Reopen the current truck fuel plan."
-      );
-    return load;
-  }
-
-  private static bool SameVehicle(TruckRouteProfile a, TruckRouteProfile b) =>
-    a.HeightFeet == b.HeightFeet
-    && a.WidthFeet == b.WidthFeet
-    && a.LengthFeet == b.LengthFeet
-    && a.WeightPounds == b.WeightPounds
-    && a.Axles == b.Axles
-    && a.AxleWeightPounds == b.AxleWeightPounds
-    && a.Hazmat == b.Hazmat;
 }

@@ -18,18 +18,12 @@ public sealed class ServerStructureTests
   // under the limit, where the ordinary rule holds it.
   private static readonly Dictionary<string, int> Written = new()
   {
-    [
-      "Application/Features/Routing/Services/FuelPlanning/FuelPlanningService.cs"
-    ] = 782,
     ["Infrastructure/Integrations/TomTom/TomTomRoutingProvider.cs"] = 750,
     [
       "Application/Features/Synchronization/Services/FleetSynchronizationOperation.cs"
     ] = 734,
     ["Application/Features/Routing/Services/FuelPlanning/FuelHorizon.cs"] = 709,
     ["Application/Features/Eta/Services/EtaService.cs"] = 692,
-    [
-      "Application/Features/Routing/Services/FuelPlanning/FuelPlanningService.Editing.cs"
-    ] = 637,
     ["Application/Features/Eta/Services/EtaChainInputsService.cs"] = 558,
     ["Infrastructure/Persistence/TruckFuelPlanStore.cs"] = 544,
     [
