@@ -16,7 +16,7 @@ namespace Application.Features.Execution.Commands;
 public sealed record PlanSwitchCommand(PlanSwitchRequest Request)
   : IRequest<RequestResponse<SwitchResult>>;
 
-public sealed class PlanSwitchHandler(
+public sealed partial class PlanSwitchHandler(
   IAppDbContext db,
   ICurrentUser caller,
   IUserRoleService roles,
@@ -108,189 +108,20 @@ public sealed class PlanSwitchHandler(
       var touched = new List<ExecutionLeg>();
       var changes = new List<ExecutionChange>();
       var trips = new Dictionary<Guid, Trip>();
+      var scope = new PlanScope(
+        request,
+        loads,
+        sourceAssignments,
+        operation,
+        touched,
+        changes,
+        trips,
+        now,
+        actor.Value
+      );
       foreach (var item in request.Loads.OrderBy(x => x.OutgoingLegId))
-      {
-        var load = loads[item.DispatchId];
-        var split = SwitchPlanningRules.Split(
-          load,
-          item,
-          request.ConfirmCompleted
-        );
-        if (split is null)
-          return Fail("The source visits changed. Review this transfer.", 409);
-        var outgoing = item.OutgoingLegId is { } existingId
-          ? await db
-            .ExecutionLegs.Include(x => x.Loads)
-            .Include(x => x.Trip)
-            .SingleOrDefaultAsync(x => x.Id == existingId, ct)
-          : null;
-        if (item.OutgoingLegId.HasValue)
-        {
-          if (
-            outgoing is null
-            || outgoing.Status is not ("active" or "planned")
-            || outgoing.SourceReviewReason is not null
-            || outgoing.EndSwitchId.HasValue
-            || outgoing.Loads.Count != 1
-            || outgoing.Loads[0].DispatchId != load.Id
-            || ExecutionCommandSupport.Assignment(outgoing) != item.Outgoing
-            || item.ExpectedOutgoingRevision != outgoing.Revision
-            || !await db.LockExecutionLegAsync(
-              outgoing.Id,
-              outgoing.Revision,
-              ct
-            )
-          )
-            return Fail("The outgoing assignment changed.", 409);
-          var retained = ExecutionStopRows.Read(outgoing);
-          var boundary = retained.FindIndex(x =>
-            x.Id == split.Value.Before[^1].Id
-          );
-          if (
-            boundary < 0
-            || retained.Skip(boundary + 1).Any(x => x.IsCompleted)
-          )
-            return Fail(
-              "Existing execution history needs reconciliation.",
-              409
-            );
-          split = (retained.Take(boundary + 1).ToList(), split.Value.After);
-        }
-        else
-        {
-          var status = await SwitchSourceAssignment.StatusAsync(
-            db,
-            load,
-            item,
-            split.Value.Before,
-            request.ConfirmCompleted,
-            ct
-          );
-          if (status is null)
-            return Fail(
-              "Review the outgoing source assignment and boundary.",
-              409
-            );
-          var trip = await TripAsync(
-            item.OutgoingTripId,
-            item.Outgoing.TruckId
-          );
-          if (trip is null)
-            return Fail("The outgoing trip is no longer available.", 409);
-          outgoing = Leg(load, trip, item.Outgoing);
-          outgoing.Status = status;
-          if (status == "active")
-            trip.Status = status;
-          db.ExecutionLegs.Add(outgoing);
-        }
-        trips.TryAdd(outgoing.TruckId, outgoing.Trip);
-        var incomingTrip = await TripAsync(
-          item.IncomingTripId,
-          item.Incoming.TruckId
-        );
-        if (incomingTrip is null)
-          return Fail("The incoming trip is no longer available.", 409);
-        var incoming = Leg(load, incomingTrip, item.Incoming);
-        var restoredStops = item.OutgoingLegId.HasValue
-          ? ExecutionStopRows.Read(outgoing)
-          : StopOperation.Resolve(load.Stops, load.PlanningFromStopId);
-        var restore = new SwitchOutgoingRestore(
-          ExecutionSnapshots.Write(restoredStops),
-          outgoing.SourceSignature,
-          outgoing.Status,
-          outgoing.StartedAt,
-          outgoing.CompletedAt,
-          outgoing.EndSwitchId,
-          restoredStops[0].Id,
-          restoredStops[^1].Id,
-          outgoing.RouteChoiceRevision,
-          item.OutgoingLegId.HasValue ? outgoing.Revision + 1 : 1
-        );
-        var release = Visit(
-          outgoing.TripId,
-          item.ReleaseVisitId,
-          item.TransferKind == "drop_hook" ? "Drop" : "Release",
-          item.PlannedReleaseAt ?? request.PlannedAt
-        );
-        var receive = Visit(
-          incoming.TripId,
-          item.ReceiveVisitId,
-          item.TransferKind == "drop_hook" ? "Hook" : "Receive",
-          item.PlannedReceiveAt ?? request.PlannedAt
-        );
-        var before = split.Value.Before;
-        var after = split.Value.After;
-        var cargo = before[^1].StateAfter;
-        before.Add(
-          ExecutionSnapshots.Boundary(release, load.Id, before.Count, cargo)
-        );
-        after.Insert(
-          0,
-          ExecutionSnapshots.Boundary(receive, load.Id, 0, cargo)
-        );
-        for (var i = 0; i < after.Count; i++)
-          after[i].Sequence = i;
-        outgoing.SourceSignature = ExecutionSnapshots.Fingerprint(load);
-        outgoing.EndSwitchId = operation.Id;
-        incoming.StartSwitchId = operation.Id;
-        var link = outgoing.Loads.SingleOrDefault();
-        if (link is null)
-        {
-          link = Link(load.Id, outgoing.Id, 0, before);
-          outgoing.Loads.Add(link);
-        }
-        else
-          link.EndVisitId = release.Id;
-        incoming.Loads.Add(
-          Link(load.Id, incoming.Id, link.Sequence + 1, after)
-        );
-        db.ExecutionLegs.Add(incoming);
-        changes.Add(
-          new(outgoing, before)
-          {
-            SourceReferences = new Dictionary<Guid, Guid?>
-            {
-              [release.Id] = release.SourceDispatchStopId,
-            },
-          }
-        );
-        changes.Add(
-          new(incoming, after)
-          {
-            SourceReferences = new Dictionary<Guid, Guid?>
-            {
-              [receive.Id] = receive.SourceDispatchStopId,
-            },
-          }
-        );
-        var participant = new SwitchParticipant
-        {
-          Id = Guid.NewGuid(),
-          SwitchId = operation.Id,
-          DispatchId = load.Id,
-          OutgoingLegId = outgoing.Id,
-          IncomingLegId = incoming.Id,
-          ReleaseVisitId = release.Id,
-          ReceiveVisitId = receive.Id,
-          TransferKind = item.TransferKind,
-          PlannedReleaseAt = release.PlannedAt,
-          PlannedReceiveAt = receive.PlannedAt,
-          Revision = 1,
-          OutgoingRestoreJson = restore.Serialize(),
-        };
-        operation.Participants.Add(participant);
-        if (request.ConfirmCompleted)
-          CompletedSwitchBootstrap.Apply(
-            db,
-            operation,
-            participant,
-            outgoing,
-            incoming,
-            actor.Value
-          );
-        touched.Add(outgoing);
-        touched.Add(incoming);
-      }
+        if (await PlanOneAsync(item, scope, ct) is { } failure)
+          return failure;
       db.DispatchSwitchOperations.Add(operation);
       await ExecutionAcceptance.ApplyAsync(
         db,
@@ -318,72 +149,6 @@ public sealed class PlanSwitchHandler(
       return RequestResponse<SwitchResult>.Ok(
         ExecutionCommandSupport.Result(operation)
       );
-
-      async Task<Trip?> TripAsync(Guid? requestedId, Guid truckId)
-      {
-        if (requestedId is { } tripId)
-          return await db.Trips.SingleOrDefaultAsync(
-            x =>
-              x.Id == tripId && (x.Status == "active" || x.Status == "planned"),
-            ct
-          );
-        if (trips.TryGetValue(truckId, out var known))
-          return known;
-        var value = new Trip
-        {
-          Id = Guid.NewGuid(),
-          Name = request.SiteName.Trim(),
-          Revision = 1,
-          RecordedAt = now,
-          RecordedBy = actor.Value,
-        };
-        db.Trips.Add(value);
-        trips[truckId] = value;
-        return value;
-      }
-
-      ExecutionLeg Leg(
-        DispatchEntity load,
-        Trip trip,
-        ExecutionAssignment assignment
-      ) =>
-        new()
-        {
-          Id = Guid.NewGuid(),
-          TripId = trip.Id,
-          Trip = trip,
-          TruckId = assignment.TruckId,
-          DriverId = assignment.DriverId,
-          CoDriverId = assignment.CoDriverId,
-          TrailerId = assignment.TrailerId,
-          Revision = 1,
-          SourceSignature = ExecutionSnapshots.Fingerprint(load),
-          SourceAssignmentSignature = sourceAssignments.GetValueOrDefault(
-            load.Id,
-            ""
-          ),
-          RecordedAt = now,
-          RecordedBy = actor.Value,
-        };
-
-      ExecutionTransferVisit Visit(
-        Guid tripId,
-        Guid? sourceId,
-        string action,
-        DateTimeOffset? planned
-      ) =>
-        new()
-        {
-          Id = Guid.NewGuid(),
-          TripId = tripId,
-          SourceDispatchStopId = sourceId,
-          Operation = action,
-          SiteName = operation.SiteName,
-          Latitude = operation.Latitude,
-          Longitude = operation.Longitude,
-          PlannedAt = planned?.UtcDateTime,
-          Revision = 1,
-        };
     }
     catch (Exception ex) when (db.IsWriteConflict(ex))
     {

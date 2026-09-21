@@ -16,7 +16,7 @@ public sealed record DispatchWorkspaceState(
   DispatchWorkspaceResponse Response
 );
 
-public static class DispatchWorkspaceReader
+public static partial class DispatchWorkspaceReader
 {
   private static IEnumerable<List<DispatchStop>> DriverSections(
     ExecutionLeg leg
@@ -380,29 +380,5 @@ public static class DispatchWorkspaceReader
         .Stops;
     }
     return new(load, workspace, legs, effective, response);
-  }
-
-  private static bool Ordinary(string job) =>
-    job is "Pick Up" or "Pickup" or "Drop Off" or "Delivery";
-
-  private static string? ReviewReason(
-    DispatchWorkspace? workspace,
-    DispatchSourceLink? sourceLink,
-    List<ExecutionLeg> legs,
-    bool pendingAssignment
-  )
-  {
-    var reasons = legs.Select(x => x.SourceReviewReason)
-      .Prepend(workspace?.SourceReviewReason)
-      .Prepend(legs.Count == 0 ? sourceLink?.ExecutionReviewReason : null)
-      .Append(
-        pendingAssignment
-          ? "Initial execution is not accepted. Review resources, visit times and execution boundaries."
-          : null
-      )
-      .Where(x => !string.IsNullOrWhiteSpace(x))
-      .Distinct()
-      .ToArray();
-    return reasons.Length == 0 ? null : string.Join(" ", reasons);
   }
 }

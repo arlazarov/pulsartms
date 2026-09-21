@@ -17,24 +17,12 @@ public sealed class ServerStructureTests
   // vocabulary, the rules and the policy, and a file that used one of them
   // now names three. That is the only thing allowed to raise a number.
   //
-  // Written as whole screens before there was a rule. Each is recorded at
-  // the length it had when the rule arrived: it may shrink, it may not grow,
-  // and the number only ever comes down. A file leaves this list by getting
-  // under the limit, where the ordinary rule holds it.
-  private static readonly Dictionary<string, int> Written = new()
-  {
-    ["Domain/Rules/Eta/HosTravelClock.cs"] = 462,
-    ["Application/Features/Routing/Services/Routes/BaseRouteService.cs"] = 428,
-    ["Application/Features/Routing/Background/BaseRouteOperation.cs"] = 427,
-    ["Application/Features/Execution/Commands/PlanSwitch.cs"] = 421,
-    ["Application/Features/Eta/Services/EtaForecastService.cs"] = 419,
-    ["Application/Features/Execution/Commands/SwitchParticipantActions.cs"] =
-      414,
-    ["Application/Features/Dispatch/Services/DispatchWorkspaceReader.cs"] = 409,
-    [
-      "Application/Features/Routing/Services/FuelPlanning/FuelCheckedRouteSearch.cs"
-    ] = 407,
-  };
+  // This held the files written as whole screens before there was a rule,
+  // each recorded at the length it had when the rule arrived. It is empty
+  // now: every one of them was cut until the ordinary limit held it. Adding
+  // an entry here means admitting a file was allowed past the limit, so the
+  // question to answer first is what two things are sharing one file.
+  private static readonly Dictionary<string, int> Written = [];
 
   private static IEnumerable<(string Name, int Lines)> ServerFiles()
   {

@@ -146,12 +146,20 @@ public sealed class PlanningPublicationBoundaryTests
   [Fact]
   public void EtaSettingsAndRoadsAreValidatedBeforeTheForecastWrite()
   {
-    var source = File.ReadAllText(
-      Path.Combine(
-        Root(),
-        "Server/Application/Features/Eta/Services/EtaForecastService.cs"
+    // The forecast service is written in parts; the publication lives in
+    // whichever one does the refreshing, so the rule finds it rather than
+    // naming a file that was right when it was written.
+    var parts = Directory
+      .GetFiles(
+        Path.Combine(Root(), "Server/Application/Features/Eta/Services"),
+        "EtaForecastService*.cs"
       )
-    );
+      .Select(File.ReadAllText)
+      .Where(x =>
+        x.Contains("publication.BeginAsync", StringComparison.Ordinal)
+      )
+      .ToArray();
+    var source = Assert.Single(parts);
     var begin = source.IndexOf(
       "publication.BeginAsync",
       StringComparison.Ordinal
