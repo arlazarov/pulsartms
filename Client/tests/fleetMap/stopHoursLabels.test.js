@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { stopEtaLabels } from '../../Scripts/fleetMap/routes/stopEtaLabels.ts';
-import { alternativeTone } from '../../Scripts/fleetMap/routes/stopHoursLabels.js';
+import { alternativeTone } from '../../Scripts/fleetMap/routes/stopHoursLabels.ts';
 
 const now = Date.parse('2026-09-08T12:00:00Z');
 const stop = {

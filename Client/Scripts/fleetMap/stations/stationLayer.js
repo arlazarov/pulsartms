@@ -3,7 +3,7 @@ import {
   comparisonPrice,
   priceStatistics,
   priceColor,
-} from './stationPrices.js';
+} from './stationPrices.ts';
 import { createStationPopup } from './stationPopup.js';
 import { fuelVisitLabel } from './stationQuantity.ts';
 import { yieldToBrowser } from '../lifecycle/backgroundWork.ts';

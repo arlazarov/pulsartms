@@ -4,7 +4,7 @@ import {
   selectStationPrices,
   comparisonPrice,
   priceStatistics,
-} from '../../Scripts/fleetMap/stations/stationPrices.js';
+} from '../../Scripts/fleetMap/stations/stationPrices.ts';
 import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.js';
 
 const date = '2026-09-09';

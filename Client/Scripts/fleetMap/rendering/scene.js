@@ -5,7 +5,7 @@ import { pickNearbyStation } from './stationTouch.ts';
 import { readStopLabelStyle } from './stopLabelStyle.js';
 import { clusterTrucks, clusterCamera } from './truckClusters.ts';
 import { layoutMapLabels } from './truckLabelLayout.js';
-import { createMapRepaint } from '../provider/mapRepaint.js';
+import { createMapRepaint } from '../provider/mapRepaint.ts';
 
 const hideUnsynchronizedLayers = () => false;
 

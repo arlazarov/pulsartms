@@ -2,7 +2,7 @@ import { stationPurchase } from './stationQuantity.ts';
 import { distanceLabel } from '../ui/distanceLabel.ts';
 import { addressLines } from '../ui/addressLines.ts';
 import { createFuelVisit } from './stationFuelVisit.js';
-import { createPriceComparison } from './stationPriceComparison.js';
+import { createPriceComparison } from './stationPriceComparison.ts';
 /**
  * The card a fuel station opens.
  *

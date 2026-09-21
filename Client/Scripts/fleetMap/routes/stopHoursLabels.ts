@@ -1,9 +1,21 @@
 // @ts-check
 
-/** @typedef {{label: string, value: string, title?: string, recap?: boolean, credit?: string, status?: string, tone: 'neutral'|'danger'|'success'}} HoursRow */
+// A line of the cycle forecast on a card: what it names, what it says, and
+// whether that is a warning.
+export type HoursRow = {
+  label: string;
+  value: string;
+  title?: string;
+  recap?: boolean;
+  credit?: string;
+  status?: string;
+  tone: 'neutral' | 'danger' | 'success';
+};
 
 /** @param {import('../contracts.d.ts').StopHoursAlternative} alternative */
-export function alternativeTone(alternative) {
+export function alternativeTone(
+  alternative: any,
+): 'neutral' | 'danger' | 'success' {
   const late = alternative.lateMinutes;
   return typeof late !== 'number' || !Number.isSafeInteger(late) || late < 0
     ? 'neutral'
@@ -13,14 +25,17 @@ export function alternativeTone(alternative) {
 }
 
 /** @param {number | null | undefined} minutes */
-function signedDuration(minutes) {
+function signedDuration(minutes: number): string {
   if (typeof minutes !== 'number' || !Number.isSafeInteger(minutes)) return '—';
   const value = Math.abs(minutes);
   return `${minutes < 0 ? '−' : minutes > 0 ? '+' : ''}${Math.floor(value / 60)}h ${String(value % 60).padStart(2, '0')}m`;
 }
 
-/** @param {string | null | undefined} date @param {string | null | undefined} zone @param {boolean} [dateOnly] */
-function localTime(date, zone, dateOnly = false) {
+function localTime(
+  date: string | null | undefined,
+  zone: string | null | undefined,
+  dateOnly = false,
+): string | null {
   if (!date || !zone || !Number.isFinite(Date.parse(date))) return null;
   try {
     return new Intl.DateTimeFormat('en-US', {
@@ -38,8 +53,7 @@ function localTime(date, zone, dateOnly = false) {
   }
 }
 
-/** @param {import('../contracts.d.ts').StopEta} stop */
-export function cycleStatus(stop) {
+export function cycleStatus(stop: any): string | null {
   if (!stop.hours) return null;
   const minutes =
     stop.hours.cycleAtArrivalMinutes ?? stop.hours.currentCycleMinutes;
@@ -58,13 +72,11 @@ export function cycleStatus(stop) {
     : null;
 }
 
-/** @param {import('../contracts.d.ts').StopEta} stop @param {import('../contracts.d.ts').DispatchEta} eta @param {number} now */
-export function stopHoursLabels(stop, eta, now) {
+export function stopHoursLabels(stop: any, eta: any, now: number): any {
   const hours = stop.hours;
   if (!hours) return null;
   const minutes = hours.cycleAtArrivalMinutes ?? hours.currentCycleMinutes;
-  /** @type {HoursRow[]} */
-  const rows = [
+  const rows: HoursRow[] = [
     {
       label: 'Cycle remaining',
       value: hours.cycleVerified ? signedDuration(minutes) : '—',

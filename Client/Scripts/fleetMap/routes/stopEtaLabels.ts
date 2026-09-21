@@ -1,6 +1,6 @@
 import type { DispatchEta } from '../contracts.d.ts';
-import type { HoursRow } from './stopHoursLabels.js';
-import { cycleStatus, stopHoursLabels } from './stopHoursLabels.js';
+import type { HoursRow } from './stopHoursLabels.ts';
+import { cycleStatus, stopHoursLabels } from './stopHoursLabels.ts';
 
 // What a card says about one stop's arrival: the hour, whether it is late,
 // and the cycle behind it.

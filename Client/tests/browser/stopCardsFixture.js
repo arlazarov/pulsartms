@@ -12,7 +12,7 @@ import { createNextLoadsLayer } from '../../Scripts/fleetMap/routes/nextLoads.js
 import { stopEtaLabels } from '../../Scripts/fleetMap/routes/stopEtaLabels.ts';
 import { createStationPopup } from '../../Scripts/fleetMap/stations/stationPopup.js';
 import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.js';
-import { fuelRecommendations } from '../../Scripts/fleetMap/stations/fuelRecommendations.js';
+import { fuelRecommendations } from '../../Scripts/fleetMap/stations/fuelRecommendations.ts';
 import { createDetailsCard } from '../../Scripts/fleetMap/ui/detailsCard.js';
 
 const host = document.getElementById('map');

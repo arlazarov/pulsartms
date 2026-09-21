@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createMapRepaint } from '../../Scripts/fleetMap/provider/mapRepaint.js';
+import { createMapRepaint } from '../../Scripts/fleetMap/provider/mapRepaint.ts';
 
 function fixture() {
   const overlays = [];

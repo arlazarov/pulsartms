@@ -5,7 +5,11 @@
 // price by day was tried first, and it was a grid of rules with rows of two
 // heights and a row of dashes; what retail and the savings did follows from
 // this number and only made noise.
-export function createPriceComparison(discount, today = new Date()) {
+// What the price did on either side of today, as a line under the prices.
+export function createPriceComparison(
+  discount: any,
+  today = new Date(),
+): HTMLElement | null {
   const next = discount?.comparison?.next ? discount.comparison : null;
   const previous = discount?.previous ?? null;
   if (!next && !previous) return null;
@@ -16,7 +20,7 @@ export function createPriceComparison(discount, today = new Date()) {
     today.getMonth(),
     today.getDate(),
   );
-  const dateLabel = date => {
+  const dateLabel = (date: string) => {
     const day = new Date(`${date}T00:00:00Z`);
     const offset = (day.getTime() - currentDay) / 86400000;
     return (
@@ -28,7 +32,12 @@ export function createPriceComparison(discount, today = new Date()) {
       }).format(day)
     );
   };
-  const day = (date, price, comparison, current = false) => {
+  const day = (
+    date: string,
+    price: number | null,
+    comparison: any,
+    current = false,
+  ) => {
     const cell = document.createElement('div');
     cell.className = `fleet-station-popup__day${current ? ' is-current' : ''}`;
     const label = document.createElement('span');
@@ -73,7 +82,7 @@ export function createPriceComparison(discount, today = new Date()) {
   return strip;
 }
 
-function format(value) {
+function format(value: unknown): string {
   return value == null || !Number.isFinite(Number(value))
     ? '—'
     : Number(value).toFixed(3);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createPriceComparison } from '../../Scripts/fleetMap/stations/stationPriceComparison.js';
-import { selectStationPrices } from '../../Scripts/fleetMap/stations/stationPrices.js';
+import { createPriceComparison } from '../../Scripts/fleetMap/stations/stationPriceComparison.ts';
+import { selectStationPrices } from '../../Scripts/fleetMap/stations/stationPrices.ts';
 
 const withDocument = t => {
   const previous = globalThis.document;

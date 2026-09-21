@@ -1,11 +1,14 @@
+// The vector map paints on its own schedule; this asks it for one frame and
+// tells the caller when that frame has been drawn.
 export function createMapRepaint(
-  map,
-  createOverlay = () => new google.maps.WebGLOverlayView(),
+  map: google.maps.Map,
+  createOverlay: () => google.maps.WebGLOverlayView = () =>
+    new google.maps.WebGLOverlayView(),
 ) {
-  let overlay = null;
+  let overlay: google.maps.WebGLOverlayView | null = null;
   let disposed = false;
   return {
-    request(ready) {
+    request(ready: () => void) {
       if (disposed || overlay) return;
       if (map.getRenderingType?.() !== 'VECTOR') {
         ready();

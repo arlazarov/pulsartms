@@ -6,7 +6,7 @@ import { markSharedRoads } from './sharedRoads.ts';
 /** @typedef {{stop: import('../contracts.d.ts').NextLoadStop, numbers: Set<number>, members: StopSelection[], color: import('../rendering/routePalette.ts').RouteColor}} StopGroup */
 
 /** @param {import('../contracts.d.ts').NextLoad[]} loads */
-export function nextLoadDisplay(loads) {
+export function nextLoadDisplay(loads: any[]) {
   /** @type {{points: import('../contracts.d.ts').RoutePoint[], role: 'deadhead' | 'future', loadId: string | number, routeColor?: import('../rendering/routePalette.ts').RouteColor}[]} */
   const lines = [];
   /** @type {StopGroup[]} */
@@ -58,8 +58,10 @@ export function nextLoadDisplay(loads) {
   return { lines: markSharedRoads(lines), groups };
 }
 
-/** @param {string | number} id
- * @param {string | null | undefined} executionLegId */
-export function nextLoadKey(id, executionLegId) {
-  return executionLegId ? `${id}:${executionLegId}` : id;
+// A load and the leg of it being driven, as one name.
+export function nextLoadKey(
+  id: string | number | undefined,
+  executionLegId: string | null | undefined,
+): string {
+  return executionLegId ? `${id}:${executionLegId}` : String(id ?? '');
 }

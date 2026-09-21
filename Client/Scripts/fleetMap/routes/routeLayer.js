@@ -7,7 +7,7 @@ import { routeGeometry } from '../geometry/routeGeometry.ts';
 import { createRouteStops } from './routeStops.js';
 import { routePosition } from '../geometry/routePosition.ts';
 import { lowerBound, segmentRange } from '../geometry/routeSearch.ts';
-import { createRouteSnapper, matchRoute } from '../trucks/routeSnap.js';
+import { createRouteSnapper, matchRoute } from '../trucks/routeSnap.ts';
 import { createDetailsCard } from '../ui/detailsCard.js';
 import { pendingStops } from './pendingStops.ts';
 import { emptyRouteLegs } from './emptyRouteLegs.ts';

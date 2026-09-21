@@ -11,7 +11,7 @@ const bundle = await build({
   stdin: {
     resolveDir: process.cwd(),
     contents: `
-import {createMapHost} from './Scripts/fleetMap/provider/mapHost.js';
+import {createMapHost} from './Scripts/fleetMap/provider/mapHost.ts';
 import {createTruckLayer} from './Scripts/fleetMap/trucks/truckLayer.js';
 import {createCameraViewport} from './Scripts/fleetMap/ui/cameraViewport.js';
 const camera = [], events = new Map();

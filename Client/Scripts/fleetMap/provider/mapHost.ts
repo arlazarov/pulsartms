@@ -1,7 +1,25 @@
-export function createMapHost(createMap, discardMap) {
-  let cached;
+// The provider map is mounted once and retained: Google fixes a map's colour
+// scheme when it is constructed, so a theme change replaces the map rather
+// than recolouring it, and nothing else may hold a second one.
+type Mounted = {
+  host: HTMLElement;
+  map: google.maps.Map;
+  colorScheme: string;
+};
+
+export function createMapHost(
+  createMap: (
+    host: HTMLElement,
+    options: google.maps.MapOptions,
+  ) => google.maps.Map,
+  discardMap?: (map: google.maps.Map) => void,
+) {
+  let cached: Mounted | null = null;
   let mounted = false;
-  return (element, options) => {
+  return (
+    element: HTMLElement,
+    options: google.maps.MapOptions & { colorScheme?: string },
+  ) => {
     if (mounted) throw new Error('Fleet map is already mounted.');
     const colorScheme = options.colorScheme ?? 'LIGHT';
     if (cached && cached.colorScheme !== colorScheme) {
@@ -46,25 +64,27 @@ export function createMapHost(createMap, discardMap) {
     }
     mounted = true;
     let released = false;
+    const map = cached!.map;
+    const host = cached!.host;
     let revealed = false,
-      idleListener = null,
-      fallback = null;
+      idleListener: google.maps.MapsEventListener | null = null,
+      fallback: ReturnType<typeof setTimeout> | null = null;
     function stopWaiting() {
       idleListener?.remove();
       idleListener = null;
-      clearTimeout(fallback);
+      if (fallback !== null) clearTimeout(fallback);
       fallback = null;
     }
     function show() {
       if (released || revealed) return;
       revealed = true;
       stopWaiting();
-      cached.host.className = 'fleet-map-host';
+      host.className = 'fleet-map-host';
     }
     return {
-      map: cached.map,
+      map,
       show,
-      initialCamera(change, waitForIdle = true) {
+      initialCamera(change?: (initial: boolean) => void, waitForIdle = true) {
         if (released) return;
         if (revealed) {
           change?.(false);
@@ -76,7 +96,7 @@ export function createMapHost(createMap, discardMap) {
         }
         stopWaiting();
         if (waitForIdle) {
-          idleListener = cached.map.addListener('idle', show);
+          idleListener = map.addListener('idle', show);
           // An unchanged provider camera may not emit idle; startup must still finish.
           fallback = setTimeout(show, 2000);
         }
@@ -92,7 +112,7 @@ export function createMapHost(createMap, discardMap) {
         if (released) return;
         released = true;
         stopWaiting();
-        cached.host.remove();
+        host.remove();
         mounted = false;
       },
     };

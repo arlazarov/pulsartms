@@ -6,7 +6,7 @@ import {
   TextLayer,
 } from '@deck.gl/layers';
 import { createScene } from '../../Scripts/fleetMap/rendering/scene.js';
-import { createMapHost } from '../../Scripts/fleetMap/provider/mapHost.js';
+import { createMapHost } from '../../Scripts/fleetMap/provider/mapHost.ts';
 
 const root = document.getElementById('map');
 const overlays = new Set();

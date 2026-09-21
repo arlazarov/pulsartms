@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   matchRoute,
   createRouteSnapper,
-} from '../../Scripts/fleetMap/trucks/routeSnap.js';
+} from '../../Scripts/fleetMap/trucks/routeSnap.ts';
 
 const path = [
   { lat: 40, lng: -80 },

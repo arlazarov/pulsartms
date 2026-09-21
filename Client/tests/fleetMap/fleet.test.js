@@ -15,7 +15,7 @@ import {
   comparisonPrice,
   priceStatistics,
   priceColor,
-} from '../../Scripts/fleetMap/stations/stationPrices.js';
+} from '../../Scripts/fleetMap/stations/stationPrices.ts';
 
 test('coordinates reject invalid values and preserve zero', () => {
   assert.deepEqual(coordinates(0, 0), { lat: 0, lng: 0 });

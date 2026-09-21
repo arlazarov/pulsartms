@@ -10,11 +10,16 @@ const unavailableDiscount = Object.freeze({
   savings: null,
 });
 
-export function selectStationPrices(stations, date, useIfta = false) {
+// The price each station shows today, in the discount the account reads.
+export function selectStationPrices(
+  stations: any[],
+  date: string,
+  useIfta = false,
+): any[] {
   return (Array.isArray(stations) ? stations : []).flatMap(station => {
     const position = coordinates(station.latitude, station.longitude);
     if (!position) return [];
-    const active = value =>
+    const active = (value: any) =>
       value && date >= value.effectiveFrom && date <= value.effectiveTo;
     const selected = useIfta
       ? (station.iftaDiscount ?? station.cashDiscount)
@@ -46,14 +51,14 @@ export function selectStationPrices(stations, date, useIfta = false) {
   });
 }
 
-export function comparisonPrice(discount, useIfta) {
+export function comparisonPrice(discount: any, useIfta: boolean): any {
   const value = useIfta ? discount.priceAfterIfta : discount.discountPrice;
   return value != null && Number.isFinite(Number(value)) && Number(value) > 0
     ? Number(value)
     : null;
 }
 
-export function priceStatistics(items, useIfta) {
+export function priceStatistics(items: any[], useIfta: boolean): any {
   const groups = new Map();
   for (const { discount } of items) {
     const price = comparisonPrice(discount, useIfta);
@@ -75,9 +80,9 @@ export function priceStatistics(items, useIfta) {
   }
   for (const stats of groups.values()) {
     stats.average = stats.total / stats.count;
-    stats.prices.sort((a, b) => a - b);
+    stats.prices.sort((a: number, b: number) => a - b);
     stats.priceTiers = [
-      ...new Set(stats.prices.map(value => Math.round(value * 100))),
+      ...new Set(stats.prices.map((value: number) => Math.round(value * 100))),
     ];
     stats.pricePositions = pricePositions(stats.priceTiers);
     const middle = Math.floor(stats.prices.length / 2);
@@ -89,7 +94,7 @@ export function priceStatistics(items, useIfta) {
   return groups;
 }
 
-export function priceColor(price, stats, palette) {
+export function priceColor(price: number, stats: any, palette: any): any {
   if (price === null || !stats) return palette.unavailable;
   if (stats.min === stats.max) return palette.middle;
   // Use a global nonlinear price axis: real price gaps remain visible, while
@@ -103,8 +108,8 @@ export function priceColor(price, stats, palette) {
     : interpolateHsl(palette.middle, palette.high, (percentile - 0.5) * 2);
 }
 
-function pricePositions(tiers) {
-  const positions = new Map();
+function pricePositions(tiers: number[]): Map<number, number> {
+  const positions = new Map<number, number>();
   if (tiers.length === 0) return positions;
   if (tiers.length === 1) {
     positions.set(tiers[0], 0.5);
@@ -117,14 +122,14 @@ function pricePositions(tiers) {
         Math.pow(Math.max(1, tiers[index] - tiers[index - 1]), 0.2),
     );
   }
-  const total = cumulative.at(-1);
+  const total = cumulative.at(-1)!;
   tiers.forEach((tier, index) =>
     positions.set(tier, cumulative[index] / total),
   );
   return positions;
 }
 
-function interpolateHsl(from, to, ratio) {
+function interpolateHsl(from: string, to: string, ratio: number) {
   const start = rgbToHsl(from.split(',').map(Number));
   const end = rgbToHsl(to.split(',').map(Number));
   const amount = Math.max(0, Math.min(1, ratio));
@@ -136,7 +141,7 @@ function interpolateHsl(from, to, ratio) {
   ).join(',');
 }
 
-function rgbToHsl([red, green, blue]) {
+function rgbToHsl([red, green, blue]: number[]) {
   const [r, g, b] = [red / 255, green / 255, blue / 255];
   const max = Math.max(r, g, b),
     min = Math.min(r, g, b);
@@ -153,7 +158,7 @@ function rgbToHsl([red, green, blue]) {
   return [hue < 0 ? hue + 360 : hue, saturation, lightness];
 }
 
-function hslToRgb(hue, saturation, lightness) {
+function hslToRgb(hue: number, saturation: number, lightness: number) {
   const chroma = (1 - Math.abs(2 * lightness - 1)) * saturation;
   const section = hue / 60;
   const x = chroma * (1 - Math.abs((section % 2) - 1));

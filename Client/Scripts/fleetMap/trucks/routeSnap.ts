@@ -1,8 +1,19 @@
+import type { MapPoint } from '../contracts.d.ts';
 import { segmentRange } from '../geometry/routeSearch.ts';
+import type { TruckPoint } from './truckPoints.ts';
 import { headingDifference } from './truckPoints.ts';
 
 // Visual correction only. Never feed these coordinates back into GPS or ETA.
-export function matchRoute(position, path, cumulative, progress) {
+// How far the drawn truck is nudged onto the road it is driving, as an
+// offset in degrees. Visual only: nothing reads it back.
+export type RouteNudge = { latitude: number; longitude: number };
+
+export function matchRoute(
+  position: TruckPoint | null,
+  path: MapPoint[],
+  cumulative: number[],
+  progress: number,
+): RouteNudge | null {
   if (
     !position ||
     position.speed < 5 ||
@@ -48,13 +59,18 @@ export function matchRoute(position, path, cumulative, progress) {
 }
 
 export function createRouteSnapper() {
-  let key = null,
+  let key: string | null = null,
     lastMatch = -Infinity,
-    lastFrame = null;
-  let target = null,
+    lastFrame: number | null = null;
+  let target: RouteNudge | null = null,
     latitude = 0,
     longitude = 0;
-  return (position, routeKey, match, now) => {
+  return (
+    position: TruckPoint,
+    routeKey: string | null,
+    match: () => RouteNudge | null,
+    now: number,
+  ) => {
     if (key !== routeKey) {
       key = routeKey;
       lastMatch = -Infinity;

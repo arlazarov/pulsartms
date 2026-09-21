@@ -1,4 +1,4 @@
-import { nextLoadDisplay, nextLoadKey } from './nextLoadDisplay.js';
+import { nextLoadDisplay, nextLoadKey } from './nextLoadDisplay.ts';
 
 /**
  * The loads a truck could take next, drawn over the map.

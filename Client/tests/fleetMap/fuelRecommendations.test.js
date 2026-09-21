@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fuelRecommendations } from '../../Scripts/fleetMap/stations/fuelRecommendations.js';
+import { fuelRecommendations } from '../../Scripts/fleetMap/stations/fuelRecommendations.ts';
 
 test('gauges retain server arrival and departure fuel with configured tank capacity and units', () => {
   const plan = {

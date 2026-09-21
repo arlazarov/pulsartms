@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createMapHost } from '../../Scripts/fleetMap/provider/mapHost.js';
+import { createMapHost } from '../../Scripts/fleetMap/provider/mapHost.ts';
 
 function container() {
   return {
