@@ -3,6 +3,7 @@ using Application.Features.Fuel.Models;
 using Application.Features.Routing.Services.Routes;
 using Domain.Rules;
 using Infrastructure.Persistence;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Server.Tests.Routing;
 
@@ -24,7 +25,8 @@ public partial class AutomaticPlanningTests
     );
     var store = new FuelExchangeRateStore(
       f.Db,
-      new PlanningPublicationScope(f.Db)
+      new PlanningPublicationScope(f.Db),
+      NullLogger<FuelExchangeRateStore>.Instance
     );
     if (!initiallyMissing)
       await SaveRateAsync(store, .71m);
@@ -78,7 +80,8 @@ public partial class AutomaticPlanningTests
     );
     var store = new FuelExchangeRateStore(
       f.Db,
-      new PlanningPublicationScope(f.Db)
+      new PlanningPublicationScope(f.Db),
+      NullLogger<FuelExchangeRateStore>.Instance
     );
     await SaveRateAsync(store, .71m);
     await f.Services.Settings.SaveAsync(

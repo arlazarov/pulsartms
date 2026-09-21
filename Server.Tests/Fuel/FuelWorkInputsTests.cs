@@ -5,6 +5,7 @@ using Domain.Rules;
 using Domain.Rules.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Server.Tests.Fuel;
 
@@ -247,11 +248,10 @@ public sealed class FuelWorkInputsTests
       "Assignments changed during fuel calculation",
       error.Message
     );
-    var saved = await new TruckFuelPlanStore(f.Db).ReadAsync(
-      f.State.Plan!.TruckId,
-      false,
-      default
-    );
+    var saved = await new TruckFuelPlanStore(
+      f.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    ).ReadAsync(f.State.Plan!.TruckId, false, default);
     Assert.Equal(initial.Plan!.CalculatedAt, saved!.Plan!.CalculatedAt);
     Assert.Equal(
       before,

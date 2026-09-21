@@ -4,6 +4,7 @@ using Application.Features.Routing.Services.Routes;
 using Domain.Models.Routing;
 using Domain.Rules.Routing;
 using Infrastructure.Persistence;
+using Microsoft.Extensions.Logging.Abstractions;
 using Server.Tests.Support;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 
@@ -22,7 +23,10 @@ public sealed class FuelHistoryDependencyStoreTests
     {
       HistoryDependencies = new(1, [new([input])]),
     };
-    var store = new TruckFuelPlanStore(f.Db);
+    var store = new TruckFuelPlanStore(
+      f.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     await store.SaveAsync(snapshot, default);
     f.Commands.Reads.Clear();
 
@@ -50,7 +54,10 @@ public sealed class FuelHistoryDependencyStoreTests
   public async Task InvalidHistoryCannotReplaceTheAcceptedPlan(string change)
   {
     await using var f = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(f.Db);
+    var store = new TruckFuelPlanStore(
+      f.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var before = f.Snapshot();
     await store.SaveAsync(before, default);
     var input = Input(f);

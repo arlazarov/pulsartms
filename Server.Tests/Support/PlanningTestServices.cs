@@ -114,7 +114,10 @@ internal sealed class PlanningTestServices : IDisposable
       new ExecutionReadScope((AppDbContext)db),
       Reads,
       Hos,
-      new SavedRoutePlanReader((AppDbContext)db),
+      new SavedRoutePlanReader(
+        (AppDbContext)db,
+        NullLogger<SavedRoutePlanReader>.Instance
+      ),
       profiles
     );
     DeadheadHistory = new(
@@ -188,7 +191,10 @@ internal sealed class PlanningTestServices : IDisposable
     Roads = new(
       db,
       new NextLoadRouteReader((AppDbContext)db),
-      new SavedRoutePlanReader((AppDbContext)db),
+      new SavedRoutePlanReader(
+        (AppDbContext)db,
+        NullLogger<SavedRoutePlanReader>.Instance
+      ),
       new ExecutionReadScope((AppDbContext)db)
     );
     SavedFuelInputs = new(
@@ -197,7 +203,10 @@ internal sealed class PlanningTestServices : IDisposable
       new ExecutionReadScope((AppDbContext)db)
     );
     FuelPlans = new(
-      new TruckFuelPlanStore((AppDbContext)db),
+      new TruckFuelPlanStore(
+        (AppDbContext)db,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ),
       Reads,
       FuelMemory,
       FuelInputs,
@@ -231,7 +240,10 @@ internal sealed class PlanningTestServices : IDisposable
       Itineraries,
       new ExecutionReadScope((AppDbContext)db),
       profiles,
-      new SavedRoutePlanReader((AppDbContext)db),
+      new SavedRoutePlanReader(
+        (AppDbContext)db,
+        NullLogger<SavedRoutePlanReader>.Instance
+      ),
       new NextLoadRouteReader((AppDbContext)db),
       DeadheadHistory,
       EtaMemory,
@@ -240,7 +252,10 @@ internal sealed class PlanningTestServices : IDisposable
     );
     Forecasts = new(
       EtaInputs,
-      new EtaForecastStore((AppDbContext)db),
+      new EtaForecastStore(
+        (AppDbContext)db,
+        NullLogger<EtaForecastStore>.Instance
+      ),
       EtaMemory,
       Eta,
       Routes,

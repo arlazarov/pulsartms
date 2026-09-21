@@ -5,6 +5,7 @@ using Application.Features.Synchronization.Options;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Support;
@@ -41,7 +42,11 @@ internal sealed class FuelRatePublicationFixture : IAsyncDisposable
     );
     await db.Database.EnsureCreatedAsync();
     var publication = new PublicationProbe(db);
-    var store = new FuelExchangeRateStore(db, publication);
+    var store = new FuelExchangeRateStore(
+      db,
+      publication,
+      NullLogger<FuelExchangeRateStore>.Instance
+    );
     var reads = new ReadCache(Options.Create(new SynchronizationOptions()));
     var provider = new StubFuelExchangeRateProvider();
     return new()

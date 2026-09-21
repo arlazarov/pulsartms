@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using Domain.Models.Routing;
 using Infrastructure.Persistence;
+using Microsoft.Extensions.Logging.Abstractions;
 using Server.Tests.Support;
 
 namespace Server.Tests.Fuel;
@@ -26,7 +27,10 @@ public sealed class FuelRoadDependencyStoreTests
         ]
       ),
     };
-    var store = new TruckFuelPlanStore(f.Db);
+    var store = new TruckFuelPlanStore(
+      f.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     await store.SaveAsync(snapshot, default);
     f.Commands.Reads.Clear();
 
@@ -58,7 +62,10 @@ public sealed class FuelRoadDependencyStoreTests
   public async Task ARoadOfAnAcceptedChainedLoadKeepsItsOwnLeg()
   {
     await using var f = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(f.Db);
+    var store = new TruckFuelPlanStore(
+      f.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var leg = Guid.NewGuid();
     var original = f.Snapshot();
     var snapshot = original with
@@ -99,7 +106,10 @@ public sealed class FuelRoadDependencyStoreTests
   public async Task InvalidEvidenceCannotReplaceAnExistingPlan(string change)
   {
     await using var f = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(f.Db);
+    var store = new TruckFuelPlanStore(
+      f.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var before = f.Snapshot();
     await store.SaveAsync(before, default);
     var road = new SavedRoadVersion(

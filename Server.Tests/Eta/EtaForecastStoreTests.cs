@@ -6,6 +6,7 @@ using Domain.Models.Eta;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Eta;
@@ -30,14 +31,17 @@ public sealed class EtaForecastStoreTests
     await using var fixture = await Fixture.CreateAsync();
     var snapshot = fixture.Snapshot(fixture.Current.Id, Now);
     Assert.True(
-      await new EtaForecastStore(fixture.Db).SaveAsync([snapshot], default)
+      await new EtaForecastStore(
+        fixture.Db,
+        NullLogger<EtaForecastStore>.Instance
+      ).SaveAsync([snapshot], default)
     );
     await using var another = new AppDbContext(fixture.Options);
     var saved = Assert.Single(
-      await new EtaForecastStore(another).ReadAsync(
-        [fixture.Current.Id],
-        default
-      )
+      await new EtaForecastStore(
+        another,
+        NullLogger<EtaForecastStore>.Instance
+      ).ReadAsync([fixture.Current.Id], default)
     );
     Assert.Equal(snapshot.DispatchId, saved.DispatchId);
     Assert.Equal(snapshot.TruckId, saved.TruckId);
@@ -77,7 +81,10 @@ public sealed class EtaForecastStoreTests
       actualStop.Hours.Alternatives
     );
     Assert.Empty(
-      await new EtaForecastStore(another).ReadAsync([Guid.NewGuid()], default)
+      await new EtaForecastStore(
+        another,
+        NullLogger<EtaForecastStore>.Instance
+      ).ReadAsync([Guid.NewGuid()], default)
     );
   }
 
@@ -85,7 +92,10 @@ public sealed class EtaForecastStoreTests
   public async Task SnapshotIdentitySurvivesDatabaseTimestampPrecision()
   {
     await using var fixture = await Fixture.CreateAsync();
-    var store = new EtaForecastStore(fixture.Db);
+    var store = new EtaForecastStore(
+      fixture.Db,
+      NullLogger<EtaForecastStore>.Instance
+    );
     Assert.True(
       await store.SaveAsync(
         [fixture.Snapshot(fixture.Current.Id, Now.AddTicks(7))],
@@ -109,7 +119,10 @@ public sealed class EtaForecastStoreTests
   public async Task OlderSavedForecastWithoutCycleFieldsDoesNotInventHours()
   {
     await using var fixture = await Fixture.CreateAsync();
-    var store = new EtaForecastStore(fixture.Db);
+    var store = new EtaForecastStore(
+      fixture.Db,
+      NullLogger<EtaForecastStore>.Instance
+    );
     Assert.True(
       await store.SaveAsync(
         [fixture.Snapshot(fixture.Current.Id, Now)],
@@ -128,10 +141,10 @@ public sealed class EtaForecastStoreTests
     await fixture.Db.SaveChangesAsync();
     await using var another = new AppDbContext(fixture.Options);
     var saved = Assert.Single(
-      await new EtaForecastStore(another).ReadAsync(
-        [fixture.Current.Id],
-        default
-      )
+      await new EtaForecastStore(
+        another,
+        NullLogger<EtaForecastStore>.Instance
+      ).ReadAsync([fixture.Current.Id], default)
     );
     Assert.Null(Assert.Single(saved.Forecast.Stops).CycleAfterDeparture);
     Assert.Null(saved.Forecast.CycleAtCalculation);
@@ -142,7 +155,10 @@ public sealed class EtaForecastStoreTests
   public async Task OlderBatchCannotOverwriteNewerForecastOrLeavePartialInserts()
   {
     await using var fixture = await Fixture.CreateAsync();
-    var store = new EtaForecastStore(fixture.Db);
+    var store = new EtaForecastStore(
+      fixture.Db,
+      NullLogger<EtaForecastStore>.Instance
+    );
     Assert.True(
       await store.SaveAsync(
         [fixture.Snapshot(fixture.Current.Id, Now)],
@@ -182,7 +198,10 @@ public sealed class EtaForecastStoreTests
   public async Task InvalidPayloadIsUnavailableAndCancelledSaveDoesNotWrite()
   {
     await using var fixture = await Fixture.CreateAsync();
-    var store = new EtaForecastStore(fixture.Db);
+    var store = new EtaForecastStore(
+      fixture.Db,
+      NullLogger<EtaForecastStore>.Instance
+    );
     using var cancelled = new CancellationTokenSource();
     cancelled.Cancel();
     await Assert.ThrowsAnyAsync<OperationCanceledException>(
@@ -237,7 +256,10 @@ public sealed class EtaForecastStoreTests
     fixture.Db.Trips.AddRange(firstTrip, secondTrip);
     fixture.Db.ExecutionLegs.AddRange(first, second);
     await fixture.Db.SaveChangesAsync();
-    var store = new EtaForecastStore(fixture.Db);
+    var store = new EtaForecastStore(
+      fixture.Db,
+      NullLogger<EtaForecastStore>.Instance
+    );
     var legacy = fixture.Snapshot(fixture.Current.Id, Now);
     var firstSnapshot = legacy with
     {
@@ -292,7 +314,10 @@ public sealed class EtaForecastStoreTests
     fixture.Db.Trips.Add(trip);
     fixture.Db.ExecutionLegs.Add(leg);
     await fixture.Db.SaveChangesAsync();
-    var store = new EtaForecastStore(fixture.Db);
+    var store = new EtaForecastStore(
+      fixture.Db,
+      NullLogger<EtaForecastStore>.Instance
+    );
     var snapshot = fixture.Snapshot(fixture.Current.Id, Now) with
     {
       ExecutionLegId = leg.Id,

@@ -8,8 +8,11 @@ namespace Application.Features.Routing.Queries;
 public sealed record GetTruckRoutePreviewQuery(Guid TruckId)
   : IRequest<RequestResponse<AutomaticPlanningResult>>,
     IPlanningRequest,
-    IChecked
+    IChecked,
+    IAboutWork
 {
+  public Guid? Truck => TruckId;
+
   public IEnumerable<string> Wrong()
   {
     if (TruckId == Guid.Empty)

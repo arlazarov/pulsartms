@@ -2,6 +2,7 @@ using Domain.Entities.Fuel;
 using Domain.Models.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Server.Tests.Fuel;
 
@@ -13,7 +14,10 @@ public sealed class TruckFuelPlanReplacementTests
   public async Task MissingExpectedRevisionOnlyInsertsTheFirstPlan()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = fixture.Snapshot();
 
     Assert.True(await store.ReplaceAsync(original, null, default));
@@ -33,7 +37,10 @@ public sealed class TruckFuelPlanReplacementTests
   public async Task ExpectedRevisionDoesNotInsertWhenThePlanNoLongerExists()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
 
     Assert.False(
       await store.ReplaceAsync(
@@ -49,7 +56,10 @@ public sealed class TruckFuelPlanReplacementTests
   public async Task MatchingRevisionReplacesAllColumnsWithoutAccumulatingHistory()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = fixture.Snapshot();
     Assert.True(await store.SaveAsync(original, default));
     var changed = fixture.Snapshot(original.CalculatedAt.AddMinutes(1));
@@ -87,7 +97,10 @@ public sealed class TruckFuelPlanReplacementTests
   public async Task StaleExpectedRevisionCannotOverwriteEvenWithALaterCandidateTimestamp()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = fixture.Snapshot();
     Assert.True(await store.ReplaceAsync(original, null, default));
     var winner = fixture.Snapshot(original.CalculatedAt.AddMinutes(1));
@@ -110,18 +123,20 @@ public sealed class TruckFuelPlanReplacementTests
   public async Task WriterPausedBeforeItsUpdateCannotOverwriteAnInterleavedEdit()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = fixture.Snapshot();
     Assert.True(await store.ReplaceAsync(original, null, default));
     await using var competingContext = new AppDbContext(fixture.Options);
     var winner = fixture.Snapshot(original.CalculatedAt.AddMinutes(1));
     fixture.Commands.BeforeWrite = async () =>
       Assert.True(
-        await new TruckFuelPlanStore(competingContext).ReplaceAsync(
-          winner,
-          original.CalculatedAt,
-          default
-        )
+        await new TruckFuelPlanStore(
+          competingContext,
+          NullLogger<TruckFuelPlanStore>.Instance
+        ).ReplaceAsync(winner, original.CalculatedAt, default)
       );
 
     Assert.False(
@@ -140,16 +155,18 @@ public sealed class TruckFuelPlanReplacementTests
   public async Task InitialWriterPausedBeforeItsInsertCannotOverwriteAnInterleavedFirstPlan()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     await using var competingContext = new AppDbContext(fixture.Options);
     var winner = fixture.Snapshot();
     fixture.Commands.BeforeWrite = async () =>
       Assert.True(
-        await new TruckFuelPlanStore(competingContext).ReplaceAsync(
-          winner,
-          null,
-          default
-        )
+        await new TruckFuelPlanStore(
+          competingContext,
+          NullLogger<TruckFuelPlanStore>.Instance
+        ).ReplaceAsync(winner, null, default)
       );
 
     Assert.False(
@@ -168,7 +185,10 @@ public sealed class TruckFuelPlanReplacementTests
   public async Task ExpectedRevisionUsesDatabaseMicrosecondsWhileJsonRetainsTheOriginalInstant()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = fixture.Snapshot(TruckFuelPlanFixture.Now.AddTicks(7));
     Assert.True(await store.ReplaceAsync(original, null, default));
     var changed = fixture.Snapshot(TruckFuelPlanFixture.Now.AddTicks(19));
@@ -193,7 +213,10 @@ public sealed class TruckFuelPlanReplacementTests
   public async Task CandidateMustBeNewerAtDatabasePrecision(int ticks)
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = fixture.Snapshot();
     Assert.True(await store.ReplaceAsync(original, null, default));
 
@@ -216,7 +239,10 @@ public sealed class TruckFuelPlanReplacementTests
   )
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = fixture.Snapshot();
     if (existingPlan)
       Assert.True(await store.ReplaceAsync(original, null, default));
@@ -260,7 +286,10 @@ public sealed class TruckFuelPlanReplacementTests
   public async Task AChainedLoadKeepsItsOwnExecutionAssignment()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var accepted = Accepted(fixture.Snapshot(), Guid.NewGuid(), 2);
 
     Assert.True(await store.SaveAsync(accepted, default));
@@ -281,7 +310,10 @@ public sealed class TruckFuelPlanReplacementTests
   public async Task AStopCannotDisagreeWithItsOwnLoad(string failure)
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var snapshot = fixture.Snapshot();
     var broken =
       failure == "revision-without-leg"
@@ -347,7 +379,10 @@ public sealed class TruckFuelPlanReplacementTests
   )
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = fixture.Snapshot();
     Assert.True(await store.ReplaceAsync(original, null, default));
     var changed = fixture.Snapshot(original.CalculatedAt.AddMinutes(1));
@@ -404,11 +439,10 @@ public sealed class TruckFuelPlanReplacementTests
   )
   {
     var actual = Assert.IsType<TruckFuelPlanSnapshot>(
-      await new TruckFuelPlanStore(fixture.Db).ReadAsync(
-        fixture.TruckId,
-        true,
-        default
-      )
+      await new TruckFuelPlanStore(
+        fixture.Db,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ).ReadAsync(fixture.TruckId, true, default)
     );
     Assert.Equal(expected.CalculatedAt, actual.CalculatedAt);
     Assert.Equal(expected.RootDispatchId, actual.RootDispatchId);

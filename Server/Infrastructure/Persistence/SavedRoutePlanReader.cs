@@ -2,11 +2,14 @@ using System.Text.Json;
 using Application.Features.Routing.Interfaces;
 using Domain.Models.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Persistence;
 
-public sealed class SavedRoutePlanReader(AppDbContext db)
-  : ISavedRoutePlanReader
+public sealed class SavedRoutePlanReader(
+  AppDbContext db,
+  ILogger<SavedRoutePlanReader> logger
+) : ISavedRoutePlanReader
 {
   private static readonly JsonSerializerOptions Json = new(
     JsonSerializerDefaults.Web
@@ -31,8 +34,9 @@ public sealed class SavedRoutePlanReader(AppDbContext db)
         ? value
         : null;
     }
-    catch (JsonException)
+    catch (JsonException ex)
     {
+      logger.LogWarning(ex, "Discarding an unreadable saved route plan");
       return null;
     }
   }

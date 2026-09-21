@@ -10,8 +10,14 @@ public sealed record EditFuelPlanCommand(
   Guid DispatchId,
   FuelPlanEditRequest Edit,
   bool Save
-) : IRequest<RequestResponse<FuelPlanEditPreview>>, IPlanningRequest, IChecked
+)
+  : IRequest<RequestResponse<FuelPlanEditPreview>>,
+    IPlanningRequest,
+    IChecked,
+    IAboutWork
 {
+  public Guid? Load => DispatchId;
+
   public IEnumerable<string> Wrong()
   {
     if (DispatchId == Guid.Empty)

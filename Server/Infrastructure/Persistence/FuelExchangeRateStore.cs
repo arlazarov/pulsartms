@@ -4,12 +4,14 @@ using Application.Features.Fuel.Models;
 using Application.Features.Routing.Interfaces;
 using Infrastructure.Synchronization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Persistence;
 
 public sealed class FuelExchangeRateStore(
   AppDbContext db,
-  IPlanningPublicationScope publication
+  IPlanningPublicationScope publication,
+  ILogger<FuelExchangeRateStore> logger
 ) : IFuelExchangeRateStore
 {
   private const int MaximumStateLength = 4096;
@@ -55,8 +57,9 @@ public sealed class FuelExchangeRateStore(
       var rate = JsonSerializer.Deserialize<FuelExchangeRate>(json, Json);
       return rate is null || rate.RetrievedAt == default ? null : rate;
     }
-    catch (JsonException)
+    catch (JsonException ex)
     {
+      logger.LogWarning(ex, "Discarding an unreadable stored exchange rate");
       return null;
     }
   }

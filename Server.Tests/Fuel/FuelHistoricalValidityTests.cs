@@ -7,6 +7,7 @@ using Domain.Models.Routing;
 using Infrastructure.Persistence;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Server.Tests.Support;
 using StoredFuel = Domain.Entities.Fuel.TruckFuelPlan;
 
@@ -112,7 +113,7 @@ public sealed class FuelHistoricalValidityTests
     await HistoricalWorkFixture.ChangeAsync(f.Db, historical, "endpoint");
     var sender = new RefreshRecorder();
     var service = new FuelPriceRefreshService(
-      new TruckFuelPlanStore(f.Db),
+      new TruckFuelPlanStore(f.Db, NullLogger<TruckFuelPlanStore>.Instance),
       f.Services.FuelInputs,
       sender,
       new CarrierFuelPrices(sender),

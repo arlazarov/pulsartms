@@ -52,6 +52,25 @@ public sealed class RequestDiagnosticsBehavior<TRequest, TResponse>(
 ) : IPipelineBehavior<TRequest, TResponse>
   where TRequest : notnull
 {
+  // What every line logged inside this request carries. The trace id ties
+  // the request to the HTTP call that started it; the work ids tie it to
+  // the truck a dispatcher is asking about.
+  private static Dictionary<string, object?> Scope(TRequest request)
+  {
+    var scope = new Dictionary<string, object?>
+    {
+      ["Request"] = typeof(TRequest).Name,
+      ["TraceId"] = Activity.Current?.TraceId.ToString(),
+    };
+    if (request is not IAboutWork work)
+      return scope;
+    if (work.Load is { } load)
+      scope["Load"] = load;
+    if (work.Truck is { } truck)
+      scope["Truck"] = truck;
+    return scope;
+  }
+
   public async Task<TResponse> Handle(
     TRequest request,
     RequestHandlerDelegate<TResponse> next,
@@ -60,6 +79,7 @@ public sealed class RequestDiagnosticsBehavior<TRequest, TResponse>(
   {
     var started = Stopwatch.GetTimestamp();
     var outcome = "completed";
+    using var scope = logger.BeginScope(Scope(request));
     try
     {
       var response = await next();

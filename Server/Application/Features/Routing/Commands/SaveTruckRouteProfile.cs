@@ -9,8 +9,14 @@ namespace Application.Features.Routing.Commands;
 public sealed record SaveTruckRouteProfileCommand(
   Guid DispatchId,
   TruckRouteProfile Profile
-) : IRequest<RequestResponse<TruckRouteProfile>>, IPlanningRequest, IChecked
+)
+  : IRequest<RequestResponse<TruckRouteProfile>>,
+    IPlanningRequest,
+    IChecked,
+    IAboutWork
 {
+  public Guid? Load => DispatchId;
+
   public IEnumerable<string> Wrong()
   {
     if (DispatchId == Guid.Empty)

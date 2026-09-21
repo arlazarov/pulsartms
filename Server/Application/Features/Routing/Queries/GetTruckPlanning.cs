@@ -13,8 +13,11 @@ public sealed record GetTruckPlanningQuery(
 )
   : IRequest<RequestResponse<AutomaticPlanningResult>>,
     IPlanningRequest,
-    IChecked
+    IChecked,
+    IAboutWork
 {
+  public Guid? Truck => TruckId;
+
   public IEnumerable<string> Wrong()
   {
     if (TruckId == Guid.Empty)

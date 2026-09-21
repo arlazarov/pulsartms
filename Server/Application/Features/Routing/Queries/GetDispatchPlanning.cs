@@ -13,8 +13,11 @@ public sealed record GetDispatchPlanningQuery(
 )
   : IRequest<RequestResponse<AutomaticPlanningResult>>,
     IPlanningRequest,
-    IChecked
+    IChecked,
+    IAboutWork
 {
+  public Guid? Load => DispatchId;
+
   public IEnumerable<string> Wrong()
   {
     if (DispatchId == Guid.Empty)

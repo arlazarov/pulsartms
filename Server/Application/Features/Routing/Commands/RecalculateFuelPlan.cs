@@ -13,8 +13,11 @@ public sealed record RecalculateFuelPlanCommand(
 )
   : IRequest<RequestResponse<AutomaticPlanningResult>>,
     IPlanningRequest,
-    IChecked
+    IChecked,
+    IAboutWork
 {
+  public Guid? Load => DispatchId;
+
   internal DateTime? AutomaticRefreshRevision { get; init; }
 
   public IEnumerable<string> Wrong()

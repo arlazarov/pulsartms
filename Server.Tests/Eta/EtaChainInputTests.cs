@@ -21,6 +21,7 @@ using MediatR;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging.Abstractions;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Eta;
@@ -356,10 +357,10 @@ public sealed partial class EtaChainInputTests
     );
     Assert.Equal(reads + 1, fixture.Probe.MetadataReads);
     Assert.Empty(
-      await new SavedRoutePlanReader(fixture.Db).ReadManyAsync(
-        [Guid.NewGuid()],
-        default
-      )
+      await new SavedRoutePlanReader(
+        fixture.Db,
+        NullLogger<SavedRoutePlanReader>.Instance
+      ).ReadManyAsync([Guid.NewGuid()], default)
     );
     Assert.Empty(fixture.Probe.TruckAssignmentQueries);
   }
@@ -398,10 +399,10 @@ public sealed partial class EtaChainInputTests
     Assert.Equal(1, fixture.Probe.MetadataReads);
     Assert.Equal(0, fixture.Probe.GeometryReads);
     var metadata = (
-      await new SavedRoutePlanReader(fixture.Db).ReadAsync(
-        fixture.Current.Id,
-        default
-      )
+      await new SavedRoutePlanReader(
+        fixture.Db,
+        NullLogger<SavedRoutePlanReader>.Instance
+      ).ReadAsync(fixture.Current.Id, default)
     )!;
     Assert.Equal(fixture.Truck.Id, metadata.TruckId);
     Assert.Equal(fixture.Truck.Id, metadata.PlanTruckId);
@@ -421,7 +422,13 @@ public sealed partial class EtaChainInputTests
     var query = (IQueryable)
       typeof(SavedRoutePlanReader)
         .GetMethod("Metadata", BindingFlags.Instance | BindingFlags.NonPublic)!
-        .Invoke(new SavedRoutePlanReader(db), [Guid.NewGuid()])!;
+        .Invoke(
+          new SavedRoutePlanReader(
+            db,
+            NullLogger<SavedRoutePlanReader>.Instance
+          ),
+          [Guid.NewGuid()]
+        )!;
     var sql = query.ToQueryString();
     Assert.Contains("jsonb_build_object", sql);
     Assert.Contains("AS \"Value\"", sql);
@@ -456,10 +463,10 @@ public sealed partial class EtaChainInputTests
     saved.PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options);
     await fixture.Db.SaveChangesAsync();
     var metadata = (
-      await new SavedRoutePlanReader(fixture.Db).ReadAsync(
-        fixture.Current.Id,
-        default
-      )
+      await new SavedRoutePlanReader(
+        fixture.Db,
+        NullLogger<SavedRoutePlanReader>.Instance
+      ).ReadAsync(fixture.Current.Id, default)
     )!;
     Assert.Equal(plan.Id, metadata.PlanId);
     Assert.Equal(now, metadata.FuelCalculatedAt);
@@ -632,7 +639,10 @@ public sealed partial class EtaChainInputTests
       ],
     };
     Assert.True(
-      await new EtaForecastStore(fixture.Db).SaveAsync(
+      await new EtaForecastStore(
+        fixture.Db,
+        NullLogger<EtaForecastStore>.Instance
+      ).SaveAsync(
         [
           new(
             fixture.Current.Id,

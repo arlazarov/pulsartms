@@ -177,9 +177,11 @@ public sealed class PlanningRefreshOperation(
       {
         return;
       }
-      catch (Exception)
+      catch (Exception ex)
       {
-        // An unacknowledged claim remains recoverable after lease expiry.
+        // An unacknowledged claim remains recoverable after lease expiry;
+        // the reason it was never acknowledged is only here.
+        logger.LogError(ex, "Planning refresh pass failed");
       }
     }
     try

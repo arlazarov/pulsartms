@@ -3,10 +3,14 @@ using Application.Features.Eta.Interfaces;
 using Domain.Entities.Dispatch;
 using Domain.Models.Eta;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Persistence;
 
-public sealed class EtaForecastStore(AppDbContext db) : IEtaForecastStore
+public sealed class EtaForecastStore(
+  AppDbContext db,
+  ILogger<EtaForecastStore> logger
+) : IEtaForecastStore
 {
   private static readonly JsonSerializerOptions Json = new(
     JsonSerializerDefaults.Web
@@ -44,7 +48,7 @@ public sealed class EtaForecastStore(AppDbContext db) : IEtaForecastStore
     return ReadRows(rows);
   }
 
-  private static IReadOnlyList<EtaForecastSnapshot> ReadRows(
+  private IReadOnlyList<EtaForecastSnapshot> ReadRows(
     List<DispatchEtaForecast> rows
   )
   {
@@ -59,8 +63,16 @@ public sealed class EtaForecastStore(AppDbContext db) : IEtaForecastStore
           Json
         );
       }
-      catch (JsonException)
+      catch (JsonException ex)
       {
+        // Saved but unreadable reads exactly like never saved, and the
+        // forecast is quietly built again from nothing. The row is named
+        // so the stored value can be looked at.
+        logger.LogWarning(
+          ex,
+          "Discarding an unreadable saved forecast for dispatch {Dispatch}",
+          row.DispatchId
+        );
         continue;
       }
       if (

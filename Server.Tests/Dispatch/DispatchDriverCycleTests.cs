@@ -4,6 +4,7 @@ using Domain.Models.Eta;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Dispatch;
@@ -206,7 +207,10 @@ public sealed class DispatchDriverCycleTests
     };
     if (scenario != "missing")
       Assert.True(
-        await new EtaForecastStore(db).SaveAsync([snapshot], default)
+        await new EtaForecastStore(
+          db,
+          NullLogger<EtaForecastStore>.Instance
+        ).SaveAsync([snapshot], default)
       );
 
     var board = (

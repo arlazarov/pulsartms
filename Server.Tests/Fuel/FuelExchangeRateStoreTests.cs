@@ -6,6 +6,7 @@ using Infrastructure.Persistence;
 using Infrastructure.Synchronization;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Server.Tests.Fuel;
 
@@ -48,7 +49,11 @@ public sealed class FuelExchangeRateStoreTests
       }
     );
     await db.SaveChangesAsync();
-    var store = new FuelExchangeRateStore(db, new PlanningPublicationScope(db));
+    var store = new FuelExchangeRateStore(
+      db,
+      new PlanningPublicationScope(db),
+      NullLogger<FuelExchangeRateStore>.Instance
+    );
 
     Assert.Null(await store.ReadAsync(default));
     Assert.True(await store.AcquireAsync("repair", now, default));
@@ -66,7 +71,11 @@ public sealed class FuelExchangeRateStoreTests
       .Options;
     await using var db = new AppDbContext(options);
     await db.Database.EnsureCreatedAsync();
-    var store = new FuelExchangeRateStore(db, new PlanningPublicationScope(db));
+    var store = new FuelExchangeRateStore(
+      db,
+      new PlanningPublicationScope(db),
+      NullLogger<FuelExchangeRateStore>.Instance
+    );
     var now = DateTime.UtcNow;
     var rate = new FuelExchangeRate(
       1m / 1.3917m,
@@ -92,7 +101,8 @@ public sealed class FuelExchangeRateStoreTests
         rate,
         await new FuelExchangeRateStore(
           restarted,
-          new PlanningPublicationScope(restarted)
+          new PlanningPublicationScope(restarted),
+          NullLogger<FuelExchangeRateStore>.Instance
         ).ReadAsync(default)
       );
     await db

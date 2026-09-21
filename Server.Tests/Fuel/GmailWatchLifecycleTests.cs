@@ -5,6 +5,7 @@ using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Services;
 using Application.Models;
 using MediatR;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Server.Tests.Fuel;
 
@@ -176,10 +177,13 @@ public sealed class GmailWatchLifecycleTests
       bool register = false,
       CancellationToken ct = default
     ) =>
-      new GmailWatchLifecycle(Store, Watch, Sender, Clock).RunAsync(
-        register,
-        ct
-      );
+      new GmailWatchLifecycle(
+        Store,
+        Watch,
+        Sender,
+        Clock,
+        NullLogger<GmailWatchLifecycle>.Instance
+      ).RunAsync(register, ct);
   }
 
   private sealed class Clock : TimeProvider

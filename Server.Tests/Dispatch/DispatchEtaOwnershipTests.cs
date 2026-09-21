@@ -4,6 +4,7 @@ using Domain.Models.Eta;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Dispatch;
@@ -92,7 +93,10 @@ public sealed class DispatchEtaOwnershipTests
       []
     );
     Assert.True(
-      await new EtaForecastStore(db).SaveAsync(
+      await new EtaForecastStore(
+        db,
+        NullLogger<EtaForecastStore>.Instance
+      ).SaveAsync(
         [
           new(
             load.Id,

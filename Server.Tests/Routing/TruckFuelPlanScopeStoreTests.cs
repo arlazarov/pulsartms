@@ -4,6 +4,7 @@ using Domain.Entities.Fuel;
 using Domain.Models.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Server.Tests.Routing;
 
@@ -21,10 +22,16 @@ public sealed class TruckFuelPlanScopeStoreTests
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
     var expected = NativeSnapshot(fixture.Snapshot(), onward);
     Assert.True(
-      await new TruckFuelPlanStore(fixture.Db).SaveAsync(expected, default)
+      await new TruckFuelPlanStore(
+        fixture.Db,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ).SaveAsync(expected, default)
     );
     await using var reopened = new AppDbContext(fixture.Options);
-    var store = new TruckFuelPlanStore(reopened);
+    var store = new TruckFuelPlanStore(
+      reopened,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     foreach (var geometry in new[] { false, true })
     {
       var saved = Assert.IsType<TruckFuelPlanSnapshot>(
@@ -60,7 +67,10 @@ public sealed class TruckFuelPlanScopeStoreTests
   )
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = NativeSnapshot(fixture.Snapshot(), true);
     Assert.True(await store.SaveAsync(original, default));
     var row = await fixture.Db.Set<TruckFuelPlan>().SingleAsync();

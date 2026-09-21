@@ -4,6 +4,7 @@ using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Server.Tests.Routing;
 
@@ -229,7 +230,7 @@ public sealed class TruckPlanningInputsTests
       new ExecutionReadScope(f.Db),
       f.Reads,
       hos,
-      new SavedRoutePlanReader(f.Db),
+      new SavedRoutePlanReader(f.Db, NullLogger<SavedRoutePlanReader>.Instance),
       f.Planning.Profiles
     );
 }

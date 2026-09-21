@@ -13,6 +13,7 @@ using Domain.Rules;
 using Domain.Rules.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Fuel;
@@ -148,11 +149,10 @@ public sealed class FuelSavedHorizonTests
       var result = await Calculate();
       Assert.Equal(current.Id, result.Plan!.ExecutionLegId);
       Assert.NotNull(
-        await new TruckFuelPlanStore(f.Db).ReadAsync(
-          plan.TruckId,
-          false,
-          default
-        )
+        await new TruckFuelPlanStore(
+          f.Db,
+          NullLogger<TruckFuelPlanStore>.Instance
+        ).ReadAsync(plan.TruckId, false, default)
       );
     }
     else
@@ -186,11 +186,10 @@ public sealed class FuelSavedHorizonTests
       leg.Id,
       leg.Revision
     );
-    var saved = await new TruckFuelPlanStore(f.Db).ReadAsync(
-      f.State.Plan!.TruckId,
-      true,
-      default
-    );
+    var saved = await new TruckFuelPlanStore(
+      f.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    ).ReadAsync(f.State.Plan!.TruckId, true, default);
     Assert.NotNull(saved);
     Assert.Equal(reset.Plan!.CalculatedAt, saved.CalculatedAt);
     Assert.Equal(leg.Id, saved.RootExecutionLegId);
@@ -305,11 +304,10 @@ public sealed class FuelSavedHorizonTests
     );
 
     var saved = Assert.IsType<TruckFuelPlanSnapshot>(
-      await new TruckFuelPlanStore(fixture.Db).ReadAsync(
-        fixture.State.Plan!.TruckId,
-        true,
-        default
-      )
+      await new TruckFuelPlanStore(
+        fixture.Db,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ).ReadAsync(fixture.State.Plan!.TruckId, true, default)
     );
     Assert.Equal(
       new[] { fixture.Current.Id, fixture.Future.Id },

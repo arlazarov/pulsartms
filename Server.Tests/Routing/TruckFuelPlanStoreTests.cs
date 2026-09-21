@@ -5,6 +5,7 @@ using Domain.Models.Routing;
 using Domain.Rules.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Server.Tests.Routing;
 
@@ -18,10 +19,16 @@ public sealed class TruckFuelPlanStoreTests
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
     var expected = EstimatedSnapshot(fixture.Snapshot());
     Assert.True(
-      await new TruckFuelPlanStore(fixture.Db).SaveAsync(expected, default)
+      await new TruckFuelPlanStore(
+        fixture.Db,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ).SaveAsync(expected, default)
     );
     await using var another = new AppDbContext(fixture.Options);
-    var store = new TruckFuelPlanStore(another);
+    var store = new TruckFuelPlanStore(
+      another,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     fixture.Commands.Reads.Clear();
     var summary = Assert.IsType<TruckFuelPlanSnapshot>(
       await store.ReadAsync(fixture.TruckId, false, default)
@@ -78,7 +85,10 @@ public sealed class TruckFuelPlanStoreTests
   )
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = EstimatedSnapshot(fixture.Snapshot());
     Assert.True(await store.SaveAsync(original, default));
     var invalid = EstimatedSnapshot(
@@ -206,7 +216,10 @@ public sealed class TruckFuelPlanStoreTests
         snapshot.BaselineRoute!.Miles++;
         break;
     }
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     await Assert.ThrowsAsync<ArgumentException>(
       () => store.SaveAsync(snapshot, default)
     );
@@ -225,7 +238,10 @@ public sealed class TruckFuelPlanStoreTests
   )
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     Assert.True(
       await store.SaveAsync(EstimatedSnapshot(fixture.Snapshot()), default)
     );
@@ -271,7 +287,10 @@ public sealed class TruckFuelPlanStoreTests
   )
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     Assert.True(
       await store.SaveAsync(EstimatedSnapshot(fixture.Snapshot()), default)
     );
@@ -303,7 +322,10 @@ public sealed class TruckFuelPlanStoreTests
   public async Task LegacySnapshotWithoutEstimatedFieldsStillUsesItsCheckedGeometry()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     Assert.True(
       await store.SaveAsync(WithBaseline(fixture.Snapshot()), default)
     );
@@ -333,10 +355,16 @@ public sealed class TruckFuelPlanStoreTests
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
     var expected = AssignedSnapshot(fixture.Snapshot(), dispatchCount);
     Assert.True(
-      await new TruckFuelPlanStore(fixture.Db).SaveAsync(expected, default)
+      await new TruckFuelPlanStore(
+        fixture.Db,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ).SaveAsync(expected, default)
     );
     await using var another = new AppDbContext(fixture.Options);
-    var store = new TruckFuelPlanStore(another);
+    var store = new TruckFuelPlanStore(
+      another,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var summary = Assert.IsType<TruckFuelPlanSnapshot>(
       await store.ReadAsync(fixture.TruckId, false, default)
     );
@@ -367,7 +395,10 @@ public sealed class TruckFuelPlanStoreTests
   public async Task FortyOneAssignedStopsCannotReplaceACompleteSavedPlan()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = fixture.Snapshot();
     Assert.True(await store.SaveAsync(original, default));
     var oversized = AssignedSnapshot(
@@ -391,15 +422,17 @@ public sealed class TruckFuelPlanStoreTests
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
     var expected = fixture.Snapshot(TruckFuelPlanFixture.Now.AddTicks(7));
     Assert.True(
-      await new TruckFuelPlanStore(fixture.Db).SaveAsync(expected, default)
+      await new TruckFuelPlanStore(
+        fixture.Db,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ).SaveAsync(expected, default)
     );
     await using var another = new AppDbContext(fixture.Options);
     var actual = Assert.IsType<TruckFuelPlanSnapshot>(
-      await new TruckFuelPlanStore(another).ReadAsync(
-        fixture.TruckId,
-        true,
-        default
-      )
+      await new TruckFuelPlanStore(
+        another,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ).ReadAsync(fixture.TruckId, true, default)
     );
     Assert.Equal(expected.CalculatedAt, actual.CalculatedAt);
     Assert.Equal(expected.RootDispatchId, actual.RootDispatchId);
@@ -422,7 +455,10 @@ public sealed class TruckFuelPlanStoreTests
   public async Task OrdinaryReadNeverSelectsCheckedRouteColumn()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var snapshot = WithBaseline(fixture.Snapshot());
     Assert.True(await store.SaveAsync(snapshot, default));
     fixture.Commands.Reads.Clear();
@@ -445,7 +481,10 @@ public sealed class TruckFuelPlanStoreTests
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
     var snapshot = WithBaseline(fixture.Snapshot());
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     Assert.True(await store.SaveAsync(snapshot, default));
     var actual = Assert.IsType<TruckFuelPlanSnapshot>(
       await store.ReadAsync(fixture.TruckId, true, default)
@@ -561,7 +600,10 @@ public sealed class TruckFuelPlanStoreTests
       ],
     };
 
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     Assert.True(await store.SaveAsync(snapshot, default));
     var saved = Assert.IsType<TruckFuelPlanSnapshot>(
       await store.ReadAsync(fixture.TruckId, true, default)
@@ -584,14 +626,17 @@ public sealed class TruckFuelPlanStoreTests
     var snapshot = fixture.Snapshot();
     snapshot.CheckedRoute!.Seconds++;
     await Assert.ThrowsAsync<ArgumentException>(
-      () => new TruckFuelPlanStore(fixture.Db).SaveAsync(snapshot, default)
+      () =>
+        new TruckFuelPlanStore(
+          fixture.Db,
+          NullLogger<TruckFuelPlanStore>.Instance
+        ).SaveAsync(snapshot, default)
     );
     Assert.Null(
-      await new TruckFuelPlanStore(fixture.Db).ReadAsync(
-        fixture.TruckId,
-        false,
-        default
-      )
+      await new TruckFuelPlanStore(
+        fixture.Db,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ).ReadAsync(fixture.TruckId, false, default)
     );
   }
 
@@ -602,7 +647,11 @@ public sealed class TruckFuelPlanStoreTests
     var snapshot = WithBaseline(fixture.Snapshot());
     snapshot.BaselineRoute!.Legs[0].Points[^1] = new(45, -80);
     await Assert.ThrowsAsync<ArgumentException>(
-      () => new TruckFuelPlanStore(fixture.Db).SaveAsync(snapshot, default)
+      () =>
+        new TruckFuelPlanStore(
+          fixture.Db,
+          NullLogger<TruckFuelPlanStore>.Instance
+        ).SaveAsync(snapshot, default)
     );
   }
 
@@ -613,7 +662,10 @@ public sealed class TruckFuelPlanStoreTests
     var snapshot = WithBaseline(fixture.Snapshot());
     snapshot.CheckedRoute!.Warnings = [new string('x', 4 * 1024 * 1024)];
     snapshot.BaselineRoute!.Warnings = [new string('y', 4 * 1024 * 1024)];
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     await Assert.ThrowsAsync<ArgumentException>(
       () => store.SaveAsync(snapshot, default)
     );
@@ -679,7 +731,10 @@ public sealed class TruckFuelPlanStoreTests
         );
         break;
     }
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     await Assert.ThrowsAsync<ArgumentException>(
       () => store.SaveAsync(snapshot, default)
     );
@@ -695,7 +750,10 @@ public sealed class TruckFuelPlanStoreTests
   )
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     Assert.True(await store.SaveAsync(fixture.Snapshot(), default));
     var row = await fixture.Db.Set<TruckFuelPlan>().SingleAsync();
     var geometry = JsonNode.Parse(row.CheckedRouteJson!)!;
@@ -716,7 +774,10 @@ public sealed class TruckFuelPlanStoreTests
   public async Task OnlyNewerSnapshotCanReplaceTheEntireSavedResult()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = fixture.Snapshot();
     Assert.True(await store.SaveAsync(original, default));
     Assert.False(
@@ -744,17 +805,22 @@ public sealed class TruckFuelPlanStoreTests
     var newer = fixture.Snapshot(TruckFuelPlanFixture.Now.AddMinutes(1));
     fixture.Commands.BeforeWrite = async () =>
       Assert.True(
-        await new TruckFuelPlanStore(newerContext).SaveAsync(newer, default)
+        await new TruckFuelPlanStore(
+          newerContext,
+          NullLogger<TruckFuelPlanStore>.Instance
+        ).SaveAsync(newer, default)
       );
     Assert.False(
-      await new TruckFuelPlanStore(fixture.Db).SaveAsync(older, default)
+      await new TruckFuelPlanStore(
+        fixture.Db,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ).SaveAsync(older, default)
     );
     var actual = Assert.IsType<TruckFuelPlanSnapshot>(
-      await new TruckFuelPlanStore(fixture.Db).ReadAsync(
-        fixture.TruckId,
-        true,
-        default
-      )
+      await new TruckFuelPlanStore(
+        fixture.Db,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ).ReadAsync(fixture.TruckId, true, default)
     );
     Assert.Equal(newer.CalculatedAt, actual.CalculatedAt);
     Assert.Equal(newer.Stops, actual.Stops);
@@ -767,7 +833,10 @@ public sealed class TruckFuelPlanStoreTests
   public async Task CorruptSummaryFailsClosed(string invalid)
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     Assert.True(await store.SaveAsync(fixture.Snapshot(), default));
     var row = await fixture.Db.Set<TruckFuelPlan>().SingleAsync();
     row.SummaryJson = invalid;
@@ -780,7 +849,10 @@ public sealed class TruckFuelPlanStoreTests
   public async Task CorruptRouteFailsClosedOnlyWhenGeometryIsRequested()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     Assert.True(await store.SaveAsync(fixture.Snapshot(), default));
     var row = await fixture.Db.Set<TruckFuelPlan>().SingleAsync();
     row.CheckedRouteJson = "{invalid";
@@ -793,7 +865,10 @@ public sealed class TruckFuelPlanStoreTests
   public async Task MissingDispatchSignatureMapFailsClosedBeforeLifecycleProjection()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     Assert.True(await store.SaveAsync(fixture.Snapshot(), default));
     var row = await fixture.Db.Set<TruckFuelPlan>().SingleAsync();
     var summary = JsonNode.Parse(row.SummaryJson)!;
@@ -807,7 +882,10 @@ public sealed class TruckFuelPlanStoreTests
   public async Task MismatchedIdentityOrEmbeddedGeometryInSummaryFailsClosed()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     Assert.True(await store.SaveAsync(fixture.Snapshot(), default));
     var row = await fixture.Db.Set<TruckFuelPlan>().SingleAsync();
     var summary = JsonNode.Parse(row.SummaryJson)!;
@@ -826,7 +904,10 @@ public sealed class TruckFuelPlanStoreTests
   public async Task OversizedItineraryOrPayloadAndCancellationDoNotWrite()
   {
     await using var fixture = await TruckFuelPlanFixture.CreateAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var snapshot = fixture.Snapshot();
     var tooMany = snapshot with
     {

@@ -9,6 +9,7 @@ using Domain.Rules;
 using Domain.Rules.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Routing;
@@ -264,7 +265,10 @@ public partial class AutomaticPlanningTests
           .UseSqlite(fixture.Connection)
           .Options
       );
-      var store = new TruckFuelPlanStore(competingContext);
+      var store = new TruckFuelPlanStore(
+        competingContext,
+        NullLogger<TruckFuelPlanStore>.Instance
+      );
       var previous = Assert.IsType<TruckFuelPlanSnapshot>(
         await store.ReadAsync(fixture.Truck.Id, true, default)
       );
@@ -575,7 +579,10 @@ public partial class AutomaticPlanningTests
   public async Task ObsoleteSavedFuelLegCannotMistakeCurrentGpsForAPassedPurchase()
   {
     await using var fixture = await CreateFuelEditingFixtureAsync();
-    var store = new TruckFuelPlanStore(fixture.Db);
+    var store = new TruckFuelPlanStore(
+      fixture.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    );
     var original = Assert.IsType<TruckFuelPlanSnapshot>(
       await store.ReadAsync(fixture.Truck.Id, true, default)
     );
@@ -703,7 +710,10 @@ public partial class AutomaticPlanningTests
     saved.Plan.Stops[0].RouteMilesAhead = 1;
     saved.Plan.Stops[0].MilesAhead = 1;
     Assert.True(
-      await new TruckFuelPlanStore(fixture.Db).ReplaceAsync(
+      await new TruckFuelPlanStore(
+        fixture.Db,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ).ReplaceAsync(
         saved with
         {
           CalculatedAt = timestamp,

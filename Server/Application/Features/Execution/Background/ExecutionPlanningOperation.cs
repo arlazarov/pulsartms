@@ -148,9 +148,12 @@ public sealed class ExecutionPlanningOperation(
       {
         return;
       }
-      catch (Exception)
+      catch (Exception ex)
       {
-        // The durable lease expires if the database is unavailable.
+        // The durable lease expires if the database is unavailable, so the
+        // work is not lost - but nothing else would ever say why a pass
+        // stopped doing anything.
+        logger.LogError(ex, "Execution planning pass failed");
       }
     }
     await Task.Delay(TimeSpan.FromSeconds(5), ct);

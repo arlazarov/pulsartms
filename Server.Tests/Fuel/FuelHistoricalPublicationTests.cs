@@ -4,6 +4,7 @@ using Domain.Rules;
 using Infrastructure.Integrations.GeoTimeZone;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Server.Tests.Support;
 
@@ -62,11 +63,10 @@ public sealed class FuelHistoricalPublicationTests
 
     Assert.Contains("Historical truck work changed", error.Message);
     Assert.Null(f.Db.Database.CurrentTransaction);
-    var saved = await new TruckFuelPlanStore(f.Db).ReadAsync(
-      f.State.Plan.TruckId,
-      false,
-      default
-    );
+    var saved = await new TruckFuelPlanStore(
+      f.Db,
+      NullLogger<TruckFuelPlanStore>.Instance
+    ).ReadAsync(f.State.Plan.TruckId, false, default);
     Assert.Equal(initial.Plan!.CalculatedAt, saved!.Plan!.CalculatedAt);
     Assert.Equal(
       before.PlanJson,

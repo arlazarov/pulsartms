@@ -9,8 +9,11 @@ namespace Application.Features.Routing.Commands;
 public sealed record BuildRouteCommand(Guid DispatchId, RouteBuildRequest Route)
   : IRequest<RequestResponse<RoutePlan>>,
     IPlanningRequest,
-    IChecked
+    IChecked,
+    IAboutWork
 {
+  public Guid? Load => DispatchId;
+
   public IEnumerable<string> Wrong()
   {
     if (DispatchId == Guid.Empty)

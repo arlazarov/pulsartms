@@ -6,10 +6,14 @@ using Domain.Entities.Fuel;
 using Domain.Models.Routing;
 using Domain.Rules.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Persistence;
 
-public sealed class TruckFuelPlanStore(AppDbContext db) : ITruckFuelPlanStore
+public sealed class TruckFuelPlanStore(
+  AppDbContext db,
+  ILogger<TruckFuelPlanStore> logger
+) : ITruckFuelPlanStore
 {
   private const int MaximumSummaryBytes = 512 * 1024;
   private const int MaximumRouteBytes = 8 * 1024 * 1024;
@@ -90,8 +94,13 @@ public sealed class TruckFuelPlanStore(AppDbContext db) : ITruckFuelPlanStore
         return null;
       return FuelPlanIntegrity.RoutesHold(result) ? result : null;
     }
-    catch (JsonException)
+    catch (JsonException ex)
     {
+      logger.LogWarning(
+        ex,
+        "Discarding an unreadable saved fuel plan for truck {Truck}",
+        truckId
+      );
       return null;
     }
   }

@@ -22,6 +22,7 @@ using MediatR;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Routing;
@@ -1142,11 +1143,10 @@ public partial class AutomaticPlanningTests
       Assert.Contains(purchase.DispatchId, futureIds);
     }
     var saved = Assert.IsType<TruckFuelPlanSnapshot>(
-      await new TruckFuelPlanStore(fixture.Db).ReadAsync(
-        fixture.Truck.Id,
-        true,
-        default
-      )
+      await new TruckFuelPlanStore(
+        fixture.Db,
+        NullLogger<TruckFuelPlanStore>.Instance
+      ).ReadAsync(fixture.Truck.Id, true, default)
     );
     Assert.Equal(plan.FuelPlan.DispatchIds, saved.Plan.DispatchIds);
     Assert.Equal(1 + futureCount * 2, saved.Stops.Count);
@@ -2041,7 +2041,11 @@ public partial class AutomaticPlanningTests
         recalculationBudget: new() { Enabled = recalculationBudgetEnabled },
         publicationScope: publication,
         exchangeRateStore: storedExchangeRates
-          ? new FuelExchangeRateStore(db, new PlanningPublicationScope(db))
+          ? new FuelExchangeRateStore(
+            db,
+            new PlanningPublicationScope(db),
+            NullLogger<FuelExchangeRateStore>.Instance
+          )
           : null
       );
       sender.Board = services.Board;

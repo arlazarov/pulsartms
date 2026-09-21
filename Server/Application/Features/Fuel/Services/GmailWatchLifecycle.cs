@@ -1,6 +1,7 @@
 using Application.Features.Fuel.Commands.ImportFuelDiscounts;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Fuel.Services;
 
@@ -8,7 +9,8 @@ public sealed class GmailWatchLifecycle(
   IGmailWatchStore store,
   IGmailWatchService watch,
   ISender sender,
-  TimeProvider clock
+  TimeProvider clock,
+  ILogger<GmailWatchLifecycle> logger
 )
 {
   public async Task<GmailWatchRunResult> RunAsync(
@@ -79,6 +81,9 @@ public sealed class GmailWatchLifecycle(
         }
         catch (Exception ex)
         {
+          // The code is what the screen shows; the exception is what
+          // explains a watch that quietly stopped renewing.
+          logger.LogError(ex, "Gmail watch renewal failed for {Owner}", owner);
           renewalError = state.RenewalErrorCode = ex.GetType().Name;
           result = null;
         }
@@ -114,6 +119,7 @@ public sealed class GmailWatchLifecycle(
         }
         catch (Exception ex)
         {
+          logger.LogError(ex, "Gmail watch recovery failed for {Owner}", owner);
           recoveryError = state.RecoveryErrorCode = ex.GetType().Name;
         }
         await store.SaveAsync(owner, state, ct);

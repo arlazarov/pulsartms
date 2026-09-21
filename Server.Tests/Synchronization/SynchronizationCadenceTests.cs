@@ -117,7 +117,7 @@ public sealed class SynchronizationCadenceTests
       return new SavedRoadValidation(
         db,
         new NextLoadRouteReader(db),
-        new SavedRoutePlanReader(db),
+        new SavedRoutePlanReader(db, NullLogger<SavedRoutePlanReader>.Instance),
         new ExecutionReadScope(db)
       );
     });

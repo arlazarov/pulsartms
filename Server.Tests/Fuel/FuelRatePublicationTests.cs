@@ -3,6 +3,7 @@ using Domain.Rules;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Server.Tests.Support;
 
 namespace Server.Tests.Fuel;
@@ -113,7 +114,8 @@ public sealed class FuelRatePublicationTests
     );
     var store = new FuelExchangeRateStore(
       writer,
-      new PlanningPublicationScope(writer)
+      new PlanningPublicationScope(writer),
+      NullLogger<FuelExchangeRateStore>.Instance
     );
     var updated = Current(.79m);
 

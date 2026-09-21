@@ -9,8 +9,10 @@ public sealed record PrepareUpcomingPlanningCommand(
   Guid DispatchId,
   Guid? ExecutionLegId = null,
   Guid? TruckId = null
-) : IRequest<RequestResponse<bool>>, IPlanningRequest, IChecked
+) : IRequest<RequestResponse<bool>>, IPlanningRequest, IChecked, IAboutWork
 {
+  public Guid? Load => DispatchId;
+
   public IEnumerable<string> Wrong()
   {
     if (DispatchId == Guid.Empty)

@@ -9,8 +9,14 @@ namespace Application.Features.Routing.Commands;
 public sealed record BuildFuelPlanCommand(
   Guid DispatchId,
   FuelBuildRequest Fuel
-) : IRequest<RequestResponse<FuelCalculationResult>>, IPlanningRequest, IChecked
+)
+  : IRequest<RequestResponse<FuelCalculationResult>>,
+    IPlanningRequest,
+    IChecked,
+    IAboutWork
 {
+  public Guid? Load => DispatchId;
+
   public IEnumerable<string> Wrong()
   {
     if (DispatchId == Guid.Empty)

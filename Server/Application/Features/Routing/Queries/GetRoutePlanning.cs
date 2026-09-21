@@ -9,8 +9,11 @@ namespace Application.Features.Routing.Queries;
 public sealed record GetRoutePlanningQuery(Guid DispatchId)
   : IRequest<RequestResponse<RoutePlanningState>>,
     IPlanningRequest,
-    IChecked
+    IChecked,
+    IAboutWork
 {
+  public Guid? Load => DispatchId;
+
   public IEnumerable<string> Wrong()
   {
     if (DispatchId == Guid.Empty)
