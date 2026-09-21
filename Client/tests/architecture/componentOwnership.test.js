@@ -1,13 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { scanned } from './scanned.js';
 import { readFileSync, readdirSync } from 'node:fs';
 
 const client = new URL('../../', import.meta.url);
 const read = path => readFileSync(new URL(path, client), 'utf8');
 const sources = folder =>
-  readdirSync(new URL(folder + '/', client), { recursive: true })
-    .filter(file => /\.(?:cs|razor)$/.test(file))
-    .map(file => folder + '/' + file);
+  scanned(
+    folder,
+    readdirSync(new URL(folder + '/', client), { recursive: true })
+      .filter(file => /\.(?:cs|razor)$/.test(file))
+      .map(file => folder + '/' + file),
+    5,
+  );
 
 test('shared UI, DTOs and services do not depend on page namespaces', () => {
   for (const folder of ['Shared', 'Components', 'Models', 'Services'])

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { scanned } from './scanned.js';
 import { readFileSync, readdirSync } from 'node:fs';
 import { compileString } from 'sass';
 import { fileURLToPath } from 'node:url';
@@ -79,13 +80,19 @@ test('markup that writes a component asks for one of its readings', () => {
       .map(part => part[0].toUpperCase() + part.slice(1))
       .join('');
   const client = new URL('../../', import.meta.url);
-  const sources = readdirSync(client, { recursive: true }).filter(
-    x =>
-      (x.endsWith('.razor') || x.endsWith('.js')) &&
-      (x.startsWith('Pages/') ||
-        x.startsWith('Shared/') ||
-        x.startsWith('Components/') ||
-        x.startsWith('Scripts/')),
+  // Both script extensions: this read only .js, and so stopped seeing
+  // every module the day it moved to TypeScript.
+  const sources = scanned(
+    'markup and scripts that could write a component',
+    readdirSync(client, { recursive: true }).filter(
+      x =>
+        (x.endsWith('.razor') || /\.[jt]s$/.test(x)) &&
+        (x.startsWith('Pages/') ||
+          x.startsWith('Shared/') ||
+          x.startsWith('Components/') ||
+          x.startsWith('Scripts/')),
+    ),
+    100,
   );
   for (const file of sources) {
     const source = readFileSync(new URL(file, client), 'utf8');

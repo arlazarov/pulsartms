@@ -1,13 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { scanned } from './scanned.js';
 import { readFileSync, readdirSync } from 'node:fs';
 
 const root = new URL('../../Scripts/', import.meta.url);
 // Both extensions: a module that moved to TypeScript is the same module,
 // and until this said so the size rule had stopped reading every file that
 // had been converted.
-const modules = readdirSync(root, { recursive: true }).filter(
-  x => typeof x === 'string' && /\.[jt]s$/.test(x) && !x.endsWith('.d.ts'),
+const modules = scanned(
+  'browser modules',
+  readdirSync(root, { recursive: true }).filter(
+    x => typeof x === 'string' && /\.[jt]s$/.test(x) && !x.endsWith('.d.ts'),
+  ),
+  60,
 );
 const length = file =>
   readFileSync(new URL(file, root), 'utf8').split('\n').length;

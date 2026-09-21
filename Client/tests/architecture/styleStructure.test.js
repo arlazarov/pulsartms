@@ -1,13 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { scanned } from './scanned.js';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { compileString } from 'sass';
 import { fileURLToPath } from 'node:url';
 
 const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
 const root = new URL('../../Styles/', import.meta.url);
-const sheets = readdirSync(root, { recursive: true }).filter(
-  x => typeof x === 'string' && x.endsWith('.scss'),
+const sheets = scanned(
+  'stylesheets',
+  readdirSync(root, { recursive: true }).filter(
+    x => typeof x === 'string' && x.endsWith('.scss'),
+  ),
+  100,
 );
 const read = file => readFileSync(new URL(file, root), 'utf8');
 const folders = new Set(

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { scanned } from './scanned.js';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { builtNames } from '../../build/sources.mjs';
 
@@ -10,8 +11,12 @@ test('browser sources do not depend on generated output and relative imports res
   const root = new URL('Scripts/', client);
   // Both extensions: a rule that reads only .js stops covering a module the
   // moment it is converted, and says nothing while it does.
-  for (const file of readdirSync(root, { recursive: true }).filter(
-    n => /\.[jt]s$/.test(n) && !n.endsWith('.d.ts'),
+  for (const file of scanned(
+    'browser sources',
+    readdirSync(root, { recursive: true }).filter(
+      n => /\.[jt]s$/.test(n) && !n.endsWith('.d.ts'),
+    ),
+    60,
   )) {
     const url = new URL(file, root);
     const source = readFileSync(url, 'utf8');
