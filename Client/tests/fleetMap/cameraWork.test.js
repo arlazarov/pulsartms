@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTruckLayer } from '../../Scripts/fleetMap/trucks/truckLayer.js';
+import { createTruckLayer } from '../../Scripts/fleetMap/trucks/truckLayer.ts';
 
 function startupFixture(t, cameraViewport) {
   const previousDocument = globalThis.document,

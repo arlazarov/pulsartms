@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTruckLayer } from '../../Scripts/fleetMap/trucks/truckLayer.js';
+import { createTruckLayer } from '../../Scripts/fleetMap/trucks/truckLayer.ts';
 import { truckPlaybackDelay } from '../../Scripts/fleetMap/trucks/truckPlayback.ts';
 
 function playback(t) {

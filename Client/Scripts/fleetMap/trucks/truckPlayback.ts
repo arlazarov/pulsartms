@@ -9,15 +9,21 @@ export const truckTransitionDuration = 6000;
 export const truckPlaybackResumeGap = 1000;
 
 // Where the playback clock stands now: never past the newest report, never
-// backwards, and it resumes rather than jumps after a gap.
+// backwards, and it resumes rather than jumps after a gap. A truck that has
+// reported nothing has no clock yet, which is what the undefined says.
 export function advancePlaybackTime(
-  current: number,
-  latest: number,
+  current: number | undefined,
+  latest: number | undefined,
   target: number,
   elapsed: number,
-): number {
-  if (!Number.isFinite(latest) || !Number.isFinite(target)) return current;
-  if (!Number.isFinite(current) || elapsed > truckPlaybackResumeGap)
+): number | undefined {
+  if (latest === undefined || !Number.isFinite(latest)) return current;
+  if (!Number.isFinite(target)) return current;
+  if (
+    current === undefined ||
+    !Number.isFinite(current) ||
+    elapsed > truckPlaybackResumeGap
+  )
     return Math.min(latest, target);
   return Math.min(
     latest,

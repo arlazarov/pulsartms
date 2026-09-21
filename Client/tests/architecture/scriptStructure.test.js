@@ -17,6 +17,10 @@ const length = file =>
 // may grow, and the number in this list only ever comes down. Anything not
 // listed is a module that was started after the rule and stays small.
 //
+// A module leaves this list by getting under 300 lines, where the ordinary
+// rule below holds it - the truck layer left when its camera and its
+// playback became things of their own.
+//
 // A module is named without its extension, because moving one to TypeScript
 // does not make it a different module. That move is the one thing allowed
 // to raise a number here, once, by what the types themselves take: the
@@ -27,7 +31,6 @@ const written = new Map([
   ['fleetMap/rendering/sceneLayers', 562],
   ['fleetMap/routes/routeLayer', 496],
   ['fleetMap/stations/stationLayer', 458],
-  ['fleetMap/trucks/truckLayer', 439],
   ['fleetMap/stations/stationPopup', 327], // 309 before its types
 ]);
 
