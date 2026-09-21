@@ -10,6 +10,7 @@ using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
+using Domain.Entities;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
@@ -18,7 +19,9 @@ using Domain.Models.Routing;
 using Domain.Policies;
 using Domain.Rules;
 using Domain.Rules.Routing;
+using Infrastructure.Identity;
 using Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +37,47 @@ using Dispatch = global::Domain.Entities.Dispatch.Dispatch;
 [Trait("Kind", "Integration")]
 public sealed class BaseRouteOperationTests
 {
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task UnscopedWorkerPreparesRoadsForTheOwningCompany(
+    bool explicitHint
+  )
+  {
+    var company = new CurrentCompany(new HttpContextAccessor());
+    Fixture fixture;
+    Guid id;
+    using (company.As(Company.Amf))
+    {
+      fixture = await Fixture.CreateAsync(companies: company);
+      id = await fixture.AddAsync(explicitHint ? 30 : 0);
+      if (explicitHint)
+        fixture.Queue.Request(id, "missing-connection");
+    }
+    await using var cleanup = fixture;
+    Assert.Null(company.Id);
+
+    await fixture.Operation.RunOnceAsync(default);
+
+    Assert.Null(company.Id);
+    Assert.Equal(1, fixture.Router.Calls);
+    using (company.As(Company.Amf))
+    {
+      await using var scope = fixture.Root.CreateAsyncScope();
+      var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+      var road = await db.DispatchBaseRoutes.SingleAsync();
+      Assert.Equal(id, road.DispatchId);
+      Assert.Equal(Company.Amf, road.CompanyId);
+      Assert.Equal(0, await fixture.PendingAsync());
+    }
+  }
+
+  private sealed class Roster : ICompanyRoster
+  {
+    public Task<IReadOnlyList<Guid>> ActiveAsync(CancellationToken ct) =>
+      Task.FromResult<IReadOnlyList<Guid>>([Company.Amf]);
+  }
+
   [Fact]
   public async Task PersistedFutureDemandRunsWithAnEmptyReplacementWorkerQueue()
   {
@@ -801,7 +845,8 @@ public sealed class BaseRouteOperationTests
     public BaseRouteOperation Operation => operation;
 
     public static async Task<Fixture> CreateAsync(
-      RoutePreparationOptions? configuration = null
+      RoutePreparationOptions? configuration = null,
+      ICurrentCompany? companies = null
     )
     {
       var connection = new SqliteConnection("Data Source=:memory:");
@@ -814,10 +859,16 @@ public sealed class BaseRouteOperationTests
       var reads = TestCache.Create();
       var router = new Router();
       var services = new ServiceCollection();
+      if (companies is not null)
+      {
+        services.AddSingleton(companies);
+        services.AddSingleton<ICompanyRoster, Roster>();
+      }
       services.AddSingleton(reads);
-      services.AddScoped(_ => new AppDbContext(
+      services.AddScoped(provider => new AppDbContext(
         new DbContextOptionsBuilder<AppDbContext>()
           .UseSqlite(connection)
+          .UseApplicationServiceProvider(provider)
           .Options
       ));
       services.AddScoped<IAppDbContext>(provider =>

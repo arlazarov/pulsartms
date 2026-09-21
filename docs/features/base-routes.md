@@ -19,6 +19,13 @@ dimensions. Routing uses the existing provider cache and daily request budget.
 Unchanged routes have no age-based expiry. Invalid stops are skipped and unexpected
 failures are logged by the worker. A failed replacement keeps the saved route.
 
+The repair scan selects each active company before reading its loads and retains
+an independent page cursor for each company. In-memory invalidation hints are
+resolved within their owner's scope before entering the durable queue. A worker
+without an authenticated request must not interpret its empty filtered read as
+evidence that no roads need preparation. Claimed durable work continues under
+the company recorded on the request.
+
 Preparation checks the supplied routing dimensions against an uncached
 effective profile before geocoding or routing. Before writing, it repeats the
 check inside the shared protected publication scope. A warm display cache

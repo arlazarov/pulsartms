@@ -21,7 +21,7 @@ public sealed partial class BaseRouteOperation(
   TimeProvider time
 ) : IBaseRouteOperation
 {
-  private int offset;
+  private readonly Dictionary<Guid, int> offsets = [];
   private DateTime nextPrune;
 
   public async Task RunAsync(CancellationToken ct)
@@ -40,7 +40,12 @@ public sealed partial class BaseRouteOperation(
   {
     try
     {
-      await ScanAsync(ct);
+      await using var scope = scopes.CreateAsyncScope();
+      await CompanyPasses.ForEachCompanyAsync(
+        scope.ServiceProvider,
+        ScanAsync,
+        ct
+      );
       await TransferHintsAsync(ct);
     }
     catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -98,21 +103,34 @@ public sealed partial class BaseRouteOperation(
       try
       {
         await using var scope = scopes.CreateAsyncScope();
-        var input = await scope
-          .ServiceProvider.GetRequiredService<SourceRoadInputs>()
-          .ReadAsync(hint.DispatchId, ct);
-        await scope
-          .ServiceProvider.GetRequiredService<ISourceRoadStore>()
-          .ObserveAsync(
-            hint.DispatchId,
-            input?.TruckId,
-            input?.Signature ?? "missing",
-            hint.Priority,
-            hint.Explicit,
-            true,
-            time.GetUtcNow().UtcDateTime,
-            ct
-          );
+        SourceRoadObservation? input = null;
+        await CompanyPasses.ForEachCompanyAsync(
+          scope.ServiceProvider,
+          async token =>
+          {
+            if (input is not null)
+              return;
+            await using var owned = scopes.CreateAsyncScope();
+            input = await owned
+              .ServiceProvider.GetRequiredService<SourceRoadInputs>()
+              .ReadAsync(hint.DispatchId, token);
+            if (input is null)
+              return;
+            await owned
+              .ServiceProvider.GetRequiredService<ISourceRoadStore>()
+              .ObserveAsync(
+                hint.DispatchId,
+                input.TruckId,
+                input.Signature,
+                hint.Priority,
+                hint.Explicit,
+                true,
+                time.GetUtcNow().UtcDateTime,
+                token
+              );
+          },
+          ct
+        );
         queue.Complete(hint, input?.Signature ?? "missing", input?.TruckId);
       }
       catch
@@ -127,6 +145,9 @@ public sealed partial class BaseRouteOperation(
   {
     await using var scope = scopes.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<IAppDbContext>();
+    var company =
+      scope.ServiceProvider.GetService<ICurrentCompany>()?.Id ?? Guid.Empty;
+    var offset = offsets.GetValueOrDefault(company);
     var store = scope.ServiceProvider.GetRequiredService<ISourceRoadStore>();
     var inputs = scope.ServiceProvider.GetRequiredService<SourceRoadInputs>();
     var now = time.GetUtcNow().UtcDateTime;
@@ -187,7 +208,7 @@ public sealed partial class BaseRouteOperation(
       .Take(options.Value.ScanPageSize)
       .Select(x => new { x.Id, x.Status })
       .ToListAsync(ct);
-    offset =
+    offsets[company] =
       loads.Count < options.Value.ScanPageSize ? 0 : offset + loads.Count;
     var observations = await inputs.ReadAsync(
       loads.Select(x => x.Id).ToArray(),
