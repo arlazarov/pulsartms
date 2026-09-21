@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using Application.Features.Routing.Interfaces;
 using Domain.Entities.Dispatch;
 using Domain.Models.Routing;
+using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
@@ -61,7 +62,7 @@ public sealed class DeadheadHistoryReader(AppDbContext db)
           .Where(x =>
             x.TruckId.HasValue
             && truckIds.Contains(x.TruckId.Value)
-            && x.Status != "cancelled"
+            && !SourceWords.Cancelled.Contains(x.Status.ToLower())
             && x.Date == null
           )
           .Select(x => x.TruckId!.Value)
@@ -90,7 +91,7 @@ public sealed class DeadheadHistoryReader(AppDbContext db)
           .Where(x =>
             x.TruckId == load.TruckId
             && x.Id != load.Id
-            && x.Status != "cancelled"
+            && !SourceWords.Cancelled.Contains(x.Status.ToLower())
             && (x.Date < date || x.Date == date && x.Time <= time)
           )
           .OrderByDescending(x => x.Date)
@@ -157,7 +158,7 @@ public sealed class DeadheadHistoryReader(AppDbContext db)
               && current.Date != null
               && previous.TruckId == current.TruckId
               && previous.Id != current.Id
-              && previous.Status != "cancelled"
+              && !SourceWords.Cancelled.Contains(previous.Status.ToLower())
               && (
                 previous.Date < current.Date
                 || previous.Date == current.Date
@@ -178,7 +179,7 @@ public sealed class DeadheadHistoryReader(AppDbContext db)
             HasUnknownStart = Starts()
               .Any(x =>
                 x.TruckId == current.TruckId
-                && x.Status != "cancelled"
+                && !SourceWords.Cancelled.Contains(x.Status.ToLower())
                 && x.Date == null
               ),
           }

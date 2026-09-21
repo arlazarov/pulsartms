@@ -5,6 +5,7 @@ using Application.Features.Routing.Services.Addresses;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Dispatch;
 using Domain.Models.Routing;
+using Domain.Rules;
 using Domain.Rules.Routing;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
@@ -76,19 +77,13 @@ public sealed record DeadheadConnection(
       return null;
     var pickup = current.Stops.OrderBy(s => s.Sequence).FirstOrDefault();
     var start = Start(current);
-    if (
-      pickup is null
-      || !string.Equals(
-        pickup.Job,
-        "Pick Up",
-        StringComparison.OrdinalIgnoreCase
-      )
-      || start is null
-    )
+    if (pickup is null || !SourceWords.IsPickup(pickup.Job) || start is null)
       return null;
     var assigned = history
       .Where(x =>
-        x.Id != current.Id && x.TruckId == truck && x.Status != "cancelled"
+        x.Id != current.Id
+        && x.TruckId == truck
+        && !SourceWords.IsCancelled(x.Status)
       )
       .Select(x => new { Load = x, Start = Start(x) })
       .ToArray();
