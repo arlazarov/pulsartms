@@ -40,7 +40,10 @@ test('every stop fact is the same two cells on one label column', () => {
     /__appointment,[^{}]*__eta\.fleet-route-popup__field,[^{}]*__distance,[^{}]*__fuel\s*\{[^}]*grid-template-columns: subgrid;/,
   );
   const stops = readFileSync(
-    new URL('../../Scripts/fleetMap/routes/routeStops.js', import.meta.url),
+    new URL(
+      '../../Scripts/fleetMap/routes/stopCardContent.js',
+      import.meta.url,
+    ),
     'utf8',
   );
   assert.doesNotMatch(stops, /createFuelGauge/);
@@ -87,7 +90,10 @@ test('the purchase is a fact of the visit, not a footer of the card', () => {
 
 test('the link out of the map keeps its arrow on the last word', () => {
   const stops = readFileSync(
-    new URL('../../Scripts/fleetMap/routes/routeStops.js', import.meta.url),
+    new URL(
+      '../../Scripts/fleetMap/routes/stopCardContent.js',
+      import.meta.url,
+    ),
     'utf8',
   );
   assert.match(stops, /'Route & load details ↗'/);

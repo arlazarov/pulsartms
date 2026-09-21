@@ -30,7 +30,10 @@ test('popup secondary cycle warnings span both columns without changing the inli
   assert.match(css, /\.fleet-route-popup__arrival\s*\{\s*display: flex;/);
   assert.match(
     readFileSync(
-      new URL('../../Scripts/fleetMap/routes/routeStops.js', import.meta.url),
+      new URL(
+        '../../Scripts/fleetMap/routes/stopCardContent.js',
+        import.meta.url,
+      ),
       'utf8',
     ),
     /'stop-hours stop-hours--inline'/,
