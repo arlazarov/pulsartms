@@ -92,7 +92,9 @@ export function createFuelEditorFocus(
         )
           return;
         const connected =
-          target.isConnected && !target.closest?.('[inert]') && !target.disabled;
+          target.isConnected &&
+          !target.closest?.('[inert]') &&
+          !target.disabled;
         (connected ? target : element).focus?.({ preventScroll: true });
       };
       if (viewport?.requestAnimationFrame)
