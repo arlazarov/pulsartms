@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createDockedDetails } from '../../Scripts/fleetMap/ui/dockedDetails.js';
+import { createDockedDetails } from '../../Scripts/fleetMap/ui/dockedDetails.ts';
 
 function fixture() {
   const changes = [],

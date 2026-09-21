@@ -13,7 +13,7 @@ import { mergeRoutePayload } from './routes/routePayload.ts';
 import { stopEtaDeadline, stopEtaLabels } from './routes/stopEtaLabels.ts';
 import { etaStops, stopEtaIdentity } from './routes/stopEtaIdentity.ts';
 import { createCameraViewport } from './ui/cameraViewport.js';
-import { createDockedDetails } from './ui/dockedDetails.js';
+import { createDockedDetails } from './ui/dockedDetails.ts';
 import { createRouteEditor } from './routes/routeEditor.js';
 import { distanceLabel } from './ui/distanceLabel.ts';
 
@@ -37,7 +37,7 @@ export async function createFleetMap(element, apiKey, callbacks) {
   }
   const [, gpuModule] = await Promise.all([
     loadGoogleMaps(apiKey),
-    import('./rendering/gpuScene.js').catch(error => {
+    import('./rendering/gpuScene.ts').catch(error => {
       if (
         !String(error?.message).includes(
           'Failed to fetch dynamically imported module',

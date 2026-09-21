@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { download } from '../../Scripts/dispatch/documents.js';
+import { download } from '../../Scripts/dispatch/documents.ts';
 
 async function withDownloadDom(run, failure) {
   const original = {

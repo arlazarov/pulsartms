@@ -6,7 +6,7 @@ import {
   dispose,
   rememberOverview,
   focusView,
-} from '../../Scripts/shared/loadDialog.js';
+} from '../../Scripts/shared/loadDialog.ts';
 
 test('selected-stop navigation retains overview scroll and restores focus without a nested dialog', () => {
   const content = { scrollTop: 340 },

@@ -7,8 +7,10 @@ const read = path => readFileSync(new URL(path, client), 'utf8');
 
 test('browser sources do not depend on generated output and relative imports resolve', () => {
   const root = new URL('Scripts/', client);
-  for (const file of readdirSync(root, { recursive: true }).filter(n =>
-    n.endsWith('.js'),
+  // Both extensions: a rule that reads only .js stops covering a module the
+  // moment it is converted, and says nothing while it does.
+  for (const file of readdirSync(root, { recursive: true }).filter(
+    n => /\.[jt]s$/.test(n) && !n.endsWith('.d.ts'),
   )) {
     const url = new URL(file, root);
     const source = readFileSync(url, 'utf8');
@@ -21,7 +23,7 @@ test('browser sources do not depend on generated output and relative imports res
       else
         assert.equal(
           file,
-          'fleetMap/rendering/gpuScene.js',
+          'fleetMap/rendering/gpuScene.ts',
           `Vendor import outside GPU adapter: ${file}`,
         );
     }

@@ -1,5 +1,27 @@
+import type { StopLabelStyle } from './stopLabelStyle.ts';
 import { isDelivery } from './stopAppearance.ts';
 import { sceneMetrics, labelSubLayers } from './sceneMetrics.ts';
+
+// What a line of a card is. 'heading' takes the card's own accent - the
+// colour of the job it belongs to - and the rest name a colour the style
+// carries. 'text' names none, and falls back to the ordinary one.
+export type StopCardTone =
+  | 'text'
+  | 'heading'
+  | 'eta'
+  | 'success'
+  | 'danger'
+  | 'muted';
+
+// One card drawn beside a stop: where it stands, the lines it says, what
+// each line is, and whether it is only there while the pointer is.
+export type StopCard = {
+  position: number[];
+  text: string;
+  job?: string;
+  tones?: StopCardTone[];
+  transient?: boolean;
+};
 
 const backgroundSubLayers = {
   ...labelSubLayers,
@@ -9,14 +31,19 @@ const lineHeight = 1.4;
 // Deck's atlas allocates 1.2 em per row; compensate so card bounds match the colored row offsets.
 const atlasRowScale = 1.2;
 
-function accent(job, style) {
+function accent(job: string | undefined, style: StopLabelStyle) {
   if (isDelivery(job)) return style.delivery;
   return /^pickup$/i.test((job || '').replace(/[\s_-]/g, ''))
     ? style.pickup
     : style.color;
 }
 
-export function stopCardLayers(TextLayer, distanceData, style, fonts) {
+export function stopCardLayers(
+  TextLayer: new (props: any) => unknown,
+  distanceData: StopCard[],
+  style: StopLabelStyle,
+  fonts: { stopLabel: unknown },
+) {
   const cards = distanceData.map(row => ({
     ...row,
     accent: accent(row.job, style),
@@ -30,7 +57,11 @@ export function stopCardLayers(TextLayer, distanceData, style, fonts) {
       return lines.map((text, index) => {
         const tone = card.tones?.[index] ?? 'text';
         const color =
-          tone === 'heading' ? card.accent : (style[tone] ?? style.color);
+          tone === 'heading'
+            ? card.accent
+            : tone === 'text'
+              ? style.color
+              : (style[tone] ?? style.color);
         return {
           position: card.position,
           text,
@@ -46,12 +77,12 @@ export function stopCardLayers(TextLayer, distanceData, style, fonts) {
     });
     const common = {
       characterSet: 'auto',
-      getPosition: row => row.position,
-      getText: row => row.text,
+      getPosition: (row: { position: number[] }) => row.position,
+      getText: (row: { text: string }) => row.text,
       getTextAnchor: 'start',
       getAlignmentBaseline: 'bottom',
       lineHeight: lineHeight / atlasRowScale,
-      getPixelOffset: row => row.offset,
+      getPixelOffset: (row: { offset: number[] }) => row.offset,
       getSize: style.size,
       sizeUnits: 'pixels',
       fontFamily: style.fontFamily,
@@ -71,7 +102,7 @@ export function stopCardLayers(TextLayer, distanceData, style, fonts) {
         getBackgroundColor: style.background,
         backgroundPadding: style.padding,
         backgroundBorderRadius: style.radius,
-        getBorderColor: card => [...card.accent, 110],
+        getBorderColor: (card: { accent: number[] }) => [...card.accent, 110],
         getBorderWidth: 1,
         _subLayerProps: backgroundSubLayers,
       }),
@@ -79,7 +110,7 @@ export function stopCardLayers(TextLayer, distanceData, style, fonts) {
         ...common,
         id: `${id}-content`,
         data: content,
-        getColor: row => row.color,
+        getColor: (row: { color: number[] }) => row.color,
         _subLayerProps: labelSubLayers,
       }),
     ];

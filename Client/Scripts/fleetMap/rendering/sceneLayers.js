@@ -10,7 +10,7 @@ import {
   labelSubLayers,
 } from './sceneMetrics.ts';
 import { defaultStopLabelStyle } from './stopLabelStyle.ts';
-import { stopCardLayers } from './stopCardLayers.js';
+import { stopCardLayers } from './stopCardLayers.ts';
 const emptyClusters = Object.freeze([]);
 
 // One cache per scene. Zoom-driven truck groups do not rebuild roads or stations.

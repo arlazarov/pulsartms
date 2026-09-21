@@ -1,26 +1,32 @@
 # Fleet rendering boundary
 
-`gpuScene.js` is the only vendor entry point. esbuild produces
-`wwwroot/js/generated/fleetMap/rendering/gpuScene.js` and shared chunks; never edit generated files.
+`gpuScene` is the only vendor entry point: deck.gl is imported there and
+nowhere else, which `tests/architecture/architecture.test.js` holds to. Its
+source is TypeScript, and esbuild produces
+`wwwroot/js/generated/fleetMap/rendering/gpuScene.js` and shared chunks - that
+generated file is what the page loads, and it is never edited by hand.
 
-- `scene.js`: scene state, scheduling, selection and lifecycle; renderer ports.
-- `sceneLayers.js`: deck.gl layer definitions and per-scene layer caches, with
+Modules are named here without an extension: a module that moves to
+TypeScript is the same module.
+
+- `scene`: scene state, scheduling, selection and lifecycle; renderer ports.
+- `sceneLayers`: deck.gl layer definitions and per-scene layer caches, with
   stable per-stop circle/number pairs. Reordering a highlighted stop preserves
   layer/data identity; changing a number or job updates only that pair.
-- `stopData.js`: immutable snapshots of explicit stop data, retaining unchanged
+- `stopData`: immutable snapshots of explicit stop data, retaining unchanged
   rows by scene ID without DOM observation.
-- `truckAppearance.js`: three cached 28px states: moving green heading arrow,
+- `truckAppearance`: three cached 28px states: moving green heading arrow,
   stationary green idle circle, and gray off/unknown circle. Speed determines
   movement; truck number typography is independent.
-- `truckLabelLayout.js`: bounded screen-space label placement, with a local
+- `truckLabelLayout`: bounded screen-space label placement, with a local
   spatial index and retained per-truck offsets. Geographic positions stay exact.
-  `markerProjection.js` shares the north-up projection with overview grouping;
-  `markerAnchor.js` shares cached connectors for truck and group labels.
+  `markerProjection` shares the north-up projection with overview grouping;
+  `markerAnchor` shares cached connectors for truck and group labels.
 - Station fills use uniform 16px price-colored circles. Prices remain in the
   station popup; map text is limited to fuel-order and active-edit badges.
   Camera changes do not scan stations or invalidate their cached layers.
-- `layerCache.js`: single-entry identity cache.
-- `stationTouch.js`: nearest-station picking after a direct-hit miss, preserving
+- `layerCache`: single-entry identity cache.
+- `stationTouch`: nearest-station picking after a direct-hit miss, preserving
   the prior 20px mouse target and larger touch tolerance without visible halos.
 
 Browser orchestration lives in `Scripts/fleetMap`, with telemetry/playback in
@@ -28,9 +34,9 @@ Browser orchestration lives in `Scripts/fleetMap`, with telemetry/playback in
 from the scene rather than selecting a fallback renderer. Blazor owns page state
 and API requests; JavaScript owns map interaction and animation.
 
-Shared planar segment projection lives in `fleetMap/geometry/segmentProjection.js`.
-`geometry/routeGeometry.js` prepares paths, provider-mile progress and stop anchors.
-`fleetMap/geometry/routePosition.js` owns bounded nearest-segment matching and progress
+Shared planar segment projection lives in `fleetMap/geometry/segmentProjection`.
+`geometry/routeGeometry` prepares paths, provider-mile progress and stop anchors.
+`fleetMap/geometry/routePosition` owns bounded nearest-segment matching and progress
 interpolation. The route layer owns scheduling, search-window selection and drawing;
 the pure matcher has no map, clock, DOM or mutable state dependencies.
 Detail simplification and live progress use it without allocating
@@ -56,9 +62,9 @@ and route stops all use the single GPU scene. Stop circle/number pairs remain
 ordered together so overlapping markers stay opaque and readable.
 Static DOM presentation belongs in SCSS; GPU appearance belongs in sceneLayers.
 
-`routes/routeStops.js` updates current-stop metadata independently of geometry.
-`routes/nextLoadDisplay.js` prepares upcoming stop grouping and mileage without
-owning render objects. `routes/routePayload.js` enforces the Blazor contract for
+`routes/routeStops` updates current-stop metadata independently of geometry.
+`routes/nextLoadDisplay` prepares upcoming stop grouping and mileage without
+owning render objects. `routes/routePayload` enforces the Blazor contract for
 retained geometry; its identity check runs before any scene mutation.
 
 Run `npm test`, `npm run js:check`, `npm run js:build`, and `npm run styles:build` after changes.

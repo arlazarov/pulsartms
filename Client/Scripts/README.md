@@ -17,7 +17,7 @@ fleetMap/    the map, by subject:
   lifecycle/   mounting, releasing, yielding to the browser
 ```
 
-`rendering/gpuScene.js` is the only vendor entry point; esbuild builds it
+`rendering/gpuScene.ts` is the only vendor entry point; esbuild builds it
 and the shared chunks into `wwwroot/js/generated/`, which is never edited by
 hand. `rendering/README.md` says what each renderer module owns.
 

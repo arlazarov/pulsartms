@@ -1,4 +1,5 @@
-export function download(fileName, bytes) {
+// A file the server built, handed to the browser to save.
+export function download(fileName: string, bytes: BlobPart) {
   const blob = new Blob([bytes], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');

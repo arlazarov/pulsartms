@@ -1,4 +1,4 @@
-import { createDockedDetails } from '../../Scripts/fleetMap/ui/dockedDetails.js';
+import { createDockedDetails } from '../../Scripts/fleetMap/ui/dockedDetails.ts';
 import { createRouteLayer } from '../../Scripts/fleetMap/routes/routeLayer.ts';
 import { createStationLayer } from '../../Scripts/fleetMap/stations/stationLayer.ts';
 import { stopEtaLabels } from '../../Scripts/fleetMap/routes/stopEtaLabels.ts';

@@ -1,22 +1,24 @@
-// Blazor owns the persistent inspector shell; JavaScript owns only this empty host.
+// One thing the card can be showing, and the caller that put it there.
+type Port = { onClose: () => void; disposed: boolean };
+
 /**
- * The card docked under the map, whose content the page owns.
+ * The card docked under the map, whose content the page owns. Blazor owns
+ * the persistent inspector shell; JavaScript owns only this empty host.
  *
- * @param {(kind: string, revision: number) => void} onChange
- *   What the card is showing now, and which revision of it.
- * @param {() => string} dismissMode
+ * @param onChange What the card is showing now, and which revision of it.
+ * @param dismissMode What Escape leaves the card showing.
  */
 export function createDockedDetails(
-  host,
-  onChange = () => {},
-  dismissMode = () => 'closed',
-  focusTarget = null,
+  host: HTMLElement | null,
+  onChange: (kind: string, revision: number) => void = () => {},
+  dismissMode: () => string = () => 'closed',
+  focusTarget: { focus?: (options?: FocusOptions) => void } | null = null,
 ) {
-  const ports = new Map();
-  let owner = null,
+  const ports = new Map<string, Port>();
+  let owner: Port | null = null,
     mode = 'closed',
     revision = 0,
-    content = null,
+    content: Node | null = null,
     disposed = false;
   let suspended = false;
 
@@ -25,7 +27,11 @@ export function createDockedDetails(
     content = null;
   }
 
-  function switchMode(next, nextOwner = null, restoreFocus = false) {
+  function switchMode(
+    next: string,
+    nextOwner: Port | null = null,
+    restoreFocus = false,
+  ) {
     if (disposed || (suspended && next !== 'closed')) return;
     if (
       restoreFocus &&
@@ -40,7 +46,7 @@ export function createDockedDetails(
     onChange(mode, ++revision);
   }
 
-  function dismiss(event) {
+  function dismiss(event: KeyboardEvent) {
     if (event.key !== 'Escape' || !owner) return;
     event.stopPropagation();
     const closing = owner;
@@ -59,24 +65,27 @@ export function createDockedDetails(
     get suspended() {
       return suspended;
     },
-    setSuspended(value) {
+    setSuspended(value: boolean) {
       if (disposed || suspended === value) return;
       suspended = value;
       if (suspended) switchMode('closed');
     },
-    activate(kind) {
+    activate(kind: string) {
       const port = ports.get(kind);
       if (port && !port.disposed) switchMode(kind, port);
     },
-    setMode(kind, restoreFocus = false) {
+    setMode(kind: string, restoreFocus = false) {
       switchMode(kind, null, restoreFocus);
     },
-    popupFactory(kind) {
-      return (_map, { onClose = () => {} } = {}) => {
-        const port = { onClose, disposed: false };
+    popupFactory(kind: string) {
+      return (
+        _map: unknown,
+        { onClose = () => {} }: { onClose?: () => void } = {},
+      ) => {
+        const port: Port = { onClose, disposed: false };
         ports.set(kind, port);
         return {
-          show(nextContent) {
+          show(nextContent: Node) {
             if (disposed || port.disposed || owner !== port) return;
             if (content !== nextContent) {
               content = nextContent;

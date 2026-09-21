@@ -1,11 +1,30 @@
-import { show as showNative } from './cameraDialog.js';
-import { lockScroll, unlockScroll } from './popup.js';
+import { show as showNative } from './cameraDialog.ts';
+import { lockScroll, unlockScroll } from './popup.ts';
 
-const dialogs = new WeakMap();
-const overviews = new WeakMap();
+// What a dialog listens with while it is open, so it can all be taken off
+// again, and where its overview stood before a stop was opened over it.
+type Listeners = {
+  pointerDown: (event: PointerEvent) => void;
+  click: (event: MouseEvent) => void;
+  release: () => void;
+};
+type Overview = { top: number; opener: Element | null };
 
-export function rememberOverview(dialog) {
-  const content = dialog.querySelector('.dispatch-load-dialog__content');
+const dialogs = new WeakMap<HTMLDialogElement, Listeners>();
+const overviews = new WeakMap<HTMLDialogElement, Overview>();
+
+// What can be focused is asked of the element, not of its type: the pages
+// are also rendered in a test host whose elements are not the browser's.
+function focusElement(element: Element | null | undefined) {
+  const focusable = element as {
+    focus?: (options?: FocusOptions) => void;
+  } | null;
+  if (typeof focusable?.focus === 'function')
+    focusable.focus({ preventScroll: true });
+}
+
+export function rememberOverview(dialog: HTMLDialogElement) {
+  const content = dialog.querySelector('.dispatch-load-dialog__content')!;
   overviews.set(dialog, {
     top: content.scrollTop,
     opener: dialog.ownerDocument.activeElement,
@@ -13,31 +32,28 @@ export function rememberOverview(dialog) {
   dialog.style.height = `${dialog.getBoundingClientRect().height}px`;
 }
 
-export function focusView(dialog, selected) {
-  const content = dialog.querySelector('.dispatch-load-dialog__content');
+export function focusView(dialog: HTMLDialogElement, selected: boolean) {
+  const content = dialog.querySelector('.dispatch-load-dialog__content')!;
   if (selected) {
     content.scrollTop = 0;
-    dialog
-      .querySelector('.dispatch-load-dialog__back')
-      ?.focus({ preventScroll: true });
+    focusElement(dialog.querySelector('.dispatch-load-dialog__back'));
   } else {
     dialog.style.height = '';
     const previous = overviews.get(dialog);
     content.scrollTop = previous?.top ?? 0;
-    if (previous?.opener?.isConnected)
-      previous.opener.focus({ preventScroll: true });
+    if (previous?.opener?.isConnected) focusElement(previous.opener);
     overviews.delete(dialog);
   }
 }
 
-export function show(dialog) {
+export function show(dialog: HTMLDialogElement | null | undefined) {
   if (!dialog?.isConnected || dialogs.has(dialog)) return;
   const opener = document.activeElement;
   const openerId = opener?.id;
   const openerControls = opener?.getAttribute?.('aria-controls');
   let locked = false;
   let startedOutside = false;
-  const outside = event => {
+  const outside = (event: MouseEvent) => {
     const rect = dialog.getBoundingClientRect();
     return (
       event.target === dialog &&
@@ -47,10 +63,10 @@ export function show(dialog) {
         event.clientY > rect.bottom)
     );
   };
-  const pointerDown = event => {
+  const pointerDown = (event: PointerEvent) => {
     startedOutside = outside(event);
   };
-  const click = event => {
+  const click = (event: MouseEvent) => {
     if (startedOutside && outside(event)) close(dialog);
     startedOutside = false;
   };
@@ -68,9 +84,7 @@ export function show(dialog) {
                 element.getAttribute('aria-controls') === openerControls,
             )
           : null;
-    const focusable = /** @type {HTMLElement | null} */ (target);
-    if (focusable?.isConnected && typeof focusable.focus === 'function')
-      focusable.focus({ preventScroll: true });
+    if (target?.isConnected) focusElement(target);
   };
   dialog.addEventListener('pointerdown', pointerDown);
   dialog.addEventListener('click', click);
@@ -86,11 +100,11 @@ export function show(dialog) {
   }
 }
 
-export function close(dialog) {
+export function close(dialog: HTMLDialogElement | null | undefined) {
   if (dialog?.open) dialog.close();
 }
 
-export function dispose(dialog) {
+export function dispose(dialog: HTMLDialogElement) {
   overviews.delete(dialog);
   const state = dialogs.get(dialog);
   if (!state) return;
