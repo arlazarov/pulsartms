@@ -5,6 +5,7 @@ using Application.Reference;
 using Domain.Entities.Dispatch;
 using Domain.Models.Execution;
 using Domain.Models.Routing;
+using Domain.Rules;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Execution.Services;
@@ -15,7 +16,7 @@ internal sealed record ExecutionWorkBatch(
   IReadOnlyDictionary<Guid, TruckWorkResources> Resources
 );
 
-public static class ExecutionWorkReader
+public static partial class ExecutionWorkReader
 {
   public static async Task<IReadOnlyList<TruckWorkSelection>> ReadAsync(
     IAppDbContext dbContext,
@@ -219,7 +220,11 @@ public static class ExecutionWorkReader
       var snapshot in loads
         .Where(x =>
           pendingReview.Contains(x.Work.Id)
-          || IsCurrentOrUpcoming(x.Work, date, includeOverdue)
+          || ExecutionWorkRelevance.IsCurrentOrUpcoming(
+            x.Work,
+            date,
+            includeOverdue
+          )
         )
         .OrderBy(x => Order(x.Work))
     )
@@ -330,150 +335,6 @@ public static class ExecutionWorkReader
             x.ConfigurationRevision
           )
         )
-    );
-  }
-
-  private static bool IsCurrentOrUpcoming(
-    RouteWorkSnapshot load,
-    DateOnly date,
-    bool includeOverdue
-  )
-  {
-    // A load the source has cancelled is not work, whatever its execution
-    // leg still says. The leg is left alone - a cancellation reversed in the
-    // source brings the same trip back, with its accepted itinerary and its
-    // recorded events - but until then the truck is not driving it. 11005
-    // carried a cancelled load across the map because the leg it was
-    // accepted into was still open, and nothing asked the load itself.
-    if (load.Status is "cancelled" or "canceled")
-      return false;
-    if (load.ExecutionLegId.HasValue)
-      return load.ExecutionStatus is "active" or "planned";
-    var final = load.Stops.LastOrDefault(x =>
-      x.StateAfter != "No truck"
-      && (
-        x.Job.Equals("Drop Off", StringComparison.OrdinalIgnoreCase)
-        || x.Job.Equals("Delivery", StringComparison.OrdinalIgnoreCase)
-      )
-    );
-    if (
-      final?.CompletionOverride == true
-      || final?.CompletionOverride != false
-        && (
-          final?.DeliveredAt is not null
-          || final?.DepartedAt is not null
-          || final?.ManualCompletedAt is not null
-            && load.Stops.Where(s => s.StateAfter != "No truck")
-              .All(s => s.IsCompleted)
-        )
-    )
-      return false;
-    // A missed appointment or UTC midnight does not complete an active load.
-    if (HasStarted(load))
-      return true;
-    var end =
-      load.DeliveryDate
-      ?? load.Stops.LastOrDefault()?.ScheduledDate
-      ?? load.ShipDate;
-    return includeOverdue || end is null || end >= date;
-  }
-
-  private sealed class SelectionRow
-  {
-    public required string Key { get; init; }
-    public Guid? TruckId { get; init; }
-    public string TruckNumber { get; init; } = "";
-    public string DriverName { get; set; } = "";
-    public string TrailerNumber { get; set; } = "";
-    public List<WorkLoadReference> Loads { get; } = [];
-  }
-
-  private static ExecutionLoadSnapshot CaptureSource(Load source)
-  {
-    var snapshot = ExecutionLoadProjection.Capture(source);
-    var work = snapshot.Work;
-    var start = work.PlanningFromStopId.HasValue
-      ? work.Stops.SingleOrDefault(s => s.Id == work.PlanningFromStopId)
-      : work.Stops.FirstOrDefault(s =>
-        s.TruckId.HasValue
-        || !string.IsNullOrWhiteSpace(s.TruckNumber)
-        || s.ManualStateAfter is not null and not "No truck"
-      );
-    var stops = StopOperation
-      .Resolve(
-        work.Stops,
-        work.PlanningFromStopId,
-        (stop, job, state) => stop with { Job = job, StateAfter = state }
-      )
-      .Select(stop =>
-        start is not null && stop.Sequence < start.Sequence
-        || stop.StateAfter == "No truck"
-          ? stop with
-          {
-            Job = stop.ManualAction is null ? "Driver start" : stop.Job,
-            StateAfter = "No truck",
-          }
-          : stop
-      )
-      .ToImmutableArray();
-    return snapshot with
-    {
-      Work = work with
-      {
-        TruckNumber = string.IsNullOrWhiteSpace(work.TruckNumber)
-          ? start?.TruckNumber ?? ""
-          : work.TruckNumber,
-        Stops = stops,
-      },
-    };
-  }
-
-  private static WorkLoadReference Reference(ExecutionLoadSnapshot snapshot)
-  {
-    var load = snapshot.Work;
-    var details = snapshot.Details;
-    return new(
-      load.Id,
-      load.ExecutionLegId,
-      load.AssignmentRevision,
-      load.ExecutionStatus,
-      load.LoadNumber,
-      details.OrderNumber,
-      details.CustomerName,
-      details.DriverName,
-      load.DriverId,
-      Order(load),
-      load.Stops.Select(stop => new WorkVisitReference(
-          stop.Id,
-          stop.City,
-          stop.Name
-        ))
-        .ToImmutableArray()
-    );
-  }
-
-  private static bool HasStarted(RouteWorkSnapshot load) =>
-    load.ExecutionLegId.HasValue
-      ? load.ExecutionStatus == "active"
-      : load.Status.Equals("in_transit", StringComparison.OrdinalIgnoreCase)
-        || load.Stops.Any(stop =>
-          stop.PickedUpAt.HasValue || stop.ManualCompletedAt.HasValue
-        );
-
-  private static WorkOrderKey Order(RouteWorkSnapshot load)
-  {
-    var first = load.Stops.FirstOrDefault(stop =>
-      stop.StateAfter != "No truck"
-    );
-    var start = (
-      first?.ScheduledDate ?? load.ShipDate ?? DateOnly.MaxValue
-    ).ToDateTime(first?.ScheduledTime ?? TimeOnly.MinValue);
-    return new(
-      load.ExecutionStatus == "active" ? WorkActivity.ActiveExecution
-        : HasStarted(load) ? WorkActivity.Started
-        : WorkActivity.Upcoming,
-      start,
-      load.LoadNumber
     );
   }
 }
