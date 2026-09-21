@@ -870,3 +870,9 @@ Fuel markers retain a reachable first purchase below reserve with a server
 warning. If the priced station cannot be reached, show its server-calculated
 fuel deficit as an access warning. Such a marker has no purchase amount, fuel
 gauges, cost or edit-plan action, and is not a feasible fuel recommendation.
+
+Saved fuel stations remain visible independently of the Next loads road layer.
+When the same assignment's fuel plan needs updating, retain its station markers
+with a saved-plan warning. Suppress unverified distance, arrival time, purchase
+quantity, fuel gauges, cost and edit action until a validated plan replaces it.
+Changed route assignment inputs do not retain the previous assignment's markers.

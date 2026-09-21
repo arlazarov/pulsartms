@@ -40,6 +40,15 @@ public sealed class FuelPriceRefreshService(
     )
       return;
     if (
+      current.State.Progress is { OffRoute: false, LocationStale: false }
+      && current.State.Plan.FuelPlan
+        is { NeedsRefresh: true, PositionUnverified: false }
+    )
+    {
+      await RecalculateAsync(saved, current, dispatchId, ct);
+      return;
+    }
+    if (
       saved.RootDispatchId != dispatchId
       || saved.RootExecutionLegId != current.ExecutionLegId
       || saved.AssignmentRevision != current.AssignmentRevision

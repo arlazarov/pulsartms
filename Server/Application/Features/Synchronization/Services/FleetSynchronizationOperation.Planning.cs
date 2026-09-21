@@ -120,10 +120,16 @@ public sealed partial class FleetSynchronizationOperation
                 await RunJobAsync(
                   $"fuel:{id}",
                   config.PlanningSeconds,
-                  (fuelServices, fuelToken) =>
-                    fuelServices
+                  async (fuelServices, fuelToken) =>
+                  {
+                    if (current.State?.Plan?.FuelPlan is not null)
+                      await fuelServices
+                        .GetRequiredService<TruckFuelPlans>()
+                        .ApplyAsync(current.State, fuelToken);
+                    await fuelServices
                       .GetRequiredService<FuelPriceRefreshService>()
-                      .RefreshAsync(current, fuelToken),
+                      .RefreshAsync(current, fuelToken);
+                  },
                   truckToken
                 );
                 if (index >= 0)

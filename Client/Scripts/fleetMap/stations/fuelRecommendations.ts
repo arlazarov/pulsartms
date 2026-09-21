@@ -3,22 +3,13 @@
 /** @param {unknown} value */
 const finite = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
-/** @param {unknown} value */
-const identity = (value: unknown) =>
-  typeof value === 'string' &&
-  value.length > 0 &&
-  value !== '00000000-0000-0000-0000-000000000000'
-    ? value
-    : null;
-
 /** @param {import('../contracts.d.ts').RouteMetadata | null} plan
  * @param {import('../contracts.d.ts').RouteProgress | null} progress
- * @param {boolean} [showNextLoads] */
+ */
 // The stations the plan suggests, and how far along the road each one is.
 export function fuelRecommendations(
   plan: any,
   progress: any,
-  showNextLoads = true,
 ): { key: string; stops: any[] } {
   const access = plan?.fuelRecommendations?.accessProblem
     ? plan.fuelRecommendations
@@ -38,32 +29,27 @@ export function fuelRecommendations(
         })),
       }
     : plan?.fuelPlan;
-  // A plan whose prices are merely out of date still names the station to
-  // drive to; only an invalid plan is withheld.
-  const unusable =
-    plan?.fuelPlan?.needsRefresh && !plan?.fuelPlan?.pricesOutOfDate;
-  if (!plan || !fuel || (!access && unusable)) return { key: '', stops: [] };
+  const refreshing =
+    !access &&
+    (progress?.offRoute === true ||
+      (fuel?.needsRefresh && !fuel?.pricesOutOfDate));
+  if (!plan || plan.inputsChanged || !fuel) return { key: '', stops: [] };
   const current = finite(progress?.progressMiles);
-  const dispatchId = identity(plan.dispatchId);
-  const currentStopIds = showNextLoads
-    ? null
-    : new Set(
-        [...(plan.referenceStops ?? []), ...(plan.stops ?? [])]
-          .map((stop: any) => identity(stop.id))
-          .filter((id: unknown) => id !== null),
-      );
-  const visits = fuel.stops.flatMap((stop: any, index: number) => {
-    if (!showNextLoads) {
-      const owner = identity(stop.dispatchId),
-        beforeStopId = identity(stop.beforeStopId);
-      // Explicit ownership takes precedence; legacy plans need a known current stop.
-      if (
-        owner
-          ? owner !== dispatchId
-          : !beforeStopId || !currentStopIds?.has(beforeStopId)
-      )
-        return [];
-    }
+  const visits = fuel.stops.flatMap((saved: any, index: number) => {
+    const stop = refreshing
+      ? {
+          ...saved,
+          warning: 'Saved fuel stop. Route and fuel plan need updating.',
+          accessOnly: true,
+          buyGallons: 0,
+          arrivalGallons: null,
+          departureGallons: null,
+          purchaseCostUsd: null,
+          currentRouteMile: null,
+          milesAhead: null,
+          estimatedArrival: null,
+        }
+      : saved;
     const routeMile = finite(stop.currentRouteMile),
       serverMiles = finite(stop.milesAhead);
     if (

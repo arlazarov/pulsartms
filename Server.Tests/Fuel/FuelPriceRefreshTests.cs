@@ -22,6 +22,54 @@ namespace Server.Tests.Fuel;
 public sealed class FuelPriceRefreshTests
 {
   [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task InvalidMeasuredFuelRefreshesAutomaticPurchasesOnly(
+    bool manual
+  )
+  {
+    var store = new Store();
+    store.Snapshot.Plan.ManuallyEdited = manual;
+    var sender = new Sender { Loads = store.Loads };
+    var current = Current(store);
+    current.State!.Plan!.FuelPlan = new()
+    {
+      NeedsRefresh = true,
+      RefreshReasons = ["A planned fuel stop is no longer reachable."],
+    };
+    current = current with
+    {
+      State = current.State with
+      {
+        Progress = new(
+          10,
+          100,
+          100,
+          0,
+          false,
+          false,
+          DateTime.UtcNow,
+          new(40, -80)
+        ),
+      },
+    };
+    var service = new FuelPriceRefreshService(
+      store,
+      sender,
+      sender,
+      new CarrierFuelPrices(sender),
+      TimeProvider.System,
+      sender
+    );
+
+    await service.RefreshAsync(current, default);
+
+    Assert.Equal(manual ? 0 : 1, sender.Calculations.Count);
+    Assert.Equal(0, sender.PriceReads);
+    Assert.Equal(0, store.Writes);
+  }
+
+  [Theory]
   [InlineData(true)]
   [InlineData(false)]
   public async Task ChangedPricingProfileRefreshesWithoutWaitingForNewQuotes(

@@ -47,6 +47,7 @@ deploy_args=(
   --quiet
   --format=none
   --port 8080
+  --memory 1GiB
   --min 1
   # Still one instance, but no longer for the reason recorded here before.
   # Read caches now agree: CacheInvalidationRelay carries invalidations

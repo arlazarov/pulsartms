@@ -103,6 +103,10 @@ prints the build ID, digest and serving revision for release records and rollbac
 selection. Image retention policies must retain revisions needed for rollback.
 No cleanup policy is changed.
 
+The deployment wrapper requests 1 GiB of API memory. The September 21 revision
+hit its former 512 MiB limit during normal operation; this setting addresses that
+observed termination, not a measured upper bound on memory or a scaling claim.
+
 Inspect actual traffic after deployment. A previously pinned revision can retain
 100% of traffic while a new image is created successfully. The wrapper explicitly
 handles this case; when deploying manually, verify the new revision's image digest

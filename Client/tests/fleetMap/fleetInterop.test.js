@@ -488,7 +488,7 @@ test('zoom settles into hybrid at 15 and roadmap below without redundant replace
   );
 });
 
-test('fuel marker visits use server future miles and invalidation clears only recommendations', async t => {
+test('fuel invalidation retains non-actionable station markers on the saved route', async t => {
   const { api, calls } = await fixture(t);
   await api.setNextLoadsVisible(true);
   const route = {
@@ -518,11 +518,14 @@ test('fuel marker visits use server future miles and invalidation clears only re
     { progressMiles: 105 },
     false,
   );
-  assert.deepEqual(calls.stations.at(-1), []);
+  assert.equal(calls.stations.at(-1).length, 1);
+  assert.equal(calls.stations.at(-1)[0].accessOnly, true);
+  assert.equal(calls.stations.at(-1)[0].gallons, 0);
+  assert.equal(calls.stations.at(-1)[0].miles, null);
   assert.equal(calls.plans.at(-1).id, route.id);
 });
 
-test('Next loads filters saved fuel visits immediately without requesting new geometry or calculations', async t => {
+test('Next loads leaves saved fuel visits visible without new geometry or calculations', async t => {
   const { api, calls, state } = await fixture(t);
   const saved = {
     ...plan(),
@@ -557,7 +560,10 @@ test('Next loads filters saved fuel visits immediately without requesting new ge
   await api.setRoute(saved, { progressMiles: 100 }, false);
   assert.deepEqual(
     calls.stations.at(-1).map(x => [x.id, x.numbers]),
-    [['same', '1']],
+    [
+      ['same', '1/2'],
+      ['future-only', '3'],
+    ],
   );
   const plans = calls.plans.length;
   await api.setNextLoadsVisible(true);
@@ -572,9 +578,12 @@ test('Next loads filters saved fuel visits immediately without requesting new ge
   const callbacks = calls.callbacks.length;
   await api.setNextLoadsVisible(false);
   assert.deepEqual(
-    calls.stations.at(-1),
-    [],
-    'a passed visit must not reappear on toggling',
+    calls.stations.at(-1).map(x => [x.id, x.numbers]),
+    [
+      ['same', '2'],
+      ['future-only', '3'],
+    ],
+    'passed visits stay removed while future fuel remains visible',
   );
   await api.setNextLoadsVisible(true);
   assert.deepEqual(
@@ -593,7 +602,7 @@ test('Next loads filters saved fuel visits immediately without requesting new ge
   assert.deepEqual(calls.stations.at(-1), []);
 });
 
-test('latest Next loads visibility wins while route recommendation rendering is pending', async t => {
+test('Next loads cannot hide fuel while recommendation rendering is pending', async t => {
   const { api, calls, state } = await fixture(t);
   await api.setNextLoadsVisible(true);
   let finish;
@@ -631,13 +640,13 @@ test('latest Next loads visibility wins while route recommendation rendering is 
   const hiding = api.setNextLoadsVisible(false);
   assert.deepEqual(
     calls.stations.at(-1).map(x => x.id),
-    ['a'],
+    ['a', 'b'],
   );
   finish();
   await Promise.all([applying, hiding]);
   assert.deepEqual(
     calls.stations.at(-1).map(x => x.id),
-    ['a'],
+    ['a', 'b'],
   );
 });
 

@@ -253,9 +253,12 @@ without a table use the cancellable preview compatibility path. Saving always
 replays the actual draft on the server using current inputs and the frozen saved
 plan revision; prepared values are not trusted write data.
 
-Opening or polling the map does not launch a fuel-purchase search. The dispatcher
-uses Calculate Fuel / Recalculate Fuel. Background tracking may invalidate saved
-recommendations but does not replace them with a new purchase plan.
+Opening or polling the map does not run a fuel-purchase search in the read
+request. Background route refresh and fleet planning validate saved automatic
+fuel plans against the updated road and measured fuel. Invalid automatic plans
+are recalculated through the existing revision-guarded replacement command.
+Manual purchases and manual starting fuel remain protected from replacement.
+An initial plan still uses Calculate Fuel / Recalculate Fuel.
 
 Recalculation keeps the previous display until a complete replacement is saved.
 The requested truck profile, truck-owned plan and current-route compatibility

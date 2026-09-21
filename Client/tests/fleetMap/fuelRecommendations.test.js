@@ -142,7 +142,13 @@ test('invalidated plans and non-purchases never show actionable recommendations'
       stops: [{ stationId: 'a', buyGallons: 40, milesAhead: 10 }],
     },
   };
-  assert.deepEqual(fuelRecommendations(plan, null), { key: '', stops: [] });
+  const retained = fuelRecommendations(plan, null).stops[0];
+  assert.equal(retained.accessOnly, true);
+  assert.equal(retained.gallons, 0);
+  assert.equal(retained.arrivalGallons, null);
+  assert.equal(retained.purchaseCostUsd, null);
+  assert.equal(retained.miles, null);
+  assert.match(retained.warning, /need updating/);
   plan.fuelPlan.needsRefresh = false;
   plan.fuelPlan.stops[0].buyGallons = 0;
   assert.deepEqual(fuelRecommendations(plan, null).stops, []);
@@ -171,7 +177,7 @@ test('planned stations carry their saved location and quote without requiring th
     assert.deepEqual(result.stops[0][key], stop[key]);
 });
 
-test('Next loads off filters visits before grouping the same station and on restores the original plan', () => {
+test('Next loads visibility does not hide any saved fuel visits', () => {
   const plan = {
     dispatchId: 'current',
     tankGallons: 200,
@@ -223,11 +229,11 @@ test('Next loads off filters visits before grouping the same station and on rest
   const current = fuelRecommendations(plan, null, false);
   assert.deepEqual(
     current.stops.map(stop => stop.numbers),
-    ['1', '3'],
+    ['1/2', '3'],
   );
-  assert.deepEqual(current.stops[0].visits, [all.stops[0].visits[0]]);
+  assert.deepEqual(current.stops[0].visits, all.stops[0].visits);
   assert.deepEqual(current.stops[1], all.stops[1]);
-  assert.notEqual(current.key, all.key);
+  assert.equal(current.key, all.key);
   assert.deepEqual(fuelRecommendations(plan, null, true), all);
   assert.deepEqual(plan, original, 'visibility does not mutate the saved plan');
 });
@@ -253,7 +259,7 @@ test('a current estimated visit with null current route mile remains visible whi
   assert.equal(result.stops[0].gallons, 30);
 });
 
-test('legacy ownership matches before-stop IDs from both reference and remaining current stops', () => {
+test('legacy future visits remain visible alongside current visits', () => {
   const plan = {
     dispatchId: 'current',
     referenceStops: [{ id: 'reference' }],
@@ -286,12 +292,12 @@ test('legacy ownership matches before-stop IDs from both reference and remaining
   };
   assert.deepEqual(
     fuelRecommendations(plan, null, false).stops.map(stop => stop.id),
-    ['a', 'b'],
+    ['a', 'b', 'c'],
   );
   assert.equal(fuelRecommendations(plan, null, true).stops.length, 3);
 });
 
-test('explicit dispatch ownership overrides conflicting current stop or mileage hints', () => {
+test('future dispatch ownership does not hide a saved station', () => {
   const plan = {
     dispatchId: 'current',
     stops: [{ id: 'current-stop' }],
@@ -318,11 +324,11 @@ test('explicit dispatch ownership overrides conflicting current stop or mileage 
   };
   assert.deepEqual(
     fuelRecommendations(plan, null, false).stops.map(stop => stop.id),
-    ['b'],
+    ['a', 'b'],
   );
 });
 
-test('unknown ownership is hidden off without treating a current route mile as ownership', () => {
+test('legacy visits without ownership stay visible', () => {
   const plan = {
     dispatchId: 'current',
     fuelPlan: {
@@ -342,11 +348,11 @@ test('unknown ownership is hidden off without treating a current route mile as o
       ],
     },
   };
-  assert.deepEqual(fuelRecommendations(plan, null, false).stops, []);
+  assert.equal(fuelRecommendations(plan, null, false).stops.length, 2);
   assert.equal(fuelRecommendations(plan, null).stops.length, 2);
 });
 
-test('empty legacy dispatch IDs require a known before-stop and cannot match each other', () => {
+test('empty legacy dispatch IDs do not hide saved stations', () => {
   const empty = '00000000-0000-0000-0000-000000000000';
   const plan = {
     dispatchId: empty,
@@ -373,11 +379,11 @@ test('empty legacy dispatch IDs require a known before-stop and cannot match eac
   };
   assert.deepEqual(
     fuelRecommendations(plan, null, false).stops.map(stop => stop.id),
-    ['a'],
+    ['a', 'b', 'c'],
   );
 });
 
-test('filtering an earlier future visit preserves fallback numbering of a current visit', () => {
+test('sorting future and current visits preserves their saved numbering', () => {
   const plan = {
     dispatchId: 'current',
     fuelPlan: {
@@ -425,4 +431,45 @@ test('unreachable station remains visible without a fictional fuel purchase', ()
   assert.equal(result.stops[0].gallons, 0);
   assert.equal(result.stops[0].purchaseCostUsd, null);
   assert.match(result.stops[0].warning, /3.2 US gal short/);
+});
+
+test('changed assignments do not resurrect stations from the old scope', () => {
+  const plan = {
+    inputsChanged: true,
+    fuelPlan: {
+      needsRefresh: true,
+      stops: [{ stationId: 'old', buyGallons: 40, milesAhead: 10 }],
+    },
+  };
+  assert.deepEqual(fuelRecommendations(plan, null).stops, []);
+});
+
+test('arrival by another road retains the station without using old progress', () => {
+  const point = { latitude: 40, longitude: -79 };
+  const plan = {
+    fuelPlan: {
+      pricesOutOfDate: true,
+      stops: [
+        {
+          stationId: 'arrived',
+          point,
+          buyGallons: 80,
+          currentRouteMile: 10,
+          milesAhead: -5,
+          arrivalGallons: 30,
+        },
+      ],
+    },
+  };
+  const result = fuelRecommendations(plan, {
+    offRoute: true,
+    progressMiles: 15,
+  });
+  const station = result.stops[0];
+  assert.deepEqual(station.point, point);
+  assert.equal(station.accessOnly, true);
+  assert.equal(station.miles, null);
+  assert.equal(station.gallons, 0);
+  assert.equal(station.arrivalGallons, null);
+  assert.equal(plan.fuelPlan.stops[0].buyGallons, 80);
 });

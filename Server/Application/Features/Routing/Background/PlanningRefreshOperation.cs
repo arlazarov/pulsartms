@@ -1,6 +1,7 @@
 using Application.Diagnostics;
 using Application.Features.Routing.Commands;
 using Application.Features.Routing.Interfaces;
+using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Synchronization.Options;
 using Application.Interfaces;
 using Domain.Models.Routing;
@@ -140,9 +141,20 @@ public sealed class PlanningRefreshOperation(
         ),
         ct
       );
-    return result.Success
+    var succeeded =
+      result.Success
       && result.Response?.State?.Plan is { InputsChanged: false }
       && result.Response.Message is null;
+    if (succeeded && result.Response!.State!.Plan!.FuelPlan is not null)
+    {
+      await services
+        .GetRequiredService<TruckFuelPlans>()
+        .ApplyAsync(result.Response.State, ct);
+      await services
+        .GetRequiredService<FuelPriceRefreshService>()
+        .RefreshAsync(result.Response!, ct);
+    }
+    return succeeded;
   }
 
   private Task<bool> CompleteAsync(
