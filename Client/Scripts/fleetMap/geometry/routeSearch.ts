@@ -1,4 +1,5 @@
-export function lowerBound(values, target) {
+// The first index whose value reaches the target, in a list that only grows.
+export function lowerBound(values: number[], target: number): number {
   let low = 0,
     high = values.length;
   while (low < high) {
@@ -9,7 +10,13 @@ export function lowerBound(values, target) {
   return low;
 }
 
-export function segmentRange(cumulative, minimum, maximum) {
+// The stretch of a road between two distances along it, as a pair of
+// indices into the cumulative miles.
+export function segmentRange(
+  cumulative: number[],
+  minimum: number,
+  maximum: number,
+): [number, number] {
   const start = Math.max(1, lowerBound(cumulative, minimum));
   let low = 0,
     high = cumulative.length;

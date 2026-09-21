@@ -2,11 +2,11 @@ import { releaseAll } from '../lifecycle/release.js';
 import {
   fullRouteDetailZoom,
   routeDetailIndices,
-} from '../geometry/routeDetail.js';
-import { routeGeometry } from '../geometry/routeGeometry.js';
+} from '../geometry/routeDetail.ts';
+import { routeGeometry } from '../geometry/routeGeometry.ts';
 import { createRouteStops } from './routeStops.js';
-import { routePosition } from '../geometry/routePosition.js';
-import { lowerBound, segmentRange } from '../geometry/routeSearch.js';
+import { routePosition } from '../geometry/routePosition.ts';
+import { lowerBound, segmentRange } from '../geometry/routeSearch.ts';
 import { createRouteSnapper, matchRoute } from '../trucks/routeSnap.js';
 import { createDetailsCard } from '../ui/detailsCard.js';
 import { pendingStops } from './pendingStops.js';

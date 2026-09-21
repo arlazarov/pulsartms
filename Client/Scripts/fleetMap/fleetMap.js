@@ -7,7 +7,7 @@ import { createStationLayer } from './stations/stationLayer.js';
 import { fuelRecommendations } from './stations/fuelRecommendations.js';
 import { yieldToBrowser } from './lifecycle/backgroundWork.js';
 import { createNextLoadsLayer } from './routes/nextLoads.js';
-import { parseMapPayload } from './geometry/encodedPath.js';
+import * as payload from './geometry/encodedPath.ts';
 import { createMapHost } from './provider/mapHost.js';
 import { mergeRoutePayload } from './routes/routePayload.js';
 import { stopEtaDeadline, stopEtaLabels } from './routes/stopEtaLabels.js';
@@ -465,8 +465,8 @@ export async function createFleetMap(element, apiKey, callbacks) {
       },
       setRouteEditor(bytes) {
         if (disposed) return;
-        const payload = bytes ? parseMapPayload(bytes) : null;
-        routeEditor.set(payload);
+        const editing = payload.parseRouteEditorPayload(bytes);
+        routeEditor.set(editing);
         if (routeEditor.active) cancelFuelFocus();
         gpuScene.setRouteEditing?.(routeEditor.active);
         trucks.setEditingTruck(routeEditor.truckId);
@@ -620,30 +620,29 @@ export async function createFleetMap(element, apiKey, callbacks) {
       },
       setNextLoadsBytes(bytes) {
         if (!disposed) {
-          const payload = parseMapPayload(bytes);
-          if (Array.isArray(payload)) nextLoads.set(payload);
+          const loads = payload.parseNextLoads(bytes);
+          if (Array.isArray(loads)) nextLoads.set(loads);
           else {
-            if (payload.truckId && payload.currentDispatchId) {
+            if (loads.truckId && loads.currentDispatchId) {
               if (
                 nextLoadIdentity &&
-                (payload.truckId !== nextLoadIdentity.truckId ||
-                  payload.currentDispatchId !==
+                (loads.truckId !== nextLoadIdentity.truckId ||
+                  loads.currentDispatchId !==
                     nextLoadIdentity.currentDispatchId ||
-                  (payload.currentExecutionLegId ?? null) !==
+                  (loads.currentExecutionLegId ?? null) !==
                     (nextLoadIdentity.currentExecutionLegId ?? null) ||
-                  (payload.currentAssignmentRevision ?? 0) !==
+                  (loads.currentAssignmentRevision ?? 0) !==
                     (nextLoadIdentity.currentAssignmentRevision ?? 0))
               )
                 nextLoads.clear();
               nextLoadIdentity = {
-                truckId: payload.truckId,
-                currentDispatchId: payload.currentDispatchId,
-                currentExecutionLegId: payload.currentExecutionLegId ?? null,
-                currentAssignmentRevision:
-                  payload.currentAssignmentRevision ?? 0,
+                truckId: loads.truckId,
+                currentDispatchId: loads.currentDispatchId,
+                currentExecutionLegId: loads.currentExecutionLegId ?? null,
+                currentAssignmentRevision: loads.currentAssignmentRevision ?? 0,
               };
             }
-            if (payload.routes) nextLoads.set(payload.routes);
+            if (loads.routes) nextLoads.set(loads.routes);
           }
         }
       },
@@ -654,7 +653,7 @@ export async function createFleetMap(element, apiKey, callbacks) {
        * @returns {Promise<boolean>}
        */
       async setRouteBytes(bytes, progress, fit) {
-        return this.setRoute(parseMapPayload(bytes), progress, fit);
+        return this.setRoute(payload.parseRoutePayload(bytes), progress, fit);
       },
       /**
        * @param {import('./contracts.d.ts').RoutePayload} payload

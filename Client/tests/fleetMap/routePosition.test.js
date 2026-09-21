@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { routePosition } from '../../Scripts/fleetMap/geometry/routePosition.js';
+import { routePosition } from '../../Scripts/fleetMap/geometry/routePosition.ts';
 
 const path = [
   { lat: 0, lng: 0 },

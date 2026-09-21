@@ -17,7 +17,8 @@
     "map:build": "npm run js:build",
     "styles:build": "sass --style=expanded Styles/main.scss:wwwroot/css/main.css && node build/styleVersion.mjs",
     "styles:watch": "sass --style=expanded --watch Styles/main.scss:wwwroot/css/main.css",
-    "test": "node --test tests/fleetMap/*.test.js tests/styles/*.test.js tests/identity/*.test.js tests/dispatch/*.test.js tests/architecture/*.test.js"
+    "test": "node --test tests/fleetMap/*.test.js tests/styles/*.test.js tests/identity/*.test.js tests/dispatch/*.test.js tests/architecture/*.test.js",
+    "js:strict": "tsc -p tsconfig.strict.json"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

@@ -1,11 +1,18 @@
+import type { MapPoint } from '../contracts.d.ts';
 import {
   segmentFraction,
   segmentDistanceSquared,
-} from './segmentProjection.js';
+} from './segmentProjection.ts';
 
 export const fullRouteDetailZoom = 14;
 
-export function routeDetailIndices(path, zoom, anchors = []) {
+// Which points of a road are worth drawing at this zoom: the ends of every
+// leg always, and between them only what the eye would miss.
+export function routeDetailIndices(
+  path: MapPoint[],
+  zoom: number,
+  anchors: number[] = [],
+): number[] {
   if (path.length < 3 || zoom >= fullRouteDetailZoom)
     return path.map((_, i) => i);
   const latitude = (path[0].lat * Math.PI) / 180;
@@ -18,9 +25,11 @@ export function routeDetailIndices(path, zoom, anchors = []) {
     .filter(i => i >= 0 && i < path.length)
     .sort((a, b) => a - b);
   const keep = new Set(boundaries);
-  const pending = boundaries.slice(1).map((end, i) => [boundaries[i], end]);
+  const pending: [number, number][] = boundaries
+    .slice(1)
+    .map((end, i) => [boundaries[i], end]);
   while (pending.length) {
-    const [start, end] = pending.pop();
+    const [start, end] = pending.pop()!;
     const a = path[start],
       b = path[end];
     const dx = (b.lng - a.lng) * scale * 111320,

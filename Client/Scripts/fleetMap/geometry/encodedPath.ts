@@ -1,4 +1,10 @@
-// @ts-check
+import type {
+  MapPlan,
+  NextLoad,
+  NextLoadsPayload,
+  RoutePayload,
+  RoutePoint,
+} from '../contracts.d.ts';
 
 const scale = 1e6;
 
@@ -6,13 +12,11 @@ const scale = 1e6;
  * Route geometry arrives as one encoded string per leg rather than an object
  * per point. It is decoded here, once, where the payload enters the map, so
  * nothing past this point knows there are two forms.
- * @param {string | null | undefined} text
- * @returns {import('../contracts.d.ts').RoutePoint[]}
  */
-export function decodePath(text) {
-  /** @type {import('../contracts.d.ts').RoutePoint[]} */
-  const points = [];
-  if (!text) return points;
+export function decodePath(encoded: string | null | undefined): RoutePoint[] {
+  const points: RoutePoint[] = [];
+  if (!encoded) return points;
+  const text = encoded;
   let index = 0,
     latitude = 0,
     longitude = 0;
@@ -42,9 +46,10 @@ export function decodePath(text) {
 /**
  * JSON.parse for anything sent to the map. A leg that carries `path` and no
  * points gets its points back.
- * @param {Uint8Array} bytes
  */
-export function parseMapPayload(bytes) {
+export function parseMapPayload(
+  bytes: Uint8Array,
+): RoutePayload | MapPlan | NextLoadsPayload | NextLoad[] {
   return JSON.parse(new TextDecoder().decode(bytes), (_key, value) =>
     value &&
     typeof value.path === 'string' &&
@@ -53,4 +58,21 @@ export function parseMapPayload(bytes) {
       ? { ...value, points: decodePath(value.path), path: undefined }
       : value,
   );
+}
+
+// Each port names the payload it carries, so no caller has to say it twice.
+export function parseRouteEditorPayload(
+  bytes: Uint8Array | null | undefined,
+): MapPlan | null {
+  return bytes ? (parseMapPayload(bytes) as MapPlan) : null;
+}
+
+export function parseRoutePayload(bytes: Uint8Array): RoutePayload {
+  return parseMapPayload(bytes) as RoutePayload;
+}
+
+export function parseNextLoads(
+  bytes: Uint8Array,
+): NextLoadsPayload | NextLoad[] {
+  return parseMapPayload(bytes) as NextLoadsPayload | NextLoad[];
 }

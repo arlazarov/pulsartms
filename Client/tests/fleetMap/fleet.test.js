@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { coordinates } from '../../Scripts/fleetMap/geometry/coordinates.js';
+import { coordinates } from '../../Scripts/fleetMap/geometry/coordinates.ts';
 import {
   createTruckPoint,
   mergeTruckPoints,

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { routeDetailIndices } from '../../Scripts/fleetMap/geometry/routeDetail.js';
+import { routeDetailIndices } from '../../Scripts/fleetMap/geometry/routeDetail.ts';
 
 test('zoomed-out geometry preserves endpoints and stop boundaries without changing source', () => {
   const path = Array.from({ length: 10001 }, (_, i) => ({

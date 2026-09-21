@@ -1,4 +1,4 @@
-import { coordinates } from '../geometry/coordinates.js';
+import { coordinates } from '../geometry/coordinates.ts';
 
 export function normalizeHeading(value) {
   return ((value % 360) + 360) % 360;

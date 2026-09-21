@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { routeGeometry } from '../../Scripts/fleetMap/geometry/routeGeometry.js';
+import { routeGeometry } from '../../Scripts/fleetMap/geometry/routeGeometry.ts';
 
 test('route geometry preserves provider mileage, joined vertices and stop anchors', () => {
   const p = longitude => ({ latitude: 40, longitude });

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   decodePath,
   parseMapPayload,
-} from '../../Scripts/fleetMap/geometry/encodedPath.js';
+} from '../../Scripts/fleetMap/geometry/encodedPath.ts';
 
 // The same points and string are pinned in the server's tests
 // (Server.Tests/Routing/EncodedPathTests.cs). Two codecs in two languages.

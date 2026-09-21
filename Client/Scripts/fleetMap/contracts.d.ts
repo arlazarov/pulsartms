@@ -165,6 +165,17 @@ export interface NextLoad {
   legs?: RouteLeg[];
   deadhead?: { miles?: number; points?: RoutePoint[] };
 }
+// What FleetMap.NextLoads.cs serialises when it sends the loads a truck
+// could take next: the routes themselves, their labels, and the work the
+// truck is on now, which is what makes a cached set stale.
+export interface NextLoadsPayload {
+  routes?: NextLoad[] | null;
+  labels?: NextLoadLabels[] | null;
+  truckId?: string;
+  currentDispatchId?: string;
+  currentExecutionLegId?: string | null;
+  currentAssignmentRevision?: number;
+}
 export interface NextLoadLabels {
   id: string;
   executionLegId?: string | null;

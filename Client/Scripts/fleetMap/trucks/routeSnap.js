@@ -1,4 +1,4 @@
-import { segmentRange } from '../geometry/routeSearch.js';
+import { segmentRange } from '../geometry/routeSearch.ts';
 import { headingDifference } from './truckPoints.js';
 
 // Visual correction only. Never feed these coordinates back into GPS or ETA.

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   segmentFraction,
   segmentDistanceSquared,
-} from '../../Scripts/fleetMap/geometry/segmentProjection.js';
+} from '../../Scripts/fleetMap/geometry/segmentProjection.ts';
 
 test('segment projection clamps to endpoints and handles duplicate points', () => {
   assert.equal(segmentFraction(5, 3, 10, 0), 0.5);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   lowerBound,
   segmentRange,
-} from '../../Scripts/fleetMap/geometry/routeSearch.js';
+} from '../../Scripts/fleetMap/geometry/routeSearch.ts';
 
 test('segment window matches exhaustive search including duplicate distances and boundaries', () => {
   for (const values of [

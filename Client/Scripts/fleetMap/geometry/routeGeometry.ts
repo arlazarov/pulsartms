@@ -1,12 +1,15 @@
-// @ts-check
+import type { MapPoint, RouteLeg, RoutePoint } from '../contracts.d.ts';
 
-/** @param {import('../contracts.d.ts').RouteLeg[]} legs */
-export function routeGeometry(legs) {
-  /** @type {import('../contracts.d.ts').MapPoint[]} */
-  const path = [];
-  /** @type {number[]} */
-  const cumulative = [],
-    anchors = [];
+// A route as one path with the miles under each point, and the index where
+// each leg ends.
+export function routeGeometry(legs: RouteLeg[]): {
+  path: MapPoint[];
+  cumulative: number[];
+  anchors: number[];
+} {
+  const path: MapPoint[] = [];
+  const cumulative: number[] = [],
+    anchors: number[] = [];
   let miles = 0;
   for (const leg of legs) {
     const lengths = leg.points
@@ -25,8 +28,7 @@ export function routeGeometry(legs) {
   return { path, cumulative, anchors };
 }
 
-/** @param {import('../contracts.d.ts').RoutePoint} a @param {import('../contracts.d.ts').RoutePoint} b */
-function angularDistance(a, b) {
+function angularDistance(a: RoutePoint, b: RoutePoint): number {
   const r = Math.PI / 180;
   const dlat = (b.latitude - a.latitude) * r;
   const dlng = (b.longitude - a.longitude) * r;

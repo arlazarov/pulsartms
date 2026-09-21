@@ -1,4 +1,4 @@
-import { coordinates } from '../geometry/coordinates.js';
+import { coordinates } from '../geometry/coordinates.ts';
 
 const unavailableDiscount = Object.freeze({
   currency: '',
