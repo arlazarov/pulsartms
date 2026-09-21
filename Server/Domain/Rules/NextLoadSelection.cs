@@ -1,7 +1,9 @@
 using Domain.Entities.Execution;
 
-namespace Application.Features.Routing.Algorithms;
+namespace Domain.Rules;
 
+// Which of a truck's loads are the work ahead of it, in the order it will
+// do them: the one being driven first, then by when each begins.
 public static class NextLoadSelection
 {
   public static List<T> Select<T>(

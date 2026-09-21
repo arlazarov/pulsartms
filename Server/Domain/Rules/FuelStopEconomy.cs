@@ -1,5 +1,10 @@
-namespace Application.Features.Routing.Algorithms;
+namespace Domain.Rules;
 
+// What an extra fuel stop has to be worth. A stop costs the driver time
+// that no price shows, so a plan with one more stop must save at least
+// this much against a feasible plan without it. It is a threshold for
+// choosing between plans and never a charge: it is not added to a purchase,
+// a cost or a reported saving.
 public static class FuelStopEconomy
 {
   public const double MinimumSavingsUsd = 20;

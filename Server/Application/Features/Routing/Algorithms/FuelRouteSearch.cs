@@ -1,6 +1,7 @@
 using Application.Features.Routing.Exceptions;
 using Application.Features.Routing.Models;
 using Application.Features.Routing.Options;
+using Domain.Rules;
 
 namespace Application.Features.Routing.Algorithms;
 

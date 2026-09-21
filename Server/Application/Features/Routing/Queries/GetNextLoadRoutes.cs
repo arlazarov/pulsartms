@@ -11,6 +11,7 @@ using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
 using Application.Models;
+using Domain.Rules;
 
 namespace Application.Features.Routing.Queries;
 

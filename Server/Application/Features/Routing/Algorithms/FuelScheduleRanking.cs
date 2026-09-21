@@ -1,4 +1,5 @@
 using Application.Features.Routing.Models;
+using Domain.Rules;
 
 namespace Application.Features.Routing.Algorithms;
 
