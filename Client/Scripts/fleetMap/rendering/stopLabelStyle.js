@@ -3,6 +3,15 @@ import { sceneMetrics } from './sceneMetrics.js';
 // Fallbacks mirror the semantic light-theme roles; mounted scenes read their
 // CSS tokens off the probe element. The two are held together by
 // tests/fleetMap/mapColors.test.js.
+/**
+ * @typedef {{ color: number[], background: number[], border: number[],
+ *   pickup: number[], delivery: number[], eta: number[], success: number[],
+ *   danger: number[], muted: number[], size: number, padding: number[],
+ *   radius: number, fontFamily: string, width: (text: string) => number }}
+ *   StopLabelStyle
+ */
+
+/** @type {Readonly<StopLabelStyle>} */
 export const defaultStopLabelStyle = Object.freeze({
   color: [23, 36, 56],
   background: [255, 255, 255, 255],
@@ -36,7 +45,11 @@ export function readStopLabelStyle(host) {
       .map(Number);
   const size = parseFloat(computed.fontSize) || defaultStopLabelStyle.size;
   const fontFamily = computed.fontFamily || defaultStopLabelStyle.fontFamily;
+  // Start from the fallbacks so every role has a value, then replace what
+  // the page actually says. Built the other way round, the six operational
+  // roles only existed once the loop below had run.
   const style = {
+    ...defaultStopLabelStyle,
     color: color(computed.color) || defaultStopLabelStyle.color,
     background: [
       ...(color(computed.backgroundColor) ||

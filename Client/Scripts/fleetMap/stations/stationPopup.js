@@ -3,6 +3,14 @@ import { distanceLabel } from '../ui/distanceLabel.js';
 import { addressLines } from '../ui/addressLines.js';
 import { createFuelVisit } from './stationFuelVisit.js';
 import { createPriceComparison } from './stationPriceComparison.js';
+/**
+ * The card a fuel station opens.
+ *
+ * @param {(selection: { stationId: string, name: string,
+ *   beforeStopId: string | null, addNew: boolean }) => void} onEdit
+ *   What the page should open the plan editor on.
+ * @param {(miles: number) => string} formatDistance
+ */
 export function createStationPopup(
   onEdit = () => {},
   formatDistance = distanceLabel,

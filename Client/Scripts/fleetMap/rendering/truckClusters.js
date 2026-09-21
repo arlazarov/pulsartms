@@ -20,6 +20,7 @@ export function clusterTrucks(vehicles, zoom) {
       bx = Math.floor(x / radius),
       by = Math.floor(y / radius);
     let group,
+      /** @type {number} */
       nearest = radius;
     for (let dx = -1; dx <= 1; dx++)
       for (let dy = -1; dy <= 1; dy++)

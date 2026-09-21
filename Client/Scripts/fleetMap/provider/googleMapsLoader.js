@@ -1,5 +1,6 @@
 let loading = null;
 
+/** @returns {Promise<void>} a promise that settles when the API is ready */
 export function loadGoogleMaps(apiKey) {
   if (loading) return loading;
   if (!apiKey)
@@ -52,7 +53,7 @@ function loadScript(apiKey, attempt) {
         script.remove();
         reject(error);
       } else {
-        resolve();
+        resolve(undefined);
       }
     };
 

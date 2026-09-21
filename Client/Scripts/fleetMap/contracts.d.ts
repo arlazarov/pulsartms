@@ -26,9 +26,16 @@ export interface PlanStop {
   commodity?: string;
   notes?: string;
 }
+// Mirrors Client/Models/DTO/Planning/RouteStopTracking.cs. Six fields cross
+// the line; this said two, and the code read a third - allStopsPassed - that
+// the type denied existed.
 export interface RouteTracking {
-  nextStopId?: string;
+  nextStopId?: string | null;
+  nextStopLabel?: string;
   passedStopIds?: string[];
+  visitedStops?: Record<string, string>;
+  allStopsPassed?: boolean;
+  offRouteSince?: string | null;
 }
 export interface FuelStop {
   warning?: string;

@@ -6,7 +6,13 @@
  * @returns {{ accepted: true, plan: import('../contracts.d.ts').MapPlan | null } | { accepted: false }}
  */
 export function mergeRoutePayload(current, payload) {
-  if (!payload?.geometryOmitted) return { accepted: true, plan: payload };
+  // Geometry not omitted means the payload carries the road itself, which
+  // is what makes it a plan rather than the metadata around one.
+  if (!payload?.geometryOmitted)
+    return {
+      accepted: true,
+      plan: /** @type {import('../contracts.d.ts').MapPlan} */ (payload),
+    };
   if (
     !current ||
     payload.id !== current.id ||

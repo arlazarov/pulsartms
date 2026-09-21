@@ -1,5 +1,15 @@
 import { nextLoadDisplay, nextLoadKey } from './nextLoadDisplay.js';
 
+/**
+ * The loads a truck could take next, drawn over the map.
+ *
+ * @param {(loadId: string | null, stopIndex: number,
+ *   executionLegId?: string) => void} onSelection
+ *   Which load is picked, which of its stops the card should open on, and -
+ *   when the stop belongs to a leg already being driven - which leg.
+ * @param {(geometry: google.maps.LatLngLiteral[] | null) => void} reveal
+ *   Asks the map to bring that load's road into view.
+ */
 export function createNextLoadsLayer(
   map,
   Polyline,

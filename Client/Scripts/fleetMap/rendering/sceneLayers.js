@@ -37,7 +37,7 @@ export function createSceneLayers({
     visible,
     onHover,
     onClick,
-    radius = metrics.stationRadius,
+    /** @type {number} */ radius = metrics.stationRadius,
   ) =>
     new ScatterplotLayer({
       id,

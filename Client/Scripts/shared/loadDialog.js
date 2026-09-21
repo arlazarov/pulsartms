@@ -68,8 +68,9 @@ export function show(dialog) {
                 element.getAttribute('aria-controls') === openerControls,
             )
           : null;
-    if (target?.isConnected && typeof target.focus === 'function')
-      target.focus({ preventScroll: true });
+    const focusable = /** @type {HTMLElement | null} */ (target);
+    if (focusable?.isConnected && typeof focusable.focus === 'function')
+      focusable.focus({ preventScroll: true });
   };
   dialog.addEventListener('pointerdown', pointerDown);
   dialog.addEventListener('click', click);

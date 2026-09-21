@@ -69,6 +69,7 @@ export function createScene(
     routeDashExtensions,
   });
   const viewport = map.getDiv().ownerDocument?.defaultView;
+  /** @type {ReturnType<typeof readStopLabelStyle>} */
   let stopLabelStyle = readStopLabelStyle(map.getDiv());
   const themeObserver = viewport?.MutationObserver
     ? new viewport.MutationObserver(() => {
@@ -90,8 +91,11 @@ export function createScene(
     disposed = false,
     hovered = null,
     truckClickAt = -Infinity;
+  /** @type {(stationId: string) => void} */
   let stationSelect = () => {};
-  let clusterSelect = () => {};
+  // Asked what padding the camera should leave when a cluster is opened.
+  /** @type {() => number | undefined} */
+  let clusterSelect = () => undefined;
   let routeEditing = false;
   let hoveredTruck = null;
   const repaint = createMapRepaint(map);
@@ -300,6 +304,9 @@ export function createScene(
     schedule();
   }
   class Polyline {
+    /** @type {((...args: unknown[]) => void) | undefined} */
+    onClick;
+
     constructor(options) {
       Object.assign(this, options);
       this.onMapClick = (...args) => {
@@ -551,7 +558,7 @@ export function createScene(
         },
         () => {
           stationSelect = () => {};
-          clusterSelect = () => {};
+          clusterSelect = () => undefined;
           hovered = null;
           hoveredTruck = null;
           stationData = [];

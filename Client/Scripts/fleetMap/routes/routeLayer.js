@@ -15,6 +15,12 @@ import { stopEtaIdentity } from './stopEtaIdentity.js';
 
 const PROGRESS_DISPLAY_INTERVAL_MS = 60_000;
 
+/**
+ * The road a truck is driving, its stops, and what it has covered.
+ *
+ * @param {(truckId: string, miles: number, remaining: number) => void} onProgress
+ * @param {(loadId: string, stopIndex: number, executionLegId?: string | null) => void} onOpen
+ */
 export function createRouteLayer(
   map,
   onProgress = () => {},

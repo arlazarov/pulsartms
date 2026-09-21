@@ -35,6 +35,10 @@ dotnet_args=(pulsartms.slnx -warnaserror -p:UseSharedCompilation=false --artifac
 if ! $all; then dotnet_args+=(--filter "$filter"); fi
 dotnet test "${dotnet_args[@]}"
 
+# The browser sources are type-checked before they are run: the check reads
+# every file under Scripts, not the five it used to name.
+npm run js:check --prefix Client
+
 if $all; then
   npm test --prefix Client
 else

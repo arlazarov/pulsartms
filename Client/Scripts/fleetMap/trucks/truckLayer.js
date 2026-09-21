@@ -8,6 +8,23 @@ import {
   truckTransitionDuration,
 } from './truckPlayback.js';
 
+/**
+ * Every truck on the map: where it is, where it is going, and which one the
+ * page has open.
+ *
+ * @param {(truckId: string) => void} onOpen
+ * @param {(truckId: string, position: import('../contracts.d.ts').RoutePoint) => void} onPosition
+ * @param {(following: boolean) => void} onFollowChange
+ *   Whether the camera is now following the open truck.
+ * @param {(change?: (initial: boolean) => void, waitForIdle?: boolean) => void} initialCamera
+ *   Runs the first camera move, optionally once the map has settled; called
+ *   with nothing when the user has taken the camera over.
+ * @param {(truckId: string, position: import('../contracts.d.ts').RoutePoint) =>
+ *   import('../contracts.d.ts').RoutePoint} displayPosition
+ *   Where a truck should be drawn now - the playback may have it between
+ *   two reported points. Positions cross the line the way the server says
+ *   them, latitude and longitude, not the map's lat and lng.
+ */
 export function createTruckLayer(
   map,
   onOpen = () => {},
@@ -15,10 +32,12 @@ export function createTruckLayer(
   displayPosition = (_, position) => position,
   markerFactory,
   onFollowChange = () => {},
-  initialCamera = change => change?.(),
+  initialCamera = (change, _waitForIdle) => change?.(true),
+  // A stand-in for the real viewport, used when a test mounts this layer
+  // alone. It takes what the real one takes and hands the position back.
   cameraViewport = {
-    center: position => position,
-    captureCenter: () => position => position,
+    center: (position, _zoom) => position,
+    captureCenter: () => (position, _zoom) => position,
     padding: value => value,
   },
 ) {

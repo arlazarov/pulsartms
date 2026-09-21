@@ -65,7 +65,7 @@ export const sceneMetrics = Object.freeze({
 // Rasterize at the displayed physical font size so small glyphs retain hinting.
 export function createLabelFonts(
   pixelRatio = 1,
-  stopLabelSize = sceneMetrics.stopLabelSize,
+  /** @type {number} */ stopLabelSize = sceneMetrics.stopLabelSize,
 ) {
   const density =
     Number.isFinite(pixelRatio) && pixelRatio > 0 ? pixelRatio : 1;

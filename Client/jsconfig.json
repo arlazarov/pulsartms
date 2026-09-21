@@ -2,19 +2,22 @@
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,
-    "strict": true,
+    "strict": false,
     "noEmit": true,
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": ["ES2023", "DOM"],
+    "lib": [
+      "ES2023",
+      "DOM"
+    ],
+    "types": [
+      "google.maps"
+    ],
     "skipLibCheck": true
   },
-  "files": [
-    "Scripts/fleetMap/contracts.d.ts",
-    "Scripts/fleetMap/geometry/routeGeometry.js",
-    "Scripts/fleetMap/routes/routePayload.js",
-    "Scripts/fleetMap/routes/nextLoadDisplay.js",
-    "Scripts/fleetMap/stations/fuelRecommendations.js"
+  "include": [
+    "Scripts/**/*.js",
+    "Scripts/**/*.d.ts"
   ]
 }

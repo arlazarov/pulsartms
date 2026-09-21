@@ -11,6 +11,21 @@ import { createDetailsCard } from '../ui/detailsCard.js';
 import { coordinates } from '../geometry/coordinates.js';
 
 const stationId = item => item.station.id || item.station.externalId;
+/**
+ * Every fuel station on the map, and the card one opens.
+ *
+ * @param {(map: unknown, options: { onClose: () => void }) => {
+ *   show: (content: Element, position: unknown) => void,
+ *   hide: () => void, dispose: () => void }} popupFactory
+ *
+ * @param {() => void} onOpen
+ *   A station's card is opening; the page closes whatever else was open.
+ * @param {(selection: { truckId?: string, dispatchId?: string,
+ *   stationId: string, name: string, beforeStopId: string | null,
+ *   addNew: boolean }) => void} onEdit
+ *   The station the plan editor should open on. The truck and the dispatch
+ *   come from the context this layer is holding, the rest from the card.
+ */
 export function createStationLayer(
   map,
   onOpen = () => {},

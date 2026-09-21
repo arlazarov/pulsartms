@@ -1,4 +1,11 @@
 // Blazor owns the persistent inspector shell; JavaScript owns only this empty host.
+/**
+ * The card docked under the map, whose content the page owns.
+ *
+ * @param {(kind: string, revision: number) => void} onChange
+ *   What the card is showing now, and which revision of it.
+ * @param {() => string} dismissMode
+ */
 export function createDockedDetails(
   host,
   onChange = () => {},

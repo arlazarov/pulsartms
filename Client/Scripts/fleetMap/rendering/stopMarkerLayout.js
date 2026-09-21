@@ -97,6 +97,8 @@ export function layoutStopMarkers(rows, zoom, trucks = []) {
       truck,
       at: project(truck.position),
       ground: ground(truck.position),
+      /** @type {{ at: number[], row: { standing: unknown } } | undefined} */
+      holds: undefined,
     }));
   // The formation stops at one address have always had - a pair, a
   // triangle, rows of two - in stop order, rising from the place they mark.
