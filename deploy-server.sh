@@ -72,7 +72,11 @@ if [[ -n "$PULSARTMS_DEPLOY_ENV_FILE" ]]; then
   deploy_args+=(--env-vars-file "$PULSARTMS_DEPLOY_ENV_FILE")
 fi
 
-gcloud run deploy "$service" "${deploy_args[@]}"
+# The liveness probe lives in the beta track of this gcloud, and without
+# it the deploy is rejected outright. It was rejected: the running
+# revision carries no probe, so the stall detection this script was
+# changed to ask for has never actually been applied.
+gcloud beta run deploy "$service" "${deploy_args[@]}"
 
 revision_fields='metadata.name,spec.containers[0].image'
 revision_fields+=',status.imageDigest,status.conditions'
