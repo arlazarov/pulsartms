@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -73,6 +75,7 @@ public sealed class DatabaseInitializer(
   {
     if (!db.Database.IsNpgsql())
       return;
+    var quoting = db.GetService<ISqlGenerationHelper>();
     var carriers = await db.Companies.Select(x => x.Id).Take(2).ToListAsync(ct);
     if (carriers.Count != 1)
       return;
@@ -89,15 +92,17 @@ public sealed class DatabaseInitializer(
         .Distinct()
     )
     {
+      // The name comes from the model, never from a request, and is
+      // delimited by the provider's own rules rather than by hand.
+      var name = quoting.DelimitIdentifier(table!);
+      var look =
+        "SELECT EXISTS (SELECT 1 FROM "
+        + name
+        + " WHERE \"CompanyId\" = {0}) AS \"Value\"";
+      var adopt =
+        "UPDATE " + name + " SET \"CompanyId\" = {0} WHERE \"CompanyId\" = {1}";
       var ownerless = await db
-        .Database.SqlQueryRaw<bool>(
-          $$"""
-          SELECT EXISTS (
-            SELECT 1 FROM "{{table}}" WHERE "CompanyId" = {0}
-          ) AS "Value"
-          """,
-          Guid.Empty
-        )
+        .Database.SqlQueryRaw<bool>(look, Guid.Empty)
         .SingleAsync(ct);
       if (!ownerless)
         continue;
@@ -116,7 +121,7 @@ public sealed class DatabaseInitializer(
           ct
         );
       await db.Database.ExecuteSqlRawAsync(
-        $$"""UPDATE "{{table}}" SET "CompanyId" = {0} WHERE "CompanyId" = {1}""",
+        adopt,
         [carriers[0], Guid.Empty],
         ct
       );
