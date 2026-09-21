@@ -2,6 +2,7 @@ using Application.Features.Auth.Commands;
 using Application.Features.Auth.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace API.Controllers;
 
@@ -13,6 +14,7 @@ public class AuthController : BaseController
     HandleUnwrappedRequest(new GetCurrentUserQuery(), cancellationToken);
 
   [AllowAnonymous]
+  [EnableRateLimiting(RequestLimits.SignIn)]
   [HttpPost("login")]
   public async Task<IActionResult> Login(
     LoginCommand command,
@@ -26,6 +28,7 @@ public class AuthController : BaseController
   }
 
   [AllowAnonymous]
+  [EnableRateLimiting(RequestLimits.SignIn)]
   [HttpPost("refresh")]
   public async Task<IActionResult> Refresh(
     RefreshCommand command,

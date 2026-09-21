@@ -2,12 +2,14 @@ using Application.Features.Routing.Commands;
 using Application.Features.Routing.Queries;
 using Domain.Models.Routing;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
 [Authorize]
 [CompressResponse]
+[EnableRateLimiting(RequestLimits.Planning)]
 [Route("api/dispatch/{dispatchId:guid}/planning")]
 public class RoutePlanningController : BaseController
 {
