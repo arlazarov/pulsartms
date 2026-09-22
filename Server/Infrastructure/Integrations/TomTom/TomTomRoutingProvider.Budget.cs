@@ -1,4 +1,5 @@
 using System.Buffers;
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
@@ -43,6 +44,12 @@ public sealed partial class TomTomRoutingProvider
       SHA256.HashData(Encoding.UTF8.GetBytes("route-legs-v1:" + query))
     );
     var cachedAt = DateTime.UtcNow;
+    // A lookup happens before the reservation is attempted at all, outside its
+    // lock, and a second one follows only when this one found a stale entry.
+    // They are round trips like any other, so they are timed as themselves
+    // rather than assumed - `cache-recheck` runs on its own branch and its
+    // count is not the count of paid calls.
+    var probing = Stopwatch.GetTimestamp();
     var existing = await db
       .RoutingApiCalls.AsNoTracking()
       .Where(x =>
@@ -52,6 +59,7 @@ public sealed partial class TomTomRoutingProvider
       .OrderByDescending(x => x.RequestHash == hash)
       .ThenByDescending(x => x.CreatedAt)
       .FirstOrDefaultAsync(ct);
+    PerformanceStages.Elapsed("routing", "cache-probe", probing);
     if (existing?.ResultJson is { } existingJson)
       return readCached(existingJson, existing.RequestHash == hash);
     using (await RequestGates.EnterAsync(hash, ct))
@@ -59,6 +67,7 @@ public sealed partial class TomTomRoutingProvider
       if (existing is not null)
       {
         var refreshedAt = DateTime.UtcNow;
+        var rechecking = Stopwatch.GetTimestamp();
         var refreshed = await db
           .RoutingApiCalls.AsNoTracking()
           .Where(x =>
@@ -68,6 +77,7 @@ public sealed partial class TomTomRoutingProvider
           .OrderByDescending(x => x.RequestHash == hash)
           .ThenByDescending(x => x.CreatedAt)
           .FirstOrDefaultAsync(ct);
+        PerformanceStages.Elapsed("routing", "cache-recheck", rechecking);
         if (refreshed?.ResultJson is { } refreshedJson)
           return readCached(refreshedJson, refreshed.RequestHash == hash);
         if (refreshed is not null)
@@ -120,15 +130,29 @@ public sealed partial class TomTomRoutingProvider
         await ReservationGate.WaitAsync(ct);
       try
       {
+        // "reservation-total" CONTAINS every stage started below it. Read it
+        // as the cost of reserving, and read the others as its breakdown -
+        // adding them to it counts the same milliseconds twice.
+        using var reserving = PerformanceStages.Start(
+          "routing",
+          "reservation-total"
+        );
+        var opening = Stopwatch.GetTimestamp();
         await using var transaction = await db.Database.BeginTransactionAsync(
           ct
         );
+        PerformanceStages.Elapsed("routing", "reservation-begin", opening);
         if (db.Database.IsNpgsql())
+        {
+          var locking = Stopwatch.GetTimestamp();
           await db.Database.ExecuteSqlRawAsync(
             "SELECT pg_advisory_xact_lock(710246710)",
             ct
           );
+          PerformanceStages.Elapsed("routing", "reservation-lock", locking);
+        }
         now = DateTime.UtcNow;
+        var looking = Stopwatch.GetTimestamp();
         var cached = await db
           .RoutingApiCalls.AsNoTracking()
           .Where(x =>
@@ -138,6 +162,7 @@ public sealed partial class TomTomRoutingProvider
           .OrderByDescending(x => x.RequestHash == hash)
           .ThenByDescending(x => x.CreatedAt)
           .FirstOrDefaultAsync(ct);
+        PerformanceStages.Elapsed("routing", "reservation-cache-read", looking);
         if (cached?.ResultJson is { } cachedJson)
           return readCached(cachedJson, cached.RequestHash == hash);
         if (cached is not null)
@@ -152,19 +177,31 @@ public sealed partial class TomTomRoutingProvider
           1,
           10000
         );
-        if (
-          await db.RoutingApiCalls.CountAsync(x => x.CreatedAt >= dayStart, ct)
-          >= dailyLimit
-        )
+        // Counted into locals so each round trip can be timed on its own. The
+        // queries, their order and the limits they enforce are unchanged.
+        var counting = Stopwatch.GetTimestamp();
+        var spentToday = await db.RoutingApiCalls.CountAsync(
+          x => x.CreatedAt >= dayStart,
+          ct
+        );
+        PerformanceStages.Elapsed("routing", "reservation-limit-day", counting);
+        if (spentToday >= dailyLimit)
           throw new RoutePlanningException(
             "The daily TomTom request limit has been reached. Saved routes remain available.",
             now.Date.AddDays(1)
           );
+        counting = Stopwatch.GetTimestamp();
+        var spentThisMinute = await db.RoutingApiCalls.CountAsync(
+          x => x.CreatedAt >= minuteStart,
+          ct
+        );
+        PerformanceStages.Elapsed(
+          "routing",
+          "reservation-limit-minute",
+          counting
+        );
         if (
-          await db.RoutingApiCalls.CountAsync(
-            x => x.CreatedAt >= minuteStart,
-            ct
-          )
+          spentThisMinute
           >= Math.Clamp(
             configuration.GetValue("TomTom:RequestsPerMinute", 30),
             1,
@@ -185,10 +222,14 @@ public sealed partial class TomTomRoutingProvider
           ErrorMessage = "This route request is waiting to retry.",
         };
         db.RoutingApiCalls.Add(call);
+        var writing = Stopwatch.GetTimestamp();
         await db.SaveChangesAsync(ct);
+        PerformanceStages.Elapsed("routing", "reservation-write", writing);
         // The committed reservation survives cancellation or process loss after
         // dispatch.
+        var committing = Stopwatch.GetTimestamp();
         await transaction.CommitAsync(ct);
+        PerformanceStages.Elapsed("routing", "reservation-commit", committing);
       }
       finally
       {
@@ -257,7 +298,9 @@ public sealed partial class TomTomRoutingProvider
         await db.SaveChangesAsync(CancellationToken.None);
         throw failure;
       }
+      var saving = Stopwatch.GetTimestamp();
       await db.SaveChangesAsync(ct);
+      PerformanceStages.Elapsed("routing", "result-save", saving);
       return result;
     }
     finally

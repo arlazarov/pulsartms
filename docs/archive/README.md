@@ -200,6 +200,10 @@ started again under the current project policy.
 
 ### Experiments and measurements
 
+- [September 22 waste audit: memory, round trips, storage and lazy calculation](2026-09/waste-audit-2026-09-22.md)
+- [September 22 RoutePoint as a class or a value](2026-09/routepoint-shape-measurements-2026-09-22.md),
+  reproducible with `tools/RoutePointShapeProbe`
+
 - [September 15 transfer road recovery](2026-09/transfer-road-recovery-2026-09-15.md)
 
 - [September 12 localhost Dispatch, HOS, route and memory audit](2026-09/localhost-performance-audit-2026-09-12.md)
