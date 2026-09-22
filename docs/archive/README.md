@@ -10,6 +10,8 @@ started again under the current project policy.
 
 ### Reviews and implementation records
 
+- [Shared planning cache release](2026-09/planning-cache-release-2026-09-21.md)
+
 - [Dispatch summary concurrency](2026-09/dispatch-summary-concurrency-2026-09-21.md)
 
 - [Native ETA history batching](2026-09/eta-native-batch-comparison-2026-09-21.md)
