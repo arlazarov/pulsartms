@@ -200,13 +200,11 @@ public sealed class BoundedRoadMatchTests
     );
     var geometry = new FuelSearchGeometry(road);
 
-    // A coarse grid is not enough, and this is not a guess: a bound made to
-    // over-estimate by 5% passed an earlier version of this test. Such a bound
-    // only misjudges points sitting just inside the limit, where the inflated
-    // distance crosses it - at 1.95 miles, not at 1.9. So the sweep walks the
-    // road and steps off it at offsets that crowd the limit from below, on
-    // both sides, and then adds a coarse grid and the road's own vertices for
-    // everything else.
+    // An unsafe bound only misjudges points close to the limit: further in,
+    // even an inflated distance stays under it, and further out both forms
+    // reject anyway. So the sweep walks the road and steps off it at offsets
+    // that crowd the limit from below on both sides, and adds a coarse grid
+    // and the road's own vertices for everything else.
     double[] offsets =
     [
       0,
