@@ -3,6 +3,7 @@ import { browserOutput } from '../../../scripts/artifacts.mjs';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { build } from 'esbuild';
 import { chromium } from 'playwright';
 import { installReleaseArtifact } from './releaseArtifact.mjs';
 import { checkMobileTruckScrolling } from './mobileTruckScrolling.mjs';
@@ -340,11 +341,12 @@ const truck = {
   formattedLocation: '200 Example Road, Chicago, IL 60601, US',
 };
 const success = response => ({ success: true, response, errors: [] });
-const viewportSource = await readFile(
-  new URL('../../scripts/fleetMap/ui/cameraViewport.ts', import.meta.url),
-  'utf8',
-);
-const mapStub = `${viewportSource}
+// The viewport module is TypeScript, so the stub is built the way the other
+// map probes build theirs. Pasting the source into a served module left type
+// syntax the browser cannot parse: the import rejected, createFleetMap never
+// ran and every Fleet Map case timed out waiting for its marker.
+const mapStubSource = `
+import {createCameraViewport} from './Scripts/fleetMap/ui/cameraViewport.ts';
 export async function createFleetMap(element, _key, callbacks) {
   element.dataset.hoursFixture = 'offline-map-callbacks';
   element.style.background = 'var(--ui-surface-muted)';
@@ -389,6 +391,14 @@ export async function createFleetMap(element, _key, callbacks) {
     },
     dispose(){viewport.dispose();delete window.hoursFixture;}};
 }`;
+const mapStub = (
+  await build({
+    stdin: { resolveDir: process.cwd(), contents: mapStubSource },
+    bundle: true,
+    format: 'esm',
+    write: false,
+  })
+).outputFiles[0].text;
 const stubIntegrity = `sha256-${createHash('sha256').update(mapStub).digest('base64')}`;
 const html = (await readFile(resolve(artifact, 'index.html'), 'utf8')).replace(
   /(<script\b[^>]*type="importmap"[^>]*>)([\s\S]*?)(<\/script>)/g,
@@ -1604,7 +1614,11 @@ async function truckLoadingGeometry(page) {
   return page
     .locator('.fleet-map-inspector[data-inspector-mode="truck"]')
     .evaluate(host => {
-      const rect = element => {
+      // Named, so a selector the card no longer has says which one it is
+      // instead of throwing on null.
+      const rect = selector => {
+        const element = host.querySelector(selector);
+        if (!element) throw new Error(`No ${selector} in the truck card`);
         const { x, y, width, height } = element.getBoundingClientRect();
         return { x, y, width, height };
       };
@@ -1612,17 +1626,19 @@ async function truckLoadingGeometry(page) {
         [
           '.fleet-map-inspector__header',
           '.fleet-map-truck-info',
-          '.fleet-map-truck-info__hours',
+          '.fleet-map-inspector__hours',
           '.fleet-map-truck-info__location',
           '.fleet-map-route-info',
-          '.fleet-map-route-info__load',
+          // The load and its order moved into the header line; the group is
+          // drawn empty so nothing to the right of it shifts as they land.
+          '.fleet-map-mobile-summary__remaining',
           '.fleet-map-route-info__distances',
           '.fleet-map-route-info__visit',
           '.fleet-map-route-info__timing',
           '.fleet-map-route-info__delivery',
           '.fleet-map-route-info__delivery > .fleet-map-route-info__label',
           'button[aria-label="Route options"]',
-        ].map(selector => [selector, rect(host.querySelector(selector))]),
+        ].map(selector => [selector, rect(selector)]),
       );
     });
 }
@@ -1664,9 +1680,15 @@ try {
           window.google = {
             maps: {
               importLibrary: async () => {},
+              // The stop map switches to satellite and back, which moves the
+              // camera by type, centre and tilt. Without these the real
+              // component throws and the run stops at the first stop opened.
               Map: class {
                 fitBounds() {}
                 setZoom() {}
+                setCenter() {}
+                setMapTypeId() {}
+                setTilt() {}
               },
               LatLngBounds: class {
                 extend() {}
@@ -1762,6 +1784,14 @@ try {
             fixture = success({ theme, ...units });
           else if (url.pathname === '/api/fuel/price-overview')
             fixture = success([]);
+          // The map asks for the fuel price basis beside itself. It keeps the
+          // page's own default, so the answer changes nothing here.
+          else if (url.pathname === '/api/settings/planning')
+            fixture = success({
+              preferences: { useIfta: true },
+              revision: 1,
+              updatedAt: null,
+            });
           else if (url.pathname === '/api/settings/dispatch')
             fixture = success({
               loadNumberPrefix: 'AMF',
@@ -2375,22 +2405,23 @@ try {
             const rect = node => node.getBoundingClientRect();
             const heading = rect(document.querySelector('.fleet-map-page h1'));
             const search = rect(el.querySelector('.fleet-map-search'));
-            const date = rect(el.querySelector('.fleet-map-date'));
+            // The layer controls are the search's right-hand neighbour: the
+            // date input that used to sit between them left the map with the
+            // IFTA switch.
             const layers = rect(el.querySelector('.fleet-map-layer-controls'));
             return {
               headingCenter: heading.top + heading.height / 2,
               searchCenter: search.top + search.height / 2,
-              dateCenter: date.top + date.height / 2,
               layersCenter: layers.top + layers.height / 2,
               searchWidth: search.width,
-              available: date.left - search.left,
+              available: layers.left - search.left,
             };
           });
         check(
-          ['headingCenter', 'dateCenter', 'layersCenter'].every(
+          ['headingCenter', 'layersCenter'].every(
             key => Math.abs(toolbar[key] - toolbar.searchCenter) <= 1,
           ),
-          `${name}: heading, search, date and layers share one line`,
+          `${name}: heading, search and layers share one line`,
         );
         check(
           toolbar.searchWidth > 192 &&
@@ -2466,16 +2497,23 @@ try {
             'retain their slots',
         );
       };
-      check(
-        (await page.locator('#fleet-map-route-details').isVisible()) &&
-          (await page.locator('#fleet-map-telemetry-details').isVisible()) &&
+      const coldPlaceholders = {
+        route: await page.locator('#fleet-map-route-details').isVisible(),
+        telemetry: await page
+          .locator('#fleet-map-telemetry-details')
+          .isVisible(),
+        hours: await page
+          .locator('.fleet-map-inspector__hours .driver-hours-panel')
+          .isVisible(),
+        noRecap:
           (await page
-            .locator('.fleet-map-truck-info__hours .driver-hours-panel')
-            .isVisible()) &&
-          (await page
-            .locator('.fleet-map-truck-info__hours .driver-next-recap')
+            .locator('.fleet-map-inspector__hours .driver-next-recap')
             .count()) === 0,
-        `${name}: cold selection shows readings, HOS and route placeholders`,
+      };
+      check(
+        Object.values(coldPlaceholders).every(Boolean),
+        `${name}: cold selection shows readings, HOS and route ` +
+          `placeholders (${JSON.stringify(coldPlaceholders)})`,
       );
       if (width === 390) {
         check(
@@ -2694,9 +2732,7 @@ try {
           (await page.locator('#fleet-map-route-details').isVisible()) &&
             (await page.locator('#fleet-map-truck-location').isVisible()) &&
             (await page
-              .locator(
-                '.fleet-map-truck-info__hours > ' + '.driver-hours-panel',
-              )
+              .locator('.fleet-map-inspector__hours > ' + '.driver-hours-panel')
               .isVisible()) &&
             (await page.locator('.fleet-map-truck-info__outside').isVisible()),
           `${name}: phone card exposes readings, HOS and location/load`,
@@ -2720,7 +2756,7 @@ try {
           `${name}: desktop must not gain a second disclosure or duplicate remaining distance`,
         );
       check(
-        (await page.locator('.fleet-map-truck-info__hours').isVisible()) &&
+        (await page.locator('.fleet-map-inspector__hours').isVisible()) &&
           (await page
             .getByRole('button', { name: 'Fuel plan', exact: true })
             .isVisible()),
@@ -2734,16 +2770,16 @@ try {
             )
             .isVisible()) &&
           (await page
-            .locator('.fleet-map-truck-info__hours .driver-duty')
+            .locator('.fleet-map-inspector__hours .driver-duty')
             .isVisible()) &&
           (await page
-            .locator('.fleet-map-truck-info__hours .driver-next-recap')
+            .locator('.fleet-map-inspector__hours .driver-next-recap')
             .count()) === 0 &&
           (await page
             .getByRole('link', { name: 'Route & load details' })
             .isVisible()) &&
           (await page
-            .locator('.fleet-map-truck-info__hours .driver-hours__clock')
+            .locator('.fleet-map-inspector__hours .driver-hours__clock')
             .count()) === 4,
         `${name}: the card retains trailer, duty, load link and HOS ` +
           'without recap',
@@ -2818,7 +2854,7 @@ try {
         .locator('.fleet-map-info-reserved')
         .boundingBox();
       const compactDialSizes = await page
-        .locator('.fleet-map-truck-info__hours .driver-hours__dial')
+        .locator('.fleet-map-inspector__hours .driver-hours__dial')
         .evaluateAll(elements =>
           elements.map(element => element.getBoundingClientRect().width),
         );
@@ -2896,7 +2932,7 @@ try {
               '.fleet-map-inspector__driver',
               '.fleet-map-inspector__trailer',
               '.fleet-map-truck-info__telemetry',
-              '.fleet-map-truck-info__hours',
+              '.fleet-map-inspector__hours',
               '.fleet-map-inspector__actions',
               '.fleet-map-truck-info__location',
               '.fleet-map-truck-info__duty',
@@ -3174,11 +3210,11 @@ try {
       const truckHeader = page.locator('.fleet-map-truck-info');
       check(
         (await truckHeader
-          .locator('.fleet-map-truck-info__hours-label')
+          .locator('.fleet-map-inspector__hours-label')
           .count()) === 0 &&
           (await truckHeader
             .locator(
-              '.fleet-map-truck-info__hours > .driver-hours-panel + .fleet-map-truck-info__duty',
+              '.fleet-map-inspector__hours > .driver-hours-panel + .fleet-map-truck-info__duty',
             )
             .count()) === 1 &&
           (await truckHeader
@@ -3234,7 +3270,7 @@ try {
           header: rect(element),
           hours: rect(element.querySelector('.driver-hours')),
           hoursGroup: rect(
-            element.querySelector('.fleet-map-truck-info__hours'),
+            element.querySelector('.fleet-map-inspector__hours'),
           ),
           dials: [...element.querySelectorAll('.driver-hours__dial')].map(rect),
           hosGap: parseFloat(
@@ -4050,12 +4086,18 @@ try {
       if (lifecycle) {
         const cdp = await context.newCDPSession(page);
         const samples = [];
+        // Timings are measured on the host clock, which page.clock does not
+        // move. They are the staged Client's own cost with instant fixture
+        // replies: the first cycle is the cold one, the rest are repeats.
+        // They say nothing about server or provider time.
         for (let cycle = 0; cycle < 16; cycle++) {
+          const openedDispatch = performance.now();
           await page
             .getByRole('link', { name: 'Dispatch', exact: true })
             .click();
           await page.locator('#dispatch-search').waitFor();
           await page.waitForFunction(() => !window.hoursFixture);
+          const dispatchMs = performance.now() - openedDispatch;
           const routeReads = planningReads;
           await page.clock.fastForward(30_000);
           await page.locator('.dispatch-load').first().waitFor();
@@ -4067,6 +4109,20 @@ try {
           await cdp.send('HeapProfiler.collectGarbage');
           const heap = await cdp.send('Runtime.getHeapUsage');
           const dom = await cdp.send('Memory.getDOMCounters');
+          const openedMap = performance.now();
+          await page
+            .getByRole('link', { name: 'Fleet Map', exact: true })
+            .click();
+          await page.locator('[data-hours-fixture]').waitFor();
+          const mapMs = performance.now() - openedMap;
+          const selectedTruck = performance.now();
+          await page.evaluate(
+            id => window.hoursFixture.selectTruck(id),
+            truckId,
+          );
+          await page
+            .locator('.fleet-map-inspector__hours .driver-hours')
+            .waitFor();
           samples.push({
             cycle,
             jsHeapBytes: heap.usedSize,
@@ -4074,22 +4130,15 @@ try {
             documents: dom.documents,
             nodes: dom.nodes,
             listeners: dom.jsEventListeners,
+            dispatchMs: Math.round(dispatchMs),
+            mapMs: Math.round(mapMs),
+            selectionMs: Math.round(performance.now() - selectedTruck),
+            apiReads,
           });
-          await page
-            .getByRole('link', { name: 'Fleet Map', exact: true })
-            .click();
-          await page.locator('[data-hours-fixture]').waitFor();
-          await page.evaluate(
-            id => window.hoursFixture.selectTruck(id),
-            truckId,
-          );
-          await page
-            .locator('.fleet-map-truck-info__hours .driver-hours')
-            .waitFor();
         }
         report.lifecycle = {
           scope:
-            '16 SPA navigation cycles; synthetic API/map; JS heap after GC, not managed .NET or GPU retention',
+            '16 SPA navigation cycles; synthetic API/map; JS heap after GC, not managed .NET or GPU retention; host-clock timings are Client render cost only',
           samples,
         };
         assert.ok(

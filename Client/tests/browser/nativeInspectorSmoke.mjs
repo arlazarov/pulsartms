@@ -122,7 +122,7 @@ try {
           '5.500',
         );
         assert.deepEqual(
-          await native.locator('.fleet-fuel-visit__percent').allTextContents(),
+          await native.locator('.fleet-fuel-visit__level').allTextContents(),
           ['20%', '100%'],
         );
         assert.match(

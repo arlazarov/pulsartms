@@ -40,6 +40,10 @@ const fixtures = new Map([
   ['/api/fleet/planning/previews', success([])],
   ['/api/fuel/stations', success([])],
   ['/api/fuel/price-overview', success([])],
+  [
+    '/api/settings/planning',
+    success({ preferences: { useIfta: true }, revision: 1, updatedAt: null }),
+  ],
 ]);
 const stub = `export async function createFleetMap(element) {
   window.toolbarMap = element;
@@ -235,8 +239,8 @@ try {
               .locator('.fleet-map-layer-controls label')
               .allTextContents()
           ).map(value => value.trim()),
-          ['IFTA', 'Fuel Stations', 'Traffic', 'Next loads'],
-          `${name}: IFTA precedes the fuel layer`,
+          ['Fuel Stations', 'Traffic', 'Next loads'],
+          `${name}: the map layers are the only chips`,
         );
         assert.equal(
           await page
@@ -246,7 +250,7 @@ try {
         );
         assert.equal(
           await page
-            .getByRole('checkbox', { name: 'IFTA', exact: true })
+            .getByRole('checkbox', { name: 'Fuel Stations', exact: true })
             .evaluate(node => node.classList.contains('visually-hidden')),
           true,
         );
@@ -265,12 +269,7 @@ try {
             `${name}: clipped control ${control.name}`,
           );
         }
-        for (const label of [
-          'Traffic',
-          'Fuel Stations',
-          'Next loads',
-          'IFTA',
-        ]) {
+        for (const label of ['Traffic', 'Fuel Stations', 'Next loads']) {
           const input = page.getByRole('checkbox', {
             name: label,
             exact: true,
@@ -324,14 +323,6 @@ try {
           colors[2].background,
           `${name}: inactive layers share a style`,
         );
-        const selectedDate = await page.locator('#fleet-date').inputValue();
-        await page.locator('#fleet-date').fill('2026-09-01');
-        assert.equal(
-          await page.locator('#fleet-date').inputValue(),
-          '2026-09-01',
-        );
-        await page.locator('#fleet-date').fill(selectedDate);
-        await page.locator('#fleet-date').blur();
         await page
           .locator(mobile ? '#fleet-map-filters' : '.fleet-map-toolbar')
           .screenshot({ path: resolve(output, `${name}-controls.png`) });
@@ -362,7 +353,7 @@ try {
           `${name}: toolbar interaction replaced or moved map`,
         );
         if (mobile) await filterButton.click();
-        for (const label of ['IFTA', 'Fuel Stations', 'Next loads']) {
+        for (const label of ['Fuel Stations', 'Next loads']) {
           await toolbar
             .locator('label')
             .filter({
@@ -376,7 +367,6 @@ try {
             has: page.getByRole('checkbox', { name: 'Traffic', exact: true }),
           })
           .click();
-        await page.locator('#fleet-date').fill('2026-09-01');
         if (mobile) await filterButton.click();
         await search.fill('1100');
         await page.reload();
@@ -412,7 +402,7 @@ try {
           `${name}: restoring preferences must not move the toolbar`,
         );
         if (mobile) await filterButton.click();
-        for (const label of ['IFTA', 'Fuel Stations', 'Next loads']) {
+        for (const label of ['Fuel Stations', 'Next loads']) {
           assert.equal(
             await page
               .getByRole('checkbox', {
@@ -438,10 +428,6 @@ try {
         assert.equal(restored.stationsVisible, true);
         assert.equal(restored.trafficVisible, false);
         assert.equal(await search.inputValue(), '');
-        assert.equal(
-          await page.locator('#fleet-date').inputValue(),
-          selectedDate,
-        );
         report.cases.push({
           width,
           theme,

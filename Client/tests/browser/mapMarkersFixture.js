@@ -203,27 +203,35 @@ const screenPoint = (position, offsetX = 0, offsetY = 0) => {
 window.markerReport = () => {
   const layers = overlay.props.layers;
   const get = id => layers.find(layer => layer.props.id === id)?.props;
-  const icons = layers.find(layer => layer.props.id === 'truck-icons');
+  // With a truck chosen the fleet is drawn in two icon layers, the chosen
+  // one and the rest at a smaller size. Reading only the first reported one
+  // truck out of four.
+  const iconLayers = layers.filter(layer =>
+    /^truck-icons(-quiet)?$/.test(layer.props.id),
+  );
   const price = get('fuel-price-labels');
   return {
     loaded:
-      !!icons?.isLoaded &&
+      iconLayers.length > 0 &&
+      iconLayers.every(layer => layer.isLoaded) &&
       layers
         .filter(
           layer => layer instanceof IconLayer || layer instanceof TextLayer,
         )
         .every(layer => layer.isLoaded),
-    trucks: icons?.props.data.map(truck => ({
-      unit: truck.unit,
-      selected: truck.selected,
-      ...screenPoint(truck.position),
-      size: icons.props.getSize(truck),
-      svg: decodeURIComponent(icons.props.getIcon(truck).url),
-      angle: icons.props.getAngle(truck),
-      label: screenPoint(truck.position, ...truck.labelOffset),
-      labelOffset: truck.labelOffset,
-      position: truck.position,
-    })),
+    trucks: iconLayers.flatMap(layer =>
+      layer.props.data.map(truck => ({
+        unit: truck.unit,
+        selected: truck.selected,
+        ...screenPoint(truck.position),
+        size: layer.props.getSize(truck),
+        svg: decodeURIComponent(layer.props.getIcon(truck).url),
+        angle: layer.props.getAngle(truck),
+        label: screenPoint(truck.position, ...truck.labelOffset),
+        labelOffset: truck.labelOffset,
+        position: truck.position,
+      })),
+    ),
     stops: layers
       .filter(layer => /^route-stop-\d+-points$/.test(layer.props.id))
       .flatMap(layer =>

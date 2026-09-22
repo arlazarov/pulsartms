@@ -525,6 +525,14 @@ try {
             value = success({ trucks: [truck], points: [truck] });
           else if (url.pathname === '/api/fleet/planning/previews')
             value = success([]);
+          // The map reads the fuel price basis beside itself; it keeps the
+          // page's own default, so the answer changes nothing here.
+          else if (url.pathname === '/api/settings/planning')
+            value = success({
+              preferences: { useIfta: true },
+              revision: 1,
+              updatedAt: null,
+            });
           else if (url.pathname === '/api/fleet/hos')
             value = success({
               [truckId]: { driverName: truck.driverName, hos: planning().hos },
@@ -704,7 +712,7 @@ try {
                 `${name}/${probeWidth}/${scale}: HOS value stays clear of the ring: ${JSON.stringify(dial)}`,
               );
             await page
-              .locator('.fleet-map-truck-info__hours')
+              .locator('.fleet-map-inspector__hours')
               .evaluate(node =>
                 node.style.setProperty('--hos-dial-size', '72px'),
               );
@@ -712,7 +720,7 @@ try {
               () => {
                 const dials = [
                   ...document.querySelectorAll(
-                    '.fleet-map-truck-info__hours .driver-hours__dial',
+                    '.fleet-map-inspector__hours .driver-hours__dial',
                   ),
                 ];
                 return (
@@ -727,7 +735,7 @@ try {
               { timeout: 5000 },
             );
             await page
-              .locator('.fleet-map-truck-info__hours')
+              .locator('.fleet-map-inspector__hours')
               .evaluate(node => node.style.removeProperty('--hos-dial-size'));
           }
         await page.setViewportSize({ width, height });

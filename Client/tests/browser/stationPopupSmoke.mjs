@@ -104,7 +104,7 @@ try {
         'Fuel stop 1',
       );
       assert.deepEqual(
-        await popup.locator('.fleet-fuel-visit__percent').allTextContents(),
+        await popup.locator('.fleet-fuel-visit__level').allTextContents(),
         ['16%', '100%'],
       );
       assert.equal(

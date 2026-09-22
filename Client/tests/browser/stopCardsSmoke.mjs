@@ -794,7 +794,7 @@ try {
         ['35 US gal', '164 US gal'],
       );
       assert.deepEqual(
-        await fuelCard.locator('.fleet-fuel-visit__percent').allTextContents(),
+        await fuelCard.locator('.fleet-fuel-visit__level').allTextContents(),
         ['20%', '38%', '13%', '95%'],
       );
       const fuelDistance = fuelCard
@@ -885,7 +885,7 @@ try {
       ['1', '2'],
     );
     assert.deepEqual(
-      await card.locator('.fleet-fuel-visit__percent').allTextContents(),
+      await card.locator('.fleet-fuel-visit__level').allTextContents(),
       ['20%', '38%', '13%', '95%'],
     );
     const screenshot = `390-${theme}-fuel-gauges.png`;
@@ -925,7 +925,7 @@ try {
         ['35 US gal'],
       );
       assert.deepEqual(
-        await card.locator('.fleet-fuel-visit__percent').allTextContents(),
+        await card.locator('.fleet-fuel-visit__level').allTextContents(),
         ['20%', '38%'],
       );
       const bounds = await fuelVisitBounds(card);

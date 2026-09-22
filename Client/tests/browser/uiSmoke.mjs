@@ -66,6 +66,9 @@ const stops = [
   stop(4, 2, 'Delivery', 'Capital distribution centre', 'Ottawa', 1, '18'),
 ];
 stops[0].pickedUpAt = `${dateOnly(0)}T08:15:00Z`;
+// The verdict is the server's and is sent beside the fact; a fixture that
+// records only the timestamp leaves the stop open on screen.
+stops[0].isCompleted = true;
 stops[2].isWindow = true;
 stops[2].scheduledTime2 = '18:00:00';
 for (const [index, value] of stops.entries()) {
@@ -188,10 +191,12 @@ const completedDispatches = () =>
   dispatches().map(load => ({
     ...load,
     status: 'completed',
+    completed: true,
     eta: null,
     stops: load.stops.map(value => ({
       ...value,
       departedAt: `${dateOnly(-1)}T18:00:00Z`,
+      isCompleted: true,
     })),
   }));
 const repeatedDispatches = () => {
@@ -213,6 +218,7 @@ const repeatedDispatches = () => {
       sequence: 1,
       scheduledTime: '02:00:00',
       pickedUpAt: `${dateOnly(0)}T06:15:00Z`,
+      isCompleted: true,
     },
     {
       id: stopIds[1],
@@ -1046,6 +1052,7 @@ try {
               const load = repeatedDispatches()[0];
               load.stops.slice(0, 4).forEach(stop => {
                 stop.departedAt = `${dateOnly(0)}T18:00:00Z`;
+                stop.isCompleted = true;
               });
               fixture.response.items[0].dispatches = [load];
             }
@@ -2484,9 +2491,8 @@ try {
             );
             const expanded = await checkToolbar(page, name + ' expanded');
             check(
-              expanded.toggles.length === 4,
-              name +
-                ' mobile filters retain IFTA, fuel, traffic and next loads',
+              expanded.toggles.length === 3,
+              name + ' mobile filters retain fuel, traffic and next loads',
             );
             const detail = resolve(output, `${name}-toolbar-filters.png`);
             await page
@@ -2495,20 +2501,22 @@ try {
             detailScreenshots.push(detail);
           }
           if (path === '/fleet/map') {
-            const ifta = page.getByRole('checkbox', {
-              name: 'IFTA',
+            // IFTA left the map with the date; Traffic is the layer chip
+            // that is on by default.
+            const traffic = page.getByRole('checkbox', {
+              name: 'Traffic',
               exact: true,
             });
-            const before = await ifta.isChecked();
-            await ifta.focus();
-            await ifta.press('Space');
+            const before = await traffic.isChecked();
+            await traffic.focus();
+            await traffic.press('Space');
             check(
-              (await ifta.isChecked()) !== before,
+              (await traffic.isChecked()) !== before,
               name + ' native checkbox toggles with Space',
             );
-            await ifta.press('Space');
+            await traffic.press('Space');
             check(
-              (await ifta.isChecked()) === before,
+              (await traffic.isChecked()) === before,
               name + ' native checkbox restores with Space',
             );
           }

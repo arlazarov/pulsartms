@@ -55,13 +55,14 @@ fixtures; no live authentication, database or external calls occur. Output uses
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/mapToolbarSmoke.mjs`
 from Client checks the actual Fleet Map toolbar at 1440/900/390/320px, in both
 themes and with 100%/200% root text. It exercises native keyboard and pointer
-toggles, date changes, search suggestions, active chip styles and the mobile
+toggles, search suggestions, active chip styles and the mobile
 filter disclosure while checking that the map node and bounds remain unchanged.
-It also verifies that IFTA precedes Fuel Stations and uses the same chip treatment
-without an exposed square checkbox. Each case saves all four map preferences,
-reloads the page and checks the restored controls and initial map options while
-the date and search reset. A held storage read verifies that unconfirmed layer
-states stay hidden without replacing controls or moving the toolbar.
+It also verifies that the layer chips are Fuel Stations, Traffic and Next loads,
+with the same chip treatment and no exposed square checkbox. Each case saves the
+three map preferences, reloads the page and checks the restored controls and
+initial map options while the search resets. A held storage read verifies that
+unconfirmed layer states stay hidden without replacing controls or moving the
+toolbar.
 All API responses and the provider module are
 deterministic substitutes; no live requests or business writes occur.
 Screenshots and the report use `browser-ui`.

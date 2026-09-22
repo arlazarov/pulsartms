@@ -255,6 +255,21 @@ const fixtures = new Map([
   ['/api/fleet/locations', success({ trucks: [truck], points: [truck] })],
   ['/api/fleet/hos', success({})],
   ['/api/fuel/price-overview', success([])],
+  // Asked for beside the map: the fuel price basis and the truck's weather.
+  [
+    '/api/settings/planning',
+    success({ preferences: { useIfta: true }, revision: 1, updatedAt: null }),
+  ],
+  [
+    `/api/fleet/trucks/${truckId}/weather`,
+    success({
+      celsius: 22.5,
+      condition: 'CLEAR',
+      description: 'Clear',
+      isDaytime: true,
+      updatedAt: fixedNow,
+    }),
+  ],
   ['/api/fleet/planning/previews', success([])],
   [`/api/fleet/trucks/${truckId}/planning/preview`, success(planning)],
   [`/api/dispatch/${currentLoadId}`, success(currentDetails)],

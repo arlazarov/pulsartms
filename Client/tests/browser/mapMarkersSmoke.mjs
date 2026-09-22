@@ -106,9 +106,14 @@ try {
       6,
       'spacing never removes an original station',
     );
+    // The planned stop is deliberately the largest thing on the fuel layer;
+    // every other station keeps the 16px circle whatever its price or
+    // crowding.
     assert.ok(
-      markers.stations.every(station => station.radius === 8),
-      'prices, clutter and plan selection never change the 16px station circle size',
+      markers.stations.every(
+        station => station.radius === (station.id === 'planned' ? 10 : 8),
+      ),
+      'prices and clutter never change the 16px station circle size',
     );
     assert.deepEqual(
       markers.prices,
