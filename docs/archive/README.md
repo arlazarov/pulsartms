@@ -200,6 +200,7 @@ started again under the current project policy.
 
 ### Experiments and measurements
 
+- [September 22 fuel inputs read audit](2026-09/fuel-inputs-read-audit-2026-09-22.md)
 - [September 22 fuel horizon read-ahead verification](2026-09/fuel-horizon-read-ahead-2026-09-22.md)
 - [September 22 bounding the corridor search, measured in production](2026-09/fuel-corridor-production-result-2026-09-22.md)
 - [September 22 fuel corridor split: which half costs](2026-09/fuel-corridor-measurements-2026-09-22.md)

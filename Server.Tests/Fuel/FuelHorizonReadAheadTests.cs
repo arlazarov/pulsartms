@@ -19,6 +19,13 @@ public sealed class FuelHorizonReadAheadTests
     "11111111-1111-4111-8111-111111111111"
   );
 
+  // The current load's execution leg. With one, the loop re-reads each saved
+  // connection and the prefetch is consulted; these tests are about which
+  // loads qualify, so they keep that branch.
+  private static readonly Guid? Leg = Guid.Parse(
+    "99999999-9999-4999-8999-999999999999"
+  );
+
   private static RouteWorkSnapshot Load(
     Guid? leg = null,
     int stops = 2,
@@ -56,12 +63,15 @@ public sealed class FuelHorizonReadAheadTests
   [Fact]
   public void EveryFollowingLoadIsReadOnceForItsConnection()
   {
-    var first = Load();
-    var second = Load();
+    // Each carries a leg, so each is the kind of predecessor whose successor
+    // re-reads its saved connection.
+    var first = Load(leg: Guid.NewGuid());
+    var second = Load(leg: Guid.NewGuid());
     var (connections, bases) = FuelHorizon.KeysToReadAhead(
       [first, second],
       Truck,
-      1
+      1,
+      Leg
     );
     Assert.Equal(
       [
@@ -75,14 +85,50 @@ public sealed class FuelHorizonReadAheadTests
   }
 
   [Fact]
+  public void APredecessorWithoutALegLeavesItsSuccessorUnread()
+  {
+    // Without a leg the predecessor's connection is captured rather than
+    // re-read, and that branch never looks at the prefetch: reading the row
+    // would be work nobody consumes. The base route is still wanted.
+    var first = Load();
+    var second = Load();
+    var (connections, bases) = FuelHorizon.KeysToReadAhead(
+      [first, second],
+      Truck,
+      1,
+      Leg
+    );
+    Assert.Equal(
+      [new FuelHorizon.SavedKey(first.Id, first.ExecutionLegId)],
+      connections
+    );
+    Assert.Equal(2, bases.Count);
+  }
+
+  [Fact]
+  public void ACurrentLoadWithoutALegLeavesTheFirstConnectionUnread()
+  {
+    var first = Load(leg: Guid.NewGuid());
+    var (connections, bases) = FuelHorizon.KeysToReadAhead(
+      [first],
+      Truck,
+      1,
+      null
+    );
+    Assert.Empty(connections);
+    Assert.Single(bases);
+  }
+
+  [Fact]
   public void ALoadWithNothingLeftToDoIsNotReadAtAll()
   {
     var done = Load(stops: 2, completed: 2);
-    var live = Load();
+    var live = Load(leg: Guid.NewGuid());
     var (connections, bases) = FuelHorizon.KeysToReadAhead(
       [done, live],
       Truck,
-      1
+      1,
+      Leg
     );
     Assert.DoesNotContain(
       new FuelHorizon.SavedKey(done.Id, done.ExecutionLegId),
@@ -95,8 +141,13 @@ public sealed class FuelHorizonReadAheadTests
   [Fact]
   public void ASingleStopLoadNeedsItsConnectionButNoBaseRoute()
   {
-    var single = Load(stops: 1);
-    var (connections, bases) = FuelHorizon.KeysToReadAhead([single], Truck, 1);
+    var single = Load(stops: 1, leg: Guid.NewGuid());
+    var (connections, bases) = FuelHorizon.KeysToReadAhead(
+      [single],
+      Truck,
+      1,
+      Leg
+    );
     Assert.Single(connections);
     Assert.Empty(bases);
   }
@@ -109,7 +160,8 @@ public sealed class FuelHorizonReadAheadTests
     var (connections, _) = FuelHorizon.KeysToReadAhead(
       [wrong, after],
       Truck,
-      1
+      1,
+      Leg
     );
     // The loop throws on the first of these, so neither is ever read.
     Assert.Empty(connections);
@@ -119,22 +171,23 @@ public sealed class FuelHorizonReadAheadTests
   public void NothingIsReadPastALoadWhoseStopBelongsToAnotherTruck()
   {
     var mixed = Load(stopTruck: Guid.NewGuid());
-    var (connections, _) = FuelHorizon.KeysToReadAhead([mixed], Truck, 1);
+    var (connections, _) = FuelHorizon.KeysToReadAhead([mixed], Truck, 1, Leg);
     Assert.Empty(connections);
   }
 
   [Fact]
   public void NothingIsReadPastTheItineraryLimit()
   {
-    var first = Load(stops: 5);
-    var overflowing = Load(stops: 5);
+    var first = Load(stops: 5, leg: Guid.NewGuid());
+    var overflowing = Load(stops: 5, leg: Guid.NewGuid());
     var after = Load();
     // 34 already + 5 is 39 and fits; another 5 would be 44, past the forty
     // where the loop throws, so neither that load nor the one after is read.
     var (connections, _) = FuelHorizon.KeysToReadAhead(
       [first, overflowing, after],
       Truck,
-      34
+      34,
+      Leg
     );
     Assert.Single(connections);
     Assert.Equal(first.Id, connections[0].Dispatch);

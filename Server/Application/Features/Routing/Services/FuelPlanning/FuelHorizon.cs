@@ -118,6 +118,7 @@ public sealed partial class FuelHorizon(
       loads.Skip(index + 1).Select(captured.Resolve).ToList(),
       plan.TruckId,
       stops.Count,
+      current.ExecutionLegId,
       ct
     );
     foreach (var next in loads.Skip(index + 1))

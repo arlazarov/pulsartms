@@ -46,10 +46,16 @@ public sealed partial class FuelHorizon
     IReadOnlyList<RouteWorkSnapshot> following,
     Guid truckId,
     int stopsSoFar,
+    Guid? currentLeg,
     CancellationToken ct
   )
   {
-    var (connections, bases) = KeysToReadAhead(following, truckId, stopsSoFar);
+    var (connections, bases) = KeysToReadAhead(
+      following,
+      truckId,
+      stopsSoFar,
+      currentLeg
+    );
     // Sequential, not concurrent: they share one DbContext.
     return (
       await ReadConnectionRowsAsync(connections, ct),
@@ -68,12 +74,19 @@ public sealed partial class FuelHorizon
   ) KeysToReadAhead(
     IReadOnlyList<RouteWorkSnapshot> following,
     Guid truckId,
-    int stopsSoFar
+    int stopsSoFar,
+    Guid? currentLeg
   )
   {
     var connections = new List<SavedKey>();
     var bases = new List<SavedKey>();
     var running = stopsSoFar;
+    // The predecessor decides which branch reads the connection. Without an
+    // execution leg it is captured rather than re-read, and that branch does
+    // not consult the prefetch - so collecting its key would fetch a saved
+    // connection nobody looks at. The chain starts at the current load and
+    // advances only over the loads the loop itself keeps.
+    var previousHasLeg = currentLeg.HasValue;
     foreach (var load in following)
     {
       if (
@@ -89,9 +102,11 @@ public sealed partial class FuelHorizon
         break;
       running += remaining;
       var key = new SavedKey(load.Id, load.ExecutionLegId);
-      connections.Add(key);
+      if (previousHasLeg)
+        connections.Add(key);
       if (ordered.Count > 1)
         bases.Add(key);
+      previousHasLeg = load.ExecutionLegId.HasValue;
     }
     return (connections, bases);
   }
