@@ -1,3 +1,4 @@
+using Application.Caching;
 using Domain.Policies;
 using Microsoft.Extensions.Options;
 
@@ -118,8 +119,9 @@ public sealed class RoutePreparationQueue(
         Dirty(entry, priority);
   }
 
-  public void MarkTruckDirty(Guid truckId)
+  public void MarkTruckDirty(Guid truckId, ReadCache reads)
   {
+    reads.InvalidateItem("planning-inputs", truckId);
     lock (gate)
       foreach (
         var entry in entries

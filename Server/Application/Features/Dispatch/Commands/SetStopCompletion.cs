@@ -274,7 +274,7 @@ public sealed class SetStopCompletionHandler(
       reads.Invalidate($"route:{stop.DispatchId}");
       preparation.MarkDirty(stop.DispatchId);
       foreach (var id in trucks.Distinct())
-        preparation.MarkTruckDirty(id);
+        preparation.MarkTruckDirty(id, reads);
       return RequestResponse<StopCompletionState>.Ok(State(stop));
     }
     catch (Exception ex) when (db.IsWriteConflict(ex))

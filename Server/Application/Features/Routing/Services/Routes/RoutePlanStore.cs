@@ -81,6 +81,7 @@ public sealed class RoutePlanStore(
       || entity.ExecutionLegId != plan.ExecutionLegId
     )
       throw new RoutePlanningException("The route assignment changed.");
+    var callerOwnsTransaction = db.Database.CurrentTransaction is not null;
     await using var owned =
       entity.ExecutionLegId.HasValue && db.Database.CurrentTransaction is null
         ? await db.Database.BeginTransactionAsync(ct)
@@ -130,6 +131,8 @@ public sealed class RoutePlanStore(
     if (owned is not null)
       await owned.CommitAsync(ct);
     Invalidate(entity.DispatchId, entity.ExecutionLegId);
+    if (!callerOwnsTransaction)
+      reads.InvalidateItem("planning-inputs", plan.TruckId);
   }
 
   public static string CacheKey(Guid dispatchId, Guid? executionLegId) =>

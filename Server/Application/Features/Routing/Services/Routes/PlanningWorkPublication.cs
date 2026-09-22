@@ -1,3 +1,4 @@
+using Application.Caching;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.Deadheads;
@@ -13,7 +14,8 @@ public sealed class PlanningWorkPublication(
   IPlanningPublicationScope scope,
   DeadheadHistoryService history,
   PlanningSummaryCache summaries,
-  ICurrentCompany company
+  ICurrentCompany company,
+  ReadCache reads
 )
 {
   private readonly Dictionary<
@@ -34,6 +36,8 @@ public sealed class PlanningWorkPublication(
   {
     await transaction.CommitAsync(ct);
     invalidate?.Invoke();
+    if (truck is { } changedTruck)
+      reads.InvalidateItem("planning-inputs", changedTruck);
     if (company.Id is { } owner && truck is { } truckId)
       foreach (var work in summaries.Committed(owner, truckId))
         committed[work.Key] = work;

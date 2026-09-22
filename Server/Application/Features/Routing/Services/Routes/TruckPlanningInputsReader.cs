@@ -51,19 +51,23 @@ public sealed class TruckPlanningInputsReader(
     if (truckIds.Count == 0)
       return new Dictionary<Guid, TruckPlanningInputs>();
     var ids = truckIds.Distinct().Order().ToArray();
-    var settings = await ReadProfilesAsync(ids, ct);
     var asOf = DateTimeOffset.UtcNow;
     var key =
-      $"planning-work:{asOf.UtcDateTime:yyyy-MM-dd}:"
-      + $"{reads.Generation("dispatch")}:{reads.Generation("execution")}:"
-      + $"{reads.Generation("route-previews")}:"
-      + $"{reads.Generation("settings")}:"
-      + string.Join(',', ids);
-    var captured = await reads.GetAsync(
-      "board",
+      $"{asOf.UtcDateTime:yyyy-MM-dd}:"
+      + $"{reads.Generation("fleet-catalog")}:"
+      + $"{reads.Generation("settings")}";
+    var captured = await reads.GetManyAsync<CapturedWork>(
+      "planning-inputs",
+      ids,
       key,
-      () => CaptureAsync(ids, asOf, settings, ct),
-      ct: ct
+      async missing =>
+        await CaptureAsync(
+          missing,
+          asOf,
+          await ReadProfilesAsync(missing, ct),
+          ct
+        ),
+      ct
     );
     return await WithClocksAsync(captured, includeHos, ct);
   }
@@ -99,18 +103,10 @@ public sealed class TruckPlanningInputsReader(
       );
   }
 
-  private async Task<Dictionary<Guid, TruckRouteProfile>> ReadProfilesAsync(
+  private Task<IReadOnlyDictionary<Guid, TruckRouteProfile>> ReadProfilesAsync(
     IReadOnlyCollection<Guid> ids,
     CancellationToken ct
-  )
-  {
-    // ReadCache stripes are not reentrant; resolve cached dependencies before
-    // entering the work-cache factory.
-    var result = new Dictionary<Guid, TruckRouteProfile>();
-    foreach (var id in ids)
-      result[id] = await profiles.GetAsync(id, ct);
-    return result;
-  }
+  ) => profiles.GetManyAsync(ids, ct);
 
   private Task<Dictionary<Guid, CapturedWork>> CaptureAsync(
     IReadOnlyCollection<Guid> ids,

@@ -25,13 +25,17 @@ public sealed class TruckPlanningProfileService(
   )
   {
     var ids = truckIds.Distinct().ToArray();
-    var rows =
-      ids.Length == 0
-        ? new Dictionary<Guid, TruckPlanningProfile>()
-        : await db
+    var rows = await reads.GetManyAsync<TruckPlanningProfile>(
+      "profile-rows",
+      ids,
+      "value",
+      async missing =>
+        await db
           .TruckPlanningProfiles.AsNoTracking()
-          .Where(x => ids.Contains(x.TruckId))
-          .ToDictionaryAsync(x => x.TruckId, ct);
+          .Where(x => missing.Contains(x.TruckId))
+          .ToDictionaryAsync(x => x.TruckId, ct),
+      ct
+    );
     var result = new Dictionary<Guid, TruckRouteProfile>();
     foreach (var id in ids)
       result[id] = await ResolveAsync(rows.GetValueOrDefault(id), ct, true);
@@ -50,13 +54,11 @@ public sealed class TruckPlanningProfileService(
   )
   {
     ct.ThrowIfCancellationRequested();
-    Task<TruckPlanningProfile?> Load() =>
-      db
-        .TruckPlanningProfiles.AsNoTracking()
-        .SingleOrDefaultAsync(x => x.TruckId == truckId, ct);
-    var entity = cached
-      ? await reads.GetAsync($"profile:{truckId}", "value", Load)
-      : await Load();
+    if (cached)
+      return (await GetManyAsync([truckId], ct))[truckId];
+    var entity = await db
+      .TruckPlanningProfiles.AsNoTracking()
+      .SingleOrDefaultAsync(x => x.TruckId == truckId, ct);
     return await ResolveAsync(entity, ct, cached);
   }
 
@@ -165,6 +167,8 @@ public sealed class TruckPlanningProfileService(
   internal void Invalidate(Guid truckId)
   {
     reads.Invalidate($"profile:{truckId}");
+    reads.InvalidateItem("profile-rows", truckId);
+    reads.InvalidateItem("planning-inputs", truckId);
     reads.Invalidate("route-previews");
   }
 }

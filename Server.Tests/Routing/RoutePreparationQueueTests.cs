@@ -1,4 +1,6 @@
+using Application.Caching;
 using Application.Features.Routing.Background;
+using Application.Features.Synchronization.Options;
 using Domain.Entities.Dispatch;
 using Domain.Policies;
 using Microsoft.Extensions.Options;
@@ -8,8 +10,14 @@ namespace Server.Tests.Routing;
 
 [Trait("Category", "Routing")]
 [Trait("Kind", "Unit")]
-public sealed class RoutePreparationQueueTests
+public sealed class RoutePreparationQueueTests : IDisposable
 {
+  private readonly ReadCache reads = new(
+    Options.Create(new SynchronizationOptions())
+  );
+
+  public void Dispose() => reads.Dispose();
+
   [Theory]
   [InlineData("address")]
   [InlineData("truck")]
@@ -26,7 +34,7 @@ public sealed class RoutePreparationQueueTests
     if (notification == "address")
       queue.AddressesChanged([id], [truck]);
     else if (notification == "truck")
-      queue.MarkTruckDirty(truck);
+      queue.MarkTruckDirty(truck, reads);
     else
       queue.MarkDirty(id);
     var work = Assert.Single(queue.Take(1));
@@ -60,7 +68,7 @@ public sealed class RoutePreparationQueueTests
     var repair = Assert.Single(queue.Take(10));
     Assert.True(repair.Explicit);
     queue.Complete(repair, "input", truck);
-    queue.MarkTruckDirty(truck);
+    queue.MarkTruckDirty(truck, reads);
     queue.Request(id, truck);
     Assert.Single(queue.Take(10));
   }
@@ -160,7 +168,7 @@ public sealed class RoutePreparationQueueTests
         work.Fingerprint!,
         queue.Identity(work.DispatchId).TruckId
       );
-    queue.MarkTruckDirty(truck);
+    queue.MarkTruckDirty(truck, reads);
     var pending = Assert.Single(queue.Take(10));
     Assert.Equal(affected, pending.DispatchId);
     Assert.Equal(1, pending.ConnectionVersion);

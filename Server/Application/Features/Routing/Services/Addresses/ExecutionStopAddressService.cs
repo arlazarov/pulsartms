@@ -75,7 +75,7 @@ public sealed class ExecutionStopAddressService(
       var key in new[] { "dispatch", "board", "execution", "route-previews" }
     )
       reads.Invalidate(key);
-    preparation.MarkTruckDirty(leg.TruckId);
+    preparation.MarkTruckDirty(leg.TruckId, reads);
     foreach (var link in leg.Loads)
       preparation.MarkDirty(link.DispatchId);
   }

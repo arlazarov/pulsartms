@@ -220,7 +220,7 @@ public sealed class UpdateDispatchWorkspaceHandler(
       foreach (var leg in state.Legs)
       {
         reads.Invalidate($"route:{load.Id}:leg:{leg.Id}");
-        preparation.MarkTruckDirty(leg.TruckId);
+        preparation.MarkTruckDirty(leg.TruckId, reads);
       }
       foreach (
         var truck in load
@@ -230,7 +230,7 @@ public sealed class UpdateDispatchWorkspaceHandler(
           .Select(x => x!.Value)
           .Distinct()
       )
-        preparation.MarkTruckDirty(truck);
+        preparation.MarkTruckDirty(truck, reads);
       return RequestResponse<DispatchWorkspaceResponse>.Ok(saved.Response);
     }
     catch (Exception ex) when (db.IsWriteConflict(ex))

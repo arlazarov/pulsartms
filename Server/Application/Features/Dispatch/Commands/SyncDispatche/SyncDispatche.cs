@@ -252,7 +252,7 @@ public partial class SyncDispatchesCommandHandler(
       foreach (var id in dirty)
         preparation.MarkDirty(id);
       foreach (var id in affectedTrucks)
-        preparation.MarkTruckDirty(id);
+        preparation.MarkTruckDirty(id, reads);
       if (affectedTrucks.Count > 0)
       {
         var successors = await dbContext

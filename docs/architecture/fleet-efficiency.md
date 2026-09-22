@@ -52,6 +52,20 @@ worker may not overwrite a newer commit, restored assignment or evicted entry.
 Keep the previous matching snapshot visible while refreshing. Never reuse one
 carrier's, truck's or assignment's result as an error fallback.
 
+Planning inputs and profile rows use company-scoped, per-truck cache entries.
+Overlapping pages reuse existing entries and batch-load only missing trucks.
+After committing a truck change, invalidate its `planning-inputs` entry through
+`PlanningWorkPublication` or `RoutePreparationQueue.MarkTruckDirty`. Assignment
+transfers must notify both the previous and receiving trucks. Profile writes
+also invalidate the matching `profile-rows` entry. Never invalidate before the
+owning transaction commits.
+
+Global board, dispatch, execution and route-preview generations do not invalidate
+these planning-input entries. Shared settings, fleet catalog changes and the UTC
+date remain common dependencies because they can affect multiple trucks. This
+broader read refresh does not recalculate or rewrite every saved route/fuel plan.
+Keep batch caches within the existing bounded `ReadCache` memory budget.
+
 ## Preventing repeated database and provider work
 
 - Batch identities, profiles, names and ETA inputs for the visible page before

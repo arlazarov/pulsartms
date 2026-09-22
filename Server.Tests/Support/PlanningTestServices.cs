@@ -131,7 +131,8 @@ internal sealed class PlanningTestServices : IDisposable
       publicationScope ?? new PlanningPublicationScope((AppDbContext)db),
       DeadheadHistory,
       new PlanningSummaryCache(TimeProvider.System),
-      new TestCompany()
+      new TestCompany(),
+      Reads
     );
     BaseRoutes = new(
       db,

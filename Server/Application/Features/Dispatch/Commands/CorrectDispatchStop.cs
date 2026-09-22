@@ -345,7 +345,7 @@ public sealed class CorrectDispatchStopHandler(
       if (request.TruckId is { } truck)
         oldTrucks.Add(truck);
       foreach (var id in oldTrucks)
-        preparation.MarkTruckDirty(id);
+        preparation.MarkTruckDirty(id, reads);
       return RequestResponse<DispatchWorkspaceResponse>.Ok(saved.Response);
     }
     catch (Exception ex) when (db.IsWriteConflict(ex))

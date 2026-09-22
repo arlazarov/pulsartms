@@ -109,7 +109,7 @@ public sealed class ExecutionPlanningOperation(
     reads.Invalidate($"route:{work.DispatchId}:leg:{work.ExecutionLegId}");
     var queue = services.GetRequiredService<RoutePreparationQueue>();
     queue.MarkDirty(work.DispatchId);
-    queue.MarkTruckDirty(work.TruckId);
+    queue.MarkTruckDirty(work.TruckId, reads);
     if (
       leg is null
       || leg.Revision != work.AssignmentRevision

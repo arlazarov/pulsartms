@@ -214,9 +214,9 @@ public sealed class SetTruckAssignmentHandler(
       reads.Invalidate($"route:{load.Id}");
       preparation.MarkDirty(load.Id);
       if (previous is { } oldTruck)
-        preparation.MarkTruckDirty(oldTruck);
+        preparation.MarkTruckDirty(oldTruck, reads);
       if (truckId is { } newTruck)
-        preparation.MarkTruckDirty(newTruck);
+        preparation.MarkTruckDirty(newTruck, reads);
       logger.LogInformation(
         "Dispatch truck assignment confirmed for {DispatchId} by {ActorId}: truck {TruckId}, start {StopId}, revision {Revision}",
         load.Id,

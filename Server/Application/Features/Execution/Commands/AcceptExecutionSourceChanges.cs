@@ -127,7 +127,7 @@ public sealed class AcceptExecutionSourceChangesHandler(
       await db.SaveChangesAsync(ct);
       await transaction.CommitAsync(ct);
       preparation.MarkDirty(command.DispatchId);
-      preparation.MarkTruckDirty(leg.TruckId);
+      preparation.MarkTruckDirty(leg.TruckId, reads);
       reads.Invalidate($"route:{command.DispatchId}");
       reads.Invalidate($"route:{command.DispatchId}:leg:{leg.Id}");
       foreach (

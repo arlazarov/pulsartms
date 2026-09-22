@@ -106,18 +106,23 @@ public sealed class StopAddressService(
   private void Notify(
     IReadOnlyCollection<DispatchStop> stops,
     IReadOnlyDictionary<Guid, Guid?> parents
-  ) =>
+  )
+  {
+    var trucks = stops
+      .SelectMany(x =>
+        new[] { x.TruckId, parents.GetValueOrDefault(x.DispatchId) }
+      )
+      .Where(x => x.HasValue)
+      .Select(x => x!.Value)
+      .Distinct()
+      .ToArray();
+    foreach (var truck in trucks)
+      cache.InvalidateItem("planning-inputs", truck);
     preparation.AddressesChanged(
       stops.Select(x => x.DispatchId).Distinct().ToArray(),
-      stops
-        .SelectMany(x =>
-          new[] { x.TruckId, parents.GetValueOrDefault(x.DispatchId) }
-        )
-        .Where(x => x.HasValue)
-        .Select(x => x!.Value)
-        .Distinct()
-        .ToArray()
+      trucks
     );
+  }
 
   private static void Copy(DispatchStop stop, DispatchStop source)
   {

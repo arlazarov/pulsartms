@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Application.Caching;
 
-public sealed class ReadCache(
+public sealed partial class ReadCache(
   IOptions<SynchronizationOptions> options,
   ICurrentCompany? companies
 ) : IReadCache, IDisposable, ICacheMemorySource

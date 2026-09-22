@@ -1,6 +1,8 @@
 using System.Data;
+using Application.Caching;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Services.Routes;
+using Application.Features.Synchronization.Options;
 using Application.Reference;
 using Domain.Entities.Fleet;
 using Domain.Rules;
@@ -8,6 +10,7 @@ using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Options;
 using Server.Tests.Support;
 
 namespace Server.Tests.Routing;
@@ -34,7 +37,8 @@ public sealed class PlanningPublicationTests
       new PublicationProbe(f.Db),
       f.Planning.DeadheadHistory,
       cache,
-      company
+      company,
+      f.Planning.Reads
     );
     await using var transaction = await f.Db.Database.BeginTransactionAsync();
     if (commit)
@@ -131,7 +135,8 @@ public sealed class PlanningPublicationTests
       probe,
       f.Planning.DeadheadHistory,
       new PlanningSummaryCache(TimeProvider.System),
-      new TestCompany()
+      new TestCompany(),
+      f.Planning.Reads
     );
 
     await Assert.ThrowsAsync<RoutePlanningException>(
@@ -360,7 +365,8 @@ public sealed class PlanningPublicationTests
         new ActiveTransfers(db)
       ),
       new PlanningSummaryCache(TimeProvider.System),
-      new TestCompany()
+      new TestCompany(),
+      new ReadCache(Options.Create(new SynchronizationOptions()))
     );
     await using var writer = new AppDbContext(
       new DbContextOptionsBuilder<AppDbContext>()

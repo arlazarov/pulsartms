@@ -151,6 +151,7 @@ public sealed class TruckRoutePreviewTests
     await fixture.Db.SaveChangesAsync();
     fixture.Services.Reads.Invalidate("board");
     fixture.Services.Reads.Invalidate("dispatch");
+    fixture.Services.Reads.InvalidateItem("planning-inputs", fixture.Truck.Id);
     Assert.Equal(
       next.Id,
       (
@@ -215,6 +216,7 @@ public sealed class TruckRoutePreviewTests
     load.Stops[0].Name = "Fresh pickup";
     await fixture.Db.SaveChangesAsync();
     fixture.Services.Reads.Invalidate("dispatch");
+    fixture.Services.Reads.InvalidateItem("planning-inputs", fixture.Truck.Id);
     fixture.Probe.Start();
     var current = (
       await reader.ForDispatchAsync(load.Id, default, stored.Id, stored.Version)
@@ -476,6 +478,7 @@ public sealed class TruckRoutePreviewTests
     fixture.Db.ExecutionLegs.Add(leg);
     await fixture.Db.SaveChangesAsync();
     fixture.Services.Reads.Invalidate("execution");
+    fixture.Services.Reads.InvalidateItem("planning-inputs", fixture.Truck.Id);
     var current = await fixture.Services.Routes.LoadAsync(load.Id, default);
     Assert.Equal(leg.Id, current.ExecutionLegId);
     Assert.Equal(leg.Revision, current.AssignmentRevision);
@@ -630,6 +633,7 @@ public sealed class TruckRoutePreviewTests
     await fixture.Db.SaveChangesAsync();
     fixture.Services.Reads.Invalidate("dispatch");
     fixture.Services.Reads.Invalidate("board");
+    fixture.Services.Reads.InvalidateItem("planning-inputs", fixture.Truck.Id);
     fixture.Probe.Start();
     Assert.Equal(
       next.Id,
@@ -812,6 +816,7 @@ public sealed class TruckRoutePreviewTests
     load.Stops[0].Notes = "Use the north gate.";
     await fixture.Db.SaveChangesAsync();
     fixture.Services.Reads.Invalidate("dispatch");
+    fixture.Services.Reads.InvalidateItem("planning-inputs", fixture.Truck.Id);
 
     var result = (
       await reader.ForTruckAsync(

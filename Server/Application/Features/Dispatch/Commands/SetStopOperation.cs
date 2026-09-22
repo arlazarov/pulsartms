@@ -230,7 +230,7 @@ public sealed class SetStopOperationHandler(
       if ((load.PlanningTruckId ?? load.TruckId) is { } truck)
         trucks.Add(truck);
       foreach (var id in trucks)
-        preparation.MarkTruckDirty(id);
+        preparation.MarkTruckDirty(id, reads);
       logger.LogInformation(
         "Stop operation changed for {DispatchId}/{StopId} by {ActorId}, revision {Revision}",
         load.Id,

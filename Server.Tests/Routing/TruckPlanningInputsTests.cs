@@ -98,7 +98,7 @@ public sealed class TruckPlanningInputsTests
   [InlineData("board")]
   [InlineData("dispatch")]
   [InlineData("execution")]
-  public async Task InvalidatingWorkRefreshesTheWholeCapturedSnapshot(
+  public async Task OnlyTruckInvalidationRefreshesTheCapturedSnapshot(
     string group
   )
   {
@@ -118,6 +118,12 @@ public sealed class TruckPlanningInputsTests
       cached.Itinerary.InputSignature
     );
     f.Reads.Invalidate(group);
+    var unaffected = (await reader.ReadAsync(truck.Id, default, false))!;
+    Assert.Equal(
+      first.Itinerary.InputSignature,
+      unaffected.Itinerary.InputSignature
+    );
+    f.Reads.InvalidateItem("planning-inputs", truck.Id);
 
     var changed = (await reader.ReadAsync(truck.Id, default, false))!;
 
@@ -191,7 +197,7 @@ public sealed class TruckPlanningInputsTests
     {
       truck.DriverId = second.Id;
       f.Db.SaveChanges();
-      f.Reads.Invalidate("board");
+      f.Reads.Invalidate("fleet-catalog");
     };
     var reader = Reader(f, hos);
 

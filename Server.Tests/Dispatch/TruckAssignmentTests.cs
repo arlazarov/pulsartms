@@ -117,6 +117,48 @@ public sealed class TruckAssignmentTests
     Assert.Null(f.Load.PlanningTruckId);
   }
 
+  [Fact]
+  public async Task ReassignmentInvalidatesOnlyPreviousAndReceivingTrucks()
+  {
+    await using var f = await StopCompletionFixture.CreateAsync();
+    var previous = new Truck { Id = Guid.NewGuid(), UnitNumber = "OLD" };
+    var receiving = new Truck
+    {
+      Id = Guid.NewGuid(),
+      UnitNumber = "54777",
+      IsActive = true,
+    };
+    var unrelated = new Truck { Id = Guid.NewGuid(), UnitNumber = "OTHER" };
+    previous.ExternalId = "previous";
+    receiving.ExternalId = "receiving";
+    unrelated.ExternalId = "unrelated";
+    f.Db.Trucks.AddRange(previous, receiving, unrelated);
+    f.Load.PlanningTruckId = previous.Id;
+    await f.Db.SaveChangesAsync();
+    Guid[] ids = [previous.Id, receiving.Id, unrelated.Id];
+    var loaded = new List<Guid>();
+    Task<IReadOnlyDictionary<Guid, string>> Load(
+      IReadOnlyCollection<Guid> missing
+    )
+    {
+      loaded.AddRange(missing);
+      return Task.FromResult<IReadOnlyDictionary<Guid, string>>(
+        missing.ToDictionary(id => id, id => id.ToString())
+      );
+    }
+    await f.Reads.GetManyAsync("planning-inputs", ids, "probe", Load, default);
+    loaded.Clear();
+
+    var result = await f.AssignmentHandler().Handle(Command(f), default);
+
+    Assert.True(result.Success);
+    await f.Reads.GetManyAsync("planning-inputs", ids, "probe", Load, default);
+    Assert.Equal(2, loaded.Count);
+    Assert.Contains(previous.Id, loaded);
+    Assert.Contains(receiving.Id, loaded);
+    Assert.DoesNotContain(unrelated.Id, loaded);
+  }
+
   private static SetTruckAssignmentCommand Command(StopCompletionFixture f) =>
     new(
       f.Load.Id,

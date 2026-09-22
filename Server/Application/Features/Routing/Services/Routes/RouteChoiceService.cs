@@ -381,7 +381,7 @@ public sealed partial class RouteChoiceService(
         () => InvalidateSavedRoute(dispatch, load.ExecutionLegId)
       );
       preparation.MarkDirty(dispatch);
-      preparation.MarkTruckDirty(load.TruckId.Value);
+      preparation.MarkTruckDirty(load.TruckId.Value, reads);
       logger.LogInformation(
         "Route choice saved for {DispatchId} by {ActorId}, revision {Revision}",
         dispatch,
