@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Application.Diagnostics;
 using Application.Features.Eta.Interfaces;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.Deadheads;
@@ -35,10 +37,18 @@ public sealed class FuelRegionPlanner(
     IReadOnlySet<Guid>? corridorStations = null
   )
   {
+    // "build-total" contains every stage below it. The sizes are counted
+    // beside the times because a slow filter and a filter run many times look
+    // the same on a clock.
+    using var building = PerformanceStages.Start("fuel-regions", "build-total");
+    PerformanceStages.Count("fuel-regions", "priced-stations", prices.Count);
+    var at = Stopwatch.GetTimestamp();
     var config = options.Value;
     var countries = new FuelAccessCountries(regionLookup);
     var geometry = searchGeometry ?? new FuelSearchGeometry(plan.Route, ct);
     var delivery = geometry.At(geometry.Miles);
+    at = Mark("setup", at);
+    // One Match against the road for every priced station there is.
     var corridor = prices
       .Where(x =>
       {
@@ -48,19 +58,29 @@ public sealed class FuelRegionPlanner(
         return match.Away <= 2 && countries.Matches(match.Point, x.Station);
       })
       .ToList();
+    at = Mark("corridor", at);
+    PerformanceStages.Count("fuel-regions", "corridor-kept", corridor.Count);
     var nearby = prices
       .Where(x =>
         RouteGeometry.Distance(delivery, x.Station.Point)
         <= config.EscapeSearchMiles
       )
       .ToList();
+    at = Mark("nearby", at);
+    PerformanceStages.Count("fuel-regions", "nearby-kept", nearby.Count);
     var destinationPrices = nearby
       .Where(x => countries.Matches(delivery, x.Station))
       .ToList();
+    at = Mark("destination-prices", at);
     // With an assigned pickup, examine fuel along that direction, not an
     // arbitrary exit.
     var captured =
       suppliedInputs ?? await inputs.ReadFreshAsync(plan.TruckId, ct);
+    // Records nothing when the caller supplied the inputs, which is the edit
+    // path's case - a missing row here means it was handed them, not that the
+    // read was free.
+    if (suppliedInputs is null)
+      at = Mark("inputs", at);
     var loads = captured.Select(plan);
     var index = loads.FindIndex(x => x.Id == plan.DispatchId);
     var next = index >= 0 ? loads.Skip(index + 1).FirstOrDefault() : null;
@@ -80,12 +100,14 @@ public sealed class FuelRegionPlanner(
           "The next pickup location is unavailable for fuel planning."
         );
       var point = FuelHorizon.ConfirmedPoint(pickup, DateTime.UtcNow);
+      at = Mark("next-pickup", at);
       var capturedRoute = await deadheads.CaptureRouteAsync(
         plan.DispatchId,
         load,
         profile,
         ct
       );
+      at = Mark("next-connection", at);
       history = capturedRoute.History;
       road = capturedRoute.Road;
       var saved = capturedRoute.Route;
@@ -97,6 +119,7 @@ public sealed class FuelRegionPlanner(
           "A matching saved connection is required to estimate fuel access in the next pickup direction."
         );
       onward = new(saved!, ct);
+      at = Mark("onward-geometry", at);
     }
     var eligible = onward is null
       ? destinationPrices
@@ -110,6 +133,8 @@ public sealed class FuelRegionPlanner(
               && countries.Matches(pickup, x.Station);
         })
         .ToList();
+    at = Mark("eligible", at);
+    PerformanceStages.Count("fuel-regions", "eligible-kept", eligible.Count);
     if (eligible.Count == 0)
       return new(
         ReserveWithoutKnownExit(profile, config, next?.Id),
@@ -123,8 +148,11 @@ public sealed class FuelRegionPlanner(
       .Order()
       .ToArray();
     var reference = comparison[(comparison.Length - 1) / 4];
+    at = Mark("comparison", at);
     var grid = new FuelRegionGrid(prices, config, reference);
+    at = Mark("grid", at);
     var cells = grid.Along(geometry, progress, ct);
+    at = Mark("grid-along", at);
     var local = destinationPrices
       .Where(x =>
         RouteGeometry.Distance(delivery, x.Station.Point)
@@ -166,6 +194,8 @@ public sealed class FuelRegionPlanner(
       )
         estimated.Add((station, miles));
     }
+    at = Mark("shortlist-estimate", at);
+    PerformanceStages.Count("fuel-regions", "shortlisted", shortlist.Count);
     if (estimated.Count == 0)
       throw new RoutePlanningException(
         "No post-delivery fuel access estimate fits the configured tank and reserve."
@@ -251,5 +281,13 @@ public sealed class FuelRegionPlanner(
       Reason =
         "Post-delivery price coverage is unavailable. Keep at least half a tank and the configured buffer plus reserve. No exit station or replacement price is assumed.",
     };
+  }
+
+  // Close one stage and open the next. A stage whose branch was not taken
+  // records nothing, so a missing row means it did not run.
+  private static long Mark(string stage, long since)
+  {
+    PerformanceStages.Elapsed("fuel-regions", stage, since);
+    return Stopwatch.GetTimestamp();
   }
 }
