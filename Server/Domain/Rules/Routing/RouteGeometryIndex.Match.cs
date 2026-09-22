@@ -13,9 +13,18 @@ internal sealed partial class RouteGeometryIndex
     RoutePoint point,
     double minAlong = 0,
     CancellationToken ct = default,
-    bool strictMinimum = false
+    bool strictMinimum = false,
+    double maximumAwayMiles = double.PositiveInfinity
   ) =>
-    Match(point, minAlong, 0, blocks.Length, ct, strictMinimum: strictMinimum);
+    Match(
+      point,
+      minAlong,
+      0,
+      blocks.Length,
+      ct,
+      maximumAwayMiles,
+      strictMinimum
+    );
 
   public (
     double Along,

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Application.Features.Routing.Services.FuelPlanning;
 using Domain.Models.Routing;
 using Domain.Rules.Routing;
 using Infrastructure.Integrations.GeoTimeZone;
@@ -148,40 +149,43 @@ Console.WriteLine(
 Console.WriteLine($"  kept {corridor}");
 Console.WriteLine();
 
-// --- the same match, told what the caller actually wants --------------------
-// corridor keeps only stations within two miles of the road, but never says
-// so: FuelSearchGeometry.Match does not expose maximumAwayMiles at all, while
-// MatchLeg does. On a single-leg route this asks the identical question with
-// the limit supplied, which lets the index reject a distant station on its
-// block bound instead of walking the road.
-if (route.Legs.Count == 1)
+
+// --- the corridor filter as it now stands ------------------------------------
+// FuelSearchGeometry.Match takes maximumAwayMiles, and the corridor filter
+// passes the same constant it judges by. This is that path, on any number of
+// legs - no MatchLeg substitute and no single-leg restriction.
 {
+  var limit = FuelRegionPlanner.CorridorMiles;
+  var bounding = new FuelAccessCountries(lookup);
   for (var warm = 0; warm < 2; warm++)
   for (var i = 0; i < stations.Count; i++)
-    geometry.MatchLeg(0, stations[i].Point, default, 2);
+    geometry.Match(stations[i].Point, 0, default, limit);
 
   clock.Restart();
   var within = 0;
   long bounded = 0;
   for (var i = 0; i < stations.Count; i++)
   {
-    var found = geometry.MatchLeg(0, stations[i].Point, default, 2);
+    var found = geometry.Match(stations[i].Point, 0, default, limit);
     bounded += found.SegmentsExamined;
-    if (found.Away <= 2)
+    if (found.Away <= limit && bounding.Matches(found.Point, stations[i]))
       within++;
   }
   clock.Stop();
   var boundedMs = clock.Elapsed.TotalMilliseconds;
-  Console.WriteLine(
-    "the same match, given the two-mile limit the caller wants"
-  );
+  Console.WriteLine($"the corridor filter bounded at {limit} mi");
   Console.WriteLine(
     $"  total {boundedMs, 9:F1} ms   per station {boundedMs / stations.Count, 7:F3} ms"
   );
   Console.WriteLine(
     $"  segments examined {bounded:N0} against {segments.Sum():N0} unbounded"
   );
-  Console.WriteLine($"  within two miles: {within}");
+  Console.WriteLine($"  kept {within}, against {corridor} unbounded");
+  if (within != corridor)
+  {
+    Console.Error.WriteLine("  the two forms disagree on the answer");
+    return 70;
+  }
   Console.WriteLine(
     $"  -> {(matchMs - boundedMs) / matchMs * 100:F0}% less time, "
       + $"{(1 - (double)bounded / segments.Sum()) * 100:F0}% fewer segments"

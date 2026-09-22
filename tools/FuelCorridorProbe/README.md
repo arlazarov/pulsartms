@@ -41,8 +41,10 @@ psql "$PULSARTMS_READONLY_URL" -A -t -o /outside/repo/stations.json \
 3. The corridor filter exactly as written, which short-circuits: a station more
    than two miles off the road never reaches the country check. The filter is
    therefore not the sum of the two halves.
-4. On a single-leg route only: the same match with `maximumAwayMiles = 2`
-   supplied through `MatchLeg`, which is the question the caller actually has.
+4. The corridor filter as it now stands, with `FuelRegionPlanner.CorridorMiles`
+   passed to `FuelSearchGeometry.Match` - the shipped path, on any number of
+   legs. It fails the run if the bounded and unbounded forms disagree on which
+   stations are kept.
 
 Each measurement is preceded by two warm-up passes.
 
@@ -58,14 +60,16 @@ depends on both. The catalogue is national and the routes are regional, so
 almost every station is far from almost every route — which is the normal case
 for this filter and the reason it behaves as it does, but it is not every case.
 
-**Step 4 changes the question slightly.** `MatchLeg` restricts to one leg and
-returns miles relative to that leg's start. On a single-leg route that is the
-same query; on a multi-leg route it is not, which is why the probe skips it
-there. It shows what a bounded search would cost, not a drop-in replacement.
+**The bound has slack left in it.** `BoundMilesPerDegree` is `2 * 3958.7613 /
+180`, about 43.99, against roughly 69 miles to a degree of latitude - a
+deliberately conservative spherical bound, so it reports about 64% of the true
+distance. A two-mile limit therefore prunes at an effective three. That is safe
+and still worth 600x, but it is not the tightest this could be.
 
-**This is a measurement, not a patch.** Nothing in the shipped code was changed
-to take these numbers, deliberately, so the first reading is of the code as it
-stands.
+**Agreement is checked, not proved.** The probe asserts the two forms keep the
+same stations on the data it is given. The correctness argument lives in
+`Server.Tests/Routing/BoundedRoadMatchTests.cs`, which sweeps offsets that
+crowd the limit from below and fails when the bound is made to over-estimate.
 
 ## Results
 

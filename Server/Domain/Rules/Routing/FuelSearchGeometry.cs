@@ -16,6 +16,11 @@ public sealed class FuelSearchGeometry
   public double Miles => index.Miles;
   public int BlockCount => index.BlockCount;
 
+  // A caller that only cares about the road within so many miles should say
+  // so. Without it the index prunes blocks against the best distance it has
+  // found, which for a point far from this road is hundreds of miles and
+  // prunes nothing: the median station in a national catalogue walked the
+  // whole route. Left at infinity the behaviour is exactly as before.
   public (
     double Along,
     double Away,
@@ -24,8 +29,9 @@ public sealed class FuelSearchGeometry
   ) Match(
     RoutePoint point,
     double minAlong = 0,
-    CancellationToken ct = default
-  ) => index.Match(point, minAlong, ct);
+    CancellationToken ct = default,
+    double maximumAwayMiles = double.PositiveInfinity
+  ) => index.Match(point, minAlong, ct, maximumAwayMiles: maximumAwayMiles);
 
   public (
     double Along,

@@ -26,6 +26,9 @@ public sealed class FuelRegionPlanner(
   IRouteRegionLookup regionLookup
 )
 {
+  // How far off the road a station may sit and still count as on the way.
+  public const double CorridorMiles = 2;
+
   public async Task<FuelArrivalInputs> BuildAsync(
     RoutePlan plan,
     TruckRouteProfile profile,
@@ -48,14 +51,23 @@ public sealed class FuelRegionPlanner(
     var geometry = searchGeometry ?? new FuelSearchGeometry(plan.Route, ct);
     var delivery = geometry.At(geometry.Miles);
     at = Mark("setup", at);
-    // One Match against the road for every priced station there is.
+    // One Match against the road for every priced station there is, so the
+    // search is told the only distance this filter cares about. The same
+    // constant bounds the search and decides the answer, so the two cannot
+    // drift apart.
     var corridor = prices
       .Where(x =>
       {
         if (corridorStations?.Contains(x.Station.StationId) == false)
           return false;
-        var match = geometry.Match(x.Station.Point, progress, ct);
-        return match.Away <= 2 && countries.Matches(match.Point, x.Station);
+        var match = geometry.Match(
+          x.Station.Point,
+          progress,
+          ct,
+          CorridorMiles
+        );
+        return match.Away <= CorridorMiles
+          && countries.Matches(match.Point, x.Station);
       })
       .ToList();
     at = Mark("corridor", at);
