@@ -13,20 +13,20 @@ These rules apply to new Dispatch, Fleet Map and planning consumers. The section
 below also retain design constraints and measurement gates; they are not a claim
 that every proposed optimization has been implemented.
 
-| Responsibility | Existing owner | Where new work belongs |
-| --- | --- | --- |
-| Business formulas and route matching | Domain rules | Extend shared rules; never calculate financial values in Client |
-| Durable route and movement state | RoutePlanStore / RoutePlanStorage | Save metadata and chunk references within the guarded transaction |
-| Durable fuel selection | TruckFuelPlans and its Infrastructure store | Save the accepted plan, not a separate copy for each screen |
-| Heavy preparation | PlanningRefreshOperation | Reuse durable requests, leases and per-truck coordination |
-| Shared display snapshots | PlanningSummaryCache | One company/truck entry for current work; explicit dispatch keys for other work |
-| Board planning reads | BoardPlanningReader | Read inputs in a batch and consume PlanningSummaryReader |
-| Selected-truck planning reads | PlanningSummaryReader | Reuse the same snapshot as Dispatch |
-| Committed change notification | PlanningWorkPublication | Notify only after commit and read-cache invalidation |
-| Prepared-result publication | PlanningSummaryPublisher | Reuse the prepared route, project saved fuel and cached ETA |
-| Cold/freshness recovery | PlanningSummaryOperation | Bounded background work through PlanningReadService |
-| Client polling and retained display | PlanningDisplayCache | Coalesce calls and retain only matching assignment identities |
-| Provider transport / SQL | Infrastructure interfaces | Keep provider-specific work outside Domain and HTTP controllers |
+| Responsibility | Existing owner |
+| --- | --- |
+| Business formulas and route matching | Domain rules |
+| Durable route and movement state | RoutePlanStore / RoutePlanStorage |
+| Durable fuel selection | TruckFuelPlans and its Infrastructure store |
+| Heavy preparation and durable demand | PlanningRefreshOperation |
+| Shared display snapshots | PlanningSummaryCache |
+| Board planning reads | BoardPlanningReader |
+| Selected-truck planning reads | PlanningSummaryReader |
+| Committed change notification | PlanningWorkPublication |
+| Prepared-result publication | PlanningSummaryPublisher |
+| Cold/freshness recovery | PlanningSummaryOperation |
+| Client polling and retained display | PlanningDisplayCache |
+| Provider transport and SQL | Infrastructure interfaces |
 
 PlanningReadService is the background reconstruction owner. Do not inject it into
 new board/map HTTP handlers to repeat heavy saved-fuel validation on every poll.
