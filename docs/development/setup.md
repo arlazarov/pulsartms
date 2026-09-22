@@ -67,17 +67,25 @@ default for subsequent implementation and automated verification.
 
 ### Current workstation override
 
-The local takeover ended with the authorized September 21 release. Cloud Run
-`amftms-api` in `amftms/us-east4` serves the new revision with automatic scaling
-and a one-instance revision limit. Local API and Client processes remain stopped.
-Local API User Secrets still point to the working `neondb` database with
-background operations and synchronization enabled. Automatic local migrations
-remain disabled. Do not start that local API while cloud workers are running.
+Cloud Run `amftms-api` in `amftms/us-east4` runs the fleet synchronization and
+planning workers. At the user's September 22 request, localhost also connects
+to the working `neondb` database. This is an interactive working-data connection,
+not a test fixture: HTTP edits affect real data.
+
+Local User Secrets limit `BackgroundOperations:Roles` to `DriverHosRefresh`,
+`PlanningSummary` and `EtaRefresh`; automatic migrations remain disabled.
+Retain all three roles when restarting this local configuration. Planning display
+and ETA memory belong to each API process, so the cloud's ETA cache does not fill
+the local API's cache. `EtaRefresh` also publishes durable forecasts under the
+existing planning publication transaction; it is not a read-only worker.
+Do not enable the remaining fleet/planning workers locally alongside cloud work.
+The prior local secrets are backed up privately in
+`before-local-eta-roles-20260922.json` under the workstation development directory.
 
 The isolated databases below remain available, but are not the current interactive
 API target. Restore `before-local-takeover-secrets.json` from the private
 workstation development directory before experimental writes or test data setup.
-Do not resume Cloud Run workers while the local working-database API is running.
+Do not run the full local worker set alongside Cloud Run workers.
 Original cloud configuration is saved privately as
 `cloud-before-local-takeover.json`; it used automatic scaling, minimum one and
 maximum twenty instances. The current release uses the narrower revision limit
