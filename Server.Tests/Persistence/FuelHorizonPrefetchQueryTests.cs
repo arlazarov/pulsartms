@@ -12,14 +12,16 @@ namespace Server.Tests.Persistence;
 // of one per load, filtered on the pairs themselves. Against the real engine
 // this asks for the rows it means and nothing beside them: not a neighbouring
 // leg of the same dispatch, and not the row a foreign leg would have found.
-[CollectionDefinition("Horizon row counts", DisableParallelization = true)]
-public sealed class HorizonRowCountCollection;
+// Tests that difference PerformanceStages totals, which are per process:
+// another test running beside them would move the counter inside the window
+// being measured.
+[CollectionDefinition(
+  "Process-wide stage counters",
+  DisableParallelization = true
+)]
+public sealed class ProcessWideStageCounterCollection;
 
-// The row counts this reads are PerformanceStages totals, which are per
-// process: another test running at the same time and touching the horizon
-// would move them, and a difference across a parallel window means nothing.
-// It passed alone and failed in the suite before this was added.
-[Collection("Horizon row counts")]
+[Collection("Process-wide stage counters")]
 [Trait("Category", "Database")]
 [Trait("Kind", "Integration")]
 public sealed class FuelHorizonPrefetchQueryTests

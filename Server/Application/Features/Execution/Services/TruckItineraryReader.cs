@@ -57,6 +57,11 @@ public sealed class TruckItineraryReader(
   {
     if (truckIds.Count == 0)
       return new Dictionary<Guid, TruckItinerarySnapshot>();
+    // "read-total" contains work-batch, legacy, evidence and assemble. What it
+    // exceeds their sum by is the part of this method nobody has measured, and
+    // that difference is the point of having it. It sits inside the scope's
+    // snapshot, so it does not cover the open or the commit.
+    using var reading = PerformanceStages.Start("itinerary-read", "read-total");
     var day = DateOnly.FromDateTime(asOf.UtcDateTime);
     var at = Stopwatch.GetTimestamp();
     var batch = await ExecutionWorkReader.ReadBatchAsync(

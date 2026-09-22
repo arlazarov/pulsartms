@@ -1,4 +1,5 @@
 using System.Data;
+using Application.Diagnostics;
 using Application.Features.Execution.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
@@ -13,6 +14,7 @@ namespace Server.Tests.Persistence;
 // is the one production takes and the one the SQLite legacy fixture does not
 // exercise. Counted against the real engine, with transaction boundaries apart
 // from statements: the snapshot read pays for its BEGIN and COMMIT too.
+[Collection("Process-wide stage counters")]
 [Trait("Category", "Fuel")]
 [Trait("Kind", "Integration")]
 public sealed class FuelInputsExecutionPathTests
@@ -66,6 +68,42 @@ public sealed class FuelInputsExecutionPathTests
     Assert.Single(counts.Distinct());
     Assert.Equal(StatementsPerExecutionRead, counts[0]);
   }
+
+  [RequiresPostgresFact]
+  public async Task TheReadIsDividedIntoStagesThatAccountForIt()
+  {
+    await using var fixture = await PostgresFixture.CreateAsync();
+    var db = fixture.Connect();
+    var truck = await SeedChainAsync(db, legs: 2);
+    var services = new PlanningTestServices(db);
+
+    await services.FuelInputs.ReadFreshAsync(truck, default);
+    var before = Stages();
+    await services.FuelInputs.ReadFreshAsync(truck, default);
+    var after = Stages();
+
+    long Moved(string stage) =>
+      after.GetValueOrDefault(stage) - before.GetValueOrDefault(stage);
+
+    // One snapshot opened and committed, one pass through the reader.
+    Assert.Equal(1, Moved("execution-scope/open"));
+    Assert.Equal(1, Moved("execution-scope/commit"));
+    Assert.Equal(1, Moved("itinerary-read/read-total"));
+    // Every part of the reader is named, so the remainder can be computed.
+    foreach (var stage in Parts)
+      Assert.Equal(1, Moved($"itinerary-read/{stage}"));
+  }
+
+  private static readonly string[] Parts =
+  [
+    "work-batch",
+    "legacy",
+    "evidence",
+    "assemble",
+  ];
+
+  private static Dictionary<string, long> Stages() =>
+    PerformanceStages.Snapshot().ToDictionary(x => x.Key, x => x.Value.Count);
 
   [RequiresPostgresFact]
   public async Task AMixedChainStillReadsItsLegacyWork()

@@ -67,27 +67,62 @@ dotnet test Server.Tests/Server.Tests.csproj \
   --filter "FullyQualifiedName~FuelInputsExecutionPathTests"
 #   2 passed, on the recorded PostgreSQL fixture
 bash verify-release.sh
-#   625 JavaScript, 1,054 Client, 3,218 Server; 297 assets, 11 graphs
+#   625 JavaScript, 1,054 Client, 3,219 Server; 297 assets, 11 graphs
 ```
 
 ## Limits, and what this does not explain
 
-**The production spike is still unexplained.** `fuel-edit/inputs` measured
-219.1, 966.8 and 218.0 ms across three previews of 11006. One statement was
-removed from a read that issues six; a local count cannot establish what the
-966.8 ms was. Nothing here should be read as predicting it.
+**The cause of the production spike is not established.** `fuel-edit/inputs`
+measured 219.1, 966.8 and 218.0 ms across three previews of 11006. A local
+count of statements does not establish what that reading was, in either
+direction: it neither explains it nor rules out the removed statement as part
+of it. Nothing here should be read as predicting the server.
 
 Counted, not timed: statement counts and transaction boundaries are stable and
 provider-independent in the sense that matters here. Wall-clock on a local
 fixture is not a server, and none is quoted.
 
-Not separated by measurement: connection acquisition, pool or lock waits,
-network time against SQL duration, and materialisation against assembly. The
-existing stages divide the read into `work-batch`, `legacy`, `evidence` and
-`assemble` only.
+## The stages, and what each one covers
 
-**What to measure on the server, after separate approval:** two `stages`
-snapshots around a single preview of 11006, reading `itinerary-read/*` beside
-`fuel-edit/inputs`, taken several times so a 966 ms reading can be seen as
-recurring or as a one-off; and `pg_stat_activity` sampling during it to
-separate waiting from executing. Neither is authorised by this note.
+Added where nothing named the work, reusing the four stages the reader already
+had:
+
+```
+fuel-edit/inputs                     the caller's view of the whole read
+  execution-scope/open               connection acquisition AND the BEGIN
+  itinerary-read/read-total          the reader, inside the snapshot
+    itinerary-read/work-batch        fleet, source dispatches, native legs
+    itinerary-read/legacy            the leftover dispatches, skipped when none
+    itinerary-read/evidence          links and switch operations
+    itinerary-read/assemble          building the snapshot from the rows
+    (remainder)                      read-total minus the four above
+  execution-scope/commit             the COMMIT
+```
+
+`execution-scope` is shared by twelve callers, so read its rows with their
+counts; `fuel-edit/inputs` bounds the fuel one.
+
+**`open` is connection acquisition and the BEGIN together.** It does not
+separate a pool or lock wait from the statement, and must not be quoted as
+either. Nothing is recorded on the path that joins an outer transaction, so a
+count there is a snapshot this scope actually opened.
+
+Still not separated by measurement: pool and lock waiting inside `open`,
+network time against SQL duration, and materialisation against assembly within
+`assemble`.
+
+## The one protocol to run on the server, after separate approval
+
+Repeat a single preview of 11006 several times, and for each take two `stages`
+snapshots around it. From the difference, per preview:
+
+1. `fuel-edit/inputs` — the reading being explained.
+2. `execution-scope/open` and `/commit` with their counts — whether the time is
+   before the first statement or after the last.
+3. `itinerary-read/read-total` minus the sum of `work-batch`, `legacy`,
+   `evidence` and `assemble` — whether it is inside a named read or in the
+   remainder.
+
+Read `open` as acquisition-plus-BEGIN, never as a pool wait on its own. If the
+time lands there, separating it needs `pg_stat_activity` sampling during the
+preview, which is a further step and is not authorised by this note either.
