@@ -794,14 +794,14 @@ async function checkHeaderLoadingSpace(page, name) {
     });
     try {
       const ready = measure();
-      truckCopy
-        .querySelectorAll('.driver-duty > :not(.driver-duty__current)')
-        .forEach(node => node.remove());
+      // The map asks DriverHours for clocks without a duty line, so there
+      // is no duty text to blank here.
       truckCopy.querySelectorAll('.driver-hours__dial strong').forEach(node => {
         node.textContent = '—';
       });
-      const duty = truckCopy.querySelector('.driver-duty__current');
-      duty.replaceChildren(document.createTextNode('—'));
+      truckCopy
+        .querySelectorAll('.driver-hours__reading')
+        .forEach(node => (node.textContent = '—'));
       routeCopy
         .querySelector(
           ':scope > .fleet-map-route-info__timing > .arrival-estimate',
@@ -816,16 +816,11 @@ async function checkHeaderLoadingSpace(page, name) {
       next
         .querySelectorAll(':scope > :not(.fleet-map-route-info__label)')
         .forEach(node => node.remove());
-      const load = routeCopy.querySelector(
-        ':scope > .fleet-map-route-info__load',
-      );
-      load
-        .querySelectorAll(
-          ':scope > :not(.fleet-map-route-info__label):not(.fleet-map-route-info__total)',
-        )
-        .forEach(node => node.remove());
-      load.querySelector('.fleet-map-route-info__total').textContent =
-        'Total — mi · — km';
+      host
+        .querySelectorAll('.fleet-map-mobile-summary__remaining strong')
+        .forEach(node => {
+          node.textContent = '—';
+        });
       routeCopy.querySelector(
         '.fleet-map-route-info__appointment strong',
       ).textContent = '—';
@@ -1106,10 +1101,7 @@ async function checkTruckTypography(page, name, phase, units) {
     {
       size: 16,
       weight: 600,
-      selectors: [
-        '.fleet-map-inspector__title',
-        '.fleet-map-route-info__load-reference > .fleet-map-route-info__copy-number strong',
-      ],
+      selectors: ['.fleet-map-inspector__title'],
     },
   ];
   if (units.distanceUnit === 'both')
@@ -1121,11 +1113,6 @@ async function checkTruckTypography(page, name, phase, units) {
         '.fleet-map-route-info__distance > .fleet-map-route-info__secondary',
       ],
     });
-  groups.push({
-    size: 14,
-    weight: 600,
-    selectors: ['.driver-duty__current strong'],
-  });
   groups.push({
     size: readingSize,
     weight: 400,
@@ -1191,10 +1178,9 @@ async function checkTruckTypography(page, name, phase, units) {
       const valueColor = getComputedStyle(
         element.querySelector('.fleet-map-truck-info__location > strong'),
       ).color;
-      return [
-        '.fleet-map-route-info__load-reference > .fleet-map-route-info__secondary',
-        '.fleet-map-route-info__total',
-      ].map(selector => {
+      // The load and its order are the card head's own label/value pair;
+      // the route card below says neither again.
+      return ['.fleet-map-mobile-summary__order'].map(selector => {
         const label = element.querySelector(selector),
           value = label.querySelector('.fleet-map-inspector__value');
         const labelStyle = getComputedStyle(label),
@@ -1226,13 +1212,38 @@ async function measureTruckControls(page, name) {
   const inspector = page.locator(
     '.fleet-map-inspector[data-inspector-mode="truck"]',
   );
+  const toggle = inspector.getByRole('button', { name: 'Truck details' });
   check(
-    (await inspector.locator('.fleet-map-mobile-summary__toggle').count()) ===
-      0 &&
+    (await toggle.count()) === 1 &&
       (await inspector
-        .getByRole('button', { name: /^Details|^Hide/ })
+        .getByRole('button', { name: /^Details$|^Hide$/ })
         .count()) === 0,
-    `${name}: the always-visible truck card has no Details or Hide control`,
+    `${name}: the card has one disclosure and it is a chevron, not a word ` +
+      'whose width changes as the card opens',
+  );
+  if ((await toggle.getAttribute('aria-expanded')) === 'true')
+    await toggle.click();
+  const closedToggle = await toggle.boundingBox();
+  check(
+    !(await inspector.locator('#fleet-map-details').isVisible()),
+    `${name}: the closed card hides the lower section`,
+  );
+  // Half of what a dispatcher looks a truck up by stays in the closed card.
+  for (const selector of [
+    '.fleet-map-inspector__driver',
+    '.fleet-map-inspector__trailer',
+  ])
+    check(
+      await inspector.locator(selector).isVisible(),
+      `${name}: ${selector} stays in the closed card`,
+    );
+  await toggle.click();
+  const openToggle = await toggle.boundingBox();
+  check(
+    ['x', 'y', 'width', 'height'].every(
+      key => Math.abs(closedToggle[key] - openToggle[key]) <= 1,
+    ),
+    `${name}: opening the card does not move its own control`,
   );
   for (const selector of [
     '#fleet-map-telemetry-details',
@@ -1244,7 +1255,7 @@ async function measureTruckControls(page, name) {
   ])
     check(
       await inspector.locator(selector).isVisible(),
-      `${name}: ${selector} remains visible without disclosure`,
+      `${name}: ${selector} is shown once the card is open`,
     );
   const result = await page
     .getByRole('button', { name: 'Close map information', exact: true })
@@ -1463,10 +1474,15 @@ async function checkRouteFactRows(page, name, distanceUnit) {
         };
         const metric = route.querySelector('.fleet-map-route-info__metric');
         const visit = route.querySelector('.fleet-map-route-info__visit');
-        const appointment = timing.querySelector(
+        // The delivery window belongs to the visit it is measured against,
+        // not to the timing column beside it.
+        const appointment = route.querySelector(
           '.fleet-map-route-info__appointment',
         );
-        const eta = timing.querySelector('.stop-hours__road');
+        const eta =
+          host.querySelector(
+            '.fleet-map-inspector__arrival .arrival-estimate .stop-hours__road',
+          ) ?? timing.querySelector('.stop-hours__road');
         const labelText = node => {
           const range = document.createRange();
           range.selectNodeContents(node);
@@ -1504,8 +1520,9 @@ async function checkRouteFactRows(page, name, distanceUnit) {
           })),
           visitWidth: visit.clientWidth,
           visitScrollWidth: visit.scrollWidth,
-          loadWidth: route.querySelector('.fleet-map-route-info__load')
-            .clientWidth,
+          distancesWidth: route.querySelector(
+            '.fleet-map-route-info__distances',
+          ).clientWidth,
           timingWidth: timing.clientWidth,
           timingScrollWidth: timing.scrollWidth,
           appointmentWidth: appointment.clientWidth,
@@ -1577,18 +1594,17 @@ async function checkRouteFactRows(page, name, distanceUnit) {
       `${name}-${variant}: Cycle short remains visible below the arrival row`,
     );
     if (layout.wide) {
-      for (const gap of [
-        layout.appointmentValue.left - layout.appointmentTextRight,
-        layout.etaTime.left - layout.etaTextRight,
-      ]) {
-        check(
-          Math.abs(gap - layout.factGap) <= 1,
-          `${name}-${variant}: appointment and ETA use the same text gap`,
-        );
-      }
       check(
-        layout.visitWidth >= layout.loadWidth * 1.3,
-        `${name}-${variant}: the next location needs more width than the load metadata`,
+        Math.abs(
+          layout.appointmentValue.left -
+            layout.appointmentTextRight -
+            layout.factGap,
+        ) <= 1,
+        `${name}-${variant}: the appointment keeps its own text gap`,
+      );
+      check(
+        Math.abs(layout.visitWidth - layout.distancesWidth) <= 1,
+        `${name}-${variant}: the stop and the facts share the card's width`,
       );
       check(
         Math.abs(
@@ -1610,6 +1626,22 @@ async function checkRouteFactRows(page, name, distanceUnit) {
   (report.routeFactRows ??= []).push({ name, ...result });
 }
 
+// The selected-truck card opens collapsed at every width: the top line
+// carries the load, the miles left to the next stop and the clocks, and
+// everything else waits behind the chevron. Every new selection closes it
+// again, so anything that reads the lower section opens it first, by the
+// same click a dispatcher would use.
+async function expandTruckCard(page, name) {
+  const toggle = page.getByRole('button', { name: 'Truck details' });
+  if ((await toggle.getAttribute('aria-expanded')) === 'false')
+    await toggle.click();
+  check(
+    (await toggle.getAttribute('aria-expanded')) === 'true' &&
+      (await page.locator('#fleet-map-details').isVisible()),
+    `${name}: the chevron opens the truck card`,
+  );
+}
+
 async function truckLoadingGeometry(page) {
   return page
     .locator('.fleet-map-inspector[data-inspector-mode="truck"]')
@@ -1625,6 +1657,11 @@ async function truckLoadingGeometry(page) {
       return Object.fromEntries(
         [
           '.fleet-map-inspector__header',
+          // The head's own rows: the card is anchored at the map's top, so
+          // anything that grows here pushes every row below it down.
+          '.fleet-map-inspector__identity',
+          '.fleet-map-inspector__arrival',
+          '.fleet-map-inspector__clocks',
           '.fleet-map-truck-info',
           '.fleet-map-inspector__hours',
           '.fleet-map-truck-info__location',
@@ -2497,10 +2534,16 @@ try {
             'retain their slots',
         );
       };
-      const coldPlaceholders = {
-        route: await page.locator('#fleet-map-route-details').isVisible(),
-        telemetry: await page
-          .locator('#fleet-map-telemetry-details')
+      // A cold card is closed, and what it says closed is the load, the
+      // miles left to the next stop and the four clocks. Nothing below is
+      // shown until it is asked for.
+      const coldClosed = {
+        lowerHidden: !(await page.locator('#fleet-map-details').isVisible()),
+        load: await page
+          .locator('.fleet-map-mobile-summary__remaining')
+          .isVisible(),
+        distance: await page
+          .locator('.fleet-map-mobile-summary__distance')
           .isVisible(),
         hours: await page
           .locator('.fleet-map-inspector__hours .driver-hours-panel')
@@ -2511,18 +2554,24 @@ try {
             .count()) === 0,
       };
       check(
+        Object.values(coldClosed).every(Boolean),
+        `${name}: a cold card is closed and still says load, miles left ` +
+          `and clocks (${JSON.stringify(coldClosed)})`,
+      );
+      await expandTruckCard(page, `${name}-cold`);
+      const coldPlaceholders = {
+        route: await page.locator('#fleet-map-route-details').isVisible(),
+        telemetry: await page
+          .locator('#fleet-map-telemetry-details')
+          .isVisible(),
+        location: await page.locator('#fleet-map-truck-location').isVisible(),
+      };
+      check(
         Object.values(coldPlaceholders).every(Boolean),
-        `${name}: cold selection shows readings, HOS and route ` +
+        `${name}: opening a cold card shows readings, location and route ` +
           `placeholders (${JSON.stringify(coldPlaceholders)})`,
       );
-      if (width === 390) {
-        check(
-          (await page.locator('#fleet-map-route-details').isVisible()) &&
-            (await page.locator('#fleet-map-truck-location').isVisible()),
-          `${name}: phone selection immediately exposes location and route`,
-        );
-        await checkPhoneTitleControls('readings');
-      }
+      if (width === 390) await checkPhoneTitleControls('readings');
       const loadingMapRect = await stableMapRect(
         page,
         mapRect,
@@ -2548,7 +2597,7 @@ try {
       previewHeld.release();
       await waitForHeld(detailsHeld, `${name}-load-reference`);
       await page
-        .locator('.fleet-map-route-info__load[aria-busy="true"]')
+        .locator('.fleet-map-mobile-summary__remaining[aria-busy="true"]')
         .waitFor();
       const partialGeometry = await truckLoadingGeometry(page);
       await stableMapRect(page, mapRect, `${name}-preview-ready`);
@@ -2560,7 +2609,7 @@ try {
       await page.waitForFunction(
         () =>
           document
-            .querySelector('.fleet-map-route-info__load')
+            .querySelector('.fleet-map-mobile-summary__remaining')
             ?.getAttribute('aria-busy') === 'false',
       );
       const detailsGeometry = await truckLoadingGeometry(page);
@@ -2569,12 +2618,13 @@ try {
         path: resolve(output, `${name}-route-reference.png`),
       });
       planningHeld.release();
-      const duty = page.locator('.fleet-map-truck-info__duty > .driver-duty');
-      await page.waitForFunction(() =>
-        document
-          .querySelector('.fleet-map-truck-info .driver-duty')
-          ?.textContent.includes('Sleeper Berth · 6h 8min'),
-      );
+      await page.waitForFunction(() => {
+        const route = document.querySelector('.fleet-map-route-info');
+        return (
+          route?.getAttribute('aria-busy') === 'false' &&
+          !route.classList.contains('is-awaiting-route')
+        );
+      });
       const selectedMapRect = await stableMapRect(
         page,
         mapRect,
@@ -2583,7 +2633,7 @@ try {
       await page.waitForFunction(
         () =>
           document
-            .querySelector('.fleet-map-route-info__load')
+            .querySelector('.fleet-map-mobile-summary__remaining')
             ?.getAttribute('aria-busy') === 'false',
       );
       const readyGeometry = await truckLoadingGeometry(page);
@@ -2606,7 +2656,7 @@ try {
               panel.querySelector('.fleet-map-route-info__delivery') ===
                 window.hoursFixtureDelivery &&
               window.hoursFixtureDelivery.parentElement.classList.contains(
-                'fleet-map-route-info__timing',
+                'fleet-map-route-info__visit',
               ),
           ),
         `${name}: route loading must populate the retained panel and groups, not replace their layout`,
@@ -2620,17 +2670,18 @@ try {
         const readyRoute = readyGeometry['.fleet-map-route-info'];
         const telemetry = geometry['.fleet-map-truck-info'];
         const readyTelemetry = readyGeometry['.fleet-map-truck-info'];
-        const routeGap = route.y - telemetry.y - telemetry.height;
-        const readyRouteGap =
-          readyRoute.y - readyTelemetry.y - readyTelemetry.height;
+        const telemetryGap = telemetry.y - route.y - route.height;
+        const readyTelemetryGap =
+          readyTelemetry.y - readyRoute.y - readyRoute.height;
         check(
-          routeGap >= -1 && Math.abs(routeGap - readyRouteGap) <= 1,
-          `${name}: ${stage} route follows telemetry without changing its gap`,
+          telemetryGap >= -1 && Math.abs(telemetryGap - readyTelemetryGap) <= 1,
+          `${name}: ${stage} the vehicle line follows the route without ` +
+            'changing its gap',
         );
         const bottomInset = snapshot => {
           const panel = snapshot['.fleet-map-route-info'];
           const contentBottom = Math.max(
-            ...['load', 'distances', 'visit', 'timing'].map(group => {
+            ...['distances', 'visit', 'timing'].map(group => {
               const bounds = snapshot[`.fleet-map-route-info__${group}`];
               return bounds.y + bounds.height;
             }),
@@ -2686,6 +2737,11 @@ try {
         `${name}: reselecting the same truck does not reread ` +
           'planning or weather',
       );
+      check(
+        !(await page.locator('#fleet-map-details').isVisible()),
+        `${name}: reselecting a truck closes its card again`,
+      );
+      await expandTruckCard(page, `${name}-reselected`);
       await page.screenshot({
         path: resolve(output, `${name}-selected-info-initial.png`),
       });
@@ -2752,8 +2808,12 @@ try {
           (await page.locator('.fleet-map-truck-info__more').count()) === 0 &&
             (await page
               .locator('.fleet-map-mobile-summary__remaining')
-              .isHidden()),
-          `${name}: desktop must not gain a second disclosure or duplicate remaining distance`,
+              .isVisible()) &&
+            (await page
+              .locator('#fleet-map-details .fleet-map-mobile-summary__distance')
+              .count()) === 0,
+          `${name}: the desktop head carries the load and the miles left ` +
+            'once, with no second disclosure',
         );
       check(
         (await page.locator('.fleet-map-inspector__hours').isVisible()) &&
@@ -2771,7 +2831,7 @@ try {
             .isVisible()) &&
           (await page
             .locator('.fleet-map-inspector__hours .driver-duty')
-            .isVisible()) &&
+            .count()) === 0 &&
           (await page
             .locator('.fleet-map-inspector__hours .driver-next-recap')
             .count()) === 0 &&
@@ -2781,8 +2841,8 @@ try {
           (await page
             .locator('.fleet-map-inspector__hours .driver-hours__clock')
             .count()) === 4,
-        `${name}: the card retains trailer, duty, load link and HOS ` +
-          'without recap',
+        `${name}: the card retains trailer, load link and four clocks ` +
+          'without a duty line or a recap',
       );
       const compactReadings = page.locator('.fleet-map-truck-info__reading');
       check(
@@ -2911,17 +2971,22 @@ try {
         `${name}: compact inspector must leave most of the map visible`,
       );
       check(
-        normalize(await duty.textContent()).includes(
-          'Sleeper Berth · 6h 8min',
-        ) && !(await duty.textContent()).includes('Current status:'),
-        `${name}: current status does not explain elapsed time beside HOS clocks`,
+        (await page.locator('.fleet-map-inspector .driver-duty').count()) ===
+          0 &&
+          (await page
+            .locator('.fleet-map-inspector__hours .driver-hours--text')
+            .count()) === 1 &&
+          (await page
+            .locator('.fleet-map-inspector__hours .driver-hours__dial')
+            .count()) === 0,
+        `${name}: the head reads four clocks as text, with no duty line and ` +
+          'no second copy of the dials',
       );
-      check(
-        (await page.locator('.fleet-map-route-info .driver-duty').count()) ===
-          0,
-        `${name}: current duty status mixed with stop forecast`,
-      );
-      const dutyBefore = normalize(await duty.textContent());
+      const headClocks = () =>
+        page
+          .locator('.fleet-map-inspector__hours .driver-hours__reading')
+          .allTextContents();
+      const clocksBefore = await headClocks();
       const primaryGeometry = () =>
         page
           .locator(
@@ -2935,7 +3000,6 @@ try {
               '.fleet-map-inspector__hours',
               '.fleet-map-inspector__actions',
               '.fleet-map-truck-info__location',
-              '.fleet-map-truck-info__duty',
             ].join(', '),
           )
           .evaluateAll(elements =>
@@ -3017,7 +3081,9 @@ try {
       check(
         (await page.locator('#fleet-map-route-details').isVisible()) &&
           (
-            await page.locator('.fleet-map-route-info__load').innerText()
+            await page
+              .locator('.fleet-map-mobile-summary__remaining')
+              .innerText()
           ).includes('CURRENT-1441') &&
           normalize(
             await page
@@ -3208,43 +3274,35 @@ try {
         `${name}: selected map keeps the metric fuel column and visible header driver`,
       );
       const truckHeader = page.locator('.fleet-map-truck-info');
+      const headHours = page.locator('.fleet-map-inspector__hours');
       check(
-        (await truckHeader
+        (await headHours
           .locator('.fleet-map-inspector__hours-label')
-          .count()) === 0 &&
-          (await truckHeader
-            .locator(
-              '.fleet-map-inspector__hours > .driver-hours-panel + .fleet-map-truck-info__duty',
-            )
-            .count()) === 1 &&
+          .count()) === 1 &&
+          (await headHours.locator('.driver-hours-panel').count()) === 1 &&
           (await truckHeader
             .locator(
               '.fleet-map-truck-info__reading > small > svg[aria-hidden="true"]',
             )
             .count()) === 2,
-        `${name}: current duty follows the clocks without a provider heading`,
+        `${name}: the clocks read under one HOS label in the head, and the ` +
+          'vehicle line keeps its own icons',
       );
       check(
-        (await truckHeader.locator('.driver-next-recap').count()) === 0,
+        (await page
+          .locator('.fleet-map-inspector .driver-next-recap')
+          .count()) === 0,
         `${name}: truck inspector omits duplicate Next recap`,
       );
       check(
-        (await truckHeader
+        (await headHours
           .locator('.driver-hours__clock:not(.is-unavailable)')
           .count()) === 4,
-        `${name}: the selected header has four fresh HOS clocks`,
-      );
-      check(
-        normalize(await duty.textContent()).includes(
-          'Sleeper Berth · 6h 8min',
-        ) &&
-          (await duty
-            .locator(':scope > :not(.driver-duty__current)')
-            .count()) === 0,
-        `${name}: map duty retains status and elapsed time; detailed rest countdowns remain in Dispatch`,
+        `${name}: the selected head has four fresh HOS clocks`,
       );
       const headerGeometry = await truckHeader.evaluate(element => {
         const rect = node => {
+          if (!node) return null;
           const bounds = node.getBoundingClientRect();
           return {
             left: bounds.left,
@@ -3255,17 +3313,20 @@ try {
             height: bounds.height,
           };
         };
-        const text = document.createTreeWalker(
-          element.querySelector('.driver-duty'),
-          NodeFilter.SHOW_TEXT,
-        );
+        const dutyNode = element.querySelector('.driver-duty');
         const textBounds = [];
-        while (text.nextNode())
-          if (text.currentNode.textContent.trim()) {
-            const range = document.createRange();
-            range.selectNodeContents(text.currentNode);
-            textBounds.push(...range.getClientRects());
-          }
+        if (dutyNode) {
+          const text = document.createTreeWalker(
+            dutyNode,
+            NodeFilter.SHOW_TEXT,
+          );
+          while (text.nextNode())
+            if (text.currentNode.textContent.trim()) {
+              const range = document.createRange();
+              range.selectNodeContents(text.currentNode);
+              textBounds.push(...range.getClientRects());
+            }
+        }
         return {
           header: rect(element),
           hours: rect(element.querySelector('.driver-hours')),
@@ -3273,9 +3334,12 @@ try {
             element.querySelector('.fleet-map-inspector__hours'),
           ),
           dials: [...element.querySelectorAll('.driver-hours__dial')].map(rect),
-          hosGap: parseFloat(
-            getComputedStyle(element.querySelector('.driver-hours')).columnGap,
-          ),
+          hosGap: element.querySelector('.driver-hours')
+            ? parseFloat(
+                getComputedStyle(element.querySelector('.driver-hours'))
+                  .columnGap,
+              )
+            : null,
           identity: rect(
             document.querySelector('.fleet-map-inspector__driver'),
           ),
@@ -3299,16 +3363,16 @@ try {
               '.fleet-map-inspector__actions .map-action-icon',
             ),
           ].map(rect),
-          dutyTextRight: Math.max(...textBounds.map(bounds => bounds.right)),
+          dutyTextRight: textBounds.length
+            ? Math.max(...textBounds.map(bounds => bounds.right))
+            : null,
           columnGap: parseFloat(getComputedStyle(element).columnGap),
           paddingRight: parseFloat(getComputedStyle(element).paddingRight),
-          rows: [...element.querySelector('.driver-duty').children].map(
-            row => ({
-              ...rect(row),
-              clientWidth: row.clientWidth,
-              scrollWidth: row.scrollWidth,
-            }),
-          ),
+          rows: [...(dutyNode?.children ?? [])].map(row => ({
+            ...rect(row),
+            clientWidth: row.clientWidth,
+            scrollWidth: row.scrollWidth,
+          })),
         };
       });
       check(
@@ -3318,7 +3382,8 @@ try {
       check(
         headerGeometry.dials.length === 4 &&
           Math.abs(headerGeometry.hosGap - 8) <= 1,
-        `${name}: selected HOS must use the shared compact 8px gap`,
+        `${name}: selected HOS must use the shared compact 8px gap ` +
+          `(dials ${headerGeometry.dials.length}, gap ${headerGeometry.hosGap})`,
       );
       check(
         headerGeometry.telemetryIcons.length === 3 &&
@@ -3330,7 +3395,9 @@ try {
         `${name}: telemetry icons share their responsive size`,
       );
       check(
-        headerGeometry.dutyGroup.top >= headerGeometry.hours.bottom - 1 &&
+        headerGeometry.dutyGroup !== null &&
+          headerGeometry.hours !== null &&
+          headerGeometry.dutyGroup.top >= headerGeometry.hours.bottom - 1 &&
           headerGeometry.dutyGroup.top - headerGeometry.hours.bottom <= 8,
         `${name}: current duty sits directly below the HOS clocks`,
       );
@@ -3365,20 +3432,27 @@ try {
         );
       if (width >= 1440) {
         check(
-          headerGeometry.identity.bottom <= headerGeometry.telemetry.top + 1 &&
+          headerGeometry.identity !== null &&
+            headerGeometry.telemetry !== null &&
+            headerGeometry.hours !== null &&
+            headerGeometry.identity.bottom <=
+              headerGeometry.telemetry.top + 1 &&
             headerGeometry.hours.left >= headerGeometry.telemetry.right - 1,
           `${name}: identity belongs in the header above adjacent readings and HOS`,
         );
         check(
-          Math.abs(
-            headerGeometry.hoursGroup.left -
-              headerGeometry.telemetry.right -
-              headerGeometry.columnGap,
-          ) <= 1,
+          headerGeometry.hoursGroup !== null &&
+            headerGeometry.telemetry !== null &&
+            Math.abs(
+              headerGeometry.hoursGroup.left -
+                headerGeometry.telemetry.right -
+                headerGeometry.columnGap,
+            ) <= 1,
           `${name}: the entire HOS group must sit directly after telemetry without an elastic spacer`,
         );
         check(
-          headerGeometry.actions.bottom <= headerGeometry.header.top + 1,
+          headerGeometry.actions !== null &&
+            headerGeometry.actions.bottom <= headerGeometry.header.top + 1,
           `${name}: truck actions belong in the header, not a separate body column`,
         );
       }
@@ -3408,7 +3482,7 @@ try {
         return {
           wide: element.getBoundingClientRect().width >= 52 * rootSize,
           gap: parseFloat(style.columnGap),
-          groups: ['load', 'distances', 'visit', 'timing'].map(group => {
+          groups: ['visit', 'distances', 'timing'].map(group => {
             const bounds = element
               .querySelector(`:scope > .fleet-map-route-info__${group}`)
               .getBoundingClientRect();
@@ -3535,13 +3609,16 @@ try {
             ':scope > .fleet-map-route-info__distances > .fleet-map-route-info__metric .fleet-map-route-info__label',
           )
           .allTextContents(),
-        ['Remaining'],
-        `${name}: only Remaining occupies the distance column`,
+        ['Run'],
+        `${name}: only the run's total occupies the distance column`,
       );
       check(
         (await routeInfo
           .locator(':scope > .fleet-map-route-info__load')
-          .count()) === 1 &&
+          .count()) === 0 &&
+          (await page
+            .locator('.fleet-map-mobile-summary__remaining')
+            .count()) === 1 &&
           (await routeInfo
             .locator(
               ':scope > .fleet-map-route-info__visit > .fleet-map-route-info__next',
@@ -3842,14 +3919,17 @@ try {
       });
       await page.evaluate(() => window.hoursFixture.selectStop(0));
       await card.locator('.stop-hours').waitFor();
+      // Closing belongs to every card: Back goes somewhere, Close leaves
+      // the map clear, so a stop inspector offers both.
       assert.equal(
-        await page.locator('.fleet-map-inspector__close').count(),
-        0,
+        await page.locator('.fleet-map-inspector__close').isVisible(),
+        true,
+        `${name}: a stop inspector keeps its own Close`,
       );
       assert.equal(
         await page.locator('.fleet-map-inspector__back').isVisible(),
         true,
-        `${name}: Back replaces Close in a selected-truck stop inspector`,
+        `${name}: Back to truck joins Close in a selected-truck stop inspector`,
       );
       const nextDisclosure = page.locator(
         'button[aria-controls="fleet-map-next-load-details"]',
@@ -3929,11 +4009,19 @@ try {
         planningReads > initialPlanningReads,
         `${name}: pending planning response was not polled`,
       );
-      assert.equal(
-        normalize(await duty.textContent()),
-        dutyBefore,
-        `${name}: pending refresh changed current duty summary`,
-      );
+      // The clocks read in the truck card's head, and a selected next-load
+      // stop takes that head over, so they are compared only when the truck
+      // still owns it.
+      if (
+        (await page
+          .locator('.fleet-map-inspector[data-inspector-mode="truck"]')
+          .count()) === 1
+      )
+        assert.deepEqual(
+          await headClocks(),
+          clocksBefore,
+          `${name}: pending refresh changed the head's HOS clocks`,
+        );
       assert.deepEqual(
         await card
           .locator('.stop-hours time')

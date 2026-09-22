@@ -224,68 +224,68 @@ both themes: signed cycle balances, Cycle short without a green ETA, known
 lateness alongside unknown cycle data, conditional recap alternatives, explicit
 absence of reset alternatives even when supplied by the server fixture, and
 the Dispatch current-driver next recap with only its local date and credited hours. The selected
-truck header checks fresh HOS clocks above current duty text, wrapping
+truck card's head checks four fresh HOS clocks read as text, wrapping
 without clipping on smaller screens, and fuel readings without maintenance wording.
 Its selected truck and route panels form one width-bounded surface centered at the
 map's top edge with the shared shadow and corners. The top inset is capped by
 actual side clearance and disappears at full width; truck and route rows retain
-their shared surface without a gap between them. The default desktop compact view keeps
-speed, fuel and engine readings aligned and visible, fuel controls reachable,
-trailer beside the driver, enlarged equal-sized telemetry icons, and current duty
-directly below all four unchanged HOS clocks without Next recap. The GPS block retains
-its timestamp and Route & load details link. Outside temperature uses one compact Fahrenheit/Celsius row directly
-below the three telemetry readings, with no new action or column. The load link retains
-its disabled placeholder while the load identity is pending. Desktop Details reveals only
-the lower load section: adjacent load/order metadata, three-line remaining distance,
-destination and inline appointment/ETA columns on wide cards, with metadata above
-the other groups at intermediate widths. The upper content and clock dimensions
-stay fixed through desktop disclosure. On phones, selection starts with a narrow
-truck title strip, centered remaining distance in the configured primary unit, and
-accessible Details/Close controls. The distance stays visible with a stable slot
-through pending data, Details and Hide; it adds no desktop duplicate. Details opens
-the retained readings, HOS, GPS location and route/load information; Hide restores
-the strip without clearing the selection or moving the map. Title, remaining
-distance, Details/Hide and Close retain the same bounds in every state. The one
-disclosure supports keyboard activation and retains the map bounds. Its collapsed
-state and stable title controls are checked in both themes; desktop keeps all
-content visible.
-Neutral address and forecast placeholders reserve
-the ordinary loaded geometry while the lower section is open during a pending read.
-The saved preview intentionally omits appointment dates: Delivery retains the same
-timing-row element and position while the load reference supplies its date and the
-live plan catches up. It never renders under Load. The single appointment above ETA
-belongs to the tracked next stop, not a later delivery.
-Intermediate-stop layout probes place the distance in its pickup/delivery heading,
-not in another vertical metric below Remaining. Cloned inspector screenshots isolate
-that layout from live route calculations, checking inline alignment on wide cards
-and overflow at narrow widths in both unit configurations.
-Narrow cards stack the readings, HOS and action groups;
-expanding retains the shared width cap without changing the map bounds. Both densities retain the selected truck's
-provider-supplied GPS address and exact observation timestamp independently of
-the next route stop. First selection,
-pending/complete reads, repeated selection and clearing must retain the same map
-element, native inspector host and exact viewport rectangle at desktop and mobile
-widths. Future-stop details replace the visible truck content in that same top
-inspector; the retained truck components remain hidden and no lower popup opens.
-Dispatch's wide header groups identity, status/fuel and mileage, and HOS together
-on the left without elastic gaps, with duty/rest and Next recap in the shared strip
-beneath. Fleet HOS circles keep equal compact gaps even on spacious screens.
-Real component polling receives empty pending
-forecasts and must retain the previous ETA, cycle, recap and alternative values,
-including the same status text and colors without Previous/Updating labels.
-Held polling responses also cross a short fixture validity deadline using the
-browser's controlled clock. Dispatch and Fleet ETA cards must stay unchanged while
-HTTP is pending, then replace each complete forecast without an empty intermediate render.
-The same scenarios verify the absence of a standalone future-trip fuel summary
-and retention of server fuel quantities, truck-relative distance and dated
-historical schedule metadata on the map bridge through ETA refresh.
-Checks also cover English text, street-first two-line current addresses with full-value
-copying, and horizontal bounds. Initial, pending and refreshed screenshots and the
-JSON report are saved to the managed `browser-hours-forecast` run;
-`HOURS_TEST_OUTPUT_DIR` overrides that path. The script intercepts every request and
-uses deterministic map callbacks and API fixtures. It does not exercise GPU
-rendering, real provider requests, authentication, database state, server calculation
-accuracy or production performance.
+their shared surface without a gap between them. The card opens closed at every
+width: the head names the unit, keeps the trailer and driver beside it, and
+carries the arrival, the load and its order, the miles left to the next stop and
+the four clocks, with no duty line and no Next recap. The chevron opens the rest
+
+- the route facts, the GPS block, the vehicle line's speed, fuel and engine
+  readings with equal-sized icons, and the truck actions. The GPS block retains
+  its timestamp and Route & load details link. Outside temperature uses one compact Fahrenheit/Celsius row directly
+  below the three telemetry readings, with no new action or column. The load link retains
+  its disabled placeholder while the load identity is pending. The head keeps its
+  own bounds through the disclosure, and every new selection closes the card again,
+  so a check that reads the lower section opens it first. On phones, selection starts with a narrow
+  truck title strip, centered remaining distance in the configured primary unit, and
+  accessible Details/Close controls. The distance stays visible with a stable slot
+  through pending data, Details and Hide; it adds no desktop duplicate. Details opens
+  the retained readings, HOS, GPS location and route/load information; Hide restores
+  the strip without clearing the selection or moving the map. Title, remaining
+  distance, Details/Hide and Close retain the same bounds in every state. The one
+  disclosure supports keyboard activation and retains the map bounds. Its collapsed
+  state and stable title controls are checked in both themes at every width.
+  Neutral address and forecast placeholders reserve
+  the ordinary loaded geometry while the lower section is open during a pending read.
+  The saved preview intentionally omits appointment dates: Delivery retains the same
+  timing-row element and position while the load reference supplies its date and the
+  live plan catches up. It never renders under Load. The single appointment above ETA
+  belongs to the tracked next stop, not a later delivery.
+  Intermediate-stop layout probes place the distance in its pickup/delivery heading,
+  not in another vertical metric below Remaining. Cloned inspector screenshots isolate
+  that layout from live route calculations, checking inline alignment on wide cards
+  and overflow at narrow widths in both unit configurations.
+  Narrow cards stack the readings, HOS and action groups;
+  expanding retains the shared width cap without changing the map bounds. Both densities retain the selected truck's
+  provider-supplied GPS address and exact observation timestamp independently of
+  the next route stop. First selection,
+  pending/complete reads, repeated selection and clearing must retain the same map
+  element, native inspector host and exact viewport rectangle at desktop and mobile
+  widths. Future-stop details replace the visible truck content in that same top
+  inspector; the retained truck components remain hidden and no lower popup opens.
+  Dispatch's wide header groups identity, status/fuel and mileage, and HOS together
+  on the left without elastic gaps, with duty/rest and Next recap in the shared strip
+  beneath. Fleet HOS circles keep equal compact gaps even on spacious screens.
+  Real component polling receives empty pending
+  forecasts and must retain the previous ETA, cycle, recap and alternative values,
+  including the same status text and colors without Previous/Updating labels.
+  Held polling responses also cross a short fixture validity deadline using the
+  browser's controlled clock. Dispatch and Fleet ETA cards must stay unchanged while
+  HTTP is pending, then replace each complete forecast without an empty intermediate render.
+  The same scenarios verify the absence of a standalone future-trip fuel summary
+  and retention of server fuel quantities, truck-relative distance and dated
+  historical schedule metadata on the map bridge through ETA refresh.
+  Checks also cover English text, street-first two-line current addresses with full-value
+  copying, and horizontal bounds. Initial, pending and refreshed screenshots and the
+  JSON report are saved to the managed `browser-hours-forecast` run;
+  `HOURS_TEST_OUTPUT_DIR` overrides that path. The script intercepts every request and
+  uses deterministic map callbacks and API fixtures. It does not exercise GPU
+  rendering, real provider requests, authentication, database state, server calculation
+  accuracy or production performance.
 
 The 2026-09-08 local run passed all 44 cases against a fresh strict publish, with
 zero browser errors, unexpected requests or checked geometry failures. It caught

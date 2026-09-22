@@ -195,3 +195,141 @@ Fixture replies are instant, so nothing here measures server or provider
 cost. Passing probes do not establish production layout, live authentication
 or real data. Seven probes remain red, and their later assertions have
 still not run; twelve more were not run at all.
+
+## Second pass: the card's contract, and the probe's real assertions
+
+The owner settled the open question: the selected-truck card is meant to be
+closed at every width, showing the top line and the miles to the next stop,
+with a disclosure for the rest. That is the contract this pass then held the
+probe and the guide to.
+
+### What changed
+
+`hoursForecastSmoke` now opens the card the way a dispatcher does. A helper
+clicks the chevron and checks it opened; the cold-selection check first
+asserts the closed card still carries the load, the miles left and the four
+clocks, and only then opens it to look at the readings, the location and the
+route placeholders. Every new selection closes the card again - including
+reselecting the same truck - so the probe reopens it where it reads the
+lower section, and asserts that closing behaviour rather than working
+around it.
+
+`measureTruckControls` used to assert the card had no disclosure at all. It
+now asserts the opposite contract and more of it: exactly one chevron and no
+Details/Hide wording, the lower section hidden while closed, the driver and
+trailer still readable in the closed card, the chevron's own bounds
+unchanged between the two states, and every lower group visible once open.
+
+Nine further expectations were moved to where the September 19 redraw put
+the thing they describe: the load and its order and the miles left now read
+in the head, so their busy state, their label/value pair and their geometry
+are read there; the vehicle line closes the card instead of opening it, so
+the gap is measured route-to-vehicle; the delivery window belongs to the
+visit, not the timing column; the ETA reads in the head; the distance column
+says `Run`, not `Remaining`; Close now stands beside Back in a stop
+inspector; and a phone card stacks its groups instead of placing them
+side by side. `Client/tests/browser/README.md` was corrected to the same
+contract.
+
+Where a part of the card no longer exists, its check now fails by name
+instead of throwing on a null and taking the rest of the run with it.
+
+### What the probe now establishes
+
+One case at 1440px completes, including the sixteen-cycle lifecycle loop.
+Nothing in the request, race, polling, pending/success/failure, ETA or fuel
+families fails; `unexpectedRequests` is empty and there are no browser
+errors. Specifically, these ran and passed:
+
+- Opening Dispatch reads one summary batch and no per-truck planning.
+- Reselecting the same truck rereads neither planning nor weather.
+- A held preview, a held load-details read and a held planning response are
+  released in that order; the card keeps the previous values through each
+  pending stage.
+- A held response that crosses the fixture's `ValidUntil` does not change
+  the displayed ETA text, times, status or colours - two quiet samples on
+  Dispatch and five on the map, three retained cards each.
+- A pending Dispatch response is polled, and polling does not erase or
+  replace the retained board stop times.
+- With the map disposed, thirty seconds of fast-forwarded time adds no
+  planning read - asserted on each of sixteen cycles.
+
+### Sixteen cycles of Dispatch to map and back
+
+Timings are the staged Client's own cost against instant fixture replies on
+the host clock, which `page.clock` does not move. They are not server or
+provider time.
+
+| | cold (cycle 0) | median of 15 repeats |
+| --- | --- | --- |
+| open Dispatch | 69 ms | 61 ms |
+| open Fleet Map | 98 ms | 64 ms |
+| select the truck | 54 ms | 44 ms |
+
+Retention across the sixteen cycles, after a forced collection each time:
+JS heap 5.8 MB to 6.4 MB, DOM nodes 1210 to 1211 (one sample at 1342),
+listeners 36 throughout, documents 4 throughout. API reads grow by exactly
+14 per cycle, from 92 to 310 - constant per round trip, not accumulating.
+
+### What still fails, and why
+
+Every remaining failure is layout or type, and each traces to a change the
+owner made on September 19-20.
+
+- **The head grows when the ETA lands, 8 selectors x 3 stages.** Measured:
+  `.fleet-map-inspector__arrival` is 19.8px high with the placeholder and
+  36.4px with the forecast, so the header goes 78.8 to 83.2 and every row
+  below it moves down 4.4px. The placeholder in `FleetMap.razor` exists to
+  reserve that space and reserves one row where the loaded forecast takes
+  two. This one looks like a real defect rather than a stale expectation,
+  but the fix changes the card's resting height, so it is left for the
+  owner.
+- **Type scale, 10 messages x 2 phases.** The readings are 14px where the
+  fixture expects 16px, and several selectors it names (`__load-reference`,
+  `__metric > strong`, `__total > strong`) no longer exist. The card head
+  was rebuilt to the drawing in `3d0d50d`; the new numbers are a design
+  decision and were not invented here.
+- **Card layout, about ten messages.** Dials (the clocks are text now),
+  the duty line (the map asks `DriverHours` for clocks without it), column
+  dividers, and the two-column expectations all describe the previous card.
+- **A phone card scrolls sideways.** At 390px the card's scroll width
+  exceeds its client width by 73px, and the widest thing past the content
+  edge is `.fleet-map-mobile-summary__distance` at 32px - the "Left 120 mi
+  · 193 km" group in the head. `_hours-line.scss` keeps that group on one
+  line on purpose, so that it never breaks between a number and its unit;
+  on a phone showing both units there is not room for it. The assertion
+  now names the offender, and it stops the two 390px cases.
+
+### `fuelEditorSmoke`
+
+The same contract applies to the truck card the fuel editor opens beside,
+so its `assertTruckInformation` was turned round too: one disclosure,
+opened by the same click, and then the drawn order of the lower section -
+the route, the actions under the detail they act on, and the vehicle line
+last. It moves two failures further and then stops on its selected-truck
+HOS block, which measures four dials. The map asks `DriverHours` for text
+rather than dials, so that block describes the previous card and needs the
+same kind of rewrite; it was not attempted here.
+
+### Checks
+
+```
+cd Client
+HOURS_TEST_LIFECYCLE=1 MAP_TEST_ARTIFACT_DIR=<staged>/publish/wwwroot \
+  node tests/browser/hoursForecastSmoke.mjs
+HOURS_TEST_FLEET_ONLY=1 MAP_TEST_ARTIFACT_DIR=<staged>/publish/wwwroot \
+  node tests/browser/hoursForecastSmoke.mjs
+FUEL_EDITOR_CASE=1440-1000-light \
+  MAP_TEST_ARTIFACT_DIR=<staged>/publish/wwwroot \
+  node tests/browser/fuelEditorSmoke.mjs
+```
+
+### Blockers, exactly
+
+- `hoursForecastSmoke` 390px cases: the phone card's 73px sideways scroll.
+- `fuelEditorSmoke`: the selected-truck HOS block expects four dials.
+- `mapMarkersSmoke`, `stopDetailsSmoke`, `nativeInspectorSmoke`,
+  `stationPopupSmoke`, `stopCardsSmoke`: untouched in this pass beyond the
+  first causes fixed earlier; each stops at its own later assertion.
+- The head's 4.4px growth, the type scale and the card's column
+  expectations need the owner's decision, not a guess.

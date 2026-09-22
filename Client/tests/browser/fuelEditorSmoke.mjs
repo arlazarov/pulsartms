@@ -242,32 +242,41 @@ const report = {
   errors: [],
   unexpectedRequests: [],
 };
+// The truck card opens closed at every width, so its readings and route are
+// read after the chevron opens them, by the same click a dispatcher uses.
 async function assertTruckInformation(page, name) {
+  const toggle = page.getByRole('button', { name: 'Truck details' });
   assert.equal(
-    await page.locator('.fleet-map-mobile-summary__toggle').count(),
-    0,
-    `${name}: truck information has no disclosure control`,
+    await toggle.count(),
+    1,
+    `${name}: truck information keeps its one disclosure`,
   );
+  if ((await toggle.getAttribute('aria-expanded')) === 'false')
+    await toggle.click();
   assert.equal(
     await page.locator('#fleet-map-telemetry-details').isVisible(),
     true,
-    `${name}: truck readings and HOS remain visible`,
+    `${name}: truck readings become visible once the card is open`,
   );
   assert.equal(
     await page.locator('#fleet-map-route-details').isVisible(),
     true,
-    `${name}: load information remains visible below the readings`,
+    `${name}: load information becomes visible once the card is open`,
   );
-  assert.equal(
-    await page.locator('#fleet-map-details').evaluate(element => {
-      const panels = [...element.children].map(child => child.id);
-      return (
-        panels[0] === 'fleet-map-telemetry-details' &&
-        panels[1] === 'fleet-map-route-details'
-      );
-    }),
-    true,
-    `${name}: telemetry and HOS precede the load panel`,
+  const panels = await page
+    .locator('#fleet-map-details')
+    .evaluate(element =>
+      [...element.children].map(child => child.id || child.className),
+    );
+  assert.deepEqual(
+    panels.filter(panel => panel.startsWith('fleet-map-')),
+    [
+      'fleet-map-route-details',
+      'fleet-map-inspector__actions',
+      'fleet-map-telemetry-details',
+    ],
+    `${name}: the actions sit under the detail they act on, and the ` +
+      'vehicle line closes the card',
   );
 }
 const browser = await chromium.launch({
