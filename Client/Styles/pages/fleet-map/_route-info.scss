@@ -105,6 +105,9 @@
     display: flex;
     flex-direction: column;
     gap: ui.pg(xs);
+    // The address may be narrower than the words in it; without this the
+    // column holding it grew to the longest street instead.
+    min-inline-size: 0;
   }
   > .fleet-map-route-info__next .fleet-map-route-info__copy-address {
     flex-direction: row;
@@ -118,6 +121,10 @@
     min-width: 0;
   }
   &__street {
+    // A flex item does not shrink below its content unless it is told it
+    // may: without this the ellipsis never appeared and a long street
+    // widened the stop's column instead.
+    min-inline-size: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

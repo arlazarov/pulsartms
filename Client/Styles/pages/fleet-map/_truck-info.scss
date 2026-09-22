@@ -93,6 +93,9 @@
   }
   &__location {
     display: flex;
+    // The label may step above the address when the line is too narrow to
+    // hold both, which a phone at 200% text is.
+    flex-wrap: wrap;
     align-items: baseline;
     gap: ui.pg(xs);
     min-width: 0;
@@ -108,6 +111,13 @@
       font-size: ui.fs(body);
       font-weight: 400;
       min-width: 0;
+      max-inline-size: 100%;
+      // The address is one long word to a browser; at 200% text it reached
+      // past the card and put it into a sideways scroll. It folds instead.
+      > button {
+        max-inline-size: 100%;
+        overflow-wrap: anywhere;
+      }
     }
   }
   > * {

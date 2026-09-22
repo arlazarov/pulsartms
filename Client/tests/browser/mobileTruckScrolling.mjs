@@ -35,24 +35,50 @@ export async function checkMobileTruckScrolling(page, output, name) {
         routeBeforeReadings:
           main.getBoundingClientRect().bottom <=
           readings.getBoundingClientRect().top + 1,
-        horizontalOverflow: element.scrollWidth > element.clientWidth + 1,
+        // Whether the card actually scrolls sideways, which is the thing a
+        // reader complains about. A scroll width past the client width is
+        // not that on its own: a box that clips its own text to an ellipsis
+        // has one and cannot be scrolled.
+        horizontalOverflow: (() => {
+          const start = element.scrollLeft;
+          element.scrollLeft = element.scrollWidth;
+          const moved = element.scrollLeft > 0;
+          element.scrollLeft = start;
+          return moved;
+        })(),
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
         // Name what sticks out, so a sideways scroll says which part of the
-        // card is too wide instead of only that one is.
+        // card is too wide instead of only that one is. Two ways to be too
+        // wide: reaching past the card's edge, or being a box whose own
+        // contents do not fit it.
         overflowing: (() => {
-          const box = element.getBoundingClientRect();
-          const edge = box.left + element.clientWidth;
-          let worst = {
+          const edge =
+            element.getBoundingClientRect().left + element.clientWidth;
+          const worst = {
             over: Math.round(element.scrollWidth - element.clientWidth),
-            name: null,
+            past: null,
+            wider: null,
           };
           for (const node of element.querySelectorAll('*')) {
-            const over = node.getBoundingClientRect().right - edge;
-            if (over > 1 && (worst.name === null || over > worst.widest))
-              Object.assign(worst, {
-                name: node.className,
-                widest: Math.round(over),
-              });
+            const past = node.getBoundingClientRect().right - edge;
+            if (past > 1 && past > (worst.past?.by ?? 0))
+              worst.past = { name: node.className, by: Math.round(past) };
           }
+          // The innermost boxes that do not fit their own contents: an
+          // ancestor is wide only because one of these is.
+          worst.wider = [...element.querySelectorAll('*')]
+            .filter(
+              node =>
+                node.scrollWidth - node.clientWidth > 1 &&
+                ![...node.querySelectorAll('*')].some(
+                  child => child.scrollWidth - child.clientWidth > 1,
+                ),
+            )
+            .map(node => ({
+              name: node.className || node.tagName,
+              by: Math.round(node.scrollWidth - node.clientWidth),
+            }));
           return worst;
         })(),
         withinMap: bounds.top >= map.top - 1 && bounds.bottom <= map.bottom + 1,
@@ -90,7 +116,15 @@ export async function checkMobileTruckScrolling(page, output, name) {
       assert.equal(
         before.horizontalOverflow,
         false,
-        `The phone card scrolls sideways: ${JSON.stringify(before.overflowing)}`,
+        `The phone card scrolls sideways at ${variant.label}/${variant.font}: ` +
+          `${JSON.stringify(before.overflowing)} in ${before.clientWidth}px`,
+      );
+      assert.equal(
+        before.overflowing.past,
+        null,
+        `Part of the phone card reaches past its edge at ` +
+          `${variant.label}/${variant.font}: ` +
+          `${JSON.stringify(before.overflowing.past)}`,
       );
       assert.equal(before.withinMap, true);
       assert.equal(

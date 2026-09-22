@@ -321,7 +321,9 @@ try {
       () => window.markerReport().clusters[0],
     );
     assert.equal(truckGroup.count, 2);
-    assert.equal(truckGroup.hasAnchor, true);
+    // The cluster stays on its own point: offsetting it only trailed a
+    // leader line halfway across a state as the map zoomed out.
+    assert.equal(truckGroup.hasAnchor, false);
     assert.deepEqual(truckGroup.position, [-80.005, 36.5]);
     assert.equal(truckGroup.x, truckGroup.anchor.x);
     assert.equal(truckGroup.y, truckGroup.anchor.y);

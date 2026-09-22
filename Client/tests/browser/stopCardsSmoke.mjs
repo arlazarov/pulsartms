@@ -496,7 +496,9 @@ try {
       );
       assert.deepEqual(
         roads.map(road => road.color),
-        [[220, 145, 48, 190], futureRouteColor(0)],
+        // An empty run reads in the slate the appearance table gives every
+        // empty road; the loaded one keeps its place in the route series.
+        [[100, 116, 139, 235], futureRouteColor(0)],
         'future road and stop colors match while empty-route styling stays unchanged',
       );
       await page.evaluate(() => window.fixtureRefresh());

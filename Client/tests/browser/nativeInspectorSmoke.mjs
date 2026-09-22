@@ -126,7 +126,9 @@ try {
           ['20%', '100%'],
         );
         assert.match(
-          await native.locator('.fleet-station-popup__cost-value').innerText(),
+          await native
+            .locator('.fleet-fuel-visit__figure > .fleet-fuel-visit__value')
+            .innerText(),
           /123\.45/,
         );
         await page.evaluate(() => {

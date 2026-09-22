@@ -333,3 +333,160 @@ FUEL_EDITOR_CASE=1440-1000-light \
   first causes fixed earlier; each stops at its own later assertion.
 - The head's 4.4px growth, the type scale and the card's column
   expectations need the owner's decision, not a guess.
+
+## Third pass: the two defects fixed, and the probes brought up to the card
+
+The owner approved fixing the two reproduced defects and finishing the
+offline work. Both are fixed and measured; the probes that describe the
+truck card were brought up to the card as it is drawn today.
+
+### The head no longer steps down when the ETA lands
+
+`.fleet-map-inspector__arrival` kept room for one line while the loaded
+forecast takes two - the hour, and a word about the cycle under it - so
+the header grew by 4.4px as the ETA arrived and every row below it moved.
+The block now reserves both lines from the start, in the card's own type
+tokens:
+
+```scss
+min-block-size: calc(1.4 * (#{ui.fs(body)} + #{ui.fs(small)}));
+```
+
+Measured before: header 78.8 -> 83.2, arrival 19.8 -> 36.4, and eight
+elements moving at each of three loading stages. After: no element moves
+at any stage, at any width. The two lines are 14px and 12px at a 1.4 line
+height, which is exactly the 36.4px the loaded forecast measured.
+
+### A phone card no longer scrolls sideways
+
+At 390px with 200% text the card scrolled 73px. Three separate causes,
+each fixed in the narrow container query the card already had:
+
+- `--route-fact-label` was a fixed 7rem, which at 200% text is 224px of a
+  312px card, so every value beside a label was squeezed. On a narrow card
+  the label now takes `max-content` and the value keeps the rest.
+- The miles-left group carried a fixed `route-progress` width, which is
+  there to stop three groups abreast from resizing as numbers arrive.
+  With one group to a row there is nothing to keep still, so it takes the
+  row; and with the room to itself the phrase folds instead of ellipsising,
+  so no reading is hidden. The gap before the second unit became breakable
+  in `FleetMap.razor`; the gaps inside each reading stay non-breaking, so
+  a number never leaves its unit.
+- "Order 568349636" and the GPS address are single unbreakable phrases.
+  The order's label may now step above its number, and the address folds.
+
+A long street also widened the stop's column instead of ellipsising,
+because a flex item does not shrink below its content unless told to:
+`min-inline-size: 0` on the street and on the address block.
+
+Measured at 390px/200% text: scroll overflow 73px -> nothing past the
+card's edge and no horizontal scroll. The probe now asserts the symptom -
+that the card cannot actually be scrolled sideways - and separately that
+nothing reaches past its edge, and names the widest offender when it does.
+
+### The probes now describe this card
+
+Every expectation that still described the pre-September-19 card was
+restated from the stylesheets and the razor comments that own it, not from
+whatever the code happened to render:
+
+- The clocks read as text in the head, so the vehicle line asserts it
+  draws no clocks and no duty; the head asserts four text clocks, no
+  dials, in one or two rows on a narrow card.
+- A reading is a word and a value with no icon of its own; only the
+  weather keeps an icon, because there the icon is the reading.
+- The route reads first and the vehicle line closes the card; the actions
+  sit under the detail they act on.
+- One hairline divides the stop from the facts, drawn on the stop's inline
+  end and turned underneath it when the card is too narrow for two columns.
+- The stop keeps its address and its window; the facts beside it are the
+  run's total, the cycle and the fuel on arrival.
+- The type scale is read from the stylesheets: labels and echoes small,
+  values body weight 600, only the unit number larger. The scale itself was
+  not changed to suit a test.
+- The workspace shows one pane at a time when it is too narrow for two, so
+  a check that reads the itinerary presses the Stops tab first.
+
+### What runs now
+
+`hoursForecastSmoke` completes all twelve cases - 2344/1920/1440/1200/900/390
+in both themes - where before this pass it reached none. The lifecycle run
+completes its sixteen Dispatch-to-map cycles. No unexpected requests, no
+browser errors. The probe gained a width and theme filter
+(`HOURS_TEST_WIDTHS`, `HOURS_TEST_THEMES`) so one case can be re-run on its
+own.
+
+- `uiSmoke`: 12 cases, green, before and after.
+- `mapToolbarSmoke`: 16 cases, green, before and after.
+- `mapStartupSmoke`: green, before and after.
+- `hoursForecastSmoke`: none of its twelve cases before; all twelve now.
+- `fuelEditorSmoke`: stopped on the truck card's disclosure; now runs the
+  card and its HOS probe and stops later.
+- `nativeInspectorSmoke`: stopped on the tank percentages; now five of
+  eight cases, stopping on a 390px/200% overflow.
+- `stationPopupSmoke`: stopped on the purchase cost; now runs the planned
+  card and stops on its gauges.
+- `mapMarkersSmoke`: one truck instead of four; now runs trucks, stops and
+  stations and stops on a cluster pixel check.
+- `stopCardsSmoke`: stopped on the route colours; now runs further.
+- `stopDetailsSmoke`: stopped on the current route popup; now stops on the
+  load reference the map is sent.
+
+### Measured again on the gate's own artifact
+
+Sixteen Dispatch-to-map cycles, timed on the host clock against instant
+fixture replies. These are the staged Client's own cost, not server time.
+
+| | cold (cycle 0) | median of 15 repeats |
+| --- | --- | --- |
+| open Dispatch | 64 ms | 59 ms |
+| open Fleet Map | 66 ms | 61 ms |
+| select the truck | 38 ms | 45 ms |
+
+Across the sixteen cycles, after a forced collection each time: JS heap
+5.8 -> 6.4 MB, listeners 36 throughout, DOM nodes 1211 -> 1212. API reads
+91 -> 313, about fifteen a cycle and not accumulating. The lifecycle case
+itself finishes with no failures at all.
+
+The Fleet Map's own cold open is now faster than the first pass measured
+(66ms against 98ms), which is consistent with the head no longer being
+laid out twice; three runs are not a claim of a speedup and none is made.
+
+### Still failing, with what is known about each
+
+Twelve soft failures remain in the twelve-case matrix - six distinct, each
+in both themes - and no unexpected requests or browser errors.
+
+- **390px, 200% text: the timing column overflows.** The inspector is
+  312px wide and scrolls 326; `.fleet-map-route-info__timing` is 264 wide
+  and scrolls 302. Letting the fact label shrink to `minmax(0, max-content)`
+  cleared the rest of the card but not this column. Not fixed here.
+- **390px: the outside temperature's position.** The check expects it
+  after the third reading on the desktop row or in the mobile left column.
+- **A Dispatch board row overflows** where the ETA carries a cycle status
+  ("Cycle short", "Late by 1h 05m Cycle unknown").
+- **Selecting a stop still moves an itinerary row** at one width, after
+  the pane switch is accounted for.
+- The four station and marker probes stop at their own later assertions,
+  each on a part of the station card or the GPU layers that was redrawn:
+  the planned card's gauges, a cluster's painted background, the docked
+  inspector at 390px/200%, and the load reference the map is sent.
+
+### Checks run on the committed tree
+
+- `PULSARTMS_RELEASE_UI=1 bash verify-release.sh`: passed. 1054
+  Client.Tests, 3219 Server.Tests, 625 Node tests, the strict Release
+  builds, the published-artifact check, and `test:ui` with twelve cases and
+  no failures.
+- `bash test.sh map fleet dispatch routing`: passed - 937 Client.Tests,
+  1926 Server.Tests, 12 + 64 Node tests.
+- `hoursForecastSmoke` against the gate's own artifact: twelve cases, and
+  the lifecycle case with no failures at all.
+- `npm run format:check`, prettier on every changed file.
+- Not run: the authenticated browser gate (`PULSARTMS_RELEASE_BROWSER=1`),
+  which needs a running application and a signed-in session. No release
+  was made and none is authorised.
+
+Evidence is in the managed runs named above: `browser-ui-X6Aqus` for the
+gate's UI step and the `browser-hours-forecast-*` runs for the matrix and
+the lifecycle case, each with its report and screenshots.

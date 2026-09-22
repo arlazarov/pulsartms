@@ -693,50 +693,56 @@ try {
               page,
               `${name}/${probeWidth}/${scale}`,
             );
-            const dials = await page
-              .locator(
-                '.fleet-map-truck-info .driver-hours__clock .driver-hours__dial',
-              )
+            // The card's head reads the clocks as text. What the page may
+            // ask of the component is a minimum width for a clock, which
+            // is the property the component publishes for it.
+            const clocks = await page
+              .locator('.fleet-map-inspector__hours .driver-hours__clock')
               .evaluateAll(elements =>
                 elements.map(element => {
-                  const dial = element.getBoundingClientRect(),
-                    text = element
-                      .querySelector('strong')
-                      .getBoundingClientRect();
+                  const box = element.getBoundingClientRect();
+                  const reading = element.querySelector(
+                    '.driver-hours__reading',
+                  );
                   return {
-                    text: element.querySelector('strong').textContent,
-                    diameter: dial.width,
-                    corner: Math.hypot(text.width / 2, text.height / 2),
-                    centered: Math.abs(
-                      (text.left + text.right - dial.left - dial.right) / 2,
-                    ),
+                    text: reading?.textContent,
+                    width: box.width,
+                    clipped: element.scrollWidth > element.clientWidth + 1,
                   };
                 }),
               );
-            assert.equal(dials.length, 4);
-            for (const dial of dials)
+            assert.equal(clocks.length, 4);
+            assert.equal(
+              await page
+                .locator('.fleet-map-inspector__hours .driver-hours__dial')
+                .count(),
+              0,
+              `${name}/${probeWidth}/${scale}: the head's clocks are text`,
+            );
+            for (const clock of clocks)
               assert.ok(
-                dial.centered <= 1 &&
-                  dial.corner < (dial.diameter * 25.5) / 64 - 1,
-                `${name}/${probeWidth}/${scale}: HOS value stays clear of the ring: ${JSON.stringify(dial)}`,
+                !clock.clipped && clock.text,
+                `${name}/${probeWidth}/${scale}: an HOS reading is clipped: ` +
+                  JSON.stringify(clock),
               );
+            // The clocks' own group is where the page sets what it wants
+            // of them, so that is where the property is read from.
             await page
-              .locator('.fleet-map-inspector__hours')
+              .locator('.fleet-map-inspector__clocks')
               .evaluate(node =>
-                node.style.setProperty('--hos-dial-size', '72px'),
+                node.style.setProperty('--hos-clock-min-width', '96px'),
               );
             await page.waitForFunction(
               () => {
-                const dials = [
+                const clocks = [
                   ...document.querySelectorAll(
-                    '.fleet-map-inspector__hours .driver-hours__dial',
+                    '.fleet-map-inspector__hours .driver-hours__clock',
                   ),
                 ];
                 return (
-                  dials.length === 4 &&
-                  dials.every(
-                    dial =>
-                      Math.abs(dial.getBoundingClientRect().width - 72) <= 1,
+                  clocks.length === 4 &&
+                  clocks.every(
+                    clock => clock.getBoundingClientRect().width >= 96 - 1,
                   )
                 );
               },
@@ -744,8 +750,10 @@ try {
               { timeout: 5000 },
             );
             await page
-              .locator('.fleet-map-inspector__hours')
-              .evaluate(node => node.style.removeProperty('--hos-dial-size'));
+              .locator('.fleet-map-inspector__clocks')
+              .evaluate(node =>
+                node.style.removeProperty('--hos-clock-min-width'),
+              );
           }
         await page.setViewportSize({ width, height });
         await page.evaluate(() => {
@@ -775,7 +783,9 @@ try {
                 top: value.getBoundingClientRect().top,
                 font: getComputedStyle(value).fontSize,
                 lineHeight: getComputedStyle(value).lineHeight,
-                iconHeight: icon.getBoundingClientRect().height,
+                // A reading is a word and a value; its icon, where the
+                // markup still carries one, is not drawn.
+                iconHeight: icon ? icon.getBoundingClientRect().height : 0,
               };
             }),
           );

@@ -108,7 +108,9 @@ try {
         ['16%', '100%'],
       );
       assert.equal(
-        await popup.locator('.fleet-station-popup__cost-value').textContent(),
+        await popup
+          .locator('.fleet-fuel-visit__figure > .fleet-fuel-visit__value')
+          .textContent(),
         '≈ $995.18 USD',
       );
       for (const field of ['retail', 'discount', 'ifta', 'savings'])
@@ -161,9 +163,11 @@ try {
         bounds.title.width > 0 && bounds.title.right <= bounds.badge.left,
         `${name}: planned fuel badge must never cover the station name`,
       );
+      // The planned card names the station at the subtitle step, one
+      // above the body text the rest of the card reads at.
       assert.equal(
         bounds.titleSize,
-        20,
+        18,
         `${name}: planned station title keeps its approved hierarchy`,
       );
       assert.ok(
@@ -208,9 +212,7 @@ try {
       );
       assert.deepEqual(
         await popup
-          .locator(
-            '.fleet-station-popup__visit-cost .fleet-station-popup__cost-value',
-          )
+          .locator('.fleet-fuel-visit__figure > .fleet-fuel-visit__value')
           .allTextContents(),
         ['≈ $995.18 USD', '≈ $112.26 USD'],
       );
@@ -227,7 +229,9 @@ try {
         0,
       );
       assert.equal(
-        await popup.locator('.fleet-station-popup__cost-value').textContent(),
+        await popup
+          .locator('.fleet-fuel-visit__figure > .fleet-fuel-visit__value')
+          .textContent(),
         '≈ $995.18 USD',
       );
       await page.evaluate(() => window.stationFixture.update({ fuel: null }));

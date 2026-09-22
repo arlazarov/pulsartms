@@ -6,6 +6,11 @@
   // 700px wide has room for both columns and was stacked anyway.
   @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
     .fleet-map-route-info {
+      // A label column of a fixed 7rem is most of a phone card once the
+      // reader asks for 200% text, and every value beside it was squeezed
+      // into a sideways scroll. Here the label takes what it needs and the
+      // value keeps the rest.
+      --route-fact-label: minmax(0, max-content);
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: none;
       row-gap: ui.pg(xs);
@@ -90,8 +95,29 @@
       .fleet-map-mobile-summary__remaining {
         min-inline-size: 0;
       }
+      // "Order 568349636" is one unbreakable phrase, and at 200% text it is
+      // wider than a phone card. The label may step above its number; the
+      // number itself still never breaks.
+      .fleet-map-mobile-summary__order {
+        flex-wrap: wrap;
+        white-space: normal;
+      }
       .fleet-map-mobile-summary__distance {
         justify-items: start;
+        // The fixed width keeps three groups abreast from resizing as the
+        // numbers arrive. Here there is only one group on the row, and at
+        // 200% text that width is wider than the card: it pushed the card
+        // into a sideways scroll. The group takes the row instead.
+        inline-size: auto;
+        max-inline-size: 100%;
+      }
+      // With the room to itself the phrase folds rather than ellipsising,
+      // so no reading is hidden. It still never breaks between a number
+      // and the unit it belongs to: those gaps are non-breaking.
+      .fleet-map-mobile-summary__distance-text {
+        overflow: visible;
+        text-overflow: clip;
+        white-space: normal;
       }
       .fleet-map-inspector__clocks {
         justify-self: start;

@@ -81,6 +81,11 @@
     display: grid;
     min-width: 0;
     font-size: ui.fs(body);
+    // The forecast reads as the hour and, when there is one, a word about
+    // the cycle under it. The block keeps room for both from the start:
+    // the placeholder is one line, so without this the head grew by the
+    // second line as the ETA landed and every row below it stepped down.
+    min-block-size: calc(1.4 * (#{ui.fs(body)} + #{ui.fs(small)}));
     // The real estimate replaces the dash rather than joining it.
     &:has(> .arrival-estimate) > .fleet-map-inspector__arrival-placeholder {
       display: none;
