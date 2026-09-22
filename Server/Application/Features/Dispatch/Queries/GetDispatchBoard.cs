@@ -97,22 +97,6 @@ public class GetDispatchBoardHandler(
       .Select(x => x.Id)
       .Distinct()
       .ToArray();
-    var detailRows = await dbContext
-      .Dispatches.AsNoTracking()
-      .Where(x => loadIds.Contains(x.Id))
-      .Select(DispatchProjection.Details)
-      .Select(detail => new
-      {
-        Detail = detail,
-        NativeOwned = dbContext.LoadExecutionLegs.Any(link =>
-          link.DispatchId == detail.Id
-        ),
-      })
-      .ToListAsync(cancellationToken);
-    var detailsMs = Take("details", ref stage);
-    var details = detailRows.ToDictionary(x => x.Detail.Id, x => x.Detail);
-    foreach (var detail in details.Values)
-      DispatchProjection.Complete(detail);
     var legIds = page.SelectMany(x => x.Dispatches)
       .Where(x => x.ExecutionLegId.HasValue)
       .Select(x => x.ExecutionLegId!.Value)
@@ -120,13 +104,7 @@ public class GetDispatchBoardHandler(
       .ToArray();
     var native =
       legIds.Length == 0
-        ? new TruckExecutionLoads(
-          [],
-          detailRows
-            .Where(x => x.NativeOwned)
-            .Select(x => x.Detail.Id)
-            .ToHashSet()
-        )
+        ? new TruckExecutionLoads([], new HashSet<Guid>())
         : await ExecutionLoads.ReadAsync(
           dbContext,
           names,
@@ -137,6 +115,23 @@ public class GetDispatchBoardHandler(
           legIds
         );
     var executionMs = Take("execution", ref stage);
+    var sourceIds = loadIds
+      .Where(id => !native.OwnedDispatchIds.Contains(id))
+      .ToArray();
+    var details =
+      sourceIds.Length == 0
+        ? new Dictionary<Guid, DispatchResponse>()
+        : await dbContext
+          .Dispatches.AsNoTracking()
+          .Where(x =>
+            sourceIds.Contains(x.Id)
+            && !dbContext.LoadExecutionLegs.Any(link => link.DispatchId == x.Id)
+          )
+          .Select(DispatchProjection.Details)
+          .ToDictionaryAsync(x => x.Id, cancellationToken);
+    foreach (var detail in details.Values)
+      DispatchProjection.Complete(detail);
+    var detailsMs = Take("details", ref stage);
     if (request.IncludeFinancials)
       await deadhead.ReadAsync(
         details

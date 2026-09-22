@@ -12,24 +12,34 @@ internal sealed class CheckpointLeaseStore(AppDbContext db, Guid id)
     CancellationToken ct
   )
   {
-    if (!await db.SynchronizationCheckpoints.AnyAsync(x => x.Id == id, ct))
+    if (await TryAcquireAsync(owner, now, ct))
+      return true;
+    if (await db.SynchronizationCheckpoints.AnyAsync(x => x.Id == id, ct))
+      return false;
+    var checkpoint = new SynchronizationCheckpoint
     {
-      var checkpoint = new SynchronizationCheckpoint
-      {
-        Id = id,
-        LeaseUntil = now,
-        UpdatedAt = now,
-      };
-      db.SynchronizationCheckpoints.Add(checkpoint);
-      try
-      {
-        await db.SaveChangesAsync(ct);
-      }
-      catch (DbUpdateException)
-      {
-        db.Entry(checkpoint).State = EntityState.Detached;
-      }
+      Id = id,
+      LeaseUntil = now,
+      UpdatedAt = now,
+    };
+    db.SynchronizationCheckpoints.Add(checkpoint);
+    try
+    {
+      await db.SaveChangesAsync(ct);
     }
+    catch (DbUpdateException)
+    {
+      db.Entry(checkpoint).State = EntityState.Detached;
+    }
+    return await TryAcquireAsync(owner, now, ct);
+  }
+
+  private async Task<bool> TryAcquireAsync(
+    string owner,
+    DateTime now,
+    CancellationToken ct
+  )
+  {
     return await db
         .SynchronizationCheckpoints.Where(x =>
           x.Id == id && (x.LeaseUntil <= now || x.Owner == owner)

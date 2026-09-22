@@ -125,6 +125,7 @@ public static partial class FuelOptimizer
               + Math.Max(0, from.Station.DetourMinutes)
                 / 60
                 * profile.DriverHourlyCostUsd;
+          List<Purchase>? stops = null;
           for (var j = i + 1; j < buckets.Count; j++)
           {
             var to = j > stations.Count ? null : stations[j - 1];
@@ -224,65 +225,49 @@ public static partial class FuelOptimizer
             if (!buckets[j].TryGetValue(key, out var alternatives))
               buckets[j][key] = alternatives = [];
             var count = incoming.Purchases.Count + (from is null ? 0 : 1);
-            if (
-              alternatives.Any(x =>
-                x.Fuel == arrival
-                && x.Cost <= cost
-                && (!fewestStops || x.Purchases.Count <= count)
-              )
-            )
+            if (Dominates(alternatives, arrival, cost, count, fewestStops))
               continue;
-            var stops = incoming.Purchases.ToList();
-            if (from is not null)
-              stops.Add(
-                new(
-                  new FuelPlanStop
-                  {
-                    StationId = from.Station.StationId,
-                    Name = from.Station.Name,
-                    Address = from.Station.Address,
-                    Point = from.Station.Point,
-                    MilesAhead = from.AlongMiles + from.ExtraInMiles,
-                    ArrivalGallons = incoming.Fuel,
-                    BuyGallons = quantity,
-                    DepartureGallons = departure,
-                    FillToTarget = full,
-                    YourPrice = from.Station.YourPrice,
-                    EconomicPrice = from.Station.EconomicPrice,
-                    Currency = from.Station.Currency,
-                    Unit = from.Station.Unit,
-                    DetourMiles = Math.Max(
-                      0,
-                      from.ExtraInMiles + from.ExtraOutMiles
-                    ),
-                    DetourMinutes = from.Station.DetourMinutes,
-                    PriceDate = from.Station.PriceDate,
-                    EstimatedArrival = from.Station.EstimatedArrival,
-                    PriceEstimated = from.Station.PriceEstimated,
-                  },
-                  from
-                )
-              );
+            // Every destination shares this immutable purchase prefix.
+            if (stops is null)
+            {
+              stops = incoming.Purchases.ToList();
+              if (from is not null)
+                stops.Add(
+                  new(
+                    new FuelPlanStop
+                    {
+                      StationId = from.Station.StationId,
+                      Name = from.Station.Name,
+                      Address = from.Station.Address,
+                      Point = from.Station.Point,
+                      MilesAhead = from.AlongMiles + from.ExtraInMiles,
+                      ArrivalGallons = incoming.Fuel,
+                      BuyGallons = quantity,
+                      DepartureGallons = departure,
+                      FillToTarget = full,
+                      YourPrice = from.Station.YourPrice,
+                      EconomicPrice = from.Station.EconomicPrice,
+                      Currency = from.Station.Currency,
+                      Unit = from.Station.Unit,
+                      DetourMiles = Math.Max(
+                        0,
+                        from.ExtraInMiles + from.ExtraOutMiles
+                      ),
+                      DetourMinutes = from.Station.DetourMinutes,
+                      PriceDate = from.Station.PriceDate,
+                      EstimatedArrival = from.Station.EstimatedArrival,
+                      PriceEstimated = from.Station.PriceEstimated,
+                    },
+                    from
+                  )
+                );
+            }
             alternatives.Add(new(cost, arrival, stops));
             // Bound fractional alternatives by cash, terminal value and range;
             // never round a retained balance or its cost.
             // This is a bounded local search, not a proof of a global optimum
             // across every possible fuel balance.
-            var ordered = alternatives.OrderBy(x =>
-              fewestStops ? x.Purchases.Count : 0
-            );
-            buckets[j][key] = new[]
-            {
-              ordered.ThenBy(x => x.Cost).First(),
-              ordered.ThenBy(FinalScore).First(),
-              ordered.ThenByDescending(x => x.Fuel).ThenBy(x => x.Cost).First(),
-              alternatives
-                .OrderByDescending(x => x.Fuel)
-                .ThenBy(x => x.Cost)
-                .First(),
-            }
-              .Distinct()
-              .ToList();
+            RetainAlternatives(alternatives, fewestStops, arrivalPolicy);
           }
         }
       }

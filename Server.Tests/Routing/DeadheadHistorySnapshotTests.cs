@@ -1,5 +1,7 @@
+using System.Collections.Immutable;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
+using Domain.Rules.Routing;
 using Microsoft.EntityFrameworkCore;
 using Server.Tests.Support;
 
@@ -9,6 +11,109 @@ namespace Server.Tests.Routing;
 [Trait("Kind", "Integration")]
 public sealed class DeadheadHistorySnapshotTests
 {
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task BatchedNativeHistoryDoesNotWidenCompletedEligibility(
+    bool savedReference
+  )
+  {
+    await using var f = await SavedFuelHorizonFixture.CreateAsync();
+    var leg = await f.ReceiveCurrentAsync();
+    leg.Status = "completed";
+    if (savedReference)
+    {
+      var saved = await f.Db.DispatchDeadheads.SingleAsync(x =>
+        x.DispatchId == f.Future.Id
+      );
+      saved.PreviousExecutionLegId = leg.Id;
+    }
+    await f.Db.SaveChangesAsync();
+    var first = RouteWorkProjection.Capture(f.Future);
+    var earlier = first.ShipDate!.Value.AddDays(-10);
+    var second = first with
+    {
+      Id = Guid.NewGuid(),
+      ShipDate = earlier,
+      Stops = first
+        .Stops.Select(x => x with { ScheduledDate = earlier })
+        .ToImmutableArray(),
+    };
+    if (savedReference)
+      first = first with { ShipDate = earlier, Stops = second.Stops };
+    var expectedFirst = await f.Services.DeadheadHistory.ReadLoadedAsync(
+      [first],
+      default
+    );
+    var expectedSecond = await f.Services.DeadheadHistory.ReadLoadedAsync(
+      [second],
+      default
+    );
+    var actual = await f.Services.DeadheadHistory.ReadLoadedBatchesAsync(
+      [
+        [first],
+        [second],
+      ],
+      default
+    );
+    Assert.Equal(
+      expectedFirst[first.Id].InputSignature,
+      actual[0][first.Id].InputSignature
+    );
+    Assert.Equal(
+      expectedSecond[second.Id].InputSignature,
+      actual[1][second.Id].InputSignature
+    );
+    Assert.Contains(
+      actual[0][first.Id].Predecessors,
+      x => x.ExecutionLegId == leg.Id
+    );
+    Assert.DoesNotContain(
+      actual[1][second.Id].Predecessors,
+      x => x.ExecutionLegId == leg.Id
+    );
+  }
+
+  [Fact]
+  public async Task RepeatedDispatchBatchesPreserveSeparateCapturedInputs()
+  {
+    await using var f = await SavedFuelHorizonFixture.CreateAsync();
+    var first = RouteWorkProjection.Capture(f.Future);
+    var second = first with
+    {
+      RouteChoiceRevision = first.RouteChoiceRevision + 1,
+    };
+    var expectedFirst = await f.Services.DeadheadHistory.ReadLoadedAsync(
+      [first],
+      default
+    );
+    var expectedSecond = await f.Services.DeadheadHistory.ReadLoadedAsync(
+      [second],
+      default
+    );
+    var actual = await f.Services.DeadheadHistory.ReadLoadedBatchesAsync(
+      [
+        [first],
+        [],
+        [second],
+      ],
+      default
+    );
+    Assert.Equal(
+      expectedFirst[first.Id].InputSignature,
+      actual[0][first.Id].InputSignature
+    );
+    Assert.Empty(actual[1]);
+    Assert.Equal(
+      expectedSecond[second.Id].InputSignature,
+      actual[2][second.Id].InputSignature
+    );
+    Assert.Equal(
+      second.RouteChoiceRevision,
+      actual[2][second.Id].Current.RouteChoiceRevision
+    );
+  }
+
   [Fact]
   public async Task CompletedHistoryHydratesInTheCandidateReadTransaction()
   {

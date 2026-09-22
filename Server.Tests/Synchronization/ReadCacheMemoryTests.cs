@@ -27,6 +27,15 @@ public class ReadCacheMemoryTests
       AssignmentRevision = 42,
       PlanJson = json,
       InputHash = "original",
+      GeometryChunks =
+      [
+        new()
+        {
+          CompanyId = Guid.NewGuid(),
+          Key = "immutable",
+          CoordinatesJson = "[40,-80]",
+        },
+      ],
     };
     var calls = 0;
     Task<DispatchRoutePlan> Load()
@@ -41,6 +50,15 @@ public class ReadCacheMemoryTests
     var legId = entity.ExecutionLegId;
     Assert.Equal(legId, copy.ExecutionLegId);
     Assert.Equal(42, copy.AssignmentRevision);
+    var chunkCompany = entity.GeometryChunks[0].CompanyId;
+    copy.GeometryChunks[0].CompanyId = Guid.NewGuid();
+    entity.GeometryChunks[0].CompanyId = Guid.NewGuid();
+    var chunkCopy = await cache.GetAsync("route", "one", Load);
+    Assert.Equal(chunkCompany, chunkCopy.GeometryChunks[0].CompanyId);
+    Assert.Same(
+      entity.GeometryChunks[0].CoordinatesJson,
+      chunkCopy.GeometryChunks[0].CoordinatesJson
+    );
     copy.PlanJson = "changed";
     entity.InputHash = "changed";
     copy.ExecutionLegId = null;

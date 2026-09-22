@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Application.Caching;
+using Application.Features.Routing.Interfaces;
 using Domain.Entities.Dispatch;
 using Domain.Models.Routing;
 using Domain.Rules;
@@ -9,9 +10,25 @@ namespace Application.Features.Routing.Services.Routes;
 public sealed class RoutePlanStore(
   IAppDbContext db,
   ReadCache reads,
-  TruckPlanningProfileService profiles
+  TruckPlanningProfileService profiles,
+  ISavedRoutePlanReader metadata
 )
 {
+  public Task<SavedRoutePlanMetadata?> ReadMetadataAsync(
+    Guid dispatchId,
+    CancellationToken ct,
+    Guid? executionLegId = null
+  ) =>
+    reads.GetAsync(
+      CacheKey(dispatchId, executionLegId),
+      "metadata",
+      () =>
+        executionLegId is { } legId
+          ? metadata.ReadExecutionLegAsync(legId, ct)
+          : metadata.ReadAsync(dispatchId, ct),
+      ct: ct
+    );
+
   public Task<DispatchRoutePlan?> ReadAsync(
     Guid dispatchId,
     CancellationToken ct,
@@ -23,25 +40,33 @@ public sealed class RoutePlanStore(
       () => ReadUncachedAsync(dispatchId, ct, executionLegId)
     );
 
-  public Task<DispatchRoutePlan?> ReadUncachedAsync(
+  public async Task<DispatchRoutePlan?> ReadUncachedAsync(
     Guid dispatchId,
     CancellationToken ct,
     Guid? executionLegId = null
   ) =>
-    db
-      .DispatchRoutePlans.AsNoTracking()
-      .SingleOrDefaultAsync(
+    await RoutePlanStorage.LoadAsync(
+      db,
+      await db
+        .DispatchRoutePlans.AsNoTracking()
+        .SingleOrDefaultAsync(
+          x => x.DispatchId == dispatchId && x.ExecutionLegId == executionLegId,
+          ct
+        ),
+      ct
+    );
+
+  public async Task<DispatchRoutePlan?> ReadForUpdateAsync(
+    Guid dispatchId,
+    CancellationToken ct,
+    Guid? executionLegId = null
+  ) =>
+    await RoutePlanStorage.LoadAsync(
+      db,
+      await db.DispatchRoutePlans.SingleOrDefaultAsync(
         x => x.DispatchId == dispatchId && x.ExecutionLegId == executionLegId,
         ct
-      );
-
-  public Task<DispatchRoutePlan?> ReadForUpdateAsync(
-    Guid dispatchId,
-    CancellationToken ct,
-    Guid? executionLegId = null
-  ) =>
-    db.DispatchRoutePlans.SingleOrDefaultAsync(
-      x => x.DispatchId == dispatchId && x.ExecutionLegId == executionLegId,
+      ),
       ct
     );
 
@@ -73,20 +98,33 @@ public sealed class RoutePlanStore(
         .AnyAsync(x => x.ExecutionLegId == insertedLeg, ct)
     )
       throw new RoutePlanningException("The route changed during calculation.");
-    var json = RoutePlanStorage.Serialize(plan);
+    var original = entity.PlanJson;
+    var originalManifest = entity.GeometryManifestJson;
+    await RoutePlanStorage.PrepareAsync(db, entity, plan, ct);
     var tracked = db.DispatchRoutePlans.Local.FirstOrDefault(x =>
       x.Id == entity.Id
     );
     if (tracked is not null)
-      tracked.PlanJson = json;
+    {
+      tracked.PlanJson = entity.PlanJson;
+      tracked.GeometryManifestJson = entity.GeometryManifestJson;
+      tracked.GeometryRevision = entity.GeometryRevision;
+      tracked.GeometryChunks = entity.GeometryChunks;
+    }
     else
     {
-      var original = entity.PlanJson;
       db.DispatchRoutePlans.Attach(entity);
-      entity.PlanJson = json;
       db.Entry(entity).Property(nameof(entity.PlanJson)).OriginalValue =
         original;
       db.Entry(entity).Property(nameof(entity.PlanJson)).IsModified = true;
+      db.Entry(entity).Property(nameof(entity.GeometryRevision)).IsModified =
+        originalManifest != entity.GeometryManifestJson;
+      db.Entry(entity)
+        .Property(nameof(entity.GeometryManifestJson))
+        .OriginalValue = originalManifest;
+      db.Entry(entity)
+        .Property(nameof(entity.GeometryManifestJson))
+        .IsModified = originalManifest != entity.GeometryManifestJson;
     }
     await db.SaveChangesAsync(ct);
     if (owned is not null)
@@ -175,8 +213,5 @@ public sealed class RoutePlanStore(
   }
 
   private static RoutePlan ReadPlan(DispatchRoutePlan entity) =>
-    JsonSerializer.Deserialize<RoutePlan>(
-      entity.PlanJson,
-      RoutingJson.Options
-    )!;
+    RoutePlanStorage.Read(entity)!;
 }

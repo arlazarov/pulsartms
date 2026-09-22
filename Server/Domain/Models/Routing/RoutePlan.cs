@@ -5,6 +5,8 @@ namespace Domain.Models.Routing;
 
 public sealed class RoutePlan
 {
+  [JsonIgnore]
+  public List<RouteMovement> CompletedMovement { get; } = [];
   public Guid Id { get; set; }
   public Guid DispatchId { get; set; }
   public Guid? ExecutionLegId { get; set; }

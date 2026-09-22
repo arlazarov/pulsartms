@@ -25,7 +25,7 @@ public sealed record GetDispatchPlanningQuery(
   }
 }
 
-public sealed class GetDispatchPlanningHandler(PlanningReadService service)
+public sealed class GetDispatchPlanningHandler(PlanningSummaryReader service)
   : IRequestHandler<
     GetDispatchPlanningQuery,
     RequestResponse<AutomaticPlanningResult>

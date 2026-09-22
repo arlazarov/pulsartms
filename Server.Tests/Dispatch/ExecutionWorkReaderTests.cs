@@ -272,8 +272,8 @@ public sealed class ExecutionWorkReaderTests
     Assert.Contains(f.Load.Id, execution.OwnedDispatchIds);
     Assert.Single(commands.Text, x => x.Contains("LoadExecutionLegs"));
     // The link read, the dispatches those links name, live handovers, and
-    // the three name tables.
-    Assert.Equal(6, commands.Text.Count);
+    // the combined resource names.
+    Assert.Equal(4, commands.Text.Count);
   }
 
   private sealed class CommandLog : DbCommandInterceptor

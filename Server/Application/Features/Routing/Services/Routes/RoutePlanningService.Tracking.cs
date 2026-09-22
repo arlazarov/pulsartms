@@ -58,10 +58,7 @@ public sealed partial class RoutePlanningService
       var entity =
         await store.ReadAsync(dispatchId, ct, load.ExecutionLegId)
         ?? throw new RoutePlanningException("Route not found.");
-      var plan = JsonSerializer.Deserialize<RoutePlan>(
-        entity.PlanJson,
-        RoutingJson.Options
-      )!;
+      var plan = RoutePlanStorage.Read(entity)!;
       if (
         entity.TruckId != work.TruckId
         || plan.TruckId != work.TruckId
@@ -72,15 +69,61 @@ public sealed partial class RoutePlanningService
         );
       var now = DateTime.UtcNow;
       var before = JsonSerializer.Serialize(plan.Tracking, RoutingJson.Options);
+      var geometry = displays.ExactGeometry(entity, plan);
       foreach (
         var point in (recent.Response?.Points ?? [])
           .Where(x =>
-            x.TruckId == load.TruckId && x.UpdatedAt <= truck?.UpdatedAt
+            x.TruckId == load.TruckId
+            && x.UpdatedAt <= truck?.UpdatedAt
+            && x.UpdatedAt <= now
+            && new RoutePoint((double)x.Latitude, (double)x.Longitude).IsValid
+            && (
+              plan.Tracking.LastObservationAt is null
+              || x.UpdatedAt > plan.Tracking.LastObservationAt
+            )
           )
           .OrderBy(x => x.UpdatedAt)
       )
+      {
         RouteStopTracker.Update(plan, load, point, now);
-      RouteStopTracker.Update(plan, load, truck, now);
+        RouteMovementRecorder.Observe(
+          plan,
+          geometry,
+          entity.GeometryRevision,
+          new(
+            point.UpdatedAt,
+            new((double)point.Latitude, (double)point.Longitude)
+          )
+        );
+        plan.Tracking.LastObservationAt = point.UpdatedAt;
+      }
+      var observation =
+        truck is not null
+        && truck.UpdatedAt <= now
+        && new RoutePoint(
+          (double)truck.Latitude,
+          (double)truck.Longitude
+        ).IsValid
+        && (
+          plan.Tracking.LastObservationAt is null
+          || truck.UpdatedAt > plan.Tracking.LastObservationAt
+        )
+          ? truck
+          : null;
+      RouteStopTracker.Update(plan, load, observation, now);
+      if (observation is not null)
+      {
+        RouteMovementRecorder.Observe(
+          plan,
+          geometry,
+          entity.GeometryRevision,
+          new(
+            observation.UpdatedAt,
+            new((double)observation.Latitude, (double)observation.Longitude)
+          )
+        );
+        plan.Tracking.LastObservationAt = observation.UpdatedAt;
+      }
       var sync = syncOptions.Value;
       var verdict = RerouteDecision.Judge(
         plan,
@@ -89,7 +132,8 @@ public sealed partial class RoutePlanningService
         sync.RouteDeviationMiles,
         sync.RouteDeviationSeconds,
         now,
-        forceReroute
+        forceReroute,
+        geometry
       );
       var progress = verdict.Progress;
       var remainingStops = verdict.RemainingStops;
@@ -100,11 +144,12 @@ public sealed partial class RoutePlanningService
           progress.Position!,
           ct
         );
-        var route = await baseRoutes.CurrentAsync(
+        var route = await baseRoutes.RecalculateAsync(
           load,
           plan.Profile,
           progress.Position!,
           remainingStops,
+          plan,
           ct
         );
         if (!plan.FromCurrentPosition && plan.Tracking.PassedStopIds.Count == 0)
@@ -145,8 +190,15 @@ public sealed partial class RoutePlanningService
         await using var transaction = await publication.BeginAsync(work, ct);
         await profiles.RequireRoutingCurrentAsync(load, profile, ct);
         await store.SaveAsync(entity, plan, ct);
-        await transaction.CommitAsync(ct);
-        store.Invalidate(dispatchId, load.ExecutionLegId);
+        await publication.CommitAsync(
+          transaction,
+          plan.TruckId,
+          ct,
+          () =>
+          {
+            store.Invalidate(dispatchId, load.ExecutionLegId);
+          }
+        );
         return true;
       }
       return false;

@@ -48,6 +48,8 @@ public static class DependencyInjection
     IConfiguration configuration
   )
   {
+    services.AddSingleton<IRuntimeMemoryReader, RuntimeMemoryReader>();
+    services.AddSingleton<IProcessMemoryMapReader, ProcessMemoryMapReader>();
     services.AddDbContext<AppDbContext>(
       (provider, options) =>
       {
@@ -198,6 +200,9 @@ public static class DependencyInjection
       )
       .RemoveAllLoggers();
     services.AddSingleton<SamsaraHosHistoryCache>();
+    services.AddSingleton<ICacheMemorySource>(sp =>
+      sp.GetRequiredService<SamsaraHosHistoryCache>()
+    );
     services.AddSingleton<SamsaraDriverCatalogCache>();
     services.AddScoped<ITruckCameraProvider, SamsaraTruckCameraProvider>();
     services.AddScoped<IFleetProvider, SamsaraFleetProvider>();
@@ -234,6 +239,7 @@ public static class DependencyInjection
       )
       .RemoveAllLoggers();
     services.AddHostedService<ApplicationWorker<IPlanningRefreshOperation>>();
+    services.AddHostedService<ApplicationWorker<IPlanningSummaryOperation>>();
     services.AddHostedService<ApplicationWorker<IBaseRouteOperation>>();
 
     var dispatchImport = configuration["DispatchImport:Provider"]?.Trim();

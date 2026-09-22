@@ -62,8 +62,15 @@ public sealed partial class RoutePlanningService(
       );
     await using var transaction = await publication.BeginAsync(work, ct);
     var saved = await profiles.SaveAsync(work.TruckId, profile, ct);
-    await transaction.CommitAsync(ct);
-    profiles.Invalidate(work.TruckId);
+    await publication.CommitAsync(
+      transaction,
+      work.TruckId,
+      ct,
+      () =>
+      {
+        profiles.Invalidate(work.TruckId);
+      }
+    );
     return saved;
   }
 

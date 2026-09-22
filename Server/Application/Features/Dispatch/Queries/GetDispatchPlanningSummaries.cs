@@ -25,7 +25,7 @@ public sealed record GetDispatchPlanningSummariesQuery(
 }
 
 public sealed class GetDispatchPlanningSummariesHandler(
-  PlanningReadService planning
+  BoardPlanningReader planning
 )
   : IRequestHandler<
     GetDispatchPlanningSummariesQuery,
@@ -37,7 +37,7 @@ public sealed class GetDispatchPlanningSummariesHandler(
     CancellationToken ct
   ) =>
     RequestResponse<List<AutomaticPlanningResult>>.Ok(
-      await planning.ForBoardAsync(
+      await planning.ReadAsync(
         new(
           Page: request.Page,
           Search: request.Search,

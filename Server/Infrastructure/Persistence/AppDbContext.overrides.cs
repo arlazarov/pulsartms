@@ -1,3 +1,4 @@
+using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,6 +24,41 @@ public partial class AppDbContext
   private void BeforeSaving()
   {
     ProtectExecutionHistory();
+    var removedPlans = ChangeTracker
+      .Entries<DispatchRoutePlan>()
+      .Where(x => x.State == EntityState.Deleted)
+      .Select(x => x.Entity.Id)
+      .ToHashSet();
+    if (
+      ChangeTracker
+        .Entries<RouteGeometryChange>()
+        .Any(x =>
+          x.State == EntityState.Modified
+          || x.State == EntityState.Deleted
+            && !removedPlans.Contains(x.Entity.RoutePlanId)
+        )
+    )
+      throw new InvalidOperationException("Route changes are immutable.");
+    if (
+      ChangeTracker
+        .Entries<RouteGeometryChunk>()
+        .Any(x =>
+          x.State == EntityState.Modified
+          || x.State == EntityState.Deleted
+            && !removedPlans.Contains(x.Entity.RoutePlanId)
+        )
+    )
+      throw new InvalidOperationException("Route chunks are immutable.");
+    if (
+      ChangeTracker
+        .Entries<RouteMovementChunk>()
+        .Any(x =>
+          x.State == EntityState.Modified
+          || x.State == EntityState.Deleted
+            && !removedPlans.Contains(x.Entity.RoutePlanId)
+        )
+    )
+      throw new InvalidOperationException("Route movement is immutable.");
     StampNewRowsWithTheCompany();
   }
 

@@ -1,15 +1,37 @@
 using Application.Caching;
 using Application.Interfaces;
+using Application.Models;
 using Domain.Models.Routing;
 using Domain.Rules.Routing;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 
-public sealed class FuelPlanMemory(ICurrentCompany companies) : IDisposable
+public sealed class FuelPlanMemory(ICurrentCompany companies)
+  : IDisposable,
+    ICacheMemorySource
 {
+  public IReadOnlyList<CacheMemorySnapshot> ReadMemory()
+  {
+    var stats0 = cache.GetCurrentStatistics();
+    return
+    [
+      new(
+        "fuel",
+        stats0?.CurrentEntryCount,
+        stats0?.CurrentEstimatedSize,
+        CacheBudgets.Fuel,
+        "bytes"
+      ),
+    ];
+  }
+
   private readonly MemoryCache cache = new(
-    new MemoryCacheOptions { SizeLimit = 8 * 1024 * 1024 }
+    new MemoryCacheOptions
+    {
+      TrackStatistics = true,
+      SizeLimit = CacheBudgets.Fuel,
+    }
   );
   private readonly KeyedGates gates = new();
   private readonly SemaphoreSlim priceGate = new(1);
@@ -112,10 +134,11 @@ public sealed class FuelPlanMemory(ICurrentCompany companies) : IDisposable
         )
           return null;
         var leg = route.Legs[index];
-        var size = Math.Max(1024L, leg.Points.Count * 64L);
-        if (size > 8 * 1024 * 1024)
+        var selected = new TruckRoute { Legs = [leg] };
+        var size = Math.Max(1024L, RouteGeometry.EstimateBytes(selected));
+        if (size > CacheBudgets.Fuel)
           return null;
-        var geometry = new RouteGeometry(new() { Legs = [leg] });
+        var geometry = new RouteGeometry(selected);
         if (found is null || found.CalculatedAt <= snapshot.CalculatedAt)
           cache.Set(
             key,

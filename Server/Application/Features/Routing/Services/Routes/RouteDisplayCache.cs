@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Application.Caching;
+using Application.Models;
 using Domain.Entities.Dispatch;
 using Domain.Models.Routing;
 using Domain.Rules;
@@ -8,11 +9,69 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Routing.Services.Routes;
 
-public sealed class RouteDisplayCache(ReadCache reads) : IDisposable
+public sealed class RouteDisplayCache(ReadCache reads)
+  : IDisposable,
+    ICacheMemorySource
 {
-  private const long Capacity = 32 * 1024 * 1024;
+  public IReadOnlyList<CacheMemorySnapshot> ReadMemory()
+  {
+    var stats0 = cache.GetCurrentStatistics();
+    var stats1 = exactIndexes.GetCurrentStatistics();
+    return
+    [
+      new(
+        "route-display",
+        stats0?.CurrentEntryCount,
+        stats0?.CurrentEstimatedSize,
+        CacheBudgets.RouteDisplay,
+        "bytes"
+      ),
+      new(
+        "route-indexes",
+        stats1?.CurrentEntryCount,
+        stats1?.CurrentEstimatedSize,
+        CacheBudgets.RouteIndexes,
+        "bytes"
+      ),
+    ];
+  }
+
+  private const long Capacity = CacheBudgets.RouteDisplay;
+  private readonly MemoryCache exactIndexes = new(
+    new MemoryCacheOptions
+    {
+      TrackStatistics = true,
+      SizeLimit = CacheBudgets.RouteIndexes,
+    }
+  );
+
+  public RouteGeometry ExactGeometry(DispatchRoutePlan entity, RoutePlan plan)
+  {
+    var key = (
+      entity.CompanyId,
+      entity.Id,
+      entity.GeometryRevision,
+      entity.GeometryManifestJson ?? entity.PlanJson
+    );
+    if (exactIndexes.TryGetValue<RouteGeometry>(key, out var existing))
+      return existing!;
+    var geometry = new RouteGeometry(plan.Route);
+    var bytes = geometry.EstimatedBytes + key.Item4.Length * 2L + 256;
+    if (bytes <= CacheBudgets.RouteIndexes)
+      exactIndexes.Set(
+        key,
+        geometry,
+        new MemoryCacheEntryOptions
+        {
+          Size = bytes,
+          SlidingExpiration = TimeSpan.FromMinutes(5),
+        }
+      );
+    return geometry;
+  }
+
   private readonly MemoryCache cache = new(
-    new MemoryCacheOptions { SizeLimit = Capacity }
+    new MemoryCacheOptions { TrackStatistics = true, SizeLimit = Capacity }
   );
   private readonly KeyedGates gates = new();
   private readonly SemaphoreSlim coldLoads = new(2, 2);
@@ -69,6 +128,9 @@ public sealed class RouteDisplayCache(ReadCache reads) : IDisposable
       new()
       {
         Id = entity.Id,
+        CompanyId = entity.CompanyId,
+        AssignmentRevision = entity.AssignmentRevision,
+        GeometryRevision = entity.GeometryRevision,
         DispatchId = entity.DispatchId,
         ExecutionLegId = entity.ExecutionLegId,
         TruckId = entity.TruckId,
@@ -77,14 +139,16 @@ public sealed class RouteDisplayCache(ReadCache reads) : IDisposable
       };
   }
 
-  public static Snapshot Create(DispatchRoutePlan entity)
+  public static Snapshot Create(DispatchRoutePlan entity) =>
+    Create(entity, RoutePlanStorage.Read(entity)!);
+
+  private static Snapshot Create(
+    DispatchRoutePlan entity,
+    RoutePlan plan,
+    RouteGeometry? exact = null
+  )
   {
-    var plan = JsonSerializer.Deserialize<RoutePlan>(
-      entity.PlanJson,
-      RoutingJson.Options
-    )!;
-    var geometry = new RouteGeometry(plan.Route);
-    var points = plan.Route.Legs.Sum(x => (long)x.Points.Count);
+    var geometry = exact ?? new RouteGeometry(plan.Route);
     PlanningReadService.TrimForDisplay(plan);
     var displayJson = JsonSerializer.SerializeToUtf8Bytes(
       plan,
@@ -98,6 +162,9 @@ public sealed class RouteDisplayCache(ReadCache reads) : IDisposable
     var metadata = new DispatchRoutePlan
     {
       Id = entity.Id,
+      CompanyId = entity.CompanyId,
+      AssignmentRevision = entity.AssignmentRevision,
+      GeometryRevision = entity.GeometryRevision,
       DispatchId = entity.DispatchId,
       ExecutionLegId = entity.ExecutionLegId,
       TruckId = entity.TruckId,
@@ -113,7 +180,7 @@ public sealed class RouteDisplayCache(ReadCache reads) : IDisposable
       plan.Version,
       displayJson.LongLength
         + metadataJson.LongLength
-        + points * 48
+        + geometry.EstimatedBytes
         + metadata.InputHash.Length * 2L
         + 2048
     );
@@ -150,7 +217,8 @@ public sealed class RouteDisplayCache(ReadCache reads) : IDisposable
           || (executionLegId.HasValue && entity.DispatchId != id)
         )
           return null;
-        var result = Create(entity);
+        var plan = RoutePlanStorage.Read(entity)!;
+        var result = Create(entity, plan, ExactGeometry(entity, plan));
         if (version == reads.Generation(key) && result.Size <= Capacity)
           cache.Set(
             key,
@@ -177,6 +245,7 @@ public sealed class RouteDisplayCache(ReadCache reads) : IDisposable
   public void Dispose()
   {
     cache.Dispose();
+    exactIndexes.Dispose();
     gates.Dispose();
     coldLoads.Dispose();
   }

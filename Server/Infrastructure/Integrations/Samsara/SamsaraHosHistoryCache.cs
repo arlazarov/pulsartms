@@ -1,4 +1,5 @@
 using Application.Interfaces;
+using Application.Models;
 using Domain.Models.Eta;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -7,8 +8,23 @@ namespace Infrastructure.Integrations.Samsara;
 public sealed class SamsaraHosHistoryCache(
   TimeProvider clock,
   ICurrentCompany companies
-) : IDisposable
+) : IDisposable, ICacheMemorySource
 {
+  public IReadOnlyList<CacheMemorySnapshot> ReadMemory()
+  {
+    var stats0 = entries.GetCurrentStatistics();
+    return
+    [
+      new(
+        "hos-history",
+        stats0?.CurrentEntryCount,
+        stats0?.CurrentEstimatedSize,
+        MaximumBytes,
+        "bytes"
+      ),
+    ];
+  }
+
   public sealed record Snapshot(
     HosHistory? Baseline,
     DateTimeOffset Fetched,
@@ -20,7 +36,7 @@ public sealed class SamsaraHosHistoryCache(
 
   private const long MaximumBytes = 16 * 1024 * 1024;
   private readonly MemoryCache entries = new(
-    new MemoryCacheOptions { SizeLimit = MaximumBytes }
+    new MemoryCacheOptions { TrackStatistics = true, SizeLimit = MaximumBytes }
   );
   private readonly SemaphoreSlim[] gates = Enumerable
     .Range(0, 64)

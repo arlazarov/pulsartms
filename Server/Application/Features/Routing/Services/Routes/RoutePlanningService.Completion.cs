@@ -42,10 +42,7 @@ public sealed partial class RoutePlanningService
     var profile = await ProfileAsync(load.TruckId!.Value, ct);
     if (!RoutePlanInputs.Matches(entity, load, profile))
       return null;
-    var plan = JsonSerializer.Deserialize<RoutePlan>(
-      entity.PlanJson,
-      RoutingJson.Options
-    );
+    var plan = RoutePlanStorage.Read(entity);
     if (plan is null || plan.TruckId != load.TruckId)
       return null;
 
@@ -91,7 +88,7 @@ public sealed partial class RoutePlanningService
       plan.FuelRecommendations = null;
     }
     entity.InputHash = RoutePlanInputs.Hash(load, profile);
-    entity.PlanJson = RoutePlanStorage.Serialize(plan);
+    await RoutePlanStorage.PrepareAsync(db, entity, plan, ct);
     // The command saves these concurrency-protected metadata changes atomically
     // with the stop and audit event, without changing the geometry revision.
     return entity;

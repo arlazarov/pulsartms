@@ -129,7 +129,9 @@ internal sealed class PlanningTestServices : IDisposable
     Publication = new(
       Itineraries,
       publicationScope ?? new PlanningPublicationScope((AppDbContext)db),
-      DeadheadHistory
+      DeadheadHistory,
+      new PlanningSummaryCache(TimeProvider.System),
+      new TestCompany()
     );
     BaseRoutes = new(
       db,
@@ -138,7 +140,15 @@ internal sealed class PlanningTestServices : IDisposable
       profiles,
       publicationScope ?? new PlanningPublicationScope((AppDbContext)db)
     );
-    var routeStore = new RoutePlanStore(db, Reads, profiles);
+    var routeStore = new RoutePlanStore(
+      db,
+      Reads,
+      profiles,
+      new SavedRoutePlanReader(
+        (AppDbContext)db,
+        NullLogger<SavedRoutePlanReader>.Instance
+      )
+    );
     Routes = new(
       db,
       router,

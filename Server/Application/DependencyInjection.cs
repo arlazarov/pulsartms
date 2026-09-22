@@ -68,7 +68,8 @@ public static class DependencyInjection
       DriverHosRefreshOperation
     >();
     services.AddSingleton<FleetLocationStream>();
-    services.AddMemoryCache();
+    services.AddMemoryCache(options => options.TrackStatistics = true);
+    services.AddSingleton<ICacheMemorySource, SharedCacheMemorySource>();
     services.AddSingleton(TimeProvider.System);
     services.AddScoped<GmailWatchLifecycle>();
     services.AddScoped<FuelStationLookupService>();
@@ -79,6 +80,9 @@ public static class DependencyInjection
     services.AddScoped<FuelExchangeRateService>();
     services.AddSingleton<IGmailWatchOperation, GmailWatchOperation>();
     services.AddSingleton<ReadCache>();
+    services.AddSingleton<ICacheMemorySource>(sp =>
+      sp.GetRequiredService<ReadCache>()
+    );
     services.AddSingleton<IReadCache>(sp => sp.GetRequiredService<ReadCache>());
     services.AddSingleton<CacheInvalidationRelay>();
     services.AddSingleton<FleetSynchronizationOperation>();
@@ -99,7 +103,14 @@ public static class DependencyInjection
     >();
     services.AddSingleton<ITruckHistoryOperation, TruckHistoryOperation>();
     services.AddSingleton<TruckHistoryQueue>();
+    services.AddSingleton<TruckHistoryCache>();
+    services.AddSingleton<ICacheMemorySource>(sp =>
+      sp.GetRequiredService<TruckHistoryCache>()
+    );
     services.AddSingleton<RouteDisplayCache>();
+    services.AddSingleton<ICacheMemorySource>(sp =>
+      sp.GetRequiredService<RouteDisplayCache>()
+    );
     services.AddSingleton<ServerTelemetry>();
     services.AddScoped<RoutePlanningService>();
     services.AddScoped<IPlannedRouteReader>(sp =>
@@ -134,9 +145,23 @@ public static class DependencyInjection
     services.AddScoped<ICarrierFuelPrices, CarrierFuelPrices>();
     services.AddScoped<TruckFuelPlans>();
     services.AddSingleton<FuelPlanMemory>();
+    services.AddSingleton<ICacheMemorySource>(sp =>
+      sp.GetRequiredService<FuelPlanMemory>()
+    );
     services.AddScoped<FuelScheduleEvaluator>();
     services.AddScoped<AutomaticPlanningService>();
     services.AddScoped<PlanningReadService>();
+    services.AddSingleton<PlanningSummaryCache>();
+    services.AddSingleton<ICacheMemorySource>(sp =>
+      sp.GetRequiredService<PlanningSummaryCache>()
+    );
+    services.AddSingleton<
+      IPlanningSummaryOperation,
+      PlanningSummaryOperation
+    >();
+    services.AddScoped<PlanningSummaryReader>();
+    services.AddScoped<PlanningSummaryPublisher>();
+    services.AddScoped<BoardPlanningReader>();
     services.AddScoped<TruckPlanningInputsReader>();
     services.AddScoped<PlanningWorkPublication>();
     services.AddScoped<ISavedRoadValidation, SavedRoadValidation>();
@@ -146,6 +171,9 @@ public static class DependencyInjection
     services.AddScoped<TruckItineraryReader>();
     services.AddScoped<EtaForecastService>();
     services.AddSingleton<EtaMemory>();
+    services.AddSingleton<ICacheMemorySource>(sp =>
+      sp.GetRequiredService<EtaMemory>()
+    );
     services.AddScoped<RoutePreviewService>();
     services.AddScoped<PlanningRefreshQueue>();
     services.AddSingleton<PlanningRefreshSignal>();

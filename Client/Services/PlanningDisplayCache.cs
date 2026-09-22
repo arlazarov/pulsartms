@@ -226,6 +226,20 @@ public sealed class PlanningDisplayCache(
       new { },
       ct
     );
+    if (
+      response.Success
+      && response.Response is { IsRefreshing: true, State: null } pending
+      && Get(url) is { State: not null } retained
+      && pending.TruckId == retained.TruckId
+      && pending.DispatchId == retained.DispatchId
+      && pending.ExecutionLegId == retained.ExecutionLegId
+      && pending.AssignmentRevision == retained.AssignmentRevision
+    )
+      response.Response = retained with
+      {
+        IsRefreshing = true,
+        Message = pending.Message,
+      };
     if (response.Response?.State?.Plan is { GeometryOmitted: true } plan)
     {
       if (

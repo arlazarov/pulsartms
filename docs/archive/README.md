@@ -10,6 +10,29 @@ started again under the current project policy.
 
 ### Reviews and implementation records
 
+- [Dispatch summary concurrency](2026-09/dispatch-summary-concurrency-2026-09-21.md)
+
+- [Native ETA history batching](2026-09/eta-native-batch-comparison-2026-09-21.md)
+
+- [ETA batch comparison](2026-09/eta-batch-comparison-2026-09-21.md)
+
+- [Fleet database latency](2026-09/fleet-database-timing-2026-09-21.md)
+
+- [Native fleet CPU measurement](2026-09/fleet-cpu-2026-09-21.md)
+
+- [Native 50-truck test](2026-09/fleet-load-native-50-2026-09-21.md)
+
+- [Native memory investigation](2026-09/native-memory-2026-09-21.md)
+
+- [Fuel allocation reduction](2026-09/fuel-allocation-2026-09-21.md)
+- [Dense-route 50-truck test](2026-09/fleet-load-50-2026-09-21.md)
+
+- [Shared route index](2026-09/shared-route-index-2026-09-21.md)
+
+- [Route compaction plan and tests](2026-09/route-compaction-plan-2026-09-21.md)
+
+- [Memory budget investigation](2026-09/memory-budget-2026-09-21.md)
+
 - [Fuel visibility and detours](2026-09/fuel-visibility-detours-2026-09-21.md)
 
 - [Dispatch and fuel release](2026-09/dispatch-fuel-release-2026-09-21.md)
@@ -250,3 +273,11 @@ started again under the current project policy.
 [refactor-audit-2026-09-21]: 2026-09/refactor-audit-2026-09-21.md
 
 [company-boundary-fixes-2026-09-21]: 2026-09/company-boundary-fixes-2026-09-21.md
+
+- [Route chunks and fleet measurements](2026-09/route-chunks-measurements-2026-09-21.md)
+- [Route chunk release and live memory](2026-09/route-chunks-release-2026-09-21.md)
+- [Runtime memory investigation](2026-09/runtime-memory-investigation-2026-09-21.md)
+- [Process memory map diagnostics](2026-09/process-memory-map-2026-09-21.md)
+- [Database efficiency follow-up](2026-09/database-efficiency-follow-up-2026-09-21.md)
+
+- [Shared background planning summaries](2026-09/shared-planning-summary-2026-09-21.md)

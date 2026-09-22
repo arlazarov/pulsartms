@@ -8,6 +8,8 @@ public sealed record AutomaticPlanningResult(
   string? Message
 )
 {
+  public DateTimeOffset? CalculatedAt { get; init; }
+  public bool IsRefreshing { get; init; }
   public FuelCalculationStatus? FuelStatus { get; init; }
   public Guid? ExecutionLegId { get; init; }
   public long AssignmentRevision { get; init; }

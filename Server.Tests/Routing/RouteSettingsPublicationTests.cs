@@ -25,8 +25,14 @@ public partial class AutomaticPlanningTests
     Assert.True(current.FromCurrentPosition);
     Assert.NotNull(current.ReferenceRoute);
     Assert.Equal(full.Route.Miles, current.ReferenceRoute.Miles);
-    var stored = SavedRouteReader.Plan(
-      (await f.Db.DispatchRoutePlans.SingleAsync()).PlanJson
+    var stored = RoutePlanStorage.Read(
+      (
+        await RoutePlanStorage.LoadAsync(
+          f.Db,
+          await f.Db.DispatchRoutePlans.SingleAsync(),
+          default
+        )
+      )!
     )!;
     Assert.NotNull(stored.ReferenceRoute);
     Assert.Equal(
@@ -56,8 +62,14 @@ public partial class AutomaticPlanningTests
     Assert.Contains(remaining.Points[0], reference.Points);
     Assert.Equal(remaining.Points[^1], reference.Points[^1]);
     Assert.True(reference.Miles > remaining.Miles);
-    var stored = SavedRouteReader.Plan(
-      (await f.Db.DispatchRoutePlans.SingleAsync()).PlanJson
+    var stored = RoutePlanStorage.Read(
+      (
+        await RoutePlanStorage.LoadAsync(
+          f.Db,
+          await f.Db.DispatchRoutePlans.SingleAsync(),
+          default
+        )
+      )!
     )!;
     Assert.Equal(reference.Points, stored.ReferenceRoute!.Legs[0].Points);
     Assert.Equal(remaining.Miles, stored.Route.Miles);

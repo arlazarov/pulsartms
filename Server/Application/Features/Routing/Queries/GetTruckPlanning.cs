@@ -25,7 +25,7 @@ public sealed record GetTruckPlanningQuery(
   }
 }
 
-public sealed class GetTruckPlanningHandler(PlanningReadService service)
+public sealed class GetTruckPlanningHandler(PlanningSummaryReader service)
   : IRequestHandler<
     GetTruckPlanningQuery,
     RequestResponse<AutomaticPlanningResult>

@@ -316,7 +316,14 @@ have not been measured. See the [core specification](architecture/core-rebuild.m
 for protected inputs and independent observation policies.
 
 ETA now consumes these snapshots. Board rows select trucks only. ETA
-preparation uses a pure compatibility projection for route algorithms, never
+description selection precedes shared future-road version reads. Historical
+source reads combine non-overlapping dispatch batches inside the existing
+read snapshot. Native leg eligibility evidence and execution hydration are
+also read together. Each original batch keeps its own truck, predecessor-load
+and saved-connection membership when selecting completed legs from that union.
+Repeated dispatch identities stay in separate reads; history membership,
+publication replay and input hashes remain per truck. ETA preparation uses a
+pure compatibility projection for route algorithms, never
 repeats mutable assignment resolution, and retains the complete snapshot plus
 typed calculation exclusions. Its database reads share a fresh
 IExecutionReadScope; existing profile/settings caches remain separate.
@@ -696,6 +703,18 @@ exact geometry. Both projections and retained geometry count toward the cache
 bound. Each keyed-gate owner uses a separate fixed stripe set: do not hold one
 owner's stripe and recursively acquire another key from that same owner.
 
+`RoutePlanStorage` separates mutable plan state from company-owned immutable
+`RouteGeometryChunks`. The current manifest includes original leg measures and
+chunk ranges; `RouteGeometryChanges` records only replacements and calculation
+identity. Current/reference roads share chunks, and state-only writes preserve
+them. The same owner reads legacy inline plans and reconstructs historical roads.
+`RouteMovementChunks` and the in-plan checkpoint record bounded observations,
+measured estimates and explicit gaps. They are not financial actuals. Exact-index
+caching uses company, plan, manifest and geometry revision, independently of
+progress writes.
+See [route storage and movement](features/route-planning.md#chunk-storage-and-movement-evidence)
+and the [efficiency design](architecture/fleet-efficiency.md).
+
 On-demand `PlanningRefreshOperation` has a bounded configurable consumer count
 (`Synchronization:PlanningConcurrency`, default two, allowed one through four).
 The existing per-truck automatic-planning gate still serializes related mutations;
@@ -843,3 +862,60 @@ to its execution scope and does not overwrite the legacy load-wide rate row.
 Regression coverage follows native deadheads through background preparation,
 persistence, map payload, unchanged polling, predecessor changes and concurrent
 publication rejection. Legacy-only fixtures cannot establish native parity.
+
+Current-work currency checks use `RoutePlanStore.ReadMetadataAsync` through
+`ISavedRoutePlanReader`; they do not hydrate saved geometry or chunk manifests.
+The compact read shares the route's existing cache generation and lifetime,
+including invalidation on route writes. Completion still requires the saved
+assignment identity and matching routing inputs. Metadata and full-plan reads
+share legacy input-signature compatibility rules.
+
+## Shared planning display snapshots
+
+The mandatory [ownership and read-efficiency rules](architecture/fleet-efficiency.md)
+identify where new fields, readers and committed updates belong. Follow them when
+extending Dispatch, Fleet Map or background planning.
+
+PlanningSummaryReader serves Dispatch and selected-truck map planning reads from
+PlanningSummaryCache. Background PlanningSummaryOperation prepares display
+snapshots using the existing saved route/fuel validation path. HTTP readers still
+resolve current work and company identity, but do not project fuel progress or
+load checked fuel geometry. The same current truck uses the same snapshot across
+both screens. Explicit non-current dispatch reads have a separate key.
+
+The process-local cache bounds payloads to 8 MiB, 256 entries and 512 KiB per
+entry. It keeps compact metadata separately from Brotli-compressed display
+geometry. Dispatch reads metadata; a map with a matching plan/version also skips
+geometry. Results are independently deserialized. Memory diagnostics include the
+cache. Two consumers coalesce work per key, refresh about every 30 seconds and
+stop refreshing entries not requested for two minutes. Queueing cannot grow
+beyond the entry limit. Late results cannot restore an evicted entry or overwrite
+a changed work signature. Old results remain marked updating during refresh or
+failure; changed assignments cannot reuse them.
+
+Database route, fuel and execution records remain the durable source and keep
+existing transactional/background publication. This display cache adds no database
+writes or migration. After restart, snapshots rebuild asynchronously from durable
+records; a cold read can temporarily return an updating response. The Client
+retains a prior map result only for the same truck, dispatch, leg and revision.
+Hosts serving these reads must run the PlanningSummary operation locally; if
+background roles are restricted, include PlanningSummary on each API instance.
+The cache is not shared across API processes. Summary readiness is not a guarantee
+that an independently expiring ETA is fresh.
+
+PlanningWorkPublication notifies active summary entries only after a successful
+route/profile/fuel transaction commit and its read-cache invalidation. A commit
+replaces the publication ticket and makes affected entries due immediately while
+retaining the previous display. In-flight work with an older ticket cannot publish.
+Notifications do not create entries for trucks nobody is viewing.
+
+PlanningRefreshOperation captures existing display demand before preparing a
+route. PlanningSummaryPublisher can reuse that prepared route, project the saved
+fuel plan and cached ETA, and publish a separate display snapshot. The scoped
+publication service carries forward tickets from its own successful commits;
+other writers invalidate those tickets. Assignment/settings changes, eviction and
+superseding refreshes reject outdated publication. Fuel-price refresh runs after
+this publication; a resulting fuel commit schedules another summary refresh.
+Cold entries, manual writes and periodic freshness checks still use the background
+saved-plan reader. The 30-second fallback remains because external telemetry and
+ETA have independent lifecycles and notifications are process-local.

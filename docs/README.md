@@ -21,6 +21,7 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
 
 ## Development and architecture
 
+- [Fleet read ownership and efficiency rules](architecture/fleet-efficiency.md)
 - [Core rebuild specification](architecture/core-rebuild.md) and
   [acceptance scenarios](architecture/core-rebuild-scenarios.md) define the
   staged replacement plan; they do not describe deployed functionality.

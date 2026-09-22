@@ -22,16 +22,13 @@ public static class PlanningCurrency
       return false;
     foreach (var candidate in PlanningWorkPolicy.Candidates(work))
     {
-      var saved = await plans.ReadAsync(
+      var saved = await plans.ReadMetadataAsync(
         candidate.Work.DispatchId,
         ct,
         candidate.Work.ExecutionLegId
       );
-      var plan = saved is null ? null : SavedRouteReader.Plan(saved.PlanJson);
       var resolved = PlanningWorkPolicy.Resolve(work, candidate);
-      if (plan is not null && saved is not null)
-        plan.InputsChanged = !RoutePlanInputs.Matches(saved, resolved, profile);
-      if (PlanningWorkPolicy.IsCompleted(plan, resolved))
+      if (PlanningWorkPolicy.IsCompleted(saved, resolved, profile))
         continue;
       return candidate.Work == new WorkIdentity(load.Id, load.ExecutionLegId);
     }

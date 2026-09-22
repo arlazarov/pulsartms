@@ -208,10 +208,17 @@ public sealed partial class FuelPlanningService
       throw new PlanningSettingsConflictException(
         "The fuel plan changed in another session. Reopen it before saving."
       );
-    await transaction.CommitAsync(ct);
-    profiles.Invalidate(plan.TruckId);
-    savedPlans.Invalidate(plan.TruckId);
-    routeStore.Invalidate(plan.DispatchId, plan.ExecutionLegId);
+    await publication.CommitAsync(
+      transaction,
+      plan.TruckId,
+      ct,
+      () =>
+      {
+        profiles.Invalidate(plan.TruckId);
+        savedPlans.Invalidate(plan.TruckId);
+        routeStore.Invalidate(plan.DispatchId, plan.ExecutionLegId);
+      }
+    );
     return fuel;
   }
 }

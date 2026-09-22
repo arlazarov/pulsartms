@@ -109,11 +109,43 @@ public sealed partial class EtaChainInputsService(
         var batch = await ReadBatchAsync(work, token);
         PerformanceStages.Elapsed("eta-describe", "batch", at);
         at = Stopwatch.GetTimestamp();
+        var truckProfiles = await profiles.GetManyAsync(
+          work.Select(x => x.TruckId).ToArray(),
+          token
+        );
+        var selected = new List<SelectedWork>();
         foreach (var snapshot in work)
           if (
-            await DescribeCoreAsync(snapshot, batch, token) is { } description
+            Select(snapshot, batch, truckProfiles[snapshot.TruckId]) is
+            { } selection
           )
-            descriptions[snapshot.TruckId] = description;
+            selected.Add(selection);
+        var future = selected.SelectMany(x => x.Loads.Skip(1)).ToArray();
+        var versions = await FutureVersionsAsync(future, token);
+        var histories = await history.ReadLoadedBatchesAsync(
+          selected
+            .Select(x =>
+              (IReadOnlyCollection<RouteWorkSnapshot>)x.Loads.Skip(1).ToArray()
+            )
+            .ToArray(),
+          token
+        );
+        for (var index = 0; index < selected.Count; index++)
+        {
+          var selection = selected[index];
+          var keys = selection
+            .Loads.Skip(1)
+            .Select(x => (x.Id, x.ExecutionLegId))
+            .ToHashSet();
+          descriptions[selection.Itinerary.TruckId] = DescribeCore(
+            selection,
+            batch,
+            versions
+              .Where(x => keys.Contains((x.DispatchId, x.ExecutionLegId)))
+              .ToArray(),
+            histories[index]
+          );
+        }
         PerformanceStages.Elapsed("eta-describe", "core", at);
         PerformanceStages.Count("eta-describe", "trucks", work.Length);
         return descriptions;
@@ -169,14 +201,20 @@ public sealed partial class EtaChainInputsService(
     );
   }
 
-  private async Task<EtaChainDescription?> DescribeCoreAsync(
+  private sealed record SelectedWork(
+    TruckItinerarySnapshot Itinerary,
+    TruckRouteProfile Profile,
+    List<RouteWorkSnapshot> Loads,
+    ImmutableArray<EtaRootRoadVersion> Roots,
+    ImmutableArray<EtaWorkExclusion> Exclusions
+  );
+
+  private static SelectedWork? Select(
     TruckItinerarySnapshot itinerary,
     ReadBatch batch,
-    CancellationToken ct
+    TruckRouteProfile profile
   )
   {
-    var truckId = itinerary.TruckId;
-    var profile = await profiles.GetAsync(truckId, ct);
     var loads = new List<RouteWorkSnapshot>();
     var roots = ImmutableArray.CreateBuilder<EtaRootRoadVersion>();
     var exclusions = ImmutableArray.CreateBuilder<EtaWorkExclusion>();
@@ -212,15 +250,30 @@ public sealed partial class EtaChainInputsService(
     }
     if (loads.Count == 0)
       return null;
+    return new(
+      itinerary,
+      profile,
+      loads,
+      roots.ToImmutable(),
+      exclusions.ToImmutable()
+    );
+  }
+
+  private EtaChainDescription DescribeCore(
+    SelectedWork selected,
+    ReadBatch batch,
+    IReadOnlyList<NextLoadRouteVersion> versions,
+    IReadOnlyDictionary<Guid, DeadheadHistorySnapshot> predecessors
+  )
+  {
+    var itinerary = selected.Itinerary;
+    var truckId = itinerary.TruckId;
+    var profile = selected.Profile;
+    var loads = selected.Loads;
+    var roots = selected.Roots;
+    var exclusions = selected.Exclusions;
     var sequence = WorkSequencePolicy.Assess(loads, itinerary.Evidence);
     var future = loads.Skip(1).ToArray();
-    var futureIds = future.Select(x => x.Id).ToArray();
-    var versions =
-      future.Length == 0 ? [] : await FutureVersionsAsync(future, ct);
-    var predecessors =
-      future.Length == 0
-        ? new Dictionary<Guid, DeadheadHistorySnapshot>()
-        : await history.ReadLoadedAsync(future, ct);
     var connections = future.ToDictionary(
       x => x.Id,
       x => DeadheadConnection.Find(predecessors.GetValueOrDefault(x.Id))
@@ -248,7 +301,7 @@ public sealed partial class EtaChainInputsService(
       }
     );
     var roads = new EtaSavedRoadInputs(
-      roots.ToImmutable(),
+      roots,
       versions.OrderBy(x => x.DispatchId).ToImmutableArray()
     );
     var inputHash = Hash(
@@ -259,7 +312,7 @@ public sealed partial class EtaChainInputsService(
           .Values.OrderBy(x => x.Current.Id)
           .Select(x => new { x.Current.Id, x.InputSignature }),
         itinerary.InputSignature,
-        Exclusions = exclusions.ToImmutable(),
+        Exclusions = exclusions,
         TruckId = truckId,
         Driver = driver,
         Roots = roads.Roots,
@@ -281,7 +334,7 @@ public sealed partial class EtaChainInputsService(
       connections,
       sequence,
       itinerary,
-      exclusions.ToImmutable(),
+      exclusions,
       new(predecessors.Values.OrderBy(x => x.Current.Id).ToImmutableArray()),
       roads
     );
@@ -314,12 +367,17 @@ public sealed partial class EtaChainInputsService(
   }
 
   private static Guid[] Plain(IReadOnlyList<RouteWorkSnapshot> loads) =>
-    loads.Where(x => !x.ExecutionLegId.HasValue).Select(x => x.Id).ToArray();
+    loads
+      .Where(x => !x.ExecutionLegId.HasValue)
+      .Select(x => x.Id)
+      .Distinct()
+      .ToArray();
 
   private static Guid[] Accepted(IReadOnlyList<RouteWorkSnapshot> loads) =>
     loads
       .Where(x => x.ExecutionLegId.HasValue)
       .Select(x => x.ExecutionLegId!.Value)
+      .Distinct()
       .ToArray();
 
   private static string Hash(object? value) =>

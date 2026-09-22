@@ -103,9 +103,15 @@ prints the build ID, digest and serving revision for release records and rollbac
 selection. Image retention policies must retain revisions needed for rollback.
 No cleanup policy is changed.
 
-The deployment wrapper requests 1 GiB of API memory. The September 21 revision
-hit its former 512 MiB limit during normal operation; this setting addresses that
-observed termination, not a measured upper bound on memory or a scaling claim.
+The deployment wrapper retains 512 MiB of API memory. The September 21 revision
+exceeded that limit. A proposed increase was withheld pending memory
+investigation; the current limit is not a demonstrated safe upper bound.
+The [route chunk release][route-chunks] subsequently applied both additive
+migrations and published the compact route implementation at the same limit.
+Old inline plans convert on their next successful write. Do not roll back to
+an earlier binary after conversion; earlier readers cannot hydrate chunks.
+
+[route-chunks]: ../archive/2026-09/route-chunks-release-2026-09-21.md
 
 Inspect actual traffic after deployment. A previously pinned revision can retain
 100% of traffic while a new image is created successfully. The wrapper explicitly

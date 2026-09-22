@@ -5,7 +5,7 @@ using Domain.Rules;
 
 namespace Application.Features.Routing.Services.Routes;
 
-public static class RoutePlanStorage
+public static partial class RoutePlanStorage
 {
   private static readonly JsonSerializerOptions Options = CreateOptions();
 

@@ -57,6 +57,43 @@ A complete migration should put refresh credentials in Secure, HttpOnly cookies,
 
 ## Verification boundaries
 
+### Process memory
+
+`GET /api/diagnostics/memory` is an Admin-only, process-wide snapshot. It reads
+runtime counters and cache statistics without database/provider calls, forced
+collection, cache eviction or payload enumeration. It returns no cache keys,
+driver identities, geometry, credentials or provider response contents.
+
+Interpret the fields separately:
+
+- `workingSetBytes` is the current process working set.
+- `managedBytesEstimate` is `GC.GetTotalMemory(false)`; it can include objects
+  awaiting collection and is not a measured live-object census.
+- Heap, fragmentation and committed bytes describe the last GC snapshot.
+  Compare `lastGcIndex` and generation collection counts across observations.
+- `totalAllocatedBytes` is cumulative since process start; its delta measures
+  allocation volume, not retained memory. Compare `startedAt` as well as PID,
+  since container processes can reuse the same PID after restart.
+- Linux cgroup usage, limit, anonymous, file and kernel counters are included
+  when available. Missing or unlimited values stay null. Cgroup counters,
+  process RSS and GC committed bytes overlap and cannot be added together.
+- Cache byte sizes are the owners' existing admission estimates. ETA timing
+  caches use work units, not bytes. Shared-cache and current-ETA byte sizes are
+  explicitly unmeasured; an entry count does not establish their memory cost.
+
+Sample sequentially at a modest interval while reproducing normal work. Growth
+in heap after comparable full collections is different from temporary allocation
+pressure or memory committed for reuse. A large gap between process and managed
+memory needs separate native/runtime analysis; these counters alone cannot name
+object types or prove a leak. The endpoint does not replace a heap/root profile.
+
+The instrumentation was deployed with explicit approval on September 21.
+Production samples and local allocation probes have different measurement
+boundaries; neither alone attributes native memory to an owner.
+See the [investigation record][memory-investigation].
+
+[memory-investigation]: ../archive/2026-09/runtime-memory-investigation-2026-09-21.md
+
 Meter `PulsarTms.Performance` exposes `pulsartms.stage.duration` (milliseconds)
 and `pulsartms.stage.items` (counts), tagged only by fixed `operation` and `stage`
 names. Planning exposes `queue-wait` and `background-job` separately, so provider
@@ -68,3 +105,36 @@ meter to record distributions. Instrumentation alone is not a durable export or
 a production benchmark; HTTP request timing remains available independently.
 
 Unit/integration tests do not substitute for production load tests. Process metrics do not prove memory cost per truck or fleet-scale capacity. Audit logs require appropriate hosting retention and access controls before they can serve as a long-term compliance record.
+
+### Linux mapping attribution
+
+`GET /api/diagnostics/memory/map` is a separate Admin-only diagnostic. It reads
+fixed `/proc/self/smaps`, `/proc/self/maps` and `/proc/self/status` paths inside
+Infrastructure, without accepting a PID or path from the caller. Only fixed
+category labels and aggregate counters leave the reader: no addresses, file
+paths, mapping names or process-memory contents are returned. Sampling is
+coalesced and cached for 30 seconds, including unavailable results. No worker,
+provider request, database query, forced GC or dump is started.
+
+The map is capped at eight MiB of text; invalid/oversized detailed reads do not
+return partial totals. The reader falls back to `maps` with `virtual-only`
+status, or reports `unavailable`. Other operating systems report
+`unsupported-platform`. Missing resident/PSS counters stay null, never zero.
+`ObservedAt` identifies the cached observation, not the request's arrival time.
+
+Categories are mapping labels, not proven allocation owners. Anonymous mappings
+can contain GC heaps, native allocator arenas and unlabelled thread stacks.
+`labelled-process-heap` is not the complete native heap. The runtime's
+`memfd:doublemapper` aliases can refer to the same physical code pages; RSS
+sums are not unique physical memory, and PSS is useful when available. A DLL or
+shared-library mapping can also contain private anonymous copy-on-write pages.
+Virtual reservations are not resident memory. `Process` exposes the available
+coarse status counters and thread count; they need not equal a separately timed
+map scan. GC, status, mapping and cgroup observations are not atomic.
+See [Linux proc documentation](https://docs.kernel.org/filesystems/proc.html)
+and [.NET double-mapping notes](https://github.com/dotnet/runtime/discussions/81752).
+
+This is an OS mapping summary, not a managed-heap/root census or an allocation
+stack trace. Do not subtract GC committed bytes from RSS/PSS and label the
+remainder an exact native allocation total. Availability in Cloud Run requires
+verification on the deployed revision; local parser tests cannot establish it.

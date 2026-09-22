@@ -5,7 +5,7 @@ using Domain.Models.Fleet;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
+using Server.Tests.Support;
 
 namespace Server.Tests.Fleet;
 
@@ -24,7 +24,7 @@ public class TruckHistoryTests
     var truck = new Truck { Id = Guid.NewGuid(), ExternalId = "history-test" };
     db.Trucks.Add(truck);
     await db.SaveChangesAsync();
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new TruckHistoryCache(new TestCompany());
     var provider = new Provider();
     var handler = new GetTruckHistoryHandler(db, provider, cache, new());
     var query = new GetTruckHistoryQuery(

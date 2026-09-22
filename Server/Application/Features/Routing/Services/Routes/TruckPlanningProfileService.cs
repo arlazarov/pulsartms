@@ -19,6 +19,25 @@ public sealed class TruckPlanningProfileService(
   public Task<TruckRouteProfile> GetAsync(Guid truckId, CancellationToken ct) =>
     ReadAsync(truckId, ct, cached: true);
 
+  public async Task<IReadOnlyDictionary<Guid, TruckRouteProfile>> GetManyAsync(
+    IReadOnlyCollection<Guid> truckIds,
+    CancellationToken ct
+  )
+  {
+    var ids = truckIds.Distinct().ToArray();
+    var rows =
+      ids.Length == 0
+        ? new Dictionary<Guid, TruckPlanningProfile>()
+        : await db
+          .TruckPlanningProfiles.AsNoTracking()
+          .Where(x => ids.Contains(x.TruckId))
+          .ToDictionaryAsync(x => x.TruckId, ct);
+    var result = new Dictionary<Guid, TruckRouteProfile>();
+    foreach (var id in ids)
+      result[id] = await ResolveAsync(rows.GetValueOrDefault(id), ct, true);
+    return result;
+  }
+
   public Task<TruckRouteProfile> GetUncachedAsync(
     Guid truckId,
     CancellationToken ct
@@ -38,6 +57,15 @@ public sealed class TruckPlanningProfileService(
     var entity = cached
       ? await reads.GetAsync($"profile:{truckId}", "value", Load)
       : await Load();
+    return await ResolveAsync(entity, ct, cached);
+  }
+
+  private async Task<TruckRouteProfile> ResolveAsync(
+    TruckPlanningProfile? entity,
+    CancellationToken ct,
+    bool cached
+  )
+  {
     var profile = entity is null
       ? new()
       : JsonSerializer.Deserialize<TruckRouteProfile>(

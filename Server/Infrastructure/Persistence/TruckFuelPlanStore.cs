@@ -47,6 +47,11 @@ public sealed class TruckFuelPlanStore(
           null
         ))
         .SingleOrDefaultAsync(ct);
+    return Decode(row, includeRoute);
+  }
+
+  private TruckFuelPlanSnapshot? Decode(StoredSnapshot? row, bool includeRoute)
+  {
     if (
       row is null
       || !WithinBytes(row.SummaryJson, MaximumSummaryBytes)
@@ -99,7 +104,7 @@ public sealed class TruckFuelPlanStore(
       logger.LogWarning(
         ex,
         "Discarding an unreadable saved fuel plan for truck {Truck}",
-        truckId
+        row.TruckId
       );
       return null;
     }

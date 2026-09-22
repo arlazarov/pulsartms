@@ -47,6 +47,8 @@ internal sealed class PlanningRefreshFixture : IAsyncDisposable
     services.AddScoped<IPlanningRefreshStore, PlanningRefreshStore>();
     services.AddScoped<PlanningRefreshQueue>();
     services.AddSingleton<PlanningRefreshSignal>();
+    services.AddSingleton<PlanningSummaryCache>();
+    services.AddScoped<ICurrentCompany, TestCompany>();
     services.AddSingleton<PlanningRefreshOperation>();
     configure?.Invoke(services);
     fixture.root = services.BuildServiceProvider(

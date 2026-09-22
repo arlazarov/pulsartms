@@ -65,8 +65,14 @@ public sealed class CurrentRouteChoiceTests
       new(preview.Id, 1, 0, leg.Id),
       default
     );
-    var plan = SavedRouteReader.Plan(
-      (await f.Db.DispatchRoutePlans.SingleAsync()).PlanJson
+    var plan = RoutePlanStorage.Read(
+      (
+        await RoutePlanStorage.LoadAsync(
+          f.Db,
+          await f.Db.DispatchRoutePlans.SingleAsync(),
+          default
+        )
+      )!
     )!;
     Assert.True(plan.FromCurrentPosition);
     Assert.Equal(preview.Stops[0].Point, plan.Route.Legs[0].Points[0]);
@@ -219,7 +225,9 @@ public sealed class CurrentRouteChoiceTests
     var baseline = await f.Db.DispatchBaseRoutes.AsNoTracking().SingleAsync();
     Assert.Equal(before.RouteJson, baseline.RouteJson);
     var entity = await f.Db.DispatchRoutePlans.AsNoTracking().SingleAsync();
-    var plan = SavedRouteReader.Plan(entity.PlanJson)!;
+    var plan = RoutePlanStorage.Read(
+      (await RoutePlanStorage.LoadAsync(f.Db, entity, default))!
+    )!;
     Assert.True(plan.FromCurrentPosition);
     Assert.Single(plan.Stops);
     Assert.Equal(f.Load.Stops[1].Id, plan.Stops[0].Id);
@@ -299,7 +307,9 @@ public sealed class CurrentRouteChoiceTests
     else
     {
       var entity = await f.Db.DispatchRoutePlans.SingleAsync();
-      var plan = SavedRouteReader.Plan(entity.PlanJson)!;
+      var plan = RoutePlanStorage.Read(
+        (await RoutePlanStorage.LoadAsync(f.Db, entity, default))!
+      )!;
       plan.Version++;
       entity.PlanJson = RoutePlanStorage.Serialize(plan);
       await f.Db.SaveChangesAsync();

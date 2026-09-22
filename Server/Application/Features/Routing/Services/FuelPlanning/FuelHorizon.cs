@@ -317,11 +317,12 @@ public sealed class FuelHorizon(
             && row.ExecutionLegId == load.ExecutionLegId,
           ct
         );
+      await RoutePlanStorage.LoadAsync(db, stored, ct);
       var previous =
         stored?.InputHash == RoutePlanInputs.Hash(load, profile)
         && stored.TruckId == load.TruckId
         && stored.AssignmentRevision == load.AssignmentRevision
-          ? SavedRouteReader.Plan(stored.PlanJson)
+          ? RoutePlanStorage.Read(stored)
           : null;
       if (
         previous is { FromCurrentPosition: false }

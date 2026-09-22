@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Domain.Models.Routing;
 
 public sealed class RouteStopTracking
@@ -7,5 +9,11 @@ public sealed class RouteStopTracking
   public Guid? NextStopId { get; set; }
   public string NextStopLabel { get; set; } = "";
   public bool AllStopsPassed { get; set; }
+
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public RouteMovement? Movement { get; set; }
+
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public DateTime? LastObservationAt { get; set; }
   public DateTime? OffRouteSince { get; set; }
 }

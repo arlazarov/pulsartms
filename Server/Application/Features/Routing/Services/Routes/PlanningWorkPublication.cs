@@ -11,9 +11,34 @@ namespace Application.Features.Routing.Services.Routes;
 public sealed class PlanningWorkPublication(
   TruckItineraryReader itineraries,
   IPlanningPublicationScope scope,
-  DeadheadHistoryService history
+  DeadheadHistoryService history,
+  PlanningSummaryCache summaries,
+  ICurrentCompany company
 )
 {
+  private readonly Dictionary<
+    PlanningSummaryCache.Key,
+    PlanningSummaryCache.Work
+  > committed = [];
+
+  public PlanningSummaryCache.Work Current(
+    PlanningSummaryCache.Work captured
+  ) => committed.GetValueOrDefault(captured.Key, captured);
+
+  public async Task CommitAsync(
+    IDbContextTransaction transaction,
+    Guid? truck,
+    CancellationToken ct,
+    Action? invalidate = null
+  )
+  {
+    await transaction.CommitAsync(ct);
+    invalidate?.Invoke();
+    if (company.Id is { } owner && truck is { } truckId)
+      foreach (var work in summaries.Committed(owner, truckId))
+        committed[work.Key] = work;
+  }
+
   public Task<IDbContextTransaction> BeginAsync(
     TruckItinerarySnapshot expected,
     CancellationToken ct

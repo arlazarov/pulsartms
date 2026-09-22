@@ -114,6 +114,10 @@ internal sealed class RouteChoiceFixture : IAsyncDisposable
           fixture.Planning.Reads,
           fixture.Planning.Settings,
           fixture.Planning.ExchangeRates
+        ),
+        new SavedRoutePlanReader(
+          fixture.Db,
+          NullLogger<SavedRoutePlanReader>.Instance
         )
       ),
       fixture.Planning.Publication,

@@ -32,10 +32,11 @@ public static class RerouteDecision
     double deviationMiles,
     double deviationSeconds,
     DateTime now,
-    bool forceReroute
+    bool forceReroute,
+    RouteGeometry? geometry = null
   )
   {
-    var progress = RouteProgressMeasure.Of(plan, truck, load);
+    var progress = RouteProgressMeasure.Of(plan, truck, load, geometry);
     var fresh = progress is { LocationStale: false, Position: not null };
     var remainingStops = (plan.ReferenceStops ?? plan.Stops)
       .Where(x => !plan.Tracking.PassedStopIds.Contains(x.Id))

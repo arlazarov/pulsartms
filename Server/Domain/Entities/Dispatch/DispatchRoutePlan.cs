@@ -10,5 +10,8 @@ public class DispatchRoutePlan : BaseEntity, ICompanyOwned
   public Guid TruckId { get; set; }
   public string InputHash { get; set; } = "";
   public string PlanJson { get; set; } = "{}";
+  public long GeometryRevision { get; set; }
+  public string? GeometryManifestJson { get; set; }
+  public List<RouteGeometryChunk> GeometryChunks { get; set; } = [];
   public DateTime CreatedAt { get; set; }
 }

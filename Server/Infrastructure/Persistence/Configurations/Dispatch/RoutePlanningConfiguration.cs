@@ -15,6 +15,7 @@ public class RoutePlanningConfiguration
   public void Configure(EntityTypeBuilder<DispatchRoutePlan> b)
   {
     b.HasKey(x => x.Id);
+    b.Ignore(x => x.GeometryChunks);
     b.HasOne<ExecutionLeg>()
       .WithMany()
       .HasForeignKey(x => x.ExecutionLegId)
@@ -27,6 +28,7 @@ public class RoutePlanningConfiguration
       .HasFilter("\"ExecutionLegId\" IS NOT NULL");
     b.Property(x => x.InputHash).HasMaxLength(64);
     b.Property(x => x.PlanJson).IsConcurrencyToken();
+    b.Property(x => x.GeometryManifestJson).IsConcurrencyToken();
     b.HasOne<DispatchEntity>()
       .WithMany()
       .HasForeignKey(x => x.DispatchId)

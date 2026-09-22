@@ -81,10 +81,7 @@ public sealed partial class RoutePlanningService
         : snapshot.ReadPlan(knownPlanId, knownVersion)
       : saved is null
         ? null
-        : JsonSerializer.Deserialize<RoutePlan>(
-          saved.PlanJson,
-          RoutingJson.Options
-        );
+        : RoutePlanStorage.Read(saved);
     if (plan is not null)
     {
       plan.InputsChanged =

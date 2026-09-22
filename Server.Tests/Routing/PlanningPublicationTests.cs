@@ -16,6 +16,48 @@ namespace Server.Tests.Routing;
 [Trait("Kind", "Integration")]
 public sealed class PlanningPublicationTests
 {
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task SummaryChangesOnlyAfterCommitAndReadInvalidation(
+    bool commit
+  )
+  {
+    await using var f = await RouteChoiceFixture.CreateAsync();
+    var company = new TestCompany();
+    var cache = new PlanningSummaryCache(TimeProvider.System);
+    var key = new PlanningSummaryCache.Key(company.Id!.Value, f.Truck.Id);
+    cache.Read(key, "work");
+    var captured = cache.Take()!;
+    var publication = new PlanningWorkPublication(
+      f.Planning.Itineraries,
+      new PublicationProbe(f.Db),
+      f.Planning.DeadheadHistory,
+      cache,
+      company
+    );
+    await using var transaction = await f.Db.Database.BeginTransactionAsync();
+    if (commit)
+    {
+      await publication.CommitAsync(
+        transaction,
+        f.Truck.Id,
+        default,
+        () => Assert.True(cache.IsCurrent(captured))
+      );
+      Assert.False(cache.IsCurrent(captured));
+      Assert.True(cache.IsCurrent(publication.Current(captured)));
+    }
+    else
+    {
+      await transaction.RollbackAsync();
+      await Assert.ThrowsAnyAsync<InvalidOperationException>(
+        () => publication.CommitAsync(transaction, f.Truck.Id, default)
+      );
+      Assert.True(cache.IsCurrent(captured));
+    }
+  }
+
   [Fact]
   public async Task UnsupportedProvidersCannotSilentlyPublishWithoutProtection()
   {
@@ -87,7 +129,9 @@ public sealed class PlanningPublicationTests
     var publication = new PlanningWorkPublication(
       f.Planning.Itineraries,
       probe,
-      f.Planning.DeadheadHistory
+      f.Planning.DeadheadHistory,
+      new PlanningSummaryCache(TimeProvider.System),
+      new TestCompany()
     );
 
     await Assert.ThrowsAsync<RoutePlanningException>(
@@ -314,7 +358,9 @@ public sealed class PlanningPublicationTests
         new ExecutionReadScope(db),
         new FleetNames(db),
         new ActiveTransfers(db)
-      )
+      ),
+      new PlanningSummaryCache(TimeProvider.System),
+      new TestCompany()
     );
     await using var writer = new AppDbContext(
       new DbContextOptionsBuilder<AppDbContext>()

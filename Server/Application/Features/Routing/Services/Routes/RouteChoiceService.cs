@@ -374,12 +374,12 @@ public sealed partial class RouteChoiceService(
         clock.GetUtcNow().UtcDateTime
       );
       await db.SaveChangesAsync(ct);
-      await transaction.CommitAsync(ct);
-      reads.Invalidate("dispatch");
-      reads.Invalidate("board");
-      reads.Invalidate("execution");
-      reads.Invalidate("route-previews");
-      plans.Invalidate(dispatch, load.ExecutionLegId);
+      await publication.CommitAsync(
+        transaction,
+        load.TruckId!.Value,
+        ct,
+        () => InvalidateSavedRoute(dispatch, load.ExecutionLegId)
+      );
       preparation.MarkDirty(dispatch);
       preparation.MarkTruckDirty(load.TruckId.Value);
       logger.LogInformation(

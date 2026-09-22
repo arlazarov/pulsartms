@@ -11,6 +11,8 @@ publish/
 **/*.heapsnapshot
 tools/**/*.bundle.js
 tools/**/*.jsonl
+# Workstation-specific assistant launch settings.
+.claude/
 docs/archive/**/*.jsonl
 .env
 .env.*

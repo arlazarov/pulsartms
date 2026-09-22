@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Application.Features.Dispatch.Models;
 using Application.Features.Synchronization.Options;
 using Application.Interfaces;
+using Application.Models;
 using Domain.Entities.Dispatch;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -13,15 +14,34 @@ namespace Application.Caching;
 public sealed class ReadCache(
   IOptions<SynchronizationOptions> options,
   ICurrentCompany? companies
-) : IReadCache, IDisposable
+) : IReadCache, IDisposable, ICacheMemorySource
 {
+  public IReadOnlyList<CacheMemorySnapshot> ReadMemory()
+  {
+    var stats0 = bounded.GetCurrentStatistics();
+    return
+    [
+      new(
+        "reads",
+        stats0?.CurrentEntryCount,
+        stats0?.CurrentEstimatedSize,
+        CacheBudgets.Reads,
+        "bytes"
+      ),
+    ];
+  }
+
   // A host with no notion of carriers - a test, a tool - caches as the one
   // carrier it serves.
   public ReadCache(IOptions<SynchronizationOptions> options)
     : this(options, null) { }
 
   private readonly MemoryCache bounded = new(
-    new MemoryCacheOptions { SizeLimit = 32 * 1024 * 1024 }
+    new MemoryCacheOptions
+    {
+      TrackStatistics = true,
+      SizeLimit = CacheBudgets.Reads,
+    }
   );
 
   private sealed record Cached(
@@ -34,6 +54,18 @@ public sealed class ReadCache(
     new()
     {
       Id = value.Id,
+      CompanyId = value.CompanyId,
+      GeometryManifestJson = value.GeometryManifestJson,
+      GeometryRevision = value.GeometryRevision,
+      GeometryChunks = value
+        .GeometryChunks.Select(x => new RouteGeometryChunk
+        {
+          CompanyId = x.CompanyId,
+          RoutePlanId = x.RoutePlanId,
+          Key = x.Key,
+          CoordinatesJson = x.CoordinatesJson,
+        })
+        .ToList(),
       DispatchId = value.DispatchId,
       ExecutionLegId = value.ExecutionLegId,
       AssignmentRevision = value.AssignmentRevision,
@@ -95,7 +127,12 @@ public sealed class ReadCache(
         entry.Board?.EstimatedBytes
         ?? (
           entry.Route is { } snapshot
-            ? 2L * snapshot.PlanJson.Length + 1024
+            ? 2L * snapshot.PlanJson.Length
+              + 1024
+              + 2L * (snapshot.GeometryManifestJson?.Length ?? 0)
+              + snapshot.GeometryChunks.Sum(x =>
+                256L + 2L * x.CoordinatesJson.Length
+              )
             : entry.Json!.LongLength
         );
       if (size <= 8 * 1024 * 1024 && version == generations.Get(group))

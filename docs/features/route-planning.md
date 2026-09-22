@@ -306,3 +306,74 @@ and `FleetController.cs`; do not copy an obsolete endpoint list from an audit.
 The [earlier route-planning description](../archive/2026-09/route-planning-history.md)
 is retained for context. Its automatic-fuel behavior and earlier limits are not
 current operating instructions.
+
+## Shared road geometry index
+
+Route progress and fuel searches use one block-refinement implementation.
+Blocks retain cumulative original road miles and conservative spatial bounds;
+matching refines original segments rather than redistributing miles along a
+simplified display line. Per-leg distance/time summaries are unchanged.
+
+Cached route progress captures coordinates into private value arrays, without
+retaining mutable source lists or expanding both endpoints for every segment.
+Request-scoped fuel search borrows its checked geometry, which must remain
+unchanged until the search finishes. Both APIs preserve their existing matching
+and distance contracts. Display and fuel caches account for the captured index
+size; fuel admission checks the estimate before allocating a captured index.
+
+This index reduces duplication and limits detailed matching work. Original
+coordinates remain available for exact refinement; display simplification stays
+separate from calculation geometry. Synthetic checks do not establish production
+capacity for 100 trucks.
+
+## Chunk storage and movement evidence
+
+A saved plan separates mutable state from an ordered manifest of immutable
+coordinate chunks. Chunks contain at most 128 original points. References can
+select part of an existing chunk, so a detour preserves unchanged prefixes and
+suffixes. Current and reference roads can share the same chunks. Original leg
+miles and seconds are part of manifest identity; equal coordinates with changed
+measures invalidate the calculation index too.
+
+`RoutePlanStorage` owns hydration, publication and historical reconstruction.
+State-only writes keep the manifest and chunk rows unchanged. Geometry changes
+append interval replacements, input identity and calculation measures. Reading
+an old road replays these replacements and loads the referenced chunks. This is
+reconstruction of the saved estimate, not a replay of a provider response or
+financial settlement. Concurrency protects state and manifest together.
+
+Legacy inline plans remain readable and convert on their next successful write.
+The additive migrations do not reset operational data. Downgrade refuses to drop
+referenced geometry or recorded movement. Old application binaries must not run
+against converted plans; use a reviewed release and rollback procedure.
+
+For an ordinary recalculation with matching inputs, the new connection ends at
+the next mandatory stop and later legs are reused. Chosen routes keep their
+existing via/restriction checks. Storage chunks are not individual paid routing
+requests. Arbitrary internal-road reconnect anchors are not introduced: joining
+roads must not silently redistribute original leg distances.
+
+The existing background planning pass records received observations once. A
+confident forward match stores a measured range; deviations keep at most 64
+observations in an open chunk and simplify once on closure with a 20 m visual
+tolerance. Stop, truck and geometry changes close the current segment. More than
+one minute without observations, or an implausible jump, records an explicit gap.
+Parallel/loop ambiguity and reverse motion remain observed deviations. Matched
+ranges are labelled `RouteMatchedEstimate`, not proven actual road travel.
+
+Checkpoint and closed chunks commit with the plan. A restart resumes the saved
+checkpoint without duplicating closed chunks. Observations lost before commit
+are not invented or backfilled; later evidence may expose a gap. This path reads
+already received telemetry and makes no daily-history provider requests. The
+older raw history endpoint remains a separate on-demand provider read.
+
+`GET /api/fleet/trucks/{truckId}/movement` reads these records without providers.
+It accepts a window of at most 25 hours, returns overlapping segments, and caps
+closed records at 512 and current-plan checkpoints at 32. `Truncated` explicitly
+reports an incomplete result. It is not a billing or exact GPS replay API.
+
+`CacheBudgets` allocates 16 MiB to shared reads, 16 MiB to map projections,
+32 MiB to exact road indexes, and 8 MiB each to fuel and requested truck history.
+These are conservative entry-accounting limits, not process RSS guarantees.
+Other caches, in-flight requests and the runtime still consume memory. Existing
+Client geometry acknowledgements and durable planning leases remain in use.

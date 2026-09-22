@@ -93,11 +93,24 @@ public static class RoutePlanInputs
     DispatchRoutePlan saved,
     RouteWorkSnapshot load,
     TruckRouteProfile profile
+  ) => Matches(saved.InputHash, saved.ExecutionLegId, load, profile);
+
+  public static bool Matches(
+    SavedRoutePlanMetadata saved,
+    RouteWorkSnapshot load,
+    TruckRouteProfile profile
+  ) => Matches(saved.InputHash, saved.ExecutionLegId, load, profile);
+
+  private static bool Matches(
+    string inputHash,
+    Guid? executionLegId,
+    RouteWorkSnapshot load,
+    TruckRouteProfile profile
   )
   {
-    if (saved.ExecutionLegId != load.ExecutionLegId)
+    if (executionLegId != load.ExecutionLegId)
       return false;
-    if (saved.InputHash == Hash(load, profile))
+    if (inputHash == Hash(load, profile))
       return true;
     if (load.ExecutionLegId.HasValue)
       return false;
@@ -142,6 +155,6 @@ public static class RoutePlanInputs
         )
       )
     );
-    return saved.InputHash == legacy;
+    return inputHash == legacy;
   }
 }

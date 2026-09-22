@@ -35,7 +35,7 @@ public sealed partial class RouteChoiceService
     if (
       saved is not null
       && RoutePlanInputs.Matches(saved, load, profile)
-      && SavedRouteReader.Plan(saved.PlanJson) is not null
+      && RoutePlanStorage.Read(saved) is not null
     )
       return false;
     await planning.BuildAsync(
@@ -59,7 +59,7 @@ public sealed partial class RouteChoiceService
     if (!await PlanningCurrency.IsCurrentAsync(work, load, plans, profile, ct))
       return null;
     var entity = await plans.ReadAsync(load.Id, ct, load.ExecutionLegId);
-    var old = entity is null ? null : SavedRouteReader.Plan(entity.PlanJson);
+    var old = entity is null ? null : RoutePlanStorage.Read(entity);
     var started =
       load.Status == "in_transit"
       || load.Stops.Any(s => s.IsCompleted)
@@ -173,7 +173,7 @@ public sealed partial class RouteChoiceService
       ct,
       load.ExecutionLegId
     );
-    var plan = entity is null ? null : SavedRouteReader.Plan(entity.PlanJson);
+    var plan = entity is null ? null : RoutePlanStorage.Read(entity);
     if (
       plan is null
       || plan.Id != context.PlanId

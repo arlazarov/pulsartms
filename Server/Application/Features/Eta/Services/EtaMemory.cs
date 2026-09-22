@@ -1,13 +1,31 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Threading.Channels;
+using Application.Models;
 using Domain.Models.Eta;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Eta.Services;
 
-public sealed class EtaMemory : IDisposable
+public sealed class EtaMemory : IDisposable, ICacheMemorySource
 {
+  public IReadOnlyList<CacheMemorySnapshot> ReadMemory()
+  {
+    var stats0 = futureTimings.GetCurrentStatistics();
+    return
+    [
+      new(
+        "eta-future-timings",
+        stats0?.CurrentEntryCount,
+        stats0?.CurrentEstimatedSize,
+        32768,
+        "units"
+      ),
+      new("eta-current", Results.Count, null, null, "unmeasured"),
+      new("eta-timing", Timing.Count, Timing.RetainedUnits, 32768, "units"),
+    ];
+  }
+
   public sealed record ScopeIdentity(Guid DispatchId, Guid? ExecutionLegId);
 
   public sealed record Entry(
@@ -25,7 +43,7 @@ public sealed class EtaMemory : IDisposable
   private readonly ConcurrentDictionary<Guid, ScopeIdentity> scopes = new();
   public EtaRouteTimingCache Timing { get; } = new();
   private readonly MemoryCache futureTimings = new(
-    new MemoryCacheOptions { SizeLimit = 32768 }
+    new MemoryCacheOptions { TrackStatistics = true, SizeLimit = 32768 }
   );
   private readonly SemaphoreSlim[] futureGates = Enumerable
     .Range(0, 16)

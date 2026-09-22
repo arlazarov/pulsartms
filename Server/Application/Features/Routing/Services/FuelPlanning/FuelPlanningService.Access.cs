@@ -89,13 +89,20 @@ public sealed partial class FuelPlanningService
         ct,
         plan.ExecutionLegId
       ) ?? throw new RoutePlanningException("Route not found.");
-    var current = SavedRouteReader.Plan(entity.PlanJson)!;
+    var current = RoutePlanStorage.Read(entity)!;
     current.FuelRecommendations = recommendations;
     current.FuelPlan = null;
     await routeStore.SaveAsync(entity, current, ct);
-    await transaction.CommitAsync(ct);
-    profiles.Invalidate(plan.TruckId);
-    routeStore.Invalidate(plan.DispatchId, plan.ExecutionLegId);
+    await publication.CommitAsync(
+      transaction,
+      plan.TruckId,
+      ct,
+      () =>
+      {
+        profiles.Invalidate(plan.TruckId);
+        routeStore.Invalidate(plan.DispatchId, plan.ExecutionLegId);
+      }
+    );
     return recommendations;
   }
 

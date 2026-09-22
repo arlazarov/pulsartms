@@ -1,7 +1,6 @@
 using Application.Features.Fleet.Interfaces;
 using Application.Models;
 using Domain.Models.Fleet;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Fleet.Queries.GetFleetLocations;
 
@@ -15,7 +14,7 @@ public record GetTruckHistoryQuery(
 public class GetTruckHistoryHandler(
   IAppDbContext db,
   IFleetTelemetryProvider telemetry,
-  IMemoryCache cache,
+  TruckHistoryCache cache,
   TruckHistoryQueue queue
 )
   : IRequestHandler<
@@ -23,18 +22,6 @@ public class GetTruckHistoryHandler(
     RequestResponse<IReadOnlyList<VehicleLocationPoint>>
   >
 {
-  private sealed record Snapshot(
-    IReadOnlyList<VehicleLocationPoint> Points,
-    DateTime Through,
-    DateTime FetchedAt
-  )
-  {
-    private readonly Lazy<IReadOnlyList<VehicleLocationPoint>> simplified = new(
-      () => TruckHistoryGeometry.Simplify(Points)
-    );
-    public IReadOnlyList<VehicleLocationPoint> Simplified => simplified.Value;
-  }
-
   private static readonly SemaphoreSlim[] Gates = Enumerable
     .Range(0, 32)
     .Select(_ => new SemaphoreSlim(1))
@@ -54,7 +41,7 @@ public class GetTruckHistoryHandler(
     var key = $"truck-history:{request.TruckId}:{from:O}:{request.To:O}";
     if (!request.Refresh)
     {
-      cache.TryGetValue(key, out Snapshot? current);
+      var current = cache.Get(key);
       if (
         current is null
         || DateTime.UtcNow - current.FetchedAt >= TimeSpan.FromMinutes(1)
@@ -70,7 +57,7 @@ public class GetTruckHistoryHandler(
     await gate.WaitAsync(ct);
     try
     {
-      cache.TryGetValue(key, out Snapshot? saved);
+      var saved = cache.Get(key);
       if (
         saved is null
         || DateTime.UtcNow - saved.FetchedAt >= TimeSpan.FromMinutes(1)
@@ -106,18 +93,6 @@ public class GetTruckHistoryHandler(
               && p.UpdatedAt <= to
             )
           );
-          cache.Set(
-            key,
-            new Snapshot(
-              points
-                .OrderBy(p => p.UpdatedAt)
-                .DistinctBy(p => p.UpdatedAt)
-                .ToArray(),
-              saved?.Through ?? from,
-              saved?.FetchedAt ?? DateTime.MinValue
-            ),
-            TimeSpan.FromHours(26)
-          );
           if (!page.HasNextPage)
             break;
           if (
@@ -126,7 +101,7 @@ public class GetTruckHistoryHandler(
             throw new InvalidOperationException("Invalid history cursor.");
           cursor = page.EndCursor;
         } while (true);
-        saved = new Snapshot(
+        saved = new TruckHistoryCache.Snapshot(
           points
             .OrderBy(p => p.UpdatedAt)
             .DistinctBy(p => p.UpdatedAt)
@@ -134,7 +109,7 @@ public class GetTruckHistoryHandler(
           to,
           DateTime.UtcNow
         );
-        cache.Set(key, saved, TimeSpan.FromHours(26));
+        cache.Set(key, saved);
       }
       return RequestResponse<IReadOnlyList<VehicleLocationPoint>>.Ok(
         saved.Simplified

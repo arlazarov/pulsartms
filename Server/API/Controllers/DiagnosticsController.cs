@@ -8,6 +8,14 @@ namespace API.Controllers;
 [Route("api/diagnostics")]
 public sealed class DiagnosticsController : BaseController
 {
+  [HttpGet("memory/map")]
+  public Task<IActionResult> MemoryMap(CancellationToken cancellationToken) =>
+    HandleUnwrappedRequest(new GetProcessMemoryMapQuery(), cancellationToken);
+
+  [HttpGet("memory")]
+  public Task<IActionResult> Memory(CancellationToken cancellationToken) =>
+    HandleUnwrappedRequest(new GetMemoryDiagnosticsQuery(), cancellationToken);
+
   [HttpGet("requests")]
   public Task<IActionResult> Get(CancellationToken cancellationToken) =>
     HandleUnwrappedRequest(new GetRequestDiagnosticsQuery(), cancellationToken);

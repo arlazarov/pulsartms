@@ -45,8 +45,10 @@ public sealed class TruckFuelPlans(
     CancellationToken ct
   ) => store.ReadAsync(truckId, false, ct);
 
-  public void Invalidate(Guid truckId) =>
+  public void Invalidate(Guid truckId)
+  {
     reads.Invalidate($"truck-fuel:{truckId}");
+  }
 
   public async Task<bool> SaveAsync(
     TruckFuelPlanSnapshot snapshot,
@@ -54,7 +56,7 @@ public sealed class TruckFuelPlans(
   )
   {
     var saved = await store.SaveAsync(snapshot, ct);
-    reads.Invalidate($"truck-fuel:{snapshot.TruckId}");
+    Invalidate(snapshot.TruckId);
     return saved;
   }
 

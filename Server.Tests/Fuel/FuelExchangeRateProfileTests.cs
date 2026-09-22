@@ -20,6 +20,72 @@ namespace Server.Tests.Fuel;
 [Trait("Kind", "Integration")]
 public sealed class FuelExchangeRateProfileTests
 {
+  [Fact]
+  public async Task BatchProfilesMatchSingleReadsAndDoNotShareMutableResults()
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await db.Database.EnsureCreatedAsync();
+    using var reads = new ReadCache(
+      Options.Create(new SynchronizationOptions())
+    );
+    var clock = new Clock();
+    var store = new MemoryFuelExchangeRateStore
+    {
+      Rate = new(.74m, new(2026, 9, 16), clock.GetUtcNow().UtcDateTime),
+    };
+    var rates = new FuelExchangeRateService(
+      store,
+      new StubFuelExchangeRateProvider(),
+      reads,
+      clock
+    );
+    var settings = new PlanningSettingsService(db, reads);
+    var profiles = new TruckPlanningProfileService(db, reads, settings, rates);
+    var first = new Truck
+    {
+      Id = Guid.NewGuid(),
+      ExternalId = "batch-a",
+      UnitNumber = "batch-a",
+    };
+    var second = new Truck
+    {
+      Id = Guid.NewGuid(),
+      ExternalId = "batch-b",
+      UnitNumber = "batch-b",
+    };
+    db.Trucks.AddRange(first, second);
+    db.TruckPlanningProfiles.Add(
+      new()
+      {
+        Id = Guid.NewGuid(),
+        TruckId = first.Id,
+        SettingsJson = JsonSerializer.Serialize(
+          new TruckRouteProfile { HeightFeet = 14 },
+          RoutingJson.Options
+        ),
+      }
+    );
+    await db.SaveChangesAsync();
+    var batch = await profiles.GetManyAsync(
+      [first.Id, second.Id, first.Id],
+      default
+    );
+    Assert.Equal(2, batch.Count);
+    foreach (var id in new[] { first.Id, second.Id })
+      Assert.Equal(
+        JsonSerializer.Serialize(await profiles.GetAsync(id, default)),
+        JsonSerializer.Serialize(batch[id])
+      );
+    batch[first.Id].HeightFeet = 99;
+    Assert.NotEqual(99, batch[second.Id].HeightFeet);
+    Assert.Equal(14, (await profiles.GetAsync(first.Id, default)).HeightFeet);
+    Assert.Empty(await profiles.GetManyAsync([], default));
+  }
+
   [Theory]
   [InlineData(null)]
   [InlineData(.82)]

@@ -77,6 +77,20 @@ relax these boundaries to make dependency injection or a background job easier.
 These rules supersede older guidance allowing Infrastructure workers to construct
 Application commands directly.
 
+## Shared reads and background planning
+
+- Before changing Dispatch, Fleet Map, planning reads or their persistence, read
+  `docs/architecture/fleet-efficiency.md` and follow its ownership table.
+- Reuse PlanningSummaryReader for shared display reads. Keep heavy fuel/geometry
+  reconstruction in the background; do not add per-card database/provider calls
+  or page-specific duplicate calculation/cache paths.
+- Batch visible-page inputs, coalesce repeated work and preserve bounded payloads.
+  Notify shared summaries after successful commit and read-cache invalidation.
+  Preserve company/assignment/version guards and retained-display behavior.
+- For a repeated-query fix, add call-count or data-loading regression coverage
+  where practical. Report foreground and background cost separately; a fast HTTP
+  response does not prove that total database or provider work decreased.
+
 ## Required completion checks
 
 - Before editing, identify the owning layer and existing shared implementation.

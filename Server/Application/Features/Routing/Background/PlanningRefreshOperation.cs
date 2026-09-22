@@ -2,6 +2,7 @@ using Application.Diagnostics;
 using Application.Features.Routing.Commands;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.FuelPlanning;
+using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Options;
 using Application.Interfaces;
 using Domain.Models.Routing;
@@ -131,30 +132,51 @@ public sealed class PlanningRefreshOperation(
       )
     )
       return true;
-    var result = await services
-      .GetRequiredService<ISender>()
-      .Send(
-        new PrepareDispatchPlanningCommand(
-          work.DispatchId,
-          work.ExecutionLegId,
-          work.AssignmentRevision
-        ),
-        ct
-      );
-    var succeeded =
-      result.Success
-      && result.Response?.State?.Plan is { InputsChanged: false }
-      && result.Response.Message is null;
-    if (succeeded && result.Response!.State!.Plan!.FuelPlan is not null)
+    var summaries = services.GetRequiredService<PlanningSummaryCache>();
+    var owner = services.GetRequiredService<ICurrentCompany>().Id;
+    var captured = owner is { } company
+      ? summaries.CaptureDispatch(company, work.DispatchId)
+      : [];
+    try
     {
-      await services
-        .GetRequiredService<TruckFuelPlans>()
-        .ApplyAsync(result.Response.State, ct);
-      await services
-        .GetRequiredService<FuelPriceRefreshService>()
-        .RefreshAsync(result.Response!, ct);
+      var result = await services
+        .GetRequiredService<ISender>()
+        .Send(
+          new PrepareDispatchPlanningCommand(
+            work.DispatchId,
+            work.ExecutionLegId,
+            work.AssignmentRevision
+          ),
+          ct
+        );
+      if (
+        captured.Count > 0
+        && result.Success
+        && result.Response is { } prepared
+      )
+        await services
+          .GetRequiredService<PlanningSummaryPublisher>()
+          .PublishAsync(captured, prepared, ct);
+      var succeeded =
+        result.Success
+        && result.Response?.State?.Plan is { InputsChanged: false }
+        && result.Response.Message is null;
+      if (succeeded && result.Response!.State!.Plan!.FuelPlan is not null)
+      {
+        await services
+          .GetRequiredService<TruckFuelPlans>()
+          .ApplyAsync(result.Response.State, ct);
+        await services
+          .GetRequiredService<FuelPriceRefreshService>()
+          .RefreshAsync(result.Response!, ct);
+      }
+      return succeeded;
     }
-    return succeeded;
+    finally
+    {
+      foreach (var item in captured)
+        summaries.Complete(item, null, null);
+    }
   }
 
   private Task<bool> CompleteAsync(

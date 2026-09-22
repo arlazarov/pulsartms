@@ -227,9 +227,14 @@ public sealed class StopCompletionRouteTests
   }
 
   private static async Task<RoutePlan> ReadAsync(StopCompletionFixture f) =>
-    JsonSerializer.Deserialize<RoutePlan>(
-      (await f.Db.DispatchRoutePlans.AsNoTracking().SingleAsync()).PlanJson,
-      RoutingJson.Options
+    RoutePlanStorage.Read(
+      (
+        await RoutePlanStorage.LoadAsync(
+          f.Db,
+          await f.Db.DispatchRoutePlans.AsNoTracking().SingleAsync(),
+          default
+        )
+      )!
     )!;
 
   private static async Task AssertCurrentAsync(StopCompletionFixture f)

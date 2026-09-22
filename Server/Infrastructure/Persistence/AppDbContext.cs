@@ -115,6 +115,12 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
     Set<FleetPlanningSettings>();
   public DbSet<SynchronizationCheckpoint> SynchronizationCheckpoints =>
     Set<SynchronizationCheckpoint>();
+  public DbSet<RouteGeometryChange> RouteGeometryChanges =>
+    Set<RouteGeometryChange>();
+  public DbSet<RouteMovementChunk> RouteMovementChunks =>
+    Set<RouteMovementChunk>();
+  public DbSet<RouteGeometryChunk> RouteGeometryChunks =>
+    Set<RouteGeometryChunk>();
   public DbSet<DispatchRoutePlan> DispatchRoutePlans =>
     Set<DispatchRoutePlan>();
   public DbSet<DispatchBaseRoute> DispatchBaseRoutes =>

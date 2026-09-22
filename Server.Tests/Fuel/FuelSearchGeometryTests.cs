@@ -13,7 +13,7 @@ public sealed class FuelSearchGeometryTests
   public void CoarseBoundsRefineToTheDetailedRoadAcrossCurvesAndRepeatedLegs()
   {
     var route = FuelGeometryFixture.RoundTrip();
-    var original = new RouteGeometry(route);
+    var original = new ReferenceRouteGeometry(route);
     var search = new FuelSearchGeometry(route);
     var random = new Random(1409);
     Assert.InRange(
@@ -24,7 +24,9 @@ public sealed class FuelSearchGeometryTests
     Assert.Equal(original.Miles, search.Miles, 6);
     for (var leg = 0; leg < route.Legs.Count; leg++)
     {
-      var detailedLeg = new RouteGeometry(new() { Legs = [route.Legs[leg]] });
+      var detailedLeg = new ReferenceRouteGeometry(
+        new() { Legs = [route.Legs[leg]] }
+      );
       for (var i = 0; i < 20; i++)
       {
         var mile = random.NextDouble() * 1500;
@@ -76,7 +78,7 @@ public sealed class FuelSearchGeometryTests
       Miles = 1400,
       Legs = [new(1400, 100000, points)],
     };
-    var exact = new RouteGeometry(route);
+    var exact = new ReferenceRouteGeometry(route);
     var search = new FuelSearchGeometry(route);
     for (var i = 0; i < 60; i++)
     {
@@ -104,7 +106,7 @@ public sealed class FuelSearchGeometryTests
         new(100, 6000, [turn, start]),
       ],
     };
-    var exact = new RouteGeometry(route);
+    var exact = new ReferenceRouteGeometry(route);
     var search = new FuelSearchGeometry(route);
     Equal(exact.Match(turn), search.Match(turn));
     Assert.Equal(0, search.MatchLeg(1, turn).Along);
@@ -147,7 +149,9 @@ public sealed class FuelSearchGeometryTests
     var expected = new List<FuelCandidate>();
     for (var leg = 0; leg < route.Legs.Count; leg++)
     {
-      var geometry = new RouteGeometry(new() { Legs = [route.Legs[leg]] });
+      var geometry = new ReferenceRouteGeometry(
+        new() { Legs = [route.Legs[leg]] }
+      );
       foreach (var price in prices)
       {
         var match = geometry.Match(price.Station.Point);

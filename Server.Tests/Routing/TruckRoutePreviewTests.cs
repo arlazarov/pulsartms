@@ -597,7 +597,11 @@ public sealed class TruckRoutePreviewTests
     await new RoutePlanStore(
       fixture.Db,
       fixture.Services.Reads,
-      profiles
+      profiles,
+      new SavedRoutePlanReader(
+        fixture.Db,
+        NullLogger<SavedRoutePlanReader>.Instance
+      )
     ).SaveAsync(entry, plan, default);
     fixture.Probe.Start();
     Assert.Equal(

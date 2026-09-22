@@ -69,12 +69,7 @@ public sealed partial class RoutePlanningService
         ct,
         load.ExecutionLegId
       );
-      var old = entity is null
-        ? null
-        : JsonSerializer.Deserialize<RoutePlan>(
-          entity.PlanJson,
-          RoutingJson.Options
-        );
+      var old = entity is null ? null : RoutePlanStorage.Read(entity);
       var ordered = load.Stops.OrderBy(x => x.Sequence).ToList();
       if (request.FromCurrentPosition)
       {
@@ -219,9 +214,16 @@ public sealed partial class RoutePlanningService
       await profiles.RequireCurrentAsync(work.TruckId, observedProfile, ct);
       await profiles.SaveAsync(plan.TruckId, request.Profile, ct);
       await store.SaveBuiltAsync(entity, plan, hash, ct);
-      await transaction.CommitAsync(ct);
-      profiles.Invalidate(plan.TruckId);
-      store.Invalidate(dispatchId, load.ExecutionLegId);
+      await publication.CommitAsync(
+        transaction,
+        plan.TruckId,
+        ct,
+        () =>
+        {
+          profiles.Invalidate(plan.TruckId);
+          store.Invalidate(dispatchId, load.ExecutionLegId);
+        }
+      );
       return plan;
     }
     finally

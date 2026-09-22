@@ -1055,6 +1055,13 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ExecutionLegId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("GeometryManifestJson")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
+
+                    b.Property<long>("GeometryRevision")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("InputHash")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -1651,6 +1658,90 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasIndex("AvailableAt", "LeaseUntil");
 
                     b.ToTable("PlanningRefreshRequests");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.RouteGeometryChange", b =>
+                {
+                    b.Property<Guid>("RoutePlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ChangesJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("RoutePlanId", "Revision");
+
+                    b.HasIndex("CompanyId");
+
+                    b.ToTable("RouteGeometryChanges");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.RouteGeometryChunk", b =>
+                {
+                    b.Property<Guid>("RoutePlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CoordinatesJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("RoutePlanId", "Key");
+
+                    b.HasIndex("CompanyId");
+
+                    b.ToTable("RouteGeometryChunks");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.RouteMovementChunk", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("From")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MovementJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("RoutePlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("To")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TruckId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("RoutePlanId");
+
+                    b.HasIndex("CompanyId", "TruckId", "To");
+
+                    b.ToTable("RouteMovementChunks");
                 });
 
             modelBuilder.Entity("Domain.Entities.Dispatch.RouteRecalculationAttempt", b =>
@@ -4809,6 +4900,33 @@ namespace Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("DispatchId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.RouteGeometryChange", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.DispatchRoutePlan", null)
+                        .WithMany()
+                        .HasForeignKey("RoutePlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.RouteGeometryChunk", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.DispatchRoutePlan", null)
+                        .WithMany()
+                        .HasForeignKey("RoutePlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Dispatch.RouteMovementChunk", b =>
+                {
+                    b.HasOne("Domain.Entities.Dispatch.DispatchRoutePlan", null)
+                        .WithMany()
+                        .HasForeignKey("RoutePlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

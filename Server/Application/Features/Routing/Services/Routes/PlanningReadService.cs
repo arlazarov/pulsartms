@@ -27,6 +27,8 @@ public sealed class PlanningReadService(
     int? knownVersion = null
   )
   {
+    plan.Tracking.Movement = null;
+    plan.Tracking.LastObservationAt = null;
     if (plan.FuelPlan is { } fuel)
       fuel.RouteChecks = [];
     plan.GeometryOmitted =
@@ -85,6 +87,17 @@ public sealed class PlanningReadService(
     CancellationToken ct
   )
   {
+    var results = new List<AutomaticPlanningResult>();
+    foreach (var work in await ReadBoardInputsAsync(query, ct))
+      if (await ReadBoardWorkAsync(work, ct) is { } result)
+        results.Add(result);
+    return results;
+  }
+
+  internal async Task<
+    IReadOnlyCollection<TruckPlanningInputs>
+  > ReadBoardInputsAsync(GetDispatchBoardQuery query, CancellationToken ct)
+  {
     var board = await mediator.Send(
       query with
       {
@@ -93,7 +106,7 @@ public sealed class PlanningReadService(
         IncludeHos = false,
         IncludeEta = false,
         IncludePlanned = false,
-        IdentitiesOnly = false,
+        IdentitiesOnly = true,
       },
       ct
     );
@@ -109,39 +122,38 @@ public sealed class PlanningReadService(
         .ToArray(),
       ct
     );
-    var results = new List<AutomaticPlanningResult>();
-    foreach (var work in snapshots.Values)
+    return snapshots.Values.ToArray();
+  }
+
+  internal async Task<AutomaticPlanningResult?> ReadBoardWorkAsync(
+    TruckPlanningInputs work,
+    CancellationToken ct
+  )
+  {
+    var first = PlanningWorkPolicy.Candidates(work.Itinerary).FirstOrDefault();
+    if (first is null)
+      return null;
+    try
     {
-      var first = PlanningWorkPolicy
-        .Candidates(work.Itinerary)
-        .FirstOrDefault();
-      if (first is null)
-        continue;
-      try
-      {
-        results.Add(await ForItineraryAsync(work, ct, metadataOnly: true));
-      }
-      catch (RoutePlanningException ex)
-      {
-        results.Add(
-          new(
-            work.Itinerary.TruckId,
-            first.Work.DispatchId,
-            first.LoadNumber,
-            null,
-            ex.Message
-          )
-          {
-            Hos = work.Hos,
-            ExecutionLegId = first.Work.ExecutionLegId,
-            AssignmentRevision = first.Work.ExecutionLegId.HasValue
-              ? first.AssignmentRevision
-              : 0,
-          }
-        );
-      }
+      return await ForItineraryAsync(work, ct, metadataOnly: true);
     }
-    return results;
+    catch (RoutePlanningException ex)
+    {
+      return new(
+        work.Itinerary.TruckId,
+        first.Work.DispatchId,
+        first.LoadNumber,
+        null,
+        ex.Message
+      )
+      {
+        Hos = work.Hos,
+        ExecutionLegId = first.Work.ExecutionLegId,
+        AssignmentRevision = first.Work.ExecutionLegId.HasValue
+          ? first.AssignmentRevision
+          : 0,
+      };
+    }
   }
 
   private async Task<AutomaticPlanningResult> ForItineraryAsync(
@@ -226,6 +238,26 @@ public sealed class PlanningReadService(
     CheckAssignments(result.State?.Plan, work?.Itinerary);
     await ApplyFuelAsync(result.State, ct, work?.Itinerary);
     return PlanningWorkPolicy.WithWarnings(result, segment);
+  }
+
+  internal async Task<AutomaticPlanningResult> PrepareDisplayAsync(
+    AutomaticPlanningResult result,
+    TruckPlanningInputs work,
+    CancellationToken ct
+  )
+  {
+    CheckAssignments(result.State?.Plan, work.Itinerary);
+    await ApplyFuelAsync(result.State, ct, work.Itinerary);
+    return result with
+    {
+      Hos = work.Hos,
+      State = result.State is { } state
+        ? state with
+        {
+          Eta = eta.GetCached(state),
+        }
+        : null,
+    };
   }
 
   private async Task ApplyFuelAsync(

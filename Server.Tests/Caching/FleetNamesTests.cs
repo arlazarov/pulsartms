@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 namespace Server.Tests.Caching;
 
 [Trait("Category", "Architecture")]
+[Trait("Kind", "Integration")]
 public class FleetNamesTests
 {
   [Fact]
@@ -39,13 +40,13 @@ public class FleetNamesTests
     Assert.Equal("11007", (await first.TrucksAsync(default))[truck.Id]);
     Assert.Empty(await first.DriversAsync(default));
     Assert.Empty(await first.TrailersAsync(default));
-    Assert.Equal(3, counter.Reads);
+    Assert.Equal(1, counter.Reads);
 
     // A second request: a new scoped instance, the same cache.
     var second = new FleetNames(db, reads);
     Assert.Equal("11007", (await second.TrucksAsync(default))[truck.Id]);
     Assert.Empty(await second.TrailersAsync(default));
-    Assert.Equal(3, counter.Reads);
+    Assert.Equal(1, counter.Reads);
 
     // What both writers of these names do after they change one.
     truck.UnitNumber = "11008";
@@ -55,7 +56,7 @@ public class FleetNamesTests
     counter.Reads = 0;
     var third = new FleetNames(db, reads);
     Assert.Equal("11008", (await third.TrucksAsync(default))[truck.Id]);
-    Assert.Equal(3, counter.Reads);
+    Assert.Equal(1, counter.Reads);
     // The request that was already running keeps the names it started with.
     Assert.Equal("11007", (await second.TrucksAsync(default))[truck.Id]);
   }
@@ -78,7 +79,7 @@ public class FleetNamesTests
     await names.TrucksAsync(default);
     await names.DriversAsync(default);
     await names.TrucksAsync(default);
-    Assert.Equal(3, counter.Reads);
+    Assert.Equal(1, counter.Reads);
   }
 
   private sealed class Counter : DbCommandInterceptor

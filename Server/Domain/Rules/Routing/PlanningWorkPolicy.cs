@@ -76,7 +76,7 @@ public static class PlanningWorkPolicy
       saved.AssignmentRevision,
       load
     )
-    && saved.InputHash == RoutePlanInputs.Hash(load, profile);
+    && RoutePlanInputs.Matches(saved, load, profile);
 
   private static bool SameAssignment(
     Guid truckId,

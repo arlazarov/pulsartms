@@ -49,9 +49,13 @@ public sealed class BorderPageTests
     var page = context.Render<BorderPage>();
     page.WaitForAssertion(() => Assert.Contains("New crossing", page.Markup));
     await Click(page, "New crossing");
-    var reference = page.FindAll("label")
-      .Single(x => x.TextContent.Contains("Crossing reference"));
-    reference.QuerySelector("input")!.Input("SYNTHETIC-CROSSING");
+    await page.InvokeAsync(
+      () =>
+        page.FindAll("label")
+          .Single(x => x.TextContent.Contains("Crossing reference"))
+          .QuerySelector("input")!
+          .Input("SYNTHETIC-CROSSING")
+    );
     await Click(page, "Shipments");
     await Click(page, "Crew & equipment");
     await Click(page, "Crossing");
@@ -70,7 +74,10 @@ public sealed class BorderPageTests
   }
 
   private static Task Click(IRenderedComponent<BorderPage> page, string text) =>
-    page.FindAll("button")
-      .Single(x => x.TextContent.Trim() == text)
-      .ClickAsync(new MouseEventArgs());
+    page.InvokeAsync(
+      () =>
+        page.FindAll("button")
+          .Single(x => x.TextContent.Trim() == text)
+          .ClickAsync(new MouseEventArgs())
+    );
 }

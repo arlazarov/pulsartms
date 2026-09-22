@@ -12,6 +12,49 @@ namespace Client.Tests.Routing;
 [Trait("Kind", "Unit")]
 public sealed class PlanningExecutionIdentityTests
 {
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task PendingSummaryRetainsOnlyTheSameAssignment(bool changed)
+  {
+    var previous = Result(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+    var pending = previous with
+    {
+      State = null,
+      IsRefreshing = true,
+      AssignmentRevision = changed ? 2 : 1,
+    };
+    using var client = new HttpClient(
+      new StubHttpMessageHandler(
+        (_, _) =>
+          Task.FromResult(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+              Content = JsonContent.Create(
+                new RequestResponseDTO<AutomaticPlanningResult>
+                {
+                  Success = true,
+                  Response = pending,
+                }
+              ),
+            }
+          )
+      )
+    )
+    {
+      BaseAddress = new("http://localhost/"),
+    };
+    using var cache = new PlanningDisplayCache(new ApiService(client));
+    var url = TruckUrl(previous.TruckId);
+    cache.Store(url, previous);
+    var response = await cache.RefreshAsync(url, default);
+    Assert.True(response.Response!.IsRefreshing);
+    if (changed)
+      Assert.Null(response.Response.State);
+    else
+      Assert.Equal(previous.State!.Plan!.Id, response.Response.State!.Plan!.Id);
+  }
+
   [Fact]
   public void ScopedReadsCannotPopulateTheCommercialDispatchAlias()
   {

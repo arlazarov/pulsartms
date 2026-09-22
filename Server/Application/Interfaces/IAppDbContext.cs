@@ -69,6 +69,9 @@ public interface IAppDbContext
   DbSet<TruckPlanningProfile> TruckPlanningProfiles { get; }
   DbSet<FleetPlanningSettings> FleetPlanningSettings { get; }
   DbSet<SynchronizationCheckpoint> SynchronizationCheckpoints { get; }
+  DbSet<RouteGeometryChange> RouteGeometryChanges { get; }
+  DbSet<RouteMovementChunk> RouteMovementChunks { get; }
+  DbSet<RouteGeometryChunk> RouteGeometryChunks { get; }
   DbSet<DispatchRoutePlan> DispatchRoutePlans { get; }
   DbSet<DispatchBaseRoute> DispatchBaseRoutes { get; }
   DbSet<DispatchRouteChoice> DispatchRouteChoices { get; }

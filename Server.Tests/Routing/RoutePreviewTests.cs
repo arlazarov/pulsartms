@@ -13,6 +13,7 @@ using MediatR;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Server.Tests.Routing;
 
@@ -117,11 +118,12 @@ public sealed class RoutePreviewTests
       services.ExchangeRates
     );
     plan.Tracking.AllStopsPassed = true;
-    await new RoutePlanStore(db, reads, profiles).SaveAsync(
-      await db.DispatchRoutePlans.SingleAsync(),
-      plan,
-      default
-    );
+    await new RoutePlanStore(
+      db,
+      reads,
+      profiles,
+      new SavedRoutePlanReader(db, NullLogger<SavedRoutePlanReader>.Instance)
+    ).SaveAsync(await db.DispatchRoutePlans.SingleAsync(), plan, default);
     Assert.Empty(await previews.GetAsync(default));
     Assert.Equal(new[] { 1, 2, 1, 2, 1, 2 }, sender.Pages);
   }

@@ -144,10 +144,11 @@ public sealed partial class BaseRouteService(
             x.DispatchId == load.Id && x.ExecutionLegId == load.ExecutionLegId,
           ct
         );
+      await RoutePlanStorage.LoadAsync(db, existing, ct);
       var previous =
         existing?.InputHash == RoutePlanInputs.Hash(load, profile)
         && existing.TruckId == load.TruckId
-          ? SavedRouteReader.Plan(existing.PlanJson)
+          ? RoutePlanStorage.Read(existing)
           : null;
       var route =
         previous is { FromCurrentPosition: false }
@@ -235,7 +236,7 @@ public sealed partial class BaseRouteService(
         DateTime.UtcNow
       );
       await db.SaveChangesAsync(ct);
-      await publicationTransaction.CommitAsync(ct);
+      await publication.CommitAsync(publicationTransaction, load.TruckId, ct);
       return route;
     }
     finally

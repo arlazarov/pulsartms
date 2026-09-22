@@ -7,23 +7,8 @@ using Microsoft.EntityFrameworkCore;
 // of three names, which ModuleDependencyTests refused - correctly.
 namespace Application.Reference;
 
-// Truck, driver and trailer names, read once for the request rather than
-// once for every caller that needs them.
-//
-// Each read of this database costs about sixty-six milliseconds whatever it
-// asks for, and ExecutionLoads.ReadAsync asked for all three every time it
-// ran - roughly fifteen times in one board page load, for tables holding
-// four, nine and seven rows. That is around two seconds of a page spent
-// fetching twenty rows over and over.
-//
-// Scoped, so the names cannot drift inside one request.
-//
-// Across requests they come from the read cache, under the group both of
-// their writers already invalidate: the fleet settings command and the
-// provider sync each drop "fleet-catalog" whenever they change a row, and the
-// relay carries that to the other instances. Once per request was still three
-// round trips for every request that touched execution - a map left open on
-// a truck asked for these twenty rows three times every ten seconds.
+// Names share the company-scoped fleet catalog cache and its invalidation.
+// Each request retains one catalog snapshot.
 public sealed class FleetNames(IAppDbContext db, IReadCache? reads = null)
 {
   public sealed record Catalog(
@@ -56,19 +41,39 @@ public sealed class FleetNames(IAppDbContext db, IReadCache? reads = null)
         ct: ct
       );
 
-  private async Task<Catalog> LoadAsync(CancellationToken ct) =>
-    new(
-      await db
-        .Trucks.AsNoTracking()
-        .Select(x => new { x.Id, Name = x.UnitNumber })
-        .ToDictionaryAsync(x => x.Id, x => x.Name, ct),
-      await db
-        .Drivers.AsNoTracking()
-        .Select(x => new { x.Id, x.Name })
-        .ToDictionaryAsync(x => x.Id, x => x.Name, ct),
-      await db
-        .Trailers.AsNoTracking()
-        .Select(x => new { x.Id, Name = x.UnitNumber })
-        .ToDictionaryAsync(x => x.Id, x => x.Name, ct)
+  private async Task<Catalog> LoadAsync(CancellationToken ct)
+  {
+    var rows = await db
+      .Trucks.AsNoTracking()
+      .Select(x => new
+      {
+        Kind = 0,
+        x.Id,
+        Name = x.UnitNumber,
+      })
+      .Concat(
+        db.Drivers.AsNoTracking()
+          .Select(x => new
+          {
+            Kind = 1,
+            x.Id,
+            x.Name,
+          })
+      )
+      .Concat(
+        db.Trailers.AsNoTracking()
+          .Select(x => new
+          {
+            Kind = 2,
+            x.Id,
+            Name = x.UnitNumber,
+          })
+      )
+      .ToListAsync(ct);
+    return new(
+      rows.Where(x => x.Kind == 0).ToDictionary(x => x.Id, x => x.Name),
+      rows.Where(x => x.Kind == 1).ToDictionary(x => x.Id, x => x.Name),
+      rows.Where(x => x.Kind == 2).ToDictionary(x => x.Id, x => x.Name)
     );
+  }
 }

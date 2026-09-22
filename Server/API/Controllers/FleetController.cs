@@ -85,6 +85,15 @@ public class FleetController : BaseController
       cancellationToken
     );
 
+  [Authorize]
+  [HttpGet("trucks/{truckId:guid}/movement")]
+  public Task<IActionResult> Movement(
+    Guid truckId,
+    DateTimeOffset from,
+    DateTimeOffset to,
+    CancellationToken ct
+  ) => HandleRequest(new GetTruckMovementQuery(truckId, from, to), ct);
+
   [HttpGet("locations")]
   public async Task<IActionResult> GetLocations(
     CancellationToken cancellationToken

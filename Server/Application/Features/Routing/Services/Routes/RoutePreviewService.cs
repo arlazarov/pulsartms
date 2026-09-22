@@ -213,15 +213,19 @@ public sealed class RoutePreviewService(
   {
     var snapshot = await displays.GetAsync(
       dispatchId,
-      () =>
-        db
-          .DispatchRoutePlans.AsNoTracking()
-          .SingleOrDefaultAsync(
-            x =>
-              x.DispatchId == dispatchId
-              && x.ExecutionLegId == load.ExecutionLegId,
-            ct
-          ),
+      async () =>
+        await RoutePlanStorage.LoadAsync(
+          db,
+          await db
+            .DispatchRoutePlans.AsNoTracking()
+            .SingleOrDefaultAsync(
+              x =>
+                x.DispatchId == dispatchId
+                && x.ExecutionLegId == load.ExecutionLegId,
+              ct
+            ),
+          ct
+        ),
       ct,
       load.ExecutionLegId
     );

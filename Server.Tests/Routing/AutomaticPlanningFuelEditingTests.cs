@@ -185,11 +185,14 @@ public partial class AutomaticPlanningTests
         default
       )
     );
-    var compatibility = JsonSerializer.Deserialize<RoutePlan>(
+    var compatibility = RoutePlanStorage.Read(
       (
-        await fixture.Db.DispatchRoutePlans.AsNoTracking().SingleAsync()
-      ).PlanJson,
-      RoutingJson.Options
+        await RoutePlanStorage.LoadAsync(
+          fixture.Db,
+          await fixture.Db.DispatchRoutePlans.AsNoTracking().SingleAsync(),
+          default
+        )
+      )!
     )!;
     Assert.True(snapshot.Plan.ManuallyEdited);
     Assert.True(compatibility.FuelPlan!.ManuallyEdited);
