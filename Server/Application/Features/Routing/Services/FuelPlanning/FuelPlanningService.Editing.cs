@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Application.Diagnostics;
 using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Queries.GetFuelStations;
@@ -56,13 +57,30 @@ public sealed partial class FuelPlanningService
     CancellationToken ct
   )
   {
+    // "core-total" contains every fuel-edit stage recorded below it, so it is
+    // the number to compare a request against - not the sum of the others.
+    //
+    // Subtracting the stages from it to find unmeasured time is only sound
+    // for ONE pass whose stages did not overlap: take an interval where
+    // core-total's count is 1 and read the stages of that same pass. These
+    // totals accumulate per process, so subtracting across several passes, or
+    // across an interval that also carried background work, produces a
+    // remainder that means nothing.
+    //
+    // It also bounds the handler from the inside: EditFuelPlanCommand's
+    // duration includes the pipeline, the gates and the response around this
+    // method, and core-total is how much of it was actually spent in here.
+    using var core = PerformanceStages.Start("fuel-edit", "core-total");
+    var at = Stopwatch.GetTimestamp();
     var assignedLoad = await FuelLoadAsync(
       dispatchId,
       request.ExecutionLegId,
       request.AssignmentRevision,
       ct
     );
+    at = Mark("load", at);
     var captured = await inputs.ReadFreshAsync(assignedLoad.TruckId!.Value, ct);
+    at = Mark("inputs", at);
     assignedLoad = captured.Root(
       new()
       {
@@ -77,6 +95,7 @@ public sealed partial class FuelPlanningService
       ct,
       PlannedRouteTelemetry.Cached
     );
+    at = Mark("plan", at);
     var plan =
       state.Plan
       ?? throw new RoutePlanningException(
@@ -90,6 +109,7 @@ public sealed partial class FuelPlanningService
       state.Profile,
       ct
     );
+    at = Mark("current", at);
     var profile = state.Profile;
     if (profile.Validate(true) is { } profileError)
       throw new RoutePlanningException(profileError);
@@ -124,6 +144,7 @@ public sealed partial class FuelPlanningService
       );
     var gallons = profile.TankGallons!.Value * percent / 100;
     var saved = await savedPlans.ReadCheckedAsync(plan.TruckId, ct);
+    at = Mark("saved-fuel", at);
     var editable =
       saved is not null && FuelPlanProjection.SameScope(saved, plan)
         ? saved
@@ -132,6 +153,7 @@ public sealed partial class FuelPlanningService
       RequireRevision(saved, request.ExpectedCalculatedAt);
     var loads = captured.Select(plan);
     var horizon = await horizons.BuildAsync(state, profile, ct, captured);
+    at = Mark("horizon", at);
     var segments = horizon
       .Itinerary.Select(
         (visit, index) =>
@@ -149,8 +171,13 @@ public sealed partial class FuelPlanningService
       ?? throw new RoutePlanningException(
         "Fuel prices are temporarily unavailable."
       );
+    at = Mark("prices", at);
     var prices = FuelRegionGrid.Prices(response, profile, today);
+    at = Mark("price-grid", at);
+    // Synchronous, and over the whole horizon road: measured because nothing
+    // about it being CPU makes it cheap.
     var geometry = new FuelSearchGeometry(horizon.Route, ct);
+    at = Mark("geometry", at);
     var edits =
       request.Stops ?? FuelPlanEdits.Initial(editable, state, horizon);
     FuelPlanEdits.Validate(edits, editable);
@@ -177,6 +204,7 @@ public sealed partial class FuelPlanningService
         ct,
         stationNames
       );
+      at = Mark("occurrences", at);
       var countries = new FuelAccessCountries(regionLookup);
       if (
         candidates.Any(candidate =>
@@ -191,6 +219,7 @@ public sealed partial class FuelPlanningService
             + "or its country cannot be confirmed. Choose a station on the "
             + "same side of the border as this route section."
         );
+      at = Mark("border-check", at);
       arrivalInputs = await regions.BuildAsync(
         new RoutePlan
         {
@@ -207,6 +236,7 @@ public sealed partial class FuelPlanningService
         geometry,
         captured
       );
+      at = Mark("arrival-regions", at);
     }
     catch (RoutePlanningException error) when (!save)
     {
@@ -241,6 +271,7 @@ public sealed partial class FuelPlanningService
       plan.Version,
       horizon.StartAccessMiles
     );
+    at = Mark("replay", at);
     var fuel = replay.Plan;
     fuel.TruckId = plan.TruckId;
     fuel.ExecutionLegId = plan.ExecutionLegId;
@@ -354,5 +385,14 @@ public sealed partial class FuelPlanningService
       Segments: segments,
       QuantityChoices: choices
     );
+  }
+
+  // Close one stage and open the next. A stage that never runs - the request
+  // threw before it, or its branch was not taken - records nothing, so a
+  // missing row means "did not happen", not "took no time".
+  private static long Mark(string stage, long since)
+  {
+    PerformanceStages.Elapsed("fuel-edit", stage, since);
+    return Stopwatch.GetTimestamp();
   }
 }
