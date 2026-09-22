@@ -78,18 +78,24 @@ public sealed class TruckItineraryReader(
       .Select(x => x.Id)
       .Distinct()
       .ToArray();
-    var legacy = await db
-      .Dispatches.AsNoTracking()
-      .Include(x => x.Stops)
-      .Where(x => legacyIds.Contains(x.Id))
-      .Select(x => new
-      {
-        Load = x,
-        Source = db.DispatchSourceLinks.FirstOrDefault(s =>
-          s.DispatchId == x.Id
-        ),
-      })
-      .ToDictionaryAsync(x => x.Load.Id, ct);
+    // Work that carries an execution leg is read natively above; this covers
+    // what is left. On a chain that is entirely execution-backed the set is
+    // empty, and asking for it is a round trip that can only return nothing.
+    var legacy =
+      legacyIds.Length == 0
+        ? []
+        : await db
+          .Dispatches.AsNoTracking()
+          .Include(x => x.Stops)
+          .Where(x => legacyIds.Contains(x.Id))
+          .Select(x => new
+          {
+            Load = x,
+            Source = db.DispatchSourceLinks.FirstOrDefault(s =>
+              s.DispatchId == x.Id
+            ),
+          })
+          .ToDictionaryAsync(x => x.Load.Id, ct);
     PerformanceStages.Elapsed("itinerary-read", "legacy", at);
     at = Stopwatch.GetTimestamp();
     var native = batch

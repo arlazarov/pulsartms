@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Npgsql;
 
 namespace Server.Tests.Support;
@@ -128,11 +129,12 @@ public sealed class PostgresFixture : IAsyncDisposable
     await command.ExecuteNonQueryAsync();
   }
 
-  public AppDbContext Connect()
+  public AppDbContext Connect(params IInterceptor[] interceptors)
   {
-    var db = new AppDbContext(
-      new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(source).Options
-    );
+    var options = new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(source);
+    if (interceptors.Length > 0)
+      options.AddInterceptors(interceptors);
+    var db = new AppDbContext(options.Options);
     opened.Add(db);
     return db;
   }
