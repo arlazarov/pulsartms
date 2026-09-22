@@ -1,7 +1,9 @@
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Application.Diagnostics;
 using Application.Features.Dispatch.Models;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.Addresses;
@@ -28,9 +30,20 @@ public sealed class FuelHorizon(
   )
   {
     ct.ThrowIfCancellationRequested();
+    // "build-total" contains every fuel-horizon stage below it. The stages
+    // around the loop - "connection" and "base" - are totals over however many
+    // times the loop ran, so read them with their Count; and each of those
+    // contains the reads recorded inside it, so they are a breakdown and not
+    // an addition.
+    using var building = PerformanceStages.Start("fuel-horizon", "build-total");
     var plan = state.Plan!;
+    var reading = Stopwatch.GetTimestamp();
     var captured =
       suppliedInputs ?? await inputs.ReadFreshAsync(plan.TruckId, ct);
+    // Records nothing when the caller supplied the inputs, which the edit path
+    // does: a missing row means it was handed them, not that it was free.
+    if (suppliedInputs is null)
+      PerformanceStages.Elapsed("fuel-horizon", "inputs", reading);
     var loads = captured.Select(plan);
     var index = loads.FindIndex(x =>
       x.Id == plan.DispatchId && x.ExecutionLegId == plan.ExecutionLegId
@@ -151,12 +164,14 @@ public sealed class FuelHorizon(
       var points = orderedStops
         .Select(stop => ConfirmedPoint(stop, now))
         .ToArray();
+      var connecting = Stopwatch.GetTimestamp();
       var (connection, dependency, road) = await ReadConnectionAsync(
         previous,
         load,
         profile,
         ct
       );
+      PerformanceStages.Elapsed("fuel-horizon", "connection", connecting);
       if (dependency is not null)
         history.Add(dependency);
       roads.Add(road);
@@ -171,7 +186,9 @@ public sealed class FuelHorizon(
       var extension = connection;
       if (points.Length > 1)
       {
+        var basing = Stopwatch.GetTimestamp();
         var basis = await ReadBaseAsync(load, profile, points, ct);
+        PerformanceStages.Elapsed("fuel-horizon", "base", basing);
         roads.AddRange(basis.Roads);
         extension = FuelHorizonRoad.Join(connection, basis.Route);
       }
@@ -237,7 +254,20 @@ public sealed class FuelHorizon(
   )
   {
     if (!previous.ExecutionLegId.HasValue)
-      return await deadheads.CaptureRouteAsync(previous.Id, next, profile, ct);
+    {
+      // The two branches are recorded apart: which one a load takes depends on
+      // whether its predecessor has an execution leg, and they do different
+      // work. A missing row means that branch was not taken.
+      var capturing = Stopwatch.GetTimestamp();
+      var captured = await deadheads.CaptureRouteAsync(
+        previous.Id,
+        next,
+        profile,
+        ct
+      );
+      PerformanceStages.Elapsed("fuel-horizon", "capture-route", capturing);
+      return captured;
+    }
     // The captured itinerary selected this predecessor. Its execution owns
     // the delivery assignment even when the imported load retains old trucks.
     var history = new Dictionary<Guid, DeadheadHistorySnapshot>
@@ -246,6 +276,7 @@ public sealed class FuelHorizon(
         new(next, [previous], false)
       ),
     };
+    var rereading = Stopwatch.GetTimestamp();
     var saved = await deadheads.ReadCapturedRouteAsync(
       previous.Id,
       next,
@@ -253,6 +284,7 @@ public sealed class FuelHorizon(
       history,
       ct
     );
+    PerformanceStages.Elapsed("fuel-horizon", "read-captured-route", rereading);
     return (saved.Route, null, saved.Road);
   }
 
@@ -285,6 +317,7 @@ public sealed class FuelHorizon(
     CancellationToken ct
   )
   {
+    var basing = Stopwatch.GetTimestamp();
     var saved = await db
       .DispatchBaseRoutes.AsNoTracking()
       .SingleOrDefaultAsync(
@@ -293,6 +326,7 @@ public sealed class FuelHorizon(
           && row.ExecutionLegId == load.ExecutionLegId,
         ct
       );
+    PerformanceStages.Elapsed("fuel-horizon", "base-route-read", basing);
     var roads = ImmutableArray.CreateBuilder<SavedRoadVersion>();
     roads.Add(
       SavedRoadVersion.Base(
@@ -309,6 +343,7 @@ public sealed class FuelHorizon(
         : null;
     if (route is null)
     {
+      var loading = Stopwatch.GetTimestamp();
       var stored = await db
         .DispatchRoutePlans.AsNoTracking()
         .SingleOrDefaultAsync(
@@ -318,6 +353,9 @@ public sealed class FuelHorizon(
           ct
         );
       await RoutePlanStorage.LoadAsync(db, stored, ct);
+      // The row and its chunked geometry together - one is worthless without
+      // the other, and the load is where the geometry actually arrives.
+      PerformanceStages.Elapsed("fuel-horizon", "base-plan-read", loading);
       var previous =
         stored?.InputHash == RoutePlanInputs.Hash(load, profile)
         && stored.TruckId == load.TruckId
