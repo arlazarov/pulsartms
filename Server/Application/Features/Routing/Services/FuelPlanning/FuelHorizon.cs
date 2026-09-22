@@ -16,7 +16,7 @@ using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 
-public sealed class FuelHorizon(
+public sealed partial class FuelHorizon(
   IFuelWorkInputsReader inputs,
   IAppDbContext db,
   DeadheadService deadheads
@@ -114,6 +114,12 @@ public sealed class FuelHorizon(
     var notes = new List<string>();
     var history = ImmutableArray.CreateBuilder<DeadheadHistoryBatch>();
     var roads = ImmutableArray.CreateBuilder<SavedRoadVersion>();
+    var (savedConnections, savedBases) = await ReadAheadAsync(
+      loads.Skip(index + 1).Select(captured.Resolve).ToList(),
+      plan.TruckId,
+      stops.Count,
+      ct
+    );
     foreach (var next in loads.Skip(index + 1))
     {
       var load = captured.Resolve(next);
@@ -169,6 +175,7 @@ public sealed class FuelHorizon(
         previous,
         load,
         profile,
+        savedConnections,
         ct
       );
       PerformanceStages.Elapsed("fuel-horizon", "connection", connecting);
@@ -187,7 +194,7 @@ public sealed class FuelHorizon(
       if (points.Length > 1)
       {
         var basing = Stopwatch.GetTimestamp();
-        var basis = await ReadBaseAsync(load, profile, points, ct);
+        var basis = await ReadBaseAsync(load, profile, points, savedBases, ct);
         PerformanceStages.Elapsed("fuel-horizon", "base", basing);
         roads.AddRange(basis.Roads);
         extension = FuelHorizonRoad.Join(connection, basis.Route);
@@ -242,52 +249,6 @@ public sealed class FuelHorizon(
     };
   }
 
-  private async Task<(
-    TruckRoute? Route,
-    DeadheadHistoryBatch? History,
-    SavedRoadVersion Road
-  )> ReadConnectionAsync(
-    RouteWorkSnapshot previous,
-    RouteWorkSnapshot next,
-    TruckRouteProfile profile,
-    CancellationToken ct
-  )
-  {
-    if (!previous.ExecutionLegId.HasValue)
-    {
-      // The two branches are recorded apart: which one a load takes depends on
-      // whether its predecessor has an execution leg, and they do different
-      // work. A missing row means that branch was not taken.
-      var capturing = Stopwatch.GetTimestamp();
-      var captured = await deadheads.CaptureRouteAsync(
-        previous.Id,
-        next,
-        profile,
-        ct
-      );
-      PerformanceStages.Elapsed("fuel-horizon", "capture-route", capturing);
-      return captured;
-    }
-    // The captured itinerary selected this predecessor. Its execution owns
-    // the delivery assignment even when the imported load retains old trucks.
-    var history = new Dictionary<Guid, DeadheadHistorySnapshot>
-    {
-      [next.Id] = DeadheadHistoryProjection.Capture(
-        new(next, [previous], false)
-      ),
-    };
-    var rereading = Stopwatch.GetTimestamp();
-    var saved = await deadheads.ReadCapturedRouteAsync(
-      previous.Id,
-      next,
-      profile,
-      history,
-      ct
-    );
-    PerformanceStages.Elapsed("fuel-horizon", "read-captured-route", rereading);
-    return (saved.Route, null, saved.Road);
-  }
-
   internal static RoutePoint ConfirmedPoint(RouteWorkStop stop, DateTime now)
   {
     if (StopLocation.ReliablePoint(stop, now) is { } reliable)
@@ -305,80 +266,5 @@ public sealed class FuelHorizon(
   {
     _ = ConfirmedPoint(current, now);
     return saved;
-  }
-
-  private async Task<(
-    TruckRoute Route,
-    ImmutableArray<SavedRoadVersion> Roads
-  )> ReadBaseAsync(
-    RouteWorkSnapshot load,
-    TruckRouteProfile profile,
-    IReadOnlyList<RoutePoint> points,
-    CancellationToken ct
-  )
-  {
-    var basing = Stopwatch.GetTimestamp();
-    var saved = await db
-      .DispatchBaseRoutes.AsNoTracking()
-      .SingleOrDefaultAsync(
-        row =>
-          row.DispatchId == load.Id
-          && row.ExecutionLegId == load.ExecutionLegId,
-        ct
-      );
-    PerformanceStages.Elapsed("fuel-horizon", "base-route-read", basing);
-    var roads = ImmutableArray.CreateBuilder<SavedRoadVersion>();
-    roads.Add(
-      SavedRoadVersion.Base(
-        NextLoadRouteVersion.From(
-          load.Id,
-          load.ExecutionLegId,
-          new(load.Id, saved, null)
-        )
-      )
-    );
-    var route =
-      saved?.InputHash == BaseRouteService.Signature(load, profile)
-        ? SavedRouteReader.Route(saved.RouteJson, points.Count - 1)
-        : null;
-    if (route is null)
-    {
-      var loading = Stopwatch.GetTimestamp();
-      var stored = await db
-        .DispatchRoutePlans.AsNoTracking()
-        .SingleOrDefaultAsync(
-          row =>
-            row.DispatchId == load.Id
-            && row.ExecutionLegId == load.ExecutionLegId,
-          ct
-        );
-      await RoutePlanStorage.LoadAsync(db, stored, ct);
-      // The row and its chunked geometry together - one is worthless without
-      // the other, and the load is where the geometry actually arrives.
-      PerformanceStages.Elapsed("fuel-horizon", "base-plan-read", loading);
-      var previous =
-        stored?.InputHash == RoutePlanInputs.Hash(load, profile)
-        && stored.TruckId == load.TruckId
-        && stored.AssignmentRevision == load.AssignmentRevision
-          ? RoutePlanStorage.Read(stored)
-          : null;
-      if (
-        previous is { FromCurrentPosition: false }
-        && previous.DispatchId == load.Id
-        && previous.TruckId == load.TruckId
-        && previous.ExecutionLegId == load.ExecutionLegId
-        && previous.AssignmentRevision == load.AssignmentRevision
-      )
-      {
-        route = previous.Route;
-        roads.Add(SavedRoadVersion.Plan(stored!, previous));
-      }
-    }
-    if (route is null)
-      throw new RoutePlanningException(
-        "A matching saved base route is required for every assigned load before finding fuel. The saved fuel plan has been kept."
-      );
-    FuelHorizonRoad.RequireAnchored(route, points);
-    return (route, roads.ToImmutable());
   }
 }

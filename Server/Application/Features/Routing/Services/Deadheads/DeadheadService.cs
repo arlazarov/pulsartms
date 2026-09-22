@@ -73,6 +73,20 @@ public sealed partial class DeadheadService(
           && x.ExecutionLegId == current.ExecutionLegId,
         ct
       );
+    return ReadCapturedRoute(previousId, current, profile, history, saved);
+  }
+
+  // The same answer from a row already in hand. A caller that has read the
+  // saved connections ahead of time uses this; the freshness test is the same
+  // one, applied to the same row, and is not moved into the query.
+  internal (TruckRoute? Route, SavedRoadVersion Road) ReadCapturedRoute(
+    Guid previousId,
+    RouteWorkSnapshot current,
+    TruckRouteProfile profile,
+    IReadOnlyDictionary<Guid, DeadheadHistorySnapshot> history,
+    DispatchDeadhead? saved
+  )
+  {
     var pair = DeadheadConnection.Find(history.GetValueOrDefault(current.Id));
     var route =
       pair?.Previous.Id == previousId ? pair.ReadRoute(saved, profile) : null;
