@@ -200,6 +200,7 @@ started again under the current project policy.
 
 ### Experiments and measurements
 
+- [September 22 three previews with the new stages](2026-09/fuel-inputs-staged-preview-2026-09-22.md)
 - [September 22 fuel inputs on the execution-backed path](2026-09/fuel-inputs-execution-path-2026-09-22.md)
 - [September 22 fuel inputs read audit](2026-09/fuel-inputs-read-audit-2026-09-22.md)
 - [September 22 fuel horizon read-ahead verification](2026-09/fuel-horizon-read-ahead-2026-09-22.md)
