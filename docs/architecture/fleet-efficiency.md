@@ -23,6 +23,8 @@ that every proposed optimization has been implemented.
 | Provider delivery statuses and inbound windows | WhatsAppWebhookHandlers |
 | Messaging transport | IDriverMessaging (WhatsAppCloudMessaging) |
 | Driver contacts | UpdateDriverContact / DriverContactImport |
+| Trailer catalog | TrailerCatalog |
+| A truck's current trailer | TruckTrailerAssignments |
 | Heavy preparation and durable demand | PlanningRefreshOperation |
 | Shared display snapshots | PlanningSummaryCache |
 | Board planning reads | BoardPlanningReader |
@@ -107,6 +109,7 @@ elsewhere neither invalidates it nor is hidden by it.
 | Summary snapshot | company and truck key, work and settings signature, cache ticket | - |
 | Fuel hand-over | company, truck, leg or load, assignment revision, station, stop before, content (fill or gallons) | wording, miles ahead, ETA, price |
 | WhatsApp message | idempotency key: assignment, visits with content, recipient; provider message id | later plan versions |
+| Truck's current trailer | stored telemetry word, active leg or in-transit load at its current stop, trailer active, one truck per trailer | planned or finished loads, a missing provider record |
 
 - Calculate outside a long database transaction. Publish through the
   owner above, which re-reads the dependencies inside its transaction and
@@ -135,7 +138,8 @@ which of these rows it belongs to and adds a controlled-interleaving
 regression where it touches one. Existing coverage:
 `PlanningSummaryCacheTests`, `PlanningPublicationTests`,
 `TruckFuelPlanReplacementTests`, `EtaRetainedForecastTests`,
-`FuelIssueRecordsTests`, `FuelIssueSenderTests` and `WhatsAppWebhookTests`.
+`FuelIssueRecordsTests`, `FuelIssueSenderTests`, `WhatsAppWebhookTests`,
+`TrailerCatalogTests` and `TruckTrailerAssignmentTests`.
 
 ## Preventing repeated database and provider work
 

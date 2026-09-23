@@ -2,6 +2,7 @@ using Application.Caching;
 using Application.Concurrency;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Queries.GetFleetLocations;
+using Application.Features.Fleet.Services;
 using Application.Models;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -56,12 +57,18 @@ public class SyncFleetHandler(
 
     await DriverSync.SyncAsync(dbContext, drivers, cancellationToken);
     await TruckSync.SyncAsync(dbContext, trucks, cancellationToken);
-    await TrailerSync.SyncAsync(dbContext, trailers, cancellationToken);
+    await TrailerCatalog.ApplyAsync(
+      dbContext,
+      fleetProvider.Source,
+      trailers,
+      cancellationToken
+    );
     var count = await FleetAssignmentSync.SyncAsync(
       dbContext,
       assignments,
       trailerAssignments,
       snapshotTime,
+      fleetProvider.Source,
       cancellationToken
     );
 

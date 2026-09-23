@@ -47,6 +47,8 @@ public sealed class FleetLocationStream(
             UnitNumber = x.UnitNumber,
             DriverName = x.DriverName,
             TrailerNumber = x.TrailerNumber,
+            TrailerSource = x.TrailerSource,
+            TrailerConflictNumber = x.TrailerConflictNumber,
             IsActive = true,
           },
           StringComparer.OrdinalIgnoreCase
@@ -143,6 +145,8 @@ public sealed class FleetLocationStream(
             UnitNumber = truck.UnitNumber,
             DriverName = truck.DriverName,
             TrailerNumber = truck.TrailerNumber,
+            TrailerSource = truck.TrailerSource,
+            TrailerConflictNumber = truck.TrailerConflictNumber,
             Latitude = point.Latitude,
             Longitude = point.Longitude,
             Speed = point.Speed,

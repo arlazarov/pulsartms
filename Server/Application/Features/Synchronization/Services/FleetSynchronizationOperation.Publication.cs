@@ -118,6 +118,8 @@ public sealed partial class FleetSynchronizationOperation
         UnitNumber = truck.UnitNumber,
         DriverName = truck.DriverName,
         TrailerNumber = truck.TrailerNumber,
+        TrailerSource = truck.TrailerSource,
+        TrailerConflictNumber = truck.TrailerConflictNumber,
         Latitude = location.Latitude,
         Longitude = location.Longitude,
         Speed = location.Speed,

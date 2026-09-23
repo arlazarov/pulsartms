@@ -11,8 +11,14 @@ public class TrailerConfiguration : IEntityTypeConfiguration<Trailer>
     builder.HasKey(x => x.Id);
 
     builder.Property(x => x.ExternalId).HasMaxLength(100).IsRequired();
+    builder.Property(x => x.Source).HasMaxLength(32);
 
-    builder.HasIndex(x => new { x.CompanyId, x.ExternalId }).IsUnique();
+    // A trailer first seen by number on a load has no external id yet, and
+    // several may wait for one; an id, once given, names one trailer.
+    builder
+      .HasIndex(x => new { x.CompanyId, x.ExternalId })
+      .IsUnique()
+      .HasFilter("\"ExternalId\" <> ''");
 
     builder.Property(x => x.UnitNumber).HasMaxLength(50).IsRequired();
 

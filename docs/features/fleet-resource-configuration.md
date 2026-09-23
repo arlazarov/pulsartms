@@ -20,6 +20,8 @@ Supported edits are:
 - Trucks and trailers: VIN and active/inactive state.
 - Drivers: display name, fuel card and active/inactive state.
 
+Trailers are catalogued automatically from the telemetry provider and from
+imported loads; see [synchronization](synchronization.md#trailers-catalog-and-current-assignment).
 Imported unit numbers and provider/ELD identifiers are read-only. Renaming an
 imported unit without alias-aware assignment reconciliation could break number
 matching. Native resource creation and mapping reconciliation are not enabled.

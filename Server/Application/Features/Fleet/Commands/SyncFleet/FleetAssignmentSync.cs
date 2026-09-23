@@ -1,3 +1,4 @@
+using Application.Features.Fleet.Services;
 using Domain.Models.Fleet;
 
 namespace Application.Features.Fleet.Commands.SyncFleet;
@@ -9,6 +10,7 @@ public static class FleetAssignmentSync
     IReadOnlyList<ExternalFleetAssignment> assignments,
     IReadOnlyList<ExternalTrailerAssignment> trailerAssignments,
     DateTime snapshotTime,
+    string source,
     CancellationToken cancellationToken = default
   )
   {
@@ -25,14 +27,8 @@ public static class FleetAssignmentSync
         x.IsActive && !string.IsNullOrWhiteSpace(x.ExternalId)
       )
       .ToDictionary(x => x.ExternalId, StringComparer.OrdinalIgnoreCase);
-    var trailersById = dbContext
-      .Trailers.Local.Where(x =>
-        x.IsActive && !string.IsNullOrWhiteSpace(x.ExternalId)
-      )
-      .ToDictionary(x => x.ExternalId, StringComparer.OrdinalIgnoreCase);
 
     var driverTargets = new Dictionary<Guid, Guid>();
-    var trailerTargets = new Dictionary<Guid, Guid>();
 
     var current = assignments
       .Where(x =>
@@ -76,74 +72,51 @@ public static class FleetAssignmentSync
       selected.Add(assignment);
     }
 
-    var trailersByDriver = trailerAssignments
-      .Where(x =>
-        x.StartTime <= snapshotTime
-        && (x.EndTime is null || x.EndTime > snapshotTime)
-        && !string.IsNullOrWhiteSpace(x.DriverExternalId)
-        && !string.IsNullOrWhiteSpace(x.TrailerExternalId)
-      )
-      .GroupBy(x => x.DriverExternalId, StringComparer.OrdinalIgnoreCase)
-      .ToDictionary(
-        x => x.Key,
-        x =>
-          x.Select(y => y.TrailerExternalId)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList(),
-        StringComparer.OrdinalIgnoreCase
-      );
-
-    var candidates = selected
-      .Where(x =>
-        trailersByDriver.TryGetValue(x.DriverExternalId, out var ids)
-        && ids.Count == 1
-      )
-      .Select(x => new
-      {
-        Truck = trucksById[x.VehicleExternalId],
-        TrailerId = trailersByDriver[x.DriverExternalId][0],
-      })
-      .GroupBy(x => x.TrailerId, StringComparer.OrdinalIgnoreCase);
-
-    foreach (var group in candidates)
-    {
-      if (
-        group.Count() != 1
-        || !trailersById.TryGetValue(group.Key, out var trailer)
-      )
-        continue;
-      var truck = group.Single().Truck;
-      trailerTargets[truck.Id] = trailer.Id;
-    }
     foreach (var truck in trucks)
     {
       var driverId = driverTargets.TryGetValue(truck.Id, out var d)
         ? d
-        : (Guid?)null;
-      var trailerId = trailerTargets.TryGetValue(truck.Id, out var t)
-        ? t
         : (Guid?)null;
       if (truck.DriverId != driverId)
       {
         truck.Driver = null;
         truck.DriverId = null;
       }
-      if (truck.TrailerId != trailerId)
-      {
-        truck.Trailer = null;
-        truck.TrailerId = null;
-      }
     }
     var count = await dbContext.SaveChangesAsync(cancellationToken);
     foreach (var truck in trucks)
-    {
       truck.DriverId = driverTargets.TryGetValue(truck.Id, out var d)
         ? d
         : null;
-      truck.TrailerId = trailerTargets.TryGetValue(truck.Id, out var t)
-        ? t
-        : null;
-    }
+
+    // The provider's trailer word is kept per truck; which trailer each
+    // truck has is then resolved with its current work.
+    var trailerIds = dbContext
+      .Trailers.Local.Where(x =>
+        x.ExternalId.Length > 0 && (x.Source is null || x.Source == source)
+      )
+      .GroupBy(x => x.ExternalId, StringComparer.OrdinalIgnoreCase)
+      .ToDictionary(
+        x => x.Key,
+        x => x.First().Id,
+        StringComparer.OrdinalIgnoreCase
+      );
+    TruckTrailerAssignments.Record(
+      trucks,
+      TruckTrailerAssignments.Telemetry(
+        selected.ToDictionary(
+          x => trucksById[x.VehicleExternalId].Id,
+          x => x.DriverExternalId
+        ),
+        trailerAssignments,
+        trailerIds,
+        snapshotTime
+      )
+    );
+    count += await dbContext.SaveChangesAsync(cancellationToken);
+    count += (
+      await TruckTrailerAssignments.ResolveAsync(dbContext, cancellationToken)
+    ).Count;
     return count;
   }
 }

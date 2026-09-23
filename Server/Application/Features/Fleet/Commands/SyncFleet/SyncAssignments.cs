@@ -4,6 +4,7 @@ using Application.Caching;
 using Application.Concurrency;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Queries.GetFleetLocations;
+using Application.Features.Fleet.Services;
 using Application.Models;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -75,13 +76,26 @@ public sealed class SyncAssignmentsHandler(
       )
     );
     if (cache.Get<string>("assignment-sync-signature") == signature)
-      return RequestResponse<int>.Ok(0);
+    {
+      // The provider said nothing new, but the current work may have moved
+      // on - a load picked up, a leg accepted - so the trucks' trailers are
+      // resolved again from what is stored.
+      await using var unchanged = await db.Database.BeginTransactionAsync(ct);
+      var moved = await TruckTrailerAssignments.ResolveAsync(db, ct);
+      if (moved.Count == 0)
+        return RequestResponse<int>.Ok(0);
+      await db.SaveChangesAsync(ct);
+      await unchanged.CommitAsync(ct);
+      TruckTrailerAssignments.Published(reads);
+      return RequestResponse<int>.Ok(moved.Count);
+    }
     await using var transaction = await db.Database.BeginTransactionAsync(ct);
     var count = await FleetAssignmentSync.SyncAsync(
       db,
       assignments,
       trailers,
       now,
+      provider.Source,
       ct
     );
     count += await db.SaveChangesAsync(ct);

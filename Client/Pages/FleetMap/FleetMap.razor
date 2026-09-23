@@ -102,9 +102,17 @@
                 {
                     <span class="fleet-map-inspector__crew">
                         <span class="fleet-map-inspector__trailer"
-                              title="Trailer">@(string.IsNullOrWhiteSpace(
+                              title="@TrailerTitle(identityTruck)">@(string.IsNullOrWhiteSpace(
                             identityTruck.TrailerNumber)
                             ? "—" : identityTruck.TrailerNumber)</span>
+                        @if (!string.IsNullOrWhiteSpace(
+                            identityTruck.TrailerConflictNumber))
+                        {
+                            <span class="fleet-map-inspector__trailer-conflict"
+                                  title="Another source names this trailer for the truck">
+                                or @identityTruck.TrailerConflictNumber?
+                            </span>
+                        }
                         <span class="fleet-map-inspector__driver"
                               title="Driver">@(string.IsNullOrWhiteSpace(
                             HosDriverName(identityTruck))

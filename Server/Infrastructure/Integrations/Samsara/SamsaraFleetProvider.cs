@@ -8,6 +8,8 @@ public class SamsaraFleetProvider(
   SamsaraDriverCatalogCache catalog
 ) : IFleetProvider
 {
+  public string Source => "samsara";
+
   public async Task<IReadOnlyList<ExternalDriver>> GetDriversAsync(
     CancellationToken cancellationToken = default
   )

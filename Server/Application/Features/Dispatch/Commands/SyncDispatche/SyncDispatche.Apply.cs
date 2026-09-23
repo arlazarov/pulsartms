@@ -1,6 +1,7 @@
 using Application.Features.Dispatch.Interfaces;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Services;
+using Application.Features.Fleet.Services;
 using Application.Features.Routing.Background;
 using Application.Models;
 using Domain.Entities.Dispatch;
@@ -63,7 +64,7 @@ public partial class SyncDispatchesCommandHandler
 
     var driver = driverIndex.Match(source.DriverName);
     var truck = trucks.GetValueOrDefault(source.TruckNumber);
-    var trailer = trailers.GetValueOrDefault(source.TrailerNumber);
+    var trailer = TrailerCatalog.Find(trailers, source.TrailerNumber);
     var dispatch = dispatches.GetValueOrDefault(source.ExternalId);
 
     if (dispatch is null)
@@ -92,7 +93,7 @@ public partial class SyncDispatchesCommandHandler
       source,
       value => trucks.GetValueOrDefault(value)?.Id,
       value => driverIndex.Match(value)?.Id,
-      value => trailers.GetValueOrDefault(value)?.Id
+      value => TrailerCatalog.Find(trailers, value)?.Id
     );
 
     provenance.AssignmentSignature = DispatchSourceAssignments.Fingerprint(
@@ -173,7 +174,7 @@ public partial class SyncDispatchesCommandHandler
       var stopDriver = driverIndex.Match(sourceStop.DriverName);
       var coDriver = driverIndex.Match(sourceStop.CoDriverName);
       var stopTruck = trucks.GetValueOrDefault(sourceStop.TruckNumber);
-      var stopTrailer = trailers.GetValueOrDefault(sourceStop.TrailerNumber);
+      var stopTrailer = TrailerCatalog.Find(trailers, sourceStop.TrailerNumber);
       if (stop is null)
       {
         stop = DispatchMapper.CreateStop(

@@ -9,6 +9,7 @@ using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Options;
 using Application.Features.Dispatch.Services;
 using Application.Features.Execution.Services;
+using Application.Features.Fleet.Services;
 using Application.Features.Routing.Background;
 using Application.Models;
 using Domain.Entities.Dispatch;
@@ -152,14 +153,14 @@ public partial class SyncDispatchesCommandHandler(
       .GroupBy(x => x.UnitNumber)
       .Where(x => x.Count() == 1)
       .ToDictionary(x => x.Key, x => x.Single(), StringComparer.Ordinal);
-    var trailers = (
-      await dbContext
-        .Trailers.Where(x => trailerNumbers.Contains(x.UnitNumber))
-        .ToListAsync(cancellationToken)
-    )
-      .GroupBy(x => x.UnitNumber)
-      .Where(x => x.Count() == 1)
-      .ToDictionary(x => x.Key, x => x.Single(), StringComparer.Ordinal);
+    // A trailer a load names is catalogued even when no telemetry provider
+    // has reported it, through the catalog's owner.
+    var trailers = await TrailerCatalog.EnsureAsync(
+      dbContext,
+      providerKey,
+      trailerNumbers,
+      cancellationToken
+    );
     var customers = (
       await dbContext
         .Customers.Where(x => customerNames.Contains(x.NormalizedName))
@@ -235,6 +236,12 @@ public partial class SyncDispatchesCommandHandler(
     {
       reads.Invalidate("dispatch");
       reads.Invalidate("board");
+      // A load picked up or moved changes which trailer its truck has now.
+      await TruckTrailerAssignments.RefreshAsync(
+        dbContext,
+        reads,
+        cancellationToken
+      );
       if (executions.Count > 0)
       {
         reads.Invalidate("execution");

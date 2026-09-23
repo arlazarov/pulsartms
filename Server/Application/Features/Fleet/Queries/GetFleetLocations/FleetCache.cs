@@ -26,6 +26,11 @@ public class FleetCache(ReadCache reads)
             DriverName = x.Driver != null ? x.Driver.Name : string.Empty,
             TrailerNumber =
               x.Trailer != null ? x.Trailer.UnitNumber : string.Empty,
+            TrailerSource = x.TrailerSource,
+            TrailerConflictNumber =
+              x.TrailerConflict != null
+                ? x.TrailerConflict.UnitNumber
+                : string.Empty,
           })
           .ToListAsync(cancellationToken),
       TimeSpan.FromHours(1),

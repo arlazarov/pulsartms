@@ -7,6 +7,11 @@ public class TruckLocationMapDto
   public string UnitNumber { get; set; } = string.Empty;
   public string DriverName { get; set; } = string.Empty;
   public string TrailerNumber { get; set; } = string.Empty;
+
+  // Where the trailer came from (telemetry, execution or load), and a
+  // trailer another source names for this truck when they disagree.
+  public string? TrailerSource { get; set; }
+  public string TrailerConflictNumber { get; set; } = string.Empty;
   public decimal Latitude { get; set; }
   public decimal Longitude { get; set; }
   public decimal Speed { get; set; }

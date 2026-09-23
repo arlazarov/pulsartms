@@ -4,6 +4,10 @@ namespace Application.Features.Fleet.Interfaces;
 
 public interface IFleetProvider
 {
+  // A stable key for this provider's identities, recorded with the ids it
+  // gives resources so another provider's ids are never read as its own.
+  string Source { get; }
+
   Task<IReadOnlyList<ExternalDriver>> GetDriversAsync(
     CancellationToken cancellationToken = default
   );

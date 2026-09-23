@@ -38,4 +38,14 @@ public partial class FleetMap
     _hosSnapshot.TryGetValue(truck.TruckId, out var snapshot)
       ? snapshot.DriverName
       : truck.DriverName;
+
+  // Where the truck's trailer came from, as the server resolved it.
+  private static string TrailerTitle(TruckLocationMapDto truck) =>
+    truck.TrailerSource switch
+    {
+      "telemetry" => "Trailer, as telemetry reports it",
+      "execution" => "Trailer of the accepted work",
+      "load" => "Trailer of the current load",
+      _ => "Trailer",
+    };
 }

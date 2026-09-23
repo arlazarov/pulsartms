@@ -332,6 +332,10 @@ public class SynchronizationTests
       IsActive = true,
       Driver = a,
       Trailer = trailerA,
+      // As migrated: the trailer already there is telemetry's last word.
+      TelemetryTrailerKnown = true,
+      TelemetryTrailerId = trailerA.Id,
+      TrailerSource = "telemetry",
     };
     var two = new Truck
     {
@@ -341,6 +345,9 @@ public class SynchronizationTests
       IsActive = true,
       Driver = b,
       Trailer = trailerB,
+      TelemetryTrailerKnown = true,
+      TelemetryTrailerId = trailerB.Id,
+      TrailerSource = "telemetry",
     };
     db.AddRange(one, two);
     await db.SaveChangesAsync();
@@ -377,13 +384,25 @@ public class SynchronizationTests
     };
     Assert.Equal(
       0,
-      await FleetAssignmentSync.SyncAsync(db, assignments, trailers, now)
+      await FleetAssignmentSync.SyncAsync(
+        db,
+        assignments,
+        trailers,
+        now,
+        "telemetry-source"
+      )
     );
     Assert.Equal(0, await db.SaveChangesAsync());
     assignments[0].VehicleExternalId = "two";
     assignments[1].VehicleExternalId = "one";
     await using var transaction = await db.Database.BeginTransactionAsync();
-    await FleetAssignmentSync.SyncAsync(db, assignments, trailers, now);
+    await FleetAssignmentSync.SyncAsync(
+      db,
+      assignments,
+      trailers,
+      now,
+      "telemetry-source"
+    );
     await db.SaveChangesAsync();
     await transaction.CommitAsync();
     Assert.Equal(b.Id, one.DriverId);
@@ -431,6 +450,73 @@ public class SynchronizationTests
     Assert.True((await handler.Handle(new(), default)).Response > 0);
     Assert.Equal(id, load.Stops.Single().Id);
     Assert.NotNull(load.Stops.Single().PickedUpAt);
+  }
+
+  // A trailer only the load import names is catalogued by the import, the
+  // load points at it, and its truck takes it once the load is in transit.
+  [Fact]
+  public async Task AnImportedLoadsUnknownTrailerIsCataloguedAndPutOnItsTruck()
+  {
+    await using var fixture = await Database.CreateAsync();
+    var truck = new Truck
+    {
+      Id = Guid.NewGuid(),
+      ExternalId = "v-11005",
+      UnitNumber = "11005",
+      IsActive = true,
+    };
+    fixture.Db.Trucks.Add(truck);
+    await fixture.Db.SaveChangesAsync();
+    var source = new ExternalDispatch
+    {
+      LoadNumber = 1407,
+      Status = "in_transit",
+      TruckNumber = "11005",
+      TrailerNumber = "55904",
+      Stops =
+      [
+        new()
+        {
+          Sequence = 1,
+          Job = "Pick Up",
+          City = "Buffalo",
+          TruckNumber = "11005",
+          TrailerNumber = "55904",
+        },
+        new()
+        {
+          Sequence = 2,
+          Job = "Drop Off",
+          City = "Toronto",
+          TruckNumber = "11005",
+          TrailerNumber = "55904",
+        },
+      ],
+    };
+    using var reads = TestCache.Create();
+    using var memory = new MemoryCache(new MemoryCacheOptions());
+    await new SyncDispatchesCommandHandler(
+      fixture.Db,
+      [new DispatchProvider(source)],
+      DispatchImportTestData.Options,
+      reads,
+      memory,
+      new(Options.Create(new RoutePreparationOptions()), TimeProvider.System)
+    ).Handle(new(), default);
+
+    var trailer = await fixture.Db.Trailers.AsNoTracking().SingleAsync();
+    Assert.Equal(
+      ("55904", DispatchImportTestData.Key),
+      (trailer.UnitNumber, trailer.Source)
+    );
+    var load = await fixture
+      .Db.Dispatches.AsNoTracking()
+      .Include(x => x.Stops)
+      .SingleAsync();
+    Assert.Equal(trailer.Id, load.TrailerId);
+    Assert.All(load.Stops, x => Assert.Equal(trailer.Id, x.TrailerId));
+    var row = await fixture.Db.Trucks.AsNoTracking().SingleAsync();
+    Assert.Equal((trailer.Id, "load"), (row.TrailerId, row.TrailerSource));
   }
 
   [Fact]

@@ -27,5 +27,16 @@ public class TruckConfiguration : IEntityTypeConfiguration<Truck>
       .WithOne()
       .HasForeignKey<Truck>(x => x.TrailerId)
       .OnDelete(DeleteBehavior.SetNull);
+    builder.Property(x => x.TrailerSource).HasMaxLength(32);
+    builder
+      .HasOne(x => x.TrailerConflict)
+      .WithMany()
+      .HasForeignKey(x => x.TrailerConflictId)
+      .OnDelete(DeleteBehavior.SetNull);
+    builder
+      .HasOne<Trailer>()
+      .WithMany()
+      .HasForeignKey(x => x.TelemetryTrailerId)
+      .OnDelete(DeleteBehavior.SetNull);
   }
 }

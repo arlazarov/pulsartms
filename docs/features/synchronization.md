@@ -73,6 +73,44 @@ its adapter and loop while other scheduled jobs continue. See
   remain in force; this does not increase configured rate/daily allowances.
 
 - Catalog and assignment synchronization are separate. Identical provider payloads are skipped before loading entity tables. If a payload changes, EF writes changed values only. Assignment swaps release only changed relationships before assigning their new owners within one transaction.
+
+### Trailers: catalog and current assignment
+
+Which trailers exist and which trailer a truck has now are separate owners.
+
+- `TrailerCatalog` owns the catalog. The telemetry provider reports trailers
+  with its ids (its `IFleetProvider.Source` is recorded with them); an
+  imported load reports only a number, and the import catalogues a trailer
+  it names that nothing has reported yet. Numbers are matched trimmed and
+  case-insensitively, at most ten characters and with at least one digit
+  ("TBD" is not a trailer). One number is one trailer per carrier. A row is
+  taken over by another identity only when that cannot join two different
+  trailers: a row known only by number, one from another provider, or one
+  whose id its provider no longer reports - never when both have different
+  VINs. Anything else is left alone and counted, not merged or duplicated.
+- `TruckTrailerAssignments` owns `Truck.TrailerId`, the one value the map,
+  the board row and fleet links read, with `TrailerSource` (`telemetry`,
+  `execution`, `load`) and `TrailerConflictId`. The provider's word is kept
+  per truck and replaced only when it answers: one current driver-trailer
+  record is an assignment; records that all ended are an explicit detach;
+  no current record, an unknown trailer or a feed that did not answer is
+  not known - never a detach. The current work is read fresh: an active
+  execution leg answers alone; otherwise an in-transit imported load at its
+  first unfinished stop (that stop's trailer, else the load's, with the
+  dispatcher's `PlanningTruckId` choosing the truck). Planned, future and
+  finished loads say nothing; two live loads naming different trailers say
+  nothing. Certain telemetry wins; the work stands in when telemetry is not
+  certain; a disagreement keeps the other trailer as a conflict. A trailer
+  two trucks resolve to stays with the one whose telemetry reports it, or
+  with neither; an inactive trailer is on no truck.
+- The refresh runs in every assignment cycle, also when the provider's
+  payload is unchanged, and after a dispatch import commits; it costs a
+  fixed number of queries for the fleet. After its commit it invalidates
+  the fleet catalog and board reads. A dispatcher's execution change is
+  picked up by the next assignment cycle (two minutes by default).
+- Samsara's driver-trailer endpoint returns only active assignments, so
+  with it an explicit detach does not occur; a truck without a current
+  record keeps the trailer its current load names.
 - TorqueAI matches source visits through the shared stop matcher and preserves
   stable stop identities when source identity is unchanged. Repeated visits are
   not merged by address. Native execution snapshots and locally owned workspace
