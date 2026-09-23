@@ -4,7 +4,13 @@ Status: a proposal written on 2026-09-23 from the code at `cba763cc` and the
 official Meta and Google documentation cited below. Nothing here is
 implemented, enabled or approved. No message is sent, no cloud folder is
 created, no access is granted and no data is moved by this document. The
-interactive prototype that accompanies it uses synthetic data only.
+interactive prototype that accompanies it uses synthetic data only:
+<https://claude.ai/artifact/E5ogEDLRCsbmon2zXDTfGg> (private to its owner
+until shared). It shows the inbox with unread and needs-reply filters, a
+thread with delivery states, a driver file checked and then filed to a load
+by confirmation, the reply guard when a colleague or the driver moved
+first, the closed 24-hour window, a refused and an unanswered send, the
+trip beside the conversation, notifications, and phone layout.
 
 ## Goal
 
