@@ -40,6 +40,7 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
 - [SCSS tokens, themes and ownership](architecture/styles.md)
 - [Fleet Map component responsibilities](architecture/fleet-map-client.md)
 - [SaaS evolution plan: retain TorqueAI and migrate incrementally](architecture/saas-evolution-plan.md)
+- [Driver messaging inside PulsR (plan, not implemented)](architecture/driver-messaging-plan.md)
 - [Fleet configuration and dispatch execution][dispatch-execution]
   covers Trucks, Trailers, Drivers and Switch; settlement design is deferred.
 
