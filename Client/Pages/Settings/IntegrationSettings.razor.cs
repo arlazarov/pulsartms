@@ -292,4 +292,11 @@ public partial class IntegrationSettings : IDisposable
         Values[name] = "";
     }
   }
+
+  // Where the credentials in use come from. A connection with nothing saved
+  // and no server configuration - WhatsApp has none - has neither.
+  private static string Source(IntegrationConnectionState state) =>
+    state.UsesSavedSettings ? "Saved in Settings"
+    : state.Configured ? "Server configuration"
+    : "Nothing saved";
 }

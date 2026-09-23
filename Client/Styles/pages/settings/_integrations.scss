@@ -22,6 +22,12 @@
   &__card {
     display: grid;
     gap: ui.pg(md);
+    min-width: 0;
+  }
+  // An address to copy, such as the WhatsApp webhook: it wraps anywhere
+  // rather than widening the card on a phone.
+  &__card code {
+    overflow-wrap: anywhere;
   }
   &__card > p {
     margin: 0;

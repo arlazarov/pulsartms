@@ -21,7 +21,7 @@
                 <p class="settings-page__hint">@card.Description</p>
                 @if (card.State is not null)
                 {
-                    <p class="integration-settings__source">@(card.State.UsesSavedSettings ? "Saved in Settings" : "Server configuration")</p>
+                    <p class="integration-settings__source">@Source(card.State)</p>
                     @if (card.Editing)
                     {
                         <form class="integration-settings__form" @onsubmit="() => SaveAsync(card, false)" @onsubmit:preventDefault="true" autocomplete="off">

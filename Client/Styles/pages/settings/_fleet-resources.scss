@@ -17,7 +17,8 @@
     overflow-wrap: anywhere;
   }
   &__references,
-  &__restore {
+  &__restore,
+  &__editor > .driver-contact {
     display: grid;
     gap: ui.pg(md);
     border-top: 1px solid ui.theme(border-subtle);
