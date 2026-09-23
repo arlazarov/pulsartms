@@ -73,7 +73,10 @@ public partial class FuelSendPlan : IDisposable
       return;
     try
     {
-      await JS.InvokeVoidAsync("navigator.clipboard.writeText", _preview.Message);
+      await JS.InvokeVoidAsync(
+        "navigator.clipboard.writeText",
+        _preview.Message
+      );
       _status = "Message copied. It is not marked as sent.";
     }
     catch (JSException)
@@ -159,7 +162,9 @@ public partial class FuelSendPlan : IDisposable
     !_saving
     && preview.Recipient?.State == "ready"
     && preview.Lines.Count > 0
-    && (preview.LastMessage is { NeedsConfirmation: true } || !AllSent(preview));
+    && (
+      preview.LastMessage is { NeedsConfirmation: true } || !AllSent(preview)
+    );
 
   private static string? LineLabel(FuelIssueLine line) =>
     line.Changed ? "Changed since sent"
@@ -194,13 +199,14 @@ public partial class FuelSendPlan : IDisposable
         + "the WhatsApp number in the last 24 hours, so WhatsApp would not "
         + "deliver this message. Ask the driver to send any message first.",
       { } r => $"Sends to {r.DriverName} at {r.WhatsAppPhone}."
-        + (r.WindowEndsAt is { } ends
-          ? " WhatsApp accepts messages to them until "
-            + ends
-              .ToLocalTime()
-              .ToString("MMM d, h:mm tt", CultureInfo.InvariantCulture)
-            + "."
-          : ""),
+        + (
+          r.WindowEndsAt is { } ends
+            ? " WhatsApp accepts messages to them until "
+              + ends.ToLocalTime()
+                .ToString("MMM d, h:mm tt", CultureInfo.InvariantCulture)
+              + "."
+            : ""
+        ),
     };
 
   private static string DeliveryText(FuelIssueMessageState last) =>
@@ -215,8 +221,7 @@ public partial class FuelSendPlan : IDisposable
         "read" => "Read by the driver.",
         "failed" => "WhatsApp could not deliver the message" + Code(last) + ".",
         "rejected" => "WhatsApp refused the message" + Code(last) + ".",
-        "withdrawn" =>
-          "Not sent: the plan changed while it was being sent.",
+        "withdrawn" => "Not sent: the plan changed while it was being sent.",
         _ => "Sending…",
       };
 

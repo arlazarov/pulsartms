@@ -83,9 +83,10 @@ public sealed class FuelPlanMemory(ICurrentCompany companies)
 
   // Today's quote per station, for telling a price change that matters from
   // one that only moves the estimate. Shares the price gate and lifetime.
-  public async Task<
-    IReadOnlyDictionary<Guid, FuelPriceMateriality.Quote>?
-  > QuotesAsync(
+  public async Task<IReadOnlyDictionary<
+    Guid,
+    FuelPriceMateriality.Quote
+  >?> QuotesAsync(
     string key,
     Func<Task<IReadOnlyDictionary<Guid, FuelPriceMateriality.Quote>?>> load,
     CancellationToken ct

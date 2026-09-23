@@ -22,18 +22,15 @@ internal static class IntegrationSettingsFixture
     string provider,
     long revision = 3,
     bool saved = false
-  ) =>
-    new(
-      provider,
-      true,
-      saved,
-      saved,
-      revision,
-      null,
-      (
+  ) => new(provider, true, saved, saved, revision, null, (
         provider switch
         {
-          "google-email" => new[] { "clientId", "clientSecret", "refreshToken" },
+          "google-email" => new[]
+          {
+            "clientId",
+            "clientSecret",
+            "refreshToken",
+          },
           "whatsapp" =>
           [
             "phoneNumberId",
@@ -43,10 +40,7 @@ internal static class IntegrationSettingsFixture
           ],
           _ => ["apiKey"],
         }
-      )
-        .Select(name => new IntegrationCredentialFieldState(name, true))
-        .ToArray()
-    );
+      ).Select(name => new IntegrationCredentialFieldState(name, true)).ToArray());
 
   public static HttpResponseMessage Response<T>(T value) =>
     new(HttpStatusCode.OK)

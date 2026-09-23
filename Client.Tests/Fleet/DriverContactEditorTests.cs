@@ -23,10 +23,7 @@ public sealed class DriverContactEditorTests
     using var f = new Fixture();
     var component = f.Render();
     component.WaitForElement("form");
-    Assert.Equal(
-      "",
-      component.Find("[id$='-whatsapp']").GetAttribute("value")
-    );
+    Assert.Equal("", component.Find("[id$='-whatsapp']").GetAttribute("value"));
     Assert.True(component.Find("[id$='-phone']").HasAttribute("disabled"));
     Assert.Contains("Source: 5558234327.", component.Markup);
 
@@ -51,8 +48,8 @@ public sealed class DriverContactEditorTests
     component.Find("[id$='-phone']").Input("");
     component.Find("form").Submit();
 
-    component.WaitForAssertion(() =>
-      Assert.Contains("Contacts saved.", component.Markup)
+    component.WaitForAssertion(
+      () => Assert.Contains("Contacts saved.", component.Markup)
     );
     var put = f.Requests.Single(x => x.Method == HttpMethod.Put);
     Assert.EndsWith($"/api/drivers/{f.Driver}/contact", put.Url);
@@ -74,11 +71,12 @@ public sealed class DriverContactEditorTests
     component.Find("[id$='-whatsapp']").Input("823-4327");
     component.Find("form").Submit();
 
-    component.WaitForAssertion(() =>
-      Assert.Contains(
-        "country code",
-        component.Find(".driver-contact__error").TextContent
-      )
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          "country code",
+          component.Find(".driver-contact__error").TextContent
+        )
     );
     Assert.Equal(
       "823-4327",

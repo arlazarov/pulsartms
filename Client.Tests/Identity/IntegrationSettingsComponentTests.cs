@@ -59,7 +59,13 @@ public sealed class IntegrationSettingsComponentTests
       component.Find("[data-provider='whatsapp'] code").TextContent
     );
     foreach (
-      var provider in new[] { "torqueai", "samsara", "google-email", "whatsapp" }
+      var provider in new[]
+      {
+        "torqueai",
+        "samsara",
+        "google-email",
+        "whatsapp",
+      }
     )
       await component
         .Find($"[data-provider='{provider}'] button")

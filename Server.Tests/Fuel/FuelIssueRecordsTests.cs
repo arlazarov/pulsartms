@@ -28,13 +28,34 @@ public sealed class FuelIssueRecordsTests
     var visit = Visit(dispatch, before, fill: true);
     var records = Records(f);
 
-    Assert.Equal(1, await records.RecordAsync(saved, [(visit, "text")], "manual", "u1", default));
-    Assert.Equal(0, await records.RecordAsync(saved, [(visit, "text")], "manual", "u1", default));
+    Assert.Equal(
+      1,
+      await records.RecordAsync(
+        saved,
+        [(visit, "text")],
+        "manual",
+        "u1",
+        default
+      )
+    );
+    Assert.Equal(
+      0,
+      await records.RecordAsync(
+        saved,
+        [(visit, "text")],
+        "manual",
+        "u1",
+        default
+      )
+    );
     Assert.Equal(1, await f.Db.FuelVisitSends.CountAsync());
 
     var shown = Plan(Visit(dispatch, before, fill: true));
     await records.ApplyAsync(saved, shown, null, default);
-    Assert.Equal(new FuelSendStatus(f.Now, "u1", "manual", false), shown.Stops[0].Sent);
+    Assert.Equal(
+      new FuelSendStatus(f.Now, "u1", "manual", false),
+      shown.Stops[0].Sent
+    );
 
     // The plan now says forty gallons: the driver was told to fill.
     var changed = Plan(Visit(dispatch, before, gallons: 40));
@@ -43,11 +64,23 @@ public sealed class FuelIssueRecordsTests
 
     // Sent again as it stands; the first hand-over is kept.
     f.Time.Advance(TimeSpan.FromMinutes(5));
-    Assert.Equal(1, await records.RecordAsync(saved, [(changed.Stops[0], "new")], "manual", "u2", default));
+    Assert.Equal(
+      1,
+      await records.RecordAsync(
+        saved,
+        [(changed.Stops[0], "new")],
+        "manual",
+        "u2",
+        default
+      )
+    );
     Assert.Equal(2, await f.Db.FuelVisitSends.CountAsync());
     var again = Plan(Visit(dispatch, before, gallons: 40));
     await records.ApplyAsync(saved, again, null, default);
-    Assert.Equal(new FuelSendStatus(f.Now, "u2", "manual", false), again.Stops[0].Sent);
+    Assert.Equal(
+      new FuelSendStatus(f.Now, "u2", "manual", false),
+      again.Stops[0].Sent
+    );
   }
 
   [Fact]
@@ -68,13 +101,23 @@ public sealed class FuelIssueRecordsTests
     // A new assignment of the same load: the same station before the same
     // stop is new work, and was never sent.
     var reassigned = Plan(Visit(dispatch, before, fill: true));
-    await records.ApplyAsync(Snapshot(truck, dispatch, before, revision: 4), reassigned, null, default);
+    await records.ApplyAsync(
+      Snapshot(truck, dispatch, before, revision: 4),
+      reassigned,
+      null,
+      default
+    );
     Assert.Null(reassigned.Stops[0].Sent);
 
     // The same station before another stop is another visit.
     var other = Guid.NewGuid();
     var elsewhere = Plan(Visit(dispatch, other, fill: true));
-    await records.ApplyAsync(Snapshot(truck, dispatch, other, revision: 3), elsewhere, null, default);
+    await records.ApplyAsync(
+      Snapshot(truck, dispatch, other, revision: 3),
+      elsewhere,
+      null,
+      default
+    );
     Assert.Null(elsewhere.Stops[0].Sent);
   }
 
@@ -85,13 +128,21 @@ public sealed class FuelIssueRecordsTests
     var (truck, dispatch) = await SeedAsync(f);
     var before = Guid.NewGuid();
     var saved = Snapshot(truck, dispatch, before, revision: 3);
-    await Records(f).RecordAsync(saved, [(Visit(dispatch, before, fill: true), "t")], "manual", "u1", default);
+    await Records(f)
+      .RecordAsync(
+        saved,
+        [(Visit(dispatch, before, fill: true), "t")],
+        "manual",
+        "u1",
+        default
+      );
 
     await using var scope = f.NewScope();
     using var serving = scope
       .ServiceProvider.GetRequiredService<ICurrentCompany>()
       .As(Guid.NewGuid());
-    var db = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.AppDbContext>();
+    var db =
+      scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.AppDbContext>();
     var foreign = new FuelIssueRecords(
       db,
       new PlanningSummaryCache(f.Time),
@@ -117,18 +168,26 @@ public sealed class FuelIssueRecordsTests
     foreach (var key in new[] { mine, theirs })
     {
       summaries.Keep(key, "s");
-      summaries.Complete(summaries.Take()!, "s", new(key.Truck, null, null, null, null) { CalculatedAt = f.Time.GetUtcNow() });
+      summaries.Complete(
+        summaries.Take()!,
+        "s",
+        new(key.Truck, null, null, null, null)
+        {
+          CalculatedAt = f.Time.GetUtcNow(),
+        }
+      );
     }
     Assert.Null(summaries.Take());
 
     var before = Guid.NewGuid();
-    await Records(f).RecordAsync(
-      Snapshot(truck, dispatch, before, revision: 3),
-      [(Visit(dispatch, before, fill: true), "t")],
-      "manual",
-      "u1",
-      default
-    );
+    await Records(f)
+      .RecordAsync(
+        Snapshot(truck, dispatch, before, revision: 3),
+        [(Visit(dispatch, before, fill: true), "t")],
+        "manual",
+        "u1",
+        default
+      );
 
     Assert.Equal(mine, summaries.Take()!.Key);
     Assert.Null(summaries.Take());
@@ -160,13 +219,14 @@ public sealed class FuelIssueRecordsTests
 
     Assert.Equal(
       0,
-      await Records(f).RecordAsync(
-        Snapshot(truck, dispatch, before, revision: 3),
-        [(Visit(dispatch, before, fill: true), "t")],
-        "manual",
-        "u1",
-        default
-      )
+      await Records(f)
+        .RecordAsync(
+          Snapshot(truck, dispatch, before, revision: 3),
+          [(Visit(dispatch, before, fill: true), "t")],
+          "manual",
+          "u1",
+          default
+        )
     );
 
     Assert.Null(summaries.Take());
@@ -219,7 +279,11 @@ public sealed class FuelIssueRecordsTests
       new DateTime(2026, 9, 23, 12, 0, 0, DateTimeKind.Utc),
       new FuelPlan(),
       [
-        new(dispatch, new PlanStop(before, "Delivery", "", 1, new(40, -80)), 100)
+        new(
+          dispatch,
+          new PlanStop(before, "Delivery", "", 1, new(40, -80)),
+          100
+        )
         {
           ExecutionLegId = null,
           AssignmentRevision = revision,

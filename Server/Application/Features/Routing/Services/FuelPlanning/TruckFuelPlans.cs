@@ -245,11 +245,14 @@ public sealed class TruckFuelPlans(
         );
         if (calendar != saved.Plan.UsDiscountSignature)
         {
-          var quotes = new Dictionary<
-            DateOnly,
-            IReadOnlyDictionary<Guid, FuelPriceMateriality.Quote>?
-          >();
-          foreach (var day in plan.FuelPlan.Stops.Select(x => x.PriceDate).Distinct())
+          var quotes =
+            new Dictionary<
+              DateOnly,
+              IReadOnlyDictionary<Guid, FuelPriceMateriality.Quote>?
+            >();
+          foreach (
+            var day in plan.FuelPlan.Stops.Select(x => x.PriceDate).Distinct()
+          )
             quotes[day] = await memory.QuotesAsync(
               $"fuel-quotes:{day}:{reads.Generation("fuel")}:{PlanningSettingsService.Signature(state.Profile)}",
               async () =>
@@ -261,7 +264,8 @@ public sealed class TruckFuelPlans(
               ct
             );
           FuelPriceMateriality.Quote? OnTheDay(FuelPlanStop stop) =>
-            quotes.GetValueOrDefault(stop.PriceDate)
+            quotes
+              .GetValueOrDefault(stop.PriceDate)
               ?.GetValueOrDefault(stop.StationId);
           if (
             calendar is null

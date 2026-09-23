@@ -60,7 +60,8 @@ public sealed class AutomaticFuelSendingSettingTests
     );
     Assert.False(
       (await new GetDispatchSettingsHandler(another).Handle(new(), default))
-        .Response!.AutomaticFuelSending
+        .Response!
+        .AutomaticFuelSending
     );
   }
 }

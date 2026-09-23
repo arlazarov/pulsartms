@@ -27,7 +27,13 @@ public sealed class FuelIssueHorizonTests
   public void OnDutyTheShiftEndsWithTheWindowPlusTheBuffer()
   {
     var plan = Plan(3, 9, 11, 12);
-    FuelIssueHorizon.Apply(plan, Clocks("driving", shiftHours: 9), Now, Buffer, Fresh);
+    FuelIssueHorizon.Apply(
+      plan,
+      Clocks("driving", shiftHours: 9),
+      Now,
+      Buffer,
+      Fresh
+    );
 
     Assert.Equal(FuelIssueStates.Ready, plan.IssueState);
     Assert.Equal(Now.AddHours(11), plan.IssueHorizonEndsAt);
@@ -41,7 +47,13 @@ public sealed class FuelIssueHorizonTests
   public void TheBufferIsInclusiveAndAMinuteLaterIsNot()
   {
     var plan = Plan(11, 11.0 + 1d / 60);
-    FuelIssueHorizon.Apply(plan, Clocks("onDuty", shiftHours: 9), Now, Buffer, Fresh);
+    FuelIssueHorizon.Apply(
+      plan,
+      Clocks("onDuty", shiftHours: 9),
+      Now,
+      Buffer,
+      Fresh
+    );
     Assert.Equal(
       new[] { "current", "upcoming" },
       plan.Stops.Select(x => x.IssueHorizon)
@@ -74,7 +86,13 @@ public sealed class FuelIssueHorizonTests
   public void RestIsPreparedButHeldUntilDuty(string duty)
   {
     var plan = Plan(1, 20);
-    FuelIssueHorizon.Apply(plan, Clocks(duty, shiftHours: 9), Now, Buffer, Fresh);
+    FuelIssueHorizon.Apply(
+      plan,
+      Clocks(duty, shiftHours: 9),
+      Now,
+      Buffer,
+      Fresh
+    );
     Assert.Equal(FuelIssueStates.AwaitingDuty, plan.IssueState);
     Assert.Equal("current", plan.Stops[0].IssueHorizon);
   }
@@ -120,7 +138,13 @@ public sealed class FuelIssueHorizonTests
   {
     var plan = Plan(1, 2, 3);
     plan.Stops[1].EstimatedArrival = null;
-    FuelIssueHorizon.Apply(plan, Clocks("driving", shiftHours: 9), Now, Buffer, Fresh);
+    FuelIssueHorizon.Apply(
+      plan,
+      Clocks("driving", shiftHours: 9),
+      Now,
+      Buffer,
+      Fresh
+    );
     Assert.Equal(
       new[] { "current", "upcoming", "upcoming" },
       plan.Stops.Select(x => x.IssueHorizon)
@@ -131,7 +155,13 @@ public sealed class FuelIssueHorizonTests
   public void AStopTheTankCannotReachIsCriticalAtOnce()
   {
     var plan = Plan(1, 2);
-    FuelIssueHorizon.Apply(plan, Clocks("driving", shiftHours: 9), Now, Buffer, Fresh);
+    FuelIssueHorizon.Apply(
+      plan,
+      Clocks("driving", shiftHours: 9),
+      Now,
+      Buffer,
+      Fresh
+    );
     Assert.False(plan.IssueCritical);
     plan.Stops[1].ArrivalGallons = -3;
     FuelIssueHorizon.Apply(plan, null, Now, Buffer, Fresh);

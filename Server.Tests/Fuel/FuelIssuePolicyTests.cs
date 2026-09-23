@@ -98,7 +98,10 @@ public sealed class FuelIssuePolicyTests
       FuelAutoSend.Refusal(true, true, sent)
     );
     // Changed since it was sent: the driver has the old one.
-    sent.Stops[0].Sent = sent.Stops[0].Sent! with { Changed = true };
+    sent.Stops[0].Sent = sent.Stops[0].Sent! with
+    {
+      Changed = true,
+    };
     Assert.Null(FuelAutoSend.Refusal(true, true, sent));
     var provisional = Ready();
     provisional.Stops[0].IssueHorizon = FuelIssueHorizons.Upcoming;
@@ -139,22 +142,36 @@ public sealed class FuelIssuePolicyTests
     FuelIssueSentRequest Request(DateTime when, params string[] visits) =>
       new(when, visits) { ExecutionLegId = leg, AssignmentRevision = 4 };
 
-    Assert.False(ConfirmFuelIssueSentHandler.Moved(saved, Request(at, "a"), keys));
-    Assert.True(
-      ConfirmFuelIssueSentHandler.Moved(saved, Request(at.AddSeconds(1), "a"), keys)
+    Assert.False(
+      ConfirmFuelIssueSentHandler.Moved(saved, Request(at, "a"), keys)
     );
-    Assert.True(ConfirmFuelIssueSentHandler.Moved(saved, Request(at, "c"), keys));
     Assert.True(
       ConfirmFuelIssueSentHandler.Moved(
         saved,
-        Request(at, "a") with { AssignmentRevision = 5 },
+        Request(at.AddSeconds(1), "a"),
+        keys
+      )
+    );
+    Assert.True(
+      ConfirmFuelIssueSentHandler.Moved(saved, Request(at, "c"), keys)
+    );
+    Assert.True(
+      ConfirmFuelIssueSentHandler.Moved(
+        saved,
+        Request(at, "a") with
+        {
+          AssignmentRevision = 5,
+        },
         keys
       )
     );
     Assert.True(
       ConfirmFuelIssueSentHandler.Moved(
         saved,
-        Request(at, "a") with { ExecutionLegId = Guid.NewGuid() },
+        Request(at, "a") with
+        {
+          ExecutionLegId = Guid.NewGuid(),
+        },
         keys
       )
     );

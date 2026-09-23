@@ -22,10 +22,13 @@ public sealed class FuelSendPlanTests
   {
     using var f = new Fixture();
     var component = f.Render();
-    component.WaitForAssertion(() =>
-      Assert.Single(component.FindAll(".fuel-send-plan__lines li"))
+    component.WaitForAssertion(
+      () => Assert.Single(component.FindAll(".fuel-send-plan__lines li"))
     );
-    Assert.Contains("Driver on duty", component.Find(".fuel-send-plan__state").TextContent);
+    Assert.Contains(
+      "Driver on duty",
+      component.Find(".fuel-send-plan__state").TextContent
+    );
     Assert.Contains("Copying does not mark it sent", component.Markup);
     Assert.Contains(
       "WhatsApp is not set up",
@@ -51,9 +54,16 @@ public sealed class FuelSendPlanTests
       .SetVoidResult();
     var component = f.Render();
     component.WaitForElement(".fuel-send-plan__lines li");
-    component.FindAll("button").Single(x => x.TextContent == "Copy message").Click();
-    component.WaitForAssertion(() =>
-      Assert.Contains("not marked as sent", component.Find(".fuel-send-plan__status").TextContent)
+    component
+      .FindAll("button")
+      .Single(x => x.TextContent == "Copy message")
+      .Click();
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          "not marked as sent",
+          component.Find(".fuel-send-plan__status").TextContent
+        )
     );
     Assert.All(f.Requests, x => Assert.Equal(HttpMethod.Get, x.Method));
     Assert.Equal(0, f.Sent);
@@ -65,10 +75,17 @@ public sealed class FuelSendPlanTests
     using var f = new Fixture();
     var component = f.Render();
     component.WaitForElement(".fuel-send-plan__lines li");
-    component.FindAll("button").Single(x => x.TextContent.Trim() == "Mark as sent").Click();
+    component
+      .FindAll("button")
+      .Single(x => x.TextContent.Trim() == "Mark as sent")
+      .Click();
 
-    component.WaitForAssertion(() =>
-      Assert.Equal("Sent", component.Find(".fleet-fuel-visit__sent").TextContent)
+    component.WaitForAssertion(
+      () =>
+        Assert.Equal(
+          "Sent",
+          component.Find(".fleet-fuel-visit__sent").TextContent
+        )
     );
     var post = f.Requests.Single(x => x.Method == HttpMethod.Post);
     Assert.EndsWith($"/{f.Dispatch}/planning/fuel/issue/sent", post.Url);
@@ -81,7 +98,10 @@ public sealed class FuelSendPlanTests
       "visit-1",
       body.RootElement.GetProperty("visitKeys")[0].GetString()
     );
-    Assert.Equal(7, body.RootElement.GetProperty("assignmentRevision").GetInt64());
+    Assert.Equal(
+      7,
+      body.RootElement.GetProperty("assignmentRevision").GetInt64()
+    );
     Assert.Equal(1, f.Sent);
     Assert.True(
       component
@@ -97,9 +117,16 @@ public sealed class FuelSendPlanTests
     using var f = new Fixture { Conflict = true };
     var component = f.Render();
     component.WaitForElement(".fuel-send-plan__lines li");
-    component.FindAll("button").Single(x => x.TextContent.Trim() == "Mark as sent").Click();
-    component.WaitForAssertion(() =>
-      Assert.Contains("changed since it was opened", component.Find(".fuel-send-plan__error").TextContent)
+    component
+      .FindAll("button")
+      .Single(x => x.TextContent.Trim() == "Mark as sent")
+      .Click();
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          "changed since it was opened",
+          component.Find(".fuel-send-plan__error").TextContent
+        )
     );
     Assert.Empty(component.FindAll(".fleet-fuel-visit__sent"));
     Assert.Equal(0, f.Sent);
@@ -113,10 +140,17 @@ public sealed class FuelSendPlanTests
     using var f = new Fixture();
     f.Preview = f.Preview with { IssueState = state, Critical = true };
     var component = f.Render();
-    component.WaitForAssertion(() =>
-      Assert.StartsWith(text, component.Find(".fuel-send-plan__state").TextContent)
+    component.WaitForAssertion(
+      () =>
+        Assert.StartsWith(
+          text,
+          component.Find(".fuel-send-plan__state").TextContent
+        )
     );
-    Assert.Contains("out of reach", component.Find(".fuel-send-plan__critical").TextContent);
+    Assert.Contains(
+      "out of reach",
+      component.Find(".fuel-send-plan__critical").TextContent
+    );
   }
 
   [Fact]
@@ -135,17 +169,21 @@ public sealed class FuelSendPlanTests
       .Single(x => x.TextContent.Trim() == "Send via WhatsApp")
       .Click();
 
-    component.WaitForAssertion(() =>
-      Assert.Equal(
-        "WhatsApp accepted the message. Not delivered yet.",
-        component.Find(".fuel-send-plan__delivery").TextContent
-      )
+    component.WaitForAssertion(
+      () =>
+        Assert.Equal(
+          "WhatsApp accepted the message. Not delivered yet.",
+          component.Find(".fuel-send-plan__delivery").TextContent
+        )
     );
     var post = f.Requests.Single(x => x.Method == HttpMethod.Post);
     Assert.EndsWith($"/{f.Dispatch}/planning/fuel/issue/whatsapp", post.Url);
     using var body = JsonDocument.Parse(post.Body!);
     var plan = body.RootElement.GetProperty("plan");
-    Assert.Equal(f.CalculatedAt, plan.GetProperty("expectedCalculatedAt").GetDateTime());
+    Assert.Equal(
+      f.CalculatedAt,
+      plan.GetProperty("expectedCalculatedAt").GetDateTime()
+    );
     Assert.Equal(7, plan.GetProperty("assignmentRevision").GetInt64());
     Assert.False(body.RootElement.GetProperty("sendAgain").GetBoolean());
     Assert.Equal(1, f.Sent);
@@ -174,8 +212,8 @@ public sealed class FuelSendPlanTests
       .FindAll("button")
       .Single(x => x.TextContent.Trim() == "Send again via WhatsApp")
       .Click();
-    component.WaitForAssertion(() =>
-      Assert.Single(f.Requests, x => x.Method == HttpMethod.Post)
+    component.WaitForAssertion(
+      () => Assert.Single(f.Requests, x => x.Method == HttpMethod.Post)
     );
     using var body = JsonDocument.Parse(
       f.Requests.Single(x => x.Method == HttpMethod.Post).Body!
@@ -280,15 +318,20 @@ public sealed class FuelSendPlanTests
       var whatsApp = request.RequestUri!.AbsolutePath.EndsWith("/whatsapp");
       var preview =
         request.Method != HttpMethod.Post ? Preview
-        : whatsApp ? Preview with
-        {
-          Lines = [Preview.Lines[0] with { Sent = true, Delivery = "accepted" }],
-          LastMessage = new("accepted", CalculatedAt, null, false),
-        }
-        : Preview with
-        {
-          Lines = [Preview.Lines[0] with { Sent = true }],
-        };
+        : whatsApp
+          ? Preview with
+          {
+            Lines =
+            [
+              Preview.Lines[0] with
+              {
+                Sent = true,
+                Delivery = "accepted",
+              },
+            ],
+            LastMessage = new("accepted", CalculatedAt, null, false),
+          }
+        : Preview with { Lines = [Preview.Lines[0] with { Sent = true }] };
       return new(HttpStatusCode.OK)
       {
         Content = JsonContent.Create(

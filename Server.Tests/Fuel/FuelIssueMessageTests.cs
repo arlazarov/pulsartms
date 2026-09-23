@@ -118,10 +118,7 @@ public sealed class FuelIssueMessageTests
   }
 
   private static PlanStop Stop(string job, string name) =>
-    new(Guid.NewGuid(), name, $"{name} address", 1, new(40, -80))
-    {
-      Job = job,
-    };
+    new(Guid.NewGuid(), name, $"{name} address", 1, new(40, -80)) { Job = job };
 
   private static FuelPlanStop Visit(
     Guid dispatch,

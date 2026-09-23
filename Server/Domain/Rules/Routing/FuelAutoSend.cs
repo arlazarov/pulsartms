@@ -14,11 +14,7 @@ namespace Domain.Rules.Routing;
 // always send by hand, whatever this says.
 public static class FuelAutoSend
 {
-  public static string? Refusal(
-    bool enabled,
-    bool channelReady,
-    FuelPlan? plan
-  )
+  public static string? Refusal(bool enabled, bool channelReady, FuelPlan? plan)
   {
     if (!enabled)
       return "Automatic fuel plan sending is off.";

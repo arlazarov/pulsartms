@@ -131,7 +131,8 @@ public sealed class FuelPriceRefreshService(
       && !FuelPriceMateriality.Material(
         shown.Stops,
         stop =>
-          quotes.GetValueOrDefault(stop.PriceDate)
+          quotes
+            .GetValueOrDefault(stop.PriceDate)
             ?.GetValueOrDefault(stop.StationId)
       )
     )
