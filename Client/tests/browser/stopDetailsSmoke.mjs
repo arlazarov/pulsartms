@@ -711,14 +711,36 @@ try {
               ),
             }))
             .filter(child => child.height > 0);
-          return children.slice(1).map((child, index) => ({
-            container: container.className,
-            afterJob: children[index].job,
-            detailsLink: child.detailsLink,
-            extraSmallGap:
-              child.fuel || children[index].fuel || child.assignment,
-            gap: child.y - children[index].y - children[index].height,
-          }));
+          return children.slice(1).map((child, index) => {
+            const previous = children[index];
+            return {
+              container: container.className,
+              afterJob: previous.job,
+              detailsLink: child.detailsLink,
+              extraSmallGap: child.fuel || previous.fuel || child.assignment,
+              gap: child.y - previous.y - previous.height,
+              // Two boxes that share a line are a label and its value in
+              // their own columns, not one under the other. Read as a
+              // vertical pair they look like a negative gap, so which of
+              // the two this is has to be decided from both axes.
+              sameRow:
+                child.y < previous.y + previous.height - 1 &&
+                previous.y < child.y + child.height - 1,
+              sideGap: child.x - previous.x - previous.width,
+              previousBox: {
+                x: previous.x,
+                y: previous.y,
+                width: previous.width,
+                height: previous.height,
+              },
+              nextBox: {
+                x: child.x,
+                y: child.y,
+                width: child.width,
+                height: child.height,
+              },
+            };
+          });
         });
         const sectionDividers = [
           ...(location?.children ?? []),
@@ -925,25 +947,27 @@ try {
           metrics.compactGap === 8,
         `${label}: separators and columns use the micro, extra-small and small spacing tokens`,
       );
-      for (const row of metrics.verticalGaps)
+      for (const row of metrics.verticalGaps) {
+        const allowed = row.afterJob
+          ? metrics.separatorGap
+          : row.detailsLink || row.extraSmallGap
+            ? metrics.verticalGap
+            : 0;
+        // Side by side, the two are asked not to touch: nothing may be
+        // drawn over its neighbour. One under the other, the gap between
+        // them is the thing measured, and it stays within its token.
         check(
-          Math.abs(
-            row.gap -
-              (row.afterJob
-                ? metrics.separatorGap
-                : row.detailsLink || row.extraSmallGap
-                  ? metrics.verticalGap
-                  : 0),
-          ) <= 1 ||
-            row.gap <=
-              (row.afterJob
-                ? metrics.separatorGap
-                : row.detailsLink || row.extraSmallGap
-                  ? metrics.verticalGap
-                  : 0) +
-                1,
-          `${label}: ${row.container} adds vertical spacing only at section dividers ${JSON.stringify(row)}`,
+          row.sameRow
+            ? row.sideGap >= -1 ||
+                row.previousBox.x - row.nextBox.x - row.nextBox.width >= -1
+            : row.gap >= -1 && row.gap <= allowed + 1,
+          `${label}: ${row.container} ${
+            row.sameRow
+              ? 'draws its columns clear of one another'
+              : 'adds vertical spacing only at section dividers'
+          } ${JSON.stringify(row)} against ${allowed}`,
         );
+      }
       check(
         metrics.distancePadding === metrics.separatorGap,
         `${label}: distance divider uses micro top padding`,

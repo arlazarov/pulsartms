@@ -96,10 +96,22 @@ console.warn = (...args) => {
   reportWarning(...args);
 };
 
+// A test may mount more than once, and the mounts nest: the second one
+// installs its fixture over the first. Each remembering what it replaced
+// and putting that back gave the wrong end state, because `t.after` hooks
+// run in the order they were added - the outer mount restored first, and
+// the inner one then wrote the outer mount's fixture back over the global
+// and left it there. Only what was there before any of them is restored,
+// and only once the last one has gone.
+let mountedFixtures = 0;
+let outerGoogle, outerFixture;
+
 async function fixture(t, { failInspector = false } = {}) {
-  const originalGoogle = globalThis.google,
-    originalFixture = globalThis.fleetInteropFixture,
-    warnedBefore = warnings.length;
+  if (mountedFixtures++ === 0) {
+    outerGoogle = globalThis.google;
+    outerFixture = globalThis.fleetInteropFixture;
+  }
+  const warnedBefore = warnings.length;
   // One teardown, in the order a page tears down: the map is released while
   // its own fixture is still installed, the globals go back, and only then
   // is the console read. Registered as separate steps these ran in the order
@@ -109,8 +121,10 @@ async function fixture(t, { failInspector = false } = {}) {
     try {
       mounted?.dispose();
     } finally {
-      globalThis.google = originalGoogle;
-      globalThis.fleetInteropFixture = originalFixture;
+      if (--mountedFixtures === 0) {
+        globalThis.google = outerGoogle;
+        globalThis.fleetInteropFixture = outerFixture;
+      }
     }
     assert.deepEqual(
       warnings
@@ -322,6 +336,11 @@ test('each mount releases the host it was handed, once', async t => {
   assert.equal(second.state.released, 1);
 });
 const bytes = value => new TextEncoder().encode(JSON.stringify(value));
+test('a test that mounted twice leaves the globals as it found them', () => {
+  assert.equal(globalThis.fleetInteropFixture, undefined);
+  assert.equal(globalThis.google, undefined);
+});
+
 test('map options retain station controls without a truck visibility API', async t => {
   const { api, calls } = await fixture(t);
   assert.equal('setTrucksVisible' in api, false);
