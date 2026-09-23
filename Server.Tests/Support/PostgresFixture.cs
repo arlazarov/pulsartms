@@ -40,7 +40,9 @@ public sealed class PostgresFixture : IAsyncDisposable
   // one.
   public static bool IsRecorded => Recorded() is not null;
 
-  public static async Task<PostgresFixture> CreateAsync()
+  // Empty: the schema is left without tables, for a test that applies the
+  // migrations itself, as production does, instead of the model's script.
+  public static async Task<PostgresFixture> CreateAsync(bool empty = false)
   {
     var recorded =
       Recorded()
@@ -102,7 +104,8 @@ public sealed class PostgresFixture : IAsyncDisposable
     var fixture = new PostgresFixture(schema, text, source);
     try
     {
-      await fixture.FillAsync();
+      if (!empty)
+        await fixture.FillAsync();
     }
     catch
     {

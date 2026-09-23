@@ -341,10 +341,10 @@ Implemented behavior:
 Known gaps: incident thresholds are global rather than per rule; consumer
 delivery and acknowledgement are not stored (a poller keeps its own cursor);
 per-company fairness is one budget per company per pass, not measured at
-scale; the planning demand rules do not distinguish superseded demand; the
-PostgreSQL path is NOT RUN: rule and journal-read SQL is checked for
-translation offline, while journal writes, the advisory lock and its
-serialization are exercised only on SQLite (whose database write lock is not
-evidence of PostgreSQL locking) and need the isolated PostgreSQL fixture.
+scale; the planning demand rules do not distinguish superseded demand. On
+the isolated PostgreSQL fixture, `ConsistencyJournalPostgresTests` shows a
+second journal writer waiting on the advisory lock and sequences committing
+in order, and `MessagingPostgresTests` runs the newer rules' reads; the
+older rules' SQL is checked for translation offline.
 The unchecked list in the report names the invariants this version does not
 cover at all.

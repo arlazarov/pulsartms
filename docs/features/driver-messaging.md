@@ -283,4 +283,8 @@ gate (two tabs on the release build with synthetic fixtures: one leader,
 relay, hand-over on close, sign-out and sign-in as another account).
 `MessageSwitchTests` (an editor or a request open on one conversation or
 file does not carry to another). Not run: a real WhatsApp webhook or media
-download, a real notification permission, and PostgreSQL.
+download, and a real notification permission. On the isolated PostgreSQL
+fixture, `MessagingPostgresTests` applies the whole migration chain with
+its backfills over existing rows, and exercises the read-marker upsert,
+the arrival head's commit order, the filing's row claim and the new
+auditor reads.

@@ -309,7 +309,7 @@ Nothing here is deployed.
 | Source cancellation holds started or changed work, cancels the rest | implemented, tested | `HeldExecutionTests`, `SourceCancellationTests` |
 | Legacy planned/active rows of cancelled loads repaired by synchronization | implemented, tested | `ConsistencyAuditTests.LegacyCancelledWork…` |
 | Dispatcher closes held work (revision, idempotency, still cancelled) | implemented, tested | `HeldExecutionTests.ADispatcherCloses…` |
-| Durable audit journal, incidents, sequence cursor, serialized writers | implemented, tested on SQLite | `ConsistencyAuditTests`; PostgreSQL lock not run |
+| Durable audit journal, incidents, sequence cursor, serialized writers | implemented, tested | `ConsistencyAuditTests`; PostgreSQL advisory lock `ConsistencyJournalPostgresTests` |
 | Allowlisted repair with cooldown, attempts, escalation | implemented, tested | `ConsistencyAuditTests.RepairIsAnAllowlisted…` |
 | Production 1399 moved to held | blocked | needs a release |
 
@@ -344,8 +344,8 @@ Nothing here is deployed.
 | Messages page, desktop and phone | implemented, tested | `MessagesPageTests`, offline UI smoke `/messages` |
 | Fake provider for local runs (never in Production) | implemented, tested | `LocalDriverMessagingTests` |
 | Notice outside `/messages`: navigation unread count, leader-only coalesced reads, opt-in browser notifications | implemented, tested | `MessagingNoticesTests`, `messagingNotices.test.js`, `messagingChannel.test.js`, `UnreadNoticeTests`, UI smoke, `messagingTabsSmoke.mjs`; not run: a real permission grant |
-| Unread by arrival revision, notice by commit-ordered arrival sequence, monotonic read markers | implemented, tested | `UnreadNoticeTests`; migrations `AddConversationReadRevisions`, `AddConversationArrivalSequence` not applied; PostgreSQL upsert and lock behavior not run |
-| Filing a driver's file to a load (confirmed only, by reference, fenced), linking a conversation to a driver, trip beside it | implemented, tested | `MessageFilingTests`, `ConversationContextTests`, `MessageFilingPageTests`, UI smoke; migration `AddFiledDriverFiles` not applied; PostgreSQL row claim not run |
+| Unread by arrival revision, notice by commit-ordered arrival sequence, monotonic read markers | implemented, tested | `UnreadNoticeTests`; PostgreSQL `MessagingPostgresTests` (migration chain and backfills, upsert, arrival order) |
+| Filing a driver's file to a load (confirmed only, by reference, fenced), linking a conversation to a driver, trip beside it | implemented, tested | `MessageFilingTests`, `ConversationContextTests`, `MessageFilingPageTests`, UI smoke; PostgreSQL row claim `MessagingPostgresTests` |
 | Real sends, Meta activation, webhook subscription | blocked | owner: Meta app review, number, tokens |
 | Migrating `DriverMessages` | blocked | owner authorization for data migration |
 
