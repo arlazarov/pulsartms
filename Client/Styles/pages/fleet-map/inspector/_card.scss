@@ -52,7 +52,8 @@
     overflow-wrap: anywhere;
   }
   .fleet-map-inspector__trailer + .fleet-map-inspector__driver::before,
-  .fleet-map-inspector__trailer-conflict + .fleet-map-inspector__driver::before {
+  .fleet-map-inspector__trailer-conflict
+    + .fleet-map-inspector__driver::before {
     content: '· ';
   }
   // Two sources name different trailers for the truck.
