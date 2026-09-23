@@ -1,16 +1,32 @@
 # Driver messaging inside PulsR: plan
 
-Status: a proposal written on 2026-09-23 from the code at `cba763cc` and the
-official Meta and Google documentation cited below. Nothing here is
-implemented, enabled or approved. No message is sent, no cloud folder is
-created, no access is granted and no data is moved by this document. The
-interactive prototype that accompanies it uses synthetic data only:
-<https://claude.ai/artifact/E5ogEDLRCsbmon2zXDTfGg> (private to its owner
-until shared). It shows the inbox with unread and needs-reply filters, a
-thread with delivery states, a driver file checked and then filed to a load
-by confirmation, the reply guard when a colleague or the driver moved
+Status: written on 2026-09-23 from the code at `cba763cc` and the official
+Meta and Google documentation cited below; implementation authorized
+locally on 2026-09-23 (see Decisions and the checklist). Nothing is
+published, no real message is sent, no cloud folder or access is created and
+no existing data is moved. The interactive prototype uses synthetic data
+only: <https://claude.ai/artifact/E5ogEDLRCsbmon2zXDTfGg> (private to its
+owner until shared). It shows the inbox with unread and needs-reply filters,
+a thread with delivery states, a driver file checked and then filed to a
+load by confirmation, the reply guard when a colleague or the driver moved
 first, the closed 24-hour window, a refused and an unanswered send, the
 trip beside the conversation, notifications, and phone layout.
+
+## Decisions (2026-09-23)
+
+- Implement locally, in stages, up to working local flows with fake
+  providers and real adapter code; no real messages, no publication.
+- Messaging stays inside Routing (no new module edges).
+- File storage is chosen per company and may use several connections: a
+  PulsR-managed store or the company's own Google Drive, Dropbox and so on.
+  Each stored file records its primary connection; the UI is the same
+  whichever holds it. Drive is a system of record when a company picks it,
+  not only a mirror. Implemented now: the shared storage owner and
+  contracts, the managed store (database-backed until object storage infra
+  is authorized) and a Google Drive adapter with its connection flow; other
+  providers are listed as capabilities, not implemented.
+- Existing data is not migrated: `DriverMessages` and load document bytes
+  stay where they are until a migration is authorized.
 
 ## Goal
 
@@ -256,9 +272,9 @@ driver reading anything.
 | Pricing model | per stored GB and operations | Workspace plan storage pool |
 
 No cost figures are given here: they depend on plan and region and were not
-measured. Recommendation: object storage as the primary store behind
-`IFileStorage`; Drive as an optional, explicit export or mirror of filed
-load documents for people who work in Drive, not as the system of record.
+measured. Decided on 2026-09-23: each company chooses; a PulsR-managed store
+and the company's own Drive (or later another provider) are both systems of
+record, per file, behind the same storage owner.
 
 ## Stages
 
@@ -276,8 +292,31 @@ load documents for people who work in Drive, not as the system of record.
 4. **Files out and templates.** Sending load documents; approved templates
    for outside the window.
 5. **Notifications beyond the tab.** Browser notifications, then Web Push.
-6. **Extensions.** Drive mirror, search across conversations, retention,
-   several business numbers, a second provider.
+6. **Extensions.** Search across conversations, retention, several business
+   numbers, a second provider.
+
+## Implementation checklist
+
+Status values: done (committed locally, checks named in the commit), in
+progress, not started, blocked (needs the owner; the independent code
+continues).
+
+| Item | Status | Blocker |
+| --- | --- | --- |
+| Storage owner, connections, per-file primary location | not started | |
+| Managed store (database-backed) | not started | object storage bucket and service account for production |
+| Google Drive adapter and connection flow | not started | OAuth client id/secret and consent screen from the owner |
+| Dropbox, OneDrive, S3 adapters | not started | listed as capabilities only |
+| Inbound text, conversations, receipts | not started | |
+| Durable inbound media capture into quarantine | not started | |
+| Outbox with fencing, text within the window | not started | |
+| Files out, templates | not started | approved templates in Meta; WABA id |
+| Stale-reply guard, claim, per-user unread | not started | |
+| One event stream per browser with polling fallback | not started | |
+| Messages page, desktop and phone | not started | |
+| Fake provider for local runs (never in Production) | not started | |
+| Real sends, Meta activation, webhook subscription | blocked | owner: Meta app review, number, tokens |
+| Migrating `DriverMessages` and load document bytes | blocked | owner authorization for data migration |
 
 ## Tests to add with each stage
 
