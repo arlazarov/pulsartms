@@ -1,0 +1,44 @@
+.privacy-page {
+  height: auto;
+  overflow: auto;
+  background: var(--ui-canvas);
+  color: var(--ui-text);
+}
+.privacy-page main {
+  max-width: 52rem;
+  margin: var(--space-xxl) auto;
+  padding: var(--space-xxl);
+  background: var(--ui-surface);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.privacy-page header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xxl);
+}
+.privacy-page h1 {
+  font-size: 2rem;
+}
+.privacy-page h2 {
+  font-size: 1.25rem;
+  margin-top: var(--space-xxl);
+  scroll-margin-top: var(--space-xl);
+}
+.privacy-page p,
+.privacy-page li {
+  margin-bottom: var(--space-lg);
+}
+.privacy-page ul,
+.privacy-page ol {
+  padding-left: var(--space-xxl);
+}
+.privacy-page a {
+  color: var(--ui-link);
+  text-decoration: underline;
+}
+.privacy-page a:focus-visible {
+  outline: 2px solid var(--ui-focus);
+}
