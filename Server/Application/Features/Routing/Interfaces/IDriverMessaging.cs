@@ -30,4 +30,20 @@ public interface IDriverMessaging
     string? signature,
     CancellationToken ct
   );
+
+  // The bytes of a file a driver sent, streamed. Null when the provider no
+  // longer has it (an unknown or expired media id); a provider that did not
+  // answer throws DriverMessagingUnavailableException. Sha256 is lower-case
+  // hex as the provider states it. The caller disposes the content.
+  Task<DriverMedia?> OpenMediaAsync(string mediaId, CancellationToken ct);
 }
+
+public sealed record DriverMedia(
+  Stream Content,
+  long Length,
+  string MimeType,
+  string Sha256
+);
+
+public sealed class DriverMessagingUnavailableException(string reason)
+  : Exception(reason);

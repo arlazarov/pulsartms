@@ -27,6 +27,7 @@ using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Addresses;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.FuelPlanning;
+using Application.Features.Routing.Services.Messaging;
 using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Interfaces;
 using Application.Features.Synchronization.Services;
@@ -108,6 +109,9 @@ public static class DependencyInjection
     >();
     services.AddSingleton<ITruckHistoryOperation, TruckHistoryOperation>();
     services.AddScoped<FileStore>();
+    services.AddScoped<InboxRecorder>();
+    services.AddSingleton<MessagingEvents>();
+    services.AddSingleton<IInboundMediaOperation, InboundMediaOperation>();
     services.AddScoped<StorageLayouts>();
     services.AddSingleton<StorageUploadGate>();
     services.AddSingleton<

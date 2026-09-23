@@ -43,6 +43,12 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
   public DbSet<DriverMessage> DriverMessages => Set<DriverMessage>();
   public DbSet<DriverMessagingWindow> DriverMessagingWindows =>
     Set<DriverMessagingWindow>();
+  public DbSet<Conversation> Conversations => Set<Conversation>();
+  public DbSet<ConversationMessage> ConversationMessages =>
+    Set<ConversationMessage>();
+  public DbSet<MessageAttachment> MessageAttachments =>
+    Set<MessageAttachment>();
+  public DbSet<ConversationRead> ConversationReads => Set<ConversationRead>();
   public DbSet<ConsistencyFinding> ConsistencyFindings =>
     Set<ConsistencyFinding>();
   public DbSet<ConsistencyEvent> ConsistencyEvents => Set<ConsistencyEvent>();

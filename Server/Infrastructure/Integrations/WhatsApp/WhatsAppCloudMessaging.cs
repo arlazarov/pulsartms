@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -8,6 +9,7 @@ using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Models;
 using Application.Features.Routing.Interfaces;
 using Domain.Models.Messaging;
+using Infrastructure.Storage;
 using Microsoft.Extensions.Configuration;
 
 namespace Infrastructure.Integrations.WhatsApp;
@@ -93,6 +95,157 @@ public sealed partial class WhatsAppCloudMessaging(
       return MessageId(body) is { } id
         ? new(DriverMessageOutcome.Accepted, id)
         : new(DriverMessageOutcome.Unknown);
+    }
+  }
+
+  public async Task<DriverMedia?> OpenMediaAsync(
+    string mediaId,
+    CancellationToken ct
+  )
+  {
+    if (await SettingsAsync(ct) is not { } settings)
+      throw new DriverMessagingUnavailableException("Not configured.");
+    if (!MediaIdPattern().IsMatch(mediaId))
+      return null;
+    using var describe = Authorized(
+      HttpMethod.Get,
+      $"https://graph.facebook.com/{Version()}/{mediaId}"
+        + $"?phone_number_id={settings.PhoneNumberId}",
+      settings
+    );
+    string body;
+    using (var described = await SendAsync(describe, ct))
+    {
+      if (
+        described.StatusCode
+        is HttpStatusCode.NotFound
+          or HttpStatusCode.BadRequest
+      )
+        return null;
+      if (!described.IsSuccessStatusCode)
+        throw new DriverMessagingUnavailableException("Media not described.");
+      body = await described.Content.ReadAsStringAsync(ct);
+    }
+    var media = Media(body);
+    if (media is null)
+      throw new DriverMessagingUnavailableException("Media not described.");
+    // The address lasts minutes and needs the token; it is used at once and
+    // never stored or given to a browser.
+    using var fetch = Authorized(
+      HttpMethod.Get,
+      media.Url.ToString(),
+      settings
+    );
+    var response = await SendAsync(
+      fetch,
+      ct,
+      HttpCompletionOption.ResponseHeadersRead
+    );
+    if (response.StatusCode == HttpStatusCode.NotFound)
+    {
+      response.Dispose();
+      return null;
+    }
+    if (!response.IsSuccessStatusCode)
+    {
+      response.Dispose();
+      throw new DriverMessagingUnavailableException("Media not downloaded.");
+    }
+    return new(
+      new ResponseStream(
+        response,
+        await response.Content.ReadAsStreamAsync(ct)
+      ),
+      media.Length,
+      media.MimeType,
+      media.Sha256
+    );
+  }
+
+  private sealed record MediaDescription(
+    Uri Url,
+    long Length,
+    string MimeType,
+    string Sha256
+  );
+
+  // Only an https address on Meta's media hosts is fetched with the token.
+  private static MediaDescription? Media(string body)
+  {
+    try
+    {
+      using var document = JsonDocument.Parse(body);
+      var root = document.RootElement;
+      return
+        root.TryGetProperty("url", out var url)
+        && Uri.TryCreate(url.GetString(), UriKind.Absolute, out var address)
+        && address.Scheme == Uri.UriSchemeHttps
+        && (
+          address.Host.EndsWith(".fbsbx.com", StringComparison.Ordinal)
+          || address.Host.EndsWith(".facebook.com", StringComparison.Ordinal)
+        )
+        && root.TryGetProperty("file_size", out var size)
+        && size.TryGetInt64(out var length)
+        && length > 0
+        && root.TryGetProperty("mime_type", out var type)
+        && type.GetString() is { Length: > 0 and <= 100 } mime
+        && root.TryGetProperty("sha256", out var sha)
+        && Hex(sha.GetString()) is { } hex
+        ? new(address, length, mime, hex)
+        : null;
+    }
+    catch (JsonException)
+    {
+      return null;
+    }
+  }
+
+  // The provider's hash as lower-case hex, whether it came as hex or base64.
+  public static string? Hex(string? value)
+  {
+    if (value is { Length: 64 } && value.All(char.IsAsciiHexDigit))
+      return value.ToLowerInvariant();
+    try
+    {
+      var bytes = value is null ? [] : Convert.FromBase64String(value);
+      return bytes.Length == 32 ? Convert.ToHexStringLower(bytes) : null;
+    }
+    catch (FormatException)
+    {
+      return null;
+    }
+  }
+
+  private static HttpRequestMessage Authorized(
+    HttpMethod method,
+    string url,
+    Settings settings
+  )
+  {
+    var request = new HttpRequestMessage(method, url);
+    request.Headers.Authorization = new AuthenticationHeaderValue(
+      "Bearer",
+      settings.AccessToken
+    );
+    return request;
+  }
+
+  private async Task<HttpResponseMessage> SendAsync(
+    HttpRequestMessage request,
+    CancellationToken ct,
+    HttpCompletionOption completion = HttpCompletionOption.ResponseContentRead
+  )
+  {
+    try
+    {
+      return await http.SendAsync(request, completion, ct);
+    }
+    catch (Exception ex)
+      when (ex is HttpRequestException
+        || ex is OperationCanceledException && !ct.IsCancellationRequested
+      )
+    {
+      throw new DriverMessagingUnavailableException("No answer.");
     }
   }
 
@@ -225,6 +378,9 @@ public sealed partial class WhatsAppCloudMessaging(
 
   [GeneratedRegex("^[0-9]{5,30}$")]
   private static partial Regex Digits();
+
+  [GeneratedRegex("^[A-Za-z0-9_-]{1,200}$")]
+  private static partial Regex MediaIdPattern();
 
   [GeneratedRegex("^v[0-9]{1,3}\\.0$")]
   private static partial Regex GraphVersion();

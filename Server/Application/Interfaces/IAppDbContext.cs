@@ -28,6 +28,10 @@ public interface IAppDbContext
   DbSet<FuelVisitSend> FuelVisitSends { get; }
   DbSet<DriverMessage> DriverMessages { get; }
   DbSet<DriverMessagingWindow> DriverMessagingWindows { get; }
+  DbSet<Conversation> Conversations { get; }
+  DbSet<ConversationMessage> ConversationMessages { get; }
+  DbSet<MessageAttachment> MessageAttachments { get; }
+  DbSet<ConversationRead> ConversationReads { get; }
   DbSet<ConsistencyFinding> ConsistencyFindings { get; }
   DbSet<ConsistencyEvent> ConsistencyEvents { get; }
   DbSet<ConsistencyIncident> ConsistencyIncidents { get; }

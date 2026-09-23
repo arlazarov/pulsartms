@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Application.Features.Routing.Interfaces;
 using Domain.Models.Messaging;
 
@@ -11,6 +12,19 @@ internal sealed class FakeDriverMessaging : IDriverMessaging
   public List<(string To, string Text)> Sent { get; } = [];
   public Func<Task>? During { get; set; }
   public bool Configured { get; set; } = true;
+
+  // Files the provider holds, by media id; a declared hash may be set to
+  // differ from the bytes. Unavailable makes every download fail for now.
+  public Dictionary<
+    string,
+    (byte[] Bytes, string Type, string? Sha)
+  > Media { get; } = [];
+  public bool Unavailable { get; set; }
+  public int Downloads { get; private set; }
+  public DriverMessagingNotification? Notification { get; set; }
+
+  // Runs while a download is being opened, as another pass would meanwhile.
+  public Func<Task>? DuringMedia { get; set; }
 
   public string Channel => DriverMessageChannels.WhatsApp;
 
@@ -40,5 +54,25 @@ internal sealed class FakeDriverMessaging : IDriverMessaging
     ReadOnlyMemory<byte> body,
     string? signature,
     CancellationToken ct
-  ) => Task.FromResult<DriverMessagingNotification?>(null);
+  ) => Task.FromResult(Notification);
+
+  public async Task<DriverMedia?> OpenMediaAsync(
+    string mediaId,
+    CancellationToken ct
+  )
+  {
+    Downloads++;
+    if (DuringMedia is { } during)
+      await during();
+    if (Unavailable)
+      throw new DriverMessagingUnavailableException("No answer.");
+    return Media.TryGetValue(mediaId, out var media)
+      ? new(
+        new MemoryStream(media.Bytes),
+        media.Bytes.Length,
+        media.Type,
+        media.Sha ?? Convert.ToHexStringLower(SHA256.HashData(media.Bytes))
+      )
+      : null;
+  }
 }

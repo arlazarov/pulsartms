@@ -1,4 +1,5 @@
 using Application.Features.Routing.Interfaces;
+using Application.Features.Routing.Services.Messaging;
 using Application.Features.Routing.Services.Routes;
 using Application.Models;
 using Domain.Entities.Messaging;
@@ -29,7 +30,9 @@ public sealed class WhatsAppWebhookHandlers(
   IAppDbContext db,
   IDriverMessaging messaging,
   ICurrentCompany companies,
-  PlanningSummaryCache summaries
+  PlanningSummaryCache summaries,
+  InboxRecorder inbox,
+  MessagingEvents events
 )
   : IRequestHandler<VerifyWhatsAppWebhookQuery, RequestResponse<string>>,
     IRequestHandler<ReceiveWhatsAppWebhookCommand, RequestResponse<int>>
@@ -73,11 +76,26 @@ public sealed class WhatsAppWebhookHandlers(
     if (notification is null)
       return RequestResponse<int>.Fail("Not accepted.", 401);
     var trucks = await ApplyStatusesAsync(notification.Statuses, ct);
+    var outbound = await ApplyConversationStatusesAsync(notification, ct);
     await ApplyInboundAsync(notification.Inbound, ct);
+    var conversations = await inbox.RecordAsync(
+      messaging.Channel,
+      notification.BusinessNumberId,
+      notification.Inbound,
+      ct
+    );
     await db.SaveChangesAsync(ct);
-    // After the commit: only the trucks whose hand-over changed.
+    // After the commit: only the trucks whose hand-over changed, and the
+    // conversations that gained or changed a message.
     foreach (var truck in trucks)
       summaries.Committed(company, truck);
+    foreach (
+      var (conversation, revision) in await RevisionsAsync(
+        conversations.Concat(outbound),
+        ct
+      )
+    )
+      events.Publish(company, new(conversation, revision));
     return RequestResponse<int>.Ok(trucks.Count);
   }
 
@@ -110,6 +128,61 @@ public sealed class WhatsAppWebhookHandlers(
         trucks.Add(message.TruckId);
       }
     return trucks;
+  }
+
+  // Statuses for messages dispatchers sent from a conversation, by provider
+  // id under this business number, forward only as for the hand-over.
+  private async Task<IReadOnlyList<Guid>> ApplyConversationStatusesAsync(
+    DriverMessagingNotification notification,
+    CancellationToken ct
+  )
+  {
+    if (notification.Statuses.Count == 0)
+      return [];
+    var ids = notification
+      .Statuses.Select(x => x.ProviderMessageId)
+      .Distinct()
+      .ToArray();
+    var messages = await db
+      .ConversationMessages.Where(x =>
+        x.Channel == messaging.Channel
+        && x.BusinessNumberId == notification.BusinessNumberId
+        && x.ProviderMessageId != null
+        && ids.Contains(x.ProviderMessageId)
+      )
+      .ToDictionaryAsync(x => x.ProviderMessageId!, ct);
+    var changed = new HashSet<Guid>();
+    foreach (var status in notification.Statuses.OrderBy(x => x.At))
+      if (
+        messages.GetValueOrDefault(status.ProviderMessageId) is { } message
+        && DriverMessageProgress.Advances(message.Status, status.Status)
+      )
+      {
+        message.Status = status.Status;
+        message.StatusAt = status.At;
+        message.ErrorCode = status.ErrorCode;
+        changed.Add(message.ConversationId);
+      }
+    return [.. changed];
+  }
+
+  private async Task<List<(Guid, long)>> RevisionsAsync(
+    IEnumerable<Guid> conversations,
+    CancellationToken ct
+  )
+  {
+    var ids = conversations.Distinct().ToArray();
+    if (ids.Length == 0)
+      return [];
+    return (
+      await db
+        .Conversations.AsNoTracking()
+        .Where(x => ids.Contains(x.Id))
+        .Select(x => new { x.Id, x.Revision })
+        .ToListAsync(ct)
+    )
+      .Select(x => (x.Id, x.Revision))
+      .ToList();
   }
 
   private async Task ApplyInboundAsync(

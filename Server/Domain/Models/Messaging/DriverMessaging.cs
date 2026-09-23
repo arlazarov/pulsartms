@@ -44,7 +44,25 @@ public sealed record DriverMessageStatusEvent(
   int? ErrorCode
 );
 
-public sealed record DriverMessageInboundEvent(string Phone, DateTime At);
+// A message a driver wrote. Kind is text, file, or unsupported (the
+// provider's type name is then the text); Text is the body or a file's
+// caption, bounded.
+public sealed record DriverMessageInboundEvent(string Phone, DateTime At)
+{
+  public string? ProviderMessageId { get; init; }
+  public string Kind { get; init; } = "text";
+  public string Text { get; init; } = "";
+  public InboundMedia? Media { get; init; }
+}
+
+// Sha256 as the provider sent it (hex or base64); FileName only for
+// documents.
+public sealed record InboundMedia(
+  string Id,
+  string MimeType,
+  string? Sha256,
+  string? FileName
+);
 
 // A provider notification after its signature and sender were checked.
 // Events for another business number are counted and dropped.
@@ -52,4 +70,8 @@ public sealed record DriverMessagingNotification(
   IReadOnlyList<DriverMessageStatusEvent> Statuses,
   IReadOnlyList<DriverMessageInboundEvent> Inbound,
   int OtherSenders
-);
+)
+{
+  // The business number these events were addressed to.
+  public string BusinessNumberId { get; init; } = "";
+}

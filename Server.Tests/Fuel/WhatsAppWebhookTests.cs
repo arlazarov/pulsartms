@@ -4,6 +4,7 @@ using System.Text.Json;
 using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Models;
 using Application.Features.Routing.Commands;
+using Application.Features.Routing.Services.Messaging;
 using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
 using Domain.Entities;
@@ -95,36 +96,211 @@ public sealed class WhatsAppWebhookTests
       Assert.Equal(DriverMessageStatuses.Accepted, await f.StatusAsync(theirs));
   }
 
+  // Since the inbox (2026-09-23) what drivers write is kept: once, however
+  // often the notification arrives, and the window still opens.
   [Fact]
-  public async Task AnInboundMessageOpensTheWindowWithoutKeepingItsWords()
+  public async Task AnInboundMessageOpensTheWindowAndIsRecordedOnce()
   {
     await using var f = await Fixture.CreateAsync();
-    var body = Envelope(
-      "123456",
-      new
-      {
-        messages = new[]
-        {
-          new
-          {
-            from = "15558234327",
-            id = "wamid.in",
-            timestamp = "1790000000",
-            type = "text",
-            text = new { body = "ok" },
-          },
-        },
-      }
-    );
+    var driver = await f.DriverAsync("+15558234327");
+    using var listening = f.Events.Subscribe(Domain.Entities.Company.Amf);
+    var body = Inbound(new { type = "text", text = new { body = "ok" } });
+
     Assert.Equal(200, await f.PostAsync(body));
     Assert.Equal(200, await f.PostAsync(body));
 
     var window = await f.Db.DriverMessagingWindows.SingleAsync();
     Assert.Equal("+15558234327", window.Phone);
+    var message = await f.Db.ConversationMessages.AsNoTracking().SingleAsync();
     Assert.Equal(
-      DateTimeOffset.FromUnixTimeSeconds(1790000000).UtcDateTime,
-      window.LastInboundAt
+      ("in", "text", "ok", "wamid.in", "123456"),
+      (
+        message.Direction,
+        message.Kind,
+        message.Body,
+        message.ProviderMessageId,
+        message.BusinessNumberId
+      )
     );
+    var conversation = await f.Db.Conversations.AsNoTracking().SingleAsync();
+    Assert.Equal(
+      (
+        driver,
+        "ok",
+        DateTimeOffset.FromUnixTimeSeconds(1790000000).UtcDateTime
+      ),
+      (
+        conversation.DriverId,
+        conversation.LastPreview,
+        conversation.LastInboundAt
+      )
+    );
+    Assert.True(listening.Reader.TryRead(out var change));
+    Assert.Equal(conversation.Id, change.ConversationId);
+    Assert.False(listening.Reader.TryRead(out _));
+  }
+
+  // The same provider message id under another carrier's number is that
+  // carrier's own message, never a duplicate of this one.
+  [Fact]
+  public async Task TheSameMessageIdUnderAnotherBusinessNumberIsAnotherMessage()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var body = Inbound(new { type = "text", text = new { body = "hi" } });
+    Assert.Equal(200, await f.PostAsync(body));
+    Assert.Equal(
+      200,
+      await f.PostAsync(
+        Inbound(new { type = "text", text = new { body = "hi" } }, "654321"),
+        "secret-other",
+        "other"
+      )
+    );
+
+    Assert.Single(await f.Db.ConversationMessages.AsNoTracking().ToListAsync());
+    using (f.Company.As(Other))
+      Assert.Equal(
+        "654321",
+        (
+          await f.Db.ConversationMessages.AsNoTracking().SingleAsync()
+        ).BusinessNumberId
+      );
+  }
+
+  [Fact]
+  public async Task AFileWaitsToBeCopiedAndOtherKindsAreRecordedWithoutGuessing()
+  {
+    await using var f = await Fixture.CreateAsync();
+    Assert.Equal(
+      200,
+      await f.PostAsync(
+        Inbound(
+          new
+          {
+            type = "document",
+            document = new
+            {
+              id = "1234567890",
+              mime_type = "application/pdf",
+              sha256 = "abc",
+              filename = "bol 1407.pdf",
+              caption = "BOL",
+            },
+          }
+        )
+      )
+    );
+    Assert.Equal(
+      200,
+      await f.PostAsync(
+        Inbound(
+          new { type = "location", location = new { latitude = 1 } },
+          id: "wamid.loc"
+        )
+      )
+    );
+
+    var messages = await f
+      .Db.ConversationMessages.AsNoTracking()
+      .OrderBy(x => x.CreatedAt)
+      .ToListAsync();
+    Assert.Equal(("file", "BOL"), (messages[0].Kind, messages[0].Body));
+    Assert.Equal(
+      ("unsupported", "location"),
+      (messages[1].Kind, messages[1].Body)
+    );
+    var file = await f.Db.MessageAttachments.AsNoTracking().SingleAsync();
+    Assert.Equal(
+      ("1234567890", "application/pdf", "bol 1407.pdf", "pending"),
+      (file.ProviderMediaId, file.DeclaredType, file.OriginalName, file.State)
+    );
+    Assert.True(file.MediaExpiresAt > DateTime.UtcNow.AddDays(6));
+  }
+
+  // Two drivers share the number: the conversation stays unmatched rather
+  // than guessing which of them wrote.
+  [Fact]
+  public async Task AnAmbiguousNumberMatchesNoDriver()
+  {
+    await using var f = await Fixture.CreateAsync();
+    await f.DriverAsync("+15558234327");
+    await f.DriverAsync("+15558234327");
+
+    Assert.Equal(
+      200,
+      await f.PostAsync(
+        Inbound(new { type = "text", text = new { body = "x" } })
+      )
+    );
+
+    Assert.Null(
+      (await f.Db.Conversations.AsNoTracking().SingleAsync()).DriverId
+    );
+  }
+
+  [Fact]
+  public async Task AReplysStatusMovesOnlyForwardUnderItsOwnNumber()
+  {
+    await using var f = await Fixture.CreateAsync();
+    Assert.Equal(
+      200,
+      await f.PostAsync(
+        Inbound(new { type = "text", text = new { body = "x" } })
+      )
+    );
+    var conversation = await f.Db.Conversations.AsNoTracking().SingleAsync();
+    f.Db.ConversationMessages.Add(
+      new ConversationMessage
+      {
+        Id = Guid.NewGuid(),
+        CompanyId = Domain.Entities.Company.Amf,
+        ConversationId = conversation.Id,
+        Channel = DriverMessageChannels.WhatsApp,
+        BusinessNumberId = "123456",
+        Direction = MessageDirections.Outbound,
+        Kind = ConversationMessageKinds.Text,
+        Body = "On my way",
+        ProviderMessageId = "wamid.reply",
+        Status = DriverMessageStatuses.Accepted,
+      }
+    );
+    await f.Db.SaveChangesAsync();
+
+    Assert.Equal(200, await f.PostAsync(Status("wamid.reply", "read", 30)));
+    Assert.Equal(
+      200,
+      await f.PostAsync(Status("wamid.reply", "delivered", 20))
+    );
+    Assert.Equal(
+      200,
+      await f.PostAsync(
+        Status("wamid.reply", "failed", 40, number: "654321"),
+        "secret-other",
+        "other"
+      )
+    );
+
+    Assert.Equal(
+      DriverMessageStatuses.Read,
+      (
+        await f
+          .Db.ConversationMessages.AsNoTracking()
+          .SingleAsync(x => x.ProviderMessageId == "wamid.reply")
+      ).Status
+    );
+  }
+
+  private static byte[] Inbound(
+    object content,
+    string number = "123456",
+    string id = "wamid.in"
+  )
+  {
+    var message = JsonSerializer.SerializeToNode(content)!.AsObject();
+    message["from"] = "15558234327";
+    message["id"] = id;
+    message["timestamp"] = "1790000000";
+    return Envelope(number, new { messages = new[] { message } });
   }
 
   [Fact]
@@ -283,8 +459,12 @@ public sealed class WhatsAppWebhookTests
           new ConfigurationBuilder().Build()
         ),
         Company,
-        Refresh.Services.GetRequiredService<PlanningSummaryCache>()
+        Refresh.Services.GetRequiredService<PlanningSummaryCache>(),
+        new InboxRecorder(Db, TimeProvider.System),
+        Events
       );
+
+    public MessagingEvents Events { get; } = new();
 
     public async Task<Guid> MessageAsync(
       string providerId,
@@ -323,6 +503,22 @@ public sealed class WhatsAppWebhookTests
       await Db.SaveChangesAsync();
       Db.ChangeTracker.Clear();
       return message.Id;
+    }
+
+    public async Task<Guid> DriverAsync(string whatsApp)
+    {
+      var driver = new Driver
+      {
+        Id = Guid.NewGuid(),
+        ExternalId = Guid.NewGuid().ToString("N"),
+        Name = "Driver",
+        IsActive = true,
+        WhatsAppPhone = whatsApp,
+      };
+      Db.Drivers.Add(driver);
+      await Db.SaveChangesAsync();
+      Db.ChangeTracker.Clear();
+      return driver.Id;
     }
 
     public Task<string> StatusAsync(Guid id) =>
