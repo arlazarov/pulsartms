@@ -155,14 +155,35 @@ upserts reject an older concurrent batch rather than partially replacing a newer
 forecast. Persisted estimates are display snapshots, not authoritative dispatch
 status or actual arrival records.
 
-Results expire after 120 seconds. New view demand and changed input signatures
-wake the worker immediately; a ten-second sweep checks due entries for recently
-viewed roots (ten-minute idle eviction). Wake signals coalesce; repeated missing
-reads do not accelerate normal retries. Up to two refreshes run in independent
-scopes, each with a thirty-second timeout. Cancelled or superseded calculations
-cannot publish a late result. Instances have separate memory caches and share the
-saved snapshots. Cards consume accepted planning responses without extra HTTP
-requests or changing existing polling intervals.
+Results expire after 120 seconds (`EtaMemory.RefreshInterval`), and the same
+interval is the longest the worker sleeps. It wakes at the earliest expiry of a
+forecast still to expire, so a forecast is due when it expires rather than a
+whole interval later. Events wake it at once: new view demand, a changed input
+signature, a read that finds the forecast's road moved on (a new route version,
+a passed stop, a confirmed deviation) or its work changed, and a driver duty
+change. A duty change is a different duty status between two readings or a
+driver's first reading; clocks counting down under the same status are not one.
+A forecast made without hours holds for the usual interval, and that driver's
+first reading makes it due. Missing, superseded and failed forecasts are
+retried at the interval, not in a loop. Wake signals coalesce. Up to two
+refreshes run in independent scopes, each with a thirty-second timeout.
+Cancelled or superseded
+calculations cannot publish a late result. Instances have separate memory caches
+and share the saved snapshots. Cards consume accepted planning responses without
+extra HTTP requests or changing existing polling intervals. This interval sets
+how often a forecast is recalculated; its CPU and database cost against the
+previous ten-second sweep has not been measured.
+
+Running work is kept viewed by the background planning summary pass (see
+[fleet efficiency](../architecture/fleet-efficiency.md)), so its forecasts are
+calculated with no page open. The ten-minute idle eviction applies only to work
+that is neither running nor being looked at.
+
+A forecast that expired, or whose road moved on, is kept for the same work - the
+same truck, load, leg, assignment and stops - and is returned marked
+`RouteUpdatePending` until its replacement lands; the map reads it the way the
+Dispatch board already reads saved forecasts. A forecast for other work is never
+returned in its place.
 
 The panel/card retains the whole matching complete snapshot from the start of its
 existing refresh request, including ETA, cycle, recap and duty status. A newer partial pending

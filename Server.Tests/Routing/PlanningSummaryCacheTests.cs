@@ -131,6 +131,104 @@ public sealed class PlanningSummaryCacheTests
     Assert.NotNull(cache.Take());
   }
 
+  // Running work is prepared with nobody reading it: the first reader, even
+  // on a cold start, opens a summary that is already there, and one that
+  // nobody has looked at for more than ten minutes is still being kept.
+  [Fact]
+  public void RunningWorkIsPreparedWithoutAReaderAndKeptWithoutOne()
+  {
+    var time = new FakeTimeProvider();
+    var cache = new PlanningSummaryCache(time);
+    var key = new PlanningSummaryCache.Key(Guid.NewGuid(), Guid.NewGuid());
+
+    cache.Keep(key, "a");
+    cache.Complete(cache.Take()!, "a", Result(key, time));
+    var opened = cache.Read(key, "a")!;
+    Assert.False(opened.IsRefreshing);
+
+    // Twelve minutes, no reader, a background pass every thirty seconds.
+    var prepared = 1;
+    for (var elapsed = 0; elapsed < 24; elapsed++)
+    {
+      time.Advance(TimeSpan.FromSeconds(30));
+      cache.Keep(key, "a");
+      if (cache.Take() is { } work)
+      {
+        cache.Complete(work, "a", Result(key, time));
+        prepared++;
+      }
+    }
+    Assert.Equal(25, prepared);
+    Assert.False(cache.Read(key, "a")!.IsRefreshing);
+  }
+
+  // Asking again for the same work is not a reason to prepare it again:
+  // it is prepared on the freshness interval, however often it is asked.
+  [Fact]
+  public void RepeatedDemandDoesNotRepeatWork()
+  {
+    var time = new FakeTimeProvider();
+    var cache = new PlanningSummaryCache(time);
+    var key = new PlanningSummaryCache.Key(Guid.NewGuid(), Guid.NewGuid());
+    cache.Keep(key, "a");
+    cache.Complete(cache.Take()!, "a", Result(key, time));
+    for (var i = 0; i < 20; i++)
+    {
+      cache.Keep(key, "a");
+      cache.Read(key, "a", geometry: false);
+    }
+    Assert.Null(cache.Take());
+    time.Advance(TimeSpan.FromSeconds(30));
+    Assert.NotNull(cache.Take());
+    Assert.Null(cache.Take());
+  }
+
+  // A committed change to one truck makes that truck due, and only it.
+  [Fact]
+  public void OneTrucksChangeLeavesTheRestOfTheFleetAlone()
+  {
+    var time = new FakeTimeProvider();
+    var cache = new PlanningSummaryCache(time);
+    var company = Guid.NewGuid();
+    var changed = new PlanningSummaryCache.Key(company, Guid.NewGuid());
+    var fleet = Enumerable
+      .Range(0, 5)
+      .Select(_ => new PlanningSummaryCache.Key(company, Guid.NewGuid()))
+      .ToArray();
+    foreach (var key in fleet.Append(changed))
+    {
+      cache.Keep(key, "a");
+      cache.Complete(cache.Take()!, "a", Result(key, time));
+    }
+
+    var committed = Assert.Single(cache.Committed(company, changed.Truck));
+
+    Assert.Equal(changed, committed.Key);
+    Assert.Equal(changed, cache.Take()!.Key);
+    Assert.Null(cache.Take());
+    Assert.All(fleet, key => Assert.False(cache.Read(key, "a")!.IsRefreshing));
+  }
+
+  // A new assignment is new work: the background asking for it does not
+  // carry the old snapshot across, and a reader of the new work sees none.
+  [Fact]
+  public void BackgroundDemandNeverCarriesASnapshotToOtherWork()
+  {
+    var time = new FakeTimeProvider();
+    var cache = new PlanningSummaryCache(time);
+    var key = new PlanningSummaryCache.Key(Guid.NewGuid(), Guid.NewGuid());
+    cache.Keep(key, "first assignment");
+    cache.Complete(cache.Take()!, "first assignment", Result(key, time));
+
+    cache.Keep(key, "second assignment");
+
+    Assert.Null(cache.Read(key, "second assignment"));
+    var work = cache.Take()!;
+    Assert.Equal("second assignment", work.Signature);
+    cache.Complete(work, "first assignment", Result(key, time));
+    Assert.Null(cache.Read(key, "second assignment"));
+  }
+
   [Fact]
   public void CommitRetainsDisplayAndRejectsEarlierInFlightWork()
   {

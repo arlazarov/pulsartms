@@ -48,23 +48,7 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
     lock (gate)
     {
       var now = time.GetUtcNow();
-      if (!entries.TryGetValue(key, out var entry))
-      {
-        if (entries.Count >= MaximumEntries)
-          Remove(entries.MinBy(x => x.Value.RequestedAt).Key);
-        entries[key] = entry = new();
-      }
-      entry.RequestedAt = now;
-      if (entry.Signature != signature)
-      {
-        bytes -= entry.Size;
-        entry.Json = null;
-        entry.Map = null;
-        entry.Signature = signature;
-        entry.Ticket = Guid.NewGuid();
-        entry.Busy = false;
-        entry.RefreshAt = DateTimeOffset.MinValue;
-      }
+      var entry = Request(key, signature, now);
       compressed =
         geometry
         && entry.Map is not null
@@ -97,6 +81,40 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
         IsRefreshing =
           refreshing || result.CalculatedAt < time.GetUtcNow().AddSeconds(-30),
       };
+  }
+
+  // Work that is running is kept prepared whether or not a page is open:
+  // the background asks for it exactly as a reader would, and the same
+  // consumers prepare it on the same path. Nothing is decoded, because
+  // nobody is reading it yet.
+  public void Keep(Key key, string signature)
+  {
+    lock (gate)
+      Request(key, signature, time.GetUtcNow());
+  }
+
+  private Entry Request(Key key, string signature, DateTimeOffset now)
+  {
+    if (!entries.TryGetValue(key, out var entry))
+    {
+      if (entries.Count >= MaximumEntries)
+        Remove(entries.MinBy(x => x.Value.RequestedAt).Key);
+      entries[key] = entry = new();
+    }
+    entry.RequestedAt = now;
+    // Other work - another assignment, other settings - never inherits this
+    // snapshot, not even while its own is being prepared.
+    if (entry.Signature != signature)
+    {
+      bytes -= entry.Size;
+      entry.Json = null;
+      entry.Map = null;
+      entry.Signature = signature;
+      entry.Ticket = Guid.NewGuid();
+      entry.Busy = false;
+      entry.RefreshAt = DateTimeOffset.MinValue;
+    }
+    return entry;
   }
 
   public IReadOnlyList<Work> Committed(Guid company, Guid truck)

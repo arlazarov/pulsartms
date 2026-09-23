@@ -7,8 +7,18 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Eta.Services;
 
-public sealed class EtaMemory : IDisposable, ICacheMemorySource
+public sealed class EtaMemory(TimeProvider? clock = null)
+  : IDisposable,
+    ICacheMemorySource
 {
+  // How long a forecast holds, and the longest the worker sleeps between
+  // checks. A forecast is due the moment it expires, not a whole interval
+  // later: the worker wakes at the earliest expiry, at this interval, or at
+  // once when a route, stop, assignment or duty change asks for it.
+  public static readonly TimeSpan RefreshInterval = TimeSpan.FromMinutes(2);
+
+  private readonly TimeProvider time = clock ?? TimeProvider.System;
+
   public IReadOnlyList<CacheMemorySnapshot> ReadMemory()
   {
     var stats0 = futureTimings.GetCurrentStatistics();
@@ -35,6 +45,19 @@ public sealed class EtaMemory : IDisposable, ICacheMemorySource
   )
   {
     public string? ChainInputHash { get; init; }
+
+    // The work this forecast is for: the load, its leg, the assignment and
+    // its stops. A forecast for the same work stays readable while it is
+    // replaced; one for other work never is.
+    public string? WorkKey { get; init; }
+
+    // Its road moved on - a new version, a passed stop, a confirmed
+    // deviation - so it is due again, but it is still this work's forecast
+    // and is shown, marked as updating, until the new one lands.
+    public bool Superseded { get; init; }
+
+    // Whose hours it was calculated with, so a duty change can make it due.
+    public string? Driver { get; init; }
   }
 
   public readonly ConcurrentDictionary<Guid, Entry> Results = new();
@@ -90,6 +113,32 @@ public sealed class EtaMemory : IDisposable, ICacheMemorySource
     ((ICollection<KeyValuePair<Guid, Entry>>)Results).Remove(
       new(dispatchId, expected)
     );
+
+  public bool SupersedeIfCurrent(Guid dispatchId, Entry expected) =>
+    expected.Superseded
+    || Results.TryUpdate(
+      dispatchId,
+      expected with
+      {
+        Superseded = true,
+      },
+      expected
+    );
+
+  // A driver went on or off duty, or was read for the first time: what
+  // their forecasts assumed about hours no longer holds. Only those are
+  // made due - the rest of the fleet is left as it is.
+  public void DutyChanged(IReadOnlyCollection<string> drivers)
+  {
+    if (drivers.Count == 0)
+      return;
+    var changed = false;
+    foreach (var (key, entry) in Results)
+      if (entry.Driver is { } driver && drivers.Contains(driver))
+        changed |= SupersedeIfCurrent(key, entry);
+    if (changed)
+      RequestRefresh();
+  }
 
   public void Forget(Guid dispatchId)
   {
@@ -187,13 +236,39 @@ public sealed class EtaMemory : IDisposable, ICacheMemorySource
 
   public async Task WaitForRefreshAsync(CancellationToken ct)
   {
-    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-    timeout.CancelAfter(TimeSpan.FromSeconds(10));
+    var now = time.GetUtcNow().UtcDateTime;
+    var delay = NextCheck(now) - now;
+    if (delay <= TimeSpan.Zero)
+      return;
+    using var timeout = new CancellationTokenSource(delay, time);
+    using var linked = CancellationTokenSource.CreateLinkedTokenSource(
+      ct,
+      timeout.Token
+    );
     try
     {
-      await refresh.Reader.ReadAsync(timeout.Token);
+      await refresh.Reader.ReadAsync(linked.Token);
     }
     catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }
+  }
+
+  // When the worker next has something to look at without being asked: the
+  // earliest forecast still to expire, or a full interval from now. Missing,
+  // superseded and already expired forecasts are not counted here - the
+  // event that caused them wakes the worker, and a refresh that failed is
+  // retried at the interval rather than in a loop.
+  public DateTime NextCheck(DateTime now)
+  {
+    var next = now + RefreshInterval;
+    foreach (var item in Viewed)
+      if (
+        Results.TryGetValue(item.Key, out var result)
+        && !result.Superseded
+        && result.Value.ValidUntil > now
+        && result.Value.ValidUntil < next
+      )
+        next = result.Value.ValidUntil;
+    return next;
   }
 
   public IEnumerable<Guid> Due(DateTime now)
@@ -207,6 +282,7 @@ public sealed class EtaMemory : IDisposable, ICacheMemorySource
       }
       if (
         !Results.TryGetValue(item.Key, out var result)
+        || result.Superseded
         || result.Value.ValidUntil <= now
       )
         yield return item.Key;

@@ -38,6 +38,8 @@ public sealed class DriverHosSnapshot(
   }
 
   private readonly Dictionary<Guid, CompanyState> states = new();
+
+  public event Action<IReadOnlyCollection<string>>? DutyChanged;
   private CompanyState State
   {
     get
@@ -129,13 +131,26 @@ public sealed class DriverHosSnapshot(
         StringComparer.Ordinal
       )
       : null;
+    string[] changed = [];
     lock (gate)
     {
       if (captured is not null)
+      {
+        var previous = State.Clocks;
+        changed = captured
+          .Where(x =>
+            !previous.TryGetValue(x.Key, out var before)
+            || before.Duty != x.Value.Duty
+          )
+          .Select(x => x.Key)
+          .ToArray();
         State.Clocks = captured;
+      }
       State.NextRefresh = now.AddSeconds(captured is { Count: > 0 } ? 45 : 60);
       State.Refreshing = false;
     }
+    if (changed.Length > 0)
+      DutyChanged?.Invoke(changed);
   }
 
   public async Task WaitForRefreshAsync(CancellationToken ct)

@@ -1,4 +1,5 @@
 using Application.Features.Eta.Services;
+using Application.Features.Fleet.Interfaces;
 using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
@@ -9,11 +10,27 @@ namespace Application.Features.Eta.Background;
 
 public sealed class EtaRefreshOperation(
   EtaMemory memory,
+  IDriverHosProvider hos,
   IServiceScopeFactory scopes,
   ILogger<EtaRefreshOperation> logger
 ) : IEtaRefreshOperation
 {
   public async Task RunAsync(CancellationToken ct)
+  {
+    // A duty change is one of the events that makes a forecast due before
+    // its interval runs out.
+    hos.DutyChanged += memory.DutyChanged;
+    try
+    {
+      await RefreshAsync(ct);
+    }
+    finally
+    {
+      hos.DutyChanged -= memory.DutyChanged;
+    }
+  }
+
+  private async Task RefreshAsync(CancellationToken ct)
   {
     while (!ct.IsCancellationRequested)
     {

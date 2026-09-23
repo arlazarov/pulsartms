@@ -24,7 +24,7 @@ that every proposed optimization has been implemented.
 | Selected-truck planning reads | PlanningSummaryReader |
 | Committed change notification | PlanningWorkPublication |
 | Prepared-result publication | PlanningSummaryPublisher |
-| Cold/freshness recovery | PlanningSummaryOperation |
+| Cold/freshness recovery and running-work demand | PlanningSummaryOperation |
 | Client polling and retained display | PlanningDisplayCache |
 | Provider transport and SQL | Infrastructure interfaces |
 
@@ -33,6 +33,21 @@ new board/map HTTP handlers to repeat heavy saved-fuel validation on every poll.
 Handlers may resolve current work, authorization and compact metadata. Opening a
 page must not synchronously recalculate routes, scan fuel geometry or fetch
 provider history. Explicit user calculation commands remain separate writes.
+
+Running work is prepared whether or not a page is open. Every thirty seconds,
+per carrier, PlanningSummaryOperation reads the trucks with running work - an
+execution leg that is active or planned, or an older in-transit load without a
+leg - batch-reads their planning inputs, and asks PlanningSummaryCache for their
+summaries exactly as a reader would. The same consumers prepare them on the
+same path, so a road or fuel plan is rebuilt only when its inputs changed, and
+the ETA worker keeps their forecasts because the summary read views them.
+Finished and cancelled work never enters this set. At most 128 trucks are held
+this way, those already driving first, so trucks somebody opens are never
+crowded out. A click
+opens what is already prepared; it is not the start of a calculation. The
+thirty-second summary refresh of each running truck is a projection of saved
+route and fuel state, not a geometry or fuel rebuild; its cost at 100 trucks has
+not been measured.
 
 For a new displayed field, first find its existing calculation and durable owner.
 Add the value to the shared display projection when both screens need it. Carry
@@ -81,7 +96,8 @@ Keep batch caches within the existing bounded `ReadCache` memory budget.
   transactional; the display cache is disposable and is not a write-behind ledger.
 - Keep cold work and retained payloads bounded. Planning summaries allow two
   consumers, 256 entries, 512 KiB per entry and 8 MiB total payload. Demand expires
-  after two minutes without reads. Dispatch uses compact metadata; maps request
+  after two minutes without reads; running work is asked for again by the
+  background pass. Dispatch uses compact metadata; maps request
   geometry only when the acknowledged plan/version changes.
 - Preserve the 30-second recovery/freshness path until all relevant inputs have
   an equivalent reliable lifecycle. Telemetry, ETA and other API processes can

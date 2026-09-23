@@ -72,6 +72,41 @@ public sealed class TruckPlanningInputsReader(
     return await WithClocksAsync(captured, includeHos, ct);
   }
 
+  // Trucks with running work: an execution leg that is active or planned,
+  // or an older in-transit load that never had a leg. Their summaries are
+  // kept prepared in the background. Finished and cancelled work is not
+  // running work, so a truck's history never enters this set; trucks already
+  // driving come first when the bound is reached.
+  public async Task<IReadOnlyList<Guid>> RunningTruckIdsAsync(
+    int limit,
+    CancellationToken ct
+  )
+  {
+    var legs = await db
+      .ExecutionLegs.AsNoTracking()
+      .Where(x => x.Status == "active" || x.Status == "planned")
+      .Select(x => new { x.TruckId, Driving = x.Status == "active" })
+      .ToListAsync(ct);
+    var loads = await db
+      .Dispatches.AsNoTracking()
+      .Where(x =>
+        x.Status == "in_transit"
+        && x.TruckId != null
+        && !db.LoadExecutionLegs.Any(link => link.DispatchId == x.Id)
+      )
+      .Select(x => x.TruckId!.Value)
+      .ToListAsync(ct);
+    return legs.Select(x => (x.TruckId, Rank: x.Driving ? 0 : 1))
+      .Concat(loads.Select(x => (TruckId: x, Rank: 0)))
+      .GroupBy(x => x.TruckId)
+      .Select(x => (Truck: x.Key, Rank: x.Min(y => y.Rank)))
+      .OrderBy(x => x.Rank)
+      .ThenBy(x => x.Truck)
+      .Take(limit)
+      .Select(x => x.Truck)
+      .ToList();
+  }
+
   public async Task<TruckPlanningInputs?> ReadFreshAsync(
     Guid truckId,
     CancellationToken ct,

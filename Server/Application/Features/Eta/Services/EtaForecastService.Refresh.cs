@@ -72,7 +72,7 @@ public sealed partial class EtaForecastService
         var now = DateTime.UtcNow;
         result = new(
           now,
-          now.AddMinutes(2),
+          now + EtaMemory.RefreshInterval,
           [],
           "ETA unavailable: waiting for the current saved route.",
           []

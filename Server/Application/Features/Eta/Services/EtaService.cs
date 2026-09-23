@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 
 namespace Application.Features.Eta.Services;
 
-public sealed class EtaService(
+public sealed partial class EtaService(
   IAppDbContext db,
   IDriverHosProvider hos,
   IRouteRegionLookup regions,
@@ -21,42 +21,6 @@ public sealed class EtaService(
 )
 {
   private readonly EtaPlanningOptions planning = planningOptions.Value;
-
-  private static string RouteKey(RoutePlanningState state) =>
-    JsonSerializer.Serialize(
-      new
-      {
-        state.Plan?.Id,
-        state.Plan?.ExecutionLegId,
-        state.Plan?.AssignmentRevision,
-        state.Plan?.Version,
-        state.Plan?.Tracking.NextStopId,
-        state.Plan?.Tracking.PassedStopIds,
-        state.Plan?.InputsChanged,
-        state.Plan?.Stops,
-        state.Progress?.OffRoute,
-        state.Progress?.LocationStale,
-      }
-    );
-
-  public DispatchEta? GetCached(RoutePlanningState state)
-  {
-    if (state.Plan is not { } plan)
-      return null;
-    var key = memory.Scope(plan.DispatchId, plan.ExecutionLegId);
-    memory.View(key, DateTime.UtcNow);
-    if (memory.Results.TryGetValue(key, out var entry))
-    {
-      if (
-        entry.RouteKey == RouteKey(state)
-        && entry.Value.ValidUntil > DateTime.UtcNow
-      )
-        return entry.Value;
-      if (memory.RemoveIfCurrent(key, entry))
-        memory.RequestRefresh();
-    }
-    return null;
-  }
 
   public async Task<DispatchEta?> GetAsync(
     RoutePlanningState state,
@@ -126,14 +90,12 @@ public sealed class EtaService(
       var history = clock is null
         ? null
         : await historyProvider.GetAsync(driver, ct);
+      // Without hours the forecast still holds for the usual interval: the
+      // driver's first reading is a duty change and makes it due at once,
+      // rather than every forecast without one retrying every few seconds.
       var result = Calculate(state, clock, DateTime.UtcNow, history, chain, ct);
-      if (clock is null)
-        result = result with { ValidUntil = DateTime.UtcNow.AddSeconds(10) };
       ct.ThrowIfCancellationRequested();
-      memory.Results[key] = new(signature, result, RouteKey(state))
-      {
-        ChainInputHash = chain?.InputHash,
-      };
+      Record(state, signature, result, chain?.InputHash, driver);
       return result;
     }
     finally
@@ -304,7 +266,7 @@ public sealed class EtaService(
       currentRegion is { NorthOf60: false } ? currentRegion.Country : null
     );
     DispatchEta Missing(string reason, bool routeUpdatePending = false) =>
-      new(now, now.AddMinutes(2), [], reason, [])
+      new(now, now + EtaMemory.RefreshInterval, [], reason, [])
       {
         DutyStatus = dutyStatus,
         RouteUpdatePending = routeUpdatePending,
@@ -383,7 +345,7 @@ public sealed class EtaService(
     );
     return new(
       now,
-      now.AddMinutes(2),
+      now + EtaMemory.RefreshInterval,
       results,
       results.Count == 0 ? blocked : null,
       assumptions
