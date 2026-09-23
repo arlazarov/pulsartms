@@ -153,6 +153,47 @@ test('station editing is explicit, uses occurrence identity and disappears witho
   assert.equal(actions.children[0].listeners.click, undefined);
 });
 
+// One visit hides its own heading, so what the driver was handed is said in
+// the head of the card - and follows the delivery as it changes.
+test('a single visit says its hand-over in the head of the card', t => {
+  const previous = globalThis.document;
+  const element = () => ({
+    children: [],
+    append(...nodes) {
+      this.children.push(...nodes);
+    },
+    replaceChildren(...nodes) {
+      this.children = nodes;
+    },
+    setAttribute() {},
+    addEventListener() {},
+    removeEventListener() {},
+  });
+  globalThis.document = { createElement: element, createElementNS: element };
+  t.after(() => {
+    globalThis.document = previous;
+  });
+  const popup = createStationPopup(() => {});
+  const label = () =>
+    part(popup, 'fleet-station-popup__plan-label').textContent;
+  const update = sent =>
+    popup.update({
+      station: { id: 'station', name: 'LOVES #706' },
+      discount: {},
+      fuel: { visits: [{ number: 1, gallons: 20, sent }] },
+    });
+  update(null);
+  assert.equal(label(), 'Fuel stop 1');
+  update({ changed: false, delivery: 'accepted' });
+  assert.equal(label(), 'Fuel stop 1 · Sent');
+  update({ changed: false, delivery: 'read' });
+  assert.equal(label(), 'Fuel stop 1 · Read');
+  update({ changed: true, delivery: 'read' });
+  assert.equal(label(), 'Fuel stop 1 · Changed since sent');
+  update({ changed: false, delivery: 'failed' });
+  assert.equal(label(), 'Fuel stop 1 · Not delivered');
+});
+
 test('unchanged polling does not mutate popup content or trigger InfoWindow layout', () => {
   let writes = 0;
   globalThis.document = {
