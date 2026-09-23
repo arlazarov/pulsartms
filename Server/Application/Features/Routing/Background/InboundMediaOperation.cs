@@ -243,6 +243,12 @@ public sealed class InboundMediaOperation(
       content,
       ct
     );
+    // Checked at once; one left unchecked (storage unreadable, a crash) is
+    // checked again by the storage reconciler.
+    if (file.State == StoredFileStates.Quarantined)
+      await services
+        .GetRequiredService<StoredFileCheck>()
+        .CheckAsync(file.Id, ct);
     // Only a durable, complete file is stored. An upload this pass did not
     // finish (another attempt took it over) is tried again later.
     return file.State switch

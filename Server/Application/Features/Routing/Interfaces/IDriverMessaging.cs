@@ -21,6 +21,25 @@ public interface IDriverMessaging
     CancellationToken ct
   );
 
+  // A file: uploaded to the provider, then sent by its media id. A refused
+  // upload sends nothing and is reported as rejected; only the send itself
+  // can end unknown.
+  Task<DriverMessageSendResult> SendFileAsync(
+    string recipient,
+    DriverFile file,
+    CancellationToken ct
+  );
+
+  // An approved template, the only kind of message allowed outside the
+  // driver's 24-hour window.
+  Task<DriverMessageSendResult> SendTemplateAsync(
+    string recipient,
+    string name,
+    string language,
+    IReadOnlyList<string> parameters,
+    CancellationToken ct
+  );
+
   // Whether a subscription check carries this company's verify token.
   Task<bool> AcceptsSubscriptionAsync(
     string? verifyToken,
@@ -51,3 +70,11 @@ public sealed record DriverMedia(
 
 public sealed class DriverMessagingUnavailableException(string reason)
   : Exception(reason);
+
+public sealed record DriverFile(
+  Stream Content,
+  long Length,
+  string ContentType,
+  string FileName,
+  string Caption
+);

@@ -50,6 +50,51 @@ internal sealed class FakeDriverMessaging : IDriverMessaging
       : new(DriverMessageOutcome.Accepted, $"wamid.{Sent.Count}");
   }
 
+  public List<(
+    string To,
+    string Name,
+    byte[] Bytes,
+    string Caption
+  )> Files { get; } = [];
+  public List<(
+    string To,
+    string Name,
+    IReadOnlyList<string> Parameters
+  )> Templates { get; } = [];
+
+  public async Task<DriverMessageSendResult> SendFileAsync(
+    string recipient,
+    DriverFile file,
+    CancellationToken ct
+  )
+  {
+    using var copy = new MemoryStream();
+    await file.Content.CopyToAsync(copy, ct);
+    Files.Add((recipient, file.FileName, copy.ToArray(), file.Caption));
+    return Answers.Count > 0
+      ? Answers.Dequeue()
+      : new(DriverMessageOutcome.Accepted, $"wamid.file.{Files.Count}");
+  }
+
+  public Task<DriverMessageSendResult> SendTemplateAsync(
+    string recipient,
+    string name,
+    string language,
+    IReadOnlyList<string> parameters,
+    CancellationToken ct
+  )
+  {
+    Templates.Add((recipient, name, parameters));
+    return Task.FromResult(
+      Answers.Count > 0
+        ? Answers.Dequeue()
+        : new DriverMessageSendResult(
+          DriverMessageOutcome.Accepted,
+          $"wamid.template.{Templates.Count}"
+        )
+    );
+  }
+
   public Task<bool> AcceptsSubscriptionAsync(
     string? verifyToken,
     CancellationToken ct

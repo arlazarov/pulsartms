@@ -22,10 +22,10 @@ using Microsoft.Extensions.Options;
 namespace Server.Tests.Routing;
 
 // Files drivers send are copied into the company's storage before the
-// provider's media id expires: once, under the attachment's own id,
-// quarantined, in the inbox for their day; a file whose bytes differ from
-// the provider's hash is refused; a provider that does not answer is asked
-// again later, and an expired or vanished file fails visibly.
+// provider's media id expires: once, under the attachment's own id, checked
+// before release, in the inbox for their day; a file whose bytes differ
+// from the provider's hash is refused; a provider that does not answer is
+// asked again later, and an expired or vanished file fails visibly.
 [Trait("Category", "Routing")]
 [Trait("Kind", "Integration")]
 public sealed class InboundMediaTests
@@ -33,7 +33,7 @@ public sealed class InboundMediaTests
   private static readonly byte[] Pdf = Encoding.UTF8.GetBytes("%PDF-1.7 bol");
 
   [Fact]
-  public async Task AFileIsCopiedOnceQuarantinedIntoTheInboxForItsDay()
+  public async Task AFileIsCopiedOnceCheckedAndFiledInTheInboxForItsDay()
   {
     await using var f = await Fixture.CreateAsync();
     f.Messaging.Media["1234567890"] = (Pdf, "application/pdf", null);
@@ -50,7 +50,7 @@ public sealed class InboundMediaTests
     );
     var file = await f.Db.StoredFiles.AsNoTracking().SingleAsync();
     Assert.Equal(
-      (StoredFileStates.Quarantined, "bol 1407.pdf", "Inbox/2026.09.21"),
+      (StoredFileStates.Available, "bol 1407.pdf", "Inbox/2026.09.21"),
       (file.State, file.Name, file.Folder)
     );
     Assert.Equal(1, f.Messaging.Downloads);
@@ -323,6 +323,7 @@ public sealed class InboundMediaTests
           provider(sp.GetRequiredService<AppDbContext>(), f.Clock)
         );
       collection.AddScoped<FileStore>();
+      collection.AddScoped<StoredFileCheck>();
       collection.AddScoped<StorageLayouts>();
       f.services = collection.BuildServiceProvider();
       return f;

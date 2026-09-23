@@ -113,11 +113,13 @@ public static class DependencyInjection
     services.AddSingleton<MessagingEvents>();
     services.AddSingleton<IInboundMediaOperation, InboundMediaOperation>();
     services.AddSingleton<OutboxSignal>();
+    services.AddScoped<ReplyQueue>();
     services.AddSingleton<
       IOutboundMessageOperation,
       OutboundMessageOperation
     >();
     services.AddScoped<StorageLayouts>();
+    services.AddScoped<StoredFileCheck>();
     services.AddSingleton<StorageUploadGate>();
     services.AddSingleton<
       IStorageReconcileOperation,

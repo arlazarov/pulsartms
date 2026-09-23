@@ -28,7 +28,7 @@ public sealed class ConversationReplyTests
   [Fact]
   public async Task AReplyIsQueuedThenSentOnceAndARepeatedPressReturnsIt()
   {
-    await using var f = await Fixture.CreateAsync();
+    await using var f = await ReplyFixture.CreateAsync();
     var (conversation, last) = await f.ConversationAsync();
     var key = Guid.NewGuid();
     using var listening = f.Events.Subscribe(Company.Amf);
@@ -60,7 +60,7 @@ public sealed class ConversationReplyTests
   [Fact]
   public async Task OutsideTheWindowOrWithAReusedKeyNothingIsQueued()
   {
-    await using var f = await Fixture.CreateAsync();
+    await using var f = await ReplyFixture.CreateAsync();
     var (conversation, last) = await f.ConversationAsync(hoursAgo: 25);
     Assert.Equal(
       409,
@@ -92,7 +92,7 @@ public sealed class ConversationReplyTests
   [Fact]
   public async Task AReplyToAConversationThatMovedOnIsRefusedUnlessConfirmed()
   {
-    await using var f = await Fixture.CreateAsync();
+    await using var f = await ReplyFixture.CreateAsync();
     var (conversation, seen) = await f.ConversationAsync();
     await f.InboundAsync("+15558234327", "wamid.later", "Never mind");
     f.Clock.Advance(TimeSpan.FromSeconds(2));
@@ -128,7 +128,7 @@ public sealed class ConversationReplyTests
   [Fact]
   public async Task AWorkerThatLostItsLeaseMidSendNeverCausesASecondSend()
   {
-    await using var f = await Fixture.CreateAsync();
+    await using var f = await ReplyFixture.CreateAsync();
     var (conversation, last) = await f.ConversationAsync();
     var queued = (
       await f.SendAsync(new(conversation, "Hi", Guid.NewGuid(), last, false))
@@ -160,7 +160,7 @@ public sealed class ConversationReplyTests
   [Fact]
   public async Task AWorkerThatPausedBeforeTakingAReplyNeverSendsItAsAnother()
   {
-    await using var f = await Fixture.CreateAsync();
+    await using var f = await ReplyFixture.CreateAsync();
     var (conversation, last) = await f.ConversationAsync();
     await f.SendAsync(new(conversation, "Hi", Guid.NewGuid(), last, false));
     var other = new BeforeFirstTake(() => f.Worker.RunOnceAsync(default));
@@ -186,7 +186,7 @@ public sealed class ConversationReplyTests
   [Fact]
   public async Task AWorkerWhoseTakeWasOvertakenCannotSendWithTheNewFence()
   {
-    await using var f = await Fixture.CreateAsync();
+    await using var f = await ReplyFixture.CreateAsync();
     var (conversation, last) = await f.ConversationAsync();
     var queued = (
       await f.SendAsync(new(conversation, "Hi", Guid.NewGuid(), last, false))
@@ -222,7 +222,7 @@ public sealed class ConversationReplyTests
   [Fact]
   public async Task ALateAnswerBelongsToItsOwnAttemptAndIsSignalled()
   {
-    await using var f = await Fixture.CreateAsync();
+    await using var f = await ReplyFixture.CreateAsync();
     var (conversation, last) = await f.ConversationAsync();
     var first = (
       await f.SendAsync(new(conversation, "Hi", Guid.NewGuid(), last, false))
@@ -271,7 +271,7 @@ public sealed class ConversationReplyTests
   [InlineData("unconfigured")]
   public async Task AReplyThatCanNoLongerGoIsWithdrawnWithoutACall(string cause)
   {
-    await using var f = await Fixture.CreateAsync();
+    await using var f = await ReplyFixture.CreateAsync();
     var (conversation, last) = await f.ConversationAsync();
     var queued = (
       await f.SendAsync(new(conversation, "Hi", Guid.NewGuid(), last, false))
@@ -295,7 +295,7 @@ public sealed class ConversationReplyTests
   [Fact]
   public async Task AnUnansweredReplyWaitsForTheDispatcherToSendItAgain()
   {
-    await using var f = await Fixture.CreateAsync();
+    await using var f = await ReplyFixture.CreateAsync();
     var (conversation, last) = await f.ConversationAsync();
     var queued = (
       await f.SendAsync(new(conversation, "Hi", Guid.NewGuid(), last, false))
@@ -338,7 +338,7 @@ public sealed class ConversationReplyTests
   [Fact]
   public async Task AClaimShowsWhoIsAnsweringForTwoMinutes()
   {
-    await using var f = await Fixture.CreateAsync();
+    await using var f = await ReplyFixture.CreateAsync();
     var (conversation, _) = await f.ConversationAsync();
 
     Assert.True(
@@ -360,139 +360,6 @@ public sealed class ConversationReplyTests
           .Handle(new ClaimConversationCommand(conversation), default)
       ).Response
     );
-  }
-
-  private sealed class Fixture : IAsyncDisposable
-  {
-    private DispatchSyncFixture sync = null!;
-    private ServiceProvider services = null!;
-    public FakeDriverMessaging Messaging { get; } = new();
-    public List<IInterceptor> Interceptors { get; } = [];
-    public MessagingEvents Events { get; } = new();
-    public OutboxSignal Signal { get; } = new();
-    public ManualTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
-    public AppDbContext Db => sync.Db;
-    public OutboundMessageOperation Worker =>
-      new(
-        services.GetRequiredService<IServiceScopeFactory>(),
-        Events,
-        Signal,
-        Clock,
-        NullLogger<OutboundMessageOperation>.Instance
-      );
-
-    public static async Task<Fixture> CreateAsync()
-    {
-      var f = new Fixture { sync = await DispatchSyncFixture.CreateAsync() };
-      var collection = new ServiceCollection();
-      collection.AddScoped<IAppDbContext>(_ =>
-        f.sync.NewContext([.. f.Interceptors])
-      );
-      collection.AddSingleton<IDriverMessaging>(f.Messaging);
-      collection.AddSingleton<ICurrentCompany>(new TestCompany());
-      f.services = collection.BuildServiceProvider();
-      foreach (var name in new[] { "me", "colleague" })
-        f.Db.Users.Add(
-          new User
-          {
-            Id = Guid.NewGuid(),
-            IdentityUserId = name,
-            Name = name,
-            Email = $"{name}@example.invalid",
-          }
-        );
-      await f.Db.SaveChangesAsync();
-      return f;
-    }
-
-    public ConversationReplies Replies(string who = "me")
-    {
-      Db.ChangeTracker.Clear();
-      return new(Db, new Caller(who), new TestCompany(), Events, Signal, Clock);
-    }
-
-    public Task<RequestResponse<MessageView>> SendAsync(
-      SendConversationMessageCommand command
-    ) => Replies().Handle(command, default);
-
-    public async Task<(Guid, Guid)> ConversationAsync(
-      string phone = "+15558234327",
-      int hoursAgo = 1
-    )
-    {
-      var id = await InboundAsync(
-        phone,
-        $"wamid.{phone}",
-        "Where do I fuel?",
-        hoursAgo
-      );
-      var conversation = await Db
-        .Conversations.AsNoTracking()
-        .SingleAsync(x => x.Participant == phone);
-      return (conversation.Id, id);
-    }
-
-    public async Task<Guid> InboundAsync(
-      string phone,
-      string providerId,
-      string text,
-      int hoursAgo = 0
-    )
-    {
-      Db.ChangeTracker.Clear();
-      var at = Clock
-        .GetUtcNow()
-        .UtcDateTime.AddHours(-hoursAgo)
-        .AddSeconds(hoursAgo == 0 ? 1 : 0);
-      await new InboxRecorder(Db, Clock).RecordAsync(
-        DriverMessageChannels.WhatsApp,
-        "123456",
-        [
-          new DriverMessageInboundEvent(phone, at)
-          {
-            ProviderMessageId = providerId,
-            Text = text,
-          },
-        ],
-        default
-      );
-      await Db.SaveChangesAsync();
-      Db.ChangeTracker.Clear();
-      return await Db
-        .ConversationMessages.AsNoTracking()
-        .Where(x => x.ProviderMessageId == providerId)
-        .Select(x => x.Id)
-        .SingleAsync();
-    }
-
-    public AppDbContext Context() => sync.NewContext();
-
-    public Task<long> RevisionAsync(Guid conversation) =>
-      Db
-        .Conversations.AsNoTracking()
-        .Where(x => x.Id == conversation)
-        .Select(x => x.Revision)
-        .SingleAsync();
-
-    public Task<ConversationMessage> MessageAsync(Guid id)
-    {
-      Db.ChangeTracker.Clear();
-      return Db
-        .ConversationMessages.AsNoTracking()
-        .SingleAsync(x => x.Id == id);
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-      await services.DisposeAsync();
-      await sync.DisposeAsync();
-    }
-  }
-
-  private sealed class Caller(string identity) : ICurrentUser
-  {
-    public bool IsAuthenticated => true;
-    public string? IdentityUserId => identity;
   }
 
   // Runs another worker's pass just before the first take of a reply.

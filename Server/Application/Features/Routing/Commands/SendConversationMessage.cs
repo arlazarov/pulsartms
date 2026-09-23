@@ -29,14 +29,13 @@ public sealed record ClaimConversationCommand(Guid ConversationId)
   : IRequest<RequestResponse<bool>>;
 
 // Replies are committed as queued before anything is sent; the outbox
-// worker sends them. A repeated request with the same retry key returns the
-// first reply instead of queueing another.
+// worker sends them (see ReplyQueue and OutboundMessageOperation).
 public sealed class ConversationReplies(
   IAppDbContext db,
   ICurrentUser caller,
   ICurrentCompany company,
   MessagingEvents events,
-  OutboxSignal outbox,
+  ReplyQueue queue,
   TimeProvider clock
 )
   : IRequestHandler<
@@ -50,7 +49,6 @@ public sealed class ConversationReplies(
     IRequestHandler<ClaimConversationCommand, RequestResponse<bool>>
 {
   public const int MaximumText = 4096;
-  public static readonly TimeSpan ClaimFor = TimeSpan.FromMinutes(2);
 
   public async Task<RequestResponse<MessageView>> Handle(
     SendConversationMessageCommand request,
@@ -71,62 +69,33 @@ public sealed class ConversationReplies(
     );
     if (conversation is null)
       return Fail("Conversation not found.", 404);
-    var earlier = await db
-      .ConversationMessages.AsNoTracking()
-      .Where(x =>
-        x.Channel == conversation.Channel
-        && x.BusinessNumberId == conversation.BusinessNumberId
-        && x.IdempotencyKey == request.IdempotencyKey
-      )
-      .OrderByDescending(x => x.Attempt)
-      .FirstOrDefaultAsync(ct);
-    if (earlier is not null)
-      return earlier.ConversationId == conversation.Id && earlier.Body == body
-        ? RequestResponse<MessageView>.Ok(View(earlier))
-        : Fail("The retry key belongs to another message.", 409);
-    var now = clock.GetUtcNow().UtcDateTime;
-    if (!DriverMessageProgress.WindowOpen(conversation.LastInboundAt, now))
-      return Fail(
-        "The driver has not written in the last 24 hours, so WhatsApp "
-          + "accepts only an approved template.",
-        409
-      );
-    var newest = await db
-      .ConversationMessages.AsNoTracking()
-      .Where(x => x.ConversationId == conversation.Id)
-      .OrderByDescending(x => x.SentAt)
-      .ThenByDescending(x => x.CreatedAt)
-      .Select(x => new
-      {
-        x.Id,
-        x.AuthorId,
-        x.Direction,
-      })
-      .FirstOrDefaultAsync(ct);
-    if (
-      !request.Confirm
-      && newest is not null
-      && newest.Id != request.LastSeenMessageId
-      && (
-        newest.Direction == MessageDirections.Inbound || newest.AuthorId != user
-      )
-    )
-      return Fail(
-        "A newer message arrived since you started. Read it, then send "
-          + "again or confirm.",
-        409
-      );
-    var message = Queue(
+    var check = await queue.CheckAsync(
       conversation,
+      request.IdempotencyKey,
+      user,
+      request.LastSeenMessageId,
+      request.Confirm,
+      needsWindow: true,
+      earlier =>
+        earlier.Kind == ConversationMessageKinds.Text && earlier.Body == body,
+      ct
+    );
+    if (check.Refused is { } refused)
+      return Fail(refused.Message, refused.Status);
+    if (check.Earlier is { } earlier)
+      return RequestResponse<MessageView>.Ok(View(earlier));
+    var message = queue.Queue(
+      conversation,
+      ConversationMessageKinds.Text,
+      body,
       body,
       user,
       request.IdempotencyKey,
-      1,
-      now
+      1
     );
-    conversation.ClaimedBy = user;
-    conversation.ClaimedUntil = now + ClaimFor;
-    return await CommitAsync(conversation, message, ct);
+    return await queue.CommitAsync(conversation, ct) is { } failed
+      ? Fail(failed.Message, failed.Status)
+      : RequestResponse<MessageView>.Ok(View(message));
   }
 
   public async Task<RequestResponse<MessageView>> Handle(
@@ -162,6 +131,7 @@ public sealed class ConversationReplies(
           is DriverMessageStatuses.Unknown
             or DriverMessageStatuses.Rejected
             or DriverMessageStatuses.Failed
+            or DriverMessageStatuses.Withdrawn
         || DriverMessageProgress.Uncertain(latest.Status, latest.StatusAt, now)
       )
     )
@@ -170,21 +140,48 @@ public sealed class ConversationReplies(
       x => x.Id == failed.ConversationId,
       ct
     );
-    if (!DriverMessageProgress.WindowOpen(conversation.LastInboundAt, now))
+    if (
+      latest.Kind != ConversationMessageKinds.Template
+      && !DriverMessageProgress.WindowOpen(conversation.LastInboundAt, now)
+    )
       return Fail(
-        "The driver has not written in the last 24 hours, so WhatsApp "
-          + "accepts only an approved template.",
-        409
+        ReplyQueue.ClosedWindow.Message,
+        ReplyQueue.ClosedWindow.Status
       );
-    var message = Queue(
+    var message = queue.Queue(
       conversation,
+      latest.Kind,
       latest.Body,
+      conversation.LastPreview,
       user,
       key,
       latest.Attempt + 1,
-      now
+      latest.Template
     );
-    return await CommitAsync(conversation, message, ct);
+    // A file reply sends the same stored file again.
+    foreach (
+      var attachment in await db
+        .MessageAttachments.AsNoTracking()
+        .Where(x => x.MessageId == latest.Id)
+        .ToListAsync(ct)
+    )
+      db.MessageAttachments.Add(
+        new MessageAttachment
+        {
+          Id = Guid.NewGuid(),
+          MessageId = message.Id,
+          StoredFileId = attachment.StoredFileId,
+          DeclaredType = attachment.DeclaredType,
+          OriginalName = attachment.OriginalName,
+          Caption = attachment.Caption,
+          State = attachment.State,
+          NextAttemptAt = now,
+          CreatedAt = now,
+        }
+      );
+    return await queue.CommitAsync(conversation, ct) is { } refused
+      ? Fail(refused.Message, refused.Status)
+      : RequestResponse<MessageView>.Ok(View(message));
   }
 
   public async Task<RequestResponse<bool>> Handle(
@@ -203,81 +200,23 @@ public sealed class ConversationReplies(
       .ExecuteUpdateAsync(
         x =>
           x.SetProperty(c => c.ClaimedBy, user)
-            .SetProperty(c => c.ClaimedUntil, now + ClaimFor)
+            .SetProperty(c => c.ClaimedUntil, now + ReplyQueue.ClaimFor)
             .SetProperty(c => c.Revision, c => c.Revision + 1),
         ct
       );
-    if (claimed == 1)
-      await PublishAsync(request.ConversationId, ct);
+    if (claimed == 1 && company.Id is { } serving)
+      events.Publish(
+        serving,
+        new(
+          request.ConversationId,
+          await db
+            .Conversations.AsNoTracking()
+            .Where(x => x.Id == request.ConversationId)
+            .Select(x => x.Revision)
+            .SingleAsync(ct)
+        )
+      );
     return RequestResponse<bool>.Ok(claimed == 1);
-  }
-
-  private ConversationMessage Queue(
-    Conversation conversation,
-    string body,
-    Guid user,
-    Guid key,
-    int attempt,
-    DateTime now
-  )
-  {
-    var message = new ConversationMessage
-    {
-      Id = Guid.NewGuid(),
-      ConversationId = conversation.Id,
-      Channel = conversation.Channel,
-      BusinessNumberId = conversation.BusinessNumberId,
-      Direction = MessageDirections.Outbound,
-      Kind = ConversationMessageKinds.Text,
-      Body = body,
-      AuthorId = user,
-      IdempotencyKey = key,
-      Attempt = attempt,
-      Status = OutboundStates.Queued,
-      StatusAt = now,
-      SentAt = now,
-      CreatedAt = now,
-    };
-    db.ConversationMessages.Add(message);
-    conversation.LastMessageAt = now;
-    conversation.LastMessageId = message.Id;
-    conversation.LastPreview = body.Length <= 200 ? body : body[..200];
-    conversation.Revision++;
-    return message;
-  }
-
-  private async Task<RequestResponse<MessageView>> CommitAsync(
-    Conversation conversation,
-    ConversationMessage message,
-    CancellationToken ct
-  )
-  {
-    try
-    {
-      await db.SaveChangesAsync(ct);
-    }
-    catch (Exception ex)
-      when (db.IsWriteConflict(ex) || ex is DbUpdateException)
-    {
-      // A same-key request or another change got there first: reading
-      // again shows which.
-      return Fail("The conversation changed. Try again.", 409);
-    }
-    if (company.Id is { } serving)
-      events.Publish(serving, new(conversation.Id, conversation.Revision));
-    outbox.Wake();
-    return RequestResponse<MessageView>.Ok(View(message));
-  }
-
-  private async Task PublishAsync(Guid conversation, CancellationToken ct)
-  {
-    var revision = await db
-      .Conversations.AsNoTracking()
-      .Where(x => x.Id == conversation)
-      .Select(x => x.Revision)
-      .SingleAsync(ct);
-    if (company.Id is { } serving)
-      events.Publish(serving, new(conversation, revision));
   }
 
   public static MessageView View(ConversationMessage x) =>

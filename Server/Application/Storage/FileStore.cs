@@ -250,6 +250,13 @@ public sealed class FileStore(
     return (file, content);
   }
 
+  public Task<string?> StateAsync(Guid fileId, CancellationToken ct) =>
+    db
+      .StoredFiles.AsNoTracking()
+      .Where(x => x.Id == fileId)
+      .Select(x => x.State)
+      .SingleOrDefaultAsync(ct);
+
   public async Task<bool> SetStateAsync(
     Guid fileId,
     string from,

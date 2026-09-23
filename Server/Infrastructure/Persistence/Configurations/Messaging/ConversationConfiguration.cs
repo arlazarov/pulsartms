@@ -40,6 +40,7 @@ public sealed class ConversationMessageConfiguration
     b.Property(x => x.Direction).HasMaxLength(8).IsRequired();
     b.Property(x => x.Kind).HasMaxLength(20).IsRequired();
     b.Property(x => x.Body).HasMaxLength(4096).IsRequired();
+    b.Property(x => x.Template).HasMaxLength(2000);
     b.Property(x => x.ProviderMessageId).HasMaxLength(200);
     b.Property(x => x.Status).HasMaxLength(32).IsRequired();
     // A notification delivered twice is one message; the same provider id

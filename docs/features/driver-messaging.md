@@ -1,10 +1,10 @@
 # Driver messaging inbox
 
 What is implemented of the [messaging plan](../architecture/driver-messaging-plan.md).
-State on 2026-09-23: local only, not deployed, migrations `AddDriverInbox`
-and `AddConversationOutbox` not applied anywhere, and no message has been
-received from or sent to a real driver. Files and templates out, the
-Messages page and the browser stream client are later stages (see the
+State on 2026-09-23: local only, not deployed, migrations `AddDriverInbox`,
+`AddConversationOutbox` and `AddConversationTemplates` not applied
+anywhere, and no message has been received from or sent to a real driver.
+The Messages page and the browser stream client are a later stage (see the
 plan's checklist).
 
 ## Receiving
@@ -41,6 +41,12 @@ in one transaction, and the change signal is sent after the commit.
 A provider that does not answer is asked again with backoff; bytes that do
 not match the provider's hash, a vanished file, or an expired media id end
 the attachment as failed, with the reason shown.
+
+Every stored file is checked before it is released (`StoredFileCheck`):
+its first bytes must be the kind it was declared as, and that kind one
+PulsR shows and sends (PDF, JPEG, PNG, WebP, OGG, MP3, AAC, MP4). Anything
+else is refused and never served. The inbound worker checks a file as soon
+as it is stored; the storage reconciler checks any file left quarantined.
 
 ## Reading
 
@@ -91,6 +97,25 @@ and the newest message the dispatcher had on screen:
   failed reply again as the next attempt of its retry key; nothing else
   does. `POST .../conversations/{id}/claim` claims without sending.
 
+## Files and templates out
+
+- `POST /api/messaging/conversations/{id}/files` (form upload, at most
+  16 MiB for now because uploaded forms are buffered by the server): the
+  browser states the file's SHA-256; the file is stored under the retry key
+  as its id in `Sent/{day}`, checked, and queued only when it may be sent,
+  within WhatsApp's limits per kind (images 5 MiB, audio and video
+  16 MiB). The outbox uploads it to WhatsApp and sends it by media id; a
+  refused upload sends nothing. A file no longer available when its turn
+  comes is withdrawn without a call.
+- `GET /api/messaging/templates` lists the templates configured as
+  approved (`Messaging:Templates`: name, language, number of parameters,
+  text). None are configured until Meta approves some.
+  `POST .../conversations/{id}/templates` sends one with its parameters
+  filled in; a template may go outside the 24-hour window, but still only
+  from the carrier's current business number.
+- `GET /api/messaging/attachments/{id}/content` serves a file only after
+  it passed its check.
+
 ## Tests
 
 `Server.Tests/Fuel/WhatsAppWebhookTests` (inbound recording, duplicates,
@@ -102,5 +127,8 @@ paging, stream isolation), `Server.Tests/Routing/ConversationReplyTests`
 (queue and send once, window, retry keys, stale replies, a take
 overtaken before sending, a lease lost mid-send, a late answer on its own
 attempt, withdrawal for a closed window or changed number, explicit retry,
-claims). Not run: a real WhatsApp webhook or media
+claims), `Server.Tests/Routing/ConversationFileTemplateTests` (a file sent
+once, a disguised file refused, an unreadable file withdrawn, approved
+templates only, download of checked files only),
+`Server.Tests/Storage/StoredFileCheckTests`. Not run: a real WhatsApp webhook or media
 download, and PostgreSQL.

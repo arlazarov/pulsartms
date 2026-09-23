@@ -63,6 +63,86 @@ public sealed class MessagingController : BaseController
       cancellationToken
     );
 
+  public sealed record TemplateRequest(
+    Guid IdempotencyKey,
+    string Name,
+    string Language,
+    IReadOnlyList<string> Parameters
+  );
+
+  // Uploaded forms are buffered by the server; the limit keeps one upload
+  // within what an instance can hold.
+  public const long MaximumUpload = 16 * 1024 * 1024;
+
+  [HttpPost("conversations/{id:guid}/files")]
+  [RequestSizeLimit(MaximumUpload + 64 * 1024)]
+  [RequestFormLimits(MultipartBodyLengthLimit = MaximumUpload + 64 * 1024)]
+  public async Task<IActionResult> SendFile(
+    Guid id,
+    IFormFile file,
+    [FromForm] string sha256,
+    [FromForm] Guid idempotencyKey,
+    [FromForm] string? caption,
+    [FromForm] Guid? lastSeenMessageId,
+    [FromForm] bool confirm,
+    CancellationToken cancellationToken
+  )
+  {
+    await using var content = file.OpenReadStream();
+    return await HandleRequest(
+      new SendConversationFileCommand(
+        id,
+        idempotencyKey,
+        file.FileName,
+        file.ContentType,
+        file.Length,
+        sha256,
+        content,
+        caption,
+        lastSeenMessageId,
+        confirm
+      ),
+      cancellationToken
+    );
+  }
+
+  [HttpPost("conversations/{id:guid}/templates")]
+  public Task<IActionResult> SendTemplate(
+    Guid id,
+    TemplateRequest request,
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(
+      new SendConversationTemplateCommand(
+        id,
+        request.IdempotencyKey,
+        request.Name,
+        request.Language,
+        request.Parameters
+      ),
+      cancellationToken
+    );
+
+  [HttpGet("templates")]
+  public Task<IActionResult> Templates(CancellationToken cancellationToken) =>
+    HandleRequest(new GetMessageTemplatesQuery(), cancellationToken);
+
+  [HttpGet("attachments/{id:guid}/content")]
+  public async Task<IActionResult> Attachment(
+    Guid id,
+    CancellationToken cancellationToken
+  )
+  {
+    var result = await Mediator.Send(
+      new GetAttachmentContentQuery(id),
+      cancellationToken
+    );
+    if (result.Response is not { } file)
+      return StatusCode(result.StatusCode, result);
+    Response.Headers.XContentTypeOptions = "nosniff";
+    return File(file.Content, file.ContentType, file.Name);
+  }
+
   [HttpPost("messages/{id:guid}/retry")]
   public Task<IActionResult> Retry(
     Guid id,

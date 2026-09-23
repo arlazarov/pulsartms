@@ -120,6 +120,21 @@ public sealed class StorageReconcileOperation(
           settled++;
       }
     }
+    // Files left quarantined unchecked, oldest first, a bounded few.
+    var waiting = await db
+      .StoredFiles.AsNoTracking()
+      .Where(x =>
+        x.State == StoredFileStates.Quarantined
+        && x.UpdatedAt <= now.AddMinutes(-1)
+      )
+      .OrderBy(x => x.UpdatedAt)
+      .Select(x => x.Id)
+      .Take(options.Value.ReconcileBatchSize)
+      .ToListAsync(ct);
+    var check = scope.ServiceProvider.GetRequiredService<StoredFileCheck>();
+    foreach (var id in waiting)
+      if (await check.CheckAsync(id, ct) != StoredFileStates.Quarantined)
+        settled++;
     return settled;
   }
 }

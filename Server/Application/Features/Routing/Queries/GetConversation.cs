@@ -147,6 +147,11 @@ public sealed class ConversationHandlers(
                   a.State,
                   a.FileState == StoredFileStates.Available,
                   a.FailureReason
+                    ?? (
+                      a.FileState == StoredFileStates.Rejected
+                        ? "This kind of file is not accepted."
+                        : null
+                    )
                 )),
             ]
           )),

@@ -236,6 +236,37 @@ public sealed class FileStorageTests
     Assert.Single(await f.Db.ManagedFileBlobs.ToListAsync());
   }
 
+  // A file stored and then left unchecked (storage unreadable, a crash) is
+  // checked by the reconciler's next pass.
+  [Fact]
+  public async Task TheReconcilerChecksFilesLeftQuarantined()
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+    var provider = new CountingProvider(f.Db);
+    var file = await PutAsync(
+      Store(f.Db, provider, clock: clock),
+      Encoding.UTF8.GetBytes("%PDF-1.7"),
+      "a.pdf"
+    );
+    await f
+      .Db.StoredFiles.Where(x => x.Id == file.Id)
+      .ExecuteUpdateAsync(x =>
+        x.SetProperty(s => s.ContentType, "application/pdf")
+      );
+
+    Assert.Equal(
+      0,
+      await Reconciler(f, provider, clock).ReconcileOnceAsync(default)
+    );
+    clock.Advance(TimeSpan.FromMinutes(2));
+    Assert.Equal(
+      1,
+      await Reconciler(f, provider, clock).ReconcileOnceAsync(default)
+    );
+    Assert.Equal(StoredFileStates.Available, (await Row(f)).State);
+  }
+
   [Fact]
   public async Task AFileTooLargeEmptyOrUnhashedIsRefusedBeforeAnythingIsRecorded()
   {
@@ -437,6 +468,7 @@ public sealed class FileStorageTests
         clock: clock
       )
     );
+    services.AddScoped<StoredFileCheck>();
     return new(
       services
         .BuildServiceProvider()

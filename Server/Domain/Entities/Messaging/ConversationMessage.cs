@@ -14,6 +14,9 @@ public sealed class ConversationMessage : BaseEntity, ICompanyOwned
   public string Direction { get; set; } = "";
   public string Kind { get; set; } = "";
   public string Body { get; set; } = "";
+
+  // For a template: its name, language and parameters as sent (JSON).
+  public string? Template { get; set; }
   public Guid? AuthorId { get; set; }
   public Guid? ReplyToId { get; set; }
   public string? ProviderMessageId { get; set; }
