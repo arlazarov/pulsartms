@@ -515,3 +515,6 @@ $RECYCLE.BIN/
 
 gmail-credentials.json
 gmail-token/
+
+# Private workstation backups; never publish.
+/local-backups/

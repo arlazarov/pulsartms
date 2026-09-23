@@ -12,6 +12,8 @@ artifacts
 **/appsettings.Local.json
 **/node_modules
 tools/
+# Private workstation backups; never publish.
+local-backups/
 docs/archive/**/*.jsonl
 .env
 .env.*
