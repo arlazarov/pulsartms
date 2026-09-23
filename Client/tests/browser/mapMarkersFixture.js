@@ -200,6 +200,12 @@ const screenPoint = (position, offsetX = 0, offsetY = 0) => {
   const rect = host.getBoundingClientRect();
   return { x: rect.x + x, y: rect.y + y, mapX: x, mapY: y };
 };
+// When a wait for a loaded scene runs out, this says which layers are
+// still not loaded rather than only that something was not.
+window.unloadedLayers = () =>
+  overlay.props.layers
+    .filter(layer => !layer.isLoaded)
+    .map(layer => layer.props.id);
 window.markerReport = () => {
   const layers = overlay.props.layers;
   const get = id => layers.find(layer => layer.props.id === id)?.props;
@@ -284,13 +290,16 @@ window.markerReport = () => {
     layerIds: layers.map(layer => layer.props.id),
   };
 };
+window.clearStops = () => {
+  for (const stop of stops) stop.map = null;
+  stops.length = 0;
+};
 window.showTruckClusters = () => {
   trucks[1].render({ longitude: -80, latitude: 36.5 });
   trucks[2].render({ longitude: -80.01, latitude: 36.5 });
 };
 window.showNearbyTrucks = () => {
-  for (const stop of stops) stop.map = null;
-  stops.length = 0;
+  window.clearStops();
   for (const truck of trucks) truck.setSelected(false);
   trucks[0].update({ unitNumber: '54777', engineState: 'off' });
   trucks[0].render({ longitude: -80, latitude: 36.5 });
@@ -304,8 +313,7 @@ window.restoreTruckOverview = () => {
 window.selectNextRoute = selected =>
   future.setOptions({ routeSelected: selected, zIndex: selected ? 10 : 0 });
 window.showCoincidentStops = () => {
-  for (const stop of stops) stop.map = null;
-  stops.length = 0;
+  window.clearStops();
   for (const number of ['1', '3', '4'])
     stops.push(
       new scene.StopMarker({
@@ -317,8 +325,9 @@ window.showCoincidentStops = () => {
       }),
     );
 };
-let routeProbe, selectionProbe;
+let routeProbe, selectionProbe, routeProbeRole;
 window.showRouteProbe = role => {
+  routeProbeRole = role;
   current.setMap(null);
   future.setMap(null);
   stations.setVisible(false);
@@ -367,10 +376,12 @@ window.routeProbeReport = () => {
   return line
     ? {
         loaded: layers.every(layer => layer.isLoaded),
-        role:
-          line.opacity < 1
-            ? `${routeProbe.routeRole}-muted`
-            : routeProbe.routeRole,
+        // The role is the road that was asked for, not a guess from how
+        // strongly it came out: an upcoming load now steps back to 0.7 of
+        // its own accord, and a road muted by a selection elsewhere never
+        // carried `routeMuted` at all. What each kind is drawn at is
+        // measured beside this, from the layer.
+        role: routeProbeRole,
         pointCount: line.data[0].length,
         start: screenPoint(line.data[0][0]),
         end: screenPoint(line.data[0].at(-1)),
@@ -435,12 +446,26 @@ window.showSavedRouteProbe = progress => {
     );
   } else savedRouteLayer.setProgress(progress);
 };
-window.savedRouteProbeReport = () => ({
-  paths: overlay.props.layers
-    .filter(layer => layer.props.id.endsWith('-outline'))
-    .flatMap(layer => layer.props.data),
-  notifications: window.savedRouteNotifications,
-});
+window.savedRouteProbeReport = () => {
+  const outlines = overlay.props.layers.filter(layer =>
+    layer.props.id.endsWith('-outline'),
+  );
+  return {
+    paths: outlines.flatMap(layer => layer.props.data),
+    // What has been driven is a faint road of its own now, so the parts
+    // are reported apart: one set of points cannot say where the road
+    // that is left begins.
+    roads: outlines.flatMap(layer =>
+      layer.props.data.map(path => ({
+        id: layer.props.id,
+        opacity: layer.props.opacity,
+        start: path[0][0],
+        end: path.at(-1)[0],
+      })),
+    ),
+    notifications: window.savedRouteNotifications,
+  };
+};
 window.setRouteProbeEditing = value => scene.setRouteEditing(value);
 window.disposeMarkerFixture = () => {
   savedRouteLayer?.dispose();

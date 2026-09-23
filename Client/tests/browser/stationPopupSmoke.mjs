@@ -140,16 +140,53 @@ try {
               element.querySelector('.fleet-station-popup__title'),
             ).fontSize,
           ),
-          dials: [...element.querySelectorAll('.fleet-fuel-visit__dial')].map(
-            box,
-          ),
+          // The tank was two dials and an arrow. It is now said in words
+          // and drawn once: "Tank 16% -> 100%", a bar under those words,
+          // and the gallons at the bar's two ends.
+          tank: (() => {
+            const bar = element.querySelector('.fleet-fuel-visit__bar');
+            if (!bar) return null;
+            return {
+              group: box(bar.closest('.fleet-fuel-visit__tank')),
+              bar: box(bar),
+              had: box(bar.querySelector('.fleet-fuel-visit__bar-had')),
+              add: box(bar.querySelector('.fleet-fuel-visit__bar-add')),
+              levels: [
+                ...element.querySelectorAll('.fleet-fuel-visit__level'),
+              ].map(box),
+              ends: [
+                ...element.querySelectorAll('.fleet-fuel-visit__ends > *'),
+              ].map(node => node.textContent.trim()),
+            };
+          })(),
+          // When the card scrolls sideways, these are the boxes that reach
+          // past its content edge, innermost first.
+          wide: (() => {
+            const edge =
+              element.getBoundingClientRect().left +
+              element.clientLeft +
+              element.clientWidth;
+            return [...element.querySelectorAll('*')]
+              .filter(
+                node =>
+                  node.getBoundingClientRect().right > edge + 1 ||
+                  node.scrollWidth > node.clientWidth + 1,
+              )
+              .map(node => ({
+                className: node.className,
+                text: (node.textContent ?? '').trim().slice(0, 30),
+                right: node.getBoundingClientRect().right,
+                width: node.clientWidth,
+                scroll: node.scrollWidth,
+              }));
+          })(),
           clientWidth: element.clientWidth,
           scrollWidth: element.scrollWidth,
           clientHeight: element.clientHeight,
           scrollHeight: element.scrollHeight,
           fields: [
             ...element.querySelectorAll(
-              '.fleet-station-popup__prices > *, .fleet-station-popup__actions > :not([hidden]), .fleet-fuel-visit__gauge',
+              '.fleet-station-popup__prices > *, .fleet-station-popup__actions > :not([hidden]), .fleet-fuel-visit__bar',
             ),
           ].map(box),
         };
@@ -157,7 +194,13 @@ try {
       assert.ok(
         bounds.scrollWidth <= bounds.clientWidth + 1 &&
           bounds.scrollHeight <= bounds.clientHeight + 1,
-        `${name}: ordinary planned popup fits without internal scrolling`,
+        `${name}: ordinary planned popup fits without internal scrolling: ` +
+          JSON.stringify({
+            client: [bounds.clientWidth, bounds.clientHeight],
+            scroll: [bounds.scrollWidth, bounds.scrollHeight],
+            popup: bounds.popup,
+            wide: bounds.wide,
+          }),
       );
       assert.ok(
         bounds.title.width > 0 && bounds.title.right <= bounds.badge.left,
@@ -171,12 +214,23 @@ try {
         `${name}: planned station title keeps its approved hierarchy`,
       );
       assert.ok(
-        bounds.dials.length === 2 &&
-          bounds.dials.every(
-            dial =>
-              Math.abs(dial.width - 64) <= 1 && Math.abs(dial.height - 64) <= 1,
-          ),
-        `${name}: planned popup has two prominent round 64px gauges`,
+        bounds.tank !== null &&
+          bounds.tank.levels.length === 2 &&
+          Math.abs(bounds.tank.bar.width - bounds.tank.group.width) <= 1,
+        `${name}: the planned tank reads as two levels over a bar that ` +
+          `spans the reading: ${JSON.stringify(bounds.tank)}`,
+      );
+      // 16% on arrival and 100% after: the bar is the same two numbers
+      // drawn, so it is read against them rather than against a size.
+      assert.ok(
+        Math.abs(bounds.tank.had.width - bounds.tank.bar.width * 0.16) <= 1 &&
+          Math.abs(bounds.tank.add.width - bounds.tank.bar.width * 0.84) <= 1,
+        `${name}: the bar draws the levels it states: ${JSON.stringify(bounds.tank)}`,
+      );
+      assert.deepEqual(
+        bounds.tank.ends,
+        ['34 US gal on arrival', '211 US gal after'],
+        `${name}: the bar names the gallons at each of its ends`,
       );
       assert.ok(
         bounds.fields.every(
@@ -186,7 +240,7 @@ try {
             field.top >= bounds.popup.top &&
             field.bottom <= bounds.popup.bottom,
         ),
-        `${name}: price, gauge and cost controls fit the popup`,
+        `${name}: price, tank and cost controls fit the popup`,
       );
       if (width === 1440)
         assert.ok(

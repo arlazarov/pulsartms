@@ -73,6 +73,11 @@
   }
   &__levels {
     display: flex;
+    // What the stop adds stands at the far end of the line. On a phone at
+    // 200% text there is no line long enough for both, and the words ran
+    // out past the card; they take a second row instead. Each reading is
+    // still whole - it is the line that folds, not "63%".
+    flex-wrap: wrap;
     align-items: baseline;
     gap: ui.pg(xs);
     min-width: 0;
@@ -126,11 +131,16 @@
     padding-top: ui.pg(xs);
     border-top: 1px solid ui.theme(border-subtle);
   }
+  // A visit states one fact, so its label and its figure are a line rather
+  // than a shared pair of columns: where the column is too narrow to hold
+  // both - a planned station on a phone - the figure takes the row below
+  // instead of running out past the card.
   &__fact {
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
     grid-column: 1 / -1;
-    grid-template-columns: subgrid;
     align-items: baseline;
+    column-gap: ui.pg(md);
   }
   &__figure {
     display: flex;

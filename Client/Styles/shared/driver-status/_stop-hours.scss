@@ -170,7 +170,10 @@
   }
   .stop-hours__arrival-cycle {
     display: grid;
-    grid-template-columns: var(--route-fact-label) minmax(0, 1fr);
+    // The reading keeps the room it needs and the label folds around it.
+    // A floor of zero let the label take its whole width first, and on a
+    // phone card at 200% text "-3h 00m" was left 82px to say 121px in.
+    grid-template-columns: var(--route-fact-label) minmax(min-content, 1fr);
     align-items: baseline;
     column-gap: ui.pg(sm);
     min-width: 0;

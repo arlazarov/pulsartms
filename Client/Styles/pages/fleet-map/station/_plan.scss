@@ -32,6 +32,11 @@
   // The head of the plan: which stop, and what is left to it.
   .fleet-station-popup__plan-head {
     display: flex;
+    // "Fuel stop 1" and "Left 465 mi - 748 km" share a line while there is
+    // one. In this card's narrow column on a phone there is not, and what
+    // is left ran out past the card; it takes the row under instead. The
+    // reading itself still never breaks.
+    flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
     gap: ui.pg(sm);

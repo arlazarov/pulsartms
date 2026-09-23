@@ -95,7 +95,9 @@
     display: flex;
     align-items: baseline;
     gap: ui.pg(xs);
-    min-width: 0;
+    // The same floor the dials keep. Written as a bare zero, this reading
+    // quietly dropped the one measurement a page can ask of a clock.
+    min-width: var(--hos-clock-min-width, 0);
   }
   // Read along a line, a label is a word beside its number. Under a dial it
   // is a column head narrower than itself and may break anywhere to fit;

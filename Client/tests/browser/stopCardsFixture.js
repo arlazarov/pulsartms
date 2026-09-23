@@ -65,6 +65,11 @@ class OfflineOverlay {
     this.props = props;
     this.deck.setProps(props);
   }
+  // A touch on a station is answered by asking the scene what is under
+  // the finger. Without this the card threw on every tap.
+  pickObject(query) {
+    return this.deck.pickObject(query);
+  }
   finalize() {
     this.deck.finalize();
   }
@@ -426,27 +431,40 @@ window.fixtureCircleOnly = enabled => {
   });
 };
 window.fixtureTruckReport = () => {
-  const icons = overlay.props.layers.find(
-    layer => layer.props.id === 'truck-icons',
+  // With a truck chosen the fleet is drawn in two icon layers - the chosen
+  // one, and the rest smaller so they do not compete with the route.
+  // Reading only the first reported one truck out of six.
+  const iconLayers = overlay.props.layers.filter(layer =>
+    /^truck-icons(-quiet)?$/.test(layer.props.id),
   );
   const numbers = overlay.props.layers.find(
     layer => layer.props.id === 'truck-numbers',
   );
-  if (!icons || !numbers) return null;
+  if (!iconLayers.length || !numbers) return null;
+  const drawn = new Map();
+  for (const layer of iconLayers)
+    for (const truck of layer.props.data) drawn.set(truck.unit, layer);
   return {
-    loaded: icons.isLoaded,
-    trucks: icons.props.data.map(truck => ({
-      unit: truck.unit,
-      engine: truck.engine,
-      size: icons.props.getSize(truck),
-      angle: icons.props.getAngle(truck),
-      textureWidth: icons.props.getIcon(truck).width,
-      textureHeight: icons.props.getIcon(truck).height,
-      labelSize: numbers.props.getSize,
-      labelPadding: numbers.props.backgroundPadding,
-      labelPhysicalFontSize: numbers.props.fontSettings.fontSize,
-      labelBackground: numbers.props.getBackgroundColor(truck),
-    })),
+    loaded: iconLayers.every(layer => layer.isLoaded),
+    // The label layer holds the whole fleet, in the order the fleet is in.
+    trucks: numbers.props.data
+      .filter(truck => drawn.has(truck.unit))
+      .map(truck => {
+        const icons = drawn.get(truck.unit);
+        return {
+          unit: truck.unit,
+          quiet: icons.props.id.endsWith('-quiet'),
+          engine: truck.engine,
+          size: icons.props.getSize(truck),
+          angle: icons.props.getAngle(truck),
+          textureWidth: icons.props.getIcon(truck).width,
+          textureHeight: icons.props.getIcon(truck).height,
+          labelSize: numbers.props.getSize,
+          labelPadding: numbers.props.backgroundPadding,
+          labelPhysicalFontSize: numbers.props.fontSettings.fontSize,
+          labelBackground: numbers.props.getBackgroundColor(truck),
+        };
+      }),
   };
 };
 window.fixtureRefresh = () => {

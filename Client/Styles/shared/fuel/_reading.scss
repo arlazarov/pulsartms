@@ -88,6 +88,11 @@
     }
     .fuel-reading__value {
       grid-column: var(--fuel-reading-value-column, 1 / -1);
+      // The value is what a line of readings aligns on. Beside a label that
+      // centres itself, nothing in the first row sat on a baseline, so the
+      // whole reading offered the label's - and the percentage read 1.6px
+      // below the speed and the engine next to it.
+      align-self: baseline;
       text-align: left;
       font-size: var(--fuel-reading-value-size, #{ui.fs(lead)});
       font-weight: 600;

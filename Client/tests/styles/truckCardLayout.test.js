@@ -160,9 +160,12 @@ test('the open card is two columns: the stop, then facts on one label column', (
   );
   assert.doesNotMatch(card, /\.stop-hours__/);
   const hours = compile('shared/driver-status/stop-hours');
+  // The same label width as every other fact, and a reading that keeps
+  // the room it needs: with a floor of zero the label took its whole
+  // width first and a phone card at 200% text cut the cycle short.
   assert.match(
     hours,
-    /\.stop-hours--compact \.stop-hours__arrival-cycle\s*\{[^}]*grid-template-columns: var\(--route-fact-label\) minmax\(0, 1fr\);/,
+    /\.stop-hours--compact \.stop-hours__arrival-cycle\s*\{[^}]*grid-template-columns: var\(--route-fact-label\) minmax\(min-content, 1fr\);/,
   );
   // The cycle is a row among rows, not a section under its own rule.
   assert.match(

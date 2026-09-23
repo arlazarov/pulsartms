@@ -82,12 +82,25 @@ async function fuelVisitBounds(card) {
         ].map(rect),
         rows: [
           ...visit.querySelectorAll(
-            '.fleet-fuel-visit__heading, .fleet-fuel-visit__gauge, .fleet-fuel-visit__action',
+            '.fleet-fuel-visit__heading, .fleet-fuel-visit__tank, .fleet-fuel-visit__action',
           ),
         ]
           .filter(node => node.getClientRects().length)
           .map(rect),
-        dials: [...visit.querySelectorAll('.fleet-fuel-visit__dial')].map(rect),
+        tank: (() => {
+          const bar = visit.querySelector('.fleet-fuel-visit__bar');
+          return bar
+            ? {
+                group: rect(bar.closest('.fleet-fuel-visit__tank')),
+                bar: rect(bar),
+                had: rect(bar.querySelector('.fleet-fuel-visit__bar-had')),
+                add: rect(bar.querySelector('.fleet-fuel-visit__bar-add')),
+                ends: [
+                  ...visit.querySelectorAll('.fleet-fuel-visit__ends > *'),
+                ].map(rect),
+              }
+            : null;
+        })(),
       })),
     };
   });
@@ -105,48 +118,48 @@ async function fuelVisitBounds(card) {
       visit.levels.left >= visit.left && visit.levels.right <= visit.right,
       'fuel levels stay inside their visit',
     );
+    // The tank was two round gauges with the purchase between them. It is
+    // now a line - "Tank", what is in it, an arrow, what will be in it,
+    // and what the stop adds - over a bar drawn to the same two numbers.
     assert.equal(
       visit.columns.length,
-      3,
-      'arrival, purchase and departure retain distinct columns',
+      5,
+      'the tank line names itself, both levels, the step between them and what is added',
     );
+    for (let index = 1; index < visit.columns.length; index++)
+      assert.ok(
+        visit.columns[index].left >= visit.columns[index - 1].right - 1 ||
+          visit.columns[index].top >= visit.columns[index - 1].bottom - 1,
+        'the parts of the tank line follow one another without overlapping',
+      );
     assert.ok(
-      visit.columns[0].right <= visit.columns[1].left &&
-        visit.columns[1].right <= visit.columns[2].left,
-      'arrival, purchase and departure never overlap',
+      visit.tank !== null &&
+        Math.abs(visit.tank.bar.width - visit.tank.group.width) <= 1,
+      'the bar is the width of the reading it belongs to',
     );
+    // The two runs start at the near end and meet; what is left of the bar
+    // is the room still in the tank, so they need not reach the far end.
     assert.ok(
-      Math.abs(
-        (visit.columns[1].left +
-          visit.columns[1].right -
-          visit.levels.left -
-          visit.levels.right) /
-          2,
-      ) <= 1,
-      'purchase is centered between the two fuel gauges',
+      Math.abs(visit.tank.had.left - visit.tank.bar.left) <= 1 &&
+        Math.abs(visit.tank.add.left - visit.tank.had.right) <= 1 &&
+        visit.tank.add.right <= visit.tank.bar.right + 1,
+      'what is in the tank and what is added meet, and stay inside the bar',
     );
-    assert.ok(
-      visit.dials.length === 2 &&
-        visit.dials.every(
-          dial =>
-            Math.abs(dial.width - 64) <= 1 && Math.abs(dial.height - 64) <= 1,
-        ),
-      'planned fuel popup retains two prominent64px round gauges',
+    assert.equal(
+      visit.tank.ends.length,
+      2,
+      'the gallons are named at each end of the bar',
     );
     assert.ok(
       visit.left >= bounds.card.left && visit.right <= bounds.card.right,
       'fuel visit stays within the card',
-    );
-    assert.ok(
-      Math.abs(visit.dials[0].top - visit.dials[1].top) <= 1,
-      'arrival and fueled gauges align',
     );
     for (const row of visit.rows)
       assert.ok(
         row.scrollWidth <= row.clientWidth + 1 &&
           row.left >= visit.left &&
           row.right <= visit.right,
-        'fuel header, gauges and purchase fit within the visit',
+        'fuel header, tank and purchase fit within the visit',
       );
   }
   return bounds;
@@ -212,9 +225,12 @@ async function circlePixelBounds(page, screenshot) {
       image: element.style.backgroundImage,
       color: element.style.backgroundColor,
     };
-    // Isolate actual GPU stop pixels from roads and the decorative fixture grid.
+    // Isolate actual GPU stop pixels from roads and the decorative fixture
+    // grid. The colour has to be one no badge is drawn in: against the
+    // slate this used, the dark edge a picked badge wears counted as
+    // background, and the badge measured three pixels short of itself.
     element.style.backgroundImage = 'none';
-    element.style.backgroundColor = '#182030';
+    element.style.backgroundColor = '#ff00ff';
     return previous;
   });
   try {
@@ -284,7 +300,7 @@ async function circlePixelBounds(page, screenshot) {
               );
               if (minimum >= 200 && maximum - minimum <= 15) count++;
               if (
-                [24, 32, 48].every(
+                [255, 0, 255].every(
                   (channel, index) =>
                     Math.abs(pixels[offset + index] - channel) <= 24,
                 )
@@ -511,10 +527,15 @@ try {
       await page.evaluate(() => window.fixtureToggleFuture(false));
       await page.waitForFunction(() => window.fixtureRoadReport().length === 0);
       assert.deepEqual(await page.evaluate(() => window.fixtureReport()), []);
-      assert.ok(
-        (await page.evaluate(() => window.fixtureMarkerReport())).every(
-          marker => !marker.highlighted,
-        ),
+      const unlit = await page.evaluate(() => window.fixtureMarkerReport());
+      // Hiding the loads that are not today's takes their two stops out of
+      // the light. The road being driven is still being driven: its next
+      // stop stays lit, which this used to read as a light left behind.
+      assert.deepEqual(
+        unlit.map(marker => marker.highlighted),
+        [true, false, false],
+        `hiding the future roads unlights their stops and leaves the ` +
+          `current road's next stop lit: ${JSON.stringify(unlit)}`,
       );
       await page.evaluate(() => window.fixtureToggleFuture(true));
       await page.waitForFunction(
@@ -526,9 +547,12 @@ try {
       const unselectedRoads = await page.evaluate(() =>
         window.fixtureRoadReport(),
       );
+      // A load that is not today's is drawn thinner than the road being
+      // driven; pointing at one lifts it to the full five, which the
+      // selection below reads back. This asked for five either way.
       assert.ok(
-        unselectedRoads.every(road => road.width === 5),
-        'unselected routes retain the 5px visibility floor',
+        unselectedRoads.every(road => road.width === 3),
+        `unselected future roads read at three pixels: ${JSON.stringify(unselectedRoads)}`,
       );
       await page.evaluate(() => window.fixtureSelectFuture());
       await page.waitForFunction(expected => {
@@ -554,24 +578,35 @@ try {
       assert.deepEqual(await page.evaluate(() => window.fixtureReport()), []);
       assert.equal(trucks.length, 6);
       for (const truck of trucks) {
-        assert.equal(truck.size, 28);
+        // The chosen truck is drawn full size and the rest a little
+        // smaller: not faded, since a truck half there reads as a truck
+        // whose position is doubtful.
+        assert.equal(truck.size, truck.quiet ? 23 : 28, `${truck.unit} size`);
         assert.equal(truck.textureWidth, 112);
         assert.equal(truck.textureHeight, 120);
         assert.equal(truck.labelSize, 13);
         assert.equal(truck.labelPhysicalFontSize, 13 * density);
         assert.deepEqual(truck.labelPadding, [9, 4]);
+        // The chosen truck's name is written on the blue the map uses for
+        // a choice, the rest on slate; both fully opaque.
         assert.deepEqual(
           truck.labelBackground,
-          truck.unit === '11006' ? [49, 94, 234] : [30, 41, 59],
+          truck.unit === '11006' ? [49, 94, 234, 255] : [30, 41, 59, 255],
+          `${truck.unit} label background`,
         );
       }
+      // The chosen truck leads the fleet, so each reading is named by the
+      // truck it belongs to rather than by where it happens to fall.
       assert.deepEqual(
-        trucks.map(truck => truck.engine),
-        ['on', 'on', 'on', 'idle', 'off', 'on'],
-      );
-      assert.deepEqual(
-        trucks.map(truck => truck.angle || 0),
-        [0, -45, -90, 0, 0, -225],
+        trucks.map(truck => [truck.unit, truck.engine, truck.angle || 0]),
+        [
+          ['11006', 'on', -225],
+          ['11001', 'on', 0],
+          ['11002', 'on', -45],
+          ['11003', 'on', -90],
+          ['11004', 'idle', 0],
+          ['11005', 'off', 0],
+        ],
       );
       const screenshot = `${theme}-${density}x.png`;
       await page.screenshot({
@@ -628,7 +663,7 @@ try {
         );
         assert.ok(
           circle.width / density >= 33 && circle.width / density <= 35,
-          `${circle.job} ${circle.label}: rendered circle keeps its 34px diameter`,
+          `${circle.job} ${circle.label}: rendered circle keeps its 34px diameter: ${JSON.stringify(circle)}`,
         );
         assert.ok(
           Math.abs(circle.centerOffsetX) <= density &&
@@ -671,7 +706,8 @@ try {
         'only fuel-order badges appear on the map; prices stay in the popup',
       );
       assert.deepEqual(fuel.badge.text, ['Fuel 1/2']);
-      assert.deepEqual(fuel.badge.offset, [0, -24]);
+      // `fuelVisitLabelOffset` - the badge stands clear of its station.
+      assert.deepEqual(fuel.badge.offset, [0, -27]);
       assert.equal(fuel.badge.size, 12);
       assert.equal(fuel.badge.fontSize, 12 * density);
       assert.deepEqual(fuel.badge.padding, [6, 4]);
@@ -791,9 +827,11 @@ try {
         await fuelCard.locator('.fleet-fuel-visit__number').allTextContents(),
         ['1', '2'],
       );
+      // What the stop adds now stands at the end of the tank's own line,
+      // as a sum rather than a figure of its own.
       assert.deepEqual(
-        await fuelCard.locator('.fleet-fuel-visit__buy').allTextContents(),
-        ['35 US gal', '164 US gal'],
+        await fuelCard.locator('.fleet-fuel-visit__added').allTextContents(),
+        ['+ 35 US gal', '+ 164 US gal'],
       );
       assert.deepEqual(
         await fuelCard.locator('.fleet-fuel-visit__level').allTextContents(),
@@ -923,8 +961,8 @@ try {
         ['1'],
       );
       assert.deepEqual(
-        await card.locator('.fleet-fuel-visit__buy').allTextContents(),
-        ['35 US gal'],
+        await card.locator('.fleet-fuel-visit__added').allTextContents(),
+        ['+ 35 US gal'],
       );
       assert.deepEqual(
         await card.locator('.fleet-fuel-visit__level').allTextContents(),
@@ -963,9 +1001,22 @@ try {
         const popup = card.locator('.fleet-route-popup--stop');
         await popup.waitFor();
         const loadReference = popup.locator('.fleet-map-route-info__load');
-        assert.equal(
-          await loadReference.textContent(),
-          'Load 1441 · Order: CURRENT-1441',
+        // The load reads as its parts now: a prefix a company can name,
+        // the number, then the order and its own number, each copiable on
+        // its own. Without metadata the prefix stays empty rather than
+        // being invented, which is what this has always been about.
+        assert.deepEqual(
+          await loadReference.evaluate(element =>
+            [...element.children]
+              .filter(child => !child.classList.contains('visually-hidden'))
+              .map(child => [child.className, child.textContent.trim()]),
+          ),
+          [
+            ['', ''],
+            ['fleet-map-route-info__copy-number', '1441'],
+            ['fleet-map-route-info__label', 'Order'],
+            ['fleet-map-route-info__copy-number', 'CURRENT-1441'],
+          ],
           'a popup without configured display metadata does not invent a load prefix',
         );
         assert.equal(
@@ -1017,9 +1068,13 @@ try {
               };
             }),
           );
+        // The distance is what is left to drive rather than the whole run,
+        // and the tank on arrival is named here too - as a dash where it
+        // is not known, which is a reading and not a missing one.
         assert.deepEqual(
           facts.map(fact => fact.label),
-          ['Appointment', 'ETA', 'Total'],
+          ['Appointment', 'ETA', 'Left', 'Fuel on arrival'],
+          JSON.stringify(facts.map(fact => [fact.label, fact.value])),
         );
         assert.equal(
           facts[0].value,
@@ -1027,7 +1082,8 @@ try {
           'same-day appointment window is compact and readable',
         );
         assert.match(facts[1].value, /Sep 9, 06:02 PM.*Late/);
-        assert.equal(facts[2].value, '865 mi · 1392 km');
+        assert.equal(facts[2].value, '865 mi · 1,392 km');
+        assert.equal(facts[3].value, '—');
         for (const fact of facts)
           assert.ok(
             fact.valueSize >= fact.labelSize,
@@ -1056,9 +1112,16 @@ try {
           await popup.locator('.fleet-route-popup__company').textContent(),
           'Schaeffler Group USA Inc',
         );
+        // The head names what is done here; the line under it says where
+        // this stop falls in the load. The job used to be read from that
+        // second line, which now carries the other of the two.
+        assert.equal(
+          await popup.locator('.fleet-route-popup__job').textContent(),
+          job,
+        );
         assert.equal(
           await popup.locator('.fleet-route-popup__kind').textContent(),
-          job,
+          'Load stop 1 of 1',
         );
         assert.match(
           await popup.locator('.fleet-route-popup__address').textContent(),
@@ -1264,16 +1327,19 @@ try {
           );
         }
         for (const row of geometry.verticalGaps) {
-          const separator = row.previousClass === 'fleet-route-popup__kind';
+          // The stop's place in the load stands apart: the ordinary small
+          // space above it, its own rule below. Everything else in these
+          // blocks reads as one run of lines with nothing added between.
           const gap =
-            row.nextClass === 'fleet-route-popup__details-link'
+            row.nextClass === 'fleet-route-popup__details-link' ||
+            row.nextClass === 'fleet-route-popup__kind'
               ? geometry.verticalGap
-              : separator
+              : row.previousClass === 'fleet-route-popup__kind'
                 ? geometry.separatorGap
                 : 0;
           assert.ok(
             row.gap >= -1 && row.gap <= gap + 1,
-            `${row.container} rows have no added vertical gaps except compact separators`,
+            `${row.container} rows have no added vertical gaps except compact separators: ${JSON.stringify(row)} against ${gap}`,
           );
         }
         assert.ok(
@@ -1677,7 +1743,9 @@ try {
     await context.close();
   }
 } catch (error) {
-  report.failures.push(error.message);
+  // The message alone said only "false == true"; where it failed is the
+  // part that is worth reading.
+  report.failures.push(error.stack ?? error.message);
 } finally {
   await browser.close();
   await writeFile(

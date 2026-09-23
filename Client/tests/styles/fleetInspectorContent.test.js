@@ -74,9 +74,13 @@ test('the tank is named, then one bar, and the purchase is a fact', () => {
     css,
     /\.fleet-fuel-visit__facts\s*\{[^}]*grid-template-columns: max-content minmax\(0, 1fr\);/,
   );
+  // A visit states one fact, so its label and its figure are a line and
+  // not a shared pair of columns: in the narrow column of a planned
+  // station on a phone the figure takes the row below rather than
+  // running out past the card.
   assert.match(
     css,
-    /\.fleet-fuel-visit__fact\s*\{[^}]*grid-template-columns: subgrid;/,
+    /\.fleet-fuel-visit__fact\s*\{[^}]*display: flex;[^}]*flex-wrap: wrap;/,
   );
   assert.doesNotMatch(css, /fleet-fuel-visit__(dial|gauge|buy)/);
 });

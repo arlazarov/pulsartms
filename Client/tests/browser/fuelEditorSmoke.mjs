@@ -781,6 +781,9 @@ try {
               const icon = reading.querySelector('svg');
               return {
                 top: value.getBoundingClientRect().top,
+                bottom: value.getBoundingClientRect().bottom,
+                className: value.className,
+                text: value.textContent.trim().slice(0, 20),
                 font: getComputedStyle(value).fontSize,
                 lineHeight: getComputedStyle(value).lineHeight,
                 // A reading is a word and a value; its icon, where the
@@ -789,6 +792,7 @@ try {
               };
             }),
           );
+        (report.telemetryMetrics ??= []).push({ name, metrics });
         assert.equal(metrics.length, 3);
         for (const metric of metrics) {
           assert.ok(

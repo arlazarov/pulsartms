@@ -302,6 +302,10 @@ try {
     await page.locator('#map').screenshot({
       path: resolve(output, `coincident-stops-${density}x.png`),
     });
+    // The three coincident stops of the previous case stand on the point
+    // the cluster forms at, and stops are drawn over clusters. Left there,
+    // the card below them read as a card that had lost its fill.
+    await page.evaluate(() => window.clearStops());
     await page.evaluate(() => window.showTruckClusters());
     await page.waitForFunction(
       () =>
@@ -406,9 +410,21 @@ try {
       'group expansion retains the selected truck and displayed roads',
     );
     await page.evaluate(() => window.restoreTruckOverview());
-    await page.waitForFunction(
-      () => window.clusterCamera.zoom === 6 && window.markerReport().loaded,
-    );
+    await page
+      .waitForFunction(
+        () => window.clusterCamera.zoom === 6 && window.markerReport().loaded,
+        null,
+        { timeout: 15000 },
+      )
+      .catch(async error => {
+        (report.restoreState ??= []).push(
+          await page.evaluate(() => ({
+            camera: window.clusterCamera,
+            unloaded: window.unloadedLayers(),
+          })),
+        );
+        throw error;
+      });
     const nearbyFrame = await page.evaluate(() => {
       window.showNearbyTrucks();
       return window.markerFrames;
@@ -439,9 +455,21 @@ try {
       if (density === 2)
         await page.touchscreen.tap(truck.label.x, truck.label.y);
       else await page.mouse.click(truck.label.x, truck.label.y);
+      // The scene records a click from its own pointer handling, a frame
+      // after the event. Read straight away, the array still held the
+      // click before this one.
+      await page
+        .waitForFunction(
+          unit => window.markerClicks.at(-1) === unit,
+          truck.unit,
+          { timeout: 5000 },
+        )
+        .catch(() => {});
+      const recorded = await page.evaluate(() => window.markerClicks);
       assert.equal(
-        await page.evaluate(() => window.markerClicks.at(-1)),
+        recorded.at(-1),
         truck.unit,
+        `clicking ${truck.unit} at ${JSON.stringify(truck.label)} recorded ${JSON.stringify(recorded)}`,
       );
     }
     await page.locator('#map').screenshot({
@@ -449,22 +477,46 @@ try {
     });
     (report.nearbyTrucks ??= []).push({ density, pair });
     await page.evaluate(() => window.restoreTruckOverview());
-    await page.waitForFunction(
-      () => window.clusterCamera.zoom === 6 && window.markerReport().loaded,
-    );
+    await page
+      .waitForFunction(
+        () => window.clusterCamera.zoom === 6 && window.markerReport().loaded,
+        null,
+        { timeout: 15000 },
+      )
+      .catch(async error => {
+        (report.restoreState ??= []).push(
+          await page.evaluate(() => ({
+            camera: window.clusterCamera,
+            unloaded: window.unloadedLayers(),
+          })),
+        );
+        throw error;
+      });
     const routes = [];
     for (const role of ['future', 'future-muted', 'current', 'current-muted']) {
       const frame = await page.evaluate(role => {
         window.showRouteProbe(role);
         return window.markerFrames;
       }, role);
-      await page.waitForFunction(
-        ({ role, frame }) =>
-          window.markerFrames > frame &&
-          window.routeProbeReport()?.loaded &&
-          window.routeProbeReport().role === role,
-        { role, frame },
-      );
+      await page
+        .waitForFunction(
+          ({ role, frame }) =>
+            window.markerFrames > frame &&
+            window.routeProbeReport()?.loaded &&
+            window.routeProbeReport().role === role,
+          { role, frame },
+          { timeout: 15000 },
+        )
+        .catch(async error => {
+          (report.routeProbeState ??= []).push({
+            role,
+            frame,
+            frames: await page.evaluate(() => window.markerFrames),
+            probe: await page.evaluate(() => window.routeProbeReport()),
+            unloaded: await page.evaluate(() => window.unloadedLayers()),
+          });
+          throw error;
+        });
       const route = await page.evaluate(() => window.routeProbeReport());
       assert.equal(
         route.pointCount,
@@ -477,7 +529,14 @@ try {
         'outline and fill retain the original route array',
       );
       assert.equal(route.width, role.startsWith('current') ? 5 : 3);
-      assert.equal(route.opacity, role.endsWith('-muted') ? 0.4 : 1);
+      // The road being driven is drawn in full. A load that is not today's
+      // steps back to 0.7, and anything muted by a selection elsewhere -
+      // whichever road it is - to 0.4.
+      assert.equal(
+        route.opacity,
+        role.endsWith('-muted') ? 0.4 : role === 'current' ? 1 : 0.7,
+        `${role} must keep the strength its kind of road is drawn at`,
+      );
       if (!role.startsWith('current'))
         assert.deepEqual(route.extensions, [
           { dash: true, offset: false, highPrecisionDash: true },
@@ -619,13 +678,29 @@ try {
         { progress, stage },
       );
       const saved = await page.evaluate(() => window.savedRouteProbeReport());
-      assert.equal(
-        Math.min(...saved.paths.flatMap(path => path.map(point => point[0]))),
-        expectedStart,
+      (report.savedRoads ??= []).push({ density, stage, roads: saved.roads });
+      // The plan is drawn twice: the whole of it faintly, and the part
+      // still to drive over that in full. Reading every point as one set
+      // said the road began where the load does, whatever the truck had
+      // already driven.
+      const driving = saved.roads.filter(
+        road => road.opacity === 1 && road.start !== road.end,
       );
       assert.equal(
-        Math.max(...saved.paths.flatMap(path => path.map(point => point[0]))),
+        Math.min(...driving.map(road => road.start)),
+        expectedStart,
+        `${stage}: the road that is left starts at the truck`,
+      );
+      assert.equal(
+        Math.max(...driving.map(road => road.end)),
         -75,
+        `${stage}: the road that is left ends at the load`,
+      );
+      assert.ok(
+        saved.roads.some(
+          road => road.opacity < 0.3 && road.start === -85 && road.end === -75,
+        ),
+        `${stage}: the whole plan stays drawn faintly under it: ${JSON.stringify(saved.roads)}`,
       );
       assert.equal(saved.notifications.length, stage === 'unknown' ? 0 : 1);
       const capture = await page.locator('#map').screenshot({

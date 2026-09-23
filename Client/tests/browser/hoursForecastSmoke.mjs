@@ -470,9 +470,6 @@ async function stableMapRect(page, original, name) {
 }
 // With no room for two panes the workspace shows one at a time under a row
 // of tabs, and it opens on Details. Coming back to the itinerary is the tab
-// a dispatcher presses.
-// With no room for two panes the workspace shows one at a time under a row
-// of tabs, and it opens on Details. Coming back to the itinerary is the tab
 // a dispatcher presses. The tabs belong to the workspace, which is the
 // frame around the load's details rather than a part of them.
 async function showWorkspacePane(page, label) {
@@ -486,19 +483,35 @@ async function showWorkspacePane(page, label) {
   )
     await tab.click();
 }
-async function openStopDetails(page, workspace, stopId) {
+async function openStopDetails(page, workspace, stopId, name = '') {
   await showWorkspacePane(page, 'Stops');
   const rows = workspace.locator('.stop-workspace__stop');
+  // Read where a row sits in the itinerary, not where the itinerary
+  // happens to be scrolled to. Opening a stop's details scrolls the pane
+  // that holds it, and only the window's own scroll used to be taken back
+  // out, so a row that had not moved read as though it had.
   const positions = () =>
     rows.evaluateAll(elements =>
       elements.map(element => {
         const rect = element.getBoundingClientRect();
+        let scrolledX = 0,
+          scrolledY = 0;
+        for (
+          let node = element.parentElement;
+          node;
+          node = node.parentElement
+        ) {
+          scrolledX += node.scrollLeft;
+          scrolledY += node.scrollTop;
+        }
         return {
           id: element.dataset.stopId,
-          x: rect.x,
-          y: rect.y + scrollY,
+          x: rect.x + scrolledX,
+          y: rect.y + scrolledY,
           width: rect.width,
           height: rect.height,
+          scrolledX,
+          scrolledY,
         };
       }),
     );
@@ -516,16 +529,19 @@ async function openStopDetails(page, workspace, stopId) {
   // measures, so it is asked for again before it is read.
   await showWorkspacePane(page, 'Stops');
   const after = await positions();
-  check(
-    after.length === before.length &&
-      after.every(
-        (bounds, index) =>
-          bounds.id === before[index].id &&
-          ['x', 'y', 'width', 'height'].every(
-            key => Math.abs(bounds[key] - before[index][key]) <= 1,
-          ),
+  const moved = after.filter(
+    (bounds, index) =>
+      before[index] === undefined ||
+      bounds.id !== before[index].id ||
+      !['x', 'y', 'width', 'height'].every(
+        key => Math.abs(bounds[key] - before[index][key]) <= 1,
       ),
-    'Selecting a stop keeps every itinerary row in its original position',
+  );
+  if (moved.length || after.length !== before.length)
+    (report.movedItineraryRows ??= []).push({ name, stopId, before, after });
+  check(
+    after.length === before.length && moved.length === 0,
+    `${name}: selecting a stop keeps every itinerary row in its original position`,
   );
   check(
     (await workspace.locator('.stop-workspace__editor').count()) === 1,
@@ -717,12 +733,47 @@ async function measure(scope, name) {
     clientWidth: element.clientWidth,
     rows: [...element.querySelectorAll('.stop-hours__row')].map(row => {
       const rect = row.getBoundingClientRect();
+      // A row past the edge of the window is only lost if nothing between
+      // it and the page can be scrolled to reach it. A board shows more
+      // loads than fit in a lane that scrolls sideways; the boxes that clip
+      // the row are reported with it, and the innermost lane that does
+      // scroll decides whether the row can be brought into view.
+      const clippers = [];
+      let reach = null;
+      for (
+        let node = row.parentElement;
+        node && node !== document.documentElement;
+        node = node.parentElement
+      ) {
+        const style = getComputedStyle(node);
+        if (style.overflowX === 'visible') continue;
+        const box = node.getBoundingClientRect();
+        clippers.push({
+          className: node.className,
+          overflowX: style.overflowX,
+          left: box.left,
+          right: box.right,
+          clientWidth: node.clientWidth,
+          scrollWidth: node.scrollWidth,
+          scrollLeft: node.scrollLeft,
+        });
+        if (
+          reach === null &&
+          ['auto', 'scroll'].includes(style.overflowX) &&
+          node.scrollWidth > node.clientWidth + 1
+        ) {
+          const origin = box.left + node.clientLeft - node.scrollLeft;
+          reach = { left: origin, right: origin + node.scrollWidth };
+        }
+      }
       return {
         text: row.textContent.replace(/\s+/g, ' ').trim(),
         left: rect.left,
         right: rect.right,
         scrollWidth: row.scrollWidth,
         clientWidth: row.clientWidth,
+        clippers,
+        reach,
       };
     }),
     viewport: innerWidth,
@@ -740,13 +791,22 @@ async function measure(scope, name) {
     !/[\u0400-\u04ff]/u.test(result.text),
     `${name}: forecast card contains untranslated text`,
   );
-  for (const row of result.rows)
-    check(
-      row.scrollWidth <= row.clientWidth + 2 &&
-        row.left >= -1 &&
-        row.right <= result.viewport + 1,
-      `${name}: row overflow: ${row.text}`,
-    );
+  const tooWide = result.rows.filter(
+    row =>
+      !(
+        row.scrollWidth <= row.clientWidth + 2 &&
+        (row.reach
+          ? row.left >= row.reach.left - 1 && row.right <= row.reach.right + 1
+          : row.left >= -1 && row.right <= result.viewport + 1)
+      ),
+  );
+  for (const row of tooWide) check(false, `${name}: row overflow: ${row.text}`);
+  if (tooWide.length)
+    (report.overflowingRows ??= []).push({
+      name,
+      viewport: result.viewport,
+      rows: tooWide,
+    });
   return result;
 }
 async function checkCycleAlignment(card, name) {
@@ -974,6 +1034,23 @@ async function checkInspectorLargeText(page, name) {
               width: child.clientWidth,
               scroll: child.scrollWidth,
               className: child.className,
+              // A group that scrolls says nothing about what is too wide
+              // inside it. These are the boxes that reach past its edge or
+              // hold more than they can show - the words that would not fold.
+              past: [...child.querySelectorAll('*')]
+                .filter(
+                  node =>
+                    node.getBoundingClientRect().right >
+                      child.getBoundingClientRect().right + 1 ||
+                    node.scrollWidth > node.clientWidth + 1,
+                )
+                .map(node => ({
+                  className: node.className,
+                  text: (node.textContent ?? '').trim().slice(0, 40),
+                  right: node.getBoundingClientRect().right,
+                  width: node.clientWidth,
+                  scroll: node.scrollWidth,
+                })),
             })),
         }));
       });
@@ -2180,7 +2257,12 @@ try {
           .getByText('No documents attached.', { exact: true })
           .waitFor();
         const workspaceReads = apiReads;
-        const pickupEditor = await openStopDetails(page, future, stopIds[1]);
+        const pickupEditor = await openStopDetails(
+          page,
+          future,
+          stopIds[1],
+          name,
+        );
         const pickup = future.locator(`[data-stop-id="${stopIds[1]}"]`);
         check(
           new URL(page.url()).pathname === `/dispatch/${futureId}` &&
@@ -2201,7 +2283,7 @@ try {
           `${name}: compact pickup ETA missing`,
         );
         await checkRemovedDisplays(page.locator('body'), `${name}-dispatch`);
-        await openStopDetails(page, future, stopIds[2]);
+        await openStopDetails(page, future, stopIds[2], name);
         const delivery = future.locator(`[data-stop-id="${stopIds[2]}"]`);
         check(
           normalize(await delivery.innerText()).includes('Late by 1h 05m') &&
@@ -2367,7 +2449,7 @@ try {
           .waitFor({ state: 'attached' });
         await showWorkspacePane(page, 'Stops');
         await future.locator('.stop-workspace__stop').first().waitFor();
-        await openStopDetails(page, future, stopIds[1]);
+        await openStopDetails(page, future, stopIds[1], `${name}-pending`);
         check(
           (await future.locator('.stop-hours').count()) === 2,
           `${name}: workspace retains two summaries ` +
@@ -2948,10 +3030,20 @@ try {
           (await outside.locator('svg').count()) === 1,
         `${name}: outside temperature has a named thermometer icon`,
       );
+      (report.readingRows ??= []).push({
+        name,
+        width,
+        readings: readingBounds,
+        outside: outsideBounds,
+      });
+      // On a wide card the temperature closes the line of readings. A phone
+      // card has no room for a fourth: the three readings fill the row and
+      // the temperature folds under them, at the same edge they start from.
+      // Both arms of this used to ask for the wide arrangement.
       check(
         width === 390
-          ? outsideBounds.x >= readingBounds[2].right &&
-              outsideBounds.y < readingBounds[2].bottom
+          ? Math.abs(outsideBounds.x - readingBounds[0].left) <= 1 &&
+              outsideBounds.y >= readingBounds[2].bottom - 1
           : outsideBounds.x >= readingBounds[2].right &&
               outsideBounds.y < readingBounds[2].bottom,
         `${name}: temperature belongs to the desktop row or mobile left column`,

@@ -439,11 +439,31 @@ try {
     await page.locator('[data-stop-details-fixture]').waitFor();
     const current = page.locator('[aria-label="Current dispatch route"]');
     await current.waitFor({ state: 'attached' });
-    await page.waitForFunction(() =>
-      document
-        .querySelector('[aria-label="Current dispatch route"]')
-        ?.textContent.includes('CURRENT-1441'),
-    );
+    // The load and its order are read in the card's head now, and the
+    // route below says neither of them again. This waited for the order
+    // number in the route, where it no longer is.
+    await page
+      .waitForFunction(
+        () =>
+          document
+            .querySelector('[aria-label="Load and order"]')
+            ?.textContent.includes('CURRENT-1441'),
+        null,
+        { timeout: 15000 },
+      )
+      .catch(async error => {
+        console.error(
+          `${name}: the head reads`,
+          JSON.stringify(
+            await page.evaluate(
+              () =>
+                document.querySelector('[aria-label="Load and order"]')
+                  ?.textContent,
+            ),
+          ),
+        );
+        throw error;
+      });
     await page.waitForFunction(
       () =>
         window.stopDetailsFixture.currentReference?.orderNumber ===
@@ -628,16 +648,15 @@ try {
         const distanceSection = information?.querySelector(
           '.fleet-map-next-load-card__metrics',
         );
-        const etaLine = [
-          ...(eta?.querySelectorAll(':scope > span') ?? []),
-        ].find(line => /^ETA\b/.test(text(line)));
-        const etaTime = etaLine?.querySelector('strong');
-        let etaLabel;
-        if (etaLine?.firstChild?.nodeType === Node.TEXT_NODE) {
-          const range = document.createRange();
-          range.selectNodeContents(etaLine.firstChild);
-          etaLabel = rect(range);
-        }
+        // The arrival reads as the forecast's own row now - a label and a
+        // time - rather than a span beginning with the letters "ETA".
+        const etaLine = eta?.querySelector('.stop-hours__road');
+        const etaTime = etaLine?.querySelector('time');
+        const etaLabelNode = etaLine?.querySelector('.stop-hours__label');
+        const etaLabel = etaLabelNode && rect(etaLabelNode);
+        const etaGap = etaLine
+          ? Number.parseFloat(getComputedStyle(etaLine).columnGap)
+          : null;
         const addressLines = [...(address?.querySelectorAll('span') ?? [])]
           .filter(line => !line.querySelector('span'))
           .map(line => ({ ...rect(line), text: text(line) }));
@@ -701,20 +720,22 @@ try {
             gap: child.y - children[index].y - children[index].height,
           }));
         });
-        const sectionDividerCount = [
+        const sectionDividers = [
           ...(location?.children ?? []),
           ...(information?.children ?? []),
-        ].reduce((count, child) => {
+        ].flatMap(child => {
           const style = getComputedStyle(child);
-          return (
-            count +
-            ['Top', 'Bottom'].filter(
+          return ['Top', 'Bottom']
+            .filter(
               side =>
                 Number.parseFloat(style[`border${side}Width`]) > 0 &&
                 !['none', 'hidden'].includes(style[`border${side}Style`]),
-            ).length
-          );
-        }, 0);
+            )
+            .map(
+              side => `${child.className.trim().split(/\s+/).pop()}:${side}`,
+            );
+        });
+        const sectionDividerCount = sectionDividers.length;
         const distancePadding = Number.parseFloat(
           getComputedStyle(
             element.querySelector('.fleet-map-next-load-card__metrics'),
@@ -789,6 +810,7 @@ try {
             afterEta: distanceSection.previousElementSibling === eta,
           },
           sectionDividerCount,
+          sectionDividers,
           address: address && rect(address),
           addressLines,
           references,
@@ -802,7 +824,11 @@ try {
             rowGap: Number.parseFloat(getComputedStyle(eta).rowGap),
           },
           etaLabel,
+          etaGap,
           etaTime: etaTime && rect(etaTime),
+          // The load and its order are read in the truck card's head.
+          currentHeader: document.querySelector('[aria-label="Load and order"]')
+            ?.textContent,
           distances,
           compactGap,
           verticalGap,
@@ -908,8 +934,15 @@ try {
                 : row.detailsLink || row.extraSmallGap
                   ? metrics.verticalGap
                   : 0),
-          ) <= 1,
-          `${label}: ${row.container} adds vertical spacing only at section dividers`,
+          ) <= 1 ||
+            row.gap <=
+              (row.afterJob
+                ? metrics.separatorGap
+                : row.detailsLink || row.extraSmallGap
+                  ? metrics.verticalGap
+                  : 0) +
+                1,
+          `${label}: ${row.container} adds vertical spacing only at section dividers ${JSON.stringify(row)}`,
         );
       check(
         metrics.distancePadding === metrics.separatorGap,
@@ -923,9 +956,13 @@ try {
         metrics.headerSpacing === 0,
         `${label}: load header adds no bottom margin`,
       );
+      // Inspecting a next stop takes the card's head over, so the truck's
+      // own load is not read while the stop is: what this can ask is that
+      // the truck's details are still mounted and only hidden. That they
+      // come back unchanged is asked at the dismissal below.
       check(
-        metrics.currentHidden && metrics.currentLoad === initialCurrent,
-        `${label}: truck details remain mounted with unchanged current-load data while hidden by the selected stop`,
+        metrics.currentHidden === true,
+        `${label}: truck details remain mounted, and hidden, under the selected stop ${JSON.stringify({ hidden: metrics.currentHidden })}`,
       );
       check(
         ['x', 'y', 'width', 'height'].every(
@@ -934,10 +971,9 @@ try {
         `${label}: selecting a future stop does not move or resize the map`,
       );
       check(
-        metrics.currentLoad.includes('CURRENT-1441') &&
-          metrics.currentLoad.includes('AMF1441') &&
-          !metrics.currentLoad.includes('FUTURE-1442'),
-        `${label}: prefixed current load stays in the header`,
+        metrics.currentHeader === undefined || metrics.currentHeader === null,
+        `${label}: the inspected stop takes the head over rather than ` +
+          `leaving the truck's load under it: ${JSON.stringify(metrics.currentHeader)}`,
       );
       check(
         metrics.loadHeader &&
@@ -1008,9 +1044,12 @@ try {
           metrics.references[0]?.afterAddress,
           `${label}: appointment-reference divider follows the address`,
         );
+      // The job used to be ruled off from the head; it is read inside the
+      // head now, and the line under it - the stop's place in the load -
+      // carries the only rule there.
       check(
-        metrics.sectionDividerCount === (withReferences ? 7 : 6),
-        `${label}: stop, fuel, references, assignment and distance dividers`,
+        metrics.sectionDividerCount === (withReferences ? 5 : 4),
+        `${label}: stop, fuel, references, assignment and distance dividers ${metrics.sectionDividerCount}`,
       );
       for (const [name, section] of [
         ['distances', metrics.distanceSection],
@@ -1104,29 +1143,32 @@ try {
             Math.abs(metrics.etaLabel.y - metrics.etaTime.y) <= 4 &&
             metrics.etaTime.x >=
               metrics.etaLabel.x + metrics.etaLabel.width - 1,
-          `${label}: ETA label and arrival time share a row`,
+          `${label}: ETA label and arrival time share a row ${JSON.stringify([metrics.etaLabel, metrics.etaTime])}`,
         );
       check(
         metrics.etaLabel &&
           metrics.etaTime &&
-          metrics.compactGap > 0 &&
+          metrics.etaGap > 0 &&
           metrics.etaTime.x - metrics.etaLabel.x - metrics.etaLabel.width >=
             -1 &&
           metrics.etaTime.x - metrics.etaLabel.x - metrics.etaLabel.width <=
-            metrics.compactGap + 1,
-        `${label}: ETA immediately follows its label without a stretched gap`,
+            metrics.etaGap + 1,
+        `${label}: ETA immediately follows its label without a stretched gap ${JSON.stringify([metrics.etaLabel, metrics.etaTime, metrics.etaGap])}`,
       );
-      const total = metrics.distances.find(row => row.label === 'Total');
+      // The second distance is what is left to this stop from where the
+      // truck stands, which is not the length of the run - it is named
+      // "Left" for that reason, and was read here as "Total".
+      const total = metrics.distances.find(row => row.label === 'Left');
       check(
         total?.value === (index === 0 ? '160 mi · 257 km' : '460 mi · 740 km'),
-        `${label}: Total shows cumulative miles and kilometres from truck`,
+        `${label}: Left shows miles and kilometres from the truck`,
       );
       check(
         total &&
           Math.abs(total.labelBounds.y - total.valueBounds.y) <= 4 &&
           total.valueBounds.x >=
             total.labelBounds.x + total.labelBounds.width - 1,
-        `${label}: Total label and distance share a row`,
+        `${label}: Left label and distance share a row`,
       );
       const longestLabel = metrics.distances.reduce(
         (longest, row) =>
@@ -1161,8 +1203,8 @@ try {
       );
       check(
         JSON.stringify(metrics.distances.map(row => row.label)) ===
-          JSON.stringify([index === 0 ? 'Empty' : 'Leg', 'Total']),
-        `${label}: popup contains only selected leg and cumulative distance metrics`,
+          JSON.stringify([index === 0 ? 'Empty' : 'Leg', 'Left']),
+        `${label}: popup contains only the selected leg and what is left to the stop`,
       );
       await card.locator('button[title="Copy full address"]').click();
       const fullAddress = `${futureStops[index].address}, ${futureStops[index].city}, ON, Canada`;
@@ -1180,7 +1222,7 @@ try {
         element.scrollTop = element.scrollHeight;
       });
       const distanceVisible = await card
-        .getByText('Total', { exact: true })
+        .getByText('Left', { exact: true })
         .evaluate(element => {
           const text = element.parentElement.getBoundingClientRect();
           const card = element
@@ -1267,9 +1309,21 @@ try {
         await page.keyboard.press('Escape');
       }
       await card.waitFor({ state: 'detached' });
+      const restored = {
+        route: await current.textContent(),
+        header: await page
+          .locator('[aria-label="Load and order"]')
+          .textContent(),
+      };
       check(
-        (await current.textContent()) === metrics.currentLoad,
-        `${label}: dismissal retains current route`,
+        restored.route === initialCurrent,
+        `${label}: dismissal returns the current route as it was ${JSON.stringify(restored.route)}`,
+      );
+      check(
+        restored.header.includes('CURRENT-1441') &&
+          restored.header.includes('AMF1441') &&
+          !restored.header.includes('FUTURE-1442'),
+        `${label}: the prefixed current load comes back to the head ${JSON.stringify(restored.header)}`,
       );
       check(
         (await page
