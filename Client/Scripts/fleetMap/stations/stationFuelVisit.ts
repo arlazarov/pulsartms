@@ -219,3 +219,16 @@ export function sentLabel(sent: {
       return 'Sent';
   }
 }
+
+// The head of a planned station's card. One visit hides its own heading,
+// so what the driver was handed is said here instead.
+export function fuelPlanLabel(
+  visits: { number: number; sent?: Parameters<typeof sentLabel>[0] | null }[],
+): string {
+  if (visits.length === 0) return '';
+  const numbers = visits.map(visit => visit.number).join(', ');
+  const single = visits.length === 1;
+  const sent =
+    single && visits[0].sent ? ` · ${sentLabel(visits[0].sent)}` : '';
+  return `Fuel ${single ? 'stop' : 'stops'} ${numbers}${sent}`;
+}

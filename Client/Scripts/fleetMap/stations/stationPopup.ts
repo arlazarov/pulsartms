@@ -1,7 +1,11 @@
 import { stationPurchase } from './stationQuantity.ts';
 import { distanceLabel } from '../ui/distanceLabel.ts';
 import { addressLines } from '../ui/addressLines.ts';
-import { createFuelVisit, sentLabel } from './stationFuelVisit.ts';
+import {
+  createFuelVisit,
+  fuelPlanLabel,
+  sentLabel,
+} from './stationFuelVisit.ts';
 import { createPriceComparison } from './stationPriceComparison.ts';
 // What the page opens the plan editor on when the card asks for it.
 export type StationEdit = {
@@ -177,18 +181,7 @@ export function createStationPopup(
         `fleet-station-popup${plannedVisits.length ? ' fleet-station-popup--planned' : ''}${singleVisit ? ' fleet-station-popup--single' : ''}`,
       );
       set(planLabel, 'hidden', plannedVisits.length === 0);
-      // One visit hides its own heading, so its hand-over is said here.
-      const handedOver =
-        singleVisit && plannedVisits[0].sent
-          ? ` · ${sentLabel(plannedVisits[0].sent)}`
-          : '';
-      set(
-        planLabel,
-        'textContent',
-        plannedVisits.length
-          ? `Fuel ${singleVisit ? 'stop' : 'stops'} ${plannedVisits.map(visit => visit.number).join(', ')}${handedOver}`
-          : '',
-      );
+      set(planLabel, 'textContent', fuelPlanLabel(plannedVisits));
       editSelection = canEdit
         ? {
             stationId: station.id,
@@ -226,8 +219,7 @@ export function createStationPopup(
           visit.estimatedArrival,
           visit.priceEstimated,
           visit.unit,
-          visit.sent?.changed,
-          visit.sent?.delivery,
+          visit.sent && sentLabel(visit.sent),
           discount.unit,
           station.country,
           Number.isFinite(visit.miles) ? formatDistance(visit.miles) : '',
