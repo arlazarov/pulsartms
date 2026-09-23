@@ -83,14 +83,17 @@ public partial class Messages : IAsyncDisposable
       await LoadThreadAsync(id);
   }
 
+  // The count is the navigation's; a colleague's tab marking something
+  // read changes only this dispatcher's inbox counts, not the thread.
   private void OnSignal(MessagingSignal signal) =>
     _ = InvokeAsync(async () =>
     {
-      if (_disposed)
+      if (_disposed || signal.Kind == "unread")
         return;
       await LoadInboxAsync();
       if (
-        Id is { } id
+        signal.Kind != "read"
+        && Id is { } id
         && (signal.ConversationId == id || signal.ConversationId is null)
       )
         await LoadThreadAsync(id);
@@ -143,12 +146,17 @@ public partial class Messages : IAsyncDisposable
     _thread = thread;
     // Newest first from the server; the thread reads oldest first.
     _messages = [.. thread.Messages.Reverse()];
-    if (_messages.LastOrDefault() is { } newest)
-      await Api.PostAsync<ReadRequest, bool>(
-        $"api/messaging/conversations/{id}/read",
-        new(newest.SentAt),
-        _lifetime.Token
-      );
+    if (_messages.Count == 0)
+      return;
+    var marked = await Api.PostAsync<ReadRequest, bool>(
+      $"api/messaging/conversations/{id}/read",
+      new(thread.Summary.Revision),
+      _lifetime.Token
+    );
+    // Other tabs, and the navigation count, learn of it only when this
+    // read changed something.
+    if (marked.Success && thread.Summary.Unread > 0 && !_disposed)
+      await Signals.AnnounceReadAsync();
   }
 
   private async Task OlderAsync()

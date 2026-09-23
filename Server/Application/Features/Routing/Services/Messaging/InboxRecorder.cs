@@ -126,6 +126,9 @@ public sealed class InboxRecorder(IAppDbContext db, TimeProvider clock)
         conversation.LastPreview = Preview(message, item);
       }
       conversation.Revision++;
+      message.ArrivedRevision = conversation.Revision;
+      conversation.LastInboundRevision = conversation.Revision;
+      conversation.LastInboundArrivedAt = now;
       changed.Add(conversation.Id);
     }
     return [.. changed];

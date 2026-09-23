@@ -48,6 +48,26 @@
     color: ui.theme(on-accent);
     font-weight: 600;
   }
+  // On the link's icon, out of the flow: the count must not widen the
+  // navigation, which stays narrow however large the text is.
+  &__nav a {
+    position: relative;
+  }
+  &__badge {
+    position: absolute;
+    top: ui.pg(micro);
+    left: calc(ui.pg(md) + ui.size(checkbox) - ui.pg(xs));
+    min-width: 1.4em;
+    padding: 0 ui.pg(micro);
+    border-radius: ui.radius(pill);
+    background: ui.theme(accent);
+    color: ui.theme(on-accent);
+    font-size: ui.fs(small);
+    font-weight: 600;
+    line-height: 1.4;
+    text-align: center;
+    pointer-events: none;
+  }
   svg:not(.brand-logo) {
     width: ui.size(checkbox);
     height: ui.size(checkbox);

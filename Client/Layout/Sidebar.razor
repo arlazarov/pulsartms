@@ -28,6 +28,9 @@
         <NavLink href="/dispatch"><ActionIcon Kind="truck" /><span>Dispatch</span></NavLink>
         <NavLink href="/messages">
             <ActionIcon Kind="note" /><span>Messages</span>
+            <AuthorizeView Roles="Admin,Dispatch" Context="notice">
+                <MessagesNotice />
+            </AuthorizeView>
         </NavLink>
         <NavLink href="/customers"><ActionIcon Kind="contact" /><span>Customers &amp; brokers</span></NavLink>
 

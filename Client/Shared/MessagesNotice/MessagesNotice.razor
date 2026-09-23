@@ -1,0 +1,5 @@
+@if (Notices.Current is { Conversations: > 0 } count)
+{
+    <span class="sidebar__badge" role="status"
+          aria-label="@Label(count)">@Text(count)</span>
+}

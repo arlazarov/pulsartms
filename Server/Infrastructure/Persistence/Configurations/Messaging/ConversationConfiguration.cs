@@ -25,6 +25,7 @@ public sealed class ConversationConfiguration
       })
       .IsUnique();
     b.HasIndex(x => new { x.CompanyId, x.LastMessageAt });
+    b.HasIndex(x => new { x.CompanyId, x.LastInboundArrivedAt });
   }
 }
 
@@ -65,6 +66,7 @@ public sealed class ConversationMessageConfiguration
       .IsUnique()
       .HasFilter("\"IdempotencyKey\" IS NOT NULL");
     b.HasIndex(x => new { x.ConversationId, x.SentAt });
+    b.HasIndex(x => new { x.ConversationId, x.ArrivedRevision });
     b.HasOne<Conversation>()
       .WithMany()
       .HasForeignKey(x => x.ConversationId)

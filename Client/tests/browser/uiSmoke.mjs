@@ -556,6 +556,16 @@ const fixtures = new Map([
   ],
   ['/api/messaging/templates', success([])],
   [
+    '/api/messaging/unread',
+    success({
+      conversations: 1,
+      more: false,
+      latest: [
+        { conversationId: '5a0e5c1e-7d5b-4a61-9d7e-000000000002', revision: 3 },
+      ],
+    }),
+  ],
+  [
     '/api/dispatch/board',
     () =>
       success(
@@ -1729,6 +1739,16 @@ try {
               0,
             );
           }
+          if (path === '/dispatch')
+            assert.equal(
+              (
+                await page
+                  .locator('.sidebar__nav a[href="/messages"] .sidebar__badge')
+                  .textContent()
+              ).trim(),
+              '1',
+              name + ' shows the unread count beside Messages on every page',
+            );
           if (path.startsWith('/messages/')) {
             const items = page.locator('.messages__item');
             assert.equal(await items.count(), 2, name + ' shows the thread');

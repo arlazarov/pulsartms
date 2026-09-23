@@ -33,6 +33,7 @@ public sealed class ConsistencyAuditSqlTests
       "execution.cancelled-source-held",
       "execution.planning-change-overdue",
       "routing.planning-refresh-overdue",
+      "messaging.unread-arrival-behind",
       "journal-events",
       "journal-incidents",
     ];
@@ -62,6 +63,8 @@ public sealed class ConsistencyAuditSqlTests
           request,
           default
         ),
+      "messaging.unread-arrival-behind" => () =>
+        new UnreadArrivalRule(db).ReadAsync(request, default),
       "journal-events" => () =>
         new ConsistencyJournalReads(db).EventsAsync(
           Company.Amf,

@@ -34,6 +34,10 @@ public sealed class ConversationMessage : BaseEntity, ICompanyOwned
   // When the provider says the message was written; for ordering a thread.
   public DateTime SentAt { get; set; }
   public DateTime CreatedAt { get; set; }
+
+  // For a driver's message, the conversation revision it was recorded at:
+  // it is unread for a dispatcher whose read revision is lower.
+  public long ArrivedRevision { get; set; }
 }
 
 public static class ConversationMessageKinds

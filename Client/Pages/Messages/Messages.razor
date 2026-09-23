@@ -7,7 +7,9 @@
 
 <section class="messages-page @(_thread is null ? "is-list" : "is-thread")">
     <PageHeader Title="Messages"
-                Description="Conversations with drivers over WhatsApp." />
+                Description="Conversations with drivers over WhatsApp.">
+        <NotificationChoice />
+    </PageHeader>
     @if (_error is not null)
     {
         <p class="settings-page__error" role="alert">

@@ -1,0 +1,20 @@
+@switch (_permission)
+{
+    case "default":
+        <button type="button" class="btn btn--small" disabled="@_busy"
+                @onclick="RequestAsync">
+            Notify me of new messages
+        </button>
+        break;
+    case "granted":
+        <button type="button" class="btn btn--small" aria-pressed="@_enabled"
+                @onclick="ToggleAsync">
+            @(_enabled ? "Notifications on" : "Notifications off")
+        </button>
+        break;
+    case "denied":
+        <p class="messages__note">
+            Notifications are blocked in this browser's site settings.
+        </p>
+        break;
+}

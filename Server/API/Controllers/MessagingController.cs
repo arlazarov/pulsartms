@@ -13,7 +13,7 @@ namespace API.Controllers;
 [Route("api/messaging")]
 public sealed class MessagingController : BaseController
 {
-  public sealed record ReadRequest(DateTime Through);
+  public sealed record ReadRequest(long Revision);
 
   public sealed record SendRequest(
     string Body,
@@ -27,6 +27,10 @@ public sealed class MessagingController : BaseController
     [FromQuery] bool unread,
     CancellationToken cancellationToken
   ) => HandleRequest(new GetInboxQuery(unread), cancellationToken);
+
+  [HttpGet("unread")]
+  public Task<IActionResult> Unread(CancellationToken cancellationToken) =>
+    HandleRequest(new GetUnreadNoticeQuery(), cancellationToken);
 
   [HttpGet("conversations/{id:guid}")]
   public Task<IActionResult> Conversation(
@@ -42,7 +46,7 @@ public sealed class MessagingController : BaseController
     CancellationToken cancellationToken
   ) =>
     HandleRequest(
-      new MarkConversationReadCommand(id, request.Through),
+      new MarkConversationReadCommand(id, request.Revision),
       cancellationToken
     );
 

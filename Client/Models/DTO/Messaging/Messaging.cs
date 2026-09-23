@@ -54,7 +54,7 @@ public sealed record SendMessageRequest(
   bool Confirm
 );
 
-public sealed record ReadRequest(DateTime Through);
+public sealed record ReadRequest(long Revision);
 
 public sealed record MessageTemplateView(
   string Name,
@@ -69,3 +69,14 @@ public sealed record TemplateRequest(
   string Language,
   IReadOnlyList<string> Parameters
 );
+
+// How many conversations hold messages this dispatcher has not read (at
+// most 99, then More), and the revision each one's latest driver message
+// arrived at: a notice is due only when one of these rises.
+public sealed record UnreadCount(
+  int Conversations,
+  bool More,
+  IReadOnlyList<UnreadMark> Latest
+);
+
+public sealed record UnreadMark(Guid ConversationId, long Revision);

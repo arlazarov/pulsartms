@@ -23,6 +23,7 @@ const openTab = async () => {
     leave: () => module.leave(),
     leads: () => calls.filter(([name]) => name === 'Lead').length,
     received: () => calls.filter(([name]) => name === 'Receive'),
+    counts: () => calls.filter(([name]) => name === 'Unread'),
   };
 };
 
@@ -118,6 +119,45 @@ test('another account in the same browser has its own leader', async () => {
   await settle();
   assert.deepEqual([mine.leads(), other.leads()], [2, 1]);
   for (const tab of [mine, theirs, other]) tab.leave();
+});
+
+test('the unread count and read marks reach every tab of the account', async () => {
+  install();
+  const leader = await openTab();
+  const other = await openTab();
+  const stranger = await openTab();
+  leader.join(scope);
+  other.join(scope);
+  stranger.join('user-2:session-9');
+  await settle();
+
+  const latest = [{ conversationId: id, revision: 7 }];
+  leader.post({ kind: 'unread', count: 1, more: false, latest });
+  other.post({ kind: 'read' });
+  assert.deepEqual(other.counts(), [['Unread', 1, false, latest]]);
+  assert.deepEqual(leader.received(), [['Receive', 'read', null]]);
+  assert.deepEqual([stranger.counts(), stranger.received()], [[], []]);
+
+  // A count that is not one is never delivered.
+  const mark = (conversationId, revision) => ({ conversationId, revision });
+  for (const bad of [
+    { kind: 'unread', count: -1, more: false, latest },
+    { kind: 'unread', count: 1.5, more: false, latest },
+    { kind: 'unread', count: 100, more: false, latest },
+    { kind: 'unread', count: 1, more: 'no', latest },
+    { kind: 'unread', count: 1, more: false, latest: 'all' },
+    { kind: 'unread', count: 1, more: false, latest: [mark('x', 1)] },
+    { kind: 'unread', count: 1, more: false, latest: [mark(id, -1)] },
+    {
+      kind: 'unread',
+      count: 1,
+      more: true,
+      latest: Array.from({ length: 100 }, () => mark(id, 1)),
+    },
+  ])
+    leader.post(bad);
+  assert.equal(other.counts().length, 1);
+  for (const tab of [leader, other, stranger]) tab.leave();
 });
 
 // The same .NET reference rejoins after a sign-in change. A lock request

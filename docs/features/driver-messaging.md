@@ -3,8 +3,9 @@
 What is implemented of the
 [messaging plan](../architecture/driver-messaging-plan.md). State on
 2026-09-23: local only, not deployed, migrations `AddDriverInbox`,
-`AddConversationOutbox` and `AddConversationTemplates` not applied
-anywhere, and no message has been received from or sent to a real driver.
+`AddConversationOutbox`, `AddConversationTemplates` and
+`AddConversationReadRevisions` not applied anywhere, and no message has
+been received from or sent to a real driver.
 
 ## Receiving
 
@@ -53,9 +54,28 @@ Dispatch policy: `GET /api/messaging/inbox?unread=` (newest 50, a fixed
 number of reads whatever the number of conversations),
 `GET /api/messaging/conversations/{id}?before=` (50 messages per page,
 newest first, with attachment states), `POST .../{id}/read` (this
-dispatcher's marker; it only moves forward and never past the newest
-message). Unread counts are each dispatcher's own and tell the driver
-nothing.
+dispatcher's marker: the conversation revision of the view they read; it
+only moves forward and never past the current revision). Unread counts
+are each dispatcher's own and tell the driver nothing.
+
+Unread is decided by when PulsR recorded a message, not by the provider's
+time: each driver message keeps the conversation revision it was recorded
+at (`ArrivedRevision`), a concurrency token that orders the
+conversation's commits, and a message is unread while the dispatcher's
+marker is below it. A message delivered late with an older time is
+therefore still unread. The conversation is read before its messages, so
+a marker at the view's revision never covers a message the view did not
+contain. Limit: a message so late that its time falls behind the newest
+50 is marked read with the rest when the thread is opened, though it
+shows only on the next page.
+
+`GET /api/messaging/unread` is the notice: up to 99 unread conversations
+(then `more`), each with the revision of its latest driver message,
+newest arrival first. Two reads; the database walks the company's
+conversations that have driver messages (index `CompanyId,
+LastInboundArrivedAt`) and this dispatcher's marker for each (`ConversationId,
+UserId`), so the work grows with conversations, not messages. Not
+measured on PostgreSQL.
 
 `GET /api/messaging/events` is a server-sent event stream of
 "conversation changed" signals (id and revision, no content) for the
@@ -67,7 +87,7 @@ reader that reconnects or misses signals reads the inbox again.
 
 `/messages` (Admin and Dispatch) lists conversations beside the open one;
 below the `md` breakpoint it shows one pane at a time. The thread reads
-oldest first, marks itself read through its newest message, and claims the
+oldest first, marks itself read at the revision it showed, and claims the
 conversation, at most once a minute, when the dispatcher starts typing.
 A reply keeps its retry key until it is sent; a reply refused as stale
 offers "Send anyway" with the same key. Outside the 24-hour window only
@@ -88,9 +108,27 @@ most every 30 seconds and reconnects with backoff (2 to 60 seconds). Each
 view reads again on a signal and discards an answer older than one it
 already has.
 
-Outside `/messages` nothing is signalled yet: a tab joins only while the
-Messages page is shown. A shell-level notice (navigation unread count and
-opt-in browser notifications) is the next stage.
+Every page shows the unread count beside Messages in the navigation
+(`Services/MessagingNotices.cs`, `Shared/MessagesNotice`), which keeps the
+tab joined to the stream on every page. Each tab reads the count once when
+it starts and when the account changes. After that only the leading tab
+reads it: a burst of signals becomes one read after 500 ms, and the count
+goes to every tab of the account over the channel, so a browser reads once
+per burst however many tabs are open. A tab that marks a conversation read
+tells the others ("read"), and the leader counts again.
+
+Browser notifications are opt-in on the Messages page ("Notify me of new
+messages"), per browser. Only the leading tab notifies, and only when a
+conversation's latest arrival revision rises above what it counted
+before; reads, claims and replies never raise it, and the first count
+after a start or an account change is only a baseline. A notification
+names no driver and quotes nothing, is skipped while the tab is in front,
+and shares one tag so a newer one replaces an older one. Every result
+carries the account generation it was asked for and is checked again
+right before it is shown, relayed or notified, so nothing from an earlier
+account or a disposed notice gets through. Limits: a conversation beyond
+the 99 newest unread cannot raise a notice; a leader that is hidden while
+another PulsR tab is in front still notifies.
 
 ## Local provider
 
@@ -179,8 +217,16 @@ a stream signal reads the open thread again),
 `Client.Tests/Routing/MessagingSignalsTests` (stream lines, account scope
 and rejoin on account change, local stream and polling after a failed
 import or join, a slow tick that outlasts the wait),
+`Client.Tests/Routing/MessagingNoticesTests` (one read and one relay per
+burst on the leader, none on a follower, only a risen arrival notifies,
+an account change or disposal during the relay or the import notifies
+nothing, an old account's answer dropped),
 `Client/tests/messaging/messagingChannel.test.js` (one leader per account,
-relay, hand-over, separate accounts, every tab leading without
-BroadcastChannel or Web Locks) and the `/messages` page in the offline UI
-smoke. Not run: a real WhatsApp webhook or media download, several real
-browser tabs, and PostgreSQL.
+relay, hand-over, separate accounts, an ended join's lock, counts and read
+marks between tabs, every tab leading without BroadcastChannel or Web
+Locks), `Client/tests/messaging/messagingNotices.test.js` (opt-in, tab in
+front, refusal, no API) and the offline UI smoke (`/messages`, and the
+navigation count on Dispatch). Server:
+`InboxReadTests.ALateMessageWithAnOlderTimeIsUnreadAndRaisesTheNotice`.
+Not run: a real WhatsApp webhook or media download, several real browser
+tabs, a real notification permission, and PostgreSQL.

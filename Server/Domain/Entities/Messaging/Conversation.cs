@@ -23,5 +23,14 @@ public sealed class Conversation : BaseEntity, ICompanyOwned
   // colleague sees it; it is a courtesy, never a lock on sending.
   public Guid? ClaimedBy { get; set; }
   public DateTime? ClaimedUntil { get; set; }
+
+  // Raised with every committed change; a concurrency token, so it orders
+  // the conversation's changes as they were committed.
   public long Revision { get; set; }
+
+  // The revision, and PulsR's time, at which the latest driver message was
+  // recorded. Unread and notices compare these, never the provider's
+  // time, so a message that arrives late with an older time still counts.
+  public long LastInboundRevision { get; set; }
+  public DateTime? LastInboundArrivedAt { get; set; }
 }

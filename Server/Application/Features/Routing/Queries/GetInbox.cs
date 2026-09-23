@@ -7,7 +7,24 @@ namespace Application.Features.Routing.Queries;
 public sealed record GetInboxQuery(bool UnreadOnly)
   : IRequest<RequestResponse<InboxView>>;
 
-public sealed record MarkConversationReadCommand(Guid Id, DateTime Through)
+// For the notice every page shows: how many conversations hold driver
+// messages this dispatcher has not read (at most NoticeLimit, then More),
+// and for each the revision its latest driver message arrived at, newest
+// arrival first. A notice is due when a conversation's revision rises; a
+// read, a claim or a reply never raises it.
+public sealed record GetUnreadNoticeQuery
+  : IRequest<RequestResponse<UnreadNotice>>;
+
+public sealed record UnreadNotice(
+  int Conversations,
+  bool More,
+  IReadOnlyList<UnreadMark> Latest
+);
+
+public sealed record UnreadMark(Guid ConversationId, long Revision);
+
+// Revision: the conversation's revision in the view the dispatcher read.
+public sealed record MarkConversationReadCommand(Guid Id, long Revision)
   : IRequest<RequestResponse<bool>>;
 
 public sealed record ConversationSummary(
@@ -41,9 +58,11 @@ public sealed class InboxHandlers(
   TimeProvider clock
 )
   : IRequestHandler<GetInboxQuery, RequestResponse<InboxView>>,
+    IRequestHandler<GetUnreadNoticeQuery, RequestResponse<UnreadNotice>>,
     IRequestHandler<MarkConversationReadCommand, RequestResponse<bool>>
 {
   public const int PageSize = 50;
+  public const int NoticeLimit = 99;
 
   public async Task<RequestResponse<InboxView>> Handle(
     GetInboxQuery request,
@@ -57,15 +76,12 @@ public sealed class InboxHandlers(
       .Conversations.AsNoTracking()
       .Where(x =>
         !request.UnreadOnly
-        || db.ConversationMessages.Any(m =>
-          m.ConversationId == x.Id
-          && m.Direction == MessageDirections.Inbound
+        || x.LastInboundRevision > 0
           && !db.ConversationReads.Any(r =>
             r.ConversationId == x.Id
             && r.UserId == user
-            && r.ReadThrough >= m.SentAt
+            && r.ReadRevision >= x.LastInboundRevision
           )
-        )
       )
       .OrderByDescending(x => x.LastMessageAt)
       .ThenBy(x => x.Id)
@@ -76,6 +92,44 @@ public sealed class InboxHandlers(
     return RequestResponse<InboxView>.Ok(new(summaries, page.Count > PageSize));
   }
 
+  // Two reads: the caller, then the unread conversations, at most
+  // NoticeLimit + 1 of them. The database still walks every conversation
+  // of the company that has a driver message, newest arrival first
+  // (CompanyId, LastInboundArrivedAt), and looks up this dispatcher's
+  // marker for each (ConversationId, UserId): the work grows with the
+  // company's conversations, not with their messages, and has not been
+  // measured on PostgreSQL.
+  public async Task<RequestResponse<UnreadNotice>> Handle(
+    GetUnreadNoticeQuery request,
+    CancellationToken ct
+  )
+  {
+    if (await Inbox.UserAsync(db, caller, ct) is not { } user)
+      return RequestResponse<UnreadNotice>.Fail("Access denied.", 403);
+    var unread = await db
+      .Conversations.AsNoTracking()
+      .Where(c =>
+        c.LastInboundRevision > 0
+        && !db.ConversationReads.Any(r =>
+          r.ConversationId == c.Id
+          && r.UserId == user
+          && r.ReadRevision >= c.LastInboundRevision
+        )
+      )
+      .OrderByDescending(c => c.LastInboundArrivedAt)
+      .ThenBy(c => c.Id)
+      .Select(c => new UnreadMark(c.Id, c.LastInboundRevision))
+      .Take(NoticeLimit + 1)
+      .ToListAsync(ct);
+    return RequestResponse<UnreadNotice>.Ok(
+      new(
+        Math.Min(unread.Count, NoticeLimit),
+        unread.Count > NoticeLimit,
+        [.. unread.Take(NoticeLimit)]
+      )
+    );
+  }
+
   public async Task<RequestResponse<bool>> Handle(
     MarkConversationReadCommand request,
     CancellationToken ct
@@ -83,15 +137,15 @@ public sealed class InboxHandlers(
   {
     if (await Inbox.UserAsync(db, caller, ct) is not { } user)
       return RequestResponse<bool>.Fail("Access denied.", 403);
-    if (!await db.Conversations.AnyAsync(x => x.Id == request.Id, ct))
+    // A marker only moves forward, and never past the conversation's
+    // current revision.
+    var current = await db
+      .Conversations.Where(x => x.Id == request.Id)
+      .Select(x => (long?)x.Revision)
+      .SingleOrDefaultAsync(ct);
+    if (current is not { } revision)
       return RequestResponse<bool>.Fail("Conversation not found.", 404);
-    // A marker only moves forward, and never past what has arrived.
-    var through = request.Through.ToUniversalTime();
-    var newest = await db
-      .ConversationMessages.Where(x => x.ConversationId == request.Id)
-      .MaxAsync(x => (DateTime?)x.SentAt, ct);
-    if (newest is { } last && through > last)
-      through = last;
+    var through = Math.Min(request.Revision, revision);
     var read = await db.ConversationReads.SingleOrDefaultAsync(
       x => x.ConversationId == request.Id && x.UserId == user,
       ct
@@ -103,11 +157,11 @@ public sealed class InboxHandlers(
           Id = Guid.NewGuid(),
           ConversationId = request.Id,
           UserId = user,
-          ReadThrough = through,
+          ReadRevision = through,
         }
       );
-    else if (through > read.ReadThrough)
-      read.ReadThrough = through;
+    else if (through > read.ReadRevision)
+      read.ReadRevision = through;
     try
     {
       await db.SaveChangesAsync(ct);
@@ -146,10 +200,6 @@ public static class Inbox
     if (conversations.Count == 0)
       return [];
     var ids = conversations.Select(x => x.Id).ToArray();
-    var reads = await db
-      .ConversationReads.AsNoTracking()
-      .Where(x => x.UserId == user && ids.Contains(x.ConversationId))
-      .ToDictionaryAsync(x => x.ConversationId, x => x.ReadThrough, ct);
     var unread = await db
       .ConversationMessages.AsNoTracking()
       .Where(m =>
@@ -158,7 +208,7 @@ public static class Inbox
         && !db.ConversationReads.Any(r =>
           r.ConversationId == m.ConversationId
           && r.UserId == user
-          && r.ReadThrough >= m.SentAt
+          && r.ReadRevision >= m.ArrivedRevision
         )
       )
       .GroupBy(m => m.ConversationId)

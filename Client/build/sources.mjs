@@ -17,6 +17,7 @@ export const sources = [
   'shared/loadDialog',
   'shared/pageVisibility',
   'shared/messagingChannel',
+  'shared/messagingNotices',
   'dispatch/dispatch',
   'dispatch/documents',
   'settings/storagePicker',

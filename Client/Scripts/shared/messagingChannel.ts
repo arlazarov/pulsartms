@@ -5,8 +5,9 @@
 // leading tab closes, the lock passes to another. Without both APIs there
 // is no election: every tab leads and reads its own stream, since a leader
 // that cannot relay would leave the other tabs deaf. Signals carry no
-// content: "conversation X changed", "read everything again" after a
-// reconnect, and a slow "poll" tick while the stream is down.
+// message content: "conversation X changed", "read everything again" after
+// a reconnect, a slow "poll" tick while the stream is down, "read" when a
+// tab marked a conversation read, and the leader's unread count.
 
 interface DotNetRef {
   invokeMethodAsync(name: string, ...args: unknown[]): Promise<unknown>;
@@ -15,7 +16,14 @@ interface DotNetRef {
 type Signal =
   | { kind: 'change'; id: string }
   | { kind: 'resync' }
-  | { kind: 'poll' };
+  | { kind: 'poll' }
+  | { kind: 'read' }
+  | { kind: 'unread'; count: number; more: boolean; latest: Mark[] };
+
+interface Mark {
+  conversationId: string;
+  revision: number;
+}
 
 const channelName = 'pulsr-messaging';
 const lockName = 'pulsr-messaging-stream';
@@ -30,24 +38,66 @@ let release: (() => void) | null = null;
 // recognised by its generation, not by the reference.
 let generation = 0;
 
-function valid(value: unknown): value is Signal {
-  const signal = value as Partial<{ kind: string; id: string }> | null;
-  if (signal === null || typeof signal !== 'object') return false;
-  if (signal.kind === 'resync' || signal.kind === 'poll') return true;
+const maximumMarks = 99;
+
+function validMark(value: unknown): boolean {
+  const mark = value as Partial<Mark> | null;
   return (
-    signal.kind === 'change' &&
-    typeof signal.id === 'string' &&
-    guid.test(signal.id)
+    mark !== null &&
+    typeof mark === 'object' &&
+    typeof mark.conversationId === 'string' &&
+    guid.test(mark.conversationId) &&
+    Number.isSafeInteger(mark.revision) &&
+    mark.revision! >= 0
   );
+}
+
+function valid(value: unknown): value is Signal {
+  const signal = value as Partial<{
+    kind: string;
+    id: string;
+    count: number;
+    more: boolean;
+    latest: unknown[];
+  }> | null;
+  if (signal === null || typeof signal !== 'object') return false;
+  switch (signal.kind) {
+    case 'resync':
+    case 'poll':
+    case 'read':
+      return true;
+    case 'change':
+      return typeof signal.id === 'string' && guid.test(signal.id);
+    case 'unread':
+      return (
+        Number.isInteger(signal.count) &&
+        signal.count! >= 0 &&
+        signal.count! <= maximumMarks &&
+        typeof signal.more === 'boolean' &&
+        Array.isArray(signal.latest) &&
+        signal.latest.length <= maximumMarks &&
+        signal.latest.every(validMark)
+      );
+    default:
+      return false;
+  }
 }
 
 function deliver(value: unknown): void {
   if (!dotnet || !valid(value)) return;
-  void dotnet.invokeMethodAsync(
-    'Receive',
-    value.kind,
-    value.kind === 'change' ? value.id : null,
-  );
+  if (value.kind === 'unread')
+    void dotnet.invokeMethodAsync(
+      'Unread',
+      value.count,
+      value.more,
+      value.latest,
+    );
+  else
+    void dotnet.invokeMethodAsync(
+      'Receive',
+      value.kind,
+      value.kind === 'change' ? value.id : null,
+    );
 }
 
 // Scope names the signed-in account and session, so a tab signed in as
@@ -83,7 +133,8 @@ export function join(ref: DotNetRef, scope: string): void {
   );
 }
 
-// From the leading tab: to every other tab, and to this one.
+// To every other tab, and to this one: signals from the leading tab, and
+// "read" from whichever tab marked a conversation read.
 export function post(signal: unknown): void {
   if (!valid(signal)) return;
   channel?.postMessage(signal);

@@ -139,6 +139,7 @@ public static class DependencyInjection
     services.AddScoped<IConsistencyRule, CancelledSourceHeldRule>();
     services.AddScoped<IConsistencyRule, ExecutionPlanningDemandRule>();
     services.AddScoped<IConsistencyRule, PlanningRefreshDemandRule>();
+    services.AddScoped<IConsistencyRule, UnreadArrivalRule>();
     services.AddSingleton<TruckHistoryQueue>();
     services.AddSingleton<TruckHistoryCache>();
     services.AddSingleton<ICacheMemorySource>(sp =>

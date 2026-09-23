@@ -43,7 +43,7 @@ public sealed class MessagesPageTests
     var items = page.FindAll(".messages__item");
     Assert.Contains("Where do I fuel?", items[0].TextContent);
     Assert.Contains("At the Pilot", items[1].TextContent);
-    Assert.Equal(Now.AddMinutes(5), api.ReadThrough);
+    Assert.Equal(3, api.ReadRevision);
     Assert.NotNull(page.Find("#messages-text"));
   }
 
@@ -117,6 +117,7 @@ public sealed class MessagesPageTests
     context.JSInterop.SetupModule("./js/generated/shared/messagingChannel.js");
     context.Services.AddSingleton<TokenStorageService>();
     context.Services.AddSingleton<MessagingSignals>();
+    context.JSInterop.SetupModule("./js/generated/shared/messagingNotices.js");
     return context;
   }
 
@@ -124,7 +125,7 @@ public sealed class MessagesPageTests
   {
     public bool RefuseFirstAsStale { get; init; }
     public List<SendMessageRequest> Sends { get; } = [];
-    public DateTime? ReadThrough { get; private set; }
+    public long? ReadRevision { get; private set; }
     public int ThreadReads { get; private set; }
     public int InboxReads { get; private set; }
 
@@ -201,9 +202,9 @@ public sealed class MessagesPageTests
       }
       if (path.EndsWith("/read"))
       {
-        ReadThrough = (
+        ReadRevision = (
           await request.Content!.ReadFromJsonAsync<ReadRequest>(ct)
-        )!.Through;
+        )!.Revision;
         return Ok(true);
       }
       if (path.EndsWith("/messages"))

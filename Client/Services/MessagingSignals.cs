@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Client.Models.DTO.Messaging;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
 
@@ -148,11 +149,51 @@ public sealed class MessagingSignals : IAsyncDisposable
     }
   }
 
+  // Whether this tab reads the stream for the browser (or for itself, when
+  // it has no channel).
+  public bool IsLeading => _leading is { IsCancellationRequested: false };
+
   [JSInvokable]
   public void Receive(string kind, string? id) =>
     Changed?.Invoke(
       new(kind, Guid.TryParse(id, out var conversation) ? conversation : null)
     );
+
+  // The leading tab's unread count, relayed to every tab of the account.
+  [JSInvokable]
+  public void Unread(int count, bool more, UnreadMark[] latest) =>
+    Changed?.Invoke(new("unread", null, new(count, more, latest)));
+
+  // "read" from the tab that marked a conversation read, and the leader's
+  // "unread" count: to every tab of the account through the channel, or to
+  // this tab alone without one.
+  public Task AnnounceReadAsync() => AnnounceAsync(new { kind = "read" });
+
+  public Task AnnounceUnreadAsync(UnreadCount count) =>
+    AnnounceAsync(
+      new
+      {
+        kind = "unread",
+        count = count.Conversations,
+        more = count.More,
+        latest = count.Latest,
+      },
+      count
+    );
+
+  private async Task AnnounceAsync(object signal, UnreadCount? count = null)
+  {
+    if (_joined && _module is not null)
+      try
+      {
+        await _module.InvokeVoidAsync("post", signal);
+        return;
+      }
+      catch (JSException) { }
+    Changed?.Invoke(
+      count is null ? new("read", null) : new("unread", null, count)
+    );
+  }
 
   [JSInvokable]
   public Task Lead()
@@ -278,4 +319,8 @@ public sealed class MessagingSignals : IAsyncDisposable
   }
 }
 
-public sealed record MessagingSignal(string Kind, Guid? ConversationId);
+public sealed record MessagingSignal(
+  string Kind,
+  Guid? ConversationId,
+  UnreadCount? Unread = null
+);
