@@ -18,6 +18,7 @@ that every proposed optimization has been implemented.
 | Business formulas and route matching | Domain rules |
 | Durable route and movement state | RoutePlanStore / RoutePlanStorage |
 | Durable fuel selection | TruckFuelPlans and its Infrastructure store |
+| Fuel hand-over records | FuelIssueRecords |
 | Heavy preparation and durable demand | PlanningRefreshOperation |
 | Shared display snapshots | PlanningSummaryCache |
 | Board planning reads | BoardPlanningReader |
@@ -48,6 +49,12 @@ opens what is already prepared; it is not the start of a calculation. The
 thirty-second summary refresh of each running truck is a projection of saved
 route and fuel state, not a geometry or fuel rebuild; its cost at 100 trucks has
 not been measured.
+
+A saved fuel plan's hand-over state - which stops are this shift's, and which
+were sent - is set when TruckFuelPlans projects it for display, from the hours
+already in the planning inputs and one query of that truck's hand-overs. It
+reaches Fleet Map and Dispatch through the same summary, never per card. A
+confirmed hand-over asks for that one truck's summary after it commits.
 
 For a new displayed field, first find its existing calculation and durable owner.
 Add the value to the shared display projection when both screens need it. Carry

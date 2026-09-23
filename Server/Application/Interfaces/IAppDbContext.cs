@@ -22,6 +22,7 @@ public interface IAppDbContext
   DbSet<User> Users { get; }
   DbSet<FuelStation> FuelStations { get; }
   DbSet<TruckFuelPlan> TruckFuelPlans { get; }
+  DbSet<FuelVisitSend> FuelVisitSends { get; }
   DbSet<FuelDiscount> FuelDiscounts { get; }
   DbSet<FuelTransaction> FuelTransactions { get; }
   DbSet<FuelImportSource> FuelImportSources { get; }

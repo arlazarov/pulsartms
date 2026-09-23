@@ -19,6 +19,7 @@ public static class OptionsRegistration
     Bind<RouteRecalculationBudgetOptions>("RouteRecalculationBudget");
     Bind<RoutePreparationOptions>("RoutePreparation");
     Bind<EtaPlanningOptions>("EtaPlanning");
+    Bind<FuelIssueOptions>("FuelIssue");
     return services;
 
     void Bind<T>(string section)

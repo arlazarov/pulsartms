@@ -1,0 +1,54 @@
+<section class="fuel-send-plan" role="region" aria-label="Send fuel plan" aria-busy="@(_loading || _saving ? "true" : "false")">
+    <header class="fuel-send-plan__header">
+        <div><strong class="fuel-send-plan__title">Send fuel plan</strong><span>Truck @TruckNumber</span></div>
+        <button type="button" class="btn btn--small" aria-label="Close send fuel plan" disabled="@_saving" @onclick="CloseAsync">×</button>
+    </header>
+    <div class="fuel-send-plan__body">
+        @if (_loading && _preview is null) { <p role="status"><LoadingIndicator /></p> }
+        @if (_error is not null)
+        {
+            <p class="fuel-send-plan__error" role="alert">@_error
+                <button type="button" class="btn btn--small" disabled="@(_loading || _saving)" @onclick="LoadAsync">Open the current plan</button>
+            </p>
+        }
+        @if (_preview is { } preview)
+        {
+            @if (preview.Critical)
+            {
+                <p class="fuel-send-plan__critical" role="alert">A planned fuel stop is out of reach. Review the fuel plan before sending it.</p>
+            }
+            <p class="fuel-send-plan__state" role="status">@StateText(preview)</p>
+            <h3 class="fuel-send-plan__section">Ready for current shift</h3>
+            @if (preview.Lines.Count == 0)
+            {
+                <p class="fuel-send-plan__empty">No fuel stop is planned for this shift.</p>
+            }
+            else
+            {
+                <ol class="fuel-send-plan__lines">
+                    @foreach (var line in preview.Lines)
+                    {
+                        <li @key="line.VisitKey">
+                            <span>@line.Text</span>
+                            @if (line.Changed) { <span class="fleet-fuel-visit__sent fleet-fuel-visit__sent--changed">Changed since sent</span> }
+                            else if (line.Sent) { <span class="fleet-fuel-visit__sent">Sent</span> }
+                        </li>
+                    }
+                </ol>
+            }
+            <h3 class="fuel-send-plan__section">Upcoming / provisional</h3>
+            <p class="fuel-send-plan__hint">Later fuel stops stay provisional and are not in this message. They are sent when their shift comes.</p>
+            <label class="fuel-send-plan__message" for="fuel-send-plan-message">Message to the driver
+                <textarea id="fuel-send-plan-message" readonly rows="6" value="@preview.Message"></textarea>
+            </label>
+            <p class="fuel-send-plan__hint">Automatic sending is not connected yet. Copy the message and send it to the driver yourself, then mark it as sent. Copying does not mark it sent.</p>
+            <div class="fuel-send-plan__actions">
+                <button type="button" class="btn" disabled="@(_saving)" @onclick="CopyAsync">Copy message</button>
+                <button type="button" class="btn btn--primary" disabled="@(_saving || preview.Lines.Count == 0 || AllSent(preview))" @onclick="MarkSentAsync">
+                    @(_saving ? "Marking…" : "Mark as sent")
+                </button>
+                @if (_status is not null) { <span class="fuel-send-plan__status" role="status">@_status</span> }
+            </div>
+        }
+    </div>
+</section>

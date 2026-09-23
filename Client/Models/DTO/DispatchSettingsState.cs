@@ -5,5 +5,6 @@ public sealed record DispatchSettingsState(
   long Revision,
   DateTime? UpdatedAt,
   string TemperatureUnit = "both",
-  string DistanceUnit = "both"
+  string DistanceUnit = "both",
+  bool AutomaticFuelSending = false
 );

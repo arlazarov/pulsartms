@@ -160,6 +160,33 @@ public class RoutePlanningController : BaseController
       cancellationToken
     );
 
+  // What would be handed to the driver for this shift. Reading it sends
+  // and records nothing.
+  [Authorize(Policy = "Dispatch")]
+  [HttpGet("fuel/issue")]
+  public Task<IActionResult> FuelIssuePreview(
+    Guid dispatchId,
+    CancellationToken cancellationToken,
+    [FromQuery] Guid? executionLegId = null
+  ) =>
+    HandleRequest(
+      new GetFuelIssuePreviewQuery(dispatchId, executionLegId),
+      cancellationToken
+    );
+
+  // A dispatcher confirming the previewed plan was passed on by hand.
+  [Authorize(Policy = "Dispatch")]
+  [HttpPost("fuel/issue/sent")]
+  public Task<IActionResult> ConfirmFuelIssueSent(
+    Guid dispatchId,
+    FuelIssueSentRequest request,
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(
+      new ConfirmFuelIssueSentCommand(dispatchId, request),
+      cancellationToken
+    );
+
   [HttpPost("fuel/reset")]
   public Task<IActionResult> ResetFuel(
     Guid dispatchId,

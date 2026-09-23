@@ -10,6 +10,12 @@ public sealed class DispatchSettings : BaseEntity, ICompanyOwned
   public string LoadNumberPrefix { get; set; } = string.Empty;
   public string TemperatureUnit { get; set; } = "both";
   public string DistanceUnit { get; set; } = "both";
+
+  // Fuel plans are prepared in the background either way. This decides
+  // only whether a prepared plan may be sent without a dispatcher pressing
+  // Send plan. Off unless a company turns it on; a company with no settings
+  // row reads it as off too.
+  public bool AutomaticFuelSending { get; set; }
   public long Revision { get; set; }
   public DateTime UpdatedAt { get; set; }
 }

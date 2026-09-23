@@ -26,7 +26,8 @@ public sealed class GetDispatchSettingsHandler(IAppDbContext db)
         x.Revision,
         x.UpdatedAt,
         x.TemperatureUnit,
-        x.DistanceUnit
+        x.DistanceUnit,
+        x.AutomaticFuelSending
       ))
       .SingleOrDefaultAsync(cancellationToken);
     return RequestResponse<DispatchSettingsState>.Ok(

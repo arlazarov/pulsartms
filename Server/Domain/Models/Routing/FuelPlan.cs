@@ -53,6 +53,11 @@ public sealed class FuelPlan
   public double? SavingsUsd { get; set; }
   public bool UsesIfta { get; set; }
   public List<FuelPlanStop> Stops { get; set; } = [];
+
+  // Set when the plan is read for display, never stored with it.
+  public string? IssueState { get; set; }
+  public DateTimeOffset? IssueHorizonEndsAt { get; set; }
+  public bool IssueCritical { get; set; }
   public List<FuelStopArrival> StopArrivals { get; set; } = [];
   public List<string> Notes { get; set; } = [];
 }

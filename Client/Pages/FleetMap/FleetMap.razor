@@ -414,7 +414,9 @@
                     @onclick="ShowRouteAsync">
                 <ActionIcon Kind="route-overview" /><span>Fit route</span>
             </button>
-            <button type="button" class="btn map-action-icon" title="Fuel plan" aria-label="Fuel plan" disabled="@(!CanEditFuel || _fuelEditorOpen || _recalculatingFuel)" @onclick="OpenFuelEditorAsync"><ActionIcon Kind="fuel" /><span>Fuel</span></button>
+            <button type="button" class="btn map-action-icon" title="Fuel plan" aria-label="Fuel plan" disabled="@(!CanEditFuel || _fuelEditorOpen || _sendPlanOpen || _recalculatingFuel)" @onclick="OpenFuelEditorAsync"><ActionIcon Kind="fuel" /><span>Fuel</span></button>
+            @* The plan as it goes to the driver. Opening it sends nothing. *@
+            <button type="button" class="btn map-action-icon" title="Send plan" aria-label="Send plan" disabled="@(!CanSendPlan)" @onclick="OpenSendPlanAsync"><ActionIcon Kind="contact" /><span>Send plan</span></button>
             <button type="button" class="btn map-action-icon" title="Camera" aria-label="Camera" @onclick="OpenCameraAsync"><ActionIcon Kind="camera" /><span>Camera</span></button>
             <button type="button" class="btn map-action-icon" title="Route options" aria-label="Route options"
                     disabled="@(_fuelEditorOpen || SelectedDispatchId is null)" @onclick="OpenSelectedRouteEditorAsync"><ActionIcon Kind="route" /><span>Route options</span></button>
@@ -570,6 +572,13 @@
             Failed="@(() => OnFuelEditorFailedAsync(editorIdentity))"
             Saved="OnFuelPlanSavedAsync" Reset="OnFuelPlanResetAsync"
             Closed="() => CloseFuelEditorAsync(editorIdentity)" />
+    }
+    @if (_sendPlanOpen && _sendPlanIdentity is { } sending)
+    {
+        <FuelSendPlan @key="sending" DispatchId="sending.Dispatch" ExecutionLegId="sending.Leg"
+            TruckNumber="@(SelectedTruck?.UnitNumber ?? "")"
+            Sent="() => OnFuelPlanSentAsync(sending)"
+            Closed="() => CloseSendPlanAsync(sending)" />
     }
     @if (_routeEditorDispatch is { } editingRoute)
     {

@@ -81,6 +81,54 @@ public sealed class FuelPlanMemory(ICurrentCompany companies)
     }
   }
 
+  // Today's quote per station, for telling a price change that matters from
+  // one that only moves the estimate. Shares the price gate and lifetime.
+  public async Task<
+    IReadOnlyDictionary<Guid, FuelPriceMateriality.Quote>?
+  > QuotesAsync(
+    string key,
+    Func<Task<IReadOnlyDictionary<Guid, FuelPriceMateriality.Quote>?>> load,
+    CancellationToken ct
+  )
+  {
+    if (companies.Id is not { } company)
+      return null;
+    key = $"{company:N}:quotes:{key}";
+    if (
+      cache.TryGetValue<IReadOnlyDictionary<Guid, FuelPriceMateriality.Quote>>(
+        key,
+        out var found
+      )
+    )
+      return found;
+    await priceGate.WaitAsync(ct);
+    try
+    {
+      if (
+        cache.TryGetValue<
+          IReadOnlyDictionary<Guid, FuelPriceMateriality.Quote>
+        >(key, out found)
+      )
+        return found;
+      found = await load();
+      if (found is not null)
+        cache.Set(
+          key,
+          found,
+          new MemoryCacheEntryOptions
+          {
+            Size = 512 + found.Count * 96L,
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30),
+          }
+        );
+      return found;
+    }
+    finally
+    {
+      priceGate.Release();
+    }
+  }
+
   public async Task<RouteGeometry?> LegAsync(
     TruckFuelPlanSnapshot snapshot,
     int index,

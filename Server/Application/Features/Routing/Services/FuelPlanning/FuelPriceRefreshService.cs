@@ -116,6 +116,26 @@ public sealed class FuelPriceRefreshService(
     var signature = UsFuelDiscountSignature.Calendar(days);
     if (saved.Plan.UsDiscountSignature == signature)
       return;
+    // The reader lets a small price change move the estimate and not the
+    // stations; this has to agree, or the reader shows a plan as current
+    // that this keeps searching again, or the other way round.
+    var quotes = days.ToDictionary(
+      x => x.Key,
+      x =>
+        FuelPriceMateriality.Quotes(
+          FuelRegionGrid.Prices(x.Value, current.State.Profile, x.Key)
+        )
+    );
+    if (
+      current.State.Plan.FuelPlan is { } shown
+      && !FuelPriceMateriality.Material(
+        shown.Stops,
+        stop =>
+          quotes.GetValueOrDefault(stop.PriceDate)
+            ?.GetValueOrDefault(stop.StationId)
+      )
+    )
+      return;
     await RecalculateAsync(saved, current, dispatchId, ct);
   }
 

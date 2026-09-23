@@ -222,7 +222,14 @@ internal sealed class PlanningTestServices : IDisposable
       FuelInputs,
       new CarrierFuelPrices(sender),
       Options.Create(new FuelRegionOptions()),
-      SavedFuelInputs
+      SavedFuelInputs,
+      new FuelIssueRecords(
+        db,
+        new PlanningSummaryCache(TimeProvider.System),
+        new TestCompany(),
+        Options.Create(new FuelIssueOptions()),
+        TimeProvider.System
+      )
     );
     FuelSchedules = new(db, hos, hos, Eta);
     Fuel = new(

@@ -144,6 +144,8 @@ public static class DependencyInjection
     services.AddScoped<IFuelWorkInputsReader, FuelWorkInputsReader>();
     services.AddScoped<ICarrierFuelPrices, CarrierFuelPrices>();
     services.AddScoped<TruckFuelPlans>();
+    services.AddScoped<FuelIssueRecords>();
+    services.AddScoped<Application.Features.Routing.Commands.FuelIssuePreviews>();
     services.AddSingleton<FuelPlanMemory>();
     services.AddSingleton<ICacheMemorySource>(sp =>
       sp.GetRequiredService<FuelPlanMemory>()

@@ -23,7 +23,10 @@ public partial class FleetMap
   private bool _mobileTruckDetailsOpen;
   private TruckCamera? _truckCamera;
   private bool MapOverlayOpen =>
-    _fuelEditorOpen || _routeEditorDispatch.HasValue || _cameraOpen;
+    _fuelEditorOpen
+    || _sendPlanOpen
+    || _routeEditorDispatch.HasValue
+    || _cameraOpen;
   private bool HasTruckInspection =>
     _activeTruckId.HasValue || _activeDispatchId.HasValue;
   private Guid? InspectorTruckId =>

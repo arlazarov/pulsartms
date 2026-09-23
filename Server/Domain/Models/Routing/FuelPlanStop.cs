@@ -38,4 +38,8 @@ public sealed class FuelPlanStop
   public DateOnly PriceDate { get; set; }
   public DateTimeOffset? EstimatedArrival { get; set; }
   public bool PriceEstimated { get; set; }
+
+  // Set when the plan is read for display, never stored with it.
+  public string? IssueHorizon { get; set; }
+  public FuelSendStatus? Sent { get; set; }
 }

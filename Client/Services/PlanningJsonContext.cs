@@ -13,4 +13,5 @@ namespace Client.Services;
 [JsonSerializable(typeof(RequestResponseDTO<List<AutomaticPlanningResult>>))]
 [JsonSerializable(typeof(RequestResponseDTO<FuelPlanEditPreview>))]
 [JsonSerializable(typeof(RequestResponseDTO<DispatchMapRoute>))]
+[JsonSerializable(typeof(RequestResponseDTO<FuelIssuePreview>))]
 internal partial class PlanningJsonContext : JsonSerializerContext;

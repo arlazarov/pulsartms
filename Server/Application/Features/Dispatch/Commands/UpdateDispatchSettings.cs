@@ -8,7 +8,8 @@ public sealed record UpdateDispatchSettingsCommand(
   string? LoadNumberPrefix,
   long Revision,
   string? TemperatureUnit = null,
-  string? DistanceUnit = null
+  string? DistanceUnit = null,
+  bool? AutomaticFuelSending = null
 ) : IRequest<RequestResponse<DispatchSettingsState>>, IChecked
 {
   public IEnumerable<string> Wrong()
@@ -54,14 +55,25 @@ public sealed class UpdateDispatchSettingsHandler(
     var temperature =
       request.TemperatureUnit ?? entity?.TemperatureUnit ?? "both";
     var distance = request.DistanceUnit ?? entity?.DistanceUnit ?? "both";
+    // A client that does not know the setting leaves it as it was.
+    var automatic =
+      request.AutomaticFuelSending ?? entity?.AutomaticFuelSending ?? false;
     if (
       entity is not null
       && entity.LoadNumberPrefix == prefix
       && entity.TemperatureUnit == temperature
       && entity.DistanceUnit == distance
+      && entity.AutomaticFuelSending == automatic
     )
       return RequestResponse<DispatchSettingsState>.Ok(
-        new(prefix, entity.Revision, entity.UpdatedAt, temperature, distance)
+        new(
+          prefix,
+          entity.Revision,
+          entity.UpdatedAt,
+          temperature,
+          distance,
+          automatic
+        )
       );
     var creating = entity is null;
     if (entity is null)
@@ -72,6 +84,7 @@ public sealed class UpdateDispatchSettingsHandler(
     entity.LoadNumberPrefix = prefix;
     entity.TemperatureUnit = temperature;
     entity.DistanceUnit = distance;
+    entity.AutomaticFuelSending = automatic;
     entity.Revision++;
     entity.UpdatedAt = clock.GetUtcNow().UtcDateTime;
     try
@@ -98,7 +111,14 @@ public sealed class UpdateDispatchSettingsHandler(
       throw;
     }
     return RequestResponse<DispatchSettingsState>.Ok(
-      new(prefix, entity.Revision, entity.UpdatedAt, temperature, distance)
+      new(
+        prefix,
+        entity.Revision,
+        entity.UpdatedAt,
+        temperature,
+        distance,
+        automatic
+      )
     );
   }
 

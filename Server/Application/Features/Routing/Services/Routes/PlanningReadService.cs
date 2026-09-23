@@ -180,7 +180,7 @@ public sealed class PlanningReadService(
       CheckAssignments(result.State?.Plan, snapshot);
       if (!PlanningWorkPolicy.IsCompleted(result.State?.Plan, load))
       {
-        await ApplyFuelAsync(result.State, ct, snapshot);
+        await ApplyFuelAsync(result.State, ct, snapshot, work.Hos);
         if (metadataOnly && result.State?.Plan is { } plan)
         {
           TrimForDisplay(plan, plan.Id, plan.Version);
@@ -236,7 +236,7 @@ public sealed class PlanningReadService(
       knownVersion
     );
     CheckAssignments(result.State?.Plan, work?.Itinerary);
-    await ApplyFuelAsync(result.State, ct, work?.Itinerary);
+    await ApplyFuelAsync(result.State, ct, work?.Itinerary, work?.Hos);
     return PlanningWorkPolicy.WithWarnings(result, segment);
   }
 
@@ -247,7 +247,7 @@ public sealed class PlanningReadService(
   )
   {
     CheckAssignments(result.State?.Plan, work.Itinerary);
-    await ApplyFuelAsync(result.State, ct, work.Itinerary);
+    await ApplyFuelAsync(result.State, ct, work.Itinerary, work.Hos);
     return result with
     {
       Hos = work.Hos,
@@ -263,10 +263,11 @@ public sealed class PlanningReadService(
   private async Task ApplyFuelAsync(
     RoutePlanningState? state,
     CancellationToken ct,
-    TruckItinerarySnapshot? itinerary
+    TruckItinerarySnapshot? itinerary,
+    DriverHosClocks? hos = null
   )
   {
-    await fuelPlans.ApplyAsync(state, ct, itinerary);
+    await fuelPlans.ApplyAsync(state, ct, itinerary, hos);
     if (state is not null)
       state.FuelStopArrivals = FuelArrivalForecast.Calculate(state);
   }

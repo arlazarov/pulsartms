@@ -30,4 +30,6 @@ public sealed class FuelPlanStop
   public DateOnly PriceDate { get; set; }
   public DateTimeOffset? EstimatedArrival { get; set; }
   public bool PriceEstimated { get; set; }
+  public string? IssueHorizon { get; set; }
+  public FuelSendStatus? Sent { get; set; }
 }

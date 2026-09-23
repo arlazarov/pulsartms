@@ -5,6 +5,7 @@ using Application.Features.Fuel.Queries.GetFuelStations;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.Routes;
 using Domain.Models.Execution;
+using Domain.Models.Fleet;
 using Domain.Models.Fuel;
 using Domain.Models.Routing;
 using Domain.Policies;
@@ -21,7 +22,8 @@ public sealed class TruckFuelPlans(
   IFuelWorkInputsReader inputs,
   ICarrierFuelPrices fuelPrices,
   IOptions<FuelRegionOptions> options,
-  IFuelSavedInputsValidation savedInputs
+  IFuelSavedInputsValidation savedInputs,
+  FuelIssueRecords issues
 )
 {
   public Task<TruckFuelPlanSnapshot?> ReadAsync(
@@ -74,7 +76,8 @@ public sealed class TruckFuelPlans(
   public async Task ApplyAsync(
     RoutePlanningState? state,
     CancellationToken ct,
-    TruckItinerarySnapshot? itinerary = null
+    TruckItinerarySnapshot? itinerary = null,
+    DriverHosClocks? hos = null
   )
   {
     if (state?.Plan is not { } plan || plan.Tracking.AllStopsPassed)
@@ -173,11 +176,45 @@ public sealed class TruckFuelPlans(
       );
       if (signature != saved.Plan.PriceSignature)
       {
-        plan.FuelPlan.NeedsRefresh = true;
-        plan.FuelPlan.ScheduleImpact = null;
-        plan.FuelPlan.RefreshReasons.Add(
-          "Fuel prices changed or could not be verified. Recalculate fuel."
+        // Only a change that could move a purchase by what an extra stop
+        // must save sends the plan back to a search; a smaller one moves
+        // the estimate and leaves the stations where they are.
+        var quotes = await memory.QuotesAsync(
+          key,
+          async () =>
+            await fuelPrices.ReadAsync(date, ct) is { } stations
+              ? FuelPriceMateriality.Quotes(
+                FuelRegionGrid.Prices(stations, state.Profile, date)
+              )
+              : null,
+          ct
         );
+        FuelPlanStop[] priced = quotes is null
+          ? []
+          : plan.FuelPlan.Stops.Where(x => x.PriceDate == date).ToArray();
+        FuelPriceMateriality.Quote? Today(FuelPlanStop stop) =>
+          quotes?.GetValueOrDefault(stop.StationId);
+        if (signature is null || quotes is null)
+        {
+          plan.FuelPlan.NeedsRefresh = true;
+          plan.FuelPlan.ScheduleImpact = null;
+          plan.FuelPlan.RefreshReasons.Add(
+            "Fuel prices changed or could not be verified. Recalculate fuel."
+          );
+        }
+        else if (FuelPriceMateriality.Material(priced, Today))
+        {
+          plan.FuelPlan.NeedsRefresh = true;
+          plan.FuelPlan.ScheduleImpact = null;
+          plan.FuelPlan.RefreshReasons.Add(
+            "Fuel prices changed enough to reconsider the stations. Recalculate fuel."
+          );
+        }
+        else
+          FuelPriceMateriality.Reprice(
+            plan.FuelPlan,
+            stop => stop.PriceDate == date ? Today(stop) : null
+          );
       }
       if (
         !plan.FuelPlan.NeedsRefresh
@@ -208,13 +245,40 @@ public sealed class TruckFuelPlans(
         );
         if (calendar != saved.Plan.UsDiscountSignature)
         {
-          plan.FuelPlan.NeedsRefresh = true;
-          plan.FuelPlan.ScheduleImpact = null;
-          plan.FuelPlan.RefreshReasons.Add(
-            "Arrival-date fuel prices changed or could not be verified."
-          );
+          var quotes = new Dictionary<
+            DateOnly,
+            IReadOnlyDictionary<Guid, FuelPriceMateriality.Quote>?
+          >();
+          foreach (var day in plan.FuelPlan.Stops.Select(x => x.PriceDate).Distinct())
+            quotes[day] = await memory.QuotesAsync(
+              $"fuel-quotes:{day}:{reads.Generation("fuel")}:{PlanningSettingsService.Signature(state.Profile)}",
+              async () =>
+                await fuelPrices.ReadAsync(day, ct) is { } stations
+                  ? FuelPriceMateriality.Quotes(
+                    FuelRegionGrid.Prices(stations, state.Profile, day)
+                  )
+                  : null,
+              ct
+            );
+          FuelPriceMateriality.Quote? OnTheDay(FuelPlanStop stop) =>
+            quotes.GetValueOrDefault(stop.PriceDate)
+              ?.GetValueOrDefault(stop.StationId);
+          if (
+            calendar is null
+            || FuelPriceMateriality.Material(plan.FuelPlan.Stops, OnTheDay)
+          )
+          {
+            plan.FuelPlan.NeedsRefresh = true;
+            plan.FuelPlan.ScheduleImpact = null;
+            plan.FuelPlan.RefreshReasons.Add(
+              "Arrival-date fuel prices changed or could not be verified."
+            );
+          }
+          else
+            FuelPriceMateriality.Reprice(plan.FuelPlan, OnTheDay);
         }
       }
     }
+    await issues.ApplyAsync(saved, plan.FuelPlan, hos, ct);
   }
 }

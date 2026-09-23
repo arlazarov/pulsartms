@@ -36,6 +36,7 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
   public new DbSet<User> Users => Set<User>();
   public DbSet<FuelStation> FuelStations => Set<FuelStation>();
   public DbSet<TruckFuelPlan> TruckFuelPlans => Set<TruckFuelPlan>();
+  public DbSet<FuelVisitSend> FuelVisitSends => Set<FuelVisitSend>();
   public DbSet<FuelDiscount> FuelDiscounts => Set<FuelDiscount>();
   public DbSet<FuelTransaction> FuelTransactions => Set<FuelTransaction>();
   public DbSet<FuelImportSource> FuelImportSources => Set<FuelImportSource>();

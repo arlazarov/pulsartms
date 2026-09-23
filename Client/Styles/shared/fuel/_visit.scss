@@ -34,6 +34,17 @@
     flex: 0 0 auto;
     font-size: ui.fs(label);
   }
+  // Said beside the stop's name, in the same small words as its labels:
+  // sent in the colour a done thing takes, changed since in a warning's.
+  &__sent {
+    color: ui.theme(success-text);
+    font-size: ui.fs(small);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  &__sent--changed {
+    color: ui.theme(warning-text);
+  }
   &__number {
     display: grid;
     place-items: center;

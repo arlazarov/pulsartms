@@ -36,6 +36,9 @@ public sealed class FuelPlan
   public double? SavingsUsd { get; set; }
   public bool UsesIfta { get; set; }
   public List<FuelPlanStop> Stops { get; set; } = [];
+  public string? IssueState { get; set; }
+  public DateTimeOffset? IssueHorizonEndsAt { get; set; }
+  public bool IssueCritical { get; set; }
   public List<FuelStopArrival> StopArrivals { get; set; } = [];
   public List<string> Notes { get; set; } = [];
 }

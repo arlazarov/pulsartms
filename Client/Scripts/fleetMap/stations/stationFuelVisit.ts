@@ -20,6 +20,8 @@ export type FuelVisit = {
   currency?: string;
   unit?: string;
   full?: boolean;
+  // Handed to the driver, and whether the plan still says what was sent.
+  sent?: { changed: boolean } | null;
 };
 
 function node(tag: string, className: string, text?: string) {
@@ -90,6 +92,16 @@ export function createFuelVisit(
     node('span', 'fleet-fuel-visit__number', String(visit.number)),
     node('span', 'fleet-fuel-visit__title', 'Fuel stop'),
   );
+  // One word, only when it is true: the stop went to the driver, or it
+  // did and the plan has moved since.
+  if (visit.sent) {
+    const sent = node(
+      'span',
+      `fleet-fuel-visit__sent${visit.sent.changed ? ' fleet-fuel-visit__sent--changed' : ''}`,
+      visit.sent.changed ? 'Changed since sent' : 'Sent',
+    );
+    name.append(sent);
+  }
   // The card names a thing before it says it, this one included: the number
   // stood on its own in the corner with nothing to say what it measured.
   const distance = node(

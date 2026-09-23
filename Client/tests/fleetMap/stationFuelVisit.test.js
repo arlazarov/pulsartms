@@ -79,3 +79,42 @@ test('unreachable visit shows its deficit instead of purchase or fuel gauges', t
   assert.equal(row.children[1].textContent, 'Cannot reach: 3.2 US gal short.');
   assert.ok(row.children.every(child => !child.className.includes('__levels')));
 });
+
+// One word beside the stop's name, only when it is true.
+test('a visit handed to the driver says so, and says when the plan moved since', t => {
+  const previous = globalThis.document;
+  globalThis.document = {
+    createElement: () => ({
+      children: [],
+      append(...children) {
+        this.children.push(...children);
+      },
+      setAttribute() {},
+    }),
+  };
+  t.after(() => {
+    globalThis.document = previous;
+  });
+  const badge = sent => {
+    const row = createFuelVisit(
+      { number: 1, miles: 40, accessOnly: true, sent },
+      { country: 'US' },
+      { unit: 'US gal' },
+    );
+    const name = row.children[0].children[0];
+    return name.children
+      .filter(child => child.className.includes('__sent'))
+      .map(child => [child.textContent, child.className]);
+  };
+  assert.deepEqual(badge(undefined), []);
+  assert.deepEqual(badge(null), []);
+  assert.deepEqual(badge({ changed: false }), [
+    ['Sent', 'fleet-fuel-visit__sent'],
+  ]);
+  assert.deepEqual(badge({ changed: true }), [
+    [
+      'Changed since sent',
+      'fleet-fuel-visit__sent fleet-fuel-visit__sent--changed',
+    ],
+  ]);
+});

@@ -805,6 +805,17 @@ Use `.btn` for secondary actions, `.btn--primary` for save/submit, `.btn--danger
 
 Validation uses `.invalid`, `[aria-invalid="true"]` or `.form-field__control--error`; all share the same error border and focus ring. Disabled inputs and buttons retain their native disabled semantics. Checkbox dimensions/accent come from the checkbox mixin.
 
+Send plan is one of the Fleet Map overlays, beside Fuel in the truck actions,
+and it hides the inspector like the fuel editor. It shows the hand-over state,
+a critical warning when a stop is out of reach, the Ready for current shift
+stops with Sent or Changed since sent, a note that later stops stay
+provisional, and the message. It says plainly that automatic sending is not
+connected: Copy message records nothing, and Mark as sent is the explicit
+confirmation. A sent visit shows the same one-word label beside its name in the
+station popup; nothing else on the map changes. Fuel plan sending in Settings
+is off by default and says that turning it on sends nothing until a channel
+exists.
+
 ## Background refresh
 
 Keep eligible last complete data visible during background refresh without internal

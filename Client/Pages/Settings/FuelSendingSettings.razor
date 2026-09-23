@@ -1,0 +1,38 @@
+<section class="settings-page__card" aria-labelledby="fuel-sending-settings-title">
+    <h2 id="fuel-sending-settings-title">Fuel plan sending</h2>
+    @if (_loading) { <p role="status"><LoadingIndicator /></p> }
+    @if (_error is not null)
+    {
+        <p class="settings-page__error" role="alert">@_error
+            <button class="btn btn--small" type="button" disabled="@(_loading || _saving)" @onclick="LoadAsync">Reload fuel plan sending</button>
+        </p>
+    }
+    @if (_settings is not null)
+    {
+        <fieldset disabled="@(_loading || _saving)" class="settings-page__form">
+            <legend class="visually-hidden">Fuel plan sending</legend>
+            <label class="settings-page__toggle" for="settings-automatic-fuel-sending">
+                <span>
+                    <strong>Send fuel plans automatically</strong>
+                    <small>Off by default. Fuel plans are prepared in the background either way.</small>
+                </span>
+                <input id="settings-automatic-fuel-sending" type="checkbox"
+                       checked="@_automatic" @onchange="OnChanged" />
+            </label>
+            <p class="settings-page__hint">
+                While this is off, a plan goes to a driver only when a
+                dispatcher presses Send plan. Automatic sending also needs a
+                connected messaging channel, which is not set up yet, so
+                turning this on sends nothing today.
+            </p>
+            <div class="settings-page__actions">
+                <button class="btn btn--primary" type="button"
+                        disabled="@(_automatic == _settings.AutomaticFuelSending)"
+                        @onclick="SaveAsync">
+                    @(_saving ? "Saving…" : "Save fuel plan sending")
+                </button>
+                @if (_saved) { <span class="settings-page__saved" role="status">Fuel plan sending saved.</span> }
+            </div>
+        </fieldset>
+    }
+</section>

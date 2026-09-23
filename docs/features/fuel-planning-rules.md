@@ -471,6 +471,79 @@ refines against original saved points. No candidate road responses or losing
 full-route variants are fetched or retained. Provider body/point/timeout limits
 continue protecting ordinary route preparation outside fuel calculation.
 
+## Handing fuel to the driver
+
+PulsR sends nothing to a driver by itself. Plans are prepared in the background
+for running work; a plan reaches a driver only when a dispatcher passes it on
+and says so, unless a company turns on automatic sending, which also needs a
+messaging channel that is not connected yet.
+
+The economic horizon stays long: the whole remaining itinerary still decides
+today's quantities. The hand-over horizon is shorter. A stop belongs to the
+current shift when its hours-aware arrival estimate falls before the end of the
+driver's current on-duty window, read from their hours, plus a selection buffer
+(`FuelIssue:ShiftBufferHours`, default 2). It is not calendar midnight. A stop
+past a required rest arrives after that rest, so it falls outside. The buffer
+only widens which stations are picked; it is not personal conveyance, not an
+extension of hours and not a promise of a lawful arrival. Personal conveyance
+is not working time. Without a shift window, remaining driving time is used as
+the shorter bound. A stop with no arrival estimate, and every stop after it,
+stays upcoming.
+
+The plan carries one hand-over state. `ready`: on duty, driving or yard move.
+`awaitingDuty`: off duty, sleeper berth or personal conveyance - an
+approximation of rest, not proof of sleep; the plan is prepared, and ordinary
+hand-over waits for duty. `hosUnknown`: no reading, or one older than
+`FuelIssue:HosFreshMinutes` (default 10); the driver is not assumed awake and no
+stop counts as this shift's. A planned stop the tank no longer reaches marks the
+plan critical, for the dispatcher at once, never as a message.
+
+Send plan previews only the current-shift stops, in words taken from the
+itinerary: a stop on the road the truck is on is placed by distance; a later
+one is placed after one stop and on the way to the next. No time is given, and
+nothing is inferred. Opening or copying the preview records nothing. Mark as
+sent records each previewed stop against the plan version shown (its
+calculation, root leg and assignment revision); a plan that moved in between is
+refused, and the dispatcher opens it again.
+
+A hand-over is one row in `FuelVisitSends`, company-owned, kept through every
+recalculation. Its identity is the visit - the station and the stop it comes
+before, within the load, leg and assignment revision that visit belonged to -
+not the plan's leg-numbered visit key, which shifts as stops are passed. The
+same station before another stop is another visit. Its content is `full` for a
+fill, or the gallons; a fill stays the same hand-over however many gallons it
+comes to. A repeated confirmation of the same content writes nothing. The
+latest hand-over of a visit is what the driver was last told: a plan saying
+anything else is shown as changed since sent. A new assignment never inherits a
+send. Sent is not delivered, and delivered is not read; a transport's receipts
+are future records of their own. After a confirmation commits, that one truck's
+shared summary is asked for again; no other truck is touched.
+
+Automatic sending is a company setting in Dispatch settings, off by default and
+off for a company with no settings row. Turning it on changes nothing today:
+no channel exists. When one does, the same owner sends only this shift's stops
+of a driver on duty, never content already sent, never a critical plan, and asks
+again right before sending - so a setting turned off, a driver gone off duty or
+a changed plan stops a waiting send. The Send plan button is never blocked by
+the setting.
+
+### Price and fuel changes after preparation
+
+A new price is a reason to search again only when, at a station the plan buys
+at, it moves that purchase by at least an extra stop's threshold (currently
+$10), or when a selected station is no longer priced. A smaller change reprices
+the displayed estimate and keeps the stations and quantities. The reader and the
+automatic refresh apply the same rule, so neither calls a plan stale that the
+other leaves. A cheaper station elsewhere is looked for at the daily repricing
+and at any recalculation the plan needs anyway.
+
+The saved plan is projected against every new fuel reading without a search: a
+small difference moves arrival and fill quantities; a stop the tank no longer
+reaches, or a quantity that no longer fits, sends the plan back to a search at
+once. A separate hourly reconciliation is not implemented: the projection
+already reconciles on each summary refresh, and an hourly re-search would move
+this shift's stations without a safety reason.
+
 ## Presentation and imports
 
 Keep eligible complete values during background refresh without internal lifecycle

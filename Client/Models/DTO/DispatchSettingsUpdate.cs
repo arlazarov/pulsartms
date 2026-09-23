@@ -4,5 +4,6 @@ public sealed record DispatchSettingsUpdate(
   string LoadNumberPrefix,
   long Revision,
   string? TemperatureUnit = null,
-  string? DistanceUnit = null
+  string? DistanceUnit = null,
+  bool? AutomaticFuelSending = null
 );

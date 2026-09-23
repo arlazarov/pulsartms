@@ -1,0 +1,99 @@
+@use '../../base' as ui;
+
+// The fuel plan as it goes to a driver: a compact card over the map, in the
+// same place and layer as the fuel editor, never both at once.
+.fuel-send-plan {
+  box-sizing: border-box;
+  position: absolute;
+  right: ui.pg(md);
+  bottom: ui.pg(md);
+  z-index: ui.layer(map-editor);
+  width: min(#{ui.size(fuel-editor-card)}, calc(100% - #{ui.pg(md)} * 2));
+  max-height: calc(100% - #{ui.pg(md)} * 2);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(md);
+  background: ui.theme(surface);
+  box-shadow: ui.shadow(popup);
+  overflow: hidden;
+  color: ui.theme(text);
+  font-size: ui.fs(body);
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+    padding: ui.pg(sm) ui.pg(md);
+    border-bottom: 1px solid ui.theme(border-subtle);
+    > div {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: ui.pg(xs) ui.pg(sm);
+      min-width: 0;
+    }
+    span {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+  }
+  &__title {
+    @include ui.overlay-title;
+  }
+  &__body {
+    display: grid;
+    align-content: start;
+    gap: ui.pg(sm);
+    padding: ui.pg(md);
+    overflow-y: auto;
+    min-height: 0;
+    > * {
+      margin: 0;
+    }
+  }
+  &__section {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    font-weight: 600;
+  }
+  &__lines {
+    display: grid;
+    gap: ui.pg(xs);
+    padding-inline-start: ui.pg(lg);
+    li > span + span {
+      margin-inline-start: ui.pg(sm);
+    }
+  }
+  &__state,
+  &__hint,
+  &__empty {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  &__critical,
+  &__error {
+    color: ui.theme(danger-text);
+    font-weight: 600;
+  }
+  &__message {
+    display: grid;
+    gap: ui.pg(xs);
+    font-size: ui.fs(small);
+    textarea {
+      resize: vertical;
+      font-family: inherit;
+      @include ui.input-control;
+    }
+  }
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(sm);
+  }
+  &__status {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+}

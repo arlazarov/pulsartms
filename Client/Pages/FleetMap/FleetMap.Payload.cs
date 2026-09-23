@@ -97,6 +97,21 @@ public partial class FleetMap
       )
     )
       ResetFuelEditor();
+    // The Send plan window belongs to the work it was opened for; another
+    // truck, load or assignment closes it rather than showing its message.
+    if (
+      _sendPlanIdentity is { } sending
+      && (
+        state?.Plan?.TruckId != sending.Truck
+        || state.Plan.DispatchId != sending.Dispatch
+        || state.Plan.ExecutionLegId != sending.Leg
+        || state.Plan.AssignmentRevision != sending.Revision
+      )
+    )
+    {
+      _sendPlanOpen = false;
+      _sendPlanIdentity = null;
+    }
     _routeDisplay.Update(
       state,
       now,
