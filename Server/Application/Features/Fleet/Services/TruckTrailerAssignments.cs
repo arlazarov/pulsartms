@@ -73,54 +73,117 @@ public static class TruckTrailerAssignments
   // work, inside the caller's transaction, and returns the trucks whose
   // trailer or its standing changed - the one that lost a trailer as well
   // as the one that took it.
-  public static async Task<IReadOnlyCollection<Guid>> ResolveAsync(
+  public static Task<IReadOnlyCollection<Guid>> ResolveAsync(
     IAppDbContext db,
+    CancellationToken ct
+  ) => ResolveCoreAsync(db, null, ct);
+
+  // The same for the trucks a committed change touched, and only the trucks
+  // their trailers tie them to: the ones holding, disputing or reported
+  // with one of those trailers. The rest of the fleet is not read.
+  public static Task<IReadOnlyCollection<Guid>> ResolveTrucksAsync(
+    IAppDbContext db,
+    IReadOnlyCollection<Guid> trucks,
+    CancellationToken ct
+  ) =>
+    trucks.Count == 0
+      ? Task.FromResult<IReadOnlyCollection<Guid>>([])
+      : ResolveCoreAsync(db, trucks, ct);
+
+  private static async Task<IReadOnlyCollection<Guid>> ResolveCoreAsync(
+    IAppDbContext db,
+    IReadOnlyCollection<Guid>? requested,
     CancellationToken ct
   )
   {
-    var trucks = await db.Trucks.ToListAsync(ct);
-    var reading = await TruckWorkTrailers.ReadAsync(db, ct);
-    if (reading.Unknown.Count > 0)
+    var reading = await DiscoverAsync(db, requested, ct);
+    var work = reading.Trucks;
+    var scope = requested is null
+      ? await db.Trucks.ToListAsync(ct)
+      : await db.Trucks.Where(x => requested.Contains(x.Id)).ToListAsync(ct);
+    if (requested is not null)
     {
-      // A load names a trailer no source has reported: it is catalogued
-      // through the catalog's owner, then the work is read again.
-      foreach (var source in reading.Unknown.GroupBy(x => x.Source))
-        await TrailerCatalog.EnsureAsync(
+      var tied = Trailers(scope, work);
+      var scoped = scope.Select(x => x.Id).ToArray();
+      var related = await db
+        .Trucks.Where(x =>
+          !scoped.Contains(x.Id)
+          && (
+            x.TrailerId.HasValue && tied.Contains(x.TrailerId.Value)
+            || x.TrailerConflictId.HasValue
+              && tied.Contains(x.TrailerConflictId.Value)
+            || x.TelemetryTrailerId.HasValue
+              && tied.Contains(x.TelemetryTrailerId.Value)
+          )
+        )
+        .ToListAsync(ct);
+      if (related.Count > 0)
+      {
+        var more = await DiscoverAsync(
           db,
-          source.Key,
-          source.Select(x => x.Number),
+          related.Select(x => x.Id).ToArray(),
           ct
         );
-      await db.SaveChangesAsync(ct);
-      reading = await TruckWorkTrailers.ReadAsync(db, ct);
+        foreach (var (truck, trailer) in more.Trucks)
+          work.TryAdd(truck, trailer);
+        scope.AddRange(related);
+      }
     }
-    var work = reading.Trucks;
-    var active = await db
-      .Trailers.AsNoTracking()
-      .Where(x => x.IsActive)
-      .Select(x => x.Id)
-      .ToListAsync(ct);
-    var usable = active.ToHashSet();
-    var resolved = TruckTrailerAuthority.Settle(
-      trucks.ToDictionary(
-        x => x.Id,
-        x =>
-        {
-          if (!x.IsActive)
-            return new EffectiveTrailer(null, null, null);
-          var trailer = TruckTrailerAuthority.Resolve(
-            new(x.TelemetryTrailerKnown, x.TelemetryTrailerId),
-            work.GetValueOrDefault(x.Id, WorkTrailer.None)
-          );
-          // An inactive trailer is unavailable, whoever names it.
-          return trailer.TrailerId is { } id && !usable.Contains(id)
-            ? new(null, null, id)
-            : trailer;
-        }
-      )
+    var candidates = Trailers(scope, work);
+    var usable = (
+      await db
+        .Trailers.AsNoTracking()
+        .Where(x => x.IsActive && candidates.Contains(x.Id))
+        .Select(x => x.Id)
+        .ToListAsync(ct)
+    ).ToHashSet();
+    var proposed = scope.ToDictionary(
+      x => x.Id,
+      x =>
+      {
+        if (!x.IsActive)
+          return new EffectiveTrailer(null, null, null);
+        var trailer = TruckTrailerAuthority.Resolve(
+          new(x.TelemetryTrailerKnown, x.TelemetryTrailerId),
+          work.GetValueOrDefault(x.Id, WorkTrailer.None)
+        );
+        // An inactive trailer is unavailable, whoever names it.
+        return trailer.TrailerId is { } id && !usable.Contains(id)
+          ? new(null, null, id)
+          : trailer;
+      }
     );
+    var trucks = scope.ToDictionary(x => x.Id);
+    if (requested is not null)
+    {
+      var inScope = trucks.Keys.ToArray();
+      // A truck outside the scope that holds a trailer the scope now
+      // claims is weighed as it stands, so one trailer is never on two.
+      var claimed = proposed
+        .Values.Select(x => x.TrailerId)
+        .OfType<Guid>()
+        .ToArray();
+      foreach (
+        var holder in await db
+          .Trucks.Where(x =>
+            !inScope.Contains(x.Id)
+            && x.TrailerId.HasValue
+            && claimed.Contains(x.TrailerId.Value)
+          )
+          .ToListAsync(ct)
+      )
+      {
+        trucks[holder.Id] = holder;
+        proposed[holder.Id] = new(
+          holder.TrailerId,
+          holder.TrailerSource,
+          holder.TrailerConflictId
+        );
+      }
+    }
+    var resolved = TruckTrailerAuthority.Settle(proposed);
     var changed = trucks
-      .Where(x =>
+      .Values.Where(x =>
         x.TrailerId != resolved[x.Id].TrailerId
         || x.TrailerSource != resolved[x.Id].Source
         || x.TrailerConflictId != resolved[x.Id].ConflictId
@@ -146,6 +209,72 @@ public static class TruckTrailerAssignments
     return changed.Select(x => x.Id).ToArray();
   }
 
+  // Reads the work, cataloguing first any trailer a current load names that
+  // no source has reported, through the catalog's owner.
+  private static async Task<TruckWorkTrailers.Reading> DiscoverAsync(
+    IAppDbContext db,
+    IReadOnlyCollection<Guid>? trucks,
+    CancellationToken ct
+  )
+  {
+    var reading = await TruckWorkTrailers.ReadAsync(db, trucks, ct);
+    if (reading.Unknown.Count == 0)
+      return reading;
+    foreach (var source in reading.Unknown.GroupBy(x => x.Source))
+      await TrailerCatalog.EnsureAsync(
+        db,
+        source.Key,
+        source.Select(x => x.Number),
+        ct
+      );
+    await db.SaveChangesAsync(ct);
+    return await TruckWorkTrailers.ReadAsync(db, trucks, ct);
+  }
+
+  private static HashSet<Guid> Trailers(
+    IEnumerable<Truck> trucks,
+    IReadOnlyDictionary<Guid, WorkTrailer> work
+  ) =>
+    trucks
+      .SelectMany(x =>
+        new[] { x.TrailerId, x.TrailerConflictId, x.TelemetryTrailerId }
+      )
+      .Concat(work.Values.Select(x => x.TrailerId))
+      .OfType<Guid>()
+      .ToHashSet();
+
+  // After a dispatcher's committed change to current work: the trucks it
+  // touched are resolved at once, not at the next synchronization. It waits
+  // briefly for a running synchronization; if that does not finish, the
+  // synchronization's own pass picks the change up.
+  public static async Task<bool> RefreshTrucksAsync(
+    IAppDbContext db,
+    ReadCache reads,
+    IReadOnlyCollection<Guid> trucks,
+    CancellationToken ct
+  )
+  {
+    if (trucks.Count == 0)
+      return false;
+    if (!await ProcessGates.Fleet.WaitAsync(TimeSpan.FromSeconds(5), ct))
+      return false;
+    try
+    {
+      await using var transaction = await db.Database.BeginTransactionAsync(ct);
+      var changed = await ResolveTrucksAsync(db, trucks, ct);
+      if (changed.Count == 0)
+        return false;
+      await db.SaveChangesAsync(ct);
+      await transaction.CommitAsync(ct);
+      Published(reads);
+      return true;
+    }
+    finally
+    {
+      ProcessGates.Fleet.Release();
+    }
+  }
+
   // After an import or an execution change: refreshes and publishes on its
   // own, unless the fleet synchronization is running - it refreshes every
   // cycle itself, so waiting behind it would only hold the caller up.
@@ -164,6 +293,9 @@ public static class TruckTrailerAssignments
         var transaction = await db.Database.BeginTransactionAsync(ct)
       )
       {
+        // The whole fleet is resolved here; the trucks this request marked
+        // need no second pass.
+        TruckWorkChanges.Handled();
         changed = await ResolveAsync(db, ct);
         if (changed.Count == 0)
           return;

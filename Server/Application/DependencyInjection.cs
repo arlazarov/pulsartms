@@ -48,6 +48,7 @@ public static class DependencyInjection
       cfg.AddOpenBehavior(typeof(AdminAuditBehavior<,>));
       cfg.AddOpenBehavior(typeof(PlanningExceptionBehavior<,>));
       cfg.AddOpenBehavior(typeof(ShapeBehavior<,>));
+      cfg.AddOpenBehavior(typeof(TruckTrailerRefreshBehavior<,>));
       cfg.LicenseKey = mediatrLicenseKey;
     });
 

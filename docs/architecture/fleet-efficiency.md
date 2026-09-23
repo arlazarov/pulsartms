@@ -24,7 +24,7 @@ that every proposed optimization has been implemented.
 | Messaging transport | IDriverMessaging (WhatsAppCloudMessaging) |
 | Driver contacts | UpdateDriverContact / DriverContactImport |
 | Trailer catalog | TrailerCatalog |
-| A truck's current trailer | TruckTrailerAssignments |
+| A truck's current trailer | TruckTrailerAssignments (targeted after a committed request by TruckTrailerRefreshBehavior) |
 | Heavy preparation and durable demand | PlanningRefreshOperation |
 | Shared display snapshots | PlanningSummaryCache |
 | Board planning reads | BoardPlanningReader |
@@ -139,7 +139,8 @@ regression where it touches one. Existing coverage:
 `PlanningSummaryCacheTests`, `PlanningPublicationTests`,
 `TruckFuelPlanReplacementTests`, `EtaRetainedForecastTests`,
 `FuelIssueRecordsTests`, `FuelIssueSenderTests`, `WhatsAppWebhookTests`,
-`TrailerCatalogTests` and `TruckTrailerAssignmentTests`.
+`TrailerCatalogTests`, `TruckTrailerAssignmentTests` and
+`TruckTrailerRefreshTests`.
 
 ## Preventing repeated database and provider work
 

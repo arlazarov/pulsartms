@@ -2,8 +2,8 @@ using Domain.Rules.Fleet;
 
 namespace Application.Features.Fleet.Services;
 
-// What each truck's current work says its trailer is, in two queries for
-// the whole fleet. An active execution leg is the accepted decision and
+// What each truck's current work says its trailer is, in a fixed number of
+// queries for the whole fleet or for a few trucks. An active execution leg is the accepted decision and
 // answers alone. Without one, an in-transit imported load answers at its
 // first unfinished stop: that stop's trailer, else the load's, by id or,
 // before the import resolved it, by number. Two current loads that name
@@ -17,22 +17,37 @@ internal static class TruckWorkTrailers
     IReadOnlyList<(string Source, string Number)> Unknown
   );
 
+  // Trucks, when given, limits the reading to work that names them: every
+  // load that could be theirs, so a truck's answer is still complete.
   public static async Task<Reading> ReadAsync(
     IAppDbContext db,
+    IReadOnlyCollection<Guid>? trucks,
     CancellationToken ct
   )
   {
-    var legs = await db
+    var ids = trucks?.ToArray();
+    var legQuery = db
       .ExecutionLegs.AsNoTracking()
-      .Where(x => x.Status == "active")
-      .Select(x => new { x.TruckId, x.TrailerId })
-      .ToListAsync(ct);
-    var loads = await db
+      .Where(x => x.Status == "active");
+    var loadQuery = db
       .Dispatches.AsNoTracking()
       .Where(x =>
         x.Status == "in_transit"
         && !db.LoadExecutionLegs.Any(link => link.DispatchId == x.Id)
-      )
+      );
+    if (ids is not null)
+    {
+      legQuery = legQuery.Where(x => ids.Contains(x.TruckId));
+      loadQuery = loadQuery.Where(x =>
+        x.PlanningTruckId.HasValue && ids.Contains(x.PlanningTruckId.Value)
+        || x.TruckId.HasValue && ids.Contains(x.TruckId.Value)
+        || x.Stops.Any(s => s.TruckId.HasValue && ids.Contains(s.TruckId.Value))
+      );
+    }
+    var legs = await legQuery
+      .Select(x => new { x.TruckId, x.TrailerId })
+      .ToListAsync(ct);
+    var loads = await loadQuery
       .Select(x => new
       {
         x.PlanningTruckId,
@@ -46,10 +61,25 @@ internal static class TruckWorkTrailers
         Stops = x.Stops.OrderBy(s => s.Sequence).ToList(),
       })
       .ToListAsync(ct);
-    var numbers = await db
-      .Trailers.AsNoTracking()
-      .Select(x => new { x.Id, x.UnitNumber })
-      .ToListAsync(ct);
+    // Only the numbers these loads name without an id are looked up.
+    var named = loads
+      .SelectMany(x =>
+        x.Stops.Where(s => s.TrailerId is null)
+          .Select(s => s.TrailerNumber)
+          .Append(x.TrailerId is null ? x.TrailerNumber : null)
+      )
+      .Select(TrailerUnits.Normalize)
+      .OfType<string>()
+      .Distinct()
+      .ToArray();
+    var numbers =
+      named.Length == 0
+        ? []
+        : await db
+          .Trailers.AsNoTracking()
+          .Where(x => named.Contains(x.UnitNumber.Trim().ToUpper()))
+          .Select(x => new { x.Id, x.UnitNumber })
+          .ToListAsync(ct);
     var byNumber = numbers
       .Select(x => (x.Id, Unit: TrailerUnits.Normalize(x.UnitNumber)))
       .Where(x => x.Unit is not null)

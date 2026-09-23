@@ -1,4 +1,5 @@
 using Application.Caching;
+using Application.Features.Fleet.Services;
 using Domain.Policies;
 using Microsoft.Extensions.Options;
 
@@ -122,6 +123,7 @@ public sealed class RoutePreparationQueue(
   public void MarkTruckDirty(Guid truckId, ReadCache reads)
   {
     reads.InvalidateItem("planning-inputs", truckId);
+    TruckWorkChanges.Mark(truckId);
     lock (gate)
       foreach (
         var entry in entries

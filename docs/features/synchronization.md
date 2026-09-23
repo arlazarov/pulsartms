@@ -103,11 +103,20 @@ Which trailers exist and which trailer a truck has now are separate owners.
   certain; a disagreement keeps the other trailer as a conflict. A trailer
   two trucks resolve to stays with the one whose telemetry reports it, or
   with neither; an inactive trailer is on no truck.
-- The refresh runs in every assignment cycle, also when the provider's
-  payload is unchanged, and after a dispatch import commits; it costs a
-  fixed number of queries for the fleet. After its commit it invalidates
-  the fleet catalog and board reads. A dispatcher's execution change is
-  picked up by the next assignment cycle (two minutes by default).
+- A dispatcher's committed change to current work - truck assignment,
+  workspace edit, stop completion or correction, execution acceptance or
+  switch - is resolved before the request answers. Those commands already
+  name every truck they touched after commit (both trucks of a transfer)
+  through `RoutePreparationQueue.MarkTruckDirty`; `TruckTrailerRefreshBehavior`
+  resolves just those trucks, plus trucks holding, disputing or reported
+  with the same trailers, when the request succeeded. It reads nothing else,
+  calls no provider and plans no fuel, waits at most five seconds for a
+  running synchronization, and a failure leaves the committed change as it
+  is. After its commit it invalidates the fleet catalog and board reads.
+- The whole fleet is resolved in every assignment cycle, also when the
+  provider's payload is unchanged, and after a dispatch import commits, in
+  a fixed number of queries. That pass is the recovery for anything the
+  targeted refresh missed and for provider changes.
 - Samsara's driver-trailer endpoint returns only active assignments, so
   with it an explicit detach does not occur; a truck without a current
   record keeps the trailer its current load names.
