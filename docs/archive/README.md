@@ -10,6 +10,7 @@ started again under the current project policy.
 
 ### Reviews and implementation records
 
+- [Fuel hand-over, WhatsApp foundation and trailers release](2026-09/fuel-handover-trailers-release-2026-09-23.md)
 - [Shared planning cache release](2026-09/planning-cache-release-2026-09-21.md)
 
 - [Dispatch summary concurrency](2026-09/dispatch-summary-concurrency-2026-09-21.md)
