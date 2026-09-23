@@ -70,29 +70,33 @@ Google Drive
 
 ## Proposed ownership
 
-One owner for conversations, messages and attachments: a **Messaging**
-module. It owns the tables below, the outbox, inbound processing, reads for
-the inbox and conversation, and links from messages to work. The existing
-fuel hand-over becomes one caller of it instead of a second message store.
+One owner for conversations, messages and attachments, inside the module
+that already owns driver messaging: **Routing**. It owns the tables below,
+the outbox, inbound processing, the inbox and conversation reads, and links
+from messages to work. The existing fuel hand-over becomes one caller of it
+instead of a second message store.
 
 - Providers stay behind Application interfaces: `IDriverMessaging` (sending,
   webhook reading, media fetch and upload) grows media operations;
   WhatsApp stays in Infrastructure. A later provider (another messenger,
   SMS) is another adapter.
-- Files go through a provider-independent `IFileStorage`: put a stream with
-  a content type and sha256, open a stream by key, delete by key, list by
-  prefix for reconciliation. Keys are opaque and tenant-scoped
-  (`company/{id}/messages/{attachment}`); the core never sees a bucket, a
-  Drive folder or a URL. Adapters: database (today's bytea, for the MVP and
-  tests), object storage, and optionally Drive.
-- **Module boundary:** `ModuleDependencyTests` forbids new edges between
-  feature modules. Today driver messaging lives in Routing. A Messaging
-  module that Routing (fuel hand-over), Dispatch (documents) and Fleet
-  (drivers) touch needs new recorded edges, which the test says never to
-  add to make a change pass. This needs the owner's decision before code:
-  either Messaging is a leaf reached only through Application interfaces
-  declared in it, with the edge set changed deliberately and reviewed, or
-  it stays inside Routing. The plan assumes the first.
+- Files go through a provider-independent `IFileStorage` declared in
+  `Application.Interfaces`, outside every feature module: put a stream with a
+  content type and sha256, open a stream by key, delete by key, list by
+  prefix for reconciliation. Keys are opaque and tenant-scoped; the core
+  never sees a bucket, a Drive folder or a URL. Adapters: database (today's
+  bytea, for the first stage and tests), object storage, and optionally
+  Drive.
+- **Module boundary, without new edges.** `ModuleDependencyTests` records
+  the dependencies between feature modules and fails on a new one; AGENTS
+  forbids weakening it or adding exceptions. The composition above needs
+  none: Routing already depends on Fleet (drivers), Execution and Eta (trip
+  context) and Dispatch (load documents); Dispatch already depends on
+  Routing; and `IFileStorage` outside the features adds no edge for either.
+  API reaches all of it through MediatR commands and queries as usual. A
+  separate Messaging module would need new recorded edges; that is an
+  owner's decision to take explicitly later, not something this plan
+  assumes. The cost of staying in Routing is a larger Routing module.
 
 ## Data model
 
@@ -102,36 +106,65 @@ cache.
 
 | Table | Holds | Keys and guards |
 | --- | --- | --- |
-| `Conversations` | company, driver (nullable until matched), channel, participant number (E.164), last inbound at, last message at/preview, state (open/archived), claimed by + until | unique (company, channel, participant) |
-| `Messages` | conversation, direction, kind (text/file/template/system), body text (bounded), author user for outbound, reply-to, provider message id, idempotency key + attempt, status (sending/unknown/rejected/accepted/sent/delivered/read/failed/withdrawn), status at, error code, created at | unique (company, provider id); unique (company, idempotency key, attempt) — the shape `DriverMessages` already has |
-| `MessageAttachments` | message, original name, content type (sniffed), size, sha256, storage key, provider media id + expires at, state (pending/stored/failed/deleted), attempts, next attempt at, failure reason | unique (company, sha256, message); storage key unique |
+| `Conversations` | company, driver (nullable until matched), channel, business number id (the carrier's sending identity), participant number (E.164), last inbound at, last message at/preview, state (open/archived), claimed by + until | unique (company, channel, business number, participant): a driver writing to two carrier numbers is two conversations |
+| `Messages` | conversation, direction, kind (text/file/template/system), body text (bounded), author user for outbound, reply-to, provider message id, idempotency key + attempt, status (sending/unknown/rejected/accepted/sent/delivered/read/failed/withdrawn), status at, error code, created at | unique (company, channel, business number, provider id); unique (company, channel, business number, idempotency key, attempt). Today's `DriverMessages` keys omit the business number because a carrier has one; they are widened in the same migration |
+| `StoredFiles` | storage key, content type (sniffed), size, sha256, state (pending/quarantined/available/deleting), created at | one row per stored object; the only owner of the object |
+| `MessageAttachments` | message, stored file, original name, provider media id + expires at, download state (pending/stored/failed), attempts, next attempt at, failure reason | references a stored file; never owns bytes |
 | `MessageLinks` | message or attachment → load, stop, execution leg or load document; state suggested/confirmed/rejected; who and when | a file is filed as a load document only through a confirmed link |
 | `ConversationReads` | user, conversation, last read message | per-user unread; not provider "read" |
-| `MessagingOutbox` | message to send, not before, attempts, lease owner/until | exactly one sender per row by lease; a lost answer becomes unknown, never retried silently |
-| `WebhookReceipts` | provider, event hash, received at | de-duplication window; pruned |
+| `MessagingOutbox` | message to send, not before, lease owner, lease until, fencing token | see Outbox below: a lease plus a fencing token, not an exactly-once guarantee |
+| `WebhookReceipts` | provider, business number id, event hash, received at | de-duplication window per business number; pruned |
 
-`DriverMessages` and `FuelVisitSends.MessageId` migrate into `Messages`
+Load documents reference `StoredFiles` too once they move out of bytea, so a
+file filed from a conversation is one object with two references, not a
+copy. `DriverMessages` and `FuelVisitSends.MessageId` migrate into `Messages`
 without losing history; `DriverMessagingWindows` becomes
-`Conversations.LastInboundAt`.
+`Conversations.LastInboundAt`. Every idempotency and de-duplication key
+carries company, channel and business number: several carrier numbers must
+never collide.
 
 ## Flows
 
 **Inbound.** The webhook verifies signature and business number, writes the
 receipt, the message and a *pending* attachment row in one transaction, and
 answers 200. A media worker then asks for the 5-minute URL, streams the
-download with the kind's size cap, sniffs the type against an allowlist,
-checks the sha256, writes to storage and marks the row stored. Failures back
-off and retry until the media id's 7-day expiry, then the attachment is
-failed and visible as such. The worker never keeps a file in memory beyond a
-bounded stream buffer.
+download with the kind's size cap, checks the sha256, writes to storage as
+*quarantined*, and only then sniffs the type against an allowlist; a file
+that passes becomes *available* for preview and filing, one that does not
+stays quarantined and is never served. Failures back off and retry until the
+media id's 7-day expiry, then the attachment is failed and visible as such.
+The worker never keeps a file in memory beyond a bounded stream buffer.
+Because media ids expire in seven days, this worker ships with the first
+stage that accepts inbound media at all; a stage that records media
+metadata without it would promise files it may lose.
 
 **Outbound text.** The composer carries an idempotency key and the id of the
 last message the dispatcher saw. The command refuses with 409 when a newer
 inbound message or a colleague's reply arrived since, unless the dispatcher
-confirms; otherwise it commits the message and an outbox row. The sender
-leases the row, calls the provider once, and records accepted, rejected or
-unknown. Unknown is sent again only by an explicit dispatcher action, as the
-fuel hand-over already does.
+confirms; otherwise it commits the message and an outbox row.
+
+**Outbox.** A lease alone does not make one sender: a worker can pause past
+its lease, lose it, and still reach the provider. So:
+
+- Taking a row increments its fencing token in the same conditional update
+  (`… WHERE lease_until < now() OR lease_owner IS NULL`); the worker keeps
+  the token it got.
+- Before the provider call the worker commits `sending` with a conditional
+  update on its token. If that fails, another worker owns the row and this
+  one stops without calling.
+- After the call it records the result with the same conditional update.
+  If that fails, a newer holder exists; the provider message id it received
+  is still written, because the provider's answer is a fact, but only onto a
+  row still `sending` or `unknown`, and never as a second send.
+- Crash windows: a crash before the call leaves `sending` with an expired
+  lease; a crash after the call and before recording leaves the same. From
+  outside they look alike, so an expired `sending` becomes `unknown`, never a
+  new send. Unknown is sent again only by an explicit dispatcher action, as
+  the fuel hand-over already does.
+- The database and the provider cannot be committed together. What is
+  promised is no silent duplicate from our side; exactly-once delivery is
+  not promised, and a status webhook for a message id we never recorded is
+  kept as an orphan receipt for review rather than guessed onto a row.
 
 **Outbound file.** The dispatcher picks a load document or a local file; the
 file is stored first, then uploaded to the provider's media endpoint and
@@ -145,37 +178,65 @@ AMF1407 · POD" or chooses another load; until then the file stays in the
 conversation as unfiled. Confirming creates the load document by reference
 to the stored object, not by copying bytes.
 
-**Delete and retention.** Deleting marks the row deleted, removes the link,
-and queues the storage delete; a periodic reconciler lists storage by
-prefix and removes objects without a live row, and reports rows whose object
-is missing. Retention is a company setting, off until chosen.
+**Delete and retention.** A stored file is deleted only when nothing
+references it: deleting a message attachment or a load document removes a
+reference, and the `StoredFiles` row moves to *deleting* only when the last
+reference is gone, checked in the same transaction. The storage delete runs
+after that commit. Retention is a company setting, off until chosen.
+
+**Reconciliation.** A periodic pass lists storage by prefix. An object with
+no `StoredFiles` row is removed only when it is older than a grace period
+(long enough to cover an upload between the object write and its row
+commit), is not named by a pending upload or a live lease, and the database
+still shows no row when checked again immediately before the delete. Rows
+whose object is missing are reported and shown as missing, never repaired
+by guessing.
 
 ## Consistency
 
 The [consistency contract](fleet-efficiency.md#consistency-contract)
 applies. Messages depend on conversation and provider id; statuses only move
 forward and apply to their own provider id; an attachment is stored before
-it is marked stored, and marked stored before any link can file it. Storage
-and database are not atomic: a stored object without a row is an orphan
-for the reconciler; a row without its object is shown as missing, never as
-an empty file.
+it is marked stored, and released from quarantine before any link can file
+it. Storage and database are not atomic: an object written before its row
+commits is an orphan only after the grace period (see Reconciliation); a
+row without its object is shown as missing, never as an empty file.
 
-## Notifications
+## Notifications and real time
 
-Unread counts come from one bounded, company-scoped inbox summary read,
-generation-cached and invalidated after an inbound commit. It rides the
-existing ten-second cadence of pages that already poll, or one additional
-poll only while the Messages page is closed; never a request per card or per
-conversation. Delivered is not read, and a dispatcher opening a
-conversation is not the driver reading anything.
+A ten-second poll is fine for the board and far too slow for an open
+conversation. One app-level channel per browser carries messaging events;
+pages do not each open their own, and tabs do not each poll.
 
-| Option | Reaches | Needs | Cost |
-| --- | --- | --- | --- |
-| In-app badge and toast | an open PulsR tab | the summary read above | smallest; recommended first |
-| Browser notification (Notification API) | an open tab in the background | per-user permission | small; second |
-| Web Push (service worker, VAPID) | a closed tab, a phone browser | a service worker, subscription storage, push sender | the app has no service worker today; needs its caching rules reviewed |
-| Server push (SSE) for the inbox | open tabs, lower latency than polling | a streaming endpoint on Cloud Run (one instance today) | replaces polling for this one read |
-| Native mobile app | always | an app | out of scope |
+| Option | Latency | Cost and risk here |
+| --- | --- | --- |
+| Per-page polling (today's pattern) | up to the poll interval | duplicated across pages and tabs; ten seconds is visible in a chat |
+| One SSE stream per browser | about a second | one long request per browser; Cloud Run supports streaming responses up to the request timeout, so the stream reconnects; one instance today, so no fan-out between instances yet |
+| SignalR (WebSockets, SSE or long-poll fallback) | about a second | a hub, sticky connections and a backplane once there are several instances |
+| Bounded polling fallback | the fallback interval | used only while the stream is down |
+
+Recommended: one server-sent event stream per browser, opened by one tab
+elected with a Web Lock and shared with the other tabs through a
+`BroadcastChannel`. Events are small ("conversation 42 changed, version
+17"); the tab that needs the content reads it once. When the stream is down,
+the same elected tab falls back to one bounded poll of the inbox summary,
+never one per page. The summary read is company-scoped, generation-cached
+and invalidated after an inbound commit; there is never a request per card
+or per conversation. SignalR stays an option if two-way features (typing
+indicators, presence) become worth a hub. Several instances need a fan-out
+(for example the existing database invalidation relay or a pub/sub) before
+either choice scales out.
+
+Delivered is not read, and a dispatcher opening a conversation is not the
+driver reading anything.
+
+| Where the dispatcher is | How they learn of a message |
+| --- | --- |
+| On Messages | the conversation updates in place |
+| Elsewhere in PulsR | badge on Messages and a short card |
+| Another tab or app | browser notification (Notification API), after permission |
+| PulsR closed, or on a phone | Web Push with a service worker: a later stage; PulsR has no service worker today and its caching rules would need review |
+| Native app | out of scope |
 
 ## Storage: Drive or object storage
 
@@ -195,12 +256,17 @@ load documents for people who work in Drive, not as the system of record.
 
 ## Stages
 
-1. **Inbox, read only.** Store inbound text and file metadata; conversations
-   and unread counts; the Messages page; no sending beyond today's fuel plan.
-2. **Reply.** Composer within the 24-hour window, outbox and statuses,
-   claim and the stale-reply guard, per-user read state.
-3. **Files in.** Media worker, storage adapter, previews for PDF and images,
-   manual filing to a load.
+1. **Inbox, read only.** Store inbound text; conversations and unread
+   counts; the Messages page; the app-level event channel. Inbound files are
+   downloaded durably into quarantine from the start (media worker and
+   storage adapter), because their media ids expire in seven days; they are
+   listed but not yet previewed or filed. No sending beyond today's fuel
+   plan.
+2. **Reply.** Composer within the 24-hour window, outbox with fencing and
+   statuses, claim and the stale-reply guard, per-user read state.
+3. **Files in, usable.** Type checks release quarantined files; previews for
+   PDF and images; manual filing to a load; stored-file references shared
+   with load documents.
 4. **Files out and templates.** Sending load documents; approved templates
    for outside the window.
 5. **Notifications beyond the tab.** Browser notifications, then Web Push.
@@ -215,8 +281,18 @@ load documents for people who work in Drive, not as the system of record.
   mismatch, the 5-minute URL expiring mid-download, the 7-day deadline.
 - Storage: put/open/delete through a fake adapter; orphans and missing
   objects found by the reconciler; nothing written to shared caches.
-- Outbox: one sender per row under two workers, lost answer is unknown,
-  explicit resend only.
+- Outbox: a worker that lost its lease cannot mark `sending` or record a
+  result over the newer holder (fencing); an expired `sending` becomes
+  unknown and is not resent; a late provider answer fills in the message id
+  without a second send; explicit resend only.
+- Keys: the same provider message id and idempotency key under two business
+  numbers are two rows, not a conflict or a merge.
+- Reconciliation: an object inside the grace period, or named by a pending
+  upload, is kept; an object whose row appears between listing and delete
+  is kept; a file referenced by a load document survives deleting the
+  message.
+- Real time: one stream for several tabs; fallback polling from one tab
+  only; no page-level polling added.
 - Collaboration: two dispatchers replying to the same message; the stale
   reply refused with 409 and the newer message shown.
 - Linking: suggestion never files; confirmation files once; another
@@ -226,8 +302,9 @@ load documents for people who work in Drive, not as the system of record.
 
 ## Open questions
 
-1. Module boundary: accept a new Messaging module with reviewed edges, or
-   keep messaging inside Routing?
+1. Is messaging inside Routing acceptable for the first stages, with a
+   separate module left as an explicit later decision about the recorded
+   edges?
 2. Object storage bucket and service account, or Drive, as the system of
    record? (Recommended: object storage.)
 3. Retention period for messages and files, and who may delete.
