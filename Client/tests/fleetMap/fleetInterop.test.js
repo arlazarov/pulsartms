@@ -32,9 +32,14 @@ const ports = {
     return fixture.stations;
   };`,
   'provider/googleMapsLoader': 'export const loadGoogleMaps = async () => {};',
+  // Like every other port, the host reads the fixture once, when it is
+  // created. Reading the global again inside `release` credited whichever
+  // fixture happened to be installed at teardown - which, once the global
+  // had been put back, was nothing at all.
   'provider/mapHost': `export const createMapHost = () => (_element, options) => {
-    globalThis.fleetInteropFixture.mapOptions = options;
-    return {map: globalThis.fleetInteropFixture.map, show() {}, initialCamera(change) { change?.(); }, release() { globalThis.fleetInteropFixture.released = (globalThis.fleetInteropFixture.released ?? 0) + 1; }};
+    const fixture = globalThis.fleetInteropFixture;
+    fixture.mapOptions = options;
+    return {map: fixture.map, show() {}, initialCamera(change) { change?.(); }, release() { fixture.released = (fixture.released ?? 0) + 1; }};
   };`,
   'rendering/gpuScene':
     'export const createGpuScene = () => globalThis.fleetInteropFixture.gpuScene;',
@@ -51,6 +56,9 @@ const bundle = await build({
   write: false,
   format: 'esm',
   platform: 'node',
+  // The bundle is imported as a data URL, so without a name of its own
+  // every stack frame from it carried the whole base64 module.
+  footer: { js: '//# sourceURL=fleetMapBundle.js' },
   plugins: [
     {
       name: 'fleet-ports',
@@ -73,12 +81,43 @@ const { createFleetMap } = await import(
     Buffer.from(bundle.outputFiles[0].text).toString('base64')
 );
 
+// `releaseAll` reports a dispose step that threw, and that warning is the
+// only sign a map was left half torn down. Every warning written while a
+// fixture is mounted is kept here, and still printed, so a broken teardown
+// is both visible and a failure.
+const warnings = [];
+const reportWarning = console.warn.bind(console);
+console.warn = (...args) => {
+  warnings.push(
+    args
+      .map(part => (part instanceof Error ? part.stack : String(part)))
+      .join(' '),
+  );
+  reportWarning(...args);
+};
+
 async function fixture(t, { failInspector = false } = {}) {
   const originalGoogle = globalThis.google,
-    originalFixture = globalThis.fleetInteropFixture;
+    originalFixture = globalThis.fleetInteropFixture,
+    warnedBefore = warnings.length;
+  // One teardown, in the order a page tears down: the map is released while
+  // its own fixture is still installed, the globals go back, and only then
+  // is the console read. Registered as separate steps these ran in the order
+  // they were added, so the globals returned before anything was disposed.
+  let mounted = null;
   t.after(() => {
-    globalThis.google = originalGoogle;
-    globalThis.fleetInteropFixture = originalFixture;
+    try {
+      mounted?.dispose();
+    } finally {
+      globalThis.google = originalGoogle;
+      globalThis.fleetInteropFixture = originalFixture;
+    }
+    assert.deepEqual(
+      warnings
+        .slice(warnedBefore)
+        .filter(line => line.includes('A teardown step failed')),
+      [],
+    );
   });
   const noop = () => {};
   const calls = {
@@ -257,7 +296,7 @@ async function fixture(t, { failInspector = false } = {}) {
     return { state };
   }
   const api = await createFleetMap(element, 'fixture', callbacks);
-  t.after(() => api.dispose());
+  mounted = api;
   return { api, calls, state, listeners, element, viewport, native };
 }
 
@@ -266,6 +305,21 @@ test('a mount that fails before the layers exist still gives the provider map ba
   // the page is reloaded.
   const { state } = await fixture(t, { failInspector: true });
   assert.equal(state.released, 1);
+});
+
+test('each mount releases the host it was handed, once', async t => {
+  const first = await fixture(t),
+    second = await fixture(t);
+  // The second mount owns the global fixture now. A host that looked the
+  // fixture up at release time would credit `second` for both maps - and,
+  // at teardown, would find nothing there to credit at all.
+  first.api.dispose();
+  assert.equal(first.state.released, 1);
+  assert.equal(second.state.released, undefined);
+  first.api.dispose();
+  assert.equal(first.state.released, 1, 'nothing is released a second time');
+  second.api.dispose();
+  assert.equal(second.state.released, 1);
 });
 const bytes = value => new TextEncoder().encode(JSON.stringify(value));
 test('map options retain station controls without a truck visibility API', async t => {
