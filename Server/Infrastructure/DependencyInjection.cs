@@ -10,9 +10,9 @@ using Application.Features.Fleet.Interfaces;
 using Application.Features.Fuel.Background;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Integrations.Interfaces;
+using Application.Features.Routing.Interfaces;
 using Application.Features.Mileage.Interfaces;
 using Application.Features.Routing.Background;
-using Application.Features.Routing.Interfaces;
 using Application.Features.Synchronization.Interfaces;
 using Application.Interfaces;
 using Domain.Rules.Ports;
@@ -29,6 +29,7 @@ using Infrastructure.Integrations.Ifta;
 using Infrastructure.Integrations.Samsara;
 using Infrastructure.Integrations.TomTom;
 using Infrastructure.Integrations.Torque;
+using Infrastructure.Integrations.WhatsApp;
 using Infrastructure.Persistence;
 using Infrastructure.Synchronization;
 using Microsoft.AspNetCore.Authorization;
@@ -204,6 +205,11 @@ public static class DependencyInjection
       sp.GetRequiredService<SamsaraHosHistoryCache>()
     );
     services.AddSingleton<SamsaraDriverCatalogCache>();
+    services
+      .AddHttpClient<IDriverMessaging, WhatsAppCloudMessaging>(client =>
+        client.Timeout = TimeSpan.FromSeconds(20)
+      )
+      .RemoveAllLoggers();
     services.AddScoped<ITruckCameraProvider, SamsaraTruckCameraProvider>();
     services.AddScoped<IFleetProvider, SamsaraFleetProvider>();
     services.AddScoped<IDriverHosRefreshProvider, SamsaraDriverHosProvider>();

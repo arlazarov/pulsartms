@@ -3298,6 +3298,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ExecutionLegId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("MessageId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("PlanCalculatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -3327,6 +3330,8 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasIndex("CompanyId");
 
                     b.HasIndex("DispatchId");
+
+                    b.HasIndex("MessageId");
 
                     b.HasIndex("TruckId", "DispatchId");
 
@@ -3442,6 +3447,132 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasIndex("CompanyId");
 
                     b.ToTable("IntegrationCredentialSettings", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.Messaging.DriverMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("AssignmentRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Attempt")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<Guid>("DispatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("ErrorCode")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ExecutionLegId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("PlanCalculatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProviderMessageId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Recipient")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("StatusAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
+
+                    b.Property<Guid>("TruckId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("VisitKeys")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("DriverId");
+
+                    b.HasIndex("CompanyId", "ProviderMessageId")
+                        .IsUnique();
+
+                    b.HasIndex("TruckId", "DispatchId");
+
+                    b.HasIndex("CompanyId", "IdempotencyKey", "Attempt")
+                        .IsUnique();
+
+                    b.ToTable("DriverMessages", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.Messaging.DriverMessagingWindow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LastInboundAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CompanyId", "Channel", "Phone")
+                        .IsUnique();
+
+                    b.ToTable("DriverMessagingWindows", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Mileage.MileageAllocationPolicy", b =>
@@ -5249,6 +5380,11 @@ namespace Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Domain.Entities.Messaging.DriverMessage", null)
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Domain.Entities.Fleet.Truck", null)
                         .WithMany()
                         .HasForeignKey("TruckId")
@@ -5261,6 +5397,21 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasOne("Domain.Entities.Dispatch.Dispatch", null)
                         .WithMany()
                         .HasForeignKey("RootDispatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.Fleet.Truck", null)
+                        .WithMany()
+                        .HasForeignKey("TruckId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Messaging.DriverMessage", b =>
+                {
+                    b.HasOne("Domain.Entities.Fleet.Driver", null)
+                        .WithMany()
+                        .HasForeignKey("DriverId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

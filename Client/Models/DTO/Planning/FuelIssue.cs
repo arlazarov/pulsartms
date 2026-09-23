@@ -7,13 +7,34 @@ public sealed record FuelSendStatus(
   string? SentBy,
   string Channel,
   bool Changed
-);
+)
+{
+  public string? Delivery { get; init; }
+}
 
 public sealed record FuelIssueLine(
   string VisitKey,
   string Text,
   bool Sent,
   bool Changed
+)
+{
+  public string? Delivery { get; init; }
+}
+
+public sealed record FuelIssueRecipient(
+  Guid? DriverId,
+  string? DriverName,
+  string? WhatsAppPhone,
+  string State,
+  DateTime? WindowEndsAt
+);
+
+public sealed record FuelIssueMessageState(
+  string Status,
+  DateTime StatusAt,
+  int? ErrorCode,
+  bool NeedsConfirmation
 );
 
 public sealed record FuelIssuePreview(
@@ -29,6 +50,8 @@ public sealed record FuelIssuePreview(
 )
 {
   public bool AutomaticSending { get; init; }
+  public FuelIssueRecipient? Recipient { get; init; }
+  public FuelIssueMessageState? LastMessage { get; init; }
 }
 
 public sealed record FuelIssueSentRequest(
@@ -39,3 +62,8 @@ public sealed record FuelIssueSentRequest(
   public Guid? ExecutionLegId { get; init; }
   public long? AssignmentRevision { get; init; }
 }
+
+public sealed record FuelIssueSendRequest(
+  FuelIssueSentRequest Plan,
+  bool SendAgain = false
+);

@@ -34,7 +34,20 @@ public partial class IntegrationSettings : IDisposable
         new("refreshToken", "Refresh token"),
       ]
     ),
+    new(
+      "whatsapp",
+      "WhatsApp",
+      "Fuel plans to drivers through the WhatsApp Cloud API. Saving sends "
+        + "nothing.",
+      [
+        new("phoneNumberId", "Phone number ID"),
+        new("accessToken", "Access token"),
+        new("appSecret", "App secret"),
+        new("verifyToken", "Webhook verify token"),
+      ]
+    ),
   ];
+  private string? _webhook;
   private bool _loading,
     _disposed;
   private string? _loadError;
@@ -71,6 +84,14 @@ public partial class IntegrationSettings : IDisposable
     if (_cards.Any(card => card.State is null))
       _loadError =
         "Some integration settings are unavailable. Reload to try again.";
+    var webhook = await Api.GetAsync<WhatsAppWebhookAddress>(
+      "api/settings/integrations/whatsapp/webhook",
+      _lifetime.Token
+    );
+    if (!_disposed && webhook.Success && webhook.Response is { } address)
+      _webhook = Api.BaseAddress is { } api
+        ? new Uri(api, address.Path).ToString()
+        : "/" + address.Path;
   }
 
   private async Task RefreshAsync(IntegrationDraft card)

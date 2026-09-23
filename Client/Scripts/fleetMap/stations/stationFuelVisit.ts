@@ -21,7 +21,8 @@ export type FuelVisit = {
   unit?: string;
   full?: boolean;
   // Handed to the driver, and whether the plan still says what was sent.
-  sent?: { changed: boolean } | null;
+  // Delivery is the provider's latest word when it went over WhatsApp.
+  sent?: { changed: boolean; delivery?: string | null } | null;
 };
 
 function node(tag: string, className: string, text?: string) {
@@ -92,13 +93,14 @@ export function createFuelVisit(
     node('span', 'fleet-fuel-visit__number', String(visit.number)),
     node('span', 'fleet-fuel-visit__title', 'Fuel stop'),
   );
-  // One word, only when it is true: the stop went to the driver, or it
-  // did and the plan has moved since.
+  // One label, only when it is true: the stop went to the driver, how far
+  // WhatsApp says it got, or the plan has moved since.
   if (visit.sent) {
+    const warn = visit.sent.changed || visit.sent.delivery === 'failed';
     const sent = node(
       'span',
-      `fleet-fuel-visit__sent${visit.sent.changed ? ' fleet-fuel-visit__sent--changed' : ''}`,
-      visit.sent.changed ? 'Changed since sent' : 'Sent',
+      `fleet-fuel-visit__sent${warn ? ' fleet-fuel-visit__sent--changed' : ''}`,
+      sentLabel(visit.sent),
     );
     name.append(sent);
   }
@@ -199,4 +201,21 @@ export function createFuelVisit(
   else if (showCost && costLabel) fact('Purchase', costLabel);
   if (facts.children.length) row.append(facts);
   return row;
+}
+
+export function sentLabel(sent: {
+  changed: boolean;
+  delivery?: string | null;
+}): string {
+  if (sent.changed) return 'Changed since sent';
+  switch (sent.delivery) {
+    case 'failed':
+      return 'Not delivered';
+    case 'delivered':
+      return 'Delivered';
+    case 'read':
+      return 'Read';
+    default:
+      return 'Sent';
+  }
 }

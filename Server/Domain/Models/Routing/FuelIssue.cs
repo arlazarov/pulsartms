@@ -2,8 +2,8 @@ namespace Domain.Models.Routing;
 
 // Which planned fuel stops are the driver's for the shift they are on, and
 // whether they have been handed over. Nothing here sends anything: a stop
-// is prepared by the plan, and only a dispatcher's confirmation (or, later,
-// a transport's) says it was sent.
+// is prepared by the plan, and only a dispatcher's confirmation or a
+// provider's acceptance says it was sent.
 public static class FuelIssueHorizons
 {
   // Reached before the current work period ends, plus the selection buffer.
@@ -31,6 +31,9 @@ public static class FuelSendChannels
 {
   // A dispatcher passed the plan on by hand and said so.
   public const string Manual = "manual";
+
+  // WhatsApp accepted it; its delivery is the message's own status.
+  public const string WhatsApp = "whatsapp";
 }
 
 // A visit's hand-over as the plan reads it now: when and by whom it was
@@ -41,13 +44,51 @@ public sealed record FuelSendStatus(
   string? SentBy,
   string Channel,
   bool Changed
-);
+)
+{
+  // The provider's latest word on the message that carried it: accepted,
+  // sent, delivered, read or failed. Null for a hand-over by hand.
+  public string? Delivery { get; init; }
+}
 
 public sealed record FuelIssueLine(
   string VisitKey,
   string Text,
   bool Sent,
   bool Changed
+)
+{
+  public string? Delivery { get; init; }
+}
+
+public static class FuelIssueChannelStates
+{
+  public const string NotConfigured = "notConfigured";
+  public const string NoDriver = "noDriver";
+  public const string NoNumber = "noNumber";
+
+  // The driver has not written to the business number in the last 24
+  // hours, so WhatsApp would not deliver a free-form message.
+  public const string OutsideWindow = "outsideWindow";
+  public const string Ready = "ready";
+}
+
+// Who a WhatsApp hand-over would go to, and whether it can go now.
+public sealed record FuelIssueRecipient(
+  Guid? DriverId,
+  string? DriverName,
+  string? WhatsAppPhone,
+  string State,
+  DateTime? WindowEndsAt
+);
+
+// The latest WhatsApp attempt for this plan version. Accepted is not
+// delivered; unknown means nobody knows whether it went.
+public sealed record FuelIssueMessageState(
+  string Status,
+  DateTime StatusAt,
+  int? ErrorCode,
+  bool NeedsConfirmation
 );
 
 // What a dispatcher would hand to the driver now: only the current-shift
@@ -65,9 +106,17 @@ public sealed record FuelIssuePreview(
   string Message
 )
 {
-  // There is no transport yet. The preview is for copying by hand.
   public bool AutomaticSending { get; init; }
+  public FuelIssueRecipient? Recipient { get; init; }
+  public FuelIssueMessageState? LastMessage { get; init; }
 }
+
+// Sending the previewed plan through WhatsApp. SendAgain is a dispatcher
+// saying so after an attempt whose outcome is unknown.
+public sealed record FuelIssueSendRequest(
+  FuelIssueSentRequest Plan,
+  bool SendAgain = false
+);
 
 public sealed record FuelIssueSentRequest(
   DateTime ExpectedCalculatedAt,

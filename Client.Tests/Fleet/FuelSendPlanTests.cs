@@ -26,9 +26,16 @@ public sealed class FuelSendPlanTests
       Assert.Single(component.FindAll(".fuel-send-plan__lines li"))
     );
     Assert.Contains("Driver on duty", component.Find(".fuel-send-plan__state").TextContent);
+    Assert.Contains("Copying does not mark it sent", component.Markup);
     Assert.Contains(
-      "Automatic sending is not connected yet",
-      component.Markup
+      "WhatsApp is not set up",
+      component.Find(".fuel-send-plan__recipient").TextContent
+    );
+    Assert.True(
+      component
+        .FindAll("button")
+        .Single(x => x.TextContent.Trim() == "Send via WhatsApp")
+        .HasAttribute("disabled")
     );
     Assert.Equal(
       "Fuel for this shift:\n1. Ahead: fuel at LOVES",
@@ -45,7 +52,9 @@ public sealed class FuelSendPlanTests
     var component = f.Render();
     component.WaitForElement(".fuel-send-plan__lines li");
     component.FindAll("button").Single(x => x.TextContent == "Copy message").Click();
-    Assert.Contains("not marked as sent", component.Find(".fuel-send-plan__status").TextContent);
+    component.WaitForAssertion(() =>
+      Assert.Contains("not marked as sent", component.Find(".fuel-send-plan__status").TextContent)
+    );
     Assert.All(f.Requests, x => Assert.Equal(HttpMethod.Get, x.Method));
     Assert.Equal(0, f.Sent);
   }
@@ -110,6 +119,89 @@ public sealed class FuelSendPlanTests
     Assert.Contains("out of reach", component.Find(".fuel-send-plan__critical").TextContent);
   }
 
+  [Fact]
+  public void WhatsAppSendsTheShownVersionAndSaysAcceptedIsNotDelivered()
+  {
+    using var f = new Fixture();
+    f.Ready();
+    var component = f.Render();
+    component.WaitForElement(".fuel-send-plan__lines li");
+    Assert.Contains(
+      "Sends to Driver One at +15558234327.",
+      component.Find(".fuel-send-plan__recipient").TextContent
+    );
+    component
+      .FindAll("button")
+      .Single(x => x.TextContent.Trim() == "Send via WhatsApp")
+      .Click();
+
+    component.WaitForAssertion(() =>
+      Assert.Equal(
+        "WhatsApp accepted the message. Not delivered yet.",
+        component.Find(".fuel-send-plan__delivery").TextContent
+      )
+    );
+    var post = f.Requests.Single(x => x.Method == HttpMethod.Post);
+    Assert.EndsWith($"/{f.Dispatch}/planning/fuel/issue/whatsapp", post.Url);
+    using var body = JsonDocument.Parse(post.Body!);
+    var plan = body.RootElement.GetProperty("plan");
+    Assert.Equal(f.CalculatedAt, plan.GetProperty("expectedCalculatedAt").GetDateTime());
+    Assert.Equal(7, plan.GetProperty("assignmentRevision").GetInt64());
+    Assert.False(body.RootElement.GetProperty("sendAgain").GetBoolean());
+    Assert.Equal(1, f.Sent);
+  }
+
+  [Fact]
+  public void AnUnansweredAttemptIsSentAgainOnlyByItsOwnButton()
+  {
+    using var f = new Fixture();
+    f.Ready();
+    f.Preview = f.Preview with
+    {
+      LastMessage = new("unknown", f.CalculatedAt, null, true),
+    };
+    var component = f.Render();
+    component.WaitForElement(".fuel-send-plan__delivery--warn");
+    Assert.Contains(
+      "may have been delivered",
+      component.Find(".fuel-send-plan__delivery").TextContent
+    );
+    Assert.DoesNotContain(
+      component.FindAll("button"),
+      x => x.TextContent.Trim() == "Send via WhatsApp"
+    );
+    component
+      .FindAll("button")
+      .Single(x => x.TextContent.Trim() == "Send again via WhatsApp")
+      .Click();
+    component.WaitForAssertion(() =>
+      Assert.Single(f.Requests, x => x.Method == HttpMethod.Post)
+    );
+    using var body = JsonDocument.Parse(
+      f.Requests.Single(x => x.Method == HttpMethod.Post).Body!
+    );
+    Assert.True(body.RootElement.GetProperty("sendAgain").GetBoolean());
+  }
+
+  [Fact]
+  public void AClosedWindowSaysWhyAndSendsNothing()
+  {
+    using var f = new Fixture();
+    f.Ready("outsideWindow");
+    var component = f.Render();
+    component.WaitForElement(".fuel-send-plan__lines li");
+    Assert.Contains(
+      "last 24 hours",
+      component.Find(".fuel-send-plan__recipient").TextContent
+    );
+    Assert.True(
+      component
+        .FindAll("button")
+        .Single(x => x.TextContent.Trim() == "Send via WhatsApp")
+        .HasAttribute("disabled")
+    );
+  }
+
   private sealed record Recorded(HttpMethod Method, string Url, string? Body);
 
   private sealed class Fixture : IDisposable
@@ -143,6 +235,18 @@ public sealed class FuelSendPlanTests
       Context.Services.AddSingleton(new ApiService(http));
     }
 
+    public void Ready(string state = "ready") =>
+      Preview = Preview with
+      {
+        Recipient = new(
+          Guid.NewGuid(),
+          "Driver One",
+          "+15558234327",
+          state,
+          null
+        ),
+      };
+
     public IRenderedComponent<FuelSendPlan> Render() =>
       Context.Render<FuelSendPlan>(p =>
         p.Add(x => x.DispatchId, Dispatch)
@@ -173,13 +277,18 @@ public sealed class FuelSendPlanTests
             }
           ),
         };
+      var whatsApp = request.RequestUri!.AbsolutePath.EndsWith("/whatsapp");
       var preview =
-        request.Method == HttpMethod.Post
-          ? Preview with
-          {
-            Lines = [Preview.Lines[0] with { Sent = true }],
-          }
-          : Preview;
+        request.Method != HttpMethod.Post ? Preview
+        : whatsApp ? Preview with
+        {
+          Lines = [Preview.Lines[0] with { Sent = true, Delivery = "accepted" }],
+          LastMessage = new("accepted", CalculatedAt, null, false),
+        }
+        : Preview with
+        {
+          Lines = [Preview.Lines[0] with { Sent = true }],
+        };
       return new(HttpStatusCode.OK)
       {
         Content = JsonContent.Create(

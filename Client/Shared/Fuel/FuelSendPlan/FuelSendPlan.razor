@@ -30,8 +30,10 @@
                     {
                         <li @key="line.VisitKey">
                             <span>@line.Text</span>
-                            @if (line.Changed) { <span class="fleet-fuel-visit__sent fleet-fuel-visit__sent--changed">Changed since sent</span> }
-                            else if (line.Sent) { <span class="fleet-fuel-visit__sent">Sent</span> }
+                            @if (LineLabel(line) is { } label)
+                            {
+                                <span class="@LineClass(line)">@label</span>
+                            }
                         </li>
                     }
                 </ol>
@@ -41,11 +43,53 @@
             <label class="fuel-send-plan__message" for="fuel-send-plan-message">Message to the driver
                 <textarea id="fuel-send-plan-message" readonly rows="6" value="@preview.Message"></textarea>
             </label>
-            <p class="fuel-send-plan__hint">Automatic sending is not connected yet. Copy the message and send it to the driver yourself, then mark it as sent. Copying does not mark it sent.</p>
+            <h3 class="fuel-send-plan__section">WhatsApp</h3>
+            <p class="fuel-send-plan__recipient">@RecipientText(preview)</p>
+            @if (preview.LastMessage is { } last)
+            {
+                <p class="@DeliveryClass(last)" role="status">
+                    @DeliveryText(last)
+                </p>
+            }
+            @if (preview.Recipient?.DriverId is { } driver
+                 && preview.Recipient.State is "noNumber" or "outsideWindow" or "ready")
+            {
+                <button type="button" class="btn btn--text"
+                        aria-expanded="@(_editingContact ? "true" : "false")"
+                        @onclick="() => _editingContact = !_editingContact">
+                    @(_editingContact ? "Close contacts" : "Edit driver contacts")
+                </button>
+                @if (_editingContact)
+                {
+                    <DriverContactEditor DriverId="driver" Saved="ContactSavedAsync" />
+                }
+            }
+            <p class="fuel-send-plan__hint">
+                Send via WhatsApp sends this message now. Accepted is not
+                delivered: delivery and reading show here when WhatsApp
+                reports them. To send it yourself instead, copy the message,
+                then mark it as sent. Copying does not mark it sent.
+            </p>
             <div class="fuel-send-plan__actions">
+                @if (preview.LastMessage is { NeedsConfirmation: true })
+                {
+                    <button type="button" class="btn btn--primary"
+                            disabled="@(!CanSend(preview))"
+                            @onclick="() => SendAsync(true)">
+                        @(_saving ? "Sending…" : "Send again via WhatsApp")
+                    </button>
+                }
+                else
+                {
+                    <button type="button" class="btn btn--primary"
+                            disabled="@(!CanSend(preview))"
+                            @onclick="() => SendAsync(false)">
+                        @(_saving ? "Sending…" : "Send via WhatsApp")
+                    </button>
+                }
                 <button type="button" class="btn" disabled="@(_saving)" @onclick="CopyAsync">Copy message</button>
-                <button type="button" class="btn btn--primary" disabled="@(_saving || preview.Lines.Count == 0 || AllSent(preview))" @onclick="MarkSentAsync">
-                    @(_saving ? "Marking…" : "Mark as sent")
+                <button type="button" class="btn" disabled="@(_saving || preview.Lines.Count == 0 || AllSent(preview))" @onclick="MarkSentAsync">
+                    Mark as sent
                 </button>
                 @if (_status is not null) { <span class="fuel-send-plan__status" role="status">@_status</span> }
             </div>

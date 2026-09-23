@@ -14,29 +14,35 @@ namespace Client.Tests.Identity;
 public sealed class IntegrationSettingsComponentTests
 {
   [Fact]
-  public async Task OnlyTheThreeApprovedProvidersAppearWithoutCredentialReadback()
+  public async Task OnlyTheApprovedProvidersAppearWithoutCredentialReadback()
   {
     using var context = new ClientComponentContext(
       (request, _) =>
       {
         Assert.Equal(HttpMethod.Get, request.Method);
-        Assert.Equal(
-          "/api/settings/integrations",
-          request.RequestUri!.AbsolutePath
+        return Task.FromResult(
+          request.RequestUri!.AbsolutePath switch
+          {
+            "/api/settings/integrations" => ListResponse(),
+            "/api/settings/integrations/whatsapp/webhook" =>
+              IntegrationSettingsFixture.Response(
+                new WhatsAppWebhookAddress("api/webhooks/whatsapp/amfcarrier")
+              ),
+            var path => throw new InvalidOperationException(path),
+          }
         );
-        return Task.FromResult(ListResponse());
       }
     );
     var component = context.Render<IntegrationSettings>();
     component.WaitForAssertion(
       () =>
         Assert.Equal(
-          3,
+          4,
           component.FindAll(".integration-settings__status.is-configured").Count
         )
     );
     Assert.Equal(
-      new[] { "torqueai", "samsara", "google-email" },
+      new[] { "torqueai", "samsara", "google-email", "whatsapp" },
       component
         .FindAll("[data-provider]")
         .Select(element => element.GetAttribute("data-provider"))
@@ -48,12 +54,18 @@ public sealed class IntegrationSettingsComponentTests
     Assert.DoesNotContain("Connected", component.Markup);
     Assert.Empty(component.FindAll("input"));
     Assert.Empty(component.FindAll(".integration-settings .btn--text"));
-    foreach (var provider in new[] { "torqueai", "samsara", "google-email" })
+    Assert.Contains(
+      "/api/webhooks/whatsapp/amfcarrier",
+      component.Find("[data-provider='whatsapp'] code").TextContent
+    );
+    foreach (
+      var provider in new[] { "torqueai", "samsara", "google-email", "whatsapp" }
+    )
       await component
         .Find($"[data-provider='{provider}'] button")
         .ClickAsync(new());
     var fields = component.FindAll("input");
-    Assert.Equal(5, fields.Count);
+    Assert.Equal(9, fields.Count);
     Assert.All(
       fields,
       field =>

@@ -134,6 +134,46 @@ public sealed class FuelIssueRecordsTests
     Assert.Null(summaries.Take());
   }
 
+  // A hand-over that is not committed is not announced: the truck's
+  // summary is not asked for again, and nothing reads as sent.
+  [Fact]
+  public async Task AHandOverThatFailsToCommitAsksForNothing()
+  {
+    var probe = new SaveFailureProbe();
+    await using var f = await PlanningRefreshFixture.CreateAsync(services =>
+      services.ConfigureDbContext<Infrastructure.Persistence.AppDbContext>(
+        options => options.AddInterceptors(probe)
+      )
+    );
+    var (truck, dispatch) = await SeedAsync(f);
+    var summaries = f.Services.GetRequiredService<PlanningSummaryCache>();
+    var company = f.Services.GetRequiredService<ICurrentCompany>().Id!.Value;
+    var key = new PlanningSummaryCache.Key(company, truck);
+    summaries.Keep(key, "s");
+    summaries.Complete(
+      summaries.Take()!,
+      "s",
+      new(truck, null, null, null, null) { CalculatedAt = f.Time.GetUtcNow() }
+    );
+    var before = Guid.NewGuid();
+    probe.FailNextSave = true;
+
+    Assert.Equal(
+      0,
+      await Records(f).RecordAsync(
+        Snapshot(truck, dispatch, before, revision: 3),
+        [(Visit(dispatch, before, fill: true), "t")],
+        "manual",
+        "u1",
+        default
+      )
+    );
+
+    Assert.Null(summaries.Take());
+    f.Db.ChangeTracker.Clear();
+    Assert.Empty(await f.Db.FuelVisitSends.ToListAsync());
+  }
+
   private static FuelIssueRecords Records(PlanningRefreshFixture f) =>
     new(
       f.Db,

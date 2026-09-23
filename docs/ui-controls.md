@@ -808,13 +808,17 @@ Validation uses `.invalid`, `[aria-invalid="true"]` or `.form-field__control--er
 Send plan is one of the Fleet Map overlays, beside Fuel in the truck actions,
 and it hides the inspector like the fuel editor. It shows the hand-over state,
 a critical warning when a stop is out of reach, the Ready for current shift
-stops with Sent or Changed since sent, a note that later stops stay
-provisional, and the message. It says plainly that automatic sending is not
-connected: Copy message records nothing, and Mark as sent is the explicit
-confirmation. A sent visit shows the same one-word label beside its name in the
-station popup; nothing else on the map changes. Fuel plan sending in Settings
-is off by default and says that turning it on sends nothing until a channel
-exists.
+stops with their label, a note that later stops stay provisional, the message
+and a WhatsApp section: who it goes to, or why it cannot go (not set up, no
+driver, no number, no message from the driver in 24 hours), and what became
+of the last attempt. Send via WhatsApp is the primary action; after an
+attempt with no answer it becomes Send again via WhatsApp. Copy message
+records nothing, and Mark as sent is the explicit hand-by-hand confirmation.
+Edit driver contacts opens the shared contact editor inside the window. A
+stop's label is one of Sent, Delivered, Read, Not delivered or Changed since
+sent, the same in the station popup; nothing else on the map changes. Fuel
+plan sending in Settings is off by default and sends nothing. Settings,
+Integrations has a WhatsApp card with the webhook URL to give Meta.
 
 `Shared/Drivers/DriverContactEditor` edits a driver's phone, email and
 WhatsApp number wherever a driver's contacts are needed. Each sourced field

@@ -145,6 +145,8 @@ public static class DependencyInjection
     services.AddScoped<ICarrierFuelPrices, CarrierFuelPrices>();
     services.AddScoped<TruckFuelPlans>();
     services.AddScoped<FuelIssueRecords>();
+    services.AddScoped<FuelIssueChannel>();
+    services.AddScoped<FuelIssueSender>();
     services.AddScoped<Application.Features.Routing.Commands.FuelIssuePreviews>();
     services.AddSingleton<FuelPlanMemory>();
     services.AddSingleton<ICacheMemorySource>(sp =>

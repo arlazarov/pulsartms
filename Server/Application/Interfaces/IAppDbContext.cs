@@ -5,6 +5,7 @@ using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Domain.Entities.Fuel;
+using Domain.Entities.Messaging;
 using Domain.Entities.Mileage;
 using Domain.Entities.Shipments;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -23,6 +24,8 @@ public interface IAppDbContext
   DbSet<FuelStation> FuelStations { get; }
   DbSet<TruckFuelPlan> TruckFuelPlans { get; }
   DbSet<FuelVisitSend> FuelVisitSends { get; }
+  DbSet<DriverMessage> DriverMessages { get; }
+  DbSet<DriverMessagingWindow> DriverMessagingWindows { get; }
   DbSet<FuelDiscount> FuelDiscounts { get; }
   DbSet<FuelTransaction> FuelTransactions { get; }
   DbSet<FuelImportSource> FuelImportSources { get; }

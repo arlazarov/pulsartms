@@ -19,6 +19,10 @@ that every proposed optimization has been implemented.
 | Durable route and movement state | RoutePlanStore / RoutePlanStorage |
 | Durable fuel selection | TruckFuelPlans and its Infrastructure store |
 | Fuel hand-over records | FuelIssueRecords |
+| Sending a hand-over to a driver | FuelIssueSender |
+| Provider delivery statuses and inbound windows | WhatsAppWebhookHandlers |
+| Messaging transport | IDriverMessaging (WhatsAppCloudMessaging) |
+| Driver contacts | UpdateDriverContact / DriverContactImport |
 | Heavy preparation and durable demand | PlanningRefreshOperation |
 | Shared display snapshots | PlanningSummaryCache |
 | Board planning reads | BoardPlanningReader |
@@ -87,6 +91,51 @@ these planning-input entries. Shared settings, fleet catalog changes and the UTC
 date remain common dependencies because they can affect multiple trucks. This
 broader read refresh does not recalculate or rewrite every saved route/fuel plan.
 Keep batch caches within the existing bounded `ReadCache` memory budget.
+
+## Consistency contract
+
+Every prepared or published result names the facts it was made from, and
+is checked against them where it is published. There is no global counter:
+each result depends on the versions below and on nothing else, so a change
+elsewhere neither invalidates it nor is hidden by it.
+
+| Result | Checked against at publication | Not a dependency |
+| --- | --- | --- |
+| Route and geometry | company, accepted assignment or leg revision, itinerary input signature, truck profile, saved road versions | contacts, prices, ETA |
+| Fuel plan | the route's dependencies, telemetry observation, price materiality, `CalculatedAt` compare-and-swap | contacts, ETA |
+| ETA forecast | company, work key (load, leg, assignment, stops), chain input hash, road plan id and version | contacts, prices |
+| Summary snapshot | company and truck key, work and settings signature, cache ticket | - |
+| Fuel hand-over | company, truck, leg or load, assignment revision, station, stop before, content (fill or gallons) | wording, miles ahead, ETA, price |
+| WhatsApp message | idempotency key: assignment, visits with content, recipient; provider message id | later plan versions |
+
+- Calculate outside a long database transaction. Publish through the
+  owner above, which re-reads the dependencies inside its transaction and
+  refuses a result whose inputs moved.
+- Order is commit, then read-cache invalidation, then shared summary
+  notification. A failed commit notifies nothing.
+- A late result never replaces a newer one: stores compare-and-swap or
+  compare timestamps, the summary cache compares tickets, and ETA memory
+  keeps the newer road version of the same work.
+- A result for the same work stays visible with honest freshness
+  (`IsRefreshing`, `RouteUpdatePending`, "Changed since sent"). A result
+  for other work - another company, truck, assignment or stops - is never
+  shown as current.
+- A send to a driver is an external operation. Its content, recipient and
+  visits are fixed in an attempt row committed before the provider call;
+  the plan version is checked on acceptance and again right before the
+  call. The database and the provider are not atomic and a lost answer is
+  not exactly-once: it is recorded as unknown and repeated only when a
+  dispatcher explicitly sends again. A plan that changes during the call
+  keeps the old hand-over and reads as changed since sent.
+- Provider statuses apply only to the message with that provider id and
+  only move forward; a failed or read message never moves back.
+
+A change that adds a dependency, a publisher or a retained result states
+which of these rows it belongs to and adds a controlled-interleaving
+regression where it touches one. Existing coverage:
+`PlanningSummaryCacheTests`, `PlanningPublicationTests`,
+`TruckFuelPlanReplacementTests`, `EtaRetainedForecastTests`,
+`FuelIssueRecordsTests`, `FuelIssueSenderTests` and `WhatsAppWebhookTests`.
 
 ## Preventing repeated database and provider work
 

@@ -33,7 +33,8 @@ public sealed class FuelIssueRecords(
     string Content,
     DateTime SentAt,
     string? SentBy,
-    string Channel
+    string Channel,
+    string? Delivery
   );
 
   public async Task ApplyAsync(
@@ -61,7 +62,14 @@ public sealed class FuelIssueRecords(
             x.Content,
             x.SentAt,
             x.SentBy,
-            x.Channel
+            x.Channel,
+            // In the same query: the carrying message's latest status.
+            x.MessageId == null
+              ? null
+              : db
+                .DriverMessages.Where(m => m.Id == x.MessageId)
+                .Select(m => m.Status)
+                .FirstOrDefault()
           ))
           .ToListAsync(ct);
     foreach (var stop in plan.Stops)
@@ -86,7 +94,10 @@ public sealed class FuelIssueRecords(
           latest.SentBy,
           latest.Channel,
           latest.Content != FuelVisitIdentity.Content(stop)
-        );
+        )
+        {
+          Delivery = latest.Delivery,
+        };
     }
     FuelIssueHorizon.Apply(
       plan,
@@ -99,57 +110,71 @@ public sealed class FuelIssueRecords(
 
   // Records that these visits, as the plan reads now, were passed on.
   // Returns how many were new; a visit already recorded with the same
-  // content is the same hand-over and is not written twice.
+  // content is the same hand-over and is not written twice. A provider
+  // message that carried content already recorded becomes that hand-over's
+  // latest carrier, so a resend after a failure is what the plan shows.
   public async Task<int> RecordAsync(
     TruckFuelPlanSnapshot saved,
     IReadOnlyList<(FuelPlanStop Stop, string Text)> visits,
     string channel,
     string? actor,
-    CancellationToken ct
+    CancellationToken ct,
+    Guid? messageId = null
   )
   {
     var owner =
       company.Id ?? throw new InvalidOperationException("A company is needed.");
     var now = time.GetUtcNow().UtcDateTime;
     var added = 0;
+    var written = new List<FuelVisitSend>();
     foreach (var (stop, text) in visits)
     {
       if (Scope(saved, stop) is not { } scope)
         continue;
       var content = FuelVisitIdentity.Content(stop);
-      if (
-        await db.FuelVisitSends.AnyAsync(
-          x =>
-            x.TruckId == saved.TruckId
-            && x.ScopeId == scope.Id
-            && x.AssignmentRevision == scope.Revision
-            && x.StationId == stop.StationId
-            && x.BeforeStopId == stop.BeforeStopId
-            && x.Content == content,
-          ct
-        )
-      )
-        continue;
-      db.FuelVisitSends.Add(
-        new FuelVisitSend
-        {
-          Id = Guid.NewGuid(),
-          CompanyId = owner,
-          TruckId = saved.TruckId,
-          DispatchId = stop.DispatchId,
-          ExecutionLegId = scope.Leg,
-          ScopeId = scope.Id,
-          AssignmentRevision = scope.Revision,
-          StationId = stop.StationId,
-          BeforeStopId = stop.BeforeStopId,
-          Content = content,
-          Text = text.Length > 1000 ? text[..1000] : text,
-          PlanCalculatedAt = saved.CalculatedAt,
-          Channel = channel,
-          SentAt = now,
-          SentBy = actor,
-        }
+      var existing = await db.FuelVisitSends.FirstOrDefaultAsync(
+        x =>
+          x.TruckId == saved.TruckId
+          && x.ScopeId == scope.Id
+          && x.AssignmentRevision == scope.Revision
+          && x.StationId == stop.StationId
+          && x.BeforeStopId == stop.BeforeStopId
+          && x.Content == content,
+        ct
       );
+      if (existing is not null)
+      {
+        if (messageId is null || existing.MessageId == messageId)
+          continue;
+        existing.MessageId = messageId;
+        existing.Channel = channel;
+        existing.SentAt = now;
+        existing.SentBy = actor;
+        written.Add(existing);
+        added++;
+        continue;
+      }
+      var row = new FuelVisitSend
+      {
+        Id = Guid.NewGuid(),
+        CompanyId = owner,
+        TruckId = saved.TruckId,
+        DispatchId = stop.DispatchId,
+        ExecutionLegId = scope.Leg,
+        ScopeId = scope.Id,
+        AssignmentRevision = scope.Revision,
+        StationId = stop.StationId,
+        BeforeStopId = stop.BeforeStopId,
+        Content = content,
+        Text = text.Length > 1000 ? text[..1000] : text,
+        PlanCalculatedAt = saved.CalculatedAt,
+        Channel = channel,
+        SentAt = now,
+        SentBy = actor,
+        MessageId = messageId,
+      };
+      db.FuelVisitSends.Add(row);
+      written.Add(row);
       added++;
     }
     if (added == 0)
@@ -161,6 +186,9 @@ public sealed class FuelIssueRecords(
     catch (DbUpdateException)
     {
       // A confirmation that raced this one wrote the same hand-over first.
+      // Nothing of this attempt stays pending on the context.
+      foreach (var row in written)
+        db.Entry(row).State = EntityState.Detached;
       return 0;
     }
     // After the commit, and for this truck only.

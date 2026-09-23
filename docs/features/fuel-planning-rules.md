@@ -474,9 +474,9 @@ continue protecting ordinary route preparation outside fuel calculation.
 ## Handing fuel to the driver
 
 PulsR sends nothing to a driver by itself. Plans are prepared in the background
-for running work; a plan reaches a driver only when a dispatcher passes it on
-and says so, unless a company turns on automatic sending, which also needs a
-messaging channel that is not connected yet.
+for running work; a plan reaches a driver only when a dispatcher presses Send
+via WhatsApp, or passes it on by hand and says so. Automatic sending is a
+company setting that stays off and is not wired to any sender.
 
 The economic horizon stays long: the whole remaining itinerary still decides
 today's quantities. The hand-over horizon is shorter. A stop belongs to the
@@ -515,17 +515,45 @@ fill, or the gallons; a fill stays the same hand-over however many gallons it
 comes to. A repeated confirmation of the same content writes nothing. The
 latest hand-over of a visit is what the driver was last told: a plan saying
 anything else is shown as changed since sent. A new assignment never inherits a
-send. Sent is not delivered, and delivered is not read; a transport's receipts
-are future records of their own. After a confirmation commits, that one truck's
-shared summary is asked for again; no other truck is touched.
+send. Sent is not delivered, and delivered is not read. After a confirmation
+commits, that one truck's shared summary is asked for again; no other truck is
+touched.
+
+### Sending over WhatsApp
+
+Send via WhatsApp goes to the driver whose hours decide the shift - the same
+planning reader - at their WhatsApp number, which is never taken from their
+phone. A co-driver gets nothing. It is offered only when the carrier saved
+WhatsApp in Settings, the driver has a number, and the driver wrote to the
+business number in the last 24 hours: outside that window WhatsApp delivers
+only approved templates, and PulsR has none. The window is known only from
+inbound notifications the webhook received.
+
+The send follows the consistency contract in
+[fleet efficiency](../architecture/fleet-efficiency.md#consistency-contract):
+the words, recipient and visits are fixed in a `DriverMessages` row committed
+before the call; the plan version is checked when the request arrives and
+again right before the call, and a plan that moved withdraws the attempt. The
+same instruction to the same recipient - assignment, visits and what is said
+at each - is one message: pressing again returns the first attempt, and
+wording that moves with the truck or a recalculation to the same instruction
+sends nothing new. An attempt with no answer (timeout, dropped connection,
+server error, no message id) is unknown; it is repeated only when a dispatcher
+presses Send again. A refusal or a failed delivery can be sent again. Only the
+provider's numeric error code is kept.
+
+When WhatsApp accepts, the visits are recorded as a hand-over over WhatsApp
+with that message as their carrier. The map and Send plan show the provider's
+latest word: Sent, Delivered, Read, or Not delivered after a failure. Signed
+webhook notifications move a message's status forward only; a notification
+about an old attempt never touches a newer one, and repeats or late arrivals
+change nothing. A plan that changes during the call keeps what was sent and
+reads as changed since sent.
 
 Automatic sending is a company setting in Dispatch settings, off by default and
-off for a company with no settings row. Turning it on changes nothing today:
-no channel exists. When one does, the same owner sends only this shift's stops
-of a driver on duty, never content already sent, never a critical plan, and asks
-again right before sending - so a setting turned off, a driver gone off duty or
-a changed plan stops a waiting send. The Send plan button is never blocked by
-the setting.
+off for a company with no settings row. It is not connected to any sender: no
+background process sends a plan, whatever the setting says. The Send plan
+buttons are never blocked by it.
 
 ### Price and fuel changes after preparation
 

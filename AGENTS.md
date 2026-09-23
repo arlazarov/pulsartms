@@ -87,6 +87,12 @@ Application commands directly.
 - Batch visible-page inputs, coalesce repeated work and preserve bounded payloads.
   Notify shared summaries after successful commit and read-cache invalidation.
   Preserve company/assignment/version guards and retained-display behavior.
+- Follow the consistency contract in `docs/architecture/fleet-efficiency.md`
+  for any prepared, cached, published or externally sent result: name its
+  dependency versions, publish only through its owner after commit, never
+  let a late result replace a newer one, keep retained results honestly
+  stale, and make external sends idempotent without claiming exactly-once.
+  Add a controlled-interleaving regression for each path a change touches.
 - For a repeated-query fix, add call-count or data-loading regression coverage
   where practical. Report foreground and background cost separately; a fast HTTP
   response does not prove that total database or provider work decreased.

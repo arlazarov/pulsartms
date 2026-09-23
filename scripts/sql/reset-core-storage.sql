@@ -54,6 +54,8 @@ DECLARE
     'DispatchWorkspaceRevisions',
     'DispatchWorkspaces',
     'DriverHosReadings',
+    'DriverMessages',
+    'DriverMessagingWindows',
     'Dispatches',
     'Drivers',
     'ExecutionActionReceipts',
@@ -109,7 +111,7 @@ BEGIN
   IF current_setting('pulsr.reset_database', true)
       IS DISTINCT FROM current_database()
     OR current_setting('pulsr.reset_ack', true)
-      IS DISTINCT FROM '20260923122137_AddDriverContacts'
+      IS DISTINCT FROM '20260923134223_AddDriverMessages'
     OR current_setting('pulsr.reset_writers_stopped', true)
       IS DISTINCT FROM 'true'
     OR current_setting('pulsr.reset_backup_verified', true)
@@ -134,9 +136,9 @@ BEGIN
   SELECT string_agg(format('public.%I', name), ', ' ORDER BY name)
     INTO tables_sql FROM unnest(expected) AS names(name);
   EXECUTE 'LOCK TABLE ' || tables_sql || ' IN ACCESS EXCLUSIVE MODE NOWAIT';
-  IF (SELECT count(*) FROM "__EFMigrationsHistory") <> 57
+  IF (SELECT count(*) FROM "__EFMigrationsHistory") <> 58
     OR (SELECT max("MigrationId") FROM "__EFMigrationsHistory")
-      IS DISTINCT FROM '20260923122137_AddDriverContacts' THEN
+      IS DISTINCT FROM '20260923134223_AddDriverMessages' THEN
     RAISE EXCEPTION 'Reset requires the schema this inventory was reviewed for';
   END IF;
   FOREACH table_name IN ARRAY protected LOOP

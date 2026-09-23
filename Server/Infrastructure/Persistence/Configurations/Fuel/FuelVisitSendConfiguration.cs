@@ -1,5 +1,6 @@
 using Domain.Entities.Fleet;
 using Domain.Entities.Fuel;
+using Domain.Entities.Messaging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
@@ -35,6 +36,10 @@ public sealed class FuelVisitSendConfiguration
       .WithMany()
       .HasForeignKey(x => x.TruckId)
       .OnDelete(DeleteBehavior.Cascade);
+    b.HasOne<DriverMessage>()
+      .WithMany()
+      .HasForeignKey(x => x.MessageId)
+      .OnDelete(DeleteBehavior.SetNull);
     b.HasOne<DispatchEntity>()
       .WithMany()
       .HasForeignKey(x => x.DispatchId)

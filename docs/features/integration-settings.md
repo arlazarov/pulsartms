@@ -1,7 +1,7 @@
 # Integration credentials in Settings
 
-Settings has three independent Admin-only connections: TorqueAI, Samsara and
-Google for Emails. Maps, Places, TomTom, Torque's base URL, database credentials,
+Settings has four independent Admin-only connections: TorqueAI, Samsara,
+Google for Emails and WhatsApp. Maps, Places, TomTom, Torque's base URL, database credentials,
 Gmail watch configuration and deployment authentication are outside this editor.
 Google email uses the existing Gmail readonly OAuth flow, not a Maps API key.
 This editor does not initiate Google consent, register a watch or send email.
@@ -13,6 +13,17 @@ server configuration: `TorqueAI:ApiKey`, `Samsara:ApiToken` and
 `Gmail:ClientId`, `Gmail:ClientSecret`, `Gmail:RefreshToken`. Opening Settings
 does not copy credentials or create database records. No deployment configuration,
 local secret file or Google credential is deleted or rotated by this feature.
+
+WhatsApp has no server configuration for any carrier, including the original
+one: it is configured only when an Admin saves its Phone number ID, Access
+token, App secret and Webhook verify token. Earlier prototype settings are not
+read. Configured means saved, not tested; saving sends nothing. The card shows
+the carrier's webhook URL, `api/webhooks/whatsapp/{company key}`, for Meta.
+Meta's subscription check is answered only for that carrier's verify token,
+and a notification is read only when its `X-Hub-Signature-256` matches that
+carrier's app secret and its business number is the carrier's phone number ID.
+The Graph API version is `v26.0` unless `WhatsApp:GraphApiVersion` names
+another.
 
 Other carriers start without deployment credentials and must configure their own
 connections. Saved bundles and optimistic revisions are keyed by company and

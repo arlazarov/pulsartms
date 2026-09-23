@@ -22,3 +22,5 @@ public sealed class IntegrationCredentialsUpdate
     new(StringComparer.Ordinal);
   public bool RestoreDeployment { get; set; }
 }
+
+public sealed record WhatsAppWebhookAddress(string Path);

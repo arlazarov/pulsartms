@@ -67,6 +67,14 @@
                         </div>
                     }
                 }
+                @if (card.Provider == "whatsapp" && _webhook is not null)
+                {
+                    <p class="settings-page__hint">
+                        Webhook URL for Meta: <code>@_webhook</code>. Meta
+                        checks it with the verify token and signs every
+                        notification with the app secret.
+                    </p>
+                }
                 @if (card.Error is not null)
                 {
                     <p class="settings-page__error" role="alert">@card.Error

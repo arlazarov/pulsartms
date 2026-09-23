@@ -58,7 +58,34 @@ public sealed class EtaMemory(TimeProvider? clock = null)
 
     // Whose hours it was calculated with, so a duty change can make it due.
     public string? Driver { get; init; }
+
+    // The saved road it was calculated on, to order two results of it.
+    public Guid? PlanId { get; init; }
+    public int? PlanVersion { get; init; }
   }
+
+  // A calculation reads its road before it waits for the dispatch's gate,
+  // so one that started on an older version of the same road can finish
+  // after one on a newer version. It never replaces it: the newer forecast
+  // stays and the late one is dropped. Results for other roads or other
+  // work cannot be ordered this way and replace as before; readers already
+  // refuse to show them as current.
+  public bool Publish(Guid key, Entry entry)
+  {
+    var kept = Results.AddOrUpdate(
+      key,
+      entry,
+      (_, existing) => Older(entry, existing) ? existing : entry
+    );
+    return ReferenceEquals(kept, entry);
+  }
+
+  private static bool Older(Entry candidate, Entry existing) =>
+    candidate.WorkKey is not null
+    && candidate.WorkKey == existing.WorkKey
+    && candidate.PlanId is not null
+    && candidate.PlanId == existing.PlanId
+    && candidate.PlanVersion < existing.PlanVersion;
 
   public readonly ConcurrentDictionary<Guid, Entry> Results = new();
   public readonly ConcurrentDictionary<Guid, DateTime> Viewed = new();

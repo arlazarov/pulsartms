@@ -92,6 +92,32 @@ public sealed class EtaRetainedForecastTests
     Assert.False(memory.Results.ContainsKey(Key(state)));
   }
 
+  // A calculation reads its road before waiting for the dispatch's gate, so
+  // one begun on the older road can finish after one on the newer road.
+  [Fact]
+  public void ALateResultForAnOlderRoadNeverReplacesANewerOne()
+  {
+    using var memory = new EtaMemory();
+    var service = Service(memory);
+    var older = State();
+    var newer = older with { Plan = Copy(older.Plan!, x => x.Version++) };
+    var now = DateTime.UtcNow;
+    var current = Forecast(now, now.AddMinutes(10));
+    service.Record(newer, "b", current);
+    service.Record(older, "a", Forecast(now.AddSeconds(5), now.AddMinutes(10)));
+
+    Assert.Same(current, service.GetCached(newer));
+
+    // Other work is not ordered against it and replaces it as before.
+    var reassigned = newer with
+    {
+      Plan = Copy(newer.Plan!, x => x.AssignmentRevision++),
+    };
+    var theirs = Forecast(now, now.AddMinutes(10));
+    service.Record(reassigned, "c", theirs);
+    Assert.Same(theirs, service.GetCached(reassigned));
+  }
+
   [Fact]
   public void ACurrentForecastIsReturnedAsItWasCalculated()
   {

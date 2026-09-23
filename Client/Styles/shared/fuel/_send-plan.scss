@@ -71,6 +71,13 @@
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);
   }
+  &__recipient,
+  &__delivery {
+    font-size: ui.fs(small);
+  }
+  &__delivery--warn {
+    color: ui.theme(danger-text);
+  }
   &__critical,
   &__error {
     color: ui.theme(danger-text);

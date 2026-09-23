@@ -84,7 +84,7 @@ public sealed class IntegrationSettingsContractTests
         .ToArray()
     );
     Assert.Equal(
-      new[] { "torqueai", "samsara", "google-email" },
+      new[] { "torqueai", "samsara", "google-email", "whatsapp" },
       IntegrationProviderCatalog.Providers
     );
   }

@@ -187,6 +187,19 @@ public class RoutePlanningController : BaseController
       cancellationToken
     );
 
+  // Sending the previewed plan to the driver over WhatsApp.
+  [Authorize(Policy = "Dispatch")]
+  [HttpPost("fuel/issue/whatsapp")]
+  public Task<IActionResult> SendFuelIssue(
+    Guid dispatchId,
+    FuelIssueSendRequest request,
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(
+      new SendFuelIssueCommand(dispatchId, request),
+      cancellationToken
+    );
+
   [HttpPost("fuel/reset")]
   public Task<IActionResult> ResetFuel(
     Guid dispatchId,

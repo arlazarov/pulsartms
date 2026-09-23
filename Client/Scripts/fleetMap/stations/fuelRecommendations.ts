@@ -88,7 +88,15 @@ export function fuelRecommendations(
         tankGallons: finite(plan.tankGallons),
         unit: stop.unit ?? '',
         full: stop.fillToTarget,
-        sent: stop.sent ? { changed: stop.sent.changed === true } : null,
+        sent: stop.sent
+          ? {
+              changed: stop.sent.changed === true,
+              delivery:
+                typeof stop.sent.delivery === 'string'
+                  ? stop.sent.delivery
+                  : null,
+            }
+          : null,
         routeMile,
         miles:
           current !== null && routeMile !== null

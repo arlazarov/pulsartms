@@ -16,7 +16,16 @@ public sealed class IntegrationSettingsTests
   public async Task ExistingConfigurationIsUsedWithoutCopyingOrChangingAnyKeys()
   {
     var fixture = new Fixture();
-    foreach (var provider in IntegrationProviderCatalog.Providers)
+    // WhatsApp has no server configuration: it is not configured until an
+    // administrator saves it.
+    Assert.False(
+      (await fixture.Service.GetStateAsync("whatsapp", default)).Configured
+    );
+    foreach (
+      var provider in IntegrationProviderCatalog.Providers.Where(x =>
+        x != "whatsapp"
+      )
+    )
     {
       var initial = await fixture.Service.GetStateAsync(provider, default);
       Assert.True(initial.Configured);
@@ -433,6 +442,8 @@ public sealed class IntegrationSettingsTests
           ("clientSecret", "mail-deployment-secret"),
           ("refreshToken", "mail-deployment-refresh")
         ),
+        // WhatsApp has no server configuration.
+        ["whatsapp"] = IntegrationSettingsTests.Values(),
       };
 
     public IntegrationCredentialValues Get(string provider) => Values[provider];

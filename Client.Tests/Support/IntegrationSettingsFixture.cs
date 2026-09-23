@@ -15,6 +15,7 @@ internal static class IntegrationSettingsFixture
       State("torqueai", revision, saved),
       State("samsara", revision, saved),
       State("google-email", revision, saved),
+      State("whatsapp", revision, saved),
     ];
 
   public static IntegrationConnectionState State(
@@ -30,9 +31,18 @@ internal static class IntegrationSettingsFixture
       revision,
       null,
       (
-        provider == "google-email"
-          ? new[] { "clientId", "clientSecret", "refreshToken" }
-          : ["apiKey"]
+        provider switch
+        {
+          "google-email" => new[] { "clientId", "clientSecret", "refreshToken" },
+          "whatsapp" =>
+          [
+            "phoneNumberId",
+            "accessToken",
+            "appSecret",
+            "verifyToken",
+          ],
+          _ => ["apiKey"],
+        }
       )
         .Select(name => new IntegrationCredentialFieldState(name, true))
         .ToArray()

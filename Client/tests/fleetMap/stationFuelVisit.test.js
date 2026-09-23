@@ -117,4 +117,21 @@ test('a visit handed to the driver says so, and says when the plan moved since',
       'fleet-fuel-visit__sent fleet-fuel-visit__sent--changed',
     ],
   ]);
+  // Accepted is still only sent; the provider's later word is shown as
+  // said, and a changed plan outranks any delivery.
+  assert.deepEqual(badge({ changed: false, delivery: 'accepted' }), [
+    ['Sent', 'fleet-fuel-visit__sent'],
+  ]);
+  assert.deepEqual(badge({ changed: false, delivery: 'read' }), [
+    ['Read', 'fleet-fuel-visit__sent'],
+  ]);
+  assert.deepEqual(badge({ changed: false, delivery: 'failed' }), [
+    ['Not delivered', 'fleet-fuel-visit__sent fleet-fuel-visit__sent--changed'],
+  ]);
+  assert.deepEqual(badge({ changed: true, delivery: 'read' }), [
+    [
+      'Changed since sent',
+      'fleet-fuel-visit__sent fleet-fuel-visit__sent--changed',
+    ],
+  ]);
 });

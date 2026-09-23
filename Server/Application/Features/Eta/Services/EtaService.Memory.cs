@@ -54,16 +54,17 @@ public sealed partial class EtaService
   {
     if (state.Plan is not { } plan)
       return;
-    memory.Results[memory.Scope(plan.DispatchId, plan.ExecutionLegId)] = new(
-      signature,
-      value,
-      RouteKey(state)
-    )
-    {
-      ChainInputHash = chainInputHash,
-      WorkKey = WorkKey(state),
-      Driver = string.IsNullOrEmpty(driver) ? null : driver,
-    };
+    memory.Publish(
+      memory.Scope(plan.DispatchId, plan.ExecutionLegId),
+      new(signature, value, RouteKey(state))
+      {
+        ChainInputHash = chainInputHash,
+        WorkKey = WorkKey(state),
+        Driver = string.IsNullOrEmpty(driver) ? null : driver,
+        PlanId = plan.Id,
+        PlanVersion = plan.Version,
+      }
+    );
   }
 
   // A forecast that is out of date for the same work is not thrown away:

@@ -13,7 +13,12 @@ public sealed class IntegrationDeploymentCredentials(
 {
   public IntegrationCredentialValues Get(string provider)
   {
-    if (companies.Id != Company.Amf)
+    // WhatsApp has no server configuration: a carrier's messaging number is
+    // only what its administrator saved in Settings.
+    if (
+      companies.Id != Company.Amf
+      || provider == IntegrationProviderCatalog.WhatsApp
+    )
       return new([]);
     var keys = provider switch
     {

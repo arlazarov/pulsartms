@@ -7,6 +7,7 @@ using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Domain.Entities.Fuel;
+using Domain.Entities.Messaging;
 using Domain.Entities.Mileage;
 using Domain.Entities.Shipments;
 using Infrastructure.Identity;
@@ -37,6 +38,9 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
   public DbSet<FuelStation> FuelStations => Set<FuelStation>();
   public DbSet<TruckFuelPlan> TruckFuelPlans => Set<TruckFuelPlan>();
   public DbSet<FuelVisitSend> FuelVisitSends => Set<FuelVisitSend>();
+  public DbSet<DriverMessage> DriverMessages => Set<DriverMessage>();
+  public DbSet<DriverMessagingWindow> DriverMessagingWindows =>
+    Set<DriverMessagingWindow>();
   public DbSet<FuelDiscount> FuelDiscounts => Set<FuelDiscount>();
   public DbSet<FuelTransaction> FuelTransactions => Set<FuelTransaction>();
   public DbSet<FuelImportSource> FuelImportSources => Set<FuelImportSource>();

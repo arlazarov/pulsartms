@@ -34,4 +34,8 @@ public sealed class FuelVisitSend : BaseEntity, ICompanyOwned
   public string Channel { get; set; } = "";
   public DateTime SentAt { get; set; }
   public string? SentBy { get; set; }
+
+  // The provider message that carried it, when it went through one. Its
+  // delivery is read from that message, never assumed from this row.
+  public Guid? MessageId { get; set; }
 }

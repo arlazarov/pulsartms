@@ -18,6 +18,10 @@ public class ApiService(HttpClient httpClient)
     ),
   };
 
+  // Where the API is served, to tell an administrator an address to give
+  // another system.
+  public Uri? BaseAddress => httpClient.BaseAddress;
+
   public async Task<RequestResponseDTO<T>> GetAsync<T>(
     string url,
     CancellationToken cancellationToken = default

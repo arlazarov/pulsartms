@@ -2,6 +2,7 @@ using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
 using Application.Models;
+using Domain.Models.Messaging;
 using Domain.Models.Routing;
 using Domain.Rules.Routing;
 
@@ -10,11 +11,11 @@ namespace Application.Features.Routing.Commands;
 // Handing this shift's fuel to a driver.
 //
 // The preview is what would be handed over now: the current-shift stops in
-// words from the itinerary, and the plan version they came from. Opening it
-// or copying it records nothing. There is no transport yet, so the words go
-// to the driver by hand, and a separate confirmation says they did - against
-// the version previewed, so a plan that moved in between is not recorded as
-// sent.
+// words from the itinerary, the plan version they came from, who would get
+// them over WhatsApp and what became of the last attempt. Opening it or
+// copying it records nothing. Words passed on by hand are confirmed
+// separately - against the version previewed, so a plan that moved in
+// between is not recorded as sent.
 public sealed record GetFuelIssuePreviewQuery(
   Guid DispatchId,
   Guid? ExecutionLegId = null
@@ -58,7 +59,8 @@ public sealed record ConfirmFuelIssueSentCommand(
 
 public sealed class FuelIssuePreviews(
   PlanningReadService reads,
-  TruckFuelPlans plans
+  TruckFuelPlans plans,
+  FuelIssueChannel channel
 )
 {
   public sealed record Current(
@@ -111,12 +113,20 @@ public sealed class FuelIssuePreviews(
           .Select(x => new FuelIssueLine(
             FuelVisitIdentity.Key(x.Stop),
             x.Text,
-            x.Stop.Sent is { Changed: false },
+            x.Stop.Sent is { Changed: false } sent
+              && sent.Delivery != DriverMessageStatuses.Failed,
             x.Stop.Sent is { Changed: true }
-          ))
+          )
+          {
+            Delivery = x.Stop.Sent?.Delivery,
+          })
           .ToList(),
         FuelIssueMessage.Compose(visits.Select(x => x.Text).ToList())
-      ),
+      )
+      {
+        Recipient = await channel.RecipientAsync(plan.TruckId, ct),
+        LastMessage = await channel.LatestAsync(saved, ct),
+      },
       visits
     );
   }
@@ -167,9 +177,7 @@ public sealed class ConfirmFuelIssueSentHandler(
     // What was handed over has to be what the plan says now: the same
     // calculation, the same assignment, and each confirmed stop still one
     // of this shift's.
-    var byKey = current.Visits.ToDictionary(x =>
-      FuelVisitIdentity.Key(x.Stop)
-    );
+    var byKey = current.Visits.ToDictionary(x => FuelVisitIdentity.Key(x.Stop));
     if (Moved(current.Saved, sent, byKey.Keys.ToHashSet()))
       return RequestResponse<FuelIssuePreview>.Fail(
         "The fuel plan changed since it was opened. Open it again, send the new plan, then confirm.",
