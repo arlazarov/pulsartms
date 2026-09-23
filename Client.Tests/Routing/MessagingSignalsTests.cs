@@ -162,6 +162,38 @@ public sealed class MessagingSignalsTests
     await f.Signals.LeaveAsync();
   }
 
+  // A proxy in front of the API holds the streamed response back. Without
+  // headers in time, or without a line in time, the stream counts as down:
+  // this tab polls and reconnects rather than waiting on it.
+  [Theory]
+  [InlineData("headers")]
+  [InlineData("body")]
+  public async Task AStreamHeldBackByAProxyCountsAsDown(string buffered)
+  {
+    await using var f = new Fixture();
+    f.Buffered = buffered;
+    var channel = f.Context.JSInterop.SetupModule(Channel);
+    channel
+      .SetupVoid("join", _ => true)
+      .SetException(new JSException("No channel in this test."));
+    var seen = new List<string>();
+    f.Signals.Changed += x => seen.Add(x.Kind);
+    await f.Signals.JoinAsync();
+    await Eventually(() => Assert.Equal(1, f.Streams));
+    Assert.DoesNotContain("poll", seen);
+
+    f.Time.Advance(
+      buffered == "headers"
+        ? MessagingSignals.HeaderTimeout
+        : MessagingSignals.IdleTimeout
+    );
+
+    await Eventually(() => Assert.Contains("poll", seen));
+    f.Time.Advance(TimeSpan.FromSeconds(2));
+    await Eventually(() => Assert.Equal(2, f.Streams));
+    await f.Signals.LeaveAsync();
+  }
+
   private static async Task Eventually(Action assertion)
   {
     for (var attempt = 0; ; attempt++)
@@ -200,6 +232,10 @@ public sealed class MessagingSignalsTests
     public FakeTimeProvider Time { get; } = new();
     public int Streams;
     public Task<HttpResponseMessage>? Stream;
+
+    // A proxy that holds the stream back: headers that never come, or a
+    // body that never says anything. Both honour the reader's cancellation.
+    public string? Buffered;
 
     public Fixture()
     {
@@ -241,12 +277,70 @@ public sealed class MessagingSignalsTests
         // notice the reader's cancellation.
         if (Stream is { } held)
           return held;
+        if (Buffered == "headers")
+          return Hang(ct);
+        if (Buffered == "body")
+          return Task.FromResult(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+              Content = new StreamContent(new SilentStream()),
+            }
+          );
       }
       return Task.FromResult(
         new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
       );
     }
 
+    private static async Task<HttpResponseMessage> Hang(CancellationToken ct)
+    {
+      await Task.Delay(Timeout.Infinite, ct);
+      throw new InvalidOperationException("Unreachable");
+    }
+
     public ValueTask DisposeAsync() => Context.DisposeAsync();
+  }
+
+  private sealed class SilentStream : Stream
+  {
+    public override bool CanRead => true;
+    public override bool CanSeek => false;
+    public override bool CanWrite => false;
+    public override long Length => throw new NotSupportedException();
+    public override long Position
+    {
+      get => throw new NotSupportedException();
+      set => throw new NotSupportedException();
+    }
+
+    public override async ValueTask<int> ReadAsync(
+      Memory<byte> buffer,
+      CancellationToken ct = default
+    )
+    {
+      await Task.Delay(Timeout.Infinite, ct);
+      return 0;
+    }
+
+    public override Task<int> ReadAsync(
+      byte[] buffer,
+      int offset,
+      int count,
+      CancellationToken ct
+    ) => ReadAsync(buffer.AsMemory(offset, count), ct).AsTask();
+
+    public override int Read(byte[] buffer, int offset, int count) =>
+      throw new NotSupportedException();
+
+    public override void Flush() { }
+
+    public override long Seek(long offset, SeekOrigin origin) =>
+      throw new NotSupportedException();
+
+    public override void SetLength(long value) =>
+      throw new NotSupportedException();
+
+    public override void Write(byte[] buffer, int offset, int count) =>
+      throw new NotSupportedException();
   }
 }

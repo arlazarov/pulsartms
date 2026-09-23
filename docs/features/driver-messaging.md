@@ -114,7 +114,13 @@ or account change leaves and joins again. Without both BroadcastChannel and
 Web Locks, or when the channel module cannot be loaded or joined, every tab
 reads its own stream and signals only itself. After every connect the
 reader sends "resync"; while the stream is down it sends a "poll" tick at
-most every 30 seconds and reconnects with backoff (2 to 60 seconds). Each
+most every 30 seconds and reconnects with backoff (2 to 60 seconds). In
+production the browser reaches the API through Firebase Hosting's
+`/api/**` rewrite, which may hold a streamed response back until it ends.
+A stream that sends no headers within 10 seconds, or no line within 40
+(the server sends a keep-alive every 25), therefore counts as down and the
+poll ticks carry the views. Whether Hosting passes the stream through live
+is checked only after release. Each
 view reads again on a signal and discards an answer older than one it
 already has.
 

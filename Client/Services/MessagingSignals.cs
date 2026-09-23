@@ -20,6 +20,13 @@ namespace Client.Services;
 public sealed class MessagingSignals : IAsyncDisposable
 {
   public static readonly TimeSpan PollEvery = TimeSpan.FromSeconds(30);
+
+  // A proxy in front of the API may hold a streamed response back until it
+  // ends: then no headers come, or no line does although the server sends a
+  // keep-alive every 25 seconds. Either counts as the stream being down, so
+  // the poll ticks carry the views instead of a stream that says nothing.
+  public static readonly TimeSpan HeaderTimeout = TimeSpan.FromSeconds(10);
+  public static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(40);
   private static readonly TimeSpan FirstBackoff = TimeSpan.FromSeconds(2);
   private static readonly TimeSpan MaximumBackoff = TimeSpan.FromSeconds(60);
 
@@ -211,27 +218,43 @@ public sealed class MessagingSignals : IAsyncDisposable
     {
       try
       {
+        using var quiet = new CancellationTokenSource(HeaderTimeout, _time);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(
+          ct,
+          quiet.Token
+        );
         using var response = await _api.OpenStreamAsync(
           "api/messaging/events",
-          ct
+          linked.Token
         );
         if (response is not null)
         {
-          backoff = FirstBackoff;
           await PostAsync("resync", null, ct);
-          await using var stream = await response.Content.ReadAsStreamAsync(ct);
+          quiet.CancelAfter(IdleTimeout);
+          await using var stream = await response.Content.ReadAsStreamAsync(
+            linked.Token
+          );
           using var reader = new StreamReader(stream);
           while (
             !ct.IsCancellationRequested
-            && await reader.ReadLineAsync(ct) is { } line
+            && await reader.ReadLineAsync(linked.Token) is { } line
           )
+          {
+            // Only a stream that actually speaks earns a quick reconnect.
+            quiet.CancelAfter(IdleTimeout);
+            backoff = FirstBackoff;
             if (Change(line) is { } id)
               await PostAsync("change", id, ct);
+          }
         }
       }
       catch (OperationCanceledException) when (ct.IsCancellationRequested)
       {
         return;
+      }
+      catch (OperationCanceledException)
+      {
+        // No headers or no line in time: treated as a dropped stream.
       }
       catch (Exception ex)
         when (ex is HttpRequestException or IOException or JSException)
