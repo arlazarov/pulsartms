@@ -1,0 +1,79 @@
+@use '../base' as ui;
+
+// A driver's contacts, wherever they are edited: the fleet driver editor
+// and the fuel plan hand-over.
+.driver-contact {
+  display: grid;
+  gap: ui.pg(md);
+  min-width: 0;
+  h3 {
+    margin: 0;
+    font-size: ui.fs(body);
+    font-weight: 650;
+  }
+  &__form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+    gap: ui.pg(lg);
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  &__field {
+    display: grid;
+    align-content: start;
+    gap: ui.pg(sm);
+    min-width: 0;
+  }
+  &__field > label:first-child {
+    display: grid;
+    gap: ui.pg(sm);
+    font-size: ui.fs(body);
+    font-weight: 600;
+  }
+  &__field input:not([type='checkbox']) {
+    width: 100%;
+    @include ui.input-control;
+  }
+  &__source {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    font-size: ui.fs(small);
+    cursor: pointer;
+  }
+  &__source input {
+    @include ui.checkbox-control;
+  }
+  small,
+  &__hint {
+    margin: 0;
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+    line-height: 1.5;
+  }
+  &__hint,
+  &__actions {
+    grid-column: 1 / -1;
+  }
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(md);
+  }
+  &__saved {
+    color: ui.theme(success-text);
+    font-size: ui.fs(body);
+  }
+  &__error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(md);
+    margin: 0;
+    color: ui.theme(danger-text);
+    font-size: ui.fs(body);
+  }
+}

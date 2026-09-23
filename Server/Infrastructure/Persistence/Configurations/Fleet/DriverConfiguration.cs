@@ -21,6 +21,13 @@ public class DriverConfiguration : IEntityTypeConfiguration<Driver>
     builder.Property(x => x.ImportedFuelCard).HasMaxLength(50);
     builder.Property(x => x.ConfiguredBy).HasMaxLength(200);
     builder.Property(x => x.ConfigurationRevision).IsConcurrencyToken();
+    builder.Property(x => x.Phone).HasMaxLength(40);
+    builder.Property(x => x.ImportedPhone).HasMaxLength(40);
+    builder.Property(x => x.Email).HasMaxLength(254);
+    builder.Property(x => x.ImportedEmail).HasMaxLength(254);
+    builder.Property(x => x.WhatsAppPhone).HasMaxLength(16);
+    builder.Property(x => x.ContactChangedBy).HasMaxLength(200);
+    builder.Property(x => x.ContactRevision).IsConcurrencyToken();
 
     builder.HasIndex(x => x.FuelCard);
   }

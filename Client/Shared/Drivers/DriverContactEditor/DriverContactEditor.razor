@@ -1,0 +1,101 @@
+<section class="driver-contact" aria-labelledby="@($"{Id}-title")">
+    <h3 id="@($"{Id}-title")">Contacts</h3>
+    @if (_loading) { <p role="status"><LoadingIndicator /></p> }
+    @if (_error is not null)
+    {
+        <p class="driver-contact__error" role="alert">
+            @_error
+            <button class="btn btn--small" type="button"
+                    disabled="@(_loading || _saving)" @onclick="LoadAsync">
+                Reload contacts
+            </button>
+        </p>
+    }
+    @if (_state is not null)
+    {
+        <form @onsubmit="SaveAsync" @onsubmit:preventDefault="true"
+              autocomplete="off">
+            <fieldset class="driver-contact__form" disabled="@_saving">
+                <legend class="visually-hidden">
+                    Contacts for @_state.Name
+                </legend>
+                <div class="driver-contact__field">
+                    <label for="@($"{Id}-phone")">
+                        Phone
+                        <input id="@($"{Id}-phone")" type="tel"
+                               inputmode="tel" maxlength="40"
+                               value="@_phone" disabled="@_phoneFromSource"
+                               @oninput="args => _phone = Text(args)" />
+                    </label>
+                    <label class="driver-contact__source"
+                           for="@($"{Id}-phone-source")">
+                        <input id="@($"{Id}-phone-source")" type="checkbox"
+                               checked="@_phoneFromSource"
+                               @onchange="args => FollowPhone(args)" />
+                        Use source value
+                    </label>
+                    <small>@SourceText(_state.Phone)</small>
+                </div>
+                <div class="driver-contact__field">
+                    <label for="@($"{Id}-email")">
+                        Email
+                        <input id="@($"{Id}-email")" type="email"
+                               maxlength="254" spellcheck="false"
+                               autocapitalize="none" value="@_email"
+                               disabled="@_emailFromSource"
+                               @oninput="args => _email = Text(args)" />
+                    </label>
+                    <label class="driver-contact__source"
+                           for="@($"{Id}-email-source")">
+                        <input id="@($"{Id}-email-source")" type="checkbox"
+                               checked="@_emailFromSource"
+                               @onchange="args => FollowEmail(args)" />
+                        Use source value
+                    </label>
+                    <small>@SourceText(_state.Email)</small>
+                </div>
+                <div class="driver-contact__field">
+                    <label for="@($"{Id}-whatsapp")">
+                        WhatsApp number
+                        <input id="@($"{Id}-whatsapp")" type="tel"
+                               inputmode="tel" maxlength="40"
+                               value="@_whatsApp"
+                               @oninput="args => _whatsApp = Text(args)" />
+                    </label>
+                    <small>
+                        Fuel plans go only to this number. It is never
+                        taken from the phone automatically.
+                    </small>
+                    @if (CanCopyPhone)
+                    {
+                        <button class="btn btn--text" type="button"
+                                @onclick="CopyPhone">
+                            Use the phone number
+                        </button>
+                    }
+                </div>
+                <p class="driver-contact__hint">
+                    Enter numbers with + and country code, or as a 10-digit
+                    US or Canada number. Local values and cleared fields stay
+                    through imports until they are set back to the source.
+                </p>
+                <div class="driver-contact__actions">
+                    <button class="btn btn--primary" type="submit"
+                            disabled="@(!Changed)">
+                        @(_saving ? "Saving…" : "Save contacts")
+                    </button>
+                    <button class="btn" type="button" disabled="@(!Changed)"
+                            @onclick="Reset">
+                        Discard changes
+                    </button>
+                    @if (_saved)
+                    {
+                        <span class="driver-contact__saved" role="status">
+                            Contacts saved.
+                        </span>
+                    }
+                </div>
+            </fieldset>
+        </form>
+    }
+</section>

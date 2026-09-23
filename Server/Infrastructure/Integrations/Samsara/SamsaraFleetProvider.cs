@@ -33,6 +33,8 @@ public class SamsaraFleetProvider(
           "active",
           StringComparison.OrdinalIgnoreCase
         ),
+        Phone = x.Phone,
+        Email = x.Email,
       }),
     ];
   }

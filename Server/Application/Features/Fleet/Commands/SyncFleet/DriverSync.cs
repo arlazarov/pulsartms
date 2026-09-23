@@ -29,22 +29,24 @@ public static class DriverSync
           driver.FuelCard,
           driver.IsActive
         );
+        DriverContactImport.Apply(existing, driver.Phone, driver.Email);
         continue;
       }
 
-      dbContext.Drivers.Add(
-        new Driver
-        {
-          Id = Guid.NewGuid(),
-          ExternalId = driver.ExternalId,
-          Name = driver.Name,
-          FuelCard = driver.FuelCard,
-          IsActive = driver.IsActive,
-          ImportedName = driver.Name,
-          ImportedFuelCard = driver.FuelCard,
-          ImportedIsActive = driver.IsActive,
-        }
-      );
+      var added = new Driver
+      {
+        Id = Guid.NewGuid(),
+        ExternalId = driver.ExternalId,
+        Name = driver.Name,
+        FuelCard = driver.FuelCard,
+        IsActive = driver.IsActive,
+        ImportedName = driver.Name,
+        ImportedFuelCard = driver.FuelCard,
+        ImportedIsActive = driver.IsActive,
+      };
+      DriverContactImport.Apply(added, driver.Phone, driver.Email);
+      added.ContactRevision = 0;
+      dbContext.Drivers.Add(added);
     }
   }
 }

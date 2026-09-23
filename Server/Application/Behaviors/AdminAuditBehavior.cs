@@ -25,6 +25,7 @@ public sealed class AdminAuditBehavior<TRequest, TResponse>(
     "UpdateDispatchSettingsCommand",
     "UpdateIntegrationCredentialsCommand",
     "UpdateFleetConfigurationCommand",
+    "UpdateDriverContactCommand",
   ];
 
   public async Task<TResponse> Handle(
@@ -77,6 +78,14 @@ public sealed class AdminAuditBehavior<TRequest, TResponse>(
         : "unsupported";
       fields["Revision"] = fleet.Update?.Revision;
       fields["UseImported"] = fleet.Update?.UseImported;
+    }
+    // Which contact fields follow the source, never the numbers themselves.
+    if (request is UpdateDriverContactCommand contact)
+    {
+      fields["DriverId"] = contact.DriverId;
+      fields["Revision"] = contact.Update?.Revision;
+      fields["PhoneFromSource"] = contact.Update?.PhoneFromSource;
+      fields["EmailFromSource"] = contact.Update?.EmailFromSource;
     }
     if (request is UpdateIntegrationCredentialsCommand integration)
     {

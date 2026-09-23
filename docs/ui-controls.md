@@ -11,8 +11,8 @@ does not change operational colors, control sizes or the existing theme contract
 ## Component ownership
 
 `Components/` owns generic controls such as tables, forms and popups. `Shared/`
-owns reusable application UI, grouped by responsibility: `Brand`, `DriverStatus`, `Fuel`,
-`Dispatch`, `Search` and `Trucks`. A Razor/code-behind pair lives in a component
+owns reusable application UI, grouped by responsibility: `Brand`, `DriverStatus`,
+`Drivers`, `Fuel`, `Dispatch`, `Search` and `Trucks`. A Razor/code-behind pair lives in a component
 folder inside its group, for example
 `Shared/DriverStatus/DriverHours/DriverHours.razor` and `DriverHours.razor.cs`.
 Standalone helpers stay in their owning group; they do not need one-file folders.
@@ -815,6 +815,12 @@ confirmation. A sent visit shows the same one-word label beside its name in the
 station popup; nothing else on the map changes. Fuel plan sending in Settings
 is off by default and says that turning it on sends nothing until a channel
 exists.
+
+`Shared/Drivers/DriverContactEditor` edits a driver's phone, email and
+WhatsApp number wherever a driver's contacts are needed. Each sourced field
+has its own "Use source value" checkbox and shows the source value; the
+WhatsApp number is never filled from the phone without the dispatcher
+pressing "Use the phone number". A refused save keeps the draft.
 
 ## Background refresh
 

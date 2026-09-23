@@ -150,6 +150,10 @@
                     }
                 </fieldset>
             </EditForm>
+            @if (IsDriver)
+            {
+                <DriverContactEditor DriverId="editing.Resource.Id" />
+            }
             <div class="fleet-resources__references">
                 <h3>Current fleet links</h3>
                 @if (editing.CurrentAssignments.Length == 0)

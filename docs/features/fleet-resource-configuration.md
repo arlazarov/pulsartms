@@ -70,3 +70,30 @@ Architecture; persistence/shared contract changes require the full suite when
 authorized. Regression sources cover local/import ownership, unchanged imports
 and source-name matching. Tests and browser verification were not run during
 implementation, as requested. Build success is not visual or database evidence.
+
+## Driver contacts
+
+A driver has a phone, an email and a WhatsApp number. Unlike the bundle
+above, contacts are owned field by field and have their own revision:
+
+- Phone and email follow the telematics source (Samsara `phone` and `email`)
+  until a dispatcher sets or clears them. A later import refreshes only the
+  source copy. A cleared field stays empty through imports. "Use source
+  value" returns that one field to the source.
+- The WhatsApp number has no source and is never derived from the phone.
+  "Use the phone number" copies it only when a dispatcher presses it; the
+  copy is checked and saved like any other entry.
+- Phones are stored in E.164. The server completes a number only when its
+  country is certain: ten digits, or eleven starting with 1, that fit the
+  North American plan. Anything else needs its "+" and country code. A source
+  phone that is not a complete number is shown as written and marked not
+  usable; nothing is sent to it. An email must be one plain address.
+
+`GET/PUT api/drivers/{id}/contact` use the Dispatch policy, and the handlers
+again require an active Admin or Dispatch account. The company query filter
+makes another carrier's driver not found. A stale revision is refused and
+the editor keeps its draft. The administrative audit records the driver,
+revision and which fields follow the source, never the values. The shared
+editor appears in the Admin driver editor. Migration
+`20260923122137_AddDriverContacts` adds the columns and is not applied by
+this change.
