@@ -36,6 +36,9 @@ public sealed partial class WhatsAppCloudMessaging(
   public async Task<bool> IsConfiguredAsync(CancellationToken ct) =>
     await SettingsAsync(ct) is not null;
 
+  public async Task<string?> BusinessNumberAsync(CancellationToken ct) =>
+    (await SettingsAsync(ct))?.PhoneNumberId;
+
   public async Task<DriverMessageSendResult> SendTextAsync(
     string recipient,
     string text,

@@ -157,6 +157,7 @@ public static class DependencyInjection
       .RemoveAllLoggers();
     services.AddHostedService<ApplicationWorker<IStorageReconcileOperation>>();
     services.AddHostedService<ApplicationWorker<IInboundMediaOperation>>();
+    services.AddHostedService<ApplicationWorker<IOutboundMessageOperation>>();
     services
       .AddHttpClient<IStorageAuthorization, GoogleDriveAuthorization>(client =>
         client.Timeout = TimeSpan.FromSeconds(20)

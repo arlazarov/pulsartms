@@ -1,10 +1,11 @@
 # Driver messaging inbox
 
 What is implemented of the [messaging plan](../architecture/driver-messaging-plan.md).
-State on 2026-09-23: local only, not deployed, migration `AddDriverInbox`
-not applied anywhere, and no message has been received from or sent to a
-real driver. Sending from a conversation, the Messages page and the browser
-stream client are later stages (see the plan's checklist).
+State on 2026-09-23: local only, not deployed, migrations `AddDriverInbox`
+and `AddConversationOutbox` not applied anywhere, and no message has been
+received from or sent to a real driver. Files and templates out, the
+Messages page and the browser stream client are later stages (see the
+plan's checklist).
 
 ## Receiving
 
@@ -57,6 +58,39 @@ caller's company, raised after commit, with a keep-alive every 25 seconds.
 Signals live in this process only and each subscriber keeps at most 64; a
 reader that reconnects or misses signals reads the inbox again.
 
+## Replying
+
+`POST /api/messaging/conversations/{id}/messages` with a body, a retry key
+and the newest message the dispatcher had on screen:
+
+- Refused outside the driver's 24-hour window (only an approved template
+  may go then; templates are a later stage).
+- Refused as stale when the driver or a colleague wrote since the message
+  on screen, unless the dispatcher confirms. The dispatcher's own last
+  reply does not make the next one stale.
+- Committed as `queued`, with the conversation claimed for two minutes so
+  colleagues see who is answering (a courtesy, never a lock). The same
+  retry key returns the first reply; with other text it is refused.
+- `OutboundMessageOperation` sends queued replies. A worker takes a reply
+  by setting its fence to the value it read plus one, only if nobody moved
+  it since, so it knows its own fence without reading it back. Right
+  before sending it checks again that the driver's window is open and that
+  the carrier still sends from the conversation's business number; a
+  reply that can no longer go is `withdrawn` without calling the
+  provider. `sending` is committed under the fence before the call, and the
+  answer is recorded only under it, together with the conversation's
+  revision; the signal follows the commit. A `sending` reply whose lease
+  (two minutes, longer than the provider's request timeout) ran out becomes
+  `unknown`. A worker that lost its fence may still record the provider's
+  id, in the same kind of transaction with the revision, on its own attempt
+  if it is still `sending` or `unknown` without one; a retry is a separate
+  attempt and never receives an older attempt's answer. Nothing is sent
+  again without a dispatcher. This promises no silent duplicate from PulsR,
+  not exactly-once delivery.
+- `POST /api/messaging/messages/{id}/retry` sends an unknown, refused or
+  failed reply again as the next attempt of its retry key; nothing else
+  does. `POST .../conversations/{id}/claim` claims without sending.
+
 ## Tests
 
 `Server.Tests/Fuel/WhatsAppWebhookTests` (inbound recording, duplicates,
@@ -64,5 +98,9 @@ business numbers, files, unsupported kinds, ambiguous numbers, reply
 statuses), `Server.Tests/Routing/InboundMediaTests` (copy, hash mismatch,
 backoff, expiry, leases, a crash between the updates, a lost finalize,
 naming), `Server.Tests/Routing/InboxReadTests` (read cost, unread, markers,
-paging, stream isolation). Not run: a real WhatsApp webhook or media
+paging, stream isolation), `Server.Tests/Routing/ConversationReplyTests`
+(queue and send once, window, retry keys, stale replies, a take
+overtaken before sending, a lease lost mid-send, a late answer on its own
+attempt, withdrawal for a closed window or changed number, explicit retry,
+claims). Not run: a real WhatsApp webhook or media
 download, and PostgreSQL.

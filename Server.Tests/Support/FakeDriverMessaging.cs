@@ -31,6 +31,11 @@ internal sealed class FakeDriverMessaging : IDriverMessaging
   public Task<bool> IsConfiguredAsync(CancellationToken ct) =>
     Task.FromResult(Configured);
 
+  public string? BusinessNumber { get; set; } = "123456";
+
+  public Task<string?> BusinessNumberAsync(CancellationToken ct) =>
+    Task.FromResult(Configured ? BusinessNumber : null);
+
   public async Task<DriverMessageSendResult> SendTextAsync(
     string recipient,
     string text,

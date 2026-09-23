@@ -112,6 +112,11 @@ public static class DependencyInjection
     services.AddScoped<InboxRecorder>();
     services.AddSingleton<MessagingEvents>();
     services.AddSingleton<IInboundMediaOperation, InboundMediaOperation>();
+    services.AddSingleton<OutboxSignal>();
+    services.AddSingleton<
+      IOutboundMessageOperation,
+      OutboundMessageOperation
+    >();
     services.AddScoped<StorageLayouts>();
     services.AddSingleton<StorageUploadGate>();
     services.AddSingleton<

@@ -60,3 +60,23 @@ public sealed class MessagingEvents
 }
 
 public sealed record MessagingEvent(Guid ConversationId, long Revision);
+
+// Wakes the outbox worker when a reply is queued, so it is sent at once
+// rather than on the next poll.
+public sealed class OutboxSignal
+{
+  private readonly SemaphoreSlim wake = new(0, 1);
+
+  public void Wake()
+  {
+    if (wake.CurrentCount == 0)
+      try
+      {
+        wake.Release();
+      }
+      catch (SemaphoreFullException) { }
+  }
+
+  public Task<bool> WaitAsync(TimeSpan timeout, CancellationToken ct) =>
+    wake.WaitAsync(timeout, ct);
+}

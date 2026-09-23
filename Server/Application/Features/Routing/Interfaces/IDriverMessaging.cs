@@ -11,6 +11,10 @@ public interface IDriverMessaging
 
   Task<bool> IsConfiguredAsync(CancellationToken ct);
 
+  // The business number the serving company sends from now, or null when
+  // messaging is not configured.
+  Task<string?> BusinessNumberAsync(CancellationToken ct);
+
   Task<DriverMessageSendResult> SendTextAsync(
     string recipient,
     string text,

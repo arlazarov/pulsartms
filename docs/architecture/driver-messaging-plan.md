@@ -337,9 +337,9 @@ Nothing here is deployed.
 | Durable inbound media capture into quarantine | implemented, tested | `InboundMediaTests` |
 | Inbox reads, per-dispatcher unread, read markers | implemented, tested | `InboxReadTests` |
 | Server event stream (signals after commit) | implemented, tested | `InboxReadTests.AStream…`; browser client not started |
-| Outbox with fencing, text within the window | not started | |
+| Outbox with fencing, text within the window | implemented, tested | `ConversationReplyTests` |
 | Files out, templates | not started | blocked for real use: approved templates, WABA id |
-| Stale-reply guard, claim, per-user unread | not started | |
+| Stale-reply guard, claim | implemented, tested | `ConversationReplyTests` |
 | One event stream per browser with polling fallback (client) | not started | |
 | Messages page, desktop and phone | not started | |
 | Fake provider for local runs (never in Production) | not started | |

@@ -23,6 +23,11 @@ public sealed class ConversationMessage : BaseEntity, ICompanyOwned
   public DateTime StatusAt { get; set; }
   public int? ErrorCode { get; set; }
 
+  // The outbox for an outbound message: each worker taking it increments
+  // Fence and may only move it while the fence is still its own.
+  public long Fence { get; set; }
+  public DateTime? LeaseUntil { get; set; }
+
   // When the provider says the message was written; for ordering a thread.
   public DateTime SentAt { get; set; }
   public DateTime CreatedAt { get; set; }
@@ -37,6 +42,12 @@ public static class ConversationMessageKinds
   // A kind PulsR does not read yet (location, contact, sticker, reaction):
   // recorded so the thread shows something arrived, never guessed at.
   public const string Unsupported = "unsupported";
+}
+
+public static class OutboundStates
+{
+  // Committed, not yet handed to a sender.
+  public const string Queued = "queued";
 }
 
 public static class MessageDirections

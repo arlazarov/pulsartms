@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Features.Routing.Commands;
 using Application.Features.Routing.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,13 @@ namespace API.Controllers;
 public sealed class MessagingController : BaseController
 {
   public sealed record ReadRequest(DateTime Through);
+
+  public sealed record SendRequest(
+    string Body,
+    Guid IdempotencyKey,
+    Guid? LastSeenMessageId,
+    bool Confirm
+  );
 
   [HttpGet("inbox")]
   public Task<IActionResult> Inbox(
@@ -37,6 +45,36 @@ public sealed class MessagingController : BaseController
       new MarkConversationReadCommand(id, request.Through),
       cancellationToken
     );
+
+  [HttpPost("conversations/{id:guid}/messages")]
+  public Task<IActionResult> Send(
+    Guid id,
+    SendRequest request,
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(
+      new SendConversationMessageCommand(
+        id,
+        request.Body,
+        request.IdempotencyKey,
+        request.LastSeenMessageId,
+        request.Confirm
+      ),
+      cancellationToken
+    );
+
+  [HttpPost("messages/{id:guid}/retry")]
+  public Task<IActionResult> Retry(
+    Guid id,
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(new RetryConversationMessageCommand(id), cancellationToken);
+
+  [HttpPost("conversations/{id:guid}/claim")]
+  public Task<IActionResult> Claim(
+    Guid id,
+    CancellationToken cancellationToken
+  ) => HandleRequest(new ClaimConversationCommand(id), cancellationToken);
 
   [HttpGet("events")]
   public async Task Events(CancellationToken cancellationToken)
