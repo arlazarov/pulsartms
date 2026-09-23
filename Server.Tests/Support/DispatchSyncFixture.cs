@@ -43,6 +43,15 @@ internal sealed class DispatchSyncFixture : IAsyncDisposable
     return fixture;
   }
 
+  // Another context over the same database, as a separate unit of work.
+  public AppDbContext NewContext(params IInterceptor[] interceptors) =>
+    new(
+      new DbContextOptionsBuilder<AppDbContext>()
+        .UseSqlite(connection)
+        .AddInterceptors([Counter, .. interceptors])
+        .Options
+    );
+
   public sealed class SqlCounter : DbCommandInterceptor
   {
     public int Reads;

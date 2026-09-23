@@ -37,3 +37,9 @@ public sealed record DispatchAcceptedAssignment(
   public Guid FromStopId { get; init; }
   public Guid ThroughStopId { get; init; }
 }
+
+public sealed record CloseCancelledExecutionRequest(
+  Guid ExecutionLegId,
+  long ExpectedRevision,
+  Guid IdempotencyKey
+);

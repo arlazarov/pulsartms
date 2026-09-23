@@ -1,8 +1,10 @@
 using Application.Behaviors;
 using Application.Caching;
+using Application.Diagnostics.Consistency;
 using Application.Features.Dispatch.Services;
 using Application.Features.Eta.Background;
 using Application.Features.Eta.Services;
+using Application.Features.Execution.Audit;
 using Application.Features.Execution.Background;
 using Application.Features.Execution.Interfaces;
 using Application.Features.Execution.Services;
@@ -18,6 +20,7 @@ using Application.Features.Integrations.Services;
 using Application.Features.Mileage.Background;
 using Application.Features.Mileage.Interfaces;
 using Application.Features.Mileage.Services;
+using Application.Features.Routing.Audit;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services;
@@ -103,6 +106,20 @@ public static class DependencyInjection
       ExecutionPlanningOperation
     >();
     services.AddSingleton<ITruckHistoryOperation, TruckHistoryOperation>();
+    services.AddSingleton<ConsistencySweeps>();
+    services.AddSingleton<ConsistencyRecovery>();
+    services.AddSingleton<ConsistencyAuditor>();
+    services.AddScoped<ConsistencyJournal>();
+    services.AddScoped<ConsistencyJournalReads>();
+    services.AddScoped<IConsistencyRepair, PlanningRefreshRequeue>();
+    services.AddSingleton<
+      IConsistencyAuditOperation,
+      ConsistencyAuditOperation
+    >();
+    services.AddScoped<IConsistencyRule, CancelledSourceRunnableRule>();
+    services.AddScoped<IConsistencyRule, CancelledSourceHeldRule>();
+    services.AddScoped<IConsistencyRule, ExecutionPlanningDemandRule>();
+    services.AddScoped<IConsistencyRule, PlanningRefreshDemandRule>();
     services.AddSingleton<TruckHistoryQueue>();
     services.AddSingleton<TruckHistoryCache>();
     services.AddSingleton<ICacheMemorySource>(sp =>

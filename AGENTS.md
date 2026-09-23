@@ -122,3 +122,26 @@ Application commands directly.
 - Report checks not run, unapplied migrations and unmeasured performance claims.
   Passing tests do not prove production performance or complete visual correctness.
 - Do not weaken an architectural test or add an exception to accommodate new code.
+
+## Consistency audit and existing data
+
+- For stateful workflow changes, follow
+  `docs/architecture/consistency-auditor.md`. Identify existing invalid rows and
+  their recovery path; a fix for new writes alone does not resolve old data.
+- Keep business audit separate from liveness/readiness. Reuse authoritative
+  owners, bounded company-scoped reads and explicit coverage reporting.
+- Verify the incident after an authorized release and distinguish tested code,
+  deployed code and repaired production state. Preserve execution history.
+- Every feature or stateful bug fix must assess auditor coverage. Add or update
+  the affected checks and regressions, or document why runtime detection is
+  inapplicable and what evidence covers the invariant instead. Record deferred
+  gaps with an owner and completion criterion; never label unimplemented
+  checks as covered. Follow the coverage review in the auditor guide.
+
+## Source size review
+
+- For maintained server C#, 400 lines triggers cohesion review rather than
+  mandatory mechanical splitting. Follow `docs/architecture/source-size.md`.
+  A reviewed, bounded size exception is allowed under that policy only;
+  dependency and layer checks must not be weakened. Browser/style limits
+  remain unchanged. Never compress formatting to satisfy a line count.

@@ -66,15 +66,15 @@ public static class ExecutionSourceReconciliation
         continue;
       }
       var source = sourceById[legLinks[0].DispatchId];
-      // The source cancelled the load. Work that never started is closed
-      // with it, so a cancelled load stops being planned and forecast; work
-      // that started, or has movement, is not closed behind anyone's back.
+      // The source cancelled the load. See SourceCancellation: unstarted,
+      // untouched work is cancelled with it; anything else is held for a
+      // dispatcher, out of the truck's current and future work either way.
       if (SourceWords.IsCancelled(source.Status))
       {
         var stops = ReadSnapshot(leg);
-        if (
-          leg.Status == "planned"
-          && !stops.Any(x =>
+        var started =
+          leg.Status == "active"
+          || stops.Any(x =>
             (
               x.ArrivedAt
               ?? x.PickedUpAt
@@ -83,24 +83,28 @@ public static class ExecutionSourceReconciliation
               ?? x.ManualCompletedAt
             ).HasValue
           )
-          && !await db.Movements.AnyAsync(x => x.ExecutionLegId == leg.Id, ct)
-        )
-          changes.Add(
-            // As a cancelled switch closes its incoming leg.
-            new(leg, stops)
-            {
-              SourceSignature = leg.SourceSignature,
-              ReviewReason = null,
-              SupersedePlannedMileage = true,
-              Status = "cancelled",
-            }
+          || await db.Movements.AnyAsync(x => x.ExecutionLegId == leg.Id, ct);
+        var changedHere =
+          leg.StartSwitchId.HasValue
+          || leg.EndSwitchId.HasValue
+          || await db.ExecutionLegRevisions.AnyAsync(
+            x => x.ExecutionLegId == leg.Id && x.RecordedBy != null,
+            ct
           );
-        else
-          Observe(
-            leg,
-            "The source cancelled this load while its execution has "
-              + "started. Review it before closing."
-          );
+        var outcome = SourceCancellation.Outcome(started, changedHere);
+        changes.Add(
+          // As a cancelled switch closes its incoming leg.
+          new(leg, stops)
+          {
+            SourceSignature = leg.SourceSignature,
+            ReviewReason =
+              outcome == SourceCancellation.Held
+                ? SourceCancellation.HeldReason
+                : null,
+            SupersedePlannedMileage = outcome != SourceCancellation.Held,
+            Status = outcome,
+          }
+        );
         continue;
       }
       var sourceAssignment = observations.GetValueOrDefault(source.Id);

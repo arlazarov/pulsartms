@@ -2,6 +2,7 @@ using Application.Interfaces;
 using Domain.Entities;
 using Domain.Entities.Border;
 using Domain.Entities.Caching;
+using Domain.Entities.Consistency;
 using Domain.Entities.Costs;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
@@ -41,6 +42,13 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
   public DbSet<DriverMessage> DriverMessages => Set<DriverMessage>();
   public DbSet<DriverMessagingWindow> DriverMessagingWindows =>
     Set<DriverMessagingWindow>();
+  public DbSet<ConsistencyFinding> ConsistencyFindings =>
+    Set<ConsistencyFinding>();
+  public DbSet<ConsistencyEvent> ConsistencyEvents => Set<ConsistencyEvent>();
+  public DbSet<ConsistencyIncident> ConsistencyIncidents =>
+    Set<ConsistencyIncident>();
+  public DbSet<ConsistencyJournalHead> ConsistencyJournalHeads =>
+    Set<ConsistencyJournalHead>();
   public DbSet<FuelDiscount> FuelDiscounts => Set<FuelDiscount>();
   public DbSet<FuelTransaction> FuelTransactions => Set<FuelTransaction>();
   public DbSet<FuelImportSource> FuelImportSources => Set<FuelImportSource>();
@@ -160,6 +168,16 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
     Database.IsNpgsql()
       ? Database.ExecuteSqlRawAsync(
         "SELECT pg_advisory_xact_lock(710246712)",
+        ct
+      )
+      : Task.CompletedTask;
+
+  // The second key is the company's hash: collisions only serialize two
+  // companies' audit writes, never let two writers of one company overlap.
+  public Task LockConsistencyJournalAsync(Guid company, CancellationToken ct) =>
+    Database.IsNpgsql()
+      ? Database.ExecuteSqlInterpolatedAsync(
+        $"SELECT pg_advisory_xact_lock(710246713, hashtext({company.ToString()}))",
         ct
       )
       : Task.CompletedTask;

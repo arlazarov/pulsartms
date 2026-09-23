@@ -32,6 +32,14 @@ public sealed class ExecutionController : BaseController
     CancellationToken ct
   ) => HandleRequest(new AcceptExecutionSourceChangesCommand(id, request), ct);
 
+  // Closing work held after the source cancelled its load.
+  [HttpPost("/api/dispatch/{id:guid}/execution/source-cancellation")]
+  public Task<IActionResult> CloseCancelled(
+    Guid id,
+    [FromBody] CloseCancelledExecutionRequest request,
+    CancellationToken ct
+  ) => HandleRequest(new CloseCancelledExecutionCommand(id, request), ct);
+
   [HttpGet("{id:guid}")]
   public Task<IActionResult> Details(Guid id, CancellationToken ct) =>
     HandleRequest(new GetSwitchDetailsQuery(id), ct);

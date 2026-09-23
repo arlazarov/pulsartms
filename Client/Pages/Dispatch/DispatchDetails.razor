@@ -69,6 +69,9 @@
     {
       <div class="dispatch-details__notice" role="status">
         <p>@_workspace.SourceReviewReason</p>
+        <CancelledWorkClose DispatchId="Id" LoadStatus="@_workspace.Load.Status"
+                            Assignments="_workspace.AcceptedAssignments"
+                            Closed="LoadAsync" />
         @if (_workspace.SourceAssignment is not null)
         {
           <button type="button" class="btn btn--small"

@@ -74,10 +74,19 @@ its adapter and loop while other scheduled jobs continue. See
 
 - Catalog and assignment synchronization are separate. Identical provider payloads are skipped before loading entity tables. If a payload changes, EF writes changed values only. Assignment swaps release only changed relationships before assigning their new owners within one transaction.
 
-A load the source cancels closes its execution work only if it never
-started: a planned leg with no actual and no movement becomes `cancelled`,
-so it is no longer planned or forecast. A leg that started, or has
-movement, stays open and is marked for review; it is never closed silently.
+A load the source cancels leaves the truck's current and future work either
+way (`Domain.Rules.SourceCancellation`). A planned leg with no actual, no
+movement, no switch and no dispatcher revision becomes `cancelled`. Any other
+leg becomes `held`: not planned or active, so map selection, the board, the
+fuel horizon, ETA and planning ignore it, while its stops, actuals,
+movements and revisions stay and its review reason explains why. It is never
+completed silently. A dispatcher closes it from Dispatch details
+(`POST /api/dispatch/{id}/execution/source-cancellation`), which requires the
+leg to be still held, the load still cancelled at the source and the viewed
+revision; a repeated request with the same key returns the first answer.
+The 30-minute repair pass moves legacy planned or active legs of cancelled
+loads the same way, and the consistency audit reports them until it has
+(see [the consistency auditor](../architecture/consistency-auditor.md)).
 
 ### Trailers: catalog and current assignment
 

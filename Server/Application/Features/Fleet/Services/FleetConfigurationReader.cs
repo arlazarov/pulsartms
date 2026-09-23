@@ -1,5 +1,6 @@
 using Domain.Entities.Fleet;
 using Domain.Models.Fleet;
+using Domain.Rules;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Fleet.Services;
@@ -95,7 +96,12 @@ internal static class FleetConfigurationReader
     var id = resource.Id;
     var query = db
       .ExecutionLegs.AsNoTracking()
-      .Where(x => x.Status == "active" || x.Status == "planned");
+      // Held work is not current work, but it is not finished either.
+      .Where(x =>
+        x.Status == "active"
+        || x.Status == "planned"
+        || x.Status == SourceCancellation.Held
+      );
     query = resource switch
     {
       Truck => query.Where(x => x.TruckId == id),

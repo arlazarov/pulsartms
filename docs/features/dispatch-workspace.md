@@ -128,7 +128,10 @@ Each correction is an independent confirmed write with automatic actor and
 before/after history, without a required reason,
 the opened workspace/source version and an actor-bound retry identity. It stores
 before/after workspace snapshots in the change history. Cancelled loads and shared
-legs retain their coordinated workflows. Drop/Hook resource fields are directly
+legs retain their coordinated workflows.
+Work held after a source cancellation shows its review notice with "Close the
+cancelled work", a two-step confirmation that closes each held assignment
+against its viewed revision; stops, actuals and movements stay in history. Drop/Hook resource fields are directly
 editable on the selected stop. Truck and driver corrections affect that side;
 a trailer correction updates both linked legs and their custody record in one
 transaction, preserving confirmations, actors and actual times. Connected further

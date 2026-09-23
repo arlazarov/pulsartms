@@ -3,26 +3,22 @@ using static Server.Tests.Support.RepositoryFiles;
 
 namespace Server.Tests.Architecture;
 
-// The same two rules the browser sources live under, for the same reason:
-// the scheme was right and nothing inside it stopped a service from growing
-// into a screen of its own.
 [Trait("Category", "Architecture")]
 [Trait("Kind", "Architecture")]
 public sealed class ServerStructureTests
 {
-  private const int Limit = 400;
+  private const int ReviewThreshold = 400;
 
-  // A file that moves to another layer may raise its number here once, by
-  // what the move itself takes: a feature's namespace splits into the
-  // vocabulary, the rules and the policy, and a file that used one of them
-  // now names three. That is the only thing allowed to raise a number.
-  //
-  // This held the files written as whole screens before there was a rule,
-  // each recorded at the length it had when the rule arrived. It is empty
-  // now: every one of them was cut until the ordinary limit held it. Adding
-  // an entry here means admitting a file was allowed past the limit, so the
-  // question to answer first is what two things are sharing one file.
-  private static readonly Dictionary<string, int> Written = [];
+  // An exception needs a bounded budget and a reviewed explanation of why
+  // splitting would harm cohesion. See docs/architecture/source-size.md.
+  private sealed record SizeReview(
+    int MaximumLines,
+    string Responsibility,
+    string WhyNotSplit,
+    string ReviewReference
+  );
+
+  private static readonly Dictionary<string, SizeReview> Reviewed = [];
 
   private static IEnumerable<(string Name, int Lines)> ServerFiles()
   {
@@ -48,32 +44,34 @@ public sealed class ServerStructureTests
   }
 
   [Fact]
-  public void AFileWrittenAsAWholeScreenMayOnlyGetSmaller()
+  public void OversizedFilesHaveCurrentBoundedReviews()
   {
     var lengths = ServerFiles().ToDictionary(x => x.Name, x => x.Lines);
-    foreach (var (name, budget) in Written)
+    foreach (var (name, review) in Reviewed)
     {
       Assert.True(
-        lengths.TryGetValue(name, out var now),
-        $"{name} is gone - drop it from the list"
+        lengths.TryGetValue(name, out var lines),
+        $"{name} is gone - remove its size review"
       );
       Assert.True(
-        now <= budget,
-        $"{name}: {now} lines, was {budget} - it may shrink, not grow"
+        lines > ReviewThreshold,
+        $"{name} no longer needs a size review"
       );
+      Assert.True(review.MaximumLines > ReviewThreshold);
+      Assert.False(string.IsNullOrWhiteSpace(review.Responsibility));
+      Assert.False(string.IsNullOrWhiteSpace(review.WhyNotSplit));
+      Assert.False(string.IsNullOrWhiteSpace(review.ReviewReference));
       Assert.True(
-        now > Limit,
-        $"{name}: {now} lines is under the limit - drop it from the list"
+        lines <= review.MaximumLines,
+        $"{name}: {lines} lines exceeds its reviewed budget; review again"
       );
     }
-  }
-
-  [Fact]
-  public void AFileStartedSinceIsOneThingYouCanName()
-  {
-    foreach (var (name, lines) in ServerFiles())
-      if (!Written.ContainsKey(name))
-        Assert.True(lines <= Limit, $"{name}: {lines} lines - split it");
+    foreach (var (name, lines) in lengths)
+      Assert.True(
+        lines <= ReviewThreshold || Reviewed.ContainsKey(name),
+        $"{name}: {lines} lines requires a cohesion review; "
+          + "split by responsibility or document a bounded size review"
+      );
   }
 
   // Domain is the one layer every other may lean on, which only holds while

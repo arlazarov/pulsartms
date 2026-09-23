@@ -1,3 +1,4 @@
+using Application.Diagnostics.Consistency;
 using Application.Features.Dispatch.Options;
 using Application.Features.Fuel.Options;
 using Application.Features.Synchronization.Options;
@@ -20,6 +21,7 @@ public static class OptionsRegistration
     Bind<RoutePreparationOptions>("RoutePreparation");
     Bind<EtaPlanningOptions>("EtaPlanning");
     Bind<FuelIssueOptions>("FuelIssue");
+    Bind<ConsistencyAuditOptions>("ConsistencyAudit");
     return services;
 
     void Bind<T>(string section)

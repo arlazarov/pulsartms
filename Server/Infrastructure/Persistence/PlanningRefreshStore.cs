@@ -172,6 +172,66 @@ public sealed class PlanningRefreshStore(AppDbContext db)
         ct
       ) == 1;
 
+  public async Task<IReadOnlyList<PlanningRefreshOverdue>> OverdueAsync(
+    DateTime due,
+    string? after,
+    int limit,
+    CancellationToken ct
+  )
+  {
+    var company = Company();
+    return await db
+      .PlanningRefreshRequests.AsNoTracking()
+      .Where(x =>
+        x.CompanyId == company
+        && x.CompletedVersion < x.RequestedVersion
+        && x.RequestedAt <= due
+        && (after == null || string.Compare(x.Id, after) > 0)
+      )
+      .OrderBy(x => x.Id)
+      .Select(x => new PlanningRefreshOverdue(
+        x.Id,
+        x.DispatchId,
+        x.ExecutionLegId,
+        x.AssignmentRevision,
+        db.ExecutionLegs.Where(leg => leg.Id == x.ExecutionLegId)
+          .Select(leg => (long?)leg.Revision)
+          .FirstOrDefault(),
+        x.RequestedVersion,
+        x.CompletedVersion,
+        x.RequestedAt,
+        x.AvailableAt,
+        x.Attempts
+      ))
+      .Take(limit + 1)
+      .ToListAsync(ct);
+  }
+
+  // Makes unfinished demand available now, only while it is still the same
+  // requested version and nobody holds its lease. Later demand, completion
+  // or a live worker all make this a no-op, so a repeated call is harmless.
+  public async Task<bool> RequeueAsync(
+    string id,
+    long requestedVersion,
+    DateTime now,
+    CancellationToken ct
+  )
+  {
+    var company = Company();
+    return await db
+        .PlanningRefreshRequests.Where(x =>
+          x.CompanyId == company
+          && x.Id == id
+          && x.RequestedVersion == requestedVersion
+          && x.CompletedVersion < x.RequestedVersion
+          && (x.LeaseUntil == null || x.LeaseUntil <= now)
+        )
+        .ExecuteUpdateAsync(
+          setters => setters.SetProperty(x => x.AvailableAt, now),
+          ct
+        ) == 1;
+  }
+
   public Task PruneAsync(DateTime before, CancellationToken ct) =>
     db
       .PlanningRefreshRequests.Where(x =>

@@ -1,0 +1,36 @@
+@* Work held after the source cancelled its load: out of the truck's
+   current and future work, kept with its history until a dispatcher
+   closes it here. *@
+@if (Held.Count > 0)
+{
+    <div class="dispatch-details__cancelled" role="group" aria-label="Held work">
+        @if (!_confirming)
+        {
+            <button type="button" class="btn btn--small" disabled="@_busy"
+                    @onclick="() => _confirming = true">
+                Close the cancelled work…
+            </button>
+        }
+        else
+        {
+            <p>
+                Close @(Held.Count == 1
+                    ? "this held assignment"
+                    : $"these {Held.Count} held assignments")?
+                It becomes cancelled. Its stops, movements and history are kept.
+            </p>
+            <button type="button" class="btn btn--primary btn--small"
+                    disabled="@_busy" @onclick="CloseAsync">
+                @(_busy ? "Closing…" : "Close it")
+            </button>
+            <button type="button" class="btn btn--small" disabled="@_busy"
+                    @onclick="() => _confirming = false">
+                Keep for review
+            </button>
+        }
+        @if (_error is not null)
+        {
+            <p class="dispatch-details__cancelled-error" role="alert">@_error</p>
+        }
+    </div>
+}

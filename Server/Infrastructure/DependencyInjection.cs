@@ -1,3 +1,4 @@
+using Application.Diagnostics.Consistency;
 using Application.Features.Addresses.Interfaces;
 using Application.Features.Auth.Interfaces;
 using Application.Features.Border.Interfaces;
@@ -195,6 +196,7 @@ public static class DependencyInjection
     services.AddSingleton<IRouteRegionLookup, RouteRegionLookup>();
     services.AddHostedService<ApplicationWorker<IEtaRefreshOperation>>();
     services.AddHostedService<ApplicationWorker<ITruckHistoryOperation>>();
+    services.AddHostedService<ApplicationWorker<IConsistencyAuditOperation>>();
     services
       .AddHttpClient<SamsaraApiService>(client =>
         client.Timeout = TimeSpan.FromSeconds(30)

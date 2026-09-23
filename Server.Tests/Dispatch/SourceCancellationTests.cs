@@ -7,6 +7,7 @@ using Domain.Entities;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
 using Domain.Models.Routing;
+using Domain.Rules;
 using Infrastructure;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
@@ -65,8 +66,8 @@ public sealed class SourceCancellationTests
     await SyncAsync(f);
 
     var leg = await f.Db.ExecutionLegs.AsNoTracking().SingleAsync();
-    Assert.Equal("active", leg.Status);
-    Assert.Contains("cancelled", leg.SourceReviewReason);
+    Assert.Equal(SourceCancellation.Held, leg.Status);
+    Assert.Equal(SourceCancellation.HeldReason, leg.SourceReviewReason);
   }
 
   // AMF1407: in transit, picked up, both visits naming trailer 55904 that

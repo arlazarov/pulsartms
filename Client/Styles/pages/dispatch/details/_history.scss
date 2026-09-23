@@ -51,6 +51,22 @@
     border-color: ui.theme(warning-text);
   }
 
+  // Closing work held after the source cancelled its load.
+  &__cancelled {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(sm);
+
+    p {
+      margin: 0;
+    }
+  }
+
+  &__cancelled-error {
+    color: ui.theme(danger-text);
+  }
+
   &__execution {
     display: grid;
     gap: ui.pg(lg);

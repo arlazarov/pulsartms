@@ -1,5 +1,6 @@
 using Domain.Entities.Border;
 using Domain.Entities.Caching;
+using Domain.Entities.Consistency;
 using Domain.Entities.Costs;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
@@ -26,6 +27,10 @@ public interface IAppDbContext
   DbSet<FuelVisitSend> FuelVisitSends { get; }
   DbSet<DriverMessage> DriverMessages { get; }
   DbSet<DriverMessagingWindow> DriverMessagingWindows { get; }
+  DbSet<ConsistencyFinding> ConsistencyFindings { get; }
+  DbSet<ConsistencyEvent> ConsistencyEvents { get; }
+  DbSet<ConsistencyIncident> ConsistencyIncidents { get; }
+  DbSet<ConsistencyJournalHead> ConsistencyJournalHeads { get; }
   DbSet<FuelDiscount> FuelDiscounts { get; }
   DbSet<FuelTransaction> FuelTransactions { get; }
   DbSet<FuelImportSource> FuelImportSources { get; }
@@ -86,11 +91,16 @@ public interface IAppDbContext
   DbSet<RouteRecalculationAttempt> RouteRecalculationAttempts { get; }
 
   DatabaseFacade Database { get; }
+  ChangeTracker ChangeTracker { get; }
 
   // Locks require an active transaction and are released when it ends.
   Task LockRouteBudgetAsync(CancellationToken ct);
   Task LockFuelImportAsync(CancellationToken ct);
   Task LockDispatchRatesAsync(CancellationToken ct);
+
+  // Serializes consistency journal writers for one company, from before
+  // they read finding state until their transaction ends.
+  Task LockConsistencyJournalAsync(Guid company, CancellationToken ct);
   bool IsWriteConflict(Exception exception);
   Task<bool> LockExecutionLegAsync(
     Guid executionLegId,
