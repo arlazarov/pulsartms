@@ -313,12 +313,12 @@ Nothing here is deployed.
 | Allowlisted repair with cooldown, attempts, escalation | implemented, tested | `ConsistencyAuditTests.RepairIsAnAllowlisted…` |
 | Production 1399 moved to held | blocked | needs a release |
 
-### File storage — this stage
+### File storage — commit `565440f9`
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
 | Storage owner, connections, per-file location, default for new uploads | implemented, tested | `FileStorageTests`, `StorageLayoutTests` |
-| Upload fingerprint, reserved key, fenced claim, verified content | implemented, tested | `FileStorageTests` |
+| Upload fingerprint, reserved key, fenced claim, verified content | implemented, tested | `FileStorageTests`, `StorageReadingTests` |
 | Lost answer, crash, retry, reconciler without deletes | implemented, tested | `FileStorageTests` |
 | Disconnect refused while files or uploads are there | implemented, tested | `StorageLayoutTests.AStorageHoldingFiles…` |
 | Readable, company-configured names and folders; inbox by day | implemented, tested | `StorageNamingTests`, `StorageLayoutTests`, `GoogleDriveStorageTests.FilesGoInto…` |
