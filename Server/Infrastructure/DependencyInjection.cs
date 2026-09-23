@@ -43,6 +43,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Infrastructure;
 
@@ -236,11 +237,30 @@ public static class DependencyInjection
       sp.GetRequiredService<SamsaraHosHistoryCache>()
     );
     services.AddSingleton<SamsaraDriverCatalogCache>();
-    services
-      .AddHttpClient<IDriverMessaging, WhatsAppCloudMessaging>(client =>
-        client.Timeout = TimeSpan.FromSeconds(20)
+    if (
+      string.Equals(
+        configuration["WhatsApp:Provider"],
+        LocalDriverMessaging.ProviderName,
+        StringComparison.OrdinalIgnoreCase
       )
-      .RemoveAllLoggers();
+    )
+    {
+      services
+        .AddOptions<LocalMessagingOptions>()
+        .Bind(configuration.GetSection("WhatsApp:Local"))
+        .Validate<IHostEnvironment>(
+          (_, environment) => environment.IsDevelopment(),
+          LocalDriverMessaging.DevelopmentOnly
+        )
+        .ValidateOnStart();
+      services.AddScoped<IDriverMessaging, LocalDriverMessaging>();
+    }
+    else
+      services
+        .AddHttpClient<IDriverMessaging, WhatsAppCloudMessaging>(client =>
+          client.Timeout = TimeSpan.FromSeconds(20)
+        )
+        .RemoveAllLoggers();
     services.AddScoped<ITruckCameraProvider, SamsaraTruckCameraProvider>();
     services.AddScoped<IFleetProvider, SamsaraFleetProvider>();
     services.AddScoped<IDriverHosRefreshProvider, SamsaraDriverHosProvider>();

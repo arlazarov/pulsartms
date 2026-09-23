@@ -16,6 +16,7 @@ export const sources = [
   'shared/reorderList',
   'shared/loadDialog',
   'shared/pageVisibility',
+  'shared/messagingChannel',
   'dispatch/dispatch',
   'dispatch/documents',
   'settings/storagePicker',

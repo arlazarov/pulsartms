@@ -8,7 +8,7 @@
     "test:map": "node --test tests/fleetMap/*.test.js",
     "test:styles": "node --test tests/styles/*.test.js",
     "test:identity": "node --test tests/identity/*.test.js",
-    "test:dispatch": "node --test tests/dispatch/*.test.js",
+    "test:dispatch": "node --test tests/dispatch/*.test.js tests/messaging/*.test.js",
     "test:architecture": "node --test tests/architecture/*.test.js",
     "test:browser": "node tests/browser/mapLifecycle.mjs",
     "test:ui": "node tests/browser/uiSmoke.mjs",
@@ -17,7 +17,7 @@
     "map:build": "npm run js:build",
     "styles:build": "sass --style=expanded Styles/main.scss:wwwroot/css/main.css && node build/styleVersion.mjs",
     "styles:watch": "sass --style=expanded --watch Styles/main.scss:wwwroot/css/main.css",
-    "test": "node --test tests/fleetMap/*.test.js tests/styles/*.test.js tests/identity/*.test.js tests/dispatch/*.test.js tests/architecture/*.test.js"
+    "test": "node --test tests/fleetMap/*.test.js tests/styles/*.test.js tests/identity/*.test.js tests/dispatch/*.test.js tests/messaging/*.test.js tests/architecture/*.test.js"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

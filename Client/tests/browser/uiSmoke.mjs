@@ -330,6 +330,60 @@ const truck = {
   updatedAt: new Date().toISOString(),
   engineState: 'Running',
 };
+// Synthetic conversations: one driver who wrote a minute ago, one whose
+// window closed. Nothing here is real; replies are never posted.
+const conversationId = '5a0e5c1e-7d5b-4a61-9d7e-000000000001';
+const conversationSummary = (id, name, windowOpen, unread) => ({
+  id,
+  participant: '+15550000000',
+  driverId: null,
+  driverName: name,
+  lastPreview: 'Loaded at the shipper, heading out now.',
+  lastMessageAt: new Date(Date.now() - 60_000).toISOString(),
+  lastInboundAt: new Date(Date.now() - 60_000).toISOString(),
+  windowOpen,
+  unread,
+  claimedBy: null,
+  claimedUntil: null,
+  revision: 3,
+});
+const conversation = () => ({
+  summary: conversationSummary(conversationId, 'Fixture Driver', true, 0),
+  messages: [
+    {
+      id: '5a0e5c1e-7d5b-4a61-9d7e-000000000011',
+      direction: 'out',
+      kind: 'text',
+      body: 'Thanks, safe drive.',
+      status: 'delivered',
+      sentAt: new Date(Date.now() - 30_000).toISOString(),
+      author: 'Fixture Administrator',
+      errorCode: null,
+      attachments: [],
+    },
+    {
+      id: '5a0e5c1e-7d5b-4a61-9d7e-000000000010',
+      direction: 'in',
+      kind: 'image',
+      body: 'Loaded at the shipper, heading out now.',
+      status: 'received',
+      sentAt: new Date(Date.now() - 60_000).toISOString(),
+      author: null,
+      errorCode: null,
+      attachments: [
+        {
+          id: '5a0e5c1e-7d5b-4a61-9d7e-000000000020',
+          name: 'bill-of-lading.jpg',
+          type: 'image/jpeg',
+          state: 'stored',
+          available: true,
+          failureReason: null,
+        },
+      ],
+    },
+  ],
+  older: false,
+});
 const fixtures = new Map([
   [
     '/api/auth/me',
@@ -484,6 +538,23 @@ const fixtures = new Map([
     '/api/settings/integrations/whatsapp/webhook',
     success({ path: 'api/webhooks/whatsapp/fixture' }),
   ],
+  [
+    '/api/messaging/inbox',
+    () =>
+      success({
+        conversations: [
+          conversationSummary(conversationId, 'Fixture Driver', true, 0),
+          conversationSummary(
+            '5a0e5c1e-7d5b-4a61-9d7e-000000000002',
+            'Second Fixture Driver With A Long Name',
+            false,
+            2,
+          ),
+        ],
+        more: false,
+      }),
+  ],
+  ['/api/messaging/templates', success([])],
   [
     '/api/dispatch/board',
     () =>
@@ -1033,7 +1104,9 @@ try {
           showCompletedHistory = false,
           showCompletedScope = false,
           summaryReads = 0,
-          telemetryReads = 0;
+          telemetryReads = 0,
+          messagingReads = 0,
+          messagingStreams = 0;
         const holdBoard = () => {
           assert.ok(!boardHold, 'A board fixture response is already held');
           let release;
@@ -1067,6 +1140,24 @@ try {
           ) {
             await route.fulfill({ status: 200, json: success(planning()) });
           } else if (
+            url.origin === origin &&
+            route.request().method() === 'POST' &&
+            url.pathname ===
+              `/api/messaging/conversations/${conversationId}/read`
+          ) {
+            messagingReads++;
+            await route.fulfill({ status: 200, json: success(true) });
+          } else if (
+            url.origin === origin &&
+            url.pathname === '/api/messaging/events'
+          ) {
+            messagingStreams++;
+            await route.fulfill({
+              status: 200,
+              contentType: 'text/event-stream',
+              body: ': ready\n\n',
+            });
+          } else if (
             url.origin !== origin ||
             !['GET', 'HEAD'].includes(route.request().method())
           ) {
@@ -1079,6 +1170,15 @@ try {
               showCompletedScope = false;
             else if (url.pathname === '/api/dispatch')
               showCompletedScope = true;
+            if (
+              url.pathname === `/api/messaging/conversations/${conversationId}`
+            ) {
+              await route.fulfill({
+                status: 200,
+                json: success(conversation()),
+              });
+              return;
+            }
             const workspacePath = url.pathname.match(
               /^\/api\/dispatch\/([^/]+)\/(workspace|activity|documents|planning\/map)$/,
             );
@@ -1213,6 +1313,7 @@ try {
           ['/settings/personal', 'Personal settings', '#personal-distance'],
           ['/fleet/map', 'Fleet Map', '[data-ui-fixture]'],
           ['/users/add', 'Add User', '#name'],
+          [`/messages/${conversationId}`, 'Messages', '.messages__composer'],
         ];
         for (const [path, title, ready] of width === 2344
           ? pages.slice(0, 1)
@@ -1626,6 +1727,32 @@ try {
             assert.equal(
               await page.locator('#settings-load-prefix').count(),
               0,
+            );
+          }
+          if (path.startsWith('/messages/')) {
+            const items = page.locator('.messages__item');
+            assert.equal(await items.count(), 2, name + ' shows the thread');
+            assert.match(
+              await items.first().innerText(),
+              /Loaded at the shipper/,
+              name + ' reads the thread oldest first',
+            );
+            assert.equal(
+              await page.locator('.messages__list').isVisible(),
+              width >= 768,
+              name + ' shows the list beside the thread only when it fits',
+            );
+            assert.ok(
+              await page
+                .locator('.messages__composer button[type=submit]')
+                .isDisabled(),
+              name + ' cannot send an empty reply',
+            );
+            for (let wait = 0; wait < 50 && !messagingReads; wait++)
+              await page.waitForTimeout(20);
+            check(
+              messagingReads >= 1 && messagingStreams >= 1,
+              name + ' marks the thread read and opens the stream',
             );
           }
           if (path === '/settings') {

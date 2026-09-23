@@ -329,20 +329,22 @@ Nothing here is deployed.
 | Dropbox, OneDrive | deferred | listed as not available |
 | Moving existing load document bytes | blocked | owner authorization for data migration |
 
-### Messaging
+### Messaging — commits `c644e18b`, `45a1a71f`, `449e3e39`, then the Client stage
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
 | Inbound text, conversations, per-message dedupe by business number | implemented, tested | `WhatsAppWebhookTests` |
 | Durable inbound media capture into quarantine | implemented, tested | `InboundMediaTests` |
 | Inbox reads, per-dispatcher unread, read markers | implemented, tested | `InboxReadTests` |
-| Server event stream (signals after commit) | implemented, tested | `InboxReadTests.AStream…`; browser client not started |
+| Server event stream (signals after commit) | implemented, tested | `InboxReadTests.AStream…` |
 | Outbox with fencing, text within the window | implemented, tested | `ConversationReplyTests` |
-| Files out, templates | not started | blocked for real use: approved templates, WABA id |
+| Files out, templates | implemented, tested | `ConversationFileTemplateTests`, `StoredFileCheckTests`; blocked for real use: approved templates, WABA id |
 | Stale-reply guard, claim | implemented, tested | `ConversationReplyTests` |
-| One event stream per browser with polling fallback (client) | not started | |
-| Messages page, desktop and phone | not started | |
-| Fake provider for local runs (never in Production) | not started | |
+| One event stream per browser and account, polling fallback (client) | implemented, tested | `messagingChannel.test.js`, `MessagingSignalsTests`; not run across real browser tabs or a real sign-out |
+| Messages page, desktop and phone | implemented, tested | `MessagesPageTests`, offline UI smoke `/messages` |
+| Fake provider for local runs (never in Production) | implemented, tested | `LocalDriverMessagingTests` |
+| Notice outside `/messages`: shell-level join, navigation unread count, opt-in browser notifications | not started, next stage | agreed scope |
+| Filing a conversation's file to a load, linking a conversation to a driver and trip | not started, after the notice | agreed scope |
 | Real sends, Meta activation, webhook subscription | blocked | owner: Meta app review, number, tokens |
 | Migrating `DriverMessages` | blocked | owner authorization for data migration |
 

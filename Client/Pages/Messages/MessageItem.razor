@@ -1,0 +1,54 @@
+@using Client.Models.DTO.Messaging
+
+<li class="messages__item @Side">
+    @if (Message.Kind == "unsupported")
+    {
+        <p class="messages__note">
+            A @Message.Body message PulsR cannot show yet.
+        </p>
+    }
+    else if (Message.Body.Length > 0)
+    {
+        <p>@Message.Body</p>
+    }
+    @foreach (var file in Message.Attachments)
+    {
+        <span class="messages__file">
+            @if (file.Available)
+            {
+                <button type="button" class="btn btn--small"
+                        @onclick="() => OnOpen.InvokeAsync(file)">
+                    Open @file.Name
+                </button>
+            }
+            else
+            {
+                <span>@file.Name: @Pending(file)</span>
+            }
+        </span>
+    }
+    <span class="messages__meta">
+        @if (Message.Author is { } author)
+        {
+            <span>@author</span>
+        }
+        <time datetime="@Message.SentAt.ToString("O")">
+            @Messages.When(Message.SentAt)
+        </time>
+        @if (Message.Direction == "out")
+        {
+            <span class="messages__status is-@Message.Status">
+                @Messages.Status(Message.Status)
+            </span>
+            @if (Retryable)
+            {
+                <button type="button" class="btn btn--small btn--text"
+                        disabled="@Busy"
+                        @onclick="() => OnRetry.InvokeAsync(Message)">
+                    Send again
+                </button>
+            }
+        }
+    </span>
+</li>
+

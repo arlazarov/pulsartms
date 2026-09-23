@@ -1,11 +1,10 @@
 # Driver messaging inbox
 
-What is implemented of the [messaging plan](../architecture/driver-messaging-plan.md).
-State on 2026-09-23: local only, not deployed, migrations `AddDriverInbox`,
+What is implemented of the
+[messaging plan](../architecture/driver-messaging-plan.md). State on
+2026-09-23: local only, not deployed, migrations `AddDriverInbox`,
 `AddConversationOutbox` and `AddConversationTemplates` not applied
 anywhere, and no message has been received from or sent to a real driver.
-The Messages page and the browser stream client are a later stage (see the
-plan's checklist).
 
 ## Receiving
 
@@ -63,6 +62,47 @@ nothing.
 caller's company, raised after commit, with a keep-alive every 25 seconds.
 Signals live in this process only and each subscriber keeps at most 64; a
 reader that reconnects or misses signals reads the inbox again.
+
+## Messages page
+
+`/messages` (Admin and Dispatch) lists conversations beside the open one;
+below the `md` breakpoint it shows one pane at a time. The thread reads
+oldest first, marks itself read through its newest message, and claims the
+conversation, at most once a minute, when the dispatcher starts typing.
+A reply keeps its retry key until it is sent; a reply refused as stale
+offers "Send anyway" with the same key. Outside the 24-hour window only
+approved templates are offered, or a note that there are none.
+
+One stream per browser and account, not per tab: every tab showing
+messages joins `Scripts/shared/messagingChannel.ts` under a scope naming
+the signed-in account and this sign-in's session. A Web Lock of that scope
+elects one tab, which reads `/api/messaging/events` through the app's
+authenticated client (`Services/MessagingSignals.cs`) and relays each
+signal to the other tabs over a BroadcastChannel of the same scope, so a
+tab signed in as someone else never shares its leader. A sign-in, sign-out
+or account change leaves and joins again. Without both BroadcastChannel and
+Web Locks, or when the channel module cannot be loaded or joined, every tab
+reads its own stream and signals only itself. After every connect the
+reader sends "resync"; while the stream is down it sends a "poll" tick at
+most every 30 seconds and reconnects with backoff (2 to 60 seconds). Each
+view reads again on a signal and discards an answer older than one it
+already has.
+
+Outside `/messages` nothing is signalled yet: a tab joins only while the
+Messages page is shown. A shell-level notice (navigation unread count and
+opt-in browser notifications) is the next stage.
+
+## Local provider
+
+For a developer's machine, `WhatsApp:Provider = local` replaces the Cloud
+API adapter with `LocalDriverMessaging`. Anything but Development refuses
+it at start. It sends nothing: every send is accepted under a `local.` id.
+A driver message is simulated by posting a Cloud API notification to the
+company's ordinary webhook address, addressed to
+`WhatsApp:Local:PhoneNumberId` (default `local`) and signed with
+`WhatsApp:Local:AppSecret` (`X-Hub-Signature-256: sha256=<HMAC>`); without
+that secret nothing is accepted. Every media id opens the same synthetic
+1x1 PNG, so the capture pipeline can be followed end to end.
 
 ## Replying
 
@@ -130,5 +170,17 @@ attempt, withdrawal for a closed window or changed number, explicit retry,
 claims), `Server.Tests/Routing/ConversationFileTemplateTests` (a file sent
 once, a disguised file refused, an unreadable file withdrawn, approved
 templates only, download of checked files only),
-`Server.Tests/Storage/StoredFileCheckTests`. Not run: a real WhatsApp webhook or media
-download, and PostgreSQL.
+`Server.Tests/Storage/StoredFileCheckTests`,
+`Server.Tests/Routing/LocalDriverMessagingTests` (refused outside
+Development, no network, signed simulation). Client:
+`Client.Tests/Routing/MessagesPageTests` (list and thread, read marker,
+stale reply confirmed with the same key, closed window without templates,
+a stream signal reads the open thread again),
+`Client.Tests/Routing/MessagingSignalsTests` (stream lines, account scope
+and rejoin on account change, local stream and polling after a failed
+import or join, a slow tick that outlasts the wait),
+`Client/tests/messaging/messagingChannel.test.js` (one leader per account,
+relay, hand-over, separate accounts, every tab leading without
+BroadcastChannel or Web Locks) and the `/messages` page in the offline UI
+smoke. Not run: a real WhatsApp webhook or media download, several real
+browser tabs, and PostgreSQL.

@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Client.Models.DTO;
+using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
 namespace Client.Services;
 
@@ -138,6 +139,78 @@ public class ApiService(HttpClient httpClient)
     {
       return Fail<T>(ex.Message);
     }
+  }
+
+  // A form with a file; answered like any other request.
+  public async Task<RequestResponseDTO<TResponse>> PostFormAsync<TResponse>(
+    string url,
+    MultipartFormDataContent form,
+    CancellationToken cancellationToken = default
+  )
+  {
+    try
+    {
+      using var message = new HttpRequestMessage(HttpMethod.Post, url)
+      {
+        Content = form,
+      };
+      using var response = await httpClient.SendAsync(
+        message,
+        HttpCompletionOption.ResponseHeadersRead,
+        cancellationToken
+      );
+      return await ReadResponseAsync<TResponse>(response, cancellationToken);
+    }
+    catch (Exception ex)
+    {
+      return Fail<TResponse>(ex.Message);
+    }
+  }
+
+  // A file's bytes with its type and name, or null when it cannot be read.
+  public async Task<(byte[] Bytes, string Type, string Name)?> GetFileAsync(
+    string url,
+    CancellationToken cancellationToken = default
+  )
+  {
+    try
+    {
+      using var response = await httpClient.GetAsync(url, cancellationToken);
+      if (!response.IsSuccessStatusCode)
+        return null;
+      return (
+        await response.Content.ReadAsByteArrayAsync(cancellationToken),
+        response.Content.Headers.ContentType?.MediaType
+          ?? "application/octet-stream",
+        response.Content.Headers.ContentDisposition?.FileNameStar
+          ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+          ?? "file"
+      );
+    }
+    catch (HttpRequestException)
+    {
+      return null;
+    }
+  }
+
+  // A response read as it arrives, for a server-sent event stream. The
+  // caller disposes it. Null when the server did not open the stream.
+  public async Task<HttpResponseMessage?> OpenStreamAsync(
+    string url,
+    CancellationToken cancellationToken = default
+  )
+  {
+    var request = new HttpRequestMessage(HttpMethod.Get, url);
+    request.SetBrowserResponseStreamingEnabled(true);
+    var response = await httpClient.SendAsync(
+      request,
+      HttpCompletionOption.ResponseHeadersRead,
+      cancellationToken
+    );
+    if (response.IsSuccessStatusCode)
+      return response;
+    response.Dispose();
+    return null;
   }
 
   private static async Task<RequestResponseDTO<T>> ReadResponseAsync<T>(
