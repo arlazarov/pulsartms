@@ -1,12 +1,11 @@
 using Application.Features.Routing.Audit;
 using Application.Features.Routing.Queries;
 using Application.Features.Routing.Services.Messaging;
-using Application.Interfaces;
-using Application.Models;
 using Domain.Entities;
 using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
 using Microsoft.EntityFrameworkCore;
+using static Server.Tests.Routing.InboxScenario;
 
 namespace Server.Tests.Routing;
 
@@ -18,16 +17,6 @@ namespace Server.Tests.Routing;
 [Trait("Kind", "Integration")]
 public sealed class InboxReadTests
 {
-  private static readonly DateTime Start = new(
-    2026,
-    9,
-    21,
-    12,
-    0,
-    0,
-    DateTimeKind.Utc
-  );
-
   [Fact]
   public async Task TheInboxCostsTheSameReadsForOneOrManyConversations()
   {
@@ -78,57 +67,6 @@ public sealed class InboxReadTests
         .Conversations,
       x => x.Unread == 0
     );
-  }
-
-  [Fact]
-  public async Task TheNoticeCountsUnreadConversationsInFixedReads()
-  {
-    await using var f = await DispatchSyncFixture.CreateAsync();
-    var (me, colleague) = await UsersAsync(f);
-    var first = await ReceiveAsync(f, "+15550000001", 2);
-    f.Counter.Reset();
-    var one = await NoticeAsync(f, me);
-    var reads = f.Counter.Reads;
-    for (var i = 2; i <= 20; i++)
-      await ReceiveAsync(f, $"+155500000{i:00}", 1);
-
-    f.Counter.Reset();
-    var many = await NoticeAsync(f, me);
-    Assert.Equal(reads, f.Counter.Reads);
-    Assert.Equal((1, false), (one.Conversations, one.More));
-    Assert.Equal(new UnreadMark(first, 2), Assert.Single(one.Latest));
-    Assert.Equal((20, false), (many.Conversations, many.More));
-    // Newest arrival first.
-    Assert.Equal(first, many.Latest[^1].ConversationId);
-
-    await ReadAsync(f, colleague, first, 2);
-    Assert.Equal(20, (await NoticeAsync(f, me)).Conversations);
-    Assert.Equal(19, (await NoticeAsync(f, colleague)).Conversations);
-  }
-
-  // A message the provider delivers late carries an older time than the
-  // one already read. It is still unread and still raises the notice,
-  // while a claim or a reply, which change the conversation too, do not.
-  [Fact]
-  public async Task ALateMessageWithAnOlderTimeIsUnreadAndRaisesTheNotice()
-  {
-    await using var f = await DispatchSyncFixture.CreateAsync();
-    var (me, _) = await UsersAsync(f);
-    var conversation = await ReceiveAsync(f, "+15550000001", 2);
-    await ReadAsync(f, me, conversation, 2);
-    Assert.Equal(0, (await NoticeAsync(f, me)).Conversations);
-
-    await RecordAsync(f, "+15550000001", Start.AddHours(-1), "late");
-
-    var notice = await NoticeAsync(f, me);
-    Assert.Equal(new UnreadMark(conversation, 3), Assert.Single(notice.Latest));
-    Assert.Equal(1, (await InboxAsync(f, me)).Single().Unread);
-    await f.Db.Conversations.ExecuteUpdateAsync(x =>
-      x.SetProperty(c => c.Revision, c => c.Revision + 5)
-    );
-    Assert.Equal(notice.Latest, (await NoticeAsync(f, me)).Latest);
-    await ReadAsync(f, me, conversation, 8);
-    Assert.Empty((await NoticeAsync(f, me)).Latest);
   }
 
   // The auditor finds a conversation whose latest arrival is behind one of
@@ -216,158 +154,5 @@ public sealed class InboxReadTests
       (stream.Current.ConversationId, stream.Current.Revision)
     );
     await stop.CancelAsync();
-  }
-
-  private static async Task<IReadOnlyList<ConversationSummary>> InboxAsync(
-    DispatchSyncFixture f,
-    Guid user
-  ) =>
-    (await Handlers(f, user).Handle(new GetInboxQuery(false), default))
-      .Response!
-      .Conversations;
-
-  private static async Task<(Guid, Guid)> UsersAsync(DispatchSyncFixture f)
-  {
-    var me = new User
-    {
-      Id = Guid.NewGuid(),
-      IdentityUserId = "me",
-      Name = "Me",
-      Email = "me@example.invalid",
-    };
-    var colleague = new User
-    {
-      Id = Guid.NewGuid(),
-      IdentityUserId = "colleague",
-      Name = "Colleague",
-      Email = "c@example.invalid",
-    };
-    f.Db.Users.AddRange(me, colleague);
-    await f.Db.SaveChangesAsync();
-    return (me.Id, colleague.Id);
-  }
-
-  // One minute apart from Start, from one number.
-  private static async Task<Guid> ReceiveAsync(
-    DispatchSyncFixture f,
-    string phone,
-    int count
-  )
-  {
-    f.Db.ChangeTracker.Clear();
-    await new InboxRecorder(f.Db, TimeProvider.System).RecordAsync(
-      DriverMessageChannels.WhatsApp,
-      "123456",
-      [
-        .. Enumerable
-          .Range(0, count)
-          .Select(i => new DriverMessageInboundEvent(phone, Start.AddMinutes(i))
-          {
-            ProviderMessageId = $"wamid.{phone}.{i}",
-            Text = $"message {i}",
-          }),
-      ],
-      default
-    );
-    await f.Db.SaveChangesAsync();
-    f.Db.ChangeTracker.Clear();
-    return await f
-      .Db.Conversations.AsNoTracking()
-      .Where(x => x.Participant == phone)
-      .Select(x => x.Id)
-      .SingleAsync();
-  }
-
-  private static Task ReadAsync(
-    DispatchSyncFixture f,
-    Guid user,
-    Guid conversation,
-    long revision
-  ) =>
-    Handlers(f, user)
-      .Handle(new MarkConversationReadCommand(conversation, revision), default);
-
-  private static async Task RecordAsync(
-    DispatchSyncFixture f,
-    string phone,
-    DateTime at,
-    string id
-  )
-  {
-    f.Db.ChangeTracker.Clear();
-    await new InboxRecorder(f.Db, TimeProvider.System).RecordAsync(
-      DriverMessageChannels.WhatsApp,
-      "123456",
-      [
-        new DriverMessageInboundEvent(phone, at)
-        {
-          ProviderMessageId = $"wamid.{phone}.{id}",
-          Text = id,
-        },
-      ],
-      default
-    );
-    await f.Db.SaveChangesAsync();
-    f.Db.ChangeTracker.Clear();
-  }
-
-  private static async Task<UnreadNotice> NoticeAsync(
-    DispatchSyncFixture f,
-    Guid user
-  ) =>
-    (
-      await Handlers(f, user).Handle(new GetUnreadNoticeQuery(), default)
-    ).Response!;
-
-  private static InboxAndConversation Handlers(DispatchSyncFixture f, Guid user)
-  {
-    f.Db.ChangeTracker.Clear();
-    var identity = f
-      .Db.Users.AsNoTracking()
-      .Where(x => x.Id == user)
-      .Select(x => x.IdentityUserId)
-      .Single();
-    return new(
-      new InboxHandlers(f.Db, new Caller(identity), TimeProvider.System),
-      new ConversationHandlers(
-        f.Db,
-        new Caller(identity),
-        new TestCompany(),
-        new MessagingEvents(),
-        TimeProvider.System
-      )
-    );
-  }
-
-  private sealed class InboxAndConversation(
-    InboxHandlers inbox,
-    ConversationHandlers conversation
-  )
-  {
-    public Task<RequestResponse<InboxView>> Handle(
-      GetInboxQuery q,
-      CancellationToken ct
-    ) => inbox.Handle(q, ct);
-
-    public Task<RequestResponse<UnreadNotice>> Handle(
-      GetUnreadNoticeQuery q,
-      CancellationToken ct
-    ) => inbox.Handle(q, ct);
-
-    public Task<RequestResponse<bool>> Handle(
-      MarkConversationReadCommand q,
-      CancellationToken ct
-    ) => inbox.Handle(q, ct);
-
-    public Task<RequestResponse<ConversationView>> Handle(
-      GetConversationQuery q,
-      CancellationToken ct
-    ) => conversation.Handle(q, ct);
-  }
-
-  private sealed class Caller(string identity) : ICurrentUser
-  {
-    public bool IsAuthenticated => true;
-    public string? IdentityUserId => identity;
   }
 }

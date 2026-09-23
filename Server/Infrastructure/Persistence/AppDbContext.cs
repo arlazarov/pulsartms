@@ -49,6 +49,8 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
   public DbSet<MessageAttachment> MessageAttachments =>
     Set<MessageAttachment>();
   public DbSet<ConversationRead> ConversationReads => Set<ConversationRead>();
+  public DbSet<ConversationArrivalHead> ConversationArrivalHeads =>
+    Set<ConversationArrivalHead>();
   public DbSet<ConsistencyFinding> ConsistencyFindings =>
     Set<ConsistencyFinding>();
   public DbSet<ConsistencyEvent> ConsistencyEvents => Set<ConsistencyEvent>();

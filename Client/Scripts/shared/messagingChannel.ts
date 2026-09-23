@@ -18,12 +18,7 @@ type Signal =
   | { kind: 'resync' }
   | { kind: 'poll' }
   | { kind: 'read' }
-  | { kind: 'unread'; count: number; more: boolean; latest: Mark[] };
-
-interface Mark {
-  conversationId: string;
-  revision: number;
-}
+  | { kind: 'unread'; count: number; more: boolean; newest: number };
 
 const channelName = 'pulsr-messaging';
 const lockName = 'pulsr-messaging-stream';
@@ -38,19 +33,7 @@ let release: (() => void) | null = null;
 // recognised by its generation, not by the reference.
 let generation = 0;
 
-const maximumMarks = 99;
-
-function validMark(value: unknown): boolean {
-  const mark = value as Partial<Mark> | null;
-  return (
-    mark !== null &&
-    typeof mark === 'object' &&
-    typeof mark.conversationId === 'string' &&
-    guid.test(mark.conversationId) &&
-    Number.isSafeInteger(mark.revision) &&
-    mark.revision! >= 0
-  );
-}
+const maximumCount = 99;
 
 function valid(value: unknown): value is Signal {
   const signal = value as Partial<{
@@ -58,7 +41,7 @@ function valid(value: unknown): value is Signal {
     id: string;
     count: number;
     more: boolean;
-    latest: unknown[];
+    newest: number;
   }> | null;
   if (signal === null || typeof signal !== 'object') return false;
   switch (signal.kind) {
@@ -72,11 +55,10 @@ function valid(value: unknown): value is Signal {
       return (
         Number.isInteger(signal.count) &&
         signal.count! >= 0 &&
-        signal.count! <= maximumMarks &&
+        signal.count! <= maximumCount &&
         typeof signal.more === 'boolean' &&
-        Array.isArray(signal.latest) &&
-        signal.latest.length <= maximumMarks &&
-        signal.latest.every(validMark)
+        Number.isSafeInteger(signal.newest) &&
+        signal.newest! >= 0
       );
     default:
       return false;
@@ -90,7 +72,7 @@ function deliver(value: unknown): void {
       'Unread',
       value.count,
       value.more,
-      value.latest,
+      value.newest,
     );
   else
     void dotnet.invokeMethodAsync(

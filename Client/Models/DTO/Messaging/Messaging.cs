@@ -71,12 +71,6 @@ public sealed record TemplateRequest(
 );
 
 // How many conversations hold messages this dispatcher has not read (at
-// most 99, then More), and the revision each one's latest driver message
-// arrived at: a notice is due only when one of these rises.
-public sealed record UnreadCount(
-  int Conversations,
-  bool More,
-  IReadOnlyList<UnreadMark> Latest
-);
-
-public sealed record UnreadMark(Guid ConversationId, long Revision);
+// most 99, then More), and the highest company arrival sequence among
+// them: a notice is due only when it rises.
+public sealed record UnreadCount(int Conversations, bool More, long Newest);

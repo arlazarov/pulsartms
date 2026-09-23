@@ -1,3 +1,4 @@
+using Application.Features.Routing.Interfaces;
 using Application.Models;
 using Domain.Entities.Messaging;
 using Domain.Rules.Messaging;
@@ -9,19 +10,14 @@ public sealed record GetInboxQuery(bool UnreadOnly)
 
 // For the notice every page shows: how many conversations hold driver
 // messages this dispatcher has not read (at most NoticeLimit, then More),
-// and for each the revision its latest driver message arrived at, newest
-// arrival first. A notice is due when a conversation's revision rises; a
-// read, a claim or a reply never raises it.
+// and the highest company arrival sequence among them. A notice is due
+// when that rises: a read, a claim or a reply never raises it, and a
+// conversation that only comes into view because another was read carries
+// an older sequence.
 public sealed record GetUnreadNoticeQuery
   : IRequest<RequestResponse<UnreadNotice>>;
 
-public sealed record UnreadNotice(
-  int Conversations,
-  bool More,
-  IReadOnlyList<UnreadMark> Latest
-);
-
-public sealed record UnreadMark(Guid ConversationId, long Revision);
+public sealed record UnreadNotice(int Conversations, bool More, long Newest);
 
 // Revision: the conversation's revision in the view the dispatcher read.
 public sealed record MarkConversationReadCommand(Guid Id, long Revision)
@@ -55,6 +51,7 @@ public sealed record InboxView(
 public sealed class InboxHandlers(
   IAppDbContext db,
   ICurrentUser caller,
+  IConversationReadMarkers markers,
   TimeProvider clock
 )
   : IRequestHandler<GetInboxQuery, RequestResponse<InboxView>>,
@@ -92,13 +89,13 @@ public sealed class InboxHandlers(
     return RequestResponse<InboxView>.Ok(new(summaries, page.Count > PageSize));
   }
 
-  // Two reads: the caller, then the unread conversations, at most
-  // NoticeLimit + 1 of them. The database still walks every conversation
-  // of the company that has a driver message, newest arrival first
-  // (CompanyId, LastInboundArrivedAt), and looks up this dispatcher's
-  // marker for each (ConversationId, UserId): the work grows with the
-  // company's conversations, not with their messages, and has not been
-  // measured on PostgreSQL.
+  // Two reads: the caller, then the arrival sequences of at most
+  // NoticeLimit + 1 unread conversations, highest first. The database still
+  // walks the company's conversations that have a driver message, in
+  // sequence order (CompanyId, LastInboundSequence), and looks up this
+  // dispatcher's marker for each (CompanyId, ConversationId, UserId): the
+  // work grows with the company's conversations, not with their messages,
+  // and has not been measured on PostgreSQL.
   public async Task<RequestResponse<UnreadNotice>> Handle(
     GetUnreadNoticeQuery request,
     CancellationToken ct
@@ -116,16 +113,15 @@ public sealed class InboxHandlers(
           && r.ReadRevision >= c.LastInboundRevision
         )
       )
-      .OrderByDescending(c => c.LastInboundArrivedAt)
-      .ThenBy(c => c.Id)
-      .Select(c => new UnreadMark(c.Id, c.LastInboundRevision))
+      .OrderByDescending(c => c.LastInboundSequence)
+      .Select(c => c.LastInboundSequence)
       .Take(NoticeLimit + 1)
       .ToListAsync(ct);
     return RequestResponse<UnreadNotice>.Ok(
       new(
         Math.Min(unread.Count, NoticeLimit),
         unread.Count > NoticeLimit,
-        [.. unread.Take(NoticeLimit)]
+        unread.Count == 0 ? 0 : unread[0]
       )
     );
   }
@@ -138,39 +134,24 @@ public sealed class InboxHandlers(
     if (await Inbox.UserAsync(db, caller, ct) is not { } user)
       return RequestResponse<bool>.Fail("Access denied.", 403);
     // A marker only moves forward, and never past the conversation's
-    // current revision.
+    // current revision. The store keeps the higher of two writers' values
+    // in one statement; a failure is not a conflict to hide, so it goes to
+    // the request boundary.
     var current = await db
       .Conversations.Where(x => x.Id == request.Id)
-      .Select(x => (long?)x.Revision)
+      .Select(x => new { x.CompanyId, x.Revision })
       .SingleOrDefaultAsync(ct);
-    if (current is not { } revision)
+    if (current is null)
       return RequestResponse<bool>.Fail("Conversation not found.", 404);
-    var through = Math.Min(request.Revision, revision);
-    var read = await db.ConversationReads.SingleOrDefaultAsync(
-      x => x.ConversationId == request.Id && x.UserId == user,
-      ct
-    );
-    if (read is null)
-      db.ConversationReads.Add(
-        new ConversationRead
-        {
-          Id = Guid.NewGuid(),
-          ConversationId = request.Id,
-          UserId = user,
-          ReadRevision = through,
-        }
+    var through = Math.Min(request.Revision, current.Revision);
+    if (through > 0)
+      await markers.AdvanceAsync(
+        current.CompanyId,
+        request.Id,
+        user,
+        through,
+        ct
       );
-    else if (through > read.ReadRevision)
-      read.ReadRevision = through;
-    try
-    {
-      await db.SaveChangesAsync(ct);
-    }
-    catch (DbUpdateException)
-    {
-      // Two tabs marking at once: the other one's marker stands.
-      return RequestResponse<bool>.Ok(false);
-    }
     return RequestResponse<bool>.Ok(true);
   }
 }

@@ -3,8 +3,9 @@
 What is implemented of the
 [messaging plan](../architecture/driver-messaging-plan.md). State on
 2026-09-23: local only, not deployed, migrations `AddDriverInbox`,
-`AddConversationOutbox`, `AddConversationTemplates` and
-`AddConversationReadRevisions` not applied anywhere, and no message has
+`AddConversationOutbox`, `AddConversationTemplates`,
+`AddConversationReadRevisions` and `AddConversationArrivalSequence` not
+applied anywhere, and no message has
 been received from or sent to a real driver.
 
 ## Receiving
@@ -55,8 +56,12 @@ number of reads whatever the number of conversations),
 `GET /api/messaging/conversations/{id}?before=` (50 messages per page,
 newest first, with attachment states), `POST .../{id}/read` (this
 dispatcher's marker: the conversation revision of the view they read; it
-only moves forward and never past the current revision). Unread counts
-are each dispatcher's own and tell the driver nothing.
+only moves forward and never past the current revision). The marker is
+one upsert that keeps the higher revision (`ConversationReadMarkers`, SQL
+for PostgreSQL and for SQLite in Infrastructure), so two writers in any
+order never move it back, and a database failure reaches the request
+boundary instead of being reported as "not marked". Unread counts are
+each dispatcher's own and tell the driver nothing.
 
 Unread is decided by when PulsR recorded a message, not by the provider's
 time: each driver message keeps the conversation revision it was recorded
@@ -69,13 +74,18 @@ contain. Limit: a message so late that its time falls behind the newest
 50 is marked read with the rest when the thread is opened, though it
 shows only on the next page.
 
-`GET /api/messaging/unread` is the notice: up to 99 unread conversations
-(then `more`), each with the revision of its latest driver message,
-newest arrival first. Two reads; the database walks the company's
-conversations that have driver messages (index `CompanyId,
-LastInboundArrivedAt`) and this dispatcher's marker for each (`ConversationId,
-UserId`), so the work grows with conversations, not messages. Not
-measured on PostgreSQL.
+`GET /api/messaging/unread` is the notice: how many conversations are
+unread (up to 99, then `more`) and `newest`, the highest company arrival
+sequence among them. Recording a driver message raises the company's
+arrival sequence (`ConversationArrivalHeads`, a concurrency token) in the
+same transaction, so numbers rise in commit order: a concurrent recording
+that read the same number fails as a write conflict and the provider's
+retry records it after. A conversation that comes into view because
+another was read carries an older number, so `newest` does not rise for
+it. Two reads; the database walks the company's conversations that have
+driver messages (index `CompanyId, LastInboundSequence`) and this
+dispatcher's marker for each, so the work grows with conversations, not
+messages. Not measured on PostgreSQL.
 
 `GET /api/messaging/events` is a server-sent event stream of
 "conversation changed" signals (id and revision, no content) for the
@@ -118,17 +128,17 @@ per burst however many tabs are open. A tab that marks a conversation read
 tells the others ("read"), and the leader counts again.
 
 Browser notifications are opt-in on the Messages page ("Notify me of new
-messages"), per browser. Only the leading tab notifies, and only when a
-conversation's latest arrival revision rises above what it counted
-before; reads, claims and replies never raise it, and the first count
-after a start or an account change is only a baseline. A notification
+messages"), per browser. Only the leading tab notifies, and only when
+`newest` rises above the highest it has counted, one number however long
+the session; reads, claims, replies and older conversations coming into
+view never raise it, and the first count after a start or an account
+change is only a baseline. A notification
 names no driver and quotes nothing, is skipped while the tab is in front,
 and shares one tag so a newer one replaces an older one. Every result
 carries the account generation it was asked for and is checked again
 right before it is shown, relayed or notified, so nothing from an earlier
-account or a disposed notice gets through. Limits: a conversation beyond
-the 99 newest unread cannot raise a notice; a leader that is hidden while
-another PulsR tab is in front still notifies.
+account or a disposed notice gets through. Limit: a leader that is
+hidden while another PulsR tab is in front still notifies.
 
 ## Local provider
 
@@ -226,7 +236,8 @@ relay, hand-over, separate accounts, an ended join's lock, counts and read
 marks between tabs, every tab leading without BroadcastChannel or Web
 Locks), `Client/tests/messaging/messagingNotices.test.js` (opt-in, tab in
 front, refusal, no API) and the offline UI smoke (`/messages`, and the
-navigation count on Dispatch). Server:
-`InboxReadTests.ALateMessageWithAnOlderTimeIsUnreadAndRaisesTheNotice`.
+navigation count on Dispatch). Server: `UnreadNoticeTests` (fixed reads,
+late message, an older conversation coming into view, arrivals in commit
+order, the marker keeping the higher of two writers).
 Not run: a real WhatsApp webhook or media download, several real browser
 tabs, a real notification permission, and PostgreSQL.

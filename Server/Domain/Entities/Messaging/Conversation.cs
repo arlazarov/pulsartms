@@ -28,9 +28,10 @@ public sealed class Conversation : BaseEntity, ICompanyOwned
   // the conversation's changes as they were committed.
   public long Revision { get; set; }
 
-  // The revision, and PulsR's time, at which the latest driver message was
-  // recorded. Unread and notices compare these, never the provider's
-  // time, so a message that arrives late with an older time still counts.
+  // The conversation revision and the company arrival sequence at which
+  // the latest driver message was recorded. Unread compares the revision,
+  // notices the sequence, never the provider's time, so a message that
+  // arrives late with an older time still counts.
   public long LastInboundRevision { get; set; }
-  public DateTime? LastInboundArrivedAt { get; set; }
+  public long LastInboundSequence { get; set; }
 }

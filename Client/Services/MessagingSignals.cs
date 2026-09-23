@@ -161,8 +161,8 @@ public sealed class MessagingSignals : IAsyncDisposable
 
   // The leading tab's unread count, relayed to every tab of the account.
   [JSInvokable]
-  public void Unread(int count, bool more, UnreadMark[] latest) =>
-    Changed?.Invoke(new("unread", null, new(count, more, latest)));
+  public void Unread(int count, bool more, long newest) =>
+    Changed?.Invoke(new("unread", null, new(count, more, newest)));
 
   // "read" from the tab that marked a conversation read, and the leader's
   // "unread" count: to every tab of the account through the channel, or to
@@ -176,7 +176,7 @@ public sealed class MessagingSignals : IAsyncDisposable
         kind = "unread",
         count = count.Conversations,
         more = count.More,
-        latest = count.Latest,
+        newest = count.Newest,
       },
       count
     );

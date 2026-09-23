@@ -131,29 +131,21 @@ test('the unread count and read marks reach every tab of the account', async () 
   stranger.join('user-2:session-9');
   await settle();
 
-  const latest = [{ conversationId: id, revision: 7 }];
-  leader.post({ kind: 'unread', count: 1, more: false, latest });
+  leader.post({ kind: 'unread', count: 1, more: false, newest: 7 });
   other.post({ kind: 'read' });
-  assert.deepEqual(other.counts(), [['Unread', 1, false, latest]]);
+  assert.deepEqual(other.counts(), [['Unread', 1, false, 7]]);
   assert.deepEqual(leader.received(), [['Receive', 'read', null]]);
   assert.deepEqual([stranger.counts(), stranger.received()], [[], []]);
 
   // A count that is not one is never delivered.
-  const mark = (conversationId, revision) => ({ conversationId, revision });
   for (const bad of [
-    { kind: 'unread', count: -1, more: false, latest },
-    { kind: 'unread', count: 1.5, more: false, latest },
-    { kind: 'unread', count: 100, more: false, latest },
-    { kind: 'unread', count: 1, more: 'no', latest },
-    { kind: 'unread', count: 1, more: false, latest: 'all' },
-    { kind: 'unread', count: 1, more: false, latest: [mark('x', 1)] },
-    { kind: 'unread', count: 1, more: false, latest: [mark(id, -1)] },
-    {
-      kind: 'unread',
-      count: 1,
-      more: true,
-      latest: Array.from({ length: 100 }, () => mark(id, 1)),
-    },
+    { kind: 'unread', count: -1, more: false, newest: 7 },
+    { kind: 'unread', count: 1.5, more: false, newest: 7 },
+    { kind: 'unread', count: 100, more: false, newest: 7 },
+    { kind: 'unread', count: 1, more: 'no', newest: 7 },
+    { kind: 'unread', count: 1, more: false, newest: -1 },
+    { kind: 'unread', count: 1, more: false, newest: 2 ** 60 },
+    { kind: 'unread', count: 1, more: false, newest: '7' },
   ])
     leader.post(bad);
   assert.equal(other.counts().length, 1);

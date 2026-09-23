@@ -27,10 +27,6 @@ public sealed class MessagingNotices : IAsyncDisposable
   private readonly IJSRuntime _js;
   private readonly TimeProvider _time;
 
-  // The revision each conversation's latest driver message arrived at, as
-  // last counted: a notice is due only when one rises. Reads, claims and
-  // replies never raise it; a late message with an older time does.
-  private readonly Dictionary<Guid, long> _seen = [];
   private IJSObjectReference? _notices;
   private int _subscribers,
     _account,
@@ -39,6 +35,13 @@ public sealed class MessagingNotices : IAsyncDisposable
     _again,
     _baseline,
     _disposed;
+
+  // The highest arrival sequence this tab has counted: a notice is due only
+  // when the newest unread arrival rises above it. Reads, claims, replies
+  // and older conversations coming into view never raise it; a late
+  // message with an older provider time does. One number, however long
+  // the session.
+  private long _seen;
 
   public event Action? Changed;
 
@@ -89,7 +92,7 @@ public sealed class MessagingNotices : IAsyncDisposable
   {
     var account = ++_account;
     Current = null;
-    _seen.Clear();
+    _seen = 0;
     _baseline = false;
     Changed?.Invoke();
     _ = ReadAsync(account, announce: false);
@@ -149,7 +152,7 @@ public sealed class MessagingNotices : IAsyncDisposable
       || result.Response is not { } count
     )
       return;
-    var newer = _baseline && count.Latest.Any(Raised);
+    var newer = _baseline && count.Newest > _seen;
     Remember(count);
     Show(count);
     if (!announce)
@@ -159,17 +162,11 @@ public sealed class MessagingNotices : IAsyncDisposable
       await NotifyAsync(account, count);
   }
 
-  private bool Raised(UnreadMark mark) =>
-    !_seen.TryGetValue(mark.ConversationId, out var seen)
-    || mark.Revision > seen;
-
   // The first count after a start or an account change is the baseline
   // and never notifies.
   private void Remember(UnreadCount count)
   {
-    foreach (var mark in count.Latest)
-      if (Raised(mark))
-        _seen[mark.ConversationId] = mark.Revision;
+    _seen = Math.Max(_seen, count.Newest);
     _baseline = true;
   }
 

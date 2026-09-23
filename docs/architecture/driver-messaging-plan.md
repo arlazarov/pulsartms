@@ -343,8 +343,8 @@ Nothing here is deployed.
 | One event stream per browser and account, polling fallback (client) | implemented, tested | `messagingChannel.test.js`, `MessagingSignalsTests`; not run across real browser tabs or a real sign-out |
 | Messages page, desktop and phone | implemented, tested | `MessagesPageTests`, offline UI smoke `/messages` |
 | Fake provider for local runs (never in Production) | implemented, tested | `LocalDriverMessagingTests` |
-| Notice outside `/messages`: navigation unread count, leader-only coalesced reads, opt-in browser notifications | implemented, tested | `MessagingNoticesTests`, `messagingNotices.test.js`, `messagingChannel.test.js`, `InboxReadTests`, UI smoke; not run: real tabs, a real permission grant |
-| Unread by arrival revision, not provider time | implemented, tested | `InboxReadTests.ALateMessage…`; migration `AddConversationReadRevisions` not applied |
+| Notice outside `/messages`: navigation unread count, leader-only coalesced reads, opt-in browser notifications | implemented, tested | `MessagingNoticesTests`, `messagingNotices.test.js`, `messagingChannel.test.js`, `UnreadNoticeTests`, UI smoke; not run: real tabs, a real permission grant |
+| Unread by arrival revision, notice by commit-ordered arrival sequence, monotonic read markers | implemented, tested | `UnreadNoticeTests`; migrations `AddConversationReadRevisions`, `AddConversationArrivalSequence` not applied; PostgreSQL upsert and lock behavior not run |
 | Filing a conversation's file to a load, linking a conversation to a driver and trip | not started, after the notice | agreed scope |
 | Real sends, Meta activation, webhook subscription | blocked | owner: Meta app review, number, tokens |
 | Migrating `DriverMessages` | blocked | owner authorization for data migration |

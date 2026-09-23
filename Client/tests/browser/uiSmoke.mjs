@@ -560,9 +560,7 @@ const fixtures = new Map([
     success({
       conversations: 1,
       more: false,
-      latest: [
-        { conversationId: '5a0e5c1e-7d5b-4a61-9d7e-000000000002', revision: 3 },
-      ],
+      newest: 3,
     }),
   ],
   [

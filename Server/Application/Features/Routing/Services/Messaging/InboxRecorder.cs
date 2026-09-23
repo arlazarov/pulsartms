@@ -8,7 +8,9 @@ namespace Application.Features.Routing.Services.Messaging;
 // so a notification delivered twice records it once; two deliveries racing
 // conflict on that key and the provider's retry finds it recorded. A file
 // becomes a pending attachment for the media worker, which must copy it
-// before the provider's media id expires.
+// before the provider's media id expires. Each message raises the company's
+// arrival sequence in the same transaction; a concurrent recording that
+// read the same sequence fails and the provider's retry records it after.
 public sealed class InboxRecorder(IAppDbContext db, TimeProvider clock)
 {
   // WhatsApp keeps a received media id for seven days.
@@ -64,6 +66,7 @@ public sealed class InboxRecorder(IAppDbContext db, TimeProvider clock)
       .ToDictionary(x => x.Key, x => x.Single().Id);
     var now = clock.GetUtcNow().UtcDateTime;
     var changed = new HashSet<Guid>();
+    ConversationArrivalHead? head = null;
     foreach (var item in events)
     {
       if (!conversations.TryGetValue(item.Phone, out var conversation))
@@ -128,7 +131,9 @@ public sealed class InboxRecorder(IAppDbContext db, TimeProvider clock)
       conversation.Revision++;
       message.ArrivedRevision = conversation.Revision;
       conversation.LastInboundRevision = conversation.Revision;
-      conversation.LastInboundArrivedAt = now;
+      head ??= await ArrivalHeadAsync(ct);
+      head.Sequence++;
+      conversation.LastInboundSequence = head.Sequence;
       changed.Add(conversation.Id);
     }
     return [.. changed];
@@ -155,5 +160,18 @@ public sealed class InboxRecorder(IAppDbContext db, TimeProvider clock)
       _ => item.Text,
     };
     return text.Length <= 200 ? text : text[..200];
+  }
+
+  private async Task<ConversationArrivalHead> ArrivalHeadAsync(
+    CancellationToken ct
+  )
+  {
+    var head = await db.ConversationArrivalHeads.SingleOrDefaultAsync(ct);
+    if (head is null)
+    {
+      head = new ConversationArrivalHead { Id = Guid.NewGuid() };
+      db.ConversationArrivalHeads.Add(head);
+    }
+    return head;
   }
 }

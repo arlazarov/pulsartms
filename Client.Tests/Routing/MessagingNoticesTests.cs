@@ -63,7 +63,7 @@ public sealed class MessagingNoticesTests
     await Eventually(() => Assert.Equal(1, f.Reads));
     Assert.Empty(page.FindAll(".sidebar__badge"));
 
-    f.Signals.Unread(2, false, [new(A, 3), new(B, 1)]);
+    f.Signals.Unread(2, false, 3);
 
     page.WaitForAssertion(
       () => Assert.Equal("2", page.Find(".sidebar__badge").TextContent)
@@ -75,23 +75,44 @@ public sealed class MessagingNoticesTests
     Assert.Equal(1, f.Reads);
   }
 
-  // Reads, claims and replies change the count but never raise a
-  // conversation's arrival; a new conversation or a late message does.
+  // Reads, claims and replies change the count but never raise the
+  // newest arrival; a new message, including a late one, does.
   [Fact]
   public async Task OnlyARisenArrivalNotifies()
   {
     await using var f = new Fixture();
-    f.Answers.Enqueue(new(1, false, [new(A, 3)]));
+    f.Answers.Enqueue(new(1, false, 3));
     await f.Notices.JoinAsync();
     await f.Signals.Lead();
 
-    await f.CountAsync(new(1, false, [new(A, 3)]));
-    await f.CountAsync(new(2, false, [new(B, 1), new(A, 3)]));
-    await f.CountAsync(new(2, false, [new(A, 5), new(B, 1)]));
-    await f.CountAsync(new(1, false, [new(A, 5)]));
-    await f.CountAsync(new(0, false, []));
+    await f.CountAsync(new(1, false, 3));
+    await f.CountAsync(new(2, false, 4));
+    await f.CountAsync(new(2, false, 6));
+    await f.CountAsync(new(1, false, 4));
+    await f.CountAsync(new(0, false, 0));
 
     Assert.Equal(2, f.Notified.Invocations.Count);
+  }
+
+  // More unread conversations than the notice lists: reading one of them
+  // brings an older one into view. The count stays and a different
+  // conversation is listed, but the newest arrival does not rise, so no
+  // notice; a new message does raise it.
+  [Fact]
+  public async Task AnOlderConversationComingIntoViewDoesNotNotify()
+  {
+    await using var f = new Fixture();
+    f.Answers.Enqueue(new(99, true, 200));
+    await f.Notices.JoinAsync();
+    await f.Signals.Lead();
+
+    await f.CountAsync(new(99, true, 200));
+    await f.CountAsync(new(99, true, 199));
+    await f.CountAsync(new(99, false, 150));
+    Assert.Empty(f.Notified.Invocations);
+
+    await f.CountAsync(new(99, true, 201));
+    Assert.Single(f.Notified.Invocations);
   }
 
   [Theory]
@@ -104,10 +125,10 @@ public sealed class MessagingNoticesTests
     await using var f = new Fixture(pauseImport: paused == "import");
     if (paused == "relay")
       f.HoldRelay();
-    f.Answers.Enqueue(new(1, false, [new(A, 3)]));
+    f.Answers.Enqueue(new(1, false, 3));
     await f.Notices.JoinAsync();
     await f.Signals.Lead();
-    f.Answers.Enqueue(new(2, false, [new(B, 1), new(A, 3)]));
+    f.Answers.Enqueue(new(2, false, 4));
     f.Signals.Receive("change", B.ToString());
     f.Time.Advance(MessagingNotices.Coalesce);
     await Eventually(() => Assert.Equal(2, f.Reads));
@@ -141,12 +162,12 @@ public sealed class MessagingNoticesTests
     await Eventually(() => Assert.Equal(1, f.Reads));
 
     f.Pending = null;
-    f.Answers.Enqueue(new(1, false, [new(B, 1)]));
+    f.Answers.Enqueue(new(1, false, 1));
     f.Auth.SetClaims(
       new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
     );
     await Eventually(() => Assert.Equal(1, f.Notices.Current?.Conversations));
-    late.SetResult(new(5, false, [new(A, 9)]));
+    late.SetResult(new(5, false, 9));
     await joining;
 
     Assert.Equal(1, f.Notices.Current!.Conversations);
@@ -270,7 +291,7 @@ public sealed class MessagingNoticesTests
       var count =
         Pending is { } pending ? await pending.Task
         : Answers.TryDequeue(out var next) ? next
-        : new UnreadCount(0, false, []);
+        : new UnreadCount(0, false, 0);
       return new(HttpStatusCode.OK)
       {
         Content = JsonContent.Create(

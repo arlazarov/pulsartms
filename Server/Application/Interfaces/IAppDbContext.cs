@@ -32,6 +32,7 @@ public interface IAppDbContext
   DbSet<ConversationMessage> ConversationMessages { get; }
   DbSet<MessageAttachment> MessageAttachments { get; }
   DbSet<ConversationRead> ConversationReads { get; }
+  DbSet<ConversationArrivalHead> ConversationArrivalHeads { get; }
   DbSet<ConsistencyFinding> ConsistencyFindings { get; }
   DbSet<ConsistencyEvent> ConsistencyEvents { get; }
   DbSet<ConsistencyIncident> ConsistencyIncidents { get; }

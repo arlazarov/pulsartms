@@ -138,6 +138,7 @@ public static class DependencyInjection
       IntegrationDeploymentCredentials
     >();
     services.AddScoped<IDeadheadHistoryReader, DeadheadHistoryReader>();
+    services.AddScoped<IConversationReadMarkers, ConversationReadMarkers>();
     services.AddSingleton<IStorageSecrets, StorageSecrets>();
     services.AddScoped<IFileStorageProvider, DatabaseFileStorage>();
     services

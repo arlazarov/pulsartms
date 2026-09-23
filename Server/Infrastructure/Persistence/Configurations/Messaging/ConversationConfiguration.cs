@@ -25,7 +25,7 @@ public sealed class ConversationConfiguration
       })
       .IsUnique();
     b.HasIndex(x => new { x.CompanyId, x.LastMessageAt });
-    b.HasIndex(x => new { x.CompanyId, x.LastInboundArrivedAt });
+    b.HasIndex(x => new { x.CompanyId, x.LastInboundSequence });
   }
 }
 
@@ -114,5 +114,17 @@ public sealed class ConversationReadConfiguration
       .WithMany()
       .HasForeignKey(x => x.ConversationId)
       .OnDelete(DeleteBehavior.Cascade);
+  }
+}
+
+public sealed class ConversationArrivalHeadConfiguration
+  : IEntityTypeConfiguration<ConversationArrivalHead>
+{
+  public void Configure(EntityTypeBuilder<ConversationArrivalHead> b)
+  {
+    b.ToTable("ConversationArrivalHeads");
+    b.HasKey(x => x.Id);
+    b.HasIndex(x => x.CompanyId).IsUnique();
+    b.Property(x => x.Sequence).IsConcurrencyToken();
   }
 }
