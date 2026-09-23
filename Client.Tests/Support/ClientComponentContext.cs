@@ -2,6 +2,7 @@ using Bunit;
 using Client.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
 
 namespace Client.Tests.Support;
@@ -24,6 +25,10 @@ internal sealed class ClientComponentContext : BunitContext
     Services.AddSingleton<ApiService>();
     Services.AddSingleton<PlanningDisplayCache>();
     Services.AddSingleton(TimeProvider.System);
+    // As in the app: the navigation's unread notice is on every page.
+    Services.TryAddSingleton<TokenStorageService>();
+    Services.AddSingleton<MessagingSignals>();
+    Services.AddSingleton<MessagingNotices>();
   }
 
   public void AddAuthenticationServices()
