@@ -819,7 +819,9 @@ attempt with no answer it becomes Send again via WhatsApp. Copy message
 records nothing, and Mark as sent is the explicit hand-by-hand confirmation.
 Edit driver contacts opens the shared contact editor inside the window. A
 stop's label is one of Sent, Delivered, Read, Not delivered or Changed since
-sent, the same in the station popup; nothing else on the map changes. Fuel
+sent, the same in the station popup - beside the visit, or, for a single
+visit whose heading is hidden, after "Fuel stop N" in the card's head;
+nothing else on the map changes. Fuel
 plan sending in Settings is off by default and sends nothing. Settings,
 Integrations has a WhatsApp card with the webhook URL to give Meta.
 

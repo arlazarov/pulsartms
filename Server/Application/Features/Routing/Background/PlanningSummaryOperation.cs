@@ -2,6 +2,7 @@ using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
 using Domain.Models.Routing;
 using Domain.Rules;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -81,6 +82,65 @@ public sealed class PlanningSummaryOperation(
       cache.Keep(new(company, truck), summaries.Signature(work));
   }
 
+  // Planning refused the work as it stands - it needs review, it has two
+  // truck assignments. That is the summary's answer for these inputs, said
+  // as it is, not "updating" forever. It is kept only if the inputs are
+  // still the ones it was refused for: a refusal because the work moved
+  // under it is not an answer, and the work is read again.
+  private async Task<(string?, AutomaticPlanningResult?)> RefusedAsync(
+    IServiceProvider services,
+    PlanningSummaryCache.Work work,
+    TruckPlanningInputs? captured,
+    string? capturedSignature,
+    string reason,
+    CancellationToken ct
+  )
+  {
+    if (captured is null || capturedSignature is null)
+      return (null, null);
+    using var owner = services
+      .GetRequiredService<ICurrentCompany>()
+      .As(work.Key.Company);
+    var inputs = services.GetRequiredService<TruckPlanningInputsReader>();
+    var summaries = services.GetRequiredService<PlanningSummaryReader>();
+    TruckPlanningInputs? now;
+    try
+    {
+      now = await inputs.ReadFreshAsync(work.Key.Truck, ct, includeHos: false);
+    }
+    catch (Exception ex) when (ex is not OperationCanceledException)
+    {
+      logger.LogWarning(
+        ex,
+        "Planning summary refusal check failed for truck {TruckId}",
+        work.Key.Truck
+      );
+      return (null, null);
+    }
+    if (now is null || summaries.Signature(now) != capturedSignature)
+      return (now is null ? null : summaries.Signature(now), null);
+    var first = PlanningWorkPolicy
+      .Candidates(captured.Itinerary)
+      .FirstOrDefault(x =>
+        work.Key.Dispatch is not { } dispatch || x.Work.DispatchId == dispatch
+      );
+    return (
+      capturedSignature,
+      new AutomaticPlanningResult(
+        work.Key.Truck,
+        first?.Work.DispatchId ?? work.Key.Dispatch,
+        first?.LoadNumber,
+        null,
+        reason
+      )
+      {
+        ExecutionLegId = first?.Work.ExecutionLegId,
+        AssignmentRevision = first?.AssignmentRevision ?? 0,
+        CalculatedAt = time.GetUtcNow(),
+      }
+    );
+  }
+
   private async Task ConsumeAsync(CancellationToken ct)
   {
     while (!ct.IsCancellationRequested)
@@ -93,10 +153,12 @@ public sealed class PlanningSummaryOperation(
       }
       AutomaticPlanningResult? result = null;
       string? signature = null;
+      await using var scope = scopes.CreateAsyncScope();
+      var services = scope.ServiceProvider;
+      TruckPlanningInputs? captured = null;
+      string? capturedSignature = null;
       try
       {
-        await using var scope = scopes.CreateAsyncScope();
-        var services = scope.ServiceProvider;
         using var owner = services
           .GetRequiredService<ICurrentCompany>()
           .As(work.Key.Company);
@@ -104,7 +166,7 @@ public sealed class PlanningSummaryOperation(
         timeout.CancelAfter(TimeSpan.FromSeconds(60));
         var token = timeout.Token;
         var inputs = services.GetRequiredService<TruckPlanningInputsReader>();
-        var captured = await inputs.ReadFreshAsync(
+        captured = await inputs.ReadFreshAsync(
           work.Key.Truck,
           token,
           includeHos: true
@@ -112,7 +174,7 @@ public sealed class PlanningSummaryOperation(
         if (captured is null)
           continue;
         var summaries = services.GetRequiredService<PlanningSummaryReader>();
-        var capturedSignature = summaries.Signature(captured);
+        capturedSignature = summaries.Signature(captured);
         var reader = services.GetRequiredService<PlanningReadService>();
         var candidate = work.Key.Dispatch is { } dispatch
           ? await reader.ForDispatchAsync(dispatch, token)
@@ -129,7 +191,17 @@ public sealed class PlanningSummaryOperation(
       {
         break;
       }
-      catch (RoutePlanningException) { }
+      catch (RoutePlanningException ex)
+      {
+        (signature, result) = await RefusedAsync(
+          services,
+          work,
+          captured,
+          capturedSignature,
+          ex.Message,
+          ct
+        );
+      }
       catch (OperationCanceledException) { }
       catch (Exception ex)
       {

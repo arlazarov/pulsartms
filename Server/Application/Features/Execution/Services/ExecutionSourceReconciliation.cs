@@ -2,6 +2,7 @@ using Application.Features.Dispatch.Models;
 using Application.Features.Execution.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
+using Domain.Rules;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Execution.Services;
@@ -65,6 +66,43 @@ public static class ExecutionSourceReconciliation
         continue;
       }
       var source = sourceById[legLinks[0].DispatchId];
+      // The source cancelled the load. Work that never started is closed
+      // with it, so a cancelled load stops being planned and forecast; work
+      // that started, or has movement, is not closed behind anyone's back.
+      if (SourceWords.IsCancelled(source.Status))
+      {
+        var stops = ReadSnapshot(leg);
+        if (
+          leg.Status == "planned"
+          && !stops.Any(x =>
+            (
+              x.ArrivedAt
+              ?? x.PickedUpAt
+              ?? x.DeliveredAt
+              ?? x.DepartedAt
+              ?? x.ManualCompletedAt
+            ).HasValue
+          )
+          && !await db.Movements.AnyAsync(x => x.ExecutionLegId == leg.Id, ct)
+        )
+          changes.Add(
+            // As a cancelled switch closes its incoming leg.
+            new(leg, stops)
+            {
+              SourceSignature = leg.SourceSignature,
+              ReviewReason = null,
+              SupersedePlannedMileage = true,
+              Status = "cancelled",
+            }
+          );
+        else
+          Observe(
+            leg,
+            "The source cancelled this load while its execution has "
+              + "started. Review it before closing."
+          );
+        continue;
+      }
       var sourceAssignment = observations.GetValueOrDefault(source.Id);
       DispatchResourceProposal? replacement = null;
       if (

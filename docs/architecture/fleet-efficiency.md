@@ -119,6 +119,10 @@ elsewhere neither invalidates it nor is hidden by it.
 - A late result never replaces a newer one: stores compare-and-swap or
   compare timestamps, the summary cache compares tickets, and ETA memory
   keeps the newer road version of the same work.
+- Work planning refuses (it needs review, it has conflicting truck
+  assignments) is answered with that reason for the inputs it was refused
+  for, not left as "updating"; a refusal because the work moved under the
+  calculation is not stored.
 - A result for the same work stays visible with honest freshness
   (`IsRefreshing`, `RouteUpdatePending`, "Changed since sent"). A result
   for other work - another company, truck, assignment or stops - is never
@@ -140,7 +144,7 @@ regression where it touches one. Existing coverage:
 `TruckFuelPlanReplacementTests`, `EtaRetainedForecastTests`,
 `FuelIssueRecordsTests`, `FuelIssueSenderTests`, `WhatsAppWebhookTests`,
 `TrailerCatalogTests`, `TruckTrailerAssignmentTests` and
-`TruckTrailerRefreshTests`.
+`TruckTrailerRefreshTests` and `SourceCancellationTests`.
 
 ## Preventing repeated database and provider work
 

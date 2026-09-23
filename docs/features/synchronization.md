@@ -74,6 +74,11 @@ its adapter and loop while other scheduled jobs continue. See
 
 - Catalog and assignment synchronization are separate. Identical provider payloads are skipped before loading entity tables. If a payload changes, EF writes changed values only. Assignment swaps release only changed relationships before assigning their new owners within one transaction.
 
+A load the source cancels closes its execution work only if it never
+started: a planned leg with no actual and no movement becomes `cancelled`,
+so it is no longer planned or forecast. A leg that started, or has
+movement, stays open and is marked for review; it is never closed silently.
+
 ### Trailers: catalog and current assignment
 
 Which trailers exist and which trailer a truck has now are separate owners.
