@@ -36,7 +36,7 @@ public sealed class MessageFilingPageTests
 
     await Button(page, "File to load").ClickAsync(new());
     Assert.Empty(api.Filed);
-    page.Find("[id^=filing-kind]").Change("pod");
+    page.WaitForElement("[id^=filing-kind]").Change("pod");
     await page.Find(".messages__filing").SubmitAsync();
 
     var filed = Assert.Single(api.Filed);
@@ -68,7 +68,7 @@ public sealed class MessageFilingPageTests
 
     await Button(page, "File to load").ClickAsync(new());
     Assert.Single(page.FindAll("[id^=filing-load] option"));
-    page.Find("[id^=filing-number]").Change("1407");
+    page.WaitForElement("[id^=filing-number]").Change("1407");
     await page.Find(".messages__filing").SubmitAsync();
 
     Assert.Equal(new FileRequest(null, 1407, "bol"), Assert.Single(api.Filed));

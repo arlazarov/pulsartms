@@ -33,8 +33,8 @@ public sealed class MessageSwitchTests
     page.WaitForAssertion(() => Assert.Contains("a.pdf", page.Markup));
 
     await Button(page, "File to load").ClickAsync(new());
-    page.Find("[id^=filing-load]").Change("");
-    page.Find("[id^=filing-number]").Change("1407");
+    page.WaitForElement("[id^=filing-load]").Change("");
+    page.WaitForElement("[id^=filing-number]").Change("1407");
     page.Render(x => x.Add(p => p.Id, B));
 
     page.WaitForAssertion(() => Assert.Contains("b.pdf", page.Markup));
@@ -53,8 +53,8 @@ public sealed class MessageSwitchTests
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
     page.WaitForAssertion(() => Assert.Contains("a.pdf", page.Markup));
     await Button(page, "File to load").ClickAsync(new());
-    page.Find("[id^=filing-load]").Change("");
-    page.Find("[id^=filing-number]").Change("1407");
+    page.WaitForElement("[id^=filing-load]").Change("");
+    page.WaitForElement("[id^=filing-number]").Change("1407");
 
     api.Earlier = true;
     context
