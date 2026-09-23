@@ -13,6 +13,11 @@ public sealed class DispatchDocumentConfiguration
   {
     builder.HasKey(x => x.Id);
     builder.HasIndex(x => new { x.DispatchId, x.RecordedAt });
+    builder
+      .HasIndex(x => new { x.DispatchId, x.SourceAttachmentId })
+      .IsUnique()
+      .HasFilter("\"SourceAttachmentId\" IS NOT NULL");
+    builder.HasIndex(x => x.StoredFileId);
     builder.Property(x => x.ActorName).HasMaxLength(200).IsRequired();
     builder.Property(x => x.Kind).HasMaxLength(16).IsRequired();
     builder.Property(x => x.FileName).HasMaxLength(180).IsRequired();

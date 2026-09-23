@@ -528,3 +528,18 @@ restoration in a new browser context and desktop/mobile controls using synthetic
 authenticated APIs. It never writes
 to the application database or calls providers. Other staged UI fixtures also
 serve the chosen theme through the account appearance endpoint.
+
+## Messaging across tabs
+
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/messagingTabsSmoke.mjs`
+
+Part of `npm run test:ui`, so the release UI gate runs it. Two tabs of one
+browser on the release build, with synthetic fixtures only (no real
+messages, accounts or notification grants): one tab reads the messaging
+stream and the other reads the conversation again on its signal; closing
+the leader hands the stream to the other tab; signing out stops it and
+gives the lock back; signing in as another account starts it again under
+that account's lock, with nothing read using the old account. The origin
+is `http://localhost:5079` because Web Locks need a secure context; every
+request is fulfilled by the probe. The report is saved to the managed
+`browser-messaging-tabs` run.

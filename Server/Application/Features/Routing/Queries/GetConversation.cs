@@ -22,8 +22,12 @@ public sealed record AttachmentView(
   string Type,
   string State,
   bool Available,
-  string? FailureReason
+  string? FailureReason,
+  IReadOnlyList<FiledView> Filed
 );
+
+// A load the file was filed to, as one of its documents.
+public sealed record FiledView(Guid DispatchId, int LoadNumber, string Kind);
 
 public sealed record MessageView(
   Guid Id,
@@ -103,6 +107,15 @@ public sealed class ConversationHandlers(
             .StoredFiles.Where(f => f.Id == x.StoredFileId)
             .Select(f => f.Name)
             .FirstOrDefault(),
+          Filed = db
+            .DispatchDocuments.Where(d => d.SourceAttachmentId == x.Id)
+            .Join(
+              db.Dispatches,
+              d => d.DispatchId,
+              l => l.Id,
+              (d, l) => new FiledView(l.Id, l.LoadNumber, d.Kind)
+            )
+            .ToList(),
         })
         .ToListAsync(ct)
     ).ToLookup(x => x.MessageId);
@@ -151,7 +164,8 @@ public sealed class ConversationHandlers(
                       a.FileState == StoredFileStates.Rejected
                         ? "This kind of file is not accepted."
                         : null
-                    )
+                    ),
+                  a.Filed
                 )),
             ]
           )),

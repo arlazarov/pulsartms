@@ -55,15 +55,21 @@ public sealed class MessagingNoticesTests
     Assert.Equal(2, f.Reads);
   }
 
+  // The tab's own first read answers after the leader's newer count: the
+  // older answer is dropped.
   [Fact]
   public async Task AFollowerShowsTheLeadersCountWithoutReading()
   {
     await using var f = new Fixture();
+    var first = new TaskCompletionSource<UnreadCount>();
+    f.Pending = first;
     var page = f.Context.Render<MessagesNotice>();
     await Eventually(() => Assert.Equal(1, f.Reads));
     Assert.Empty(page.FindAll(".sidebar__badge"));
 
     f.Signals.Unread(2, false, 3);
+    first.SetResult(new(0, false, 0));
+    await Task.Delay(20);
 
     page.WaitForAssertion(
       () => Assert.Equal("2", page.Find(".sidebar__badge").TextContent)
@@ -91,6 +97,8 @@ public sealed class MessagingNoticesTests
     await f.CountAsync(new(1, false, 4));
     await f.CountAsync(new(0, false, 0));
 
+    await Eventually(() => Assert.Equal(2, f.Notified.Invocations.Count));
+    await Task.Delay(50);
     Assert.Equal(2, f.Notified.Invocations.Count);
   }
 
@@ -109,10 +117,11 @@ public sealed class MessagingNoticesTests
     await f.CountAsync(new(99, true, 200));
     await f.CountAsync(new(99, true, 199));
     await f.CountAsync(new(99, false, 150));
+    await Task.Delay(50);
     Assert.Empty(f.Notified.Invocations);
 
     await f.CountAsync(new(99, true, 201));
-    Assert.Single(f.Notified.Invocations);
+    await Eventually(() => Assert.Single(f.Notified.Invocations));
   }
 
   [Theory]
@@ -269,15 +278,18 @@ public sealed class MessagingNoticesTests
           .Where(x => x.Contains($"\"kind\":\"{kind}\"")),
       ];
 
-    // One signal on the leader, answered with this count.
+    // One signal on the leader, answered with this count; done when the
+    // count has been relayed, which follows the read and precedes nothing
+    // but the notice, so the next signal starts a new count.
     public async Task CountAsync(UnreadCount answer)
     {
-      var before = _reads;
+      var relayed = Relayed("unread").Count;
       Answers.Enqueue(answer);
       Signals.Receive("change", A.ToString());
       Time.Advance(MessagingNotices.Coalesce);
-      await Eventually(() => Assert.Equal(before + 1, _reads));
-      await Task.Delay(20);
+      await Eventually(
+        () => Assert.Equal(relayed + 1, Relayed("unread").Count)
+      );
     }
 
     private async Task<HttpResponseMessage> SendAsync(

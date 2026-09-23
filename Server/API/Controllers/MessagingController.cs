@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Features.Dispatch.Documents;
 using Application.Features.Routing.Commands;
 using Application.Features.Routing.Queries;
 using Microsoft.AspNetCore.Authorization;
@@ -15,6 +16,14 @@ public sealed class MessagingController : BaseController
 {
   public sealed record ReadRequest(long Revision);
 
+  public sealed record DriverRequest(Guid? DriverId, long Revision);
+
+  public sealed record FileRequest(
+    Guid? DispatchId,
+    int? LoadNumber,
+    string Kind
+  );
+
   public sealed record SendRequest(
     string Body,
     Guid IdempotencyKey,
@@ -27,6 +36,39 @@ public sealed class MessagingController : BaseController
     [FromQuery] bool unread,
     CancellationToken cancellationToken
   ) => HandleRequest(new GetInboxQuery(unread), cancellationToken);
+
+  [HttpGet("conversations/{id:guid}/context")]
+  public Task<IActionResult> Context(
+    Guid id,
+    CancellationToken cancellationToken
+  ) => HandleRequest(new GetConversationContextQuery(id), cancellationToken);
+
+  [HttpPut("conversations/{id:guid}/driver")]
+  public Task<IActionResult> Driver(
+    Guid id,
+    DriverRequest request,
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(
+      new SetConversationDriverCommand(id, request.DriverId, request.Revision),
+      cancellationToken
+    );
+
+  [HttpPost("attachments/{id:guid}/file")]
+  public Task<IActionResult> FileAttachment(
+    Guid id,
+    FileRequest request,
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(
+      new FileMessageAttachmentCommand(
+        id,
+        request.DispatchId,
+        request.LoadNumber,
+        request.Kind
+      ),
+      cancellationToken
+    );
 
   [HttpGet("unread")]
   public Task<IActionResult> Unread(CancellationToken cancellationToken) =>

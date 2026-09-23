@@ -6,6 +6,7 @@ using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Server.Tests.Storage;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Support;
@@ -37,7 +38,12 @@ internal sealed class DispatchDocumentFixture : IAsyncDisposable
     new(Db, new Caller(Actor.IdentityUserId), new Roles(role));
 
   public DownloadDispatchDocumentHandler Download(string? role = "Dispatch") =>
-    new(Db, new Caller(Actor.IdentityUserId), new Roles(role));
+    new(
+      Db,
+      new Caller(Actor.IdentityUserId),
+      new Roles(role),
+      FileStorageTests.Store(Db, clock: Clock)
+    );
 
   public UploadDispatchDocumentCommand Command() =>
     new(

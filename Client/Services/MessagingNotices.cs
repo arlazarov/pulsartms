@@ -104,6 +104,8 @@ public sealed class MessagingNotices : IAsyncDisposable
     {
       if (signal.Unread is { } count)
       {
+        // Newer than any read of this tab's still on its way.
+        _read++;
         Remember(count);
         Show(count);
       }

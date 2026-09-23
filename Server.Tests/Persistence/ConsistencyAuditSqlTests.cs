@@ -1,4 +1,5 @@
 using Application.Diagnostics.Consistency;
+using Application.Features.Dispatch.Audit;
 using Application.Features.Execution.Audit;
 using Application.Features.Routing.Audit;
 using Domain.Entities;
@@ -34,6 +35,7 @@ public sealed class ConsistencyAuditSqlTests
       "execution.planning-change-overdue",
       "routing.planning-refresh-overdue",
       "messaging.unread-arrival-behind",
+      "dispatch.filed-document-unavailable",
       "journal-events",
       "journal-incidents",
     ];
@@ -65,6 +67,8 @@ public sealed class ConsistencyAuditSqlTests
         ),
       "messaging.unread-arrival-behind" => () =>
         new UnreadArrivalRule(db).ReadAsync(request, default),
+      "dispatch.filed-document-unavailable" => () =>
+        new FiledDocumentRule(db).ReadAsync(request, default),
       "journal-events" => () =>
         new ConsistencyJournalReads(db).EventsAsync(
           Company.Amf,

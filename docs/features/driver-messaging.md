@@ -4,8 +4,8 @@ What is implemented of the
 [messaging plan](../architecture/driver-messaging-plan.md). State on
 2026-09-23: local only, not deployed, migrations `AddDriverInbox`,
 `AddConversationOutbox`, `AddConversationTemplates`,
-`AddConversationReadRevisions` and `AddConversationArrivalSequence` not
-applied anywhere, and no message has
+`AddConversationReadRevisions`, `AddConversationArrivalSequence` and
+`AddFiledDriverFiles` not applied anywhere, and no message has
 been received from or sent to a real driver.
 
 ## Receiving
@@ -140,6 +140,39 @@ right before it is shown, relayed or notified, so nothing from an earlier
 account or a disposed notice gets through. Limit: a leader that is
 hidden while another PulsR tab is in front still notifies.
 
+## Driver, trip and filing
+
+Beside a conversation (`GET .../conversations/{id}/context`): the driver
+and the truck they are on. Trucks come from the driver's planned and
+active execution legs, as driver or co-driver; only without such a leg,
+from the fleet's assignment of the truck (one driver per truck). On one
+truck, that truck's current and upcoming loads as the Dispatch board reads
+them (`ExecutionWorkReader`), at most five; on several, all trucks are
+listed and no load is offered, since choosing one would be a guess. Read
+when a conversation opens or its driver changes, not per message.
+
+When the number matched no driver, or the wrong one, a dispatcher chooses
+the driver (`PUT .../conversations/{id}/driver`) at the revision they saw;
+a newer revision refuses it, and the change is signalled after commit.
+
+A file a driver sent is filed to a load only when a dispatcher presses
+File (`POST /api/messaging/attachments/{id}/file`, owned by the Dispatch
+documents): a suggested load of the driver's, or any load by its number.
+The load document refers to the stored file and copies no bytes; the same
+file on the same load is filed once. Only a released PDF, PNG or JPEG up
+to 5 MB is filed. Everything is read and checked inside the committing
+transaction, and the stored file's row is claimed there on the checked
+state, so a quarantine or removal that commits after the check stops the
+filing. The download reads a filed document through the file store, which
+now bounds every read to the recorded length and hash, and refuses a file
+that is no longer released or no longer what was recorded; the auditor's
+`dispatch.filed-document-unavailable` finds such documents.
+
+Unlike the plan's `MessageLinks`, suggestions are not stored: they are
+computed from the context each time, and a confirmed filing is the load
+document itself (`SourceAttachmentId`, unique per load), so there is no
+link that could outlive or contradict its document.
+
 ## Local provider
 
 For a developer's machine, `WhatsApp:Provider = local` replaces the Cloud
@@ -231,13 +264,23 @@ import or join, a slow tick that outlasts the wait),
 burst on the leader, none on a follower, only a risen arrival notifies,
 an account change or disposal during the relay or the import notifies
 nothing, an old account's answer dropped),
+`Client.Tests/Routing/MessageFilingPageTests` (File pressed files the
+suggested load, a number on several trucks, choosing the driver),
 `Client/tests/messaging/messagingChannel.test.js` (one leader per account,
 relay, hand-over, separate accounts, an ended join's lock, counts and read
 marks between tabs, every tab leading without BroadcastChannel or Web
 Locks), `Client/tests/messaging/messagingNotices.test.js` (opt-in, tab in
 front, refusal, no API) and the offline UI smoke (`/messages`, and the
-navigation count on Dispatch). Server: `UnreadNoticeTests` (fixed reads,
-late message, an older conversation coming into view, arrivals in commit
-order, the marker keeping the higher of two writers).
-Not run: a real WhatsApp webhook or media download, several real browser
-tabs, a real notification permission, and PostgreSQL.
+navigation count on Dispatch). Server: `MessageFilingTests` (filed once
+by reference, company, kind and state, by number, a quarantine after the
+check, download defenses, auditor), `ConversationContextTests` (driver
+link at a revision, co-driver, several trucks, fleet fallback),
+`UnreadNoticeTests` (fixed reads, late message, an older conversation
+coming into view, arrivals in commit order, the marker keeping the higher
+of two writers).
+Browser: `Client/tests/browser/messagingTabsSmoke.mjs`, in the release UI
+gate (two tabs on the release build with synthetic fixtures: one leader,
+relay, hand-over on close, sign-out and sign-in as another account).
+`MessageSwitchTests` (an editor or a request open on one conversation or
+file does not carry to another). Not run: a real WhatsApp webhook or media
+download, a real notification permission, and PostgreSQL.

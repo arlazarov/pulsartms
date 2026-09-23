@@ -2,8 +2,10 @@ using System.Security.Cryptography;
 
 namespace Application.Storage;
 
-// The content of one upload as the provider reads it: exactly the declared
-// length and the declared SHA-256. Both are checked on the read that would
+// The content of one stored file as it is read, on the way in (the provider
+// reads an upload) or out (a reader opens a stored file): exactly the
+// declared length and the declared SHA-256. Nothing past the declared
+// length is ever read, so a reader can size its buffer from it. Both are checked on the read that would
 // complete the declared length, before that read returns: the hash of the
 // whole content, and one byte read ahead from the input, which must be its
 // end. A provider that completes an upload only on its full length, and
@@ -12,7 +14,8 @@ namespace Application.Storage;
 public sealed class StorageReading(
   Stream inner,
   long length,
-  string expectedSha256
+  string expectedSha256,
+  bool ownsInner = false
 ) : Stream
 {
   private readonly IncrementalHash hash = IncrementalHash.CreateHash(
@@ -77,8 +80,20 @@ public sealed class StorageReading(
   protected override void Dispose(bool disposing)
   {
     if (disposing)
+    {
       hash.Dispose();
+      if (ownsInner)
+        inner.Dispose();
+    }
     base.Dispose(disposing);
+  }
+
+  public override async ValueTask DisposeAsync()
+  {
+    hash.Dispose();
+    if (ownsInner)
+      await inner.DisposeAsync();
+    await base.DisposeAsync();
   }
 }
 

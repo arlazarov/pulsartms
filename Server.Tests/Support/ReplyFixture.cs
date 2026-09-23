@@ -141,7 +141,8 @@ internal sealed class ReplyFixture : IAsyncDisposable
       .SingleAsync();
   }
 
-  public AppDbContext Context() => sync.NewContext();
+  public AppDbContext Context(params IInterceptor[] interceptors) =>
+    sync.NewContext(interceptors);
 
   public Task<long> RevisionAsync(Guid conversation) =>
     Db

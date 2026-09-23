@@ -45,6 +45,9 @@ public partial class Messages : IAsyncDisposable
   private int _inboxRead,
     _threadRead;
   private Guid? _shown;
+  private ConversationContext? _context;
+  private bool _contextFailed;
+  private int _contextRead;
   private DateTime _claimedAt = DateTime.MinValue;
   private IJSObjectReference? _files;
   private readonly CancellationTokenSource _lifetime = new();
@@ -78,9 +81,50 @@ public partial class Messages : IAsyncDisposable
     _shown = Id;
     _thread = null;
     _messages = [];
+    _context = null;
+    _contextFailed = false;
     ResetDraft();
     if (Id is { } id)
+    {
       await LoadThreadAsync(id);
+      await LoadContextAsync(id);
+    }
+  }
+
+  // Loads offered for filing: the driver's current ones, only when they
+  // are on one truck.
+  private IReadOnlyList<ContextLoad> Suggestions => _context?.Loads ?? [];
+
+  // Read when a conversation is opened or its driver changes, not on every
+  // signal: it costs a read of the truck's work.
+  private async Task LoadContextAsync(Guid id)
+  {
+    var generation = ++_contextRead;
+    var result = await Api.GetAsync<ConversationContext>(
+      $"api/messaging/conversations/{id}/context",
+      _lifetime.Token
+    );
+    if (_disposed || generation != _contextRead || Id != id)
+      return;
+    _context = result.Success ? result.Response : null;
+    _contextFailed = !result.Success;
+  }
+
+  // Both answer for the conversation that asked: a change or a filing
+  // that completes after the dispatcher moved on does not touch the
+  // conversation now open.
+  private async Task ContextChangedAsync(Guid conversation)
+  {
+    if (Id != conversation)
+      return;
+    await LoadThreadAsync(conversation);
+    await LoadContextAsync(conversation);
+  }
+
+  private async Task FiledAsync(Guid conversation)
+  {
+    if (Id == conversation)
+      await LoadThreadAsync(conversation);
   }
 
   // The count is the navigation's; a colleague's tab marking something

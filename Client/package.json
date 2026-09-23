@@ -11,7 +11,7 @@
     "test:dispatch": "node --test tests/dispatch/*.test.js tests/messaging/*.test.js",
     "test:architecture": "node --test tests/architecture/*.test.js",
     "test:browser": "node tests/browser/mapLifecycle.mjs",
-    "test:ui": "node tests/browser/uiSmoke.mjs",
+    "test:ui": "node tests/browser/uiSmoke.mjs && node tests/browser/messagingTabsSmoke.mjs",
     "js:build": "node build/javascript.mjs",
     "js:check": "tsc -p tsconfig.json",
     "map:build": "npm run js:build",

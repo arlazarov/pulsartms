@@ -152,6 +152,43 @@
   &__templates {
     grid-template-columns: minmax(0, 1fr);
   }
+  &__context {
+    display: grid;
+    gap: ui.pg(xs);
+    padding: ui.pg(sm);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-soft);
+  }
+  &__context p,
+  &__loads {
+    margin: 0;
+  }
+  &__loads {
+    display: grid;
+    gap: ui.pg(micro);
+    padding: 0;
+    list-style: none;
+  }
+  &__filing {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: ui.pg(sm);
+  }
+  &__filing label {
+    display: grid;
+    gap: ui.pg(micro);
+    min-width: 0;
+    font-size: ui.fs(small);
+  }
+  &__filing select,
+  &__filing input {
+    max-width: 100%;
+    @include ui.input-control;
+  }
+  &__filed {
+    font-size: ui.fs(small);
+  }
   &__attach {
     position: relative;
     overflow: hidden;

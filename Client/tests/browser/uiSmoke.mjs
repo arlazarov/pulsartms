@@ -378,6 +378,7 @@ const conversation = () => ({
           state: 'stored',
           available: true,
           failureReason: null,
+          filed: [],
         },
       ],
     },
@@ -1179,6 +1180,36 @@ try {
             else if (url.pathname === '/api/dispatch')
               showCompletedScope = true;
             if (
+              url.pathname ===
+              `/api/messaging/conversations/${conversationId}/context`
+            ) {
+              await route.fulfill({
+                status: 200,
+                json: success({
+                  driverId: '5a0e5c1e-7d5b-4a61-9d7e-000000000030',
+                  driverName: 'Fixture Driver',
+                  state: 'one-truck',
+                  trucks: [
+                    {
+                      id: truckId,
+                      number: '11006',
+                      role: 'assigned',
+                    },
+                  ],
+                  loads: [
+                    {
+                      id: '5a0e5c1e-7d5b-4a61-9d7e-000000000040',
+                      loadNumber: 1441,
+                      customerName: 'Fixture Current Customer',
+                      status: 'active',
+                      places: ['Windsor', 'London', 'Toronto'],
+                    },
+                  ],
+                }),
+              });
+              return;
+            }
+            if (
               url.pathname === `/api/messaging/conversations/${conversationId}`
             ) {
               await route.fulfill({
@@ -1759,6 +1790,18 @@ try {
               await page.locator('.messages__list').isVisible(),
               width >= 768,
               name + ' shows the list beside the thread only when it fits',
+            );
+            assert.match(
+              await page.locator('.messages__context').innerText(),
+              /Truck 11006[\s\S]*Windsor → London → Toronto/,
+              name + " shows the driver's truck and load beside the thread",
+            );
+            assert.equal(
+              await page
+                .locator('.messages__file button', { hasText: 'File to load' })
+                .count(),
+              1,
+              name + " offers filing a driver's file, without filing it",
             );
             assert.ok(
               await page

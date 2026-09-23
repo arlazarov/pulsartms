@@ -105,6 +105,12 @@
                         <span class="messages__claim">@by is replying</span>
                     }
                 </header>
+                <ConversationContextPanel @key="summary.Id"
+                                          ConversationId="summary.Id"
+                                          Revision="summary.Revision"
+                                          Context="_context"
+                                          Failed="_contextFailed"
+                                          OnChanged="ContextChangedAsync" />
                 <ol class="messages__items" aria-live="polite">
                     @if (_thread.Older)
                     {
@@ -118,8 +124,10 @@
                     }
                     @foreach (var message in _messages)
                     {
-                        <MessageItem Message="message" Busy="_busy"
-                                     OnOpen="OpenAsync" OnRetry="RetryAsync" />
+                        <MessageItem @key="message.Id" Message="message"
+                                     Busy="_busy" OnOpen="OpenAsync"
+                                     OnRetry="RetryAsync" Loads="Suggestions"
+                                     OnFiled="() => FiledAsync(summary.Id)" />
                     }
                 </ol>
                 @if (summary.WindowOpen)

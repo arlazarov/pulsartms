@@ -1,6 +1,7 @@
 using Application.Behaviors;
 using Application.Caching;
 using Application.Diagnostics.Consistency;
+using Application.Features.Dispatch.Audit;
 using Application.Features.Dispatch.Services;
 using Application.Features.Eta.Background;
 using Application.Features.Eta.Services;
@@ -140,6 +141,7 @@ public static class DependencyInjection
     services.AddScoped<IConsistencyRule, ExecutionPlanningDemandRule>();
     services.AddScoped<IConsistencyRule, PlanningRefreshDemandRule>();
     services.AddScoped<IConsistencyRule, UnreadArrivalRule>();
+    services.AddScoped<IConsistencyRule, FiledDocumentRule>();
     services.AddSingleton<TruckHistoryQueue>();
     services.AddSingleton<TruckHistoryCache>();
     services.AddSingleton<ICacheMemorySource>(sp =>

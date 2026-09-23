@@ -247,7 +247,12 @@ public sealed class FileStore(
       await SetStateAsync(file.Id, file.State, StoredFileStates.Missing, ct);
       return null;
     }
-    return (file, content);
+    // Bounded by the recorded length and checked against the recorded
+    // hash, whatever the provider hands back.
+    return (
+      file,
+      new StorageReading(content, file.Size, file.Sha256, ownsInner: true)
+    );
   }
 
   public Task<string?> StateAsync(Guid fileId, CancellationToken ct) =>

@@ -1,0 +1,58 @@
+@using Client.Models.DTO.Messaging
+
+@if (!_open)
+{
+    <button type="button" class="btn btn--small btn--text"
+            @onclick="() => _open = true">
+        File to load
+    </button>
+}
+else
+{
+    <form class="messages__filing" @onsubmit="FileAsync"
+          @onsubmit:preventDefault>
+        <label for="@Id("load")">
+            Load
+            <select id="@Id("load")" @bind="_choice" disabled="@_busy">
+                @foreach (var load in Loads)
+                {
+                    <option value="@load.Id">
+                        <LoadNumber Value="load.LoadNumber" />
+                        · @load.CustomerName
+                    </option>
+                }
+                <option value="">Another load…</option>
+            </select>
+        </label>
+        @if (_choice.Length == 0)
+        {
+            <label for="@Id("number")">
+                Load number
+                <input id="@Id("number")" type="number" min="1"
+                       inputmode="numeric" @bind="_number"
+                       disabled="@_busy" />
+            </label>
+        }
+        <label for="@Id("kind")">
+            Document
+            <select id="@Id("kind")" @bind="_kind" disabled="@_busy">
+                <option value="bol">Bill of lading</option>
+                <option value="pod">Proof of delivery</option>
+                <option value="rc">Rate confirmation</option>
+                <option value="other">Other</option>
+            </select>
+        </label>
+        <button type="submit" class="btn btn--small btn--primary"
+                disabled="@(!Ready)">
+            File
+        </button>
+        <button type="button" class="btn btn--small btn--text"
+                disabled="@_busy" @onclick="Close">
+            Cancel
+        </button>
+        @if (_error is not null)
+        {
+            <p class="settings-page__error" role="alert">@_error</p>
+        }
+    </form>
+}

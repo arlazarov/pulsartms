@@ -10,7 +10,8 @@ const marker = '.pulsartms-artifact.json';
 const legacyMarker = '.amftms-artifact.json';
 const kinds = new Set(['release', 'scratch', 'diagnostic', 'browser-ui', 'browser-fuel-editor', 'browser-route-editor',
   'browser-native-inspector', 'browser-stop-details', 'browser-map-startup', 'browser-map-markers',
-  'browser-station-popup', 'browser-stop-cards', 'browser-hours-forecast', 'browser-map-lifecycle']);
+  'browser-station-popup', 'browser-stop-cards', 'browser-hours-forecast', 'browser-map-lifecycle',
+  'browser-messaging-tabs']);
 const validKind = value => kinds.has(value);
 
 function preparePool(pool) {

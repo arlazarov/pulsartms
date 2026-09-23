@@ -19,6 +19,25 @@ public partial class MessageItem
   [Parameter]
   public EventCallback<MessageView> OnRetry { get; set; }
 
+  [Parameter]
+  public IReadOnlyList<ContextLoad> Loads { get; set; } = [];
+
+  [Parameter]
+  public EventCallback OnFiled { get; set; }
+
+  // Load documents take PDF, PNG or JPEG; the server decides again.
+  private static bool Fileable(AttachmentView file) =>
+    file.Type is "application/pdf" or "image/png" or "image/jpeg";
+
+  private static string Kind(string kind) =>
+    kind switch
+    {
+      "bol" => "Bill of lading",
+      "pod" => "Proof of delivery",
+      "rc" => "Rate confirmation",
+      _ => "Other",
+    };
+
   private string Side => Message.Direction == "out" ? "is-out" : "is-in";
 
   private bool Retryable =>

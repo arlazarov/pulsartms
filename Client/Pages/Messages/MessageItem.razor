@@ -20,6 +20,19 @@
                         @onclick="() => OnOpen.InvokeAsync(file)">
                     Open @file.Name
                 </button>
+                @foreach (var filed in file.Filed)
+                {
+                    <a class="messages__filed"
+                       href="@($"/dispatch/{filed.DispatchId}")">
+                        Filed to <LoadNumber Value="filed.LoadNumber" />
+                        · @Kind(filed.Kind)
+                    </a>
+                }
+                @if (Fileable(file))
+                {
+                    <FileToLoad @key="file.Id" Attachment="file"
+                                Loads="Loads" OnFiled="OnFiled" />
+                }
             }
             else
             {

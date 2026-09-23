@@ -26,8 +26,12 @@ public sealed record AttachmentView(
   string Type,
   string State,
   bool Available,
-  string? FailureReason
+  string? FailureReason,
+  IReadOnlyList<FiledView> Filed
 );
+
+// A load the file was filed to, as one of its documents.
+public sealed record FiledView(Guid DispatchId, int LoadNumber, string Kind);
 
 public sealed record MessageView(
   Guid Id,
@@ -74,3 +78,33 @@ public sealed record TemplateRequest(
 // most 99, then More), and the highest company arrival sequence among
 // them: a notice is due only when it rises.
 public sealed record UnreadCount(int Conversations, bool More, long Newest);
+
+// Who the conversation is with and what they are driving. State:
+// unmatched, no-truck, one-truck or several-trucks; loads are offered only
+// for one truck.
+public sealed record ConversationContext(
+  Guid? DriverId,
+  string? DriverName,
+  string State,
+  IReadOnlyList<ContextTruck> Trucks,
+  IReadOnlyList<ContextLoad> Loads
+);
+
+// Role: driver or co-driver on a live leg, or assigned in the fleet.
+public sealed record ContextTruck(Guid Id, string Number, string Role);
+
+public sealed record ContextLoad(
+  Guid Id,
+  int LoadNumber,
+  string CustomerName,
+  string? Status,
+  IReadOnlyList<string> Places
+);
+
+public sealed record DriverRequest(Guid? DriverId, long Revision);
+
+public sealed record FileRequest(
+  Guid? DispatchId,
+  int? LoadNumber,
+  string Kind
+);

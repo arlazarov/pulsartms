@@ -340,12 +340,12 @@ Nothing here is deployed.
 | Outbox with fencing, text within the window | implemented, tested | `ConversationReplyTests` |
 | Files out, templates | implemented, tested | `ConversationFileTemplateTests`, `StoredFileCheckTests`; blocked for real use: approved templates, WABA id |
 | Stale-reply guard, claim | implemented, tested | `ConversationReplyTests` |
-| One event stream per browser and account, polling fallback (client) | implemented, tested | `messagingChannel.test.js`, `MessagingSignalsTests`; not run across real browser tabs or a real sign-out |
+| One event stream per browser and account, polling fallback (client) | implemented, tested | `messagingChannel.test.js`, `MessagingSignalsTests`, `messagingTabsSmoke.mjs` (two tabs on the release build, synthetic fixtures) |
 | Messages page, desktop and phone | implemented, tested | `MessagesPageTests`, offline UI smoke `/messages` |
 | Fake provider for local runs (never in Production) | implemented, tested | `LocalDriverMessagingTests` |
-| Notice outside `/messages`: navigation unread count, leader-only coalesced reads, opt-in browser notifications | implemented, tested | `MessagingNoticesTests`, `messagingNotices.test.js`, `messagingChannel.test.js`, `UnreadNoticeTests`, UI smoke; not run: real tabs, a real permission grant |
+| Notice outside `/messages`: navigation unread count, leader-only coalesced reads, opt-in browser notifications | implemented, tested | `MessagingNoticesTests`, `messagingNotices.test.js`, `messagingChannel.test.js`, `UnreadNoticeTests`, UI smoke, `messagingTabsSmoke.mjs`; not run: a real permission grant |
 | Unread by arrival revision, notice by commit-ordered arrival sequence, monotonic read markers | implemented, tested | `UnreadNoticeTests`; migrations `AddConversationReadRevisions`, `AddConversationArrivalSequence` not applied; PostgreSQL upsert and lock behavior not run |
-| Filing a conversation's file to a load, linking a conversation to a driver and trip | not started, after the notice | agreed scope |
+| Filing a driver's file to a load (confirmed only, by reference, fenced), linking a conversation to a driver, trip beside it | implemented, tested | `MessageFilingTests`, `ConversationContextTests`, `MessageFilingPageTests`, UI smoke; migration `AddFiledDriverFiles` not applied; PostgreSQL row claim not run |
 | Real sends, Meta activation, webhook subscription | blocked | owner: Meta app review, number, tokens |
 | Migrating `DriverMessages` | blocked | owner authorization for data migration |
 
