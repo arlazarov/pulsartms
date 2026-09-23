@@ -11,6 +11,7 @@ using Domain.Entities.Fuel;
 using Domain.Entities.Messaging;
 using Domain.Entities.Mileage;
 using Domain.Entities.Shipments;
+using Domain.Entities.Storage;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -49,6 +50,11 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
     Set<ConsistencyIncident>();
   public DbSet<ConsistencyJournalHead> ConsistencyJournalHeads =>
     Set<ConsistencyJournalHead>();
+  public DbSet<StorageConnection> StorageConnections =>
+    Set<StorageConnection>();
+  public DbSet<StoredFile> StoredFiles => Set<StoredFile>();
+  public DbSet<ManagedFileBlob> ManagedFileBlobs => Set<ManagedFileBlob>();
+  public DbSet<StorageLayout> StorageLayouts => Set<StorageLayout>();
   public DbSet<FuelDiscount> FuelDiscounts => Set<FuelDiscount>();
   public DbSet<FuelTransaction> FuelTransactions => Set<FuelTransaction>();
   public DbSet<FuelImportSource> FuelImportSources => Set<FuelImportSource>();

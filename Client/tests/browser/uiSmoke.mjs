@@ -374,6 +374,72 @@ const fixtures = new Map([
     success({ loadNumberPrefix: 'AMF', revision: 1, updatedAt: null }),
   ],
   [
+    '/api/storage',
+    success({
+      kinds: [
+        {
+          kind: 'managed',
+          name: 'PulsR storage',
+          implemented: true,
+          available: true,
+          unavailable: null,
+        },
+        {
+          kind: 'google-drive',
+          name: 'Google Drive',
+          implemented: true,
+          available: true,
+          unavailable: null,
+        },
+        {
+          kind: 'dropbox',
+          name: 'Dropbox',
+          implemented: false,
+          available: false,
+          unavailable: 'Not available yet.',
+        },
+      ],
+      connections: [
+        {
+          id: '66666666-6666-6666-6666-000000000001',
+          kind: 'managed',
+          displayName: 'PulsR storage',
+          state: 'connected',
+          isDefault: true,
+          rootName: null,
+          lastError: null,
+          revision: 1,
+          createdAt: '2026-09-23T12:00:00Z',
+        },
+        {
+          id: '66666666-6666-6666-6666-000000000002',
+          kind: 'google-drive',
+          displayName: 'Fixture drive',
+          state: 'needs-root',
+          isDefault: false,
+          rootName: null,
+          lastError: null,
+          revision: 2,
+          createdAt: '2026-09-23T12:00:00Z',
+        },
+      ],
+    }),
+  ],
+  [
+    '/api/storage/layout',
+    success({
+      loadsFolder: 'Dispatch/Loads',
+      loadTemplate: '{date} - {load} - {broker} - {order} - {truck}',
+      cancelledSuffix: 'Canceled',
+      inboxFolder: 'Inbox',
+      revision: 0,
+      example:
+        'Dispatch/Loads/2026.09.21 - 1407 - Example Broker - PO-5521 - 101',
+      cancelledExample:
+        'Dispatch/Loads/2026.09.21 - 1407 - Example Broker - 101 - Canceled',
+    }),
+  ],
+  [
     '/api/settings/mileage-policy',
     success({
       revision: 1,
@@ -387,19 +453,36 @@ const fixtures = new Map([
   [
     '/api/settings/integrations',
     success(
-      ['torqueai', 'samsara', 'google-email'].map(provider => ({
-        provider,
-        configured: true,
-        usesSavedSettings: false,
-        canRestoreDeployment: false,
-        revision: 0,
-        updatedAt: null,
-        fields: (provider === 'google-email'
-          ? ['clientId', 'clientSecret', 'refreshToken']
-          : ['apiKey']
-        ).map(name => ({ name, configured: true })),
-      })),
+      ['torqueai', 'samsara', 'google-email', 'whatsapp']
+        .map(provider => ({
+          provider,
+          configured: provider !== 'whatsapp',
+          usesSavedSettings: false,
+          canRestoreDeployment: false,
+          revision: 0,
+          updatedAt: null,
+          fields: {
+            'google-email': ['clientId', 'clientSecret', 'refreshToken'],
+            whatsapp: [
+              'phoneNumberId',
+              'accessToken',
+              'appSecret',
+              'verifyToken',
+            ],
+          }[provider] ?? ['apiKey'],
+        }))
+        .map(state => ({
+          ...state,
+          fields: state.fields.map(name => ({
+            name,
+            configured: state.configured,
+          })),
+        })),
     ),
+  ],
+  [
+    '/api/settings/integrations/whatsapp/webhook',
+    success({ path: 'api/webhooks/whatsapp/fixture' }),
   ],
   [
     '/api/dispatch/board',
@@ -1546,6 +1629,33 @@ try {
             );
           }
           if (path === '/settings') {
+            await page
+              .locator('.storage-settings__connection')
+              .first()
+              .waitFor();
+            assert.equal(
+              await page
+                .locator('.storage-settings button', {
+                  hasText: 'Choose folder',
+                })
+                .count(),
+              1,
+              name + ' asks for a folder before a drive holds files',
+            );
+            assert.ok(
+              await page
+                .locator('.storage-settings__kind button', {
+                  hasText: 'Dropbox',
+                })
+                .isDisabled(),
+              name + ' shows an unavailable storage as disabled',
+            );
+            assert.match(
+              await page.locator('.storage-layout__example').innerText(),
+              /2026\.09\.21 - 1407 - Example Broker/,
+            );
+          }
+          if (path === '/settings') {
             assert.equal(
               await page
                 .locator(
@@ -1560,8 +1670,8 @@ try {
               await page
                 .locator('.integration-settings [data-provider]')
                 .evaluateAll(cards => cards.map(card => card.dataset.provider)),
-              ['torqueai', 'samsara', 'google-email'],
-              name + ' only the three approved integrations',
+              ['torqueai', 'samsara', 'google-email', 'whatsapp'],
+              name + ' only the four approved integrations',
             );
             assert.equal(
               await page.locator('.integration-settings input').count(),

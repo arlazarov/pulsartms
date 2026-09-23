@@ -31,6 +31,7 @@ using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Interfaces;
 using Application.Features.Synchronization.Services;
 using Application.Reference;
+using Application.Storage;
 using Domain.Rules.Ports;
 using Domain.Rules.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -106,6 +107,13 @@ public static class DependencyInjection
       ExecutionPlanningOperation
     >();
     services.AddSingleton<ITruckHistoryOperation, TruckHistoryOperation>();
+    services.AddScoped<FileStore>();
+    services.AddScoped<StorageLayouts>();
+    services.AddSingleton<StorageUploadGate>();
+    services.AddSingleton<
+      IStorageReconcileOperation,
+      StorageReconcileOperation
+    >();
     services.AddSingleton<ConsistencySweeps>();
     services.AddSingleton<ConsistencyRecovery>();
     services.AddSingleton<ConsistencyAuditor>();

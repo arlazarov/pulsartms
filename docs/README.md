@@ -57,6 +57,7 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
 - [Trucks, Trailers and Drivers configuration][fleet-configuration]
 - [Operational mileage and load attribution](features/mileage-attribution.md)
 - [Integration credentials in Settings](features/integration-settings.md)
+- [File storage: PulsR storage and company drives](features/file-storage.md)
 - [Load numbering and optional prefixes](features/load-numbering.md)
 - [Route planning](features/route-planning.md), [saved base routes](features/base-routes.md),
   [empty mileage](features/dispatch-deadhead.md), and [access warnings](features/route-access-warnings.md)

@@ -2,6 +2,7 @@ using Application.Diagnostics.Consistency;
 using Application.Features.Dispatch.Options;
 using Application.Features.Fuel.Options;
 using Application.Features.Synchronization.Options;
+using Application.Storage;
 using Domain.Policies;
 
 namespace API;
@@ -22,6 +23,7 @@ public static class OptionsRegistration
     Bind<EtaPlanningOptions>("EtaPlanning");
     Bind<FuelIssueOptions>("FuelIssue");
     Bind<ConsistencyAuditOptions>("ConsistencyAudit");
+    Bind<StorageOptions>("Storage");
     return services;
 
     void Bind<T>(string section)

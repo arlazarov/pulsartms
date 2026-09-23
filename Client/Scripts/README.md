@@ -6,6 +6,7 @@ modules own the map, its interaction and its animation.
 ```
 shared/      used by more than one page: dialogs, popups, storage, appearance
 dispatch/    the dispatch board's own behaviour
+settings/    Settings' own behaviour: the storage folder picker
 fleetMap/    the map, by subject:
   provider/    the Google map itself - loading it, mounting it, releasing it
   rendering/   what is drawn: the scene, its layers, markers and labels

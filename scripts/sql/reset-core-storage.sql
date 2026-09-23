@@ -20,6 +20,8 @@ DECLARE
     'Companies',
     'DataProtectionKeys',
     'IntegrationCredentialSettings',
+    'StorageConnections',
+    'StorageLayouts',
     'Users',
     '__EFMigrationsHistory'
   ];
@@ -79,6 +81,7 @@ DECLARE
     'FuelVisitSends',
     'IftaTaxRates',
     'LoadExecutionLegs',
+    'ManagedFileBlobs',
     'MileageAllocationPolicies',
     'MileageCaptureGaps',
     'MovementAllocationEvents',
@@ -94,6 +97,7 @@ DECLARE
     'ShipmentSaveReceipts',
     'Shipments',
     'SourceRoadRequests',
+    'StoredFiles',
     'SwitchParticipants',
     'SynchronizationCheckpoints',
     'TrailerCustodyIntervals',
@@ -115,7 +119,7 @@ BEGIN
   IF current_setting('pulsr.reset_database', true)
       IS DISTINCT FROM current_database()
     OR current_setting('pulsr.reset_ack', true)
-      IS DISTINCT FROM '20260923182612_AddConsistencyJournal'
+      IS DISTINCT FROM '20260923191321_AddFileStorage'
     OR current_setting('pulsr.reset_writers_stopped', true)
       IS DISTINCT FROM 'true'
     OR current_setting('pulsr.reset_backup_verified', true)
@@ -140,9 +144,9 @@ BEGIN
   SELECT string_agg(format('public.%I', name), ', ' ORDER BY name)
     INTO tables_sql FROM unnest(expected) AS names(name);
   EXECUTE 'LOCK TABLE ' || tables_sql || ' IN ACCESS EXCLUSIVE MODE NOWAIT';
-  IF (SELECT count(*) FROM "__EFMigrationsHistory") <> 60
+  IF (SELECT count(*) FROM "__EFMigrationsHistory") <> 61
     OR (SELECT max("MigrationId") FROM "__EFMigrationsHistory")
-      IS DISTINCT FROM '20260923182612_AddConsistencyJournal' THEN
+      IS DISTINCT FROM '20260923191321_AddFileStorage' THEN
     RAISE EXCEPTION 'Reset requires the schema this inventory was reviewed for';
   END IF;
   FOREACH table_name IN ARRAY protected LOOP

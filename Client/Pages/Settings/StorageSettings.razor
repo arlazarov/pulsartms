@@ -1,0 +1,99 @@
+@using Client.Models.DTO.Storage
+<section class="settings-page__card storage-settings" aria-labelledby="storage-settings-title">
+    <h2 id="storage-settings-title">File storage</h2>
+    <p class="settings-page__hint">
+        Where PulsR keeps files drivers send and documents you attach. New
+        files go to the default; a file stays where it was stored.
+    </p>
+    @if (_outcome is not null)
+    {
+        <p class="storage-settings__outcome" role="status">@_outcome</p>
+    }
+    @if (_loading) { <p role="status"><LoadingIndicator /></p> }
+    @if (_error is not null)
+    {
+        <p class="settings-page__error" role="alert">@_error
+            <button class="btn btn--small" type="button" disabled="@_busy" @onclick="LoadAsync">Reload file storage</button>
+        </p>
+    }
+    @if (_settings is not null)
+    {
+        @if ((_settings.Connections ?? []).Count == 0)
+        {
+            <p class="settings-page__hint">
+                Nothing is stored yet. The first file goes to PulsR storage
+                unless you connect another place first.
+            </p>
+        }
+        <ul class="storage-settings__list">
+            @foreach (var connection in _settings.Connections ?? [])
+            {
+                <li class="storage-settings__connection">
+                    <span class="storage-settings__name">
+                        <strong>@connection.DisplayName</strong>
+                        <small>@KindName(connection.Kind)@(connection.RootName is null ? "" : $" · {connection.RootName}")</small>
+                    </span>
+                    <span class="storage-settings__state @StateClass(connection)">@StateText(connection)</span>
+                    @if (connection.LastError is not null)
+                    {
+                        <small class="storage-settings__problem">@connection.LastError</small>
+                    }
+                    <span class="storage-settings__actions">
+                        @if (connection.Kind != "managed" && connection.State is "needs-root" or "connected")
+                        {
+                            <button class="btn btn--small @(connection.State == "needs-root" ? "btn--primary" : "")" type="button" disabled="@_busy"
+                                    @onclick="() => ChooseFolderAsync(connection)">
+                                @(connection.State == "needs-root" ? "Choose folder" : "Change folder")
+                            </button>
+                        }
+                        @if (!connection.IsDefault && connection.State == "connected")
+                        {
+                            <button class="btn btn--small" type="button" disabled="@_busy"
+                                    @onclick="() => MakeDefaultAsync(connection)">Make default</button>
+                        }
+                        @if (connection.Kind != "managed" && connection.State is "connected" or "failed")
+                        {
+                            <button class="btn btn--small" type="button" disabled="@_busy"
+                                    @onclick="() => CheckAsync(connection)">Check</button>
+                        }
+                        @if (connection.Kind != "managed" && !connection.IsDefault && connection.State != "disconnected")
+                        {
+                            @if (_confirming == connection.Id)
+                            {
+                                <button class="btn btn--small btn--danger" type="button" disabled="@_busy"
+                                        @onclick="() => DisconnectAsync(connection)">Disconnect</button>
+                                <button class="btn btn--small btn--text" type="button" disabled="@_busy"
+                                        @onclick="() => _confirming = null">Keep</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn--small btn--text" type="button" disabled="@_busy"
+                                        @onclick="() => _confirming = connection.Id">Disconnect…</button>
+                            }
+                        }
+                    </span>
+                </li>
+            }
+        </ul>
+        <div class="storage-settings__add">
+            @foreach (var kind in (_settings.Kinds ?? []).Where(x => x.Kind != "managed"))
+            {
+                <span class="storage-settings__kind">
+                    <button class="btn" type="button" disabled="@(_busy || !kind.Available)"
+                            @onclick="() => ConnectAsync(kind)">Connect @kind.Name</button>
+                    @if (kind.Unavailable is not null)
+                    {
+                        <small>@kind.Unavailable</small>
+                    }
+                </span>
+            }
+        </div>
+        @if (_disconnectedNote)
+        {
+            <p class="settings-page__hint">
+                Files already in a disconnected storage stay there; PulsR shows
+                them as unavailable until it is connected again.
+            </p>
+        }
+    }
+</section>

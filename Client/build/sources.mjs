@@ -18,6 +18,7 @@ export const sources = [
   'shared/pageVisibility',
   'dispatch/dispatch',
   'dispatch/documents',
+  'settings/storagePicker',
 ];
 
 // What the build emits for each of them, under wwwroot/js/generated/.

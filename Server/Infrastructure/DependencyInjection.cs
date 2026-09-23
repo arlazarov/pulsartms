@@ -16,6 +16,7 @@ using Application.Features.Routing.Background;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Synchronization.Interfaces;
 using Application.Interfaces;
+using Application.Storage;
 using Domain.Rules.Ports;
 using Infrastructure.Diagnostics;
 using Infrastructure.Identity;
@@ -23,6 +24,7 @@ using Infrastructure.Integrations;
 using Infrastructure.Integrations.BankOfCanada;
 using Infrastructure.Integrations.Bvd;
 using Infrastructure.Integrations.GeoTimeZone;
+using Infrastructure.Integrations.Google.Drive;
 using Infrastructure.Integrations.Google.Gmail;
 using Infrastructure.Integrations.Google.Places;
 using Infrastructure.Integrations.Google.Weather;
@@ -32,6 +34,7 @@ using Infrastructure.Integrations.TomTom;
 using Infrastructure.Integrations.Torque;
 using Infrastructure.Integrations.WhatsApp;
 using Infrastructure.Persistence;
+using Infrastructure.Storage;
 using Infrastructure.Synchronization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -134,6 +137,30 @@ public static class DependencyInjection
       IntegrationDeploymentCredentials
     >();
     services.AddScoped<IDeadheadHistoryReader, DeadheadHistoryReader>();
+    services.AddSingleton<IStorageSecrets, StorageSecrets>();
+    services.AddScoped<IFileStorageProvider, DatabaseFileStorage>();
+    services
+      .AddHttpClient<IFileStorageProvider, CloudStorageFileStorage>(client =>
+        client.Timeout = TimeSpan.FromMinutes(10)
+      )
+      .RemoveAllLoggers();
+    services.AddSingleton<GoogleDriveClient>();
+    services
+      .AddHttpClient<IFileStorageProvider, GoogleDriveStorage>(client =>
+        client.Timeout = TimeSpan.FromMinutes(10)
+      )
+      .RemoveAllLoggers();
+    services
+      .AddHttpClient<IStorageRootPicker, GoogleDriveRootPicker>(client =>
+        client.Timeout = TimeSpan.FromSeconds(20)
+      )
+      .RemoveAllLoggers();
+    services.AddHostedService<ApplicationWorker<IStorageReconcileOperation>>();
+    services
+      .AddHttpClient<IStorageAuthorization, GoogleDriveAuthorization>(client =>
+        client.Timeout = TimeSpan.FromSeconds(20)
+      )
+      .RemoveAllLoggers();
     services.AddScoped<IOdometerCaptureLease, OdometerCaptureLease>();
     services.AddScoped<IOdometerFeedProvider, SamsaraOdometerProvider>();
     services.AddHostedService<ApplicationWorker<IOdometerCaptureOperation>>();

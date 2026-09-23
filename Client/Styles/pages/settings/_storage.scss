@@ -1,0 +1,85 @@
+@use '../../base' as ui;
+
+// The company's storage connections: one row each, actions wrapping under
+// the name on narrow screens.
+.storage-settings {
+  &__list {
+    display: grid;
+    gap: ui.pg(sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  &__connection {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(sm) ui.pg(md);
+    padding: ui.pg(sm) 0;
+    border-bottom: 1px solid ui.theme(border);
+  }
+  &__name {
+    display: grid;
+    min-width: 0;
+    flex: 1 1 12rem;
+  }
+  &__name small,
+  &__kind small,
+  &__problem {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  &__state {
+    padding: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface-soft);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  &__state.is-connected {
+    background: ui.theme(success-surface);
+    color: ui.theme(success-text);
+  }
+  &__state.is-failed {
+    color: ui.theme(danger-text);
+  }
+  &__problem {
+    flex-basis: 100%;
+  }
+  &__actions,
+  &__add {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+  }
+  &__kind {
+    display: grid;
+    gap: ui.pg(micro);
+  }
+  &__outcome {
+    margin: 0;
+  }
+}
+
+// Paths and the template are free text that can be longer than a phone's
+// width, so they wrap and grow to their content instead of scrolling.
+.storage-layout {
+  &__fields textarea {
+    width: 100%;
+    resize: vertical;
+    font-family: inherit;
+    field-sizing: content;
+    @include ui.input-control;
+  }
+  &__fields label:has(#storage-load-template) {
+    grid-column: 1 / -1;
+  }
+  &__example {
+    margin: 0;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  &__example code {
+    overflow-wrap: anywhere;
+  }
+}

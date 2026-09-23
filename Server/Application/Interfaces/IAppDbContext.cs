@@ -9,6 +9,7 @@ using Domain.Entities.Fuel;
 using Domain.Entities.Messaging;
 using Domain.Entities.Mileage;
 using Domain.Entities.Shipments;
+using Domain.Entities.Storage;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -31,6 +32,10 @@ public interface IAppDbContext
   DbSet<ConsistencyEvent> ConsistencyEvents { get; }
   DbSet<ConsistencyIncident> ConsistencyIncidents { get; }
   DbSet<ConsistencyJournalHead> ConsistencyJournalHeads { get; }
+  DbSet<StorageConnection> StorageConnections { get; }
+  DbSet<StoredFile> StoredFiles { get; }
+  DbSet<ManagedFileBlob> ManagedFileBlobs { get; }
+  DbSet<StorageLayout> StorageLayouts { get; }
   DbSet<FuelDiscount> FuelDiscounts { get; }
   DbSet<FuelTransaction> FuelTransactions { get; }
   DbSet<FuelImportSource> FuelImportSources { get; }

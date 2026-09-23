@@ -17,6 +17,8 @@ public sealed class FleetResourceNavigationTests
     authorization.SetAuthorized("Administrator");
     authorization.SetRoles("Admin");
     context.ComponentFactories.AddStub<FleetSettings>();
+    context.ComponentFactories.AddStub<StorageSettings>();
+    context.ComponentFactories.AddStub<StorageLayoutSettings>();
 
     var component = context.Render<Client.Pages.Settings.Settings>();
 

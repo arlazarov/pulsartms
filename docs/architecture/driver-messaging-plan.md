@@ -297,26 +297,52 @@ record, per file, behind the same storage owner.
 
 ## Implementation checklist
 
-Status values: done (committed locally, checks named in the commit), in
-progress, not started, blocked (needs the owner; the independent code
-continues).
+One list for the work authorized on 2026-09-23. Status: implemented and
+tested (locally, with the named tests), blocked (needs the owner; the
+independent code continues), deferred (agreed for later), not started.
+Nothing here is deployed.
 
-| Item | Status | Blocker |
+### Cancelled work (AMF1399) and consistency audit — commit `98114781`
+
+| Requirement | Status | Evidence |
 | --- | --- | --- |
-| Storage owner, connections, per-file primary location | not started | |
-| Managed store (database-backed) | not started | object storage bucket and service account for production |
-| Google Drive adapter and connection flow | not started | OAuth client id/secret and consent screen from the owner |
-| Dropbox, OneDrive, S3 adapters | not started | listed as capabilities only |
+| Source cancellation holds started or changed work, cancels the rest | implemented, tested | `HeldExecutionTests`, `SourceCancellationTests` |
+| Legacy planned/active rows of cancelled loads repaired by synchronization | implemented, tested | `ConsistencyAuditTests.LegacyCancelledWork…` |
+| Dispatcher closes held work (revision, idempotency, still cancelled) | implemented, tested | `HeldExecutionTests.ADispatcherCloses…` |
+| Durable audit journal, incidents, sequence cursor, serialized writers | implemented, tested on SQLite | `ConsistencyAuditTests`; PostgreSQL lock not run |
+| Allowlisted repair with cooldown, attempts, escalation | implemented, tested | `ConsistencyAuditTests.RepairIsAnAllowlisted…` |
+| Production 1399 moved to held | blocked | needs a release |
+
+### File storage — this stage
+
+| Requirement | Status | Evidence |
+| --- | --- | --- |
+| Storage owner, connections, per-file location, default for new uploads | implemented, tested | `FileStorageTests`, `StorageLayoutTests` |
+| Upload fingerprint, reserved key, fenced claim, verified content | implemented, tested | `FileStorageTests` |
+| Lost answer, crash, retry, reconciler without deletes | implemented, tested | `FileStorageTests` |
+| Disconnect refused while files or uploads are there | implemented, tested | `StorageLayoutTests.AStorageHoldingFiles…` |
+| Readable, company-configured names and folders; inbox by day | implemented, tested | `StorageNamingTests`, `StorageLayoutTests`, `GoogleDriveStorageTests.FilesGoInto…` |
+| Database store for development and tests | implemented, tested | `FileStorageTests` |
+| PulsR storage in Cloud Storage (streaming) | code, not run | blocked: bucket and service account access |
+| Google Drive consent, folder picker, adapter | code, tested against a scripted Google | blocked: OAuth client, Picker key, project number, consent screen |
+| Transfer between storages (copy, verify, swap, keep source) | deferred | contract in [file storage](../features/file-storage.md) |
+| Dropbox, OneDrive | deferred | listed as not available |
+| Moving existing load document bytes | blocked | owner authorization for data migration |
+
+### Messaging
+
+| Requirement | Status | Evidence |
+| --- | --- | --- |
 | Inbound text, conversations, receipts | not started | |
 | Durable inbound media capture into quarantine | not started | |
 | Outbox with fencing, text within the window | not started | |
-| Files out, templates | not started | approved templates in Meta; WABA id |
+| Files out, templates | not started | blocked for real use: approved templates, WABA id |
 | Stale-reply guard, claim, per-user unread | not started | |
 | One event stream per browser with polling fallback | not started | |
 | Messages page, desktop and phone | not started | |
 | Fake provider for local runs (never in Production) | not started | |
 | Real sends, Meta activation, webhook subscription | blocked | owner: Meta app review, number, tokens |
-| Migrating `DriverMessages` and load document bytes | blocked | owner authorization for data migration |
+| Migrating `DriverMessages` | blocked | owner authorization for data migration |
 
 ## Tests to add with each stage
 

@@ -1,0 +1,48 @@
+@using Client.Models.DTO.Storage
+<section class="settings-page__card storage-layout" aria-labelledby="storage-layout-title">
+    <h2 id="storage-layout-title">File names and folders</h2>
+    <p class="settings-page__hint">
+        How files read in your storage, outside PulsR. Load folders use the
+        template when their first file is written; files nobody has filed
+        yet wait in the inbox, by day. Renaming or moving files there later
+        does not break PulsR.
+    </p>
+    @if (_loading) { <p role="status"><LoadingIndicator /></p> }
+    @if (_error is not null)
+    {
+        <p class="settings-page__error" role="alert">@_error
+            <button class="btn btn--small" type="button" disabled="@_saving" @onclick="LoadAsync">Reload file names</button>
+        </p>
+    }
+    @if (_layout is not null)
+    {
+        <fieldset disabled="@_saving" class="settings-page__form">
+            <legend class="visually-hidden">File names and folders</legend>
+            <div class="settings-page__fields storage-layout__fields">
+            <label for="storage-loads-folder">Folder for loads
+                <textarea id="storage-loads-folder" rows="1" @bind="_loadsFolder" @bind:event="oninput"></textarea>
+            </label>
+            <label for="storage-load-template">Load folder name
+                <textarea id="storage-load-template" rows="1" @bind="_template" @bind:event="oninput"></textarea>
+                <small>Fields: {date}, {load}, {broker}, {order}, {truck}. A missing field is left out.</small>
+            </label>
+            <label for="storage-cancelled-suffix">Added to cancelled loads
+                <input id="storage-cancelled-suffix" @bind="_suffix" @bind:event="oninput" />
+            </label>
+            <label for="storage-inbox-folder">Inbox folder
+                <textarea id="storage-inbox-folder" rows="1" @bind="_inbox" @bind:event="oninput"></textarea>
+            </label>
+            </div>
+            <p class="storage-layout__example">
+                <span>Saved example:</span> <code>@_layout.Example</code><br />
+                <span>Cancelled:</span> <code>@_layout.CancelledExample</code>
+            </p>
+            <div class="settings-page__actions">
+                <button class="btn btn--primary" type="button" disabled="@(!Changed)" @onclick="SaveAsync">
+                    @(_saving ? "Saving…" : "Save file names")
+                </button>
+                @if (_saved) { <span class="settings-page__saved" role="status">File names saved.</span> }
+            </div>
+        </fieldset>
+    }
+</section>
