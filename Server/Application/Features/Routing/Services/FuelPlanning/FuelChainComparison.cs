@@ -12,8 +12,8 @@ namespace Application.Features.Routing.Services.FuelPlanning;
 // the schedule first - one that makes an appointment late, or a driver run
 // out of hours, loses to one that does not, whatever it saves - and on
 // money only between chains the schedule cannot tell apart. An extra stop
-// has to earn its place: it must save at least twenty dollars against a
-// feasible chain with fewer.
+// has to earn its place: it must save at least `FuelStopEconomy`'s
+// threshold against a feasible chain with fewer.
 //
 // Every chain looked at is recorded with why it lost, because "why not the
 // cheaper station" is the first thing a dispatcher asks.
@@ -164,7 +164,9 @@ public static class FuelChainComparison
       )
       {
         if (score < bestScore)
-          check.Result = "Additional stops save less than $20 each";
+          check.Result =
+            "Additional stops save less than "
+            + $"{FuelStopEconomy.MinimumSavingsText} each";
         continue;
       }
       fuel.ExtraMinutes = extraMinutes;

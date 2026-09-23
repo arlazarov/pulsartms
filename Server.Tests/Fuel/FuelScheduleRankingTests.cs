@@ -161,10 +161,13 @@ public sealed class FuelScheduleRankingTests
   [InlineData(960, 40, -30, 35, 2, true)]
   [InlineData(1000, 0, 90, 0, 3, true)]
   [InlineData(900, 10, -60, 35, 2, false)]
-  [InlineData(980.01, 0, 0, 35, 3, true)]
-  [InlineData(980, 0, 0, 35, 3, false)]
-  [InlineData(1019.99, 0, 0, 35, 1, false)]
-  [InlineData(1020, 0, 0, 35, 1, true)]
+  // Against an incumbent scoring 1000 with two purchases, the boundaries
+  // are the stop threshold either side of it: a third purchase has to
+  // promise that much less, and dropping to one may cost that much more.
+  [InlineData(990.01, 0, 0, 35, 3, true)]
+  [InlineData(990, 0, 0, 35, 3, false)]
+  [InlineData(1009.99, 0, 0, 35, 1, false)]
+  [InlineData(1010, 0, 0, 35, 1, true)]
   public void IdealIncumbentSkipsOnlyCandidatesWhoseCheckedCostCannotWin(
     double fuelCost,
     double futureCost,

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Domain.Rules;
 
 // What an extra fuel stop has to be worth. A stop costs the driver time
@@ -7,7 +9,12 @@ namespace Domain.Rules;
 // a cost or a reported saving.
 public static class FuelStopEconomy
 {
-  public const double MinimumSavingsUsd = 20;
+  public const double MinimumSavingsUsd = 10;
+
+  // Everything that says the figure out loud reads it from here, so a
+  // changed threshold cannot leave an old number in a note or a check.
+  public static string MinimumSavingsText { get; } =
+    "$" + MinimumSavingsUsd.ToString("0.##", CultureInfo.InvariantCulture);
 
   public static IComparer<(double Cost, int Stops)> Comparer { get; } =
     Comparer<(double Cost, int Stops)>.Create(
@@ -27,7 +34,7 @@ public static class FuelStopEconomy
       cost - otherCost + MinimumSavingsUsd * (stops - otherStops);
     if (Math.Abs(difference) > 1e-8)
       return difference.CompareTo(0);
-    // Exactly $20 per additional stop is sufficient.
+    // Exactly the threshold per additional stop is sufficient.
     return otherStops.CompareTo(stops);
   }
 }

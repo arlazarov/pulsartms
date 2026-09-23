@@ -1,3 +1,4 @@
+using System.Globalization;
 using Domain.Models.Routing;
 using Domain.Rules;
 using Domain.Rules.Routing;
@@ -11,13 +12,13 @@ public sealed class FuelStopEconomyTests
   [Theory]
   [InlineData(0, 1, false)]
   [InlineData(.86, 1, false)]
-  [InlineData(19.99, 1, false)]
-  [InlineData(20, 1, true)]
-  [InlineData(20.01, 1, true)]
-  [InlineData(39.99, 2, false)]
-  [InlineData(40, 2, true)]
-  [InlineData(40.01, 2, true)]
-  public void AdditionalStopsMustEarnTwentyDollarsEach(
+  [InlineData(9.99, 1, false)]
+  [InlineData(10, 1, true)]
+  [InlineData(10.01, 1, true)]
+  [InlineData(19.99, 2, false)]
+  [InlineData(20, 2, true)]
+  [InlineData(20.01, 2, true)]
+  public void AdditionalStopsMustEarnTenDollarsEach(
     double savings,
     int additional,
     bool worthwhile
@@ -33,6 +34,22 @@ public sealed class FuelStopEconomyTests
     Assert.Equal(
       -comparison,
       FuelStopEconomy.Compare(1000, 2, 1000 - savings, 2 + additional)
+    );
+  }
+
+  // A plan note and a rejected chain both say the figure out loud. They
+  // read it from the threshold, so it cannot be left behind when the
+  // policy changes, and it is written the same way in every culture.
+  [Fact]
+  public void TheFigureWrittenIntoNotesIsTheThresholdInInvariantForm()
+  {
+    Assert.Equal("$10", FuelStopEconomy.MinimumSavingsText);
+    Assert.Equal(
+      FuelStopEconomy.MinimumSavingsUsd,
+      double.Parse(
+        FuelStopEconomy.MinimumSavingsText.TrimStart('$'),
+        CultureInfo.InvariantCulture
+      )
     );
   }
 
@@ -140,6 +157,7 @@ public sealed class FuelStopEconomyTests
   // and both plans end with the same fuel in the tank; it saves 26 cents.
   [Theory]
   [InlineData(5.747, new[] { "856", "706" })]
+  [InlineData(5.6, new[] { "856", "480", "706" })]
   [InlineData(5.55, new[] { "856", "480", "706" })]
   public void Captured54777AddsAThirdStopOnlyWhenItsDiscountClearsTheThreshold(
     double detouredPrice,

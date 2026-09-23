@@ -5,7 +5,7 @@ namespace Domain.Rules.Routing;
 
 public static partial class FuelOptimizer
 {
-  public const int SelectionVersion = 32;
+  public const int SelectionVersion = 33;
 
   // Search/ranking upgrades preserve the validity of previously checked roads.
   public const int MinimumProjectionVersion = 11;

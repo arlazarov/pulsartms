@@ -1,4 +1,5 @@
 using Domain.Models.Routing;
+using Domain.Rules;
 using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
@@ -50,7 +51,7 @@ public static class FuelPlanSummary
     );
     fuel.Notes.AddRange(horizon.Notes);
     fuel.Notes.Add(
-      "Additional fuel stops must save at least $20 each against a feasible alternative with fewer stops and the same schedule rank. This is a selection threshold, not a stop charge."
+      $"Additional fuel stops must save at least {FuelStopEconomy.MinimumSavingsText} each against a feasible alternative with fewer stops and the same schedule rank. This is a selection threshold, not a stop charge."
     );
   }
 }

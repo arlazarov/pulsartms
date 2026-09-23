@@ -264,8 +264,8 @@ Compare normalized USD/US-gallon prices under one IFTA preference; map colors do
 not determine selection.
 
 For equally ranked schedule feasibility, each additional purchase stop must save
-at least $20 against a feasible alternative with fewer stops. Exactly $20 qualifies;
-two additional stops must save at least $40. This is a selection threshold only:
+at least $10 against a feasible alternative with fewer stops. Exactly $10 qualifies;
+two additional stops must save at least $20. This is a selection threshold only:
 purchase costs, economic costs and reported savings do not include a fictional fee.
 Compare the complete horizon, including access fuel/time and useful final fuel,
 after re-optimizing quantities. Keep single-stop omissions of the economic seed
