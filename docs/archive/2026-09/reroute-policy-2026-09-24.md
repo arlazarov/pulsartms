@@ -92,10 +92,19 @@ Mutation checks:
 ## Not done, and what would do it
 
 - **Detection is still paced by the planning pass**, not by telemetry
-  arrival. A cheap check when fixes are published, requesting that truck's
-  planning through the existing planning queue, would remove up to about 90
-  seconds. It needs its own coalescing per truck and assignment and a
-  controlled-interleaving test against the pass. Not started.
+  arrival. Where the rest of the delay comes from:
+  - fixes reach the server once per `TelemetrySeconds` (60);
+  - the planning pass (every 30 s plus its run time) is not aligned with
+    that poll, so it adds 0–30 s, about 15 s on average;
+  - with four trucks, every truck is judged on every pass
+    (`MaxTrucksPerPlanningCycle` is 10).
+
+  A cheap check when fixes are published, requesting that truck's planning
+  through the existing queue, would save only that pass delay. It needs its
+  own coalescing per truck and assignment and a controlled-interleaving
+  test against the pass. Not started: the gain is about 15 s at this scale.
+  The larger lever is `TelemetrySeconds` itself, an owner decision because
+  it raises Samsara request volume.
 - **Fuel stops already sent** are not examined by this change. A reroute
   still marks the fuel plan for refresh, as before. Whether a small
   reroute can move a sent stop is the fuel owner's rule and was not
