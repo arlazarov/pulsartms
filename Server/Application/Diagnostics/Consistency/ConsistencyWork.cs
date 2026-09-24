@@ -17,16 +17,26 @@ public sealed class ConsistencyWork(
   public IReadOnlyList<IConsistencyRepair> Repairs => repairs;
   public ConsistencyJournal Journal => journal;
 
+  // A scope that cannot yield its services is disposed here; one that can
+  // is owned by the work.
   public static ConsistencyWork Open(IServiceScopeFactory scopes)
   {
     var scope = scopes.CreateAsyncScope();
-    var services = scope.ServiceProvider;
-    return new(
-      [.. services.GetServices<IConsistencyRule>()],
-      [.. services.GetServices<IConsistencyRepair>()],
-      services.GetRequiredService<ConsistencyJournal>(),
-      scope
-    );
+    try
+    {
+      var services = scope.ServiceProvider;
+      return new(
+        [.. services.GetServices<IConsistencyRule>()],
+        [.. services.GetServices<IConsistencyRepair>()],
+        services.GetRequiredService<ConsistencyJournal>(),
+        scope
+      );
+    }
+    catch
+    {
+      scope.Dispose();
+      throw;
+    }
   }
 
   public ValueTask DisposeAsync() => owner.DisposeAsync();

@@ -52,10 +52,12 @@ public sealed class ConsistencyAuditor(
     IReadOnlyList<string> Failed
   );
 
+  // The scope that yields the company context is owned here and disposed
+  // with the pass, however it ends; the context is released first.
   public async Task<PassResult> RunAsync(Guid company, CancellationToken ct)
   {
-    using var serving = scopes
-      .CreateScope()
+    await using var scope = scopes.CreateAsyncScope();
+    using var serving = scope
       .ServiceProvider.GetService<ICurrentCompany>()
       ?.As(company);
     return await RunAsync(company, () => ConsistencyWork.Open(scopes), ct);

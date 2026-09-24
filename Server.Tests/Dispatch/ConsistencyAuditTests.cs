@@ -2,6 +2,7 @@ using Application.Diagnostics.Consistency;
 using Application.Features.Execution.Audit;
 using Application.Features.Execution.Commands;
 using Application.Features.Routing.Audit;
+using Application.Interfaces;
 using Domain.Entities;
 using Domain.Entities.Consistency;
 using Domain.Entities.Dispatch;
@@ -12,6 +13,7 @@ using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Truck = Domain.Entities.Fleet.Truck;
@@ -770,6 +772,80 @@ public sealed class ConsistencyAuditTests
         throw new InvalidOperationException("Simulated lost connection.");
       }
       return ValueTask.FromResult(result);
+    }
+  }
+
+  // A pass owns every scope it opens, the one that sets the company too,
+  // and disposes each whether the pass completes, fails or is cancelled.
+  [Theory]
+  [InlineData("completes")]
+  [InlineData("fails")]
+  [InlineData("cancelled")]
+  public async Task APassDisposesEveryScopeItOpens(string outcome)
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    var services = new ServiceCollection();
+    services.AddSingleton<ICurrentCompany>(new TestCompany());
+    services.AddScoped<IAppDbContext>(_ => f.NewContext());
+    services.AddScoped(sp =>
+      outcome == "fails"
+        ? throw new InvalidOperationException("Simulated failure.")
+        : new ConsistencyJournal(sp.GetRequiredService<IAppDbContext>())
+    );
+    await using var provider = services.BuildServiceProvider();
+    var scopes = new CountedScopes(
+      provider.GetRequiredService<IServiceScopeFactory>()
+    );
+    var auditor = new ConsistencyAuditor(
+      scopes,
+      new ConsistencySweeps(),
+      new ConsistencyRecovery(NullLogger<ConsistencyRecovery>.Instance),
+      Options.Create(new ConsistencyAuditOptions()),
+      TimeProvider.System,
+      NullLogger<ConsistencyAuditor>.Instance
+    );
+    using var cancel = new CancellationTokenSource();
+    if (outcome == "cancelled")
+      cancel.Cancel();
+
+    var error = await Record.ExceptionAsync(
+      () => auditor.RunAsync(Company.Amf, cancel.Token)
+    );
+
+    Assert.Equal(outcome == "completes", error is null);
+    Assert.True(scopes.Created > 0);
+    Assert.Equal(scopes.Created, scopes.Disposed);
+  }
+
+  private sealed class CountedScopes(IServiceScopeFactory inner)
+    : IServiceScopeFactory
+  {
+    public int Created { get; private set; }
+    public int Disposed { get; private set; }
+
+    public IServiceScope CreateScope()
+    {
+      Created++;
+      return new Counted(inner.CreateScope(), () => Disposed++);
+    }
+
+    private sealed class Counted(IServiceScope scope, Action disposed)
+      : IServiceScope,
+        IAsyncDisposable
+    {
+      public IServiceProvider ServiceProvider => scope.ServiceProvider;
+
+      public void Dispose()
+      {
+        disposed();
+        scope.Dispose();
+      }
+
+      public ValueTask DisposeAsync()
+      {
+        disposed();
+        return ((IAsyncDisposable)scope).DisposeAsync();
+      }
     }
   }
 
