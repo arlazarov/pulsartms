@@ -322,6 +322,7 @@ public sealed class InboundMediaTests
         collection.AddScoped(sp =>
           provider(sp.GetRequiredService<AppDbContext>(), f.Clock)
         );
+      collection.AddScoped<StorageTargets>();
       collection.AddScoped<FileStore>();
       collection.AddScoped<StoredFileCheck>();
       collection.AddScoped<StorageLayouts>();

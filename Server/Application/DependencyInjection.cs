@@ -112,6 +112,7 @@ public static class DependencyInjection
       ExecutionPlanningOperation
     >();
     services.AddSingleton<ITruckHistoryOperation, TruckHistoryOperation>();
+    services.AddScoped<StorageTargets>();
     services.AddScoped<FileStore>();
     services.AddScoped<InboxRecorder>();
     services.AddScoped<IDriverScope, DriverScopeReader>();

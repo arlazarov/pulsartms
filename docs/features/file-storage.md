@@ -37,7 +37,11 @@ as an empty file.
 
 ## Upload guarantees
 
-`Application.Storage.FileStore` owns stored files. Adapters implement
+`Application.Storage.FileStore` owns stored files. `StorageTargets` owns
+how connections are reached: the connection new files go to (creating the
+managed one on first use), a connection's provider and target (its secret is
+unprotected only there), and the size a provider accepts. Connection
+management and reconciliation use it directly. Adapters implement
 `IFileStorageProvider` in Infrastructure.
 
 - **Fingerprint.** The caller states the content's SHA-256, length and type.

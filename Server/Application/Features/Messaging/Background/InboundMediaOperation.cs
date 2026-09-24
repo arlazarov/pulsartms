@@ -217,13 +217,14 @@ public sealed class InboundMediaOperation(
       return Outcome.Fail("The file expired before it could be copied.");
     var messaging = services.GetRequiredService<IDriverMessaging>();
     var files = services.GetRequiredService<FileStore>();
+    var targets = services.GetRequiredService<StorageTargets>();
     var layouts = services.GetRequiredService<StorageLayouts>();
     var media = await messaging.OpenMediaAsync(attachment.ProviderMediaId, ct);
     if (media is null)
       return Outcome.Fail("The provider no longer has this file.");
     await using var content = media.Content;
-    var connection = await files.DefaultAsync(ct);
-    if (media.Length > files.MaximumSize(files.Provider(connection.Kind)))
+    var connection = await targets.DefaultAsync(ct);
+    if (media.Length > targets.MaximumSize(targets.Provider(connection.Kind)))
       return Outcome.Fail("The file is larger than PulsR stores.");
     var name = FileName(attachment, media.MimeType, message.SentAt);
     var file = await files.PutAsync(

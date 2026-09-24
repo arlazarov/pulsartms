@@ -155,7 +155,7 @@ public sealed class StorageConnectionFlowTests
     var listed = (
       await new StorageConnectionHandlers(
         f.Db,
-        FileStorageTests.Store(f.Db),
+        FileStorageTests.Targets(f.Db),
         [],
         [consent],
         [new FakePicker()],
@@ -320,7 +320,7 @@ public sealed class StorageConnectionFlowTests
   private static StorageRoots Roots(AppDbContext db) =>
     new(
       db,
-      FileStorageTests.Store(db),
+      FileStorageTests.Targets(db),
       [new FakePicker()],
       TimeProvider.System
     );

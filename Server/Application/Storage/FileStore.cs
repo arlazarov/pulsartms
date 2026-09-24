@@ -18,22 +18,15 @@ namespace Application.Storage;
 // makes a second object. A lost answer at any step is settled by asking
 // whether the reserved key holds an object; nothing is deleted on an
 // ambiguous outcome.
-public sealed partial class FileStore(
+public sealed class FileStore(
   IAppDbContext db,
-  IEnumerable<IFileStorageProvider> providers,
-  IStorageSecrets secrets,
+  StorageTargets targets,
   ICurrentCompany companies,
   IOptions<StorageOptions> options,
   StorageUploadGate gate,
   TimeProvider clock
 )
 {
-  public long MaximumSize(IFileStorageProvider provider) =>
-    Math.Min(
-      options.Value.MaximumMegabytes * 1024L * 1024L,
-      provider.MaximumSize
-    );
-
   public async Task<StoredFile> PutAsync(
     StoredFileRequest request,
     Stream content,
@@ -50,17 +43,17 @@ public sealed partial class FileStore(
     if (file is null)
     {
       var connection = request.ConnectionId is { } id
-        ? await ConnectionAsync(id, ct)
-        : await DefaultAsync(ct);
-      var provider = Provider(connection.Kind);
-      if (request.Length <= 0 || request.Length > MaximumSize(provider))
+        ? await targets.ConnectionAsync(id, ct)
+        : await targets.DefaultAsync(ct);
+      var provider = targets.Provider(connection.Kind);
+      if (request.Length <= 0 || request.Length > targets.MaximumSize(provider))
         throw new ArgumentException("The file size is not allowed.");
       var now = clock.GetUtcNow().UtcDateTime;
       var folder = string.Join('/', StorageNaming.Folder(request.Folder ?? []));
       // Reserved before the transaction: a provider call is not held
       // inside it, and a key never used makes no object.
       var key = await provider.ReserveKeyAsync(
-        Target(connection),
+        targets.Target(connection),
         request.FileId,
         ct
       );
@@ -145,9 +138,9 @@ public sealed partial class FileStore(
   {
     var token =
       await ClaimAsync(file.Id, ct) ?? throw new StorageBusyException();
-    var connection = await ConnectionAsync(file.ConnectionId, ct);
-    var provider = Provider(connection.Kind);
-    var target = Target(connection);
+    var connection = await targets.ConnectionAsync(file.ConnectionId, ct);
+    var provider = targets.Provider(connection.Kind);
+    var target = targets.Target(connection);
     await using var reading = new StorageReading(
       content,
       file.Size,
@@ -264,8 +257,9 @@ public sealed partial class FileStore(
       .SingleOrDefaultAsync(x => x.Id == file.ConnectionId, ct);
     if (connection is not { State: StorageConnectionStates.Connected })
       return null;
-    var content = await Provider(connection.Kind)
-      .OpenAsync(Target(connection), file.ObjectKey, ct);
+    var content = await targets
+      .Provider(connection.Kind)
+      .OpenAsync(targets.Target(connection), file.ObjectKey, ct);
     if (content is null)
     {
       await SetStateAsync(file.Id, file.State, StoredFileStates.Missing, ct);
@@ -316,4 +310,8 @@ public sealed partial class FileStore(
             .SetProperty(f => f.UpdatedAt, clock.GetUtcNow().UtcDateTime),
         ct
       ) == 1;
+
+  private Guid Company() =>
+    companies.Id
+    ?? throw new InvalidOperationException("Files belong to a company.");
 }

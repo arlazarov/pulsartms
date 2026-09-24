@@ -1,12 +1,29 @@
 using Domain.Entities.Storage;
 using Domain.Rules.Storage;
+using Microsoft.Extensions.Options;
 
 namespace Application.Storage;
 
-// Where a file goes and how its connection is reached: the company's
-// default connection, its provider and the target a provider is given.
-public sealed partial class FileStore
+// How a company's storage connections are reached: the connection new files
+// go to, a connection's provider and the target a provider is given (with
+// its secret unprotected only here), and what size a provider accepts.
+// Stored files (FileStore), connection management (StorageConnections,
+// StorageRoots) and reconciliation all reach storage through this.
+public sealed class StorageTargets(
+  IAppDbContext db,
+  IEnumerable<IFileStorageProvider> providers,
+  IStorageSecrets secrets,
+  ICurrentCompany companies,
+  IOptions<StorageOptions> options,
+  TimeProvider clock
+)
 {
+  public long MaximumSize(IFileStorageProvider provider) =>
+    Math.Min(
+      options.Value.MaximumMegabytes * 1024L * 1024L,
+      provider.MaximumSize
+    );
+
   // The connection new files go to: the company's default, or the managed
   // store created on first use when this server has one. A server without a
   // managed store never substitutes another; the company must choose.
@@ -77,7 +94,8 @@ public sealed partial class FileStore
       "The storage kind is not available."
     );
 
-  private async Task<StorageConnection> ConnectionAsync(
+  // A connection that is still connected, by id.
+  public async Task<StorageConnection> ConnectionAsync(
     Guid id,
     CancellationToken ct
   ) =>

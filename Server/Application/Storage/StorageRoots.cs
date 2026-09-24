@@ -20,7 +20,7 @@ public sealed record ChooseStorageRootCommand(
 // only new files; stored files stay where they were written.
 public sealed class StorageRoots(
   IAppDbContext db,
-  FileStore files,
+  StorageTargets targets,
   IEnumerable<IStorageRootPicker> pickers,
   TimeProvider clock
 )
@@ -50,7 +50,7 @@ public sealed class StorageRoots(
         "The server has no folder picker registration for this provider.",
         409
       );
-    var session = await picker.SessionAsync(files.Target(connection), ct);
+    var session = await picker.SessionAsync(targets.Target(connection), ct);
     return session is null
       ? RequestResponse<StoragePickerSession>.Fail(
         "The provider refused access. Connect again.",
@@ -73,7 +73,7 @@ public sealed class StorageRoots(
     var root = picker is null
       ? null
       : await picker.VerifyAsync(
-        files.Target(connection),
+        targets.Target(connection),
         request.FolderId ?? "",
         ct
       );

@@ -108,7 +108,7 @@ public sealed class StoragePostgresTests
 
   private static async Task<Guid> DriveAsync(AppDbContext db)
   {
-    await Store(db).DefaultAsync(default);
+    await Targets(db).DefaultAsync(default);
     var drive = new StorageConnection
     {
       Id = Guid.NewGuid(),
@@ -127,6 +127,16 @@ public sealed class StoragePostgresTests
   private static FileStore Store(AppDbContext db) =>
     new(
       db,
+      Targets(db),
+      new TestCompany(),
+      Options.Create(new StorageOptions()),
+      new StorageUploadGate(Options.Create(new StorageOptions())),
+      TimeProvider.System
+    );
+
+  private static StorageTargets Targets(AppDbContext db) =>
+    new(
+      db,
       [
         new DatabaseFileStorage(db, FileStorageTests.Configuration()),
         new Drive(),
@@ -134,12 +144,11 @@ public sealed class StoragePostgresTests
       FileStorageTests.Secrets,
       new TestCompany(),
       Options.Create(new StorageOptions()),
-      new StorageUploadGate(Options.Create(new StorageOptions())),
       TimeProvider.System
     );
 
   private static StorageConnectionHandlers Handlers(AppDbContext db) =>
-    new(db, Store(db), [], [], [], TimeProvider.System);
+    new(db, Targets(db), [], [], [], TimeProvider.System);
 
   private static Task<StoredFile> PutAsync(
     AppDbContext db,

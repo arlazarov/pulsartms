@@ -71,6 +71,7 @@ public sealed class StorageReconcileOperation(
     await using var scope = scopes.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<IAppDbContext>();
     var files = scope.ServiceProvider.GetRequiredService<FileStore>();
+    var targets = scope.ServiceProvider.GetRequiredService<StorageTargets>();
     var now = clock.GetUtcNow().UtcDateTime;
     var due = now.AddMinutes(-options.Value.UploadLeaseMinutes);
     var stalled = await db
@@ -98,7 +99,10 @@ public sealed class StorageReconcileOperation(
       if (connection is { State: StorageConnectionStates.Connected })
         try
         {
-          usable = (files.Provider(connection.Kind), files.Target(connection));
+          usable = (
+            targets.Provider(connection.Kind),
+            targets.Target(connection)
+          );
         }
         catch (StorageUnavailableException) { }
       foreach (var file in connectionFiles)

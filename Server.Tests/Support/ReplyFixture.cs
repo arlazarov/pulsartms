@@ -64,6 +64,7 @@ internal sealed class ReplyFixture : IAsyncDisposable
       (AppDbContext)sp.GetRequiredService<IAppDbContext>()
     );
     collection.AddScoped<IFileStorageProvider, DatabaseFileStorage>();
+    collection.AddScoped<StorageTargets>();
     collection.AddScoped<FileStore>();
     collection.AddScoped<ApprovedTemplates>();
     f.services = collection.BuildServiceProvider();

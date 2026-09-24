@@ -47,7 +47,7 @@ public sealed record StorageSettings(
 // rows: files in that connection show as unavailable, never as deleted.
 public sealed class StorageConnectionHandlers(
   IAppDbContext db,
-  FileStore files,
+  StorageTargets targets,
   IEnumerable<IFileStorageProvider> providers,
   IEnumerable<IStorageAuthorization> authorizations,
   IEnumerable<IStorageRootPicker> pickers,
@@ -227,9 +227,9 @@ public sealed class StorageConnectionHandlers(
     bool working;
     try
     {
-      working = await files
+      working = await targets
         .Provider(connection.Kind)
-        .CheckAsync(files.Target(connection), ct);
+        .CheckAsync(targets.Target(connection), ct);
     }
     catch (StorageUnavailableException)
     {

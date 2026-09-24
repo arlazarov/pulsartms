@@ -276,7 +276,7 @@ public sealed class FileStorageTests
     await using var f = await DispatchSyncFixture.CreateAsync();
     var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
     var provider = new CountingProvider(f.Db);
-    var usable = await Store(f.Db, provider, clock: clock)
+    var usable = await Targets(f.Db, provider, clock: clock)
       .DefaultAsync(default);
     var gone = new StorageConnection
     {
@@ -462,7 +462,7 @@ public sealed class FileStorageTests
   public async Task TheDefaultAlwaysHasAPlaceForNewFiles()
   {
     await using var f = await DispatchSyncFixture.CreateAsync();
-    var managed = await Store(f.Db).DefaultAsync(default);
+    var managed = await Targets(f.Db).DefaultAsync(default);
     var drive = new StorageConnection
     {
       Id = Guid.NewGuid(),
@@ -566,11 +566,25 @@ public sealed class FileStorageTests
   ) =>
     new(
       db,
+      Targets(db, provider, managed, clock),
+      new TestCompany(),
+      Options.Create(new StorageOptions()),
+      new StorageUploadGate(Options.Create(new StorageOptions())),
+      clock ?? TimeProvider.System
+    );
+
+  internal static StorageTargets Targets(
+    AppDbContext db,
+    IFileStorageProvider? provider = null,
+    bool managed = true,
+    TimeProvider? clock = null
+  ) =>
+    new(
+      db,
       [provider ?? new DatabaseFileStorage(db, Configuration(managed))],
       Secrets,
       new TestCompany(),
       Options.Create(new StorageOptions()),
-      new StorageUploadGate(Options.Create(new StorageOptions())),
       clock ?? TimeProvider.System
     );
 
@@ -622,7 +636,7 @@ public sealed class FileStorageTests
   ) =>
     new(
       db,
-      Store(db, managed: managed),
+      Targets(db, managed: managed),
       [new DatabaseFileStorage(db, Configuration(managed))],
       [new FakeAuthorization { IsConfigured = configured }],
       [new FakePicker { IsConfigured = configured }],

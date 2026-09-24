@@ -117,7 +117,7 @@ public sealed class StorageLayoutTests
   public async Task AStorageHoldingFilesCannotBeDisconnectedSilently()
   {
     await using var f = await DispatchSyncFixture.CreateAsync();
-    await FileStorageTests.Store(f.Db).DefaultAsync(default);
+    await FileStorageTests.Targets(f.Db).DefaultAsync(default);
     var drive = new StorageConnection
     {
       Id = Guid.NewGuid(),
@@ -146,7 +146,7 @@ public sealed class StorageLayoutTests
 
     var refused = await new StorageConnectionHandlers(
       f.Db,
-      FileStorageTests.Store(f.Db),
+      FileStorageTests.Targets(f.Db),
       [],
       [],
       [],
