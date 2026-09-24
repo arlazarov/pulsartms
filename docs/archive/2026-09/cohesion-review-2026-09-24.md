@@ -54,6 +54,12 @@ was reviewed.
 | Client `DispatchDetails` (612 lines), member outline | owners | Cohesive: one page and its unsaved-changes protocol |
 | `Client/Services` (11 files), sizes and names | owners | Single-purpose; not read in full |
 | `Server/Application/Features` folders against `module-ownership.md` | mixed owners | Match; fuel planning is Routing's by design |
+| `EtaChainInputsService` (3 parts, 10 dependencies), outline | owners | Cohesive: one input assembler over several sources |
+| WhatsApp Cloud adapter (2 parts), outline | owners | Cohesive: one provider adapter; Media is a real concern split |
+| `SyncDispatchesCommandHandler` (2 parts) and its matchers, outline | owners | Acceptable: helpers already separate owners |
+| `FuelHorizon` (2 parts), outline | owners | Cohesive: the roads ahead for fuel and its batched reads |
+| Execution switch commands (`PlanSwitch`, `SwitchParticipantActions`), outline | owners | Cohesive: one command each, parts by step |
+| `Client/Scripts/fleetMap/stations/stationLayer.ts`, outline | owners | Cohesive: composed from price-book, plan and popup modules |
 
 ## Policy change
 
@@ -220,11 +226,11 @@ FuelPlanningService, FleetMap, DispatchList and fleetMap.ts rows looked at
 members, fields and dependencies, not every method body. In particular:
 - Client pages other than Messages, FleetMap, DispatchList, DispatchDetails
   and the fuel plan editor;
-- browser modules other than the two above (`stationLayer.ts` is the other
-  known whole-screen module);
+- browser modules other than fleetMap.ts, stationLayer.ts and the route
+  layer split;
 - style contents;
-- Infrastructure adapters other than the Google geocoder and TomTom, tools
-  and scripts;
+- Infrastructure adapters other than Google, TomTom and WhatsApp, tools and
+  scripts;
 - the tests beyond those touched.
 
 Four production server files sit at 381–399 lines, just under the old limit:
