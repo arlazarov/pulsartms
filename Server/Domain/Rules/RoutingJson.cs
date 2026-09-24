@@ -9,5 +9,8 @@ public static class RoutingJson
 {
   public static readonly JsonSerializerOptions Options = new(
     JsonSerializerDefaults.Web
-  );
+  )
+  {
+    Converters = { new RoutePointJson() },
+  };
 }
