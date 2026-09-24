@@ -96,9 +96,9 @@ public sealed class StoragePostgresTests
       new(
         Company.Amf,
         DateTime.UtcNow,
-        Guid.NewGuid().ToString(),
-        10,
-        TimeSpan.FromMinutes(30)
+        After: null,
+        Limit: 10,
+        PendingGrace: TimeSpan.FromMinutes(30)
       ),
       default
     );
