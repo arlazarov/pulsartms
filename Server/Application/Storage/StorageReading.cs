@@ -5,19 +5,25 @@ namespace Application.Storage;
 // The content of one stored file as it is read, on the way in (the provider
 // reads an upload) or out (a reader opens a stored file): exactly the
 // declared length and the declared SHA-256. Nothing past the declared
-// length is ever read, so a reader can size its buffer from it. Both are checked on the read that would
-// complete the declared length, before that read returns: the hash of the
+// length is ever read, so a reader can size its buffer from it. Both are
+// checked on the read that would complete the declared length, before that
+// read returns: the hash of the
 // whole content, and one byte read ahead from the input, which must be its
 // end. A provider that completes an upload only on its full length, and
 // stops reading there, therefore never completes one whose content is
 // longer, shorter or different.
+//
+// Mismatched, when given, is told once before a mismatch is thrown, so the
+// file's owner can record it.
 public sealed class StorageReading(
   Stream inner,
   long length,
   string expectedSha256,
-  bool ownsInner = false
+  bool ownsInner = false,
+  Func<Task>? mismatched = null
 ) : Stream
 {
+  private bool told;
   private readonly IncrementalHash hash = IncrementalHash.CreateHash(
     HashAlgorithmName.SHA256
   );
@@ -47,12 +53,12 @@ public sealed class StorageReading(
     var room = (int)Math.Min(buffer.Length, length - read);
     var count = await inner.ReadAsync(buffer[..room], ct);
     if (count == 0)
-      throw new StorageContentMismatchException("shorter than declared");
+      await MismatchAsync("shorter than declared");
     hash.AppendData(buffer.Span[..count]);
     if (read + count == length)
     {
       if (await inner.ReadAsync(new byte[1], ct) != 0)
-        throw new StorageContentMismatchException("longer than declared");
+        await MismatchAsync("longer than declared");
       if (
         !string.Equals(
           Convert.ToHexStringLower(hash.GetHashAndReset()),
@@ -60,10 +66,20 @@ public sealed class StorageReading(
           StringComparison.Ordinal
         )
       )
-        throw new StorageContentMismatchException("different from its hash");
+        await MismatchAsync("different from its hash");
     }
     read += count;
     return count;
+  }
+
+  private async Task MismatchAsync(string how)
+  {
+    if (!told && mismatched is not null)
+    {
+      told = true;
+      await mismatched();
+    }
+    throw new StorageContentMismatchException(how);
   }
 
   public override void Flush() { }

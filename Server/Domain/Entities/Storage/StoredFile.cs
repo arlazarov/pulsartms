@@ -26,6 +26,13 @@ public sealed class StoredFile : BaseEntity, ICompanyOwned
   public string State { get; set; } = StoredFileStates.Quarantined;
   public Guid? UploadToken { get; set; }
   public DateTime? UploadLeaseUntil { get; set; }
+
+  // When the reconciler may look at this file again after it could not
+  // settle it (its storage unusable, or the check could not read it), and
+  // how many times in a row that happened: a bounded backoff that moves
+  // the file behind others instead of in front of them.
+  public DateTime? ReconcileAfter { get; set; }
+  public int ReconcileFailures { get; set; }
   public DateTime CreatedAt { get; set; }
   public DateTime UpdatedAt { get; set; }
 }
@@ -50,4 +57,8 @@ public static class StoredFileStates
 
   // The row exists but its connection no longer has the object.
   public const string Missing = "missing";
+
+  // Released, then read back different from what was recorded (changed in
+  // its storage outside PulsR): never served again; a person decides.
+  public const string Changed = "changed";
 }

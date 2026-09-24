@@ -267,6 +267,141 @@ public sealed class FileStorageTests
     Assert.Equal(StoredFileStates.Available, (await Row(f)).State);
   }
 
+  // The oldest stalled uploads are in a storage that cannot be asked. Each
+  // pass puts them back behind a backoff, so a newer upload in a usable
+  // storage is reached on the next pass rather than never.
+  [Fact]
+  public async Task UnreachableStalledUploadsNoLongerStarveTheOthers()
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+    var provider = new CountingProvider(f.Db);
+    var usable = await Store(f.Db, provider, clock: clock)
+      .DefaultAsync(default);
+    var gone = new StorageConnection
+    {
+      Id = Guid.NewGuid(),
+      Kind = StorageKinds.Managed + "-gone",
+      DisplayName = "Gone",
+      State = StorageConnectionStates.Disconnected,
+      Revision = 1,
+    };
+    f.Db.StorageConnections.Add(gone);
+    var now = clock.GetUtcNow().UtcDateTime;
+    var unreachable = Enumerable
+      .Range(0, 3)
+      .Select(i => Stalled(gone.Id, now.AddHours(-3).AddMinutes(i)))
+      .ToArray();
+    var healthy = Stalled(usable.Id, now.AddHours(-1));
+    f.Db.StoredFiles.AddRange([.. unreachable, healthy]);
+    await f.Db.SaveChangesAsync();
+
+    await Reconciler(f, provider, clock, batch: 2).ReconcileOnceAsync(default);
+    Assert.Equal(StoredFileStates.Uploading, await StateAsync(f, healthy.Id));
+    await Reconciler(f, provider, clock, batch: 2).ReconcileOnceAsync(default);
+
+    Assert.Equal(StoredFileStates.Failed, await StateAsync(f, healthy.Id));
+    var deferred = await f
+      .Db.StoredFiles.AsNoTracking()
+      .Where(x => x.ConnectionId == gone.Id)
+      .ToListAsync();
+    Assert.All(
+      deferred,
+      x =>
+        Assert.True(
+          x.State == StoredFileStates.Uploading
+            && x.ReconcileFailures == 1
+            && x.ReconcileAfter > now
+        )
+    );
+  }
+
+  // One quarantined file whose content is not what was recorded (shorter
+  // than declared) is refused; it does not stop the pass, and the next
+  // file is still checked and released.
+  [Fact]
+  public async Task ACorruptFileIsRefusedAndTheCheckGoesOn()
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+    var provider = new CountingProvider(f.Db);
+    var store = Store(f.Db, provider, clock: clock);
+    var pdf = Encoding.UTF8.GetBytes("%PDF-1.7 text");
+    var corrupt = await PutAsync(store, pdf, "short.pdf");
+    clock.Advance(TimeSpan.FromSeconds(1));
+    var good = await PutAsync(store, pdf, "good.pdf");
+    await f.Db.StoredFiles.ExecuteUpdateAsync(x =>
+      x.SetProperty(s => s.ContentType, "application/pdf")
+    );
+    await f
+      .Db.StoredFiles.Where(x => x.Id == corrupt.Id)
+      .ExecuteUpdateAsync(x => x.SetProperty(s => s.Size, 400));
+    clock.Advance(TimeSpan.FromMinutes(2));
+
+    await Reconciler(f, provider, clock).ReconcileOnceAsync(default);
+
+    Assert.Equal(StoredFileStates.Rejected, await StateAsync(f, corrupt.Id));
+    Assert.Equal(StoredFileStates.Available, await StateAsync(f, good.Id));
+  }
+
+  // Released on its first bytes, then changed in its storage (same length,
+  // other content): the full read fails on the hash, the file is marked
+  // changed, and it is not served again.
+  [Fact]
+  public async Task AReleasedFileChangedInItsStorageIsNotServedAgain()
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+    var provider = new CountingProvider(f.Db);
+    var store = Store(f.Db, provider, clock: clock);
+    var pdf = Encoding.UTF8.GetBytes("%PDF-1.7 the signed copy");
+    var file = await PutAsync(store, pdf, "pod.pdf");
+    await f.Db.StoredFiles.ExecuteUpdateAsync(x =>
+      x.SetProperty(s => s.ContentType, "application/pdf")
+    );
+    Assert.Equal(
+      StoredFileStates.Available,
+      await new StoredFileCheck(store).CheckAsync(file.Id, default)
+    );
+    var edited = Encoding.UTF8.GetBytes("%PDF-1.7 an edited copy!");
+    Assert.Equal(pdf.Length, edited.Length);
+    await f.Db.ManagedFileBlobs.ExecuteUpdateAsync(x =>
+      x.SetProperty(b => b.Content, edited)
+    );
+
+    var opened = await store.OpenAsync(file.Id, false, default);
+    await using (opened!.Value.Content)
+      await Assert.ThrowsAsync<StorageContentMismatchException>(
+        () => opened.Value.Content.CopyToAsync(Stream.Null)
+      );
+
+    Assert.Equal(StoredFileStates.Changed, await StateAsync(f, file.Id));
+    Assert.Null(await store.OpenAsync(file.Id, false, default));
+  }
+
+  private static StoredFile Stalled(Guid connection, DateTime updated) =>
+    new()
+    {
+      Id = Guid.NewGuid(),
+      CompanyId = Company.Amf,
+      ConnectionId = connection,
+      ObjectKey = Guid.NewGuid().ToString("N"),
+      ContentType = "application/pdf",
+      Name = "pod.pdf",
+      Size = 3,
+      Sha256 = new string('a', 64),
+      State = StoredFileStates.Uploading,
+      CreatedAt = updated,
+      UpdatedAt = updated,
+    };
+
+  private static Task<string> StateAsync(DispatchSyncFixture f, Guid id) =>
+    f
+      .Db.StoredFiles.AsNoTracking()
+      .Where(x => x.Id == id)
+      .Select(x => x.State)
+      .SingleAsync();
+
   [Fact]
   public async Task AFileTooLargeEmptyOrUnhashedIsRefusedBeforeAnythingIsRecorded()
   {
@@ -456,7 +591,8 @@ public sealed class FileStorageTests
   private static StorageReconcileOperation Reconciler(
     DispatchSyncFixture f,
     IFileStorageProvider provider,
-    TimeProvider clock
+    TimeProvider clock,
+    int batch = 50
   )
   {
     var services = new ServiceCollection();
@@ -473,7 +609,7 @@ public sealed class FileStorageTests
       services
         .BuildServiceProvider()
         .GetRequiredService<IServiceScopeFactory>(),
-      Options.Create(new StorageOptions()),
+      Options.Create(new StorageOptions { ReconcileBatchSize = batch }),
       clock,
       NullLogger<StorageReconcileOperation>.Instance
     );

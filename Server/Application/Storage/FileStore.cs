@@ -272,10 +272,26 @@ public sealed class FileStore(
       return null;
     }
     // Bounded by the recorded length and checked against the recorded
-    // hash, whatever the provider hands back.
+    // hash, whatever the provider hands back. A released file read back
+    // different is marked changed, and not served again; a quarantined one
+    // is its check's to refuse.
     return (
       file,
-      new StorageReading(content, file.Size, file.Sha256, ownsInner: true)
+      new StorageReading(
+        content,
+        file.Size,
+        file.Sha256,
+        ownsInner: true,
+        file.State == StoredFileStates.Available
+          ? () =>
+            SetStateAsync(
+              file.Id,
+              StoredFileStates.Available,
+              StoredFileStates.Changed,
+              CancellationToken.None
+            )
+          : null
+      )
     );
   }
 

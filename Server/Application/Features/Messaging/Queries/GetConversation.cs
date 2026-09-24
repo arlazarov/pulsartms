@@ -232,11 +232,15 @@ public sealed class ConversationHandlers(
                   a.State,
                   a.FileState == StoredFileStates.Available,
                   a.FailureReason
-                    ?? (
-                      a.FileState == StoredFileStates.Rejected
-                        ? "This kind of file is not accepted."
-                        : null
-                    ),
+                    ?? a.FileState switch
+                    {
+                      StoredFileStates.Rejected =>
+                        "This kind of file is not accepted.",
+                      StoredFileStates.Changed =>
+                        "The file changed in its storage after it was "
+                          + "checked, so it is not shown.",
+                      _ => null,
+                    },
                   a.Filed
                 )),
             ]

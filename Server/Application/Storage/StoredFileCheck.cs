@@ -7,6 +7,12 @@ namespace Application.Storage;
 // JPEG, PNG, WebP, OGG, MP3, AAC and MP4. Anything else is refused and never
 // served. It reads a few bytes, never the whole file. A file whose storage
 // cannot be read now stays quarantined, to be checked again.
+//
+// So Available means: recorded under its fingerprint (name, type, length,
+// SHA-256) and its first bytes show an accepted kind. It is not a malware
+// scan and not a full read. Every full read checks the length and SHA-256
+// again; a file changed in its storage after release (a company drive
+// edited outside PulsR) fails there and is marked changed (FileStore).
 public sealed class StoredFileCheck(FileStore files)
 {
   public const int Probe = 16;
@@ -43,17 +49,28 @@ public sealed class StoredFileCheck(FileStore files)
       return StoredFileStates.Quarantined;
     var head = new byte[Probe];
     var read = 0;
+    var intact = true;
     await using (found.Content)
-      while (read < Probe)
+      try
       {
-        var count = await found.Content.ReadAsync(head.AsMemory(read), ct);
-        if (count == 0)
-          break;
-        read += count;
+        while (read < Probe)
+        {
+          var count = await found.Content.ReadAsync(head.AsMemory(read), ct);
+          if (count == 0)
+            break;
+          read += count;
+        }
       }
-    var outcome = Matches(found.File.ContentType, head.AsSpan(0, read))
-      ? StoredFileStates.Available
-      : StoredFileStates.Rejected;
+      catch (StorageContentMismatchException)
+      {
+        // Already not the content that was recorded (shorter than its
+        // declared length): refused, like a wrong kind.
+        intact = false;
+      }
+    var outcome =
+      intact && Matches(found.File.ContentType, head.AsSpan(0, read))
+        ? StoredFileStates.Available
+        : StoredFileStates.Rejected;
     await files.SetStateAsync(
       fileId,
       StoredFileStates.Quarantined,

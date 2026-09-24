@@ -68,6 +68,23 @@ as an empty file.
   deleted on an ambiguous outcome.
 - **Quarantine.** Every upload ends `quarantined`; callers cannot choose
   otherwise. Only a server-side check releases a file as `available`.
+- **What `available` means.** Recorded under its fingerprint, and its
+  first 16 bytes show an accepted kind that matches its declared type
+  (`StoredFileCheck`). It is not a malware scan and not a full read. Every
+  full read checks the length and SHA-256 again; a released file read back
+  different (a company drive edited outside PulsR) is marked `changed` and
+  not served again, and a message shows why. A check that finds content
+  already shorter than declared refuses the file (`rejected`). An upload
+  settled by the reconciler because its key holds an object is only as
+  good as that object: it goes through the same check, and a later change
+  is caught the same way.
+- **Reconciliation that cannot starve.** Each pass takes the stalled
+  uploads and unchecked files that are due, least recently tried first. A
+  file it cannot settle (its storage disconnected or unreachable, or the
+  check unable to read it) waits a backoff that doubles from the pass
+  interval up to six hours (`ReconcileAfter`, `ReconcileFailures`), so a
+  batch of them never keeps newer files from being reached. One file's
+  failure is logged for that file and the pass goes on.
 - **Bounds.** At most `Storage:MaximumMegabytes` (100) per file, less where
   an adapter says so, and `Storage:MaximumConcurrentUploads` (2) per process.
 
@@ -188,7 +205,9 @@ Administrator only, except the callback: `GET /api/storage`,
 
 `Server.Tests/Storage`: `FileStorageTests` (fingerprint conflicts, content
 mismatch, lost answer and retry, busy and late attempts, reconciler against
-live leases, no substitution), `StorageReadingTests` (empty reads,
+live leases, unreachable files not starving others, a corrupt file refused
+while the pass goes on, a released file changed in its storage not served
+again, no substitution), `StorageReadingTests` (empty reads,
 excess, short and different input), `StorageLayoutTests` (layout, names,
 collisions, disconnect guard), `StorageNamingTests` (templates,
 sanitization), `StorageConnectionFlowTests` (state, folder choice, crash
