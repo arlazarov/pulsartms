@@ -26,17 +26,17 @@ public sealed record UpdateIntegrationCredentialsCommand(
     }
   }
 
-  // A provider's own fields, at most three of them, each a single
-  // unbroken secret - and none of them supplied at all when the request
-  // is asking for the stored ones to be put back.
+  // Only the provider's own catalogued fields, each a single unbroken
+  // secret - and none of them supplied at all when the request is asking
+  // for the stored ones to be put back. A save may carry every field the
+  // provider has (WhatsApp has four), counted by key even when blank.
   private bool ValidFields()
   {
     var fields = Update.Fields!;
+    var allowed = IntegrationProviderCatalog.Fields(Provider);
     if (
-      fields.Count > 3
-      || fields.Keys.Any(field =>
-        !IntegrationProviderCatalog.Fields(Provider).Contains(field)
-      )
+      fields.Count > allowed.Count
+      || fields.Keys.Any(field => !allowed.Contains(field))
     )
       return false;
     if (

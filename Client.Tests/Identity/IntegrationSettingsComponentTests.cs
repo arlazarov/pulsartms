@@ -85,6 +85,62 @@ public sealed class IntegrationSettingsComponentTests
     Assert.Empty(context.JSInterop.Invocations);
   }
 
+  // The WhatsApp card has four fields and all four go in one save; one left
+  // blank is not sent. The server bounds a save by the provider's own
+  // fields, so this request is accepted (IntegrationSettingsTests).
+  [Theory]
+  [InlineData(null)]
+  [InlineData("verifyToken")]
+  public async Task TheWhatsAppCardSendsItsFilledFieldsInOneSave(string? blank)
+  {
+    var writes = new List<(string Path, IntegrationCredentialsUpdate Body)>();
+    using var context = new ClientComponentContext(
+      async (request, ct) =>
+      {
+        if (request.Method == HttpMethod.Get)
+          return request.RequestUri!.AbsolutePath.EndsWith("/webhook")
+            ? Response(
+              new WhatsAppWebhookAddress("api/webhooks/whatsapp/amfcarrier")
+            )
+            : ListResponse();
+        var body = (
+          await request.Content!.ReadFromJsonAsync<IntegrationCredentialsUpdate>(
+            ct
+          )
+        )!;
+        writes.Add((request.RequestUri!.AbsolutePath, body));
+        return Response(State("whatsapp", 4, true));
+      }
+    );
+    var component = context.Render<IntegrationSettings>();
+    await component
+      .WaitForElement("[data-provider='whatsapp'] button")
+      .ClickAsync(new());
+    var names = new[]
+    {
+      "phoneNumberId",
+      "accessToken",
+      "appSecret",
+      "verifyToken",
+    };
+    foreach (var name in names.Where(name => name != blank))
+      component.Find($"#integration-whatsapp-{name}").Input($"{name}-draft");
+    await component
+      .Find("[data-provider='whatsapp'] form")
+      .SubmitAsync(EventArgs.Empty);
+
+    var write = Assert.Single(writes);
+    Assert.Equal("/api/settings/integrations/whatsapp", write.Path);
+    Assert.Equal(
+      names.Where(name => name != blank).Order(),
+      write.Body.Fields.Keys.Order()
+    );
+    Assert.All(
+      write.Body.Fields,
+      field => Assert.Equal($"{field.Key}-draft", field.Value)
+    );
+  }
+
   [Fact]
   public async Task SavingOneProviderLeavesOtherDraftsUntouchedAndNeverSendsBlankFields()
   {

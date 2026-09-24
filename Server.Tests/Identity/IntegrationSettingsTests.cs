@@ -366,6 +366,71 @@ public sealed class IntegrationSettingsTests
     Assert.DoesNotContain(value, string.Join(" ", wrong));
   }
 
+  // Every field a provider has may come in one save - WhatsApp's four as
+  // much as a single API key - with blank ones counted by key; a field the
+  // provider does not have is refused, even beside a complete set.
+  [Theory]
+  [InlineData("torqueai", "")]
+  [InlineData("samsara", "")]
+  [InlineData("google-email", "")]
+  [InlineData("whatsapp", "")]
+  [InlineData("whatsapp", "appSecret")]
+  public void AProvidersOwnFieldsAreAcceptedTogether(
+    string provider,
+    string blank
+  )
+  {
+    var fields = IntegrationProviderCatalog
+      .Fields(provider)
+      .ToDictionary(
+        field => field,
+        field => (string?)(field == blank ? "" : $"{field}-value")
+      );
+
+    Assert.Empty(
+      new UpdateIntegrationCredentialsCommand(
+        provider,
+        new() { Fields = fields }
+      ).Wrong()
+    );
+    fields["notAField"] = "unknown-value";
+    Assert.NotEmpty(
+      new UpdateIntegrationCredentialsCommand(
+        provider,
+        new() { Fields = fields }
+      ).Wrong()
+    );
+  }
+
+  [Fact]
+  public async Task AllFourWhatsAppFieldsAreSavedInOneWrite()
+  {
+    var fixture = new Fixture();
+    var fields = IntegrationProviderCatalog
+      .Fields("whatsapp")
+      .ToDictionary(field => field, field => (string?)$"{field}-value");
+    var command = new UpdateIntegrationCredentialsCommand(
+      "whatsapp",
+      new() { Fields = fields }
+    );
+    Assert.Empty(command.Wrong());
+
+    var saved = await fixture.Service.SaveAsync(
+      "whatsapp",
+      command.Update,
+      default
+    );
+
+    Assert.True(saved.Success);
+    Assert.Equal(1, fixture.Store.Writes);
+    Assert.True(saved.Response!.Configured);
+    var stored = await fixture.Service.GetAsync("whatsapp", default);
+    Assert.All(
+      IntegrationProviderCatalog.Fields("whatsapp"),
+      field => Assert.Equal($"{field}-value", stored.Get(field))
+    );
+  }
+
   [Fact]
   public void NullOversizeAndRestoreWithReplacementRequestsAreRejected()
   {
