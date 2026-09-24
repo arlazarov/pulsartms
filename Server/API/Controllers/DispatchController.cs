@@ -101,7 +101,8 @@ public class DispatchController : BaseController
   public async Task<IActionResult> GetDispatch(
     [FromQuery] GetDispatchQuery query,
     CancellationToken cancellationToken
-  ) => await HandleRequest(query, cancellationToken);
+  ) =>
+    await HandleRequest(query with { InChosenGroup = true }, cancellationToken);
 
   [HttpGet("{id:guid}")]
   public Task<IActionResult> GetById(
@@ -114,7 +115,15 @@ public class DispatchController : BaseController
   public Task<IActionResult> GetBoard(
     [FromQuery] GetDispatchBoardQuery query,
     CancellationToken cancellationToken
-  ) => HandleRequest(query with { IdentitiesOnly = false }, cancellationToken);
+  ) =>
+    HandleRequest(
+      query with
+      {
+        IdentitiesOnly = false,
+        InChosenGroup = true,
+      },
+      cancellationToken
+    );
 
   [Authorize]
   [HttpGet("board/enrichment")]
@@ -124,7 +133,7 @@ public class DispatchController : BaseController
     CancellationToken cancellationToken
   ) =>
     HandleRequest(
-      new GetDispatchBoardEnrichmentQuery(query),
+      new GetDispatchBoardEnrichmentQuery(query with { InChosenGroup = true }),
       cancellationToken
     );
 

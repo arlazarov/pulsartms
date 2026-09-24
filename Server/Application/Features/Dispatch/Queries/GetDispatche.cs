@@ -9,7 +9,8 @@ public record GetDispatchQuery(
   int PageSize = 20,
   string? Search = null,
   string? Status = null,
-  Guid? TruckId = null
+  Guid? TruckId = null,
+  bool InChosenGroup = false
 ) : IRequest<RequestResponse<PaginatedList<DispatchResponse>>>, IChecked
 {
   public IEnumerable<string> Wrong()
@@ -100,7 +101,10 @@ public class GetDispatchQueryHandler(
       );
     // The dispatcher's chosen driver group: loads one of its drivers drove
     // or drives, on the load or on any of its stops, as recorded.
-    if (await scope.CurrentAsync(cancellationToken) is { IsAll: false } group)
+    if (
+      request.InChosenGroup
+      && await scope.CurrentAsync(cancellationToken) is { IsAll: false } group
+    )
     {
       var drivers = group.Drivers;
       query = query.Where(x =>

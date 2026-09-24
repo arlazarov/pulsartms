@@ -46,7 +46,8 @@ public sealed class MessagingController : BaseController
       new GetInboxQuery(
         unread,
         search,
-        afterAt is { } at && afterId is { } id ? new(at.UtcDateTime, id) : null
+        afterAt is { } at && afterId is { } id ? new(at.UtcDateTime, id) : null,
+        InChosenGroup: true
       ),
       cancellationToken
     );

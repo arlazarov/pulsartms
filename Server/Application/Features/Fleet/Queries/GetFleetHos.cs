@@ -4,9 +4,10 @@ using Domain.Models.Fleet;
 
 namespace Application.Features.Fleet.Queries;
 
-public sealed record GetFleetHosQuery(Guid[]? TruckIds = null)
-  : IRequest<RequestResponse<Dictionary<Guid, TruckHosSnapshot>>>,
-    IChecked
+public sealed record GetFleetHosQuery(
+  Guid[]? TruckIds = null,
+  bool InChosenGroup = false
+) : IRequest<RequestResponse<Dictionary<Guid, TruckHosSnapshot>>>, IChecked
 {
   public IEnumerable<string> Wrong()
   {
@@ -45,7 +46,10 @@ public sealed class GetFleetHosHandler(
       ? trucks.Where(x => ids.Contains(x.Id))
       : trucks.Where(x => x.IsActive);
     // The dispatcher's chosen driver group narrows the trucks listed.
-    if (await scope.CurrentAsync(ct) is { IsAll: false } group)
+    if (
+      request.InChosenGroup
+      && await scope.CurrentAsync(ct) is { IsAll: false } group
+    )
     {
       var scoped = group.Trucks;
       trucks = trucks.Where(x => scoped.Contains(x.Id));

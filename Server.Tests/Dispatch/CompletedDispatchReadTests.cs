@@ -212,7 +212,8 @@ public sealed class CompletedDispatchReadTests
 
   // A chosen driver group: the loads its drivers drove, on the load or as a
   // stop's co-driver, as recorded - not the other drivers' on the same
-  // truck. History included.
+  // truck. History included. Only the page asks for it; the same read made
+  // by another owner lists every load.
   [Fact]
   public async Task AChosenDriverGroupListsItsDriversLoads()
   {
@@ -250,15 +251,24 @@ public sealed class CompletedDispatchReadTests
       []
     );
 
-    var response = (
-      await new GetDispatchQueryHandler(
-        db,
-        services.Deadheads,
-        new TestDriverScope(group)
-      ).Handle(new(Status: "completed"), default)
+    var handler = new GetDispatchQueryHandler(
+      db,
+      services.Deadheads,
+      new TestDriverScope(group)
+    );
+
+    var page = (
+      await handler.Handle(
+        new(Status: "completed", InChosenGroup: true),
+        default
+      )
+    ).Response!;
+    var unscoped = (
+      await handler.Handle(new(Status: "completed"), default)
     ).Response!;
 
-    Assert.Equal([1402, 1401], response.Items.Select(x => x.LoadNumber));
+    Assert.Equal([1402, 1401], page.Items.Select(x => x.LoadNumber));
+    Assert.Equal([1403, 1402, 1401], unscoped.Items.Select(x => x.LoadNumber));
   }
 
   private static Load Completed(Truck truck, int number, DateOnly day) =>

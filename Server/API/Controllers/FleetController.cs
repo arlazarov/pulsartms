@@ -27,7 +27,10 @@ public class FleetController : BaseController
     CancellationToken ct
   ) =>
     HandleRequest(
-      new GetFleetHosQuery(truckIds is { Length: > 0 } ? truckIds : null),
+      new GetFleetHosQuery(
+        truckIds is { Length: > 0 } ? truckIds : null,
+        InChosenGroup: true
+      ),
       ct
     );
 
@@ -97,5 +100,9 @@ public class FleetController : BaseController
   [HttpGet("locations")]
   public async Task<IActionResult> GetLocations(
     CancellationToken cancellationToken
-  ) => await HandleRequest(new GetFleetLocationsQuery(), cancellationToken);
+  ) =>
+    await HandleRequest(
+      new GetFleetLocationsQuery(InChosenGroup: true),
+      cancellationToken
+    );
 }

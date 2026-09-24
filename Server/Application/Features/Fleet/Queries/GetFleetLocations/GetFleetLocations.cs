@@ -7,8 +7,10 @@ using Microsoft.Extensions.Options;
 
 namespace Application.Features.Fleet.Queries.GetFleetLocations;
 
-public record GetFleetLocationsQuery(bool CachedOnly = false)
-  : IRequest<RequestResponse<FleetLocationsResponse>>;
+public record GetFleetLocationsQuery(
+  bool CachedOnly = false,
+  bool InChosenGroup = false
+) : IRequest<RequestResponse<FleetLocationsResponse>>;
 
 public class GetFleetLocationsHandler(
   IAppDbContext dbContext,
@@ -32,7 +34,9 @@ public class GetFleetLocationsHandler(
   ) =>
     Scoped(
       await ReadAsync(request, cancellationToken),
-      await scope.CurrentAsync(cancellationToken)
+      request.InChosenGroup
+        ? await scope.CurrentAsync(cancellationToken)
+        : DriverScope.All
     );
 
   // The snapshot is shared by every viewer: a dispatcher's chosen driver

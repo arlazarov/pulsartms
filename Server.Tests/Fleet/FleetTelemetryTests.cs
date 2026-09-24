@@ -444,12 +444,18 @@ public class FleetTelemetryTests
     Assert.Equal(highFrequency ? 1 : 0, provider.Requests.Count);
     await handler.Handle(new(), default);
     Assert.Equal(1, provider.StatsCalls);
-    // A chosen driver group narrows a copy; the shared snapshot keeps the
-    // truck for everyone else.
+    // A chosen driver group narrows a copy for the page that asks; the
+    // shared snapshot keeps the truck for everyone else, and a read made
+    // for a truck's planning in the same request still finds it.
     scope.Scope = new DriverScope(Guid.NewGuid(), "East", [], []);
-    Assert.Empty((await handler.Handle(new(), default)).Response!.Trucks);
-    scope.Scope = DriverScope.All;
+    Assert.Empty(
+      (await handler.Handle(new(InChosenGroup: true), default)).Response!.Trucks
+    );
     Assert.Single((await handler.Handle(new(), default)).Response!.Trucks);
+    scope.Scope = DriverScope.All;
+    Assert.Single(
+      (await handler.Handle(new(InChosenGroup: true), default)).Response!.Trucks
+    );
   }
 
   private sealed class Provider : IFleetTelemetryProvider

@@ -34,7 +34,8 @@ public sealed class DriverGroupInboxTests
     var west = new DriverScope(Guid.NewGuid(), "West", [driver.Id], []);
 
     var inbox = (
-      await Handlers(f, me, west).Handle(new GetInboxQuery(false), default)
+      await Handlers(f, me, west)
+        .Handle(new GetInboxQuery(false, InChosenGroup: true), default)
     ).Response!;
     var notice = (
       await Handlers(f, me, west).Handle(new GetUnreadNoticeQuery(), default)
@@ -42,6 +43,13 @@ public sealed class DriverGroupInboxTests
 
     Assert.Equal([linked], inbox.Conversations.Select(x => x.Id));
     Assert.Equal(2, notice.Conversations);
+    Assert.Equal(
+      2,
+      (await Handlers(f, me, west).Handle(new GetInboxQuery(false), default))
+        .Response!
+        .Conversations
+        .Count
+    );
     Assert.Equal(
       new[] { linked, unlinked }.Order(),
       (await InboxAsync(f, me)).Select(x => x.Id).Order()

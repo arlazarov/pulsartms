@@ -9,6 +9,7 @@ using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Queries;
 using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Options;
+using Application.Interfaces;
 using Application.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
@@ -431,6 +432,22 @@ public sealed class TruckRoutePreviewTests
       ).PlanJson
     );
     Assert.False(fixture.Db.ChangeTracker.HasChanges());
+  }
+
+  // The fleet preview is kept once for everyone. A dispatcher looking at a
+  // driver group that leaves this truck out may be the one whose request
+  // fills it; it still holds the truck for the others.
+  [Fact]
+  public async Task ADispatchersDriverGroupNeverNarrowsTheSharedPreview()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var load = await fixture.AddAsync(1);
+    await fixture.SavePlanAsync(load);
+    fixture.Scope.Scope = new(Guid.NewGuid(), "Elsewhere", [], []);
+
+    var fleet = await fixture.Preview.GetAsync(default);
+
+    Assert.Equal(load.Id, Assert.Single(fleet).DispatchId);
   }
 
   [Fact]
@@ -946,6 +963,7 @@ public sealed class TruckRoutePreviewTests
     public RejectingRouter Router { get; } = new();
     public RejectingHos Hos { get; } = new();
     public BoardSender Sender { get; } = new();
+    public TestDriverScope Scope { get; } = new();
     public MemoryCache Memory { get; } = new(new MemoryCacheOptions());
     public ServerTelemetry Telemetry { get; } = new(new TestCompany());
     public FleetTelemetryCache TelemetryCache { get; private set; } = null!;
@@ -974,7 +992,7 @@ public sealed class TruckRoutePreviewTests
         fixture.Services.Forecasts,
         fixture.Services.Names,
         fixture.Services.Transfers,
-        new TestDriverScope(),
+        fixture.Scope,
         NullLogger<GetDispatchBoardHandler>.Instance
       );
       fixture.TelemetryCache = new(fixture.Memory, new TestCompany());

@@ -10,7 +10,8 @@ namespace Application.Features.Messaging.Queries;
 public sealed record GetInboxQuery(
   bool UnreadOnly,
   string? Search = null,
-  InboxCursor? After = null
+  InboxCursor? After = null,
+  bool InChosenGroup = false
 ) : IRequest<RequestResponse<InboxView>>;
 
 // A position in the list: a conversation's last message time and id.
@@ -104,7 +105,10 @@ public sealed class InboxHandlers(
     // its drivers. Unlinked ones are under All. The unread notice is not
     // narrowed: what is unread stays each dispatcher's own, whatever group
     // they are looking at.
-    if (await scope.CurrentAsync(ct) is { IsAll: false } group)
+    if (
+      request.InChosenGroup
+      && await scope.CurrentAsync(ct) is { IsAll: false } group
+    )
     {
       var drivers = group.Drivers;
       query = query.Where(x =>

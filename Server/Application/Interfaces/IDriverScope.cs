@@ -6,6 +6,12 @@ namespace Application.Interfaces;
 // It only narrows what the caller may already see and never widens it;
 // without a signed-in user (a background job) or with no group chosen, it
 // is All. Read once per request.
+//
+// It narrows only a page's own list, asked for by the query's
+// InChosenGroup. A read another owner makes inside the request (a truck's
+// position for its planning, the fleet preview kept for everyone) is
+// unscoped: a personal filter must never shape shared state or a shared
+// cache.
 public interface IDriverScope
 {
   Task<DriverScope> CurrentAsync(CancellationToken ct);

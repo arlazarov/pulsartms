@@ -31,13 +31,20 @@ contract in `Application/Interfaces` that the owner implements
 (`DriverScopeReader`: two reads when a group is chosen, one when not). A
 background job has no user and reads All.
 
+Only a page's own list is narrowed, and only when its endpoint asks: the
+query's `InChosenGroup`, set by the controller. The same query sent by
+another owner inside the request is unscoped - a truck's position read
+for its planning, the fleet preview kept once for everyone, a truck's
+weather - so a personal filter never shapes shared tracking state or a
+shared cache. Queries default to unscoped for that reason.
+
 - Messages: conversations linked to one of the group's drivers. An
   unlinked conversation is under All.
 - Dispatch board: trucks the group's drivers are on (the truck each is
   assigned to, and the trucks of their planned and active legs as driver
   or co-driver) and loads one of them drives. Applied after the shared
-  board index, so the index stays one for everyone; enrichment and
-  planning ask the board through the same query and follow it.
+  board index, so the index stays one for everyone; enrichment asks the
+  board with the page's query and follows it.
 - Loads (active and completed): loads whose recorded driver, or a stop's
   driver or co-driver, is in the group, history included.
 - Fleet Map: the same trucks, narrowed on a copy of the shared telemetry
@@ -74,10 +81,13 @@ was added.
 owner's, trucks through assignment and live legs, removal keeps drivers
 and falls back to All, an edit at an old revision changes nothing,
 naming and company drivers only), `Server.Tests/Messaging/
-DriverGroupInboxTests` (the list narrows, the notice and each dispatcher's
-reads do not), `DispatchBoardIndexTests` (the page narrows, not the
-index), `CompletedDispatchReadTests` (a group's loads, history included),
-`FleetTelemetryTests` (a copy is narrowed, the snapshot is not),
+DriverGroupInboxTests` (the list narrows, the notice, an unflagged read
+and each dispatcher's reads do not), `DispatchBoardIndexTests` (the page narrows, not the
+index), `CompletedDispatchReadTests` (a group's loads, history included; an
+unflagged read lists every load),
+`FleetTelemetryTests` (a copy is narrowed for the page, the snapshot
+and an internal read are not), `TruckRoutePreviewTests` (a dispatcher's
+group never narrows the shared fleet preview),
 `Client.Tests/Fleet/DriverGroupComponentTests` (choosing saves and the
 page reads again, making a group, a refusal keeps the draft, removal
 after confirming).
