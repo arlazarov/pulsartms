@@ -142,16 +142,24 @@ internal sealed class ProbeControl(IServiceScopeFactory scopes)
       .As(ProbeSeed.CompanyId);
     var routes = sp.GetRequiredService<RoutePlanningService>();
     var profile = await routes.ProfileAsync(v.Truck, ct);
+    // The background planning pass may hold this truck's lock for a moment
+    // at startup; that answer says to retry shortly, and is not a failure.
     foreach (var work in v.Work)
     {
       var load = await routes.LoadAsync(work.Load, ct, work.Leg);
-      await sp.GetRequiredService<BaseRouteService>()
-        .EnsureAsync(load, profile, ct);
-      await sp.GetRequiredService<DeadheadService>()
-        .EnsureAsync(load, profile, ct);
+      await WhenFreeAsync(
+        () =>
+          sp.GetRequiredService<BaseRouteService>()
+            .EnsureAsync(load, profile, ct),
+        ct
+      );
+      await WhenFreeAsync(
+        () =>
+          sp.GetRequiredService<DeadheadService>()
+            .EnsureAsync(load, profile, ct),
+        ct
+      );
     }
-    // The background planning pass may hold this truck's lock for a moment
-    // at startup; that answer says to retry shortly, and is not a failure.
     var planning = sp.GetRequiredService<AutomaticPlanningService>();
     var automatic = await planning.ForTruckAsync(v.Truck, ct);
     for (var attempt = 1; attempt < 10 && automatic.Message is Busy; attempt++)
@@ -168,6 +176,24 @@ internal sealed class ProbeControl(IServiceScopeFactory scopes)
 
   private const string Busy =
     "Planning inputs are being updated. Retry planning shortly.";
+
+  private static async Task WhenFreeAsync(
+    Func<Task> publish,
+    CancellationToken ct
+  )
+  {
+    for (var attempt = 1; ; attempt++)
+      try
+      {
+        await publish();
+        return;
+      }
+      catch (RoutePlanningException busy)
+        when (busy.RetryAfter != DateTime.MaxValue && attempt < 10)
+      {
+        await Task.Delay(TimeSpan.FromSeconds(5), ct);
+      }
+  }
 
   public async Task<object> RecalculateAsync(int index, CancellationToken ct)
   {

@@ -16,6 +16,22 @@ internal sealed class DatabaseTiming
   private readonly ConcurrentBag<IDisposable> subscriptions = [];
   private readonly ConcurrentQueue<object> completed = new();
   private readonly IDisposable listener;
+  private readonly ConcurrentDictionary<Guid, string> callers = new();
+
+  // An async method's frame is its state machine, <Name>d__N.MoveNext:
+  // name the method, not the machine.
+  private static string Caller(System.Reflection.MethodBase method)
+  {
+    var type = method.DeclaringType!;
+    var owner =
+      type.DeclaringType is { } outer && type.Name.StartsWith('<')
+        ? outer
+        : type;
+    var name = type.Name.StartsWith('<')
+      ? type.Name[1..type.Name.IndexOf('>')]
+      : method.Name;
+    return owner.Name + "." + name;
+  }
 
   public DatabaseTiming() =>
     listener = DiagnosticListener.AllListeners.Subscribe(this);
@@ -39,6 +55,32 @@ internal sealed class DatabaseTiming
   {
     if (current.Value is not { } scope)
       return;
+    if (
+      value.Value is CommandEventData starting
+      && value.Key.EndsWith("CommandExecuting", StringComparison.Ordinal)
+    )
+    {
+      // Before the command runs, the stack still holds the synchronous path
+      // from the application method that asked into EF; afterwards it is an
+      // I/O continuation with no application frame.
+      callers[starting.CommandId] = string.Join(
+        " < ",
+        new StackTrace()
+          .GetFrames()
+          .Select(x => x.GetMethod())
+          .Where(x =>
+            x?.DeclaringType?.FullName is { } name
+            && (
+              name.StartsWith("Application.", StringComparison.Ordinal)
+              || name.StartsWith("Infrastructure.", StringComparison.Ordinal)
+            )
+          )
+          .Select(x => Caller(x!))
+          .Distinct()
+          .Take(4)
+      );
+      return;
+    }
     if (value.Value is CommandExecutedEventData command)
     {
       var sql = command.Command.CommandText;
@@ -53,7 +95,8 @@ internal sealed class DatabaseTiming
           .Distinct()
           .Order()
       );
-      scope.Add("command", fingerprint, tables, command.Duration);
+      callers.TryRemove(command.CommandId, out var caller);
+      scope.Add("command", fingerprint, tables, command.Duration, sql, caller);
     }
     else if (
       value.Value is ConnectionEndEventData connection
@@ -86,7 +129,9 @@ internal sealed class DatabaseTiming
       string kind,
       string fingerprint,
       string tables,
-      TimeSpan duration
+      TimeSpan duration,
+      string? sql = null,
+      string? caller = null
     )
     {
       lock (gate)
@@ -99,7 +144,9 @@ internal sealed class DatabaseTiming
           tables,
           (old?.Count ?? 0) + 1,
           (old?.TotalMs ?? 0) + duration.TotalMilliseconds,
-          Math.Max(old?.MaxMs ?? 0, duration.TotalMilliseconds)
+          Math.Max(old?.MaxMs ?? 0, duration.TotalMilliseconds),
+          old?.Sql ?? sql,
+          old is null ? [caller ?? ""] : [.. old.Callers, caller ?? ""]
         );
       }
     }
@@ -129,6 +176,11 @@ internal sealed class DatabaseTiming
     string Tables,
     int Count,
     double TotalMs,
-    double MaxMs
+    double MaxMs,
+    // The statement text, without parameter values: which read a repeated
+    // fingerprint is. Only the probe's own measured requests carry it.
+    string? Sql,
+    // Each execution's calling application frames, innermost first.
+    string[] Callers
   );
 }
