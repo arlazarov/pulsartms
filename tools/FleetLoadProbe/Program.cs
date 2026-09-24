@@ -125,6 +125,13 @@ app.MapGet("/probe/database", () => databaseTiming.Snapshot())
   .RequireAuthorization("Admin");
 await app.Services.GetRequiredService<ProbeControl>().LoadAsync();
 using var workers = new CancellationTokenSource();
+
+// The workers run beside the host, not as hosted services, so the host
+// must not dispose the services they use before they stop. RunAsync did:
+// they went on against a disposed container and the process did not exit
+// on SIGTERM. Start, wait for shutdown (which stops the host), stop the
+// workers, and dispose only when this scope ends.
+app.Lifetime.ApplicationStopping.Register(workers.Cancel);
 var planning = Task.WhenAll(
   app.Services.GetRequiredService<IPlanningRefreshOperation>()
     .RunAsync(workers.Token),
@@ -133,7 +140,8 @@ var planning = Task.WhenAll(
 );
 try
 {
-  await app.RunAsync();
+  await app.StartAsync();
+  await app.WaitForShutdownAsync();
 }
 finally
 {

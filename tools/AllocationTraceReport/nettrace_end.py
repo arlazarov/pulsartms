@@ -1,7 +1,8 @@
 """End a nettrace stream the process could not close.
 
-A process killed before EventPipe closes its session leaves a stream
-without its end marker, and TraceEvent refuses it. This keeps every
+A process killed before EventPipe closes its session (docker stop's
+timeout, an out-of-memory kill) leaves a stream without its end marker,
+and TraceEvent refuses it. This keeps every
 complete object, drops a partial last one, and writes the end marker.
 
     python3 nettrace_end.py api.nettrace ended.nettrace

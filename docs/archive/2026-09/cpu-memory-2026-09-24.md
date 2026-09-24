@@ -93,12 +93,14 @@ instead of 3.25 MB.
 
 ## Side findings
 
-- **The probe API does not exit on SIGTERM within 90 seconds.** Docker
+- **The probe API did not exit on SIGTERM within 90 seconds.** Docker
   killed it both times (exit 137), and a summary refresh logged an
-  `ObjectDisposedException` during shutdown. The probe runs the planning
-  workers outside the host and cancels them only after the host has
-  stopped. Production runs them as hosted services, so this was not shown
-  to affect production shutdown. That was not verified either.
+  `ObjectDisposedException` during shutdown. The probe ran its planning
+  workers beside the host, and `RunAsync` disposed the host before they
+  were cancelled. Fixed in the probe: it now stops the workers before
+  disposal and exits in about a second (exit 0, no exception). Production
+  runs these workers as hosted services and was not affected by this
+  code; its own shutdown time was not measured.
 - **A stray command.** While re-running the trace I ran a stray
   `docker run hello-world` by mistake. A `hello-world` image is present
   locally; whether this pulled it or it was there before is unknown. It was
