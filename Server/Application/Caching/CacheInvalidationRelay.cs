@@ -24,7 +24,7 @@ public sealed class CacheInvalidationRelay(
   IOptions<SynchronizationOptions> options,
   TimeProvider clock,
   ILogger<CacheInvalidationRelay> logger
-)
+) : ICacheInvalidationRelay
 {
   // Wide enough to cover any delay between a row being written and becoming
   // visible, and any clock difference between instances, because rows are read

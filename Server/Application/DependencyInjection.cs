@@ -94,7 +94,7 @@ public static class DependencyInjection
       sp.GetRequiredService<ReadCache>()
     );
     services.AddSingleton<IReadCache>(sp => sp.GetRequiredService<ReadCache>());
-    services.AddSingleton<CacheInvalidationRelay>();
+    services.AddSingleton<ICacheInvalidationRelay, CacheInvalidationRelay>();
     services.AddSingleton<FleetSynchronizationOperation>();
     services.AddSingleton<IFleetSynchronizationOperation>(sp =>
       sp.GetRequiredService<FleetSynchronizationOperation>()

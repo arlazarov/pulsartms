@@ -1,4 +1,4 @@
-using Application.Caching;
+using Application.Interfaces;
 using Microsoft.Extensions.Hosting;
 
 namespace Infrastructure.Synchronization;
@@ -8,7 +8,7 @@ namespace Infrastructure.Synchronization;
 // not work that can be given to one instance. An instance that serves reads
 // needs it, and an instance configured to serve reads and nothing else is
 // exactly the one that would otherwise answer from caches nobody can clear.
-public sealed class CacheInvalidationWorker(CacheInvalidationRelay relay)
+public sealed class CacheInvalidationWorker(ICacheInvalidationRelay relay)
   : BackgroundService
 {
   protected override Task ExecuteAsync(CancellationToken stoppingToken) =>

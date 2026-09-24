@@ -1,9 +1,11 @@
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Application.Features.Dispatch.Queries;
 using Application.Features.Eta.Services;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
 using Domain.Rules.Routing;
+using Infrastructure.Persistence;
 using static Server.Tests.Support.RepositoryFiles;
 
 namespace Server.Tests.Architecture;
@@ -251,6 +253,57 @@ public class LayerBoundaryTests
         source
       );
     }
+  }
+
+  // Infrastructure reaches Application only through interfaces. A source
+  // check on namespaces cannot tell an interface from the class beside it
+  // (Application.Caching holds both), so this reads what every
+  // Infrastructure constructor actually asks for. A record is a contract's
+  // data, not a service, and stays allowed.
+  [Fact]
+  public void InfrastructureIsNeverGivenAConcreteApplicationClass()
+  {
+    var application = typeof(GetDispatchBoardHandler).Assembly;
+    var infrastructure =
+      typeof(AppDbContext).Assembly;
+    var found = infrastructure
+      .GetTypes()
+      .SelectMany(type =>
+        type.GetConstructors(
+            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance
+          )
+          .SelectMany(x => x.GetParameters())
+          .SelectMany(x => Given(x.ParameterType))
+          .Where(x =>
+            x.Assembly == application
+            && x.IsClass
+            && !x.IsAbstract
+            && x.GetMethod("<Clone>$") is null
+          )
+          .Select(x => $"{type.FullName} <- {x.FullName}")
+      )
+      .Distinct()
+      .ToArray();
+
+    Assert.Empty(found);
+  }
+
+  private static IEnumerable<Type> Given(Type type)
+  {
+    yield return type;
+    if (type.IsArray)
+      yield return type.GetElementType()!;
+    if (
+      type.IsGenericType
+      && type.GetGenericTypeDefinition() is var open
+      && (
+        open == typeof(Nullable<>)
+        || open == typeof(Lazy<>)
+        || open == typeof(Func<>)
+        || open == typeof(IEnumerable<>)
+      )
+    )
+      yield return type.GetGenericArguments()[0];
   }
 
   [Fact]
