@@ -184,3 +184,15 @@ is likely a "being prepared" answer, not a full plan; it was not checked.
   `docker run hello-world` by mistake. A `hello-world` image is present
   locally; whether this pulled it or it was there before is unknown. It was
   not removed.
+
+## Evidence
+
+Paths are relative to `artifacts/managed` and pinned with `.keep`. Raw
+traces stay private; this page gives only aggregates.
+
+- `diagnostic-LgBQTK`: the first load run (requests, memory, state).
+- `diagnostic-j5W9b3`: the allocation trace before the converter.
+- `diagnostic-64Otjk`: the allocation trace after it.
+- `diagnostic-EFVOkP`: the 30-minute run.
+- `diagnostic-ijN0DB`: the CPU-sampled idle trace.
+- `diagnostic-xMyELL`: the preparation that answered 500.
