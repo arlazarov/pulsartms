@@ -28,7 +28,16 @@ public partial class Messages : IAsyncDisposable
   [Inject]
   private IJSRuntime JS { get; set; } = default!;
 
-  private InboxView? _inbox;
+  // The list as shown: the first page, and the pages the dispatcher asked
+  // for below it. Next continues it; a new search or filter starts over.
+  private List<ConversationSummary>? _conversations;
+  private InboxCursor? _next;
+  private bool _extended,
+    _loadingMore;
+  private string _search = "",
+    _searched = "";
+  private int _listVersion,
+    _moreRead;
   private ConversationView? _thread;
   private List<MessageView> _messages = [];
   private IReadOnlyList<MessageTemplateView> _templates = [];
@@ -155,22 +164,106 @@ public partial class Messages : IAsyncDisposable
   private async Task FilterAsync(bool unread)
   {
     _unreadOnly = unread;
+    await StartOverAsync();
+  }
+
+  private async Task SearchAsync()
+  {
+    _searched = _search.Trim();
+    await StartOverAsync();
+  }
+
+  private async Task StartOverAsync()
+  {
+    _listVersion++;
+    _conversations = null;
+    _next = null;
+    _extended = false;
+    _loadingMore = false;
     await LoadInboxAsync();
   }
 
+  private string InboxPath(InboxCursor? after) =>
+    $"api/messaging/inbox?unread={(_unreadOnly ? "true" : "false")}"
+    + (_searched.Length > 0 ? $"&search={Uri.EscapeDataString(_searched)}" : "")
+    + (
+      after is null
+        ? ""
+        : $"&afterAt={Uri.EscapeDataString(after.At.ToString("O"))}"
+          + $"&afterId={after.Id}"
+    );
+
+  // The first page, read again on every change. Pages the dispatcher
+  // already opened below it are kept: the first page replaces what it
+  // covers, and the rest stays where it was until they ask for more. A
+  // conversation that moved to the top is shown there, not twice.
   private async Task LoadInboxAsync()
   {
     var generation = ++_inboxRead;
+    var version = _listVersion;
     var result = await Api.GetAsync<InboxView>(
-      $"api/messaging/inbox?unread={(_unreadOnly ? "true" : "false")}",
+      InboxPath(null),
       _lifetime.Token
     );
-    if (_disposed || generation != _inboxRead)
+    if (_disposed || generation != _inboxRead || version != _listVersion)
       return;
-    if (result.Success && result.Response is { } inbox)
-      _inbox = inbox;
-    else
+    if (!result.Success || result.Response is not { } inbox)
+    {
       _error = result.ErrorMessage;
+      return;
+    }
+    var first = inbox.Conversations;
+    // The rows below the new first page's last one, as already shown; the
+    // order of ids is the database's, so it is read from the list rather
+    // than compared here. When that row is not in the list, start over.
+    var end =
+      _extended && _conversations is not null && inbox.Next is { } next
+        ? _conversations.FindIndex(x => x.Id == next.Id)
+        : -1;
+    if (end < 0)
+    {
+      _conversations = [.. first];
+      _next = inbox.Next;
+      _extended = false;
+      _moreRead++;
+      _loadingMore = false;
+      return;
+    }
+    var ids = first.Select(x => x.Id).ToHashSet();
+    _conversations =
+    [
+      .. first,
+      .. _conversations![(end + 1)..].Where(x => !ids.Contains(x.Id)),
+    ];
+  }
+
+  private async Task LoadMoreAsync()
+  {
+    if (_next is not { } after || _loadingMore)
+      return;
+    _loadingMore = true;
+    var generation = ++_moreRead;
+    var version = _listVersion;
+    var result = await Api.GetAsync<InboxView>(
+      InboxPath(after),
+      _lifetime.Token
+    );
+    if (_disposed || generation != _moreRead || version != _listVersion)
+      return;
+    _loadingMore = false;
+    if (!result.Success || result.Response is not { } page)
+    {
+      _error = result.ErrorMessage;
+      return;
+    }
+    var shown = (_conversations ?? []).Select(x => x.Id).ToHashSet();
+    _conversations =
+    [
+      .. _conversations ?? [],
+      .. page.Conversations.Where(x => !shown.Contains(x.Id)),
+    ];
+    _next = page.Next;
+    _extended = true;
   }
 
   private async Task LoadThreadAsync(Guid id)

@@ -34,14 +34,23 @@
                     Unread
                 </button>
             </div>
-            @if (_inbox is null)
+            <form class="messages__search" role="search"
+                  @onsubmit="SearchAsync">
+                <input type="search" aria-label="Search conversations"
+                       placeholder="Driver name or number"
+                       maxlength="100" @bind="_search" />
+                <button type="submit" class="btn btn--small">Search</button>
+            </form>
+            @if (_conversations is null)
             {
                 <p role="status"><LoadingIndicator /></p>
             }
-            else if (_inbox.Conversations.Count == 0)
+            else if (_conversations.Count == 0)
             {
                 <p class="messages__empty">
-                    @(_unreadOnly
+                    @(_searched.Length > 0
+                        ? "No conversation matches."
+                        : _unreadOnly
                         ? "Nothing unread."
                         : "No driver has written yet.")
                 </p>
@@ -49,9 +58,9 @@
             else
             {
                 <ul>
-                    @foreach (var item in _inbox.Conversations)
+                    @foreach (var item in _conversations)
                     {
-                        <li>
+                        <li @key="item.Id">
                             <a href="@($"/messages/{item.Id}")"
                                class="@Conversation(item)"
                                aria-current="@(item.Id == Id ? "page" : null)">
@@ -79,6 +88,14 @@
                         </li>
                     }
                 </ul>
+                @if (_next is not null)
+                {
+                    <button type="button" class="btn btn--small"
+                            disabled="@_loadingMore"
+                            @onclick="LoadMoreAsync">
+                        Show more conversations
+                    </button>
+                }
             }
         </aside>
         <section class="messages__thread" aria-label="Conversation">

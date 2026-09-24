@@ -15,10 +15,16 @@ public sealed record ConversationSummary(
   long Revision
 );
 
+// Next continues the list below its last conversation, when there is more.
 public sealed record InboxView(
   IReadOnlyList<ConversationSummary> Conversations,
   bool More
-);
+)
+{
+  public InboxCursor? Next { get; init; }
+}
+
+public sealed record InboxCursor(DateTime At, Guid Id);
 
 public sealed record AttachmentView(
   Guid Id,

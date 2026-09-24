@@ -36,8 +36,19 @@ public sealed class MessagingController : BaseController
   [HttpGet("inbox")]
   public Task<IActionResult> Inbox(
     [FromQuery] bool unread,
+    [FromQuery] string? search,
+    [FromQuery] DateTimeOffset? afterAt,
+    [FromQuery] Guid? afterId,
     CancellationToken cancellationToken
-  ) => HandleRequest(new GetInboxQuery(unread), cancellationToken);
+  ) =>
+    HandleRequest(
+      new GetInboxQuery(
+        unread,
+        search,
+        afterAt is { } at && afterId is { } id ? new(at.UtcDateTime, id) : null
+      ),
+      cancellationToken
+    );
 
   // Who the conversation is with (Messaging) beside what they are driving
   // (Execution): two owners' answers, side by side, in one response.

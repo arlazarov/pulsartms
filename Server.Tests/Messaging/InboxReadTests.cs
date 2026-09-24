@@ -97,6 +97,134 @@ public sealed class InboxReadTests
     Assert.NotEqual(healthy.ToString(), found.EntityKey);
   }
 
+  // 120 conversations, 70 of them with the same last message time: the
+  // list continues past each page of 50 in its own order, with no
+  // conversation missed or repeated. One that gets a message while the
+  // dispatcher pages moves to the top and is not shown again below.
+  [Fact]
+  public async Task TheInboxContinuesPastFiftyWithoutGapsOrRepeats()
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    var (me, _) = await UsersAsync(f);
+    await ManyAsync(f, 120, same: 70);
+    var expected = await f
+      .Db.Conversations.AsNoTracking()
+      .OrderByDescending(x => x.LastMessageAt)
+      .ThenBy(x => x.Id)
+      .Select(x => x.Id)
+      .ToListAsync();
+
+    var first = await PageAsync(f, me, null);
+    var late = expected[110];
+    await RecordAsync(
+      f,
+      await f
+        .Db.Conversations.Where(x => x.Id == late)
+        .Select(x => x.Participant)
+        .SingleAsync(),
+      Start.AddDays(1),
+      "late"
+    );
+    var seen = first.Conversations.Select(x => x.Id).ToList();
+    var next = first.Next;
+    var pages = 1;
+    while (next is not null)
+    {
+      var page = await PageAsync(f, me, next);
+      seen.AddRange(page.Conversations.Select(x => x.Id));
+      Assert.Equal(page.More, page.Next is not null);
+      next = page.Next;
+      pages++;
+    }
+
+    Assert.Equal(3, pages);
+    Assert.Equal(seen.Count, seen.Distinct().Count());
+    Assert.Equal([.. expected.Where(x => x != late)], seen);
+    Assert.Equal(late, (await PageAsync(f, me, null)).Conversations[0].Id);
+  }
+
+  // A driver by any part of their name, a number by three or more of its
+  // digits, however they are spaced; nothing else matches.
+  [Fact]
+  public async Task SearchFindsADriverByNameOrANumberByItsDigits()
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    var (me, _) = await UsersAsync(f);
+    f.Db.Drivers.Add(
+      new Domain.Entities.Fleet.Driver
+      {
+        Id = Guid.NewGuid(),
+        ExternalId = "d1",
+        Name = "Alexei Morozov",
+        IsActive = true,
+        WhatsAppPhone = "+15558234327",
+      }
+    );
+    await f.Db.SaveChangesAsync();
+    var driver = await ReceiveAsync(f, "+15558234327", 1);
+    var other = await ReceiveAsync(f, "+15550001111", 1);
+
+    async Task<IEnumerable<Guid>> FindAsync(string term) =>
+      (
+        await Handlers(f, me).Handle(new GetInboxQuery(false, term), default)
+      ).Response!.Conversations.Select(x => x.Id);
+
+    Assert.Equal([driver], await FindAsync("moroz"));
+    Assert.Equal([driver], await FindAsync("ALEX"));
+    Assert.Equal([driver], await FindAsync("823-4327"));
+    Assert.Equal([other], await FindAsync("(555) 000-1111"));
+    Assert.Empty(await FindAsync("zz"));
+    Assert.Empty(await FindAsync("55"));
+    Assert.Equal(2, (await FindAsync("  ")).Count());
+    Assert.Equal(
+      400,
+      (
+        await Handlers(f, me)
+          .Handle(new GetInboxQuery(false, new string('a', 101)), default)
+      ).StatusCode
+    );
+  }
+
+  private static async Task<InboxView> PageAsync(
+    DispatchSyncFixture f,
+    Guid user,
+    InboxCursor? after
+  ) =>
+    (
+      await Handlers(f, user)
+        .Handle(new GetInboxQuery(false, null, after), default)
+    ).Response!;
+
+  // Count conversations in one notification; the first `same` of them
+  // share one last message time, the rest are a minute apart.
+  private static async Task ManyAsync(
+    DispatchSyncFixture f,
+    int count,
+    int same
+  )
+  {
+    f.Db.ChangeTracker.Clear();
+    await new InboxRecorder(f.Db, TimeProvider.System).RecordAsync(
+      DriverMessageChannels.WhatsApp,
+      "123456",
+      [
+        .. Enumerable
+          .Range(0, count)
+          .Select(i => new DriverMessageInboundEvent(
+            $"+1555100{i:0000}",
+            i < same ? Start : Start.AddMinutes(-i)
+          )
+          {
+            ProviderMessageId = $"wamid.many.{i}",
+            Text = $"message {i}",
+          }),
+      ],
+      default
+    );
+    await f.Db.SaveChangesAsync();
+    f.Db.ChangeTracker.Clear();
+  }
+
   [Fact]
   public async Task AConversationReadsBackwardsInPages()
   {

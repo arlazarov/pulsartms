@@ -29,10 +29,16 @@
     padding: 0;
     list-style: none;
   }
-  &__filters {
+  &__filters,
+  &__search {
     display: flex;
     flex-wrap: wrap;
     gap: ui.pg(sm);
+  }
+  &__search input {
+    flex: 1 1 10rem;
+    min-width: 0;
+    @include ui.input-control;
   }
   &__conversation {
     display: grid;

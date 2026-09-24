@@ -110,6 +110,133 @@ public sealed class MessagesPageTests
     Assert.Equal(2, api.ThreadReads);
   }
 
+  // 60 conversations, 50 to a page. Show more brings the rest below; a
+  // stream signal reads the first page again and keeps them, and one that
+  // moved to the top is shown once, there.
+  [Fact]
+  public async Task MoreConversationsLoadBelowAndARefreshKeepsThem()
+  {
+    var all = Enumerable
+      .Range(0, 60)
+      .Select(i => Row(Guid.NewGuid(), Now.AddMinutes(-i)))
+      .ToList();
+    var moved = false;
+    var api = new Api(windowOpen: true)
+    {
+      Inbox = query =>
+      {
+        var rows = moved ? [with59First(all), .. all.Take(59)] : all;
+        var page = query.Contains("afterId")
+          ? rows.Skip(50).ToList()
+          : rows.Take(50).ToList();
+        return Task.FromResult(
+          new InboxView(page, page.Count == 50 && !query.Contains("afterId"))
+          {
+            Next = query.Contains("afterId")
+              ? null
+              : new(page[^1].LastMessageAt, page[^1].Id),
+          }
+        );
+      },
+    };
+    await using var context = Context(api);
+    var page = context.Render<MessagesPage>();
+    page.WaitForAssertion(
+      () => Assert.Equal(50, page.FindAll(".messages__list li").Count)
+    );
+
+    await page.FindAll("button")
+      .Single(x => x.TextContent.Contains("Show more conversations"))
+      .ClickAsync(new());
+    page.WaitForAssertion(
+      () => Assert.Equal(60, page.FindAll(".messages__list li").Count)
+    );
+    Assert.DoesNotContain(
+      page.FindAll("button"),
+      x => x.TextContent.Contains("Show more conversations")
+    );
+    Assert.Contains($"afterId={all[49].Id}", api.InboxQueries[^1]);
+
+    moved = true;
+    context
+      .Services.GetRequiredService<MessagingSignals>()
+      .Receive("change", all[59].Id.ToString());
+    page.WaitForAssertion(
+      () =>
+        Assert.Equal(
+          all[59].Id.ToString(),
+          page.Find(".messages__list li a").GetAttribute("href")![10..]
+        )
+    );
+    Assert.Equal(60, page.FindAll(".messages__list li").Count);
+
+    static ConversationSummary with59First(List<ConversationSummary> rows) =>
+      rows[59] with
+      {
+        LastMessageAt = Now.AddHours(1),
+      };
+  }
+
+  // A search starts the list over; a Show more that was still on its way
+  // for the earlier list adds nothing to the new one.
+  [Fact]
+  public async Task ASearchStartsOverAndALatePageForTheOldListIsDropped()
+  {
+    var all = Enumerable
+      .Range(0, 60)
+      .Select(i => Row(Guid.NewGuid(), Now.AddMinutes(-i)))
+      .ToList();
+    var later = new TaskCompletionSource<InboxView>();
+    var api = new Api(windowOpen: true)
+    {
+      Inbox = query =>
+        query.Contains("search=")
+          ? Task.FromResult(new InboxView([all[3]], false))
+        : query.Contains("afterId") ? later.Task
+        : Task.FromResult(
+          new InboxView([.. all.Take(50)], true)
+          {
+            Next = new(all[49].LastMessageAt, all[49].Id),
+          }
+        ),
+    };
+    await using var context = Context(api);
+    var page = context.Render<MessagesPage>();
+    page.WaitForAssertion(
+      () => Assert.Equal(50, page.FindAll(".messages__list li").Count)
+    );
+    var more = page.FindAll("button")
+      .Single(x => x.TextContent.Contains("Show more conversations"))
+      .ClickAsync(new());
+
+    page.Find(".messages__search input").Change("Driver 3");
+    await page.Find(".messages__search").SubmitAsync();
+    page.WaitForAssertion(
+      () => Assert.Single(page.FindAll(".messages__list li"))
+    );
+    later.SetResult(new InboxView([.. all.Skip(50)], false));
+    await more;
+
+    Assert.Single(page.FindAll(".messages__list li"));
+    Assert.Contains("search=Driver 3", api.InboxQueries[^1]);
+  }
+
+  private static ConversationSummary Row(Guid id, DateTime at) =>
+    new(
+      id,
+      "+15558234327",
+      null,
+      null,
+      "hello",
+      at,
+      at,
+      true,
+      0,
+      null,
+      null,
+      1
+    );
+
   private static ClientComponentContext Context(Api api)
   {
     var context = new ClientComponentContext(api.SendAsync);
@@ -124,6 +251,10 @@ public sealed class MessagesPageTests
   private sealed class Api(bool windowOpen)
   {
     public bool RefuseFirstAsStale { get; init; }
+
+    // Answers the inbox by its query when set; the requests are kept.
+    public Func<string, Task<InboxView>>? Inbox { get; init; }
+    public List<string> InboxQueries { get; } = [];
     public List<SendMessageRequest> Sends { get; } = [];
     public long? ReadRevision { get; private set; }
     public int ThreadReads { get; private set; }
@@ -161,7 +292,13 @@ public sealed class MessagesPageTests
       if (path == "/api/messaging/inbox")
       {
         InboxReads++;
-        return Ok(new InboxView([Summary(Ann, "Ann Driver", 2, "Bob")], false));
+        var query = Uri.UnescapeDataString(request.RequestUri.Query);
+        InboxQueries.Add(query);
+        return Ok(
+          Inbox is { } answer
+            ? await answer(query)
+            : new InboxView([Summary(Ann, "Ann Driver", 2, "Bob")], false)
+        );
       }
       if (
         path == $"/api/messaging/conversations/{Ann}"

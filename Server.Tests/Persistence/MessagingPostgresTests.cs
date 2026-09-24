@@ -3,6 +3,7 @@ using Application.Diagnostics.Consistency;
 using Application.Features.Dispatch.Audit;
 using Application.Features.Dispatch.Documents;
 using Application.Features.Messaging.Audit;
+using Application.Features.Messaging.Queries;
 using Application.Features.Messaging.Services;
 using Application.Interfaces;
 using Application.Storage;
@@ -218,6 +219,76 @@ public sealed class MessagingPostgresTests
     );
     Assert.Empty(
       (await new FiledDocumentRule(db).ReadAsync(request, default)).Observed
+    );
+  }
+
+  // The inbox keyset on PostgreSQL, whose uuid order is not SQLite's text
+  // order: 120 conversations, 70 with one last message time, paged to the
+  // end in the order the database itself sorts them; search executed.
+  [RequiresPostgresFact]
+  public async Task TheInboxContinuesInTheDatabasesOwnOrder()
+  {
+    await using var fixture = await PostgresFixture.CreateAsync();
+    var db = fixture.Connect();
+    var at = new DateTime(2026, 9, 21, 12, 0, 0, DateTimeKind.Utc);
+    await new InboxRecorder(db, TimeProvider.System).RecordAsync(
+      DriverMessageChannels.WhatsApp,
+      "123456",
+      [
+        .. Enumerable
+          .Range(0, 120)
+          .Select(i => new DriverMessageInboundEvent(
+            $"+1555100{i:0000}",
+            i < 70 ? at : at.AddMinutes(-i)
+          )
+          {
+            ProviderMessageId = $"wamid.many.{i}",
+            Text = "x",
+          }),
+      ],
+      default
+    );
+    db.Users.Add(
+      new User
+      {
+        Id = Guid.NewGuid(),
+        IdentityUserId = "inbox-dispatcher",
+        Name = "Dispatcher",
+        Email = "inbox@example.invalid",
+      }
+    );
+    await db.SaveChangesAsync();
+    var expected = await db
+      .Conversations.AsNoTracking()
+      .OrderByDescending(x => x.LastMessageAt)
+      .ThenBy(x => x.Id)
+      .Select(x => x.Id)
+      .ToListAsync();
+    var inbox = new InboxHandlers(
+      db,
+      new Server.Tests.Messaging.InboxScenario.Caller("inbox-dispatcher"),
+      new ConversationReadMarkers(db),
+      TimeProvider.System
+    );
+
+    var seen = new List<Guid>();
+    InboxCursor? next = null;
+    do
+    {
+      var page = (
+        await inbox.Handle(new GetInboxQuery(false, null, next), default)
+      ).Response!;
+      seen.AddRange(page.Conversations.Select(x => x.Id));
+      next = page.Next;
+    } while (next is not null);
+    var found = (
+      await inbox.Handle(new GetInboxQuery(false, "555 100 0119"), default)
+    ).Response!;
+
+    Assert.Equal(expected, seen);
+    Assert.Equal(
+      "+15551000119",
+      Assert.Single(found.Conversations).Participant
     );
   }
 

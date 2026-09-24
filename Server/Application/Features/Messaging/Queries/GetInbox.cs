@@ -5,8 +5,16 @@ using Domain.Rules.Messaging;
 
 namespace Application.Features.Messaging.Queries;
 
-public sealed record GetInboxQuery(bool UnreadOnly)
-  : IRequest<RequestResponse<InboxView>>;
+// After continues the list below the conversation it names, in the same
+// order; Search narrows it to a driver's name or a number's digits.
+public sealed record GetInboxQuery(
+  bool UnreadOnly,
+  string? Search = null,
+  InboxCursor? After = null
+) : IRequest<RequestResponse<InboxView>>;
+
+// A position in the list: a conversation's last message time and id.
+public sealed record InboxCursor(DateTime At, Guid Id);
 
 // For the notice every page shows: how many conversations hold driver
 // messages this dispatcher has not read (at most NoticeLimit, then More),
@@ -38,10 +46,14 @@ public sealed record ConversationSummary(
   long Revision
 );
 
+// Next continues the list, when there is more of it.
 public sealed record InboxView(
   IReadOnlyList<ConversationSummary> Conversations,
   bool More
-);
+)
+{
+  public InboxCursor? Next { get; init; }
+}
 
 // The company's conversations, newest first, with this dispatcher's unread
 // counts. A fixed number of reads whatever the number of conversations:
@@ -60,6 +72,7 @@ public sealed class InboxHandlers(
 {
   public const int PageSize = 50;
   public const int NoticeLimit = 99;
+  public const int MaximumSearch = 100;
 
   public async Task<RequestResponse<InboxView>> Handle(
     GetInboxQuery request,
@@ -68,8 +81,14 @@ public sealed class InboxHandlers(
   {
     if (await Inbox.UserAsync(db, caller, ct) is not { } user)
       return RequestResponse<InboxView>.Fail("Access denied.", 403);
+    var term = request.Search?.Trim() ?? "";
+    if (term.Length > MaximumSearch)
+      return RequestResponse<InboxView>.Fail(
+        $"Search for at most {MaximumSearch} characters.",
+        400
+      );
     var now = clock.GetUtcNow().UtcDateTime;
-    var page = await db
+    var query = db
       .Conversations.AsNoTracking()
       .Where(x =>
         !request.UnreadOnly
@@ -79,14 +98,43 @@ public sealed class InboxHandlers(
             && r.UserId == user
             && r.ReadRevision >= x.LastInboundRevision
           )
-      )
+      );
+    if (term.Length > 0)
+    {
+      var name = term.ToLowerInvariant();
+      var digits = new string([.. term.Where(char.IsAsciiDigit)]);
+      query = query.Where(x =>
+        digits.Length >= 3 && x.Participant.Contains(digits)
+        || db.Drivers.Any(d =>
+          d.Id == x.DriverId && d.Name.ToLower().Contains(name)
+        )
+      );
+    }
+    // A keyset on the list's own order: the rows after the cursor, whatever
+    // arrived above it meanwhile. A conversation that moves up while the
+    // dispatcher pages is not shown twice; it is at the top on the next
+    // read of the first page.
+    if (request.After is { } after)
+      query = query.Where(x =>
+        x.LastMessageAt < after.At
+        || x.LastMessageAt == after.At && x.Id.CompareTo(after.Id) > 0
+      );
+    var page = await query
       .OrderByDescending(x => x.LastMessageAt)
       .ThenBy(x => x.Id)
       .Take(PageSize + 1)
       .ToListAsync(ct);
     var shown = page.Take(PageSize).ToList();
     var summaries = await Inbox.SummariesAsync(db, user, shown, now, ct);
-    return RequestResponse<InboxView>.Ok(new(summaries, page.Count > PageSize));
+    return RequestResponse<InboxView>.Ok(
+      new(summaries, page.Count > PageSize)
+      {
+        Next =
+          page.Count > PageSize
+            ? new(shown[^1].LastMessageAt, shown[^1].Id)
+            : null,
+      }
+    );
   }
 
   // Two reads: the caller, then the arrival sequences of at most

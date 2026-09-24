@@ -89,8 +89,13 @@ as it is stored; the storage reconciler checks any file left quarantined.
 
 ## Reading
 
-Dispatch policy: `GET /api/messaging/inbox?unread=` (newest 50, a fixed
-number of reads whatever the number of conversations),
+Dispatch policy: `GET /api/messaging/inbox?unread=&search=&afterAt=&afterId=`
+(50 conversations a page, newest first, a fixed number of reads whatever
+the number of conversations; `next` in the answer continues below the
+last one shown, by its last message time and id, so conversations with
+the same time are neither skipped nor repeated; `search` narrows to a
+driver's name or three or more digits of a number, at most 100
+characters),
 `GET /api/messaging/conversations/{id}?before=` (50 messages per page,
 newest first, with attachment states), `POST .../{id}/read` (this
 dispatcher's marker: the conversation revision of the view they read; it
@@ -134,7 +139,14 @@ reader that reconnects or misses signals reads the inbox again.
 ## Messages page
 
 `/messages` (Admin and Dispatch) lists conversations beside the open one;
-below the `md` breakpoint it shows one pane at a time. The thread reads
+below the `md` breakpoint it shows one pane at a time. The list searches
+explicitly (Search, by driver name or number) and shows 50 at a time;
+"Show more conversations" continues below. A change signal reads the
+first page again and keeps the pages shown below it: a conversation that
+moved up is shown once, at the top, and those further down keep what was
+last read for them until more is asked for. A new search or filter
+starts over, and a page still on its way for the earlier list is
+dropped. The thread reads
 oldest first, marks itself read at the revision it showed, and claims the
 conversation, at most once a minute, when the dispatcher starts typing.
 A reply keeps its retry key until it is sent; a reply refused as stale
@@ -288,8 +300,10 @@ duplicates, business numbers, files, unsupported kinds, ambiguous
 numbers, reply statuses, a failed commit retried, fuel-plan statuses only
 under the number they went from, a window under another number),
 `Server.Tests/Messaging/InboundMediaTests` (copy, hash mismatch, backoff,
-expiry, leases, a crash between the updates, a lost finalize, naming), `Server.Tests/Messaging/InboxReadTests` (read cost, unread, markers,
-paging, stream isolation), `Server.Tests/Messaging/ConversationReplyTests`
+expiry, leases, a crash between the updates, a lost finalize, naming),
+`Server.Tests/Messaging/InboxReadTests` (read cost, unread, markers,
+paging, 120 conversations continued past 50 with 70 at one time and a
+late arrival, search, stream isolation), `Server.Tests/Messaging/ConversationReplyTests`
 (queue and send once, window, retry keys, stale replies, a take
 overtaken before sending, a lease lost mid-send, a late answer on its own
 attempt, withdrawal for a closed window or changed number, explicit retry,
@@ -301,7 +315,8 @@ templates only, download of checked files only),
 Development, no network, signed simulation). Client:
 `Client.Tests/Messaging/MessagesPageTests` (list and thread, read marker,
 stale reply confirmed with the same key, closed window without templates,
-a stream signal reads the open thread again),
+a stream signal reads the open thread again, more conversations kept
+through a refresh, a late page for an earlier search dropped),
 `Client.Tests/Messaging/MessagingSignalsTests` (stream lines, account scope
 and rejoin on account change, local stream and polling after a failed
 import or join, a slow tick that outlasts the wait),
