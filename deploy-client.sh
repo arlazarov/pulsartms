@@ -9,6 +9,8 @@ if [[ -z "$PULSARTMS_RELEASE_DIR" ]]; then
 fi
 export PULSARTMS_RELEASE_DIR
 bash verify-release.sh
+node Client/build/verifyHostedConfig.mjs \
+  "$PULSARTMS_RELEASE_DIR/publish/wwwroot"
 
 echo "Deploying Firebase Hosting..."
 

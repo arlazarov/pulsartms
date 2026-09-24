@@ -82,6 +82,10 @@ build-worker sizing only; it does not change Cloud Run instance resources.
 `deploy-client.sh` runs the gate and gives Firebase the exact verified staged
 `wwwroot` through `--public`. Existing Firebase rewrites and project selection stay
 unchanged. Neither deployment continues after a failed gate.
+The Client's `wwwroot/appsettings.json` (the browser Maps key) is ignored by
+git, so a clean checkout lacks it: copy the local file into that checkout
+before `deploy-client.sh`. The script refuses an artifact whose settings do
+not fill every setting in `appsettings.example.json`.
 The style build stamps `css/main.css?v=<content hash>` into `index.html`; the Client
 build also refreshes this stamp when SCSS compilation is incremental. Firebase
 responses revalidate entry HTML, configuration, CSS and unhashed module aliases

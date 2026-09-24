@@ -164,9 +164,21 @@ test('Firebase receives the exact unique staged artifact after verification', ()
   );
   assert.ok(
     result.calls.endsWith(
-      `firebase deploy --only hosting --public ${result.directory}/publish/wwwroot\n`,
+      `node Client/build/verifyHostedConfig.mjs ${result.directory}/publish/wwwroot\n` +
+        `firebase deploy --only hosting --public ${result.directory}/publish/wwwroot\n`,
     ),
   );
+});
+
+test('an artifact without its hosted settings is not deployed', () => {
+  const result = run('deploy-client.sh', {
+    environment: directory => ({
+      TEST_FAIL: `node Client/build/verifyHostedConfig.mjs ${directory}/publish/wwwroot`,
+    }),
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.calls, /node Client\/build\/verifyHostedConfig\.mjs/);
+  assert.doesNotMatch(result.calls, /firebase deploy/);
 });
 
 test('legacy release directories remain accepted only when the canonical variable is unset', () => {
