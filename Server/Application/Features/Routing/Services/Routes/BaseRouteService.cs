@@ -208,6 +208,7 @@ public sealed partial class BaseRouteService(
         db.DispatchBaseRoutes.Attach(saved);
       saved.InputHash = hash;
       saved.RouteJson = RoutePlanStorage.Serialize(route);
+      saved.Revision++;
       saved.CalculatedAt = route.CalculatedAt;
       if (load.ExecutionLegId is { } executionLegId)
       {

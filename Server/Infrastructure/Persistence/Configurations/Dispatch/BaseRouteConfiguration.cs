@@ -23,6 +23,8 @@ public sealed class BaseRouteConfiguration
       .IsUnique()
       .HasFilter("\"ExecutionLegId\" IS NOT NULL");
     b.Property(x => x.InputHash).HasMaxLength(64);
+    // Two writes from the same revision must not both claim the next one.
+    b.Property(x => x.Revision).IsConcurrencyToken();
     b.HasOne<DispatchEntity>()
       .WithMany()
       .HasForeignKey(x => x.DispatchId)

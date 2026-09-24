@@ -107,6 +107,7 @@ public sealed class RouteChoiceTests
       display.Options,
       option => Assert.Equal(2, option.Route.Legs[0].Points.Count)
     );
+    var revision = await BaseRoadRevisionAsync(f);
     Assert.Equal(
       1,
       await f.Choices.SaveAsync(
@@ -124,7 +125,15 @@ public sealed class RouteChoiceTests
     Assert.Equal(points, saved.Route.Legs[0].Points);
     Assert.Equal(route.Miles, saved.Route.Miles);
     Assert.Equal(route.Seconds, saved.Route.Seconds);
+    // The choice rewrote the base road, so a kept display copy is stale.
+    Assert.Equal(revision + 1, await BaseRoadRevisionAsync(f));
   }
+
+  private static async Task<long> BaseRoadRevisionAsync(RouteChoiceFixture f) =>
+    await f
+      .Db.DispatchBaseRoutes.AsNoTracking()
+      .Select(x => (long?)x.Revision)
+      .SingleOrDefaultAsync() ?? 0;
 
   [Fact]
   public async Task CompactPreviewStillRejectsGeometryOverTheByteLimitWithoutReplacingTheSavedDraft()
