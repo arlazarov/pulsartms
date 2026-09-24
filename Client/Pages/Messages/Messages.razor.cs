@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using Client.Models.DTO.Messaging;
 using Client.Services;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 
@@ -27,6 +29,9 @@ public partial class Messages : IAsyncDisposable
 
   [Inject]
   private IJSRuntime JS { get; set; } = default!;
+
+  [CascadingParameter]
+  private Task<AuthenticationState>? Authentication { get; set; }
 
   // The list as shown: the first page, and the pages the dispatcher asked
   // for below it. Next continues it; a new search or filter starts over.
@@ -60,6 +65,12 @@ public partial class Messages : IAsyncDisposable
   private Guid? _shown;
   private ConversationContext? _context;
   private bool _contextFailed;
+
+  // The trip opens over the conversation where there is no room beside it.
+  private bool _trip;
+
+  // The signed-in dispatcher's name: their own replies read "You".
+  private string? _me;
   private int _contextRead;
   private DateTime _claimedAt = DateTime.MinValue;
   private IJSObjectReference? _files;
@@ -76,6 +87,8 @@ public partial class Messages : IAsyncDisposable
 
   protected override async Task OnInitializedAsync()
   {
+    if (Authentication is not null)
+      _me = (await Authentication).User.Identity?.Name;
     Signals.Changed += OnSignal;
     await Signals.JoinAsync();
     var templates = await Api.GetAsync<List<MessageTemplateView>>(
@@ -92,6 +105,7 @@ public partial class Messages : IAsyncDisposable
     if (_shown == Id)
       return;
     _shown = Id;
+    _trip = false;
     _thread = null;
     _messages = [];
     _context = null;
@@ -544,9 +558,6 @@ public partial class Messages : IAsyncDisposable
   private const string Accepted =
     ".pdf,image/jpeg,image/png,image/webp,audio/*,video/mp4";
 
-  private string Filter(bool unread) =>
-    unread == _unreadOnly ? "btn btn--small btn--primary" : "btn btn--small";
-
   private string Conversation(ConversationSummary item) =>
     "messages__conversation"
     + (item.Id == Id ? " is-selected" : "")
@@ -554,9 +565,6 @@ public partial class Messages : IAsyncDisposable
 
   private static string Unread(ConversationSummary item) =>
     $"{item.Unread} unread";
-
-  private static string Window(ConversationSummary item) =>
-    item.WindowOpen ? "messages__window is-open" : "messages__window";
 
   private bool CanSend => !_busy && _draft.Trim().Length > 0;
 
@@ -569,6 +577,72 @@ public partial class Messages : IAsyncDisposable
   private static string Who(ConversationSummary conversation) =>
     conversation.DriverName ?? conversation.Participant;
 
+  // Another dispatcher is answering; one's own claim is not news.
+  private bool Colleague(ConversationSummary conversation) =>
+    conversation.ClaimedBy is { } by && by != _me;
+
+  private static string FirstName(ConversationSummary conversation) =>
+    conversation.DriverName?.Split(' ')[0] ?? conversation.Participant;
+
+  private static string Initials(ConversationSummary conversation) =>
+    conversation.DriverName is { } name
+      ? string.Concat(
+        name.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+          .Take(2)
+          .Select(x => char.ToUpperInvariant(x[0]))
+      )
+      : "#";
+
+  private static string Titled(string status) =>
+    status.Length == 0
+      ? status
+      : char.ToUpperInvariant(status[0]) + status[1..].Replace('_', ' ');
+
+  // How long the driver's 24-hour window stays open, from their last
+  // message; the server decides again when the reply is sent.
+  private static string FreeFor(ConversationSummary conversation)
+  {
+    if (conversation.LastInboundAt is not { } last)
+      return "Free replies while the driver's window is open";
+    var left = last.AddHours(24) - DateTime.UtcNow;
+    return left.TotalHours >= 1
+      ? $"Free replies for {(int)left.TotalHours} h more"
+      : "Free replies for less than an hour more";
+  }
+
+  // Drive and shift left, for the conversation's header where the trip
+  // does not fit beside it.
+  private static string? Glance(ContextHours? hours) =>
+    hours is { Known: true } known
+      ? $"Drive {Clock(known.DriveMs)} · Shift {Clock(known.ShiftMs)} left"
+      : null;
+
+  internal static string Clock(long? milliseconds)
+  {
+    if (milliseconds is null)
+      return "—";
+    var minutes = Math.Max(0, milliseconds.Value) / 60000;
+    return $"{minutes / 60}:{minutes % 60:00}";
+  }
+
+  // The messages with the day each one opens, when it is the first of its
+  // day in the thread.
+  private IEnumerable<(MessageView, string?)> Days()
+  {
+    DateTime? last = null;
+    foreach (var message in _messages)
+    {
+      var day = message.SentAt.ToLocalTime().Date;
+      yield return (message, day == last ? null : DayLabel(day));
+      last = day;
+    }
+  }
+
+  private static string DayLabel(DateTime day) =>
+    day == DateTime.Now.Date ? "Today"
+    : day == DateTime.Now.Date.AddDays(-1) ? "Yesterday"
+    : day.ToString("MMM d", CultureInfo.InvariantCulture);
+
   internal static string When(DateTime at) =>
     at.ToLocalTime().Date == DateTime.Now.Date
       ? at.ToLocalTime().ToString("HH:mm")
@@ -579,13 +653,13 @@ public partial class Messages : IAsyncDisposable
     {
       "queued" => "Waiting to send",
       "sending" => "Sending",
-      "accepted" => "Sent to WhatsApp",
+      "accepted" => "Accepted",
       "sent" => "Sent",
       "delivered" => "Delivered",
       "read" => "Read",
       "failed" => "Not delivered",
       "rejected" => "Refused",
-      "unknown" => "Not confirmed",
+      "unknown" => "No answer from WhatsApp",
       "withdrawn" => "Not sent",
       _ => status,
     };

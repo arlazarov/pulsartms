@@ -7,7 +7,7 @@
         </button>
         break;
     case "granted":
-        <button type="button" class="btn btn--small" aria-pressed="@_enabled"
+        <button type="button" class="btn btn--small" aria-pressed="@(_enabled ? "true" : "false")"
                 @onclick="ToggleAsync">
             @(_enabled ? "Notifications on" : "Notifications off")
         </button>

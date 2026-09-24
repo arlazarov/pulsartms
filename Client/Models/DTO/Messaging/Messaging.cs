@@ -101,12 +101,26 @@ public sealed record UnreadCount(int Conversations, bool More, long Newest);
 // Who the conversation is with and what they are driving. State:
 // unmatched, no-truck, one-truck or several-trucks; loads are offered only
 // for one truck.
+// Hours: the driver's hours of service from the fleet's shared snapshot,
+// null when no driver is linked.
 public sealed record ConversationContext(
   Guid? DriverId,
   string? DriverName,
   string State,
   IReadOnlyList<ContextTruck> Trucks,
-  IReadOnlyList<ContextLoad> Loads
+  IReadOnlyList<ContextLoad> Loads,
+  ContextHours? Hours = null
+);
+
+// Known is false when the provider holds no clocks for this driver.
+public sealed record ContextHours(
+  bool Known,
+  long? BreakMs,
+  long? DriveMs,
+  long? ShiftMs,
+  long? CycleMs,
+  DateTime? UpdatedAt,
+  string? DutyStatus
 );
 
 // Role: driver or co-driver on a live leg, or assigned in the fleet.
@@ -118,7 +132,13 @@ public sealed record ContextLoad(
   string CustomerName,
   string? Status,
   IReadOnlyList<string> Places
-);
+)
+{
+  public string OrderNumber { get; init; } = "";
+  public IReadOnlyList<ContextStop> Stops { get; init; } = [];
+}
+
+public sealed record ContextStop(string Name, string City);
 
 public sealed record DriverRequest(Guid? DriverId, long Revision);
 

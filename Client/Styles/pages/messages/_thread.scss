@@ -1,0 +1,160 @@
+@use '../../base' as ui;
+
+// The thread: its header, the messages and their states.
+.messages {
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-height: 3.25rem;
+    padding: ui.pg(sm) ui.pg(md);
+    border-bottom: 1px solid ui.theme(border-subtle);
+  }
+  &__title {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+  }
+  &__title h2 {
+    margin: 0;
+    font-size: ui.fs(lead);
+  }
+  &__title span {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  &__glance {
+    display: none;
+    @include ui.below(messages-trip-beside) {
+      display: inline;
+    }
+  }
+  &__back {
+    display: none;
+    @include ui.below(md) {
+      display: inline-flex;
+    }
+  }
+  &__trip {
+    display: none;
+    @include ui.below(messages-trip-beside) {
+      display: inline-flex;
+    }
+  }
+  &__banner {
+    margin: ui.pg(sm) ui.pg(md) 0;
+    padding: ui.pg(sm) ui.pg(md);
+    border-radius: ui.radius(sm);
+    font-size: ui.fs(label);
+  }
+  &__banner.is-claim {
+    background: ui.theme(selected);
+    color: ui.theme(link);
+  }
+  // Reversed so the thread opens at its newest message without a script;
+  // the one child keeps the messages in reading order.
+  &__scroll {
+    display: flex;
+    flex: 1;
+    flex-direction: column-reverse;
+    min-height: 0;
+    overflow-y: auto;
+    background: ui.theme(surface-soft);
+  }
+  &__items {
+    display: flex;
+    flex-direction: column;
+    gap: ui.pg(sm);
+    margin: 0;
+    padding: ui.pg(md);
+    list-style: none;
+  }
+  &__earlier,
+  &__day {
+    align-self: center;
+  }
+  &__day {
+    margin: ui.pg(xs) 0;
+    padding: ui.pg(micro) ui.pg(sm);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface);
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  &__item {
+    display: grid;
+    gap: ui.pg(micro);
+    max-width: min(34rem, 82%);
+    @include ui.below(md) {
+      max-width: 92%;
+    }
+  }
+  &__item.is-in {
+    align-self: flex-start;
+  }
+  &__item.is-out {
+    align-self: flex-end;
+    justify-items: end;
+  }
+  &__bubble {
+    margin: 0;
+    padding: ui.pg(sm) ui.pg(md);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(md);
+    background: ui.theme(surface);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+  &__item.is-out &__bubble,
+  &__item.is-out &__file {
+    border-color: ui.theme(selection-border);
+    background: ui.theme(selected);
+  }
+  &__item.is-failed &__bubble {
+    border-color: ui.theme(danger-border);
+  }
+  &__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(xs);
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  &__author {
+    color: ui.theme(text-secondary);
+    font-weight: 600;
+  }
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(micro);
+  }
+  &__status svg {
+    width: 1rem;
+    height: 0.75rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+  }
+  &__status.is-read {
+    color: ui.theme(link);
+  }
+  &__status.is-failed,
+  &__status.is-rejected {
+    color: ui.theme(danger-text);
+    font-weight: 600;
+  }
+  &__status.is-unknown,
+  &__status.is-withdrawn {
+    color: ui.theme(warning-text);
+    font-weight: 600;
+  }
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(xs);
+  }
+}

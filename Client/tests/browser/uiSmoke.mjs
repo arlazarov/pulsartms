@@ -1808,7 +1808,7 @@ try {
             );
             assert.match(
               await page.locator('.messages__context').innerText(),
-              /Truck 11006[\s\S]*Windsor → London → Toronto/,
+              /Truck\s+11006[\s\S]*Windsor → London → Toronto/,
               name + " shows the driver's truck and load beside the thread",
             );
             assert.equal(

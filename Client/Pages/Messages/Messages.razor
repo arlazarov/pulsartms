@@ -5,9 +5,8 @@
 
 <PageTitle>Messages · PulsR</PageTitle>
 
-<section class="messages-page @(_thread is null ? "is-list" : "is-thread")">
-    <PageHeader Title="Messages"
-                Description="Conversations with drivers over WhatsApp.">
+<section class="messages-page @(_thread is null ? "is-list" : "is-thread") @(_trip ? "shows-trip" : "")">
+    <PageHeader Title="Messages">
         <NotificationChoice />
     </PageHeader>
     @if (_error is not null)
@@ -22,25 +21,30 @@
     }
     <div class="messages">
         <aside class="messages__list" aria-label="Conversations">
-            <div class="messages__filters" role="group" aria-label="Show">
-                <button type="button" class="@Filter(false)"
-                        aria-pressed="@(!_unreadOnly)"
-                        @onclick="() => FilterAsync(false)">
-                    All
-                </button>
-                <button type="button" class="@Filter(true)"
-                        aria-pressed="@_unreadOnly"
-                        @onclick="() => FilterAsync(true)">
-                    Unread
-                </button>
+            <div class="messages__list-head">
+                <form class="messages__search" role="search"
+                      @onsubmit="SearchAsync">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="M20 20l-4-4" />
+                    </svg>
+                    <input type="search" aria-label="Search conversations"
+                           placeholder="Driver name or number"
+                           maxlength="100" @bind="_search" />
+                </form>
+                <div class="messages__filters" role="group" aria-label="Show">
+                    <button type="button" class="messages__chip"
+                            aria-pressed="@(_unreadOnly ? "false" : "true")"
+                            @onclick="() => FilterAsync(false)">
+                        All
+                    </button>
+                    <button type="button" class="messages__chip"
+                            aria-pressed="@(_unreadOnly ? "true" : "false")"
+                            @onclick="() => FilterAsync(true)">
+                        Unread
+                    </button>
+                </div>
             </div>
-            <form class="messages__search" role="search"
-                  @onsubmit="SearchAsync">
-                <input type="search" aria-label="Search conversations"
-                       placeholder="Driver name or number"
-                       maxlength="100" @bind="_search" />
-                <button type="submit" class="btn btn--small">Search</button>
-            </form>
             @if (_conversations is null)
             {
                 <p role="status"><LoadingIndicator /></p>
@@ -57,14 +61,17 @@
             }
             else
             {
-                <ul>
+                <ul class="messages__conversations">
                     @foreach (var item in _conversations)
                     {
                         <li @key="item.Id">
                             <a href="@($"/messages/{item.Id}")"
                                class="@Conversation(item)"
                                aria-current="@(item.Id == Id ? "page" : null)">
-                                <span class="messages__who">@Who(item)</span>
+                                <span class="messages__avatar" aria-hidden="true">@Initials(item)</span>
+                                <span class="messages__who">
+                                    <strong>@Who(item)</strong>
+                                </span>
                                 <time datetime="@Stamp(item.LastMessageAt)">
                                     @When(item.LastMessageAt)
                                 </time>
@@ -78,10 +85,19 @@
                                         @item.Unread
                                     </span>
                                 }
-                                @if (item.ClaimedBy is not null)
+                                @if (Colleague(item) || !item.WindowOpen)
                                 {
-                                    <span class="messages__claim">
-                                        @item.ClaimedBy is replying
+                                    <span class="messages__tags">
+                                        @if (Colleague(item))
+                                        {
+                                            <span class="messages__tag is-claim">
+                                                @item.ClaimedBy is replying
+                                            </span>
+                                        }
+                                        @if (!item.WindowOpen)
+                                        {
+                                            <span class="messages__tag">Template only</span>
+                                        }
                                     </span>
                                 }
                             </a>
@@ -90,7 +106,7 @@
                 </ul>
                 @if (_next is not null)
                 {
-                    <button type="button" class="btn btn--small"
+                    <button type="button" class="btn btn--small btn--text messages__more"
                             disabled="@_loadingMore"
                             @onclick="LoadMoreAsync">
                         Show more conversations
@@ -108,133 +124,220 @@
                 var summary = _thread.Summary;
                 <header class="messages__head">
                     <a href="/messages"
-                       class="btn btn--small btn--text messages__back">Back</a>
-                    <h2>@Who(summary)</h2>
-                    <span class="messages__number">@summary.Participant</span>
-                    <span class="@Window(summary)">
-                        @(summary.WindowOpen
-                            ? "Can reply"
-                            : "Template only: no message from the driver in "
-                              + "24 hours")
+                       class="btn btn--small btn--text messages__back">
+                        ‹ Back
+                    </a>
+                    <span class="messages__avatar" aria-hidden="true">@Initials(summary)</span>
+                    <span class="messages__title">
+                        <h2>@Who(summary)</h2>
+                        <span>
+                            @if (_context?.Trucks.Count == 1)
+                            {
+                                <text>Truck @_context.Trucks[0].Number</text>
+                                @if (_context.Loads.FirstOrDefault() is { } load)
+                                {
+                                    <text> · </text><LoadNumber Value="load.LoadNumber" />
+                                    @if (load.Status is { } status)
+                                    {
+                                        <text> · @Titled(status)</text>
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                @summary.Participant
+                            }
+                        </span>
+                        @if (Glance(_context?.Hours) is { } glance)
+                        {
+                            <span class="messages__glance">@glance</span>
+                        }
                     </span>
-                    @if (summary.ClaimedBy is { } by)
-                    {
-                        <span class="messages__claim">@by is replying</span>
-                    }
+                    <button type="button" class="btn btn--small messages__trip"
+                            aria-expanded="@(_trip ? "true" : "false")" aria-controls="messages-trip"
+                            @onclick="() => _trip = !_trip">
+                        Trip
+                    </button>
                 </header>
-                <ConversationContextPanel @key="summary.Id"
-                                          ConversationId="summary.Id"
-                                          Revision="summary.Revision"
-                                          Context="_context"
-                                          Failed="_contextFailed"
-                                          OnChanged="ContextChangedAsync" />
-                <ol class="messages__items" aria-live="polite">
-                    @if (_thread.Older)
-                    {
-                        <li>
-                            <button type="button"
-                                    class="btn btn--small btn--text"
-                                    @onclick="OlderAsync">
-                                Show earlier messages
-                            </button>
-                        </li>
-                    }
-                    @foreach (var message in _messages)
-                    {
-                        <MessageItem @key="message.Id" Message="message"
-                                     Busy="_busy" OnOpen="OpenAsync"
-                                     OnRetry="RetryAsync" Loads="Suggestions"
-                                     OnFiled="() => FiledAsync(summary.Id)" />
-                    }
-                </ol>
+                @if (summary.ClaimedBy is { } by && by != _me)
+                {
+                    <p class="messages__banner is-claim">
+                        <strong>@by</strong>&nbsp;started a reply. Yours still
+                        goes if you send; read theirs first.
+                    </p>
+                }
+                <div class="messages__scroll">
+                    <ol class="messages__items" aria-live="polite">
+                        @if (_thread.Older)
+                        {
+                            <li class="messages__earlier">
+                                <button type="button"
+                                        class="btn btn--small btn--text"
+                                        @onclick="OlderAsync">
+                                    Show earlier messages
+                                </button>
+                            </li>
+                        }
+                        @foreach (var (message, day) in Days())
+                        {
+                            @if (day is not null)
+                            {
+                                <li class="messages__day" @key="day">@day</li>
+                            }
+                            <MessageItem @key="message.Id" Message="message"
+                                         Busy="_busy" OnOpen="OpenAsync"
+                                         OnRetry="RetryAsync" Loads="Suggestions"
+                                         Me="@_me"
+                                         OnFiled="() => FiledAsync(summary.Id)" />
+                        }
+                    </ol>
+                </div>
                 @if (summary.WindowOpen)
                 {
                     <form class="messages__composer" @onsubmit="SendAsync"
                           @onsubmit:preventDefault>
-                        <label for="messages-text" class="visually-hidden">
-                            Reply
-                        </label>
-                        <textarea id="messages-text" rows="2" maxlength="4096"
-                                  @bind="_draft" @bind:event="oninput"
-                                  @onfocus="ClaimAsync" disabled="@_busy"
-                                  placeholder="Write a reply"></textarea>
-                        <label class="btn btn--small messages__attach">
-                            Attach
-                            <InputFile OnChange="AttachAsync" disabled="@_busy"
-                                       accept="@Accepted"
-                                       aria-label="Attach a file" />
-                        </label>
-                        <button type="submit" class="btn btn--primary"
-                                disabled="@(!CanSend)">
-                            Send
-                        </button>
+                        @if (_refusal is not null)
+                        {
+                            <div class="messages__guard" role="alert">
+                                <span>@_refusal</span>
+                                @if (_stale)
+                                {
+                                    <span class="messages__actions">
+                                        <button type="button"
+                                                class="btn btn--small btn--primary"
+                                                disabled="@_busy"
+                                                @onclick="SendAnywayAsync">
+                                            Send anyway
+                                        </button>
+                                    </span>
+                                }
+                            </div>
+                        }
+                        <p class="messages__window">
+                            <svg viewBox="0 0 16 16" aria-hidden="true">
+                                <circle cx="8" cy="8" r="6" />
+                                <path d="M8 4.5V8l2 1.5" />
+                            </svg>
+                            @FreeFor(summary)
+                        </p>
+                        <div class="messages__compose-row">
+                            <label class="messages__attach" title="Attach a file">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M20 12l-8 8a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5l-9 9a2 2 0 0 1-3-3l8-8" />
+                                </svg>
+                                <InputFile OnChange="AttachAsync" disabled="@_busy"
+                                           accept="@Accepted"
+                                           aria-label="Attach a file" />
+                            </label>
+                            <label for="messages-text" class="visually-hidden">
+                                Message to @Who(summary)
+                            </label>
+                            <textarea id="messages-text" rows="1" maxlength="4096"
+                                      @bind="_draft" @bind:event="oninput"
+                                      @onfocus="ClaimAsync" disabled="@_busy"
+                                      placeholder="@($"Message {FirstName(summary)}")"></textarea>
+                            <button type="submit" class="btn btn--primary"
+                                    disabled="@(!CanSend)">
+                                Send
+                            </button>
+                        </div>
                     </form>
                 }
                 else
                 {
-                    <div class="messages__composer messages__templates">
-                        @if (_templates.Count == 0)
-                        {
-                            <p class="messages__note">
-                                No template is approved yet, so nothing can be
-                                sent until the driver writes.
+                    <div class="messages__composer">
+                        <div class="messages__template-box">
+                            <p>
+                                <strong>Outside the 24-hour window.</strong>
+                                @FirstName(summary) last wrote more than a day
+                                ago, so WhatsApp only delivers an approved
+                                template. The reply box opens as soon as the
+                                driver answers.
                             </p>
-                        }
-                        else
-                        {
-                            <label for="messages-template">
-                                Template
-                                <select id="messages-template"
-                                        @bind="_template" disabled="@_busy">
-                                    <option value="">Choose a template</option>
-                                    @foreach (var template in _templates)
-                                    {
-                                        <option value="@template.Name">
-                                            @template.Name
-                                        </option>
-                                    }
-                                </select>
-                            </label>
-                            @if (Chosen is { } chosen)
+                            @if (_templates.Count == 0)
                             {
-                                <p class="messages__note">@chosen.Text</p>
-                                @for (var i = 0; i < chosen.Parameters; i++)
-                                {
-                                    var index = i;
-                                    <label for="@ParameterId(index)">
-                                        @Placeholder(index)
-                                        <input id="@ParameterId(index)"
-                                               maxlength="200"
-                                               value="@Parameter(index)"
-                                               @onchange="e => SetParameter(
-                                                   index,
-                                                   e.Value?.ToString())" />
-                                    </label>
-                                }
-                                <button type="button" class="btn btn--primary"
-                                        disabled="@(_busy || !TemplateReady)"
-                                        @onclick="SendTemplateAsync">
-                                    Send template
-                                </button>
+                                <p class="messages__note">
+                                    No template is approved yet, so nothing can
+                                    be sent until the driver writes.
+                                </p>
                             }
-                        }
+                            else
+                            {
+                                <label for="messages-template">
+                                    Template
+                                    <select id="messages-template"
+                                            @bind="_template" disabled="@_busy">
+                                        <option value="">Choose a template</option>
+                                        @foreach (var template in _templates)
+                                        {
+                                            <option value="@template.Name">
+                                                @template.Name
+                                            </option>
+                                        }
+                                    </select>
+                                </label>
+                                @if (Chosen is { } chosen)
+                                {
+                                    <p class="messages__note">@chosen.Text</p>
+                                    @for (var i = 0; i < chosen.Parameters; i++)
+                                    {
+                                        var index = i;
+                                        <label for="@ParameterId(index)">
+                                            @Placeholder(index)
+                                            <input id="@ParameterId(index)"
+                                                   maxlength="200"
+                                                   value="@Parameter(index)"
+                                                   @onchange="e => SetParameter(
+                                                       index,
+                                                       e.Value?.ToString())" />
+                                        </label>
+                                    }
+                                    <span class="messages__actions">
+                                        <button type="button" class="btn btn--small btn--primary"
+                                                disabled="@(_busy || !TemplateReady)"
+                                                @onclick="SendTemplateAsync">
+                                            Send template
+                                        </button>
+                                    </span>
+                                }
+                            }
+                            @if (_refusal is not null)
+                            {
+                                <p class="settings-page__error" role="alert">
+                                    @_refusal
+                                    @if (_stale)
+                                    {
+                                        <button type="button" class="btn btn--small"
+                                                disabled="@_busy"
+                                                @onclick="SendAnywayAsync">
+                                            Send anyway
+                                        </button>
+                                    }
+                                </p>
+                            }
+                        </div>
                     </div>
-                }
-                @if (_refusal is not null)
-                {
-                    <p class="settings-page__error" role="alert">
-                        @_refusal
-                        @if (_stale)
-                        {
-                            <button type="button" class="btn btn--small"
-                                    disabled="@_busy"
-                                    @onclick="SendAnywayAsync">
-                                Send anyway
-                            </button>
-                        }
-                    </p>
                 }
             }
         </section>
+        @if (_thread is not null)
+        {
+            <ConversationContextPanel @key="_thread.Summary.Id"
+                                      ConversationId="_thread.Summary.Id"
+                                      Participant="@_thread.Summary.Participant"
+                                      Revision="_thread.Summary.Revision"
+                                      Context="_context"
+                                      Failed="_contextFailed"
+                                      OnChanged="ContextChangedAsync"
+                                      OnClose="() => _trip = false" />
+            <button type="button" class="messages__backdrop" tabindex="-1"
+                    aria-label="Close the trip" @onclick="() => _trip = false"></button>
+        }
+        else
+        {
+            <aside class="messages__context is-empty" aria-label="Driver and trip">
+                <p class="messages__empty">The driver's hours and load show here.</p>
+            </aside>
+        }
     </div>
 </section>

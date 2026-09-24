@@ -1,0 +1,117 @@
+@use '../../base' as ui;
+
+// The driver and trip beside the thread.
+.messages {
+  &__context {
+    overflow-y: auto;
+    @include ui.below(messages-trip-beside) {
+      display: none;
+    }
+  }
+  &__context.is-empty {
+    justify-content: center;
+    text-align: center;
+  }
+  &__close {
+    display: none;
+  }
+  &__ctx {
+    display: grid;
+    gap: ui.pg(sm);
+    margin: 0;
+    padding: ui.pg(md);
+    border-bottom: 1px solid ui.theme(border-subtle);
+  }
+  &__ctx h3 {
+    margin: 0;
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+  // The four clocks share the pane's width, through the properties the
+  // hours component offers for placing it.
+  &__ctx {
+    --hos-gap: #{ui.pg(sm)};
+    --hos-clock-min-width: calc((100% - 3 * #{ui.pg(sm)}) / 4);
+  }
+  &__ctx .driver-hours-panel {
+    margin-left: 0;
+    max-width: none;
+  }
+  &__kv {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(md);
+    margin: 0;
+    font-size: ui.fs(label);
+  }
+  &__kv dt {
+    color: ui.theme(text-muted);
+  }
+  &__kv dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+  &__load {
+    display: grid;
+    gap: ui.pg(xs);
+    padding: ui.pg(sm);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+  }
+  &__load-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+  }
+  &__pill {
+    padding: 0 ui.pg(xs);
+    border-radius: ui.radius(pill);
+    background: ui.theme(selected);
+    color: ui.theme(transit);
+    font-size: ui.fs(caption);
+    font-weight: 600;
+  }
+  &__stops {
+    display: grid;
+    gap: ui.pg(xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  &__stops li {
+    display: grid;
+    grid-template-columns: 1.4rem minmax(0, 1fr);
+    gap: ui.pg(xs);
+    font-size: ui.fs(label);
+  }
+  &__stops small,
+  &__next small {
+    display: block;
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  &__stop-dot {
+    display: grid;
+    place-items: center;
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 50%;
+    background: ui.theme(transit);
+    color: ui.theme(on-accent);
+    font-size: ui.fs(caption);
+    font-weight: 700;
+  }
+  &__next {
+    margin: 0;
+    font-size: ui.fs(label);
+  }
+  &__backdrop {
+    display: none;
+  }
+}

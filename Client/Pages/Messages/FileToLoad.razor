@@ -1,15 +1,39 @@
 @using Client.Models.DTO.Messaging
 
-@if (!_open)
+@if (!_open && Filed)
 {
-    <button type="button" class="btn btn--small btn--text"
-            @onclick="() => _open = true">
-        File to load
-    </button>
+    <span class="messages__actions">
+        <button type="button" class="btn btn--small btn--text"
+                @onclick="() => _open = true">
+            File to load
+        </button>
+    </span>
+}
+else if (!_open)
+{
+    <div class="messages__suggest">
+        <span>
+            @if (Loads.FirstOrDefault() is { } first)
+            {
+                <text>File this to </text><strong><LoadNumber Value="first.LoadNumber" /></strong><text>, the driver's current load, or another. </text>
+            }
+            else
+            {
+                <text>File this to a load. </text>
+            }
+            Nothing is filed until you confirm.
+        </span>
+        <span class="messages__actions">
+            <button type="button" class="btn btn--small btn--primary"
+                    @onclick="() => _open = true">
+                File to load
+            </button>
+        </span>
+    </div>
 }
 else
 {
-    <form class="messages__filing" @onsubmit="FileAsync"
+    <form class="messages__suggest messages__filing" @onsubmit="FileAsync"
           @onsubmit:preventDefault>
         <label for="@Id("load")">
             Load

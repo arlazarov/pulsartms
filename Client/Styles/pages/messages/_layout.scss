@@ -1,0 +1,107 @@
+@use '../../base' as ui;
+
+// Messages fills the window below the page header; the conversations, the
+// thread and the driver's trip each scroll on their own, as the Driver
+// Messages prototype lays them out.
+.main-layout:has(.messages-page) {
+  height: 100dvh;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+
+  .main-layout__content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  @include ui.above(md) {
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+
+.messages-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: ui.pg(md);
+  min-height: 0;
+}
+
+// Three panes: conversations, the thread, the driver and trip. Where the
+// trip does not fit beside the thread it opens over it (Trip); on a phone
+// one pane shows at a time.
+.messages {
+  flex: 1;
+  display: grid;
+  grid-template-columns:
+    minmax(16rem, 20rem) minmax(0, 1fr)
+    minmax(16rem, 18.75rem);
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(md);
+  background: ui.theme(surface);
+  @include ui.below(messages-trip-beside) {
+    grid-template-columns: minmax(15.5rem, 18.75rem) minmax(0, 1fr);
+  }
+  @include ui.below(md) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  &__list,
+  &__thread,
+  &__context {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+  &__thread,
+  &__context {
+    border-left: 1px solid ui.theme(border-subtle);
+    @include ui.below(md) {
+      border-left: 0;
+    }
+  }
+}
+
+// Where the trip does not fit beside the thread, Trip opens it over the
+// conversation from the right, and a press outside closes it.
+.messages-page.shows-trip {
+  @include ui.below(messages-trip-beside) {
+    .messages__context {
+      position: fixed;
+      inset: 0 0 0 auto;
+      z-index: ui.layer(dialog);
+      display: flex;
+      width: min(22rem, 92vw);
+      border-left: 1px solid ui.theme(border-subtle);
+      background: ui.theme(surface);
+      box-shadow: ui.shadow(modal);
+    }
+    .messages__close {
+      display: inline-flex;
+      align-self: flex-end;
+      margin: ui.pg(sm) ui.pg(sm) 0;
+    }
+    .messages__backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: calc(#{ui.layer(dialog)} - 1);
+      display: block;
+      border: 0;
+      background: ui.theme(overlay, 0.35);
+    }
+  }
+}
+
+// On a phone only one pane shows.
+.messages-page {
+  @include ui.below(md) {
+    &.is-thread .messages__list,
+    &.is-list .messages__thread {
+      display: none;
+    }
+  }
+}

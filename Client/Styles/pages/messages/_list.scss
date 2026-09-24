@@ -1,0 +1,176 @@
+@use '../../base' as ui;
+
+// The conversations: search, filters and one row per driver.
+.messages {
+  &__list-head {
+    display: grid;
+    gap: ui.pg(sm);
+    padding: ui.pg(md);
+    border-bottom: 1px solid ui.theme(border-subtle);
+  }
+  &__search {
+    position: relative;
+    display: flex;
+    min-width: 0;
+  }
+  &__search svg {
+    position: absolute;
+    left: ui.pg(sm);
+    top: 50%;
+    width: 1rem;
+    height: 1rem;
+    transform: translateY(-50%);
+    fill: none;
+    stroke: ui.theme(text-muted);
+    stroke-width: 1.8;
+    pointer-events: none;
+  }
+  &__search input {
+    width: 100%;
+    @include ui.input-control;
+    & {
+      padding-left: calc(#{ui.pg(sm)} + 1.5rem);
+    }
+  }
+  &__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(xs);
+  }
+  &__chip {
+    padding: ui.pg(xs) ui.pg(md);
+    border: 1px solid ui.theme(border);
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface);
+    color: ui.theme(text-secondary);
+    font: inherit;
+    font-size: ui.fs(small);
+    cursor: pointer;
+    @include ui.below(md) {
+      min-height: ui.size(control-touch);
+      padding-inline: ui.pg(md);
+    }
+  }
+  &__chip[aria-pressed='true'] {
+    border-color: ui.theme(accent);
+    background: ui.theme(accent);
+    color: ui.theme(on-accent);
+  }
+  &__conversations {
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+  }
+  &__conversation {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: ui.pg(xs) ui.pg(sm);
+    align-items: center;
+    padding: ui.pg(md);
+    border-bottom: 1px solid ui.theme(border-subtle);
+    border-left: 3px solid transparent;
+    color: ui.theme(text);
+    text-decoration: none;
+  }
+  &__conversation:hover {
+    background: ui.theme(surface-soft);
+  }
+  &__conversation.is-selected {
+    border-left-color: ui.theme(accent);
+    background: ui.theme(selected);
+  }
+  &__conversation > .messages__avatar {
+    grid-row: span 2;
+    align-self: start;
+  }
+  &__avatar {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    flex: none;
+    border-radius: 50%;
+    background: ui.theme(surface-muted);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    font-weight: 600;
+  }
+  &__who {
+    display: flex;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    min-width: 0;
+  }
+  &__who strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &__who span,
+  &__conversation time {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  &__preview {
+    grid-column: 2;
+    overflow: hidden;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(label);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &__conversation.is-unread &__preview {
+    color: ui.theme(text);
+    font-weight: 600;
+  }
+  &__unread {
+    grid-column: 3;
+    justify-self: end;
+    min-width: 1.3rem;
+    padding: 0 ui.pg(xs);
+    border-radius: ui.radius(pill);
+    background: ui.theme(accent);
+    color: ui.theme(on-accent);
+    font-size: ui.fs(small);
+    font-weight: 700;
+    text-align: center;
+  }
+  &__tags {
+    grid-column: 2 / 4;
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(xs);
+  }
+  &__tag {
+    padding: 0 ui.pg(sm);
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface-muted);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+  }
+  &__tag.is-claim {
+    background: ui.theme(selected);
+    color: ui.theme(link);
+  }
+  &__more {
+    margin: ui.pg(sm);
+  }
+  &__empty,
+  &__note,
+  &__file-sub,
+  &__window {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  &__empty {
+    padding: ui.pg(lg);
+  }
+  &__note {
+    margin: 0;
+  }
+}

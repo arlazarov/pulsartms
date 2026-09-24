@@ -1,49 +1,80 @@
 @using Client.Models.DTO.Messaging
 
-<li class="messages__item @Side">
+<li class="messages__item @Side @(Failed ? "is-failed" : "")">
     @if (Message.Kind == "unsupported")
     {
-        <p class="messages__note">
+        <p class="messages__bubble messages__note">
             A @Message.Body message PulsR cannot show yet.
         </p>
     }
-    else if (Message.Body.Length > 0)
+    else if (Message.Body.Length > 0 && (Message.Attachments.Count == 0 || Message.Direction == "out"))
     {
-        <p>@Message.Body</p>
+        <p class="messages__bubble">@Message.Body</p>
     }
     @foreach (var file in Message.Attachments)
     {
-        <span class="messages__file">
-            @if (file.Available)
-            {
-                <button type="button" class="btn btn--small"
-                        @onclick="() => OnOpen.InvokeAsync(file)">
-                    Open @file.Name
-                </button>
+        <div class="messages__file">
+            <button type="button" class="messages__thumb"
+                    disabled="@(!file.Available)"
+                    aria-label="@($"Open {file.Name}")"
+                    @onclick="() => OnOpen.InvokeAsync(file)">
+                <svg viewBox="0 0 76 96" aria-hidden="true">
+                    <rect class="messages__thumb-page" x="0.5" y="0.5" width="75" height="95" rx="3" />
+                    @if (IsImage(file))
+                    {
+                        <rect class="messages__thumb-photo" x="10" y="16" width="56" height="42" rx="2" />
+                        <path class="messages__thumb-mark" d="M14 54l14-16 10 11 7-7 17 12z" />
+                    }
+                    else
+                    {
+                        @for (var line = 0; line < 8; line++)
+                        {
+                            <rect class="messages__thumb-line" x="10" y="@(16 + line * 8)"
+                                  width="@(52 - line % 3 * 8)" height="2.5" rx="1.2" />
+                        }
+                    }
+                    <text x="10" y="86">@Label(file)</text>
+                </svg>
+            </button>
+            <div class="messages__file-body">
+                <span class="messages__file-name">@file.Name</span>
+                <span class="messages__file-sub">
+                    @Kind(file)@(file.Available ? " · stored in PulsR" : "")
+                </span>
+                @if (Message.Direction == "in" && Message.Body.Length > 0)
+                {
+                    <span class="messages__caption">@Message.Body</span>
+                }
+                @if (!file.Available)
+                {
+                    <span class="@(file.FailureReason is null ? "messages__file-sub" : "messages__refused")">
+                        @Pending(file)
+                    </span>
+                }
                 @foreach (var filed in file.Filed)
                 {
                     <a class="messages__filed"
                        href="@($"/dispatch/{filed.DispatchId}")">
+                        <svg viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M3 8.5l3 3 7-7" />
+                        </svg>
                         Filed to <LoadNumber Value="filed.LoadNumber" />
-                        · @Kind(filed.Kind)
+                        · @Document(filed.Kind)
                     </a>
                 }
-                @if (Fileable(file))
+                @if (file.Available && Fileable(file))
                 {
                     <FileToLoad @key="file.Id" Attachment="file"
-                                Loads="Loads" OnFiled="OnFiled" />
+                                Loads="Loads" OnFiled="OnFiled"
+                                Filed="file.Filed.Count > 0" />
                 }
-            }
-            else
-            {
-                <span>@file.Name: @Pending(file)</span>
-            }
-        </span>
+            </div>
+        </div>
     }
     <span class="messages__meta">
-        @if (Message.Author is { } author)
+        @if (Message.Direction == "out" && Message.Author is { } author)
         {
-            <span>@author</span>
+            <span class="messages__author">@(author == Me ? "You" : author)</span>
         }
         <time datetime="@Message.SentAt.ToString("O")">
             @Messages.When(Message.SentAt)
@@ -51,17 +82,43 @@
         @if (Message.Direction == "out")
         {
             <span class="messages__status is-@Message.Status">
-                @Messages.Status(Message.Status)
+                @if (Message.Status is "delivered" or "read")
+                {
+                    <svg viewBox="0 0 16 12" aria-hidden="true">
+                        <path d="M1 6.5l3 3 7-7M6 9.5l1 1 7-8" />
+                    </svg>
+                }
+                else if (Message.Status is "accepted" or "sent")
+                {
+                    <svg viewBox="0 0 16 12" aria-hidden="true">
+                        <path d="M2 6.5l3 3 7-7" />
+                    </svg>
+                }
+                else if (Attention)
+                {
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M8 2l6.5 12h-13z M8 6.5v3.5 M8 12v.5" />
+                    </svg>
+                }
+                @Messages.Status(Message.Status)@(Message.ErrorCode is { } code ? $" · code {code}" : "")
             </span>
-            @if (Retryable)
-            {
-                <button type="button" class="btn btn--small btn--text"
-                        disabled="@Busy"
-                        @onclick="() => OnRetry.InvokeAsync(Message)">
-                    Send again
-                </button>
-            }
         }
     </span>
+    @if (Message.Direction == "out" && Retryable)
+    {
+        <span class="messages__actions">
+            @if (Message.Status == "unknown")
+            {
+                <span class="messages__note">
+                    It may have arrived. Ask the driver before sending again.
+                </span>
+            }
+            <button type="button"
+                    class="btn btn--small @(Message.Status == "unknown" ? "" : "btn--danger")"
+                    disabled="@Busy"
+                    @onclick="() => OnRetry.InvokeAsync(Message)">
+                @(Message.Status == "unknown" ? "Send again anyway" : "Send again")
+            </button>
+        </span>
+    }
 </li>
-

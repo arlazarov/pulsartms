@@ -42,7 +42,10 @@ $screen-places: (
   stop-editor-fields: 22rem,
 
   // The fuel plan editor.
-  fuel-editor-columns: 1000px
+  fuel-editor-columns: 1000px,
+
+  // Messages: the driver and trip beside the conversation.
+  messages-trip-beside: 1101px
 );
 
 $breakpoints: map.merge($screen-scale, $screen-places);

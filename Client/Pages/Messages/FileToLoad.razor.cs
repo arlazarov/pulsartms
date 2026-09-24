@@ -20,6 +20,10 @@ public partial class FileToLoad : IDisposable
   [Parameter]
   public EventCallback OnFiled { get; set; }
 
+  // Already filed somewhere: filing again is offered quietly.
+  [Parameter]
+  public bool Filed { get; set; }
+
   [Inject]
   private ApiService Api { get; set; } = default!;
 

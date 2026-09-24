@@ -1,99 +1,168 @@
 @using Client.Models.DTO.Messaging
+@using Client.Shared.DriverStatus.DriverHours
 
-<section class="messages__context" aria-label="Driver and trip">
+<aside class="messages__context" id="messages-trip" aria-label="Driver and trip">
+    <button type="button" class="btn btn--small btn--text messages__close"
+            @onclick="() => OnClose.InvokeAsync()">
+        Close
+    </button>
     @if (Failed)
     {
-        <p class="messages__note">
+        <p class="messages__note messages__ctx">
             The driver and trip could not be loaded. Open the conversation
             again to retry.
         </p>
     }
     else if (Context is null)
     {
-        <p role="status"><LoadingIndicator /></p>
+        <p role="status" class="messages__ctx"><LoadingIndicator /></p>
     }
     else
     {
-        <p>
-            @if (Context.DriverName is { } name)
+        <section class="messages__ctx">
+            <h3>Driver</h3>
+            <dl class="messages__kv">
+                <dt>Name</dt>
+                <dd>
+                    @(Context.DriverName ?? "No driver matches this number.")
+                    <button type="button" class="btn btn--small btn--text"
+                            @onclick="ChooseAsync" disabled="@_busy">
+                        @(Context.DriverId is null ? "Choose driver" : "Change")
+                    </button>
+                </dd>
+                @if (Context.Trucks.Count > 0)
+                {
+                    <dt>@(Context.Trucks.Count == 1 ? "Truck" : "Trucks")</dt>
+                    <dd>@Trucks()</dd>
+                }
+                <dt>WhatsApp</dt>
+                <dd>@Participant</dd>
+            </dl>
+            @if (_drivers is not null)
             {
-                <strong>@name</strong>
+                <form class="messages__filing" @onsubmit="LinkAsync"
+                      @onsubmit:preventDefault>
+                    <label for="@($"driver-{ConversationId:N}")">
+                        Driver
+                        <select id="@($"driver-{ConversationId:N}")"
+                                @bind="_driver" disabled="@_busy">
+                            <option value="">No driver</option>
+                            @foreach (var driver in _drivers)
+                            {
+                                <option value="@driver.Id">@driver.Name</option>
+                            }
+                        </select>
+                    </label>
+                    <span class="messages__actions">
+                        <button type="submit" class="btn btn--small btn--primary"
+                                disabled="@_busy">
+                            Save
+                        </button>
+                        <button type="button" class="btn btn--small btn--text"
+                                disabled="@_busy" @onclick="() => _drivers = null">
+                            Cancel
+                        </button>
+                    </span>
+                </form>
             }
-            else
+            @if (Context.Hours is { Known: true } hours)
             {
-                <span>No driver matches this number.</span>
+                <DriverHours Clocks="Clocks(hours)" />
+                <p class="messages__file-sub">@Age(hours)</p>
             }
-            <button type="button" class="btn btn--small btn--text"
-                    @onclick="ChooseAsync" disabled="@_busy">
-                @(Context.DriverId is null ? "Choose driver" : "Change")
-            </button>
-        </p>
-        @if (_drivers is not null)
-        {
-            <form class="messages__filing" @onsubmit="LinkAsync"
-                  @onsubmit:preventDefault>
-                <label for="@($"driver-{ConversationId:N}")">
-                    Driver
-                    <select id="@($"driver-{ConversationId:N}")"
-                            @bind="_driver" disabled="@_busy">
-                        <option value="">No driver</option>
-                        @foreach (var driver in _drivers)
-                        {
-                            <option value="@driver.Id">@driver.Name</option>
-                        }
-                    </select>
-                </label>
-                <button type="submit" class="btn btn--small btn--primary"
-                        disabled="@_busy">
-                    Save
-                </button>
-                <button type="button" class="btn btn--small btn--text"
-                        disabled="@_busy" @onclick="() => _drivers = null">
-                    Cancel
-                </button>
-            </form>
-        }
-        @switch (Context.State)
-        {
-            case "no-truck":
-                <p class="messages__note">Not on a truck now.</p>
-                break;
-            case "several-trucks":
+            else if (Context.Hours is not null)
+            {
                 <p class="messages__note">
-                    On trucks @Trucks(). Choose the load when filing a file.
+                    Samsara has no hours for this driver now.
                 </p>
-                break;
-            case "one-truck":
-                <p class="messages__note">Truck @Trucks()</p>
-                @if (Context.Loads.Count == 0)
-                {
-                    <p class="messages__note">No current or upcoming load.</p>
-                }
-                else
-                {
-                    <ul class="messages__loads">
-                        @foreach (var load in Context.Loads)
-                        {
-                            <li>
-                                <a href="@($"/dispatch/{load.Id}")">
-                                    <LoadNumber Value="load.LoadNumber" />
+            }
+        </section>
+        <section class="messages__ctx">
+            <h3>Current load</h3>
+            @switch (Context.State)
+            {
+                case "unmatched":
+                    <p class="messages__note">
+                        Link the driver to see their load.
+                    </p>
+                    break;
+                case "no-truck":
+                    <p class="messages__note">Not on a truck now.</p>
+                    break;
+                case "several-trucks":
+                    <p class="messages__note">
+                        On trucks @Trucks(). Choose the load when filing a
+                        file.
+                    </p>
+                    break;
+                default:
+                    @if (Context.Loads.FirstOrDefault() is { } current)
+                    {
+                        <div class="messages__load">
+                            <span class="messages__load-top">
+                                <a href="@($"/dispatch/{current.Id}")">
+                                    <strong><LoadNumber Value="current.LoadNumber" /></strong>
                                 </a>
-                                @load.CustomerName
-                                @if (load.Places.Count > 0)
+                                @if (current.Status is { } status)
                                 {
-                                    <span class="messages__note">
-                                        @string.Join(" → ", load.Places)
-                                    </span>
+                                    <span class="messages__pill">@Titled(status)</span>
                                 }
-                            </li>
+                            </span>
+                            <span class="messages__file-sub">
+                                @current.CustomerName@(current.OrderNumber.Length > 0 ? $" · {current.OrderNumber}" : "")
+                            </span>
+                            @if (current.Stops.Count == 0 && current.Places.Count > 0)
+                            {
+                                <span class="messages__file-sub">
+                                    @string.Join(" → ", current.Places)
+                                </span>
+                            }
+                            <ol class="messages__stops">
+                                @foreach (var (stop, index) in current.Stops.Select((x, i) => (x, i)))
+                                {
+                                    <li>
+                                        <span class="messages__stop-dot">@(index + 1)</span>
+                                        <span>
+                                            @(stop.Name.Length > 0 ? stop.Name : stop.City)
+                                            @if (stop.Name.Length > 0 && stop.City.Length > 0)
+                                            {
+                                                <small>@stop.City</small>
+                                            }
+                                        </span>
+                                    </li>
+                                }
+                            </ol>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="messages__note">No current or upcoming load.</p>
+                    }
+                    break;
+            }
+        </section>
+        @if (Context.State == "one-truck" && Context.Loads.Count > 1)
+        {
+            <section class="messages__ctx">
+                <h3>Next</h3>
+                @foreach (var load in Context.Loads.Skip(1))
+                {
+                    <p class="messages__next">
+                        <a href="@($"/dispatch/{load.Id}")">
+                            <LoadNumber Value="load.LoadNumber" />
+                        </a>
+                        @load.CustomerName
+                        @if (load.Places.Count > 0)
+                        {
+                            <small>@string.Join(" → ", load.Places)</small>
                         }
-                    </ul>
+                    </p>
                 }
-                break;
+            </section>
         }
         @if (_error is not null)
         {
-            <p class="settings-page__error" role="alert">@_error</p>
+            <p class="settings-page__error messages__ctx" role="alert">@_error</p>
         }
     }
-</section>
+</aside>

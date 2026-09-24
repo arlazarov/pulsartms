@@ -25,11 +25,15 @@ public partial class MessageItem
   [Parameter]
   public EventCallback OnFiled { get; set; }
 
+  // The signed-in dispatcher's name; their own replies read "You".
+  [Parameter]
+  public string? Me { get; set; }
+
   // Load documents take PDF, PNG or JPEG; the server decides again.
   private static bool Fileable(AttachmentView file) =>
     file.Type is "application/pdf" or "image/png" or "image/jpeg";
 
-  private static string Kind(string kind) =>
+  private static string Document(string kind) =>
     kind switch
     {
       "bol" => "Bill of lading",
@@ -39,6 +43,24 @@ public partial class MessageItem
     };
 
   private string Side => Message.Direction == "out" ? "is-out" : "is-in";
+
+  private bool Failed => Message.Status is "failed" or "rejected";
+
+  private bool Attention =>
+    Message.Status is "failed" or "rejected" or "unknown" or "withdrawn";
+
+  private static bool IsImage(AttachmentView file) =>
+    file.Type.StartsWith("image/", StringComparison.Ordinal);
+
+  private static string Kind(AttachmentView file) =>
+    IsImage(file) ? "Photo"
+    : file.Type == "application/pdf" ? "PDF"
+    : "File";
+
+  private static string Label(AttachmentView file) =>
+    IsImage(file) ? "PHOTO"
+    : file.Type == "application/pdf" ? "PDF"
+    : "FILE";
 
   private bool Retryable =>
     Message.Status is "unknown" or "rejected" or "failed" or "withdrawn";

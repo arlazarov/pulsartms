@@ -1,4 +1,5 @@
 using Bunit;
+using Bunit.TestDoubles;
 using Client.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,11 +12,14 @@ internal sealed class ClientComponentContext : BunitContext
 {
   public PageVisibilityInterop Visibility { get; } = new();
 
+  // Who is signed in, for a test that needs a named dispatcher.
+  public BunitAuthorizationContext Authorization { get; }
+
   public ClientComponentContext(
     Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send
   )
   {
-    this.AddAuthorization();
+    Authorization = this.AddAuthorization();
     Visibility.Configure(JSInterop);
     Services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
     Services.AddSingleton(_ => new HttpClient(new StubHttpMessageHandler(send))

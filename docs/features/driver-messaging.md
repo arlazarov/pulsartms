@@ -151,9 +151,21 @@ reader that reconnects or misses signals reads the inbox again.
 
 ## Messages page
 
-`/messages` (Admin and Dispatch) lists conversations beside the open one;
-below the `md` breakpoint it shows one pane at a time. The list searches
-explicitly (Search, by driver name or number) and shows 50 at a time;
+`/messages` (Admin and Dispatch) follows the Driver Messages prototype
+(the published artifact is the reference for its layout): conversations,
+the thread and the driver's trip in three panes that fill the window and
+scroll on their own. The trip pane shows the driver (name, truck,
+WhatsApp number), their hours of service from the fleet's shared snapshot
+with how old the reading is, or that Samsara has none, never zeros, and
+the current load with its stops and the next one. Below
+`messages-trip-beside` (1101px) the trip opens over the thread (Trip),
+and the thread's header keeps the truck, load and drive and shift left;
+below `md` one pane shows at a time. The context read composes three
+owners in the API: Messaging's driver, Execution's work and Fleet's
+`GetDriverHosQuery`, keyed by the driver so a co-driver never shows the
+truck driver's clocks; it runs when a conversation opens, not per
+message. The list searches (by driver name or number, on Enter) and
+shows 50 at a time;
 "Show more conversations" continues below. A change signal reads the
 first page again and keeps the pages shown below it: a conversation that
 moved up is shown once, at the top, and those further down keep what was
@@ -328,8 +340,8 @@ late arrival, search, stream isolation),
 `Server.Tests/Messaging/ConversationHistoryTests` (120 messages at one
 time read to the end, a late message below the page kept unread until
 shown, one among pages already shown not marked),
-`Server.Tests/Messaging/ConversationReplyTests` (queue and send once, window, retry keys, stale replies, a take
-overtaken before sending, a lease lost mid-send, a late answer on its own
+`Server.Tests/Messaging/ConversationReplyTests` (queue and send once,
+window, retry keys, stale replies, a take overtaken before sending, a lease lost mid-send, a late answer on its own
 attempt, withdrawal for a closed window or changed number, explicit retry,
 claims), `Server.Tests/Messaging/ApprovedTemplateTests` (recorded for this
 carrier's current number only, refused as Meta would, administrators
@@ -341,6 +353,10 @@ templates only, download of checked files only),
 `Server.Tests/Storage/StoredFileCheckTests`,
 `Server.Tests/Messaging/LocalDriverMessagingTests` (refused outside
 Development, no network, signed simulation). Client:
+`Client.Tests/Messaging/MessagesTripTests` (hours with their age and the
+load beside the thread, missing hours said plainly, Trip opens and
+closes, "You" and one's own claim), `Server.Tests/Fleet/DriverHosReadTests`
+(a driver's own clocks, never a co-driver's, none when unknown),
 `Client.Tests/Messaging/WhatsAppTemplatesTests` (a refused template
 keeps its draft, removal only after confirming),
 `Client.Tests/Messaging/MessagesPageTests` (list and thread, read marker,

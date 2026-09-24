@@ -830,6 +830,23 @@ each one's name, language and text with Remove, which asks to confirm
 shared field styles (no field shows until then); a refused entry keeps
 its draft.
 
+Messages follows the published Driver Messages prototype, rebuilt from
+PulsR tokens and controls. Conversations, thread and trip are three panes
+inside one bordered surface that fills the window (the page opts into the
+same full-height main layout as Fleet Map); each pane scrolls on its own,
+and the thread opens at its newest message. List rows carry an initials
+avatar, the name, time, a one-line preview (bold while unread), the
+unread pill and tags for another dispatcher's claim and a closed window.
+Filter chips state `aria-pressed` as `true`/`false`. Bubbles: inbound on
+the surface with a subtle border, outbound on `selected` with
+`selection-border`; statuses read with check marks, a failure in danger
+text with its code and Send again as `.btn--danger`. A file is a card
+whose drawn thumbnail is its open control, with name, kind, where it is
+and the filing box on `warning-surface`. The trip pane uses the shared
+`DriverHours` dials and always says how old the clocks are. Below
+`messages-trip-beside` the trip is a sheet over the thread with a dimmed
+backdrop; below `md` one pane shows, with Back.
+
 `Shared/Drivers/DriverContactEditor` edits a driver's phone, email and
 WhatsApp number wherever a driver's contacts are needed. Each sourced field
 has its own "Use source value" checkbox and shows the source value; the

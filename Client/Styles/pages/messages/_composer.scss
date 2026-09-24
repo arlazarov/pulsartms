@@ -1,0 +1,102 @@
+@use '../../base' as ui;
+
+// Writing to the driver, or a template outside the window.
+.messages {
+  &__composer {
+    display: grid;
+    gap: ui.pg(sm);
+    padding: ui.pg(sm) ui.pg(md) ui.pg(md);
+    border-top: 1px solid ui.theme(border-subtle);
+    background: ui.theme(surface);
+  }
+  &__window {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(xs);
+    margin: 0;
+  }
+  &__window svg {
+    width: 0.8rem;
+    height: 0.8rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+  }
+  &__compose-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: ui.pg(sm);
+    align-items: end;
+  }
+  &__compose-row textarea {
+    width: 100%;
+    max-height: 8rem;
+    resize: none;
+    font-family: inherit;
+    @include ui.input-control;
+  }
+  &__attach {
+    position: relative;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    @include ui.icon-control;
+  }
+  &__attach svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+  }
+  &__attach:focus-within {
+    outline: 2px solid ui.theme(focus);
+    outline-offset: 2px;
+  }
+  &__attach input[type='file'] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    // The label is the visible control; the transparent input keeps focus,
+    // the keyboard and the click, without a native caption to overflow.
+    font-size: 0;
+    cursor: pointer;
+    &::file-selector-button {
+      display: none;
+    }
+    &:disabled {
+      cursor: default;
+    }
+  }
+  &__guard {
+    display: grid;
+    gap: ui.pg(sm);
+    padding: ui.pg(sm) ui.pg(md);
+    border-radius: ui.radius(sm);
+    background: ui.theme(warning-surface);
+    color: ui.theme(warning-text);
+    font-size: ui.fs(label);
+  }
+  &__template-box {
+    display: grid;
+    gap: ui.pg(sm);
+    padding: ui.pg(sm) ui.pg(md);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-muted);
+    font-size: ui.fs(label);
+  }
+  &__template-box p {
+    margin: 0;
+  }
+  &__template-box label {
+    display: grid;
+    gap: ui.pg(micro);
+  }
+  &__template-box select,
+  &__template-box input {
+    width: 100%;
+    @include ui.input-control;
+  }
+}
