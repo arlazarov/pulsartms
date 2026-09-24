@@ -94,6 +94,9 @@ def main():
                       credential, {}, "truck-planning")
                 timed(f"/api/dispatch/board?page={1 + index % 2}", credential,
                       category="board")
+                timed("/api/messaging/unread", credential,
+                      category="unread")
+                timed("/api/messaging/inbox", credential, category="inbox")
             except (OSError, ValueError, RuntimeError):
                 pass
             iteration += 1

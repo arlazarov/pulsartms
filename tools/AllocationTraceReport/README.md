@@ -11,3 +11,9 @@ must also live in a managed diagnostic directory. Keep raw traces private;
 publish only reviewed aggregate results. Use synthetic fixture traffic for
 profiling, with a bounded EventPipe buffer. A profiler changes process load;
 measure uninstrumented container memory separately.
+
+An optional second argument skips the trace's first seconds. The report
+also rolls sampled bytes up by the nearest application frame (what
+allocated) and the farthest (the operation it ran under); asynchronous
+continuations can cut the stack short, so the farthest frame is the
+outermost one sampled, not always the originating request or worker.

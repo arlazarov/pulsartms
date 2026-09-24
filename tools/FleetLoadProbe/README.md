@@ -97,6 +97,21 @@ rendered fuel stops or complete visual correctness. Report warmup, concurrency,
 read errors, queue completion and idle behavior separately; do not treat an
 empty plan or failed calculation as a cheap successful operation.
 
+## Allocation trace
+
+`run.py restart --manifest ... --publish ... --trace DIR` restarts the
+fixture's one container on the same schema (prepared plans stay, process
+memory starts empty) with EventPipe GC allocation ticks, JIT and loader
+events streamed to `DIR/api.nettrace`. Use a managed diagnostic directory,
+made writable for the container. Leave it idle or drive it, then stop the
+container; the API does not exit on SIGTERM within 90 seconds, so the stream
+usually lacks its end marker. `tools/AllocationTraceReport/nettrace_end.py`
+ends it without dropping complete events; pass the result and the seconds of
+startup to skip to AllocationTraceReport. `restart` without `--trace` gives
+the untraced process back.
+
+`exercise.py` dispatchers also poll the Messages unread notice and inbox.
+
 ## Cleanup
 
 `compare.py` compares a baseline and candidate publish on an already prepared

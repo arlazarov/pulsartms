@@ -26,13 +26,17 @@ def fixture_environment():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=["start", "stop", "user"])
+    parser.add_argument("action", choices=["start", "stop", "user", "restart"])
     parser.add_argument("--publish", type=Path, required=True)
     parser.add_argument("--trucks", type=int, choices=[10, 50, 100], default=10)
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--memory", choices=["512m", "1g"], default="1g")
     parser.add_argument("--platform", default="linux/amd64",
                         choices=["linux/amd64", "linux/arm64"])
+    # restart only: record sampled GC allocation ticks with stacks (and JIT
+    # and loader events, so methods resolve without a clean rundown), from the
+    # API's start to its stop, into this managed directory.
+    parser.add_argument("--trace", type=Path)
     args = parser.parse_args()
     output = Path(os.environ["PULSARTMS_ARTIFACT_DIR"])
     (output / ".keep").touch()
@@ -67,6 +71,25 @@ def main():
             env=environment, check=True,
         )
         return
+    if args.action == "restart":
+        # The same container name and schema: prepared plans stay in the
+        # database, process memory starts empty.
+        saved = json.loads(args.manifest.read_text())
+        # A container that already stopped or was removed is not an error.
+        subprocess.run(["docker", "rm", "-f", saved["container"]],
+                       capture_output=True)
+        traced = []
+        if args.trace:
+            traced = [
+                "-v", f"{args.trace.resolve()}:/trace",
+                "-e", "DOTNET_EnableEventPipe=1",
+                "-e", "DOTNET_EventPipeOutputStreaming=1",
+                "-e", "DOTNET_EventPipeOutputPath=/trace/api.nettrace",
+                "-e", "DOTNET_EventPipeConfig="
+                "Microsoft-Windows-DotNETRuntime:0x19:5",
+            ]
+        serve(common + traced, image, saved, environment, output)
+        return
     schema = "load_" + uuid.uuid4().hex
     name = "pulsr-" + schema
     saved = {"schema": schema, "container": name, "trucks": args.trucks, "memory": args.memory,
@@ -90,11 +113,16 @@ def main():
                        "-e", "PULSR_LOAD_USER_PASSWORD", image, "dotnet",
                        "FleetLoadProbe.dll", "user", schema, str(args.trucks)],
                        env=environment, check=True)
-    result = subprocess.run(
+    serve(common, image, saved, environment, output)
+
+
+def serve(common, image, saved, environment, output):
+    name = saved["container"]
+    subprocess.run(
         common + ["-d", "--name", name,
                   "-p", "127.0.0.1:5086:5086", image,
-                  "dotnet", "FleetLoadProbe.dll", "serve", schema,
-                  str(args.trucks)],
+                  "dotnet", "FleetLoadProbe.dll", "serve", saved["schema"],
+                  str(saved["trucks"])],
         env=environment, check=True, capture_output=True, text=True,
     )
     for _ in range(90):
