@@ -91,13 +91,13 @@ internal static class GoogleAddressValidation
         && country != "US"
       || Regex.IsMatch(input, @"\bCANADA\b", RegexOptions.IgnoreCase)
         && country != "CA"
-      || !GoogleAddressGeocoder.MatchesLocality(
+      || !GoogleAddressMatching.MatchesLocality(
         input,
         city,
         country ?? "",
         postal
       )
-      || !GoogleAddressGeocoder.MatchesRegion(input, region, country ?? "")
+      || !GoogleAddressMatching.MatchesRegion(input, region, country ?? "")
     )
       throw Unconfirmed();
     var parts = candidate
@@ -135,11 +135,11 @@ internal static class GoogleAddressValidation
       Part("street_number") != number
       || (
         !samePremise
-        && GoogleAddressGeocoder.Normalize(Part("route"))
-          != GoogleAddressGeocoder.Normalize(street)
+        && GoogleAddressMatching.Normalize(Part("route"))
+          != GoogleAddressMatching.Normalize(street)
       )
-      || GoogleAddressGeocoder.City(Part("locality"))
-        != GoogleAddressGeocoder.City(city)
+      || GoogleAddressMatching.City(Part("locality"))
+        != GoogleAddressMatching.City(city)
       || Part("administrative_area_level_1") != region
       || Part("country") != country
     )
