@@ -37,6 +37,35 @@ The board and the empty inbox are foreground costs dominated by database
 round trips to the remote fixture. They were measured but not investigated
 tonight.
 
+## Foreground: what a page actually asks
+
+The table above timed `/api/dispatch/board` with the API's defaults: HOS,
+financials and ETA all included. The Dispatch page does not send that. It
+asks for a light board and fetches financial and ETA enrichment
+separately. Measured per request on the same fixture, warm, with database
+commands counted by `X-Probe-Measure`:
+
+| Request | Commands before | Commands after `e7aa35aa` | Time after (ms) |
+| --- | ---: | ---: | ---: |
+| Light board (what the page sends) | 4 | 3 | ~260 |
+| Financial enrichment | 4 | 3 | ~330 |
+| ETA enrichment | 21–22 | 20 | 1,130–1,470 |
+| API-default board | 23–24 | 22 | 1,150–1,310 |
+| Messages inbox | 3 | 2 | ~275 |
+| Messages unread notice | 2 | 2 | ~270 |
+
+Against this remote fixture each command costs about 50–100 ms.
+
+- **The driver-group scope (added the same night)** cost one round trip on
+  every scoped read, including for dispatchers without a group. `e7aa35aa`
+  serves the choice from the read cache, invalidated by the group commands.
+- **ETA enrichment** re-runs the board and then its own reads. It is the
+  page's real foreground cost; it is owned by the fleet-efficiency read
+  path and was not changed.
+- **The unread notice** is two commands. One maps the signed-in identity to
+  a user id; four modules each have their own copy of that lookup, and
+  caching it across requests would delay a deactivation. Not changed.
+
 ## Idle: attributed by an allocation trace
 
 With no clients and the queue drained, the idle process still used about
@@ -86,8 +115,8 @@ instead of 3.25 MB.
   sample trace was not taken.
 - **No long-running or recovery run.** The runs lasted minutes. Leaks over
   hours, restart recovery and a 512 MiB limit were not tested.
-- **Foreground costs.** Dispatch board and inbox round trips were not
-  investigated.
+- **Foreground costs.** Beyond the section above (ETA enrichment's 20
+  commands, the identity lookup), not investigated.
 - **Cloud Run.** Memory and CPU there, and real routes and real provider
   latency, cannot be inferred from this fixture.
 
