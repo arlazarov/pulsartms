@@ -79,20 +79,39 @@ public sealed class PlanningPublicationScope(AppDbContext db)
     CancellationToken ct
   )
   {
+    // SKIP LOCKED rather than NOWAIT: another planning pass holding the row
+    // is ordinary contention, and NOWAIT answered it with a database error
+    // that aborted the transaction and was logged as a failed command.
     var sql = exclusive
       ? """
         SELECT "Revision" AS "Value" FROM "PlanningInputRevisions"
-        WHERE "TruckId" = @truck FOR UPDATE NOWAIT
+        WHERE "TruckId" = @truck FOR UPDATE SKIP LOCKED
         """
       : """
         SELECT "Revision" AS "Value" FROM "PlanningInputRevisions"
-        WHERE "TruckId" = @truck FOR SHARE NOWAIT
+        WHERE "TruckId" = @truck FOR SHARE SKIP LOCKED
         """;
     var rows = await db
       .Database.SqlQueryRaw<long>(sql, new NpgsqlParameter("truck", truckId))
       .ToArrayAsync(ct);
-    if (rows.Length != 1)
-      throw new RoutePlanningException(
+    if (rows.Length == 1)
+      return;
+    // Nothing came back: the row is held by another pass, or it is gone.
+    var held = await db
+      .Database.SqlQueryRaw<long>(
+        """
+        SELECT "Revision" AS "Value" FROM "PlanningInputRevisions"
+        WHERE "TruckId" = @truck
+        """,
+        new NpgsqlParameter("truck", truckId)
+      )
+      .ToArrayAsync(ct);
+    throw held.Length == 1
+      ? new RoutePlanningException(
+        "Planning inputs are being updated. Retry planning shortly.",
+        DateTime.UtcNow.AddSeconds(5)
+      )
+      : new RoutePlanningException(
         "Planning input ownership changed. Refresh the truck work."
       );
   }

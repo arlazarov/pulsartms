@@ -174,7 +174,20 @@ public sealed class AutomaticPlanningService(
           ex is RoutePlanningException
             ? ex.Message
             : "Route service is temporarily unavailable. Retrying automatically.";
-        cache.Set(key, message, TimeSpan.FromMinutes(2));
+        // An answer that names when to try again - a lock another planning
+        // pass holds for a few seconds - is remembered only until then, not
+        // for the full two minutes a failed provider is.
+        var lifetime = TimeSpan.FromMinutes(2);
+        if (
+          ex is RoutePlanningException { RetryAfter: var retry }
+          && retry != DateTime.MaxValue
+        )
+          lifetime =
+            retry - DateTime.UtcNow < lifetime
+              ? retry - DateTime.UtcNow
+              : lifetime;
+        if (lifetime > TimeSpan.Zero)
+          cache.Set(key, message, lifetime);
         return Result(state, message);
       }
 

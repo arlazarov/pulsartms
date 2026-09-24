@@ -104,8 +104,8 @@ public sealed class PlanningPublicationBoundaryTests
 
     Assert.NotEmpty(queried);
     Assert.Equal(queried.Order(), locked.Order());
-    Assert.Contains("FOR SHARE NOWAIT", scope);
-    Assert.Contains("FOR UPDATE NOWAIT", scope);
+    Assert.Contains("FOR SHARE SKIP LOCKED", scope);
+    Assert.Contains("FOR UPDATE SKIP LOCKED", scope);
     Assert.Contains("RequireRevisionAsync(Guid.Empty, !scoped, ct)", scope);
     Assert.Contains("RequireRevisionAsync(truckId!.Value, true, ct)", scope);
     Assert.Contains("transaction.DisposeAsync()", scope);

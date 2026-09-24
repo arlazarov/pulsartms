@@ -1,11 +1,14 @@
+using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
 using Domain.Models.Routing;
 using Domain.Policies;
+using Domain.Rules;
 using Domain.Rules.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Load = Domain.Entities.Dispatch.Dispatch;
@@ -236,14 +239,67 @@ public sealed class FuelIssueRecordsTests
     Assert.Empty(await f.Db.FuelVisitSends.ToListAsync());
   }
 
-  private static FuelIssueRecords Records(PlanningRefreshFixture f) =>
+  // Another planning pass holding the truck's lock for a moment: the
+  // hand-over, perhaps of a message already sent, waits for it; a lock that
+  // stays held is refused after ten tries, with the retry answer.
+  [Theory]
+  [InlineData(2, true)]
+  [InlineData(int.MaxValue, false)]
+  public async Task AHandOverWaitsBrieflyForABusyTruck(int busy, bool recorded)
+  {
+    await using var f = await PlanningRefreshFixture.CreateAsync();
+    var (truck, dispatch) = await SeedAsync(f);
+    var scope = new BusyScope(new PlanningPublicationScope(f.Db), busy);
+    var before = Guid.NewGuid();
+
+    var record = () =>
+      Records(f, scope)
+        .RecordAsync(
+          Snapshot(truck, dispatch, before, revision: 3),
+          [(Visit(dispatch, before, fill: true), "t")],
+          "manual",
+          "u1",
+          default
+        );
+
+    if (recorded)
+      Assert.Equal(1, await record());
+    else
+      Assert.Contains(
+        "being updated",
+        (await Assert.ThrowsAsync<RoutePlanningException>(record)).Message
+      );
+    Assert.Equal(recorded ? busy + 1 : 10, scope.Calls);
+  }
+
+  private sealed class BusyScope(IPlanningPublicationScope inner, int busy)
+    : IPlanningPublicationScope
+  {
+    public int Calls;
+
+    public Task<IDbContextTransaction> BeginAsync(
+      Guid? truckId,
+      CancellationToken ct
+    ) =>
+      ++Calls <= busy
+        ? throw new RoutePlanningException(
+          "Planning inputs are being updated. Retry planning shortly.",
+          DateTime.UtcNow.AddSeconds(5)
+        )
+        : inner.BeginAsync(truckId, ct);
+  }
+
+  private static FuelIssueRecords Records(
+    PlanningRefreshFixture f,
+    IPlanningPublicationScope? scope = null
+  ) =>
     new(
       f.Db,
       f.Services.GetRequiredService<PlanningSummaryCache>(),
       f.Services.GetRequiredService<ICurrentCompany>(),
       Options.Create(new FuelIssueOptions()),
       f.Time,
-      new PlanningPublicationScope(f.Db)
+      scope ?? new PlanningPublicationScope(f.Db)
     );
 
   private static async Task<(Guid Truck, Guid Dispatch)> SeedAsync(

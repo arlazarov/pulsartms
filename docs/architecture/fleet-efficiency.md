@@ -106,7 +106,7 @@ elsewhere neither invalidates it nor is hidden by it.
 | Result | Checked against at publication | Not a dependency |
 | --- | --- | --- |
 | Route and geometry | company, accepted assignment or leg revision, itinerary input signature, truck profile, saved road versions | contacts, prices, ETA |
-| Fuel plan | the route's dependencies, telemetry observation, price materiality, `CalculatedAt` compare-and-swap | contacts, ETA |
+| Fuel plan | the route's dependencies, telemetry observation, price materiality, `CalculatedAt` compare-and-swap, the truck's hand-overs and in-flight WhatsApp attempts since the calculation began (under the per-truck publication lock that hand-over recording also takes) | contacts, ETA |
 | ETA forecast | company, work key (load, leg, assignment, stops), chain input hash, road plan id and version | contacts, prices |
 | Summary snapshot | company and truck key, work and settings signature, cache ticket | - |
 | Fuel hand-over | company, truck, leg or load, assignment revision, station, stop before, content (fill or gallons) | wording, miles ahead, ETA, price |

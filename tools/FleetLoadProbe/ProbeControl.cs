@@ -150,14 +150,24 @@ internal sealed class ProbeControl(IServiceScopeFactory scopes)
       await sp.GetRequiredService<DeadheadService>()
         .EnsureAsync(load, profile, ct);
     }
-    var automatic = await sp.GetRequiredService<AutomaticPlanningService>()
-      .ForTruckAsync(v.Truck, ct);
+    // The background planning pass may hold this truck's lock for a moment
+    // at startup; that answer says to retry shortly, and is not a failure.
+    var planning = sp.GetRequiredService<AutomaticPlanningService>();
+    var automatic = await planning.ForTruckAsync(v.Truck, ct);
+    for (var attempt = 1; attempt < 10 && automatic.Message is Busy; attempt++)
+    {
+      await Task.Delay(TimeSpan.FromSeconds(5), ct);
+      automatic = await planning.ForTruckAsync(v.Truck, ct);
+    }
     if (automatic.State?.Plan is null || automatic.Message is not null)
       throw new InvalidOperationException(
         automatic.Message ?? "Missing route."
       );
     return await CalculateAsync(sp, v, profile, ct);
   }
+
+  private const string Busy =
+    "Planning inputs are being updated. Retry planning shortly.";
 
   public async Task<object> RecalculateAsync(int index, CancellationToken ct)
   {

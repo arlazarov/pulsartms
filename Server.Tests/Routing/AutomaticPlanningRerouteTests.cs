@@ -144,6 +144,34 @@ public partial class AutomaticPlanningTests
     Assert.False(kept.FromCurrentPosition);
   }
 
+  // A refusal that says when to try again - another pass holding the
+  // truck's planning lock for a few seconds - is not remembered past that
+  // time: the next ask tries again instead of repeating it for two minutes.
+  [Fact]
+  public async Task ARefusalWithARetryTimeIsNotHeldPastIt()
+  {
+    await using var f = await Fixture.CreateAsync(
+      pickedUp: true,
+      recalculationBudgetEnabled: false
+    );
+    var start = DateTime.UtcNow.AddMinutes(-9);
+    await PassAsync(f, 40, -79.5m, start);
+    await PassAsync(f, 40.1m, -79.4m, start.AddMinutes(1));
+    f.Router.Fail = true;
+    f.Router.FailRetryAfter = DateTime.UtcNow.AddMilliseconds(-1);
+    f.Location.UpdatedAt = start.AddMinutes(2);
+    f.Db.ChangeTracker.Clear();
+    var refused = await f.Service.ForTruckAsync(f.Truck.Id, default);
+    Assert.Equal("Route service unavailable.", refused.Message);
+    var calls = f.Router.Calls;
+    f.Router.Fail = false;
+
+    var retried = await PassAsync(f, 40.1m, -79.4m, start.AddMinutes(2));
+
+    Assert.True(f.Router.Calls > calls);
+    Assert.True(retried.FromCurrentPosition);
+  }
+
   private static async Task<RoutePlan> PassAsync(
     Fixture f,
     decimal latitude,

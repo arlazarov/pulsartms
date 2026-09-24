@@ -21,6 +21,7 @@ using Infrastructure.Persistence;
 using MediatR;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -1955,7 +1956,8 @@ public partial class AutomaticPlanningTests
       Guid? truckId = null,
       bool recalculationBudgetEnabled = true,
       PublicationCommitFailureProbe? publicationFailure = null,
-      bool storedExchangeRates = false
+      bool storedExchangeRates = false,
+      IInterceptor? observer = null
     )
     {
       var connection = new SqliteConnection("Data Source=:memory:");
@@ -1967,6 +1969,8 @@ public partial class AutomaticPlanningTests
         options.AddInterceptors(failure);
       if (publicationFailure is not null)
         options.AddInterceptors(publicationFailure);
+      if (observer is not null)
+        options.AddInterceptors(observer);
       var db = new AppDbContext(options.Options);
       await db.Database.EnsureCreatedAsync();
       var truck = new Truck
@@ -2103,6 +2107,7 @@ public partial class AutomaticPlanningTests
     public double DetourExtraMinutes;
     public List<RoutePoint[]> Requests { get; } = [];
     public bool Fail;
+    public DateTime? FailRetryAfter;
     public Func<Task>? BeforeCalculate;
 
     public async Task<TruckRoute> CalculateAsync(
@@ -2118,7 +2123,10 @@ public partial class AutomaticPlanningTests
       if (points.Count == 2)
         MainCalls++;
       if (Fail)
-        throw new RoutePlanningException("Route service unavailable.");
+        throw new RoutePlanningException(
+          "Route service unavailable.",
+          FailRetryAfter
+        );
       var legs = points
         .Zip(
           points.Skip(1),

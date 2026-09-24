@@ -168,9 +168,8 @@ is likely a "being prepared" answer, not a full plan; it was not checked.
 
 - **Two transient HTTP 500s.** On one fresh fixture, two concurrent plan
   preparations answered 500 after about 8 s. The server log was lost with
-  the restart that followed. A rerun on another fresh fixture prepared all
-  ten trucks with no error logged. Seen once, not reproduced, not
-  explained.
+  the restart that followed. Reproduced and explained the next morning; see
+  [plan preparation 500s](plan-preparation-500-2026-09-24.md).
 
 - **The probe API did not exit on SIGTERM within 90 seconds.** Docker
   killed it both times (exit 137), and a summary refresh logged an

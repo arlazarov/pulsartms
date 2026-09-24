@@ -184,32 +184,7 @@ public partial class AutomaticPlanningTests
     var saved = (
       await f.Services.FuelPlans.ReadCheckedAsync(f.Truck.Id, default)
     )!;
-    var driver = new Driver
-    {
-      Id = Guid.NewGuid(),
-      ExternalId = "driver",
-      Name = "Driver",
-    };
-    f.Db.Drivers.Add(driver);
-    f.Db.DriverMessages.Add(
-      new DriverMessage
-      {
-        Id = Guid.NewGuid(),
-        DriverId = driver.Id,
-        TruckId = f.Truck.Id,
-        DispatchId = f.Load.Id,
-        PlanCalculatedAt = saved.CalculatedAt,
-        Channel = "whatsapp",
-        Recipient = "+15550000000",
-        Text = "Fuel at A",
-        VisitKeys = "a",
-        IdempotencyKey = "attempt",
-        Status = DriverMessageStatuses.Sending,
-        StatusAt = DateTime.UtcNow,
-        CreatedAt = DateTime.UtcNow.AddMinutes(-1),
-      }
-    );
-    await f.Db.SaveChangesAsync();
+    await AttemptAsync(f, saved);
     f.Db.ChangeTracker.Clear();
     Reprice(f, a, 4.5m);
 
@@ -221,6 +196,76 @@ public partial class AutomaticPlanningTests
           automaticRefreshRevision: saved.CalculatedAt
         )
     );
+  }
+
+  // An attempt that was in flight when the calculation read what the driver
+  // held, and was accepted before its commit: the acceptance may become a
+  // hand-over the calculation never saw, so the commit is refused.
+  [Fact]
+  public async Task AnAttemptAcceptedDuringTheCalculationRefusesItsCommit()
+  {
+    var a = Station("A", 40m, -79.3m, 3.0m);
+    var c = Station("C", 40m, -79.25m, 3.6m);
+    await using var f = await Fixture.CreateAsync([a, c], pickedUp: true);
+    await FueledAsync(f, DateTime.UtcNow.AddMinutes(-5));
+    var saved = (
+      await f.Services.FuelPlans.ReadCheckedAsync(f.Truck.Id, default)
+    )!;
+    var attempt = await AttemptAsync(f, saved);
+    Reprice(f, a, 4.5m);
+    f.Sender.BeforeFuel = async _ =>
+    {
+      f.Sender.BeforeFuel = null;
+      await f
+        .Db.DriverMessages.Where(x => x.Id == attempt)
+        .ExecuteUpdateAsync(x =>
+          x.SetProperty(m => m.Status, DriverMessageStatuses.Accepted)
+            .SetProperty(m => m.StatusAt, DateTime.UtcNow.AddSeconds(1))
+        );
+    };
+
+    await Assert.ThrowsAsync<PlanningSettingsConflictException>(
+      () =>
+        f.Service.RecalculateFuelAsync(
+          f.Load.Id,
+          default,
+          automaticRefreshRevision: saved.CalculatedAt
+        )
+    );
+  }
+
+  private static async Task<Guid> AttemptAsync(
+    Fixture f,
+    TruckFuelPlanSnapshot saved
+  )
+  {
+    var driver = new Driver
+    {
+      Id = Guid.NewGuid(),
+      ExternalId = "driver",
+      Name = "Driver",
+    };
+    f.Db.Drivers.Add(driver);
+    var attempt = new DriverMessage
+    {
+      Id = Guid.NewGuid(),
+      DriverId = driver.Id,
+      TruckId = f.Truck.Id,
+      DispatchId = f.Load.Id,
+      PlanCalculatedAt = saved.CalculatedAt,
+      Channel = "whatsapp",
+      Recipient = "+15550000000",
+      Text = "Fuel at A",
+      VisitKeys = "a",
+      IdempotencyKey = "attempt",
+      Status = DriverMessageStatuses.Sending,
+      StatusAt = DateTime.UtcNow.AddMinutes(-1),
+      CreatedAt = DateTime.UtcNow.AddMinutes(-1),
+    };
+    f.Db.DriverMessages.Add(attempt);
+    await f.Db.SaveChangesAsync();
+    f.Db.ChangeTracker.Clear();
+    return attempt.Id;
   }
 
   // A confirmation by hand against a plan that has been recalculated since

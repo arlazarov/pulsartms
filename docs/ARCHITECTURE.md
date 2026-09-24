@@ -299,9 +299,11 @@ those remaining adapters are tracked separately.
 Infrastructure opens a fresh publication transaction before validating work.
 PostgreSQL uses a repeatable-read snapshot and PlanningInputRevisions rows.
 A known truck publication shares the global guard and exclusively owns its
-truck revision, acquired with NOWAIT. Unresolved source membership and automatic
-exchange-rate publication own the global guard exclusively. Busy ownership is
-an expected planning retry, including provider-wrapped lock/serialization errors.
+truck revision, acquired with SKIP LOCKED so that contention is not a database
+error. Unresolved source membership and automatic exchange-rate publication own
+the global guard exclusively. Busy ownership is an expected planning retry with
+a retry time, including provider-wrapped serialization errors; callers must not
+report it as a failure or remember it past that time.
 
 Database triggers cover the complete work, history, settings and saved-road
 writer inventory. They advance every affected old and new truck, including

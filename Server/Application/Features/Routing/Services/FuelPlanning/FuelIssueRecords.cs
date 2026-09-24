@@ -7,6 +7,7 @@ using Domain.Models.Routing;
 using Domain.Policies;
 using Domain.Rules;
 using Domain.Rules.Routing;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
@@ -41,7 +42,8 @@ public sealed class FuelIssueRecords(
 
   // Inside a fuel plan's publication, which holds the truck's publication
   // lock that RecordAsync takes too: a plan calculated before a hand-over,
-  // or while a WhatsApp attempt for the truck is in flight, is refused and
+  // or while a WhatsApp attempt for the truck is in flight or has changed
+  // state (an acceptance not yet recorded as a hand-over), is refused and
   // calculated again, so it can never drop that hand-over unseen.
   public async Task RequireUnchangedAsync(Stamp stamp, CancellationToken ct)
   {
@@ -50,9 +52,7 @@ public sealed class FuelIssueRecords(
       x =>
         x.TruckId == stamp.TruckId
         && x.VisitKeys != ""
-        && (
-          x.Status == DriverMessageStatuses.Sending || x.CreatedAt > stamp.At
-        ),
+        && (x.Status == DriverMessageStatuses.Sending || x.StatusAt > stamp.At),
       ct
     );
     if (latest != stamp.LatestSentAt || attempts)
@@ -249,10 +249,20 @@ public sealed class FuelIssueRecords(
   {
     var owner =
       company.Id ?? throw new InvalidOperationException("A company is needed.");
-    await using var transaction = await publication.BeginAsync(
-      saved.TruckId,
-      ct
-    );
+    // Another planning pass may hold the lock for a moment; a hand-over,
+    // perhaps of a message already sent, waits for it rather than failing.
+    IDbContextTransaction? opened = null;
+    for (var attempt = 1; opened is null; attempt++)
+      try
+      {
+        opened = await publication.BeginAsync(saved.TruckId, ct);
+      }
+      catch (RoutePlanningException busy)
+        when (busy.RetryAfter != DateTime.MaxValue && attempt < 10)
+      {
+        await Task.Delay(TimeSpan.FromMilliseconds(500), time, ct);
+      }
+    await using var transaction = opened;
     if (
       requireCurrent
       && await db
