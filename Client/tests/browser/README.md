@@ -167,6 +167,32 @@ total/completed counts and the next unfinished visit's original position. Keyboa
 activation of the count opens all five visits in the shared dialog without growing
 the table row. Separate checks retain later delivery appointment windows there.
 
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/fuelSendSmoke.mjs`
+runs the compiled Fleet Map page and its Send plan window at 1440 and 390 px,
+light and dark, against synthetic in-memory answers. The map canvas is a flat
+stub: nothing here checks map drawing. It checks:
+- the "given to the driver, no longer in the plan" alert: text, role,
+  contrast, fitting the screen;
+- the Sent and Changed since sent labels;
+- the toolbar with a truck selected (search width, the group name not cut
+  off);
+- that selecting another truck closes the window, and the other truck's
+  window shows nothing of the first;
+- that a late answer for the first truck never reaches the second;
+- that an assignment change, seen by the ten-second poll, closes the window
+  and a new one reads again.
+
+Output: managed `browser-fuel-send`.
+
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/fuelVisitSentSmoke.mjs`
+renders the production station popup module with staged CSS (1440/390, light
+and dark) for fuel stops given to a driver. It checks:
+- Delivered and Changed since sent: text, warning style, contrast, no
+  clipping;
+- that an update without a hand-over leaves no stale label.
+
+Output: managed `browser-station-popup`.
+
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/fuelEditorSmoke.mjs`
 from Client exercises the actual staged fuel editor at 1440px/390px in both themes.
 It checks full-tank gauges, adding and ordering visits, five-gallon manual input
