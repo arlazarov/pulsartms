@@ -77,7 +77,7 @@ Memory samples use the existing Admin diagnostic endpoint without forced GC.
 Record Docker OOM/exit state separately if the process fails.
 
 For request-scoped database measurements, an Admin request may send
-`X-Probe-Measure` with `planning`, `board`, `refresh` or `fuel`. Read the last
+`X-Probe-Measure` with `planning`, `board`, `refresh`, `fuel` or `inbox`. Read the last
 32 completed measurements from `/probe/database`. The listener records EF
 command counts/durations, connection-open and transaction-end durations,
 query fingerprints and table names. It never retains SQL text, parameters,

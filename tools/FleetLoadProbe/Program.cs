@@ -101,7 +101,7 @@ app.Use(
   {
     var label = context.Request.Headers["X-Probe-Measure"].ToString();
     if (
-      label is "planning" or "board" or "refresh" or "fuel"
+      label is "planning" or "board" or "refresh" or "fuel" or "inbox"
       && (
         await context
           .RequestServices.GetRequiredService<IAuthorizationService>()
