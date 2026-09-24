@@ -105,10 +105,20 @@ Mutation checks:
   test against the pass. Not started: the gain is about 15 s at this scale.
   The larger lever is `TelemetrySeconds` itself, an owner decision because
   it raises Samsara request volume.
-- **Fuel stops already sent** are not examined by this change. A reroute
-  still marks the fuel plan for refresh, as before. Whether a small
-  reroute can move a sent stop is the fuel owner's rule and was not
-  verified here.
+- **Fuel stops already sent.** Read from the code, not tested.
+  - *What changes:* a reroute marks the fuel plan for refresh, as before.
+    Once the truck is back on a road with a fresh position,
+    `FuelPriceRefreshService` recalculates the plan automatically. The
+    recalculation does not pin stops already given to the driver, so a
+    reroute, even a small one, can change the plan's stations.
+  - *What does not:* what the driver was given. A hand-over is written only
+    on an explicit confirmation (`FuelIssueRecords`), automatic sending is
+    off, and the display marks a stop whose plan no longer says what was
+    sent. Nothing is re-sent on its own.
+  - *Decision for the owner:* whether a small reroute should keep sent stops
+    pinned. It is not built. The shorter cooldown makes reroutes, and so
+    recalculations, somewhat more frequent for a truck that stays off its
+    road.
 - **Real latency and provider volume** need the telemetry cadence of real
   trucks. Neither was measured; the load fixture's detour scenario was not
   rerun.
