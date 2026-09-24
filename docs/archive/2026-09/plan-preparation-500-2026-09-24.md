@@ -63,6 +63,30 @@ the attempt's status time (`AnAttemptAcceptedDuringTheCalculationRefusesItsCommi
 
 ## After the change
 
-See the rerun below. A clean rerun alone would not prove the cause, because
-the failure appeared in one run of three. The cause is shown by the log
-above and pinned by the regressions.
+A clean rerun alone would not prove the cause, because the failure
+appeared in one run of three. The cause is shown by the log above and
+pinned by the regressions.
+
+The same reproduction on the fixed build (`5bf92f65` plus the display
+reference change), three fresh fixtures:
+
+| Run | Evidence | Failed preparations |
+| --- | --- | ---: |
+| 1 | `diagnostic-YRSFi9` | 1 (0.7 s) |
+| 2 | `diagnostic-vzxLlq` | 0 |
+| 3 | `diagnostic-1PucBb` | 0 |
+
+Run 1's failure was a second probe-only path. Before planning, the probe
+calls `BaseRouteService.EnsureAsync` directly. That call met the same
+held lock and got the new "being updated, retry shortly" answer, which the
+probe did not retry, so it surfaced as a 500. No database error was
+logged, and the planning path did not fail. `6167f2a3` makes the probe
+retry that answer on its base road and deadhead steps too. After that fix,
+one more fixture (`diagnostic-ezKDoN`) prepared its ten trucks with all 37
+requests passing (`diagnostic-sFJZV2`). That is one run, not a rate.
+
+**Open:** a handler that lets this retry answer escape reaches
+`ApiExceptionHandler`, which logs it as an error and answers 500. The API
+layer may not reference the Domain exception, so it cannot map it there.
+The planning handlers catch it and answer with a message. Not every
+handler that reaches the publication scope was audited.

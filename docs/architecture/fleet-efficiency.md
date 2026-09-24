@@ -109,7 +109,6 @@ elsewhere neither invalidates it nor is hidden by it.
 | Fuel plan | the route's dependencies, telemetry observation, price materiality, `CalculatedAt` compare-and-swap, the truck's hand-overs and in-flight WhatsApp attempts since the calculation began (under the per-truck publication lock that hand-over recording also takes) | contacts, ETA |
 | ETA forecast | company, work key (load, leg, assignment, stops), chain input hash, road plan id and version | contacts, prices |
 | Summary snapshot | company and truck key, work and settings signature, cache ticket | - |
-| Display reference (the load's base road shown beside a route from the truck) | company, base-road row id and `Revision` (raised by every write, a concurrency token), leg count; one read per use, which leaves out the JSON when the kept copy has that row and revision; an older revision never replaces a newer kept one; copied per reader | the route plan's version |
 | Fuel hand-over | company, truck, leg or load, assignment revision, station, stop before, content (fill or gallons) | wording, miles ahead, ETA, price |
 | WhatsApp message | idempotency key: assignment, visits with content, recipient; provider message id | later plan versions |
 | Truck's current trailer | stored telemetry word, active leg or in-transit load at its current stop, trailer active, one truck per trailer | planned or finished loads, a missing provider record |

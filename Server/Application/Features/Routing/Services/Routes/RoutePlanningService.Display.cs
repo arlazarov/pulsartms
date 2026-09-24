@@ -43,56 +43,20 @@ public sealed partial class RoutePlanningService
     }
   }
 
-  // The load's base road, as it is now, in one round trip: the road's text
-  // is left out when the kept copy has this row's revision. The revision
-  // and the text come from the same row read, so a copy is never kept under
-  // a revision it does not belong to.
   private async Task<TruckRoute?> ReadReferenceAsync(
     RouteWorkSnapshot load,
     TruckRouteProfile profile,
     CancellationToken ct
   )
   {
-    var key = (
-      Load: load.Id,
-      Leg: load.ExecutionLegId,
-      Legs: load.Stops.Length - 1
-    );
-    var kept = displays.FindReference(key);
-    var keptRow = kept?.Row ?? Guid.Empty;
-    var keptRevision = kept?.Revision ?? -1;
-    var row = await db
+    var full = await db
       .DispatchBaseRoutes.AsNoTracking()
-      .Where(x =>
-        x.DispatchId == load.Id && x.ExecutionLegId == load.ExecutionLegId
-      )
-      .Select(x => new
-      {
-        x.CompanyId,
-        x.Id,
-        x.InputHash,
-        x.Revision,
-        RouteJson = x.Id == keptRow && x.Revision == keptRevision
-          ? null
-          : x.RouteJson,
-      })
-      .SingleOrDefaultAsync(ct);
-    if (
-      row is null
-      || row.InputHash != BaseRouteService.Signature(load, profile)
-    )
-      return null;
-    if (row.RouteJson is null)
-      return kept!.Is(row.CompanyId, row.Id, row.Revision)
-        ? kept.Route()
-        : null;
-    var reference = new RouteDisplayCache.DisplayReference(
-      row.CompanyId,
-      row.Id,
-      row.Revision,
-      SavedRouteReader.Route(row.RouteJson, key.Legs)
-    );
-    displays.KeepReference(key, reference);
-    return reference.Route();
+      .SingleOrDefaultAsync(
+        x => x.DispatchId == load.Id && x.ExecutionLegId == load.ExecutionLegId,
+        ct
+      );
+    return full?.InputHash == BaseRouteService.Signature(load, profile)
+      ? SavedRouteReader.Route(full.RouteJson, load.Stops.Length - 1)
+      : null;
   }
 }

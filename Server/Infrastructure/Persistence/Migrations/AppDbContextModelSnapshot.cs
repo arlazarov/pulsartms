@@ -918,10 +918,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
-                    b.Property<long>("Revision")
-                        .IsConcurrencyToken()
-                        .HasColumnType("bigint");
-
                     b.Property<string>("RouteJson")
                         .IsRequired()
                         .HasColumnType("text");

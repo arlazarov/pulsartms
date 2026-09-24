@@ -342,7 +342,6 @@ public sealed partial class RouteChoiceService(
       baseline.InputHash = BaseRouteService.Signature(load, profile);
       var fullRoute = draft.Current?.FullRoute ?? selected;
       baseline.RouteJson = RoutePlanStorage.Serialize(fullRoute);
-      baseline.Revision++;
       baseline.CalculatedAt = fullRoute.CalculatedAt;
       if (current is not null)
       {
