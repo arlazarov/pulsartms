@@ -618,6 +618,13 @@ public sealed class FileStorageTests
         clock: clock
       )
     );
+    services.AddScoped(sp =>
+      Targets(
+        (AppDbContext)sp.GetRequiredService<IAppDbContext>(),
+        provider,
+        clock: clock
+      )
+    );
     services.AddScoped<StoredFileCheck>();
     return new(
       services
