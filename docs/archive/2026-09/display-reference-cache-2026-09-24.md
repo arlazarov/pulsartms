@@ -161,10 +161,36 @@ them.
   The net saving is about 400 MB per window.
 - **Container CPU** did not separate (11.0-15.8% across windows).
 
-**Left:** a map that already acknowledged the plan's version gets metadata
-only and does not see a reference that appears later. That was already true
-of the read-time attachment; a reference version in the acknowledgment
-would change it.
+**An already open map.** The Client acknowledges a plan by id and version,
+and for an acknowledged plan the server answers with metadata only.
+Traced:
+- **The cache.** `PlanningDisplayCache` already asked for full geometry
+  when the metadata named a reference with a different leg count, such as
+  none before and one after. So the attached reference was re-read on the
+  next poll. It did not compare a changed reference with the same legs;
+  it now also compares the reference's miles.
+- **The map.** `MapRoutePublisher` sent the map module metadata only while
+  the plan's id, version, truck, leg and assignment revision were
+  unchanged. So even a re-read reference never reached an open map. This
+  was equally true of the read-time attachment whenever the base road
+  appeared after the first read. The publisher's identity now includes the
+  reference's leg count and miles: a reference that appears or changes is
+  sent in full once.
+- **Unchanged:** the plan version, fuel's route version and movement. No
+  cache or provider call was added.
+
+Regressions:
+- Client `PlanningExecutionIdentityTests`: a reference appearing, held and
+  unchanged, held and changed;
+- `MapRoutePublisherTests`: a reference added at the same version is sent
+  in full.
+
+Removing the new identity fields or the miles comparison fails them. The
+page's own path was traced, not tested: each ten-second poll goes
+`PlanningCache.RefreshAsync`, `SetRouteState`, `SendMapRouteAsync`,
+`MapRoutePublisher.PublishAsync`. The component harness has no test of a
+reference appearing between polls, and map drawing itself is not checked
+by any browser probe.
 
 **Consistency auditor:** no runtime rule. A plan without a stored reference
 is not invalid: the read path still attaches the reference in memory, so the

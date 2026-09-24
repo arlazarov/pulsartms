@@ -140,6 +140,87 @@ public sealed class PlanningExecutionIdentityTests
     Assert.False(response.Response!.State!.Plan!.GeometryOmitted);
   }
 
+  // An open map acknowledged a plan with no display reference; the server
+  // then gives the plan its base road as reference at the same version. The
+  // metadata answer names the reference but omits its points, so they are
+  // read in full once, without the acknowledgment; the version the fuel
+  // plan and ETA follow does not move. With the reference already held, the
+  // metadata answer reuses it and asks nothing more; a different one held
+  // (another road, same legs) is read again.
+  [Theory]
+  [InlineData(false, 110, 2)]
+  [InlineData(true, 110, 1)]
+  [InlineData(true, 96, 2)]
+  public async Task AReferenceGivenAtTheSameVersionReachesAnOpenMap(
+    bool held,
+    double heldMiles,
+    int reads
+  )
+  {
+    var first = Result(Guid.NewGuid(), Guid.NewGuid(), null);
+    var points = new List<RoutePoint> { new(40, -80), new(40.5, -79.5) };
+    var drawn = new List<RoutePoint> { new(41, -81), new(41.2, -80.9) };
+    TruckRoute Reference(bool withPoints) =>
+      new()
+      {
+        Miles = 110,
+        Legs = [new(110, 7200, withPoints ? [.. points] : [])],
+      };
+    if (held)
+      first.State!.Plan!.ReferenceRoute = new()
+      {
+        Miles = heldMiles,
+        Legs = [new(heldMiles, 7200, [.. drawn])],
+      };
+    var urls = new List<string>();
+    using var client = new HttpClient(
+      new StubHttpMessageHandler(
+        (request, _) =>
+        {
+          urls.Add(request.RequestUri!.PathAndQuery);
+          var omitted = request.RequestUri.Query.Contains("knownVersion");
+          var next = Result(first.TruckId, first.DispatchId!.Value, null);
+          next.State!.Plan!.Id = first.State!.Plan!.Id;
+          next.State.Plan.Version = first.State.Plan.Version;
+          next.State.Plan.GeometryOmitted = omitted;
+          next.State.Plan.ReferenceRoute = Reference(!omitted);
+          return Task.FromResult(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+              Content = JsonContent.Create(
+                new RequestResponseDTO<AutomaticPlanningResult>
+                {
+                  Success = true,
+                  Response = next,
+                }
+              ),
+            }
+          );
+        }
+      )
+    )
+    {
+      BaseAddress = new("http://localhost/"),
+    };
+    using var cache = new PlanningDisplayCache(new ApiService(client));
+    var url = TruckUrl(first.TruckId);
+    cache.Store(url, first);
+
+    var response = await cache.RefreshAsync(url, default);
+
+    Assert.Equal(reads, urls.Count);
+    Assert.Contains("knownVersion", urls[0]);
+    if (reads == 2)
+      Assert.DoesNotContain("knownVersion", urls[1]);
+    var plan = response.Response!.State!.Plan!;
+    Assert.False(plan.GeometryOmitted);
+    Assert.Equal(first.State!.Plan!.Version, plan.Version);
+    Assert.Equal(
+      reads == 2 ? points : drawn,
+      Assert.Single(plan.ReferenceRoute!.Legs).Points
+    );
+  }
+
   [Theory]
   [InlineData(true)]
   [InlineData(false)]

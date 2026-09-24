@@ -115,6 +115,37 @@ public sealed class MapRoutePublisherTests
     );
   }
 
+  // The server may give a plan its display reference at the same version.
+  // What the map drew had none, so the reference is sent in full once;
+  // after that the same plan is metadata again.
+  [Fact]
+  public async Task AReferenceAddedAtTheSameVersionIsSentToTheMap()
+  {
+    var js = new PayloadJs();
+    var publisher = new MapRoutePublisher();
+    var state = State();
+    var plan = state.Plan!;
+    await publisher.PublishAsync(js, state, false, () => true, default);
+    Assert.True(publisher.HasGeometry(js, plan));
+
+    plan.ReferenceRoute = new()
+    {
+      Miles = 110,
+      Legs = [new(110, 7200, [new(40, -80), new(40.5, -79.5)])],
+    };
+    Assert.False(publisher.HasGeometry(js, plan));
+    await publisher.PublishAsync(js, state, false, () => true, default);
+
+    using var sent = JsonDocument.Parse((byte[])js.Calls[^1].Args![0]!);
+    Assert.False(sent.RootElement.GetProperty("geometryOmitted").GetBoolean());
+    Assert.Equal(
+      JsonValueKind.Object,
+      sent.RootElement.GetProperty("referenceRoute").ValueKind
+    );
+    Assert.Equal(1, sent.RootElement.GetProperty("version").GetInt32());
+    Assert.True(publisher.HasGeometry(js, plan));
+  }
+
   [Fact]
   public async Task FuelGaugeInputsPublishWithFullAndMetadataOnlyPayloads()
   {
