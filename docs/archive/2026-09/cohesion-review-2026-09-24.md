@@ -36,6 +36,13 @@ was reviewed.
 | `Client/Pages/Messages/Messages.razor.cs` | mixed concerns | Proposal |
 | `RoutePlanningService.ReadReferenceAsync` / `SavedRouteReader` | measured idle cost | Proposal; parse cost cut separately |
 | Size checks and guides: ServerStructureTests, scriptStructure.test.js, styleStructure.test.js, AGENTS.md, source-size.md, Scripts/Styles READMEs, ui-controls.md | policy | Replaced (below) |
+| `FuelPlanningService` (6 files, 13 dependencies), member outline | owners | One owner; yesterday's finding 1 stands |
+| Client `FleetMap` page (12 files, 81 fields), member and field outline | mixed owners | Proposal: next-loads owner |
+| Client `DispatchList` (2 files), member outline | mixed owners | Proposal: board-state owner |
+| `Client/Scripts/fleetMap/fleetMap.ts`, outline | composition root | Reviewed, fine |
+| `Client/Scripts/fleetMap/routes/*` and commit `093c5cb4` | split for the limit? | Split by responsibility, fine |
+| Style and script file names across the tree | limit-driven names | None found |
+| Inbox and unread-notice handlers | round trips | Finding: duplicate user read |
 
 ## Policy change
 
@@ -120,6 +127,16 @@ behavior check is unchanged. `ui-controls.md` had no size rule; its size
 - **`Messages.razor.cs`:** the composer (draft, send, template, file,
   retry, claim) is its own component with its own state and lifecycle. The
   formatting helpers could be shared with `MessageItem`.
+- **Client `FleetMap` page:** one component holds 81 fields across 12
+  files. The next-loads feature (`NextLoads` + `NextLoadDetails`, 724 lines,
+  17 fields, its own polling and revision state) is its own owner inside the
+  page. Extracting it touches the 5,653-line component test suite.
+- **Client `DispatchList`:** board load, search, and separate telemetry,
+  planning, HOS and enrichment polling, each with its own lifecycle.
+  Candidate: a board-state owner, possibly shared with FleetMap's polling.
+- **Inbox round trips:** the driver-group scope (added tonight) reads the
+  user row that `Inbox.UserAsync` has just read, one remote round trip per
+  inbox poll. The unread notice itself is two queries.
 - **`AutomaticPlanningTests`** is one partial test class across 15 files
   (5,372 lines) held together by a nested fixture. That fixture should be a
   support type. Tonight's reroute tests followed the existing pattern.
@@ -136,13 +153,14 @@ behavior check is unchanged. `ui-controls.md` had no size rule; its size
 
 ## Not reviewed tonight
 
-Everything not in the table above. In particular:
-- `FuelPlanningService` beyond yesterday's findings;
+Everything not in the table above. Outlines are not full reads: the
+FuelPlanningService, FleetMap, DispatchList and fleetMap.ts rows looked at
+members, fields and dependencies, not every method body. In particular:
 - `RoutePlanStorage` (a static codec in six parts, not read);
-- the Client `FleetMap` page (12 files), `DispatchList`, `FuelPlanEditor`;
-- browser modules (`fleetMap.ts` and `stationLayer.ts` are the known
-  whole-screen modules);
-- styles;
+- `FuelPlanEditor`, `DispatchDetails` and the other Client pages;
+- browser modules other than the two above (`stationLayer.ts` is the other
+  known whole-screen module);
+- style contents;
 - Infrastructure adapters, tools and scripts;
 - the tests beyond those touched.
 
