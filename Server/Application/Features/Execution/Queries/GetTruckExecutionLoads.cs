@@ -81,26 +81,38 @@ public static class ExecutionLoads
     var anyLeg = legFilter is null;
     var legSet = legFilter ?? new HashSet<Guid>();
     var started = Stopwatch.GetTimestamp();
-    var rows = await db
-      .LoadExecutionLegs.AsNoTracking()
-      .Where(x =>
-        wanted.Contains(x.DispatchId)
+    // Each link comes with its leg (and the leg's stops) and its load in one
+    // statement: the loads were a second round trip on every call, and this
+    // runs up to three times in one ETA enrichment.
+    var joined = await (
+      from link in db.LoadExecutionLegs.AsNoTracking()
+      join load in db.Dispatches.AsNoTracking()
+        on link.DispatchId equals load.Id
+      where
+        wanted.Contains(link.DispatchId)
         || (
           (
-            x.ExecutionLeg.Status == "active"
-            || x.ExecutionLeg.Status == "planned"
-            || x.ExecutionLeg.Status == "completed"
-              && completed.Contains(x.ExecutionLegId)
+            link.ExecutionLeg.Status == "active"
+            || link.ExecutionLeg.Status == "planned"
+            || link.ExecutionLeg.Status == "completed"
+              && completed.Contains(link.ExecutionLegId)
           )
-          && (anyTruck || truckSet.Contains(x.ExecutionLeg.TruckId))
-          && (anyLeg || legSet.Contains(x.ExecutionLegId))
+          && (anyTruck || truckSet.Contains(link.ExecutionLeg.TruckId))
+          && (anyLeg || legSet.Contains(link.ExecutionLegId))
         )
-      )
-      .Include(x => x.ExecutionLeg)
-      .OrderBy(x => x.ExecutionLeg.Status == "active" ? 0 : 1)
-      .ThenBy(x => x.Sequence)
-      .ThenBy(x => x.Id)
-      .ToListAsync(ct);
+      orderby link.ExecutionLeg.Status == "active"
+        ? 0
+        : 1, link.Sequence, link.Id
+      select new
+      {
+        Link = link,
+        Leg = link.ExecutionLeg,
+        Load = load,
+      }
+    ).ToListAsync(ct);
+    foreach (var row in joined)
+      row.Link.ExecutionLeg = row.Leg;
+    var rows = joined.Select(x => x.Link).ToList();
     started = Mark("links", started);
     var owned = rows.Where(x => wanted.Contains(x.DispatchId))
       .Select(x => x.DispatchId)
@@ -119,12 +131,10 @@ public static class ExecutionLoads
       .ToList();
     if (links.Count == 0)
       return new([], owned);
-    var ids = links.Select(x => x.DispatchId).Distinct().ToArray();
-    var loads = await db
-      .Dispatches.AsNoTracking()
-      .Where(x => ids.Contains(x.Id))
-      .ToDictionaryAsync(x => x.Id, ct);
-    started = Mark("loads", started);
+    var loads = joined
+      .Select(x => x.Load)
+      .DistinctBy(x => x.Id)
+      .ToDictionary(x => x.Id);
     var legs = links
       .Select(x => x.ExecutionLeg)
       .DistinctBy(x => x.Id)
