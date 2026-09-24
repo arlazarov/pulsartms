@@ -143,9 +143,20 @@ is likely a "being prepared" answer, not a full plan; it was not checked.
 - **Why a plan read re-parses the base road.** Proposal in the
   [cohesion review](cohesion-review-2026-09-24.md). Removing that read would
   be the next idle reduction.
-- **Idle CPU** did not move with allocation. Its source (the 30-second
-  summary and planning loops, GC, the runtime) was not attributed; a CPU
-  sample trace was not taken.
+- **Idle CPU, attributed later in the night.** An idle window was traced
+  with the sample profiler (`run.py restart --trace --sample-cpu`, 187 s,
+  build `9fdca76b`). While sampling, CPU read 19%, against 12% without
+  sampling.
+  - *Managed code is a small share:* about 32 samples a second, roughly 3%
+    of one CPU. The rest is runtime work these samples do not attribute
+    (GC, timers, I/O).
+  - *Within managed code:* `DisplayRouteGeometry.Simplify` 15%, route point
+    reads 7.7%, summary serialization 4.3% and chunk decoding 3.8%.
+  - *By outermost operation:* execution reads 19.5%, plan loads 9.8% and
+    `ReadReferenceAsync` 8.3%.
+
+  The base road re-read and re-simplified for display on every summary
+  refresh leads idle CPU as well as idle allocation.
 - **Hours-long runs and a 512 MiB limit** were not tested (see the
   30-minute run above).
 - **Foreground costs.** Beyond the section above (ETA enrichment's 20
@@ -154,6 +165,12 @@ is likely a "being prepared" answer, not a full plan; it was not checked.
   latency, cannot be inferred from this fixture.
 
 ## Side findings
+
+- **Two transient HTTP 500s.** On one fresh fixture, two concurrent plan
+  preparations answered 500 after about 8 s. The server log was lost with
+  the restart that followed. A rerun on another fresh fixture prepared all
+  ten trucks with no error logged. Seen once, not reproduced, not
+  explained.
 
 - **The probe API did not exit on SIGTERM within 90 seconds.** Docker
   killed it both times (exit 137), and a summary refresh logged an

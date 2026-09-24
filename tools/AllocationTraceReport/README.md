@@ -17,3 +17,10 @@ also rolls sampled bytes up by the nearest application frame (what
 allocated) and the farthest (the operation it ran under); asynchronous
 continuations can cut the stack short, so the farthest frame is the
 outermost one sampled, not always the originating request or worker.
+
+`--cpu` counts the EventPipe sample profiler's samples of managed code
+running (about one per millisecond per running thread) instead of
+allocation ticks, rolled up the same way. Samples of waiting threads are
+left out, and so is CPU spent outside managed code. The profiler suspends
+the runtime at each sample, so a sampled process runs slower. `--events`
+lists the providers and events a trace holds.

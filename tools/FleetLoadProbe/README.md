@@ -102,7 +102,8 @@ empty plan or failed calculation as a cheap successful operation.
 `run.py restart --manifest ... --publish ... --trace DIR` restarts the
 fixture's one container on the same schema (prepared plans stay, process
 memory starts empty) with EventPipe GC allocation ticks, JIT and loader
-events streamed to `DIR/api.nettrace`. Use a managed diagnostic directory,
+events streamed to `DIR/api.nettrace`; add `--sample-cpu` to sample stacks
+for where CPU goes (it costs CPU itself). Use a managed diagnostic directory,
 made writable for the container. Leave it idle or drive it, then stop the
 container (`docker stop`); the API stops its planning workers before the
 host is disposed and exits within seconds. A stream from a killed process

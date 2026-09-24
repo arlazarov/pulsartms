@@ -3,16 +3,37 @@ using Microsoft.Diagnostics.Tracing.Etlx;
 using Microsoft.Diagnostics.Tracing.Parsers.Clr;
 
 // An optional second argument skips the trace's first seconds (startup:
-// JIT, model building), so a steady window is reported on its own.
+// JIT, model building), so a steady window is reported on its own. With
+// --cpu, the sample profiler's samples of managed code running are
+// counted instead of allocation ticks: about one per millisecond per
+// running thread; samples of a thread waiting are left out.
+var cpu = args.Contains("--cpu");
+
+// --events lists which providers and events a trace holds, and stops.
+var listing = args.Contains("--events");
+args = [.. args.Where(x => x is not ("--cpu" or "--events"))];
 if (args.Length is not (1 or 2))
   throw new ArgumentException(
-    "Supply an allocation EventPipe trace and optionally seconds to skip."
+    "Supply an EventPipe trace, optionally seconds to skip, and --cpu."
   );
 var skip = args.Length == 2 ? double.Parse(args[1]) * 1000 : 0;
 string[] owned = ["Application.", "Domain.", "Infrastructure.", "API."];
 
 var path = TraceLog.CreateFromEventPipeDataFile(args[0]);
 using var log = new TraceLog(path);
+if (listing)
+{
+  foreach (
+    var group in log
+      .Events.GroupBy(x =>
+        $"{x.ProviderName}/{x.EventName} {(x.PayloadNames.Contains("Type") ? x.PayloadByName("Type")?.GetType().Name + "=" + x.PayloadByName("Type") : "")}"
+      )
+      .OrderByDescending(x => x.Count())
+      .Take(25)
+  )
+    Console.WriteLine($"{group.Count(), 9} {group.Key}");
+  return;
+}
 var types = new Dictionary<string, long>();
 var stacks = new Dictionary<string, long>();
 var inner = new Dictionary<string, long>();
@@ -21,16 +42,30 @@ double first = double.NaN,
   last = 0;
 foreach (var entry in log.Events)
 {
-  if (
-    entry is not GCAllocationTickTraceData allocation
-    || entry.TimeStampRelativeMSec < skip
-  )
+  if (entry.TimeStampRelativeMSec < skip)
     continue;
+  long bytes;
+  string type;
+  if (cpu)
+  {
+    if (
+      entry.ProviderName != "Microsoft-DotNETCore-SampleProfiler"
+      || entry.PayloadByName("Type")?.ToString() != "Managed"
+    )
+      continue;
+    bytes = 1;
+    type = "managed sample";
+  }
+  else
+  {
+    if (entry is not GCAllocationTickTraceData allocation)
+      continue;
+    bytes = allocation.AllocationAmount64;
+    type = allocation.TypeName ?? "unknown";
+  }
   if (double.IsNaN(first))
     first = entry.TimeStampRelativeMSec;
   last = entry.TimeStampRelativeMSec;
-  var bytes = allocation.AllocationAmount64;
-  var type = allocation.TypeName ?? "unknown";
   types[type] = types.GetValueOrDefault(type) + bytes;
   var names = new List<string>();
   for (var frame = entry.CallStack(); frame is not null; frame = frame.Caller)

@@ -37,6 +37,10 @@ def main():
     # and loader events, so methods resolve without a clean rundown), from the
     # API's start to its stop, into this managed directory.
     parser.add_argument("--trace", type=Path)
+    # restart --trace only: also sample every managed thread's stack about
+    # once a millisecond, for where CPU goes. It costs CPU itself, so it is
+    # kept out of allocation-only traces.
+    parser.add_argument("--sample-cpu", action="store_true")
     args = parser.parse_args()
     output = Path(os.environ["PULSARTMS_ARTIFACT_DIR"])
     (output / ".keep").touch()
@@ -86,7 +90,9 @@ def main():
                 "-e", "DOTNET_EventPipeOutputStreaming=1",
                 "-e", "DOTNET_EventPipeOutputPath=/trace/api.nettrace",
                 "-e", "DOTNET_EventPipeConfig="
-                "Microsoft-Windows-DotNETRuntime:0x19:5",
+                + ("Microsoft-DotNETCore-SampleProfiler:0:5,"
+                   if args.sample_cpu else "")
+                + "Microsoft-Windows-DotNETRuntime:0x19:5",
             ]
         serve(common + traced, image, saved, environment, output)
         return
