@@ -153,6 +153,36 @@ public sealed class FuelSendPlanTests
     );
   }
 
+  // A stop the driver was given that a recalculation dropped is said at
+  // once, for review; the server decides it, the page only shows it.
+  [Fact]
+  public void AStopGivenToTheDriverAndDroppedIsShownForReview()
+  {
+    using var f = new Fixture();
+    f.Preview = f.Preview with
+    {
+      Withdrawn =
+      [
+        new(
+          Guid.NewGuid(),
+          Guid.NewGuid(),
+          Guid.NewGuid(),
+          "Pilot 312",
+          DateTime.UtcNow.AddHours(-1),
+          DateTime.UtcNow
+        ),
+      ],
+    };
+    var component = f.Render();
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          "Pilot 312",
+          component.Find(".fuel-send-plan__withdrawn").TextContent
+        )
+    );
+  }
+
   [Fact]
   public void WhatsAppSendsTheShownVersionAndSaysAcceptedIsNotDelivered()
   {

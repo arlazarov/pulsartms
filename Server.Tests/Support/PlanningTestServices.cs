@@ -66,6 +66,7 @@ internal sealed class PlanningTestServices : IDisposable
   public TruckFuelPlans FuelPlans { get; }
   public FuelScheduleEvaluator FuelSchedules { get; }
   public FuelPlanningService Fuel { get; }
+  public FuelIssueRecords Issues { get; private set; } = null!;
   public ISender Sender { get; }
   public NoHos Hos { get; } = new();
 
@@ -223,12 +224,13 @@ internal sealed class PlanningTestServices : IDisposable
       new CarrierFuelPrices(sender),
       Options.Create(new FuelRegionOptions()),
       SavedFuelInputs,
-      new FuelIssueRecords(
+      Issues = new FuelIssueRecords(
         db,
         new PlanningSummaryCache(TimeProvider.System),
         new TestCompany(),
         Options.Create(new FuelIssueOptions()),
-        TimeProvider.System
+        TimeProvider.System,
+        new PlanningPublicationScope((AppDbContext)db)
       )
     );
     FuelSchedules = new(db, hos, hos, Eta);
@@ -250,7 +252,8 @@ internal sealed class PlanningTestServices : IDisposable
       Publication,
       profiles,
       routeStore,
-      Roads
+      Roads,
+      Issues
     );
     EtaInputs = new(
       db,

@@ -1,8 +1,11 @@
+using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Fuel;
 using Domain.Models.Fleet;
+using Domain.Models.Messaging;
 using Domain.Models.Routing;
 using Domain.Policies;
+using Domain.Rules;
 using Domain.Rules.Routing;
 using Microsoft.Extensions.Options;
 
@@ -21,9 +24,115 @@ public sealed class FuelIssueRecords(
   PlanningSummaryCache summaries,
   ICurrentCompany company,
   IOptions<FuelIssueOptions> options,
-  TimeProvider time
+  TimeProvider time,
+  IPlanningPublicationScope publication
 )
 {
+  // What a fuel calculation saw of the truck's hand-overs when it began: the
+  // latest one recorded, and the moment it began.
+  public sealed record Stamp(Guid TruckId, DateTime At, DateTime? LatestSentAt);
+
+  public async Task<Stamp> StampAsync(Guid truckId, CancellationToken ct) =>
+    new(
+      truckId,
+      time.GetUtcNow().UtcDateTime,
+      await LatestSentAtAsync(truckId, ct)
+    );
+
+  // Inside a fuel plan's publication, which holds the truck's publication
+  // lock that RecordAsync takes too: a plan calculated before a hand-over,
+  // or while a WhatsApp attempt for the truck is in flight, is refused and
+  // calculated again, so it can never drop that hand-over unseen.
+  public async Task RequireUnchangedAsync(Stamp stamp, CancellationToken ct)
+  {
+    var latest = await LatestSentAtAsync(stamp.TruckId, ct);
+    var attempts = await db.DriverMessages.AnyAsync(
+      x =>
+        x.TruckId == stamp.TruckId
+        && x.VisitKeys != ""
+        && (
+          x.Status == DriverMessageStatuses.Sending || x.CreatedAt > stamp.At
+        ),
+      ct
+    );
+    if (latest != stamp.LatestSentAt || attempts)
+      throw new PlanningSettingsConflictException(
+        "A fuel stop was handed to the driver during the calculation. "
+          + "It is calculated again."
+      );
+  }
+
+  private Task<DateTime?> LatestSentAtAsync(
+    Guid truckId,
+    CancellationToken ct
+  ) =>
+    db
+      .FuelVisitSends.AsNoTracking()
+      .Where(x => x.TruckId == truckId)
+      .MaxAsync(x => (DateTime?)x.SentAt, ct);
+
+  // The visits among these, still ahead in the saved plan, that the driver
+  // holds: each one's latest hand-over, in the scope of the stop it comes
+  // before, is this visit (whatever quantity it said).
+  public async Task<IReadOnlyList<FuelHandedOver>> HandedOverAsync(
+    TruckFuelPlanSnapshot saved,
+    IReadOnlyCollection<FuelPlanEditStop> ahead,
+    CancellationToken ct
+  )
+  {
+    var stops = saved
+      .Plan.Stops.Where(stop =>
+        ahead.Any(x =>
+          x.StationId == stop.StationId && x.BeforeStopId == stop.BeforeStopId
+        )
+      )
+      .ToList();
+    if (stops.Count == 0)
+      return [];
+    var dispatches = stops.Select(x => x.DispatchId).Distinct().ToArray();
+    var sends = await db
+      .FuelVisitSends.AsNoTracking()
+      .Where(x =>
+        x.TruckId == saved.TruckId && dispatches.Contains(x.DispatchId)
+      )
+      .Select(x => new
+      {
+        x.DispatchId,
+        x.ScopeId,
+        x.AssignmentRevision,
+        x.StationId,
+        x.BeforeStopId,
+        x.SentAt,
+      })
+      .ToListAsync(ct);
+    var held = new List<FuelHandedOver>();
+    foreach (var stop in stops)
+    {
+      if (Scope(saved, stop) is not { } scope)
+        continue;
+      var latest = sends
+        .Where(x =>
+          x.DispatchId == stop.DispatchId
+          && x.ScopeId == scope.Id
+          && x.AssignmentRevision == scope.Revision
+          && x.StationId == stop.StationId
+          && x.BeforeStopId == stop.BeforeStopId
+        )
+        .MaxBy(x => x.SentAt);
+      if (latest is not null)
+        held.Add(
+          new(
+            stop.StationId,
+            stop.BeforeStopId,
+            stop.DispatchId,
+            stop.Name,
+            latest.SentAt
+          )
+        );
+    }
+    return held;
+  }
+
   private sealed record Sent(
     Guid DispatchId,
     Guid ScopeId,
@@ -99,6 +208,15 @@ public sealed class FuelIssueRecords(
           Delivery = latest.Delivery,
         };
     }
+    // A withdrawn visit stays in view until the dispatcher hands the driver
+    // something newer: that hand-over is the answer to it.
+    if (plan.Withdrawn is { Count: > 0 } withdrawn)
+    {
+      var latestSent = await LatestSentAtAsync(saved.TruckId, ct);
+      plan.Withdrawn = withdrawn
+        .Where(x => latestSent is null || latestSent <= x.WithdrawnAt)
+        .ToList();
+    }
     FuelIssueHorizon.Apply(
       plan,
       hos,
@@ -113,17 +231,37 @@ public sealed class FuelIssueRecords(
   // content is the same hand-over and is not written twice. A provider
   // message that carried content already recorded becomes that hand-over's
   // latest carrier, so a resend after a failure is what the plan shows.
-  public async Task<int> RecordAsync(
+  //
+  // Written under the truck's publication lock, which a fuel plan's
+  // publication holds too, so the two are ordered. A confirmation by hand
+  // (requireCurrent) is refused - null - when the saved plan is no longer
+  // the version confirmed; a WhatsApp acceptance is recorded whatever the
+  // plan says now, because the message has already gone.
+  public async Task<int?> RecordAsync(
     TruckFuelPlanSnapshot saved,
     IReadOnlyList<(FuelPlanStop Stop, string Text)> visits,
     string channel,
     string? actor,
     CancellationToken ct,
-    Guid? messageId = null
+    Guid? messageId = null,
+    bool requireCurrent = false
   )
   {
     var owner =
       company.Id ?? throw new InvalidOperationException("A company is needed.");
+    await using var transaction = await publication.BeginAsync(
+      saved.TruckId,
+      ct
+    );
+    if (
+      requireCurrent
+      && await db
+        .TruckFuelPlans.AsNoTracking()
+        .Where(x => x.TruckId == saved.TruckId)
+        .Select(x => (DateTime?)x.CalculatedAt)
+        .FirstOrDefaultAsync(ct) != saved.CalculatedAt
+    )
+      return null;
     var now = time.GetUtcNow().UtcDateTime;
     var added = 0;
     var written = new List<FuelVisitSend>();
@@ -182,6 +320,7 @@ public sealed class FuelIssueRecords(
     try
     {
       await db.SaveChangesAsync(ct);
+      await transaction.CommitAsync(ct);
     }
     catch (DbUpdateException)
     {

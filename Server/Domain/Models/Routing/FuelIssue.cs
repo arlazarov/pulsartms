@@ -51,6 +51,27 @@ public sealed record FuelSendStatus(
   public string? Delivery { get; init; }
 }
 
+// A visit the driver holds from an earlier hand-over: what the fuel owner
+// compares a new plan against before it replaces the old one.
+public sealed record FuelHandedOver(
+  Guid StationId,
+  Guid BeforeStopId,
+  Guid DispatchId,
+  string StationName,
+  DateTime SentAt
+);
+
+// A hand-over the plan no longer holds: the station, the stop it came
+// before, when it was sent and when a recalculation dropped it.
+public sealed record FuelWithdrawnVisit(
+  Guid StationId,
+  Guid BeforeStopId,
+  Guid DispatchId,
+  string StationName,
+  DateTime SentAt,
+  DateTime WithdrawnAt
+);
+
 public sealed record FuelIssueLine(
   string VisitKey,
   string Text,
@@ -109,6 +130,9 @@ public sealed record FuelIssuePreview(
   public bool AutomaticSending { get; init; }
   public FuelIssueRecipient? Recipient { get; init; }
   public FuelIssueMessageState? LastMessage { get; init; }
+
+  // Stops given to the driver that the plan no longer holds.
+  public IReadOnlyList<FuelWithdrawnVisit> Withdrawn { get; init; } = [];
 }
 
 // Sending the previewed plan through WhatsApp. SendAgain is a dispatcher

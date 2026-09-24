@@ -52,7 +52,19 @@ public sealed record FuelIssuePreview(
   public bool AutomaticSending { get; init; }
   public FuelIssueRecipient? Recipient { get; init; }
   public FuelIssueMessageState? LastMessage { get; init; }
+
+  // Stops given to the driver that the plan no longer holds.
+  public List<FuelWithdrawnVisit> Withdrawn { get; init; } = [];
 }
+
+public sealed record FuelWithdrawnVisit(
+  Guid StationId,
+  Guid BeforeStopId,
+  Guid DispatchId,
+  string StationName,
+  DateTime SentAt,
+  DateTime WithdrawnAt
+);
 
 public sealed record FuelIssueSentRequest(
   DateTime ExpectedCalculatedAt,

@@ -17,6 +17,14 @@
             {
                 <p class="fuel-send-plan__critical" role="alert">A planned fuel stop is out of reach. Review the fuel plan before sending it.</p>
             }
+            @if (preview.Withdrawn.Count > 0)
+            {
+                <p class="fuel-send-plan__critical fuel-send-plan__withdrawn" role="alert">
+                    Given to the driver, no longer in the plan:
+                    @string.Join(", ", preview.Withdrawn.Select(x => x.StationName)).
+                    Review the plan and send it again.
+                </p>
+            }
             <p class="fuel-send-plan__state" role="status">@StateText(preview)</p>
             <h3 class="fuel-send-plan__section">Ready for current shift</h3>
             @if (preview.Lines.Count == 0)

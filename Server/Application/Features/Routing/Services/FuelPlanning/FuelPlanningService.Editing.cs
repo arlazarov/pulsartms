@@ -37,7 +37,7 @@ public sealed partial class FuelPlanningService
       await GateWait.WaitAsync(SearchSlots, "FuelEdit", ct);
       try
       {
-        return await EditCoreAsync(dispatchId, request, save, ct);
+        return (await EditCoreAsync(dispatchId, request, save, ct))!;
       }
       finally
       {
@@ -50,11 +50,15 @@ public sealed partial class FuelPlanningService
     }
   }
 
-  private async Task<FuelPlanEditPreview> EditCoreAsync(
+  // keepHandedOver: an automatic refresh asking to keep the saved stations
+  // because the driver holds some of them. Null when the driver holds none
+  // of the stops still ahead; any refusal throws, and the caller searches.
+  private async Task<FuelPlanEditPreview?> EditCoreAsync(
     Guid dispatchId,
     FuelPlanEditRequest request,
     bool save,
-    CancellationToken ct
+    CancellationToken ct,
+    bool keepHandedOver = false
   )
   {
     // "core-total" contains every fuel-edit stage recorded below it, so it is
@@ -143,6 +147,8 @@ public sealed partial class FuelPlanningService
         "A valid reported fuel level is required to preview this plan."
       );
     var gallons = profile.TankGallons!.Value * percent / 100;
+    // Only a save commits a plan, so only a save needs what the driver holds.
+    var stamp = save ? await issues.StampAsync(plan.TruckId, ct) : null;
     var saved = await savedPlans.ReadCheckedAsync(plan.TruckId, ct);
     at = Mark("saved-fuel", at);
     var editable =
@@ -178,9 +184,15 @@ public sealed partial class FuelPlanningService
     // about it being CPU makes it cheap.
     var geometry = new FuelSearchGeometry(horizon.Route, ct);
     at = Mark("geometry", at);
-    var edits =
-      request.Stops ?? FuelPlanEdits.Initial(editable, state, horizon);
+    var ahead = FuelPlanEdits.Initial(editable, state, horizon);
+    var edits = request.Stops ?? ahead;
     FuelPlanEdits.Validate(edits, editable);
+    var handedOver =
+      save && editable is not null
+        ? await issues.HandedOverAsync(editable, ahead, ct)
+        : [];
+    if (keepHandedOver && handedOver.Count == 0)
+      return null;
     // Headroom is preview output, never an authority supplied by the request.
     edits = edits
       .Select(edit => edit with { PurchaseLimitGallons = null })
@@ -292,9 +304,13 @@ public sealed partial class FuelPlanningService
       .ToList();
     if (save)
     {
-      if (request.Stops is null)
+      if (request.Stops is null && !keepHandedOver)
         throw new RoutePlanningException(
           "Choose the fuel stops before saving."
+        );
+      if (keepHandedOver)
+        fuel.Notes.Add(
+          "The road changed. The stations given to the driver still work on it and were kept."
         );
       if (replay.Errors.Count > 0)
         throw new RoutePlanningException(string.Join(" ", replay.Errors));
@@ -351,6 +367,7 @@ public sealed partial class FuelPlanningService
         FuelPriceSignature.From(prices),
         today,
         request.ExpectedCalculatedAt,
+        new(stamp!, handedOver, editable?.Plan.Withdrawn),
         ct
       );
     }

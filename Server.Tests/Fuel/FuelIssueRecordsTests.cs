@@ -4,6 +4,7 @@ using Application.Interfaces;
 using Domain.Models.Routing;
 using Domain.Policies;
 using Domain.Rules.Routing;
+using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -148,7 +149,8 @@ public sealed class FuelIssueRecordsTests
       new PlanningSummaryCache(f.Time),
       scope.ServiceProvider.GetRequiredService<ICurrentCompany>(),
       Options.Create(new FuelIssueOptions()),
-      f.Time
+      f.Time,
+      new PlanningPublicationScope(db)
     );
     var shown = Plan(Visit(dispatch, before, fill: true));
     await foreign.ApplyAsync(saved, shown, null, default);
@@ -240,7 +242,8 @@ public sealed class FuelIssueRecordsTests
       f.Services.GetRequiredService<PlanningSummaryCache>(),
       f.Services.GetRequiredService<ICurrentCompany>(),
       Options.Create(new FuelIssueOptions()),
-      f.Time
+      f.Time,
+      new PlanningPublicationScope(f.Db)
     );
 
   private static async Task<(Guid Truck, Guid Dispatch)> SeedAsync(

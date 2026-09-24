@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Domain.Models.Routing;
 
 public sealed class FuelPlan
@@ -53,6 +55,13 @@ public sealed class FuelPlan
   public double? SavingsUsd { get; set; }
   public bool UsesIfta { get; set; }
   public List<FuelPlanStop> Stops { get; set; } = [];
+
+  // Visits the driver was given that a recalculation of the same assignment
+  // no longer holds: kept with the plan until a newer hand-over replaces
+  // them, so the change is shown for review and never passes silently.
+  // Written only when the fuel owner commits a plan; null when none.
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public List<FuelWithdrawnVisit>? Withdrawn { get; set; }
 
   // Set when the plan is read for display, never stored with it.
   public string? IssueState { get; set; }

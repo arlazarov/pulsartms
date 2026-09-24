@@ -20,6 +20,15 @@ namespace Application.Features.Routing.Services.FuelPlanning;
 // only if nothing it depends on has moved in the meantime.
 public sealed partial class FuelPlanningService
 {
+  // What the driver held when the calculation began: the hand-over stamp
+  // checked again inside the publication, the visits handed over that were
+  // still ahead, and the withdrawn visits the saved plan already carried.
+  private sealed record HandOvers(
+    FuelIssueRecords.Stamp Stamp,
+    IReadOnlyList<FuelHandedOver> HandedOver,
+    IReadOnlyList<FuelWithdrawnVisit>? Carried
+  );
+
   // Opens the publication for the captured work and confirms, inside it, that
   // every input the result was calculated from is still current: the truck
   // itinerary, the saved roads used, the truck profile and the telemetry
@@ -91,6 +100,7 @@ public sealed partial class FuelPlanningService
     string priceSignature,
     DateOnly today,
     DateTime? expectedCalculatedAt,
+    HandOvers handOvers,
     CancellationToken ct
   )
   {
@@ -142,6 +152,31 @@ public sealed partial class FuelPlanningService
       accessMiles += candidate.ExtraInMiles + candidate.ExtraOutMiles;
     }
     fuel.StopArrivals = FuelStopArrivals.Calculate(fuel, itinerary, profile);
+    // A visit the driver holds that this plan no longer has is kept with the
+    // plan for review until a newer hand-over answers it; one the plan still
+    // has is not withdrawn, whatever quantity it now says.
+    var present = fuel
+      .Stops.Select(x => (x.StationId, x.BeforeStopId))
+      .ToHashSet();
+    var withdrawn = (handOvers.Carried ?? [])
+      .Where(x =>
+        handOvers.Stamp.LatestSentAt is not { } latest
+        || latest <= x.WithdrawnAt
+      )
+      .Concat(
+        handOvers.HandedOver.Select(x => new FuelWithdrawnVisit(
+          x.StationId,
+          x.BeforeStopId,
+          x.DispatchId,
+          x.StationName,
+          x.SentAt,
+          fuel.CalculatedAt
+        ))
+      )
+      .Where(x => !present.Contains((x.StationId, x.BeforeStopId)))
+      .DistinctBy(x => (x.StationId, x.BeforeStopId))
+      .ToList();
+    fuel.Withdrawn = withdrawn.Count == 0 ? null : withdrawn;
     var latest = await inputs.ReadFreshAsync(plan.TruckId, ct);
     var latestLoads = latest.Select(plan);
     if (
@@ -170,6 +205,7 @@ public sealed partial class FuelPlanningService
       history,
       ct
     );
+    await issues.RequireUnchangedAsync(handOvers.Stamp, ct);
     SavedRoadVersion[] dependencies =
     [
       .. savedRoads,

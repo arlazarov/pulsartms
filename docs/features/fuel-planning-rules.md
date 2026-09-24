@@ -519,6 +519,50 @@ send. Sent is not delivered, and delivered is not read. After a confirmation
 commits, that one truck's shared summary is asked for again; no other truck is
 touched.
 
+### When the plan changes after a hand-over
+
+A stop given to the driver is not moved without a reason. The fuel owner
+decides this at every automatic recalculation (a changed road after a
+reroute, a price or pricing-day change, a changed profile), before any
+search.
+
+- **Small change: the stations are kept.** The driver holds a visit still
+  ahead in the saved plan, for the same assignment and revision. The saved
+  stations are replayed on the road as it is now, by the plan editor's own
+  rules: each is within 40 miles of the remaining road
+  (`FuelAccessEstimate.NearbyMiles`), on the same side of any border, still
+  offered and priced, and every purchase is reached with reserve and fits
+  the tank. If all hold, the plan is recalculated with the same stations -
+  new quantities, arrivals and prices - as an automatic plan, not a manual
+  one, with a note that the stations were kept. No new distance or price
+  threshold is introduced: the test is the one a dispatcher's own edit
+  would pass.
+- **Substantial change: the search runs, and says so.** When any of those
+  fails - a station no longer offered, out of reach, too far from the new
+  road - the ordinary search runs. A visit the driver holds that the new
+  plan does not have is recorded with the plan as withdrawn. Send plan
+  shows it ("Given to the driver, no longer in the plan") until a newer
+  hand-over answers it. The hand-over history is never changed, and
+  nothing is re-sent.
+- **Another assignment keeps nothing.** A hand-over under another
+  assignment or revision is not this work's: it is neither kept nor shown
+  as withdrawn.
+- **A price change alone keeps the stations.** It takes the same path, so a
+  price that would send an untouched plan back to a search reprices a
+  handed-over plan instead.
+- **Ordering.** Recording a hand-over and publishing a fuel plan take the
+  same per-truck publication lock. A plan calculated before a hand-over
+  was recorded, or while a WhatsApp attempt for the truck is in flight, is
+  refused at publication and calculated again with what the driver now
+  holds. A confirmation by hand against a plan published after it was
+  opened is refused under the same lock.
+
+Limits: the optimizer cannot keep a subset, so while the driver holds any
+stop ahead, the whole saved plan is kept, including later stops he has not
+been given. A stop already passed before a reroute cannot always be told
+apart on the new road; the replay then fails and the search runs, which can
+withdraw a visit that was in fact used.
+
 ### Sending over WhatsApp
 
 Send via WhatsApp goes to the driver whose hours decide the shift - the same

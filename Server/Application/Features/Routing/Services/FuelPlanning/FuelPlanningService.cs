@@ -30,7 +30,8 @@ public sealed partial class FuelPlanningService(
   PlanningWorkPublication publication,
   TruckPlanningProfileService profiles,
   RoutePlanStore routeStore,
-  ISavedRoadValidation roads
+  ISavedRoadValidation roads,
+  FuelIssueRecords issues
 )
 {
   private static readonly KeyedGates TruckGates = new();
@@ -106,6 +107,7 @@ public sealed partial class FuelPlanningService(
       state.Plan?.TruckId ?? assignedLoad.TruckId!.Value,
       ct
     );
+    var stamp = await issues.StampAsync(assignedLoad.TruckId!.Value, ct);
     if (request.AutomaticRefreshRevision is { } refreshRevision)
     {
       RequireRevision(existing, refreshRevision);
@@ -150,6 +152,32 @@ public sealed partial class FuelPlanningService(
         ct
       );
     FuelPlanningGuards.RequireDrivable(state, plan, p);
+    if (request.AutomaticRefreshRevision is { } keepRevision)
+    {
+      // Stops the driver was given are not moved without a reason. When the
+      // saved stations still work on the road as it is now - by the plan
+      // editor's own rules - they are kept; otherwise the search below runs
+      // and records what it drops.
+      try
+      {
+        if (
+          await EditCoreAsync(
+            dispatchId,
+            new(keepRevision, null)
+            {
+              ExecutionLegId = request.ExecutionLegId,
+              AssignmentRevision = request.AssignmentRevision,
+            },
+            true,
+            ct,
+            keepHandedOver: true
+          ) is
+          { } kept
+        )
+          return FuelCalculationResult.Feasible(kept.Plan, p.ReserveGallons);
+      }
+      catch (RoutePlanningException) { }
+    }
     var manual = request.CurrentGallons.HasValue;
     var gallons = FuelStartingLevel.Gallons(
       request.CurrentGallons,
@@ -172,6 +200,17 @@ public sealed partial class FuelPlanningService(
       FuelWorkSignature.LoadSignature
     );
     var horizon = await horizons.BuildAsync(state, p, ct, captured);
+    var sameScope =
+      existing is not null
+      && state.Plan is { } scoped
+      && FuelPlanProjection.SameScope(existing, scoped);
+    var handedOver = sameScope
+      ? await issues.HandedOverAsync(
+        existing!,
+        FuelPlanEdits.Initial(existing, state, horizon),
+        ct
+      )
+      : [];
     // Nothing left to drive is nothing to fuel. A truck standing on the last
     // stop of its last load has a route of zero miles, which is not a route:
     // the store refuses to keep a plan against one, and refused it by
@@ -373,6 +412,7 @@ public sealed partial class FuelPlanningService(
       priceSignature,
       today,
       existing?.CalculatedAt,
+      new(stamp, handedOver, sameScope ? existing!.Plan.Withdrawn : null),
       ct
     );
     return FuelCalculationResult.Feasible(committed, p.ReserveGallons);

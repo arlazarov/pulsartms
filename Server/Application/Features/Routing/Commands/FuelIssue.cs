@@ -124,6 +124,7 @@ public sealed class FuelIssuePreviews(
         FuelIssueMessage.Compose(visits.Select(x => x.Text).ToList())
       )
       {
+        Withdrawn = fuel.Withdrawn ?? [],
         Recipient = await channel.RecipientAsync(plan.TruckId, ct),
         LastMessage = await channel.LatestAsync(saved, ct),
       },
@@ -183,13 +184,23 @@ public sealed class ConfirmFuelIssueSentHandler(
         "The fuel plan changed since it was opened. Open it again, send the new plan, then confirm.",
         409
       );
-    await records.RecordAsync(
-      current.Saved,
-      sent.VisitKeys.Distinct().Select(key => byKey[key]).ToList(),
-      FuelSendChannels.Manual,
-      caller.IdentityUserId,
-      ct
-    );
+    // Checked again under the truck's publication lock: a fuel plan
+    // committed after the preview was read refuses the confirmation.
+    if (
+      await records.RecordAsync(
+        current.Saved,
+        sent.VisitKeys.Distinct().Select(key => byKey[key]).ToList(),
+        FuelSendChannels.Manual,
+        caller.IdentityUserId,
+        ct,
+        requireCurrent: true
+      )
+      is null
+    )
+      return RequestResponse<FuelIssuePreview>.Fail(
+        "The fuel plan changed since it was opened. Open it again, send the new plan, then confirm.",
+        409
+      );
     var after = await previews.ReadAsync(
       request.DispatchId,
       sent.ExecutionLegId,

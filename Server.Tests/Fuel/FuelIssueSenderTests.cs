@@ -9,6 +9,7 @@ using Domain.Models.Messaging;
 using Domain.Models.Routing;
 using Domain.Policies;
 using Domain.Rules.Routing;
+using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -361,7 +362,8 @@ public sealed class FuelIssueSenderTests
         Refresh.Services.GetRequiredService<PlanningSummaryCache>(),
         Refresh.Services.GetRequiredService<ICurrentCompany>(),
         Options.Create(new FuelIssueOptions()),
-        Time
+        Time,
+        new PlanningPublicationScope(Db)
       );
 
     // What the preview reads: the saved plan, its stop marked with the

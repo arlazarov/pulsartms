@@ -115,10 +115,11 @@ Mutation checks:
     on an explicit confirmation (`FuelIssueRecords`), automatic sending is
     off, and the display marks a stop whose plan no longer says what was
     sent. Nothing is re-sent on its own.
-  - *Decision for the owner:* whether a small reroute should keep sent stops
-    pinned. It is not built. The shorter cooldown makes reroutes, and so
-    recalculations, somewhat more frequent for a truck that stays off its
-    road.
+  - *Correction:* this was an owner's requirement already given, not an
+    open decision. It was built the same day: the stations given to the
+    driver are kept when they still work on the new road, and otherwise the
+    change is shown for review. See
+    [fuel planning rules](../../features/fuel-planning-rules.md#when-the-plan-changes-after-a-hand-over).
 - **Real latency and provider volume** need the telemetry cadence of real
   trucks. Neither was measured; the load fixture's detour scenario was not
   rerun.
