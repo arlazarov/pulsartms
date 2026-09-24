@@ -41,8 +41,6 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
   public DbSet<TruckFuelPlan> TruckFuelPlans => Set<TruckFuelPlan>();
   public DbSet<FuelVisitSend> FuelVisitSends => Set<FuelVisitSend>();
   public DbSet<DriverMessage> DriverMessages => Set<DriverMessage>();
-  public DbSet<DriverMessagingWindow> DriverMessagingWindows =>
-    Set<DriverMessagingWindow>();
   public DbSet<Conversation> Conversations => Set<Conversation>();
   public DbSet<ConversationMessage> ConversationMessages =>
     Set<ConversationMessage>();

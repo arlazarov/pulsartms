@@ -9,6 +9,12 @@ namespace Domain.Entities.Messaging;
 // only after a refusal or failure, or when a dispatcher explicitly sends
 // again after an unknown outcome. Text is kept so the hand-over can be
 // read back; provider errors are kept as numbers only.
+//
+// Messaging (DriverTextDelivery) owns the channel, business number,
+// attempt, provider id and status columns; the module that asked for the
+// message owns the rest. BusinessNumberId is the number the attempt went
+// from, and only that number's statuses move it; attempts recorded before
+// it existed have none and are no longer moved by any status.
 public sealed class DriverMessage : BaseEntity, ICompanyOwned
 {
   public Guid CompanyId { get; set; }
@@ -19,6 +25,7 @@ public sealed class DriverMessage : BaseEntity, ICompanyOwned
   public long AssignmentRevision { get; set; }
   public DateTime PlanCalculatedAt { get; set; }
   public string Channel { get; set; } = "";
+  public string? BusinessNumberId { get; set; }
   public string Recipient { get; set; } = "";
   public string Text { get; set; } = "";
   public string VisitKeys { get; set; } = "";

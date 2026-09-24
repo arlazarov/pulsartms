@@ -27,7 +27,6 @@ public interface IAppDbContext
   DbSet<TruckFuelPlan> TruckFuelPlans { get; }
   DbSet<FuelVisitSend> FuelVisitSends { get; }
   DbSet<DriverMessage> DriverMessages { get; }
-  DbSet<DriverMessagingWindow> DriverMessagingWindows { get; }
   DbSet<Conversation> Conversations { get; }
   DbSet<ConversationMessage> ConversationMessages { get; }
   DbSet<MessageAttachment> MessageAttachments { get; }

@@ -5,19 +5,20 @@ What is implemented of the
 2026-09-23: local only, not deployed, migrations `AddDriverInbox`,
 `AddConversationOutbox`, `AddConversationTemplates`,
 `AddConversationReadRevisions`, `AddConversationArrivalSequence` and
-`AddFiledDriverFiles` not applied anywhere, and no message has
-been received from or sent to a real driver.
+`AddFiledDriverFiles` applied in production on 2026-09-23 with
+integrations disabled; `DeliverDriverTextsThroughMessaging` (local, not
+applied anywhere) follows. No message has been received from or sent to
+a real driver.
 
 ## Receiving
 
-One signed provider notification has two owners. Messaging
-(`DriverMessagingWebhookHandlers`) verifies its signature and business
-number and records, in its own transaction, what drivers write
-(`InboxRecorder`) and the statuses of dispatchers' replies; fuel planning
-(`ApplyFuelPlanMessageEventsHandler`, in Routing) then applies its sent
-plans' statuses and reply windows in a second transaction. The API
-controller sends the two commands in turn; both only move forward, so the
-provider's retry of a notification whose second part failed settles it:
+Messaging (`DriverMessagingWebhookHandlers`) verifies a signed provider
+notification's signature and business number and records all of it in
+one transaction: what drivers write (`InboxRecorder`), the statuses of
+dispatchers' replies, and the statuses of texts other modules asked it to
+send (fuel plans). A notification whose commit failed leaves nothing, and
+the provider's retry records it once. Fuel planning is told which of its
+plans moved after the commit (`IDriverTextObserver`):
 
 - A message is keyed by its provider id under company, channel and business
   number: a repeated notification records it once, and the same id under
@@ -28,10 +29,27 @@ provider's retry of a notification whose second part failed settles it:
 - Text is kept, bounded at 4096 characters; a file keeps its caption, media
   id, declared type, hash and name; kinds PulsR cannot show (location,
   contact, sticker) are recorded as unsupported under their type name.
-- The 24-hour window runs from the conversation's last inbound message.
-  The fuel hand-over's window record is still kept as before.
-- Statuses of messages sent from a conversation move forward only, matched
-  by provider id under the same business number.
+- The 24-hour window runs from the conversation's last inbound message
+  under the company's current business number; fuel plans are held to the
+  same window. A driver who wrote to another number has not opened it.
+- Statuses move forward only, matched by provider id under the business
+  number the message went from: replies by their conversation's number,
+  fuel plans by the number recorded on the attempt. A fuel plan sent
+  before that number was recorded has none and no status moves it; a
+  status addressed to a number other than the current one is dropped
+  before any of this.
+
+## Sending for other modules
+
+A module that decides what to say asks Messaging to deliver it through
+`IDriverTextDelivery` (in `Application/Interfaces`, outside every
+feature). Fuel planning (`FuelIssueSender`) builds the words, the
+recipient, its key and its own references on the attempt; Messaging
+(`DriverTextDelivery`) reads the window, records the attempt with the
+business number before calling the provider, asks the requester once
+more whether it is still wanted, and keeps the provider's answer. The
+same key is one message: a taken attempt settles it, one in flight or
+without an answer is not repeated unless the requester says so.
 
 ## Files drivers send
 
@@ -251,32 +269,33 @@ and the newest message the dispatcher had on screen:
 
 ## Tests
 
-`Server.Tests/Fuel/WhatsAppWebhookTests` (inbound recording, duplicates,
-business numbers, files, unsupported kinds, ambiguous numbers, reply
-statuses), `Server.Tests/Routing/InboundMediaTests` (copy, hash mismatch,
-backoff, expiry, leases, a crash between the updates, a lost finalize,
-naming), `Server.Tests/Routing/InboxReadTests` (read cost, unread, markers,
-paging, stream isolation), `Server.Tests/Routing/ConversationReplyTests`
+`Server.Tests/Messaging/DriverMessagingWebhookTests` (inbound recording,
+duplicates, business numbers, files, unsupported kinds, ambiguous
+numbers, reply statuses, a failed commit retried, fuel-plan statuses only
+under the number they went from, a window under another number),
+`Server.Tests/Messaging/InboundMediaTests` (copy, hash mismatch, backoff,
+expiry, leases, a crash between the updates, a lost finalize, naming), `Server.Tests/Messaging/InboxReadTests` (read cost, unread, markers,
+paging, stream isolation), `Server.Tests/Messaging/ConversationReplyTests`
 (queue and send once, window, retry keys, stale replies, a take
 overtaken before sending, a lease lost mid-send, a late answer on its own
 attempt, withdrawal for a closed window or changed number, explicit retry,
-claims), `Server.Tests/Routing/ConversationFileTemplateTests` (a file sent
+claims), `Server.Tests/Messaging/ConversationFileTemplateTests` (a file sent
 once, a disguised file refused, an unreadable file withdrawn, approved
 templates only, download of checked files only),
 `Server.Tests/Storage/StoredFileCheckTests`,
-`Server.Tests/Routing/LocalDriverMessagingTests` (refused outside
+`Server.Tests/Messaging/LocalDriverMessagingTests` (refused outside
 Development, no network, signed simulation). Client:
-`Client.Tests/Routing/MessagesPageTests` (list and thread, read marker,
+`Client.Tests/Messaging/MessagesPageTests` (list and thread, read marker,
 stale reply confirmed with the same key, closed window without templates,
 a stream signal reads the open thread again),
-`Client.Tests/Routing/MessagingSignalsTests` (stream lines, account scope
+`Client.Tests/Messaging/MessagingSignalsTests` (stream lines, account scope
 and rejoin on account change, local stream and polling after a failed
 import or join, a slow tick that outlasts the wait),
-`Client.Tests/Routing/MessagingNoticesTests` (one read and one relay per
+`Client.Tests/Messaging/MessagingNoticesTests` (one read and one relay per
 burst on the leader, none on a follower, only a risen arrival notifies,
 an account change or disposal during the relay or the import notifies
 nothing, an old account's answer dropped),
-`Client.Tests/Routing/MessageFilingPageTests` (File pressed files the
+`Client.Tests/Messaging/MessageFilingPageTests` (File pressed files the
 suggested load, a number on several trucks, choosing the driver),
 `Client/tests/messaging/messagingChannel.test.js` (one leader per account,
 relay, hand-over, separate accounts, an ended join's lock, counts and read
@@ -300,3 +319,11 @@ fixture, `MessagingPostgresTests` applies the whole migration chain with
 its backfills over existing rows, and exercises the read-marker upsert,
 the arrival head's commit order, the filing's row claim and the new
 auditor reads.
+
+Auditor coverage of delivery ownership: that a status moved only an
+attempt from its own business number cannot be detected afterwards (no
+record says which notification moved it), so it rests on the regression
+and on the query's scope, not on a runtime check. Fuel attempts recorded
+before the number was kept have none and stay at their last status; none
+are expected in production, where sending was never configured, but that
+count has not been read.

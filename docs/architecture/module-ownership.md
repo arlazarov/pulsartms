@@ -45,13 +45,15 @@ templates, the event stream and its audit rule, with its contracts
 dependency on another feature module, and none on it. What it needs from
 others comes through their owners, composed outside it:
 
-- Fuel planning (Routing) sends plans through its own narrow port,
-  `IFuelPlanTransport`, which the provider adapter in Infrastructure also
-  implements; fuel planning names nothing of Messaging.
-- The provider webhook is one ingress with two owners: the API sends
-  Messaging's `ReceiveDriverMessagesCommand`, then Routing's
-  `ApplyFuelPlanMessageEventsCommand` with the verified notification, a
-  Domain type.
+- Fuel planning (Routing) asks Messaging to deliver a plan through
+  `IDriverTextDelivery`, a neutral contract in `Application/Interfaces`
+  that Messaging implements. Messaging owns the transport, the reply
+  window, the attempt protocol and provider statuses; Routing owns the
+  plan's words, visits, key, assignment revision and hand-over records.
+  Routing hears of its plans' statuses through `IDriverTextObserver`,
+  after Messaging's commit. Neither names the other.
+- The provider webhook is one command, Messaging's
+  `ReceiveDriverMessagesCommand`, in one transaction.
 - What a conversation's driver is driving is Execution's
   `GetDriverWorkQuery`; the API puts it beside Messaging's
   `GetConversationDriverQuery`.

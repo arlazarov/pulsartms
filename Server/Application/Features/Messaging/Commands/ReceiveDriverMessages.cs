@@ -1,6 +1,7 @@
 using Application.Features.Messaging.Interfaces;
 using Application.Features.Messaging.Services;
 using Application.Models;
+using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
 using Domain.Rules.Messaging;
 
@@ -17,33 +18,27 @@ public sealed record VerifyDriverMessagingWebhookQuery(
 
 // A signed notification for one carrier. It is read only after its
 // signature matches that carrier's app secret, and only changes for its
-// own business number count. What drivers wrote and the statuses of
-// dispatchers' replies are recorded here, in one transaction; the verified
-// notification is returned so fuel-plan statuses can be applied by their
-// owner (Routing) afterwards.
+// own business number count. What drivers wrote, and the statuses of
+// dispatchers' replies and of texts other modules asked Messaging to send,
+// are recorded in one transaction, so the provider's retry of a failed
+// notification finds either all of it or none. Requesters are told which
+// of their texts moved after the commit.
 public sealed record ReceiveDriverMessagesCommand(
   string CompanyKey,
   string? Signature,
   Stream Body
-) : IRequest<RequestResponse<ReceivedDriverMessages>>;
-
-public sealed record ReceivedDriverMessages(
-  Guid Company,
-  DriverMessagingNotification Notification
-);
+) : IRequest<RequestResponse<bool>>;
 
 public sealed class DriverMessagingWebhookHandlers(
   IAppDbContext db,
   IDriverMessaging messaging,
   ICurrentCompany companies,
   InboxRecorder inbox,
-  MessagingEvents events
+  MessagingEvents events,
+  IEnumerable<IDriverTextObserver> observers
 )
   : IRequestHandler<VerifyDriverMessagingWebhookQuery, RequestResponse<string>>,
-    IRequestHandler<
-      ReceiveDriverMessagesCommand,
-      RequestResponse<ReceivedDriverMessages>
-    >
+    IRequestHandler<ReceiveDriverMessagesCommand, RequestResponse<bool>>
 {
   public const int MaximumBody = 262_144;
 
@@ -65,16 +60,16 @@ public sealed class DriverMessagingWebhookHandlers(
       : RequestResponse<string>.Fail("Not accepted.", 403);
   }
 
-  public async Task<RequestResponse<ReceivedDriverMessages>> Handle(
+  public async Task<RequestResponse<bool>> Handle(
     ReceiveDriverMessagesCommand request,
     CancellationToken ct
   )
   {
     if (await CompanyAsync(request.CompanyKey, ct) is not { } company)
-      return RequestResponse<ReceivedDriverMessages>.Fail("Not accepted.", 404);
+      return RequestResponse<bool>.Fail("Not accepted.", 404);
     var body = await ReadAsync(request.Body, ct);
     if (body is null)
-      return RequestResponse<ReceivedDriverMessages>.Fail("Not accepted.", 413);
+      return RequestResponse<bool>.Fail("Not accepted.", 413);
     using var serving = companies.As(company);
     var notification = await messaging.ReadNotificationAsync(
       body,
@@ -82,8 +77,9 @@ public sealed class DriverMessagingWebhookHandlers(
       ct
     );
     if (notification is null)
-      return RequestResponse<ReceivedDriverMessages>.Fail("Not accepted.", 401);
+      return RequestResponse<bool>.Fail("Not accepted.", 401);
     var outbound = await ApplyConversationStatusesAsync(notification, ct);
+    var texts = await ApplyTextStatusesAsync(notification, ct);
     var conversations = await inbox.RecordAsync(
       messaging.Channel,
       notification.BusinessNumberId,
@@ -99,9 +95,10 @@ public sealed class DriverMessagingWebhookHandlers(
       )
     )
       events.Publish(company, new(conversation, revision));
-    return RequestResponse<ReceivedDriverMessages>.Ok(
-      new(company, notification)
-    );
+    if (texts.Count > 0)
+      foreach (var observer in observers)
+        observer.Changed(company, texts);
+    return RequestResponse<bool>.Ok(true);
   }
 
   // Statuses for messages dispatchers sent from a conversation, by provider
@@ -138,6 +135,44 @@ public sealed class DriverMessagingWebhookHandlers(
         changed.Add(message.ConversationId);
       }
     return [.. changed];
+  }
+
+  // Statuses for texts sent for other modules (fuel plans), by provider id
+  // under the business number each attempt went from: a delayed status
+  // from another or an earlier number moves nothing. Attempts recorded
+  // before the number was kept have none and are not moved at all.
+  private async Task<IReadOnlyList<DriverMessage>> ApplyTextStatusesAsync(
+    DriverMessagingNotification notification,
+    CancellationToken ct
+  )
+  {
+    if (notification.Statuses.Count == 0)
+      return [];
+    var ids = notification
+      .Statuses.Select(x => x.ProviderMessageId)
+      .Distinct()
+      .ToArray();
+    var attempts = await db
+      .DriverMessages.Where(x =>
+        x.Channel == messaging.Channel
+        && x.BusinessNumberId == notification.BusinessNumberId
+        && x.ProviderMessageId != null
+        && ids.Contains(x.ProviderMessageId)
+      )
+      .ToDictionaryAsync(x => x.ProviderMessageId!, ct);
+    var changed = new Dictionary<Guid, DriverMessage>();
+    foreach (var status in notification.Statuses.OrderBy(x => x.At))
+      if (
+        attempts.GetValueOrDefault(status.ProviderMessageId) is { } attempt
+        && DriverMessageProgress.Advances(attempt.Status, status.Status)
+      )
+      {
+        attempt.Status = status.Status;
+        attempt.StatusAt = status.At;
+        attempt.ErrorCode = status.ErrorCode;
+        changed[attempt.Id] = attempt;
+      }
+    return [.. changed.Values];
   }
 
   private async Task<List<(Guid, long)>> RevisionsAsync(

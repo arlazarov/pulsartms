@@ -13,6 +13,7 @@ public sealed class DriverMessageConfiguration
     b.ToTable("DriverMessages");
     b.HasKey(x => x.Id);
     b.Property(x => x.Channel).HasMaxLength(32).IsRequired();
+    b.Property(x => x.BusinessNumberId).HasMaxLength(64);
     b.Property(x => x.Recipient).HasMaxLength(16).IsRequired();
     b.Property(x => x.Text).HasMaxLength(4096).IsRequired();
     b.Property(x => x.VisitKeys).HasMaxLength(4000).IsRequired();

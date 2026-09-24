@@ -1,3 +1,4 @@
+using Application.Features.Messaging.Services;
 using Application.Features.Routing.Commands;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
@@ -85,6 +86,8 @@ public sealed class FuelIssueSenderTests
     Assert.Equal(message.Id, send.MessageId);
     Assert.Equal(DriverMessageStatuses.Accepted, message.Status);
     Assert.Equal(First, message.PlanCalculatedAt);
+    // The number it went from, so only that number's statuses move it.
+    Assert.Equal("123456", message.BusinessNumberId);
 
     // The plan now says forty gallons: the fill that went out is kept, and
     // the stop reads as changed since it was sent.
@@ -370,15 +373,23 @@ public sealed class FuelIssueSenderTests
     )
     {
       Db.ChangeTracker.Clear();
-      return new FuelIssueSender(
+      return new FuelIssueSender(Delivery, Records).SendAsync(
+        request,
+        _ => read(),
+        "dispatcher",
+        default
+      );
+    }
+
+    // Messaging's delivery, which the fuel sender asks to send.
+    public DriverTextDelivery Delivery =>
+      new(
         Db,
         Transport,
-        Records,
         Refresh.Services.GetRequiredService<ICurrentCompany>(),
         Time,
-        NullLogger<FuelIssueSender>.Instance
-      ).SendAsync(request, _ => read(), "dispatcher", default);
-    }
+        NullLogger<DriverTextDelivery>.Instance
+      );
 
     public ValueTask DisposeAsync() => Refresh.DisposeAsync();
   }

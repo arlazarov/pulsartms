@@ -1,18 +1,17 @@
 using Application.Features.Routing.Commands;
-using Application.Features.Routing.Interfaces;
 using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
 using Domain.Models.Routing;
 using Domain.Rules.Messaging;
 using Domain.Rules.Routing;
-using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 
-// Sends this shift's fuel over WhatsApp. It is an external operation, not
-// a database change: the database and WhatsApp cannot be committed
-// together, and an answer that never came cannot be turned into exactly
-// once. So:
+// Sends this shift's fuel over WhatsApp: what to say and to whom is decided
+// here, and Messaging (IDriverTextDelivery) records and makes the attempt.
+// It is an external operation, not a database change: the database and
+// WhatsApp cannot be committed together, and an answer that never came
+// cannot be turned into exactly once. So:
 //
 // - What goes is fixed first: the words, the recipient and the visits of
 //   the plan version the dispatcher saw, in an attempt row committed
@@ -26,12 +25,8 @@ namespace Application.Features.Routing.Services.FuelPlanning;
 //   are recorded as the snapshot said them, and the plan that now says
 //   something else reads as changed since sent.
 public sealed class FuelIssueSender(
-  IAppDbContext db,
-  IFuelPlanTransport messaging,
-  FuelIssueRecords records,
-  ICurrentCompany company,
-  TimeProvider time,
-  ILogger<FuelIssueSender> logger
+  IDriverTextDelivery delivery,
+  FuelIssueRecords records
 )
 {
   public sealed record Outcome(int Status, string? Error)
@@ -75,42 +70,15 @@ public sealed class FuelIssueSender(
       visits.Select(x => x.Stop),
       recipient
     );
-    var now = time.GetUtcNow().UtcDateTime;
-    var latest = await db
-      .DriverMessages.Where(x => x.IdempotencyKey == key)
-      .OrderByDescending(x => x.Attempt)
-      .FirstOrDefaultAsync(ct);
-    if (latest is not null)
-    {
-      if (DriverMessageProgress.Taken(latest.Status))
-        return Outcome.Done;
-      if (DriverMessageProgress.InProgress(latest.Status, latest.StatusAt, now))
-        return new(409, "This plan is being sent now.");
-      if (
-        DriverMessageProgress.Uncertain(latest.Status, latest.StatusAt, now)
-        && !request.SendAgain
-      )
-        return new(
-          409,
-          "WhatsApp did not answer the last attempt, so it may have been "
-            + "delivered. Check with the driver, then send again only if "
-            + "it did not arrive."
-        );
-    }
     var saved = current.Saved;
     var message = new DriverMessage
     {
-      Id = Guid.NewGuid(),
-      CompanyId =
-        company.Id
-        ?? throw new InvalidOperationException("A company is needed."),
       DriverId = current.Preview.Recipient.DriverId!.Value,
       TruckId = saved.TruckId,
       DispatchId = saved.RootDispatchId,
       ExecutionLegId = saved.RootExecutionLegId,
       AssignmentRevision = saved.AssignmentRevision,
       PlanCalculatedAt = saved.CalculatedAt,
-      Channel = messaging.Channel,
       Recipient = recipient,
       Text = text,
       VisitKeys = string.Join(
@@ -118,80 +86,49 @@ public sealed class FuelIssueSender(
         visits.Select(x => FuelVisitIdentity.Key(x.Stop))
       ),
       IdempotencyKey = key,
-      Attempt = (latest?.Attempt ?? 0) + 1,
-      Status = DriverMessageStatuses.Sending,
-      StatusAt = now,
-      CreatedAt = now,
       CreatedBy = actor,
     };
-    db.DriverMessages.Add(message);
-    try
-    {
-      await db.SaveChangesAsync(ct);
-    }
-    catch (DbUpdateException)
-    {
-      // Another press of the same message took this attempt first.
-      db.Entry(message).State = EntityState.Detached;
-      return new(409, "This plan is being sent now.");
-    }
-    // From here the attempt is recorded whatever happens to the request
-    // that asked for it.
-    var after = await read(CancellationToken.None);
-    if (after is null || Refusal(after, plan) is not null)
-      return await FinishAsync(
-        message,
-        DriverMessageStatuses.Withdrawn,
-        null,
-        new(
-          409,
-          "The fuel plan changed while it was being sent, so nothing was "
-            + "sent. Open it again and send the new plan."
-        )
-      );
-    var result = await messaging.SendTextAsync(
-      recipient,
-      text,
-      CancellationToken.None
+    var outcome = await delivery.SendAsync(
+      message,
+      request.SendAgain,
+      async again =>
+        await read(again) is { } after && Refusal(after, plan) is null,
+      ct
     );
-    switch (result.Outcome)
+    switch (outcome.Result)
     {
-      case DriverMessageOutcome.Accepted:
-        message.ProviderMessageId = result.ProviderMessageId;
-        await FinishAsync(message, DriverMessageStatuses.Accepted, null, null);
+      case DriverTextResult.Accepted:
         await records.RecordAsync(
           saved,
           visits,
           FuelSendChannels.WhatsApp,
           actor,
           CancellationToken.None,
-          message.Id
+          outcome.Attempt!.Id
         );
         return Outcome.Done;
-      case DriverMessageOutcome.Unknown:
-        logger.LogWarning(
-          "WhatsApp send {DriverMessageId} has no answer, code {ErrorCode}",
-          message.Id,
-          result.ErrorCode
+      case DriverTextResult.InProgress:
+        return new(409, "This plan is being sent now.");
+      case DriverTextResult.Uncertain:
+        return new(
+          409,
+          "WhatsApp did not answer the last attempt, so it may have been "
+            + "delivered. Check with the driver, then send again only if "
+            + "it did not arrive."
         );
-        return await FinishAsync(
-          message,
-          DriverMessageStatuses.Unknown,
-          result.ErrorCode,
-          Outcome.Done
+      case DriverTextResult.NotConfigured:
+        return new(
+          409,
+          "WhatsApp is not set up. An administrator adds it in Settings."
+        );
+      case DriverTextResult.Withdrawn:
+        return new(
+          409,
+          "The fuel plan changed while it was being sent, so nothing was "
+            + "sent. Open it again and send the new plan."
         );
       default:
-        logger.LogWarning(
-          "WhatsApp refused {DriverMessageId}, code {ErrorCode}",
-          message.Id,
-          result.ErrorCode
-        );
-        return await FinishAsync(
-          message,
-          DriverMessageStatuses.Rejected,
-          result.ErrorCode,
-          Outcome.Done
-        );
+        return Outcome.Done;
     }
   }
 
@@ -234,19 +171,5 @@ public sealed class FuelIssueSender(
           + "hand."
       ),
     };
-  }
-
-  private async Task<Outcome> FinishAsync(
-    DriverMessage message,
-    string status,
-    int? errorCode,
-    Outcome? outcome
-  )
-  {
-    message.Status = status;
-    message.StatusAt = time.GetUtcNow().UtcDateTime;
-    message.ErrorCode = errorCode;
-    await db.SaveChangesAsync(CancellationToken.None);
-    return outcome ?? Outcome.Done;
   }
 }

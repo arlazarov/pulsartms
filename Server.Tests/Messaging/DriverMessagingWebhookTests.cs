@@ -6,8 +6,6 @@ using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Models;
 using Application.Features.Messaging.Commands;
 using Application.Features.Messaging.Services;
-using Application.Features.Routing.Commands;
-using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Entities.Fleet;
@@ -17,6 +15,7 @@ using Infrastructure.Integrations.WhatsApp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Server.Tests.Messaging;
 
@@ -111,8 +110,12 @@ public sealed class DriverMessagingWebhookTests
     Assert.Equal(200, await f.PostAsync(body));
     Assert.Equal(200, await f.PostAsync(body));
 
-    var window = await f.Db.DriverMessagingWindows.SingleAsync();
-    Assert.Equal("+15558234327", window.Phone);
+    var at = DateTimeOffset.FromUnixTimeSeconds(1790000000).UtcDateTime;
+    f.Refresh.Time.UtcNow = at.AddHours(1);
+    Assert.Equal(
+      new DriverTextReadiness(true, at.AddHours(24)),
+      await f.Delivery().ReadinessAsync("+15558234327", default)
+    );
     var message = await f.Db.ConversationMessages.AsNoTracking().SingleAsync();
     Assert.Equal(
       ("in", "text", "ok", "wamid.in", "123456"),
@@ -142,12 +145,12 @@ public sealed class DriverMessagingWebhookTests
     Assert.False(listening.Reader.TryRead(out _));
   }
 
-  // One notification, two owners committing in turn. When Messaging has
-  // committed and fuel planning has not (its part failed, the webhook
-  // answered an error), the provider's retry of the whole notification
-  // settles fuel planning's part and records nothing twice.
+  // One notification, one transaction: when its commit fails (the webhook
+  // answers an error) nothing of it is kept, and the provider's retry of
+  // the whole notification records all of it once. Nothing is sent, and
+  // the fuel plan's owner hears of its status only after the commit.
   [Fact]
-  public async Task ARetryAfterOnlyMessagingCommittedSettlesBoth()
+  public async Task ARetryAfterAFailedCommitSettlesEverythingOnce()
   {
     await using var f = await Fixture.CreateAsync();
     await f.DriverAsync("+15558234327");
@@ -155,20 +158,28 @@ public sealed class DriverMessagingWebhookTests
     var inbound = Inbound(new { type = "text", text = new { body = "ok" } });
     var status = Status("wamid.plan", "delivered", 20);
 
-    Assert.Equal(200, await f.PostAsync(inbound, messagingOnly: true));
-    Assert.Equal(200, await f.PostAsync(status, messagingOnly: true));
-    Assert.Empty(
-      await f.Db.DriverMessagingWindows.AsNoTracking().ToListAsync()
-    );
+    f.Probe.FailNextSave = true;
+    await Assert.ThrowsAsync<DbUpdateException>(() => f.PostAsync(inbound));
+    f.Probe.FailNextSave = true;
+    await Assert.ThrowsAsync<DbUpdateException>(() => f.PostAsync(status));
+    Assert.Empty(await f.Db.ConversationMessages.AsNoTracking().ToListAsync());
     Assert.Equal(DriverMessageStatuses.Accepted, await f.StatusAsync(sent));
+    Assert.Empty(f.Notified);
 
     Assert.Equal(200, await f.PostAsync(inbound));
     Assert.Equal(200, await f.PostAsync(status));
+    Assert.Equal(200, await f.PostAsync(inbound));
+    Assert.Equal(200, await f.PostAsync(status));
 
-    Assert.Single(
-      await f.Db.DriverMessagingWindows.AsNoTracking().ToListAsync()
-    );
     Assert.Equal(DriverMessageStatuses.Delivered, await f.StatusAsync(sent));
+    var truck = await f
+      .Db.DriverMessages.AsNoTracking()
+      .Select(x => x.TruckId)
+      .SingleAsync();
+    Assert.Equal(
+      (Domain.Entities.Company.Amf, truck),
+      Assert.Single(f.Notified)
+    );
     // Nothing went out twice, or at all: no provider call, no new fuel
     // attempt, no reply, and the driver's message recorded once.
     Assert.Equal(0, f.ProviderCalls);
@@ -181,6 +192,58 @@ public sealed class DriverMessagingWebhookTests
     );
     var messages = await f.Db.ConversationMessages.AsNoTracking().ToListAsync();
     Assert.Equal(MessageDirections.Inbound, Assert.Single(messages).Direction);
+  }
+
+  // A fuel plan went from the number it records. After the carrier moves
+  // to another number, a delayed status for an attempt from the old number
+  // cannot move it, even under a provider id the new number reuses; an
+  // attempt recorded before numbers were kept is moved by nothing. Statuses
+  // addressed to the old number are dropped before any of this
+  // (AnUnsignedOrMisaddressedNotificationChangesNothing).
+  [Fact]
+  public async Task AFuelPlansStatusMovesOnlyUnderTheNumberItWentFrom()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var old = await f.MessageAsync("wamid.reused", number: "111111");
+    var legacy = await f.MessageAsync("wamid.legacy", number: null);
+    var current = await f.MessageAsync("wamid.current");
+
+    Assert.Equal(200, await f.PostAsync(Status("wamid.reused", "read", 10)));
+    Assert.Equal(200, await f.PostAsync(Status("wamid.legacy", "read", 10)));
+    Assert.Equal(200, await f.PostAsync(Status("wamid.current", "read", 10)));
+
+    Assert.Equal(DriverMessageStatuses.Accepted, await f.StatusAsync(old));
+    Assert.Equal(DriverMessageStatuses.Accepted, await f.StatusAsync(legacy));
+    Assert.Equal(DriverMessageStatuses.Read, await f.StatusAsync(current));
+    Assert.Single(f.Notified);
+  }
+
+  // The reply window is the conversation's under the current number: a
+  // driver who wrote to another number has not opened it.
+  [Fact]
+  public async Task AWindowUnderAnotherNumberIsNotThisOnes()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var at = DateTimeOffset.FromUnixTimeSeconds(1790000000).UtcDateTime;
+    f.Db.Conversations.Add(
+      new Conversation
+      {
+        Id = Guid.NewGuid(),
+        CompanyId = Domain.Entities.Company.Amf,
+        Channel = DriverMessageChannels.WhatsApp,
+        BusinessNumberId = "111111",
+        Participant = "+15558234327",
+        LastInboundAt = at,
+        LastMessageAt = at,
+      }
+    );
+    await f.Db.SaveChangesAsync();
+    f.Refresh.Time.UtcNow = at.AddHours(1);
+
+    Assert.Equal(
+      new DriverTextReadiness(true, null),
+      await f.Delivery().ReadinessAsync("+15558234327", default)
+    );
   }
 
   // The same provider message id under another carrier's number is that
@@ -475,15 +538,25 @@ public sealed class DriverMessagingWebhookTests
   private sealed class Fixture : IAsyncDisposable
   {
     public required PlanningRefreshFixture Refresh { get; init; }
+    public required SaveFailureProbe Probe { get; init; }
+
+    // What the requesting module was told after each commit.
+    public List<(Guid Company, Guid Truck)> Notified { get; } = [];
     public Infrastructure.Persistence.AppDbContext Db => Refresh.Db;
     public ICurrentCompany Company =>
       Refresh.Services.GetRequiredService<ICurrentCompany>();
 
     public static async Task<Fixture> CreateAsync()
     {
+      var probe = new SaveFailureProbe();
       var f = new Fixture
       {
-        Refresh = await PlanningRefreshFixture.CreateAsync(),
+        Probe = probe,
+        Refresh = await PlanningRefreshFixture.CreateAsync(services =>
+          services.ConfigureDbContext<Infrastructure.Persistence.AppDbContext>(
+            options => options.AddInterceptors(probe)
+          )
+        ),
       };
       f.Db.Companies.AddRange(
         new Company { Id = Domain.Entities.Company.Amf, Key = "amfcarrier" },
@@ -510,24 +583,25 @@ public sealed class DriverMessagingWebhookTests
         Provider(),
         Company,
         new InboxRecorder(Db, TimeProvider.System),
-        Events
+        Events,
+        [new Observer(Notified)]
       );
 
-    // Fuel planning's part of a verified notification, as the controller
-    // sends it after Messaging's.
-    public ApplyFuelPlanMessageEventsHandler FuelPlans() =>
+    public DriverTextDelivery Delivery() =>
       new(
         Db,
         Provider(),
         Company,
-        Refresh.Services.GetRequiredService<PlanningSummaryCache>()
+        Refresh.Time,
+        NullLogger<DriverTextDelivery>.Instance
       );
 
     public MessagingEvents Events { get; } = new();
 
     public async Task<Guid> MessageAsync(
       string providerId,
-      string status = DriverMessageStatuses.Accepted
+      string status = DriverMessageStatuses.Accepted,
+      string? number = "123456"
     )
     {
       var truckRow = new Truck
@@ -551,6 +625,7 @@ public sealed class DriverMessagingWebhookTests
         TruckId = truckRow.Id,
         DispatchId = Guid.NewGuid(),
         Channel = DriverMessageChannels.WhatsApp,
+        BusinessNumberId = number,
         Recipient = "+15558234327",
         Text = "Fuel for this shift",
         IdempotencyKey = Guid.NewGuid().ToString("N"),
@@ -587,14 +662,10 @@ public sealed class DriverMessagingWebhookTests
         .Select(x => x.Status)
         .SingleAsync();
 
-    // As the controller does: Messaging first, then fuel planning.
-    // MessagingOnly stops after Messaging's commit, as when the fuel part
-    // failed and the provider will retry the whole notification.
     public async Task<int> PostAsync(
       byte[] body,
       string secret = "secret-amf",
-      string key = "amfcarrier",
-      bool messagingOnly = false
+      string key = "amfcarrier"
     )
     {
       var signature =
@@ -614,21 +685,19 @@ public sealed class DriverMessagingWebhookTests
           ),
           default
         );
-      if (!received.Success || messagingOnly)
-        return received.StatusCode;
-      Db.ChangeTracker.Clear();
-      var result = await FuelPlans()
-        .Handle(
-          new ApplyFuelPlanMessageEventsCommand(
-            received.Response!.Company,
-            received.Response.Notification
-          ),
-          default
-        );
-      return result.StatusCode;
+      return received.StatusCode;
     }
 
     public ValueTask DisposeAsync() => Refresh.DisposeAsync();
+  }
+
+  private sealed class Observer(List<(Guid, Guid)> notified)
+    : IDriverTextObserver
+  {
+    public void Changed(
+      Guid company,
+      IReadOnlyCollection<DriverMessage> attempts
+    ) => notified.AddRange(attempts.Select(x => (company, x.TruckId)));
   }
 
   private sealed class Counting(Action called) : HttpMessageHandler

@@ -113,6 +113,7 @@ public static class DependencyInjection
     services.AddSingleton<ITruckHistoryOperation, TruckHistoryOperation>();
     services.AddScoped<FileStore>();
     services.AddScoped<InboxRecorder>();
+    services.AddScoped<IDriverTextDelivery, DriverTextDelivery>();
     services.AddSingleton<MessagingEvents>();
     services.AddSingleton<IInboundMediaOperation, InboundMediaOperation>();
     services.AddSingleton<OutboxSignal>();
@@ -189,6 +190,7 @@ public static class DependencyInjection
     services.AddScoped<FuelIssueRecords>();
     services.AddScoped<FuelIssueChannel>();
     services.AddScoped<FuelIssueSender>();
+    services.AddSingleton<IDriverTextObserver, FuelDeliveryObserver>();
     services.AddScoped<Application.Features.Routing.Commands.FuelIssuePreviews>();
     services.AddSingleton<FuelPlanMemory>();
     services.AddSingleton<ICacheMemorySource>(sp =>

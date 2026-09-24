@@ -333,7 +333,7 @@ Nothing here is deployed.
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
-| Inbound text, conversations, per-message dedupe by business number | implemented, tested | `WhatsAppWebhookTests` |
+| Inbound text, conversations, per-message dedupe by business number | implemented, tested | `DriverMessagingWebhookTests` |
 | Durable inbound media capture into quarantine | implemented, tested | `InboundMediaTests` |
 | Inbox reads, per-dispatcher unread, read markers | implemented, tested | `InboxReadTests` |
 | Server event stream (signals after commit) | implemented, tested | `InboxReadTests.AStream…` |
@@ -347,7 +347,8 @@ Nothing here is deployed.
 | Unread by arrival revision, notice by commit-ordered arrival sequence, monotonic read markers | implemented, tested | `UnreadNoticeTests`; PostgreSQL `MessagingPostgresTests` (migration chain and backfills, upsert, arrival order) |
 | Filing a driver's file to a load (confirmed only, by reference, fenced), linking a conversation to a driver, trip beside it | implemented, tested | `MessageFilingTests`, `ConversationContextTests`, `MessageFilingPageTests`, UI smoke; PostgreSQL row claim `MessagingPostgresTests` |
 | Real sends, Meta activation, webhook subscription | blocked | owner: Meta app review, number, tokens |
-| Migrating `DriverMessages` | blocked | owner authorization for data migration |
+| One delivery owner: fuel plans sent through Messaging (`IDriverTextDelivery`), one reply window (the conversation's, per business number), statuses by the number an attempt went from, one webhook transaction; `DriverMessagingWindows` dropped | implemented, tested, local | `DriverMessagingWebhookTests`, `FuelIssueSenderTests`; migration `DeliverDriverTextsThroughMessaging` not applied anywhere |
+| Migrating `DriverMessages` | blocked | owner authorization for data migration; until then fuel attempts keep their own rows, owned column by column (Messaging: channel, number, attempt, provider id, status) |
 
 ## Tests to add with each stage
 

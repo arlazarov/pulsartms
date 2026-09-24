@@ -20,9 +20,9 @@ that every proposed optimization has been implemented.
 | Durable fuel selection | TruckFuelPlans and its Infrastructure store |
 | Fuel hand-over records | FuelIssueRecords |
 | Sending a hand-over to a driver | FuelIssueSender |
-| Fuel plans' delivery statuses and reply windows | ApplyFuelPlanMessageEventsHandler (Routing), after Messaging verified the notification |
-| Driver conversations, replies' statuses, inbox | Messaging (DriverMessagingWebhookHandlers, InboxRecorder, ReplyQueue) |
-| Messaging transport | IDriverMessaging (Messaging) and IFuelPlanTransport (Routing), both WhatsAppCloudMessaging |
+| Fuel plans' words, visits and hand-over | FuelIssueSender, FuelIssueRecords (Routing), delivered through IDriverTextDelivery |
+| Driver conversations, all delivery statuses, reply window, inbox | Messaging (DriverMessagingWebhookHandlers, DriverTextDelivery, InboxRecorder, ReplyQueue) |
+| Messaging transport | IDriverMessaging (Messaging), WhatsAppCloudMessaging |
 | Driver contacts | UpdateDriverContact / DriverContactImport |
 | Trailer catalog | TrailerCatalog |
 | A truck's current trailer | TruckTrailerAssignments (targeted after a committed request by TruckTrailerRefreshBehavior) |
@@ -143,7 +143,7 @@ which of these rows it belongs to and adds a controlled-interleaving
 regression where it touches one. Existing coverage:
 `PlanningSummaryCacheTests`, `PlanningPublicationTests`,
 `TruckFuelPlanReplacementTests`, `EtaRetainedForecastTests`,
-`FuelIssueRecordsTests`, `FuelIssueSenderTests`, `WhatsAppWebhookTests`,
+`FuelIssueRecordsTests`, `FuelIssueSenderTests`, `DriverMessagingWebhookTests`,
 `TrailerCatalogTests`, `TruckTrailerAssignmentTests` and
 `TruckTrailerRefreshTests` and `SourceCancellationTests`.
 

@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
@@ -18,11 +17,11 @@ namespace Application.Features.Routing.Services.FuelPlanning;
 public sealed class FuelIssueChannel(
   IAppDbContext db,
   TruckPlanningInputsReader inputs,
-  IFuelPlanTransport messaging,
+  IDriverTextDelivery delivery,
   TimeProvider time
 )
 {
-  public string Name => messaging.Channel;
+  public string Name => delivery.Channel;
 
   // The driver whose hours decide the shift is the one the plan goes to:
   // the same reader, so the two cannot disagree. A co-driver gets nothing.
@@ -31,7 +30,6 @@ public sealed class FuelIssueChannel(
     CancellationToken ct
   )
   {
-    var configured = await messaging.IsConfiguredAsync(ct);
     var work = await inputs.ReadAsync(truckId, ct, includeHos: false);
     var driver = work?.DriverId is { } id
       ? await db
@@ -45,6 +43,15 @@ public sealed class FuelIssueChannel(
         })
         .SingleOrDefaultAsync(ct)
       : null;
+    var phone =
+      driver?.WhatsAppPhone is { } number
+      && ContactAddresses.Phone(number) == number
+        ? number
+        : null;
+    // The reply window is Messaging's: the same one a conversation reply
+    // is held to, under the company's current business number.
+    var readiness = await delivery.ReadinessAsync(phone, ct);
+    var configured = readiness.Configured;
     if (driver is null)
       return new(
         null,
@@ -55,22 +62,7 @@ public sealed class FuelIssueChannel(
           : FuelIssueChannelStates.NotConfigured,
         null
       );
-    var phone =
-      driver.WhatsAppPhone is { } number
-      && ContactAddresses.Phone(number) == number
-        ? number
-        : null;
-    DateTime? windowEnds = null;
-    if (configured && phone is not null)
-    {
-      var last = await db
-        .DriverMessagingWindows.AsNoTracking()
-        .Where(x => x.Channel == messaging.Channel && x.Phone == phone)
-        .Select(x => (DateTime?)x.LastInboundAt)
-        .SingleOrDefaultAsync(ct);
-      if (DriverMessageProgress.WindowOpen(last, Now))
-        windowEnds = last!.Value + DriverMessageProgress.SessionWindow;
-    }
+    var windowEnds = readiness.WindowEnds;
     var state =
       !configured ? FuelIssueChannelStates.NotConfigured
       : phone is null ? FuelIssueChannelStates.NoNumber
