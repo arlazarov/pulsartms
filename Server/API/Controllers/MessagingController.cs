@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Application.Features.Dispatch.Documents;
 using Application.Features.Execution.Queries;
+using Application.Features.Fleet.Queries;
 using Application.Features.Messaging.Commands;
 using Application.Features.Messaging.Queries;
 using Application.Models;
@@ -50,14 +51,17 @@ public sealed class MessagingController : BaseController
       cancellationToken
     );
 
-  // Who the conversation is with (Messaging) beside what they are driving
-  // (Execution): two owners' answers, side by side, in one response.
+  // Who the conversation is with (Messaging), what they are driving
+  // (Execution) and their hours of service (Fleet's shared snapshot):
+  // three owners' answers, side by side, in one response. Hours is null
+  // when no driver is linked.
   public sealed record ConversationContextView(
     Guid? DriverId,
     string? DriverName,
     string State,
     IReadOnlyList<DriverTruck> Trucks,
-    IReadOnlyList<DriverLoad> Loads
+    IReadOnlyList<DriverLoad> Loads,
+    DriverHoursView? Hours
   );
 
   [HttpGet("conversations/{id:guid}/context")]
@@ -78,6 +82,17 @@ public sealed class MessagingController : BaseController
     );
     if (!work.Success || work.Response is not { } driving)
       return StatusCode(work.StatusCode, work);
+    DriverHoursView? hours = null;
+    if (who.DriverId is { } linked)
+    {
+      var read = await Mediator.Send(
+        new GetDriverHosQuery(linked),
+        cancellationToken
+      );
+      if (!read.Success)
+        return StatusCode(read.StatusCode, read);
+      hours = read.Response;
+    }
     return Ok(
       RequestResponse<ConversationContextView>.Ok(
         new(
@@ -85,7 +100,8 @@ public sealed class MessagingController : BaseController
           who.DriverName,
           driving.State,
           driving.Trucks,
-          driving.Loads
+          driving.Loads,
+          hours
         )
       )
     );

@@ -32,13 +32,20 @@ public sealed record DriverWork(
 // Role: driver or co-driver on an execution leg, or assigned in the fleet.
 public sealed record DriverTruck(Guid Id, string Number, string Role);
 
+// Places: the stops' cities, kept for earlier clients; Stops names them.
 public sealed record DriverLoad(
   Guid Id,
   int LoadNumber,
   string CustomerName,
   string? Status,
   IReadOnlyList<string> Places
-);
+)
+{
+  public string OrderNumber { get; init; } = "";
+  public IReadOnlyList<DriverStop> Stops { get; init; } = [];
+}
+
+public sealed record DriverStop(string Name, string City);
 
 public sealed class DriverWorkHandler(
   IAppDbContext db,
@@ -92,7 +99,11 @@ public sealed class DriverWorkHandler(
             x.CustomerName,
             x.ExecutionStatus,
             [.. x.Visits.Select(v => v.City).Where(c => c.Length > 0)]
-          )),
+          )
+          {
+            OrderNumber = x.OrderNumber,
+            Stops = [.. x.Visits.Select(v => new DriverStop(v.Name, v.City))],
+          }),
       ]
     );
 
