@@ -64,7 +64,10 @@ Against this remote fixture each command costs about 50–100 ms.
   serves the choice from the read cache, invalidated by the group commands.
 - **ETA enrichment** re-runs the board and then its own reads. It is the
   page's real foreground cost; it is owned by the fleet-efficiency read
-  path and was not changed.
+  path and was not changed that night. The next morning its commands were
+  mapped by caller, and the duplicated saved-plan read was merged
+  (`da34b0a6`, 20 to 19 warm). The remaining repeats are in the
+  [cohesion review](cohesion-review-2026-09-24.md#morning-continuation-september-24).
 - **The unread notice** is two commands. One maps the signed-in identity to
   a user id; four modules each have their own copy of that lookup, and
   caching it across requests would delay a deactivation. Not changed.

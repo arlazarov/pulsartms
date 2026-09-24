@@ -166,6 +166,10 @@ behavior check is unchanged. `ui-controls.md` had no size rule; its size
       (`PlanningReadService.TrimForDisplay`) reassigns its legs and points.
   - *Either one* needs a controlled-interleaving test under the consistency
     contract.
+  - *Next morning:* the second way was built and measured, then reverted.
+    The shared 16 MiB display budget cannot hold fixture-size roads. See
+    [display reference cache](display-reference-cache-2026-09-24.md). The
+    writer-side fix remains the way out.
 - **`Messages.razor.cs`:** the composer (draft, send, template, file,
   retry, claim) is its own component with its own state and lifecycle. The
   formatting helpers could be shared with `MessageItem`.
@@ -178,7 +182,9 @@ behavior check is unchanged. `ui-controls.md` had no size rule; its size
   Candidate: a board-state owner, possibly shared with FleetMap's polling.
 - **Inbox round trips:** the driver-group scope (added tonight) reads the
   user row that `Inbox.UserAsync` has just read, one remote round trip per
-  inbox poll. The unread notice itself is two queries.
+  inbox poll. The unread notice itself is two queries. *Resolved by
+  `e7aa35aa`*, which serves the group choice from the read cache. This
+  proposal was written before that commit.
 - **`TomTomRoutingProvider`.** Yesterday's review called it "large but
   fine"; against tonight's criteria it is two owners.
   - *What it mixes:* the TomTom transport and parsing, and a database-backed
@@ -238,3 +244,99 @@ FuelPlanningService.Editing, GoogleAddressGeocoder, EtaChainInputsService,
 FuelPlanningService. They were not read for signs of trimming. CSharpier
 fixes their formatting, so trimming there would show as removed comments or
 moved methods, not as compressed code.
+
+## Morning continuation (September 24)
+
+Read by two read-only review passes plus my own checks. Each finding named
+below was verified in the source before it was acted on or recorded.
+
+**Read or outlined:**
+- *Infrastructure* (everything except the Google, TomTom and WhatsApp
+  adapters and generated migrations):
+  - read in full: DependencyInjection, the three AppDbContext parts, every
+    store and reader under Persistence, all Samsara, Identity,
+    Synchronization and Gmail files, BaseApiService, TorqueApiService,
+    TorqueDispatchProvider, the storage adapters, BVD, IFTA, the health
+    checks, LocalDriverMessaging;
+  - by outline only: the EF configurations, provider models,
+    ProviderJson, ResponseStream, RuntimeMemoryReader, BankOfCanada,
+    RouteRegionLookup.
+- *Client pages* other than Messages, FleetMap, DispatchList,
+  DispatchDetails and the fuel plan editor:
+  - read in full: DispatchStopCorrection, DispatchStopWorkspace,
+    MileageMovementEditor, DispatchResourceOptions,
+    DispatchWorkspaceStopDisplay, DispatchMileageTotals,
+    DispatchAssignmentReview, DispatchBilling, DispatchRig(Status),
+    DispatchStopTransfer, LoadAdjustments, Border, FleetSettings,
+    FuelSendingSettings, Settings, PersonalSettings, Home;
+  - read in large part: DispatchPlanning, DispatchMileageBreakdown,
+    DispatchNumberSettings, IntegrationSettings, Customers, DispatchBroker,
+    DispatchStopForecast;
+  - the rest by outline only.
+- No residue partial and no split made for the old limits was found in
+  either area. Client Razor and C# were never under a line limit.
+
+**Fixed:**
+- **Layer violation** (`7a0b70c9`). `CacheInvalidationWorker` in
+  Infrastructure took the concrete `CacheInvalidationRelay`. The namespace
+  regex missed it because `Application.Caching` holds interfaces and
+  classes alike. The relay is now behind `ICacheInvalidationRelay`. A new
+  architecture check reads every Infrastructure constructor and fails on
+  any concrete Application class. It found only this case.
+- **ETA enrichment's saved-plan metadata read twice** (`da34b0a6`). The
+  twenty commands were mapped on the load fixture by statement and calling
+  frame. Warm enrichment now takes 19.
+
+**Verified and recorded, not changed:**
+- **Settings page 409.** `DispatchNumberSettings` and
+  `FuelSendingSettings` edit one record, each with its own revision. Saving
+  one makes the other's next save a conflict. No update is lost (null
+  means unchanged, and a stale revision is refused). The page also fetches
+  the record three times. *Proposal:* one owner of the page's dispatch
+  settings state.
+- **HOS provider cache.** `SamsaraDriverHosProvider` keeps a process-wide
+  key and a static gate while credentials are per company. The only
+  production caller refreshes and never reads the cache, so nothing leaks
+  today. The non-refresh path would cross tenants if it were used.
+  *Proposal:* remove that path or key it by company.
+- **ETA enrichment's remaining repeats.** The three `Dispatches` reads are
+  `ExecutionLoads.ReadAsync` from the board, from the ETA itinerary (fresh
+  snapshot) and from deadhead history's execution batches. The board's
+  read is outside the snapshot and cannot be reused. The other two could
+  share one read inside the snapshot. *Proposal*, with an interleaving
+  review.
+- **Plan-preparation "busy" answer outside planning.** A handler that lets
+  it escape becomes a logged 500 (see the preparation record). Not every
+  handler has been audited.
+
+**Proposals from the passes, not verified line by line:**
+- the leased-queue claim and prune SQL, written three times
+  (`SourceRoadStore`, `PlanningRefreshStore`, `ExecutionPlanningStore`);
+- the tenant guard `Company()`, copied six times; two `DatabaseInstant`
+  helpers that differ on UTC;
+- `TorqueApiService` re-implementing the base send path and reading
+  options from configuration;
+- `SessionStartupFilter` composing the API pipeline from Infrastructure;
+- `DatabaseInitializer` running a periodic loop outside `ApplicationWorker`;
+- `CloudStorageFileStorage.OpenAsync` and `DeleteAsync` skipping
+  `Owned()`'s key-length check;
+- carrier-specific values hard-coded (Samsara tag, Gmail topic and label);
+- Client:
+  - the allocation editor inside `DispatchMileageBreakdown`;
+  - `Border.UseAssignment` belonging to `BorderResources`;
+  - `FleetSettings` both hosting a layout and holding a form;
+  - an apparently unused `DispatchRig` and its stylesheet;
+  - a dead branch in `DispatchStopCorrection` (its "this side of the
+    transfer" message can never show; the intended condition needs the
+    owner);
+  - a triple fetch in `MileageMovementEditor` that
+    `DispatchResourceOptions` already does;
+  - unused members in `Home`.
+
+**Still not reviewed:**
+- client pages and shared components outside the lists above;
+- browser modules other than those named last night;
+- style contents;
+- tools and scripts;
+- tests beyond those touched.
+
