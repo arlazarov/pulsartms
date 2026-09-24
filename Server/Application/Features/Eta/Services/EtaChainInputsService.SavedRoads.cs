@@ -18,26 +18,22 @@ public sealed partial class EtaChainInputsService
         "ETA road validation requires a publication transaction."
       );
     var roots = expected.Roads.Roots;
-    var legacy = await rootRoutes.ReadManyAsync(
+    var current = await rootRoutes.ReadWorkAsync(
       roots
         .Where(x => !x.Work.ExecutionLegId.HasValue)
         .Select(x => x.Work.DispatchId)
         .ToArray(),
+      roots
+        .Where(x => x.Work.ExecutionLegId.HasValue)
+        .Select(x => x.Work.ExecutionLegId!.Value)
+        .ToArray(),
       ct
     );
-    var legIds = roots
-      .Where(x => x.Work.ExecutionLegId.HasValue)
-      .Select(x => x.Work.ExecutionLegId!.Value)
-      .ToArray();
-    var native =
-      legIds.Length == 0
-        ? new Dictionary<Guid, SavedRoutePlanMetadata>()
-        : await rootRoutes.ReadExecutionLegsAsync(legIds, ct);
     foreach (var root in roots)
     {
       var saved = root.Work.ExecutionLegId is { } legId
-        ? native.GetValueOrDefault(legId)
-        : legacy.GetValueOrDefault(root.Work.DispatchId);
+        ? current.Legs.GetValueOrDefault(legId)
+        : current.Loads.GetValueOrDefault(root.Work.DispatchId);
       if (RootVersion(root.Work, saved) != root)
         throw RoadsChanged();
     }

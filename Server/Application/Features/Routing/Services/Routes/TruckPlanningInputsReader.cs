@@ -155,19 +155,17 @@ public sealed class TruckPlanningInputsReader(
       {
         var snapshots = await itineraries.ReadManyAsync(ids, asOf, token);
         var segments = snapshots.Values.SelectMany(x => x.Segments).ToArray();
-        var saved = await savedRoutes.ReadManyAsync(
+        var plans = await savedRoutes.ReadWorkAsync(
           segments.Select(x => x.Work.DispatchId).Distinct().ToArray(),
+          segments
+            .Where(x => x.Work.ExecutionLegId.HasValue)
+            .Select(x => x.Work.ExecutionLegId!.Value)
+            .Distinct()
+            .ToArray(),
           token
         );
-        var legIds = segments
-          .Where(x => x.Work.ExecutionLegId.HasValue)
-          .Select(x => x.Work.ExecutionLegId!.Value)
-          .Distinct()
-          .ToArray();
-        var native =
-          legIds.Length == 0
-            ? new Dictionary<Guid, SavedRoutePlanMetadata>()
-            : await savedRoutes.ReadExecutionLegsAsync(legIds, token);
+        var saved = plans.Loads;
+        var native = plans.Legs;
         var current = new Dictionary<Guid, TruckWorkSegment?>();
         foreach (var snapshot in snapshots.Values)
         {

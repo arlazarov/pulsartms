@@ -42,7 +42,7 @@ public sealed class SavedRoutePlanReader(
   }
 
   private IQueryable<string> Metadata(Guid dispatchId) =>
-    MetadataRows([dispatchId], false).Select(x => x.Value);
+    MetadataRows([dispatchId], []).Select(x => x.Value);
 
   public async Task<SavedRoutePlanMetadata?> ReadExecutionLegAsync(
     Guid executionLegId,
@@ -52,32 +52,35 @@ public sealed class SavedRoutePlanReader(
       executionLegId
     );
 
-  public Task<
+  public async Task<
     IReadOnlyDictionary<Guid, SavedRoutePlanMetadata>
   > ReadExecutionLegsAsync(
     IReadOnlyCollection<Guid> executionLegIds,
     CancellationToken ct
-  ) => ReadManyCoreAsync(executionLegIds, true, ct);
+  ) => (await ReadWorkAsync([], executionLegIds, ct)).Legs;
 
   public async Task<
     IReadOnlyDictionary<Guid, SavedRoutePlanMetadata>
   > ReadManyAsync(
     IReadOnlyCollection<Guid> dispatchIds,
     CancellationToken ct
-  ) => await ReadManyCoreAsync(dispatchIds, false, ct);
+  ) => (await ReadWorkAsync(dispatchIds, [], ct)).Loads;
 
-  private async Task<
-    IReadOnlyDictionary<Guid, SavedRoutePlanMetadata>
-  > ReadManyCoreAsync(
-    IReadOnlyCollection<Guid> ids,
-    bool executionLegs,
+  public async Task<SavedRoutePlanMetadataSet> ReadWorkAsync(
+    IReadOnlyCollection<Guid> dispatchIds,
+    IReadOnlyCollection<Guid> executionLegIds,
     CancellationToken ct
   )
   {
-    if (ids.Count == 0)
-      return new Dictionary<Guid, SavedRoutePlanMetadata>();
-    var rows = await MetadataRows(ids.ToArray(), executionLegs).ToListAsync(ct);
-    var result = new Dictionary<Guid, SavedRoutePlanMetadata>();
+    var loads = new Dictionary<Guid, SavedRoutePlanMetadata>();
+    var legs = new Dictionary<Guid, SavedRoutePlanMetadata>();
+    if (dispatchIds.Count == 0 && executionLegIds.Count == 0)
+      return new(loads, legs);
+    var rows = await MetadataRows(
+        dispatchIds.ToArray(),
+        executionLegIds.ToArray()
+      )
+      .ToListAsync(ct);
     foreach (var row in rows)
     {
       try
@@ -89,11 +92,14 @@ public sealed class SavedRoutePlanReader(
         if (
           value?.Tracking is { PassedStopIds: not null, VisitedStops: not null }
         )
-          result[row.ExecutionLegId ?? row.DispatchId] = value;
+          if (row.ExecutionLegId is { } leg)
+            legs[leg] = value;
+          else
+            loads[row.DispatchId] = value;
       }
       catch (JsonException) { }
     }
-    return result;
+    return new(loads, legs);
   }
 
   private sealed class MetadataRow
@@ -103,7 +109,7 @@ public sealed class SavedRoutePlanReader(
     public string Value { get; set; } = "";
   }
 
-  private IQueryable<MetadataRow> MetadataRows(Guid[] ids, bool executionLegs)
+  private IQueryable<MetadataRow> MetadataRows(Guid[] loads, Guid[] legs)
   {
     // JSON stays inside the database; saved-road validation must not
     // transfer route geometry.
@@ -114,9 +120,8 @@ public sealed class SavedRoutePlanReader(
           SELECT "DispatchId", "ExecutionLegId", "InputHash", "TruckId",
             "AssignmentRevision", "PlanJson"::jsonb AS document
           FROM "DispatchRoutePlans"
-          WHERE ({{executionLegs}} AND "ExecutionLegId" = ANY({{ids}}))
-            OR (NOT {{executionLegs}} AND "ExecutionLegId" IS NULL
-              AND "DispatchId" = ANY({{ids}}))
+          WHERE "ExecutionLegId" = ANY({{legs}})
+            OR ("ExecutionLegId" IS NULL AND "DispatchId" = ANY({{loads}}))
         )
         SELECT "DispatchId", "ExecutionLegId", jsonb_build_object(
           'inputHash', "InputHash", 'truckId', "TruckId",
@@ -162,9 +167,8 @@ public sealed class SavedRoutePlanReader(
           """
         )
         .Where(x =>
-          executionLegs
-            ? x.ExecutionLegId != null && ids.Contains(x.ExecutionLegId.Value)
-            : x.ExecutionLegId == null && ids.Contains(x.DispatchId)
+          x.ExecutionLegId != null && legs.Contains(x.ExecutionLegId.Value)
+          || x.ExecutionLegId == null && loads.Contains(x.DispatchId)
         );
     throw new NotSupportedException(
       "Saved route metadata requires PostgreSQL or SQLite."

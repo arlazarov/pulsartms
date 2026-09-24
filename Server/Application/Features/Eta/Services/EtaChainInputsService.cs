@@ -192,13 +192,8 @@ public sealed partial class EtaChainInputsService(
         x => new AssignedDriver(x.Id, x.ExternalId),
         ct
       );
-    return new(
-      await rootRoutes.ReadManyAsync(ids, ct),
-      legIds.Length == 0
-        ? new Dictionary<Guid, SavedRoutePlanMetadata>()
-        : await rootRoutes.ReadExecutionLegsAsync(legIds, ct),
-      drivers
-    );
+    var roots = await rootRoutes.ReadWorkAsync(ids, legIds, ct);
+    return new(roots.Loads, roots.Legs, drivers);
   }
 
   private sealed record SelectedWork(
