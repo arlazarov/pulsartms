@@ -105,6 +105,39 @@ The after build also contains this evening's other commits; none of them
 is on this path. Unit measurement: a 20,000-point road reads with 1.17 MB
 instead of 3.25 MB.
 
+## A longer run and a restart (build at `9fdca76b`)
+
+This run had 20 minutes of five dispatchers, telemetry and planning
+enqueues, then 10 minutes idle, on the same fixture. All 4,796 requests
+passed; the queue drained with no retries.
+
+| Minute | Container MiB | Heap after GC MiB | Phase |
+| ---: | ---: | ---: | --- |
+| 0 | 449 | 273 | start |
+| 3 | 575 | 393 | steady |
+| 9 | 560 | 365 | steady |
+| 15 | 666 | 446 | steady |
+| 18 | 573 | 390 | steady |
+| 21 | 482 | 237 | idle |
+| 30 | 481 | 247 | idle |
+
+- **Memory:** it went up and down within the same band and did not
+  climb. That rules out growth over 30 minutes, not over hours.
+- **CPU:** steady averaged 33% of one CPU (p95 49); idle averaged 11.6%.
+  Gen2 collections at idle fell to about 7.6 a minute, from about 11 in the
+  first run.
+- **Requests:** steady medians were inbox 199 ms, unread 198 ms, locations
+  8 ms and truck planning 37 ms; the API-default board took 1,026 ms.
+
+**Restart.** The same schema, a new process:
+- ready in 2.6 s;
+- the first light board took 829 ms, then 150–260 ms;
+- ETA enrichment took 1.2–1.4 s cold or warm (it is not cached);
+- the first inbox took 351 ms.
+
+The first truck-planning read took 30 ms. With the summary cache empty, that
+is likely a "being prepared" answer, not a full plan; it was not checked.
+
 ## Not measured, or left
 
 - **Why a plan read re-parses the base road.** Proposal in the
@@ -113,8 +146,8 @@ instead of 3.25 MB.
 - **Idle CPU** did not move with allocation. Its source (the 30-second
   summary and planning loops, GC, the runtime) was not attributed; a CPU
   sample trace was not taken.
-- **No long-running or recovery run.** The runs lasted minutes. Leaks over
-  hours, restart recovery and a 512 MiB limit were not tested.
+- **Hours-long runs and a 512 MiB limit** were not tested (see the
+  30-minute run above).
 - **Foreground costs.** Beyond the section above (ETA enrichment's 20
   commands, the identity lookup), not investigated.
 - **Cloud Run.** Memory and CPU there, and real routes and real provider
