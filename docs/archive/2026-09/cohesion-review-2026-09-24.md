@@ -301,10 +301,12 @@ below was verified in the source before it was acted on or recorded.
   *Proposal:* remove that path or key it by company.
 - **ETA enrichment's remaining repeats.** The three `Dispatches` reads are
   `ExecutionLoads.ReadAsync` from the board, from the ETA itinerary (fresh
-  snapshot) and from deadhead history's execution batches. The board's
-  read is outside the snapshot and cannot be reused. The other two could
-  share one read inside the snapshot. *Proposal*, with an interleaving
-  review.
+  snapshot) and from deadhead history's execution batches.
+  - *Done later that day:* `64f9e8b8` joins the loads to the link read, so
+    each call is one round trip shorter (warm enrichment 19 to 16).
+  - *Still a proposal:* the itinerary and history reading their links and
+    handovers separately inside one snapshot. They read different sets of
+    legs. The board's read is outside the snapshot and cannot be reused.
 - **Plan-preparation "busy" answer outside planning.** A handler that lets
   it escape becomes a logged 500 (see the preparation record). Not every
   handler has been audited.

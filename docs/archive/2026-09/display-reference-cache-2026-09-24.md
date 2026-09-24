@@ -60,3 +60,46 @@ controlled-interleaving test. Not started.
 
 Evidence: `artifacts/managed/diagnostic-ezKDoN` (pinned; `idle-*`
 windows and reports, `compare.txt`).
+
+## The writer-side fix needs an owner's decision
+
+**Traced on a fresh prepared fixture** (`diagnostic-bF4CtD`), with its saved
+rows read directly:
+- 9 of 10 plans are "from the truck's position" with no reference stops or
+  route;
+- each one's base road exists, is complete, and has the expected legs (2
+  legs for 3 stops);
+- the background pass built those plans before the base road was written;
+- every read since attaches the reference in memory and never keeps it.
+
+Fuel and ETA never read the reference road; only the display does.
+
+**The choice.** Saving the reference is a change to stored geometry. Either
+it is a road replacement or it is not:
+
+1. **Display attachment.**
+   - The plan's owner writes the reference once, when a matching base road
+     is there, and keeps the plan's version, so no fuel refresh and no ETA
+     re-key.
+   - One geometry history row of a new "reference" kind; the geometry
+     revision moves once, which closes the truck's open movement segment
+     once.
+   - Guarded by the plan version and the base road's input hash (compare
+     and swap).
+   - Needs a storage path that adds reference chunks without counting as a
+     replacement. Existing rows recover on their next summary refresh.
+2. **Replacement through the normal writer.**
+   - Simple, but it bumps the plan version: every affected truck's fuel
+     plan is marked for refresh and recalculated automatically (under the
+     hand-over rules), ETA forecasts are re-keyed, and each write records a
+     full geometry history row.
+3. **Build the base road before a from-position build.**
+   - New plans carry the reference from the start.
+   - Each such build makes the base road call earlier (normally made by the
+     background base road operation anyway) plus one reconnect call to
+     join the reference to the truck.
+   - Existing plans keep re-reading until their next rebuild.
+
+**Recommendation:** 1, because fuel and ETA do not depend on the reference.
+The decision is whether a display-only reference may be written without
+a new plan version. Not built.
