@@ -59,6 +59,7 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
 - [Integration credentials in Settings](features/integration-settings.md)
 - [File storage: PulsR storage and company drives](features/file-storage.md)
 - [Driver messaging inbox](features/driver-messaging.md)
+- [Driver groups: one view for every page](features/driver-groups.md)
 - [Load numbering and optional prefixes](features/load-numbering.md)
 - [Route planning](features/route-planning.md), [saved base routes](features/base-routes.md),
   [empty mileage](features/dispatch-deadhead.md), and [access warnings](features/route-access-warnings.md)

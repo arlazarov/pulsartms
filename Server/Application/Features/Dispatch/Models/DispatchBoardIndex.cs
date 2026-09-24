@@ -17,6 +17,7 @@ public sealed class DispatchBoardIndex
     string Order,
     string Customer,
     string Driver,
+    Guid? DriverId,
     string[] Stops
   );
 
@@ -54,6 +55,7 @@ public sealed class DispatchBoardIndex
             d.OrderNumber,
             d.CustomerName,
             d.DriverName,
+            d.DriverId,
             d.Stops.SelectMany(s => new[] { s.City, s.Name }).ToArray()
           ))
           .ToArray()
@@ -81,16 +83,24 @@ public sealed class DispatchBoardIndex
       );
   }
 
+  // Scope narrows the shared index to the dispatcher's chosen driver
+  // group: a truck its drivers are on, or a load one of them drives.
   public PaginatedList<TruckDispatchBoardResponse> SelectPage(
     int page,
     int pageSize,
     string? query,
-    Guid? truckId
+    Guid? truckId,
+    DriverScope scope
   )
   {
     IEnumerable<Row> result = rows;
     if (truckId.HasValue)
       result = result.Where(x => x.TruckId == truckId);
+    if (!scope.IsAll)
+      result = result.Where(x =>
+        scope.IncludesTruck(x.TruckId)
+        || x.Loads.Any(d => scope.IncludesDriver(d.DriverId))
+      );
     if (!string.IsNullOrWhiteSpace(query))
     {
       var search = query.Trim();

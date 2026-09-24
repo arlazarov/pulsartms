@@ -144,6 +144,7 @@ public sealed class DispatchSyncDeltaTests
       null!,
       new FleetNames(fixture.Db),
       new ActiveTransfers(fixture.Db),
+      new TestDriverScope(),
       NullLogger<GetDispatchBoardHandler>.Instance
     );
     var query = new GetDispatchBoardQuery(

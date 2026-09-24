@@ -387,6 +387,9 @@ public sealed class DriverMessagingWebhookTests
     await f.Db.SaveChangesAsync();
 
     Assert.Equal(200, await f.PostAsync(Status("wamid.reply", "read", 30)));
+    // WhatsApp's receipt says the driver read the reply; it reads nothing
+    // for any dispatcher.
+    Assert.Empty(await f.Db.ConversationReads.AsNoTracking().ToListAsync());
     Assert.Equal(
       200,
       await f.PostAsync(Status("wamid.reply", "delivered", 20))

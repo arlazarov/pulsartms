@@ -21,11 +21,15 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
 
   [Inject]
   private TimeProvider Clock { get; set; } = default!;
+
+  [Inject]
+  private ChosenDriverGroup DriverGroup { get; set; } = default!;
   private const string ViewStorageKey = "pulsartms.dispatch.view";
   private const string LegacyViewStorageKey = "amftms.dispatch.view";
 
   protected override async Task OnInitializedAsync()
   {
+    DriverGroup.Changed += OnDriverGroupChanged;
     try
     {
       var saved = await JS.InvokeAsync<string?>(
@@ -737,11 +741,20 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
       _latestTelemetry.Remove(id);
   }
 
+  // The dispatcher chose another driver group: the board starts over.
+  private void OnDriverGroupChanged() =>
+    _ = InvokeAsync(async () =>
+    {
+      if (!_disposed)
+        await LoadAsync(1);
+    });
+
   public void Dispose()
   {
     if (_disposed)
       return;
     _disposed = true;
+    DriverGroup.Changed -= OnDriverGroupChanged;
     _request?.Cancel();
     _planningRequest?.Cancel();
     _enrichmentRequest?.Cancel();

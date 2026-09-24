@@ -48,6 +48,7 @@ public class GetDispatchBoardHandler(
   EtaForecastService eta,
   FleetNames names,
   ActiveTransfers transfers,
+  IDriverScope scope,
   ILogger<GetDispatchBoardHandler> logger
 )
   : IRequestHandler<
@@ -86,7 +87,8 @@ public class GetDispatchBoardHandler(
       request.Page,
       request.PageSize,
       request.Search,
-      request.TruckId
+      request.TruckId,
+      await scope.CurrentAsync(cancellationToken)
     );
     if (request.IdentitiesOnly)
       return RequestResponse<PaginatedList<TruckDispatchBoardResponse>>.Ok(

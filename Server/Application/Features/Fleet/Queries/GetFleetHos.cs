@@ -20,7 +20,8 @@ public sealed record GetFleetHosQuery(Guid[]? TruckIds = null)
 public sealed class GetFleetHosHandler(
   IAppDbContext db,
   IDriverHosProvider hos,
-  IDriverHosStore store
+  IDriverHosStore store,
+  IDriverScope scope
 )
   : IRequestHandler<
     GetFleetHosQuery,
@@ -43,6 +44,12 @@ public sealed class GetFleetHosHandler(
     trucks = request.TruckIds is { } ids
       ? trucks.Where(x => ids.Contains(x.Id))
       : trucks.Where(x => x.IsActive);
+    // The dispatcher's chosen driver group narrows the trucks listed.
+    if (await scope.CurrentAsync(ct) is { IsAll: false } group)
+    {
+      var scoped = group.Trucks;
+      trucks = trucks.Where(x => scoped.Contains(x.Id));
+    }
     var drivers = await trucks
       .Select(x => new
       {

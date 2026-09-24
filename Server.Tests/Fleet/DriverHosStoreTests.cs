@@ -27,7 +27,8 @@ public sealed class DriverHosStoreTests
     var result = await new GetFleetHosHandler(
       f.Db,
       new DriverHosSnapshotStub(),
-      f.Store
+      f.Store,
+      new TestDriverScope()
     ).Handle(new(), default);
 
     var hos = Assert.Single(result.Response!).Value.Hos;
@@ -130,7 +131,8 @@ public sealed class DriverHosStoreTests
     var result = await new GetFleetHosHandler(
       f.Db,
       new DriverHosSnapshotStub(),
-      f.Store
+      f.Store,
+      new TestDriverScope()
     ).Handle(new(), default);
 
     Assert.Null(Assert.Single(result.Response!).Value.Hos);

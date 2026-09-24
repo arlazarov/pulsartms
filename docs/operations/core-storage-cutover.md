@@ -25,10 +25,10 @@ the reviewed transition and its recovery prerequisites.
   database container, install a server or use the working database as a fixture.
 
 The reviewed [reset script](../../scripts/sql/reset-core-storage.sql) explicitly
-lists 86 operational tables. It retains Users, all seven AspNet identity/role
+lists 87 operational tables. It retains Users, all seven AspNet identity/role
 related tables, Companies, DataProtectionKeys, IntegrationCredentialSettings,
-StorageConnections, StorageLayouts, ApprovedTemplates and EF migration
-history. Identity profiles, passwords, role claims, external logins,
+StorageConnections, StorageLayouts, ApprovedTemplates, DriverGroups (their
+members are cleared with the drivers) and EF migration history. Identity profiles, passwords, role claims, external logins,
 token rows, preferences and key XML retain their values. Deployment-provided
 integration credentials remain unchanged. The script uses no CASCADE and rejects
 an unknown table, unexpected schema, another database client or a missing
@@ -57,7 +57,7 @@ backup.
    name, `pulsr.reset_ack` to the new migration ID, and both
    `pulsr.reset_writers_stopped` and `pulsr.reset_backup_verified` to `true`.
    Execute the reviewed SQL with error-stop enabled. Its transaction either
-   clears all 86 listed operational tables while retaining protected rows, or
+   clears all 87 listed operational tables while retaining protected rows, or
    rolls back. It does not grant deployment authorization or stop writers
    itself.
 5. Keep writers stopped. Apply the single pending migration with the compatible

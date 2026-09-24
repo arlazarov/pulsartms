@@ -19,6 +19,7 @@ builder.Services.AddScoped<AppAuthenticationStateProvider>();
 builder.Services.AddScoped<ApiService>();
 builder.Services.AddScoped<MessagingSignals>();
 builder.Services.AddScoped<MessagingNotices>();
+builder.Services.AddScoped<ChosenDriverGroup>();
 builder.Services.AddScoped<PlanningDisplayCache>();
 builder.Services.AddSingleton(TimeProvider.System);
 

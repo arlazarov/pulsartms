@@ -1,0 +1,17 @@
+<div class="driver-group-picker">
+    <label for="@Id" class="visually-hidden">Drivers shown</label>
+    <select id="@Id" value="@(Groups.View?.Selected?.ToString() ?? "")"
+            disabled="@(_busy || Groups.View is null)" @onchange="ChooseAsync"
+            title="@Title">
+        <option value="">All drivers</option>
+        @foreach (var group in Groups.View?.Groups ?? [])
+        {
+            <option value="@group.Id" @key="group.Id">@group.Name (@group.Drivers.Count)</option>
+        }
+    </select>
+    <a class="btn btn--text" href="/settings/personal#driver-groups">Groups</a>
+    @if (_error is not null)
+    {
+        <span class="driver-group-picker__error" role="status">@_error</span>
+    }
+</div>

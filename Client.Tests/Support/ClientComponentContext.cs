@@ -1,5 +1,9 @@
+using System.Net;
+using System.Net.Http.Json;
 using Bunit;
 using Bunit.TestDoubles;
+using Client.Models.DTO;
+using Client.Models.DTO.DriverGroups;
 using Client.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,7 +26,9 @@ internal sealed class ClientComponentContext : BunitContext
     Authorization = this.AddAuthorization();
     Visibility.Configure(JSInterop);
     Services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-    Services.AddSingleton(_ => new HttpClient(new StubHttpMessageHandler(send))
+    Services.AddSingleton(_ => new HttpClient(
+      new StubHttpMessageHandler((request, ct) => SendAsync(send, request, ct))
+    )
     {
       BaseAddress = new("http://localhost/"),
     });
@@ -33,6 +39,34 @@ internal sealed class ClientComponentContext : BunitContext
     Services.TryAddSingleton<TokenStorageService>();
     Services.AddSingleton<MessagingSignals>();
     Services.AddSingleton<MessagingNotices>();
+    Services.AddSingleton<ChosenDriverGroup>();
+  }
+
+  // Every page that lists drivers shows the driver group picker. A test
+  // that does not answer for groups gets none chosen and none made, as a
+  // dispatcher who never made one.
+  private static async Task<HttpResponseMessage> SendAsync(
+    Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send,
+    HttpRequestMessage request,
+    CancellationToken ct
+  )
+  {
+    var response = await send(request, ct);
+    return
+      response.StatusCode == HttpStatusCode.NotFound
+      && request.Method == HttpMethod.Get
+      && request.RequestUri?.AbsolutePath == "/api/driver-groups"
+      ? new(HttpStatusCode.OK)
+      {
+        Content = JsonContent.Create(
+          new RequestResponseDTO<DriverGroupsView>
+          {
+            Success = true,
+            Response = new(null, []),
+          }
+        ),
+      }
+      : response;
   }
 
   public void AddAuthenticationServices()

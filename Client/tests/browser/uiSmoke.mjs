@@ -540,6 +540,33 @@ const fixtures = new Map([
     success({ path: 'api/webhooks/whatsapp/fixture' }),
   ],
   [
+    '/api/fleet/drivers',
+    success({
+      totalCount: 1,
+      items: [
+        {
+          id: '5a0e5c1e-7d5b-4a61-9d7e-000000000030',
+          name: 'Fixture Driver',
+          isActive: true,
+        },
+      ],
+    }),
+  ],
+  [
+    '/api/driver-groups',
+    success({
+      selected: null,
+      groups: [
+        {
+          id: '00000000-0000-4000-8000-00000000b001',
+          name: 'West drivers with a long group name',
+          revision: 1,
+          drivers: ['5a0e5c1e-7d5b-4a61-9d7e-000000000030'],
+        },
+      ],
+    }),
+  ],
+  [
     '/api/settings/integrations/whatsapp/templates',
     success({
       businessNumberId: '123456789012345',

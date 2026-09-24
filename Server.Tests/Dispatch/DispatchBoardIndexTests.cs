@@ -1,6 +1,7 @@
 using Application.Caching;
 using Application.Features.Dispatch.Models;
 using Application.Features.Synchronization.Options;
+using Application.Interfaces;
 using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Dispatch;
@@ -38,15 +39,43 @@ public class DispatchBoardIndexTests
     source.DriverName = "changed";
     source.Dispatches[0].Stops[0].City = "changed";
     source.Dispatches.Clear();
-    var first = index.SelectPage(1, 12, "Toronto", null);
+    var first = index.SelectPage(1, 12, "Toronto", null, DriverScope.All);
     var row = Assert.Single(first.Items);
     Assert.Equal("Aidar", row.DriverName);
     Assert.Equal(id, Assert.Single(row.Dispatches).Id);
     row.DriverName = "request mutation";
     row.Dispatches.Clear();
-    var second = index.SelectPage(1, 12, "987", null);
+    var second = index.SelectPage(1, 12, "987", null, DriverScope.All);
     Assert.Equal("Aidar", Assert.Single(second.Items).DriverName);
     Assert.Equal(id, Assert.Single(second.Items.Single().Dispatches).Id);
+  }
+
+  // A chosen driver group narrows the shared index, not a copy per user: a
+  // truck its drivers are on, or a load one of them drives. All is all.
+  [Fact]
+  public void AChosenDriverGroupNarrowsThePageNotTheIndex()
+  {
+    var theirs = Row("11005", 5555);
+    var bound = Row("11006", 5556);
+    var driving = Row("11007", 5557);
+    var driver = Guid.NewGuid();
+    driving.Dispatches[0].DriverId = driver;
+    var index = new DispatchBoardIndex([theirs, bound, driving]);
+    var group = new DriverScope(
+      Guid.NewGuid(),
+      "West",
+      [driver],
+      [bound.TruckId!.Value]
+    );
+
+    var page = index.SelectPage(1, 12, null, null, group);
+
+    Assert.Equal(["11006", "11007"], page.Items.Select(x => x.TruckNumber));
+    Assert.Equal(2, page.TotalCount);
+    Assert.Equal(
+      3,
+      index.SelectPage(1, 12, null, null, DriverScope.All).TotalCount
+    );
   }
 
   [Fact]
@@ -57,13 +86,20 @@ public class DispatchBoardIndexTests
     );
     Assert.Equal(
       "54777",
-      Assert.Single(index.SelectPage(1, 12, "5", null).Items).TruckNumber
+      Assert
+        .Single(index.SelectPage(1, 12, "5", null, DriverScope.All).Items)
+        .TruckNumber
     );
-    var page = index.SelectPage(2, 1, null, null);
+    var page = index.SelectPage(2, 1, null, null, DriverScope.All);
     Assert.Equal(3, page.TotalCount);
     Assert.Equal("11006", Assert.Single(page.Items).TruckNumber);
-    Assert.Equal(3, index.SelectPage(99, 1, "Warehouse", null).TotalCount);
-    Assert.Empty(index.SelectPage(99, 1, "Warehouse", null).Items);
+    Assert.Equal(
+      3,
+      index.SelectPage(99, 1, "Warehouse", null, DriverScope.All).TotalCount
+    );
+    Assert.Empty(
+      index.SelectPage(99, 1, "Warehouse", null, DriverScope.All).Items
+    );
   }
 
   [Fact]
@@ -97,10 +133,13 @@ public class DispatchBoardIndexTests
       var index = new DispatchBoardIndex(
         Enumerable.Range(0, count).Select(i => Row((11000 + i).ToString(), i))
       );
-      _ = index.SelectPage(1, 12, null, null);
+      _ = index.SelectPage(1, 12, null, null, DriverScope.All);
       var before = GC.GetAllocatedBytesForCurrentThread();
       for (var i = 0; i < 50; i++)
-        Assert.Equal(12, index.SelectPage(1, 12, null, null).Items.Count);
+        Assert.Equal(
+          12,
+          index.SelectPage(1, 12, null, null, DriverScope.All).Items.Count
+        );
       return GC.GetAllocatedBytesForCurrentThread() - before;
     }
     var small = Measure(100);

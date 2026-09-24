@@ -60,6 +60,14 @@ others comes through their owners, composed outside it:
 - Filing a driver's file to a load is the Dispatch documents owner's
   `FileMessageAttachmentCommand`.
 
+## Driver groups (added 2026-09-24)
+
+`Application/Features/DriverGroups` owns each dispatcher's own groups of
+drivers and their choice of one (or all), and implements `IDriverScope`
+in `Application/Interfaces`. Messaging, Dispatch and Fleet read that
+contract and name nothing of the module, so no edge between modules was
+added. See [driver groups](../features/driver-groups.md).
+
 ## Who writes each table
 
 `IAppDbContext` exposes fifty-five sets. Counting only explicit `Add`,

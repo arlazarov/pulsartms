@@ -847,6 +847,12 @@ and the filing box on `warning-surface`. The trip pane uses the shared
 `messages-trip-beside` the trip is a sheet over the thread with a dimmed
 backdrop; below `md` one pane shows, with Back.
 
+`Shared/DriverGroups/DriverGroupPicker` is the one driver-group switch on
+Messages, Dispatch and Fleet Map (All drivers or one of the dispatcher's
+own groups with its size, and a Groups link to Personal settings); pages
+do not keep their own driver filters. A failed read of the groups is a
+status beside it, not an alert.
+
 `Shared/Drivers/DriverContactEditor` edits a driver's phone, email and
 WhatsApp number wherever a driver's contacts are needed. Each sourced field
 has its own "Use source value" checkbox and shows the source value; the

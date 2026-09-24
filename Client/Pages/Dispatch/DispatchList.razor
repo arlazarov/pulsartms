@@ -20,6 +20,7 @@
             <button id="dispatch-active" type="button" aria-pressed="@(!_showCompleted ? "true" : "false")" @onclick="() => SelectScopeAsync(false)">Active</button>
             <button id="dispatch-completed" type="button" aria-pressed="@(_showCompleted ? "true" : "false")" @onclick="() => SelectScopeAsync(true)">Completed</button>
         </div>
+        <DriverGroupPicker Id="dispatch-driver-group" />
         @if (TruckId.HasValue) { <a class="btn" href="/dispatch">Show all trucks</a> }
     </div>
     <div class="dispatch-board__body">

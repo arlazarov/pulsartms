@@ -2098,6 +2098,72 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("SourceRoadRequests");
                 });
 
+            modelBuilder.Entity("Domain.Entities.DriverGroups.DriverGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("OwnerUserId");
+
+                    b.HasIndex("CompanyId", "OwnerUserId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("DriverGroups", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.DriverGroups.DriverGroupMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DriverId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("DriverId");
+
+                    b.HasIndex("GroupId", "DriverId")
+                        .IsUnique();
+
+                    b.ToTable("DriverGroupMembers", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Entities.Execution.DispatchSwitchOperation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5001,6 +5067,9 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("SelectedDriverGroupId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("TemperatureUnit")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -5021,6 +5090,8 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasIndex("IdentityUserId")
                         .IsUnique();
+
+                    b.HasIndex("SelectedDriverGroupId");
 
                     b.ToTable("Users");
                 });
@@ -5981,6 +6052,30 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Domain.Entities.DriverGroups.DriverGroup", b =>
+                {
+                    b.HasOne("Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.DriverGroups.DriverGroupMember", b =>
+                {
+                    b.HasOne("Domain.Entities.Fleet.Driver", null)
+                        .WithMany()
+                        .HasForeignKey("DriverId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Domain.Entities.DriverGroups.DriverGroup", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Domain.Entities.Execution.ExecutionActionReceipt", b =>
                 {
                     b.HasOne("Domain.Entities.Execution.SwitchParticipant", null)
@@ -6577,6 +6672,14 @@ namespace Infrastructure.Persistence.Migrations
                         .HasForeignKey("ConnectionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.User", b =>
+                {
+                    b.HasOne("Domain.Entities.DriverGroups.DriverGroup", null)
+                        .WithMany()
+                        .HasForeignKey("SelectedDriverGroupId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

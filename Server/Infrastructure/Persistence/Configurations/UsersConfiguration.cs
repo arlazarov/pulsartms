@@ -1,4 +1,5 @@
 using Domain.Entities;
+using Domain.Entities.DriverGroups;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -18,5 +19,11 @@ public class UsersConfiguration : IEntityTypeConfiguration<User>
       .Property(x => x.DistanceUnit)
       .HasMaxLength(16)
       .HasDefaultValue("both");
+    // A deleted group leaves its owner on all drivers.
+    builder
+      .HasOne<DriverGroup>()
+      .WithMany()
+      .HasForeignKey(x => x.SelectedDriverGroupId)
+      .OnDelete(DeleteBehavior.SetNull);
   }
 }

@@ -1,4 +1,5 @@
 using Application.Features.Dispatch.Models;
+using Application.Interfaces;
 
 namespace Server.Tests.Dispatch;
 
@@ -40,7 +41,9 @@ public sealed class ExecutionBoardIndexTests
         },
       ]
     );
-    var row = Assert.Single(index.SelectPage(1, 12, null, truck).Items);
+    var row = Assert.Single(
+      index.SelectPage(1, 12, null, truck, DriverScope.All).Items
+    );
     Assert.Collection(
       row.Dispatches,
       current =>

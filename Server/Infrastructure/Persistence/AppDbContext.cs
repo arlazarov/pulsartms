@@ -5,6 +5,7 @@ using Domain.Entities.Caching;
 using Domain.Entities.Consistency;
 using Domain.Entities.Costs;
 using Domain.Entities.Dispatch;
+using Domain.Entities.DriverGroups;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Domain.Entities.Fuel;
@@ -52,6 +53,9 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
   public DbSet<ConversationArrivalHead> ConversationArrivalHeads =>
     Set<ConversationArrivalHead>();
   public DbSet<ApprovedTemplate> ApprovedTemplates => Set<ApprovedTemplate>();
+  public DbSet<DriverGroup> DriverGroups => Set<DriverGroup>();
+  public DbSet<DriverGroupMember> DriverGroupMembers =>
+    Set<DriverGroupMember>();
   public DbSet<ConsistencyFinding> ConsistencyFindings =>
     Set<ConsistencyFinding>();
   public DbSet<ConsistencyEvent> ConsistencyEvents => Set<ConsistencyEvent>();

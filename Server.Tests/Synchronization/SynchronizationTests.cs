@@ -536,7 +536,8 @@ public class SynchronizationTests
       stream,
       new(new TestCompany()),
       new NoRecordedPositions(),
-      Options.Create(new SynchronizationOptions())
+      Options.Create(new SynchronizationOptions()),
+      new TestDriverScope()
     );
     Assert.Empty(
       (await handler.Handle(new(CachedOnly: true), default)).Response!.Trucks

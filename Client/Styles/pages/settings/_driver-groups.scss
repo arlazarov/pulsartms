@@ -1,0 +1,64 @@
+@use '../../base' as ui;
+
+// A dispatcher's own driver groups: each one's name and size, and the
+// checklist that fills one.
+.driver-groups {
+  display: grid;
+  gap: ui.pg(md);
+
+  &__list {
+    display: grid;
+    gap: ui.pg(sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(xs) ui.pg(md);
+    padding-bottom: ui.pg(sm);
+    border-bottom: 1px solid ui.theme(border-subtle);
+  }
+
+  &__name {
+    font-weight: 600;
+  }
+
+  &__count {
+    flex: 1;
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+
+  &__drivers {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
+    gap: ui.pg(xs) ui.pg(md);
+    max-height: 20rem;
+    margin: 0;
+    padding: ui.pg(sm);
+    overflow-y: auto;
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+  }
+
+  &__drivers legend {
+    padding: 0 ui.pg(xs);
+    font-weight: 600;
+  }
+
+  &__drivers label {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &__drivers input {
+    @include ui.checkbox-control;
+  }
+}

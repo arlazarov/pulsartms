@@ -128,7 +128,8 @@ internal static class InboxScenario
 
   internal static InboxAndConversation Handlers(
     DispatchSyncFixture f,
-    Guid user
+    Guid user,
+    DriverScope? scope = null
   )
   {
     f.Db.ChangeTracker.Clear();
@@ -142,6 +143,7 @@ internal static class InboxScenario
         f.Db,
         new Caller(identity),
         new ConversationReadMarkers(f.Db),
+        new TestDriverScope(scope),
         TimeProvider.System
       ),
       new ConversationHandlers(

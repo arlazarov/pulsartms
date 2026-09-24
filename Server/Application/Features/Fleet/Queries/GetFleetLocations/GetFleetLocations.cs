@@ -18,7 +18,8 @@ public class GetFleetLocationsHandler(
   FleetLocationStream stream,
   ServerTelemetry serverTelemetry,
   ITruckLocationStore positions,
-  IOptions<SynchronizationOptions> syncOptions
+  IOptions<SynchronizationOptions> syncOptions,
+  IDriverScope scope
 )
   : IRequestHandler<
     GetFleetLocationsQuery,
@@ -26,6 +27,31 @@ public class GetFleetLocationsHandler(
   >
 {
   public async Task<RequestResponse<FleetLocationsResponse>> Handle(
+    GetFleetLocationsQuery request,
+    CancellationToken cancellationToken
+  ) =>
+    Scoped(
+      await ReadAsync(request, cancellationToken),
+      await scope.CurrentAsync(cancellationToken)
+    );
+
+  // The snapshot is shared by every viewer: a dispatcher's chosen driver
+  // group narrows a copy of its lists, never the snapshot itself.
+  private static RequestResponse<FleetLocationsResponse> Scoped(
+    RequestResponse<FleetLocationsResponse> read,
+    DriverScope scope
+  ) =>
+    scope.IsAll || read.Response is not { } all
+      ? read
+      : RequestResponse<FleetLocationsResponse>.Ok(
+        new()
+        {
+          Trucks = [.. all.Trucks.Where(x => scope.IncludesTruck(x.TruckId))],
+          Points = [.. all.Points.Where(x => scope.IncludesTruck(x.TruckId))],
+        }
+      );
+
+  private async Task<RequestResponse<FleetLocationsResponse>> ReadAsync(
     GetFleetLocationsQuery request,
     CancellationToken cancellationToken
   )

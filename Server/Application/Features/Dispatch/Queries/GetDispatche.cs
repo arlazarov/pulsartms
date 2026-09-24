@@ -27,7 +27,8 @@ public record GetDispatchQuery(
 
 public class GetDispatchQueryHandler(
   IAppDbContext dbContext,
-  DeadheadService deadhead
+  DeadheadService deadhead,
+  IDriverScope scope
 )
   : IRequestHandler<
     GetDispatchQuery,
@@ -97,6 +98,19 @@ public class GetDispatchQueryHandler(
         || x.TruckId == request.TruckId
         || x.Stops.Any(s => s.TruckId == request.TruckId)
       );
+    // The dispatcher's chosen driver group: loads one of its drivers drove
+    // or drives, on the load or on any of its stops, as recorded.
+    if (await scope.CurrentAsync(cancellationToken) is { IsAll: false } group)
+    {
+      var drivers = group.Drivers;
+      query = query.Where(x =>
+        x.DriverId != null && drivers.Contains(x.DriverId.Value)
+        || x.Stops.Any(s =>
+          s.DriverId != null && drivers.Contains(s.DriverId.Value)
+          || s.CoDriverId != null && drivers.Contains(s.CoDriverId.Value)
+        )
+      );
+    }
     var count = await query.CountAsync(cancellationToken);
     var page = query
       .OrderByDescending(x => x.LoadNumber)

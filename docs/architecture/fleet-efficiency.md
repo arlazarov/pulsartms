@@ -22,6 +22,7 @@ that every proposed optimization has been implemented.
 | Sending a hand-over to a driver | FuelIssueSender |
 | Fuel plans' words, visits and hand-over | FuelIssueSender, FuelIssueRecords (Routing), delivered through IDriverTextDelivery |
 | Driver conversations, all delivery statuses, reply window, inbox | Messaging (DriverMessagingWebhookHandlers, DriverTextDelivery, InboxRecorder, ReplyQueue) |
+| A dispatcher's driver groups and their choice for every page | DriverGroups (DriverScopeReader through IDriverScope, once per request; lists narrowed after shared caches) |
 | Messaging transport | IDriverMessaging (Messaging), WhatsAppCloudMessaging |
 | Driver contacts | UpdateDriverContact / DriverContactImport |
 | Trailer catalog | TrailerCatalog |

@@ -1,0 +1,22 @@
+@use '../base' as ui;
+
+// The switch between the dispatcher's driver groups and all drivers, the
+// same on every page that lists drivers' work.
+.driver-group-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ui.pg(xs);
+  min-width: 0;
+
+  select {
+    min-width: 0;
+    max-width: 16rem;
+    @include ui.input-control;
+  }
+
+  &__error {
+    color: ui.theme(danger-text);
+    font-size: ui.fs(small);
+  }
+}

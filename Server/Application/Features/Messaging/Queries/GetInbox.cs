@@ -64,6 +64,7 @@ public sealed class InboxHandlers(
   IAppDbContext db,
   ICurrentUser caller,
   IConversationReadMarkers markers,
+  IDriverScope scope,
   TimeProvider clock
 )
   : IRequestHandler<GetInboxQuery, RequestResponse<InboxView>>,
@@ -99,6 +100,17 @@ public sealed class InboxHandlers(
             && r.ReadRevision >= x.LastInboundRevision
           )
       );
+    // The dispatcher's chosen driver group: conversations linked to one of
+    // its drivers. Unlinked ones are under All. The unread notice is not
+    // narrowed: what is unread stays each dispatcher's own, whatever group
+    // they are looking at.
+    if (await scope.CurrentAsync(ct) is { IsAll: false } group)
+    {
+      var drivers = group.Drivers;
+      query = query.Where(x =>
+        x.DriverId != null && drivers.Contains(x.DriverId.Value)
+      );
+    }
     if (term.Length > 0)
     {
       var name = term.ToLowerInvariant();

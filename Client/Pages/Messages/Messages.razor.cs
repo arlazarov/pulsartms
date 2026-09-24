@@ -33,6 +33,9 @@ public partial class Messages : IAsyncDisposable
   [CascadingParameter]
   private Task<AuthenticationState>? Authentication { get; set; }
 
+  [Inject]
+  private ChosenDriverGroup DriverGroup { get; set; } = default!;
+
   // The list as shown: the first page, and the pages the dispatcher asked
   // for below it. Next continues it; a new search or filter starts over.
   private List<ConversationSummary>? _conversations;
@@ -90,6 +93,7 @@ public partial class Messages : IAsyncDisposable
     if (Authentication is not null)
       _me = (await Authentication).User.Identity?.Name;
     Signals.Changed += OnSignal;
+    DriverGroup.Changed += OnDriverGroupChanged;
     await Signals.JoinAsync();
     var templates = await Api.GetAsync<List<MessageTemplateView>>(
       "api/messaging/templates",
@@ -664,10 +668,21 @@ public partial class Messages : IAsyncDisposable
       _ => status,
     };
 
+  // The dispatcher chose another driver group: the list starts over.
+  private void OnDriverGroupChanged() =>
+    _ = InvokeAsync(async () =>
+    {
+      if (_disposed)
+        return;
+      await StartOverAsync();
+      StateHasChanged();
+    });
+
   public async ValueTask DisposeAsync()
   {
     _disposed = true;
     Signals.Changed -= OnSignal;
+    DriverGroup.Changed -= OnDriverGroupChanged;
     await Signals.LeaveAsync();
     _lifetime.Cancel();
     _lifetime.Dispose();

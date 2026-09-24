@@ -2,6 +2,7 @@ using Application.Caching;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Application.Features.Synchronization.Options;
+using Application.Interfaces;
 using Domain.Entities;
 using Domain.Models.Fleet;
 using Microsoft.Extensions.Caching.Memory;
@@ -410,6 +411,7 @@ public class FleetTelemetryTests
       TimeProvider.System,
       new TestCompany()
     );
+    var scope = new TestDriverScope();
     using var telemetry = new FleetTelemetryCache(memory, new TestCompany());
     var handler = new GetFleetLocationsHandler(
       null!,
@@ -425,7 +427,8 @@ public class FleetTelemetryTests
           Enabled = false,
           HighFrequencyLocations = highFrequency,
         }
-      )
+      ),
+      scope
     );
     var result = await handler.Handle(new(), default);
     var truck = Assert.Single(result.Response!.Trucks);
@@ -441,6 +444,12 @@ public class FleetTelemetryTests
     Assert.Equal(highFrequency ? 1 : 0, provider.Requests.Count);
     await handler.Handle(new(), default);
     Assert.Equal(1, provider.StatsCalls);
+    // A chosen driver group narrows a copy; the shared snapshot keeps the
+    // truck for everyone else.
+    scope.Scope = new DriverScope(Guid.NewGuid(), "East", [], []);
+    Assert.Empty((await handler.Handle(new(), default)).Response!.Trucks);
+    scope.Scope = DriverScope.All;
+    Assert.Single((await handler.Handle(new(), default)).Response!.Trucks);
   }
 
   private sealed class Provider : IFleetTelemetryProvider

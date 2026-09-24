@@ -84,10 +84,11 @@ public class DispatchTests
     Assert.Equal(truck.Id, stop.TruckId);
     Assert.Equal(driver.Id, stop.DriverId);
     using var planning = new PlanningTestServices(db);
-    var list = await new GetDispatchQueryHandler(db, planning.Deadheads).Handle(
-      new(1, 20, "Customer", "assigned", truck.Id),
-      default
-    );
+    var list = await new GetDispatchQueryHandler(
+      db,
+      planning.Deadheads,
+      new TestDriverScope()
+    ).Handle(new(1, 20, "Customer", "assigned", truck.Id), default);
     Assert.Equal(1, list.Response!.TotalCount);
     Assert.Empty(list.Response.Items.Single().Stops);
     Assert.Null(list.Response.Items.Single().Eta);

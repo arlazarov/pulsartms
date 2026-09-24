@@ -12,4 +12,8 @@ public class User : BaseEntity, ICompanyOwned
   public string Theme { get; set; } = "light";
   public string TemperatureUnit { get; set; } = "both";
   public string DistanceUnit { get; set; } = "both";
+
+  // The dispatcher's own driver group that narrows the program's driver
+  // lists everywhere, or null for all drivers. Only a filter.
+  public Guid? SelectedDriverGroupId { get; set; }
 }

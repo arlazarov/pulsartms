@@ -48,6 +48,9 @@ public partial class FleetMap : IAsyncDisposable
   private HttpClient Http { get; set; } = default!;
 
   [Inject]
+  private ChosenDriverGroup DriverGroup { get; set; } = default!;
+
+  [Inject]
   private IJSRuntime JS { get; set; } = default!;
 
   [Inject]
@@ -370,31 +373,7 @@ public partial class FleetMap : IAsyncDisposable
 
   private Task PollTrucksAsync(CancellationToken cancellationToken) =>
     RefreshLoop.RunAsync(
-      async token =>
-      {
-        var result = await Http.GetFromJsonAsync<
-          ApiResponse<FleetLocationsMapDto>
-        >("api/fleet/locations", token);
-        if (_disposed)
-          return;
-        if (result?.Success != true || result.Response is null)
-          throw new HttpRequestException("Fleet locations are unavailable.");
-        _trucks = result.Response.Trucks;
-        _truckPoints = result.Response.Points;
-        await UpdateTruckSearchAsync();
-        var nextLoadsTask = RefreshNextLoadsAsync(polled: true);
-        await Task.WhenAll(nextLoadsTask, LoadRouteAsync(false));
-        await FocusTruckAsync();
-        if (
-          !_selectionDismissed
-          && DispatchId.HasValue
-          && !_activeDispatchId.HasValue
-          && !_activeTruckId.HasValue
-        )
-          await SelectRouteAsync(TruckId, DispatchId);
-        TruckError = null;
-        await InvokeAsync(StateHasChanged);
-      },
+      RefreshTrucksAsync,
       async _ =>
       {
         if (_disposed)
@@ -410,6 +389,57 @@ public partial class FleetMap : IAsyncDisposable
       Clock,
       _visibility
     );
+
+  // One read of the trucks the map shows, by the poll and when the
+  // dispatcher chooses another driver group.
+  private async Task RefreshTrucksAsync(CancellationToken token)
+  {
+    var result = await Http.GetFromJsonAsync<ApiResponse<FleetLocationsMapDto>>(
+      "api/fleet/locations",
+      token
+    );
+    if (_disposed)
+      return;
+    if (result?.Success != true || result.Response is null)
+      throw new HttpRequestException("Fleet locations are unavailable.");
+    _trucks = result.Response.Trucks;
+    _truckPoints = result.Response.Points;
+    await UpdateTruckSearchAsync();
+    var nextLoadsTask = RefreshNextLoadsAsync(polled: true);
+    await Task.WhenAll(nextLoadsTask, LoadRouteAsync(false));
+    await FocusTruckAsync();
+    if (
+      !_selectionDismissed
+      && DispatchId.HasValue
+      && !_activeDispatchId.HasValue
+      && !_activeTruckId.HasValue
+    )
+      await SelectRouteAsync(TruckId, DispatchId);
+    TruckError = null;
+    await InvokeAsync(StateHasChanged);
+  }
+
+  protected override void OnInitialized() =>
+    DriverGroup.Changed += OnDriverGroupChanged;
+
+  // The dispatcher chose another driver group: the trucks and their hours
+  // are read again now rather than at the next poll.
+  private void OnDriverGroupChanged() =>
+    _ = InvokeAsync(async () =>
+    {
+      if (_disposed || !_preferencesLoaded)
+        return;
+      try
+      {
+        await RefreshTrucksAsync(_lifetime.Token);
+        await RefreshHosAsync(_lifetime.Token);
+      }
+      catch (Exception ex) when (IsLoadError(ex))
+      {
+        TruckError =
+          "Truck locations could not be updated. Showing the last available data; retrying automatically.";
+      }
+    });
 
   [JSInvokable]
   public Task OnTruckSelected(string id)
@@ -928,6 +958,7 @@ public partial class FleetMap : IAsyncDisposable
     if (_disposed)
       return;
     _disposed = true;
+    DriverGroup.Changed -= OnDriverGroupChanged;
     ResetFuelEditor();
     ResetInspectedLoad();
     _inspectedDetailsCache.Clear();

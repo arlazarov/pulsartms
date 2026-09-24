@@ -297,7 +297,8 @@ public sealed class StopCompletionTests
     );
     var history = await new GetDispatchQueryHandler(
       f.Db,
-      services.Deadheads
+      services.Deadheads,
+      new TestDriverScope()
     ).Handle(new(Status: "completed"), default);
     Assert.Contains(history.Response!.Items, x => x.Id == f.Load.Id);
     await f.Handler().Handle(f.Command(4, null), default);

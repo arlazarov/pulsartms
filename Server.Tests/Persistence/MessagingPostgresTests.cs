@@ -268,6 +268,7 @@ public sealed class MessagingPostgresTests
       db,
       new Server.Tests.Messaging.InboxScenario.Caller("inbox-dispatcher"),
       new ConversationReadMarkers(db),
+      new TestDriverScope(),
       TimeProvider.System
     );
 

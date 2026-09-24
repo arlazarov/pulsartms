@@ -1,5 +1,6 @@
 using Application.Features.Dispatch.Queries;
 using Application.Features.Routing.Services.Deadheads;
+using Application.Interfaces;
 using Domain.Entities.Fleet;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
@@ -45,10 +46,11 @@ public sealed class CompletedDispatchReadTests
     using var services = new PlanningTestServices(db);
 
     var response = (
-      await new GetDispatchQueryHandler(db, services.Deadheads).Handle(
-        new(Status: "completed"),
-        default
-      )
+      await new GetDispatchQueryHandler(
+        db,
+        services.Deadheads,
+        new TestDriverScope()
+      ).Handle(new(Status: "completed"), default)
     ).Response!;
 
     Assert.Equal(visible ? 1 : 0, response.TotalCount);
@@ -96,7 +98,11 @@ public sealed class CompletedDispatchReadTests
     );
     await db.SaveChangesAsync();
     db.ChangeTracker.Clear();
-    var handler = new GetDispatchQueryHandler(db, services.Deadheads);
+    var handler = new GetDispatchQueryHandler(
+      db,
+      services.Deadheads,
+      new TestDriverScope()
+    );
 
     var page = (
       await handler.Handle(
@@ -191,16 +197,68 @@ public sealed class CompletedDispatchReadTests
     await db.SaveChangesAsync();
     using var services = new PlanningTestServices(db);
     var response = (
-      await new GetDispatchQueryHandler(db, services.Deadheads).Handle(
-        new(Status: "assigned"),
-        default
-      )
+      await new GetDispatchQueryHandler(
+        db,
+        services.Deadheads,
+        new TestDriverScope()
+      ).Handle(new(Status: "assigned"), default)
     ).Response!;
     var row = Assert.Single(response.Items);
     Assert.Empty(row.Stops);
     Assert.Null(row.LoadedMiles);
     Assert.Null(row.LoadedRatePerMile);
     Assert.Null(row.Eta);
+  }
+
+  // A chosen driver group: the loads its drivers drove, on the load or as a
+  // stop's co-driver, as recorded - not the other drivers' on the same
+  // truck. History included.
+  [Fact]
+  public async Task AChosenDriverGroupListsItsDriversLoads()
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await db.Database.EnsureCreatedAsync();
+    var drivers = Enumerable
+      .Range(1, 3)
+      .Select(i => new Driver
+      {
+        Id = Guid.NewGuid(),
+        ExternalId = $"d{i}",
+        Name = $"Driver {i}",
+      })
+      .ToArray();
+    db.Drivers.AddRange(drivers);
+    var truck = new Truck { Id = Guid.NewGuid(), ExternalId = "t" };
+    var driven = Completed(truck, 1401, new(2026, 9, 12));
+    driven.DriverId = drivers[0].Id;
+    var codriven = Completed(truck, 1402, new(2026, 9, 13));
+    codriven.DriverId = drivers[2].Id;
+    codriven.Stops[1].CoDriverId = drivers[1].Id;
+    var other = Completed(truck, 1403, new(2026, 9, 14));
+    other.DriverId = drivers[2].Id;
+    db.Dispatches.AddRange(driven, codriven, other);
+    await db.SaveChangesAsync();
+    using var services = new PlanningTestServices(db);
+    var group = new DriverScope(
+      Guid.NewGuid(),
+      "West",
+      [drivers[0].Id, drivers[1].Id],
+      []
+    );
+
+    var response = (
+      await new GetDispatchQueryHandler(
+        db,
+        services.Deadheads,
+        new TestDriverScope(group)
+      ).Handle(new(Status: "completed"), default)
+    ).Response!;
+
+    Assert.Equal([1402, 1401], response.Items.Select(x => x.LoadNumber));
   }
 
   private static Load Completed(Truck truck, int number, DateOnly day) =>

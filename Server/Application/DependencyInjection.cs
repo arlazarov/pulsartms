@@ -3,6 +3,7 @@ using Application.Caching;
 using Application.Diagnostics.Consistency;
 using Application.Features.Dispatch.Audit;
 using Application.Features.Dispatch.Services;
+using Application.Features.DriverGroups.Services;
 using Application.Features.Eta.Background;
 using Application.Features.Eta.Services;
 using Application.Features.Execution.Audit;
@@ -113,6 +114,7 @@ public static class DependencyInjection
     services.AddSingleton<ITruckHistoryOperation, TruckHistoryOperation>();
     services.AddScoped<FileStore>();
     services.AddScoped<InboxRecorder>();
+    services.AddScoped<IDriverScope, DriverScopeReader>();
     services.AddScoped<ApprovedTemplates>();
     services.AddScoped<IDriverTextDelivery, DriverTextDelivery>();
     services.AddSingleton<MessagingEvents>();

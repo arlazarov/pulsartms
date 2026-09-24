@@ -3,6 +3,7 @@ using Domain.Entities.Caching;
 using Domain.Entities.Consistency;
 using Domain.Entities.Costs;
 using Domain.Entities.Dispatch;
+using Domain.Entities.DriverGroups;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Domain.Entities.Fuel;
@@ -34,6 +35,8 @@ public interface IAppDbContext
   DbSet<ConversationRead> ConversationReads { get; }
   DbSet<ConversationArrivalHead> ConversationArrivalHeads { get; }
   DbSet<ApprovedTemplate> ApprovedTemplates { get; }
+  DbSet<DriverGroup> DriverGroups { get; }
+  DbSet<DriverGroupMember> DriverGroupMembers { get; }
   DbSet<ConsistencyFinding> ConsistencyFindings { get; }
   DbSet<ConsistencyEvent> ConsistencyEvents { get; }
   DbSet<ConsistencyIncident> ConsistencyIncidents { get; }

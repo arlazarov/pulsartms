@@ -1,0 +1,86 @@
+@using Client.Models.DTO.DriverGroups
+<section class="settings-page__card driver-groups" id="driver-groups" aria-labelledby="driver-groups-title">
+    <h2 id="driver-groups-title">Driver groups</h2>
+    <p class="settings-page__hint">
+        Your own groups of drivers, such as West or Local. Choose one on
+        Messages, Dispatch or the Fleet Map to show only its drivers, on every
+        page, until you choose All drivers. A group is only a view: it gives
+        no access, and removing it removes no driver or message.
+    </p>
+    @if (_error is not null)
+    {
+        <p class="settings-page__error" role="alert">@_error</p>
+    }
+    @if (Groups.View is null || _drivers is null)
+    {
+        <p role="status"><LoadingIndicator /></p>
+    }
+    else if (_editing)
+    {
+        <form class="settings-page__form" @onsubmit="SaveAsync" @onsubmit:preventDefault="true" autocomplete="off">
+            <div class="settings-page__fields">
+                <label for="driver-group-name">Name
+                    <input id="driver-group-name" maxlength="60" @bind="_name" @bind:event="oninput" />
+                </label>
+                <label for="driver-group-filter">Find drivers
+                    <input id="driver-group-filter" type="search" @bind="_filter" @bind:event="oninput" />
+                </label>
+            </div>
+            <fieldset class="driver-groups__drivers">
+                <legend>Drivers (@_chosen.Count chosen)</legend>
+                @foreach (var driver in Shown)
+                {
+                    <label @key="driver.Id">
+                        <input type="checkbox" checked="@_chosen.Contains(driver.Id)"
+                               @onchange="e => Toggle(driver.Id, e.Value is true)" />
+                        @driver.Name@(driver.IsActive ? "" : " (inactive)")
+                    </label>
+                }
+            </fieldset>
+            <div class="settings-page__actions">
+                <button class="btn btn--primary" type="submit" disabled="@(_busy || _name.Trim().Length == 0)">
+                    @(_busy ? "Saving…" : "Save group")
+                </button>
+                <button class="btn" type="button" disabled="@_busy" @onclick="Close">Cancel</button>
+            </div>
+        </form>
+    }
+    else
+    {
+        @if (Groups.View.Groups.Count == 0)
+        {
+            <p class="settings-page__hint">You have no driver groups yet.</p>
+        }
+        else
+        {
+            <ul class="driver-groups__list">
+                @foreach (var group in Groups.View.Groups)
+                {
+                    <li @key="group.Id">
+                        <span class="driver-groups__name">@group.Name</span>
+                        <span class="driver-groups__count">@Count(group)</span>
+                        @if (_removing == group.Id)
+                        {
+                            <span class="settings-page__actions" role="group" aria-label="@($"Remove {group.Name}")">
+                                <span>Remove this group? Its drivers stay.</span>
+                                <button class="btn btn--small btn--danger" type="button" disabled="@_busy" @onclick="() => RemoveAsync(group.Id)">Remove group</button>
+                                <button class="btn btn--small" type="button" disabled="@_busy" @onclick="() => _removing = null">Keep</button>
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="settings-page__actions">
+                                <button class="btn btn--small" type="button" disabled="@_busy" @onclick="() => Open(group)">Edit</button>
+                                <button class="btn btn--small btn--text" type="button" disabled="@_busy" @onclick="() => _removing = group.Id">Remove</button>
+                            </span>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+        <div class="settings-page__actions">
+            <button class="btn" type="button" @onclick="() => Open(null)">New group</button>
+            @if (_saved) { <span class="settings-page__saved" role="status">Group saved.</span> }
+        </div>
+    }
+</section>

@@ -287,6 +287,7 @@ internal sealed class PlanningTestServices : IDisposable
       Forecasts,
       Names,
       Transfers,
+      new TestDriverScope(),
       NullLogger<GetDispatchBoardHandler>.Instance
     );
   }
