@@ -28,8 +28,13 @@ One owner, `Application/Features/DriverGroups`, keeps the groups and the
 choice (`User.SelectedDriverGroupId`). Pages do not send the choice: the
 server reads it once per request through `IDriverScope`, a neutral
 contract in `Application/Interfaces` that the owner implements
-(`DriverScopeReader`: two reads when a group is chosen, one when not). A
-background job has no user and reads All.
+(`DriverScopeReader`). The choice and its members come from the read cache
+(group `driver-groups`), dropped by the owner's save, delete and select
+after they commit: a dispatcher on All costs no round trip per page read,
+one with a group costs one, for the trucks its drivers are on now, which
+change with the fleet and are never cached. Another instance sees a change
+within the cache relay interval (10 seconds). A background job has no user
+and reads All.
 
 Only a page's own list is narrowed, and only when its endpoint asks: the
 query's `InChosenGroup`, set by the controller. The same query sent by
@@ -78,7 +83,7 @@ was added.
 ## Tests
 
 `Server.Tests/Fleet/DriverGroupTests` (groups and choice are their
-owner's, trucks through assignment and live legs, removal keeps drivers
+owner's, the choice is read once and every change is seen at once, trucks through assignment and live legs, removal keeps drivers
 and falls back to All, an edit at an old revision changes nothing,
 naming and company drivers only), `Server.Tests/Messaging/
 DriverGroupInboxTests` (the list narrows, the notice, an unflagged read

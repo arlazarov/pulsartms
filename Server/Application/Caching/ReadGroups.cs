@@ -13,6 +13,7 @@ public static class ReadGroups
   public const string Fuel = "fuel";
   public const string FleetCatalog = "fleet-catalog";
   public const string Settings = "settings";
+  public const string DriverGroups = "driver-groups";
 
   // What a change to a load's work - its stops, their times or order, its
   // truck or its execution - makes stale.

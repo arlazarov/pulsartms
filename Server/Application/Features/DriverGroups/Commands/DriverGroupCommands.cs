@@ -1,3 +1,4 @@
+using Application.Caching;
 using Application.Features.DriverGroups.Queries;
 using Application.Features.DriverGroups.Services;
 using Application.Models;
@@ -27,6 +28,7 @@ public sealed record SelectDriverGroupCommand(Guid? Id)
 public sealed class DriverGroupHandlers(
   IAppDbContext db,
   ICurrentUser caller,
+  ReadCache reads,
   TimeProvider clock
 )
   : IRequestHandler<SaveDriverGroupCommand, RequestResponse<DriverGroupView>>,
@@ -120,6 +122,7 @@ public sealed class DriverGroupHandlers(
     {
       return Fail("This group changed in another window. Open it again.", 409);
     }
+    reads.Invalidate(ReadGroups.DriverGroups);
     return RequestResponse<DriverGroupView>.Ok(
       new(
         group.Id,
@@ -144,6 +147,8 @@ public sealed class DriverGroupHandlers(
     var removed = await db
       .DriverGroups.Where(x => x.Id == request.Id && x.OwnerUserId == user)
       .ExecuteDeleteAsync(ct);
+    if (removed > 0)
+      reads.Invalidate(ReadGroups.DriverGroups);
     return removed == 0
       ? RequestResponse<bool>.Fail("Group not found.", 404)
       : RequestResponse<bool>.Ok(true);
@@ -170,6 +175,7 @@ public sealed class DriverGroupHandlers(
         x => x.SetProperty(u => u.SelectedDriverGroupId, request.Id),
         ct
       );
+    reads.Invalidate(ReadGroups.DriverGroups);
     return RequestResponse<bool>.Ok(true);
   }
 

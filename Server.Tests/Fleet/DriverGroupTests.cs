@@ -1,11 +1,15 @@
+using System.Runtime.CompilerServices;
+using Application.Caching;
 using Application.Features.DriverGroups.Commands;
 using Application.Features.DriverGroups.Queries;
 using Application.Features.DriverGroups.Services;
+using Application.Features.Synchronization.Options;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Fleet;
 
@@ -190,6 +194,53 @@ public sealed class DriverGroupTests
     );
   }
 
+  // A dispatcher on All reads nothing once the choice is known; one with a
+  // group reads only the trucks its drivers are on. Every change to the
+  // choice or the group is seen by the next read.
+  [Fact]
+  public async Task TheChoiceIsReadOnceAndEveryChangeIsSeenAtOnce()
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    var (west, east, local) = await DriversAsync(f);
+    await UsersAsync(f);
+    Assert.True((await ScopeAsync(f, "anna")).IsAll);
+    f.Counter.Reset();
+
+    Assert.True((await ScopeAsync(f, "anna")).IsAll);
+    Assert.Equal(0, f.Counter.Reads);
+
+    var group = (
+      await Handlers(f, "anna").Handle(Save("West", west), default)
+    ).Response!;
+    await Handlers(f, "anna")
+      .Handle(new SelectDriverGroupCommand(group.Id), default);
+    Assert.Equal([west], (await ScopeAsync(f, "anna")).Drivers);
+    f.Counter.Reset();
+    Assert.Equal([west], (await ScopeAsync(f, "anna")).Drivers);
+    Assert.Equal(1, f.Counter.Reads);
+
+    await Handlers(f, "anna")
+      .Handle(
+        new SaveDriverGroupCommand(group.Id, "West", [west, east], 1),
+        default
+      );
+    Assert.Equal(
+      new[] { west, east }.Order(),
+      (await ScopeAsync(f, "anna")).Drivers.Order()
+    );
+    Assert.False((await ScopeAsync(f, "anna")).IncludesDriver(local));
+
+    await Handlers(f, "anna")
+      .Handle(new SelectDriverGroupCommand(null), default);
+    Assert.True((await ScopeAsync(f, "anna")).IsAll);
+    await Handlers(f, "anna")
+      .Handle(new SelectDriverGroupCommand(group.Id), default);
+    Assert.False((await ScopeAsync(f, "anna")).IsAll);
+    await Handlers(f, "anna")
+      .Handle(new DeleteDriverGroupCommand(group.Id), default);
+    Assert.True((await ScopeAsync(f, "anna")).IsAll);
+  }
+
   private static SaveDriverGroupCommand Save(
     string name,
     params Guid[] drivers
@@ -201,7 +252,7 @@ public sealed class DriverGroupTests
   )
   {
     f.Db.ChangeTracker.Clear();
-    return new(f.Db, new Caller(identity), TimeProvider.System);
+    return new(f.Db, new Caller(identity), Reads(f), TimeProvider.System);
   }
 
   private static async Task<DriverGroupsView> ListAsync(
@@ -224,10 +275,26 @@ public sealed class DriverGroupTests
   )
   {
     f.Db.ChangeTracker.Clear();
-    return new DriverScopeReader(f.Db, new Caller(identity)).CurrentAsync(
-      default
-    );
+    return new DriverScopeReader(
+      f.Db,
+      new Caller(identity),
+      Reads(f)
+    ).CurrentAsync(default);
   }
+
+  // One read cache per fixture, shared by the commands and the scope reader
+  // as they share one in a request; never across tests, where the same
+  // names would find each other's entries.
+  private static readonly ConditionalWeakTable<
+    DispatchSyncFixture,
+    ReadCache
+  > Caches = new();
+
+  private static ReadCache Reads(DispatchSyncFixture f) =>
+    Caches.GetValue(
+      f,
+      _ => new ReadCache(Options.Create(new SynchronizationOptions()))
+    );
 
   private static async Task<(Guid, Guid, Guid)> DriversAsync(
     DispatchSyncFixture f
