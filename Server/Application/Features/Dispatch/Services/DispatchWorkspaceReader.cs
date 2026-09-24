@@ -16,8 +16,37 @@ public sealed record DispatchWorkspaceState(
   DispatchWorkspaceResponse Response
 );
 
-public static partial class DispatchWorkspaceReader
+public static class DispatchWorkspaceReader
 {
+  // An ordinary freight movement, spelled exactly as the editor writes it.
+  // Narrower than SourceWords.MovesCargo, which also accepts other casing:
+  // see the 2026-09-24 cohesion review before widening it.
+  private static bool Ordinary(string job) =>
+    job is "Pick Up" or "Pickup" or "Drop Off" or "Delivery";
+
+  // The one sentence naming everything about this load that still needs a
+  // look before a dispatcher acts on it.
+  private static string? ReviewReason(
+    DispatchWorkspace? workspace,
+    DispatchSourceLink? sourceLink,
+    List<ExecutionLeg> legs,
+    bool pendingAssignment
+  )
+  {
+    var reasons = legs.Select(x => x.SourceReviewReason)
+      .Prepend(workspace?.SourceReviewReason)
+      .Prepend(legs.Count == 0 ? sourceLink?.ExecutionReviewReason : null)
+      .Append(
+        pendingAssignment
+          ? "Initial execution is not accepted. Review resources, visit times and execution boundaries."
+          : null
+      )
+      .Where(x => !string.IsNullOrWhiteSpace(x))
+      .Distinct()
+      .ToArray();
+    return reasons.Length == 0 ? null : string.Join(" ", reasons);
+  }
+
   private static IEnumerable<List<DispatchStop>> DriverSections(
     ExecutionLeg leg
   )
