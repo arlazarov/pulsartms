@@ -5,7 +5,10 @@ synthetic routing and HOS providers, in a Linux ARM64 container limited to
 one CPU and 1 GiB (`tools/FleetLoadProbe`). No production database,
 provider or deployment was involved. The fixture's synthetic routes are
 about 4,000 km with ~75,000 points each, larger than most real loads.
-Samples are about every 3 seconds and can miss short peaks.
+Samples are about every 3 seconds and can miss short peaks. CPU percentages
+in tables and phase averages are `docker stats` readings of the container;
+they are the only CPU-time measurements here. Profiler sample counts are
+shares of samples, not CPU time.
 
 ## Load run (build at eae82c2f)
 
@@ -130,7 +133,10 @@ passed; the queue drained with no retries.
   8 ms and truck planning 37 ms; the API-default board took 1,026 ms.
 
 **Restart.** The same schema, a new process:
-- ready in 2.6 s;
+- the probe's health endpoint answered 2.6 s after the restart command.
+  It is polled once a second and returns OK as soon as the host listens;
+  it checks neither the database nor prepared plans, so this is not
+  readiness to serve the pages;
 - the first light board took 829 ms, then 150–260 ms;
 - ETA enrichment took 1.2–1.4 s cold or warm (it is not cached);
 - the first inbox took 351 ms.
@@ -147,16 +153,23 @@ is likely a "being prepared" answer, not a full plan; it was not checked.
   with the sample profiler (`run.py restart --trace --sample-cpu`, 187 s,
   build `9fdca76b`). While sampling, CPU read 19%, against 12% without
   sampling.
-  - *Managed code is a small share:* about 32 samples a second, roughly 3%
-    of one CPU. The rest is runtime work these samples do not attribute
-    (GC, timers, I/O).
-  - *Within managed code:* `DisplayRouteGeometry.Simplify` 15%, route point
-    reads 7.7%, summary serialization 4.3% and chunk decoding 3.8%.
-  - *By outermost operation:* execution reads 19.5%, plan loads 9.8% and
-    `ReadReferenceAsync` 8.3%.
+  - *Sample counts are not CPU time.* The trace held about 32 samples a
+    second with a managed frame. An earlier version of this record called
+    that "roughly 3% of one CPU". That conversion assumed a sampling model
+    (interval, and whether waiting threads are sampled) that was not
+    verified, so no CPU share is derived from these counts.
+  - *The rest is unknown.* The CPU these samples do not account for was
+    not attributed. It was not shown to be GC, timers or I/O, as this
+    record first said.
+  - *Shares of the managed samples:* `DisplayRouteGeometry.Simplify` 15%,
+    route point reads 7.7%, summary serialization 4.3% and chunk decoding
+    3.8%.
+  - *By outermost operation, of the same samples:* execution reads 19.5%,
+    plan loads 9.8% and `ReadReferenceAsync` 8.3%.
 
-  The base road re-read and re-simplified for display on every summary
-  refresh leads idle CPU as well as idle allocation.
+  The base road re-read and re-simplified for display leads the sampled
+  managed stacks and idle allocation. Its share of total idle CPU is not
+  known.
 - **Hours-long runs and a 512 MiB limit** were not tested (see the
   30-minute run above).
 - **Foreground costs.** Beyond the section above (ETA enrichment's 20
