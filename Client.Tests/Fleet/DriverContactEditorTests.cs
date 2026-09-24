@@ -31,9 +31,12 @@ public sealed class DriverContactEditorTests
       .FindAll("button")
       .Single(x => x.TextContent.Trim() == "Use the phone number")
       .Click();
-    Assert.Equal(
-      "+15558234327",
-      component.Find("[id$='-whatsapp']").GetAttribute("value")
+    component.WaitForAssertion(
+      () =>
+        Assert.Equal(
+          "+15558234327",
+          component.Find("[id$='-whatsapp']").GetAttribute("value")
+        )
     );
     Assert.All(f.Requests, x => Assert.Equal(HttpMethod.Get, x.Method));
   }
