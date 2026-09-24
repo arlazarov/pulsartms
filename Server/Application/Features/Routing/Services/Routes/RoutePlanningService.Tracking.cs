@@ -11,6 +11,7 @@ using Application.Features.Routing.Services.Addresses;
 using Application.Features.Synchronization.Options;
 using Domain.Entities.Dispatch;
 using Domain.Models.Execution;
+using Domain.Models.Fleet;
 using Domain.Models.Routing;
 using Domain.Rules;
 using Domain.Rules.Routing;
@@ -70,6 +71,7 @@ public sealed partial class RoutePlanningService
       var now = DateTime.UtcNow;
       var before = JsonSerializer.Serialize(plan.Tracking, RoutingJson.Options);
       var geometry = displays.ExactGeometry(entity, plan);
+      var fixes = new List<TruckLocation>();
       foreach (
         var point in (recent.Response?.Points ?? [])
           .Where(x =>
@@ -85,6 +87,7 @@ public sealed partial class RoutePlanningService
           .OrderBy(x => x.UpdatedAt)
       )
       {
+        fixes.Add(point);
         RouteStopTracker.Update(plan, load, point, now);
         RouteMovementRecorder.Observe(
           plan,
@@ -113,6 +116,7 @@ public sealed partial class RoutePlanningService
       RouteStopTracker.Update(plan, load, observation, now);
       if (observation is not null)
       {
+        fixes.Add(observation);
         RouteMovementRecorder.Observe(
           plan,
           geometry,
@@ -129,8 +133,12 @@ public sealed partial class RoutePlanningService
         plan,
         load,
         truck,
-        sync.RouteDeviationMiles,
-        sync.RouteDeviationSeconds,
+        fixes,
+        new(
+          sync.RouteDeviationMiles,
+          TimeSpan.FromSeconds(sync.RouteDeviationSeconds),
+          TimeSpan.FromSeconds(sync.RerouteCooldownSeconds)
+        ),
         now,
         forceReroute,
         geometry
@@ -171,7 +179,7 @@ public sealed partial class RoutePlanningService
         plan.CalculatedAt = route.CalculatedAt;
         plan.LastReroutedAt = now;
         plan.LastReroutePosition = progress.Position;
-        plan.Tracking.OffRouteSince = null;
+        plan.Tracking.ClearDeviation();
         plan.Version++;
         if (plan.FuelPlan is { } previousFuel)
           previousFuel.NeedsRefresh = true;

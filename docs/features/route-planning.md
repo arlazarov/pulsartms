@@ -218,6 +218,17 @@ Approaching a pickup does not mean it has been completed. Inferred plan progress
 does not overwrite imported pickup/delivery timestamps. Rerouting uses remaining
 mandatory stops and the configured GPS, deviation and request-budget guards.
 
+`RerouteDecision` follows a departure fix by fix: every new, unique fix since
+the last pass, in order, at the pass's own time. Two fixes of their own beyond
+the threshold and the persistence time apart confirm it; two fixes that were
+each twice the threshold away confirm it at once. One fix never does, however
+far off; a stale fix neither confirms nor clears; the truck is back on the
+road only inside 60% of the threshold. A confirmed departure waits out the
+cooldown and a one-mile move. Providers report no position accuracy, so the
+threshold is kept far above GPS error. Checks run at each planning pass, not
+on telemetry arrival. Measurements and open gaps:
+[reroute policy record](../archive/2026-09/reroute-policy-2026-09-24.md).
+
 Truck dimensions, weight, axles and applicable restrictions are server inputs.
 Never fabricate tank capacity or MPG. A returned distance is not permission to
 drive a road with truck restrictions. Preserve provider mileage and geometry while

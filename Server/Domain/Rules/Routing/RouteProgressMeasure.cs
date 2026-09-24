@@ -21,10 +21,11 @@ public static class RouteProgressMeasure
     RoutePlan plan,
     TruckLocation? truck,
     RouteWorkSnapshot load,
-    RouteGeometry? exactGeometry = null
+    RouteGeometry? exactGeometry = null,
+    DateTime? now = null
   )
   {
-    var stale = TruckLocationFreshness.IsStale(truck, DateTime.UtcNow);
+    var stale = TruckLocationFreshness.IsStale(truck, now ?? DateTime.UtcNow);
     if (truck is null)
       return new(null, null, null, 0, false, true, null, null);
     var position = new RoutePoint(

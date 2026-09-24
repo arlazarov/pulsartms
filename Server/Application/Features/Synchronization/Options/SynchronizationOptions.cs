@@ -31,8 +31,15 @@ public sealed class SynchronizationOptions
   [Range(1, 50)]
   public double RouteDeviationMiles { get; set; } = 2;
 
+  // How long a departure must last, from its first fix to a later one,
+  // before a truck is given a new road; one twice as far off as
+  // RouteDeviationMiles needs two fixes and no wait.
   [Range(30, 1800)]
-  public int RouteDeviationSeconds { get; set; } = 180;
+  public int RouteDeviationSeconds { get; set; } = 60;
+
+  // How soon after one new road a truck may be given another.
+  [Range(60, 1800)]
+  public int RerouteCooldownSeconds { get; set; } = 150;
 
   [Range(30, 600)]
   public int ReadCacheSeconds { get; set; } = 120;

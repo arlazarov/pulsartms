@@ -18,8 +18,9 @@ its adapter and loop while other scheduled jobs continue. See
 | `CheckpointSeconds` | 120 | Persist one fleet telemetry/cursor/job checkpoint |
 | `PlanningSeconds` | 30 | Process the route preparation queue |
 | `OnDemandPlanningSeconds` | 120 | Durable cooldown after a successful on-demand check; recently saved routes also skip the first check |
-| `RouteDeviationMiles` | 5 | Minimum distance from the saved route before automatic rerouting |
-| `RouteDeviationSeconds` | 120 | Time the truck must stay beyond that distance before rerouting |
+| `RouteDeviationMiles` | 2 | Distance from the saved route that starts a departure; the truck is back on it inside 60% of this |
+| `RouteDeviationSeconds` | 60 | Time between two fixes of their own beyond that distance before rerouting; two fixes each twice as far off need no wait |
+| `RerouteCooldownSeconds` | 150 | Minimum time between automatic new roads for one truck (a confirmed departure waits, it is not dropped) |
 | `ReadCacheSeconds` | 120 | Shared cache for dispatches, routes, profiles, preferences and station prices |
 | `SessionValidationSeconds` | 30 | Cache authenticated session checks; maximum 60 seconds |
 | `RetrySeconds` | 60 | Initial failed-job retry delay; exponential backoff capped at 15 minutes |

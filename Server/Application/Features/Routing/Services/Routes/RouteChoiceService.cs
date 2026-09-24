@@ -357,7 +357,7 @@ public sealed partial class RouteChoiceService(
         plan.LastReroutePosition = preview.Stops[0].Point;
         plan.FuelPlan = null;
         plan.FuelRecommendations = null;
-        plan.Tracking.OffRouteSince = null;
+        plan.Tracking.ClearDeviation();
         await plans.SaveBuiltAsync(
           current.Entity,
           plan,
