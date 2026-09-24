@@ -297,12 +297,20 @@ and the newest message the dispatcher had on screen:
   16 MiB). The outbox uploads it to WhatsApp and sends it by media id; a
   refused upload sends nothing. A file no longer available when its turn
   comes is withdrawn without a call.
-- `GET /api/messaging/templates` lists the templates configured as
-  approved (`Messaging:Templates`: name, language, number of parameters,
-  text). None are configured until Meta approves some.
-  `POST .../conversations/{id}/templates` sends one with its parameters
-  filled in; a template may go outside the 24-hour window, but still only
-  from the carrier's current business number.
+- Templates are the carrier's own (`ApprovedTemplates`: company, channel,
+  business number, name, language, number of parameters, text). An
+  administrator records those Meta approved for the number the company
+  sends from now (`GET/POST /api/settings/integrations/whatsapp/templates`,
+  `DELETE .../{id}`, in the WhatsApp card of Settings, Integrations);
+  PulsR does not ask Meta, so one Meta did not approve is refused by it
+  when sent. The deployment-wide `Messaging:Templates` setting is gone;
+  production had none.
+  `GET /api/messaging/templates` lists those of the current number.
+  `POST .../conversations/{id}/templates` queues one only while it is
+  approved for the number the conversation is on and that number is the
+  one the carrier sends from; the worker checks both again before the
+  call and withdraws a reply whose template was removed or whose number
+  changed. A template may go outside the 24-hour window.
 - `GET /api/messaging/attachments/{id}/content` serves a file only after
   it passed its check.
 
@@ -323,12 +331,18 @@ shown, one among pages already shown not marked),
 `Server.Tests/Messaging/ConversationReplyTests` (queue and send once, window, retry keys, stale replies, a take
 overtaken before sending, a lease lost mid-send, a late answer on its own
 attempt, withdrawal for a closed window or changed number, explicit retry,
-claims), `Server.Tests/Messaging/ConversationFileTemplateTests` (a file sent
+claims), `Server.Tests/Messaging/ApprovedTemplateTests` (recorded for this
+carrier's current number only, refused as Meta would, administrators
+only), `Server.Tests/Messaging/ConversationFileTemplateTests` (another
+carrier's or number's template neither offered nor queued, one removed
+or a number changed before the send not sent, a file sent
 once, a disguised file refused, an unreadable file withdrawn, approved
 templates only, download of checked files only),
 `Server.Tests/Storage/StoredFileCheckTests`,
 `Server.Tests/Messaging/LocalDriverMessagingTests` (refused outside
 Development, no network, signed simulation). Client:
+`Client.Tests/Messaging/WhatsAppTemplatesTests` (a refused template
+keeps its draft, removal only after confirming),
 `Client.Tests/Messaging/MessagesPageTests` (list and thread, read marker,
 stale reply confirmed with the same key, closed window without templates,
 a stream signal reads the open thread again, more conversations kept

@@ -1,12 +1,11 @@
 using System.Text.Json;
-using Application.Features.Messaging.Options;
+using Application.Features.Messaging.Interfaces;
 using Application.Features.Messaging.Queries;
 using Application.Features.Messaging.Services;
 using Application.Models;
 using Application.Storage;
 using Domain.Entities.Messaging;
 using Domain.Entities.Storage;
-using Microsoft.Extensions.Options;
 
 namespace Application.Features.Messaging.Commands;
 
@@ -50,7 +49,8 @@ public sealed class ConversationFilesAndTemplates(
   ReplyQueue queue,
   FileStore files,
   StoredFileCheck check,
-  IOptions<MessagingOptions> options,
+  ApprovedTemplates templates,
+  IDriverMessaging messaging,
   TimeProvider clock
 )
   : IRequestHandler<SendConversationFileCommand, RequestResponse<MessageView>>,
@@ -183,8 +183,27 @@ public sealed class ConversationFilesAndTemplates(
   {
     if (await Inbox.UserAsync(db, caller, ct) is not { } user)
       return Fail("Access denied.", 403);
-    var template = options.Value.Templates.FirstOrDefault(x =>
-      x.Name == request.Name && x.Language == request.Language
+    var conversation = await db.Conversations.SingleOrDefaultAsync(
+      x => x.Id == request.ConversationId,
+      ct
+    );
+    if (conversation is null)
+      return Fail("Conversation not found.", 404);
+    // Approved for this carrier and for the number the conversation is on,
+    // which must still be the one the carrier sends from.
+    if (
+      await messaging.BusinessNumberAsync(ct) != conversation.BusinessNumberId
+    )
+      return Fail(
+        "This conversation is on a WhatsApp number the company no longer "
+          + "sends from.",
+        409
+      );
+    var template = await templates.FindAsync(
+      conversation.BusinessNumberId,
+      request.Name ?? "",
+      request.Language ?? "",
+      ct
     );
     if (
       template is null
@@ -194,12 +213,6 @@ public sealed class ConversationFilesAndTemplates(
       || request.IdempotencyKey == Guid.Empty
     )
       return Fail("Choose an approved template and fill in every field.", 400);
-    var conversation = await db.Conversations.SingleOrDefaultAsync(
-      x => x.Id == request.ConversationId,
-      ct
-    );
-    if (conversation is null)
-      return Fail("Conversation not found.", 404);
     var text = Fill(template.Text, parameters);
     var payload = JsonSerializer.Serialize(
       new TemplatePayload(template.Name, template.Language, [.. parameters])
@@ -233,22 +246,25 @@ public sealed class ConversationFilesAndTemplates(
       : RequestResponse<MessageView>.Ok(ConversationReplies.View(message));
   }
 
-  public Task<RequestResponse<IReadOnlyList<MessageTemplateView>>> Handle(
+  // The templates approved for the number the carrier sends from now.
+  public async Task<RequestResponse<IReadOnlyList<MessageTemplateView>>> Handle(
     GetMessageTemplatesQuery request,
     CancellationToken ct
-  ) =>
-    Task.FromResult(
-      RequestResponse<IReadOnlyList<MessageTemplateView>>.Ok(
-        [
-          .. options.Value.Templates.Select(x => new MessageTemplateView(
-            x.Name,
-            x.Language,
-            x.Parameters,
-            x.Text
-          )),
-        ]
-      )
+  )
+  {
+    if (await Inbox.UserAsync(db, caller, ct) is null)
+      return RequestResponse<IReadOnlyList<MessageTemplateView>>.Fail(
+        "Access denied.",
+        403
+      );
+    return RequestResponse<IReadOnlyList<MessageTemplateView>>.Ok(
+      [
+        .. (await templates.CurrentAsync(ct)).Select(
+          x => new MessageTemplateView(x.Name, x.Language, x.Parameters, x.Text)
+        ),
+      ]
     );
+  }
 
   public static string Fill(string text, IReadOnlyList<string> parameters)
   {

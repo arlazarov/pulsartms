@@ -51,6 +51,7 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
   public DbSet<ConversationRead> ConversationReads => Set<ConversationRead>();
   public DbSet<ConversationArrivalHead> ConversationArrivalHeads =>
     Set<ConversationArrivalHead>();
+  public DbSet<ApprovedTemplate> ApprovedTemplates => Set<ApprovedTemplate>();
   public DbSet<ConsistencyFinding> ConsistencyFindings =>
     Set<ConsistencyFinding>();
   public DbSet<ConsistencyEvent> ConsistencyEvents => Set<ConsistencyEvent>();

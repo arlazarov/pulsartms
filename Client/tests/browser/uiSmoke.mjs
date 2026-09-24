@@ -511,7 +511,7 @@ const fixtures = new Map([
       ['torqueai', 'samsara', 'google-email', 'whatsapp']
         .map(provider => ({
           provider,
-          configured: provider !== 'whatsapp',
+          configured: true,
           usesSavedSettings: false,
           canRestoreDeployment: false,
           revision: 0,
@@ -538,6 +538,21 @@ const fixtures = new Map([
   [
     '/api/settings/integrations/whatsapp/webhook',
     success({ path: 'api/webhooks/whatsapp/fixture' }),
+  ],
+  [
+    '/api/settings/integrations/whatsapp/templates',
+    success({
+      businessNumberId: '123456789012345',
+      templates: [
+        {
+          id: '00000000-0000-4000-8000-00000000a001',
+          name: 'fuel_plan_ready_for_the_current_shift',
+          language: 'en_US',
+          parameters: 1,
+          text: 'Your fuel plan for load {{1}} is ready. Reply to receive it.',
+        },
+      ],
+    }),
   ],
   [
     '/api/messaging/inbox',

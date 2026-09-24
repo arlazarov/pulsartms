@@ -1,0 +1,91 @@
+@using Client.Models.DTO.Messaging
+<section class="whatsapp-templates" aria-labelledby="whatsapp-templates-title">
+    <h4 id="whatsapp-templates-title">Approved templates</h4>
+    <p class="settings-page__hint">
+        Record the templates Meta approved for this number, exactly as Meta
+        shows them. Only these can be sent to a driver outside the 24-hour
+        window. PulsR does not ask Meta; a template Meta has not approved is
+        refused when sent.
+    </p>
+    @if (_loading) { <p role="status"><LoadingIndicator /></p> }
+    @if (_error is not null)
+    {
+        <p class="settings-page__error" role="alert">@_error
+            @if (_view is null)
+            { <button class="btn btn--small" type="button" @onclick="LoadAsync">Reload templates</button> }
+        </p>
+    }
+    @if (_view is not null)
+    {
+        @if (_view.BusinessNumberId is null)
+        {
+            <p class="settings-page__hint">Add the WhatsApp credentials first.</p>
+        }
+        else
+        {
+            <p class="integration-settings__source">For number ID <code>@_view.BusinessNumberId</code>.</p>
+            @if (_view.Templates.Count == 0)
+            {
+                <p class="settings-page__hint">No template is recorded yet.</p>
+            }
+            else
+            {
+                <ul class="whatsapp-templates__list">
+                    @foreach (var template in _view.Templates)
+                    {
+                        <li @key="template.Id">
+                            <span class="whatsapp-templates__name">@template.Name · @template.Language</span>
+                            <span class="whatsapp-templates__text">@template.Text</span>
+                            @if (_removing == template.Id)
+                            {
+                                <span class="settings-page__actions" role="group" aria-label="@($"Remove {template.Name}")">
+                                    <span>Remove it? A reply already queued with it will not be sent.</span>
+                                    <button class="btn btn--small btn--danger" type="button" disabled="@_busy" @onclick="() => RemoveAsync(template.Id)">Remove template</button>
+                                    <button class="btn btn--small" type="button" disabled="@_busy" @onclick="() => _removing = null">Keep</button>
+                                </span>
+                            }
+                            else
+                            {
+                                <button class="btn btn--small btn--text" type="button" disabled="@_busy" @onclick="() => _removing = template.Id">Remove</button>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+            @if (!_adding)
+            {
+                <div class="settings-page__actions">
+                    <button class="btn" type="button" @onclick="Open">Record a template</button>
+                    @if (_added) { <span class="settings-page__saved" role="status">Template recorded.</span> }
+                </div>
+            }
+            else
+            {
+            <form class="integration-settings__form" @onsubmit="AddAsync" @onsubmit:preventDefault="true" autocomplete="off">
+                <fieldset class="settings-page__form" disabled="@_busy">
+                    <legend class="visually-hidden">Record an approved template</legend>
+                    <div class="settings-page__fields integration-settings__fields">
+                        <label for="whatsapp-template-name">Name
+                            <input id="whatsapp-template-name" maxlength="512" spellcheck="false" autocapitalize="none" @bind="_name" @bind:event="oninput" />
+                        </label>
+                        <label for="whatsapp-template-language">Language code
+                            <input id="whatsapp-template-language" maxlength="16" spellcheck="false" autocapitalize="none" @bind="_language" @bind:event="oninput" />
+                        </label>
+                        <label for="whatsapp-template-parameters">Parameters
+                            <input id="whatsapp-template-parameters" type="number" min="0" max="10" @bind="_parameters" @bind:event="oninput" />
+                        </label>
+                        <label for="whatsapp-template-text">Text
+                            <textarea id="whatsapp-template-text" rows="3" maxlength="1024" @bind="_text" @bind:event="oninput"></textarea>
+                            <small>Write parameters as {{1}}, {{2}}, as the driver will read them.</small>
+                        </label>
+                    </div>
+                    <div class="settings-page__actions">
+                        <button class="btn btn--primary" type="submit" disabled="@(!CanAdd)">@(_busy ? "Recording…" : "Record template")</button>
+                        <button class="btn" type="button" @onclick="() => _adding = false">Cancel</button>
+                    </div>
+                </fieldset>
+            </form>
+            }
+        }
+    }
+</section>

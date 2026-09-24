@@ -184,6 +184,21 @@ public sealed class OutboundMessageOperation(
     // checked again now, and a reply that can no longer go is withdrawn
     // without calling the provider. A template needs no window.
     var template = message.Kind == ConversationMessageKinds.Template;
+    // A template goes only while it is approved for the number the
+    // conversation is on; one withdrawn since it was queued is not sent.
+    var approved =
+      !template
+      || Template(message) is { } queued
+        && await services
+          .GetRequiredService<ApprovedTemplates>()
+          .FindAsync(
+            conversation.BusinessNumberId,
+            queued.Name,
+            queued.Language,
+            ct
+          )
+          is { } current
+        && current.Parameters == queued.Parameters.Count;
     Stream? content = null;
     DriverFile? file = null;
     if (message.Kind == ConversationMessageKinds.File)
@@ -195,7 +210,7 @@ public sealed class OutboundMessageOperation(
       || await messaging.BusinessNumberAsync(ct)
         != conversation.BusinessNumberId
       || message.Kind == ConversationMessageKinds.File && file is null
-      || template && Template(message) is null
+      || !approved
     )
       return await records.FinishAsync(
         services,

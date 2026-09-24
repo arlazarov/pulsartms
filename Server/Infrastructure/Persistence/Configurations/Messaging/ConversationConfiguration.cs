@@ -128,3 +128,27 @@ public sealed class ConversationArrivalHeadConfiguration
     b.Property(x => x.Sequence).IsConcurrencyToken();
   }
 }
+
+public sealed class ApprovedTemplateConfiguration
+  : IEntityTypeConfiguration<ApprovedTemplate>
+{
+  public void Configure(EntityTypeBuilder<ApprovedTemplate> b)
+  {
+    b.ToTable("ApprovedTemplates");
+    b.HasKey(x => x.Id);
+    b.Property(x => x.Channel).HasMaxLength(32).IsRequired();
+    b.Property(x => x.BusinessNumberId).HasMaxLength(64).IsRequired();
+    b.Property(x => x.Name).HasMaxLength(512).IsRequired();
+    b.Property(x => x.Language).HasMaxLength(16).IsRequired();
+    b.Property(x => x.Text).HasMaxLength(1024).IsRequired();
+    b.HasIndex(x => new
+      {
+        x.CompanyId,
+        x.Channel,
+        x.BusinessNumberId,
+        x.Name,
+        x.Language,
+      })
+      .IsUnique();
+  }
+}

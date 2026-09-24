@@ -1,7 +1,6 @@
 using Application.Features.Messaging.Background;
 using Application.Features.Messaging.Commands;
 using Application.Features.Messaging.Interfaces;
-using Application.Features.Messaging.Options;
 using Application.Features.Messaging.Queries;
 using Application.Features.Messaging.Services;
 using Application.Interfaces;
@@ -66,6 +65,7 @@ internal sealed class ReplyFixture : IAsyncDisposable
     );
     collection.AddScoped<IFileStorageProvider, DatabaseFileStorage>();
     collection.AddScoped<FileStore>();
+    collection.AddScoped<ApprovedTemplates>();
     f.services = collection.BuildServiceProvider();
     foreach (var name in new[] { "me", "colleague" })
       f.Db.Users.Add(
@@ -166,10 +166,32 @@ internal sealed class ReplyFixture : IAsyncDisposable
   public ReplyQueue Queue() =>
     new(Db, new TestCompany(), Events, Signal, Clock);
 
+  // Templates given are recorded as approved for the carrier's number
+  // (123456) unless they name another, once each.
   public ConversationFilesAndTemplates Files(
-    IEnumerable<MessageTemplate>? templates = null
+    IEnumerable<ApprovedTemplate>? templates = null
   )
   {
+    Db.ChangeTracker.Clear();
+    foreach (var template in templates ?? [])
+    {
+      template.Channel = DriverMessageChannels.WhatsApp;
+      if (template.BusinessNumberId.Length == 0)
+        template.BusinessNumberId = "123456";
+      if (
+        !Db.ApprovedTemplates.Any(x =>
+          x.BusinessNumberId == template.BusinessNumberId
+          && x.Name == template.Name
+          && x.Language == template.Language
+        )
+      )
+      {
+        if (template.Id == Guid.Empty)
+          template.Id = Guid.NewGuid();
+        Db.ApprovedTemplates.Add(template);
+      }
+    }
+    Db.SaveChanges();
     Db.ChangeTracker.Clear();
     var store = FileStorageTests.Store(Db, clock: Clock);
     return new(
@@ -178,7 +200,8 @@ internal sealed class ReplyFixture : IAsyncDisposable
       Queue(),
       store,
       new StoredFileCheck(store),
-      Options.Create(new MessagingOptions { Templates = [.. templates ?? []] }),
+      new ApprovedTemplates(Db, Messaging),
+      Messaging,
       Clock
     );
   }

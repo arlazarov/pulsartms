@@ -1,3 +1,4 @@
+using Application.Features.Messaging.Services;
 using Application.Models;
 
 namespace Application.Features.Messaging.Queries;
@@ -25,19 +26,9 @@ public sealed class GetMessagingWebhookHandler(
     CancellationToken ct
   )
   {
-    if (
-      !caller.IsAuthenticated
-      || string.IsNullOrEmpty(caller.IdentityUserId)
-      || await roles.GetAsync(caller.IdentityUserId, ct) != "Admin"
-      || !await db
-        .Users.AsNoTracking()
-        .AnyAsync(
-          x => x.IdentityUserId == caller.IdentityUserId && x.IsActive,
-          ct
-        )
-    )
+    if (await MessagingAdmin.UserAsync(db, caller, roles, ct) is null)
       return RequestResponse<MessagingWebhookAddress>.Fail(
-        "Administrator access is required.",
+        MessagingAdmin.Required,
         403
       );
     var key = await db

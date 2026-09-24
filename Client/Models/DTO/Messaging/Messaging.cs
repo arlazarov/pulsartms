@@ -127,3 +127,25 @@ public sealed record FileRequest(
   int? LoadNumber,
   string Kind
 );
+
+// Templates approved for the number the company sends from now; the number
+// is null when WhatsApp is not set up.
+public sealed record ApprovedTemplatesView(
+  string? BusinessNumberId,
+  IReadOnlyList<ApprovedTemplateView> Templates
+);
+
+public sealed record ApprovedTemplateView(
+  Guid Id,
+  string Name,
+  string Language,
+  int Parameters,
+  string Text
+);
+
+public sealed record ApprovedTemplateRequest(
+  string Name,
+  string Language,
+  int Parameters,
+  string Text
+);

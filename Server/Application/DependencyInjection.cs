@@ -113,6 +113,7 @@ public static class DependencyInjection
     services.AddSingleton<ITruckHistoryOperation, TruckHistoryOperation>();
     services.AddScoped<FileStore>();
     services.AddScoped<InboxRecorder>();
+    services.AddScoped<ApprovedTemplates>();
     services.AddScoped<IDriverTextDelivery, DriverTextDelivery>();
     services.AddSingleton<MessagingEvents>();
     services.AddSingleton<IInboundMediaOperation, InboundMediaOperation>();

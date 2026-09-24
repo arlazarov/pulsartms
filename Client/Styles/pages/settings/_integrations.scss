@@ -71,9 +71,58 @@
     grid-template-columns: minmax(0, 1fr);
     gap: ui.pg(md);
   }
+  .settings-page__fields textarea {
+    width: 100%;
+    resize: vertical;
+    font-family: inherit;
+    @include ui.input-control;
+  }
   @include ui.below(bg) {
     &__grid {
       grid-template-columns: minmax(0, 1fr);
     }
+  }
+}
+
+// The WhatsApp card's approved templates: each one's name and text, and
+// the form that records another.
+.whatsapp-templates {
+  display: grid;
+  gap: ui.pg(md);
+  min-width: 0;
+  padding-top: ui.pg(md);
+  border-top: 1px solid ui.theme(border-subtle);
+  h4 {
+    margin: 0;
+    font-size: ui.fs(body);
+    font-weight: 650;
+    color: ui.theme(text);
+  }
+  > p {
+    margin: 0;
+  }
+  &__list {
+    display: grid;
+    gap: ui.pg(sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  &__list li {
+    display: grid;
+    gap: ui.pg(xs);
+    min-width: 0;
+  }
+  &__list li > .btn {
+    justify-self: start;
+  }
+  &__name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  &__text {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+    overflow-wrap: anywhere;
   }
 }

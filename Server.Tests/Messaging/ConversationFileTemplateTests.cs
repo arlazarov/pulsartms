@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using Application.Features.Messaging.Commands;
-using Application.Features.Messaging.Options;
 using Application.Features.Messaging.Queries;
 using Application.Features.Messaging.Services;
 using Application.Models;
@@ -121,7 +120,7 @@ public sealed class ConversationFileTemplateTests
   {
     await using var f = await ReplyFixture.CreateAsync();
     var (conversation, _) = await f.ConversationAsync(hoursAgo: 30);
-    MessageTemplate[] approved =
+    ApprovedTemplate[] approved =
     [
       new()
       {
@@ -203,12 +202,119 @@ public sealed class ConversationFileTemplateTests
       DriverMessageStatuses.Accepted,
       (await f.MessageAsync(queued.Response.Id)).Status
     );
+    Assert.Equal(
+      "fuel_plan_ready",
+      Assert
+        .Single(
+          (
+            await f.Files().Handle(new GetMessageTemplatesQuery(), default)
+          ).Response!
+        )
+        .Name
+    );
+  }
+
+  // A template approved for another carrier, or for another of this
+  // carrier's numbers, is not this conversation's: it is neither offered
+  // nor queued.
+  [Fact]
+  public async Task ATemplateIsOnlyItsOwnCarriersAndNumbers()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    var (conversation, _) = await f.ConversationAsync(hoursAgo: 30);
+    f.Db.ApprovedTemplates.AddRange(
+      Template("theirs", company: Guid.NewGuid()),
+      Template("old_number", number: "999999")
+    );
+    await f.Db.SaveChangesAsync();
+
     Assert.Empty(
       (
         await f.Files().Handle(new GetMessageTemplatesQuery(), default)
       ).Response!
     );
+    foreach (var name in new[] { "theirs", "old_number" })
+      Assert.Equal(
+        400,
+        (await QueueTemplateAsync(f, conversation, name)).StatusCode
+      );
+    Assert.Empty(
+      await f
+        .Db.ConversationMessages.AsNoTracking()
+        .Where(x => x.Kind == ConversationMessageKinds.Template)
+        .ToListAsync()
+    );
   }
+
+  // Queued while approved; withdrawn, or the carrier moved to another
+  // number, before the worker's turn: nothing is sent. A conversation on a
+  // number the carrier no longer sends from queues nothing.
+  [Theory]
+  [InlineData("withdrawn")]
+  [InlineData("number")]
+  public async Task ATemplateNoLongerApprovedAtTheSendIsNotSent(string cause)
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    var (conversation, _) = await f.ConversationAsync(hoursAgo: 30);
+    f.Db.ApprovedTemplates.Add(Template("fuel_plan_ready"));
+    await f.Db.SaveChangesAsync();
+    var queued = (
+      await QueueTemplateAsync(f, conversation, "fuel_plan_ready")
+    ).Response!;
+
+    if (cause == "withdrawn")
+      await f.Db.ApprovedTemplates.ExecuteDeleteAsync();
+    else
+      f.Messaging.BusinessNumber = "999999";
+    await f.Worker.RunOnceAsync(default);
+
+    Assert.Equal(
+      DriverMessageStatuses.Withdrawn,
+      (await f.MessageAsync(queued.Id)).Status
+    );
+    Assert.Empty(f.Messaging.Templates);
+    if (cause == "number")
+      Assert.Equal(
+        409,
+        (
+          await QueueTemplateAsync(f, conversation, "fuel_plan_ready")
+        ).StatusCode
+      );
+  }
+
+  private static ApprovedTemplate Template(
+    string name,
+    Guid? company = null,
+    string number = "123456"
+  ) =>
+    new()
+    {
+      Id = Guid.NewGuid(),
+      CompanyId = company ?? Domain.Entities.Company.Amf,
+      Channel = DriverMessageChannels.WhatsApp,
+      BusinessNumberId = number,
+      Name = name,
+      Language = "en_US",
+      Parameters = 0,
+      Text = "Your fuel plan is ready.",
+    };
+
+  private static Task<RequestResponse<MessageView>> QueueTemplateAsync(
+    ReplyFixture f,
+    Guid conversation,
+    string name
+  ) =>
+    f.Files()
+      .Handle(
+        new SendConversationTemplateCommand(
+          conversation,
+          Guid.NewGuid(),
+          name,
+          "en_US",
+          []
+        ),
+        default
+      );
 
   [Fact]
   public async Task OnlyACheckedFileIsServed()

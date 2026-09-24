@@ -823,7 +823,12 @@ sent, the same in the station popup - beside the visit, or, for a single
 visit whose heading is hidden, after "Fuel stop N" in the card's head;
 nothing else on the map changes. Fuel
 plan sending in Settings is off by default and sends nothing. Settings,
-Integrations has a WhatsApp card with the webhook URL to give Meta.
+Integrations has a WhatsApp card with the webhook URL to give Meta and,
+once credentials are saved, the approved templates of the current number:
+each one's name, language and text with Remove, which asks to confirm
+(`.btn--danger`), and Record a template, which opens a form with the
+shared field styles (no field shows until then); a refused entry keeps
+its draft.
 
 `Shared/Drivers/DriverContactEditor` edits a driver's phone, email and
 WhatsApp number wherever a driver's contacts are needed. Each sourced field
