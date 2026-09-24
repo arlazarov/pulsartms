@@ -51,6 +51,9 @@ was reviewed.
 | `DispatchWorkspaceReader.ReadAsync`, outline | extraction | Left (below) |
 | `tools/FleetLoadProbe/Program.cs` | shutdown | Fixed |
 | `TomTomRoutingProvider` (5 parts), outline | owners | Proposal: routing call ledger |
+| Client `DispatchDetails` (612 lines), member outline | owners | Cohesive: one page and its unsaved-changes protocol |
+| `Client/Services` (11 files), sizes and names | owners | Single-purpose; not read in full |
+| `Server/Application/Features` folders against `module-ownership.md` | mixed owners | Match; fuel planning is Routing's by design |
 
 ## Policy change
 
@@ -215,7 +218,8 @@ behavior check is unchanged. `ui-controls.md` had no size rule; its size
 Everything not in the table above. Outlines are not full reads: the
 FuelPlanningService, FleetMap, DispatchList and fleetMap.ts rows looked at
 members, fields and dependencies, not every method body. In particular:
-- `DispatchDetails` and the other Client pages;
+- Client pages other than Messages, FleetMap, DispatchList, DispatchDetails
+  and the fuel plan editor;
 - browser modules other than the two above (`stationLayer.ts` is the other
   known whole-screen module);
 - style contents;
