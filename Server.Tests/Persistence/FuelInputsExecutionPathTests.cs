@@ -19,8 +19,9 @@ namespace Server.Tests.Persistence;
 [Trait("Kind", "Integration")]
 public sealed class FuelInputsExecutionPathTests
 {
-  // What this path costs today, beside the BEGIN and COMMIT.
-  private const int StatementsPerExecutionRead = 6;
+  // What this path costs today, beside the BEGIN and COMMIT. Five since
+  // execution loads come joined with their links (64f9e8b8).
+  private const int StatementsPerExecutionRead = 5;
 
   [RequiresPostgresFact]
   public async Task AFreshReadIsOneSnapshotAndDoesNotAskForLegacyWork()

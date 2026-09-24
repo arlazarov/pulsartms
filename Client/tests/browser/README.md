@@ -171,6 +171,7 @@ the table row. Separate checks retain later delivery appointment windows there.
 runs the compiled Fleet Map page and its Send plan window at 1440 and 390 px,
 light and dark, against synthetic in-memory answers. The map canvas is a flat
 stub: nothing here checks map drawing. It checks:
+
 - the "given to the driver, no longer in the plan" alert: text, role,
   contrast, fitting the screen;
 - the Sent and Changed since sent labels;
@@ -187,6 +188,7 @@ Output: managed `browser-fuel-send`.
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/fuelVisitSentSmoke.mjs`
 renders the production station popup module with staged CSS (1440/390, light
 and dark) for fuel stops given to a driver. It checks:
+
 - Delivered and Changed since sent: text, warning style, contrast, no
   clipping;
 - that an update without a hand-over leaves no stale label.
