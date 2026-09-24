@@ -46,7 +46,7 @@ public sealed partial class RouteChoiceService(
       throw new RoutePlanningException("This load is no longer active.");
     if (load.Stops.Length > 0 && load.Stops.All(s => s.IsCompleted))
       throw new RoutePlanningException("This load has no remaining stops.");
-    var profile = await planning.ProfileAsync(load.TruckId!.Value, ct);
+    var profile = await profiles.GetAsync(load.TruckId!.Value, ct);
     await profiles.RequireRoutingCurrentAsync(load, profile, ct);
     if (await PrepareCurrentRoadAsync(work, load, profile, ct))
     {
@@ -56,7 +56,7 @@ public sealed partial class RouteChoiceService(
         executionLegId
       );
       load = PlanningWorkPolicy.Resolve(work, dispatch, executionLegId);
-      profile = await planning.ProfileAsync(load.TruckId!.Value, ct);
+      profile = await profiles.GetAsync(load.TruckId!.Value, ct);
       await profiles.RequireRoutingCurrentAsync(load, profile, ct);
     }
     List<PlanStop> stops = [];
@@ -242,7 +242,7 @@ public sealed partial class RouteChoiceService(
         preview.ExecutionLegId
       );
       var source = await db.Dispatches.SingleAsync(x => x.Id == dispatch, ct);
-      var profile = await planning.ProfileAsync(load.TruckId!.Value, ct);
+      var profile = await profiles.GetAsync(load.TruckId!.Value, ct);
       await profiles.RequireRoutingCurrentAsync(load, profile, ct);
       if (
         !load.ExecutionLegId.HasValue
@@ -394,5 +394,15 @@ public sealed partial class RouteChoiceService(
     {
       ProcessGates.Dispatch.Release();
     }
+  }
+
+  // A saved route changed: every read that shows it, and the plan cache.
+  private void InvalidateSavedRoute(Guid dispatch, Guid? executionLeg)
+  {
+    reads.Invalidate("dispatch");
+    reads.Invalidate("board");
+    reads.Invalidate("execution");
+    reads.Invalidate("route-previews");
+    plans.Invalidate(dispatch, executionLeg);
   }
 }
