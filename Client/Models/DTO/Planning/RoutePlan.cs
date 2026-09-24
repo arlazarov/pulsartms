@@ -22,6 +22,11 @@ public sealed class RoutePlan
   public FuelRecommendations? FuelRecommendations { get; set; }
   public TruckRoute? ReferenceRoute { get; set; }
   public List<PlanStop>? ReferenceStops { get; set; }
+
+  // The server's identity for a reference given within one plan version:
+  // which base road it came from. Null when the reference came with the
+  // version itself.
+  public string? ReferenceSource { get; set; }
   public RouteStopTracking Tracking { get; set; } = new();
   public DateTime? LastReroutedAt { get; set; }
   public RoutePoint? LastReroutePosition { get; set; }

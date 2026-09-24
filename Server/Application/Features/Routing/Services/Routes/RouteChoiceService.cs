@@ -352,6 +352,7 @@ public sealed partial class RouteChoiceService(
         plan.Route = selected;
         plan.ReferenceStops = draft.Current!.FullStops;
         plan.ReferenceRoute = displayReference;
+        plan.ReferenceSource = null;
         plan.CalculatedAt = selected.CalculatedAt;
         plan.LastReroutedAt = clock.GetUtcNow().UtcDateTime;
         plan.LastReroutePosition = preview.Stops[0].Point;

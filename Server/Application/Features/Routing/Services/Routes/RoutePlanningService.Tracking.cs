@@ -164,6 +164,7 @@ public sealed partial class RoutePlanningService
           plan.OriginalPlannedMiles = route.Miles;
         plan.ReferenceRoute ??= plan.Route;
         plan.ReferenceStops ??= plan.Stops;
+        plan.ReferenceSource = null;
         plan.ReferenceRoute = await RouteDisplayReference.ReconnectAsync(
           plan.ReferenceRoute,
           plan.ReferenceStops,
@@ -197,7 +198,11 @@ public sealed partial class RoutePlanningService
       // existed is given the road as its display reference once, here in its
       // own writer, so reads stop looking for it. It is display only: the
       // plan's version, driven road and movement stay as they are.
-      var shown = (plan.ReferenceRoute, plan.ReferenceStops);
+      var shown = (
+        plan.ReferenceRoute,
+        plan.ReferenceStops,
+        plan.ReferenceSource
+      );
       var reference = await AttachReferenceAsync(plan, load, ct);
       if (tracked || reference is not null)
       {
@@ -208,7 +213,8 @@ public sealed partial class RoutePlanningService
           && !await IsBaseRoadAsync(load, reference, ct)
         )
         {
-          (plan.ReferenceRoute, plan.ReferenceStops) = shown;
+          (plan.ReferenceRoute, plan.ReferenceStops, plan.ReferenceSource) =
+            shown;
           if (!tracked)
             return false;
         }

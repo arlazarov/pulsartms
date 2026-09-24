@@ -199,6 +199,7 @@ public sealed partial class RoutePlanningService
       if (plan.FromCurrentPosition)
       {
         await AddDisplayReferenceAsync(plan, load, ct);
+        plan.ReferenceSource = null;
         plan.ReferenceRoute = await RouteDisplayReference.ReconnectAsync(
           plan.ReferenceRoute,
           plan.ReferenceStops,

@@ -12,23 +12,24 @@ internal sealed class MapRoutePublisher
   private IJSObjectReference? _target;
 
   // The display reference is part of what the map has drawn: the server
-  // may give a plan its reference at the same version, so a reference that
-  // appeared or changed is sent in full once.
+  // may give a plan its reference at the same version, naming where it
+  // came from, so a reference that appeared or came from another base road
+  // is sent in full once.
   private (
     Guid Id,
     int Version,
     Guid Truck,
     Guid? ExecutionLeg,
     long AssignmentRevision,
-    int? ReferenceLegs,
-    double? ReferenceMiles
+    bool Reference,
+    string? ReferenceSource
   )? _geometry;
   private int _version;
 
   public bool HasGeometry(IJSObjectReference? target, RoutePlan plan) =>
     ReferenceEquals(target, _target) && _geometry == Identity(plan);
 
-  private static (Guid, int, Guid, Guid?, long, int?, double?)? Identity(
+  private static (Guid, int, Guid, Guid?, long, bool, string?)? Identity(
     RoutePlan? plan
   ) =>
     plan is null
@@ -39,8 +40,8 @@ internal sealed class MapRoutePublisher
         plan.TruckId,
         plan.ExecutionLegId,
         plan.AssignmentRevision,
-        plan.ReferenceRoute?.Legs.Count,
-        plan.ReferenceRoute?.Miles
+        plan.ReferenceRoute is not null,
+        plan.ReferenceSource
       );
 
   public async Task PublishAsync(

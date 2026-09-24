@@ -255,7 +255,7 @@ public sealed class PlanningDisplayCache(
           != previous.ReferenceRoute?.Legs.Count
         // A reference given at the same version: its points were never
         // received, so they cannot be reused.
-        || plan.ReferenceRoute?.Miles != previous.ReferenceRoute?.Miles
+        || plan.ReferenceSource != previous.ReferenceSource
       )
         response = await api.PostAsync<object, AutomaticPlanningResult>(
           url,

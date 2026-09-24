@@ -304,9 +304,18 @@ below was verified in the source before it was acted on or recorded.
   snapshot) and from deadhead history's execution batches.
   - *Done later that day:* `64f9e8b8` joins the loads to the link read, so
     each call is one round trip shorter (warm enrichment 19 to 16).
-  - *Still a proposal:* the itinerary and history reading their links and
-    handovers separately inside one snapshot. They read different sets of
-    legs. The board's read is outside the snapshot and cannot be reused.
+  - *Deferred, with its cost measured:* after the join, what is left of
+    the repeat is one statement per warm enrichment. Deadhead history's
+    joined read costs 27-30 ms of 560-620 ms of database time (about 5%).
+    - Removing it means handing history the legs the itinerary already
+      loaded and reading only the completed predecessors. That needs proof
+      that the two projections of a leg are equal within one snapshot, on
+      the path that sets deadhead start positions for ETA and fuel.
+    - *Owner:* the fleet-efficiency read path.
+    - *Revisit when:* enrichment's database time is a measured bottleneck
+      at a larger fleet, or the execution read scope gains a per-snapshot
+      leg reader.
+    - The board's read is outside the snapshot and cannot be reused.
 - **Plan-preparation "busy" answer outside planning.** A handler that lets
   it escape becomes a logged 500 (see the preparation record). Not every
   handler has been audited.

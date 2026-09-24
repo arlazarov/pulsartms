@@ -12,7 +12,10 @@ public sealed partial class RoutePlanningService
     Guid Id,
     string InputHash,
     DateTime CalculatedAt
-  );
+  )
+  {
+    public string Source => $"{Id:N}:{CalculatedAt.Ticks}";
+  }
 
   internal async Task AddDisplayReferenceAsync(
     RoutePlan plan,
@@ -58,6 +61,7 @@ public sealed partial class RoutePlanningService
           )
       )
       .ToList();
+    plan.ReferenceSource = stamp!.Source;
     return stamp;
   }
 

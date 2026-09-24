@@ -30,6 +30,13 @@ public sealed class RoutePlan
   public FuelRecommendations? FuelRecommendations { get; set; }
   public TruckRoute? ReferenceRoute { get; set; }
   public List<PlanStop>? ReferenceStops { get; set; }
+
+  // Which base road a reference taken from the load's base road came from:
+  // its row and calculation. It identifies the reference within one plan
+  // version, where it may be given later; null when the reference came with
+  // the plan's own version (a build, a reroute, a chosen road).
+  [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+  public string? ReferenceSource { get; set; }
   public RouteStopTracking Tracking { get; set; } = new();
   public DateTime? LastReroutedAt { get; set; }
   public RoutePoint? LastReroutePosition { get; set; }

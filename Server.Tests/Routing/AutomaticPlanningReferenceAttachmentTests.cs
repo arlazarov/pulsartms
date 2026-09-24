@@ -23,10 +23,13 @@ public partial class AutomaticPlanningTests
     await using var f = await WithoutReferenceAsync(reads);
     var before = await StoredAsync(f);
     Assert.Null(before.Plan.ReferenceStops);
-    reads.Count = 0;
-    await f.Reader.ForTruckAsync(f.Truck.Id, default);
-    Assert.True(reads.Count > 0, "a plan read looks for the base road");
     await RewriteAsync(f.Db.Database.GetDbConnection(), Road(Detour));
+    reads.Count = 0;
+    f.Db.ChangeTracker.Clear();
+    var readTime = await f.Reader.ForTruckAsync(f.Truck.Id, default);
+    Assert.True(reads.Count > 0, "a plan read looks for the base road");
+    var source = readTime.State!.Plan!.ReferenceSource;
+    Assert.NotNull(source);
 
     f.Db.ChangeTracker.Clear();
     await f.Service.ForTruckAsync(f.Truck.Id, default);
@@ -49,6 +52,42 @@ public partial class AutomaticPlanningTests
       Detour,
       Assert.Single(shown.State!.Plan!.ReferenceRoute!.Legs).Points
     );
+    // The same base road, read or stored: an open map has nothing new to
+    // fetch when the reference is stored.
+    Assert.Equal(source, after.Plan.ReferenceSource);
+    Assert.Equal(source, shown.State.Plan.ReferenceSource);
+  }
+
+  // Within one version a stored reference never changes: a reference that
+  // differs from the stored one - here the same legs and miles through other
+  // points - is saved as a new version like any other change.
+  [Fact]
+  public async Task AStoredReferenceThatChangesIsANewVersion()
+  {
+    await using var f = await WithoutReferenceAsync(new BaseRoadReads());
+    await RewriteAsync(f.Db.Database.GetDbConnection(), Road(Detour));
+    f.Db.ChangeTracker.Clear();
+    await f.Service.ForTruckAsync(f.Truck.Id, default);
+    var attached = await StoredAsync(f);
+    Assert.NotNull(attached.Plan.ReferenceStops);
+
+    f.Db.ChangeTracker.Clear();
+    var entity = (await f.Services.RoutePlans.ReadAsync(f.Load.Id, default))!;
+    var plan = RoutePlanStorage.Read(entity)!;
+    var leg = Assert.Single(plan.ReferenceRoute!.Legs);
+    plan.ReferenceRoute.Legs =
+    [
+      leg with
+      {
+        Points = [new(40, -80), new(40.3, -79.6), new(40, -79)],
+      },
+    ];
+    await f.Services.RoutePlans.SaveAsync(entity, plan, default);
+
+    var changed = await StoredAsync(f);
+    Assert.Equal(attached.Plan.Version + 1, changed.Plan.Version);
+    Assert.Equal(attached.Revision + 1, changed.Revision);
+    Assert.Equal(attached.History + 1, changed.History);
   }
 
   [Fact]

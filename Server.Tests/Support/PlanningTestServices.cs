@@ -47,6 +47,7 @@ internal sealed class PlanningTestServices : IDisposable
   public PlanningSettingsService Settings { get; }
   public FuelExchangeRateService ExchangeRates { get; }
   public RoutePlanningService Routes { get; }
+  public RoutePlanStore RoutePlans { get; }
   public TruckItineraryReader Itineraries { get; }
   public TruckPlanningInputsReader PlanningInputs { get; }
   public PlanningWorkPublication Publication { get; }
@@ -151,6 +152,7 @@ internal sealed class PlanningTestServices : IDisposable
         NullLogger<SavedRoutePlanReader>.Instance
       )
     );
+    RoutePlans = routeStore;
     Routes = new(
       db,
       router,

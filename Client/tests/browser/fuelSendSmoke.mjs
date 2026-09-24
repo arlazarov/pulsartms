@@ -39,6 +39,7 @@ const success = response => ({ success: true, response, errors: [] });
 const mapStub = `export async function createFleetMap(element, _key, callbacks) {
   element.style.background = 'var(--ui-surface-muted)';
   window.sendFixture = {
+    routes: [],
     selectTruck(id) { return callbacks.invokeMethodAsync('OnTruckSelected', id); },
   };
   return {setOptions(){},setTrucks(){},setStationsVisible(){},
@@ -47,7 +48,7 @@ const mapStub = `export async function createFleetMap(element, _key, callbacks) 
     setStopEtas(){},setLoadReference(){},setDistanceUnit(){},setFollow(){},
     finishInitialView(){},setInspectorMode(){},clearMapInspection(){},
     setInspectionSuspended(){},setFuelEditorTruck(){},focusFuelStation(){},
-    clearFuelStationFocus(){},setRouteBytes(){return true;},
+    clearFuelStationFocus(){},setRouteBytes(bytes){window.sendFixture.routes.push(JSON.parse(new TextDecoder().decode(bytes)));return true;},
     setNextLoadsBytes(){},focusTruck(){return true;},
     dispose(){delete window.sendFixture;}};
 }`;
@@ -77,8 +78,8 @@ await mkdir(output, { recursive: true });
 // hand-over state, and what the Send plan window shows.
 function fixture() {
   const state = {
-    a: { revision: 3, withdrawn: true, delayMs: 0 },
-    b: { revision: 1, withdrawn: false, delayMs: 0 },
+    a: { revision: 3, withdrawn: true, delayMs: 0, reference: null },
+    b: { revision: 1, withdrawn: false, delayMs: 0, reference: null },
     previews: [],
   };
   const stop = key => ({
@@ -115,7 +116,9 @@ function fixture() {
     unit: 'US gal',
     sent,
   });
-  const planning = key => {
+  // An acknowledged plan (the page sends the id and version it holds) is
+  // answered with metadata only, as the server does: no points.
+  const planning = (key, omitted = false) => {
     const truck = trucks[key];
     const stops =
       key === 'a'
@@ -178,10 +181,37 @@ function fixture() {
               {
                 miles: 500,
                 seconds: 7200,
-                points: [point, { latitude: 35.1, longitude: -80.9 }],
+                points: omitted
+                  ? []
+                  : [point, { latitude: 35.1, longitude: -80.9 }],
               },
             ],
           },
+          geometryOmitted: omitted,
+          ...(state[key].reference
+            ? {
+                referenceSource: state[key].reference,
+                referenceStops: [stop(key)],
+                referenceRoute: {
+                  miles: 620,
+                  seconds: 9000,
+                  warnings: [],
+                  points: [],
+                  legs: [
+                    {
+                      miles: 620,
+                      seconds: 9000,
+                      points: omitted
+                        ? []
+                        : [
+                            { latitude: 38.9, longitude: -79.4 },
+                            { latitude: 35.1, longitude: -80.9 },
+                          ],
+                    },
+                  ],
+                },
+              }
+            : {}),
           fuelPlan: {
             truckId: truck.id,
             calculatedAt: at,
@@ -408,9 +438,17 @@ try {
             truckMatch &&
             /\/(planning|planning\/preview)$/.test(path) &&
             keyOf(truckMatch[1])
-          )
-            value = success(planning(keyOf(truckMatch[1])));
-          else if (truckMatch && path.endsWith('/weather'))
+          ) {
+            const key = keyOf(truckMatch[1]);
+            const plan = planning(key).state.plan;
+            value = success(
+              planning(
+                key,
+                url.searchParams.get('knownPlanId') === plan.id &&
+                  url.searchParams.get('knownVersion') === String(plan.version),
+              ),
+            );
+          } else if (truckMatch && path.endsWith('/weather'))
             value = success(null);
           else if (
             loadMatch &&
@@ -637,6 +675,42 @@ try {
       );
       await shot('4-new-assignment');
 
+      // 5. An already open map: truck A's plan is given its base road as
+      // reference at the same version. The page's own poll holds the plan's
+      // id and version, so the answer is metadata that names the reference;
+      // the page reads the geometry once and the map module receives it.
+      // The version the fuel plan follows stays 1.
+      await panel.getByRole('button', { name: 'Close send fuel plan' }).click();
+      await panel.waitFor({ state: 'detached' });
+      // Settled first: closing the window republishes the map in full, so
+      // the reference is given only after an ordinary poll has sent the map
+      // metadata alone - what an open map receives while nothing changes.
+      await page.evaluate(() => (window.sendFixture.routes.length = 0));
+      await page.waitForFunction(
+        () => window.sendFixture.routes.some(route => route?.geometryOmitted),
+        null,
+        { timeout: 25000 },
+      );
+      await page.evaluate(() => (window.sendFixture.routes.length = 0));
+      state.a.reference = 'road-a';
+      await page.waitForFunction(
+        () =>
+          window.sendFixture.routes.some(
+            route =>
+              route?.referenceRoute?.legs?.[0]?.points?.length === 2 &&
+              route.geometryOmitted === false,
+          ),
+        null,
+        { timeout: 25000 },
+      );
+      const drawn = await page.evaluate(() =>
+        window.sendFixture.routes.find(
+          route => route?.referenceRoute?.legs?.[0]?.points?.length === 2,
+        ),
+      );
+      assert.equal(drawn.version, 1, `${name}: reference changed the version`);
+      assert.equal(drawn.fuelPlan.stops.length, 2);
+      await shot('5-reference');
       report.cases.push({
         name,
         alertContrast: Number(alertContrast.toFixed(2)),

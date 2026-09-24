@@ -163,35 +163,54 @@ them.
 
 **An already open map.** The Client acknowledges a plan by id and version,
 and for an acknowledged plan the server answers with metadata only.
-Traced:
-- **The cache.** `PlanningDisplayCache` already asked for full geometry
-  when the metadata named a reference with a different leg count, such as
-  none before and one after. So the attached reference was re-read on the
-  next poll. It did not compare a changed reference with the same legs;
-  it now also compares the reference's miles.
-- **The map.** `MapRoutePublisher` sent the map module metadata only while
-  the plan's id, version, truck, leg and assignment revision were
-  unchanged. So even a re-read reference never reached an open map. This
-  was equally true of the read-time attachment whenever the base road
-  appeared after the first read. The publisher's identity now includes the
-  reference's leg count and miles: a reference that appears or changes is
-  sent in full once.
+
+**The reference's identity.** Leg count and miles are not an identity: two
+roads can share both. (`e0495e28` used them; replaced.) What identifies a
+reference within one plan version:
+- **Stored references never change within a version.**
+  `RoutePlanStorage.RecordChange` keeps the version only when a plan that
+  had no reference is given one. Any other reference change is a new
+  version, like any other change (`AStoredReferenceThatChangesIsANewVersion`,
+  with the same legs and miles through other points).
+- **Where it came from.** A reference taken from the load's base road, in
+  memory by a read or stored by the planning pass, carries `ReferenceSource`:
+  the base road row's id and calculation time, the same version the base
+  road writer's compare-and-swap uses. The read-time and stored references
+  name the same source, so storing one makes an open map fetch nothing new.
+  A read-time reference can change within a version when the base road is
+  rewritten with the same inputs; its source changes with it.
+- **References that come with a new version** (build, reroute, chosen road)
+  carry no source: the version identifies them.
+
+**The Client.**
+- `PlanningDisplayCache` asks for full geometry when the metadata names a
+  reference its copy lacks, or one from another source.
+- `MapRoutePublisher` sends the map module full geometry when the reference
+  appears or its source changes.
 - **Unchanged:** the plan version, fuel's route version and movement. No
   cache or provider call was added.
 
-Regressions:
-- Client `PlanningExecutionIdentityTests`: a reference appearing, held and
-  unchanged, held and changed;
-- `MapRoutePublisherTests`: a reference added at the same version is sent
-  in full.
+**Regressions:**
+- Client:
+  - a reference appearing;
+  - held with the same source;
+  - held with another source through different points at the same legs
+    and miles.
+- Publisher: appears, then the same source, then another source.
+- Server:
+  - the read-time and stored sources are equal;
+  - a changed stored reference is a new version.
 
-Removing the new identity fields or the miles comparison fails them. The
-page's own path was traced, not tested: each ten-second poll goes
-`PlanningCache.RefreshAsync`, `SetRouteState`, `SendMapRouteAsync`,
-`MapRoutePublisher.PublishAsync`. The component harness has no test of a
-reference appearing between polls, and map drawing itself is not checked
-by any browser probe.
+Removing the source comparison, the publisher's source, the server's source
+or the storage condition each fails them.
 
+**The page.** `fuelSendSmoke` step 5 runs the compiled Fleet Map against a
+synthetic server that answers an acknowledged poll with metadata only. It
+waits for an ordinary poll to send the map metadata alone, then gives
+truck A a reference at the same version. The map module must receive the
+reference's points in full, with the version still 1. A build whose
+publisher leaves the reference out of its identity fails that step (the
+wait times out).
 **Consistency auditor:** no runtime rule. A plan without a stored reference
 is not invalid: the read path still attaches the reference in memory, so the
 display is correct either way, only dearer. Existing rows recover through

@@ -115,11 +115,13 @@ public sealed class MapRoutePublisherTests
     );
   }
 
-  // The server may give a plan its display reference at the same version.
-  // What the map drew had none, so the reference is sent in full once;
-  // after that the same plan is metadata again.
+  // The server may give a plan its display reference at the same version,
+  // naming the base road it came from. What the map drew had none, or had
+  // another road's, so the reference is sent in full once; the same source
+  // again is metadata. Legs and miles are the same throughout: only the
+  // source says which reference it is.
   [Fact]
-  public async Task AReferenceAddedAtTheSameVersionIsSentToTheMap()
+  public async Task AReferenceGivenAtTheSameVersionIsSentToTheMapOnce()
   {
     var js = new PayloadJs();
     var publisher = new MapRoutePublisher();
@@ -128,22 +130,33 @@ public sealed class MapRoutePublisherTests
     await publisher.PublishAsync(js, state, false, () => true, default);
     Assert.True(publisher.HasGeometry(js, plan));
 
-    plan.ReferenceRoute = new()
+    async Task<JsonDocument> GiveAsync(string source, RoutePoint through)
     {
-      Miles = 110,
-      Legs = [new(110, 7200, [new(40, -80), new(40.5, -79.5)])],
-    };
-    Assert.False(publisher.HasGeometry(js, plan));
-    await publisher.PublishAsync(js, state, false, () => true, default);
+      plan.ReferenceRoute = new()
+      {
+        Miles = 110,
+        Legs = [new(110, 7200, [new(40, -80), through])],
+      };
+      plan.ReferenceSource = source;
+      await publisher.PublishAsync(js, state, false, () => true, default);
+      return JsonDocument.Parse((byte[])js.Calls[^1].Args![0]!);
+    }
 
-    using var sent = JsonDocument.Parse((byte[])js.Calls[^1].Args![0]!);
-    Assert.False(sent.RootElement.GetProperty("geometryOmitted").GetBoolean());
+    using var appeared = await GiveAsync("road-a", new(40.5, -79.5));
+    Assert.False(
+      appeared.RootElement.GetProperty("geometryOmitted").GetBoolean()
+    );
+    using var again = await GiveAsync("road-a", new(40.5, -79.5));
+    Assert.True(again.RootElement.GetProperty("geometryOmitted").GetBoolean());
+    using var another = await GiveAsync("road-b", new(40.3, -79.6));
+    Assert.False(
+      another.RootElement.GetProperty("geometryOmitted").GetBoolean()
+    );
     Assert.Equal(
       JsonValueKind.Object,
-      sent.RootElement.GetProperty("referenceRoute").ValueKind
+      another.RootElement.GetProperty("referenceRoute").ValueKind
     );
-    Assert.Equal(1, sent.RootElement.GetProperty("version").GetInt32());
-    Assert.True(publisher.HasGeometry(js, plan));
+    Assert.Equal(1, another.RootElement.GetProperty("version").GetInt32());
   }
 
   [Fact]

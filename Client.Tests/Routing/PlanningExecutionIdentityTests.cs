@@ -140,38 +140,32 @@ public sealed class PlanningExecutionIdentityTests
     Assert.False(response.Response!.State!.Plan!.GeometryOmitted);
   }
 
-  // An open map acknowledged a plan with no display reference; the server
-  // then gives the plan its base road as reference at the same version. The
-  // metadata answer names the reference but omits its points, so they are
-  // read in full once, without the acknowledgment; the version the fuel
-  // plan and ETA follow does not move. With the reference already held, the
-  // metadata answer reuses it and asks nothing more; a different one held
-  // (another road, same legs) is read again.
+  // An open map acknowledged a plan; the server then gives the plan its
+  // base road as reference, or another base road's, at the same version.
+  // The metadata answer names where the reference came from but omits its
+  // points, so a reference from elsewhere than the one held is read in full
+  // once; the one held is reused. Legs and miles are the same in every case:
+  // only the source says which reference it is. The version the fuel plan
+  // and ETA follow does not move.
   [Theory]
-  [InlineData(false, 110, 2)]
-  [InlineData(true, 110, 1)]
-  [InlineData(true, 96, 2)]
+  [InlineData(null, 2)]
+  [InlineData("road-a", 1)]
+  [InlineData("road-b", 2)]
   public async Task AReferenceGivenAtTheSameVersionReachesAnOpenMap(
-    bool held,
-    double heldMiles,
+    string? heldSource,
     int reads
   )
   {
     var first = Result(Guid.NewGuid(), Guid.NewGuid(), null);
-    var points = new List<RoutePoint> { new(40, -80), new(40.5, -79.5) };
+    var given = new List<RoutePoint> { new(40, -80), new(40.5, -79.5) };
     var drawn = new List<RoutePoint> { new(41, -81), new(41.2, -80.9) };
-    TruckRoute Reference(bool withPoints) =>
-      new()
-      {
-        Miles = 110,
-        Legs = [new(110, 7200, withPoints ? [.. points] : [])],
-      };
-    if (held)
-      first.State!.Plan!.ReferenceRoute = new()
-      {
-        Miles = heldMiles,
-        Legs = [new(heldMiles, 7200, [.. drawn])],
-      };
+    TruckRoute Reference(List<RoutePoint> points) =>
+      new() { Miles = 110, Legs = [new(110, 7200, [.. points])] };
+    if (heldSource is not null)
+    {
+      first.State!.Plan!.ReferenceRoute = Reference(drawn);
+      first.State.Plan.ReferenceSource = heldSource;
+    }
     var urls = new List<string>();
     using var client = new HttpClient(
       new StubHttpMessageHandler(
@@ -183,7 +177,8 @@ public sealed class PlanningExecutionIdentityTests
           next.State!.Plan!.Id = first.State!.Plan!.Id;
           next.State.Plan.Version = first.State.Plan.Version;
           next.State.Plan.GeometryOmitted = omitted;
-          next.State.Plan.ReferenceRoute = Reference(!omitted);
+          next.State.Plan.ReferenceRoute = Reference(omitted ? [] : given);
+          next.State.Plan.ReferenceSource = "road-a";
           return Task.FromResult(
             new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -215,8 +210,9 @@ public sealed class PlanningExecutionIdentityTests
     var plan = response.Response!.State!.Plan!;
     Assert.False(plan.GeometryOmitted);
     Assert.Equal(first.State!.Plan!.Version, plan.Version);
+    Assert.Equal("road-a", plan.ReferenceSource);
     Assert.Equal(
-      reads == 2 ? points : drawn,
+      reads == 2 ? given : drawn,
       Assert.Single(plan.ReferenceRoute!.Legs).Points
     );
   }

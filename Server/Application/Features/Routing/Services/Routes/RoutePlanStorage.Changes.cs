@@ -29,10 +29,17 @@ public static partial class RoutePlanStorage
     var old = entity.GeometryManifestJson is null
       ? null
       : Manifest(entity.GeometryManifestJson);
-    // Only the display reference changed: the driven road, its revision
-    // (which movement and history follow) and the plan version (which fuel
-    // and ETA follow) are the road's, and it did not move.
-    if (old is not null && SameRoad(old, next))
+    // A reference given to a plan that had none: the driven road, its
+    // revision (which movement and history follow) and the plan version
+    // (which fuel and ETA follow) are the road's, and it did not move. A
+    // reference that changes or goes away is a new version like any other
+    // change, so within one version a stored reference never changes.
+    if (
+      old is not null
+      && (old.Reference?.Count ?? 0) == 0
+      && (next.Reference?.Count ?? 0) > 0
+      && SameRoad(old, next)
+    )
       return;
     if (
       old is not null
