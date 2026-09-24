@@ -1,0 +1,78 @@
+@using Client.Models.DTO.Messaging
+
+<div class="messages__list-head">
+    <div class="messages__new-head">
+        <h2>New chat</h2>
+        <button type="button" class="btn btn--small btn--text"
+                @onclick="OnClose">
+            Conversations
+        </button>
+    </div>
+    <form class="messages__search" role="search" @onsubmit="SearchAsync">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-4-4" />
+        </svg>
+        <input type="search" aria-label="Search drivers"
+               placeholder="Driver name or WhatsApp number"
+               maxlength="100" @bind="_search" />
+    </form>
+    <DriverGroupPicker Id="messages-new-chat-group" />
+</div>
+@if (_error is not null)
+{
+    <p class="settings-page__error" role="alert">@_error</p>
+}
+@if (_view is { Configured: false })
+{
+    <p class="messages__empty">
+        WhatsApp is not set up for the company yet, so no chat can be
+        started. An administrator saves it in Settings.
+    </p>
+}
+@if (_drivers is null)
+{
+    <p role="status"><LoadingIndicator /></p>
+}
+else if (_drivers.Count == 0)
+{
+    <p class="messages__empty">
+        @(_searched.Length > 0
+            ? "No driver with a WhatsApp number matches."
+            : "No driver has a WhatsApp number yet. Add it to the "
+              + "driver's contacts.")
+    </p>
+}
+else
+{
+    <ul class="messages__conversations" aria-label="Drivers">
+        @foreach (var driver in _drivers)
+        {
+            <li @key="driver.Id">
+                <button type="button" class="messages__conversation"
+                        disabled="@(!CanOpen)"
+                        @onclick="() => OpenAsync(driver)">
+                    <span class="messages__avatar"
+                          aria-hidden="true">@Initials(driver.Name)</span>
+                    <span class="messages__who">
+                        <strong>@driver.Name</strong>
+                    </span>
+                    <span class="messages__preview">@driver.WhatsAppPhone</span>
+                    @if (driver.ConversationId is not null)
+                    {
+                        <span class="messages__tags">
+                            <span class="messages__tag">Open chat</span>
+                        </span>
+                    }
+                </button>
+            </li>
+        }
+    </ul>
+    @if (_view?.Next is not null)
+    {
+        <button type="button" class="btn btn--small btn--text messages__more"
+                disabled="@_loadingMore" @onclick="LoadMoreAsync">
+            Show more drivers
+        </button>
+    }
+}

@@ -36,6 +36,9 @@ public partial class Messages : IAsyncDisposable
   [Inject]
   private ChosenDriverGroup DriverGroup { get; set; } = default!;
 
+  [Inject]
+  private NavigationManager Navigation { get; set; } = default!;
+
   // The list as shown: the first page, and the pages the dispatcher asked
   // for below it. Next continues it; a new search or filter starts over.
   private List<ConversationSummary>? _conversations;
@@ -71,6 +74,9 @@ public partial class Messages : IAsyncDisposable
 
   // The trip opens over the conversation where there is no room beside it.
   private bool _trip;
+
+  // The list pane shows the drivers a chat can be started with.
+  private bool _newChat;
 
   // The signed-in dispatcher's name: their own replies read "You".
   private string? _me;
@@ -150,6 +156,15 @@ public partial class Messages : IAsyncDisposable
       return;
     await LoadThreadAsync(conversation);
     await LoadContextAsync(conversation);
+  }
+
+  // The driver's conversation, opened or just created: the list shows it
+  // at once, whatever the stream says later.
+  private async Task ChatOpenedAsync(Guid conversation)
+  {
+    _newChat = false;
+    await LoadInboxAsync();
+    Navigation.NavigateTo($"/messages/{conversation}");
   }
 
   private async Task FiledAsync(Guid conversation)

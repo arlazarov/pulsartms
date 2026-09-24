@@ -178,6 +178,21 @@ A reply keeps its retry key until it is sent; a reply refused as stale
 offers "Send anyway" with the same key. Outside the 24-hour window only
 approved templates are offered, or a note that there are none.
 
+**New chat** (`Pages/Messages/NewChat`) replaces the list with the active
+drivers who have a WhatsApp number of their own (`GET
+/api/messaging/drivers`), never one taken from their ordinary phone. The
+list is narrowed by the chosen driver group, searched by name or number
+and paged 50 at a time by name. Choosing a driver (`POST
+.../drivers/{id}/conversation`, `DriverConversations`) opens the driver's
+conversation on the number the company sends from now. When there is
+none, it is created with no message, no reply window and nothing unread
+for anyone, so its first message is an approved template. Choosing sends
+nothing. Two dispatchers choosing at once get one conversation: the
+conversation's unique key refuses the second insert, which reads the
+first. Without WhatsApp settings, or for a driver without a WhatsApp
+number, nothing is created (409). An empty conversation stays in the
+inbox as "No messages yet"; nothing removes it.
+
 One stream per browser and account, not per tab: every tab showing
 messages joins `Scripts/shared/messagingChannel.ts` under a scope naming
 the signed-in account and this sign-in's session. A Web Lock of that scope

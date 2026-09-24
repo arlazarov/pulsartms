@@ -52,6 +52,30 @@ public sealed class MessagingController : BaseController
       cancellationToken
     );
 
+  // Drivers a chat can be started with, in the dispatcher's driver group.
+  [HttpGet("drivers")]
+  public Task<IActionResult> Drivers(
+    [FromQuery] string? search,
+    [FromQuery] string? afterName,
+    [FromQuery] Guid? afterId,
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(
+      new GetMessagingDriversQuery(
+        search,
+        afterName is { } name && afterId is { } id ? new(name, id) : null,
+        InChosenGroup: true
+      ),
+      cancellationToken
+    );
+
+  // The driver's conversation, created when there is none; sends nothing.
+  [HttpPost("drivers/{id:guid}/conversation")]
+  public Task<IActionResult> OpenDriverConversation(
+    Guid id,
+    CancellationToken cancellationToken
+  ) => HandleRequest(new OpenDriverConversationCommand(id), cancellationToken);
+
   // Who the conversation is with (Messaging), what they are driving
   // (Execution) and their hours of service (Fleet's shared snapshot):
   // three owners' answers, side by side, in one response. Hours is null

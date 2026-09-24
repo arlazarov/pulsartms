@@ -5,9 +5,14 @@
 
 <PageTitle>Messages · PulsR</PageTitle>
 
-<section class="messages-page @(_thread is null ? "is-list" : "is-thread") @(_trip ? "shows-trip" : "")">
+<section class="messages-page @(_thread is null || _newChat ? "is-list" : "is-thread") @(_trip ? "shows-trip" : "")">
     <PageHeader Title="Messages">
         <NotificationChoice />
+        <button type="button" class="btn btn--small btn--primary"
+                aria-pressed="@(_newChat ? "true" : "false")"
+                @onclick="() => _newChat = !_newChat">
+            New chat
+        </button>
     </PageHeader>
     @if (_error is not null)
     {
@@ -20,98 +25,109 @@
         </p>
     }
     <div class="messages">
-        <aside class="messages__list" aria-label="Conversations">
-            <div class="messages__list-head">
-                <form class="messages__search" role="search"
-                      @onsubmit="SearchAsync">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <circle cx="11" cy="11" r="7" />
-                        <path d="M20 20l-4-4" />
-                    </svg>
-                    <input type="search" aria-label="Search conversations"
-                           placeholder="Driver name or number"
-                           maxlength="100" @bind="_search" />
-                </form>
-                <div class="messages__filters" role="group" aria-label="Show">
-                    <button type="button" class="messages__chip"
-                            aria-pressed="@(_unreadOnly ? "false" : "true")"
-                            @onclick="() => FilterAsync(false)">
-                        All
-                    </button>
-                    <button type="button" class="messages__chip"
-                            aria-pressed="@(_unreadOnly ? "true" : "false")"
-                            @onclick="() => FilterAsync(true)">
-                        Unread
-                    </button>
-                </div>
-                <DriverGroupPicker Id="messages-driver-group" />
-            </div>
-            @if (_conversations is null)
+        <aside class="messages__list"
+               aria-label="@(_newChat ? "New chat" : "Conversations")">
+            @if (_newChat)
             {
-                <p role="status"><LoadingIndicator /></p>
-            }
-            else if (_conversations.Count == 0)
-            {
-                <p class="messages__empty">
-                    @(_searched.Length > 0
-                        ? "No conversation matches."
-                        : _unreadOnly
-                        ? "Nothing unread."
-                        : "No driver has written yet.")
-                </p>
+                <NewChat OnOpened="ChatOpenedAsync"
+                         OnClose="() => _newChat = false" />
             }
             else
             {
-                <ul class="messages__conversations">
-                    @foreach (var item in _conversations)
-                    {
-                        <li @key="item.Id">
-                            <a href="@($"/messages/{item.Id}")"
-                               class="@Conversation(item)"
-                               aria-current="@(item.Id == Id ? "page" : null)">
-                                <span class="messages__avatar" aria-hidden="true">@Initials(item)</span>
-                                <span class="messages__who">
-                                    <strong>@Who(item)</strong>
-                                </span>
-                                <time datetime="@Stamp(item.LastMessageAt)">
-                                    @When(item.LastMessageAt)
-                                </time>
-                                <span class="messages__preview">
-                                    @item.LastPreview
-                                </span>
-                                @if (item.Unread > 0)
-                                {
-                                    <span class="messages__unread"
-                                          aria-label="@Unread(item)">
-                                        @item.Unread
-                                    </span>
-                                }
-                                @if (Colleague(item) || !item.WindowOpen)
-                                {
-                                    <span class="messages__tags">
-                                        @if (Colleague(item))
-                                        {
-                                            <span class="messages__tag is-claim">
-                                                @item.ClaimedBy is replying
-                                            </span>
-                                        }
-                                        @if (!item.WindowOpen)
-                                        {
-                                            <span class="messages__tag">Template only</span>
-                                        }
-                                    </span>
-                                }
-                            </a>
-                        </li>
-                    }
-                </ul>
-                @if (_next is not null)
+                <div class="messages__list-head">
+                    <form class="messages__search" role="search"
+                          @onsubmit="SearchAsync">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="11" cy="11" r="7" />
+                            <path d="M20 20l-4-4" />
+                        </svg>
+                        <input type="search" aria-label="Search conversations"
+                               placeholder="Driver name or number"
+                               maxlength="100" @bind="_search" />
+                    </form>
+                    <div class="messages__filters" role="group" aria-label="Show">
+                        <button type="button" class="messages__chip"
+                                aria-pressed="@(_unreadOnly ? "false" : "true")"
+                                @onclick="() => FilterAsync(false)">
+                            All
+                        </button>
+                        <button type="button" class="messages__chip"
+                                aria-pressed="@(_unreadOnly ? "true" : "false")"
+                                @onclick="() => FilterAsync(true)">
+                            Unread
+                        </button>
+                    </div>
+                    <DriverGroupPicker Id="messages-driver-group" />
+                </div>
+                @if (_conversations is null)
                 {
-                    <button type="button" class="btn btn--small btn--text messages__more"
-                            disabled="@_loadingMore"
-                            @onclick="LoadMoreAsync">
-                        Show more conversations
-                    </button>
+                    <p role="status"><LoadingIndicator /></p>
+                }
+                else if (_conversations.Count == 0)
+                {
+                    <p class="messages__empty">
+                        @(_searched.Length > 0
+                            ? "No conversation matches."
+                            : _unreadOnly
+                            ? "Nothing unread."
+                            : "No driver has written yet.")
+                    </p>
+                }
+                else
+                {
+                    <ul class="messages__conversations">
+                        @foreach (var item in _conversations)
+                        {
+                            <li @key="item.Id">
+                                <a href="@($"/messages/{item.Id}")"
+                                   class="@Conversation(item)"
+                                   aria-current="@(item.Id == Id ? "page" : null)">
+                                    <span class="messages__avatar" aria-hidden="true">@Initials(item)</span>
+                                    <span class="messages__who">
+                                        <strong>@Who(item)</strong>
+                                    </span>
+                                    <time datetime="@Stamp(item.LastMessageAt)">
+                                        @When(item.LastMessageAt)
+                                    </time>
+                                    <span class="messages__preview">
+                                        @(item.LastPreview.Length > 0
+                                            ? item.LastPreview
+                                            : "No messages yet")
+                                    </span>
+                                    @if (item.Unread > 0)
+                                    {
+                                        <span class="messages__unread"
+                                              aria-label="@Unread(item)">
+                                            @item.Unread
+                                        </span>
+                                    }
+                                    @if (Colleague(item) || !item.WindowOpen)
+                                    {
+                                        <span class="messages__tags">
+                                            @if (Colleague(item))
+                                            {
+                                                <span class="messages__tag is-claim">
+                                                    @item.ClaimedBy is replying
+                                                </span>
+                                            }
+                                            @if (!item.WindowOpen)
+                                            {
+                                                <span class="messages__tag">Template only</span>
+                                            }
+                                        </span>
+                                    }
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                    @if (_next is not null)
+                    {
+                        <button type="button" class="btn btn--small btn--text messages__more"
+                                disabled="@_loadingMore"
+                                @onclick="LoadMoreAsync">
+                            Show more conversations
+                        </button>
+                    }
                 }
             }
         </aside>
@@ -248,13 +264,26 @@
                 {
                     <div class="messages__composer">
                         <div class="messages__template-box">
-                            <p>
-                                <strong>Outside the 24-hour window.</strong>
-                                @FirstName(summary) last wrote more than a day
-                                ago, so WhatsApp only delivers an approved
-                                template. The reply box opens as soon as the
-                                driver answers.
-                            </p>
+                            @if (summary.LastInboundAt is null)
+                            {
+                                <p>
+                                    <strong>No reply window yet.</strong>
+                                    @FirstName(summary) has not written to this
+                                    number, so WhatsApp only delivers an
+                                    approved template first. The reply box
+                                    opens as soon as the driver answers.
+                                </p>
+                            }
+                            else
+                            {
+                                <p>
+                                    <strong>Outside the 24-hour window.</strong>
+                                    @FirstName(summary) last wrote more than a
+                                    day ago, so WhatsApp only delivers an
+                                    approved template. The reply box opens as
+                                    soon as the driver answers.
+                                </p>
+                            }
                             @if (_templates.Count == 0)
                             {
                                 <p class="messages__note">

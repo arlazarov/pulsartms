@@ -75,8 +75,31 @@
     color: ui.theme(text);
     text-decoration: none;
   }
+  // A driver to start a chat with is a button laid out as a row.
+  button#{&}__conversation {
+    width: 100%;
+    border-top: 0;
+    border-right: 0;
+    background: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  button#{&}__conversation:disabled {
+    cursor: default;
+  }
   &__conversation:hover {
     background: ui.theme(surface-soft);
+  }
+  &__new-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+  }
+  &__new-head h2 {
+    margin: 0;
+    font-size: ui.fs(body);
   }
   &__conversation.is-selected {
     border-left-color: ui.theme(accent);

@@ -169,3 +169,26 @@ public sealed record ApprovedTemplateRequest(
   int Parameters,
   string Text
 );
+
+// A driver a chat can be started with: only a WhatsApp number the
+// driver's contacts hold, never their ordinary phone. ConversationId is
+// the driver's conversation on the company's current number, if any.
+public sealed record MessagingDriver(
+  Guid Id,
+  string Name,
+  string WhatsAppPhone,
+  Guid? ConversationId
+);
+
+// Configured is false while the company has no WhatsApp number to send
+// from; Next continues the list, by name, when there is more.
+public sealed record MessagingDriversView(
+  IReadOnlyList<MessagingDriver> Drivers,
+  bool Configured,
+  bool More
+)
+{
+  public MessagingDriverCursor? Next { get; init; }
+}
+
+public sealed record MessagingDriverCursor(string Name, Guid Id);
