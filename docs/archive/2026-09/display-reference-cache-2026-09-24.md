@@ -101,5 +101,75 @@ it is a road replacement or it is not:
    - Existing plans keep re-reading until their next rebuild.
 
 **Recommendation:** 1, because fuel and ETA do not depend on the reference.
-The decision is whether a display-only reference may be written without
-a new plan version. Not built.
+
+## Built: option 1, the display attachment
+
+Taken as a routine design decision within the local scope, after this
+trace of who reads what:
+- **Geometry revision** is the driven road's. The movement recorder keys
+  its observations to it and closes the open segment when it changes. The
+  history (`ReadRoadAtAsync`) rebuilds a past road from the "route" splices
+  only.
+- **Plan version** is what fuel (`RouteVersion`), ETA (road plan id and
+  version) and the Client's geometry acknowledgment follow.
+
+A reference-only change needs neither, and no separate reference version
+is needed on the server: the exact-geometry cache keys on the manifest as
+well, and the display snapshot is invalidated after commit.
+
+**Change:**
+- `RoutePlanStorage.RecordChange` treats a manifest change that leaves the
+  route ranges and measures as they were as reference-only. No version
+  bump, no fuel refresh, no movement close, no geometry revision, no
+  history row.
+- The planning pass, the plan's own writer (`AdvanceAutomaticallyAsync`),
+  gives a from-position plan without reference stops the load's complete
+  base road, once. It saves through the same publication (truck work
+  re-read under the lock), the plan row's compare-and-swap (`PlanJson` and
+  manifest concurrency tokens) and after-commit invalidation.
+- A base road stamp (id, input hash, calculation time) read with the road
+  is checked again under the lock. A road rewritten meanwhile is not
+  attached, and the next pass attaches the new one.
+- No provider call is added. The rejected cache is not restored.
+
+**Regressions** (`AutomaticPlanningReferenceAttachmentTests`):
+- the attachment keeps version, geometry revision, history and route, and
+  a plan read then makes no base road read (it made one before);
+- a base road committed between the pass's read and its commit is not
+  attached;
+- a plan replaced meanwhile is not overwritten
+  (`DbUpdateConcurrencyException`, the other writer's row stays).
+
+Removing the storage rule, the stamp check or the attachment each fails
+them.
+
+**Measured on a fresh fixture** (`diagnostic-1hJ26N`):
+
+| Rows | Windows | Allocation MB (134 s) | Reference read MB | Base road parse MB |
+| --- | --- | ---: | ---: | ---: |
+| 8 of 10 without reference | 4, both builds | 1,286-1,358 | 181-264 | 101-229 |
+| all attached | new build | 893 | 0 | 0 |
+| all attached | old build | 911 | 0 | 0 |
+
+- **Existing rows recover on a truck's next planning pass.** Idle, the
+  fixture sends no telemetry, so no pass runs and 8 rows stayed
+  unattached. After 70 s of ticks and enqueues, all 10 were attached,
+  every plan kept geometry revision 1 and version 1, the history kept its
+  10 rows, and nothing was logged as a failure.
+- **The cost moved.** The stored reference is decoded with each plan load:
+  chunk decoding went from 175 to 223 MB and restore from 64 to 93 MB.
+  The net saving is about 400 MB per window.
+- **Container CPU** did not separate (11.0-15.8% across windows).
+
+**Left:** a map that already acknowledged the plan's version gets metadata
+only and does not see a reference that appears later. That was already true
+of the read-time attachment; a reference version in the acknowledgment
+would change it.
+
+**Consistency auditor:** no runtime rule. A plan without a stored reference
+is not invalid: the read path still attaches the reference in memory, so the
+display is correct either way, only dearer. Existing rows recover through
+the ordinary planning pass. The regressions above cover the invariant that
+matters: a reference never moves the driven road, its movement, fuel or ETA,
+and a changed road or a replaced plan is never overwritten by a late
+attachment.

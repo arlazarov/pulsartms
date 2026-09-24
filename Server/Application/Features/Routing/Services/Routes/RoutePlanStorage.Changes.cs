@@ -29,6 +29,11 @@ public static partial class RoutePlanStorage
     var old = entity.GeometryManifestJson is null
       ? null
       : Manifest(entity.GeometryManifestJson);
+    // Only the display reference changed: the driven road, its revision
+    // (which movement and history follow) and the plan version (which fuel
+    // and ETA follow) are the road's, and it did not move.
+    if (old is not null && SameRoad(old, next))
+      return;
     if (
       old is not null
       && SavedRouteReader.Plan(entity.PlanJson) is { } prior
@@ -114,4 +119,17 @@ public static partial class RoutePlanStorage
       }
     }
   }
+
+  private static bool SameRoad(
+    RouteChunkManifest old,
+    RouteChunkManifest next
+  ) =>
+    JsonSerializer.Serialize(
+      new { old.Route, old.Measures },
+      RoutingJson.Options
+    )
+    == JsonSerializer.Serialize(
+      new { next.Route, next.Measures },
+      RoutingJson.Options
+    );
 }

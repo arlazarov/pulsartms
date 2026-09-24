@@ -190,13 +190,28 @@ public sealed partial class RoutePlanningService
         plan.FuelPlan = null;
         plan.FuelRecommendations = null;
       }
-      if (
+      var tracked =
         before != JsonSerializer.Serialize(plan.Tracking, RoutingJson.Options)
-        || plan.LastReroutedAt == now
-      )
+        || plan.LastReroutedAt == now;
+      // A plan from the truck's position saved before its load's base road
+      // existed is given the road as its display reference once, here in its
+      // own writer, so reads stop looking for it. It is display only: the
+      // plan's version, driven road and movement stay as they are.
+      var shown = (plan.ReferenceRoute, plan.ReferenceStops);
+      var reference = await AttachReferenceAsync(plan, load, ct);
+      if (tracked || reference is not null)
       {
         await using var transaction = await publication.BeginAsync(work, ct);
         await profiles.RequireRoutingCurrentAsync(load, profile, ct);
+        if (
+          reference is not null
+          && !await IsBaseRoadAsync(load, reference, ct)
+        )
+        {
+          (plan.ReferenceRoute, plan.ReferenceStops) = shown;
+          if (!tracked)
+            return false;
+        }
         await store.SaveAsync(entity, plan, ct);
         await publication.CommitAsync(
           transaction,

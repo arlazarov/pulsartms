@@ -174,7 +174,9 @@ public sealed partial class RoutePlanningService
             old.ReferenceRoute ?? (old.FromCurrentPosition ? null : old.Route);
         if (reference is null)
         {
-          reference = await ReadReferenceAsync(load, request.Profile, ct);
+          reference = (
+            await ReadReferenceAsync(load, request.Profile, ct)
+          ).Route;
         }
       }
       var plan = new RoutePlan
