@@ -333,6 +333,29 @@ below was verified in the source before it was acted on or recorded.
     `DispatchResourceOptions` already does;
   - unused members in `Home`.
 
+**The four files last night flagged as sitting just under the old limit**,
+checked for trimming. Every commit to each was examined for removed
+comments and moved methods.
+- *No trimming found.* Four commits removed comments.
+  - Three moved them, verbatim, with their code to a new owner:
+    - `00b8cab9`, fuel rules;
+    - `438df4a3`, the ETA split;
+    - `b0cb06f5`, Google matching.
+  - `27f57a1d` re-worded one explanation into the planning policy that
+    now owns "where a run ends", and its message says so.
+- *`FuelPlanningService`* (six parts, 14 dependencies) is one owner, the
+  truck's fuel plan.
+  - Two parts are now past 400 lines: `FuelPlanningService` 420 and
+    `.Editing` 415. The growth is this morning's hand-over rule, which
+    belongs there. Keeping stops reuses the editor's pipeline rather than
+    copying it.
+  - The long `BuildCoreAsync` and `EditCoreAsync` are yesterday's finding 1
+    (the pipeline written twice). They wait for the owner's decision.
+- *`GoogleAddressGeocoder`* (260 lines) keeps transport, cache and its own
+  response since `b0cb06f5`.
+- *`EtaChainInputsService`* (382 lines, three parts) is one input
+  assembler, as last night found. `da34b0a6` removed its doubled plan read.
+
 **Still not reviewed:**
 - client pages and shared components outside the lists above;
 - browser modules other than those named last night;
