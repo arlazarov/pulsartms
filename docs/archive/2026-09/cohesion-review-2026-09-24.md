@@ -183,6 +183,19 @@ behavior check is unchanged. `ui-controls.md` had no size rule; its size
     `SourceWords.MovesCargo`;
   - the receipt refusal answers 409 on create but the default status on
     update and correction.
+  - **Stop-job words (yesterday's finding 3), catalogued tonight.** About 25
+    places read a stop's job outside `SourceWords`, in three ways:
+    - exact-case `"Pick Up" or "Pickup"`: the workspace rules and stop
+      display, Shipments, DispatchStopWorkspace;
+    - case-insensitive `Equals`: DispatchTable, DispatchLoadDialog;
+    - `Contains("pick")`: the FleetMap route label and ArrivalEstimate.
+
+    The workspace rule that rejects "Pickup" applies only to stops the
+    editor creates, and the editor writes the canonical words, so imported
+    spellings pass. No live bug was found; the readings differ only for
+    spellings not seen today. Load-status checks mostly accept "cancelled"
+    and "canceled"; the leg and switch statuses compared to "cancelled" are
+    PulsR's own vocabulary, not imported words.
 
 ## Not reviewed tonight
 
