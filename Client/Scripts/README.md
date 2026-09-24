@@ -63,7 +63,7 @@ costs at them, the road and the shape of the route it draws.
 
 A few modules are still whole screens written as one closure -
 `fleetMap.js`, `rendering/scene.ts`, `rendering/sceneLayers.ts`,
-`routes/routeLayer.ts`, `stations/stationLayer.ts`. They are pinned at
-their current length by `tests/architecture/scriptStructure.test.js`: they
-may shrink, never grow, and nothing new may start out over 300 lines. A
-module leaves that list by getting under 300, as the truck layer did.
+`routes/routeLayer.ts`, `stations/stationLayer.ts`. No line budget holds
+them: take one apart where it holds things with separate owners, as the
+truck layer's camera and playback were. See
+[cohesion review](../../docs/architecture/cohesion-review.md).

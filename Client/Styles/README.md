@@ -36,8 +36,8 @@ it, the editor a stop opens into. When a screen has several such things,
 it gets a folder, one file per part, and an `_index.scss` that names them
 in the order they are emitted. That order is the cascade - keep it.
 
-Files run to about 250 lines. Past that, the file is usually holding two
-things that want separating.
+A long file is a reason to look for two things held together, not a limit;
+see [cohesion review](../../docs/architecture/cohesion-review.md).
 
 ## The vocabulary in `base/tokens/`
 

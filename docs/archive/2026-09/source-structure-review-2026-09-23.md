@@ -1,7 +1,7 @@
 # Source structure review, 2026-09-23
 
 Scope: a report on existing maintained code under the reviewed-exception size
-policy ([source size](../../architecture/source-size.md)). No code was changed
+policy (since replaced by [cohesion review](../../architecture/cohesion-review.md)). No code was changed
 for this report; fixes are separate, reviewable commits after it. Size alone is
 not treated as evidence of a problem. The inventory was read from the tree at
 `4d468d4a`; line numbers may have moved since.

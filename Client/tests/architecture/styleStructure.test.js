@@ -76,15 +76,6 @@ test('a layer never reaches down into the one below it', () => {
   }
 });
 
-// Past about this length a stylesheet is holding two things that want
-// separating. Six screens were written as one file each before this.
-test('no stylesheet grows back into a screen of its own', () => {
-  for (const file of sheets) {
-    const lines = read(file).split('\n').length;
-    assert.ok(lines <= 280, `${file}: ${lines} lines - split it`);
-  }
-});
-
 // The map of the tree, in words, beside the tree itself.
 test('the tree explains itself to someone who has not seen it', () => {
   const guide = readFileSync(new URL('README.md', root), 'utf8');

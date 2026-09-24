@@ -138,10 +138,13 @@ Application commands directly.
   gaps with an owner and completion criterion; never label unimplemented
   checks as covered. Follow the coverage review in the auditor guide.
 
-## Source size review
+## Cohesion review
 
-- For maintained server C#, 400 lines triggers cohesion review rather than
-  mandatory mechanical splitting. Follow `docs/architecture/source-size.md`.
-  A reviewed, bounded size exception is allowed under that policy only;
-  dependency and layer checks must not be weakened. Browser/style limits
-  remain unchanged. Never compress formatting to satisfy a line count.
+- No size limit fails a check; size is only a signal to look. Review owner,
+  independent responsibilities, dependencies, public surface, lifecycle and
+  cost of change, following `docs/architecture/cohesion-review.md`.
+- A partial file does not fix a bloated class; extract a real owner or join
+  pieces split only for a count. Do not replace line limits with method or
+  dependency limits. Never compress formatting to change a number.
+- Layer, dependency, authentication, tenant, style-token and behavior checks
+  are unaffected and must not be weakened.
