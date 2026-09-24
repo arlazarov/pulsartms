@@ -56,19 +56,19 @@ public sealed class CreateDispatchHandler(
     );
     try
     {
-      var receipt = await db
-        .DispatchWorkspaceRevisions.AsNoTracking()
-        .SingleOrDefaultAsync(
-          x => x.IdempotencyKey == request.IdempotencyKey,
+      if (
+        await DispatchWorkspaceReceipts.FindAsync(
+          db,
+          request.IdempotencyKey,
+          hash,
+          actor.Value,
+          null,
           ct
-        );
-      if (receipt is not null)
-        return receipt.RequestHash == hash && receipt.RecordedBy == actor
-          ? RequestResponse<DispatchWorkspaceResponse>.Ok(
-            DispatchWorkspaceData.Read<DispatchWorkspaceResponse>(
-              receipt.SnapshotJson
-            )
-          )
+        ) is
+        { } replay
+      )
+        return replay.Answer is { } answer
+          ? RequestResponse<DispatchWorkspaceResponse>.Ok(answer)
           : Fail("The retry identity belongs to another operation.", 409);
       var ids = request.Stops.Select(x => x.Id).ToArray();
       if (
