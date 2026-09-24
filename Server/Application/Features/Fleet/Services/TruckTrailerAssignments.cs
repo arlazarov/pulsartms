@@ -314,7 +314,7 @@ public static class TruckTrailerAssignments
   // truck's trailer.
   public static void Published(ReadCache reads)
   {
-    reads.Invalidate("fleet-catalog");
-    reads.Invalidate("board");
+    reads.Invalidate(ReadGroups.FleetCatalog);
+    reads.Invalidate(ReadGroups.Board);
   }
 }

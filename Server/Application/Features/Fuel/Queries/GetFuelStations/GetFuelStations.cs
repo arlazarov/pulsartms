@@ -75,7 +75,7 @@ public class GetFuelStationsHandler(
     CancellationToken cancellationToken
   ) =>
     reads.GetAsync(
-      "fuel",
+      ReadGroups.Fuel,
       date.ToString("O"),
       () => LoadAsync(date, cancellationToken),
       ct: cancellationToken

@@ -20,7 +20,7 @@ public sealed class PlanningSettingsService(IAppDbContext db, ReadCache reads)
   {
     ct.ThrowIfCancellationRequested();
     return Project(
-      await reads.GetAsync("settings", "fleet", () => LoadAsync(ct))
+      await reads.GetAsync(ReadGroups.Settings, "fleet", () => LoadAsync(ct))
     );
   }
 
@@ -93,7 +93,7 @@ public sealed class PlanningSettingsService(IAppDbContext db, ReadCache reads)
       entity.Revision++;
       entity.UpdatedAt = DateTime.UtcNow;
       await db.SaveChangesAsync(ct);
-      reads.Invalidate("settings");
+      reads.Invalidate(ReadGroups.Settings);
       return new(preferences, entity.Revision, entity.UpdatedAt);
     }
     finally

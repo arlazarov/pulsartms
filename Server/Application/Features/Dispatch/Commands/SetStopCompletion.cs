@@ -265,12 +265,12 @@ public sealed class SetStopCompletionHandler(
           return Conflict();
         throw;
       }
-      reads.Invalidate("dispatch");
-      reads.Invalidate("board");
-      reads.Invalidate("execution");
+      reads.Invalidate(ReadGroups.Dispatch);
+      reads.Invalidate(ReadGroups.Board);
+      reads.Invalidate(ReadGroups.Execution);
       if (leg is not null)
         reads.Invalidate($"route:{stop.DispatchId}:leg:{leg.Id}");
-      reads.Invalidate("route-previews");
+      reads.Invalidate(ReadGroups.RoutePreviews);
       reads.Invalidate($"route:{stop.DispatchId}");
       preparation.MarkDirty(stop.DispatchId);
       foreach (var id in trucks.Distinct())

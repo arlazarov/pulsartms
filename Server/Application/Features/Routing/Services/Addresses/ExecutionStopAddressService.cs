@@ -71,9 +71,7 @@ public sealed class ExecutionStopAddressService(
     );
     await db.SaveChangesAsync(ct);
     await transaction.CommitAsync(ct);
-    foreach (
-      var key in new[] { "dispatch", "board", "execution", "route-previews" }
-    )
+    foreach (var key in ReadGroups.Work)
       reads.Invalidate(key);
     preparation.MarkTruckDirty(leg.TruckId, reads);
     foreach (var link in leg.Loads)

@@ -123,9 +123,9 @@ public sealed class UpdateFleetConfigurationHandler(
       db.Entry(resource).State = EntityState.Detached;
       return Conflict();
     }
-    reads.Invalidate("fleet-catalog");
-    reads.Invalidate("board");
-    reads.Invalidate("route-previews");
+    reads.Invalidate(ReadGroups.FleetCatalog);
+    reads.Invalidate(ReadGroups.Board);
+    reads.Invalidate(ReadGroups.RoutePreviews);
     memory.Remove("fleet-driver-ids");
     memory.Remove("assignment-sync-signature");
     memory.Remove("dispatch-sync-signature");

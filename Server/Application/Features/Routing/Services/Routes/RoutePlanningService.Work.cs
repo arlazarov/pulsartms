@@ -40,9 +40,9 @@ public sealed partial class RoutePlanningService
           db.LoadExecutionLegs.Any(link => link.DispatchId == x.Id)
         ))
         .SingleOrDefaultAsync(ct);
-    var key = $"{id}:source:{reads.Generation("execution")}";
+    var key = $"{id}:source:{reads.Generation(ReadGroups.Execution)}";
     var source =
-      (await reads.GetAsync("dispatch", key, Load))
+      (await reads.GetAsync(ReadGroups.Dispatch, key, Load))
       ?? throw new RoutePlanningException("Dispatch not found.");
     return await ResolveAssignmentAsync(
       source.Load,
@@ -70,7 +70,7 @@ public sealed partial class RoutePlanningService
     )
     {
       var execution = await reads.GetAsync(
-        "execution",
+        ReadGroups.Execution,
         $"{load.Id}:{executionLegId}:{truckId}",
         () =>
           mediator.Send(

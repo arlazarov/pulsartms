@@ -141,7 +141,7 @@ public sealed class RoutePlanStore(
   internal void Invalidate(Guid dispatchId, Guid? executionLegId = null)
   {
     reads.Invalidate(CacheKey(dispatchId, executionLegId));
-    reads.Invalidate("route-previews");
+    reads.Invalidate(ReadGroups.RoutePreviews);
   }
 
   public async Task SaveBuiltAsync(

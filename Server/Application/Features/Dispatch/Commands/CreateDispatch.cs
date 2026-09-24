@@ -144,8 +144,8 @@ public sealed class CreateDispatchHandler(
       history.SnapshotJson = DispatchWorkspaceData.Write(saved!.Response);
       await db.SaveChangesAsync(ct);
       await tx.CommitAsync(ct);
-      reads.Invalidate("dispatch");
-      reads.Invalidate("board");
+      reads.Invalidate(ReadGroups.Dispatch);
+      reads.Invalidate(ReadGroups.Board);
       preparation.MarkDirty(load.Id);
       return RequestResponse<DispatchWorkspaceResponse>.Ok(saved.Response);
     }

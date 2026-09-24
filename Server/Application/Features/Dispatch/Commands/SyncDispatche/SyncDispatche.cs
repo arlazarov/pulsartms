@@ -78,8 +78,8 @@ public partial class SyncDispatchesCommandHandler(
       return RequestResponse<int>.Fail("Load import is unavailable.", 503);
     providerKey = dispatchProvider.Key;
     var memoryKey = $"dispatch-sync-signature:{providerKey}";
-    var catalogGeneration = reads.Generation("fleet-catalog");
-    var dispatchGeneration = reads.Generation("dispatch");
+    var catalogGeneration = reads.Generation(ReadGroups.FleetCatalog);
+    var dispatchGeneration = reads.Generation(ReadGroups.Dispatch);
     IReadOnlyList<ExternalDispatch> allSources;
     using (PerformanceStages.Start("dispatch-sync", "provider-wait"))
       allSources = await dispatchProvider.GetDispatchesAsync(cancellationToken);
@@ -234,8 +234,8 @@ public partial class SyncDispatchesCommandHandler(
     await transaction.CommitAsync(cancellationToken);
     if (changed > 0)
     {
-      reads.Invalidate("dispatch");
-      reads.Invalidate("board");
+      reads.Invalidate(ReadGroups.Dispatch);
+      reads.Invalidate(ReadGroups.Board);
       // A load picked up or moved changes which trailer its truck has now.
       await TruckTrailerAssignments.RefreshAsync(
         dbContext,
@@ -244,8 +244,8 @@ public partial class SyncDispatchesCommandHandler(
       );
       if (executions.Count > 0)
       {
-        reads.Invalidate("execution");
-        reads.Invalidate("route-previews");
+        reads.Invalidate(ReadGroups.Execution);
+        reads.Invalidate(ReadGroups.RoutePreviews);
         foreach (var leg in executions)
         {
           affectedTrucks.Add(leg.TruckId);
@@ -291,7 +291,7 @@ public partial class SyncDispatchesCommandHandler(
       memoryKey,
       new Snapshot(
         catalogGeneration,
-        reads.Generation("dispatch"),
+        reads.Generation(ReadGroups.Dispatch),
         fingerprints
           .Take(8192)
           .ToDictionary(

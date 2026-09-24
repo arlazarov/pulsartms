@@ -46,7 +46,7 @@ public class SyncIftaTaxRatesHandler(
 
     var count = await dbContext.SaveChangesAsync(cancellationToken);
     if (count > 0)
-      reads.Invalidate("fuel");
+      reads.Invalidate(ReadGroups.Fuel);
 
     return RequestResponse<int>.Ok(count);
   }

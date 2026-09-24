@@ -208,9 +208,7 @@ public sealed class UpdateDispatchWorkspaceHandler(
       history.SnapshotJson = DispatchWorkspaceData.Write(saved!.Response);
       await db.SaveChangesAsync(ct);
       await transaction.CommitAsync(ct);
-      foreach (
-        var key in new[] { "dispatch", "board", "execution", "route-previews" }
-      )
+      foreach (var key in ReadGroups.Work)
         reads.Invalidate(key);
       reads.Invalidate($"route:{load.Id}");
       preparation.MarkDirty(load.Id);

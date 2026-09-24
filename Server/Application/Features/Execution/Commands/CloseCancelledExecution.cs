@@ -146,9 +146,7 @@ public sealed class CloseCancelledExecutionHandler(
       preparation.MarkTruckDirty(leg.TruckId, reads);
       reads.Invalidate($"route:{command.DispatchId}");
       reads.Invalidate($"route:{command.DispatchId}:leg:{leg.Id}");
-      foreach (
-        var key in new[] { "dispatch", "board", "execution", "route-previews" }
-      )
+      foreach (var key in ReadGroups.Work)
         reads.Invalidate(key);
       return RequestResponse<ExecutionSourceApplyResult>.Ok(result);
     }

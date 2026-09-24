@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Caching;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Options;
 using Application.Features.Fuel.Services;
@@ -228,7 +229,9 @@ public sealed class FuelStationStatusOperation(
     // status changes, so it would keep being offered until the entry aged
     // out on its own.
     if (changed)
-      scope.ServiceProvider.GetRequiredService<IReadCache>().Invalidate("fuel");
+      scope
+        .ServiceProvider.GetRequiredService<IReadCache>()
+        .Invalidate(ReadGroups.Fuel);
     if (asked > 0)
       logger.LogInformation(
         "FuelStationStatus Asked={Asked} Closed={Closed} Due={Due}",

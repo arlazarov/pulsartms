@@ -54,8 +54,8 @@ public sealed class TruckPlanningInputsReader(
     var asOf = DateTimeOffset.UtcNow;
     var key =
       $"{asOf.UtcDateTime:yyyy-MM-dd}:"
-      + $"{reads.Generation("fleet-catalog")}:"
-      + $"{reads.Generation("settings")}";
+      + $"{reads.Generation(ReadGroups.FleetCatalog)}:"
+      + $"{reads.Generation(ReadGroups.Settings)}";
     var captured = await reads.GetManyAsync<CapturedWork>(
       "planning-inputs",
       ids,

@@ -13,7 +13,7 @@ public sealed class PlanningSummaryReader(
 )
 {
   public string Signature(TruckPlanningInputs work) =>
-    $"{work.Itinerary.InputSignature}:{reads.Generation("settings")}";
+    $"{work.Itinerary.InputSignature}:{reads.Generation(ReadGroups.Settings)}";
 
   public AutomaticPlanningResult Read(
     TruckPlanningInputs work,

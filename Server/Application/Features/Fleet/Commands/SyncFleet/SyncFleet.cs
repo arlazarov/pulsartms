@@ -79,8 +79,8 @@ public class SyncFleetHandler(
       cache.Remove("fleet-driver-ids");
       cache.Remove("assignment-sync-signature");
       cache.Remove("dispatch-sync-signature");
-      reads.Invalidate("fleet-catalog");
-      reads.Invalidate("board");
+      reads.Invalidate(ReadGroups.FleetCatalog);
+      reads.Invalidate(ReadGroups.Board);
     }
 
     return RequestResponse<int>.Ok(count);

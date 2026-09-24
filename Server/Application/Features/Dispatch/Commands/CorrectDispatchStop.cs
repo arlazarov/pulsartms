@@ -331,9 +331,7 @@ public sealed class CorrectDispatchStopHandler(
       history.SnapshotJson = DispatchWorkspaceData.Write(saved!.Response);
       await db.SaveChangesAsync(ct);
       await transaction.CommitAsync(ct);
-      foreach (
-        var key in new[] { "dispatch", "board", "execution", "route-previews" }
-      )
+      foreach (var key in ReadGroups.Work)
         reads.Invalidate(key);
       reads.Invalidate($"route:{state.Load.Id}");
       preparation.MarkDirty(state.Load.Id);

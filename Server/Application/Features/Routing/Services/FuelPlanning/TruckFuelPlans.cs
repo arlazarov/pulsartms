@@ -161,7 +161,7 @@ public sealed class TruckFuelPlans(
     {
       var date = FuelPricingDate.FromUtc(DateTime.UtcNow);
       var key =
-        $"fuel-prices:{date}:{reads.Generation("fuel")}:{PlanningSettingsService.Signature(state.Profile)}";
+        $"fuel-prices:{date}:{reads.Generation(ReadGroups.Fuel)}:{PlanningSettingsService.Signature(state.Profile)}";
       var signature = await memory.PricesAsync(
         key,
         async () =>
@@ -227,7 +227,7 @@ public sealed class TruckFuelPlans(
           .Order()
           .ToArray();
         var calendarKey =
-          $"fuel-calendar:{string.Join(',', dates)}:{reads.Generation("fuel")}";
+          $"fuel-calendar:{string.Join(',', dates)}:{reads.Generation(ReadGroups.Fuel)}";
         var calendar = await memory.PricesAsync(
           calendarKey,
           async () =>
@@ -254,7 +254,7 @@ public sealed class TruckFuelPlans(
             var day in plan.FuelPlan.Stops.Select(x => x.PriceDate).Distinct()
           )
             quotes[day] = await memory.QuotesAsync(
-              $"fuel-quotes:{day}:{reads.Generation("fuel")}:{PlanningSettingsService.Signature(state.Profile)}",
+              $"fuel-quotes:{day}:{reads.Generation(ReadGroups.Fuel)}:{PlanningSettingsService.Signature(state.Profile)}",
               async () =>
                 await fuelPrices.ReadAsync(day, ct) is { } stations
                   ? FuelPriceMateriality.Quotes(

@@ -12,7 +12,7 @@ public class FleetCache(ReadCache reads)
     CancellationToken cancellationToken = default
   ) =>
     reads.GetAsync<IReadOnlyList<FleetTruckInfo>>(
-      "fleet-catalog",
+      ReadGroups.FleetCatalog,
       CacheKey,
       async () =>
         await dbContext

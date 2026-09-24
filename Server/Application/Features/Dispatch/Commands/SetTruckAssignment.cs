@@ -207,10 +207,10 @@ public sealed class SetTruckAssignmentHandler(
         db.Entry(load).State = EntityState.Detached;
         return Fail("Assignment changed. Reload the load.", 409);
       }
-      reads.Invalidate("dispatch");
-      reads.Invalidate("board");
-      reads.Invalidate("execution");
-      reads.Invalidate("route-previews");
+      reads.Invalidate(ReadGroups.Dispatch);
+      reads.Invalidate(ReadGroups.Board);
+      reads.Invalidate(ReadGroups.Execution);
+      reads.Invalidate(ReadGroups.RoutePreviews);
       reads.Invalidate($"route:{load.Id}");
       preparation.MarkDirty(load.Id);
       if (previous is { } oldTruck)

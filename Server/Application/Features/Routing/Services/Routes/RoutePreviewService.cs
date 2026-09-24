@@ -67,9 +67,9 @@ public sealed class RoutePreviewService(
 
   private string Generation() =>
     $"{DateOnly.FromDateTime(DateTime.UtcNow):O}:"
-    + $"{reads.Generation("board")}:{reads.Generation("dispatch")}:"
-    + $"{reads.Generation("settings")}:{reads.Generation("route-previews")}:"
-    + $"{reads.Generation("execution")}";
+    + $"{reads.Generation(ReadGroups.Board)}:{reads.Generation(ReadGroups.Dispatch)}:"
+    + $"{reads.Generation(ReadGroups.Settings)}:{reads.Generation(ReadGroups.RoutePreviews)}:"
+    + $"{reads.Generation(ReadGroups.Execution)}";
 
   private List<AutomaticPlanningResult>? ReadCached(string generation) =>
     cache.TryGetValue<SavedPreview>(CacheKey, out var saved)

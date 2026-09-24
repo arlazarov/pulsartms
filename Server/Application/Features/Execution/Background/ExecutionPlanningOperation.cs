@@ -101,9 +101,7 @@ public sealed class ExecutionPlanningOperation(
         .CapturePlannedAsync(work.ExecutionLegId, ct);
     }
     var reads = services.GetRequiredService<ReadCache>();
-    foreach (
-      var key in new[] { "dispatch", "board", "execution", "route-previews" }
-    )
+    foreach (var key in ReadGroups.Work)
       reads.Invalidate(key);
     reads.Invalidate($"route:{work.DispatchId}");
     reads.Invalidate($"route:{work.DispatchId}:leg:{work.ExecutionLegId}");

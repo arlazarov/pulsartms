@@ -103,8 +103,8 @@ public sealed class SyncAssignmentsHandler(
     cache.Set("assignment-sync-signature", signature, TimeSpan.FromMinutes(30));
     if (count > 0)
     {
-      reads.Invalidate("fleet-catalog");
-      reads.Invalidate("board");
+      reads.Invalidate(ReadGroups.FleetCatalog);
+      reads.Invalidate(ReadGroups.Board);
     }
     return RequestResponse<int>.Ok(count);
   }

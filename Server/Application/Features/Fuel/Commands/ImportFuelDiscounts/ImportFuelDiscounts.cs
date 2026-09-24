@@ -121,7 +121,7 @@ public class ImportFuelDiscountsHandler(
       );
       count += await dbContext.SaveChangesAsync(cancellationToken);
       await transaction.CommitAsync(cancellationToken);
-      reads.Invalidate("fuel");
+      reads.Invalidate(ReadGroups.Fuel);
     }
     return RequestResponse<int>.Ok(count);
   }

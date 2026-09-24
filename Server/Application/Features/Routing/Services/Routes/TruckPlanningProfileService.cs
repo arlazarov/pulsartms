@@ -169,6 +169,6 @@ public sealed class TruckPlanningProfileService(
     reads.Invalidate($"profile:{truckId}");
     reads.InvalidateItem("profile-rows", truckId);
     reads.InvalidateItem("planning-inputs", truckId);
-    reads.Invalidate("route-previews");
+    reads.Invalidate(ReadGroups.RoutePreviews);
   }
 }

@@ -61,7 +61,7 @@ public sealed class StopAddressService(
       {
         await db.SaveChangesAsync(ct);
         Copy(stop, source);
-        cache.Invalidate("dispatch");
+        cache.Invalidate(ReadGroups.Dispatch);
         Notify([stop], parents);
       }
       catch (DbUpdateConcurrencyException)
@@ -99,7 +99,7 @@ public sealed class StopAddressService(
         : null;
     }
     await db.SaveChangesAsync(ct);
-    cache.Invalidate("dispatch");
+    cache.Invalidate(ReadGroups.Dispatch);
     Notify(expired, parents);
   }
 

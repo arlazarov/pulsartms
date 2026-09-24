@@ -1,3 +1,4 @@
+using Application.Caching;
 using Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,7 +36,7 @@ public sealed class FleetNames(IAppDbContext db, IReadCache? reads = null)
     catalog ??= reads is null
       ? await LoadAsync(ct)
       : await reads.GetAsync(
-        "fleet-catalog",
+        ReadGroups.FleetCatalog,
         "names",
         () => LoadAsync(ct),
         ct: ct

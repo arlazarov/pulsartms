@@ -213,12 +213,12 @@ public sealed class SetStopOperationHandler(
         db.Entry(stop).State = EntityState.Detached;
         return Fail("This stop changed. Reload the load.", 409);
       }
-      reads.Invalidate("dispatch");
-      reads.Invalidate("board");
-      reads.Invalidate("execution");
+      reads.Invalidate(ReadGroups.Dispatch);
+      reads.Invalidate(ReadGroups.Board);
+      reads.Invalidate(ReadGroups.Execution);
       if (leg is not null)
         reads.Invalidate($"route:{load.Id}:leg:{leg.Id}");
-      reads.Invalidate("route-previews");
+      reads.Invalidate(ReadGroups.RoutePreviews);
       reads.Invalidate($"route:{load.Id}");
       preparation.MarkDirty(load.Id);
       var trucks = load

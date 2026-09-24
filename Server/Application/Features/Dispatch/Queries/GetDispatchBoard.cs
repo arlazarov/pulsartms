@@ -79,7 +79,7 @@ public class GetDispatchBoardHandler(
       );
     var stage = Stopwatch.GetTimestamp();
     var index = await reads.GetAsync(
-      "board",
+      ReadGroups.Board,
       $"index:{date:O}:{request.TruckId}:{request.IncludePlanned}:{request.IncludeOverdue}",
       LoadIndex
     );

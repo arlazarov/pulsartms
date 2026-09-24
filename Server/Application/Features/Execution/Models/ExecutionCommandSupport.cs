@@ -75,9 +75,7 @@ internal static class ExecutionCommandSupport
     }
     foreach (var id in legs.Select(x => x.TruckId).Distinct())
       preparation.MarkTruckDirty(id, reads);
-    foreach (
-      var key in new[] { "dispatch", "board", "execution", "route-previews" }
-    )
+    foreach (var key in ReadGroups.Work)
       reads.Invalidate(key);
   }
 
