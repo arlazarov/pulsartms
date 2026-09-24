@@ -101,11 +101,22 @@ behavior check is unchanged. `ui-controls.md` had no size rule; its size
   - *Measured* (traced idle fixture): reading the load's base road to attach
     a display reference was the largest single allocation owner. It went
     from 880 MB to 364 MB per ~190 s after the converter in `a972cb54`.
-  - *Cause:* a saved plan without reference stops never keeps what a read
-    found, so every read loads and parses the whole base road again.
-  - *Fix needs:* a versioned owner under the consistency contract, since
-    the reference is mutated by display trimming and so cannot be shared as
-    is. Not started.
+  - *Cause, from the code:* a build from the truck's current position
+    (`RoutePlanningService.BuildAsync`) calculates only the road from the
+    truck, never the load's base road. When the background base-route
+    operation later writes that road, every read finds it
+    (`ReadReferenceAsync`), transfers and parses the whole row, attaches it
+    in memory, and never keeps it. The row is rewritten in place (same id,
+    new JSON), so its version is its input hash plus calculation time.
+  - *Two ways out, neither started:*
+    - Attach and save the reference once, in the writer. That changes the
+      stored geometry: a chunk write, and possibly the geometry revision
+      that fuel's saved-road validation compares. Not verified.
+    - Remember the parsed reference by row version. It must be handed out
+      as a fresh shell per read, because display trimming
+      (`PlanningReadService.TrimForDisplay`) reassigns its legs and points.
+  - *Either one* needs a controlled-interleaving test under the consistency
+    contract.
 - **`Messages.razor.cs`:** the composer (draft, send, template, file,
   retry, claim) is its own component with its own state and lifecycle. The
   formatting helpers could be shared with `MessageItem`.
