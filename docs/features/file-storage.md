@@ -16,7 +16,12 @@ default changes; the UI is the same whichever holds a file.
 
 The default cannot be disconnected until another is chosen, and no
 connection that holds files, or uploads on their way to it, can be
-disconnected: they would silently become unreadable. A company that has
+disconnected: they would silently become unreadable. The check and the
+disconnect are one serializable transaction, and an upload records its
+file in one that reads the connection as connected, so an upload and a
+disconnect that interleave cannot both commit (`StoragePostgresTests`).
+Rows left from before that fence are reported by the consistency auditor
+(`storage.file-on-disconnected-storage`), read only. A company that has
 chosen nothing gets PulsR storage on its first file, but only on a server
 where PulsR storage is set up; a server without it never substitutes
 another store.

@@ -1,3 +1,4 @@
+using System.Data;
 using Application.Models;
 using Domain.Entities.Storage;
 
@@ -149,36 +150,59 @@ public sealed class StorageConnectionHandlers(
     CancellationToken ct
   )
   {
-    var connection = await db.StorageConnections.SingleOrDefaultAsync(
-      x => x.Id == request.Id,
-      ct
-    );
-    if (connection is null)
-      return Fail("Storage connection not found.", 404);
-    if (connection.Revision != request.ExpectedRevision)
-      return Fail("The connection changed. Reload and try again.", 409);
-    if (connection.IsDefault)
-      return Fail("Choose another default storage first.", 409);
-    if (connection.Kind == StorageKinds.Managed)
-      return Fail("PulsR storage cannot be disconnected.", 409);
-    // Files there, or on their way there, would silently become unreadable.
-    if (
-      await db.StoredFiles.AnyAsync(
-        x =>
-          x.ConnectionId == connection.Id
-          && x.State != StoredFileStates.Failed
-          && x.State != StoredFileStates.Rejected,
+    // The check for files and the disconnect are one serializable
+    // transaction, and an upload records its file in one that reads the
+    // connection: when the two interleave, the database refuses one of
+    // them, so no file is left pointing at a disconnected storage.
+    try
+    {
+      await using var transaction = await db.Database.BeginTransactionAsync(
+        IsolationLevel.Serializable,
         ct
-      )
-    )
-      return Fail(
-        "Files are stored there. They must be moved before it is disconnected.",
-        409
       );
-    connection.State = StorageConnectionStates.Disconnected;
-    connection.ProtectedSecret = null;
-    connection.LastError = null;
-    return await SaveAsync(connection, clock.GetUtcNow().UtcDateTime, ct);
+      var connection = await db.StorageConnections.SingleOrDefaultAsync(
+        x => x.Id == request.Id,
+        ct
+      );
+      if (connection is null)
+        return Fail("Storage connection not found.", 404);
+      if (connection.Revision != request.ExpectedRevision)
+        return Fail("The connection changed. Reload and try again.", 409);
+      if (connection.IsDefault)
+        return Fail("Choose another default storage first.", 409);
+      if (connection.Kind == StorageKinds.Managed)
+        return Fail("PulsR storage cannot be disconnected.", 409);
+      // Files there, or on their way there, would silently become
+      // unreadable.
+      if (
+        await db.StoredFiles.AnyAsync(
+          x =>
+            x.ConnectionId == connection.Id
+            && x.State != StoredFileStates.Failed
+            && x.State != StoredFileStates.Rejected,
+          ct
+        )
+      )
+        return Fail(
+          "Files are stored there. They must be moved before it is disconnected.",
+          409
+        );
+      connection.State = StorageConnectionStates.Disconnected;
+      connection.ProtectedSecret = null;
+      connection.LastError = null;
+      var saved = await SaveAsync(
+        connection,
+        clock.GetUtcNow().UtcDateTime,
+        ct
+      );
+      if (saved.Success)
+        await transaction.CommitAsync(ct);
+      return saved;
+    }
+    catch (Exception ex) when (db.IsWriteConflict(ex))
+    {
+      return Fail("The connection changed. Reload and try again.", 409);
+    }
   }
 
   public async Task<RequestResponse<StorageConnectionView>> Handle(

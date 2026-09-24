@@ -1,3 +1,4 @@
+using System.Data;
 using Domain.Entities.Storage;
 using Domain.Rules.Storage;
 using Microsoft.Extensions.Options;
@@ -56,6 +57,29 @@ public sealed class FileStore(
         throw new ArgumentException("The file size is not allowed.");
       var now = clock.GetUtcNow().UtcDateTime;
       var folder = string.Join('/', StorageNaming.Folder(request.Folder ?? []));
+      // Reserved before the transaction: a provider call is not held
+      // inside it, and a key never used makes no object.
+      var key = await provider.ReserveKeyAsync(
+        Target(connection),
+        request.FileId,
+        ct
+      );
+      // The upload is recorded in a serializable transaction that reads
+      // the connection as still connected, so a disconnect committed in
+      // between makes one of the two fail (see DisconnectStorageCommand).
+      await using var transaction = await db.Database.BeginTransactionAsync(
+        IsolationLevel.Serializable,
+        ct
+      );
+      if (
+        !await db.StorageConnections.AnyAsync(
+          x =>
+            x.Id == connection.Id
+            && x.State == StorageConnectionStates.Connected,
+          ct
+        )
+      )
+        throw new StorageUnavailableException("The connection is not usable.");
       // Readable only: two files may still race to one name, which changes
       // nothing about either file's identity.
       var taken = await db
@@ -69,11 +93,7 @@ public sealed class FileStore(
         Id = request.FileId,
         CompanyId = company,
         ConnectionId = connection.Id,
-        ObjectKey = await provider.ReserveKeyAsync(
-          Target(connection),
-          request.FileId,
-          ct
-        ),
+        ObjectKey = key,
         ContentType = request.ContentType,
         Name = StorageNaming.Unique(StorageNaming.Segment(request.Name), taken),
         Folder = folder,
@@ -90,11 +110,15 @@ public sealed class FileStore(
       try
       {
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
       }
-      catch (DbUpdateException)
+      catch (Exception ex)
+        when (ex is DbUpdateException || db.IsWriteConflict(ex))
       {
-        // Another first attempt recorded this id; its record decides.
+        // Another first attempt recorded this id, and its record decides;
+        // or a disconnect won, and nothing was recorded.
         db.Entry(file).State = EntityState.Detached;
+        await transaction.RollbackAsync(CancellationToken.None);
         file =
           await FileAsync(request.FileId, ct)
           ?? throw new StorageUnavailableException(
@@ -362,32 +386,4 @@ public sealed class FileStore(
   private Guid Company() =>
     companies.Id
     ?? throw new InvalidOperationException("Files belong to a company.");
-}
-
-// FileId is the caller's stable identity for this upload and Sha256 (lower
-// case hex) the content it promises: a retry with the same id and content
-// completes or returns the same file, never a second one; the same id with
-// other content is refused.
-//
-// Name and Folder are how the file reads outside PulsR (see StorageLayouts);
-// OriginalName is the name it arrived with, kept for reference.
-public sealed record StoredFileRequest(
-  Guid FileId,
-  string Name,
-  string ContentType,
-  long Length,
-  string Sha256,
-  IReadOnlyList<string>? Folder = null,
-  string? OriginalName = null,
-  Guid? ConnectionId = null
-);
-
-// Uploads streaming at once in this process, shared by every scope.
-public sealed class StorageUploadGate(IOptions<StorageOptions> options)
-{
-  public SemaphoreSlim Slots { get; } =
-    new(
-      options.Value.MaximumConcurrentUploads,
-      options.Value.MaximumConcurrentUploads
-    );
 }
