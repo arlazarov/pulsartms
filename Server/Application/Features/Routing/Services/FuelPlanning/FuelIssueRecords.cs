@@ -257,8 +257,7 @@ public sealed class FuelIssueRecords(
       {
         opened = await publication.BeginAsync(saved.TruckId, ct);
       }
-      catch (RoutePlanningException busy)
-        when (busy.RetryAfter != DateTime.MaxValue && attempt < 10)
+      catch (RoutePlanningException busy) when (busy.Busy && attempt < 10)
       {
         await Task.Delay(TimeSpan.FromMilliseconds(500), time, ct);
       }

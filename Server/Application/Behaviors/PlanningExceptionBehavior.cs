@@ -40,7 +40,7 @@ public sealed class PlanningExceptionBehavior<TRequest, TData>
     }
     catch (RoutePlanningException ex) when (request is IPlanningRequest)
     {
-      return RequestResponse<TData>.Fail(ex.Message);
+      return RequestResponse<TData>.Fail(ex.Message, ex.Busy ? 409 : 400);
     }
   }
 }

@@ -282,10 +282,7 @@ public sealed class FuelIssueRecordsTests
       CancellationToken ct
     ) =>
       ++Calls <= busy
-        ? throw new RoutePlanningException(
-          "Planning inputs are being updated. Retry planning shortly.",
-          DateTime.UtcNow.AddSeconds(5)
-        )
+        ? throw RoutePlanningException.InputsBusy(DateTime.UtcNow.AddSeconds(5))
         : inner.BeginAsync(truckId, ct);
   }
 

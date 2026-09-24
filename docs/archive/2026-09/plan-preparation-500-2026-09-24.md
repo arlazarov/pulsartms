@@ -85,8 +85,56 @@ retry that answer on its base road and deadhead steps too. After that fix,
 one more fixture (`diagnostic-ezKDoN`) prepared its ten trucks with all 37
 requests passing (`diagnostic-sFJZV2`). That is one run, not a rate.
 
-**Open:** a handler that lets this retry answer escape reaches
-`ApiExceptionHandler`, which logs it as an error and answers 500. The API
-layer may not reference the Domain exception, so it cannot map it there.
-The planning handlers catch it and answer with a message. Not every
-handler that reaches the publication scope was audited.
+## Audit: the busy answer outside planning
+
+The "being updated" answer comes only from
+`PlanningPublicationScope.BeginAsync`. The writer triggers take the
+revision rows with plain `FOR SHARE` and upsert, so they wait rather than
+raise it. Every path to the scope was traced:
+
+- **HTTP.** Every MediatR request that reaches the scope carries
+  `IPlanningRequest`:
+  - planning reads and preparation;
+  - route build and choice;
+  - fuel build, edit, reset and recalculation;
+  - hand-over preview, confirmation and WhatsApp send;
+  - truck route profile.
+
+  None reached `ApiExceptionHandler`. `PlanningExceptionBehavior` answered
+  it as a 400 "bad request"; it now answers 409, the conflict status the
+  planning settings conflicts already use. Other planning refusals stay
+  400. A request that is not a planning request is not answered there, so
+  an unexpected failure still reaches the HTTP boundary.
+- **HTTP handlers that use the owners but not the scope:**
+  - reads: the board, load detail and workspace, mileage, ETA display,
+    next-load routes and the dispatch map route (these queue preparation);
+  - stop completion, which writes in its own transaction.
+- **Background:**
+  - the base-route operation retries at the retry time;
+  - the synchronization job runner treats retryable answers as retries;
+  - the summary operation records it as that pass's refusal;
+  - planning refresh goes through `AutomaticPlanningService`, which answers
+    with the message and forgets it at the retry time;
+  - the ETA refresh worker logged it as "ETA refresh failed", a warning
+    with a stack. It now logs it at debug, and the next demand refreshes.
+
+The kind is now explicit: `RoutePlanningException.Busy`, created by
+`RoutePlanningException.InputsBusy`. Before, callers keyed on "has a retry
+time", which a provider's back-off also has.
+
+Regressions:
+- the behavior maps busy to 409 and other refusals to 400, and leaves
+  other requests alone;
+- on the isolated PostgreSQL fixture, a truck lock held by another
+  connection answers a planning request with 409 and no failed command.
+
+Each was checked by removing the mapping and by dropping the kind. The
+ETA worker's log level has no test: the worker resolves the concrete
+forecast service from a scope.
+
+**Remaining:**
+- the Client shows a 409 like any failed request, with the message, and
+  does not retry on its own;
+- writers whose triggers meet a deadlock (`40P01`) under contention get a
+  database error in their own handler; only stop completion was checked
+  to answer it as a conflict.

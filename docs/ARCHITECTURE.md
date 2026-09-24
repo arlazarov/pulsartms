@@ -302,8 +302,11 @@ A known truck publication shares the global guard and exclusively owns its
 truck revision, acquired with SKIP LOCKED so that contention is not a database
 error. Unresolved source membership and automatic exchange-rate publication own
 the global guard exclusively. Busy ownership is an expected planning retry with
-a retry time, including provider-wrapped serialization errors; callers must not
-report it as a failure or remember it past that time.
+a retry time, including provider-wrapped serialization errors
+(`RoutePlanningException.Busy`). Callers must not report it as a failure or
+remember it past that time: planning requests answer 409 through
+`PlanningExceptionBehavior`, background workers retry or defer without a
+warning, and hand-over recording waits briefly for the lock.
 
 Database triggers cover the complete work, history, settings and saved-road
 writer inventory. They advance every affected old and new truck, including

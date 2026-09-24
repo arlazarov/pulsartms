@@ -188,8 +188,7 @@ internal sealed class ProbeControl(IServiceScopeFactory scopes)
         await publish();
         return;
       }
-      catch (RoutePlanningException busy)
-        when (busy.RetryAfter != DateTime.MaxValue && attempt < 10)
+      catch (RoutePlanningException busy) when (busy.Busy && attempt < 10)
       {
         await Task.Delay(TimeSpan.FromSeconds(5), ct);
       }

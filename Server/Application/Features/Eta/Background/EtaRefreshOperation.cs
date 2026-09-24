@@ -3,6 +3,7 @@ using Application.Features.Fleet.Interfaces;
 using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
+using Domain.Rules;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -68,6 +69,15 @@ public sealed class EtaRefreshOperation(
           catch (OperationCanceledException)
           {
             logger.LogWarning("ETA refresh timed out for {DispatchId}", id);
+          }
+          // A planning pass holds the truck's inputs: the next demand
+          // refreshes it, and contention is not a failure.
+          catch (RoutePlanningException busy) when (busy.Busy)
+          {
+            logger.LogDebug(
+              "ETA refresh for {DispatchId} deferred: planning inputs busy",
+              id
+            );
           }
           catch (Exception ex)
           {

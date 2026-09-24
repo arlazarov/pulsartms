@@ -1,8 +1,12 @@
 using System.Data.Common;
+using Application.Behaviors;
+using Application.Features.Routing.Interfaces;
+using Application.Models;
 using Domain.Entities;
 using Domain.Entities.Fleet;
 using Domain.Rules;
 using Infrastructure.Persistence;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
@@ -40,6 +44,7 @@ public sealed class PlanningPublicationScopePostgresTests
     );
 
     Assert.Contains("being updated", busy.Message);
+    Assert.True(busy.Busy);
     Assert.Equal(0, failures.Count);
     Assert.NotEqual(DateTime.MaxValue, busy.RetryAfter);
     await held.CommitAsync();
@@ -49,6 +54,49 @@ public sealed class PlanningPublicationScopePostgresTests
     );
     Assert.NotNull(taken);
   }
+
+  // The same contention reaching a planning request's HTTP answer: a
+  // conflict to retry (409) with the retry message, not a failure.
+  [RequiresPostgresFact]
+  public async Task AHeldTruckAnswersAPlanningRequestWithAConflict()
+  {
+    await using var fixture = await PostgresFixture.CreateAsync();
+    var truck = await TruckAsync(fixture.Connect());
+    await using var holder = fixture.Connect();
+    await using var held = await holder.Database.BeginTransactionAsync();
+    await holder
+      .Database.SqlQueryRaw<int>(
+        """
+        SELECT 1 AS "Value" FROM "PlanningInputRevisions"
+        WHERE "TruckId" = {0} FOR UPDATE
+        """,
+        truck
+      )
+      .ToListAsync();
+    var failures = new FailedCommands();
+    await using var db = fixture.Connect(failures);
+
+    var answer = await new PlanningExceptionBehavior<Publish, bool>().Handle(
+      new Publish(),
+      async ct =>
+      {
+        await using var opened = await new PlanningPublicationScope(
+          db
+        ).BeginAsync(truck, ct);
+        return RequestResponse<bool>.Ok(true);
+      },
+      default
+    );
+
+    Assert.False(answer.Success);
+    Assert.Equal(409, answer.StatusCode);
+    Assert.Contains("being updated", Assert.Single(answer.Errors!));
+    Assert.Equal(0, failures.Count);
+  }
+
+  private sealed record Publish
+    : IRequest<RequestResponse<bool>>,
+      IPlanningRequest;
 
   [RequiresPostgresFact]
   public async Task ATruckWithoutARevisionRowIsAChangedOwnership()

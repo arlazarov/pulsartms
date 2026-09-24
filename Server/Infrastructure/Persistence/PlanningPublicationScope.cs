@@ -46,10 +46,7 @@ public sealed class PlanningPublicationScope(AppDbContext db)
     {
       await transaction.DisposeAsync();
       if (IsBusy(ex))
-        throw new RoutePlanningException(
-          "Planning inputs are being updated. Retry planning shortly.",
-          DateTime.UtcNow.AddSeconds(5)
-        );
+        throw RoutePlanningException.InputsBusy(DateTime.UtcNow.AddSeconds(5));
       throw;
     }
   }
@@ -107,10 +104,7 @@ public sealed class PlanningPublicationScope(AppDbContext db)
       )
       .ToArrayAsync(ct);
     throw held.Length == 1
-      ? new RoutePlanningException(
-        "Planning inputs are being updated. Retry planning shortly.",
-        DateTime.UtcNow.AddSeconds(5)
-      )
+      ? RoutePlanningException.InputsBusy(DateTime.UtcNow.AddSeconds(5))
       : new RoutePlanningException(
         "Planning input ownership changed. Refresh the truck work."
       );
