@@ -49,7 +49,7 @@ and [integration settings](../features/integration-settings.md).
 - `DriverMessages` holds outbound fuel hand-overs: the fixed text, recipient,
   visits, an idempotency key with attempts, the provider message id and a
   status that only moves forward.
-- `WhatsAppWebhookHandlers` verify the signature and the business number,
+- The webhook handlers verified the signature and the business number,
   apply statuses by provider message id, and record only **when** a number
   last wrote (`DriverMessagingWindows`). **The text and files of inbound
   messages are not stored.** There is no inbox.

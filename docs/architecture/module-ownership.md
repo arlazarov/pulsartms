@@ -36,6 +36,28 @@ record, so the list can only shrink.
 A cycle is what makes an extraction expensive: moving one of the two modules
 requires a contract for the other direction in the same change.
 
+## Messaging (added 2026-09-23)
+
+`Application/Features/Messaging` owns driver conversations: the inbox,
+conversations, unread markers and notices, claims, the outbox, files and
+templates, the event stream and its audit rule, with its contracts
+(`IDriverMessaging`, `IConversationReadMarkers`) and options. It has no
+dependency on another feature module, and none on it. What it needs from
+others comes through their owners, composed outside it:
+
+- Fuel planning (Routing) sends plans through its own narrow port,
+  `IFuelPlanTransport`, which the provider adapter in Infrastructure also
+  implements; fuel planning names nothing of Messaging.
+- The provider webhook is one ingress with two owners: the API sends
+  Messaging's `ReceiveDriverMessagesCommand`, then Routing's
+  `ApplyFuelPlanMessageEventsCommand` with the verified notification, a
+  Domain type.
+- What a conversation's driver is driving is Execution's
+  `GetDriverWorkQuery`; the API puts it beside Messaging's
+  `GetConversationDriverQuery`.
+- Filing a driver's file to a load is the Dispatch documents owner's
+  `FileMessageAttachmentCommand`.
+
 ## Who writes each table
 
 `IAppDbContext` exposes fifty-five sets. Counting only explicit `Add`,

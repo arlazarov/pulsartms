@@ -1,7 +1,7 @@
 using Application.Features.Integrations.Commands;
 using Application.Features.Integrations.Models;
 using Application.Features.Integrations.Queries;
-using Application.Features.Routing.Commands;
+using Application.Features.Messaging.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,7 +18,7 @@ public sealed class IntegrationSettingsController : BaseController
 
   [HttpGet("whatsapp/webhook")]
   public Task<IActionResult> WhatsAppWebhook(CancellationToken ct) =>
-    HandleRequest(new GetWhatsAppWebhookQuery(), ct);
+    HandleRequest(new GetMessagingWebhookQuery(), ct);
 
   [HttpPut("{provider}")]
   [RequestSizeLimit(20_480)]

@@ -1,6 +1,7 @@
 using Application.Diagnostics.Consistency;
 using Application.Features.Dispatch.Audit;
 using Application.Features.Execution.Audit;
+using Application.Features.Messaging.Audit;
 using Application.Features.Routing.Audit;
 using Domain.Entities;
 using Infrastructure.Persistence;

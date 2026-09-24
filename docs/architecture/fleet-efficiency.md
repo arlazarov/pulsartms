@@ -20,8 +20,9 @@ that every proposed optimization has been implemented.
 | Durable fuel selection | TruckFuelPlans and its Infrastructure store |
 | Fuel hand-over records | FuelIssueRecords |
 | Sending a hand-over to a driver | FuelIssueSender |
-| Provider delivery statuses and inbound windows | WhatsAppWebhookHandlers |
-| Messaging transport | IDriverMessaging (WhatsAppCloudMessaging) |
+| Fuel plans' delivery statuses and reply windows | ApplyFuelPlanMessageEventsHandler (Routing), after Messaging verified the notification |
+| Driver conversations, replies' statuses, inbox | Messaging (DriverMessagingWebhookHandlers, InboxRecorder, ReplyQueue) |
+| Messaging transport | IDriverMessaging (Messaging) and IFuelPlanTransport (Routing), both WhatsAppCloudMessaging |
 | Driver contacts | UpdateDriverContact / DriverContactImport |
 | Trailer catalog | TrailerCatalog |
 | A truck's current trailer | TruckTrailerAssignments (targeted after a committed request by TruckTrailerRefreshBehavior) |

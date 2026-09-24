@@ -30,6 +30,7 @@ are historical results, not an approved workflow for future runs.
 | Fleet telemetry or map payload | `bash test.sh fleet` | ETA, map JS, both architecture suites |
 | Dispatch | `bash test.sh dispatch` | Finance, routing, server architecture |
 | Fuel | `bash test.sh fuel` | Routing, server architecture |
+| Driver messaging, inbox, notices | `bash test.sh messaging` | Fuel (the shared webhook), messaging JS, server architecture |
 | Expenses, load attribution | `bash test.sh costs` | Finance, architecture |
 | Identity helpers | `bash test.sh identity` | Auth storage JS, both architecture suites |
 | Synchronization | `bash test.sh synchronization` | Dispatch, addresses, server architecture |

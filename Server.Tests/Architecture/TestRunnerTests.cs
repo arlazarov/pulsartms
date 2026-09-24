@@ -17,6 +17,7 @@ public sealed class TestRunnerTests
   [InlineData("eta")]
   [InlineData("fleet")]
   [InlineData("dispatch")]
+  [InlineData("messaging")]
   [InlineData("fuel")]
   [InlineData("identity")]
   [InlineData("synchronization")]

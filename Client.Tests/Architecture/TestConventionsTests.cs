@@ -34,6 +34,7 @@ public sealed class TestConventionsTests
       "Fleet",
       "Fuel",
       "Identity",
+      "Messaging",
       "Routing",
       "Synchronization",
     ];

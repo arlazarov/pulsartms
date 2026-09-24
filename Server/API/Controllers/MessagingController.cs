@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Application.Features.Dispatch.Documents;
-using Application.Features.Routing.Commands;
-using Application.Features.Routing.Queries;
+using Application.Features.Execution.Queries;
+using Application.Features.Messaging.Commands;
+using Application.Features.Messaging.Queries;
+using Application.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,11 +39,46 @@ public sealed class MessagingController : BaseController
     CancellationToken cancellationToken
   ) => HandleRequest(new GetInboxQuery(unread), cancellationToken);
 
+  // Who the conversation is with (Messaging) beside what they are driving
+  // (Execution): two owners' answers, side by side, in one response.
+  public sealed record ConversationContextView(
+    Guid? DriverId,
+    string? DriverName,
+    string State,
+    IReadOnlyList<DriverTruck> Trucks,
+    IReadOnlyList<DriverLoad> Loads
+  );
+
   [HttpGet("conversations/{id:guid}/context")]
-  public Task<IActionResult> Context(
+  public async Task<IActionResult> Context(
     Guid id,
     CancellationToken cancellationToken
-  ) => HandleRequest(new GetConversationContextQuery(id), cancellationToken);
+  )
+  {
+    var driver = await Mediator.Send(
+      new GetConversationDriverQuery(id),
+      cancellationToken
+    );
+    if (!driver.Success || driver.Response is not { } who)
+      return StatusCode(driver.StatusCode, driver);
+    var work = await Mediator.Send(
+      new GetDriverWorkQuery(who.DriverId),
+      cancellationToken
+    );
+    if (!work.Success || work.Response is not { } driving)
+      return StatusCode(work.StatusCode, work);
+    return Ok(
+      RequestResponse<ConversationContextView>.Ok(
+        new(
+          who.DriverId,
+          who.DriverName,
+          driving.State,
+          driving.Trucks,
+          driving.Loads
+        )
+      )
+    );
+  }
 
   [HttpPut("conversations/{id:guid}/driver")]
   public Task<IActionResult> Driver(

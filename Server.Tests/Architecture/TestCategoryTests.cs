@@ -38,6 +38,7 @@ public sealed class TestCategoryTests
       "Fleet",
       "Fuel",
       "Identity",
+      "Messaging",
       "Persistence",
       "Routing",
       "Synchronization",

@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Models;
+using Application.Features.Messaging.Interfaces;
 using Application.Features.Routing.Interfaces;
 using Domain.Models.Messaging;
 using Infrastructure.Storage;
@@ -24,7 +25,7 @@ public sealed partial class WhatsAppCloudMessaging(
   HttpClient http,
   IIntegrationCredentials credentials,
   IConfiguration configuration
-) : IDriverMessaging
+) : IDriverMessaging, IFuelPlanTransport
 {
   // The Graph API version requests are pinned to; each version is served
   // for about two years. WhatsApp:GraphApiVersion overrides it.

@@ -10,8 +10,14 @@ been received from or sent to a real driver.
 
 ## Receiving
 
-The signed WhatsApp webhook (`WhatsAppWebhookHandlers`) records, in its own
-transaction, what drivers write (`InboxRecorder`):
+One signed provider notification has two owners. Messaging
+(`DriverMessagingWebhookHandlers`) verifies its signature and business
+number and records, in its own transaction, what drivers write
+(`InboxRecorder`) and the statuses of dispatchers' replies; fuel planning
+(`ApplyFuelPlanMessageEventsHandler`, in Routing) then applies its sent
+plans' statuses and reply windows in a second transaction. The API
+controller sends the two commands in turn; both only move forward, so the
+provider's retry of a notification whose second part failed settles it:
 
 - A message is keyed by its provider id under company, channel and business
   number: a repeated notification records it once, and the same id under

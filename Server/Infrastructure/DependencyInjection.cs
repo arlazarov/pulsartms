@@ -11,6 +11,8 @@ using Application.Features.Fleet.Interfaces;
 using Application.Features.Fuel.Background;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Integrations.Interfaces;
+using Application.Features.Messaging.Background;
+using Application.Features.Messaging.Interfaces;
 using Application.Features.Mileage.Interfaces;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Interfaces;
@@ -262,6 +264,11 @@ public static class DependencyInjection
           client.Timeout = TimeSpan.FromSeconds(20)
         )
         .RemoveAllLoggers();
+    // Fuel sending's narrow port is the same adapter: one provider client
+    // per carrier, whichever feature asks.
+    services.AddTransient<IFuelPlanTransport>(sp =>
+      (IFuelPlanTransport)sp.GetRequiredService<IDriverMessaging>()
+    );
     services.AddScoped<ITruckCameraProvider, SamsaraTruckCameraProvider>();
     services.AddScoped<IFleetProvider, SamsaraFleetProvider>();
     services.AddScoped<IDriverHosRefreshProvider, SamsaraDriverHosProvider>();

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Application.Features.Messaging.Interfaces;
 using Application.Features.Routing.Interfaces;
 using Domain.Models.Messaging;
 
@@ -6,7 +7,7 @@ namespace Server.Tests.Support;
 
 // A transport that records what it was asked to send and answers as told.
 // During runs inside the call, while the message is in flight.
-internal sealed class FakeDriverMessaging : IDriverMessaging
+internal sealed class FakeDriverMessaging : IDriverMessaging, IFuelPlanTransport
 {
   public Queue<DriverMessageSendResult> Answers { get; } = [];
   public List<(string To, string Text)> Sent { get; } = [];

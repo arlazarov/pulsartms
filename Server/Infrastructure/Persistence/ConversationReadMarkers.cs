@@ -1,4 +1,4 @@
-using Application.Features.Routing.Interfaces;
+using Application.Features.Messaging.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence;

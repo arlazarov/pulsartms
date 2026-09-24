@@ -18,7 +18,7 @@ namespace Application.Features.Routing.Services.FuelPlanning;
 public sealed class FuelIssueChannel(
   IAppDbContext db,
   TruckPlanningInputsReader inputs,
-  IDriverMessaging messaging,
+  IFuelPlanTransport messaging,
   TimeProvider time
 )
 {

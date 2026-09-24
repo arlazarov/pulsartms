@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Application.Features.Messaging.Interfaces;
 using Application.Features.Routing.Interfaces;
 using Domain.Models.Messaging;
 using Microsoft.Extensions.Hosting;
@@ -13,7 +14,7 @@ namespace Infrastructure.Integrations.WhatsApp;
 // Driver messages are simulated through the ordinary webhook, in the Cloud
 // API's shape, signed with WhatsApp:Local:AppSecret; every media id opens
 // the same small synthetic image, so the capture pipeline can be followed.
-public sealed class LocalDriverMessaging : IDriverMessaging
+public sealed class LocalDriverMessaging : IDriverMessaging, IFuelPlanTransport
 {
   public const string ProviderName = "local";
   public const string DevelopmentOnly =

@@ -48,7 +48,7 @@ also company-specific. This does not add multi-mailbox push configuration.
 
 Background operation implementations and their queues live in Application.
 Feature operations are grouped under Routing/Background, Eta/Background,
-Fleet/Background, and Fuel/Background; Synchronization owns shared fleet scheduling
+Fleet/Background, Fuel/Background and Messaging/Background; Synchronization owns shared fleet scheduling
 and checkpoint contracts. Feature-specific lifecycle policies stay in their feature.
 Infrastructure's generic ApplicationWorker hosts only IBackgroundOperation
 interfaces. ISynchronizationStore owns persistence and IReadCache provides the
@@ -56,6 +56,12 @@ cross-layer cache contract. Infrastructure registers database startup/health and
 the authentication/session startup filter; API does not resolve database types.
 Administrative auditing runs in the Application pipeline. API diagnostics dispatch
 a query through MediatR rather than reading static metrics directly.
+
+Driver messaging is its own feature, Application/Features/Messaging, with no
+dependency on another feature module; see
+[module ownership](architecture/module-ownership.md#messaging-added-2026-09-23)
+for how fuel planning, Execution and Dispatch reach it through their own
+contracts and the API's composition.
 
 Shared read caching lives in Application/Caching. Fleet owns its server telemetry
 snapshot. Routing services are grouped into Routes, Addresses, Deadheads, and

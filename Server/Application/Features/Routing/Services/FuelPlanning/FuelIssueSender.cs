@@ -27,7 +27,7 @@ namespace Application.Features.Routing.Services.FuelPlanning;
 //   something else reads as changed since sent.
 public sealed class FuelIssueSender(
   IAppDbContext db,
-  IDriverMessaging messaging,
+  IFuelPlanTransport messaging,
   FuelIssueRecords records,
   ICurrentCompany company,
   TimeProvider time,

@@ -8,6 +8,7 @@ map=false
 styles=false
 identity=false
 dispatch=false
+messaging=false
 
 for category in "$@"; do
   case "$category" in
@@ -22,10 +23,11 @@ for category in "$@"; do
     dispatch) filter+='|Category=Dispatch|Category=Finance|Category=Routing'; dispatch=true ;;
     fuel) filter+='|Category=Fuel|Category=Routing' ;;
     identity) filter+='|Category=Identity'; identity=true ;;
+    messaging) filter+='|Category=Messaging|Category=Fuel'; messaging=true ;;
     caching) filter+='|Category=Caching' ;;
     database) filter+='|Category=Database' ;;
     synchronization) filter+='|Category=Synchronization|Category=Caching|Category=Dispatch|Category=Addresses'; dispatch=true ;;
-    *) echo 'Usage: bash test.sh [all|map|styles|architecture|addresses|costs|routing|finance|eta|fleet|dispatch|fuel|identity|caching|database|synchronization] ...' >&2; exit 2 ;;
+    *) echo 'Usage: bash test.sh [all|map|styles|architecture|addresses|costs|routing|finance|eta|fleet|dispatch|fuel|identity|messaging|caching|database|synchronization] ...' >&2; exit 2 ;;
   esac
 done
 
@@ -46,5 +48,6 @@ else
   if $styles; then npm run test:styles --prefix Client; fi
   if $identity; then npm run test:identity --prefix Client; fi
   if $dispatch; then npm run test:dispatch --prefix Client; fi
+  if $messaging; then npm run test:messaging --prefix Client; fi
   npm run test:architecture --prefix Client
 fi
