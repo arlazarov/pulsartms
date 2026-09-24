@@ -43,6 +43,13 @@ was reviewed.
 | `Client/Scripts/fleetMap/routes/*` and commit `093c5cb4` | split for the limit? | Split by responsibility, fine |
 | Style and script file names across the tree | limit-driven names | None found |
 | Inbox and unread-notice handlers | round trips | Finding: duplicate user read |
+| `GoogleAddressGeocoder` and `GoogleAddressValidation` | borrowed internals | New owner `GoogleAddressMatching` |
+| Every read-cache group literal (about fifty sites) | missing owner of names and of the work-changed set | New owner `ReadGroups` |
+| Server Application, Infrastructure and API, scanned for classes whose public members only forward to one dependency | forwarding layers | None needless (below) |
+| `RoutePlanStorage` (6 parts), outline | owners | One owner; static with I/O (below) |
+| `Client/Shared/Fuel/FuelPlanEditor` (919 lines), outline | owners | Cohesive; carries finding 11 |
+| `DispatchWorkspaceReader.ReadAsync`, outline | extraction | Left (below) |
+| `tools/FleetLoadProbe/Program.cs` | shutdown | Fixed |
 
 ## Policy change
 
@@ -82,6 +89,15 @@ behavior check is unchanged. `ui-controls.md` had no size rule; its size
 5. **Not structural, found on the way** (`aa4c4e04`): the storage auditor's
    PostgreSQL test passed a random GUID as the page cursor and passed about
    half the time. It was a test bug of mine from `5d2748bb`.
+6. **`GoogleAddressMatching`** owns the address-text rules both Google
+   adapters judge answers by; the geocoder keeps transport, cache and its
+   own response (`b0cb06f5`, yesterday's finding 8).
+7. **`ReadGroups`** names the seven read-cache groups and the set a work
+   change makes stale, which was written out eleven times. A misspelt group
+   is now a compile error; `ReadGroupsTests` pins the names, which other
+   instances receive (`e7ca05ad`, finding 6).
+8. **Load probe shutdown** (`647ec3a2`): the probe exits in about a second
+   on SIGTERM instead of being killed at 90 s.
 
 ## Reviewed and deliberately left
 
@@ -91,6 +107,22 @@ behavior check is unchanged. `ui-controls.md` had no size rule; its size
 - **`BaseRouteService`:** one owner (the base road), five dependencies,
   parts by step. `Signatures` is a set of pure static functions other
   owners call; a static type of its own is possible, low value.
+- **Forwarding:** the scan found three single-dependency classes. Each
+  earns its place: a MediatR handler (the layer boundary requires one), a
+  cache holder that owns its key and loader, and an Infrastructure
+  implementation of an Application interface.
+  `RoutePlanningService.ProfileAsync` is a forward, but it is a member of
+  `IPlannedRouteReader`, which fuel planning uses. Removing it is a
+  contract change.
+- **`RoutePlanStorage`:** one owner, the saved plan's storage mapping, with
+  parts by step. It is static, yet does database I/O and keeps a static
+  `ConditionalWeakTable` of fingerprint captures. It could become an
+  instance owner; low priority.
+- **`DispatchWorkspaceReader.ReadAsync`:** its tail is one
+  read-and-project pipeline. Cutting it into a function with eight
+  parameters would be a split, not an owner.
+- **Yesterday's finding 12** (`stationLayer.ts` at its shrink-only budget)
+  no longer applies: there is no budget.
 
 ## Proposals, with evidence (not started)
 
@@ -143,7 +175,8 @@ behavior check is unchanged. `ui-controls.md` had no size rule; its size
 - **From yesterday, still open:**
   - findings 1–2 (the fuel pipeline written twice; the reserve rule) wait
     for a product decision;
-  - 3, 6, 8, 9, 11 and 12 are untouched;
+  - 3, 9 and 11 are untouched (6 and 8 were done tonight; 12 is gone with
+    the budget);
   - 4 is folded, but `ReadAsync`'s nine reads are still one method.
 - **Decisions to take, not code to write:**
   - `DispatchWorkspaceReader.Ordinary()` is exact-case, narrower than
@@ -156,8 +189,7 @@ behavior check is unchanged. `ui-controls.md` had no size rule; its size
 Everything not in the table above. Outlines are not full reads: the
 FuelPlanningService, FleetMap, DispatchList and fleetMap.ts rows looked at
 members, fields and dependencies, not every method body. In particular:
-- `RoutePlanStorage` (a static codec in six parts, not read);
-- `FuelPlanEditor`, `DispatchDetails` and the other Client pages;
+- `DispatchDetails` and the other Client pages;
 - browser modules other than the two above (`stationLayer.ts` is the other
   known whole-screen module);
 - style contents;
