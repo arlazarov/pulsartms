@@ -62,8 +62,14 @@ public sealed class LocalDriverMessagingTests
     var messaging = Messaging("Development", Secret);
     var file = new MemoryStream(Encoding.UTF8.GetBytes("%PDF-1.7"));
 
-    var text = await messaging.SendTextAsync("+15550000000", "Ok", default);
+    var text = await messaging.SendTextAsync(
+      "local",
+      "+15550000000",
+      "Ok",
+      default
+    );
     var sent = await messaging.SendFileAsync(
+      "local",
       "+15550000000",
       new(file, file.Length, "application/pdf", "rate.pdf", ""),
       default
@@ -74,6 +80,12 @@ public sealed class LocalDriverMessagingTests
     Assert.NotEqual(text.ProviderMessageId, sent.ProviderMessageId);
     Assert.Equal(file.Length, file.Position);
     Assert.Equal("local", await messaging.BusinessNumberAsync(default));
+    Assert.Equal(
+      DriverMessageOutcome.NumberChanged,
+      (
+        await messaging.SendTextAsync("other", "+15550000000", "Ok", default)
+      ).Outcome
+    );
   }
 
   [Fact]

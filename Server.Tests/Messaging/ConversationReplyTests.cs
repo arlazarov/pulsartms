@@ -292,6 +292,60 @@ public sealed class ConversationReplyTests
     Assert.Empty(f.Messaging.Sent);
   }
 
+  // The number changes after the worker checked it and before the provider
+  // is called: the send names the number the reply was queued under, and
+  // the adapter sends nothing from another.
+  [Theory]
+  [InlineData("text")]
+  [InlineData("template")]
+  public async Task ANumberThatChangesAtTheCallSendsNothing(string kind)
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    var (conversation, last) = await f.ConversationAsync();
+    var queued =
+      kind == "text"
+        ? (
+          await f.SendAsync(
+            new(conversation, "Hi", Guid.NewGuid(), last, false)
+          )
+        )
+          .Response!
+          .Id
+        : (
+          await f.Files(
+              [
+                new()
+                {
+                  Name = "fuel_plan_ready",
+                  Language = "en_US",
+                  Parameters = 0,
+                  Text = "Your fuel plan is ready.",
+                },
+              ]
+            )
+            .Handle(
+              new SendConversationTemplateCommand(
+                conversation,
+                Guid.NewGuid(),
+                "fuel_plan_ready",
+                "en_US",
+                []
+              ),
+              default
+            )
+        ).Response!.Id;
+    f.Messaging.BeforeSend = () => f.Messaging.BusinessNumber = "999999";
+
+    await f.Worker.RunOnceAsync(default);
+
+    Assert.Equal(
+      DriverMessageStatuses.Withdrawn,
+      (await f.MessageAsync(queued)).Status
+    );
+    Assert.Empty(f.Messaging.Sent);
+    Assert.Empty(f.Messaging.Templates);
+  }
+
   [Fact]
   public async Task AnUnansweredReplyWaitsForTheDispatcherToSendItAgain()
   {

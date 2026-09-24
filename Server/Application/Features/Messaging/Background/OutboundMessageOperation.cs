@@ -226,11 +226,13 @@ public sealed class OutboundMessageOperation(
     var result = message.Kind switch
     {
       ConversationMessageKinds.File => await messaging.SendFileAsync(
+        conversation.BusinessNumberId,
         conversation.Participant,
         file!,
         ct
       ),
       ConversationMessageKinds.Template => await messaging.SendTemplateAsync(
+        conversation.BusinessNumberId,
         conversation.Participant,
         Template(message)!.Name,
         Template(message)!.Language,
@@ -238,6 +240,7 @@ public sealed class OutboundMessageOperation(
         ct
       ),
       _ => await messaging.SendTextAsync(
+        conversation.BusinessNumberId,
         conversation.Participant,
         message.Body,
         ct
@@ -247,6 +250,8 @@ public sealed class OutboundMessageOperation(
     {
       DriverMessageOutcome.Accepted => DriverMessageStatuses.Accepted,
       DriverMessageOutcome.Unknown => DriverMessageStatuses.Unknown,
+      // The number moved after the check above; nothing was sent.
+      DriverMessageOutcome.NumberChanged => DriverMessageStatuses.Withdrawn,
       _ => DriverMessageStatuses.Rejected,
     };
     if (

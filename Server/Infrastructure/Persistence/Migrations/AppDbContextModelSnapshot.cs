@@ -4019,6 +4019,38 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("DriverMessages", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entities.Messaging.DriverMessagingWindow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LastInboundAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CompanyId", "Channel", "Phone")
+                        .IsUnique();
+
+                    b.ToTable("DriverMessagingWindows", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Entities.Messaging.MessageAttachment", b =>
                 {
                     b.Property<Guid>("Id")

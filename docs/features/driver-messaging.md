@@ -6,8 +6,8 @@ What is implemented of the
 `AddConversationOutbox`, `AddConversationTemplates`,
 `AddConversationReadRevisions`, `AddConversationArrivalSequence` and
 `AddFiledDriverFiles` applied in production on 2026-09-23 with
-integrations disabled; `DeliverDriverTextsThroughMessaging` (local, not
-applied anywhere) follows. No message has been received from or sent to
+integrations disabled; `AddDriverMessageBusinessNumber` (local, not
+applied anywhere, one nullable column) follows. No message has been received from or sent to
 a real driver.
 
 ## Receiving
@@ -32,6 +32,10 @@ plans moved after the commit (`IDriverTextObserver`):
 - The 24-hour window runs from the conversation's last inbound message
   under the company's current business number; fuel plans are held to the
   same window. A driver who wrote to another number has not opened it.
+  The older window rows (`DriverMessagingWindows`) name no number, so
+  they open nothing; Messaging keeps writing them only so that revisions
+  released before 2026-09-24, which read them, keep working through a
+  rolling cutover. Dropping the table is a later explicit cleanup.
 - Statuses move forward only, matched by provider id under the business
   number the message went from: replies by their conversation's number,
   fuel plans by the number recorded on the attempt. A fuel plan sent
@@ -50,6 +54,16 @@ business number before calling the provider, asks the requester once
 more whether it is still wanted, and keeps the provider's answer. The
 same key is one message: a taken attempt settles it, one in flight or
 without an answer is not repeated unless the requester says so.
+
+Every send, a fuel plan or a reply, names the business number it was
+recorded under. The adapter reads the carrier's credentials once for the
+call and sends with exactly those; if they now name another number it
+sends nothing, and the attempt is withdrawn. The window is read again
+under that number right before the call, after the attempt is committed;
+a window that closed meanwhile withdraws it. During a rolling cutover a
+revision from before 2026-09-24 still applies fuel statuses by provider
+id alone and records attempts without a number; those attempts are then
+moved by no status.
 
 ## Files drivers send
 

@@ -127,6 +127,19 @@ public sealed class FuelIssueSender(
           "The fuel plan changed while it was being sent, so nothing was "
             + "sent. Open it again and send the new plan."
         );
+      case DriverTextResult.WindowClosed:
+        return new(
+          409,
+          "The driver's 24-hour WhatsApp window closed while this was being "
+            + "sent, so nothing was sent. Ask the driver to send any "
+            + "message, or copy the plan and send it by hand."
+        );
+      case DriverTextResult.NumberChanged:
+        return new(
+          409,
+          "The company's WhatsApp number changed while this was being "
+            + "sent, so nothing was sent. Open the plan again."
+        );
       default:
         return Outcome.Done;
     }

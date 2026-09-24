@@ -24,6 +24,7 @@ public sealed class WhatsAppCloudMessagingTests
     );
     var result = await Messaging(http)
       .SendTextAsync(
+        "123456",
         "+15558234327",
         "Fuel for this shift:\n1. Fill up",
         default
@@ -56,7 +57,7 @@ public sealed class WhatsAppCloudMessagingTests
           """{"error":{"message":"Recipient +15558234327 is not a valid WhatsApp user","code":131026}}"""
         )
       )
-      .SendTextAsync("+15558234327", "x", default);
+      .SendTextAsync("123456", "+15558234327", "x", default);
 
     Assert.Equal(
       new DriverMessageSendResult(
@@ -83,7 +84,7 @@ public sealed class WhatsAppCloudMessagingTests
     };
 
     var result = await Messaging(http)
-      .SendTextAsync("+15558234327", "x", default);
+      .SendTextAsync("123456", "+15558234327", "x", default);
 
     Assert.Equal(DriverMessageOutcome.Unknown, result.Outcome);
     Assert.Single(http.Requests);
@@ -109,7 +110,61 @@ public sealed class WhatsAppCloudMessagingTests
     Assert.False(await messaging.IsConfiguredAsync(default));
     Assert.Equal(
       DriverMessageOutcome.NotConfigured,
-      (await messaging.SendTextAsync("+15558234327", "x", default)).Outcome
+      (
+        await messaging.SendTextAsync("123456", "+15558234327", "x", default)
+      ).Outcome
+    );
+    Assert.Empty(http.Requests);
+  }
+
+  // The send was recorded under 123456; the carrier's credentials now name
+  // 999999. The adapter reads them once for the call and sends nothing
+  // rather than send from a number the record does not name.
+  [Fact]
+  public async Task NothingGoesFromANumberTheSendWasNotRecordedUnder()
+  {
+    var http = new Handler(HttpStatusCode.OK, "{}");
+    var messaging = new WhatsAppCloudMessaging(
+      new HttpClient(http),
+      new StubProviderCredentials(
+        ("phoneNumberId", "999999"),
+        ("accessToken", "token-2"),
+        ("appSecret", "secret"),
+        ("verifyToken", "verify")
+      ),
+      new ConfigurationBuilder().Build()
+    );
+    using var content = new MemoryStream([1, 2, 3]);
+
+    Assert.Equal(
+      [
+        DriverMessageOutcome.NumberChanged,
+        DriverMessageOutcome.NumberChanged,
+        DriverMessageOutcome.NumberChanged,
+      ],
+      [
+        (
+          await messaging.SendTextAsync("123456", "+15558234327", "x", default)
+        ).Outcome,
+        (
+          await messaging.SendTemplateAsync(
+            "123456",
+            "+15558234327",
+            "hello",
+            "en_US",
+            [],
+            default
+          )
+        ).Outcome,
+        (
+          await messaging.SendFileAsync(
+            "123456",
+            "+15558234327",
+            new(content, 3, "application/pdf", "a.pdf", ""),
+            default
+          )
+        ).Outcome,
+      ]
     );
     Assert.Empty(http.Requests);
   }

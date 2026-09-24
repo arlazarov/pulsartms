@@ -116,6 +116,9 @@ public sealed class DriverMessagingWebhookTests
       new DriverTextReadiness(true, at.AddHours(24)),
       await f.Delivery().ReadinessAsync("+15558234327", default)
     );
+    // Still written for revisions from before 2026-09-24, which read it.
+    var legacy = await f.Db.DriverMessagingWindows.AsNoTracking().SingleAsync();
+    Assert.Equal(("+15558234327", at), (legacy.Phone, legacy.LastInboundAt));
     var message = await f.Db.ConversationMessages.AsNoTracking().SingleAsync();
     Assert.Equal(
       ("in", "text", "ok", "wamid.in", "123456"),
@@ -219,12 +222,23 @@ public sealed class DriverMessagingWebhookTests
   }
 
   // The reply window is the conversation's under the current number: a
-  // driver who wrote to another number has not opened it.
+  // driver who wrote to another number has not opened it, and a legacy
+  // window row, which names no number, opens nothing.
   [Fact]
   public async Task AWindowUnderAnotherNumberIsNotThisOnes()
   {
     await using var f = await Fixture.CreateAsync();
     var at = DateTimeOffset.FromUnixTimeSeconds(1790000000).UtcDateTime;
+    f.Db.DriverMessagingWindows.Add(
+      new DriverMessagingWindow
+      {
+        Id = Guid.NewGuid(),
+        CompanyId = Domain.Entities.Company.Amf,
+        Channel = DriverMessageChannels.WhatsApp,
+        Phone = "+15558234327",
+        LastInboundAt = at,
+      }
+    );
     f.Db.Conversations.Add(
       new Conversation
       {

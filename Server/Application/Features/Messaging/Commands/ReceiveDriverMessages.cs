@@ -80,6 +80,7 @@ public sealed class DriverMessagingWebhookHandlers(
       return RequestResponse<bool>.Fail("Not accepted.", 401);
     var outbound = await ApplyConversationStatusesAsync(notification, ct);
     var texts = await ApplyTextStatusesAsync(notification, ct);
+    await RecordLegacyWindowsAsync(notification.Inbound, ct);
     var conversations = await inbox.RecordAsync(
       messaging.Channel,
       notification.BusinessNumberId,
@@ -173,6 +174,45 @@ public sealed class DriverMessagingWebhookHandlers(
         changed[attempt.Id] = attempt;
       }
     return [.. changed.Values];
+  }
+
+  // For revisions released before 2026-09-24 only (see
+  // DriverMessagingWindow): kept current so a rolling cutover leaves their
+  // fuel sends working. Nothing here reads it.
+  private async Task RecordLegacyWindowsAsync(
+    IReadOnlyList<DriverMessageInboundEvent> inbound,
+    CancellationToken ct
+  )
+  {
+    if (inbound.Count == 0)
+      return;
+    var latest = inbound
+      .GroupBy(x => x.Phone)
+      .ToDictionary(x => x.Key, x => x.Max(y => y.At));
+    var phones = latest.Keys.ToArray();
+    var windows = await db
+      .DriverMessagingWindows.Where(x =>
+        x.Channel == messaging.Channel && phones.Contains(x.Phone)
+      )
+      .ToDictionaryAsync(x => x.Phone, ct);
+    foreach (var (phone, at) in latest)
+    {
+      if (windows.GetValueOrDefault(phone) is { } window)
+      {
+        if (at > window.LastInboundAt)
+          window.LastInboundAt = at;
+        continue;
+      }
+      db.DriverMessagingWindows.Add(
+        new DriverMessagingWindow
+        {
+          Id = Guid.NewGuid(),
+          Channel = messaging.Channel,
+          Phone = phone,
+          LastInboundAt = at,
+        }
+      );
+    }
   }
 
   private async Task<List<(Guid, long)>> RevisionsAsync(

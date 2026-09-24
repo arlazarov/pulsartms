@@ -11,6 +11,10 @@ internal sealed class FakeDriverMessaging : IDriverMessaging
   public Queue<DriverMessageSendResult> Answers { get; } = [];
   public List<(string To, string Text)> Sent { get; } = [];
   public Func<Task>? During { get; set; }
+
+  // Runs as a send begins, before the adapter reads its credentials: what
+  // changes here happened after the caller's own checks.
+  public Action? BeforeSend { get; set; }
   public bool Configured { get; set; } = true;
 
   // Files the provider holds, by media id; a declared hash may be set to
@@ -36,12 +40,23 @@ internal sealed class FakeDriverMessaging : IDriverMessaging
   public Task<string?> BusinessNumberAsync(CancellationToken ct) =>
     Task.FromResult(Configured ? BusinessNumber : null);
 
+  // A send whose number is no longer the configured one never reaches
+  // the provider, as the real adapter answers it.
+  private bool Changed(string businessNumber)
+  {
+    BeforeSend?.Invoke();
+    return !Configured || businessNumber != BusinessNumber;
+  }
+
   public async Task<DriverMessageSendResult> SendTextAsync(
+    string businessNumber,
     string recipient,
     string text,
     CancellationToken ct
   )
   {
+    if (Changed(businessNumber))
+      return new(DriverMessageOutcome.NumberChanged);
     Sent.Add((recipient, text));
     if (During is { } during)
       await during();
@@ -63,11 +78,14 @@ internal sealed class FakeDriverMessaging : IDriverMessaging
   )> Templates { get; } = [];
 
   public async Task<DriverMessageSendResult> SendFileAsync(
+    string businessNumber,
     string recipient,
     DriverFile file,
     CancellationToken ct
   )
   {
+    if (Changed(businessNumber))
+      return new(DriverMessageOutcome.NumberChanged);
     using var copy = new MemoryStream();
     await file.Content.CopyToAsync(copy, ct);
     Files.Add((recipient, file.FileName, copy.ToArray(), file.Caption));
@@ -77,6 +95,7 @@ internal sealed class FakeDriverMessaging : IDriverMessaging
   }
 
   public Task<DriverMessageSendResult> SendTemplateAsync(
+    string businessNumber,
     string recipient,
     string name,
     string language,
@@ -84,6 +103,10 @@ internal sealed class FakeDriverMessaging : IDriverMessaging
     CancellationToken ct
   )
   {
+    if (Changed(businessNumber))
+      return Task.FromResult(
+        new DriverMessageSendResult(DriverMessageOutcome.NumberChanged)
+      );
     Templates.Add((recipient, name, parameters));
     return Task.FromResult(
       Answers.Count > 0

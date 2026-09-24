@@ -131,6 +131,7 @@ public sealed partial class WhatsAppCloudMessaging
   }
 
   public async Task<DriverMessageSendResult> SendFileAsync(
+    string businessNumber,
     string recipient,
     DriverFile file,
     CancellationToken ct
@@ -138,6 +139,8 @@ public sealed partial class WhatsAppCloudMessaging
   {
     if (await SettingsAsync(ct) is not { } settings)
       return new(DriverMessageOutcome.NotConfigured);
+    if (settings.PhoneNumberId != businessNumber)
+      return new(DriverMessageOutcome.NumberChanged);
     // Nothing reaches the driver until the send below, so an upload that
     // fails or goes unanswered is simply not sent.
     string? mediaId;

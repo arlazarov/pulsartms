@@ -26,6 +26,10 @@ public static class DriverMessageStatuses
 public enum DriverMessageOutcome
 {
   NotConfigured,
+
+  // The credentials now name another business number than the send was
+  // recorded under; nothing was sent.
+  NumberChanged,
   Accepted,
   Rejected,
   Unknown,

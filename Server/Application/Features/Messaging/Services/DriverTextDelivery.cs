@@ -30,8 +30,21 @@ public sealed class DriverTextDelivery(
   {
     if (await messaging.BusinessNumberAsync(ct) is not { } number)
       return new(false, null);
-    if (phone is null)
-      return new(true, null);
+    return new(
+      true,
+      phone is null ? null : await WindowEndsAsync(number, phone, ct)
+    );
+  }
+
+  // Only a conversation under this business number opens its window. The
+  // legacy window rows name no number, so they open nothing: a window is
+  // never guessed.
+  private async Task<DateTime?> WindowEndsAsync(
+    string number,
+    string phone,
+    CancellationToken ct
+  )
+  {
     var last = await db
       .Conversations.AsNoTracking()
       .Where(x =>
@@ -41,12 +54,9 @@ public sealed class DriverTextDelivery(
       )
       .Select(x => x.LastInboundAt)
       .SingleOrDefaultAsync(ct);
-    return new(
-      true,
-      DriverMessageProgress.WindowOpen(last, time.GetUtcNow().UtcDateTime)
-        ? last!.Value + DriverMessageProgress.SessionWindow
-        : null
-    );
+    return DriverMessageProgress.WindowOpen(last, time.GetUtcNow().UtcDateTime)
+      ? last!.Value + DriverMessageProgress.SessionWindow
+      : null;
   }
 
   public async Task<DriverTextOutcome> SendAsync(
@@ -99,7 +109,9 @@ public sealed class DriverTextDelivery(
       return new(DriverTextResult.InProgress, null);
     }
     // From here the attempt is recorded whatever happens to the request
-    // that asked for it.
+    // that asked for it. The requester is asked once more, and the
+    // driver's window under the recorded number is read again right before
+    // the call; the adapter then sends from that number or not at all.
     if (!await stillWanted(CancellationToken.None))
       return await FinishAsync(
         request,
@@ -107,13 +119,31 @@ public sealed class DriverTextDelivery(
         DriverMessageStatuses.Withdrawn,
         null
       );
+    if (
+      await WindowEndsAsync(number, request.Recipient, CancellationToken.None)
+      is null
+    )
+      return await FinishAsync(
+        request,
+        DriverTextResult.WindowClosed,
+        DriverMessageStatuses.Withdrawn,
+        null
+      );
     var result = await messaging.SendTextAsync(
+      number,
       request.Recipient,
       request.Text,
       CancellationToken.None
     );
     switch (result.Outcome)
     {
+      case DriverMessageOutcome.NumberChanged:
+        return await FinishAsync(
+          request,
+          DriverTextResult.NumberChanged,
+          DriverMessageStatuses.Withdrawn,
+          null
+        );
       case DriverMessageOutcome.Accepted:
         request.ProviderMessageId = result.ProviderMessageId;
         return await FinishAsync(

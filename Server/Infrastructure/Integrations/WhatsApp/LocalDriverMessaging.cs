@@ -45,12 +45,14 @@ public sealed class LocalDriverMessaging : IDriverMessaging
     Task.FromResult<string?>(_options.PhoneNumberId);
 
   public Task<DriverMessageSendResult> SendTextAsync(
+    string businessNumber,
     string recipient,
     string text,
     CancellationToken ct
-  ) => Accepted();
+  ) => Accepted(businessNumber);
 
   public async Task<DriverMessageSendResult> SendFileAsync(
+    string businessNumber,
     string recipient,
     DriverFile file,
     CancellationToken ct
@@ -58,16 +60,17 @@ public sealed class LocalDriverMessaging : IDriverMessaging
   {
     // Read to the end, as an upload would, so a broken stream shows here.
     await file.Content.CopyToAsync(Stream.Null, ct);
-    return await Accepted();
+    return await Accepted(businessNumber);
   }
 
   public Task<DriverMessageSendResult> SendTemplateAsync(
+    string businessNumber,
     string recipient,
     string name,
     string language,
     IReadOnlyList<string> parameters,
     CancellationToken ct
-  ) => Accepted();
+  ) => Accepted(businessNumber);
 
   public Task<bool> AcceptsSubscriptionAsync(
     string? verifyToken,
@@ -107,12 +110,14 @@ public sealed class LocalDriverMessaging : IDriverMessaging
       )
     );
 
-  private static Task<DriverMessageSendResult> Accepted() =>
+  private Task<DriverMessageSendResult> Accepted(string businessNumber) =>
     Task.FromResult(
-      new DriverMessageSendResult(
-        DriverMessageOutcome.Accepted,
-        $"local.{Guid.NewGuid():N}"
-      )
+      businessNumber == _options.PhoneNumberId
+        ? new DriverMessageSendResult(
+          DriverMessageOutcome.Accepted,
+          $"local.{Guid.NewGuid():N}"
+        )
+        : new DriverMessageSendResult(DriverMessageOutcome.NumberChanged)
     );
 }
 

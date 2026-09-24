@@ -15,7 +15,12 @@ public interface IDriverMessaging
   // messaging is not configured.
   Task<string?> BusinessNumberAsync(CancellationToken ct);
 
+  // Every send names the business number it must go from, as the caller
+  // recorded it. The adapter reads the credentials once for the call and
+  // sends with exactly those; when they now name another number it sends
+  // nothing and answers NumberChanged.
   Task<DriverMessageSendResult> SendTextAsync(
+    string businessNumber,
     string recipient,
     string text,
     CancellationToken ct
@@ -25,6 +30,7 @@ public interface IDriverMessaging
   // upload sends nothing and is reported as rejected; only the send itself
   // can end unknown.
   Task<DriverMessageSendResult> SendFileAsync(
+    string businessNumber,
     string recipient,
     DriverFile file,
     CancellationToken ct
@@ -33,6 +39,7 @@ public interface IDriverMessaging
   // An approved template, the only kind of message allowed outside the
   // driver's 24-hour window.
   Task<DriverMessageSendResult> SendTemplateAsync(
+    string businessNumber,
     string recipient,
     string name,
     string language,

@@ -44,7 +44,12 @@ public enum DriverTextResult
 
   // An earlier attempt has no answer; only sendAgain repeats it.
   Uncertain,
+
+  // Recorded and then not sent: the requester no longer wanted it, the
+  // driver's window had closed, or the company's number had changed.
   Withdrawn,
+  WindowClosed,
+  NumberChanged,
   Accepted,
   Unknown,
   Rejected,

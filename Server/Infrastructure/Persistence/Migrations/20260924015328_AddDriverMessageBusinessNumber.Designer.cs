@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260924014137_DeliverDriverTextsThroughMessaging")]
-    partial class DeliverDriverTextsThroughMessaging
+    [Migration("20260924015328_AddDriverMessageBusinessNumber")]
+    partial class AddDriverMessageBusinessNumber
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -4020,6 +4020,38 @@ namespace Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("DriverMessages", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Entities.Messaging.DriverMessagingWindow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LastInboundAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CompanyId", "Channel", "Phone")
+                        .IsUnique();
+
+                    b.ToTable("DriverMessagingWindows", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.Messaging.MessageAttachment", b =>

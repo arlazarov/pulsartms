@@ -40,6 +40,7 @@ public sealed partial class WhatsAppCloudMessaging(
     (await SettingsAsync(ct))?.PhoneNumberId;
 
   public async Task<DriverMessageSendResult> SendTextAsync(
+    string businessNumber,
     string recipient,
     string text,
     CancellationToken ct
@@ -47,6 +48,8 @@ public sealed partial class WhatsAppCloudMessaging(
   {
     if (await SettingsAsync(ct) is not { } settings)
       return new(DriverMessageOutcome.NotConfigured);
+    if (settings.PhoneNumberId != businessNumber)
+      return new(DriverMessageOutcome.NumberChanged);
     if (text.Length is 0 or > MaximumText)
       throw new ArgumentException("The message length is not allowed.");
     return await PostMessageAsync(
@@ -64,6 +67,7 @@ public sealed partial class WhatsAppCloudMessaging(
   }
 
   public async Task<DriverMessageSendResult> SendTemplateAsync(
+    string businessNumber,
     string recipient,
     string name,
     string language,
@@ -73,6 +77,8 @@ public sealed partial class WhatsAppCloudMessaging(
   {
     if (await SettingsAsync(ct) is not { } settings)
       return new(DriverMessageOutcome.NotConfigured);
+    if (settings.PhoneNumberId != businessNumber)
+      return new(DriverMessageOutcome.NumberChanged);
     return await PostMessageAsync(
       settings,
       new

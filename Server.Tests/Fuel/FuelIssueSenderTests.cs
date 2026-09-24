@@ -4,6 +4,7 @@ using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
 using Domain.Entities.Fleet;
+using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
 using Domain.Models.Routing;
 using Domain.Policies;
@@ -209,6 +210,64 @@ public sealed class FuelIssueSenderTests
     Assert.Empty(f.Transport.Sent);
   }
 
+  // The window was open when the plan was shown and closes after the
+  // attempt is recorded: Messaging reads it again before the call and
+  // sends nothing.
+  [Fact]
+  public async Task AWindowThatClosesBeforeTheCallSendsNothing()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var shown = await f.CurrentAsync(First, fill: true);
+
+    var outcome = await f.SendAsync(
+      Request(shown),
+      () =>
+      {
+        f.Time.Advance(TimeSpan.FromHours(24));
+        return Task.FromResult<FuelIssuePreviews.Current?>(shown);
+      }
+    );
+
+    Assert.Equal(409, outcome.Status);
+    Assert.Contains("window closed", outcome.Error);
+    Assert.Empty(f.Transport.Sent);
+    Assert.Equal(
+      DriverMessageStatuses.Withdrawn,
+      (await f.Db.DriverMessages.SingleAsync()).Status
+    );
+  }
+
+  // The attempt is recorded under 123456; the carrier's number changes to
+  // 999999 before the call. The adapter is asked to send from 123456 and
+  // sends nothing, so no plan goes from a number its record does not name.
+  [Fact]
+  public async Task ANumberThatChangesBeforeTheCallSendsNothing()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var shown = await f.CurrentAsync(First, fill: true);
+    var reads = 0;
+
+    var outcome = await f.SendAsync(
+      Request(shown),
+      () =>
+      {
+        if (++reads == 2)
+          f.Transport.BusinessNumber = "999999";
+        return Task.FromResult<FuelIssuePreviews.Current?>(shown);
+      }
+    );
+
+    Assert.Equal(409, outcome.Status);
+    Assert.Contains("number changed", outcome.Error);
+    Assert.Empty(f.Transport.Sent);
+    var attempt = await f.Db.DriverMessages.SingleAsync();
+    Assert.Equal(
+      (DriverMessageStatuses.Withdrawn, "123456"),
+      (attempt.Status, attempt.BusinessNumberId)
+    );
+    Assert.Empty(await f.Db.FuelVisitSends.ToListAsync());
+  }
+
   [Fact]
   public async Task AnotherCarriersAttemptIsNotThisOnes()
   {
@@ -279,7 +338,18 @@ public sealed class FuelIssueSenderTests
         Status = "in_transit",
         TruckId = truck.Id,
       };
-      f.Db.AddRange(truck, driver, load);
+      // The driver wrote to the carrier's number an hour ago, so the
+      // window Messaging reads at the send is open.
+      var conversation = new Conversation
+      {
+        Id = Guid.NewGuid(),
+        Channel = DriverMessageChannels.WhatsApp,
+        BusinessNumberId = "123456",
+        Participant = "+15558234327",
+        LastInboundAt = f.Time.GetUtcNow().UtcDateTime.AddHours(-1),
+        LastMessageAt = f.Time.GetUtcNow().UtcDateTime.AddHours(-1),
+      };
+      f.Db.AddRange(truck, driver, load, conversation);
       await f.Db.SaveChangesAsync();
       (f.Truck, f.Dispatch, f.Driver) = (truck.Id, load.Id, driver.Id);
       return f;
