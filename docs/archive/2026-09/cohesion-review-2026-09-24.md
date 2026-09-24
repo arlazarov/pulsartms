@@ -50,6 +50,7 @@ was reviewed.
 | `Client/Shared/Fuel/FuelPlanEditor` (919 lines), outline | owners | Cohesive; carries finding 11 |
 | `DispatchWorkspaceReader.ReadAsync`, outline | extraction | Left (below) |
 | `tools/FleetLoadProbe/Program.cs` | shutdown | Fixed |
+| `TomTomRoutingProvider` (5 parts), outline | owners | Proposal: routing call ledger |
 
 ## Policy change
 
@@ -169,6 +170,18 @@ behavior check is unchanged. `ui-controls.md` had no size rule; its size
 - **Inbox round trips:** the driver-group scope (added tonight) reads the
   user row that `Inbox.UserAsync` has just read, one remote round trip per
   inbox poll. The unread notice itself is two queries.
+- **`TomTomRoutingProvider`.** Yesterday's review called it "large but
+  fine"; against tonight's criteria it is two owners.
+  - *What it mixes:* the TomTom transport and parsing, and a database-backed
+    call ledger: reservations, daily and per-minute limits, and the result
+    cache in `RoutingApiCalls`. The ledger belongs to no one provider.
+  - *Why it matters:* the September 22 audit measured seven round trips per
+    provider call on that path, behind a process-wide `SemaphoreSlim(1,1)`.
+    That was the 3.2 s fuel reset.
+  - *Also:* `GeocodeAsync` only forwards to the injected Google geocoder.
+  - *Proposal:* a routing-call ledger owner in Infrastructure behind the
+    existing interfaces. It touches provider-cost guards, so it needs its
+    own review and call-count tests.
 - **`AutomaticPlanningTests`** is one partial test class across 15 files
   (5,372 lines) held together by a nested fixture. That fixture should be a
   support type. Tonight's reroute tests followed the existing pattern.
@@ -206,7 +219,8 @@ members, fields and dependencies, not every method body. In particular:
 - browser modules other than the two above (`stationLayer.ts` is the other
   known whole-screen module);
 - style contents;
-- Infrastructure adapters, tools and scripts;
+- Infrastructure adapters other than the Google geocoder and TomTom, tools
+  and scripts;
 - the tests beyond those touched.
 
 Four production server files sit at 381–399 lines, just under the old limit:
