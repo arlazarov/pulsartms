@@ -53,6 +53,10 @@ public partial class Messages : IAsyncDisposable
   private readonly Dictionary<int, string> _parameters = [];
   private int _inboxRead,
     _threadRead;
+
+  // The revision the thread's first page was read at; older pages are
+  // asked for relative to it.
+  private long _threadSeen;
   private Guid? _shown;
   private ConversationContext? _context;
   private bool _contextFailed;
@@ -281,34 +285,56 @@ public partial class Messages : IAsyncDisposable
       return;
     }
     _thread = thread;
+    _threadSeen = thread.Summary.Revision;
     // Newest first from the server; the thread reads oldest first.
     _messages = [.. thread.Messages.Reverse()];
     if (_messages.Count == 0)
       return;
+    await MarkReadAsync(id, thread);
+  }
+
+  // Through what the server says this page lets be read: never past a
+  // driver message the dispatcher has not been shown.
+  private async Task MarkReadAsync(Guid id, ConversationView page)
+  {
     var marked = await Api.PostAsync<ReadRequest, bool>(
       $"api/messaging/conversations/{id}/read",
-      new(thread.Summary.Revision),
+      new(page.ReadThrough ?? page.Summary.Revision),
       _lifetime.Token
     );
     // Other tabs, and the navigation count, learn of it only when this
     // read changed something.
-    if (marked.Success && thread.Summary.Unread > 0 && !_disposed)
+    if (marked.Success && page.Summary.Unread > 0 && !_disposed)
       await Signals.AnnounceReadAsync();
   }
 
+  // Below the oldest message shown, by its place in the thread's order.
+  // A newer read of the thread since this was asked replaces what it
+  // continued, so its answer is dropped.
   private async Task OlderAsync()
   {
-    if (Id is not { } id || _messages.FirstOrDefault() is not { } oldest)
+    if (Id is not { } id || _thread?.Next is not { } before)
       return;
-    var before = Uri.EscapeDataString(oldest.SentAt.ToString("O"));
+    var generation = _threadRead;
     var result = await Api.GetAsync<ConversationView>(
-      $"api/messaging/conversations/{id}?before={before}",
+      $"api/messaging/conversations/{id}"
+        + $"?beforeSentAt={Uri.EscapeDataString(before.SentAt.ToString("O"))}"
+        + "&beforeCreatedAt="
+        + Uri.EscapeDataString(before.CreatedAt.ToString("O"))
+        + $"&beforeId={before.Id}&seen={_threadSeen}",
       _lifetime.Token
     );
-    if (_disposed || Id != id || result.Response is not { } page)
+    if (
+      _disposed
+      || Id != id
+      || generation != _threadRead
+      || result.Response is not { } page
+    )
       return;
     _messages = [.. page.Messages.Reverse(), .. _messages];
-    _thread = _thread! with { Older = page.Older };
+    _thread = _thread! with { Older = page.Older, Next = page.Next };
+    if (page.Messages.Count > 0)
+      await MarkReadAsync(id, page);
   }
 
   private Task SendAsync() => SendAsync(confirm: false);

@@ -6,9 +6,25 @@ using Domain.Entities.Storage;
 
 namespace Application.Features.Messaging.Queries;
 
-// A page of one conversation, newest first; Before continues backwards.
-public sealed record GetConversationQuery(Guid Id, DateTime? Before)
-  : IRequest<RequestResponse<ConversationView>>;
+// A page of one conversation, newest first; Before continues backwards
+// below the message it names. Seen is the conversation revision at which
+// the pages the reader already shows were first read, when it asks for an
+// older one.
+public sealed record GetConversationQuery(
+  Guid Id,
+  MessageCursor? Before,
+  long? Seen = null
+) : IRequest<RequestResponse<ConversationView>>;
+
+// A message's place in the thread's order: its time, when PulsR recorded
+// it, and its id, so messages sharing a time are neither skipped nor
+// repeated.
+public sealed record MessageCursor(DateTime SentAt, DateTime CreatedAt, Guid Id)
+{
+  // The earlier API's before=time: every message older than it.
+  public static MessageCursor Older(DateTime sentAt) =>
+    new(sentAt, DateTime.MinValue, Guid.Empty);
+}
 
 // "Conversation X changed" signals for the caller's company, as they are
 // raised after commit. A heartbeat (an empty id) keeps the stream open
@@ -41,11 +57,19 @@ public sealed record MessageView(
   IReadOnlyList<AttachmentView> Attachments
 );
 
+// Next continues backwards. ReadThrough is the revision the reader may
+// mark read after showing this page: it stops below the first unread
+// driver message the reader has not been shown, such as one that arrived
+// late with a time among older pages.
 public sealed record ConversationView(
   ConversationSummary Summary,
   IReadOnlyList<MessageView> Messages,
   bool Older
-);
+)
+{
+  public MessageCursor? Next { get; init; }
+  public long ReadThrough { get; init; }
+}
 
 public sealed class ConversationHandlers(
   IAppDbContext db,
@@ -75,18 +99,66 @@ public sealed class ConversationHandlers(
         "Conversation not found.",
         404
       );
-    var page = await db
+    var thread = db
       .ConversationMessages.AsNoTracking()
-      .Where(x =>
-        x.ConversationId == request.Id
-        && (request.Before == null || x.SentAt < request.Before)
-      )
+      .Where(x => x.ConversationId == request.Id);
+    var page = await Below(thread, request.Before)
       .OrderByDescending(x => x.SentAt)
       .ThenByDescending(x => x.CreatedAt)
+      .ThenByDescending(x => x.Id)
       .Take(PageSize + 1)
       .ToListAsync(ct);
     var messages = page.Take(PageSize).ToList();
     var ids = messages.Select(x => x.Id).ToArray();
+    var last = messages.LastOrDefault();
+    // Opening a thread reads what was recorded before the driver messages
+    // it shows, as a messenger does; what it must never mark is an unread
+    // driver message the reader has not been shown that was recorded after
+    // one it has. Below this page, that is one with a later arrival than
+    // the lowest shown (delivered late with an older time); a page showing
+    // no driver message lets nothing below it be marked. Among the pages
+    // the reader already shows, it is one recorded after they were first
+    // read (Seen), which the cap at Seen leaves unread. One aggregate over
+    // the conversation's driver messages above the reader's marker.
+    var seen = Math.Min(
+      request.Seen ?? conversation.Revision,
+      conversation.Revision
+    );
+    var low = messages
+      .Where(x => x.Direction == MessageDirections.Inbound)
+      .Min(x => (long?)x.ArrivedRevision);
+    var noneShown = low is null;
+    var lowest = low ?? 0;
+    var bounded = last is not null;
+    var (sentAt, createdAt, lastId) = last is null
+      ? (DateTime.MinValue, DateTime.MinValue, Guid.Empty)
+      : (last.SentAt, last.CreatedAt, last.Id);
+    var blocking = await thread
+      .Where(x =>
+        x.Direction == MessageDirections.Inbound
+        && x.ArrivedRevision
+          > (
+            db.ConversationReads.Where(r =>
+                r.ConversationId == request.Id && r.UserId == user
+              )
+              .Select(r => (long?)r.ReadRevision)
+              .FirstOrDefault() ?? 0
+          )
+        && !ids.Contains(x.Id)
+        && (
+          !bounded
+          || (noneShown || x.ArrivedRevision > lowest)
+            && (
+              x.SentAt < sentAt
+              || x.SentAt == sentAt
+                && (
+                  x.CreatedAt < createdAt
+                  || x.CreatedAt == createdAt && x.Id.CompareTo(lastId) < 0
+                )
+            )
+        )
+      )
+      .MinAsync(x => (long?)x.ArrivedRevision, ct);
     var attachments = (
       await db
         .MessageAttachments.AsNoTracking()
@@ -172,8 +244,31 @@ public sealed class ConversationHandlers(
         ],
         page.Count > PageSize
       )
+      {
+        Next =
+          page.Count > PageSize
+            ? new(last!.SentAt, last.CreatedAt, last.Id)
+            : null,
+        ReadThrough = blocking is { } first ? Math.Min(seen, first - 1) : seen,
+      }
     );
   }
+
+  // The messages after the cursor in the thread's order (newest first).
+  private static IQueryable<ConversationMessage> Below(
+    IQueryable<ConversationMessage> messages,
+    MessageCursor? cursor
+  ) =>
+    cursor is not { } at
+      ? messages
+      : messages.Where(x =>
+        x.SentAt < at.SentAt
+        || x.SentAt == at.SentAt
+          && (
+            x.CreatedAt < at.CreatedAt
+            || x.CreatedAt == at.CreatedAt && x.Id.CompareTo(at.Id) < 0
+          )
+      );
 
   public async IAsyncEnumerable<MessagingEvent> Handle(
     StreamMessagingEventsQuery request,

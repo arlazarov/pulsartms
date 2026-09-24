@@ -238,10 +238,7 @@ public sealed class InboxReadTests
     ).Response!;
     var second = (
       await Handlers(f, me)
-        .Handle(
-          new GetConversationQuery(conversation, first.Messages[^1].SentAt),
-          default
-        )
+        .Handle(new GetConversationQuery(conversation, first.Next), default)
     ).Response!;
 
     Assert.Equal((50, true), (first.Messages.Count, first.Older));

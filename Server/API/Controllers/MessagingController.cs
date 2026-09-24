@@ -122,12 +122,32 @@ public sealed class MessagingController : BaseController
   public Task<IActionResult> Unread(CancellationToken cancellationToken) =>
     HandleRequest(new GetUnreadNoticeQuery(), cancellationToken);
 
+  // beforeSentAt, beforeCreatedAt and beforeId continue below a message;
+  // before alone is the earlier clients' form, every message older than
+  // that time.
   [HttpGet("conversations/{id:guid}")]
   public Task<IActionResult> Conversation(
     Guid id,
     [FromQuery] DateTime? before,
+    [FromQuery] DateTimeOffset? beforeSentAt,
+    [FromQuery] DateTimeOffset? beforeCreatedAt,
+    [FromQuery] Guid? beforeId,
+    [FromQuery] long? seen,
     CancellationToken cancellationToken
-  ) => HandleRequest(new GetConversationQuery(id, before), cancellationToken);
+  ) =>
+    HandleRequest(
+      new GetConversationQuery(
+        id,
+        beforeSentAt is { } sent
+          && beforeCreatedAt is { } created
+          && beforeId is { } message
+            ? new(sent.UtcDateTime, created.UtcDateTime, message)
+          : before is { } time ? MessageCursor.Older(time)
+          : null,
+        seen
+      ),
+      cancellationToken
+    );
 
   [HttpPost("conversations/{id:guid}/read")]
   public Task<IActionResult> Read(

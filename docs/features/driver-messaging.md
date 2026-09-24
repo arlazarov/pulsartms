@@ -7,8 +7,8 @@ What is implemented of the
 `AddConversationReadRevisions`, `AddConversationArrivalSequence` and
 `AddFiledDriverFiles` applied in production on 2026-09-23 with
 integrations disabled; `AddDriverMessageBusinessNumber` (local, not
-applied anywhere, one nullable column) follows. No message has been received from or sent to
-a real driver.
+applied anywhere, one nullable column) follows. No message has been
+received from or sent to a real driver.
 
 ## Receiving
 
@@ -96,8 +96,12 @@ last one shown, by its last message time and id, so conversations with
 the same time are neither skipped nor repeated; `search` narrows to a
 driver's name or three or more digits of a number, at most 100
 characters),
-`GET /api/messaging/conversations/{id}?before=` (50 messages per page,
-newest first, with attachment states), `POST .../{id}/read` (this
+`GET /api/messaging/conversations/{id}?beforeSentAt=&beforeCreatedAt=&beforeId=&seen=`
+(50 messages per page, newest first, with attachment states; `next`
+continues below the last message by its time, when PulsR recorded it and
+its id, so messages sharing a time are neither skipped nor repeated;
+`before=` alone, the earlier clients' form, still reads everything older
+than a time), `POST .../{id}/read` (this
 dispatcher's marker: the conversation revision of the view they read; it
 only moves forward and never past the current revision). The marker is
 one upsert that keeps the higher revision (`ConversationReadMarkers`, SQL
@@ -113,9 +117,18 @@ conversation's commits, and a message is unread while the dispatcher's
 marker is below it. A message delivered late with an older time is
 therefore still unread. The conversation is read before its messages, so
 a marker at the view's revision never covers a message the view did not
-contain. Limit: a message so late that its time falls behind the newest
-50 is marked read with the rest when the thread is opened, though it
-shows only on the next page.
+contain. Each page also answers `readThrough`, the revision the client
+marks: opening a thread reads what was recorded before the driver
+messages it shows, as a messenger does, but never an unread driver
+message recorded after one it shows and not shown itself, such as one
+delivered late with a time among older pages. Such a message keeps the
+conversation unread until the page showing it is opened; an older page
+is asked for with `seen`, the revision the thread was read at, so one
+recorded among pages already shown after they were read stays unread
+too. A page showing no driver message lets nothing below it be marked.
+The check is one aggregate over the conversation's driver messages above
+the reader's marker; its cost grows with those, and it has not been
+measured on PostgreSQL.
 
 `GET /api/messaging/unread` is the notice: how many conversations are
 unread (up to 99, then `more`) and `newest`, the highest company arrival
@@ -303,8 +316,11 @@ under the number they went from, a window under another number),
 expiry, leases, a crash between the updates, a lost finalize, naming),
 `Server.Tests/Messaging/InboxReadTests` (read cost, unread, markers,
 paging, 120 conversations continued past 50 with 70 at one time and a
-late arrival, search, stream isolation), `Server.Tests/Messaging/ConversationReplyTests`
-(queue and send once, window, retry keys, stale replies, a take
+late arrival, search, stream isolation),
+`Server.Tests/Messaging/ConversationHistoryTests` (120 messages at one
+time read to the end, a late message below the page kept unread until
+shown, one among pages already shown not marked),
+`Server.Tests/Messaging/ConversationReplyTests` (queue and send once, window, retry keys, stale replies, a take
 overtaken before sending, a lease lost mid-send, a late answer on its own
 attempt, withdrawal for a closed window or changed number, explicit retry,
 claims), `Server.Tests/Messaging/ConversationFileTemplateTests` (a file sent
@@ -316,7 +332,9 @@ Development, no network, signed simulation). Client:
 `Client.Tests/Messaging/MessagesPageTests` (list and thread, read marker,
 stale reply confirmed with the same key, closed window without templates,
 a stream signal reads the open thread again, more conversations kept
-through a refresh, a late page for an earlier search dropped),
+through a refresh, a late page for an earlier search dropped, earlier
+messages by cursor marking only what the server allows, and as before
+against a server without it),
 `Client.Tests/Messaging/MessagingSignalsTests` (stream lines, account scope
 and rejoin on account change, local stream and polling after a failed
 import or join, a slow tick that outlasts the wait),

@@ -51,10 +51,23 @@ public sealed record MessageView(
   IReadOnlyList<AttachmentView> Attachments
 );
 
+// Next continues backwards; ReadThrough is the revision to mark read after
+// showing this page, which never passes a driver message not yet shown.
+// A server released before it existed sends none.
 public sealed record ConversationView(
   ConversationSummary Summary,
   IReadOnlyList<MessageView> Messages,
   bool Older
+)
+{
+  public MessageCursor? Next { get; init; }
+  public long? ReadThrough { get; init; }
+}
+
+public sealed record MessageCursor(
+  DateTime SentAt,
+  DateTime CreatedAt,
+  Guid Id
 );
 
 public sealed record SendMessageRequest(

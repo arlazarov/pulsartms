@@ -221,6 +221,42 @@ public sealed class MessagesPageTests
     Assert.Contains("search=Driver 3", api.InboxQueries[^1]);
   }
 
+  // The first page lets the dispatcher read only through revision 2: a
+  // late driver message sits below it. Earlier messages are asked for
+  // below the page's last message, relative to the revision it was read
+  // at, and that page lets the rest be read. A server from before
+  // ReadThrough existed is answered as before, through the revision shown.
+  [Theory]
+  [InlineData(2L, new long[] { 2, 4 })]
+  [InlineData(null, new long[] { 3, 4 })]
+  public async Task EarlierMessagesContinueByCursorAndMarkOnlyWhatWasShown(
+    long? readThrough,
+    long[] reads
+  )
+  {
+    var api = new Api(windowOpen: true)
+    {
+      ReadThrough = readThrough,
+      Older = true,
+    };
+    await using var context = Context(api);
+    var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, Ann));
+    page.WaitForAssertion(() => Assert.Single(api.Reads));
+
+    await page.FindAll("button")
+      .Single(x => x.TextContent.Contains("Show earlier messages"))
+      .ClickAsync(new());
+
+    page.WaitForAssertion(
+      () => Assert.Contains("Late from the road", page.Markup)
+    );
+    page.WaitForAssertion(() => Assert.Equal(reads, api.Reads));
+    Assert.Contains(
+      $"beforeId={Guid.Empty}&seen=3",
+      Assert.Single(api.OlderQueries)
+    );
+  }
+
   private static ConversationSummary Row(Guid id, DateTime at) =>
     new(
       id,
@@ -252,11 +288,17 @@ public sealed class MessagesPageTests
   {
     public bool RefuseFirstAsStale { get; init; }
 
+    // What the thread's page lets be read; the Summary says revision 3.
+    public long? ReadThrough { get; init; } = 3;
+
     // Answers the inbox by its query when set; the requests are kept.
     public Func<string, Task<InboxView>>? Inbox { get; init; }
     public List<string> InboxQueries { get; } = [];
     public List<SendMessageRequest> Sends { get; } = [];
     public long? ReadRevision { get; private set; }
+    public List<long> Reads { get; } = [];
+    public List<string> OlderQueries { get; } = [];
+    public bool Older { get; init; }
     public int ThreadReads { get; private set; }
     public int InboxReads { get; private set; }
 
@@ -303,6 +345,36 @@ public sealed class MessagesPageTests
       if (
         path == $"/api/messaging/conversations/{Ann}"
         && request.Method == HttpMethod.Get
+        && request.RequestUri.Query.Contains("beforeId")
+      )
+      {
+        OlderQueries.Add(Uri.UnescapeDataString(request.RequestUri.Query));
+        return Ok(
+          new ConversationView(
+            Summary(Ann, "Ann Driver", 1, null),
+            [
+              new(
+                Guid.NewGuid(),
+                "in",
+                "text",
+                "Late from the road",
+                "received",
+                Now.AddHours(-1),
+                null,
+                null,
+                []
+              ),
+            ],
+            false
+          )
+          {
+            ReadThrough = 4,
+          }
+        );
+      }
+      if (
+        path == $"/api/messaging/conversations/{Ann}"
+        && request.Method == HttpMethod.Get
       )
       {
         ThreadReads++;
@@ -333,8 +405,12 @@ public sealed class MessagesPageTests
                 []
               ),
             ],
-            false
+            Older
           )
+          {
+            ReadThrough = ReadThrough,
+            Next = new(Now, Now, Guid.Empty),
+          }
         );
       }
       if (path.EndsWith("/read"))
@@ -342,6 +418,7 @@ public sealed class MessagesPageTests
         ReadRevision = (
           await request.Content!.ReadFromJsonAsync<ReadRequest>(ct)
         )!.Revision;
+        Reads.Add(ReadRevision.Value);
         return Ok(true);
       }
       if (path.EndsWith("/messages"))

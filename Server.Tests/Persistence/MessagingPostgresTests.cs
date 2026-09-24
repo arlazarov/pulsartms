@@ -292,6 +292,76 @@ public sealed class MessagingPostgresTests
     );
   }
 
+  // The thread's composite keyset and its read-through aggregate on
+  // PostgreSQL: 120 messages at one time, read to the end in the order the
+  // database sorts them, the last page letting all of them be read.
+  [RequiresPostgresFact]
+  public async Task TheThreadContinuesInTheDatabasesOwnOrder()
+  {
+    await using var fixture = await PostgresFixture.CreateAsync();
+    var db = fixture.Connect();
+    var at = new DateTime(2026, 9, 21, 12, 0, 0, DateTimeKind.Utc);
+    await new InboxRecorder(db, TimeProvider.System).RecordAsync(
+      DriverMessageChannels.WhatsApp,
+      "123456",
+      [
+        .. Enumerable
+          .Range(0, 120)
+          .Select(i => new DriverMessageInboundEvent("+15550000001", at)
+          {
+            ProviderMessageId = $"wamid.same.{i}",
+            Text = "x",
+          }),
+      ],
+      default
+    );
+    db.Users.Add(
+      new User
+      {
+        Id = Guid.NewGuid(),
+        IdentityUserId = "thread-dispatcher",
+        Name = "Dispatcher",
+        Email = "thread@example.invalid",
+      }
+    );
+    await db.SaveChangesAsync();
+    var conversation = await db.Conversations.Select(x => x.Id).SingleAsync();
+    var expected = await db
+      .ConversationMessages.AsNoTracking()
+      .OrderByDescending(x => x.SentAt)
+      .ThenByDescending(x => x.CreatedAt)
+      .ThenByDescending(x => x.Id)
+      .Select(x => x.Id)
+      .ToListAsync();
+    var handler = new ConversationHandlers(
+      db,
+      new Server.Tests.Messaging.InboxScenario.Caller("thread-dispatcher"),
+      new TestCompany(),
+      new MessagingEvents(),
+      TimeProvider.System
+    );
+
+    var seen = new List<Guid>();
+    ConversationView page;
+    MessageCursor? next = null;
+    long? revision = null;
+    do
+    {
+      page = (
+        await handler.Handle(
+          new GetConversationQuery(conversation, next, revision),
+          default
+        )
+      ).Response!;
+      revision ??= page.Summary.Revision;
+      seen.AddRange(page.Messages.Select(x => x.Id));
+      next = page.Next;
+    } while (next is not null);
+
+    Assert.Equal(expected, seen);
+    Assert.Equal(page.Summary.Revision, page.ReadThrough);
+  }
+
   private static async Task<Guid> ConversationAsync(AppDbContext db)
   {
     await RecordAsync(db, "+15550000001");
