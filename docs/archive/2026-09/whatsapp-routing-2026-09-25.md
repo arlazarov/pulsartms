@@ -92,3 +92,50 @@ keeps the test number:
 
 Sharing one number across companies is not supported; designing for it
 is future research.
+
+## Inbound not arriving (reported later on September 25)
+
+**Documented evidence (from the read above, up to 02:46 UTC).** This is
+not fresh:
+- Meta's callbacks went to `meta-review-demo`;
+- the test phone's replies were recorded in the demo company;
+- AMF's statuses could not reach AMF.
+
+**Fresh evidence: none yet.** Production reads need a renewed
+`gcloud auth login`, and none were made.
+
+**Code on the inbound path.** Nothing in the September 25 release changes
+it except driver matching (through the shared WhatsApp rule; covered by
+the database group) and quick-reply taps. There is no known code
+regression.
+
+**Where a notification can stop, and what shows it:**
+
+| Stage | Outcome | Visible before | Visible now (local, not deployed) |
+| --- | --- | --- | --- |
+| Meta sends nothing (callback elsewhere, app unsubscribed) | no request | only the absence of requests | same: check the request log |
+| Unknown company key in the URL | 404 | request log | counted, logged by key |
+| Company not configured | 401 | request log | counted, logged "not-configured" |
+| App secret mismatch | 401 | request log | counted, logged "signature" |
+| Signed, but for another business number | **200, dropped** | **nothing** | counted, logged with the count of dropped changes |
+| Recorded in another company | 200, stored there | that company's inbox | same |
+| Recorded but not shown | 200, stored | Messages after a reload | unchanged |
+
+Counters live under `driver-messaging-webhook/…` in `GET
+/api/diagnostics/stages` (admin). They show where delivery stops; they
+repair nothing.
+
+**Evidence still needed (read only):**
+1. Request log for `/api/webhooks/whatsapp/*` since 02:46: the paths
+   (which company key), statuses and times.
+2. Latest `ConversationMessages` rows per company, inbound (counts and
+   times only).
+3. Credential rows for WhatsApp per company: revision and time only.
+4. In Meta's app settings, the callback URL the test WABA uses (the
+   owner can see it; PulsR cannot).
+
+**Configuration change that may be needed (owner's decision; nothing
+changed here).** If AMF should receive, point the test WABA's callback
+back to `/api/webhooks/whatsapp/amfcarrier` and clear the demo company's
+copy of the number. If the demo should receive, clear AMF's copy.
+Either way, one company holds the number.

@@ -1,9 +1,11 @@
+using Application.Diagnostics;
 using Application.Features.Messaging.Interfaces;
 using Application.Features.Messaging.Services;
 using Application.Models;
 using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
 using Domain.Rules.Messaging;
+using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Messaging.Commands;
 
@@ -29,13 +31,20 @@ public sealed record ReceiveDriverMessagesCommand(
   Stream Body
 ) : IRequest<RequestResponse<bool>>;
 
+// Every notification ends in one counted outcome (stage diagnostics,
+// "driver-messaging-webhook/…"): accepted, unknown company, not
+// configured, signature refused, or accepted but carrying changes for
+// another business number, which are dropped. A refusal or a drop is also
+// logged once, by company key and reason: never a number, message id,
+// text or secret. These show where delivery stops; they repair nothing.
 public sealed class DriverMessagingWebhookHandlers(
   IAppDbContext db,
   IDriverMessaging messaging,
   ICurrentCompany companies,
   InboxRecorder inbox,
   MessagingEvents events,
-  IEnumerable<IDriverTextObserver> observers
+  IEnumerable<IDriverTextObserver> observers,
+  ILogger<DriverMessagingWebhookHandlers> logger
 )
   : IRequestHandler<VerifyDriverMessagingWebhookQuery, RequestResponse<string>>,
     IRequestHandler<ReceiveDriverMessagesCommand, RequestResponse<bool>>
@@ -66,7 +75,10 @@ public sealed class DriverMessagingWebhookHandlers(
   )
   {
     if (await CompanyAsync(request.CompanyKey, ct) is not { } company)
+    {
+      Refused(request.CompanyKey, "unknown-company");
       return RequestResponse<bool>.Fail("Not accepted.", 404);
+    }
     var body = await ReadAsync(request.Body, ct);
     if (body is null)
       return RequestResponse<bool>.Fail("Not accepted.", 413);
@@ -77,7 +89,34 @@ public sealed class DriverMessagingWebhookHandlers(
       ct
     );
     if (notification is null)
+    {
+      Refused(
+        request.CompanyKey,
+        await messaging.IsConfiguredAsync(ct) ? "signature" : "not-configured"
+      );
       return RequestResponse<bool>.Fail("Not accepted.", 401);
+    }
+    Outcome("accepted");
+    PerformanceStages.Count(
+      Stage,
+      "inbound-messages",
+      notification.Inbound.Count
+    );
+    PerformanceStages.Count(Stage, "statuses", notification.Statuses.Count);
+    if (notification.OtherSenders > 0)
+    {
+      PerformanceStages.Count(
+        Stage,
+        "other-number-changes",
+        notification.OtherSenders
+      );
+      logger.LogWarning(
+        "Driver messaging webhook for {CompanyKey} dropped {Changes} "
+          + "changes addressed to another business number",
+        request.CompanyKey,
+        notification.OtherSenders
+      );
+    }
     var outbound = await ApplyConversationStatusesAsync(notification, ct);
     var texts = await ApplyTextStatusesAsync(notification, ct);
     await RecordLegacyWindowsAsync(notification.Inbound, ct);
@@ -232,6 +271,23 @@ public sealed class DriverMessagingWebhookHandlers(
     )
       .Select(x => (x.Id, x.Revision))
       .ToList();
+  }
+
+  private const string Stage = "driver-messaging-webhook";
+
+  private static void Outcome(string outcome) =>
+    PerformanceStages.Count(Stage, outcome, 1);
+
+  // The key is the path the provider called; bounded, since anyone can
+  // call it.
+  private void Refused(string key, string reason)
+  {
+    Outcome(reason);
+    logger.LogWarning(
+      "Driver messaging webhook refused for {CompanyKey}: {Reason}",
+      key.Length <= 64 ? key : key[..64],
+      reason
+    );
   }
 
   private async Task<Guid?> CompanyAsync(string key, CancellationToken ct) =>

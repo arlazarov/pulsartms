@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Application.Diagnostics;
 using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Models;
 using Application.Features.Messaging.Commands;
@@ -15,6 +16,7 @@ using Infrastructure.Integrations.WhatsApp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Server.Tests.Messaging;
@@ -76,6 +78,60 @@ public sealed class DriverMessagingWebhookTests
       await f.PostAsync(Status("wamid.1", "delivered", 10, number: "999"))
     );
     Assert.Equal(DriverMessageStatuses.Accepted, await f.StatusAsync(message));
+  }
+
+  // Where a notification stops is counted and, for a refusal or a drop,
+  // logged once by company key and reason - the silent case was a signed
+  // notification for another business number, answered 200 and dropped.
+  // No number, message id or text reaches the log.
+  [Fact]
+  public async Task EachWayANotificationStopsIsCountedAndNamed()
+  {
+    await using var f = await Fixture.CreateAsync();
+    await f.MessageAsync("wamid.1");
+    var before = PerformanceStages.Snapshot();
+    long Counted(string outcome) =>
+      (
+        PerformanceStages
+          .Snapshot()
+          .GetValueOrDefault($"driver-messaging-webhook/{outcome}")
+          ?.Items ?? 0
+      )
+      - (
+        before.GetValueOrDefault($"driver-messaging-webhook/{outcome}")?.Items
+        ?? 0
+      );
+
+    Assert.Equal(
+      401,
+      await f.PostAsync(Status("wamid.1", "delivered", 10), secret: "wrong")
+    );
+    Assert.Equal(
+      404,
+      await f.PostAsync(Status("wamid.1", "delivered", 10), key: "nobody")
+    );
+    Assert.Equal(
+      200,
+      await f.PostAsync(Status("wamid.1", "delivered", 10, number: "999"))
+    );
+    Assert.Equal(200, await f.PostAsync(Status("wamid.1", "delivered", 10)));
+
+    // Other tests count too, in parallel: only increases are asserted.
+    Assert.True(Counted("signature") >= 1);
+    Assert.True(Counted("unknown-company") >= 1);
+    Assert.True(Counted("other-number-changes") >= 1);
+    Assert.True(Counted("accepted") >= 2);
+    Assert.Equal(
+      [
+        "Driver messaging webhook refused for amfcarrier: signature",
+        "Driver messaging webhook refused for nobody: unknown-company",
+        "Driver messaging webhook for amfcarrier dropped 1 changes "
+          + "addressed to another business number",
+      ],
+      f.Logger.Lines
+    );
+    Assert.All(f.Logger.Lines, x => Assert.DoesNotContain("wamid", x));
+    Assert.All(f.Logger.Lines, x => Assert.DoesNotContain("999", x));
   }
 
   [Fact]
@@ -628,8 +684,11 @@ public sealed class DriverMessagingWebhookTests
         Company,
         new InboxRecorder(Db, TimeProvider.System),
         Events,
-        [new Observer(Notified)]
+        [new Observer(Notified)],
+        Logger
       );
+
+    public Recorded Logger { get; } = new();
 
     public DriverTextDelivery Delivery() =>
       new(
@@ -733,6 +792,24 @@ public sealed class DriverMessagingWebhookTests
     }
 
     public ValueTask DisposeAsync() => Refresh.DisposeAsync();
+  }
+
+  public sealed class Recorded : ILogger<DriverMessagingWebhookHandlers>
+  {
+    public List<string> Lines { get; } = [];
+
+    public IDisposable? BeginScope<TState>(TState state)
+      where TState : notnull => null;
+
+    public bool IsEnabled(LogLevel logLevel) => true;
+
+    public void Log<TState>(
+      LogLevel logLevel,
+      EventId eventId,
+      TState state,
+      Exception? exception,
+      Func<TState, Exception?, string> formatter
+    ) => Lines.Add(formatter(state, exception));
   }
 
   private sealed class Observer(List<(Guid, Guid)> notified)
