@@ -125,4 +125,31 @@
     font-size: ui.fs(small);
     overflow-wrap: anywhere;
   }
+  &__heading {
+    margin: 0;
+    font-size: ui.fs(label);
+    font-weight: 650;
+    color: ui.theme(text);
+  }
+  &__recorded,
+  &__pending {
+    font-size: ui.fs(small);
+    font-weight: 600;
+  }
+  &__recorded {
+    color: ui.theme(success-text);
+  }
+  &__pending {
+    color: ui.theme(warning-text);
+  }
+  &__submission pre {
+    max-width: 100%;
+    margin: ui.pg(xs) 0 0;
+    padding: ui.pg(sm);
+    overflow-x: auto;
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-muted);
+    font-size: ui.fs(small);
+    white-space: pre;
+  }
 }

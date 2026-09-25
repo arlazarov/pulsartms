@@ -608,6 +608,39 @@ public partial class Messages : IAsyncDisposable
     Refuse(result.ErrorMessage, template: false);
   }
 
+  // PulsR's contact request, when an administrator recorded it for this
+  // number exactly as PulsR defines it after Meta approved it.
+  private MessageTemplateView? ContactTemplate =>
+    _templates.FirstOrDefault(x => x.Purpose == "contactRequest");
+
+  // One click sends it once: its retry key lasts until it is queued, so a
+  // click again after an answer that never came is the same request.
+  private Guid? _contactKey;
+
+  private async Task RequestContactAsync()
+  {
+    if (Id is not { } id || _busy || ContactTemplate is not { } contact)
+      return;
+    var editor = Begin(id);
+    _refusal = null;
+    _contactKey ??= Guid.NewGuid();
+    var result = await Api.PostAsync<TemplateRequest, MessageView>(
+      $"api/messaging/conversations/{id}/templates",
+      new(_contactKey.Value, contact.Name, contact.Language, []),
+      _lifetime.Token
+    );
+    if (!Settled(id, editor))
+      return;
+    if (!result.Success)
+    {
+      _refusal = result.ErrorMessage;
+      return;
+    }
+    _contactKey = null;
+    await ToNewestAsync();
+    await RefreshThreadAsync(id);
+  }
+
   private Task SendTemplateAsync() => SendTemplateAsync(confirm: false);
 
   private async Task SendTemplateAsync(bool confirm)
@@ -863,6 +896,7 @@ public partial class Messages : IAsyncDisposable
   private void ResetDraft()
   {
     _staged.RemoveAll(x => x.State != StagedState.Sending);
+    _contactKey = null;
     _draft = "";
     _draftKey = null;
     _refusal = null;

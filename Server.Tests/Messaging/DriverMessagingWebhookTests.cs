@@ -337,6 +337,33 @@ public sealed class DriverMessagingWebhookTests
     Assert.True(file.MediaExpiresAt > DateTime.UtcNow.AddDays(6));
   }
 
+  // The driver taps "I'm available" on the contact request: a reply like
+  // any other, which opens the reply window.
+  [Fact]
+  public async Task AQuickReplyTapIsTheDriverWriting()
+  {
+    await using var f = await Fixture.CreateAsync();
+    Assert.Equal(
+      200,
+      await f.PostAsync(
+        Inbound(
+          new
+          {
+            type = "button",
+            button = new { text = "I'm available", payload = "I'm available" },
+          },
+          id: "wamid.tap"
+        )
+      )
+    );
+
+    var message = await f.Db.ConversationMessages.AsNoTracking().SingleAsync();
+    Assert.Equal(("text", "I'm available"), (message.Kind, message.Body));
+    Assert.NotNull(
+      (await f.Db.Conversations.AsNoTracking().SingleAsync()).LastInboundAt
+    );
+  }
+
   // Two drivers share the number: the conversation stays unmatched rather
   // than guessing which of them wrote.
   [Fact]

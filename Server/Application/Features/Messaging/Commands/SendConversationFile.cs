@@ -36,11 +36,14 @@ public sealed record SendConversationTemplateCommand(
 public sealed record GetMessageTemplatesQuery
   : IRequest<RequestResponse<IReadOnlyList<MessageTemplateView>>>;
 
+// Purpose: the PulsR template this one is (PulsrTemplates), when it is
+// recorded exactly as PulsR defines it.
 public sealed record MessageTemplateView(
   string Name,
   string Language,
   int Parameters,
-  string Text
+  string Text,
+  string? Purpose = null
 );
 
 public sealed class ConversationFilesAndTemplates(
@@ -213,6 +216,10 @@ public sealed class ConversationFilesAndTemplates(
       || request.IdempotencyKey == Guid.Empty
     )
       return Fail("Choose an approved template and fill in every field.", 400);
+    // A PulsR template PulsR cannot send yet (an image header) is never
+    // sent through here without it.
+    if (PulsrTemplates.Matching(template)?.Unsupported is { } unsupported)
+      return Fail(unsupported, 409);
     var text = Fill(template.Text, parameters);
     var payload = JsonSerializer.Serialize(
       new TemplatePayload(template.Name, template.Language, [.. parameters])
@@ -259,9 +266,15 @@ public sealed class ConversationFilesAndTemplates(
       );
     return RequestResponse<IReadOnlyList<MessageTemplateView>>.Ok(
       [
-        .. (await templates.CurrentAsync(ct)).Select(
-          x => new MessageTemplateView(x.Name, x.Language, x.Parameters, x.Text)
-        ),
+        .. (await templates.CurrentAsync(ct))
+          .Where(x => PulsrTemplates.Matching(x)?.Unsupported is null)
+          .Select(x => new MessageTemplateView(
+            x.Name,
+            x.Language,
+            x.Parameters,
+            x.Text,
+            PulsrTemplates.Matching(x)?.Purpose
+          )),
       ]
     );
   }

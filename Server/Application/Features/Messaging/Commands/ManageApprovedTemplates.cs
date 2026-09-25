@@ -22,10 +22,24 @@ public sealed record WithdrawTemplateCommand(Guid Id)
   : IRequest<RequestResponse<bool>>;
 
 // BusinessNumberId: the number the company sends from now, or null when
-// messaging is not configured and nothing can be recorded.
+// messaging is not configured and nothing can be recorded. Pulsr: the
+// templates PulsR itself uses, what to submit to Meta for each, and
+// whether it is recorded for this number exactly as defined.
 public sealed record ApprovedTemplatesView(
   string? BusinessNumberId,
-  IReadOnlyList<ApprovedTemplateView> Templates
+  IReadOnlyList<ApprovedTemplateView> Templates,
+  IReadOnlyList<PulsrTemplateView> Pulsr
+);
+
+public sealed record PulsrTemplateView(
+  string Purpose,
+  string Name,
+  string Language,
+  int Parameters,
+  string Body,
+  string Submission,
+  string? Unsupported,
+  bool Recorded
 );
 
 public sealed record ApprovedTemplateView(
@@ -65,8 +79,29 @@ public sealed class ApprovedTemplateHandlers(
         403
       );
     var number = await messaging.BusinessNumberAsync(ct);
+    var current = await templates.CurrentAsync(ct);
+    var recorded = current
+      .Select(PulsrTemplates.Matching)
+      .OfType<PulsrTemplate>()
+      .Select(x => x.Purpose)
+      .ToHashSet();
     return RequestResponse<ApprovedTemplatesView>.Ok(
-      new(number, [.. (await templates.CurrentAsync(ct)).Select(View)])
+      new(
+        number,
+        [.. current.Select(View)],
+        [
+          .. PulsrTemplates.All.Select(x => new PulsrTemplateView(
+            x.Purpose,
+            x.Name,
+            x.Language,
+            x.Examples.Count,
+            x.Body,
+            x.Submission(),
+            x.Unsupported,
+            recorded.Contains(x.Purpose)
+          )),
+        ]
+      )
     );
   }
 

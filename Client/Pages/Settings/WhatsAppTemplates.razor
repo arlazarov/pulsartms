@@ -52,6 +52,42 @@
                     }
                 </ul>
             }
+            @if (_view.Pulsr is { Count: > 0 } pulsr)
+            {
+                <h5 class="whatsapp-templates__heading">Templates PulsR uses</h5>
+                <p class="settings-page__hint">
+                    Submit each to Meta exactly as shown, then record it here
+                    once Meta approves it. Until then PulsR shows it as waiting
+                    for approval.
+                </p>
+                <ul class="whatsapp-templates__list">
+                    @foreach (var template in pulsr)
+                    {
+                        <li @key="template.Purpose">
+                            <span class="whatsapp-templates__name">@template.Name · @template.Language</span>
+                            <span class="whatsapp-templates__text">@template.Body</span>
+                            <span class="@(template.Recorded ? "whatsapp-templates__recorded" : "whatsapp-templates__pending")">
+                                @(template.Recorded ? "Recorded for this number" : "Not recorded: waiting for Meta's approval")
+                            </span>
+                            @if (template.Unsupported is { } why)
+                            {
+                                <span class="settings-page__hint">@why</span>
+                            }
+                            <details class="whatsapp-templates__submission">
+                                <summary>What to submit to Meta</summary>
+                                <pre>@template.Submission</pre>
+                            </details>
+                            @if (!template.Recorded)
+                            {
+                                <button class="btn btn--small btn--text" type="button" disabled="@_busy"
+                                        @onclick="() => Prefill(template)">
+                                    Record it as approved
+                                </button>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
             @if (!_adding)
             {
                 <div class="settings-page__actions">

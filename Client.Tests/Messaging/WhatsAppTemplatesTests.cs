@@ -84,6 +84,49 @@ public sealed class WhatsAppTemplatesTests
     Assert.Equal([Ready.Id], api.Removed);
   }
 
+  // What PulsR's own templates need from Meta, and a shortcut to record one
+  // exactly as defined once Meta approved it; PulsR never says it is
+  // approved on its own.
+  [Fact]
+  public async Task PulsrTemplatesShowWhatToSubmitAndFillTheRecordForm()
+  {
+    var api = new Api();
+    api.Pulsr.Add(
+      new(
+        "contactRequest",
+        "contact_request",
+        "en_US",
+        0,
+        "Dispatch would like to speak with you. Please reply when it’s safe.",
+        "{\"name\": \"contact_request\"}",
+        null,
+        false
+      )
+    );
+    await using var context = new ClientComponentContext(api.SendAsync);
+    var page = context.Render<WhatsAppTemplates>();
+    page.WaitForAssertion(
+      () => Assert.Contains("Templates PulsR uses", page.Markup)
+    );
+    Assert.Contains("waiting for Meta", page.Markup);
+    Assert.Equal(
+      "{\"name\": \"contact_request\"}",
+      page.Find(".whatsapp-templates__submission pre").TextContent
+    );
+
+    await Button(page, "Record it as approved").ClickAsync(new());
+
+    Assert.Equal(
+      "contact_request",
+      page.Find("#whatsapp-template-name").GetAttribute("value")
+    );
+    Assert.Equal(
+      "Dispatch would like to speak with you. Please reply when it’s safe.",
+      page.Find("#whatsapp-template-text").GetAttribute("value")
+    );
+    Assert.Empty(api.Added);
+  }
+
   private static AngleSharp.Dom.IElement Button(
     IRenderedComponent<WhatsAppTemplates> page,
     string text
@@ -95,6 +138,7 @@ public sealed class WhatsAppTemplatesTests
     public List<ApprovedTemplateView> Templates { get; } = [];
     public List<ApprovedTemplateRequest> Added { get; } = [];
     public List<Guid> Removed { get; } = [];
+    public List<PulsrTemplateView> Pulsr { get; } = [];
 
     public async Task<HttpResponseMessage> SendAsync(
       HttpRequestMessage request,
@@ -104,7 +148,9 @@ public sealed class WhatsAppTemplatesTests
       var path = request.RequestUri!.AbsolutePath;
       const string templates = "/api/settings/integrations/whatsapp/templates";
       if (path == templates && request.Method == HttpMethod.Get)
-        return Ok(new ApprovedTemplatesView("123456", [.. Templates]));
+        return Ok(
+          new ApprovedTemplatesView("123456", [.. Templates], [.. Pulsr])
+        );
       if (path == templates && request.Method == HttpMethod.Post)
       {
         var body = (

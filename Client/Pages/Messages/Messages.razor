@@ -346,6 +346,30 @@
                 {
                     <div class="messages__composer">
                         <div class="messages__template-box">
+                            <div class="messages__contact">
+                                @if (ContactTemplate is not null)
+                                {
+                                    <button type="button" class="btn btn--small btn--primary"
+                                            disabled="@_busy" @onclick="RequestContactAsync">
+                                        Request contact
+                                    </button>
+                                    <span class="messages__note">
+                                        Asks the driver to reply when it is safe;
+                                        they can answer with one tap.
+                                    </span>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn--small" disabled>
+                                        Request contact
+                                    </button>
+                                    <span class="messages__note">
+                                        Waiting for approval: the contact request
+                                        template is not recorded as approved for
+                                        this number yet.
+                                    </span>
+                                }
+                            </div>
                             @if (summary.LastInboundAt is null)
                             {
                                 <p>

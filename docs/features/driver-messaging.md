@@ -431,6 +431,35 @@ until then a slow provider shows as "Waiting to send" and nothing is lost.
 - `GET /api/messaging/attachments/{id}/content` serves a file only after
   it passed its check.
 
+### Templates PulsR itself uses
+
+`Application/Features/Messaging/Services/PulsrTemplates` defines them,
+with exactly what to submit to Meta (shown in Settings under "Templates
+PulsR uses", with a shortcut to record one once Meta approved it). A
+recorded template is one of them only when its name, language, text and
+number of parameters are exactly the definition's; anything else is just
+another recorded template. PulsR never calls one approved on its own.
+
+- **Contact request** (`contact_request`, `en_US`, UTILITY): body
+  "Dispatch would like to speak with you. Please reply when it’s safe."
+  and one QUICK_REPLY button "I'm available". In a conversation outside
+  the reply window, **Request contact** sends it on an explicit click
+  through the ordinary template path, with a retry key that lasts until
+  it is queued (clicking again after an unanswered attempt is the same
+  request). Until it is recorded for the current number, the button is
+  disabled and says it is waiting for approval. Sending it opens no reply
+  window: the driver's reply does. A tap on "I'm available" arrives as a
+  WhatsApp `button` message and is recorded as the driver's text.
+- **Fuel plan card** (`fuel_plan_card`, `en_US`, UTILITY): an IMAGE
+  header and the body "Fuel stop: {{1}}, {{2}}. Planned fill: {{3}}."
+  (station, address, quantity). **Not sendable yet**: the adapter sends a
+  template's body parameters only, and has no image to send - a header
+  needs a hosted image or an uploaded media id, and a card image per plan.
+  Until that exists, the generic template path refuses it (409) and the
+  dispatcher's template list leaves it out, so it can never go without
+  its image; fuel plans still go as text through the fuel hand-over's
+  owner while the reply window is open.
+
 ## Tests
 
 `Server.Tests/Messaging/DriverMessagingWebhookTests` (inbound recording,

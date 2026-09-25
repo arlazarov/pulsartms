@@ -95,6 +95,14 @@ public static class WhatsAppNotifications
         ProviderMessageId = id,
         Text = Bounded(Child(message, "text", "body"), MaximumText),
       };
+    // A tap on a template's quick-reply button ("I'm available") is the
+    // driver writing: its text is what the driver chose.
+    if (type == "button" && Child(message, "button", "text") is { } tapped)
+      return new(from, at)
+      {
+        ProviderMessageId = id,
+        Text = Bounded(tapped, MaximumText),
+      };
     if (
       type is "image" or "document" or "audio" or "video"
       && message.TryGetProperty(type, out var media)

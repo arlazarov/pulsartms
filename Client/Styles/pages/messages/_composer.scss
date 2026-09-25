@@ -219,3 +219,12 @@
     opacity: 0.5;
   }
 }
+
+.messages__contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ui.pg(sm);
+  padding-bottom: ui.pg(sm);
+  border-bottom: 1px solid ui.theme(border-subtle);
+}

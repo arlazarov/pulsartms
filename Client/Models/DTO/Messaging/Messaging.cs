@@ -79,11 +79,14 @@ public sealed record SendMessageRequest(
 
 public sealed record ReadRequest(long Revision);
 
+// Purpose names the PulsR template this is, when it is recorded exactly
+// as PulsR defines it ("contactRequest").
 public sealed record MessageTemplateView(
   string Name,
   string Language,
   int Parameters,
-  string Text
+  string Text,
+  string? Purpose = null
 );
 
 public sealed record TemplateRequest(
@@ -152,7 +155,21 @@ public sealed record FileRequest(
 // is null when WhatsApp is not set up.
 public sealed record ApprovedTemplatesView(
   string? BusinessNumberId,
-  IReadOnlyList<ApprovedTemplateView> Templates
+  IReadOnlyList<ApprovedTemplateView> Templates,
+  IReadOnlyList<PulsrTemplateView>? Pulsr = null
+);
+
+// A template PulsR itself uses: what to submit to Meta, whether it is
+// recorded for this number exactly so, and why PulsR cannot send it yet.
+public sealed record PulsrTemplateView(
+  string Purpose,
+  string Name,
+  string Language,
+  int Parameters,
+  string Body,
+  string Submission,
+  string? Unsupported,
+  bool Recorded
 );
 
 public sealed record ApprovedTemplateView(

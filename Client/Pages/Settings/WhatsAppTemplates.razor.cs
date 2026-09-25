@@ -55,6 +55,17 @@ public partial class WhatsAppTemplates : IDisposable
       _error = result.ErrorMessage ?? "Templates could not be loaded.";
   }
 
+  // After Meta approves a PulsR template: the form, filled exactly as PulsR
+  // defines it, for the administrator to record.
+  private void Prefill(PulsrTemplateView template)
+  {
+    _name = template.Name;
+    _language = template.Language;
+    _parameters = template.Parameters;
+    _text = template.Body;
+    Open();
+  }
+
   // The form opens on request, so the card shows no field until then.
   private void Open()
   {

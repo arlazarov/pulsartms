@@ -31,6 +31,7 @@ public sealed class MessageSwitchTests
     await using var context = Context(api);
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
     page.WaitForAssertion(() => Assert.Contains("a.pdf", page.Markup));
+    page.Settle();
 
     await Button(page, "File to load").ClickAsync(new());
     page.WaitForElement("[id^=filing-load]").Change("");
@@ -52,6 +53,7 @@ public sealed class MessageSwitchTests
     await using var context = Context(api);
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
     page.WaitForAssertion(() => Assert.Contains("a.pdf", page.Markup));
+    page.Settle();
     await Button(page, "File to load").ClickAsync(new());
     page.WaitForElement("[id^=filing-load]").Change("");
     page.WaitForElement("[id^=filing-number]").Change("1407");
@@ -73,6 +75,7 @@ public sealed class MessageSwitchTests
     await using var context = Context(api);
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
     page.WaitForAssertion(() => Assert.Contains("a.pdf", page.Markup));
+    page.Settle();
     await Button(page, "File to load").ClickAsync(new());
     var filing = page.Find(".messages__file .messages__filing").SubmitAsync();
 
@@ -94,6 +97,7 @@ public sealed class MessageSwitchTests
     await using var context = Context(api);
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
     page.WaitForAssertion(() => Assert.Contains("a.pdf", page.Markup));
+    page.Settle();
     await Button(page, "Choose driver").ClickAsync(new());
     page.WaitForElement("[id^=driver-] option[value]");
     page.Find("[id^=driver-]").Change(api.Driver.ToString());
