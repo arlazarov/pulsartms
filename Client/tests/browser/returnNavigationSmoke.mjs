@@ -102,18 +102,180 @@ const fixtures = new Map([
   ['/api/dispatch/board/enrichment', success([])],
 ]);
 
-// Every call the page makes on the map is recorded; focusing a truck
-// succeeds. The page's callbacks are kept so the test can report the camera
-// coming to rest, as the real map does on 'idle'.
+// The first truck's work, so its card and its next load's stop draw: the
+// current load on its road, and the next load with two stops.
+const now = new Date().toISOString();
+const point = (latitude, longitude) => ({ latitude, longitude });
+const [first] = trucks;
+const currentLoad = guid(200);
+const nextLoad = guid(201);
+const stop = (n, sequence, job, name, city, latitude, longitude) => ({
+  id: guid(300 + n),
+  sequence,
+  job,
+  name,
+  city,
+  province: 'ON',
+  country: 'Canada',
+  address: `${100 + n} Fixture Road, ${city}, ON, Canada`,
+  scheduledDate: '2026-09-28',
+  scheduledTime: '10:00:00',
+  latitude,
+  longitude,
+});
+const stops = [
+  stop(
+    0,
+    1,
+    'Delivery',
+    'Current receiving facility',
+    'Toronto',
+    43.65,
+    -79.38,
+  ),
+  stop(1, 1, 'Pickup', 'East logistics terminal', 'Kingston', 44.23, -76.48),
+  stop(2, 2, 'Delivery', 'Capital distribution centre', 'Ottawa', 45.42, -75.7),
+];
+const loadOf = (id, number, status, of) => ({
+  ...load(first, 0, false),
+  id,
+  loadNumber: number,
+  status,
+  orderNumber: `ORD-${number}`,
+  stops: of,
+});
+const loads = [
+  loadOf(currentLoad, 1400, 'in_transit', stops.slice(0, 1)),
+  loadOf(nextLoad, 1401, 'planned', stops.slice(1)),
+];
+const routePlanning = success({
+  truckId: first.truckId,
+  dispatchId: currentLoad,
+  loadNumber: 1400,
+  state: {
+    profile: {},
+    apiConfigured: false,
+    fuelPercent: 75,
+    fuelUpdatedAt: now,
+    eta: null,
+    plan: {
+      id: guid(400),
+      dispatchId: currentLoad,
+      truckId: first.truckId,
+      version: 1,
+      calculatedAt: now,
+      originalPlannedMiles: 500,
+      fromCurrentPosition: true,
+      profile: {},
+      fuelPlan: null,
+      stops: [{ ...stops[0], point: point(43.65, -79.38) }],
+      tracking: {
+        nextStopId: stops[0].id,
+        passedStopIds: [],
+        visitedStops: {},
+      },
+      route: {
+        miles: 500,
+        seconds: 30_000,
+        warnings: [],
+        points: [],
+        legs: [
+          {
+            miles: 500,
+            seconds: 30_000,
+            points: [point(41, -87), point(43.65, -79.38)],
+          },
+        ],
+      },
+    },
+    progress: {
+      progressMiles: 380,
+      remainingMiles: 120,
+      remainingSeconds: 7200,
+      distanceFromRouteMiles: 0,
+      offRoute: false,
+      locationStale: false,
+      locationTime: now,
+      position: point(41, -87),
+    },
+  },
+});
+const nextRoutes = success({
+  revision: 'fixture-v1',
+  unchanged: false,
+  routes: [
+    {
+      id: nextLoad,
+      loadNumber: 1401,
+      status: 'planned',
+      stopCount: 2,
+      stops: stops.slice(1).map(({ id, latitude, longitude, job, name }) => ({
+        id,
+        latitude,
+        longitude,
+        job,
+        name,
+      })),
+      deadhead: {
+        miles: 40,
+        points: [point(43.65, -79.38), point(44.23, -76.48)],
+      },
+      legs: [
+        {
+          miles: 300,
+          seconds: 18_000,
+          points: [point(44.23, -76.48), point(45.42, -75.7)],
+        },
+      ],
+    },
+  ],
+});
+const truckWork = new Map([
+  [`/api/dispatch/${currentLoad}`, success(loads[0])],
+  [`/api/dispatch/${nextLoad}`, success(loads[1])],
+  [`/api/dispatch/truck/${first.truckId}`, success(loads)],
+  [`/api/dispatch/truck/${first.truckId}/next-routes`, nextRoutes],
+  [
+    `/api/fleet/trucks/${first.truckId}/weather`,
+    success({
+      celsius: 22.5,
+      condition: 'CLEAR',
+      description: 'Clear',
+      isDaytime: true,
+      updatedAt: now,
+    }),
+  ],
+  ...[currentLoad, nextLoad].map(id => [
+    `/api/dispatch/${id}/planning/map`,
+    success({ dispatchId: id, segments: [], missingSections: 0 }),
+  ]),
+]);
+
+// The map provider, without the Google SDK. Every call the page makes is
+// recorded; focusing a truck succeeds. A next load's stop asked for by the
+// page is reported back as selected once the page has sent that truck's
+// next loads, as the real next-loads layer does when their stops are drawn
+// - there is no marker to press. The page's callbacks are kept so the test
+// can also report the camera coming to rest, as the real map does on
+// 'idle'.
 const mapStub = `export async function createFleetMap(element, _key, callbacks) {
   element.dataset.returnFixture = 'offline-map';
   window.mapCalls = [];
   window.mapCallbacks = callbacks;
+  let pending = null;
   return new Proxy({}, {
     get(_target, name) {
       if (name === 'then') return undefined;
       return (...args) => {
         window.mapCalls.push([String(name), JSON.parse(JSON.stringify(args ?? []))]);
+        if (name === 'selectNextStop') pending = args;
+        if (name === 'setNextLoadsBytes' && pending) {
+          const [load, index] = pending;
+          pending = null;
+          const address = new URL(location.href).searchParams;
+          setTimeout(() => callbacks.invokeMethodAsync('OnNextLoadSelected',
+            address.get('truckId'), address.get('dispatchId'), load, index));
+        }
         return name === 'focusTruck' ? true : undefined;
       };
     },
@@ -173,6 +335,12 @@ await context.route('**/*', async route => {
   const planning =
     request.method() === 'POST' &&
     url.pathname === '/api/dispatch/board/planning';
+  // Reading a truck's route is a POST that writes nothing.
+  const readsRoute =
+    request.method() === 'POST' &&
+    (url.pathname === `/api/dispatch/${currentLoad}/planning/automatic` ||
+      url.pathname === `/api/fleet/trucks/${first.truckId}/planning`);
+  if (readsRoute) return route.fulfill({ json: routePlanning });
   if (
     url.origin !== origin ||
     (!['GET', 'HEAD'].includes(request.method()) && !planning)
@@ -191,6 +359,8 @@ await context.route('**/*', async route => {
       return route.fulfill({ json: completed(number) });
     }
     if (planning) return route.fulfill({ json: success([]) });
+    if (truckWork.has(url.pathname))
+      return route.fulfill({ json: truckWork.get(url.pathname) });
     if (url.pathname === '/api/settings/appearance')
       return route.fulfill({ json: success({ theme: 'light' }) });
     const fixture = fixtures.get(url.pathname);
@@ -350,32 +520,47 @@ try {
     moved,
   );
 
-  // The truck's card stays hidden here (no route is served), so the link
-  // is followed by a script click, which Blazor routes like a pointer one.
-  const open = tab.locator("a[aria-label='Route & load details']");
-  await open.waitFor({ state: 'attached' });
-  await tab.waitForFunction(() =>
-    document
-      .querySelector("a[aria-label='Route & load details']")
-      ?.getAttribute('href')
-      ?.includes('44.1%252C-78.2%252C9'),
-  );
-  const openHref = await open.getAttribute('href');
+  // The next load's stop is on screen as it was left: its card, titled,
+  // with the stop the address names (the second of that load).
+  const card = tab.locator('.fleet-map-next-load-card');
+  const header = tab.locator('.fleet-map-inspector__header');
+  const stopShown = async label => {
+    await card.waitFor({ state: 'visible' });
+    const text = await card.innerText();
+    check(
+      text.includes('Capital distribution centre') && text.includes('Delivery'),
+      `${label}: the next load's stop is on screen`,
+      text.slice(0, 160),
+    );
+    check(
+      (await header.isVisible()) &&
+        (await header.innerText()).includes('Next load stop'),
+      `${label}: the card is the next load stop`,
+      await header.innerText(),
+    );
+  };
+  await stopShown('arrival');
+  const stopLink = card.locator('a.fleet-route-popup__details-link');
+  const detailsFrom = new URL(
+    await stopLink.getAttribute('href'),
+    origin,
+  ).searchParams.get('from');
   check(
-    openHref.startsWith(`/dispatch/${current}?from=`) &&
-      new URL(openHref, origin).searchParams
-        .get('from')
-        .includes('view=44.1%2C-78.2%2C9'),
-    'Open load carries the map address',
-    openHref,
+    (await stopLink.getAttribute('href')).startsWith(`/dispatch/${next}?`) &&
+      detailsFrom.includes(`nextLoadId=${next}`) &&
+      detailsFrom.includes('nextStop=1') &&
+      detailsFrom.includes('view=44.1%2C-78.2%2C9'),
+    "the stop's load link carries the map with that stop open",
+    detailsFrom,
   );
-  await open.evaluate(element => element.click());
+
+  // Pressed as a reader would, on the visible link.
+  await stopLink.click();
   link = await back('Back to map');
+  check(await link.isVisible(), 'Back to map is visible', null);
   await link.click();
   await tab.locator('[data-return-fixture]').waitFor();
-  await tab.waitForFunction(() =>
-    (window.mapCalls ?? []).some(([name]) => name === 'selectNextStop'),
-  );
+  await stopShown('Back to map');
   const again = await tab.evaluate(() => window.mapCalls);
   check(
     JSON.stringify(
@@ -385,12 +570,6 @@ try {
     again.find(([name]) => name === 'setOptions')?.[1][0]?.initialView,
   );
   check(
-    JSON.stringify(again.find(([name]) => name === 'selectNextStop')?.[1]) ===
-      JSON.stringify([next, 1, null]),
-    'Back to map reopens the next load stop',
-    again.find(([name]) => name === 'selectNextStop')?.[1],
-  );
-  check(
     (await tab.locator('#fleet-truck-search').inputValue()) === '110',
     'Back to map keeps the search',
     await tab.locator('#fleet-truck-search').inputValue(),
@@ -398,15 +577,11 @@ try {
   await tab.screenshot({ path: resolve(output, 'map-returned.png') });
 
   // Browser Back from the load to the map.
-  await tab
-    .locator("a[aria-label='Route & load details']")
-    .evaluate(element => element.click());
+  await card.locator('a.fleet-route-popup__details-link').click();
   await back('Back to map');
   await tab.goBack();
   await tab.locator('[data-return-fixture]').waitFor();
-  await tab.waitForFunction(() =>
-    (window.mapCalls ?? []).some(([name]) => name === 'setOptions'),
-  );
+  await stopShown('browser Back');
   const viaBack = await tab.evaluate(() => window.mapCalls);
   check(
     JSON.stringify(
@@ -415,6 +590,42 @@ try {
     'browser Back restores the map camera',
     await here(),
   );
+
+  // Back to the truck: its own card, and Open load on it, visible.
+  // The truck card opens collapsed; its actions are behind its own
+  // chevron, which a reader presses first.
+  const expand = async () => {
+    const toggle = tab.locator("button[aria-label='Truck details']");
+    await toggle.waitFor({ state: 'visible' });
+    if ((await toggle.getAttribute('aria-expanded')) !== 'true')
+      await toggle.click();
+  };
+  await tab.locator('.fleet-map-inspector__back').click();
+  await expand();
+  const open = tab.locator("a[aria-label='Route & load details']");
+  await open.waitFor({ state: 'visible' });
+  const openFrom = new URL(
+    await open.getAttribute('href'),
+    origin,
+  ).searchParams.get('from');
+  check(
+    (await open.getAttribute('href')).startsWith(`/dispatch/${current}?`) &&
+      !openFrom.includes('nextLoadId') &&
+      openFrom.includes(`truckId=${truck}`),
+    'Open load returns to the truck, the next stop closed',
+    openFrom,
+  );
+  await open.click();
+  link = await back('Back to map');
+  await link.click();
+  await expand();
+  await open.waitFor({ state: 'visible' });
+  check(
+    !(await card.isVisible()),
+    'Back to map shows the truck card, not the closed stop',
+    null,
+  );
+  await tab.screenshot({ path: resolve(output, 'map-truck-returned.png') });
 
   // A crafted return address goes nowhere but Dispatch.
   await tab.goto(
