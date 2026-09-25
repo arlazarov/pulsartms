@@ -366,20 +366,21 @@ public sealed class BroadcastHandlers(
     var (content, problem) = await ContentAsync(request, number, ct);
     if (problem is not null)
       return (null, problem);
-    var drivers = DriverRecipients.Candidates(
-      db.Drivers.AsNoTracking().Where(x => x.IsActive)
-    );
+    // All drivers and a group mean the active ones; a driver no longer
+    // active who is chosen by hand is listed and not sent to.
+    var drivers = DriverRecipients.Candidates(db.Drivers.AsNoTracking());
     string scopeName;
     switch (request.Scope)
     {
       case "all":
+        drivers = drivers.Where(x => x.IsActive);
         scopeName = "All drivers";
         break;
       case "group":
         if (await scope.CurrentAsync(ct) is not { IsAll: false } group)
           return (null, new("Choose a driver group first.", 400));
         var members = group.Drivers;
-        drivers = drivers.Where(x => members.Contains(x.Id));
+        drivers = drivers.Where(x => x.IsActive && members.Contains(x.Id));
         scopeName = $"Group {group.GroupName}";
         break;
       case "selected":
@@ -439,13 +440,15 @@ public sealed class BroadcastHandlers(
       var conversation = recipient.Number is { } phone
         ? open.GetValueOrDefault(phone)
         : null;
-      string? reason = recipient.Source switch
-      {
-        DriverWhatsAppSources.InvalidWhatsApp =>
-          "The WhatsApp number is not valid.",
-        DriverWhatsAppSources.None => "No WhatsApp number or valid phone.",
-        _ => null,
-      };
+      string? reason = !row.IsActive
+        ? "Inactive driver."
+        : recipient.Source switch
+        {
+          DriverWhatsAppSources.InvalidWhatsApp =>
+            "The WhatsApp number is not valid.",
+          DriverWhatsAppSources.None => "No WhatsApp number or valid phone.",
+          _ => null,
+        };
       if (reason is null && !seen.Add(recipient.Number!))
         reason = "Another driver here has the same number.";
       if (

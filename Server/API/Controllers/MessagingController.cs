@@ -40,14 +40,16 @@ public sealed class MessagingController : BaseController
     [FromQuery] string? search,
     [FromQuery] DateTimeOffset? afterAt,
     [FromQuery] Guid? afterId,
-    CancellationToken cancellationToken
+    CancellationToken cancellationToken,
+    [FromQuery] bool archived = false
   ) =>
     HandleRequest(
       new GetInboxQuery(
         unread,
         search,
         afterAt is { } at && afterId is { } id ? new(at.UtcDateTime, id) : null,
-        InChosenGroup: true
+        InChosenGroup: true,
+        Archived: archived
       ),
       cancellationToken
     );

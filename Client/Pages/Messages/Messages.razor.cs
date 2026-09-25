@@ -55,6 +55,7 @@ public partial class Messages : IAsyncDisposable
   private List<MessageView> _messages = [];
   private IReadOnlyList<MessageTemplateView> _templates = [];
   private bool _broadcasting;
+  private bool _archived;
   private bool _unreadOnly,
     _stale,
     _disposed;
@@ -301,9 +302,11 @@ public partial class Messages : IAsyncDisposable
       await RefreshThreadAsync(id);
   }
 
-  private async Task FilterAsync(bool unread)
+  // All, Unread or Archive (chats of drivers no longer active).
+  private async Task FilterAsync(bool unread, bool archived = false)
   {
     _unreadOnly = unread;
+    _archived = archived;
     await StartOverAsync();
   }
 
@@ -325,6 +328,7 @@ public partial class Messages : IAsyncDisposable
 
   private string InboxPath(InboxCursor? after) =>
     $"api/messaging/inbox?unread={(_unreadOnly ? "true" : "false")}"
+    + (_archived ? "&archived=true" : "")
     + (_searched.Length > 0 ? $"&search={Uri.EscapeDataString(_searched)}" : "")
     + (
       after is null

@@ -7,11 +7,17 @@ namespace Application.Features.Messaging.Queries;
 
 // After continues the list below the conversation it names, in the same
 // order; Search narrows it to a driver's name or a number's digits.
+// Archived lists only the conversations of drivers who are no longer
+// active (Driver.IsActive, the fleet's own lifecycle). The plain list
+// leaves them out; Unread and a search keep them, each marked by its
+// driver's status, so nothing unread or searched for is hidden. Nothing
+// about the conversation or its history changes with the driver's status.
 public sealed record GetInboxQuery(
   bool UnreadOnly,
   string? Search = null,
   InboxCursor? After = null,
-  bool InChosenGroup = false
+  bool InChosenGroup = false,
+  bool Archived = false
 ) : IRequest<RequestResponse<InboxView>>;
 
 // A position in the list: a conversation's last message time and id.
@@ -45,7 +51,12 @@ public sealed record ConversationSummary(
   string? ClaimedBy,
   DateTime? ClaimedUntil,
   long Revision
-);
+)
+{
+  // The linked driver's status, not the messages': true while active,
+  // false once no longer active, null for a number linked to no driver.
+  public bool? DriverActive { get; init; }
+}
 
 // Next continues the list, when there is more of it.
 public sealed record InboxView(
@@ -115,6 +126,15 @@ public sealed class InboxHandlers(
         x.DriverId != null && drivers.Contains(x.DriverId.Value)
       );
     }
+    if (request.Archived)
+      query = query.Where(x =>
+        db.Drivers.Any(d => d.Id == x.DriverId && !d.IsActive)
+      );
+    else if (!request.UnreadOnly && term.Length == 0)
+      query = query.Where(x =>
+        x.DriverId == null
+        || !db.Drivers.Any(d => d.Id == x.DriverId && !d.IsActive)
+      );
     if (term.Length > 0)
     {
       var name = term.ToLowerInvariant();
@@ -268,7 +288,7 @@ public static class Inbox
     var drivers = await db
       .Drivers.AsNoTracking()
       .Where(x => people.Contains(x.Id))
-      .ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+      .ToDictionaryAsync(x => x.Id, x => new { x.Name, x.IsActive }, ct);
     var users = await db
       .Users.AsNoTracking()
       .Where(x => people.Contains(x.Id))
@@ -279,7 +299,9 @@ public static class Inbox
         x.Id,
         x.Participant,
         x.DriverId,
-        x.DriverId is { } driver ? drivers.GetValueOrDefault(driver) : null,
+        x.DriverId is { } driver
+          ? drivers.GetValueOrDefault(driver)?.Name
+          : null,
         x.LastPreview,
         x.LastMessageAt,
         x.LastInboundAt,
@@ -290,7 +312,12 @@ public static class Inbox
           : null,
         x.ClaimedUntil > now ? x.ClaimedUntil : null,
         x.Revision
-      )),
+      )
+      {
+        DriverActive = x.DriverId is { } linked
+          ? drivers.GetValueOrDefault(linked)?.IsActive
+          : null,
+      }),
     ];
   }
 }

@@ -23,6 +23,11 @@ public partial class Popup : IAsyncDisposable
   [Parameter]
   public EventCallback OnClose { get; set; }
 
+  // When set, an X in the title's corner closes the popup, named for
+  // screen readers by this label; the overlay still closes it as before.
+  [Parameter]
+  public string? CloseLabel { get; set; }
+
   private IJSObjectReference? _module;
 
   private bool _scrollLocked;

@@ -852,10 +852,20 @@ and the filing box on `warning-surface`. The trip pane uses the shared
 `DriverHours` dials and always says how old the clocks are. Below
 `messages-trip-beside` the trip is a sheet over the thread with a dimmed
 backdrop; below `md` one pane shows, with Back. Below the conversations,
-"Drivers without a chat" lists driver rows of the same shape (a row is a
-button) with their WhatsApp numbers, scrolling with the conversations.
-**Message several drivers** beside the group switch opens the shared
-Popup: the scope as filter chips, a text or a template, Preview with one
+the drivers without a chat follow as rows of the same shape (a row is a
+button) with their WhatsApp numbers, scrolling with the conversations,
+without a visible heading (the section is named "Drivers without a chat"
+for screen readers). The chips are All, Unread and Archive. Archive holds
+the chats of drivers who are no longer active; All leaves them out,
+Unread and a search keep them. A chat of a driver no longer active
+carries a muted "Inactive driver" tag (`is-inactive`, the driver's own
+status and never a message status) in its row, its header and its search
+results.
+**Group message** beside the group switch opens the shared Popup, with
+an X (`CloseLabel`, `.popup__close` on `ui.icon-control`) in the title's
+corner; the overlay still closes it too. Closing it cancels nothing that
+was sent. It says each driver gets their own message, not a WhatsApp
+group: the scope as filter chips, a text or a template, Preview with one
 row per driver (a checkbox, disabled with its reason when it cannot be
 sent), Send as `.btn--primary`, then each driver's status with Cancel
 what has not gone as `.btn--danger`.

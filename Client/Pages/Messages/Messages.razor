@@ -34,7 +34,7 @@
                 </form>
                 <div class="messages__filters" role="group" aria-label="Show">
                     <button type="button" class="messages__chip"
-                            aria-pressed="@(_unreadOnly ? "false" : "true")"
+                            aria-pressed="@(_unreadOnly || _archived ? "false" : "true")"
                             @onclick="() => FilterAsync(false)">
                         All
                     </button>
@@ -43,11 +43,16 @@
                             @onclick="() => FilterAsync(true)">
                         Unread
                     </button>
+                    <button type="button" class="messages__chip"
+                            aria-pressed="@(_archived ? "true" : "false")"
+                            @onclick="() => FilterAsync(false, true)">
+                        Archive
+                    </button>
                 </div>
                 <DriverGroupPicker Id="messages-driver-group" />
                 <button type="button" class="btn btn--small messages__several"
                         @onclick="() => _broadcasting = true">
-                    Message several drivers
+                    Group message
                 </button>
             </div>
             <div class="messages__rows">
@@ -62,6 +67,8 @@
                             ? "No conversation matches."
                             : _unreadOnly
                             ? "Nothing unread."
+                            : _archived
+                            ? "No archived chats. Chats of drivers who are no longer active show here."
                             : "No conversation yet.")
                     </p>
                 }
@@ -93,9 +100,14 @@
                                             @item.Unread
                                         </span>
                                     }
-                                    @if (Colleague(item) || !item.WindowOpen)
+                                    @if (Colleague(item) || !item.WindowOpen
+                                         || item.DriverActive == false)
                                     {
                                         <span class="messages__tags">
+                                            @if (item.DriverActive == false)
+                                            {
+                                                <span class="messages__tag is-inactive">Inactive driver</span>
+                                            }
                                             @if (Colleague(item))
                                             {
                                                 <span class="messages__tag is-claim">
@@ -121,7 +133,7 @@
                         </button>
                     }
                 }
-                @if (!_unreadOnly)
+                @if (!_unreadOnly && !_archived)
                 {
                     <MessagingDrivers Search="@_searched" OnOpened="ChatOpened" />
                 }
@@ -148,6 +160,10 @@
                     <span class="messages__avatar" aria-hidden="true">@Initials(summary)</span>
                     <span class="messages__title">
                         <h2>@Who(summary)</h2>
+                        @if (summary.DriverActive == false)
+                        {
+                            <span class="messages__tag is-inactive">Inactive driver</span>
+                        }
                         <span>
                             @if (_context?.Trucks.Count == 1)
                             {

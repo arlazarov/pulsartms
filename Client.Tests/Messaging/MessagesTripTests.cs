@@ -98,8 +98,9 @@ public sealed class MessagesTripTests
     );
     Assert.Empty(page.FindAll(".messages__banner"));
     Assert.Empty(page.FindAll(".messages__tag.is-claim"));
+    // All pressed; Unread and Archive not.
     Assert.Equal(
-      ["true", "false"],
+      ["true", "false", "false"],
       page.FindAll(".messages__chip")
         .Select(x => x.GetAttribute("aria-pressed"))
     );

@@ -35,7 +35,12 @@ public sealed record MessageSearchHit(
   string Snippet,
   bool FiledToLoad,
   bool MentionsLoad
-);
+)
+{
+  // The chat's driver's status (not the message's): false for a driver no
+  // longer active, whose history search still finds; null for no driver.
+  public bool? DriverActive { get; init; }
+}
 
 // Next continues below the last message read, which may be below the last
 // hit shown: a message whose number only resembles the load is read and
@@ -218,6 +223,10 @@ public sealed class MessageSearchHandler(
           .Drivers.Where(d => d.Id == c.DriverId)
           .Select(d => d.Name)
           .FirstOrDefault(),
+        Active = db
+          .Drivers.Where(d => d.Id == c.DriverId)
+          .Select(d => (bool?)d.IsActive)
+          .FirstOrDefault(),
       })
       .ToDictionaryAsync(x => x.Id, ct);
     var hits = new List<MessageSearchHit>();
@@ -244,6 +253,9 @@ public sealed class MessageSearchHandler(
           isFiled,
           mentions
         )
+        {
+          DriverActive = chat?.Active,
+        }
       );
     }
     var last = page.LastOrDefault();

@@ -1,7 +1,8 @@
 @using Client.Components.Popup
 @using Client.Models.DTO.Messaging
 
-<Popup IsOpen="Open" Title="Message several drivers" OnClose="CloseAsync">
+<Popup IsOpen="Open" Title="Group message" CloseLabel="Close group message"
+       OnClose="CloseAsync">
     <div class="messages__broadcast">
         @if (_sent is { } sent)
         {
@@ -43,6 +44,10 @@
         }
         else
         {
+            <p class="messages__note">
+                Each driver gets their own message in their own chat; it is
+                not a WhatsApp group.
+            </p>
             <div class="messages__filters" role="group" aria-label="Send to">
                 <button type="button" class="messages__chip"
                         aria-pressed="@(_scope == "all" ? "true" : "false")"

@@ -54,6 +54,24 @@ html.popup-open {
     margin-bottom: ui.pg(md);
   }
 
+  // A title with the X beside it, in the corner.
+  &__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+    margin-bottom: ui.pg(md);
+  }
+
+  &__head &__title {
+    margin-bottom: 0;
+  }
+
+  &__close {
+    @include ui.icon-control;
+    flex: none;
+  }
+
   &__body {
     color: ui.theme(text-secondary);
   }

@@ -6,10 +6,7 @@
 }
 @if (_drivers is { Count: > 0 })
 {
-    <section class="messages__drivers" aria-labelledby="messages-drivers-title">
-        <h2 id="messages-drivers-title" class="messages__section">
-            Drivers without a chat
-        </h2>
+    <section class="messages__drivers" aria-label="Drivers without a chat">
         @if (_view is { Configured: false })
         {
             <p class="messages__note messages__section-note">

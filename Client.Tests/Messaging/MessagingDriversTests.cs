@@ -33,7 +33,12 @@ public sealed class MessagingDriversTests
     var page = context.Render<MessagesPage>();
     page.WaitForAssertion(() => Assert.Contains("Ann Lee", page.Markup));
     page.Settle();
-    Assert.Contains("Drivers without a chat", page.Markup);
+    // Named for screen readers; no visible heading above the rows.
+    page.Find("section[aria-label='Drivers without a chat']");
+    Assert.DoesNotContain(
+      page.FindAll("h2, h3"),
+      x => x.TextContent.Contains("Drivers without a chat")
+    );
     Assert.Contains("withoutConversation=true", api.DriverQueries.Single());
 
     await Driver(page, "Ann Lee").ClickAsync(new());

@@ -64,9 +64,14 @@
                             <time datetime="@hit.SentAt.ToString("O")">@When(hit)</time>
                         </span>
                         <span class="messages__result-text">@hit.Snippet</span>
-                        @if (hit.FiledToLoad || hit.MentionsLoad)
+                        @if (hit.FiledToLoad || hit.MentionsLoad
+                             || hit.DriverActive == false)
                         {
                             <span class="messages__tags">
+                                @if (hit.DriverActive == false)
+                                {
+                                    <span class="messages__tag is-inactive">Inactive driver</span>
+                                }
                                 @if (hit.FiledToLoad)
                                 {
                                     <span class="messages__tag">Filed to the load</span>

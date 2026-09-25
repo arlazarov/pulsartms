@@ -524,9 +524,24 @@ another recorded template. PulsR never calls one approved on its own.
   its image; fuel plans still go as text through the fuel hand-over's
   owner while the reply window is open.
 
+## Drivers no longer active: Archive
+
+A conversation follows its linked driver's own status (`Driver.IsActive`,
+the fleet's lifecycle), never its messages'. `GET
+/api/messaging/inbox` leaves out the chats of drivers no longer active;
+`archived=true` lists only those. Unread and a search keep both, and every
+summary and search hit carries `driverActive` (null for a number linked to
+no driver). A driver made active again is back in the plain list. Nothing
+is deleted or moved: the conversation, its history and the driver stay as
+they are. The directory of drivers without a chat lists active drivers
+only, and a chat cannot be started with one who is not. Group messages go
+to active drivers only: All and a group leave the others out, and one
+chosen by hand is listed as "Inactive driver." and not sent.
+
 ## One message to several drivers
 
-Messages, **Message several drivers** opens a dialog: all the company's
+Messages, **Group message** opens a dialog (individual messages to each
+driver, not a WhatsApp group): all the company's
 drivers or the dispatcher's current driver group, a text or an approved
 template (Request contact included), then **Preview**. The preview
 (`POST /api/messaging/broadcasts/preview`, nothing written) lists each

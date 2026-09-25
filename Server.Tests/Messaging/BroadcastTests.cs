@@ -135,6 +135,45 @@ public sealed class BroadcastTests
     );
   }
 
+  // A driver no longer active is never among All or a group; chosen by
+  // hand, they are listed as not sendable, and nothing is queued for them.
+  [Fact]
+  public async Task AnInactiveDriverChosenByHandIsListedAndNotSent()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    var d = await DriversAsync(f);
+    var inactive = await f
+      .Db.Drivers.AsNoTracking()
+      .Where(x => x.Name == "Inactive")
+      .Select(x => x.Id)
+      .SingleAsync();
+
+    var all = await PreviewAsync(f, Contact("all"));
+    var chosen = await PreviewAsync(
+      f,
+      Contact("selected") with
+      {
+        DriverIds = [d.Ann, inactive],
+      }
+    );
+    var sent = await CreateAsync(
+      f,
+      Guid.NewGuid(),
+      Contact("selected") with
+      {
+        DriverIds = [d.Ann, inactive],
+      }
+    );
+
+    Assert.DoesNotContain(all.Recipients, x => x.DriverId == inactive);
+    var listed = Assert.Single(chosen.Recipients, x => x.DriverId == inactive);
+    Assert.False(listed.Eligible);
+    Assert.Equal("Inactive driver.", listed.Reason);
+    Assert.Equal(1, chosen.Eligible);
+    var skipped = Assert.Single(sent.Recipients, x => x.DriverId == inactive);
+    Assert.Equal(("skipped", (Guid?)null), (skipped.Status, skipped.MessageId));
+  }
+
   // Cancelled before the worker takes them: withdrawn, never sent.
   [Fact]
   public async Task CancellingBeforeTheyGoWithdrawsThem()

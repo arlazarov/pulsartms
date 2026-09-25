@@ -84,6 +84,28 @@ public sealed class BroadcastDialogTests
   private static string Text(IRenderedComponent<BroadcastDialog> dialog) =>
     Regex.Replace(dialog.Markup, @"\s+", " ");
 
+  // The X in the title's corner closes the dialog through its owner, named
+  // for screen readers; nothing is sent or cancelled by closing.
+  [Fact]
+  public void TheXClosesTheGroupMessage()
+  {
+    var api = new Api();
+    using var context = Context(api);
+    var closed = 0;
+    var dialog = context.Render<BroadcastDialog>(x =>
+      x.Add(p => p.Open, true).Add(p => p.OnClose, () => closed++)
+    );
+
+    Assert.Contains("Group message", dialog.Find(".popup__title").TextContent);
+    Assert.Contains("not a WhatsApp group", dialog.Markup);
+    dialog
+      .Find("button.popup__close[aria-label='Close group message']")
+      .Click();
+
+    Assert.Equal(1, closed);
+    Assert.Empty(api.Sends);
+  }
+
   private static void Send(
     IRenderedComponent<BroadcastDialog> dialog,
     string label

@@ -13,7 +13,13 @@ public sealed record ConversationSummary(
   string? ClaimedBy,
   DateTime? ClaimedUntil,
   long Revision
-);
+)
+{
+  // The linked driver's own status (not the messages'): false once the
+  // driver is no longer active, null for a number linked to no driver. A
+  // server released before it existed sends none.
+  public bool? DriverActive { get; init; }
+}
 
 // Next continues the list below its last conversation, when there is more.
 public sealed record InboxView(
@@ -232,7 +238,11 @@ public sealed record MessageSearchHit(
   string Snippet,
   bool FiledToLoad,
   bool MentionsLoad
-);
+)
+{
+  // The chat's driver's status, as on ConversationSummary.
+  public bool? DriverActive { get; init; }
+}
 
 public sealed record MessageSearchView(
   IReadOnlyList<MessageSearchHit> Hits,
