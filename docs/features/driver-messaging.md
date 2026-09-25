@@ -365,6 +365,19 @@ and the newest message the dispatcher had on screen:
   failed reply again as the next attempt of its retry key; nothing else
   does. `POST .../conversations/{id}/claim` claims without sending.
 
+**Throughput, assessed and deliberately unchanged (September 25).** The
+worker sends one message at a time: each pass takes up to ten queued
+messages per company, oldest first, and companies are passed one after
+another. A provider that does not answer holds the next message for up to
+its request timeout (20 seconds; a file also uploads first), so ten slow
+answers delay a company's later replies by minutes, and another company's
+by as long. Nothing has been measured, because production has never sent a
+message and serves one company. Sending in parallel would need the fence
+per message kept exactly as it is (it already makes concurrent workers
+safe) and a per-company and provider-rate bound. Revisit when a queued
+reply waits longer than a minute in production, or a second company sends;
+until then a slow provider shows as "Waiting to send" and nothing is lost.
+
 ## Files and templates out
 
 - `POST /api/messaging/conversations/{id}/files` (form upload, at most
