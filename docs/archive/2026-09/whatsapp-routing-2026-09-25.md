@@ -63,7 +63,7 @@ The replies were not lost at Meta; only their statuses were routed away.
 attempt that had already been sent again. The server was right; the page
 kept the button on superseded attempts. Fixed locally in `85f65104`.
 
-## Guard (local, released with the September 25 package if it ships)
+## Guard (released at 05:29 UTC in `ce465d2d`, see [the release](release-2026-09-25.md))
 
 **Before.** Nothing stopped two companies saving active credentials for
 the same WhatsApp number, and the webhook silently served one of them.
