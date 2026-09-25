@@ -276,8 +276,11 @@ public static class TruckTrailerAssignments
   }
 
   // After an import or an execution change: refreshes and publishes on its
-  // own, unless the fleet synchronization is running - it refreshes every
-  // cycle itself, so waiting behind it would only hold the caller up.
+  // own, unless another pass holds the process-wide fleet gate - possibly
+  // another company's, which will not resolve these trucks. Waiting here
+  // would hold the caller's dispatch gate, so the trucks it marked are left
+  // to TruckTrailerRefreshBehavior once that gate is released, and to the
+  // next synchronization if the fleet gate stays busy.
   public static async Task RefreshAsync(
     IAppDbContext db,
     ReadCache reads,

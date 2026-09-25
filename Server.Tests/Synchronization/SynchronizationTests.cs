@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using System.Data.Common;
 using System.Text.Json;
+using Application.Behaviors;
 using Application.Caching;
+using Application.Concurrency;
 using Application.Features.Dispatch.Commands.SyncDispatche;
 using Application.Features.Dispatch.Interfaces;
 using Application.Features.Dispatch.Models;
@@ -459,16 +461,78 @@ public class SynchronizationTests
   public async Task AnImportedLoadsUnknownTrailerIsCataloguedAndPutOnItsTruck()
   {
     await using var fixture = await Database.CreateAsync();
-    var truck = new Truck
-    {
-      Id = Guid.NewGuid(),
-      ExternalId = "v-11005",
-      UnitNumber = "11005",
-      IsActive = true,
-    };
-    fixture.Db.Trucks.Add(truck);
-    await fixture.Db.SaveChangesAsync();
-    var source = new ExternalDispatch
+    var source = await TrailerLoadAsync(fixture.Db);
+    using var reads = TestCache.Create();
+    using var memory = new MemoryCache(new MemoryCacheOptions());
+    await SendImportAsync(fixture.Db, reads, memory, source);
+
+    var trailer = await fixture.Db.Trailers.AsNoTracking().SingleAsync();
+    Assert.Equal(
+      ("55904", DispatchImportTestData.Key),
+      (trailer.UnitNumber, trailer.Source)
+    );
+    var load = await fixture
+      .Db.Dispatches.AsNoTracking()
+      .Include(x => x.Stops)
+      .SingleAsync();
+    Assert.Equal(trailer.Id, load.TrailerId);
+    Assert.All(load.Stops, x => Assert.Equal(trailer.Id, x.TrailerId));
+    var row = await fixture.Db.Trucks.AsNoTracking().SingleAsync();
+    Assert.Equal((trailer.Id, "load"), (row.TrailerId, row.TrailerSource));
+  }
+
+  // The fleet gate is process-wide: another company's synchronization or a
+  // dispatcher's refresh may hold it while the import commits. The import's
+  // own pass then stands aside, and the trucks it marked still take their
+  // trailers before the request answers.
+  [Fact]
+  public async Task AnImportMeetingAHeldFleetGateStillPutsTheTrailerOnItsTruck()
+  {
+    await using var fixture = await Database.CreateAsync();
+    var source = await TrailerLoadAsync(fixture.Db);
+    using var reads = TestCache.Create();
+    using var memory = new MemoryCache(new MemoryCacheOptions());
+    await SendImportAsync(
+      fixture.Db,
+      reads,
+      memory,
+      source,
+      async import =>
+      {
+        await ProcessGates.Fleet.WaitAsync();
+        try
+        {
+          var result = await import();
+          Assert.Null(
+            (await fixture.Db.Trucks.AsNoTracking().SingleAsync()).TrailerId
+          );
+          return result;
+        }
+        finally
+        {
+          ProcessGates.Fleet.Release();
+        }
+      }
+    );
+
+    var trailer = await fixture.Db.Trailers.AsNoTracking().SingleAsync();
+    var row = await fixture.Db.Trucks.AsNoTracking().SingleAsync();
+    Assert.Equal((trailer.Id, "load"), (row.TrailerId, row.TrailerSource));
+  }
+
+  private static async Task<ExternalDispatch> TrailerLoadAsync(AppDbContext db)
+  {
+    db.Trucks.Add(
+      new Truck
+      {
+        Id = Guid.NewGuid(),
+        ExternalId = "v-11005",
+        UnitNumber = "11005",
+        IsActive = true,
+      }
+    );
+    await db.SaveChangesAsync();
+    return new ExternalDispatch
     {
       LoadNumber = 1407,
       Status = "in_transit",
@@ -494,31 +558,39 @@ public class SynchronizationTests
         },
       ],
     };
-    using var reads = TestCache.Create();
-    using var memory = new MemoryCache(new MemoryCacheOptions());
-    await new SyncDispatchesCommandHandler(
-      fixture.Db,
+  }
+
+  // The import as the pipeline sends it: the truck refresh behavior resolves
+  // the trucks it marked when its own pass could not take the fleet gate.
+  private static Task<RequestResponse<int>> SendImportAsync(
+    AppDbContext db,
+    ReadCache reads,
+    IMemoryCache memory,
+    ExternalDispatch source,
+    Func<Func<Task<RequestResponse<int>>>, Task<RequestResponse<int>>>? around =
+      null
+  )
+  {
+    var handler = new SyncDispatchesCommandHandler(
+      db,
       [new DispatchProvider(source)],
       DispatchImportTestData.Options,
       reads,
       memory,
       new(Options.Create(new RoutePreparationOptions()), TimeProvider.System),
       new TestCompany()
-    ).Handle(new(), default);
-
-    var trailer = await fixture.Db.Trailers.AsNoTracking().SingleAsync();
-    Assert.Equal(
-      ("55904", DispatchImportTestData.Key),
-      (trailer.UnitNumber, trailer.Source)
     );
-    var load = await fixture
-      .Db.Dispatches.AsNoTracking()
-      .Include(x => x.Stops)
-      .SingleAsync();
-    Assert.Equal(trailer.Id, load.TrailerId);
-    Assert.All(load.Stops, x => Assert.Equal(trailer.Id, x.TrailerId));
-    var row = await fixture.Db.Trucks.AsNoTracking().SingleAsync();
-    Assert.Equal((trailer.Id, "load"), (row.TrailerId, row.TrailerSource));
+    Task<RequestResponse<int>> Import() => handler.Handle(new(), default);
+    return new TruckTrailerRefreshBehavior<
+      SyncDispatchesCommand,
+      RequestResponse<int>
+    >(
+      db,
+      reads,
+      NullLogger<
+        TruckTrailerRefreshBehavior<SyncDispatchesCommand, RequestResponse<int>>
+      >.Instance
+    ).Handle(new(), _ => around is null ? Import() : around(Import), default);
   }
 
   [Fact]
