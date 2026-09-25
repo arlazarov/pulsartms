@@ -106,8 +106,8 @@ public partial class FleetMap
     return ReflectSelectionAsync();
   }
 
-  // Asked once, after the truck is focused; the map applies it when that
-  // load's stops are drawn, through the same path as a click, so the
+  // Asked once, as soon as the truck is focused; the map applies it when
+  // that load's stops are drawn, through the same path as a click, so the
   // truck, load and assignment checks still decide.
   private async Task RestoreNextStopAsync()
   {

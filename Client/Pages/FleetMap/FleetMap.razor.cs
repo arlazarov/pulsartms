@@ -280,8 +280,10 @@ public partial class FleetMap : IAsyncDisposable
     {
       _focusedTruckId = TruckId;
       FocusError = null;
-      await SelectRouteAsync(TruckId, DispatchId);
+      // Asked before the route is read: the map holds it until that load's
+      // stops are drawn, so it need not wait for the route.
       await RestoreNextStopAsync();
+      await SelectRouteAsync(TruckId, DispatchId);
     }
     else
       FocusError = "This truck has no location available on the map.";

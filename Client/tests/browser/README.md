@@ -36,6 +36,17 @@ JSON report in managed `browser-ui` output. This does not exercise production
 data, real address verification, database transactions, document storage,
 authentication, browser zoom or complete visual correctness.
 
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/returnNavigationSmoke.mjs`
+from Client follows a load from the Dispatch list and from the Fleet Map and
+back, through the load page's Back link and through browser Back. Dispatch
+must return with its scope, search, page and scroll; the map with its truck,
+load, next load's stop, camera and truck search, and its address must follow
+a camera move. The map provider is a stub that records what the page asks of
+it and reports one camera move, so the real camera is not exercised here (the
+script tests cover it). APIs are synthetic and read-only; reads it does not
+need (a load's workspace, a route) answer not found and are listed. It also
+checks that a crafted return address goes to Dispatch. Not gated.
+
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/stationQuoteSizingSmoke.mjs`
 checks single-day and comparison station quotes in a representative inspector
 shell using the production popup module and staged CSS. Sixteen cases cover

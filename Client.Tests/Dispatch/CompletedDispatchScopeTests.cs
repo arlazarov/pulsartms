@@ -260,6 +260,47 @@ public sealed class CompletedDispatchScopeTests
     );
   }
 
+  // The page's parameters can be set again with the same address (the
+  // layout renders again, or the list is returned to). That reads the list
+  // again where it is; it must not fall back to page 1.
+  [Fact]
+  public void SettingTheSameAddressAgainKeepsThePage()
+  {
+    const string place = "/dispatch?scope=completed&q=Historic&page=2";
+    var requests = new ConcurrentQueue<Uri>();
+    using var context = Context(
+      new FakeTimeProvider(),
+      (request, _) =>
+      {
+        requests.Enqueue(request.RequestUri!);
+        return Task.FromResult(
+          request.RequestUri!.AbsolutePath == "/api/dispatch"
+            ? Archive(2)
+            : Auxiliary(request.RequestUri)
+        );
+      }
+    );
+    context.Services.GetRequiredService<NavigationManager>().NavigateTo(place);
+    var component = context.Render<DispatchList>();
+    component.WaitForAssertion(
+      () => Assert.NotEmpty(component.FindAll("section.dispatch-load"))
+    );
+
+    component.Render();
+
+    component.WaitForAssertion(
+      () =>
+        Assert.Equal(
+          2,
+          requests.Count(uri => uri.AbsolutePath == "/api/dispatch")
+        )
+    );
+    Assert.All(
+      requests.Where(uri => uri.AbsolutePath == "/api/dispatch"),
+      uri => Assert.Contains("page=2", uri.Query)
+    );
+  }
+
   private static HttpResponseMessage Page(
     params (string Truck, int Number, string Driver)[] loads
   )

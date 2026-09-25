@@ -111,6 +111,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
 
   private (Guid?, string?, string?, int?)? _address;
   private bool _armed;
+  private int _requestedPage = 1;
 
   private string ReturnOrigin =>
     ReturnNavigation.DispatchList(
@@ -251,8 +252,10 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
   protected override Task OnParametersSetAsync()
   {
     var address = (TruckId, Scope, Query, PageNumber);
+    // Set again with the same address (the layout rendered again): the list
+    // is read again where it is, not from page 1.
     if (_address == address)
-      return LoadAsync(1);
+      return LoadAsync(_requestedPage);
     _address = address;
     _showCompleted = Scope == "completed";
     _search = Query ?? "";
@@ -327,6 +330,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
 
   private async Task LoadAsync(int page)
   {
+    _requestedPage = page;
     var version = ++_boardVersion;
     _enrichmentRequest?.Cancel();
     var query = BoardRequest(page);
