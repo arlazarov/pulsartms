@@ -204,3 +204,33 @@ owner's decision:
 
 **Observability gap:** an accepted notification logs nothing; its
 inbound and status counts exist only in the live stage counters.
+
+## Owner's decision (evening)
+
+The owner decided AMF must see the messages: AMF is the receiving company
+for the test number. Nothing is moved: the ten inbound messages already in
+`meta-review-demo` stay there, and tenant isolation is unchanged.
+
+The route is Meta's callback address, which only the owner can change in
+the Meta app. Meta calls
+`https://amftms-api-ddgxhwho3a-uk.a.run.app/api/webhooks/whatsapp/<company>`;
+AMF's address passed Meta's check on September 24 (GET 200) and received
+16 notifications (all 200) before the switch. Steps, no secrets involved
+beyond what AMF already saved:
+1. In PulsR, signed in to AMF: Settings → Integrations → WhatsApp shows
+   "Webhook URL for Meta" (the `amfcarrier` address). The verify token is
+   the one saved in AMF's WhatsApp credentials (revision 5, 02:34).
+2. In the Meta app: WhatsApp → Configuration → Webhook → Edit, set the
+   Callback URL to AMF's address and the Verify token to AMF's; keep the
+   `messages` field subscribed. Meta verifies it at once (GET).
+3. If Meta refuses the verification, AMF's saved token or app secret
+   differs from the app's: re-enter them in AMF's WhatsApp settings.
+4. Optional, the owner's call: disconnect the number from
+   `meta-review-demo` (Settings → Integrations → WhatsApp there) if the
+   Meta review no longer needs it; the settings card flags the shared
+   number until then.
+
+Evidence to read afterwards (read only): a GET 200 on
+`/api/webhooks/whatsapp/amfcarrier`, later POSTs there, and new inbound
+rows in AMF's conversation. Earlier "accepted" replies stay as they are;
+their statuses went to the other company.
