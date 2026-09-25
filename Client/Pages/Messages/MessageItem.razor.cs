@@ -62,8 +62,11 @@ public partial class MessageItem
     : file.Type == "application/pdf" ? "PDF"
     : "FILE";
 
+  // Only the latest attempt: an earlier one already sent again is history,
+  // and the server refuses to send it once more.
   private bool Retryable =>
-    Message.Status is "unknown" or "rejected" or "failed" or "withdrawn";
+    !Message.Retried
+    && Message.Status is "unknown" or "rejected" or "failed" or "withdrawn";
 
   private static string Pending(AttachmentView file) =>
     file.FailureReason

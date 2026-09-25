@@ -432,9 +432,12 @@ and the newest message the dispatcher had on screen:
   attempt and never receives an older attempt's answer. Nothing is sent
   again without a dispatcher. This promises no silent duplicate from PulsR,
   not exactly-once delivery.
-- `POST /api/messaging/messages/{id}/retry` sends an unknown, refused or
-  failed reply again as the next attempt of its retry key; nothing else
-  does. `POST .../conversations/{id}/claim` claims without sending.
+- `POST /api/messaging/messages/{id}/retry` sends an unknown, refused,
+  failed or withdrawn reply again as the next attempt of its retry key;
+  nothing else does, and an attempt already sent again is refused (409).
+  A thread marks such an attempt (`retried`, read in the page's own
+  statement), and the page offers Send again only on the latest one.
+  `POST .../conversations/{id}/claim` claims without sending.
 
 **Throughput, assessed and deliberately unchanged (September 25).** The
 worker sends one message at a time: each pass takes up to ten queued

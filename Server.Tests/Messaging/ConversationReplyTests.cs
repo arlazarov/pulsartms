@@ -387,6 +387,34 @@ public sealed class ConversationReplyTests
           )
       ).StatusCode
     );
+
+    // The thread offers only the latest attempt to be sent again: the
+    // first is marked as sent again, so the button that would be refused
+    // is not shown (production, September 25: four such 409s).
+    f.Db.ChangeTracker.Clear();
+    var thread = (
+      await new ConversationHandlers(
+        f.Db,
+        new ReplyFixture.Caller("me"),
+        new TestCompany(),
+        f.Events,
+        f.Clock
+      ).Handle(new GetConversationQuery(conversation, null), default)
+    ).Response!;
+    Assert.Equal(
+      [(queued.Id, true), (retry.Response.Id, false)],
+      thread
+        .Messages.Where(x => x.Direction == "out")
+        .Select(x => (x.Id, x.Retried))
+        .OrderBy(x => x.Retried ? 0 : 1)
+    );
+    Assert.Equal(
+      409,
+      (
+        await f.Replies()
+          .Handle(new RetryConversationMessageCommand(queued.Id), default)
+      ).StatusCode
+    );
   }
 
   [Fact]

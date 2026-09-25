@@ -49,7 +49,12 @@ public sealed record MessageView(
   string? Author,
   int? ErrorCode,
   IReadOnlyList<AttachmentView> Attachments
-);
+)
+{
+  // A later attempt of this reply exists; a server released before it
+  // existed sends none.
+  public bool Retried { get; init; }
+}
 
 // Next continues backwards; ReadThrough is the revision to mark read after
 // showing this page, which never passes a driver message not yet shown.

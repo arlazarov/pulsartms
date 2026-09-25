@@ -59,7 +59,12 @@ public sealed record MessageView(
   string? Author,
   int? ErrorCode,
   IReadOnlyList<AttachmentView> Attachments
-);
+)
+{
+  // A later attempt of this reply exists (it was sent again): this one is
+  // history and is not offered to be sent again.
+  public bool Retried { get; init; }
+}
 
 // Next continues backwards. ReadThrough is the revision the reader may
 // mark read after showing this page: it stops below the first unread
@@ -110,50 +115,60 @@ public sealed class ConversationHandlers(
     var thread = db
       .ConversationMessages.AsNoTracking()
       .Where(x => x.ConversationId == request.Id);
-    List<ConversationMessage> messages;
+    List<Row> rows;
     bool older,
       newer = false;
     if (request.Around is { } around)
     {
-      var target = await thread.SingleOrDefaultAsync(x => x.Id == around, ct);
+      var target = await Rows(thread.Where(x => x.Id == around))
+        .SingleOrDefaultAsync(ct);
       if (target is null)
         return RequestResponse<ConversationView>.Fail(
           "Message not found.",
           404
         );
-      var at = new MessageCursor(target.SentAt, target.CreatedAt, target.Id);
-      var above = await Above(thread, at)
-        .OrderBy(x => x.SentAt)
-        .ThenBy(x => x.CreatedAt)
-        .ThenBy(x => x.Id)
-        .Take(Context + 1)
+      var at = new MessageCursor(
+        target.Message.SentAt,
+        target.Message.CreatedAt,
+        target.Message.Id
+      );
+      var above = await Rows(
+          Above(thread, at)
+            .OrderBy(x => x.SentAt)
+            .ThenBy(x => x.CreatedAt)
+            .ThenBy(x => x.Id)
+            .Take(Context + 1)
+        )
         .ToListAsync(ct);
-      var below = await Below(thread, at)
-        .OrderByDescending(x => x.SentAt)
-        .ThenByDescending(x => x.CreatedAt)
-        .ThenByDescending(x => x.Id)
-        .Take(Context + 1)
+      var below = await Rows(
+          Below(thread, at)
+            .OrderByDescending(x => x.SentAt)
+            .ThenByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.Id)
+            .Take(Context + 1)
+        )
         .ToListAsync(ct);
       newer = above.Count > Context;
       older = below.Count > Context;
-      messages =
-      [
-        .. above.Take(Context).Reverse(),
-        target,
-        .. below.Take(Context),
-      ];
+      rows = [.. above.Take(Context).Reverse(), target, .. below.Take(Context)];
     }
     else
     {
-      var page = await Below(thread, request.Before)
-        .OrderByDescending(x => x.SentAt)
-        .ThenByDescending(x => x.CreatedAt)
-        .ThenByDescending(x => x.Id)
-        .Take(PageSize + 1)
+      var page = await Rows(
+          Below(thread, request.Before)
+            .OrderByDescending(x => x.SentAt)
+            .ThenByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.Id)
+            .Take(PageSize + 1)
+        )
         .ToListAsync(ct);
       older = page.Count > PageSize;
-      messages = page.Take(PageSize).ToList();
+      rows = page.Take(PageSize).ToList();
     }
+    var messages = rows.Select(x => x.Message).ToList();
+    var retried = rows.Where(x => x.Retried)
+      .Select(x => x.Message.Id)
+      .ToHashSet();
     var ids = messages.Select(x => x.Id).ToArray();
     var last = messages.LastOrDefault();
     // Opening a thread reads what was recorded before the driver messages
@@ -289,7 +304,10 @@ public sealed class ConversationHandlers(
                   a.Filed
                 )),
             ]
-          )),
+          )
+          {
+            Retried = retried.Contains(x.Id),
+          }),
         ],
         older
       )
@@ -303,6 +321,22 @@ public sealed class ConversationHandlers(
       }
     );
   }
+
+  private sealed record Row(ConversationMessage Message, bool Retried);
+
+  // Each message with whether a later attempt of it exists, in the same
+  // statement: the retry key's index answers it per shown reply.
+  private IQueryable<Row> Rows(IQueryable<ConversationMessage> page) =>
+    page.Select(x => new Row(
+      x,
+      x.IdempotencyKey != null
+        && db.ConversationMessages.Any(r =>
+          r.Channel == x.Channel
+          && r.BusinessNumberId == x.BusinessNumberId
+          && r.IdempotencyKey == x.IdempotencyKey
+          && r.Attempt > x.Attempt
+        )
+    ));
 
   // The messages before the cursor in the thread's order: newer ones.
   private static IQueryable<ConversationMessage> Above(

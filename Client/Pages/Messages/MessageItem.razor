@@ -108,7 +108,7 @@
                         <path d="M8 2l6.5 12h-13z M8 6.5v3.5 M8 12v.5" />
                     </svg>
                 }
-                @Messages.Status(Message.Status)@(Message.ErrorCode is { } code ? $" · code {code}" : "")
+                @Messages.Status(Message.Status)@(Message.ErrorCode is { } code ? $" · code {code}" : "")@(Message.Retried ? " · sent again below" : "")
             </span>
         }
     </span>
