@@ -180,9 +180,26 @@
                         goes if you send; read theirs first.
                     </p>
                 }
-                <div class="messages__scroll">
-                    <ol class="messages__items" aria-live="polite">
-                        @if (_thread.Older)
+                <div class="messages__scroll" @ref="_scroller">
+                    <ol class="messages__items">
+                        @if (_loadingOlder)
+                        {
+                            <li class="messages__earlier" role="status">
+                                <LoadingIndicator />
+                            </li>
+                        }
+                        else if (_olderFailed)
+                        {
+                            <li class="messages__earlier" role="alert">
+                                Earlier messages could not be loaded.
+                                <button type="button"
+                                        class="btn btn--small btn--text"
+                                        @onclick="OlderAsync">
+                                    Try again
+                                </button>
+                            </li>
+                        }
+                        else if (_thread.Older)
                         {
                             <li class="messages__earlier">
                                 <button type="button"
@@ -190,6 +207,12 @@
                                         @onclick="OlderAsync">
                                     Show earlier messages
                                 </button>
+                            </li>
+                        }
+                        else if (_messages.Count > 0)
+                        {
+                            <li class="messages__earlier messages__start">
+                                Start of the conversation
                             </li>
                         }
                         @foreach (var (message, day) in Days())
@@ -206,6 +229,19 @@
                         }
                     </ol>
                 </div>
+                @if (_newBelow)
+                {
+                    <button type="button" class="messages__new-below"
+                            @onclick="ToNewestAsync">
+                        New messages
+                        <svg viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M8 3v10M4 9l4 4 4-4" />
+                        </svg>
+                    </button>
+                }
+                <p class="visually-hidden" role="status">
+                    @(_newBelow ? "New messages below." : "")
+                </p>
                 @if (summary.WindowOpen)
                 {
                     <form class="messages__composer" @onsubmit="SendAsync"

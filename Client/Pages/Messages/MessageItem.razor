@@ -1,6 +1,7 @@
 @using Client.Models.DTO.Messaging
 
-<li class="messages__item @Side @(Failed ? "is-failed" : "")">
+<li class="messages__item @Side @(Failed ? "is-failed" : "")"
+    data-message-id="@Message.Id">
     @if (Message.Kind == "unsupported")
     {
         <p class="messages__bubble messages__note">

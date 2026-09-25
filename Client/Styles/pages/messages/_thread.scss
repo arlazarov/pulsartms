@@ -158,3 +158,37 @@
     gap: ui.pg(xs);
   }
 }
+
+// Where the history ends, and the way back to the newest message when
+// messages arrived below while the dispatcher reads further up.
+.messages {
+  &__start {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  &__new-below {
+    position: relative;
+    z-index: ui.layer(raised);
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    gap: ui.pg(xs);
+    margin: calc(-1 * #{ui.pg(section)}) 0 ui.pg(sm);
+    padding: ui.pg(xs) ui.pg(md);
+    border: 1px solid ui.theme(accent);
+    border-radius: ui.radius(pill);
+    background: ui.theme(accent);
+    color: ui.theme(on-accent);
+    font: inherit;
+    font-size: ui.fs(small);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  &__new-below svg {
+    width: 0.8rem;
+    height: 0.8rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+}

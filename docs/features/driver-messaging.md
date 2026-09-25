@@ -187,6 +187,32 @@ build): opening from a cold page went from 1.94 s to 0.42 s after the
 first API call, and a switch between conversations from about 0.8 s to
 0.29 s. Production itself was not measured.
 
+**Long histories** load fifty messages at a time, through the one
+history read (`GET .../conversations/{id}` with the composite
+`beforeSentAt`/`beforeCreatedAt`/`beforeId` cursor). The next older page
+is asked for when the dispatcher scrolls near the top
+(`Scripts/messages/thread.ts`), one request at a time; a failed page says
+so and offers "Try again" rather than asking on its own, and the top of
+the history says "Start of the conversation". Nothing loads every page:
+a 1,000-message conversation read to its start costs 21 reads. A reread
+of the newest page (a signal, a reply, a status) is merged in front of
+the pages already shown at its own oldest message, so the history and
+the dispatcher's place stay; when more than a page arrived meanwhile and
+it no longer reaches them, the history starts over rather than show a
+gap. An older page answered for a history that has since started over,
+or for another conversation, is dropped. The scroller is reversed, so
+older pages added above move nothing on screen; while the dispatcher
+reads further up, a message arriving below leaves the view where it is
+and shows "New messages", which scrolls to the newest; near the newest,
+it stays in view, and one's own reply scrolls there. Every message loaded
+stays in the page: at 1,200 messages that is 1,200 list items, which was
+not measured for memory; there is no virtual list.
+
+The composer shows the reply window as "Reply window: 21 hours left",
+then minutes in the last hour, from the driver's last message. Only
+free-form replies depend on it; the conversation and its history stay,
+and the server decides again when a reply is sent.
+
 The thread reads oldest first, marks itself read at the revision it
 showed, and claims the conversation, at most once a minute, when the
 dispatcher starts typing. Enter sends; Option (Alt) or Shift with Enter

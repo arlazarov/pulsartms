@@ -366,13 +366,11 @@ public sealed class MessagesLoadingTests
     for (var attempt = 0; ; attempt++)
       try
       {
+        page.Settle();
         await page.Find(selector).ClickAsync(new());
         return;
       }
-      catch (UnknownEventHandlerIdException) when (attempt < 5)
-      {
-        await Task.Delay(20);
-      }
+      catch (UnknownEventHandlerIdException) when (attempt < 20) { }
   }
 
   // The thread, the list and the trip have all landed, so a control found
@@ -383,7 +381,7 @@ public sealed class MessagesLoadingTests
     {
       Assert.Single(page.FindAll(".messages__conversation"));
       Assert.NotNull(page.Find("#messages-text"));
-      Assert.Empty(page.FindAll("[role=status]"));
+      Assert.Empty(page.FindAll("[role=status]:not(.visually-hidden)"));
     });
     page.Settle();
   }

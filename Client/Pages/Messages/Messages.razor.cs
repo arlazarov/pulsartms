@@ -85,6 +85,25 @@ public partial class Messages : IAsyncDisposable
   // The revision the thread's first page was read at; older pages are
   // asked for relative to it.
   private long _threadSeen;
+
+  // The history shown: which one (a new opening or a gap starts another),
+  // the cursor below its oldest message and whether older pages remain,
+  // an older page on its way or refused, and new messages arrived below
+  // while the dispatcher reads further up.
+  private int _history;
+  private MessageCursor? _below;
+  private bool _older,
+    _loadingOlder,
+    _olderFailed,
+    _newBelow;
+
+  // The conversation's scroller and the script that keeps its place.
+  private ElementReference _scroller;
+  private string? _scrolled;
+  private IJSObjectReference? _threadScript;
+  private IJSObjectReference? _scrolling;
+  private DotNetObjectReference<Messages>? _self;
+
   private Guid? _shown;
   private ConversationContext? _context;
   private bool _contextFailed;
@@ -136,6 +155,7 @@ public partial class Messages : IAsyncDisposable
     _trip = false;
     _thread = null;
     _messages = [];
+    _newBelow = false;
     _context = null;
     _contextFailed = false;
     ResetDraft();
@@ -371,6 +391,12 @@ public partial class Messages : IAsyncDisposable
     _extended = true;
   }
 
+  // The newest page, merged in front of the older pages already shown: it
+  // joins them at its own oldest message, so a reread (a signal, a reply,
+  // a status) keeps the history and the place the dispatcher scrolled to.
+  // A newest page that no longer reaches the history shown - more than a
+  // page arrived meanwhile - starts the history over rather than show a
+  // gap.
   private async Task LoadThreadAsync(Guid id)
   {
     var generation = ++_threadRead;
@@ -385,10 +411,32 @@ public partial class Messages : IAsyncDisposable
       _error = result.ErrorMessage;
       return;
     }
-    _thread = thread;
-    _threadSeen = thread.Summary.Revision;
     // Newest first from the server; the thread reads oldest first.
-    _messages = [.. thread.Messages.Reverse()];
+    List<MessageView> page = [.. thread.Messages.Reverse()];
+    var newest = _messages.LastOrDefault()?.Id;
+    var join =
+      _thread?.Summary.Id == id && page.Count > 0
+        ? _messages.FindIndex(x => x.Id == page[0].Id)
+        : -1;
+    if (join >= 0)
+      _messages = [.. _messages[..join], .. page];
+    else
+    {
+      _history++;
+      _threadSeen = thread.Summary.Revision;
+      _messages = page;
+      _below = thread.Next;
+      _older = thread.Older;
+      _loadingOlder = false;
+      _olderFailed = false;
+    }
+    _thread = thread with { Older = _older, Next = _below };
+    if (
+      newest is not null
+      && _messages.LastOrDefault()?.Id != newest
+      && _scrolling is not null
+    )
+      _newBelow |= !await IsNearNewestAsync();
     // Shown before the read marker is acknowledged.
     StateHasChanged();
     await MarkReadAsync(id, thread);
@@ -423,14 +471,25 @@ public partial class Messages : IAsyncDisposable
       await Signals.AnnounceReadAsync();
   }
 
-  // Below the oldest message shown, by its place in the thread's order.
-  // A newer read of the thread since this was asked replaces what it
-  // continued, so its answer is dropped.
+  // The next older page, below the oldest message shown, by its place in
+  // the thread's order: one at a time, when the dispatcher scrolls near
+  // the top or asks. It belongs to the history it continues; one started
+  // over since (another conversation, or a gap) drops it. Messages already
+  // shown are not repeated.
   private async Task OlderAsync()
   {
-    if (Id is not { } id || _thread?.Next is not { } before)
+    if (
+      Id is not { } id
+      || _thread is null
+      || _below is not { } before
+      || !_older
+      || _loadingOlder
+    )
       return;
-    var generation = _threadRead;
+    var history = _history;
+    _loadingOlder = true;
+    _olderFailed = false;
+    StateHasChanged();
     var result = await Api.GetAsync<ConversationView>(
       $"api/messaging/conversations/{id}"
         + $"?beforeSentAt={Uri.EscapeDataString(before.SentAt.ToString("O"))}"
@@ -439,16 +498,71 @@ public partial class Messages : IAsyncDisposable
         + $"&beforeId={before.Id}&seen={_threadSeen}",
       _lifetime.Token
     );
-    if (
-      _disposed
-      || Id != id
-      || generation != _threadRead
-      || result.Response is not { } page
-    )
+    if (_disposed || Id != id || history != _history)
       return;
-    _messages = [.. page.Messages.Reverse(), .. _messages];
-    _thread = _thread! with { Older = page.Older, Next = page.Next };
+    _loadingOlder = false;
+    if (!result.Success || result.Response is not { } page)
+    {
+      _olderFailed = true;
+      return;
+    }
+    var shown = _messages.Select(x => x.Id).ToHashSet();
+    _messages =
+    [
+      .. page.Messages.Reverse().Where(x => !shown.Contains(x.Id)),
+      .. _messages,
+    ];
+    _below = page.Next;
+    _older = page.Older;
+    _thread = _thread with { Older = _older, Next = _below };
+    StateHasChanged();
     await MarkReadAsync(id, page);
+  }
+
+  // The scroller asks for the next older page when it comes near the top.
+  [JSInvokable]
+  public Task NearOldest() =>
+    InvokeAsync(() =>
+    {
+      if (_older && !_loadingOlder && !_olderFailed)
+        Start(OlderAsync);
+    });
+
+  // The dispatcher is back at the newest message.
+  [JSInvokable]
+  public Task AtNewest() =>
+    InvokeAsync(() =>
+    {
+      if (!_newBelow)
+        return;
+      _newBelow = false;
+      StateHasChanged();
+    });
+
+  private async Task ToNewestAsync()
+  {
+    _newBelow = false;
+    if (_scrolling is not null)
+      try
+      {
+        await _scrolling.InvokeVoidAsync("toNewest", _lifetime.Token);
+      }
+      catch (JSException) { }
+  }
+
+  private async Task<bool> IsNearNewestAsync()
+  {
+    try
+    {
+      return await _scrolling!.InvokeAsync<bool>(
+        "isNearNewest",
+        _lifetime.Token
+      );
+    }
+    catch (JSException)
+    {
+      return true;
+    }
   }
 
   private Task SendAsync() => SendAsync(confirm: false);
@@ -487,6 +601,7 @@ public partial class Messages : IAsyncDisposable
     if (result.Success)
     {
       ResetDraft();
+      await ToNewestAsync();
       await RefreshThreadAsync(id);
       return;
     }
@@ -816,17 +931,26 @@ public partial class Messages : IAsyncDisposable
       ? status
       : char.ToUpperInvariant(status[0]) + status[1..].Replace('_', ' ');
 
-  // How long the driver's 24-hour window stays open, from their last
-  // message; the server decides again when the reply is sent.
-  private static string FreeFor(ConversationSummary conversation)
+  // How long WhatsApp still takes free-form replies, from the driver's
+  // last message; the server decides again when the reply is sent. Only
+  // replies are limited: the conversation and its history stay.
+  internal static string ReplyWindow(DateTime? lastInbound, DateTime now)
   {
-    if (conversation.LastInboundAt is not { } last)
-      return "Free replies while the driver's window is open";
-    var left = last.AddHours(24) - DateTime.UtcNow;
-    return left.TotalHours >= 1
-      ? $"Free replies for {(int)left.TotalHours} h more"
-      : "Free replies for less than an hour more";
+    if (lastInbound is not { } last)
+      return "Reply window open";
+    var left = last.AddHours(24) - now;
+    if (left.TotalHours >= 1)
+    {
+      var hours = (int)left.TotalHours;
+      return $"Reply window: {hours} {(hours == 1 ? "hour" : "hours")} left";
+    }
+    var minutes = Math.Max(1, (int)Math.Ceiling(left.TotalMinutes));
+    return $"Reply window: {minutes} "
+      + $"{(minutes == 1 ? "minute" : "minutes")} left";
   }
+
+  private static string FreeFor(ConversationSummary conversation) =>
+    ReplyWindow(conversation.LastInboundAt, DateTime.UtcNow);
 
   // Drive and shift left, for the conversation's header where the trip
   // does not fit beside it.
@@ -884,6 +1008,7 @@ public partial class Messages : IAsyncDisposable
 
   protected override async Task OnAfterRenderAsync(bool firstRender)
   {
+    await FollowScrollerAsync();
     if (!firstRender)
       return;
     try
@@ -904,6 +1029,44 @@ public partial class Messages : IAsyncDisposable
     catch (JSException)
     {
       // Without it the Send button and the paperclip still work.
+    }
+  }
+
+  // Each conversation's scroller is a new element: the script follows it.
+  private async Task FollowScrollerAsync()
+  {
+    var shown = _thread is null ? null : _scroller.Id;
+    if (shown == _scrolled || _disposed)
+      return;
+    _scrolled = shown;
+    try
+    {
+      if (_scrolling is not null)
+      {
+        await _scrolling.InvokeVoidAsync("dispose");
+        await _scrolling.DisposeAsync();
+        _scrolling = null;
+      }
+      if (shown is null)
+        return;
+      _threadScript ??= await JS.InvokeAsync<IJSObjectReference>(
+        "import",
+        _lifetime.Token,
+        "./js/generated/messages/thread.js"
+      );
+      if (_threadScript is null)
+        return;
+      _self ??= DotNetObjectReference.Create(this);
+      _scrolling = await _threadScript.InvokeAsync<IJSObjectReference>(
+        "attach",
+        _lifetime.Token,
+        _scroller,
+        _self
+      );
+    }
+    catch (JSException)
+    {
+      // Without it the history still loads with "Show earlier messages".
     }
   }
 
@@ -938,5 +1101,13 @@ public partial class Messages : IAsyncDisposable
         await _composer.DisposeAsync();
       }
       catch (JSDisconnectedException) { }
+    if (_scrolling is not null)
+      try
+      {
+        await _scrolling.InvokeVoidAsync("dispose");
+        await _scrolling.DisposeAsync();
+      }
+      catch (JSDisconnectedException) { }
+    _self?.Dispose();
   }
 }

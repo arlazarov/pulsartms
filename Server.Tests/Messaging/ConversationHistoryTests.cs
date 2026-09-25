@@ -67,6 +67,63 @@ public sealed class ConversationHistoryTests
     Assert.Equal(expected, seen);
   }
 
+  // 1,030 messages, seven to each second: every page of at most fifty
+  // continues exactly below the last, in the database's own order, and
+  // costs the same number of statements however deep it is.
+  [Fact]
+  public async Task AThousandMessagesArePagedInBoundedSteps()
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    var (me, _) = await UsersAsync(f);
+    f.Db.ChangeTracker.Clear();
+    await new Application.Features.Messaging.Services.InboxRecorder(
+      f.Db,
+      TimeProvider.System
+    ).RecordAsync(
+      DriverMessageChannels.WhatsApp,
+      "123456",
+      [
+        .. Enumerable
+          .Range(0, 1030)
+          .Select(i => new DriverMessageInboundEvent(
+            Phone,
+            Start.AddSeconds(i / 7)
+          )
+          {
+            ProviderMessageId = $"wamid.many.{i}",
+            Text = $"message {i}",
+          }),
+      ],
+      default
+    );
+    await f.Db.SaveChangesAsync();
+    var conversation = await f.Db.Conversations.Select(x => x.Id).SingleAsync();
+    var expected = await f
+      .Db.ConversationMessages.AsNoTracking()
+      .OrderByDescending(x => x.SentAt)
+      .ThenByDescending(x => x.CreatedAt)
+      .ThenByDescending(x => x.Id)
+      .Select(x => x.Id)
+      .ToListAsync();
+
+    var seen = new List<Guid>();
+    var statements = new List<int>();
+    MessageCursor? next = null;
+    do
+    {
+      var before = f.Counter.Reads;
+      var page = await PageAsync(f, me, conversation, next);
+      statements.Add(f.Counter.Reads - before);
+      Assert.InRange(page.Messages.Count, 1, 50);
+      seen.AddRange(page.Messages.Select(x => x.Id));
+      next = page.Next;
+    } while (next is not null);
+
+    Assert.Equal(21, statements.Count);
+    Assert.Equal(expected, seen);
+    Assert.Single(statements.Skip(1).Distinct());
+  }
+
   // Sixty messages, all read. One arrives late with a time older than all
   // of them: the first page does not show it, so marking what it showed
   // leaves it unread; the older page that shows it lets it be read.
