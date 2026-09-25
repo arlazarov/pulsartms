@@ -111,10 +111,21 @@ public sealed class MessageSwitchTests
     Assert.Empty(page.FindAll("[id^=driver-]"));
   }
 
+  // The trip loads beside the thread, so its controls may come after it.
   private static IElement Button(
     IRenderedComponent<MessagesPage> page,
     string text
-  ) => page.FindAll("button").First(x => x.TextContent.Trim() == text);
+  )
+  {
+    page.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          page.FindAll("button"),
+          x => x.TextContent.Trim() == text
+        )
+    );
+    return page.FindAll("button").First(x => x.TextContent.Trim() == text);
+  }
 
   private static ClientComponentContext Context(Api api)
   {

@@ -38,12 +38,16 @@ public sealed class MessagesPageTests
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, Ann));
 
     page.WaitForAssertion(() => Assert.Contains("Delivered", page.Markup));
-    Assert.Equal("2", page.Find(".messages__unread").TextContent.Trim());
-    Assert.Contains("Bob is replying", page.Markup);
     var items = page.FindAll(".messages__item");
     Assert.Contains("Where do I fuel?", items[0].TextContent);
     Assert.Contains("At the Pilot", items[1].TextContent);
-    Assert.Equal(3, api.ReadRevision);
+    // The list and the read marker load beside the thread, not before it.
+    page.WaitForAssertion(() =>
+    {
+      Assert.Equal("2", page.Find(".messages__unread").TextContent.Trim());
+      Assert.Contains("Bob is replying", page.Markup);
+      Assert.Equal(3, api.ReadRevision);
+    });
     Assert.NotNull(page.Find("#messages-text"));
   }
 
@@ -53,7 +57,9 @@ public sealed class MessagesPageTests
     var api = new Api(windowOpen: true) { RefuseFirstAsStale = true };
     await using var context = Context(api);
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, Ann));
-    page.WaitForElement("#messages-text").Input("Ok");
+    page.WaitForElement("#messages-text");
+    page.Settle();
+    page.Find("#messages-text").Input("Ok");
 
     await page.Find(".messages__composer").SubmitAsync();
     page.WaitForAssertion(() => Assert.Contains("newer message", page.Markup));
@@ -205,6 +211,7 @@ public sealed class MessagesPageTests
     page.WaitForAssertion(
       () => Assert.Equal(50, page.FindAll(".messages__list li").Count)
     );
+    page.Settle();
     var more = page.FindAll("button")
       .Single(x => x.TextContent.Contains("Show more conversations"))
       .ClickAsync(new());

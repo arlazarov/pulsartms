@@ -100,3 +100,122 @@
     @include ui.input-control;
   }
 }
+
+// Files waiting under the reply box until Send, each with a preview and a
+// way to take it off; one on its way shows an indeterminate bar, one that
+// failed says why and offers to send it again.
+.messages {
+  &__staged {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  &__staged-file {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    gap: 0 ui.pg(sm);
+    align-items: center;
+    width: min(100%, 16rem);
+    padding: ui.pg(xs) ui.pg(sm);
+    border: 1px solid ui.theme(border);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-soft);
+    font-size: ui.fs(small);
+  }
+  &__staged-file.is-failed {
+    border-color: ui.theme(danger-border);
+  }
+  &__staged-file > img,
+  &__staged-kind {
+    grid-row: span 2;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: ui.radius(sm);
+    object-fit: cover;
+  }
+  &__staged-kind {
+    display: grid;
+    place-items: center;
+    background: ui.theme(surface-muted);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+    font-weight: 700;
+  }
+  &__staged-name {
+    overflow: hidden;
+    color: ui.theme(text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &__staged-size {
+    grid-column: 2;
+    color: ui.theme(text-muted);
+  }
+  &__staged-error {
+    grid-column: 1 / -1;
+    color: ui.theme(danger-text);
+  }
+  &__staged-file > .btn {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  &__staged-remove {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: ui.theme(text-muted);
+    cursor: pointer;
+    @include ui.icon-control;
+  }
+  &__staged-remove svg {
+    width: 0.75rem;
+    height: 0.75rem;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+  &__staged-progress {
+    grid-column: 1 / -1;
+    position: relative;
+    height: 3px;
+    margin-top: ui.pg(xs);
+    overflow: hidden;
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface-muted);
+  }
+  &__staged-progress::after {
+    content: '';
+    position: absolute;
+    inset: 0 60% 0 0;
+    background: ui.theme(accent);
+    animation: messages-staged-progress 1.2s ease-in-out infinite;
+  }
+  &__thread.is-dropping {
+    outline: 2px dashed ui.theme(accent);
+    outline-offset: -6px;
+  }
+}
+
+@keyframes messages-staged-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .messages__staged-progress::after {
+    inset: 0;
+    animation: none;
+    opacity: 0.5;
+  }
+}

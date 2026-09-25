@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Security.Cryptography;
 using Client.Models.DTO.Messaging;
 using Client.Services;
 using Microsoft.AspNetCore.Components;
@@ -16,8 +15,6 @@ namespace Client.Pages.Messages;
 // sends it once, and a reply refused as stale can be confirmed.
 public partial class Messages : IAsyncDisposable
 {
-  public const long MaximumFile = 16 * 1024 * 1024;
-
   [Parameter]
   public Guid? Id { get; set; }
 
@@ -53,17 +50,29 @@ public partial class Messages : IAsyncDisposable
   private List<MessageView> _messages = [];
   private IReadOnlyList<MessageTemplateView> _templates = [];
   private bool _unreadOnly,
-    _busy,
     _stale,
     _disposed;
+
+  // The conversation a send is on its way for. Busy only there: another
+  // conversation opened meanwhile has its own composer, and the answer
+  // for the first touches nothing of it.
+  private Guid? _busyFor;
+  private bool _busy => _busyFor is { } busy && busy == Id;
   private string _draft = "";
   private Guid? _draftKey;
   private string? _error,
     _refusal,
     _template;
   private readonly Dictionary<int, string> _parameters = [];
+  private readonly List<StagedFile> _staged = [];
   private int _inboxRead,
     _threadRead;
+
+  // A signal's reread of the open conversation, one at a time: a demand
+  // that comes while one is on its way is kept and read once more after
+  // it, so a change committed after that read's snapshot is never lost.
+  private Guid? _refreshing;
+  private bool _dirty;
 
   // The revision the thread's first page was read at; older pages are
   // asked for relative to it.
@@ -83,6 +92,10 @@ public partial class Messages : IAsyncDisposable
   private int _contextRead;
   private DateTime _claimedAt = DateTime.MinValue;
   private IJSObjectReference? _files;
+
+  // The conversation pane, where Enter sends and files can be dropped.
+  private ElementReference _threadPane;
+  private IJSObjectReference? _composer;
   private readonly CancellationTokenSource _lifetime = new();
 
   private MessageTemplateView? Chosen =>
@@ -94,23 +107,22 @@ public partial class Messages : IAsyncDisposable
       .Range(0, chosen.Parameters)
       .All(i => !string.IsNullOrWhiteSpace(Parameter(i)));
 
+  // Nothing here is awaited before the conversation is read: the stream,
+  // the templates and the list each load beside it and show when they land.
   protected override async Task OnInitializedAsync()
   {
-    if (Authentication is not null)
-      _me = (await Authentication).User.Identity?.Name;
     Signals.Changed += OnSignal;
     DriverGroup.Changed += OnDriverGroupChanged;
-    await Signals.JoinAsync();
-    var templates = await Api.GetAsync<List<MessageTemplateView>>(
-      "api/messaging/templates",
-      _lifetime.Token
-    );
-    if (templates.Success && templates.Response is { } list)
-      _templates = list;
-    await LoadInboxAsync();
+    Start(Signals.JoinAsync);
+    Start(LoadTemplatesAsync);
+    Start(LoadInboxAsync);
+    if (Authentication is not null)
+      _me = (await Authentication).User.Identity?.Name;
   }
 
-  protected override async Task OnParametersSetAsync()
+  // The conversation and its trip are read side by side; the messages show
+  // as soon as they arrive, before the trip and before they are marked read.
+  protected override void OnParametersSet()
   {
     if (_shown == Id)
       return;
@@ -123,9 +135,40 @@ public partial class Messages : IAsyncDisposable
     ResetDraft();
     if (Id is { } id)
     {
-      await LoadThreadAsync(id);
-      await LoadContextAsync(id);
+      Start(() => LoadThreadAsync(id));
+      Start(() => LoadContextAsync(id));
     }
+  }
+
+  // A read that runs beside the others: the page shows its answer when it
+  // lands, whatever is still on its way. Every read fences its own answer
+  // by generation and conversation, so a late one changes nothing.
+  private void Start(Func<Task> read) => _ = ShowAsync(read);
+
+  private async Task ShowAsync(Func<Task> read)
+  {
+    try
+    {
+      await read();
+    }
+    catch (Exception ex)
+    {
+      if (!_disposed)
+        await DispatchExceptionAsync(ex);
+      return;
+    }
+    if (!_disposed)
+      StateHasChanged();
+  }
+
+  private async Task LoadTemplatesAsync()
+  {
+    var templates = await Api.GetAsync<List<MessageTemplateView>>(
+      "api/messaging/templates",
+      _lifetime.Token
+    );
+    if (!_disposed && templates.Success && templates.Response is { } list)
+      _templates = list;
   }
 
   // Loads offered for filing: the driver's current ones, only when they
@@ -154,48 +197,64 @@ public partial class Messages : IAsyncDisposable
   {
     if (Id != conversation)
       return;
-    await LoadThreadAsync(conversation);
+    await RefreshThreadAsync(conversation);
     await LoadContextAsync(conversation);
   }
 
-  // The driver's conversation, opened or just created: the list shows it
-  // at once, whatever the stream says later.
-  private async Task ChatOpenedAsync(Guid conversation)
+  // The driver's conversation, opened or just created, opens at once; the
+  // list is read again beside it.
+  private void ChatOpened(Guid conversation)
   {
     _newChat = false;
-    await LoadInboxAsync();
     Navigation.NavigateTo($"/messages/{conversation}");
+    Start(LoadInboxAsync);
   }
 
   private async Task FiledAsync(Guid conversation)
   {
     if (Id == conversation)
-      await LoadThreadAsync(conversation);
+      await RefreshThreadAsync(conversation);
   }
 
   // The count is the navigation's; a colleague's tab marking something
-  // read changes only this dispatcher's inbox counts, not the thread.
+  // read changes only this dispatcher's inbox counts, not the thread. A
+  // change to the open conversation reads it beside the list. A poll tick
+  // names no conversation: the list is read first, and the open one only
+  // when the list shows it at another revision or does not show it.
   private void OnSignal(MessagingSignal signal) =>
     _ = InvokeAsync(async () =>
     {
       if (_disposed || signal.Kind == "unread")
         return;
-      await LoadInboxAsync();
-      if (
-        signal.Kind != "read"
-        && Id is { } id
-        && (signal.ConversationId == id || signal.ConversationId is null)
-      )
-        await LoadThreadAsync(id);
-      StateHasChanged();
+      if (signal.Kind == "read" || Id is not { } id)
+        await LoadInboxAsync();
+      else if (signal.ConversationId == id || signal.Kind == "resync")
+        await Task.WhenAll(LoadInboxAsync(), RefreshThreadAsync(id));
+      else if (signal.ConversationId is not null)
+        await LoadInboxAsync();
+      else
+      {
+        await LoadInboxAsync();
+        if (!_disposed && Id == id && !Current(id))
+          await RefreshThreadAsync(id);
+      }
+      if (!_disposed)
+        StateHasChanged();
     });
+
+  // Whether the list, as just read, shows the open conversation at the
+  // revision its thread was read at.
+  private bool Current(Guid id) =>
+    _thread?.Summary.Id == id
+    && _conversations?.FirstOrDefault(x => x.Id == id) is { } listed
+    && listed.Revision == _thread.Summary.Revision;
 
   private async Task ReloadAsync()
   {
     _error = null;
     await LoadInboxAsync();
     if (Id is { } id)
-      await LoadThreadAsync(id);
+      await RefreshThreadAsync(id);
   }
 
   private async Task FilterAsync(bool unread)
@@ -321,15 +380,42 @@ public partial class Messages : IAsyncDisposable
     _threadSeen = thread.Summary.Revision;
     // Newest first from the server; the thread reads oldest first.
     _messages = [.. thread.Messages.Reverse()];
-    if (_messages.Count == 0)
-      return;
+    // Shown before the read marker is acknowledged.
+    StateHasChanged();
     await MarkReadAsync(id, thread);
   }
 
+  private async Task RefreshThreadAsync(Guid id)
+  {
+    if (_refreshing == id)
+    {
+      _dirty = true;
+      return;
+    }
+    _refreshing = id;
+    try
+    {
+      do
+      {
+        _dirty = false;
+        await LoadThreadAsync(id);
+      } while (_dirty && !_disposed && Id == id);
+    }
+    finally
+    {
+      if (_refreshing == id)
+        _refreshing = null;
+    }
+  }
+
   // Through what the server says this page lets be read: never past a
-  // driver message the dispatcher has not been shown.
+  // driver message the dispatcher has not been shown. Nothing unread for
+  // this dispatcher means the marker already covers every driver message,
+  // so a reread (a poll, a reply) asks nothing.
   private async Task MarkReadAsync(Guid id, ConversationView page)
   {
+    if (page.Summary.Unread == 0 || page.Messages.Count == 0)
+      return;
     var marked = await Api.PostAsync<ReadRequest, bool>(
       $"api/messaging/conversations/{id}/read",
       new(page.ReadThrough ?? page.Summary.Revision),
@@ -366,8 +452,7 @@ public partial class Messages : IAsyncDisposable
       return;
     _messages = [.. page.Messages.Reverse(), .. _messages];
     _thread = _thread! with { Older = page.Older, Next = page.Next };
-    if (page.Messages.Count > 0)
-      await MarkReadAsync(id, page);
+    await MarkReadAsync(id, page);
   }
 
   private Task SendAsync() => SendAsync(confirm: false);
@@ -381,9 +466,19 @@ public partial class Messages : IAsyncDisposable
 
   private async Task SendAsync(bool confirm)
   {
-    if (Id is not { } id || _busy || _draft.Trim().Length == 0)
+    if (Id is not { } id || _busy)
       return;
-    _busy = true;
+    if (
+      Staged.Where(x => x.State != StagedState.Sending).ToList() is
+      { Count: > 0 } files
+    )
+    {
+      await SendFilesAsync(id, files, confirm);
+      return;
+    }
+    if (_draft.Trim().Length == 0)
+      return;
+    _busyFor = id;
     _refusal = null;
     _draftKey ??= Guid.NewGuid();
     var result = await Api.PostAsync<SendMessageRequest, MessageView>(
@@ -391,13 +486,12 @@ public partial class Messages : IAsyncDisposable
       new(_draft, _draftKey.Value, _messages.LastOrDefault()?.Id, confirm),
       _lifetime.Token
     );
-    _busy = false;
-    if (_disposed)
+    if (!Settled(id))
       return;
     if (result.Success)
     {
       ResetDraft();
-      await LoadThreadAsync(id);
+      await RefreshThreadAsync(id);
       return;
     }
     Refuse(result.ErrorMessage, template: false);
@@ -409,7 +503,7 @@ public partial class Messages : IAsyncDisposable
   {
     if (Id is not { } id || _busy || Chosen is not { } chosen || !TemplateReady)
       return;
-    _busy = true;
+    _busyFor = id;
     _refusal = null;
     _draftKey ??= Guid.NewGuid();
     var result = await Api.PostAsync<TemplateRequest, MessageView>(
@@ -422,83 +516,137 @@ public partial class Messages : IAsyncDisposable
       ),
       _lifetime.Token
     );
-    _busy = false;
-    if (_disposed)
+    if (!Settled(id))
       return;
     if (result.Success)
     {
       ResetDraft();
-      await LoadThreadAsync(id);
+      await RefreshThreadAsync(id);
       return;
     }
     Refuse(result.ErrorMessage, template: true);
   }
 
-  private async Task AttachAsync(InputFileChangeEventArgs args)
+  // Picked or dropped files wait under the reply box, each with its own
+  // preview, until Send; each can be taken off before then.
+  private async Task StageAsync(InputFileChangeEventArgs args)
   {
     if (Id is not { } id || _busy)
       return;
-    var file = args.File;
-    if (file.Size is 0 or > MaximumFile)
-    {
-      _refusal = "Files up to 16 MB can be sent.";
-      return;
-    }
-    _busy = true;
     _refusal = null;
-    byte[] bytes;
-    await using (var stream = file.OpenReadStream(MaximumFile, _lifetime.Token))
+    foreach (var file in args.GetMultipleFiles(args.FileCount))
     {
-      using var copy = new MemoryStream((int)file.Size);
-      await stream.CopyToAsync(copy, _lifetime.Token);
-      bytes = copy.ToArray();
-    }
-    var content = new ByteArrayContent(bytes);
-    content.Headers.ContentType = new(file.ContentType);
-    using var form = new MultipartFormDataContent
-    {
-      { content, "file", file.Name },
+      if (Staged.Count() >= StagedFile.MaximumStaged)
       {
-        new StringContent(Convert.ToHexStringLower(SHA256.HashData(bytes))),
-        "sha256"
-      },
-      { new StringContent(Guid.NewGuid().ToString()), "idempotencyKey" },
-      { new StringContent(_draft.Trim()), "caption" },
-      { new StringContent("true"), "confirm" },
-    };
-    var result = await Api.PostFormAsync<MessageView>(
-      $"api/messaging/conversations/{id}/files",
-      form,
-      _lifetime.Token
-    );
-    _busy = false;
-    if (_disposed)
-      return;
-    if (result.Success)
-    {
-      ResetDraft();
-      await LoadThreadAsync(id);
+        _refusal = $"Send at most {StagedFile.MaximumStaged} files at once.";
+        break;
+      }
+      if (!StagedFile.Accepts(file.ContentType))
+      {
+        _refusal = "PDFs, photos, audio and MP4 video can be sent.";
+        continue;
+      }
+      if (file.Size <= 0 || file.Size > StagedFile.Limit(file.ContentType))
+      {
+        _refusal = "Photos up to 5 MB and other files up to 16 MB can be sent.";
+        continue;
+      }
+      var staged = await StagedFile.ReadAsync(file, id, _lifetime.Token);
+      if (_disposed || Id != id)
+        return;
+      _staged.Add(staged);
     }
-    else
-      _refusal = result.ErrorMessage;
+  }
+
+  private void Unstage(StagedFile file)
+  {
+    if (file.State != StagedState.Sending)
+      _staged.Remove(file);
+  }
+
+  private IEnumerable<StagedFile> Staged =>
+    _staged.Where(x => x.ConversationId == Id);
+
+  private Task RetryFileAsync(StagedFile file) =>
+    Id is { } id && !_busy
+      ? SendFilesAsync(id, [file], confirm: false)
+      : Task.CompletedTask;
+
+  // One file message each, in order; the reply's text is the first one's
+  // caption. A file keeps its retry key and caption, so sending it again
+  // is the same message. The answers belong to the conversation they were
+  // sent in: another conversation opened meanwhile is left as it is.
+  private async Task SendFilesAsync(
+    Guid id,
+    IReadOnlyList<StagedFile> files,
+    bool confirm
+  )
+  {
+    var text = _draft.Trim();
+    if (text.Length > StagedFile.MaximumCaption && files[0].Caption is null)
+    {
+      _refusal =
+        $"A caption is at most {StagedFile.MaximumCaption} characters. "
+        + "Send the text on its own first.";
+      return;
+    }
+    _busyFor = id;
+    _refusal = null;
+    if (files[0].Caption is null && text.Length > 0)
+    {
+      files[0].Caption = text;
+      _draft = "";
+      _draftKey = null;
+    }
+    var lastSeen = _messages.LastOrDefault()?.Id;
+    string? stale = null;
+    foreach (var file in files)
+    {
+      file.State = StagedState.Sending;
+      file.Error = null;
+      if (Id == id)
+        StateHasChanged();
+      using var form = file.Form(lastSeen, confirm);
+      var result = await Api.PostFormAsync<MessageView>(
+        $"api/messaging/conversations/{id}/files",
+        form,
+        _lifetime.Token
+      );
+      if (result.Success)
+      {
+        _staged.Remove(file);
+        continue;
+      }
+      file.State = StagedState.Failed;
+      file.Error = result.ErrorMessage;
+      if (IsStale(result.ErrorMessage))
+      {
+        stale = result.ErrorMessage;
+        break;
+      }
+    }
+    if (!Settled(id))
+      return;
+    if (stale is not null)
+      Refuse(stale, template: false);
+    await RefreshThreadAsync(id);
   }
 
   private async Task RetryAsync(MessageView message)
   {
     if (Id is not { } id || _busy)
       return;
-    _busy = true;
+    _busyFor = id;
     var result = await Api.PostAsync<object, MessageView>(
       $"api/messaging/messages/{message.Id}/retry",
       new { },
       _lifetime.Token
     );
-    _busy = false;
-    if (_disposed)
+    if (!Settled(id))
       return;
     if (!result.Success)
       _refusal = result.ErrorMessage;
-    await LoadThreadAsync(id);
+    await RefreshThreadAsync(id);
   }
 
   // Tells colleagues who is answering, at most once a minute.
@@ -550,15 +698,30 @@ public partial class Messages : IAsyncDisposable
     }
   }
 
+  // Ends the send for its conversation; whether its answer may still touch
+  // the page, which it may only while that conversation is open.
+  private bool Settled(Guid id)
+  {
+    if (_busyFor == id)
+      _busyFor = null;
+    return !_disposed && Id == id;
+  }
+
   private void Refuse(string message, bool template)
   {
     _refusal = message;
-    _stale = message.Contains("newer message", StringComparison.Ordinal);
+    _stale = IsStale(message);
     _templateStale = template && _stale;
   }
 
+  private static bool IsStale(string message) =>
+    message.Contains("newer message", StringComparison.Ordinal);
+
+  // Also takes off files staged and not on their way: they belonged to the
+  // reply being written.
   private void ResetDraft()
   {
+    _staged.RemoveAll(x => x.State != StagedState.Sending);
     _draft = "";
     _draftKey = null;
     _refusal = null;
@@ -582,10 +745,20 @@ public partial class Messages : IAsyncDisposable
     + (item.Id == Id ? " is-selected" : "")
     + (item.Unread > 0 ? " is-unread" : "");
 
+  private static string StagedClass(StagedFile file) =>
+    "messages__staged-file"
+    + (file.State == StagedState.Failed ? " is-failed" : "")
+    + (file.State == StagedState.Sending ? " is-sending" : "");
+
   private static string Unread(ConversationSummary item) =>
     $"{item.Unread} unread";
 
-  private bool CanSend => !_busy && _draft.Trim().Length > 0;
+  private bool CanSend =>
+    !_busy
+    && (
+      _draft.Trim().Length > 0
+      || Staged.Any(x => x.State != StagedState.Sending)
+    );
 
   private static string ParameterId(int index) => $"messages-parameter-{index}";
 
@@ -683,6 +856,31 @@ public partial class Messages : IAsyncDisposable
       _ => status,
     };
 
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    if (!firstRender)
+      return;
+    try
+    {
+      var module = await JS.InvokeAsync<IJSObjectReference>(
+        "import",
+        _lifetime.Token,
+        "./js/generated/messages/composer.js"
+      );
+      if (module is null || _disposed)
+        return;
+      _composer = await module.InvokeAsync<IJSObjectReference>(
+        "attach",
+        _lifetime.Token,
+        _threadPane
+      );
+    }
+    catch (JSException)
+    {
+      // Without it the Send button and the paperclip still work.
+    }
+  }
+
   // The dispatcher chose another driver group: the list starts over.
   private void OnDriverGroupChanged() =>
     _ = InvokeAsync(async () =>
@@ -705,6 +903,13 @@ public partial class Messages : IAsyncDisposable
       try
       {
         await _files.DisposeAsync();
+      }
+      catch (JSDisconnectedException) { }
+    if (_composer is not null)
+      try
+      {
+        await _composer.InvokeVoidAsync("dispose");
+        await _composer.DisposeAsync();
       }
       catch (JSDisconnectedException) { }
   }

@@ -171,12 +171,41 @@ first page again and keeps the pages shown below it: a conversation that
 moved up is shown once, at the top, and those further down keep what was
 last read for them until more is asked for. A new search or filter
 starts over, and a page still on its way for the earlier list is
-dropped. The thread reads
-oldest first, marks itself read at the revision it showed, and claims the
-conversation, at most once a minute, when the dispatcher starts typing.
-A reply keeps its retry key until it is sent; a reply refused as stale
-offers "Send anyway" with the same key. Outside the 24-hour window only
-approved templates are offered, or a note that there are none.
+dropped.
+
+Opening a conversation reads its messages and its trip side by side, and
+the messages show as soon as they arrive: the list, the templates, the
+stream join, the trip and the read marker never hold them back, and each
+answer is fenced by its conversation and read generation. The read marker
+is posted after the messages show, and only while something is unread
+for this dispatcher. A signal for the open conversation rereads it beside
+the list; a poll tick rereads it only when the list shows it at another
+revision. Rereads run one at a time per conversation, and a demand that
+comes while one is on its way is read once more after it. Measured with
+production's median latencies on the synthetic demo (Chromium, local
+build): opening from a cold page went from 1.94 s to 0.42 s after the
+first API call, and a switch between conversations from about 0.8 s to
+0.29 s. Production itself was not measured.
+
+The thread reads oldest first, marks itself read at the revision it
+showed, and claims the conversation, at most once a minute, when the
+dispatcher starts typing. Enter sends; Option (Alt) or Shift with Enter
+starts a new line, and a key an input method is composing is left to it
+(`Scripts/messages/composer.ts`). A reply keeps its retry key until it
+is sent; a reply refused as stale offers "Send anyway" with the same key.
+A send belongs to its conversation: its answer never clears or blocks
+another conversation opened meanwhile.
+
+Files picked with the paperclip or dropped on the conversation wait under
+the reply box (`StagedFile`), with a thumbnail for photos, their size and
+a remove button, until Send; at most five, photos up to 5 MB and other
+files up to 16 MB, as the server takes them. Each is read once and sent
+as its own file message, the text as the first one's caption, with the
+same stale check as a text reply. A file keeps its retry key and caption,
+so "Send again" after a failure is the same message. A file on its way
+shows an indeterminate bar: the upload's progress is not measured.
+Outside the 24-hour window only approved templates are offered, or a
+note that there are none.
 
 **New chat** (`Pages/Messages/NewChat`) replaces the list with the active
 drivers who have a WhatsApp number of their own (`GET
