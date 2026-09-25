@@ -58,8 +58,10 @@
   }
   // Two sources name different trailers for the truck.
   .fleet-map-inspector__trailer-conflict {
+    min-width: 0;
     color: ui.theme(warning-text);
     font-size: ui.fs(small);
+    overflow-wrap: anywhere;
   }
   // The actions read as words, under the detail they act on. They were six
   // bare icons in the header, where the row had no room to say what any of

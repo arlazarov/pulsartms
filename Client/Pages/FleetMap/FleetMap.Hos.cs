@@ -39,6 +39,38 @@ public partial class FleetMap
       ? snapshot.DriverName
       : truck.DriverName;
 
+  // Two sources disagree about the truck's trailer, said with both sources
+  // named and neither chosen (TruckTrailerAuthority on the server). Either
+  // telemetry reported a trailer - or none - and the truck's current work
+  // names another, or two trucks resolved to the same trailer and neither
+  // could keep it.
+  public static (string Text, string Title)? TrailerDiscrepancy(
+    TruckLocationMapDto truck
+  )
+  {
+    var other = truck.TrailerConflictNumber?.Trim();
+    if (string.IsNullOrEmpty(other))
+      return null;
+    var shown = string.IsNullOrWhiteSpace(truck.TrailerNumber)
+      ? "none"
+      : truck.TrailerNumber.Trim();
+    return truck.TrailerSource switch
+    {
+      "telemetry" => (
+        $"Telemetry: {shown} · Work: {other}",
+        $"Trailer sources disagree: telemetry reports {(shown == "none" ? "no trailer" : shown)}; the truck's current work names {other}. Neither is chosen here."
+      ),
+      null or "" when shown == "none" => (
+        $"{other}: also named for another truck",
+        $"Trailer {other} is named for this truck and for another one; neither is confirmed, so it is not assigned to either."
+      ),
+      _ => (
+        $"Trailer: {shown} · Also named: {other}",
+        $"Trailer sources disagree: {TrailerTitle(truck).ToLowerInvariant()} is {shown}; another source names {other}. Neither is chosen here."
+      ),
+    };
+  }
+
   // Where the truck's trailer came from, as the server resolved it.
   private static string TrailerTitle(TruckLocationMapDto truck) =>
     truck.TrailerSource switch

@@ -117,7 +117,10 @@ Which trailers exist and which trailer a truck has now are separate owners.
   nothing. Certain telemetry wins; the work stands in when telemetry is not
   certain; a disagreement keeps the other trailer as a conflict. A trailer
   two trucks resolve to stays with the one whose telemetry reports it, or
-  with neither; an inactive trailer is on no truck.
+  with neither; an inactive trailer is on no truck. The Fleet Map card says a
+  conflict with both sources named and neither chosen
+  (`FleetMap.TrailerDiscrepancy`): "Telemetry: none · Work: 055904", or
+  "77001: also named for another truck" when two trucks claim it.
 - A dispatcher's committed change to current work - truck assignment,
   workspace edit, stop completion or correction, execution acceptance or
   switch - is resolved before the request answers. Those commands already
