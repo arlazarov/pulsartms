@@ -1,0 +1,138 @@
+@using Client.Components.Popup
+@using Client.Models.DTO.Messaging
+
+<Popup IsOpen="Open" Title="Message several drivers" OnClose="CloseAsync">
+    <div class="messages__broadcast">
+        @if (_sent is { } sent)
+        {
+            <p class="messages__note">
+                Each driver gets their own message in their own chat.
+                @if (sent.CancelledAt is not null)
+                {
+                    <text>Cancelled: what had not gone was taken back.</text>
+                }
+            </p>
+            <ul class="messages__broadcast-list">
+                @foreach (var recipient in sent.Recipients)
+                {
+                    <li @key="recipient.DriverId">
+                        <strong>@recipient.Name</strong>
+                        <span class="messages__status is-@recipient.Status">
+                            @StatusText(recipient)
+                        </span>
+                    </li>
+                }
+            </ul>
+            <div class="settings-page__actions">
+                <button type="button" class="btn btn--small"
+                        @onclick="RefreshAsync">
+                    Refresh
+                </button>
+                @if (sent.CancelledAt is null)
+                {
+                    <button type="button" class="btn btn--small btn--danger"
+                            disabled="@_busy" @onclick="CancelAsync">
+                        Cancel what has not gone
+                    </button>
+                }
+                <button type="button" class="btn btn--small"
+                        @onclick="CloseAsync">
+                    Close
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="messages__filters" role="group" aria-label="Send to">
+                <button type="button" class="messages__chip"
+                        aria-pressed="@(_scope == "all" ? "true" : "false")"
+                        @onclick="@(() => Scope("all"))">
+                    All drivers
+                </button>
+                <button type="button" class="messages__chip"
+                        aria-pressed="@(_scope == "group" ? "true" : "false")"
+                        @onclick="@(() => Scope("group"))">
+                    My driver group
+                </button>
+            </div>
+            <label for="broadcast-template">
+                Message
+                <select id="broadcast-template" @bind="_template"
+                        @bind:after="Changed" disabled="@_busy">
+                    <option value="">
+                        A text (drivers who wrote in 24 hours)
+                    </option>
+                    @foreach (var template in Templates)
+                    {
+                        <option value="@template.Name">
+                            Template: @TemplateName(template)
+                        </option>
+                    }
+                </select>
+            </label>
+            @if (Chosen is null)
+            {
+                <textarea rows="3" maxlength="4096" aria-label="Text"
+                          @bind="_text" @bind:event="oninput"
+                          @bind:after="Changed"></textarea>
+            }
+            else
+            {
+                <p class="messages__note">@Chosen.Text</p>
+                @for (var i = 0; i < Parameters; i++)
+                {
+                    var index = i;
+                    <input maxlength="200" aria-label="@($"Field {index + 1}")"
+                           value="@(_parameters.GetValueOrDefault(index) ?? "")"
+                           @onchange="e => SetParameter(
+                               index,
+                               e.Value?.ToString())" />
+                }
+            }
+            <div class="settings-page__actions">
+                <button type="button" class="btn btn--small" disabled="@_busy"
+                        @onclick="PreviewAsync">
+                    Preview
+                </button>
+            </div>
+            @if (_preview is { } preview)
+            {
+                <p class="messages__note">
+                    @preview.Eligible of @preview.Recipients.Count
+                    can be sent it.
+                </p>
+                <ul class="messages__broadcast-list">
+                    @foreach (var recipient in preview.Recipients)
+                    {
+                        <li @key="recipient.DriverId">
+                            <label>
+                                <input type="checkbox"
+                                       disabled="@(!recipient.Eligible)"
+                                       checked="@_chosen.Contains(
+                                           recipient.DriverId)"
+                                       @onchange="e => Toggle(
+                                           recipient.DriverId,
+                                           e.Value is true)" />
+                                <strong>@recipient.Name</strong>
+                            </label>
+                            <span class="messages__note">
+                                @(recipient.Reason ?? recipient.Number)
+                            </span>
+                        </li>
+                    }
+                </ul>
+                <div class="settings-page__actions">
+                    <button type="button" class="btn btn--primary"
+                            disabled="@(_busy || _chosen.Count == 0)"
+                            @onclick="SendAsync">
+                        Send to @_chosen.Count
+                    </button>
+                </div>
+            }
+        }
+        @if (_error is not null)
+        {
+            <p class="settings-page__error" role="alert">@_error</p>
+        }
+    </div>
+</Popup>

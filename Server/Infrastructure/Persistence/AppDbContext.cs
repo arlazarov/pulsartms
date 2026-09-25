@@ -53,6 +53,7 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
   public DbSet<ConversationArrivalHead> ConversationArrivalHeads =>
     Set<ConversationArrivalHead>();
   public DbSet<ApprovedTemplate> ApprovedTemplates => Set<ApprovedTemplate>();
+  public DbSet<MessageBroadcast> MessageBroadcasts => Set<MessageBroadcast>();
   public DbSet<DriverGroup> DriverGroups => Set<DriverGroup>();
   public DbSet<DriverGroupMember> DriverGroupMembers =>
     Set<DriverGroupMember>();

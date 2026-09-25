@@ -398,14 +398,19 @@ public sealed class DriverConversationTests
   )
   {
     f.Db.ChangeTracker.Clear();
+    var context = db ?? f.Db;
     return new(
-      db ?? f.Db,
+      context,
       new ReplyFixture.Caller(who),
-      new TestCompany(),
       new TestDriverScope(scope),
       f.Messaging,
-      f.Events,
-      f.Clock
+      new ConversationOpener(
+        context,
+        f.Messaging,
+        new TestCompany(),
+        f.Events,
+        f.Clock
+      )
     );
   }
 

@@ -45,6 +45,10 @@
                     </button>
                 </div>
                 <DriverGroupPicker Id="messages-driver-group" />
+                <button type="button" class="btn btn--small messages__several"
+                        @onclick="() => _broadcasting = true">
+                    Message several drivers
+                </button>
             </div>
             <div class="messages__rows">
                 @if (_conversations is null)
@@ -501,3 +505,6 @@
         }
     </div>
 </section>
+
+<BroadcastDialog Open="_broadcasting" Templates="_templates"
+                 OnClose="() => _broadcasting = false" />

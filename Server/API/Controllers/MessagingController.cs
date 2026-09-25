@@ -86,6 +86,42 @@ public sealed class MessagingController : BaseController
       cancellationToken
     );
 
+  public sealed record BroadcastBody(
+    Guid IdempotencyKey,
+    BroadcastRequest Request
+  );
+
+  // One message to several drivers, each in their own conversation:
+  // preview writes nothing; create is idempotent on its key; cancel takes
+  // back only what has not gone.
+  [HttpPost("broadcasts/preview")]
+  public Task<IActionResult> PreviewBroadcast(
+    BroadcastRequest request,
+    CancellationToken cancellationToken
+  ) => HandleRequest(new PreviewBroadcastQuery(request), cancellationToken);
+
+  [HttpPost("broadcasts")]
+  public Task<IActionResult> CreateBroadcast(
+    BroadcastBody body,
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(
+      new CreateBroadcastCommand(body.IdempotencyKey, body.Request),
+      cancellationToken
+    );
+
+  [HttpGet("broadcasts/{id:guid}")]
+  public Task<IActionResult> Broadcast(
+    Guid id,
+    CancellationToken cancellationToken
+  ) => HandleRequest(new GetBroadcastQuery(id), cancellationToken);
+
+  [HttpPost("broadcasts/{id:guid}/cancel")]
+  public Task<IActionResult> CancelBroadcast(
+    Guid id,
+    CancellationToken cancellationToken
+  ) => HandleRequest(new CancelBroadcastCommand(id), cancellationToken);
+
   // Drivers a chat can be started with, in the dispatcher's driver group.
   [HttpGet("drivers")]
   public Task<IActionResult> Drivers(

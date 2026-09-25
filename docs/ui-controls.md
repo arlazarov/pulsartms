@@ -848,6 +848,11 @@ and the filing box on `warning-surface`. The trip pane uses the shared
 backdrop; below `md` one pane shows, with Back. Below the conversations,
 "Drivers without a chat" lists driver rows of the same shape (a row is a
 button) with their WhatsApp numbers, scrolling with the conversations.
+**Message several drivers** beside the group switch opens the shared
+Popup: the scope as filter chips, a text or a template, Preview with one
+row per driver (a checkbox, disabled with its reason when it cannot be
+sent), Send as `.btn--primary`, then each driver's status with Cancel
+what has not gone as `.btn--danger`.
 
 `Shared/DriverGroups/DriverGroupPicker` is the one driver-group switch on
 Messages, Dispatch and Fleet Map (All drivers or one of the dispatcher's

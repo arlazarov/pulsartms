@@ -35,6 +35,7 @@ public interface IAppDbContext
   DbSet<ConversationRead> ConversationReads { get; }
   DbSet<ConversationArrivalHead> ConversationArrivalHeads { get; }
   DbSet<ApprovedTemplate> ApprovedTemplates { get; }
+  DbSet<MessageBroadcast> MessageBroadcasts { get; }
   DbSet<DriverGroup> DriverGroups { get; }
   DbSet<DriverGroupMember> DriverGroupMembers { get; }
   DbSet<ConsistencyFinding> ConsistencyFindings { get; }

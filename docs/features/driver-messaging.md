@@ -511,8 +511,50 @@ another recorded template. PulsR never calls one approved on its own.
   its image; fuel plans still go as text through the fuel hand-over's
   owner while the reply window is open.
 
+## One message to several drivers
+
+Messages, **Message several drivers** opens a dialog: all the company's
+drivers or the dispatcher's current driver group, a text or an approved
+template (Request contact included), then **Preview**. The preview
+(`POST /api/messaging/broadcasts/preview`, nothing written) lists each
+driver with why one cannot be sent it: no WhatsApp number, an invalid
+explicit one, the same number as another driver here, or - for a text -
+no message from them in the last 24 hours. The dispatcher may untick
+drivers; the rest are sent as `selected`. At most 200 recipients.
+
+`POST /api/messaging/broadcasts` takes the dialog's retry key (kept until
+the broadcast exists, so a repeated Send is the same broadcast). It checks
+everything again, opens each driver's own conversation if needed, and in
+one commit queues one ordinary message per driver - each with its own
+retry key derived from the broadcast and the driver - and records the
+broadcast (`MessageBroadcasts`: who sent it, what, the scope and each
+driver with their message or the reason they were skipped). The outbox
+sends them one by one as it sends any reply; each shows in its chat and
+has its own status. `GET /api/messaging/broadcasts/{id}` reads each
+driver's current status.
+
+`POST /api/messaging/broadcasts/{id}/cancel` withdraws the messages still
+waiting: their status leaves "queued" and their fence moves, so a worker
+that took one but has not recorded it as sending cannot record it and
+never calls WhatsApp. A message already recorded as sending is with
+WhatsApp or on its way: it is left, it may arrive, and the dialog says
+so. Nothing can take back what WhatsApp has. The tests only use a fake
+provider; no bulk message has ever been sent for real.
+
+Consistency audit: the broadcast record and all its messages are written
+in one commit, so this path leaves no broadcast without its messages or
+the reverse; a skipped driver is recorded with its reason and no message.
+Each queued message is an ordinary outbound reply, and a reply that stays
+"queued" or "sending" past its lease is not audited today for any reply.
+Deferred, owner Messaging outbox: a `messaging.outbound-overdue` rule
+reading key-ordered pages of such replies per company, with a detection
+test, completes it.
+
 ## Tests
 
+`Server.Tests/Messaging/BroadcastTests` (eligibility, one message per
+driver per key, scopes, cancellation before, during and after the send
+is taken), `Client.Tests/Messaging/BroadcastDialogTests`,
 `Server.Tests/Messaging/DriverMessagingWebhookTests` (inbound recording,
 duplicates, business numbers, files, unsupported kinds, ambiguous
 numbers, reply statuses, a failed commit retried, fuel-plan statuses only

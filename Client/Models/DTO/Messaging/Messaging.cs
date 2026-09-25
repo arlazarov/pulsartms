@@ -236,3 +236,52 @@ public sealed record MessageSearchView(
 {
   public MessageCursor? Next { get; init; }
 }
+
+// One message to several drivers. Scope: all, group or selected (with
+// DriverIds). A text, or an approved template with its parameters.
+public sealed record BroadcastRequest(
+  string Scope,
+  IReadOnlyList<Guid>? DriverIds,
+  string? Text,
+  string? TemplateName,
+  string? TemplateLanguage,
+  IReadOnlyList<string>? Parameters
+);
+
+public sealed record BroadcastBody(
+  Guid IdempotencyKey,
+  BroadcastRequest Request
+);
+
+public sealed record BroadcastCandidate(
+  Guid DriverId,
+  string Name,
+  string? Number,
+  bool Eligible,
+  string? Reason
+);
+
+public sealed record BroadcastPreview(
+  IReadOnlyList<BroadcastCandidate> Recipients,
+  int Eligible,
+  string Body
+);
+
+public sealed record BroadcastRecipientView(
+  Guid DriverId,
+  string Name,
+  Guid? ConversationId,
+  Guid? MessageId,
+  string Status,
+  string? Reason
+);
+
+public sealed record BroadcastView(
+  Guid Id,
+  string Kind,
+  string Body,
+  string Scope,
+  DateTime CreatedAt,
+  DateTime? CancelledAt,
+  IReadOnlyList<BroadcastRecipientView> Recipients
+);

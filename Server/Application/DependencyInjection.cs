@@ -122,6 +122,7 @@ public static class DependencyInjection
     services.AddSingleton<IInboundMediaOperation, InboundMediaOperation>();
     services.AddSingleton<OutboxSignal>();
     services.AddScoped<ReplyQueue>();
+    services.AddScoped<ConversationOpener>();
     services.AddSingleton<
       IOutboundMessageOperation,
       OutboundMessageOperation

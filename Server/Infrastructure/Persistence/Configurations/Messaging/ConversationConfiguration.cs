@@ -152,3 +152,19 @@ public sealed class ApprovedTemplateConfiguration
       .IsUnique();
   }
 }
+
+public sealed class MessageBroadcastConfiguration
+  : IEntityTypeConfiguration<MessageBroadcast>
+{
+  public void Configure(EntityTypeBuilder<MessageBroadcast> b)
+  {
+    b.ToTable("MessageBroadcasts");
+    b.HasKey(x => x.Id);
+    b.Property(x => x.Kind).HasMaxLength(20).IsRequired();
+    b.Property(x => x.Body).HasMaxLength(4096).IsRequired();
+    b.Property(x => x.Template).HasMaxLength(4000);
+    b.Property(x => x.Scope).HasMaxLength(200).IsRequired();
+    b.Property(x => x.RecipientsJson).IsRequired();
+    b.HasIndex(x => new { x.CompanyId, x.CreatedAt });
+  }
+}

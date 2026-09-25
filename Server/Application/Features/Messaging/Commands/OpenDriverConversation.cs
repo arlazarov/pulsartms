@@ -62,11 +62,9 @@ public sealed record OpenDriverConversationCommand(Guid DriverId)
 public sealed class DriverConversations(
   IAppDbContext db,
   ICurrentUser caller,
-  ICurrentCompany company,
   IDriverScope scope,
   IDriverMessaging messaging,
-  MessagingEvents events,
-  TimeProvider clock
+  ConversationOpener opener
 )
   : IRequestHandler<
     GetMessagingDriversQuery,
@@ -206,49 +204,8 @@ public sealed class DriverConversations(
         "WhatsApp is not set up for the company yet.",
         409
       );
-    if (await ExistingAsync(number, participant, ct) is { } existing)
-      return RequestResponse<Guid>.Ok(existing);
-    var conversation = new Conversation
-    {
-      Id = Guid.NewGuid(),
-      Channel = messaging.Channel,
-      BusinessNumberId = number,
-      Participant = participant,
-      DriverId = request.DriverId,
-      LastMessageAt = clock.GetUtcNow().UtcDateTime,
-      Revision = 1,
-    };
-    db.Conversations.Add(conversation);
-    try
-    {
-      await db.SaveChangesAsync(ct);
-    }
-    catch (DbUpdateException)
-    {
-      db.Entry(conversation).State = EntityState.Detached;
-      return await ExistingAsync(number, participant, ct) is { } first
-        ? RequestResponse<Guid>.Ok(first)
-        : throw new InvalidOperationException(
-          "A conversation insert failed and no conversation holds its key."
-        );
-    }
-    if (company.Id is { } serving)
-      events.Publish(serving, new(conversation.Id, conversation.Revision));
-    return RequestResponse<Guid>.Ok(conversation.Id);
+    return RequestResponse<Guid>.Ok(
+      await opener.OpenAsync(number, participant, request.DriverId, ct)
+    );
   }
-
-  private Task<Guid?> ExistingAsync(
-    string number,
-    string participant,
-    CancellationToken ct
-  ) =>
-    db
-      .Conversations.AsNoTracking()
-      .Where(x =>
-        x.Channel == messaging.Channel
-        && x.BusinessNumberId == number
-        && x.Participant == participant
-      )
-      .Select(x => (Guid?)x.Id)
-      .SingleOrDefaultAsync(ct);
 }

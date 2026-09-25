@@ -1,0 +1,48 @@
+@use '../../base' as ui;
+
+// One message to several drivers: who, what, and each driver's outcome.
+.messages {
+  &__broadcast {
+    display: flex;
+    flex-direction: column;
+    gap: ui.pg(sm);
+    min-width: min(32rem, 100%);
+  }
+  &__broadcast label {
+    display: flex;
+    flex-direction: column;
+    gap: ui.pg(xs);
+  }
+  &__broadcast select,
+  &__broadcast textarea,
+  &__broadcast input:not([type='checkbox']) {
+    @include ui.input-control;
+  }
+  &__broadcast-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 18rem;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    border: 1px solid ui.theme(border);
+    border-radius: ui.radius(sm);
+    list-style: none;
+  }
+  &__broadcast-list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: ui.pg(xs) ui.pg(sm);
+    padding: ui.pg(xs) ui.pg(sm);
+    border-bottom: 1px solid ui.theme(border);
+  }
+  &__broadcast-list li:last-child {
+    border-bottom: 0;
+  }
+  &__broadcast-list li label {
+    flex-direction: row;
+    align-items: center;
+  }
+}

@@ -54,6 +54,7 @@ public partial class Messages : IAsyncDisposable
   private ConversationView? _thread;
   private List<MessageView> _messages = [];
   private IReadOnlyList<MessageTemplateView> _templates = [];
+  private bool _broadcasting;
   private bool _unreadOnly,
     _stale,
     _disposed;
