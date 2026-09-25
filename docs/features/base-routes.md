@@ -144,11 +144,51 @@ meet). If any point is in another country, or in one the region lookup
 cannot name, the request is unchanged. So cross-border loads, and a
 dispatcher's own waypoint abroad, keep their road.
 
-The rule's version is part of every saved road's signature (plan, base road
-and approach), next to the location policy. Roads bought before it are
-therefore bought again once, through the usual refresh and its truck,
-assignment and version checks. This is one paid recalculation for each
-saved road when the change is released.
+The avoidance is only a preference, so `TomTomRoutingProvider` checks what
+comes back (`RouteBorderPolicy.Check`). Every point of the road is looked
+up, plus points at most 1 km apart where two are further apart. On
+AMF1414's 14,178 points that is about 20 ms locally (1.4 µs a lookup);
+production CPU is not measured. A foreign stretch shorter than 1 km inside
+one straight segment can still go unseen. The verdict is one of four:
+
+- `Leaves`: the road enters another country. It is not used or saved;
+  planning fails with a `RoutePlanningException` naming both countries, so
+  nothing is published or sent from it. The refused answer stays in the
+  provider cache, so asking again costs no second call. Alternatives that
+  leave are dropped, and the choice fails when none is left.
+- `Stays`: every looked-up point is in the work's country.
+- `Unknown`: a point the lookup cannot place (at sea), a bad coordinate or
+  missing geometry. The road is used, but it is not recorded as domestic.
+- `NotJudged`: the work is not in one known country (cross-border work, a
+  waypoint abroad, a stop of unknown country).
+
+Saved roads are not bought again wholesale: the rule is not part of the
+signature. `BaseRouteService` refuses to reuse a saved base road, or the
+previous plan's road, that leaves the country of its points. Only that
+load's road is bought again, and only when the load is next built or
+tracked. There is no fleet-wide recompute and no automatic replan.
+
+Each saved base road records its verdict in `DispatchBaseRoutes.BorderCheck`
+(migration `RecordBaseRoadBorderCheck`):
+
+- the country entered, for a road that leaves;
+- `stays`, `unknown` or `n/a`;
+- null for a road saved before the check.
+
+`BaseRoadBorderCheck` fills in the null ones from each road's own geometry,
+five per preparation pass. It uses the local lookup only, with no provider
+call, and records unreadable geometry as `unknown`. It stops asking once a
+company has none left.
+
+The auditor reads that column alone:
+
+- `routing.base-road-leaves-country` reports a road that leaves (violation);
+- `routing.base-road-border-unverified` reports an `unknown` one (review);
+- both cover only work that can still run.
+
+Plan roads and approaches carry no stored verdict. A plan road is checked
+when it is reused, and an approach is bought again as the truck moves
+through the checking provider.
 
 Why it exists: on September 25, truck 11007's next load, AMF1414
 (Ticonderoga, NY to De Pere, WI), had a saved road through Ontario via the

@@ -20,6 +20,7 @@ using Domain.Policies;
 using Domain.Rules;
 using Domain.Rules.Routing;
 using Infrastructure.Identity;
+using Infrastructure.Integrations.GeoTimeZone;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
@@ -889,6 +890,10 @@ public sealed class BaseRouteOperationTests
       services.AddScoped(provider =>
         provider.GetRequiredService<PlanningTestServices>().BaseRoutes
       );
+      services.AddScoped(provider => new BaseRoadBorderCheck(
+        provider.GetRequiredService<IAppDbContext>(),
+        new RouteRegionLookup()
+      ));
       services.AddScoped<ISourceRoadStore, SourceRoadStore>();
       services.AddScoped(provider => new SourceRoadInputs(
         provider.GetRequiredService<IAppDbContext>(),

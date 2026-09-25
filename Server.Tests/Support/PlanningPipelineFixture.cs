@@ -5,7 +5,9 @@ using Application.Features.Fuel.Interfaces;
 using Application.Features.Routing.Interfaces;
 using Application.Interfaces;
 using Domain.Models.Routing;
+using Domain.Rules.Ports;
 using Infrastructure.Identity;
+using Infrastructure.Integrations.GeoTimeZone;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
@@ -55,6 +57,7 @@ internal sealed class PlanningPipelineFixture(
     services.AddSingleton<IDriverHosProvider>(new PlanningTestServices.NoHos());
     var router = new RejectingRouter();
     services.AddSingleton<IRoutingProvider>(router);
+    services.AddSingleton<IRouteRegionLookup, RouteRegionLookup>();
     var root = services.BuildServiceProvider(
       new ServiceProviderOptions { ValidateScopes = true }
     );

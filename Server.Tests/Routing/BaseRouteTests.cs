@@ -178,6 +178,116 @@ public sealed class BaseRouteTests
     Assert.Single(await db.DispatchBaseRoutes.ToListAsync());
   }
 
+  // A saved road for one-country work that leaves the country (AMF1414's,
+  // through Ontario) is bought again, once, and only that road; the new
+  // road is then used as saved. A cross-border load's saved road through
+  // the other country is used as it is.
+  [Theory]
+  [InlineData(true)]
+  [InlineData(false)]
+  public async Task ASavedRoadThatLeavesItsCountryIsBoughtAgainOnce(
+    bool domestic
+  )
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await db.Database.EnsureCreatedAsync();
+    // Ticonderoga, NY to De Pere, WI; or Toronto to Detroit.
+    var (from, to) = domestic
+      ? ((43.8486707m, -73.4234531m), (44.4488805m, -88.0603806m))
+      : ((43.6532m, -79.3832m), (42.3314m, -83.0458m));
+    var load = new Dispatch
+    {
+      Id = Guid.NewGuid(),
+      Stops =
+      [
+        new()
+        {
+          Id = Guid.NewGuid(),
+          Sequence = 1,
+          Latitude = from.Item1,
+          Longitude = from.Item2,
+        },
+        new()
+        {
+          Id = Guid.NewGuid(),
+          Sequence = 2,
+          Latitude = to.Item1,
+          Longitude = to.Item2,
+        },
+      ],
+    };
+    db.Dispatches.Add(load);
+    await db.SaveChangesAsync();
+    // The first road goes by London, Ontario, as the provider's did.
+    var router = new DetourRouter([new(42.9849, -81.2453)]);
+    using var services = new PlanningTestServices(db, router);
+    var profile = new TruckRouteProfile { UsesFleetDefaults = true };
+    await services.BaseRoutes.EnsureAsync(load, profile, default);
+    Assert.Equal(1, router.Calls);
+    // A provider that does not check its answer: the road is saved with
+    // the country it enters, which the auditor reports.
+    Assert.Equal(
+      domestic ? "CA" : "n/a",
+      (await db.DispatchBaseRoutes.SingleAsync()).BorderCheck
+    );
+
+    // Now the provider would answer by Indianapolis and Chicago.
+    router.Via = [new(39.7684, -86.1581), new(41.8781, -87.6298)];
+    db.ChangeTracker.Clear();
+    var road = await services.BaseRoutes.EnsureAsync(load, profile, default);
+    var again = await services.BaseRoutes.EnsureAsync(load, profile, default);
+
+    Assert.Equal(domestic ? 2 : 1, router.Calls);
+    Assert.Equal(
+      domestic ? -86.1581 : -81.2453,
+      road.Legs[0].Points[1].Longitude
+    );
+    Assert.Equal(
+      road.Legs[0].Points[1].Longitude,
+      again.Legs[0].Points[1].Longitude
+    );
+    db.ChangeTracker.Clear();
+    Assert.Equal(
+      domestic ? "stays" : "n/a",
+      (await db.DispatchBaseRoutes.SingleAsync()).BorderCheck
+    );
+  }
+
+  private sealed class DetourRouter(RoutePoint[] via) : IRoutingProvider
+  {
+    public bool IsConfigured => true;
+    public int Calls { get; private set; }
+    public RoutePoint[] Via { get; set; } = via;
+
+    public Task<RoutePoint> GeocodeAsync(
+      string address,
+      CancellationToken ct
+    ) => throw new NotSupportedException();
+
+    public Task<TruckRoute> CalculateAsync(
+      IReadOnlyList<RoutePoint> points,
+      TruckRouteProfile profile,
+      CancellationToken ct
+    )
+    {
+      Calls++;
+      var leg = new RouteLeg(900, 36_000, [points[0], .. Via, points[^1]]);
+      return Task.FromResult(
+        new TruckRoute
+        {
+          Miles = 900,
+          Seconds = 36_000,
+          Legs = [leg],
+          Points = [.. leg.Points],
+        }
+      );
+    }
+  }
+
   private sealed class Router : IRoutingProvider
   {
     public bool IsConfigured => true;

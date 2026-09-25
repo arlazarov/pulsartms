@@ -10,6 +10,7 @@ using Domain.Entities.Dispatch;
 using Domain.Models.Execution;
 using Domain.Models.Routing;
 using Domain.Rules;
+using Domain.Rules.Ports;
 using Domain.Rules.Routing;
 using DispatchEntity = global::Domain.Entities.Dispatch.Dispatch;
 
@@ -20,7 +21,8 @@ public sealed partial class BaseRouteService(
   IRoutingProvider routing,
   PlanningWorkPublication publication,
   TruckPlanningProfileService profiles,
-  IPlanningPublicationScope publicationScope
+  IPlanningPublicationScope publicationScope,
+  IRouteRegionLookup regions
 )
 {
   private static readonly KeyedGates Gates = new();
@@ -135,6 +137,14 @@ public sealed partial class BaseRouteService(
               : new RoutePoint(double.NaN, double.NaN)
           )
           .ToArray();
+      // A saved road for one-country work that leaves the country (bought
+      // before the border policy, or accepted by an older release) is not
+      // used again: only that road is bought again, not every saved one.
+      if (
+        cached is not null
+        && RouteBorderPolicy.Check(cached, known, regions).Leaves
+      )
+        cached = null;
       if (cached is not null && RouteAnchoring.Matches(cached, known))
         return cached;
       var existing = await db
@@ -157,6 +167,11 @@ public sealed partial class BaseRouteService(
         && SavedRouteGeometry.Complete(previous.Route, ordered.Count - 1)
           ? previous.Route
           : null;
+      if (
+        route is not null
+        && RouteBorderPolicy.Check(route, known, regions).Leaves
+      )
+        route = null;
       if (route is null || !RouteAnchoring.Matches(route, known))
       {
         var points = resolvedPoints?.ToList() ?? [];
@@ -209,6 +224,7 @@ public sealed partial class BaseRouteService(
       saved.InputHash = hash;
       saved.RouteJson = RoutePlanStorage.Serialize(route);
       saved.CalculatedAt = route.CalculatedAt;
+      saved.BorderCheck = RouteBorderPolicy.Check(route, regions).Stored;
       if (load.ExecutionLegId is { } executionLegId)
       {
         if (

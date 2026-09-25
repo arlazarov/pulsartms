@@ -13,6 +13,9 @@ public static class SavedRouteReader
     return SavedRouteGeometry.Complete(route, legCount) ? route : null;
   }
 
+  // Whatever was saved, complete or not.
+  public static TruckRoute? Stored(string? json) => Read<TruckRoute>(json);
+
   public static RoutePlan? Plan(string? json) => Read<RoutePlan>(json);
 
   private static T? Read<T>(string? json)

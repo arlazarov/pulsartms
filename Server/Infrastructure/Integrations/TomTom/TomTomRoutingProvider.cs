@@ -8,6 +8,7 @@ using Application.Diagnostics;
 using Application.Features.Routing.Interfaces;
 using Application.Interfaces;
 using Domain.Models.Routing;
+using Domain.Rules;
 using Domain.Rules.Ports;
 using Domain.Rules.Routing;
 using Microsoft.EntityFrameworkCore;
@@ -50,8 +51,9 @@ public sealed partial class TomTomRoutingProvider(
   )
   {
     validator.Validate(points, p);
-    var query = Query(points, p, 0, OneCountry(points));
-    return await CachedAsync(
+    var oneCountry = OneCountry(points);
+    var query = Query(points, p, 0, oneCountry);
+    var road = await CachedAsync(
       "route",
       query,
       TimeSpan.FromHours(12),
@@ -71,7 +73,24 @@ public sealed partial class TomTomRoutingProvider(
         ),
       ct
     );
+    if (
+      oneCountry
+      && RouteBorderPolicy.Check(road, points, regions) is { Leaves: true } exit
+    )
+      throw LeavesCountry(exit);
+    return road;
   }
+
+  // The border policy is a preference to the provider, so what it returns
+  // is checked. A road that leaves the country anyway is neither used nor
+  // saved, and planning says why. A road the check cannot fully place is
+  // used; its saved verdict says unknown, which the auditor reports.
+  private static RoutePlanningException LeavesCountry(BorderVerdict exit) =>
+    new(
+      $"TomTom's road leaves {exit.Country} through {exit.Entered} although "
+        + $"every stop is in {exit.Country}. It was not used; review the "
+        + "route or add a waypoint."
+    );
 
   public async Task<IReadOnlyList<TruckRoute>> CalculateAlternativesAsync(
     IReadOnlyList<RoutePoint> points,
@@ -80,9 +99,10 @@ public sealed partial class TomTomRoutingProvider(
   )
   {
     validator.Validate(points, profile);
-    return await CachedAsync(
+    var oneCountry = OneCountry(points);
+    var roads = await CachedAsync(
       "alternatives",
-      Query(points, profile, 2, OneCountry(points)),
+      Query(points, profile, 2, oneCountry),
       TimeSpan.FromMinutes(15),
       root =>
       {
@@ -149,6 +169,14 @@ public sealed partial class TomTomRoutingProvider(
         ),
       ct
     );
+    if (!oneCountry || roads.Count == 0)
+      return roads;
+    var kept = roads
+      .Where(road => !RouteBorderPolicy.Check(road, points, regions).Leaves)
+      .ToList();
+    return kept.Count > 0
+      ? kept
+      : throw LeavesCountry(RouteBorderPolicy.Check(roads[0], points, regions));
   }
 
   private bool OneCountry(IReadOnlyList<RoutePoint> points) =>

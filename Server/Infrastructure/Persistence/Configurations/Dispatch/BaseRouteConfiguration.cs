@@ -23,6 +23,7 @@ public sealed class BaseRouteConfiguration
       .IsUnique()
       .HasFilter("\"ExecutionLegId\" IS NOT NULL");
     b.Property(x => x.InputHash).HasMaxLength(64);
+    b.Property(x => x.BorderCheck).HasMaxLength(8);
     b.HasOne<DispatchEntity>()
       .WithMany()
       .HasForeignKey(x => x.DispatchId)

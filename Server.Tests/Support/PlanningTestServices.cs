@@ -141,7 +141,8 @@ internal sealed class PlanningTestServices : IDisposable
       router,
       Publication,
       profiles,
-      publicationScope ?? new PlanningPublicationScope((AppDbContext)db)
+      publicationScope ?? new PlanningPublicationScope((AppDbContext)db),
+      new RouteRegionLookup()
     );
     var routeStore = new RoutePlanStore(
       db,

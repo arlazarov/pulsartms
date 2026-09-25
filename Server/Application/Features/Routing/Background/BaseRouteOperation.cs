@@ -24,6 +24,10 @@ public sealed partial class BaseRouteOperation(
   private readonly Dictionary<Guid, int> offsets = [];
   private DateTime nextPrune;
 
+  // Companies with no road left without a border verdict. Every road saved
+  // since carries one from the save, so the check stops asking.
+  private readonly HashSet<Guid> bordersChecked = [];
+
   public async Task RunAsync(CancellationToken ct)
   {
     using var timer = new PeriodicTimer(
@@ -159,6 +163,13 @@ public sealed partial class BaseRouteOperation(
     await scope
       .ServiceProvider.GetRequiredService<StopAddressService>()
       .ExpireAsync(ct);
+    if (
+      !bordersChecked.Contains(company)
+      && await scope
+        .ServiceProvider.GetRequiredService<BaseRoadBorderCheck>()
+        .CheckAsync(ct) == 0
+    )
+      bordersChecked.Add(company);
     var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
     var horizon = today.AddDays(options.Value.HorizonDays);
     var prewarm = today.AddDays(options.Value.PrewarmDays);

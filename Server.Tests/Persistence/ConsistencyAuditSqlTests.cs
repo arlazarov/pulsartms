@@ -38,6 +38,8 @@ public sealed class ConsistencyAuditSqlTests
       "messaging.unread-arrival-behind",
       "messaging.outbound-overdue",
       "dispatch.filed-document-unavailable",
+      "routing.base-road-leaves-country",
+      "routing.base-road-border-unverified",
       "journal-events",
       "journal-incidents",
     ];
@@ -50,7 +52,9 @@ public sealed class ConsistencyAuditSqlTests
     var request = new ConsistencyPageRequest(
       Company.Amf,
       DateTime.UtcNow,
-      read.StartsWith("routing") ? "cursor" : Guid.NewGuid().ToString(),
+      read == "routing.planning-refresh-overdue"
+        ? "cursor"
+        : Guid.NewGuid().ToString(),
       10,
       TimeSpan.FromMinutes(30)
     );
@@ -73,6 +77,10 @@ public sealed class ConsistencyAuditSqlTests
         new OutboundOverdueRule(db).ReadAsync(request, default),
       "dispatch.filed-document-unavailable" => () =>
         new FiledDocumentRule(db).ReadAsync(request, default),
+      "routing.base-road-leaves-country" => () =>
+        new BaseRoadBorderRule(db).ReadAsync(request, default),
+      "routing.base-road-border-unverified" => () =>
+        new BaseRoadBorderUnknownRule(db).ReadAsync(request, default),
       "journal-events" => () =>
         new ConsistencyJournalReads(db).EventsAsync(
           Company.Amf,

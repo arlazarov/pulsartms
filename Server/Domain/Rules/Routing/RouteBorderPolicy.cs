@@ -1,3 +1,4 @@
+using Domain.Models.Routing;
 using Domain.Rules.Ports;
 
 namespace Domain.Rules.Routing;
@@ -8,20 +9,156 @@ namespace Domain.Rules.Routing;
 // which a domestic load cannot do. So when every point asked for - the
 // truck's position or the previous stop, each stop, and any waypoint a
 // dispatcher chose - is in the same known country, the provider is asked to
-// avoid border crossings. A point in another country, or one whose country
-// is not known, leaves the road to the provider as before: cross-border work
-// and a dispatcher's own waypoint abroad keep their road.
+// avoid border crossings, and the road it returns is checked, since the
+// provider treats that as a preference. The check looks at every point of
+// the road and at least every kilometre between them; a road it cannot
+// fully place is Unknown, never Stays. A point in another country, or one
+// whose country is not known, leaves the road to the provider as before:
+// cross-border work and a dispatcher's own waypoint abroad keep their road.
 public static class RouteBorderPolicy
 {
-  // Part of every saved road's signature, so roads bought before the rule
-  // are bought again once, through the usual refresh.
-  public const string Version = "one-country-v1";
+  // Longest stretch between two looked-up points. A foreign excursion
+  // shorter than this inside one straight segment of the geometry can go
+  // unseen; road geometry bends far more often than that at a border.
+  public const double StepKilometres = 1;
 
-  public static bool KeepsToOneCountry(IEnumerable<RouteRegion> regions)
+  public static bool KeepsToOneCountry(IEnumerable<RouteRegion> regions) =>
+    CountryOf(regions) is not null;
+
+  // The one country every point is in, if there is one.
+  public static string? CountryOf(IEnumerable<RouteRegion> regions)
   {
     var countries = regions.Select(region => region.Country).ToList();
-    return countries.Count > 1
+    return
+      countries.Count > 1
       && countries.All(country => country.Length > 0)
-      && countries.Distinct(StringComparer.Ordinal).Count() == 1;
+      && countries.Distinct(StringComparer.Ordinal).Count() == 1
+      ? countries[0]
+      : null;
   }
+
+  // The same, judged by the road alone: its legs begin and end at the
+  // points it was asked for, so a saved road carries its own stops.
+  public static BorderVerdict Check(
+    TruckRoute road,
+    IRouteRegionLookup regions
+  ) =>
+    road.Legs.Count == 0 || road.Legs.Any(leg => leg.Points.Count == 0)
+      ? BorderVerdict.Unverified
+      : Check(
+        road,
+        [road.Legs[0].Points[0], .. road.Legs.Select(leg => leg.Points[^1])],
+        regions
+      );
+
+  // Whether a road for one-country work stays in that country. Work that
+  // is not in one known country is not judged. Every point of the road is
+  // looked up, and more between points further apart than a step; the
+  // first in another known country is where the road leaves. A point the
+  // lookup cannot place, a bad coordinate or a road with no points leaves
+  // the answer Unknown.
+  public static BorderVerdict Check(
+    TruckRoute road,
+    IReadOnlyList<RoutePoint> requested,
+    IRouteRegionLookup regions
+  )
+  {
+    if (
+      requested.Any(point => !Finite(point))
+      || CountryOf(requested.Select(regions.Find)) is not { } country
+    )
+      return BorderVerdict.NotJudged;
+    var points = road.Legs.SelectMany(leg => leg.Points).ToList();
+    if (points.Count == 0)
+      points = [.. road.Points];
+    if (points.Count == 0 || !points.All(Finite))
+      return BorderVerdict.Unverified;
+    var unplaced = false;
+    RoutePoint? previous = null;
+    foreach (var point in points)
+    {
+      foreach (var at in Between(previous, point))
+      {
+        var found = regions.Find(at).Country;
+        if (found.Length == 0)
+          unplaced = true;
+        else if (found != country)
+          return new(BorderCheck.Leaves, country, found, at);
+      }
+      previous = point;
+    }
+    return unplaced
+      ? BorderVerdict.Unverified
+      : new(BorderCheck.Stays, country, "", null);
+  }
+
+  // The point itself, preceded by points evenly spaced from the previous
+  // one so that none is more than a step from the next.
+  private static IEnumerable<RoutePoint> Between(
+    RoutePoint? from,
+    RoutePoint to
+  )
+  {
+    if (from is { } start)
+    {
+      var north = (to.Latitude - start.Latitude) * 111.2;
+      var east =
+        (to.Longitude - start.Longitude)
+        * 111.2
+        * Math.Cos(start.Latitude * Math.PI / 180);
+      var steps = (int)Math.Ceiling(Math.Sqrt(north * north + east * east));
+      for (var step = 1; step < steps; step++)
+        yield return new(
+          start.Latitude + (to.Latitude - start.Latitude) * step / steps,
+          start.Longitude + (to.Longitude - start.Longitude) * step / steps
+        );
+    }
+    yield return to;
+  }
+
+  private static bool Finite(RoutePoint point) =>
+    double.IsFinite(point.Latitude) && double.IsFinite(point.Longitude);
+}
+
+public enum BorderCheck
+{
+  // The work is not in one known country, so no road is wrong for it.
+  NotJudged,
+  Stays,
+  Leaves,
+
+  // One-country work whose road could not be fully placed.
+  Unknown,
+}
+
+// Country is the work's country; Entered and At say where a road that
+// Leaves first reaches another one.
+public sealed record BorderVerdict(
+  BorderCheck Check,
+  string Country,
+  string Entered,
+  RoutePoint? At
+)
+{
+  public static BorderVerdict NotJudged { get; } =
+    new(BorderCheck.NotJudged, "", "", null);
+  public static BorderVerdict Unverified { get; } =
+    new(BorderCheck.Unknown, "", "", null);
+
+  public const string StaysValue = "stays";
+  public const string UnknownValue = "unknown";
+  public const string NotJudgedValue = "n/a";
+
+  public bool Leaves => Check == BorderCheck.Leaves;
+
+  // How a saved road records it: the country entered for a road that
+  // leaves, otherwise one of the values above.
+  public string Stored =>
+    Check switch
+    {
+      BorderCheck.Leaves => Entered,
+      BorderCheck.Stays => StaysValue,
+      BorderCheck.Unknown => UnknownValue,
+      _ => NotJudgedValue,
+    };
 }

@@ -151,6 +151,8 @@ public static class DependencyInjection
     services.AddScoped<IConsistencyRule, UnreadArrivalRule>();
     services.AddScoped<IConsistencyRule, OutboundOverdueRule>();
     services.AddScoped<IConsistencyRule, FiledDocumentRule>();
+    services.AddScoped<IConsistencyRule, BaseRoadBorderRule>();
+    services.AddScoped<IConsistencyRule, BaseRoadBorderUnknownRule>();
     services.AddScoped<IConsistencyRule, StoredFileConnectionRule>();
     services.AddSingleton<TruckHistoryQueue>();
     services.AddSingleton<TruckHistoryCache>();
@@ -169,6 +171,7 @@ public static class DependencyInjection
     services.AddScoped<TruckPlanningProfileService>();
     services.AddScoped<RoutePlanStore>();
     services.AddScoped<BaseRouteService>();
+    services.AddScoped<BaseRoadBorderCheck>();
     services.AddScoped<RouteChoiceService>();
     services.AddScoped<RouteChoiceDrafts>();
     services.AddScoped<StopAddressService>();
