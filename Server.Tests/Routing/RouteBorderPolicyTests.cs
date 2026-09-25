@@ -208,10 +208,10 @@ public sealed class RouteBorderPolicyTests
 
     Assert.Equal(
       BorderCheck.Stays,
-      RouteBorderPolicy.Check(Straight(path), regions).Check
+      RouteBorderPolicy.Check(Straight(path), regions, default).Check
     );
     path[7 * step + step / 2] = excursion;
-    var verdict = RouteBorderPolicy.Check(Straight(path), regions);
+    var verdict = RouteBorderPolicy.Check(Straight(path), regions, default);
 
     Assert.Equal(BorderCheck.Leaves, verdict.Check);
     Assert.Equal(
@@ -229,7 +229,8 @@ public sealed class RouteBorderPolicyTests
     var verdict = RouteBorderPolicy.Check(
       Straight([Buffalo, Detroit]),
       [Buffalo, Detroit],
-      new RouteRegionLookup()
+      new RouteRegionLookup(),
+      default
     );
 
     Assert.Equal(BorderCheck.Leaves, verdict.Check);
@@ -246,30 +247,83 @@ public sealed class RouteBorderPolicyTests
     Assert.Equal(
       BorderCheck.Unknown,
       RouteBorderPolicy
-        .Check(Straight([Ticonderoga, .. Offshore, DePere]), regions)
+        .Check(Straight([Ticonderoga, .. Offshore, DePere]), regions, default)
         .Check
     );
     Assert.Equal(
       BorderCheck.Unknown,
       RouteBorderPolicy
-        .Check(Straight([Ticonderoga, new(double.NaN, 0), DePere]), regions)
+        .Check(
+          Straight([Ticonderoga, new(double.NaN, 0), DePere]),
+          regions,
+          default
+        )
         .Check
     );
     Assert.Equal(
       BorderCheck.Unknown,
-      RouteBorderPolicy.Check(new TruckRoute(), regions).Check
+      RouteBorderPolicy.Check(new TruckRoute(), regions, default).Check
     );
     Assert.Equal(
       "unknown",
-      RouteBorderPolicy.Check(new TruckRoute(), regions).Stored
+      RouteBorderPolicy.Check(new TruckRoute(), regions, default).Stored
     );
     // Work not in one country is not judged, whatever its road does.
     Assert.Equal(
       "n/a",
       RouteBorderPolicy
-        .Check(Straight([Toronto, London, Detroit]), regions)
+        .Check(Straight([Toronto, London, Detroit]), regions, default)
         .Stored
     );
+  }
+
+  // A coordinate that is no place on Earth leaves the road unknown. So
+  // does geometry that would need more lookups than the budget - here
+  // points a continent apart, 200 times - and it costs no more than the
+  // budget. Without it this road would pass as staying after a million.
+  [Fact]
+  public void BadOrOversizedGeometryIsUnknownWithinTheBudget()
+  {
+    var regions = new CountingUs();
+    foreach (var bad in new RoutePoint[] { new(95, -80), new(43, -200) })
+      Assert.Equal(
+        BorderCheck.Unknown,
+        RouteBorderPolicy
+          .Check(Straight([Ticonderoga, bad, DePere]), regions, default)
+          .Check
+      );
+    var zigzag = Enumerable
+      .Range(0, 200)
+      .Select(index =>
+        index % 2 == 0 ? new RoutePoint(25, -70) : new RoutePoint(48, -124)
+      )
+      .ToList();
+    regions.Lookups = 0;
+
+    var verdict = RouteBorderPolicy.Check(Straight(zigzag), regions, default);
+
+    Assert.Equal(BorderCheck.Unknown, verdict.Check);
+    Assert.InRange(regions.Lookups, 1, RouteBorderPolicy.MaximumLookups + 2);
+    Assert.Throws<OperationCanceledException>(
+      () =>
+        RouteBorderPolicy.Check(
+          Straight(zigzag),
+          regions,
+          new CancellationToken(canceled: true)
+        )
+    );
+  }
+
+  // Places everything in the US and counts the lookups.
+  private sealed class CountingUs : IRouteRegionLookup
+  {
+    public int Lookups { get; set; }
+
+    public RouteRegion Find(RoutePoint point)
+    {
+      Lookups++;
+      return new("US", "", false);
+    }
   }
 
   // Places everything in the US except one exact point, in Canada.

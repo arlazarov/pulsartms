@@ -75,7 +75,8 @@ public sealed partial class TomTomRoutingProvider(
     );
     if (
       oneCountry
-      && RouteBorderPolicy.Check(road, points, regions) is { Leaves: true } exit
+      && RouteBorderPolicy.Check(road, points, regions, ct)
+        is { Leaves: true } exit
     )
       throw LeavesCountry(exit);
     return road;
@@ -172,11 +173,13 @@ public sealed partial class TomTomRoutingProvider(
     if (!oneCountry || roads.Count == 0)
       return roads;
     var kept = roads
-      .Where(road => !RouteBorderPolicy.Check(road, points, regions).Leaves)
+      .Where(road => !RouteBorderPolicy.Check(road, points, regions, ct).Leaves)
       .ToList();
     return kept.Count > 0
       ? kept
-      : throw LeavesCountry(RouteBorderPolicy.Check(roads[0], points, regions));
+      : throw LeavesCountry(
+        RouteBorderPolicy.Check(roads[0], points, regions, ct)
+      );
   }
 
   private bool OneCountry(IReadOnlyList<RoutePoint> points) =>

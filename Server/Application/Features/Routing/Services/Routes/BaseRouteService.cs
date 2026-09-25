@@ -142,7 +142,7 @@ public sealed partial class BaseRouteService(
       // used again: only that road is bought again, not every saved one.
       if (
         cached is not null
-        && RouteBorderPolicy.Check(cached, known, regions).Leaves
+        && RouteBorderPolicy.Check(cached, known, regions, ct).Leaves
       )
         cached = null;
       if (cached is not null && RouteAnchoring.Matches(cached, known))
@@ -169,7 +169,7 @@ public sealed partial class BaseRouteService(
           : null;
       if (
         route is not null
-        && RouteBorderPolicy.Check(route, known, regions).Leaves
+        && RouteBorderPolicy.Check(route, known, regions, ct).Leaves
       )
         route = null;
       if (route is null || !RouteAnchoring.Matches(route, known))
@@ -224,7 +224,7 @@ public sealed partial class BaseRouteService(
       saved.InputHash = hash;
       saved.RouteJson = RoutePlanStorage.Serialize(route);
       saved.CalculatedAt = route.CalculatedAt;
-      saved.BorderCheck = RouteBorderPolicy.Check(route, regions).Stored;
+      saved.BorderCheck = RouteBorderPolicy.Check(route, regions, ct).Stored;
       if (load.ExecutionLegId is { } executionLegId)
       {
         if (

@@ -157,8 +157,11 @@ one straight segment can still go unseen. The verdict is one of four:
   provider cache, so asking again costs no second call. Alternatives that
   leave are dropped, and the choice fails when none is left.
 - `Stays`: every looked-up point is in the work's country.
-- `Unknown`: a point the lookup cannot place (at sea), a bad coordinate or
-  missing geometry. The road is used, but it is not recorded as domestic.
+- `Unknown`: a point the lookup cannot place (at sea), a coordinate that
+  is not a place on Earth (`RoutePoint.IsValid`), missing geometry, or a
+  road needing more than `MaximumLookups` (100,000) lookups. The road is
+  used, but it is not recorded as domestic. The budget bounds the cost of
+  bad geometry; a normal road of 14,000 points needs about 16,000.
 - `NotJudged`: the work is not in one known country (cross-border work, a
   waypoint abroad, a stop of unknown country).
 

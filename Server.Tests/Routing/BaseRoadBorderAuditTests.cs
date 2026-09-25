@@ -1,6 +1,8 @@
+using System.Data.Common;
 using Application.Diagnostics.Consistency;
 using Application.Features.Routing.Audit;
 using Application.Features.Routing.Services.Routes;
+using Application.Interfaces;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
@@ -9,6 +11,9 @@ using Infrastructure.Integrations.GeoTimeZone;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+using Server.Tests.Support;
 
 namespace Server.Tests.Routing;
 
@@ -109,15 +114,141 @@ public sealed class BaseRoadBorderAuditTests
       };
   }
 
+  // A road saved again between the check's read and its write keeps the
+  // newer verdict: the write matches only the road that was read. A road
+  // re-saved without a verdict (by an older release) is judged on the
+  // next pass from the geometry now saved, not the geometry first read.
+  [Theory]
+  [InlineData("CA")]
+  [InlineData(null)]
+  public async Task ARoadSavedAgainDuringTheCheckKeepsItsNewerVerdict(
+    string? newer
+  )
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var plain = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await plain.Database.EnsureCreatedAsync();
+    var id = Saved(plain, Road(Ticonderoga, [Indianapolis, Chicago], DePere));
+    await plain.SaveChangesAsync();
+    var resave = new BeforeTheWrite(
+      () =>
+        plain
+          .DispatchBaseRoutes.Where(x => x.Id == id)
+          .ExecuteUpdateAsync(set =>
+            set.SetProperty(
+                x => x.RouteJson,
+                RoutePlanStorage.Serialize(Road(Ticonderoga, [London], DePere))
+              )
+              .SetProperty(x => x.CalculatedAt, DateTime.UtcNow.AddMinutes(5))
+              .SetProperty(x => x.BorderCheck, newer)
+          )
+    );
+    await using var checking = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>()
+        .UseSqlite(connection)
+        .AddInterceptors(resave)
+        .Options
+    );
+    var check = new BaseRoadBorderCheck(checking, new RouteRegionLookup());
+
+    Assert.Equal(1, await check.CheckAsync(default));
+
+    Assert.True(resave.Fired);
+    Assert.Equal(newer, await Verdict(plain, id));
+    Assert.Equal(newer is null ? 1 : 0, await check.CheckAsync(default));
+    Assert.Equal("CA", await Verdict(plain, id));
+  }
+
+  // The preparation pass checks one carrier at a time. A context serving
+  // one carrier reads and writes only that carrier's roads; the other's
+  // stay unchecked until its own pass.
+  [Fact]
+  public async Task TheCheckServesOneCarrierAtATime()
+  {
+    var other = Guid.NewGuid();
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var plain = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await plain.Database.EnsureCreatedAsync();
+    var amf = Saved(plain, Road(Ticonderoga, [London], DePere));
+    var theirs = Saved(plain, Road(Ticonderoga, [London], DePere), null, other);
+    await plain.SaveChangesAsync();
+    var serving = new TestCompany();
+    await using var scoped = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>()
+        .UseSqlite(connection)
+        .UseApplicationServiceProvider(
+          new ServiceCollection()
+            .AddSingleton<ICurrentCompany>(serving)
+            .BuildServiceProvider()
+        )
+        .Options
+    );
+    var check = new BaseRoadBorderCheck(scoped, new RouteRegionLookup());
+
+    using (serving.As(other))
+      Assert.Equal(1, await check.CheckAsync(default));
+
+    Assert.Equal("CA", await Verdict(plain, theirs));
+    Assert.Null(await Verdict(plain, amf));
+    Assert.Equal(1, await check.CheckAsync(default));
+    Assert.Equal("CA", await Verdict(plain, amf));
+  }
+
+  private static Task<string?> Verdict(AppDbContext db, Guid id) =>
+    db
+      .DispatchBaseRoutes.IgnoreQueryFilters()
+      .AsNoTracking()
+      .Where(x => x.Id == id)
+      .Select(x => x.BorderCheck)
+      .SingleAsync();
+
+  // Runs `between` once, just before the check's write reaches the
+  // database, as another request saving the road would.
+  private sealed class BeforeTheWrite(Func<Task> between) : DbCommandInterceptor
+  {
+    public bool Fired { get; private set; }
+
+    public override async ValueTask<
+      InterceptionResult<int>
+    > NonQueryExecutingAsync(
+      DbCommand command,
+      CommandEventData eventData,
+      InterceptionResult<int> result,
+      CancellationToken cancellationToken = default
+    )
+    {
+      if (
+        !Fired
+        && command.CommandText.Contains("UPDATE")
+        && command.CommandText.Contains("BorderCheck")
+      )
+      {
+        Fired = true;
+        await between();
+      }
+      return result;
+    }
+  }
+
+  // A load and its road saved before the check, for the fixture's carrier
+  // unless another is named.
   private static Guid Saved(
     AppDbContext db,
     TruckRoute? road,
-    ExecutionLeg? leg
+    ExecutionLeg? leg = null,
+    Guid company = default
   )
   {
     var load = new Dispatch
     {
       Id = Guid.NewGuid(),
+      CompanyId = company,
       LoadNumber = db.ChangeTracker.Entries<Dispatch>().Count() + 1,
     };
     db.Dispatches.Add(load);
@@ -126,6 +257,7 @@ public sealed class BaseRoadBorderAuditTests
     var saved = new DispatchBaseRoute
     {
       Id = Guid.NewGuid(),
+      CompanyId = company,
       DispatchId = load.Id,
       ExecutionLegId = leg?.Id,
       InputHash = "saved-before-the-check",

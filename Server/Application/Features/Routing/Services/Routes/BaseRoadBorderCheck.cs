@@ -38,7 +38,7 @@ public sealed class BaseRoadBorderCheck(
       // Unreadable geometry is recorded as unknown, never as clean.
       var verdict = road is null
         ? BorderVerdict.Unverified
-        : RouteBorderPolicy.Check(road, regions);
+        : RouteBorderPolicy.Check(road, regions, ct);
       // A road saved again meanwhile has its own verdict and is left alone.
       await db
         .DispatchBaseRoutes.Where(x =>

@@ -22,6 +22,11 @@ public static class RouteBorderPolicy
   // unseen; road geometry bends far more often than that at a border.
   public const double StepKilometres = 1;
 
+  // Most points one check looks up. AMF1414's road of 14,178 points needs
+  // about 16,000; past this the answer is Unknown, never Stays, so bad
+  // geometry (points a continent apart) costs a bounded 100,000 lookups.
+  public const int MaximumLookups = 100_000;
+
   public static bool KeepsToOneCountry(IEnumerable<RouteRegion> regions) =>
     CountryOf(regions) is not null;
 
@@ -41,43 +46,53 @@ public static class RouteBorderPolicy
   // points it was asked for, so a saved road carries its own stops.
   public static BorderVerdict Check(
     TruckRoute road,
-    IRouteRegionLookup regions
+    IRouteRegionLookup regions,
+    CancellationToken ct
   ) =>
     road.Legs.Count == 0 || road.Legs.Any(leg => leg.Points.Count == 0)
       ? BorderVerdict.Unverified
       : Check(
         road,
         [road.Legs[0].Points[0], .. road.Legs.Select(leg => leg.Points[^1])],
-        regions
+        regions,
+        ct
       );
 
   // Whether a road for one-country work stays in that country. Work that
   // is not in one known country is not judged. Every point of the road is
   // looked up, and more between points further apart than a step; the
   // first in another known country is where the road leaves. A point the
-  // lookup cannot place, a bad coordinate or a road with no points leaves
-  // the answer Unknown.
+  // lookup cannot place, a coordinate that is not a place on Earth, a road
+  // with no points or one needing more than MaximumLookups leaves the
+  // answer Unknown.
   public static BorderVerdict Check(
     TruckRoute road,
     IReadOnlyList<RoutePoint> requested,
-    IRouteRegionLookup regions
+    IRouteRegionLookup regions,
+    CancellationToken ct
   )
   {
     if (
-      requested.Any(point => !Finite(point))
+      requested.Any(point => !point.IsValid)
       || CountryOf(requested.Select(regions.Find)) is not { } country
     )
       return BorderVerdict.NotJudged;
     var points = road.Legs.SelectMany(leg => leg.Points).ToList();
     if (points.Count == 0)
       points = [.. road.Points];
-    if (points.Count == 0 || !points.All(Finite))
+    if (points.Count == 0 || !points.All(point => point.IsValid))
       return BorderVerdict.Unverified;
     var unplaced = false;
+    var lookups = 0;
     RoutePoint? previous = null;
     foreach (var point in points)
     {
-      foreach (var at in Between(previous, point))
+      ct.ThrowIfCancellationRequested();
+      var steps = Steps(previous, point);
+      if (steps > MaximumLookups - lookups)
+        return BorderVerdict.Unverified;
+      lookups += steps;
+      foreach (var at in Between(previous, point, steps))
       {
         var found = regions.Find(at).Country;
         if (found.Length == 0)
@@ -92,32 +107,36 @@ public static class RouteBorderPolicy
       : new(BorderCheck.Stays, country, "", null);
   }
 
-  // The point itself, preceded by points evenly spaced from the previous
-  // one so that none is more than a step from the next.
+  // Lookups for the stretch ending at a point: the point itself, and more
+  // so that none is more than a step from the next.
+  private static int Steps(RoutePoint? from, RoutePoint to)
+  {
+    if (from is not { } start)
+      return 1;
+    var north = (to.Latitude - start.Latitude) * 111.2;
+    var east =
+      (to.Longitude - start.Longitude)
+      * 111.2
+      * Math.Cos(start.Latitude * Math.PI / 180);
+    var kilometres = Math.Sqrt(north * north + east * east);
+    return Math.Max(1, (int)Math.Ceiling(kilometres / StepKilometres));
+  }
+
+  // The point itself, preceded by the evenly spaced points before it.
   private static IEnumerable<RoutePoint> Between(
     RoutePoint? from,
-    RoutePoint to
+    RoutePoint to,
+    int steps
   )
   {
     if (from is { } start)
-    {
-      var north = (to.Latitude - start.Latitude) * 111.2;
-      var east =
-        (to.Longitude - start.Longitude)
-        * 111.2
-        * Math.Cos(start.Latitude * Math.PI / 180);
-      var steps = (int)Math.Ceiling(Math.Sqrt(north * north + east * east));
       for (var step = 1; step < steps; step++)
         yield return new(
           start.Latitude + (to.Latitude - start.Latitude) * step / steps,
           start.Longitude + (to.Longitude - start.Longitude) * step / steps
         );
-    }
     yield return to;
   }
-
-  private static bool Finite(RoutePoint point) =>
-    double.IsFinite(point.Latitude) && double.IsFinite(point.Longitude);
 }
 
 public enum BorderCheck
