@@ -36,6 +36,7 @@ public sealed class ConsistencyAuditSqlTests
       "execution.planning-change-overdue",
       "routing.planning-refresh-overdue",
       "messaging.unread-arrival-behind",
+      "messaging.outbound-overdue",
       "dispatch.filed-document-unavailable",
       "journal-events",
       "journal-incidents",
@@ -68,6 +69,8 @@ public sealed class ConsistencyAuditSqlTests
         ),
       "messaging.unread-arrival-behind" => () =>
         new UnreadArrivalRule(db).ReadAsync(request, default),
+      "messaging.outbound-overdue" => () =>
+        new OutboundOverdueRule(db).ReadAsync(request, default),
       "dispatch.filed-document-unavailable" => () =>
         new FiledDocumentRule(db).ReadAsync(request, default),
       "journal-events" => () =>

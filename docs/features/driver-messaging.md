@@ -556,11 +556,16 @@ answered by the sender for two minutes, as a single reply does.
 Consistency audit: the broadcast record and all its messages are written
 in one commit, so this path leaves no broadcast without its messages or
 the reverse; a skipped driver is recorded with its reason and no message.
-Each queued message is an ordinary outbound reply, and a reply that stays
-"queued" or "sending" past its lease is not audited today for any reply.
-Deferred, owner Messaging outbox: a `messaging.outbound-overdue` rule
-reading key-ordered pages of such replies per company, with a detection
-test, completes it.
+Each queued message is an ordinary outbound reply, covered like any
+other by `messaging.outbound-overdue` (`Messaging/Audit/OutboundOverdueRule`):
+a reply still queued, or sending after its lease, longer than the
+auditor's pending grace (30 minutes) past when it was due - the outbox
+would have taken or reaped it within seconds, so it is not moving. Read
+only, key-ordered pages per company; the outbox owns every change.
+Detection: `Server.Tests/Messaging/OutboundOverdueRuleTests`. Its
+condition reads the company's outbound messages without a status index
+(the outbox's own due query does the same every 5 seconds); not
+measured at volume, and production holds few messages.
 
 ## Tests
 

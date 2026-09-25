@@ -280,6 +280,7 @@ does; everything else in this guide is target design.
 | `execution.planning-change-overdue` | `ExecutionPlanningOperation` | violation, warning | none | implemented |
 | `routing.planning-refresh-overdue` | `PlanningRefreshOperation` | violation, warning | requeue, allowlisted | implemented |
 | `messaging.unread-arrival-behind` | `InboxRecorder` | violation, warning | none; next driver message | implemented, detection tested |
+| `messaging.outbound-overdue` | `OutboundMessageOperation` | violation, warning | none; the outbox's next pass | implemented, detection tested |
 | `dispatch.filed-document-unavailable` | `FileMessageAttachment` | violation, warning | none; stored file's owner | implemented, detection tested |
 
 Detectors live in `Application/Features/Execution/Audit` and

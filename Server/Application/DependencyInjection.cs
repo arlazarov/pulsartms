@@ -149,6 +149,7 @@ public static class DependencyInjection
     services.AddScoped<IConsistencyRule, ExecutionPlanningDemandRule>();
     services.AddScoped<IConsistencyRule, PlanningRefreshDemandRule>();
     services.AddScoped<IConsistencyRule, UnreadArrivalRule>();
+    services.AddScoped<IConsistencyRule, OutboundOverdueRule>();
     services.AddScoped<IConsistencyRule, FiledDocumentRule>();
     services.AddScoped<IConsistencyRule, StoredFileConnectionRule>();
     services.AddSingleton<TruckHistoryQueue>();

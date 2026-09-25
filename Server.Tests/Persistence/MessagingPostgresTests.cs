@@ -220,6 +220,9 @@ public sealed class MessagingPostgresTests
     Assert.Empty(
       (await new FiledDocumentRule(db).ReadAsync(request, default)).Observed
     );
+    Assert.Empty(
+      (await new OutboundOverdueRule(db).ReadAsync(request, default)).Observed
+    );
   }
 
   // The inbox keyset on PostgreSQL, whose uuid order is not SQLite's text
