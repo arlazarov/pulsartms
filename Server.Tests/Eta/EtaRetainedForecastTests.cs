@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Eta.Services;
 using Domain.Models.Eta;
 using Domain.Models.Routing;
@@ -88,9 +89,57 @@ public sealed class EtaRetainedForecastTests
       _ => Copy(plan, x => x.TruckId = Guid.NewGuid()),
     };
 
+    var before = Counted($"other-work-{Part(change)}");
     Assert.Null(service.GetCached(state with { Plan = other }));
     Assert.False(memory.Results.ContainsKey(Key(state)));
+    // Counted for the stage diagnostics, with the part that differs.
+    Assert.True(Counted($"other-work-{Part(change)}") > before);
   }
+
+  // Why the map has no forecast is counted, not logged per poll: nothing
+  // kept yet, or one taken back because a reader's chain description
+  // differed from the one it was published with.
+  [Fact]
+  public void AnEmptyMapReadAndADemandRemovalAreCounted()
+  {
+    using var memory = new EtaMemory();
+    var service = Service(memory);
+    var state = State();
+    var now = DateTime.UtcNow;
+    var empty = Counted("no-entry");
+    Assert.Null(service.GetCached(state));
+    Assert.True(Counted("no-entry") > empty);
+
+    service.Record(
+      state,
+      "a",
+      Forecast(now, now.AddMinutes(10)),
+      chainInputHash: "published"
+    );
+    var removed = Counted("demand-removed", "eta-memory");
+    memory.Demand(Key(state), "described-otherwise", now);
+
+    Assert.False(memory.Results.ContainsKey(Key(state)));
+    Assert.True(Counted("demand-removed", "eta-memory") > removed);
+  }
+
+  // Other tests count too, in parallel: only increases are asserted.
+  private static long Counted(
+    string stage,
+    string operation = "eta-map-read"
+  ) =>
+    PerformanceStages
+      .Snapshot()
+      .GetValueOrDefault($"{operation}/{stage}")
+      ?.Items ?? 0;
+
+  private static string Part(string change) =>
+    change switch
+    {
+      "assignment" => "AssignmentRevision",
+      "stops" => "Stops",
+      _ => "TruckId",
+    };
 
   // A calculation reads its road before waiting for the dispatch's gate, so
   // one begun on the older road can finish after one on the newer road.

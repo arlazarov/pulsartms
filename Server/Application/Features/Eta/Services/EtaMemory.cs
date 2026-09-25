@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Threading.Channels;
+using Application.Diagnostics;
 using Application.Models;
 using Domain.Models.Eta;
 using Microsoft.Extensions.Caching.Memory;
@@ -189,7 +190,10 @@ public sealed class EtaMemory(TimeProvider? clock = null)
             && invalid.ChainInputHash != inputHash
             && RemoveIfCurrent(rootDispatchId, invalid)
           )
+          {
+            DemandRemoved();
             RequestRefresh();
+          }
           return;
         }
         if (!demandedInputs.TryUpdate(rootDispatchId, inputHash, previous))
@@ -200,12 +204,19 @@ public sealed class EtaMemory(TimeProvider? clock = null)
       if (
         Results.TryGetValue(rootDispatchId, out var cached)
         && cached.ChainInputHash != inputHash
+        && RemoveIfCurrent(rootDispatchId, cached)
       )
-        RemoveIfCurrent(rootDispatchId, cached);
+        DemandRemoved();
       RequestRefresh();
       return;
     }
   }
+
+  // A reader's chain description differed from the one the forecast was
+  // published with, so the map loses it until the worker publishes again;
+  // counted for `GET /api/diagnostics/stages`.
+  private static void DemandRemoved() =>
+    PerformanceStages.Count("eta-memory", "demand-removed", 1);
 
   public async Task<ImmutableArray<EtaFutureTiming>> FutureTimingAsync(
     string revision,

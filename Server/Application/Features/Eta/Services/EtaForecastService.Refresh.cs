@@ -160,9 +160,13 @@ public sealed partial class EtaForecastService
         !committed
         && published is not null
         && memory.RemoveIfCurrent(rootKey, published)
-        && changed
       )
-        memory.RequestRefresh();
+      {
+        // Published to readers, then not saved: taken back.
+        PerformanceStages.Count("eta-memory", "unsaved-removed", 1);
+        if (changed)
+          memory.RequestRefresh();
+      }
     }
   }
 }

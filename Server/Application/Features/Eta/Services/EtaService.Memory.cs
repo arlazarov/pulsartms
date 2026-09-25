@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Diagnostics;
 using Domain.Models.Eta;
 using Domain.Models.Routing;
 
@@ -90,16 +91,49 @@ public sealed partial class EtaService
         && !entry.Superseded
         && entry.Value.ValidUntil > DateTime.UtcNow
       )
+      {
+        MapRead("current");
         return entry.Value;
+      }
       if (sameWork)
       {
+        MapRead("updating");
         if (current || memory.SupersedeIfCurrent(key, entry))
           memory.RequestRefresh();
         return entry.Value with { RouteUpdatePending = true };
       }
+      MapRead("other-work");
+      foreach (var part in Differing(entry.WorkKey, WorkKey(state)))
+        MapRead($"other-work-{part}");
       if (memory.RemoveIfCurrent(key, entry))
         memory.RequestRefresh();
     }
+    else
+      MapRead("no-entry");
     return null;
+  }
+
+  // Why a map read found a forecast or not, counted for
+  // `GET /api/diagnostics/stages` (the open truck 11007 ETA incident): a
+  // count per answer, no log line per poll and no change to what is shown.
+  private static void MapRead(string answer) =>
+    PerformanceStages.Count("eta-map-read", answer, 1);
+
+  private static IEnumerable<string> Differing(string? kept, string read)
+  {
+    if (kept is null)
+      return ["unknown"];
+    using var before = JsonDocument.Parse(kept);
+    using var now = JsonDocument.Parse(read);
+    return
+    [
+      .. now
+        .RootElement.EnumerateObject()
+        .Where(x =>
+          !before.RootElement.TryGetProperty(x.Name, out var old)
+          || old.GetRawText() != x.Value.GetRawText()
+        )
+        .Select(x => x.Name),
+    ];
   }
 }
