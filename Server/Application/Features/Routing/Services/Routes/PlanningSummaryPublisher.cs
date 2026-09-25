@@ -66,21 +66,22 @@ public sealed class PlanningSummaryPublisher(
   // nothing while it stays the same, so polling is quiet.
   private void NoteEta(AutomaticPlanningResult snapshot)
   {
-    if (snapshot.State?.Plan is not { } plan)
-      return;
-    var scope = etas.Scope(plan.DispatchId, plan.ExecutionLegId);
-    var answer = snapshot.State.Eta is null
-      ? etas.MapAnswer(scope) ?? "not-read"
-      : "shown";
-    if (!etas.PublishedAnswerChanged(scope, answer))
-      return;
-    logger.LogInformation(
-      "Planning summary ETA for truck {TruckId} load {DispatchId} leg "
-        + "{ExecutionLegId}: {EtaAnswer}",
-      snapshot.TruckId,
-      plan.DispatchId,
-      plan.ExecutionLegId,
-      answer
-    );
+    if (
+      snapshot.State?.Plan is { } plan
+      && etas.SummaryAnswerChange(
+        plan.DispatchId,
+        plan.ExecutionLegId,
+        snapshot.State.Eta is not null
+      )
+        is { } answer
+    )
+      logger.LogInformation(
+        "Planning summary ETA for truck {TruckId} load {DispatchId} leg "
+          + "{ExecutionLegId}: {EtaAnswer}",
+        snapshot.TruckId,
+        plan.DispatchId,
+        plan.ExecutionLegId,
+        answer
+      );
   }
 }

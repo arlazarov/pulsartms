@@ -104,13 +104,20 @@ public sealed class EtaMemory(TimeProvider? clock = null)
 
   public string? MapAnswer(Guid key) => mapAnswers.GetValueOrDefault(key);
 
-  // True when a summary's answer for this scope differs from the last one
-  // published: the change is worth a log line, a repeat is not.
-  public bool PublishedAnswerChanged(Guid key, string answer)
+  // What a planning summary about to be published says of its ETA -
+  // shown, or why not - when that differs from the last one for the same
+  // work; null when it is the same, so a repeat is not logged.
+  public string? SummaryAnswerChange(
+    Guid dispatchId,
+    Guid? executionLegId,
+    bool hasEta
+  )
   {
+    var key = Scope(dispatchId, executionLegId);
+    var answer = hasEta ? "shown" : MapAnswer(key) ?? "not-read";
     var previous = publishedAnswers.GetValueOrDefault(key);
     publishedAnswers[key] = answer;
-    return previous != answer;
+    return previous == answer ? null : answer;
   }
 
   private readonly ConcurrentDictionary<Guid, ScopeIdentity> scopes = new();

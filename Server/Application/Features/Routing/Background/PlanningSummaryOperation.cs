@@ -1,3 +1,4 @@
+using Application.Features.Eta.Services;
 using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
 using Domain.Models.Routing;
@@ -184,7 +185,29 @@ public sealed class PlanningSummaryOperation(
         if (signature != capturedSignature)
           continue;
         if (candidate.State?.Plan is { } plan)
+        {
           PlanningReadService.TrimForDisplay(plan);
+          // The map's ETA is this summary's: say once when it starts or
+          // stops carrying one, and why (the open map ETA incident).
+          if (
+            services
+              .GetRequiredService<EtaMemory>()
+              .SummaryAnswerChange(
+                plan.DispatchId,
+                plan.ExecutionLegId,
+                candidate.State.Eta is not null
+              ) is
+            { } answer
+          )
+            logger.LogInformation(
+              "Planning summary ETA for truck {TruckId} load {DispatchId} "
+                + "leg {ExecutionLegId}: {EtaAnswer}",
+              work.Key.Truck,
+              plan.DispatchId,
+              plan.ExecutionLegId,
+              answer
+            );
+        }
         result = candidate with { CalculatedAt = time.GetUtcNow() };
       }
       catch (OperationCanceledException) when (ct.IsCancellationRequested)
