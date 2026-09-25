@@ -68,8 +68,8 @@ html.popup-open {
   }
 
   &__close {
-    @include ui.icon-control;
     flex: none;
+    @include ui.icon-control;
   }
 
   &__body {

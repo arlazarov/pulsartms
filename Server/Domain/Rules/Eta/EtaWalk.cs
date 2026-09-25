@@ -24,9 +24,13 @@ public sealed class EtaWalk(
   DateTime now,
   HosCycleMode cycleMode,
   CancellationToken cancellationToken,
-  IReadOnlyList<(Guid DispatchId, Guid BeforeStopId)>? pumps = null
+  IReadOnlyList<(Guid DispatchId, Guid BeforeStopId)>? pumps = null,
+  bool preTripDeferred = false
 )
 {
+  // The first stop reached under the personal conveyance approach: its
+  // arrival excludes the pre-trip, which is owed again after it.
+  private bool approaching = preTripDeferred;
   private readonly HashSet<Guid> visited = [];
   private readonly HashSet<(Guid, Guid)> fuelled = [];
 
@@ -196,6 +200,7 @@ public sealed class EtaWalk(
           && fuelled.Add(pump)
         )
           clock.FuelAtPlannedStop();
+    var approach = approaching;
     var arrivalAt = clock.Now;
     if (atFacility)
       arrivalAt = new DateTimeOffset(
@@ -276,8 +281,14 @@ public sealed class EtaWalk(
         ),
         PreTripMinutes = preTrip,
         FuelMinutes = fuel,
+        PreTripDeferred = approach,
       }
     );
+    if (approach)
+    {
+      approaching = false;
+      clock.ResumeDeferredPreTrip();
+    }
   }
 
   public static DateTimeOffset? Appointment(

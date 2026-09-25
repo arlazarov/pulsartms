@@ -34,6 +34,12 @@ public sealed class EtaPlanningOptions
   [Range(1d, 3d)]
   public double OffRouteDistanceFactor { get; set; } = 1.25;
 
+  // Road distance to the next stop within which a driver moving in
+  // personal conveyance is forecast to arrive before the pre-trip
+  // (PersonalConveyanceApproach). A prediction assumption only.
+  [Range(0d, 100d)]
+  public double PersonalConveyanceApproachKm { get; set; } = 50;
+
   public double TravelHours(double miles, double roadSeconds) =>
     Math.Max(roadSeconds / 3600, miles / PlanningSpeedCapMph)
     * (1 + TravelTimeBufferPercent / 100);

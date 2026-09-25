@@ -306,9 +306,24 @@ the road-only ETA. Unknown cycle history remains unknown. Standard Canada south:
 The road forecast never grants extra hours at a border.
 Current remaining limits come from Samsara. History-based credits are described
 below. Exceptions, border delays and exact facility service duration are not
-modeled. `EtaPlanningOptions` supplies one 5-minute on-duty fuel allowance per new
-planned shift, alongside 15 minutes PTI. Saved fuel recommendations do not add
-repeated allowances or independently invalidate ETA. Facility service defaults
+modeled. `EtaPlanningOptions` supplies a 15-minute PTI per new planned shift and
+a 5-minute on-duty fuel allowance. With a fuel plan whose pumps each name the
+stop they precede, the allowance is spent where the road reaches each pump, not
+at the start of the shift (a full tank a few miles from its pickup pays nothing
+for a pump hundreds of miles on); without a fuel plan, one per shift. Saved fuel
+recommendations do not add repeated allowances or independently invalidate ETA.
+
+**Personal conveyance approach (the owner's prediction assumption).** When the
+driver's current duty status is personal conveyance (read within 3 minutes), the
+same fresh telemetry reading shows the truck moving (at least 3 mph) on its
+road, and the road distance to the immediate next stop is at most
+`PersonalConveyanceApproachKm` (50 km), that one arrival excludes the PTI; the
+PTI is owed again after that stop. The stop carries `preTripDeferred`, shown
+as "PC · ETA excludes PTI", and the forecast says so in its assumptions. It is
+not a legal personal conveyance allowance, not a record that an inspection was
+done, and it changes no ELD or HOS record and grants no hours. Parked in
+personal conveyance, stale telemetry, off the road or farther away: the PTI
+comes first, as before. Facility service defaults
 to sleeper time; a short stop alone is not a daily reset. Every result is
 explicitly Estimated and includes its assumptions.
 

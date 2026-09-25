@@ -17,6 +17,10 @@ public sealed record StopEta(
   public StopHoursForecast? Hours { get; init; }
   public int PreTripMinutes { get; init; }
   public int FuelMinutes { get; init; }
+
+  // This arrival excludes the pre-trip: the driver is moving in personal
+  // conveyance near the stop (a prediction assumption only).
+  public bool PreTripDeferred { get; init; }
 }
 
 public sealed record DispatchEta(

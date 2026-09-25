@@ -216,3 +216,20 @@ test('only an explicitly pending forecast gets the bounded grace after its origi
   );
   assert.equal(stopEtaLabels({ ...eta, validUntil: 'invalid' }, now).size, 0);
 });
+
+test('an arrival that excludes the pre-trip says so beside the hour, and only that one', () => {
+  const labels = stopEtaLabels(
+    {
+      validUntil: '2026-09-08T12:02:00Z',
+      stops: [
+        { ...stop, preTripDeferred: true },
+        { ...stop, stopId: 'delivery', arrival: '2026-09-11T14:00:00-04:00' },
+      ],
+    },
+    now,
+  );
+  assert.match(labels.get('load:pickup').text, /PC · ETA excludes PTI$/);
+  assert.match(labels.get('load:pickup').statusText, /PC · ETA excludes PTI/);
+  assert.doesNotMatch(labels.get('load:delivery').text, /PTI/);
+  assert.equal(labels.get('load:delivery').statusText, '');
+});

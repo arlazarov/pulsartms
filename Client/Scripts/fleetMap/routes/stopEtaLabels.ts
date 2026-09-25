@@ -17,6 +17,8 @@ export type StopEtaLabel = {
 
 const PENDING_DISPLAY_GRACE_MS = 15 * 60_000;
 
+export const PC_NOTE = 'PC · ETA excludes PTI';
+
 export function stopEtaDeadline(eta: DispatchEta | null | undefined): number {
   return (
     Date.parse(eta?.validUntil ?? '') +
@@ -58,18 +60,29 @@ export function stopEtaLabels(
       const hours = stopHoursLabels(stop, eta, now);
       const etaLabel = 'ETA';
       const arrivalText = hours ? local.replace(',', ' ·') : local;
+      // The personal conveyance approach assumption, said beside the hour.
+      const note = stop.preTripDeferred ? PC_NOTE : '';
+      const withNote = (text: string) =>
+        [text, note].filter(Boolean).join(' · ');
       labels.set(`${stop.dispatchId}:${stop.stopId}`, {
-        text: `${etaLabel} ${arrivalText} local${late ? ' · Late' : ''}`,
+        text: withNote(
+          `${etaLabel} ${arrivalText} local${late ? ' · Late' : ''}`,
+        ),
         arrivalText,
-        statusText: cycle
-          ? `${late ? 'Late · ' : ''}${cycle}`
-          : known
-            ? late
-              ? 'Late'
-              : 'On time'
-            : '',
+        statusText: withNote(
+          cycle
+            ? `${late ? 'Late · ' : ''}${cycle}`
+            : known
+              ? late
+                ? 'Late'
+                : 'On time'
+              : '',
+        ),
         ...(cycle
-          ? { arrivalStatusText: late ? 'Late' : '', cycleStatusText: cycle }
+          ? {
+              arrivalStatusText: withNote(late ? 'Late' : ''),
+              cycleStatusText: cycle,
+            }
           : {}),
         tone:
           late || cycle === 'Cycle short'

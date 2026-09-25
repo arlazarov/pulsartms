@@ -4,6 +4,7 @@ using Domain.Models.Eta;
 using Domain.Models.Fleet;
 using Domain.Models.Routing;
 using Domain.Policies;
+using Domain.Rules.Eta;
 using Domain.Rules.Ports;
 using Microsoft.Extensions.Options;
 
@@ -170,6 +171,158 @@ public sealed class EtaReplayTests
     Assert.Equal(15, stop.PreTripMinutes);
     Assert.Equal(4, stop.DrivingMinutes);
     Assert.Equal(Now.AddMinutes(15 + fuel + 4), stop.Arrival);
+  }
+
+  // The owner's personal conveyance approach: moving in personal
+  // conveyance within 50 km (road) of the next stop, that arrival excludes
+  // the pre-trip, which is owed after it. Parked, stale telemetry, farther
+  // than 50 km, or another status: the pre-trip first.
+  [Theory]
+  [InlineData("personalConveyance", 45d, 31d, false, true)]
+  [InlineData("personalConveyance", 45d, 31.1d, false, false)]
+  [InlineData("personalConveyance", 0d, 3d, false, false)]
+  [InlineData("personalConveyance", 45d, 3d, true, false)]
+  [InlineData("offDuty", 45d, 3d, false, false)]
+  [InlineData("onDuty", 45d, 3d, false, false)]
+  public void MovingInPersonalConveyanceNearTheStopDefersThePreTrip(
+    string status,
+    double speed,
+    double milesAhead,
+    bool stale,
+    bool deferred
+  )
+  {
+    var plan = Plan(milesAhead, milesAhead * 60);
+    var clocks = Fresh(status);
+    var state = State(plan, 0);
+    state = state with
+    {
+      Progress = state.Progress! with
+      {
+        SpeedMph = speed,
+        LocationStale = stale,
+      },
+    };
+
+    var result = Service(new Regions())
+      .Calculate(state, clocks, Now.UtcDateTime);
+
+    // Stale telemetry withholds the forecast altogether (readiness guard).
+    Assert.Equal(deferred, result.Stops.Any(x => x.PreTripDeferred));
+    if (!stale)
+      Assert.Equal(
+        deferred ? 0 : 15,
+        Assert.Single(result.Stops).PreTripMinutes
+      );
+    Assert.Equal(
+      deferred,
+      result.Assumptions.Any(x => x.StartsWith("PC · ETA excludes PTI"))
+    );
+  }
+
+  // The rule's own edges: 50 km exactly qualifies, a status read more than
+  // three minutes ago does not, and an unknown distance does not.
+  [Fact]
+  public void ThePersonalConveyanceApproachNeedsAFreshStatusAndAKnownDistance()
+  {
+    var moving = State(Plan(10, 600), 0).Progress! with { SpeedMph = 40 };
+    DriverDutyStatus Status(int minutesAgo) =>
+      new("personalConveyance", null, null, Now.AddMinutes(-minutesAgo));
+    var limit = 50 * PersonalConveyanceApproach.MilesPerKilometre;
+
+    Assert.True(
+      PersonalConveyanceApproach.Qualifies(
+        Status(0),
+        moving,
+        limit,
+        Now.UtcDateTime,
+        50
+      )
+    );
+    Assert.False(
+      PersonalConveyanceApproach.Qualifies(
+        Status(0),
+        moving,
+        limit + .01,
+        Now.UtcDateTime,
+        50
+      )
+    );
+    Assert.False(
+      PersonalConveyanceApproach.Qualifies(
+        Status(4),
+        moving,
+        3,
+        Now.UtcDateTime,
+        50
+      )
+    );
+    Assert.False(
+      PersonalConveyanceApproach.Qualifies(
+        Status(0),
+        moving,
+        null,
+        Now.UtcDateTime,
+        50
+      )
+    );
+    Assert.False(
+      PersonalConveyanceApproach.Qualifies(
+        Status(0),
+        moving with
+        {
+          SpeedMph = null,
+        },
+        3,
+        Now.UtcDateTime,
+        50
+      )
+    );
+  }
+
+  // The deferred pre-trip is not dropped: the leg after the approached
+  // stop owes it.
+  [Fact]
+  public void TheDeferredPreTripIsOwedAfterTheApproachedStop()
+  {
+    var plan = Plan(3, 180);
+    plan.Stops =
+    [
+      new(Guid.NewGuid(), "Pick Up", "", 1, new(35, -80.5)) { Job = "Pick Up" },
+      new(Guid.NewGuid(), "Drop Off", "", 2, new(35, -80)) { Job = "Drop Off" },
+    ];
+    plan.Route = new()
+    {
+      Miles = 63,
+      Seconds = 3780,
+      Legs =
+      [
+        new(3, 180, [new(35, -81), new(35, -80.5)]),
+        new(60, 3600, [new(35, -80.5), new(35, -80)]),
+      ],
+    };
+    var state = State(plan, 0);
+    state = state with { Progress = state.Progress! with { SpeedMph = 40 } };
+
+    var stops = Service(new Regions())
+      .Calculate(state, Fresh("personalConveyance"), Now.UtcDateTime)
+      .Stops;
+
+    Assert.Equal(2, stops.Count);
+    Assert.True(stops[0].PreTripDeferred);
+    Assert.Equal(0, stops[0].PreTripMinutes);
+    Assert.False(stops[1].PreTripDeferred);
+    Assert.Equal(15, stops[1].PreTripMinutes);
+  }
+
+  private static DriverHosClocks Fresh(string status)
+  {
+    var clocks = Clocks;
+    clocks.DriveMs = 11 * 3600000L;
+    clocks.ShiftMs = 14 * 3600000L;
+    clocks.CurrentDutyStatus = status;
+    clocks.UpdatedAt = Now.UtcDateTime;
+    return clocks;
   }
 
   [Fact]

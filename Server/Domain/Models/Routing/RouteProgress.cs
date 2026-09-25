@@ -9,4 +9,9 @@ public sealed record RouteProgress(
   bool LocationStale,
   DateTime? LocationTime,
   RoutePoint? Position
-);
+)
+{
+  // The truck's speed in the telemetry reading this was measured from;
+  // null without one.
+  public double? SpeedMph { get; init; }
+}

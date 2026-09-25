@@ -21,6 +21,9 @@
             @if (Status.Length > 0) { <span class="stop-hours__status stop-hours__status--@StatusTone">@Status</span> }</span>
             @if (CycleStatus.Length > 0)
             { <span class="stop-hours__status stop-hours__cycle-status stop-hours__status--@CycleStatusTone">@CycleStatus</span> }
+            @if (Estimate.PreTripDeferred)
+            { <span class="stop-hours__status stop-hours__assumption"
+                    title="The driver is moving in personal conveyance near this stop, so this arrival excludes the pre-trip, planned after it. A prediction assumption, not an inspection record.">PC · ETA excludes PTI</span> }
         </span>
     </div>
     }

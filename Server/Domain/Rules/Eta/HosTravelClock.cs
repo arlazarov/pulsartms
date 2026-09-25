@@ -156,6 +156,31 @@ public sealed partial class HosTravelClock
     Service(hours);
   }
 
+  // The personal conveyance approach (PersonalConveyanceApproach): the
+  // pre-trip due before the first drive is moved to after the next stop,
+  // not dropped. False when none was due.
+  public bool DeferPreTrip()
+  {
+    if (!preTripPending)
+      return false;
+    preTripPending = false;
+    preTripDeferred = true;
+    return true;
+  }
+
+  // At the stop the approach was to: the pre-trip is owed again before the
+  // next drive.
+  public bool ResumeDeferredPreTrip()
+  {
+    if (!preTripDeferred)
+      return false;
+    preTripDeferred = false;
+    preTripPending = true;
+    return true;
+  }
+
+  private bool preTripDeferred;
+
   // A pump the fuel plan places on the road: its allowance is spent where
   // the road reaches it, whatever the shift has already paid.
   public void FuelAtPlannedStop()

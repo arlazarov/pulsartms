@@ -16,6 +16,11 @@ public sealed record StopEta(
   public StopCycleForecast? CycleAfterDeparture { get; init; }
   public StopHoursForecast? Hours { get; init; }
   public int PreTripMinutes { get; init; }
+
+  // This arrival excludes the pre-trip under the personal conveyance
+  // approach assumption (PersonalConveyanceApproach); it is planned after
+  // the stop. A prediction assumption, not an inspection record.
+  public bool PreTripDeferred { get; init; }
   public int FuelMinutes { get; init; }
 }
 

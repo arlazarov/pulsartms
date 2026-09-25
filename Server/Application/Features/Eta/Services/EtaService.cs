@@ -73,6 +73,9 @@ public sealed partial class EtaService(
         state.Progress?.OffRoute,
         state.Progress?.LocationStale,
         Chain = chain?.InputHash,
+        // The personal conveyance approach depends on it.
+        Moving = state.Progress?.SpeedMph
+          >= PersonalConveyanceApproach.MovingMph,
       }
     );
     var gate = memory.Gate(key);
@@ -323,7 +326,29 @@ public sealed partial class EtaService(
     {
       return Missing(error.Message);
     }
+    // The personal conveyance approach: measured on the leg to the next
+    // stop, from the same reading as the progress; a truck at its origin
+    // or at a facility is not approaching one.
+    var nextLeg = -1;
+    for (var i = 0; i < timing.Legs.Length && nextLeg < 0; i++)
+      if (timing.Legs[i].EndMiles >= progress)
+        nextLeg = i;
+    var preTripDeferred =
+      nextLeg >= 0
+      && (plan.FromCurrentPosition || progress > .5)
+      && PersonalConveyanceApproach.Qualifies(
+        dutyStatus,
+        state.Progress,
+        timing.Legs[nextLeg].EndMiles - progress,
+        now,
+        planning.PersonalConveyanceApproachKm
+      )
+      && clock.DeferPreTrip();
     var assumptions = EtaAssumptions.Opening(clock, planning);
+    if (preTripDeferred)
+      assumptions.Add(
+        $"PC · ETA excludes PTI: the driver is moving in personal conveyance within {planning.PersonalConveyanceApproachKm:0} km of the next stop, so that arrival excludes the pre-trip, which is planned after it. A prediction assumption only: not a personal conveyance allowance, not a record of an inspection, and no hours are granted."
+      );
     var walk = new EtaWalk(
       clock,
       regions,
@@ -334,7 +359,8 @@ public sealed partial class EtaService(
       now,
       cycleMode,
       cancellationToken,
-      pumps
+      pumps,
+      preTripDeferred
     );
     walk.Run(timing, progress);
     var results = walk.Results;

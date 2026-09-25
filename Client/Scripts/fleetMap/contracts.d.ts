@@ -197,6 +197,7 @@ export interface StopEta {
   appointment?: string | null;
   lateMinutes?: number | null;
   hours?: StopHoursForecast | null;
+  preTripDeferred?: boolean;
 }
 export interface DispatchEta {
   validUntil: string;

@@ -112,6 +112,10 @@
     white-space: nowrap;
   }
   .stop-hours__value--danger,
+  // A prediction assumption, not a state of the load: muted.
+  &__assumption {
+    color: ui.theme(text-secondary);
+  }
   &__status--danger {
     color: ui.theme(danger-text);
   }

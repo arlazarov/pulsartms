@@ -632,6 +632,32 @@ public sealed class StopHoursComponentTests
     Assert.Empty(recap.QuerySelectorAll("[title]"));
   }
 
+  // The personal conveyance approach assumption is said beside the hour of
+  // the one arrival it applies to, and nowhere else.
+  [Theory]
+  [InlineData(true)]
+  [InlineData(false)]
+  public void AnArrivalExcludingThePreTripSaysSo(bool deferred)
+  {
+    using var context = Context();
+    var component = context.Render<StopHours>(p =>
+      p.Add(
+        x => x.Estimate,
+        Estimate(300, 180) with
+        {
+          PreTripDeferred = deferred,
+        }
+      )
+    );
+
+    Assert.Equal(
+      deferred,
+      component
+        .FindAll(".stop-hours__assumption")
+        .Any(x => x.TextContent.Trim() == "PC · ETA excludes PTI")
+    );
+  }
+
   [Theory]
   [InlineData(false)]
   [InlineData(true)]

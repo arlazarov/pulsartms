@@ -23,6 +23,18 @@ public static class RouteProgressMeasure
     RouteWorkSnapshot load,
     RouteGeometry? exactGeometry = null,
     DateTime? now = null
+  ) =>
+    Measure(plan, truck, load, exactGeometry, now) with
+    {
+      SpeedMph = truck is null ? null : (double)truck.Speed,
+    };
+
+  private static RouteProgress Measure(
+    RoutePlan plan,
+    TruckLocation? truck,
+    RouteWorkSnapshot load,
+    RouteGeometry? exactGeometry,
+    DateTime? now
   )
   {
     var stale = TruckLocationFreshness.IsStale(truck, now ?? DateTime.UtcNow);
