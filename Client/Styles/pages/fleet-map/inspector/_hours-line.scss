@@ -51,6 +51,13 @@
     grid-column: 1 / -1;
     min-inline-size: 0;
   }
+  // With the clocks on a line of their own, the first line holds only the
+  // load and what is left: the load keeps its own width rather than
+  // sharing it with an empty column, so it does not wrap - and push the
+  // lines below - as the numbers land.
+  .fleet-map-inspector__hours:has(> .fleet-map-inspector__vehicle) {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
   // The load leads the line. It keeps the room its numbers will need: an
   // empty group here is a hole that everything right of it slides across
   // when the load lands.
