@@ -172,6 +172,8 @@ public sealed partial class RoutePlanningService
         )
           reference =
             old.ReferenceRoute ?? (old.FromCurrentPosition ? null : old.Route);
+        if (reference is not null && baseRoutes.LeavesItsCountry(reference, ct))
+          reference = null;
         if (reference is null)
         {
           reference = (

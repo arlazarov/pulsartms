@@ -35,7 +35,13 @@ public sealed partial class BaseRouteService
       previous.Route.Warnings,
       previous.Route.CalculatedAt
     );
-    if (!RouteAnchoring.Matches(tail, remaining.Select(x => x.Point).ToList()))
+    // A kept remainder that leaves the country of its stops (saved before
+    // the border check: AMF1414's plan kept its Ontario leg this way) is
+    // bought again whole, through the provider's check.
+    if (
+      !RouteAnchoring.Matches(tail, remaining.Select(x => x.Point).ToList())
+      || LeavesItsCountry(tail, ct)
+    )
       return await CurrentAsync(load, profile, position, remaining, ct);
     // A mandatory stop is an unambiguous reconnect boundary. Internal-road
     // joins need independent segment measures and must not rescale old miles.

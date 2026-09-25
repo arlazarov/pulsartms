@@ -273,4 +273,9 @@ public sealed partial class BaseRouteService(
       }
     }
   }
+
+  // Whether a road kept from an earlier plan leaves the country of the
+  // points it joins; such a road is not kept for display or tracking.
+  public bool LeavesItsCountry(TruckRoute road, CancellationToken ct) =>
+    RouteBorderPolicy.Check(road, regions, ct).Leaves;
 }

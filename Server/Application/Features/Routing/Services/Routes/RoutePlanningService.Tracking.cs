@@ -164,6 +164,16 @@ public sealed partial class RoutePlanningService
           plan.OriginalPlannedMiles = route.Miles;
         plan.ReferenceRoute ??= plan.Route;
         plan.ReferenceStops ??= plan.Stops;
+        // A reference kept from before the border check that leaves the
+        // country is replaced by the new road rather than reconnected.
+        if (
+          plan.ReferenceRoute is { } kept
+          && baseRoutes.LeavesItsCountry(kept, ct)
+        )
+        {
+          plan.ReferenceRoute = route;
+          plan.ReferenceStops = remainingStops;
+        }
         plan.ReferenceSource = null;
         plan.ReferenceRoute = await RouteDisplayReference.ReconnectAsync(
           plan.ReferenceRoute,

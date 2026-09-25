@@ -167,9 +167,13 @@ one straight segment can still go unseen. The verdict is one of four:
 
 Saved roads are not bought again wholesale: the rule is not part of the
 signature. `BaseRouteService` refuses to reuse a saved base road, or the
-previous plan's road, that leaves the country of its points. Only that
-load's road is bought again, and only when the load is next built or
-tracked. There is no fleet-wide recompute and no automatic replan.
+previous plan's road, that leaves the country of its points. Tracking's
+reroute likewise buys the whole remainder again instead of keeping a
+remainder that leaves (`RecalculateAsync`), and such a road is not kept
+as a plan's display reference; the display read skips a base road whose
+stored verdict names a country. Only that load's road is bought again,
+and only when the load is next built or tracked. There is no fleet-wide
+recompute and no automatic replan.
 
 Each saved base road records its verdict in `DispatchBaseRoutes.BorderCheck`
 (migration `RecordBaseRoadBorderCheck`):

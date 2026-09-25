@@ -1,5 +1,6 @@
 using Application.Features.Routing.Services.Addresses;
 using Domain.Models.Routing;
+using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Services.Routes;
 
@@ -80,7 +81,11 @@ public sealed partial class RoutePlanningService
         x => x.DispatchId == load.Id && x.ExecutionLegId == load.ExecutionLegId,
         ct
       );
-    return full?.InputHash == BaseRouteService.Signature(load, profile)
+    // A saved road recorded as leaving its country is not shown; the owner
+    // buys it again at the load's next build.
+    return
+      full?.InputHash == BaseRouteService.Signature(load, profile)
+      && !BorderVerdict.StoredLeaves(full.BorderCheck)
       ? (
         SavedRouteReader.Route(full.RouteJson, load.Stops.Length - 1),
         new(full.Id, full.InputHash, full.CalculatedAt)

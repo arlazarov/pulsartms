@@ -2110,6 +2110,9 @@ public partial class AutomaticPlanningTests
     public DateTime? FailRetryAfter;
     public Func<Task>? BeforeCalculate;
 
+    // When set, every leg bends through this point, whatever was asked.
+    public RoutePoint? Via;
+
     public async Task<TruckRoute> CalculateAsync(
       IReadOnlyList<RoutePoint> points,
       TruckRouteProfile profile,
@@ -2145,7 +2148,7 @@ public partial class AutomaticPlanningTests
                     ? DetourExtraMinutes * 60 / (points.Count - 1)
                     : 0
                 ),
-              [a, b]
+              Via is { } via ? [a, via, b] : [a, b]
             );
           }
         )

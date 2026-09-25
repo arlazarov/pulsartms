@@ -170,6 +170,10 @@ public sealed record BorderVerdict(
 
   public bool Leaves => Check == BorderCheck.Leaves;
 
+  // Whether a stored verdict says the road leaves: it names a country.
+  public static bool StoredLeaves(string? stored) =>
+    stored is not (null or StaysValue or UnknownValue or NotJudgedValue);
+
   // How a saved road records it: the country entered for a road that
   // leaves, otherwise one of the values above.
   public string Stored =>

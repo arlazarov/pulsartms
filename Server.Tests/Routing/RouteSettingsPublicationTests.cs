@@ -41,6 +41,77 @@ public partial class AutomaticPlanningTests
     );
   }
 
+  // A saved full route through Ontario between US stops, bought before the
+  // border check, is not kept as the GPS build's display reference, and
+  // neither is the base road saved with it (recorded as entering Canada):
+  // no reference is shown until the base road is bought again.
+  [Fact]
+  public async Task GpsBuildDoesNotKeepASavedRouteThatLeavesTheCountry()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var profile = await f.Plans.ProfileAsync(f.Truck.Id, default);
+    var london = new RoutePoint(42.9849, -81.2453);
+    f.Router.Via = london;
+    await f.Plans.BuildAsync(f.Load.Id, new(profile), default);
+    f.Router.Via = null;
+    var saved = await f.Db.DispatchRoutePlans.AsNoTracking().SingleAsync();
+    await f.Db.DispatchRoutePlans.ExecuteUpdateAsync(s =>
+      s.SetProperty(x => x.PlanJson, OldRoute(saved.PlanJson))
+    );
+    f.Db.ChangeTracker.Clear();
+
+    var current = await f.Plans.BuildAsync(
+      f.Load.Id,
+      new(profile, true, 1),
+      default
+    );
+
+    Assert.True(current.FromCurrentPosition);
+    Assert.Equal(
+      "CA",
+      (await f.Db.DispatchBaseRoutes.AsNoTracking().SingleAsync()).BorderCheck
+    );
+    Assert.Null(current.ReferenceRoute);
+    Assert.DoesNotContain(london, current.Route.Legs.SelectMany(x => x.Points));
+  }
+
+  // Tracking's reroute from a saved route through Ontario between US stops
+  // (AMF1414 after the border release): the kept remainder is bought again
+  // whole, and the old route is not kept as the display reference.
+  [Fact]
+  public async Task ReroutingReplacesARouteThatLeavesTheCountry()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var profile = await f.Plans.ProfileAsync(f.Truck.Id, default);
+    var london = new RoutePoint(42.9849, -81.2453);
+    f.Router.Via = london;
+    await f.Plans.BuildAsync(f.Load.Id, new(profile), default);
+    f.Router.Via = null;
+    f.Location.Longitude = -81;
+
+    await f.Plans.AdvanceAutomaticallyAsync(
+      f.Load.Id,
+      default,
+      forceReroute: true
+    );
+
+    var stored = RoutePlanStorage.Read(
+      (
+        await RoutePlanStorage.LoadAsync(
+          f.Db,
+          await f.Db.DispatchRoutePlans.SingleAsync(),
+          default
+        )
+      )!
+    )!;
+    Assert.True(stored.FromCurrentPosition);
+    Assert.DoesNotContain(london, stored.Route.Legs.SelectMany(x => x.Points));
+    Assert.DoesNotContain(
+      london,
+      stored.ReferenceRoute!.Legs.SelectMany(x => x.Points)
+    );
+  }
+
   [Fact]
   public async Task OffRouteGpsBuildReconnectsPickupWithoutChangingRemainingMiles()
   {
