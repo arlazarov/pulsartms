@@ -214,6 +214,74 @@ public sealed class ConversationFileTemplateTests
     );
   }
 
+  // Fields in Cyrillic are stored as written, not six times longer, so two
+  // full fields fit the stored payload; more than it holds is refused as
+  // too long, before anything is queued, and not as a conflict.
+  [Fact]
+  public async Task LongFieldsFitWhenTheyCanAndAreRefusedWhenNot()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    var (conversation, _) = await f.ConversationAsync(hoursAgo: 30);
+    ApprovedTemplate[] approved =
+    [
+      new()
+      {
+        Name = "two_fields",
+        Language = "en_US",
+        Parameters = 2,
+        Text = "{{1}} / {{2}}",
+      },
+      new()
+      {
+        Name = "twelve_fields",
+        Language = "en_US",
+        Parameters = 12,
+        Text = string.Concat(
+          Enumerable.Range(1, 12).Select(i => $"{{{{{i}}}}} ")
+        ),
+      },
+    ];
+    var cyrillic = new string('Ж', 200);
+
+    var fits = await f.Files(approved)
+      .Handle(
+        new SendConversationTemplateCommand(
+          conversation,
+          Guid.NewGuid(),
+          "two_fields",
+          "en_US",
+          [cyrillic, cyrillic]
+        ),
+        default
+      );
+    var tooLong = await f.Files(approved)
+      .Handle(
+        new SendConversationTemplateCommand(
+          conversation,
+          Guid.NewGuid(),
+          "twelve_fields",
+          "en_US",
+          [.. Enumerable.Repeat(new string('x', 200), 12)]
+        ),
+        default
+      );
+
+    Assert.True(fits.Success, $"status {fits.StatusCode}");
+    var stored = (await f.MessageAsync(fits.Response!.Id)).Template!;
+    Assert.Contains(cyrillic, stored);
+    Assert.True(stored.Length <= TemplatePayload.MaximumStored);
+    Assert.Equal(
+      (400, TemplatePayload.TooLong),
+      (tooLong.StatusCode, Assert.Single(tooLong.Errors!))
+    );
+    Assert.Equal(
+      TemplatePayload.MaximumStored,
+      f.Db.Model.FindEntityType(typeof(ConversationMessage))!
+        .FindProperty(nameof(ConversationMessage.Template))!
+        .GetMaxLength()
+    );
+  }
+
   // A template approved for another carrier, or for another of this
   // carrier's numbers, is not this conversation's: it is neither offered
   // nor queued.

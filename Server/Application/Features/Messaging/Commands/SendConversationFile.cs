@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Application.Features.Messaging.Interfaces;
 using Application.Features.Messaging.Queries;
@@ -238,14 +239,14 @@ public sealed class ConversationFilesAndTemplates(
       return Fail("Choose an approved template and fill in every field.", 400);
     var names = ApprovedTemplates.Names(template.Text);
     var text = Fill(template.Text, parameters, names);
-    var payload = JsonSerializer.Serialize(
-      new TemplatePayload(
-        template.Name,
-        template.Language,
-        [.. parameters],
-        names
-      )
-    );
+    var payload = new TemplatePayload(
+      template.Name,
+      template.Language,
+      [.. parameters],
+      names
+    ).Serialize();
+    if (payload.Length > TemplatePayload.MaximumStored)
+      return Fail(TemplatePayload.TooLong, 400);
     var verdict = await queue.CheckAsync(
       conversation,
       request.IdempotencyKey,
@@ -328,4 +329,19 @@ public sealed record TemplatePayload(
   string Language,
   IReadOnlyList<string> Parameters,
   IReadOnlyList<string>? Names = null
-);
+)
+{
+  // The column that stores it (ConversationMessages.Template).
+  public const int MaximumStored = 2000;
+
+  // Stored as written: escaping each non-ASCII letter as \uXXXX would make
+  // a field in Cyrillic six times longer. It is only ever read as JSON.
+  private static readonly JsonSerializerOptions Stored = new()
+  {
+    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+  };
+
+  public string Serialize() => JsonSerializer.Serialize(this, Stored);
+
+  public const string TooLong = "The template's fields are too long together.";
+}

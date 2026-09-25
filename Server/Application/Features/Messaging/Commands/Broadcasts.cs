@@ -222,9 +222,7 @@ public sealed class BroadcastHandlers(
         user,
         Key(request.Id, recipient.DriverId),
         1,
-        plan.Content.Template is { } template
-          ? JsonSerializer.Serialize(template)
-          : null
+        plan.Content.Template?.Serialize()
       );
       queued.Add(conversation);
       recipients.Add(
@@ -246,9 +244,7 @@ public sealed class BroadcastHandlers(
         CreatedAt = clock.GetUtcNow().UtcDateTime,
         Kind = plan.Content.Kind,
         Body = plan.Content.Body,
-        Template = plan.Content.Template is { } payload
-          ? JsonSerializer.Serialize(payload)
-          : null,
+        Template = plan.Content.Template?.Serialize(),
         Scope = plan.Scope,
         RequestHash = hash,
         RecipientsJson = JsonSerializer.Serialize(recipients),
@@ -509,11 +505,19 @@ public sealed class BroadcastHandlers(
     )
       return (null, new("Fill in every field of the template.", 400));
     var names = ApprovedTemplates.Names(template.Text);
+    var payload = new TemplatePayload(
+      template.Name,
+      template.Language,
+      [.. parameters],
+      names
+    );
+    if (payload.Serialize().Length > TemplatePayload.MaximumStored)
+      return (null, new(TemplatePayload.TooLong, 400));
     return (
       new(
         ConversationMessageKinds.Template,
         ConversationFilesAndTemplates.Fill(template.Text, parameters, names),
-        new(template.Name, template.Language, [.. parameters], names)
+        payload
       ),
       null
     );
