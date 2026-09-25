@@ -91,6 +91,28 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   public readonly ConcurrentDictionary<Guid, Entry> Results = new();
   public readonly ConcurrentDictionary<Guid, DateTime> Viewed = new();
   private readonly ConcurrentDictionary<Guid, string> demandedInputs = new();
+
+  // What the last map read of each forecast scope answered (current,
+  // updating, other work and the parts that differed, or no entry), and
+  // what the planning summary last published about it. Kept so a summary
+  // published without an ETA can say why, once per change.
+  private readonly ConcurrentDictionary<Guid, string> mapAnswers = new();
+  private readonly ConcurrentDictionary<Guid, string> publishedAnswers = new();
+
+  public void NoteMapAnswer(Guid key, string answer) =>
+    mapAnswers[key] = answer;
+
+  public string? MapAnswer(Guid key) => mapAnswers.GetValueOrDefault(key);
+
+  // True when a summary's answer for this scope differs from the last one
+  // published: the change is worth a log line, a repeat is not.
+  public bool PublishedAnswerChanged(Guid key, string answer)
+  {
+    var previous = publishedAnswers.GetValueOrDefault(key);
+    publishedAnswers[key] = answer;
+    return previous != answer;
+  }
+
   private readonly ConcurrentDictionary<Guid, ScopeIdentity> scopes = new();
   public EtaRouteTimingCache Timing { get; } = new();
   private readonly MemoryCache futureTimings = new(
@@ -174,6 +196,8 @@ public sealed class EtaMemory(TimeProvider? clock = null)
     Results.TryRemove(dispatchId, out _);
     demandedInputs.TryRemove(dispatchId, out _);
     scopes.TryRemove(dispatchId, out _);
+    mapAnswers.TryRemove(dispatchId, out _);
+    publishedAnswers.TryRemove(dispatchId, out _);
   }
 
   public void Demand(Guid rootDispatchId, string inputHash, DateTime now)

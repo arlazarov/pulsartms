@@ -93,23 +93,30 @@ public sealed partial class EtaService
       )
       {
         MapRead("current");
+        memory.NoteMapAnswer(key, "current");
         return entry.Value;
       }
       if (sameWork)
       {
         MapRead("updating");
+        memory.NoteMapAnswer(key, "updating");
         if (current || memory.SupersedeIfCurrent(key, entry))
           memory.RequestRefresh();
         return entry.Value with { RouteUpdatePending = true };
       }
       MapRead("other-work");
-      foreach (var part in Differing(entry.WorkKey, WorkKey(state)))
+      var parts = Differing(entry.WorkKey, WorkKey(state)).ToList();
+      foreach (var part in parts)
         MapRead($"other-work-{part}");
+      memory.NoteMapAnswer(key, $"other-work:{string.Join(',', parts)}");
       if (memory.RemoveIfCurrent(key, entry))
         memory.RequestRefresh();
     }
     else
+    {
       MapRead("no-entry");
+      memory.NoteMapAnswer(key, "no-entry");
+    }
     return null;
   }
 

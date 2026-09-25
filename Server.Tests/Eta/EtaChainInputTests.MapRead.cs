@@ -1,11 +1,15 @@
 using System.Text.Json;
 using Application.Features.Execution.Models;
+using Application.Features.Routing.Services.Routes;
+using Application.Features.Synchronization.Options;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Models.Routing;
 using Domain.Rules;
 using Domain.Rules.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Eta;
 
@@ -219,6 +223,40 @@ public sealed partial class EtaChainInputTests
 
     Assert.NotNull(cached);
     Assert.NotNull(board);
+    Assert.True(f.Services.EtaMemory.Results.ContainsKey(scope));
+
+    // What the map card reads is the planning summary: the background
+    // prepares the truck (AutomaticPlanningService), and the publisher
+    // copies the result through JSON and attaches the ETA from memory
+    // (PlanningSummaryPublisher). That copy must find the same forecast,
+    // and the memory notes the answer the publisher logs.
+    using var cache = new MemoryCache(new MemoryCacheOptions());
+    var synchronization = Options.Create(new SynchronizationOptions());
+    var planned = await new AutomaticPlanningService(
+      f.Services.Routes,
+      f.Services.Fuel,
+      f.Services.PlanningInputs,
+      cache,
+      new PlanningReadService(
+        f.Services.Routes,
+        f.Services.PlanningInputs,
+        f.Services.Refreshes(cache, synchronization),
+        f.Services.Sender,
+        synchronization,
+        f.Services.Eta,
+        f.Services.FuelPlans
+      )
+    ).ForTruckAsync(f.Truck.Id, default);
+    var copy = JsonSerializer.Deserialize<AutomaticPlanningResult>(
+      JsonSerializer.SerializeToUtf8Bytes(planned, RoutingJson.Options),
+      RoutingJson.Options
+    )!;
+
+    Assert.NotNull(f.Services.Eta.GetCached(copy.State!));
+    Assert.Contains(
+      f.Services.EtaMemory.MapAnswer(scope),
+      new[] { "current", "updating" }
+    );
     Assert.True(f.Services.EtaMemory.Results.ContainsKey(scope));
   }
 }
