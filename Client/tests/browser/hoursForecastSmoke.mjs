@@ -822,9 +822,8 @@ async function checkCycleAlignment(card, name) {
       .getBoundingClientRect();
     const late = row.querySelector('.stop-hours__arrival .stop-hours__status');
     return {
-      valueLeft: row
-        .querySelector('.stop-hours__value')
-        .getBoundingClientRect().left,
+      valueLeft: row.querySelector('.stop-hours__value').getBoundingClientRect()
+        .left,
       cycleLeft: cycle.left,
       cycleTop: cycle.top,
       arrivalBottom: arrival.bottom,
