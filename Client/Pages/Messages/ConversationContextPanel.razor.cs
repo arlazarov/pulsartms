@@ -7,10 +7,10 @@ using Microsoft.AspNetCore.Components;
 namespace Client.Pages.Messages;
 
 // Beside a conversation: the driver, whom a dispatcher can choose when the
-// number matched nobody or the wrong person, their hours of service from
-// the fleet's shared snapshot (said plainly when there are none), and the
-// truck and loads they are on. Several trucks are listed as they are; no
-// load is picked for the dispatcher.
+// number matched nobody or the wrong person; their hours of service from
+// the fleet's shared snapshot, said plainly when there are none and dated
+// when they are old; and the truck and loads they are on. Several trucks
+// are listed as they are; no load is picked for the dispatcher.
 public partial class ConversationContextPanel : IDisposable
 {
   [Parameter, EditorRequired]
@@ -61,17 +61,34 @@ public partial class ConversationContextPanel : IDisposable
       CurrentDutyStatus = hours.DutyStatus,
     };
 
-  // How old the clocks are, always said: Samsara's clocks are read on a
-  // schedule, not live.
-  private static string Age(ContextHours hours)
+  // The status start is the server's reading of the HOS history, never
+  // the time the clocks were fetched, and counts only for the status the
+  // clocks show. The duration runs to now; the shared summary drops it once
+  // the clocks are older than it trusts a status for.
+  private DriverDutyStatus? Duty(ContextHours hours) =>
+    hours.DutyStatus is { Length: > 0 } status
+      ? new(
+        status,
+        Context?.Duty?.Status == status ? Context.Duty.StartedAt : null,
+        null,
+        DateTimeOffset.UtcNow
+      )
+      : null;
+
+  // Said only when it matters: the clocks refresh every minute, so a
+  // routine reading needs no timestamp beside it.
+  private static string? Staleness(ContextHours hours)
   {
     if (hours.UpdatedAt is not { } at)
-      return "Samsara · time of reading unknown";
+      return "When these hours were read is unknown.";
     var updated = DateTime.SpecifyKind(at, DateTimeKind.Utc);
     var minutes = (int)Math.Max(0, (DateTime.UtcNow - updated).TotalMinutes);
-    return $"Samsara · updated {updated.ToLocalTime():HH:mm}, "
-      + (minutes < 1 ? "just now" : $"{minutes} min ago");
+    return minutes <= StaleMinutes
+      ? null
+      : $"Hours as of {updated.ToLocalTime():HH:mm}, {minutes} min ago.";
   }
+
+  private const int StaleMinutes = 3;
 
   private static string Titled(string status) =>
     status.Length == 0

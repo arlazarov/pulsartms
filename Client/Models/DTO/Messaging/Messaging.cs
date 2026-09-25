@@ -126,7 +126,8 @@ public sealed record ConversationContext(
   string State,
   IReadOnlyList<ContextTruck> Trucks,
   IReadOnlyList<ContextLoad> Loads,
-  ContextHours? Hours = null
+  ContextHours? Hours = null,
+  ContextDuty? Duty = null
 );
 
 // Known is false when the provider holds no clocks for this driver.
@@ -139,6 +140,10 @@ public sealed record ContextHours(
   DateTime? UpdatedAt,
   string? DutyStatus
 );
+
+// When the driver's current duty status began, from the HOS history;
+// StartedAt is null when that is not known.
+public sealed record ContextDuty(string? Status, DateTimeOffset? StartedAt);
 
 // Role: driver or co-driver on a live leg, or assigned in the fleet.
 public sealed record ContextTruck(Guid Id, string Number, string Role);

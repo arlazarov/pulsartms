@@ -11,7 +11,8 @@ using MessagesPage = Client.Pages.Messages.Messages;
 namespace Client.Tests.Messaging;
 
 // Beside a conversation, as the Driver Messages prototype lays it out: the
-// driver's hours with how old they are, the current load and its stops,
+// driver's hours with how long they have been in their status (and how
+// old the hours are when that matters), the current load and its stops,
 // said plainly when missing; where there is no room beside it the trip
 // opens over the conversation. A dispatcher's own replies read "You", and
 // their own claim is not shown to them as someone else's.
@@ -35,7 +36,11 @@ public sealed class MessagesTripTests
     var trip = page.Find(".messages__context").TextContent;
     Assert.Contains("4:45", trip);
     Assert.Contains("9:20", trip);
-    Assert.Contains("Samsara · updated", trip);
+    // How long the driver has been in the status, from the server's start
+    // time; no fetch time presented as news.
+    Assert.Contains("Driving for 1h 20min", trip);
+    Assert.DoesNotContain("Samsara", trip);
+    Assert.DoesNotContain("Hours as of", trip);
     Assert.Contains("PO 55-1180", trip);
     Assert.Contains("Toronto", trip);
     Assert.Contains("Truck 11006", page.Find(".messages__head").TextContent);
@@ -43,6 +48,40 @@ public sealed class MessagesTripTests
       "Drive 4:45 · Shift 9:20 left",
       page.Find(".messages__glance").TextContent.Trim()
     );
+  }
+
+  [Fact]
+  public async Task OldClocksAreSaidAndNoDurationIsClaimed()
+  {
+    await using var context = Context(
+      new Api(Hours(known: true, updated: Now.AddMinutes(-12)))
+    );
+
+    var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, Ann));
+
+    page.WaitForAssertion(() => Assert.Contains("12 min ago", page.Markup));
+    var trip = page.Find(".messages__context").TextContent;
+    Assert.Contains("Hours as of", trip);
+    Assert.Contains("Driving", trip);
+    Assert.DoesNotContain("Driving for", trip);
+  }
+
+  [Fact]
+  public async Task AnUnknownStatusStartShowsTheStatusAlone()
+  {
+    await using var context = Context(
+      new Api(Hours(known: true)) { Duty = new("driving", null) }
+    );
+
+    var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, Ann));
+
+    page.WaitForAssertion(
+      () => Assert.Contains("North distribution centre", page.Markup)
+    );
+    var trip = page.Find(".messages__context").TextContent;
+    Assert.Contains("Driving", trip);
+    Assert.DoesNotContain("Driving for", trip);
+    Assert.DoesNotContain("Hours as of", trip);
   }
 
   [Fact]
@@ -106,7 +145,7 @@ public sealed class MessagesTripTests
     );
   }
 
-  private static ContextHours Hours(bool known) =>
+  private static ContextHours Hours(bool known, DateTime? updated = null) =>
     known
       ? new(
         true,
@@ -114,7 +153,7 @@ public sealed class MessagesTripTests
         4 * 3600_000 + 45 * 60_000,
         9 * 3600_000 + 20 * 60_000,
         40 * 3600_000,
-        Now.AddMinutes(-2),
+        updated ?? Now.AddMinutes(-2),
         "driving"
       )
       : new(false, null, null, null, null, null, null);
@@ -131,6 +170,9 @@ public sealed class MessagesTripTests
   private sealed class Api(ContextHours hours)
   {
     public string? ClaimedBy { get; init; }
+
+    public ContextDuty Duty { get; init; } =
+      new("driving", DateTimeOffset.UtcNow.AddMinutes(-80));
 
     private ConversationSummary Summary() =>
       new(
@@ -184,7 +226,8 @@ public sealed class MessagesTripTests
                   ],
                 },
               ],
-              hours
+              hours,
+              Duty
             )
           ),
           _ when path == $"/api/messaging/conversations/{Ann}" => Ok(

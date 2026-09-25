@@ -120,6 +120,8 @@ internal sealed class FuelScheduleFixture(
       Assert.Equal("preview-driver", driverId);
       return Task.FromResult(History);
     }
+
+    public HosHistory? Peek(string driverId) => null;
   }
 
   private sealed class Regions : IRouteRegionLookup

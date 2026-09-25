@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Application.Features.Dispatch.Documents;
+using Application.Features.Eta.Queries;
 using Application.Features.Execution.Queries;
 using Application.Features.Fleet.Queries;
 using Application.Features.Messaging.Commands;
@@ -151,16 +152,18 @@ public sealed class MessagingController : BaseController
   ) => HandleRequest(new OpenDriverConversationCommand(id), cancellationToken);
 
   // Who the conversation is with (Messaging), what they are driving
-  // (Execution) and their hours of service (Fleet's shared snapshot):
-  // three owners' answers, side by side, in one response. Hours is null
-  // when no driver is linked.
+  // (Execution), their hours of service (Fleet's shared snapshot) and when
+  // their duty status began (Eta's history): four owners' answers, side
+  // by side, in one response. Hours and Duty are null when no driver is
+  // linked.
   public sealed record ConversationContextView(
     Guid? DriverId,
     string? DriverName,
     string State,
     IReadOnlyList<DriverTruck> Trucks,
     IReadOnlyList<DriverLoad> Loads,
-    DriverHoursView? Hours
+    DriverHoursView? Hours,
+    DriverDutyView? Duty
   );
 
   [HttpGet("conversations/{id:guid}/context")]
@@ -182,6 +185,7 @@ public sealed class MessagingController : BaseController
     if (!work.Success || work.Response is not { } driving)
       return StatusCode(work.StatusCode, work);
     DriverHoursView? hours = null;
+    DriverDutyView? duty = null;
     if (who.DriverId is { } linked)
     {
       var read = await Mediator.Send(
@@ -191,6 +195,13 @@ public sealed class MessagingController : BaseController
       if (!read.Success)
         return StatusCode(read.StatusCode, read);
       hours = read.Response;
+      var status = await Mediator.Send(
+        new GetDriverDutyStatusQuery(linked),
+        cancellationToken
+      );
+      if (!status.Success)
+        return StatusCode(status.StatusCode, status);
+      duty = status.Response;
     }
     return Ok(
       RequestResponse<ConversationContextView>.Ok(
@@ -200,7 +211,8 @@ public sealed class MessagingController : BaseController
           driving.State,
           driving.Trucks,
           driving.Loads,
-          hours
+          hours,
+          duty
         )
       )
     );

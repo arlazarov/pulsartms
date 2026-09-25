@@ -67,8 +67,11 @@
             }
             @if (Context.Hours is { Known: true } hours)
             {
-                <DriverHours Clocks="Clocks(hours)" />
-                <p class="messages__file-sub">@Age(hours)</p>
+                <DriverHours Clocks="Clocks(hours)" Status="Duty(hours)" />
+                @if (Staleness(hours) is { } stale)
+                {
+                    <p class="messages__note">@stale</p>
+                }
             }
             else if (Context.Hours is not null)
             {
@@ -144,7 +147,7 @@
         @if (Context.State == "one-truck" && Context.Loads.Count > 1)
         {
             <section class="messages__ctx">
-                <h3>Next</h3>
+                <h3>@(Context.Loads.Count > 2 ? "Next loads" : "Next load")</h3>
                 @foreach (var load in Context.Loads.Skip(1))
                 {
                     <p class="messages__next">

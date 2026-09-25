@@ -109,6 +109,11 @@ public sealed class SamsaraHosHistoryProvider(
     }
   }
 
+  public HosHistory? Peek(string driverId) =>
+    string.IsNullOrWhiteSpace(driverId) ? null
+    : cache.Get(driverId) is { Available: true } cached ? cached.Baseline
+    : null;
+
   public static string NormalizeStatus(string status) =>
     status == "sleeperBed" ? "sleeperBerth" : status;
 

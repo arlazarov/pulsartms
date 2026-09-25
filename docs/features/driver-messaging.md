@@ -165,16 +165,23 @@ reader that reconnects or misses signals reads the inbox again.
 (the published artifact is the reference for its layout): conversations,
 the thread and the driver's trip in three panes that fill the window and
 scroll on their own. The trip pane shows the driver (name, truck,
-WhatsApp number), their hours of service from the fleet's shared snapshot
-with how old the reading is, or that Samsara has none, never zeros, and
-the current load with its stops and the next one. Below
+WhatsApp number), their hours of service from the fleet's shared snapshot,
+or that Samsara has none, never zeros, and the current load with its
+stops and the next load. The duty status says how long the driver has
+been in it ("Driving for 1h 20min") only from the status start that Eta's
+`GetDriverDutyStatusQuery` reads out of the HOS history the forecasts
+already hold (`IHosHistoryProvider.Peek`, no provider call), under the
+forecasts' rule; with no current history, or clocks older than three
+minutes, the status stands alone. The clocks' fetch time is never shown
+as a status start; it is said only when the clocks are over three minutes
+old. Below
 `messages-trip-beside` (1101px) the trip opens over the thread (Trip),
 and the thread's header keeps the truck, load and drive and shift left;
-below `md` one pane shows at a time. The context read composes three
-owners in the API: Messaging's driver, Execution's work and Fleet's
-`GetDriverHosQuery`, keyed by the driver so a co-driver never shows the
-truck driver's clocks; it runs when a conversation opens, not per
-message. The list searches (by driver name or number, on Enter) and
+below `md` one pane shows at a time. The context read composes four
+owners in the API: Messaging's driver, Execution's work, Fleet's
+`GetDriverHosQuery` and Eta's `GetDriverDutyStatusQuery`, keyed by the
+driver so a co-driver never shows the truck driver's clocks; it runs
+when a conversation opens, not per message. The list searches (by driver name or number, on Enter) and
 shows 50 at a time;
 "Show more conversations" continues below. A change signal reads the
 first page again and keeps the pages shown below it: a conversation that
