@@ -34,6 +34,12 @@ public static class IntegrationProviderCatalog
       ),
     };
 
+  // The field naming the provider-side channel the provider's webhooks are
+  // routed by: one company holds a value at a time, since a webhook reaches
+  // only the company whose address the provider calls.
+  public static string? OwnedField(string provider) =>
+    provider == WhatsApp ? "phoneNumberId" : null;
+
   public static bool IsConfigured(
     string provider,
     IntegrationCredentialValues values

@@ -13,7 +13,12 @@ public sealed record IntegrationConnectionState(
   long Revision,
   DateTime? UpdatedAt,
   IReadOnlyList<IntegrationCredentialFieldState> Fields
-);
+)
+{
+  // Another company has saved the same channel; a server released before
+  // it existed sends none.
+  public bool HeldElsewhere { get; init; }
+}
 
 public sealed class IntegrationCredentialsUpdate
 {

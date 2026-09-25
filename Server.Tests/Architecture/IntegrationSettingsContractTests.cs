@@ -64,6 +64,7 @@ public sealed class IntegrationSettingsContractTests
         "CanRestoreDeployment",
         "Configured",
         "Fields",
+        "HeldElsewhere",
         "Provider",
         "Revision",
         "UpdatedAt",
@@ -74,6 +75,14 @@ public sealed class IntegrationSettingsContractTests
         .Select(property => property.Name)
         .Order()
         .ToArray()
+    );
+    // Whether another company saved the same channel: a yes or no, never
+    // the channel or any value.
+    Assert.Equal(
+      typeof(bool),
+      typeof(IntegrationConnectionState)
+        .GetProperty(nameof(IntegrationConnectionState.HeldElsewhere))!
+        .PropertyType
     );
     Assert.Equal(
       new[] { "Configured", "Name" },

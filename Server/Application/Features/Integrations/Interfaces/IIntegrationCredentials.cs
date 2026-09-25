@@ -27,4 +27,14 @@ public interface IIntegrationCredentialStore
     IntegrationCredentialValues? values,
     CancellationToken ct
   );
+
+  // Whether another company's saved credentials for the provider hold this
+  // value in the field. Answers only yes or no; nothing of the other
+  // company's credentials leaves the store.
+  Task<bool> HeldElsewhereAsync(
+    string provider,
+    string field,
+    string value,
+    CancellationToken ct
+  );
 }

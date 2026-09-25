@@ -102,6 +102,50 @@ public sealed class IntegrationCredentialStore(
     }
   }
 
+  // Across companies on purpose, and bounded: one row per company for the
+  // provider. A row that cannot be read is not counted as holding it.
+  public async Task<bool> HeldElsewhereAsync(
+    string provider,
+    string field,
+    string value,
+    CancellationToken ct
+  )
+  {
+    RequireProvider(provider);
+    await using var scope = scopes.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var serving =
+      db.ServingCompany
+      ?? throw new InvalidOperationException(
+        "Integration credentials require a company."
+      );
+    var rows = await db
+      .IntegrationCredentialSettings.IgnoreQueryFilters()
+      .AsNoTracking()
+      .Where(x =>
+        x.Provider == provider
+        && x.CompanyId != serving
+        && x.ProtectedValues != null
+      )
+      .Select(x => new { x.CompanyId, x.ProtectedValues })
+      .ToListAsync(ct);
+    foreach (var row in rows)
+    {
+      IntegrationCredentialValues values;
+      try
+      {
+        values = Unprotect(row.CompanyId, provider, row.ProtectedValues!);
+      }
+      catch (InvalidOperationException)
+      {
+        continue;
+      }
+      if (values.Get(field)?.Trim() == value.Trim())
+        return true;
+    }
+    return false;
+  }
+
   private string Protect(
     Guid company,
     string provider,

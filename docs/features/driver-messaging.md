@@ -18,7 +18,17 @@ one transaction: what drivers write (`InboxRecorder`), the statuses of
 dispatchers' replies, and the statuses of texts other modules asked it to
 send (fuel plans). A notification whose commit failed leaves nothing, and
 the provider's retry records it once. Fuel planning is told which of its
-plans moved after the commit (`IDriverTextObserver`):
+plans moved after the commit (`IDriverTextObserver`).
+
+A notification reaches only the company whose webhook address Meta
+calls, so one WhatsApp number belongs to one company. Saving a number
+another company has saved is refused (422, "connected to another PulsR
+company"); a company keeps the number it already holds (a new token
+saves), and its settings card says when another company holds it too.
+The check lives in the credential store and answers only yes or no
+across companies; it is not atomic against two simultaneous saves. See
+[the September 25 routing record](../archive/2026-09/whatsapp-routing-2026-09-25.md).
+
 
 - A message is keyed by its provider id under company, channel and business
   number: a repeated notification records it once, and the same id under

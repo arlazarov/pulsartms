@@ -431,6 +431,59 @@ public sealed class IntegrationSettingsTests
     );
   }
 
+  // A WhatsApp number another company has saved is not taken silently:
+  // its webhooks reach only one company. A new token for the number this
+  // company already holds is not a new claim and still saves, and the
+  // state says the number is shared.
+  [Fact]
+  public async Task ANumberAnotherCompanyHoldsIsRefusedButOwnOneKeeps()
+  {
+    var fixture = new Fixture();
+    fixture.Store.Elsewhere.Add(("whatsapp", "phoneNumberId", "shared"));
+    Dictionary<string, string?> Bundle(string number, string token) =>
+      new()
+      {
+        ["phoneNumberId"] = number,
+        ["accessToken"] = token,
+        ["appSecret"] = "secret",
+        ["verifyToken"] = "verify",
+      };
+
+    var taken = await fixture.Service.SaveAsync(
+      "whatsapp",
+      new() { Fields = Bundle("shared", "one") },
+      default
+    );
+    Assert.Equal(422, taken.StatusCode);
+    Assert.Equal(0, fixture.Store.Writes);
+
+    var own = await fixture.Service.SaveAsync(
+      "whatsapp",
+      new() { Fields = Bundle("own", "one") },
+      default
+    );
+    Assert.True(own.Success);
+    Assert.False(own.Response!.HeldElsewhere);
+
+    // Already held here and, since, by another company too (as production
+    // was on September 25): a new token still saves, and it is flagged.
+    fixture.Store.Elsewhere.Add(("whatsapp", "phoneNumberId", "own"));
+    var rotated = await fixture.Service.SaveAsync(
+      "whatsapp",
+      new() { Revision = own.Response.Revision, Fields = Bundle("", "two") },
+      default
+    );
+    Assert.True(rotated.Success);
+    Assert.True(rotated.Response!.HeldElsewhere);
+    Assert.True(
+      (await fixture.Service.GetStateAsync("whatsapp", default)).HeldElsewhere
+    );
+    Assert.Equal(
+      "two",
+      (await fixture.Service.GetAsync("whatsapp", default)).Get("accessToken")
+    );
+  }
+
   [Fact]
   public void NullOversizeAndRestoreWithReplacementRequestsAreRejected()
   {
@@ -557,6 +610,16 @@ public sealed class IntegrationSettingsTests
       Writes++;
       return Task.FromResult(true);
     }
+
+    // Channels other companies hold, as (provider, field, value).
+    public HashSet<(string, string, string)> Elsewhere { get; } = [];
+
+    public Task<bool> HeldElsewhereAsync(
+      string provider,
+      string field,
+      string value,
+      CancellationToken ct
+    ) => Task.FromResult(Elsewhere.Contains((provider, field, value)));
   }
 
   private sealed class Caller : ICurrentUser

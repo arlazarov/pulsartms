@@ -249,6 +249,10 @@ public partial class IntegrationSettings : IDisposable
       HttpStatusCode.Conflict =>
         "Settings changed elsewhere. Refresh status before saving again.",
       HttpStatusCode.BadRequest => "Check the credential fields and try again.",
+      HttpStatusCode.UnprocessableEntity =>
+        "This number is connected to another PulsR company, and its messages "
+          + "can reach only one. Disconnect it there first. Your entries are "
+          + "unchanged.",
       _ => fallback,
     };
 

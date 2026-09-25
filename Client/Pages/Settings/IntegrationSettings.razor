@@ -75,6 +75,15 @@
                         notification with the app secret.
                     </p>
                 }
+                @if (card.State?.HeldElsewhere == true)
+                {
+                    <p class="settings-page__error" role="status">
+                        Another PulsR company has also saved this number.
+                        Its messages and statuses reach only the company
+                        whose webhook URL Meta calls. Disconnect it from
+                        the company that should not use it.
+                    </p>
+                }
                 @if (card.Provider == "whatsapp" && card.State?.Configured == true && !card.Editing)
                 {
                     <WhatsAppTemplates />

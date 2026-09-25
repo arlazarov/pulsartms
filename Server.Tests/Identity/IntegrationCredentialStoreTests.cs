@@ -69,6 +69,66 @@ public sealed class IntegrationCredentialStoreTests
     Assert.Equal(writes, fixture.SaveCount);
   }
 
+  // The one question the store answers across companies: whether another
+  // company's saved credentials hold a value. Its own row does not count,
+  // and nothing of the other company's values is returned.
+  [Fact]
+  public async Task OnlyAnotherCompanysSavedValueCountsAsHeldElsewhere()
+  {
+    await using var fixture = await IntegrationCredentialFixture.CreateAsync();
+    var other = Guid.NewGuid();
+    IntegrationCredentialValues Bundle(string number) =>
+      new(
+        IntegrationProviderCatalog
+          .Fields("whatsapp")
+          .ToDictionary(
+            field => field,
+            field => field == "phoneNumberId" ? number : $"fixture-{field}"
+          )
+      );
+    Assert.True(
+      await fixture.Store.TryWriteAsync("whatsapp", 0, Bundle("111"), default)
+    );
+    using (fixture.Companies.As(other))
+    {
+      Assert.True(
+        await fixture.Store.TryWriteAsync("whatsapp", 0, Bundle("222"), default)
+      );
+      Assert.True(
+        await fixture.Store.HeldElsewhereAsync(
+          "whatsapp",
+          "phoneNumberId",
+          "111",
+          default
+        )
+      );
+      Assert.False(
+        await fixture.Store.HeldElsewhereAsync(
+          "whatsapp",
+          "phoneNumberId",
+          "222",
+          default
+        )
+      );
+    }
+    Assert.True(
+      await fixture.Store.HeldElsewhereAsync(
+        "whatsapp",
+        "phoneNumberId",
+        "222",
+        default
+      )
+    );
+    Assert.False(
+      await fixture.Store.HeldElsewhereAsync(
+        "whatsapp",
+        "phoneNumberId",
+        "333",
+        default
+      )
+    );
+  }
+
   [Fact]
   public async Task ConcurrentFirstInsertsHaveExactlyOneWinner()
   {

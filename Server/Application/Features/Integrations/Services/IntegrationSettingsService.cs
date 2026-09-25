@@ -24,10 +24,11 @@ public sealed class IntegrationSettingsService(
     string provider,
     CancellationToken ct
   ) =>
-    State(
+    await StateAsync(
       provider,
       await store.ReadAsync(provider, ct),
-      deployment.Get(provider)
+      deployment.Get(provider),
+      ct
     );
 
   public async Task<RequestResponse<IntegrationConnectionState>> SaveAsync(
@@ -61,7 +62,7 @@ public sealed class IntegrationSettingsService(
         );
       if (changed.Count == 0)
         return RequestResponse<IntegrationConnectionState>.Ok(
-          State(provider, saved, defaults)
+          await StateAsync(provider, saved, defaults, ct)
         );
       if (
         provider == IntegrationProviderCatalog.GoogleEmail
@@ -96,7 +97,24 @@ public sealed class IntegrationSettingsService(
           .All(field => replacement.Get(field) == saved.Values.Get(field))
       )
         return RequestResponse<IntegrationConnectionState>.Ok(
-          State(provider, saved, defaults)
+          await StateAsync(provider, saved, defaults, ct)
+        );
+      // A channel another company holds is not taken silently: its webhooks
+      // would keep reaching only one of them. Keeping the one this company
+      // already holds (a new token for the same number) is not a new claim
+      // and is allowed; the state then says it is shared. 422, not 409,
+      // which means a stale revision to the page.
+      if (
+        IntegrationProviderCatalog.OwnedField(provider) is { } owned
+        && replacement.Get(owned) is { } channel
+        && channel != saved.Values?.Get(owned)
+        && await store.HeldElsewhereAsync(provider, owned, channel, ct)
+      )
+        return RequestResponse<IntegrationConnectionState>.Fail(
+          "This number is connected to another PulsR company, and its "
+            + "messages can reach only one. Disconnect it there first. "
+            + "Existing settings were kept.",
+          422
         );
     }
     if (!await store.TryWriteAsync(provider, update.Revision, replacement, ct))
@@ -105,6 +123,20 @@ public sealed class IntegrationSettingsService(
       await GetStateAsync(provider, ct)
     );
   }
+
+  private async Task<IntegrationConnectionState> StateAsync(
+    string provider,
+    StoredIntegrationCredentials saved,
+    IntegrationCredentialValues defaults,
+    CancellationToken ct
+  ) =>
+    State(provider, saved, defaults) with
+    {
+      HeldElsewhere =
+        IntegrationProviderCatalog.OwnedField(provider) is { } owned
+        && saved.Values?.Get(owned) is { } channel
+        && await store.HeldElsewhereAsync(provider, owned, channel, ct),
+    };
 
   private static IntegrationConnectionState State(
     string provider,

@@ -141,6 +141,45 @@ public sealed class IntegrationSettingsComponentTests
     );
   }
 
+  // A WhatsApp number another company has also saved is said plainly on
+  // its card; no other card says it.
+  [Fact]
+  public void ANumberSharedWithAnotherCompanyIsSaidOnItsCard()
+  {
+    using var context = new ClientComponentContext(
+      (request, _) =>
+        Task.FromResult(
+          request.RequestUri!.AbsolutePath switch
+          {
+            "/api/settings/integrations" => Response(
+              States(3, true)
+                .Select(x =>
+                  x.Provider == "whatsapp" ? x with { HeldElsewhere = true } : x
+                )
+                .ToArray()
+            ),
+            "/api/settings/integrations/whatsapp/webhook" => Response(
+              new WhatsAppWebhookAddress("api/webhooks/whatsapp/amfcarrier")
+            ),
+            var path => throw new InvalidOperationException(path),
+          }
+        )
+    );
+    var component = context.Render<IntegrationSettings>();
+
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          "Another PulsR company has also saved this number",
+          component.Find("[data-provider='whatsapp']").TextContent
+        )
+    );
+    Assert.Single(
+      component.FindAll(".integration-settings [role=status]"),
+      x => x.TextContent.Contains("Another PulsR company")
+    );
+  }
+
   [Fact]
   public async Task SavingOneProviderLeavesOtherDraftsUntouchedAndNeverSendsBlankFields()
   {
@@ -227,6 +266,49 @@ public sealed class IntegrationSettingsComponentTests
       )
     );
     Assert.Equal(0, writes);
+  }
+
+  // A number another company holds is refused with its own status: the
+  // card says so in its own words, keeps the entries and does not ask for
+  // a refresh as a stale revision would.
+  [Fact]
+  public async Task ANumberHeldByAnotherCompanyIsExplainedNotCalledStale()
+  {
+    using var context = new ClientComponentContext(
+      (request, _) =>
+        Task.FromResult(
+          request.RequestUri!.AbsolutePath switch
+          {
+            "/api/settings/integrations/whatsapp/webhook" => Response(
+              new WhatsAppWebhookAddress("api/webhooks/whatsapp/amfcarrier")
+            ),
+            _ when request.Method == HttpMethod.Get => ListResponse(),
+            _ => Failure(
+              HttpStatusCode.UnprocessableEntity,
+              "DO_NOT_DISPLAY_RAW_PAYLOAD"
+            ),
+          }
+        )
+    );
+    var component = context.Render<IntegrationSettings>();
+    await component
+      .WaitForElement("[data-provider='whatsapp'] button")
+      .ClickAsync(new());
+    component.Find("#integration-whatsapp-phoneNumberId").Input("123456");
+    await component
+      .Find("[data-provider='whatsapp'] form")
+      .SubmitAsync(EventArgs.Empty);
+
+    var error = component.Find("[role=alert]").TextContent;
+    Assert.Contains("connected to another PulsR company", error);
+    Assert.DoesNotContain("Refresh", error);
+    Assert.DoesNotContain("DO_NOT_DISPLAY_RAW_PAYLOAD", component.Markup);
+    Assert.Equal(
+      "123456",
+      component
+        .Find("#integration-whatsapp-phoneNumberId")
+        .GetAttribute("value")
+    );
   }
 
   [Fact]

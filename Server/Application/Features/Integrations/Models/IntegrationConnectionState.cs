@@ -13,7 +13,12 @@ public sealed record IntegrationConnectionState(
   long Revision,
   DateTime? UpdatedAt,
   IReadOnlyList<IntegrationCredentialFieldState> Fields
-);
+)
+{
+  // The saved channel (a WhatsApp number) is also saved by another
+  // company, and the provider's webhooks reach only one of them.
+  public bool HeldElsewhere { get; init; }
+}
 
 public sealed record StoredIntegrationCredentials(
   long Revision,
