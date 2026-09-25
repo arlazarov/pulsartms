@@ -131,6 +131,112 @@ public sealed class CompletedDispatchScopeTests
     Assert.Empty(component.FindAll(".dispatch-load__phase"));
   }
 
+  // A page of completed loads, newest load number first, is shown one
+  // truck at a time: 54777's three loads under one heading, not three
+  // headings interleaved with the other trucks. Trucks come in the order
+  // of their newest load on the page; each load keeps its own driver.
+  [Fact]
+  public async Task CompletedCardsShowEachTruckOnceWithItsLoads()
+  {
+    using var context = Context(
+      new FakeTimeProvider(),
+      (request, _) =>
+        Task.FromResult(
+          request.RequestUri!.AbsolutePath == "/api/dispatch"
+            ? Page(
+              ("54777", 1408, "Ann"),
+              ("11005", 1407, "James"),
+              ("11007", 1400, "Kim"),
+              ("11006", 1398, "Maksims"),
+              ("54777", 1397, "Ann"),
+              ("54777", 1396, "Ann"),
+              ("11006", 1395, "Earlier Driver")
+            )
+            : Auxiliary(request.RequestUri)
+        )
+    );
+    var component = context.Render<DispatchList>();
+    await component.InvokeAsync(
+      () => component.Find("#dispatch-completed").ClickAsync(new())
+    );
+    component.WaitForAssertion(
+      () => Assert.Equal(4, component.FindAll("article.dispatch-truck").Count)
+    );
+
+    var trucks = component.FindAll("article.dispatch-truck");
+    Assert.Equal(
+      ["Truck 54777", "Truck 11005", "Truck 11007", "Truck 11006"],
+      trucks.Select(x => x.GetAttribute("aria-label"))
+    );
+    Assert.Equal(
+      ["1408", "1397", "1396"],
+      trucks[0]
+        .QuerySelectorAll("section.dispatch-load")
+        .Select(x =>
+          System
+            .Text.RegularExpressions.Regex.Match(
+              x.GetAttribute("aria-label") ?? "",
+              "\\d{4}"
+            )
+            .Value
+        )
+    );
+    // One driver throughout: named once in the heading. Two drivers on
+    // 11006's loads: no heading driver, each load names its own.
+    Assert.Contains(
+      "Ann",
+      trucks[0].QuerySelector(".dispatch-truck__header")!.TextContent
+    );
+    Assert.Null(trucks[3].QuerySelector(".dispatch-truck__header-driver"));
+    Assert.Contains("Maksims", trucks[3].TextContent);
+    Assert.Contains("Earlier Driver", trucks[3].TextContent);
+    Assert.Contains(
+      "grouped by truck on this page",
+      component.Find(".dispatch-board__count").TextContent
+    );
+  }
+
+  private static HttpResponseMessage Page(
+    params (string Truck, int Number, string Driver)[] loads
+  )
+  {
+    var ids = loads
+      .Select(x => x.Truck)
+      .Distinct()
+      .ToDictionary(x => x, _ => Guid.NewGuid());
+    var items = loads
+      .Select(x =>
+      {
+        var load = DispatchFinancialViewsTests.Load(x.Number);
+        load.Status = "completed";
+        load.Completed = true;
+        load.TruckId = ids[x.Truck];
+        load.TruckNumber = x.Truck;
+        load.DriverName = x.Driver;
+        return load;
+      })
+      .ToArray();
+    return new(HttpStatusCode.OK)
+    {
+      Content = JsonContent.Create(
+        new
+        {
+          success = true,
+          response = new
+          {
+            items,
+            page = 1,
+            pageSize = 12,
+            totalCount = items.Length,
+            totalPages = 1,
+            hasPreviousPage = false,
+            hasNextPage = false,
+          },
+        }
+      ),
+    };
+  }
+
   [Fact]
   public async Task LateCompletedResponseCannotReplaceNewerActiveScope()
   {

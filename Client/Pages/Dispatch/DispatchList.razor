@@ -31,7 +31,7 @@
     @if (_loading && _data is null) { <p class="dispatch-board__message" role="status"><LoadingIndicator /></p> }
     else if (_data is not null)
     {
-        <div class="dispatch-board__count">@_data.TotalCount @(_showCompleted ? _data.TotalCount == 1 ? "completed load" : "completed loads" : _data.TotalCount == 1 ? "truck" : "trucks")<span>@(_showCompleted ? "Newest load numbers first" : _view == 2 ? "Loads on this page" : "Ordered by truck number")</span></div>
+        <div class="dispatch-board__count">@_data.TotalCount @(_showCompleted ? _data.TotalCount == 1 ? "completed load" : "completed loads" : _data.TotalCount == 1 ? "truck" : "trucks")<span>@(_showCompleted ? "Newest load numbers first, grouped by truck on this page" : _view == 2 ? "Loads on this page" : "Ordered by truck number")</span></div>
         @if (_data.Items.Count == 0) { <div class="dispatch-board__empty">@(_showCompleted ? "No completed loads match this search." : "No trucks or upcoming loads match this search.")</div> }
         @if (_view == 1)
         {
@@ -52,7 +52,8 @@
                     <div class="dispatch-truck__identity">
                         <svg class="dispatch-truck__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5h12v12H2zM14 9h4l4 4v4h-8z" /><circle cx="6" cy="18" r="2" /><circle cx="18" cy="18" r="2" /></svg>
                         <h2>@(string.IsNullOrWhiteSpace(truck.TruckNumber) ? "Awaiting assignment" : truck.TruckNumber)</h2>
-                        <strong class="dispatch-truck__header-driver">@(string.IsNullOrWhiteSpace(truck.DriverName) ? "Driver not assigned" : truck.DriverName)</strong>
+                        @if (!_showCompleted || !string.IsNullOrWhiteSpace(truck.DriverName))
+                        { <strong class="dispatch-truck__header-driver">@(string.IsNullOrWhiteSpace(truck.DriverName) ? "Driver not assigned" : truck.DriverName)</strong> }
                         @if (!string.IsNullOrWhiteSpace(truck.TrailerNumber))
                         { <span class="dispatch-truck__trailer">Trailer <strong>@truck.TrailerNumber</strong></span> }
                         @if (!_showCompleted && (!truck.TruckId.HasValue || truck.Dispatches.Count == 0))

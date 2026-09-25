@@ -16,6 +16,19 @@ remain on the load without returning finished work to the truck's queue.
 Conflicting actual visit order remains visible for review rather than proving
 completion. The Completed list includes recorded final deliveries even when an
 import retains a non-completed header status, unless the delivery was reopened.
+The Completed list pages by load (12 a page, newest load number first). Cards
+show each truck on the page once (`Pages/Dispatch/CompletedGroups`), in the
+order of its newest load there, with its loads beneath it newest first; a
+truck's other completed loads may be on other pages, and the count line says
+the grouping is for this page. Each load keeps the driver and trailer it had;
+the truck's heading names one only when all its loads on the page share it.
+
+Active shows a load while its execution leg is active or planned, whatever
+the source's own status says. AMF1385 on 11006 (September 25, read only)
+carries the source status `sent` with its leg still active and no delivery
+recorded in PulsR, on its stops or its leg; what `sent` means at the source
+is not confirmed, so PulsR neither hides it nor completes it. Recording the
+delivery (stop completion) closes it through the existing owner.
 
 ## Shipment preparation
 

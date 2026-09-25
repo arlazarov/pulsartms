@@ -208,17 +208,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
           TotalPages = page.TotalPages,
           HasPreviousPage = page.HasPreviousPage,
           HasNextPage = page.HasNextPage,
-          Items = page
-            .Items.Select(load => new TruckDispatchBoardResponse
-            {
-              Key = load.Id.ToString(),
-              TruckId = load.TruckId,
-              TruckNumber = load.TruckNumber,
-              DriverName = load.DriverName,
-              TrailerNumber = load.TrailerNumber,
-              Dispatches = [load],
-            })
-            .ToList(),
+          Items = CompletedGroups.Group(page.Items),
         },
     };
   }
