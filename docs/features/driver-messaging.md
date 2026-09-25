@@ -232,12 +232,26 @@ neither repeated nor skipped.
   each side, older pages below as usual). The window marks nothing read,
   since the newest messages are not shown. A change that arrives keeps
   the window and shows "New messages", and "Jump to newest" leaves it.
-- **Cost, assessed and not measured on PostgreSQL:** one chat is read in
-  (ConversationId, SentAt) order. Every chat is read in the company's
-  SentAt order under a case-insensitive substring filter, with no index
-  for the words: a rare word walks the company's messages. Production had
-  no conversation messages when this was written. Revisit with a trigram
-  or full-text index when searches over all chats become slow.
+- **Days out of reach:** days outside 2000–2100, a range that runs
+  backwards and ranges longer than a year are refused with a message
+  (400). A day whose local midnight never happens, because the clocks jump
+  forward at midnight (Santiago on September 6, 2026), starts at its first
+  moment that does.
+- **Cost, measured on the isolated PostgreSQL fixture:** one company with
+  100,000 messages in 200 conversations, and another with as many
+  (`MessageSearchPostgresTests`, `EXPLAIN (ANALYZE, BUFFERS)` of the one
+  statement a search sends, September 25).
+  - One chat: 66 buffer pages, under 1 ms, on (ConversationId, SentAt).
+  - Every chat: 2,564 pages (about 20 MB), whatever matches. A rare word
+    or no match takes 39–54 ms, a common word 63 ms, and a load number
+    35 ms. The company's messages are walked through the `CompanyId` index
+    under a case-insensitive substring filter. The output is bounded to 51
+    rows; the database work is not. It grows with the company's messages.
+  - Warm cache only; cold reads and Cloud SQL were not measured.
+    Production had no conversation messages at the time. Revisit when a
+    company holds several hundred thousand messages: a trigram or
+    full-text index belongs in Infrastructure behind an Application
+    interface.
 
 The composer shows the reply window as "Reply window: 21 hours left",
 then minutes in the last hour, from the driver's last message. Only

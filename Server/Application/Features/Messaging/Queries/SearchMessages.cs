@@ -58,6 +58,11 @@ public sealed class MessageSearchHandler(
   public const int MaximumText = 100;
   public const int MaximumDays = 366;
 
+  // Days a search may name: a message is never older or newer than these,
+  // and every edge between them converts.
+  private static readonly DateOnly Earliest = new(2000, 1, 1);
+  private static readonly DateOnly Latest = new(2100, 12, 31);
+
   public async Task<RequestResponse<MessageSearchView>> Handle(
     SearchMessagesQuery request,
     CancellationToken ct
@@ -85,6 +90,11 @@ public sealed class MessageSearchHandler(
         || !TimeZoneInfo.TryFindSystemTimeZoneById(request.TimeZone, out zone)
       )
         return Fail("The browser's time zone is not known.", 400);
+      if (
+        request.From is { } early && (early < Earliest || early > Latest)
+        || request.To is { } late && (late < Earliest || late > Latest)
+      )
+        return Fail("Choose days between 2000 and 2100.", 400);
       if (
         request.From is { } first
         && request.To is { } final
@@ -248,12 +258,16 @@ public sealed class MessageSearchHandler(
     );
   }
 
-  // The instant a day starts where the dispatcher is.
-  internal static DateTime Utc(DateOnly day, TimeZoneInfo zone) =>
-    TimeZoneInfo.ConvertTimeToUtc(
-      day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified),
-      zone
-    );
+  // The instant a day starts where the dispatcher is. Where the clocks
+  // jump forward at midnight that midnight never happens, and the day
+  // starts at its first moment that does.
+  internal static DateTime Utc(DateOnly day, TimeZoneInfo zone)
+  {
+    var start = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+    for (var minutes = 0; zone.IsInvalidTime(start) && minutes < 180; minutes++)
+      start = start.AddMinutes(1);
+    return TimeZoneInfo.ConvertTimeToUtc(start, zone);
+  }
 
   internal static bool Mentions(string body, int load) =>
     Regex.IsMatch(body, $@"(?<!\d){load}(?!\d)");

@@ -3,11 +3,11 @@ using Application.Features.Messaging.Services;
 using Application.Interfaces;
 using Application.Models;
 using Domain.Entities.Dispatch;
-using Load = Domain.Entities.Dispatch.Dispatch;
 using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
 using Microsoft.EntityFrameworkCore;
 using static Server.Tests.Messaging.InboxScenario;
+using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Messaging;
 
@@ -141,6 +141,64 @@ public sealed class MessageSearchTests
           )
       ).StatusCode
     );
+  }
+
+  // Days no message can have are refused, not failed on: the last day
+  // there is, the first, a range backwards, more than a year.
+  [Theory]
+  [InlineData("2026-09-01", "9999-12-31")]
+  [InlineData("0001-01-01", "2026-09-01")]
+  [InlineData("2026-09-02", "2026-09-01")]
+  [InlineData("2025-01-01", "2026-09-01")]
+  public async Task DaysOutOfReachAreRefused(string from, string to)
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    var (me, _) = await UsersAsync(f);
+
+    var result = await Handler(f, me)
+      .Handle(
+        new(
+          null,
+          null,
+          DateOnly.Parse(from),
+          DateOnly.Parse(to),
+          "America/Toronto",
+          null
+        ),
+        default
+      );
+
+    Assert.Equal(400, result.StatusCode);
+  }
+
+  // In Santiago the clocks jump from midnight to one on September 6, 2026:
+  // that day starts at 01:00 local (04:00 UTC), and the search answers.
+  [Fact]
+  public async Task ADayWhoseMidnightNeverHappensStartsAtItsFirstMoment()
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    var (me, _) = await UsersAsync(f);
+    var conversation = await RecordAsync(
+      f,
+      [
+        (new DateTime(2026, 9, 6, 3, 59, 0, DateTimeKind.Utc), "Sep 5 late"),
+        (new DateTime(2026, 9, 6, 4, 1, 0, DateTimeKind.Utc), "Sep 6 early"),
+      ]
+    );
+    var zone = TimeZoneInfo.FindSystemTimeZoneById("America/Santiago");
+    Assert.True(
+      zone.IsInvalidTime(
+        new DateTime(2026, 9, 6, 0, 0, 0, DateTimeKind.Unspecified)
+      )
+    );
+
+    var found = await SearchAsync(
+      f,
+      me,
+      new(conversation, null, new(2026, 9, 6), new(2026, 9, 6), zone.Id, null)
+    );
+
+    Assert.Equal(["Sep 6 early"], found.Hits.Select(x => x.Snippet));
   }
 
   // Filed to the load, or its number written in the text; 14070 is not
