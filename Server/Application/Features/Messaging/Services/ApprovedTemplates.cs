@@ -47,7 +47,9 @@ public sealed partial class ApprovedTemplates(
       .SingleOrDefaultAsync(ct);
 
   // What the provider accepts as a name and a language, and a text whose
-  // placeholders are exactly {{1}} to {{parameters}}.
+  // placeholders are exactly {{1}} to {{parameters}}, or named ones such as
+  // {{company_name}} - as many distinct names as parameters, never mixed
+  // with numbers.
   public static string? Refusal(
     string name,
     string language,
@@ -64,6 +66,11 @@ public sealed partial class ApprovedTemplates(
       return $"A template has at most {MaximumParameters} parameters.";
     if (string.IsNullOrWhiteSpace(text) || text.Length > MaximumText)
       return $"Enter the template's text, at most {MaximumText} characters.";
+    if (Names(text) is { } names)
+      return names.Count == parameters && !Placeholder().IsMatch(text)
+        ? null
+        : "Use either numbered or named placeholders, as many as the "
+          + "parameters.";
     var used = Placeholder()
       .Matches(text)
       .Select(x => int.Parse(x.Groups[1].Value))
@@ -75,8 +82,23 @@ public sealed partial class ApprovedTemplates(
         + "}}, each at least once, and no other placeholder.";
   }
 
+  // A template's named parameters in the order they first appear, or null
+  // when it uses numbered ones or none.
+  public static IReadOnlyList<string>? Names(string text)
+  {
+    var names = NamedPlaceholder()
+      .Matches(text)
+      .Select(x => x.Groups[1].Value)
+      .Distinct()
+      .ToList();
+    return names.Count == 0 ? null : names;
+  }
+
   [GeneratedRegex("^[a-z0-9_]{1,512}$")]
   private static partial Regex Name();
+
+  [GeneratedRegex(@"\{\{([a-z_][a-z0-9_]{0,63})\}\}")]
+  private static partial Regex NamedPlaceholder();
 
   [GeneratedRegex("^[a-z]{2,3}(_[A-Z]{2})?$")]
   private static partial Regex Language();

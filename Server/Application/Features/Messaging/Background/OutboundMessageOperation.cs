@@ -252,6 +252,7 @@ public sealed class OutboundMessageOperation(
         Template(message)!.Name,
         Template(message)!.Language,
         Template(message)!.Parameters,
+        Template(message)!.Names,
         ct
       ),
       _ => await messaging.SendTextAsync(

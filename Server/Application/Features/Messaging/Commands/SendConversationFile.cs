@@ -49,6 +49,7 @@ public sealed record MessageTemplateView(
 public sealed class ConversationFilesAndTemplates(
   IAppDbContext db,
   ICurrentUser caller,
+  ICurrentCompany company,
   ReplyQueue queue,
   FileStore files,
   StoredFileCheck check,
@@ -208,21 +209,42 @@ public sealed class ConversationFilesAndTemplates(
       request.Language ?? "",
       ct
     );
+    var pulsr = template is null ? null : PulsrTemplates.Matching(template);
+    // A PulsR template PulsR cannot send yet (an image header) is never
+    // sent through here without it.
+    if (pulsr?.Unsupported is { } unsupported)
+      return Fail(unsupported, 409);
+    var supplied = request.Parameters;
+    // The contact request names the sending company: its own name, read
+    // here for the signed-in company, never a value from the browser.
+    if (pulsr is { CompanyNamed: true })
+    {
+      var name = await db
+        .Companies.AsNoTracking()
+        .Where(x => x.Id == company.Id)
+        .Select(x => x.Name)
+        .SingleOrDefaultAsync(ct);
+      if (string.IsNullOrWhiteSpace(name))
+        return Fail("The company has no name to send.", 409);
+      supplied = [name.Trim()];
+    }
     if (
       template is null
-      || request.Parameters is not { } parameters
+      || supplied is not { } parameters
       || parameters.Count != template.Parameters
       || parameters.Any(x => string.IsNullOrWhiteSpace(x) || x.Length > 200)
       || request.IdempotencyKey == Guid.Empty
     )
       return Fail("Choose an approved template and fill in every field.", 400);
-    // A PulsR template PulsR cannot send yet (an image header) is never
-    // sent through here without it.
-    if (PulsrTemplates.Matching(template)?.Unsupported is { } unsupported)
-      return Fail(unsupported, 409);
-    var text = Fill(template.Text, parameters);
+    var names = ApprovedTemplates.Names(template.Text);
+    var text = Fill(template.Text, parameters, names);
     var payload = JsonSerializer.Serialize(
-      new TemplatePayload(template.Name, template.Language, [.. parameters])
+      new TemplatePayload(
+        template.Name,
+        template.Language,
+        [.. parameters],
+        names
+      )
     );
     var verdict = await queue.CheckAsync(
       conversation,
@@ -279,10 +301,17 @@ public sealed class ConversationFilesAndTemplates(
     );
   }
 
-  public static string Fill(string text, IReadOnlyList<string> parameters)
+  public static string Fill(
+    string text,
+    IReadOnlyList<string> parameters,
+    IReadOnlyList<string>? names = null
+  )
   {
     for (var i = 0; i < parameters.Count; i++)
-      text = text.Replace($"{{{{{i + 1}}}}}", parameters[i].Trim());
+      text = text.Replace(
+        $"{{{{{names?[i] ?? (i + 1).ToString()}}}}}",
+        parameters[i].Trim()
+      );
     return text.Length <= 4096 ? text : text[..4096];
   }
 
@@ -292,8 +321,11 @@ public sealed class ConversationFilesAndTemplates(
   ) => RequestResponse<MessageView>.Fail(message, status);
 }
 
+// Names: the parameters' names, in order, for a template approved with
+// named parameters.
 public sealed record TemplatePayload(
   string Name,
   string Language,
-  IReadOnlyList<string> Parameters
+  IReadOnlyList<string> Parameters,
+  IReadOnlyList<string>? Names = null
 );

@@ -9,6 +9,7 @@ namespace Server.Tests.Support;
 internal sealed class FakeDriverMessaging : IDriverMessaging
 {
   public Queue<DriverMessageSendResult> Answers { get; } = [];
+  public List<IReadOnlyList<string>?> TemplateNames { get; } = [];
   public List<(string To, string Text)> Sent { get; } = [];
   public Func<Task>? During { get; set; }
 
@@ -100,6 +101,7 @@ internal sealed class FakeDriverMessaging : IDriverMessaging
     string name,
     string language,
     IReadOnlyList<string> parameters,
+    IReadOnlyList<string>? names,
     CancellationToken ct
   )
   {
@@ -108,6 +110,7 @@ internal sealed class FakeDriverMessaging : IDriverMessaging
         new DriverMessageSendResult(DriverMessageOutcome.NumberChanged)
       );
     Templates.Add((recipient, name, parameters));
+    TemplateNames.Add(names);
     return Task.FromResult(
       Answers.Count > 0
         ? Answers.Dequeue()

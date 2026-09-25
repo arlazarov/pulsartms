@@ -96,8 +96,9 @@ public sealed class WhatsAppTemplatesTests
         "contactRequest",
         "contact_request",
         "en_US",
-        0,
-        "Dispatch would like to speak with you. Please reply when it’s safe.",
+        1,
+        "Dispatch at {{company_name}} would like to speak with you. Please "
+          + "reply when it’s safe.",
         "{\"name\": \"contact_request\"}",
         null,
         false
@@ -121,7 +122,8 @@ public sealed class WhatsAppTemplatesTests
       page.Find("#whatsapp-template-name").GetAttribute("value")
     );
     Assert.Equal(
-      "Dispatch would like to speak with you. Please reply when it’s safe.",
+      "Dispatch at {{company_name}} would like to speak with you. Please "
+        + "reply when it’s safe.",
       page.Find("#whatsapp-template-text").GetAttribute("value")
     );
     Assert.Empty(api.Added);

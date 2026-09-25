@@ -16,17 +16,23 @@ public static class PulsrTemplates
   public const string ContactRequest = "contactRequest";
   public const string FuelPlanCard = "fuelPlanCard";
 
+  // Named parameters: Meta shows them to the reviewer and the driver reads
+  // the company's own name, which the sending company supplies.
   public static readonly PulsrTemplate Contact = new(
     ContactRequest,
     "contact_request",
     "en_US",
     "UTILITY",
     null,
-    "Dispatch would like to speak with you. Please reply when it’s safe.",
-    [],
+    "Dispatch at {{company_name}} would like to speak with you. Please "
+      + "reply when it’s safe.",
+    ["AMF Carrier"],
     ["I'm available"],
     null
-  );
+  )
+  {
+    CompanyNamed = true,
+  };
 
   // The body cannot start or end with a parameter, as Meta requires.
   public static readonly PulsrTemplate FuelCard = new(
@@ -66,6 +72,9 @@ public sealed record PulsrTemplate(
   string? Unsupported
 )
 {
+  // Its one parameter is the sending company's name, filled by the server.
+  public bool CompanyNamed { get; init; }
+
   // What to submit to Meta (WhatsApp Manager, or the Graph API's
   // message_templates), with the examples Meta asks for. An image header
   // needs a sample uploaded to Meta, whose handle goes in place of the
@@ -86,7 +95,25 @@ public sealed record PulsrTemplate(
         }
       );
     var body = new JsonObject { ["type"] = "BODY", ["text"] = Body };
-    if (Examples.Count > 0)
+    var names = ApprovedTemplates.Names(Body);
+    if (names is not null)
+      body["example"] = new JsonObject
+      {
+        ["body_text_named_params"] = new JsonArray(
+          [
+            .. names.Select(
+              (name, index) =>
+                (JsonNode)
+                  new JsonObject
+                  {
+                    ["param_name"] = name,
+                    ["example"] = Examples[index],
+                  }
+            ),
+          ]
+        ),
+      };
+    else if (Examples.Count > 0)
       body["example"] = new JsonObject
       {
         ["body_text"] = new JsonArray(
@@ -109,13 +136,16 @@ public sealed record PulsrTemplate(
           ),
         }
       );
-    return new JsonObject
+    var submission = new JsonObject
     {
       ["name"] = Name,
       ["language"] = Language,
       ["category"] = Category,
-      ["components"] = components,
-    }.ToJsonString(
+    };
+    if (names is not null)
+      submission["parameter_format"] = "NAMED";
+    submission["components"] = components;
+    return submission.ToJsonString(
       new JsonSerializerOptions
       {
         WriteIndented = true,

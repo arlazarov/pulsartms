@@ -390,7 +390,7 @@
                                     soon as the driver answers.
                                 </p>
                             }
-                            @if (_templates.Count == 0)
+                            @if (!DispatcherTemplates.Any())
                             {
                                 <p class="messages__note">
                                     No template is approved yet, so nothing can
@@ -404,7 +404,7 @@
                                     <select id="messages-template"
                                             @bind="_template" disabled="@_busy">
                                         <option value="">Choose a template</option>
-                                        @foreach (var template in _templates)
+                                        @foreach (var template in DispatcherTemplates)
                                         {
                                             <option value="@template.Name">
                                                 @template.Name

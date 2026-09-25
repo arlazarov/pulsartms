@@ -68,21 +68,28 @@ public sealed class PulsrTemplateTests
     Assert.Empty(await ListAsync(f, [other]));
   }
 
+  // The company named is the sending company's own, read by the server:
+  // a value from the browser is not used.
   [Fact]
   public async Task AContactRequestIsSentOnceForItsKey()
   {
     await using var f = await ReplyFixture.CreateAsync();
+    await CompanyAsync(f, "AMF Carrier");
     var (conversation, _) = await f.ConversationAsync(hoursAgo: 30);
     var key = Guid.NewGuid();
     SendConversationTemplateCommand Request() =>
-      new(conversation, key, "contact_request", "en_US", []);
+      new(conversation, key, "contact_request", "en_US", ["Someone Else"]);
 
     var first = await f.Files([Recorded(PulsrTemplates.Contact)])
       .Handle(Request(), default);
     var again = await f.Files().Handle(Request(), default);
 
     Assert.Equal(first.Response!.Id, again.Response!.Id);
-    Assert.Equal(PulsrTemplates.Contact.Body, first.Response.Body);
+    Assert.Equal(
+      "Dispatch at AMF Carrier would like to speak with you. Please reply "
+        + "when it’s safe.",
+      first.Response.Body
+    );
     Assert.Single(
       await f
         .Db.ConversationMessages.AsNoTracking()
@@ -96,7 +103,48 @@ public sealed class PulsrTemplateTests
     );
     await f.Worker.RunOnceAsync(default);
     var sent = Assert.Single(f.Messaging.Templates);
-    Assert.Equal(("contact_request", 0), (sent.Name, sent.Parameters.Count));
+    Assert.Equal(
+      ("contact_request", "AMF Carrier"),
+      (sent.Name, Assert.Single(sent.Parameters))
+    );
+    Assert.Equal(["company_name"], Assert.Single(f.Messaging.TemplateNames)!);
+  }
+
+  [Fact]
+  public async Task WithoutACompanyNameNothingIsSent()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    await CompanyAsync(f, " ");
+    var (conversation, _) = await f.ConversationAsync(hoursAgo: 30);
+
+    var refused = await f.Files([Recorded(PulsrTemplates.Contact)])
+      .Handle(
+        new SendConversationTemplateCommand(
+          conversation,
+          Guid.NewGuid(),
+          "contact_request",
+          "en_US",
+          []
+        ),
+        default
+      );
+
+    Assert.Equal(409, refused.StatusCode);
+    Assert.Empty(f.Messaging.Templates);
+  }
+
+  private static async Task CompanyAsync(ReplyFixture f, string name)
+  {
+    f.Db.Companies.Add(
+      new Domain.Entities.Company
+      {
+        Id = Domain.Entities.Company.Amf,
+        Key = "amfcarrier",
+        Name = name,
+      }
+    );
+    await f.Db.SaveChangesAsync();
+    f.Db.ChangeTracker.Clear();
   }
 
   [Fact]
@@ -133,18 +181,27 @@ public sealed class PulsrTemplateTests
     using var contact = JsonDocument.Parse(PulsrTemplates.Contact.Submission());
     var root = contact.RootElement;
     Assert.Equal(
-      ("contact_request", "en_US", "UTILITY"),
+      ("contact_request", "en_US", "UTILITY", "NAMED"),
       (
         root.GetProperty("name").GetString(),
         root.GetProperty("language").GetString(),
-        root.GetProperty("category").GetString()
+        root.GetProperty("category").GetString(),
+        root.GetProperty("parameter_format").GetString()
       )
     );
     var components = root.GetProperty("components");
     Assert.Equal(
-      "Dispatch would like to speak with you. Please reply when it’s safe.",
+      "Dispatch at {{company_name}} would like to speak with you. Please "
+        + "reply when it’s safe.",
       components[0].GetProperty("text").GetString()
     );
+    var example = Assert.Single(
+      components[0]
+        .GetProperty("example")
+        .GetProperty("body_text_named_params")
+        .EnumerateArray()
+    );
+    Assert.Equal("company_name", example.GetProperty("param_name").GetString());
     var button = Assert.Single(
       components[1].GetProperty("buttons").EnumerateArray()
     );
@@ -159,6 +216,22 @@ public sealed class PulsrTemplateTests
     using var fuel = JsonDocument.Parse(PulsrTemplates.FuelCard.Submission());
     var header = fuel.RootElement.GetProperty("components")[0];
     Assert.Equal("IMAGE", header.GetProperty("format").GetString());
+    Assert.Null(
+      ApprovedTemplates.Refusal(
+        PulsrTemplates.Contact.Name,
+        PulsrTemplates.Contact.Language,
+        1,
+        PulsrTemplates.Contact.Body
+      )
+    );
+    Assert.NotNull(
+      ApprovedTemplates.Refusal(
+        "mixed",
+        "en_US",
+        2,
+        "Dispatch at {{company_name}}, load {{1}}."
+      )
+    );
     Assert.Null(
       ApprovedTemplates.Refusal(
         PulsrTemplates.FuelCard.Name,

@@ -72,6 +72,7 @@ public sealed partial class WhatsAppCloudMessaging(
     string name,
     string language,
     IReadOnlyList<string> parameters,
+    IReadOnlyList<string>? names,
     CancellationToken ct
   )
   {
@@ -98,9 +99,22 @@ public sealed partial class WhatsAppCloudMessaging(
               new
               {
                 type = "body",
-                parameters = parameters
-                  .Select(text => new { type = "text", text })
-                  .ToArray(),
+                parameters = names is null
+                  ? parameters
+                    .Select(text => (object)new { type = "text", text })
+                    .ToArray()
+                  : parameters
+                    .Select(
+                      (text, index) =>
+                        (object)
+                          new
+                          {
+                            type = "text",
+                            parameter_name = names[index],
+                            text,
+                          }
+                    )
+                    .ToArray(),
               },
             },
         },

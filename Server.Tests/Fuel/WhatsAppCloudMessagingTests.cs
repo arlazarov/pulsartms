@@ -153,6 +153,7 @@ public sealed class WhatsAppCloudMessagingTests
             "hello",
             "en_US",
             [],
+            null,
             default
           )
         ).Outcome,
@@ -190,6 +191,42 @@ public sealed class WhatsAppCloudMessagingTests
     );
     Assert.False(WhatsAppCloudMessaging.Signed(body, null, "secret"));
     Assert.False(WhatsAppCloudMessaging.Signed(body, signature[7..], "secret"));
+  }
+
+  // A template approved with named parameters is sent with each value's
+  // name, as Meta requires for them; a numbered one without.
+  [Theory]
+  [InlineData(true)]
+  [InlineData(false)]
+  public async Task ATemplatesParametersCarryTheirNamesWhenItHasThem(bool named)
+  {
+    var http = new Handler(
+      HttpStatusCode.OK,
+      """{"messaging_product":"whatsapp","messages":[{"id":"wamid.T"}]}"""
+    );
+    await Messaging(http)
+      .SendTemplateAsync(
+        "123456",
+        "+15558234327",
+        "contact_request",
+        "en_US",
+        ["AMF Carrier"],
+        named ? ["company_name"] : null,
+        default
+      );
+
+    using var body = JsonDocument.Parse(Assert.Single(http.Requests).Body);
+    var parameter = body
+      .RootElement.GetProperty("template")
+      .GetProperty("components")[0]
+      .GetProperty("parameters")[0];
+    Assert.Equal("AMF Carrier", parameter.GetProperty("text").GetString());
+    Assert.Equal(
+      named,
+      parameter.TryGetProperty("parameter_name", out var name)
+    );
+    if (named)
+      Assert.Equal("company_name", name.GetString());
   }
 
   private static WhatsAppCloudMessaging Messaging(Handler http) =>

@@ -37,13 +37,15 @@ public interface IDriverMessaging
   );
 
   // An approved template, the only kind of message allowed outside the
-  // driver's 24-hour window.
+  // driver's 24-hour window. Names, when given, name the parameters in
+  // order, for a template approved with named parameters.
   Task<DriverMessageSendResult> SendTemplateAsync(
     string businessNumber,
     string recipient,
     string name,
     string language,
     IReadOnlyList<string> parameters,
+    IReadOnlyList<string>? names,
     CancellationToken ct
   );
 

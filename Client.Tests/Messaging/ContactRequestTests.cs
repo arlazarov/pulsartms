@@ -109,9 +109,9 @@ public sealed class ContactRequestTests
               new(
                 "contact_request",
                 "en_US",
-                0,
-                "Dispatch would like to speak with you. Please reply when "
-                  + "it’s safe.",
+                1,
+                "Dispatch at {{company_name}} would like to speak with you. "
+                  + "Please reply when it’s safe.",
                 "contactRequest"
               ),
             ]

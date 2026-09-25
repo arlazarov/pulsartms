@@ -440,9 +440,15 @@ recorded template is one of them only when its name, language, text and
 number of parameters are exactly the definition's; anything else is just
 another recorded template. PulsR never calls one approved on its own.
 
-- **Contact request** (`contact_request`, `en_US`, UTILITY): body
-  "Dispatch would like to speak with you. Please reply when it’s safe."
-  and one QUICK_REPLY button "I'm available". In a conversation outside
+- **Contact request** (`contact_request`, `en_US`, UTILITY, named
+  parameters): body "Dispatch at {{company_name}} would like to speak with
+  you. Please reply when it’s safe." and one QUICK_REPLY button "I'm
+  available". The company name is the signed-in sending company's own
+  (`Companies.Name`), read by the server when the request is queued; a
+  value from the browser is not used, and a company without a name sends
+  nothing (409). Approved templates may use named placeholders
+  (`{{company_name}}`, never mixed with numbered ones); a send names each
+  value (`parameter_name`). In a conversation outside
   the reply window, **Request contact** sends it on an explicit click
   through the ordinary template path, with a retry key that lasts until
   it is queued (clicking again after an unanswered attempt is the same

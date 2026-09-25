@@ -198,6 +198,7 @@ internal sealed class ReplyFixture : IAsyncDisposable
     return new(
       Db,
       new Caller("me"),
+      new TestCompany(),
       Queue(),
       store,
       new StoredFileCheck(store),

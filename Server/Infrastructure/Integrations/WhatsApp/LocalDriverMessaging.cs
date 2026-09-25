@@ -69,6 +69,7 @@ public sealed class LocalDriverMessaging : IDriverMessaging
     string name,
     string language,
     IReadOnlyList<string> parameters,
+    IReadOnlyList<string>? names,
     CancellationToken ct
   ) => Accepted(businessNumber);
 

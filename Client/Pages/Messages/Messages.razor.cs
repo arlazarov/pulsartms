@@ -123,7 +123,7 @@ public partial class Messages : IAsyncDisposable
   private readonly CancellationTokenSource _lifetime = new();
 
   private MessageTemplateView? Chosen =>
-    _templates.FirstOrDefault(x => x.Name == _template);
+    DispatcherTemplates.FirstOrDefault(x => x.Name == _template);
 
   private bool TemplateReady =>
     Chosen is { } chosen
@@ -610,6 +610,11 @@ public partial class Messages : IAsyncDisposable
 
   // PulsR's contact request, when an administrator recorded it for this
   // number exactly as PulsR defines it after Meta approved it.
+  // The carrier's own templates; PulsR's (the contact request) have their
+  // own button and parameters the server fills.
+  private IEnumerable<MessageTemplateView> DispatcherTemplates =>
+    _templates.Where(x => x.Purpose is null);
+
   private MessageTemplateView? ContactTemplate =>
     _templates.FirstOrDefault(x => x.Purpose == "contactRequest");
 
