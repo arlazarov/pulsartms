@@ -139,3 +139,28 @@ changed here).** If AMF should receive, point the test WABA's callback
 back to `/api/webhooks/whatsapp/amfcarrier` and clear the demo company's
 copy of the number. If the demo should receive, clear AMF's copy.
 Either way, one company holds the number.
+
+**Fresh evidence (read at 11:57 UTC, read only).**
+- No webhook call at all between 02:47 and 11:19.
+- 11:19–11:24: AMF sent 4 messages. Meta then made 16 POSTs, all HTTP
+  200, and every one went to `/api/webhooks/whatsapp/meta-review-demo`.
+- In the same minutes, 4 driver replies were recorded in the demo
+  company. None were recorded in AMF.
+- Credential rows are unchanged: demo revision 1 (00:35), AMF revision 5
+  (02:34). AMF holds 4 conversations, the demo company 1.
+
+**Conclusion.** Inbound messages are arriving, and PulsR stores them, in
+the demo company, the one whose webhook Meta calls for the shared test
+number. AMF therefore sees none, and its replies' statuses stay
+"accepted". No code change repairs this.
+
+**Configuration change needed (owner's decision; not made).** Pick which
+company owns the test number:
+- **AMF:** set the WABA callback to
+  `/api/webhooks/whatsapp/amfcarrier` in Meta, and clear the demo
+  company's saved WhatsApp connection.
+- **The demo:** clear AMF's saved connection (revision 5, restored during
+  troubleshooting).
+
+Replies already stored in the demo company stay there. Moving them is a
+separate, explicit decision.
