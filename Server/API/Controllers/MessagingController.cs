@@ -52,6 +52,40 @@ public sealed class MessagingController : BaseController
       cancellationToken
     );
 
+  // Messages by words, days (in the browser's time zone) and load, in one
+  // conversation or the dispatcher's driver group; afterSentAt,
+  // afterCreatedAt and afterId continue below a page.
+  [HttpGet("search")]
+  public Task<IActionResult> Search(
+    [FromQuery] Guid? conversationId,
+    [FromQuery] string? text,
+    [FromQuery] DateOnly? from,
+    [FromQuery] DateOnly? to,
+    [FromQuery] string? timeZone,
+    [FromQuery] int? load,
+    [FromQuery] DateTimeOffset? afterSentAt,
+    [FromQuery] DateTimeOffset? afterCreatedAt,
+    [FromQuery] Guid? afterId,
+    CancellationToken cancellationToken
+  ) =>
+    HandleRequest(
+      new SearchMessagesQuery(
+        conversationId,
+        text,
+        from,
+        to,
+        timeZone,
+        load,
+        afterSentAt is { } sent
+        && afterCreatedAt is { } created
+        && afterId is { } message
+          ? new(sent.UtcDateTime, created.UtcDateTime, message)
+          : null,
+        InChosenGroup: conversationId is null
+      ),
+      cancellationToken
+    );
+
   // Drivers a chat can be started with, in the dispatcher's driver group.
   [HttpGet("drivers")]
   public Task<IActionResult> Drivers(
@@ -176,6 +210,7 @@ public sealed class MessagingController : BaseController
     [FromQuery] DateTimeOffset? beforeCreatedAt,
     [FromQuery] Guid? beforeId,
     [FromQuery] long? seen,
+    [FromQuery] Guid? around,
     CancellationToken cancellationToken
   ) =>
     HandleRequest(
@@ -187,7 +222,8 @@ public sealed class MessagingController : BaseController
             ? new(sent.UtcDateTime, created.UtcDateTime, message)
           : before is { } time ? MessageCursor.Older(time)
           : null,
-        seen
+        seen,
+        around
       ),
       cancellationToken
     );

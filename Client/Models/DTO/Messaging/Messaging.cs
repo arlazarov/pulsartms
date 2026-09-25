@@ -62,6 +62,9 @@ public sealed record ConversationView(
 {
   public MessageCursor? Next { get; init; }
   public long? ReadThrough { get; init; }
+
+  // A window around a message has newer messages above it.
+  public bool Newer { get; init; }
 }
 
 public sealed record MessageCursor(
@@ -211,3 +214,25 @@ public sealed record MessagingDriversView(
 }
 
 public sealed record MessagingDriverCursor(string Name, Guid Id);
+
+// A message matching a search. FiledToLoad: a file from it was filed to
+// the load searched for; MentionsLoad: its text names the load's number.
+public sealed record MessageSearchHit(
+  Guid MessageId,
+  Guid ConversationId,
+  string? DriverName,
+  string Participant,
+  string Direction,
+  DateTime SentAt,
+  string Snippet,
+  bool FiledToLoad,
+  bool MentionsLoad
+);
+
+public sealed record MessageSearchView(
+  IReadOnlyList<MessageSearchHit> Hits,
+  bool More
+)
+{
+  public MessageCursor? Next { get; init; }
+}

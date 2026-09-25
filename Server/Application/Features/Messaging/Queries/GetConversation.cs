@@ -10,10 +10,14 @@ namespace Application.Features.Messaging.Queries;
 // below the message it names. Seen is the conversation revision at which
 // the pages the reader already shows were first read, when it asks for an
 // older one.
+// Around, instead of the newest page, is a window of the thread around one
+// message - a search result - with up to Context messages on each side;
+// it lets nothing be marked read, since the newest messages are not shown.
 public sealed record GetConversationQuery(
   Guid Id,
   MessageCursor? Before,
-  long? Seen = null
+  long? Seen = null,
+  Guid? Around = null
 ) : IRequest<RequestResponse<ConversationView>>;
 
 // A message's place in the thread's order: its time, when PulsR recorded
@@ -69,6 +73,9 @@ public sealed record ConversationView(
 {
   public MessageCursor? Next { get; init; }
   public long ReadThrough { get; init; }
+
+  // A window around a message has newer messages above it.
+  public bool Newer { get; init; }
 }
 
 public sealed class ConversationHandlers(
@@ -82,6 +89,7 @@ public sealed class ConversationHandlers(
     IStreamRequestHandler<StreamMessagingEventsQuery, MessagingEvent>
 {
   public const int PageSize = 50;
+  public const int Context = 25;
   public static readonly TimeSpan Heartbeat = TimeSpan.FromSeconds(25);
 
   public async Task<RequestResponse<ConversationView>> Handle(
@@ -102,13 +110,50 @@ public sealed class ConversationHandlers(
     var thread = db
       .ConversationMessages.AsNoTracking()
       .Where(x => x.ConversationId == request.Id);
-    var page = await Below(thread, request.Before)
-      .OrderByDescending(x => x.SentAt)
-      .ThenByDescending(x => x.CreatedAt)
-      .ThenByDescending(x => x.Id)
-      .Take(PageSize + 1)
-      .ToListAsync(ct);
-    var messages = page.Take(PageSize).ToList();
+    List<ConversationMessage> messages;
+    bool older,
+      newer = false;
+    if (request.Around is { } around)
+    {
+      var target = await thread.SingleOrDefaultAsync(x => x.Id == around, ct);
+      if (target is null)
+        return RequestResponse<ConversationView>.Fail(
+          "Message not found.",
+          404
+        );
+      var at = new MessageCursor(target.SentAt, target.CreatedAt, target.Id);
+      var above = await Above(thread, at)
+        .OrderBy(x => x.SentAt)
+        .ThenBy(x => x.CreatedAt)
+        .ThenBy(x => x.Id)
+        .Take(Context + 1)
+        .ToListAsync(ct);
+      var below = await Below(thread, at)
+        .OrderByDescending(x => x.SentAt)
+        .ThenByDescending(x => x.CreatedAt)
+        .ThenByDescending(x => x.Id)
+        .Take(Context + 1)
+        .ToListAsync(ct);
+      newer = above.Count > Context;
+      older = below.Count > Context;
+      messages =
+      [
+        .. above.Take(Context).Reverse(),
+        target,
+        .. below.Take(Context),
+      ];
+    }
+    else
+    {
+      var page = await Below(thread, request.Before)
+        .OrderByDescending(x => x.SentAt)
+        .ThenByDescending(x => x.CreatedAt)
+        .ThenByDescending(x => x.Id)
+        .Take(PageSize + 1)
+        .ToListAsync(ct);
+      older = page.Count > PageSize;
+      messages = page.Take(PageSize).ToList();
+    }
     var ids = messages.Select(x => x.Id).ToArray();
     var last = messages.LastOrDefault();
     // Opening a thread reads what was recorded before the driver messages
@@ -246,17 +291,32 @@ public sealed class ConversationHandlers(
             ]
           )),
         ],
-        page.Count > PageSize
+        older
       )
       {
-        Next =
-          page.Count > PageSize
-            ? new(last!.SentAt, last.CreatedAt, last.Id)
-            : null,
-        ReadThrough = blocking is { } first ? Math.Min(seen, first - 1) : seen,
+        Next = older ? new(last!.SentAt, last.CreatedAt, last.Id) : null,
+        ReadThrough =
+          request.Around is not null ? 0
+          : blocking is { } first ? Math.Min(seen, first - 1)
+          : seen,
+        Newer = newer,
       }
     );
   }
+
+  // The messages before the cursor in the thread's order: newer ones.
+  private static IQueryable<ConversationMessage> Above(
+    IQueryable<ConversationMessage> messages,
+    MessageCursor at
+  ) =>
+    messages.Where(x =>
+      x.SentAt > at.SentAt
+      || x.SentAt == at.SentAt
+        && (
+          x.CreatedAt > at.CreatedAt
+          || x.CreatedAt == at.CreatedAt && x.Id.CompareTo(at.Id) > 0
+        )
+    );
 
   // The messages after the cursor in the thread's order (newest first).
   private static IQueryable<ConversationMessage> Below(

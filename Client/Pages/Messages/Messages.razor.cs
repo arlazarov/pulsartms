@@ -18,6 +18,11 @@ public partial class Messages : IAsyncDisposable
   [Parameter]
   public Guid? Id { get; set; }
 
+  // A search result to open the conversation around, instead of at its
+  // newest message.
+  [SupplyParameterFromQuery]
+  public Guid? Around { get; set; }
+
   [Inject]
   private ApiService Api { get; set; } = default!;
 
@@ -104,7 +109,12 @@ public partial class Messages : IAsyncDisposable
   private IJSObjectReference? _scrolling;
   private DotNetObjectReference<Messages>? _self;
 
-  private Guid? _shown;
+  private (Guid?, Guid?) _shown;
+
+  // Showing a window around a search result, not the newest messages: it
+  // marks nothing read and a reread does not replace it.
+  private bool _contextView;
+  private bool _searchOpen;
   private ConversationContext? _context;
   private bool _contextFailed;
 
@@ -148,9 +158,10 @@ public partial class Messages : IAsyncDisposable
   // as soon as they arrive, before the trip and before they are marked read.
   protected override void OnParametersSet()
   {
-    if (_shown == Id)
+    if (_shown == (Id, Around))
       return;
-    _shown = Id;
+    _shown = (Id, Around);
+    _contextView = Around is not null;
     _editor++;
     _trip = false;
     _thread = null;
@@ -161,7 +172,10 @@ public partial class Messages : IAsyncDisposable
     ResetDraft();
     if (Id is { } id)
     {
-      Start(() => RefreshThreadAsync(id));
+      if (Around is { } around)
+        Start(() => LoadAroundAsync(id, around));
+      else
+        Start(() => RefreshThreadAsync(id));
       Start(() => LoadContextAsync(id));
     }
   }
@@ -420,6 +434,18 @@ public partial class Messages : IAsyncDisposable
         : -1;
     if (join >= 0)
       _messages = [.. _messages[..join], .. page];
+    else if (_contextView && _thread?.Summary.Id == id)
+    {
+      // The newest messages do not reach the window around a result: it
+      // stays, and says newer ones are waiting.
+      _thread = _thread with
+      {
+        Summary = thread.Summary,
+      };
+      _newBelow = true;
+      StateHasChanged();
+      return;
+    }
     else
     {
       _history++;
@@ -458,7 +484,7 @@ public partial class Messages : IAsyncDisposable
   // so a reread (a poll, a reply) asks nothing.
   private async Task MarkReadAsync(Guid id, ConversationView page)
   {
-    if (page.Summary.Unread == 0 || page.Messages.Count == 0)
+    if (_contextView || page.Summary.Unread == 0 || page.Messages.Count == 0)
       return;
     var marked = await Api.PostAsync<ReadRequest, bool>(
       $"api/messaging/conversations/{id}/read",
@@ -517,6 +543,47 @@ public partial class Messages : IAsyncDisposable
     _thread = _thread with { Older = _older, Next = _below };
     StateHasChanged();
     await MarkReadAsync(id, page);
+  }
+
+  // A window of the thread around one message, for a search result: older
+  // pages continue below it as usual; newer ones are reached by going to
+  // the newest.
+  private async Task LoadAroundAsync(Guid id, Guid message)
+  {
+    var generation = ++_threadRead;
+    var result = await Api.GetAsync<ConversationView>(
+      $"api/messaging/conversations/{id}?around={message}",
+      _lifetime.Token
+    );
+    if (_disposed || generation != _threadRead || Id != id || Around != message)
+      return;
+    if (!result.Success || result.Response is not { } window)
+    {
+      _error = result.ErrorMessage;
+      return;
+    }
+    _history++;
+    _threadSeen = window.Summary.Revision;
+    _messages = [.. window.Messages.Reverse()];
+    _below = window.Next;
+    _older = window.Older;
+    _loadingOlder = false;
+    _olderFailed = false;
+    _thread = window;
+    _reveal = message;
+  }
+
+  private Guid? _reveal;
+
+  private void OpenHit(MessageSearchHit hit) =>
+    Navigation.NavigateTo(
+      $"/messages/{hit.ConversationId}?around={hit.MessageId}"
+    );
+
+  private void JumpToNewest()
+  {
+    if (Id is { } id)
+      Navigation.NavigateTo($"/messages/{id}");
   }
 
   // The scroller asks for the next older page when it comes near the top.
@@ -1048,6 +1115,19 @@ public partial class Messages : IAsyncDisposable
   protected override async Task OnAfterRenderAsync(bool firstRender)
   {
     await FollowScrollerAsync();
+    if (_reveal is { } reveal && _scrolling is not null)
+    {
+      _reveal = null;
+      try
+      {
+        await _scrolling.InvokeVoidAsync(
+          "reveal",
+          _lifetime.Token,
+          reveal.ToString()
+        );
+      }
+      catch (JSException) { }
+    }
     if (!firstRender)
       return;
     try

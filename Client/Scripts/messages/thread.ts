@@ -83,6 +83,17 @@ export function attach(scroller: HTMLElement, page: Callbacks) {
       atBottom = true;
       remember();
     },
+    // A search result: brought into view and marked for a moment.
+    reveal(id: string) {
+      const item = scroller.querySelector<HTMLElement>(
+        `[data-message-id="${CSS.escape(id)}"]`,
+      );
+      if (!item) return;
+      item.scrollIntoView({ block: 'center' });
+      item.classList.add('is-found');
+      atBottom = fromBottom() <= nearEnd;
+      remember();
+    },
     dispose() {
       resized.disconnect();
       children.disconnect();

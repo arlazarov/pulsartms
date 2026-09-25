@@ -167,6 +167,11 @@
                             <span class="messages__glance">@glance</span>
                         }
                     </span>
+                    <button type="button" class="btn btn--small btn--text"
+                            aria-expanded="@(_searchOpen ? "true" : "false")"
+                            @onclick="() => _searchOpen = !_searchOpen">
+                        Search
+                    </button>
                     <button type="button" class="btn btn--small messages__trip"
                             aria-expanded="@(_trip ? "true" : "false")" aria-controls="messages-trip"
                             @onclick="() => _trip = !_trip">
@@ -178,6 +183,21 @@
                     <p class="messages__banner is-claim">
                         <strong>@by</strong>&nbsp;started a reply. Yours still
                         goes if you send; read theirs first.
+                    </p>
+                }
+                @if (_searchOpen)
+                {
+                    <MessageSearch ConversationId="Id" OnOpen="OpenHit"
+                                   OnClose="() => _searchOpen = false" />
+                }
+                @if (_contextView)
+                {
+                    <p class="messages__banner">
+                        Showing messages around a search result.
+                        <button type="button" class="btn btn--small btn--text"
+                                @onclick="JumpToNewest">
+                            Jump to newest
+                        </button>
                     </p>
                 }
                 <div class="messages__scroll" @ref="_scroller">

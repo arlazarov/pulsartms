@@ -208,6 +208,37 @@ it stays in view, and one's own reply scrolls there. Every message loaded
 stays in the page: at 1,200 messages that is 1,200 list items, which was
 not measured for memory; there is no virtual list.
 
+**Search** (Search in the conversation's header, `Pages/Messages/
+MessageSearch`, `GET /api/messaging/search`, `MessageSearchHandler`) finds
+messages across the whole history the company holds, not only the pages
+shown: words in the text or a file's name, a day or a range of days, and
+a load number, alone or together, in this chat or in every chat of the
+chosen driver group. Results come fifty at a time, newest first, on the
+same composite cursor as the history, so messages sharing a time are
+neither repeated nor skipped.
+
+- **Days:** the dispatcher's own. The browser's IANA time zone goes with
+  them and the server converts each day's edges, so a day across a
+  daylight-saving change is 23 or 25 hours.
+- **Loads:** matched two ways, and the result says which. A file from the
+  message was filed to that load (the only stored link between a message
+  and a load), or its number is written in the text (14070 is not 1407).
+  A driver's current assignment is never used for an old message, and
+  the panel says messages are not otherwise linked to loads.
+- **Typing:** waits 300 ms; a newer search cancels the one before, and an
+  answer for an earlier one is dropped.
+- **Opening a result:** it opens its conversation as a window around the
+  message (`GET .../conversations/{id}?around={message}`: up to 25 on
+  each side, older pages below as usual). The window marks nothing read,
+  since the newest messages are not shown. A change that arrives keeps
+  the window and shows "New messages", and "Jump to newest" leaves it.
+- **Cost, assessed and not measured on PostgreSQL:** one chat is read in
+  (ConversationId, SentAt) order. Every chat is read in the company's
+  SentAt order under a case-insensitive substring filter, with no index
+  for the words: a rare word walks the company's messages. Production had
+  no conversation messages when this was written. Revisit with a trigram
+  or full-text index when searches over all chats become slow.
+
 The composer shows the reply window as "Reply window: 21 hours left",
 then minutes in the last hour, from the driver's last message. Only
 free-form replies depend on it; the conversation and its history stay,

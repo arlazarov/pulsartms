@@ -1,0 +1,92 @@
+@using Client.Models.DTO.Messaging
+
+<section class="messages__search-panel" aria-label="Search messages">
+    <div class="messages__search-fields">
+        <input type="search" aria-label="Words" placeholder="Words"
+               maxlength="100" @bind="_text" @bind:event="oninput"
+               @bind:after="ChangedAsync" />
+        <label>
+            <span class="visually-hidden">From day</span>
+            <input type="date" @bind="_from" @bind:after="ChangedAsync"
+                   aria-label="From day" />
+        </label>
+        <label>
+            <span class="visually-hidden">To day</span>
+            <input type="date" @bind="_to" @bind:after="ChangedAsync"
+                   aria-label="To day" />
+        </label>
+        <input inputmode="numeric" aria-label="Load number"
+               placeholder="Load #" maxlength="9" @bind="_load"
+               @bind:event="oninput" @bind:after="ChangedAsync" />
+        <div class="messages__filters" role="group" aria-label="Search in">
+            <button type="button" class="messages__chip"
+                    aria-pressed="@(_allChats ? "false" : "true")"
+                    disabled="@(ConversationId is null)"
+                    @onclick="() => ScopeAsync(false)">
+                This chat
+            </button>
+            <button type="button" class="messages__chip"
+                    aria-pressed="@(_allChats || ConversationId is null ? "true" : "false")"
+                    @onclick="() => ScopeAsync(true)">
+                All chats
+            </button>
+        </div>
+        <button type="button" class="btn btn--small btn--text"
+                @onclick="OnClose">
+            Close
+        </button>
+    </div>
+    <p class="messages__note">
+        Days are in your time zone. A load matches a file filed to it or its
+        number in the text; messages are not otherwise linked to loads.
+    </p>
+    @if (_error is not null)
+    {
+        <p class="settings-page__error" role="alert">@_error</p>
+    }
+    @if (_searching && _hits is null)
+    {
+        <p role="status"><LoadingIndicator /></p>
+    }
+    else if (_hits is { Count: 0 })
+    {
+        <p class="messages__empty">No message matches.</p>
+    }
+    else if (_hits is not null)
+    {
+        <ul class="messages__results">
+            @foreach (var hit in _hits)
+            {
+                <li @key="hit.MessageId">
+                    <button type="button" @onclick="() => OnOpen.InvokeAsync(hit)">
+                        <span class="messages__result-head">
+                            <strong>@Who(hit)</strong>
+                            <time datetime="@hit.SentAt.ToString("O")">@When(hit)</time>
+                        </span>
+                        <span class="messages__result-text">@hit.Snippet</span>
+                        @if (hit.FiledToLoad || hit.MentionsLoad)
+                        {
+                            <span class="messages__tags">
+                                @if (hit.FiledToLoad)
+                                {
+                                    <span class="messages__tag">Filed to the load</span>
+                                }
+                                @if (hit.MentionsLoad)
+                                {
+                                    <span class="messages__tag">Mentions the load</span>
+                                }
+                            </span>
+                        }
+                    </button>
+                </li>
+            }
+        </ul>
+        @if (_next is not null)
+        {
+            <button type="button" class="btn btn--small btn--text messages__more"
+                    disabled="@_searching" @onclick="MoreAsync">
+                Show more results
+            </button>
+        }
+    }
+</section>
