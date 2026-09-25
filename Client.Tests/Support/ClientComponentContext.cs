@@ -19,12 +19,18 @@ internal sealed class ClientComponentContext : BunitContext
   // Who is signed in, for a test that needs a named dispatcher.
   public BunitAuthorizationContext Authorization { get; }
 
+  // Pages that open loads write their place into their address; a test
+  // that checks it reads this module's calls.
+  public BunitJSModuleInterop ReturnPlace { get; }
+
   public ClientComponentContext(
     Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send
   )
   {
     Authorization = this.AddAuthorization();
     Visibility.Configure(JSInterop);
+    ReturnPlace = JSInterop.SetupModule("./js/generated/shared/returnPlace.js");
+    ReturnPlace.Mode = JSRuntimeMode.Loose;
     Services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
     Services.AddSingleton(_ => new HttpClient(
       new StubHttpMessageHandler((request, ct) => SendAsync(send, request, ct))
@@ -40,6 +46,7 @@ internal sealed class ClientComponentContext : BunitContext
     Services.AddSingleton<MessagingSignals>();
     Services.AddSingleton<MessagingNotices>();
     Services.AddSingleton<ChosenDriverGroup>();
+    Services.AddSingleton<ReturnPlaces>();
   }
 
   // Every page that lists drivers shows the driver group picker. A test

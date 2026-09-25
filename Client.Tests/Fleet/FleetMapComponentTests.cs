@@ -965,9 +965,23 @@ public sealed class FleetMapComponentTests
     Assert.Equal("Route & load details", loadLink.GetAttribute("title"));
     Assert.Single(loadLink.QuerySelectorAll("svg"));
     Assert.Equal("Open load", loadLink.TextContent.Trim());
+    // The load opens with the way back to this truck and its load.
+    var openedLoad = fixture.Plan(fixture.TruckA).DispatchId!.Value;
     Assert.Equal(
-      $"/dispatch/{fixture.Plan(fixture.TruckA).DispatchId}",
+      ReturnNavigation.Load(
+        openedLoad,
+        ReturnNavigation.FleetMap(fixture.TruckA, openedLoad)
+      ),
       loadLink.GetAttribute("href")
+    );
+    Assert.Contains(
+      fixture.Js.Calls,
+      call =>
+        call.Name == "reflect"
+        && Equals(
+          call.Args?[0],
+          ReturnNavigation.FleetMap(fixture.TruckA, openedLoad)
+        )
     );
     Assert.Empty(component.FindAll(".fleet-map-truck-info__details"));
     Assert.Single(component.FindAll(".fleet-map-inspector__title"));
@@ -2098,7 +2112,15 @@ public sealed class FleetMapComponentTests
     Assert.Empty(component.FindAll("#fleet-map-details"));
     Assert.Empty(component.FindAll(".fleet-map-truck-info"));
     Assert.Empty(component.FindAll(".fleet-map-route-info"));
-    Assert.Equal("clearSelection", fixture.Js.Calls.Last().Name);
+    // The last map instruction; the page's address follows it.
+    Assert.Equal(
+      "clearSelection",
+      fixture.Js.Calls.Last(call => call.Name != "reflect").Name
+    );
+    Assert.Equal(
+      ("reflect", "/fleet/map"),
+      (fixture.Js.Calls.Last().Name, fixture.Js.Calls.Last().Args?[0])
+    );
     await component.InvokeAsync(
       () =>
         component.Instance.OnMapInspectorChanged(
@@ -3710,7 +3732,10 @@ public sealed class FleetMapComponentTests
       );
       Assert.Empty(location.QuerySelectorAll("a"));
       Assert.Equal(
-        $"/dispatch/{future.Id}",
+        ReturnNavigation.Load(
+          future.Id,
+          ReturnNavigation.FleetMap(fixture.TruckA, Guid.Parse(current))
+        ),
         card.QuerySelector(
               ".fleet-route-popup__information > .fleet-route-popup__details-link"
             )!
@@ -3765,7 +3790,12 @@ public sealed class FleetMapComponentTests
       );
       Assert.Contains(
         card.QuerySelectorAll("a"),
-        link => link.GetAttribute("href") == $"/dispatch/{future.Id}"
+        link =>
+          link.GetAttribute("href")
+          == ReturnNavigation.Load(
+            future.Id,
+            ReturnNavigation.FleetMap(fixture.TruckA, Guid.Parse(current))
+          )
       );
     });
     using (var route = fixture.LastCurrentPayload())

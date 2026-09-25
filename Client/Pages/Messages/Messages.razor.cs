@@ -30,6 +30,9 @@ public partial class Messages : IAsyncDisposable
   private MessagingSignals Signals { get; set; } = default!;
 
   [Inject]
+  private ReturnPlaces Places { get; set; } = default!;
+
+  [Inject]
   private IJSRuntime JS { get; set; } = default!;
 
   [CascadingParameter]
@@ -174,6 +177,7 @@ public partial class Messages : IAsyncDisposable
     ResetDraft();
     if (Id is { } id)
     {
+      _draft = Places.TakeDraft(id);
       if (Around is { } around)
         Start(() => LoadAroundAsync(id, around));
       else
@@ -1209,7 +1213,14 @@ public partial class Messages : IAsyncDisposable
 
   public async ValueTask DisposeAsync()
   {
+    if (_disposed)
+      return;
     _disposed = true;
+    // Leaving for a load or another page keeps the reply's words for this
+    // conversation; its files and its send key stay behind, so nothing is
+    // sent twice.
+    if (Id is { } open)
+      Places.KeepDraft(open, _draft);
     Signals.Changed -= OnSignal;
     DriverGroup.Changed -= OnDriverGroupChanged;
     await Signals.LeaveAsync();

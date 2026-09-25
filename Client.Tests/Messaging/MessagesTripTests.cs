@@ -84,6 +84,45 @@ public sealed class MessagesTripTests
     Assert.DoesNotContain("Hours as of", trip);
   }
 
+  // Opening a load from the trip keeps the way back to this conversation
+  // and the reply being written.
+  [Fact]
+  public async Task ALoadOpensWithTheWayBackAndTheReplyIsKept()
+  {
+    await using var context = Context(new Api(Hours(known: true)));
+    var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, Ann));
+    page.WaitForAssertion(
+      () => Assert.Contains("North distribution centre", page.Markup)
+    );
+    var back =
+      $"from={Uri.EscapeDataString(ReturnNavigation.Conversation(Ann))}";
+    var loads = page.FindAll(".messages__context a[href^='/dispatch/']");
+    Assert.NotEmpty(loads);
+    Assert.All(loads, link => Assert.EndsWith(back, link.GetAttribute("href")));
+    var places = context.Services.GetRequiredService<ReturnPlaces>();
+
+    // Left with a reply written (as leaving with one keeps it); coming
+    // back, the reply is where it was left.
+    await context.DisposeComponentsAsync();
+    places.KeepDraft(Ann, "Running late");
+    page = context.Render<MessagesPage>(x => x.Add(p => p.Id, Ann));
+    page.WaitForAssertion(
+      () =>
+        Assert.Equal(
+          "Running late",
+          page.Find("#messages-text").GetAttribute("value")
+        )
+    );
+    Assert.Equal("Running late", Draft(page));
+
+    // Leaving again keeps what the box holds.
+    await page.InvokeAsync(() => page.Instance.DisposeAsync().AsTask());
+    Assert.Equal("Running late", places.TakeDraft(Ann));
+  }
+
+  private static string Draft(IRenderedComponent<MessagesPage> page) =>
+    page.Find("#messages-text").GetAttribute("value") ?? "";
+
   [Fact]
   public async Task MissingHoursAreSaidPlainlyNotShownAsZero()
   {

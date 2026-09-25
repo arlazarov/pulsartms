@@ -1,5 +1,6 @@
 using Client.Models.DTO;
 using Client.Models.DTO.Dispatch;
+using Client.Services;
 using Client.Shared.Dispatch;
 using Microsoft.AspNetCore.Components;
 
@@ -9,6 +10,13 @@ public partial class DispatchPapers
 {
   [CascadingParameter]
   public DispatchSettingsState? DisplaySettings { get; set; }
+
+  // The list's own address, so the load page can return to it.
+  [Parameter]
+  public string? ReturnOrigin { get; set; }
+
+  private string LoadUrl(DispatchBoardRow row) =>
+    ReturnNavigation.Load(row.Load.Id, ReturnOrigin);
 
   [Parameter, EditorRequired]
   public IReadOnlyList<TruckDispatchBoardResponse> Trucks { get; set; } = [];

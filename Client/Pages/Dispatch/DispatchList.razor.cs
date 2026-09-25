@@ -93,6 +93,32 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
 
   [SupplyParameterFromQuery]
   public Guid? TruckId { get; set; }
+
+  // The list's place, held in its own address so that a load opened from
+  // here, browser Back and a reload all come back to it. The view is kept
+  // in the browser and the driver group on the server, as before.
+  [SupplyParameterFromQuery(Name = "scope")]
+  public string? Scope { get; set; }
+
+  [SupplyParameterFromQuery(Name = "q")]
+  public string? Query { get; set; }
+
+  [SupplyParameterFromQuery(Name = "page")]
+  public int? PageNumber { get; set; }
+
+  [Inject]
+  private ReturnPlaces Places { get; set; } = default!;
+
+  private (Guid?, string?, string?, int?)? _address;
+  private bool _armed;
+
+  private string ReturnOrigin =>
+    ReturnNavigation.DispatchList(
+      TruckId,
+      _loadedQuery?.Completed ?? _showCompleted,
+      _loadedQuery?.Search ?? _search,
+      _page
+    );
   private PaginatedListDTO<TruckDispatchBoardResponse>? _data;
   private string _search = "";
   private string? _loadedSearch;
@@ -138,8 +164,17 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     || _enrichmentRequest is not null
     || _enrichmentFailed;
 
-  protected override Task OnAfterRenderAsync(bool firstRender) =>
-    firstRender ? _visibility.StartAsync(JS) : Task.CompletedTask;
+  protected override async Task OnAfterRenderAsync(bool firstRender)
+  {
+    if (firstRender)
+      await _visibility.StartAsync(JS);
+    // Once the board is drawn, the scroll kept for this address returns.
+    if (!_armed && _data is not null && !_disposed)
+    {
+      _armed = true;
+      await Places.ArmAsync();
+    }
+  }
 
   private string TruckMotion(TruckDispatchBoardResponse truck) =>
     DispatchRigStatus.Resolve(
@@ -213,7 +248,16 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     };
   }
 
-  protected override Task OnParametersSetAsync() => LoadAsync(1);
+  protected override Task OnParametersSetAsync()
+  {
+    var address = (TruckId, Scope, Query, PageNumber);
+    if (_address == address)
+      return LoadAsync(1);
+    _address = address;
+    _showCompleted = Scope == "completed";
+    _search = Query ?? "";
+    return LoadAsync(Math.Max(1, PageNumber ?? 1));
+  }
 
   private async Task OnSearchInput(string value)
   {
@@ -325,6 +369,16 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
         _loadedQuery = query;
         _boardRefreshFailed = false;
         _loadedSearch = query.Search;
+        // Not awaited: the board's state is settled before anything else
+        // may run, and the address follows it.
+        _ = Places.ReflectAsync(
+          ReturnNavigation.DispatchList(
+            TruckId,
+            query.Completed,
+            query.Search,
+            page
+          )
+        );
         _lastBoardRefresh = Clock.GetUtcNow().UtcDateTime;
         if (!query.Completed)
         {
@@ -758,6 +812,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
   public async ValueTask DisposeAsync()
   {
     Dispose();
+    await Places.DisarmAsync();
     await _visibility.DisposeAsync();
   }
 

@@ -19,6 +19,13 @@ public partial class DispatchDetails : IDisposable
   [SupplyParameterFromQuery(Name = "stopId")]
   public Guid? StopId { get; set; }
 
+  // The page that opened this load, if it said; ReturnNavigation accepts
+  // only this app's own pages and otherwise returns to Dispatch.
+  [SupplyParameterFromQuery(Name = ReturnNavigation.Parameter)]
+  public string? From { get; set; }
+
+  private ReturnLink Return => ReturnNavigation.Resolve(From);
+
   [Inject]
   private ApiService Api { get; set; } = default!;
 

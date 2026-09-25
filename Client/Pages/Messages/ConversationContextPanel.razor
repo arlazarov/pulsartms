@@ -103,7 +103,7 @@
                     {
                         <div class="messages__load">
                             <span class="messages__load-top">
-                                <a href="@($"/dispatch/{current.Id}")">
+                                <a href="@LoadHref(current.Id)">
                                     <strong><LoadNumber Value="current.LoadNumber" /></strong>
                                 </a>
                                 @if (current.Status is { } status)
@@ -151,7 +151,7 @@
                 @foreach (var load in Context.Loads.Skip(1))
                 {
                     <p class="messages__next">
-                        <a href="@($"/dispatch/{load.Id}")">
+                        <a href="@LoadHref(load.Id)">
                             <LoadNumber Value="load.LoadNumber" />
                         </a>
                         @load.CustomerName

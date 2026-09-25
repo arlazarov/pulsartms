@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Bunit;
 using Client.Pages.Dispatch;
+using Client.Services;
 using Client.Tests.Support;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -193,6 +194,69 @@ public sealed class CompletedDispatchScopeTests
     Assert.Contains(
       "grouped by truck on this page",
       component.Find(".dispatch-board__count").TextContent
+    );
+  }
+
+  // The list's place lives in its address: opened there (a return from a
+  // load, browser Back or a reload), it reads that scope, search and page
+  // and nothing else, and each load it shows opens with the way back to
+  // exactly that address.
+  [Fact]
+  public void TheListReopensAtItsAddressAndLoadsCarryIt()
+  {
+    const string place = "/dispatch?scope=completed&q=Historic&page=2";
+    var requests = new ConcurrentQueue<Uri>();
+    using var context = Context(
+      new FakeTimeProvider(),
+      (request, _) =>
+      {
+        requests.Enqueue(request.RequestUri!);
+        return Task.FromResult(
+          request.RequestUri!.AbsolutePath == "/api/dispatch"
+            ? Archive(2)
+            : Auxiliary(request.RequestUri)
+        );
+      }
+    );
+    context.Services.GetRequiredService<NavigationManager>().NavigateTo(place);
+
+    var component = context.Render<DispatchList>();
+
+    component.WaitForAssertion(
+      () => Assert.NotEmpty(component.FindAll("section.dispatch-load"))
+    );
+    var read = Assert.Single(
+      requests,
+      uri =>
+        uri.AbsolutePath.StartsWith("/api/dispatch", StringComparison.Ordinal)
+        && uri.AbsolutePath != "/api/dispatch/previews"
+        && !uri.AbsolutePath.Contains("/planning", StringComparison.Ordinal)
+    );
+    Assert.Equal("/api/dispatch", read.AbsolutePath);
+    Assert.Contains("status=completed", read.Query);
+    Assert.Contains("page=2", read.Query);
+    Assert.Contains("search=Historic", read.Query);
+    Assert.Equal(
+      "true",
+      component.Find("#dispatch-completed").GetAttribute("aria-pressed")
+    );
+    var loads = component
+      .FindAll("section.dispatch-load a")
+      .Select(link => link.GetAttribute("href") ?? "")
+      .Where(href => href.StartsWith("/dispatch/", StringComparison.Ordinal))
+      .ToList();
+    Assert.NotEmpty(loads);
+    Assert.All(
+      loads,
+      href =>
+        Assert.EndsWith(
+          $"{ReturnNavigation.Parameter}={Uri.EscapeDataString(place)}",
+          href
+        )
+    );
+    Assert.Contains(
+      context.ReturnPlace.Invocations,
+      call => call.Identifier == "reflect" && Equals(call.Arguments[0], place)
     );
   }
 

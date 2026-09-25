@@ -1,5 +1,6 @@
 using Client.Models.DTO;
 using Client.Models.DTO.Dispatch;
+using Client.Services;
 using Client.Shared.Dispatch;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -13,6 +14,10 @@ public partial class DispatchLoadCard
 
   [CascadingParameter]
   public DispatchSettingsState? DisplaySettings { get; set; }
+
+  // The list's own address, so the load page can return to it.
+  [Parameter]
+  public string? ReturnOrigin { get; set; }
 
   [Inject]
   private IJSRuntime JS { get; set; } = default!;
@@ -88,9 +93,10 @@ public partial class DispatchLoadCard
   private (Guid Load, string Order) _copyIdentity;
   private bool _copied;
   private string? _copyError;
-  private string LoadUrl => $"/dispatch/{Load.Id}";
+  private string LoadUrl => ReturnNavigation.Load(Load.Id, ReturnOrigin);
 
-  private string StopUrl(Guid stopId) => $"{LoadUrl}?stopId={stopId}";
+  private string StopUrl(Guid stopId) =>
+    ReturnNavigation.Load(Load.Id, ReturnOrigin, stopId);
 
   protected override void OnParametersSet()
   {

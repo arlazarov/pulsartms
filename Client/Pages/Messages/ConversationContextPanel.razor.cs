@@ -90,6 +90,11 @@ public partial class ConversationContextPanel : IDisposable
 
   private const int StaleMinutes = 3;
 
+  // A load opens with the way back to this conversation, where the reply
+  // being written is kept (Messages leaves it with ReturnPlaces).
+  private string LoadHref(Guid load) =>
+    ReturnNavigation.Load(load, ReturnNavigation.Conversation(ConversationId));
+
   private static string Titled(string status) =>
     status.Length == 0
       ? status

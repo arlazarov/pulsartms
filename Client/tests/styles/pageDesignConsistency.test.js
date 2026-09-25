@@ -109,7 +109,15 @@ test('dispatch scope wraps and Papers uses native full-page load links', () => {
   );
   const link = papers.match(/<a\b[^>]*class="dispatch-paper__tab"[^>]*>/s)?.[0];
   assert.ok(link);
-  assert.match(link, /href="@\(\$"\/dispatch\/\{row\.Load\.Id\}"\)"/);
+  // A native link to the load, carrying the way back to this list.
+  assert.match(link, /href="@LoadUrl\(row\)"/);
+  assert.match(
+    readFileSync(
+      new URL('../../Pages/Dispatch/DispatchPapers.razor.cs', import.meta.url),
+      'utf8',
+    ),
+    /LoadUrl\(DispatchBoardRow row\) =>\s*ReturnNavigation\.Load\(row\.Load\.Id, ReturnOrigin\);/,
+  );
   assert.doesNotMatch(link, /@onclick|role="button"/);
   assert.doesNotMatch(papers, /<DispatchLoadDialog\b/);
   assert.doesNotMatch(papers, /dispatch-paper--pulled|<details\b/);

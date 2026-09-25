@@ -36,12 +36,14 @@
         @if (_view == 1)
         {
             <DispatchTable Trucks="_data.Items" Completed="_showCompleted"
-                LoadPhase="LoadPhase" Refreshing="RefreshingEstimates" />
+                LoadPhase="LoadPhase" Refreshing="RefreshingEstimates"
+                ReturnOrigin="@ReturnOrigin" />
         }
         else if (_view == 2)
         {
             <DispatchPapers Trucks="_data.Items" Completed="_showCompleted"
-                LoadPhase="LoadPhase" Refreshing="RefreshingEstimates" />
+                LoadPhase="LoadPhase" Refreshing="RefreshingEstimates"
+                ReturnOrigin="@ReturnOrigin" />
         }
         else
         {
@@ -106,6 +108,7 @@
                         <DispatchLoadCard @key="LoadIdentity(load)" Load="load"
                             Truck="truck" Current="current" Order="order"
                             Refreshing="RefreshingEstimates"
+                            ReturnOrigin="@ReturnOrigin"
                             StopChanged="() => StopChangedAsync(load)"
                             RemainingMiles="summary.RemainingMiles" FuelStopCount="summary.FuelStopCount"
                             HeaderDriverName="@truck.DriverName" HeaderTrailerNumber="@truck.TrailerNumber" />

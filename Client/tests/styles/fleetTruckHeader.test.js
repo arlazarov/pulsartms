@@ -378,7 +378,15 @@ test('load details uses an accessible header icon with shared action sizing', ()
   );
   const link = markup.match(/<a class="btn map-action-icon"[\s\S]*?<\/a>/)?.[0];
   assert.ok(link);
-  assert.match(link, /href="@\(SelectedDispatchId is/);
+  // Only with a load chosen, and with the way back to this map.
+  assert.match(link, /href="@OpenLoadHref"/);
+  assert.match(
+    readFileSync(
+      new URL('../../Pages/FleetMap/FleetMap.razor.cs', import.meta.url),
+      'utf8',
+    ),
+    /OpenLoadHref =>\s*SelectedDispatchId is \{ \} id\s*\?\s*ReturnNavigation\.Load\(id, ReturnOrigin\)\s*:\s*null;/,
+  );
   assert.match(link, /title="@\("Route & load details"\)"/);
   assert.match(link, /aria-label="@\("Route & load details"\)"/);
   assert.match(link, /aria-disabled="@\(SelectedDispatchId is null/);

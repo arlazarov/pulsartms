@@ -72,6 +72,12 @@ public partial class NextLoadDetailsCard
   [Parameter]
   public EventCallback<string> OnCopy { get; set; }
 
+  // The map's own address, so the load page can return to it.
+  [Parameter]
+  public string? ReturnOrigin { get; set; }
+
+  private string DetailsHref => ReturnNavigation.Load(Route.Id, ReturnOrigin);
+
   [Parameter]
   public EventCallback OnClose { get; set; }
   private readonly ArrivalDisplayMemory _arrivalMemory = new();

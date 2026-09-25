@@ -482,8 +482,7 @@
             <button type="button" class="btn map-action-icon" title="Route options" aria-label="Route options"
                     disabled="@(_fuelEditorOpen || SelectedDispatchId is null)" @onclick="OpenSelectedRouteEditorAsync"><ActionIcon Kind="route" /><span>Route options</span></button>
             <a class="btn map-action-icon"
-               href="@(SelectedDispatchId is { } detailsDispatchId
-                   ? $"/dispatch/{detailsDispatchId}" : null)"
+               href="@OpenLoadHref"
                title="@("Route & load details")"
                aria-label="@("Route & load details")"
                aria-disabled="@(SelectedDispatchId is null
@@ -507,7 +506,8 @@
                 DistanceMiles="InspectedDistanceMiles"
                 Details="_inspectedDetails" Eta="InspectedEta" Refreshing="InspectedEtaRefreshing" Loading="@(_inspectedDetailsRequest is not null)"
                 Error="@_inspectedDetailsError" CopyMessage="@_addressCopyMessage"
-                OnCopy="CopyTextAsync" OnClose="BackToTruckAsync" />
+                OnCopy="CopyTextAsync" OnClose="BackToTruckAsync"
+                ReturnOrigin="@ReturnOrigin" />
         }
     </section>
 

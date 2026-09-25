@@ -54,10 +54,9 @@ public sealed class DispatchViewPreferenceTests
             .TextContent.Trim()
         )
     );
-    var writes = context
-      .JSInterop.Invocations.Where(call =>
-        call.Identifier == "localStorage.setItem"
-      )
+    var calls = await Calls(component, context);
+    var writes = calls
+      .Where(call => call.Identifier == "localStorage.setItem")
       .ToList();
     if (migrated)
     {
@@ -69,7 +68,7 @@ public sealed class DispatchViewPreferenceTests
       Assert.Empty(writes);
     if (current is not null)
       Assert.DoesNotContain(
-        context.JSInterop.Invocations,
+        calls,
         call =>
           call.Identifier == "localStorage.getItem"
           && Equals(call.Arguments[0], "amftms.dispatch.view")
@@ -80,7 +79,7 @@ public sealed class DispatchViewPreferenceTests
       .Single(button => button.TextContent.Trim() == "Papers")
       .ClickAsync(new());
     Assert.All(
-      context.JSInterop.Invocations.Where(call =>
+      (await Calls(component, context)).Where(call =>
         call.Identifier == "localStorage.setItem"
       ),
       call => Assert.Equal("pulsartms.dispatch.view", call.Arguments[0])
@@ -127,10 +126,18 @@ public sealed class DispatchViewPreferenceTests
         )
     );
     Assert.Single(
-      context.JSInterop.Invocations,
+      await Calls(component, context),
       call => call.Identifier == "localStorage.setItem"
     );
   }
+
+  // Read on the renderer's dispatcher: the page records other calls there
+  // (its address, for a return from a load), and the log is not safe to
+  // read from the test's thread while it is written.
+  private static Task<List<JSRuntimeInvocation>> Calls(
+    IRenderedComponent<DispatchList> component,
+    BunitContext context
+  ) => component.InvokeAsync(() => context.JSInterop.Invocations.ToList());
 
   private static HttpResponseMessage Reply(string path) =>
     new(HttpStatusCode.OK)

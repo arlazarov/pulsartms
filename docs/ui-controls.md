@@ -644,8 +644,9 @@ pickup and picked-up loads in In transit, even when their dates fall in that
 window. The completed archive remains separate.
 Cards, Table and Papers navigate to the same full load page. Its workspace
 read owns editing metadata and server forecasts. It does not recalculate routes
-or mutate business data merely by opening. Back to Dispatch uses normal page
-navigation, guarded when any local draft would be lost. Copy feedback stays inside the order
+or mutate business data merely by opening. Its Back link returns to the page
+that opened it (see Returning from a load) with normal page navigation,
+guarded when any local draft would be lost. Copy feedback stays inside the order
 button as an icon; successful copies must not add a status row.
 
 Truck-start confirmation belongs in Details through the shared
@@ -893,6 +894,38 @@ has its own "Use source value" checkbox and shows the source value; the
 WhatsApp number is never filled from the phone without the dispatcher
 pressing "Use the phone number"; while it is blank, messages go to the
 phone, as its hint says. A refused save keeps the draft.
+
+## Returning from a load
+
+A page that opens a load passes its own address, its state included, as
+`from`; the load page's Back link returns there and is named for it: Back
+to map, Back to Dispatch, Back to conversation. `ReturnNavigation` in
+`Client/Services` is the one owner: every link to `/dispatch/{id}` from the
+map, Dispatch or Messages is built with `ReturnNavigation.Load`, and new
+origins join it rather than building the query themselves.
+
+- Only this app's pages are returned to: `/fleet/map`, `/dispatch` and
+  `/messages[/{id}]`, as a path with no scheme, host, backslash or
+  fragment. Anything else, or no `from`, returns to Dispatch. A link can
+  never send the reader to another site.
+- The origin keeps its state in its own address, written into its own
+  history entry (`ReturnPlaces.ReflectAsync`, `history.replaceState` with
+  the router's state kept), so browser Back, a reload and a load opened in
+  a new tab all return to the same place:
+  - Dispatch: Active or Completed, the search and the page, with the view
+    kept in the browser and the driver group on the server as before;
+  - the map: the selected truck and its load; the camera follows the truck
+    again, and the zoom and the truck search are not kept;
+  - Messages: the conversation.
+- What an address cannot hold is kept in memory for the tab only
+  (`ReturnPlaces`): Dispatch's scroll position, restored once the board
+  is drawn, and the reply being written in a conversation, restored when
+  it opens again. A reload or a new tab starts without them. Both are
+  cleared when the signed-in user changes, so nothing kept for one user
+  or company shows for the next.
+- The address is written only for the page's own entry: a read that
+  finishes after the reader has left does not rewrite the page they are
+  on.
 
 ## Background refresh
 

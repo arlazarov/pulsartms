@@ -1,5 +1,6 @@
 using Client.Models.DTO;
 using Client.Models.DTO.Dispatch;
+using Client.Services;
 using Client.Shared.Dispatch;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -13,6 +14,10 @@ public partial class DispatchTable
 
   [CascadingParameter]
   public DispatchSettingsState? DisplaySettings { get; set; }
+
+  // The list's own address, so the load page can return to it.
+  [Parameter]
+  public string? ReturnOrigin { get; set; }
 
   [Parameter, EditorRequired]
   public IReadOnlyList<TruckDispatchBoardResponse> Trucks { get; set; } = [];
@@ -44,8 +49,8 @@ public partial class DispatchTable
       truck.Dispatches.Select(load => new DispatchBoardRow(truck, load))
     );
 
-  private static string LoadUrl(DispatchBoardRow row) =>
-    $"/dispatch/{row.Load.Id}";
+  private string LoadUrl(DispatchBoardRow row) =>
+    ReturnNavigation.Load(row.Load.Id, ReturnOrigin);
 
   private void OpenFromRow(DispatchBoardRow row, MouseEventArgs e)
   {

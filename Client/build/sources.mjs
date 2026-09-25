@@ -18,6 +18,7 @@ export const sources = [
   'shared/pageVisibility',
   'shared/messagingChannel',
   'shared/messagingNotices',
+  'shared/returnPlace',
   'messages/composer',
   'messages/thread',
   'dispatch/dispatch',
