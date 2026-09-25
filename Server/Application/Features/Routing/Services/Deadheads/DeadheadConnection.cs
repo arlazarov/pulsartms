@@ -192,6 +192,7 @@ public sealed record DeadheadConnection(
             new
             {
               Policy = "planned-deadhead-street-v2",
+              BorderPolicy = RouteBorderPolicy.Version,
               Previous.Id,
               CurrentId = Current.Id,
               Current.TruckId,

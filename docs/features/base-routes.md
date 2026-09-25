@@ -135,6 +135,26 @@ stops still require the existing street-address validation; a native label does
 not grant a global geocoding bypass. Concurrent assignment writes retain the
 execution revision lock before a road is saved.
 
+A road whose points all lie in one known country stays in it
+(`RouteBorderPolicy`, Domain). Those points are the truck's position or the
+previous stop, each stop, and any waypoint a dispatcher chose. For such a
+road the TomTom request asks to avoid border crossings
+(`avoid=borderCrossings`, a preference the provider may not be able to
+meet). If any point is in another country, or in one the region lookup
+cannot name, the request is unchanged. So cross-border loads, and a
+dispatcher's own waypoint abroad, keep their road.
+
+The rule's version is part of every saved road's signature (plan, base road
+and approach), next to the location policy. Roads bought before it are
+therefore bought again once, through the usual refresh and its truck,
+assignment and version checks. This is one paid recalculation for each
+saved road when the change is released.
+
+Why it exists: on September 25, truck 11007's next load, AMF1414
+(Ticonderoga, NY to De Pere, WI), had a saved road through Ontario via the
+Niagara bridges. That is TomTom's fastest truck road, asked for with no
+border policy; both stops were correctly placed in the US.
+
 Google Geocoding resolves street addresses through `IAddressGeocoder`; TomTom remains
 the truck-routing provider. The Google lookup uses the server-side `GooglePlaces:ApiKey`
 and requires Geocoding API access. It rejects partial matches, city centers,

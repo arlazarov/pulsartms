@@ -4,6 +4,7 @@ using Application.Features.Routing.Services.Routes;
 using Domain.Models.Routing;
 using Domain.Rules;
 using Domain.Rules.Routing;
+using Infrastructure.Integrations.GeoTimeZone;
 using Infrastructure.Integrations.TomTom;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
@@ -212,7 +213,8 @@ public class RoutePlanningTests
       db,
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
-      new RouteSectionValidator()
+      new RouteSectionValidator(),
+      new RouteRegionLookup()
     );
     var points = new List<RoutePoint> { new(40, -80), new(40, -79) };
     var first = await provider.CalculateAsync(points, Profile(), default);
@@ -223,7 +225,8 @@ public class RoutePlanningTests
       db2,
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
-      new RouteSectionValidator()
+      new RouteSectionValidator(),
+      new RouteRegionLookup()
     ).CalculateAsync(points, Profile(), default);
     Assert.Equal(1, handler.Calls);
     Assert.Equal(first.Miles, second.Miles);
@@ -262,7 +265,8 @@ public class RoutePlanningTests
       db,
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
-      new RouteSectionValidator()
+      new RouteSectionValidator(),
+      new RouteRegionLookup()
     );
     await provider.CalculateAsync(
       [new(40, -80), new(40, -79)],
@@ -301,7 +305,8 @@ public class RoutePlanningTests
       db,
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
-      new RouteSectionValidator()
+      new RouteSectionValidator(),
+      new RouteRegionLookup()
     );
     var route = await provider.CalculateAsync(
       [new(40, -80), new(40, -79)],
@@ -392,7 +397,8 @@ public class RoutePlanningTests
       db,
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
-      new RouteSectionValidator()
+      new RouteSectionValidator(),
+      new RouteRegionLookup()
     );
     var input = new[]
     {

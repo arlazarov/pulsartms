@@ -67,6 +67,7 @@ public sealed partial class BaseRouteService
             new
             {
               LocationPolicy = "google-street-address-v1",
+              BorderPolicy = RouteBorderPolicy.Version,
               profile.HeightFeet,
               profile.WidthFeet,
               profile.LengthFeet,

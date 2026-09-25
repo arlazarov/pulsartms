@@ -2,6 +2,7 @@ using System.Globalization;
 using Application.Features.Routing.Services.Routes;
 using Domain.Models.Routing;
 using Domain.Rules.Routing;
+using Infrastructure.Integrations.GeoTimeZone;
 using Infrastructure.Integrations.TomTom;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
@@ -51,7 +52,8 @@ internal sealed class TomTomProviderFixture : IAsyncDisposable
       context,
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
-      new RouteSectionValidator()
+      new RouteSectionValidator(),
+      new RouteRegionLookup()
     );
 
   public Task<TruckRoute> CalculateAsync(
@@ -118,7 +120,8 @@ internal sealed class TomTomProviderFixture : IAsyncDisposable
         db,
         new RouteRequestValidator(),
         new UnusedAddressGeocoder(),
-        new RouteSectionValidator()
+        new RouteSectionValidator(),
+        new RouteRegionLookup()
       ),
       config
     );

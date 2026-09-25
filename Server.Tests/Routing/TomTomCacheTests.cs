@@ -3,6 +3,7 @@ using Application.Features.Routing.Services.Routes;
 using Domain.Models.Routing;
 using Domain.Rules;
 using Domain.Rules.Routing;
+using Infrastructure.Integrations.GeoTimeZone;
 using Infrastructure.Integrations.TomTom;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
@@ -44,7 +45,8 @@ public class TomTomCacheTests
       db,
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
-      new RouteSectionValidator()
+      new RouteSectionValidator(),
+      new RouteRegionLookup()
     );
     Task<TruckRoute> Calculate() =>
       provider.CalculateAsync(
@@ -102,7 +104,8 @@ public class TomTomCacheTests
       db,
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
-      new RouteSectionValidator()
+      new RouteSectionValidator(),
+      new RouteRegionLookup()
     );
     var profile = new TruckRouteProfile { UsesFleetDefaults = true };
     var error = await Assert.ThrowsAsync<RoutePlanningException>(

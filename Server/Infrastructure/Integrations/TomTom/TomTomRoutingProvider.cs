@@ -9,6 +9,7 @@ using Application.Features.Routing.Interfaces;
 using Application.Interfaces;
 using Domain.Models.Routing;
 using Domain.Rules.Ports;
+using Domain.Rules.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -20,7 +21,8 @@ public sealed partial class TomTomRoutingProvider(
   IAppDbContext db,
   IRouteRequestValidator validator,
   IAddressGeocoder geocoder,
-  IRouteSectionValidator sectionsValidator
+  IRouteSectionValidator sectionsValidator,
+  IRouteRegionLookup regions
 ) : IRoutingProvider, IRouteAlternativesProvider
 {
   private static readonly TomTomRequestGates RequestGates = new();
@@ -48,7 +50,7 @@ public sealed partial class TomTomRoutingProvider(
   )
   {
     validator.Validate(points, p);
-    var query = Query(points, p, 0);
+    var query = Query(points, p, 0, OneCountry(points));
     return await CachedAsync(
       "route",
       query,
@@ -80,7 +82,7 @@ public sealed partial class TomTomRoutingProvider(
     validator.Validate(points, profile);
     return await CachedAsync(
       "alternatives",
-      Query(points, profile, 2),
+      Query(points, profile, 2, OneCountry(points)),
       TimeSpan.FromMinutes(15),
       root =>
       {
@@ -149,10 +151,16 @@ public sealed partial class TomTomRoutingProvider(
     );
   }
 
+  private bool OneCountry(IReadOnlyList<RoutePoint> points) =>
+    RouteBorderPolicy.KeepsToOneCountry(points.Select(regions.Find));
+
+  // The request is the cache key, so a road asked for with the border
+  // policy is never answered by one bought without it.
   private static string Query(
     IReadOnlyList<RoutePoint> points,
     TruckRouteProfile p,
-    int alternatives
+    int alternatives,
+    bool oneCountry
   )
   {
     var path = string.Join(
@@ -167,6 +175,8 @@ public sealed partial class TomTomRoutingProvider(
       + $"&vehicleAxleWeight={Math.Ceiling(p.AxleWeightPounds * .45359237)}&vehicleNumberOfAxles={p.Axles}";
     if (p.Hazmat != "")
       query += $"&vehicleLoadType={Uri.EscapeDataString(p.Hazmat)}";
+    if (oneCountry)
+      query += "&avoid=borderCrossings";
     return query;
   }
 

@@ -51,6 +51,7 @@ public static class RoutePlanInputs
               new
               {
                 LocationPolicy = "google-street-address-v1",
+                BorderPolicy = RouteBorderPolicy.Version,
                 load.TruckId,
                 profile.HeightFeet,
                 profile.WidthFeet,
