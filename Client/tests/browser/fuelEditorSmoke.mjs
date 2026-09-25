@@ -4,6 +4,15 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
+
+// The fuel plan opens from the Fuel panel under the truck card's actions:
+// the panel is opened when it is closed, and its View fuel plan button is
+// the one a dispatcher presses.
+async function fuelPlan(page) {
+  const fuel = page.locator('button[aria-controls="fleet-map-fuel-panel"]');
+  if ((await fuel.getAttribute('aria-expanded')) !== 'true') await fuel.click();
+  return page.locator('#fleet-map-fuel-panel .fleet-map-fuel-panel__view');
+}
 import { installReleaseArtifact } from './releaseArtifact.mjs';
 
 assert.ok(
@@ -245,7 +254,7 @@ const report = {
 // The truck card opens closed at every width, so its readings and route are
 // read after the chevron opens them, by the same click a dispatcher uses.
 async function assertTruckInformation(page, name) {
-  const toggle = page.getByRole('button', { name: 'Truck details' });
+  const toggle = page.locator('.fleet-map-mobile-summary__toggle');
   assert.equal(
     await toggle.count(),
     1,
@@ -269,14 +278,20 @@ async function assertTruckInformation(page, name) {
       [...element.children].map(child => child.id || child.className),
     );
   assert.deepEqual(
-    panels.filter(panel => panel.startsWith('fleet-map-')),
-    [
-      'fleet-map-route-details',
-      'fleet-map-inspector__actions',
-      'fleet-map-telemetry-details',
-    ],
-    `${name}: the actions sit under the detail they act on, and the ` +
-      'vehicle line closes the card',
+    panels.filter(
+      panel =>
+        panel.startsWith('fleet-map-') && panel !== 'fleet-map-fuel-panel',
+    ),
+    ['fleet-map-route-details', 'fleet-map-inspector__actions'],
+    `${name}: the actions sit under the detail they act on`,
+  );
+  // The vehicle line is the card's head, open or closed.
+  assert.equal(
+    await page
+      .locator('.fleet-map-inspector__header #fleet-map-telemetry-details')
+      .count(),
+    1,
+    `${name}: the vehicle line is in the card's head`,
   );
 }
 const browser = await chromium.launch({
@@ -827,9 +842,7 @@ try {
           .count(),
         0,
       );
-      await page
-        .getByRole('button', { name: 'Fuel plan', exact: true })
-        .click();
+      await (await fuelPlan(page)).click();
       const editor = page.locator('.fuel-plan-editor');
       const view = label =>
         editor
@@ -1644,9 +1657,7 @@ try {
         `${name}: stale truck/dispatch callback opened editor`,
       );
       await assertTruckInformation(page, `${name}-stale-callback`);
-      await page
-        .getByRole('button', { name: 'Fuel plan', exact: true })
-        .click();
+      await (await fuelPlan(page)).click();
       assert.equal(
         writes.length,
         1,
@@ -1663,12 +1674,7 @@ try {
       assert.equal(writes[1].reset, true);
       assert.equal(writes[1].expectedCalculatedAt, savedToken);
       await assertTruckInformation(page, `${name}-calculated`);
-      assert.equal(
-        await page
-          .getByRole('button', { name: 'Fuel plan', exact: true })
-          .isEnabled(),
-        true,
-      );
+      assert.equal(await (await fuelPlan(page)).isEnabled(), true);
       await page.getByRole('button', { name: 'Camera', exact: true }).click();
       const camera = page.getByRole('dialog', { name: 'Road-facing camera' });
       await camera.waitFor({ state: 'visible' });

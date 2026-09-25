@@ -28,16 +28,37 @@
   .fleet-map-info-content {
     display: flex;
   }
+  // The head: the truck and what is left of its way beside it, then its
+  // rows - the load and its arrival, the vehicle and its clocks, where the
+  // truck is - each under a rule of its own.
   .fleet-map-inspector__header {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, max-content) max-content;
+    grid-template-areas:
+      'identity distance controls'
+      'hours hours hours';
+    align-items: center;
+    column-gap: ui.pg(md);
   }
   .fleet-map-inspector__identity {
+    grid-area: identity;
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: ui.pg(xs) ui.pg(sm);
     min-width: 0;
-    flex: 1;
+  }
+  // The toggle and the close, with a hairline between them so the one
+  // that opens the card is never taken for the one that shuts it.
+  .fleet-map-inspector__controls {
+    grid-area: controls;
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    > .fleet-map-mobile-summary__toggle {
+      padding-inline-end: ui.pg(sm);
+      box-shadow: 1px 0 0 0 ui.theme(border-subtle);
+    }
   }
   .fleet-map-inspector__title {
     @include ui.overlay-title;
@@ -66,6 +87,37 @@
   // The actions read as words, under the detail they act on. They were six
   // bare icons in the header, where the row had no room to say what any of
   // them did.
+  // The load's own page is where most visits from the card end: it is
+  // the one primary action, at the end of the row.
+  .fleet-map-inspector__actions .fleet-map-inspector__open-load {
+    margin-inline-start: auto;
+  }
+  // Fuel's panel, under the actions: now and on arrival, then the plan's
+  // view and send.
+  .fleet-map-fuel-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: ui.pg(sm) ui.pg(lg);
+    margin-inline: ui.pg(md);
+    padding: ui.pg(sm) 0;
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+  .fleet-map-fuel-panel__reading {
+    display: grid;
+    gap: ui.pg(micro);
+    > strong {
+      color: ui.theme(text);
+      font-size: ui.fs(lead);
+      font-weight: 600;
+    }
+  }
+  .fleet-map-fuel-panel__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(xs);
+    margin-inline-start: auto;
+  }
   .fleet-map-inspector__actions {
     display: flex;
     flex-wrap: wrap;
@@ -88,6 +140,8 @@
   }
   .fleet-map-inspector__arrival {
     display: grid;
+    justify-items: start;
+    row-gap: ui.pg(micro);
     min-width: 0;
     font-size: ui.fs(body);
     // The forecast reads as the hour and, when there is one, a word about
@@ -100,10 +154,49 @@
       display: none;
     }
   }
-  // The card's second line reads left to right as a sentence: what the
-  // truck is running, how much is left to the stop it is heading for, and
-  // whether the driver has the hours for it.
-  //
-  // Three columns, not a flow: the outer two share what is left over, so the
-  // middle one is dead centre and stays there while the load number and the
+  // The booking at the same stop, under its forecast: its own label, the
+  // visit's, so a scheduled time is never read as a predicted one.
+  .fleet-map-inspector__appointment {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 ui.pg(xs);
+    min-width: 0;
+    > strong {
+      color: ui.theme(text);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+  .fleet-map-inspector__appointment-label {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  // The load is a way into its page: it reads as a link, not as a number
+  // to copy.
+  .fleet-map-inspector__load-link {
+    display: inline-flex;
+    align-items: baseline;
+    gap: ui.pg(micro);
+    color: ui.theme(action);
+    font-size: ui.fs(lead);
+    font-weight: 600;
+    text-decoration: none;
+    &:hover,
+    &:focus-visible {
+      text-decoration: underline;
+    }
+    > svg {
+      inline-size: 1em;
+      block-size: 1em;
+      align-self: center;
+    }
+  }
+  // Where the truck is going, under its load: the visit and the place.
+  .fleet-map-inspector__heading-to {
+    flex-basis: 100%;
+    min-width: 0;
+    color: ui.theme(text);
+    overflow-wrap: anywhere;
+  }
 }

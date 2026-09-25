@@ -47,6 +47,58 @@ public partial class FleetMap
     }
   }
 
+  // The booking shown under the head's ETA: the tracked stop's own, and
+  // only while the forecast shown there is for that same stop, so the two
+  // times beside each other are always about one visit.
+  private PlanStop? HeadAppointmentStop
+  {
+    get
+    {
+      if (ScheduledStop is not { ScheduledDate: not null } stop)
+        return null;
+      var eta = _routeState?.Plan is { InputsChanged: false }
+        ? DisplayRouteState?.Eta
+        : null;
+      return
+        eta?.Stops.FirstOrDefault() is { } forecast
+        && forecast.StopId != stop.Id
+        ? null
+        : stop;
+    }
+  }
+
+  // The booking as read beside the ETA: its date and window, then the
+  // zone they are written in.
+  private string HeadAppointmentText(PlanStop stop)
+  {
+    var booked = FleetAppointmentDisplay.Split(stop);
+    var text = booked.Date is null
+      ? booked.Value
+      : $"{booked.Date} · {booked.Value}";
+    return StopZone(stop) is { } zone ? $"{text}\u00a0{zone}" : text;
+  }
+
+  // The zone a stop's booking is written in: the forecast for that same
+  // stop knows the stop's zone; failing that, the source's own. None
+  // known, none said.
+  private string? StopZone(PlanStop stop)
+  {
+    if (stop.ScheduledDate is not { } date)
+      return null;
+    var forecast = (
+      _routeState?.Plan is { InputsChanged: false }
+        ? DisplayRouteState?.Eta
+        : null
+    )?.Stops.FirstOrDefault(value => value.StopId == stop.Id);
+    return Client.Services.StopTimeZoneLabel.For(
+      string.IsNullOrWhiteSpace(forecast?.TimeZoneId)
+        ? stop.AppointmentTimeZoneId
+        : forecast.TimeZoneId,
+      date,
+      stop.ScheduledTime
+    );
+  }
+
   private PlanStop? ScheduledStop
   {
     get
@@ -81,6 +133,7 @@ public partial class FleetMap
           ScheduledTime = stop.ScheduledTime,
           ScheduledDate2 = stop.ScheduledDate2,
           ScheduledTime2 = stop.ScheduledTime2,
+          AppointmentTimeZoneId = stop.AppointmentTimeZoneId,
         };
     }
   }
@@ -102,6 +155,7 @@ public partial class FleetMap
       ScheduledTime = details.ScheduledTime,
       ScheduledDate2 = details.ScheduledDate2,
       ScheduledTime2 = details.ScheduledTime2,
+      AppointmentTimeZoneId = details.AppointmentTimeZoneId,
     };
   }
 

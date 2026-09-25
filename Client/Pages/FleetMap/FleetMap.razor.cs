@@ -548,6 +548,7 @@ public partial class FleetMap : IAsyncDisposable
     _nextRestorePending = false;
     _showTruckInfo = false;
     _mobileTruckDetailsOpen = false;
+    _fuelPanelOpen = false;
     _inspectorMode = MapInspectorMode.Closed;
     _routeRequest?.Cancel();
     _routeRequest = null;
@@ -592,6 +593,7 @@ public partial class FleetMap : IAsyncDisposable
     _selectionDismissed = false;
     _showTruckInfo = true;
     _mobileTruckDetailsOpen = false;
+    _fuelPanelOpen = false;
     _inspectorMode = MapInspectorMode.Truck;
     _addressCopyMessage = null;
     if (truckId == _activeTruckId && dispatchId == _activeDispatchId)

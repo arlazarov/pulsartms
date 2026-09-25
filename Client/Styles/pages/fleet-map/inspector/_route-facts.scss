@@ -66,6 +66,19 @@
       color: ui.theme(text-secondary);
       font-size: ui.fs(small);
     }
+    // The section names itself the way the card's other groups do not
+    // need to: in small capitals, over the stop it introduces.
+    &__section {
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    // The visit and its booking, led by the truck that makes it.
+    &__delivery > svg {
+      align-self: center;
+      inline-size: ui.fs(heading);
+      block-size: ui.fs(heading);
+      color: ui.theme(text-secondary);
+    }
     &__progress {
       display: flex;
       flex-wrap: wrap;

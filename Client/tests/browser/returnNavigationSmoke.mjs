@@ -595,7 +595,7 @@ try {
   // The truck card opens collapsed; its actions are behind its own
   // chevron, which a reader presses first.
   const expand = async () => {
-    const toggle = tab.locator("button[aria-label='Truck details']");
+    const toggle = tab.locator('.fleet-map-mobile-summary__toggle');
     await toggle.waitFor({ state: 'visible' });
     if ((await toggle.getAttribute('aria-expanded')) !== 'true')
       await toggle.click();

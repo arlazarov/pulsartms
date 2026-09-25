@@ -504,22 +504,29 @@ try {
           report.errors.push(`${name}: ${message.text()}`);
       });
       const panel = page.getByRole('region', { name: 'Send fuel plan' });
-      const sendButton = page.locator('button[aria-label="Send plan"]');
+      // Sending lives in the Fuel panel under the card's actions.
+      const sendButton = page.locator('.fleet-map-fuel-panel__send');
       // The truck card opens closed; its actions show once a dispatcher
       // opens it, with the same click.
       const openCard = async () => {
-        const toggle = page.getByRole('button', { name: 'Truck details' });
+        const toggle = page.locator('.fleet-map-mobile-summary__toggle');
         await toggle.waitFor();
         if ((await toggle.getAttribute('aria-expanded')) === 'false')
           await toggle.click();
+        const fuel = page.locator(
+          'button[aria-controls="fleet-map-fuel-panel"]',
+        );
+        await fuel.waitFor();
+        if ((await fuel.getAttribute('aria-expanded')) !== 'true')
+          await fuel.click();
       };
       const openPanel = async () => {
         await openCard();
         await sendButton.first().waitFor({ state: 'visible' });
         await page.waitForFunction(
           () =>
-            document.querySelector('button[aria-label="Send plan"]')
-              ?.disabled === false,
+            document.querySelector('.fleet-map-fuel-panel__send')?.disabled ===
+            false,
         );
         await sendButton.first().click();
         await panel.waitFor({ state: 'visible' });
@@ -638,7 +645,7 @@ try {
       await sendButton.first().waitFor({ state: 'visible' });
       await page.waitForFunction(
         () =>
-          document.querySelector('button[aria-label="Send plan"]')?.disabled ===
+          document.querySelector('.fleet-map-fuel-panel__send')?.disabled ===
           false,
       );
       await sendButton.first().click();

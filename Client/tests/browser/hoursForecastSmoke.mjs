@@ -1165,7 +1165,7 @@ async function checkTruckTypography(page, name, phase, units) {
         '.fleet-map-truck-info__reading > small',
         '.fuel-reading--metric .fuel-reading__label',
         '.driver-hours__label',
-        '.fleet-map-truck-info__location > span',
+        '.fleet-map-inspector__location > span',
         '.fleet-map-route-info__label',
         '.stop-hours__road > .stop-hours__label',
       ],
@@ -1192,7 +1192,7 @@ async function checkTruckTypography(page, name, phase, units) {
         // unit of a distance are values that do not need the emphasis.
         '.fleet-map-inspector__driver',
         '.fleet-map-inspector__trailer',
-        '.fleet-map-truck-info__location > strong',
+        '.fleet-map-inspector__location > strong',
         '.fleet-map-route-info__total',
         '.fleet-map-truck-info__reading > strong > small',
       ],
@@ -1271,7 +1271,7 @@ async function checkTruckTypography(page, name, phase, units) {
     .locator('.fleet-map-inspector[data-inspector-mode="truck"]')
     .evaluate(element => {
       const valueColor = getComputedStyle(
-        element.querySelector('.fleet-map-truck-info__location > strong'),
+        document.querySelector('.fleet-map-inspector__location > strong'),
       ).color;
       // The load and its order are the card head's own label/value pair;
       // the route card below says neither again.
@@ -1307,7 +1307,7 @@ async function measureTruckControls(page, name) {
   const inspector = page.locator(
     '.fleet-map-inspector[data-inspector-mode="truck"]',
   );
-  const toggle = inspector.getByRole('button', { name: 'Truck details' });
+  const toggle = inspector.locator('.fleet-map-mobile-summary__toggle');
   check(
     (await toggle.count()) === 1 &&
       (await inspector
@@ -1743,7 +1743,7 @@ async function checkRouteFactRows(page, name, distanceUnit) {
 // again, so anything that reads the lower section opens it first, by the
 // same click a dispatcher would use.
 async function expandTruckCard(page, name) {
-  const toggle = page.getByRole('button', { name: 'Truck details' });
+  const toggle = page.locator('.fleet-map-mobile-summary__toggle');
   if ((await toggle.getAttribute('aria-expanded')) === 'false')
     await toggle.click();
   check(
@@ -1775,7 +1775,7 @@ async function truckLoadingGeometry(page) {
           '.fleet-map-inspector__clocks',
           '.fleet-map-truck-info',
           '.fleet-map-inspector__hours',
-          '.fleet-map-truck-info__location',
+          '.fleet-map-inspector__location',
           '.fleet-map-route-info',
           // The load and its order moved into the header line; the group is
           // drawn empty so nothing to the right of it shifts as they land.
@@ -2962,7 +2962,7 @@ try {
       check(
         (await page.locator('.fleet-map-inspector__hours').isVisible()) &&
           (await page
-            .getByRole('button', { name: 'Fuel plan', exact: true })
+            .locator('button[aria-controls="fleet-map-fuel-panel"]')
             .isVisible()),
         `${name}: always-visible readings retain fuel controls and HOS`,
       );
@@ -3155,7 +3155,7 @@ try {
               '.fleet-map-truck-info__telemetry',
               '.fleet-map-inspector__hours',
               '.fleet-map-inspector__actions',
-              '.fleet-map-truck-info__location',
+              '.fleet-map-inspector__location',
             ].join(', '),
           )
           .evaluateAll(elements =>
@@ -3505,7 +3505,7 @@ try {
             element.querySelector('.fleet-map-truck-info__telemetry'),
           ),
           location: rect(
-            element.querySelector('.fleet-map-truck-info__location'),
+            document.querySelector('.fleet-map-inspector__location'),
           ),
           duty: rect(element.querySelector('.driver-duty')),
           clientWidth: element.clientWidth,
@@ -3717,8 +3717,8 @@ try {
             ':scope > .fleet-map-route-info__distances > .fleet-map-route-info__metric .fleet-map-route-info__label',
           )
           .allTextContents(),
-        ['Run'],
-        `${name}: only the run's total occupies the distance column`,
+        ['Remaining load'],
+        `${name}: only what is left of the load occupies the distance column`,
       );
       // The stop and the window it has to make read together; the run's
       // total and the cycle are the facts beside them. The load and the

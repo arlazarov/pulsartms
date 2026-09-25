@@ -34,7 +34,7 @@ export async function checkTruckReadingsLayout(page, output, name) {
           element.querySelector('.fleet-map-truck-info__telemetry'),
         ),
         location: rect(
-          element.querySelector('.fleet-map-truck-info__location'),
+          document.querySelector('.fleet-map-inspector__location'),
         ),
         // A reading is a quiet word and its value; only the weather keeps
         // an icon, because there the icon is the reading.
@@ -129,8 +129,11 @@ export async function checkTruckReadingsLayout(page, output, name) {
             const { x, y, width, right, bottom } = node.getBoundingClientRect();
             return { x, y, width, right, bottom };
           };
-          const style = getComputedStyle(element);
-          const bounds = box(element);
+          // The block holding the clocks lays nothing out; its rows are the
+          // header's, so the header's content box is the edge to keep to.
+          const frame = element.closest('.fleet-map-inspector__header');
+          const style = getComputedStyle(frame);
+          const bounds = box(frame);
           return {
             left: bounds.x + parseFloat(style.paddingLeft),
             right: bounds.right - parseFloat(style.paddingRight),
@@ -179,11 +182,8 @@ export async function checkTruckReadingsLayout(page, output, name) {
           );
         }
         assert.ok(
-          g.columns === 2
-            ? g.location.x >= g.telemetry.right - 1 &&
-                Math.abs(g.location.y - g.telemetry.y) <= 1
-            : g.location.y >= g.telemetry.bottom - 1,
-          `${variant}: the address ends the vehicle's line, or drops below it`,
+          g.location.y >= g.telemetry.bottom - 1,
+          `${variant}: the address is last, below the vehicle's line`,
         );
         if (width === 390 || width === 441 || width === 600) {
           await page.screenshot({ path: resolve(output, `${variant}.png`) });

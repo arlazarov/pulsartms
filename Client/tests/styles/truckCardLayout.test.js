@@ -28,10 +28,14 @@ const markup = readFileSync(
 
 test('the card says the load, its order and the miles once, in the head', () => {
   const head = markup.slice(
-    markup.indexOf('fleet-map-inspector__hours">'),
+    markup.indexOf('fleet-map-inspector__controls'),
     markup.indexOf('</header>'),
   );
-  assert.match(head, /title="Copy load number"/);
+  // The load is a way to its page; the order is the number to copy.
+  assert.match(
+    head,
+    /class="fleet-map-inspector__load-link"\s*href="@OpenLoadHref"/,
+  );
   assert.match(head, /title="Copy order number"/);
   // The number and the bar under it measure the same thing - the way to the
   // stop the truck is heading for, which is the stop the ETA beside them is
@@ -56,29 +60,28 @@ test('the card says the load, its order and the miles once, in the head', () => 
   const body = markup.slice(markup.indexOf('id="fleet-map-route-details"'));
   assert.doesNotMatch(body, /Copy load number|Copy order number/);
   assert.doesNotMatch(body, /fleet-map-route-info__load"/);
-  // The body carries the total the bar is drawn against, not the remainder
-  // the head already says.
-  assert.match(body, /__label">Run</);
-  assert.doesNotMatch(
+  // The head says what is left to the next stop; the body what is left of
+  // the whole load (the owner's approved card, September 25).
+  assert.match(body, /__label">Remaining load</);
+  assert.match(
     body,
     /DistanceValue\(routePlan is null \? null : RemainingMiles\)/,
   );
+  assert.doesNotMatch(body, /DistanceValue\(LeftMiles\)/);
 });
 
-test('what is left sits between the load and the clocks, said and drawn', () => {
-  // The line is three columns and this is the middle one, so it is centred
-  // by where it stands - it carries no margin to centre itself with. The
-  // clocks column never goes under what it says: on a card with no work to
-  // show it was squeezed and "Break" came apart into letters.
+test('what is left stands beside the name, said and drawn', () => {
+  // Where the ETA used to stand: at the right of the truck's own row. The
+  // clocks never go under what they say: on a card with no work to show
+  // they were squeezed and "Break" came apart into letters.
   assert.match(
     card,
-    /__hours\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto minmax\(max-content, 1fr\);/,
+    /\.fleet-map-mobile-summary__distance\s*\{[^}]*grid-area: distance;[^}]*justify-self: end;/,
   );
   assert.doesNotMatch(
     card.match(/__clocks\s*\{([^}]*)\}/)[1],
     /^\s*min-width:/m,
   );
-  assert.match(card, /__distance\s*\{[^}]*justify-items: center;/);
   assert.doesNotMatch(card, /__distance\s*\{[^}]*margin-inline: auto;/);
   // One phrase: it shortens by ellipsis rather than folding a number away
   // from the unit it belongs to.
@@ -90,6 +93,55 @@ test('what is left sits between the load and the clocks, said and drawn', () => 
   assert.match(card, /__bar > span\s*\{[^}]*background: var\(--ui-action\);/);
 });
 
+// The owner's order for the closed card (AMF1414, truck 11007): the load
+// with its ETA at the right and the booking at that same stop under it;
+// the vehicle with its clocks at the right; and the address last, across
+// the card, where a long one folds instead of being squeezed beside the
+// readings.
+test('the booking sits under the ETA for the same stop, and the address is last', () => {
+  const head = markup.slice(
+    markup.indexOf('fleet-map-inspector__controls'),
+    markup.indexOf('</header>'),
+  );
+  const order = [
+    'fleet-map-mobile-summary__distance',
+    'fleet-map-mobile-summary__remaining',
+    'fleet-map-inspector__arrival',
+    'fleet-map-inspector__appointment',
+    'fleet-map-inspector__vehicle',
+    'fleet-map-inspector__clocks',
+    'fleet-map-inspector__location',
+  ].map(name => head.indexOf(name));
+  assert.ok(
+    order.every(at => at >= 0),
+    String(order),
+  );
+  assert.deepEqual(
+    order,
+    [...order].sort((a, b) => a - b),
+  );
+  // Labelled as the booking, never as the forecast, written in the stop's
+  // zone, and shown only for the stop the ETA is for.
+  assert.match(
+    head,
+    /appointment-label">Appointment<\/span>\s*<strong>@HeadAppointmentText\(appointed\)/,
+  );
+  assert.match(head, /HeadAppointmentStop is \{ \} appointed/);
+  const code = readFileSync(
+    new URL('../../Pages/FleetMap/FleetMap.LoadDetails.cs', import.meta.url),
+    'utf8',
+  );
+  assert.match(code, /forecast\.StopId != stop\.Id/);
+  assert.match(
+    card,
+    /\.fleet-map-inspector__location\s*\{[^}]*grid-template-columns: max-content max-content minmax\(0, 1fr\);/,
+  );
+  assert.match(
+    card,
+    /\.fleet-map-inspector__location > strong > button\s*\{[^}]*overflow-wrap: anywhere;/,
+  );
+});
+
 // 11006 had driven its whole route and was standing at the delivery waiting
 // on tomorrow's window. The server sends an ETA with no stops in it, because
 // there is nothing left to drive - which is not the same as nothing to say.
@@ -98,7 +150,7 @@ test('a truck that has run out of route says so instead of a dash', () => {
     markup.indexOf('fleet-map-inspector__arrival'),
     markup.indexOf('</header>'),
   );
-  assert.match(header, /AtNextStop[\s\S]{0,40}"At stop"/);
+  assert.match(header, /AtNextStop[\s\S]{0,80}"At stop"/);
   const code = readFileSync(
     new URL('../../Pages/FleetMap/FleetMap.razor.cs', import.meta.url),
     'utf8',
@@ -112,7 +164,7 @@ test('a truck that has run out of route says so instead of a dash', () => {
 test('HOS travels with its clocks, at the far end under the arrival', () => {
   assert.match(
     markup,
-    /fleet-map-inspector__clocks">\s*<span class="fleet-map-inspector__hours-label">HOS<\/span>\s*<Client\.Shared\.DriverStatus\.DriverHours\.DriverHours/,
+    /fleet-map-inspector__clocks" aria-label="HOS">\s*<span class="fleet-map-inspector__hours-label"><ActionIcon Kind="clock" \/><span>HOS<\/span><\/span>\s*<Client\.Shared\.DriverStatus\.DriverHours\.DriverHours/,
   );
   assert.match(card, /__clocks\s*\{[^}]*justify-self: end;/);
   // Said once: a second flex-wrap lower in the same rule used to take back
@@ -216,8 +268,13 @@ test('a card too narrow for two columns stacks, wherever it stands', () => {
   );
 });
 
-test('the vehicle is one line: every reading the same shape, place at the end', () => {
-  assert.match(markup, /fleet-map-truck-info__kind">Vehicle</);
+test('the vehicle is one line: every reading the same shape', () => {
+  // Each reading leads with its icon; no word stands over the group.
+  assert.doesNotMatch(markup, /fleet-map-truck-info__kind/);
+  assert.match(
+    card,
+    /__reading svg\s*\{[^}]*inline-size: var\(--type-heading\);/,
+  );
   assert.match(
     card,
     /__telemetry\s*\{[^}]*display: flex;[^}]*flex-wrap: wrap;/,
@@ -227,12 +284,13 @@ test('the vehicle is one line: every reading the same shape, place at the end', 
     card,
     /__reading,[^{}]*__outside\s*\{[^}]*display: flex;[^}]*align-items: baseline;/,
   );
-  assert.match(card, /__location\s*\{[^}]*margin-inline-start: auto;/);
-  // Speed, fuel and engine say themselves in words, so their icons only
-  // repeat. The sky does not: the same degrees are a different day in rain
-  // than in sun, so the weather keeps its icon - sun, moon, cloud, rain,
-  // snow or thunder - and only the word "Temp" leaves the line.
-  assert.match(card, /__reading svg\s*\{\s*display: none;/);
+  // Where the truck is has a row of its own now, not the end of this one.
+  assert.doesNotMatch(markup, /fleet-map-truck-info__location/);
+  assert.doesNotMatch(card, /__location\s*\{[^}]*margin-inline-start: auto;/);
+  // Every reading leads with its icon (the owner's approved card); the
+  // weather's is the reading itself - sun, moon, cloud, rain, snow or
+  // thunder - and only the word "Temp" leaves the line.
+  assert.doesNotMatch(card, /__reading svg\s*\{\s*display: none;/);
   assert.match(
     card,
     /__outside > small > svg\s*\{[^}]*inline-size: var\(--type-heading\);/,
@@ -253,14 +311,11 @@ test('the vehicle is one line: every reading the same shape, place at the end', 
 // the load number was the faintest thing on a line that is about the load.
 test('the lines that should be one line are one line', () => {
   assert.match(card, /__appointment\s*\{[^}]*flex-direction: row;/);
-  // The page-wide rule gives the address a row of its own; the card must
-  // take that back or the address never joins the vehicle line.
-  assert.match(card, /__location\s*\{[^}]*margin-inline-start: auto;/);
   // "mph" and the degree sign name themselves; their words leave the line
   // but stay in the document for a screen reader.
   assert.match(
     card,
-    /__reading--speed > small,[^{}]*__outside > small > span\s*\{[^}]*clip-path: inset\(50%\);/,
+    /__reading--speed > small > span,[^{}]*__outside > small > span\s*\{[^}]*clip-path: inset\(50%\);/,
   );
   assert.match(markup, /fleet-map-truck-info__reading--speed/);
   assert.match(

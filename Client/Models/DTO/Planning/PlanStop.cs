@@ -23,6 +23,10 @@ public sealed record PlanStop(
   public DateOnly? ScheduledDate { get; init; }
   public TimeOnly? ScheduledTime { get; init; }
   public DateOnly? ScheduledDate2 { get; init; }
+
+  // The zone the scheduled date and time are written in, when the source
+  // says; the server sends it with the plan's stops.
+  public string AppointmentTimeZoneId { get; init; } = "";
   public TimeOnly? ScheduledTime2 { get; init; }
   public string Commodity { get; init; } = "";
   public string Notes { get; init; } = "";

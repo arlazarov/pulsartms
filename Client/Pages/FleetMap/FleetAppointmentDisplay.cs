@@ -19,6 +19,15 @@ internal static class FleetAppointmentDisplay
     return (null, KeepClocksTogether(text));
   }
 
+  // What the booking is for, from the visit's own action.
+  internal static string Visit(PlanStop? stop) =>
+    stop?.Job.Contains("pick", StringComparison.OrdinalIgnoreCase) == true
+      ? "Pickup"
+    : stop?.Job.Contains("drop", StringComparison.OrdinalIgnoreCase) == true
+    || stop?.Job.Contains("deliver", StringComparison.OrdinalIgnoreCase) == true
+      ? "Delivery"
+    : "Stop";
+
   private static string KeepClocksTogether(string value) =>
     value.Replace(" AM", "\u00a0AM").Replace(" PM", "\u00a0PM");
 }

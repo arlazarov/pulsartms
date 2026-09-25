@@ -1,7 +1,6 @@
 @use '../../base' as ui;
 
-// The vehicle, on the truck card: one line that says what it is doing and
-// then where it is. Every reading has the same shape - a quiet word, then its
+// The vehicle, on the truck card: one line that says what it is doing. Every reading has the same shape - a quiet word, then its
 // value - so the line has one baseline instead of four little towers.
 //
 // This file used to describe the panel the card had before: a grid of towers
@@ -20,25 +19,23 @@
   margin-inline: ui.pg(md);
   padding: ui.pg(sm) 0;
   border-top: 1px solid ui.theme(border-subtle);
-  &__kind {
-    color: ui.theme(text-muted);
-    font-size: ui.fs(small);
-  }
   &__telemetry {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: ui.pg(xs) ui.pg(lg);
-    --fuel-reading-columns: max-content max-content;
+    --fuel-reading-columns: max-content max-content max-content;
     --fuel-reading-value-column: auto;
     --fuel-reading-row-gap: 0;
     --fuel-reading-value-size: #{ui.fs(body)};
   }
-  // Speed, fuel and engine name themselves in words, so their icons only
-  // repeat. The sky does not: 25 °C is a different day in rain than in
-  // sun, and the icon is the only thing on this line that says which.
+  // Each reading leads with its icon, sized to the line and quieter than
+  // the value it marks.
   &__reading svg {
-    display: none;
+    align-self: center;
+    inline-size: ui.fs(heading);
+    block-size: ui.fs(heading);
+    color: ui.theme(text-secondary);
   }
   // Every reading is the same shape: a quiet word, then its value, on one
   // baseline.
@@ -49,7 +46,9 @@
     gap: ui.pg(xs);
     min-width: 0;
     > small {
-      display: inline;
+      display: inline-flex;
+      align-items: baseline;
+      gap: ui.pg(xs);
       color: ui.theme(text-secondary);
       font-size: ui.fs(small);
     }
@@ -79,10 +78,9 @@
     }
   }
   // "mph" and the degree sign say what they measure. The words stay for
-  // a screen reader and leave the line, which is what lets the address
-  // keep its place at the end of it. The weather's icon stays: it is the
+  // a screen reader and leave the line. The weather's icon stays: it is the
   // reading, not a label for one.
-  &__reading--speed > small,
+  &__reading--speed > small > span,
   &__outside > small > span {
     position: absolute;
     inline-size: 1px;
@@ -91,34 +89,21 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  &__location {
-    display: flex;
-    // The label may step above the address when the line is too narrow to
-    // hold both, which a phone at 200% text is.
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: ui.pg(xs);
-    min-width: 0;
-    // The address ends the vehicle's line, and drops below only when it
-    // cannot fit.
-    margin-inline-start: auto;
-    > span {
-      color: ui.theme(text-secondary);
-      font-size: ui.fs(small);
-      white-space: nowrap;
-    }
-    > strong {
-      font-size: ui.fs(body);
-      font-weight: 400;
-      min-width: 0;
-      max-inline-size: 100%;
-      // The address is one long word to a browser; at 200% text it reached
-      // past the card and put it into a sideways scroll. It folds instead.
-      > button {
-        max-inline-size: 100%;
-        overflow-wrap: anywhere;
-      }
-    }
+  // Whether the engine is running, as Dispatch says it: green while the
+  // truck moves, amber while it idles, nothing when unknown.
+  &__reading--engine.is-normal > strong::after,
+  &__reading--engine.is-low > strong::after {
+    content: '';
+    display: inline-block;
+    inline-size: 0.5em;
+    block-size: 0.5em;
+    margin-inline-start: ui.pg(xs);
+    border-radius: ui.radius(pill);
+    vertical-align: middle;
+    background: ui.theme(success-text);
+  }
+  &__reading--engine.is-low > strong::after {
+    background: ui.theme(telemetry-warning-icon);
   }
   > * {
     flex: 0 1 auto;

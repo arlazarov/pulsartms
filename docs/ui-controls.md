@@ -167,6 +167,32 @@ selected truck it closes the card. Marker and route clicks are not background cl
 active editors and camera dialogs ignore background dismissal.
 Back to truck replaces Close on stop/fuel inspectors; never show both controls.
 Truck cards and standalone station cards retain Close.
+The truck card follows the owner's approved design of September 25
+(`design/source-assets/fleet-card-approved-2026-09-25.png`); where the
+older sentences below differ, this paragraph wins. The head reads in rows,
+each a fact at the left and its answer past a hairline at the right, under
+a rule that runs the width of the card:
+- the unit, trailer and driver, then Left to the next stop (with its bar),
+  then a labelled Details / Hide details button and Close, separated by a
+  hairline. Both toggle words share one cell, so the button keeps its
+  width; on a card narrower than `map-truck-toggle-words` the words become
+  screen-reader-only and the chevron remains;
+- the load number as a link to its page, the order to copy, and the
+  tracked stop's visit and name; at the right, ETA, and under it the
+  Appointment for the same stop in that stop's zone (the forecast's zone
+  for that stop, else the source's; none said when neither is known). An
+  unknown ETA keeps its dash; the appointment never stands in for it;
+- speed, fuel, engine (with the running dot: success while moving,
+  warning while idling) and temperature, each with its icon; at the right,
+  the HOS clocks under a clock icon that keeps the name HOS;
+- the current location, pinned, across the card, open or closed.
+On narrow cards the crew and Left take rows of their own and each row
+stacks its answer under its fact. The open card adds Next stop (the stop,
+its visit and appointment with zone), Remaining load and Fuel on arrival,
+then Follow, Fit route, Fuel, Camera, Route options and the primary Open
+load. Fuel opens a panel under the actions with the current and on-arrival
+fuel and the plan's View fuel plan and Send fuel plan; sending is not in the
+actions row, and the send window's own safeguards are unchanged.
 The truck inspector uses the `map-compact-inspector` width cap (56rem), with
 adjacent telemetry and HOS above the load-information panel. Both panels remain
 visible on larger screens. On phones, the inspector opens as one compact header
@@ -292,10 +318,11 @@ the current load). When another source names a different trailer, the header
 says both, warning-toned and labelled by source ("Telemetry: none · Work:
 055904", or "N: also named for another truck"), with the full explanation as
 its accessible name; the map never picks between them itself. The vehicle
-line (speed, fuel, engine, temperature, current location) is on the card's
-summary under the load and order and before HOS, so it shows collapsed; the
-details do not repeat it. The summary stays mounted while a truck is
-selected, so switching views never fetches the weather again.
+line (speed, fuel, engine, temperature) has its row in the card's head,
+with the HOS clocks at its right, and the current location a row of its
+own below it; both show collapsed and the details do not repeat them. The
+head's rows stay mounted while a truck is selected, so switching views
+never fetches the weather again.
 Outside temperature uses a weather icon, a short Temp label and one value.
 Keep an accessible name and the Google Weather timestamp tooltip. On mobile it
 joins the three telemetry readings. Desktop also keeps it in that same row,

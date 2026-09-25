@@ -52,10 +52,16 @@ test('compact truck inspection retains content-sized telemetry and HOS', () => {
   // The vehicle's readings sit on one line and wrap only if they must.
   assert.match(telemetry, /display: flex;/);
   assert.match(telemetry, /flex-wrap: wrap;/);
-  // The clocks take the header's own row, full width, under the identity.
+  // The head: the truck and what is left beside it, then its rows - the
+  // load and its arrival, the vehicle and its clocks, where the truck is -
+  // each under a rule that runs the width of the card.
   assert.match(
     compact,
-    /\.fleet-map-inspector__hours\s*\{[^}]*flex-basis: 100%;/,
+    /grid-template-areas: "identity distance controls" "hours hours hours";/,
+  );
+  assert.match(
+    compact,
+    /\.fleet-map-inspector__row\s*\{[^}]*border-top: 1px solid/,
   );
   assert.doesNotMatch(
     compact,
@@ -313,18 +319,14 @@ test('mobile keeps one compact row until Details is selected', () => {
   const narrow = compact.slice(
     compact.indexOf('@container map-truck-card (width < 40rem)'),
   );
-  // On a phone the top line is the unit and the controls; the distance
-  // rides the clocks line below with the load it belongs to.
-  for (const [selector, column] of [
-    ['fleet-map-inspector__title', 1],
-    ['fleet-map-inspector__controls', 2],
-  ])
-    assert.match(
-      narrow,
-      new RegExp(
-        `${selector}\\s*\\{\\s*grid-column: ${column};\\s*grid-row: 1;`,
-      ),
-    );
+  // On a phone the top line is the unit and the controls; the crew and
+  // what is left share the line below it.
+  assert.match(narrow, /\.fleet-map-inspector__title\s*\{\s*grid-area: title;/);
+  assert.match(
+    narrow,
+    /grid-template-areas: "title controls" "crew crew" "distance distance" "hours hours";/,
+  );
+  assert.match(narrow, /\.fleet-map-inspector__crew\s*\{\s*grid-area: crew;/);
   assert.match(
     narrow,
     /\.is-mobile-collapsed[\s\S]*\.fleet-map-info-content\s*\{\s*display: none;/,
@@ -346,12 +348,11 @@ test('next-stop distance rides the clocks line at every width', () => {
   // The load leads the clocks line rather than sitting in a chip of its
   // own, and its number is labelled at every width.
   assert.doesNotMatch(compact, /__remaining\s*\{[^}]*margin-inline-start/);
-  // One column on a phone. It asked for this with flex-basis on the children
-  // of a grid, which does nothing: the three stayed abreast and the clocks
-  // folded into a tower.
+  // A phone keeps the same order, and each row stacks its answer under
+  // its fact instead of squeezing the two abreast.
   assert.match(
     narrow,
-    /\.fleet-map-inspector__hours\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/,
+    /\.fleet-map-inspector__row\s*\{\s*grid-template-columns: minmax\(0, 1fr\);/,
   );
   assert.doesNotMatch(compact, /flex-basis: 100%;\s*min-inline-size: 0;/);
   assert.match(compact, /__label\s*\{\s*display: inline;/);
@@ -376,7 +377,10 @@ test('load details uses an accessible header icon with shared action sizing', ()
     new URL('../../Pages/FleetMap/FleetMap.razor', import.meta.url),
     'utf8',
   );
-  const link = markup.match(/<a class="btn map-action-icon"[\s\S]*?<\/a>/)?.[0];
+  // The one primary action, at the end of the row.
+  const link = markup.match(
+    /<a class="btn btn--primary map-action-icon fleet-map-inspector__open-load"[\s\S]*?<\/a>/,
+  )?.[0];
   assert.ok(link);
   // Only with a load chosen, and with the way back to this map.
   assert.match(link, /href="@OpenLoadHref"/);

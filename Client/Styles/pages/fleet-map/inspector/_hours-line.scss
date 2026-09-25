@@ -1,33 +1,55 @@
 @use '../../../base' as ui;
 
-// The line under the name: what the truck is running, how far is left, and
-// whether the driver has the hours for it.
+// The head's rows under the name: what is left, the load and its arrival,
+// the vehicle and its clocks, and where the truck is.
 .fleet-map-inspector[data-inspector-mode='truck'] {
-  // clocks arrive and change width beside it.
   .fleet-map-inspector__hours {
-    flex-basis: 100%;
+    grid-area: hours;
     display: grid;
-    // The clocks are read as numbers and never shrink below what they say;
-    // the load number, which can ellipsize, gives way instead. Given a
-    // share of the line like any other column, they were squeezed on a card
-    // with nothing else to show, and "Break" came apart into three rows of
-    // letters.
-    grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr);
-    align-items: baseline;
-    gap: ui.pg(xs) ui.pg(md);
     min-width: 0;
-    padding-top: ui.pg(xs);
+  }
+  // Each row: its fact at the left and, past a hairline, its answer at
+  // the right, under a rule that runs the width of the card.
+  .fleet-map-inspector__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: center;
+    column-gap: ui.pg(md);
+    min-width: 0;
+    padding-block: ui.pg(sm);
     border-top: 1px solid ui.theme(border-subtle);
+    > :nth-child(2) {
+      align-self: stretch;
+      align-content: center;
+      padding-inline-start: ui.pg(md);
+      border-inline-start: 1px solid ui.theme(border-subtle);
+    }
   }
+  .fleet-map-inspector__vehicle {
+    min-inline-size: 0;
+  }
+  // The clock says what the numbers are; "HOS" stays for a screen reader.
   .fleet-map-inspector__hours-label {
-    color: ui.theme(text-muted);
-    font-size: ui.fs(small);
+    display: inline-flex;
+    align-self: center;
+    color: ui.theme(text-secondary);
+    > svg {
+      inline-size: ui.fs(heading);
+      block-size: ui.fs(heading);
+    }
+    > span {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
-  // The clocks stand at the far end, under the arrival they decide. Tighter
-  // between the clocks than between the three groups, so the line reads as
-  // three things and still fits across the card; and the group never
-  // splits - "HOS" on one row with its clocks on the next was the worst way
-  // this line could break.
+  // The clocks stand at the right of the vehicle, read as numbers that
+  // never shrink below what they say. Tighter between the clocks than
+  // around them, and the group never splits: "HOS" on one row with its
+  // clocks on the next was the worst way this could break.
   .fleet-map-inspector__clocks {
     display: flex;
     flex-wrap: nowrap;
@@ -44,22 +66,43 @@
       margin-left: 0;
     }
   }
-  // The vehicle has a line of its own under the load, and the clocks follow
-  // it: read in that order on every width, collapsed or open.
-  .fleet-map-inspector__hours > .fleet-map-inspector__vehicle,
-  .fleet-map-inspector__hours > .fleet-map-inspector__clocks {
-    grid-column: 1 / -1;
-    min-inline-size: 0;
+  // Where the truck is: last, across the whole card, from its left edge.
+  // The address is one long word to a browser; it folds rather than
+  // pushing the card into a sideways scroll, and its label may step above
+  // it when the two do not fit on one line.
+  .fleet-map-inspector__location {
+    grid-template-columns: max-content max-content minmax(0, 1fr);
+    align-items: start;
+    column-gap: ui.pg(sm);
+    > svg {
+      inline-size: ui.fs(heading);
+      block-size: ui.fs(heading);
+      color: ui.theme(text-secondary);
+    }
+    > :nth-child(2) {
+      align-self: auto;
+      padding-inline-start: 0;
+      border-inline-start: 0;
+    }
+    > span {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+      white-space: nowrap;
+    }
+    > strong {
+      min-width: 0;
+      max-inline-size: 100%;
+      font-size: ui.fs(body);
+      font-weight: 400;
+      > button {
+        max-inline-size: 100%;
+        text-align: start;
+        overflow-wrap: anywhere;
+      }
+    }
   }
-  // With the clocks on a line of their own, the first line holds only the
-  // load and what is left: the load keeps its own width rather than
-  // sharing it with an empty column, so it does not wrap - and push the
-  // lines below - as the numbers land.
-  .fleet-map-inspector__hours:has(> .fleet-map-inspector__vehicle) {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  // The load leads the line. It keeps the room its numbers will need: an
-  // empty group here is a hole that everything right of it slides across
+  // The load leads its row. It keeps the room its numbers will need: an
+  // empty group here is a hole that the arrival beside it slides across
   // when the load lands.
   .fleet-map-mobile-summary__remaining {
     display: flex;
@@ -84,31 +127,41 @@
   &.is-mobile-collapsed .fleet-map-inspector__header {
     border-bottom: 0;
   }
-  // The only thing that may change when the card opens is the chevron's
-  // angle: a word would change the row's width and push the rest of the
-  // header sideways on the way open.
+  // Says what it does, with an arrow that says which way. Both words sit in
+  // one cell, so the button keeps the width of the longer and opening the
+  // card does not move the row beside it.
   .fleet-map-mobile-summary__toggle {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    min-inline-size: ui.size(control-compact);
-    color: ui.theme(text-secondary);
+    gap: ui.pg(xs);
+    min-block-size: ui.size(control-compact);
+    color: ui.theme(text);
+    font-weight: 600;
+    white-space: nowrap;
     @include ui.below(md) {
-      min-inline-size: ui.size(control-touch);
+      min-block-size: ui.size(control-touch);
     }
-    &::after {
-      content: '\25be';
-      font-size: ui.fs(lead);
-      line-height: 1;
+    > svg {
+      inline-size: 1.1em;
+      block-size: 1.1em;
       transition: transform 120ms ease;
     }
-    &[aria-expanded='true']::after {
+    &[aria-expanded='true'] > svg {
       transform: rotate(180deg);
     }
     @media (prefers-reduced-motion: reduce) {
-      &::after {
+      > svg {
         transition: none;
       }
+    }
+  }
+  .fleet-map-mobile-summary__toggle-words {
+    display: grid;
+    > span {
+      grid-area: 1 / 1;
+    }
+    > [aria-hidden='true'] {
+      visibility: hidden;
     }
   }
   .fleet-map-mobile-summary__remaining > .fleet-map-route-info__copy-number {
@@ -121,11 +174,13 @@
     gap: ui.pg(xs);
     white-space: nowrap;
   }
-  // What is left sits between the load and the clocks, in the room the
-  // line has going spare, with the covered share drawn under it.
+  // What is left stands beside the name, at the right, with the covered
+  // share drawn under it.
   .fleet-map-mobile-summary__distance {
+    grid-area: distance;
+    justify-self: end;
     display: grid;
-    justify-items: center;
+    justify-items: end;
     gap: ui.pg(micro);
     // A width of its own, wide enough for the longest distance this can
     // read. Without it the group is as wide as whatever has arrived so far,
