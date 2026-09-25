@@ -12,8 +12,10 @@ namespace Application.Features.Messaging.Commands;
 // WhatsApp messages go to (DriverWhatsApp: their WhatsApp number, else
 // their phone). Search and After work as on the inbox; InChosenGroup
 // narrows to the dispatcher's chosen driver group. WithoutConversation
-// leaves out the drivers who already have a conversation for that number
-// on the number the company sends from, which the inbox lists above them.
+// leaves out the drivers whose conversation for that number, on the number
+// the company sends from, holds a message: the inbox lists those above.
+// A conversation opened and never written in keeps its driver here, in
+// place, with its id, so choosing them again opens the same one.
 public sealed record GetMessagingDriversQuery(
   string? Search = null,
   MessagingDriverCursor? After = null,
@@ -106,6 +108,7 @@ public sealed class DriverConversations(
           c.Channel == channel
           && c.BusinessNumberId == number
           && c.Participant == x.Candidate
+          && db.ConversationMessages.Any(m => m.ConversationId == c.Id)
         )
       );
     if (term.Length > 0)

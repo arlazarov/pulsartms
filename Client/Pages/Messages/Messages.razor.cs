@@ -302,6 +302,9 @@ public partial class Messages : IAsyncDisposable
       await RefreshThreadAsync(id);
   }
 
+  private IReadOnlySet<Guid> Listed =>
+    _conversations?.Select(x => x.Id).ToHashSet() ?? [];
+
   // All, Unread or Archive (chats of drivers no longer active).
   private async Task FilterAsync(bool unread, bool archived = false)
   {

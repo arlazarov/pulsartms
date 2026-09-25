@@ -304,10 +304,11 @@ phone or WhatsApp number is edited, the history and anything queued stay
 with the old number, and choosing the driver opens a conversation for the
 new one.
 
-Below the conversations, **Drivers without a chat**
-(`Pages/Messages/MessagingDrivers`) lists the active drivers who have such
-a number and no conversation yet for it on the number the company sends
-from (`GET /api/messaging/drivers?withoutConversation=true`). A page may
+Below the conversations, the drivers without a chat
+(`Pages/Messages/MessagingDrivers`, no visible heading) are the active
+drivers who have such a number and no conversation holding a message for
+it on the number the company sends from
+(`GET /api/messaging/drivers?withoutConversation=true`). A page may
 hold fewer than 50 drivers, since rows whose stored number is unusable are
 read and skipped. It follows the list's search
 and the chosen driver group, pages 50 at a time by name, and is hidden
@@ -319,8 +320,12 @@ nothing unread for anyone, so its first message is an approved template.
 Choosing sends nothing. Two dispatchers choosing at once get one
 conversation: the conversation's unique key refuses the second insert,
 which reads the first. Without WhatsApp settings, or for a driver without
-a WhatsApp number, nothing is created (409). An empty conversation stays
-in the list as "No messages yet"; nothing removes it. The drivers list
+a WhatsApp number, nothing is created (409). A conversation is listed
+only once it holds a message, in the order of its last one: opening a
+driver's chat promotes nothing, and the driver keeps their place in the
+directory, with the chat's id, until the first message lists it; the
+page then leaves the driver out of the directory. This holds for empty
+conversations opened before this rule too; none is deleted. The drivers list
 is read when the page opens, when the search or the group changes, and
 not on every signal: a driver whose conversation a colleague created
 meanwhile still opens that one.

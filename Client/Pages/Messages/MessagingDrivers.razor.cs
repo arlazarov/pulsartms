@@ -18,6 +18,17 @@ public partial class MessagingDrivers : IDisposable
   [Parameter]
   public EventCallback<Guid> OnOpened { get; set; }
 
+  // The conversations the list above shows: a driver whose chat is there
+  // (it holds a message) is not repeated here. One opened and never
+  // written in is not listed above, so its driver stays in place.
+  [Parameter]
+  public IReadOnlySet<Guid> Listed { get; set; } = new HashSet<Guid>();
+
+  private IEnumerable<MessagingDriver> Shown =>
+    (_drivers ?? []).Where(x =>
+      x.ConversationId is not { } chat || !Listed.Contains(chat)
+    );
+
   [Inject]
   private ApiService Api { get; set; } = default!;
 
@@ -108,8 +119,10 @@ public partial class MessagingDrivers : IDisposable
       _error = result.ErrorMessage;
       return;
     }
-    // The driver now has a conversation, listed above.
-    _drivers?.Remove(driver);
+    // The driver keeps their place, now with their chat: it is listed
+    // above only once it holds a message.
+    if (_drivers?.IndexOf(driver) is >= 0 and var at)
+      _drivers[at] = driver with { ConversationId = result.Response };
     await OnOpened.InvokeAsync(result.Response);
   }
 

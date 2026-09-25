@@ -6,7 +6,8 @@ namespace Application.Features.Messaging.Services;
 // The one way a conversation is started without a driver writing first:
 // for a driver's number on the business number the company sends from
 // now. An existing one is returned as it is; a new one has no message, no
-// reply window and nothing unread. Two callers opening the same one at
+// reply window and nothing unread, and is not listed until it has a
+// message (its LastMessageAt orders nothing before then). Two callers opening the same one at
 // once meet on the conversation's unique key: the losing insert reads the
 // winner's row. Commits on its own and signals after the commit.
 public sealed class ConversationOpener(

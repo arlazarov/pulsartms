@@ -135,7 +135,8 @@
                 }
                 @if (!_unreadOnly && !_archived)
                 {
-                    <MessagingDrivers Search="@_searched" OnOpened="ChatOpened" />
+                    <MessagingDrivers Search="@_searched" OnOpened="ChatOpened"
+                                      Listed="@Listed" />
                 }
             </div>
         </aside>

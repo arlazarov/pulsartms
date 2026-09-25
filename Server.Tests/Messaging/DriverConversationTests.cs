@@ -41,11 +41,8 @@ public sealed class DriverConversationTests
     Assert.Equal(0, conversation.LastInboundRevision);
     Assert.Empty(await f.Db.ConversationMessages.AsNoTracking().ToListAsync());
     Assert.Empty(f.Messaging.Sent);
-    var summary = Assert.Single(await InboxAsync(f));
-    Assert.Equal(
-      (first, 0, false),
-      (summary.Id, summary.Unread, summary.WindowOpen)
-    );
+    // Not listed until it holds a message: opening promotes nothing.
+    Assert.Empty(await InboxAsync(f));
     Assert.Equal(0, (await NoticeAsync(f)).Conversations);
 
     // A text needs the driver's window; the first message is a template.
@@ -79,6 +76,72 @@ public sealed class DriverConversationTests
     Assert.Single(await f.Db.Conversations.AsNoTracking().ToListAsync());
   }
 
+  // Choosing a driver with no messages, and choosing them again, leaves
+  // the list and the directory as they were - including a chat that was
+  // opened long ago and never written in. The first message is what lists
+  // the chat, at the top, and moves the driver out of the directory.
+  [Fact]
+  public async Task OnlyTheFirstMessageListsAChat()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    var (written, _) = await f.ConversationAsync("+15550000009");
+    var ann = await DriverAsync(f, "Ann Lee", "+15550000001");
+    var bo = await DriverAsync(f, "Bo Diaz", "+15550000002");
+    var stale = await OpenAsync(f, bo);
+    f.Clock.Advance(TimeSpan.FromHours(1));
+
+    var chat = await OpenAsync(f, ann);
+    Assert.Equal(chat, await OpenAsync(f, ann));
+    Assert.Equal([written], (await InboxAsync(f)).Select(x => x.Id));
+    Assert.Equal(
+      [(ann, (Guid?)chat), (bo, stale)],
+      (await ListAsync(f, withoutConversation: true)).Drivers.Select(x =>
+        (x.Id, x.ConversationId)
+      )
+    );
+    Assert.Empty(f.Messaging.Sent);
+    Assert.Empty(f.Messaging.Templates);
+
+    var queued = await f.Files(
+        [
+          new()
+          {
+            Name = "hello",
+            Language = "en_US",
+            Parameters = 0,
+            Text = "Hello from dispatch.",
+          },
+        ]
+      )
+      .Handle(
+        new SendConversationTemplateCommand(
+          chat,
+          Guid.NewGuid(),
+          "hello",
+          "en_US",
+          []
+        ),
+        default
+      );
+    Assert.True(queued.Success, $"status {queued.StatusCode}");
+
+    Assert.Equal([chat, written], (await InboxAsync(f)).Select(x => x.Id));
+    Assert.Equal(
+      [bo],
+      (await ListAsync(f, withoutConversation: true)).Drivers.Select(x => x.Id)
+    );
+    Assert.Equal(
+      "queued",
+      (await InboxAsync(f)).Select(x => x.Id).First() == chat
+        ? (
+          await f
+            .Db.ConversationMessages.AsNoTracking()
+            .SingleAsync(x => x.ConversationId == chat)
+        ).Status
+        : null
+    );
+  }
+
   [Fact]
   public async Task DriversAreListedByTheNumberTheirMessagesGoTo()
   {
@@ -109,9 +172,13 @@ public sealed class DriverConversationTests
       [ann],
       (await ListAsync(f, search: "ann")).Drivers.Select(x => x.Id)
     );
+    // Bo's chat was opened and never written in: Bo stays in place, with
+    // the chat to open again.
     Assert.Equal(
-      [ann],
-      (await ListAsync(f, withoutConversation: true)).Drivers.Select(x => x.Id)
+      [(ann, (Guid?)null), (bo, opened)],
+      (await ListAsync(f, withoutConversation: true)).Drivers.Select(x =>
+        (x.Id, x.ConversationId)
+      )
     );
     var group = new DriverScope(Guid.NewGuid(), "West", [bo], []);
     Assert.Equal(
@@ -231,9 +298,17 @@ public sealed class DriverConversationTests
           .ToListAsync()
       ).Order()
     );
+    // Opened, never written in: all three stay in the directory, the two
+    // with a chat keeping it.
+    var directory = (await ListAsync(f, withoutConversation: true)).Drivers;
     Assert.Equal(
-      [invalid],
-      (await ListAsync(f, withoutConversation: true)).Drivers.Select(x => x.Id)
+      new HashSet<(Guid, bool)>
+      {
+        (phoneOnly, true),
+        (both, true),
+        (invalid, false),
+      },
+      directory.Select(x => (x.Id, x.ConversationId.HasValue)).ToHashSet()
     );
   }
 

@@ -101,8 +101,12 @@ public sealed class InboxHandlers(
         400
       );
     var now = clock.GetUtcNow().UtcDateTime;
+    // A chat is listed once it holds a message, in the order of its last
+    // one: opening a driver's chat writes nothing to the list, and its
+    // driver stays where they are in the directory until a message exists.
     var query = db
       .Conversations.AsNoTracking()
+      .Where(x => db.ConversationMessages.Any(m => m.ConversationId == x.Id))
       .Where(x =>
         !request.UnreadOnly
         || x.LastInboundRevision > 0

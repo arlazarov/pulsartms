@@ -4,7 +4,7 @@
 {
     <p class="settings-page__error" role="alert">@_error</p>
 }
-@if (_drivers is { Count: > 0 })
+@if (Shown.Any())
 {
     <section class="messages__drivers" aria-label="Drivers without a chat">
         @if (_view is { Configured: false })
@@ -15,7 +15,7 @@
             </p>
         }
         <ul class="messages__conversations">
-            @foreach (var driver in _drivers)
+            @foreach (var driver in Shown)
             {
                 <li @key="driver.Id">
                     <button type="button" class="messages__conversation"

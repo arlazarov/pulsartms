@@ -46,6 +46,16 @@ public sealed class MessagingDriversTests
       () => Assert.EndsWith($"/messages/{Chat}", Uri(context))
     );
     Assert.Equal([$"/api/messaging/drivers/{Ann}/conversation"], api.Opens);
+    // An opened chat with no message is not listed: Ann keeps her place,
+    // and choosing her again opens the same chat without asking again.
+    page.Settle();
+    Assert.Equal(
+      ["Ann Lee", "Bo Diaz", "Cy Wrong"],
+      page.FindAll(".messages__drivers .messages__who strong")
+        .Select(x => x.TextContent.Trim())
+    );
+    await Driver(page, "Ann Lee").ClickAsync(new());
+    Assert.Single(api.Opens);
 
     // A phone used for WhatsApp says so; an invalid WhatsApp number cannot
     // be opened, and the phone is not used in its place.
@@ -60,6 +70,24 @@ public sealed class MessagingDriversTests
     );
     Assert.Single(api.Opens);
     Assert.Empty(api.Sends);
+  }
+
+  // Once a driver's chat is in the list above (it holds a message), their
+  // row leaves the directory; nothing else moves.
+  [Fact]
+  public async Task AListedChatTakesItsDriverOutOfTheDirectory()
+  {
+    var api = new Api(configured: true) { ListedChat = Known };
+    await using var context = Context(api);
+    var page = context.Render<MessagesPage>();
+    page.WaitForAssertion(() => Assert.Contains("Ann Lee", page.Markup));
+    page.Settle();
+
+    Assert.Equal(
+      ["Ann Lee", "Cy Wrong"],
+      page.FindAll(".messages__drivers .messages__who strong")
+        .Select(x => x.TextContent.Trim())
+    );
   }
 
   [Fact]
@@ -128,6 +156,8 @@ public sealed class MessagingDriversTests
     public List<string> Opens { get; } = [];
     public List<string> Sends { get; } = [];
 
+    public Guid? ListedChat { get; init; }
+
     public Task<HttpResponseMessage> SendAsync(
       HttpRequestMessage request,
       CancellationToken ct
@@ -137,7 +167,30 @@ public sealed class MessagingDriversTests
       if (path == "/api/messaging/templates")
         return Ok<IReadOnlyList<MessageTemplateView>>([]);
       if (path == "/api/messaging/inbox")
-        return Ok(new InboxView([], false));
+        return Ok(
+          new InboxView(
+            ListedChat is { } listed
+              ?
+              [
+                new(
+                  listed,
+                  "+15550000002",
+                  Bo,
+                  "Bo Diaz",
+                  "hello",
+                  DateTime.UtcNow,
+                  DateTime.UtcNow,
+                  true,
+                  0,
+                  null,
+                  null,
+                  1
+                ),
+              ]
+              : [],
+            false
+          )
+        );
       if (path == "/api/messaging/drivers")
       {
         DriverQueries.Add(request.RequestUri.Query);
