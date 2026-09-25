@@ -66,4 +66,67 @@ public sealed class FleetResourceNavigationTests
         .GetAttribute("aria-current")
     );
   }
+
+  // Active by default, with how many are inactive said beside it; Inactive
+  // and All are one press away, read by the server from page 1, and each
+  // empty list says which status it is.
+  [Fact]
+  public async Task ActiveIsTheDefaultAndInactiveIsOnePressAway()
+  {
+    var queries = new List<string>();
+    await using var context = new ClientComponentContext(
+      (request, _) =>
+      {
+        var query = request.RequestUri!.Query;
+        queries.Add(query);
+        var inactive = query.Contains("status=inactive");
+        return Task.FromResult(
+          MileageComponentResponses.Ok(
+            new FleetConfigurationList(
+              inactive ? 0 : 2,
+              inactive
+                ? []
+                :
+                [
+                  new(Guid.NewGuid(), "11005", "VIN1", true, false, 1),
+                  new(Guid.NewGuid(), "11006", "VIN2", true, false, 1),
+                ],
+              2,
+              3
+            )
+          )
+        );
+      }
+    );
+    var component = context.Render<FleetResources>(parameters =>
+      parameters.Add(page => page.Kind, "trucks")
+    );
+
+    component.WaitForAssertion(
+      () => Assert.Equal(2, component.FindAll(".data-table__row").Count)
+    );
+    Assert.Contains("status=active", Assert.Single(queries));
+    Assert.Equal(
+      ["Active · 2", "Inactive · 3", "All · 5"],
+      component
+        .FindAll("[role=group][aria-label='Trucks status'] button")
+        .Select(button => button.TextContent.Trim())
+    );
+    Assert.Equal(
+      "true",
+      component.Find("#fleet-status-active").GetAttribute("aria-pressed")
+    );
+
+    await component.Find("#fleet-status-inactive").ClickAsync(new());
+
+    component.WaitForAssertion(
+      () => Assert.Contains("No inactive trucks match.", component.Markup)
+    );
+    Assert.Contains("status=inactive", queries[^1]);
+    Assert.Contains("page=1", queries[^1]);
+    Assert.Equal(
+      "true",
+      component.Find("#fleet-status-inactive").GetAttribute("aria-pressed")
+    );
+  }
 }

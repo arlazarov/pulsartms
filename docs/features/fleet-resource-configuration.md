@@ -11,6 +11,12 @@ Pay, settlement contracts and payment operations are not part of this feature.
 ## Ownership and editing
 
 The lists are searchable, paginated in groups of 30 and loaded on demand.
+Each shows Active resources by default; Inactive and All are one press away,
+with how many of each match the search. The status is the resource's
+`IsActive`, the same field Messaging's Archive reads for a driver. Reading
+a status changes nothing, and nothing is deleted: a reactivated resource
+simply lists under Active again. Changing the resource, the search or the
+status returns to page 1.
 Opening Edit loads one resource. Save and Cancel are explicit. Fuel-card values
 are absent from list responses and available only in the Admin detail editor;
 the Client clears retained edit values on cancel, save and disposal.
@@ -56,7 +62,10 @@ the configuration revision alone cannot protect independent assignment writes.
 ## API and persistence
 
 Admin endpoints use `api/settings/fleet/{kind}`, where kind is trucks, trailers
-or drivers. GET supports search and page. GET/PUT on the stable resource ID own
+or drivers. GET supports search, page and status (`active`, the default,
+`inactive` or `all`); it filters, counts and pages on the server, returning
+the chosen status's total with ActiveCount and InactiveCount from one
+grouped count, so a page read is still two queries. GET/PUT on the stable resource ID own
 the detail/edit contract. Both endpoint policy and Application handlers require
 an active Admin account. Resource fields are not recorded in audit logs; the
 administrative audit records only identity, kind, revision and restore intent.

@@ -16,8 +16,13 @@ public sealed class FleetConfigurationController : BaseController
     string kind,
     [FromQuery] string? search,
     [FromQuery] int page = 1,
+    [FromQuery] string status = "active",
     CancellationToken ct = default
-  ) => HandleRequest(new GetFleetConfigurationQuery(kind, search, page), ct);
+  ) =>
+    HandleRequest(
+      new GetFleetConfigurationQuery(kind, search, page, status),
+      ct
+    );
 
   [HttpGet("{id:guid}")]
   public Task<IActionResult> Get(string kind, Guid id, CancellationToken ct) =>

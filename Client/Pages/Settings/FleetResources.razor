@@ -196,6 +196,23 @@
                 </label>
             </div>
             <button class="btn" type="submit" disabled="@_loading">Search</button>
+            <div class="filter-toolbar__views" role="group"
+                 aria-label="@($"{Title} status")">
+                @foreach (var (status, label, count) in new[]
+                {
+                    ("active", "Active", _list?.ActiveCount),
+                    ("inactive", "Inactive", _list?.InactiveCount),
+                    ("all", "All", _list?.ActiveCount + _list?.InactiveCount),
+                })
+                {
+                    <button type="button" id="@($"fleet-status-{status}")"
+                            aria-pressed="@(_status == status ? "true" : "false")"
+                            disabled="@_loading"
+                            @onclick="() => StatusAsync(status)">
+                        @label@(count is { } n ? $" · {n}" : "")
+                    </button>
+                }
+            </div>
         </form>
         @if (_list is { } list)
         {
@@ -239,7 +256,7 @@
             </DataTablePagination>
             @if (list.Items.Count == 0 && !_loading)
             {
-                <p>No matching resources.</p>
+                <p>@Empty</p>
             }
         }
     }

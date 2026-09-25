@@ -20,6 +20,11 @@ public partial class FleetResources : IDisposable
   private ResourceForm _form = new();
   private string? _loadedKind;
   private string _search = "";
+
+  // The resource's lifecycle, as Messaging's Archive reads a driver: active
+  // by default, the others one press away. Filtered and counted by the
+  // server.
+  private string _status = "active";
   private string? _error;
   private string? _saved;
   private int _page = 1;
@@ -46,6 +51,7 @@ public partial class FleetResources : IDisposable
     _loadedKind = Kind;
     _page = 1;
     _search = "";
+    _status = "active";
     _list = null;
     CancelEdit();
     await LoadAsync();
@@ -68,7 +74,7 @@ public partial class FleetResources : IDisposable
     _error = null;
     var url =
       $"api/settings/fleet/{Kind}?page={_page}"
-      + $"&search={Uri.EscapeDataString(_search)}";
+      + $"&search={Uri.EscapeDataString(_search)}&status={_status}";
     var result = await Api.GetAsync<FleetConfigurationList>(url, owner.Token);
     if (_disposed || owner != _read || owner.IsCancellationRequested)
       return;
@@ -87,6 +93,24 @@ public partial class FleetResources : IDisposable
     CancelEdit();
     await LoadAsync();
   }
+
+  private async Task StatusAsync(string status)
+  {
+    if (_loading || _saving || _status == status)
+      return;
+    _status = status;
+    _page = 1;
+    CancelEdit();
+    await LoadAsync();
+  }
+
+  private string Empty =>
+    _status switch
+    {
+      "inactive" => $"No inactive {Title.ToLowerInvariant()} match.",
+      "all" => $"No {Title.ToLowerInvariant()} match.",
+      _ => $"No active {Title.ToLowerInvariant()} match.",
+    };
 
   private async Task PageAsync(int page)
   {

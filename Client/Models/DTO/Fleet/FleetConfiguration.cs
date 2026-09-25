@@ -9,9 +9,13 @@ public sealed record FleetConfigurationRow(
   long Revision
 );
 
+// TotalCount is the chosen status's; ActiveCount and InactiveCount say how
+// many of each match the search.
 public sealed record FleetConfigurationList(
   int TotalCount,
-  List<FleetConfigurationRow> Items
+  List<FleetConfigurationRow> Items,
+  int ActiveCount = 0,
+  int InactiveCount = 0
 );
 
 public sealed record FleetConfigurationState(
