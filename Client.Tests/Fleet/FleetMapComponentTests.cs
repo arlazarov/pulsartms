@@ -38,16 +38,27 @@ public sealed class FleetMapComponentTests
     var route = component.Find("#fleet-map-route-details");
     Assert.False(telemetry.HasAttribute("hidden"));
     Assert.False(route.HasAttribute("hidden"));
-    // Route first: what the dispatcher decides on, then what can be done
-    // about it, then the vehicle - in the document, not only on screen, so
-    // reading order matches.
+    // The vehicle is on the card's summary, under the load and before the
+    // clocks - visible collapsed - and not repeated in the details. In the
+    // document too, so reading order matches.
     Assert.Equal(
-      ["fleet-map-inspector__actions", "fleet-map-telemetry-details"],
-      new[]
-      {
-        route.NextElementSibling!.ClassName ?? "",
-        route.NextElementSibling!.NextElementSibling!.Id ?? "",
-      }
+      [
+        "fleet-map-mobile-summary__remaining",
+        "fleet-map-mobile-summary__distance",
+        "fleet-map-telemetry-details",
+        "fleet-map-inspector__clocks",
+      ],
+      component
+        .Find(".fleet-map-inspector__hours")
+        .Children.Select(x =>
+          x.Id is { Length: > 0 } id ? id : x.ClassList[0] ?? ""
+        )
+    );
+    Assert.Single(component.FindAll("#fleet-map-telemetry-details"));
+    Assert.Empty(component.FindAll("#fleet-map-details .fleet-map-truck-info"));
+    Assert.Equal(
+      "fleet-map-inspector__actions",
+      route.NextElementSibling!.ClassName ?? ""
     );
     Assert.Equal("fleet-map-telemetry-details", telemetry.Id);
     Assert.Single(component.FindAll(".fleet-map-mobile-summary__toggle"));
@@ -442,6 +453,7 @@ public sealed class FleetMapComponentTests
       [
         "fleet-map-mobile-summary__remaining",
         "fleet-map-mobile-summary__distance",
+        "fleet-map-inspector__vehicle",
         "fleet-map-inspector__clocks",
       ],
       second.Children.Select(node => node.ClassName)
@@ -449,7 +461,7 @@ public sealed class FleetMapComponentTests
     // "HOS" travels with the clocks it names.
     Assert.Equal(
       ["fleet-map-inspector__hours-label", "driver-hours-panel"],
-      second.Children[2].Children.Select(node => node.ClassName)
+      second.Children[3].Children.Select(node => node.ClassName)
     );
     // What is left is the middle of the line: named, said and drawn.
     Assert.StartsWith(

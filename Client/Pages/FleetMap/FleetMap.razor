@@ -199,7 +199,7 @@
                     aria-label="Close map information"
                     @onclick="CloseInspectorAsync">×</button>
         </div>
-        @if (_inspectorMode == MapInspectorMode.Truck && SelectedTruck is not null)
+        @if (SelectedTruck is not null)
         {
             @* Second line of the card, under a rule: the four clocks as
                text, and at the far end the load being run and what is left
@@ -207,7 +207,11 @@
                the rest is worth reading, so it is never behind a
                disclosure. Last in the header, so the order on screen is
                the order in the document. *@
-            <div class="fleet-map-inspector__hours">
+            @* Kept while a truck is selected and hidden in the other
+               views, as the details are: the vehicle's readings in it are
+               not fetched again on the way back. *@
+            <div hidden="@(_inspectorMode != MapInspectorMode.Truck)"
+                 class="fleet-map-inspector__hours">
                 @* What the truck is running, said once: the load, its order,
                    and what is left to the next stop in both units. Each
                    number is also the control that copies it. *@
@@ -266,6 +270,67 @@
                         <span style="inline-size: @(Math.Round((RouteCovered ?? 0) * 100))%"></span>
                     </span>
                 </span>
+    @if (SelectedTruck is { } truck)
+    {
+        <div id="fleet-map-telemetry-details" class="fleet-map-inspector__vehicle">
+        @* The vehicle itself - speed, fuel, engine, temperature and where
+           it is - under the load and before the clocks, on the collapsed
+           card too: it was behind the disclosure. Said once; the details
+           below do not repeat it. *@
+        <div class="fleet-map-truck-info" aria-label="Selected truck">
+            <span class="fleet-map-truck-info__kind">Vehicle</span>
+            <div class="fleet-map-truck-info__telemetry"
+                 aria-label="Current truck readings">
+                <span class="fleet-map-truck-info__reading
+                             fleet-map-truck-info__reading--speed
+                             @TelemetryTone.Speed(truck.Speed)">
+                    <small><ActionIcon Kind="speed" /><span>Speed</span></small>
+                    <strong>@truck.Speed.ToString("N0") <small>mph</small>
+                    </strong>
+                </span>
+                <span class="fleet-map-truck-info__reading
+                             fleet-map-truck-info__reading--fuel">
+                    <FuelReading Percent="@((double?)truck.FuelPercent)"
+                                 Variant="metric" />
+                </span>
+                <span class="fleet-map-truck-info__reading
+                    @TelemetryTone.Engine(truck.Speed, truck.EngineState)">
+                    <small><ActionIcon Kind="engine" /><span>Engine</span>
+                    </small>
+                    <strong>@(string.IsNullOrWhiteSpace(truck.EngineState)
+                        ? "—" : truck.EngineState)</strong>
+                </span>
+                <Client.Shared.Trucks.TruckWeather.TruckWeather
+                    TruckId="truck.TruckId"
+                    Visibility="_visibility"
+                    OwnerCancellation="_lifetime.Token"
+                    Current="@(SelectedDate == DateOnly.FromDateTime(
+                        DateTime.Today))" />
+            </div>
+            <div id="fleet-map-truck-location"
+                 class="fleet-map-truck-info__location"
+                 aria-label="Truck GPS location">
+                <span>@TruckLocationLabel</span>
+                @if (string.IsNullOrWhiteSpace(truck.FormattedLocation))
+                {
+                    <strong>Address unavailable</strong>
+                }
+                else
+                {
+                    <strong>
+                        <button type="button"
+                            class="fleet-map-route-info__copy-number"
+                            title="Copy location address"
+                            @onclick="() => CopyTextAsync(
+                                truck.FormattedLocation)">
+                            @truck.FormattedLocation
+                        </button>
+                    </strong>
+                }
+            </div>
+        </div>
+        </div>
+    }
                 @* The label travels with the clocks it names. Apart, "HOS"
                    sat beside the load and the clocks sat a card-width away. *@
                 <span class="fleet-map-inspector__clocks">
@@ -439,66 +504,6 @@
                    ? "true" : null)">
                 <ActionIcon Kind="external-link" /><span>Open load</span>
             </a>
-        </div>
-    }
-    @if (SelectedTruck is { } truck)
-    {
-        <div id="fleet-map-telemetry-details">
-        @* One line for the vehicle itself: what it is doing right now, and
-           where it is. It is the last thing a dispatcher reads, so it gets
-           one line rather than a block of its own. *@
-        <div class="fleet-map-truck-info" aria-label="Selected truck">
-            <span class="fleet-map-truck-info__kind">Vehicle</span>
-            <div class="fleet-map-truck-info__telemetry"
-                 aria-label="Current truck readings">
-                <span class="fleet-map-truck-info__reading
-                             fleet-map-truck-info__reading--speed
-                             @TelemetryTone.Speed(truck.Speed)">
-                    <small><ActionIcon Kind="speed" /><span>Speed</span></small>
-                    <strong>@truck.Speed.ToString("N0") <small>mph</small>
-                    </strong>
-                </span>
-                <span class="fleet-map-truck-info__reading
-                             fleet-map-truck-info__reading--fuel">
-                    <FuelReading Percent="@((double?)truck.FuelPercent)"
-                                 Variant="metric" />
-                </span>
-                <span class="fleet-map-truck-info__reading
-                    @TelemetryTone.Engine(truck.Speed, truck.EngineState)">
-                    <small><ActionIcon Kind="engine" /><span>Engine</span>
-                    </small>
-                    <strong>@(string.IsNullOrWhiteSpace(truck.EngineState)
-                        ? "—" : truck.EngineState)</strong>
-                </span>
-                <Client.Shared.Trucks.TruckWeather.TruckWeather
-                    TruckId="truck.TruckId"
-                    Visibility="_visibility"
-                    OwnerCancellation="_lifetime.Token"
-                    Current="@(SelectedDate == DateOnly.FromDateTime(
-                        DateTime.Today))" />
-            </div>
-            <div id="fleet-map-truck-location"
-                 class="fleet-map-truck-info__location"
-                 aria-label="Truck GPS location">
-                <span>@TruckLocationLabel</span>
-                @if (string.IsNullOrWhiteSpace(truck.FormattedLocation))
-                {
-                    <strong>Address unavailable</strong>
-                }
-                else
-                {
-                    <strong>
-                        <button type="button"
-                            class="fleet-map-route-info__copy-number"
-                            title="Copy location address"
-                            @onclick="() => CopyTextAsync(
-                                truck.FormattedLocation)">
-                            @truck.FormattedLocation
-                        </button>
-                    </strong>
-                }
-            </div>
-        </div>
         </div>
     }
 

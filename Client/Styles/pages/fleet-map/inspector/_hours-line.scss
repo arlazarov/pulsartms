@@ -44,6 +44,13 @@
       margin-left: 0;
     }
   }
+  // The vehicle has a line of its own under the load, and the clocks follow
+  // it: read in that order on every width, collapsed or open.
+  .fleet-map-inspector__hours > .fleet-map-inspector__vehicle,
+  .fleet-map-inspector__hours > .fleet-map-inspector__clocks {
+    grid-column: 1 / -1;
+    min-inline-size: 0;
+  }
   // The load leads the line. It keeps the room its numbers will need: an
   // empty group here is a hole that everything right of it slides across
   // when the load lands.

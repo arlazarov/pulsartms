@@ -288,8 +288,14 @@ column without changing its value/label hierarchy.
 Hide the separate Fleet Map page heading on mobile. Driver and trailer share
 one wrapping header line without the visible Driver label; desktop is unchanged.
 The trailer's tooltip says where it came from (telemetry, accepted work or
-the current load). When another source names a different trailer, a small
-warning-toned "or N?" follows it; the map never picks between them itself.
+the current load). When another source names a different trailer, the header
+says both, warning-toned and labelled by source ("Telemetry: none · Work:
+055904", or "N: also named for another truck"), with the full explanation as
+its accessible name; the map never picks between them itself. The vehicle
+line (speed, fuel, engine, temperature, current location) is on the card's
+summary under the load and order and before HOS, so it shows collapsed; the
+details do not repeat it. The summary stays mounted while a truck is
+selected, so switching views never fetches the weather again.
 Outside temperature uses a weather icon, a short Temp label and one value.
 Keep an accessible name and the Google Weather timestamp tooltip. On mobile it
 joins the three telemetry readings. Desktop also keeps it in that same row,

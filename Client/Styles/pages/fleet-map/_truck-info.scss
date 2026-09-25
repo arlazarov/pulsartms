@@ -125,3 +125,13 @@
     max-width: 100%;
   }
 }
+
+// On the card's own line, under the load: the header's padding already
+// frames it, so it adds no margin or rule of its own.
+.fleet-map-inspector[data-inspector-mode='truck']
+  .fleet-map-inspector__vehicle
+  .fleet-map-truck-info {
+  margin-inline: 0;
+  padding: ui.pg(xs) 0;
+  border-top: 0;
+}
