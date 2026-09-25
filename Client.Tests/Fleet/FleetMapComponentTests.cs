@@ -37,7 +37,12 @@ public sealed class FleetMapComponentTests
   )
   {
     if (component.FindAll("#fleet-map-fuel-panel").Count == 0)
-      component.Find("button[aria-controls='fleet-map-fuel-panel']").Click();
+    {
+      var fuel = component.Find("button[aria-controls='fleet-map-fuel-panel']");
+      // A disabled Fuel opens nothing; say so rather than time out later.
+      Assert.False(fuel.HasAttribute("disabled"), "Fuel is disabled.");
+      fuel.Click();
+    }
     return component.Find("#fleet-map-fuel-panel .fleet-map-fuel-panel__view");
   }
 
@@ -1707,7 +1712,13 @@ public sealed class FleetMapComponentTests
         .ClassList.Contains("has-selection")
     );
     Assert.Contains(fixture.Js.Calls, call => call.Name == "closeStationPopup");
-    Assert.True(FuelPlan(component).HasAttribute("disabled"));
+    // With the editor open, Fuel itself is off: its panel cannot open over
+    // the editor.
+    Assert.True(
+      component
+        .Find("button[aria-controls='fleet-map-fuel-panel']")
+        .HasAttribute("disabled")
+    );
     var oldEditor = component.FindComponent<FuelPlanEditor>().Instance;
     await component.InvokeAsync(
       () => component.Instance.OnTruckSelected(fixture.TruckB.ToString())

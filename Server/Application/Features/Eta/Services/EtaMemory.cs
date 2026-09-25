@@ -197,14 +197,16 @@ public sealed class EtaMemory(TimeProvider? clock = null)
       RequestRefresh();
   }
 
-  public void Forget(Guid dispatchId)
+  // True when a forecast readers could see was dropped.
+  public bool Forget(Guid dispatchId)
   {
     Viewed.TryRemove(dispatchId, out _);
-    Results.TryRemove(dispatchId, out _);
+    var dropped = Results.TryRemove(dispatchId, out _);
     demandedInputs.TryRemove(dispatchId, out _);
     scopes.TryRemove(dispatchId, out _);
     mapAnswers.TryRemove(dispatchId, out _);
     publishedAnswers.TryRemove(dispatchId, out _);
+    return dropped;
   }
 
   public void Demand(Guid rootDispatchId, string inputHash, DateTime now)

@@ -30,12 +30,12 @@ public sealed partial class EtaForecastService
     }
     catch (RoutePlanningException) when (identity.ExecutionLegId.HasValue)
     {
-      memory.Forget(requestedDispatchId);
+      Drop(requestedDispatchId, "the leg could not be loaded");
       return;
     }
     if (!PlanningWorkPolicy.CanUseGps(requested))
     {
-      memory.Forget(requestedDispatchId);
+      Drop(requestedDispatchId, "the load cannot use GPS");
       return;
     }
     if (requested.TruckId is not { } truckId)
@@ -43,7 +43,7 @@ public sealed partial class EtaForecastService
     var description = await inputs.DescribeAsync(truckId, ct);
     if (description is null)
     {
-      memory.Forget(requestedDispatchId);
+      Drop(requestedDispatchId, "the truck has no chain to describe");
       return;
     }
     var rootKey = memory.Scope(
@@ -52,7 +52,7 @@ public sealed partial class EtaForecastService
     );
     if (rootKey != requestedDispatchId)
     {
-      memory.Forget(requestedDispatchId);
+      Drop(requestedDispatchId, "the chain's root is another scope");
       memory.View(rootKey, DateTime.UtcNow);
     }
     var chain = await inputs.PrepareAsync(description, ct);
@@ -164,9 +164,25 @@ public sealed partial class EtaForecastService
       {
         // Published to readers, then not saved: taken back.
         PerformanceStages.Count("eta-memory", "unsaved-removed", 1);
+        logger.LogInformation(
+          "ETA forecast for scope {EtaScope} was not saved and was taken back",
+          rootKey
+        );
         if (changed)
           memory.RequestRefresh();
       }
     }
+  }
+
+  // A forecast readers could see, dropped by a refresh: said once with why
+  // (the open map ETA incident, where trucks lost theirs every half minute).
+  private void Drop(Guid scope, string reason)
+  {
+    if (memory.Forget(scope))
+      logger.LogInformation(
+        "ETA memory dropped the forecast for scope {EtaScope}: {EtaReason}",
+        scope,
+        reason
+      );
   }
 }
