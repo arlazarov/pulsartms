@@ -3,9 +3,14 @@
 The owner authorized this release after an independent review of the
 border hardening, per [release.md](../../operations/release.md).
 
-**Status:** API released and verified at 19:57 UTC. The frontend is not
-published: the Firebase CLI's credentials had expired, and signing in
-again is the owner's to do. Hosting still serves the morning's frontend.
+**Status:** complete.
+- API: released and verified at 19:57 UTC.
+- Frontend: first attempt blocked at 20:10 by expired Firebase CLI
+  credentials; the owner signed in again, and it was released and
+  verified at 21:30 UTC.
+
+One defect was found afterwards and fixed locally, not released: see
+[AMF1414's tracked plan](#amf1414s-tracked-plan).
 
 Not done: no message sent, no forced replan, no reset, no configuration
 or credential change, no Driver Pay merge.
@@ -76,23 +81,47 @@ count and the base roads changed.
 - AMF1414's saved plan still holds its 18:09 route; it takes the new
   base road on its next planning build, which was not forced.
 
-## Frontend: blocked
+## Frontend (21:24–21:30 UTC)
 
-`PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a clean worktree of
-`401387c9` (local Client settings copied, compared) passed its gate, then
-Firebase answered "credentials are no longer valid". Hosting still serves
-`main.css?v=9303c30f125585f5`; the verified artifact carries
-`db1da54f36149762`.
+- **First attempt (20:04):** the wrapper's gate passed, then Firebase
+  refused the upload ("credentials are no longer valid"). Nothing was
+  published.
+- **Release:** after the owner signed in again, `PULSARTMS_RELEASE_UI=1
+  bash deploy-client.sh` ran from the same clean worktree of `401387c9`
+  (local Client settings copied, compared). Its gate passed again:
+  Server 3,706, Client C# 1,217, the JavaScript suites and the UI smoke.
+  Artifact `release-Ropy01`; Firebase uploaded 285 files, "release
+  complete".
+- **What Hosting serves:** `index.html`, `css/main.css`
+  (`?v=db1da54f36149762`), `appsettings.json` and
+  `_framework/dotnet.sivox1e2p5.js` are byte-identical to the artifact.
+  The entry HTML is `no-cache`, hashed framework files are
+  `public, max-age=31536000, immutable`, and `/appsettings.json` is
+  valid JSON.
+- **API after:** still generation 248, 100% on the same revision and
+  digest, health 200 directly and through Hosting, no error or 5xx.
+- **Protected data** between 20:10 and 21:30: unchanged except ordinary
+  operation (one leg completed at 21:04; one base road recalculated at
+  20:58, verdict `stays`).
 
-Until it is published, the morning's frontend talks to the new API. All
-contract changes are additive, except two defaults it cannot choose: the
-Fleet lists show active rows only, and chats of inactive drivers are left
-out of the Messages list.
+## AMF1414's tracked plan
 
-**To finish:** run `firebase login --reauth`, then
-`PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a clean checkout of
-`401387c9` with the local Client settings copied in, and verify Hosting
-as in the [morning release](release-2026-09-25.md).
+The base road was fixed, but the plan still was not. Tracking rerouted
+the plan at 20:48 on the new revision:
+- a new 139.9 mi connector from the truck;
+- then the saved 986.5 mi leg through Ontario.
+
+`BaseRouteService.RecalculateAsync` keeps the previous plan's remaining
+legs and buys only the connector, and the border check did not guard
+that path.
+
+Fixed locally in `326fcd55`, not released:
+- a remainder that leaves is bought again whole;
+- such a road is no longer kept as the display reference;
+- the display read skips a base road recorded as leaving.
+
+Until that is released, AMF1414's plan (map, ETA and fuel) keeps the
+Ontario leg. No replan was forced.
 
 ## Open
 
