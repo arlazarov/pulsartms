@@ -68,6 +68,7 @@ public sealed partial class TomTomRoutingProvider(
             route.Seconds,
             route.Legs,
             route.Warnings,
+            route.Ferry,
           },
           Json
         ),
@@ -79,8 +80,20 @@ public sealed partial class TomTomRoutingProvider(
         is { Leaves: true } exit
     )
       throw LeavesCountry(exit);
+    if (road.Ferry)
+      throw OnlyByFerry();
     return road;
   }
+
+  // Asked to avoid ferries, the provider answers with one only when it
+  // found no road-only way. That road is never taken automatically: the
+  // dispatcher can choose it among the route options, where it is labelled.
+  private static RoutePlanningException OnlyByFerry() =>
+    new(
+      "TomTom found no road-only route for these stops, only one that "
+        + "crosses by ferry. It was not used; choose it under Routes if the "
+        + "truck can take the ferry."
+    );
 
   // The border policy is a preference to the provider, so what it returns
   // is checked. A road that leaves the country anyway is neither used nor
@@ -165,28 +178,37 @@ public sealed partial class TomTomRoutingProvider(
             route.Seconds,
             route.Legs,
             route.Warnings,
+            route.Ferry,
           }),
           Json
         ),
       ct
     );
-    if (!oneCountry || roads.Count == 0)
-      return roads;
-    var kept = roads
-      .Where(road => !RouteBorderPolicy.Check(road, points, regions, ct).Leaves)
-      .ToList();
-    return kept.Count > 0
-      ? kept
-      : throw LeavesCountry(
-        RouteBorderPolicy.Check(roads[0], points, regions, ct)
-      );
+    var usable = roads;
+    if (oneCountry && roads.Count > 0)
+    {
+      var kept = roads
+        .Where(road =>
+          !RouteBorderPolicy.Check(road, points, regions, ct).Leaves
+        )
+        .ToList();
+      usable =
+        kept.Count > 0
+          ? kept
+          : throw LeavesCountry(
+            RouteBorderPolicy.Check(roads[0], points, regions, ct)
+          );
+    }
+    // Road-only roads first: a ferry is offered only when none is left.
+    var roadOnly = usable.Where(road => !road.Ferry).ToList();
+    return roadOnly.Count > 0 ? roadOnly : usable;
   }
 
   private bool OneCountry(IReadOnlyList<RoutePoint> points) =>
     RouteBorderPolicy.KeepsToOneCountry(points.Select(regions.Find));
 
-  // The request is the cache key, so a road asked for with the border
-  // policy is never answered by one bought without it.
+  // The request is the cache key, so a road asked for with the border or
+  // ferry policy is never answered by one bought without it.
   private static string Query(
     IReadOnlyList<RoutePoint> points,
     TruckRouteProfile p,
@@ -200,7 +222,8 @@ public sealed partial class TomTomRoutingProvider(
     );
     var query =
       $"routing/1/calculateRoute/{path}/json?travelMode=truck&vehicleCommercial=true&routeType=fastest"
-      + $"&traffic=true&maxAlternatives={alternatives}&sectionType=travelMode&report=effectiveSettings"
+      + $"&traffic=true&maxAlternatives={alternatives}&sectionType=travelMode"
+      + "&sectionType=ferry&avoid=ferries&report=effectiveSettings"
       + $"&vehicleHeight={Number(p.HeightFeet * .3048)}&vehicleWidth={Number(p.WidthFeet * .3048)}"
       + $"&vehicleLength={Number(p.LengthFeet * .3048)}&vehicleWeight={Math.Ceiling(p.WeightPounds * .45359237)}"
       + $"&vehicleAxleWeight={Math.Ceiling(p.AxleWeightPounds * .45359237)}&vehicleNumberOfAxles={p.Axles}";

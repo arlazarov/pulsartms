@@ -1,16 +1,9 @@
-using System.Globalization;
-using System.Net;
-using Application.Features.Routing.Services.Routes;
 using Domain.Models.Routing;
 using Domain.Rules;
 using Domain.Rules.Ports;
 using Domain.Rules.Routing;
 using Infrastructure.Integrations.GeoTimeZone;
-using Infrastructure.Integrations.TomTom;
-using Infrastructure.Persistence;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Server.Tests.Support;
 
 namespace Server.Tests.Routing;
 
@@ -52,7 +45,7 @@ public sealed class RouteBorderPolicyTests
   [Fact]
   public async Task ADomesticLoadIsAskedToStayInItsCountry()
   {
-    await using var fixture = await Fixture.CreateAsync();
+    await using var fixture = await TomTomRouteFixture.CreateAsync();
     fixture.Handler.Detours = [InTheUs];
 
     await fixture.Provider.CalculateAsync(
@@ -76,7 +69,7 @@ public sealed class RouteBorderPolicyTests
   [Fact]
   public async Task CrossBorderWorkAndAChosenWaypointAbroadKeepTheirRoad()
   {
-    await using var fixture = await Fixture.CreateAsync();
+    await using var fixture = await TomTomRouteFixture.CreateAsync();
 
     // A load from Toronto to Detroit crosses by its nature.
     await fixture.Provider.CalculateAsync(
@@ -94,7 +87,7 @@ public sealed class RouteBorderPolicyTests
     Assert.Equal(2, fixture.Handler.Queries.Count);
     Assert.All(
       fixture.Handler.Queries,
-      query => Assert.DoesNotContain("avoid=", query)
+      query => Assert.DoesNotContain("avoid=borderCrossings", query)
     );
   }
 
@@ -105,7 +98,7 @@ public sealed class RouteBorderPolicyTests
   [Fact]
   public async Task ADomesticRoadTheProviderSendsAbroadIsNotUsed()
   {
-    await using var fixture = await Fixture.CreateAsync();
+    await using var fixture = await TomTomRouteFixture.CreateAsync();
     fixture.Handler.Detours =
     [
       [London],
@@ -132,7 +125,7 @@ public sealed class RouteBorderPolicyTests
   [Fact]
   public async Task OnlyDomesticAlternativesAreOffered()
   {
-    await using var fixture = await Fixture.CreateAsync();
+    await using var fixture = await TomTomRouteFixture.CreateAsync();
     fixture.Handler.Detours =
     [
       [London],
@@ -167,7 +160,7 @@ public sealed class RouteBorderPolicyTests
   [Fact]
   public async Task CrossBorderRoadsAndUnplacedPointsAreKept()
   {
-    await using var fixture = await Fixture.CreateAsync();
+    await using var fixture = await TomTomRouteFixture.CreateAsync();
     fixture.Handler.Detours =
     [
       [London],
@@ -397,126 +390,4 @@ public sealed class RouteBorderPolicyTests
       Axles = 5,
       AxleWeightPounds = 17000,
     };
-
-  private sealed class Fixture : IAsyncDisposable
-  {
-    private readonly SqliteConnection _connection;
-    private readonly AppDbContext _db;
-    private readonly HttpClient _client;
-
-    private Fixture(SqliteConnection connection, AppDbContext db)
-    {
-      _connection = connection;
-      _db = db;
-      _client = new HttpClient(Handler);
-      Provider = new TomTomRoutingProvider(
-        _client,
-        new ConfigurationBuilder()
-          .AddInMemoryCollection(
-            new Dictionary<string, string?> { ["TomTom:ApiKey"] = "test-only" }
-          )
-          .Build(),
-        db,
-        new RouteRequestValidator(),
-        new UnusedAddressGeocoder(),
-        new RouteSectionValidator(),
-        new RouteRegionLookup()
-      );
-    }
-
-    public RecordingTomTom Handler { get; } = new();
-    public TomTomRoutingProvider Provider { get; }
-
-    public static async Task<Fixture> CreateAsync()
-    {
-      var connection = new SqliteConnection("Data Source=:memory:");
-      await connection.OpenAsync();
-      var db = new AppDbContext(
-        new DbContextOptionsBuilder<AppDbContext>()
-          .UseSqlite(connection)
-          .Options
-      );
-      await db.Database.EnsureCreatedAsync();
-      return new(connection, db);
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-      _client.Dispose();
-      Handler.Dispose();
-      await _db.DisposeAsync();
-      await _connection.DisposeAsync();
-    }
-  }
-
-  // Answers each request with a straight road through the points it names,
-  // one leg between each pair, and keeps the request's query. Each detour
-  // is one road offered, its last leg bent through those points whatever
-  // the request asked to avoid.
-  private sealed class RecordingTomTom : HttpMessageHandler
-  {
-    public List<string> Queries { get; } = [];
-    public RoutePoint[][] Detours { get; set; } =
-      [
-        [],
-      ];
-
-    protected override Task<HttpResponseMessage> SendAsync(
-      HttpRequestMessage request,
-      CancellationToken cancellationToken
-    )
-    {
-      var uri = request.RequestUri!;
-      Queries.Add(uri.Query);
-      var path = Uri.UnescapeDataString(uri.AbsolutePath);
-      var points = path.Split('/')[^2]
-        .Split(':')
-        .Select(pair => pair.Split(','))
-        .Select(pair => $"{{\"latitude\":{pair[0]},\"longitude\":{pair[1]}}}")
-        .ToArray();
-      var routes = string.Join(",", Detours.Select(via => Road(points, via)));
-      return Task.FromResult(
-        new HttpResponseMessage(HttpStatusCode.OK)
-        {
-          Content = new StringContent($"{{\"routes\":[{routes}]}}"),
-        }
-      );
-    }
-
-    private static string Road(string[] points, RoutePoint[] via)
-    {
-      var bend = string.Concat(
-        via.Select(point =>
-          string.Create(
-            CultureInfo.InvariantCulture,
-            $"{{\"latitude\":{point.Latitude},"
-              + $"\"longitude\":{point.Longitude}}},"
-          )
-        )
-      );
-      var legs = string.Join(
-        ",",
-        points
-          .Zip(points.Skip(1))
-          .Select(
-            (leg, index) =>
-              "{\"summary\":{\"lengthInMeters\":1000,"
-              + "\"travelTimeInSeconds\":60},"
-              + $"\"points\":[{leg.First},"
-              + (index == points.Length - 2 ? bend : "")
-              + $"{leg.Second}]}}"
-          )
-      );
-      var legCount = points.Length - 1;
-      var meters = (1000 * legCount).ToString(CultureInfo.InvariantCulture);
-      var seconds = (60 * legCount).ToString(CultureInfo.InvariantCulture);
-      return "{\"summary\":{\"lengthInMeters\":"
-        + meters
-        + ",\"travelTimeInSeconds\":"
-        + seconds
-        + "},\"legs\":["
-        + legs
-        + "]}";
-    }
-  }
 }

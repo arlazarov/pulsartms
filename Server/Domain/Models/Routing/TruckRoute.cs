@@ -9,6 +9,11 @@ public sealed class TruckRoute
   public List<RoutePoint> Points { get; set; } = [];
   public List<string> Warnings { get; set; } = [];
 
+  // The provider reports a ferry crossing on this road. Such a road is
+  // offered only when no road-only one exists, and only for the
+  // dispatcher to choose; nothing takes it on its own.
+  public bool Ferry { get; set; }
+
   public bool TryGetLegSeconds(out double seconds)
   {
     seconds = 0;

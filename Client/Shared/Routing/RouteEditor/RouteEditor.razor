@@ -24,13 +24,20 @@
                     @foreach (var option in preview.Options)
                     {
                         <button class="btn route-editor__option route-editor__option--@option.Number @(_selected == option.Number ? "is-selected" : "")" aria-pressed="@(_selected == option.Number ? "true" : "false")" disabled="@Busy" @onclick="() => Select(option.Number)">
-                            <span>Route @option.Number</span><strong><DistanceText Miles="option.Route.Miles" /></strong>
+                            <span>Route @option.Number@(option.Route.Ferry ? " · Ferry" : "")</span><strong><DistanceText Miles="option.Route.Miles" /></strong>
                             <span>@Duration(option.Route.Seconds) driving</span>
                             <small>@Units.FormatDistanceDelta(option.DifferenceMiles) · @TimeDifference(option.DifferenceSeconds)</small>
                         </button>
                     }
                 </div>
                 <p class="route-editor__hint">Click a road to compare. @if (preview.Options.Count == 1) { <span>Only one suitable route was returned.</span> }</p>
+                @if (preview.Options.All(option => option.Route.Ferry))
+                {
+                    <p class="route-editor__warning">
+                        No road-only route was found. Every option crosses by
+                        ferry; choose one only if the truck can take the ferry.
+                    </p>
+                }
                 <p class="route-editor__hint">Driving time only, without HOS or service time. ETA updates after saving; recalculate fuel for the new road.</p>
             }
             else

@@ -91,13 +91,19 @@ public partial class RouteEditor
     }
     _preview = preview;
     _via = [.. preview.ViaPoints];
-    _selected = 1;
+    _selected = FirstRoadOnly(preview);
     _valid = true;
     _beforeStop = preview.Stops.Skip(1).Any(s => s.Id == _beforeStop)
       ? _beforeStop
       : preview.Stops.Last().Id;
     await Publish();
   }
+
+  // A road that crosses by ferry is never selected for the dispatcher:
+  // with only ferry roads on offer, nothing is selected until one is
+  // clicked, so "Use this route" cannot save a ferry by default.
+  private static int FirstRoadOnly(RouteChoicePreview preview) =>
+    preview.Options.FirstOrDefault(option => !option.Route.Ferry)?.Number ?? 0;
 
   private Task Publish() =>
     _preview is null || _disposed

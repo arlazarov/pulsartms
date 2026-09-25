@@ -15,7 +15,10 @@ internal static class TomTomRouteSections
         Text(s, "travelMode") == "truck",
         Index(s, "startPointIndex"),
         Index(s, "endPointIndex")
-      ))
+      )
+      {
+        Ferry = Text(s, "sectionType") == "FERRY",
+      })
       .ToArray();
 
   private static string? Text(JsonElement section, string name) =>

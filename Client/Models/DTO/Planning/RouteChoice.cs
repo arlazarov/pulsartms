@@ -30,6 +30,10 @@ public sealed class RouteChoiceDisplayRoute
   public double Seconds { get; set; }
   public List<RouteLeg> Legs { get; set; } = [];
   public List<string> Warnings { get; set; } = [];
+
+  // The road crosses by ferry; the server offers it only when no road-only
+  // route exists.
+  public bool Ferry { get; set; }
 }
 
 public sealed record RouteChoiceSummary(double Miles, double Seconds);

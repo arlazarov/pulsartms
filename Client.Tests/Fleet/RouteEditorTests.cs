@@ -107,6 +107,82 @@ public sealed class RouteEditorTests
     Assert.Equal(3, cut.FindAll(".route-editor__number").Count);
   }
 
+  // A ferry is offered only when no road-only route exists, and never
+  // chosen for the dispatcher: with ferry roads only, nothing is selected
+  // and "Use this route" stays off until one is clicked; a road-only road
+  // is preselected even when a ferry road is listed first.
+  [Fact]
+  public async Task AFerryRouteIsLabelledAndNeverPreselected()
+  {
+    var preview = Preview();
+    foreach (var option in preview.Options)
+      option.Route.Ferry = true;
+    RouteChoiceSave? saved = null;
+    RouteEditorMap? map = null;
+    using var context = new ClientComponentContext(
+      async (request, ct) =>
+      {
+        if (request.Method == HttpMethod.Put)
+        {
+          saved = await request.Content!.ReadFromJsonAsync<RouteChoiceSave>(ct);
+          return Ok(5L);
+        }
+        return Ok(preview);
+      }
+    );
+    var cut = context.Render<RouteEditor>(p =>
+      p.Add(x => x.DispatchId, preview.DispatchId)
+        .Add(x => x.Session, Guid.NewGuid())
+        .Add(x => x.MapChanged, value => map = value)
+    );
+    cut.WaitForAssertion(
+      () => Assert.Equal(2, cut.FindAll(".route-editor__option").Count)
+    );
+
+    Assert.All(
+      cut.FindAll(".route-editor__option"),
+      option => Assert.Contains("Ferry", option.TextContent)
+    );
+    Assert.Contains("No road-only route was found", cut.Markup);
+    Assert.Equal(0, map!.Selected);
+    Assert.Empty(cut.FindAll(".route-editor__option.is-selected"));
+    Assert.True(
+      cut.Find(".route-editor__actions .btn--primary").HasAttribute("disabled")
+    );
+    await cut.FindAll(".route-editor__option")[1]
+      .ClickAsync(new MouseEventArgs());
+    await cut.Find(".route-editor__actions .btn--primary")
+      .ClickAsync(new MouseEventArgs());
+    Assert.Equal(new(preview.Id, 2, 4), saved);
+  }
+
+  [Fact]
+  public void ARoadOnlyRouteIsPreselectedOverAFerryListedFirst()
+  {
+    var preview = Preview();
+    preview.Options[0].Route.Ferry = true;
+    RouteEditorMap? map = null;
+    using var context = new ClientComponentContext(
+      (_, _) => Task.FromResult(Ok(preview))
+    );
+    var cut = context.Render<RouteEditor>(p =>
+      p.Add(x => x.DispatchId, preview.DispatchId)
+        .Add(x => x.Session, Guid.NewGuid())
+        .Add(x => x.MapChanged, value => map = value)
+    );
+    cut.WaitForAssertion(() => Assert.Equal(2, map?.Selected));
+
+    Assert.DoesNotContain("No road-only route was found", cut.Markup);
+    Assert.Contains(
+      "Ferry",
+      cut.FindAll(".route-editor__option")[0].TextContent
+    );
+    Assert.DoesNotContain(
+      "Ferry",
+      cut.FindAll(".route-editor__option")[1].TextContent
+    );
+  }
+
   private static RouteChoicePreview Preview() =>
     new(
       Guid.NewGuid(),
