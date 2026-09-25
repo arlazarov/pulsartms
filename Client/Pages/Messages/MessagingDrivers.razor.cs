@@ -86,7 +86,7 @@ public partial class MessagingDrivers : IDisposable
 
   private async Task OpenAsync(MessagingDriver driver)
   {
-    if (!CanOpen)
+    if (!CanOpen || driver.Number is null)
       return;
     if (driver.ConversationId is { } known)
     {
@@ -121,6 +121,16 @@ public partial class MessagingDrivers : IDisposable
       await LoadAsync(null);
       StateHasChanged();
     });
+
+  // Where a chat would go, and from which contact; a phone is not known to
+  // be on WhatsApp until the driver writes.
+  private static string Where(MessagingDriver driver) =>
+    driver switch
+    {
+      { Number: null } => "WhatsApp number is not valid",
+      { Source: "phone" } => $"{driver.Number} (phone) · no messages yet",
+      _ => $"{driver.Number} · no messages yet",
+    };
 
   private static string Initials(string name) =>
     string.Concat(

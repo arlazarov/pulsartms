@@ -40,14 +40,16 @@ public sealed class FuelIssueChannel(
           x.Id,
           x.Name,
           x.WhatsAppPhone,
+          x.Phone,
         })
         .SingleOrDefaultAsync(ct)
       : null;
-    var phone =
-      driver?.WhatsAppPhone is { } number
-      && ContactAddresses.Phone(number) == number
-        ? number
-        : null;
+    // Messaging's rule: the driver's WhatsApp number, else their phone.
+    var recipient = DriverWhatsApp.Resolve(
+      driver?.WhatsAppPhone,
+      driver?.Phone
+    );
+    var phone = recipient.Number;
     // The reply window is Messaging's: the same one a conversation reply
     // is held to, under the company's current business number.
     var readiness = await delivery.ReadinessAsync(phone, ct);
@@ -65,6 +67,8 @@ public sealed class FuelIssueChannel(
     var windowEnds = readiness.WindowEnds;
     var state =
       !configured ? FuelIssueChannelStates.NotConfigured
+      : recipient.Source == DriverWhatsAppSources.InvalidWhatsApp
+        ? FuelIssueChannelStates.InvalidNumber
       : phone is null ? FuelIssueChannelStates.NoNumber
       : windowEnds is null ? FuelIssueChannelStates.OutsideWindow
       : FuelIssueChannelStates.Ready;

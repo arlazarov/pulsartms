@@ -18,8 +18,9 @@ public class Driver : BaseEntity, IFleetConfiguration, ICompanyOwned
 
   // Contact details are owned field by field: each follows the source until
   // somebody here sets or clears it, and a later import only refreshes the
-  // source copy. The WhatsApp number has no source - an ordinary phone is
-  // never assumed to be registered on WhatsApp.
+  // source copy. The WhatsApp number has no source; when it is blank the
+  // driver's WhatsApp messages go to their phone (DriverWhatsApp), which is
+  // still not known to be registered on WhatsApp.
   public string? Phone { get; set; }
   public string? ImportedPhone { get; set; }
   public bool PhoneIsLocal { get; set; }

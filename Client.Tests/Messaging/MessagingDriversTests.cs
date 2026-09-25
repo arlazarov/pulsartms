@@ -23,6 +23,7 @@ public sealed class MessagingDriversTests
   private static readonly Guid Bo = Guid.NewGuid();
   private static readonly Guid Chat = Guid.NewGuid();
   private static readonly Guid Known = Guid.NewGuid();
+  private static readonly Guid Cy = Guid.NewGuid();
 
   [Fact]
   public async Task ChoosingADriverOpensTheirConversation()
@@ -40,6 +41,12 @@ public sealed class MessagingDriversTests
       () => Assert.EndsWith($"/messages/{Chat}", Uri(context))
     );
     Assert.Equal([$"/api/messaging/drivers/{Ann}/conversation"], api.Opens);
+
+    // A phone used for WhatsApp says so; an invalid WhatsApp number cannot
+    // be opened, and the phone is not used in its place.
+    Assert.Contains("+15550000002 (phone)", page.Markup);
+    Assert.Contains("WhatsApp number is not valid", page.Markup);
+    Assert.True(Driver(page, "Cy Wrong").HasAttribute("disabled"));
 
     page.Settle();
     await Driver(page, "Bo Diaz").ClickAsync(new());
@@ -132,8 +139,9 @@ public sealed class MessagingDriversTests
         return Ok(
           new MessagingDriversView(
             [
-              new(Ann, "Ann Lee", "+15550000001", null),
-              new(Bo, "Bo Diaz", "+15550000002", Known),
+              new(Ann, "Ann Lee", "+15550000001", "whatsapp", null),
+              new(Bo, "Bo Diaz", "+15550000002", "phone", Known),
+              new(Cy, "Cy Wrong", null, "invalidWhatsApp", null),
             ],
             configured,
             false

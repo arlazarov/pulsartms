@@ -88,6 +88,10 @@ public static class FuelIssueChannelStates
   public const string NoDriver = "noDriver";
   public const string NoNumber = "noNumber";
 
+  // The driver's own WhatsApp number is set but not valid: their phone is
+  // not used instead.
+  public const string InvalidNumber = "invalidNumber";
+
   // The driver has not written to the business number in the last 24
   // hours, so WhatsApp would not deliver a free-form message.
   public const string OutsideWindow = "outsideWindow";

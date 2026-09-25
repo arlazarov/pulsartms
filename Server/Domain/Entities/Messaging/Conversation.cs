@@ -2,8 +2,11 @@ namespace Domain.Entities.Messaging;
 
 // One driver's thread with the carrier on one channel and one business
 // number: a driver writing to two carrier numbers is two conversations.
-// The driver is matched by the WhatsApp number on the driver's contacts,
-// and stays unmatched when no driver, or more than one, has that number.
+// The driver is matched by the number their WhatsApp messages go to
+// (DriverWhatsApp: their WhatsApp number, else their phone), and stays
+// unmatched when no driver, or more than one, has that number. The number
+// a conversation is with never changes: after a driver's number is edited,
+// their history stays here and a new conversation serves the new number.
 public sealed class Conversation : BaseEntity, ICompanyOwned
 {
   public Guid CompanyId { get; set; }

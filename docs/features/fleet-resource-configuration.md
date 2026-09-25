@@ -82,9 +82,12 @@ above, contacts are owned field by field and have their own revision:
   until a dispatcher sets or clears them. A later import refreshes only the
   source copy. A cleared field stays empty through imports. "Use source
   value" returns that one field to the source.
-- The WhatsApp number has no source and is never derived from the phone.
+- The WhatsApp number has no source and is never written from the phone.
   "Use the phone number" copies it only when a dispatcher presses it; the
-  copy is checked and saved like any other entry.
+  copy is checked and saved like any other entry. While it is blank,
+  WhatsApp messages and fuel plans go to the phone (see
+  [driver messaging](driver-messaging.md#messages-page)); a WhatsApp number
+  that is set always wins.
 - Phones are stored in E.164. The server completes a number only when its
   country is certain: ten digits, or eleven starting with 1, that fit the
   North American plan. Anything else needs its "+" and country code. A source

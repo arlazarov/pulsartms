@@ -174,7 +174,12 @@ public sealed class FuelIssueSender(
       ),
       FuelIssueChannelStates.NoNumber => new(
         409,
-        "Add the driver's WhatsApp number first."
+        "Add the driver's WhatsApp number or phone first."
+      ),
+      FuelIssueChannelStates.InvalidNumber => new(
+        409,
+        "The driver's WhatsApp number is not a valid number. Correct it in "
+          + "the driver's contacts."
       ),
       _ => new(
         409,

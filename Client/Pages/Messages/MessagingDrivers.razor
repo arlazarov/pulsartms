@@ -22,7 +22,7 @@
             {
                 <li @key="driver.Id">
                     <button type="button" class="messages__conversation"
-                            disabled="@(!CanOpen)"
+                            disabled="@(!CanOpen || driver.Number is null)"
                             @onclick="() => OpenAsync(driver)">
                         <span class="messages__avatar"
                               aria-hidden="true">@Initials(driver.Name)</span>
@@ -30,7 +30,7 @@
                             <strong>@driver.Name</strong>
                         </span>
                         <span class="messages__preview">
-                            @driver.WhatsAppPhone · no messages yet
+                            @Where(driver)
                         </span>
                     </button>
                 </li>

@@ -170,13 +170,15 @@ public sealed record ApprovedTemplateRequest(
   string Text
 );
 
-// A driver a chat can be started with: only a WhatsApp number the
-// driver's contacts hold, never their ordinary phone. ConversationId is
-// the driver's conversation on the company's current number, if any.
+// A driver a chat can be started with. Number is where their WhatsApp
+// messages go - their WhatsApp number, else their phone (Source says which)
+// - and null when their own WhatsApp number is not valid. ConversationId is
+// the driver's conversation for that number, if any.
 public sealed record MessagingDriver(
   Guid Id,
   string Name,
-  string WhatsAppPhone,
+  string? Number,
+  string Source,
   Guid? ConversationId
 );
 

@@ -1,3 +1,4 @@
+using Application.Features.Fleet.Services;
 using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
 
@@ -54,14 +55,16 @@ public sealed class InboxRecorder(IAppDbContext db, TimeProvider clock)
         && phones.Contains(x.Participant)
       )
       .ToDictionaryAsync(x => x.Participant, ct);
+    // The driver whose WhatsApp messages go to the number (DriverWhatsApp:
+    // their WhatsApp number, else their phone), when exactly one does.
     var drivers = (
-      await db
-        .Drivers.AsNoTracking()
-        .Where(x => x.WhatsAppPhone != null && phones.Contains(x.WhatsAppPhone))
-        .Select(x => new { x.Id, Phone = x.WhatsAppPhone! })
+      await DriverRecipients
+        .Candidates(db.Drivers.AsNoTracking())
+        .Where(x => x.Candidate != null && phones.Contains(x.Candidate))
         .ToListAsync(ct)
     )
-      .GroupBy(x => x.Phone)
+      .Where(x => x.Recipient.IsUsable)
+      .GroupBy(x => x.Recipient.Number!)
       .Where(x => x.Count() == 1)
       .ToDictionary(x => x.Key, x => x.Single().Id);
     var now = clock.GetUtcNow().UtcDateTime;

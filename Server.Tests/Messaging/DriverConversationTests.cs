@@ -80,13 +80,11 @@ public sealed class DriverConversationTests
   }
 
   [Fact]
-  public async Task OnlyAnExplicitWhatsAppNumberIsListedInTheChosenGroup()
+  public async Task DriversAreListedByTheNumberTheirMessagesGoTo()
   {
     await using var f = await ReplyFixture.CreateAsync();
     var ann = await DriverAsync(f, "Ann Lee", "+15550000001");
     var bo = await DriverAsync(f, "Bo Diaz", "+15550000002");
-    // An ordinary phone is never taken for a WhatsApp number.
-    await DriverAsync(f, "Cy Phone Only", null, phone: "+15550000003");
     await DriverAsync(f, "Di Inactive", "+15550000004", active: false);
     await DriverAsync(
       f,
@@ -102,6 +100,7 @@ public sealed class DriverConversationTests
       [(ann, (Guid?)null), (bo, opened)],
       all.Drivers.Select(x => (x.Id, x.ConversationId))
     );
+    Assert.All(all.Drivers, x => Assert.Equal("whatsapp", x.Source));
     Assert.Equal(
       [bo],
       (await ListAsync(f, search: "0002")).Drivers.Select(x => x.Id)
@@ -147,7 +146,8 @@ public sealed class DriverConversationTests
   {
     await using var f = await ReplyFixture.CreateAsync();
     var ann = await DriverAsync(f, "Ann Lee", "+15550000001");
-    var phoneOnly = await DriverAsync(f, "Cy", null, phone: "+15550000003");
+    // No WhatsApp number, and a phone that is not a valid number.
+    var phoneOnly = await DriverAsync(f, "Cy", null, phone: "555-0003");
     var other = await DriverAsync(
       f,
       "Ed Other Carrier",
@@ -185,6 +185,140 @@ public sealed class DriverConversationTests
     );
     Assert.False((await ListAsync(f)).Configured);
     Assert.Empty(await f.Db.Conversations.AsNoTracking().ToListAsync());
+  }
+
+  // Without a WhatsApp number of their own a driver's messages go to their
+  // phone; with one, to it. A stored WhatsApp number that is not valid is
+  // shown as such and never falls back to the phone. A phone that is not a
+  // valid number is no recipient at all.
+  [Fact]
+  public async Task ThePhoneFillsInOnlyForABlankWhatsAppNumber()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    var phoneOnly = await DriverAsync(f, "Ann Phone", null, "+15550000011");
+    var both = await DriverAsync(f, "Bo Both", "+15550000012", "+15550000013");
+    var invalid = await DriverAsync(f, "Cy Invalid", null, "+15550000014");
+    await f
+      .Db.Drivers.Where(x => x.Id == invalid)
+      .ExecuteUpdateAsync(x => x.SetProperty(d => d.WhatsAppPhone, "555-01"));
+    await DriverAsync(f, "Di Raw Phone", null, "(555) 000-0015");
+
+    var listed = await ListAsync(f);
+    Assert.Equal(
+      [
+        (phoneOnly, "+15550000011", "phone"),
+        (both, "+15550000012", "whatsapp"),
+        (invalid, (string?)null, "invalidWhatsApp"),
+      ],
+      listed.Drivers.Select(x => (x.Id, x.Number, x.Source))
+    );
+    Assert.Equal(
+      [phoneOnly],
+      (await ListAsync(f, search: "0011")).Drivers.Select(x => x.Id)
+    );
+
+    await OpenAsync(f, phoneOnly);
+    await OpenAsync(f, both);
+    var refused = await Handler(f)
+      .Handle(new OpenDriverConversationCommand(invalid), default);
+    Assert.Equal(409, refused.StatusCode);
+    Assert.Equal(
+      ["+15550000011", "+15550000012"],
+      (
+        await f
+          .Db.Conversations.AsNoTracking()
+          .Select(x => x.Participant)
+          .ToListAsync()
+      ).Order()
+    );
+    Assert.Equal(
+      [invalid],
+      (await ListAsync(f, withoutConversation: true)).Drivers.Select(x => x.Id)
+    );
+  }
+
+  // A driver's phone is edited after their conversation began: the history
+  // stays with the number it was with, a message queued there still goes
+  // there, and choosing the driver now opens a conversation for the new
+  // number.
+  [Fact]
+  public async Task ANewNumberGetsANewConversationAndHistoryStays()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    var driver = await DriverAsync(f, "Ann Phone", null, "+15550000021");
+    var first = await OpenAsync(f, driver);
+    f.Db.ConversationMessages.Add(
+      new ConversationMessage
+      {
+        Id = Guid.NewGuid(),
+        ConversationId = first,
+        Channel = f.Messaging.Channel,
+        BusinessNumberId = "123456",
+        Direction = MessageDirections.Outbound,
+        Kind = ConversationMessageKinds.Template,
+        Body = "queued",
+        IdempotencyKey = Guid.NewGuid(),
+        Attempt = 1,
+        Status = OutboundStates.Queued,
+        StatusAt = DateTime.UtcNow,
+        SentAt = DateTime.UtcNow,
+        CreatedAt = DateTime.UtcNow,
+      }
+    );
+    await f.Db.SaveChangesAsync();
+    await f
+      .Db.Drivers.Where(x => x.Id == driver)
+      .ExecuteUpdateAsync(x => x.SetProperty(d => d.Phone, "+15550000022"));
+
+    var second = await OpenAsync(f, driver);
+
+    Assert.NotEqual(first, second);
+    f.Db.ChangeTracker.Clear();
+    var conversations = await f
+      .Db.Conversations.AsNoTracking()
+      .ToDictionaryAsync(x => x.Id);
+    Assert.Equal(
+      ("+15550000021", "+15550000022"),
+      (conversations[first].Participant, conversations[second].Participant)
+    );
+    Assert.All(conversations.Values, x => Assert.Equal(driver, x.DriverId));
+    Assert.Equal(
+      first,
+      (
+        await f.Db.ConversationMessages.AsNoTracking().SingleAsync()
+      ).ConversationId
+    );
+  }
+
+  // A driver writes from the number their messages go to, phone or
+  // WhatsApp number, and is linked; two drivers with that number, or a
+  // driver whose own WhatsApp number is another, are not.
+  [Fact]
+  public async Task AnInboundMessageLinksTheDriverTheRuleNames()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    var byPhone = await DriverAsync(f, "Ann Phone", null, "+15550000031");
+    await DriverAsync(f, "Bo Elsewhere", "+15550000039", "+15550000032");
+    await DriverAsync(f, "Cy Shared", null, "+15550000033");
+    await DriverAsync(f, "Di Shared", "+15550000033");
+    await DriverAsync(
+      f,
+      "Ed Other Carrier",
+      null,
+      "+15550000034",
+      company: Guid.NewGuid()
+    );
+
+    foreach (var phone in new[] { "31", "32", "33", "34" })
+      await f.InboundAsync($"+155500000{phone}", $"wamid.{phone}", "hi");
+
+    var linked = await f
+      .Db.Conversations.AsNoTracking()
+      .ToDictionaryAsync(x => x.Participant, x => x.DriverId);
+    Assert.Equal(byPhone, linked["+15550000031"]);
+    Assert.Null(linked["+15550000032"]);
+    Assert.Null(linked["+15550000033"]);
+    Assert.Null(linked["+15550000034"]);
   }
 
   // Two dispatchers choose the driver at once: the other's conversation is

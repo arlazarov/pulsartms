@@ -194,7 +194,10 @@ public partial class FuelSendPlan : IDisposable
         "WhatsApp is not set up. An administrator adds it in Settings.",
       { State: "noDriver" } =>
         "No driver is assigned to this truck's current work.",
-      { State: "noNumber" } r => $"{r.DriverName} has no WhatsApp number.",
+      { State: "noNumber" } r =>
+        $"{r.DriverName} has no WhatsApp number or valid phone.",
+      { State: "invalidNumber" } r =>
+        $"{r.DriverName}'s WhatsApp number is not a valid number.",
       { State: "outsideWindow" } r => $"{r.DriverName} has not written to "
         + "the WhatsApp number in the last 24 hours, so WhatsApp would not "
         + "deliver this message. Ask the driver to send any message first.",

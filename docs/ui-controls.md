@@ -859,7 +859,8 @@ status beside it, not an alert.
 WhatsApp number wherever a driver's contacts are needed. Each sourced field
 has its own "Use source value" checkbox and shows the source value; the
 WhatsApp number is never filled from the phone without the dispatcher
-pressing "Use the phone number". A refused save keeps the draft.
+pressing "Use the phone number"; while it is blank, messages go to the
+phone, as its hint says. A refused save keeps the draft.
 
 ## Background refresh
 

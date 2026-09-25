@@ -60,7 +60,8 @@
                 </p>
             }
             @if (preview.Recipient?.DriverId is { } driver
-                 && preview.Recipient.State is "noNumber" or "outsideWindow" or "ready")
+                 && preview.Recipient.State
+                    is "noNumber" or "invalidNumber" or "outsideWindow" or "ready")
             {
                 <button type="button" class="btn btn--text"
                         aria-expanded="@(_editingContact ? "true" : "false")"

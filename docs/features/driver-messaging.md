@@ -207,11 +207,28 @@ shows an indeterminate bar: the upload's progress is not measured.
 Outside the 24-hour window only approved templates are offered, or a
 note that there are none.
 
+**Where a driver's WhatsApp messages go** is one rule,
+`Domain/Rules/Fleet/DriverWhatsApp`: the driver's own WhatsApp number when
+one is set, otherwise their phone, each only when it is a valid E.164
+number. An explicit WhatsApp number that is not valid is reported as
+invalid and never replaced by the phone. A phone used this way is only an
+address to try: nothing knows it is registered on WhatsApp until the driver
+writes, and the list labels it "(phone)". The driver list, opening a
+conversation, matching an inbound number to its driver (exactly one driver
+must resolve to it) and the fuel hand-over's recipient all use the rule;
+database filters use the same choice through
+`Application/Features/Fleet/Services/DriverRecipients`, and the rule still
+decides per row. A conversation's number never changes: after a driver's
+phone or WhatsApp number is edited, the history and anything queued stay
+with the old number, and choosing the driver opens a conversation for the
+new one.
+
 Below the conversations, **Drivers without a chat**
-(`Pages/Messages/MessagingDrivers`) lists the active drivers who have a
-WhatsApp number of their own and no conversation yet on the number the
-company sends from (`GET /api/messaging/drivers?withoutConversation=true`),
-never one taken from their ordinary phone. It follows the list's search
+(`Pages/Messages/MessagingDrivers`) lists the active drivers who have such
+a number and no conversation yet for it on the number the company sends
+from (`GET /api/messaging/drivers?withoutConversation=true`). A page may
+hold fewer than 50 drivers, since rows whose stored number is unusable are
+read and skipped. It follows the list's search
 and the chosen driver group, pages 50 at a time by name, and is hidden
 under Unread. Conversations with unknown numbers stay in the list above.
 Choosing a driver (`POST .../drivers/{id}/conversation`,
