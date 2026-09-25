@@ -73,7 +73,9 @@ public sealed partial class EtaChainInputTests
   // accepted execution leg with its pickup done and its road saved for the
   // leg; the same leg after the load's stops were edited (notes, commodity,
   // a second appointment) so the leg's captured stops and the live ones
-  // differ; and a load with every stop field filled. The worker records a
+  // differ; and a load with every stop field filled; and truck 54777's
+  // (AMF1409, September 25): the source stop's address edited after the
+  // leg captured it. The worker records a
   // forecast, then the map's display read and the board's metadata read
   // ask for it. A forecast judged
   // "other work" is removed and read as none; the same work reads current
@@ -83,6 +85,7 @@ public sealed partial class EtaChainInputTests
   [InlineData("accepted leg, pickup done")]
   [InlineData("accepted leg, stops edited after acceptance")]
   [InlineData("no leg, every stop field filled")]
+  [InlineData("accepted leg, stop address edited after acceptance")]
   public async Task TheMapReadKeepsTheWorkersForecastForIncidentShapedWork(
     string shape
   )
@@ -148,7 +151,14 @@ public sealed partial class EtaChainInputTests
       row.PlanJson = JsonSerializer.Serialize(plan, RoutingJson.Options);
       await f.Db.SaveChangesAsync();
     }
-    if (shape != "accepted leg, pickup done")
+    if (shape.Contains("address", StringComparison.Ordinal))
+      await f
+        .Db.Set<DispatchStop>()
+        .Where(x => x.DispatchId == f.Current.Id)
+        .ExecuteUpdateAsync(s =>
+          s.SetProperty(x => x.Address, x => x.Address + " Suite 2")
+        );
+    else if (shape != "accepted leg, pickup done")
       await f
         .Db.Set<DispatchStop>()
         .Where(x => x.DispatchId == f.Current.Id)
