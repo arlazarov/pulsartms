@@ -372,8 +372,6 @@ internal sealed class PlanningTestServices : IDisposable
       HistoryCalls++;
       return Task.FromResult<HosHistory?>(null);
     }
-
-    public HosHistory? Peek(string driverId) => null;
   }
 
   private sealed class NoRouter : IRoutingProvider

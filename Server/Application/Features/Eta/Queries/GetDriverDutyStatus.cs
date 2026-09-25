@@ -6,10 +6,12 @@ using Domain.Rules.Eta;
 namespace Application.Features.Eta.Queries;
 
 // When a driver's current duty status began, for a page that shows how
-// long they have been in it. Read from the HOS history the forecasts
-// already hold, under the rule the forecasts use; nothing asks the
-// provider. StartedAt is null when that history is absent, stale or
-// disagrees with the clocks - never the time the clocks were fetched.
+// long they have been in it, under the rule the forecasts use. The history
+// is the forecasts' own: read through the provider's gate and one-minute
+// cache, so opening a conversation costs at most one history read per
+// driver a minute, and none when a forecast read it lately. StartedAt is
+// null when that history is unavailable, stale or disagrees with the
+// clocks - never the time the clocks were fetched.
 public sealed record GetDriverDutyStatusQuery(Guid DriverId)
   : IRequest<RequestResponse<DriverDutyView>>;
 
@@ -42,7 +44,7 @@ public sealed class GetDriverDutyStatusHandler(
     if (clocks.Count == 0)
       clocks = await store.ReadAsync(ct);
     var status = HosDutyStatus.Read(
-      history.Peek(external),
+      await history.GetAsync(external, ct),
       clocks.GetValueOrDefault(external),
       clock.GetUtcNow()
     );

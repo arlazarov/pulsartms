@@ -25,9 +25,6 @@ public class SamsaraHosHistoryTests
       clock,
       NullLogger<SamsaraHosHistoryProvider>.Instance
     );
-    // Nothing read yet: a peek finds nothing and asks nobody.
-    Assert.Null(provider.Peek("test"));
-    Assert.Equal(0, handler.Calls);
     var history = (await provider.GetAsync("test", default))!;
     Assert.Contains(history.Periods, p => p.Status == "sleeperBerth");
     Assert.DoesNotContain(history.Periods, p => p.Status == "sleeperBed");
@@ -37,8 +34,6 @@ public class SamsaraHosHistoryTests
       HosDutyStatus.Read(history, null, history.Through)!.RestMinutes
     );
     Assert.Same(history, await provider.GetAsync("test", default));
-    Assert.Same(history, provider.Peek("test"));
-    Assert.Null(provider.Peek("other"));
     Assert.Equal(2, handler.Calls);
   }
 

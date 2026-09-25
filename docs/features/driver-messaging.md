@@ -169,9 +169,11 @@ WhatsApp number), their hours of service from the fleet's shared snapshot,
 or that Samsara has none, never zeros, and the current load with its
 stops and the next load. The duty status says how long the driver has
 been in it ("Driving for 1h 20min") only from the status start that Eta's
-`GetDriverDutyStatusQuery` reads out of the HOS history the forecasts
-already hold (`IHosHistoryProvider.Peek`, no provider call), under the
-forecasts' rule; with no current history, or clocks older than three
+`GetDriverDutyStatusQuery` reads out of the driver's HOS history, under the
+forecasts' rule. The history comes through the forecasts' own provider
+(`IHosHistoryProvider.GetAsync`), whose per-driver gate and one-minute cache
+bound it to one read per driver a minute, and none when a forecast read it
+lately; with no current history, or clocks older than three
 minutes, the status stands alone. The clocks' fetch time is never shown
 as a status start; it is said only when the clocks are over three minutes
 old. Below

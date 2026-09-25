@@ -137,7 +137,5 @@ public sealed class EtaNativeDriverTests
       HistoryDrivers.Add(driverId);
       return Task.FromResult<HosHistory?>(null);
     }
-
-    public HosHistory? Peek(string driverId) => null;
   }
 }

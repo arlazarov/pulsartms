@@ -11,9 +11,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Server.Tests.Eta;
 
 // How long a driver has been in their current status, as a conversation
-// shows it: from the history the forecasts already hold, under their rule.
-// The clocks' fetch time is never a status start, and nothing asks the
-// provider for history.
+// shows it: from the driver's HOS history, under the forecasts' rule,
+// whether or not a forecast read it first. The clocks' fetch time is never
+// a status start.
 [Trait("Category", "Eta")]
 [Trait("Kind", "Integration")]
 public sealed class DriverDutyStatusReadTests
@@ -92,21 +92,20 @@ public sealed class DriverDutyStatusReadTests
     Assert.Equal(new("driving", null), await Read(driver.Id));
 
     Assert.Equal(DriverDutyView.Unknown, await Read(unlinked.Id));
-    Assert.Equal(5, history.Peeks);
+    Assert.Equal(5, history.Reads);
   }
 
+  // The provider's own gate and one-minute cache bound what these reads
+  // cost (SamsaraHosHistoryTests); here each read is counted.
   private sealed class CachedHistory : IHosHistoryProvider
   {
     public HosHistory? Value { get; set; }
-    public int Peeks { get; private set; }
+    public int Reads { get; private set; }
 
-    public Task<HosHistory?> GetAsync(string driverId, CancellationToken ct) =>
-      throw new InvalidOperationException("A read must not fetch history.");
-
-    public HosHistory? Peek(string driverId)
+    public Task<HosHistory?> GetAsync(string driverId, CancellationToken ct)
     {
-      Peeks++;
-      return Value;
+      Reads++;
+      return Task.FromResult(Value);
     }
   }
 }
