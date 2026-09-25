@@ -164,3 +164,43 @@ company owns the test number:
 
 Replies already stored in the demo company stay there. Moving them is a
 separate, explicit decision.
+
+## Evening check (after the 19:57 release)
+
+The owner reported that incoming messages still do not arrive. Evidence
+from Cloud Run request and application logs (path, status and time
+only) and bounded `READ ONLY` queries (counts and times, no text):
+
+| Stage | Evidence | Result |
+| --- | --- | --- |
+| Meta delivery | 27 webhook POSTs since 02:44, all HTTP 200; 4 on the new revision at 21:42:55.4, 21:42:55.9, 21:42:56.0 and 21:43:02.1 | delivered |
+| Company | every one to `meta-review-demo`; none to `amfcarrier` since 00:10:34 | the demo company |
+| Signature | 200, not 401, on each | valid for the demo company |
+| Number | no "addressed to another business number" warning; both companies' chats have the same business number and participant | same test number |
+| Storage | `meta-review-demo` chat `d9a9a728` (no driver): inbound at 11:19:43, 11:21:48, 11:21:53, 11:24:47 and 21:43:02.27 | stored, in the demo company |
+| AMF | chat `c9f5c6c8`: last inbound 00:10:33; replies sent at 11:19, 11:23, 11:24 (×2) and 21:42:51 stay "accepted" | nothing arrives |
+| Driver filter | AMF chat's driver is active (`IsActive` and imported both true) | not involved |
+| Page | AMF's inbox and unread reads answered 200 at 21:42:55, 21:43:05 and 21:43:21 | polling works; the data is elsewhere |
+
+**At 21:42:51**, AMF sent a reply; the three POSTs a few seconds later
+match that reply's status callbacks, which the demo company cannot apply.
+The owner's answer from the phone arrived at 21:43:02 and was stored in
+the demo company's chat 0.17 s later.
+
+**Configuration** is as in the morning: `amfcarrier` WhatsApp revision 5
+(02:34:17) and `meta-review-demo` revision 1 (00:35:40), both holding the
+same test number; Meta's callback address is the demo company's.
+
+**Stage that fails:** routing at Meta's callback address, a configuration
+choice, not the release. No code defect was found on this path, so no
+regression was added. Nothing was changed. Correcting it needs the
+owner's decision:
+- which company the test number belongs to;
+- if AMF, the callback address in the Meta app set to
+  `/api/webhooks/whatsapp/amfcarrier`, and the demo company's
+  credentials cleared in PulsR;
+- if the demo company must keep it for App Review, AMF needs its own
+  number.
+
+**Observability gap:** an accepted notification logs nothing; its
+inbound and status counts exist only in the live stage counters.
