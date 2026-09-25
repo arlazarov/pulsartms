@@ -6,60 +6,89 @@ namespace Application.Features.Messaging.Services;
 // "Conversation X changed" signals for the browsers of one company, raised
 // only after the change committed. They carry no content: a browser reads
 // what changed through the ordinary reads. Each subscriber has a small
-// bounded queue that drops its oldest signals when full, since any later
-// signal makes it read again anyway. In this process only; a second
-// instance would need a fan-out first.
+// bounded queue. A signal that finds it full is not queued: the subscriber
+// is told to read everything again (Resync) before its next signal, so a
+// burst never silently loses the change to the conversation a browser has
+// open. In this process only: a browser whose stream is on another
+// instance hears of a change only through its own periodic repair
+// (Client MessagingSignals.RepairEvery) until a fan-out exists.
 public sealed class MessagingEvents
 {
   public const int QueueSize = 64;
 
   private readonly ConcurrentDictionary<
     Guid,
-    ConcurrentDictionary<Guid, Channel<MessagingEvent>>
+    ConcurrentDictionary<Guid, Subscriber>
   > subscribers = new();
+
+  private sealed class Subscriber(Channel<MessagingEvent> queue)
+  {
+    public Channel<MessagingEvent> Queue => queue;
+    public volatile bool Overflowed;
+  }
 
   public void Publish(Guid company, MessagingEvent change)
   {
     if (!subscribers.TryGetValue(company, out var channels))
       return;
     foreach (var channel in channels.Values)
-      channel.Writer.TryWrite(change);
+      if (!channel.Queue.Writer.TryWrite(change))
+        channel.Overflowed = true;
   }
 
   public Subscription Subscribe(Guid company)
   {
     var id = Guid.NewGuid();
-    var channel = Channel.CreateBounded<MessagingEvent>(
-      new BoundedChannelOptions(QueueSize)
-      {
-        FullMode = BoundedChannelFullMode.DropOldest,
-        SingleReader = true,
-      }
+    var subscriber = new Subscriber(
+      Channel.CreateBounded<MessagingEvent>(
+        new BoundedChannelOptions(QueueSize)
+        {
+          FullMode = BoundedChannelFullMode.Wait,
+          SingleReader = true,
+        }
+      )
     );
-    subscribers.GetOrAdd(company, _ => new())[id] = channel;
+    subscribers.GetOrAdd(company, _ => new())[id] = subscriber;
     return new(
-      channel.Reader,
+      subscriber.Queue.Reader,
+      () =>
+      {
+        var overflowed = subscriber.Overflowed;
+        subscriber.Overflowed = false;
+        return overflowed;
+      },
       () =>
       {
         if (subscribers.TryGetValue(company, out var channels))
           channels.TryRemove(id, out _);
-        channel.Writer.TryComplete();
+        subscriber.Queue.Writer.TryComplete();
       }
     );
   }
 
   public sealed class Subscription(
     ChannelReader<MessagingEvent> reader,
+    Func<bool> overflowed,
     Action release
   ) : IDisposable
   {
     public ChannelReader<MessagingEvent> Reader => reader;
 
+    // Whether signals were refused since the last ask: the subscriber must
+    // read everything again.
+    public bool TakeOverflow() => overflowed();
+
     public void Dispose() => release();
   }
 }
 
-public sealed record MessagingEvent(Guid ConversationId, long Revision);
+public sealed record MessagingEvent(Guid ConversationId, long Revision)
+{
+  // Read everything again: signals were lost to a full queue.
+  public static readonly MessagingEvent Resync = new(Guid.Empty, -1);
+
+  public static readonly MessagingEvent KeepAlive = new(Guid.Empty, 0);
+}
 
 // Wakes the outbox worker when a reply is queued, so it is sent at once
 // rather than on the next poll.

@@ -53,11 +53,14 @@ public partial class Messages : IAsyncDisposable
     _stale,
     _disposed;
 
-  // The conversation a send is on its way for. Busy only there: another
-  // conversation opened meanwhile has its own composer, and the answer
-  // for the first touches nothing of it.
-  private Guid? _busyFor;
-  private bool _busy => _busyFor is { } busy && busy == Id;
+  // Each opening of a conversation is an editor session. A send on its way
+  // is kept by conversation with the session it came from: its
+  // conversation stays busy, even after leaving and coming back, until it
+  // answers, and its answer touches the draft, files and refusal only in
+  // the session that sent it.
+  private int _editor;
+  private readonly Dictionary<Guid, int> _sending = [];
+  private bool _busy => Id is { } id && _sending.ContainsKey(id);
   private string _draft = "";
   private Guid? _draftKey;
   private string? _error,
@@ -68,11 +71,16 @@ public partial class Messages : IAsyncDisposable
   private int _inboxRead,
     _threadRead;
 
-  // A signal's reread of the open conversation, one at a time: a demand
-  // that comes while one is on its way is kept and read once more after
-  // it, so a change committed after that read's snapshot is never lost.
-  private Guid? _refreshing;
-  private bool _dirty;
+  // Rereads, one at a time: the open conversation's per conversation, the
+  // list's for the page. A demand that comes while one is on its way is
+  // served by one more read after it.
+  private readonly CoalescedReads<Guid> _threads = new();
+  private readonly CoalescedReads<bool> _lists = new();
+
+  // Files being read into staging, reserved against the limits before
+  // their bytes arrive, so selections made together cannot pass them.
+  private int _stagingCount;
+  private long _stagingBytes;
 
   // The revision the thread's first page was read at; older pages are
   // asked for relative to it.
@@ -112,7 +120,7 @@ public partial class Messages : IAsyncDisposable
     DriverGroup.Changed += OnDriverGroupChanged;
     Start(Signals.JoinAsync);
     Start(LoadTemplatesAsync);
-    Start(LoadInboxAsync);
+    Start(RefreshListAsync);
     if (Authentication is not null)
       _me = (await Authentication).User.Identity?.Name;
   }
@@ -124,6 +132,7 @@ public partial class Messages : IAsyncDisposable
     if (_shown == Id)
       return;
     _shown = Id;
+    _editor++;
     _trip = false;
     _thread = null;
     _messages = [];
@@ -132,7 +141,7 @@ public partial class Messages : IAsyncDisposable
     ResetDraft();
     if (Id is { } id)
     {
-      Start(() => LoadThreadAsync(id));
+      Start(() => RefreshThreadAsync(id));
       Start(() => LoadContextAsync(id));
     }
   }
@@ -203,7 +212,7 @@ public partial class Messages : IAsyncDisposable
   private void ChatOpened(Guid conversation)
   {
     Navigation.NavigateTo($"/messages/{conversation}");
-    Start(LoadInboxAsync);
+    Start(RefreshListAsync);
   }
 
   private async Task FiledAsync(Guid conversation)
@@ -218,24 +227,28 @@ public partial class Messages : IAsyncDisposable
   // names no conversation: the list is read first, and the open one only
   // when the list shows it at another revision or does not show it.
   private void OnSignal(MessagingSignal signal) =>
-    _ = InvokeAsync(async () =>
+    _ = InvokeAsync(() =>
     {
       if (_disposed || signal.Kind == "unread")
         return;
       if (signal.Kind == "read" || Id is not { } id)
-        await LoadInboxAsync();
+        Start(RefreshListAsync);
       else if (signal.ConversationId == id || signal.Kind == "resync")
-        await Task.WhenAll(LoadInboxAsync(), RefreshThreadAsync(id));
-      else if (signal.ConversationId is not null)
-        await LoadInboxAsync();
-      else
       {
-        await LoadInboxAsync();
-        if (!_disposed && Id == id && !Current(id))
-          await RefreshThreadAsync(id);
+        Start(RefreshListAsync);
+        Start(() => RefreshThreadAsync(id));
       }
-      if (!_disposed)
-        StateHasChanged();
+      else if (signal.ConversationId is not null)
+        Start(RefreshListAsync);
+      else
+        Start(async () =>
+        {
+          await RefreshListAsync();
+          if (_disposed || Id != id || Current(id))
+            return;
+          StateHasChanged();
+          await RefreshThreadAsync(id);
+        });
     });
 
   // Whether the list, as just read, shows the open conversation at the
@@ -248,7 +261,7 @@ public partial class Messages : IAsyncDisposable
   private async Task ReloadAsync()
   {
     _error = null;
-    await LoadInboxAsync();
+    await RefreshListAsync();
     if (Id is { } id)
       await RefreshThreadAsync(id);
   }
@@ -381,28 +394,15 @@ public partial class Messages : IAsyncDisposable
     await MarkReadAsync(id, thread);
   }
 
-  private async Task RefreshThreadAsync(Guid id)
-  {
-    if (_refreshing == id)
-    {
-      _dirty = true;
-      return;
-    }
-    _refreshing = id;
-    try
-    {
-      do
-      {
-        _dirty = false;
-        await LoadThreadAsync(id);
-      } while (_dirty && !_disposed && Id == id);
-    }
-    finally
-    {
-      if (_refreshing == id)
-        _refreshing = null;
-    }
-  }
+  private Task RefreshThreadAsync(Guid id) =>
+    _threads.RequestAsync(
+      id,
+      () => LoadThreadAsync(id),
+      () => !_disposed && Id == id
+    );
+
+  private Task RefreshListAsync() =>
+    _lists.RequestAsync(true, LoadInboxAsync, () => !_disposed);
 
   // Through what the server says this page lets be read: never past a
   // driver message the dispatcher has not been shown. Nothing unread for
@@ -474,7 +474,7 @@ public partial class Messages : IAsyncDisposable
     }
     if (_draft.Trim().Length == 0)
       return;
-    _busyFor = id;
+    var editor = Begin(id);
     _refusal = null;
     _draftKey ??= Guid.NewGuid();
     var result = await Api.PostAsync<SendMessageRequest, MessageView>(
@@ -482,7 +482,7 @@ public partial class Messages : IAsyncDisposable
       new(_draft, _draftKey.Value, _messages.LastOrDefault()?.Id, confirm),
       _lifetime.Token
     );
-    if (!Settled(id))
+    if (!Settled(id, editor))
       return;
     if (result.Success)
     {
@@ -499,7 +499,7 @@ public partial class Messages : IAsyncDisposable
   {
     if (Id is not { } id || _busy || Chosen is not { } chosen || !TemplateReady)
       return;
-    _busyFor = id;
+    var editor = Begin(id);
     _refusal = null;
     _draftKey ??= Guid.NewGuid();
     var result = await Api.PostAsync<TemplateRequest, MessageView>(
@@ -512,7 +512,7 @@ public partial class Messages : IAsyncDisposable
       ),
       _lifetime.Token
     );
-    if (!Settled(id))
+    if (!Settled(id, editor))
       return;
     if (result.Success)
     {
@@ -529,10 +529,11 @@ public partial class Messages : IAsyncDisposable
   {
     if (Id is not { } id || _busy)
       return;
+    var editor = _editor;
     _refusal = null;
     foreach (var file in args.GetMultipleFiles(args.FileCount))
     {
-      if (Staged.Count() >= StagedFile.MaximumStaged)
+      if (Staged.Count() + _stagingCount >= StagedFile.MaximumStaged)
       {
         _refusal = $"Send at most {StagedFile.MaximumStaged} files at once.";
         break;
@@ -547,8 +548,30 @@ public partial class Messages : IAsyncDisposable
         _refusal = "Photos up to 5 MB and other files up to 16 MB can be sent.";
         continue;
       }
-      var staged = await StagedFile.ReadAsync(file, id, _lifetime.Token);
-      if (_disposed || Id != id)
+      if (
+        _staged.Sum(x => (long)x.Bytes.Length) + _stagingBytes + file.Size
+        > StagedFile.MaximumTotal
+      )
+      {
+        _refusal =
+          "Files waiting to be sent total at most "
+          + $"{StagedFile.MaximumTotal / (1024 * 1024)} MB.";
+        break;
+      }
+      _stagingCount++;
+      _stagingBytes += file.Size;
+      StagedFile staged;
+      try
+      {
+        staged = await StagedFile.ReadAsync(file, id, _lifetime.Token);
+      }
+      finally
+      {
+        _stagingCount--;
+        _stagingBytes -= file.Size;
+      }
+      // Read for a session that has since ended: its reply is gone.
+      if (_disposed || Id != id || _editor != editor)
         return;
       _staged.Add(staged);
     }
@@ -586,7 +609,7 @@ public partial class Messages : IAsyncDisposable
         + "Send the text on its own first.";
       return;
     }
-    _busyFor = id;
+    var editor = Begin(id);
     _refusal = null;
     if (files[0].Caption is null && text.Length > 0)
     {
@@ -621,7 +644,7 @@ public partial class Messages : IAsyncDisposable
         break;
       }
     }
-    if (!Settled(id))
+    if (!Settled(id, editor))
       return;
     if (stale is not null)
       Refuse(stale, template: false);
@@ -632,13 +655,13 @@ public partial class Messages : IAsyncDisposable
   {
     if (Id is not { } id || _busy)
       return;
-    _busyFor = id;
+    var editor = Begin(id);
     var result = await Api.PostAsync<object, MessageView>(
       $"api/messaging/messages/{message.Id}/retry",
       new { },
       _lifetime.Token
     );
-    if (!Settled(id))
+    if (!Settled(id, editor))
       return;
     if (!result.Success)
       _refusal = result.ErrorMessage;
@@ -694,13 +717,20 @@ public partial class Messages : IAsyncDisposable
     }
   }
 
-  // Ends the send for its conversation; whether its answer may still touch
-  // the page, which it may only while that conversation is open.
-  private bool Settled(Guid id)
+  private int Begin(Guid id) => _sending[id] = _editor;
+
+  // Ends the send for its conversation. Its answer may touch the draft,
+  // files and refusal only in the session that sent it; the conversation
+  // opened again since is only read again, to show what was sent.
+  private bool Settled(Guid id, int editor)
   {
-    if (_busyFor == id)
-      _busyFor = null;
-    return !_disposed && Id == id;
+    _sending.Remove(id);
+    if (_disposed || Id != id)
+      return false;
+    if (_editor == editor)
+      return true;
+    Start(() => RefreshThreadAsync(id));
+    return false;
   }
 
   private void Refuse(string message, bool template)

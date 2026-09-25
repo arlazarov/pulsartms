@@ -62,7 +62,8 @@ public sealed class MessagesLoadingTests
 
   // B is chosen while A is still being read, then A again while B is; the
   // answers come back in the other order. Only the open conversation's
-  // messages show, and each opening reads one thread and one trip.
+  // messages show; each opening reads one trip, and A's second opening
+  // joins its first read, with one more read after it.
   [Fact]
   public async Task SwitchingBackAndForthShowsOnlyTheOpenConversation()
   {
@@ -75,8 +76,11 @@ public sealed class MessagesLoadingTests
     page.Render(x => x.Add(p => p.Id, B));
     page.Render(x => x.Add(p => p.Id, A));
     page.WaitForAssertion(
-      () => Assert.Equal(2, api.Count($"/api/messaging/conversations/{A}"))
+      () => Assert.Equal(1, api.Count($"/api/messaging/conversations/{B}"))
     );
+    // Opening A again while its read is on its way adds no read beside it;
+    // one more follows it.
+    Assert.Equal(1, api.Count($"/api/messaging/conversations/{A}"));
     toB.SetResult();
     first.SetResult();
 
@@ -149,6 +153,136 @@ public sealed class MessagesLoadingTests
       () => Assert.Contains("hello from A r4", page.Markup)
     );
     Assert.Equal(3, api.Count(thread));
+  }
+
+  // A's reply is on its way; B is opened and a reply sent there, then A
+  // again. A stays busy until its own reply answers, so it cannot be sent
+  // twice, and that answer, coming to a later opening of A, clears
+  // nothing there; A is read again to show it.
+  [Fact]
+  public async Task OverlappingRepliesAcrossReopeningAreSentOnceEach()
+  {
+    var api = new Api();
+    var sentA = api.Hold($"/api/messaging/conversations/{A}/messages");
+    await using var context = Context(api);
+    var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
+    Settle(page);
+    page.Find("#messages-text").Input("to A");
+    var sendingA = page.Find(".messages__composer").SubmitAsync();
+
+    page.Render(x => x.Add(p => p.Id, B));
+    Settle(page);
+    page.Find("#messages-text").Input("to B");
+    await page.Find(".messages__composer").SubmitAsync();
+    page.Render(x => x.Add(p => p.Id, A));
+    Settle(page);
+
+    Assert.True(page.Find("#messages-text").HasAttribute("disabled"));
+    await page.Find(".messages__composer").SubmitAsync();
+    var threadReads = api.Count($"/api/messaging/conversations/{A}");
+    sentA.SetResult();
+    await sendingA;
+
+    page.WaitForAssertion(
+      () =>
+        Assert.True(
+          api.Count($"/api/messaging/conversations/{A}") > threadReads
+        )
+    );
+    Assert.Equal(
+      (1, 1),
+      (
+        api.Count($"/api/messaging/conversations/{A}/messages"),
+        api.Count($"/api/messaging/conversations/{B}/messages")
+      )
+    );
+    page.WaitForAssertion(
+      () => Assert.False(page.Find("#messages-text").HasAttribute("disabled"))
+    );
+  }
+
+  // Changes to five other conversations arrive while the list is being
+  // read: one more read serves them all.
+  [Fact]
+  public async Task ABurstOfSignalsReadsTheListTwice()
+  {
+    var api = new Api();
+    await using var context = Context(api);
+    var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
+    Settle(page);
+    var signals = context.Services.GetRequiredService<MessagingSignals>();
+    var before = api.Count("/api/messaging/inbox");
+    var held = api.Hold("/api/messaging/inbox");
+
+    for (var i = 0; i < 5; i++)
+      signals.Receive("change", Guid.NewGuid().ToString());
+    page.WaitForAssertion(
+      () => Assert.Equal(before + 1, api.Count("/api/messaging/inbox"))
+    );
+    held.SetResult();
+
+    page.WaitForAssertion(
+      () => Assert.Equal(before + 2, api.Answered("/api/messaging/inbox"))
+    );
+    page.Settle();
+    Assert.Equal(before + 2, api.Count("/api/messaging/inbox"));
+    Assert.Equal(1, api.Count($"/api/messaging/conversations/{A}"));
+  }
+
+  // Six files chosen together stage five; and what waits to be sent stays
+  // within the total the browser holds.
+  [Fact]
+  public async Task StagingKeepsToItsCountAndSize()
+  {
+    var api = new Api();
+    await using var context = Context(api);
+    var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
+    Settle(page);
+
+    page.FindComponent<InputFile>()
+      .UploadFiles(
+        [
+          .. Enumerable
+            .Range(0, 6)
+            .Select(i =>
+              InputFileContent.CreateFromBinary(
+                [1],
+                $"f{i}.pdf",
+                contentType: "application/pdf"
+              )
+            ),
+        ]
+      );
+    page.WaitForAssertion(
+      () => Assert.Contains("Send at most 5 files", page.Markup)
+    );
+    Assert.Equal(5, page.FindAll(".messages__staged-file").Count);
+    foreach (var name in new[] { "f1", "f2", "f3", "f4" })
+      await ClickAsync(page, $"[aria-label='Remove {name}.pdf']");
+
+    var large = new byte[12 * 1024 * 1024];
+    page.FindComponent<InputFile>()
+      .UploadFiles(
+        [
+          .. Enumerable
+            .Range(0, 3)
+            .Select(i =>
+              InputFileContent.CreateFromBinary(
+                large,
+                $"big{i}.pdf",
+                contentType: "application/pdf"
+              )
+            ),
+        ]
+      );
+    page.WaitForAssertion(
+      () => Assert.Contains("total at most 32 MB", page.Markup)
+    );
+    Assert.Equal(
+      ["f0.pdf", "big0.pdf", "big1.pdf"],
+      page.FindAll(".messages__staged-name").Select(x => x.TextContent)
+    );
+    Assert.Empty(api.Uploads);
   }
 
   [Fact]

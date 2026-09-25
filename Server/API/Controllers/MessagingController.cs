@@ -321,6 +321,10 @@ public sealed class MessagingController : BaseController
     Response.Headers["X-Accel-Buffering"] = "no";
     try
     {
+      // Headers go at once: the browser counts a stream that sends none
+      // within 10 seconds as down, and the first keep-alive is 25 away.
+      await Response.WriteAsync(": connected\n\n", cancellationToken);
+      await Response.Body.FlushAsync(cancellationToken);
       await foreach (
         var change in Mediator.CreateStream(
           new StreamMessagingEventsQuery(),
@@ -329,8 +333,10 @@ public sealed class MessagingController : BaseController
       )
       {
         await Response.WriteAsync(
-          change.ConversationId == Guid.Empty
-            ? ": keep-alive\n\n"
+            // A negative revision is the query's "read everything again".
+            change.Revision < 0
+              ? "data: {\"resync\":true}\n\n"
+            : change.ConversationId == Guid.Empty ? ": keep-alive\n\n"
             : "data: "
               + JsonSerializer.Serialize(
                 new { change.ConversationId, change.Revision },

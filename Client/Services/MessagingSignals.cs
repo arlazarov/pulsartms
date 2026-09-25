@@ -27,6 +27,13 @@ public sealed class MessagingSignals : IAsyncDisposable
   // the poll ticks carry the views instead of a stream that says nothing.
   public static readonly TimeSpan HeaderTimeout = TimeSpan.FromSeconds(10);
   public static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(40);
+
+  // A healthy stream still misses some changes: those committed on another
+  // API instance, whose signals stay there. While it is up, the leader asks
+  // every view to check itself once this long has passed since the last
+  // ask, on the next line the stream sends (a keep-alive comes every 25
+  // seconds), so such a change shows within about a minute and a half.
+  public static readonly TimeSpan RepairEvery = TimeSpan.FromSeconds(60);
   private static readonly TimeSpan FirstBackoff = TimeSpan.FromSeconds(2);
   private static readonly TimeSpan MaximumBackoff = TimeSpan.FromSeconds(60);
 
@@ -230,6 +237,7 @@ public sealed class MessagingSignals : IAsyncDisposable
         if (response is not null)
         {
           await PostAsync("resync", null, ct);
+          var repaired = _time.GetUtcNow();
           quiet.CancelAfter(IdleTimeout);
           await using var stream = await response.Content.ReadAsStreamAsync(
             linked.Token
@@ -245,6 +253,13 @@ public sealed class MessagingSignals : IAsyncDisposable
             backoff = FirstBackoff;
             if (Change(line) is { } id)
               await PostAsync("change", id, ct);
+            else if (IsResync(line))
+              await PostAsync("resync", null, ct);
+            if (_time.GetUtcNow() - repaired >= RepairEvery)
+            {
+              repaired = _time.GetUtcNow();
+              await PostAsync("poll", null, ct);
+            }
           }
         }
       }
@@ -306,6 +321,25 @@ public sealed class MessagingSignals : IAsyncDisposable
     catch (JsonException)
     {
       return null;
+    }
+  }
+
+  // "data: {resync: true}": the server refused signals for this stream
+  // while it was behind, so every view reads everything again.
+  public static bool IsResync(string line)
+  {
+    if (!line.StartsWith("data:", StringComparison.Ordinal))
+      return false;
+    try
+    {
+      using var json = JsonDocument.Parse(line[5..]);
+      return json.RootElement.ValueKind == JsonValueKind.Object
+        && json.RootElement.TryGetProperty("resync", out var resync)
+        && resync.ValueKind == JsonValueKind.True;
+    }
+    catch (JsonException)
+    {
+      return false;
     }
   }
 

@@ -13,6 +13,10 @@ public sealed class StagedFile
   public const int MaximumStaged = 5;
   public const int MaximumCaption = 1024;
 
+  // Everything staged or being staged at once, whatever the conversation:
+  // the bytes live in the browser's WebAssembly memory until sent.
+  public const long MaximumTotal = 32 * 1024 * 1024;
+
   public Guid Id { get; } = Guid.NewGuid();
   public required Guid ConversationId { get; init; }
   public required string Name { get; init; }

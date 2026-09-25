@@ -43,6 +43,54 @@ public sealed class MessagingSignalsTests
     );
     Assert.Null(MessagingSignals.Change("data: {\"conversationId\":7}"));
     Assert.Null(MessagingSignals.Change("data: [1]"));
+    Assert.Null(MessagingSignals.Change("data: {\"resync\":true}"));
+    Assert.True(MessagingSignals.IsResync("data: {\"resync\":true}"));
+    Assert.False(MessagingSignals.IsResync("data: {\"resync\":false}"));
+    Assert.False(MessagingSignals.IsResync(": keep-alive"));
+  }
+
+  // A healthy stream: the server's "read everything again" reaches every
+  // view, and so does a repair tick once a minute has passed, on the next
+  // keep-alive, since changes on another instance never come as signals.
+  [Fact]
+  public async Task AHealthyStreamResyncsWhenToldAndRepairsEachMinute()
+  {
+    await using var f = new Fixture();
+    f.Live = new();
+    var channel = f.Context.JSInterop.SetupModule(Channel);
+    channel
+      .SetupVoid("join", _ => true)
+      .SetException(new JSException("No channel in this test."));
+    var seen = new List<string>();
+    f.Signals.Changed += x =>
+    {
+      lock (seen)
+        seen.Add(x.Kind);
+    };
+    await f.Signals.JoinAsync();
+    await Eventually(() => Assert.Contains("resync", Seen(seen)));
+    f.Live.Say(": connected");
+
+    f.Live.Say("data: {\"resync\":true}");
+    await Eventually(
+      () => Assert.Equal(2, Seen(seen).Count(x => x == "resync"))
+    );
+    f.Time.Advance(TimeSpan.FromSeconds(25));
+    f.Live.Say(": keep-alive");
+    await Task.Delay(50);
+    Assert.DoesNotContain("poll", Seen(seen));
+
+    f.Time.Advance(TimeSpan.FromSeconds(36));
+    f.Live.Say(": keep-alive");
+    await Eventually(() => Assert.Contains("poll", Seen(seen)));
+    Assert.Equal(1, f.Streams);
+    await f.Signals.LeaveAsync();
+  }
+
+  private static List<string> Seen(List<string> seen)
+  {
+    lock (seen)
+      return [.. seen];
   }
 
   [Fact]
@@ -237,6 +285,9 @@ public sealed class MessagingSignalsTests
     // body that never says anything. Both honour the reader's cancellation.
     public string? Buffered;
 
+    // A stream that speaks when the test says.
+    public LiveStream? Live;
+
     public Fixture()
     {
       Context = new ClientComponentContext(SendAsync);
@@ -277,6 +328,13 @@ public sealed class MessagingSignalsTests
         // notice the reader's cancellation.
         if (Stream is { } held)
           return held;
+        if (Live is { } live)
+          return Task.FromResult(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+              Content = new StreamContent(live),
+            }
+          );
         if (Buffered == "headers")
           return Hang(ct);
         if (Buffered == "body")
@@ -301,7 +359,26 @@ public sealed class MessagingSignalsTests
     public ValueTask DisposeAsync() => Context.DisposeAsync();
   }
 
-  private sealed class SilentStream : Stream
+  private sealed class LiveStream : SilentStream
+  {
+    private readonly System.Threading.Channels.Channel<byte[]> _lines =
+      System.Threading.Channels.Channel.CreateUnbounded<byte[]>();
+
+    public void Say(string line) =>
+      _lines.Writer.TryWrite(System.Text.Encoding.UTF8.GetBytes(line + "\n\n"));
+
+    public override async ValueTask<int> ReadAsync(
+      Memory<byte> buffer,
+      CancellationToken ct = default
+    )
+    {
+      var bytes = await _lines.Reader.ReadAsync(ct);
+      bytes.CopyTo(buffer);
+      return bytes.Length;
+    }
+  }
+
+  private class SilentStream : Stream
   {
     public override bool CanRead => true;
     public override bool CanSeek => false;

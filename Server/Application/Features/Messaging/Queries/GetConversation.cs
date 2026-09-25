@@ -284,6 +284,14 @@ public sealed class ConversationHandlers(
     using var subscription = events.Subscribe(serving);
     while (!ct.IsCancellationRequested)
     {
+      // Queued signals were refused while this reader was behind: it says
+      // so before the ones that did queue, which may come later than the
+      // lost ones.
+      if (subscription.TakeOverflow())
+      {
+        yield return MessagingEvent.Resync;
+        continue;
+      }
       using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
       wait.CancelAfter(Heartbeat);
       MessagingEvent? next = null;
@@ -299,7 +307,7 @@ public sealed class ConversationHandlers(
       {
         yield break;
       }
-      yield return next ?? new(Guid.Empty, 0);
+      yield return next ?? MessagingEvent.KeepAlive;
     }
   }
 }
