@@ -22,6 +22,10 @@ namespace Server.Tests.Fleet;
 [Trait("Kind", "Integration")]
 public sealed class TruckTrailerAssignmentTests
 {
+  // Load numbers are unique per company; a random one collided now and
+  // then and failed the save, which read as a flaky refresh.
+  private static int _loadNumber = 1000;
+
   private const string Source = "acme-telematics";
 
   // Truck 11005: in transit on a load that names 55904 at both stops, with
@@ -432,7 +436,7 @@ public sealed class TruckTrailerAssignmentTests
     return new Load
     {
       Id = id,
-      LoadNumber = Random.Shared.Next(1000, 999999),
+      LoadNumber = Interlocked.Increment(ref _loadNumber),
       Status = status,
       TruckId = truck,
       TrailerNumber = trailer,

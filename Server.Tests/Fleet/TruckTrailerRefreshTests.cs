@@ -27,6 +27,10 @@ namespace Server.Tests.Fleet;
 [Trait("Kind", "Integration")]
 public sealed class TruckTrailerRefreshTests
 {
+  // Load numbers are unique per company; a random one collided now and
+  // then and failed the save, which read as a flaky refresh.
+  private static int _loadNumber = 1000;
+
   public sealed record Change : IRequest<RequestResponse<int>>;
 
   [Fact]
@@ -245,7 +249,7 @@ public sealed class TruckTrailerRefreshTests
         new Load
         {
           Id = id,
-          LoadNumber = Random.Shared.Next(1000, 999999),
+          LoadNumber = Interlocked.Increment(ref _loadNumber),
           Status = "in_transit",
           TruckId = truck,
           TrailerNumber = trailer,
