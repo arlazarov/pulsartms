@@ -3,6 +3,7 @@
 // Writing to the driver, or a template outside the window.
 .messages {
   &__composer {
+    container: messages-composer / inline-size;
     display: grid;
     gap: ui.pg(sm);
     padding: ui.pg(sm) ui.pg(md) ui.pg(md);
@@ -27,6 +28,24 @@
     grid-template-columns: auto minmax(0, 1fr) auto;
     gap: ui.pg(sm);
     align-items: end;
+  }
+  // At a large text size on a phone one row leaves the text box a sliver:
+  // it takes the first line, with Attach and Send below it.
+  @container messages-composer (width < #{ui.breakpoint(messages-composer-stacked)}) {
+    .messages__compose-row {
+      grid-template-areas:
+        'text text text'
+        'attach . send';
+    }
+    .messages__compose-row > textarea {
+      grid-area: text;
+    }
+    .messages__compose-row > .messages__attach {
+      grid-area: attach;
+    }
+    .messages__compose-row > button[type='submit'] {
+      grid-area: send;
+    }
   }
   &__compose-row textarea {
     width: 100%;

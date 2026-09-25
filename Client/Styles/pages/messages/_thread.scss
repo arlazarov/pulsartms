@@ -2,8 +2,11 @@
 
 // The thread: its header, the messages and their states.
 .messages {
+  // At a large text size a phone's row cannot hold every control: they
+  // wrap to the next line rather than leave the screen.
   &__head {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: ui.pg(sm);
     min-height: 3.25rem;
@@ -12,7 +15,7 @@
   }
   &__title {
     display: grid;
-    flex: 1;
+    flex: 1 1 5rem;
     min-width: 0;
   }
   &__title h2 {

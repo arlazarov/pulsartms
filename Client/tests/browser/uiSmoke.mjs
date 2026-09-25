@@ -347,8 +347,11 @@ const conversationSummary = (id, name, windowOpen, unread) => ({
   claimedUntil: null,
   revision: 3,
 });
+// Opened with the driver's message unread, so opening it marks it read (a
+// thread with nothing unread asks nothing).
 const conversation = () => ({
-  summary: conversationSummary(conversationId, 'Fixture Driver', true, 0),
+  summary: conversationSummary(conversationId, 'Fixture Driver', true, 1),
+  readThrough: 3,
   messages: [
     {
       id: '5a0e5c1e-7d5b-4a61-9d7e-000000000011',
@@ -598,6 +601,23 @@ const fixtures = new Map([
       }),
   ],
   ['/api/messaging/templates', success([])],
+  [
+    '/api/messaging/drivers',
+    success({
+      drivers: [
+        {
+          id: '5a0e5c1e-7d5b-4a61-9d7e-000000000009',
+          name: 'Fixture Driver Without A Chat',
+          number: '+15550000009',
+          source: 'whatsApp',
+          conversationId: null,
+        },
+      ],
+      configured: true,
+      more: false,
+      next: null,
+    }),
+  ],
   [
     '/api/messaging/unread',
     success({

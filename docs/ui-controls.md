@@ -840,7 +840,11 @@ unread pill and tags for another dispatcher's claim and a closed window.
 Filter chips state `aria-pressed` as `true`/`false`. Bubbles: inbound on
 the surface with a subtle border, outbound on `selected` with
 `selection-border`; statuses read with check marks, a failure in danger
-text with its code and Send again as `.btn--danger`. A file is a card
+text with its code and Send again as `.btn--danger` (only on a reply's
+latest attempt; an earlier one reads "sent again below"). The thread
+header wraps rather than push a control off a phone's screen, and below
+`messages-composer-stacked` (the composer's own width) the reply box
+takes its own line above Attach and Send. A file is a card
 whose drawn thumbnail is its open control, with name, kind, where it is
 and the filing box on `warning-surface`. The trip pane uses the shared
 `DriverHours` dials and always says how old the clocks are. Below

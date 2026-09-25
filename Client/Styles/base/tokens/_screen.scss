@@ -44,8 +44,10 @@ $screen-places: (
   // The fuel plan editor.
   fuel-editor-columns: 1000px,
 
-  // Messages: the driver and trip beside the conversation.
-  messages-trip-beside: 1101px
+  // Messages: the driver and trip beside the conversation, and the reply
+  // box above its buttons when a row would leave it a sliver.
+  messages-trip-beside: 1101px,
+  messages-composer-stacked: 16rem
 );
 
 $breakpoints: map.merge($screen-scale, $screen-places);

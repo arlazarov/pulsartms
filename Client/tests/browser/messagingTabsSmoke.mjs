@@ -110,6 +110,10 @@ async function api(route) {
   if (path === '/api/messaging/unread')
     return json(success({ conversations: 0, more: false, newest: 0 }));
   if (path === '/api/messaging/templates') return json(success([]));
+  if (path === '/api/messaging/drivers')
+    return json(
+      success({ drivers: [], configured: true, more: false, next: null }),
+    );
   // The driver group picker on Messages: none made, none chosen.
   if (path === '/api/driver-groups')
     return json(success({ selected: null, groups: [] }));
