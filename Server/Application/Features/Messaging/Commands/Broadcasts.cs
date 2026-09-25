@@ -538,18 +538,19 @@ public sealed class BroadcastHandlers(
     if (broadcast is null)
       return null;
     var recipients = Recipients(broadcast);
-    var latest = (
-      await Attempts(broadcast)
-        .AsNoTracking()
-        .Select(x => new
-        {
-          x.IdempotencyKey,
-          x.Attempt,
-          x.Id,
-          x.Status,
-        })
-        .ToListAsync(ct)
-    ).GroupBy(x => x.IdempotencyKey!.Value).ToDictionary(x => x.Key, x => x.MaxBy(m => m.Attempt)!);
+    var attempts = await Attempts(broadcast)
+      .AsNoTracking()
+      .Select(x => new
+      {
+        x.IdempotencyKey,
+        x.Attempt,
+        x.Id,
+        x.Status,
+      })
+      .ToListAsync(ct);
+    var latest = attempts
+      .GroupBy(x => x.IdempotencyKey!.Value)
+      .ToDictionary(x => x.Key, x => x.MaxBy(m => m.Attempt)!);
     return new(
       broadcast.Id,
       broadcast.Kind,

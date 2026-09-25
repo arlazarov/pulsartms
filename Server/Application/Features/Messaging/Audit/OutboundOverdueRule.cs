@@ -4,10 +4,11 @@ using Domain.Models.Messaging;
 
 namespace Application.Features.Messaging.Audit;
 
-// The outbox takes a queued reply within seconds of it being due (queued,
-// or its worker's lease over), and turns a "sending" reply whose lease ran
-// out into "unknown" on its next pass. A reply still queued or sending
-// longer than the pending grace after that means the outbox is not running
+// The outbox sends a queued reply within seconds of it being queued, and
+// turns a "sending" reply whose lease ran out into "unknown" on its next
+// pass. A reply still queued longer than the pending grace after it was
+// queued - even one taken again and again, whose lease keeps moving - or
+// still sending that long after its lease, means the outbox is not running
 // for the company or fails on the reply: the driver is waiting on a
 // message that is not moving. Read only; the outbox owns every change,
 // and a reply already with the provider is never sent again from here.
@@ -39,10 +40,7 @@ public sealed class OutboundOverdueRule(IAppDbContext db) : IConsistencyRule
         && m.Direction == MessageDirections.Outbound
         && (after == null || m.Id.CompareTo(after.Value) > 0)
         && (
-          (
-            m.Status == OutboundStates.Queued
-            && (m.LeaseUntil ?? m.StatusAt) < overdue
-          )
+          (m.Status == OutboundStates.Queued && m.StatusAt < overdue)
           || (
             m.Status == DriverMessageStatuses.Sending && m.LeaseUntil < overdue
           )

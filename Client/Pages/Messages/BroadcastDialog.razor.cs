@@ -10,8 +10,8 @@ namespace Client.Pages.Messages;
 // and sends: each driver gets their own message in their own chat. The
 // retry key lasts as long as the dialog, so Send twice is one broadcast,
 // and a changed request after an unanswered Send is refused by the server
-// instead of sent twice. Afterwards each driver's message shows its own status, and
-// what has not gone yet can be cancelled.
+// instead of sent twice. Afterwards each driver's message shows its own
+// status, and what has not gone yet can be cancelled.
 public partial class BroadcastDialog : IDisposable
 {
   [Parameter]
