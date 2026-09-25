@@ -844,7 +844,9 @@ text with its code and Send again as `.btn--danger` (only on a reply's
 latest attempt; an earlier one reads "sent again below"). The thread
 header wraps rather than push a control off a phone's screen, and below
 `messages-composer-stacked` (the composer's own width) the reply box
-takes its own line above Attach and Send. A file is a card
+takes its own line above Attach and Send. On a phone the surface keeps at
+least `28rem`, so at a large text size the page scrolls rather than leave
+the thread no height. A file is a card
 whose drawn thumbnail is its open control, with name, kind, where it is
 and the filing box on `warning-surface`. The trip pane uses the shared
 `DriverHours` dials and always says how old the clocks are. Below

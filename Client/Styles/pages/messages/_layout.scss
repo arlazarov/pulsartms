@@ -45,8 +45,12 @@
   @include ui.below(messages-trip-beside) {
     grid-template-columns: minmax(15.5rem, 18.75rem) minmax(0, 1fr);
   }
+  // On a phone at a large text size the window cannot hold the header, the
+  // thread and the reply box: the page scrolls rather than leave the
+  // thread no height. At an ordinary size this is below the room it has.
   @include ui.below(md) {
     grid-template-columns: minmax(0, 1fr);
+    min-height: 28rem;
   }
 
   &__list,
