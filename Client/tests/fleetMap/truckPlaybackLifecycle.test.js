@@ -202,3 +202,21 @@ test('hiding while the GPS buffer is exhausted resumes fresh movement without re
   assert.equal(f.position().gpsTime, f.now() - truckPlaybackDelay);
   assert.equal(f.layer.isFollowing(), true);
 });
+
+test('a restored camera stands, even when the truck it showed is focused', t => {
+  const run = playback(t);
+  run.layer.setInitialView({ latitude: 43.65, longitude: -79.38, zoom: 11 });
+  assert.deepEqual(run.cameras, [
+    { center: { lat: 43.65, lng: -79.38 }, zoom: 11 },
+  ]);
+  run.publish(run.origin, run.now());
+  run.layer.focusTruck('54777', undefined, true);
+  assert.equal(run.cameras.length, 1);
+});
+
+test('a camera that is not a place is ignored', t => {
+  const run = playback(t);
+  run.layer.setInitialView({ latitude: Number.NaN, longitude: 1, zoom: 3 });
+  run.layer.setInitialView(null);
+  assert.deepEqual(run.cameras, []);
+});

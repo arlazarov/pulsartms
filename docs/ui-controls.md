@@ -914,13 +914,21 @@ origins join it rather than building the query themselves.
   a new tab all return to the same place:
   - Dispatch: Active or Completed, the search and the page, with the view
     kept in the browser and the driver group on the server as before;
-  - the map: the selected truck and its load; the camera follows the truck
-    again, and the zoom and the truck search are not kept;
+  - the map: the selected truck and its load, a next load's stop being
+    read (`nextLoadId`, `nextStop`, `nextLeg`), the camera (`view`, centre
+    and zoom, reported when the map comes to rest) and the truck search
+    (`q`). A restored camera counts as the reader's own, so focusing the
+    truck it showed does not move it. The next load's stop is opened when
+    that load is drawn, through the same path as a click, so the truck,
+    load and assignment checks still decide; picking something first
+    replaces it;
   - Messages: the conversation.
 - What an address cannot hold is kept in memory for the tab only
-  (`ReturnPlaces`): Dispatch's scroll position, restored once the board
-  is drawn, and the reply being written in a conversation, restored when
-  it opens again. A reload or a new tab starts without them. Both are
+  (`ReturnPlaces`, `shared/returnPlace`): Dispatch's scroll position,
+  restored once the board is drawn; the reply being written in a
+  conversation; and where its thread was being read (the message at the
+  top and its offset), restored when that message is among those loaded,
+  otherwise the thread opens at the newest. A reload or a new tab starts without them. Both are
   cleared when the signed-in user changes, so nothing kept for one user
   or company shows for the next.
 - The address is written only for the page's own entry: a read that

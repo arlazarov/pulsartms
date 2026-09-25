@@ -153,6 +153,7 @@ async function fixture(t, { failInspector = false } = {}) {
     follows: [],
     inspections: [],
     initialTrucks: [],
+    initialViews: [],
     stationVisibility: [],
     ifta: [],
     fits: [],
@@ -221,6 +222,7 @@ async function fixture(t, { failInspector = false } = {}) {
       clearSelection: noop,
       dispose: noop,
       setInitialTruck: id => calls.initialTrucks.push(id),
+      setInitialView: view => calls.initialViews.push(view),
       setEditingTruck: id => calls.editingTrucks.push(id),
       setFollow: (id, enabled) => calls.follows.push([id, enabled]),
       releaseCamera: () => calls.follows.push([null, false]),
@@ -346,11 +348,15 @@ test('map options retain station controls without a truck visibility API', async
   assert.equal('setTrucksVisible' in api, false);
   await api.setOptions({
     initialTruckId: 'truck',
+    initialView: { latitude: 43.65, longitude: -79.38, zoom: 11 },
     stationsVisible: true,
     trafficVisible: true,
     useIfta: true,
   });
   assert.deepEqual(calls.initialTrucks, ['truck']);
+  assert.deepEqual(calls.initialViews, [
+    { latitude: 43.65, longitude: -79.38, zoom: 11 },
+  ]);
   assert.deepEqual(calls.stationVisibility, [true]);
   assert.deepEqual(calls.ifta, [true]);
 });

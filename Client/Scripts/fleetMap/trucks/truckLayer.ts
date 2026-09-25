@@ -160,6 +160,9 @@ export function createTruckLayer(
     setInitialTruck(id: string | null | undefined) {
       if (!disposed) camera.setInitialTruck(id);
     },
+    setInitialView(view: unknown) {
+      if (!disposed) camera.setInitialView(view);
+    },
     isFollowing() {
       return !disposed && camera.isFollowing();
     },

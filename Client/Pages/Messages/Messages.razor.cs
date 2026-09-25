@@ -1192,7 +1192,8 @@ public partial class Messages : IAsyncDisposable
         "attach",
         _lifetime.Token,
         _scroller,
-        _self
+        _self,
+        Id?.ToString()
       );
     }
     catch (JSException)

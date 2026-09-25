@@ -214,6 +214,14 @@ export async function createFleetMap(
       },
     );
     cleanup.push(() => nextLoads.dispose());
+    // Where the camera came to rest, for the page's address.
+    const idle = map.addListener?.('idle', () => {
+      const center = map.getCenter?.();
+      const zoom = map.getZoom?.();
+      if (center && typeof zoom === 'number')
+        notify('OnMapViewChanged', center.lat(), center.lng(), zoom);
+    });
+    cleanup.push(() => idle?.remove());
     nextLoads.setVisible(false);
     traffic.setMap(map);
     const trucks = createTruckLayer(
@@ -430,6 +438,16 @@ export async function createFleetMap(
           nextLoadIdentity = null;
         }
       },
+      // A next load's stop named by the page's address, opened when that
+      // load is drawn, exactly as if it had been picked.
+      selectNextStop(
+        loadId: string,
+        stopIndex: number,
+        executionLegId?: string | null,
+      ) {
+        if (!disposed)
+          nextLoads.selectStop(loadId, stopIndex, executionLegId ?? undefined);
+      },
       clearNextLoadSelection() {
         if (!disposed) nextLoads.clearSelection();
       },
@@ -604,6 +622,7 @@ export async function createFleetMap(
         if (disposed) return;
         const version = ++optionsVersion;
         trucks.setInitialTruck(options?.initialTruckId);
+        trucks.setInitialView(options?.initialView);
         traffic.setMap(options?.trafficVisible === true ? map : null);
         await stations.setIfta(options?.useIfta === true);
         if (disposed || version !== optionsVersion) return;

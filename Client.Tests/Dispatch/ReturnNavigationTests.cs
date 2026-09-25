@@ -95,4 +95,46 @@ public sealed class ReturnNavigationTests
     Assert.Equal("/fleet/map", ReturnNavigation.FleetMap(null, null));
     Assert.Equal($"/messages/{Truck}", ReturnNavigation.Conversation(Truck));
   }
+
+  [Fact]
+  public void TheMapKeepsItsNextStopCameraAndSearch()
+  {
+    var next = Guid.Parse("2b3c4d5e-6f70-4812-9a3b-4c5d6e7f8091");
+    var place = new MapPlace(
+      Truck,
+      Load,
+      next,
+      2,
+      null,
+      new MapView(43.651234567, -79.38, 11.25),
+      " 110 "
+    );
+
+    var address = ReturnNavigation.FleetMap(place);
+
+    Assert.Equal(
+      $"/fleet/map?truckId={Truck}&dispatchId={Load}&nextLoadId={next}"
+        + "&nextStop=2&view=43.65123%2C-79.38%2C11.25&q=110",
+      address
+    );
+    Assert.Equal("Back to map", ReturnNavigation.Resolve(address).Label);
+    // No next load, no stop number.
+    Assert.DoesNotContain(
+      "nextStop",
+      ReturnNavigation.FleetMap(new MapPlace(Truck, Load, NextStop: 2))
+    );
+  }
+
+  [Theory]
+  [InlineData("43.65,-79.38,11", true)]
+  [InlineData("43.65,-79.38", false)]
+  [InlineData("91,-79.38,11", false)]
+  [InlineData("43.65,-181,11", false)]
+  [InlineData("43.65,-79.38,40", false)]
+  [InlineData("NaN,-79.38,11", false)]
+  [InlineData("43.65,Infinity,11", false)]
+  [InlineData("a,b,c", false)]
+  [InlineData(null, false)]
+  public void OnlyARealPlaceOnTheMapIsReadAsACamera(string? text, bool real) =>
+    Assert.Equal(real, MapView.Parse(text) is not null);
 }

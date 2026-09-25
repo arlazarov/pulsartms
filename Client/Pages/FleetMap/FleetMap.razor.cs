@@ -45,9 +45,6 @@ public partial class FleetMap : IAsyncDisposable
   private PlanningDisplayCache PlanningCache { get; set; } = default!;
 
   [Inject]
-  private ReturnPlaces Places { get; set; } = default!;
-
-  [Inject]
   private HttpClient Http { get; set; } = default!;
 
   [Inject]
@@ -157,17 +154,6 @@ public partial class FleetMap : IAsyncDisposable
     TruckMapSearch.Filter(_trucks, TruckSearch);
   private TruckLocationMapDto? SelectedTruck =>
     _trucks.FirstOrDefault(x => x.TruckId == _activeTruckId);
-
-  // The map's place, for a load opened from here to return to: the chosen
-  // truck and its load, which the map already reads from its address. The
-  // camera follows the truck again on return; the zoom is not kept.
-  private string ReturnOrigin =>
-    ReturnNavigation.FleetMap(_activeTruckId, SelectedDispatchId);
-  private string? _reflectedAddress;
-  private string? OpenLoadHref =>
-    SelectedDispatchId is { } id
-      ? ReturnNavigation.Load(id, ReturnOrigin)
-      : null;
 
   private Guid? SelectedDispatchId =>
     (_planningDispatchId ?? _routeState?.Plan?.DispatchId ?? _activeDispatchId)
@@ -295,6 +281,7 @@ public partial class FleetMap : IAsyncDisposable
       _focusedTruckId = TruckId;
       FocusError = null;
       await SelectRouteAsync(TruckId, DispatchId);
+      await RestoreNextStopAsync();
     }
     else
       FocusError = "This truck has no location available on the map.";
@@ -346,6 +333,7 @@ public partial class FleetMap : IAsyncDisposable
           useIfta = UseIfta,
           distanceUnit = Units.Distance,
           initialTruckId = TruckId,
+          initialView = InitialView,
         }
       );
       if (_disposed || _map is null)
@@ -435,8 +423,11 @@ public partial class FleetMap : IAsyncDisposable
     await InvokeAsync(StateHasChanged);
   }
 
-  protected override void OnInitialized() =>
+  protected override void OnInitialized()
+  {
     DriverGroup.Changed += OnDriverGroupChanged;
+    ReadReturnPlace();
+  }
 
   // The dispatcher chose another driver group: the trucks and their hours
   // are read again now rather than at the next poll.
@@ -552,6 +543,7 @@ public partial class FleetMap : IAsyncDisposable
     _previewRequest?.Cancel();
     _previewRequest = null;
     _selectionDismissed = true;
+    _nextRestorePending = false;
     _showTruckInfo = false;
     _mobileTruckDetailsOpen = false;
     _inspectorMode = MapInspectorMode.Closed;
@@ -968,20 +960,6 @@ public partial class FleetMap : IAsyncDisposable
         or OperationCanceledException
         or JsonException
         or JSException;
-
-  // Written into the map's own history entry once there is a selection,
-  // or once the reader closed it, so browser Back and a reload return to
-  // it. Before either, the address the map was opened with stands.
-  private async Task ReflectSelectionAsync()
-  {
-    if (_disposed || _activeTruckId is null && !_selectionDismissed)
-      return;
-    var address = ReturnOrigin;
-    if (address == _reflectedAddress)
-      return;
-    _reflectedAddress = address;
-    await Places.ReflectAsync(address);
-  }
 
   public async ValueTask DisposeAsync()
   {

@@ -382,7 +382,7 @@ test('load details uses an accessible header icon with shared action sizing', ()
   assert.match(link, /href="@OpenLoadHref"/);
   assert.match(
     readFileSync(
-      new URL('../../Pages/FleetMap/FleetMap.razor.cs', import.meta.url),
+      new URL('../../Pages/FleetMap/FleetMap.ReturnPlace.cs', import.meta.url),
       'utf8',
     ),
     /OpenLoadHref =>\s*SelectedDispatchId is \{ \} id\s*\?\s*ReturnNavigation\.Load\(id, ReturnOrigin\)\s*:\s*null;/,

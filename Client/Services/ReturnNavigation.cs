@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Client.Services;
 
 // Where a load page returns to. A page that opens a load passes its own
@@ -33,10 +35,18 @@ public static class ReturnNavigation
     Accepts(from) ? new(from!, Label(Path(from!))) : Fallback;
 
   public static string FleetMap(Guid? truckId, Guid? dispatchId) =>
+    FleetMap(new MapPlace(truckId, dispatchId));
+
+  public static string FleetMap(MapPlace place) =>
     Address(
       "/fleet/map",
-      ("truckId", truckId?.ToString()),
-      ("dispatchId", dispatchId?.ToString())
+      ("truckId", place.TruckId?.ToString()),
+      ("dispatchId", place.DispatchId?.ToString()),
+      ("nextLoadId", place.NextLoadId?.ToString()),
+      ("nextStop", place.NextLoadId is null ? null : place.NextStop.ToString()),
+      ("nextLeg", place.NextLoadId is null ? null : place.NextLeg?.ToString()),
+      ("view", place.View?.ToString()),
+      ("q", place.Search?.Trim().Length > 0 ? place.Search.Trim() : null)
     );
 
   public static string DispatchList(
@@ -100,3 +110,46 @@ public static class ReturnNavigation
 }
 
 public sealed record ReturnLink(string Href, string Label);
+
+// Where the map was: the chosen truck and load, a next load's stop being
+// looked at, the camera and the truck search.
+public sealed record MapPlace(
+  Guid? TruckId,
+  Guid? DispatchId,
+  Guid? NextLoadId = null,
+  int NextStop = 0,
+  Guid? NextLeg = null,
+  MapView? View = null,
+  string? Search = null
+);
+
+// The camera, written compactly and read back only when it is a real
+// place on the map.
+public sealed record MapView(double Latitude, double Longitude, double Zoom)
+{
+  public override string ToString() =>
+    string.Create(
+      CultureInfo.InvariantCulture,
+      $"{Latitude:0.#####},{Longitude:0.#####},{Zoom:0.##}"
+    );
+
+  public static MapView? Parse(string? text)
+  {
+    var parts = text?.Split(',');
+    if (
+      parts is not { Length: 3 }
+      || !double.TryParse(parts[0], Number, Invariant, out var latitude)
+      || !double.TryParse(parts[1], Number, Invariant, out var longitude)
+      || !double.TryParse(parts[2], Number, Invariant, out var zoom)
+      || !double.IsFinite(latitude + longitude + zoom)
+      || latitude is < -85 or > 85
+      || longitude is < -180 or > 180
+      || zoom is < 1 or > 22
+    )
+      return null;
+    return new(latitude, longitude, zoom);
+  }
+
+  private const NumberStyles Number = NumberStyles.Float;
+  private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
+}

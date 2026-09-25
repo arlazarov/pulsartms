@@ -96,3 +96,19 @@ test('another user finds nothing kept', () => {
   place.arm();
   assert.equal(page.y, 0);
 });
+
+test('a conversation is reopened where it was read, once', () => {
+  place.forget();
+  place.keepThread('conversation-a', { id: 'message-7', top: 42 });
+  place.keepThread('conversation-b', null);
+  assert.deepEqual(place.takeThread('conversation-a'), {
+    id: 'message-7',
+    top: 42,
+  });
+  assert.equal(place.takeThread('conversation-a'), null);
+  assert.equal(place.takeThread('conversation-b'), null);
+
+  place.keepThread('conversation-a', { id: 'message-9', top: 0 });
+  place.forget();
+  assert.equal(place.takeThread('conversation-a'), null);
+});

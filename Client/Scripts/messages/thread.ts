@@ -6,6 +6,8 @@
 // Near the top it asks for the next older page; the page decides whether
 // one is due, and asks one at a time.
 
+import { keepThread, takeThread } from '../shared/returnPlace.ts';
+
 interface Callbacks {
   invokeMethodAsync(name: string): Promise<unknown>;
 }
@@ -14,7 +16,11 @@ interface Callbacks {
 const nearEnd = 96;
 const topFor = 400;
 
-export function attach(scroller: HTMLElement, page: Callbacks) {
+export function attach(
+  scroller: HTMLElement,
+  page: Callbacks,
+  conversation?: string | null,
+) {
   // Reversed scrollers count scrollTop from the bottom, as zero or less.
   const fromBottom = () =>
     scroller.scrollTop <= 0
@@ -53,6 +59,22 @@ export function attach(scroller: HTMLElement, page: Callbacks) {
     if (Math.abs(moved) >= 1) scroller.scrollTop += moved;
   };
 
+  // Coming back to a conversation left partway up: the same message at
+  // the same height, once it is on the page. When it is not among the
+  // messages loaded, the view stays at the newest, as a fresh opening does.
+  let returning = conversation ? takeThread(conversation) : null;
+  const returnToAnchor = () => {
+    if (!returning) return;
+    const item = scroller.querySelector(
+      `[data-message-id="${CSS.escape(returning.id)}"]`,
+    );
+    if (!item) return;
+    atBottom = false;
+    anchor = returning;
+    returning = null;
+    restore();
+  };
+
   const check = () => {
     const bottom = fromBottom() <= nearEnd;
     if (bottom && !atBottom) void page.invokeMethodAsync('AtNewest');
@@ -63,6 +85,7 @@ export function attach(scroller: HTMLElement, page: Callbacks) {
 
   // Content changed size: new messages, an older page, a photo loaded.
   const resized = new ResizeObserver(() => {
+    returnToAnchor();
     restore();
     check();
   });
@@ -74,6 +97,7 @@ export function attach(scroller: HTMLElement, page: Callbacks) {
   children.observe(scroller, { childList: true });
   observe();
   scroller.addEventListener('scroll', check, { passive: true });
+  returnToAnchor();
   check();
 
   return {
@@ -95,6 +119,7 @@ export function attach(scroller: HTMLElement, page: Callbacks) {
       remember();
     },
     dispose() {
+      if (conversation) keepThread(conversation, atBottom ? null : anchor);
       resized.disconnect();
       children.disconnect();
       scroller.removeEventListener('scroll', check);

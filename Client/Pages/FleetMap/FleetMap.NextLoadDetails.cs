@@ -270,6 +270,7 @@ public partial class FleetMap
     if (stopIndex >= Math.Max(1, Math.Max(route.StopCount, route.Stops.Count)))
       return;
     _inspectorMode = MapInspectorMode.NextStop;
+    _nextRestorePending = false;
     _showTruckInfo = true;
     if (
       _inspectedLoadId == id

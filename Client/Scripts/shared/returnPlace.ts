@@ -41,8 +41,26 @@ export function disarm() {
   armed = null;
 }
 
+// Where a conversation was being read: the message at the top of the view
+// and how far down the view it stood. Taken when the conversation opens
+// again; nothing is kept while the newest message is in view.
+export type ThreadAnchor = { id: string; top: number };
+const threads = new Map<string, ThreadAnchor>();
+
+export function keepThread(key: string, anchor: ThreadAnchor | null) {
+  if (anchor) threads.set(key, anchor);
+  else threads.delete(key);
+}
+
+export function takeThread(key: string) {
+  const anchor = threads.get(key) ?? null;
+  threads.delete(key);
+  return anchor;
+}
+
 // Another user or another company: nothing kept for the last one is shown.
 export function forget() {
   positions.clear();
+  threads.clear();
   armed = null;
 }

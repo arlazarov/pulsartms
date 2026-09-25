@@ -1127,3 +1127,29 @@ test('picking a load road selects that load and offers it to be revealed', () =>
   assert.equal(selections.length, 2);
   assert.ok(revealed.at(-1).length >= 4);
 });
+
+test('a stop asked for before its load is drawn opens when the load arrives', () => {
+  const { layer, selections, loads } = selectionFixture();
+  layer.clear();
+  const before = selections.length;
+
+  layer.selectStop('second', 1);
+  assert.equal(selections.length, before);
+
+  layer.set(loads);
+  assert.deepEqual(selections.at(-1), ['second', 1]);
+
+  // Asked once: a later drawing does not pick it again.
+  layer.clear();
+  layer.set(loads);
+  assert.deepEqual(selections.at(-1), [null, 0]);
+});
+
+test('a stop the reader picks first replaces one still waiting', () => {
+  const { layer, markers, selections, loads } = selectionFixture();
+  layer.selectStop('missing', 0);
+  markers[0].onSelect();
+  assert.deepEqual(selections.at(-1), ['first', 0]);
+  layer.set([...loads, { ...loads[0], id: 'missing', loadNumber: 99 }]);
+  assert.deepEqual(selections.at(-1), ['first', 0]);
+});

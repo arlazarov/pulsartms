@@ -105,6 +105,30 @@ export function createTruckCamera(
     setInitialTruck(id: string | null | undefined) {
       if (!fitted) initialTruckId = id ?? null;
     },
+    // The camera a reader left the map with, coming back to it. It counts
+    // as their own camera: focusing the truck they had open keeps it.
+    setInitialView(view: unknown) {
+      const place = view as {
+        latitude?: unknown;
+        longitude?: unknown;
+        zoom?: unknown;
+      } | null;
+      const { latitude, longitude, zoom } = place ?? {};
+      if (
+        fitted ||
+        typeof latitude !== 'number' ||
+        typeof longitude !== 'number' ||
+        typeof zoom !== 'number' ||
+        !Number.isFinite(latitude + longitude + zoom)
+      )
+        return;
+      fitted = true;
+      userCamera = true;
+      viewportFocusId = null;
+      initialCamera(() =>
+        map.moveCamera({ center: { lat: latitude, lng: longitude }, zoom }),
+      );
+    },
     clearViewportFocus() {
       viewportFocusId = null;
     },

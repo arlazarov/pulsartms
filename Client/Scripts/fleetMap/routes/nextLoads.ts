@@ -95,7 +95,32 @@ export function createNextLoadsLayer(
   // badges stand at its own pickup and delivery, which can be several hundred
   // miles from the truck - so picking the road highlighted nothing but the
   // road, and the circles it was picked for were off the screen entirely.
+  // A stop asked for before its load is drawn: applied by the drawing that
+  // brings it, and dropped once the reader picks something themselves.
+  let pending: {
+    loadId: string;
+    index: number;
+    executionLegId?: string;
+  } | null = null;
+  function applyPending() {
+    if (!pending) return;
+    const wanted = pending;
+    for (const group of markerGroups) {
+      const row = group.members.find(
+        member =>
+          member.loadId === wanted.loadId &&
+          member.index === wanted.index &&
+          (member.executionLegId ?? undefined) === wanted.executionLegId,
+      );
+      if (row) {
+        pending = null;
+        select(row, identity(row));
+        return;
+      }
+    }
+  }
   function select(member: StopSelection | undefined, loadId: string | null) {
+    pending = null;
     if (disposed || !visible || !member) return;
     selectedId = identity(member);
     selectedStopIndex = member.index;
@@ -121,6 +146,11 @@ export function createNextLoadsLayer(
   }
   return {
     clearSelection,
+    selectStop(loadId: string, index: number, executionLegId?: string) {
+      if (disposed) return;
+      pending = { loadId, index, executionLegId };
+      applyPending();
+    },
     clear() {
       clearSelection();
       clearObjects();
@@ -224,6 +254,7 @@ export function createNextLoadsLayer(
         objects.push(marker);
       }
       applySelection();
+      applyPending();
     },
   };
 }

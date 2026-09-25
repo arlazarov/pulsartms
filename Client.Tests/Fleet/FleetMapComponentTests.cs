@@ -2530,6 +2530,60 @@ public sealed class FleetMapComponentTests
     Assert.Equal(true, focus.Args![2]);
   }
 
+  // Coming back to the map from a load: the camera, the truck search and
+  // the next load's stop that was open all come back from the address,
+  // and the address follows the camera from then on.
+  [Fact]
+  public async Task AReturnRestoresTheCameraTheSearchAndTheNextStop()
+  {
+    using var fixture = new Fixture();
+    var next = Guid.NewGuid();
+    var component = fixture.RenderAt(
+      $"/fleet/map?truckId={fixture.TruckId}&nextLoadId={next}&nextStop=2"
+        + "&view=43.65,-79.38,11&q=110"
+    );
+
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(fixture.Js.Calls, call => call.Name == "selectNextStop")
+    );
+    var calls = fixture.Js.Calls.ToArray();
+    var view = JsonSerializer
+      .SerializeToElement(
+        calls.First(call => call.Name == "setOptions").Args![0]
+      )
+      .GetProperty("initialView");
+    Assert.Equal(
+      (43.65, -79.38, 11d),
+      (
+        view.GetProperty("latitude").GetDouble(),
+        view.GetProperty("longitude").GetDouble(),
+        view.GetProperty("zoom").GetDouble()
+      )
+    );
+    Assert.Equal(
+      [next.ToString(), 2, null],
+      calls.First(call => call.Name == "selectNextStop").Args!
+    );
+    Assert.Equal(
+      "110",
+      component.Find("#fleet-truck-search").GetAttribute("value")
+    );
+    // Until the stop is open, the address still names it.
+    var address = (string)calls.Last(call => call.Name == "reflect").Args![0]!;
+    Assert.Contains($"nextLoadId={next}", address);
+    Assert.Contains("view=43.65%2C-79.38%2C11", address);
+    Assert.Contains("q=110", address);
+
+    await component.InvokeAsync(
+      () => component.Instance.OnMapViewChanged(44.12345678, -78.2, 9.5)
+    );
+    Assert.Contains(
+      "view=44.12346%2C-78.2%2C9.5",
+      (string)fixture.Js.Calls.Last(call => call.Name == "reflect").Args![0]!
+    );
+  }
+
   [Fact]
   public void FailedInitialLocationsRevealTheMapInsteadOfLeavingTheStartupHostHidden()
   {
@@ -3734,7 +3788,10 @@ public sealed class FleetMapComponentTests
       Assert.Equal(
         ReturnNavigation.Load(
           future.Id,
-          ReturnNavigation.FleetMap(fixture.TruckA, Guid.Parse(current))
+          // With the stop being read, so the return reopens it.
+          ReturnNavigation.FleetMap(
+            new MapPlace(fixture.TruckA, Guid.Parse(current), future.Id)
+          )
         ),
         card.QuerySelector(
               ".fleet-route-popup__information > .fleet-route-popup__details-link"
@@ -3794,7 +3851,10 @@ public sealed class FleetMapComponentTests
           link.GetAttribute("href")
           == ReturnNavigation.Load(
             future.Id,
-            ReturnNavigation.FleetMap(fixture.TruckA, Guid.Parse(current))
+            // With the stop being read, so the return reopens it.
+            ReturnNavigation.FleetMap(
+              new MapPlace(fixture.TruckA, Guid.Parse(current), future.Id)
+            )
           )
       );
     });
@@ -3932,9 +3992,16 @@ public sealed class FleetMapComponentTests
     });
     Assert.True(pending.Cancellation.IsCancellationRequested);
     Assert.Equal(httpCalls, fixture.HttpCalls);
-    var transition = Assert.Single(fixture.Js.Calls.Skip(mapCalls));
+    // One map instruction; the address follows it and no longer names the
+    // next load's stop.
+    var after = fixture.Js.Calls.Skip(mapCalls).ToArray();
+    var transition = Assert.Single(after, call => call.Name != "reflect");
     Assert.Equal("setInspectorMode", transition.Name);
     Assert.Equal("truck", transition.Args![0]);
+    Assert.DoesNotContain(
+      "nextLoadId",
+      (string)after.Last(call => call.Name == "reflect").Args![0]!
+    );
 
     pending.Reply(
       new
@@ -5572,6 +5639,14 @@ public sealed class FleetMapComponentTests
         _context
           .Services.GetRequiredService<NavigationManager>()
           .NavigateTo($"/fleet/map?truckId={target}");
+      return _context.Render<FleetMap>();
+    }
+
+    public IRenderedComponent<FleetMap> RenderAt(string address)
+    {
+      _context
+        .Services.GetRequiredService<NavigationManager>()
+        .NavigateTo(address);
       return _context.Render<FleetMap>();
     }
 
