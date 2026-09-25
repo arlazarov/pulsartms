@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using Bunit;
 using Client.Models.DTO;
 using Client.Models.DTO.Messaging;
-using Client.Services;
 using Client.Tests.Support;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,15 +10,19 @@ using MessagesPage = Client.Pages.Messages.Messages;
 
 namespace Client.Tests.Messaging;
 
-// New chat lists the drivers with a WhatsApp number; choosing one asks the
-// server for the driver's conversation and opens it. Nothing is sent from
-// here, and while WhatsApp is not set up no driver can be chosen.
+// Below the conversations the page lists the drivers with a WhatsApp
+// number and no chat yet, under the same search. Choosing one asks the
+// server for the driver's conversation and opens it; nothing is sent. A
+// driver already known to have one opens it without asking, and while
+// WhatsApp is not set up no driver can be chosen.
 [Trait("Category", "Messaging")]
 [Trait("Kind", "Component")]
-public sealed class NewChatTests
+public sealed class MessagingDriversTests
 {
   private static readonly Guid Ann = Guid.NewGuid();
+  private static readonly Guid Bo = Guid.NewGuid();
   private static readonly Guid Chat = Guid.NewGuid();
+  private static readonly Guid Known = Guid.NewGuid();
 
   [Fact]
   public async Task ChoosingADriverOpensTheirConversation()
@@ -27,29 +30,48 @@ public sealed class NewChatTests
     var api = new Api(configured: true);
     await using var context = Context(api);
     var page = context.Render<MessagesPage>();
-    page.WaitForAssertion(() => Assert.Equal(1, api.InboxReads));
-
-    await page.FindAll("button")
-      .Single(x => x.TextContent.Trim() == "New chat")
-      .ClickAsync(new());
     page.WaitForAssertion(() => Assert.Contains("Ann Lee", page.Markup));
-    Assert.Contains("+15550000001", page.Markup);
-    Assert.Contains("api/messaging/drivers", api.DriverQueries.Single());
+    page.Settle();
+    Assert.Contains("Drivers without a chat", page.Markup);
+    Assert.Contains("withoutConversation=true", api.DriverQueries.Single());
 
-    await page.FindAll("button.messages__conversation")
-      .Single()
-      .ClickAsync(new());
-
+    await Driver(page, "Ann Lee").ClickAsync(new());
     page.WaitForAssertion(
-      () =>
-        Assert.EndsWith(
-          $"/messages/{Chat}",
-          context.Services.GetRequiredService<NavigationManager>().Uri
-        )
+      () => Assert.EndsWith($"/messages/{Chat}", Uri(context))
     );
     Assert.Equal([$"/api/messaging/drivers/{Ann}/conversation"], api.Opens);
+
+    page.Settle();
+    await Driver(page, "Bo Diaz").ClickAsync(new());
+    page.WaitForAssertion(
+      () => Assert.EndsWith($"/messages/{Known}", Uri(context))
+    );
+    Assert.Single(api.Opens);
     Assert.Empty(api.Sends);
-    Assert.True(api.InboxReads >= 2);
+  }
+
+  [Fact]
+  public async Task TheSearchNarrowsDriversAndUnreadHidesThem()
+  {
+    var api = new Api(configured: true);
+    await using var context = Context(api);
+    var page = context.Render<MessagesPage>();
+    page.WaitForAssertion(() => Assert.Contains("Ann Lee", page.Markup));
+    page.Settle();
+
+    page.Find(".messages__search input").Change("ann");
+    await page.Find(".messages__search").SubmitAsync();
+    page.WaitForAssertion(
+      () => Assert.Contains("search=ann", api.DriverQueries[^1])
+    );
+
+    page.Settle();
+    await page.FindAll(".messages__chip")
+      .Single(x => x.TextContent.Trim() == "Unread")
+      .ClickAsync(new());
+    page.WaitForAssertion(
+      () => Assert.DoesNotContain("Drivers without a chat", page.Markup)
+    );
   }
 
   [Fact]
@@ -57,16 +79,27 @@ public sealed class NewChatTests
   {
     var api = new Api(configured: false);
     await using var context = Context(api);
-    var picker = context.Render<Client.Pages.Messages.NewChat>();
+    var page = context.Render<MessagesPage>();
 
-    picker.WaitForAssertion(
-      () => Assert.Contains("WhatsApp is not set up", picker.Markup)
+    page.WaitForAssertion(
+      () => Assert.Contains("WhatsApp is not set up", page.Markup)
     );
-    var driver = picker.Find("button.messages__conversation");
+    page.Settle();
+    var driver = Driver(page, "Ann Lee");
     Assert.True(driver.HasAttribute("disabled"));
     await driver.ClickAsync(new());
     Assert.Empty(api.Opens);
   }
+
+  private static AngleSharp.Dom.IElement Driver(
+    IRenderedComponent<MessagesPage> page,
+    string name
+  ) =>
+    page.FindAll("button.messages__conversation")
+      .Single(x => x.TextContent.Contains(name));
+
+  private static string Uri(ClientComponentContext context) =>
+    context.Services.GetRequiredService<NavigationManager>().Uri;
 
   private static ClientComponentContext Context(Api api)
   {
@@ -82,7 +115,6 @@ public sealed class NewChatTests
     public List<string> DriverQueries { get; } = [];
     public List<string> Opens { get; } = [];
     public List<string> Sends { get; } = [];
-    public int InboxReads { get; private set; }
 
     public Task<HttpResponseMessage> SendAsync(
       HttpRequestMessage request,
@@ -93,16 +125,16 @@ public sealed class NewChatTests
       if (path == "/api/messaging/templates")
         return Ok<IReadOnlyList<MessageTemplateView>>([]);
       if (path == "/api/messaging/inbox")
-      {
-        InboxReads++;
         return Ok(new InboxView([], false));
-      }
       if (path == "/api/messaging/drivers")
       {
-        DriverQueries.Add(request.RequestUri.PathAndQuery);
+        DriverQueries.Add(request.RequestUri.Query);
         return Ok(
           new MessagingDriversView(
-            [new(Ann, "Ann Lee", "+15550000001", null)],
+            [
+              new(Ann, "Ann Lee", "+15550000001", null),
+              new(Bo, "Bo Diaz", "+15550000002", Known),
+            ],
             configured,
             false
           )
@@ -113,7 +145,7 @@ public sealed class NewChatTests
         Opens.Add(path);
         return Ok(Chat);
       }
-      if (path.Contains("/messages") || path.Contains("/templates"))
+      if (path.EndsWith("/messages") || path.EndsWith("/templates"))
         Sends.Add(path);
       return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
     }

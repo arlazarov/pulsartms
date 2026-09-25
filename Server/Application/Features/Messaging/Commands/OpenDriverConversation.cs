@@ -9,11 +9,14 @@ namespace Application.Features.Messaging.Commands;
 // The drivers a dispatcher can start a chat with: those with a WhatsApp
 // number of their own, never one taken from an ordinary phone. Search and
 // After work as on the inbox; InChosenGroup narrows to the dispatcher's
-// chosen driver group.
+// chosen driver group. WithoutConversation leaves out the drivers who
+// already have a conversation on the number the company sends from, which
+// the inbox lists above them.
 public sealed record GetMessagingDriversQuery(
   string? Search = null,
   MessagingDriverCursor? After = null,
-  bool InChosenGroup = false
+  bool InChosenGroup = false,
+  bool WithoutConversation = false
 ) : IRequest<RequestResponse<MessagingDriversView>>;
 
 public sealed record MessagingDriverCursor(string Name, Guid Id);
@@ -78,9 +81,19 @@ public sealed class DriverConversations(
         $"Search for at most {InboxHandlers.MaximumSearch} characters.",
         400
       );
+    var number = await messaging.BusinessNumberAsync(ct);
+    var channel = messaging.Channel;
     var query = db
       .Drivers.AsNoTracking()
       .Where(x => x.IsActive && x.WhatsAppPhone != null);
+    if (request.WithoutConversation && number is not null)
+      query = query.Where(x =>
+        !db.Conversations.Any(c =>
+          c.Channel == channel
+          && c.BusinessNumberId == number
+          && c.Participant == x.WhatsAppPhone
+        )
+      );
     if (
       request.InChosenGroup
       && await scope.CurrentAsync(ct) is { IsAll: false } group
@@ -115,7 +128,6 @@ public sealed class DriverConversations(
       .Take(PageSize + 1)
       .ToListAsync(ct);
     var shown = page.Take(PageSize).ToList();
-    var number = await messaging.BusinessNumberAsync(ct);
     var phones = shown.Select(x => x.Phone).Distinct().ToArray();
     var open =
       number is null || phones.Length == 0

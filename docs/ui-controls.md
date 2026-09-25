@@ -845,9 +845,9 @@ whose drawn thumbnail is its open control, with name, kind, where it is
 and the filing box on `warning-surface`. The trip pane uses the shared
 `DriverHours` dials and always says how old the clocks are. Below
 `messages-trip-beside` the trip is a sheet over the thread with a dimmed
-backdrop; below `md` one pane shows, with Back. New chat, beside
-the notification choice, swaps the conversations pane for driver rows of
-the same shape (a row is a button) with their WhatsApp numbers.
+backdrop; below `md` one pane shows, with Back. Below the conversations,
+"Drivers without a chat" lists driver rows of the same shape (a row is a
+button) with their WhatsApp numbers, scrolling with the conversations.
 
 `Shared/DriverGroups/DriverGroupPicker` is the one driver-group switch on
 Messages, Dispatch and Fleet Map (All drivers or one of the dispatcher's

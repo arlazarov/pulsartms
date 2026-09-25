@@ -58,13 +58,15 @@ public sealed class MessagingController : BaseController
     [FromQuery] string? search,
     [FromQuery] string? afterName,
     [FromQuery] Guid? afterId,
+    [FromQuery] bool withoutConversation,
     CancellationToken cancellationToken
   ) =>
     HandleRequest(
       new GetMessagingDriversQuery(
         search,
         afterName is { } name && afterId is { } id ? new(name, id) : null,
-        InChosenGroup: true
+        InChosenGroup: true,
+        WithoutConversation: withoutConversation
       ),
       cancellationToken
     );

@@ -5,14 +5,9 @@
 
 <PageTitle>Messages · PulsR</PageTitle>
 
-<section class="messages-page @(Id is null || _newChat ? "is-list" : "is-thread") @(_trip ? "shows-trip" : "")">
+<section class="messages-page @(Id is null ? "is-list" : "is-thread") @(_trip ? "shows-trip" : "")">
     <PageHeader Title="Messages">
         <NotificationChoice />
-        <button type="button" class="btn btn--small btn--primary"
-                aria-pressed="@(_newChat ? "true" : "false")"
-                @onclick="() => _newChat = !_newChat">
-            New chat
-        </button>
     </PageHeader>
     @if (_error is not null)
     {
@@ -25,40 +20,33 @@
         </p>
     }
     <div class="messages">
-        <aside class="messages__list"
-               aria-label="@(_newChat ? "New chat" : "Conversations")">
-            @if (_newChat)
-            {
-                <NewChat OnOpened="ChatOpened"
-                         OnClose="() => _newChat = false" />
-            }
-            else
-            {
-                <div class="messages__list-head">
-                    <form class="messages__search" role="search"
-                          @onsubmit="SearchAsync">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <circle cx="11" cy="11" r="7" />
-                            <path d="M20 20l-4-4" />
-                        </svg>
-                        <input type="search" aria-label="Search conversations"
-                               placeholder="Driver name or number"
-                               maxlength="100" @bind="_search" />
-                    </form>
-                    <div class="messages__filters" role="group" aria-label="Show">
-                        <button type="button" class="messages__chip"
-                                aria-pressed="@(_unreadOnly ? "false" : "true")"
-                                @onclick="() => FilterAsync(false)">
-                            All
-                        </button>
-                        <button type="button" class="messages__chip"
-                                aria-pressed="@(_unreadOnly ? "true" : "false")"
-                                @onclick="() => FilterAsync(true)">
-                            Unread
-                        </button>
-                    </div>
-                    <DriverGroupPicker Id="messages-driver-group" />
+        <aside class="messages__list" aria-label="Conversations">
+            <div class="messages__list-head">
+                <form class="messages__search" role="search"
+                      @onsubmit="SearchAsync">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="M20 20l-4-4" />
+                    </svg>
+                    <input type="search" aria-label="Search conversations"
+                           placeholder="Driver name or number"
+                           maxlength="100" @bind="_search" />
+                </form>
+                <div class="messages__filters" role="group" aria-label="Show">
+                    <button type="button" class="messages__chip"
+                            aria-pressed="@(_unreadOnly ? "false" : "true")"
+                            @onclick="() => FilterAsync(false)">
+                        All
+                    </button>
+                    <button type="button" class="messages__chip"
+                            aria-pressed="@(_unreadOnly ? "true" : "false")"
+                            @onclick="() => FilterAsync(true)">
+                        Unread
+                    </button>
                 </div>
+                <DriverGroupPicker Id="messages-driver-group" />
+            </div>
+            <div class="messages__rows">
                 @if (_conversations is null)
                 {
                     <p role="status"><LoadingIndicator /></p>
@@ -70,7 +58,7 @@
                             ? "No conversation matches."
                             : _unreadOnly
                             ? "Nothing unread."
-                            : "No driver has written yet.")
+                            : "No conversation yet.")
                     </p>
                 }
                 else
@@ -129,7 +117,11 @@
                         </button>
                     }
                 }
-            }
+                @if (!_unreadOnly)
+                {
+                    <MessagingDrivers Search="@_searched" OnOpened="ChatOpened" />
+                }
+            </div>
         </aside>
         <section class="messages__thread" aria-label="Conversation"
                  @ref="_threadPane">

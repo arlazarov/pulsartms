@@ -110,6 +110,10 @@ public sealed class DriverConversationTests
       [ann],
       (await ListAsync(f, search: "ann")).Drivers.Select(x => x.Id)
     );
+    Assert.Equal(
+      [ann],
+      (await ListAsync(f, withoutConversation: true)).Drivers.Select(x => x.Id)
+    );
     var group = new DriverScope(Guid.NewGuid(), "West", [bo], []);
     Assert.Equal(
       [bo],
@@ -234,7 +238,8 @@ public sealed class DriverConversationTests
     ReplyFixture f,
     string? search = null,
     MessagingDriverCursor? after = null,
-    DriverScope? scope = null
+    DriverScope? scope = null,
+    bool withoutConversation = false
   )
   {
     var result = await Handler(f, scope: scope)
@@ -242,7 +247,8 @@ public sealed class DriverConversationTests
         new GetMessagingDriversQuery(
           search,
           after,
-          InChosenGroup: scope is not null
+          InChosenGroup: scope is not null,
+          WithoutConversation: withoutConversation
         ),
         default
       );

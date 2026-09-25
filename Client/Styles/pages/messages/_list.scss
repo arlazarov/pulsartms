@@ -56,13 +56,28 @@
     background: ui.theme(accent);
     color: ui.theme(on-accent);
   }
-  &__conversations {
+  // Conversations, then drivers without one, scrolling together.
+  &__rows {
     flex: 1;
     min-height: 0;
+    overflow-y: auto;
+  }
+  &__conversations {
     margin: 0;
     padding: 0;
-    overflow-y: auto;
     list-style: none;
+  }
+  &__section {
+    margin: 0;
+    padding: ui.pg(md) ui.pg(md) ui.pg(xs);
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+  &__section-note {
+    padding: 0 ui.pg(md) ui.pg(sm);
   }
   &__conversation {
     display: grid;
@@ -91,16 +106,7 @@
   &__conversation:hover {
     background: ui.theme(surface-soft);
   }
-  &__new-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: ui.pg(sm);
-  }
-  &__new-head h2 {
-    margin: 0;
-    font-size: ui.fs(body);
-  }
+
   &__conversation.is-selected {
     border-left-color: ui.theme(accent);
     background: ui.theme(selected);

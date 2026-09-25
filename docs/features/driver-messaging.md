@@ -207,20 +207,25 @@ shows an indeterminate bar: the upload's progress is not measured.
 Outside the 24-hour window only approved templates are offered, or a
 note that there are none.
 
-**New chat** (`Pages/Messages/NewChat`) replaces the list with the active
-drivers who have a WhatsApp number of their own (`GET
-/api/messaging/drivers`), never one taken from their ordinary phone. The
-list is narrowed by the chosen driver group, searched by name or number
-and paged 50 at a time by name. Choosing a driver (`POST
-.../drivers/{id}/conversation`, `DriverConversations`) opens the driver's
-conversation on the number the company sends from now. When there is
-none, it is created with no message, no reply window and nothing unread
-for anyone, so its first message is an approved template. Choosing sends
-nothing. Two dispatchers choosing at once get one conversation: the
-conversation's unique key refuses the second insert, which reads the
-first. Without WhatsApp settings, or for a driver without a WhatsApp
-number, nothing is created (409). An empty conversation stays in the
-inbox as "No messages yet"; nothing removes it.
+Below the conversations, **Drivers without a chat**
+(`Pages/Messages/MessagingDrivers`) lists the active drivers who have a
+WhatsApp number of their own and no conversation yet on the number the
+company sends from (`GET /api/messaging/drivers?withoutConversation=true`),
+never one taken from their ordinary phone. It follows the list's search
+and the chosen driver group, pages 50 at a time by name, and is hidden
+under Unread. Conversations with unknown numbers stay in the list above.
+Choosing a driver (`POST .../drivers/{id}/conversation`,
+`DriverConversations`) opens the driver's conversation on the company's
+current number, or creates it with no message, no reply window and
+nothing unread for anyone, so its first message is an approved template.
+Choosing sends nothing. Two dispatchers choosing at once get one
+conversation: the conversation's unique key refuses the second insert,
+which reads the first. Without WhatsApp settings, or for a driver without
+a WhatsApp number, nothing is created (409). An empty conversation stays
+in the list as "No messages yet"; nothing removes it. The drivers list
+is read when the page opens, when the search or the group changes, and
+not on every signal: a driver whose conversation a colleague created
+meanwhile still opens that one.
 
 One stream per browser and account, not per tab: every tab showing
 messages joins `Scripts/shared/messagingChannel.ts` under a scope naming

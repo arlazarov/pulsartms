@@ -1,0 +1,47 @@
+@using Client.Models.DTO.Messaging
+
+@if (_error is not null)
+{
+    <p class="settings-page__error" role="alert">@_error</p>
+}
+@if (_drivers is { Count: > 0 })
+{
+    <section class="messages__drivers" aria-labelledby="messages-drivers-title">
+        <h2 id="messages-drivers-title" class="messages__section">
+            Drivers without a chat
+        </h2>
+        @if (_view is { Configured: false })
+        {
+            <p class="messages__note messages__section-note">
+                WhatsApp is not set up for the company yet, so no chat can be
+                started. An administrator saves it in Settings.
+            </p>
+        }
+        <ul class="messages__conversations">
+            @foreach (var driver in _drivers)
+            {
+                <li @key="driver.Id">
+                    <button type="button" class="messages__conversation"
+                            disabled="@(!CanOpen)"
+                            @onclick="() => OpenAsync(driver)">
+                        <span class="messages__avatar"
+                              aria-hidden="true">@Initials(driver.Name)</span>
+                        <span class="messages__who">
+                            <strong>@driver.Name</strong>
+                        </span>
+                        <span class="messages__preview">
+                            @driver.WhatsAppPhone · no messages yet
+                        </span>
+                    </button>
+                </li>
+            }
+        </ul>
+        @if (_view?.Next is not null)
+        {
+            <button type="button" class="btn btn--small btn--text messages__more"
+                    disabled="@_loadingMore" @onclick="LoadMoreAsync">
+                Show more drivers
+            </button>
+        }
+    </section>
+}

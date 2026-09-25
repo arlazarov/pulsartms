@@ -4,18 +4,19 @@ using Microsoft.AspNetCore.Components;
 
 namespace Client.Pages.Messages;
 
-// Starts a chat: the drivers with a WhatsApp number in the dispatcher's
-// driver group, by name. Choosing one asks the server for the driver's
-// conversation, which it opens or creates once; nothing is sent. While one
-// choice is on its way the others wait, and a late answer for an earlier
-// list never replaces a newer one.
-public partial class NewChat : IDisposable
+// Below the conversations: the drivers with a WhatsApp number of their own
+// and no conversation yet on the company's number, in the dispatcher's
+// driver group and under the same search, by name. Choosing one asks the
+// server for the driver's conversation, which it opens or creates once;
+// nothing is sent. While one choice is on its way the others wait, and a
+// late answer for an earlier list never replaces a newer one.
+public partial class MessagingDrivers : IDisposable
 {
   [Parameter]
-  public EventCallback<Guid> OnOpened { get; set; }
+  public string Search { get; set; } = "";
 
   [Parameter]
-  public EventCallback OnClose { get; set; }
+  public EventCallback<Guid> OnOpened { get; set; }
 
   [Inject]
   private ApiService Api { get; set; } = default!;
@@ -25,9 +26,8 @@ public partial class NewChat : IDisposable
 
   private MessagingDriversView? _view;
   private List<MessagingDriver>? _drivers;
-  private string _search = "",
-    _searched = "";
-  private string? _error;
+  private string? _searched,
+    _error;
   private bool _loadingMore,
     _opening,
     _disposed;
@@ -36,16 +36,14 @@ public partial class NewChat : IDisposable
 
   private bool CanOpen => !_opening && _view is { Configured: true };
 
-  protected override async Task OnInitializedAsync()
-  {
+  protected override void OnInitialized() =>
     DriverGroup.Changed += OnDriverGroupChanged;
-    await LoadAsync(null);
-  }
 
-  private async Task SearchAsync()
+  protected override async Task OnParametersSetAsync()
   {
-    _searched = _search.Trim();
-    _drivers = null;
+    if (_searched == Search)
+      return;
+    _searched = Search;
     await LoadAsync(null);
   }
 
@@ -62,16 +60,12 @@ public partial class NewChat : IDisposable
   {
     var generation = ++_read;
     var result = await Api.GetAsync<MessagingDriversView>(
-      "api/messaging/drivers?"
-        + (
-          _searched.Length > 0
-            ? $"search={Uri.EscapeDataString(_searched)}&"
-            : ""
-        )
+      "api/messaging/drivers?withoutConversation=true"
+        + (Search.Length > 0 ? $"&search={Uri.EscapeDataString(Search)}" : "")
         + (
           after is null
             ? ""
-            : $"afterName={Uri.EscapeDataString(after.Name)}"
+            : $"&afterName={Uri.EscapeDataString(after.Name)}"
               + $"&afterId={after.Id}"
         ),
       _lifetime.Token
@@ -81,7 +75,6 @@ public partial class NewChat : IDisposable
     if (!result.Success || result.Response is not { } view)
     {
       _error = result.ErrorMessage;
-      _drivers ??= [];
       return;
     }
     _error = null;
@@ -95,6 +88,11 @@ public partial class NewChat : IDisposable
   {
     if (!CanOpen)
       return;
+    if (driver.ConversationId is { } known)
+    {
+      await OnOpened.InvokeAsync(known);
+      return;
+    }
     _opening = true;
     _error = null;
     var result = await Api.PostAsync<object, Guid>(
@@ -105,10 +103,14 @@ public partial class NewChat : IDisposable
     _opening = false;
     if (_disposed)
       return;
-    if (result.Success)
-      await OnOpened.InvokeAsync(result.Response);
-    else
+    if (!result.Success)
+    {
       _error = result.ErrorMessage;
+      return;
+    }
+    // The driver now has a conversation, listed above.
+    _drivers?.Remove(driver);
+    await OnOpened.InvokeAsync(result.Response);
   }
 
   private void OnDriverGroupChanged() =>
@@ -116,7 +118,6 @@ public partial class NewChat : IDisposable
     {
       if (_disposed)
         return;
-      _drivers = null;
       await LoadAsync(null);
       StateHasChanged();
     });
