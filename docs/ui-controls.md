@@ -418,13 +418,17 @@ location and arrival information adjacent instead of stretching across the map.
 Future-stop details show the exact stop's imported PU # or DEL # below its address
 when available. The value copies on click and remains distinct from Appt # and the
 load's order number; missing or mismatched stop details never supply a reference.
-Next load stop starts compact, retaining load/order, stop identity, company,
-address, appointment, fuel on arrival and ETA. Its header's stable Details button
-reveals assignments, customer, stop/appointment references, distances and cycle
-forecasts. Keep the same summary and width in both states. Disclosure is local
-presentation only: no requests, recalculation or camera movement. Loading and
-polling retain the chosen state; another stop or a new inspection starts compact.
-On phones, keep title and Details in the first row and Back below them.
+Next load stop always shows its details: load/order, stop identity, company,
+address, assignments, customer, stop/appointment references, appointment,
+fuel on arrival, ETA, cycle forecasts and distances. There is no Details
+toggle. The address is split by the shared `StopAddressLines` formatter,
+which drops a trailing repeat of the city, region, postal code or country
+while the copy button still copies the full stored address. Rows that have
+no value are not rendered, except the stop facts, which show a dash.
+Appointment, fuel, the forecast (`Reading="facts"`) and the distances share
+one label column, published as `--route-fact-label`: 7rem, as on the truck
+card, capped at 40% of the column for phones at large text.
+On phones, keep the title in the first row and Back below it.
 At very narrow or enlarged-text widths, let this header scroll with the card
 instead of covering the stop facts with a tall sticky area.
 

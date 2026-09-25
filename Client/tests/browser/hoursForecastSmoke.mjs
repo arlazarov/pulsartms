@@ -822,7 +822,9 @@ async function checkCycleAlignment(card, name) {
       .getBoundingClientRect();
     const late = row.querySelector('.stop-hours__arrival .stop-hours__status');
     return {
-      labelLeft: label.left,
+      valueLeft: row
+        .querySelector('.stop-hours__value')
+        .getBoundingClientRect().left,
       cycleLeft: cycle.left,
       cycleTop: cycle.top,
       arrivalBottom: arrival.bottom,
@@ -830,9 +832,11 @@ async function checkCycleAlignment(card, name) {
       timeTop: row.querySelector('time').getBoundingClientRect().top,
     };
   });
+  // The card sets every fact on one label column, so a word about the
+  // cycle belongs in the value column under the ETA, like the lateness.
   check(
-    Math.abs(alignment.labelLeft - alignment.cycleLeft) <= 1,
-    `${name}: cycle warning is indented under the ETA value`,
+    Math.abs(alignment.valueLeft - alignment.cycleLeft) <= 1,
+    `${name}: cycle warning left the ETA value column`,
   );
   check(
     alignment.cycleTop >= alignment.arrivalBottom - 1,
@@ -4053,10 +4057,13 @@ try {
         true,
         `${name}: Back to truck joins Close in a selected-truck stop inspector`,
       );
-      const nextDisclosure = page.locator(
-        'button[aria-controls="fleet-map-next-load-details"]',
+      // The next load stop always shows its details: there is no toggle.
+      check(
+        (await page
+          .locator('button[aria-controls="fleet-map-next-load-details"]')
+          .count()) === 0,
+        `${name}: the next load stop has no Details toggle`,
       );
-      await nextDisclosure.click();
       check(
         (await card
           .locator('xpath=ancestor::*[contains(@class,"fleet-map-inspector")]')
@@ -4071,6 +4078,24 @@ try {
         `${name}: selected future details must hide, not duplicate, the retained truck and route information`,
       );
       await stableMapRect(page, mapRect, `${name}-future-inspection`);
+      const nextHead = await card.evaluate(element => {
+        const inspector = element.closest('.fleet-map-inspector');
+        const sticky = inspector
+          .querySelector('.fleet-map-inspector__header')
+          .getBoundingClientRect();
+        const load = element
+          .querySelector('.fleet-map-next-load-card__header')
+          .getBoundingClientRect();
+        return {
+          covered: load.top < sticky.bottom - 1,
+          scrollTop: inspector.scrollTop,
+        };
+      });
+      check(
+        !nextHead.covered,
+        `${name}: the sticky title covers the next load's load/order line ` +
+          `(scrolled ${nextHead.scrollTop}px)`,
+      );
       check(
         normalize(await card.innerText()).includes('Cycle short'),
         `${name}: selected pickup shortage missing`,
@@ -4100,7 +4125,6 @@ try {
         path: resolve(output, `${name}-selected-inspector.png`),
       });
       await page.evaluate(() => window.hoursFixture.selectStop(1));
-      await nextDisclosure.click();
       await page.waitForFunction(() =>
         document
           .querySelector('.fleet-map-next-load-card .stop-hours')

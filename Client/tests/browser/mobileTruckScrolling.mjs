@@ -15,12 +15,18 @@ export async function checkMobileTruckScrolling(page, output, name) {
       const map = document.querySelector('#fleet-map').getBoundingClientRect();
       const main = element.querySelector('.fleet-map-route-details');
       const readings = element.querySelector('#fleet-map-telemetry-details');
-      // The vehicle line is the last thing in the card, under the route.
+      // Whatever comes last in the card, and the card's own padding under
+      // it: the route no longer closes the card since the vehicle line
+      // moved onto the summary.
       const contentBottom =
         Math.max(
-          main.getBoundingClientRect().bottom,
-          readings.getBoundingClientRect().bottom,
-        ) + element.scrollTop;
+          ...[...element.children].map(
+            child => child.getBoundingClientRect().bottom,
+          ),
+        ) +
+        parseFloat(style.paddingBottom) +
+        parseFloat(style.borderBottomWidth) +
+        element.scrollTop;
       return {
         height: bounds.height,
         contentHeight: contentBottom - bounds.top,
@@ -32,9 +38,9 @@ export async function checkMobileTruckScrolling(page, output, name) {
         webkitScrollbar: getComputedStyle(element, '::-webkit-scrollbar')
           .display,
         overflow: style.overflowY,
-        routeBeforeReadings:
-          main.getBoundingClientRect().bottom <=
-          readings.getBoundingClientRect().top + 1,
+        readingsBeforeRoute:
+          readings.getBoundingClientRect().bottom <=
+          main.getBoundingClientRect().top + 1,
         // Whether the card actually scrolls sideways, which is the thing a
         // reader complains about. A scroll width past the client width is
         // not that on its own: a box that clips its own text to an ellipsis
@@ -128,9 +134,9 @@ export async function checkMobileTruckScrolling(page, output, name) {
       );
       assert.equal(before.withinMap, true);
       assert.equal(
-        before.routeBeforeReadings,
+        before.readingsBeforeRoute,
         true,
-        'The route reads first and the vehicle line closes the card',
+        'The vehicle line sits on the summary, above the route',
       );
       assert.ok(
         Math.abs(
@@ -141,7 +147,13 @@ export async function checkMobileTruckScrolling(page, output, name) {
               before.maximumHeight,
             ),
         ) <= 2,
-        'The phone card fits its content up to 60% of the map height',
+        `The phone card fits its content up to 60% of the map height ` +
+          `at ${variant.label}: ${JSON.stringify({
+            height: before.height,
+            content: before.contentHeight,
+            available: before.available,
+            maximum: before.maximumHeight,
+          })}`,
       );
       assert.equal(
         await page.locator('#fleet-map-route-details').isVisible(),

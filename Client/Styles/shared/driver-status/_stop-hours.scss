@@ -151,6 +151,25 @@
   }
 }
 
+// Every row on the label column its holder names, so the forecast lines
+// up with the facts said above and below it. The holder publishes the
+// width as --route-fact-label; without one each label takes what it needs.
+.stop-hours--facts {
+  grid-template-columns: var(--route-fact-label, max-content) minmax(0, 1fr);
+  .stop-hours__label,
+  .stop-hours__heading {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    font-weight: 400;
+  }
+  .stop-hours__cycle {
+    grid-template-columns: subgrid;
+  }
+  .stop-hours__row.stop-hours__recap {
+    display: grid;
+  }
+}
+
 // Inside a card on the map there is less room and less to say: the labels
 // are small and quiet, the hour is what stands out, and the cycle is a
 // column of plain rows rather than a section with a rule above it.

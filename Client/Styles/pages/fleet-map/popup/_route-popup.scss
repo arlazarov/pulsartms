@@ -171,7 +171,7 @@
   }
   &__facts {
     display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-columns: var(--route-fact-label, max-content) minmax(0, 1fr);
     column-gap: ui.pg(sm);
     margin: 0;
   }

@@ -9,7 +9,6 @@ public partial class FleetMap
   private Guid? _inspectedLoadId;
   private Guid? _inspectedExecutionLegId;
   private int _inspectedStopIndex;
-  private bool _nextStopDetailsOpen;
 
   private DispatchResponse? _inspectedDetails;
   private string? _inspectedDetailsError;
@@ -175,9 +174,6 @@ public partial class FleetMap
     }
   }
 
-  private void ToggleNextStopDetails() =>
-    _nextStopDetailsOpen = !_nextStopDetailsOpen;
-
   private void ResetInspectedLoad()
   {
     if (_inspectorMode == MapInspectorMode.NextStop)
@@ -190,7 +186,6 @@ public partial class FleetMap
     _inspectedLoadId = null;
     _inspectedExecutionLegId = null;
     _inspectedStopIndex = 0;
-    _nextStopDetailsOpen = false;
     _inspectedDetails = null;
     _inspectedDetailsError = null;
   }
@@ -282,8 +277,6 @@ public partial class FleetMap
       && _inspectedDetailsRequest is not null
     )
     {
-      if (_inspectedStopIndex != stopIndex)
-        _nextStopDetailsOpen = false;
       _inspectedStopIndex = stopIndex;
       await InvokeAsync(StateHasChanged);
       return;

@@ -1,17 +1,29 @@
 @use '../../base' as ui;
 
 .fleet-map-next-load-card {
+  // One label column for the facts, the forecast and the distances, the
+  // width the truck card uses, so the eye runs down a single line of
+  // values. The three blocks are equally wide, so the cap resolves alike
+  // in each; it keeps a phone at large text from giving the labels most
+  // of the card.
+  --route-fact-label: min(7rem, 40%);
   font-size: ui.fs(label);
   overflow-wrap: anywhere;
 
+  // One line: the load and its order, with the loading mark beside them.
+  // As a grid the mark took a row of its own and left a blank band under
+  // the load even when nothing was loading.
   &__header {
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(sm);
     font-size: ui.fs(label);
   }
 
   &__metrics {
     display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-columns: var(--route-fact-label) minmax(0, 1fr);
     column-gap: ui.pg(sm);
     margin: 0;
     > div {

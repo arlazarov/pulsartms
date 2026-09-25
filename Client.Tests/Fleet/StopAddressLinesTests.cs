@@ -49,6 +49,24 @@ public sealed class StopAddressLinesTests
     "Los Angeles, CA 90210"
   )]
   [InlineData("123 Main St, Albany, NY", "123 Main St", "Albany, NY")]
+  // AMF1413, September 25: the source line and the structured fields
+  // together named the city, state, ZIP and country twice.
+  [InlineData(
+    "860 Marine Dr, ROCK HILL, SC, USA, 29730-8089, Rock Hill, SC 29730-8089, USA",
+    "860 Marine Dr",
+    "Rock Hill, SC 29730-8089, USA"
+  )]
+  [InlineData(
+    "860 Marine Dr, Rock Hill, SC 29730-8089, US, Rock Hill, SC 29730-8089, USA",
+    "860 Marine Dr",
+    "Rock Hill, SC 29730-8089, USA"
+  )]
+  // A part that only resembles the locality stays.
+  [InlineData(
+    "860 Marine Dr, Rock Hill Plaza, Rock Hill, SC, 29730, US",
+    "860 Marine Dr, Rock Hill Plaza",
+    "Rock Hill, SC 29730, US"
+  )]
   public void RecognizedAddressTailsSeparateLocalityWithoutLosingStreetOrUnit(
     string address,
     string street,

@@ -69,12 +69,42 @@ public sealed partial record StopAddressLines(string Street, string Locality)
       string.Join(" ", new[] { region, postal }.Where(x => x.Length > 0)),
       country,
     };
+    // A source address often carries its own city, region, postal code
+    // and country before the structured ones repeat them: those repeats
+    // leave the street line, which keeps at least one part. Only exact
+    // repeats go; the full address is still what is copied.
+    var street = parts.Take(end).ToList();
+    var repeats = new HashSet<string>(
+      new[] { parts[end], region, postal, $"{region} {postal}" }.Where(x =>
+        x.Trim().Length > 0
+      ),
+      StringComparer.OrdinalIgnoreCase
+    );
+    while (
+      street.Count > 1
+      && (
+        repeats.Contains(street[^1])
+        || country is not null && SameCountry(street[^1], country)
+      )
+    )
+      street.RemoveAt(street.Count - 1);
     result = new(
-      string.Join(", ", parts.Take(end)),
+      string.Join(", ", street),
       string.Join(", ", locality.Where(x => !string.IsNullOrEmpty(x)))
     );
     return true;
   }
+
+  // US and USA, or the same word: one country. "CA" is left as written,
+  // since it may be California.
+  private static bool SameCountry(string value, string country) =>
+    value.Equals(country, StringComparison.OrdinalIgnoreCase)
+    || UnitedStates.Contains(value) && UnitedStates.Contains(country);
+
+  private static readonly HashSet<string> UnitedStates = new(
+    ["US", "USA", "United States"],
+    StringComparer.OrdinalIgnoreCase
+  );
 
   private static bool IsCity(string value) =>
     value.Any(char.IsLetter)

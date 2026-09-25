@@ -123,5 +123,9 @@
     max-width: none;
     border: 0;
     box-shadow: none;
+    // Directly under "Route options": the header row already separates it.
+    .fleet-map-inspector__body {
+      padding-top: ui.pg(xs);
+    }
   }
 }

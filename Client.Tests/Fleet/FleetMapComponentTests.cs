@@ -3618,20 +3618,15 @@ public sealed class FleetMapComponentTests
           component.Find("[aria-label='Selected next load']").TextContent
         )
     );
-    const string disclosure =
-      "button[aria-controls='fleet-map-next-load-details']";
+    // The next load stop always shows its details: there is no Details
+    // toggle, and Back to truck and the close control stay.
     var cardInstance = component.FindComponent<NextLoadDetailsCard>().Instance;
-    Assert.False(cardInstance.Expanded);
-    Assert.Equal(
-      "false",
-      component.Find(disclosure).GetAttribute("aria-expanded")
-    );
-    var mapCalls = fixture.Js.Calls.Count;
-    var readsBeforeDisclosure = fixture.DetailsCalls;
-    await component.Find(disclosure).ClickAsync(new());
     Assert.True(cardInstance.Expanded);
-    Assert.Equal(mapCalls, fixture.Js.Calls.Count);
-    Assert.Equal(readsBeforeDisclosure, fixture.DetailsCalls);
+    Assert.Empty(
+      component.FindAll("button[aria-controls='fleet-map-next-load-details']")
+    );
+    Assert.Single(component.FindAll(".fleet-map-inspector__back"));
+    Assert.Single(component.FindAll(".fleet-map-inspector__close"));
     Assert.Equal(planningCalls, fixture.PlanningCalls);
     request.Reply(
       new
@@ -3792,15 +3787,8 @@ public sealed class FleetMapComponentTests
       "Future delivery",
       component.Find("[aria-label='Selected next load']").TextContent
     );
-    Assert.False(
-      component.FindComponent<NextLoadDetailsCard>().Instance.Expanded
-    );
-    await component.Find(disclosure).ClickAsync(new());
+    // Another stop of the same load: still expanded, nothing to open.
     Assert.True(
-      component.FindComponent<NextLoadDetailsCard>().Instance.Expanded
-    );
-    await component.Find(disclosure).ClickAsync(new());
-    Assert.False(
       component.FindComponent<NextLoadDetailsCard>().Instance.Expanded
     );
     Assert.Contains(

@@ -40,6 +40,37 @@ test('popup secondary cycle warnings span both columns without changing the inli
   );
 });
 
+test('the next load stop sets its facts, forecast and distances on one label column', () => {
+  const css = compileString(
+    "@use 'shared/driver-status'; @use 'pages/fleet-map';",
+    { loadPaths },
+  ).css;
+  // One width, named once by the card, read by all three blocks; each block
+  // sizing its own label column is what left the values out of line.
+  assert.match(
+    css,
+    /\.fleet-map-next-load-card\s*\{[^}]*--route-fact-label: min\(7rem, 40%\);/,
+  );
+  assert.match(
+    css,
+    /\.stop-hours--facts\s*\{[^}]*grid-template-columns: var\(--route-fact-label, max-content\) minmax\(0, 1fr\);/,
+  );
+  assert.match(
+    css,
+    /\.fleet-route-popup__facts\s*\{[^}]*grid-template-columns: var\(--route-fact-label, max-content\) minmax\(0, 1fr\);/,
+  );
+  assert.match(
+    css,
+    /\.fleet-map-next-load-card__metrics\s*\{[^}]*grid-template-columns: var\(--route-fact-label\) minmax\(0, 1fr\);/,
+  );
+  const card = readFileSync(
+    new URL('../../Pages/FleetMap/NextLoadDetailsCard.razor', import.meta.url),
+    'utf8',
+  );
+  assert.match(card, /Reading="facts"/);
+  assert.doesNotMatch(card, /Reading="inline"/);
+});
+
 test('public style API emits no CSS and exposes only the intended controls and tokens', () => {
   assert.equal(compileString("@use 'base' as ui;", { loadPaths }).css, '');
   const css = compileString(

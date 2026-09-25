@@ -166,20 +166,6 @@
            map used to offer only "Back to truck", which is a different
            thing: it goes somewhere, and closing leaves the map clear. *@
         <div class="fleet-map-inspector__controls">
-            @if (_inspectorMode == MapInspectorMode.NextStop)
-            {
-                <button type="button"
-                        class="btn btn--text btn--small"
-                        aria-expanded="@(_nextStopDetailsOpen
-                            ? "true" : "false")"
-                        aria-controls="fleet-map-next-load-details"
-                        @onclick="ToggleNextStopDetails">
-                    Details
-                    <span aria-hidden="true">
-                        @(_nextStopDetailsOpen ? "▴" : "▾")
-                    </span>
-                </button>
-            }
             @if (_inspectorMode == MapInspectorMode.Truck)
             {
                 @* A chevron, not a word: "Details"/"Hide" are
@@ -517,7 +503,6 @@
                 Route options · <LoadNumber Value="inspected.LoadNumber" />
             </button>
             <NextLoadDetailsCard Embedded="true" Route="inspected" Stop="InspectedStop" StopIndex="_inspectedStopIndex"
-                Expanded="_nextStopDetailsOpen"
                 FuelArrival="InspectedFuelArrival"
                 DistanceMiles="InspectedDistanceMiles"
                 Details="_inspectedDetails" Eta="InspectedEta" Refreshing="InspectedEtaRefreshing" Loading="@(_inspectedDetailsRequest is not null)"

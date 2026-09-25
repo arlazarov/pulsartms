@@ -125,18 +125,19 @@
                         </dt>
                         <dd class="fleet-route-popup__value">@ArrivalFuelText</dd>
                     </div>
+                    @* No forecast: said on the same label column as the
+                       facts above, not as a stray line under them. *@
+                    @if (!HasDisplayedEta)
+                    {
+                        <div class="fleet-route-popup__field fleet-route-popup__eta"><dt class="fleet-route-popup__label">ETA</dt> <dd class="fleet-route-popup__value">—</dd></div>
+                    }
                 </dl>
                 <ArrivalEstimate @key="(Route.Id, StopIndex)"
                     Eta="Eta" Stop="Stop" DispatchId="Route.Id"
                     Memory="_arrivalMemory" Completed="StopCompleted"
                     Refreshing="Refreshing" ShowDutyStatus="false"
                     ShowAppointment="false" ShowRecap="true"
-                    ShowDetails="Expanded" Reading="inline" />
-                @if (!HasDisplayedEta)
-                {
-                    <span class="fleet-route-popup__eta
-                        fleet-route-popup__eta--eta">ETA —</span>
-                }
+                    ShowDetails="Expanded" Reading="facts" />
                 <dl hidden="@(!Expanded)"
                     class="fleet-map-next-load-card__metrics
                         fleet-route-popup__section-start">

@@ -24,8 +24,9 @@ public partial class StopHours
   public StopCycleForecast? Recap { get; set; }
 
   // How the same facts are read where they stand: "inline" runs the ETA as
-  // one line, "compact" is the quieter reading a card on the map uses. The
-  // stylesheet that owns the component owns both; a page asks for one
+  // one line, "compact" is the quieter reading a card on the map uses, and
+  // "facts" sets every row on the label column its holder names. The
+  // stylesheet that owns the component owns them; a page asks for one
   // instead of restyling what is inside.
   [Parameter]
   public string Reading { get; set; } = string.Empty;
