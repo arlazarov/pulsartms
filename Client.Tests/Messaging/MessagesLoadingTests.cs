@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.RegularExpressions;
 using Bunit;
 using Bunit.Rendering;
 using Client.Models.DTO;
@@ -132,14 +133,15 @@ public sealed class MessagesLoadingTests
   {
     var api = new Api { Unread = 0 };
     await using var context = Context(api);
+    api.ArmReread();
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
-    Settle(page);
+    Settle(page, api);
     var signals = context.Services.GetRequiredService<MessagingSignals>();
     var thread = $"/api/messaging/conversations/{A}";
     var held = api.Hold(thread);
     var inbox = api.Answered("/api/messaging/inbox");
     signals.Receive("change", A.ToString());
-    page.WaitForAssertion(() => Assert.Equal(2, api.Count(thread)));
+    api.WaitForRequests(thread, 2);
 
     api.Revision = 4;
     signals.Receive("poll", null);
@@ -165,17 +167,20 @@ public sealed class MessagesLoadingTests
     var api = new Api();
     var sentA = api.Hold($"/api/messaging/conversations/{A}/messages");
     await using var context = Context(api);
+    api.ArmReread();
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
-    Settle(page);
+    Settle(page, api);
     page.Find("#messages-text").Input("to A");
     var sendingA = page.Find(".messages__composer").SubmitAsync();
 
+    api.ArmReread();
     page.Render(x => x.Add(p => p.Id, B));
-    Settle(page);
+    Settle(page, api);
     page.Find("#messages-text").Input("to B");
     await page.Find(".messages__composer").SubmitAsync();
+    api.ArmReread();
     page.Render(x => x.Add(p => p.Id, A));
-    Settle(page);
+    Settle(page, api);
 
     Assert.True(page.Find("#messages-text").HasAttribute("disabled"));
     await page.Find(".messages__composer").SubmitAsync();
@@ -201,6 +206,35 @@ public sealed class MessagesLoadingTests
     );
   }
 
+  // The page acknowledges a read and then reads the list again; that answer
+  // renders the page once more and replaces the composer's input handler.
+  // Typing into the box found before it and dispatched after it reaches a
+  // handler that is gone (UnknownEventHandlerIdException, seen in the gate)
+  // - which is why Settle waits for this answer to be on screen.
+  [Fact]
+  public async Task TheListReadAfterAReadRendersTheComposerAgain()
+  {
+    var api = new Api();
+    api.ArmReread();
+    await using var context = Context(api);
+    var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
+    var reread = api.TakeReread()!;
+    reread.WaitAsked();
+    var before = page.Find("#messages-text").GetAttribute("blazor:oninput");
+
+    reread.Release(
+      page,
+      () => Assert.True(ListShown(page) >= api.RereadNumber)
+    );
+
+    Assert.NotNull(before);
+    Assert.NotEqual(
+      before,
+      page.Find("#messages-text").GetAttribute("blazor:oninput")
+    );
+    Assert.Equal(1, api.Answered($"/api/messaging/conversations/{A}/read"));
+  }
+
   // Changes to five other conversations arrive while the list is being
   // read: one more read serves them all.
   [Fact]
@@ -208,17 +242,16 @@ public sealed class MessagesLoadingTests
   {
     var api = new Api();
     await using var context = Context(api);
+    api.ArmReread();
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
-    Settle(page);
+    Settle(page, api);
     var signals = context.Services.GetRequiredService<MessagingSignals>();
     var before = api.Count("/api/messaging/inbox");
     var held = api.Hold("/api/messaging/inbox");
 
     for (var i = 0; i < 5; i++)
       signals.Receive("change", Guid.NewGuid().ToString());
-    page.WaitForAssertion(
-      () => Assert.Equal(before + 1, api.Count("/api/messaging/inbox"))
-    );
+    api.WaitForRequests("/api/messaging/inbox", before + 1);
     held.SetResult();
 
     page.WaitForAssertion(
@@ -236,8 +269,9 @@ public sealed class MessagesLoadingTests
   {
     var api = new Api();
     await using var context = Context(api);
+    api.ArmReread();
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
-    Settle(page);
+    Settle(page, api);
 
     page.FindComponent<InputFile>()
       .UploadFiles(
@@ -291,14 +325,16 @@ public sealed class MessagesLoadingTests
     var api = new Api();
     var sent = api.Hold($"/api/messaging/conversations/{A}/messages");
     await using var context = Context(api);
+    api.ArmReread();
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
-    Settle(page);
+    Settle(page, api);
     page.Find("#messages-text").Input("to A");
     var sending = page.Find(".messages__composer").SubmitAsync();
 
+    api.ArmReread();
     page.Render(x => x.Add(p => p.Id, B));
     page.WaitForAssertion(() => Assert.Contains("hello from B r", page.Markup));
-    Settle(page);
+    Settle(page, api);
     page.Find("#messages-text").Input("to B");
     Assert.False(page.Find("#messages-text").HasAttribute("disabled"));
     sent.SetResult();
@@ -316,8 +352,9 @@ public sealed class MessagesLoadingTests
   {
     var api = new Api { FailFirstFile = true };
     await using var context = Context(api);
+    api.ArmReread();
     var page = context.Render<MessagesPage>(x => x.Add(p => p.Id, A));
-    Settle(page);
+    Settle(page, api);
 
     page.FindComponent<InputFile>()
       .UploadFiles(
@@ -373,18 +410,39 @@ public sealed class MessagesLoadingTests
       catch (UnknownEventHandlerIdException) when (attempt < 20) { }
   }
 
-  // The thread, the list and the trip have all landed, so a control found
-  // now is the one that stays on screen.
-  private static void Settle(IRenderedComponent<MessagesPage> page)
+  // The thread, the list and the trip have all landed, and so has the
+  // page's own follow-up: with unread messages it acknowledges the read,
+  // then reads the list again, and that answer renders the page once more,
+  // replacing the composer's handlers
+  // (TheListReadAfterAReadRendersTheComposerAgain). It is held until asked,
+  // then released, and the test waits until the list on screen is that
+  // answer or a later one - not merely for some render. After it nothing
+  // more is on its way, so a control found then stays.
+  private static void Settle(IRenderedComponent<MessagesPage> page, Api api)
   {
     page.WaitForAssertion(() =>
     {
       Assert.Single(page.FindAll(".messages__conversation"));
       Assert.NotNull(page.Find("#messages-text"));
-      Assert.Empty(page.FindAll("[role=status]:not(.visually-hidden)"));
     });
-    page.Settle();
+    if (api.TakeReread() is { } reread)
+      reread.Release(
+        page,
+        () => Assert.True(ListShown(page) >= api.RereadNumber)
+      );
+    page.WaitForAssertion(
+      () => Assert.Empty(page.FindAll("[role=status]:not(.visually-hidden)"))
+    );
   }
+
+  // Which list answer the page shows: each carries its number.
+  private static int ListShown(IRenderedComponent<MessagesPage> page) =>
+    page.FindAll(".messages__conversation")
+      .Select(row => Regex.Match(row.TextContent, @"\[list (\d+)\]"))
+      .Where(match => match.Success)
+      .Select(match => int.Parse(match.Groups[1].Value))
+      .DefaultIfEmpty(0)
+      .Max();
 
   private static readonly string[] Slow =
   [
@@ -427,7 +485,71 @@ public sealed class MessagesLoadingTests
         held.TrySetResult();
     }
 
+    // The list read that follows a read acknowledgment, held once when
+    // armed (see Settle). With nothing unread there is no read to follow.
+    private readonly Lock _reread = new();
+    private HeldRequest? _armed;
+    private HeldRequest? _heldReread;
+    private bool _readAnswered;
+    private int _lists;
+
+    // The number the held list answer carries.
+    public int RereadNumber { get; private set; }
+
+    public void ArmReread()
+    {
+      lock (_reread)
+      {
+        _armed = Unread > 0 ? new HeldRequest() : null;
+        _heldReread = _armed;
+        _readAnswered = false;
+      }
+    }
+
+    public HeldRequest? TakeReread()
+    {
+      lock (_reread)
+      {
+        var held = _heldReread;
+        _heldReread = null;
+        return held;
+      }
+    }
+
+    private HeldRequest? HoldReread(string path, int number)
+    {
+      lock (_reread)
+      {
+        if (_armed is not { } armed || path != "/api/messaging/inbox")
+          return null;
+        if (!_readAnswered)
+          return null;
+        _armed = null;
+        RereadNumber = number;
+        return armed;
+      }
+    }
+
+    private void NoteAnswered(string path)
+    {
+      if (!path.EndsWith("/read", StringComparison.Ordinal))
+        return;
+      lock (_reread)
+        _readAnswered = _armed is not null;
+    }
+
     public int Count(string path) => _requests.GetValueOrDefault(path);
+
+    // A held request renders nothing, and bUnit re-checks a waited-for
+    // assertion only when the page renders, so the count itself is watched.
+    public void WaitForRequests(string path, int count) =>
+      Assert.True(
+        SpinWait.SpinUntil(
+          () => Count(path) >= count,
+          BunitContext.DefaultWaitTimeout
+        ),
+        $"{path} was asked {Count(path)} times, not {count}."
+      );
 
     public int Answered(string path) => _answered.GetValueOrDefault(path);
 
@@ -478,17 +600,27 @@ public sealed class MessagesLoadingTests
       var path = request.RequestUri!.AbsolutePath;
       var revision = Revision;
       _requests.AddOrUpdate(path, 1, (_, n) => n + 1);
+      var list =
+        path == "/api/messaging/inbox" ? Interlocked.Increment(ref _lists) : 0;
       if (_held.TryGetValue(path, out var held))
       {
         await held.Task;
         // A held answer is given once; the next request answers at once.
         _held.TryRemove(path, out _);
       }
+      if (HoldReread(path, list) is { } reread)
+        await reread.HoldAsync();
       _answered.AddOrUpdate(path, 1, (_, n) => n + 1);
+      NoteAnswered(path);
       if (path == "/api/messaging/templates")
         return Ok<IReadOnlyList<MessageTemplateView>>([]);
       if (path == "/api/messaging/inbox")
-        return Ok(new InboxView([Summary(A)], false));
+        return Ok(
+          new InboxView(
+            [Summary(A) with { LastPreview = $"hello [list {list}]" }],
+            false
+          )
+        );
       foreach (var id in new[] { A, B })
       {
         var at = $"/api/messaging/conversations/{id}";

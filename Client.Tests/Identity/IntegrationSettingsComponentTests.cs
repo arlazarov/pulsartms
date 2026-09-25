@@ -33,7 +33,7 @@ public sealed class IntegrationSettingsComponentTests
         );
       }
     );
-    var component = context.Render<IntegrationSettings>();
+    var component = RenderLoaded(context);
     component.WaitForAssertion(
       () =>
         Assert.Equal(
@@ -112,7 +112,7 @@ public sealed class IntegrationSettingsComponentTests
         return Response(State("whatsapp", 4, true));
       }
     );
-    var component = context.Render<IntegrationSettings>();
+    var component = RenderLoaded(context);
     await component
       .WaitForElement("[data-provider='whatsapp'] button")
       .ClickAsync(new());
@@ -165,7 +165,7 @@ public sealed class IntegrationSettingsComponentTests
           }
         )
     );
-    var component = context.Render<IntegrationSettings>();
+    var component = RenderLoaded(context);
 
     component.WaitForAssertion(
       () =>
@@ -198,7 +198,7 @@ public sealed class IntegrationSettingsComponentTests
         return Response(State("google-email", 4, true));
       }
     );
-    var component = context.Render<IntegrationSettings>();
+    var component = RenderLoaded(context);
     await component
       .WaitForElement("[data-provider='torqueai'] button")
       .ClickAsync(new());
@@ -245,7 +245,7 @@ public sealed class IntegrationSettingsComponentTests
         return Task.FromResult(ListResponse());
       }
     );
-    var component = context.Render<IntegrationSettings>();
+    var component = RenderLoaded(context);
     await component
       .WaitForElement("[data-provider='samsara'] button")
       .ClickAsync(new());
@@ -290,7 +290,7 @@ public sealed class IntegrationSettingsComponentTests
           }
         )
     );
-    var component = context.Render<IntegrationSettings>();
+    var component = RenderLoaded(context);
     await component
       .WaitForElement("[data-provider='whatsapp'] button")
       .ClickAsync(new());
@@ -325,7 +325,7 @@ public sealed class IntegrationSettingsComponentTests
             )
         )
     );
-    var component = context.Render<IntegrationSettings>();
+    var component = RenderLoaded(context);
     await component
       .WaitForElement("[data-provider='torqueai'] button")
       .ClickAsync(new());
@@ -367,7 +367,7 @@ public sealed class IntegrationSettingsComponentTests
           : Response(State("torqueai", 8, true));
       }
     );
-    var component = context.Render<IntegrationSettings>();
+    var component = RenderLoaded(context);
     await component
       .WaitForElement("[data-provider='torqueai'] button")
       .ClickAsync(new());
@@ -410,7 +410,7 @@ public sealed class IntegrationSettingsComponentTests
             : Failure(HttpStatusCode.Conflict, "conflict")
         )
     );
-    var component = context.Render<IntegrationSettings>();
+    var component = RenderLoaded(context);
     await component
       .WaitForElement("[data-provider='torqueai'] button")
       .ClickAsync(new());
@@ -470,7 +470,7 @@ public sealed class IntegrationSettingsComponentTests
         return await release.Task.WaitAsync(ct);
       }
     );
-    var component = context.Render<IntegrationSettings>();
+    var component = RenderLoaded(context);
     await component
       .WaitForElement("[data-provider='torqueai'] button")
       .ClickAsync(new());
@@ -522,7 +522,7 @@ public sealed class IntegrationSettingsComponentTests
         return Response(State("samsara", 4, true));
       }
     );
-    var component = context.Render<IntegrationSettings>();
+    var component = RenderLoaded(context);
     await component
       .WaitForElement("[data-provider='torqueai'] button")
       .ClickAsync(new());
@@ -578,7 +578,7 @@ public sealed class IntegrationSettingsComponentTests
         return Response(State("torqueai", 4));
       }
     );
-    var component = context.Render<IntegrationSettings>();
+    var component = RenderLoaded(context);
     await component
       .WaitForElement("[data-provider='torqueai'] .btn--text")
       .ClickAsync(new());
@@ -612,6 +612,7 @@ public sealed class IntegrationSettingsComponentTests
     using var context = new ClientComponentContext(
       (_, _) => Task.FromResult(Failure(status, "untrusted"))
     );
+    // A failed provider read ends the load: no webhook read follows.
     var component = context.Render<IntegrationSettings>();
     Assert.Contains(
       message,
@@ -619,6 +620,30 @@ public sealed class IntegrationSettingsComponentTests
     );
     Assert.Empty(
       component.FindAll("[data-provider] button, [data-provider] input")
+    );
+  }
+
+  // RenderLoaded waits for the webhook address by waiting for the cards:
+  // the page draws them only when the address is answered, never between
+  // its two reads. If that changed, a button could be found in a card that
+  // is about to be drawn again.
+  [Fact]
+  public void TheCardsAppearOnlyOnceTheWebhookAddressIsAnswered()
+  {
+    using var context = new ClientComponentContext(
+      (_, _) => Task.FromResult(ListResponse())
+    );
+    var providers = context.Hold("/api/settings/integrations");
+    var webhook = context.Hold("/api/settings/integrations/whatsapp/webhook");
+    var component = context.Render<IntegrationSettings>();
+    providers.Release();
+    webhook.WaitAsked();
+
+    Assert.Empty(component.FindAll("[data-provider] button"));
+
+    webhook.Release(
+      component,
+      () => Assert.NotEmpty(component.FindAll("[data-provider] button"))
     );
   }
 

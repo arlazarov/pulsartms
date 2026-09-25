@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
 using Bunit;
@@ -33,7 +34,14 @@ internal sealed class ClientComponentContext : BunitContext
     ReturnPlace.Mode = JSRuntimeMode.Loose;
     Services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
     Services.AddSingleton(_ => new HttpClient(
-      new StubHttpMessageHandler((request, ct) => SendAsync(send, request, ct))
+      new StubHttpMessageHandler(
+        async (request, ct) =>
+        {
+          if (TakeHold(request.RequestUri?.AbsolutePath) is { } held)
+            await held.HoldAsync();
+          return await SendAsync(send, request, ct);
+        }
+      )
     )
     {
       BaseAddress = new("http://localhost/"),
@@ -47,6 +55,30 @@ internal sealed class ClientComponentContext : BunitContext
     Services.AddSingleton<MessagingNotices>();
     Services.AddSingleton<ChosenDriverGroup>();
     Services.AddSingleton<ReturnPlaces>();
+  }
+
+  private readonly ConcurrentDictionary<string, HeldRequest> _holds = new();
+
+  // The next request to this path is held until released (HeldRequest).
+  public HeldRequest Hold(string path) => _holds[path] = new HeldRequest();
+
+  private HeldRequest? TakeHold(string? path)
+  {
+    if (path is null || !_holds.TryRemove(path, out var held))
+      return null;
+    _taken.Enqueue(held);
+    return held;
+  }
+
+  private readonly ConcurrentQueue<HeldRequest> _taken = new();
+
+  // A request still held when the test ends is answered, so nothing is
+  // left waiting after the page is gone.
+  protected override ValueTask DisposeAsyncCore()
+  {
+    foreach (var held in _taken)
+      held.Answer();
+    return base.DisposeAsyncCore();
   }
 
   // Every page that lists drivers shows the driver group picker. A test
