@@ -522,8 +522,10 @@ explicit one, the same number as another driver here, or - for a text -
 no message from them in the last 24 hours. The dispatcher may untick
 drivers; the rest are sent as `selected`. At most 200 recipients.
 
-`POST /api/messaging/broadcasts` takes the dialog's retry key (kept until
-the broadcast exists, so a repeated Send is the same broadcast). It checks
+`POST /api/messaging/broadcasts` takes the dialog's retry key, kept as
+long as the dialog is open: a repeated Send is the same broadcast, and the
+same key with a different request (other drivers, other words) is refused
+(409) rather than answered with the first or sent again. It checks
 everything again, opens each driver's own conversation if needed, and in
 one commit queues one ordinary message per driver - each with its own
 retry key derived from the broadcast and the driver - and records the
@@ -531,15 +533,25 @@ broadcast (`MessageBroadcasts`: who sent it, what, the scope and each
 driver with their message or the reason they were skipped). The outbox
 sends them one by one as it sends any reply; each shows in its chat and
 has its own status. `GET /api/messaging/broadcasts/{id}` reads each
-driver's current status.
+driver's current status, following a retry made from the chat (a new
+attempt under the same key).
 
 `POST /api/messaging/broadcasts/{id}/cancel` withdraws the messages still
-waiting: their status leaves "queued" and their fence moves, so a worker
+waiting (any attempt): their status leaves "queued" and their fence moves
+in the same commit as their chats' revisions, whose signals follow, so an
+open chat shows it. A worker
 that took one but has not recorded it as sending cannot record it and
 never calls WhatsApp. A message already recorded as sending is with
 WhatsApp or on its way: it is left, it may arrive, and the dialog says
 so. Nothing can take back what WhatsApp has. The tests only use a fake
 provider; no bulk message has ever been sent for real.
+
+Known limits, not fixed: each new conversation is opened and committed
+one by one before the broadcast, so a first broadcast to many drivers
+without chats makes two statements per driver in the request (not
+measured), and if the final commit then fails, those empty chats stay
+(a retry with the same key reuses them). Queuing marks each chat as being
+answered by the sender for two minutes, as a single reply does.
 
 Consistency audit: the broadcast record and all its messages are written
 in one commit, so this path leaves no broadcast without its messages or

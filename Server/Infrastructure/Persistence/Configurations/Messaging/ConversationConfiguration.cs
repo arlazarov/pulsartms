@@ -164,6 +164,7 @@ public sealed class MessageBroadcastConfiguration
     b.Property(x => x.Body).HasMaxLength(4096).IsRequired();
     b.Property(x => x.Template).HasMaxLength(4000);
     b.Property(x => x.Scope).HasMaxLength(200).IsRequired();
+    b.Property(x => x.RequestHash).HasMaxLength(64).IsRequired();
     b.Property(x => x.RecipientsJson).IsRequired();
     b.HasIndex(x => new { x.CompanyId, x.CreatedAt });
   }

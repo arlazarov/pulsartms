@@ -157,6 +157,127 @@ public sealed class BroadcastTests
     );
   }
 
+  // A cancel is a status change like any other: each chat's revision moves
+  // and its signal follows, so an open chat reads the withdrawal.
+  [Fact]
+  public async Task CancellingMovesEachChatsRevisionAndSignalsIt()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    await DriversAsync(f);
+    var broadcast = await CreateAsync(f, Guid.NewGuid(), Contact("all"));
+    var chats = broadcast
+      .Recipients.Where(x => x.MessageId is not null)
+      .Select(x => x.ConversationId!.Value)
+      .ToHashSet();
+    var before = await f
+      .Db.Conversations.Where(x => chats.Contains(x.Id))
+      .ToDictionaryAsync(x => x.Id, x => x.Revision);
+    using var listening = f.Events.Subscribe(Company.Amf);
+
+    await Handlers(f).Handle(new CancelBroadcastCommand(broadcast.Id), default);
+
+    var after = await f
+      .Db.Conversations.AsNoTracking()
+      .Where(x => chats.Contains(x.Id))
+      .ToDictionaryAsync(x => x.Id, x => x.Revision);
+    Assert.All(chats, x => Assert.True(after[x] > before[x]));
+    var signals = new List<MessagingEvent>();
+    while (listening.Reader.TryRead(out var signal))
+      signals.Add(signal);
+    Assert.Equal(
+      chats.Select(x => (x, after[x])).Order(),
+      signals.Select(x => (x.ConversationId, x.Revision)).Order()
+    );
+  }
+
+  // The same key with another request is refused, not answered with the
+  // first broadcast, and queues nothing more.
+  [Fact]
+  public async Task TheSameKeyWithAnotherRequestIsRefused()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    var d = await DriversAsync(f);
+    var key = Guid.NewGuid();
+    await CreateAsync(f, key, Contact("all"));
+    var messages = await f.Db.ConversationMessages.CountAsync();
+
+    var other = await Handlers(f)
+      .Handle(
+        new CreateBroadcastCommand(
+          key,
+          Contact("selected") with
+          {
+            DriverIds = [d.Ann],
+          }
+        ),
+        default
+      );
+
+    Assert.Equal(409, other.StatusCode);
+    Assert.Equal(messages, await f.Db.ConversationMessages.CountAsync());
+  }
+
+  // A driver's message retried from their chat is a new attempt under the
+  // same key: the broadcast shows it, and a cancel withdraws it.
+  [Fact]
+  public async Task TheBroadcastFollowsARetriedAttempt()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    await DriversAsync(f);
+    var broadcast = await CreateAsync(
+      f,
+      Guid.NewGuid(),
+      Contact("selected") with
+      {
+        DriverIds = [(await DriversAsync(f, only: true)).Ann],
+      }
+    );
+    var first = broadcast.Recipients.Single(x => x.MessageId is not null);
+    var original = await f.Db.ConversationMessages.SingleAsync(x =>
+      x.Id == first.MessageId
+    );
+    original.Status = DriverMessageStatuses.Rejected;
+    var retry = new ConversationMessage
+    {
+      Id = Guid.NewGuid(),
+      CompanyId = original.CompanyId,
+      ConversationId = original.ConversationId,
+      Channel = original.Channel,
+      BusinessNumberId = original.BusinessNumberId,
+      Direction = original.Direction,
+      Kind = original.Kind,
+      Body = original.Body,
+      Template = original.Template,
+      AuthorId = original.AuthorId,
+      IdempotencyKey = original.IdempotencyKey,
+      Attempt = original.Attempt + 1,
+      Status = OutboundStates.Queued,
+      StatusAt = original.StatusAt,
+      SentAt = original.SentAt,
+      CreatedAt = original.CreatedAt,
+    };
+    f.Db.ConversationMessages.Add(retry);
+    await f.Db.SaveChangesAsync();
+
+    var view = (
+      await Handlers(f).Handle(new GetBroadcastQuery(broadcast.Id), default)
+    ).Response!;
+    var cancelled = (
+      await Handlers(f)
+        .Handle(new CancelBroadcastCommand(broadcast.Id), default)
+    ).Response!;
+
+    var shown = view.Recipients.Single(x => x.DriverId == first.DriverId);
+    Assert.Equal(
+      (retry.Id, OutboundStates.Queued),
+      (shown.MessageId!.Value, shown.Status)
+    );
+    Assert.Equal(
+      DriverMessageStatuses.Withdrawn,
+      cancelled.Recipients.Single(x => x.DriverId == first.DriverId).Status
+    );
+  }
+
   // The worker has taken the message, but not yet recorded that it is
   // sending, when the dispatcher cancels: the withdrawal moves its fence,
   // the worker's next step fails, and the provider is never called.

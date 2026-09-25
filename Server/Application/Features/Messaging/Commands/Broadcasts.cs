@@ -169,8 +169,11 @@ public sealed class BroadcastHandlers(
       return Fail("Access denied.", 403);
     if (request.Id == Guid.Empty)
       return Fail("The request has no retry key.", 400);
+    var hash = Fingerprint(request.Request);
     if (await ViewAsync(request.Id, ct) is { } earlier)
-      return RequestResponse<BroadcastView>.Ok(earlier);
+      return await HashAsync(request.Id, ct) == hash
+        ? RequestResponse<BroadcastView>.Ok(earlier)
+        : Fail(OtherRequest, 409);
     var (plan, refusal) = await PlanAsync(request.Request, ct);
     if (refusal is not null)
       return Fail(refusal.Message, refusal.Status);
@@ -247,6 +250,7 @@ public sealed class BroadcastHandlers(
           ? JsonSerializer.Serialize(payload)
           : null,
         Scope = plan.Scope,
+        RequestHash = hash,
         RecipientsJson = JsonSerializer.Serialize(recipients),
       }
     );
@@ -254,15 +258,19 @@ public sealed class BroadcastHandlers(
     {
       await db.SaveChangesAsync(ct);
     }
-    catch (Exception ex)
-      when (db.IsWriteConflict(ex) || ex is DbUpdateException)
+    catch (DbUpdateException ex)
     {
       // The same key committed first, or a driver wrote meanwhile: the
-      // broadcast as it stands, or ask again with the same key.
+      // broadcast as it stands, or ask again with the same key. Any other
+      // failure is not a conflict and is not reported as one.
       db.ChangeTracker.Clear();
-      return await ViewAsync(request.Id, ct) is { } first
-        ? RequestResponse<BroadcastView>.Ok(first)
-        : Fail("The conversations changed. Send again.", 409);
+      if (await ViewAsync(request.Id, ct) is { } first)
+        return await HashAsync(request.Id, ct) == hash
+          ? RequestResponse<BroadcastView>.Ok(first)
+          : Fail(OtherRequest, 409);
+      if (!db.IsWriteConflict(ex))
+        throw;
+      return Fail("The conversations changed. Send again.", 409);
     }
     if (company.Id is { } serving)
       foreach (var conversation in queued)
@@ -305,24 +313,46 @@ public sealed class BroadcastHandlers(
     );
     if (broadcast is null)
       return Fail("Broadcast not found.", 404);
-    var ids = Recipients(broadcast)
-      .Select(x => x.MessageId)
-      .OfType<Guid>()
-      .ToArray();
     var now = clock.GetUtcNow().UtcDateTime;
-    await db
-      .ConversationMessages.Where(x =>
-        ids.Contains(x.Id) && x.Status == OutboundStates.Queued
-      )
-      .ExecuteUpdateAsync(
-        x =>
-          x.SetProperty(m => m.Status, DriverMessageStatuses.Withdrawn)
-            .SetProperty(m => m.StatusAt, now)
-            .SetProperty(m => m.Fence, m => m.Fence + 1),
-        ct
-      );
-    broadcast.CancelledAt ??= now;
-    await db.SaveChangesAsync(ct);
+    var waiting = await Attempts(broadcast)
+      .Where(x => x.Status == OutboundStates.Queued)
+      .Select(x => new { x.Id, x.ConversationId })
+      .ToListAsync(ct);
+    var ids = waiting.Select(x => x.Id).ToArray();
+    var chats = waiting.Select(x => x.ConversationId).Distinct().ToArray();
+    Dictionary<Guid, long> revisions;
+    // Like every status change, the withdrawal commits with its
+    // conversations' revisions so open chats read it again.
+    await using (var transaction = await db.Database.BeginTransactionAsync(ct))
+    {
+      await db
+        .ConversationMessages.Where(x =>
+          ids.Contains(x.Id) && x.Status == OutboundStates.Queued
+        )
+        .ExecuteUpdateAsync(
+          x =>
+            x.SetProperty(m => m.Status, DriverMessageStatuses.Withdrawn)
+              .SetProperty(m => m.StatusAt, now)
+              .SetProperty(m => m.Fence, m => m.Fence + 1),
+          ct
+        );
+      await db
+        .Conversations.Where(x => chats.Contains(x.Id))
+        .ExecuteUpdateAsync(
+          x => x.SetProperty(c => c.Revision, c => c.Revision + 1),
+          ct
+        );
+      revisions = await db
+        .Conversations.AsNoTracking()
+        .Where(x => chats.Contains(x.Id))
+        .ToDictionaryAsync(x => x.Id, x => x.Revision, ct);
+      broadcast.CancelledAt ??= now;
+      await db.SaveChangesAsync(ct);
+      await transaction.CommitAsync(ct);
+    }
+    if (company.Id is { } serving)
+      foreach (var (chat, revision) in revisions)
+        events.Publish(serving, new(chat, revision));
     return RequestResponse<BroadcastView>.Ok(
       (await ViewAsync(request.Id, ct))!
     );
@@ -504,11 +534,18 @@ public sealed class BroadcastHandlers(
     if (broadcast is null)
       return null;
     var recipients = Recipients(broadcast);
-    var ids = recipients.Select(x => x.MessageId).OfType<Guid>().ToArray();
-    var statuses = await db
-      .ConversationMessages.AsNoTracking()
-      .Where(x => ids.Contains(x.Id))
-      .ToDictionaryAsync(x => x.Id, x => x.Status, ct);
+    var latest = (
+      await Attempts(broadcast)
+        .AsNoTracking()
+        .Select(x => new
+        {
+          x.IdempotencyKey,
+          x.Attempt,
+          x.Id,
+          x.Status,
+        })
+        .ToListAsync(ct)
+    ).GroupBy(x => x.IdempotencyKey!.Value).ToDictionary(x => x.Key, x => x.MaxBy(m => m.Attempt)!);
     return new(
       broadcast.Id,
       broadcast.Kind,
@@ -521,16 +558,60 @@ public sealed class BroadcastHandlers(
           x.DriverId,
           x.Name,
           x.ConversationId,
-          x.MessageId,
+          latest.GetValueOrDefault(Key(broadcast.Id, x.DriverId))?.Id
+            ?? x.MessageId,
           x.Skipped is not null ? "skipped"
-            : x.MessageId is { } message
-              ? statuses.GetValueOrDefault(message, "unknown")
+            : latest.GetValueOrDefault(Key(broadcast.Id, x.DriverId)) is { } m
+              ? m.Status
             : "unknown",
           x.Skipped
         )),
       ]
     );
   }
+
+  // Every attempt of each driver's message: a retry from the chat is a
+  // new attempt under the same key, and the broadcast follows it.
+  private IQueryable<ConversationMessage> Attempts(MessageBroadcast broadcast)
+  {
+    var sent = Recipients(broadcast).Where(x => x.MessageId is not null);
+    var chats = sent.Select(x => x.ConversationId)
+      .OfType<Guid>()
+      .Distinct()
+      .ToArray();
+    var keys = sent.Select(x => (Guid?)Key(broadcast.Id, x.DriverId)).ToArray();
+    return db.ConversationMessages.Where(x =>
+      chats.Contains(x.ConversationId) && keys.Contains(x.IdempotencyKey)
+    );
+  }
+
+  private Task<string?> HashAsync(Guid id, CancellationToken ct) =>
+    db
+      .MessageBroadcasts.AsNoTracking()
+      .Where(x => x.Id == id)
+      .Select(x => x.RequestHash)
+      .SingleOrDefaultAsync(ct);
+
+  private const string OtherRequest =
+    "This retry key was used for another broadcast.";
+
+  // The request as asked, independent of order and spacing.
+  internal static string Fingerprint(BroadcastRequest request) =>
+    Convert.ToHexString(
+      SHA256.HashData(
+        JsonSerializer.SerializeToUtf8Bytes(
+          new
+          {
+            Scope = request.Scope?.Trim().ToLowerInvariant(),
+            Drivers = request.DriverIds?.Distinct().Order().ToArray(),
+            Text = request.Text?.Trim(),
+            request.TemplateName,
+            request.TemplateLanguage,
+            request.Parameters,
+          }
+        )
+      )
+    );
 
   private static List<BroadcastRecipient> Recipients(
     MessageBroadcast broadcast

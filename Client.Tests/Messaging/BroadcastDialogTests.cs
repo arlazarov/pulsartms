@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Bunit;
 using Client.Models.DTO;
 using Client.Models.DTO.Messaging;
@@ -33,7 +34,7 @@ public sealed class BroadcastDialogTests
       .Single(x => x.TextContent.Trim() == "Preview")
       .Click();
     dialog.WaitForAssertion(
-      () => Assert.Contains("2 of 3 can be sent it.", dialog.Markup)
+      () => Assert.Contains("2 of 3 can be sent it.", Text(dialog))
     );
     Assert.Contains("Has not written in the last 24 hours", dialog.Markup);
     var boxes = dialog.FindAll("input[type=checkbox]");
@@ -58,9 +59,7 @@ public sealed class BroadcastDialogTests
       .FindAll("button")
       .Single(x => x.TextContent.Trim() == "Cancel what has not gone")
       .Click();
-    dialog.WaitForAssertion(
-      () => Assert.Contains("Cancelled before it went", dialog.Markup)
-    );
+    dialog.WaitForAssertion(() => Assert.Contains("Not sent", dialog.Markup));
   }
 
   [Fact]
@@ -80,6 +79,10 @@ public sealed class BroadcastDialogTests
     Assert.Equal("all", api.Sends[0].Request.Scope);
     Assert.Null(api.Sends[0].Request.DriverIds);
   }
+
+  // Markup wraps its text; a browser shows each run of spaces as one.
+  private static string Text(IRenderedComponent<BroadcastDialog> dialog) =>
+    Regex.Replace(dialog.Markup, @"\s+", " ");
 
   private static void Send(
     IRenderedComponent<BroadcastDialog> dialog,

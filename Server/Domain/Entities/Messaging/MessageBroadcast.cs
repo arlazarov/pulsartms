@@ -20,6 +20,10 @@ public sealed class MessageBroadcast : BaseEntity, ICompanyOwned
   // The template payload, for a template.
   public string? Template { get; set; }
 
+  // SHA-256 of the request as asked: the same retry key with another
+  // request is refused rather than answered with this broadcast.
+  public string RequestHash { get; set; } = "";
+
   // Which drivers were asked for: all, a group (named) or those chosen.
   public string Scope { get; set; } = "";
 

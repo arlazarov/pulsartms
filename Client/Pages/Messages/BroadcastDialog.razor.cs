@@ -8,8 +8,9 @@ namespace Client.Pages.Messages;
 // or their driver group, then leaves out anyone they like) and what (a
 // text, or an approved template), sees who can be sent it and why not,
 // and sends: each driver gets their own message in their own chat. The
-// retry key lasts until the broadcast is made, so Send twice is one
-// broadcast. Afterwards each driver's message shows its own status, and
+// retry key lasts as long as the dialog, so Send twice is one broadcast,
+// and a changed request after an unanswered Send is refused by the server
+// instead of sent twice. Afterwards each driver's message shows its own status, and
 // what has not gone yet can be cancelled.
 public partial class BroadcastDialog : IDisposable
 {
@@ -87,7 +88,6 @@ public partial class BroadcastDialog : IDisposable
     _chosen.Clear();
     foreach (var recipient in preview.Recipients.Where(x => x.Eligible))
       _chosen.Add(recipient.DriverId);
-    _key = null;
   }
 
   private void Toggle(Guid driver, bool chosen)
@@ -176,17 +176,13 @@ public partial class BroadcastDialog : IDisposable
   private static string TemplateName(MessageTemplateView template) =>
     template.Purpose == "contactRequest" ? "Request contact" : template.Name;
 
-  private void Changed()
-  {
-    _preview = null;
-    _key = null;
-  }
+  private void Changed() => _preview = null;
 
   private static string StatusText(BroadcastRecipientView recipient) =>
     recipient.Status switch
     {
       "skipped" => recipient.Reason ?? "Not sent",
-      "withdrawn" => "Cancelled before it went",
+      "withdrawn" => "Not sent",
       "sending" => "Being sent: it may arrive",
       _ => Messages.Status(recipient.Status),
     };

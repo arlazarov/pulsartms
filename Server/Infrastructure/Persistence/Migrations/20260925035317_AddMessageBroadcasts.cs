@@ -23,6 +23,7 @@ namespace Infrastructure.Persistence.Migrations
                     Body = table.Column<string>(type: "character varying(4096)", maxLength: 4096, nullable: false),
                     Template = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
                     Scope = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    RequestHash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     RecipientsJson = table.Column<string>(type: "text", nullable: false),
                     CancelledAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
