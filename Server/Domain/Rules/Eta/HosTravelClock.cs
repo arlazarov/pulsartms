@@ -156,6 +156,15 @@ public sealed partial class HosTravelClock
     Service(hours);
   }
 
+  // A pump the fuel plan places on the road: its allowance is spent where
+  // the road reaches it, whatever the shift has already paid.
+  public void FuelAtPlannedStop()
+  {
+    var hours = (planning?.FuelStopMinutes ?? 15) / 60d;
+    FuelHours += hours;
+    Service(hours);
+  }
+
   public void CompletePlannedBreak()
   {
     if (planning is null || plannedBreakTaken)

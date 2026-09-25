@@ -17,6 +17,27 @@ public static class EtaAssumptions
   public static int? FuelStopsAhead(FuelPlan? plan) =>
     plan?.Stops.Count(stop => stop.MilesAhead > 0);
 
+  // Where the plan stops to fuel: before which stop of which load. The
+  // allowance is then spent where the road reaches each pump, not at the
+  // start of the shift - a truck a few miles from its pickup with a full
+  // tank does not pay for a pump hundreds of miles on (11006, September
+  // 25). Null when any pump ahead has no place, so the count above rules.
+  public static IReadOnlyList<(
+    Guid DispatchId,
+    Guid BeforeStopId
+  )>? FuelStopPlaces(FuelPlan? plan)
+  {
+    var ahead = plan?.Stops.Where(stop => stop.MilesAhead > 0).ToList();
+    if (
+      ahead is null
+      || ahead.Any(stop =>
+        stop.DispatchId == Guid.Empty || stop.BeforeStopId == Guid.Empty
+      )
+    )
+      return null;
+    return [.. ahead.Select(stop => (stop.DispatchId, stop.BeforeStopId))];
+  }
+
   public static List<string> Opening(
     HosTravelClock clock,
     EtaPlanningOptions planning
@@ -35,7 +56,7 @@ public static class EtaAssumptions
       : "Cycle history or the current ELD cycle is unavailable; cycle feasibility is unknown.",
       "Road ETA includes daily HOS and stop service but does not assume a cycle wait or restart. Cycle alternatives are conditional plans, not driver instructions.",
       "Equipment-operation waits conservatively consume duty time without rest credit; cargo service durations do not apply to equipment collection.",
-      $"Planning: {planning.DrivingHoursPerShift}h driving per shift, {planning.PreTripMinutes}m PTI, one {planning.FuelStopMinutes}m fuel allowance per shift and a separate {planning.DailyBreakMinutes}m daily break. ELD limits can require stopping earlier.",
+      $"Planning: {planning.DrivingHoursPerShift}h driving per shift, {planning.PreTripMinutes}m PTI, a {planning.FuelStopMinutes}m fuel allowance at each planned fuel stop (one per shift without a fuel plan) and a separate {planning.DailyBreakMinutes}m daily break. ELD limits can require stopping earlier.",
       $"Road travel times retain routing speed/traffic assumptions; planning speed is capped at {planning.PlanningSpeedCapMph} mph with {planning.TravelTimeBufferPercent}% extra travel-time allowance, not a live traffic prediction.",
       $"{planning.PickupMinutes} minutes at pickups and {planning.DeliveryMinutes} minutes at deliveries. Facility service and appointment waiting are planned sleeper time, not cycle duty or observed ELD status.",
       "Configured cycles are used when available. Missing history keeps conservative rest assumptions; cross-border history credits require verification.",

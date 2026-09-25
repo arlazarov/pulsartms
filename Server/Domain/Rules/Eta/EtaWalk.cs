@@ -23,10 +23,12 @@ public sealed class EtaWalk(
   EtaChainPlan? chain,
   DateTime now,
   HosCycleMode cycleMode,
-  CancellationToken cancellationToken
+  CancellationToken cancellationToken,
+  IReadOnlyList<(Guid DispatchId, Guid BeforeStopId)>? pumps = null
 )
 {
   private readonly HashSet<Guid> visited = [];
+  private readonly HashSet<(Guid, Guid)> fuelled = [];
 
   public List<StopEta> Results { get; } = [];
 
@@ -179,12 +181,22 @@ public sealed class EtaWalk(
       stop.ScheduledTime2 ?? stop.ScheduledTime,
       zone
     );
-    var arrivalAt = clock.Now;
     var atFacility =
       activity?.ArrivedAt is { } arrived
       && arrived <= now
       && state.Progress?.Position is { } position
       && RouteGeometry.Distance(position, stop.Point) <= .5;
+    // A planned pump before this stop is reached on the way to it; one at
+    // a facility the truck is already at is behind it.
+    if (!atFacility)
+      foreach (var pump in pumps ?? [])
+        if (
+          pump.DispatchId == dispatchId
+          && pump.BeforeStopId == stop.Id
+          && fuelled.Add(pump)
+        )
+          clock.FuelAtPlannedStop();
+    var arrivalAt = clock.Now;
     if (atFacility)
       arrivalAt = new DateTimeOffset(
         DateTime.SpecifyKind(activity!.ArrivedAt!.Value, DateTimeKind.Utc)

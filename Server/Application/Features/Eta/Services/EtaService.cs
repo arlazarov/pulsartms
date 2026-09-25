@@ -295,6 +295,7 @@ public sealed partial class EtaService(
       );
     // EtaReadiness has already answered for missing hours: a forecast
     // without them never reaches this line.
+    var pumps = EtaAssumptions.FuelStopPlaces(plan.FuelPlan);
     var clock = new HosTravelClock(
       now,
       clocks!,
@@ -302,7 +303,7 @@ public sealed partial class EtaService(
       history,
       planning,
       cycleMode,
-      EtaAssumptions.FuelStopsAhead(plan.FuelPlan)
+      pumps is null ? EtaAssumptions.FuelStopsAhead(plan.FuelPlan) : 0
     );
     var cycleAtCalculation = clock.SnapshotCycle();
     try
@@ -332,7 +333,8 @@ public sealed partial class EtaService(
       chain,
       now,
       cycleMode,
-      cancellationToken
+      cancellationToken,
+      pumps
     );
     walk.Run(timing, progress);
     var results = walk.Results;

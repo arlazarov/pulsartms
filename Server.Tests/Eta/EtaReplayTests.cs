@@ -129,6 +129,49 @@ public sealed class EtaReplayTests
     Assert.Equal(15, stop.PreTripMinutes);
   }
 
+  // 11006, September 25: a fresh shift a few miles from its pickup, a full
+  // tank, and the plan's one pump far on, before a stop of the next load.
+  // The pre-trip is owed now; the fuel allowance is spent where the road
+  // reaches the pump, so the pickup's arrival carries none of it. A pump
+  // placed before this stop is still paid on the way to it.
+  [Theory]
+  [InlineData(false, 0)]
+  [InlineData(true, 5)]
+  public void APlannedPumpIsPaidWhereTheRoadReachesIt(
+    bool beforeThisStop,
+    int fuel
+  )
+  {
+    var plan = Plan(3, 240);
+    plan.DispatchId = Guid.NewGuid();
+    plan.FuelPlan = new()
+    {
+      Stops =
+      [
+        new()
+        {
+          MilesAhead = beforeThisStop ? 2 : 947,
+          DispatchId = beforeThisStop ? plan.DispatchId : Guid.NewGuid(),
+          BeforeStopId = beforeThisStop ? plan.Stops[0].Id : Guid.NewGuid(),
+        },
+      ],
+    };
+    var fresh = Clocks;
+    fresh.DriveMs = 11 * 3600000L;
+    fresh.ShiftMs = 14 * 3600000L;
+
+    var stop = Assert.Single(
+      Service(new Regions())
+        .Calculate(State(plan, 0), fresh, Now.UtcDateTime)
+        .Stops
+    );
+
+    Assert.Equal(fuel, stop.FuelMinutes);
+    Assert.Equal(15, stop.PreTripMinutes);
+    Assert.Equal(4, stop.DrivingMinutes);
+    Assert.Equal(Now.AddMinutes(15 + fuel + 4), stop.Arrival);
+  }
+
   [Fact]
   public void UnsupportedRegionBehindProgressDoesNotBlockRemainingSupportedTravel()
   {
