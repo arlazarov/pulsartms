@@ -5,8 +5,8 @@ using Client.Models.DTO;
 using Client.Models.DTO.DriverGroups;
 using Client.Models.DTO.Messaging;
 using Client.Models.DTO.Mileage;
-using Client.Pages.Settings;
 using Client.Services;
+using Client.Shared.DriverGroups.DriverGroupEditor;
 using Client.Tests.Support;
 using Microsoft.Extensions.DependencyInjection;
 using MessagesPage = Client.Pages.Messages.Messages;
@@ -15,8 +15,9 @@ namespace Client.Tests.Fleet;
 
 // One choice of driver group for every page: choosing one on a page saves
 // it for the dispatcher and that page reads its list again. Groups are
-// made, filled and removed in personal settings; a refused save keeps the
-// draft and nothing is removed without confirming.
+// made, filled and removed in personal settings or from the picker in
+// place; a refused save keeps the draft and nothing is removed without
+// confirming.
 [Trait("Category", "Fleet")]
 [Trait("Kind", "Component")]
 public sealed class DriverGroupComponentTests
@@ -50,12 +51,47 @@ public sealed class DriverGroupComponentTests
     );
   }
 
+  // A dispatcher makes a group from the picker on Messages: the page stays,
+  // and the new group can be chosen at once.
+  [Fact]
+  public async Task GroupsAreMadeFromThePickerWithoutLeavingThePage()
+  {
+    var api = new Api();
+    await using var context = Context(api);
+    var page = context.Render<MessagesPage>();
+    page.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          "West (1)",
+          page.Find("#messages-driver-group").TextContent
+        )
+    );
+    page.Settle();
+
+    await page.FindAll(".driver-group-picker button")
+      .Single(x => x.TextContent.Trim() == "Groups")
+      .ClickAsync(new());
+    await page.WaitForElement(".popup button:contains('New group')")
+      .ClickAsync(new());
+    page.Find("#driver-group-name").Input("Local");
+    await page.Find(".popup form").SubmitAsync();
+
+    page.WaitForAssertion(() => Assert.Contains("Group saved.", page.Markup));
+    Assert.Equal("Local", api.Saved[^1].Name);
+    Assert.DoesNotContain(
+      "settings",
+      context
+        .Services.GetRequiredService<Microsoft.AspNetCore.Components.NavigationManager>()
+        .Uri
+    );
+  }
+
   [Fact]
   public async Task AGroupIsMadeWithItsDriversAndARefusalKeepsTheDraft()
   {
     var api = new Api { RefuseFirstSave = true };
     await using var context = Context(api);
-    var settings = context.Render<DriverGroupSettings>();
+    var settings = context.Render<DriverGroupEditor>();
     await settings
       .WaitForElement("button:contains('New group')")
       .ClickAsync(new());
@@ -87,7 +123,7 @@ public sealed class DriverGroupComponentTests
   {
     var api = new Api();
     await using var context = Context(api);
-    var settings = context.Render<DriverGroupSettings>();
+    var settings = context.Render<DriverGroupEditor>();
     await settings
       .WaitForElement("button:contains('Remove')")
       .ClickAsync(new());

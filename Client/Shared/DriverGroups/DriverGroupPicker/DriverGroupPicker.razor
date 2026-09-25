@@ -1,3 +1,4 @@
+@using Client.Components.Popup
 <div class="driver-group-picker">
     <label for="@Id" class="visually-hidden">Drivers shown</label>
     <select id="@Id" value="@(Groups.View?.Selected?.ToString() ?? "")"
@@ -9,9 +10,19 @@
             <option value="@group.Id" @key="group.Id">@group.Name (@group.Drivers.Count)</option>
         }
     </select>
-    <a class="btn btn--text" href="/settings/personal#driver-groups">Groups</a>
+    <button class="btn btn--text" type="button"
+            aria-haspopup="dialog" @onclick="() => _managing = true">
+        Groups
+    </button>
     @if (_error is not null)
     {
         <span class="driver-group-picker__error" role="status">@_error</span>
     }
 </div>
+<Popup IsOpen="_managing" Title="Driver groups"
+       OnClose="() => _managing = false">
+    @if (_managing)
+    {
+        <DriverGroupEditor />
+    }
+</Popup>

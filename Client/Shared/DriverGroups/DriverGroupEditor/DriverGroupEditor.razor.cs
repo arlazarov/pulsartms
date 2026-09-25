@@ -3,12 +3,14 @@ using Client.Models.DTO.Mileage;
 using Client.Services;
 using Microsoft.AspNetCore.Components;
 
-namespace Client.Pages.Settings;
+namespace Client.Shared.DriverGroups.DriverGroupEditor;
 
 // A dispatcher makes, names, fills, changes and removes their own driver
-// groups here. A refused save keeps the draft; the choice of group is made
-// on the pages that list drivers.
-public partial class DriverGroupSettings : IDisposable
+// groups: in Personal settings, and from the driver group picker on any
+// page that lists drivers, without leaving it. A refused save keeps the
+// draft; the choice of group is the picker's. It is laid out with the
+// settings forms' shared classes (settings-page__*), wherever it is shown.
+public partial class DriverGroupEditor : IDisposable
 {
   private const string Path = "api/driver-groups";
 

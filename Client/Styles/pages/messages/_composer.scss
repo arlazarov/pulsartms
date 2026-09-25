@@ -121,7 +121,7 @@
     align-items: center;
     width: min(100%, 16rem);
     padding: ui.pg(xs) ui.pg(sm);
-    border: 1px solid ui.theme(border);
+    border: 1px solid ui.theme(selection-border);
     border-radius: ui.radius(sm);
     background: ui.theme(surface-soft);
     font-size: ui.fs(small);

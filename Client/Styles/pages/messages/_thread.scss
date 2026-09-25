@@ -138,8 +138,20 @@
     stroke: currentColor;
     stroke-width: 1.8;
   }
+  // Each state reads by its words and icon; colour only ranks them:
+  // waiting muted, sent neutral, delivered green, read blue, and what needs
+  // the dispatcher in warning or danger.
+  &__status.is-accepted,
+  &__status.is-sent {
+    color: ui.theme(text-secondary);
+  }
+  &__status.is-delivered {
+    color: ui.theme(success-text);
+    font-weight: 600;
+  }
   &__status.is-read {
     color: ui.theme(link);
+    font-weight: 600;
   }
   &__status.is-failed,
   &__status.is-rejected {

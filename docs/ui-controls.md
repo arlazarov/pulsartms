@@ -851,7 +851,8 @@ button) with their WhatsApp numbers, scrolling with the conversations.
 
 `Shared/DriverGroups/DriverGroupPicker` is the one driver-group switch on
 Messages, Dispatch and Fleet Map (All drivers or one of the dispatcher's
-own groups with its size, and a Groups link to Personal settings); pages
+own groups with its size, and a Groups button that opens
+`Shared/DriverGroups/DriverGroupEditor` in the shared Popup); pages
 do not keep their own driver filters. A failed read of the groups is a
 status beside it, not an alert.
 

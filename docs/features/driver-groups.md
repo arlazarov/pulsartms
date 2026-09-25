@@ -1,7 +1,8 @@
 # Driver groups
 
 A dispatcher makes their own named groups of drivers ("West", "Local"),
-fills and renames them, and removes them, in Personal settings. One
+fills and renames them, and removes them, from the group picker on the
+page they are on or in Personal settings. One
 choice, a group or All drivers, holds for them on every page that lists
 drivers' work, on every device, until they change it. The names are
 examples; nothing is created for anyone. State on 2026-09-24: local only,
@@ -64,11 +65,13 @@ linked driver.
 
 `Shared/DriverGroups/DriverGroupPicker` is the switch on Messages,
 Dispatch and Fleet Map: All drivers or one of the dispatcher's groups with
-its size, and a link to manage them. Changing it saves the choice and the
+its size, and a Groups button that opens the same editor as Personal
+settings in a dialog over the page (`Shared/DriverGroups/DriverGroupEditor`),
+so a dispatcher never needs the Settings pages to manage them. Changing it saves the choice and the
 page reads its list again (`Services/ChosenDriverGroup` announces it).
 The picker reads the choice from the server each time a page shows it, so
-a choice made in another tab shows on the next page. Personal settings
-list the groups with Edit and Remove (confirmed); the editor names a
+a choice made in another tab shows on the next page. The editor lists
+the groups with Edit and Remove (confirmed); the editor names a
 group and checks its drivers, and a refused save keeps the draft.
 
 ## Audit coverage

@@ -153,9 +153,10 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  &__conversation.is-unread &__preview {
+  &__conversation.is-unread &__preview,
+  &__conversation.is-unread &__who strong {
     color: ui.theme(text);
-    font-weight: 600;
+    font-weight: 700;
   }
   &__unread {
     grid-column: 3;
@@ -181,6 +182,10 @@
     background: ui.theme(surface-muted);
     color: ui.theme(text-secondary);
     font-size: ui.fs(caption);
+  }
+  &__tag.is-window {
+    background: ui.theme(warning-surface);
+    color: ui.theme(warning-text);
   }
   &__tag.is-claim {
     background: ui.theme(selected);

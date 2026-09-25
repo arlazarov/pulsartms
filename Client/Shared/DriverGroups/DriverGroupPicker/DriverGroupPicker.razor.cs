@@ -5,7 +5,9 @@ namespace Client.Shared.DriverGroups.DriverGroupPicker;
 
 // The one switch between the dispatcher's own driver groups and all
 // drivers, the same on every page that lists drivers' work. The choice is
-// the dispatcher's and holds on every page and device.
+// the dispatcher's and holds on every page and device. Groups opens the
+// dispatcher's own groups to make or change them in place, without the
+// Settings pages.
 public partial class DriverGroupPicker : IDisposable
 {
   [Inject]
@@ -16,6 +18,7 @@ public partial class DriverGroupPicker : IDisposable
 
   private readonly CancellationTokenSource _lifetime = new();
   private bool _busy,
+    _managing,
     _disposed;
   private string? _error;
 
