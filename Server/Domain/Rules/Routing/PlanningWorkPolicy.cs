@@ -110,15 +110,23 @@ public static class PlanningWorkPolicy
       || !segment.Problems.Contains(WorkReadProblem.SourceReviewRequired)
     )
       return result;
-    var warning =
-      $"Load {segment.LoadNumber}: "
-      + (segment.SourceReviewReason ?? "Source changes need review.")
+    // Said as a notice about the load, not in the message: the map showed
+    // the whole sentence over the route, where it could not be acted on.
+    var text =
+      (segment.SourceReviewReason ?? "Source changes need review.")
       + " Calculation uses the accepted assignment.";
     return result with
     {
-      Message = string.IsNullOrWhiteSpace(result.Message)
-        ? warning
-        : $"{result.Message} {warning}",
+      Notices =
+      [
+        .. result.Notices,
+        new PlanningNotice(
+          PlanningNotice.SourceReview,
+          segment.LoadNumber,
+          segment.Work.DispatchId,
+          text
+        ),
+      ],
     };
   }
 

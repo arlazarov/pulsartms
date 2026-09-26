@@ -912,7 +912,14 @@ public sealed class TruckRoutePreviewTests
     }
     var pending = await reader.ForTruckAsync(fixture.Truck.Id, default);
     Assert.Equal(current.Id, pending.DispatchId);
-    Assert.Contains("Source changed.", pending.Message);
+    // The review is a notice about the load, not part of the message.
+    Assert.Contains(
+      pending.Notices,
+      notice =>
+        notice.Kind == PlanningNotice.SourceReview
+        && notice.Text.StartsWith("Source changed.")
+    );
+    Assert.DoesNotContain("Source changed.", pending.Message ?? "");
     var leg = await fixture.Db.ExecutionLegs.SingleAsync();
     var saved = await fixture.SavePlanAsync(current);
     var plan = JsonSerializer.Deserialize<RoutePlan>(
@@ -936,8 +943,15 @@ public sealed class TruckRoutePreviewTests
     );
     Assert.NotNull(live.State!.Plan);
     Assert.NotNull(preview.State!.Plan);
-    Assert.Contains("Source changed.", live.Message);
-    Assert.Contains("accepted assignment", preview.Message);
+    Assert.Contains(
+      live.Notices,
+      notice => notice.Text.StartsWith("Source changed.")
+    );
+    Assert.Contains(
+      preview.Notices,
+      notice => notice.Text.Contains("accepted assignment")
+    );
+    Assert.DoesNotContain("accepted assignment", preview.Message ?? "");
     await fixture.Db.Entry(leg).ReloadAsync();
     Assert.Equal(2, leg.Revision);
     Assert.Equal("Source changed.", leg.SourceReviewReason);

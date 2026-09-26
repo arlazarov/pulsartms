@@ -133,12 +133,21 @@ test('the booking sits under the ETA for the same stop, and the address is last'
   // and not among the facts on the right.
   assert.equal(head.indexOf('TruckLocationLine'), -1);
   const body = markup.slice(markup.indexOf('id="fleet-map-route-details"'));
-  assert.ok(body.indexOf('fleet-map-route-info__arrival-fuel') >= 0);
+  // The cycle and the fuel on arrival left the card; the actions stand
+  // at the foot of the facts column, beside the stop.
+  assert.equal(body.indexOf('fleet-map-route-info__arrival-fuel'), -1);
+  // The route's own arrival stays only while a next stop has the head.
+  assert.match(
+    body,
+    /@if \(_inspectorMode != MapInspectorMode\.Truck\)\s*\{\s*<div class="fleet-map-route-info__timing">/,
+  );
   assert.ok(
     body.indexOf('fleet-map-route-info__next') <
       body.indexOf('<TruckLocationLine') &&
       body.indexOf('<TruckLocationLine') <
-        body.indexOf('fleet-map-route-info__facts'),
+        body.indexOf('fleet-map-route-info__facts') &&
+      body.indexOf('fleet-map-route-info__facts') <
+        body.indexOf('@truckActions'),
   );
   assert.match(
     card,
@@ -299,7 +308,7 @@ test('the open card is two columns: the stop, then facts on one label column', (
   // through its compact reading rather than being restyled from here.
   assert.match(
     card,
-    /__metric,[^{}]*__arrival-fuel\s*\{[^}]*grid-template-columns: var\(--route-fact-label\) minmax\(0, 1fr\);/,
+    /__metric\s*\{[^}]*grid-template-columns: var\(--route-fact-label\) minmax\(0, 1fr\);/,
   );
   assert.doesNotMatch(card, /\.stop-hours__/);
   const hours = compile('shared/driver-status/stop-hours');

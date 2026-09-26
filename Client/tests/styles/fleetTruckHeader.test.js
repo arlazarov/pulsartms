@@ -115,7 +115,7 @@ test('selected truck and route panels overlay one stable map with bounded scroll
   );
   assert.match(
     compact,
-    /\.fleet-map-route-info__timing > \.arrival-estimate\s*\{[^}]*min-height: 0;/,
+    /\.fleet-map-route-info \.fleet-map-inspector__actions\s*\{[^}]*justify-content: flex-end;/,
   );
   assert.match(
     css,

@@ -355,7 +355,21 @@ its clocks, the next stop and its facts - splits at the same place
 one column down the card instead of stepping sideways row by row.
 In the stop row, where the truck is now stands beside the next stop (two
 columns of the left cell when it has room, one under the other when it
-has not); the right cell keeps the cycle and the fuel on arrival.
+has not); the right cell holds what is left of the load and, at its foot,
+the actions - Follow, Fit route, Fuel, Camera, Route options and Open
+load. The cycle remaining and the fuel on arrival left the truck card on
+September 26 at the owner's request; the fuel plan and the stop cards
+still say them where they matter. While a next stop has the head, the
+route keeps its own arrival in the retained details, so coming back to
+the truck shows the same forecast.
+
+A plan's notice about a load - its source changed or is ambiguous and
+the assignment needs a dispatcher's review - reaches the map as a
+`PlanningNotice` by kind, never as its sentence: the map shows
+"Load N · review in Dispatch" linking to the load's Dispatch page, and
+Dispatch shows the whole text against the load. Detection, review state
+and the calculation's safeguards are unchanged; only where the prose is
+said moved.
 
 The Fuel plan lists the load's remaining stops between the fuel stops -
 each fuel stop before the stop it is planned before, pickups and

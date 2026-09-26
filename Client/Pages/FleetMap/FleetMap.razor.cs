@@ -157,6 +157,7 @@ public partial class FleetMap : IAsyncDisposable
   [Inject]
   private TimeProvider Clock { get; set; } = default!;
   private string? RouteError;
+  private IReadOnlyList<PlanningNotice> _routeNotices = [];
   private string? _routeValidationUrl;
   private DateTimeOffset _routeValidationRetryAt;
 
@@ -553,6 +554,7 @@ public partial class FleetMap : IAsyncDisposable
     _displayRemainingMiles = null;
     _displayProgressMiles = null;
     RouteError = null;
+    _routeNotices = [];
     FocusError = null;
     if (_map is not null && !_disposed)
       await _map.InvokeVoidAsync("clearSelection");
@@ -614,6 +616,7 @@ public partial class FleetMap : IAsyncDisposable
     _loadDetails = null;
     _hos = SelectedHos(null);
     RouteError = null;
+    _routeNotices = [];
     ResetNextLoads();
     await _map.InvokeVoidAsync(
       "setInspectorMode",
@@ -661,6 +664,7 @@ public partial class FleetMap : IAsyncDisposable
       : LoadDispatchDetailsAsync();
     _hos = SelectedHos(cached?.Hos);
     RouteError = null;
+    _routeNotices = [];
     _routeLoading = false;
     await InvokeAsync(StateHasChanged);
     await SendMapRouteAsync(fit);
@@ -819,6 +823,7 @@ public partial class FleetMap : IAsyncDisposable
       );
       _hos = SelectedHos(result.Response?.Hos);
       RouteError = result.Response?.Message;
+      _routeNotices = result.Response?.Notices ?? [];
       var identityChanged =
         previousDispatchId != SelectedDispatchId
         || previousExecutionLegId != SelectedExecutionLegId

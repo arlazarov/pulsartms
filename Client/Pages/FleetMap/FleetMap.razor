@@ -402,6 +402,44 @@
         }
         @if (HasTruckInspection)
         {
+        // The actions, with the words that say what they do rather than six
+        // bare icons: beside the stop when there is one to drive to, under
+        // where the truck stands when there is not.
+        RenderFragment truckActions =
+        @<div class="fleet-map-inspector__actions" role="group" aria-label="Truck actions">
+            <button type="button"
+                    class="btn map-action-icon
+                        @(_followingTruck ? "btn--primary" : "")"
+                    title="Follow" aria-label="Follow"
+                    aria-pressed="@(_followingTruck ? "true" : "false")"
+                    @onclick="ToggleFollowAsync">
+                <ActionIcon Kind="follow" /><span>Follow</span>
+            </button>
+            <button type="button" class="btn map-action-icon"
+                    title="Show route" aria-label="Show route"
+                    disabled="@(!CanShowRoute)"
+                    @onclick="ShowRouteAsync">
+                <ActionIcon Kind="route-overview" /><span>Fit route</span>
+            </button>
+            @* Fuel opens its own panel; viewing and sending the plan live
+               there, not in this row. *@
+            <button type="button" class="btn map-action-icon"
+                    title="Fuel plan" aria-label="Fuel"
+                    disabled="@(_fuelEditorOpen || _sendPlanOpen)"
+                    @onclick="OpenFuelPlanAsync"
+                ><ActionIcon Kind="fuel" /><span>Fuel</span></button>
+            <button type="button" class="btn map-action-icon" title="Camera" aria-label="Camera" @onclick="OpenCameraAsync"><ActionIcon Kind="camera" /><span>Camera</span></button>
+            <button type="button" class="btn map-action-icon" title="Route options" aria-label="Route options"
+                    disabled="@(_fuelEditorOpen || SelectedDispatchId is null)" @onclick="OpenSelectedRouteEditorAsync"><ActionIcon Kind="route" /><span>Route options</span></button>
+            <a class="btn btn--primary map-action-icon fleet-map-inspector__open-load"
+               href="@OpenLoadHref"
+               title="@("Route & load details")"
+               aria-label="@("Route & load details")"
+               aria-disabled="@(SelectedDispatchId is null
+                   ? "true" : null)">
+                <span>Open load</span><ActionIcon Kind="external-link" />
+            </a>
+        </div>;
             <div id="fleet-map-details" class="fleet-map-info-content" hidden="@(_inspectorMode != MapInspectorMode.Truck)">
     <div id="fleet-map-route-details" class="fleet-map-route-details">
     @if (!NothingToDrive && (_routeLoading || _loadDetails is not null || ScheduledStop is not null || _routeState?.Plan is not null))
@@ -470,40 +508,24 @@
                         @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">· @Units.Kilometers(routePlan is null ? null : RemainingMiles) km</span> }
                     </span>
                 </div>
-            <div class="fleet-map-route-info__timing">
-            <div class="arrival-estimate">
-                @* The cycle at the stop, as one more fact. ETA reads in the
-                   card head; inspecting a next stop takes the head over, and
-                   the route then carries its own arrival again. *@
-                <ArrivalEstimate
-                    Eta="@(routePlan is null ? null : DisplayRouteState?.Eta)"
-                    Stop="ScheduledStop" Memory="_arrivalMemory"
-                    DispatchId="SelectedDispatchId"
-                    Refreshing="_etaRefreshPending"
-                    Completed="@(routePlan?.Tracking.AllStopsPassed == true)"
-                    ShowDutyStatus="false" ShowAppointment="false"
-                    ShowSummary="@(_inspectorMode != MapInspectorMode.Truck)"
-                    ShowDetails="true" Reading="compact" />
-                <div class="fleet-map-route-info__eta-placeholder stop-hours stop-hours--compact">
-                    <section class="stop-hours__cycle" aria-label="Cycle at this stop"><div class="stop-hours__row stop-hours__arrival-cycle"><h3 class="stop-hours__heading">Cycle remaining</h3><strong class="stop-hours__value">—</strong></div></section>
-                </div>
-            </div>
-            </div>
-            <div class="fleet-map-route-info__arrival-fuel">
-                <span class="fleet-map-route-info__label">Fuel on arrival</span>
-                <span class="fleet-map-route-info__fuel-value">
-                @if (ScheduledFuelArrival is { } fuelArrival)
-                {
-                    <strong>@Math.Round(fuelArrival.Percent)%</strong>
-                    <span aria-hidden="true">·</span>
-                    <strong>@Math.Round(fuelArrival.Gallons) US gal</strong>
-                }
-                else
-                {
-                    <strong>—</strong>
-                }
-                </span>
-            </div>
+            @* While the head is given to a next stop, the route keeps its own
+               arrival here, in the details that stay retained under it, so
+               that coming back to the truck shows the same forecast; in the
+               truck's own view the head says it and this says nothing. *@
+            @if (_inspectorMode != MapInspectorMode.Truck)
+            {
+                <div class="fleet-map-route-info__timing"><div class="arrival-estimate">
+                    <ArrivalEstimate
+                        Eta="@(routePlan is null ? null : DisplayRouteState?.Eta)"
+                        Stop="ScheduledStop" Memory="_arrivalMemory"
+                        DispatchId="SelectedDispatchId"
+                        Refreshing="_etaRefreshPending"
+                        Completed="@(routePlan?.Tracking.AllStopsPassed == true)"
+                        ShowDutyStatus="false" ShowAppointment="false"
+                        ShowSummary="true" ShowDetails="false" Reading="compact" />
+                </div></div>
+            }
+            @truckActions
             </div>
             <div class="fleet-map-route-info__messages">
                 @foreach (var warning in routePlan?.Route.Warnings ?? [])
@@ -517,6 +539,16 @@
                 }
                 @if (VisibleRouteError is { } plannedRouteError)
                 { <span class="fleet-map-route-info__error" role="status">@plannedRouteError</span> }
+                @* A load the plan has a notice about: named, and a way to the
+                   screen that shows and settles it. The prose itself stays
+                   there, not over the map. *@
+                @foreach (var notice in _routeNotices)
+                {
+                    if (notice.DispatchId is { } noticeDispatch)
+                    { <a class="fleet-map-route-info__notice" role="status" href="@($"/dispatch/{noticeDispatch}")">Load @notice.LoadNumber · review in Dispatch</a> }
+                    else
+                    { <span class="fleet-map-route-info__notice" role="status">Load @notice.LoadNumber · needs review</span> }
+                }
             </div>
 
         </div>
@@ -529,48 +561,10 @@
                 Address="@SelectedTruck.FormattedLocation"
                 OnCopy="CopyTextAsync" />
         </div>
+        @truckActions
     }
     @if (NothingToDrive && VisibleRouteError is { } emptyRouteError) { <p class="fleet-map-route-info__error" role="status">@emptyRouteError</p> }
     </div>
-    @* The drawing puts the actions under the detail they act on, with the
-       words that say what they do rather than six bare icons. *@
-    @if (SelectedTruck is { } headerTruck)
-    {
-        <div class="fleet-map-inspector__actions" role="group" aria-label="Truck actions">
-            <button type="button"
-                    class="btn map-action-icon
-                        @(_followingTruck ? "btn--primary" : "")"
-                    title="Follow" aria-label="Follow"
-                    aria-pressed="@(_followingTruck ? "true" : "false")"
-                    @onclick="ToggleFollowAsync">
-                <ActionIcon Kind="follow" /><span>Follow</span>
-            </button>
-            <button type="button" class="btn map-action-icon"
-                    title="Show route" aria-label="Show route"
-                    disabled="@(!CanShowRoute)"
-                    @onclick="ShowRouteAsync">
-                <ActionIcon Kind="route-overview" /><span>Fit route</span>
-            </button>
-            @* Fuel opens its own panel; viewing and sending the plan live
-               there, not in this row. *@
-            <button type="button" class="btn map-action-icon"
-                    title="Fuel plan" aria-label="Fuel"
-                    disabled="@(_fuelEditorOpen || _sendPlanOpen)"
-                    @onclick="OpenFuelPlanAsync"
-                ><ActionIcon Kind="fuel" /><span>Fuel</span></button>
-            <button type="button" class="btn map-action-icon" title="Camera" aria-label="Camera" @onclick="OpenCameraAsync"><ActionIcon Kind="camera" /><span>Camera</span></button>
-            <button type="button" class="btn map-action-icon" title="Route options" aria-label="Route options"
-                    disabled="@(_fuelEditorOpen || SelectedDispatchId is null)" @onclick="OpenSelectedRouteEditorAsync"><ActionIcon Kind="route" /><span>Route options</span></button>
-            <a class="btn btn--primary map-action-icon fleet-map-inspector__open-load"
-               href="@OpenLoadHref"
-               title="@("Route & load details")"
-               aria-label="@("Route & load details")"
-               aria-disabled="@(SelectedDispatchId is null
-                   ? "true" : null)">
-                <span>Open load</span><ActionIcon Kind="external-link" />
-            </a>
-        </div>
-    }
 
             </div>
         }

@@ -146,7 +146,7 @@ public partial class DispatchPlanning : IDisposable, IAsyncDisposable
     RetainingPlan ? _retainedResult : _result;
   private string? DisplayMessage =>
     RouteMessageDisplay.For(
-      _result?.Message,
+      PlanningMessages.WithNotices(_result?.Message, _result?.Notices),
       DisplayResult?.State?.Plan
         is { InputsChanged: false, Tracking.AllStopsPassed: false }
     );

@@ -1,6 +1,7 @@
 using Application.Features.Execution.Models;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
+using Domain.Models.Routing;
 using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
@@ -59,7 +60,17 @@ public partial class AutomaticPlanningTests
     Assert.Equal(f.Load.Stops[1].Id, Assert.Single(result.State.Plan.Stops).Id);
     Assert.Equal(-81, result.State.Plan.Route.Legs[0].Points[0].Longitude);
     Assert.Equal(leg.Id, result.State.Plan.ExecutionLegId);
-    Assert.Contains("Trailer conflicts", result.Message);
+    // The review is a notice about the load, by kind; the message stays
+    // free of it for the map.
+    Assert.Contains(
+      result.Notices,
+      notice =>
+        notice.Kind == PlanningNotice.SourceReview
+        && notice.LoadNumber == f.Load.LoadNumber
+        && notice.DispatchId == f.Load.Id
+        && notice.Text.Contains("Trailer conflicts")
+    );
+    Assert.DoesNotContain("Trailer conflicts", result.Message ?? "");
     Assert.True(f.Router.Calls > 0);
     await f.Db.Entry(leg).ReloadAsync();
     Assert.Equal(status, leg.Status);

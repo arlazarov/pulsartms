@@ -24,29 +24,6 @@ public partial class FleetMap
       ?.Stops.OrderBy(s => s.Sequence)
       .FirstOrDefault(s => !s.DriverOnly && !s.IsCompleted);
 
-  private FuelStopArrival? ScheduledFuelArrival
-  {
-    get
-    {
-      if (
-        _routeState?.Plan is not { DispatchId: var dispatchId }
-        || ScheduledStop is not { Id: var stopId }
-      )
-        return null;
-      var arrival = _routeState.FuelStopArrivals.FirstOrDefault(value =>
-        value.DispatchId == dispatchId && value.StopId == stopId
-      );
-      return
-        arrival is not null
-        && double.IsFinite(arrival.Gallons)
-        && double.IsFinite(arrival.Percent)
-        && arrival.Gallons >= 0
-        && arrival.Percent is >= 0 and <= 100
-        ? arrival
-        : null;
-    }
-  }
-
   // The booking shown under the head's ETA: the tracked stop's own, and
   // only while the forecast shown there is for that same stop, so the two
   // times beside each other are always about one visit. A stop with no
