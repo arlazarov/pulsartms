@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Threading.Channels;
 
 namespace Application.Features.Messaging.Services;
@@ -17,10 +16,18 @@ public sealed class MessagingEvents
 {
   public const int QueueSize = 64;
 
-  private readonly ConcurrentDictionary<
-    Guid,
-    ConcurrentDictionary<Guid, Subscriber>
-  > subscribers = new();
+  private readonly object gate = new();
+  private readonly Dictionary<Guid, Dictionary<Guid, Subscriber>> subscribers =
+    new();
+
+  internal int CompanyCount
+  {
+    get
+    {
+      lock (gate)
+        return subscribers.Count;
+    }
+  }
 
   private sealed class Subscriber(Channel<MessagingEvent> queue)
   {
@@ -30,11 +37,14 @@ public sealed class MessagingEvents
 
   public void Publish(Guid company, MessagingEvent change)
   {
-    if (!subscribers.TryGetValue(company, out var channels))
-      return;
-    foreach (var channel in channels.Values)
-      if (!channel.Queue.Writer.TryWrite(change))
-        Interlocked.Exchange(ref channel.Overflowed, 1);
+    lock (gate)
+    {
+      if (!subscribers.TryGetValue(company, out var channels))
+        return;
+      foreach (var channel in channels.Values)
+        if (!channel.Queue.Writer.TryWrite(change))
+          Interlocked.Exchange(ref channel.Overflowed, 1);
+    }
   }
 
   public Subscription Subscribe(Guid company)
@@ -49,15 +59,29 @@ public sealed class MessagingEvents
         }
       )
     );
-    subscribers.GetOrAdd(company, _ => new())[id] = subscriber;
+    lock (gate)
+    {
+      if (!subscribers.TryGetValue(company, out var channels))
+        subscribers[company] = channels = new();
+      channels[id] = subscriber;
+    }
     return new(
       subscriber.Queue.Reader,
       () => Interlocked.Exchange(ref subscriber.Overflowed, 0) != 0,
       () =>
       {
-        if (subscribers.TryGetValue(company, out var channels))
-          channels.TryRemove(id, out _);
-        subscriber.Queue.Writer.TryComplete();
+        // Removing the last reader and admitting its replacement must share
+        // a lock: otherwise the new reader can attach to a detached group.
+        lock (gate)
+        {
+          if (subscribers.TryGetValue(company, out var channels))
+          {
+            channels.Remove(id);
+            if (channels.Count == 0)
+              subscribers.Remove(company);
+          }
+          subscriber.Queue.Writer.TryComplete();
+        }
       }
     );
   }

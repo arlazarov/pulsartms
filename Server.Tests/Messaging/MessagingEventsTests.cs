@@ -10,6 +10,51 @@ namespace Server.Tests.Messaging;
 public sealed class MessagingEventsTests
 {
   [Fact]
+  public void CompanyEntriesLiveOnlyWhileSubscribed()
+  {
+    var events = new MessagingEvents();
+    for (var i = 0; i < 1000; i++)
+    {
+      using var subscription = events.Subscribe(Guid.NewGuid());
+      Assert.Equal(1, events.CompanyCount);
+    }
+    Assert.Equal(0, events.CompanyCount);
+
+    var old = events.Subscribe(Company.Amf);
+    old.Dispose();
+    using var replacement = events.Subscribe(Company.Amf);
+    old.Dispose();
+    events.Publish(Company.Amf, new(Guid.NewGuid(), 1));
+    Assert.True(replacement.Reader.TryRead(out _));
+    Assert.Equal(1, events.CompanyCount);
+  }
+
+  [Fact]
+  public async Task LastReleaseAndNewSubscriptionCannotDetachTheNewReader()
+  {
+    var events = new MessagingEvents();
+    var old = events.Subscribe(Company.Amf);
+    using var start = new Barrier(2);
+    var release = Task.Run(() =>
+    {
+      start.SignalAndWait();
+      old.Dispose();
+    });
+    var joining = Task.Run(() =>
+    {
+      start.SignalAndWait();
+      return events.Subscribe(Company.Amf);
+    });
+    await release;
+    using var next = await joining;
+    var change = new MessagingEvent(Guid.NewGuid(), 2);
+    events.Publish(Company.Amf, change);
+    Assert.True(next.Reader.TryRead(out var received));
+    Assert.Equal(change, received);
+    Assert.Equal(1, events.CompanyCount);
+  }
+
+  [Fact]
   public void AQueueThatKeepsUpIsNeverToldToResync()
   {
     var events = new MessagingEvents();

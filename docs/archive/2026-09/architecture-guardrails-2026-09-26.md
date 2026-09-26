@@ -220,3 +220,23 @@ notice tests also passed. JavaScript Messaging (13), architecture (67) and
 TypeScript checking passed. Client was rebuilt for the changed C# service.
 Unchanged server and JavaScript gates were not repeated after the Client-only
 correction. No new full-suite result or production latency claim is made.
+
+## Final audit lifecycle correction
+
+The remaining `MessagingEvents` company dictionaries were retained after the
+last subscription closed. The publisher now removes empty groups under the
+same lock that admits new subscriptions; concurrent replacement cannot attach
+to a detached group. All writes under that lock are non-blocking queue writes,
+with subscribers still bounded by `MessagingMailboxes`. No provider or database
+work is added. The 24 focused event/mailbox tests passed, including company
+churn, repeated disposal and overlapping release/subscription.
+
+See the [audit conclusion](architecture-audit-conclusion-2026-09-26.md) for
+the final assessment, residual ownership risks and completion criteria.
+
+The final stable local candidate passed `bash test.sh all`: server 3,773
+(2m 55s), Client 1,240 (6s) and JavaScript 660 (4.243s), with zero failures
+or skips. The runner rebuilt the Client and included TypeScript and architecture
+checks. Changed C# files passed pinned CSharpier; `git diff --check` passed.
+This is one completion run after the lifecycle correction, not a repeated gate
+on unchanged inputs. Production and visual checks remain outside this result.
