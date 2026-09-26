@@ -102,4 +102,19 @@ alone. From 00:20 UTC the summaries of all three trucks carry an ETA
   only one tenant can receive. AMF's outbound statuses go the same way
   and stay "accepted". The 11 inbound texts stored under the demo since
   September 25 were not moved.
+
+  **Update, 01:22 UTC, September 26.** With the owner's authorization,
+  the stored AMF token was used for a scoped read of the subscription,
+  through the credential store on a read-only database session, never
+  printed. It confirmed the cause: app `1925925125038750`'s WABA
+  subscription had `override_callback_uri` set to the demo URL; the app
+  callback was AMF's, and the number had no override of its own. The
+  override was then set to
+  `https://tms.amfcarrier.com/api/webhooks/whatsapp/amfcarrier` with
+  AMF's verify token. Meta verified it (GET to `/amfcarrier`, 200, at
+  01:22:14), and the readback shows the AMF URL for both the WABA and the
+  number. ReviewerAccess's preparation, which also clears AMF's
+  credentials, was not run. Credentials, history and tenants are
+  unchanged: AMF 5 inbound and 22 outbound, demo 12 inbound. The demo no
+  longer receives. What remains is the owner's inbound check.
 - The ETA diagnostics stay: one line per change, no per-poll noise.
