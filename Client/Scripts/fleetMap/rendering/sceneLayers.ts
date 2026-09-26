@@ -8,7 +8,6 @@ import type { LabelledCluster, LabelledTruck } from './truckClusters.ts';
 import { memoizeLast } from './layerCache.ts';
 import { routeLayers } from './routeAppearance.ts';
 import { createStationLayers } from './stationLayers.ts';
-import { stationsFarFromRoads } from './stationCorridor.ts';
 import { createStopLayers } from './stopLayers.ts';
 import { createVehicleLayers } from './vehicleLayers.ts';
 import type { LabelFonts } from './sceneMetrics.ts';
@@ -43,7 +42,6 @@ export function createSceneLayers({
   const stops = createStopLayers({ ScatterplotLayer, IconLayer, TextLayer });
   const vehicles = createVehicleLayers({ IconLayer, TextLayer });
   const distanceLabels = memoizeLast<DeckLayer[]>();
-  const corridor = memoizeLast<Set<StationMark>>();
   const labelFonts = memoizeLast<LabelFonts>();
 
   return ({
@@ -63,7 +61,6 @@ export function createSceneLayers({
     selectTruck,
     selectStation,
     pixelRatio = 1,
-    zoom = null,
     stopLabelStyle = defaultStopLabelStyle,
   }: {
     lines: Iterable<SceneRouteLine & { map?: unknown; path?: unknown[] }>;
@@ -90,14 +87,6 @@ export function createSceneLayers({
     );
     const roads = [...lines].filter(
       line => line.map && (line.path?.length ?? 0) > 1,
-    );
-    // Which stations the plan passes: asked again only when the stations,
-    // a road's points or what a road is change, not on every frame. A
-    // road's points are a new array whenever they change; its role is set
-    // on the same object, so it is part of the key by value.
-    const farStations = corridor(
-      [stationData, ...roads.flatMap(line => [line.path, line.routeRole])],
-      () => stationsFarFromRoads(stationData, roads),
     );
     // A road picked out of several quiets the others, so each one has to
     // know whether any of them was picked.
@@ -138,17 +127,13 @@ export function createSceneLayers({
         // retain priority.
         ...stations({
           stationData,
-          // Stations along the plan are drawn wherever the camera is:
-          // holding them back until it was close enough read as them
-          // having gone missing, and the map is where fuel is decided
-          // before the route is. Only the ones the plan passes nowhere
-          // near wait for a closer zoom.
+          // Stations are drawn wherever the camera is. Holding them back
+          // until it was close enough read as them having gone missing, and
+          // the map is where fuel is decided before the route is.
           stationsVisible,
           setHover,
           selectStation,
           fonts,
-          zoom,
-          farStations,
         }),
         fleet.clusters,
         ...fleet.icons,

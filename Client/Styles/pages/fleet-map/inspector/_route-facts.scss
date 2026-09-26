@@ -26,24 +26,32 @@
       padding-inline-end: ui.pg(lg);
       border-inline-end: 1px solid ui.theme(border-subtle);
     }
-    // What is left of the load, then the actions at the foot of the
-    // column: the cycle and the fuel on arrival left it (the owner,
-    // September 26), and the buttons took the room.
+    // The actions, in a grid of equal cells beside the stop: the cycle
+    // and the fuel on arrival left this column (the owner, September 26)
+    // and what is left of the load moved up to the stop's heading, so the
+    // buttons have the column to themselves.
     &__facts {
       grid-column: 2;
       grid-row: 1;
       align-self: stretch;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: ui.pg(xs);
+      display: grid;
+      align-content: end;
       min-width: 0;
     }
     .fleet-map-inspector__actions {
-      justify-content: flex-end;
-      margin: auto 0 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+      gap: ui.pg(xs);
+      margin: 0;
       padding: 0;
       border-top: 0;
+      .map-action-icon {
+        inline-size: 100%;
+        justify-content: center;
+      }
+      .fleet-map-inspector__open-load {
+        margin-inline-start: 0;
+      }
     }
     &__messages {
       grid-column: 1 / -1;
@@ -66,14 +74,13 @@
       font-weight: 500;
       text-decoration: none;
     }
-    // Every fact is the same two cells: a quiet label, then its value.
-    // The forecast's cycle row is the same shape, said in its own
-    // stylesheet, which reads the label width from here.
+    // What is left of the load reads on the stop's heading line, after the
+    // distance to the stop: a quiet label, then its value.
     &__metric {
-      display: grid;
-      grid-template-columns: var(--route-fact-label) minmax(0, 1fr);
+      display: inline-flex;
+      flex-wrap: wrap;
       align-items: baseline;
-      column-gap: ui.pg(sm);
+      gap: 0 ui.pg(xs);
       min-width: 0;
       margin: 0;
       padding: 0;

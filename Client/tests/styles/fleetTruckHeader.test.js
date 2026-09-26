@@ -115,7 +115,7 @@ test('selected truck and route panels overlay one stable map with bounded scroll
   );
   assert.match(
     compact,
-    /\.fleet-map-route-info \.fleet-map-inspector__actions\s*\{[^}]*justify-content: flex-end;/,
+    /\.fleet-map-route-info \.fleet-map-inspector__actions\s*\{[^}]*display: grid;/,
   );
   assert.match(
     css,
@@ -154,7 +154,7 @@ test('selected truck and route panels overlay one stable map with bounded scroll
   );
   assert.match(
     css,
-    /\.fleet-map-route-info__metric\s*\{[^}]*min-width: var\(--size-route-metric\);/,
+    /\.fleet-map-route-info \.fleet-map-inspector__actions\s*\{[^}]*grid-template-columns: repeat\(auto-fit, minmax\(8rem, 1fr\)\);/,
   );
   assert.match(css, /\.fleet-map-route-info__next\s*\{[^}]*min-height: 0;/);
   for (const selector of ['fleet-map-truck-info', 'fleet-map-route-info'])

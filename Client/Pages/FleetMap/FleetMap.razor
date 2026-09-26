@@ -456,6 +456,18 @@
                         <strong>@Units.DistanceValue(routePlan is null ? null : NextStopMiles) <small>@Units.DistanceUnit</small></strong>
                         @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">· @Units.Kilometers(routePlan is null ? null : NextStopMiles) km</span> }
                     </span>
+                @* Kept in place through loading; a final stop's remainder is
+                   the head's Left, so the card hides it rather than saying
+                   the same number twice. *@
+                    <span class="fleet-map-route-info__metric">
+                        <span aria-hidden="true">·</span>
+                        <span class="fleet-map-route-info__label">Remaining load</span>
+                    <span class="fleet-map-route-info__progress">
+                        <strong>@Units.DistanceValue(routePlan is null ? null : RemainingMiles)</strong>
+                        <span class="fleet-map-route-info__total">@Units.DistanceUnit</span>
+                        @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">· @Units.Kilometers(routePlan is null ? null : RemainingMiles) km</span> }
+                    </span>
+                    </span>
                 </div>
                 @if (nextStop is not null && !string.IsNullOrWhiteSpace(nextStop.Address))
                 {
@@ -497,17 +509,6 @@
             @* Beside them, what the truck will have when it gets there:
                the stop's appointment and ETA are in the head. *@
             <div class="fleet-map-route-info__facts">
-                @* Kept in place through loading; a final stop's remainder is
-                   the head's Left, so the card hides it rather than saying
-                   the same number twice. *@
-                <div class="fleet-map-route-info__metric">
-                    <span class="fleet-map-route-info__label">Remaining load</span>
-                    <span class="fleet-map-route-info__progress">
-                        <strong>@Units.DistanceValue(routePlan is null ? null : RemainingMiles)</strong>
-                        <span class="fleet-map-route-info__total">@Units.DistanceUnit</span>
-                        @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">· @Units.Kilometers(routePlan is null ? null : RemainingMiles) km</span> }
-                    </span>
-                </div>
             @* While the head is given to a next stop, the route keeps its own
                arrival here, in the details that stay retained under it, so
                that coming back to the truck shows the same forecast; in the

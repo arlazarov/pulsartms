@@ -306,10 +306,7 @@ test('the open card is two columns: the stop, then facts on one label column', (
   // Every fact is the same two cells, sharing one label width - the
   // forecast's cycle row included, which reads that width from the card
   // through its compact reading rather than being restyled from here.
-  assert.match(
-    card,
-    /__metric\s*\{[^}]*grid-template-columns: var\(--route-fact-label\) minmax\(0, 1fr\);/,
-  );
+  assert.match(card, /__metric\s*\{[^}]*display: inline-flex;/);
   assert.doesNotMatch(card, /\.stop-hours__/);
   const hours = compile('shared/driver-status/stop-hours');
   // The same label width as every other fact, and a reading that keeps

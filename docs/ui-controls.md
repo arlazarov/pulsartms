@@ -377,7 +377,8 @@ deliveries in their own colours, outlined where a fuel stop is filled -
 so the plan reads as the drive. With the Next loads layer off, the fuel
 stops booked to the next loads are neither listed nor drawn on the map,
 except one before this load's own stop, which is on this road whatever
-load it is booked to; the plan's totals stay the plan's.
+load it is booked to; the plan's totals stay the plan's. With the
+station layer on, every station is drawn whatever truck is picked.
 Telemetry, HOS/current duty and GPS location stay together above load/order,
 remaining distance, next location, appointment and ETA. Do not introduce another
 disclosure or widen the inspector when data arrives.
@@ -1138,14 +1139,6 @@ scrolls past the toolbar for it) and the floating panel may take 70% of
 the stage, so at 200% text the fuel plan's Stations, Edit plan and Send
 actions stay within reach by scrolling the panel rather than vanishing
 under its own heading.
-
-Fuel stations are told apart by the plan (`stationCorridor`): a station
-within about twelve miles of a road the truck is going to drive - the
-current road, its empty approach, the next loads' roads and empty miles,
-not the road behind it - is the 8 px price-coloured dot as before; the
-rest are 5 px with a 1 px rim, and below zoom 7 are not drawn at all.
-With no road drawn every station is drawn in full. Planned stops keep
-their ring and Fuel N label, and price colours are never changed.
 
 Saved fuel stations remain visible independently of the Next loads road layer.
 When the same assignment's fuel plan needs updating, retain its station markers

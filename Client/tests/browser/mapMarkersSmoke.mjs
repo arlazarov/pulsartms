@@ -106,10 +106,6 @@ try {
       6,
       'spacing never removes an original station',
     );
-    assert.ok(
-      !markers.stations.some(station => station.id === 'elsewhere'),
-      'a station the plan passes nowhere near is not drawn at an overview',
-    );
     // The planned stop is deliberately the largest thing on the fuel layer;
     // every other station keeps the 16px circle whatever its price or
     // crowding.
@@ -534,11 +530,11 @@ try {
       );
       assert.equal(route.width, role.startsWith('current') ? 5 : 4);
       // The road being driven is drawn in full. A load that is not today's
-      // is drawn at full strength too, and anything muted by a selection -
+      // steps back to 0.75, and anything muted by a selection elsewhere -
       // whichever road it is - to 0.4.
       assert.equal(
         route.opacity,
-        role.endsWith('-muted') ? 0.4 : 1,
+        role.endsWith('-muted') ? 0.4 : role === 'current' ? 1 : 0.75,
         `${role} must keep the strength its kind of road is drawn at`,
       );
       // Empty miles are dashed; a load's road, today's or not, is solid.

@@ -30,11 +30,6 @@ export const sceneMetrics = Object.freeze({
   stopBadgeDoneRadius: 11,
   stopBadgeGap: 2,
   stationRadius: 8,
-  // A station the plan passes nowhere near: a smaller dot with a thinner
-  // rim, and none at all further out than this zoom, where every station
-  // in the country was a coat of dots over the roads.
-  stationFarRadius: 5,
-  stationFarMinZoom: 7,
   stationHitRadius: 10,
   // A planned stop is the only station the plan is about, so its dot is
   // drawn larger than the ones it was chosen from, inside its ring - but a
@@ -65,9 +60,9 @@ export const sceneMetrics = Object.freeze({
   routeCurrentMinWidth: 5,
   routeCurrentWidthScale: 1.25,
   routeMutedOpacity: 0.4,
-  // Upcoming roads at full strength: at 0.9 over the basemap's green the
-  // owner found them pale beside the road being driven.
-  routeFutureOpacity: 1,
+  // Upcoming roads step back from the road being driven: at full
+  // strength the owner found them too loud beside it.
+  routeFutureOpacity: 0.75,
   routeTraveledOpacity: 0.22,
   routeOutlineWidth: 2,
   // Empty miles are dashed: nothing is on board. Dash units are half

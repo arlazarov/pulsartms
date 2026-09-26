@@ -477,7 +477,7 @@ public sealed class FleetMapComponentTests
     // the same number.
     Assert.Single(
       route.QuerySelectorAll(
-        ".fleet-map-route-info__facts > .fleet-map-route-info__metric"
+        ".fleet-map-route-info__visit-heading > .fleet-map-route-info__metric"
       )
     );
     Assert.Empty(
@@ -1803,7 +1803,7 @@ public sealed class FleetMapComponentTests
       );
       Assert.Single(
         panel.QuerySelectorAll(
-          ":scope > .fleet-map-route-info__facts > .fleet-map-route-info__metric"
+          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__next > .fleet-map-route-info__visit-heading > .fleet-map-route-info__metric"
         )
       );
       Assert.NotNull(
@@ -1881,7 +1881,7 @@ public sealed class FleetMapComponentTests
       );
       Assert.Single(
         panel.QuerySelectorAll(
-          ":scope > .fleet-map-route-info__facts > .fleet-map-route-info__metric"
+          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__next > .fleet-map-route-info__visit-heading > .fleet-map-route-info__metric"
         )
       );
       Assert.NotNull(

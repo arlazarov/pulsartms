@@ -15,8 +15,6 @@ export type StationMark = {
   numbers?: string;
 };
 
-const nothing: ReadonlySet<StationMark> = new Set();
-
 const selectedBlue = [49, 94, 234];
 
 /**
@@ -34,7 +32,6 @@ export function createStationLayers({
   TextLayer: DeckLayerFactory;
 }) {
   const plain = memoizeLast<DeckLayer>(),
-    far = memoizeLast<DeckLayer>(),
     recommended = memoizeLast<DeckLayer[]>(),
     visitLabels = memoizeLast<DeckLayer>(),
     editing = memoizeLast<DeckLayer[]>();
@@ -46,7 +43,6 @@ export function createStationLayers({
     onHover: unknown,
     onClick: unknown,
     radius: number = metrics.stationRadius,
-    rim = 2,
   ) =>
     new ScatterplotLayer({
       id,
@@ -58,7 +54,7 @@ export function createStationLayers({
       getRadius: radius,
       stroked: true,
       lineWidthUnits: 'pixels',
-      getLineWidth: (d: StationMark) => (d.selected ? 3 : rim),
+      getLineWidth: (d: StationMark) => (d.selected ? 3 : 2),
       getFillColor: (d: StationMark) => d.color,
       getLineColor: (d: StationMark) =>
         d.selected || d.recommended ? selectedBlue : [255, 255, 255],
@@ -143,49 +139,21 @@ export function createStationLayers({
     setHover,
     selectStation,
     fonts,
-    zoom = null,
-    farStations = nothing,
   }: {
     stationData: StationMark[];
     stationsVisible: boolean;
     setHover: unknown;
     selectStation: unknown;
     fonts: LabelFonts;
-    zoom?: number | null;
-    // The stations the plan passes nowhere near (stationCorridor).
-    farStations?: ReadonlySet<StationMark>;
   }): DeckLayer[] => [
-    // Stations along the plan in full; the rest smaller, and only close
-    // enough in.
-    far(
-      [
-        stationData,
-        farStations,
-        stationsVisible && (zoom ?? Infinity) >= metrics.stationFarMinZoom,
+    plain([stationData, stationsVisible, setHover, selectStation], () =>
+      points(
+        'fuel-points',
+        stationData.filter(d => !d.recommended),
+        stationsVisible,
         setHover,
         selectStation,
-      ],
-      () =>
-        points(
-          'fuel-points-far',
-          stationData.filter(d => !d.recommended && farStations.has(d)),
-          stationsVisible && (zoom ?? Infinity) >= metrics.stationFarMinZoom,
-          setHover,
-          selectStation,
-          metrics.stationFarRadius,
-          1,
-        ),
-    ),
-    plain(
-      [stationData, farStations, stationsVisible, setHover, selectStation],
-      () =>
-        points(
-          'fuel-points',
-          stationData.filter(d => !d.recommended && !farStations.has(d)),
-          stationsVisible,
-          setHover,
-          selectStation,
-        ),
+      ),
     ),
     // The stops of the fuel plan belong to the fuel layer: they are shown
     // while fuel is being looked at and not otherwise. Drawn always, they
