@@ -21,8 +21,10 @@
   position: relative;
   z-index: ui.layer(map-controls);
   container: fleet-toolbar / inline-size;
+  // Room for a unit, a driver or a trailer, not the width of the page: what
+  // it does not need goes to the filters and the layer chips.
   .fleet-map-search {
-    flex: 1 1 12rem;
+    flex: 0 1 28rem;
     min-width: 0;
   }
   .search-input {
@@ -49,6 +51,20 @@
       height: ui.size(checkbox);
       flex-shrink: 0;
     }
+    // The colour the layer is drawn in, on the chip that turns it on.
+    &__swatch {
+      flex-shrink: 0;
+      width: ui.pg(sm);
+      height: ui.pg(sm);
+      border-radius: 50%;
+      box-shadow: 0 0 0 2px ui.theme(surface);
+      &--stations {
+        background: ui.theme(success-text);
+      }
+      &--next {
+        background: ui.theme(map-route-future);
+      }
+    }
     &:has(input:checked) {
       --button-bg: #{ui.theme(action)};
       --button-border: #{ui.theme(action)};
@@ -66,13 +82,14 @@
 
 @include ui.above(map-mobile) {
   .fleet-map-toolbar {
-    .fleet-map-layers .fleet-map-toggle > span {
-      display: none;
+    // The layer chips stand at the toolbar's end, named: the icon-only
+    // squares said nothing about what was on.
+    .fleet-map-layer-controls {
+      margin-inline-start: auto;
     }
     .fleet-map-layers .fleet-map-toggle {
-      justify-content: center;
-      width: ui.size(control);
-      padding-inline: 0;
+      gap: ui.pg(xs);
+      border-radius: ui.radius(pill);
     }
   }
 }

@@ -12,11 +12,21 @@ test('Fleet heading shares a wrapping row with an elastic icon toolbar', () => {
   }).css;
   assert.match(css, /__background\s*\{[^}]*display: flex;/);
   assert.match(css, /__background\s*\{[^}]*flex-wrap: wrap;/);
-  assert.match(css, /\.fleet-map-search\s*\{[^}]*flex: 1 1 12rem;/);
+  assert.match(css, /\.fleet-map-search\s*\{[^}]*flex: 0 1 28rem;/);
   assert.match(css, /@media \(width >= 768px\)/);
-  assert.match(
+  // The layer chips keep their names at every width and stand at the
+  // toolbar's end; the ones drawn in one colour wear it.
+  assert.doesNotMatch(
     css,
     /\.fleet-map-layers \.fleet-map-toggle > span\s*\{\s*display: none;/,
+  );
+  assert.match(
+    css,
+    /\.fleet-map-layer-controls\s*\{\s*margin-inline-start: auto;/,
+  );
+  assert.match(
+    css,
+    /__swatch--next\s*\{\s*background: var\(--ui-map-route-future\);/,
   );
   const markup = readFileSync(
     new URL('../../Pages/FleetMap/FleetMap.razor', import.meta.url),

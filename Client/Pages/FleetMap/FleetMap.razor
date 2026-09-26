@@ -23,6 +23,9 @@
         <div class="fleet-map-layer-controls"
              aria-busy="@(!_preferencesLoaded ? "true" : "false")"
              aria-hidden="@(!_preferencesLoaded ? "true" : "false")">
+        @* Each layer is a chip that says its name and, where the map draws
+           it in one colour, shows that colour: the stations' green and the
+           next loads' violet. Bare icons read as nothing (September 26). *@
         <div class="fleet-map-layers" role="group" aria-label="Map layers">
         <label class="fleet-map-toggle filter-toolbar__toggle"
                title="Fuel Stations">
@@ -31,7 +34,8 @@
                 aria-label="Fuel Stations"
                 @bind="ShowFuelStations"
                 @bind:after="OnFuelStationsToggleChanged" />
-            <ActionIcon Kind="fuel" /><span>Fuel Stations</span>
+            <span class="fleet-map-toggle__swatch fleet-map-toggle__swatch--stations"
+                  aria-hidden="true"></span><span>Fuel Stations</span>
         </label>
 
         <label class="fleet-map-toggle filter-toolbar__toggle"
@@ -49,7 +53,8 @@
             <input type="checkbox" class="visually-hidden"
                    aria-label="Next loads" @bind="ShowNextLoads"
                    @bind:after="OnNextLoadsChanged" />
-            <ActionIcon Kind="route" /><span>Next loads</span>
+            <span class="fleet-map-toggle__swatch fleet-map-toggle__swatch--next"
+                  aria-hidden="true"></span><span>Next loads</span>
         </label>
         </div>
         </div>

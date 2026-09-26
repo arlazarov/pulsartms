@@ -86,7 +86,7 @@ test('truck inspector keeps one disclosure on wide cards and none on a phone', (
   // wherever the card stands: it reads its own width, not the window's.
   assert.match(
     compact,
-    /@container map-truck-card \(width >= 40rem\)[\s\S]*\.is-mobile-collapsed \.fleet-map-info-content\s*\{\s*display: none;/,
+    /@container map-truck-card \(width >= 40rem\)[\s\S]*\.is-mobile-collapsed \.fleet-map-info-content,\s*[^{]*\.is-mobile-collapsed \.fleet-map-inspector__duty\s*\{\s*display: none;/,
   );
   const phone = compact.slice(
     compact.indexOf('@container map-truck-card (width < 40rem)'),

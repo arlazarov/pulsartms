@@ -83,7 +83,10 @@
   // phone's card (narrower than the compact columns) is open whole and
   // scrolls instead, so the closed state and its button exist only here.
   @container map-truck-card (width >= #{ui.breakpoint(map-compact-columns)}) {
-    &.is-mobile-collapsed .fleet-map-info-content {
+    // The driver's duty and rest line waits behind Details with the rest
+    // (the owner, September 26); the clocks above it stay.
+    &.is-mobile-collapsed .fleet-map-info-content,
+    &.is-mobile-collapsed .fleet-map-inspector__duty {
       display: none;
     }
     &.is-mobile-collapsed .fleet-map-inspector__header {

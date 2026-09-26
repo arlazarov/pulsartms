@@ -317,7 +317,14 @@ public sealed class FleetMapComponentTests
     var search = component.Find("#fleet-truck-search");
     var layers = component.Find("[aria-label='Map layers']");
     Assert.Equal(3, layers.QuerySelectorAll("input[type='checkbox']").Length);
-    Assert.Equal(3, layers.QuerySelectorAll("svg[aria-hidden='true']").Length);
+    // Traffic keeps its icon; the two layers drawn in one colour wear it.
+    Assert.Equal(1, layers.QuerySelectorAll("svg[aria-hidden='true']").Length);
+    Assert.Equal(
+      2,
+      layers
+        .QuerySelectorAll(".fleet-map-toggle__swatch[aria-hidden='true']")
+        .Length
+    );
     // Neither the date nor the price basis is a map question: the map is
     // today, and it prices fuel the way the planner does.
     Assert.Empty(component.FindAll("#fleet-date"));

@@ -226,9 +226,10 @@ a rule that runs the width of the card:
 - the unit, trailer and driver, then Left to the next stop (with its bar),
   then a labelled Details / Hide details button and Close, separated by a
   hairline. Both toggle words share one cell, so the button keeps its
-  width. On a card narrower than `map-compact-columns` (a phone) the
-  button is hidden and the card is open whole, taking at most half the
-  stage and scrolling (September 26);
+  width. Closed, the card keeps its head through the clocks and hides the
+  duty and rest line with the rest. On a card narrower than
+  `map-compact-columns` (a phone) the button is hidden and the card is
+  open whole, taking at most half the stage and scrolling (September 26);
 - the load number as a link to its page, the order to copy, and the
   tracked stop's visit and name; at the right, ETA, and under it the
   Appointment for the same stop in that stop's zone (the forecast's zone
@@ -888,12 +889,15 @@ query strings and fragments do not. Respect `prefers-reduced-motion` by omitting
 the animation entirely. Initial loading remains immediate without a late fade
 when shared settings arrive.
 
-Fleet Map places its heading and toolbar in one wrapping row. Search grows into
-available width beside the date and separated Map layers group. Desktop layer
-controls use compact icons with native title hints and explicit accessible names;
-mobile Filters retains visible labels. Keep shared button metrics, filled
-action/on-accent roles when enabled, native checkbox semantics and visible
-keyboard focus. The date keeps its accessible label without desktop label text.
+Fleet Map places its heading and toolbar in one wrapping row. Search takes
+up to 28rem beside the driver filter, whose Groups button shares the
+outlined control style; the Map layers group stands at the toolbar's end.
+Layer controls are named chips at every width (the icon-only squares of the
+earlier design said nothing about what was on, September 26): Fuel Stations
+wears the stations' green and Next loads the `map-route-future` violet,
+Traffic keeps its icon; the enabled chip is filled. Keep shared button
+metrics, filled action/on-accent roles when enabled, native checkbox
+semantics and visible keyboard focus. The date keeps its accessible label without desktop label text.
 IFTA stays readable as a short label
 in its own fuel-price group immediately before Fuel Stations, with the same chip
 appearance and visually hidden native checkbox. Its state is separate from layer visibility. Search counts are
