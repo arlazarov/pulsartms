@@ -40,7 +40,7 @@ public sealed class FleetSyncKeysTests
     );
     Assert.Equal(
       ["other"],
-      cache.Get<string[]>(FleetSyncKeys.DriverIds(Other))
+      cache.Get<string[]>(FleetSyncKeys.DriverIds(Other))!
     );
     Assert.Equal(
       "other",
