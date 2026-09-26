@@ -7,7 +7,9 @@
   // in each; it keeps a phone at large text from giving the labels most
   // of the card.
   --route-fact-label: min(7rem, 40%);
-  font-size: ui.fs(label);
+  // The route stop's size: the two cards are one kind of card and read
+  // alike (the owner, September 26).
+  font-size: ui.fs(body);
   overflow-wrap: anywhere;
 
   // One line: the load and its order, with the loading mark beside them.
@@ -18,7 +20,7 @@
     flex-wrap: wrap;
     align-items: baseline;
     gap: ui.pg(xs) ui.pg(sm);
-    font-size: ui.fs(label);
+    font-size: ui.fs(body);
   }
 
   &__metrics {
@@ -43,27 +45,45 @@
     }
   }
 
+  // Who takes the truck there, as the route stop says it: "Truck 54777 ·
+  // Trailer GG1030" on one line, the driver under them, all in the card's
+  // quiet line. The terms keep their names for a screen reader.
   &__assignment {
     display: flex;
     flex-wrap: wrap;
-    gap: ui.pg(xs) ui.pg(md);
-    margin: ui.pg(xs) 0 0;
-    padding-top: ui.pg(xs);
-    border-top: 1px solid ui.theme(border-subtle);
-    font-size: ui.fs(label);
+    gap: 0 ui.pg(xs);
+    margin: ui.pg(sm) 0 0;
+    padding: 0;
+    border: 0;
+    font-size: ui.fs(small);
+    color: ui.theme(text-secondary);
 
     > div {
-      display: flex;
+      display: inline-flex;
       align-items: baseline;
       gap: ui.pg(xs);
       min-width: 0;
     }
-    dt {
-      color: ui.theme(text-muted);
+    > div:nth-child(2)::before {
+      content: '·';
+      margin-inline-end: ui.pg(xs);
     }
+    > div:last-child {
+      flex-basis: 100%;
+    }
+    > div:last-child dt {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    dt,
     dd {
       margin: 0;
-      font-weight: 600;
+      color: inherit;
+      font-weight: 400;
     }
   }
 }

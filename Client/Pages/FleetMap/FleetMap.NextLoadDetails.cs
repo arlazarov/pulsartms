@@ -23,6 +23,28 @@ public partial class FleetMap
       route.Id == _inspectedLoadId
       && route.ExecutionLegId == _inspectedExecutionLegId
     );
+
+  // The badge number of the inspected stop, as the map counts it: the
+  // current plan's stops, then each earlier next load's, then this one.
+  private int? InspectedStopNumber
+  {
+    get
+    {
+      if (InspectedRoute is not { } inspected)
+        return null;
+      var number = _routeState?.Plan?.Stops.Count ?? 0;
+      foreach (var route in _nextLoadRoutes)
+      {
+        if (ReferenceEquals(route, inspected))
+          return number + _inspectedStopIndex + 1;
+        number +=
+          route.Stops.Count > 0 ? route.Stops.Count
+          : route.Legs.Count > 0 ? 1
+          : 0;
+      }
+      return null;
+    }
+  }
   private FuelStopArrival? InspectedFuelArrival =>
     _routeState is { } state
       ? state.FuelStopArrivals.FirstOrDefault(x =>

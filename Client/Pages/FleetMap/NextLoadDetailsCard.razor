@@ -18,6 +18,10 @@
         <div class="fleet-route-popup fleet-route-popup--stop">
             <div class="fleet-route-popup__location">
                 <div class="fleet-route-popup__head">
+                    @if (Number is { } number)
+                    {
+                        <span class="fleet-route-popup__number">@number</span>
+                    }
                     <div class="fleet-route-popup__identity">
                         <strong class="fleet-route-popup__job"
                             >@Stop?.Job</strong>

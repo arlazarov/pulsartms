@@ -85,7 +85,7 @@ export function stopEtaLabels(
             }
           : {}),
         tone:
-          late || cycle === 'Cycle short'
+          late || cycle?.startsWith('Cycle short')
             ? 'danger'
             : known
               ? 'success'

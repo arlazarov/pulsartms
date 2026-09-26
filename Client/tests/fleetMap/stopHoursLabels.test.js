@@ -71,7 +71,7 @@ test('alternative tone follows known lateness instead of recap or reset kind', (
 test('road-only on-time arrival with cycle debt is explicitly short, never green', () => {
   const actual = label();
   assert.equal(actual.etaLabel, 'ETA');
-  assert.equal(actual.statusText, 'Cycle short');
+  assert.equal(actual.statusText, 'Cycle short by 8h 00m');
   assert.equal(actual.tone, 'danger');
   assert.deepEqual(actual.hours.slice(0, 1), [
     {
@@ -124,7 +124,7 @@ test('a positive final cycle cannot hide an earlier driving shortage', () => {
   const actual = label(
     withHours({ cycleAtArrivalMinutes: 120, cycleAfterStopMinutes: 0 }),
   );
-  assert.equal(actual.statusText, 'Cycle short');
+  assert.equal(actual.statusText, 'Cycle short by 8h 00m');
   assert.equal(actual.tone, 'danger');
   assert.equal(actual.hours[0].value, '+2h 00m');
 });
@@ -178,7 +178,7 @@ test('unknown or short cycle does not hide independently known road lateness', (
     });
     assert.equal(
       actual.statusText,
-      verified ? 'Late · Cycle short' : 'Late · Cycle unknown',
+      verified ? 'Late · Cycle short by 8h 00m' : 'Late · Cycle unknown',
     );
     assert.equal(actual.tone, 'danger');
   }
@@ -198,7 +198,7 @@ test('recap remains conditional and reset alternatives are not displayed', () =>
     }),
   );
   assert.equal(actual.arrivalText, 'Sep 10 · 12:00 PM');
-  assert.equal(actual.statusText, 'Cycle short');
+  assert.equal(actual.statusText, 'Cycle short by 8h 00m');
   assert.deepEqual(actual.hours.slice(-1), [
     {
       label: 'With recap',
@@ -237,7 +237,7 @@ test('pending snapshots retain cycle, recap, alternatives and their original pre
   });
   const actual = label(value, { ...forecast, routeUpdatePending: true });
   assert.deepEqual(actual, label(value));
-  assert.equal(actual.statusText, 'Cycle short');
+  assert.equal(actual.statusText, 'Cycle short by 8h 00m');
   assert.equal(actual.previousStatusText, undefined);
   assert.equal(actual.tone, 'danger');
   assert.equal(actual.hours[0].value, '−8h 00m');

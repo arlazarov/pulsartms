@@ -21,6 +21,11 @@ public partial class NextLoadDetailsCard
   [Parameter]
   public int StopIndex { get; set; }
 
+  // The number the stop's badge wears on the map: counted on from the
+  // current plan's stops through the loads before this one.
+  [Parameter]
+  public int? Number { get; set; }
+
   [Parameter]
   public double? DistanceMiles { get; set; }
 

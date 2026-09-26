@@ -53,6 +53,18 @@ function localTime(
   }
 }
 
+// Said in a sentence, as StopHoursDisplay.Lateness says it: "45m", or
+// "1h 05m" from an hour.
+function lateness(minutes: number): string {
+  const value = Math.abs(minutes);
+  return value < 60
+    ? `${value}m`
+    : `${Math.floor(value / 60)}h ${String(value % 60).padStart(2, '0')}m`;
+}
+
+// The word about the cycle, and by how much when the forecast says: the
+// driving the run still needs beyond the cycle, else the cycle below zero
+// on arrival or now - the same rule as StopHours on the next-load card.
 export function cycleStatus(stop: any): string | null {
   if (!stop.hours) return null;
   const minutes =
@@ -63,13 +75,27 @@ export function cycleStatus(stop: any): string | null {
     !Number.isSafeInteger(minutes)
   )
     return 'Cycle unknown';
-  return Number.isFinite(Date.parse(stop.hours.firstCycleShortageAt ?? '')) ||
-    (typeof stop.hours.drivingShortfallMinutes === 'number' &&
-      Number.isSafeInteger(stop.hours.drivingShortfallMinutes) &&
-      stop.hours.drivingShortfallMinutes > 0) ||
-    minutes < 0
-    ? 'Cycle short'
-    : null;
+  const driving =
+    typeof stop.hours.drivingShortfallMinutes === 'number' &&
+    Number.isSafeInteger(stop.hours.drivingShortfallMinutes) &&
+    stop.hours.drivingShortfallMinutes > 0
+      ? stop.hours.drivingShortfallMinutes
+      : null;
+  const short =
+    Number.isFinite(Date.parse(stop.hours.firstCycleShortageAt ?? '')) ||
+    driving !== null ||
+    minutes < 0;
+  if (!short) return null;
+  const by =
+    driving ??
+    (typeof stop.hours.cycleAtArrivalMinutes === 'number' &&
+    stop.hours.cycleAtArrivalMinutes < 0
+      ? -stop.hours.cycleAtArrivalMinutes
+      : typeof stop.hours.currentCycleMinutes === 'number' &&
+          stop.hours.currentCycleMinutes < 0
+        ? -stop.hours.currentCycleMinutes
+        : null);
+  return by === null ? 'Cycle short' : `Cycle short by ${lateness(by)}`;
 }
 
 export function stopHoursLabels(stop: any, eta: any, now: number): any {

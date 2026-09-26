@@ -230,7 +230,10 @@ their prices, quantities and dates are illustrative, never formulas.
   route only) and job, load and order, the stop's place in its load,
   company, address, references and assignment at the left; ETA with its one
   badge, Appointment, then distances, fuel on arrival and cycle rows at the
-  right, ending with the primary Open load.
+  right, ending with the primary Open load. The next-load card wears the
+  number its badge has on the map, names truck, trailer and driver as the
+  route stop does, and reads at the same size; both say "Cycle short by
+  1h 20m" (September 26).
 
 The truck card follows the owner's approved design of September 25
 (`design/source-assets/fleet-card-approved-2026-09-25.png`); where the

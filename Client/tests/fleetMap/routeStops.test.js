@@ -236,7 +236,7 @@ test('current popup separates secondary cycle warning while keeping lateness wit
     const warning = row(state.shown, 'fleet-route-popup__cycle-status');
     assert.equal(
       warning.textContent,
-      cycleVerified ? 'Cycle short' : 'Cycle unknown',
+      cycleVerified ? 'Cycle short by 1h 20m' : 'Cycle unknown',
     );
     assert.notEqual(late, warning);
     assert.ok(value.children.includes(warning));
@@ -1270,7 +1270,11 @@ test('current popup renders signed hours and explicit alternatives with metadata
   markers[0].onSelect();
   assert.ok(rows(state.shown).some(node => node.textContent === 'ETA'));
   assert.ok(rows(state.shown).every(node => node.textContent !== 'Road ETA'));
-  assert.ok(rows(state.shown).some(node => node.textContent === 'Cycle short'));
+  assert.ok(
+    rows(state.shown).some(
+      node => node.textContent === 'Cycle short by 8h 00m',
+    ),
+  );
   assert.ok(rows(state.shown).some(node => node.textContent === '−8h 00m'));
   assert.ok(
     rows(state.shown).some(node => node.textContent === 'On time with recap'),
@@ -1287,7 +1291,11 @@ test('current popup renders signed hours and explicit alternatives with metadata
     creates,
     'pending does not rebuild the same Hours card',
   );
-  assert.ok(rows(state.shown).some(node => node.textContent === 'Cycle short'));
+  assert.ok(
+    rows(state.shown).some(
+      node => node.textContent === 'Cycle short by 8h 00m',
+    ),
+  );
   assert.ok(rows(state.shown).some(node => node.textContent === '−8h 00m'));
   assert.ok(
     rows(state.shown).some(node =>
