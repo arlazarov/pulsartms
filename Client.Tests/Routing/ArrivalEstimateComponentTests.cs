@@ -56,6 +56,55 @@ public sealed class ArrivalEstimateComponentTests
     Assert.Single(component.FindAll(".stop-hours.stop-hours--compact"));
   }
 
+  // The held forecast depends on the clock. A render read it three times,
+  // and a tick past its validity between the second read and the third
+  // threw: the release gate caught it once under load. One render sees one
+  // forecast, whatever the clock does meanwhile.
+  [Fact]
+  public void OneRenderReadsTheHeldForecastOnceWhileTheClockMoves()
+  {
+    using var context = new BunitContext();
+    var start = new DateTimeOffset(2026, 9, 8, 12, 0, 0, TimeSpan.Zero);
+    var clock = new SteppingClock(start, reads: 2, start.AddMinutes(10));
+    context.Services.AddSingleton<TimeProvider>(clock);
+    var now = start.UtcDateTime;
+    var stop = new PlanStop(
+      Guid.NewGuid(),
+      "Delivery",
+      "Warehouse",
+      1,
+      new(40, -80)
+    );
+    var eta = new DispatchEta(
+      now,
+      now.AddMinutes(2),
+      [new(stop.Id, start.AddHours(1), "UTC", null, null, 60, 0)],
+      null,
+      []
+    );
+
+    var component = context.Render<ArrivalEstimate>(p =>
+      p.Add(x => x.Stop, stop)
+        .Add(x => x.Eta, eta)
+        .Add(x => x.ShowAppointment, false)
+    );
+
+    Assert.Single(component.FindAll(".stop-hours__road"));
+    Assert.Equal(1, clock.Reads);
+  }
+
+  private sealed class SteppingClock(
+    DateTimeOffset before,
+    int reads,
+    DateTimeOffset after
+  ) : TimeProvider
+  {
+    public int Reads { get; private set; }
+
+    public override DateTimeOffset GetUtcNow() =>
+      ++Reads <= reads ? before : after;
+  }
+
   [Fact]
   public void SummaryAndDetailsCanBeSeparatedWithoutChangingTheDefaultDisplay()
   {

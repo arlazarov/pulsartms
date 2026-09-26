@@ -1,7 +1,10 @@
 @using Client.Models.DTO.Planning
 @using System.Globalization
-@if (DisplayEta?.Stops.Count > 0 || (ShowAppointment && Stop?.ScheduledDate is not null)
-    || (ShowDutyStatus && DisplayEta?.DutyStatus is not null))
+@* Read once per render: the held forecast depends on the clock, and a
+   tick between reads let the first see it and a later one see nothing. *@
+@{ var displayEta = DisplayEta; }
+@if (displayEta?.Stops.Count > 0 || (ShowAppointment && Stop?.ScheduledDate is not null)
+    || (ShowDutyStatus && displayEta?.DutyStatus is not null))
 {
     <div class="arrival-estimate">
         @if (ShowAppointment && Stop?.ScheduledDate is not null)
@@ -10,17 +13,17 @@
                 <strong>@Appointment</strong>
             </span>
         }
-        @if (DisplayEta?.Stops.FirstOrDefault() is { } next)
+        @if (displayEta?.Stops.FirstOrDefault() is { } next)
         {
             @* One row, wherever it comes from: the forecast renders the hour
                with or without hours behind it. This used to carry a second
                copy of that row for a stop the server could not forecast. *@
             @if (ShowSummary || next.Hours is not null)
             {
-                <StopHours Estimate="next" Recap="DisplayEta.CycleAtCalculation" ShowRecap="ShowRecap" ShowSummary="ShowSummary" ShowDetails="ShowDetails" Reading="@Reading" />
+                <StopHours Estimate="next" Recap="displayEta.CycleAtCalculation" ShowRecap="ShowRecap" ShowSummary="ShowSummary" ShowDetails="ShowDetails" Reading="@Reading" />
             }
             else if (ShowDetails) { <span class="arrival-estimate__timezone">Arrival time zone <strong>@($"UTC{next.Arrival:zzz}")</strong></span> }
         }
-        @if (ShowDutyStatus && DisplayEta?.DutyStatus is { } status) { <DriverDutySummary Status="status" /> }
+        @if (ShowDutyStatus && displayEta?.DutyStatus is { } status) { <DriverDutySummary Status="status" /> }
     </div>
 }
