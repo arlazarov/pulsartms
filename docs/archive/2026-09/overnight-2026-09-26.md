@@ -19,7 +19,7 @@ Each item has a regression that fails without the fix unless marked.
 |---|---|---|
 | `6ae6bd0e`, `b070e218`, `52038a20`, `18232d06` | Messaging signals by long poll instead of a server-sent stream | Firebase Hosting buffers streamed Cloud Run responses; an inbound stored 01:37:56.6 was read by the 30 s poll at 01:38:18.3. Mailboxes under one lock, per-account (4) and held-wait (40) caps, the wait not logged as slow, backoff that grows, timer-handshake test |
 | `d7a8aeea` | The reason an ETA forecast is taken back, logged and counted | 11006 (leg `2f2cc129`) taken back every few minutes; the reason was not recorded |
-| `2e8d63e2` | **Policy change, needs a decision:** keep the reserve to the first fuel stop whenever a plan can | 11007: first stop at mile 616 reached with 5.6 gal from 97.5; LOVES #820 at mile 279 kept the reserve for about $7 |
+| `2e8d63e2` | **Policy change, needs a decision; reverted on `main` by `54c186af` and kept on branch `fuel/first-stop-reserve-policy`:** keep the reserve to the first fuel stop whenever a plan can | 11007: first stop at mile 616 reached with 5.6 gal from 97.5; LOVES #820 at mile 279 kept the reserve for about $7 |
 | `b4a332ba` | Fleet route preview cache keyed by company | Constant key over a process-wide cache: code permits one carrier's preview to be served to another for 30 s. No observed leak is claimed |
 | `325c6cc2` | Speed icon bands restored on the truck card; unknown speed not shown as normal | `05490091` removed the rules; before/after screenshots in `artifacts/managed/diagnostic-E7Rop4` |
 | `327252b9` | Station status sweep reads prices inside each carrier's pass | Production: no station checked since 2026-09-21 16:50 UTC |
