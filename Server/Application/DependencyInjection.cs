@@ -63,6 +63,7 @@ public static class DependencyInjection
 
     services.AddScoped<FleetCache>();
     services.AddScoped<FleetNames>();
+    services.AddScoped<DriverClockReader>();
     services.AddScoped<ActiveTransfers>();
     services.AddScoped<IntegrationSettingsService>();
     services.AddScoped<IIntegrationCredentials>(sp =>

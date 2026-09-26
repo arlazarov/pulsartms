@@ -40,16 +40,16 @@ public sealed class DriverDutyStatusReadTests
     var now = time.GetUtcNow();
     var snapshot = new DriverHosSnapshot(time, new TestCompany());
     var history = new CachedHistory();
-    var handler = new GetDriverDutyStatusHandler(
-      db,
-      snapshot,
-      new DriverHosStore(db),
-      history,
-      null!,
-      time
-    );
+    // Each read is its own request, with its own clock reader.
     async Task<DriverDutyView> Read(Guid id) =>
-      (await handler.Handle(new(id), default)).Response!;
+      (
+        await new GetDriverDutyStatusHandler(
+          new DriverClockReader(db, snapshot, new DriverHosStore(db)),
+          history,
+          null!,
+          time
+        ).Handle(new(id), default)
+      ).Response!;
 
     Assert.Equal(DriverDutyView.Unknown, await Read(driver.Id));
     Assert.True(snapshot.TryBeginRefresh(false));

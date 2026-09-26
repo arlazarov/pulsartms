@@ -1,4 +1,4 @@
-using Application.Features.Fleet.Interfaces;
+using Application.Features.Fleet.Services;
 using Application.Models;
 
 namespace Application.Features.Fleet.Queries;
@@ -32,29 +32,19 @@ public sealed record DriverHoursView(
   );
 }
 
-public sealed class GetDriverHosHandler(
-  IAppDbContext db,
-  IDriverHosProvider hos,
-  IDriverHosStore store
-) : IRequestHandler<GetDriverHosQuery, RequestResponse<DriverHoursView>>
+public sealed class GetDriverHosHandler(DriverClockReader reader)
+  : IRequestHandler<GetDriverHosQuery, RequestResponse<DriverHoursView>>
 {
   public async Task<RequestResponse<DriverHoursView>> Handle(
     GetDriverHosQuery request,
     CancellationToken ct
   )
   {
-    var external = await db
-      .Drivers.AsNoTracking()
-      .Where(x => x.Id == request.DriverId)
-      .Select(x => x.ExternalId)
-      .SingleOrDefaultAsync(ct);
-    if (string.IsNullOrEmpty(external))
+    if (await reader.DriverAsync(request.DriverId, ct) is not { } driver)
       return RequestResponse<DriverHoursView>.Ok(DriverHoursView.Unknown);
-    var clocks = await hos.GetClocksAsync(ct);
-    if (clocks.Count == 0)
-      clocks = await store.ReadAsync(ct);
+    var clocks = await reader.ClocksAsync(ct);
     return RequestResponse<DriverHoursView>.Ok(
-      clocks.GetValueOrDefault(external) is { } found
+      clocks.GetValueOrDefault(driver.ExternalId) is { } found
         ? new(
           true,
           found.BreakMs,

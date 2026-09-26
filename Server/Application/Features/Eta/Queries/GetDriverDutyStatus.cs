@@ -1,5 +1,5 @@
 using Application.Features.Eta.Interfaces;
-using Application.Features.Fleet.Interfaces;
+using Application.Features.Fleet.Services;
 using Application.Features.Routing.Services.Routes;
 using Application.Models;
 using Domain.Models.Eta;
@@ -38,9 +38,7 @@ public sealed record DriverDutyView(string? Status, DateTimeOffset? StartedAt)
 }
 
 public sealed class GetDriverDutyStatusHandler(
-  IAppDbContext db,
-  IDriverHosProvider hos,
-  IDriverHosStore store,
+  DriverClockReader reader,
   IHosHistoryProvider history,
   PlanningSummaryReader summaries,
   TimeProvider clock
@@ -51,30 +49,16 @@ public sealed class GetDriverDutyStatusHandler(
     CancellationToken ct
   )
   {
-    var driver = await db
-      .Drivers.AsNoTracking()
-      .Where(x => x.Id == request.DriverId)
-      .Select(x => new
-      {
-        x.ExternalId,
-        DrivesTruck = request.TruckId.HasValue
-          && db.Trucks.Any(t =>
-            t.Id == request.TruckId.Value && t.DriverId == x.Id
-          ),
-      })
-      .SingleOrDefaultAsync(ct);
-    if (string.IsNullOrEmpty(driver?.ExternalId))
+    if (await reader.DriverAsync(request.DriverId, ct) is not { } driver)
       return RequestResponse<DriverDutyView>.Ok(DriverDutyView.Unknown);
     var external = driver.ExternalId;
-    var clocks = await hos.GetClocksAsync(ct);
-    if (clocks.Count == 0)
-      clocks = await store.ReadAsync(ct);
+    var clocks = await reader.ClocksAsync(ct);
     var now = clock.GetUtcNow();
     var status = HosDutyStatus.Read(
       await history.GetAsync(external, ct),
       clocks.GetValueOrDefault(external),
       now,
-      driver.DrivesTruck && request.TruckId is { } truck
+      request.TruckId is { } truck && driver.Trucks.Contains(truck)
         ? Current(
           (await summaries.ForTruckAsync(truck, ct, summaryOnly: true))
             .State

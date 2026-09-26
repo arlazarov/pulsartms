@@ -50,11 +50,13 @@ public sealed class DriverHosReadTests
     await db.SaveChangesAsync();
     var time = new ManualTimeProvider();
     var snapshot = new DriverHosSnapshot(time, new TestCompany());
-    var handler = new GetDriverHosHandler(db, snapshot, new DriverHosStore(db));
+    // Each read is its own request, with its own clock reader.
+    GetDriverHosHandler handler() =>
+      new(new DriverClockReader(db, snapshot, new DriverHosStore(db)));
 
     Assert.Equal(
       DriverHoursView.Unknown,
-      (await handler.Handle(new(driver.Id), default)).Response
+      (await handler().Handle(new(driver.Id), default)).Response
     );
 
     Assert.True(snapshot.TryBeginRefresh(false));
@@ -70,7 +72,7 @@ public sealed class DriverHosReadTests
         },
       }
     );
-    var own = (await handler.Handle(new(driver.Id), default)).Response!;
+    var own = (await handler().Handle(new(driver.Id), default)).Response!;
     Assert.Equal(
       (true, 3600000L, 7200000L, "driving"),
       (own.Known, own.DriveMs!.Value, own.ShiftMs!.Value, own.DutyStatus)
@@ -78,11 +80,11 @@ public sealed class DriverHosReadTests
     Assert.Equal(time.GetUtcNow().UtcDateTime, own.UpdatedAt);
     Assert.Equal(
       DriverHoursView.Unknown,
-      (await handler.Handle(new(codriver.Id), default)).Response
+      (await handler().Handle(new(codriver.Id), default)).Response
     );
     Assert.Equal(
       DriverHoursView.Unknown,
-      (await handler.Handle(new(Guid.NewGuid()), default)).Response
+      (await handler().Handle(new(Guid.NewGuid()), default)).Response
     );
   }
 }
