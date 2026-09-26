@@ -216,6 +216,14 @@ basemap with the colours back).
   framework files match the artifact. Local renders
   `browser-fleet-design-C3BnYu` and `-6zwW4C`.
 
+- `16322944` -> `release-Eheq3j`, 20:09 UTC (with `d87045a1`): the pick
+  revealed again when its card changes shape, even after a drag; the
+  stop's rows kept at the top beside a taller column; what is left of
+  the load in the location's shape. Gate: Server 3,773, Client 1,244,
+  JavaScript 663; 285 files; entry HTML, stylesheet
+  (`v=93f98f01ebe26026`), settings and the fingerprinted framework files
+  match the artifact. Local render `browser-fleet-design-MAauDp`.
+
 ## API, second release (16:51-16:59 UTC)
 
 The owner authorized it ("so fix it") for the review notices by kind
