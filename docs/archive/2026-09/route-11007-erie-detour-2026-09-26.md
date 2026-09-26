@@ -22,19 +22,42 @@ delivery (44.42875, -88.09795). Nothing was saved and no plan changed.
 | C: traffic, border allowed | 1,144.1 | 17.77 | north of Lake Erie (Ontario) |
 | D: A plus a waypoint on I-90 near Ashtabula, OH | **1,137.2** | **17.29** | 41.909, -80.599 (I-90) |
 
-## Findings
+## Findings (corrected at 10:00 UTC)
 
-- Request A reproduces the saved road exactly (1,229.8 mi).
-- Traffic is not the cause: the delay is 0 and B returns the same road.
-- A truck restriction on I-90 is not the cause: D uses the same truck
-  profile and is 92.6 miles shorter and 48 minutes faster than A.
-- The cause is TomTom's answer to `avoid=borderCrossings`: without it
-  the fastest road crosses Ontario (C); with it, TomTom returns a US road
-  that is not the best US road it can produce (D), and its alternatives
-  are worse still.
+The first reading, that `avoid=borderCrossings` makes TomTom return the
+detour, was wrong. Seven more requests (09:54-09:58 UTC, 12 in total),
+recorded in `artifacts/managed/diagnostic-LPkdbv` (no key in them):
 
-Not fixed. The border hardening of September 25 asks for this option for
-every one-country trip, so other trips across the Great Lakes region may
-take the same kind of detour. A fix (a guiding waypoint, another way to
-exclude Canada, or comparing against a waypointed road) is a routing
-decision for the owner and Root.
+| Request | Miles | Hours | Path at Erie |
+|---|---|---|---|
+| U: no border option (the fastest road) | 1,144.1 | 17.75 | through Ontario |
+| Ontario blocked by 4 `avoidAreas` rectangles built from U, border option kept | 1,229.8 | 18.06 | I-79 |
+| the same rectangles, border option dropped | 1,229.8 | 18.06 | I-79 |
+| `alternativeType=betterRoute` with the saved road as `supportingPoints` | 1,229.8 | 18.06 | I-79 only; nothing better offered |
+| A with a 54 ft vehicle | 1,229.8 | 18.06 | I-79 |
+| A with 60,000 lb | 1,229.8 | 18.06 | I-79 |
+| A with `vehicleCommercial=false` | 1,229.8 | 18.05 | I-79 |
+
+- Request A reproduces the saved road exactly; traffic, length, weight,
+  the commercial flag and the border option are ruled out as causes.
+- With Canada excluded in any way, TomTom's own answer - including its
+  "better route" search against the saved road - is the I-79 road.
+- Only a waypoint on I-90 near Ashtabula (D) gives a shorter, faster road
+  (1,137.2 mi, 17.29 h). A waypoint can lift a restriction that applies to
+  through traffic, so D is not known to be legal for this truck without
+  the stop; nothing in the responses says which segment TomTom avoids.
+
+## Decision needed
+
+No general code change is defensible from this evidence: steering trucks
+through a waypoint TomTom would not choose itself could route them where
+they may not go through. Options for the owner and Root:
+
+1. Accept TomTom's truck road as it is (current behaviour).
+2. Ask TomTom support why the truck profile avoids I-90 between Erie and
+   Cleveland (the requests above are recorded for that).
+3. Let a dispatcher add a waypoint on a load that is known to be legal,
+   through the existing route options, per load, with the border check
+   still applied.
+
+Nothing was changed in code, in saved plans or in production.
