@@ -1,119 +1,79 @@
 # Dispatch and Fleet integration review
 
-Local integration branch: `codex/dispatch-fleet-integration`.
-Base: `242ab81a`, including Fleet corrections via `c493ce23`.
-The uncommitted contrast correction from `claude/dazzling-herschel-ec9652`
-was applied with a three-way patch to the three explicit source/test files.
-No conflicts; the stylesheet version was regenerated from combined SCSS.
-Other worktrees and the dirty root checkout were not modified.
+## Result
 
-## Independent review
+Local integration is complete on `codex/dispatch-fleet-integration`.
+Dispatch Cards and filters (`242ab81a`) are combined with the Fleet SCSS
+corrections and the reviewed browser-probe migration (`3fbd6a5d`). No root
+merge, deployment, database change or production action was performed.
+Unrelated root work and Driver Pay were preserved.
 
-Reviewed the Dispatch presentation change, shared TruckReadings, DistanceLeft,
-stop classification, Fleet callers, style ownership and browser assertions.
-TruckReadings reuses TelemetryTone and FuelReading; DistanceLeft only selects
-existing distance values. No new provider calls, persistence or financial
-calculation was introduced. The managed board retains page-owned summaries;
-the empty-load path has no additional planning read. No performance claim is
-made. Runtime consistency-auditor coverage is inapplicable to this cosmetic
-integration; no persisted state or workflow changes.
+## Product corrections
 
-Inspected the original full-test log in the Dispatch worktree: Client 1244,
-Server 3773 and JavaScript 663 passed. PostgreSQL execution was not exercised.
-Inspected browser-ui-nXsVX2 success metadata and empty failures, plus actual
-1440 desktop, 390 phone and 390 dark/200-percent screenshots. Two other
-browser probes remain failing: mapToolbarSmoke and hoursForecastSmoke.
-The latter's same toolbar-width and ambiguous Fuel Stations locator failures
-are recorded against release-Eheq3j in browser-hours-forecast-uxzLDS.
-These are explicit remaining verification gaps, not passing checks.
+- Details and load-number links use the existing accessible link color.
+  The load link's dark contrast improved from 2.41 to 7.59; the regression
+  failed before the correction and passed after it.
+- The load block stays top-aligned when its first forecast badge arrives.
+  Its loading dash uses the same lead size as the eventual link, removing
+  the separate 2.8px line-height jump.
+- Fleet text clocks use the available column instead of the shared dial
+  panel's 20rem cap. Below the named 54rem truck-card breakpoint, the whole
+  clocks row moves below vehicle readings before the column squeezes it.
+  The normal wide card retains its paired layout.
+- The route visit grid caps its 11rem minimum at available width, fixing
+  64px horizontal overflow on a phone with 200-percent text.
 
-## Final cosmetic checks
+Owners are the existing Fleet inspector styles and named screen tokens.
+Shared clock business rules, semantic colors, calculations, provider reads
+and Dispatch behavior were not duplicated or changed by these corrections.
+Runtime consistency auditing is inapplicable to style and browser-probe
+changes: there is no new persisted state or workflow. Browser assertions
+cover the corrected layout invariants.
 
-After applying the contrast fix: styles build, bash test.sh styles
-(Client architecture 2, Server architecture 113, style tests 139 and JS
-architecture 67), TypeScript check, Prettier and git diff checks passed.
-The unchanged full suite was not repeated for the color-only addition.
+## Verification
 
-Independent fleetDesignSmoke run: browser-fleet-design-cmvAeL, all five
-cases passed, with no failed steps, outside panels or unexpected requests.
-Release Client from the final Dispatch scratch-riVj71 artifact was reused
-in a copy-on-write scratch-sibwn1 staging directory with the combined CSS.
-No C# or JavaScript production changes followed that compiled artifact.
-The final dark screenshot was visually inspected. Details contrast measured
-7.59 at rest and 6.12 on hover (minimum 4.5); light 8.56 and 7.61.
-Small screenshot/report evidence is retained with .keep.
+The compiled Client artifact is the final Dispatch `scratch-riVj71` output,
+staged by copy-on-write into `scratch-sibwn1`, with final integration CSS.
+No production C# or JavaScript changed after that compiled artifact.
+Final production CSS revision: `f6184f83`; source and staged main.css SHA-1
+both equal `575b876238e238507e2cf6b7cfcb24c0e7433695`.
 
-## Remaining scope
+- Independent full suite on `930575bf`: Client 1244, Server 3773,
+  JavaScript 663; exit 0. Original log is retained in
+  `diagnostic-lvSyI0/full-check.log`. Later production changes were SCSS
+  only and received affected checks. PostgreSQL execution was not enabled;
+  test counts must not be described as PostgreSQL coverage.
+- Styles 139 and formatting passed after the final style changes. Earlier
+  styles/architecture boundary checks passed Client architecture 2,
+  Server architecture 113 and JavaScript architecture 67 plus TypeScript.
+- Independent mapToolbarSmoke `browser-ui-I4JXY9`: 16 cases, no errors or
+  unexpected requests. The probe follows the search listbox, checks exact
+  truck IDs and verifies the existing q-parameter restoration contract.
+- Final independent fleetDesignSmoke `browser-fleet-design-ut3i6S`: all
+  five cases passed, including 1024, dark, phone and phone/200-percent text.
+  No layout failures, outside panels, browser errors or unexpected requests.
+  Actual dark and 1024 compact screenshots were independently reviewed.
+- Hours matrix `v1g25L`: 12 cases on unchanged final CSS; ten passed and two
+  1200px cases exposed an obsolete toolbar-centering assertion. Only that
+  assertion changed afterward. Targeted 1200 light/dark runs `tIZVA2` and
+  `Qt1x6D` passed and supersede those two failures. Original failures remain
+  retained; this is not represented as a single clean matrix run.
+- Lifecycle `jjqGYN`: 16 Dispatch/Map transitions passed. Settled documents
+  remained 4 and listeners 38. This measures synthetic Client behavior,
+  not managed .NET memory, GPU retention or production performance.
 
-No deployment or root merge performed. Table/Papers redesign and the broader
-load-workspace design remain outside this completed Cards/filter step.
-The dark Fleet load-number link contrast remains unmeasured and is not
-covered by the Details-button assertion. No production data was changed.
+The hours reports were independently inspected, including controlled
+requests crossing ValidUntil, retained forecasts, read counts, map bounds,
+loading geometry and separate shell polling counts. Duty growth remains
+bounded by newly arriving content; phone height has an independent half-map
+ceiling. No arbitrary layout tolerance was added to conceal product defects.
+See [probe migration](hours-forecast-probe-migration-2026-09-26.md) for the
+specific test-contract changes, retained runs and findings. Evidence runs
+carry `.keep`; build outputs remain disposable.
 
-## Follow-up: toolbar and load-link regression
+## Limits
 
-The toolbar probe counted all option roles, including the driver select.
-It now follows the search combobox aria-controls and verifies both truck IDs.
-It supplies the existing read-only group/unread/mailbox fixtures and waits
-for the search to reach the URL before testing reload restoration. Search
-restoration is expected: ReturnNavigation stores it in the q parameter.
-Unknown endpoints and external requests remain failures.
-
-Independent mapToolbarSmoke: browser-ui-I4JXY9, all 16 cases passed with no
-browser errors or unexpected requests. The load-link contrast regression
-first failed at 2.41 in browser-fleet-design-7farBN. The link now uses the
-existing link theme role. This changes no route, calculation or state.
-The hoursForecastSmoke repair is separately owned by Claude Dispatch;
-its result still requires independent review and integration.
-
-Final link-color verification: browser-fleet-design-w9PIMw passed all five
-cases with no layout failures, browser errors or unexpected requests.
-Styles/architecture, TypeScript and formatting checks passed again after the
-production style change. No database checks were required by this style fix.
-
-Stable follow-up candidate 930575bf: full bash test.sh independently passed
-Client 1244 (7 seconds), Server 3773 (3m 8s), JavaScript 663 (4.95 seconds),
-exit 0. Retained original log: diagnostic-lvSyI0/full-check.log. No real
-PostgreSQL execution was requested; these counts do not assert its coverage.
-
-A first-arrival forecast badge recentered the load block beside it. The load
-block now aligns itself to the start, preserving its position when the
-adjacent forecast gains content. No fixed placeholder height was added.
-After this cosmetic change, 139 styles tests and formatting passed, and
-browser-fleet-design-sUn2q3 passed all five cases. The hours probe owns the
-controlled first-arrival geometry evidence; final review remains pending.
-
-
-## Enlarged text clocks
-
-The 200-percent, 2344px probe found all four text clocks overflowing their
-own flex boxes by 15–19px. The shared dial panel capped the text group at
-20rem despite available space in the Fleet column. Fleet now overrides
-that cap with 100 percent of its column; the shared dial component and
-Dispatch remain unchanged. The unchanged clipping assertion passes in
-browser-hours-forecast-FtcgCv (2344 light), with all four clock scroll widths
-matching their client widths. Original failure: CRIaso. Styles 139 and
-formatting passed. The remaining responsive matrix is still in progress.
-
-
-## Phone loading and enlarged route grid
-
-The phone probe fGQdrD reproduced a 64px horizontal overflow at 200-percent
-text: the visit grid required an 11rem minimum wider than its container.
-The minimum now caps itself at 100 percent of available width, retaining
-11rem as the normal two-column threshold. The loading load-number dash now
-uses the loaded link's lead size and weight; its former body size caused a
-2.8px line-height jump when the load details arrived. No arrival tolerance
-was relaxed. Follow-up iYtf8c passed these assertions and reached a separate
-outdated helper assertion. Final whole-matrix evidence remains pending.
-Styles 139 and formatting passed after both changes.
-
-
-At 1920px and 200-percent text, the available answer column still had less
-space than four clocks need. A named 54rem truck-card breakpoint stacks
-only the vehicle/clocks row before this occurs. Ordinary wide cards retain
-the paired layout. Bounded hours probes rQNGEH (1920 light) and kBj4V9
-(390 light) passed on the final CSS. Independent fleetDesign-ut3i6S passed
-all five cases, including 1024 and phone/200-percent text, with no errors,
-overflows or unexpected requests. The 1024 compact screenshot was reviewed.
-Styles 139 and formatting passed. Final full hours matrix is pending.
+This completes local Cards/filter integration and its affected verification.
+Table/Papers redesign, the broader load workspace and production verification
+are not included. No release readiness claim substitutes for the repository's
+mandatory release procedure and an explicit deployment request.
