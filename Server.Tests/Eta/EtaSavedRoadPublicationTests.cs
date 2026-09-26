@@ -33,6 +33,7 @@ public sealed partial class EtaChainInputTests
     await f.Services.Forecasts.RefreshAsync(f.Current.Id, default);
     var before = await SavedForecastsAsync(f);
     Assert.NotEmpty(before);
+    f.Services.EtaMemory.Results.TryGetValue(f.Current.Id, out var shown);
     var geometryReads = 0;
     f.Publication.BeforeBegin = async () =>
     {
@@ -83,7 +84,13 @@ public sealed partial class EtaChainInputTests
 
     Assert.Contains("Saved roads changed", error.Message);
     Assert.Equal(before, await SavedForecastsAsync(f));
-    Assert.False(f.Services.EtaMemory.Results.ContainsKey(f.Current.Id));
+    // Nothing unsaved is published: readers have what they had, if the
+    // refresh's own description did not already retire it. Readers refuse
+    // one for other work or show one for an older road as updating.
+    Assert.True(
+      !f.Services.EtaMemory.Results.TryGetValue(f.Current.Id, out var after)
+        || ReferenceEquals(after, shown)
+    );
     Assert.Null(f.Db.Database.CurrentTransaction);
     Assert.Equal(geometryReads, f.Probe.GeometryReads);
   }

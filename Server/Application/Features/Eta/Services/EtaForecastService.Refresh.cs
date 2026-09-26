@@ -68,16 +68,33 @@ public sealed partial class EtaForecastService
       ct,
       cachedTelemetryOnly: true
     );
-    EtaMemory.Entry? published = null;
     var committed = false;
     var changed = false;
-    // Why a published forecast was not saved, for the line that takes it
-    // back: truck 11006's forecast was taken back every few minutes and
-    // the log could not say which of these it was.
+    // Why a forecast was not saved: truck 11006's forecast failed to save
+    // every few minutes and the log could not say which of these it was.
     var unsaved = "store-refused";
+    // Readers see a forecast only once it is saved. It used to be published
+    // first and taken back when the save failed, so the map's ETA went blank
+    // whenever one refresh could not save, even for a passing reason
+    // (11006, September 26). A new result is now published only after its
+    // commit. The one readers already have stays, unless the failure says
+    // its inputs changed: then it was calculated on inputs that no longer
+    // hold, and readers, who compare only the work and the road, would show
+    // it as current. It is retired only if still the one read here: a newer
+    // one another refresh published meanwhile stays.
+    EtaService.Calculation? calculation = null;
+    var shown = memory.Results.GetValueOrDefault(rootKey);
+    EtaMemory.Entry? waiting = null;
     try
     {
-      var result = await eta.GetAsync(state, ct, viewed: false, chain);
+      calculation = await eta.CalculateAsync(
+        state,
+        ct,
+        viewed: false,
+        chain,
+        publish: false
+      );
+      var result = calculation?.Value;
       if (result is null)
       {
         var now = DateTime.UtcNow;
@@ -91,16 +108,11 @@ public sealed partial class EtaForecastService
         {
           RouteUpdatePending = true,
         };
-        memory.Results[rootKey] = new(description.InputHash, result)
+        waiting = new(description.InputHash, result)
         {
           ChainInputHash = description.InputHash,
         };
       }
-      if (
-        memory.Results.TryGetValue(rootKey, out var entry)
-        && ReferenceEquals(entry.Value, result)
-      )
-        published = entry;
       var current = await inputs.DescribeAsync(truckId, ct);
       if (current?.InputHash != description.InputHash)
       {
@@ -172,26 +184,34 @@ public sealed partial class EtaForecastService
       {
         RoutePlanningException { Busy: true } => "planning-busy",
         OperationCanceledException => "cancelled",
+        RoutePlanningException => "dependency-changed",
         _ => "failed",
       };
       throw;
     }
     finally
     {
-      if (
-        !committed
-        && published is not null
-        && memory.RemoveIfCurrent(rootKey, published)
-      )
+      if (committed)
       {
-        // Published to readers, then not saved: taken back.
-        PerformanceStages.Count("eta-memory", "unsaved-removed", 1);
+        if (calculation is { Published: false })
+          eta.Publish(state, calculation, description.InputHash);
+        else if (waiting is not null)
+          memory.Publish(rootKey, waiting);
+      }
+      else
+      {
+        PerformanceStages.Count("eta-memory", "unsaved", 1);
         PerformanceStages.Count("eta-memory", $"unsaved-{unsaved}", 1);
+        var retire =
+          shown is not null
+          && unsaved is not ("planning-busy" or "cancelled")
+          && memory.RemoveIfCurrent(rootKey, shown);
         logger.LogInformation(
-          "ETA forecast for scope {EtaScope} was not saved and was taken "
-            + "back: {EtaUnsavedReason}",
+          "ETA forecast for scope {EtaScope} was not saved and not "
+            + "published: {EtaUnsavedReason}; the shown one {EtaShown}",
           rootKey,
-          unsaved
+          unsaved,
+          retire ? "was retired" : "stays"
         );
         if (changed)
           memory.RequestRefresh();

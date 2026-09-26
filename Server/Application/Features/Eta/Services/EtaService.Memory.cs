@@ -42,6 +42,20 @@ public sealed partial class EtaService
       }
     );
 
+  // A calculation made unpublished, published once its save committed.
+  public void Publish(
+    RoutePlanningState state,
+    Calculation calculation,
+    string? chainInputHash
+  ) =>
+    Record(
+      state,
+      calculation.Signature,
+      calculation.Value,
+      chainInputHash,
+      calculation.Driver
+    );
+
   // A forecast is kept against the road it was calculated on and the work
   // it belongs to, so a later read can tell a newer road for the same work
   // from different work.

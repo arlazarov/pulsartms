@@ -143,6 +143,25 @@ public sealed class EtaRetainedForecastTests
 
   // A calculation reads its road before waiting for the dispatch's gate, so
   // one begun on the older road can finish after one on the newer road.
+  // A refresh publishes after its save, and saves finish in any order: of
+  // two results of the same road version, the one calculated later stays.
+  [Fact]
+  public void ALateEarlierResultOfTheSameRoadNeverReplacesALaterOne()
+  {
+    using var memory = new EtaMemory();
+    var service = Service(memory);
+    var state = State();
+    var now = DateTime.UtcNow;
+    var later = Forecast(now.AddSeconds(5), now.AddMinutes(10));
+    service.Record(state, "b", later);
+    service.Record(state, "a", Forecast(now, now.AddMinutes(10)));
+
+    Assert.Same(later, memory.Results[Key(state)].Value);
+    var newest = Forecast(now.AddSeconds(9), now.AddMinutes(10));
+    service.Record(state, "c", newest);
+    Assert.Same(newest, memory.Results[Key(state)].Value);
+  }
+
   [Fact]
   public void ALateResultForAnOlderRoadNeverReplacesANewerOne()
   {

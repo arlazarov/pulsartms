@@ -22,11 +22,31 @@ public sealed partial class EtaService(
 {
   private readonly EtaPlanningOptions planning = planningOptions.Value;
 
+  // A forecast and what it takes to publish it. Published: it is already
+  // what readers see (a remembered result), or it was published here.
+  public sealed record Calculation(
+    DispatchEta Value,
+    string Signature,
+    string Driver,
+    bool Published
+  );
+
   public async Task<DispatchEta?> GetAsync(
     RoutePlanningState state,
     CancellationToken ct,
     bool viewed = true,
     EtaChainPlan? chain = null
+  ) => (await CalculateAsync(state, ct, viewed, chain, publish: true))?.Value;
+
+  // publish: false leaves a new result unpublished, for a caller that must
+  // save it first (EtaForecastService.RefreshAsync) and publishes it with
+  // Publish only once the save committed.
+  public async Task<Calculation?> CalculateAsync(
+    RoutePlanningState state,
+    CancellationToken ct,
+    bool viewed,
+    EtaChainPlan? chain,
+    bool publish
   )
   {
     if (state.Plan is not { } plan)
@@ -87,7 +107,7 @@ public sealed partial class EtaService(
         && cached.Signature == signature
         && cached.Value.ValidUntil > DateTime.UtcNow
       )
-        return cached.Value;
+        return new(cached.Value, signature, driver, Published: true);
       var clocks = await hos.GetClocksAsync(ct);
       clocks.TryGetValue(driver, out var clock);
       var history = clock is null
@@ -98,8 +118,9 @@ public sealed partial class EtaService(
       // rather than every forecast without one retrying every few seconds.
       var result = Calculate(state, clock, DateTime.UtcNow, history, chain, ct);
       ct.ThrowIfCancellationRequested();
-      Record(state, signature, result, chain?.InputHash, driver);
-      return result;
+      if (publish)
+        Record(state, signature, result, chain?.InputHash, driver);
+      return new(result, signature, driver, publish);
     }
     finally
     {
