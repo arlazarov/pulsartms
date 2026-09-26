@@ -37,37 +37,41 @@
     stroke-linejoin: round;
   }
 
+  // The load the truck is on stands out by a light ring, not a heavy
+  // blue frame; its tag says Current.
   &--current {
-    border-color: ui.theme(link);
-    box-shadow: 0 0 0 1px ui.theme(link);
+    border-color: ui.theme(selection-border);
+    box-shadow: 0 0 0 1px ui.theme(selection-border);
   }
   &__heading {
     display: flex;
-    align-items: start;
+    align-items: baseline;
     flex-wrap: wrap;
     gap: ui.pg(xs) ui.pg(sm);
   }
-  &__title {
-    display: flex;
-    align-items: center;
-    flex-wrap: nowrap;
-    gap: ui.pg(xs) ui.pg(sm);
-    min-width: 0;
-    max-width: 100%;
-    flex: 1 0 auto;
-  }
+  // The load's number is the link to its page, as on the map's truck card.
   &__number {
-    font-size: ui.fs(subtitle);
+    display: inline-flex;
+    align-items: baseline;
+    gap: ui.pg(micro);
+    color: ui.theme(action);
+    font-size: ui.fs(lead);
     font-weight: 700;
-    color: ui.theme(text);
     overflow-wrap: anywhere;
     text-decoration: none;
-    padding-inline: 0;
+    svg {
+      align-self: center;
+      inline-size: 0.9em;
+      block-size: 0.9em;
+    }
   }
-  &__number:hover {
+  &__number:hover,
+  &__number:focus-visible {
     text-decoration: underline;
   }
   &__phase {
+    margin-left: auto;
+    align-self: center;
     padding: ui.pg(micro) ui.pg(xs);
     border-radius: ui.radius(sm);
     font-size: ui.fs(small);
@@ -114,13 +118,16 @@
     font-size: ui.fs(caption);
     margin-top: ui.pg(xs);
   }
+  // Who the load is for and where it stands, then which of the truck's
+  // loads it is, under a hairline that closes the card's head.
   &__reference {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
     flex-wrap: wrap;
-    gap: ui.pg(xs) ui.pg(sm);
+    gap: ui.pg(xs);
     margin-top: ui.pg(xs);
+    padding-bottom: ui.pg(sm);
+    border-bottom: 1px solid ui.theme(border-subtle);
     font-size: ui.fs(body);
   }
   &__reference > span:first-child {
@@ -129,7 +136,11 @@
     overflow-wrap: anywhere;
   }
   &__status {
-    font-size: ui.fs(caption);
+    font-size: ui.fs(body);
+    color: ui.theme(text-muted);
+  }
+  &__status::before {
+    content: '· ';
     color: ui.theme(text-muted);
   }
   &__status.is-moving {

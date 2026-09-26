@@ -335,26 +335,36 @@ public sealed class DispatchTruckHeaderTests
 
     component.WaitForAssertion(() =>
     {
+      // The truck reads as its Fleet Map card: the unit and its crew with
+      // what is left to the next stop, the vehicle line and the clocks, and
+      // behind Details the duty and the recap (the owner, September 26).
       var truckHeader = component.Find(".dispatch-truck__header");
       Assert.Contains("11005", truckHeader.TextContent);
       Assert.Contains("Test Driver", truckHeader.TextContent);
-      Assert.NotNull(truckHeader.QuerySelector(".dispatch-truck__icon"));
-      Assert.Empty(component.FindAll(".dispatch-rig"));
-      var summary = component.Find(".dispatch-truck__equipment");
+      // What is left to the next stop, by the plan's own reading.
+      Assert.Matches(
+        @"^Left\s\d[\d,]*\smi\s·\s\d[\d,]*\skm$",
+        truckHeader
+          .QuerySelector(".dispatch-planning__left")!
+          .TextContent.Trim()
+      );
+      Assert.Empty(component.FindAll(".dispatch-truck__icon, .dispatch-rig"));
+      var summary = component.Find(".dispatch-planning--board");
       Assert.Empty(
         summary.QuerySelectorAll(
-          ".dispatch-planning__details, .dispatch-planning__next, .arrival-estimate, .stop-hours__cycle"
+          ".dispatch-planning__details, .dispatch-planning__next, .arrival-estimate, .stop-hours__cycle, .dispatch-planning__metrics"
         )
       );
       Assert.DoesNotContain("Middletown", summary.TextContent);
       Assert.DoesNotContain("Cycle remaining", summary.TextContent);
-      Assert.Contains("Fuel 50%", summary.TextContent);
+      Assert.DoesNotContain("Total Distance", summary.TextContent);
+      Assert.Contains(
+        "Fuel 50%",
+        summary.QuerySelector(".truck-readings")!.TextContent
+      );
       Assert.Empty(summary.QuerySelectorAll("details"));
-      var distances = summary.QuerySelector(".dispatch-planning__metrics")!;
-      Assert.Contains("100 mi", distances.TextContent);
-      Assert.Contains("75 mi", distances.TextContent);
-      Assert.Contains("Next Stop", distances.TextContent);
       var clocks = Assert.Single(summary.QuerySelectorAll(".driver-hours"));
+      Assert.True(clocks.ClassList.Contains("driver-hours--text"));
       foreach (
         var value in new[]
         {
@@ -369,21 +379,19 @@ public sealed class DispatchTruckHeaderTests
         }
       )
         Assert.Contains(value, clocks.TextContent);
+      var duty = summary.QuerySelector(".dispatch-planning__duty")!;
+      Assert.True(duty.HasAttribute("hidden"));
       Assert.Contains(
         "Driving",
-        summary.QuerySelector(".driver-duty__current")!.TextContent
+        duty.QuerySelector(".driver-duty--row")!.TextContent
+      );
+      Assert.Contains(
+        "+3h 05m",
+        duty.QuerySelector(".driver-next-recap")!.TextContent
       );
       Assert.Empty(
         summary.QuerySelectorAll(".driver-hours-panel .driver-duty")
       );
-      var recap = Assert.Single(summary.QuerySelectorAll(".driver-next-recap"));
-      Assert.Contains("+3h 05m", recap.TextContent);
-      Assert.Null(recap.Closest("details"));
-      Assert.Null(clocks.Closest("details"));
-      Assert.Null(
-        summary.QuerySelector(".driver-duty__current")!.Closest("details")
-      );
-      Assert.DoesNotContain("Driver details", summary.TextContent);
       Assert.DoesNotContain(
         "Next recap",
         component.Find(".dispatch-truck__loads").TextContent
@@ -394,13 +402,13 @@ public sealed class DispatchTruckHeaderTests
         "Middletown, DE",
         stop.QuerySelector(".dispatch-load__location")!.TextContent
       );
-      Assert.Contains(
+      Assert.Equal(
         "Delivery",
-        stop.QuerySelector(".arrival-estimate__appointment")!.TextContent
+        stop.QuerySelector(".dispatch-load__stop-job")!.TextContent
       );
       Assert.Contains(
         "Sep 8",
-        stop.QuerySelector(".arrival-estimate__appointment")!.TextContent
+        stop.QuerySelector(".dispatch-load__appointment")!.TextContent
       );
       Assert.Contains(
         "01:00 PM",
@@ -412,7 +420,6 @@ public sealed class DispatchTruckHeaderTests
   }
 
   [Theory]
-  [InlineData(true)]
   [InlineData(false)]
   public void CompactSummaryKeepsDutyRecapClocksAndDistancesVisibleWithoutDisclosures(
     bool boardHeader
@@ -446,6 +453,55 @@ public sealed class DispatchTruckHeaderTests
       Assert.Null(component.Find(".driver-hours").Closest("details"));
       Assert.Equal(4, component.FindAll(".driver-hours__clock").Count);
     });
+  }
+
+  // On the board the duty and the recap wait behind Details, as on the
+  // Fleet Map truck card; the clocks stay in view as text.
+  [Fact]
+  public async Task BoardSummaryKeepsClocksInViewAndDutyAndRecapBehindDetails()
+  {
+    var load = Load();
+    using var context = new ClientComponentContext(
+      (_, _) => Task.FromResult(Json(Result(load)))
+    );
+    context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
+    var component = context.Render<DispatchPlanning>(parameters =>
+      parameters
+        .Add(part => part.Load, load)
+        .Add(part => part.TruckId, load.TruckId)
+        .Add(part => part.Compact, true)
+        .Add(part => part.BoardHeader, true)
+        .Add(part => part.Hos, Clocks())
+    );
+
+    component.WaitForAssertion(() =>
+    {
+      Assert.Empty(component.FindAll("details"));
+      Assert.Empty(component.FindAll(".dispatch-planning__metric"));
+      Assert.Empty(component.FindAll(".driver-hours__dial"));
+      Assert.Equal(4, component.FindAll(".driver-hours__clock").Count);
+      Assert.True(
+        component.Find(".dispatch-planning__duty").HasAttribute("hidden")
+      );
+    });
+    var toggle = component.Find(".dispatch-planning__toggle");
+    Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+    Assert.Equal(
+      component.Find(".dispatch-planning__duty").Id,
+      toggle.GetAttribute("aria-controls")
+    );
+    await toggle.ClickAsync(new());
+    Assert.Equal(
+      "true",
+      component.Find(".dispatch-planning__toggle").GetAttribute("aria-expanded")
+    );
+    var duty = component.Find(".dispatch-planning__duty");
+    Assert.False(duty.HasAttribute("hidden"));
+    Assert.Contains(
+      "Driving",
+      duty.QuerySelector(".driver-duty--row")!.TextContent
+    );
+    Assert.NotNull(duty.QuerySelector(".driver-next-recap"));
   }
 
   [Fact]
@@ -506,9 +562,15 @@ public sealed class DispatchTruckHeaderTests
       Assert.Equal(4, component.FindAll(".driver-hours__clock").Count);
       Assert.Contains(
         "Driving",
-        component.Find(".dispatch-planning__driver").TextContent
+        component.Find(".dispatch-planning__duty").TextContent
       );
       Assert.Empty(component.FindAll(".driver-hours-panel .driver-duty"));
+      // No plan, so nothing is said to be left and the fuel is unknown.
+      Assert.Empty(component.FindAll(".dispatch-planning__left"));
+      Assert.Equal(
+        "Fuel —",
+        component.Find(".truck-readings .fuel-reading").TextContent.Trim()
+      );
       Assert.Equal(0, planningRequests);
     });
   }
@@ -620,8 +682,8 @@ public sealed class DispatchTruckHeaderTests
         component.Find(".dispatch-truck__header-driver").TextContent
       );
       Assert.Contains(
-        "25 mph",
-        component.Find(".dispatch-truck__status").TextContent
+        "25",
+        component.Find(".truck-readings__reading--speed").TextContent
       );
       Assert.Contains("20:00", component.Find(".driver-hours").TextContent);
       Assert.Contains(
@@ -644,8 +706,8 @@ public sealed class DispatchTruckHeaderTests
         component.Find(".driver-hours").TextContent
       );
       Assert.Contains(
-        "Off Duty",
-        component.Find(".dispatch-planning__driver").TextContent
+        "Off duty",
+        component.Find(".dispatch-planning__duty").TextContent
       );
       Assert.Contains(
         "+1h 00m",
@@ -733,7 +795,7 @@ public sealed class DispatchTruckHeaderTests
   [InlineData(70, "is-low", true)]
   [InlineData(71, "is-critical", true)]
   [InlineData(67, "is-low", false)]
-  public void MovingBadgeUsesSpeedThresholdsWithOrWithoutAnAssignedLoad(
+  public void SpeedReadingUsesSpeedThresholdsWithOrWithoutAnAssignedLoad(
     int speed,
     string tone,
     bool assigned
@@ -785,9 +847,9 @@ public sealed class DispatchTruckHeaderTests
     var component = context.Render<DispatchList>();
     component.WaitForAssertion(() =>
     {
-      var badge = component.Find(".dispatch-truck__status.is-moving");
-      Assert.True(badge.ClassList.Contains(tone));
-      Assert.Contains($"Driving · {speed} mph", badge.TextContent);
+      var reading = component.Find(".truck-readings__reading--speed");
+      Assert.True(reading.ClassList.Contains(tone));
+      Assert.Contains($"{speed} mph", reading.TextContent);
     });
   }
 

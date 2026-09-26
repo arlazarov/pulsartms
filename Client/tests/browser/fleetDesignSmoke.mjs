@@ -760,7 +760,7 @@ async function measure(page, selector) {
       outside: box.left < -0.5 || box.right > window.innerWidth + 0.5,
       clipped,
       overlappingReadings: [
-        ...card.querySelectorAll('.fleet-map-truck-info__telemetry > *'),
+        ...card.querySelectorAll('.truck-readings > *'),
       ].some((node, index, nodes) => {
         const a = node.getBoundingClientRect();
         const content = document.createRange();

@@ -787,7 +787,7 @@ try {
           { timeout: 5000 },
         );
         const metrics = await page
-          .locator('.fleet-map-truck-info__reading')
+          .locator('.truck-readings__reading')
           .evaluateAll(readings =>
             readings.map(reading => {
               const value =

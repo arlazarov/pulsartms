@@ -18,6 +18,10 @@ $screen-scale: (
 // these are in rem - they measure text, not screens. Adding one here
 // changes only the thing it names.
 $screen-places: (
+  // A filter toolbar folds its filters behind a Filters button below this,
+  // on Fleet Map and Dispatch alike.
+  filter-toolbar-drawer: 768px,
+
   // The map's cards.
   map-compact-columns: 40rem,
   map-info-stacked: 20rem,
@@ -31,7 +35,12 @@ $screen-places: (
   // Dispatch.
   dispatch-load-history: 48rem,
   dispatch-load-columns: 32rem,
+  // Below this a board stop's labels (Appt, ETA) stop sharing a column and
+  // each value goes under its label.
+  dispatch-stop-facts-stacked: 16rem,
   dispatch-truck-compact: 1050px,
+  // Below this a truck's crew takes a line of its own under the unit.
+  dispatch-truck-head-stacked: 16rem,
   dispatch-workspace-columns: 62rem,
   dispatch-workspace-panes: 55rem,
   dispatch-workspace-stacked: 38rem,

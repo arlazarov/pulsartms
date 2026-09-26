@@ -8,7 +8,7 @@ const css = compileString(
   {
     loadPaths: [fileURLToPath(new URL('../../Styles/', import.meta.url))],
   },
-).css;
+).css.replace(/^@charset "UTF-8";\n/, '');
 
 function rule(selector) {
   const matches = [...css.matchAll(/([^{}]+)\{([^{}]+)\}/g)].filter(

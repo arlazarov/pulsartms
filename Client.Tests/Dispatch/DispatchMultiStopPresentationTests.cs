@@ -191,7 +191,8 @@ public sealed class DispatchMultiStopPresentationTests
         times[index],
         stops[index]
           .QuerySelector(
-            ".arrival-estimate__appointment, .dispatch-load__history-time"
+            ".arrival-estimate__appointment, .dispatch-load__appointment,"
+              + " .dispatch-load__history-time"
           )!
           .TextContent
       );
@@ -202,12 +203,15 @@ public sealed class DispatchMultiStopPresentationTests
         $"{visit.TextContent} at this address",
         visit.GetAttribute("title")
       );
+      // A board card names the place (as the map's stop card does); the
+      // dialog names the town and keeps the place in its title.
+      var stop = visit.Closest(".dispatch-load__stop")!;
+      var location = stop.QuerySelector(".dispatch-load__location")!;
       Assert.Equal(
         "FAIRLIFE WEBSTER",
-        visit
-          .Closest(".dispatch-load__stop")!
-          .QuerySelector(".dispatch-load__location")!
-          .GetAttribute("title")
+        stop.ClassList.Contains("dispatch-load__stop--summary")
+          ? location.TextContent
+          : location.GetAttribute("title")
       );
     }
   }

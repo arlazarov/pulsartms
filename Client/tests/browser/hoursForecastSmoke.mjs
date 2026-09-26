@@ -1162,7 +1162,7 @@ async function checkTruckTypography(page, name, phase, units) {
     {
       size: 12,
       selectors: [
-        '.fleet-map-truck-info__reading > small',
+        '.truck-readings__reading > small',
         '.fuel-reading--metric .fuel-reading__label',
         '.driver-hours__label',
         '.fleet-map-inspector__location > span',
@@ -1178,7 +1178,7 @@ async function checkTruckTypography(page, name, phase, units) {
         '.fleet-map-route-info__appointment > strong',
         '.stop-hours__road time',
         '.fleet-map-route-info__metric strong',
-        '.fleet-map-truck-info__reading > strong',
+        '.truck-readings__reading > strong',
         '.fuel-reading--metric .fuel-reading__value',
         '[title="Copy order number"] > strong',
         '.fleet-map-route-info__facility',
@@ -1194,7 +1194,7 @@ async function checkTruckTypography(page, name, phase, units) {
         '.fleet-map-inspector__trailer',
         '.fleet-map-inspector__location > strong',
         '.fleet-map-route-info__total',
-        '.fleet-map-truck-info__reading > strong > small',
+        '.truck-readings__reading > strong > small',
       ],
     },
     {
@@ -2205,6 +2205,7 @@ try {
                 .getBoundingClientRect();
               return {
                 labelLeft: label.left,
+                arrivalLeft: arrival.left,
                 cycleLeft: cycle.left,
                 cycleTop: cycle.top,
                 arrivalBottom: arrival.bottom,
@@ -2212,9 +2213,12 @@ try {
             }),
           );
         for (const warning of summaryWarnings) {
+          // As on the map's stop card, the cycle's badge stands in the
+          // value column under the hour, not under the ETA label.
           check(
-            Math.abs(warning.cycleLeft - warning.labelLeft) <= 1,
-            `${name}: summary cycle warning is indented`,
+            Math.abs(warning.cycleLeft - warning.arrivalLeft) <= 1 &&
+              warning.cycleLeft > warning.labelLeft,
+            `${name}: summary cycle warning leaves the value column`,
           );
           check(
             warning.cycleTop >= warning.arrivalBottom - 1,
@@ -2307,15 +2311,30 @@ try {
         await future.getByRole('link', { name: '← Back to Dispatch' }).click();
         await future.waitFor({ state: 'detached' });
         await board.locator('.stop-hours').nth(2).waitFor();
-        await page.locator('.driver-duty__cycle-reset').first().waitFor();
+        // The duty, the rest and the recap wait behind Details, as on the
+        // map's truck card (the owner, September 26).
+        const details = page.locator('.dispatch-planning__toggle').first();
+        check(
+          (await details.getAttribute('aria-expanded')) === 'false' &&
+            !(await page
+              .locator('.dispatch-planning__duty')
+              .first()
+              .isVisible()),
+          `${name}: duty and recap start behind Details`,
+        );
+        await details.click();
+        await page
+          .locator('.dispatch-planning__duty .driver-duty--row')
+          .first()
+          .waitFor();
         const dispatchRecap = page.locator(
-          '.dispatch-truck__equipment .driver-next-recap',
+          '.dispatch-planning__duty .driver-next-recap',
         );
         check(
           (await dispatchRecap.count()) === 1 &&
             normalize(await dispatchRecap.innerText()) ===
               'Next recap Sep 9 +3h 05m',
-          `${name}: one current-driver recap remains visible in the truck header with date and hours only`,
+          `${name}: one current-driver recap behind Details with date and hours only`,
         );
         check(
           (await page
@@ -2326,7 +2345,7 @@ try {
             !(await futureCard.innerText()).includes('Next recap'),
           `${name}: load cards repeat the truck recap`,
         );
-        const compactHeader = page.locator('.dispatch-planning--compact');
+        const compactHeader = page.locator('.dispatch-planning--board');
         check(
           summaryReads <= boardSummaryReads + 1 && planningReads === 0,
           `${name}: returning to Dispatch uses at most one summary batch ` +
@@ -2334,12 +2353,12 @@ try {
         );
         check(
           (await compactHeader
-            .locator('.dispatch-planning__driver .driver-duty')
+            .locator('.dispatch-planning__duty .driver-duty')
             .count()) === 1 &&
             (await compactHeader
               .locator('.driver-hours-panel .driver-duty')
               .count()) === 0,
-          `${name}: duty status belongs in the route area, not beneath HOS`,
+          `${name}: duty status belongs behind Details, not beneath HOS`,
         );
         check(
           (await compactHeader
@@ -2366,9 +2385,9 @@ try {
                 .closest('.dispatch-truck')
                 .querySelector('.dispatch-truck__header'),
             ),
-            route: rect(element.querySelector('.dispatch-planning__content')),
-            driver: rect(element.querySelector('.dispatch-planning__driver')),
-            hours: rect(element.querySelector('.driver-hours-panel')),
+            route: rect(element.querySelector('.truck-readings')),
+            driver: rect(element.querySelector('.dispatch-planning__duty')),
+            hours: rect(element.querySelector('.dispatch-planning__clocks')),
             clientWidth: element.clientWidth,
             scrollWidth: element.scrollWidth,
             padding:
@@ -2382,46 +2401,35 @@ try {
             dispatchHeaderGeometry.clientWidth + 1,
           `${name}: compact Dispatch header overflows horizontally`,
         );
-        if (width >= 1200) {
+        // The head, then the vehicle beside the clocks, then (opened) the
+        // duty and recap, as the rows of the map's truck card.
+        {
           const g = dispatchHeaderGeometry;
           check(
-            Math.abs(g.identity.left - g.header.left) <= 1 &&
-              g.route.left >= g.identity.right - 1 &&
-              g.route.left - g.identity.right <= g.gap + 1 &&
-              Math.abs(
-                g.hours.left - Math.max(g.route.right, g.driver.right) - g.gap,
-              ) <= 1,
-            `${name}: Dispatch identity, status/fuel and mileage, and HOS must be left-packed without elastic gaps`,
+            g.route.top >= g.identity.bottom - 1 &&
+              g.driver.top >= Math.max(g.route.bottom, g.hours.bottom) - 1,
+            `${name}: Dispatch head, readings and duty stand in rows`,
           );
-          check(
-            g.driver.top >= Math.max(g.route.bottom, g.identity.bottom) - 1 &&
-              Math.abs(g.driver.left - g.identity.left) <= 1 &&
-              g.driver.right <= g.hours.left + 1,
-            `${name}: duty/rest and Next recap must use the strip below truck identity and route metrics, not a tall right column`,
-          );
-          check(
-            g.header.height <=
-              Math.max(
-                Math.max(g.route.height, g.identity.height) + g.driver.height,
-                g.hours.height,
-              ) +
-                3,
-            `${name}: Dispatch header must fit its two natural content rows without reserved blank height`,
-          );
-        } else if (width < 551) {
-          const g = dispatchHeaderGeometry;
-          check(
-            g.driver.top >= g.route.bottom - 1 &&
-              g.hours.top >= g.driver.bottom - 1,
-            `${name}: narrow Dispatch must show route, duty/recap and HOS in separate unclipped rows`,
-          );
+          if (width >= 1200)
+            check(
+              g.hours.left >= g.route.right - 1 &&
+                Math.abs(g.hours.top - g.route.top) <= g.route.height,
+              `${name}: HOS clocks stand beside the vehicle line`,
+            );
+          else if (width < 551)
+            check(
+              g.hours.top >= g.route.bottom - 1,
+              `${name}: narrow Dispatch puts the clocks under the vehicle line`,
+            );
         }
         await compactHeader.screenshot({
           path: resolve(output, `${name}-dispatch-header.png`),
         });
         check(
           normalize(
-            await page.locator('.dispatch-planning__fuel').innerText(),
+            await page
+              .locator('.dispatch-planning--board .fuel-reading')
+              .innerText(),
           ) === 'Fuel 75%',
           `${name}: saved fuel reading is a percentage without maintenance wording`,
         );
@@ -2435,14 +2443,16 @@ try {
               )
               .count()) === 0 &&
             (await page
-              .locator('.dispatch-truck__equipment .dispatch-planning__details')
+              .locator('.dispatch-planning--board .dispatch-planning__details')
               .count()) === 0,
           `${name}: each actual stop has one compact summary without inline detailed forecasts or header duplicates`,
         );
         check(
           (
-            await page.locator('.driver-duty__cycle-reset').allTextContents()
-          ).some(text => text.includes('27h 52m left to complete 34h reset')),
+            await page
+              .locator('.dispatch-planning__duty .driver-duty__rest')
+              .allTextContents()
+          ).some(text => text.includes('34h reset in 27h 52m')),
           `${name}: current-driver reset countdown missing`,
         );
         await futureCard.locator('.dispatch-load__details').click();
@@ -2934,7 +2944,9 @@ try {
             (await page
               .locator('.fleet-map-inspector__clocks > .driver-hours-panel')
               .isVisible()) &&
-            (await page.locator('.fleet-map-truck-info__outside').isVisible()),
+            (await page
+              .locator('.truck-readings__reading--outside')
+              .isVisible()),
           `${name}: phone card exposes readings, HOS and location/load`,
         );
         await checkPhoneTitleControls('summary');
@@ -2988,7 +3000,7 @@ try {
         `${name}: the card retains trailer, load link and four clocks ` +
           'without a duty line or a recap',
       );
-      const compactReadings = page.locator('.fleet-map-truck-info__reading');
+      const compactReadings = page.locator('.truck-readings__reading');
       check(
         (await compactReadings.count()) === 3 &&
           (await compactReadings.nth(0).isVisible()) &&
@@ -3014,7 +3026,7 @@ try {
         }),
       );
       const outside = page.locator(
-        '.fleet-map-truck-info__telemetry > .fleet-map-truck-info__outside',
+        '.truck-readings > .truck-readings__reading--outside',
       );
       const expectedOutside =
         units.temperatureUnit === 'fahrenheit' ? '72.5 °F' : '22.5 °C';
@@ -3152,7 +3164,7 @@ try {
               '.fleet-map-inspector__close',
               '.fleet-map-inspector__driver',
               '.fleet-map-inspector__trailer',
-              '.fleet-map-truck-info__telemetry',
+              '.truck-readings',
               '.fleet-map-inspector__hours',
               '.fleet-map-inspector__actions',
               '.fleet-map-inspector__location',
@@ -3418,7 +3430,7 @@ try {
         path: resolve(output, `${name}-selected-info-retained.png`),
       });
       const fuelReading = page
-        .locator('.fleet-map-truck-info__reading')
+        .locator('.truck-readings__reading')
         .filter({ hasText: 'Fuel' });
       check(
         (await fuelReading.locator('.fuel-reading__value').textContent()) ===
@@ -3440,7 +3452,7 @@ try {
           (await headHours.locator('.driver-hours-panel').count()) === 1 &&
           (await truckHeader
             .locator(
-              '.fleet-map-truck-info__reading > small > svg[aria-hidden="true"]',
+              '.truck-readings__reading > small > svg[aria-hidden="true"]',
             )
             .count()) === 2,
         `${name}: the clocks read under one HOS label in the head, and the ` +
@@ -3501,9 +3513,7 @@ try {
           identity: rect(
             document.querySelector('.fleet-map-inspector__driver'),
           ),
-          telemetry: rect(
-            element.querySelector('.fleet-map-truck-info__telemetry'),
-          ),
+          telemetry: rect(element.querySelector('.truck-readings')),
           location: rect(
             document.querySelector('.fleet-map-inspector__location'),
           ),
@@ -3513,16 +3523,16 @@ try {
           dutyGroup: rect(element.querySelector('.fleet-map-truck-info__duty')),
           telemetryIcons: [
             ...element.querySelectorAll(
-              '.fleet-map-truck-info__reading > small > svg, .fuel-reading__icon',
+              '.truck-readings__reading > small > svg, .fuel-reading__icon',
             ),
           ]
             .map(rect)
             .filter(icon => icon.width > 0),
           weather: rect(
-            element.querySelector('.fleet-map-truck-info__outside svg'),
+            element.querySelector('.truck-readings__reading--outside svg'),
           ),
           readings: [
-            ...element.querySelectorAll('.fleet-map-truck-info__reading'),
+            ...element.querySelectorAll('.truck-readings__reading'),
           ].map(rect),
           actions: rect(
             document.querySelector('.fleet-map-inspector__actions'),

@@ -67,11 +67,22 @@
   &__fuel-count strong {
     font-weight: 600;
   }
+  // Open load, as the map's stop card says it.
   &__details {
     display: inline-flex;
     align-items: center;
     gap: ui.pg(xs);
-    color: ui.theme(link);
-    font-size: ui.fs(small);
+    color: ui.theme(action);
+    font-size: ui.fs(body);
+    font-weight: 600;
+    text-decoration: none;
+    svg {
+      inline-size: 1em;
+      block-size: 1em;
+    }
+    &:hover,
+    &:focus-visible {
+      text-decoration: underline;
+    }
   }
 }

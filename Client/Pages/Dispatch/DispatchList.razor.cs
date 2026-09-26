@@ -22,6 +22,10 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
   [Inject]
   private TimeProvider Clock { get; set; } = default!;
 
+  // Only a phone keeps the filters behind their button; wider screens
+  // ignore this.
+  private bool _filtersOpen;
+
   [Inject]
   private ChosenDriverGroup DriverGroup { get; set; } = default!;
   private const string ViewStorageKey = "pulsartms.dispatch.view";
@@ -176,24 +180,6 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
       await Places.ArmAsync();
     }
   }
-
-  private string TruckMotion(TruckDispatchBoardResponse truck) =>
-    DispatchRigStatus.Resolve(
-      truck.Speed,
-      truck.EngineState,
-      truck.Hos,
-      Clock.GetUtcNow().UtcDateTime
-    );
-
-  private string TruckMotionLabel(TruckDispatchBoardResponse truck) =>
-    TruckMotion(truck) switch
-    {
-      "moving" => $"Driving · {truck.Speed:0} mph",
-      "sleeping" => "Sleeper Berth",
-      "idling" => "Idle",
-      "off" => "Engine off",
-      _ => "Parked",
-    };
 
   private DispatchBoardRequest BoardRequest(int page) =>
     new(

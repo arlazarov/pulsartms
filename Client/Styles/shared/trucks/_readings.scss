@@ -1,0 +1,122 @@
+@use '../../base' as ui;
+
+// The vehicle line (TruckReadings): speed, fuel and engine, each a quiet
+// word or icon and then its value on one baseline, past a hairline of its
+// own. The cells are equal, so "0 mph" and "71 mph" move nothing from truck
+// to truck (the owner, September 26), and they wrap before values overlap.
+// A holder whose line folds hides the hairlines through
+// --truck-readings-divider; a fold puts them at the start of a line, where
+// they separate nothing.
+.truck-readings {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, #{ui.size(telemetry-reading)}), 1fr)
+  );
+  align-items: baseline;
+  gap: ui.pg(xs) ui.pg(md);
+  font-size: ui.fs(body);
+  font-variant-numeric: tabular-nums;
+  --fuel-reading-columns: max-content max-content max-content;
+  --fuel-reading-value-column: auto;
+  --fuel-reading-row-gap: 0;
+  --fuel-reading-value-size: #{ui.fs(body)};
+  > * + * {
+    padding-inline-start: var(--truck-readings-divider-gap, #{ui.pg(md)});
+    border-inline-start: var(
+      --truck-readings-divider,
+      1px solid #{ui.theme(border-subtle)}
+    );
+  }
+  // Each reading leads with its icon, sized to the line and quieter than
+  // the value it marks.
+  &__reading svg {
+    align-self: center;
+    inline-size: ui.fs(heading);
+    block-size: ui.fs(heading);
+    color: ui.theme(text-secondary);
+  }
+  // Every reading is the same shape: a quiet word, then its value, on one
+  // baseline. The word is the value's size and only quieter: a smaller one
+  // sat on a lower line box, and every icon centred on it stood at its
+  // own height.
+  &__reading {
+    display: flex;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    min-width: 0;
+    > small {
+      display: inline-flex;
+      align-items: baseline;
+      gap: ui.pg(xs);
+      color: ui.theme(text-secondary);
+      font-size: inherit;
+    }
+    > strong {
+      color: ui.theme(text);
+      font-size: ui.fs(body);
+      font-weight: 600;
+      white-space: nowrap;
+      > small {
+        font: inherit;
+        font-weight: 400;
+      }
+    }
+  }
+  // Where the word is an icon alone (the speed, the engine, the weather),
+  // the icon steps off the baseline and centres itself on the line: a
+  // 20px glyph on the baseline of 14px text stands above the words. The
+  // words stay for a screen reader and leave the line.
+  &__reading--speed > small,
+  &__reading--engine > small,
+  &__reading--outside > small {
+    display: inline-flex;
+    align-self: center;
+    > svg {
+      inline-size: ui.fs(heading);
+      block-size: ui.fs(heading);
+    }
+    > span {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  // How the speed stands against the limit, in its icon's colour: normal,
+  // a little over (above 65 mph), well over (above 70 mph), as
+  // TelemetryTone.Speed decides. An unknown speed keeps the quiet icon.
+  &__reading--speed.is-normal > small svg {
+    color: ui.theme(success-text);
+  }
+  &__reading--speed.is-low > small svg {
+    color: ui.theme(telemetry-warning-icon);
+  }
+  &__reading--speed.is-critical > small svg {
+    color: ui.theme(telemetry-critical-icon);
+  }
+  // Over the limit says so in the number too; a normal speed stays plain.
+  &__reading--speed.is-low > strong,
+  &__reading--speed.is-critical > strong {
+    color: ui.theme(warning-text);
+  }
+  // Whether the engine is running: green while the truck moves, amber
+  // while it idles, nothing when unknown.
+  &__reading--engine.is-normal > strong::after,
+  &__reading--engine.is-low > strong::after {
+    content: '';
+    display: inline-block;
+    inline-size: 0.5em;
+    block-size: 0.5em;
+    margin-inline-start: ui.pg(xs);
+    border-radius: ui.radius(pill);
+    vertical-align: middle;
+    background: ui.theme(success-text);
+  }
+  &__reading--engine.is-low > strong::after {
+    background: ui.theme(telemetry-warning-icon);
+  }
+}

@@ -96,13 +96,25 @@ public static class DispatchStopPresentation
       .ToArray();
   }
 
+  // Whether a stop loads or unloads cargo: the one reading every Dispatch
+  // view counts and colours stops by. Equipment and driver moves are
+  // neither and keep a neutral tone.
+  public static bool IsPickup(DispatchStopResponse stop) =>
+    Job(stop) is "PICKUP" or "PICK UP";
+
+  public static bool IsDelivery(DispatchStopResponse stop) =>
+    Job(stop) is "DELIVERY" or "DROP OFF" or "DROPOFF";
+
+  public static string Tone(DispatchStopResponse stop) =>
+    IsPickup(stop) ? "is-pickup"
+    : IsDelivery(stop) ? "is-delivery"
+    : "";
+
   public static string Summary(IEnumerable<DispatchStopResponse> stops)
   {
     var values = stops.ToArray();
-    var pickups = values.Count(stop => Job(stop) is "PICKUP" or "PICK UP");
-    var deliveries = values.Count(stop =>
-      Job(stop) is "DELIVERY" or "DROP OFF" or "DROPOFF"
-    );
+    var pickups = values.Count(IsPickup);
+    var deliveries = values.Count(IsDelivery);
     var parts = new List<string> { Quantity(values.Length, "stop") };
     if (pickups > 0)
       parts.Add(Quantity(pickups, "pickup"));

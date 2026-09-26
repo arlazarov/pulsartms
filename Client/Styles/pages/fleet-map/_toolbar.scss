@@ -94,9 +94,6 @@
   }
 }
 
-.fleet-map-filters {
-  display: contents;
-}
 .fleet-map-layer-controls {
   display: flex;
   flex-wrap: wrap;
@@ -114,7 +111,6 @@
   padding-inline-start: ui.pg(md);
   border-inline-start: 1px solid ui.theme(border-subtle);
 }
-.fleet-map-mobile-filters,
 .fleet-map-mobile-summary {
   display: none;
 }
@@ -137,18 +133,9 @@
       order: 3;
     }
   }
-  .fleet-map-mobile-filters {
-    display: inline-flex;
-    order: 1;
-    flex-shrink: 0;
-    svg {
-      width: ui.size(checkbox);
-      height: ui.size(checkbox);
-      flex-shrink: 0;
-    }
-  }
+  // The panel itself is the shared filter-toolbar drawer; inside it the
+  // layer chips lose the hairline that parts them from the search.
   .fleet-map-filters {
-    display: none;
     .fleet-map-layers {
       border: 0;
       padding: 0;
@@ -156,22 +143,6 @@
     .fleet-map-layer-controls {
       border: 0;
       padding: 0;
-    }
-    &.is-open {
-      display: grid;
-      gap: ui.pg(sm);
-      position: absolute;
-      top: calc(100% + #{ui.pg(xs)});
-      left: 0;
-      right: 0;
-      max-height: 50dvh;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      padding: ui.pg(md);
-      background: ui.theme(surface);
-      border: 1px solid ui.theme(border-subtle);
-      border-radius: ui.radius(sm);
-      box-shadow: ui.shadow(popup);
     }
   }
   @container fleet-toolbar (width < #{ui.breakpoint(map-toolbar-stacked)}) {

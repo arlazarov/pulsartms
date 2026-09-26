@@ -176,10 +176,13 @@
 // is at least the width the holder publishes as --route-fact-label, so the
 // ETA lines up with the facts the holder sets beside it, and it grows
 // rather than letting a long label run into its value.
+// A holder with no room for the labels beside their values stacks them by
+// publishing --stop-hours-columns as a single column.
 .stop-hours--compact {
-  grid-template-columns:
-    minmax(var(--route-fact-label, 0px), max-content)
-    minmax(0, 1fr);
+  grid-template-columns: var(
+    --stop-hours-columns,
+    minmax(var(--route-fact-label, 0px), max-content) minmax(0, 1fr)
+  );
   .stop-hours__label {
     color: ui.theme(text-secondary);
     font-size: inherit;
@@ -197,7 +200,6 @@
   // and the component says only one of them unless both are problems.
   .stop-hours__cycle-status {
     flex-basis: auto;
-    white-space: nowrap;
   }
   .stop-hours__heading {
     margin: 0;
@@ -262,7 +264,10 @@
     font-size: ui.fs(small);
     font-weight: 500;
     line-height: 1.4;
-    white-space: nowrap;
+    // A badge moves to a line of its own as a whole, and breaks its words
+    // only where even that line is narrower than it: a board card on a
+    // phone at enlarged text, where it ran out of its card.
+    max-inline-size: 100%;
     &::before {
       content: '';
       inline-size: 0.5em;

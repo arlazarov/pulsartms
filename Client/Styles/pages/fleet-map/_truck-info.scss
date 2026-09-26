@@ -1,14 +1,13 @@
 @use '../../base' as ui;
 
-// The vehicle, on the truck card: one line that says what it is doing. Every reading has the same shape - a quiet word, then its
-// value - so the line has one baseline instead of four little towers.
+// The vehicle, on the truck card: one line that says what it is doing. The
+// line itself - speed, fuel, engine and the weather, each the same shape -
+// is the shared TruckReadings (shared/trucks/_readings.scss), which Dispatch
+// reads a truck with too. This file places it on the card and adds the one
+// mark only the card has: the reserve warning beside the fuel.
 //
-// This file used to describe the panel the card had before: a grid of towers
-// with an icon over a label over a value, an illustration, a driver block and
-// a column of actions. The card then overrode nearly every property of it
-// from another file. The panel is gone and this is the only description of
-// the line there is. It is named through the card it stands on so that the
-// card's own reset of its sections does not outrank it.
+// It is named through the card it stands on so that the card's own reset of
+// its sections does not outrank it.
 .fleet-map-inspector[data-inspector-mode='truck'] .fleet-map-truck-info {
   font-size: ui.fs(body);
   display: flex;
@@ -19,115 +18,6 @@
   margin-inline: ui.pg(md);
   padding: ui.pg(sm) 0;
   border-top: 1px solid ui.theme(border-subtle);
-  // Each reading past a hairline of its own, like the clocks beside them,
-  // in equal cells: sized to their values, the hairlines moved from
-  // truck to truck ("0 mph" is narrower than "71 mph"), and the owner
-  // wants nothing on the card to jump (September 26).
-  &__telemetry {
-    display: grid;
-    width: 100%;
-    grid-template-columns: repeat(
-      auto-fit,
-      minmax(min(100%, #{ui.size(map-telemetry-reading)}), 1fr)
-    );
-    align-items: baseline;
-    gap: ui.pg(xs) ui.pg(md);
-    font-variant-numeric: tabular-nums;
-    --fuel-reading-columns: max-content max-content max-content;
-    --fuel-reading-value-column: auto;
-    --fuel-reading-row-gap: 0;
-    --fuel-reading-value-size: #{ui.fs(body)};
-    > * + * {
-      padding-inline-start: ui.pg(md);
-      border-inline-start: 1px solid ui.theme(border-subtle);
-    }
-  }
-  // Each reading leads with its icon, sized to the line and quieter than
-  // the value it marks.
-  &__reading svg {
-    align-self: center;
-    inline-size: ui.fs(heading);
-    block-size: ui.fs(heading);
-    color: ui.theme(text-secondary);
-  }
-  // Every reading is the same shape: a quiet word, then its value, on one
-  // baseline. The word is the value's size and only quieter: a smaller one
-  // sat on a lower line box, and every icon centred on it stood at its
-  // own height.
-  &__reading,
-  &__outside {
-    display: flex;
-    align-items: baseline;
-    gap: ui.pg(xs);
-    min-width: 0;
-    > small {
-      display: inline-flex;
-      align-items: baseline;
-      gap: ui.pg(xs);
-      color: ui.theme(text-secondary);
-      font-size: inherit;
-    }
-    > strong {
-      color: ui.theme(text);
-      font-size: ui.fs(body);
-      font-weight: 600;
-      white-space: nowrap;
-      > small {
-        font: inherit;
-        font-weight: 400;
-      }
-    }
-  }
-  // The weather differs in one thing: its word is an icon. The degrees
-  // keep the baseline, which is what puts them on the level of the speed
-  // and the fuel beside them; the icon steps off it and centres itself on
-  // the line, because a 20px glyph on the baseline of 14px text stands
-  // above the words. It is sized to the line, not to the panel it came
-  // from - the telemetry icon is 28px and made this row half again as tall.
-  // The speed's word is also left to a screen reader, so its icon has no
-  // text to sit on and is centred on the line in the same way.
-  &__reading--speed > small,
-  &__reading--engine > small,
-  &__outside > small {
-    display: inline-flex;
-    align-self: center;
-    > svg {
-      inline-size: ui.fs(heading);
-      block-size: ui.fs(heading);
-    }
-  }
-  // "mph" and the degree sign say what they measure. The words stay for
-  // a screen reader and leave the line. The weather's icon stays: it is the
-  // reading, not a label for one.
-  &__reading--speed > small > span,
-  &__reading--engine > small > span,
-  &__outside > small > span {
-    position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  // How the speed stands against the limit, in its icon's colour: normal,
-  // a little over (above 65 mph), well over (above 70 mph), as
-  // TelemetryTone.Speed decides for Dispatch too. An unknown speed keeps the
-  // quiet icon. These were dropped on September 20 while the line's icons
-  // were hidden, and did not come back with the icons.
-  &__reading--speed.is-normal > small svg {
-    color: ui.theme(success-text);
-  }
-  &__reading--speed.is-low > small svg {
-    color: ui.theme(telemetry-warning-icon);
-  }
-  &__reading--speed.is-critical > small svg {
-    color: ui.theme(telemetry-critical-icon);
-  }
-  // Over the limit says so in the number too; a normal speed stays plain.
-  &__reading--speed.is-low > strong,
-  &__reading--speed.is-critical > strong {
-    color: ui.theme(warning-text);
-  }
   // The plan cannot reach its first fuel stop with the reserve: a mark
   // beside the tank's own reading, which stays the percentage alone.
   &__reserve {
@@ -143,22 +33,6 @@
     font-weight: 700;
     line-height: 1;
   }
-  // Whether the engine is running, as Dispatch says it: green while the
-  // truck moves, amber while it idles, nothing when unknown.
-  &__reading--engine.is-normal > strong::after,
-  &__reading--engine.is-low > strong::after {
-    content: '';
-    display: inline-block;
-    inline-size: 0.5em;
-    block-size: 0.5em;
-    margin-inline-start: ui.pg(xs);
-    border-radius: ui.radius(pill);
-    vertical-align: middle;
-    background: ui.theme(success-text);
-  }
-  &__reading--engine.is-low > strong::after {
-    background: ui.theme(telemetry-warning-icon);
-  }
   > * {
     flex: 0 1 auto;
     max-width: 100%;
@@ -166,10 +40,8 @@
   // On a card too narrow for one line the readings fold, and a hairline a
   // fold puts at the start of a line separates nothing: space alone.
   @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
-    &__telemetry > * + * {
-      padding-inline-start: 0;
-      border-inline-start: 0;
-    }
+    --truck-readings-divider: 0;
+    --truck-readings-divider-gap: 0;
   }
 }
 

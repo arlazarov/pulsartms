@@ -1,5 +1,6 @@
 @page "/dispatch"
 @attribute [Authorize]
+@using Client.Models.DTO.Dispatch
 
 <PageTitle>Dispatch · PulsR</PageTitle>
 <section class="dispatch-page dispatch-board">
@@ -8,9 +9,24 @@
             <a class="btn btn--primary" href="/dispatch/new">New load</a>
         </AuthorizeView>
     </PageHeader>
+    @* One row, as on Fleet Map: the search, the driver filter, the view and,
+       at the row's end, the scope. On a phone the driver filter waits
+       behind Filters; the view and the scope stay in reach. *@
     <div class="dispatch-page__filters dispatch-board__filters filter-toolbar">
         <SearchInput Id="dispatch-search" Placeholder="Truck, driver, trailer or load" Value="@_search"
                      Options="SearchOptions" Loading="@(_loadedSearch != _search)" Changed="OnSearchInput" Selected="ChooseSearchAsync" Enter="SubmitSearchAsync" />
+        <button type="button" class="btn filter-toolbar__drawer-toggle"
+                aria-expanded="@(_filtersOpen ? "true" : "false")"
+                aria-controls="dispatch-filters"
+                @onclick="() => _filtersOpen = !_filtersOpen">
+            <ActionIcon Kind="filters" /><span>Filters</span>
+        </button>
+        <div id="dispatch-filters"
+             class="filter-toolbar__drawer @(_filtersOpen ? "is-open" : "")">
+            <DriverGroupPicker Id="dispatch-driver-group" />
+            @if (TruckId.HasValue)
+            { <a class="btn" href="/dispatch">Show all trucks</a> }
+        </div>
         <div class="dispatch-view filter-toolbar__views" role="group" aria-label="Dispatch view">
             <button type="button" aria-pressed="@(_view == 0 ? "true" : "false")" @onclick="() => SelectViewAsync(0)"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" /><path d="M3 8h14M7 8v9" /></svg>Cards</button>
             <button type="button" aria-pressed="@(_view == 1 ? "true" : "false")" @onclick="() => SelectViewAsync(1)"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" /><path d="M3 8h14M3 12h14M8 3v14" /></svg>Table</button>
@@ -20,8 +36,6 @@
             <button id="dispatch-active" type="button" aria-pressed="@(!_showCompleted ? "true" : "false")" @onclick="() => SelectScopeAsync(false)">Active</button>
             <button id="dispatch-completed" type="button" aria-pressed="@(_showCompleted ? "true" : "false")" @onclick="() => SelectScopeAsync(true)">Completed</button>
         </div>
-        <DriverGroupPicker Id="dispatch-driver-group" />
-        @if (TruckId.HasValue) { <a class="btn" href="/dispatch">Show all trucks</a> }
     </div>
     <div class="dispatch-board__body">
     @if (_error is not null)
@@ -50,51 +64,31 @@
         @foreach (var truck in _data.Items)
         {
             <article class="dispatch-truck" @key="truck.Key" aria-label="@($"Truck {truck.TruckNumber}")">
-                <header class="dispatch-truck__header">
-                    <div class="dispatch-truck__identity">
-                        <svg class="dispatch-truck__icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 5h12v12H2zM14 9h4l4 4v4h-8z" /><circle cx="6" cy="18" r="2" /><circle cx="18" cy="18" r="2" /></svg>
-                        <h2>@(string.IsNullOrWhiteSpace(truck.TruckNumber) ? "Awaiting assignment" : truck.TruckNumber)</h2>
-                        @if (!_showCompleted || !string.IsNullOrWhiteSpace(truck.DriverName))
-                        { <strong class="dispatch-truck__header-driver">@(string.IsNullOrWhiteSpace(truck.DriverName) ? "Driver not assigned" : truck.DriverName)</strong> }
-                        @if (!string.IsNullOrWhiteSpace(truck.TrailerNumber))
-                        { <span class="dispatch-truck__trailer">Trailer <strong>@truck.TrailerNumber</strong></span> }
-                        @if (!_showCompleted && (!truck.TruckId.HasValue || truck.Dispatches.Count == 0))
-                        { <span class="dispatch-truck__status is-@TruckMotion(truck) @TelemetryTone.Speed(truck.Speed)"><span aria-hidden="true">●</span>@TruckMotionLabel(truck)</span> }
-                    </div>
-                    @if (truck.TruckId.HasValue)
-                    {
-                        <a class="dispatch-truck__map" href="@($"/fleet/map?truckId={truck.TruckId}")"
-                           aria-label="@($"Locate truck {truck.TruckNumber} on map")" title="Locate on map">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z" />
-                                <circle cx="12" cy="9" r="2.5" />
-                            </svg>
-                        </a>
-                    }
-                </header>
-                @if (!_showCompleted)
+                @if (!_showCompleted && truck.TruckId.HasValue)
                 {
-                <div class="dispatch-truck__equipment">
-                    @if (truck.TruckId.HasValue && truck.Dispatches.Count > 0)
-                    { <DispatchPlanning @key="PlanningIdentity(truck)"
-                        TruckId="truck.TruckId" Load="truck.Dispatches[0]"
+                    @* A truck without a load has no snapshot, so no forecast
+                       reaches its ForecastChanged. *@
+                    <DispatchPlanning @key="PlanningIdentity(truck)"
+                        TruckId="truck.TruckId"
+                        Load="truck.Dispatches.FirstOrDefault()"
                         Compact="true" BoardHeader="true" Hos="truck.Hos"
                         CurrentCycle="truck.CurrentCycle"
                         Refreshing="RefreshingEstimates"
-                        MotionState="@TruckMotion(truck)" MotionLabel="@TruckMotionLabel(truck)" Speed="truck.Speed"
-                        Managed="true" Snapshot="_planningSummaries.GetValueOrDefault(truck.TruckId.Value)"
-                        ForecastChanged="forecast => OnForecastChanged(truck, truck.Dispatches[0].Id, forecast)" /> }
-                    else if (truck.TruckId.HasValue)
-                    {
-                        <section class="dispatch-planning dispatch-planning--compact dispatch-planning--board" aria-label="Driver status">
-                            <div class="dispatch-planning__driver">
-                                <DriverDutySummary CurrentStatus="@(truck.Hos?.CurrentDutyStatus)" ClockUpdatedAt="truck.Hos?.UpdatedAt" />
-                                <DriverNextRecap Snapshot="truck.CurrentCycle" />
-                            </div>
-                            <DriverHours Clocks="truck.Hos" ShowDutyStatus="false" />
-                        </section>
-                    }
-                </div>
+                        Speed="truck.Speed" EngineState="@truck.EngineState"
+                        Managed="true"
+                        Snapshot="@(truck.Dispatches.Count > 0
+                            ? _planningSummaries.GetValueOrDefault(
+                                truck.TruckId.Value)
+                            : null)"
+                        ForecastChanged="forecast => OnForecastChanged(
+                            truck, truck.Dispatches[0].Id, forecast)">
+                        <Identity>@TruckIdentity(truck)</Identity>
+                    </DispatchPlanning>
+                }
+                else
+                {
+                    <header class="dispatch-truck__header"
+                        >@TruckIdentity(truck)</header>
                 }
                 <div class="dispatch-truck__loads" role="region" aria-label="@($"Loads for truck {truck.TruckNumber}")" tabindex="0">
                     @if (truck.Dispatches.Count == 0)
@@ -138,3 +132,47 @@
     }
     </div>
 </section>
+
+@code {
+    // The unit and, past a hairline, its trailer and driver, the way a
+    // dispatcher says them; then the way to the truck on the map. The same
+    // on Active, where it heads the truck's summary, and on Completed.
+    private RenderFragment TruckIdentity(TruckDispatchBoardResponse truck) =>
+        @<text>
+            <div class="dispatch-truck__identity">
+                <h2>@(string.IsNullOrWhiteSpace(truck.TruckNumber)
+                    ? "Awaiting assignment" : truck.TruckNumber)</h2>
+                @{
+                    var trailer = !string.IsNullOrWhiteSpace(truck.TrailerNumber);
+                    var driver = !_showCompleted
+                        || !string.IsNullOrWhiteSpace(truck.DriverName);
+                }
+                @if (trailer || driver)
+                {
+                    <span class="dispatch-truck__crew">
+                        @if (trailer)
+                        {
+                            <span class="dispatch-truck__trailer"
+                                  title="Trailer">@truck.TrailerNumber</span>
+                        }
+                        @if (driver)
+                        {
+                            <span class="dispatch-truck__header-driver"
+                                  title="Driver">@(string.IsNullOrWhiteSpace(
+                                truck.DriverName)
+                                ? "Driver not assigned"
+                                : truck.DriverName)</span>
+                        }
+                    </span>
+                }
+            </div>
+            @if (truck.TruckId.HasValue)
+            {
+                <a class="btn btn--small dispatch-truck__map"
+                   href="@($"/fleet/map?truckId={truck.TruckId}")"
+                   aria-label="@($"Show truck {truck.TruckNumber} on map")">
+                    <ActionIcon Kind="location" /><span>Show on map</span>
+                </a>
+            }
+        </text>;
+}

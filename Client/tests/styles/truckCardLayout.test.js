@@ -15,9 +15,19 @@ const card =
       " @use 'pages/fleet-map/inspector/route-facts';" +
       " @use 'pages/fleet-map/inspector/narrow';",
     { loadPaths },
-  ).css + compile('pages/fleet-map/truck-info');
+  ).css +
+  compile('pages/fleet-map/truck-info') +
+  compile('shared/trucks/readings');
 const markup = readFileSync(
   new URL('../../Pages/FleetMap/FleetMap.razor', import.meta.url),
+  'utf8',
+);
+// The vehicle line is the shared TruckReadings, which Dispatch uses too.
+const readings = readFileSync(
+  new URL(
+    '../../Shared/Trucks/TruckReadings/TruckReadings.razor',
+    import.meta.url,
+  ),
   'utf8',
 );
 
@@ -187,7 +197,7 @@ test('the head reads as rows of one table, on one line each', () => {
   // about the cycle stands beside the hour.
   assert.match(
     hours,
-    /\.stop-hours--compact\s*\{[^}]*grid-template-columns: minmax\(var\(--route-fact-label, 0px\), max-content\) minmax\(0, 1fr\);/,
+    /\.stop-hours--compact\s*\{[^}]*grid-template-columns: var\(--stop-hours-columns, minmax\(var\(--route-fact-label, 0px\), max-content\) minmax\(0, 1fr\)\);/,
   );
   assert.match(
     hours,
@@ -220,14 +230,14 @@ test('the head reads as rows of one table, on one line each', () => {
     assert.doesNotMatch(card.match(rule)[0], /font-size/);
   assert.match(
     card,
-    /__reading > small,[^{}]*__outside > small\s*\{[^}]*font-size: inherit;/,
+    /\.truck-readings__reading > small\s*\{[^}]*font-size: inherit;/,
   );
   assert.match(card, /--hos-label-font-size: var\(--type-body\);/);
   // An icon whose word is only for a screen reader has no text to sit on:
   // it centres on the line.
   assert.match(
     card,
-    /__reading--speed > small,[^{}]*__outside > small\s*\{[^}]*align-self: center;/,
+    /__reading--speed > small,[^{}]*__reading--outside > small\s*\{[^}]*align-self: center;/,
   );
   assert.match(
     card,
@@ -258,7 +268,8 @@ test('the speed icon carries its band, and an unknown speed stays quiet', () => 
       ),
     );
   assert.doesNotMatch(card, /__reading--speed\.is-unknown/);
-  assert.match(markup, /TelemetryTone\.Speed\(KnownSpeed\(truck\)\)/);
+  assert.match(markup, /<TruckReadings Speed="KnownSpeed\(truck\)"/);
+  assert.match(readings, /@TelemetryTone\.Speed\(Speed\)/);
 });
 
 test('HOS travels with its clocks, at the far end under the arrival', () => {
@@ -395,12 +406,15 @@ test('the vehicle is one line: every reading the same shape', () => {
   );
   assert.match(
     card,
-    /__telemetry\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, var\(--size-map-telemetry-reading\)\), 1fr\)\);/,
+    /\.truck-readings\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, var\(--size-telemetry-reading\)\), 1fr\)\);/,
   );
-  assert.match(card, /__telemetry\s*\{[^}]*--fuel-reading-value-column: auto;/);
   assert.match(
     card,
-    /__reading,[^{}]*__outside\s*\{[^}]*display: flex;[^}]*align-items: baseline;/,
+    /\.truck-readings\s*\{[^}]*--fuel-reading-value-column: auto;/,
+  );
+  assert.match(
+    card,
+    /\.truck-readings__reading\s*\{[^}]*display: flex;[^}]*align-items: baseline;/,
   );
   // Where the truck is has a row of its own now, not the end of this one.
   assert.doesNotMatch(markup, /fleet-map-truck-info__location/);
@@ -411,16 +425,19 @@ test('the vehicle is one line: every reading the same shape', () => {
   assert.doesNotMatch(card, /__reading svg\s*\{\s*display: none;/);
   assert.match(
     card,
-    /__outside > small > svg\s*\{[^}]*inline-size: var\(--type-heading\);/,
+    /__reading--outside > small > svg\s*\{[^}]*inline-size: var\(--type-heading\);/,
   );
   // The degrees keep the baseline, which is what puts them on the level of
   // the speed and the fuel beside them; only the icon steps off it, or a
   // 20px glyph on the baseline of 14px text stands above the words.
-  assert.match(card, /__outside > small\s*\{[^}]*align-self: center;/);
+  assert.match(card, /__reading--outside > small\s*\{[^}]*align-self: center;/);
   // Named plainly, after the rule it differs from. It used to be named by
   // two classes at once, only to outrank a rule that stood below it.
-  assert.doesNotMatch(card, /__outside\.truck-weather/);
-  assert.doesNotMatch(card, /__outside > small > svg\s*\{[^}]*display: none/);
+  assert.doesNotMatch(card, /__reading--outside\.truck-weather/);
+  assert.doesNotMatch(
+    card,
+    /__reading--outside > small > svg\s*\{[^}]*display: none/,
+  );
   assert.doesNotMatch(card, /__reading\s*\{[^}]*display: none/);
 });
 
@@ -433,9 +450,9 @@ test('the lines that should be one line are one line', () => {
   // but stay in the document for a screen reader.
   assert.match(
     card,
-    /__reading--speed > small > span,[^{}]*__outside > small > span\s*\{[^}]*clip-path: inset\(50%\);/,
+    /__reading--speed > small > span,[^{}]*__reading--outside > small > span\s*\{[^}]*clip-path: inset\(50%\);/,
   );
-  assert.match(markup, /fleet-map-truck-info__reading--speed/);
+  assert.match(readings, /truck-readings__reading--speed/);
   assert.match(
     card,
     /__remaining\s*>\s*\.fleet-map-route-info__copy-number\s*\{[^}]*font-weight: 600;/,

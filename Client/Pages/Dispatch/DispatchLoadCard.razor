@@ -1,13 +1,14 @@
 <section class="dispatch-load @(Current && !Completed ? "dispatch-load--current" : "") @(Next ? "dispatch-load--next" : "")" aria-label="@($"Load {LoadLabel}")">
     <span class="dispatch-load__connector" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6" /></svg></span>
+    @* The load as the map's truck card names it: its number, a link to its
+       page, and its order; then who it is for, where it stands and which of
+       the truck's loads it is. *@
     <div class="dispatch-load__heading">
-        <div class="dispatch-load__title">
-            <a class="btn btn--text btn--small dispatch-load__number"
-               href="@LoadUrl" aria-label="@($"Open load {LoadLabel}")">
-                <LoadNumber Value="Load.LoadNumber" />
-            </a>
-            <span class="dispatch-load__phase">@Phase</span>
-        </div>
+        <a class="dispatch-load__number" href="@LoadUrl"
+           aria-label="@($"Open load {LoadLabel}")">
+            <LoadNumber Value="Load.LoadNumber" /><ActionIcon
+                Kind="external-link" />
+        </a>
         @if (!string.IsNullOrWhiteSpace(Load.OrderNumber))
         {
             <button type="button" class="btn btn--text btn--small dispatch-load__order" title="@(_copied ? "Copied" : "Copy order number")"
@@ -23,6 +24,7 @@
     <div class="dispatch-load__reference">
         <span>@Load.CustomerName</span>
         <span class="dispatch-load__status @(!Completed && Load.Status == "in_transit" ? "is-moving" : "")">@Status</span>
+        <span class="dispatch-load__phase">@Phase</span>
     </div>
     @if (ShowTrailerAssignment || ShowDriverAssignment)
     {
@@ -51,9 +53,9 @@
         @if (ShowRemaining) { <span class="dispatch-load__remaining"><DistanceText Miles="RemainingMiles" /> remaining</span> }
         @if (ShowFuelStops) { <span class="dispatch-load__fuel-count"><ActionIcon Kind="fuel" /> Fuel stops <strong>@FuelStopCount</strong></span> }
         @if (!ShowRemaining && !ShowFuelStops) { <span>@(OrderedStops.Count == 1 ? "1 stop" : $"{OrderedStops.Count} stops")</span> }
-        <a class="btn btn--text btn--small dispatch-load__details"
-           href="@LoadUrl" aria-label="@($"Details for load {LoadLabel}")">
-            Details <span aria-hidden="true">↗</span>
+        <a class="dispatch-load__details" href="@LoadUrl"
+           aria-label="@($"Open load {LoadLabel}")">
+            Open load<ActionIcon Kind="external-link" />
         </a>
     </footer>
 </section>

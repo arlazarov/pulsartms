@@ -8,6 +8,7 @@ using Client.Models.DTO.Fleet;
 using Client.Models.DTO.Planning;
 using Client.Services;
 using Client.Shared;
+using Client.Shared.Measurements;
 using Client.Shared.Search;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -94,12 +95,8 @@ public partial class FleetMap : IAsyncDisposable
         ?? _routeState?.Progress?.ProgressMiles
     );
 
-  // What the head of the card says is left: to the stop the truck is heading
-  // for, because that is the stop its ETA beside it is for. It was the
-  // remainder of the whole run, so a truck on its way to a pickup read the
-  // miles to its delivery next to the hour of its pickup. Only where no next
-  // stop is known is the run's remainder said instead.
-  private double? LeftMiles => NextStopMiles ?? RemainingMiles;
+  private double? LeftMiles =>
+    DistanceLeft.Miles(NextStopMiles, RemainingMiles);
 
   // The truck has reached the stop it was heading for and the stop is still
   // open: it is standing there, waiting on the appointment. There is nothing

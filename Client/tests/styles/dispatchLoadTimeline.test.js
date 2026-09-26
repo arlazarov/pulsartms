@@ -105,7 +105,7 @@ test('wide summary stops put arrival facts beside the address without changing t
   );
   assert.match(
     css,
-    /\.dispatch-load__stop--summary > \.dispatch-load__stop-times\s*\{[^}]*grid-column: 2;[^}]*grid-row: 1\s*\/\s*span 3;[^}]*align-content: start;/,
+    /\.dispatch-load__stop--summary > \.dispatch-load__stop-times\s*\{[^}]*grid-column: 2;[^}]*grid-row: 1\s*\/\s*span 4;[^}]*align-content: start;/,
   );
   assert.match(
     css,

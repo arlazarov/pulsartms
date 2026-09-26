@@ -210,12 +210,16 @@ public partial class DispatchList
   private static (Guid, Guid?, long) LoadIdentity(DispatchResponse load) =>
     (load.Id, load.ExecutionLegId, load.AssignmentRevision);
 
+  // A truck without a load still has a summary (its readings and clocks),
+  // keyed by the truck alone.
   private static object PlanningIdentity(TruckDispatchBoardResponse truck) =>
-    (
-      truck.Key,
-      LoadIdentity(truck.Dispatches[0]),
-      DispatchStopPresentation.CompletionRevision(truck.Dispatches[0].Stops)
-    );
+    truck.Dispatches.Count == 0
+      ? truck.Key
+      : (
+        truck.Key,
+        LoadIdentity(truck.Dispatches[0]),
+        DispatchStopPresentation.CompletionRevision(truck.Dispatches[0].Stops)
+      );
 
   private static void CopyFinancials(
     DispatchResponse source,

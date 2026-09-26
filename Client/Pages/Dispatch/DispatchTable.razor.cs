@@ -90,12 +90,10 @@ public partial class DispatchTable
     );
 
   private static bool IsDelivery(DispatchStopResponse stop) =>
-    stop.Job.Equals("Drop Off", StringComparison.OrdinalIgnoreCase)
-    || stop.Job.Equals("Delivery", StringComparison.OrdinalIgnoreCase);
+    DispatchStopPresentation.IsDelivery(stop);
 
   private static bool IsPickup(DispatchStopResponse stop) =>
-    stop.Job.Equals("Pick Up", StringComparison.OrdinalIgnoreCase)
-    || stop.Job.Equals("Pickup", StringComparison.OrdinalIgnoreCase);
+    DispatchStopPresentation.IsPickup(stop);
 
   private static bool StopCompleted(
     DispatchBoardRow row,

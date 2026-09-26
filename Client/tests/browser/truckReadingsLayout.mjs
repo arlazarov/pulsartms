@@ -30,9 +30,7 @@ export async function checkTruckReadingsLayout(page, output, name) {
         available: right - left,
         gap: parseFloat(style.columnGap),
         columns: style.gridTemplateColumns.split(' ').length,
-        telemetry: rect(
-          element.querySelector('.fleet-map-truck-info__telemetry'),
-        ),
+        telemetry: rect(element.querySelector('.truck-readings')),
         location: rect(
           document.querySelector('.fleet-map-inspector__location'),
         ),
@@ -40,25 +38,25 @@ export async function checkTruckReadingsLayout(page, output, name) {
         // an icon, because there the icon is the reading.
         icons: [
           ...element.querySelectorAll(
-            '.fleet-map-truck-info__reading > small > svg, .fuel-reading__icon',
+            '.truck-readings__reading > small > svg, .fuel-reading__icon',
           ),
         ]
           .map(rect)
           .filter(box => box.width > 0),
         weather: [
-          ...element.querySelectorAll('.fleet-map-truck-info__outside svg'),
+          ...element.querySelectorAll('.truck-readings__reading--outside svg'),
         ]
           .map(rect)
           .filter(box => box.width > 0),
         // The clocks read in the card's head, as text; the vehicle line
         // below carries only what the truck itself is doing.
         dials: [...element.querySelectorAll('.driver-hours__dial')].map(rect),
-        readings: [
-          ...element.querySelectorAll('.fleet-map-truck-info__reading'),
-        ].map(rect),
+        readings: [...element.querySelectorAll('.truck-readings__reading')].map(
+          rect,
+        ),
         labels: [
           ...element.querySelectorAll(
-            '.fleet-map-truck-info__reading > small > span, ' +
+            '.truck-readings__reading > small > span, ' +
               '.fuel-reading__label',
           ),
         ].map(rect),

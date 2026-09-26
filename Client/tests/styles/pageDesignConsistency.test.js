@@ -35,10 +35,12 @@ test('application page cards share neutral surfaces and compact semantic corners
   }
 });
 
+// The current load stands out by a light ring and its Current tag, not a
+// heavy blue frame (the owner's Dispatch cards of September 26).
 test('current dispatch stays recognizable without tinting the entire load card', () => {
   const body = rule('.dispatch-load--current');
-  assert.match(body, /border-color: var\(--ui-link\);/);
-  assert.match(body, /box-shadow: 0 0 0 1px var\(--ui-link\);/);
+  assert.match(body, /border-color: var\(--ui-selection-border\);/);
+  assert.match(body, /box-shadow: 0 0 0 1px var\(--ui-selection-border\);/);
   assert.doesNotMatch(body, /background:/);
   assert.match(
     rule('.dispatch-load--current .dispatch-load__phase'),

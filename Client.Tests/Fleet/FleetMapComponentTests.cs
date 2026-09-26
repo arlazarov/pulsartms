@@ -870,11 +870,11 @@ public sealed class FleetMapComponentTests
     );
     Assert.Contains(
       "26.5 °C",
-      component.Find(".fleet-map-truck-info__outside").TextContent
+      component.Find(".truck-readings__reading--outside").TextContent
     );
     Assert.DoesNotContain(
       "°F",
-      component.Find(".fleet-map-truck-info__outside").TextContent
+      component.Find(".truck-readings__reading--outside").TextContent
     );
     // The facts column carries the run's length, in the chosen unit, when
     // the stop is not the load's last; the head's Left always does.
@@ -911,11 +911,11 @@ public sealed class FleetMapComponentTests
     );
     Assert.Contains(
       "79.7 °F",
-      component.Find(".fleet-map-truck-info__outside").TextContent
+      component.Find(".truck-readings__reading--outside").TextContent
     );
     Assert.DoesNotContain(
       "°C",
-      component.Find(".fleet-map-truck-info__outside").TextContent
+      component.Find(".truck-readings__reading--outside").TextContent
     );
     wrapper.Render(parameters =>
       parameters
@@ -948,7 +948,7 @@ public sealed class FleetMapComponentTests
       () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
     );
     var outside = component.Find(
-      ".fleet-map-truck-info__telemetry > .fleet-map-truck-info__outside"
+      ".truck-readings > .truck-readings__reading--outside"
     );
     Assert.Equal("Outside temperature", outside.GetAttribute("aria-label"));
     Assert.Contains("0 °C", outside.TextContent);
@@ -963,17 +963,17 @@ public sealed class FleetMapComponentTests
       () =>
         Assert.Contains(
           "-40 °C",
-          component.Find(".fleet-map-truck-info__outside").TextContent
+          component.Find(".truck-readings__reading--outside").TextContent
         )
     );
     Assert.DoesNotContain(
       "°F",
-      component.Find(".fleet-map-truck-info__outside").TextContent
+      component.Find(".truck-readings__reading--outside").TextContent
     );
     await component.InvokeAsync(
       () => component.Instance.OnTruckSelected(fixture.TruckB.ToString())
     );
-    outside = component.Find(".fleet-map-truck-info__outside");
+    outside = component.Find(".truck-readings__reading--outside");
     Assert.Contains("—", outside.TextContent);
     Assert.DoesNotContain("°F", outside.TextContent);
     Assert.DoesNotContain("°C", outside.TextContent);
@@ -2212,7 +2212,8 @@ public sealed class FleetMapComponentTests
         3,
         component
           .FindAll(
-            ".fleet-map-truck-info__telemetry > .fleet-map-truck-info__reading"
+            ".truck-readings > .truck-readings__reading"
+              + ":not(.truck-readings__reading--outside)"
           )
           .Count
       );
@@ -2222,13 +2223,11 @@ public sealed class FleetMapComponentTests
       Assert.Empty(component.FindAll(".fleet-map-truck-info__hours-label"));
       Assert.Empty(component.FindAll(".driver-next-recap"));
       Assert.Single(
-        component.FindAll(
-          ".fleet-map-truck-info__reading--fuel > .fuel-reading"
-        )
+        component.FindAll(".truck-readings__reading--fuel > .fuel-reading")
       );
       Assert.Single(
         component.FindAll(
-          ".fleet-map-truck-info__reading--fuel > .fuel-reading--metric"
+          ".truck-readings__reading--fuel > .fuel-reading--metric"
         )
       );
       Assert.Empty(
@@ -2242,7 +2241,8 @@ public sealed class FleetMapComponentTests
         2,
         component
           .FindAll(
-            ".fleet-map-truck-info__reading > small > svg[aria-hidden='true']"
+            ".truck-readings__reading:not(.truck-readings__reading--outside)"
+              + " > small > svg[aria-hidden='true']"
           )
           .Count
       );

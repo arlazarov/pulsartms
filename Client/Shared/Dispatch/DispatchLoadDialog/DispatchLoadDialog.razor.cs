@@ -135,8 +135,7 @@ public partial class DispatchLoadDialog
     : null;
 
   private static bool IsPickup(DispatchStopResponse stop) =>
-    stop.Job.Equals("Pick Up", StringComparison.OrdinalIgnoreCase)
-    || stop.Job.Equals("Pickup", StringComparison.OrdinalIgnoreCase);
+    DispatchStopPresentation.IsPickup(stop);
 
   public async ValueTask DisposeAsync()
   {

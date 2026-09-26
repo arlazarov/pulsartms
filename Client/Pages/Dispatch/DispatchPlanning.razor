@@ -1,13 +1,94 @@
-
-<section class="dispatch-planning @(Compact ? "dispatch-planning--compact" : "") @(BoardHeader ? "dispatch-planning--board" : "")" aria-label="Route">
+@if (BoardHeader)
+{
+    @* A truck on the board reads as its Fleet Map card does: the unit and
+       its crew with what is left to the next stop beside them, then the
+       vehicle line and the driver's clocks, and - behind Details - the
+       duty and the rest built up (the owner, September 26). *@
+    <section class="dispatch-planning dispatch-planning--board"
+             aria-label="Truck summary">
+        <header class="dispatch-truck__header">
+            @Identity
+            @if (LeftMiles is { } left)
+            {
+                <span class="dispatch-planning__left"
+                      aria-label="@(Units.FormatDistance(left)
+                          + " left to the next stop")">
+                    <span aria-hidden="true">Left&#160;<strong
+                        >@Units.DistanceValue(left)</strong><span
+                        >&#160;@Units.DistanceUnit</span>@if (Units.BothDistances)
+                        {<small> ·&#160;@Units.Kilometers(left)&#160;km</small>}</span>
+                </span>
+            }
+            @* Says what it does; both words share one cell, so opening does
+               not change the button's width and move the row beside it. *@
+            <button type="button"
+                    class="btn btn--small dispatch-planning__toggle"
+                    aria-expanded="@(_detailsOpen ? "true" : "false")"
+                    aria-controls="@_detailsId"
+                    @onclick="() => _detailsOpen = !_detailsOpen">
+                <span class="dispatch-planning__toggle-words">
+                    <span aria-hidden="@(_detailsOpen ? "true" : "false")"
+                        >Details</span>
+                    <span aria-hidden="@(_detailsOpen ? "false" : "true")"
+                        >Hide details</span>
+                </span>
+                <ActionIcon Kind="chevron-down" />
+            </button>
+        </header>
+        <div class="dispatch-planning__readings">
+            <TruckReadings Speed="Speed"
+                           Fuel="@DisplayResult?.State?.FuelPercent"
+                           Engine="@EngineState" />
+            @* The driver's clocks, named by their labels alone; the group
+               keeps "HOS" as its name for a screen reader. *@
+            <span class="dispatch-planning__clocks" aria-label="HOS">
+                <DriverHours Clocks="Hos" Dials="false" ShowDutyStatus="false"
+                             Jurisdiction="@DutyStatus?.Jurisdiction" />
+            </span>
+        </div>
+        @if (_loading && _result is null)
+        {
+            <p class="dispatch-planning__hint" role="status"
+                ><LoadingIndicator /></p>
+        }
+        @if (ShowRefreshError)
+        {
+            <p class="dispatch-planning__hint" role="status"
+                >@RouteMessageDisplay.Concise(_error)</p>
+        }
+        @if (DisplayMessage is { } boardMessage)
+        { <p class="dispatch-planning__hint" role="status">@boardMessage</p> }
+        @if (DisplayResult?.State is { Plan: { } boardPlan } boardState)
+        {
+            @foreach (var warning in boardPlan.Route.Warnings)
+            {
+                <p class="dispatch-planning__hint" role="status"
+                    >@RouteMessageDisplay.Concise(warning)</p>
+            }
+            @if (boardState.Progress?.OffRoute == true)
+            {
+                <p class="dispatch-planning__hint" role="status"
+                    >Off planned route</p>
+            }
+        }
+        <div id="@_detailsId" class="dispatch-planning__duty"
+             hidden="@(!_detailsOpen)">
+            <DriverDutySummary Reading="row" Status="DutyStatus"
+                               CurrentStatus="@(Hos?.CurrentDutyStatus)"
+                               ClockUpdatedAt="Hos?.UpdatedAt" />
+            <DriverNextRecap Snapshot="CurrentCycle" />
+        </div>
+    </section>
+}
+else
+{
+<section class="dispatch-planning @(Compact ? "dispatch-planning--compact" : "")" aria-label="Route">
     <div class="dispatch-planning__content">
     <div class="dispatch-planning__heading">
         <div class="dispatch-planning__identity"><strong>Route</strong>
             @if (DisplayResult?.LoadNumber is { } number && Compact) { <span>Load <LoadNumber Value="number" /></span> }
         </div>
         <div class="dispatch-planning__telemetry">
-            @if (BoardHeader && !string.IsNullOrWhiteSpace(MotionLabel))
-            { <span class="dispatch-truck__status is-@MotionState @TelemetryTone.Speed(Speed)"><span aria-hidden="true">●</span>@MotionLabel</span> }
             @if (DisplayResult?.State?.FuelPercent is { } percent) { <span class="dispatch-planning__fuel"><FuelReading Percent="percent" /></span> }
         </div>
     </div>
@@ -43,10 +124,11 @@
     @if (Compact)
     {
         <div class="dispatch-planning__driver">
-            <DriverDutySummary Status="DisplayResult?.State?.Eta?.DutyStatus" CurrentStatus="@(Hos?.CurrentDutyStatus)" ClockUpdatedAt="Hos?.UpdatedAt" Compact="BoardHeader" />
+            <DriverDutySummary Status="DutyStatus" CurrentStatus="@(Hos?.CurrentDutyStatus)" ClockUpdatedAt="Hos?.UpdatedAt" />
             <DriverNextRecap Snapshot="CurrentCycle" />
         </div>
         <DriverHours Clocks="Hos" ShowDutyStatus="false"
-                     Status="DisplayResult?.State?.Eta?.DutyStatus" />
+                     Status="DutyStatus" />
     }
 </section>
+}

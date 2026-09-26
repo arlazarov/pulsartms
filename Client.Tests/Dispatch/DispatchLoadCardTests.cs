@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Bunit;
 using Client.Models.DTO.Dispatch;
 using Client.Models.DTO.Planning;
@@ -149,10 +150,16 @@ public sealed class DispatchLoadCardTests
         continue;
       }
       Assert.NotNull(stop.QuerySelector(":scope > .dispatch-load__street"));
-      Assert.NotNull(
+      // The booked hour and the forecast share one label column (Appt,
+      // ETA), as on the map's stop card.
+      Assert.Equal(
+        "Appt",
         stop.QuerySelector(
-          ".dispatch-load__stop-times .arrival-estimate__appointment"
-        )
+          ".dispatch-load__stop-times > .dispatch-load__appointment > span"
+        )!.TextContent
+      );
+      Assert.NotNull(
+        stop.QuerySelector(".dispatch-load__stop-times .stop-hours--compact")
       );
     }
     Assert.Single(component.FindAll(".dispatch-load__stop--completed"));
@@ -278,7 +285,7 @@ public sealed class DispatchLoadCardTests
       component.Find(".dispatch-load__footer .dispatch-load__details").LocalName
     );
     Assert.StartsWith(
-      "Details for load ",
+      "Open load ",
       component
         .Find(".dispatch-load__footer .dispatch-load__details")
         .GetAttribute("aria-label")
@@ -346,11 +353,18 @@ public sealed class DispatchLoadCardTests
     var component = context.Render<DispatchLoadCard>(p =>
       p.Add(card => card.Load, load)
     );
+    // The place is named first; the street, which is the stop's location
+    // without a town, is said once under it.
+    var stop = component.Find(".dispatch-load__stop");
+    Assert.Equal(
+      load.Stops[0].Name,
+      stop.QuerySelector(".dispatch-load__location")!.TextContent
+    );
     Assert.Equal(
       "50 Patriot Drive",
-      component.Find(".dispatch-load__location").TextContent
+      Assert.Single(component.FindAll(".dispatch-load__street")).TextContent
     );
-    Assert.Empty(component.FindAll(".dispatch-load__street"));
+    Assert.Single(Regex.Matches(stop.TextContent, "50 Patriot Drive"));
 
     load.Stops[0].PickedUpAt = Start.UtcDateTime;
     load.Stops[0].IsCompleted = true;

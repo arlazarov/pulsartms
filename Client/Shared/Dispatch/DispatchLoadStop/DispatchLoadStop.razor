@@ -1,3 +1,4 @@
+@using Client.Services
 @{
     RenderFragment detailContent = @<div class="dispatch-load__stop-detail-content">
         @if (!CollapsibleDetails && HasStreet) { <span class="dispatch-load__street">@Stop.Address</span> }
@@ -45,6 +46,51 @@
             <span class="dispatch-load__history-time" title="Scheduled appointment">@Client.Services.StopAppointmentDisplay.Format(PlannedStop)</span>
         </button>
         }
+    }
+    else if (!Detailed)
+    {
+    @* A stop on a board card reads as a stop card on the map: its number
+       and what happens there, the place by name with its town under it,
+       then the booked hour and the forecast beside their labels. *@
+    <div class="dispatch-load__stop-heading">
+        <span class="dispatch-load__stop-number"
+              aria-label="@($"Stop {Number}")">@Number</span>
+        <span class="dispatch-load__stop-job
+                     @DispatchStopPresentation.Tone(Stop)">@Job</span>
+        @if (VisitLabel.Length > 0)
+        {
+            <span class="dispatch-load__stop-visit"
+                  title="@($"{VisitLabel} at this address")">@VisitLabel</span>
+        }
+        @if (Stop.DriverOnly)
+        {
+            <span class="dispatch-load__stop-visit"
+                  title="Excluded from truck route and fuel; completion is tracked separately"
+                >Driver only · No truck</span>
+        }
+    </div>
+    <strong class="dispatch-load__location"
+            title="@PlannedStop.Address">@Place</strong>
+    @foreach (var (kind, line) in PlaceLines)
+    { <span class="dispatch-load__@kind">@line</span> }
+    <div class="dispatch-load__stop-times">
+        <div class="dispatch-load__appointment">
+            <span>Appt</span>
+            <strong>@(PlannedStop.ScheduledDate is null
+                ? "—" : StopAppointmentDisplay.Format(PlannedStop))</strong>
+        </div>
+        <ArrivalEstimate Stop="PlannedStop" Eta="StopEstimate"
+            DispatchId="DispatchId" Memory="Memory" Completed="Completed"
+            Refreshing="Refreshing" ShowDutyStatus="false" ShowDetails="false"
+            ShowAppointment="false" Reading="compact" />
+        @if (!Stop.DriverOnly && !Completed && !HasDisplayEstimate)
+        {
+            <div class="dispatch-load__eta-missing">
+                <span>ETA</span><strong>—</strong>
+            </div>
+        }
+    </div>
+    @StopActions
     }
     else
     {

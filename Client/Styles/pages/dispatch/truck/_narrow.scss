@@ -1,26 +1,39 @@
 @use '../../../base' as ui;
 
-// On a phone the row becomes a column and the loads stack.
+// On a phone the unit and its crew take the head's first line whole, and
+// what is left shares the next with the map and Details, each folding to a
+// line of its own when enlarged text needs it; the map button says itself
+// with its icon alone, and the loads stack.
 @include ui.below(narrow-card) {
   .dispatch-truck__header {
-    padding-inline: ui.pg(lg);
+    display: flex;
+    flex-wrap: wrap;
+    padding-inline: ui.pg(md);
+    > .dispatch-truck__identity {
+      flex-basis: 100%;
+    }
+    // What is left first, then the map and Details, as on a wide head.
+    > a.dispatch-truck__map {
+      order: 1;
+    }
+    > .dispatch-planning__toggle {
+      order: 2;
+    }
   }
-  .dispatch-truck__identity {
-    column-gap: ui.pg(sm);
-  }
-  .dispatch-truck__header-driver {
-    flex-basis: calc(100% - #{ui.size(control-compact)} - #{ui.pg(sm)});
-    margin-left: calc(#{ui.size(control-compact)} + #{ui.pg(sm)});
-  }
-  .dispatch-truck__trailer {
-    padding-left: 0;
-    border: 0;
+  a.dispatch-truck__map > span {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .dispatch-truck__loads {
     grid-auto-flow: row;
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
     gap: ui.pg(md);
+    padding: ui.pg(md);
   }
   .dispatch-truck__loads
     > .dispatch-load
@@ -28,20 +41,16 @@
     .dispatch-load__connector {
     display: none;
   }
-  .dispatch-truck__equipment > .dispatch-planning--board {
-    grid-template-columns: minmax(0, 1fr);
-    --hos-gap: #{ui.pg(sm)};
-    .dispatch-planning__content {
-      grid-column: 1;
-      grid-row: 1;
-    }
-    .dispatch-planning__driver {
-      grid-column: 1;
-      grid-row: 2;
-    }
-    > .driver-hours-panel {
-      grid-column: 1;
-      grid-row: 3;
-    }
+}
+
+// Too narrow for the crew beside the unit (a phone at enlarged text): it
+// takes a line of its own, and a hairline at the start of a line would
+// separate nothing.
+@container dispatch-truck
+  (width < #{ui.breakpoint(dispatch-truck-head-stacked)}) {
+  .dispatch-truck__crew {
+    flex-basis: 100%;
+    padding-inline-start: 0;
+    border-inline-start: 0;
   }
 }

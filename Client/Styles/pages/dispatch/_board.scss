@@ -9,6 +9,20 @@
     align-items: center;
     gap: ui.pg(sm);
   }
+  // Room for a unit, a driver, a trailer or a load, not the width of the
+  // page, as on Fleet Map. The search and the driver filter start from a
+  // field's width and give it up before the view or the scope is pushed
+  // to a second line; with enlarged text the row wraps instead of running
+  // off the page.
+  &__filters > .search-input {
+    flex: 1 1 ui.size(form-field);
+    width: auto;
+    max-width: 28rem;
+  }
+  &__filters .driver-group-picker {
+    flex: 0 1 ui.size(form-field);
+    flex-wrap: nowrap;
+  }
   &__scope,
   &__filters &__scope {
     display: inline-flex;
@@ -82,6 +96,21 @@
   }
   &__footer .dispatch-page__pagination {
     margin-left: auto;
+  }
+}
+
+// On a phone the search and Filters share the first line; the view and the
+// scope follow on the next.
+@include ui.below(filter-toolbar-drawer) {
+  .dispatch-board__filters {
+    > .search-input {
+      flex: 1 1 ui.size(filter-search);
+      max-width: none;
+    }
+    .dispatch-view,
+    .dispatch-board__scope {
+      order: 2;
+    }
   }
 }
 
