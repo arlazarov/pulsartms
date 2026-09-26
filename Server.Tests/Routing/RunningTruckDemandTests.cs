@@ -1,6 +1,8 @@
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Execution;
+using Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
@@ -13,6 +15,34 @@ namespace Server.Tests.Routing;
 [Trait("Kind", "Integration")]
 public sealed class RunningTruckDemandTests
 {
+  [Fact]
+  public async Task ManyLegsAreGroupedAndBoundedByOneDatabaseRead()
+  {
+    var commands = new HistoricalReadProbe();
+    await using var f = await PlanningRefreshFixture.CreateAsync(services =>
+      services.AddDbContext<AppDbContext>(options =>
+        options.AddInterceptors(commands)
+      )
+    );
+    var driving = await TruckAsync(f, "driving");
+    var planned = await TruckAsync(f, "planned");
+    Leg(f, driving, "active");
+    for (var i = 0; i < 200; i++)
+    {
+      Leg(f, driving, "planned");
+      Leg(f, planned, "planned");
+    }
+    await f.Db.SaveChangesAsync();
+    commands.Enabled = true;
+    var result = await Reader(f).RunningTruckIdsAsync(1, default);
+    Assert.Equal(new[] { driving }, result);
+    var sql = Assert.Single(commands.Commands);
+    Assert.Contains("GROUP BY", sql);
+    Assert.Contains("LIMIT", sql);
+    Assert.Empty(await Reader(f).RunningTruckIdsAsync(0, default));
+    Assert.Single(commands.Commands);
+  }
+
   [Fact]
   public async Task RunningWorkIsOpenLegsAndOlderInTransitLoadsOnly()
   {

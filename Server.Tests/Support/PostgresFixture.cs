@@ -132,9 +132,22 @@ public sealed class PostgresFixture : IAsyncDisposable
     await command.ExecuteNonQueryAsync();
   }
 
-  public AppDbContext Connect(params IInterceptor[] interceptors)
+  public AppDbContext Connect(params IInterceptor[] interceptors) =>
+    ConnectCore(null, interceptors);
+
+  public AppDbContext Connect(
+    IServiceProvider services,
+    params IInterceptor[] interceptors
+  ) => ConnectCore(services, interceptors);
+
+  private AppDbContext ConnectCore(
+    IServiceProvider? services,
+    IInterceptor[] interceptors
+  )
   {
     var options = new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(source);
+    if (services is not null)
+      options.UseApplicationServiceProvider(services);
     if (interceptors.Length > 0)
       options.AddInterceptors(interceptors);
     var db = new AppDbContext(options.Options);

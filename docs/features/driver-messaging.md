@@ -25,8 +25,11 @@ calls, so one WhatsApp number belongs to one company. Saving a number
 another company has saved is refused (422, "connected to another PulsR
 company"); a company keeps the number it already holds (a new token
 saves), and its settings card says when another company holds it too.
-The check lives in the credential store and answers only yes or no
-across companies; it is not atomic against two simultaneous saves. See
+The display check answers only yes or no across companies. Admission is
+rechecked in the credential store's serialized transaction: PostgreSQL uses
+an advisory transaction lock before reading claims. A failed or unreadable
+claim check cannot authorize a new saved number. Existing duplicate ownership
+requires explicit review; no conversations move when settings are saved. See
 [the September 25 routing record](../archive/2026-09/whatsapp-routing-2026-09-25.md).
 
 
@@ -57,9 +60,11 @@ across companies; it is not atomic against two simultaneous saves. See
 
 A module that decides what to say asks Messaging to deliver it through
 `IDriverTextDelivery` (in `Application/Interfaces`, outside every
-feature). Fuel planning (`FuelIssueSender`) builds the words, the
-recipient, its key and its own references on the attempt; Messaging
-(`DriverTextDelivery`) reads the window, records the attempt with the
+feature). Fuel planning supplies the authoritative driver identity and builds
+the words, key and its own references on the attempt. Messaging resolves the
+recipient and readiness; a ready channel need not have a phone or reply window.
+The configured `DriverTextDelivery` applies WhatsApp's window and length rules,
+records the attempt with the
 business number before calling the provider, asks the requester once
 more whether it is still wanted, and keeps the provider's answer. The
 same key is one message: a taken attempt settles it, one in flight or
@@ -324,7 +329,7 @@ Outside the 24-hour window only approved templates are offered, or a
 note that there are none.
 
 **Where a driver's WhatsApp messages go** is one rule,
-`Domain/Rules/Fleet/DriverWhatsApp`: the driver's own WhatsApp number when
+`Domain/Rules/Messaging/DriverWhatsApp`: the driver's own WhatsApp number when
 one is set, otherwise their phone, each only when it is a valid E.164
 number. An explicit WhatsApp number that is not valid is reported as
 invalid and never replaced by the phone. A phone used this way is only an

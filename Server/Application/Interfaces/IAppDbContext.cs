@@ -117,6 +117,7 @@ public interface IAppDbContext
   // they read finding state until their transaction ends.
   Task LockConsistencyJournalAsync(Guid company, CancellationToken ct);
   bool IsWriteConflict(Exception exception);
+  bool IsDuplicateMessageAttempt(Exception exception);
   Task<bool> LockExecutionLegAsync(
     Guid executionLegId,
     long expectedRevision,

@@ -1,0 +1,51 @@
+{
+  "recordedAt": "2026-09-26T12:39:37.213Z",
+  "head": "186ce56225edd0c9e6c805df9dc330de98e042b8",
+  "workingTree": "Dirty; concurrent Fleet/Fuel/duty-status work was not certified.",
+  "probe": {
+    "run": "artifacts/managed/diagnostic-30iJ9J",
+    "exitCode": 0,
+    "interpretation": "Completed reproduction, not an application invariant pass.",
+    "camera": {
+      "firstCalls": 1,
+      "secondCalls": 0,
+      "secondReceivedFirstImage": true
+    },
+    "channel": {
+      "firstSaved": true,
+      "secondSaved": true,
+      "records": 2
+    },
+    "isolation": "Fake HTTP, ephemeral data protection, in-memory SQLite only."
+  },
+  "javascriptArchitecture": {
+    "passed": 65,
+    "failed": 0,
+    "durationMs": 3679.056375
+  },
+  "notRun": [
+    "Full .NET tests",
+    "PostgreSQL tests",
+    "Production checks",
+    "Visual acceptance",
+    "Load benchmark",
+    "Deployment"
+  ],
+  "sourceSha256": {
+    "tools/ArchitectureAuditProbe/Program.cs": "7ae4d3c91d4465a6085dbd3664a890d7298f6b3a53780abb91e3e98071d0a393",
+    "tools/ArchitectureAuditProbe/ArchitectureAuditProbe.csproj": "41c1719e4fb6ab13fe3c6e7ace2f1e7f9525bafafd83a77209ae24068742f769",
+    "Server/Infrastructure/Integrations/Samsara/SamsaraTruckCameraProvider.cs": "ef9c48cd8475c8c07f51912d749009a5b16b556c1a33d030ece4a704fd0621d1",
+    "Server/Application/Features/Fleet/Commands/RequestTruckCamera/RequestTruckCameraCommand.cs": "650a9e2dd61cb39f79e1edbe069fc744935cda247cef1c8584b28288ffa5988a",
+    "Server/Application/Features/Fleet/Queries/GetTruckCamera/GetTruckCameraQuery.cs": "92d2f2573635118bddd257f8d7f362ca8d7229b2393b9d21c4b60ce95dda564f",
+    "Server/Application/Features/Integrations/Services/IntegrationSettingsService.cs": "0684c1660891775056b73dcf25dcd043b3cdae696489ee743127deb9db6a47a6",
+    "Server/Infrastructure/Persistence/IntegrationCredentialStore.cs": "6c26cbe4391d0edcba53d462cd5798049c04f82b22a1c95ef58415628c9463e2",
+    "Server/Infrastructure/Persistence/Configurations/IntegrationCredentialSettingConfiguration.cs": "a3acb849b1d61060cfb9377a75781d3c2ee82e3302ef6d8d09fc17e22c754016",
+    "Server/Application/Features/Routing/Services/Routes/TruckPlanningInputsReader.cs": "b9281d66b1e44409c2b6bfe81144a6714debda201403fddac872f4b7034c50a3",
+    "Server/Application/Caching/ReadCache.cs": "33c65f7343d36ae12d3cd4123c317e885095ac7d5ba8f190099d0623bafc6f5d",
+    "Server/Application/Features/Messaging/Services/DriverTextDelivery.cs": "b707cf4b2a7c09bea913937ececdacab9a1ce02a203e6d1d955032a3d6174a48",
+    "Server/Domain/Rules/Fleet/DriverWhatsApp.cs": "4abcf4cecb7e4d9da92bf149b64e6e8e780ed69c5198111d5035c08f2d77eaf1",
+    "Server.Tests/Architecture/ModuleDependencyTests.cs": "3e8fa0da067636adc8eb5c0c0130c15b49a428909d51ca92aa2745b39a718fcf",
+    "Client/Client.csproj": "7d62d0bd9d48d0024d658f3a78367bf0b6d2320e4dc6fb69187a6b723570dc82",
+    "test.sh": "ed92f7e3b363c05d418377c84d65a9c1190bf7cc2c903a86a1be5bee1dc34e4a"
+  }
+}

@@ -110,19 +110,31 @@ public sealed class IntegrationSettingsService(
         && channel != saved.Values?.Get(owned)
         && await store.HeldElsewhereAsync(provider, owned, channel, ct)
       )
-        return RequestResponse<IntegrationConnectionState>.Fail(
-          "This number is connected to another PulsR company, and its "
-            + "messages can reach only one. Disconnect it there first. "
-            + "Existing settings were kept.",
-          422
-        );
+        return ChannelConflict();
     }
-    if (!await store.TryWriteAsync(provider, update.Revision, replacement, ct))
-      return Conflict();
+    try
+    {
+      if (
+        !await store.TryWriteAsync(provider, update.Revision, replacement, ct)
+      )
+        return Conflict();
+    }
+    catch (IntegrationChannelConflictException)
+    {
+      return ChannelConflict();
+    }
     return RequestResponse<IntegrationConnectionState>.Ok(
       await GetStateAsync(provider, ct)
     );
   }
+
+  private static RequestResponse<IntegrationConnectionState> ChannelConflict() =>
+    RequestResponse<IntegrationConnectionState>.Fail(
+      "This number is connected to another PulsR company, and its "
+        + "messages can reach only one. Disconnect it there first. "
+        + "Existing settings were kept.",
+      422
+    );
 
   private async Task<IntegrationConnectionState> StateAsync(
     string provider,

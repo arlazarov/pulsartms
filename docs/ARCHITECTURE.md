@@ -409,7 +409,10 @@ authentication; authentication and credential responses are excluded.
 
 ReadCache retains at most 4,096 generation identities. Its monotonic eviction epoch
 prevents an evicted identity from reviving an older cached result. Cache byte limits
-are accounting bounds, not process working-set guarantees.
+are accounting bounds, not process working-set guarantees. Group invalidation
+and relay identities are company-scoped. Shared reference updates (exchange
+rates and global IFTA data) explicitly invalidate globally. Both scopes protect
+against late loader publication; legacy global relay events remain safe.
 
 The fuel map price overview projects the existing cached, selected-day station
 read into IDs and chosen cash/IFTA prices only. It does not query tomorrow, fetch
@@ -800,6 +803,12 @@ Data Protection key ring and provider-specific purposes, with one context per
 operation and optimistic revision checks. Reads expose presence metadata only;
 blank edits preserve values and explicit restoration retains a revision tombstone.
 Provider requests capture their own credentials without shared header mutation.
+Camera retrievals bind company, active truck, external vehicle and captured
+credential identity. Their adapter reuses the bounded shared read cache with
+that identity; matching an external vehicle ID alone never permits reuse.
+The credential store serializes newly owned channel admission and repeats
+ownership checks in the transaction. Existing duplicate saved claims need an
+explicit ownership review; token rotation does not migrate history.
 See [integration settings](features/integration-settings.md) for OAuth tuple rules,
 the existing key-ring protection limitation and rollback behavior.
 

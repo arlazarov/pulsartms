@@ -1,21 +1,25 @@
 using System.Net;
 using System.Text.Json;
+using Application.Caching;
 using Application.Features.Fleet.Commands.RequestTruckCamera;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Queries;
 using Application.Features.Fleet.Queries.GetLatestTruckCamera;
 using Application.Features.Fleet.Queries.GetTruckCamera;
+using Application.Features.Synchronization.Options;
 using Domain.Entities.Fleet;
 using Infrastructure.Integrations.Samsara;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using Server.Tests.Support;
 
 namespace Server.Tests.Fleet;
 
 [Trait("Category", "Fleet")]
+[Trait("Kind", "Integration")]
 public class TruckCameraTests
 {
   [Theory]
@@ -26,17 +30,26 @@ public class TruckCameraTests
   public async Task EmptyMediaDoesNotFailOpeningOrPolling(string body)
   {
     using var client = new HttpClient(new EmptyCameraHttp(body));
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new ReadCache(
+      Options.Create(new SynchronizationOptions()),
+      new TestCompany()
+    );
     var provider = new SamsaraTruckCameraProvider(
       new SamsaraApiService(
         client,
         new StubProviderCredentials(("apiKey", "test"))
       ),
-      cache
+      cache,
+      new TestCompany()
     );
     var latest = await provider.LatestAsync("vehicle", default);
     Assert.Null(latest.Url);
-    var pending = await provider.GetAsync("vehicle", "retrieval", default);
+    var request = await provider.RequestAsync(
+      "vehicle",
+      DateTimeOffset.UtcNow,
+      default
+    );
+    var pending = await provider.GetAsync("vehicle", request, default);
     Assert.Equal("pending", pending.Status);
     Assert.Null(pending.Url);
   }
@@ -50,7 +63,11 @@ public class TruckCameraTests
       Task.FromResult(
         new HttpResponseMessage(HttpStatusCode.OK)
         {
-          Content = new StringContent(body),
+          Content = new StringContent(
+            request.Method == HttpMethod.Post
+              ? """{"data":{"retrievalId":"retrieval"}}"""
+              : body
+          ),
         }
       );
   }
@@ -73,11 +90,26 @@ public class TruckCameraTests
     };
     db.Trucks.Add(truck);
     await db.SaveChangesAsync();
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new ReadCache(
+      Options.Create(new SynchronizationOptions()),
+      new TestCompany()
+    );
+    using var requests = new MemoryCache(new MemoryCacheOptions());
     var provider = new FakeCamera();
-    var handler = new RequestTruckCameraHandler(db, provider, cache);
+    var companies = new TestCompany();
+    var handler = new RequestTruckCameraHandler(
+      db,
+      provider,
+      requests,
+      companies
+    );
     var latest = new GetLatestTruckCameraHandler(db, provider);
-    var retrieval = new GetTruckCameraHandler(provider, cache);
+    var retrieval = new GetTruckCameraHandler(
+      provider,
+      requests,
+      db,
+      companies
+    );
     Assert.True(
       (
         await latest.Handle(new GetLatestTruckCameraQuery(truck.Id), default)
@@ -122,6 +154,36 @@ public class TruckCameraTests
         .Response!
         .Status
     );
+    using (companies.As(Guid.NewGuid()))
+      Assert.False(
+        (
+          await retrieval.Handle(
+            new GetTruckCameraQuery(truck.Id, first.Response),
+            default
+          )
+        ).Success
+      );
+    truck.IsActive = false;
+    await db.SaveChangesAsync();
+    Assert.False(
+      (
+        await retrieval.Handle(
+          new GetTruckCameraQuery(truck.Id, first.Response),
+          default
+        )
+      ).Success
+    );
+    truck.IsActive = true;
+    truck.ExternalId = "changed-vehicle";
+    await db.SaveChangesAsync();
+    Assert.False(
+      (
+        await retrieval.Handle(
+          new GetTruckCameraQuery(truck.Id, first.Response),
+          default
+        )
+      ).Success
+    );
     Assert.False(
       (
         await handler.Handle(
@@ -136,19 +198,25 @@ public class TruckCameraTests
   public async Task ProviderRequestsRoadImageAndUsesActualCaptureTime()
   {
     using var client = new HttpClient(new CameraHttp());
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new ReadCache(
+      Options.Create(new SynchronizationOptions()),
+      new TestCompany()
+    );
     var provider = new SamsaraTruckCameraProvider(
       new SamsaraApiService(
         client,
         new StubProviderCredentials(("apiKey", "test"))
       ),
-      cache
+      cache,
+      new TestCompany()
     );
-    Assert.Equal(
-      "retrieval",
-      await provider.RequestAsync("vehicle", DateTimeOffset.UtcNow, default)
+    var request = await provider.RequestAsync(
+      "vehicle",
+      DateTimeOffset.UtcNow,
+      default
     );
-    var image = await provider.GetAsync("vehicle", "retrieval", default);
+    Assert.Equal("retrieval", request.Id);
+    var image = await provider.GetAsync("vehicle", request, default);
     Assert.Equal("https://example.com/image.jpg", image.Url);
     Assert.Equal(
       DateTimeOffset.Parse("2026-09-07T12:00:00Z"),
@@ -161,16 +229,25 @@ public class TruckCameraTests
   {
     var http = new CameraHttp(true);
     using var client = new HttpClient(http);
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new ReadCache(
+      Options.Create(new SynchronizationOptions()),
+      new TestCompany()
+    );
     var provider = new SamsaraTruckCameraProvider(
       new SamsaraApiService(
         client,
         new StubProviderCredentials(("apiKey", "test"))
       ),
-      cache
+      cache,
+      new TestCompany()
     );
-    var first = await provider.GetAsync("vehicle", "retrieval", default);
-    var second = await provider.GetAsync("vehicle", "retrieval", default);
+    var request = await provider.RequestAsync(
+      "vehicle",
+      DateTimeOffset.UtcNow,
+      default
+    );
+    var first = await provider.GetAsync("vehicle", request, default);
+    var second = await provider.GetAsync("vehicle", request, default);
     Assert.Equal("pending", first.Status);
     Assert.NotNull(first.Url);
     Assert.Equal(first, second);
@@ -186,19 +263,19 @@ public class TruckCameraTests
       CancellationToken ct
     ) => Task.FromResult(new CameraImage("pending"));
 
-    public Task<string> RequestAsync(
+    public Task<CameraRequest> RequestAsync(
       string vehicleId,
       DateTimeOffset time,
       CancellationToken ct
     )
     {
       Requests++;
-      return Task.FromResult("retrieval");
+      return Task.FromResult(new CameraRequest("retrieval", "test-scope"));
     }
 
     public Task<CameraImage> GetAsync(
       string vehicleId,
-      string retrievalId,
+      CameraRequest retrieval,
       CancellationToken ct
     ) => Task.FromResult(new CameraImage("pending"));
   }

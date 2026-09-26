@@ -37,6 +37,44 @@ public sealed class FuelIssueSenderTests
   );
 
   [Fact]
+  public async Task PersistenceFailureIsNotReportedAsAnExistingSend()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var shown = await f.CurrentAsync(First, fill: true);
+    await f.Db.Drivers.Where(x => x.Id == f.Driver).ExecuteDeleteAsync();
+    await Assert.ThrowsAsync<DbUpdateException>(
+      () => f.SendAsync(Request(shown), shown)
+    );
+    Assert.Empty(f.Transport.Sent);
+  }
+
+  [Fact]
+  public async Task OnlyTheAttemptConstraintIsAnExpectedAdmissionConflict()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var shown = await f.CurrentAsync(First, fill: true);
+    Assert.Equal(200, (await f.SendAsync(Request(shown), shown)).Status);
+    var saved = await f.Db.DriverMessages.AsNoTracking().SingleAsync();
+    f.Db.ChangeTracker.Clear();
+    saved.Id = Guid.NewGuid();
+    saved.ProviderMessageId = null;
+    f.Db.DriverMessages.Add(saved);
+    var duplicate = await Assert.ThrowsAsync<DbUpdateException>(
+      () => f.Db.SaveChangesAsync()
+    );
+    Assert.True(f.Db.IsDuplicateMessageAttempt(duplicate));
+    f.Db.ChangeTracker.Clear();
+    saved.Attempt++;
+    saved.DriverId = Guid.NewGuid();
+    f.Db.DriverMessages.Add(saved);
+    var missingDriver = await Assert.ThrowsAsync<DbUpdateException>(
+      () => f.Db.SaveChangesAsync()
+    );
+    Assert.False(f.Db.IsDuplicateMessageAttempt(missingDriver));
+    Assert.Single(f.Transport.Sent);
+  }
+
+  [Fact]
   public async Task APlanThatMovedBeforeTheRequestSendsNothing()
   {
     await using var f = await Fixture.CreateAsync();
@@ -207,7 +245,7 @@ public sealed class FuelIssueSenderTests
     var outcome = await f.SendAsync(Request(shown), shown);
 
     Assert.Equal(409, outcome.Status);
-    Assert.Contains("24 hours", outcome.Error);
+    Assert.Contains("cannot deliver", outcome.Error);
     Assert.Empty(f.Transport.Sent);
   }
 
@@ -230,7 +268,7 @@ public sealed class FuelIssueSenderTests
     );
 
     Assert.Equal(409, outcome.Status);
-    Assert.Contains("window closed", outcome.Error);
+    Assert.Contains("can no longer deliver", outcome.Error);
     Assert.Empty(f.Transport.Sent);
     Assert.Equal(
       DriverMessageStatuses.Withdrawn,
@@ -259,7 +297,7 @@ public sealed class FuelIssueSenderTests
     );
 
     Assert.Equal(409, outcome.Status);
-    Assert.Contains("number changed", outcome.Error);
+    Assert.Contains("connection changed", outcome.Error);
     Assert.Empty(f.Transport.Sent);
     var attempt = await f.Db.DriverMessages.SingleAsync();
     Assert.Equal(

@@ -13,10 +13,10 @@ public interface IDriverTextDelivery
 {
   string Channel { get; }
 
-  // Whether the serving company can send now, and until when the driver's
-  // reply window under its current business number stays open (null when
-  // it is closed, or when no phone is given).
-  Task<DriverTextReadiness> ReadinessAsync(string? phone, CancellationToken ct);
+  Task<DriverTextRecipient> RecipientAsync(
+    Guid? driverId,
+    CancellationToken ct
+  );
 
   // Sends request.Text to request.Recipient as the next attempt under
   // request.IdempotencyKey, unless an earlier attempt settles it.
@@ -30,10 +30,29 @@ public interface IDriverTextDelivery
   );
 }
 
+public enum DriverTextAvailability
+{
+  Ready,
+  NotConfigured,
+  NoDriver,
+  InvalidRecipient,
+  NoRecipient,
+  Unavailable,
+}
+
+public sealed record DriverTextRecipient(
+  Guid? DriverId,
+  string? Name,
+  string? Address,
+  DriverTextAvailability Availability,
+  DateTime? AvailableUntil
+);
+
 public sealed record DriverTextReadiness(bool Configured, DateTime? WindowEnds);
 
 public enum DriverTextResult
 {
+  TooLong,
   NotConfigured,
 
   // An earlier attempt under the key was taken by the provider.

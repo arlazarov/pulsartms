@@ -5,13 +5,12 @@ using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
 using Domain.Models.Routing;
-using Domain.Rules.Fleet;
 using Domain.Rules.Messaging;
 using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 
-// Whether this shift's fuel can go to the driver over WhatsApp, and what
+// Whether this shift's fuel can go to the driver over the chosen channel, and what
 // became of the attempts for a plan version. Read only when Send plan is
 // opened or used - never per card.
 public sealed class FuelIssueChannel(
@@ -31,48 +30,25 @@ public sealed class FuelIssueChannel(
   )
   {
     var work = await inputs.ReadAsync(truckId, ct, includeHos: false);
-    var driver = work?.DriverId is { } id
-      ? await db
-        .Drivers.AsNoTracking()
-        .Where(x => x.Id == id)
-        .Select(x => new
-        {
-          x.Id,
-          x.Name,
-          x.WhatsAppPhone,
-          x.Phone,
-        })
-        .SingleOrDefaultAsync(ct)
-      : null;
-    // Messaging's rule: the driver's WhatsApp number, else their phone.
-    var recipient = DriverWhatsApp.Resolve(
-      driver?.WhatsAppPhone,
-      driver?.Phone
+    var recipient = await delivery.RecipientAsync(work?.DriverId, ct);
+    var state = recipient.Availability switch
+    {
+      DriverTextAvailability.Ready => FuelIssueChannelStates.Ready,
+      DriverTextAvailability.NotConfigured =>
+        FuelIssueChannelStates.NotConfigured,
+      DriverTextAvailability.NoDriver => FuelIssueChannelStates.NoDriver,
+      DriverTextAvailability.InvalidRecipient =>
+        FuelIssueChannelStates.InvalidNumber,
+      DriverTextAvailability.NoRecipient => FuelIssueChannelStates.NoNumber,
+      _ => FuelIssueChannelStates.OutsideWindow,
+    };
+    return new(
+      recipient.DriverId,
+      recipient.Name,
+      recipient.Address,
+      state,
+      recipient.AvailableUntil
     );
-    var phone = recipient.Number;
-    // The reply window is Messaging's: the same one a conversation reply
-    // is held to, under the company's current business number.
-    var readiness = await delivery.ReadinessAsync(phone, ct);
-    var configured = readiness.Configured;
-    if (driver is null)
-      return new(
-        null,
-        null,
-        null,
-        configured
-          ? FuelIssueChannelStates.NoDriver
-          : FuelIssueChannelStates.NotConfigured,
-        null
-      );
-    var windowEnds = readiness.WindowEnds;
-    var state =
-      !configured ? FuelIssueChannelStates.NotConfigured
-      : recipient.Source == DriverWhatsAppSources.InvalidWhatsApp
-        ? FuelIssueChannelStates.InvalidNumber
-      : phone is null ? FuelIssueChannelStates.NoNumber
-      : windowEnds is null ? FuelIssueChannelStates.OutsideWindow
-      : FuelIssueChannelStates.Ready;
-    return new(driver.Id, driver.Name, phone, state, windowEnds);
   }
 
   public async Task<FuelIssueMessageState?> LatestAsync(

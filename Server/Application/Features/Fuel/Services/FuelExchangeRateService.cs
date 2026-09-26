@@ -61,7 +61,7 @@ public sealed class FuelExchangeRateService(
       )
         return false;
       await store.SaveAsync(owner, rate, ct);
-      reads.Invalidate(CacheGroup);
+      reads.InvalidateGlobally(CacheGroup);
       return true;
     }
     finally

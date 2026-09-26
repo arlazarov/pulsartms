@@ -7,10 +7,10 @@ using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Services.FuelPlanning;
 
-// Sends this shift's fuel over WhatsApp: what to say and to whom is decided
+// Sends this shift's fuel through Messaging: the plan and driver are decided
 // here, and Messaging (IDriverTextDelivery) records and makes the attempt.
 // It is an external operation, not a database change: the database and
-// WhatsApp cannot be committed together, and an answer that never came
+// the provider cannot be committed together, and an answer that never came
 // cannot be turned into exactly once. So:
 //
 // - What goes is fixed first: the words, the recipient and the visits of
@@ -47,7 +47,7 @@ public sealed class FuelIssueSender(
       return new(404, "There is no fuel plan to hand over for this load.");
     if (Refusal(current, plan) is { } refused)
       return refused;
-    var recipient = current.Preview.Recipient!.WhatsAppPhone!;
+    var recipient = current.Preview.Recipient!.Address!;
     var byKey = current.Visits.ToDictionary(x => FuelVisitIdentity.Key(x.Stop));
     var visits = plan.VisitKeys.Distinct().Select(key => byKey[key]).ToList();
     if (
@@ -63,8 +63,6 @@ public sealed class FuelIssueSender(
           + "Nothing was sent again."
       );
     var text = FuelIssueMessage.Compose(visits.Select(x => x.Text).ToList());
-    if (text.Length > 4096)
-      return new(400, "The message is too long for WhatsApp.");
     var key = FuelIssueChannel.Key(
       current.Saved,
       visits.Select(x => x.Stop),
@@ -101,25 +99,27 @@ public sealed class FuelIssueSender(
         await records.RecordAsync(
           saved,
           visits,
-          FuelSendChannels.WhatsApp,
+          outcome.Attempt!.Channel,
           actor,
           CancellationToken.None,
           outcome.Attempt!.Id
         );
         return Outcome.Done;
+      case DriverTextResult.TooLong:
+        return new(400, "The message exceeds the delivery size limit.");
       case DriverTextResult.InProgress:
         return new(409, "This plan is being sent now.");
       case DriverTextResult.Uncertain:
         return new(
           409,
-          "WhatsApp did not answer the last attempt, so it may have been "
+          "The delivery service did not answer, so the last attempt may have been "
             + "delivered. Check with the driver, then send again only if "
             + "it did not arrive."
         );
       case DriverTextResult.NotConfigured:
         return new(
           409,
-          "WhatsApp is not set up. An administrator adds it in Settings."
+          "Driver messaging is not set up. An administrator adds it in Settings."
         );
       case DriverTextResult.Withdrawn:
         return new(
@@ -130,14 +130,13 @@ public sealed class FuelIssueSender(
       case DriverTextResult.WindowClosed:
         return new(
           409,
-          "The driver's 24-hour WhatsApp window closed while this was being "
-            + "sent, so nothing was sent. Ask the driver to send any "
-            + "message, or copy the plan and send it by hand."
+          "The channel can no longer deliver to this driver. Nothing was "
+            + "sent. Refresh the recipient or pass the plan on by hand."
         );
       case DriverTextResult.NumberChanged:
         return new(
           409,
-          "The company's WhatsApp number changed while this was being "
+          "The company's messaging connection changed while this was being "
             + "sent, so nothing was sent. Open the plan again."
         );
       default:
@@ -146,7 +145,7 @@ public sealed class FuelIssueSender(
   }
 
   // Whether the plan the dispatcher saw is still the one to send, to a
-  // recipient WhatsApp will deliver a free-form message to now.
+  // recipient the delivery owner currently marks ready.
   private static Outcome? Refusal(
     FuelIssuePreviews.Current current,
     FuelIssueSentRequest plan
@@ -166,7 +165,7 @@ public sealed class FuelIssueSender(
       FuelIssueChannelStates.Ready => null,
       FuelIssueChannelStates.NotConfigured => new(
         409,
-        "WhatsApp is not set up. An administrator adds it in Settings."
+        "Driver messaging is not set up. An administrator adds it in Settings."
       ),
       FuelIssueChannelStates.NoDriver => new(
         409,
@@ -174,19 +173,17 @@ public sealed class FuelIssueSender(
       ),
       FuelIssueChannelStates.NoNumber => new(
         409,
-        "Add the driver's WhatsApp number or phone first."
+        "Add a contact for the driver on the selected channel first."
       ),
       FuelIssueChannelStates.InvalidNumber => new(
         409,
-        "The driver's WhatsApp number is not a valid number. Correct it in "
+        "The selected delivery address is invalid. Correct it in "
           + "the driver's contacts."
       ),
       _ => new(
         409,
-        "The driver has not written to the WhatsApp number in the last 24 "
-          + "hours, so WhatsApp would not deliver this message. Ask the "
-          + "driver to send any message, or copy the plan and send it by "
-          + "hand."
+        "The selected channel cannot deliver this message now. Refresh "
+          + "the recipient or pass the plan on by hand."
       ),
     };
   }

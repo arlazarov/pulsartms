@@ -1,0 +1,82 @@
+{
+  "baseline": "a65ab9ad5b69d33b1a3592ef35054fb7fecd635a",
+  "scope": "Local architecture corrections A1-A6; wider audit remains open",
+  "parallelRootObserved": "ccb0838f",
+  "checks": {
+    "command": "bash test.sh all",
+    "exitCode": 0,
+    "server": {
+      "passed": 3769,
+      "failed": 0,
+      "skipped": 0,
+      "durationSeconds": 179
+    },
+    "client": {
+      "passed": 1237,
+      "failed": 0,
+      "skipped": 0,
+      "durationSeconds": 6
+    },
+    "javascript": {
+      "passed": 657,
+      "failed": 0,
+      "durationMs": 5316.250542
+    },
+    "postgres": "Recorded dedicated fixture, isolated schemas; no SQL containers",
+    "format": "Pinned CSharpier check and git diff --check passed"
+  },
+  "logSha256": "9b79416b6827c4d57908d0f7e26116c0c6fba5d24f713aa134099106e28a2d72",
+  "files": {
+    "Server.Tests/Architecture/DeliveryOwnershipTests.cs": "ecf5fc4a4791543e5183685c2af37a534a3b82934c765e340b1f731394e82576",
+    "Server.Tests/Caching/CacheInvalidationRelayTests.cs": "f4ea5aa0393f5e1bb890249bbdc1409f947ed941f8d3229e11d342ef089bac9b",
+    "Server.Tests/Fleet/CameraIsolationTests.cs": "a5ef6ac422fd76dc3ae6b99fa0642fd46f45d11617cfeca43ea649490ee7b919",
+    "Server.Tests/Fleet/TruckCameraTests.cs": "8707829a01483277233969e0a960aa2afdfbeffa9efeb404ffcdb165af926614",
+    "Server.Tests/Fuel/FuelDeliveryChannelTests.cs": "f1f509370734d6f11464a487131b6b7422ccc6a9e4bf295afa19bdf2752a381e",
+    "Server.Tests/Fuel/FuelIssueSenderTests.cs": "8d4eba98e2e191491817c0f23ac14a02acebc85a82ec336cece7aa07a66a3758",
+    "Server.Tests/Identity/IntegrationChannelAdmissionTests.cs": "2499741e6531984eb04a01d6a7cf361667d94991d145297857522a3966156079",
+    "Server.Tests/Messaging/DriverWhatsAppTests.cs": "022e76199721d1f20966aac8a2793cabba2d494010512dabfbb755d39aead2d5",
+    "Server.Tests/Persistence/IntegrationAdmissionPostgresTests.cs": "cab6a940d3428d14739cf6c65505eab786d61eda5a95ed51622878a0165fd1a9",
+    "Server.Tests/Routing/RunningTruckDemandTests.cs": "6ca2cb63fa0a1a4ad6baff6872155b45f97d66adc09943bba72d75fc3382e7c9",
+    "Server.Tests/Support/PostgresFixture.cs": "9d461e3121f73614e8893cf98a7bf86755504a32851f2ad24a19dddb692c3989",
+    "Server.Tests/Synchronization/ReadCacheGenerationTests.cs": "8beb8228348f79fa497fd3803b6b1beb3d3dc9a566f2bd655b8f6cf3934b6928",
+    "Server/Application/Caching/ReadCache.Batches.cs": "f4e3495fd3f894799846311af6db87d1196be4068af4e92edca674f1ea79a8b7",
+    "Server/Application/Caching/ReadCache.cs": "24fd5e9c3af33f38ba6fd979f76b4e5042046c802576094ec3db80363227a568",
+    "Server/Application/Features/Fleet/Commands/RequestTruckCamera/RequestTruckCameraCommand.cs": "57009450825414fa8fbd3030d6ddc76cc20af549968404aeb4be7be71f1049a6",
+    "Server/Application/Features/Fleet/Interfaces/ITruckCameraProvider.cs": "b418b9503814cc4f9bc2cf4dfe326164506d0d1f3aff1fe9267e15fbce3ed4cd",
+    "Server/Application/Features/Fleet/Models/CameraRetrieval.cs": "14fe2e7fef534c726df45bd2b58d513c5e6dc5ecb5ea1dc08a3537ca03d9a826",
+    "Server/Application/Features/Fleet/Queries/GetTruckCamera/GetTruckCameraQuery.cs": "e9bf0a8d7aece8ee4f7bc0ccf7eae5abf4faf813d20a27d87d9194d849148e8c",
+    "Server/Application/Features/Fuel/Commands/SyncIftaTaxRates/SyncIftaTaxRates.cs": "0fb0afb928333c7e7e25ee075228bce3fec3267ba16b28c7941faae4c42ccbe1",
+    "Server/Application/Features/Fuel/Services/FuelExchangeRateService.cs": "57be1fc6030eb1094bfc61474fb7152c5328d62c6fda27e48973c24be62ee842",
+    "Server/Application/Features/Integrations/Models/IntegrationChannelConflictException.cs": "bbe461ea48a81287b50ad6263849e834f2253167f1089fa212cf782eba89f42c",
+    "Server/Application/Features/Integrations/Services/IntegrationSettingsService.cs": "257dbe15aef91501a50f6c009baab9a9e199f2ede1b0f4f9fa7f883c0303b90a",
+    "Server/Application/Features/Messaging/Commands/Broadcasts.cs": "cd74d9a4f1bc64c3707af636b546b69f8392868b8b79a8bdc57146378b17ba39",
+    "Server/Application/Features/Messaging/Commands/OpenDriverConversation.cs": "61dd9d4c51b9889e0d7a9a0accf37a78bbe6657f2048cb0885a60b466368a0f5",
+    "Server/Application/Features/Messaging/Services/DriverRecipients.cs": "f1ee0d251052b01da706d676db40d943cfd413e00da7c4ccd303d7b9cfd1f630",
+    "Server/Application/Features/Messaging/Services/DriverTextDelivery.cs": "78a78fdb8d3f511b39c1dc5b03c96a3f6b1e99905fe4df7b0693cb640e86ea54",
+    "Server/Application/Features/Messaging/Services/InboxRecorder.cs": "d0b66edc7f01743ff2c3a1963921ad05b838320f7150afd99d49851d3360c28f",
+    "Server/Application/Features/Routing/Services/FuelPlanning/FuelIssueChannel.cs": "1b65c6c2c4b5489a58b6c2aa0f63cadaae9b06f3ffaad2b3e54ce5fc1113faa5",
+    "Server/Application/Features/Routing/Services/FuelPlanning/FuelIssueSender.cs": "efa567b79eeb9742e9812cf91d57f4acbdc3611a9aa76e91c6271baab7ba5da6",
+    "Server/Application/Features/Routing/Services/Routes/TruckPlanningInputsReader.cs": "081ed50bc843634ab7fe8ad5fbfb63065f5989dbfde9b36926962342db806ab5",
+    "Server/Application/Interfaces/IAppDbContext.cs": "e0c660cefce350e4ac770998f614ba5dc557f02540946367d653dcddd9873e35",
+    "Server/Application/Interfaces/IDriverTextDelivery.cs": "a607ecfbe2adec0122623f9bfd9e1b59132a6c0643d556ac7e84fca09f721dac",
+    "Server/Domain/Models/Routing/FuelIssue.cs": "0776bb7094b52006a43006b86127ea6e339ea25805a0ebaedfe85db79f673872",
+    "Server/Domain/Rules/Messaging/DriverWhatsApp.cs": "81d807f03d3e766d9b3c273cbde8913b30440301f200843a08421bcebac508c0",
+    "Server/Infrastructure/Integrations/Samsara/SamsaraApiService.cs": "b60c4d5f86459e298b8ee22426eb22944a37bd9876715071efc788aec154f7e3",
+    "Server/Infrastructure/Integrations/Samsara/SamsaraTruckCameraProvider.cs": "8bf3ea15b59bbc66d066434e8482f4e45c5003fc21fa84f310cb4236e40184b9",
+    "Server/Infrastructure/Persistence/AppDbContext.cs": "1f0824299c3723984e1effda7867762e09c8ee49f72944c9b8572b8d83fec3ae",
+    "Server/Infrastructure/Persistence/IntegrationCredentialStore.cs": "201f80020240d127dab42f0af4534fd591bb19242fd867d9602c5fa451646500"
+  },
+  "deleted": [
+    "Server.Tests/Fleet/DriverWhatsAppTests.cs",
+    "Server/Application/Features/Fleet/Services/DriverRecipients.cs",
+    "Server/Domain/Models/Fleet/CameraRetrieval.cs",
+    "Server/Domain/Rules/Fleet/DriverWhatsApp.cs"
+  ],
+  "notVerified": [
+    "Later Claude changes",
+    "Independent visual acceptance",
+    "Production incidents or performance",
+    "Legacy duplicate ownership inventory"
+  ],
+  "deployed": false
+}

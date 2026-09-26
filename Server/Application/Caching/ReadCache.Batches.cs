@@ -11,7 +11,7 @@ public sealed partial class ReadCache
     new();
 
   public void InvalidateItem(string family, Guid id) =>
-    Invalidate(ItemGroup(family, id));
+    InvalidateIdentity(ItemGroup(family, id));
 
   private string ItemGroup(string family, Guid id) =>
     $"{family}:{companies?.Id:N}:{id:N}";
