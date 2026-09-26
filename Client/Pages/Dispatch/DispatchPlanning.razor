@@ -9,6 +9,10 @@
                 <span class="dispatch-planning__left"
                       aria-label="@(Units.FormatDistance(left)
                           + " left to the next stop")">
+                    @if (ShowPlanningLoad && DisplayResult?.LoadNumber is { } number)
+                    {
+                        <span>Load <LoadNumber Value="number" /> · </span>
+                    }
                     <span aria-hidden="true">Left&#160;<strong
                         >@Units.DistanceValue(left)</strong><span
                         >&#160;@Units.DistanceUnit</span>@if (Units.BothDistances)

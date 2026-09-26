@@ -424,7 +424,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     var truck = _data?.Items.FirstOrDefault(item =>
       item.Key == owner.Key
       && item.TruckId == truckId
-      && item.Dispatches.FirstOrDefault()?.Id == currentId
+      && PlanningLoad(item)?.Id == currentId
     );
     if (truck is null)
       return;
@@ -712,8 +712,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
           if (truck.TruckId is not { } truckId)
             continue;
           var summary = response.Response.FirstOrDefault(result =>
-            result.TruckId == truckId
-            && result.DispatchId == truck.Dispatches.FirstOrDefault()?.Id
+            MatchingPlanningLoad(truck, result) is not null
           );
           if (summary is null)
           {
@@ -839,7 +838,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
       : DispatchCardPlanningSummary.From(
         _planningSummaries.GetValueOrDefault(truckId),
         truckId,
-        truck.Dispatches.FirstOrDefault()?.Id,
+        PlanningLoad(truck)?.Id,
         load.Id
       );
 }

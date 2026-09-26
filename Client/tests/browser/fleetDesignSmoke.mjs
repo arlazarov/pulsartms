@@ -582,6 +582,17 @@ const stationRows = Object.values(stations).map(station => ({
   address: station.address,
   latitude: station.point.latitude,
   longitude: station.point.longitude,
+  cashPreviousComparison: {
+    date: new Date(now - 86400000).toISOString().slice(0, 10),
+    nextDate: today,
+    discountChange: -0.029,
+  },
+  cashComparison: {
+    date: today,
+    nextDate: new Date(now + 86400000).toISOString().slice(0, 10),
+    next: { discountPrice: station.price - 0.06 },
+    discountChange: -0.06,
+  },
   cashDiscount: {
     unit: 'US gal',
     currency: 'USD',
@@ -714,6 +725,7 @@ function answer(path, url, theme) {
 const cases = [
   ['1440-light', 1440, 900, 'light', 1],
   ['1024-light', 1024, 800, 'light', 1],
+  ['1200-light', 1200, 900, 'light', 1],
   ['390-light', 390, 844, 'light', 1],
   ['1440-dark', 1440, 900, 'dark', 1],
   ['390-text200', 390, 844, 'light', 2],
@@ -759,6 +771,11 @@ async function measure(page, selector) {
       viewport: window.innerWidth,
       outside: box.left < -0.5 || box.right > window.innerWidth + 0.5,
       clipped,
+      telemetryRows: new Set(
+        [...card.querySelectorAll('.truck-readings > *')].map(node =>
+          Math.round(node.getBoundingClientRect().top),
+        ),
+      ).size,
       overlappingReadings: [
         ...card.querySelectorAll('.truck-readings > *'),
       ].some((node, index, nodes) => {
@@ -1182,6 +1199,29 @@ try {
       await page
         .locator('.fleet-map-inspector[data-inspector-mode="fuel"]')
         .waitFor({ timeout: 5000 });
+      const days = page.locator('.fleet-station-popup__day');
+      assert.equal(await days.count(), 3, 'all price comparison days render');
+      const dayBoxes = await days.evaluateAll(nodes =>
+        nodes.map(node => {
+          const box = node.getBoundingClientRect();
+          return {
+            y: box.y,
+            right: box.right,
+            left: box.left,
+            width: box.width,
+            overflow: node.scrollWidth > node.clientWidth + 1,
+          };
+        }),
+      );
+      assert.ok(
+        dayBoxes.every(box => !box.overflow),
+        'price days never clip',
+      );
+      if (width >= 1024 && text === 1)
+        assert.ok(
+          dayBoxes.every(box => Math.abs(box.y - dayBoxes[0].y) < 1),
+          'wide price days stay aligned',
+        );
       await shot('planned-station');
       // Back returns to the plan it was opened from.
       await page.getByRole('button', { name: /Back to plan/ }).click();

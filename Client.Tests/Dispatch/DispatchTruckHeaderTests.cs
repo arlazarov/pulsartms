@@ -837,6 +837,115 @@ public sealed class DispatchTruckHeaderTests
     });
   }
 
+  [Theory]
+  [InlineData("matching", true)]
+  [InlineData("other-truck", false)]
+  [InlineData("unknown-load", false)]
+  [InlineData("other-leg", false)]
+  [InlineData("old-assignment", false)]
+  [InlineData("completed", false)]
+  public async Task TruckSummaryUsesItsMatchingVisibleLoadInsteadOfBoardOrder(
+    string scenario,
+    bool accepted
+  )
+  {
+    var first = Load();
+    first.LoadNumber = 1403;
+    var next = Load();
+    next.TruckId = first.TruckId;
+    next.LoadNumber = 1410;
+    next.ExecutionLegId = Guid.NewGuid();
+    next.AssignmentRevision = 7;
+    if (scenario == "completed")
+      next.Completed = true;
+    var summary = Result(next) with
+    {
+      ExecutionLegId = next.ExecutionLegId,
+      AssignmentRevision = next.AssignmentRevision,
+    };
+    summary = scenario switch
+    {
+      "other-truck" => summary with { TruckId = Guid.NewGuid() },
+      "unknown-load" => summary with { DispatchId = Guid.NewGuid() },
+      "other-leg" => summary with { ExecutionLegId = Guid.NewGuid() },
+      "old-assignment" => summary with { AssignmentRevision = 6 },
+      _ => summary,
+    };
+    var response = new TaskCompletionSource<HttpResponseMessage>(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    var requested = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    var reads = 0;
+    using var context = new ClientComponentContext(
+      (request, _) =>
+      {
+        if (request.RequestUri!.AbsolutePath == "/api/dispatch/board/planning")
+        {
+          Interlocked.Increment(ref reads);
+          requested.TrySetResult();
+          return response.Task;
+        }
+        return Task.FromResult(
+          Json(
+            request.RequestUri.AbsolutePath == "/api/dispatch/board"
+              ? (object)
+                new
+                {
+                  items = new[]
+                  {
+                    new TruckDispatchBoardResponse
+                    {
+                      Key = first.TruckId.ToString()!,
+                      TruckId = first.TruckId,
+                      TruckNumber = "11005",
+                      Dispatches = [first, next],
+                    },
+                  },
+                  page = 1,
+                  totalCount = 1,
+                  totalPages = 1,
+                }
+              : Array.Empty<object>()
+          )
+        );
+      }
+    );
+    context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
+    context.JSInterop.Mode = JSRuntimeMode.Loose;
+    var component = context.Render<DispatchList>();
+    await requested.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    Assert.Null(component.FindComponent<DispatchPlanning>().Instance.Snapshot);
+    response.SetResult(Json(new[] { summary }));
+    component.WaitForAssertion(() =>
+    {
+      var header = component.FindComponent<DispatchPlanning>();
+      Assert.False(header.Instance.Refreshing);
+      Assert.Equal(accepted ? next.Id : first.Id, header.Instance.Load?.Id);
+      Assert.Equal(accepted, header.Instance.Snapshot is not null);
+      Assert.Equal(accepted, header.Instance.ShowPlanningLoad);
+      var fuel = header.Find(".fuel-reading").TextContent;
+      Assert.Equal(accepted, fuel.Contains("50%"));
+      if (accepted)
+      {
+        Assert.Contains(
+          "1410",
+          header.Find(".dispatch-planning__left").TextContent
+        );
+        var cards = component.FindComponents<DispatchLoadCard>();
+        var firstCard = cards.Single(card => card.Instance.Load.Id == first.Id);
+        var nextCard = cards.Single(card => card.Instance.Load.Id == next.Id);
+        Assert.Null(firstCard.Instance.RemainingMiles);
+        Assert.Equal(75, nextCard.Instance.RemainingMiles);
+        Assert.False(firstCard.Instance.Load.Completed);
+        Assert.NotNull(nextCard.Instance.Load.Eta);
+      }
+      Assert.False(first.Completed);
+    });
+    Assert.Equal(1, reads);
+  }
+
   private static DispatchResponse Load() =>
     new()
     {

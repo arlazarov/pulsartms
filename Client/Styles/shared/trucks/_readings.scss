@@ -12,7 +12,10 @@
   width: 100%;
   grid-template-columns: repeat(
     auto-fit,
-    minmax(min(100%, #{ui.size(telemetry-reading)}), 1fr)
+    minmax(
+      min(100%, var(--truck-readings-min-width, #{ui.size(telemetry-reading)})),
+      1fr
+    )
   );
   align-items: baseline;
   gap: ui.pg(xs) ui.pg(md);

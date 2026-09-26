@@ -49,6 +49,9 @@ public partial class DispatchPlanning : IDisposable, IAsyncDisposable
   [Parameter]
   public bool BoardHeader { get; set; }
 
+  [Parameter]
+  public bool ShowPlanningLoad { get; set; }
+
   // The board's truck row: its identity (unit, crew and map link), drawn
   // in the head beside what is left to the next stop.
   [Parameter]

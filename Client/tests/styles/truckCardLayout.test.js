@@ -406,7 +406,7 @@ test('the vehicle is one line: every reading the same shape', () => {
   );
   assert.match(
     card,
-    /\.truck-readings\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, var\(--size-telemetry-reading\)\), 1fr\)\);/,
+    /\.truck-readings\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, var\(--truck-readings-min-width, var\(--size-telemetry-reading\)\)\), 1fr\)\);/,
   );
   assert.match(
     card,

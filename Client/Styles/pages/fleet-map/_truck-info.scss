@@ -9,6 +9,7 @@
 // It is named through the card it stands on so that the card's own reset of
 // its sections does not outrank it.
 .fleet-map-inspector[data-inspector-mode='truck'] .fleet-map-truck-info {
+  --truck-readings-min-width: #{ui.size(map-telemetry-reading)};
   font-size: ui.fs(body);
   display: flex;
   flex-wrap: wrap;

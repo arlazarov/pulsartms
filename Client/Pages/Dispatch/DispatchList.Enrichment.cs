@@ -210,15 +210,37 @@ public partial class DispatchList
   private static (Guid, Guid?, long) LoadIdentity(DispatchResponse load) =>
     (load.Id, load.ExecutionLegId, load.AssignmentRevision);
 
-  // A truck without a load still has a summary (its readings and clocks),
-  // keyed by the truck alone.
-  private static object PlanningIdentity(TruckDispatchBoardResponse truck) =>
-    truck.Dispatches.Count == 0
+  private static DispatchResponse? MatchingPlanningLoad(
+    TruckDispatchBoardResponse truck,
+    AutomaticPlanningResult? result
+  ) =>
+    result is null || result.TruckId != truck.TruckId
+      ? null
+      : truck.Dispatches.FirstOrDefault(load =>
+        load.Id == result.DispatchId
+        && !load.Completed
+        && (load.TruckId is null || load.TruckId == truck.TruckId)
+        && load.ExecutionLegId == result.ExecutionLegId
+        && (
+          load.ExecutionLegId.HasValue
+            ? load.AssignmentRevision
+            : load.PlanningAssignmentRevision
+        ) == result.AssignmentRevision
+      );
+
+  private DispatchResponse? PlanningLoad(TruckDispatchBoardResponse truck) =>
+    MatchingPlanningLoad(
+      truck,
+      truck.TruckId is { } id ? _planningSummaries.GetValueOrDefault(id) : null
+    ) ?? truck.Dispatches.FirstOrDefault();
+
+  private object PlanningIdentity(TruckDispatchBoardResponse truck) =>
+    PlanningLoad(truck) is not { } load
       ? truck.Key
       : (
         truck.Key,
-        LoadIdentity(truck.Dispatches[0]),
-        DispatchStopPresentation.CompletionRevision(truck.Dispatches[0].Stops)
+        LoadIdentity(load),
+        DispatchStopPresentation.CompletionRevision(load.Stops)
       );
 
   private static void CopyFinancials(

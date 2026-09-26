@@ -63,6 +63,7 @@
         {
         @foreach (var truck in _data.Items)
         {
+            var planningLoad = PlanningLoad(truck);
             <article class="dispatch-truck" @key="truck.Key" aria-label="@($"Truck {truck.TruckNumber}")">
                 @if (!_showCompleted && truck.TruckId.HasValue)
                 {
@@ -70,7 +71,9 @@
                        reaches its ForecastChanged. *@
                     <DispatchPlanning @key="PlanningIdentity(truck)"
                         TruckId="truck.TruckId"
-                        Load="truck.Dispatches.FirstOrDefault()"
+                        Load="planningLoad"
+                        ShowPlanningLoad="@(planningLoad?.Id
+                            != truck.Dispatches.FirstOrDefault()?.Id)"
                         Compact="true" BoardHeader="true" Hos="truck.Hos"
                         CurrentCycle="truck.CurrentCycle"
                         Refreshing="RefreshingEstimates"
@@ -81,7 +84,7 @@
                                 truck.TruckId.Value)
                             : null)"
                         ForecastChanged="forecast => OnForecastChanged(
-                            truck, truck.Dispatches[0].Id, forecast)">
+                            truck, planningLoad!.Id, forecast)">
                         <Identity>@TruckIdentity(truck)</Identity>
                     </DispatchPlanning>
                 }

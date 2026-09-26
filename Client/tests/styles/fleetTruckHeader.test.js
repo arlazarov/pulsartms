@@ -54,7 +54,7 @@ test('compact truck inspection retains bounded telemetry and HOS', () => {
   assert.match(telemetry, /display: grid;/);
   assert.match(
     telemetry,
-    /grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, var\(--size-telemetry-reading\)\), 1fr\)\);/,
+    /grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, var\(--truck-readings-min-width, var\(--size-telemetry-reading\)\)\), 1fr\)\);/,
   );
   assert.match(telemetry, /font-variant-numeric: tabular-nums;/);
   // The head: the truck and what is left beside it, then its rows - the
