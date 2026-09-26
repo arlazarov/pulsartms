@@ -64,6 +64,8 @@
   // when the load lands.
   .fleet-map-mobile-summary__remaining {
     display: flex;
+    // A later forecast badge must not recenter the load beside it.
+    align-self: start;
     flex-wrap: wrap;
     align-items: baseline;
     gap: ui.pg(xs);

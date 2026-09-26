@@ -70,3 +70,15 @@ Final link-color verification: browser-fleet-design-w9PIMw passed all five
 cases with no layout failures, browser errors or unexpected requests.
 Styles/architecture, TypeScript and formatting checks passed again after the
 production style change. No database checks were required by this style fix.
+
+Stable follow-up candidate 930575bf: full bash test.sh independently passed
+Client 1244 (7 seconds), Server 3773 (3m 8s), JavaScript 663 (4.95 seconds),
+exit 0. Retained original log: diagnostic-lvSyI0/full-check.log. No real
+PostgreSQL execution was requested; these counts do not assert its coverage.
+
+A first-arrival forecast badge recentered the load block beside it. The load
+block now aligns itself to the start, preserving its position when the
+adjacent forecast gains content. No fixed placeholder height was added.
+After this cosmetic change, 139 styles tests and formatting passed, and
+browser-fleet-design-sUn2q3 passed all five cases. The hours probe owns the
+controlled first-arrival geometry evidence; final review remains pending.
