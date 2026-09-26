@@ -107,3 +107,13 @@ uses the loaded link's lead size and weight; its former body size caused a
 was relaxed. Follow-up iYtf8c passed these assertions and reached a separate
 outdated helper assertion. Final whole-matrix evidence remains pending.
 Styles 139 and formatting passed after both changes.
+
+
+At 1920px and 200-percent text, the available answer column still had less
+space than four clocks need. A named 54rem truck-card breakpoint stacks
+only the vehicle/clocks row before this occurs. Ordinary wide cards retain
+the paired layout. Bounded hours probes rQNGEH (1920 light) and kBj4V9
+(390 light) passed on the final CSS. Independent fleetDesign-ut3i6S passed
+all five cases, including 1024 and phone/200-percent text, with no errors,
+overflows or unexpected requests. The 1024 compact screenshot was reviewed.
+Styles 139 and formatting passed. Final full hours matrix is pending.

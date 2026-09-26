@@ -24,6 +24,8 @@ $screen-places: (
 
   // The map's cards.
   map-compact-columns: 40rem,
+  // Four text clocks need more room than the other paired facts.
+  map-truck-readings-stacked: 54rem,
   map-info-stacked: 20rem,
   map-fuel-halves: 34rem,
   map-next-stop-tight: 18rem,
