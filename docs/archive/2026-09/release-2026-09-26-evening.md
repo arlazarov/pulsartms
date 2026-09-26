@@ -184,6 +184,16 @@ basemap with the colours back).
   `fuel-editor` case. `fuelEditorSmoke.mjs` (not gated) still describes
   the retired two-column editor.
 
+- `e76b377a` -> `release-b0Tku4`, 19:01 UTC (with `1e66face`): a
+  picked truck, stop or station brought out from under the card that
+  opens for it; "Cycle short by 1h 20m"; a booking over two days on two
+  lines; the vehicle line's four readings in four equal cells; the next
+  recap off the map's stop cards. Gate: Server 3,773, Client 1,244,
+  JavaScript 659; 285 files; entry HTML, stylesheet
+  (`v=38c551e7e2374905`), settings and the fingerprinted framework files
+  match the artifact. Local render `browser-fleet-design-ezVoQC`; the
+  reveal is covered by unit tests (the design probe stubs the map).
+
 ## API, second release (16:51-16:59 UTC)
 
 The owner authorized it ("so fix it") for the review notices by kind
