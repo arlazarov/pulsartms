@@ -737,10 +737,10 @@ const browser = await chromium.launch({
 
 // What a card looks like to a person at this size: nothing wider than the
 // map, nothing clipped sideways.
-async function measure(page) {
-  return page.evaluate(() => {
-    const card = document.querySelector('.fleet-map-inspector');
-    if (!card) return null;
+async function measure(page, selector) {
+  return page.evaluate(selector => {
+    const card = document.querySelector(selector);
+    if (!card) return { missing: true, selector };
     const box = card.getBoundingClientRect();
     const clipped = [...card.querySelectorAll('*')]
       .filter(
@@ -751,14 +751,33 @@ async function measure(page) {
       )
       .map(node => node.className?.toString?.() ?? node.tagName);
     return {
+      selector,
+      missing: box.width <= 0 || box.height <= 0,
       left: Math.round(box.left),
       width: Math.round(box.width),
       height: Math.round(box.height),
       viewport: window.innerWidth,
       outside: box.left < -0.5 || box.right > window.innerWidth + 0.5,
       clipped,
+      overlappingReadings: [
+        ...card.querySelectorAll('.fleet-map-truck-info__telemetry > *'),
+      ].some((node, index, nodes) => {
+        const a = node.getBoundingClientRect();
+        const content = document.createRange();
+        content.selectNodeContents(node);
+        const text = content.getBoundingClientRect();
+        return nodes.slice(index + 1).some(other => {
+          const b = other.getBoundingClientRect();
+          return (
+            a.width > 0 &&
+            b.width > 0 &&
+            Math.min(text.right, b.right) - Math.max(text.left, b.left) > 1 &&
+            Math.min(text.bottom, b.bottom) - Math.max(text.top, b.top) > 1
+          );
+        });
+      }),
     };
-  });
+  }, selector);
 }
 
 try {
@@ -871,11 +890,14 @@ try {
     const shot = async (step, fullCard = false) => {
       await page.waitForTimeout(250);
       const file = resolve(output, `${name}-${step}.png`);
-      const card = page.locator('.fleet-map-inspector');
+      const selector = step.startsWith('fuel-editor')
+        ? '.fuel-plan-editor'
+        : '.fleet-map-inspector';
+      const card = page.locator(selector);
       if (fullCard && (await card.count()))
         await card.first().screenshot({ path: file });
       else await page.screenshot({ path: file, fullPage: false });
-      steps.push({ step, file, layout: await measure(page) });
+      steps.push({ step, file, layout: await measure(page, selector) });
     };
     const attempt = async (step, action) => {
       try {
@@ -1010,6 +1032,29 @@ try {
         )
         .waitFor({ timeout: 10000 });
       await shot('fuel-editor');
+      for (const [part, selector] of [
+        ['quantity', '.fuel-plan-editor input[type="range"]'],
+        ['save', '.fuel-plan-editor__footer .btn:last-child'],
+      ]) {
+        const control = page.locator(selector).first();
+        await control.scrollIntoViewIfNeeded();
+        const reachable = await control.evaluate(node => {
+          const box = node.getBoundingClientRect();
+          const card = node
+            .closest('.fuel-plan-editor')
+            .getBoundingClientRect();
+          return (
+            box.width > 0 &&
+            box.height > 0 &&
+            box.top >= card.top - 1 &&
+            box.bottom <= card.bottom + 1 &&
+            box.left >= card.left - 1 &&
+            box.right <= card.right + 1
+          );
+        });
+        assert.ok(reachable, `Editor ${part} must be reachable by scrolling`);
+        await shot(`fuel-editor-${part}`);
+      }
       await page
         .getByRole('button', { name: 'Cancel', exact: true })
         .click({ timeout: 3000 });
@@ -1115,3 +1160,18 @@ console.log(
     2,
   ),
 );
+
+const failures = report.cases.flatMap(c =>
+  c.steps
+    .filter(
+      s =>
+        s.failed ||
+        s.layout?.missing ||
+        s.layout?.outside ||
+        s.layout?.overlappingReadings,
+    )
+    .map(s => `${c.name}: ${s.step}`),
+);
+assert.deepEqual(report.errors, [], 'Browser errors');
+assert.deepEqual(report.unexpectedRequests, [], 'Unexpected requests');
+assert.deepEqual(failures, [], 'Fleet design layout failures');

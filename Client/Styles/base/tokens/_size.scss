@@ -28,6 +28,7 @@ $sizes: (
   map-inspector: 76rem,
   map-compact-inspector: 56rem,
   map-stop-inspector: 46rem,
+  map-telemetry-reading: 9rem,
   // A stop or station card is never shorter than this, so it does not
   // grow when its details arrive.
   map-stop-inspector-height: 15rem,
@@ -54,6 +55,7 @@ $sizes: (
   // the plan card's own width (map-stop-inspector).
   fuel-editor: 46rem,
   fuel-editor-card: 26rem,
+  fuel-editor-action: 6rem,
   fuel-visit: 14rem,
   fuel-visit-number: 1.375rem,
   popup-stop-badge: 1.625rem,

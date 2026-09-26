@@ -395,7 +395,7 @@ test('the vehicle is one line: every reading the same shape', () => {
   );
   assert.match(
     card,
-    /__telemetry\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/,
+    /__telemetry\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, var\(--size-map-telemetry-reading\)\), 1fr\)\);/,
   );
   assert.match(card, /__telemetry\s*\{[^}]*--fuel-reading-value-column: auto;/);
   assert.match(

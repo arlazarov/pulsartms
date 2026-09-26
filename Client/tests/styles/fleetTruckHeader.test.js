@@ -27,7 +27,7 @@ test('supporting truck values have semantic contrast without another font size o
   assert.doesNotMatch(rule, /font-size:|line-height:|padding:|margin:/);
 });
 
-test('compact truck inspection retains content-sized telemetry and HOS', () => {
+test('compact truck inspection retains bounded telemetry and HOS', () => {
   // Only the icons the words repeat are hidden on the vehicle line; a
   // reading itself is never dropped.
   assert.doesNotMatch(compact, /__reading\s*\{[^}]*display: none/);
@@ -49,13 +49,11 @@ test('compact truck inspection retains content-sized telemetry and HOS', () => {
     /__metric > \.fleet-map-route-info__secondary[^{}]*\{[^}]*display: none;/,
   );
   const telemetry = css.match(/__telemetry\s*\{([^}]*)\}/)?.[1];
-  // The vehicle's readings stand in four equal cells with tabular figures,
-  // so a wider value moves nothing from truck to truck (the owner,
-  // September 26).
+  // Equal cells retain stable alignment but wrap before values overlap.
   assert.match(telemetry, /display: grid;/);
   assert.match(
     telemetry,
-    /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/,
+    /grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, var\(--size-map-telemetry-reading\)\), 1fr\)\);/,
   );
   assert.match(telemetry, /font-variant-numeric: tabular-nums;/);
   // The head: the truck and what is left beside it, then its rows - the

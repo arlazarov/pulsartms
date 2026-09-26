@@ -52,7 +52,7 @@ test('the fuel editor takes the plan card place and width as one column over the
   assert.match(razor, /fuel-plan-editor__stop-meta/);
 });
 
-test('the list scrolls while the head, totals and foot stay put', () => {
+test('the desktop list scrolls while the head, totals and foot stay put', () => {
   assert.match(
     css,
     /\.fuel-plan-editor__stops\s*\{[^}]*overflow: auto;[^}]*overscroll-behavior: contain;/,
@@ -72,7 +72,7 @@ test('the list scrolls while the head, totals and foot stay put', () => {
   assert.match(css, /\.fuel-plan-editor__detail\s*\{[^}]*grid-column: 1\/-1;/);
 });
 
-test('a phone gives the editor the whole width and half the stage, with the actions on one row', () => {
+test('a phone gives the editor the whole width and half the stage, with reachable actions', () => {
   assert.match(css, /\.fuel-plan-editor\s*\{\s*box-sizing: border-box;/);
   const mobile = css.slice(
     css.indexOf('@media (width < 768px)', css.indexOf('.fuel-plan-editor')),
@@ -89,7 +89,10 @@ test('a phone gives the editor the whole width and half the stage, with the acti
   const footer = mobile.match(/\.fuel-plan-editor__footer\s*\{([^}]+)\}/)?.[1];
   assert.ok(footer);
   assert.match(footer, /display: grid;/);
-  assert.match(footer, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+  assert.match(
+    footer,
+    /grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, var\(--size-fuel-editor-action\)\), 1fr\)\);/,
+  );
   assert.match(
     mobile,
     /\.fuel-plan-editor__footer > div\s*\{\s*display: contents;/,

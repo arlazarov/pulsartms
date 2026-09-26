@@ -141,7 +141,8 @@ mounted, full-sized and independently interactive, and leave background
 controls accessible. Trucks are always shown; there is no manual
 truck-layer visibility toggle. While editing fuel, show only the edited
 truck; restore all trucks when editing ends, including empty drafts. On a
-phone the editor takes the card's whole width and half the stage, the map
+phone the editor takes the card's whole width and half the stage; the whole card
+scrolls so that large text cannot trap the quantity or Save controls. The map
 staying under it so a station can still be picked there; there are no
 Route / Fuel / Map tabs any more. The older paragraph below describes the
 retired two-column card.

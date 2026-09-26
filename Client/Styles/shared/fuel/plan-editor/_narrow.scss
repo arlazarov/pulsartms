@@ -2,11 +2,19 @@
 
 // A phone gives the editor the card's whole width and half the stage, the
 // map staying under it so a station can still be picked there; the three
-// actions share one row.
+// actions wrap when text needs more room.
 .fuel-plan-editor {
   @include ui.below(map-mobile) {
     width: 100%;
     max-height: 50%;
+    // Large text can fill the panel with its heading and totals alone.
+    // Scroll the whole phone card so every control remains reachable.
+    display: block;
+    overflow: auto;
+    overscroll-behavior: contain;
+    &__stops {
+      overflow: visible;
+    }
     // Half a phone's stage has no room for a heading over the list or the
     // truck's own line: the list starts at its first stop.
     &__timeline-heading,
@@ -15,7 +23,10 @@
     }
     &__footer {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, #{ui.size(fuel-editor-action)}), 1fr)
+      );
       gap: ui.pg(xs);
     }
     &__footer > div {

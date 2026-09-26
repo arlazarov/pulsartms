@@ -55,7 +55,7 @@ test('ordinary fuel inspector fits its quote without changing truck or planned f
   );
   assert.match(
     css,
-    /\.fleet-map-inspector\[data-inspector-mode=fuel\]:not\(:has\(\.fleet-station-popup--planned\)\) \.fleet-station-popup\s*\{[^}]*display: block;/,
+    /\.fleet-station-popup:not\(\.fleet-station-popup--planned\)\s*\{[^}]*display: block;/,
   );
 });
 
