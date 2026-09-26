@@ -62,7 +62,13 @@ public sealed class EtaRetainedForecastTests
     // A failed refresh leaves it as it was; the reader keeps seeing it.
     Assert.True(service.GetCached(deviated)!.RouteUpdatePending);
 
-    service.Record(deviated, "b", Forecast(now, now.AddMinutes(10)));
+    // Its replacement is calculated later; one at the same instant would
+    // not be newer, for the store or for memory.
+    service.Record(
+      deviated,
+      "b",
+      Forecast(now.AddSeconds(1), now.AddMinutes(10))
+    );
     Assert.False(service.GetCached(deviated)!.RouteUpdatePending);
     Assert.DoesNotContain(Key(before), memory.Due(now));
   }
@@ -156,6 +162,14 @@ public sealed class EtaRetainedForecastTests
     service.Record(state, "b", later);
     service.Record(state, "a", Forecast(now, now.AddMinutes(10)));
 
+    Assert.Same(later, memory.Results[Key(state)].Value);
+    // An equal time is not later: the forecast store keeps a row only for a
+    // strictly later one, so the one published first stays here too.
+    service.Record(
+      state,
+      "tie",
+      Forecast(now.AddSeconds(5), now.AddMinutes(20))
+    );
     Assert.Same(later, memory.Results[Key(state)].Value);
     var newest = Forecast(now.AddSeconds(9), now.AddMinutes(10));
     service.Record(state, "c", newest);

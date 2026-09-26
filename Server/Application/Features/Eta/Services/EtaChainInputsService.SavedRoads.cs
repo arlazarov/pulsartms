@@ -120,5 +120,7 @@ public sealed partial class EtaChainInputsService
     );
 
   private static RoutePlanningException RoadsChanged() =>
-    new("Saved roads changed. Refresh the ETA inputs.");
+    RoutePlanningException.Changed(
+      "Saved roads changed. Refresh the ETA inputs."
+    );
 }

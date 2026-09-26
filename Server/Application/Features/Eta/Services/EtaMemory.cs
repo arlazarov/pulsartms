@@ -68,9 +68,11 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   // A calculation reads its road before it waits for the dispatch's gate,
   // so one that started on an older version of the same road can finish
   // after one on a newer version. It never replaces it: the newer forecast
-  // stays and the late one is dropped. The same holds for two results of
-  // one version: publication follows each one's save, and saves finish in
-  // any order, so the one calculated later stays. Results for other roads or other
+  // stays and the late one is dropped. Two results of one version are
+  // ordered as the forecast store orders them, since each is published only
+  // after the store accepted it: the store keeps a row only for a strictly
+  // later CalculatedAt, so an earlier or equal one never replaces the one
+  // kept here either. Results for other roads or other
   // work cannot be ordered this way and replace as before; readers already
   // refuse to show them as current.
   public bool Publish(Guid key, Entry entry)
@@ -91,7 +93,7 @@ public sealed class EtaMemory(TimeProvider? clock = null)
     && (
       candidate.PlanVersion < existing.PlanVersion
       || candidate.PlanVersion == existing.PlanVersion
-        && candidate.Value.CalculatedAt < existing.Value.CalculatedAt
+        && candidate.Value.CalculatedAt <= existing.Value.CalculatedAt
     );
 
   public readonly ConcurrentDictionary<Guid, Entry> Results = new();

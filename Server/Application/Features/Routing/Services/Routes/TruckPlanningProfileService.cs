@@ -130,7 +130,7 @@ public sealed class TruckPlanningProfileService(
       RoutePlanInputs.Hash(load, current)
       != RoutePlanInputs.Hash(load, expected)
     )
-      throw new RoutePlanningException(
+      throw RoutePlanningException.Changed(
         "Truck routing settings changed. Recalculate the plan."
       );
   }

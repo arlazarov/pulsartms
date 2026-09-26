@@ -175,7 +175,7 @@ public sealed partial class DeadheadHistoryService(
           != x.InputSignature
         )
       )
-        throw new RoutePlanningException(
+        throw RoutePlanningException.Changed(
           "Historical truck work changed. Refresh the connection inputs."
         );
     }

@@ -151,6 +151,32 @@ public sealed class EtaForecastStoreTests
     Assert.Null(Assert.Single(saved.Forecast.Stops).Hours);
   }
 
+  // The store keeps a row only for a strictly later calculation, and ETA
+  // memory publishes a refresh's result only after the store accepted it,
+  // ordering two results of one road the same way (EtaMemory.Publish).
+  [Fact]
+  public async Task AnEqualCalculationTimeIsNotNewer()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var store = new EtaForecastStore(
+      fixture.Db,
+      NullLogger<EtaForecastStore>.Instance
+    );
+    Assert.True(
+      await store.SaveAsync(
+        [fixture.Snapshot(fixture.Current.Id, Now)],
+        default
+      )
+    );
+
+    Assert.False(
+      await store.SaveAsync(
+        [fixture.Snapshot(fixture.Current.Id, Now)],
+        default
+      )
+    );
+  }
+
   [Fact]
   public async Task OlderBatchCannotOverwriteNewerForecastOrLeavePartialInserts()
   {

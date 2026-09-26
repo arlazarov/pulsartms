@@ -63,7 +63,7 @@ public sealed class PlanningWorkPublication(
         ct
       );
       if (current?.InputSignature != expected.InputSignature)
-        throw new RoutePlanningException(
+        throw RoutePlanningException.Changed(
           "The truck work changed. Refresh and calculate the plan again."
         );
       await history.RequirePredecessorsAsync(historicalInputs, ct);

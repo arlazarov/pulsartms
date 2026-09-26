@@ -77,11 +77,15 @@ public sealed partial class EtaForecastService
     // first and taken back when the save failed, so the map's ETA went blank
     // whenever one refresh could not save, even for a passing reason
     // (11006, September 26). A new result is now published only after its
-    // commit. The one readers already have stays, unless the failure says
-    // its inputs changed: then it was calculated on inputs that no longer
-    // hold, and readers, who compare only the work and the road, would show
-    // it as current. It is retired only if still the one read here: a newer
-    // one another refresh published meanwhile stays.
+    // commit. The one readers already have stays unless the failure
+    // demonstrates that its inputs changed - the chain was described
+    // otherwise, or a check that compares a captured version with the
+    // current one said so - because then it was calculated on inputs that
+    // no longer hold, and readers, who compare only the work and the road,
+    // would show it as current. A failure that proves nothing about the
+    // inputs (the store, the network, planning busy) leaves it to the
+    // readers' own guards. It is retired only if still the one read here: a
+    // newer one another refresh published meanwhile stays.
     EtaService.Calculation? calculation = null;
     var shown = memory.Results.GetValueOrDefault(rootKey);
     EtaMemory.Entry? waiting = null;
@@ -182,9 +186,11 @@ public sealed partial class EtaForecastService
     {
       unsaved = failure switch
       {
+        RoutePlanningException { DependencyChanged: true } =>
+          "dependency-changed",
         RoutePlanningException { Busy: true } => "planning-busy",
         OperationCanceledException => "cancelled",
-        RoutePlanningException => "dependency-changed",
+        RoutePlanningException => "refused",
         _ => "failed",
       };
       throw;
@@ -204,7 +210,7 @@ public sealed partial class EtaForecastService
         PerformanceStages.Count("eta-memory", $"unsaved-{unsaved}", 1);
         var retire =
           shown is not null
-          && unsaved is not ("planning-busy" or "cancelled")
+          && unsaved is ("inputs-changed" or "dependency-changed")
           && memory.RemoveIfCurrent(rootKey, shown);
         logger.LogInformation(
           "ETA forecast for scope {EtaScope} was not saved and not "

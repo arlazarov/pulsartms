@@ -68,8 +68,8 @@ public sealed partial class EtaChainInputTests
     );
   }
 
-  // A refresh that fails because its inputs changed retires the forecast it
-  // found shown - but only that one. A newer one published meanwhile by
+  // A refresh that fails because a check demonstrated that its inputs
+  // changed retires the forecast it found shown - but only that one. A newer one published meanwhile by
   // another refresh stays.
   [Fact]
   public async Task AChangedInputRetiresOnlyTheForecastItFound()
@@ -92,7 +92,7 @@ public sealed partial class EtaChainInputTests
     f.Publication.BeforeBegin = () =>
     {
       memory.Results[f.Current.Id] = newer;
-      throw new RoutePlanningException("Saved roads changed.");
+      throw RoutePlanningException.Changed("Saved roads changed.");
     };
 
     await Assert.ThrowsAsync<RoutePlanningException>(
@@ -104,11 +104,42 @@ public sealed partial class EtaChainInputTests
     // Without the newer one, the one it found is retired.
     memory.Results[f.Current.Id] = found;
     f.Publication.BeforeBegin = () =>
-      throw new RoutePlanningException("Saved roads changed.");
+      throw RoutePlanningException.Changed("Saved roads changed.");
     await Assert.ThrowsAsync<RoutePlanningException>(
       () => f.Services.Forecasts.RefreshAsync(f.Current.Id, default)
     );
     Assert.False(memory.Results.ContainsKey(f.Current.Id));
+  }
+
+  // A failure that proves nothing about the inputs - here the database, as
+  // an unexpected exception at the save - leaves the saved forecast shown,
+  // with its inputs unchanged. So does a refusal that is not a change.
+  [Theory]
+  [InlineData("failed")]
+  [InlineData("refused")]
+  public async Task AFailureThatProvesNoChangeLeavesTheSavedForecastShown(
+    string failure
+  )
+  {
+    await using var f = await Fixture.CreateAsync(
+      sender: new DispatchTelemetrySender(new())
+    );
+    await f.Services.Forecasts.RefreshAsync(f.Current.Id, default);
+    var memory = f.Services.EtaMemory;
+    var shown = memory.Results[f.Current.Id] with { Signature = "earlier" };
+    memory.Results[f.Current.Id] = shown;
+    var counted = Counted($"unsaved-{failure}");
+    f.Publication.BeforeBegin = () =>
+      failure == "failed"
+        ? throw new InvalidOperationException("The database went away.")
+        : throw new RoutePlanningException("Fuel prices are unavailable.");
+
+    await Assert.ThrowsAnyAsync<Exception>(
+      () => f.Services.Forecasts.RefreshAsync(f.Current.Id, default)
+    );
+
+    Assert.Same(shown, memory.Results[f.Current.Id]);
+    Assert.True(Counted($"unsaved-{failure}") > counted);
   }
 
   // Other tests count too, in parallel: only increases are asserted.
