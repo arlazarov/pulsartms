@@ -166,6 +166,13 @@ basemap with the colours back).
   match the artifact. Local renders `browser-fleet-design-ghpFGq`,
   `-wGDjrU`, `-DCCuno`, `-oCNXg7` and `browser-map-markers-xtuxuW`.
 
+- `46193678` -> `release-32VEGI`, 18:20 UTC (with `b4561e38`): what is
+  left of the load on one line, and a fuel reading over 30% in the
+  card's own colour rather than green. Gate: Server 3,773, Client 1,242,
+  JavaScript 656; 285 files; entry HTML, stylesheet
+  (`v=3497ce74fd4ffabd`), settings and the fingerprinted framework files
+  match the artifact.
+
 ## API, second release (16:51-16:59 UTC)
 
 The owner authorized it ("so fix it") for the review notices by kind
