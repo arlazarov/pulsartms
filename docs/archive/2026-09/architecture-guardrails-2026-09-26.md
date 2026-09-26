@@ -75,6 +75,41 @@ No new external channel is implemented by the fake-channel regression.
 Existing message records, wire field names and delivery uncertainty are
 preserved. The application still uses its configured WhatsApp adapter.
 
+### A7
+
+Fleet no longer depends on the Synchronization feature. It consumes the
+neutral `IFleetCollectionState` runtime contract for collection mode, activity
+and high-frequency locations; the synchronization host owns its implementation.
+The compiled module-edge allowlist shrank rather than gaining an exception.
+
+Regression: module dependency architecture checks plus proactive HOS and fleet
+telemetry tests for enabled, idle and high-frequency collection modes.
+
+### A8
+
+The server remains the sole owner of fuel quote eligibility and selects cash,
+IFTA, current and previous comparisons for the requested date. The map and the
+station list now choose only the requested display basis and format that
+selection; they no longer inspect raw quote dates or independently select a
+discount.
+
+Regression: stale raw discounts cannot replace the server selection; map and
+list use the prepared cash/IFTA values and comparisons.
+
+### A9
+
+Unread-message signals arriving inside the 500 ms coalescing window share one
+count read. A signal arriving during the actual read earns one bounded follow-up
+read so a later commit is not lost. Deterministic work handles replaced timing
+guesses in the affected tests.
+
+The Client JavaScript build now fingerprints every source and build input and
+records hashes for every generated output in the intermediate directory.
+Unchanged, intact output skips esbuild; source deletion, missing output and
+changed output force a rebuild. The measured local no-change step fell from
+about 0.19 seconds to 0.05 seconds. This is a local build-step measurement, not
+an end-to-end CI or production claim.
+
 The new application-wide AGENTS ownership rules require tracing existing
 owners and all foreground/background consumers before adding work. Automated
 regressions guard concrete isolation, query-count, admission and ownership
@@ -105,12 +140,17 @@ future code will contain no duplication or error.
 
 ## Still open in the wider audit
 
-A7 module cycles, A8 shared station price presentation, A9 build/test
-improvements and A10 shared messaging notification across instances remain
-open. A8 concerns Claude's newly committed UI and must be coordinated before
-editing the same owner. A10 remains a limitation before increasing the current
-single-instance deployment bound. This record does not certify those items,
-all UI visuals, production performance, or the whole application as complete.
+A7 is reduced by one real edge; 19 recorded cross-feature dependencies remain
+and are still technical debt. A9 removes two measured repeated-work paths but
+does not claim every test or build stage is optimal.
+
+A10 shared messaging notification across instances remains open. Messaging
+change fan-out is process-local and another instance repairs by polling. A
+durable company-scoped event cursor or equivalent shared fan-out is required
+before increasing the current single-instance deployment bound. Reusing cache
+invalidation rows as an untyped message bus was rejected because it would mix
+unrelated ownership and retention contracts. This record does not certify all
+UI visuals, production performance, or the whole application as complete.
 
 ## Verification
 
@@ -125,6 +165,24 @@ None were skipped. Client compilation, JS type checking and both architecture
 suites were included. Pinned CSharpier check and `git diff --check` passed.
 The source hashes and gate summary are in the
 [evidence manifest](architecture-guardrails-2026-09-26-evidence.json).
+
+The second block's affected checks passed: server Fleet, Messaging,
+Synchronization and Architecture dependencies (2,617 tests); Client Fleet,
+ETA, Messaging, Fuel and Architecture (453 tests); map JavaScript (416),
+messaging JavaScript (13) and JavaScript architecture (67). TypeScript checking
+passed. The first combined runner attempt could not build Client because this
+isolated worktree intentionally had no duplicate `node_modules`; the missing
+dependency was supplied from the original checkout for the Client checks. The
+server part of that attempt completed successfully and was not repeated.
+
+The first full second-block gate exposed a stale test-only copy of the read
+cache's stripe-key formula: the test could accidentally choose the occupied
+stripe and time out after two seconds under full load. The cache now exposes
+its actual stripe choice internally to the test assembly, and the controlled
+test uses that owner instead of duplicating the formula. Its focused check
+passed in 74 ms. The changed candidate then passed one full gate: server 3,769,
+Client 1,239 and JavaScript 659, with no failures or skips. TypeScript checking
+also passed.
 
 Claude subsequently committed `ccb0838f` (map road presentation) while this
 gate ran. It is outside this candidate and has no overlapping source file.

@@ -1,14 +1,10 @@
 using Application.Features.Fleet.Background;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Services;
-using Application.Features.Synchronization.Interfaces;
-using Application.Features.Synchronization.Models;
-using Application.Features.Synchronization.Options;
 using Domain.Models.Fleet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using SynchronizationSnapshot = Application.Features.Synchronization.Models.SynchronizationStatus;
+using Server.Tests.Support;
 
 namespace Server.Tests.Fleet;
 
@@ -28,8 +24,7 @@ public sealed class DriverHosRefreshTests
     var operation = new DriverHosRefreshOperation(
       snapshot,
       services.GetRequiredService<IServiceScopeFactory>(),
-      Options.Create(new SynchronizationOptions { Enabled = true }),
-      new SynchronizationStatus(true),
+      new TestFleetCollectionState(Enabled: true, Active: true),
       NullLogger<DriverHosRefreshOperation>.Instance
     );
     var pending = operation.RunOnceAsync(default);
@@ -71,18 +66,11 @@ public sealed class DriverHosRefreshTests
     var operation = new DriverHosRefreshOperation(
       snapshot,
       services.GetRequiredService<IServiceScopeFactory>(),
-      Options.Create(new SynchronizationOptions { Enabled = true }),
-      new SynchronizationStatus(false),
+      new TestFleetCollectionState(Enabled: true),
       NullLogger<DriverHosRefreshOperation>.Instance
     );
     await operation.RunOnceAsync(default);
     Assert.Equal(0, refresh.Calls);
-  }
-
-  private sealed class SynchronizationStatus(bool active)
-    : ISynchronizationStatusProvider
-  {
-    public SynchronizationSnapshot Status => new(true, active, 0, []);
   }
 
   private sealed class RefreshProvider : IDriverHosRefreshProvider

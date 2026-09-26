@@ -33,9 +33,16 @@ public sealed partial class FleetSynchronizationOperation(
   ServerTelemetry telemetry,
   ILogger<FleetSynchronizationOperation> logger,
   ICurrentCompany companies
-) : IFleetSynchronizationOperation, ISynchronizationStatusProvider
+)
+  : IFleetSynchronizationOperation,
+    ISynchronizationStatusProvider,
+    IFleetCollectionState
 {
   private volatile bool active;
+  public bool Enabled => config.Enabled;
+  public bool Active => active;
+  public bool HighFrequencyLocations => config.HighFrequencyLocations;
+
   public SynchronizationStatus Status
   {
     get

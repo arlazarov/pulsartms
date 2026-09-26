@@ -2,21 +2,17 @@ using System.Diagnostics;
 using Application.Diagnostics;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Services;
-using Application.Features.Synchronization.Interfaces;
-using Application.Features.Synchronization.Options;
 using Application.Interfaces;
 using Domain.Models.Fleet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Application.Features.Fleet.Background;
 
 public sealed class DriverHosRefreshOperation(
   DriverHosSnapshot snapshot,
   IServiceScopeFactory scopes,
-  IOptions<SynchronizationOptions> options,
-  ISynchronizationStatusProvider synchronization,
+  IFleetCollectionState collection,
   ILogger<DriverHosRefreshOperation> logger
 ) : IDriverHosRefreshOperation
 {
@@ -41,11 +37,7 @@ public sealed class DriverHosRefreshOperation(
 
   private async Task RunCompanyAsync(CancellationToken ct)
   {
-    if (
-      !snapshot.TryBeginRefresh(
-        options.Value.Enabled && synchronization.Status.Active
-      )
-    )
+    if (!snapshot.TryBeginRefresh(collection.Enabled && collection.Active))
       return;
     var traceId =
       Activity.Current?.TraceId.ToString()

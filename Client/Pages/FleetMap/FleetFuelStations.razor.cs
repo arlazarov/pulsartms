@@ -83,7 +83,7 @@ public partial class FleetFuelStations
   {
     get
     {
-      var from = (Stations, Plan, _query, _scope, _brand, Date, UseIfta);
+      var from = (Stations, Plan, _query, _scope, _brand, UseIfta);
       if (_rowsFrom is { } built && built.Equals(from))
         return _rows;
       _rowsFrom = from;
@@ -93,37 +93,40 @@ public partial class FleetFuelStations
 
   private List<Row> BuildRows()
   {
-      var planned = (Plan?.Stops ?? [])
-        .GroupBy(stop => stop.StationId)
-        .ToDictionary(group => group.Key, group => group.First());
-      var query = _query.Trim();
-      return (Stations ?? [])
-        .Where(station => _scope != "planned" || planned.ContainsKey(station.Id))
-        .Where(station =>
-          _brand.Length == 0
-          || string.Equals(
-            Brand(station.Name),
-            _brand,
-            StringComparison.OrdinalIgnoreCase
-          )
+    var planned = (Plan?.Stops ?? [])
+      .GroupBy(stop => stop.StationId)
+      .ToDictionary(group => group.Key, group => group.First());
+    var query = _query.Trim();
+    return (Stations ?? [])
+      .Where(station => _scope != "planned" || planned.ContainsKey(station.Id))
+      .Where(station =>
+        _brand.Length == 0
+        || string.Equals(
+          Brand(station.Name),
+          _brand,
+          StringComparison.OrdinalIgnoreCase
         )
-        .Where(station =>
-          query.Length == 0
-          || new[] { station.Name, station.City, station.Region, station.Address }
-            .Any(text =>
-              text.Contains(query, StringComparison.OrdinalIgnoreCase)
-            )
-        )
-        .Select(station => new Row(
-          station.Id,
+      )
+      .Where(station =>
+        query.Length == 0
+        || new[]
+        {
           station.Name,
-          Address(station),
-          Price(station),
-          planned.GetValueOrDefault(station.Id)
-        ))
-        .OrderBy(row => row.Planned?.Number ?? int.MaxValue)
-        .ThenBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
-        .ToList();
+          station.City,
+          station.Region,
+          station.Address,
+        }.Any(text => text.Contains(query, StringComparison.OrdinalIgnoreCase))
+      )
+      .Select(station => new Row(
+        station.Id,
+        station.Name,
+        Address(station),
+        Price(station),
+        planned.GetValueOrDefault(station.Id)
+      ))
+      .OrderBy(row => row.Planned?.Number ?? int.MaxValue)
+      .ThenBy(row => row.Name, StringComparer.OrdinalIgnoreCase)
+      .ToList();
   }
 
   // The chain a station belongs to, as its name says it: "LOVES #504".
@@ -137,27 +140,24 @@ public partial class FleetFuelStations
   private static string Address(FuelStationMapDto station)
   {
     var lines = StopAddressLines.Create(station.Address);
-    return lines.Locality.Length > 0
-      ? $"{lines.Street}, {lines.Locality}"
-      : lines.Street.Length > 0
-        ? lines.Street
-        : string.Join(", ", new[] { station.City, station.Region }
-          .Where(part => !string.IsNullOrWhiteSpace(part)));
+    return lines.Locality.Length > 0 ? $"{lines.Street}, {lines.Locality}"
+      : lines.Street.Length > 0 ? lines.Street
+      : string.Join(
+        ", ",
+        new[] { station.City, station.Region }.Where(part =>
+          !string.IsNullOrWhiteSpace(part)
+        )
+      );
   }
 
-  // The discount the map reads for this day, as selectStationPrices does:
-  // the IFTA one when the account prices after IFTA, the cash one
-  // otherwise, and only while it is in effect on the selected day.
+  // The server owns quote eligibility and selects both display bases. This
+  // view only chooses the account's basis and formats the selected value.
   private string Price(FuelStationMapDto station)
   {
     var discount = UseIfta
       ? station.IftaDiscount ?? station.CashDiscount
       : station.CashDiscount;
-    if (
-      discount is null
-      || Date < discount.EffectiveFrom
-      || Date > discount.EffectiveTo
-    )
+    if (discount is null)
       return "—";
     var price = UseIfta ? discount.PriceAfterIfta : discount.DiscountPrice;
     return price is > 0

@@ -28,10 +28,13 @@ public sealed class MessagingNotices : IAsyncDisposable
   private readonly TimeProvider _time;
 
   private IJSObjectReference? _notices;
+  private Task _initialRead = Task.CompletedTask;
+  private Task _countTask = Task.CompletedTask;
   private int _subscribers,
     _account,
     _read;
   private bool _counting,
+    _reading,
     _again,
     _baseline,
     _disposed;
@@ -69,7 +72,8 @@ public sealed class MessagingNotices : IAsyncDisposable
     _signals.Changed += OnSignal;
     _auth.AuthenticationStateChanged += OnAuthenticationChanged;
     await _signals.JoinAsync();
-    await ReadAsync(_account, announce: false);
+    _initialRead = ReadAsync(_account, announce: false);
+    await _initialRead;
   }
 
   public async Task LeaveAsync()
@@ -95,7 +99,7 @@ public sealed class MessagingNotices : IAsyncDisposable
     _seen = 0;
     _baseline = false;
     Changed?.Invoke();
-    _ = ReadAsync(account, announce: false);
+    _initialRead = ReadAsync(account, announce: false);
   }
 
   private void OnSignal(MessagingSignal signal)
@@ -111,19 +115,22 @@ public sealed class MessagingNotices : IAsyncDisposable
       }
       return;
     }
-    if (_signals.IsLeading)
-      _ = CountAsync(_account);
-  }
-
-  // One read at a time; signals during it make exactly one more.
-  private async Task CountAsync(int account)
-  {
+    if (!_signals.IsLeading)
+      return;
     if (_counting)
     {
-      _again = true;
+      if (_reading)
+        _again = true;
       return;
     }
     _counting = true;
+    _countTask = CountAsync(_account);
+  }
+
+  // Signals in the pause belong to the same burst. A signal while the actual
+  // read is in flight can describe a later commit, so it earns one more read.
+  private async Task CountAsync(int account)
+  {
     try
     {
       do
@@ -132,7 +139,15 @@ public sealed class MessagingNotices : IAsyncDisposable
         await Task.Delay(Coalesce, _time);
         if (!Live(account) || !_signals.IsLeading)
           return;
-        await ReadAsync(account, announce: true);
+        _reading = true;
+        try
+        {
+          await ReadAsync(account, announce: true);
+        }
+        finally
+        {
+          _reading = false;
+        }
       } while (_again && Live(account));
     }
     finally
@@ -140,6 +155,8 @@ public sealed class MessagingNotices : IAsyncDisposable
       _counting = false;
     }
   }
+
+  internal Task PendingWork => Task.WhenAll(_initialRead, _countTask);
 
   private bool Live(int account) => !_disposed && account == _account;
 

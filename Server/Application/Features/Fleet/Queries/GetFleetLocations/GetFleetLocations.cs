@@ -1,9 +1,8 @@
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Services;
-using Application.Features.Synchronization.Options;
+using Application.Interfaces;
 using Application.Models;
 using Domain.Models.Fleet;
-using Microsoft.Extensions.Options;
 
 namespace Application.Features.Fleet.Queries.GetFleetLocations;
 
@@ -20,7 +19,7 @@ public class GetFleetLocationsHandler(
   FleetLocationStream stream,
   ServerTelemetry serverTelemetry,
   ITruckLocationStore positions,
-  IOptions<SynchronizationOptions> syncOptions,
+  IFleetCollectionState collection,
   IDriverScope scope
 )
   : IRequestHandler<
@@ -63,7 +62,7 @@ public class GetFleetLocationsHandler(
     // An instance that does not collect telemetry, or one that has just
     // restarted, holds no snapshot and draws the last recorded positions
     // instead of an empty map. The trail points are not recorded.
-    if (syncOptions.Value.Enabled)
+    if (collection.Enabled)
       return RequestResponse<FleetLocationsResponse>.Ok(
         serverTelemetry.Current
           ?? new() { Trucks = await positions.ReadAsync(cancellationToken) }
@@ -116,7 +115,7 @@ public class GetFleetLocationsHandler(
       )
       .ToList();
 
-    var points = syncOptions.Value.HighFrequencyLocations
+    var points = collection.HighFrequencyLocations
       ? await stream.GetAsync(telemetryProvider, fleet, cancellationToken)
       : [];
     FleetLocationSnapshot.UpdateFromStream(trucks, points);

@@ -18,8 +18,13 @@
     <InternalsVisibleTo Include="Client.Tests" />
   </ItemGroup>
 
-  <Target Name="BuildJavaScript" BeforeTargets="BeforeBuild" Condition="'$(SkipJavaScriptBuild)' != 'true'">
-    <Exec Command="npm run js:build" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  <Target
+    Name="BuildJavaScript"
+    BeforeTargets="BeforeBuild"
+    Condition="'$(SkipJavaScriptBuild)' != 'true'">
+    <Exec
+      Command="node build/javascript.mjs --state &quot;$(IntermediateOutputPath)javascript-build.json&quot;"
+      WorkingDirectory="$(MSBuildProjectDirectory)" />
   </Target>
 
   <Target Name="BuildStyles" BeforeTargets="BeforeBuild" Condition="'$(SkipStyleBuild)' != 'true'" Inputs="@(ScssSource);package.json;package-lock.json" Outputs="wwwroot/css/main.css;wwwroot/css/main.css.map">

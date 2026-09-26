@@ -103,6 +103,9 @@ public static class DependencyInjection
     services.AddSingleton<ISynchronizationStatusProvider>(sp =>
       sp.GetRequiredService<FleetSynchronizationOperation>()
     );
+    services.AddSingleton<IFleetCollectionState>(sp =>
+      sp.GetRequiredService<FleetSynchronizationOperation>()
+    );
     services.AddSingleton<
       IPlanningRefreshOperation,
       PlanningRefreshOperation

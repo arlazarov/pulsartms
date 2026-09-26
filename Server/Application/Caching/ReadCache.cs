@@ -108,12 +108,10 @@ public sealed partial class ReadCache(
     // it is. "The board for today" is a different board for each carrier,
     // and without the carrier in the key the second one to ask would be
     // handed the first one's.
-    var cacheKey = $"read:{companies?.Id:N}:{group}:{version}:{key}";
+    var cacheKey = CacheKey(group, key, version);
     if (bounded.TryGetValue<Cached>(cacheKey, out var saved))
       return Restore<T>(saved!);
-    var gate = gates[
-      (uint)StringComparer.Ordinal.GetHashCode(cacheKey) % gates.Length
-    ];
+    var gate = gates[Stripe(cacheKey)];
     await gate.WaitAsync(ct);
     try
     {
@@ -168,6 +166,15 @@ public sealed partial class ReadCache(
 
   private long Version(string group, string identity) =>
     Math.Max(generations.Get(group), generations.Get(identity));
+
+  private string CacheKey(string group, string key, long version) =>
+    $"read:{companies?.Id:N}:{group}:{version}:{key}";
+
+  private int Stripe(string cacheKey) =>
+    (int)((uint)StringComparer.Ordinal.GetHashCode(cacheKey) % gates.Length);
+
+  internal int Stripe(string group, string key) =>
+    Stripe(CacheKey(group, key, Version(group, ScopedGroup(group))));
 
   private void InvalidateIdentity(string identity)
   {

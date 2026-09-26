@@ -1,6 +1,6 @@
 {
   "baseline": "a65ab9ad5b69d33b1a3592ef35054fb7fecd635a",
-  "scope": "Local architecture corrections A1-A6; wider audit remains open",
+  "scope": "Local architecture corrections A1-A9; wider audit remains open",
   "parallelRootObserved": "ccb0838f",
   "checks": {
     "command": "bash test.sh all",
@@ -24,6 +24,35 @@
     },
     "postgres": "Recorded dedicated fixture, isolated schemas; no SQL containers",
     "format": "Pinned CSharpier check and git diff --check passed"
+  },
+  "secondBlockChecks": {
+    "command": "bash test.sh all",
+    "exitCode": 0,
+    "server": {
+      "passed": 3769,
+      "failed": 0,
+      "skipped": 0,
+      "durationSeconds": 184
+    },
+    "client": {
+      "passed": 1239,
+      "failed": 0,
+      "skipped": 0,
+      "durationSeconds": 6
+    },
+    "javascript": {
+      "passed": 659,
+      "failed": 0,
+      "durationMs": 4720.015167
+    },
+    "typescript": "passed",
+    "affectedBeforeFull": {
+      "server": 2617,
+      "client": 453,
+      "mapJavascript": 416,
+      "messagingJavascript": 13,
+      "architectureJavascript": 67
+    }
   },
   "logSha256": "9b79416b6827c4d57908d0f7e26116c0c6fba5d24f713aa134099106e28a2d72",
   "files": {
@@ -76,7 +105,9 @@
     "Later Claude changes",
     "Independent visual acceptance",
     "Production incidents or performance",
-    "Legacy duplicate ownership inventory"
+    "Legacy duplicate ownership inventory",
+    "Cross-instance Messaging event fan-out",
+    "Remaining 19 recorded cross-feature dependencies"
   ],
   "deployed": false
 }

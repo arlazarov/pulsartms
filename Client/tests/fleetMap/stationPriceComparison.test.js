@@ -110,7 +110,7 @@ test('the line says what it can when only one side of today is known', t => {
   assert.equal(createPriceComparison(quote), null);
 });
 
-test('map switches comparison with its cash or IFTA basis and never keeps another dates comparison', () => {
+test('map uses the server comparison for its cash or IFTA basis', () => {
   const quote = {
     effectiveFrom: '2026-09-09',
     effectiveTo: '2026-09-10',
@@ -126,22 +126,16 @@ test('map switches comparison with its cash or IFTA basis and never keeps anothe
     iftaComparison: { date: '2026-09-09', discountChange: 0.2 },
   };
   assert.equal(
-    selectStationPrices([station], '2026-09-09')[0].discount.comparison
-      .discountChange,
+    selectStationPrices([station])[0].discount.comparison.discountChange,
     -0.1,
   );
   assert.equal(
-    selectStationPrices([station], '2026-09-09', true)[0].discount.comparison
-      .discountChange,
+    selectStationPrices([station], true)[0].discount.comparison.discountChange,
     0.2,
-  );
-  assert.equal(
-    selectStationPrices([station], '2026-09-10')[0].discount.comparison,
-    undefined,
   );
 });
 
-test('the day before belongs only to the date it ends on', () => {
+test('map attaches the previous comparison selected by the server', () => {
   const quote = {
     effectiveFrom: '2026-09-09',
     effectiveTo: '2026-09-10',
@@ -159,12 +153,7 @@ test('the day before belongs only to the date it ends on', () => {
     },
   };
   assert.equal(
-    selectStationPrices([station], '2026-09-10')[0].discount.previous
-      .discountChange,
+    selectStationPrices([station])[0].discount.previous.discountChange,
     0.25,
-  );
-  assert.equal(
-    selectStationPrices([station], '2026-09-09')[0].discount.previous,
-    undefined,
   );
 });
