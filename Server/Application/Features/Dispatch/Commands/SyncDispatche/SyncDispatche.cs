@@ -28,7 +28,8 @@ public partial class SyncDispatchesCommandHandler(
   IOptions<DispatchImportOptions> importOptions,
   ReadCache reads,
   IMemoryCache memory,
-  RoutePreparationQueue preparation
+  RoutePreparationQueue preparation,
+  ICurrentCompany companies
 ) : IRequestHandler<SyncDispatchesCommand, RequestResponse<int>>
 {
   private sealed record LoadSnapshot(string Signature, DateTime ReconciledAt);
@@ -77,7 +78,7 @@ public partial class SyncDispatchesCommandHandler(
     if (dispatchProvider is null)
       return RequestResponse<int>.Fail("Load import is unavailable.", 503);
     providerKey = dispatchProvider.Key;
-    var memoryKey = $"dispatch-sync-signature:{providerKey}";
+    var memoryKey = FleetSyncKeys.DispatchSnapshot(companies.Id, providerKey);
     var catalogGeneration = reads.Generation(ReadGroups.FleetCatalog);
     var dispatchGeneration = reads.Generation(ReadGroups.Dispatch);
     IReadOnlyList<ExternalDispatch> allSources;

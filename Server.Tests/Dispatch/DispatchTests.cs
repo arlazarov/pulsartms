@@ -1,3 +1,4 @@
+using Application.Caching;
 using Application.Features.Dispatch.Commands.SyncDispatche;
 using Application.Features.Dispatch.Interfaces;
 using Application.Features.Dispatch.Models;
@@ -54,7 +55,8 @@ public class DispatchTests
       DispatchImportTestData.Options,
       reads,
       memory,
-      preparation
+      preparation,
+      new TestCompany()
     );
     await handler.Handle(new(), default);
     var stop = await db.DispatchStops.SingleAsync();
@@ -77,8 +79,9 @@ public class DispatchTests
     db.Trucks.Add(truck);
     db.Drivers.Add(driver);
     await db.SaveChangesAsync();
-    // Match fleet synchronization's invalidation after a catalog change.
-    memory.Remove("dispatch-sync-signature:fixture");
+    // Fleet synchronization's invalidation after a catalog change: the
+    // load import's snapshot is reused only while this group is unchanged.
+    reads.Invalidate(ReadGroups.FleetCatalog);
     await handler.Handle(new(), default);
     Assert.Equal(stopId, stop.Id);
     Assert.Equal(truck.Id, stop.TruckId);

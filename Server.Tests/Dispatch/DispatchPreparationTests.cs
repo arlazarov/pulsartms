@@ -75,7 +75,8 @@ public sealed class DispatchPreparationTests
       DispatchImportTestData.Options,
       reads,
       memory,
-      preparation
+      preparation,
+      new TestCompany()
     );
     await handler.Handle(new(), default);
     var load = await db

@@ -53,7 +53,8 @@ public sealed class UpdateFleetConfigurationHandler(
   IUserRoleService roles,
   TimeProvider clock,
   ReadCache reads,
-  IMemoryCache memory
+  IMemoryCache memory,
+  ICurrentCompany companies
 )
   : IRequestHandler<
     UpdateFleetConfigurationCommand,
@@ -126,9 +127,7 @@ public sealed class UpdateFleetConfigurationHandler(
     reads.Invalidate(ReadGroups.FleetCatalog);
     reads.Invalidate(ReadGroups.Board);
     reads.Invalidate(ReadGroups.RoutePreviews);
-    memory.Remove("fleet-driver-ids");
-    memory.Remove("assignment-sync-signature");
-    memory.Remove("dispatch-sync-signature");
+    FleetSyncKeys.Forget(memory, companies.Id);
     return RequestResponse<FleetConfigurationState>.Ok(
       await FleetConfigurationReader.StateAsync(db, resource, ct)
     );

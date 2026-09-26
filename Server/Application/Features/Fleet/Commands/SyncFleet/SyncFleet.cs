@@ -14,7 +14,8 @@ public class SyncFleetHandler(
   IAppDbContext dbContext,
   IFleetProvider fleetProvider,
   IMemoryCache cache,
-  ReadCache reads
+  ReadCache reads,
+  ICurrentCompany companies
 ) : IRequestHandler<SyncFleetCommand, RequestResponse<int>>
 {
   public async Task<RequestResponse<int>> Handle(
@@ -76,9 +77,7 @@ public class SyncFleetHandler(
     await transaction.CommitAsync(cancellationToken);
     if (count > 0)
     {
-      cache.Remove("fleet-driver-ids");
-      cache.Remove("assignment-sync-signature");
-      cache.Remove("dispatch-sync-signature");
+      FleetSyncKeys.Forget(cache, companies.Id);
       reads.Invalidate(ReadGroups.FleetCatalog);
       reads.Invalidate(ReadGroups.Board);
     }

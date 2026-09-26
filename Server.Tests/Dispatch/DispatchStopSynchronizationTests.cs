@@ -1,6 +1,8 @@
 using Application.Features.Dispatch.Commands.SyncDispatche;
 using Application.Features.Dispatch.Interfaces;
 using Application.Features.Dispatch.Models;
+using Application.Features.Fleet.Services;
+using Domain.Entities;
 using Domain.Entities.Fleet;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
@@ -45,7 +47,8 @@ public sealed class DispatchStopSynchronizationTests
       DispatchImportTestData.Options,
       reads,
       memory,
-      preparation
+      preparation,
+      new TestCompany()
     );
     await handler.Handle(new(), default);
     var saved = await db
@@ -98,7 +101,7 @@ public sealed class DispatchStopSynchronizationTests
       preparation.Complete(work, "prepared", truck.Id);
     generation = reads.Generation("dispatch");
     db.ChangeTracker.Clear();
-    memory.Remove("dispatch-sync-signature:fixture");
+    memory.Remove(FleetSyncKeys.DispatchSnapshot(Company.Amf, "fixture"));
 
     var replay = await handler.Handle(new(), default);
 
@@ -144,7 +147,8 @@ public sealed class DispatchStopSynchronizationTests
       DispatchImportTestData.Options,
       reads,
       memory,
-      preparation
+      preparation,
+      new TestCompany()
     );
     await handler.Handle(new(), default);
     var originalIds = await db

@@ -437,7 +437,8 @@ public class SynchronizationTests
       DispatchImportTestData.Options,
       reads,
       memory,
-      new(Options.Create(new RoutePreparationOptions()), TimeProvider.System)
+      new(Options.Create(new RoutePreparationOptions()), TimeProvider.System),
+      new TestCompany()
     );
     await handler.Handle(new(), default);
     var load = await fixture.Db.Dispatches.Include(x => x.Stops).SingleAsync();
@@ -501,7 +502,8 @@ public class SynchronizationTests
       DispatchImportTestData.Options,
       reads,
       memory,
-      new(Options.Create(new RoutePreparationOptions()), TimeProvider.System)
+      new(Options.Create(new RoutePreparationOptions()), TimeProvider.System),
+      new TestCompany()
     ).Handle(new(), default);
 
     var trailer = await fixture.Db.Trailers.AsNoTracking().SingleAsync();

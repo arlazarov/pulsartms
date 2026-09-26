@@ -117,7 +117,8 @@ public sealed class DispatchImportIdentityTests
       Options.Create(new DispatchImportOptions()),
       f.Reads,
       f.Memory,
-      TestCache.Preparation()
+      TestCache.Preparation(),
+      new TestCompany()
     );
     Assert.Equal(409, (await handler.Handle(new(), default)).StatusCode);
     Assert.False(await f.Db.Dispatches.AnyAsync());

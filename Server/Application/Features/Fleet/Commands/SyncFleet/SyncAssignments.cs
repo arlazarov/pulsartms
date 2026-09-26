@@ -16,7 +16,8 @@ public sealed class SyncAssignmentsHandler(
   IAppDbContext db,
   IFleetProvider provider,
   IMemoryCache cache,
-  ReadCache reads
+  ReadCache reads,
+  ICurrentCompany companies
 ) : IRequestHandler<SyncAssignmentsCommand, RequestResponse<int>>
 {
   public async Task<RequestResponse<int>> Handle(
@@ -40,14 +41,23 @@ public sealed class SyncAssignmentsHandler(
     CancellationToken ct
   )
   {
-    if (!cache.TryGetValue<string[]>("fleet-driver-ids", out var drivers))
+    if (
+      !cache.TryGetValue<string[]>(
+        FleetSyncKeys.DriverIds(companies.Id),
+        out var drivers
+      )
+    )
     {
       drivers = await db
         .Drivers.AsNoTracking()
         .Where(x => x.IsActive)
         .Select(x => x.ExternalId)
         .ToArrayAsync(ct);
-      cache.Set("fleet-driver-ids", drivers, TimeSpan.FromHours(1));
+      cache.Set(
+        FleetSyncKeys.DriverIds(companies.Id),
+        drivers,
+        TimeSpan.FromHours(1)
+      );
     }
     var now = DateTime.UtcNow;
     var assignments = await provider.GetAssignmentsAsync(now, now, ct);
@@ -75,7 +85,10 @@ public sealed class SyncAssignmentsHandler(
         )
       )
     );
-    if (cache.Get<string>("assignment-sync-signature") == signature)
+    if (
+      cache.Get<string>(FleetSyncKeys.AssignmentSignature(companies.Id))
+      == signature
+    )
     {
       // The provider said nothing new, but the current work may have moved
       // on - a load picked up, a leg accepted - so the trucks' trailers are
@@ -100,7 +113,11 @@ public sealed class SyncAssignmentsHandler(
     );
     count += await db.SaveChangesAsync(ct);
     await transaction.CommitAsync(ct);
-    cache.Set("assignment-sync-signature", signature, TimeSpan.FromMinutes(30));
+    cache.Set(
+      FleetSyncKeys.AssignmentSignature(companies.Id),
+      signature,
+      TimeSpan.FromMinutes(30)
+    );
     if (count > 0)
     {
       reads.Invalidate(ReadGroups.FleetCatalog);

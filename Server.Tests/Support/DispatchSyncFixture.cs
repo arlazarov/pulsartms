@@ -26,7 +26,8 @@ internal sealed class DispatchSyncFixture : IAsyncDisposable
       DispatchImportTestData.Options,
       Reads,
       Memory,
-      TestCache.Preparation()
+      TestCache.Preparation(),
+      new TestCompany()
     );
 
   public static async Task<DispatchSyncFixture> CreateAsync()

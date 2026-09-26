@@ -94,7 +94,8 @@ public sealed class StopCompletionTests
       DispatchImportTestData.Options,
       f.Reads,
       memory,
-      f.Queue
+      f.Queue,
+      new TestCompany()
     );
     await sync.Handle(new(), default);
     Assert.NotNull(f.Load.Stops[0].ManualCompletedAt);
