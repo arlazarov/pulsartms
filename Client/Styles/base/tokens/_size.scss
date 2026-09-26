@@ -47,12 +47,10 @@ $sizes: (
   dispatch-stop-list-compact: 15rem,
   dispatch-stop-map: 20rem,
 
-  // Fuel: the plan editor, and a visit on a card.
+  // Fuel: the send window, and a visit on a card. The plan editor takes
+  // the plan card's own width (map-stop-inspector).
   fuel-editor: 46rem,
-  fuel-editor-wide: 54rem,
-  fuel-editor-height: 40rem,
   fuel-editor-card: 26rem,
-  fuel-editor-route: 20rem,
   fuel-visit: 14rem,
   fuel-visit-number: 1.375rem,
   popup-stop-badge: 1.625rem,

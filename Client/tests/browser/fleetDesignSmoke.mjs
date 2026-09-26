@@ -436,6 +436,37 @@ function planning(truck) {
   };
 }
 
+// The editor's draft of the same plan: its stops as edits, the road they
+// sit on as one segment before the delivery, and the plan as its values.
+function fuelPreview(truck) {
+  const stops = stopsFor(truck);
+  const plan = planning(truck).state.plan.fuelPlan;
+  return {
+    plan,
+    stops: (plan?.stops ?? []).map(stop => ({
+      stationId: stop.stationId,
+      beforeStopId: stop.beforeStopId,
+      buyGallons: stop.buyGallons,
+      fillToTarget: stop.fillToTarget,
+      purchaseLimitGallons: 180,
+    })),
+    expectedCalculatedAt: plan?.calculatedAt ?? null,
+    tankGallons: 250,
+    fillLimitGallons: 240,
+    errors: [],
+    valuesAvailable: true,
+    segments: [
+      {
+        beforeStopId: stops[1].id,
+        afterStop: stops[0],
+        beforeStop: stops[1],
+        dispatchId: truck.dispatch,
+      },
+    ],
+    quantityChoices: null,
+  };
+}
+
 function dispatch(truck) {
   return {
     id: truck.dispatch,
@@ -640,6 +671,8 @@ function answer(path, url, theme) {
     const truck = byId.get(loadMatch[1]);
     if (!loadMatch[2]) return success(dispatch(truck));
     if (loadMatch[2] === '/planning/automatic') return success(planning(truck));
+    if (loadMatch[2] === '/planning/fuel/edit/preview')
+      return success(fuelPreview(truck));
     if (loadMatch[2] === '/next-routes')
       return success({ routes: [], truckId: truck.id });
   }
@@ -777,7 +810,10 @@ try {
         // fixture holds no state and writes nothing.
         const refresh =
           request.method() === 'POST' &&
-          /^\/api\/fleet\/trucks\/[^/]+\/planning$/.test(path);
+          (/^\/api\/fleet\/trucks\/[^/]+\/planning$/.test(path) ||
+            /^\/api\/dispatch\/[^/]+\/planning\/fuel\/edit\/preview$/.test(
+              path,
+            ));
         if (request.method() !== 'GET' && !refresh) {
           report.unexpectedRequests.push(`${request.method()} ${path}`);
           return route.abort('blockedbyclient');
@@ -949,6 +985,23 @@ try {
         .click();
       await page.locator('#fleet-map-fuel-panel').waitFor({ timeout: 5000 });
       await shot('fuel-plan');
+    });
+    // The plan card in edit: the same place, one list, the chosen stop
+    // opened under its line.
+    await attempt('fuel-editor', async () => {
+      await page
+        .getByRole('button', { name: 'Edit plan', exact: true })
+        .click({ timeout: 3000 });
+      await page
+        .locator(
+          '.fuel-plan-editor__stop.is-selected .fuel-plan-editor__detail',
+        )
+        .waitFor({ timeout: 10000 });
+      await shot('fuel-editor');
+      await page
+        .getByRole('button', { name: 'Cancel', exact: true })
+        .click({ timeout: 3000 });
+      await page.locator('#fleet-map-fuel-panel').waitFor({ timeout: 5000 });
     });
     await attempt('fuel-stations', async () => {
       const list = page.getByRole('button', {

@@ -133,12 +133,6 @@
     .fleet-map-search {
       flex: 1;
     }
-    // The driver group choice takes its own row under the search and
-    // Filters, so neither the search nor the group's name is squeezed.
-    .driver-group-picker {
-      order: 2;
-      flex-basis: 100%;
-    }
     &__status {
       order: 3;
     }

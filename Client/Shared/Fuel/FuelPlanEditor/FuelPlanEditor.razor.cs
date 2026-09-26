@@ -92,14 +92,6 @@ public partial class FuelPlanEditor : IAsyncDisposable
   private bool _valid;
   private bool _valuesCurrent;
 
-  private enum MobileView
-  {
-    Fuel,
-    Route,
-    Map,
-  }
-
-  private MobileView _mobileView = MobileView.Fuel;
   private bool _disposed;
   private bool _interopDisposed;
   private string Endpoint => $"api/dispatch/{DispatchId}/planning/fuel";
@@ -234,7 +226,6 @@ public partial class FuelPlanEditor : IAsyncDisposable
       _expectedCalculatedAt = InitialCalculatedAt;
       _publishedSelection = null;
       _orderAnnouncement = "";
-      _mobileView = MobileView.Fuel;
       _dirty = _valid = _valuesCurrent = _saving = _previewing = false;
       await LoadAsync();
     }
@@ -335,7 +326,6 @@ public partial class FuelPlanEditor : IAsyncDisposable
       new(new(station.StationId, before, 0, true), station.Name)
     );
     _selected = insertion;
-    _mobileView = MobileView.Fuel;
     return ChangedAsync();
   }
 
@@ -344,7 +334,6 @@ public partial class FuelPlanEditor : IAsyncDisposable
     if (_disposed || Busy || index < 0 || index >= _stops.Count)
       return;
     _selected = index;
-    _mobileView = MobileView.Fuel;
     await PublishSelectionAsync();
     if (
       _preview?.QuantityChoices is not null
@@ -678,7 +667,6 @@ public partial class FuelPlanEditor : IAsyncDisposable
     var request = BeginRequest();
     var generation = _generation;
     _saving = true;
-    _mobileView = MobileView.Fuel;
     try
     {
       await BusyChanged.InvokeAsync(true);
@@ -809,6 +797,22 @@ public partial class FuelPlanEditor : IAsyncDisposable
     return arriving is null || leaving is null
       ? ""
       : $"{arriving}% → {leaving}%";
+  }
+
+  // The tank at one moment of the chosen stop, said in words rather than
+  // drawn as a ring: its share of the tank and the gallons that is.
+  private string Level(double? gallons)
+  {
+    if (
+      gallons is not { } amount
+      || !double.IsFinite(amount)
+      || _preview is not { TankGallons: > 0 } preview
+    )
+      return "—";
+    var percent = TankPercent(amount, preview.TankGallons);
+    return percent is null
+      ? $"{Quantity(amount)} US gal"
+      : $"{percent}% · {Quantity(amount)} US gal";
   }
 
   private static int? TankPercent(double gallons, double tank) =>

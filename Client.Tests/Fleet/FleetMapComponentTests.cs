@@ -160,6 +160,35 @@ public sealed class FleetMapComponentTests
     );
   }
 
+  // The plan card in edit is the plan card: closing the editor opened from
+  // it shows the plan again, not the truck (the owner, September 26).
+  [Fact]
+  public async Task ClosingTheEditorOpenedFromThePlanCardShowsThePlanCardAgain()
+  {
+    using var fixture = new SelectionFixture();
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, call => call.Name == "setTrucks")
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
+    );
+    await FuelPlan(component).ClickAsync(new MouseEventArgs());
+    component.WaitForAssertion(
+      () => Assert.Single(component.FindAll(".fuel-plan-editor"))
+    );
+    var editor = component.FindComponent<FuelPlanEditor>().Instance;
+    await component.InvokeAsync(() => editor.Closed.InvokeAsync());
+    component.WaitForAssertion(() =>
+    {
+      Assert.Empty(component.FindAll(".fuel-plan-editor"));
+      var inspector = component.Find(".fleet-map-inspector");
+      Assert.Contains("has-selection", inspector.ClassList);
+      Assert.Equal("fuelplan", inspector.GetAttribute("data-inspector-mode"));
+      Assert.Single(component.FindAll("#fleet-map-fuel-panel"));
+    });
+  }
+
   [Theory]
   [InlineData("truck")]
   [InlineData("stop")]

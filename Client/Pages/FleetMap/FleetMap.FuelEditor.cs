@@ -16,6 +16,11 @@ public partial class FleetMap
   );
 
   private bool _fuelEditorOpen;
+
+  // Opened from the plan card, the editor is that card in edit, and
+  // closing it - saved, reset or cancelled - shows the card again rather
+  // than the truck (the owner, September 26).
+  private bool _fuelEditorFromPlan;
   private FuelEditorIdentity? _fuelEditorIdentity;
   private FuelEditorStation? _fuelEditorStation;
   private long _fuelStationSequence;
@@ -62,6 +67,7 @@ public partial class FleetMap
     )
       return;
     _fuelEditorIdentity = identity;
+    _fuelEditorFromPlan = _inspectorMode == MapInspectorMode.FuelPlan;
     _fuelEditorOpen = true;
     ResetInspectedLoad();
     await PublishInspectorSuspensionAsync();

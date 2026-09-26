@@ -128,16 +128,27 @@ focus; destructive actions retain their danger role. Keep the navigation compact
 and preserve visible keyboard focus, responsive wrapping and minimum touch sizes.
 
 Use `size(content-account)` for account forms and `size(content-login)` for the
-sign-in card instead of fixed pixel widths. The fuel editor is a compact floating
-card over the existing Fleet map, not a second map workspace. Keep the map mounted,
-full-sized and independently interactive, and leave background controls accessible.
-Trucks are always shown; there is no manual truck-layer visibility toggle.
-While editing fuel, show only the edited truck; restore all trucks when editing
-ends, including empty drafts.
-On wide screens, center the editor horizontally while retaining its bottom map inset,
-and give the route timeline a full-height left column beside the
-selected station, quantity and prices. The timeline and details scroll separately,
-while the header and save footer remain visible. Narrow layouts stack the two
+sign-in card instead of fixed pixel widths. The fuel editor is the fuel plan
+card in edit (September 26): it stands where the plan card stands, at the
+plan card's width (`map-stop-inspector`), and is one list - the truck, each
+fuel stop in an order that can be dragged, the load's own stops between
+them - with the chosen stop opened under its own line for its address,
+position, the tank arriving and leaving said in words (no gauges), the
+quantity slider, price and cost, and Remove. The totals stand over the
+list; the head and the Calculate automatically / Cancel / Save foot stay put
+while the list scrolls. It is not a second map workspace: keep the map
+mounted, full-sized and independently interactive, and leave background
+controls accessible. Trucks are always shown; there is no manual
+truck-layer visibility toggle. While editing fuel, show only the edited
+truck; restore all trucks when editing ends, including empty drafts. On a
+phone the editor takes the card's whole width and half the stage, the map
+staying under it so a station can still be picked there; there are no
+Route / Fuel / Map tabs any more. The older paragraph below describes the
+retired two-column card.
+The retired layout centred the editor horizontally with a bottom map inset
+and gave the route timeline a full-height left column beside the
+selected station, quantity and prices. The timeline and details scrolled separately,
+while the header and save footer remained visible. Narrow layouts stacked the two
 scroll regions and retain an uncovered part of the map on tablets. On phones, the
 editor fills the existing map bounds without a top gap. Route and Fuel details
 switch between full-height working panes; header and save footer remain visible.
@@ -204,8 +215,10 @@ their prices, quantities and dates are illustrative, never formulas.
 - Fuel plan (`FleetFuelPlan`): current fuel, the plan's own purchase and
   cost totals, the plan state, then each planned stop in order with its
   arrival fuel, purchase, price and cost, the server's warning, sent state
-  and View station. Stations, Edit plan (the existing editor) and Send fuel
-  plan (the existing send window) close it. Close returns to the truck.
+  and View station. Stations, Edit plan (the same card in edit, see the
+  fuel editor above) and Send fuel plan (the existing send window) close
+  it. Close returns to the truck; the editor, saved, reset or cancelled,
+  returns to this card.
 - Fuel stations (`FleetFuelStations`): the selected day's stations the
   map loaded, searched by name, city or address, narrowed to planned stops
   or a brand, with the price the map shows for that day. Planned stops

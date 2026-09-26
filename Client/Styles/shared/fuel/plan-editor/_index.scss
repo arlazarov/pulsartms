@@ -1,6 +1,5 @@
-// The fuel plan editor: its frame, the route it plans against, the station
-// selected on it, and how it folds.
+// The fuel plan editor: its frame in the card's place, the one list it
+// edits, and how it folds on a phone.
 @use 'editor';
-@use 'timeline';
-@use 'station';
+@use 'list';
 @use 'narrow';

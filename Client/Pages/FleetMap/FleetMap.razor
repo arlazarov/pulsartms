@@ -15,11 +15,15 @@
             @if (!string.IsNullOrWhiteSpace(TruckSearch))
             { <span class="visually-hidden" role="status">@MatchingTrucks.Count found</span> }
         </div>
-        <DriverGroupPicker Id="fleet-map-driver-group" />
         <button type="button" class="btn fleet-map-mobile-filters" aria-expanded="@(_mobileFiltersOpen ? "true" : "false")" aria-controls="fleet-map-filters" @onclick="() => _mobileFiltersOpen = !_mobileFiltersOpen">
             <ActionIcon Kind="filters" /><span>Filters</span>
         </button>
         <div id="fleet-map-filters" class="fleet-map-filters @(_mobileFiltersOpen ? "is-open" : "")">
+        @* The driver filter is a filter: on a phone it waits behind the
+           Filters button with the layers (the owner, September 26), and
+           on a wide toolbar the group is transparent, so it stands where
+           it did. *@
+        <DriverGroupPicker Id="fleet-map-driver-group" />
         <div class="fleet-map-layer-controls"
              aria-busy="@(!_preferencesLoaded ? "true" : "false")"
              aria-hidden="@(!_preferencesLoaded ? "true" : "false")">

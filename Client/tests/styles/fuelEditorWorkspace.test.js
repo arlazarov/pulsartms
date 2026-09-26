@@ -9,103 +9,82 @@ const css = compileString(
   "@use 'shared/fuel/plan-editor'; @use 'pages/fleet-map/stage'; @use 'pages/fleet-map/inspector';",
   { loadPaths },
 ).css;
+const razor = readFileSync(
+  new URL(
+    '../../Shared/Fuel/FuelPlanEditor/FuelPlanEditor.razor',
+    import.meta.url,
+  ),
+  'utf8',
+);
 
-test('wide fuel editor gives route and station independent adjacent columns over the unchanged map', () => {
+// The editor is the plan's own card in edit: the same place, the same
+// width, one list. It used to be a wider card at the foot of the map with
+// the route down one side and the chosen stop down the other, and the
+// owner could not tell which was which (September 26).
+test('the fuel editor takes the plan card place and width as one column over the unchanged map', () => {
   assert.match(
     css,
-    /@media \(width >= 1000px\)[\s\S]*\.fuel-plan-editor\s*\{[^}]*left: 50%;[^}]*right: auto;[^}]*transform: translateX\(-50%\);/,
-  );
-  assert.doesNotMatch(css, /top: 50%|translate\(-50%, -50%\)/);
-  assert.match(
-    css,
-    /\.fuel-plan-editor\s*\{[^}]*position: absolute;[^}]*right: var\(--space-md\);[^}]*bottom: var\(--space-md\);[^}]*width: min\(var\(--size-fuel-editor-wide\),/,
-  );
-  assert.match(
-    css,
-    /height: min\(var\(--size-fuel-editor-height\), 100% - var\(--space-md\) \* 2\);/,
+    /\.fuel-plan-editor\s*\{[^}]*position: absolute;[^}]*top: min\(var\(--space-md\), var\(--map-inspector-side-gap, 0px\)\);[^}]*left: 0;[^}]*right: 0;/,
   );
   assert.match(
     css,
-    /grid-template-columns: minmax\(0, var\(--size-fuel-editor-route\)\) minmax\(0, 1fr\);/,
+    /\.fuel-plan-editor\s*\{[^}]*width: min\(100%, var\(--size-map-stop-inspector\)\);[^}]*max-height: 55%;[^}]*margin-inline: auto;/,
   );
   assert.match(
     css,
-    /grid-template-areas: "header header" "timeline content" "footer footer";/,
+    /grid-template-areas: "header" "errors" "totals" "list" "footer";/,
   );
+  assert.doesNotMatch(css, /top: 50%|translate\(-50%, -50%\)|translateX/);
   assert.doesNotMatch(
     css,
-    /grid-template-rows:[^;]*var\(--size-fuel-editor-timeline/,
+    /fuel-editor-wide|fuel-editor-route|fuel-editor-height|"timeline content"/,
   );
   assert.doesNotMatch(
     css,
     /fleet-map-stage--fuel-editor|fuel-plan-editor__map-slot|grid-template-columns: subgrid/,
   );
-  const razor = readFileSync(
-    new URL(
-      '../../Shared/Fuel/FuelPlanEditor/FuelPlanEditor.razor',
-      import.meta.url,
-    ),
-    'utf8',
-  );
   assert.doesNotMatch(razor, /map-slot|id="fleet-map"/);
+  // No second column and no rings: the chosen stop opens under its own
+  // line, and the tank is said in words.
+  assert.doesNotMatch(razor, /fuel-plan-editor__content|__views|FuelGauge/);
+  assert.match(razor, /fuel-plan-editor__detail/);
+  assert.match(razor, /fuel-plan-editor__levels/);
   assert.match(razor, /fuel-plan-editor__stop-meta/);
 });
 
-test('the timeline and selected controls scroll independently while header and footer remain outside scroll areas', () => {
+test('the list scrolls while the head, totals and foot stay put', () => {
   assert.match(
     css,
     /\.fuel-plan-editor__stops\s*\{[^}]*overflow: auto;[^}]*overscroll-behavior: contain;/,
   );
-  assert.match(
-    css,
-    /\.fuel-plan-editor__content\s*\{[^}]*overflow: auto;[^}]*overscroll-behavior: contain;/,
-  );
   assert.doesNotMatch(
     css,
-    /\.fuel-plan-editor__(?:header|footer)\s*\{[^}]*overflow: auto/,
+    /\.fuel-plan-editor__(?:header|totals|footer)\s*\{[^}]*overflow: auto/,
   );
   assert.match(
     css,
-    /@media \(width < 1000px\)[\s\S]*\.fuel-plan-editor\s*\{[^}]*max-height: min\(70dvh, 75%\);[^}]*grid-template-rows: auto minmax\(0, 9fr\) minmax\(0, 11fr\) auto;/,
-  );
-  assert.match(
-    css,
-    /grid-template-areas: "header" "timeline" "content" "footer";/,
+    /\.fuel-plan-editor__totals\s*\{[^}]*grid-area: totals;[^}]*display: flex;/,
   );
   assert.match(
     css,
     /\.fuel-plan-editor__grip\s*\{[^}]*min-height: var\(--size-control-touch\);/,
   );
+  assert.match(css, /\.fuel-plan-editor__detail\s*\{[^}]*grid-column: 1\/-1;/);
 });
 
-test('phone editing uses one full-height pane and can expose the map without closing the draft', () => {
+test('a phone gives the editor the whole width and half the stage, with the actions on one row', () => {
   assert.match(css, /\.fuel-plan-editor\s*\{\s*box-sizing: border-box;/);
   const mobile = css.slice(
     css.indexOf('@media (width < 768px)', css.indexOf('.fuel-plan-editor')),
   );
   assert.match(
     mobile,
-    /\.fuel-plan-editor\s*\{[^}]*top: 0;[^}]*width: 100%;[^}]*height: 100%;[^}]*max-height: 100%;/,
+    /\.fuel-plan-editor\s*\{[^}]*width: 100%;[^}]*max-height: 50%;/,
   );
-  assert.match(mobile, /grid-template-rows: auto auto minmax\(0, 1fr\) auto;/);
+  assert.doesNotMatch(mobile, /is-route|is-map|"views"/);
   assert.match(
     mobile,
-    /grid-template-areas: "header" "views" "content" "footer";/,
-  );
-  assert.match(
-    mobile,
-    /\.fuel-plan-editor\.is-route\s*\{[^}]*grid-template-areas: "header" "views" "timeline" "footer";/,
-  );
-  assert.match(mobile, /\.fuel-plan-editor\.is-map\s*\{[^}]*height: auto;/);
-  assert.match(
-    mobile,
-    /\.fuel-plan-editor\.is-map \.fuel-plan-editor__footer\s*\{\s*display: none;/,
-  );
-});
-
-test('phone fuel actions share a row without shrinking targets or text', () => {
-  const mobile = css.slice(
-    css.indexOf('@media (width < 768px)', css.indexOf('.fuel-plan-editor')),
+    /\.fuel-plan-editor__timeline-heading,\s*\.fuel-plan-editor__origin\s*\{\s*display: none;/,
   );
   const footer = mobile.match(/\.fuel-plan-editor__footer\s*\{([^}]+)\}/)?.[1];
   assert.ok(footer);

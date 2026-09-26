@@ -575,6 +575,7 @@ public partial class FleetMap : IAsyncDisposable
     _showTruckInfo = true;
     _mobileTruckDetailsOpen = false;
     _fuelReturn = null;
+    _fuelEditorFromPlan = false;
     _inspectorMode = MapInspectorMode.Truck;
     _addressCopyMessage = null;
     if (truckId == _activeTruckId && dispatchId == _activeDispatchId)

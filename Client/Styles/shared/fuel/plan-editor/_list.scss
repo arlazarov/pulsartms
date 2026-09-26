@@ -1,24 +1,12 @@
 @use '../../../base' as ui;
 
-// The route down the left: pickup and delivery at the ends, a row per
-// planned stop between them, in an order that can be dragged.
+// The one list: the truck, a row per planned stop in an order that can be
+// dragged, the load's own stops between them, and the chosen stop opened
+// under its own line for its quantity and prices.
 .fuel-plan-editor {
-  &__timeline {
-    grid-area: timeline;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  &__content {
-    grid-area: content;
-    overflow: auto;
-    overscroll-behavior: contain;
-    padding: ui.pg(md);
-    border-left: 1px solid ui.theme(border-subtle);
-  }
   &__stops {
+    grid-area: list;
     display: flex;
-    flex: 1;
     flex-direction: column;
     align-items: stretch;
     gap: ui.pg(xs);
@@ -56,8 +44,8 @@
   }
   &__origin > svg {
     color: ui.theme(action);
-    width: ui.size(control-compact);
-    height: ui.size(control-compact);
+    width: ui.pg(lg);
+    height: ui.pg(lg);
     flex-shrink: 0;
   }
   &__stop,
@@ -81,8 +69,11 @@
       bottom: calc(-1 * #{ui.pg(xs)});
     }
   }
+  // A row is the grip and the stop's line; opened, its detail takes the
+  // full width under them.
   &__stop {
-    display: flex;
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
     align-items: center;
     min-width: 0;
     border: 1px solid ui.theme(border-subtle);
@@ -104,6 +95,7 @@
       --button-border: transparent;
       align-self: stretch;
       height: auto;
+      min-height: ui.size(control-touch);
       touch-action: none;
       cursor: grab;
     }
@@ -125,7 +117,6 @@
       display: grid;
       justify-content: stretch;
       gap: ui.pg(micro);
-      flex: 1;
       min-width: 0;
       padding: ui.pg(sm) ui.pg(sm) ui.pg(sm) 0;
       text-align: left;
@@ -170,6 +161,122 @@
     flex-shrink: 0;
     background: ui.theme(navigation);
     color: ui.theme(navigation-text);
+  }
+  &__detail {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: ui.pg(sm);
+    padding: 0 ui.pg(sm) ui.pg(sm);
+    border-top: 1px solid ui.theme(border-subtle);
+    padding-top: ui.pg(sm);
+  }
+  &__station-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+  }
+  &__station-heading > div {
+    display: grid;
+    gap: ui.pg(micro);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  &__station-heading small {
+    font-size: ui.fs(caption);
+    color: ui.theme(text-secondary);
+  }
+  &__address,
+  &__position {
+    margin: 0;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    line-height: 1.5;
+  }
+  &__position {
+    font-size: ui.fs(caption);
+  }
+  // The tank arriving, what is bought, the tank leaving: three readings
+  // on one line, no rings.
+  &__levels {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(md);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    &[aria-busy='true'] {
+      opacity: 0.6;
+    }
+  }
+  &__levels strong {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  &__buy {
+    padding-inline: ui.pg(sm);
+    border-inline: 1px solid ui.theme(border-subtle);
+  }
+  &__quantity {
+    display: grid;
+    gap: ui.pg(xs);
+  }
+  &__quantity-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+    flex-wrap: wrap;
+  }
+  &__quantity-heading > label:first-child {
+    display: flex;
+    gap: ui.pg(sm);
+  }
+  &__quantity input[type='range'] {
+    width: 100%;
+    min-height: ui.size(control);
+    margin: 0;
+    accent-color: ui.theme(action);
+    cursor: pointer;
+  }
+  &__quantity input[type='range']:focus-visible {
+    outline: 2px solid ui.theme(focus);
+    outline-offset: 2px;
+  }
+  &__range-labels {
+    display: flex;
+    justify-content: space-between;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+  }
+  &__full {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-height: ui.size(control);
+  }
+  &__full input {
+    @include ui.checkbox-control;
+  }
+  &__price,
+  &__cost {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: ui.pg(sm);
+    border-top: 1px solid ui.theme(border-subtle);
+    padding-top: ui.pg(sm);
+    font-size: ui.fs(small);
+  }
+  &__price strong,
+  &__cost strong {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
   &__anchor {
     display: flex;
@@ -216,6 +323,13 @@
   }
   &__anchor.is-delivery {
     color: ui.theme(delivery);
+  }
+  &__hint,
+  &__empty {
+    font-size: ui.fs(small);
+    color: ui.theme(text-secondary);
+    line-height: 1.5;
+    margin: ui.pg(sm) 0;
   }
   &__announcement {
     position: absolute;

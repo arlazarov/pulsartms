@@ -228,6 +228,12 @@ public partial class FleetMap
       await ShowFuelViewAsync(fuelView);
       return;
     }
+    if (_fuelEditorFromPlan)
+    {
+      _fuelEditorFromPlan = false;
+      await ShowFuelViewAsync(MapInspectorMode.FuelPlan);
+      return;
+    }
     _fuelReturn = null;
     ResetInspectedLoad();
     _mobileTruckDetailsOpen = false;

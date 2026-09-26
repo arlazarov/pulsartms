@@ -374,7 +374,7 @@ public sealed class FuelPlanEditorTests
   }
 
   [Fact]
-  public async Task MobileViewsPreserveTheDraftAndSelectingAStationReturnsToDetails()
+  public async Task SelectingAnotherRowOpensItInPlaceAndKeepsTheDraft()
   {
     using var fixture = new Fixture();
     var component = fixture.Render();
@@ -382,41 +382,21 @@ public sealed class FuelPlanEditorTests
       () => Assert.Equal(2, component.FindAll(".fuel-plan-editor__stop").Count)
     );
     var requests = fixture.Requests.Count;
-    var quantity = component.Find("input[type='range']").GetAttribute("value");
-    await component.InvokeAsync(
-      () =>
-        component
-          .FindAll(".fuel-plan-editor__views button")[2]
-          .ClickAsync(new MouseEventArgs())
-    );
-    Assert.Contains("is-map", component.Find(".fuel-plan-editor").ClassList);
-    Assert.Equal(
-      "true",
-      component
-        .FindAll(".fuel-plan-editor__views button")[2]
-        .GetAttribute("aria-pressed")
-    );
-    Assert.Equal(
-      quantity,
-      component.Find("input[type='range']").GetAttribute("value")
-    );
-    await component.InvokeAsync(
-      () =>
-        component
-          .FindAll(".fuel-plan-editor__views button")[0]
-          .ClickAsync(new MouseEventArgs())
-    );
-    Assert.Contains("is-route", component.Find(".fuel-plan-editor").ClassList);
+    Assert.Single(component.FindAll(".fuel-plan-editor__detail"));
     await component.InvokeAsync(
       () =>
         component
           .FindAll(".fuel-plan-editor__stop-select")[1]
           .ClickAsync(new MouseEventArgs())
     );
-    Assert.Contains("is-fuel", component.Find(".fuel-plan-editor").ClassList);
+    // The detail moves to the chosen row; there is no other pane to go to.
+    var opened = component.FindAll(".fuel-plan-editor__stop")[1];
+    Assert.Contains("is-selected", opened.ClassList);
+    Assert.NotNull(opened.QuerySelector(".fuel-plan-editor__detail"));
+    Assert.Single(component.FindAll(".fuel-plan-editor__detail"));
     Assert.Contains(
       "Second station",
-      component.Find(".fuel-plan-editor__station-heading").TextContent
+      opened.QuerySelector(".fuel-plan-editor__stop-heading")!.TextContent
     );
     Assert.Equal(requests, fixture.Requests.Count);
     Assert.Equal(0, fixture.Closed);
@@ -464,27 +444,30 @@ public sealed class FuelPlanEditorTests
       "1.739 CAD / L",
       component.Find(".fuel-plan-editor__price strong").TextContent
     );
+    // One list in the plan card's place: the totals over it, the chosen
+    // stop opened under its own line, no second column and no rings.
     Assert.Single(
-      component.FindAll(".fuel-plan-editor__timeline .fuel-plan-editor__stops")
-    );
-    Assert.Empty(
-      component.FindAll(".fuel-plan-editor__timeline .fuel-plan-editor__totals")
+      component.FindAll(".fuel-plan-editor > .fuel-plan-editor__stops")
     );
     Assert.Single(
-      component.FindAll(".fuel-plan-editor__content .fuel-plan-editor__totals")
+      component.FindAll(".fuel-plan-editor > .fuel-plan-editor__totals")
     );
     Assert.Equal(
       3,
       component
         .FindAll(
-          ".fuel-plan-editor > .fuel-plan-editor__header, .fuel-plan-editor > .fuel-plan-editor__timeline, .fuel-plan-editor > .fuel-plan-editor__footer"
+          ".fuel-plan-editor > .fuel-plan-editor__header, .fuel-plan-editor > .fuel-plan-editor__stops, .fuel-plan-editor > .fuel-plan-editor__footer"
         )
         .Count
     );
-    Assert.Empty(component.FindAll(".fuel-plan-editor__map-slot, #fleet-map"));
+    Assert.Empty(
+      component.FindAll(
+        ".fuel-plan-editor__map-slot, #fleet-map, .fuel-plan-editor__content, .fuel-plan-editor__views, .fleet-fuel-visit__gauge"
+      )
+    );
     Assert.Single(
       component.FindAll(
-        ".fuel-plan-editor__content .fuel-plan-editor__station-summary .fleet-fuel-visit__levels"
+        ".fuel-plan-editor__stop.is-selected > .fuel-plan-editor__detail .fuel-plan-editor__levels"
       )
     );
     Assert.Equal(3, component.FindAll(".fuel-plan-editor__anchor").Count);
@@ -599,7 +582,7 @@ public sealed class FuelPlanEditorTests
       () =>
         Assert.Equal(
           "true",
-          component.Find(".fleet-fuel-visit__levels").GetAttribute("aria-busy")
+          component.Find(".fuel-plan-editor__levels").GetAttribute("aria-busy")
         )
     );
     fixture.Clock.Advance(TimeSpan.FromMilliseconds(250));
@@ -961,7 +944,7 @@ public sealed class FuelPlanEditorTests
           Assert.Equal(
             "true",
             component
-              .Find(".fleet-fuel-visit__levels")
+              .Find(".fuel-plan-editor__levels")
               .GetAttribute("aria-busy")
           )
       );
@@ -1175,7 +1158,7 @@ public sealed class FuelPlanEditorTests
     {
       Assert.Equal(
         "false",
-        component.Find(".fleet-fuel-visit__levels").GetAttribute("aria-busy")
+        component.Find(".fuel-plan-editor__levels").GetAttribute("aria-busy")
       );
       Assert.False(
         component.Find("button.fuel-plan-editor__save").HasAttribute("disabled")
