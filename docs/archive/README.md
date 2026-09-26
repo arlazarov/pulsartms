@@ -13,6 +13,7 @@ started again under the current project policy.
 - [Application architecture audit](2026-09/application-audit-2026-09-26.md)
 - [Architecture guardrail corrections][architecture-guardrails]
 - [Architecture audit conclusion](2026-09/architecture-audit-conclusion-2026-09-26.md)
+- [September 26 evening release](2026-09/release-2026-09-26-evening.md)
 
 [architecture-guardrails]: 2026-09/architecture-guardrails-2026-09-26.md
 
