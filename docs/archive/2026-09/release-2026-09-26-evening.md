@@ -124,6 +124,19 @@ against the artifact). The API is unchanged.
 Local renders, pinned: `browser-fleet-design-iOd4xT` and `-sVWlox`
 (card and fuel plan), `browser-map-markers-XCDDoT` (the map on the real
 basemap with the colours back).
+- `530f8e6c` -> `release-dccWfF`, 16:47 UTC (with `c9422d85`): the
+  cycle remaining and the fuel on arrival off the truck card, the actions
+  at the foot of the stop row's facts column; planning review notices by
+  kind on the client (`PlanningNotice`), shown on the map as
+  "Load N · review in Dispatch" and in full on Dispatch. The gate on
+  `c9422d85` alone failed two preview-cache tests (record equality of the
+  notice list) and published nothing; `530f8e6c` corrected it.
+
+The matching API change (`PlanningWorkPolicy` says the review as a notice
+instead of appending it to the message) is committed but not deployed:
+the map keeps showing the old API's sentence until the API is published,
+which needs its own authorization. Local render of the card:
+`browser-fleet-design-uX3AEz`.
 
 ## Not done
 
