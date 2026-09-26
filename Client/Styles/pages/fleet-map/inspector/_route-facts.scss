@@ -19,7 +19,7 @@
       grid-row: 1;
       align-self: stretch;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
       align-content: start;
       gap: ui.pg(xs) ui.pg(lg);
       min-width: 0;

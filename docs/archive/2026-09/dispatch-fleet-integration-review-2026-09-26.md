@@ -94,3 +94,16 @@ Dispatch remain unchanged. The unchanged clipping assertion passes in
 browser-hours-forecast-FtcgCv (2344 light), with all four clock scroll widths
 matching their client widths. Original failure: CRIaso. Styles 139 and
 formatting passed. The remaining responsive matrix is still in progress.
+
+
+## Phone loading and enlarged route grid
+
+The phone probe fGQdrD reproduced a 64px horizontal overflow at 200-percent
+text: the visit grid required an 11rem minimum wider than its container.
+The minimum now caps itself at 100 percent of available width, retaining
+11rem as the normal two-column threshold. The loading load-number dash now
+uses the loaded link's lead size and weight; its former body size caused a
+2.8px line-height jump when the load details arrived. No arrival tolerance
+was relaxed. Follow-up iYtf8c passed these assertions and reached a separate
+outdated helper assertion. Final whole-matrix evidence remains pending.
+Styles 139 and formatting passed after both changes.
