@@ -28,6 +28,17 @@ public sealed partial class RoutePlanningService
     CancellationToken ct,
     Guid? executionLegId = null,
     Guid? truckId = null
+  ) =>
+    await TryLoadAsync(id, ct, executionLegId, truckId)
+    ?? throw new RoutePlanningException("Dispatch not found.");
+
+  // Null when the serving carrier has no such dispatch: another carrier's,
+  // or gone.
+  public async Task<RouteWorkSnapshot?> TryLoadAsync(
+    Guid id,
+    CancellationToken ct,
+    Guid? executionLegId = null,
+    Guid? truckId = null
   )
   {
     Task<DispatchSource?> Load() =>
@@ -41,9 +52,8 @@ public sealed partial class RoutePlanningService
         ))
         .SingleOrDefaultAsync(ct);
     var key = $"{id}:source:{reads.Generation(ReadGroups.Execution)}";
-    var source =
-      (await reads.GetAsync(ReadGroups.Dispatch, key, Load))
-      ?? throw new RoutePlanningException("Dispatch not found.");
+    if (await reads.GetAsync(ReadGroups.Dispatch, key, Load) is not { } source)
+      return null;
     return await ResolveAssignmentAsync(
       source.Load,
       ct,

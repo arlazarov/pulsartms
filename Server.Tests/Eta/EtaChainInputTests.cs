@@ -1,6 +1,7 @@
 using System.Data.Common;
 using System.Reflection;
 using System.Text.Json;
+using Application.Caching;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Queries;
 using Application.Features.Eta.Services;
@@ -8,6 +9,8 @@ using Application.Features.Execution.Models;
 using Application.Features.Routing.Services.Addresses;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
+using Application.Features.Synchronization.Options;
+using Application.Interfaces;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
@@ -21,7 +24,10 @@ using MediatR;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Server.Tests.Support;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Eta;
@@ -989,10 +995,13 @@ public sealed partial class EtaChainInputTests
     Truck truck,
     Load current,
     Load next,
-    PublicationProbe publication
+    PublicationProbe publication,
+    TestCompany company,
+    ReadCache reads
   ) : IAsyncDisposable
   {
     public AppDbContext Db => db;
+    public TestCompany Company => company;
     public PublicationProbe Publication => publication;
     public GeometryProbe Probe => probe;
     public PlanningTestServices Services => services;
@@ -1013,10 +1022,18 @@ public sealed partial class EtaChainInputTests
       var connection = new SqliteConnection("Data Source=:memory:");
       await connection.OpenAsync();
       var probe = new GeometryProbe();
+      // A carrier the context serves, which a test may switch for a pass
+      // made as another one.
+      var company = new TestCompany();
       var db = new AppDbContext(
         new DbContextOptionsBuilder<AppDbContext>()
           .UseSqlite(connection)
           .AddInterceptors(probe)
+          .UseApplicationServiceProvider(
+            new ServiceCollection()
+              .AddSingleton<ICurrentCompany>(company)
+              .BuildServiceProvider()
+          )
           .Options
       );
       await db.Database.EnsureCreatedAsync();
@@ -1075,9 +1092,16 @@ public sealed partial class EtaChainInputTests
       db.Dispatches.AddRange(current, next);
       await db.SaveChangesAsync();
       var publication = new PublicationProbe(db);
+      // The read cache keys what it holds by the carrier served, as in
+      // the running app, so a pass made as another carrier reads its own.
+      var reads = new ReadCache(
+        Options.Create(new SynchronizationOptions()),
+        company
+      );
       var services = new PlanningTestServices(
         db,
         sender: sender,
+        reads: reads,
         publicationScope: publication
       );
       var profile = await services.Routes.ProfileAsync(truck.Id, default);
@@ -1172,13 +1196,16 @@ public sealed partial class EtaChainInputTests
         truck,
         current,
         next,
-        publication
+        publication,
+        company,
+        reads
       );
     }
 
     public async ValueTask DisposeAsync()
     {
       services.Dispose();
+      reads.Dispose();
       await db.DisposeAsync();
       await connection.DisposeAsync();
     }

@@ -257,6 +257,18 @@ public sealed partial class EtaChainInputTests
       f.Services.EtaMemory.MapAnswer(scope),
       new[] { "current", "updating" }
     );
+
+    // The ETA queue does not know whose load it holds, so the refresh is
+    // offered to every carrier in turn (EtaRefreshOperation). Another
+    // carrier's pass cannot see the load; it must leave the owner's
+    // forecast in place, not drop it as gone. It did, every half minute,
+    // once meta-review-demo stood beside amfcarrier: trucks 11005, 11007 and
+    // 54777 read a dash on the map (September 25).
+    using (f.Company.As(Guid.NewGuid()))
+      await f.Services.Forecasts.RefreshAsync(scope, default);
+
+    Assert.True(f.Services.EtaMemory.Results.ContainsKey(scope));
+    Assert.NotNull(f.Services.Eta.GetCached(copy.State!));
     Assert.True(f.Services.EtaMemory.Results.ContainsKey(scope));
   }
 }

@@ -19,10 +19,10 @@ public sealed partial class EtaForecastService
   public async Task RefreshAsync(Guid requestedDispatchId, CancellationToken ct)
   {
     var identity = memory.Resolve(requestedDispatchId);
-    RouteWorkSnapshot requested;
+    RouteWorkSnapshot? requested;
     try
     {
-      requested = await routes.LoadAsync(
+      requested = await routes.TryLoadAsync(
         identity.DispatchId,
         ct,
         identity.ExecutionLegId
@@ -33,6 +33,13 @@ public sealed partial class EtaForecastService
       Drop(requestedDispatchId, "the leg could not be loaded");
       return;
     }
+    // The queue does not know whose load it holds, so the refresh is offered
+    // to every carrier in turn (EtaRefreshOperation). A carrier that does not
+    // have the load leaves the owner's forecast alone: dropping it here
+    // emptied the map's ETA every half minute once a second carrier existed
+    // (trucks 11005, 11007 and 54777, September 25).
+    if (requested is null)
+      return;
     if (!PlanningWorkPolicy.CanUseGps(requested))
     {
       Drop(requestedDispatchId, "the load cannot use GPS");
