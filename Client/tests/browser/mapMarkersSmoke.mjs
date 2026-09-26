@@ -106,13 +106,10 @@ try {
       6,
       'spacing never removes an original station',
     );
-    // The planned stop is deliberately the largest thing on the fuel layer;
-    // every other station keeps the 16px circle whatever its price or
-    // crowding.
+    // Every station keeps the 16px circle whatever its price or crowding;
+    // the planned stop is told apart by its ring, not by a bigger dot.
     assert.ok(
-      markers.stations.every(
-        station => station.radius === (station.id === 'planned' ? 10 : 8),
-      ),
+      markers.stations.every(station => station.radius === 8),
       'prices and clutter never change the 16px station circle size',
     );
     assert.deepEqual(
@@ -530,11 +527,12 @@ try {
       );
       assert.equal(route.width, role.startsWith('current') ? 5 : 4);
       // The road being driven is drawn in full. A load that is not today's
-      // steps back to 0.75, and anything muted by a selection elsewhere -
-      // whichever road it is - to 0.4.
+      // steps back to 0.45 (0.7 once deck has raised it to 1/2.2), and
+      // anything muted by a selection elsewhere - whichever road it is -
+      // to 0.4.
       assert.equal(
         route.opacity,
-        role.endsWith('-muted') ? 0.4 : role === 'current' ? 1 : 0.75,
+        role.endsWith('-muted') ? 0.4 : role === 'current' ? 1 : 0.45,
         `${role} must keep the strength its kind of road is drawn at`,
       );
       // Empty miles are dashed; a load's road, today's or not, is solid.
