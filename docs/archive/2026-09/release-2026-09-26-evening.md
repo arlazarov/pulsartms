@@ -100,6 +100,31 @@ conversations 5, conversation messages 55, driver messages 0,
 broadcasts 0, fuel visit sends 0, stored credentials 2). The new
 revision's first 30 minutes show no error-level log entry and no 5xx.
 
+## Frontend follow-ups the same evening
+
+The owner reviewed the published map and card and asked for changes,
+published without the design matrix at their request ("deploy without
+checks; check later"); each ran `deploy-client.sh`'s own gate (Server
+3,773, Client 1,240-1,242, JavaScript 662-663) from a clean worktree and
+was checked live the same way (entry HTML, stylesheet and settings
+against the artifact). The API is unchanged.
+
+- `14bd23c2` -> `release-3lkCvr`: a colour per upcoming load again on the
+  roads and badges, 28 px badges, every truck-card row split at one
+  place (`--truck-card-columns`).
+- `c7295704` -> `release-7gdpP0`: the planned fuel stop a size smaller.
+- `3e39fdd3` -> `release-eCm7iW` (with `b0409300`): upcoming roads at
+  full strength, a standing truck's ring 36 px, the fuel on arrival at
+  the facts' size.
+- `bd398acc` -> `release-ig8H20`, 16:23 UTC: the load's stops listed
+  in the fuel plan between the fuel stops; the fuel booked to the next
+  loads hidden with the Next loads layer (the toggle used to hide
+  nothing); where the truck is now beside the next stop.
+
+Local renders, pinned: `browser-fleet-design-iOd4xT` and `-sVWlox`
+(card and fuel plan), `browser-map-markers-XCDDoT` (the map on the real
+basemap with the colours back).
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
