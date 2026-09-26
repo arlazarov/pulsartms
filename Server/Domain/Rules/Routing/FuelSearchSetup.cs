@@ -27,7 +27,8 @@ public sealed record FuelSearchSetup(
     TruckRouteProfile profile,
     IReadOnlyList<FuelCandidate> candidates,
     FuelArrivalPolicy? arrivalPolicy,
-    double initialAccessMiles
+    double initialAccessMiles,
+    bool keepReserveToFirstStop = false
   )
   {
     if (profile.Validate(true) is { } error)
@@ -44,7 +45,9 @@ public sealed record FuelSearchSetup(
       { } levelError
     )
       throw new RoutePlanningException(levelError);
-    var firstMinimum = FuelReservePolicy.PhysicalArrivalMinimumGallons;
+    var firstMinimum = keepReserveToFirstStop
+      ? reserve
+      : FuelReservePolicy.PhysicalArrivalMinimumGallons;
     var arrivalMinimum = arrivalPolicy is null
       ? reserve
       : Math.Max(reserve, (int)Math.Ceiling(arrivalPolicy.MinimumGallons));

@@ -8,7 +8,7 @@ namespace Server.Tests.Fuel;
 public sealed class FuelOptionalTopUpTests
 {
   [Fact]
-  public void Captured11007UsesReachableCheaperStopAndCoversDeliveryAndExit()
+  public void Captured11007KeepsTheReserveThenFillsAtTheCheaperStop()
   {
     var profile = Profile();
     profile.Mpg = 6.720416657142858;
@@ -30,15 +30,27 @@ public sealed class FuelOptionalTopUpTests
       arrivalPolicy: policy
     );
 
-    Assert.Equal("371", Assert.Single(plan.Stops).Name);
-    Assert.InRange(plan.Stops[0].ArrivalGallons, 0, profile.ReserveGallons);
-    Assert.True(plan.Stops[0].FillToTarget);
+    // 371 is the cheapest, but reached directly it is below the reserve.
+    // Since 435 keeps the reserve, the plan tops up there with the least
+    // automatic purchase and still fills at 371 (September 26: a plan that
+    // keeps the reserve to its first stop wins whenever one exists).
+    Assert.Equal(["435", "371"], plan.Stops.Select(x => x.Name));
+    Assert.All(
+      plan.Stops,
+      stop => Assert.True(stop.ArrivalGallons >= profile.ReserveGallons)
+    );
+    Assert.Equal(25, plan.Stops[0].BuyGallons);
+    Assert.True(plan.Stops[1].FillToTarget);
     Assert.Equal(164.7043285725631, plan.ArrivalGallons, 8);
     Assert.True(
       plan.ArrivalGallons - policy.EscapeMiles / profile.Mpg
         >= profile.ReserveGallons
     );
-    Assert.Equal(plan.PurchaseCostUsd + 4d / 60 * 35, plan.EconomicCostUsd, 8);
+    Assert.Equal(
+      plan.PurchaseCostUsd + plan.Stops.Count * (4d / 60 * 35),
+      plan.EconomicCostUsd,
+      8
+    );
   }
 
   [Theory]
