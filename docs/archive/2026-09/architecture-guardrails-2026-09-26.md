@@ -184,8 +184,9 @@ passed in 74 ms. The changed candidate then passed one full gate: server 3,769,
 Client 1,239 and JavaScript 659, with no failures or skips. TypeScript checking
 also passed.
 
-Claude subsequently committed `ccb0838f` (map road presentation) while this
-gate ran. It is outside this candidate and has no overlapping source file.
-Do not treat this gate as acceptance of later changes or the combined future
-release. No independent visual/browser matrix, production data repair, real
-provider send, deployment or production performance measurement ran here.
+Claude subsequently committed `ccb0838f` (map road presentation). The isolated
+branch was rebased onto that commit without conflicts after the full gate, then
+the combined tree passed `bash test.sh map`: server 282, Client 317, map
+JavaScript 417 and JavaScript architecture 67. TypeScript checking passed.
+No independent visual/browser matrix, production data repair, real provider
+send, deployment or production performance measurement ran here.

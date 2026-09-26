@@ -54,6 +54,16 @@
       "architectureJavascript": 67
     }
   },
+  "combinedMapCheck": {
+    "base": "ccb0838f",
+    "command": "bash test.sh map",
+    "exitCode": 0,
+    "server": 282,
+    "client": 317,
+    "mapJavascript": 417,
+    "architectureJavascript": 67,
+    "typescript": "passed"
+  },
   "logSha256": "9b79416b6827c4d57908d0f7e26116c0c6fba5d24f713aa134099106e28a2d72",
   "files": {
     "Server.Tests/Architecture/DeliveryOwnershipTests.cs": "ecf5fc4a4791543e5183685c2af37a534a3b82934c765e340b1f731394e82576",
