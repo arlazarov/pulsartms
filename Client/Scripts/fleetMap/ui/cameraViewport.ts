@@ -32,6 +32,12 @@ export function createCameraViewport(
     panned: { x: number; y: number };
     until: number;
   } | null = null;
+  // What the card is about, kept after the reveal is over: a card that
+  // changes shape later - opened, Details, a taller stop - reveals it
+  // again, even after the reader has dragged the map away (the owner,
+  // September 26).
+  let current: google.maps.LatLngLiteral | null = null,
+    covering = '';
   // A reader who drags the map has taken it back: nothing more is moved for
   // them. Any other move - a route fitted, a zoom, our own pan - ends in an
   // idle, where the pick's place is measured again against the camera at
@@ -58,7 +64,27 @@ export function createCameraViewport(
       signature = next;
       changed();
     }
+    // A card of another shape than last time is a new card over the pick.
+    const cover = region
+      ? [region.x, region.y, region.width, region.height].join(':')
+      : '';
+    if (cover !== covering) {
+      covering = cover;
+      if (cover && !pending && current) begin(current);
+    }
     attemptReveal();
+  }
+
+  function begin(position: google.maps.LatLngLiteral) {
+    const at = pixel(position);
+    pending = at
+      ? {
+          position,
+          at,
+          panned: { x: 0, y: 0 },
+          until: Date.now() + revealPatience,
+        }
+      : null;
   }
 
   // Where a position falls on the map's element, in its pixels.
@@ -253,6 +279,7 @@ export function createCameraViewport(
     },
     reveal(position: google.maps.LatLngLiteral | null | undefined) {
       if (disposed || !position) return;
+      current = position;
       // The same pick again, while it is still being brought into view,
       // is the same pick: measuring it afresh mid-pan would send it off.
       if (
@@ -265,16 +292,14 @@ export function createCameraViewport(
         return;
       }
       measure();
-      const at = pixel(position);
-      pending = at
-        ? {
-            position,
-            at,
-            panned: { x: 0, y: 0 },
-            until: Date.now() + revealPatience,
-          }
-        : null;
+      begin(position);
       refresh();
+    },
+    // Nothing is picked any more: a card that opens later is about
+    // something else, and says so itself.
+    forget() {
+      current = null;
+      pending = null;
     },
     center,
     captureCenter() {
@@ -295,6 +320,7 @@ export function createCameraViewport(
     dispose() {
       disposed = true;
       pending = null;
+      current = null;
       for (const listener of taken) listener?.remove?.();
       changed = () => {};
       resize?.disconnect();

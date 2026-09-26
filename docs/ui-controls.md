@@ -519,7 +519,11 @@ against the camera at rest - at the pick and again at every idle, so a
 route fitted or a zoom meanwhile is taken into account and a pan in flight
 is never read mid-animation. The same pick clicked again while it is being
 brought into view is the same pick; a stop or station opened again after
-its card closed is a new one and is revealed again. A stop, next-stop or station card is
+its card closed is a new one and is revealed again. The pick is kept as
+long as it is what the card is about: a card that changes shape later -
+opened, Details, a stop card grown taller - reveals it again, even after
+the reader has dragged the map away; an unchanged card after a drag moves
+nothing, and closing the card forgets the pick. A stop, next-stop or station card is
 at least `map-stop-inspector-height` tall (half the stage at most on a
 phone), so it does not grow under the reader (September 26). Fuel details
 reuse existing server prices, quantities and costs, with compact gauges and

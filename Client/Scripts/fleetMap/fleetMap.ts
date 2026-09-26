@@ -243,7 +243,7 @@ export async function createFleetMap(
           if (at)
             cameraViewport.reveal({ lat: at.latitude, lng: at.longitude });
           notify('OnTruckSelected', id);
-        }
+        } else cameraViewport.forget();
       },
       (id, position) => route.setRenderedPosition(id, position),
       (id, position) => route.getDisplayPosition(id, position),
@@ -383,6 +383,7 @@ export async function createFleetMap(
       clearMapInspection() {
         if (disposed) return;
         inspector.setMode('closed', true);
+        cameraViewport.forget();
         route.closePopup();
         stations.closePopup();
         nextLoads.clearSelection();
@@ -586,6 +587,7 @@ export async function createFleetMap(
         gpuScene.setRouteEditing?.(false);
         inspectionTruckId = null;
         inspector.setMode('closed');
+        cameraViewport.forget();
         etas.clear();
         routeVersion++;
         currentPlan = null;

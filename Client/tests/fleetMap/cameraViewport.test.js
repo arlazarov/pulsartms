@@ -373,13 +373,17 @@ test('a pick waits for its card and is revealed once when the card appears', t =
   assert.deepEqual(f.pans, [[0, -220]], 'a later layout pass moves nothing');
 });
 
-test('a reader who drags the map keeps it, and a map without panBy is left alone', t => {
+test('a drag ends the reveal in flight, a card that then opens is a new one, and a map without panBy is left alone', t => {
   const f = revealFixture(t);
   f.camera.reveal({ lat: -10, lng: 0 });
   f.drag();
+  f.camera.refresh();
+  assert.deepEqual(f.pans, [], 'dragged: nothing in flight moves the map');
+  // The card opens over the pick after the drag: a new card, revealed.
   f.overlay('.fleet-map-info-reserved', () => rect(80, 100, 1000, 160));
   f.camera.refresh();
-  assert.deepEqual(f.pans, []);
+  assert.deepEqual(f.pans, [[0, -220]]);
+  f.idle();
   delete f.map.panBy;
   f.camera.reveal({ lat: -10, lng: 0 });
   assert.doesNotThrow(() => f.camera.refresh());
@@ -439,4 +443,38 @@ test('opening the same pick again after the card closed reveals it again', t => 
   shown = true;
   f.camera.refresh();
   assert.equal(f.pans.length, 2, 'the card is back over it');
+});
+
+// The reader dragged the map away from the pick, then opened the card's
+// Details: the card is a new shape over the same pick, and the pick is
+// brought out again. An unchanged card after a drag moves nothing, and a
+// forgotten pick is not brought back by a card about something else.
+test('a card that changes shape after a drag reveals the current pick again', t => {
+  const f = revealFixture(t);
+  let height = 160;
+  f.overlay('.fleet-map-info-reserved', () => rect(80, 100, 1000, height));
+  f.camera.refresh();
+  f.camera.reveal({ lat: -10, lng: 0 });
+  f.idle();
+  assert.equal(f.pans.length, 1);
+  // Dragged back under the card, and left there: the map is the reader's.
+  f.drag();
+  f.centre.lat = 0;
+  f.idle();
+  f.camera.refresh();
+  assert.equal(
+    f.pans.length,
+    1,
+    'an unchanged card after a drag moves nothing',
+  );
+  // Details opens: the card is taller, and the pick comes out again.
+  height = 260;
+  f.camera.refresh();
+  assert.deepEqual(f.pans.at(-1), [0, -320]);
+  f.idle();
+  // Forgotten, a taller card again is about something else.
+  f.camera.forget();
+  height = 360;
+  f.camera.refresh();
+  assert.equal(f.pans.length, 2);
 });
