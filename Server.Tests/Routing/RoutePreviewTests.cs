@@ -90,6 +90,7 @@ public sealed class RoutePreviewTests
       }
     );
     using var telemetry = new FleetTelemetryCache(memory, new TestCompany());
+    var company = new TestCompany();
     var previews = new RoutePreviewService(
       db,
       services.PlanningInputs,
@@ -99,7 +100,8 @@ public sealed class RoutePreviewTests
       services.Routes,
       memory,
       new ServerTelemetry(new TestCompany()),
-      telemetry
+      telemetry,
+      company
     );
     var result = await previews.GetAsync(default);
     Assert.Equal(truck.Id, Assert.Single(result).TruckId);
@@ -108,9 +110,15 @@ public sealed class RoutePreviewTests
     var cached = await previews.GetAsync(default);
     Assert.NotEmpty(Assert.Single(cached).State!.Plan!.Route.Legs);
     Assert.Equal(new[] { 1, 2 }, sender.Pages);
-    reads.Invalidate("board");
+    // Another carrier never gets this one's cached preview: it reads its own.
+    using (company.As(Guid.NewGuid()))
+      await previews.GetAsync(default);
+    Assert.Equal(new[] { 1, 2, 1, 2 }, sender.Pages);
     await previews.GetAsync(default);
     Assert.Equal(new[] { 1, 2, 1, 2 }, sender.Pages);
+    reads.Invalidate("board");
+    await previews.GetAsync(default);
+    Assert.Equal(new[] { 1, 2, 1, 2, 1, 2 }, sender.Pages);
     var profiles = new TruckPlanningProfileService(
       db,
       reads,
@@ -125,7 +133,7 @@ public sealed class RoutePreviewTests
       new SavedRoutePlanReader(db, NullLogger<SavedRoutePlanReader>.Instance)
     ).SaveAsync(await db.DispatchRoutePlans.SingleAsync(), plan, default);
     Assert.Empty(await previews.GetAsync(default));
-    Assert.Equal(new[] { 1, 2, 1, 2, 1, 2 }, sender.Pages);
+    Assert.Equal(new[] { 1, 2, 1, 2, 1, 2, 1, 2 }, sender.Pages);
   }
 
   [Fact]
@@ -168,6 +176,7 @@ public sealed class RoutePreviewTests
       },
     };
     using var telemetry = new FleetTelemetryCache(memory, new TestCompany());
+    var company = new TestCompany();
     var service = new RoutePreviewService(
       db,
       services.PlanningInputs,
@@ -177,7 +186,8 @@ public sealed class RoutePreviewTests
       services.Routes,
       memory,
       new ServerTelemetry(new TestCompany()),
-      telemetry
+      telemetry,
+      company
     );
     var first = service.GetAsync(default);
     await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));

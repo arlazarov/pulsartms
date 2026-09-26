@@ -22,10 +22,17 @@ public sealed class RoutePreviewService(
   RoutePlanningService routes,
   IMemoryCache cache,
   ServerTelemetry serverTelemetry,
-  FleetTelemetryCache telemetryCache
+  FleetTelemetryCache telemetryCache,
+  ICurrentCompany companies
 )
 {
-  private const string CacheKey = "route-preview:fleet";
+  // One company's fleet preview, never another's: the key names the company.
+  // It was one constant key over a process-wide cache, and the read-cache
+  // generations it is checked against are not per company either, so for up
+  // to 30 seconds any other carrier's request got this one's trucks, loads
+  // and roads.
+  private string? CacheKey =>
+    companies.Id is { } company ? $"route-preview:fleet:{company:N}" : null;
   private static readonly SemaphoreSlim FleetGate = new(1);
 
   private sealed record SavedPreview(string Generation, byte[] Json);
@@ -51,9 +58,13 @@ public sealed class RoutePreviewService(
         result,
         RoutingJson.Options
       );
-      if (json.Length <= 8 * 1024 * 1024 && generation == Generation())
+      if (
+        CacheKey is { } key
+        && json.Length <= 8 * 1024 * 1024
+        && generation == Generation()
+      )
         cache.Set(
-          CacheKey,
+          key,
           new SavedPreview(generation, json),
           TimeSpan.FromSeconds(30)
         );
@@ -72,7 +83,8 @@ public sealed class RoutePreviewService(
     + $"{reads.Generation(ReadGroups.Execution)}";
 
   private List<AutomaticPlanningResult>? ReadCached(string generation) =>
-    cache.TryGetValue<SavedPreview>(CacheKey, out var saved)
+    CacheKey is { } key
+    && cache.TryGetValue<SavedPreview>(key, out var saved)
     && saved!.Generation == generation
       ? JsonSerializer.Deserialize<List<AutomaticPlanningResult>>(
         saved.Json,

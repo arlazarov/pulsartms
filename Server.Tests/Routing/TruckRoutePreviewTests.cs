@@ -1005,7 +1005,8 @@ public sealed class TruckRoutePreviewTests
         fixture.Services.Routes,
         fixture.Memory,
         fixture.Telemetry,
-        fixture.TelemetryCache
+        fixture.TelemetryCache,
+        new TestCompany()
       );
       db.Trucks.Add(fixture.Truck);
       await db.SaveChangesAsync();
