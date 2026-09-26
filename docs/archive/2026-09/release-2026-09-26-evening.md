@@ -202,6 +202,20 @@ basemap with the colours back).
   (`v=9f1acb1fd276511c`), settings and the fingerprinted framework files
   match the artifact. Local render `browser-fleet-design-z8Mu4T`.
 
+- `283ec891` -> `release-pZ5iF7`, 19:58 UTC (with `e76ad220` and
+  `a3a7d2ad`): a stop or station opened again is revealed again, and
+  the pick is measured at every rest, so a route fitted or a zoom
+  meanwhile is taken into account; the Open load button off the truck
+  card; the next-load stop card numbered as its badge, naming its crew
+  and sized as the route stop card, and both saying "Cycle short by".
+  Two earlier gates on this work published nothing: one (`e76ad220`)
+  was stopped after 28 minutes in the Server tests, slowed by builds
+  beside it; two more stopped at two JavaScript pins and at Prettier.
+  Gate: Server 3,773, Client 1,244, JavaScript 662; 285 files; entry
+  HTML, stylesheet (`v=75dff988178eeac2`), settings and the fingerprinted
+  framework files match the artifact. Local renders
+  `browser-fleet-design-C3BnYu` and `-6zwW4C`.
+
 ## API, second release (16:51-16:59 UTC)
 
 The owner authorized it ("so fix it") for the review notices by kind
