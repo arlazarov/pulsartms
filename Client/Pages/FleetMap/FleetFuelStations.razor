@@ -1,0 +1,88 @@
+@using Client.Models.DTO.Fleet
+<section class="fleet-fuel-stations" aria-label="Fuel stations">
+    <div class="fleet-fuel-stations__filters" role="search">
+        <label class="fleet-fuel-stations__search">
+            <ActionIcon Kind="search" />
+            <span class="visually-hidden">Search stations</span>
+            <input type="search" placeholder="Search station or city"
+                   value="@_query" @oninput="OnQuery" />
+        </label>
+        <label class="fleet-fuel-stations__select">
+            <span class="visually-hidden">Stations shown</span>
+            <select value="@_scope" @onchange="OnScope">
+                <option value="all">All stations</option>
+                <option value="planned">Planned stops</option>
+            </select>
+        </label>
+        <label class="fleet-fuel-stations__select">
+            <span class="visually-hidden">Brand</span>
+            <select value="@_brand" @onchange="OnBrand">
+                <option value="">All brands</option>
+                @foreach (var brand in Brands)
+                {
+                    <option value="@brand">@brand</option>
+                }
+            </select>
+        </label>
+    </div>
+    <p class="fleet-fuel-stations__freshness">
+        @if (Stations is null && Error is null)
+        {
+            <span role="status">Loading stations…</span>
+        }
+        else if (Error is not null)
+        {
+            <span role="alert">@Error</span>
+        }
+        else
+        {
+            <span>Prices for @Date.ToString("MMM d") · @PriceLabel</span>
+        }
+    </p>
+    @if (Rows.Count == 0 && Stations is not null)
+    {
+        <p class="fleet-fuel-stations__empty">No stations match.</p>
+    }
+    <ul class="fleet-fuel-stations__list">
+        @foreach (var row in Rows.Take(ShownLimit))
+        {
+            <li class="fleet-fuel-stations__row" @key="row.Id">
+                <div class="fleet-fuel-stations__station">
+                    <strong>@row.Name</strong>
+                    <span>@row.Address</span>
+                    @if (row.Planned is { } planned)
+                    {
+                        <small>
+                            @Units.FormatDistance(planned.MilesAhead) ahead ·
+                            @Units.FormatDistance(planned.DetourMiles) detour
+                        </small>
+                    }
+                </div>
+                <strong class="fleet-fuel-stations__price">@row.Price</strong>
+                @if (row.Planned is { } stop)
+                {
+                    <span class="fleet-fuel-stations__planned"
+                        >Planned · @stop.Number</span>
+                }
+                else
+                {
+                    <span aria-hidden="true"></span>
+                }
+                <button type="button" class="btn btn--small"
+                        aria-label="@($"View {row.Name}")"
+                        @onclick="() => View.InvokeAsync(row.Id)">View</button>
+            </li>
+        }
+    </ul>
+    @if (Rows.Count > ShownLimit)
+    {
+        <p class="fleet-fuel-stations__more">
+            Showing @ShownLimit of @Rows.Count. Search to narrow the list.
+        </p>
+    }
+    <footer class="fleet-fuel-stations__actions">
+        <button type="button" class="btn btn--small" @onclick="Back">
+            <span aria-hidden="true">←</span> Back to plan
+        </button>
+    </footer>
+</section>

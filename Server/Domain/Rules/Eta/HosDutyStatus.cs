@@ -16,10 +16,14 @@ public static class HosDutyStatus
       clocks?.UpdatedAt >= now.UtcDateTime.AddMinutes(-3)
         ? clocks.CurrentDutyStatus
         : null;
+    var jurisdiction = country is "US" or "CA" ? country : null;
     DriverDutyStatus? Fallback() =>
       string.IsNullOrEmpty(status)
         ? null
-        : new(status, null, null, clocks!.UpdatedAt);
+        : new(status, null, null, clocks!.UpdatedAt)
+        {
+          Jurisdiction = jurisdiction,
+        };
     if (history is null || history.Through < now.AddMinutes(-3))
       return Fallback();
     var observed = history.Through < now ? history.Through : now;
@@ -88,6 +92,7 @@ public static class HosDutyStatus
     {
       CycleResetHours = rest.HasValue ? resetHours : null,
       CycleResetCountry = rest.HasValue && resetHours.HasValue ? country : null,
+      Jurisdiction = jurisdiction,
     };
   }
 

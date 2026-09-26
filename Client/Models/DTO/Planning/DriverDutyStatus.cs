@@ -10,6 +10,9 @@ public sealed record DriverDutyStatus(
   public int? CycleResetHours { get; init; }
   public string? CycleResetCountry { get; init; }
   public int? CycleResetRemainingMinutes { get; init; }
+
+  // "US" or "CA": the ruleset the server read these hours under.
+  public string? Jurisdiction { get; init; }
   public int? StatusMinutes =>
     StatusStartedAt is { } start
       ? (int)Math.Max(0, (ObservedAt - start).TotalMinutes)

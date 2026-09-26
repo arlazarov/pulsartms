@@ -195,7 +195,10 @@ public sealed class MessagingController : BaseController
         return StatusCode(read.StatusCode, read);
       hours = read.Response;
       var status = await Mediator.Send(
-        new GetDriverDutyStatusQuery(linked),
+        new GetDriverDutyStatusQuery(
+          linked,
+          driving.Trucks.Count == 1 ? driving.Trucks[0].Id : null
+        ),
         cancellationToken
       );
       if (!status.Success)

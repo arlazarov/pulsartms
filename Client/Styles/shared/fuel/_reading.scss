@@ -78,8 +78,25 @@
       grid-row: auto;
       align-self: center;
     }
-    &.is-normal .fuel-reading__icon {
+    // The icon and the percentage say the tank's state together:
+    // enough, low, critical, or unknown - as TelemetryTone.Fuel decides.
+    &.is-normal .fuel-reading__icon,
+    &.is-normal .fuel-reading__value {
       color: ui.theme(success-text);
+    }
+    &.is-low .fuel-reading__icon {
+      color: ui.theme(telemetry-warning-icon);
+    }
+    &.is-low .fuel-reading__value {
+      color: ui.theme(warning-text);
+    }
+    &.is-critical .fuel-reading__icon,
+    &.is-critical .fuel-reading__value {
+      color: ui.theme(danger-text);
+    }
+    &.is-unknown .fuel-reading__icon,
+    &.is-unknown .fuel-reading__value {
+      color: ui.theme(text-muted);
     }
     // Read in a line of readings, the word is the line's size and only
     // quieter, and it shares the value's baseline.

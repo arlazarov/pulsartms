@@ -224,23 +224,22 @@ test('current popup separates secondary cycle warning while keeping lateness wit
     ).get('load:pickup');
     stops.setEtas(new Map([['pickup', label]]));
     markers[0].onSelect();
-    const arrival = row(state.shown, 'fleet-route-popup__arrival');
-    assert.equal(arrival.textContent, 'Sep 10 · 02:00 PM');
-    assert.equal(arrival.children[0].textContent, 'Late');
+    // The hour, then its one word about lateness and, apart from it, the
+    // cycle's: two badges in the ETA's value, each saying its own thing.
+    const value = row(
+      row(state.shown, 'fleet-route-popup__eta'),
+      'fleet-route-popup__value',
+    );
+    assert.equal(value.children[0].textContent, 'Sep 10 · 02:00 PM');
+    const late = row(value, 'fleet-route-popup__status--danger');
+    assert.equal(late.textContent, 'Late');
     const warning = row(state.shown, 'fleet-route-popup__cycle-status');
     assert.equal(
       warning.textContent,
       cycleVerified ? 'Cycle short' : 'Cycle unknown',
     );
-    assert.ok(
-      !arrival.children.includes(warning),
-      'cycle warning is not inside the inline arrival status',
-    );
-    assert.ok(
-      row(state.shown, 'fleet-route-popup__value--cycle').children.includes(
-        warning,
-      ),
-    );
+    assert.notEqual(late, warning);
+    assert.ok(value.children.includes(warning));
   }
 });
 
@@ -307,10 +306,9 @@ test('both current stops show and copy authoritative load and order numbers', as
   for (const marker of markers) {
     marker.onSelect();
     const header = row(state.shown, 'fleet-map-route-info__load');
-    assert.equal(
-      state.shown.children[0].children[0],
-      header,
-      'identity precedes the stop/company/address',
+    assert.ok(
+      rows(state.shown.children[0].children[0]).includes(header),
+      'identity is in the head, before the stop/company/address',
     );
     const buttons = rows(header).filter(node => node.tagName === 'button');
     assert.deepEqual(
@@ -495,7 +493,8 @@ test('current pickup and delivery link only to the authoritative dispatch and pr
     assert.equal(link.tagName, 'a');
     assert.equal(link.href, `/dispatch/${dispatchId}`);
     // The arrow is tied to the last word so it never lands on a line alone.
-    assert.equal(link.textContent, 'Route & load details\u00a0↗');
+    assert.equal(link.textContent, 'Open load\u00a0↗');
+    assert.equal(link.title, 'Route & load details');
     assert.equal(
       state.shown.children[1].children.at(-1),
       link,
@@ -557,8 +556,11 @@ test('current stop shows only its appointment reference under the address and up
     reference.children.map(child => child.textContent),
     ['Appt #', 'PU123456'],
   );
-  assert.ok(
-    reference.className.split(' ').includes('fleet-route-popup__section-start'),
+  // Under the address, as the stop's own line; the facts' rule is on the
+  // distance, where the forecast ends and the road begins.
+  assert.equal(
+    state.shown.children[0].children.at(-2).className,
+    'fleet-route-popup__address',
   );
   assert.ok(
     row(state.shown, 'fleet-route-popup__distance')
@@ -710,42 +712,46 @@ test('current-stop details show the local appointment window, exact ETA status a
     ['fleet-route-popup__location', 'fleet-route-popup__information'],
   );
   const [location, information] = state.shown.children;
-  // The card opens with its place in the run, the job, and where it stands.
+  // The card opens with its place in the run and the job, beside where
+  // the stop sits in its load. Whether it is late is said once, by the ETA.
   const head = location.children[0];
   assert.equal(head.className, 'fleet-route-popup__head');
   assert.deepEqual(
-    head.children.map(node => [node.className, node.textContent]),
+    head.children.map(node => node.className),
+    ['fleet-route-popup__number', 'fleet-route-popup__identity'],
+  );
+  assert.equal(head.children[0].textContent, '1');
+  assert.deepEqual(
+    head.children[1].children.map(node => [node.className, node.textContent]),
     [
-      ['fleet-route-popup__number', '1'],
       ['fleet-route-popup__job', 'Pickup'],
-      ['fleet-route-popup__state fleet-route-popup__state--danger', 'Late'],
+      ['fleet-route-popup__kind', 'Load stop 1 of 1'],
     ],
   );
+  assert.equal(row(head, 'fleet-route-popup__state'), undefined);
+  assert.equal(location.children[1].textContent, 'Warehouse');
+  assert.equal(location.children[2].className, 'fleet-route-popup__address');
   assert.deepEqual(
-    location.children.slice(1, 3).map(node => node.textContent),
-    ['Load stop 1 of 1', 'Warehouse'],
-  );
-  assert.equal(location.children[3].className, 'fleet-route-popup__address');
-  assert.deepEqual(
-    location.children[3].children.map(node => node.textContent),
+    location.children[2].children.map(node => node.textContent),
     ['123 Main Street'],
   );
   assert.equal(
     location.children.length,
-    4,
+    3,
     'only the head, the stop identity and its address belong here',
   );
+  // The forecast leads and the booking follows it, as on the truck card.
   assert.deepEqual(
     rows(information)
       .filter(node => node.tagName === 'dt')
       .map(node => node.textContent),
-    ['Appointment', 'ETA', 'Left', 'Fuel on arrival'],
+    ['ETA', 'Appointment', 'Left', 'Fuel on arrival'],
   );
   assert.deepEqual(
     rows(state.shown)
       .filter(node => node.tagName === 'dt')
       .map(node => node.textContent),
-    ['Appointment', 'ETA', 'Left', 'Fuel on arrival'],
+    ['ETA', 'Appointment', 'Left', 'Fuel on arrival'],
   );
   assert.equal(
     fieldValue(state.shown, 'fleet-route-popup__appointment'),
@@ -1154,14 +1160,24 @@ test('a passed stop is marked done and its badge is outlined, not filled', t => 
   const head = row(state.shown, 'fleet-route-popup__head');
   assert.equal(head.children[0].className, 'fleet-route-popup__number is-done');
   assert.equal(head.children[0].textContent, '1');
+  const done = row(head, 'fleet-route-popup__job').children[0];
   assert.deepEqual(
-    [head.children[2].className, head.children[2].textContent],
+    [done.className, done.textContent],
     ['fleet-route-popup__state fleet-route-popup__state--success', 'Done'],
+  );
+  assert.equal(
+    row(state.shown, 'fleet-route-popup__status'),
+    undefined,
+    'a stop behind the truck says Done, not how its arrival stood',
   );
   markers[1].onSelect();
   const next = row(state.shown, 'fleet-route-popup__head');
   assert.equal(next.children[0].className, 'fleet-route-popup__number');
-  assert.equal(next.children.length, 2, 'no state is claimed without an ETA');
+  assert.equal(
+    row(next, 'fleet-route-popup__state'),
+    undefined,
+    'no state is claimed without an ETA',
+  );
 });
 
 test('reference-stop details keep unknown distance and render provider text as text', t => {
@@ -1179,7 +1195,10 @@ test('reference-stop details keep unknown distance and render provider text as t
   stops.setProgress(20);
   markers[0].onSelect();
   assert.deepEqual(
-    state.shown.children[0].children.slice(1, 3).map(node => node.textContent),
+    [
+      row(state.shown, 'fleet-route-popup__kind').textContent,
+      row(state.shown, 'fleet-route-popup__company').textContent,
+    ],
     ['Load stop 1 of 2', name],
   );
   assert.equal(

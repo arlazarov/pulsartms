@@ -193,7 +193,8 @@
   }
   // The card has room for a word about the cycle beside the hour, where
   // the lateness already stands; it folds under only when the line is
-  // full.
+  // full. On a card each word about the arrival is a badge in its tone,
+  // and the component says only one of them unless both are problems.
   .stop-hours__cycle-status {
     flex-basis: auto;
     white-space: nowrap;
@@ -243,5 +244,42 @@
   .stop-hours__road time {
     font-size: ui.fs(body);
     font-weight: 600;
+  }
+}
+
+// On a map card each word about the arrival is a badge in its tone, and
+// the component says only one of them unless both are problems.
+.stop-hours--compact,
+.stop-hours--facts {
+  .stop-hours__status--success,
+  .stop-hours__status--danger,
+  .stop-hours__cycle-status {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(xs);
+    padding: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(sm);
+    font-size: ui.fs(small);
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+    &::before {
+      content: '';
+      inline-size: 0.5em;
+      block-size: 0.5em;
+      border-radius: ui.radius(pill);
+      background: currentColor;
+    }
+  }
+  .stop-hours__status--success {
+    background: ui.theme(success-surface);
+  }
+  .stop-hours__status--danger {
+    background: ui.theme(danger-surface);
+  }
+  // Short on cycle is a warning about the plan, not a missed booking.
+  .stop-hours__cycle-status.stop-hours__status--danger {
+    background: ui.theme(warning-surface);
+    color: ui.theme(warning-text);
   }
 }

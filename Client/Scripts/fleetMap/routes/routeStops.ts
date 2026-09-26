@@ -7,6 +7,8 @@ import { stopContent, stopDetails } from './stopCardContent.ts';
 import { distanceLabel } from '../ui/distanceLabel.ts';
 
 const point = (p: RoutePoint) => ({ lat: p.latitude, lng: p.longitude });
+const text = (value: unknown) =>
+  typeof value === 'string' && value.trim() ? value.trim() : undefined;
 
 // One stop as this layer holds it: the stop itself, the marker drawn for
 // it, the facts its card is built from, and the card once it has been
@@ -128,6 +130,9 @@ export function createRouteStops(
                 value.orderNumber.trim()
                   ? value.orderNumber
                   : undefined,
+              truck: text(value.truck),
+              trailer: text(value.trailer),
+              driver: text(value.driver),
             }
           : null;
       for (const entry of entries.values()) refreshContent(entry);

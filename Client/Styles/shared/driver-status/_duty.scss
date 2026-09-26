@@ -22,3 +22,33 @@
   color: ui.theme(text-muted);
   font-size: ui.fs(micro);
 }
+
+// One line on a map card: the status and its time, then the rest and the
+// reset it counts towards, each past a hairline. Quieter than the clocks.
+.driver-duty--row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: ui.pg(xs) ui.pg(md);
+  font-size: ui.fs(body);
+  color: ui.theme(text-secondary);
+  .driver-duty__status {
+    display: inline-flex;
+    align-items: baseline;
+    gap: ui.pg(xs);
+    > strong {
+      color: ui.theme(text-secondary);
+      font-weight: 400;
+    }
+    > svg {
+      align-self: center;
+      inline-size: ui.fs(heading);
+      block-size: ui.fs(heading);
+    }
+  }
+  .driver-duty__status ~ span {
+    padding-inline-start: ui.pg(md);
+    border-inline-start: 1px solid ui.theme(border-subtle);
+    font-variant-numeric: tabular-nums;
+  }
+}

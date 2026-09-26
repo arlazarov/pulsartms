@@ -394,7 +394,10 @@ public sealed class NextLoadDetailsRetentionTests
     var component = context.Render<NextLoadDetailsCard>(p =>
       p.Add(x => x.Route, route).Add(x => x.Stop, stop).Add(x => x.Eta, eta)
     );
-    Assert.Single(component.FindAll(".arrival-estimate"));
+    // The forecast is read twice from one memory: its hour at the top of
+    // the facts, its cycle under them. The hour's reading is the one that
+    // must keep the retained estimate without a dash beside it.
+    Assert.Equal(2, component.FindAll(".arrival-estimate").Count);
     Assert.Empty(component.FindAll(".fleet-route-popup__eta"));
     var previousMarkup = component.Find(".arrival-estimate").OuterHtml;
 

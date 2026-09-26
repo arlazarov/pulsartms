@@ -29,6 +29,11 @@ public partial class FleetMap
             details.LoadNumber,
             DisplaySettings?.LoadNumberPrefix
           ),
+          // Who drives it: the stop card says the truck, trailer and
+          // driver the head of the truck card says.
+          Truck = SelectedTruck?.UnitNumber,
+          Trailer = SelectedTruck?.TrailerNumber,
+          Driver = SelectedTruck is { } driven ? HosDriverName(driven) : null,
         }
         : null
     );

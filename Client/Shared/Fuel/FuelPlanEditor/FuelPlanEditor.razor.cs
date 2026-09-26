@@ -865,20 +865,12 @@ public partial class FuelPlanEditor : IAsyncDisposable
       : ["The plan could not be updated. Please try again."];
 
   private static string Quantity(double? value) =>
-    value is { } number && double.IsFinite(number)
-      ? number.ToString("N0", CultureInfo.InvariantCulture)
-      : "—";
+    FuelPlanDisplay.Quantity(value);
 
   private string SelectedPrice =>
-    SelectedDetails is { YourPrice: > 0 } details
-    && double.IsFinite(details.YourPrice)
-      ? $"{details.YourPrice.ToString("N3", CultureInfo.InvariantCulture)} {details.Currency} / {details.Unit}"
-      : "—";
+    SelectedDetails is { } details ? FuelPlanDisplay.Price(details) : "—";
 
-  private static string Money(double? value) =>
-    value is { } number && double.IsFinite(number)
-      ? $"${number.ToString("N2", CultureInfo.InvariantCulture)}"
-      : "—";
+  private static string Money(double? value) => FuelPlanDisplay.Money(value);
 
   public void Dispose()
   {

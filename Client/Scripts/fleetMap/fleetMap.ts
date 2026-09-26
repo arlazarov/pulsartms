@@ -394,6 +394,10 @@ export async function createFleetMap(
         gpuScene.setRouteEditing?.(routeEditor.active);
         trucks.setEditingTruck(routeEditor.truckId);
       },
+      openStation(id: string) {
+        if (disposed || inspector.suspended) return false;
+        return stations.openStation(id);
+      },
       closeStationPopup(captureEditorFocus = false) {
         if (disposed) return;
         if (captureEditorFocus) fuelFocus.captureOpener();

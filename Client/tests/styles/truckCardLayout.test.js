@@ -37,10 +37,9 @@ test('the card says the load, its order and the miles once, in the head', () => 
     /class="fleet-map-inspector__load-link"\s*href="@OpenLoadHref"/,
   );
   assert.match(head, /title="Copy order number"/);
-  // The number and the bar under it measure the same thing - the way to the
-  // stop the truck is heading for, which is the stop the ETA beside them is
-  // for - so none of the three can contradict another. It was the remainder
-  // of the whole run: a truck on its way to a pickup read the miles to its
+  // The number measures the way to the stop the truck is heading for,
+  // which is the stop the ETA beside it is for. It was the remainder of
+  // the whole run: a truck on its way to a pickup read the miles to its
   // delivery next to the hour of its pickup.
   assert.match(head, /Units\.DistanceValue\(LeftMiles\)/);
   assert.match(
@@ -50,13 +49,9 @@ test('the card says the load, its order and the miles once, in the head', () => 
   assert.doesNotMatch(head, /DistanceValue\(RemainingMiles\)/);
   // The line names a thing before it says it, this one included.
   assert.match(head, /__label">Left&#160;<\/span>/);
-  assert.match(head, /fleet-map-mobile-summary__bar/);
-  // The track is always drawn, so a run whose progress is not known yet
-  // reserves the same height as one that is.
-  assert.match(head, /RouteCovered \?\? 0/);
-  // A truck that has run out of route is standing at its stop; the server
-  // sends no forecast for it, which is not the same as nothing to say.
-  assert.doesNotMatch(head, /@if \(RouteCovered/);
+  // The owner's card of September 26 says Left as a phrase, without the
+  // progress bar the September 25 card drew under it.
+  assert.doesNotMatch(head, /fleet-map-mobile-summary__bar|RouteCovered/);
   const body = markup.slice(markup.indexOf('id="fleet-map-route-details"'));
   assert.doesNotMatch(body, /Copy load number|Copy order number/);
   assert.doesNotMatch(body, /fleet-map-route-info__load"/);
@@ -70,7 +65,7 @@ test('the card says the load, its order and the miles once, in the head', () => 
   assert.doesNotMatch(body, /DistanceValue\(LeftMiles\)/);
 });
 
-test('what is left stands beside the name, said and drawn', () => {
+test('what is left stands beside the name', () => {
   // Where the ETA used to stand: at the right of the truck's own row. The
   // clocks never go under what they say: on a card with no work to show
   // they were squeezed and "Break" came apart into letters.
@@ -89,8 +84,7 @@ test('what is left stands beside the name, said and drawn', () => {
     card,
     /__distance-text\s*\{[^}]*text-overflow: ellipsis;[^}]*white-space: nowrap;/,
   );
-  assert.match(card, /__bar\s*\{[^}]*block-size: 3px;/);
-  assert.match(card, /__bar > span\s*\{[^}]*background: var\(--ui-action\);/);
+  assert.doesNotMatch(card, /__bar\b/);
 });
 
 // The owner's order for the closed card (AMF1414, truck 11007): the load
@@ -110,7 +104,7 @@ test('the booking sits under the ETA for the same stop, and the address is last'
     'fleet-map-inspector__appointment',
     'fleet-map-inspector__vehicle',
     'fleet-map-inspector__clocks',
-    'fleet-map-inspector__location',
+    'fleet-map-inspector__duty',
   ].map(name => head.indexOf(name));
   assert.ok(
     order.every(at => at >= 0),
@@ -124,17 +118,28 @@ test('the booking sits under the ETA for the same stop, and the address is last'
   // zone, and shown only for the stop the ETA is for.
   assert.match(
     head,
-    /appointment-label">Appointment<\/span>\s*<strong>@HeadAppointmentText\(appointed\)/,
+    /appointment-label">Appointment<\/span>\s*<strong>@HeadAppointmentText\(\s*HeadAppointmentStop\)/,
   );
-  assert.match(head, /HeadAppointmentStop is \{ \} appointed/);
+  // The card's one appointment row: shown as a dash while the stop loads
+  // or has no booking, and not at all while the ETA is for another stop.
+  assert.match(head, /@if \(HeadAppointmentShown\)/);
   const code = readFileSync(
     new URL('../../Pages/FleetMap/FleetMap.LoadDetails.cs', import.meta.url),
     'utf8',
   );
   assert.match(code, /forecast\.StopId != stop\.Id/);
+  // Where the truck is: only on the open card since September 26, under
+  // the fuel on arrival, its address on a line under its label.
+  assert.equal(head.indexOf('TruckLocationLine'), -1);
+  const body = markup.slice(markup.indexOf('id="fleet-map-route-details"'));
+  assert.ok(body.indexOf('fleet-map-route-info__arrival-fuel') >= 0);
+  assert.ok(
+    body.indexOf('fleet-map-route-info__arrival-fuel') <
+      body.indexOf('<TruckLocationLine'),
+  );
   assert.match(
     card,
-    /\.fleet-map-inspector__location\s*\{[^}]*grid-template-columns: max-content max-content minmax\(0, 1fr\);/,
+    /\.fleet-map-inspector__location\s*\{[^}]*grid-template-columns: max-content minmax\(0, 1fr\);/,
   );
   assert.match(
     card,
@@ -199,7 +204,6 @@ test('the head reads as rows of one table, on one line each', () => {
   for (const rule of [
     /\.fleet-map-inspector__appointment-label\s*\{[^}]*\}/,
     /\.fleet-map-mobile-summary__label\s*\{[^}]*\}/,
-    /\.fleet-map-inspector__location > span\s*\{[^}]*\}/,
   ])
     assert.doesNotMatch(card.match(rule)[0], /font-size/);
   assert.match(
@@ -217,10 +221,11 @@ test('the head reads as rows of one table, on one line each', () => {
     card,
     /\.fleet-map-inspector__clocks\s*\{[^}]*align-items: center;/,
   );
-  // The pin, its label and the address share a baseline.
+  // On the open card the location is a fact among the facts: the pin
+  // centred on its label, the address under it.
   assert.match(
     card,
-    /\.fleet-map-inspector__location\s*\{[^}]*align-items: baseline;/,
+    /\.fleet-map-inspector__location\s*\{[^}]*align-items: center;/,
   );
 });
 
@@ -247,8 +252,11 @@ test('the speed icon carries its band, and an unknown speed stays quiet', () => 
 test('HOS travels with its clocks, at the far end under the arrival', () => {
   assert.match(
     markup,
-    /fleet-map-inspector__clocks" aria-label="HOS">\s*<span class="fleet-map-inspector__hours-label"><ActionIcon Kind="clock" \/><span>HOS<\/span><\/span>\s*<Client\.Shared\.DriverStatus\.DriverHours\.DriverHours/,
+    /fleet-map-inspector__clocks" aria-label="HOS">\s*<DriverHours/,
   );
+  // No visible "HOS" word or clock icon (the owner's September 26 card):
+  // the labels say what the numbers are; "HOS" stays the group's name.
+  assert.doesNotMatch(markup, /hours-label/);
   assert.match(card, /__clocks\s*\{[^}]*justify-self: end;/);
   // Said once: a second flex-wrap lower in the same rule used to take back
   // the first.
@@ -269,23 +277,13 @@ test('the open card is two columns: the stop, then facts on one label column', (
     card,
     /\.fleet-map-route-info\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/,
   );
-  // The last row takes the slack so the facts stay packed at the top.
+  // The stop at the left; at the right one column of facts - remaining
+  // load, cycle, fuel on arrival - then where the truck is.
   assert.match(
     card,
-    /\.fleet-map-route-info\s*\{[^}]*grid-template-rows: auto auto 1fr;/,
+    /__visit\s*\{[^}]*grid-column: 1;[^}]*grid-row: 1;[^}]*border-inline-end: 1px solid/,
   );
-  assert.match(
-    card,
-    /__visit\s*\{[^}]*grid-column: 1;[^}]*grid-row: 1\s*\/\s*span 3;[^}]*border-inline-end: 1px solid/,
-  );
-  for (const [group, row] of [
-    ['distances', 1],
-    ['timing', 2],
-  ])
-    assert.match(
-      card,
-      new RegExp(`__${group}\\s*\\{[^}]*grid-column: 2;[^}]*grid-row: ${row};`),
-    );
+  assert.match(card, /__facts\s*\{[^}]*grid-column: 2;[^}]*grid-row: 1;/);
   // Every fact is the same two cells, sharing one label width - the
   // forecast's cycle row included, which reads that width from the card
   // through its compact reading rather than being restyled from here.
@@ -326,7 +324,11 @@ test('the stop keeps its children in its own column and fits four lines', () => 
     /__address-lines\s*\{[^}]*display: flex;[^}]*flex-wrap: wrap;/,
   );
   assert.match(card, /__facility\s*\{[^}]*flex-basis: 100%;/);
-  assert.match(card, /__street:not\(:last-child\)::after\s*\{\s*content: ",";/);
+  // The street and the city each on a line, as the approved card has them.
+  assert.match(
+    card,
+    /__address-lines > \.fleet-map-route-info__street,[^{}]*__address\s*\{\s*flex-basis: 100%;/,
+  );
 });
 
 // A card too narrow for two columns stacks - and that is decided once, by

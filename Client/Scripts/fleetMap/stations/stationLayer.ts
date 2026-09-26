@@ -85,6 +85,9 @@ export function createStationLayer(
   }, formatDistance);
   const popupWindow = popupFactory(map, { onClose: close });
   let selectedId: string | null = null;
+  // A station the page named from its list: its card stays while it is
+  // open, whatever the layer or the plan says about the marker.
+  let namedId: string | null = null;
   let editing: EditingStation | null = null;
   let visible = false;
   let renderVersion = 0;
@@ -108,6 +111,7 @@ export function createStationLayer(
   }
 
   function close() {
+    namedId = null;
     const selected = selectedId === null ? undefined : entries.get(selectedId);
     if (selected) updatePoint(selectedId!, selected, false);
     pointLayer.redraw();
@@ -115,12 +119,17 @@ export function createStationLayer(
     selectedId = null;
   }
 
-  function open(id: string) {
+  // A marker opens only what the map draws; a station named from the
+  // page's list (explicit) opens whether or not the layer is on.
+  function open(id: string, explicit = false) {
     if (disposed) return;
     const entry = entries.get(id);
     if (
       !entry ||
-      (!visible && !plan.recommends(id) && editing?.stationId !== id) ||
+      (!explicit &&
+        !visible &&
+        !plan.recommends(id) &&
+        editing?.stationId !== id) ||
       selectedId === id
     )
       return;
@@ -246,7 +255,8 @@ export function createStationLayer(
       }
     }
     for (const [id, entry] of entries) {
-      if (active.has(id) || editing?.stationId === id) continue;
+      if (active.has(id) || editing?.stationId === id || namedId === id)
+        continue;
       if (id === selectedId) close();
       pointLayer.removePoint(id);
       entries.delete(id);
@@ -325,6 +335,21 @@ export function createStationLayer(
     closePopup() {
       if (!disposed) close();
     },
+    // The card of one station the page names: a planned stop, or one from
+    // the day's loaded stations. True when its card is the one showing.
+    openStation(id: string): boolean {
+      if (disposed) return false;
+      if (!entries.has(id)) {
+        const item = prices.items().find(each => stationId(each) === id);
+        if (!item) return false;
+        const entry = { item, ...prices.look()(id) };
+        entries.set(id, entry);
+        updatePoint(id, entry);
+      }
+      open(id, true);
+      if (selectedId === id) namedId = id;
+      return selectedId === id;
+    },
     handleMapClick(event: { latLng?: unknown } | undefined) {
       if (disposed) return false;
       const id = pointLayer.hitTest(event?.latLng);
@@ -365,7 +390,8 @@ export function createStationLayer(
       if (
         !visible &&
         !plan.recommends(selectedId) &&
-        editing?.stationId !== selectedId
+        editing?.stationId !== selectedId &&
+        namedId !== selectedId
       )
         close();
       return render();
@@ -378,7 +404,8 @@ export function createStationLayer(
       if (
         !visible &&
         !plan.recommends(selectedId) &&
-        editing?.stationId !== selectedId
+        editing?.stationId !== selectedId &&
+        namedId !== selectedId
       )
         close();
       return render();

@@ -45,6 +45,7 @@ public sealed class DriverDutyStatusReadTests
       snapshot,
       new DriverHosStore(db),
       history,
+      null!,
       time
     );
     async Task<DriverDutyView> Read(Guid id) =>

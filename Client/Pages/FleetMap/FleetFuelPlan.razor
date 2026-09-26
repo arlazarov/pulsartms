@@ -1,0 +1,106 @@
+@using Client.Models.DTO.Planning
+<section id="fleet-map-fuel-panel" class="fleet-fuel-plan"
+         aria-label="Fuel plan">
+    <div class="fleet-fuel-plan__summary">
+        <ActionIcon Kind="fuel" />
+        <div class="fleet-fuel-plan__figure">
+            <span>Current fuel</span>
+            <strong>@CurrentFuel</strong>
+        </div>
+        <div class="fleet-fuel-plan__figure">
+            <span>Planned purchase</span>
+            <strong>@(Plan is { } bought
+                ? $"{FuelPlanDisplay.Quantity(bought.PurchaseGallons)} gal"
+                : "—")</strong>
+        </div>
+        <div class="fleet-fuel-plan__figure">
+            <span>Estimated cost</span>
+            <strong>@(Plan is { } paid
+                ? FuelPlanDisplay.Money(paid.PurchaseCostUsd) : "—")</strong>
+        </div>
+        @if (Plan is { } state)
+        {
+            <span class="fleet-fuel-plan__state"
+                  title="@StateTitle(state)">@StateLabel(state)</span>
+        }
+    </div>
+    @if (Plan is null)
+    {
+        <p class="fleet-fuel-plan__empty">
+            @(Unusable ? "The fuel plan is being recalculated."
+                : "No fuel stops are planned for this load.")
+        </p>
+    }
+    else
+    {
+        <ol class="fleet-fuel-plan__stops">
+            @for (var i = 0; i < Plan.Stops.Count; i++)
+            {
+                var stop = Plan.Stops[i];
+                var previous = i > 0 ? Plan.Stops[i - 1] : null;
+                <li class="fleet-fuel-plan__stop" @key="stop.VisitKey">
+                    <span class="fleet-fuel-plan__number">@stop.Number</span>
+                    <div class="fleet-fuel-plan__station">
+                        <strong>@stop.Name</strong>
+                        <span>@AddressLine(stop.Address)</span>
+                        @if (previous is not null
+                            && stop.MilesAhead - previous.MilesAhead is
+                                var between and > 0)
+                        {
+                            <small>
+                                @Units.FormatDistance(between) after stop
+                                @previous.Number
+                            </small>
+                        }
+                    </div>
+                    <div class="fleet-fuel-plan__arrival">
+                        <span>Arrival fuel</span>
+                        <strong>@Tank(stop.ArrivalGallons)</strong>
+                    </div>
+                    <div class="fleet-fuel-plan__purchase">
+                        <strong>@(stop.FillToTarget ? "Fill up"
+                            : "Add " + FuelPlanDisplay.Quantity(
+                                stop.BuyGallons) + " gal")</strong>
+                        <span>@FuelPlanDisplay.Price(stop) ·
+                            @FuelPlanDisplay.Money(stop.PurchaseCostUsd)</span>
+                        @if (stop.Sent is { } sent)
+                        {
+                            <span class="fleet-fuel-plan__sent
+                                         @(sent.Changed ? "is-changed" : "")">
+                                @(sent.Changed ? "Changed since sent" : "Sent")
+                            </span>
+                        }
+                    </div>
+                    <button type="button"
+                            class="btn btn--small fleet-fuel-plan__view"
+                            disabled="@(stop.StationId == Guid.Empty)"
+                            @onclick="() => ViewStation.InvokeAsync(stop)">
+                        <span>View station</span>
+                        <ActionIcon Kind="external-link" />
+                    </button>
+                    @if (stop.Warning.Length > 0)
+                    {
+                        <p class="fleet-fuel-plan__warning" role="note">
+                            @stop.Warning
+                        </p>
+                    }
+                </li>
+            }
+        </ol>
+    }
+    <footer class="fleet-fuel-plan__actions">
+        <button type="button" class="btn btn--small"
+                @onclick="Stations">
+            <ActionIcon Kind="search" /><span>Stations</span>
+        </button>
+        <button type="button" class="btn btn--small fleet-map-fuel-panel__view"
+                disabled="@(!CanEdit)" @onclick="Edit">
+            <ActionIcon Kind="edit" /><span>Edit plan</span>
+        </button>
+        <button type="button"
+                class="btn btn--small btn--primary fleet-map-fuel-panel__send"
+                disabled="@(!CanSend)" @onclick="Send">
+            <span>Send fuel plan</span>
+        </button>
+    </footer>
+</section>

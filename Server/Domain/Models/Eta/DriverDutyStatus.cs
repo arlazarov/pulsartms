@@ -9,6 +9,10 @@ public sealed record DriverDutyStatus(
 {
   public int? CycleResetHours { get; init; }
   public string? CycleResetCountry { get; init; }
+
+  // The ruleset the forecast reads these hours under: "US" or "CA" from the
+  // truck's current region, null when that region is unknown.
+  public string? Jurisdiction { get; init; }
   public int? CycleResetRemainingMinutes =>
     CycleResetHours is { } hours && RestMinutes is { } minutes
       ? Math.Max(0, hours * 60 - minutes)

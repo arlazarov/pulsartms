@@ -60,6 +60,30 @@ public class HosDutyStatusTests
     Assert.Null(result.CycleResetRemainingMinutes);
   }
 
+  // The card hides the US break clock only when the forecast says the
+  // hours are read under Canadian rules; any other region says nothing,
+  // including when the history cannot be read and only the status is.
+  [Theory]
+  [InlineData("US", "US")]
+  [InlineData("CA", "CA")]
+  [InlineData("MX", null)]
+  [InlineData("", null)]
+  [InlineData(null, null)]
+  public void TheRulesetIsTheCurrentRegionsOrUnknown(
+    string? country,
+    string? expected
+  )
+  {
+    Assert.Equal(
+      expected,
+      HosDutyStatus.Read(History(), Clocks(), Now, country)!.Jurisdiction
+    );
+    Assert.Equal(
+      expected,
+      HosDutyStatus.Read(null, Clocks(), Now, country)!.Jurisdiction
+    );
+  }
+
   [Fact]
   public void IncompleteOrConflictingRestCannotShowResetCountdown()
   {

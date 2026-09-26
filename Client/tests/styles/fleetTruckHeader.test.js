@@ -104,8 +104,11 @@ test('map inspector content updates without reveal or fade animation', () => {
 
 test('selected truck and route panels overlay one stable map with bounded scrolling and no empty reserve', () => {
   assert.match(css, /\.fleet-map-truck-info\s*\{[^}]*min-height: 0;/);
-  // "Hours are enough" is off the card, so nothing styles it any more.
-  assert.doesNotMatch(css, /__duty/);
+  // The duty line came back as the owner's September 26 rest row: the
+  // status and its time, then the rest and reset it counts towards. Only
+  // the old "Hours are enough" wording stays off the card.
+  assert.match(css, /\.fleet-map-inspector__duty\s*\{/);
+  assert.doesNotMatch(css, /hours-enough|__duty-enough/);
   assert.match(
     css,
     /\.fleet-map-route-info\s*\{[^}]*min-height: 0;\s*align-content: start;/,
@@ -369,7 +372,7 @@ test('truck metadata stays aligned and disclosure does not restyle the primary s
   );
   assert.match(compact, /__trailer \+ [^{]*__driver::before\s*\{\s*content:/);
   assert.match(css, /\.fleet-map-truck-info\s*\{[^}]*align-items: baseline;/);
-  assert.doesNotMatch(compact, /__duty/);
+  assert.doesNotMatch(compact, /hours-enough|__duty-enough/);
 });
 
 test('load details uses an accessible header icon with shared action sizing', () => {

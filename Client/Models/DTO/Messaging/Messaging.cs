@@ -151,7 +151,11 @@ public sealed record ContextHours(
 
 // When the driver's current duty status began, from the HOS history;
 // StartedAt is null when that is not known.
-public sealed record ContextDuty(string? Status, DateTimeOffset? StartedAt);
+public sealed record ContextDuty(string? Status, DateTimeOffset? StartedAt)
+{
+  // "US" or "CA": the ruleset of the driver's current forecast.
+  public string? Jurisdiction { get; init; }
+}
 
 // Role: driver or co-driver on a live leg, or assigned in the fleet.
 public sealed record ContextTruck(Guid Id, string Number, string Role);

@@ -1,0 +1,354 @@
+@use '../../../base' as ui;
+
+// The truck's fuel plan and the day's station list, each drawn in the
+// card's place: one width with the stop cards, the truck named in the head.
+.fleet-map-inspector {
+  &[data-inspector-mode='fuelplan'],
+  &[data-inspector-mode='fuelstations'] {
+    width: min(100%, #{ui.size(map-stop-inspector)});
+    container: fleet-fuel / inline-size;
+    .fleet-map-inspector__identity {
+      display: flex;
+      align-items: baseline;
+      gap: ui.pg(md);
+      min-width: 0;
+      margin-right: auto;
+    }
+    .fleet-map-inspector__subtitle {
+      padding-inline-start: ui.pg(md);
+      border-inline-start: 1px solid ui.theme(border-subtle);
+      color: ui.theme(text);
+      font-size: ui.fs(lead);
+      font-weight: 600;
+    }
+    .fleet-map-inspector__body {
+      padding-block: 0;
+    }
+  }
+  // Back leaves the card for the view it came from, said with its arrow
+  // and outlined, as the card's other actions are.
+  &__back {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(xs);
+    border-color: ui.theme(action);
+    color: ui.theme(action);
+    font-weight: 600;
+  }
+}
+
+.fleet-fuel-plan {
+  display: grid;
+  font-size: ui.fs(body);
+  // The tank now, what the plan buys, what it costs, and whose plan it is.
+  &__summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(sm) ui.pg(lg);
+    padding-block: ui.pg(md);
+    border-bottom: 1px solid ui.theme(border-subtle);
+    > svg {
+      inline-size: ui.fs(title);
+      block-size: ui.fs(title);
+      color: ui.theme(success-text);
+    }
+  }
+  &__figure {
+    display: grid;
+    gap: ui.pg(micro);
+    padding-inline-end: ui.pg(lg);
+    border-inline-end: 1px solid ui.theme(border-subtle);
+    > span {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+    > strong {
+      color: ui.theme(text);
+      font-size: ui.fs(lead);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    &:nth-last-child(2) {
+      border-inline-end: 0;
+    }
+  }
+  &__state {
+    margin-inline-start: auto;
+    padding: ui.pg(xs) ui.pg(md);
+    border-radius: ui.radius(sm);
+    background: ui.theme(selected);
+    color: ui.theme(action);
+    font-weight: 600;
+  }
+  &__empty {
+    margin: 0;
+    padding-block: ui.pg(md);
+    color: ui.theme(text-secondary);
+  }
+  &__stops {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  // One planned stop: its number on a line that runs down the plan, the
+  // station, the tank on arrival, the purchase, and the way to its card.
+  &__stop {
+    position: relative;
+    display: grid;
+    grid-template-columns:
+      max-content minmax(0, 1.6fr) minmax(max-content, 0.8fr)
+      minmax(max-content, 1fr) max-content;
+    align-items: start;
+    gap: ui.pg(xs) ui.pg(md);
+    padding-block: ui.pg(md);
+    & + & {
+      border-top: 1px solid ui.theme(border-subtle);
+    }
+    &:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      inset-block: calc(#{ui.pg(md)} + 2rem) 0;
+      inset-inline-start: 0.9375rem;
+      border-inline-start: 2px solid ui.theme(action);
+    }
+  }
+  &__number {
+    display: grid;
+    place-items: center;
+    inline-size: 2rem;
+    block-size: 2rem;
+    border-radius: ui.radius(pill);
+    background: ui.theme(action);
+    color: ui.theme(on-accent);
+    font-weight: 600;
+  }
+  &__station {
+    display: grid;
+    min-width: 0;
+    > strong {
+      color: ui.theme(text);
+      font-size: ui.fs(lead);
+      font-weight: 600;
+    }
+    > span,
+    > small {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+      overflow-wrap: anywhere;
+    }
+  }
+  &__arrival,
+  &__purchase {
+    display: grid;
+    align-content: start;
+    gap: ui.pg(micro);
+    min-width: 0;
+    padding-inline-start: ui.pg(md);
+    border-inline-start: 1px solid ui.theme(border-subtle);
+    > span {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+    > strong {
+      color: ui.theme(text);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+  }
+  &__purchase > strong {
+    font-size: ui.fs(lead);
+  }
+  &__sent {
+    justify-self: start;
+    padding: 0 ui.pg(xs);
+    border-radius: ui.radius(sm);
+    background: ui.theme(success-surface);
+    color: ui.theme(success-text);
+    &.is-changed {
+      background: ui.theme(warning-surface);
+      color: ui.theme(warning-text);
+    }
+  }
+  &__view {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(xs);
+    border-color: ui.theme(action);
+    color: ui.theme(action);
+    font-weight: 600;
+    white-space: nowrap;
+    > svg {
+      inline-size: 1em;
+      block-size: 1em;
+    }
+  }
+  &__warning {
+    grid-column: 2 / -1;
+    margin: 0;
+    padding: ui.pg(xs) ui.pg(sm);
+    border-radius: ui.radius(sm);
+    background: ui.theme(danger-surface);
+    color: ui.theme(danger-text);
+    font-size: ui.fs(small);
+  }
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: ui.pg(sm);
+    padding-block: ui.pg(sm) ui.pg(md);
+    border-top: 1px solid ui.theme(border-subtle);
+    > .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: ui.pg(xs);
+    }
+  }
+}
+
+// Too narrow for five columns: the station takes the row under its number,
+// and the tank, the purchase and the view share the next one.
+@container fleet-fuel (width < #{ui.breakpoint(map-compact-columns)}) {
+  .fleet-fuel-plan__stop {
+    grid-template-columns: max-content minmax(0, 1fr) minmax(0, 1fr);
+    > .fleet-fuel-plan__station {
+      grid-column: 2 / -1;
+    }
+    > .fleet-fuel-plan__arrival {
+      grid-column: 2;
+      padding-inline-start: 0;
+      border-inline-start: 0;
+    }
+    > .fleet-fuel-plan__view {
+      grid-column: 2 / -1;
+      justify-self: start;
+    }
+  }
+  .fleet-fuel-plan__figure {
+    padding-inline-end: 0;
+    border-inline-end: 0;
+  }
+  .fleet-fuel-plan__state {
+    margin-inline-start: 0;
+  }
+}
+
+.fleet-fuel-stations {
+  display: grid;
+  font-size: ui.fs(body);
+  &__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+    padding-block: ui.pg(md) ui.pg(xs);
+  }
+  &__search {
+    display: flex;
+    flex: 1 1 14rem;
+    align-items: center;
+    gap: ui.pg(xs);
+    min-width: 0;
+    padding-inline: ui.pg(sm);
+    border: 1px solid ui.theme(border);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface);
+    > svg {
+      color: ui.theme(text-secondary);
+    }
+    > input {
+      flex: 1;
+      min-width: 0;
+      min-height: ui.size(control-compact);
+      border: 0;
+      background: transparent;
+      color: ui.theme(text);
+      font: inherit;
+      outline: none;
+    }
+    &:focus-within {
+      outline: 2px solid ui.theme(focus);
+      outline-offset: 1px;
+    }
+  }
+  &__select > select {
+    @include ui.input-control;
+    @include ui.compact-control;
+  }
+  &__freshness {
+    margin: 0;
+    padding-block-end: ui.pg(xs);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    text-align: end;
+  }
+  &__empty,
+  &__more {
+    margin: 0;
+    padding-block: ui.pg(sm);
+    color: ui.theme(text-secondary);
+  }
+  &__list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  &__row {
+    display: grid;
+    grid-template-columns:
+      minmax(0, 1fr) max-content minmax(max-content, 6rem)
+      max-content;
+    align-items: center;
+    gap: ui.pg(xs) ui.pg(md);
+    padding-block: ui.pg(sm);
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+  &__station {
+    display: grid;
+    min-width: 0;
+    > strong {
+      color: ui.theme(text);
+      font-weight: 600;
+    }
+    > span,
+    > small {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+      overflow-wrap: anywhere;
+    }
+  }
+  &__price {
+    color: ui.theme(text);
+    font-size: ui.fs(lead);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  &__planned {
+    justify-self: start;
+    padding: ui.pg(xs) ui.pg(sm);
+    border-radius: ui.radius(sm);
+    background: ui.theme(selected);
+    color: ui.theme(action);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  &__actions {
+    display: flex;
+    padding-block: ui.pg(sm) ui.pg(md);
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+}
+
+@container fleet-fuel (width < #{ui.breakpoint(map-compact-columns)}) {
+  .fleet-fuel-stations__row {
+    grid-template-columns: minmax(0, 1fr) max-content;
+    > .fleet-fuel-stations__station {
+      grid-column: 1 / -1;
+    }
+  }
+}

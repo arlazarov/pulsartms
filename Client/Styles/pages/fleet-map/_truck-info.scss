@@ -19,15 +19,20 @@
   margin-inline: ui.pg(md);
   padding: ui.pg(sm) 0;
   border-top: 1px solid ui.theme(border-subtle);
+  // Each reading past a hairline of its own, like the clocks beside them.
   &__telemetry {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: ui.pg(xs) ui.pg(lg);
+    gap: ui.pg(xs) ui.pg(md);
     --fuel-reading-columns: max-content max-content max-content;
     --fuel-reading-value-column: auto;
     --fuel-reading-row-gap: 0;
     --fuel-reading-value-size: #{ui.fs(body)};
+    > * + * {
+      padding-inline-start: ui.pg(md);
+      border-inline-start: 1px solid ui.theme(border-subtle);
+    }
   }
   // Each reading leads with its icon, sized to the line and quieter than
   // the value it marks.
@@ -74,6 +79,7 @@
   // The speed's word is also left to a screen reader, so its icon has no
   // text to sit on and is centred on the line in the same way.
   &__reading--speed > small,
+  &__reading--engine > small,
   &__outside > small {
     display: inline-flex;
     align-self: center;
@@ -86,6 +92,7 @@
   // a screen reader and leave the line. The weather's icon stays: it is the
   // reading, not a label for one.
   &__reading--speed > small > span,
+  &__reading--engine > small > span,
   &__outside > small > span {
     position: absolute;
     inline-size: 1px;
@@ -108,6 +115,26 @@
   &__reading--speed.is-critical > small svg {
     color: ui.theme(telemetry-critical-icon);
   }
+  // Over the limit says so in the number too; a normal speed stays plain.
+  &__reading--speed.is-low > strong,
+  &__reading--speed.is-critical > strong {
+    color: ui.theme(warning-text);
+  }
+  // The plan cannot reach its first fuel stop with the reserve: a mark
+  // beside the tank's own reading, which stays the percentage alone.
+  &__reserve {
+    display: inline-grid;
+    place-items: center;
+    align-self: center;
+    inline-size: 1.25em;
+    block-size: 1.25em;
+    border-radius: ui.radius(pill);
+    background: ui.theme(danger-surface);
+    color: ui.theme(danger-text);
+    font-size: ui.fs(small);
+    font-weight: 700;
+    line-height: 1;
+  }
   // Whether the engine is running, as Dispatch says it: green while the
   // truck moves, amber while it idles, nothing when unknown.
   &__reading--engine.is-normal > strong::after,
@@ -127,6 +154,14 @@
   > * {
     flex: 0 1 auto;
     max-width: 100%;
+  }
+  // On a card too narrow for one line the readings fold, and a hairline a
+  // fold puts at the start of a line separates nothing: space alone.
+  @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
+    &__telemetry > * + * {
+      padding-inline-start: 0;
+      border-inline-start: 0;
+    }
   }
 }
 

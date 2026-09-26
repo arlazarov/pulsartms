@@ -8,16 +8,13 @@
     --route-fact-label: 7rem;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    // The last row takes the slack when the stop is taller than the facts,
-    // so the facts stay packed at the top instead of drifting apart.
-    grid-template-rows: auto auto 1fr;
     align-items: start;
     gap: ui.pg(xs) ui.pg(lg);
     min-height: 0;
     padding: ui.pg(sm) ui.pg(md);
     &__visit {
       grid-column: 1;
-      grid-row: 1 / span 3;
+      grid-row: 1;
       align-self: stretch;
       display: grid;
       grid-template-columns: minmax(0, 1fr);
@@ -27,21 +24,26 @@
       padding-inline-end: ui.pg(lg);
       border-inline-end: 1px solid ui.theme(border-subtle);
     }
-    &__distances {
+    // The facts about the stop, then where the truck is now.
+    &__facts {
       grid-column: 2;
       grid-row: 1;
+      display: grid;
+      align-content: start;
+      gap: ui.pg(xs);
       min-width: 0;
     }
     &__timing {
-      grid-column: 2;
-      grid-row: 2;
       display: grid;
       gap: ui.pg(xs);
       min-width: 0;
     }
     &__messages {
       grid-column: 1 / -1;
-      grid-row: 4;
+      grid-row: 2;
+      &:empty {
+        display: none;
+      }
     }
     // Every fact is the same two cells: a quiet label, then its value.
     // The forecast's cycle row is the same shape, said in its own
@@ -107,7 +109,7 @@
       min-width: 0;
       > strong {
         color: ui.theme(text);
-        font-size: ui.fs(body);
+        font-size: ui.fs(lead);
         font-weight: 600;
         white-space: nowrap;
       }
@@ -190,16 +192,21 @@
       gap: 0 ui.pg(xs);
       text-align: start;
     }
-    &__street:not(:last-child)::after {
-      content: ',';
+    // The street and the city each take a line, as an envelope does.
+    &__address-lines > .fleet-map-route-info__street,
+    &__address-lines > .fleet-map-route-info__address {
+      flex-basis: 100%;
     }
-    &__address-lines > span {
+    &__address-lines > span,
+    &__address-lines > .fleet-map-route-info__address {
       font-size: ui.fs(body);
+      font-weight: 400;
       color: ui.theme(text-secondary);
     }
     &__address-lines > .fleet-map-route-info__facility {
       flex-basis: 100%;
       color: ui.theme(text);
+      font-size: ui.fs(lead);
       font-weight: 600;
       overflow-wrap: anywhere;
     }
@@ -219,8 +226,47 @@
     &.is-awaiting-route .fleet-map-route-info__distance {
       display: none;
     }
+    // At the load's last stop what is left of the load is the head's Left.
+    &.has-final-stop .fleet-map-route-info__metric {
+      display: none;
+    }
   }
-  // Too narrow for two columns: the stop, then the facts under a rule.
-  // Said once, and to the card itself - a phone was told the same thing a
-  // second time, by its screen width, and the two could disagree: a window
+  // A truck with no work to show keeps only where it is, not a skeleton of
+  // the route it does not have.
+  .fleet-map-inspector__where {
+    padding: ui.pg(sm) ui.pg(md);
+  }
+  // Where the truck is, under the facts: the pin and its label on one
+  // line, the address under the label. A long one wraps; it never pushes
+  // the card sideways.
+  .fleet-map-inspector__location {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: ui.pg(sm);
+    row-gap: ui.pg(micro);
+    align-items: center;
+    margin-top: ui.pg(xs);
+    > svg {
+      grid-row: 1;
+      inline-size: ui.fs(heading);
+      block-size: ui.fs(heading);
+      color: ui.theme(text-secondary);
+    }
+    > span {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+    > strong {
+      grid-column: 2;
+      min-width: 0;
+      max-inline-size: 100%;
+      font-size: ui.fs(body);
+      font-weight: 400;
+      > button {
+        max-inline-size: 100%;
+        text-align: start;
+        overflow-wrap: anywhere;
+      }
+    }
+  }
 }

@@ -113,7 +113,14 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
-  // An hour or less left is the one thing on this line worth a colour.
+  // A holder that sets the clocks apart names the rule between them.
+  .driver-hours__clock + .driver-hours__clock {
+    padding-inline-start: var(--hos-divider-gap, 0);
+    border-inline-start: var(--hos-divider, 0);
+  }
+  // An hour or less left is the one thing on this line worth a colour, and
+  // the clock says it in its name as well as its number.
+  .driver-hours__clock.is-low .driver-hours__label,
   .driver-hours__clock.is-low .driver-hours__reading {
     color: ui.theme(warning-text);
   }

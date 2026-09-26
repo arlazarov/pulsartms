@@ -94,17 +94,9 @@ export function stopContent(
   const details = element('div', 'fleet-route-popup fleet-route-popup--stop');
   const location = element('div', 'fleet-route-popup__location');
   const information = element('div', 'fleet-route-popup__information');
-  if (loadReference) location.append(loadReferenceContent(loadReference));
-  const address = element('div', 'fleet-route-popup__address');
-  address.append(
-    element('span', 'fleet-route-popup__address-line', stop.address.street),
-  );
-  if (stop.address.locality)
-    address.append(
-      element('span', 'fleet-route-popup__address-line', stop.address.locality),
-    );
   // The card opens with what a dispatcher scans for: which stop this is in
-  // the run, what happens there, and whether it is already behind them.
+  // the run and what happens there, then whose load it is. Whether it is
+  // on time is said once, beside its ETA; a stop behind the truck says Done.
   const head = element('div', 'fleet-route-popup__head');
   if (stop.number)
     head.append(
@@ -114,22 +106,18 @@ export function stopContent(
         String(stop.number),
       ),
     );
-  head.append(element('span', 'fleet-route-popup__job', stop.job));
-  const state = stop.done ? 'Done' : etaStatus;
-  if (state)
-    head.append(
+  const identity = element('div', 'fleet-route-popup__identity');
+  const job = element('strong', 'fleet-route-popup__job', stop.job);
+  if (stop.done)
+    job.append(
       element(
         'span',
-        `fleet-route-popup__state fleet-route-popup__state--${
-          stop.done || etaTone === 'success'
-            ? 'success'
-            : etaTone === 'danger'
-              ? 'danger'
-              : 'neutral'
-        }`,
-        state,
+        'fleet-route-popup__state fleet-route-popup__state--success',
+        'Done',
       ),
     );
+  identity.append(job);
+  if (loadReference) identity.append(loadReferenceContent(loadReference));
   const kind = element('div', 'fleet-route-popup__kind', stop.position);
   if (stop.stateAfter && stop.stateAfter !== 'Unknown')
     kind.append(element('span', '', `After: ${stop.stateAfter}`));
@@ -138,22 +126,40 @@ export function stopContent(
     visit.title = `${stop.visit} at this address`;
     kind.append(visit);
   }
+  identity.append(kind);
+  head.append(identity);
+  const address = element('div', 'fleet-route-popup__address');
+  address.append(
+    element('span', 'fleet-route-popup__address-line', stop.address.street),
+  );
+  if (stop.address.locality)
+    address.append(
+      element('span', 'fleet-route-popup__address-line', stop.address.locality),
+    );
   location.append(
     head,
-    kind,
     element('strong', 'fleet-route-popup__company', stop.name),
     address,
   );
   if (stop.references.length) {
-    const references = element(
-      'div',
-      'fleet-route-popup__reference fleet-route-popup__section-start',
-    );
+    const references = element('div', 'fleet-route-popup__reference');
     references.append(
       element('span', 'fleet-route-popup__label', 'Appt #'),
       element('span', '', stop.references.join(', ')),
     );
     location.append(references);
+  }
+  // Who takes the truck there, as the truck card names them.
+  const crew = [
+    loadReference?.truck ? `Truck ${loadReference.truck}` : '',
+    loadReference?.trailer ? `Trailer ${loadReference.trailer}` : '',
+  ].filter(Boolean);
+  if (crew.length || loadReference?.driver) {
+    const assignment = element('div', 'fleet-route-popup__assignment');
+    if (crew.length) assignment.append(element('span', '', crew.join(' · ')));
+    if (loadReference?.driver)
+      assignment.append(element('span', '', loadReference.driver));
+    location.append(assignment);
   }
   const facts = element('dl', 'fleet-route-popup__facts');
   function field(
@@ -169,25 +175,25 @@ export function stopContent(
     parent.append(group);
     return value;
   }
-  field(
-    facts,
-    'Appointment',
-    stop.appointment,
-    'fleet-route-popup__appointment',
-  );
+  // The forecast leads, with the one word about it: on time, late, short
+  // of cycle. The booking follows on the same label column.
   const eta = field(
     facts,
     etaLabel ?? 'ETA',
     etaText ?? '',
     `fleet-route-popup__eta${etaTone ? ` fleet-route-popup__eta--${etaTone}` : ''}`,
   );
-  if (cycleStatus) {
-    eta.className += ' fleet-route-popup__value--cycle';
-    eta.children[0].className = 'fleet-route-popup__arrival';
-    if (etaStatus)
-      eta.children[0].append(
-        element('span', 'fleet-route-popup__status', etaStatus),
-      );
+  if (etaStatus && !stop.done)
+    eta.append(
+      element(
+        'span',
+        `fleet-route-popup__status fleet-route-popup__status--${
+          etaTone === 'danger' ? 'danger' : 'success'
+        }`,
+        etaStatus,
+      ),
+    );
+  if (cycleStatus)
     eta.append(
       element(
         'span',
@@ -195,8 +201,12 @@ export function stopContent(
         cycleStatus,
       ),
     );
-  } else if (etaStatus)
-    eta.append(element('span', 'fleet-route-popup__status', etaStatus));
+  field(
+    facts,
+    'Appointment',
+    stop.appointment,
+    'fleet-route-popup__appointment',
+  );
   // What is left to this stop, and the card calls it Left. Labelling it
   // Total said the length of the whole run, which it is not.
   field(
@@ -217,7 +227,7 @@ export function stopContent(
       facts,
       'Fuel on arrival',
       tank,
-      'fleet-route-popup__fuel fleet-route-popup__section-start',
+      'fleet-route-popup__fuel',
     );
     value.title = 'Estimated from the current fuel plan';
   }
@@ -259,12 +269,13 @@ export function stopContent(
   if (stop.detailsHref) {
     const link = element(
       'a',
-      'fleet-route-popup__details-link',
+      'btn btn--primary fleet-route-popup__details-link',
       // The arrow belongs to the last word; on its own line it reads as a
       // stray mark rather than as a link that leaves the map.
-      'Route & load details ↗',
+      'Open load\u00a0↗',
     );
     (link as HTMLAnchorElement).href = stop.detailsHref;
+    link.title = 'Route & load details';
     information.append(link);
   }
   details.append(location, information);

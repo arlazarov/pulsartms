@@ -1,4 +1,36 @@
 @using Client.Models.DTO.Planning
+@if (Reading == "row")
+{
+    @* One line under the clocks: the status and how long it has lasted,
+       then - only while the driver rests - the rest built up so far,
+       counted against the daily rest and the cycle reset. The two are
+       different durations: a sleeper period after off duty and personal
+       conveyance is one rest block, longer than the status itself. *@
+    <div class="driver-duty driver-duty--row"
+         aria-label="Current duty and rest">
+        <span class="driver-duty__status">
+            <ActionIcon Kind="@StatusIcon" />
+            <strong>@ShortLabel(ShownStatus)</strong>
+            @if (Fresh && Matches && Status?.StatusMinutes is { } elapsed)
+            { <span>· @Duration(elapsed)</span> }
+        </span>
+        @if (Fresh && Matches
+            && Status?.TenHourRestRemainingMinutes is { } rest)
+        {
+            <span class="driver-duty__rest"
+                  title="@RestTitle">@(rest > 0
+                ? $"10h rest in {Duration(rest)}"
+                : "10h rest done")</span>
+        }
+        @if (Fresh && Matches && ResetRemaining is { } reset)
+        {
+            <span class="driver-duty__rest"
+                  title="@ResetTitle">@reset</span>
+        }
+    </div>
+}
+else
+{
 <div class="driver-duty" aria-label="Current driver duty status">
     <div class="driver-duty__current">
         <span class="driver-duty__label">@(Compact ? "HOS ·" : "HOS status:")</span>
@@ -13,3 +45,4 @@
         }
     }
 </div>
+}

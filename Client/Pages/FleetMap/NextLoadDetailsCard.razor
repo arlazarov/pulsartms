@@ -17,31 +17,39 @@
              ? "fleet-map-inspector__body" : "fleet-map-details-card__body")">
         <div class="fleet-route-popup fleet-route-popup--stop">
             <div class="fleet-route-popup__location">
-                <header class="fleet-map-next-load-card__header">
-                    <span class="fleet-map-route-info__load"
-                          aria-busy="@(Loading ? "true" : "false")">
-                        <LoadReference LoadNumber="Route.LoadNumber"
-                            OrderNumber="@(Details?.OrderNumber ?? "")"
-                            OnCopy="OnCopy" />
-                    </span>
-                    <span class="loading-slot @(Loading ? "is-loading" : "")"><LoadingIndicator /></span>
-                </header>
-                <span class="fleet-route-popup__kind">
-                    @Stop?.Job · @StopPosition
-                    @if (Stop?.StateAfter is not null and not "Unknown")
-                    {
-                        <span hidden="@(!Expanded)">
-                            After: @Stop.StateAfter
+                <div class="fleet-route-popup__head">
+                    <div class="fleet-route-popup__identity">
+                        <strong class="fleet-route-popup__job"
+                            >@Stop?.Job</strong>
+                        <header class="fleet-map-next-load-card__header">
+                            <span class="fleet-map-route-info__load"
+                                  aria-busy="@(Loading ? "true" : "false")">
+                                <LoadReference LoadNumber="Route.LoadNumber"
+                                    OrderNumber="@(Details?.OrderNumber ?? "")"
+                                    OnCopy="OnCopy" />
+                            </span>
+                            <span class="loading-slot
+                                @(Loading ? "is-loading" : "")"
+                                ><LoadingIndicator /></span>
+                        </header>
+                        <span class="fleet-route-popup__kind">
+                            @StopPosition
+                            @if (Stop?.StateAfter is not null and not "Unknown")
+                            {
+                                <span hidden="@(!Expanded)">
+                                    After: @Stop.StateAfter
+                                </span>
+                            }
+                            @if (VisitLabel.Length > 0)
+                            {
+                                <span class="fleet-route-popup__visit"
+                                      title="@(VisitLabel + " at this address")">
+                                    @VisitLabel
+                                </span>
+                            }
                         </span>
-                    }
-                    @if (VisitLabel.Length > 0)
-                    {
-                        <span class="fleet-route-popup__visit"
-                              title="@(VisitLabel + " at this address")">
-                            @VisitLabel
-                        </span>
-                    }
-                </span>
+                    </div>
+                </div>
                 @if (Stop is { } stop)
                 {
                     <strong class="fleet-route-popup__company">@stop.Name</strong>
@@ -93,7 +101,8 @@
                     </div>
                 }
                 <dl hidden="@(!Expanded)"
-                    class="fleet-map-next-load-card__assignment"
+                    class="fleet-route-popup__assignment
+                        fleet-map-next-load-card__assignment"
                     aria-label="Stop assignment">
                     <div><dt>Truck</dt><dd>@AssignmentTruck</dd></div>
                     <div><dt>Trailer</dt><dd>@AssignmentTrailer</dd></div>
@@ -108,36 +117,29 @@
                 }
             </div>
             <div class="fleet-route-popup__information">
+                @* The forecast leads, with its one word about the arrival;
+                   the booking, the distances and the fuel follow on the
+                   same label column, then the cycle. *@
+                <ArrivalEstimate @key="(Route.Id, StopIndex, 0)"
+                    Eta="Eta" Stop="Stop" DispatchId="Route.Id"
+                    Memory="_arrivalMemory" Completed="StopCompleted"
+                    Refreshing="Refreshing" ShowDutyStatus="false"
+                    ShowAppointment="false" ShowDetails="false"
+                    Reading="facts" />
                 <dl class="fleet-route-popup__facts">
+                    @if (!HasDisplayedEta)
+                    {
+                        <div class="fleet-route-popup__field
+                            fleet-route-popup__eta"><dt
+                            class="fleet-route-popup__label">ETA</dt> <dd
+                            class="fleet-route-popup__value">—</dd></div>
+                    }
                     <div class="fleet-route-popup__field
                         fleet-route-popup__appointment">
                         <dt class="fleet-route-popup__label">Appointment</dt>
                         <dd class="fleet-route-popup__value">@Appointment</dd>
                     </div>
-                    @* Fuel is one more fact about the stop, so it stands on
-                       the same label column as the appointment above it
-                       rather than in a block of its own with a dial. *@
-                    <div class="fleet-route-popup__field
-                        fleet-route-popup__fuel"
-                         title="Estimated from the current fuel plan">
-                        <dt class="fleet-route-popup__label">
-                            Fuel on arrival
-                        </dt>
-                        <dd class="fleet-route-popup__value">@ArrivalFuelText</dd>
-                    </div>
-                    @* No forecast: said on the same label column as the
-                       facts above, not as a stray line under them. *@
-                    @if (!HasDisplayedEta)
-                    {
-                        <div class="fleet-route-popup__field fleet-route-popup__eta"><dt class="fleet-route-popup__label">ETA</dt> <dd class="fleet-route-popup__value">—</dd></div>
-                    }
                 </dl>
-                <ArrivalEstimate @key="(Route.Id, StopIndex)"
-                    Eta="Eta" Stop="Stop" DispatchId="Route.Id"
-                    Memory="_arrivalMemory" Completed="StopCompleted"
-                    Refreshing="Refreshing" ShowDutyStatus="false"
-                    ShowAppointment="false" ShowRecap="true"
-                    ShowDetails="Expanded" Reading="facts" />
                 <dl hidden="@(!Expanded)"
                     class="fleet-map-next-load-card__metrics
                         fleet-route-popup__section-start">
@@ -145,16 +147,36 @@
                         <dt>@(StopIndex == 0 ? "Empty" : "Leg")</dt>
                         <dd><DistanceText Miles="LegMiles" /></dd>
                     </div>
+                    @* What is left to this stop from where the truck
+                       stands, which is not the length of the run. *@
                     <div>
-                        @* What is left to this stop from where the truck
-                           stands, which is not the length of the run. *@
                         <dt>Left</dt>
                         <dd><DistanceText Miles="DistanceMiles" /></dd>
                     </div>
                 </dl>
-                <a class="fleet-route-popup__details-link"
-                   href="@DetailsHref">
-                    Route &amp; load details ↗
+                <dl class="fleet-route-popup__facts">
+                    @* Fuel is one more fact about the stop, on the same
+                       label column, not a block of its own with a dial. *@
+                    <div class="fleet-route-popup__field
+                        fleet-route-popup__fuel"
+                         title="Estimated from the current fuel plan">
+                        <dt class="fleet-route-popup__label">
+                            Fuel on arrival
+                        </dt>
+                        <dd class="fleet-route-popup__value"
+                            >@ArrivalFuelText</dd>
+                    </div>
+                </dl>
+                <ArrivalEstimate @key="(Route.Id, StopIndex, 1)"
+                    Eta="Eta" Stop="Stop" DispatchId="Route.Id"
+                    Memory="_arrivalMemory" Completed="StopCompleted"
+                    Refreshing="Refreshing" ShowDutyStatus="false"
+                    ShowAppointment="false" ShowSummary="false"
+                    ShowRecap="true" ShowDetails="Expanded"
+                    Reading="facts" />
+                <a class="btn btn--primary fleet-route-popup__details-link"
+                   href="@DetailsHref" title="Route &amp; load details">
+                    Open load ↗
                 </a>
             </div>
         </div>

@@ -72,6 +72,11 @@
     font-size: ui.fs(body);
     overflow-wrap: anywhere;
   }
+  // The unit, then past a hairline the trailer and the driver.
+  .fleet-map-inspector__title + .fleet-map-inspector__crew > :first-child {
+    padding-inline-start: ui.pg(md);
+    border-inline-start: 1px solid ui.theme(border-subtle);
+  }
   .fleet-map-inspector__trailer + .fleet-map-inspector__driver::before,
   .fleet-map-inspector__trailer-conflict
     + .fleet-map-inspector__driver::before {

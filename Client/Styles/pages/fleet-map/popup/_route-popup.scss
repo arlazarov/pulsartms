@@ -22,34 +22,11 @@
   .arrival-estimate {
     row-gap: 0;
   }
-  .fleet-route-popup__value--cycle {
-    display: contents;
-  }
-  &__arrival {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0 ui.pg(sm);
-  }
-  &__cycle-status {
-    grid-column: 1 / -1;
-  }
   &__location,
   &__information {
     min-width: 0;
     display: flex;
     flex-direction: column;
-  }
-  &__eta {
-    &--eta {
-      color: ui.theme(link);
-    }
-    &--success {
-      color: ui.theme(success-text);
-    }
-    &--danger {
-      color: ui.theme(danger-text);
-    }
   }
   &--stop {
     font-size: ui.fs(body);
@@ -67,9 +44,6 @@
     // Blue is what you can click. This line only says where the stop sits in
     // the load, and the card keeps its own secondary lines muted.
     color: ui.theme(text-secondary);
-    margin-bottom: ui.pg(micro);
-    padding-bottom: ui.pg(micro);
-    border-bottom: 1px solid ui.theme(border-subtle);
     &:empty {
       display: none;
     }
@@ -78,8 +52,8 @@
   // where it stands - read before any of the detail below it.
   &__head {
     display: flex;
-    align-items: center;
-    gap: ui.pg(sm);
+    align-items: flex-start;
+    gap: ui.pg(md);
     min-width: 0;
     margin-bottom: ui.pg(xs);
   }
@@ -88,13 +62,15 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    inline-size: ui.size(popup-stop-badge);
-    block-size: ui.size(popup-stop-badge);
+    align-self: start;
+    inline-size: 2rem;
+    block-size: 2rem;
     border: 2px solid ui.theme(link);
     border-radius: 50%;
     background: ui.theme(link);
     color: ui.theme(on-accent);
-    font-size: ui.fs(small);
+    font-size: ui.fs(lead);
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
     // A stop behind the truck is outlined, not filled: it no longer asks
     // for anything.
@@ -103,12 +79,38 @@
       color: ui.theme(link);
     }
   }
+  // What happens at the stop, whose load it is and where the stop sits in
+  // it, stacked beside the stop's number.
+  &__identity {
+    display: grid;
+    gap: ui.pg(micro);
+    min-width: 0;
+    // The load leads, in the link colour and the card's lead size; a click
+    // copies it, and Open load at the foot of the card goes to its page.
+    .fleet-map-route-info__load
+      > .fleet-map-route-info__copy-number:first-of-type {
+      color: ui.theme(action);
+      font-size: ui.fs(lead);
+    }
+  }
   &__job {
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(small);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(sm);
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 600;
     // This is where "Drop Off" came apart one letter per line, between the
     // badge and the state chip that share the row with it.
     overflow-wrap: break-word;
+  }
+  // Who takes the truck there: the unit and trailer, then the driver.
+  &__assignment {
+    display: grid;
+    margin-top: ui.pg(sm);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
   }
   &__state {
     margin-inline-start: auto;
@@ -138,12 +140,16 @@
     font-variant-numeric: tabular-nums;
   }
   // The load and the order are separate elements now that the words between
-  // them are gone. Without a gap they read as one long number.
+  // them are gone. Without a gap they read as one long number. The load's
+  // own caption is empty, and an empty cell must not add a gap before it.
   .fleet-map-route-info__load {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: ui.pg(xs);
+    > span:empty {
+      display: none;
+    }
   }
   .fleet-map-route-info__label {
     color: ui.theme(text-secondary);
@@ -199,15 +205,44 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
+  // The one word about the arrival, as a badge in its tone: on time, late,
+  // or short of cycle - the last a warning about the plan, in amber.
   &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(xs);
+    padding: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(sm);
     font-size: ui.fs(small);
-    font-weight: 400;
+    font-weight: 500;
+    white-space: nowrap;
+    &::before {
+      content: '';
+      inline-size: 0.5em;
+      block-size: 0.5em;
+      border-radius: ui.radius(pill);
+      background: currentColor;
+    }
+    &--success {
+      background: ui.theme(success-surface);
+      color: ui.theme(success-text);
+    }
+    &--danger {
+      background: ui.theme(danger-surface);
+      color: ui.theme(danger-text);
+    }
   }
+  &__cycle-status {
+    background: ui.theme(warning-surface);
+    color: ui.theme(warning-text);
+  }
+  // The load's page is where the card ends: the one primary action, at the
+  // foot of the facts.
   &__details-link {
-    display: block;
-    margin-top: ui.pg(xs);
-    padding-top: ui.pg(xs);
-    border-top: 1px solid ui.theme(border-subtle);
+    align-self: flex-end;
+    display: inline-flex;
+    margin-top: ui.pg(md);
+    text-decoration: none;
   }
 }
 

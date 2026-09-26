@@ -1,4 +1,5 @@
 using Client.Models.DTO.Fleet;
+using Client.Models.DTO.Planning;
 using Client.Shared.Trucks.TruckCamera;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
@@ -14,7 +15,13 @@ public partial class FleetMap
     Stop,
     Fuel,
     NextStop,
+    FuelPlan,
+    FuelStations,
   }
+
+  // The fuel view a station card was opened from: its Back returns there
+  // rather than to the truck. Null when the card was picked on the map.
+  private MapInspectorMode? _fuelReturn;
 
   private MapInspectorMode _inspectorMode;
   private long _inspectorVersion;
@@ -63,11 +70,39 @@ public partial class FleetMap
       ? null
       : truck.Speed;
 
+  // The duty status the forecast read with the hours: its start, the rest
+  // built up so far and the ruleset they are read under. The summary drops
+  // the durations whenever the live clocks name another status.
+  private DriverDutyStatus? HeadDutyStatus =>
+    DisplayRouteState?.Eta?.DutyStatus;
+
+  // What the fuel plan says about reaching its first stop with the reserve
+  // in the tank - a different fact from a low reading, which is the
+  // tank's percentage alone.
+  // The plan the Fuel view shows: the selected route's own, while it is
+  // usable.
+  private FuelPlan? CurrentFuelPlan =>
+    _routeState?.Plan is { InputsChanged: false, FuelPlan: { } fuel }
+    && Usable(fuel)
+      ? fuel
+      : null;
+
+  private string? FuelReserveWarning =>
+    _routeState?.Plan is { InputsChanged: false, FuelPlan: { } fuel }
+    && Usable(fuel)
+    && fuel.Stops.FirstOrDefault(stop => stop.Warning.Length > 0) is { } stop
+      ? $"Fuel stop {stop.Number}: {stop.Warning}"
+      : null;
+
   private string InspectorTitle =>
     _inspectorMode switch
     {
       MapInspectorMode.Stop => "Route stop",
-      MapInspectorMode.Fuel => "Fuel station",
+      MapInspectorMode.Fuel => _fuelReturn == MapInspectorMode.FuelPlan
+        ? "Planned fuel stop"
+        : "Fuel station",
+      MapInspectorMode.FuelPlan => "Fuel plan",
+      MapInspectorMode.FuelStations => "Fuel stations",
       MapInspectorMode.NextStop => "Next load stop",
       _ => SelectedTruck is { } truck
         ? $"Truck {truck.UnitNumber}"
@@ -99,6 +134,25 @@ public partial class FleetMap
     };
     if (mode is null)
       return Task.CompletedTask;
+    // The map knows the truck card, not the fuel views the page draws in
+    // its place: the truck it reports is the one they belong to.
+    if (
+      mode == MapInspectorMode.Truck
+      && _inspectorMode
+        is MapInspectorMode.FuelPlan
+          or MapInspectorMode.FuelStations
+    )
+      return Task.CompletedTask;
+    if (mode == MapInspectorMode.Fuel)
+      _fuelReturn =
+        _inspectorMode
+          is MapInspectorMode.FuelPlan
+            or MapInspectorMode.FuelStations
+          ? _inspectorMode
+        : _inspectorMode == MapInspectorMode.Fuel ? _fuelReturn
+        : null;
+    else
+      _fuelReturn = null;
     if (mode != MapInspectorMode.NextStop)
       ResetInspectedLoad();
     _inspectorMode = mode.Value;
@@ -126,7 +180,14 @@ public partial class FleetMap
       || truckId != InspectorTruckId?.ToString()
     )
       return;
-    if (_inspectorMode != MapInspectorMode.Truck)
+    if (
+      _inspectorMode
+      is not (
+        MapInspectorMode.Truck
+        or MapInspectorMode.FuelPlan
+        or MapInspectorMode.FuelStations
+      )
+    )
       await BackToTruckAsync();
     await InvokeAsync(StateHasChanged);
   }
@@ -162,6 +223,12 @@ public partial class FleetMap
       await CloseInspectorAsync();
       return;
     }
+    if (_inspectorMode == MapInspectorMode.Fuel && _fuelReturn is { } fuelView)
+    {
+      await ShowFuelViewAsync(fuelView);
+      return;
+    }
+    _fuelReturn = null;
     ResetInspectedLoad();
     _mobileTruckDetailsOpen = false;
     _inspectorMode = MapInspectorMode.Truck;
@@ -172,6 +239,58 @@ public partial class FleetMap
         "truck",
         InspectorTruckId?.ToString()
       );
+  }
+
+  // Fuel opens the plan in the card's place; the plan's own actions open
+  // the editor, the send window, a station or the station list.
+  private Task OpenFuelPlanAsync() =>
+    ShowFuelViewAsync(MapInspectorMode.FuelPlan);
+
+  private Task BackToFuelPlanAsync() =>
+    ShowFuelViewAsync(MapInspectorMode.FuelPlan);
+
+  private async Task OpenFuelStationsAsync()
+  {
+    await ShowFuelViewAsync(MapInspectorMode.FuelStations);
+    if (_stations?.LoadedDate != SelectedDate)
+      await OnDateChanged();
+  }
+
+  private async Task ShowFuelViewAsync(MapInspectorMode view)
+  {
+    if (!HasTruckInspection || MapOverlayOpen)
+      return;
+    ResetInspectedLoad();
+    _fuelReturn = null;
+    _inspectorMode = view;
+    _showTruckInfo = true;
+    if (_map is not null && !_disposed)
+      await _map.InvokeVoidAsync(
+        "setInspectorMode",
+        "truck",
+        InspectorTruckId?.ToString()
+      );
+    _inspectorMode = view;
+  }
+
+  // A station opens in its own card, as a click on its marker opens it;
+  // Back returns to the view it was opened from.
+  private Task OpenPlannedStationAsync(FuelPlanStop stop) =>
+    OpenStationCardAsync(stop.StationId, MapInspectorMode.FuelPlan);
+
+  private Task OpenListedStationAsync(Guid stationId) =>
+    OpenStationCardAsync(stationId, MapInspectorMode.FuelStations);
+
+  private async Task OpenStationCardAsync(Guid stationId, MapInspectorMode from)
+  {
+    if (_map is null || _disposed || stationId == Guid.Empty)
+      return;
+    var opened = await _map.InvokeAsync<bool>(
+      "openStation",
+      stationId.ToString()
+    );
+    if (opened && _inspectorMode == MapInspectorMode.Fuel)
+      _fuelReturn = from;
   }
 
   private void ToggleMobileTruckDetails() =>

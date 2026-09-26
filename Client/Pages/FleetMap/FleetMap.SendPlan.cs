@@ -8,12 +8,6 @@ public partial class FleetMap
   private bool _sendPlanOpen;
   private FuelEditorIdentity? _sendPlanIdentity;
 
-  // The Fuel panel under the actions: the fuel now and on arrival, and
-  // the plan's view and send. It only shows; nothing opens by itself.
-  private bool _fuelPanelOpen;
-
-  private void ToggleFuelPanel() => _fuelPanelOpen = !_fuelPanelOpen;
-
   private bool CanSendPlan =>
     CanEditFuel
     && !_fuelEditorOpen

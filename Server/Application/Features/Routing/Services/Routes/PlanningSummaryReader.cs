@@ -71,17 +71,25 @@ public sealed class PlanningSummaryReader(
     };
   }
 
+  // summaryOnly: the result without route geometry, for a reader that
+  // needs a scalar of it and not the road.
   public async Task<AutomaticPlanningResult> ForTruckAsync(
     Guid truckId,
     CancellationToken ct,
     Guid? knownPlanId = null,
-    int? knownVersion = null
+    int? knownVersion = null,
+    bool summaryOnly = false
   )
   {
     var work = await inputs.ReadAsync(truckId, ct);
     return work is null
       ? new(truckId, null, null, null, "No remaining dispatches.")
-      : Read(work, knownPlanId: knownPlanId, knownVersion: knownVersion);
+      : Read(
+        work,
+        knownPlanId: knownPlanId,
+        knownVersion: knownVersion,
+        summaryOnly: summaryOnly
+      );
   }
 
   public async Task<AutomaticPlanningResult> ForDispatchAsync(

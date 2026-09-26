@@ -19,15 +19,13 @@ test('popup secondary cycle warnings span both columns without changing the inli
     css,
     /\.stop-hours--inline\s*\{[^}]*--stop-hours-road-value-display: contents;/,
   );
+  // The cycle's word is a badge of its own beside the hour, in the
+  // warning tone, and never replaces the word about lateness.
   assert.match(
     css,
-    /\.fleet-route-popup__value--cycle\s*\{\s*display: contents;/,
+    /\.fleet-route-popup__cycle-status\s*\{[^}]*background: var\(--ui-warning-surface\);/,
   );
-  assert.match(
-    css,
-    /\.fleet-route-popup__cycle-status\s*\{\s*grid-column: 1\s*\/\s*-1;/,
-  );
-  assert.match(css, /\.fleet-route-popup__arrival\s*\{\s*display: flex;/);
+  assert.doesNotMatch(css, /fleet-route-popup__value--cycle/);
   assert.match(
     readFileSync(
       new URL(

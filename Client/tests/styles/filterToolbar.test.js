@@ -86,8 +86,14 @@ test('Fleet and Dispatch keep their native bindings and use the same toolbar cla
     3,
   );
   assert.doesNotMatch(fleet, /ShowTrucks|OnTrucksToggleChanged/);
-  // The fuel price basis is the fleet's setting, not a map switch.
-  assert.doesNotMatch(fleet, /UseIfta|IFTA/);
+  // The fuel price basis is the fleet's setting, not a map switch. The
+  // station list reads that setting; the toolbar offers no such switch.
+  const toolbar = fleet.slice(
+    fleet.indexOf('<fieldset class="fleet-map-toolbar'),
+    fleet.indexOf('</fieldset>'),
+  );
+  assert.doesNotMatch(toolbar, /UseIfta|IFTA/);
+  assert.doesNotMatch(fleet, /@bind="UseIfta"|@bind-Value="UseIfta"/);
   for (const value of ['ShowFuelStations', 'ShowTraffic', 'ShowNextLoads'])
     assert.match(
       fleet,

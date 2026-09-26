@@ -16,8 +16,7 @@
       row-gap: ui.pg(xs);
       padding-block: ui.pg(xs);
       > .fleet-map-route-info__visit,
-      > .fleet-map-route-info__distances,
-      > .fleet-map-route-info__timing,
+      > .fleet-map-route-info__facts,
       > .fleet-map-route-info__messages {
         grid-column: 1;
         grid-row: auto;
@@ -70,6 +69,11 @@
     .fleet-map-inspector__title {
       grid-area: title;
     }
+    // On a row of its own the crew needs no rule before it.
+    .fleet-map-inspector__title + .fleet-map-inspector__crew > :first-child {
+      padding-inline-start: 0;
+      border-inline-start: 0;
+    }
     .fleet-map-inspector__crew {
       grid-area: crew;
       display: flex;
@@ -86,13 +90,6 @@
         padding-inline-start: 0;
         border-inline-start: 0;
       }
-    }
-    // The address stays beside its label while it fits and takes a line
-    // of its own only when it does not.
-    .fleet-map-inspector__location {
-      display: flex;
-      flex-wrap: wrap;
-      row-gap: ui.pg(xs);
     }
     .fleet-map-mobile-summary__remaining {
       min-inline-size: 0;
@@ -118,11 +115,16 @@
       text-overflow: clip;
       white-space: normal;
     }
-    // The clock stays at the start of its clocks; they fold beside it.
+    // The clocks start the row on their own and fold when they must. A
+    // hairline that a fold puts at the start of a line separates nothing,
+    // so a phone card sets its readings apart by space alone.
     .fleet-map-inspector__clocks {
       justify-self: start;
       max-inline-size: 100%;
       --hos-wrap: wrap;
+      --hos-gap: #{ui.pg(xs)} #{ui.pg(md)};
+      --hos-divider: 0;
+      --hos-divider-gap: 0;
     }
 
     // Nothing here re-columns on open. The header a dispatcher reads while
@@ -143,12 +145,8 @@
   }
 
   // On a card this tight - a phone at 200% text - the toggle's words give
-  // way to its arrow, and the clock to the clocks it marks; the words and
-  // the group's "HOS" stay names for a screen reader.
+  // way to its arrow; they stay its name for a screen reader.
   @container map-truck-card (width < #{ui.breakpoint(map-truck-toggle-words)}) {
-    .fleet-map-inspector__hours-label {
-      display: none;
-    }
     .fleet-map-mobile-summary__toggle-words {
       position: absolute;
       inline-size: 1px;

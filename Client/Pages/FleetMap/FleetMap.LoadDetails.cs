@@ -49,12 +49,13 @@ public partial class FleetMap
 
   // The booking shown under the head's ETA: the tracked stop's own, and
   // only while the forecast shown there is for that same stop, so the two
-  // times beside each other are always about one visit.
+  // times beside each other are always about one visit. A stop with no
+  // booking says so with a dash; it is the card's only appointment row.
   private PlanStop? HeadAppointmentStop
   {
     get
     {
-      if (ScheduledStop is not { ScheduledDate: not null } stop)
+      if (ScheduledStop is not { } stop)
         return null;
       var eta = _routeState?.Plan is { InputsChanged: false }
         ? DisplayRouteState?.Eta
@@ -69,8 +70,15 @@ public partial class FleetMap
 
   // The booking as read beside the ETA: its date and window, then the
   // zone they are written in.
-  private string HeadAppointmentText(PlanStop stop)
+  // The row stands while the stop is still loading, as a dash, so the
+  // arrival beside the load does not change height when it lands.
+  private bool HeadAppointmentShown =>
+    ScheduledStop is null || HeadAppointmentStop is not null;
+
+  private string HeadAppointmentText(PlanStop? stop)
   {
+    if (stop is null)
+      return "—";
     var booked = FleetAppointmentDisplay.Split(stop);
     var text = booked.Date is null
       ? booked.Value

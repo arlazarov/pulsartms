@@ -28,78 +28,31 @@
   .fleet-map-inspector__vehicle {
     min-inline-size: 0;
   }
-  // The clock says what the numbers are; "HOS" stays for a screen reader.
-  .fleet-map-inspector__hours-label {
-    display: inline-flex;
-    align-self: center;
-    color: ui.theme(text-secondary);
-    > svg {
-      inline-size: ui.fs(heading);
-      block-size: ui.fs(heading);
-    }
-    > span {
-      position: absolute;
-      inline-size: 1px;
-      block-size: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
-    }
-  }
   // The clocks stand at the right of the vehicle, read as numbers that
-  // never shrink below what they say. Tighter between the clocks than
-  // around them, and the group never splits: "HOS" on one row with its
-  // clocks on the next was the worst way this could break.
+  // never shrink below what they say, each past a hairline of its own. The
+  // group never splits: a clock on one row with the rest on the next was
+  // the worst way this could break.
   .fleet-map-inspector__clocks {
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
     justify-self: end;
-    gap: ui.pg(xs);
     --hos-display: flex;
     --hos-wrap: nowrap;
-    --hos-gap: #{ui.pg(xs)};
+    --hos-gap: #{ui.pg(md)};
     --hos-clock-min-width: 0;
     --hos-label-font-size: #{ui.fs(body)};
+    --hos-divider: 1px solid #{ui.theme(border-subtle)};
+    --hos-divider-gap: #{ui.pg(md)};
     > .driver-hours-panel {
       min-width: 0;
       margin-left: 0;
     }
   }
-  // Where the truck is: last, across the whole card, from its left edge,
-  // the pin, its label and the address on one line. The address is one
-  // long word to a browser; it folds rather than pushing the card into a
-  // sideways scroll.
-  .fleet-map-inspector__location {
-    grid-template-columns: max-content max-content minmax(0, 1fr);
-    align-items: baseline;
-    column-gap: ui.pg(sm);
-    > svg {
-      align-self: center;
-      inline-size: ui.fs(heading);
-      block-size: ui.fs(heading);
-      color: ui.theme(text-secondary);
-    }
-    > :nth-child(2) {
-      align-self: auto;
-      padding-inline-start: 0;
-      border-inline-start: 0;
-    }
-    > span {
-      color: ui.theme(text-secondary);
-      white-space: nowrap;
-    }
-    > strong {
-      min-width: 0;
-      max-inline-size: 100%;
-      font-size: ui.fs(body);
-      font-weight: 400;
-      > button {
-        max-inline-size: 100%;
-        text-align: start;
-        overflow-wrap: anywhere;
-      }
-    }
+  // The driver's duty and rest, on a line of their own under the clocks,
+  // quieter than the readings above them.
+  .fleet-map-inspector__duty {
+    grid-template-columns: minmax(0, 1fr);
   }
   // The load leads its row. It keeps the room its numbers will need: an
   // empty group here is a hole that the arrival beside it slides across
@@ -135,7 +88,8 @@
     align-items: center;
     gap: ui.pg(xs);
     min-block-size: ui.size(control-compact);
-    color: ui.theme(text);
+    border-color: ui.theme(action);
+    color: ui.theme(action);
     font-weight: 600;
     white-space: nowrap;
     @include ui.below(md) {
@@ -174,8 +128,7 @@
     gap: ui.pg(xs);
     white-space: nowrap;
   }
-  // What is left stands beside the name, at the right, with the covered
-  // share drawn under it.
+  // What is left stands beside the name, at the right.
   .fleet-map-mobile-summary__distance {
     grid-area: distance;
     justify-self: end;
@@ -201,20 +154,6 @@
     .fleet-map-mobile-summary__alternate {
       color: ui.theme(text-muted);
       font-size: ui.fs(caption);
-    }
-  }
-  .fleet-map-mobile-summary__bar {
-    display: block;
-    inline-size: 100%;
-    block-size: 3px;
-    border-radius: ui.radius(pill);
-    background: ui.theme(border-subtle);
-    overflow: hidden;
-    > span {
-      display: block;
-      block-size: 100%;
-      border-radius: inherit;
-      background: ui.theme(action);
     }
   }
   // "18" on its own says nothing; the words around it say what it counts.

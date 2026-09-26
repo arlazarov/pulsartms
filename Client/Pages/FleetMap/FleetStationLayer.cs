@@ -16,6 +16,10 @@ internal sealed class FleetStationLayer(HttpClient http, IJSObjectReference map)
   private List<FuelMapPriceDto>? _prices;
   private bool _disposed;
   public DateOnly? LoadedDate { get; private set; }
+
+  // The selected day's stations as the map received them, for the page's
+  // station list; the same read, not a second one.
+  public IReadOnlyList<FuelStationMapDto>? Stations { get; private set; }
   public string? Error { get; private set; }
   public string? PriceError { get; private set; }
 
@@ -140,6 +144,7 @@ internal sealed class FleetStationLayer(HttpClient http, IJSObjectReference map)
       if (!IsCurrent(request))
         return;
       LoadedDate = date;
+      Stations = result.Response;
       Error = null;
     }
     catch (Exception ex)

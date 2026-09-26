@@ -237,6 +237,9 @@ export interface LoadReference {
   loadNumber: number;
   loadLabel?: string;
   orderNumber?: string;
+  truck?: string;
+  trailer?: string;
+  driver?: string;
 }
 
 /** Blazor transports UTF-8 JSON bytes; geometry omission is accepted only for a retained matching plan. */

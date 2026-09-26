@@ -101,25 +101,6 @@ public partial class FleetMap : IAsyncDisposable
   // stop is known is the run's remainder said instead.
   private double? LeftMiles => NextStopMiles ?? RemainingMiles;
 
-  // How much of the way to that stop is behind the truck, 0 to 1 - the same
-  // thing the number beside it measures, so one cannot contradict the other.
-  // Both ends have to be real and the whole has to be larger than the
-  // remainder, or the bar would claim progress nobody measured.
-  private double? RouteCovered
-  {
-    get
-    {
-      if (_routeState?.Plan is not { InputsChanged: false } plan)
-        return null;
-      var (left, whole) = NextStopMiles is { } next
-        ? (next, plan.NextStopDistance ?? 0)
-        : (RemainingMiles ?? double.NaN, plan.OriginalPlannedMiles);
-      return whole > 0 && double.IsFinite(left) && left <= whole
-        ? Math.Clamp(1 - left / whole, 0, 1)
-        : null;
-    }
-  }
-
   // The truck has reached the stop it was heading for and the stop is still
   // open: it is standing there, waiting on the appointment. There is nothing
   // left to forecast, which is why the server sends an ETA with no stops in
@@ -548,7 +529,7 @@ public partial class FleetMap : IAsyncDisposable
     _nextRestorePending = false;
     _showTruckInfo = false;
     _mobileTruckDetailsOpen = false;
-    _fuelPanelOpen = false;
+    _fuelReturn = null;
     _inspectorMode = MapInspectorMode.Closed;
     _routeRequest?.Cancel();
     _routeRequest = null;
@@ -593,7 +574,7 @@ public partial class FleetMap : IAsyncDisposable
     _selectionDismissed = false;
     _showTruckInfo = true;
     _mobileTruckDetailsOpen = false;
-    _fuelPanelOpen = false;
+    _fuelReturn = null;
     _inspectorMode = MapInspectorMode.Truck;
     _addressCopyMessage = null;
     if (truckId == _activeTruckId && dispatchId == _activeDispatchId)
@@ -932,7 +913,12 @@ public partial class FleetMap : IAsyncDisposable
     await _stations.LoadPricesAsync(date, () => UseIfta, _lifetime.Token);
     if (_disposed || date != SelectedDate)
       return;
-    if (ShowFuelStations || _inspectorMode == MapInspectorMode.Fuel)
+    if (
+      ShowFuelStations
+      || _inspectorMode
+        is MapInspectorMode.Fuel
+          or MapInspectorMode.FuelStations
+    )
       await _stations.LoadAsync(date, () => UseIfta, _lifetime.Token);
     if (!_disposed)
       await InvokeAsync(StateHasChanged);
@@ -943,7 +929,11 @@ public partial class FleetMap : IAsyncDisposable
     await SaveMapPreferencesAsync();
     if (_map is not null && !_disposed)
       await _map.InvokeVoidAsync("setStationsVisible", ShowFuelStations);
-    if (!ShowFuelStations && _inspectorMode != MapInspectorMode.Fuel)
+    if (
+      !ShowFuelStations
+      && _inspectorMode
+        is not (MapInspectorMode.Fuel or MapInspectorMode.FuelStations)
+    )
     {
       _stations?.Cancel();
     }

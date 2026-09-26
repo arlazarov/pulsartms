@@ -73,6 +73,9 @@ public partial class ConversationContextPanel : IDisposable
         null,
         DateTimeOffset.UtcNow
       )
+      {
+        Jurisdiction = Context?.Duty?.Jurisdiction,
+      }
       : null;
 
   // Said only when it matters: the clocks refresh every minute, so a

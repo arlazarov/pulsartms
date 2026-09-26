@@ -477,3 +477,27 @@ test('temporary station details do not present the optimization price as an actu
     'a genuine loaded quote replaces the unavailable fallback',
   );
 });
+
+// A station named from the page's list opens with the layer off, keeps its
+// price colour, and stays open while the plan's recommendations refresh -
+// which close a card a marker opened, since that marker is no longer drawn.
+// A station the day has no quote for is not invented.
+test('a station named from the list stays open while the layer is off', async t => {
+  const { layer, points, stations, popup, select } = fixture(t);
+  await layer.setStations(stations, '2026-09-09', false);
+  assert.equal(layer.openStation(missing), false);
+  assert.equal(layer.openStation(second), true);
+  assert.equal(popup().visible, true);
+  const color = points.get(second).color;
+  assert.ok(color, 'the point keeps the price colour the map gives it');
+  await layer.setRecommended([first]);
+  assert.equal(popup().visible, true);
+  await layer.setVisible(true);
+  await layer.setVisible(false);
+  assert.equal(popup().visible, true);
+  assert.equal(points.get(second).color, color);
+  // Another card replaces it, and then the ordinary rule applies again.
+  layer.closePopup();
+  select(second);
+  assert.equal(popup().visible, false, 'a hidden marker opens nothing');
+});

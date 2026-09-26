@@ -46,6 +46,7 @@
             <DriverDutySummary Status="DisplayResult?.State?.Eta?.DutyStatus" CurrentStatus="@(Hos?.CurrentDutyStatus)" ClockUpdatedAt="Hos?.UpdatedAt" Compact="BoardHeader" />
             <DriverNextRecap Snapshot="CurrentCycle" />
         </div>
-        <DriverHours Clocks="Hos" ShowDutyStatus="false" />
+        <DriverHours Clocks="Hos" ShowDutyStatus="false"
+                     Status="DisplayResult?.State?.Eta?.DutyStatus" />
     }
 </section>

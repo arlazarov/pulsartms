@@ -167,6 +167,57 @@ selected truck it closes the card. Marker and route clicks are not background cl
 active editors and camera dialogs ignore background dismissal.
 Back to truck replaces Close on stop/fuel inspectors; never show both controls.
 Truck cards and standalone station cards retain Close.
+The Fleet and fuel cards follow the owner's approved design of September 26
+(`archive/2026-09/fleet-card-design-2026-09-26.png` and
+`archive/2026-09/fleet-fuel-design-2026-09-26.png`; handoff in
+`archive/2026-09/fleet-fuel-design-handoff-2026-09-26.md`). Where the
+paragraphs below differ, this one wins. The images are visual references:
+their prices, quantities and dates are illustrative, never formulas.
+- Closed truck card: unit, then past a hairline trailer and driver; Left to
+  the next stop as a phrase (no progress bar); an outlined Details / Hide
+  details and Close. Then the load and order with the visit and stop name,
+  and at the right ETA with one badge (on time, late, or an amber Cycle
+  short) and the Appointment for the same stop in its zone - the card's
+  only appointment row, a dash while the stop loads. Then speed, fuel,
+  engine and temperature, each past a hairline, and at the right the HOS
+  clocks past hairlines with no "HOS" word or clock icon (the group keeps
+  that name for a screen reader). Break is left out when the server says
+  the hours are read under Canadian rules (`DriverDutyStatus.Jurisdiction`);
+  unknown keeps it. Last, the duty line from the shared
+  `DriverDutySummary` (`Reading="row"`): the status and its time, then -
+  only while resting - the rest built up towards the 10h daily rest and the
+  ruleset's cycle reset, as the server's HOS history reads them. A status
+  the live clocks no longer show, or clocks older than three minutes, keep
+  the status and say no duration.
+- Fuel reads its tank state in both icon and value: success, low
+  (telemetry warning icon, warning text), critical (danger) or unknown
+  (`TelemetryTone.Fuel`). A fuel plan whose first stop is reached below
+  its reserve adds a separate danger mark beside the reading, with the
+  server's warning as its name; the percentage alone never says it.
+- Open card: NEXT STOP with the facility, street and city on their own
+  lines at the left; at the right Remaining load (hidden at the load's last
+  stop, where it equals Left), Cycle remaining, Fuel on arrival, and the
+  current location under them - the only place it is shown - with long
+  addresses wrapping. A truck with nothing to drive keeps the location.
+  Actions follow unchanged; Fuel opens the fuel plan in the card's place.
+- Fuel plan (`FleetFuelPlan`): current fuel, the plan's own purchase and
+  cost totals, the plan state, then each planned stop in order with its
+  arrival fuel, purchase, price and cost, the server's warning, sent state
+  and View station. Stations, Edit plan (the existing editor) and Send fuel
+  plan (the existing send window) close it. Close returns to the truck.
+- Fuel stations (`FleetFuelStations`): the selected day's stations the
+  map loaded, searched by name, city or address, narrowed to planned stops
+  or a brand, with the price the map shows for that day. Planned stops
+  carry their number, distance ahead and detour from the plan; other
+  stations have no route distance because none was measured. View opens a
+  station's card even with the Fuel Stations layer off; Back returns to the
+  list or plan it came from. Station and marker price colours are unchanged.
+- Route stops, current and next-load, share one layout: number (current
+  route only) and job, load and order, the stop's place in its load,
+  company, address, references and assignment at the left; ETA with its one
+  badge, Appointment, then distances, fuel on arrival and cycle rows at the
+  right, ending with the primary Open load.
+
 The truck card follows the owner's approved design of September 25
 (`design/source-assets/fleet-card-approved-2026-09-25.png`); where the
 older sentences below differ, this paragraph wins. The head reads in rows,

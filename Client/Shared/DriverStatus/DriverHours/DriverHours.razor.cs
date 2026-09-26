@@ -21,6 +21,23 @@ public partial class DriverHours
   [Parameter]
   public DriverDutyStatus? Status { get; set; }
 
+  // The ruleset the server read the hours under, given directly or by the
+  // duty status the server sent with them. The eight-hour break is a US
+  // rule: under Canadian rules its clock says nothing and is left out.
+  // Unknown keeps every clock the provider reports.
+  [Parameter]
+  public string? Jurisdiction { get; set; }
+  private string? Rules => Jurisdiction ?? Status?.Jurisdiction;
+
+  private IEnumerable<(string, long?, int)> Readings =>
+    new[]
+    {
+      ("Break", Clocks?.BreakMs, 8),
+      ("Drive", Clocks?.DriveMs, 11),
+      ("Shift", Clocks?.ShiftMs, 14),
+      ("Cycle", Clocks?.CycleMs, 70),
+    }.Where(clock => clock.Item1 != "Break" || Rules != "CA");
+
   private static string Fill(long? milliseconds, int hours) =>
     Math.Clamp((milliseconds ?? 0) / (hours * 3600000d) * 100, 0, 100)
       .ToString("0.###", CultureInfo.InvariantCulture);

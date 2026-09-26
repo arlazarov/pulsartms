@@ -123,12 +123,34 @@
                 }
             </div>
         }
+        else if (_inspectorMode is MapInspectorMode.FuelPlan
+            or MapInspectorMode.FuelStations)
+        {
+            @* The truck's fuel, named with the truck it belongs to. Its
+               close goes back to the truck card, which stays selected. *@
+            <div class="fleet-map-inspector__identity">
+                <strong class="fleet-map-inspector__title"
+                    >@InspectorTitle</strong>
+                <span class="fleet-map-inspector__subtitle"
+                    >@SelectedTruck?.UnitNumber</span>
+            </div>
+        }
         else
         {
             <strong class="fleet-map-inspector__title">@InspectorTitle</strong>
             @if (HasTruckInspection)
             {
-                <button type="button" class="btn btn--text btn--small fleet-map-inspector__back" @onclick="BackToTruckAsync">Back to truck</button>
+                <button type="button"
+                        class="btn btn--small fleet-map-inspector__back"
+                        @onclick="BackToTruckAsync">
+                    <span aria-hidden="true">←</span>
+                    @(_fuelReturn switch
+                    {
+                        MapInspectorMode.FuelPlan => "Back to plan",
+                        MapInspectorMode.FuelStations => "Back to stations",
+                        _ => "Back to truck",
+                    })
+                </button>
             }
         }
         @* The close control belongs to every card. A stop opened from the
@@ -155,10 +177,22 @@
                     <ActionIcon Kind="chevron-down" />
                 </button>
             }
-            <button type="button"
-                    class="btn btn--small fleet-map-inspector__close"
-                    aria-label="Close map information"
-                    @onclick="CloseInspectorAsync">×</button>
+            @if (_inspectorMode is MapInspectorMode.FuelPlan
+                or MapInspectorMode.FuelStations)
+            {
+                <button type="button"
+                        class="btn btn--small fleet-map-inspector__close"
+                        aria-label="@("Close "
+                            + InspectorTitle.ToLowerInvariant())"
+                        @onclick="BackToTruckAsync">×</button>
+            }
+            else
+            {
+                <button type="button"
+                        class="btn btn--small fleet-map-inspector__close"
+                        aria-label="Close map information"
+                        @onclick="CloseInspectorAsync">×</button>
+            }
         </div>
         @if (SelectedTruck is not null && _inspectorMode == MapInspectorMode.Truck)
         {
@@ -175,12 +209,6 @@
                         class="fleet-map-mobile-summary__label">Left&#160;</span><strong>@Units.DistanceValue(LeftMiles)</strong><span
                         class="fleet-map-mobile-summary__label">&#160;@Units.DistanceUnit</span>@if (Units.BothDistances)
                     {<span class="fleet-map-mobile-summary__label fleet-map-mobile-summary__alternate"> ·&#160;@Units.Kilometers(LeftMiles)&#160;km</span>}
-                </span>
-                @* Always drawn, so a run whose progress is not known yet
-                   reserves the same height as one that is. *@
-                <span class="fleet-map-mobile-summary__bar"
-                      aria-hidden="true">
-                    <span style="inline-size: @(Math.Round((RouteCovered ?? 0) * 100))%"></span>
                 </span>
             </span>
         }
@@ -260,12 +288,13 @@
                                     </span></span>
                                 </div>
                             </div>
-                            @if (HeadAppointmentStop is { } appointed)
+                            @if (HeadAppointmentShown)
                             {
                                 <div class="fleet-map-inspector__appointment"
                                      title="Booked time at the stop, in its local time">
                                     <span class="fleet-map-inspector__appointment-label">Appointment</span>
-                                    <strong>@HeadAppointmentText(appointed)</strong>
+                                    <strong>@HeadAppointmentText(
+                                        HeadAppointmentStop)</strong>
                                 </div>
                             }
                         </div>
@@ -291,6 +320,13 @@
                                              fleet-map-truck-info__reading--fuel">
                                     <FuelReading Percent="@((double?)truck.FuelPercent)"
                                                  Variant="metric" />
+                                    @if (FuelReserveWarning is { } reserve)
+                                    {
+                                        <span
+                                            class="fleet-map-truck-info__reserve"
+                                              role="note" title="@reserve"
+                                              aria-label="@reserve">!</span>
+                                    }
                                 </span>
                                 <span class="fleet-map-truck-info__reading
                                     fleet-map-truck-info__reading--engine
@@ -309,43 +345,58 @@
                             </div>
                         </div>
                     </div>
-                    @* The clock names the group; "HOS" stays its name for a
-                       screen reader and travels with the clocks. *@
+                    @* The driver's clocks, named by their labels alone; the
+                       group keeps "HOS" as its name for a screen reader. *@
                     <span class="fleet-map-inspector__clocks" aria-label="HOS">
-                        <span class="fleet-map-inspector__hours-label"><ActionIcon Kind="clock" /><span>HOS</span></span>
-                        <Client.Shared.DriverStatus.DriverHours.DriverHours
+                        <DriverHours
                             @key="_activeTruckId" Clocks="_hos"
+                            Jurisdiction="@HeadDutyStatus?.Jurisdiction"
                             Dials="false" ShowDutyStatus="false" />
                     </span>
                 </div>
-                @* Where the truck is, last and across the whole card, open or
-                   closed: the longest thing on it, with room to fold. *@
-                <div id="fleet-map-truck-location"
-                     class="fleet-map-inspector__row fleet-map-inspector__location"
-                     aria-label="Truck GPS location">
-                    <ActionIcon Kind="location" />
-                    <span>@TruckLocationLabel</span>
-                    @if (string.IsNullOrWhiteSpace(truck.FormattedLocation))
-                    {
-                        <strong>Address unavailable</strong>
-                    }
-                    else
-                    {
-                        <strong>
-                            <button type="button"
-                                class="fleet-map-route-info__copy-number"
-                                title="Copy location address"
-                                @onclick="() => CopyTextAsync(
-                                    truck.FormattedLocation)">
-                                @truck.FormattedLocation
-                            </button>
-                        </strong>
-                    }
+                @* The duty the driver is in and for how long, then the rest
+                   built up towards the daily rest and the cycle reset. *@
+                <div class="fleet-map-inspector__row fleet-map-inspector__duty">
+                    <DriverDutySummary
+                        Reading="row" Status="HeadDutyStatus"
+                        CurrentStatus="@_hos?.CurrentDutyStatus"
+                        ClockUpdatedAt="_hos?.UpdatedAt" />
                 </div>
             </div>
         }
         </header>
         <div class="fleet-map-inspector__native" hidden="@(_inspectorMode is not (MapInspectorMode.Stop or MapInspectorMode.Fuel))"></div>
+        @if (_inspectorMode == MapInspectorMode.FuelPlan
+            && SelectedTruck is { } fuelTruck)
+        {
+            <div class="fleet-map-inspector__body">
+                <FleetFuelPlan
+                    Plan="@CurrentFuelPlan"
+                    Unusable="@(_routeState?.Plan?.FuelPlan is not null)"
+                    CurrentPercent="@((double?)fuelTruck.FuelPercent)"
+                    TankGallons="@_routeState?.Profile.TankGallons"
+                    CanEdit="@(CanEditFuel && !_fuelEditorOpen
+                        && !_sendPlanOpen && !_recalculatingFuel)"
+                    CanSend="CanSendPlan"
+                    ViewStation="OpenPlannedStationAsync"
+                    Edit="OpenFuelEditorAsync"
+                    Send="OpenSendPlanAsync"
+                    Stations="OpenFuelStationsAsync" />
+            </div>
+        }
+        @if (_inspectorMode == MapInspectorMode.FuelStations)
+        {
+            <div class="fleet-map-inspector__body">
+                <FleetFuelStations
+                    Stations="_stations?.Stations"
+                    Error="@StationError"
+                    Date="SelectedDate" UseIfta="UseIfta"
+                    Plan="@(Usable(_routeState?.Plan?.FuelPlan)
+                        ? _routeState!.Plan!.FuelPlan : null)"
+                    View="OpenListedStationAsync"
+                    Back="BackToFuelPlanAsync" />
+            </div>
+        }
         @if (HasTruckInspection)
         {
             <div id="fleet-map-details" class="fleet-map-info-content" hidden="@(_inspectorMode != MapInspectorMode.Truck)">
@@ -395,51 +446,40 @@
                     </span>
                 }
             </div>
-            @{ var appointment = FleetAppointmentDisplay.Split(ScheduledStop); }
-            <div class="fleet-map-route-info__appointment fleet-map-route-info__delivery">
-                <ActionIcon Kind="truck" />
-                <span class="fleet-map-route-info__label">@FleetAppointmentDisplay.Visit(ScheduledStop)</span>
-                <strong>
-                    @if (appointment.Date is not null)
-                    {
-                        <span
-                            class="fleet-map-route-info__appointment-date"
-                            data-separator="· "
-                        >@appointment.Date</span><span
-                            class="fleet-map-route-info__appointment-separator"
-                        > · </span>
-                    }
-                    <span
-                        class="fleet-map-route-info__appointment-time"
-                    >@appointment.Value</span>@if (ScheduledStop is { } zoned && StopZone(zoned) is { } zone)
-                    {<span class="fleet-map-route-info__appointment-zone">&#160;@zone</span>}
-                </strong>
             </div>
-            </div>
-            @* The load, its order and the distance to the next stop are in
-               the card head, so none of them is said again here. *@
-            <div class="fleet-map-route-info__distances">
-            <div class="fleet-map-route-info__metric">
-                @* The head says what is left to the next stop; here what is
-                   left of the whole load. *@
-                <span class="fleet-map-route-info__label">Remaining load</span>
-                <span class="fleet-map-route-info__progress">
-                    <strong>@Units.DistanceValue(routePlan is null ? null : RemainingMiles)</strong>
-                    <span class="fleet-map-route-info__total">@Units.DistanceUnit</span>
-                    @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">· @Units.Kilometers(routePlan is null ? null : RemainingMiles) km</span> }
-                </span>
-            </div>
-            </div>
+            @* Beside the stop, what the truck will have when it gets there,
+               then where it is now: the stop's appointment and ETA are in
+               the head. *@
+            <div class="fleet-map-route-info__facts">
+                @* Kept in place through loading; a final stop's remainder is
+                   the head's Left, so the card hides it rather than saying
+                   the same number twice. *@
+                <div class="fleet-map-route-info__metric">
+                    <span class="fleet-map-route-info__label">Remaining load</span>
+                    <span class="fleet-map-route-info__progress">
+                        <strong>@Units.DistanceValue(routePlan is null ? null : RemainingMiles)</strong>
+                        <span class="fleet-map-route-info__total">@Units.DistanceUnit</span>
+                        @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">· @Units.Kilometers(routePlan is null ? null : RemainingMiles) km</span> }
+                    </span>
+                </div>
             <div class="fleet-map-route-info__timing">
             <div class="arrival-estimate">
-                @* ETA reads in the card head, so this section keeps only the
-                   cycle, next to the delivery window it is measured against.
-                   Inspecting a next stop takes the head over; the route then
-                   carries its own arrival again rather than losing it. *@
-                <ArrivalEstimate Eta="@(routePlan is null ? null : DisplayRouteState?.Eta)" Stop="ScheduledStop" Memory="_arrivalMemory" DispatchId="SelectedDispatchId" Refreshing="_etaRefreshPending" Completed="@(routePlan?.Tracking.AllStopsPassed == true)" ShowDutyStatus="false" ShowAppointment="false" ShowSummary="@(_inspectorMode != MapInspectorMode.Truck)" ShowDetails="@(_inspectorMode != MapInspectorMode.Truck)" Reading="compact" />
+                @* The cycle at the stop, as one more fact. ETA reads in the
+                   card head; inspecting a next stop takes the head over, and
+                   the route then carries its own arrival again. *@
+                <ArrivalEstimate
+                    Eta="@(routePlan is null ? null : DisplayRouteState?.Eta)"
+                    Stop="ScheduledStop" Memory="_arrivalMemory"
+                    DispatchId="SelectedDispatchId"
+                    Refreshing="_etaRefreshPending"
+                    Completed="@(routePlan?.Tracking.AllStopsPassed == true)"
+                    ShowDutyStatus="false" ShowAppointment="false"
+                    ShowSummary="@(_inspectorMode != MapInspectorMode.Truck)"
+                    ShowDetails="true" Reading="compact" />
                 <div class="fleet-map-route-info__eta-placeholder stop-hours stop-hours--compact">
                     <section class="stop-hours__cycle" aria-label="Cycle at this stop"><div class="stop-hours__row stop-hours__arrival-cycle"><h3 class="stop-hours__heading">Cycle remaining</h3><strong class="stop-hours__value">—</strong></div></section>
                 </div>
+            </div>
             </div>
             <div class="fleet-map-route-info__arrival-fuel">
                 <span class="fleet-map-route-info__label">Fuel on arrival</span>
@@ -447,7 +487,8 @@
                 @if (ScheduledFuelArrival is { } fuelArrival)
                 {
                     <strong>@Math.Round(fuelArrival.Percent)%</strong>
-                    <span class="fleet-map-route-info__secondary">@Math.Round(fuelArrival.Gallons) US gal</span>
+                    <span aria-hidden="true">·</span>
+                    <strong>@Math.Round(fuelArrival.Gallons) US gal</strong>
                 }
                 else
                 {
@@ -455,6 +496,12 @@
                 }
                 </span>
             </div>
+            @* Where the truck is: only on the open card, under what it will
+               have on arrival. The address is one long word to a browser;
+               it folds rather than pushing the card sideways. *@
+            <TruckLocationLine Label="@TruckLocationLabel"
+                Address="@SelectedTruck?.FormattedLocation"
+                OnCopy="CopyTextAsync" />
             </div>
             <div class="fleet-map-route-info__messages">
                 @foreach (var warning in routePlan?.Route.Warnings ?? [])
@@ -470,6 +517,15 @@
                 { <span class="fleet-map-route-info__error" role="status">@plannedRouteError</span> }
             </div>
 
+        </div>
+    }
+    else if (SelectedTruck is not null)
+    {
+        @* No work to show: where the truck is still has its place. *@
+        <div class="fleet-map-inspector__where">
+            <TruckLocationLine Label="@TruckLocationLabel"
+                Address="@SelectedTruck.FormattedLocation"
+                OnCopy="CopyTextAsync" />
         </div>
     }
     @if (NothingToDrive && VisibleRouteError is { } emptyRouteError) { <p class="fleet-map-route-info__error" role="status">@emptyRouteError</p> }
@@ -495,13 +551,11 @@
             </button>
             @* Fuel opens its own panel; viewing and sending the plan live
                there, not in this row. *@
-            <button type="button"
-                    class="btn map-action-icon @(_fuelPanelOpen ? "is-open" : "")"
-                    title="Fuel" aria-label="Fuel"
-                    aria-expanded="@(_fuelPanelOpen ? "true" : "false")"
-                    aria-controls="fleet-map-fuel-panel"
+            <button type="button" class="btn map-action-icon"
+                    title="Fuel plan" aria-label="Fuel"
                     disabled="@(_fuelEditorOpen || _sendPlanOpen)"
-                    @onclick="ToggleFuelPanel"><ActionIcon Kind="fuel" /><span>Fuel</span></button>
+                    @onclick="OpenFuelPlanAsync"
+                ><ActionIcon Kind="fuel" /><span>Fuel</span></button>
             <button type="button" class="btn map-action-icon" title="Camera" aria-label="Camera" @onclick="OpenCameraAsync"><ActionIcon Kind="camera" /><span>Camera</span></button>
             <button type="button" class="btn map-action-icon" title="Route options" aria-label="Route options"
                     disabled="@(_fuelEditorOpen || SelectedDispatchId is null)" @onclick="OpenSelectedRouteEditorAsync"><ActionIcon Kind="route" /><span>Route options</span></button>
@@ -514,39 +568,6 @@
                 <span>Open load</span><ActionIcon Kind="external-link" />
             </a>
         </div>
-        @if (_fuelPanelOpen)
-        {
-            @* The truck's fuel now and at the stop it is heading for, and
-               the plan's two actions. Opening the sender sends nothing. *@
-            <section id="fleet-map-fuel-panel" class="fleet-map-fuel-panel"
-                     aria-label="Fuel">
-                <div class="fleet-map-fuel-panel__reading">
-                    <span class="fleet-map-route-info__label">Current</span>
-                    <strong>@(headerTruck.FuelPercent is { } now
-                        ? $"{Math.Round(now)}%" : "—")</strong>
-                </div>
-                <div class="fleet-map-fuel-panel__reading">
-                    <span class="fleet-map-route-info__label">On arrival</span>
-                    @if (ScheduledFuelArrival is { } onArrival)
-                    {
-                        <strong>@Math.Round(onArrival.Percent)%<span
-                            class="fleet-map-route-info__secondary"> · @Math.Round(onArrival.Gallons) US gal</span></strong>
-                    }
-                    else
-                    {
-                        <strong>—</strong>
-                    }
-                </div>
-                <div class="fleet-map-fuel-panel__actions">
-                    <button type="button" class="btn fleet-map-fuel-panel__view"
-                            disabled="@(!CanEditFuel || _fuelEditorOpen || _sendPlanOpen || _recalculatingFuel)"
-                            @onclick="OpenFuelEditorAsync">View fuel plan</button>
-                    <button type="button" class="btn btn--primary fleet-map-fuel-panel__send"
-                            disabled="@(!CanSendPlan)"
-                            @onclick="OpenSendPlanAsync">Send fuel plan</button>
-                </div>
-            </section>
-        }
     }
 
             </div>
