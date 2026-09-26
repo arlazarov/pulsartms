@@ -154,6 +154,18 @@ basemap with the colours back).
   `browser-fleet-design-Sf09as` (390), `browser-map-markers-M4nguA` (real
   basemap) and the markers probe `browser-map-markers-31G5Ih`.
 
+- `18113d1c` -> `release-EPd1dz`, 18:04 UTC (with `6a274a45`): the
+  Details button back on wide cards only (a phone's card stays open
+  whole, half the stage); what is left of the load over where the truck
+  is; the facility name one line, cut by an ellipsis; the planning notice
+  chip gone from the map; upcoming roads at 0.3; the layer chips named
+  and coloured with the search capped at 28rem and Groups outlined; a
+  closed card hides the duty and rest line. Gate: Server 3,773, Client
+  1,242, JavaScript 656; 285 files; entry HTML, stylesheet
+  (`v=54f49d941461948b`), settings and the fingerprinted framework files
+  match the artifact. Local renders `browser-fleet-design-ghpFGq`,
+  `-wGDjrU`, `-DCCuno`, `-oCNXg7` and `browser-map-markers-xtuxuW`.
+
 ## API, second release (16:51-16:59 UTC)
 
 The owner authorized it ("so fix it") for the review notices by kind
