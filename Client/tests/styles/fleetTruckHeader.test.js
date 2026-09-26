@@ -82,10 +82,20 @@ test('truck inspector keeps one disclosure on wide cards and none on a phone', (
   assert.match(markup, /fleet-map-mobile-summary__toggle/);
   assert.match(markup, /aria-controls="fleet-map-details"/);
   assert.doesNotMatch(markup, /fleet-map-truck-info__more/);
-  assert.match(
-    compact,
-    /\.fleet-map-mobile-summary__toggle\s*\{\s*display: inline-flex;/,
-  );
+  const toggle = compact.match(
+    /\] \.fleet-map-mobile-summary__toggle\s*\{([^}]*)\}/,
+  )?.[1];
+  assert.match(toggle, /display: inline-flex;/);
+  // The words are the link colour, which the dark theme lightens; the
+  // action colour stays primary 600 there and falls below AA on the card.
+  for (const property of [
+    'button-text',
+    'button-border',
+    'button-hover-text',
+    'button-hover-border',
+  ])
+    assert.match(toggle, new RegExp(`--${property}: var\\(--ui-link\\);`));
+  assert.doesNotMatch(toggle, /--ui-action\b/);
   // The closed state belongs to a card wide enough for two columns; a
   // phone's card is open whole and hides the toggle. Narrow is narrow
   // wherever the card stands: it reads its own width, not the window's.

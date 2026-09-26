@@ -780,6 +780,53 @@ async function measure(page, selector) {
   }, selector);
 }
 
+// The Details button's words against what is behind them, as WCAG counts
+// it. Colors are resolved by painting them, so any CSS color syntax and
+// any translucent layer between the button and the page are read as drawn.
+async function toggleContrast(page) {
+  return page.evaluate(() => {
+    const toggle = document.querySelector('.fleet-map-mobile-summary__toggle');
+    if (!toggle) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const paint = canvas.getContext('2d', { willReadFrequently: true });
+    const layers = [];
+    for (let node = toggle; node; node = node.parentElement)
+      layers.unshift(getComputedStyle(node).backgroundColor);
+    paint.fillStyle = '#fff';
+    paint.fillRect(0, 0, 1, 1);
+    for (const layer of layers) {
+      paint.fillStyle = layer;
+      paint.fillRect(0, 0, 1, 1);
+    }
+    const background = [...paint.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+    const style = getComputedStyle(toggle);
+    paint.fillStyle = style.color;
+    paint.fillRect(0, 0, 1, 1);
+    const foreground = [...paint.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+    const luminance = rgb =>
+      rgb
+        .map(v => v / 255)
+        .map(v => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+        .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const [light, dark] = [luminance(foreground), luminance(background)].sort(
+      (a, b) => b - a,
+    );
+    const size = parseFloat(style.fontSize);
+    const weight = Number(style.fontWeight);
+    const large = size >= 24 || (size >= 18.66 && weight >= 700);
+    return {
+      color: style.color,
+      foreground,
+      background,
+      fontSize: size,
+      fontWeight: weight,
+      ratio: Math.round(((light + 0.05) / (dark + 0.05)) * 100) / 100,
+      required: large ? 3 : 4.5,
+    };
+  });
+}
+
 try {
   for (const [name, width, height, theme, text] of cases) {
     const context = await browser.newContext({
@@ -955,6 +1002,23 @@ try {
         await toggleDetails(false);
         await shot(`${truck.key}-compact`);
       });
+      if (truck === trucks[0])
+        await attempt('toggle-contrast', async () => {
+          const toggle = page.locator('.fleet-map-mobile-summary__toggle');
+          if (!(await toggle.isVisible())) return;
+          await page.mouse.move(0, 0);
+          const rest = await toggleContrast(page);
+          await toggle.hover();
+          await page.waitForTimeout(250);
+          const hover = await toggleContrast(page);
+          await page.mouse.move(0, 0);
+          steps.push({ step: 'toggle-contrast', rest, hover });
+          for (const [state, value] of Object.entries({ rest, hover }))
+            assert.ok(
+              value.ratio >= value.required,
+              `Details ${state} contrast ${value.ratio} < ${value.required}`,
+            );
+        });
       if (truck.key === 'us' || truck.key === 'ca' || width < 768)
         await attempt(`${truck.key}-expanded`, async () => {
           await toggleDetails(true);

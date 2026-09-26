@@ -95,14 +95,18 @@
   }
   // Says what it does, with an arrow that says which way. Both words sit in
   // one cell, so the button keeps the width of the longer and opening the
-  // card does not move the row beside it.
+  // card does not move the row beside it. Its words are a link's colour:
+  // the action colour stays dark on a dark card, and link is lightened for
+  // it.
   .fleet-map-mobile-summary__toggle {
+    --button-text: #{ui.theme(link)};
+    --button-border: #{ui.theme(link)};
+    --button-hover-text: #{ui.theme(link)};
+    --button-hover-border: #{ui.theme(link)};
     display: inline-flex;
     align-items: center;
     gap: ui.pg(xs);
     min-block-size: ui.size(control-compact);
-    border-color: ui.theme(action);
-    color: ui.theme(action);
     font-weight: 600;
     white-space: nowrap;
     > svg {
