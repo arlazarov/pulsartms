@@ -180,6 +180,37 @@ public sealed class MessagingNoticesTests
     Assert.Equal(1, f.Notices.Current!.Conversations);
   }
 
+  [Fact]
+  public async Task AnOldAccountsHeldReadDoesNotBlockNewSignals()
+  {
+    await using var f = new Fixture();
+    await f.Notices.JoinAsync();
+    await f.Signals.Lead();
+    var late = new TaskCompletionSource<UnreadCount>(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    f.Pending = late;
+    f.Signals.Receive("change", A.ToString());
+    f.Time.Advance(MessagingNotices.Coalesce);
+    await Eventually(() => Assert.Equal(2, f.Reads));
+    var oldWork = f.Notices.PendingWork;
+
+    f.Pending = null;
+    f.Auth.SetClaims(
+      new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+    );
+    await Eventually(() => Assert.Equal(3, f.Reads));
+    await f.Signals.Lead();
+    await f.CountAsync(new(2, false, 2));
+    Assert.Equal(2, f.Notices.Current!.Conversations);
+
+    late.SetResult(new(9, false, 9));
+    await oldWork;
+    Assert.Equal(2, f.Notices.Current.Conversations);
+    await f.CountAsync(new(3, false, 3));
+    Assert.Equal(5, f.Reads);
+  }
+
   private static async Task Eventually(Action assertion)
   {
     for (var attempt = 0; ; attempt++)

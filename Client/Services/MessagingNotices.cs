@@ -33,10 +33,8 @@ public sealed class MessagingNotices : IAsyncDisposable
   private int _subscribers,
     _account,
     _read;
-  private bool _counting,
-    _reading,
-    _again,
-    _baseline,
+  private CountPass? _counting;
+  private bool _baseline,
     _disposed;
 
   // The highest arrival sequence this tab has counted: a notice is due only
@@ -117,46 +115,55 @@ public sealed class MessagingNotices : IAsyncDisposable
     }
     if (!_signals.IsLeading)
       return;
-    if (_counting)
+    if (_counting is { } current && current.Account == _account)
     {
-      if (_reading)
-        _again = true;
+      if (current.Reading)
+        current.Again = true;
       return;
     }
-    _counting = true;
-    _countTask = CountAsync(_account);
+    var pass = new CountPass(_account);
+    _counting = pass;
+    _countTask = CountAsync(pass);
   }
 
   // Signals in the pause belong to the same burst. A signal while the actual
   // read is in flight can describe a later commit, so it earns one more read.
-  private async Task CountAsync(int account)
+  private async Task CountAsync(CountPass pass)
   {
     try
     {
       do
       {
-        _again = false;
+        pass.Again = false;
         await Task.Delay(Coalesce, _time);
-        if (!Live(account) || !_signals.IsLeading)
+        if (!Live(pass.Account) || !_signals.IsLeading)
           return;
-        _reading = true;
+        pass.Reading = true;
         try
         {
-          await ReadAsync(account, announce: true);
+          await ReadAsync(pass.Account, announce: true);
         }
         finally
         {
-          _reading = false;
+          pass.Reading = false;
         }
-      } while (_again && Live(account));
+      } while (pass.Again && Live(pass.Account));
     }
     finally
     {
-      _counting = false;
+      if (ReferenceEquals(_counting, pass))
+        _counting = null;
     }
   }
 
   internal Task PendingWork => Task.WhenAll(_initialRead, _countTask);
+
+  private sealed class CountPass(int account)
+  {
+    public int Account { get; } = account;
+    public bool Reading { get; set; }
+    public bool Again { get; set; }
+  }
 
   private bool Live(int account) => !_disposed && account == _account;
 

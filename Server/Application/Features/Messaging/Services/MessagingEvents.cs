@@ -25,7 +25,7 @@ public sealed class MessagingEvents
   private sealed class Subscriber(Channel<MessagingEvent> queue)
   {
     public Channel<MessagingEvent> Queue => queue;
-    public volatile bool Overflowed;
+    public int Overflowed;
   }
 
   public void Publish(Guid company, MessagingEvent change)
@@ -34,7 +34,7 @@ public sealed class MessagingEvents
       return;
     foreach (var channel in channels.Values)
       if (!channel.Queue.Writer.TryWrite(change))
-        channel.Overflowed = true;
+        Interlocked.Exchange(ref channel.Overflowed, 1);
   }
 
   public Subscription Subscribe(Guid company)
@@ -52,12 +52,7 @@ public sealed class MessagingEvents
     subscribers.GetOrAdd(company, _ => new())[id] = subscriber;
     return new(
       subscriber.Queue.Reader,
-      () =>
-      {
-        var overflowed = subscriber.Overflowed;
-        subscriber.Overflowed = false;
-        return overflowed;
-      },
+      () => Interlocked.Exchange(ref subscriber.Overflowed, 0) != 0,
       () =>
       {
         if (subscribers.TryGetValue(company, out var channels))

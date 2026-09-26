@@ -190,3 +190,33 @@ the combined tree passed `bash test.sh map`: server 282, Client 317, map
 JavaScript 417 and JavaScript architecture 67. TypeScript checking passed.
 No independent visual/browser matrix, production data repair, real provider
 send, deployment or production performance measurement ran here.
+
+## Messaging concurrency follow-up
+
+`MessagingEvents` owns process-local, company-scoped subscriber queues. Its
+overflow acknowledgement previously read and cleared a Boolean separately,
+which could erase a concurrent overflow. Publishing and acknowledgement now
+use atomic exchange. Focused regressions cover a single acknowledgement among
+concurrent readers, subsequent overflow and isolation between companies.
+
+`MessagingNotices` owns the browser unread-count coalescer. An old account's
+held read previously kept its global busy flag set, suppressing new-account
+signals. Each count pass now owns its account generation and pending-signal
+state; an old completion cannot clear a newer pass. A controlled held-response
+regression switches accounts, processes a new signal before releasing the old
+read, rejects that late answer and verifies subsequent updates.
+
+These changes do not add queries, caches, dependencies or schema changes.
+They protect transient notification delivery; there are no persisted invalid
+rows to repair and a runtime business auditor is not applicable. They do not
+close A10: cross-instance fan-out still requires a separate durable design.
+Per-conversation revisions and inbound-only sequences cannot serve as a
+company-wide cursor for statuses, claims and other conversation changes.
+
+Verification: the server Messaging group and its dependencies passed 1,284
+tests; Client passed 138 before the account-pass correction, followed by all
+88 Client Messaging/Architecture tests on the final correction. The 10 focused
+notice tests also passed. JavaScript Messaging (13), architecture (67) and
+TypeScript checking passed. Client was rebuilt for the changed C# service.
+Unchanged server and JavaScript gates were not repeated after the Client-only
+correction. No new full-suite result or production latency claim is made.
