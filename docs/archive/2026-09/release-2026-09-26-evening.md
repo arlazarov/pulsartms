@@ -194,6 +194,14 @@ basemap with the colours back).
   match the artifact. Local render `browser-fleet-design-ezVoQC`; the
   reveal is covered by unit tests (the design probe stubs the map).
 
+- `d205a1b5` -> `release-PRWGmo`, 19:14 UTC: the reveal kept up while
+  a card settles (grows, or is replaced by one of another size), measured
+  once at the pick; stop, next-stop and station cards at least
+  `map-stop-inspector-height` tall. Gate: Server 3,773, Client 1,244,
+  JavaScript 661; 285 files; entry HTML, stylesheet
+  (`v=9f1acb1fd276511c`), settings and the fingerprinted framework files
+  match the artifact. Local render `browser-fleet-design-z8Mu4T`.
+
 ## API, second release (16:51-16:59 UTC)
 
 The owner authorized it ("so fix it") for the review notices by kind
