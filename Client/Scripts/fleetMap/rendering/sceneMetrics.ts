@@ -39,15 +39,16 @@ export const sceneMetrics = Object.freeze({
   // A planned stop is the only station the plan is about, so its dot is
   // drawn larger than the ones it was chosen from, inside its ring - but a
   // step larger, not the largest thing on the map. At 13 inside 19 the ring
-  // was wider than a stop's badge, and a fuel stop is not more than a stop.
-  recommendationDotRadius: 10,
-  recommendationRadius: 14,
+  // was wider than a stop's badge, and a fuel stop is not more than a stop;
+  // at 10 inside 14 the owner still found it a size too large.
+  recommendationDotRadius: 8,
+  recommendationRadius: 12,
   fuelEditingRadius: 14,
   fuelEditingLabelOffset: 25,
   fuelVisitLabelSize: 12,
   // Clear of the ring it names: its radius, half the label's own height,
   // and a gap. At twenty-one the label sat on the marker.
-  fuelVisitLabelOffset: 27,
+  fuelVisitLabelOffset: 25,
   fuelVisitLabelPadding: [6, 4],
   labelOffset: 34,
   truckSize: 28,

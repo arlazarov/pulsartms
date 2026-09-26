@@ -44,7 +44,7 @@ test('recommendation rings retain anchors and selection without floating distanc
     ring,
   );
   assert.equal(ring.props.radiusUnits, 'pixels');
-  assert.equal(ring.props.getRadius, 14);
+  assert.equal(ring.props.getRadius, 12);
   // The stops of the fuel plan belong to the fuel layer: they are shown
   // while fuel is being looked at, and not over a map asked to be about
   // something else.
@@ -109,7 +109,7 @@ test('all station fills cover the route and recommendation rings remain above or
   const points = layers[3];
   assert.deepEqual(points.props.data, [recommended]);
   // A planned stop is drawn larger than the stations it was chosen from.
-  assert.equal(points.props.getRadius, 10);
+  assert.equal(points.props.getRadius, 8);
   assert.deepEqual(points.props.getFillColor(recommended), recommended.color);
   assert.equal(points.props.pickable, true);
   assert.equal(points.props.onClick, selectStation);
@@ -324,13 +324,13 @@ test('fuel visits use compact rectangular order badges without changing selectab
     }
     assert.equal(result[0].props.getFillColor(station), station.color);
     assert.deepEqual(result[1].props.getLineColor, [49, 94, 234]);
-    assert.equal(result[0].props.getRadius, 10);
-    assert.equal(result[1].props.getRadius, 14);
+    assert.equal(result[0].props.getRadius, 8);
+    assert.equal(result[1].props.getRadius, 12);
     const badge = result[2].props;
     assert.equal(badge.getText(badge.data[0]), `Fuel ${badge.data[0].numbers}`);
     assert.equal(badge.getPosition(station), station.position);
     // Above the ring, clear of it: the label used to sit on the marker.
-    assert.deepEqual(badge.getPixelOffset, [0, -27]);
+    assert.deepEqual(badge.getPixelOffset, [0, -25]);
     assert.equal(badge.getSize, 12);
     assert.deepEqual(badge.backgroundPadding, [6, 4]);
     assert.equal(

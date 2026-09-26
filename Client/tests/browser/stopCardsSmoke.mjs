@@ -719,7 +719,7 @@ try {
       );
       assert.deepEqual(fuel.badge.text, ['Fuel 1/2']);
       // `fuelVisitLabelOffset` - the badge stands clear of its station.
-      assert.deepEqual(fuel.badge.offset, [0, -27]);
+      assert.deepEqual(fuel.badge.offset, [0, -25]);
       assert.equal(fuel.badge.size, 12);
       assert.equal(fuel.badge.fontSize, 12 * density);
       assert.deepEqual(fuel.badge.padding, [6, 4]);
