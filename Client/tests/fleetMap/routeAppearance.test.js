@@ -2,6 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { routeLayers } from '../../Scripts/fleetMap/rendering/routeAppearance.ts';
 import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.ts';
+import { sceneMetrics } from '../../Scripts/fleetMap/rendering/sceneMetrics.ts';
+
+// An upcoming road or empty miles at rest, and the white keyline around it.
+const secondary = sceneMetrics.routeSecondaryWidth;
+const keyline = secondary + sceneMetrics.routeOutlineWidth;
 import {
   currentRouteColor,
   currentRouteLineColor,
@@ -111,8 +116,8 @@ test('route outline shares geometry and cached layers survive camera-only update
   const layers = routeLayers(line, Layer);
   assert.equal(layers.length, 2);
   assert.equal(layers[0].data, layers[1].data);
-  assert.equal(layers[0].getWidth, 5);
-  assert.equal(layers[1].getWidth, 3);
+  assert.equal(layers[0].getWidth, keyline);
+  assert.equal(layers[1].getWidth, secondary);
   assert.equal(routeLayers(line, Layer), layers);
   line.visible = false;
   assert.equal(routeLayers(line, Layer)[1].visible, false);
@@ -144,8 +149,8 @@ test('future routes retain their hue with a secondary stroke and bounded white o
   };
   const [outline, route] = routeLayers(future, Layer);
   assert.deepEqual(route.getColor, [145, 105, 201, 240]);
-  assert.equal(route.getWidth, 3);
-  assert.equal(outline.getWidth, 5);
+  assert.equal(route.getWidth, secondary);
+  assert.equal(outline.getWidth, keyline);
   assert.deepEqual(outline.getColor, [255, 255, 255, 210]);
   assert.equal(outline.data, route.data);
   assert.equal(
@@ -182,8 +187,8 @@ test('zoomed-out current future and empty routes keep a readable minimum width',
       routeRole: role,
     };
     const [outline, route] = routeLayers(line, Layer);
-    assert.equal(route.getWidth, role === 'current' ? 5 : 3);
-    assert.equal(outline.getWidth, role === 'current' ? 7 : 5);
+    assert.equal(route.getWidth, role === 'current' ? 5 : secondary);
+    assert.equal(outline.getWidth, role === 'current' ? 7 : keyline);
     assert.equal(route.widthUnits, 'pixels');
     assert.equal(routeLayers(line, Layer)[1], route);
     line.strokeWeight = 4;
@@ -236,7 +241,7 @@ test('current route stays at five pixels while a selected future route gets expl
     strokeWeight: 4,
     routeRole: 'future',
   };
-  assert.equal(routeLayers(future, Layer)[1].getWidth, 3);
+  assert.equal(routeLayers(future, Layer)[1].getWidth, secondary);
   future.routeSelected = true;
   assert.equal(
     routeLayers(future, Layer)[1].getWidth,
@@ -244,7 +249,7 @@ test('current route stays at five pixels while a selected future route gets expl
     'selection expands only the chosen future route',
   );
   future.routeSelected = false;
-  assert.equal(routeLayers(future, Layer)[1].getWidth, 3);
+  assert.equal(routeLayers(future, Layer)[1].getWidth, secondary);
 });
 
 test('future and deadhead dashes share cached extensions and align their white outlines without changing geometry', () => {
@@ -464,7 +469,7 @@ test('selected next routes dim every other road and restore their appearance whe
   // upcoming one stays a step behind it rather than matching it.
   assert.deepEqual(
     roads().map(layer => layer.opacity),
-    [0.7, 0.7, 1, 1],
+    [sceneMetrics.routeFutureOpacity, sceneMetrics.routeFutureOpacity, 1, 1],
   );
   assert.ok(roads().every(layer => layer.data === data));
 });
@@ -487,4 +492,46 @@ test('traveled route stays solid and dimmer than remaining route', () => {
   assert.ok(history[1].opacity < current[1].opacity);
   assert.deepEqual(history[1].getColor, current[1].getColor);
   assert.equal(history[1].getDashArray, undefined);
+});
+
+// A road two upcoming loads share is loaded work: not either load's
+// colour, and not the empty-miles grey it used to be, which made the
+// Thruway two loads ran on read as empty miles until one was picked. The
+// empty miles themselves read as dots with gaps between them.
+test('a shared upcoming road is neither a load colour nor empty miles', () => {
+  class Layer {
+    constructor(options) {
+      Object.assign(this, options);
+    }
+  }
+  const road = role => ({
+    id: role,
+    data: [
+      [
+        [0, 0],
+        [1, 1],
+      ],
+    ],
+    strokeWeight: 2,
+    routeRole: role,
+    routeColor: futureRouteColor(0),
+  });
+  const empty = routeLayers(road('deadhead'), Layer)[1];
+  const shared = routeLayers({ ...road('future'), routeShared: true }, Layer);
+  assert.notDeepEqual(shared[1].getColor, empty.getColor);
+  assert.notDeepEqual(shared[1].getColor, futureRouteColor(0));
+  assert.deepEqual(shared[1].getDashArray, sceneMetrics.routeDashArray);
+  assert.deepEqual(empty.getDashArray, sceneMetrics.routeDotArray);
+  // Picked, the load lifts its own colour back out of the shared stretch.
+  assert.deepEqual(
+    routeLayers(
+      { ...road('future'), routeShared: true, routeSelected: true },
+      Layer,
+    )[1].getColor,
+    futureRouteColor(0),
+  );
+  // Rounded caps add a width to every dash (dash units are half widths),
+  // so the gap must outlast two half-width caps to stay open.
+  const [on, off] = sceneMetrics.routeDotArray;
+  assert.ok(off - on > 2, 'dots keep a visible gap');
 });

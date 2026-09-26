@@ -1086,6 +1086,17 @@ warning. If the priced station cannot be reached, show its server-calculated
 fuel deficit as an access warning. Such a marker has no purchase amount, fuel
 gauges, cost or edit-plan action, and is not a feasible fuel recommendation.
 
+Upcoming roads are legible before anything is picked (proposal of
+September 26, pending the owner's review of
+`tests/browser/nextLoadRoadsSmoke.mjs` screenshots): each load's own
+colour where it runs alone; a dark neutral dash (`#334155`) where several
+upcoming loads share the road, which is loaded work and never the
+empty-miles grey; empty miles as grey round dots with open gaps. At rest
+they are 4 px at 0.9 opacity and sit above the traveled road and below the
+road being driven; picking a stop still lifts that load's colour and width
+and dims the rest. Geometry is never moved or simplified for this, and
+station price colours and planned rings are unchanged.
+
 Saved fuel stations remain visible independently of the Next loads road layer.
 When the same assignment's fuel plan needs updating, retain its station markers
 with a saved-plan warning. Suppress unverified distance, arrival time, purchase

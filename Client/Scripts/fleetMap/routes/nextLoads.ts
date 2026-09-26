@@ -70,7 +70,8 @@ export function createNextLoadsLayer(
     for (const { line, loadId } of renderedLines)
       line?.setOptions({
         strokeWeight: 2,
-        zIndex: loadId === shown ? 10 : 0,
+        // Above the traveled road (1-1.5), below the one being driven (2).
+        zIndex: loadId === shown ? 10 : 1.75,
         routeSelected: shown !== null && loadId === shown,
         routeMuted: shown !== null && loadId !== shown,
       });

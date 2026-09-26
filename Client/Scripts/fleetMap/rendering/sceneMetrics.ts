@@ -50,16 +50,20 @@ export const sceneMetrics = Object.freeze({
   truckLabelOffset: 30,
   routeWidthScale: 1.75,
   routeMinWidth: 5,
-  routeSecondaryWidth: 3,
+  // Upcoming roads and empty miles before one is picked: wide enough to
+  // be followed at an overview against the basemap's own roads.
+  routeSecondaryWidth: 4,
   routeCurrentMinWidth: 5,
   routeCurrentWidthScale: 1.25,
   routeMutedOpacity: 0.4,
-  routeFutureOpacity: 0.7,
+  routeFutureOpacity: 0.9,
   routeTraveledOpacity: 0.22,
   routeOutlineWidth: 2,
   routeDashArray: Object.freeze([4, 4]),
-  // Empty miles read as dots, not dashes: nothing is on board.
-  routeDotArray: Object.freeze([1, 3]),
+  // Empty miles read as dots, not dashes: nothing is on board. Dash units
+  // are half widths and rounded caps add a width to each dash, so [1, 3]
+  // closed into a near-solid line; [1, 5] leaves round dots with gaps.
+  routeDotArray: Object.freeze([1, 5]),
 });
 
 // Rasterize at the displayed physical font size so small glyphs retain hinting.

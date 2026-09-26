@@ -46,6 +46,12 @@ export type SceneRouteLine = {
 // orange they used to share with a live route claimed attention they never
 // deserved.
 const emptyColor = [100, 116, 139, 235];
+// A road several upcoming loads share is none of their colours, and it is
+// not empty miles either: it is loaded work, in a dark neutral with the
+// loads' dashes, where empty miles are a lighter grey in dots. It used to
+// be the empty-miles grey, and at 3 px the Thruway two loads ran on read
+// as empty miles, or as nothing, until one of them was picked.
+const sharedColor = [51, 65, 85, 255];
 const colors: Record<string, readonly number[]> = {
   current: currentRouteLineColor,
   traveled: currentRouteLineColor,
@@ -85,7 +91,7 @@ export function routeLayers(
     line.routeRole === 'current'
       ? colors.current
       : sharedRoad
-        ? emptyColor
+        ? sharedColor
         : line.routeColor || colors[line.routeRole] || colors.current;
   const colorKey = color.join(',');
   if (

@@ -528,13 +528,13 @@ try {
         true,
         'outline and fill retain the original route array',
       );
-      assert.equal(route.width, role.startsWith('current') ? 5 : 3);
+      assert.equal(route.width, role.startsWith('current') ? 5 : 4);
       // The road being driven is drawn in full. A load that is not today's
-      // steps back to 0.7, and anything muted by a selection elsewhere -
+      // steps back to 0.9, and anything muted by a selection elsewhere -
       // whichever road it is - to 0.4.
       assert.equal(
         route.opacity,
-        role.endsWith('-muted') ? 0.4 : role === 'current' ? 1 : 0.7,
+        role.endsWith('-muted') ? 0.4 : role === 'current' ? 1 : 0.9,
         `${role} must keep the strength its kind of road is drawn at`,
       );
       if (!role.startsWith('current'))

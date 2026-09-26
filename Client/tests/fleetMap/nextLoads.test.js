@@ -4,6 +4,11 @@ import { createNextLoadsLayer } from '../../Scripts/fleetMap/routes/nextLoads.ts
 import { futureRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.ts';
 import { routeLayers } from '../../Scripts/fleetMap/rendering/routeAppearance.ts';
 import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.ts';
+import { sceneMetrics } from '../../Scripts/fleetMap/rendering/sceneMetrics.ts';
+
+// Where an upcoming road rests when no load is picked: above the traveled
+// road, below the one being driven.
+const resting = 1.75;
 
 function selectionFixture() {
   const markers = [],
@@ -121,9 +126,9 @@ test('stop click pins every road and marker for its load without floating labels
       [2, 10],
       [2, 10],
       [2, 10],
-      [2, 0],
-      [2, 0],
-      [2, 0],
+      [2, resting],
+      [2, resting],
+      [2, resting],
     ],
   );
   assert.deepEqual(
@@ -154,9 +159,9 @@ test('stop click pins every road and marker for its load without floating labels
   assert.deepEqual(
     lines.map(line => [line.strokeWeight, line.zIndex]),
     [
-      [2, 0],
-      [2, 0],
-      [2, 0],
+      [2, resting],
+      [2, resting],
+      [2, resting],
       [2, 10],
       [2, 10],
       [2, 10],
@@ -174,7 +179,9 @@ test('stop click pins every road and marker for its load without floating labels
   assert.ok(
     markers.every(marker => !marker.highlighted && marker.label === null),
   );
-  assert.ok(lines.every(line => line.strokeWeight === 2 && line.zIndex === 0));
+  assert.ok(
+    lines.every(line => line.strokeWeight === 2 && line.zIndex === resting),
+  );
   assert.ok(lines.every(line => line.routeMuted === false));
   assert.ok(lines.every(line => line.routeSelected === false));
   assert.deepEqual(
@@ -266,7 +273,10 @@ test('selection emphasizes the chosen road and subdues others without replacing 
         part => part.opacity === (index < 3 ? 1 : 0.4) && part.visible,
       ),
     );
-    assert.equal(pair[1].getWidth, index < 3 ? 5 : 3);
+    assert.equal(
+      pair[1].getWidth,
+      index < 3 ? 5 : sceneMetrics.routeSecondaryWidth,
+    );
     assert.equal(pair[0].data, paths[index]);
     assert.equal(pair[1].data, paths[index]);
     assert.equal(
@@ -313,7 +323,7 @@ test('selection emphasizes the chosen road and subdues others without replacing 
   );
   assert.deepEqual(
     render().map(pair => pair[1].getWidth),
-    [3, 3, 3, 5, 5, 5],
+    [...Array(3).fill(sceneMetrics.routeSecondaryWidth), 5, 5, 5],
   );
   layer.clearSelection();
   // Clearing the selection restores the upcoming roads to their resting
@@ -323,9 +333,13 @@ test('selection emphasizes the chosen road and subdues others without replacing 
   // exactly the ones that were hardest to follow.
   assert.deepEqual(
     render().map(pair => pair[1].opacity),
-    [0.7, 0.7, 0.7, 0.7, 0.7, 0.7],
+    Array(6).fill(sceneMetrics.routeFutureOpacity),
   );
-  assert.ok(render().every(pair => pair[1].getWidth === 3));
+  assert.ok(
+    render().every(
+      pair => pair[1].getWidth === sceneMetrics.routeSecondaryWidth,
+    ),
+  );
   assert.ok(current.cachedLayer.every(part => part.opacity === 1));
   assert.equal(current.cachedLayer[1].getWidth, 5);
   assert.ok(lines.every((line, index) => line.data === paths[index]));
@@ -743,7 +757,7 @@ test('saved empty route is drawn before the loaded route is ready and preserves 
   assert.equal(objects[0].zIndex, 10);
   layer.clearSelection();
   assert.equal(objects[0].strokeWeight, 2);
-  assert.equal(objects[0].zIndex, 0);
+  assert.equal(objects[0].zIndex, resting);
   objects[1].onSelect();
   assert.equal(objects[1].label, null);
   load.stops = [{ latitude: 41, longitude: -79, job: 'Pick Up' }];

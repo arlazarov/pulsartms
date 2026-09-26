@@ -84,6 +84,7 @@ const mapsOwn = new Map([
   ['#315eea', 'the badge of a stop on that line'],
   ['#1e293b', 'the edge of a stop that is picked'],
   ['#64748b', 'miles with no load on board'],
+  ['#334155', 'a road several upcoming loads share'],
   ['#9169c9', 'a road still to come'],
   ['#ffffff', 'paper, behind a badge or under a line'],
   ['#000000', 'ink, where a shadow is drawn'],
