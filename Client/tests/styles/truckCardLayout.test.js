@@ -311,13 +311,18 @@ test('the open card is two columns: the stop, then facts on one label column', (
     card,
     /__where\s*\{[^}]*display: grid;[^}]*align-content: start;/,
   );
+  // The stop's own rows stay together at the top beside a taller column.
   assert.match(
     card,
-    /__metric\s*\{[^}]*display: flex;[^}]*flex-wrap: wrap;[^}]*align-items: baseline;/,
+    /__next\s*\{[^}]*display: grid;[^}]*align-content: start;/,
   );
   assert.match(
     card,
-    /__metric > \.fleet-map-route-info__progress\s*\{[^}]*flex-wrap: nowrap;[^}]*white-space: nowrap;/,
+    /__metric\s*\{[^}]*display: grid;[^}]*grid-template-columns: max-content minmax\(0, 1fr\);[^}]*align-content: start;/,
+  );
+  assert.match(
+    card,
+    /__metric > \.fleet-map-route-info__progress\s*\{[^}]*grid-column: 2;[^}]*flex-wrap: nowrap;[^}]*white-space: nowrap;/,
   );
   assert.doesNotMatch(card, /\.stop-hours__/);
   const hours = compile('shared/driver-status/stop-hours');

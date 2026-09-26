@@ -168,6 +168,9 @@ const trucks = [
     key: 'low',
     id: uuid(14),
     unit: '11007',
+    // Still on the way to its pickup: the card says what is left of the
+    // load, which a truck at its last stop does not.
+    toPickup: true,
     driver: 'Casey Fixture',
     trailer: '53R118',
     dispatch: uuid(24),
@@ -367,9 +370,9 @@ function planning(truck) {
     profile: { tankGallons: 250 },
     stops,
     tracking: {
-      nextStopId: stops[1].id,
-      nextStopLabel: 'Delivery',
-      passedStopIds: [stops[0].id],
+      nextStopId: truck.toPickup ? stops[0].id : stops[1].id,
+      nextStopLabel: truck.toPickup ? 'Pickup' : 'Delivery',
+      passedStopIds: truck.toPickup ? [] : [stops[0].id],
       visitedStops: {},
       allStopsPassed: false,
     },

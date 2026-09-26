@@ -65,18 +65,29 @@
       gap: ui.pg(xs);
       min-width: 0;
     }
-    // What is left of the load on one line: a quiet label, then its value,
-    // which never breaks between its number, unit and kilometres.
+    // What is left of the load, in the shape of the location under it: an
+    // icon and a quiet label on one line, the value under the label, which
+    // never breaks between its number, unit and kilometres. One line, then
+    // two, then four as the column narrowed was not a shape at all.
     &__metric {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 0 ui.pg(xs);
+      display: grid;
+      grid-template-columns: max-content minmax(0, 1fr);
+      align-content: start;
+      align-items: center;
+      column-gap: ui.pg(sm);
+      row-gap: ui.pg(micro);
       min-width: 0;
       margin: 0;
       padding: 0;
       border: 0;
+      > svg {
+        grid-row: 1;
+        inline-size: ui.fs(heading);
+        block-size: ui.fs(heading);
+        color: ui.theme(text-secondary);
+      }
       > .fleet-map-route-info__progress {
+        grid-column: 2;
         flex-wrap: nowrap;
         white-space: nowrap;
       }
@@ -135,6 +146,10 @@
     }
     &__next {
       display: grid;
+      // Beside a taller neighbour the stop is stretched to its height; its
+      // heading and its address stay together at the top rather than a
+      // blank band opening between them (the owner, September 26).
+      align-content: start;
       gap: ui.pg(xs);
     }
     &__visit-heading {
