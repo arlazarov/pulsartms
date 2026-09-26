@@ -5,7 +5,7 @@ namespace Domain.Rules.Routing;
 
 public static partial class FuelOptimizer
 {
-  public const int SelectionVersion = 34;
+  public const int SelectionVersion = 33;
 
   // Search/ranking upgrades preserve the validity of previously checked roads.
   public const int MinimumProjectionVersion = 11;
@@ -45,13 +45,6 @@ public static partial class FuelOptimizer
       initialAccessMiles
     ).Plan;
 
-  // The first purchase may be reached below the reserve (the documented
-  // rule): a truck that cannot do better still gets a plan, with a warning.
-  // It is a fallback, not a saving. Truck 11007 was sent 616 miles on 97.5
-  // US gal to arrive with 5.6 because that stop was the cheapest, while a
-  // station on the road at mile 279 kept the reserve for about $7 more
-  // (September 26). A plan that keeps the reserve to its first stop is
-  // chosen whenever one exists; only when none does is the rule applied.
   public static (
     FuelPlan Plan,
     List<FuelCandidate> Purchases
@@ -66,50 +59,6 @@ public static partial class FuelOptimizer
     bool compare = true,
     FuelArrivalPolicy? arrivalPolicy = null,
     double initialAccessMiles = 0
-  ) =>
-    Search(
-      miles,
-      currentGallons,
-      profile,
-      candidates,
-      routeVersion,
-      useIfta,
-      fewestStops,
-      compare,
-      arrivalPolicy,
-      initialAccessMiles,
-      keepReserveToFirstStop: true
-    )
-    ?? Search(
-      miles,
-      currentGallons,
-      profile,
-      candidates,
-      routeVersion,
-      useIfta,
-      fewestStops,
-      compare,
-      arrivalPolicy,
-      initialAccessMiles,
-      keepReserveToFirstStop: false
-    )
-    ?? throw new RoutePlanningException(
-      "No fuel plan can maintain the reserve using the verified BVD stations. Review fuel level, MPG or the permitted detour; do not rely on these stations to complete the trip."
-    );
-
-  // Null when no chain of purchases meets the arrival floors.
-  private static (FuelPlan Plan, List<FuelCandidate> Purchases)? Search(
-    double miles,
-    double currentGallons,
-    TruckRouteProfile profile,
-    IReadOnlyList<FuelCandidate> candidates,
-    int routeVersion,
-    bool useIfta,
-    bool fewestStops,
-    bool compare,
-    FuelArrivalPolicy? arrivalPolicy,
-    double initialAccessMiles,
-    bool keepReserveToFirstStop
   )
   {
     var (
@@ -130,8 +79,7 @@ public static partial class FuelOptimizer
       profile,
       candidates,
       arrivalPolicy,
-      initialAccessMiles,
-      keepReserveToFirstStop
+      initialAccessMiles
     );
     double FinalScore(State state) =>
       state.Cost
@@ -324,13 +272,15 @@ public static partial class FuelOptimizer
         }
       }
     }
-    var best = buckets[^1]
-      .Values.SelectMany(x => x)
-      .OrderBy(x => fewestStops ? x.Purchases.Count : 0)
-      .ThenBy(FinalScore)
-      .FirstOrDefault();
-    if (best is null)
-      return null;
+    var best =
+      buckets[^1]
+        .Values.SelectMany(x => x)
+        .OrderBy(x => fewestStops ? x.Purchases.Count : 0)
+        .ThenBy(FinalScore)
+        .FirstOrDefault()
+      ?? throw new RoutePlanningException(
+        "No fuel plan can maintain the reserve using the verified BVD stations. Review fuel level, MPG or the permitted detour; do not rely on these stations to complete the trip."
+      );
     var cash = best.Purchases.Sum(x =>
       x.Stop.BuyGallons * x.Candidate.PriceUsd
     );

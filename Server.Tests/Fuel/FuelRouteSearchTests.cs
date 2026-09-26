@@ -85,11 +85,9 @@ public class FuelRouteSearchTests
 
     Assert.InRange(selected.Count, 19, options.CandidateShortlistLimit);
     Assert.True(selected.Max(x => x.AlongMiles) >= 7550);
-    // Twenty, not nineteen: the first stop keeps the reserve too, since a
-    // station reachable with it exists.
-    Assert.Equal(20, plan.Stops.Count);
+    Assert.Equal(19, plan.Stops.Count);
     Assert.True(plan.ArrivalGallons >= 10);
-    Assert.InRange(plan.Stops[0].ArrivalGallons, 10, 100);
+    Assert.InRange(plan.Stops[0].ArrivalGallons, 0, 100);
     Assert.All(
       plan.Stops.Skip(1),
       stop => Assert.InRange(stop.ArrivalGallons, 10, 100)

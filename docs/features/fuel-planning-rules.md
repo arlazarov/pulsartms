@@ -9,13 +9,10 @@ financial totals. Automatic recalculation exposes the same `FuelStatus`.
 Expected infeasibility is not an exception after a successful write. Invalid
 inputs, changed dependencies and technical failures still reject publication.
 
-Physical arrival fuel at the first purchase may be zero, but only as a
-fallback: a plan that reaches its first purchase with the reserve is chosen
-whenever one exists, however much cheaper a plan below it would be. Preferred
-reserve, post-purchase reserve and the regional terminal arrival requirement
-remain separate constraints. A reachable first purchase below preferred
-reserve, when no plan keeps it, is a valid plan with a warning; a negative
-physical arrival is a diagnostic candidate.
+Physical arrival fuel at the first purchase may be zero. Preferred reserve,
+post-purchase reserve and the regional terminal arrival requirement remain
+separate constraints. A reachable first purchase below preferred reserve is a
+valid plan with a warning; a negative physical arrival is a diagnostic candidate.
 The regional half-tank terminal policy is unchanged.
 
 Diagnostic quantities use the requested effective profile. Publication validates
@@ -318,12 +315,8 @@ saved schedule impact is dated estimated information, not live HOS authorization
   ordering). Retain unrounded balances and prices in every label. This and the
   candidate/chain limits make selection a bounded local search, not an exhaustive
   global-optimum guarantee. The final score uses the retained actual arrival fuel.
-- The search first requires the reserve at the first purchase too. Only when
-  no plan meets it may the first purchase be reached below reserve, from any
-  starting level, provided estimated arrival is nonnegative (selection version
-  34; truck 11007 on September 26 was sent 616 miles on 97.5 US gal to arrive
-  with 5.6 because that stop was cheapest, past a station on its road at mile
-  279 that kept the reserve for about $7 more). Warn about the reserve shortfall,
+- The first purchase may be reached below reserve from any starting level,
+  provided estimated arrival is nonnegative. Warn about the reserve shortfall,
   then restore reserve; later legs and final arrival keep normal reserve. If no
   station is reachable, show the nearest priced candidate with the additional
   fuel required. This access warning is separate from a feasible fuel plan and

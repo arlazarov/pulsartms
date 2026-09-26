@@ -58,13 +58,10 @@ public sealed class FuelOptimizerAllocationTests(ITestOutputHelper output)
         )
     );
     Assert.True(allocated < 20_000_000, $"Allocated {allocated:N0} bytes.");
-    // Station 3 is cheaper but reached below the reserve (20.5 US gal);
-    // a plan that keeps the reserve to its first stop wins when one exists.
-    Assert.Equal(578, actual.EconomicCostUsd);
+    Assert.Equal(560, actual.EconomicCostUsd);
     Assert.Equal(25.8805970149254, actual.ArrivalGallons, 10);
     var purchase = Assert.Single(actual.Stops);
-    Assert.Equal("Station 1", purchase.Name);
-    Assert.True(purchase.ArrivalGallons >= profile.ReserveGallons);
+    Assert.Equal("Station 3", purchase.Name);
     Assert.Equal(180, purchase.BuyGallons);
     Assert.Equal(expected.EconomicCostUsd, actual.EconomicCostUsd);
     Assert.Equal(expected.ArrivalGallons, actual.ArrivalGallons);
