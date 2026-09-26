@@ -49,3 +49,24 @@ No deployment or root merge performed. Table/Papers redesign and the broader
 load-workspace design remain outside this completed Cards/filter step.
 The dark Fleet load-number link contrast remains unmeasured and is not
 covered by the Details-button assertion. No production data was changed.
+
+## Follow-up: toolbar and load-link regression
+
+The toolbar probe counted all option roles, including the driver select.
+It now follows the search combobox aria-controls and verifies both truck IDs.
+It supplies the existing read-only group/unread/mailbox fixtures and waits
+for the search to reach the URL before testing reload restoration. Search
+restoration is expected: ReturnNavigation stores it in the q parameter.
+Unknown endpoints and external requests remain failures.
+
+Independent mapToolbarSmoke: browser-ui-I4JXY9, all 16 cases passed with no
+browser errors or unexpected requests. The load-link contrast regression
+first failed at 2.41 in browser-fleet-design-7farBN. The link now uses the
+existing link theme role. This changes no route, calculation or state.
+The hoursForecastSmoke repair is separately owned by Claude Dispatch;
+its result still requires independent review and integration.
+
+Final link-color verification: browser-fleet-design-w9PIMw passed all five
+cases with no layout failures, browser errors or unexpected requests.
+Styles/architecture, TypeScript and formatting checks passed again after the
+production style change. No database checks were required by this style fix.

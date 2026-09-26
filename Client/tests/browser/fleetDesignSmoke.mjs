@@ -780,12 +780,15 @@ async function measure(page, selector) {
   }, selector);
 }
 
-// The Details button's words against what is behind them, as WCAG counts
+// Text against its composed background, as WCAG counts
 // it. Colors are resolved by painting them, so any CSS color syntax and
 // any translucent layer between the button and the page are read as drawn.
-async function toggleContrast(page) {
-  return page.evaluate(() => {
-    const toggle = document.querySelector('.fleet-map-mobile-summary__toggle');
+async function textContrast(
+  page,
+  selector = '.fleet-map-mobile-summary__toggle',
+) {
+  return page.evaluate(selector => {
+    const toggle = document.querySelector(selector);
     if (!toggle) return null;
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 1;
@@ -824,7 +827,7 @@ async function toggleContrast(page) {
       ratio: Math.round(((light + 0.05) / (dark + 0.05)) * 100) / 100,
       required: large ? 3 : 4.5,
     };
-  });
+  }, selector);
 }
 
 try {
@@ -1007,10 +1010,10 @@ try {
           const toggle = page.locator('.fleet-map-mobile-summary__toggle');
           if (!(await toggle.isVisible())) return;
           await page.mouse.move(0, 0);
-          const rest = await toggleContrast(page);
+          const rest = await textContrast(page);
           await toggle.hover();
           await page.waitForTimeout(250);
-          const hover = await toggleContrast(page);
+          const hover = await textContrast(page);
           await page.mouse.move(0, 0);
           steps.push({ step: 'toggle-contrast', rest, hover });
           for (const [state, value] of Object.entries({ rest, hover }))
@@ -1018,6 +1021,18 @@ try {
               value.ratio >= value.required,
               `Details ${state} contrast ${value.ratio} < ${value.required}`,
             );
+        });
+      if (truck === trucks[0])
+        await attempt('load-link-contrast', async () => {
+          const selector = '.fleet-map-inspector__load-link';
+          const link = page.locator(selector);
+          await link.waitFor({ state: 'visible' });
+          const value = await textContrast(page, selector);
+          steps.push({ step: 'load-link-contrast', ...value });
+          assert.ok(
+            value.ratio >= value.required,
+            `Load link contrast ${value.ratio} < ${value.required}`,
+          );
         });
       if (truck.key === 'us' || truck.key === 'ca' || width < 768)
         await attempt(`${truck.key}-expanded`, async () => {
