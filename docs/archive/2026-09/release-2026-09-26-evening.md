@@ -224,6 +224,55 @@ basemap with the colours back).
   (`v=93f98f01ebe26026`), settings and the fingerprinted framework files
   match the artifact. Local render `browser-fleet-design-MAauDp`.
 
+## Frontend, fifteenth publication (23:03 UTC)
+
+The owner confirmed publication (Root asked "publish to the server?",
+the owner answered "yes"), and Root cleared candidate
+`8c6c506f6f5e3668b5e0f63cdcc5d2e7c7aec3fc` on
+`codex/dispatch-fleet-integration` after its own review: the Dispatch
+cards read as the Fleet Map cards (`242ab81a`), the Fleet reading and
+fuel-editor fixes (`c493ce23`), the Fleet disclosure and load-link
+contrast, the enlarged-clock, load-placeholder and phone visit-grid
+fixes the revived hours probe found, and that probe (`3fbd6a5d`). Root
+checked `66f8801e..8c6c506f`: Client, tests, styles and documents only;
+no server, contract, migration or deployment change.
+
+Client only: the API, the database and Driver Pay were not touched; no
+backup or reset was needed for a static, migration-free release.
+
+`PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a clean detached
+worktree of the candidate, with the local `Client/wwwroot/appsettings.json`
+copied in (22:35-23:03 UTC), exit 0. Its gate: JavaScript 663, Client
+1,244, Server 3,773; offline UI smoke 12 cases with no failures, browser
+errors or unexpected requests (`browser-ui-Tu553J`); messaging tabs
+smoke without errors. Verified artifact `release-Ul6JiU`, retained in
+the main checkout's `artifacts/managed/release-Ul6JiU` (pinned) with the
+gate log and both smoke reports under `gate/`; 285 files. PostgreSQL
+execution checks were not run (no suitable isolated fixture is wired to
+the gate, and nothing here changes storage).
+
+Hosting release `sites/amftms/releases/1790463827610000`, version
+`sites/amftms/versions/ec5a6335623746b0`, 23:03:47 UTC, finalized. The
+version it replaced, for rollback, is `601a28e3431f5221` (release
+`1790453374943000`, 20:09 UTC, the fourteenth publication).
+
+Served from `tms.amfcarrier.com` after publication, each byte-identical
+to the artifact (SHA-256):
+- `index.html` `a905d4466498d7d92e4ea628b9a1234fcb272e57326d2423b97e751d620bea39`;
+- `css/main.css?v=0106181897024f2f`
+  `0106181897024f2f77e8cacc5060544bb0fbd96a21da6a7ab16b82c5ae86c930`
+  (SHA-1 `575b876238e238507e2cf6b7cfcb24c0e7433695`, the stylesheet Root
+  verified in its staging);
+- `appsettings.json` `ca2a6e6c74ce65676cdb76b87f91253e0c4879979d96b9a806fb507057b1380e`,
+  parses as JSON with a 39 character Maps key;
+- `_framework/Client.5c89t2hl5f.wasm`, `blazor.webassembly.w3qd1tpl0e.js`,
+  `dotnet.native.z7sw92kwzx.wasm` and `dotnet.v2nmre6qp6.js`.
+
+Entry HTML, stylesheet and settings answer `Cache-Control: no-cache`;
+the fingerprinted framework files `public, max-age=31536000, immutable`.
+`/api/health/live` answers `Healthy`. Before publication the site served
+`v=93f98f01ebe26026`, the fourteenth publication, as recorded above.
+
 ## API, second release (16:51-16:59 UTC)
 
 The owner authorized it ("so fix it") for the review notices by kind
