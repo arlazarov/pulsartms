@@ -158,8 +158,12 @@ messages. Not measured on PostgreSQL.
 commits, or empty after 20 seconds (`MessagingMailboxes`). The mailbox is
 the caller's subscription, kept between requests, so a change raised
 between two requests waits for the next; each belongs to one company and
-account, lives 60 seconds after its last answer, and a process keeps at
-most 512. A new, expired, foreign or unknown mailbox is replaced and the
+account and lives 60 seconds after its last request ends. One lock
+admits, leases, sweeps and evicts: a mailbox is held in the same step that
+finds it, and only one nobody holds is expired or evicted. A process keeps
+at most 512; at the limit the one idle longest gives way, and when every
+one is held a new one is refused with 503, which the browser treats as
+down. A new, expired, foreign or unknown mailbox is replaced and the
 answer says `resync`: read everything again. Signals live in this process
 only and each mailbox queues at most 64; a full queue also answers
 `resync`. The answer is `Cache-Control: no-store`.
@@ -639,7 +643,9 @@ late arrival, search),
 change commits, a change between requests kept for the next, empty after
 the wait, a mailbox its owner's alone, replaced when unknown or expired
 but never while read, a full queue, a second request not taking the
-first's change, the process limit),
+first's change, the process limit, opens racing at the limit, a new one
+refused while every one is held, eviction or expiry racing a request in
+both orders and unordered),
 `Server.Tests/Messaging/ConversationHistoryTests` (120 messages at one
 time read to the end, a late message below the page kept unread until
 shown, one among pages already shown not marked),

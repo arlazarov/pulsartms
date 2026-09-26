@@ -23,9 +23,11 @@ public sealed class WaitMessagingChangesHandler(
     WaitMessagingChangesQuery request,
     CancellationToken ct
   ) =>
-    company.Id is { } serving && caller.IdentityUserId is { } account
-      ? RequestResponse<MessagingChanges>.Ok(
-        await mailboxes.WaitAsync(serving, account, request.Mailbox, ct)
-      )
-      : RequestResponse<MessagingChanges>.Fail("Access denied.", 403);
+    company.Id is not { } serving || caller.IdentityUserId is not { } account
+      ? RequestResponse<MessagingChanges>.Fail("Access denied.", 403)
+    // Every mailbox is held: the browser polls and asks again later.
+    : await mailboxes.WaitAsync(serving, account, request.Mailbox, ct)
+      is not { } changes
+      ? RequestResponse<MessagingChanges>.Fail("Too many readers.", 503)
+    : RequestResponse<MessagingChanges>.Ok(changes);
 }

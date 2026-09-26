@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-
 namespace Application.Features.Messaging.Services;
 
 // A browser's subscription to MessagingEvents, kept between its requests so
@@ -12,18 +10,24 @@ namespace Application.Features.Messaging.Services;
 // mailbox the caller does not own, or one that expired or lives on another
 // instance, is replaced by a new one and the answer says "read everything
 // again", as a reconnected stream did. Each mailbox belongs to one company
-// and one account, lives Keep after its last answer, and the process keeps
-// at most Limit of them, dropping the one idle longest.
+// and one account and lives Keep after its last request ends.
+//
+// One lock admits, leases, sweeps and evicts, so a mailbox is leased in
+// the same step that finds it and only a mailbox nobody holds is ever
+// closed. The process never keeps more than its limit: when every mailbox
+// is held, a new one is refused (null) rather than admitted over it.
 public sealed class MessagingMailboxes(
   MessagingEvents events,
-  TimeProvider clock
+  TimeProvider clock,
+  int limit = MessagingMailboxes.Limit
 )
 {
   public static readonly TimeSpan Wait = TimeSpan.FromSeconds(20);
   public static readonly TimeSpan Keep = TimeSpan.FromSeconds(60);
   public const int Limit = 512;
 
-  private readonly ConcurrentDictionary<Guid, Mailbox> mailboxes = new();
+  private readonly object gate = new();
+  private readonly Dictionary<Guid, Mailbox> mailboxes = [];
 
   private sealed class Mailbox(
     Guid company,
@@ -35,30 +39,67 @@ public sealed class MessagingMailboxes(
     public string Account => account;
     public MessagingEvents.Subscription Subscription => subscription;
 
-    // One request reads a mailbox at a time: its queue has a single reader.
+    // One request reads the queue at a time: it has a single reader.
     public SemaphoreSlim Reading { get; } = new(1, 1);
 
-    // Null while a request is reading it: a mailbox in use never expires.
-    public DateTimeOffset? IdleSince;
+    // Guarded by the lock. Requests holding or waiting for this mailbox;
+    // while any does, it is neither swept nor evicted.
+    public int Leases;
+    public DateTimeOffset IdleSince;
   }
 
-  public int Count => mailboxes.Count;
+  public int Count
+  {
+    get
+    {
+      lock (gate)
+        return mailboxes.Count;
+    }
+  }
 
-  public async Task<MessagingChanges> WaitAsync(
+  // Null: every mailbox is held and the limit admits no other.
+  public async Task<MessagingChanges?> WaitAsync(
     Guid company,
     string account,
     Guid? id,
     CancellationToken ct
   )
   {
-    Sweep();
-    if (
-      id is not { } known
-      || !mailboxes.TryGetValue(known, out var mailbox)
-      || mailbox.Company != company
-      || mailbox.Account != account
-    )
-      return new(Open(company, account), true, []);
+    Mailbox mailbox;
+    Guid known;
+    lock (gate)
+    {
+      Sweep();
+      if (
+        id is not { } asked
+        || !mailboxes.TryGetValue(asked, out var found)
+        || found.Company != company
+        || found.Account != account
+      )
+        return Open(company, account) is { } opened
+          ? new(opened, true, [])
+          : null;
+      (mailbox, known) = (found, asked);
+      mailbox.Leases++;
+    }
+    try
+    {
+      return await ReadAsync(known, mailbox, ct);
+    }
+    finally
+    {
+      lock (gate)
+        if (--mailbox.Leases == 0)
+          mailbox.IdleSince = clock.GetUtcNow();
+    }
+  }
+
+  private async Task<MessagingChanges> ReadAsync(
+    Guid id,
+    Mailbox mailbox,
+    CancellationToken ct
+  )
+  {
     using var timeout = new CancellationTokenSource(Wait, clock);
     using var wait = CancellationTokenSource.CreateLinkedTokenSource(
       ct,
@@ -66,18 +107,16 @@ public sealed class MessagingMailboxes(
     );
     try
     {
-      // Another request of the same browser may be reading it: this one
-      // waits its turn within the same limit, then says nothing rather than
-      // competing for the queue.
       await mailbox.Reading.WaitAsync(wait.Token);
     }
+    // Another request of the same browser held the queue for the whole
+    // wait: this one says nothing rather than compete for it.
     catch (OperationCanceledException) when (!ct.IsCancellationRequested)
     {
-      return new(known, false, []);
+      return new(id, false, []);
     }
     try
     {
-      mailbox.IdleSince = null;
       var resync = mailbox.Subscription.TakeOverflow();
       var changed = Drain(mailbox);
       if (!resync && changed.Count == 0)
@@ -91,19 +130,29 @@ public sealed class MessagingMailboxes(
         resync = mailbox.Subscription.TakeOverflow();
         changed = Drain(mailbox);
       }
-      return new(known, resync, changed);
+      return new(id, resync, changed);
     }
     finally
     {
-      mailbox.IdleSince = clock.GetUtcNow();
       mailbox.Reading.Release();
     }
   }
 
-  private Guid Open(Guid company, string account)
+  // Under the lock. At the limit the mailbox idle longest gives way; when
+  // every one is held, nothing is admitted.
+  private Guid? Open(Guid company, string account)
   {
-    if (mailboxes.Count >= Limit)
-      DropIdlest();
+    if (mailboxes.Count >= limit)
+    {
+      var idlest = mailboxes
+        .Where(x => x.Value.Leases == 0)
+        .OrderBy(x => x.Value.IdleSince)
+        .Select(x => (Guid?)x.Key)
+        .FirstOrDefault();
+      if (idlest is not { } evicted)
+        return null;
+      Close(evicted);
+    }
     var id = Guid.NewGuid();
     mailboxes[id] = new(company, account, events.Subscribe(company))
     {
@@ -125,31 +174,23 @@ public sealed class MessagingMailboxes(
     return changed;
   }
 
+  // Under the lock.
   private void Sweep()
   {
     var before = clock.GetUtcNow() - Keep;
-    foreach (var (id, mailbox) in mailboxes)
-      if (mailbox.IdleSince is { } idle && idle < before)
-        Close(id);
-  }
-
-  // Every mailbox being read: the limit gives way rather than wait.
-  private void DropIdlest()
-  {
-    if (
-      mailboxes
-        .Where(x => x.Value.IdleSince is not null)
-        .OrderBy(x => x.Value.IdleSince)
-        .Select(x => (Guid?)x.Key)
-        .FirstOrDefault() is
-      { } id
+    foreach (
+      var id in mailboxes
+        .Where(x => x.Value.Leases == 0 && x.Value.IdleSince < before)
+        .Select(x => x.Key)
+        .ToList()
     )
       Close(id);
   }
 
+  // Under the lock, and only for a mailbox nobody holds.
   private void Close(Guid id)
   {
-    if (mailboxes.TryRemove(id, out var mailbox))
+    if (mailboxes.Remove(id, out var mailbox))
       mailbox.Subscription.Dispose();
   }
 }
