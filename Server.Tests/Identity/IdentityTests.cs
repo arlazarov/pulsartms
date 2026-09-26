@@ -51,6 +51,15 @@ public class IdentityTests
       Email = "locked@example.com",
     };
     Assert.True((await manager.CreateAsync(user, "password123")).Succeeded);
+    // Sign-in counts only for an existing, active carrier.
+    db.Companies.Add(
+      new Company
+      {
+        Id = Company.Amf,
+        Key = "amfcarrier",
+        Name = "AMF",
+      }
+    );
     db.Users.Add(
       new User
       {
@@ -130,6 +139,15 @@ public class IdentityTests
     };
     Assert.True((await manager.CreateAsync(user, "password123")).Succeeded);
     Assert.True((await manager.SetLockoutEnabledAsync(user, false)).Succeeded);
+    // Sign-in counts only for an existing, active carrier.
+    db.Companies.Add(
+      new Company
+      {
+        Id = Company.Amf,
+        Key = "amfcarrier",
+        Name = "AMF",
+      }
+    );
     db.Users.Add(
       new User
       {
@@ -258,15 +276,7 @@ public class IdentityTests
     });
     await check.InvokeAsync(session, signIn, db);
     Assert.Equal(1, served);
-    db.Companies.Add(
-      new Company
-      {
-        Id = Company.Amf,
-        Key = "amfcarrier",
-        Name = "AMF",
-        IsActive = false,
-      }
-    );
+    (await db.Companies.SingleAsync(x => x.Id == Company.Amf)).IsActive = false;
     await db.SaveChangesAsync();
     await check.InvokeAsync(session, signIn, db);
     Assert.Equal(1, served);
