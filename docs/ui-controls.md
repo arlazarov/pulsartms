@@ -186,6 +186,13 @@ a rule that runs the width of the card:
   warning while idling) and temperature, each with its icon; at the right,
   the HOS clocks under a clock icon that keeps the name HOS;
 - the current location, pinned, across the card, open or closed.
+Every label in the head is its value's size, only quieter, so each row
+has one baseline; an icon whose word is only for a screen reader centres
+on the line. ETA and Appointment share one label column
+(`--route-fact-label`), and a word about the cycle ("Cycle short") stands
+on the ETA's line, folding under it only when the line is full. Below
+`map-truck-arrival-stacked` each label takes its own width and the
+booking's value goes under its label.
 On narrow cards the crew and Left take rows of their own and each row
 stacks its answer under its fact. The open card adds Next stop (the stop,
 its visit and appointment with zone), Remaining load and Fuel on arrival,

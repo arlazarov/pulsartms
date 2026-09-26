@@ -171,12 +171,18 @@
 }
 
 // Inside a card on the map there is less room and less to say: the labels
-// are small and quiet, the hour is what stands out, and the cycle is a
-// column of plain rows rather than a section with a rule above it.
+// are quiet, the hour is what stands out, and the cycle is a column of
+// plain rows rather than a section with a rule above it. The label column
+// is at least the width the holder publishes as --route-fact-label, so the
+// ETA lines up with the facts the holder sets beside it, and it grows
+// rather than letting a long label run into its value.
 .stop-hours--compact {
-  --stop-hours-road-display: flex;
+  grid-template-columns:
+    minmax(var(--route-fact-label, 0px), max-content)
+    minmax(0, 1fr);
   .stop-hours__label {
-    font-size: ui.fs(small);
+    color: ui.theme(text-secondary);
+    font-size: inherit;
   }
   .stop-hours__arrival {
     display: flex;
@@ -184,6 +190,13 @@
     align-items: baseline;
     gap: ui.pg(xs);
     font-weight: 600;
+  }
+  // The card has room for a word about the cycle beside the hour, where
+  // the lateness already stands; it folds under only when the line is
+  // full.
+  .stop-hours__cycle-status {
+    flex-basis: auto;
+    white-space: nowrap;
   }
   .stop-hours__heading {
     margin: 0;
@@ -221,12 +234,11 @@
     font-size: ui.fs(small);
   }
   .stop-hours__road {
-    flex-wrap: wrap;
     align-items: baseline;
-    gap: ui.pg(xs);
-  }
-  .stop-hours__road > .stop-hours__label {
-    font-size: ui.fs(small);
+    > .stop-hours__value {
+      align-items: baseline;
+      gap: 0 ui.pg(sm);
+    }
   }
   .stop-hours__road time {
     font-size: ui.fs(body);

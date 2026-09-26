@@ -53,28 +53,29 @@
   .fleet-map-inspector__clocks {
     display: flex;
     flex-wrap: nowrap;
-    align-items: baseline;
+    align-items: center;
     justify-self: end;
     gap: ui.pg(xs);
     --hos-display: flex;
     --hos-wrap: nowrap;
     --hos-gap: #{ui.pg(xs)};
     --hos-clock-min-width: 0;
-    --hos-label-font-size: #{ui.fs(small)};
+    --hos-label-font-size: #{ui.fs(body)};
     > .driver-hours-panel {
       min-width: 0;
       margin-left: 0;
     }
   }
-  // Where the truck is: last, across the whole card, from its left edge.
-  // The address is one long word to a browser; it folds rather than
-  // pushing the card into a sideways scroll, and its label may step above
-  // it when the two do not fit on one line.
+  // Where the truck is: last, across the whole card, from its left edge,
+  // the pin, its label and the address on one line. The address is one
+  // long word to a browser; it folds rather than pushing the card into a
+  // sideways scroll.
   .fleet-map-inspector__location {
     grid-template-columns: max-content max-content minmax(0, 1fr);
-    align-items: start;
+    align-items: baseline;
     column-gap: ui.pg(sm);
     > svg {
+      align-self: center;
       inline-size: ui.fs(heading);
       block-size: ui.fs(heading);
       color: ui.theme(text-secondary);
@@ -86,7 +87,6 @@
     }
     > span {
       color: ui.theme(text-secondary);
-      font-size: ui.fs(small);
       white-space: nowrap;
     }
     > strong {
@@ -221,7 +221,6 @@
   .fleet-map-mobile-summary__label {
     display: inline;
     color: ui.theme(text-secondary);
-    font-size: ui.fs(small);
   }
   @container map-truck-card (width >= #{ui.breakpoint(map-compact-columns)}) {
     .fleet-map-inspector__header {

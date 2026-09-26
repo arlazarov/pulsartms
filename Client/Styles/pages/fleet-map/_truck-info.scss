@@ -38,7 +38,9 @@
     color: ui.theme(text-secondary);
   }
   // Every reading is the same shape: a quiet word, then its value, on one
-  // baseline.
+  // baseline. The word is the value's size and only quieter: a smaller one
+  // sat on a lower line box, and every icon centred on it stood at its
+  // own height.
   &__reading,
   &__outside {
     display: flex;
@@ -50,7 +52,7 @@
       align-items: baseline;
       gap: ui.pg(xs);
       color: ui.theme(text-secondary);
-      font-size: ui.fs(small);
+      font-size: inherit;
     }
     > strong {
       color: ui.theme(text);
@@ -69,6 +71,9 @@
   // the line, because a 20px glyph on the baseline of 14px text stands
   // above the words. It is sized to the line, not to the panel it came
   // from - the telemetry icon is 28px and made this row half again as tall.
+  // The speed's word is also left to a screen reader, so its icon has no
+  // text to sit on and is centred on the line in the same way.
+  &__reading--speed > small,
   &__outside > small {
     display: inline-flex;
     align-self: center;

@@ -26,6 +26,8 @@ $screen-places: (
   map-toolbar-stacked: 14rem,
   // The truck card's Details toggle keeps its words above this.
   map-truck-toggle-words: 16rem,
+  // Below this the head's ETA and Appointment stop sharing a label column.
+  map-truck-arrival-stacked: 20rem,
   map-route-columns: 1101px,
 
   // Dispatch.

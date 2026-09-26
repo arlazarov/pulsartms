@@ -161,6 +161,69 @@ test('a truck that has run out of route says so instead of a dash', () => {
   assert.match(code, /remaining < 0\.5/);
 });
 
+// The owner's mark on the released card: "Cycle short" fell to a line of
+// its own, the booking's value did not start where the ETA's did, and the
+// words, icons and values of each row stood at different heights.
+test('the head reads as rows of one table, on one line each', () => {
+  const hours = compile('shared/driver-status/stop-hours');
+  // The ETA's label column is the holder's width at least, and the word
+  // about the cycle stands beside the hour.
+  assert.match(
+    hours,
+    /\.stop-hours--compact\s*\{[^}]*grid-template-columns: minmax\(var\(--route-fact-label, 0px\), max-content\) minmax\(0, 1fr\);/,
+  );
+  assert.match(
+    hours,
+    /\.stop-hours--compact \.stop-hours__cycle-status\s*\{[^}]*flex-basis: auto;/,
+  );
+  assert.doesNotMatch(
+    hours.match(/\.stop-hours--compact\s*\{[^}]*\}/)[0],
+    /--stop-hours-road-display/,
+  );
+  // The booking uses the same column, as a length the row can measure.
+  assert.match(
+    card,
+    /\.fleet-map-inspector__arrival\s*\{[^}]*--route-fact-label: 6rem;/,
+  );
+  assert.match(
+    card,
+    /\.fleet-map-inspector__appointment\s*\{[^}]*grid-template-columns: minmax\(var\(--route-fact-label\), max-content\) minmax\(0, 1fr\);/,
+  );
+  // Too narrow for the column: each label its own width, the booking's
+  // value under its label.
+  assert.match(
+    card,
+    /@container map-truck-card\s+\(width < 20rem\)\s*\{[^@]*__arrival\s*\{\s*--route-fact-label: 0px;[^@]*__appointment\s*\{\s*grid-template-columns: minmax\(0, 1fr\);/,
+  );
+  // Every label is its value's size, only quieter.
+  for (const rule of [
+    /\.fleet-map-inspector__appointment-label\s*\{[^}]*\}/,
+    /\.fleet-map-mobile-summary__label\s*\{[^}]*\}/,
+    /\.fleet-map-inspector__location > span\s*\{[^}]*\}/,
+  ])
+    assert.doesNotMatch(card.match(rule)[0], /font-size/);
+  assert.match(
+    card,
+    /__reading > small,[^{}]*__outside > small\s*\{[^}]*font-size: inherit;/,
+  );
+  assert.match(card, /--hos-label-font-size: var\(--type-body\);/);
+  // An icon whose word is only for a screen reader has no text to sit on:
+  // it centres on the line.
+  assert.match(
+    card,
+    /__reading--speed > small,[^{}]*__outside > small\s*\{[^}]*align-self: center;/,
+  );
+  assert.match(
+    card,
+    /\.fleet-map-inspector__clocks\s*\{[^}]*align-items: center;/,
+  );
+  // The pin, its label and the address share a baseline.
+  assert.match(
+    card,
+    /\.fleet-map-inspector__location\s*\{[^}]*align-items: baseline;/,
+  );
+});
+
 test('HOS travels with its clocks, at the far end under the arrival', () => {
   assert.match(
     markup,

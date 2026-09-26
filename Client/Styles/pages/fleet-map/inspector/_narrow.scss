@@ -87,11 +87,12 @@
         border-inline-start: 0;
       }
     }
+    // The address stays beside its label while it fits and takes a line
+    // of its own only when it does not.
     .fleet-map-inspector__location {
-      grid-template-columns: max-content minmax(0, 1fr);
-      > strong {
-        grid-column: 1 / -1;
-      }
+      display: flex;
+      flex-wrap: wrap;
+      row-gap: ui.pg(xs);
     }
     .fleet-map-mobile-summary__remaining {
       min-inline-size: 0;
@@ -117,15 +118,28 @@
       text-overflow: clip;
       white-space: normal;
     }
+    // The clock stays at the start of its clocks; they fold beside it.
     .fleet-map-inspector__clocks {
       justify-self: start;
-      flex-wrap: wrap;
+      max-inline-size: 100%;
       --hos-wrap: wrap;
     }
 
     // Nothing here re-columns on open. The header a dispatcher reads while
     // the card is shut keeps every row and every column when it opens;
     // opening only adds the actions and the detail below them.
+  }
+
+  // Too narrow for a label column beside the arrival: each label takes
+  // only what it needs, and the booking's value goes under its label.
+  @container map-truck-card
+    (width < #{ui.breakpoint(map-truck-arrival-stacked)}) {
+    .fleet-map-inspector__arrival {
+      --route-fact-label: 0px;
+    }
+    .fleet-map-inspector__appointment {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
   // On a card this tight - a phone at 200% text - the toggle's words give

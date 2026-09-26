@@ -81,10 +81,12 @@
     &.is-normal .fuel-reading__icon {
       color: ui.theme(success-text);
     }
+    // Read in a line of readings, the word is the line's size and only
+    // quieter, and it shares the value's baseline.
     .fuel-reading__label {
-      align-self: center;
+      align-self: baseline;
       color: ui.theme(text-secondary);
-      font-size: ui.fs(small);
+      font-size: inherit;
     }
     .fuel-reading__value {
       grid-column: var(--fuel-reading-value-column, 1 / -1);

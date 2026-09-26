@@ -57,9 +57,11 @@ test('the metric variant stacks its reading below a pump label without a pill su
     css,
     /\.fuel-reading--metric\s*\{[^}]*gap: var\(--space-xs\);[^}]*line-height: 1.4;/,
   );
+  // In a line of readings the word is the line's size, only quieter, and
+  // on the value's baseline: a smaller word stood on a lower line box.
   assert.match(
     css,
-    /\.fuel-reading--metric \.fuel-reading__label\s*\{[^}]*font-size: var\(--type-small\);/,
+    /\.fuel-reading--metric \.fuel-reading__label\s*\{[^}]*align-self: baseline;[^}]*font-size: inherit;/,
   );
   const value = css.match(
     /\.fuel-reading--metric \.fuel-reading__value\s*\{([^}]*)\}/,

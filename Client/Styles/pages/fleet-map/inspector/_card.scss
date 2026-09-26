@@ -138,17 +138,17 @@
       }
     }
   }
+  // The forecast and the booking read as two rows of one table: their
+  // labels in one column, so both values start at the same line. The
+  // column is a length, not a share of the card: a percentage is not known
+  // while the row measures how wide the block wants to be, and the booking
+  // folded in room that had been promised to it.
   .fleet-map-inspector__arrival {
+    --route-fact-label: 6rem;
     display: grid;
-    justify-items: start;
-    row-gap: ui.pg(micro);
+    row-gap: ui.pg(xs);
     min-width: 0;
     font-size: ui.fs(body);
-    // The forecast reads as the hour and, when there is one, a word about
-    // the cycle under it. The block keeps room for both from the start:
-    // the placeholder is one line, so without this the head grew by the
-    // second line as the ETA landed and every row below it stepped down.
-    min-block-size: calc(1.4 * (#{ui.fs(body)} + #{ui.fs(small)}));
     // The real estimate replaces the dash rather than joining it.
     &:has(> .arrival-estimate) > .fleet-map-inspector__arrival-placeholder {
       display: none;
@@ -157,12 +157,15 @@
   // The booking at the same stop, under its forecast: its own label, the
   // visit's, so a scheduled time is never read as a predicted one.
   .fleet-map-inspector__appointment {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns:
+      minmax(var(--route-fact-label), max-content)
+      minmax(0, 1fr);
     align-items: baseline;
-    gap: 0 ui.pg(xs);
+    column-gap: ui.pg(sm);
     min-width: 0;
     > strong {
+      min-width: 0;
       color: ui.theme(text);
       font-weight: 600;
       font-variant-numeric: tabular-nums;
@@ -170,7 +173,6 @@
   }
   .fleet-map-inspector__appointment-label {
     color: ui.theme(text-secondary);
-    font-size: ui.fs(small);
   }
   // The load is a way into its page: it reads as a link, not as a number
   // to copy.
