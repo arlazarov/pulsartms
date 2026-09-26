@@ -4,7 +4,29 @@
 // conversation go to its file input, as if picked with the paperclip, so
 // Blazor stages them the same way.
 
+// Where the browser cannot size a text box to its content, the reply box
+// is measured instead: its height follows its lines up to the stylesheet's
+// maximum, past which it scrolls.
+const sizesItself =
+  typeof CSS !== 'undefined' && CSS.supports?.('field-sizing', 'content');
+
+function fitBox(box: HTMLTextAreaElement | null) {
+  if (!box || sizesItself) return;
+  box.style.height = 'auto';
+  box.style.height = `${box.scrollHeight + box.offsetHeight - box.clientHeight}px`;
+}
+
 export function attach(root: HTMLElement) {
+  const replyBox = () =>
+    root.querySelector<HTMLTextAreaElement>('textarea[data-send-on-enter]');
+  const onInput = (event: Event) => {
+    const box = event.target;
+    if (
+      box instanceof HTMLTextAreaElement &&
+      box.hasAttribute('data-send-on-enter')
+    )
+      fitBox(box);
+  };
   const onKey = (event: KeyboardEvent) => {
     const box = event.target;
     if (
@@ -57,12 +79,19 @@ export function attach(root: HTMLElement) {
   };
 
   root.addEventListener('keydown', onKey);
+  root.addEventListener('input', onInput);
   root.addEventListener('dragover', onOver);
   root.addEventListener('dragleave', onLeave);
   root.addEventListener('drop', onDrop);
   return {
+    // The page changed the reply itself - a draft restored, a sent reply
+    // cleared - which no input event reports.
+    fit() {
+      fitBox(replyBox());
+    },
     dispose() {
       root.removeEventListener('keydown', onKey);
+      root.removeEventListener('input', onInput);
       root.removeEventListener('dragover', onOver);
       root.removeEventListener('dragleave', onLeave);
       root.removeEventListener('drop', onDrop);

@@ -47,11 +47,18 @@
       grid-area: send;
     }
   }
+  // The reply grows with what is written, one line at a time up to four,
+  // then scrolls inside itself; deleted lines give the height back. The
+  // browser sizes it where it can (field-sizing); the composer module
+  // measures it where it cannot. Four lines: the line height four times,
+  // the control's padding above and below, and its hairline border.
   &__compose-row textarea {
     width: 100%;
-    max-height: 8rem;
+    max-height: calc(4lh + 2 * #{ui.pg(sm)} + 2px);
+    overflow-y: auto;
     resize: none;
     font-family: inherit;
+    field-sizing: content;
     @include ui.input-control;
   }
   &__attach {

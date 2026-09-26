@@ -72,6 +72,10 @@ public partial class Messages : IAsyncDisposable
   private readonly Dictionary<Guid, int> _sending = [];
   private bool _busy => Id is { } id && _sending.ContainsKey(id);
   private string _draft = "";
+
+  // The page set the reply itself; its box is fitted to it after the
+  // render (typing is fitted by the composer module as it happens).
+  private bool _fitDraft;
   private Guid? _draftKey;
   private string? _error,
     _refusal,
@@ -178,6 +182,7 @@ public partial class Messages : IAsyncDisposable
     if (Id is { } id)
     {
       _draft = Places.TakeDraft(id);
+      _fitDraft = true;
       if (Around is { } around)
         Start(() => LoadAroundAsync(id, around));
       else
@@ -847,6 +852,7 @@ public partial class Messages : IAsyncDisposable
     {
       files[0].Caption = text;
       _draft = "";
+      _fitDraft = true;
       _draftKey = null;
     }
     var lastSeen = _messages.LastOrDefault()?.Id;
@@ -982,6 +988,7 @@ public partial class Messages : IAsyncDisposable
     _staged.RemoveAll(x => x.State != StagedState.Sending);
     _contactKey = null;
     _draft = "";
+    _fitDraft = true;
     _draftKey = null;
     _refusal = null;
     _stale = false;
@@ -1137,6 +1144,15 @@ public partial class Messages : IAsyncDisposable
           _lifetime.Token,
           reveal.ToString()
         );
+      }
+      catch (JSException) { }
+    }
+    if (_fitDraft && _composer is not null)
+    {
+      _fitDraft = false;
+      try
+      {
+        await _composer.InvokeVoidAsync("fit", _lifetime.Token);
       }
       catch (JSException) { }
     }

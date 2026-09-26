@@ -294,8 +294,13 @@ The thread reads oldest first, marks itself read at the revision it
 showed, and claims the conversation, at most once a minute, when the
 dispatcher starts typing. Enter sends; Option (Alt) or Shift with Enter
 starts a new line, and a key an input method is composing is left to it
-(`Scripts/messages/composer.ts`). A reply keeps its retry key until it
-is sent; a reply refused as stale offers "Send anyway" with the same key.
+(`Scripts/messages/composer.ts`). The reply box grows with typed,
+wrapped or pasted lines from one to four and then scrolls inside itself;
+deleting shrinks it, and a sent, cleared or restored reply refits it. The
+stylesheet sizes it with `field-sizing` where the browser can, and the
+composer module measures it where it cannot
+(`tests/browser/messagesComposerSmoke.mjs`). A reply keeps its retry key
+until it is sent; a reply refused as stale offers "Send anyway" with the same key.
 A send belongs to its conversation: its answer never clears or blocks
 another conversation opened meanwhile.
 
