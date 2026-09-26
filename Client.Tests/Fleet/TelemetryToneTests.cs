@@ -16,6 +16,11 @@ public sealed class TelemetryToneTests
   public void SpeedUsesInclusiveLimits(double speed, string tone) =>
     Assert.Equal(tone, TelemetryTone.Speed((decimal)speed));
 
+  // No report is not a stopped truck: it never reads as a normal speed.
+  [Fact]
+  public void AnUnknownSpeedIsNeverNormal() =>
+    Assert.Equal("is-unknown", TelemetryTone.Speed(null));
+
   [Theory]
   [InlineData(65, "On", "is-normal")]
   [InlineData(1, "Idle", "is-normal")]

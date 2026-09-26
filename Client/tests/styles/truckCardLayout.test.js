@@ -224,6 +224,26 @@ test('the head reads as rows of one table, on one line each', () => {
   );
 });
 
+// The speed's icon says how it stands against the limit, with the shared
+// telemetry tokens (TelemetryTone.Speed decides the band). The rules were
+// dropped on September 20 while the icons were hidden and every band read
+// grey once they came back.
+test('the speed icon carries its band, and an unknown speed stays quiet', () => {
+  for (const [band, token] of [
+    ['is-normal', '--ui-success-text'],
+    ['is-low', '--ui-telemetry-warning-icon'],
+    ['is-critical', '--ui-telemetry-critical-icon'],
+  ])
+    assert.match(
+      card,
+      new RegExp(
+        `__reading--speed\\.${band} > small svg\\s*\\{[^}]*color: var\\(${token}\\);`,
+      ),
+    );
+  assert.doesNotMatch(card, /__reading--speed\.is-unknown/);
+  assert.match(markup, /TelemetryTone\.Speed\(KnownSpeed\(truck\)\)/);
+});
+
 test('HOS travels with its clocks, at the far end under the arrival', () => {
   assert.match(
     markup,

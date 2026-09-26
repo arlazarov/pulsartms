@@ -55,6 +55,14 @@ public partial class FleetMap
         DateTime.SpecifyKind(truck.UpdatedAt, DateTimeKind.Utc)
       );
 
+  // The speed is known only from a report, and only while the route does
+  // not call the truck's GPS stale: otherwise the card says nothing about
+  // it rather than a confident 0 mph "normal".
+  private decimal? KnownSpeed(TruckLocationMapDto truck) =>
+    truck.UpdatedAt == default || _routeState?.Progress?.LocationStale == true
+      ? null
+      : truck.Speed;
+
   private string InspectorTitle =>
     _inspectorMode switch
     {

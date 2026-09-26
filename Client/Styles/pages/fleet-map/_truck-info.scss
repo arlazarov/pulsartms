@@ -94,6 +94,20 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
+  // How the speed stands against the limit, in its icon's colour: normal,
+  // a little over (above 65 mph), well over (above 70 mph), as
+  // TelemetryTone.Speed decides for Dispatch too. An unknown speed keeps the
+  // quiet icon. These were dropped on September 20 while the line's icons
+  // were hidden, and did not come back with the icons.
+  &__reading--speed.is-normal > small svg {
+    color: ui.theme(success-text);
+  }
+  &__reading--speed.is-low > small svg {
+    color: ui.theme(telemetry-warning-icon);
+  }
+  &__reading--speed.is-critical > small svg {
+    color: ui.theme(telemetry-critical-icon);
+  }
   // Whether the engine is running, as Dispatch says it: green while the
   // truck moves, amber while it idles, nothing when unknown.
   &__reading--engine.is-normal > strong::after,

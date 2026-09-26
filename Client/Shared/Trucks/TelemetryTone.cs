@@ -11,9 +11,12 @@ public static class TelemetryTone
       _ => "is-normal",
     };
 
-  public static string Speed(decimal speed) =>
+  // Null is a speed nobody knows - no report, or a stale one - and never
+  // reads as a confirmed normal one.
+  public static string Speed(decimal? speed) =>
     speed switch
     {
+      null => "is-unknown",
       > 70 => "is-critical",
       > 65 => "is-low",
       _ => "is-normal",
