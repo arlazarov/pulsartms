@@ -28,6 +28,7 @@ Each item has a regression that fails without the fix unless marked.
 | `c732e490` | Fleet and load import memory keys name the carrier | Code; no production effect with one fleet provider |
 | `c3ab25ea`, `d8f5aab9` | An account counts only for an existing, active carrier (sign-in, refresh, session) | Code; production: all 3 users' carriers exist and are active |
 | `8aa1723e` | An ETA refresh publishes only after its save commits; a failed save publishes nothing and retires the shown forecast only when inputs changed (and only if it is still the one it found); a late earlier result of the same road version never replaces a later one | 11006: published before save, taken back on failure. Two of four new interleaving tests fail on the old code |
+| `f9cfdd92` | Root's review of `8aa1723e`: the shown forecast is retired only when a check demonstrates a changed dependency (`RoutePlanningException.DependencyChanged`) or the chain is described otherwise; generic failures and refusals leave it. Equal `CalculatedAt` keeps the published result, as the store does | Generic-failure, refusal and equal-time tests fail on `8aa1723e` |
 
 ## Reported, not changed
 
