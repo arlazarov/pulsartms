@@ -24,9 +24,14 @@ test('mobile truck panels scroll normally within the bounded map inspector', () 
     css,
     /\.fleet-map-info-content\s*\{[^}]*position: absolute/,
   );
-  assert.doesNotMatch(
+  // The closed state is a wide card's; the phone's card is open whole.
+  assert.match(
     css,
-    /is-mobile-collapsed|fleet-map-mobile-summary__toggle/,
+    new RegExp(
+      String.raw`@container map-truck-card \(width >= 40rem\)\s*\{\s*` +
+        `${selector}\\.is-mobile-collapsed \\.fleet-map-info-content` +
+        String.raw`\s*\{\s*display: none;`,
+    ),
   );
   assert.match(css, /\.fleet-map-info-content > div\s*\{\s*flex-shrink: 0;/);
   assert.match(

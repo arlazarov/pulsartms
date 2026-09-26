@@ -60,27 +60,18 @@
         display: none;
       }
     }
-    // A notice about a load: its number and the way to Dispatch, where
-    // the whole of it is shown and settled.
-    &__notice {
-      display: inline-flex;
-      align-items: center;
+    // The stop's other column: what is left of the load over where the
+    // truck is, both at the top of it.
+    &__where {
+      display: grid;
+      align-content: start;
       gap: ui.pg(xs);
-      padding: ui.pg(micro) ui.pg(sm);
-      border-radius: ui.radius(sm);
-      background: ui.theme(warning-surface);
-      color: ui.theme(warning-text);
-      font-size: ui.fs(small);
-      font-weight: 500;
-      text-decoration: none;
+      min-width: 0;
     }
-    // What is left of the load reads on the stop's heading line, after the
-    // distance to the stop: a quiet label, then its value.
+    // What is left of the load: a quiet label, its value under it.
     &__metric {
-      display: inline-flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 0 ui.pg(xs);
+      display: grid;
+      gap: 0;
       min-width: 0;
       margin: 0;
       padding: 0;
@@ -199,12 +190,17 @@
       font-weight: 400;
       color: ui.theme(text-secondary);
     }
+    // One line, cut short: a long facility name took two and pushed the
+    // address down; the full name is the block's title.
     &__address-lines > .fleet-map-route-info__facility {
       flex-basis: 100%;
+      min-width: 0;
       color: ui.theme(text);
       font-size: ui.fs(lead);
       font-weight: 600;
-      overflow-wrap: anywhere;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     &__appointment {
       display: flex;
@@ -244,7 +240,6 @@
     column-gap: ui.pg(sm);
     row-gap: ui.pg(micro);
     align-items: center;
-    margin-top: ui.pg(xs);
     > svg {
       grid-row: 1;
       inline-size: ui.fs(heading);

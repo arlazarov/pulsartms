@@ -79,6 +79,52 @@
       font-size: ui.fs(small);
     }
   }
+  // A wide card opens closed behind Details: the head says most of it. A
+  // phone's card (narrower than the compact columns) is open whole and
+  // scrolls instead, so the closed state and its button exist only here.
+  @container map-truck-card (width >= #{ui.breakpoint(map-compact-columns)}) {
+    &.is-mobile-collapsed .fleet-map-info-content {
+      display: none;
+    }
+    &.is-mobile-collapsed .fleet-map-inspector__header {
+      border-bottom: 0;
+    }
+  }
+  // Says what it does, with an arrow that says which way. Both words sit in
+  // one cell, so the button keeps the width of the longer and opening the
+  // card does not move the row beside it.
+  .fleet-map-mobile-summary__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(xs);
+    min-block-size: ui.size(control-compact);
+    border-color: ui.theme(action);
+    color: ui.theme(action);
+    font-weight: 600;
+    white-space: nowrap;
+    > svg {
+      inline-size: 1.1em;
+      block-size: 1.1em;
+      transition: transform 120ms ease;
+    }
+    &[aria-expanded='true'] > svg {
+      transform: rotate(180deg);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      > svg {
+        transition: none;
+      }
+    }
+  }
+  .fleet-map-mobile-summary__toggle-words {
+    display: grid;
+    > span {
+      grid-area: 1 / 1;
+    }
+    > [aria-hidden='true'] {
+      visibility: hidden;
+    }
+  }
   .fleet-map-mobile-summary__remaining > .fleet-map-route-info__copy-number {
     color: ui.theme(text);
     font-weight: 600;

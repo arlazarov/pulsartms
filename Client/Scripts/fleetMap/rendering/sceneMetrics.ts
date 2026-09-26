@@ -60,11 +60,12 @@ export const sceneMetrics = Object.freeze({
   routeCurrentMinWidth: 5,
   routeCurrentWidthScale: 1.25,
   routeMutedOpacity: 0.4,
-  // Upcoming roads step back from the road being driven: at full
-  // strength the owner found them too loud beside it. deck.gl raises a
-  // layer's opacity to 1/2.2 before blending, so 0.75 here was drawn at
-  // 0.88 and read as no step at all; 0.45 is drawn at about 0.7.
-  routeFutureOpacity: 0.45,
+  // Upcoming roads step back from the road being driven until one is
+  // pointed at or picked: at full strength the owner found them too loud
+  // beside it. deck.gl raises a layer's opacity to 1/2.2 before blending,
+  // so 0.75 here was drawn at 0.88 and read as no step at all, and 0.45
+  // (drawn at 0.7) still as none; 0.3 is drawn at about 0.58.
+  routeFutureOpacity: 0.3,
   routeTraveledOpacity: 0.22,
   routeOutlineWidth: 2,
   // Empty miles are dashed: nothing is on board. Dash units are half

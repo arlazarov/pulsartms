@@ -51,11 +51,17 @@
     gap: ui.pg(xs) ui.pg(sm);
     min-width: 0;
   }
+  // The toggle and the close, with a hairline between them so the one
+  // that opens the card is never taken for the one that shuts it.
   .fleet-map-inspector__controls {
     grid-area: controls;
     display: flex;
     align-items: center;
     gap: ui.pg(sm);
+    > .fleet-map-mobile-summary__toggle {
+      padding-inline-end: ui.pg(sm);
+      box-shadow: 1px 0 0 0 ui.theme(border-subtle);
+    }
   }
   .fleet-map-inspector__title {
     @include ui.overlay-title;

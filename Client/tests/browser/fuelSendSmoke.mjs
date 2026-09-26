@@ -515,9 +515,13 @@ try {
       const panel = page.getByRole('region', { name: 'Send fuel plan' });
       // Sending lives in the Fuel panel under the card's actions.
       const sendButton = page.locator('.fleet-map-fuel-panel__send');
-      // The truck card opens whole (September 26); its actions show at
-      // once.
+      // The truck card opens closed; its actions show once a dispatcher
+      // opens it, with the same click.
       const openCard = async () => {
+        const toggle = page.locator('.fleet-map-mobile-summary__toggle');
+        await toggle.waitFor();
+        if ((await toggle.getAttribute('aria-expanded')) === 'false')
+          await toggle.click();
         const fuel = page.locator(
           'button[aria-controls="fleet-map-fuel-panel"]',
         );

@@ -1307,11 +1307,17 @@ async function measureTruckControls(page, name) {
   const inspector = page.locator(
     '.fleet-map-inspector[data-inspector-mode="truck"]',
   );
+  const toggle = inspector.locator('.fleet-map-mobile-summary__toggle');
   check(
-    (await inspector.locator('.fleet-map-mobile-summary__toggle').count()) ===
-      0,
-    `${name}: the card opens whole, with no disclosure`,
+    (await toggle.count()) === 1 &&
+      (await inspector
+        .getByRole('button', { name: /^Details$|^Hide$/ })
+        .count()) === 0,
+    `${name}: the card has one disclosure and it is a chevron, not a word ` +
+      'whose width changes as the card opens',
   );
+  if ((await toggle.getAttribute('aria-expanded')) === 'true')
+    await toggle.click();
   const closedToggle = await toggle.boundingBox();
   check(
     !(await inspector.locator('#fleet-map-details').isVisible()),
@@ -1731,11 +1737,19 @@ async function checkRouteFactRows(page, name, distanceUnit) {
   (report.routeFactRows ??= []).push({ name, ...result });
 }
 
-// The selected-truck card opens whole at every width (September 26).
+// The selected-truck card opens collapsed at every width: the top line
+// carries the load, the miles left to the next stop and the clocks, and
+// everything else waits behind the chevron. Every new selection closes it
+// again, so anything that reads the lower section opens it first, by the
+// same click a dispatcher would use.
 async function expandTruckCard(page, name) {
+  const toggle = page.locator('.fleet-map-mobile-summary__toggle');
+  if ((await toggle.getAttribute('aria-expanded')) === 'false')
+    await toggle.click();
   check(
-    await page.locator('#fleet-map-details').isVisible(),
-    `${name}: the truck card is open`,
+    (await toggle.getAttribute('aria-expanded')) === 'true' &&
+      (await page.locator('#fleet-map-details').isVisible()),
+    `${name}: the chevron opens the truck card`,
   );
 }
 

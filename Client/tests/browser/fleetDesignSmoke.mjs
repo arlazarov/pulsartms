@@ -866,8 +866,13 @@ try {
       );
       await page.waitForTimeout(600);
     };
-    // The card opens whole since September 26; nothing to press.
-    const toggleDetails = async () => {};
+    // A phone's card is open whole and hides the toggle (September 26).
+    const toggleDetails = async open => {
+      const toggle = page.locator('.fleet-map-mobile-summary__toggle');
+      if (!(await toggle.isVisible())) return;
+      if (((await toggle.getAttribute('aria-expanded')) === 'true') !== open)
+        await toggle.click();
+    };
 
     await page.goto(`${origin}/fleet/map`);
     await page.waitForFunction(() => window.designFixture, null, {

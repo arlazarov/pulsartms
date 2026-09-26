@@ -85,7 +85,9 @@
         aria-busy="@_initializing">
     </div>
     <section class="fleet-map-info-reserved fleet-map-inspector
-                    @(InspectorVisible ? "has-selection" : "")"
+                    @(InspectorVisible ? "has-selection" : "")
+                    @(_mobileTruckDetailsOpen
+                        ? "is-mobile-expanded" : "is-mobile-collapsed")"
              aria-label="Map information"
              data-inspector-mode="@_inspectorMode.ToString().ToLowerInvariant()"
              @onkeydown="OnInspectorKeyDownAsync"
@@ -155,6 +157,28 @@
            map used to offer only "Back to truck", which is a different
            thing: it goes somewhere, and closing leaves the map clear. *@
         <div class="fleet-map-inspector__controls">
+            @if (_inspectorMode == MapInspectorMode.Truck)
+            {
+                @* Says what it does. A bare chevron was too faint to be found;
+                   both words sit in one cell, so opening does not change the
+                   button's width and move the row beside it. A phone's card
+                   has no room for a closed state: there the card is open
+                   whole and this button is not shown (September 26). *@
+                <button type="button"
+                        class="btn btn--small fleet-map-mobile-summary__toggle"
+                        aria-expanded="@(_mobileTruckDetailsOpen
+                            ? "true" : "false")"
+                        aria-controls="fleet-map-details"
+                        @onclick="ToggleMobileTruckDetails">
+                    <span class="fleet-map-mobile-summary__toggle-words">
+                        <span aria-hidden="@(_mobileTruckDetailsOpen
+                            ? "true" : "false")">Details</span>
+                        <span aria-hidden="@(_mobileTruckDetailsOpen
+                            ? "false" : "true")">Hide details</span>
+                    </span>
+                    <ActionIcon Kind="chevron-down" />
+                </button>
+            }
             @if (_inspectorMode is MapInspectorMode.FuelPlan
                 or MapInspectorMode.FuelStations)
             {
@@ -434,18 +458,6 @@
                         <strong>@Units.DistanceValue(routePlan is null ? null : NextStopMiles) <small>@Units.DistanceUnit</small></strong>
                         @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">· @Units.Kilometers(routePlan is null ? null : NextStopMiles) km</span> }
                     </span>
-                @* Kept in place through loading; a final stop's remainder is
-                   the head's Left, so the card hides it rather than saying
-                   the same number twice. *@
-                    <span class="fleet-map-route-info__metric">
-                        <span aria-hidden="true">·</span>
-                        <span class="fleet-map-route-info__label">Remaining load</span>
-                    <span class="fleet-map-route-info__progress">
-                        <strong>@Units.DistanceValue(routePlan is null ? null : RemainingMiles)</strong>
-                        <span class="fleet-map-route-info__total">@Units.DistanceUnit</span>
-                        @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">· @Units.Kilometers(routePlan is null ? null : RemainingMiles) km</span> }
-                    </span>
-                    </span>
                 </div>
                 @if (nextStop is not null && !string.IsNullOrWhiteSpace(nextStop.Address))
                 {
@@ -477,12 +489,25 @@
                     </span>
                 }
             </div>
-            @* Where the truck is, beside where it is going: only on the
-               open card. The address is one long word to a browser; it
-               folds rather than pushing the card sideways. *@
-            <TruckLocationLine Label="@TruckLocationLabel"
-                Address="@SelectedTruck?.FormattedLocation"
-                OnCopy="CopyTextAsync" />
+            @* Beside where it is going: what is left of the load, then where
+               the truck is. The remainder is kept in place through loading;
+               at a final stop it is the head's Left, so the card hides it
+               rather than saying the same number twice. The address is one
+               long word to a browser; it folds rather than pushing the card
+               sideways. *@
+            <div class="fleet-map-route-info__where">
+                <span class="fleet-map-route-info__metric">
+                    <span class="fleet-map-route-info__label">Remaining load</span>
+                    <span class="fleet-map-route-info__progress">
+                        <strong>@Units.DistanceValue(routePlan is null ? null : RemainingMiles)</strong>
+                        <span class="fleet-map-route-info__total">@Units.DistanceUnit</span>
+                        @if (Units.BothDistances) { <span class="fleet-map-route-info__secondary">· @Units.Kilometers(routePlan is null ? null : RemainingMiles) km</span> }
+                    </span>
+                </span>
+                <TruckLocationLine Label="@TruckLocationLabel"
+                    Address="@SelectedTruck?.FormattedLocation"
+                    OnCopy="CopyTextAsync" />
+            </div>
             </div>
             @* Beside them, what the truck will have when it gets there:
                the stop's appointment and ETA are in the head. *@
@@ -518,16 +543,6 @@
                 }
                 @if (VisibleRouteError is { } plannedRouteError)
                 { <span class="fleet-map-route-info__error" role="status">@plannedRouteError</span> }
-                @* A load the plan has a notice about: named, and a way to the
-                   screen that shows and settles it. The prose itself stays
-                   there, not over the map. *@
-                @foreach (var notice in _routeNotices)
-                {
-                    if (notice.DispatchId is { } noticeDispatch)
-                    { <a class="fleet-map-route-info__notice" role="status" href="@($"/dispatch/{noticeDispatch}")">Load @notice.LoadNumber · review in Dispatch</a> }
-                    else
-                    { <span class="fleet-map-route-info__notice" role="status">Load @notice.LoadNumber · needs review</span> }
-                }
             </div>
 
         </div>

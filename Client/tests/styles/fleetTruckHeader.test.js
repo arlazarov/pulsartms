@@ -69,18 +69,33 @@ test('compact truck inspection retains content-sized telemetry and HOS', () => {
   );
 });
 
-test('truck inspector opens whole with no disclosure control at any width', () => {
+test('truck inspector keeps one disclosure on wide cards and none on a phone', () => {
   const markup = readFileSync(
     new URL('../../Pages/FleetMap/FleetMap.razor', import.meta.url),
     'utf8',
   );
-  assert.doesNotMatch(markup, /fleet-map-mobile-summary__toggle/);
-  assert.doesNotMatch(markup, /aria-controls="fleet-map-details"/);
+  assert.match(markup, /fleet-map-mobile-summary__toggle/);
+  assert.match(markup, /aria-controls="fleet-map-details"/);
   assert.doesNotMatch(markup, /fleet-map-truck-info__more/);
-  assert.doesNotMatch(compact, /fleet-map-mobile-summary__toggle/);
-  // Narrow is narrow wherever the card stands: it reads its own width,
-  // not the window's.
-  assert.match(compact, /@container map-truck-card \(width < 40rem\)/);
+  assert.match(
+    compact,
+    /\.fleet-map-mobile-summary__toggle\s*\{\s*display: inline-flex;/,
+  );
+  // The closed state belongs to a card wide enough for two columns; a
+  // phone's card is open whole and hides the toggle. Narrow is narrow
+  // wherever the card stands: it reads its own width, not the window's.
+  assert.match(
+    compact,
+    /@container map-truck-card \(width >= 40rem\)[\s\S]*\.is-mobile-collapsed \.fleet-map-info-content\s*\{\s*display: none;/,
+  );
+  const phone = compact.slice(
+    compact.indexOf('@container map-truck-card (width < 40rem)'),
+  );
+  assert.match(
+    phone,
+    /\.fleet-map-mobile-summary__toggle\s*\{\s*display: none;/,
+  );
+  assert.doesNotMatch(phone, /is-mobile-collapsed/);
   assert.doesNotMatch(compact, /@media \(width < 768px\)/);
   assert.doesNotMatch(css, /fleet-map-reveal/);
 });
@@ -155,11 +170,11 @@ test('selected truck and route panels overlay one stable map with bounded scroll
     assert.doesNotMatch(
       css,
       new RegExp(
-        // Nothing in a panel is clipped, except the street, which shortens
-        // by ellipsis, and a word kept only for a screen reader, which is
-        // hidden by being clipped to nothing.
+        // Nothing in a panel is clipped, except the street and the
+        // facility name, which shorten by ellipsis, and a word kept only
+        // for a screen reader, which is hidden by being clipped to nothing.
         `\\.${selector}\\s*\\{[^}]*[;{]\\s*height:|` +
-          `\\.${selector}(?!__street\\b)[^{}]*\\{` +
+          `\\.${selector}(?!__street\\b)(?![^{}]*__facility\\b)[^{}]*\\{` +
           `(?![^}]*clip-path: inset)[^}]*overflow(?:-y)?: (?:hidden|clip);`,
       ),
     );

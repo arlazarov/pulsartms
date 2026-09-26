@@ -23,6 +23,7 @@ public partial class FleetMap
   // rather than to the truck. Null when the card was picked on the map.
   private MapInspectorMode? _fuelReturn;
 
+  private bool _mobileTruckDetailsOpen;
   private MapInspectorMode _inspectorMode;
   private long _inspectorVersion;
   private bool _cameraOpen;
@@ -229,6 +230,7 @@ public partial class FleetMap
     }
     _fuelReturn = null;
     ResetInspectedLoad();
+    _mobileTruckDetailsOpen = false;
     _inspectorMode = MapInspectorMode.Truck;
     _showTruckInfo = true;
     if (_map is not null && !_disposed)
@@ -290,6 +292,9 @@ public partial class FleetMap
     if (opened && _inspectorMode == MapInspectorMode.Fuel)
       _fuelReturn = from;
   }
+
+  private void ToggleMobileTruckDetails() =>
+    _mobileTruckDetailsOpen = !_mobileTruckDetailsOpen;
 
   // Closing puts the map back the way it was before anything was picked.
   // From a stop it used to leave the truck selected behind the card it had

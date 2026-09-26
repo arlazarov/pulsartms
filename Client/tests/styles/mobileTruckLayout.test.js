@@ -15,9 +15,12 @@ test('mobile card expands both panels inside the bounded inspector', () => {
   // Half of a stage that keeps half the screen: the map is what the page
   // is for, and the card scrolls for the rest.
   assert.match(details, /\.fleet-map-info-reserved\s*\{[^}]*max-height: 50%;/);
-  // The card opens whole: no Details toggle and no collapsed state.
-  assert.doesNotMatch(header, /is-mobile-collapsed|is-mobile-expanded/);
-  assert.doesNotMatch(header, /fleet-map-mobile-summary__toggle/);
+  // A wide card opens closed behind Details; a phone's opens whole.
+  assert.match(header, /is-mobile-collapsed/);
+  assert.match(
+    header,
+    /fleet-map-mobile-summary__toggle\s*\{\s*display: none;/,
+  );
   assert.doesNotMatch(header, /fleet-map-reveal/);
   assert.doesNotMatch(header, /inset: 100% 0 auto;/);
   assert.match(header, /__header\s*\{\s*position: static;/);

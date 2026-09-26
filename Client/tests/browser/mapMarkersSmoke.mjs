@@ -527,12 +527,12 @@ try {
       );
       assert.equal(route.width, role.startsWith('current') ? 5 : 4);
       // The road being driven is drawn in full. A load that is not today's
-      // steps back to 0.45 (0.7 once deck has raised it to 1/2.2), and
+      // steps back to 0.3 (0.58 once deck has raised it to 1/2.2), and
       // anything muted by a selection elsewhere - whichever road it is -
       // to 0.4.
       assert.equal(
         route.opacity,
-        role.endsWith('-muted') ? 0.4 : role === 'current' ? 1 : 0.45,
+        role.endsWith('-muted') ? 0.4 : role === 'current' ? 1 : 0.3,
         `${role} must keep the strength its kind of road is drawn at`,
       );
       // Empty miles are dashed; a load's road, today's or not, is solid.

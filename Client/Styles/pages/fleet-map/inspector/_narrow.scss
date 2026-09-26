@@ -36,6 +36,10 @@
     .fleet-map-inspector__desktop-title {
       display: block;
     }
+    // Open whole on a phone: it takes half the stage at most and scrolls.
+    .fleet-map-mobile-summary__toggle {
+      display: none;
+    }
     // A phone keeps the head in the same order: the unit and the controls,
     // then the crew and what is left, then the rows, each of which stacks
     // its answer under its fact instead of squeezing the two abreast.

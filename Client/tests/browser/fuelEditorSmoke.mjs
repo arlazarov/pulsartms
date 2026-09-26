@@ -251,13 +251,17 @@ const report = {
   errors: [],
   unexpectedRequests: [],
 };
-// The truck card opens whole at every width (September 26).
+// The truck card opens closed at every width, so its readings and route are
+// read after the chevron opens them, by the same click a dispatcher uses.
 async function assertTruckInformation(page, name) {
+  const toggle = page.locator('.fleet-map-mobile-summary__toggle');
   assert.equal(
-    await page.locator('.fleet-map-mobile-summary__toggle').count(),
-    0,
-    `${name}: truck information has no disclosure`,
+    await toggle.count(),
+    1,
+    `${name}: truck information keeps its one disclosure`,
   );
+  if ((await toggle.getAttribute('aria-expanded')) === 'false')
+    await toggle.click();
   assert.equal(
     await page.locator('#fleet-map-telemetry-details').isVisible(),
     true,

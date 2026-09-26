@@ -591,9 +591,15 @@ try {
     await here(),
   );
 
-  // Back to the truck: its own card, and Open load on it, visible. The
-  // card opens whole (September 26).
-  const expand = async () => {};
+  // Back to the truck: its own card, and Open load on it, visible.
+  // The truck card opens collapsed; its actions are behind its own
+  // chevron, which a reader presses first.
+  const expand = async () => {
+    const toggle = tab.locator('.fleet-map-mobile-summary__toggle');
+    await toggle.waitFor({ state: 'visible' });
+    if ((await toggle.getAttribute('aria-expanded')) !== 'true')
+      await toggle.click();
+  };
   await tab.locator('.fleet-map-inspector__back').click();
   await expand();
   const open = tab.locator("a[aria-label='Route & load details']");

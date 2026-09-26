@@ -224,9 +224,11 @@ older sentences below differ, this paragraph wins. The head reads in rows,
 each a fact at the left and its answer past a hairline at the right, under
 a rule that runs the width of the card:
 - the unit, trailer and driver, then Left to the next stop (with its bar),
-  then Close. The card opens whole at every width: the Details / Hide
-  details button of the earlier design is gone (September 26), and on a
-  phone the card scrolls inside its half of the stage instead;
+  then a labelled Details / Hide details button and Close, separated by a
+  hairline. Both toggle words share one cell, so the button keeps its
+  width. On a card narrower than `map-compact-columns` (a phone) the
+  button is hidden and the card is open whole, taking at most half the
+  stage and scrolling (September 26);
 - the load number as a link to its page, the order to copy, and the
   tracked stop's visit and name; at the right, ETA, and under it the
   Appointment for the same stop in that stop's zone (the forecast's zone
@@ -363,12 +365,12 @@ route keeps its own arrival in the retained details, so coming back to
 the truck shows the same forecast.
 
 A plan's notice about a load - its source changed or is ambiguous and
-the assignment needs a dispatcher's review - reaches the map as a
-`PlanningNotice` by kind, never as its sentence: the map shows
-"Load N · review in Dispatch" linking to the load's Dispatch page, and
-Dispatch shows the whole text against the load. Detection, review state
-and the calculation's safeguards are unchanged; only where the prose is
-said moved.
+the assignment needs a dispatcher's review - reaches the client as a
+`PlanningNotice` by kind, never as its sentence. Dispatch shows the whole
+text against the load; the map says nothing of it (the owner crossed
+out the "Load N · review in Dispatch" chip on September 26). Detection,
+review state and the calculation's safeguards are unchanged; only where
+the prose is said moved.
 
 The Fuel plan lists the load's remaining stops between the fuel stops -
 each fuel stop before the stop it is planned before, pickups and
@@ -1119,9 +1121,10 @@ Upcoming loads keep a colour each (the map-route-option series, in
 chain order) on the road and on the badges: the owner read the chain
 by colour, and one blue for every load (tried on September 26) told
 the loads apart by nothing. Their roads are solid, 4 px with the white
-keyline, at a layer opacity of 0.45 (deck.gl raises it to 1/2.2 before
-blending, so it is drawn at about 0.7: the 0.75 tried first was drawn at
-0.88 and the owner saw no step at all); empty miles are the dashed ones, in the
+keyline, at a layer opacity of 0.3 until one is pointed at or picked
+(deck.gl raises it to 1/2.2 before blending, so it is drawn at about
+0.58: the 0.75 tried first was drawn at 0.88 and 0.45 at 0.7, and the
+owner saw no step from the road being driven at either); empty miles are the dashed ones, in the
 `map-route-empty` orange that Dispatch's stop map uses for empty legs,
 never grey. Where two loads run on one road the earlier load is drawn
 over the later one, and the road being driven over both. Picking a stop
@@ -1137,8 +1140,8 @@ Empty miles as the orange dash.
 
 On phones the map stage keeps at least half the screen (`50dvh`; the page
 scrolls past the toolbar for it) and the floating panel may take half of
-the stage - the map is what the page is for - so the card, open whole,
-scrolls for the rest and the fuel plan's Stations, Edit plan and Send
+the stage - the map is what the page is for - so the card, open whole
+with its Details button hidden, scrolls for the rest and the fuel plan's Stations, Edit plan and Send
 actions stay within reach by scrolling the panel rather than vanishing
 under its own heading.
 

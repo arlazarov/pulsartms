@@ -303,10 +303,15 @@ test('the open card is two columns: the stop, then facts on one label column', (
     /__visit\s*\{[^}]*grid-column: 1;[^}]*grid-row: 1;[^}]*border-inline-end: 1px solid/,
   );
   assert.match(card, /__facts\s*\{[^}]*grid-column: 2;[^}]*grid-row: 1;/);
-  // Every fact is the same two cells, sharing one label width - the
-  // forecast's cycle row included, which reads that width from the card
-  // through its compact reading rather than being restyled from here.
-  assert.match(card, /__metric\s*\{[^}]*display: inline-flex;/);
+  // What is left of the load stands over where the truck is, in the
+  // stop's second column: a label with its value under it (the owner,
+  // September 26). The forecast's cycle row reads its label width from
+  // the card through its compact reading rather than being restyled here.
+  assert.match(
+    card,
+    /__where\s*\{[^}]*display: grid;[^}]*align-content: start;/,
+  );
+  assert.match(card, /__metric\s*\{[^}]*display: grid;/);
   assert.doesNotMatch(card, /\.stop-hours__/);
   const hours = compile('shared/driver-status/stop-hours');
   // The same label width as every other fact, and a reading that keeps

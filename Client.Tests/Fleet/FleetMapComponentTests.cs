@@ -97,12 +97,14 @@ public sealed class FleetMapComponentTests
       )
     );
     Assert.Equal("fleet-map-telemetry-details", telemetry.Id);
-    Assert.Empty(component.FindAll(".fleet-map-mobile-summary__toggle"));
+    Assert.Single(component.FindAll(".fleet-map-mobile-summary__toggle"));
     Assert.Empty(component.FindAll(".fleet-map-truck-info__more"));
   }
 
   [Fact]
-  public async Task TruckCardOpensWholeWithNoDisclosureAtAnyWidth()
+  // The closed state is the wide card's: a phone's styles keep the card
+  // open whole and hide the toggle (September 26).
+  public async Task TruckDetailsStartCollapsedAndToggleWithoutReloading()
   {
     using var fixture = new SelectionFixture();
     var component = fixture.Render();
@@ -114,15 +116,48 @@ public sealed class FleetMapComponentTests
       () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
     );
 
-    // The phone card used to open closed behind a Details button; the
-    // owner wants it open at once and scrolling, the map keeping half
-    // the stage (September 26).
     var inspector = component.Find(".fleet-map-inspector");
-    Assert.DoesNotContain("is-mobile-collapsed", inspector.ClassList);
-    Assert.DoesNotContain("is-mobile-expanded", inspector.ClassList);
-    Assert.Empty(component.FindAll(".fleet-map-mobile-summary__toggle"));
-    Assert.Empty(component.FindAll("[aria-controls='fleet-map-details']"));
-    Assert.False(component.Find("#fleet-map-details").HasAttribute("hidden"));
+    var toggle = component.Find(".fleet-map-mobile-summary__toggle");
+    Assert.Contains("is-mobile-collapsed", inspector.ClassList);
+    Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
+    var closed = component.Find(".fleet-map-inspector__header").InnerHtml;
+
+    await toggle.ClickAsync(new MouseEventArgs());
+
+    Assert.Contains("is-mobile-expanded", inspector.ClassList);
+    Assert.Equal("true", toggle.GetAttribute("aria-expanded"));
+    // The header is what stays on screen either way, so opening the card may
+    // not rewrite a word of it: the toggle holds both "Details" and "Hide
+    // details" in one cell and only swaps which is hidden, so its width,
+    // and the row beside it, stay put.
+    // Blazor renumbers its event handler ids on every render; they are not
+    // on screen, so they are not part of what must stay the same.
+    static string Visible(string html) =>
+      System.Text.RegularExpressions.Regex.Replace(
+        html,
+        "\\sblazor:[a-z]+=\"\\d+\"|\\saria-hidden=\"(?:true|false)\"",
+        ""
+      );
+    Assert.Equal(
+      Visible(
+        closed.Replace("aria-expanded=\"false\"", "aria-expanded=\"true\"")
+      ),
+      Visible(component.Find(".fleet-map-inspector__header").InnerHtml)
+    );
+    Assert.Equal(
+      "Hide details",
+      toggle
+        .QuerySelector(
+          ".fleet-map-mobile-summary__toggle-words > [aria-hidden='false']"
+        )!
+        .TextContent
+    );
+    Assert.Equal(
+      ["Details", "Hide details"],
+      toggle
+        .QuerySelectorAll(".fleet-map-mobile-summary__toggle-words > span")
+        .Select(word => word.TextContent)
+    );
   }
 
   [Theory]
@@ -444,7 +479,7 @@ public sealed class FleetMapComponentTests
     // the same number.
     Assert.Single(
       route.QuerySelectorAll(
-        ".fleet-map-route-info__visit-heading > .fleet-map-route-info__metric"
+        ".fleet-map-route-info__where > .fleet-map-route-info__metric"
       )
     );
     Assert.Empty(
@@ -645,11 +680,12 @@ public sealed class FleetMapComponentTests
     Assert.Equal(0, fixture.FuelWrites);
   }
 
-  // A plan's notice about a load - its source changed and the assignment
-  // needs a dispatcher's review - is a word and a way to Dispatch on the
-  // map, never the sentence itself (the owner, September 26).
+  // A plan's notice about a load - its source changed or is ambiguous and
+  // needs a dispatcher's review - is not said on the map at all (the
+  // owner, September 26, crossing out "Load 1410 · review in Dispatch");
+  // Dispatch shows it against the load.
   [Fact]
-  public async Task APlanningNoticeIsAWordAndALinkOnTheMapNotProse()
+  public async Task APlanningNoticeIsNotSaidOnTheMap()
   {
     using var fixture = new SelectionFixture();
     var result = fixture.Plan(fixture.TruckA);
@@ -676,11 +712,8 @@ public sealed class FleetMapComponentTests
     await component.InvokeAsync(
       () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
     );
-    var notice = component.Find(
-      "[aria-label='Current dispatch route'] .fleet-map-route-info__notice"
-    );
-    Assert.Equal("Load 1410 · review in Dispatch", notice.TextContent.Trim());
-    Assert.Equal($"/dispatch/{dispatch}", notice.GetAttribute("href"));
+    Assert.Empty(component.FindAll(".fleet-map-route-info__notice"));
+    Assert.DoesNotContain("review in Dispatch", component.Markup);
     Assert.DoesNotContain("ambiguous execution boundaries", component.Markup);
     Assert.DoesNotContain("accepted assignment", component.Markup);
   }
@@ -1770,7 +1803,7 @@ public sealed class FleetMapComponentTests
       );
       Assert.Single(
         panel.QuerySelectorAll(
-          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__next > .fleet-map-route-info__visit-heading > .fleet-map-route-info__metric"
+          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__where > .fleet-map-route-info__metric"
         )
       );
       Assert.NotNull(
@@ -1796,7 +1829,7 @@ public sealed class FleetMapComponentTests
       );
       Assert.NotNull(
         panel.QuerySelector(
-          ":scope > .fleet-map-route-info__visit > #fleet-map-truck-location"
+          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__where > #fleet-map-truck-location"
         )
       );
       Assert.Single(component.FindAll(".fleet-map-inspector__appointment"));
@@ -1848,7 +1881,7 @@ public sealed class FleetMapComponentTests
       );
       Assert.Single(
         panel.QuerySelectorAll(
-          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__next > .fleet-map-route-info__visit-heading > .fleet-map-route-info__metric"
+          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__where > .fleet-map-route-info__metric"
         )
       );
       Assert.NotNull(
