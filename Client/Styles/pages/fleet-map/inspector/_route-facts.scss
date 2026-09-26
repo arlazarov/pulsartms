@@ -107,9 +107,11 @@
       align-items: baseline;
       gap: 0 ui.pg(xs);
       min-width: 0;
+      // The same size as every other fact on the card: at lead it stood
+      // out from the cycle line above it for no reason.
       > strong {
         color: ui.theme(text);
-        font-size: ui.fs(lead);
+        font-size: ui.fs(body);
         font-weight: 600;
         white-space: nowrap;
       }
