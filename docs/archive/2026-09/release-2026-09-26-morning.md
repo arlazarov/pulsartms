@@ -4,10 +4,10 @@ The owner authorized it ("work and publish") and Root cleared candidate
 `3630bbdb` (see [the candidate record](candidate-2026-09-26.md)). The
 undecided fuel reserve policy and Driver Pay are not in it.
 
-**Status: partial.** The API is released and verified. The frontend is
-not: its gate passed, but the upload stopped because the Firebase CLI's
-credentials had expired. It waits for the owner to sign in again
-(`firebase login --reauth`).
+**Status: complete.** API released and verified at 09:22 UTC. The
+frontend's upload first stopped on expired Firebase CLI credentials; after
+the owner signed in again, the verified artifact was published at
+10:47 UTC.
 
 Not done: no message sent, no replan, no reset, no configuration or
 credential change.
@@ -50,9 +50,25 @@ restore rehearsed. No migration in this release (still 73).
   3,743, UI smoke); artifact kept as
   `artifacts/managed/deploy-3630bbdb-release-hZVJT4` (manifest SHA-256
   `ce8fd7505ad421202fd809152d005611fdcf81a9bfeab0ed2e75d528d508cb42`).
-- Firebase refused the upload ("credentials are no longer valid").
-  Nothing was published; Hosting still serves version
-  `77a0ab003a21c5d9` (`eeab5a34`).
+- Firebase first refused the upload ("credentials are no longer valid");
+  nothing was published then.
+- **Published (10:47 UTC):** after the owner's sign-in, the artifact was
+  checked again against its manifest (all files match, manifest SHA-256
+  unchanged) and published with the script's own post-gate steps from the
+  `3630bbdb` worktree, without repeating the unchanged gate:
+  `node Client/build/verifyHostedConfig.mjs` and `firebase deploy --only
+  hosting --public`. Hosting version `sites/amftms/versions/aef44d6ce29bbfa8`,
+  released 2026-09-26T10:47:24Z. Log: `hosting.log` beside the artifact.
+- **Served:** all 95 uncompressed files fetched from
+  `tms.amfcarrier.com` match the manifest's SHA-256 (0 mismatches; the
+  `.br`/`.gz` variants are served by encoding and were not compared).
+  `index.html`, `css/main.css` and `appsettings.json` are `no-cache`;
+  fingerprinted framework files are `public, max-age=31536000,
+  immutable`. `appsettings.json` is valid JSON with the Maps key.
+- **After:** the API is still 100% on `amftms-api-b-f169545d-…`, health
+  200 through Hosting and directly, no error or 5xx since. The new client
+  reads `/api/messaging/changes` (200); tabs still on the old client hit
+  `/api/messaging/events` (401/404) until reloaded.
 - The build is not byte-reproducible: this artifact and the candidate's
   (`candidate-3630bbdb-release-h5qEVM`) differ in 18 manifest lines (the
   Client assembly's fingerprinted name). The one to publish is this
@@ -62,8 +78,8 @@ restore rehearsed. No migration in this release (still 73).
 
 ## Still to do
 
-- Publish the frontend after the owner signs in to Firebase, then check
-  the served files against the manifest, the cache headers, the settings
-  and health.
 - Measure WhatsApp latency with one owner-sent test after the frontend.
 - Read the ETA "not saved" reasons for 11006 on the new revision.
+- 11007's Erie detour stays unresolved; see
+  [its record](route-11007-erie-detour-2026-09-26.md). No replan was
+  forced.
