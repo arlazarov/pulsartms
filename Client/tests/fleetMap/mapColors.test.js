@@ -4,7 +4,6 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { compileString } from 'sass';
 import {
-  chainRouteColor,
   currentRouteColor,
   currentRouteLineColor,
   futureRouteColor,
@@ -75,11 +74,6 @@ test('the roads a truck is given are the map route roles, in order', () => {
   assert.equal(hex(futureRouteColor(3)), primitive('color'));
   assert.equal(hex(futureRouteColor(4)), primitive('border-color'));
   assert.deepEqual(futureRouteColor(5), futureRouteColor(0));
-  // The next load's road is the role the map key shows for it; the loads
-  // after it step lighter from there.
-  assert.equal(hex(chainRouteColor(0)), role('map-route-next'));
-  assert.notEqual(hex(chainRouteColor(1)), hex(chainRouteColor(0)));
-  assert.deepEqual(chainRouteColor(9), chainRouteColor(2));
 });
 
 // A colour that is neither a role nor a palette entry is the map's own, and

@@ -99,7 +99,7 @@ try {
       markers.stops.map(stop => stop.number),
       ['1', '2', '12'],
     );
-    assert.ok(markers.stops.every(stop => stop.size === 20));
+    assert.ok(markers.stops.every(stop => stop.size === 28));
     assert.deepEqual(markers.stops[1].color, [124, 58, 237, 255]);
     assert.equal(
       markers.stations.length,
@@ -293,7 +293,7 @@ try {
             Math.hypot(
               cluster[i].x - cluster[j].x,
               cluster[i].y - cluster[j].y,
-            ) - 22,
+            ) - 30,
           ) < 0.01,
         );
       if (density === 2) await page.touchscreen.tap(cluster[i].x, cluster[i].y);

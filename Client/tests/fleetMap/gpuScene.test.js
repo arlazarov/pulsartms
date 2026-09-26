@@ -189,7 +189,7 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   listeners.get('zoom_changed')();
   flush();
   assert.equal(initial['fuel-points'].props.getRadius, 8);
-  assert.equal(initial['route-stop-1-points'].props.getSize, 20);
+  assert.equal(initial['route-stop-1-points'].props.getSize, 28);
   // Marks in this order: a truck under the badges, its label over them. A
   // badge is never moved to clear a truck - the gap between the two is how
   // far the stop is - so where they overlap the badge must stay readable.
@@ -202,7 +202,7 @@ test('scene reuses static layers across motion, invalidates only changed stops a
       order.indexOf('route-stop-1-points') < order.indexOf('truck-numbers'),
     );
   }
-  assert.equal(initial['route-stop-1-numbers'].props.getSize, 11);
+  assert.equal(initial['route-stop-1-numbers'].props.getSize, 13);
   assert.equal(initial['route-stop-distances'].props.getSize, 14);
   assert.equal(initial['truck-numbers'].props.getSize, 13);
   assert.deepEqual(initial['truck-numbers'].props.backgroundPadding, [9, 4]);
@@ -225,7 +225,7 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   for (const [id, fontSize] of [
     ['route-stop-distances', 14],
     ['route-stop-distances-content', 14],
-    ['route-stop-1-numbers', 11],
+    ['route-stop-1-numbers', 13],
     ['truck-numbers', 13],
   ]) {
     assert.deepEqual(initial[id].props.fontSettings, { sdf: false, fontSize });
@@ -425,7 +425,7 @@ test('scene reuses static layers across motion, invalidates only changed stops a
     layers()['route-stop-1-points'],
     initial['route-stop-1-points'],
   );
-  assert.equal(layers()['route-stop-1-points'].props.getSize, 20);
+  assert.equal(layers()['route-stop-1-points'].props.getSize, 28);
   assert.deepEqual(
     layers()['route-stop-1-points'].props.getPixelOffset(
       layers()['route-stop-1-points'].props.data[0],

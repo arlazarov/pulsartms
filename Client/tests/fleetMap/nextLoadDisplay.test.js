@@ -1,10 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { nextLoadDisplay } from '../../Scripts/fleetMap/routes/nextLoadDisplay.ts';
-import {
-  chainRouteColor,
-  currentRouteColor,
-} from '../../Scripts/fleetMap/rendering/routePalette.ts';
+import { futureRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.ts';
 
 test('pending loads reserve numbers without changing inputs or calculating popup display values', () => {
   const loads = [
@@ -28,8 +25,8 @@ test('pending loads reserve numbers without changing inputs or calculating popup
   ]);
   assert.equal(
     display.groups[0].color,
-    currentRouteColor,
-    'the badges of the chain are one colour',
+    futureRouteColor(1),
+    'pending loads reserve their palette position',
   );
 });
 
@@ -78,7 +75,7 @@ test('every co-located visit keeps its own number and exact stop while load owne
       ['load', 'future'],
     ],
   );
-  assert.ok(display.groups.every(group => group.color === currentRouteColor));
+  assert.ok(display.groups.every(group => group.color === futureRouteColor(0)));
   assert.equal(
     display.lines[0].routeColor,
     undefined,
@@ -87,7 +84,7 @@ test('every co-located visit keeps its own number and exact stop while load owne
   assert.ok(
     display.lines
       .slice(1)
-      .every(line => line.routeColor === chainRouteColor(0)),
+      .every(line => line.routeColor === futureRouteColor(0)),
   );
 });
 
@@ -108,7 +105,7 @@ test('repeated same-location visits never produce grouped slash numbers', () => 
     assert.deepEqual(group.members, [
       { loadId: 'repeated', loadNumber: 12, index },
     ]);
-    assert.equal(group.color, currentRouteColor);
+    assert.equal(group.color, futureRouteColor(0));
   });
 });
 
@@ -127,8 +124,7 @@ test('coincident stops from different loads retain separate matching road and ma
     assert.deepEqual(display.groups[index].members, [
       { loadId: loads[index].id, loadNumber: 12, index: 0 },
     ]);
-    assert.equal(display.groups[index].color, currentRouteColor);
-    // Each load a step lighter than the one before it.
-    assert.equal(display.lines[index].routeColor, chainRouteColor(index));
+    assert.equal(display.groups[index].color, futureRouteColor(index));
+    assert.equal(display.lines[index].routeColor, display.groups[index].color);
   }
 });

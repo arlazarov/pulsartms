@@ -61,7 +61,7 @@ test('one stop update preserves other GPU data; hover only reorders opaque pairs
     decodeURIComponent(picked.props.iconAtlas).match(/stroke="([^"]+)"/)[1],
     'rgb(30,41,59)',
   );
-  assert.equal(picked.props.getSize, 20, 'and it is not a size larger');
+  assert.equal(picked.props.getSize, 28, 'and it is not a size larger');
   assert.deepEqual(
     hovered.slice(-2).map(layer => layer.props.id),
     ['route-stop-1-points', 'route-stop-1-numbers'],
@@ -77,12 +77,12 @@ test('one stop update preserves other GPU data; hover only reorders opaque pairs
     stopMarkerIcon(currentRouteColor, [30, 41, 59, 255]).url,
   );
   assert.equal(delivery.props.getIcon(delivery.props.data[0]), 'circle');
-  assert.equal(delivery.props.getSize, 20);
+  assert.equal(delivery.props.getSize, 28);
   assert.equal(delivery.props.sizeUnits, 'pixels');
   assert.equal(delivery.props.billboard, true);
   assert.equal(
     hovered.at(-1).props.getSize,
-    11,
+    13,
     'compact numbers remain readable',
   );
   assert.equal(hovered.at(-1).props.pickable, true);
@@ -161,7 +161,7 @@ test('one- and two-digit stop circles share fixed geometry and preserve individu
     const anchor = layers.find(
       layer => layer.props.id === `${prefix}-anchor`,
     ).props;
-    assert.equal(circle.getSize, 20);
+    assert.equal(circle.getSize, 28);
     assert.equal(
       typeof circle.getIcon,
       'function',

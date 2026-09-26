@@ -1,9 +1,6 @@
 import type { NextLoad, NextLoadStop, RoutePoint } from '../contracts.d.ts';
 import type { RouteColor } from '../rendering/routePalette.ts';
-import {
-  chainRouteColor,
-  currentRouteColor,
-} from '../rendering/routePalette.ts';
+import { futureRouteColor } from '../rendering/routePalette.ts';
 
 // Which load a badge stands for, and which of its stops the card opens on.
 // A stop on a leg already being driven names that leg as well.
@@ -42,7 +39,7 @@ export function nextLoadDisplay(loads: NextLoad[]) {
   for (const [loadIndex, load] of loads.entries()) {
     const points = load.deadhead?.points || [];
     const loadId = nextLoadKey(load.id ?? load.loadNumber, load.executionLegId);
-    const color = chainRouteColor(loadIndex);
+    const color = futureRouteColor(loadIndex);
     if (points.length > 1)
       lines.push({ points, role: 'deadhead', loadId, chain: loadIndex });
     for (const leg of load.legs || []) {
@@ -76,9 +73,7 @@ export function nextLoadDisplay(loads: NextLoad[]) {
             index,
           },
         ],
-        // The badges of the whole chain are one colour: the numbers say
-        // which load a stop belongs to, and the road under it says the rest.
-        color: currentRouteColor,
+        color,
       });
     }
     stopNumber += Math.max(

@@ -31,8 +31,8 @@ test('number badges use opaque route colors with a white border and readable dig
 
 test('stop backgrounds are high-density circles with centered square bounds, not rounded text boxes', () => {
   const icon = stopMarkerIcon([32, 122, 99, 255]);
-  assert.equal(icon.width, 80);
-  assert.equal(icon.height, 80);
+  assert.equal(icon.width, 112);
+  assert.equal(icon.height, 112);
   assert.equal(icon.anchorX, icon.width / 2);
   assert.equal(icon.anchorY, icon.height / 2);
   assert.equal(
@@ -41,8 +41,8 @@ test('stop backgrounds are high-density circles with centered square bounds, not
     'the white border and route fill remain distinct',
   );
   const svg = decodeURIComponent(icon.url.split(',').slice(1).join(','));
-  assert.match(svg, /width="80" height="80" viewBox="0 0 20 20"/);
-  assert.match(svg, /<circle cx="10" cy="10" r="8.5"/);
+  assert.match(svg, /width="112" height="112" viewBox="0 0 28 28"/);
+  assert.match(svg, /<circle cx="14" cy="14" r="12.5"/);
   assert.match(
     svg,
     /fill="rgb\(32,122,99\)" stroke="rgb\(255,255,255\)" stroke-width="2.5"/,
@@ -70,7 +70,7 @@ test('a stop already visited is drawn outlined, like its badge in the card', () 
   // the truck.
   assert.match(
     decodeURIComponent(stopMarkerIcon(pending.fill, pending.border).url),
-    /r="8.5"/,
+    /r="12.5"/,
   );
 });
 
@@ -84,19 +84,19 @@ test('a truck at a stop is its ring, and a truck near it stands behind', () => {
   const at = decodeURIComponent(
     stopMarkerIcon(fill, border, undefined, '#16a34a').url,
   );
-  assert.match(at, /viewBox="0 0 26 26"/);
-  assert.match(at, /r="11.75" fill="#16a34a"/, 'the ring is the truck');
+  assert.match(at, /viewBox="0 0 40 40"/);
+  assert.match(at, /r="18.75" fill="#16a34a"/, 'the ring is the truck');
   // Inside a ring the badge keeps a thinner white edge: at full width the
   // ring was too narrow to see, and dropped altogether a stop on a teal
   // route inside a green ring was one blot.
-  assert.match(at, /r="8.5"[^/]*stroke-width="1.5"/);
+  assert.match(at, /r="12.5"[^/]*stroke-width="1.5"/);
   const near = decodeURIComponent(
     stopMarkerIcon(fill, border, undefined, null, true).url,
   );
-  assert.match(near, /viewBox="0 0 24 24"/);
-  assert.match(near, /r="11" fill="rgb\(255,255,255\)"/, 'the wider rim');
-  assert.match(near, /r="8.5"[^/]*stroke-width="2.5"/);
+  assert.match(near, /viewBox="0 0 32 32"/);
+  assert.match(near, /r="15" fill="rgb\(255,255,255\)"/, 'the wider rim');
+  assert.match(near, /r="12.5"[^/]*stroke-width="2.5"/);
   const plain = decodeURIComponent(stopMarkerIcon(fill, border).url);
-  assert.match(plain, /viewBox="0 0 20 20"/);
+  assert.match(plain, /viewBox="0 0 28 28"/);
   assert.doesNotMatch(plain, /fill="rgb\(255,255,255\)"/);
 });

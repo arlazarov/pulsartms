@@ -613,7 +613,7 @@
                 <div class="fleet-map-key__routes">
                     <span><i class="fleet-map-key__line" aria-hidden="true"></i>Current route</span>
                     @if (ShowNextLoads)
-                    { <span><i class="fleet-map-key__line fleet-map-key__line--next" aria-hidden="true"></i>Next loads</span> }
+                    { <span><i class="fleet-map-key__line fleet-map-key__line--next" aria-hidden="true"></i>Next loads · color by load</span> }
                     <span><i class="fleet-map-key__line fleet-map-key__line--empty" aria-hidden="true"></i>Empty miles</span>
                     <span><i class="fleet-map-key__stop" aria-hidden="true">1</i>Pickup / delivery</span>
                     @if (ShowFuelStations || Usable(_routeState?.Plan?.FuelPlan))

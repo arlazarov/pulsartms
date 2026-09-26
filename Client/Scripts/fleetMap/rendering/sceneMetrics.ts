@@ -2,7 +2,7 @@
 export const sceneMetrics = Object.freeze({
   labelSize: 16,
   stopLabelSize: 14,
-  numberSize: 11,
+  numberSize: 13,
   truckLabelSize: 13,
   truckLabelPadding: [9, 4],
   truckClusterPadding: [12, 10],
@@ -10,13 +10,14 @@ export const sceneMetrics = Object.freeze({
   stopRadius: 3,
   stopBadgeOffset: 0,
   // A stop's badge is a numbered dot, not a pin: at 34 px six of them
-  // covered New York State at an overview and the trucks' labels with it.
-  stopBadgeDiameter: 20,
+  // covered New York State at an overview; at 20 px the owner could not
+  // read them. A step smaller than the original.
+  stopBadgeDiameter: 28,
   // The same badge with the truck's ring around it.
-  stopBadgeStandingDiameter: 26,
+  stopBadgeStandingDiameter: 40,
   // And with a wider white rim, for a badge drawn over a truck it is near
   // but not at.
-  stopBadgeStackedDiameter: 24,
+  stopBadgeStackedDiameter: 32,
   // The edge a badge wears while its load is the one being looked at: the
   // dark of the map's labels, which reads against every route colour.
   stopBadgePickedEdge: [30, 41, 59, 255],
@@ -26,7 +27,7 @@ export const sceneMetrics = Object.freeze({
   truckCrescent: 6,
   // Where the filled badge's edge falls, so an outlined one does not read as
   // the larger of the two.
-  stopBadgeDoneRadius: 7.5,
+  stopBadgeDoneRadius: 11,
   stopBadgeGap: 2,
   stationRadius: 8,
   // A station the plan passes nowhere near: a smaller dot with a thinner

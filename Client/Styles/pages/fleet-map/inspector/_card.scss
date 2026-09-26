@@ -31,6 +31,9 @@
   // The head: the truck and what is left of its way beside it, then its
   // rows - the load and its arrival, the vehicle and its clocks, where the
   // truck is - each under a rule of its own.
+  // The split every row of the card shares: the load, the vehicle and the
+  // stop at the left; the arrival, the clocks and the facts at the right.
+  --truck-card-columns: minmax(0, 11fr) minmax(0, 9fr);
   .fleet-map-inspector__header {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, max-content) max-content;

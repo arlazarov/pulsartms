@@ -257,7 +257,14 @@ test('HOS travels with its clocks, at the far end under the arrival', () => {
   // No visible "HOS" word or clock icon (the owner's September 26 card):
   // the labels say what the numbers are; "HOS" stays the group's name.
   assert.doesNotMatch(markup, /hours-label/);
-  assert.match(card, /__clocks\s*\{[^}]*justify-self: end;/);
+  // The clocks fill the answer column from the shared hairline, spread
+  // between its ends: at the far end alone, the hairline before them
+  // stepped sideways from the row above.
+  assert.match(card, /__clocks\s*\{[^}]*justify-content: space-between;/);
+  assert.match(
+    card,
+    /__row\s*\{[^}]*grid-template-columns: var\(--truck-card-columns\);/,
+  );
   // Said once: a second flex-wrap lower in the same rule used to take back
   // the first.
   assert.equal(
@@ -275,7 +282,7 @@ test('HOS travels with its clocks, at the far end under the arrival', () => {
 test('the open card is two columns: the stop, then facts on one label column', () => {
   assert.match(
     card,
-    /\.fleet-map-route-info\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\);/,
+    /\.fleet-map-route-info\s*\{[^}]*grid-template-columns: var\(--truck-card-columns\);/,
   );
   // The stop at the left; at the right one column of facts - remaining
   // load, cycle, fuel on arrival - then where the truck is.

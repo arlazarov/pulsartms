@@ -7,7 +7,7 @@
   .fleet-map-route-info {
     --route-fact-label: 7rem;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: var(--truck-card-columns);
     align-items: start;
     gap: ui.pg(xs) ui.pg(lg);
     min-height: 0;

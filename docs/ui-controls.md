@@ -349,6 +349,10 @@ supporting facts, `body` with weight 600 for operational values, and `lead` with
 weight 600 for truck identity, load number and headline readings. HOS retains its
 component-owned fitted numbers. Metric fuel follows the same reading hierarchy.
 Truck header actions retain visible keyboard focus and shared compact metrics.
+Every row of the truck card - the load and its arrival, the vehicle and
+its clocks, the next stop and its facts - splits at the same place
+(`--truck-card-columns`, 11:9), so the hairline and the answers stand in
+one column down the card instead of stepping sideways row by row.
 Telemetry, HOS/current duty and GPS location stay together above load/order,
 remaining distance, next location, appointment and ETA. Do not introduce another
 disclosure or widen the inspector when data arrives.
@@ -1086,25 +1090,23 @@ warning. If the priced station cannot be reached, show its server-calculated
 fuel deficit as an access warning. Such a marker has no purchase amount, fuel
 gauges, cost or edit-plan action, and is not a feasible fuel recommendation.
 
-A truck's plan is one road (concept of September 26, pending the owner's
-review of `tests/browser/mapProposalSmoke.mjs` screenshots on the real
-basemap). Upcoming loads are not given a colour each: their roads are the
-blue of the road being driven, solid, 4 px at 0.9 opacity with the white
-keyline, each load a step lighter than the one before (`chainRouteColor`),
-and their badges are the current road's badge blue throughout, so the chain
-is read by its numbers. Empty miles are the dashed ones, in the
+Upcoming loads keep a colour each (the map-route-option series, in
+chain order) on the road and on the badges: the owner read the chain
+by colour, and one blue for every load (tried on September 26) told
+the loads apart by nothing. Their roads are solid, 4 px at 0.9 opacity
+with the white keyline; empty miles are the dashed ones, in the
 `map-route-empty` orange that Dispatch's stop map uses for empty legs,
-never grey. Where two loads run on one road the earlier load is drawn over
-the later one, and the road being driven over both. Picking a stop still
-lifts that load's colour and width and dims the rest. Geometry is never
-moved or simplified for this, and station price colours and planned rings
-are unchanged. Stop badges are 20 px (26 px wearing a truck's ring) with
-11 px numbers, so six stops and a truck cluster no longer cover New York
-State at an overview.
+never grey. Where two loads run on one road the earlier load is drawn
+over the later one, and the road being driven over both. Picking a stop
+still lifts that load's colour and width and dims the rest. Geometry is
+never moved or simplified for this, and station price colours and
+planned rings are unchanged. Stop badges are 28 px (40 px wearing a
+truck's ring) with 13 px numbers: a step smaller than the 34 px that
+covered New York State at an overview, and larger than the 20 px the
+owner could not read.
 
-The map key names the current route, Next loads in the `map-route-next`
-blue the first upcoming load is drawn in, and Empty miles as the orange
-dash; there is no colour per load to explain any more.
+The map key names the current route, Next loads (colour by load) and
+Empty miles as the orange dash.
 
 On phones the map stage keeps at least half the screen (`50dvh`; the page
 scrolls past the toolbar for it) and the floating panel may take 70% of

@@ -5,8 +5,8 @@ import { resolve } from 'node:path';
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
 import {
-  chainRouteColor,
   currentRouteColor,
+  futureRouteColor,
 } from '../../Scripts/fleetMap/rendering/routePalette.ts';
 
 const output = browserOutput('stop-cards', process.env.STOP_CARD_OUTPUT_DIR);
@@ -215,8 +215,10 @@ async function circlePixelBounds(page, screenshot) {
     .flatMap(layer => layer.rows.map(row => ({ ...row, edge: layer.edge })))
     .map(circle => ({
       ...circle,
-      // The badges of the whole chain are the current road's badge blue.
-      fill: currentRouteColor.slice(0, 3),
+      fill: (circle.label === '1'
+        ? currentRouteColor
+        : futureRouteColor(0)
+      ).slice(0, 3),
     }));
   const background = await page.locator('#map').evaluate(element => {
     const previous = {
@@ -468,7 +470,7 @@ try {
         circles.every(
           layer =>
             layer.type === 'icon' &&
-            layer.numberSize === 20 &&
+            layer.numberSize === 28 &&
             layer.sizeUnits === 'pixels' &&
             layer.pickable,
         ),
@@ -478,16 +480,16 @@ try {
         assert.deepEqual(circle.icon, {
           x: 0,
           y: 0,
-          width: 80,
-          height: 80,
-          anchorX: 40,
-          anchorY: 40,
+          width: 112,
+          height: 112,
+          anchorX: 56,
+          anchorY: 56,
           mask: false,
         });
       }
       assert.equal(numbers.length, 3);
       assert.ok(
-        numbers.every(layer => layer.numberSize === 11 && layer.pickable),
+        numbers.every(layer => layer.numberSize === 13 && layer.pickable),
         'the whole number badge is selectable',
       );
       assert.deepEqual(numbers.flatMap(layer => layer.labels).sort(), [
@@ -520,8 +522,8 @@ try {
       assert.deepEqual(
         roads.map(road => road.color),
         // An empty run is the orange every empty road is drawn in; the
-        // loaded one is the first step of the chain's blue.
-        [[234, 88, 12, 255], chainRouteColor(0)],
+        // loaded one keeps its place in the route series.
+        [[234, 88, 12, 255], futureRouteColor(0)],
         'future road and stop colors match while empty-route styling stays unchanged',
       );
       await page.evaluate(() => window.fixtureRefresh());
@@ -672,8 +674,8 @@ try {
           `${circle.job} ${circle.label}: rendered circle width and height agree within one physical pixel`,
         );
         assert.ok(
-          circle.width / density >= 19 && circle.width / density <= 21,
-          `${circle.job} ${circle.label}: rendered circle keeps its 20px diameter: ${JSON.stringify(circle)}`,
+          circle.width / density >= 27 && circle.width / density <= 29,
+          `${circle.job} ${circle.label}: rendered circle keeps its 28px diameter: ${JSON.stringify(circle)}`,
         );
         assert.ok(
           Math.abs(circle.centerOffsetX) <= density &&

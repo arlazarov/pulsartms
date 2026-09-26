@@ -58,7 +58,7 @@
     background: ui.theme(map-route-current);
   }
   &__line--next {
-    background: ui.theme(map-route-next);
+    background: ui.theme(map-route-future);
   }
   &__line--empty {
     background: repeating-linear-gradient(

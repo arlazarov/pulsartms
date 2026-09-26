@@ -79,10 +79,10 @@ test('coincident visits keep individual circles evenly spaced with the final odd
   );
   assert.equal(
     rows[1].markerOffsetX - rows[0].markerOffsetX,
-    22,
+    30,
     'digit count never changes circle spacing',
   );
-  assert.equal(rows[2].markerOffsetY, rows[0].markerOffsetY - 22);
+  assert.equal(rows[2].markerOffsetY, rows[0].markerOffsetY - 30);
   assert.equal(rows[4].markerOffsetX, 0);
 });
 
@@ -101,7 +101,7 @@ test('three shared-site visits form a compact triangle with equal non-overlappin
         rows[i].markerOffsetY - rows[j].markerOffsetY,
       );
       assert.ok(
-        Math.abs(distance - 22) < 0.001,
+        Math.abs(distance - 30) < 0.001,
         '34px circles retain a 2px gap on every side',
       );
     }
@@ -160,7 +160,7 @@ test('two that touch part along the line between them, equally, just far enough'
   const rows = snapshotStops(stops, [], [], zoom).stopData;
   const [a, b] = ['a', 'b'].map(id => rows.find(row => row.id === id));
   const [at, bt] = [drawnAt(a, zoom), drawnAt(b, zoom)];
-  assert.ok(Math.abs(gap(at, bt) - 22) < 0.05, 'a badge and its gap apart');
+  assert.ok(Math.abs(gap(at, bt) - 30) < 0.05, 'a badge and its gap apart');
   assert.ok(bt[0] > at[0] && bt[1] < at[1], 'east and north of stays so');
   assert.ok(
     Math.abs(a.markerOffsetX + b.markerOffsetX) < 0.05 &&
@@ -201,7 +201,7 @@ test('stops along a road stay on the line of it, in order', () => {
 test('the ring opens into two marks when there is room for both', () => {
   const truck = { position: [-78.9, 35.9], speed: 0, engine: 'Off' };
   const stops = [{ id: 's', number: '2', position: [-78.8963, 35.9] }];
-  const ringed = snapshotStops(stops, [], [], 10, [truck]).stopData[0];
+  const ringed = snapshotStops(stops, [], [], 11, [truck]).stopData[0];
   // The ring is the truck, so it is the truck's colour: this one is shut
   // down for the night at the dock.
   assert.equal(ringed.standing, '#64748b');
@@ -257,7 +257,7 @@ test('the badge a truck stands on holds its ground and its neighbour parts', () 
   );
   assert.ok(row('three').markerOffsetX > 0, 'the neighbour gives way east');
   assert.ok(
-    gap(drawnAt(row('two'), zoom), drawnAt(row('three'), zoom)) >= 22 - 0.05,
+    gap(drawnAt(row('two'), zoom), drawnAt(row('three'), zoom)) >= 30 - 0.05,
   );
 });
 
@@ -278,7 +278,7 @@ test('a badge never gives way to a truck, so the gap stays the distance', () => 
   const [tx, ty] = screen(truck.position, zoom);
   const [sx, sy] = screen(stops[0].position, zoom);
   const drawn = drawnAt(row, zoom);
-  assert.ok(Math.hypot(sx - tx, sy - ty) < 30, 'the marks do overlap here');
+  assert.ok(Math.hypot(sx - tx, sy - ty) < 34, 'the marks do overlap here');
   assert.ok(
     Math.hypot(drawn[0] - sx, drawn[1] - sy) < 0.05,
     'and the badge is still drawn on its own point',
@@ -299,7 +299,7 @@ test('a badge that would hide a truck wears it as a ring instead', () => {
   const stops = [
     { id: 'ace', number: '2', position: [-73.7418915, 43.1753532] },
   ];
-  for (const zoom of [6, 7]) {
+  for (const zoom of [7, 8]) {
     const [row] = snapshotStops(stops, [], [], zoom, [truck]).stopData;
     assert.equal(row.standing, '#16a34a', `zoom ${zoom}`);
     assert.deepEqual([row.markerOffsetX, row.markerOffsetY], [0, 0]);
@@ -385,7 +385,7 @@ test('the stops keep their places relative to each other at every zoom', () => {
       [six, seven],
       [two, three],
     ])
-      assert.ok(gap(a, b) >= 22 - 0.5, `zoom ${zoom}: nothing overlaps`);
+      assert.ok(gap(a, b) >= 30 - 0.5, `zoom ${zoom}: nothing overlaps`);
   }
 });
 
@@ -430,7 +430,7 @@ test('no badge is ever thrown far from the place it marks', () => {
     const rows = snapshotStops(stops, [], [], zoom, [truck]).stopData;
     for (const row of rows)
       assert.ok(
-        Math.hypot(row.markerOffsetX, row.markerOffsetY) < 22 * 3,
+        Math.hypot(row.markerOffsetX, row.markerOffsetY) < 30 * 3,
         `zoom ${zoom}, stop ${row.number}`,
       );
   }

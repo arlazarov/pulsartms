@@ -10,9 +10,12 @@
   }
   // Each row: its fact at the left and, past a hairline, its answer at
   // the right, under a rule that runs the width of the card.
+  // Every row splits at the same place, so the hairline and the answers
+  // stand in one column down the card: sized to each row's answer, the
+  // line stepped sideways from row to row.
   .fleet-map-inspector__row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-columns: var(--truck-card-columns);
     align-items: center;
     column-gap: ui.pg(md);
     min-width: 0;
@@ -20,7 +23,9 @@
     border-top: 1px solid ui.theme(border-subtle);
     > :nth-child(2) {
       align-self: stretch;
+      justify-self: stretch;
       align-content: center;
+      min-width: 0;
       padding-inline-start: ui.pg(md);
       border-inline-start: 1px solid ui.theme(border-subtle);
     }
@@ -36,7 +41,7 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
-    justify-self: end;
+    justify-content: space-between;
     --hos-display: flex;
     --hos-wrap: nowrap;
     --hos-gap: #{ui.pg(md)};
