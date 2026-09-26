@@ -56,10 +56,24 @@ Each item has a regression that fails without the fix unless marked.
   load; planning settings row with a fixed id (a second carrier cannot
   save, needs a migration); board planning summaries requested without
   the driver-group filter; three "load completed" rules; the Client's own
-  Current/Next rule; a summary signed with fresh work but calculated from
-  cached work; rate limits keyed by the proxy address (unverified);
+  Current/Next rule; rate limits keyed by the proxy address (unverified);
   expected webhook write conflicts logged as errors; repeated user and
   credential reads per request.
+
+- **Refuted: "a summary signed with fresh work but calculated from cached
+  work".** `PlanningSummaryOperation` does sign with inputs read fresh and
+  calculate through the read cache's copy, but
+  `PlanningSummaryCache.Complete` stores a result only under the signature
+  the reader asked with, and the reader signs with the same cached copy.
+  While the copy lags, nothing is stored and the reader sees "updating";
+  once it catches up, the copy matches the fresh inputs in everything the
+  signature covers. Older work cannot be shown under a newer signature.
+  Pinned by `PlanningSummaryCacheTests.AResultSignedWithFresherWorkWaitsForTheReaderToAskForIt`;
+  no code changed. A full integration reproduction was attempted on the
+  server-composed SQLite harness and stalled (one shared in-memory
+  connection under the background loop), so it was not kept. The
+  remaining cost - a recalculation that cannot be stored while the copy
+  lags, and one cached read per refresh - was not measured.
 
 ## Audit coverage
 

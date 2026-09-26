@@ -300,4 +300,43 @@ public sealed class PlanningSummaryCacheTests
     {
       CalculatedAt = time.GetUtcNow(),
     };
+
+  // The background signs with the truck's work read fresh; the reader asks
+  // with the read cache's copy, which can lag it. A result signed with the
+  // fresh work is not stored for a reader asking with the older copy - so
+  // older work is never shown under the newer work's signature, nor the
+  // other way round (audit, September 26). Once the reader's copy catches
+  // up, the next calculation is stored.
+  [Fact]
+  public void AResultSignedWithFresherWorkWaitsForTheReaderToAskForIt()
+  {
+    var time = new ManualTimeProvider(DateTimeOffset.UtcNow);
+    var cache = new PlanningSummaryCache(time);
+    var key = new PlanningSummaryCache.Key(Guid.NewGuid(), Guid.NewGuid());
+    Assert.Null(cache.Read(key, "work:cached"));
+    var work = cache.Take()!;
+
+    cache.Complete(
+      work,
+      "work:fresh",
+      new(key.Truck, Guid.NewGuid(), 1408, null, null)
+      {
+        CalculatedAt = time.GetUtcNow(),
+      }
+    );
+
+    Assert.Null(cache.Read(key, "work:cached"));
+    Assert.Null(cache.Read(key, "work:fresh"));
+    var again = cache.Take()!;
+    Assert.Equal("work:fresh", again.Signature);
+    cache.Complete(
+      again,
+      "work:fresh",
+      new(key.Truck, Guid.NewGuid(), 1408, null, null)
+      {
+        CalculatedAt = time.GetUtcNow(),
+      }
+    );
+    Assert.Equal(1408, cache.Read(key, "work:fresh")!.LoadNumber);
+  }
 }
