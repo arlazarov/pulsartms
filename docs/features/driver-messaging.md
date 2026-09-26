@@ -160,10 +160,14 @@ the caller's subscription, kept between requests, so a change raised
 between two requests waits for the next; each belongs to one company and
 account and lives 60 seconds after its last request ends. One lock
 admits, leases, sweeps and evicts: a mailbox is held in the same step that
-finds it, and only one nobody holds is expired or evicted. A process keeps
-at most 512; at the limit the one idle longest gives way, and when every
-one is held a new one is refused with 503, which the browser treats as
-down. A new, expired, foreign or unknown mailbox is replaced and the
+finds it, and only one nobody holds is expired or evicted. Three bounds,
+each refused with 503 (which the browser treats as down) rather than
+exceeded: a process keeps at most 512 mailboxes, the one idle longest
+giving way; an account of a company keeps at most 4, its own oldest
+giving way, so one browser cannot push out other accounts'; and at most 40
+requests wait at once, since each holds one of the API instance's 80
+request slots. The wait is marked `IWaitsByDesign`, so an idle answer
+after 20 seconds is timed like any request but never logged as slow. A new, expired, foreign or unknown mailbox is replaced and the
 answer says `resync`: read everything again. Signals live in this process
 only and each mailbox queues at most 64; a full queue also answers
 `resync`. The answer is `Cache-Control: no-store`.
@@ -363,7 +367,8 @@ answer sends "resync"; while answers keep coming it sends a "poll" repair
 tick once a minute, for changes committed on another API instance. A
 request not answered within 35 seconds, or refused, counts as down: the
 reader sends a "poll" tick at most every 30 seconds and retries with
-backoff (2 to 60 seconds); so does a mailbox replaced twice in a row.
+backoff (2 to 60 seconds); so does a mailbox replaced twice in a row, and
+the wait keeps doubling while replacements continue.
 
 This replaced a server-sent event stream. In production the browser
 reaches the API through Firebase Hosting's `/api/**` rewrite, which does
@@ -644,7 +649,9 @@ change commits, a change between requests kept for the next, empty after
 the wait, a mailbox its owner's alone, replaced when unknown or expired
 but never while read, a full queue, a second request not taking the
 first's change, the process limit, opens racing at the limit, a new one
-refused while every one is held, eviction or expiry racing a request in
+refused while every one is held, an account's share evicting only its
+own, a new one refused while all of an account's are held, at most so many
+waits at once, eviction or expiry racing a request in
 both orders and unordered),
 `Server.Tests/Messaging/ConversationHistoryTests` (120 messages at one
 time read to the end, a late message below the page kept unread until
@@ -676,7 +683,7 @@ messages by cursor marking only what the server allows, and as before
 against a server without it),
 `Client.Tests/Messaging/MessagingSignalsTests` (a change reaching the views
 with no poll, resync and a repair each minute, a mailbox replaced again
-and again backing off, an idle browser's requests over five minutes,
+and again backing off with a growing wait, an idle browser's requests over five minutes,
 account scope and rejoin on account change, asking for itself and
 polling after a failed import or join, a slow tick that outlasts the
 wait, an answer that never comes),

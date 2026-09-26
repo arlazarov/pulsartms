@@ -233,11 +233,14 @@ public sealed class MessagingSignals : IAsyncDisposable
         return;
       if (changes is not null)
       {
-        backoff = FirstBackoff;
         // A mailbox the server no longer had: whatever changed before the
         // new one opened was queued for nobody.
         replaced =
           mailbox is not null && changes.Mailbox != mailbox ? replaced + 1 : 0;
+        // Only an answer for the mailbox asked with is a healthy one: a run
+        // of replacements keeps doubling the wait below.
+        if (replaced == 0)
+          backoff = FirstBackoff;
         if (changes.Resync || changes.Mailbox != mailbox)
         {
           await PostAsync("resync", null, ct);

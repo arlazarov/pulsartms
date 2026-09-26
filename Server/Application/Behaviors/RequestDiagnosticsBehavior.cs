@@ -107,7 +107,11 @@ public sealed class RequestDiagnosticsBehavior<TRequest, TResponse>(
         new KeyValuePair<string, object?>("request", typeof(TRequest).Name),
         new KeyValuePair<string, object?>("outcome", outcome)
       );
-      if (outcome == "completed" && elapsed >= 1000)
+      if (
+        outcome == "completed"
+        && elapsed >= 1000
+        && request is not IWaitsByDesign
+      )
         logger.LogInformation(
           "RequestTiming Request={RequestType} DurationMs={DurationMs} Outcome={Outcome} TraceId={TraceId}",
           typeof(TRequest).Name,

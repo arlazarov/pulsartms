@@ -1,4 +1,6 @@
 using Application.Behaviors;
+using Application.Features.Messaging.Queries;
+using Application.Features.Messaging.Services;
 using Application.Features.Routing.Queries;
 using Application.Models;
 using Domain.Models.Routing;
@@ -55,13 +57,71 @@ public sealed class RequestDiagnosticsTests
     Assert.Empty(logger.Levels);
   }
 
+  // A long poll waits by design: an idle browser's answer every 20 seconds
+  // is not a slow request. Logged as one, it was a line per browser every
+  // 20 seconds. The same wait in an ordinary request still is logged.
+  [Fact]
+  public async Task AWaitByDesignIsNotLoggedAsSlowWorkIs()
+  {
+    var waiting =
+      new CaptureLogger<
+        RequestDiagnosticsBehavior<
+          WaitMessagingChangesQuery,
+          RequestResponse<MessagingChanges>
+        >
+      >();
+    var working =
+      new CaptureLogger<
+        RequestDiagnosticsBehavior<
+          GetRoutePlanningQuery,
+          RequestResponse<RoutePlanningState>
+        >
+      >();
+
+    await Task.WhenAll(
+      new RequestDiagnosticsBehavior<
+        WaitMessagingChangesQuery,
+        RequestResponse<MessagingChanges>
+      >(waiting).Handle(
+        new(Guid.NewGuid()),
+        async _ =>
+        {
+          await Task.Delay(TimeSpan.FromMilliseconds(1050));
+          return RequestResponse<MessagingChanges>.Ok(
+            new(Guid.NewGuid(), false, [])
+          );
+        },
+        default
+      ),
+      new RequestDiagnosticsBehavior<
+        GetRoutePlanningQuery,
+        RequestResponse<RoutePlanningState>
+      >(working).Handle(
+        new(Guid.NewGuid()),
+        async _ =>
+        {
+          await Task.Delay(TimeSpan.FromMilliseconds(1050));
+          return RequestResponse<RoutePlanningState>.Ok(
+            new(new(), null, null, null, null, true)
+          );
+        },
+        default
+      )
+    );
+
+    Assert.Empty(waiting.Levels);
+    Assert.Equal([LogLevel.Information], working.Levels);
+  }
+
   private sealed class CaptureLogger
-    : ILogger<
+    : CaptureLogger<
       RequestDiagnosticsBehavior<
         GetRoutePlanningQuery,
         RequestResponse<RoutePlanningState>
       >
-    >
+    >;
+
+  private class CaptureLogger<T> : ILogger<T>
   {
     public List<LogLevel> Levels { get; } = [];
 

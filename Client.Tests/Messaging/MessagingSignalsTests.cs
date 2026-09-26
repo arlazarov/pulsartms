@@ -105,8 +105,19 @@ public sealed class MessagingSignalsTests
     await Task.Delay(50);
     Assert.Equal(3, server.Requests);
     f.Time.Advance(TimeSpan.FromSeconds(2));
-    await server.NextAsync();
+    // Replaced a third time: the wait doubles rather than starting over.
+    (await server.NextAsync()).Answer(mailbox: Guid.NewGuid());
+    await Eventually(
+      () => Assert.Equal(2, Kinds(seen).Count(x => x == "poll"))
+    );
+    // The wait starts just after the tick; the clock moves once it has.
+    await Task.Delay(50);
+    f.Time.Advance(TimeSpan.FromSeconds(2));
+    await Task.Delay(50);
     Assert.Equal(4, server.Requests);
+    f.Time.Advance(TimeSpan.FromSeconds(2));
+    await server.NextAsync();
+    Assert.Equal(5, server.Requests);
     await f.Signals.LeaveAsync();
   }
 

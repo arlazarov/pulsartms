@@ -7,7 +7,8 @@ namespace Application.Features.Messaging.Queries;
 // as a change commits, or empty after MessagingMailboxes.Wait. The answer
 // names the mailbox to ask with next; see MessagingMailboxes.
 public sealed record WaitMessagingChangesQuery(Guid? Mailbox)
-  : IRequest<RequestResponse<MessagingChanges>>;
+  : IRequest<RequestResponse<MessagingChanges>>,
+    IWaitsByDesign;
 
 public sealed class WaitMessagingChangesHandler(
   ICurrentUser caller,
@@ -25,7 +26,8 @@ public sealed class WaitMessagingChangesHandler(
   ) =>
     company.Id is not { } serving || caller.IdentityUserId is not { } account
       ? RequestResponse<MessagingChanges>.Fail("Access denied.", 403)
-    // Every mailbox is held: the browser polls and asks again later.
+    // No room for another mailbox or another held wait: the browser polls
+    // and asks again later.
     : await mailboxes.WaitAsync(serving, account, request.Mailbox, ct)
       is not { } changes
       ? RequestResponse<MessagingChanges>.Fail("Too many readers.", 503)

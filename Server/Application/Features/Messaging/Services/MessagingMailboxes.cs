@@ -14,20 +14,35 @@ namespace Application.Features.Messaging.Services;
 //
 // One lock admits, leases, sweeps and evicts, so a mailbox is leased in
 // the same step that finds it and only a mailbox nobody holds is ever
-// closed. The process never keeps more than its limit: when every mailbox
-// is held, a new one is refused (null) rather than admitted over it.
+// closed. Three bounds, each refused (null, answered 503) rather than
+// exceeded:
+// - the process keeps at most Limit mailboxes, the one idle longest giving
+//   way to a new one;
+// - one account of one company keeps at most PerAccount, its own oldest
+//   giving way, so one browser opening many cannot push out everyone
+//   else's;
+// - at most Held requests wait at once. Each holds one of the API
+//   instance's request slots (80 on Cloud Run) for up to Wait, and the rest
+//   of the API needs the others.
 public sealed class MessagingMailboxes(
   MessagingEvents events,
   TimeProvider clock,
-  int limit = MessagingMailboxes.Limit
+  int limit = MessagingMailboxes.Limit,
+  int perAccount = MessagingMailboxes.PerAccount,
+  int held = MessagingMailboxes.Held
 )
 {
   public static readonly TimeSpan Wait = TimeSpan.FromSeconds(20);
   public static readonly TimeSpan Keep = TimeSpan.FromSeconds(60);
   public const int Limit = 512;
+  public const int PerAccount = 4;
+  public const int Held = 40;
 
   private readonly object gate = new();
   private readonly Dictionary<Guid, Mailbox> mailboxes = [];
+
+  // Guarded by the lock: requests holding a lease right now.
+  private int holding;
 
   private sealed class Mailbox(
     Guid company,
@@ -57,7 +72,7 @@ public sealed class MessagingMailboxes(
     }
   }
 
-  // Null: every mailbox is held and the limit admits no other.
+  // Null: a bound admits nothing more.
   public async Task<MessagingChanges?> WaitAsync(
     Guid company,
     string account,
@@ -79,8 +94,11 @@ public sealed class MessagingMailboxes(
         return Open(company, account) is { } opened
           ? new(opened, true, [])
           : null;
+      if (holding >= held)
+        return null;
       (mailbox, known) = (found, asked);
       mailbox.Leases++;
+      holding++;
     }
     try
     {
@@ -89,8 +107,11 @@ public sealed class MessagingMailboxes(
     finally
     {
       lock (gate)
+      {
+        holding--;
         if (--mailbox.Leases == 0)
           mailbox.IdleSince = clock.GetUtcNow();
+      }
     }
   }
 
@@ -138,27 +159,38 @@ public sealed class MessagingMailboxes(
     }
   }
 
-  // Under the lock. At the limit the mailbox idle longest gives way; when
-  // every one is held, nothing is admitted.
+  // Under the lock. The account's own oldest gives way at its share, then
+  // the process's idlest at the limit; when those are all held, nothing is
+  // admitted.
   private Guid? Open(Guid company, string account)
   {
-    if (mailboxes.Count >= limit)
-    {
-      var idlest = mailboxes
-        .Where(x => x.Value.Leases == 0)
-        .OrderBy(x => x.Value.IdleSince)
-        .Select(x => (Guid?)x.Key)
-        .FirstOrDefault();
-      if (idlest is not { } evicted)
-        return null;
-      Close(evicted);
-    }
+    var own = mailboxes.Where(x =>
+      x.Value.Company == company && x.Value.Account == account
+    );
+    if (own.Count() >= perAccount && !EvictIdlest(own))
+      return null;
+    if (mailboxes.Count >= limit && !EvictIdlest(mailboxes))
+      return null;
     var id = Guid.NewGuid();
     mailboxes[id] = new(company, account, events.Subscribe(company))
     {
       IdleSince = clock.GetUtcNow(),
     };
     return id;
+  }
+
+  // Under the lock: closes the one of these idle longest, if any is idle.
+  private bool EvictIdlest(IEnumerable<KeyValuePair<Guid, Mailbox>> among)
+  {
+    var idlest = among
+      .Where(x => x.Value.Leases == 0)
+      .OrderBy(x => x.Value.IdleSince)
+      .Select(x => (Guid?)x.Key)
+      .FirstOrDefault();
+    if (idlest is not { } evicted)
+      return false;
+    Close(evicted);
+    return true;
   }
 
   // Every change queued now, each conversation once; no waiting.

@@ -17,8 +17,11 @@ public sealed class MessagingMailboxesTests
   private readonly MessagingEvents events = new();
   private readonly FakeTimeProvider clock = new();
 
-  private MessagingMailboxes Mailboxes(int limit = MessagingMailboxes.Limit) =>
-    new(events, clock, limit);
+  private MessagingMailboxes Mailboxes(
+    int limit = MessagingMailboxes.Limit,
+    int perAccount = MessagingMailboxes.PerAccount,
+    int held = MessagingMailboxes.Held
+  ) => new(events, clock, limit, perAccount, held);
 
   [Fact]
   public async Task AWaitingRequestAnswersAsSoonAsAChangeCommits()
@@ -175,7 +178,7 @@ public sealed class MessagingMailboxesTests
   [Fact]
   public async Task TheProcessKeepsAtMostTheLimitDroppingTheIdlest()
   {
-    var mailboxes = Mailboxes();
+    var mailboxes = Mailboxes(perAccount: int.MaxValue);
     var oldest = await OpenAsync(mailboxes);
     for (var i = 1; i < MessagingMailboxes.Limit; i++)
     {
@@ -198,7 +201,7 @@ public sealed class MessagingMailboxesTests
   public async Task ConcurrentOpensAtTheLimitNeverExceedIt()
   {
     const int limit = 8;
-    var mailboxes = Mailboxes(limit);
+    var mailboxes = Mailboxes(limit, perAccount: int.MaxValue);
     for (var i = 0; i < limit; i++)
       await OpenAsync(mailboxes);
     var start = new TaskCompletionSource(
@@ -351,6 +354,87 @@ public sealed class MessagingMailboxesTests
       }
       Assert.Equal(1, mailboxes.Count);
     }
+  }
+
+  // One browser opening mailbox after mailbox pushes out only its own
+  // oldest, never another account's, however much older that one is.
+  [Fact]
+  public async Task AnAccountKeepsItsShareEvictingOnlyItsOwnOldest()
+  {
+    var mailboxes = Mailboxes(perAccount: 2);
+    var bob = await Ask(mailboxes, Company.Amf, "bob", null, default);
+    clock.Advance(TimeSpan.FromSeconds(1));
+    var first = await OpenAsync(mailboxes);
+    clock.Advance(TimeSpan.FromSeconds(1));
+    var second = await OpenAsync(mailboxes);
+    clock.Advance(TimeSpan.FromSeconds(1));
+    await OpenAsync(mailboxes);
+
+    Assert.Equal(3, mailboxes.Count);
+    Assert.True(
+      (await Ask(mailboxes, Company.Amf, Ann, first, default)).Resync
+    );
+    var waiting = mailboxes.WaitAsync(Company.Amf, "bob", bob.Mailbox, default);
+    var chat = Guid.NewGuid();
+    events.Publish(Company.Amf, new(chat, 1));
+    Assert.Equal(
+      [chat],
+      Answered(await waiting.WaitAsync(TimeSpan.FromSeconds(5))).Conversations
+    );
+    Assert.NotEqual(first, second);
+  }
+
+  // Every one of an account's mailboxes held by a waiting request: its next
+  // is refused, and another account is still admitted.
+  [Fact]
+  public async Task AnAccountWhoseMailboxesAreAllHeldIsRefusedAnother()
+  {
+    var mailboxes = Mailboxes(perAccount: 2);
+    var boxes = new[]
+    {
+      await OpenAsync(mailboxes),
+      await OpenAsync(mailboxes),
+    };
+    var held = boxes
+      .Select(box => mailboxes.WaitAsync(Company.Amf, Ann, box, default))
+      .ToList();
+
+    Assert.Null(await mailboxes.WaitAsync(Company.Amf, Ann, null, default));
+    Assert.NotNull(
+      await mailboxes.WaitAsync(Company.Amf, "bob", null, default)
+    );
+
+    clock.Advance(MessagingMailboxes.Wait);
+    await Task.WhenAll(held).WaitAsync(TimeSpan.FromSeconds(5));
+  }
+
+  // At most so many requests wait at once, whoever they are: the rest of
+  // the API needs the instance's other request slots. The one beyond is
+  // refused without taking a lease, and admitted once a wait ends.
+  [Fact]
+  public async Task AtMostSoManyRequestsWaitAtOnce()
+  {
+    var mailboxes = Mailboxes(held: 2);
+    var ann = await OpenAsync(mailboxes);
+    var bob = (await Ask(mailboxes, Company.Amf, "bob", null, default)).Mailbox;
+    var cy = (await Ask(mailboxes, Company.Amf, "cy", null, default)).Mailbox;
+    var waiting = new[]
+    {
+      mailboxes.WaitAsync(Company.Amf, Ann, ann, default),
+      mailboxes.WaitAsync(Company.Amf, "bob", bob, default),
+    };
+
+    Assert.Null(await mailboxes.WaitAsync(Company.Amf, "cy", cy, default));
+
+    clock.Advance(MessagingMailboxes.Wait);
+    await Task.WhenAll(waiting).WaitAsync(TimeSpan.FromSeconds(5));
+    var admitted = mailboxes.WaitAsync(Company.Amf, "cy", cy, default);
+    var chat = Guid.NewGuid();
+    events.Publish(Company.Amf, new(chat, 1));
+    Assert.Equal(
+      [chat],
+      Answered(await admitted.WaitAsync(TimeSpan.FromSeconds(5))).Conversations
+    );
   }
 
   private static void InterlockedMax(ref int most, int value)
