@@ -602,7 +602,7 @@ try {
   };
   await tab.locator('.fleet-map-inspector__back').click();
   await expand();
-  const open = tab.locator("a[aria-label='Route & load details']");
+  const open = tab.locator('.fleet-map-inspector__load-link');
   await open.waitFor({ state: 'visible' });
   const openFrom = new URL(
     await open.getAttribute('href'),

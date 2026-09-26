@@ -444,14 +444,6 @@
             <button type="button" class="btn map-action-icon" title="Camera" aria-label="Camera" @onclick="OpenCameraAsync"><ActionIcon Kind="camera" /><span>Camera</span></button>
             <button type="button" class="btn map-action-icon" title="Route options" aria-label="Route options"
                     disabled="@(_fuelEditorOpen || SelectedDispatchId is null)" @onclick="OpenSelectedRouteEditorAsync"><ActionIcon Kind="route" /><span>Route options</span></button>
-            <a class="btn btn--primary map-action-icon fleet-map-inspector__open-load"
-               href="@OpenLoadHref"
-               title="@("Route & load details")"
-               aria-label="@("Route & load details")"
-               aria-disabled="@(SelectedDispatchId is null
-                   ? "true" : null)">
-                <span>Open load</span><ActionIcon Kind="external-link" />
-            </a>
         </div>;
             <div id="fleet-map-details" class="fleet-map-info-content" hidden="@(_inspectorMode != MapInspectorMode.Truck)">
     <div id="fleet-map-route-details" class="fleet-map-route-details">

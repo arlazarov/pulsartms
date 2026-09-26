@@ -394,14 +394,13 @@ test('truck metadata stays aligned and disclosure does not restyle the primary s
   assert.doesNotMatch(compact, /hours-enough|__duty-enough/);
 });
 
-test('load details uses an accessible header icon with shared action sizing', () => {
+test('the load opens from its number in the head, with no Open load button in the actions', () => {
   const markup = readFileSync(
     new URL('../../Pages/FleetMap/FleetMap.razor', import.meta.url),
     'utf8',
   );
-  // The one primary action, at the end of the row.
   const link = markup.match(
-    /<a class="btn btn--primary map-action-icon fleet-map-inspector__open-load"[\s\S]*?<\/a>/,
+    /<a class="fleet-map-inspector__load-link"[\s\S]*?<\/a>/,
   )?.[0];
   assert.ok(link);
   // Only with a load chosen, and with the way back to this map.
@@ -413,20 +412,13 @@ test('load details uses an accessible header icon with shared action sizing', ()
     ),
     /OpenLoadHref =>\s*SelectedDispatchId is \{ \} id\s*\?\s*ReturnNavigation\.Load\(id, ReturnOrigin\)\s*:\s*null;/,
   );
-  assert.match(link, /title="@\("Route & load details"\)"/);
-  assert.match(link, /aria-label="@\("Route & load details"\)"/);
-  assert.match(link, /aria-disabled="@\(SelectedDispatchId is null/);
+  assert.match(link, /title="Open load"/);
   assert.match(link, /<ActionIcon Kind="external-link"\s*\/>/);
-  assert.ok(
-    markup.indexOf('fleet-map-inspector__actions') < markup.indexOf(link),
-  );
-  // The actions sit under the detail they act on, below the header's own
-  // controls rather than crowded into them.
-  assert.ok(
-    markup.indexOf('fleet-map-inspector__controls') < markup.indexOf(link),
-  );
+  // The button that repeated the link at the end of the action row is
+  // gone (the owner, September 26).
+  assert.doesNotMatch(markup, /fleet-map-inspector__open-load/);
+  assert.doesNotMatch(markup, /Route & load details/);
   assert.doesNotMatch(markup, /fleet-map-truck-info__load-link/);
-  assert.match(link, /<span>Open load<\/span>/);
   assert.match(
     compact,
     /__actions \.map-action-icon\s*\{[^}]*display: inline-flex;[^}]*gap: var\(--space-xs\);/,

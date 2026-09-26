@@ -1040,12 +1040,12 @@ public sealed class FleetMapComponentTests
       )
     );
     Assert.Empty(component.FindAll(".driver-next-recap"));
-    var loadLink = component.Find(
-      "#fleet-map-details a[aria-label='Route & load details']"
-    );
-    Assert.Equal("Route & load details", loadLink.GetAttribute("title"));
+    // The load opens from its number in the head; the Open load button
+    // that repeated it is gone (the owner, September 26).
+    Assert.Empty(component.FindAll(".fleet-map-inspector__open-load"));
+    var loadLink = component.Find(".fleet-map-inspector__load-link");
+    Assert.Equal("Open load", loadLink.GetAttribute("title"));
     Assert.Single(loadLink.QuerySelectorAll("svg"));
-    Assert.Equal("Open load", loadLink.TextContent.Trim());
     // The load opens with the way back to this truck and its load.
     var openedLoad = fixture.Plan(fixture.TruckA).DispatchId!.Value;
     Assert.Equal(

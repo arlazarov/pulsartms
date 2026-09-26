@@ -294,10 +294,10 @@ and load link across the full width beneath telemetry and HOS.
 Wide bodies top-align GPS beside telemetry and HOS. Current duty and its elapsed
 time stay directly below the HOS clocks; omit the static provider label and Next
 recap from the truck inspector and from the map's stop cards (September 26).
-Dispatch retains Next recap and detailed rest/reset countdowns. Route & load details uses an external-link icon at the end of the
-truck action row on desktop. Keep its accessible
-name, tooltip and disabled slot before the current load identity arrives.
-On phones it follows the other icons in the action row.
+Dispatch retains Next recap and detailed rest/reset countdowns. The load
+opens from its number in the truck card's head (a link with the way back
+to this map); the Open load button that repeated it at the end of the
+action row is gone (September 26). Stop cards keep their own Open load.
 The retained readings are always visible. On wide inspectors,
 load number/order/total, Remaining, next location and timing form four adjacent
 columns. The load label and number share a line, with order and total beneath;

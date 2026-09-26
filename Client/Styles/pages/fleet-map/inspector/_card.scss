@@ -94,12 +94,8 @@
   }
   // The actions read as words, under the detail they act on. They were six
   // bare icons in the header, where the row had no room to say what any of
-  // them did.
-  // The load's own page is where most visits from the card end: it is
-  // the one primary action, at the end of the row.
-  .fleet-map-inspector__actions .fleet-map-inspector__open-load {
-    margin-inline-start: auto;
-  }
+  // them did. The load's own page opens from the load number in the head;
+  // the Open load button that repeated it is gone (September 26).
   // Fuel's panel, under the actions: now and on arrival, then the plan's
   // view and send.
   .fleet-map-fuel-panel {
