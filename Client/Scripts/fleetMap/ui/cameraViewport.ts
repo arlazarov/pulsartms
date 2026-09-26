@@ -23,13 +23,21 @@ export function createCameraViewport(
     disposed = false;
   let signature = '',
     changed: () => void = () => {};
-  // What was just picked, waiting for the card that opens over it.
-  let pending: { position: google.maps.LatLngLiteral; until: number } | null =
-    null;
-  // A reader who drags the map has taken it back: nothing is moved for them.
-  const dragged = map.addListener?.('dragstart', () => {
-    pending = null;
-  });
+  // What was just picked: where it stood on the element when it was picked,
+  // how far the map has been panned for it since, and until when the card
+  // that opens over it is still expected to settle.
+  let pending: {
+    at: { x: number; y: number };
+    panned: { x: number; y: number };
+    until: number;
+  } | null = null;
+  // A reader who drags or zooms the map has taken it back: nothing more is
+  // moved for them, and the pick's place on the element is stale anyway.
+  const taken = ['dragstart', 'zoom_changed'].map(name =>
+    map.addListener?.(name, () => {
+      pending = null;
+    }),
+  );
   const observed = new Set<HTMLElement>();
   const Resize = view?.ResizeObserver;
   const Mutation = view?.MutationObserver;
@@ -69,28 +77,31 @@ export function createCameraViewport(
   }
 
   // The card that opens for a picked truck, stop or station used to open
-  // over it. Once the card is there, the pick is moved the least distance
-  // that brings it into the free region - and only then, so a pick with
-  // no card, or one already in the clear, moves nothing (the owner,
-  // September 26).
+  // over it. While the card settles - it opens, then grows as its details
+  // arrive - each layout pass moves the pick the least distance that
+  // brings it into the free region, and no distance when it is already
+  // there; a pick with no card moves nothing (the owner, September 26).
+  // The pick's place is the one measured when it was picked, less what has
+  // been panned for it since: the camera is read once, not mid-animation.
   function attemptReveal() {
     if (!pending || disposed) return;
-    if (!region) {
-      if (Date.now() > pending.until) pending = null;
+    if (Date.now() > pending.until) {
+      pending = null;
       return;
     }
-    const wanted = pending.position;
-    pending = null;
-    const at = pixel(wanted);
-    if (!at || typeof map.panBy !== 'function') return;
+    if (!region || typeof map.panBy !== 'function') return;
+    const x = pending.at.x - pending.panned.x,
+      y = pending.at.y - pending.panned.y;
     const gap = Math.min(revealMargin, region.width / 4, region.height / 4);
     const left = region.x + gap,
       right = region.x + region.width - gap,
       top = region.y + gap,
       bottom = region.y + region.height - gap;
-    const dx = at.x < left ? at.x - left : at.x > right ? at.x - right : 0,
-      dy = at.y < top ? at.y - top : at.y > bottom ? at.y - bottom : 0;
-    if (dx !== 0 || dy !== 0) map.panBy(Math.round(dx), Math.round(dy));
+    const dx = Math.round(x < left ? x - left : x > right ? x - right : 0),
+      dy = Math.round(y < top ? y - top : y > bottom ? y - bottom : 0);
+    if (dx === 0 && dy === 0) return;
+    pending.panned = { x: pending.panned.x + dx, y: pending.panned.y + dy };
+    map.panBy(dx, dy);
   }
 
   function measure() {
@@ -225,7 +236,11 @@ export function createCameraViewport(
     },
     reveal(position: google.maps.LatLngLiteral | null | undefined) {
       if (disposed || !position) return;
-      pending = { position, until: Date.now() + revealPatience };
+      measure();
+      const at = pixel(position);
+      pending = at
+        ? { at, panned: { x: 0, y: 0 }, until: Date.now() + revealPatience }
+        : null;
       refresh();
     },
     center,
@@ -247,7 +262,7 @@ export function createCameraViewport(
     dispose() {
       disposed = true;
       pending = null;
-      dragged?.remove?.();
+      for (const listener of taken) listener?.remove?.();
       changed = () => {};
       resize?.disconnect();
       mutation?.disconnect();

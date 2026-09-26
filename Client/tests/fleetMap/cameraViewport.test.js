@@ -315,11 +315,11 @@ test('fully obscured or unavailable projection safely retains the original targe
 function revealFixture(t) {
   const f = fixture(t);
   const pans = [];
-  let dragStart = null;
+  const taken = new Map();
   f.map.getCenter = () => ({ lat: 0, lng: 0 });
   f.map.panBy = (x, y) => pans.push([x, y]);
   f.map.addListener = (name, callback) => {
-    if (name === 'dragstart') dragStart = callback;
+    taken.set(name, callback);
     return { remove() {} };
   };
   // The listener is taken at construction; build again with it in place.
@@ -332,7 +332,13 @@ function revealFixture(t) {
     f.map,
   );
   t.after(() => camera.dispose());
-  return { ...f, camera, pans, drag: () => dragStart?.() };
+  return {
+    ...f,
+    camera,
+    pans,
+    drag: () => taken.get('dragstart')?.(),
+    zoom: () => taken.get('zoom_changed')?.(),
+  };
 }
 
 test('a pick under the card is panned the least distance into the free region', t => {
@@ -369,4 +375,26 @@ test('a reader who drags the map keeps it, and a map without panBy is left alone
   delete f.map.panBy;
   f.camera.reveal({ lat: -10, lng: 0 });
   assert.doesNotThrow(() => f.camera.refresh());
+});
+
+test('a card that grows after the reveal moves the pick again by the difference, and a zoom ends it', t => {
+  const f = revealFixture(t);
+  let height = 160;
+  f.overlay('.fleet-map-info-reserved', () => rect(80, 100, 1000, height));
+  f.camera.refresh();
+  f.camera.reveal({ lat: -10, lng: 0 });
+  assert.deepEqual(f.pans, [[0, -220]]);
+  // The forecast arrives and the card is 100px taller: the pick, now
+  // 200px into the free region, needs 100px more - measured from where it
+  // was picked, not from a camera mid-pan.
+  height = 260;
+  f.camera.refresh();
+  assert.deepEqual(f.pans, [
+    [0, -220],
+    [0, -100],
+  ]);
+  f.zoom();
+  height = 360;
+  f.camera.refresh();
+  assert.deepEqual(f.pans.length, 2, "a zoomed map is the reader's");
 });

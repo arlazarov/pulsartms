@@ -107,6 +107,12 @@ test('a stop, a next stop and a planned fuel stop share one bounded width', () =
     css,
     /\[data-inspector-mode=stop\],[^{]*\[data-inspector-mode=nextstop\],[^{]*\[data-inspector-mode=fuel\]:has\(\.fleet-station-popup--planned\)\s*\{\s*width: min\(100%, var\(--size-map-stop-inspector\)\);/,
   );
+  // One height too, at least: a card that grew when its details arrived
+  // moved the map twice (the owner, September 26).
+  assert.match(
+    css,
+    /\[data-inspector-mode=stop\],[^{]*\[data-inspector-mode=nextstop\],[^{]*\[data-inspector-mode=fuel\]\s*\{\s*min-height: min\(var\(--size-map-stop-inspector-height\), 45%\);/,
+  );
   // The days stand under the prices they are about, which puts them in the
   // half of the card that is about the place - by being inside it, not by
   // being sent to a column.

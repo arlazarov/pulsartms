@@ -9,6 +9,14 @@
   // width. The fuel card carried a width of its own, half as wide again,
   // from when it held three columns of dials; emptied of those it was a
   // card with room left over.
+  // One height too, at least: a stop card opened short and grew when its
+  // forecast arrived, and the map that had moved for it was moving again
+  // (the owner, September 26). On a phone the stage's half is the ceiling.
+  &[data-inspector-mode='stop'],
+  &[data-inspector-mode='nextstop'],
+  &[data-inspector-mode='fuel'] {
+    min-height: min(#{ui.size(map-stop-inspector-height)}, 45%);
+  }
   &[data-inspector-mode='stop'],
   &[data-inspector-mode='nextstop'],
   &[data-inspector-mode='fuel']:has(.fleet-station-popup--planned) {

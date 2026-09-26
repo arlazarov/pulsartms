@@ -28,6 +28,9 @@ $sizes: (
   map-inspector: 76rem,
   map-compact-inspector: 56rem,
   map-stop-inspector: 46rem,
+  // A stop or station card is never shorter than this, so it does not
+  // grow when its details arrive.
+  map-stop-inspector-height: 15rem,
   map-details-card: 37.5rem,
   map-fuel-card: 32rem,
   map-fuel-quote: 22.5rem,
