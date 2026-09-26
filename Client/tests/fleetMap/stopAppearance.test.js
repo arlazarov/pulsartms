@@ -84,8 +84,8 @@ test('a truck at a stop is its ring, and a truck near it stands behind', () => {
   const at = decodeURIComponent(
     stopMarkerIcon(fill, border, undefined, '#16a34a').url,
   );
-  assert.match(at, /viewBox="0 0 40 40"/);
-  assert.match(at, /r="18.75" fill="#16a34a"/, 'the ring is the truck');
+  assert.match(at, /viewBox="0 0 36 36"/);
+  assert.match(at, /r="16.75" fill="#16a34a"/, 'the ring is the truck');
   // Inside a ring the badge keeps a thinner white edge: at full width the
   // ring was too narrow to see, and dropped altogether a stop on a teal
   // route inside a green ring was one blot.

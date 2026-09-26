@@ -14,7 +14,7 @@ export const sceneMetrics = Object.freeze({
   // read them. A step smaller than the original.
   stopBadgeDiameter: 28,
   // The same badge with the truck's ring around it.
-  stopBadgeStandingDiameter: 40,
+  stopBadgeStandingDiameter: 36,
   // And with a wider white rim, for a badge drawn over a truck it is near
   // but not at.
   stopBadgeStackedDiameter: 32,
@@ -65,7 +65,9 @@ export const sceneMetrics = Object.freeze({
   routeCurrentMinWidth: 5,
   routeCurrentWidthScale: 1.25,
   routeMutedOpacity: 0.4,
-  routeFutureOpacity: 0.9,
+  // Upcoming roads at full strength: at 0.9 over the basemap's green the
+  // owner found them pale beside the road being driven.
+  routeFutureOpacity: 1,
   routeTraveledOpacity: 0.22,
   routeOutlineWidth: 2,
   // Empty miles are dashed: nothing is on board. Dash units are half
