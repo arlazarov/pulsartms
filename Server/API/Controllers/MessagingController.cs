@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Application.Features.Dispatch.Documents;
 using Application.Features.Eta.Queries;
 using Application.Features.Execution.Queries;
@@ -11,9 +10,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
 
-// Conversations with drivers. The event stream carries only "conversation
-// changed" signals, one stream per browser; the conversation itself is read
-// through the ordinary endpoints.
+// Conversations with drivers. "changes" carries only "conversation changed"
+// signals, one reader per browser; the conversation itself is read through
+// the ordinary endpoints.
 [Authorize(Policy = "Dispatch")]
 [Route("api/messaging")]
 public sealed class MessagingController : BaseController
@@ -399,42 +398,20 @@ public sealed class MessagingController : BaseController
     CancellationToken cancellationToken
   ) => HandleRequest(new ClaimConversationCommand(id), cancellationToken);
 
-  [HttpGet("events")]
-  public async Task Events(CancellationToken cancellationToken)
+  // Answers when a change commits, or empty after about 20 seconds; see
+  // WaitMessagingChangesQuery. Firebase Hosting holds a streamed response
+  // back until it ends, so this is a request that ends. Never cached: the
+  // answer is this caller's alone.
+  [HttpGet("changes")]
+  public Task<IActionResult> Changes(
+    [FromQuery] Guid? mailbox,
+    CancellationToken cancellationToken
+  )
   {
-    Response.ContentType = "text/event-stream";
-    Response.Headers.CacheControl = "no-cache";
-    Response.Headers["X-Accel-Buffering"] = "no";
-    try
-    {
-      // Headers go at once: the browser counts a stream that sends none
-      // within 10 seconds as down, and the first keep-alive is 25 away.
-      await Response.WriteAsync(": connected\n\n", cancellationToken);
-      await Response.Body.FlushAsync(cancellationToken);
-      await foreach (
-        var change in Mediator.CreateStream(
-          new StreamMessagingEventsQuery(),
-          cancellationToken
-        )
-      )
-      {
-        await Response.WriteAsync(
-            // A negative revision is the query's "read everything again".
-            change.Revision < 0
-              ? "data: {\"resync\":true}\n\n"
-            : change.ConversationId == Guid.Empty ? ": keep-alive\n\n"
-            : "data: "
-              + JsonSerializer.Serialize(
-                new { change.ConversationId, change.Revision },
-                JsonSerializerOptions.Web
-              )
-              + "\n\n",
-          cancellationToken
-        );
-        await Response.Body.FlushAsync(cancellationToken);
-      }
-    }
-    catch (OperationCanceledException)
-      when (cancellationToken.IsCancellationRequested) { }
+    Response.Headers.CacheControl = "no-store";
+    return HandleRequest(
+      new WaitMessagingChangesQuery(mailbox),
+      cancellationToken
+    );
   }
 }

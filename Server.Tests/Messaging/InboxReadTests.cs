@@ -249,35 +249,4 @@ public sealed class InboxReadTests
         .Intersect(second.Messages.Select(x => x.Id))
     );
   }
-
-  [Fact]
-  public async Task AStreamCarriesOnlyItsOwnCompanysSignals()
-  {
-    var events = new MessagingEvents();
-    await using var f = await DispatchSyncFixture.CreateAsync();
-    var handlers = new ConversationHandlers(
-      f.Db,
-      new Caller("a"),
-      new TestCompany(),
-      events,
-      TimeProvider.System
-    );
-    using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-    var stream = handlers
-      .Handle(new StreamMessagingEventsQuery(), stop.Token)
-      .GetAsyncEnumerator(stop.Token);
-    var next = stream.MoveNextAsync().AsTask();
-    await Task.Delay(50);
-    var mine = Guid.NewGuid();
-
-    events.Publish(Guid.NewGuid(), new(Guid.NewGuid(), 1));
-    events.Publish(Company.Amf, new(mine, 7));
-
-    Assert.True(await next);
-    Assert.Equal(
-      (mine, 7L),
-      (stream.Current.ConversationId, stream.Current.Revision)
-    );
-    await stop.CancelAsync();
-  }
 }

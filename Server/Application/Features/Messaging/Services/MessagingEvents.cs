@@ -7,11 +7,12 @@ namespace Application.Features.Messaging.Services;
 // only after the change committed. They carry no content: a browser reads
 // what changed through the ordinary reads. Each subscriber has a small
 // bounded queue. A signal that finds it full is not queued: the subscriber
-// is told to read everything again (Resync) before its next signal, so a
-// burst never silently loses the change to the conversation a browser has
-// open. In this process only: a browser whose stream is on another
-// instance hears of a change only through its own periodic repair
-// (Client MessagingSignals.RepairEvery) until a fan-out exists.
+// is told to read everything again before its next signal, so a burst
+// never silently loses the change to the conversation a browser has open.
+// Browsers subscribe through MessagingMailboxes. In this process only: a
+// browser whose mailbox is on another instance hears of a change only
+// through its own periodic repair (Client MessagingSignals.RepairEvery)
+// until a fan-out exists.
 public sealed class MessagingEvents
 {
   public const int QueueSize = 64;
@@ -82,13 +83,7 @@ public sealed class MessagingEvents
   }
 }
 
-public sealed record MessagingEvent(Guid ConversationId, long Revision)
-{
-  // Read everything again: signals were lost to a full queue.
-  public static readonly MessagingEvent Resync = new(Guid.Empty, -1);
-
-  public static readonly MessagingEvent KeepAlive = new(Guid.Empty, 0);
-}
+public sealed record MessagingEvent(Guid ConversationId, long Revision);
 
 // Wakes the outbox worker when a reply is queued, so it is sent at once
 // rather than on the next poll.

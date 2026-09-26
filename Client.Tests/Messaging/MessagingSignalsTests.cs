@@ -12,9 +12,12 @@ using Microsoft.JSInterop;
 
 namespace Client.Tests.Messaging;
 
-// The browser's messaging signals: the stream's lines, the channel scoped
+// The browser's messaging signals: the server's answers, the channel scoped
 // to the signed-in account, the local fallback when the channel cannot be
-// loaded, and a fallback wait that a slow tick cannot break.
+// loaded, and a fallback wait that a slow tick cannot break. Firebase
+// Hosting held the old server-sent stream back, so an inbound message
+// showed only on the next 30-second poll; the reader now asks with
+// requests that end, and a change reaches the views as soon as one answers.
 [Trait("Category", "Messaging")]
 [Trait("Kind", "Unit")]
 public sealed class MessagingSignalsTests
@@ -23,74 +26,113 @@ public sealed class MessagingSignalsTests
   private static readonly Guid Ann = Guid.NewGuid();
   private static readonly Guid Session = Guid.NewGuid();
 
+  // The owner's case: a driver's message commits while the reader waits.
+  // The view hears of it when the answer comes, not on a poll tick: the
+  // clock does not move at all.
   [Fact]
-  public void OnlyADataLineNamingAConversationIsAChange()
-  {
-    var id = Guid.NewGuid();
-
-    Assert.Equal(
-      id.ToString(),
-      MessagingSignals.Change(
-        $"data: {{\"conversationId\":\"{id}\",\"revision\":4}}"
-      )
-    );
-    Assert.Null(MessagingSignals.Change(": keep-alive"));
-    Assert.Null(MessagingSignals.Change("event: change"));
-    Assert.Null(MessagingSignals.Change("data: not json"));
-    Assert.Null(MessagingSignals.Change("data: {\"revision\":4}"));
-    Assert.Null(
-      MessagingSignals.Change($"data: {{\"conversationId\":\"{Guid.Empty}\"}}")
-    );
-    Assert.Null(MessagingSignals.Change("data: {\"conversationId\":7}"));
-    Assert.Null(MessagingSignals.Change("data: [1]"));
-    Assert.Null(MessagingSignals.Change("data: {\"resync\":true}"));
-    Assert.True(MessagingSignals.IsResync("data: {\"resync\":true}"));
-    Assert.False(MessagingSignals.IsResync("data: {\"resync\":false}"));
-    Assert.False(MessagingSignals.IsResync(": keep-alive"));
-  }
-
-  // A healthy stream: the server's "read everything again" reaches every
-  // view, and so does a repair tick once a minute has passed, on the next
-  // keep-alive, since changes on another instance never come as signals.
-  [Fact]
-  public async Task AHealthyStreamResyncsWhenToldAndRepairsEachMinute()
+  public async Task AChangeReachesTheViewsWithoutWaitingForAPoll()
   {
     await using var f = new Fixture();
-    f.Live = new();
-    var channel = f.Context.JSInterop.SetupModule(Channel);
-    channel
-      .SetupVoid("join", _ => true)
-      .SetException(new JSException("No channel in this test."));
-    var seen = new List<string>();
-    f.Signals.Changed += x =>
-    {
-      lock (seen)
-        seen.Add(x.Kind);
-    };
+    var server = f.Server();
+    var seen = f.LocalOnly();
     await f.Signals.JoinAsync();
-    await Eventually(() => Assert.Contains("resync", Seen(seen)));
-    f.Live.Say(": connected");
+    await Eventually(() => Assert.Contains("resync", Kinds(seen)));
+    var waiting = await server.NextAsync();
+    Assert.Equal(server.Mailbox, waiting.Mailbox);
 
-    f.Live.Say("data: {\"resync\":true}");
+    var chat = Guid.NewGuid();
+    waiting.Answer(chat);
+
     await Eventually(
-      () => Assert.Equal(2, Seen(seen).Count(x => x == "resync"))
+      () => Assert.Contains(("change", (Guid?)chat), Seen(seen))
     );
-    f.Time.Advance(TimeSpan.FromSeconds(25));
-    f.Live.Say(": keep-alive");
-    await Task.Delay(50);
-    Assert.DoesNotContain("poll", Seen(seen));
-
-    f.Time.Advance(TimeSpan.FromSeconds(36));
-    f.Live.Say(": keep-alive");
-    await Eventually(() => Assert.Contains("poll", Seen(seen)));
-    Assert.Equal(1, f.Streams);
+    Assert.DoesNotContain("poll", Kinds(seen));
     await f.Signals.LeaveAsync();
   }
 
-  private static List<string> Seen(List<string> seen)
+  // Resync when the server says so, or when it answers with a mailbox other
+  // than the one asked with; and a repair tick once a minute of answers.
+  [Fact]
+  public async Task AnswersResyncWhenToldAndRepairEachMinute()
   {
-    lock (seen)
-      return [.. seen];
+    await using var f = new Fixture();
+    var server = f.Server();
+    var seen = f.LocalOnly();
+    await f.Signals.JoinAsync();
+    await Eventually(() => Assert.Single(Kinds(seen), "resync"));
+
+    (await server.NextAsync()).Answer(resync: true);
+    await Eventually(
+      () => Assert.Equal(2, Kinds(seen).Count(x => x == "resync"))
+    );
+    var replaced = await server.NextAsync();
+    replaced.Answer(mailbox: Guid.NewGuid());
+    await Eventually(
+      () => Assert.Equal(3, Kinds(seen).Count(x => x == "resync"))
+    );
+    // The next request names the mailbox the server answered with.
+    var next = await server.NextAsync();
+    Assert.Equal(replaced.AnsweredWith, next.Mailbox);
+
+    // Time moves only while a request is waiting, as on the server.
+    f.Time.Advance(TimeSpan.FromSeconds(20));
+    next.Answer();
+    var later = await server.NextAsync();
+    f.Time.Advance(TimeSpan.FromSeconds(20));
+    later.Answer();
+    var last = await server.NextAsync();
+    Assert.DoesNotContain("poll", Kinds(seen));
+    f.Time.Advance(TimeSpan.FromSeconds(21));
+    last.Answer();
+    await Eventually(() => Assert.Contains("poll", Kinds(seen)));
+    await f.Signals.LeaveAsync();
+  }
+
+  // A mailbox lost on every request - each reaching another instance -
+  // must not become a loop of full reads: the second replacement in a row
+  // waits out the backoff before asking again.
+  [Fact]
+  public async Task AMailboxReplacedAgainAndAgainBacksOff()
+  {
+    await using var f = new Fixture();
+    var server = f.Server();
+    var seen = f.LocalOnly();
+    await f.Signals.JoinAsync();
+    (await server.NextAsync()).Answer(mailbox: Guid.NewGuid());
+    (await server.NextAsync()).Answer(mailbox: Guid.NewGuid());
+
+    await Eventually(() => Assert.Contains("poll", Kinds(seen)));
+    await Task.Delay(50);
+    Assert.Equal(3, server.Requests);
+    f.Time.Advance(TimeSpan.FromSeconds(2));
+    await server.NextAsync();
+    Assert.Equal(4, server.Requests);
+    await f.Signals.LeaveAsync();
+  }
+
+  // Idle for five minutes: about three requests a minute that each return
+  // after the server's wait, one repair tick a minute, and nothing else.
+  // The stream this replaced left each view polling every 30 seconds.
+  [Fact]
+  public async Task AnIdleBrowserAsksThreeTimesAMinuteAndRepairsOnce()
+  {
+    await using var f = new Fixture();
+    var server = f.Server(answerAfter: TimeSpan.FromSeconds(20));
+    var seen = f.LocalOnly();
+    await f.Signals.JoinAsync();
+    await Eventually(() => Assert.Equal(2, server.Requests));
+
+    for (var second = 0; second < 300; second++)
+    {
+      f.Time.Advance(TimeSpan.FromSeconds(1));
+      await Task.Delay(2);
+    }
+    await Task.Delay(50);
+
+    Assert.InRange(server.Requests, 15, 17);
+    Assert.InRange(Kinds(seen).Count(x => x == "poll"), 4, 5);
+    Assert.Single(Kinds(seen), "resync");
+    await f.Signals.LeaveAsync();
   }
 
   [Fact]
@@ -121,7 +163,7 @@ public sealed class MessagingSignalsTests
   [Theory]
   [InlineData("import")]
   [InlineData("join")]
-  public async Task WithoutTheChannelThisTabReadsItsOwnStreamAndPolls(
+  public async Task WithoutTheChannelThisTabAsksForItselfAndPolls(
     string failing
   )
   {
@@ -146,15 +188,15 @@ public sealed class MessagingSignalsTests
     await signals.JoinAsync();
 
     await Eventually(() => Assert.Contains("poll", seen));
-    Assert.Equal(1, f.Streams);
+    Assert.Equal(1, f.Requests);
     Assert.Empty(channel.Invocations["post"]);
     f.Time.Advance(TimeSpan.FromSeconds(2));
-    await Eventually(() => Assert.Equal(2, f.Streams));
+    await Eventually(() => Assert.Equal(2, f.Requests));
     await signals.LeaveAsync();
   }
 
   // A tick that returns after the whole wait has passed must not stop the
-  // reader: it reconnects instead of waiting for a negative time.
+  // reader: it asks again instead of waiting for a negative time.
   [Fact]
   public async Task ASlowTickDoesNotStopTheReader()
   {
@@ -170,18 +212,19 @@ public sealed class MessagingSignalsTests
     f.Time.Advance(TimeSpan.FromSeconds(10));
     posts.SetVoidResult();
 
-    await Eventually(() => Assert.Equal(2, f.Streams));
+    await Eventually(() => Assert.Equal(2, f.Requests));
     await f.Signals.LeaveAsync();
   }
 
-  // A reader stopped by a sign-in change is not awaited; whatever it reads
-  // afterwards must not reach the channel the next join opened.
+  // A reader stopped by a sign-in change is not awaited; whatever its last
+  // request answers afterwards must not reach the channel the next join
+  // opened.
   [Fact]
   public async Task AStoppedReaderPostsNothingIntoTheNextJoin()
   {
     await using var f = new Fixture();
     var held = new TaskCompletionSource<HttpResponseMessage>();
-    f.Stream = held.Task;
+    f.Held = held.Task;
     var channel = f.Context.JSInterop.SetupModule(Channel);
     var joins = channel.SetupVoid("join", _ => true);
     joins.SetVoidResult();
@@ -190,57 +233,48 @@ public sealed class MessagingSignalsTests
     posts.SetVoidResult();
     await f.Signals.JoinAsync();
     await f.Signals.Lead();
-    await Eventually(() => Assert.Equal(1, f.Streams));
+    await Eventually(() => Assert.Equal(1, f.Requests));
 
     f.Auth.SetClaims(
       new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
     );
     await Eventually(() => Assert.Equal(2, joins.Invocations.Count));
-    held.SetResult(
-      new(HttpStatusCode.OK)
-      {
-        Content = new StringContent(
-          $"data: {{\"conversationId\":\"{Guid.NewGuid()}\"}}\n\n"
-        ),
-      }
-    );
+    held.SetResult(Fixture.Json(Guid.NewGuid(), true, [Guid.NewGuid()]));
     await Task.Delay(50);
 
     Assert.Empty(posts.Invocations);
     await f.Signals.LeaveAsync();
   }
 
-  // A proxy in front of the API holds the streamed response back. Without
-  // headers in time, or without a line in time, the stream counts as down:
-  // this tab polls and reconnects rather than waiting on it.
-  [Theory]
-  [InlineData("headers")]
-  [InlineData("body")]
-  public async Task AStreamHeldBackByAProxyCountsAsDown(string buffered)
+  // An answer that never comes - a network or proxy that holds it - counts
+  // as the connection being down once the server's wait and a margin have
+  // passed: this tab polls and asks again.
+  [Fact]
+  public async Task AnAnswerThatDoesNotComeCountsAsDown()
   {
     await using var f = new Fixture();
-    f.Buffered = buffered;
-    var channel = f.Context.JSInterop.SetupModule(Channel);
-    channel
-      .SetupVoid("join", _ => true)
-      .SetException(new JSException("No channel in this test."));
-    var seen = new List<string>();
-    f.Signals.Changed += x => seen.Add(x.Kind);
+    f.Silent = true;
+    var seen = f.LocalOnly();
     await f.Signals.JoinAsync();
-    await Eventually(() => Assert.Equal(1, f.Streams));
-    Assert.DoesNotContain("poll", seen);
+    await Eventually(() => Assert.Equal(1, f.Requests));
+    Assert.DoesNotContain("poll", Kinds(seen));
 
-    f.Time.Advance(
-      buffered == "headers"
-        ? MessagingSignals.HeaderTimeout
-        : MessagingSignals.IdleTimeout
-    );
+    f.Time.Advance(MessagingSignals.AnswerTimeout);
 
-    await Eventually(() => Assert.Contains("poll", seen));
+    await Eventually(() => Assert.Contains("poll", Kinds(seen)));
     f.Time.Advance(TimeSpan.FromSeconds(2));
-    await Eventually(() => Assert.Equal(2, f.Streams));
+    await Eventually(() => Assert.Equal(2, f.Requests));
     await f.Signals.LeaveAsync();
   }
+
+  private static List<(string Kind, Guid? Id)> Seen(List<(string, Guid?)> seen)
+  {
+    lock (seen)
+      return [.. seen];
+  }
+
+  private static List<string> Kinds(List<(string, Guid?)> seen) =>
+    [.. Seen(seen).Select(x => x.Kind)];
 
   private static async Task Eventually(Action assertion)
   {
@@ -278,15 +312,16 @@ public sealed class MessagingSignalsTests
     public ClientComponentContext Context { get; }
     public BunitAuthorizationContext Auth { get; }
     public FakeTimeProvider Time { get; } = new();
-    public int Streams;
-    public Task<HttpResponseMessage>? Stream;
+    public int Requests;
 
-    // A proxy that holds the stream back: headers that never come, or a
-    // body that never says anything. Both honour the reader's cancellation.
-    public string? Buffered;
+    // Held until the test answers; like a slow network, it does not notice
+    // the reader's cancellation.
+    public Task<HttpResponseMessage>? Held;
 
-    // A stream that speaks when the test says.
-    public LiveStream? Live;
+    // An answer that never comes; it honours the reader's cancellation.
+    public bool Silent;
+
+    private FakeServer? _server;
 
     public Fixture()
     {
@@ -316,34 +351,39 @@ public sealed class MessagingSignalsTests
     public MessagingSignals Signals =>
       Context.Services.GetRequiredService<MessagingSignals>();
 
+    public FakeServer Server(TimeSpan? answerAfter = null) =>
+      _server = new FakeServer(Time, answerAfter);
+
+    // No channel: this tab reads for itself and every signal comes here.
+    public List<(string, Guid?)> LocalOnly()
+    {
+      Context
+        .JSInterop.SetupModule(Channel)
+        .SetupVoid("join", _ => true)
+        .SetException(new JSException("No channel in this test."));
+      var seen = new List<(string, Guid?)>();
+      Signals.Changed += x =>
+      {
+        lock (seen)
+          seen.Add((x.Kind, x.ConversationId));
+      };
+      return seen;
+    }
+
     private Task<HttpResponseMessage> SendAsync(
       HttpRequestMessage request,
       CancellationToken ct
     )
     {
-      if (request.RequestUri!.AbsolutePath == "/api/messaging/events")
+      if (request.RequestUri!.AbsolutePath == "/api/messaging/changes")
       {
-        Interlocked.Increment(ref Streams);
-        // Held until the test answers; like a slow network, it does not
-        // notice the reader's cancellation.
-        if (Stream is { } held)
+        Interlocked.Increment(ref Requests);
+        if (Held is { } held)
           return held;
-        if (Live is { } live)
-          return Task.FromResult(
-            new HttpResponseMessage(HttpStatusCode.OK)
-            {
-              Content = new StreamContent(live),
-            }
-          );
-        if (Buffered == "headers")
+        if (Silent)
           return Hang(ct);
-        if (Buffered == "body")
-          return Task.FromResult(
-            new HttpResponseMessage(HttpStatusCode.OK)
-            {
-              Content = new StreamContent(new SilentStream()),
-            }
-          );
+        if (_server is { } server)
+          return server.Receive(request.RequestUri, ct);
       }
       return Task.FromResult(
         new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
@@ -356,68 +396,89 @@ public sealed class MessagingSignalsTests
       throw new InvalidOperationException("Unreachable");
     }
 
+    public static HttpResponseMessage Json(
+      Guid mailbox,
+      bool resync,
+      IReadOnlyList<Guid> conversations
+    ) =>
+      new(HttpStatusCode.OK)
+      {
+        Content = new StringContent(
+          JsonSerializer.Serialize(
+            new
+            {
+              success = true,
+              response = new
+              {
+                mailbox,
+                resync,
+                conversations,
+              },
+              errors = Array.Empty<string>(),
+            }
+          ),
+          System.Text.Encoding.UTF8,
+          "application/json"
+        ),
+      };
+
     public ValueTask DisposeAsync() => Context.DisposeAsync();
   }
 
-  private sealed class LiveStream : SilentStream
+  // The server's side of the conversation: the first request (no mailbox)
+  // opens one and is told to resync; every other waits for the test, or
+  // answers empty after answerAfter on the test's clock.
+  private sealed class FakeServer(TimeProvider time, TimeSpan? answerAfter)
   {
-    private readonly System.Threading.Channels.Channel<byte[]> _lines =
-      System.Threading.Channels.Channel.CreateUnbounded<byte[]>();
+    public Guid Mailbox { get; } = Guid.NewGuid();
+    public int Requests;
+    private readonly System.Threading.Channels.Channel<Pending> _pending =
+      System.Threading.Channels.Channel.CreateUnbounded<Pending>();
 
-    public void Say(string line) =>
-      _lines.Writer.TryWrite(System.Text.Encoding.UTF8.GetBytes(line + "\n\n"));
-
-    public override async ValueTask<int> ReadAsync(
-      Memory<byte> buffer,
-      CancellationToken ct = default
+    public async Task<HttpResponseMessage> Receive(
+      Uri uri,
+      CancellationToken ct
     )
     {
-      var bytes = await _lines.Reader.ReadAsync(ct);
-      bytes.CopyTo(buffer);
-      return bytes.Length;
+      Interlocked.Increment(ref Requests);
+      var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+      Guid? asked = Guid.TryParse(query["mailbox"], out var id) ? id : null;
+      if (asked is null)
+        return Fixture.Json(Mailbox, true, []);
+      if (answerAfter is { } after)
+      {
+        await Task.Delay(after, time, ct);
+        return Fixture.Json(asked.Value, false, []);
+      }
+      var pending = new Pending(asked);
+      _pending.Writer.TryWrite(pending);
+      return await pending.Response.Task.WaitAsync(ct);
     }
+
+    public async Task<Pending> NextAsync() =>
+      await _pending
+        .Reader.ReadAsync()
+        .AsTask()
+        .WaitAsync(TimeSpan.FromSeconds(5));
   }
 
-  private class SilentStream : Stream
+  private sealed class Pending(Guid? mailbox)
   {
-    public override bool CanRead => true;
-    public override bool CanSeek => false;
-    public override bool CanWrite => false;
-    public override long Length => throw new NotSupportedException();
-    public override long Position
-    {
-      get => throw new NotSupportedException();
-      set => throw new NotSupportedException();
-    }
+    public Guid? Mailbox => mailbox;
+    public Guid? AnsweredWith { get; private set; }
+    public TaskCompletionSource<HttpResponseMessage> Response { get; } =
+      new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public override async ValueTask<int> ReadAsync(
-      Memory<byte> buffer,
-      CancellationToken ct = default
+    public void Answer(
+      Guid? change = null,
+      bool resync = false,
+      Guid? mailbox = null
     )
     {
-      await Task.Delay(Timeout.Infinite, ct);
-      return 0;
+      AnsweredWith = mailbox ?? Mailbox!.Value;
+      Response.TrySetResult(
+        Fixture.Json(AnsweredWith.Value, resync, change is { } id ? [id] : [])
+      );
     }
-
-    public override Task<int> ReadAsync(
-      byte[] buffer,
-      int offset,
-      int count,
-      CancellationToken ct
-    ) => ReadAsync(buffer.AsMemory(offset, count), ct).AsTask();
-
-    public override int Read(byte[] buffer, int offset, int count) =>
-      throw new NotSupportedException();
-
-    public override void Flush() { }
-
-    public override long Seek(long offset, SeekOrigin origin) =>
-      throw new NotSupportedException();
-
-    public override void SetLength(long value) =>
-      throw new NotSupportedException();
-
-    public override void Write(byte[] buffer, int offset, int count) =>
-      throw new NotSupportedException();
   }
 }

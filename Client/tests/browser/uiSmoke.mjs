@@ -1177,7 +1177,7 @@ try {
           summaryReads = 0,
           telemetryReads = 0,
           messagingReads = 0,
-          messagingStreams = 0;
+          messagingChanges = 0;
         const holdBoard = () => {
           assert.ok(!boardHold, 'A board fixture response is already held');
           let release;
@@ -1220,14 +1220,24 @@ try {
             await route.fulfill({ status: 200, json: success(true) });
           } else if (
             url.origin === origin &&
-            url.pathname === '/api/messaging/events'
+            url.pathname === '/api/messaging/changes'
           ) {
-            messagingStreams++;
-            await route.fulfill({
-              status: 200,
-              contentType: 'text/event-stream',
-              body: ': ready\n\n',
-            });
+            // As the server answers: a new mailbox is told to read
+            // everything; a known one, with nothing changing, answers
+            // empty after a wait (shortened here from 20 seconds).
+            messagingChanges++;
+            const mailbox = url.searchParams.get('mailbox');
+            if (mailbox) await new Promise(done => setTimeout(done, 2000));
+            await route
+              .fulfill({
+                status: 200,
+                json: success({
+                  mailbox: mailbox ?? '00000000-0000-4000-8000-00000000c4a9',
+                  resync: !mailbox,
+                  conversations: [],
+                }),
+              })
+              .catch(() => {});
           } else if (
             url.origin !== origin ||
             !['GET', 'HEAD'].includes(route.request().method())
@@ -1874,8 +1884,8 @@ try {
             for (let wait = 0; wait < 50 && !messagingReads; wait++)
               await page.waitForTimeout(20);
             check(
-              messagingReads >= 1 && messagingStreams >= 1,
-              name + ' marks the thread read and opens the stream',
+              messagingReads >= 1 && messagingChanges >= 1,
+              name + ' marks the thread read and asks for changes',
             );
           }
           if (path === '/settings') {

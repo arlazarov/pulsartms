@@ -428,13 +428,22 @@ try {
             value = success({ selected: null, groups: [] });
           else if (path === '/api/messaging/unread')
             value = success({ conversations: 0, more: false, newest: 0 });
-          else if (path === '/api/messaging/events')
-            return route.fulfill({
-              status: 200,
-              contentType: 'text/event-stream',
-              body: ': ready\n\n',
-            });
-          else if (
+          else if (path === '/api/messaging/changes') {
+            // A new mailbox reads everything; a known one, with nothing
+            // changing, answers empty after a (shortened) wait.
+            const mailbox = url.searchParams.get('mailbox');
+            if (mailbox) await new Promise(done => setTimeout(done, 2000));
+            return route
+              .fulfill({
+                status: 200,
+                json: success({
+                  mailbox: mailbox ?? '00000000-0000-4000-8000-00000000c4a9',
+                  resync: !mailbox,
+                  conversations: [],
+                }),
+              })
+              .catch(() => {});
+          } else if (
             truckMatch &&
             /\/(planning|planning\/preview)$/.test(path) &&
             keyOf(truckMatch[1])

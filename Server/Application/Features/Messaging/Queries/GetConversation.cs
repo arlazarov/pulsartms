@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Application.Features.Messaging.Services;
 using Application.Models;
 using Domain.Entities.Messaging;
@@ -29,12 +28,6 @@ public sealed record MessageCursor(DateTime SentAt, DateTime CreatedAt, Guid Id)
   public static MessageCursor Older(DateTime sentAt) =>
     new(sentAt, DateTime.MinValue, Guid.Empty);
 }
-
-// "Conversation X changed" signals for the caller's company, as they are
-// raised after commit. A heartbeat (an empty id) keeps the stream open
-// through proxies while nothing changes.
-public sealed record StreamMessagingEventsQuery
-  : IStreamRequest<MessagingEvent>;
 
 public sealed record AttachmentView(
   Guid Id,
@@ -86,16 +79,11 @@ public sealed record ConversationView(
 public sealed class ConversationHandlers(
   IAppDbContext db,
   ICurrentUser caller,
-  ICurrentCompany company,
-  MessagingEvents events,
   TimeProvider clock
-)
-  : IRequestHandler<GetConversationQuery, RequestResponse<ConversationView>>,
-    IStreamRequestHandler<StreamMessagingEventsQuery, MessagingEvent>
+) : IRequestHandler<GetConversationQuery, RequestResponse<ConversationView>>
 {
   public const int PageSize = 50;
   public const int Context = 25;
-  public static readonly TimeSpan Heartbeat = TimeSpan.FromSeconds(25);
 
   public async Task<RequestResponse<ConversationView>> Handle(
     GetConversationQuery request,
@@ -367,41 +355,4 @@ public sealed class ConversationHandlers(
             || x.CreatedAt == at.CreatedAt && x.Id.CompareTo(at.Id) < 0
           )
       );
-
-  public async IAsyncEnumerable<MessagingEvent> Handle(
-    StreamMessagingEventsQuery request,
-    [EnumeratorCancellation] CancellationToken ct
-  )
-  {
-    if (company.Id is not { } serving)
-      yield break;
-    using var subscription = events.Subscribe(serving);
-    while (!ct.IsCancellationRequested)
-    {
-      // Queued signals were refused while this reader was behind: it says
-      // so before the ones that did queue, which may come later than the
-      // lost ones.
-      if (subscription.TakeOverflow())
-      {
-        yield return MessagingEvent.Resync;
-        continue;
-      }
-      using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct);
-      wait.CancelAfter(Heartbeat);
-      MessagingEvent? next = null;
-      try
-      {
-        if (await subscription.Reader.WaitToReadAsync(wait.Token))
-          subscription.Reader.TryRead(out next);
-        else
-          yield break;
-      }
-      catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }
-      catch (OperationCanceledException)
-      {
-        yield break;
-      }
-      yield return next ?? MessagingEvent.KeepAlive;
-    }
-  }
 }

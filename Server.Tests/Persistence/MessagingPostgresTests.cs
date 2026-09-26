@@ -340,8 +340,6 @@ public sealed class MessagingPostgresTests
     var handler = new ConversationHandlers(
       db,
       new Server.Tests.Messaging.InboxScenario.Caller("thread-dispatcher"),
-      new TestCompany(),
-      new MessagingEvents(),
       TimeProvider.System
     );
 

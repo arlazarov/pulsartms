@@ -115,6 +115,14 @@ public sealed record TemplateRequest(
 // them: a notice is due only when it rises.
 public sealed record UnreadCount(int Conversations, bool More, long Newest);
 
+// The conversations that changed since the mailbox's last answer. Resync:
+// read everything again. The next request names Mailbox.
+public sealed record MessagingChanges(
+  Guid Mailbox,
+  bool Resync,
+  IReadOnlyList<Guid> Conversations
+);
+
 // Who the conversation is with and what they are driving. State:
 // unmatched, no-truck, one-truck or several-trucks; loads are offered only
 // for one truck.

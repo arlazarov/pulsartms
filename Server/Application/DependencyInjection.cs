@@ -119,6 +119,7 @@ public static class DependencyInjection
     services.AddScoped<ApprovedTemplates>();
     services.AddScoped<IDriverTextDelivery, DriverTextDelivery>();
     services.AddSingleton<MessagingEvents>();
+    services.AddSingleton<MessagingMailboxes>();
     services.AddSingleton<IInboundMediaOperation, InboundMediaOperation>();
     services.AddSingleton<OutboxSignal>();
     services.AddScoped<ReplyQueue>();

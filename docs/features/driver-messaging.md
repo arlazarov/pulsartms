@@ -153,11 +153,16 @@ driver messages (index `CompanyId, LastInboundSequence`) and this
 dispatcher's marker for each, so the work grows with conversations, not
 messages. Not measured on PostgreSQL.
 
-`GET /api/messaging/events` is a server-sent event stream of
-"conversation changed" signals (id and revision, no content) for the
-caller's company, raised after commit, with a keep-alive every 25 seconds.
-Signals live in this process only and each subscriber keeps at most 64; a
-reader that reconnects or misses signals reads the inbox again.
+`GET /api/messaging/changes?mailbox=` answers which conversations changed
+(ids only, no content) for the caller's company, as soon as a change
+commits, or empty after 20 seconds (`MessagingMailboxes`). The mailbox is
+the caller's subscription, kept between requests, so a change raised
+between two requests waits for the next; each belongs to one company and
+account, lives 60 seconds after its last answer, and a process keeps at
+most 512. A new, expired, foreign or unknown mailbox is replaced and the
+answer says `resync`: read everything again. Signals live in this process
+only and each mailbox queues at most 64; a full queue also answers
+`resync`. The answer is `Cache-Control: no-store`.
 
 ## Messages page
 
@@ -194,7 +199,7 @@ dropped.
 
 Opening a conversation reads its messages and its trip side by side, and
 the messages show as soon as they arrive: the list, the templates, the
-stream join, the trip and the read marker never hold them back, and each
+signal join, the trip and the read marker never hold them back, and each
 answer is fenced by its conversation and read generation. The read marker
 is posted after the messages show, and only while something is unread
 for this dispatcher. A signal for the open conversation rereads it beside
@@ -339,30 +344,37 @@ is read when the page opens, when the search or the group changes, and
 not on every signal: a driver whose conversation a colleague created
 meanwhile still opens that one.
 
-One stream per browser and account, not per tab: every tab showing
+One reader per browser and account, not per tab: every tab showing
 messages joins `Scripts/shared/messagingChannel.ts` under a scope naming
 the signed-in account and this sign-in's session. A Web Lock of that scope
-elects one tab, which reads `/api/messaging/events` through the app's
-authenticated client (`Services/MessagingSignals.cs`) and relays each
-signal to the other tabs over a BroadcastChannel of the same scope, so a
+elects one tab, which asks `/api/messaging/changes` through the app's
+authenticated client (`Services/MessagingSignals.cs`), one request after
+another, and relays each signal to the other tabs over a BroadcastChannel
+of the same scope, so a
 tab signed in as someone else never shares its leader. A sign-in, sign-out
 or account change leaves and joins again. Without both BroadcastChannel and
 Web Locks, or when the channel module cannot be loaded or joined, every tab
-reads its own stream and signals only itself. After every connect the
-reader sends "resync"; while the stream is down it sends a "poll" tick at
-most every 30 seconds and reconnects with backoff (2 to 60 seconds). In
-production the browser reaches the API through Firebase Hosting's
-`/api/**` rewrite, which may hold a streamed response back until it ends.
-A stream that sends no headers within 10 seconds, or no line within 40
-(the server sends a keep-alive every 25), therefore counts as down and the
-poll ticks carry the views. Whether Hosting passes the stream through live
-is checked only after release. Each
+asks for itself and signals only itself. A new mailbox or a `resync`
+answer sends "resync"; while answers keep coming it sends a "poll" repair
+tick once a minute, for changes committed on another API instance. A
+request not answered within 35 seconds, or refused, counts as down: the
+reader sends a "poll" tick at most every 30 seconds and retries with
+backoff (2 to 60 seconds); so does a mailbox replaced twice in a row.
+
+This replaced a server-sent event stream. In production the browser
+reaches the API through Firebase Hosting's `/api/**` rewrite, which does
+not pass streamed responses through: it buffers them until they end. The
+stream never spoke, every browser fell back to the 30-second poll, and on
+September 26 an inbound message stored at 01:37:56.6 UTC was read by the
+next inbox poll at 01:38:18.3 (Meta to stored took 1.4 to 2.6 seconds).
+Each abandoned stream also held one of the instance's 80 request slots
+until Cloud Run's 300-second timeout. Each
 view reads again on a signal and discards an answer older than one it
 already has.
 
 Every page shows the unread count beside Messages in the navigation
 (`Services/MessagingNotices.cs`, `Shared/MessagesNotice`), which keeps the
-tab joined to the stream on every page. Each tab reads the count once when
+tab joined to the signals on every page. Each tab reads the count once when
 it starts and when the account changes. After that only the leading tab
 reads it: a burst of signals becomes one read after 500 ms, and the count
 goes to every tab of the account over the channel, so a browser reads once
@@ -622,7 +634,12 @@ under the number they went from, a window under another number),
 expiry, leases, a crash between the updates, a lost finalize, naming),
 `Server.Tests/Messaging/InboxReadTests` (read cost, unread, markers,
 paging, 120 conversations continued past 50 with 70 at one time and a
-late arrival, search, stream isolation),
+late arrival, search),
+`Server.Tests/Messaging/MessagingMailboxesTests` (an answer as soon as a
+change commits, a change between requests kept for the next, empty after
+the wait, a mailbox its owner's alone, replaced when unknown or expired
+but never while read, a full queue, a second request not taking the
+first's change, the process limit),
 `Server.Tests/Messaging/ConversationHistoryTests` (120 messages at one
 time read to the end, a late message below the page kept unread until
 shown, one among pages already shown not marked),
@@ -647,13 +664,16 @@ closes, "You" and one's own claim), `Server.Tests/Fleet/DriverHosReadTests`
 keeps its draft, removal only after confirming),
 `Client.Tests/Messaging/MessagesPageTests` (list and thread, read marker,
 stale reply confirmed with the same key, closed window without templates,
-a stream signal reads the open thread again, more conversations kept
+a change signal reads the open thread again, more conversations kept
 through a refresh, a late page for an earlier search dropped, earlier
 messages by cursor marking only what the server allows, and as before
 against a server without it),
-`Client.Tests/Messaging/MessagingSignalsTests` (stream lines, account scope
-and rejoin on account change, local stream and polling after a failed
-import or join, a slow tick that outlasts the wait),
+`Client.Tests/Messaging/MessagingSignalsTests` (a change reaching the views
+with no poll, resync and a repair each minute, a mailbox replaced again
+and again backing off, an idle browser's requests over five minutes,
+account scope and rejoin on account change, asking for itself and
+polling after a failed import or join, a slow tick that outlasts the
+wait, an answer that never comes),
 `Client.Tests/Messaging/MessagingNoticesTests` (one read and one relay per
 burst on the leader, none on a follower, only a risen arrival notifies,
 an account change or disposal during the relay or the import notifies

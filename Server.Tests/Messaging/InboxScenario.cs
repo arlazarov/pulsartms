@@ -146,13 +146,7 @@ internal static class InboxScenario
         new TestDriverScope(scope),
         TimeProvider.System
       ),
-      new ConversationHandlers(
-        f.Db,
-        new Caller(identity),
-        new TestCompany(),
-        new MessagingEvents(),
-        TimeProvider.System
-      )
+      new ConversationHandlers(f.Db, new Caller(identity), TimeProvider.System)
     );
   }
 

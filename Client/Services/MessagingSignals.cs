@@ -1,38 +1,40 @@
 using System.Security.Claims;
-using System.Text.Json;
 using Client.Models.DTO.Messaging;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
 
 namespace Client.Services;
 
-// "Something changed" for the messaging views, from one server stream per
-// browser and account. Views subscribe while they are shown; the first
-// subscriber joins the tab to the cross-tab channel
-// (Scripts/shared/messagingChannel.ts) under the signed-in account and
-// session, and whichever tab is elected reads the stream through the app's
-// own authenticated client and passes each signal on. When the channel
-// cannot be loaded, this tab reads its own stream and signals only itself.
-// After every (re)connect it sends "resync", so a view reads everything
-// again rather than trusting that no signal was lost; while the stream is
-// down it sends a "poll" tick at most every 30 seconds and reconnects with
-// backoff. A change of account or sign-out leaves and joins again.
+// "Something changed" for the messaging views, from one reader per browser
+// and account. Views subscribe while they are shown; the first subscriber
+// joins the tab to the cross-tab channel (Scripts/shared/messagingChannel.ts)
+// under the signed-in account and session, and whichever tab is elected
+// asks the server what changed through the app's own authenticated client
+// and passes each signal on. When the channel cannot be loaded, this tab
+// asks for itself and signals only itself.
+//
+// Each request answers as soon as a change commits, or empty after the
+// server's wait (MessagingMailboxes.Wait, 20 seconds), and names the
+// mailbox to ask with next. It is a request that ends because Firebase
+// Hosting, in front of the API, held a streamed response back until it
+// ended: the stream this replaced never spoke, and inbound messages showed
+// only on the 30-second poll. A new mailbox, or a server that lost signals,
+// sends "resync", so a view reads everything again rather than trusting
+// that nothing was missed. While requests fail it sends a "poll" tick at
+// most every 30 seconds and retries with backoff. A change of account or
+// sign-out leaves and joins again.
 public sealed class MessagingSignals : IAsyncDisposable
 {
   public static readonly TimeSpan PollEvery = TimeSpan.FromSeconds(30);
 
-  // A proxy in front of the API may hold a streamed response back until it
-  // ends: then no headers come, or no line does although the server sends a
-  // keep-alive every 25 seconds. Either counts as the stream being down, so
-  // the poll ticks carry the views instead of a stream that says nothing.
-  public static readonly TimeSpan HeaderTimeout = TimeSpan.FromSeconds(10);
-  public static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(40);
+  // The server's wait plus a margin: an answer later than this counts as
+  // the connection being down.
+  public static readonly TimeSpan AnswerTimeout = TimeSpan.FromSeconds(35);
 
-  // A healthy stream still misses some changes: those committed on another
-  // API instance, whose signals stay there. While it is up, the leader asks
-  // every view to check itself once this long has passed since the last
-  // ask, on the next line the stream sends (a keep-alive comes every 25
-  // seconds), so such a change shows within about a minute and a half.
+  // A mailbox lives on one API instance only, so a change committed on
+  // another never reaches it. While answers come, the leader asks every
+  // view to check itself once this long has passed since the last ask, so
+  // such a change shows within about a minute and a half.
   public static readonly TimeSpan RepairEvery = TimeSpan.FromSeconds(60);
   private static readonly TimeSpan FirstBackoff = TimeSpan.FromSeconds(2);
   private static readonly TimeSpan MaximumBackoff = TimeSpan.FromSeconds(60);
@@ -221,60 +223,38 @@ public sealed class MessagingSignals : IAsyncDisposable
   private async Task ReadAsync(CancellationToken ct)
   {
     var backoff = FirstBackoff;
+    Guid? mailbox = null;
+    var replaced = 0;
+    var repaired = _time.GetUtcNow();
     while (!ct.IsCancellationRequested)
     {
-      try
+      var changes = await AskAsync(mailbox, ct);
+      if (ct.IsCancellationRequested)
+        return;
+      if (changes is not null)
       {
-        using var quiet = new CancellationTokenSource(HeaderTimeout, _time);
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(
-          ct,
-          quiet.Token
-        );
-        using var response = await _api.OpenStreamAsync(
-          "api/messaging/events",
-          linked.Token
-        );
-        if (response is not null)
+        backoff = FirstBackoff;
+        // A mailbox the server no longer had: whatever changed before the
+        // new one opened was queued for nobody.
+        replaced =
+          mailbox is not null && changes.Mailbox != mailbox ? replaced + 1 : 0;
+        if (changes.Resync || changes.Mailbox != mailbox)
         {
           await PostAsync("resync", null, ct);
-          var repaired = _time.GetUtcNow();
-          quiet.CancelAfter(IdleTimeout);
-          await using var stream = await response.Content.ReadAsStreamAsync(
-            linked.Token
-          );
-          using var reader = new StreamReader(stream);
-          while (
-            !ct.IsCancellationRequested
-            && await reader.ReadLineAsync(linked.Token) is { } line
-          )
-          {
-            // Only a stream that actually speaks earns a quick reconnect.
-            quiet.CancelAfter(IdleTimeout);
-            backoff = FirstBackoff;
-            if (Change(line) is { } id)
-              await PostAsync("change", id, ct);
-            else if (IsResync(line))
-              await PostAsync("resync", null, ct);
-            if (_time.GetUtcNow() - repaired >= RepairEvery)
-            {
-              repaired = _time.GetUtcNow();
-              await PostAsync("poll", null, ct);
-            }
-          }
+          repaired = _time.GetUtcNow();
         }
-      }
-      catch (OperationCanceledException) when (ct.IsCancellationRequested)
-      {
-        return;
-      }
-      catch (OperationCanceledException)
-      {
-        // No headers or no line in time: treated as a dropped stream.
-      }
-      catch (Exception ex)
-        when (ex is HttpRequestException or IOException or JSException)
-      {
-        // The stream dropped; views keep up through the poll ticks below.
+        mailbox = changes.Mailbox;
+        foreach (var id in changes.Conversations)
+          await PostAsync("change", id.ToString(), ct);
+        if (_time.GetUtcNow() - repaired >= RepairEvery)
+        {
+          repaired = _time.GetUtcNow();
+          await PostAsync("poll", null, ct);
+        }
+        // Replaced again and again - requests reaching another instance
+        // each time - would read everything in a loop; it waits instead.
+        if (replaced < 2)
+          continue;
       }
       var until = _time.GetUtcNow() + backoff;
       backoff = TimeSpan.FromTicks(
@@ -300,47 +280,24 @@ public sealed class MessagingSignals : IAsyncDisposable
     }
   }
 
-  // "data: {conversationId, revision}" lines carry a change; comments and
-  // anything else are ignored.
-  public static string? Change(string line)
+  // Null when no answer came in time or the server refused.
+  private async Task<MessagingChanges?> AskAsync(
+    Guid? mailbox,
+    CancellationToken ct
+  )
   {
-    if (!line.StartsWith("data:", StringComparison.Ordinal))
-      return null;
-    try
-    {
-      using var json = JsonDocument.Parse(line[5..]);
-      return
-        json.RootElement.ValueKind == JsonValueKind.Object
-        && json.RootElement.TryGetProperty("conversationId", out var id)
-        && id.ValueKind == JsonValueKind.String
-        && Guid.TryParse(id.GetString(), out var parsed)
-        && parsed != Guid.Empty
-        ? parsed.ToString()
-        : null;
-    }
-    catch (JsonException)
-    {
-      return null;
-    }
-  }
-
-  // "data: {resync: true}": the server refused signals for this stream
-  // while it was behind, so every view reads everything again.
-  public static bool IsResync(string line)
-  {
-    if (!line.StartsWith("data:", StringComparison.Ordinal))
-      return false;
-    try
-    {
-      using var json = JsonDocument.Parse(line[5..]);
-      return json.RootElement.ValueKind == JsonValueKind.Object
-        && json.RootElement.TryGetProperty("resync", out var resync)
-        && resync.ValueKind == JsonValueKind.True;
-    }
-    catch (JsonException)
-    {
-      return false;
-    }
+    using var late = new CancellationTokenSource(AnswerTimeout, _time);
+    using var linked = CancellationTokenSource.CreateLinkedTokenSource(
+      ct,
+      late.Token
+    );
+    var answer = await _api.GetAsync<MessagingChanges>(
+      mailbox is { } known
+        ? $"api/messaging/changes?mailbox={known}"
+        : "api/messaging/changes",
+      linked.Token
+    );
+    return answer is { Success: true, Response: { } changes } ? changes : null;
   }
 
   // Through the channel when joined, otherwise to this tab only. A channel

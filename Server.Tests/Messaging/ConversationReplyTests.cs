@@ -396,8 +396,6 @@ public sealed class ConversationReplyTests
       await new ConversationHandlers(
         f.Db,
         new ReplyFixture.Caller("me"),
-        new TestCompany(),
-        f.Events,
         f.Clock
       ).Handle(new GetConversationQuery(conversation, null), default)
     ).Response!;

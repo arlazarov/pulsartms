@@ -1,9 +1,10 @@
 // Two tabs of one browser on the release build, with synthetic fixtures
 // only: no real messages, accounts or notification grants. It checks the
 // real channel module, Web Locks and BroadcastChannel together: one tab
-// reads the stream and the other hears it, closing the leader hands the
-// stream to the other tab, signing out stops it, and signing in as
-// someone else starts it again under the new account's lock.
+// asks the server for changes and the other hears them, closing the leader
+// hands the asking to the other tab, signing out stops it, and signing in
+// as someone else starts it again under the new account's lock. A
+// "stream" below is one such request.
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -91,21 +92,32 @@ async function api(route) {
     return json(
       success({ loadNumberPrefix: 'AMF', revision: 1, updatedAt: null }),
     );
-  if (path === '/api/messaging/events') {
+  if (path === '/api/messaging/changes') {
     report.streams.push({
       tab: tabOf(request),
       account: token,
       at: Date.now(),
     });
-    // One change per connection: the leader relays it to the other tab.
-    revision++;
-    return route.fulfill({
-      status: 200,
-      contentType: 'text/event-stream',
-      body:
-        ': ready\n\n' +
-        `data: {"conversationId":"${conversation}","revision":${revision}}\n\n`,
-    });
+    // A new mailbox reads everything; after that each answer, a moment
+    // later, carries one change, which the leader relays to the other tab.
+    const mailbox = url.searchParams.get('mailbox');
+    if (mailbox) {
+      await new Promise(done => setTimeout(done, 500));
+      revision++;
+    }
+    return route
+      .fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(
+          success({
+            mailbox: mailbox ?? '00000000-0000-4000-8000-00000000c4a9',
+            resync: !mailbox,
+            conversations: mailbox ? [conversation] : [],
+          }),
+        ),
+      })
+      .catch(() => {});
   }
   if (path === '/api/messaging/unread')
     return json(success({ conversations: 0, more: false, newest: 0 }));
