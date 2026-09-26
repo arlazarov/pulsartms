@@ -5,7 +5,8 @@
 
 <PageTitle>Messages · PulsR</PageTitle>
 
-<section class="messages-page @(Id is null ? "is-list" : "is-thread") @(_trip ? "shows-trip" : "")">
+<section @ref="_page"
+         class="messages-page @(Id is null ? "is-list" : "is-thread") @(_trip ? "shows-trip" : "")">
     <PageHeader Title="Messages">
         <NotificationChoice />
     </PageHeader>
@@ -79,6 +80,7 @@
                         {
                             <li @key="item.Id">
                                 <a href="@($"/messages/{item.Id}")"
+                                   @onclick="() => PickedInList(item.Id)"
                                    class="@Conversation(item)"
                                    aria-current="@(item.Id == Id ? "page" : null)">
                                     <span class="messages__avatar" aria-hidden="true">@Initials(item)</span>

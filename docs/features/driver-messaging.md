@@ -290,6 +290,14 @@ then minutes in the last hour, from the driver's last message. Only
 free-form replies depend on it; the conversation and its history stay,
 and the server decides again when a reply is sent.
 
+Messages opened without a conversation opens, on a screen wide enough to
+show a conversation beside the list, the one left open last in this tab,
+else the newest by its last message; a phone keeps its list, and a link to
+a conversation opens that one. A conversation opened so is not marked read
+until the dispatcher picks it in the list or starts a reply. The memory is
+the tab's own and is cleared when the signed-in user changes
+(`ReturnPlaces`).
+
 The thread reads oldest first, marks itself read at the revision it
 showed, and claims the conversation, at most once a minute, when the
 dispatcher starts typing. Enter sends; Option (Alt) or Shift with Enter

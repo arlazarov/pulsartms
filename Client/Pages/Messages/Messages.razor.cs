@@ -118,7 +118,9 @@ public partial class Messages : IAsyncDisposable
   private IJSObjectReference? _scrolling;
   private DotNetObjectReference<Messages>? _self;
 
-  private (Guid?, Guid?) _shown;
+  // Null until the first parameters: the list with nothing open is a
+  // state of its own, not the default of "nothing shown yet".
+  private (Guid?, Guid?)? _shown;
 
   // Showing a window around a search result, not the newest messages: it
   // marks nothing read and a reread does not replace it.
@@ -138,7 +140,18 @@ public partial class Messages : IAsyncDisposable
 
   // The conversation pane, where Enter sends and files can be dropped.
   private ElementReference _threadPane;
+  private ElementReference _page;
   private IJSObjectReference? _composer;
+  private IJSObjectReference? _composerModule;
+
+  // Messages opened without a conversation opens the one left open last in
+  // this tab, else the newest by its last message - on a wide screen,
+  // where it stands beside the list; a phone keeps its list. One opened so
+  // is not chosen: it is not marked read until the dispatcher picks it in
+  // the list or starts a reply, so nothing unread is cleared by arriving.
+  private bool _openWhereLeft;
+  private Guid? _openedForYou;
+  private bool _unchosen;
   private readonly CancellationTokenSource _lifetime = new();
 
   private MessageTemplateView? Chosen =>
@@ -179,8 +192,12 @@ public partial class Messages : IAsyncDisposable
     _context = null;
     _contextFailed = false;
     ResetDraft();
+    _unchosen = Id is { } shown && shown == _openedForYou;
+    _openedForYou = null;
+    _openWhereLeft = Id is null && Around is null;
     if (Id is { } id)
     {
+      Places.LastConversation = id;
       _draft = Places.TakeDraft(id);
       _fitDraft = true;
       if (Around is { } around)
@@ -250,6 +267,57 @@ public partial class Messages : IAsyncDisposable
       return;
     await RefreshThreadAsync(conversation);
     await LoadContextAsync(conversation);
+  }
+
+  // Picked in the list, or a reply started: a conversation opened for the
+  // dispatcher becomes one they chose, and is read as it is shown.
+  private void PickedInList(Guid conversation)
+  {
+    if (conversation == Id)
+      Choose();
+  }
+
+  private void Choose()
+  {
+    if (!_unchosen || Id is not { } id)
+      return;
+    _unchosen = false;
+    Start(() => RefreshThreadAsync(id));
+  }
+
+  private async Task OpenWhereLeftAsync()
+  {
+    if (
+      !_openWhereLeft
+      || Id is not null
+      || _conversations is not { Count: > 0 } list
+      || _composerModule is null
+    )
+      return;
+    _openWhereLeft = false;
+    try
+    {
+      if (
+        !await _composerModule.InvokeAsync<bool>(
+          "threadBesideList",
+          _lifetime.Token,
+          _page
+        )
+      )
+        return;
+    }
+    catch (JSException)
+    {
+      return;
+    }
+    if (_disposed || Id is not null)
+      return;
+    var target =
+      Places.LastConversation is { } last && list.Any(x => x.Id == last)
+        ? last
+        : list.MaxBy(x => x.LastMessageAt)!.Id;
+    _openedForYou = target;
+    Navigation.NavigateTo($"/messages/{target}", replace: true);
   }
 
   // The driver's conversation, opened or just created, opens at once; the
@@ -501,7 +569,12 @@ public partial class Messages : IAsyncDisposable
   // so a reread (a poll, a reply) asks nothing.
   private async Task MarkReadAsync(Guid id, ConversationView page)
   {
-    if (_contextView || page.Summary.Unread == 0 || page.Messages.Count == 0)
+    if (
+      _contextView
+      || _unchosen
+      || page.Summary.Unread == 0
+      || page.Messages.Count == 0
+    )
       return;
     var marked = await Api.PostAsync<ReadRequest, bool>(
       $"api/messaging/conversations/{id}/read",
@@ -909,6 +982,7 @@ public partial class Messages : IAsyncDisposable
   // Tells colleagues who is answering, at most once a minute.
   private async Task ClaimAsync()
   {
+    Choose();
     if (
       Id is not { } id
       || DateTime.UtcNow - _claimedAt < TimeSpan.FromMinutes(1)
@@ -1147,6 +1221,7 @@ public partial class Messages : IAsyncDisposable
       }
       catch (JSException) { }
     }
+    await OpenWhereLeftAsync();
     if (_fitDraft && _composer is not null)
     {
       _fitDraft = false;
@@ -1167,11 +1242,13 @@ public partial class Messages : IAsyncDisposable
       );
       if (module is null || _disposed)
         return;
+      _composerModule = module;
       _composer = await module.InvokeAsync<IJSObjectReference>(
         "attach",
         _lifetime.Token,
         _threadPane
       );
+      await OpenWhereLeftAsync();
     }
     catch (JSException)
     {
@@ -1254,6 +1331,12 @@ public partial class Messages : IAsyncDisposable
       {
         await _composer.InvokeVoidAsync("dispose");
         await _composer.DisposeAsync();
+      }
+      catch (JSDisconnectedException) { }
+    if (_composerModule is not null)
+      try
+      {
+        await _composerModule.DisposeAsync();
       }
       catch (JSDisconnectedException) { }
     if (_scrolling is not null)

@@ -43,9 +43,14 @@ public sealed class ReturnPlaces : IDisposable, IAsyncDisposable
   public string TakeDraft(Guid conversation) =>
     _drafts.TryRemove(conversation, out var text) ? text : "";
 
+  // The conversation last shown in Messages, for opening Messages again
+  // where it was left. For this tab and this signed-in user only.
+  public Guid? LastConversation { get; set; }
+
   private void OnAuthenticationChanged(Task<AuthenticationState> state)
   {
     _drafts.Clear();
+    LastConversation = null;
     _ = CallAsync("forget");
   }
 

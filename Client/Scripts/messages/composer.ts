@@ -16,6 +16,20 @@ function fitBox(box: HTMLTextAreaElement | null) {
   box.style.height = `${box.scrollHeight + box.offsetHeight - box.clientHeight}px`;
 }
 
+// Whether the page shows a conversation beside the list, as a wide screen
+// does, rather than one in place of the other, as a phone does. The
+// stylesheet decides; this only reads it.
+export function threadBesideList(page: HTMLElement | null): boolean {
+  const thread = page?.querySelector<HTMLElement>('.messages__thread');
+  const list = page?.querySelector<HTMLElement>('.messages__list');
+  return (
+    !!thread &&
+    !!list &&
+    getComputedStyle(thread).display !== 'none' &&
+    getComputedStyle(list).display !== 'none'
+  );
+}
+
 export function attach(root: HTMLElement) {
   const replyBox = () =>
     root.querySelector<HTMLTextAreaElement>('textarea[data-send-on-enter]');
