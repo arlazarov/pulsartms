@@ -50,6 +50,8 @@
     --hos-divider: 1px solid #{ui.theme(border-subtle)};
     --hos-divider-gap: #{ui.pg(md)};
     > .driver-hours-panel {
+      // Text clocks use the column, not the dial panel's fixed cap.
+      max-width: 100%;
       min-width: 0;
       margin-left: 0;
     }

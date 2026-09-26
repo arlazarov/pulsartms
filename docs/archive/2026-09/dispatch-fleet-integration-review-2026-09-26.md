@@ -82,3 +82,15 @@ adjacent forecast gains content. No fixed placeholder height was added.
 After this cosmetic change, 139 styles tests and formatting passed, and
 browser-fleet-design-sUn2q3 passed all five cases. The hours probe owns the
 controlled first-arrival geometry evidence; final review remains pending.
+
+
+## Enlarged text clocks
+
+The 200-percent, 2344px probe found all four text clocks overflowing their
+own flex boxes by 15–19px. The shared dial panel capped the text group at
+20rem despite available space in the Fleet column. Fleet now overrides
+that cap with 100 percent of its column; the shared dial component and
+Dispatch remain unchanged. The unchanged clipping assertion passes in
+browser-hours-forecast-FtcgCv (2344 light), with all four clock scroll widths
+matching their client widths. Original failure: CRIaso. Styles 139 and
+formatting passed. The remaining responsive matrix is still in progress.
