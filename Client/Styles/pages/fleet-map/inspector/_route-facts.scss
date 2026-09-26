@@ -68,14 +68,21 @@
       gap: ui.pg(xs);
       min-width: 0;
     }
-    // What is left of the load: a quiet label, its value under it.
+    // What is left of the load on one line: a quiet label, then its value,
+    // which never breaks between its number, unit and kilometres.
     &__metric {
-      display: grid;
-      gap: 0;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 ui.pg(xs);
       min-width: 0;
       margin: 0;
       padding: 0;
       border: 0;
+      > .fleet-map-route-info__progress {
+        flex-wrap: nowrap;
+        white-space: nowrap;
+      }
     }
     &__label {
       margin: 0;
