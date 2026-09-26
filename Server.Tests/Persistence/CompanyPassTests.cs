@@ -62,6 +62,39 @@ public sealed class CompanyPassTests
     Assert.Null(provider.GetRequiredService<ICurrentCompany>().Id);
   }
 
+  // Carriers go in key order, so a failure in the first one used to take
+  // every later carrier's turn with it.
+  [Fact]
+  public async Task OneCarriersFailureDoesNotCostTheNextItsTurn()
+  {
+    await using var connection = new SqliteConnection("DataSource=:memory:");
+    await connection.OpenAsync();
+    await using var provider = Server(connection);
+    await SeedAsync(connection);
+    var served = new List<Guid?>();
+    var current = provider.GetRequiredService<ICurrentCompany>();
+    await using var scope = provider.CreateAsyncScope();
+
+    var failure = await Assert.ThrowsAsync<InvalidOperationException>(
+      () =>
+        CompanyPasses.ForEachCompanyAsync(
+          scope.ServiceProvider,
+          _ =>
+          {
+            served.Add(current.Id);
+            return served.Count == 1
+              ? throw new InvalidOperationException("first carrier failed")
+              : Task.CompletedTask;
+          },
+          default
+        )
+    );
+
+    Assert.Equal("first carrier failed", failure.Message);
+    Assert.Equal(2, served.Count);
+    Assert.Equal(2, served.Distinct().Count());
+  }
+
   [Fact]
   public async Task TwoPassesRunningAtOnceDoNotSeeEachOthersCarrier()
   {

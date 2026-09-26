@@ -1,3 +1,5 @@
+using System.Runtime.ExceptionServices;
+
 namespace Application.Interfaces;
 
 public static class CompanyPasses
@@ -24,11 +26,32 @@ public static class CompanyPasses
       await pass(ct);
       return;
     }
+    // One carrier's failure does not cost the carriers after it their turn.
+    // The failure still reaches the caller, after every carrier has been
+    // served, so it is logged once at the job's own boundary; one failure is
+    // rethrown as it was, so a caller's filters (planning busy, for one)
+    // still recognise it.
+    List<ExceptionDispatchInfo>? failures = null;
     foreach (var company in await roster.ActiveAsync(ct))
     {
       ct.ThrowIfCancellationRequested();
       using var serving = current.As(company);
-      await pass(ct);
+      try
+      {
+        await pass(ct);
+      }
+      catch (OperationCanceledException) when (ct.IsCancellationRequested)
+      {
+        throw;
+      }
+      catch (Exception failure)
+      {
+        (failures ??= []).Add(ExceptionDispatchInfo.Capture(failure));
+      }
     }
+    if (failures is [var only])
+      only.Throw();
+    if (failures is { Count: > 1 })
+      throw new AggregateException(failures.Select(x => x.SourceException));
   }
 }
