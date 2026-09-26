@@ -78,12 +78,10 @@
       grid-row: auto;
       align-self: center;
     }
-    // The icon and the percentage say the tank's state together:
-    // enough, low, critical, or unknown - as TelemetryTone.Fuel decides.
-    &.is-normal .fuel-reading__icon,
-    &.is-normal .fuel-reading__value {
-      color: ui.theme(success-text);
-    }
+    // The icon and the percentage say the tank's state together: low,
+    // critical, or unknown - as TelemetryTone.Fuel decides. Enough fuel is
+    // said in the card's own colour: green for anything over 30% was a
+    // signal about nothing (the owner, September 26).
     &.is-low .fuel-reading__icon {
       color: ui.theme(telemetry-warning-icon);
     }

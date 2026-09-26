@@ -189,9 +189,10 @@ their prices, quantities and dates are illustrative, never formulas.
   ruleset's cycle reset, as the server's HOS history reads them. A status
   the live clocks no longer show, or clocks older than three minutes, keep
   the status and say no duration.
-- Fuel reads its tank state in both icon and value: success, low
-  (telemetry warning icon, warning text), critical (danger) or unknown
-  (`TelemetryTone.Fuel`). A fuel plan whose first stop is reached below
+- Fuel reads its tank state in both icon and value: low (telemetry
+  warning icon, warning text), critical (danger) or unknown
+  (`TelemetryTone.Fuel`); enough fuel is said in the card's own colour,
+  since green for anything over 30% signalled nothing (September 26). A fuel plan whose first stop is reached below
   its reserve adds a separate danger mark beside the reading, with the
   server's warning as its name; the percentage alone never says it.
 - Open card: NEXT STOP with the facility, street and city on their own
