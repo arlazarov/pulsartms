@@ -6,7 +6,9 @@ using Application.Features.Fuel.Options;
 using Application.Features.Fuel.Services;
 using Application.Interfaces;
 using Domain.Entities.Fuel;
+using Infrastructure.Identity;
 using Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +27,24 @@ namespace Server.Tests.Fuel;
 [Trait("Kind", "Integration")]
 public sealed class FuelStationStatusOperationTests
 {
+  // On a server a carrier resolver is registered, so outside a carrier's
+  // pass nothing a carrier owns is visible - prices included. The sweep read
+  // today's prices there, found none, and checked no station after
+  // September 21. The other tests run as a single-carrier host, which is
+  // why they passed.
+  [Fact]
+  public async Task OnAServerTodaysPricesAreReadInsideEachCarriersPass()
+  {
+    await using var f = await Fixture.CreateAsync(server: true);
+    await f.AddAsync("never", checkedAt: null);
+    await f.AddAsync("unpriced", checkedAt: null, pricedToday: false);
+    f.Places.Status = FuelStationStatus.Operational;
+
+    Assert.Equal(1, await f.Operation.RunOnceAsync(default));
+
+    Assert.Equal([f.Query("never")], f.Places.Asked);
+  }
+
   [Fact]
   public async Task AStationNobodyHasAskedAboutIsAskedFirst()
   {
@@ -212,6 +232,12 @@ public sealed class FuelStationStatusOperationTests
       Task.CompletedTask;
   }
 
+  private sealed class Roster : ICompanyRoster
+  {
+    public Task<IReadOnlyList<Guid>> ActiveAsync(CancellationToken ct) =>
+      Task.FromResult<IReadOnlyList<Guid>>([Domain.Entities.Company.Amf]);
+  }
+
   private sealed class Fixture : IAsyncDisposable
   {
     private SqliteConnection Connection { get; init; } = null!;
@@ -222,15 +248,28 @@ public sealed class FuelStationStatusOperationTests
     public required FuelStationStatusOperation Operation { get; init; }
     public required ManualTimeProvider Clock { get; init; }
     public required ReadCache Reads { get; init; }
+
+    // Set on a server-shaped fixture: rows are written as this carrier.
+    public CurrentCompany? Company { get; init; }
     public DateTime Now => Clock.UtcNow.UtcDateTime;
 
-    public static async Task<Fixture> CreateAsync()
+    public static async Task<Fixture> CreateAsync(bool server = false)
     {
       var connection = new SqliteConnection("Data Source=:memory:");
       await connection.OpenAsync();
+      var company = server
+        ? new CurrentCompany(new HttpContextAccessor())
+        : null;
+      var carriers = new ServiceCollection();
+      if (company is not null)
+        carriers
+          .AddSingleton<ICurrentCompany>(company)
+          .AddSingleton<ICompanyRoster, Roster>();
+      var carrierServices = carriers.BuildServiceProvider();
       var db = new AppDbContext(
         new DbContextOptionsBuilder<AppDbContext>()
           .UseSqlite(connection)
+          .UseApplicationServiceProvider(carrierServices)
           .Options
       );
       await db.Database.EnsureCreatedAsync();
@@ -242,15 +281,20 @@ public sealed class FuelStationStatusOperationTests
         clock
       );
       var reads = TestCache.Create();
-      var services = new ServiceCollection()
+      var registrations = new ServiceCollection()
         .AddSingleton<IAppDbContext>(db)
         .AddSingleton<IReadCache>(reads)
         .AddSingleton(lookups)
-        .AddSingleton<IPlaceSearchService>(places)
-        .BuildServiceProvider();
+        .AddSingleton<IPlaceSearchService>(places);
+      if (company is not null)
+        registrations
+          .AddSingleton<ICurrentCompany>(company)
+          .AddSingleton<ICompanyRoster, Roster>();
+      var services = registrations.BuildServiceProvider();
       var options = new FuelStationStatusOptions();
       return new Fixture
       {
+        Company = company,
         Reads = reads,
         Connection = connection,
         Services = services,
@@ -302,7 +346,8 @@ public sealed class FuelStationStatusOperationTests
           ],
         }
       );
-      await Db.SaveChangesAsync();
+      using (Company?.As(Domain.Entities.Company.Amf))
+        await Db.SaveChangesAsync();
       Db.ChangeTracker.Clear();
     }
 

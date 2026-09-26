@@ -134,10 +134,26 @@ public sealed class FuelStationStatusOperation(
     // Stations are shared, but which of them a driver is being sent to is
     // read out of each carrier's own plans, so that part is asked once per
     // carrier and the answers are put together.
+    // Which stations have a current price is also each carrier's own: the
+    // prices belong to a carrier and are invisible outside its pass. Asked
+    // after the loop, as it was, no station ever had one and the sweep
+    // checked nothing (the last status check in production was September 21).
     var planned = new HashSet<Guid>();
+    var priced = new HashSet<Guid>();
     await CompanyPasses.ForEachCompanyAsync(
       scope.ServiceProvider,
-      async token => planned.UnionWith(await PlannedStationIdsAsync(db, token)),
+      async token =>
+      {
+        planned.UnionWith(await PlannedStationIdsAsync(db, token));
+        priced.UnionWith(
+          await db
+            .FuelDiscounts.AsNoTracking()
+            .Where(d => d.EffectiveFrom <= today && d.EffectiveTo >= today)
+            .Select(d => d.FuelStationId)
+            .Distinct()
+            .ToListAsync(token)
+        );
+      },
       ct
     );
     var plannedStale = now.AddMinutes(
@@ -150,9 +166,7 @@ public sealed class FuelStationStatusOperation(
     // that the candidates need.
     var due = await db
       .FuelStations.Where(x =>
-        x.FuelDiscounts.Any(d =>
-          d.EffectiveFrom <= today && d.EffectiveTo >= today
-        )
+        priced.Contains(x.Id)
         && (
           planned.Contains(x.Id)
             ? x.StatusCheckedAt == null || x.StatusCheckedAt < plannedStale
