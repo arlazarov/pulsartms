@@ -1,4 +1,6 @@
-namespace Domain.Rules.Fleet;
+using Domain.Rules.Fleet;
+
+namespace Domain.Rules.Messaging;
 
 // The number a driver's WhatsApp messages go to: their own WhatsApp number
 // when one is set, otherwise their phone. Either must already be a valid

@@ -1,7 +1,7 @@
 using Domain.Entities.Fleet;
-using Domain.Rules.Fleet;
+using Domain.Rules.Messaging;
 
-namespace Application.Features.Fleet.Services;
+namespace Application.Features.Messaging.Services;
 
 // Drivers with the stored number the WhatsApp rule starts from, for a
 // database query to filter, search and compare against conversations in

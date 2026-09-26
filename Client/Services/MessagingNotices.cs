@@ -28,12 +28,13 @@ public sealed class MessagingNotices : IAsyncDisposable
   private readonly TimeProvider _time;
 
   private IJSObjectReference? _notices;
+  private Task _initialRead = Task.CompletedTask;
+  private Task _countTask = Task.CompletedTask;
   private int _subscribers,
     _account,
     _read;
-  private bool _counting,
-    _again,
-    _baseline,
+  private CountPass? _counting;
+  private bool _baseline,
     _disposed;
 
   // The highest arrival sequence this tab has counted: a notice is due only
@@ -69,7 +70,8 @@ public sealed class MessagingNotices : IAsyncDisposable
     _signals.Changed += OnSignal;
     _auth.AuthenticationStateChanged += OnAuthenticationChanged;
     await _signals.JoinAsync();
-    await ReadAsync(_account, announce: false);
+    _initialRead = ReadAsync(_account, announce: false);
+    await _initialRead;
   }
 
   public async Task LeaveAsync()
@@ -95,7 +97,7 @@ public sealed class MessagingNotices : IAsyncDisposable
     _seen = 0;
     _baseline = false;
     Changed?.Invoke();
-    _ = ReadAsync(account, announce: false);
+    _initialRead = ReadAsync(account, announce: false);
   }
 
   private void OnSignal(MessagingSignal signal)
@@ -111,34 +113,56 @@ public sealed class MessagingNotices : IAsyncDisposable
       }
       return;
     }
-    if (_signals.IsLeading)
-      _ = CountAsync(_account);
-  }
-
-  // One read at a time; signals during it make exactly one more.
-  private async Task CountAsync(int account)
-  {
-    if (_counting)
+    if (!_signals.IsLeading)
+      return;
+    if (_counting is { } current && current.Account == _account)
     {
-      _again = true;
+      if (current.Reading)
+        current.Again = true;
       return;
     }
-    _counting = true;
+    var pass = new CountPass(_account);
+    _counting = pass;
+    _countTask = CountAsync(pass);
+  }
+
+  // Signals in the pause belong to the same burst. A signal while the actual
+  // read is in flight can describe a later commit, so it earns one more read.
+  private async Task CountAsync(CountPass pass)
+  {
     try
     {
       do
       {
-        _again = false;
+        pass.Again = false;
         await Task.Delay(Coalesce, _time);
-        if (!Live(account) || !_signals.IsLeading)
+        if (!Live(pass.Account) || !_signals.IsLeading)
           return;
-        await ReadAsync(account, announce: true);
-      } while (_again && Live(account));
+        pass.Reading = true;
+        try
+        {
+          await ReadAsync(pass.Account, announce: true);
+        }
+        finally
+        {
+          pass.Reading = false;
+        }
+      } while (pass.Again && Live(pass.Account));
     }
     finally
     {
-      _counting = false;
+      if (ReferenceEquals(_counting, pass))
+        _counting = null;
     }
+  }
+
+  internal Task PendingWork => Task.WhenAll(_initialRead, _countTask);
+
+  private sealed class CountPass(int account)
+  {
+    public int Account { get; } = account;
+    public bool Reading { get; set; }
+    public bool Again { get; set; }
   }
 
   private bool Live(int account) => !_disposed && account == _account;

@@ -6,17 +6,19 @@ public record CameraImage(
   DateTimeOffset? CapturedAt = null
 );
 
+public sealed record CameraRequest(string Id, string Scope);
+
 public interface ITruckCameraProvider
 {
   Task<CameraImage> LatestAsync(string vehicleId, CancellationToken ct);
-  Task<string> RequestAsync(
+  Task<CameraRequest> RequestAsync(
     string vehicleId,
     DateTimeOffset time,
     CancellationToken ct
   );
   Task<CameraImage> GetAsync(
     string vehicleId,
-    string retrievalId,
+    CameraRequest retrieval,
     CancellationToken ct
   );
 }

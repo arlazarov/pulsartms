@@ -87,8 +87,7 @@ public class DriverHosTests
     var operation = new DriverHosRefreshOperation(
       snapshot,
       services.GetRequiredService<IServiceScopeFactory>(),
-      Options.Create(new SynchronizationOptions { Enabled = true }),
-      new ActiveSynchronization(),
+      new TestFleetCollectionState(Enabled: true, Active: true),
       operationLogger
     );
 
@@ -114,11 +113,6 @@ public class DriverHosTests
     Assert.Empty(await snapshot.GetClocksAsync(default));
     await operation.RunOnceAsync(default);
     Assert.Equal(1, handler.Count);
-  }
-
-  private sealed class ActiveSynchronization : ISynchronizationStatusProvider
-  {
-    public SynchronizationStatus Status => new(true, true, 0, []);
   }
 
   private sealed class CaptureLogger<T> : ILogger<T>

@@ -11,36 +11,27 @@ const unavailableDiscount = Object.freeze({
 });
 
 // The price each station shows today, in the discount the account reads.
-export function selectStationPrices(
-  stations: any[],
-  date: string,
-  useIfta = false,
-): any[] {
+export function selectStationPrices(stations: any[], useIfta = false): any[] {
   return (Array.isArray(stations) ? stations : []).flatMap(station => {
     const position = coordinates(station.latitude, station.longitude);
     if (!position) return [];
-    const active = (value: any) =>
-      value && date >= value.effectiveFrom && date <= value.effectiveTo;
     const selected = useIfta
       ? (station.iftaDiscount ?? station.cashDiscount)
       : station.cashDiscount;
-    if (!(station.discounts || []).some(active) && !active(selected)) return [];
     const comparison = useIfta
       ? station.iftaComparison
       : station.cashComparison;
-    // The day before, against the day being looked at. It belongs to this
-    // date only if this date is the one it ends on.
     const previous = useIfta
       ? station.iftaPreviousComparison
       : station.cashPreviousComparison;
     const compared = {
-      ...(comparison?.date === date ? { comparison } : {}),
-      ...(previous?.nextDate === date ? { previous } : {}),
+      ...(comparison ? { comparison } : {}),
+      ...(previous ? { previous } : {}),
     };
     return [
       {
         station,
-        discount: active(selected)
+        discount: selected
           ? Object.keys(compared).length
             ? { ...selected, ...compared }
             : selected

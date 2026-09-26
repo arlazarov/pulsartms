@@ -26,7 +26,6 @@ public sealed class ModuleDependencyTests
     "Eta -> Routing",
     "Execution -> Dispatch",
     "Execution -> Routing",
-    "Fleet -> Synchronization",
     "Mileage -> Routing",
     "Routing -> Dispatch",
     "Routing -> Eta",

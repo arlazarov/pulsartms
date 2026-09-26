@@ -1,0 +1,270 @@
+{
+  "baseCandidate": "2287f0de13031e2719bfa7bc8b8e4c2aba750032",
+  "scope": "Local architecture audit. Hashes include uncommitted lifecycle correction. Import pairs are lexical signals, not executable dependencies.",
+  "sourceSha256": {
+    "Server.Tests/Architecture/ModuleDependencyTests.cs": "c317332872bf6b951b9edb3300f321d546f3952f1d064998c37cc978804bb1c3",
+    "Server/Application/Features/Messaging/Services/MessagingEvents.cs": "a5cf4d3b2b30f1ce0d7e185bcb22cdbdf7e3adff012db4dffc0b3b400d349ac4",
+    "Server.Tests/Messaging/MessagingEventsTests.cs": "25c1556253ac402d1fae6195788ec885ab3db6447ca26622f5f002d35222e631",
+    "Server/Application/Features/Messaging/Services/MessagingMailboxes.cs": "271a9de6b483b4e017e07e9a074f855e7c5bdb2fa4981a8cc8e5782ab61c483d",
+    "Client/Services/MessagingSignals.cs": "bfc34d9a498934f517383756796d41bd29f2bf4c31984c3a3d34fe1b98c7617d",
+    "Client/Services/MessagingNotices.cs": "7c6bc3cda078ed1fbfa8989aa845b4059bfd2bec851c61b6e8aa84ac21ce4c29",
+    "deploy-server.sh": "272b4a937cec06d1e9a1b6f01f7a323ecbb667898b0b4fa8ba0d2f8daac182a1",
+    "Server/Application/Features/Execution/Services/ExecutionSourceAssignment.cs": "763024d01581b46aaee894028f3fa37ba7002a8fdd074a879929e9cc6b225e6b",
+    "Server/Application/Features/Execution/Models/ExecutionCommandSupport.cs": "47554efd53f0d1b52ae7b2c9679559c438de929bf4052e244acdbce80fc16aad",
+    "Server/Application/Features/Mileage/Services/MileageAccess.cs": "558c162c17623fddce2044ee4fafd7638633ae19ab10fc84c6c710c0896d5d05",
+    "Server/Application/Features/Routing/Services/Routes/TruckPlanningInputsReader.cs": "081ed50bc843634ab7fe8ad5fbfb63065f5989dbfde9b36926962342db806ab5"
+  },
+  "compiledSignatureBaseline": [
+    "Border -> Shipments",
+    "Dispatch -> Eta",
+    "Dispatch -> Fleet",
+    "Dispatch -> Routing",
+    "Eta -> Dispatch",
+    "Eta -> Execution",
+    "Eta -> Fleet",
+    "Eta -> Routing",
+    "Execution -> Dispatch",
+    "Execution -> Routing",
+    "Mileage -> Routing",
+    "Routing -> Dispatch",
+    "Routing -> Eta",
+    "Routing -> Execution",
+    "Routing -> Fleet",
+    "Routing -> Fuel",
+    "Routing -> Synchronization",
+    "Synchronization -> Dispatch",
+    "Synchronization -> Fleet"
+  ],
+  "crossFeatureImports": {
+    "Addresses -> Execution": [
+      "Server/Application/Features/Addresses/AddressSearch.cs"
+    ],
+    "Border -> Shipments": [
+      "Server/Application/Features/Border/BorderQueries.cs",
+      "Server/Application/Features/Border/Models/BorderContracts.cs",
+      "Server/Application/Features/Border/SaveBorderCrossingCommand.cs",
+      "Server/Application/Features/Border/Services/BorderRules.cs"
+    ],
+    "Border -> Execution": [
+      "Server/Application/Features/Border/SaveBorderCrossingCommand.cs"
+    ],
+    "Costs -> Mileage": [
+      "Server/Application/Features/Costs/Commands/RecordExpense.cs",
+      "Server/Application/Features/Costs/Commands/SetExpenseAttribution.cs",
+      "Server/Application/Features/Costs/Queries/GetLoadCosts.cs"
+    ],
+    "Dispatch -> Execution": [
+      "Server/Application/Features/Dispatch/Commands/CorrectDispatchStop.cs",
+      "Server/Application/Features/Dispatch/Commands/CreateDispatch.cs",
+      "Server/Application/Features/Dispatch/Commands/SaveBrokerProfile.cs",
+      "Server/Application/Features/Dispatch/Commands/SetTruckAssignment.cs",
+      "Server/Application/Features/Dispatch/Commands/SyncDispatche/SyncDispatche.cs",
+      "Server/Application/Features/Dispatch/Commands/UpdateDispatchWorkspace.cs",
+      "Server/Application/Features/Dispatch/Commands/VerifyDispatchAddress.cs",
+      "Server/Application/Features/Dispatch/Documents/FileMessageAttachment.cs",
+      "Server/Application/Features/Dispatch/Documents/GetDispatchDocuments.cs",
+      "Server/Application/Features/Dispatch/Documents/UploadDispatchDocument.cs",
+      "Server/Application/Features/Dispatch/Queries/DispatchProjection.cs",
+      "Server/Application/Features/Dispatch/Queries/GetDispatchBoard.cs",
+      "Server/Application/Features/Dispatch/Queries/GetDispatchWorkspace.cs",
+      "Server/Application/Features/Dispatch/Queries/SearchBrokers.cs",
+      "Server/Application/Features/Dispatch/Services/DispatchAcceptedStopChange.cs",
+      "Server/Application/Features/Dispatch/Services/DispatchStopCorrections.cs",
+      "Server/Application/Features/Dispatch/Services/DispatchWorkspaceData.cs",
+      "Server/Application/Features/Dispatch/Services/DispatchWorkspaceImport.cs",
+      "Server/Application/Features/Dispatch/Services/DispatchWorkspaceReader.cs"
+    ],
+    "Dispatch -> Routing": [
+      "Server/Application/Features/Dispatch/Commands/CorrectDispatchStop.cs",
+      "Server/Application/Features/Dispatch/Commands/CreateDispatch.cs",
+      "Server/Application/Features/Dispatch/Commands/SetStopCompletion.cs",
+      "Server/Application/Features/Dispatch/Commands/SetStopOperation.cs",
+      "Server/Application/Features/Dispatch/Commands/SetTruckAssignment.cs",
+      "Server/Application/Features/Dispatch/Commands/SyncDispatche/SyncDispatche.Apply.cs",
+      "Server/Application/Features/Dispatch/Commands/SyncDispatche/SyncDispatche.cs",
+      "Server/Application/Features/Dispatch/Commands/UpdateDispatchWorkspace.cs",
+      "Server/Application/Features/Dispatch/Commands/VerifyDispatchAddress.cs",
+      "Server/Application/Features/Dispatch/Queries/GetDispatchBoard.cs",
+      "Server/Application/Features/Dispatch/Queries/GetDispatchPlanningSummaries.cs",
+      "Server/Application/Features/Dispatch/Queries/GetDispatchWorkspace.cs",
+      "Server/Application/Features/Dispatch/Queries/GetDispatche.cs"
+    ],
+    "Dispatch -> Fleet": [
+      "Server/Application/Features/Dispatch/Commands/SyncDispatche/SyncDispatche.Apply.cs",
+      "Server/Application/Features/Dispatch/Commands/SyncDispatche/SyncDispatche.cs",
+      "Server/Application/Features/Dispatch/Queries/GetDispatchBoard.cs",
+      "Server/Application/Features/Dispatch/Queries/GetDispatchTelemetry.cs"
+    ],
+    "Dispatch -> Eta": [
+      "Server/Application/Features/Dispatch/Queries/GetDispatchBoard.cs",
+      "Server/Application/Features/Dispatch/Queries/GetDispatchById.cs",
+      "Server/Application/Features/Dispatch/Queries/GetDispatchWorkspace.cs"
+    ],
+    "Eta -> Fleet": [
+      "Server/Application/Features/Eta/Background/EtaRefreshOperation.cs",
+      "Server/Application/Features/Eta/Queries/GetDriverDutyStatus.cs",
+      "Server/Application/Features/Eta/Services/EtaService.cs"
+    ],
+    "Eta -> Routing": [
+      "Server/Application/Features/Eta/Background/EtaRefreshOperation.cs",
+      "Server/Application/Features/Eta/Queries/GetDriverDutyStatus.cs",
+      "Server/Application/Features/Eta/Services/EtaChainInputsService.Prepare.cs",
+      "Server/Application/Features/Eta/Services/EtaChainInputsService.cs",
+      "Server/Application/Features/Eta/Services/EtaForecastService.Refresh.cs",
+      "Server/Application/Features/Eta/Services/EtaForecastService.cs"
+    ],
+    "Eta -> Dispatch": [
+      "Server/Application/Features/Eta/Services/EtaChainInputsService.cs",
+      "Server/Application/Features/Eta/Services/EtaForecastService.Refresh.cs",
+      "Server/Application/Features/Eta/Services/EtaForecastService.cs"
+    ],
+    "Eta -> Execution": [
+      "Server/Application/Features/Eta/Services/EtaChainInputsService.cs"
+    ],
+    "Execution -> Mileage": [
+      "Server/Application/Features/Execution/Background/ExecutionPlanningOperation.cs",
+      "Server/Application/Features/Execution/Services/ExecutionAcceptance.cs"
+    ],
+    "Execution -> Routing": [
+      "Server/Application/Features/Execution/Background/ExecutionPlanningOperation.cs",
+      "Server/Application/Features/Execution/Commands/AcceptExecutionSourceChanges.cs",
+      "Server/Application/Features/Execution/Commands/CancelSwitch.cs",
+      "Server/Application/Features/Execution/Commands/CloseCancelledExecution.cs",
+      "Server/Application/Features/Execution/Commands/PlanSwitch.cs",
+      "Server/Application/Features/Execution/Commands/SwitchParticipantActions.cs",
+      "Server/Application/Features/Execution/Models/ExecutionCommandSupport.cs",
+      "Server/Application/Features/Execution/Services/ExecutionLoadProjection.cs",
+      "Server/Application/Features/Execution/Services/TruckItineraryReader.cs"
+    ],
+    "Execution -> Synchronization": [
+      "Server/Application/Features/Execution/Interfaces/IExecutionPlanningOperation.cs"
+    ],
+    "Execution -> Dispatch": [
+      "Server/Application/Features/Execution/Models/ExecutionSourceFacts.cs",
+      "Server/Application/Features/Execution/Services/ExecutionSourceAssignment.cs",
+      "Server/Application/Features/Execution/Services/ExecutionSourceReconciliation.cs"
+    ],
+    "Mileage -> Synchronization": [
+      "Server/Application/Features/Mileage/Interfaces/IOdometerCaptureOperation.cs"
+    ],
+    "Mileage -> Dispatch": [
+      "Server/Application/Features/Mileage/Queries/GetDispatchMileage.cs"
+    ],
+    "Mileage -> Routing": [
+      "Server/Application/Features/Mileage/Queries/GetDispatchMileage.cs",
+      "Server/Application/Features/Mileage/Services/AutomaticMileageRecorder.cs"
+    ],
+    "Mileage -> Execution": [
+      "Server/Application/Features/Mileage/Services/AutomaticMileageRecorder.Intervals.cs",
+      "Server/Application/Features/Mileage/Services/AutomaticMileageRecorder.Odometer.cs",
+      "Server/Application/Features/Mileage/Services/AutomaticMileageRecorder.cs"
+    ],
+    "Routing -> Synchronization": [
+      "Server/Application/Features/Routing/Background/PlanningRefreshOperation.cs",
+      "Server/Application/Features/Routing/Services/Routes/PlanningReadService.cs",
+      "Server/Application/Features/Routing/Services/Routes/PlanningRefreshQueue.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Build.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Read.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Tracking.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Work.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.cs"
+    ],
+    "Routing -> Eta": [
+      "Server/Application/Features/Routing/Background/PlanningSummaryOperation.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelPlanningService.Publication.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelPlanningService.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelRegionPlanner.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelScheduleContext.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelScheduleEvaluator.cs",
+      "Server/Application/Features/Routing/Services/Routes/PlanningReadService.cs",
+      "Server/Application/Features/Routing/Services/Routes/PlanningSummaryPublisher.cs"
+    ],
+    "Routing -> Fleet": [
+      "Server/Application/Features/Routing/Background/RoutePreparationQueue.cs",
+      "Server/Application/Features/Routing/Commands/FuelIssueSend.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelScheduleEvaluator.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Build.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Read.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Tracking.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Work.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePreviewService.cs",
+      "Server/Application/Features/Routing/Services/Routes/TruckPlanningInputsReader.cs"
+    ],
+    "Routing -> Execution": [
+      "Server/Application/Features/Routing/Background/SourceRoadInputs.cs",
+      "Server/Application/Features/Routing/Queries/GetNextLoadRoutes.cs",
+      "Server/Application/Features/Routing/Services/Addresses/ExecutionStopAddressService.cs",
+      "Server/Application/Features/Routing/Services/Deadheads/DeadheadHistoryService.Execution.cs",
+      "Server/Application/Features/Routing/Services/Deadheads/DeadheadHistoryService.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelSavedInputsValidation.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelWorkInputsReader.cs",
+      "Server/Application/Features/Routing/Services/Routes/BaseRouteService.cs",
+      "Server/Application/Features/Routing/Services/Routes/ExecutionRouteSections.cs",
+      "Server/Application/Features/Routing/Services/Routes/PlanningWorkPublication.cs",
+      "Server/Application/Features/Routing/Services/Routes/RouteChoiceService.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Build.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Read.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Tracking.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Work.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePreviewService.cs",
+      "Server/Application/Features/Routing/Services/Routes/SavedRoadValidation.cs",
+      "Server/Application/Features/Routing/Services/Routes/TruckPlanningInputsReader.cs"
+    ],
+    "Routing -> Dispatch": [
+      "Server/Application/Features/Routing/Services/Addresses/StopAddressResolution.cs",
+      "Server/Application/Features/Routing/Services/Addresses/StopAddressService.cs",
+      "Server/Application/Features/Routing/Services/Addresses/StopLocation.cs",
+      "Server/Application/Features/Routing/Services/Deadheads/DeadheadService.Ensure.cs",
+      "Server/Application/Features/Routing/Services/Deadheads/DeadheadService.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelHorizon.cs",
+      "Server/Application/Features/Routing/Services/Routes/BoardPlanningReader.cs",
+      "Server/Application/Features/Routing/Services/Routes/PlanningReadService.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Build.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Read.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Tracking.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.Work.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePlanningService.cs",
+      "Server/Application/Features/Routing/Services/Routes/RoutePreviewService.cs"
+    ],
+    "Routing -> Fuel": [
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelPlanEdits.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelPlanningService.Editing.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelPlanningService.Publication.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelPlanningService.Reset.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelPlanningService.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelPriceCalendar.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/FuelPriceRefreshService.cs",
+      "Server/Application/Features/Routing/Services/FuelPlanning/TruckFuelPlans.cs",
+      "Server/Application/Features/Routing/Services/Routes/TruckPlanningProfileService.cs"
+    ],
+    "Shipments -> Execution": [
+      "Server/Application/Features/Shipments/Shipments.cs"
+    ],
+    "Synchronization -> Dispatch": [
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.Feeds.cs",
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.Planning.cs",
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.Publication.cs",
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.cs"
+    ],
+    "Synchronization -> Fleet": [
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.Feeds.cs",
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.Planning.cs",
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.Publication.cs",
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.cs"
+    ],
+    "Synchronization -> Fuel": [
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.Feeds.cs",
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.Planning.cs",
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.Publication.cs",
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.cs"
+    ],
+    "Synchronization -> Routing": [
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.Feeds.cs",
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.Planning.cs",
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.Publication.cs",
+      "Server/Application/Features/Synchronization/Services/FleetSynchronizationOperation.cs"
+    ]
+  }
+}

@@ -1,10 +1,9 @@
-using Application.Features.Fleet.Services;
 using Application.Features.Messaging.Interfaces;
 using Application.Features.Messaging.Queries;
 using Application.Features.Messaging.Services;
 using Application.Models;
 using Domain.Entities.Messaging;
-using Domain.Rules.Fleet;
+using Domain.Rules.Messaging;
 
 namespace Application.Features.Messaging.Commands;
 

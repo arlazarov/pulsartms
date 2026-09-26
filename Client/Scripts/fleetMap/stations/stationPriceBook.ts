@@ -100,7 +100,7 @@ export function createStationPriceBook() {
       stationsLoaded = true;
       priceDate = date;
       useIfta = ifta === true;
-      items = selectStationPrices(stationData, stationDate, useIfta);
+      items = selectStationPrices(stationData, useIfta);
     },
     setOverview(data: any, date: string, ifta: unknown) {
       priceDate = date;
@@ -109,7 +109,7 @@ export function createStationPriceBook() {
     },
     setIfta(value: unknown) {
       useIfta = value === true;
-      items = selectStationPrices(stationData, stationDate, useIfta);
+      items = selectStationPrices(stationData, useIfta);
     },
     clear() {
       items = [];

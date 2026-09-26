@@ -1,7 +1,7 @@
 using System.Net;
 using Application.Features.Fleet.Interfaces;
+using Application.Features.Fleet.Models;
 using Application.Models;
-using Domain.Models.Fleet;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Fleet.Commands.RequestTruckCamera;
@@ -12,7 +12,8 @@ public record RequestTruckCameraCommand(Guid TruckId)
 public sealed class RequestTruckCameraHandler(
   IAppDbContext db,
   ITruckCameraProvider provider,
-  IMemoryCache cache
+  IMemoryCache cache,
+  ICurrentCompany company
 ) : IRequestHandler<RequestTruckCameraCommand, RequestResponse<Guid>>
 {
   public async Task<RequestResponse<Guid>> Handle(
@@ -20,6 +21,8 @@ public sealed class RequestTruckCameraHandler(
     CancellationToken ct
   )
   {
+    if (company.Id is not { } owner)
+      return RequestResponse<Guid>.Fail("A company is required.", 403);
     var vehicle = await db
       .Trucks.AsNoTracking()
       .Where(x => x.Id == request.TruckId && x.IsActive)
@@ -40,7 +43,7 @@ public sealed class RequestTruckCameraHandler(
       var id = Guid.NewGuid();
       cache.Set(
         $"camera-request:{id}",
-        new CameraRetrieval(request.TruckId, vehicle, providerId),
+        new CameraRetrieval(owner, request.TruckId, vehicle, providerId),
         TimeSpan.FromMinutes(10)
       );
       return RequestResponse<Guid>.Ok(id);

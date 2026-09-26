@@ -1,6 +1,6 @@
-using Domain.Rules.Fleet;
+using Domain.Rules.Messaging;
 
-namespace Server.Tests.Fleet;
+namespace Server.Tests.Messaging;
 
 // Where a driver's WhatsApp messages go: their own WhatsApp number when
 // set, otherwise their phone; an explicit number that is not valid is

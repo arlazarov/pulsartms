@@ -47,8 +47,10 @@ others comes through their owners, composed outside it:
 
 - Fuel planning (Routing) asks Messaging to deliver a plan through
   `IDriverTextDelivery`, a neutral contract in `Application/Interfaces`
-  that Messaging implements. Messaging owns the transport, the reply
-  window, the attempt protocol and provider statuses; Routing owns the
+  that Messaging implements. Routing supplies the authoritative driver ID;
+  Messaging resolves its recipient, channel and availability. Messaging owns
+  transport, reply-window policy, attempt protocol and provider statuses;
+  Routing owns the
   plan's words, visits, key, assignment revision and hand-over records.
   Routing hears of its plans' statuses through `IDriverTextObserver`,
   after Messaging's commit. Neither names the other.

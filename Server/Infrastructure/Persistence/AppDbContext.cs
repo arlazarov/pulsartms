@@ -16,6 +16,7 @@ using Domain.Entities.Storage;
 using Infrastructure.Identity;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -220,6 +221,24 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
       );
     return changed == 1;
   }
+
+  public bool IsDuplicateMessageAttempt(Exception exception) =>
+    exception is DbUpdateException { InnerException: { } inner }
+    && inner switch
+    {
+      PostgresException
+      {
+        SqlState: PostgresErrorCodes.UniqueViolation,
+        ConstraintName: "IX_DriverMessages_CompanyId_IdempotencyKey_Attempt"
+      } => true,
+      SqliteException { SqliteExtendedErrorCode: 2067 } sqlite =>
+        sqlite.Message.Contains(
+          "UNIQUE constraint failed: DriverMessages.CompanyId, "
+            + "DriverMessages.IdempotencyKey, DriverMessages.Attempt",
+          StringComparison.Ordinal
+        ),
+      _ => false,
+    };
 
   public bool IsWriteConflict(Exception exception)
   {

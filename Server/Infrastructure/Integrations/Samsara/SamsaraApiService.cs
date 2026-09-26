@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Models;
@@ -10,22 +11,60 @@ namespace Infrastructure.Integrations.Samsara;
 public class SamsaraApiService : BaseApiService
 {
   private readonly IIntegrationCredentials _credentials;
+  private static readonly HttpRequestOptionsKey<IntegrationCredentialValues> CameraCredentials =
+    new("camera-credentials");
 
-  public Task<JsonElement> RequestCameraImageAsync(
+  internal Task<IntegrationCredentialValues> CaptureCameraCredentialsAsync(
+    CancellationToken ct
+  ) => _credentials.GetAsync(IntegrationProviderCatalog.Samsara, ct);
+
+  internal async Task<JsonElement> ReadCameraAsync(
+    string path,
+    IntegrationCredentialValues credentials,
+    CancellationToken ct
+  )
+  {
+    using var request = new HttpRequestMessage(HttpMethod.Get, path);
+    request.Options.Set(CameraCredentials, credentials);
+    return await SendAsync<JsonElement>(request, ct);
+  }
+
+  internal async Task<JsonElement> CaptureCameraAsync(
+    string vehicleId,
+    DateTimeOffset time,
+    IntegrationCredentialValues credentials,
+    CancellationToken ct
+  )
+  {
+    using var request = new HttpRequestMessage(
+      HttpMethod.Post,
+      "cameras/media/retrieval"
+    )
+    {
+      Content = JsonContent.Create(
+        new
+        {
+          vehicleId,
+          startTime = time.ToString("O"),
+          endTime = time.ToString("O"),
+          mediaType = "image",
+          inputs = new[] { "dashcamRoadFacing" },
+        }
+      ),
+    };
+    request.Options.Set(CameraCredentials, credentials);
+    return await SendAsync<JsonElement>(request, ct);
+  }
+
+  public async Task<JsonElement> RequestCameraImageAsync(
     string vehicleId,
     DateTimeOffset time,
     CancellationToken ct
   ) =>
-    PostAsync<object, JsonElement>(
-      "cameras/media/retrieval",
-      new
-      {
-        vehicleId,
-        startTime = time.ToString("O"),
-        endTime = time.ToString("O"),
-        mediaType = "image",
-        inputs = new[] { "dashcamRoadFacing" },
-      },
+    await CaptureCameraAsync(
+      vehicleId,
+      time,
+      await CaptureCameraCredentialsAsync(ct),
       ct
     );
 
@@ -55,10 +94,15 @@ public class SamsaraApiService : BaseApiService
         "Samsara request destination is not allowed."
       );
     request.RequestUri = destination;
-    var values = await _credentials.GetAsync(
-      IntegrationProviderCatalog.Samsara,
-      cancellationToken
-    );
+    var values = request.Options.TryGetValue(
+      CameraCredentials,
+      out var captured
+    )
+      ? captured
+      : await _credentials.GetAsync(
+        IntegrationProviderCatalog.Samsara,
+        cancellationToken
+      );
     var token = values.Get("apiKey");
 
     if (string.IsNullOrWhiteSpace(token))

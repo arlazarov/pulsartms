@@ -33,10 +33,9 @@ test('map displays the server-selected road diesel rather than a newer cheaper n
     quote({ product: 'Reefer Diesel', discountPrice: 0.2 }),
     road,
   ];
-  const item = selectStationPrices(
-    [station({ discounts, cashDiscount: road, iftaDiscount: road })],
-    date,
-  )[0];
+  const item = selectStationPrices([
+    station({ discounts, cashDiscount: road, iftaDiscount: road }),
+  ])[0];
   assert.equal(item.discount, road);
   assert.equal(item.station.discounts, discounts);
 });
@@ -57,30 +56,27 @@ test('IFTA chooses its ready server quote and never calculates tax or converts C
   const data = [
     station({ discounts: [cash, net], cashDiscount: cash, iftaDiscount: net }),
   ];
-  const direct = selectStationPrices(data, date, false)[0];
-  const ifta = selectStationPrices(data, date, true)[0];
+  const direct = selectStationPrices(data, false)[0];
+  const ifta = selectStationPrices(data, true)[0];
   assert.equal(direct.discount, cash);
   assert.equal(ifta.discount, net);
   assert.equal(ifta.discount.unit, 'L');
   assert.equal(comparisonPrice(ifta.discount, true), 1.1);
   assert.equal(priceStatistics([ifta], true).get('CAD').min, 1.1);
-  assert.equal(selectStationPrices(data, date, false)[0].discount, cash);
+  assert.equal(selectStationPrices(data, false)[0].discount, cash);
 });
 
 test('ambiguous or legacy-unselected quotes keep a neutral station instead of an invalid cheapest price', () => {
   for (const selected of [{ cashDiscount: null, iftaDiscount: null }, {}]) {
-    const item = selectStationPrices(
-      [
-        station({
-          ...selected,
-          discounts: [
-            quote(),
-            quote({ currency: 'CAD', unit: 'L', discountPrice: 1 }),
-          ],
-        }),
-      ],
-      date,
-    )[0];
+    const item = selectStationPrices([
+      station({
+        ...selected,
+        discounts: [
+          quote(),
+          quote({ currency: 'CAD', unit: 'L', discountPrice: 1 }),
+        ],
+      }),
+    ])[0];
     assert.deepEqual(item.position, { lat: 40, lng: -79 });
     assert.equal(comparisonPrice(item.discount, false), null);
     assert.equal(comparisonPrice(item.discount, true), null);
@@ -92,7 +88,6 @@ test('missing IFTA retains known cash details but an unavailable comparison', ()
   const cash = quote({ priceAfterIfta: null });
   const item = selectStationPrices(
     [station({ discounts: [cash], cashDiscount: cash, iftaDiscount: null })],
-    date,
     true,
   )[0];
   assert.equal(item.discount, cash);
@@ -101,29 +96,18 @@ test('missing IFTA retains known cash details but an unavailable comparison', ()
     assert.equal(comparisonPrice(quote({ priceAfterIfta: value }), true), null);
 });
 
-test('expired selections cannot replace a current quote and bad positions remain excluded', () => {
-  const expired = quote({ effectiveTo: '2026-09-08' });
-  const current = quote();
+test('raw quotes cannot replace the server selection and bad positions remain excluded', () => {
+  const raw = quote();
   const data = station({
-    discounts: [current],
-    cashDiscount: expired,
-    iftaDiscount: expired,
+    discounts: [raw],
+    cashDiscount: null,
+    iftaDiscount: null,
   });
   assert.equal(
-    comparisonPrice(selectStationPrices([data], date)[0].discount, false),
+    comparisonPrice(selectStationPrices([data])[0].discount, false),
     null,
   );
-  assert.equal(
-    selectStationPrices([{ ...data, latitude: 100 }], date).length,
-    0,
-  );
-  assert.equal(
-    selectStationPrices(
-      [station({ discounts: [expired], cashDiscount: expired })],
-      date,
-    ).length,
-    0,
-  );
+  assert.equal(selectStationPrices([{ ...data, latitude: 100 }]).length, 0);
 });
 
 test('IFTA toggles replace the selected popup quote without another station request', async t => {

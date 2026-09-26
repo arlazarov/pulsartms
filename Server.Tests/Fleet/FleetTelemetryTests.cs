@@ -421,13 +421,7 @@ public class FleetTelemetryTests
       stream,
       new(new TestCompany()),
       new NoRecordedPositions(),
-      Options.Create(
-        new SynchronizationOptions
-        {
-          Enabled = false,
-          HighFrequencyLocations = highFrequency,
-        }
-      ),
+      new TestFleetCollectionState(HighFrequencyLocations: highFrequency),
       scope
     );
     var result = await handler.Handle(new(), default);

@@ -610,7 +610,7 @@ public class SynchronizationTests
       stream,
       new(new TestCompany()),
       new NoRecordedPositions(),
-      Options.Create(new SynchronizationOptions()),
+      new TestFleetCollectionState(),
       new TestDriverScope()
     );
     Assert.Empty(
@@ -827,10 +827,7 @@ public class SynchronizationTests
     var key = Enumerable
       .Range(0, 1000)
       .Select(x => x.ToString())
-      .First(x =>
-        (uint)StringComparer.Ordinal.GetHashCode($"read:fast:0:{x}") % 64
-        != (uint)StringComparer.Ordinal.GetHashCode("read:slow:0:key") % 64
-      );
+      .First(x => cache.Stripe("fast", x) != cache.Stripe("slow", "key"));
     try
     {
       Assert.Equal(

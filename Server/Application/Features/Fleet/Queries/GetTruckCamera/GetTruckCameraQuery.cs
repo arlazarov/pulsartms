@@ -1,7 +1,7 @@
 using System.Net;
 using Application.Features.Fleet.Interfaces;
+using Application.Features.Fleet.Models;
 using Application.Models;
-using Domain.Models.Fleet;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Application.Features.Fleet.Queries.GetTruckCamera;
@@ -11,7 +11,9 @@ public record GetTruckCameraQuery(Guid TruckId, Guid RequestId)
 
 public sealed class GetTruckCameraHandler(
   ITruckCameraProvider provider,
-  IMemoryCache cache
+  IMemoryCache cache,
+  IAppDbContext db,
+  ICurrentCompany company
 ) : IRequestHandler<GetTruckCameraQuery, RequestResponse<CameraImage>>
 {
   public async Task<RequestResponse<CameraImage>> Handle(
@@ -25,7 +27,17 @@ public sealed class GetTruckCameraHandler(
         out var retrieval
       )
       || retrieval is null
+      || retrieval.CompanyId != company.Id
       || retrieval.TruckId != request.TruckId
+      || !await db
+        .Trucks.AsNoTracking()
+        .AnyAsync(
+          x =>
+            x.Id == request.TruckId
+            && x.IsActive
+            && x.ExternalId == retrieval.VehicleId,
+          ct
+        )
     )
       return RequestResponse<CameraImage>.Fail(
         "Camera request expired. Request a new image.",
@@ -35,10 +47,15 @@ public sealed class GetTruckCameraHandler(
     {
       var image = await provider.GetAsync(
         retrieval.VehicleId,
-        retrieval.ProviderId,
+        retrieval.Request,
         ct
       );
-      return RequestResponse<CameraImage>.Ok(image);
+      return image.Status == "expired"
+        ? RequestResponse<CameraImage>.Fail(
+          "Camera connection changed. Request a new image.",
+          404
+        )
+        : RequestResponse<CameraImage>.Ok(image);
     }
     catch (HttpRequestException ex)
       when (ex.StatusCode

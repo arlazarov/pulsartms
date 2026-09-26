@@ -21,6 +21,35 @@ public sealed class DriverTextDelivery(
 {
   public string Channel => messaging.Channel;
 
+  public async Task<DriverTextRecipient> RecipientAsync(
+    Guid? driverId,
+    CancellationToken ct
+  )
+  {
+    var driver = driverId is { } id
+      ? await DriverRecipients
+        .Candidates(db.Drivers.AsNoTracking())
+        .SingleOrDefaultAsync(x => x.Id == id, ct)
+      : null;
+    var recipient = driver?.Recipient;
+    var readiness = await ReadinessAsync(recipient?.Number, ct);
+    var availability =
+      !readiness.Configured ? DriverTextAvailability.NotConfigured
+      : driver is null ? DriverTextAvailability.NoDriver
+      : recipient?.Source == DriverWhatsAppSources.InvalidWhatsApp
+        ? DriverTextAvailability.InvalidRecipient
+      : recipient?.Number is null ? DriverTextAvailability.NoRecipient
+      : readiness.WindowEnds is null ? DriverTextAvailability.Unavailable
+      : DriverTextAvailability.Ready;
+    return new(
+      driver?.Id,
+      driver?.Name,
+      recipient?.Number,
+      availability,
+      readiness.WindowEnds
+    );
+  }
+
   // The same window a conversation reply is held to: the driver's latest
   // message to the company's current business number.
   public async Task<DriverTextReadiness> ReadinessAsync(
@@ -66,6 +95,8 @@ public sealed class DriverTextDelivery(
     CancellationToken ct
   )
   {
+    if (request.Text.Length > 4096)
+      return new(DriverTextResult.TooLong, null);
     var now = time.GetUtcNow().UtcDateTime;
     var latest = await db
       .DriverMessages.Where(x => x.IdempotencyKey == request.IdempotencyKey)
@@ -102,7 +133,7 @@ public sealed class DriverTextDelivery(
     {
       await db.SaveChangesAsync(ct);
     }
-    catch (DbUpdateException)
+    catch (DbUpdateException ex) when (db.IsDuplicateMessageAttempt(ex))
     {
       // Another press of the same message took this attempt first.
       db.Entry(request).State = EntityState.Detached;

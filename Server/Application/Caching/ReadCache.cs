@@ -102,17 +102,16 @@ public sealed partial class ReadCache(
     CancellationToken ct = default
   )
   {
-    var version = generations.Get(group);
+    var identity = ScopedGroup(group);
+    var version = Version(group, identity);
     // The cache outlives every request, so what it holds has to say whose
     // it is. "The board for today" is a different board for each carrier,
     // and without the carrier in the key the second one to ask would be
     // handed the first one's.
-    var cacheKey = $"read:{companies?.Id:N}:{group}:{version}:{key}";
+    var cacheKey = CacheKey(group, key, version);
     if (bounded.TryGetValue<Cached>(cacheKey, out var saved))
       return Restore<T>(saved!);
-    var gate = gates[
-      (uint)StringComparer.Ordinal.GetHashCode(cacheKey) % gates.Length
-    ];
+    var gate = gates[Stripe(cacheKey)];
     await gate.WaitAsync(ct);
     try
     {
@@ -135,7 +134,7 @@ public sealed partial class ReadCache(
               )
             : entry.Json!.LongLength
         );
-      if (size <= 8 * 1024 * 1024 && version == generations.Get(group))
+      if (size <= 8 * 1024 * 1024 && version == Version(group, identity))
         bounded.Set(
           cacheKey,
           entry,
@@ -157,10 +156,30 @@ public sealed partial class ReadCache(
   // Invalidating stays local and synchronous: the request that wrote must
   // read its own write back. Telling the other instances is the relay's work,
   // so a command does not pay a round trip per group it drops.
-  public void Invalidate(string group)
+  public void Invalidate(string group) =>
+    InvalidateIdentity(ScopedGroup(group));
+
+  public void InvalidateGlobally(string group) => InvalidateIdentity(group);
+
+  private string ScopedGroup(string group) =>
+    companies?.Id is { } company ? $"company:{company:N}:{group}" : group;
+
+  private long Version(string group, string identity) =>
+    Math.Max(generations.Get(group), generations.Get(identity));
+
+  private string CacheKey(string group, string key, long version) =>
+    $"read:{companies?.Id:N}:{group}:{version}:{key}";
+
+  private int Stripe(string cacheKey) =>
+    (int)((uint)StringComparer.Ordinal.GetHashCode(cacheKey) % gates.Length);
+
+  internal int Stripe(string group, string key) =>
+    Stripe(CacheKey(group, key, Version(group, ScopedGroup(group))));
+
+  private void InvalidateIdentity(string identity)
   {
-    generations.Invalidate(group);
-    unpublished[group] = Interlocked.Increment(ref stamp);
+    generations.Invalidate(identity);
+    unpublished[identity] = Interlocked.Increment(ref stamp);
   }
 
   private readonly ConcurrentDictionary<string, long> unpublished = new(
@@ -187,7 +206,7 @@ public sealed partial class ReadCache(
   // the row that carried it here is already in the log.
   internal void ApplyPublished(string group) => generations.Invalidate(group);
 
-  public long Generation(string group) => generations.Get(group);
+  public long Generation(string group) => Version(group, ScopedGroup(group));
 
   public void Dispose() => bounded.Dispose();
 }

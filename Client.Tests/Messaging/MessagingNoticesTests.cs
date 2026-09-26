@@ -42,17 +42,16 @@ public sealed class MessagingNoticesTests
     for (var i = 0; i < 3; i++)
       f.Signals.Receive("change", A.ToString());
     f.Time.Advance(MessagingNotices.Coalesce);
-    await Task.Delay(20);
+    await f.Notices.PendingWork;
     Assert.Equal(1, f.Reads);
 
     await f.Signals.Lead();
     for (var i = 0; i < 5; i++)
       f.Signals.Receive("change", A.ToString());
     f.Time.Advance(MessagingNotices.Coalesce);
-    await Eventually(() => Assert.Equal(2, f.Reads));
-    await Eventually(() => Assert.Single(f.Relayed("unread")));
-    await Task.Delay(20);
+    await f.Notices.PendingWork;
     Assert.Equal(2, f.Reads);
+    Assert.Single(f.Relayed("unread"));
   }
 
   // The tab's own first read answers after the leader's newer count: the
@@ -69,7 +68,7 @@ public sealed class MessagingNoticesTests
 
     f.Signals.Unread(2, false, 3);
     first.SetResult(new(0, false, 0));
-    await Task.Delay(20);
+    await f.Notices.PendingWork;
 
     page.WaitForAssertion(
       () => Assert.Equal("2", page.Find(".sidebar__badge").TextContent)
@@ -97,8 +96,7 @@ public sealed class MessagingNoticesTests
     await f.CountAsync(new(1, false, 4));
     await f.CountAsync(new(0, false, 0));
 
-    await Eventually(() => Assert.Equal(2, f.Notified.Invocations.Count));
-    await Task.Delay(50);
+    await f.Notices.PendingWork;
     Assert.Equal(2, f.Notified.Invocations.Count);
   }
 
@@ -117,11 +115,10 @@ public sealed class MessagingNoticesTests
     await f.CountAsync(new(99, true, 200));
     await f.CountAsync(new(99, true, 199));
     await f.CountAsync(new(99, false, 150));
-    await Task.Delay(50);
     Assert.Empty(f.Notified.Invocations);
 
     await f.CountAsync(new(99, true, 201));
-    await Eventually(() => Assert.Single(f.Notified.Invocations));
+    Assert.Single(f.Notified.Invocations);
   }
 
   [Theory]
@@ -154,8 +151,9 @@ public sealed class MessagingNoticesTests
       );
     else
       await f.Notices.DisposeAsync();
+    var pending = f.Notices.PendingWork;
     f.Release();
-    await Task.Delay(50);
+    await pending;
 
     Assert.Empty(f.Notified.Invocations);
   }
@@ -180,6 +178,37 @@ public sealed class MessagingNoticesTests
     await joining;
 
     Assert.Equal(1, f.Notices.Current!.Conversations);
+  }
+
+  [Fact]
+  public async Task AnOldAccountsHeldReadDoesNotBlockNewSignals()
+  {
+    await using var f = new Fixture();
+    await f.Notices.JoinAsync();
+    await f.Signals.Lead();
+    var late = new TaskCompletionSource<UnreadCount>(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    f.Pending = late;
+    f.Signals.Receive("change", A.ToString());
+    f.Time.Advance(MessagingNotices.Coalesce);
+    await Eventually(() => Assert.Equal(2, f.Reads));
+    var oldWork = f.Notices.PendingWork;
+
+    f.Pending = null;
+    f.Auth.SetClaims(
+      new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+    );
+    await Eventually(() => Assert.Equal(3, f.Reads));
+    await f.Signals.Lead();
+    await f.CountAsync(new(2, false, 2));
+    Assert.Equal(2, f.Notices.Current!.Conversations);
+
+    late.SetResult(new(9, false, 9));
+    await oldWork;
+    Assert.Equal(2, f.Notices.Current.Conversations);
+    await f.CountAsync(new(3, false, 3));
+    Assert.Equal(5, f.Reads);
   }
 
   private static async Task Eventually(Action assertion)
@@ -287,9 +316,8 @@ public sealed class MessagingNoticesTests
       Answers.Enqueue(answer);
       Signals.Receive("change", A.ToString());
       Time.Advance(MessagingNotices.Coalesce);
-      await Eventually(
-        () => Assert.Equal(relayed + 1, Relayed("unread").Count)
-      );
+      await Notices.PendingWork;
+      Assert.Equal(relayed + 1, Relayed("unread").Count);
     }
 
     private async Task<HttpResponseMessage> SendAsync(

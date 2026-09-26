@@ -10,6 +10,12 @@ started again under the current project policy.
 
 ### Reviews and implementation records
 
+- [Application architecture audit](2026-09/application-audit-2026-09-26.md)
+- [Architecture guardrail corrections][architecture-guardrails]
+- [Architecture audit conclusion](2026-09/architecture-audit-conclusion-2026-09-26.md)
+
+[architecture-guardrails]: 2026-09/architecture-guardrails-2026-09-26.md
+
 - [Source structure review](2026-09/source-structure-review-2026-09-23.md)
 - [Fuel hand-over, WhatsApp foundation and trailers release](2026-09/fuel-handover-trailers-release-2026-09-23.md)
 - [Public privacy policy](2026-09/privacy-policy-publication-2026-09-23.md)

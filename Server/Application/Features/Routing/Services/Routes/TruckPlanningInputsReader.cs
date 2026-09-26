@@ -82,29 +82,29 @@ public sealed class TruckPlanningInputsReader(
     CancellationToken ct
   )
   {
-    var legs = await db
+    ArgumentOutOfRangeException.ThrowIfNegative(limit);
+    if (limit == 0)
+      return [];
+    var legs = db
       .ExecutionLegs.AsNoTracking()
       .Where(x => x.Status == "active" || x.Status == "planned")
-      .Select(x => new { x.TruckId, Driving = x.Status == "active" })
-      .ToListAsync(ct);
-    var loads = await db
+      .Select(x => new { x.TruckId, Rank = x.Status == "active" ? 0 : 1 });
+    var loads = db
       .Dispatches.AsNoTracking()
       .Where(x =>
         x.Status == "in_transit"
         && x.TruckId != null
         && !db.LoadExecutionLegs.Any(link => link.DispatchId == x.Id)
       )
-      .Select(x => x.TruckId!.Value)
-      .ToListAsync(ct);
-    return legs.Select(x => (x.TruckId, Rank: x.Driving ? 0 : 1))
-      .Concat(loads.Select(x => (TruckId: x, Rank: 0)))
+      .Select(x => new { TruckId = x.TruckId!.Value, Rank = 0 });
+    return await legs.Concat(loads)
       .GroupBy(x => x.TruckId)
-      .Select(x => (Truck: x.Key, Rank: x.Min(y => y.Rank)))
+      .Select(x => new { TruckId = x.Key, Rank = x.Min(y => y.Rank) })
       .OrderBy(x => x.Rank)
-      .ThenBy(x => x.Truck)
+      .ThenBy(x => x.TruckId)
       .Take(limit)
-      .Select(x => x.Truck)
-      .ToList();
+      .Select(x => x.TruckId)
+      .ToListAsync(ct);
   }
 
   public async Task<TruckPlanningInputs?> ReadFreshAsync(

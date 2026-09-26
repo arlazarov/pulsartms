@@ -69,7 +69,7 @@ test('duplicate telemetry timestamps are replaced and memory stays bounded', () 
   assert.equal(merged.at(-1).latitude, 7);
 });
 
-test('station selection respects date and coordinate validity', () => {
+test('station selection uses the server quote and validates coordinates', () => {
   const discounts = [
     {
       effectiveFrom: '2026-09-05',
@@ -87,12 +87,8 @@ test('station selection respects date and coordinate validity', () => {
     cashDiscount: discounts[0],
     iftaDiscount: null,
   }));
-  assert.equal(selectStationPrices(stations, '2026-09-05').length, 1);
-  assert.equal(
-    selectStationPrices(stations, '2026-09-05')[0].discount.discountPrice,
-    2,
-  );
-  assert.equal(selectStationPrices(stations, '2026-09-06').length, 0);
+  assert.equal(selectStationPrices(stations).length, 1);
+  assert.equal(selectStationPrices(stations)[0].discount.discountPrice, 2);
 });
 
 test('price comparison keeps currencies separate and treats missing IFTA as unavailable', () => {

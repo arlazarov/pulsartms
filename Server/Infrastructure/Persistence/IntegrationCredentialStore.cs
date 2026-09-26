@@ -1,3 +1,4 @@
+using System.Data;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Application.Features.Integrations.Interfaces;
@@ -60,6 +61,24 @@ public sealed class IntegrationCredentialStore(
       ValidateFields(provider, values);
     await using var scope = scopes.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var ownedField = IntegrationProviderCatalog.OwnedField(provider);
+    await using var transaction = ownedField is null
+      ? null
+      : await db.Database.BeginTransactionAsync(
+        db.Database.IsNpgsql()
+          ? IsolationLevel.ReadCommitted
+          : IsolationLevel.Serializable,
+        ct
+      );
+    if (ownedField is not null && db.Database.IsNpgsql())
+      await db.Database.ExecuteSqlRawAsync(
+        "SELECT pg_advisory_xact_lock(710246714)",
+        ct
+      );
+    else if (ownedField is not null && !db.Database.IsSqlite())
+      throw new NotSupportedException(
+        "Channel ownership needs a supported store."
+      );
     var row = await db.IntegrationCredentialSettings.SingleOrDefaultAsync(
       value => value.Provider == provider,
       ct
@@ -67,6 +86,24 @@ public sealed class IntegrationCredentialStore(
     var inserting = row is null;
     if ((row?.Revision ?? 0) != expectedRevision)
       return false;
+    if (ownedField is not null && values?.Get(ownedField) is { } channel)
+    {
+      var previous = row?.ProtectedValues is { } protectedValues
+        ? Unprotect(row.CompanyId, provider, protectedValues).Get(ownedField)
+        : null;
+      if (
+        channel.Trim() != previous?.Trim()
+        && await HeldElsewhereAsync(
+          db,
+          provider,
+          ownedField,
+          channel,
+          ct,
+          requireReadable: true
+        )
+      )
+        throw new IntegrationChannelConflictException();
+    }
     if (row is null)
     {
       row = new() { Provider = provider };
@@ -89,6 +126,8 @@ public sealed class IntegrationCredentialStore(
     try
     {
       await db.SaveChangesAsync(ct);
+      if (transaction is not null)
+        await transaction.CommitAsync(ct);
       return true;
     }
     catch (DbUpdateConcurrencyException)
@@ -102,8 +141,8 @@ public sealed class IntegrationCredentialStore(
     }
   }
 
-  // Across companies on purpose, and bounded: one row per company for the
-  // provider. A row that cannot be read is not counted as holding it.
+  // Read-only display hint. Admission repeats this inside the serialized
+  // channel write transaction; the earlier observation cannot authorize it.
   public async Task<bool> HeldElsewhereAsync(
     string provider,
     string field,
@@ -114,12 +153,24 @@ public sealed class IntegrationCredentialStore(
     RequireProvider(provider);
     await using var scope = scopes.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    return await HeldElsewhereAsync(db, provider, field, value, ct);
+  }
+
+  private async Task<bool> HeldElsewhereAsync(
+    AppDbContext db,
+    string provider,
+    string field,
+    string value,
+    CancellationToken ct,
+    bool requireReadable = false
+  )
+  {
     var serving =
       db.ServingCompany
       ?? throw new InvalidOperationException(
         "Integration credentials require a company."
       );
-    var rows = await db
+    var rows = db
       .IntegrationCredentialSettings.IgnoreQueryFilters()
       .AsNoTracking()
       .Where(x =>
@@ -128,15 +179,15 @@ public sealed class IntegrationCredentialStore(
         && x.ProtectedValues != null
       )
       .Select(x => new { x.CompanyId, x.ProtectedValues })
-      .ToListAsync(ct);
-    foreach (var row in rows)
+      .AsAsyncEnumerable();
+    await foreach (var row in rows.WithCancellation(ct))
     {
       IntegrationCredentialValues values;
       try
       {
         values = Unprotect(row.CompanyId, provider, row.ProtectedValues!);
       }
-      catch (InvalidOperationException)
+      catch (InvalidOperationException) when (!requireReadable)
       {
         continue;
       }

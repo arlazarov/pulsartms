@@ -138,6 +138,27 @@ public sealed class CacheInvalidationRelayTests
     );
   }
 
+  [Fact]
+  public async Task ScopedChangesReachTheSameCompanyWithoutReloadingAnother()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var other = Guid.NewGuid();
+    await Load(f.B, "original");
+    using (f.Companies.As(other))
+      await Load(f.B, "other-original");
+    f.A.Cache.Invalidate("board");
+    await f.A.Relay.RunOnceAsync(default);
+    await f.B.Relay.RunOnceAsync(default);
+    Assert.Equal("updated", await Load(f.B, "updated"));
+    using (f.Companies.As(other))
+      Assert.Equal("other-original", await Load(f.B, "unexpected reload"));
+    f.A.Cache.InvalidateGlobally("board");
+    await f.A.Relay.RunOnceAsync(default);
+    await f.B.Relay.RunOnceAsync(default);
+    using (f.Companies.As(other))
+      Assert.Equal("global update", await Load(f.B, "global update"));
+  }
+
   private static Task<string> Load(Instance instance, string value) =>
     instance.Cache.GetAsync("board", "k", () => Task.FromResult(value));
 
@@ -147,6 +168,7 @@ public sealed class CacheInvalidationRelayTests
   {
     private SqliteConnection Connection { get; init; } = null!;
     private ServiceProvider Services { get; init; } = null!;
+    public required TestCompany Companies { get; init; }
     public required AppDbContext Db { get; init; }
     public required ManualTimeProvider Clock { get; init; }
     public required Instance A { get; init; }
@@ -167,21 +189,27 @@ public sealed class CacheInvalidationRelayTests
       );
       await db.Database.EnsureCreatedAsync();
       var clock = new ManualTimeProvider();
+      var companies = new TestCompany();
       return new Fixture
       {
         Connection = connection,
         Services = services,
         Db = db,
         Clock = clock,
-        A = Build(services, clock),
-        B = Build(services, clock),
+        Companies = companies,
+        A = Build(services, clock, companies),
+        B = Build(services, clock, companies),
       };
     }
 
-    private static Instance Build(IServiceProvider services, TimeProvider clock)
+    private static Instance Build(
+      IServiceProvider services,
+      TimeProvider clock,
+      TestCompany companies
+    )
     {
       var options = Options.Create(new SynchronizationOptions());
-      var cache = new ReadCache(options);
+      var cache = new ReadCache(options, companies);
       return new(
         cache,
         new CacheInvalidationRelay(

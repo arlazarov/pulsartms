@@ -1,6 +1,7 @@
 using Application.Caching;
 using Application.Features.Synchronization.Options;
 using Microsoft.Extensions.Options;
+using Server.Tests.Support;
 
 namespace Server.Tests.Synchronization;
 
@@ -8,6 +9,38 @@ namespace Server.Tests.Synchronization;
 [Trait("Kind", "Unit")]
 public sealed class ReadCacheGenerationTests
 {
+  [Fact]
+  public async Task ScopedInvalidationRejectsLateResultsWithoutReloadingOtherCompany()
+  {
+    var companies = new TestCompany();
+    using var cache = new ReadCache(
+      Options.Create(new SynchronizationOptions()),
+      companies
+    );
+    var other = Guid.NewGuid();
+    var held = new TaskCompletionSource<int>(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    var old = cache.GetAsync("settings", "value", () => held.Task);
+    using (companies.As(other))
+      Assert.Equal(
+        9,
+        await cache.GetAsync("settings", "value", () => Task.FromResult(9))
+      );
+    cache.Invalidate("settings");
+    held.SetResult(1);
+    Assert.Equal(1, await old);
+    Assert.Equal(
+      2,
+      await cache.GetAsync("settings", "value", () => Task.FromResult(2))
+    );
+    using (companies.As(other))
+      Assert.Equal(
+        9,
+        await cache.GetAsync("settings", "value", () => Task.FromResult(99))
+      );
+  }
+
   [Fact]
   public async Task ForgottenGroupsCannotReviveOldCachedValues()
   {

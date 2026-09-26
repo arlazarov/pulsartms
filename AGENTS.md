@@ -77,6 +77,39 @@ relax these boundaries to make dependency injection or a background job easier.
 These rules supersede older guidance allowing Infrastructure workers to construct
 Application commands directly.
 
+## Shared ownership and duplicate work (application-wide)
+
+- Before adding a calculation, query, provider call, projection or cache, find
+  its existing owner and trace the callers across all affected screens and
+  jobs. Record what is reused and why any new work is necessary. This applies
+  to every module, including Dispatch, Fleet Map, Messaging and financial flows.
+- Keep each business rule in one authoritative owner. Consumers request its
+  result and format it; do not copy formulas, validity rules or fallback logic
+  into another screen or handler. Share through permitted layer contracts.
+- Review the complete request and background chain, not one method in
+  isolation. Reuse equivalent reads within an operation, batch collections,
+  and coalesce concurrent expensive work for the same scoped dependency key.
+  Repeated handler calls must not repeat database/provider reads or full-set
+  materialization unnecessarily. Do not assume a cache hit makes work free.
+- Read only the projection needed. A scalar or summary must not load,
+  deserialize or decompress full geometry, history or large entity graphs.
+  Rendering getters must not repeatedly rebuild or sort the same collection.
+- Reuse existing caches before adding one. Cross-request reuse requires named
+  tenant, authorization, assignment and input-version boundaries as applicable,
+  bounded memory, explicit freshness and invalidation after commit. Do not
+  remove correctness checks or retain stale results as current to save work.
+  Do not introduce a cache or generic framework for trivial operations.
+- For changes to shared reads or expensive calculations, review warm, cold
+  and overlapping consumers, including background consumers. Add focused
+  call-count or work-count regression coverage where practical; document any
+  coverage gap. Distinguish calculations, database/provider calls, cache reads
+  and materialization. Measure foreground and background cost separately.
+- Completion evidence must name the owner, consumers, eliminated repetition
+  and checks performed. Do not claim "computed once" from response time or a
+  passing functional test alone. Justified repetition (different inputs,
+  permissions or freshness) must be explicit. Cosmetic changes do not require
+  performance tests, and unchanged passing gates must not be repeated.
+
 ## Shared reads and background planning
 
 - Before changing Dispatch, Fleet Map, planning reads or their persistence, read

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Domain.Models.Routing;
 
 // Which planned fuel stops are the driver's for the shift they are on, and
@@ -98,16 +100,16 @@ public static class FuelIssueChannelStates
   public const string Ready = "ready";
 }
 
-// Who a WhatsApp hand-over would go to, and whether it can go now.
+// Who the chosen delivery channel would reach, and whether it can go now.
 public sealed record FuelIssueRecipient(
   Guid? DriverId,
   string? DriverName,
-  string? WhatsAppPhone,
+  [property: JsonPropertyName("whatsAppPhone")] string? Address,
   string State,
-  DateTime? WindowEndsAt
+  [property: JsonPropertyName("windowEndsAt")] DateTime? AvailableUntil
 );
 
-// The latest WhatsApp attempt for this plan version. Accepted is not
+// The latest delivery attempt for this plan version. Accepted is not
 // delivered; unknown means nobody knows whether it went.
 public sealed record FuelIssueMessageState(
   string Status,
@@ -139,7 +141,7 @@ public sealed record FuelIssuePreview(
   public IReadOnlyList<FuelWithdrawnVisit> Withdrawn { get; init; } = [];
 }
 
-// Sending the previewed plan through WhatsApp. SendAgain is a dispatcher
+// Sending the previewed plan through Messaging. SendAgain is a dispatcher
 // saying so after an attempt whose outcome is unknown.
 public sealed record FuelIssueSendRequest(
   FuelIssueSentRequest Plan,
