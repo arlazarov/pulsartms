@@ -289,6 +289,28 @@ public sealed class BaseRouteOperationTests
     Assert.Equal(current, saved.PreviousDispatchId);
     Assert.Equal(incoming.Id, saved.PreviousExecutionLegId);
     Assert.Equal(100m, saved.Miles);
+    if (nativeSuccessor)
+    {
+      // The board reads an accepted load's connection by its leg; read by
+      // the load alone, Papers showed no total or Total RPM (September 26).
+      var board = await services.Board.Handle(
+        new GetDispatchBoardQuery(
+          TruckId: incoming.TruckId,
+          IncludeHos: false,
+          IncludePlanned: true,
+          IncludeEta: false,
+          IncludeOverdue: true
+        ),
+        default
+      );
+      var card = board
+        .Response!.Items.SelectMany(x => x.Dispatches)
+        .Single(x => x.Id == next && x.ExecutionLegId == nextLeg);
+      Assert.Equal("ready", card.EmptyMilesStatus);
+      Assert.Equal(100m, card.EmptyMiles);
+      Assert.Equal(200m, card.TotalMiles);
+      Assert.Equal(0.5m, card.TotalRatePerMile);
+    }
     var loadToRead = await services.Routes.LoadAsync(next, default, nextLeg);
     var profile = await services.Routes.ProfileAsync(incoming.TruckId, default);
     Assert.NotNull(

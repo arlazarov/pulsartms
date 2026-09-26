@@ -137,17 +137,17 @@ public class GetDispatchBoardHandler(
     foreach (var detail in details.Values)
       DispatchProjection.Complete(detail);
     var detailsMs = Take("details", ref stage);
-    if (request.IncludeFinancials)
-      await deadhead.ReadAsync(
-        details
-          .Values.Where(x => !native.OwnedDispatchIds.Contains(x.Id))
-          .ToArray(),
-        cancellationToken
-      );
-    var financialsMs = Take("financials", ref stage);
-    var scopedDetails = details
+    var sourceDetails = details
       .Values.Where(x => !native.OwnedDispatchIds.Contains(x.Id))
-      .Concat(native.Loads.Select(DispatchProjection.FromExecution))
+      .ToArray();
+    var nativeDetails = native
+      .Loads.Select(x => (Item: DispatchProjection.FromExecution(x), x.Work))
+      .ToArray();
+    if (request.IncludeFinancials)
+      await deadhead.ReadAsync(sourceDetails, nativeDetails, cancellationToken);
+    var financialsMs = Take("financials", ref stage);
+    var scopedDetails = sourceDetails
+      .Concat(nativeDetails.Select(x => x.Item))
       .ToDictionary(x => (x.Id, x.ExecutionLegId));
     var clocks = request.IncludeHos
       ? await hos.GetClocksAsync(cancellationToken)

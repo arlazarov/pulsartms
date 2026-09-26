@@ -66,6 +66,13 @@ calls.
 - Total RPM = rate / (loaded miles + planned empty miles).
 - Unknown empty mileage leaves Total RPM unavailable; known zero is valid.
 
+A load accepted into execution keeps its connection per leg. The board reads
+it by that leg, with history captured from the leg's work, in the same batched
+read as imported loads; read by the load alone it matched nothing and Cards,
+Table and Papers showed no total or Total RPM. Background preparation stores
+no `DispatchRates` snapshot for a leg, so a leg's Total RPM is the same
+rate / (loaded + empty) division taken at read time.
+
 `DispatchRates` persists both RPM values to six decimal places, together with
 the source price, currency, loaded/empty miles, connection signature and
 calculation time. Active-load background preparation refreshes these snapshots

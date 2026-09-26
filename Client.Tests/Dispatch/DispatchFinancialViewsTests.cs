@@ -148,6 +148,40 @@ public sealed class DispatchFinancialViewsTests
   }
 
   [Fact]
+  public void PapersNameTheTrailerOfTheLoadOrElseOfTheTruck()
+  {
+    using var context = new BunitContext();
+    var own = Load();
+    own.TrailerNumber = "LOAD-7";
+    var inherited = Load();
+    inherited.Id = Guid.NewGuid();
+    inherited.LoadNumber = own.LoadNumber + 1;
+    inherited.TrailerNumber = "";
+    var trucks = new[]
+    {
+      new TruckDispatchBoardResponse
+      {
+        Key = "truck",
+        TruckNumber = "11005",
+        TrailerNumber = "TRUCK-9",
+        Dispatches = [own, inherited],
+      },
+    };
+    var papers = context.Render<DispatchPapers>(parameters =>
+      parameters.Add(view => view.Trucks, trucks)
+    );
+
+    Assert.Equal(
+      ["Trailer LOAD-7", "Trailer TRUCK-9"],
+      papers
+        .FindAll(".dispatch-paper__tab-trailer")
+        .Select(cell => cell.TextContent.Trim())
+        .OrderBy(text => text)
+        .ToArray()
+    );
+  }
+
+  [Fact]
   public void TableAndPapersDisplayCompleteAppointmentWindows()
   {
     using var context = new BunitContext();
