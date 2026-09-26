@@ -1,18 +1,33 @@
 // One thing the card can be showing, and the caller that put it there.
 type Port = { onClose: () => void; disposed: boolean };
 
+// A position as a popup names it - the provider's LatLng or a literal -
+// read as numbers; anything else is no position.
+function literal(value: unknown): google.maps.LatLngLiteral | null {
+  if (!value || typeof value !== 'object') return null;
+  const at = value as { lat?: unknown; lng?: unknown };
+  const lat = typeof at.lat === 'function' ? at.lat() : at.lat,
+    lng = typeof at.lng === 'function' ? at.lng() : at.lng;
+  return typeof lat === 'number' && typeof lng === 'number'
+    ? { lat, lng }
+    : null;
+}
+
 /**
  * The card docked under the map, whose content the page owns. Blazor owns
  * the persistent inspector shell; JavaScript owns only this empty host.
  *
  * @param onChange What the card is showing now, and which revision of it.
  * @param dismissMode What Escape leaves the card showing.
+ * @param onShow Where the thing the card now shows stands on the map: said
+ *   once per place, not again when the same stop's content is refreshed.
  */
 export function createDockedDetails(
   host: HTMLElement | null,
   onChange: (kind: string, revision: number) => void = () => {},
   dismissMode: () => string = () => 'closed',
   focusTarget: { focus?: (options?: FocusOptions) => void } | null = null,
+  onShow: (position: google.maps.LatLngLiteral) => void = () => {},
 ) {
   const ports = new Map<string, Port>();
   let owner: Port | null = null,
@@ -84,12 +99,19 @@ export function createDockedDetails(
       ) => {
         const port: Port = { onClose, disposed: false };
         ports.set(kind, port);
+        let shownAt = '';
         return {
-          show(nextContent: Node) {
+          show(nextContent: Node, position?: unknown) {
             if (disposed || port.disposed || owner !== port) return;
             if (content !== nextContent) {
               content = nextContent;
               host?.replaceChildren(content);
+            }
+            const place = literal(position);
+            const key = place ? `${place.lat}:${place.lng}` : '';
+            if (place && key !== shownAt) {
+              shownAt = key;
+              onShow(place);
             }
           },
           hide() {

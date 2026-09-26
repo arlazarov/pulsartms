@@ -308,3 +308,65 @@ test('fully obscured or unavailable projection safely retains the original targe
   f.map.getProjection = () => null;
   assert.equal(f.camera.center(target), target);
 });
+
+// The card that opens for a picked truck, stop or station used to open
+// over it. A pick waits for its card, then moves the least distance that
+// brings it into the free region (the owner, September 26).
+function revealFixture(t) {
+  const f = fixture(t);
+  const pans = [];
+  let dragStart = null;
+  f.map.getCenter = () => ({ lat: 0, lng: 0 });
+  f.map.panBy = (x, y) => pans.push([x, y]);
+  f.map.addListener = (name, callback) => {
+    if (name === 'dragstart') dragStart = callback;
+    return { remove() {} };
+  };
+  // The listener is taken at construction; build again with it in place.
+  const camera = createCameraViewport(
+    {
+      parentElement: f.stage,
+      ownerDocument: { defaultView: {} },
+      getBoundingClientRect: () => rect(80, 100, 1000, 600),
+    },
+    f.map,
+  );
+  t.after(() => camera.dispose());
+  return { ...f, camera, pans, drag: () => dragStart?.() };
+}
+
+test('a pick under the card is panned the least distance into the free region', t => {
+  const f = revealFixture(t);
+  f.overlay('.fleet-map-info-reserved', () => rect(80, 100, 1000, 160));
+  f.camera.refresh();
+  // At zoom 5 a degree is 32px: this point stands 20px above the map, under
+  // the card, and needs the region's top edge plus the margin.
+  f.camera.reveal({ lat: -10, lng: 0 });
+  assert.deepEqual(f.pans, [[0, -220]]);
+  // Already in the clear: nothing moves.
+  f.camera.reveal({ lat: 3, lng: 0 });
+  assert.deepEqual(f.pans, [[0, -220]]);
+});
+
+test('a pick waits for its card and is revealed once when the card appears', t => {
+  const f = revealFixture(t);
+  f.camera.reveal({ lat: -10, lng: 0 });
+  assert.deepEqual(f.pans, [], 'no card yet, nothing to come out from under');
+  f.overlay('.fleet-map-info-reserved', () => rect(80, 100, 1000, 160));
+  f.camera.refresh();
+  assert.deepEqual(f.pans, [[0, -220]]);
+  f.camera.refresh();
+  assert.deepEqual(f.pans, [[0, -220]], 'a later layout pass moves nothing');
+});
+
+test('a reader who drags the map keeps it, and a map without panBy is left alone', t => {
+  const f = revealFixture(t);
+  f.camera.reveal({ lat: -10, lng: 0 });
+  f.drag();
+  f.overlay('.fleet-map-info-reserved', () => rect(80, 100, 1000, 160));
+  f.camera.refresh();
+  assert.deepEqual(f.pans, []);
+  delete f.map.panBy;
+  f.camera.reveal({ lat: -10, lng: 0 });
+  assert.doesNotThrow(() => f.camera.refresh());
+});

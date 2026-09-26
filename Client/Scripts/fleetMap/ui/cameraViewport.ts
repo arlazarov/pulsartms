@@ -1,6 +1,11 @@
 // A rectangle of the map's own element, in its pixels.
 type Area = { x: number; y: number; width: number; height: number };
 
+// How far inside the free region a revealed point is placed, and how long a
+// pick waits for its card to open before it is forgotten.
+const revealMargin = 40;
+const revealPatience = 2000;
+
 const selectors = [
   '.fleet-map-info-reserved',
   '.fuel-plan-editor',
@@ -18,6 +23,13 @@ export function createCameraViewport(
     disposed = false;
   let signature = '',
     changed: () => void = () => {};
+  // What was just picked, waiting for the card that opens over it.
+  let pending: { position: google.maps.LatLngLiteral; until: number } | null =
+    null;
+  // A reader who drags the map has taken it back: nothing is moved for them.
+  const dragged = map.addListener?.('dragstart', () => {
+    pending = null;
+  });
   const observed = new Set<HTMLElement>();
   const Resize = view?.ResizeObserver;
   const Mutation = view?.MutationObserver;
@@ -34,6 +46,51 @@ export function createCameraViewport(
       signature = next;
       changed();
     }
+    attemptReveal();
+  }
+
+  // Where a position falls on the map's element, in its pixels.
+  function pixel(position: google.maps.LatLngLiteral) {
+    const projection = map.getProjection?.(),
+      zoom = map.getZoom?.(),
+      centre = map.getCenter?.();
+    if (!bounds || !projection || !Number.isFinite(zoom) || !centre)
+      return null;
+    const point = projection.fromLatLngToPoint(
+        new google.maps.LatLng(position),
+      ),
+      origin = projection.fromLatLngToPoint(centre);
+    if (!point || !origin) return null;
+    const scale = 2 ** zoom!;
+    return {
+      x: bounds.width / 2 + (point.x - origin.x) * scale,
+      y: bounds.height / 2 + (point.y - origin.y) * scale,
+    };
+  }
+
+  // The card that opens for a picked truck, stop or station used to open
+  // over it. Once the card is there, the pick is moved the least distance
+  // that brings it into the free region - and only then, so a pick with
+  // no card, or one already in the clear, moves nothing (the owner,
+  // September 26).
+  function attemptReveal() {
+    if (!pending || disposed) return;
+    if (!region) {
+      if (Date.now() > pending.until) pending = null;
+      return;
+    }
+    const wanted = pending.position;
+    pending = null;
+    const at = pixel(wanted);
+    if (!at || typeof map.panBy !== 'function') return;
+    const gap = Math.min(revealMargin, region.width / 4, region.height / 4);
+    const left = region.x + gap,
+      right = region.x + region.width - gap,
+      top = region.y + gap,
+      bottom = region.y + region.height - gap;
+    const dx = at.x < left ? at.x - left : at.x > right ? at.x - right : 0,
+      dy = at.y < top ? at.y - top : at.y > bottom ? at.y - bottom : 0;
+    if (dx !== 0 || dy !== 0) map.panBy(Math.round(dx), Math.round(dy));
   }
 
   function measure() {
@@ -166,6 +223,11 @@ export function createCameraViewport(
     onChange(callback: () => void) {
       changed = callback;
     },
+    reveal(position: google.maps.LatLngLiteral | null | undefined) {
+      if (disposed || !position) return;
+      pending = { position, until: Date.now() + revealPatience };
+      refresh();
+    },
     center,
     captureCenter() {
       const offset = centerOffset();
@@ -184,6 +246,8 @@ export function createCameraViewport(
     },
     dispose() {
       disposed = true;
+      pending = null;
+      dragged?.remove?.();
       changed = () => {};
       resize?.disconnect();
       mutation?.disconnect();

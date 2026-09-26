@@ -215,3 +215,27 @@ test('explicit Back, Close and native Escape restore only departing inspector fo
     'pointer markers and passive owner cleanup do not steal focus',
   );
 });
+
+// The card says where what it shows stands, once per place: a refresh of
+// the same stop's content is not a new place, and content without a
+// position says nothing.
+test('showing content names its place once, not again for the same stop', () => {
+  const places = [];
+  const inspector = createDockedDetails(
+    { replaceChildren() {}, addEventListener() {}, removeEventListener() {} },
+    () => {},
+    () => 'closed',
+    null,
+    position => places.push(position),
+  );
+  const stop = inspector.popupFactory('stop')({}, { onClose() {} });
+  inspector.activate('stop');
+  stop.show({}, { lat: 40, lng: -79 });
+  stop.show({}, { lat: 40, lng: -79 });
+  stop.show({}, { lat: () => 41, lng: () => -78 });
+  stop.show({});
+  assert.deepEqual(places, [
+    { lat: 40, lng: -79 },
+    { lat: 41, lng: -78 },
+  ]);
+});

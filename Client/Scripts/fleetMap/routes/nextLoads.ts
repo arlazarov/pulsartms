@@ -27,6 +27,7 @@ type NextLoadMarker = {
  *   Which load is picked, which of its stops the card should open on, and -
  *   when the stop belongs to a leg already being driven - which leg.
  * @param reveal Asks the map to bring that load's road into view.
+ * @param revealStop Where the picked stop stands, for the card that opens.
  */
 export function createNextLoadsLayer(
   map: google.maps.Map,
@@ -38,7 +39,9 @@ export function createNextLoadsLayer(
     executionLegId?: string,
   ) => void = () => {},
   reveal: (geometry: google.maps.LatLngLiteral[] | null) => void = () => {},
+  revealStop: (position: google.maps.LatLngLiteral) => void = () => {},
 ) {
+  const stopPositions = new Map<string, google.maps.LatLngLiteral>();
   const objects: (NextLoadLine | NextLoadMarker)[] = [];
   const markerUpdates: (() => void)[] = [];
   let previous: string | null = null;
@@ -129,11 +132,14 @@ export function createNextLoadsLayer(
     selectedStopIndex = member.index;
     applySelection();
     reveal(loadGeometry.get(loadId ?? selectedId!) ?? null);
+    const at = stopPositions.get(`${selectedId}:${member.index}`);
+    if (at) revealStop(at);
     if (member.executionLegId)
       onSelection(member.loadId ?? null, member.index, member.executionLegId);
     else onSelection(member.loadId ?? null, member.index);
   }
   function clearObjects() {
+    stopPositions.clear();
     for (const object of objects) {
       if (object.setMap) object.setMap(null);
       else object.map = null;
@@ -227,6 +233,11 @@ export function createNextLoadsLayer(
       for (const { stop, numbers, members, color } of display.groups) {
         const loadId = identity(members[0]);
         remember(loadId, { lat: stop.latitude, lng: stop.longitude });
+        for (const member of members)
+          stopPositions.set(`${identity(member)}:${member.index}`, {
+            lat: stop.latitude,
+            lng: stop.longitude,
+          });
         if (!loadMembers.has(loadId)) loadMembers.set(loadId, members[0]);
         const marker = new StopMarker({
           map,

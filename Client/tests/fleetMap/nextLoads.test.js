@@ -51,8 +51,14 @@ function selectionFixture() {
       this.visible = visible;
     }
   }
-  const layer = createNextLoadsLayer({}, Line, Stop, (...args) =>
-    selections.push(args),
+  const reveals = [];
+  const layer = createNextLoadsLayer(
+    {},
+    Line,
+    Stop,
+    (...args) => selections.push(args),
+    () => {},
+    position => reveals.push(position),
   );
   const loads = ['first', 'second'].map((id, index) => {
     const stops = [
@@ -72,8 +78,18 @@ function selectionFixture() {
     };
   });
   layer.set(loads);
-  return { layer, markers, lines, selections, loads };
+  return { layer, markers, lines, selections, loads, reveals };
 }
+
+// The card that opens for a picked stop opens over the map; the map is
+// told where the stop stands so it can bring it out from under the card.
+test('picking a stop says where it stands, once per pick', () => {
+  const { markers, reveals } = selectionFixture();
+  markers[1].onSelect();
+  assert.deepEqual(reveals, [{ lat: 40, lng: -79 }]);
+  markers[5].onSelect();
+  assert.deepEqual(reveals.at(-1), { lat: 41, lng: -78 });
+});
 
 test('different execution legs of one load have independent selection', () => {
   const { layer, markers, lines, selections, loads } = selectionFixture();

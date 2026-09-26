@@ -505,7 +505,12 @@ zero mileage as measured progress or invent ETA, fuel or completed stops.
 Selecting, loading or switching content must not change the map element's
 bounds. Keep empty selection free of reserved space and bound the overlay's height
 with internal scrolling; mobile retains all truck actions and Close. Camera
-focus accounts for visible overlays without recalculating routes. Fuel details
+focus accounts for visible overlays without recalculating routes. A truck,
+stop or station picked on the map comes out from under the card that opens
+for it: once the card is there, the map pans the least distance that puts
+the pick inside the free region with a margin, and not at all when the pick
+is already in the clear, when no card opens, or after the reader has
+dragged the map (September 26). Fuel details
 reuse existing server prices, quantities and costs, with compact gauges and
 side-by-side station, quote and purchases when width permits.
 Valid planned fuel markers stay visible and selectable with the route when the

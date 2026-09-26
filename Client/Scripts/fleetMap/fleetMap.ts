@@ -116,6 +116,9 @@ export async function createFleetMap(
         notify('OnMapInspectorChanged', kind, inspectionTruckId, revision),
       () => (inspectionTruckId ? 'truck' : 'closed'),
       element,
+      // A stop or a station the card now shows is brought out from under
+      // the card, if the card opened over it.
+      position => cameraViewport.reveal(position),
     );
     cleanup.push(() => inspector.dispose());
     const fuelFocus = createFuelEditorFocus(element, {
@@ -212,6 +215,7 @@ export async function createFleetMap(
         cameraViewport.refresh();
         map.fitBounds(bounds, cameraViewport.padding(55));
       },
+      position => cameraViewport.reveal(position),
     );
     cleanup.push(() => nextLoads.dispose());
     // Where the camera came to rest, for the page's address.
@@ -232,7 +236,14 @@ export async function createFleetMap(
         nextLoads.clearSelection();
         route.closePopup();
         stations.closePopup();
-        if (id) notify('OnTruckSelected', id);
+        if (id) {
+          // The truck's card opens over the map; the truck comes out from
+          // under it.
+          const at = trucks.getPosition(id);
+          if (at)
+            cameraViewport.reveal({ lat: at.latitude, lng: at.longitude });
+          notify('OnTruckSelected', id);
+        }
       },
       (id, position) => route.setRenderedPosition(id, position),
       (id, position) => route.getDisplayPosition(id, position),
