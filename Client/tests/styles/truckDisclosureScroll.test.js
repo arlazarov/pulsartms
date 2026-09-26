@@ -15,7 +15,7 @@ test('mobile truck panels scroll normally within the bounded map inspector', () 
   const mobile = css.slice(css.indexOf('@media (width < 768px)'));
   const rule = mobile.match(/\.fleet-map-info-reserved\s*\{([^}]*)\}/);
   assert.ok(rule);
-  assert.match(rule[1], /max-height: 60%;/);
+  assert.match(rule[1], /max-height: 70%;/);
   assert.match(css, /\.fleet-map-info-reserved\s*\{[^}]*overflow: auto;/);
   assert.doesNotMatch(rule[1], /overflow(?:-y)?: (?:hidden|clip);/);
   assert.doesNotMatch(mobile, /scrollbar-width: none;/);

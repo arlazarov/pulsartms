@@ -30,7 +30,7 @@ export async function checkMobileTruckScrolling(page, output, name) {
       return {
         height: bounds.height,
         contentHeight: contentBottom - bounds.top,
-        maximumHeight: map.height * 0.6,
+        maximumHeight: map.height * 0.7,
         available: map.bottom - bounds.top,
         clientHeight: element.clientHeight,
         scrollHeight: element.scrollHeight,
@@ -147,7 +147,7 @@ export async function checkMobileTruckScrolling(page, output, name) {
               before.maximumHeight,
             ),
         ) <= 2,
-        `The phone card fits its content up to 60% of the map height ` +
+        `The phone card fits its content up to 70% of the map height ` +
           `at ${variant.label}: ${JSON.stringify({
             height: before.height,
             content: before.contentHeight,

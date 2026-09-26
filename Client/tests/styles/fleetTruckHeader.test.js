@@ -131,7 +131,14 @@ test('selected truck and route panels overlay one stable map with bounded scroll
   );
   assert.match(
     css,
-    /@media \(width < 768px\)[\s\S]*\.fleet-map-info-reserved\s*\{[^}]*max-height: 60%;/,
+    /@media \(width < 768px\)[\s\S]*\.fleet-map-info-reserved\s*\{[^}]*max-height: 70%;/,
+  );
+  // At a large text size the toolbar left the map a strip: the stage keeps
+  // half the screen and the panel most of it, so the fuel plan's actions
+  // stay within reach.
+  assert.match(
+    css,
+    /@media \(width < 768px\)[\s\S]*\.fleet-map-stage\s*\{\s*min-height: 50dvh;/,
   );
   assert.doesNotMatch(
     css,
@@ -199,7 +206,7 @@ test('map information caps its top gap by actual side clearance rather than view
     /\.fleet-map-info-content\s*\{[^}]*display: flex;[^}]*flex-direction: column;/,
   );
   const mobilePanel = css.match(
-    /\.fleet-map-info-reserved\s*\{(\s*max-height: 60%;[^}]+)\}/,
+    /\.fleet-map-info-reserved\s*\{(\s*max-height: 70%;[^}]+)\}/,
   );
   assert.ok(
     mobilePanel,

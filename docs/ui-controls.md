@@ -1106,6 +1106,12 @@ The map key names the current route, Next loads in the `map-route-next`
 blue the first upcoming load is drawn in, and Empty miles as the orange
 dash; there is no colour per load to explain any more.
 
+On phones the map stage keeps at least half the screen (`50dvh`; the page
+scrolls past the toolbar for it) and the floating panel may take 70% of
+the stage, so at 200% text the fuel plan's Stations, Edit plan and Send
+actions stay within reach by scrolling the panel rather than vanishing
+under its own heading.
+
 Fuel stations are told apart by the plan (`stationCorridor`): a station
 within about twelve miles of a road the truck is going to drive - the
 current road, its empty approach, the next loads' roads and empty miles,

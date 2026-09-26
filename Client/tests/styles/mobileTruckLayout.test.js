@@ -12,7 +12,9 @@ test('mobile card expands both panels inside the bounded inspector', () => {
     compile('pages/fleet-map/stage') + compile('pages/fleet-map/inspector');
   assert.match(details, /\.fleet-map-info-reserved\s*\{[^}]*max-height: 55%;/);
   assert.match(details, /\.fleet-map-info-reserved\s*\{[^}]*overflow: auto;/);
-  assert.match(details, /\.fleet-map-info-reserved\s*\{[^}]*max-height: 60%;/);
+  // 70% of a stage that keeps half the screen: room for the fuel plan's
+  // actions at 200% text.
+  assert.match(details, /\.fleet-map-info-reserved\s*\{[^}]*max-height: 70%;/);
   assert.match(header, /is-mobile-collapsed/);
   assert.match(header, /fleet-map-mobile-summary__toggle/);
   assert.doesNotMatch(header, /fleet-map-reveal/);
