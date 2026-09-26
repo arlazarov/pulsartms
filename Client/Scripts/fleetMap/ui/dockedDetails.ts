@@ -36,6 +36,9 @@ export function createDockedDetails(
     content: Node | null = null,
     disposed = false;
   let suspended = false;
+  // Where what the card shows stands, said once per activation: the same
+  // stop opened again is a new pick, its content refreshed is not.
+  let shownAt = '';
 
   function clear() {
     if (content !== null) host?.replaceChildren();
@@ -57,6 +60,7 @@ export function createDockedDetails(
       focusTarget?.focus?.({ preventScroll: true });
     owner = nextOwner;
     mode = next;
+    shownAt = '';
     clear();
     onChange(mode, ++revision);
   }
@@ -99,7 +103,6 @@ export function createDockedDetails(
       ) => {
         const port: Port = { onClose, disposed: false };
         ports.set(kind, port);
-        let shownAt = '';
         return {
           show(nextContent: Node, position?: unknown) {
             if (disposed || port.disposed || owner !== port) return;

@@ -508,12 +508,15 @@ with internal scrolling; mobile retains all truck actions and Close. Camera
 focus accounts for visible overlays without recalculating routes. A truck,
 stop or station picked on the map comes out from under the card that opens
 for it: while the card settles (it opens, then may grow as its details
-arrive, for up to two seconds), each layout pass pans the map the least
+arrive, for up to eight seconds), each layout pass pans the map the least
 distance that puts the pick inside the free region with a margin, and no
 distance when the pick is already in the clear; nothing moves when no card
-opens or after the reader has dragged or zoomed the map. The pick's place
-is measured once, at the pick, against the camera then, so a pan in
-flight is never read mid-animation. A stop, next-stop or station card is
+opens or after the reader has dragged the map. The pick's place is measured
+against the camera at rest - at the pick and again at every idle, so a
+route fitted or a zoom meanwhile is taken into account and a pan in flight
+is never read mid-animation. The same pick clicked again while it is being
+brought into view is the same pick; a stop or station opened again after
+its card closed is a new one and is revealed again. A stop, next-stop or station card is
 at least `map-stop-inspector-height` tall (half the stage at most on a
 phone), so it does not grow under the reader (September 26). Fuel details
 reuse existing server prices, quantities and costs, with compact gauges and

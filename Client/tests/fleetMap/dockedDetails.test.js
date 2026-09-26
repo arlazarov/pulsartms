@@ -238,4 +238,8 @@ test('showing content names its place once, not again for the same stop', () => 
     { lat: 40, lng: -79 },
     { lat: 41, lng: -78 },
   ]);
+  // Opened again - the same stop picked again - is a new pick.
+  inspector.activate('stop');
+  stop.show({}, { lat: 41, lng: -78 });
+  assert.equal(places.length, 3);
 });

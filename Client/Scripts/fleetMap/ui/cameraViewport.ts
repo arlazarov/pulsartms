@@ -2,9 +2,9 @@
 type Area = { x: number; y: number; width: number; height: number };
 
 // How far inside the free region a revealed point is placed, and how long a
-// pick waits for its card to open before it is forgotten.
+// pick is kept in view while its card opens and settles.
 const revealMargin = 40;
-const revealPatience = 2000;
+const revealPatience = 8000;
 
 const selectors = [
   '.fleet-map-info-reserved',
@@ -23,21 +23,25 @@ export function createCameraViewport(
     disposed = false;
   let signature = '',
     changed: () => void = () => {};
-  // What was just picked: where it stood on the element when it was picked,
-  // how far the map has been panned for it since, and until when the card
-  // that opens over it is still expected to settle.
+  // What was just picked: where it is, where that stood on the element when
+  // the camera was last at rest, how far the map has been panned for it
+  // since, and until when it is kept in view while its card settles.
   let pending: {
+    position: google.maps.LatLngLiteral;
     at: { x: number; y: number };
     panned: { x: number; y: number };
     until: number;
   } | null = null;
-  // A reader who drags or zooms the map has taken it back: nothing more is
-  // moved for them, and the pick's place on the element is stale anyway.
-  const taken = ['dragstart', 'zoom_changed'].map(name =>
-    map.addListener?.(name, () => {
+  // A reader who drags the map has taken it back: nothing more is moved for
+  // them. Any other move - a route fitted, a zoom, our own pan - ends in an
+  // idle, where the pick's place is measured again against the camera at
+  // rest, so the reveal converges whatever else moved the map meanwhile.
+  const taken = [
+    map.addListener?.('dragstart', () => {
       pending = null;
     }),
-  );
+    map.addListener?.('idle', () => remeasure()),
+  ];
   const observed = new Set<HTMLElement>();
   const Resize = view?.ResizeObserver;
   const Mutation = view?.MutationObserver;
@@ -83,6 +87,19 @@ export function createCameraViewport(
   // there; a pick with no card moves nothing (the owner, September 26).
   // The pick's place is the one measured when it was picked, less what has
   // been panned for it since: the camera is read once, not mid-animation.
+  function remeasure() {
+    if (!pending || disposed) return;
+    measure();
+    const at = pixel(pending.position);
+    if (!at) {
+      pending = null;
+      return;
+    }
+    pending.at = at;
+    pending.panned = { x: 0, y: 0 };
+    attemptReveal();
+  }
+
   function attemptReveal() {
     if (!pending || disposed) return;
     if (Date.now() > pending.until) {
@@ -236,10 +253,26 @@ export function createCameraViewport(
     },
     reveal(position: google.maps.LatLngLiteral | null | undefined) {
       if (disposed || !position) return;
+      // The same pick again, while it is still being brought into view,
+      // is the same pick: measuring it afresh mid-pan would send it off.
+      if (
+        pending &&
+        pending.position.lat === position.lat &&
+        pending.position.lng === position.lng
+      ) {
+        pending.until = Date.now() + revealPatience;
+        refresh();
+        return;
+      }
       measure();
       const at = pixel(position);
       pending = at
-        ? { at, panned: { x: 0, y: 0 }, until: Date.now() + revealPatience }
+        ? {
+            position,
+            at,
+            panned: { x: 0, y: 0 },
+            until: Date.now() + revealPatience,
+          }
         : null;
       refresh();
     },

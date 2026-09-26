@@ -316,8 +316,15 @@ function revealFixture(t) {
   const f = fixture(t);
   const pans = [];
   const taken = new Map();
-  f.map.getCenter = () => ({ lat: 0, lng: 0 });
-  f.map.panBy = (x, y) => pans.push([x, y]);
+  // The stub's camera moves as the real one does: a degree is 32px at
+  // zoom 5, and a pan moves the centre by what was asked.
+  const centre = { lat: 0, lng: 0 };
+  f.map.getCenter = () => ({ ...centre });
+  f.map.panBy = (x, y) => {
+    pans.push([x, y]);
+    centre.lng += x / 32;
+    centre.lat += y / 32;
+  };
   f.map.addListener = (name, callback) => {
     taken.set(name, callback);
     return { remove() {} };
@@ -337,7 +344,8 @@ function revealFixture(t) {
     camera,
     pans,
     drag: () => taken.get('dragstart')?.(),
-    zoom: () => taken.get('zoom_changed')?.(),
+    idle: () => taken.get('idle')?.(),
+    centre,
   };
 }
 
@@ -349,8 +357,8 @@ test('a pick under the card is panned the least distance into the free region', 
   // the card, and needs the region's top edge plus the margin.
   f.camera.reveal({ lat: -10, lng: 0 });
   assert.deepEqual(f.pans, [[0, -220]]);
-  // Already in the clear: nothing moves.
-  f.camera.reveal({ lat: 3, lng: 0 });
+  // Already in the clear, where the pan left the camera: nothing moves.
+  f.camera.reveal({ lat: -3, lng: 0 });
   assert.deepEqual(f.pans, [[0, -220]]);
 });
 
@@ -377,7 +385,7 @@ test('a reader who drags the map keeps it, and a map without panBy is left alone
   assert.doesNotThrow(() => f.camera.refresh());
 });
 
-test('a card that grows after the reveal moves the pick again by the difference, and a zoom ends it', t => {
+test('a card that grows after the reveal moves the pick again by the difference, and an idle re-measures', t => {
   const f = revealFixture(t);
   let height = 160;
   f.overlay('.fleet-map-info-reserved', () => rect(80, 100, 1000, height));
@@ -393,8 +401,42 @@ test('a card that grows after the reveal moves the pick again by the difference,
     [0, -220],
     [0, -100],
   ]);
-  f.zoom();
-  height = 360;
+  // The camera comes to rest after the pans: measured again, the pick is
+  // where the pans put it, and nothing more is asked for.
+  f.idle();
+  assert.equal(f.pans.length, 2);
+  // Something else moved the map meanwhile - a route fitted - and put the
+  // pick back under the card: the next rest brings it out again.
+  f.centre.lat = 0;
+  f.idle();
+  assert.deepEqual(f.pans.at(-1), [0, -320]);
+  // The same pick clicked again while it is being brought into view is
+  // not measured afresh mid-pan.
+  const before = f.pans.length;
+  f.camera.reveal({ lat: -10, lng: 0 });
+  assert.equal(f.pans.length, before);
+});
+
+test('opening the same pick again after the card closed reveals it again', t => {
+  const f = revealFixture(t);
+  let shown = true;
+  f.overlay('.fleet-map-info-reserved', () =>
+    shown ? rect(80, 100, 1000, 160) : rect(0, 0, 0, 0),
+  );
   f.camera.refresh();
-  assert.deepEqual(f.pans.length, 2, "a zoomed map is the reader's");
+  f.camera.reveal({ lat: -10, lng: 0 });
+  f.idle();
+  assert.equal(f.pans.length, 1);
+  // The card closes, the reader pans the pick back under where the card
+  // will be, and picks it again.
+  shown = false;
+  f.camera.refresh();
+  f.drag();
+  f.centre.lat = 0;
+  f.idle();
+  f.camera.reveal({ lat: -10, lng: 0 });
+  assert.equal(f.pans.length, 1, 'no card yet');
+  shown = true;
+  f.camera.refresh();
+  assert.equal(f.pans.length, 2, 'the card is back over it');
 });
