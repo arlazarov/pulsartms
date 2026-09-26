@@ -173,6 +173,17 @@ basemap with the colours back).
   (`v=3497ce74fd4ffabd`), settings and the fingerprinted framework files
   match the artifact.
 
+- `9c51711b` -> `release-vAP9ED`, 18:39 UTC: the fuel plan edited in
+  its own card - one list in the plan card's place, the chosen stop
+  opened under its line, no gauges, no phone tabs, back to the plan card
+  on save, reset or cancel - and the driver filter behind Filters on a
+  phone. Gate: Server 3,773, Client 1,243, JavaScript 655; 285 files;
+  entry HTML, stylesheet (`v=b069f26b712e8e41`), settings and the
+  fingerprinted framework files match the artifact. Local renders
+  `browser-fleet-design-sNknSP` (1440) and `-PHSqRK` (390), each with a
+  `fuel-editor` case. `fuelEditorSmoke.mjs` (not gated) still describes
+  the retired two-column editor.
+
 ## API, second release (16:51-16:59 UTC)
 
 The owner authorized it ("so fix it") for the review notices by kind
