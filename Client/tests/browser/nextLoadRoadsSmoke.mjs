@@ -12,6 +12,12 @@ import { chromium } from 'playwright';
 import { browserOutput } from '../../../scripts/artifacts.mjs';
 
 const label = process.argv[2] ?? 'now';
+// ROAD_SCENARIO=corridor: the owner's September 26 map, next loads on the
+// current road's corridor, over a land colour like the basemap's.
+const scenario = process.env.ROAD_SCENARIO ?? '';
+const search = [scenario, process.env.ROAD_QUERY ?? '']
+  .filter(Boolean)
+  .join('&');
 const output = browserOutput('map-markers', process.env.ROAD_TEST_OUTPUT_DIR);
 const origin = 'http://next-load-roads.invalid';
 const bundle = await build({
@@ -24,7 +30,7 @@ const bundle = await build({
 // The compiled stylesheet: the price colours are its custom properties.
 const css = await readFile('wwwroot/css/main.css', 'utf8');
 const html = `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/styles.css"><style>
-body{margin:0;background:#eceff1}#map{position:relative;width:100%;height:100vh;background:#eceff1}
+body{margin:0;background:#eceff1}#map{position:relative;width:100%;height:100vh;background:${scenario === 'corridor' ? '#cde9d2' : '#eceff1'}}
 </style></head><body><main id="map"></main><script type="module" src="/fixture.js"></script></body></html>`;
 const report = { label, cases: [], errors: [] };
 await mkdir(output, { recursive: true });
@@ -54,24 +60,27 @@ try {
   });
   const page = await context.newPage();
   page.on('pageerror', error => report.errors.push(error.message));
-  await page.goto(origin);
+  await page.goto(`${origin}/${search ? `?${search}` : ''}`);
   await page.waitForFunction(() => window.roadFixture && window.roadFrames > 0);
   const frame = async () => {
     const start = await page.evaluate(() => window.roadFrames);
     await page.waitForFunction(n => window.roadFrames > n, start);
     await page.waitForTimeout(250);
   };
-  const views = {
-    overview: [-75.0, 42.75, 7.2],
-    closer: [-74.6, 42.95, 9],
-  };
-  for (const stations of [false, true]) {
+  const views =
+    scenario === 'corridor'
+      ? { overview: [-84.5, 36.8, 4.6], closer: [-78.2, 39.6, 6.2] }
+      : { overview: [-75.0, 42.75, 7.2], closer: [-74.6, 42.95, 9] };
+  const stationCases = process.env.ROAD_ONLY_PLAIN ? [false] : [false, true];
+  for (const stations of stationCases) {
     await page.evaluate(
       visible => window.roadFixture.setStations(visible),
       stations,
     );
     for (const [view, [lon, lat, zoom]] of Object.entries(views))
-      for (const selected of [null, 'load-1413']) {
+      for (const selected of process.env.ROAD_ONLY_PLAIN
+        ? [null]
+        : [null, 'load-1413']) {
         await page.evaluate(
           ([lon, lat, zoom, selected]) => {
             window.roadFixture.view(lon, lat, zoom);

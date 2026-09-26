@@ -93,6 +93,20 @@ export async function createFleetMap(element, _key, callbacks) {
     selectTruck: id => notify('OnTruckSelected', id),
     openStop: number => markers.get(`${number}`)?.onSelect(),
     openStation: id => selectStation(id),
+    // As the next-loads layer reports a picked badge: with the current
+    // work's execution leg and assignment revision, which the page checks
+    // against what it has selected.
+    selectNextStop: (truck, current, load, index, revision) =>
+      notify(
+        'OnNextExecutionLegSelected',
+        truck,
+        current,
+        load,
+        index,
+        null,
+        null,
+        revision,
+      ),
     requests: [],
   };
   const record =
@@ -121,7 +135,7 @@ export async function createFleetMap(element, _key, callbacks) {
     },
     clearNextLoads() {},
     setNextLoadsVisible() {},
-    setNextLoadsBytes() {},
+    setNextLoadsBytes: record('setNextLoadsBytes'),
     clearNextLoadSelection() {},
     closeStationPopup: () => {
       window.designFixture.requests.push('closeStationPopup');

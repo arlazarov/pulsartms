@@ -50,7 +50,8 @@ export function createNextLoadsLayer(
   let selectedStopIndex: number | null = null;
   let hoveredId: string | null = null;
   let markerGroups: { marker: NextLoadMarker; members: StopSelection[] }[] = [];
-  let renderedLines: { line: NextLoadLine; loadId: string }[] = [];
+  let renderedLines: { line: NextLoadLine; loadId: string; chain: number }[] =
+    [];
   // Where each load is on the ground: its roads and the stops at their ends.
   let loadGeometry = new Map<string, google.maps.LatLngLiteral[]>();
   let loadMembers = new Map<string, StopSelection>();
@@ -67,11 +68,12 @@ export function createNextLoadsLayer(
       group.marker.highlighted = group.members.some(
         row => identity(row) === shown,
       );
-    for (const { line, loadId } of renderedLines)
+    for (const { line, loadId, chain } of renderedLines)
       line?.setOptions({
         strokeWeight: 2,
-        // Above the traveled road (1-1.5), below the one being driven (2).
-        zIndex: loadId === shown ? 10 : 1.75,
+        // Above the traveled road (1-1.5), below the one being driven (2),
+        // and each load below the one before it.
+        zIndex: loadId === shown ? 10 : 1.75 - chain * 0.01,
         routeSelected: shown !== null && loadId === shown,
         routeMuted: shown !== null && loadId !== shown,
       });
@@ -203,14 +205,13 @@ export function createNextLoadsLayer(
         else loadGeometry.set(loadId, [point]);
       };
       renderedLines = display.lines.map(
-        ({ points, role, loadId, routeColor, routeShared }) => {
+        ({ points, role, loadId, routeColor, chain }) => {
           for (const p of points)
             remember(loadId, { lat: p.latitude, lng: p.longitude });
           const line = new Polyline({
             map,
             routeRole: role,
             routeColor,
-            routeShared,
             strokeWeight: 2,
             onHover: (info: { object?: unknown } | null) =>
               hover(loadId, !!info?.object),
@@ -220,7 +221,7 @@ export function createNextLoadsLayer(
             points.map(p => ({ lat: p.latitude, lng: p.longitude })),
           );
           objects.push(line);
-          return { line, loadId };
+          return { line, loadId, chain };
         },
       );
       for (const { stop, numbers, members, color } of display.groups) {

@@ -1,14 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createNextLoadsLayer } from '../../Scripts/fleetMap/routes/nextLoads.ts';
-import { futureRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.ts';
+import {
+  chainRouteColor,
+  currentRouteColor,
+} from '../../Scripts/fleetMap/rendering/routePalette.ts';
 import { routeLayers } from '../../Scripts/fleetMap/rendering/routeAppearance.ts';
 import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.ts';
 import { sceneMetrics } from '../../Scripts/fleetMap/rendering/sceneMetrics.ts';
 
 // Where an upcoming road rests when no load is picked: above the traveled
 // road, below the one being driven.
+// Above the travelled road, below the one being driven, each load a step
+// under the one before it.
 const resting = 1.75;
+const restingAfter = 1.74;
 
 function selectionFixture() {
   const markers = [],
@@ -97,20 +103,20 @@ test('different execution legs of one load have independent selection', () => {
 test('stop click pins every road and marker for its load without floating labels', () => {
   const { layer, markers, lines, selections } = selectionFixture();
   assert.ok(
-    markers.slice(0, 3).every(marker => marker.color === futureRouteColor(0)),
+    markers.slice(0, 3).every(marker => marker.color === currentRouteColor),
   );
   assert.ok(
-    markers.slice(3).every(marker => marker.color === futureRouteColor(1)),
+    markers.slice(3).every(marker => marker.color === currentRouteColor),
   );
   assert.deepEqual(
     lines.map(line => line.routeColor),
     [
       undefined,
-      futureRouteColor(0),
-      futureRouteColor(0),
+      chainRouteColor(0),
+      chainRouteColor(0),
       undefined,
-      futureRouteColor(1),
-      futureRouteColor(1),
+      chainRouteColor(1),
+      chainRouteColor(1),
     ],
   );
   markers[2].onSelect();
@@ -126,9 +132,9 @@ test('stop click pins every road and marker for its load without floating labels
       [2, 10],
       [2, 10],
       [2, 10],
-      [2, resting],
-      [2, resting],
-      [2, resting],
+      [2, restingAfter],
+      [2, restingAfter],
+      [2, restingAfter],
     ],
   );
   assert.deepEqual(
@@ -180,7 +186,11 @@ test('stop click pins every road and marker for its load without floating labels
     markers.every(marker => !marker.highlighted && marker.label === null),
   );
   assert.ok(
-    lines.every(line => line.strokeWeight === 2 && line.zIndex === resting),
+    lines.every(
+      line =>
+        line.strokeWeight === 2 &&
+        [resting, restingAfter].includes(line.zIndex),
+    ),
   );
   assert.ok(lines.every(line => line.routeMuted === false));
   assert.ok(lines.every(line => line.routeSelected === false));
@@ -188,11 +198,11 @@ test('stop click pins every road and marker for its load without floating labels
     lines.map(line => line.routeColor),
     [
       undefined,
-      futureRouteColor(0),
-      futureRouteColor(0),
+      chainRouteColor(0),
+      chainRouteColor(0),
       undefined,
-      futureRouteColor(1),
-      futureRouteColor(1),
+      chainRouteColor(1),
+      chainRouteColor(1),
     ],
     'selection never changes the load or deadhead color',
   );
@@ -828,7 +838,7 @@ test('next loads use separate geometry and release it when hidden or replaced', 
   layer.set([]);
 });
 
-test('coincident stops from different loads stay separately selectable in their own colors', () => {
+test('coincident stops from different loads stay separately selectable', () => {
   const markers = [];
   const selections = [];
   class Line {
@@ -871,8 +881,8 @@ test('coincident stops from different loads stay separately selectable in their 
     markers.map(marker => marker.number),
     ['1', '2', '3', '4'],
   );
-  assert.equal(markers[0].color, futureRouteColor(0));
-  assert.equal(markers[2].color, futureRouteColor(1));
+  assert.equal(markers[0].color, currentRouteColor);
+  assert.equal(markers[2].color, currentRouteColor);
   assert.equal(markers[0].label, null);
   // Pointing at one of two loads that meet here lights that one alone, and
   // still puts no label on the badge.
@@ -969,9 +979,9 @@ test('each coincident occurrence selects its own stop while load colors and refr
     markers.map(marker => marker.number),
     ['1', '2', '3', '4'],
   );
-  assert.equal(markers[1].color, futureRouteColor(0));
-  assert.equal(markers[2].color, futureRouteColor(0));
-  assert.equal(markers[3].color, futureRouteColor(1));
+  assert.equal(markers[1].color, currentRouteColor);
+  assert.equal(markers[2].color, currentRouteColor);
+  assert.equal(markers[3].color, currentRouteColor);
   assert.deepEqual(markers[2].position, { lat: 41.0001, lng: -79 });
   markers[0].onSelect();
   markers[2].onSelect();

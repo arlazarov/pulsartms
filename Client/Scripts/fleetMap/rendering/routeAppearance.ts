@@ -22,7 +22,6 @@ export type SceneRouteLine = {
   routeRole: RouteRole;
   routeColor?: readonly number[];
   routeMuted?: boolean;
-  routeShared?: boolean;
   routeSelected?: boolean;
   visible?: boolean;
   onClick?: unknown;
@@ -38,20 +37,12 @@ export type SceneRouteLine = {
   cachedHover?: unknown;
   cachedMuted?: boolean;
   cachedSelected?: boolean;
-  cachedShared?: boolean;
   cachedVisible?: boolean;
 };
 
-// Empty miles are grey wherever they appear: no load is on board, and the
-// orange they used to share with a live route claimed attention they never
-// deserved.
-const emptyColor = [100, 116, 139, 235];
-// A road several upcoming loads share is none of their colours, and it is
-// not empty miles either: it is loaded work, in a dark neutral with the
-// loads' dashes, where empty miles are a lighter grey in dots. It used to
-// be the empty-miles grey, and at 3 px the Thruway two loads ran on read
-// as empty miles, or as nothing, until one of them was picked.
-const sharedColor = [51, 65, 85, 255];
+// Empty miles are orange wherever they appear, dashed: nothing is on
+// board. Grey, they vanished into the basemap's own roads.
+const emptyColor = [234, 88, 12, 255];
 const colors: Record<string, readonly number[]> = {
   current: currentRouteLineColor,
   traveled: currentRouteLineColor,
@@ -77,21 +68,22 @@ export function routeLayers(
   selectionMuted = false,
 ) {
   const empty = emptyRoles.has(line.routeRole);
-  const dashed = line.routeRole === 'future' || empty;
+  // A load's road is solid in its colour, an upcoming one as much as the
+  // one being driven: dashed and grey, upcoming roads read as the basemap's
+  // own, and several loads on one corridor were told apart by nothing.
+  const dashed = empty;
+  const upcoming = line.routeRole === 'future' || line.routeRole === 'deadhead';
   const muted =
     selectionMuted ||
     line.routeRole === 'traveled' ||
     line.routeRole === 'traveled-empty' ||
-    (dashed && line.routeMuted === true);
+    (upcoming && line.routeMuted === true);
   const extensions = dashed ? routeDashExtensions : undefined;
-  // A road several loads share is not any one of their colours. Pointing at
-  // one of them lifts its own colour back out of the shared stretch.
-  const sharedRoad = line.routeShared === true && !line.routeSelected;
   const color =
     line.routeRole === 'current'
       ? colors.current
-      : sharedRoad
-        ? sharedColor
+      : empty
+        ? emptyColor
         : line.routeColor || colors[line.routeRole] || colors.current;
   const colorKey = color.join(',');
   if (
@@ -105,7 +97,6 @@ export function routeLayers(
     line.cachedHover === line.onHover &&
     line.cachedMuted === muted &&
     line.cachedSelected === line.routeSelected &&
-    line.cachedShared === line.routeShared &&
     line.cachedVisible === (line.visible !== false)
   )
     return line.cachedLayer;
@@ -118,7 +109,6 @@ export function routeLayers(
   line.cachedHover = line.onHover;
   line.cachedMuted = muted;
   line.cachedSelected = line.routeSelected;
-  line.cachedShared = line.routeShared;
   line.cachedVisible = line.visible !== false;
   const shared = {
     data: line.data,
@@ -130,7 +120,7 @@ export function routeLayers(
         ? metrics.routeTraveledOpacity
         : muted
           ? metrics.routeMutedOpacity
-          : dashed && !line.routeSelected
+          : upcoming && !line.routeSelected
             ? metrics.routeFutureOpacity
             : 1,
     getPath: (path: unknown) => path,
@@ -143,7 +133,7 @@ export function routeLayers(
     onHover: line.onHover,
   };
   const width =
-    dashed && !line.routeSelected
+    upcoming && !line.routeSelected
       ? metrics.routeSecondaryWidth
       : Math.max(
           line.routeRole === 'current'
@@ -156,7 +146,7 @@ export function routeLayers(
         );
   const outlineWidth = width + metrics.routeOutlineWidth;
   const dash = dashed ? { extensions, dashJustified: false } : {};
-  const pattern = empty ? metrics.routeDotArray : metrics.routeDashArray;
+  const pattern = metrics.routeDashArray;
   // Dash units use half-width. Both strokes must share physical dash boundaries.
   const outlineDash = pattern.map(
     (value: number) => (value * width) / outlineWidth,

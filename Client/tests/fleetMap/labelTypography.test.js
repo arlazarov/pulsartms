@@ -13,7 +13,7 @@ test('label atlases match physical font sizes without enlarging CSS text', () =>
       ['label', 16],
       ['stopLabel', 14],
       ['truck', 13],
-      ['stop', 15],
+      ['stop', 11],
       ['fuelVisit', 12],
     ]) {
       assert.deepEqual(fonts[role], {
@@ -107,7 +107,7 @@ test('density changes refresh text, preserve route data and release the resize l
   assert.notEqual(retinaText, originalText);
   assert.equal(retinaText.props.fontSettings.fontSize, 28);
   assert.equal(retinaText.props.getSize, originalText.props.getSize);
-  assert.equal(get('route-stop-1-numbers').props.fontSettings.fontSize, 30);
+  assert.equal(get('route-stop-1-numbers').props.fontSettings.fontSize, 22);
   assert.equal(
     get(route.id),
     originalRoute,

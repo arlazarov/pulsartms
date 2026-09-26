@@ -2,19 +2,21 @@
 export const sceneMetrics = Object.freeze({
   labelSize: 16,
   stopLabelSize: 14,
-  numberSize: 15,
+  numberSize: 11,
   truckLabelSize: 13,
   truckLabelPadding: [9, 4],
   truckClusterPadding: [12, 10],
   truckClusterBadge: 12,
   stopRadius: 3,
   stopBadgeOffset: 0,
-  stopBadgeDiameter: 34,
+  // A stop's badge is a numbered dot, not a pin: at 34 px six of them
+  // covered New York State at an overview and the trucks' labels with it.
+  stopBadgeDiameter: 20,
   // The same badge with the truck's ring around it.
-  stopBadgeStandingDiameter: 46,
+  stopBadgeStandingDiameter: 26,
   // And with a wider white rim, for a badge drawn over a truck it is near
   // but not at.
-  stopBadgeStackedDiameter: 38,
+  stopBadgeStackedDiameter: 24,
   // The edge a badge wears while its load is the one being looked at: the
   // dark of the map's labels, which reads against every route colour.
   stopBadgePickedEdge: [30, 41, 59, 255],
@@ -24,9 +26,14 @@ export const sceneMetrics = Object.freeze({
   truckCrescent: 6,
   // Where the filled badge's edge falls, so an outlined one does not read as
   // the larger of the two.
-  stopBadgeDoneRadius: 13,
+  stopBadgeDoneRadius: 7.5,
   stopBadgeGap: 2,
   stationRadius: 8,
+  // A station the plan passes nowhere near: a smaller dot with a thinner
+  // rim, and none at all further out than this zoom, where every station
+  // in the country was a coat of dots over the roads.
+  stationFarRadius: 5,
+  stationFarMinZoom: 7,
   stationHitRadius: 10,
   // A planned stop is the only station the plan is about, so its dot is
   // drawn larger than the ones it was chosen from, inside its ring - but a
@@ -59,11 +66,9 @@ export const sceneMetrics = Object.freeze({
   routeFutureOpacity: 0.9,
   routeTraveledOpacity: 0.22,
   routeOutlineWidth: 2,
+  // Empty miles are dashed: nothing is on board. Dash units are half
+  // widths, and rounded caps add a width to each dash.
   routeDashArray: Object.freeze([4, 4]),
-  // Empty miles read as dots, not dashes: nothing is on board. Dash units
-  // are half widths and rounded caps add a width to each dash, so [1, 3]
-  // closed into a near-solid line; [1, 5] leaves round dots with gaps.
-  routeDotArray: Object.freeze([1, 5]),
 });
 
 // Rasterize at the displayed physical font size so small glyphs retain hinting.

@@ -170,13 +170,16 @@ const stops = [
       onSelect: () => window.markerClicks.push(`stop-${spec.number}`),
     }),
 );
+// Along the roads drawn above, within the corridor the station layer
+// draws in full - and one the plan passes nowhere near.
 const stationSpecs = [
-  ['green', -84, 35.4, 'rgb(21,128,61)', 5.119],
-  ['amber', -79.6, 34.7, 'rgb(245,158,11)', 5.613],
-  ['red', -76.5, 37.8, 'rgb(185,28,28)', 6.289],
-  ['planned', -79.1, 36.4, 'rgb(21,128,61)', 5.286],
-  ['crowded', -79.11, 36.4, 'rgb(245,158,11)', 5.913],
-  ['unavailable', -83, 38.8, 'rgb(128,144,165)', null],
+  ['green', -82.7, 34.75, 'rgb(21,128,61)', 5.119],
+  ['amber', -81.2, 35.9, 'rgb(245,158,11)', 5.613],
+  ['red', -77.9, 38.1, 'rgb(185,28,28)', 6.289],
+  ['planned', -79.7, 36.8, 'rgb(21,128,61)', 5.286],
+  ['crowded', -79.71, 36.8, 'rgb(245,158,11)', 5.913],
+  ['unavailable', -79.4, 38.9, 'rgb(128,144,165)', null],
+  ['elsewhere', -83, 38.8, 'rgb(21,128,61)', 5.05],
 ];
 const stations = scene.createStationPointLayer(map, id =>
   window.markerClicks.push(id),
@@ -248,7 +251,11 @@ window.markerReport = () => {
           ...screenPoint(stop.position, stop.markerOffsetX, stop.markerOffsetY),
         })),
       ),
-    stations: ['fuel-points', 'fuel-recommendation-points'].flatMap(
+    stations: [
+      'fuel-points',
+      'fuel-points-far',
+      'fuel-recommendation-points',
+    ].flatMap(
       id =>
         get(id)?.data.map(row => ({
           id: row.id,
@@ -360,10 +367,11 @@ window.showRouteProbe = role => {
     }
     selectionProbe.setMap(map);
   } else selectionProbe?.setMap(null);
+  // The dashed road is empty miles now; a load's road is solid.
   routeProbe.setOptions({
-    routeRole: role.startsWith('current') ? 'current' : 'future',
+    routeRole: role.startsWith('current') ? 'current' : 'deadhead',
     routeColor: futureRouteColor(0),
-    routeMuted: role === 'future-muted',
+    routeMuted: role === 'empty-muted',
   });
 };
 window.routeProbeReport = () => {

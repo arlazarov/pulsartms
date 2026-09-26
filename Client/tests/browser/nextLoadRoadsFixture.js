@@ -108,7 +108,33 @@ const place = {
 };
 const thruway = road(place.amsterdam, place.utica);
 
-// The road being driven, from near Kingston to the delivery at Rensselaer.
+const corridor = new URLSearchParams(location.search).has('corridor');
+
+// The corridor case, as the owner saw 54777 on September 26: the current
+// load runs from Houston up the Appalachian corridor to Rensselaer, and
+// both next loads run back down and up that same corridor, so their roads
+// lie on the current one for most of their length.
+const spine = [
+  [-95.37, 29.76],
+  [-91.2, 30.45],
+  [-88.0, 30.7],
+  [-87.2, 33.0],
+  [-85.3, 35.0],
+  [-81.5, 36.6],
+  [-78.8, 38.5],
+  [-77.2, 40.2],
+  [-75.9, 41.2],
+  [-75.9, 42.1],
+];
+const spineRoad = road(...spine);
+const fromBinghamton = spineRoad.findIndex(
+  p => p.latitude > 41.2 && p.longitude > -76,
+);
+const currentPath = corridor
+  ? [...spineRoad, ...road([-75.9, 42.1], place.rensselaer).slice(1)]
+  : road(place.kingston, [-73.9, 42.3], place.rensselaer);
+
+// The road being driven, to the delivery at Rensselaer.
 const current = new scene.Polyline({
   map,
   strokeWeight: 3,
@@ -116,14 +142,15 @@ const current = new scene.Polyline({
   routeColor: currentRouteColor,
   zIndex: 2,
 });
-current.setPath(
-  road(place.kingston, [-73.9, 42.3], place.rensselaer).map(p => ({
-    lng: p.longitude,
-    lat: p.latitude,
-  })),
-);
+current.setPath(currentPath.map(p => ({ lng: p.longitude, lat: p.latitude })));
 const currentStops = [
-  { position: { lng: -74.3, lat: 41.6 }, number: '1', job: 'Pickup' },
+  {
+    position: corridor
+      ? { lng: spine[0][0], lat: spine[0][1] }
+      : { lng: -74.3, lat: 41.6 },
+    number: '1',
+    job: 'Pickup',
+  },
   {
     position: { lng: place.rensselaer[0], lat: place.rensselaer[1] },
     number: '2',
@@ -201,6 +228,74 @@ const loads = [
     stopCount: 2,
   },
 ];
+
+// Corridor loads: AMF1413 from Syracuse down the corridor to Columbia,
+// SC; AMF1415 from Greensboro, NC back up it to Albany.
+const columbia = [-81.0, 34.0];
+const greensboro = [-79.8, 36.07];
+const down = [...spineRoad.slice(0, fromBinghamton + 1)].reverse();
+const southOfVirginia = down.findIndex(p => p.latitude < 36.8);
+const corridorLoads = [
+  {
+    id: 'load-1413',
+    loadNumber: 1413,
+    status: 'ready',
+    deadhead: { miles: 145, points: road(place.rensselaer, place.syracuse) },
+    legs: [
+      {
+        miles: 780,
+        seconds: 45000,
+        points: [
+          ...road(place.syracuse, [-75.9, 42.1]),
+          ...down.slice(1, southOfVirginia + 1),
+          ...road(
+            [down[southOfVirginia].longitude, down[southOfVirginia].latitude],
+            columbia,
+          ).slice(1),
+        ],
+      },
+    ],
+    stops: [
+      {
+        latitude: place.syracuse[1],
+        longitude: place.syracuse[0],
+        job: 'Pickup',
+      },
+      { latitude: columbia[1], longitude: columbia[0], job: 'Delivery' },
+    ],
+    stopCount: 2,
+  },
+  {
+    id: 'load-1415',
+    loadNumber: 1415,
+    status: 'ready',
+    deadhead: { miles: 95, points: road(columbia, greensboro) },
+    legs: [
+      {
+        miles: 620,
+        seconds: 36000,
+        points: [
+          ...road(greensboro, [
+            down[southOfVirginia].longitude,
+            down[southOfVirginia].latitude,
+          ]),
+          ...[...down.slice(1, southOfVirginia + 1)].reverse().slice(1),
+          ...road([-75.9, 42.1], place.albany).slice(1),
+        ],
+      },
+    ],
+    stops: [
+      { latitude: greensboro[1], longitude: greensboro[0], job: 'Pickup' },
+      {
+        latitude: place.albany[1],
+        longitude: place.albany[0],
+        job: 'Delivery',
+      },
+    ],
+    stopCount: 2,
+  },
+];
+
 const nextLoads = createNextLoadsLayer(
   map,
   scene.Polyline,
@@ -210,7 +305,7 @@ const nextLoads = createNextLoadsLayer(
   },
 );
 nextLoads.setStopOffset(2);
-nextLoads.set(loads);
+nextLoads.set(corridor ? corridorLoads : loads);
 nextLoads.setVisible(true);
 
 // The day's stations along the way, priced as the station layer prices

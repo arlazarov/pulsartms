@@ -91,6 +91,11 @@ const scene = createScene(map, {
   TextLayer,
   routeDashExtensions,
 });
+// Deck resolves an icon atlas into a texture behind the same prop and keeps
+// the SVG it was given under this symbol.
+const iconAtlasOf = layer =>
+  layer.props[Symbol.for('asyncPropOriginal')]?.iconAtlas ??
+  layer.props.iconAtlas;
 const truckSpecs = [
   ['11001', 'on', 0],
   ['11002', 'on', 45],
@@ -396,6 +401,17 @@ window.fixtureStopMetrics = () =>
           : layer.props.getIcon
       ],
       textColor: layer.props.getColor,
+      // The colour of the badge's own edge: white, or the dark edge of the
+      // load being looked at.
+      edge:
+        typeof iconAtlasOf(layer) === 'string'
+          ? decodeURIComponent(iconAtlasOf(layer))
+              .match(
+                /stroke="rgb\((\d+),(\d+),(\d+)\)" stroke-width="[\d.]+"\/><\/svg>/,
+              )
+              ?.slice(1, 4)
+              .map(Number)
+          : undefined,
       rows: layer.props.data.map(row => {
         const viewport = overlay.deck.getViewports()[0];
         const [x, y] = viewport.project(row.position);

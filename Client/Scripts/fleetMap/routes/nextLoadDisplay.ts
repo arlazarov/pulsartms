@@ -1,8 +1,9 @@
 import type { NextLoad, NextLoadStop, RoutePoint } from '../contracts.d.ts';
 import type { RouteColor } from '../rendering/routePalette.ts';
-import type { RoadLine } from './sharedRoads.ts';
-import { futureRouteColor } from '../rendering/routePalette.ts';
-import { markSharedRoads } from './sharedRoads.ts';
+import {
+  chainRouteColor,
+  currentRouteColor,
+} from '../rendering/routePalette.ts';
 
 // Which load a badge stands for, and which of its stops the card opens on.
 // A stop on a leg already being driven names that leg as well.
@@ -24,11 +25,14 @@ export type StopGroup = {
 
 // One stretch of road drawn for an upcoming load: the empty miles to its
 // pickup, or a leg of the load itself.
-export type DisplayLine = RoadLine & {
+export type DisplayLine = {
   points: RoutePoint[];
   role: 'deadhead' | 'future';
   loadId: string;
   routeColor?: RouteColor;
+  // The load's place in the chain: the next load is drawn over the ones
+  // after it where they run on one road.
+  chain: number;
 };
 
 export function nextLoadDisplay(loads: NextLoad[]) {
@@ -38,8 +42,9 @@ export function nextLoadDisplay(loads: NextLoad[]) {
   for (const [loadIndex, load] of loads.entries()) {
     const points = load.deadhead?.points || [];
     const loadId = nextLoadKey(load.id ?? load.loadNumber, load.executionLegId);
-    const color = futureRouteColor(loadIndex);
-    if (points.length > 1) lines.push({ points, role: 'deadhead', loadId });
+    const color = chainRouteColor(loadIndex);
+    if (points.length > 1)
+      lines.push({ points, role: 'deadhead', loadId, chain: loadIndex });
     for (const leg of load.legs || []) {
       if (leg.points.length > 1)
         lines.push({
@@ -47,6 +52,7 @@ export function nextLoadDisplay(loads: NextLoad[]) {
           role: 'future',
           loadId,
           routeColor: color,
+          chain: loadIndex,
         });
     }
     const lastPoint = points.at(-1);
@@ -70,7 +76,9 @@ export function nextLoadDisplay(loads: NextLoad[]) {
             index,
           },
         ],
-        color,
+        // The badges of the whole chain are one colour: the numbers say
+        // which load a stop belongs to, and the road under it says the rest.
+        color: currentRouteColor,
       });
     }
     stopNumber += Math.max(
@@ -78,7 +86,7 @@ export function nextLoadDisplay(loads: NextLoad[]) {
       (load.stopCount ?? load.stops.length) - stops.length,
     );
   }
-  return { lines: markSharedRoads(lines), groups };
+  return { lines, groups };
 }
 
 // A load and the leg of it being driven, as one name.

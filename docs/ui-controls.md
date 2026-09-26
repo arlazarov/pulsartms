@@ -1086,16 +1086,33 @@ warning. If the priced station cannot be reached, show its server-calculated
 fuel deficit as an access warning. Such a marker has no purchase amount, fuel
 gauges, cost or edit-plan action, and is not a feasible fuel recommendation.
 
-Upcoming roads are legible before anything is picked (proposal of
-September 26, pending the owner's review of
-`tests/browser/nextLoadRoadsSmoke.mjs` screenshots): each load's own
-colour where it runs alone; a dark neutral dash (`#334155`) where several
-upcoming loads share the road, which is loaded work and never the
-empty-miles grey; empty miles as grey round dots with open gaps. At rest
-they are 4 px at 0.9 opacity and sit above the traveled road and below the
-road being driven; picking a stop still lifts that load's colour and width
-and dims the rest. Geometry is never moved or simplified for this, and
-station price colours and planned rings are unchanged.
+A truck's plan is one road (concept of September 26, pending the owner's
+review of `tests/browser/mapProposalSmoke.mjs` screenshots on the real
+basemap). Upcoming loads are not given a colour each: their roads are the
+blue of the road being driven, solid, 4 px at 0.9 opacity with the white
+keyline, each load a step lighter than the one before (`chainRouteColor`),
+and their badges are the current road's badge blue throughout, so the chain
+is read by its numbers. Empty miles are the dashed ones, in the
+`map-route-empty` orange that Dispatch's stop map uses for empty legs,
+never grey. Where two loads run on one road the earlier load is drawn over
+the later one, and the road being driven over both. Picking a stop still
+lifts that load's colour and width and dims the rest. Geometry is never
+moved or simplified for this, and station price colours and planned rings
+are unchanged. Stop badges are 20 px (26 px wearing a truck's ring) with
+11 px numbers, so six stops and a truck cluster no longer cover New York
+State at an overview.
+
+The map key names the current route, Next loads in the `map-route-next`
+blue the first upcoming load is drawn in, and Empty miles as the orange
+dash; there is no colour per load to explain any more.
+
+Fuel stations are told apart by the plan (`stationCorridor`): a station
+within about twelve miles of a road the truck is going to drive - the
+current road, its empty approach, the next loads' roads and empty miles,
+not the road behind it - is the 8 px price-coloured dot as before; the
+rest are 5 px with a 1 px rim, and below zoom 7 are not drawn at all.
+With no road drawn every station is drawn in full. Planned stops keep
+their ring and Fuel N label, and price colours are never changed.
 
 Saved fuel stations remain visible independently of the Next loads road layer.
 When the same assignment's fuel plan needs updating, retain its station markers

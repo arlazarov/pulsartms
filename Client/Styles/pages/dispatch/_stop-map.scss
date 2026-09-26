@@ -25,7 +25,7 @@
   }
   &__canvas {
     --dispatch-road-color: #{ui.theme(action)};
-    --dispatch-empty-road-color: #{ui.theme(warning-text)};
+    --dispatch-empty-road-color: #{ui.theme(map-route-empty)};
     height: ui.size(dispatch-stop-map);
     border-radius: ui.radius(sm);
   }

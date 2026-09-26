@@ -5,8 +5,8 @@ import { resolve } from 'node:path';
 import { build } from 'esbuild';
 import { chromium } from 'playwright';
 import {
+  chainRouteColor,
   currentRouteColor,
-  futureRouteColor,
 } from '../../Scripts/fleetMap/rendering/routePalette.ts';
 
 const output = browserOutput('stop-cards', process.env.STOP_CARD_OUTPUT_DIR);
@@ -212,13 +212,11 @@ async function waitForRenderedStops(page, labels, afterFrame = 0) {
 async function circlePixelBounds(page, screenshot) {
   const circles = (await page.evaluate(() => window.fixtureStopMetrics()))
     .filter(layer => layer.type === 'icon')
-    .flatMap(layer => layer.rows)
+    .flatMap(layer => layer.rows.map(row => ({ ...row, edge: layer.edge })))
     .map(circle => ({
       ...circle,
-      fill: (circle.label === '1'
-        ? currentRouteColor
-        : futureRouteColor(0)
-      ).slice(0, 3),
+      // The badges of the whole chain are the current road's badge blue.
+      fill: currentRouteColor.slice(0, 3),
     }));
   const background = await page.locator('#map').evaluate(element => {
     const previous = {
@@ -276,7 +274,8 @@ async function circlePixelBounds(page, screenshot) {
             right = -Infinity,
             top = Infinity,
             bottom = -Infinity,
-            count = 0;
+            count = 0,
+            edgePixels = 0;
           for (
             let y = Math.floor(cy - margin);
             y <= Math.ceil(cy + margin);
@@ -299,6 +298,13 @@ async function circlePixelBounds(page, screenshot) {
                 pixels[offset + 2],
               );
               if (minimum >= 200 && maximum - minimum <= 15) count++;
+              if (
+                circle.edge.every(
+                  (channel, index) =>
+                    Math.abs(pixels[offset + index] - channel) <= 24,
+                )
+              )
+                edgePixels++;
               if (
                 [255, 0, 255].every(
                   (channel, index) =>
@@ -327,6 +333,7 @@ async function circlePixelBounds(page, screenshot) {
             ...circle,
             density,
             whitePixels: count,
+            edgePixels,
             fillPixels,
             width: right - left + 1,
             height: bottom - top + 1,
@@ -461,7 +468,7 @@ try {
         circles.every(
           layer =>
             layer.type === 'icon' &&
-            layer.numberSize === 34 &&
+            layer.numberSize === 20 &&
             layer.sizeUnits === 'pixels' &&
             layer.pickable,
         ),
@@ -471,16 +478,16 @@ try {
         assert.deepEqual(circle.icon, {
           x: 0,
           y: 0,
-          width: 136,
-          height: 136,
-          anchorX: 68,
-          anchorY: 68,
+          width: 80,
+          height: 80,
+          anchorX: 40,
+          anchorY: 40,
           mask: false,
         });
       }
       assert.equal(numbers.length, 3);
       assert.ok(
-        numbers.every(layer => layer.numberSize === 15 && layer.pickable),
+        numbers.every(layer => layer.numberSize === 11 && layer.pickable),
         'the whole number badge is selectable',
       );
       assert.deepEqual(numbers.flatMap(layer => layer.labels).sort(), [
@@ -512,9 +519,9 @@ try {
       );
       assert.deepEqual(
         roads.map(road => road.color),
-        // An empty run reads in the slate the appearance table gives every
-        // empty road; the loaded one keeps its place in the route series.
-        [[100, 116, 139, 235], futureRouteColor(0)],
+        // An empty run is the orange every empty road is drawn in; the
+        // loaded one is the first step of the chain's blue.
+        [[234, 88, 12, 255], chainRouteColor(0)],
         'future road and stop colors match while empty-route styling stays unchanged',
       );
       await page.evaluate(() => window.fixtureRefresh());
@@ -551,8 +558,8 @@ try {
       // driven; pointing at one lifts it to the full five, which the
       // selection below reads back. This asked for five either way.
       assert.ok(
-        unselectedRoads.every(road => road.width === 3),
-        `unselected future roads read at three pixels: ${JSON.stringify(unselectedRoads)}`,
+        unselectedRoads.every(road => road.width === 4),
+        `unselected future roads read at four pixels: ${JSON.stringify(unselectedRoads)}`,
       );
       await page.evaluate(() => window.fixtureSelectFuture());
       await page.waitForFunction(expected => {
@@ -649,9 +656,12 @@ try {
         '11',
       ]);
       for (const circle of [...singleDigitCircles, ...doubleDigitCircles]) {
+        // The edge is measured in its own colour: white, or the dark edge a
+        // picked load's badges wear. Counted as white pixels, it was the
+        // number that was being measured, and an 11 px "1" has few.
         assert.ok(
-          circle.whitePixels > 20 * density * density,
-          `${circle.job} ${circle.label}: visible white circle border is rendered`,
+          circle.edgePixels > 20 * density * density,
+          `${circle.job} ${circle.label}: the badge's edge is rendered in ${circle.edge}`,
         );
         assert.ok(
           circle.fillPixels > 20 * density * density,
@@ -662,8 +672,8 @@ try {
           `${circle.job} ${circle.label}: rendered circle width and height agree within one physical pixel`,
         );
         assert.ok(
-          circle.width / density >= 33 && circle.width / density <= 35,
-          `${circle.job} ${circle.label}: rendered circle keeps its 34px diameter: ${JSON.stringify(circle)}`,
+          circle.width / density >= 19 && circle.width / density <= 21,
+          `${circle.job} ${circle.label}: rendered circle keeps its 20px diameter: ${JSON.stringify(circle)}`,
         );
         assert.ok(
           Math.abs(circle.centerOffsetX) <= density &&
@@ -1019,12 +1029,20 @@ try {
           ],
           'a popup without configured display metadata does not invent a load prefix',
         );
+        // The September 26 card: the job names the stop, then the load and
+        // order, then where it is.
         assert.equal(
           await loadReference.evaluate(
-            element => element.parentElement.firstElementChild === element,
+            element =>
+              element.parentElement.classList.contains(
+                'fleet-route-popup__identity',
+              ) &&
+              element.previousElementSibling?.classList.contains(
+                'fleet-route-popup__job',
+              ),
           ),
           true,
-          'current load and order begin the destination column',
+          'the load and order follow the job in the stop identity',
         );
         await loadReference
           .getByRole('button', { name: '1441', exact: true })
@@ -1073,15 +1091,16 @@ try {
         // is not known, which is a reading and not a missing one.
         assert.deepEqual(
           facts.map(fact => fact.label),
-          ['Appointment', 'ETA', 'Left', 'Fuel on arrival'],
+          // The September 26 card: the ETA and its status first.
+          ['ETA', 'Appointment', 'Left', 'Fuel on arrival'],
           JSON.stringify(facts.map(fact => [fact.label, fact.value])),
         );
+        assert.match(facts[0].value, /Sep 9, 06:02 PM.*Late/);
         assert.equal(
-          facts[0].value,
+          facts[1].value,
           'Sep 9 · 07:00 AM – 02:00 PM',
           'same-day appointment window is compact and readable',
         );
-        assert.match(facts[1].value, /Sep 9, 06:02 PM.*Late/);
         assert.equal(facts[2].value, '865 mi · 1,392 km');
         assert.equal(facts[3].value, '—');
         for (const fact of facts)
@@ -1105,8 +1124,8 @@ try {
           );
         }
         assert.ok(
-          Math.abs(facts[1].valueLeft - facts[2].valueLeft) <= 1,
-          'ETA and Total values start in the same column',
+          Math.abs(facts[0].valueLeft - facts[2].valueLeft) <= 1,
+          'ETA and Left values start in the same column',
         );
         assert.equal(
           await popup.locator('.fleet-route-popup__company').textContent(),
@@ -1169,7 +1188,7 @@ try {
           'reference extraction does not repeat full notes',
         );
         const detailsLink = popup.getByRole('link', {
-          name: 'Route & load details ↗',
+          name: 'Open load\u00a0↗',
           exact: true,
         });
         assert.equal(
@@ -1187,13 +1206,18 @@ try {
           const separatorProbe = document.createElement('span');
           separatorProbe.style.cssText =
             'position:absolute;width:var(--space-micro);border-color:var(--ui-border-subtle);transition:none!important;animation:none!important';
-          element.append(spacingProbe, separatorProbe);
+          const linkProbe = document.createElement('span');
+          linkProbe.style.cssText =
+            'position:absolute;width:var(--space-md);transition:none!important;animation:none!important';
+          element.append(spacingProbe, separatorProbe, linkProbe);
           const verticalGap = spacingProbe.getBoundingClientRect().width;
           const separatorGap = separatorProbe.getBoundingClientRect().width;
+          const linkGap = linkProbe.getBoundingClientRect().width;
           const separatorColor =
             getComputedStyle(separatorProbe).borderTopColor;
           spacingProbe.remove();
           separatorProbe.remove();
+          linkProbe.remove();
           const verticalGaps = [
             ...element.querySelectorAll(
               '.fleet-route-popup__location, .fleet-route-popup__information, .fleet-route-popup__facts',
@@ -1248,6 +1272,8 @@ try {
             link: rect(link),
             linkBorder: Number.parseFloat(linkStyle.borderTopWidth),
             linkPadding: Number.parseFloat(linkStyle.paddingTop),
+            linkPrimary: link.classList.contains('btn--primary'),
+            linkGap,
             clientWidth: element.clientWidth,
             scrollWidth: element.scrollWidth,
             clientHeight: element.clientHeight,
@@ -1262,6 +1288,7 @@ try {
             text: element.textContent,
           };
         });
+        (report.currentGeometry ??= []).push({ width, theme, ...geometry });
         assert.ok(
           Math.abs(
             geometry.card.x +
@@ -1303,43 +1330,44 @@ try {
           geometry.separatorGap > 0 &&
             geometry.separatorGap < geometry.verticalGap,
         );
+        // The September 26 card draws one rule: above the distances, where
+        // the facts about the stop give way to the facts about the drive.
+        // The heading and the reference carry none.
         for (const divider of geometry.separators) {
-          assert.equal(
-            divider.border,
-            1,
-            `${divider.name} uses a thin separator`,
-          );
-          assert.equal(divider.style, 'solid');
-          assert.equal(
-            divider.color,
-            geometry.separatorColor,
-            `${divider.name} separator uses the current theme`,
-          );
-          assert.equal(
-            divider.margin,
-            divider.name === 'job' ? geometry.separatorGap : 0,
-            `${divider.name} separator adds no unnecessary margin`,
-          );
-          assert.equal(
-            divider.padding,
-            geometry.separatorGap,
-            `${divider.name} separator padding stays compact`,
-          );
+          if (divider.name === 'distance') {
+            assert.equal(divider.border, 1, 'distances start under a rule');
+            assert.equal(divider.style, 'solid');
+            assert.equal(
+              divider.color,
+              geometry.separatorColor,
+              'the rule uses the current theme',
+            );
+            assert.equal(divider.margin, 0);
+            assert.equal(
+              divider.padding,
+              geometry.separatorGap,
+              'the rule padding stays compact',
+            );
+          } else
+            assert.equal(
+              divider.border,
+              0,
+              `${divider.name} draws no rule of its own`,
+            );
         }
         for (const row of geometry.verticalGaps) {
-          // The stop's place in the load stands apart: the ordinary small
-          // space above it, its own rule below. Everything else in these
-          // blocks reads as one run of lines with nothing added between.
-          const gap =
-            row.nextClass === 'fleet-route-popup__details-link' ||
-            row.nextClass === 'fleet-route-popup__kind'
+          // The company stands the small space under the heading; the load's
+          // page link stands the medium space under the facts. Everything
+          // else in these blocks reads as one run of lines with nothing
+          // added between.
+          const gap = row.nextClass.includes('fleet-route-popup__details-link')
+            ? geometry.linkGap
+            : row.previousClass === 'fleet-route-popup__head'
               ? geometry.verticalGap
-              : row.previousClass === 'fleet-route-popup__kind'
-                ? geometry.separatorGap
-                : 0;
+              : 0;
           assert.ok(
             row.gap >= -1 && row.gap <= gap + 1,
-            `${row.container} rows have no added vertical gaps except compact separators: ${JSON.stringify(row)} against ${gap}`,
+            `${row.container} rows have no added vertical gaps except the named ones: ${JSON.stringify(row)} against ${gap}`,
           );
         }
         assert.ok(
@@ -1348,15 +1376,9 @@ try {
               geometry.information.x + geometry.information.width + 1,
           'current details link remains in the information column',
         );
-        assert.equal(
-          geometry.linkBorder,
-          1,
-          'a visible divider separates the current details link',
-        );
-        assert.equal(
-          geometry.linkPadding,
-          geometry.verticalGap,
-          'divider uses extra-small spacing',
+        assert.ok(
+          geometry.linkPrimary,
+          'the load link is the one primary action at the foot of the facts',
         );
         assert.ok(
           geometry.reference.y >= geometry.address.y + geometry.address.height,
@@ -1367,17 +1389,16 @@ try {
           'appointment reference stays in the destination column',
         );
         assert.ok(
-          Math.abs(geometry.appointment.y - geometry.information.y) <= 1,
-          'appointment begins the information column',
+          Math.abs(geometry.eta.y - geometry.information.y) <= 1,
+          'the ETA begins the information column',
         );
         assert.ok(
           Math.abs(geometry.appointment.x - geometry.eta.x) <= 1,
           'appointment and ETA share a compact aligned column',
         );
         assert.ok(
-          geometry.eta.y >=
-            geometry.appointment.y + geometry.appointment.height,
-          'ETA follows appointment without overlap',
+          geometry.appointment.y >= geometry.eta.y + geometry.eta.height,
+          'the appointment follows the ETA without overlap',
         );
         if (width === 1320) {
           assert.equal(
@@ -1497,6 +1518,10 @@ try {
               !/[\u0400-\u04ff]/u.test(text),
               'hours cards remain English-only',
             );
+            // The September 26 card: the ETA row is a label and a value,
+            // and the value holds the time with the one word about it and
+            // the cycle warning as badges after it, wrapping under the
+            // time when the row is narrow.
             const cycleAlignment = await popup
               .locator('.fleet-route-popup__eta')
               .evaluate(row => {
@@ -1505,29 +1530,30 @@ try {
                   .querySelector('.fleet-route-popup__cycle-status')
                   .getBoundingClientRect();
                 const arrival = row
-                  .querySelector('.fleet-route-popup__arrival')
+                  .querySelector('.fleet-route-popup__value > span')
                   .getBoundingClientRect();
                 return {
-                  labelLeft: label.left,
+                  labelRight: label.right,
                   warningLeft: warning.left,
                   warningTop: warning.top,
-                  arrivalBottom: arrival.bottom,
+                  arrivalTop: arrival.top,
+                  arrivalLeft: arrival.left,
                 };
               });
             assert.ok(
-              Math.abs(cycleAlignment.labelLeft - cycleAlignment.warningLeft) <=
-                1,
-              'secondary cycle warning begins at the ETA label, not the time value',
+              cycleAlignment.warningLeft >= cycleAlignment.labelRight - 1 &&
+                cycleAlignment.warningLeft >= cycleAlignment.arrivalLeft - 1,
+              'the cycle warning stands in the value column, never under the label',
             );
             assert.ok(
-              cycleAlignment.warningTop >= cycleAlignment.arrivalBottom - 1,
-              'cycle warning is below the inline ETA',
+              cycleAlignment.warningTop >= cycleAlignment.arrivalTop - 1,
+              'the cycle warning follows the arrival, on its line or the next',
             );
             if (mode === 'unknown') {
               assert.equal(
                 await popup
                   .locator(
-                    '.fleet-route-popup__arrival .fleet-route-popup__status',
+                    '.fleet-route-popup__eta .fleet-route-popup__status--danger',
                   )
                   .textContent(),
                 'Late',
@@ -1720,7 +1746,7 @@ try {
     });
     assert.equal(
       await card
-        .getByRole('link', { name: 'Route & load details ↗' })
+        .getByRole('link', { name: 'Open load\u00a0↗' })
         .evaluate(element => {
           const link = element.getBoundingClientRect(),
             card = element.closest('[role="dialog"]').getBoundingClientRect();

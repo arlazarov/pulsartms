@@ -1,4 +1,5 @@
 import type { RouteColor } from './routePalette.ts';
+import { sceneMetrics as metrics } from './sceneMetrics.ts';
 
 export function isDelivery(job: string | null | undefined): boolean {
   return /^(delivery|dropoff)$/i.test((job || '').replace(/[\s_-]/g, ''));
@@ -33,7 +34,7 @@ export function stopAppearance(
 export function stopMarkerIcon(
   color: readonly number[],
   border: readonly number[] = [255, 255, 255, 255],
-  radius = 15.5,
+  radius = metrics.stopBadgeDiameter / 2 - 1.5,
   // The colour of the truck standing on this stop, when one is; the badge
   // is then drawn as a ring in that colour around it.
   ring: string | readonly number[] | null = null,
@@ -41,7 +42,11 @@ export function stopMarkerIcon(
 ) {
   const paint = (value: string | readonly number[]) =>
     typeof value === 'string' ? value : `rgb(${value.slice(0, 3).join(',')})`;
-  const span = ring ? 46 : stacked ? 38 : 34;
+  const span = ring
+    ? metrics.stopBadgeStandingDiameter
+    : stacked
+      ? metrics.stopBadgeStackedDiameter
+      : metrics.stopBadgeDiameter;
   const half = span / 2;
   // Inside a ring a filled badge keeps a thinner white edge: at full width
   // it left a band of the truck's colour too narrow to see, and dropped

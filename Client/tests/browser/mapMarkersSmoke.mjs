@@ -99,12 +99,16 @@ try {
       markers.stops.map(stop => stop.number),
       ['1', '2', '12'],
     );
-    assert.ok(markers.stops.every(stop => stop.size === 34));
+    assert.ok(markers.stops.every(stop => stop.size === 20));
     assert.deepEqual(markers.stops[1].color, [124, 58, 237, 255]);
     assert.equal(
       markers.stations.length,
       6,
       'spacing never removes an original station',
+    );
+    assert.ok(
+      !markers.stations.some(station => station.id === 'elsewhere'),
+      'a station the plan passes nowhere near is not drawn at an overview',
     );
     // The planned stop is deliberately the largest thing on the fuel layer;
     // every other station keeps the 16px circle whatever its price or
@@ -289,7 +293,7 @@ try {
             Math.hypot(
               cluster[i].x - cluster[j].x,
               cluster[i].y - cluster[j].y,
-            ) - 36,
+            ) - 22,
           ) < 0.01,
         );
       if (density === 2) await page.touchscreen.tap(cluster[i].x, cluster[i].y);
@@ -493,7 +497,7 @@ try {
         throw error;
       });
     const routes = [];
-    for (const role of ['future', 'future-muted', 'current', 'current-muted']) {
+    for (const role of ['empty', 'empty-muted', 'current', 'current-muted']) {
       const frame = await page.evaluate(role => {
         window.showRouteProbe(role);
         return window.markerFrames;
@@ -537,6 +541,7 @@ try {
         role.endsWith('-muted') ? 0.4 : role === 'current' ? 1 : 0.9,
         `${role} must keep the strength its kind of road is drawn at`,
       );
+      // Empty miles are dashed; a load's road, today's or not, is solid.
       if (!role.startsWith('current'))
         assert.deepEqual(route.extensions, [
           { dash: true, offset: false, highPrecisionDash: true },

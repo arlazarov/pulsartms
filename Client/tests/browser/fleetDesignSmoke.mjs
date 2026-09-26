@@ -461,6 +461,74 @@ function dispatch(truck) {
   };
 }
 
+// The truck's next load, as the next-loads read returns it, and its
+// details as the load read does.
+const nextRoute = {
+  id: uuid(31),
+  loadNumber: 1395,
+  status: 'ready',
+  legs: [
+    {
+      miles: 150,
+      seconds: 9000,
+      points: [
+        { latitude: 42.94, longitude: -74.19 },
+        { latitude: 43.05, longitude: -76.15 },
+      ],
+    },
+  ],
+  stops: [
+    {
+      id: uuid(311),
+      latitude: 42.94,
+      longitude: -74.19,
+      job: 'Pickup',
+      name: 'Hudson Valley Foods',
+    },
+    {
+      id: uuid(312),
+      latitude: 42.95,
+      longitude: -74.19,
+      job: 'Delivery',
+      name: 'Target DC #3802',
+    },
+  ],
+  deadhead: {
+    miles: 103,
+    points: [
+      { latitude: 42.64, longitude: -73.75 },
+      { latitude: 42.94, longitude: -74.19 },
+    ],
+  },
+  stopCount: 2,
+};
+const nextDispatch = {
+  id: nextRoute.id,
+  loadNumber: 1395,
+  orderNumber: '568011987',
+  status: 'assigned',
+  customerName: 'Fixture Customer',
+  truckNumber: '11006',
+  trailerNumber: '9P1571',
+  driverName: 'Maksims Ostanins',
+  stops: nextRoute.stops.map((stop, i) => ({
+    id: stop.id,
+    sequence: i + 1,
+    job: stop.job,
+    name: stop.name,
+    address:
+      i === 0
+        ? '12 Industrial Pkwy, Amsterdam, NY 12010, US'
+        : '1730 NY-5S, Amsterdam, NY 12010, US',
+    scheduledDate: new Date(now + 86400000).toISOString().slice(0, 10),
+    scheduledTime: i === 0 ? '07:00:00' : '09:00:00',
+    stopNo: i === 0 ? 'PU 441' : 'DEL 3802',
+    truckNumber: '11006',
+    trailerNumber: '9P1571',
+    driverName: 'Maksims Ostanins',
+  })),
+};
+
 const stationRows = Object.values(stations).map(station => ({
   id: station.id,
   externalId: station.name,
@@ -567,6 +635,7 @@ function answer(path, url, theme) {
         updatedAt: iso(-10),
       });
   }
+  if (path === `/api/dispatch/${nextRoute.id}`) return success(nextDispatch);
   if (loadMatch && byId.get(loadMatch[1])) {
     const truck = byId.get(loadMatch[1]);
     if (!loadMatch[2]) return success(dispatch(truck));
@@ -577,7 +646,11 @@ function answer(path, url, theme) {
   if (path.startsWith('/api/dispatch/truck/')) {
     const truck = byId.get(path.split('/')[4]);
     if (truck && path.endsWith('/next-routes'))
-      return success({ routes: [], truckId: truck.id });
+      return success({
+        revision: `next-${truck.key}`,
+        unchanged: false,
+        routes: truck.key === 'us' ? [nextRoute] : [],
+      });
     if (truck) return success([dispatch(truck)]);
   }
   if (path === '/api/fuel/stations') return success(stationRows);
@@ -772,6 +845,11 @@ try {
         await page
           .screenshot({ path: resolve(output, `${name}-${step}-failed.png`) })
           .catch(() => {});
+        // A failed step must not leave the phone's filters over the card.
+        await page
+          .locator('.fleet-map-mobile-filters[aria-expanded="true"]')
+          .click({ timeout: 1000 })
+          .catch(() => {});
       }
     };
     const select = async truck => {
@@ -829,6 +907,36 @@ try {
         .locator('.fleet-map-inspector[data-inspector-mode="stop"]')
         .waitFor({ timeout: 5000 });
       await shot('route-stop');
+    });
+    await attempt('next-load-stop', async () => {
+      await select(us);
+      // Next loads on, as the dispatcher turns it on: the box itself is
+      // visually hidden, so it is its label that is clicked, and on a
+      // phone the filters are opened for it and closed again after.
+      const toggle = page.locator('input[aria-label="Next loads"]');
+      const label = page.locator('label[title="Next loads"]');
+      const filters = page.locator('.fleet-map-mobile-filters');
+      const phone = !(await label.isVisible().catch(() => false));
+      if (phone) await filters.click();
+      if (!(await toggle.isChecked())) await label.click();
+      if (phone) await filters.click();
+      await page.waitForFunction(
+        () => window.designFixture.requests.includes('setNextLoadsBytes'),
+        null,
+        { timeout: 10000 },
+      );
+      // The plan above carries assignment revision 1 and no execution leg.
+      await page.evaluate(
+        ([truck, current, load]) =>
+          window.designFixture.selectNextStop(truck, current, load, 1, 1),
+        [us.id, us.dispatch, nextRoute.id],
+      );
+      await page
+        .locator(
+          '[aria-label="Selected next load"] .fleet-route-popup__company',
+        )
+        .waitFor({ timeout: 10000 });
+      await shot('next-load-stop');
     });
     await attempt('fuel-plan', async () => {
       await select(us);

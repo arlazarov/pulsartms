@@ -92,8 +92,8 @@ test('per-load route colors invalidate only changed appearance and keep role def
   delete line.routeColor;
   assert.deepEqual(routeLayers(line, Layer)[1].getColor, [145, 105, 201, 240]);
   line.routeRole = 'deadhead';
-  // Empty miles carry no load, so they are grey wherever they appear.
-  assert.deepEqual(routeLayers(line, Layer)[1].getColor, [100, 116, 139, 235]);
+  // Empty miles carry no load, so they are orange wherever they appear.
+  assert.deepEqual(routeLayers(line, Layer)[1].getColor, [234, 88, 12, 255]);
 });
 
 test('route outline shares geometry and cached layers survive camera-only updates', () => {
@@ -164,7 +164,7 @@ test('future routes retain their hue with a secondary stroke and bounded white o
   );
   assert.deepEqual(
     routeLayers({ ...future, routeRole: 'deadhead' }, Layer)[1].getColor,
-    [100, 116, 139, 235],
+    [234, 88, 12, 255],
   );
 });
 
@@ -252,7 +252,7 @@ test('current route stays at five pixels while a selected future route gets expl
   assert.equal(routeLayers(future, Layer)[1].getWidth, secondary);
 });
 
-test('future and deadhead dashes share cached extensions and align their white outlines without changing geometry', () => {
+test('empty-mile dashes keep cached extensions and align their white outlines without changing geometry', () => {
   class Layer {
     constructor(options) {
       Object.assign(this, options);
@@ -261,7 +261,7 @@ test('future and deadhead dashes share cached extensions and align their white o
   const extensions = [{ dash: true, highPrecisionDash: true }];
   const path = Array.from({ length: 1000 }, (_, index) => [index / 10000, 0]);
   const data = [path];
-  for (const role of ['future', 'deadhead']) {
+  for (const role of ['deadhead']) {
     const line = {
       id: role,
       data,
@@ -286,7 +286,7 @@ test('future and deadhead dashes share cached extensions and align their white o
       assert.equal(layer.capRounded, true);
       assert.equal(layer.jointRounded, true);
     }
-    assert.equal(initial[1].getColor, futureRouteColor(1));
+    assert.deepEqual(initial[1].getColor, [234, 88, 12, 255]);
     for (let index = 0; index < 2; index++)
       assert.equal(
         (initial[0].getDashArray[index] * initial[0].getWidth) / 2,
@@ -323,7 +323,7 @@ test('future and deadhead dashes share cached extensions and align their white o
   }
 });
 
-test('scene-layer composition forwards one stable dash extension port only to future routes', () => {
+test('scene-layer composition forwards one stable dash extension port only to empty miles', () => {
   class Layer {
     constructor(props) {
       this.props = props;
@@ -342,7 +342,7 @@ test('scene-layer composition forwards one stable dash extension port only to fu
       [1, 1],
     ],
     data = [path];
-  const lines = ['current', 'future'].map(routeRole => ({
+  const lines = ['current', 'deadhead'].map(routeRole => ({
     id: routeRole,
     routeRole,
     path,
@@ -361,7 +361,7 @@ test('scene-layer composition forwards one stable dash extension port only to fu
   for (const layer of initial)
     assert.equal(
       layer.props.extensions,
-      layer.props.id.startsWith('future') ? routeDashExtensions : undefined,
+      layer.props.id.startsWith('deadhead') ? routeDashExtensions : undefined,
     );
   assert.deepEqual(render({ ...input, stationZoom: 15 }), initial);
 });
@@ -494,11 +494,11 @@ test('traveled route stays solid and dimmer than remaining route', () => {
   assert.equal(history[1].getDashArray, undefined);
 });
 
-// A road two upcoming loads share is loaded work: not either load's
-// colour, and not the empty-miles grey it used to be, which made the
-// Thruway two loads ran on read as empty miles until one was picked. The
-// empty miles themselves read as dots with gaps between them.
-test('a shared upcoming road is neither a load colour nor empty miles', () => {
+// An upcoming load's road is solid in the load's colour, like the road
+// being driven: dashed and grey, it read as one of the basemap's own roads,
+// and two loads on one corridor were told apart by nothing. Empty miles
+// are the dashed ones, in orange, whichever load they lead to.
+test('an upcoming road is solid in its colour and empty miles are dashed orange', () => {
   class Layer {
     constructor(options) {
       Object.assign(this, options);
@@ -516,22 +516,21 @@ test('a shared upcoming road is neither a load colour nor empty miles', () => {
     routeRole: role,
     routeColor: futureRouteColor(0),
   });
-  const empty = routeLayers(road('deadhead'), Layer)[1];
-  const shared = routeLayers({ ...road('future'), routeShared: true }, Layer);
-  assert.notDeepEqual(shared[1].getColor, empty.getColor);
-  assert.notDeepEqual(shared[1].getColor, futureRouteColor(0));
-  assert.deepEqual(shared[1].getDashArray, sceneMetrics.routeDashArray);
-  assert.deepEqual(empty.getDashArray, sceneMetrics.routeDotArray);
-  // Picked, the load lifts its own colour back out of the shared stretch.
-  assert.deepEqual(
-    routeLayers(
-      { ...road('future'), routeShared: true, routeSelected: true },
-      Layer,
-    )[1].getColor,
-    futureRouteColor(0),
-  );
-  // Rounded caps add a width to every dash (dash units are half widths),
-  // so the gap must outlast two half-width caps to stay open.
-  const [on, off] = sceneMetrics.routeDotArray;
-  assert.ok(off - on > 2, 'dots keep a visible gap');
+  const extensions = [{ dash: true }];
+  const [outline, loaded] = routeLayers(road('future'), Layer, extensions);
+  assert.deepEqual(loaded.getColor, futureRouteColor(0));
+  assert.equal(loaded.getDashArray, undefined);
+  assert.equal(loaded.extensions, undefined);
+  assert.deepEqual(outline.getColor, [255, 255, 255, 210]);
+  const empty = routeLayers(road('deadhead'), Layer, extensions)[1];
+  assert.deepEqual(empty.getColor, [234, 88, 12, 255]);
+  assert.deepEqual(empty.getDashArray, sceneMetrics.routeDashArray);
+  assert.equal(empty.extensions, extensions);
+  // Picked, either keeps its colour and takes the full width.
+  for (const role of ['future', 'deadhead'])
+    assert.equal(
+      routeLayers({ ...road(role), routeSelected: true }, Layer, extensions)[1]
+        .getWidth,
+      5,
+    );
 });

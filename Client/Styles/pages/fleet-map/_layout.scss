@@ -58,7 +58,14 @@
     background: ui.theme(map-route-current);
   }
   &__line--next {
-    background: ui.theme(map-route-future);
+    background: ui.theme(map-route-next);
+  }
+  &__line--empty {
+    background: repeating-linear-gradient(
+      90deg,
+      ui.theme(map-route-empty) 0 ui.pg(xs),
+      transparent ui.pg(xs) calc(2 * #{ui.pg(xs)})
+    );
   }
   &__stop {
     display: grid;
