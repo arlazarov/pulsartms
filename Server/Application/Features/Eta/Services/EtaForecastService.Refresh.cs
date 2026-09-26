@@ -71,6 +71,10 @@ public sealed partial class EtaForecastService
     EtaMemory.Entry? published = null;
     var committed = false;
     var changed = false;
+    // Why a published forecast was not saved, for the line that takes it
+    // back: truck 11006's forecast was taken back every few minutes and
+    // the log could not say which of these it was.
+    var unsaved = "store-refused";
     try
     {
       var result = await eta.GetAsync(state, ct, viewed: false, chain);
@@ -101,6 +105,7 @@ public sealed partial class EtaForecastService
       if (current?.InputHash != description.InputHash)
       {
         changed = true;
+        unsaved = "inputs-changed";
         return;
       }
       var snapshots = description
@@ -161,6 +166,16 @@ public sealed partial class EtaForecastService
         );
       }
     }
+    catch (Exception failure)
+    {
+      unsaved = failure switch
+      {
+        RoutePlanningException { Busy: true } => "planning-busy",
+        OperationCanceledException => "cancelled",
+        _ => "failed",
+      };
+      throw;
+    }
     finally
     {
       if (
@@ -171,9 +186,12 @@ public sealed partial class EtaForecastService
       {
         // Published to readers, then not saved: taken back.
         PerformanceStages.Count("eta-memory", "unsaved-removed", 1);
+        PerformanceStages.Count("eta-memory", $"unsaved-{unsaved}", 1);
         logger.LogInformation(
-          "ETA forecast for scope {EtaScope} was not saved and was taken back",
-          rootKey
+          "ETA forecast for scope {EtaScope} was not saved and was taken "
+            + "back: {EtaUnsavedReason}",
+          rootKey,
+          unsaved
         );
         if (changed)
           memory.RequestRefresh();
