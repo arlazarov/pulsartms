@@ -139,6 +139,21 @@ basemap with the colours back).
   picked. Local renders `browser-fleet-design-BzMpIt` and
   `browser-map-markers-o8BARy`.
 
+- `c0c55b3e` -> `release-vZssV6`, 17:31 UTC (code in `761c7b4c` and
+  `c52b1ea5`): the plan's fuel stops drawn with the station layer off;
+  the phone card open whole with no Details button, at most half the
+  stage, scrolling; the gap under Current location closed; upcoming
+  roads at a layer opacity of 0.45 (deck.gl raises it to 1/2.2, so the
+  0.75 before was drawn at 0.88 and read as no step); a parked truck
+  ringed into its own next stop only, never the nearest badge. The first
+  gate, on `c52b1ea5`, failed the English-only documentation check on a
+  Cyrillic quotation in this record and published nothing; `c0c55b3e`
+  translated it. Gate: Server 3,773, Client 1,242, JavaScript 656; 285
+  files; entry HTML, stylesheet (`v=0fb6df0f45123f1c`), settings and the
+  fingerprinted framework files match the artifact. Local renders
+  `browser-fleet-design-Sf09as` (390), `browser-map-markers-M4nguA` (real
+  basemap) and the markers probe `browser-map-markers-31G5Ih`.
+
 ## API, second release (16:51-16:59 UTC)
 
 The owner authorized it ("so fix it") for the review notices by kind
