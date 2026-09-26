@@ -132,11 +132,30 @@ basemap with the colours back).
   `c9422d85` alone failed two preview-cache tests (record equality of the
   notice list) and published nothing; `530f8e6c` corrected it.
 
-The matching API change (`PlanningWorkPolicy` says the review as a notice
-instead of appending it to the message) is committed but not deployed:
-the map keeps showing the old API's sentence until the API is published,
-which needs its own authorization. Local render of the card:
-`browser-fleet-design-uX3AEz`.
+- `96f9177a` -> `release-dil1Yw`, 17:03 UTC: what is left of the load
+  on the NEXT STOP line, the actions in a grid of equal cells, upcoming
+  roads at 0.75 (the owner wanted them quieter, not louder), and the
+  station corridor removed - every station is drawn whatever truck is
+  picked. Local renders `browser-fleet-design-BzMpIt` and
+  `browser-map-markers-o8BARy`.
+
+## API, second release (16:51-16:59 UTC)
+
+The owner authorized it ("так поправь") for the review notices by kind
+(`e6531949`, code in `c9422d85`). Backup first:
+`local-backups/pulsartms-release-backup.RhA2N9/before-2026-09-26-late-api-e6531949.dump`,
+29,585,152 bytes, SHA-256
+`340dfccfdba044c55b7f9b75b66c1106c8f44e8a3ab0645fd5a6e0fd109dfe67`,
+720 entries, 104 table data, in the inventory; no migration (still 73).
+Cloud Build `c59a3784-a92c-400d-9989-8648631ab2e2` from a clean
+worktree; image
+`us-east4-docker.pkg.dev/amftms/amftms/api@sha256:a6c08f2d3b809b07addf84377c4baa5289eb1440853c89467c90d793d35a8766`;
+revision `amftms-api-b-c59a3784-a92c-400d-9989-8648631ab2e2`, generation
+262, 100% traffic, Ready and Active; the previous `…3ce9aeb4…` Active
+false and TrafficShutDown true. `/api/health/live` 200 on the service and
+through Hosting; no error-level entry or 5xx in the new revision's first
+minutes; protected data unchanged (73/3/5/55/0/2). The frontend that
+reads the notices (`530f8e6c`) was already published.
 
 ## Not done
 
