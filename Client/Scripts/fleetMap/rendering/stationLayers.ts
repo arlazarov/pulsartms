@@ -155,57 +155,51 @@ export function createStationLayers({
         selectStation,
       ),
     ),
-    // The stops of the fuel plan belong to the fuel layer: they are shown
-    // while fuel is being looked at and not otherwise. Drawn always, they
-    // put rings and labels over a map that had been asked to be about
-    // something else.
-    ...recommended(
-      [stationData, stationsVisible, setHover, selectStation],
-      () => {
-        const data = stationData.filter(d => d.recommended && !d.editing);
-        return [
-          points(
-            'fuel-recommendation-points',
-            data,
-            stationsVisible,
-            setHover,
-            selectStation,
-            metrics.recommendationDotRadius,
-          ),
-          ring(
-            'fuel-recommendation-rings',
-            data,
-            stationsVisible,
-            metrics.recommendationRadius,
-            setHover,
-            selectStation,
-          ),
-        ];
-      },
-    ),
-    visitLabels(
-      [stationData, stationsVisible, setHover, selectStation, fonts.fuelVisit],
-      () =>
-        badge(
-          'fuel-recommendation-numbers',
-          stationData.filter(
-            d =>
-              d.recommended &&
-              !d.editing &&
-              typeof d.numbers === 'string' &&
-              d.numbers.trim(),
-          ),
-          stationsVisible,
-          d => `Fuel ${d.numbers}`,
-          // The badge now carries how much is bought there, so its alphabet
-          // is whatever the quantity and its unit need.
-          'auto',
-          [30, 41, 59],
-          metrics.fuelVisitLabelOffset,
-          fonts,
+    // The stops of the fuel plan are drawn whether or not the station
+    // layer is on: the plan is the picked truck's, and the owner wants to
+    // see where it fuels without turning every station on (September 26).
+    ...recommended([stationData, setHover, selectStation], () => {
+      const data = stationData.filter(d => d.recommended && !d.editing);
+      return [
+        points(
+          'fuel-recommendation-points',
+          data,
+          true,
+          setHover,
+          selectStation,
+          metrics.recommendationDotRadius,
+        ),
+        ring(
+          'fuel-recommendation-rings',
+          data,
+          true,
+          metrics.recommendationRadius,
           setHover,
           selectStation,
         ),
+      ];
+    }),
+    visitLabels([stationData, setHover, selectStation, fonts.fuelVisit], () =>
+      badge(
+        'fuel-recommendation-numbers',
+        stationData.filter(
+          d =>
+            d.recommended &&
+            !d.editing &&
+            typeof d.numbers === 'string' &&
+            d.numbers.trim(),
+        ),
+        true,
+        d => `Fuel ${d.numbers}`,
+        // The badge now carries how much is bought there, so its alphabet
+        // is whatever the quantity and its unit need.
+        'auto',
+        [30, 41, 59],
+        metrics.fuelVisitLabelOffset,
+        fonts,
+        setHover,
+        selectStation,
+      ),
     ),
     ...editing(
       [stationData, stationsVisible, setHover, selectStation, fonts.fuelVisit],

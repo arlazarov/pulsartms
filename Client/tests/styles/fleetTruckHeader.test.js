@@ -69,24 +69,18 @@ test('compact truck inspection retains content-sized telemetry and HOS', () => {
   );
 });
 
-test('truck inspector uses one disclosure control on every screen size', () => {
+test('truck inspector opens whole with no disclosure control at any width', () => {
   const markup = readFileSync(
     new URL('../../Pages/FleetMap/FleetMap.razor', import.meta.url),
     'utf8',
   );
-  assert.match(markup, /fleet-map-mobile-summary__toggle/);
-  assert.match(markup, /aria-controls="fleet-map-details"/);
+  assert.doesNotMatch(markup, /fleet-map-mobile-summary__toggle/);
+  assert.doesNotMatch(markup, /aria-controls="fleet-map-details"/);
   assert.doesNotMatch(markup, /fleet-map-truck-info__more/);
-  assert.match(
-    compact,
-    /.fleet-map-mobile-summary__toggle\s*\{\s*display: inline-flex;/,
-  );
+  assert.doesNotMatch(compact, /fleet-map-mobile-summary__toggle/);
   // Narrow is narrow wherever the card stands: it reads its own width,
   // not the window's.
-  assert.match(
-    compact,
-    /@container map-truck-card \(width < 40rem\)[\s\S]*\.fleet-map-mobile-summary__toggle\s*\{\s*display: inline-flex;/,
-  );
+  assert.match(compact, /@container map-truck-card \(width < 40rem\)/);
   assert.doesNotMatch(compact, /@media \(width < 768px\)/);
   assert.doesNotMatch(css, /fleet-map-reveal/);
 });
@@ -131,10 +125,10 @@ test('selected truck and route panels overlay one stable map with bounded scroll
   );
   assert.match(
     css,
-    /@media \(width < 768px\)[\s\S]*\.fleet-map-info-reserved\s*\{[^}]*max-height: 70%;/,
+    /@media \(width < 768px\)[\s\S]*\.fleet-map-info-reserved\s*\{[^}]*max-height: 50%;/,
   );
   // At a large text size the toolbar left the map a strip: the stage keeps
-  // half the screen and the panel most of it, so the fuel plan's actions
+  // half the screen and the panel half of it, so the fuel plan's actions
   // stay within reach.
   assert.match(
     css,
@@ -206,7 +200,7 @@ test('map information caps its top gap by actual side clearance rather than view
     /\.fleet-map-info-content\s*\{[^}]*display: flex;[^}]*flex-direction: column;/,
   );
   const mobilePanel = css.match(
-    /\.fleet-map-info-reserved\s*\{(\s*max-height: 70%;[^}]+)\}/,
+    /\.fleet-map-info-reserved\s*\{(\s*max-height: 50%;[^}]+)\}/,
   );
   assert.ok(
     mobilePanel,
@@ -337,10 +331,7 @@ test('mobile keeps one compact row until Details is selected', () => {
     /grid-template-areas: "title controls" "crew crew" "distance distance" "hours hours";/,
   );
   assert.match(narrow, /\.fleet-map-inspector__crew\s*\{\s*grid-area: crew;/);
-  assert.match(
-    narrow,
-    /\.is-mobile-collapsed[\s\S]*\.fleet-map-info-content\s*\{\s*display: none;/,
-  );
+  assert.doesNotMatch(narrow, /is-mobile-collapsed/);
   assert.match(
     narrow,
     /\.fleet-map-inspector__desktop-title\s*\{\s*display: block;/,

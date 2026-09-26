@@ -120,6 +120,7 @@ export function createSceneMarks(scene: MarkedScene) {
       this.onHover = options.onHover;
       this.transientLabel = options.transientLabel;
       this.job = options.job;
+      this.next = options.next === true;
       this.routeRole = options.routeRole;
       this.distance = null;
       this.distanceTones = [];
@@ -156,6 +157,11 @@ export function createSceneMarks(scene: MarkedScene) {
     setDone(value: boolean) {
       if (this.done === value) return;
       this.done = value;
+      scene.stopsChanged();
+    }
+    setNext(value: boolean) {
+      if (this.next === value) return;
+      this.next = value;
       scene.stopsChanged();
     }
     get highlighted() {

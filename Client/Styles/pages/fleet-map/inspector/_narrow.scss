@@ -36,20 +36,6 @@
     .fleet-map-inspector__desktop-title {
       display: block;
     }
-    .fleet-map-mobile-summary__toggle {
-      display: inline-flex;
-    }
-    // The driver and the trailer stay in the closed card: they are half of
-    // what a dispatcher looks a truck up by.
-    &.is-mobile-collapsed {
-      .fleet-map-inspector__header {
-        border-bottom: 0;
-      }
-      .fleet-map-inspector__actions,
-      .fleet-map-info-content {
-        display: none;
-      }
-    }
     // A phone keeps the head in the same order: the unit and the controls,
     // then the crew and what is left, then the rows, each of which stacks
     // its answer under its fact instead of squeezing the two abreast.
@@ -141,19 +127,6 @@
     }
     .fleet-map-inspector__appointment {
       grid-template-columns: minmax(0, 1fr);
-    }
-  }
-
-  // On a card this tight - a phone at 200% text - the toggle's words give
-  // way to its arrow; they stay its name for a screen reader.
-  @container map-truck-card (width < #{ui.breakpoint(map-truck-toggle-words)}) {
-    .fleet-map-mobile-summary__toggle-words {
-      position: absolute;
-      inline-size: 1px;
-      block-size: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
     }
   }
 }

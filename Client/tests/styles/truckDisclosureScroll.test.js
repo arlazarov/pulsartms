@@ -15,7 +15,7 @@ test('mobile truck panels scroll normally within the bounded map inspector', () 
   const mobile = css.slice(css.indexOf('@media (width < 768px)'));
   const rule = mobile.match(/\.fleet-map-info-reserved\s*\{([^}]*)\}/);
   assert.ok(rule);
-  assert.match(rule[1], /max-height: 70%;/);
+  assert.match(rule[1], /max-height: 50%;/);
   assert.match(css, /\.fleet-map-info-reserved\s*\{[^}]*overflow: auto;/);
   assert.doesNotMatch(rule[1], /overflow(?:-y)?: (?:hidden|clip);/);
   assert.doesNotMatch(mobile, /scrollbar-width: none;/);
@@ -24,12 +24,9 @@ test('mobile truck panels scroll normally within the bounded map inspector', () 
     css,
     /\.fleet-map-info-content\s*\{[^}]*position: absolute/,
   );
-  assert.match(
-    mobile,
-    new RegExp(
-      `${selector}\\.is-mobile-collapsed[\\s\\S]*` +
-        String.raw`\.fleet-map-info-content\s*\{\s*display: none;`,
-    ),
+  assert.doesNotMatch(
+    css,
+    /is-mobile-collapsed|fleet-map-mobile-summary__toggle/,
   );
   assert.match(css, /\.fleet-map-info-content > div\s*\{\s*flex-shrink: 0;/);
   assert.match(

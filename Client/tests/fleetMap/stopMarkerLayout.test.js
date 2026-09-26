@@ -200,7 +200,9 @@ test('stops along a road stay on the line of it, in order', () => {
 // zoom in far enough and it opens into two marks.
 test('the ring opens into two marks when there is room for both', () => {
   const truck = { position: [-78.9, 35.9], speed: 0, engine: 'Off' };
-  const stops = [{ id: 's', number: '2', position: [-78.8963, 35.9] }];
+  const stops = [
+    { id: 's', number: '2', position: [-78.8963, 35.9], next: true },
+  ];
   const ringed = snapshotStops(stops, [], [], 11, [truck]).stopData[0];
   // The ring is the truck, so it is the truck's colour: this one is shut
   // down for the night at the dock.
@@ -217,7 +219,9 @@ test('the ring opens into two marks when there is room for both', () => {
 
 test('a truck standing on a stop becomes a ring around its badge', () => {
   const zoom = 13;
-  const stops = [{ id: 'a', number: '2', position: [-82.55, 35.38] }];
+  const stops = [
+    { id: 'a', number: '2', position: [-82.55, 35.38], next: true },
+  ];
   const truck = { position: [-82.5501, 35.3799], engine: 'on' };
   const [row] = snapshotStops(stops, [], [], zoom, [truck]).stopData;
   assert.deepEqual(
@@ -246,7 +250,7 @@ test('the badge a truck stands on holds its ground and its neighbour parts', () 
   const zoom = 8;
   const truck = { position: [-80.95, 35.22] };
   const stops = [
-    { id: 'two', number: '2', position: [-80.95, 35.22] },
+    { id: 'two', number: '2', position: [-80.95, 35.22], next: true },
     { id: 'three', number: '3', position: [-80.84, 35.22] },
   ];
   const rows = snapshotStops(stops, [], [], zoom, [truck]).stopData;
@@ -270,7 +274,7 @@ test('a badge never gives way to a truck, so the gap stays the distance', () => 
   const zoom = 10;
   const truck = { position: [-73.71563, 43.167812], engine: 'on' };
   const stops = [
-    { id: 'ace', number: '2', position: [-73.7418915, 43.1753532] },
+    { id: 'ace', number: '2', position: [-73.7418915, 43.1753532], next: true },
   ];
   const [row] = snapshotStops(stops, [], [], zoom, [truck]).stopData;
   assert.deepEqual([row.markerOffsetX, row.markerOffsetY], [0, 0]);
@@ -297,7 +301,7 @@ test('a badge never gives way to a truck, so the gap stays the distance', () => 
 test('a badge that would hide a truck wears it as a ring instead', () => {
   const truck = { position: [-73.71563, 43.167812], engine: 'on' };
   const stops = [
-    { id: 'ace', number: '2', position: [-73.7418915, 43.1753532] },
+    { id: 'ace', number: '2', position: [-73.7418915, 43.1753532], next: true },
   ];
   for (const zoom of [7, 8]) {
     const [row] = snapshotStops(stops, [], [], zoom, [truck]).stopData;
@@ -310,7 +314,9 @@ test('a badge that would hide a truck wears it as a ring instead', () => {
 // A truck that drove off from a stop kept its ring and was never drawn as
 // a truck again: what is cleared each pass is every truck, not the parked.
 test('a truck that leaves a stop is a truck again', () => {
-  const stops = [{ id: 'a', number: '2', position: [-82.55, 35.38] }];
+  const stops = [
+    { id: 'a', number: '2', position: [-82.55, 35.38], next: true },
+  ];
   const truck = { position: [-82.5501, 35.3799], engine: 'on' };
   assert.equal(
     snapshotStops(stops, [], [], 13, [truck]).stopData[0].standing,
@@ -355,7 +361,7 @@ test('the same stops always give the same layout', () => {
 test('the stops keep their places relative to each other at every zoom', () => {
   const truck = { position: [-80.95, 35.22] };
   const stops = () => [
-    { id: '2', number: '2', position: [-80.95, 35.22] },
+    { id: '2', number: '2', position: [-80.95, 35.22], next: true },
     { id: '3', number: '3', position: [-80.77, 35.25] },
     { id: '6', number: '6', position: [-80.47, 35.21] },
     { id: '7', number: '7', position: [-80.72, 35.3] },
@@ -395,7 +401,7 @@ test('the stops keep their places relative to each other at every zoom', () => {
 test('only the stop the truck is at holds it aside, however far out', () => {
   const truck = { position: [-80.95, 35.22] };
   const stops = [
-    { id: 'here', number: '2', position: [-80.951, 35.2205] },
+    { id: 'here', number: '2', position: [-80.951, 35.2205], next: true },
     { id: 'miles', number: '3', position: [-80.77, 35.25] },
   ];
   const rows = snapshotStops(stops, [], [], 4, [truck]).stopData;

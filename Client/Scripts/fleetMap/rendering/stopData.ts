@@ -38,6 +38,7 @@ export function snapshotStops(
     'markerOffsetY',
     'standing',
     'stacked',
+    'next',
   ];
   for (const stop of stops) {
     if (stop.visible === false) continue;
@@ -53,6 +54,7 @@ export function snapshotStops(
       highlighted,
       job,
       done,
+      next,
     } = stop;
     const priority = highlighted ? 2 : stop.transientLabel ? 0 : 1;
     const row = {
@@ -66,6 +68,7 @@ export function snapshotStops(
       priority,
       job,
       done: done === true,
+      next: next === true,
     };
     stopData.push(row);
     if (distance)

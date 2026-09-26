@@ -97,7 +97,8 @@
   // a large text size the map and its panel were left a strip in which the
   // fuel plan showed nothing but its own heading. The stage keeps half the
   // screen at least - the page scrolls past the toolbar for it - and the
-  // panel may take most of that.
+  // panel half of that: the map is what the page is for, and the card
+  // scrolls for the rest.
   .fleet-map-stage {
     min-height: 50dvh;
   }
@@ -123,7 +124,7 @@
     }
   }
   .fleet-map-info-reserved {
-    max-height: 70%;
+    max-height: 50%;
     .fleet-map-info-empty {
       display: none;
     }

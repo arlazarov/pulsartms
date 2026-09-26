@@ -238,6 +238,9 @@
   .fleet-map-inspector__location {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
+    // Beside a taller neighbour the block is stretched to its height; its
+    // two rows stay together at the top rather than spreading through it.
+    align-content: start;
     column-gap: ui.pg(sm);
     row-gap: ui.pg(micro);
     align-items: center;

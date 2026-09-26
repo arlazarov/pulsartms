@@ -16,6 +16,8 @@ export type StopRow = {
   // The colour of the truck standing on this stop, once one is known to be.
   standing?: string | readonly number[] | null;
   stacked?: boolean;
+  // The stop the plan's truck is driving to: the only one it can stand on.
+  next?: boolean;
   [key: string]: any;
 };
 
@@ -168,14 +170,19 @@ export function layoutStopMarkers(
     Math.hypot(truck.at[0] - item.at[0], truck.at[1] - item.at[1]) +
       metrics.truckSize / 2 <
     metrics.stopBadgeStackedDiameter / 2 + metrics.truckCrescent;
-  // One ring to a truck, around the stop it is nearest. Far enough out a
-  // truck covers half a state's worth of badges, and ringing every one of
-  // them says it is standing on all of them at once - and holds them all
-  // where they are, on top of each other.
+  // One ring to a truck, around its own next stop and no other. Far enough
+  // out a truck covers half a state's worth of badges, and ringing every
+  // one of them says it is standing on all of them at once - and holds
+  // them all where they are, on top of each other. Ringing the nearest
+  // instead put truck 6, due at its stop 2, in the badge of a later load's
+  // stop 12 at the same yard (September 26): the ring says "he is here",
+  // and "here" is the stop he is driving to.
   const groups = [...places.values()];
   for (const truck of parked) {
     const reached = groups
-      .filter(group => covered(truck, group[0]))
+      .filter(
+        group => group.some(item => item.row.next) && covered(truck, group[0]),
+      )
       .sort((a, b) => away(truck, a[0]) - away(truck, b[0]))[0];
     if (!reached) continue;
     truck.holds = reached[0];

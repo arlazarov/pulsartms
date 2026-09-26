@@ -211,6 +211,7 @@ export function createRouteStops(
         row.marker.setNumber?.(`${index + 1}`);
         row.marker.setJob?.(stop.job);
         row.marker.setDone?.(completed);
+        row.marker.setNext?.(stop.id === nextId);
         row.marker.highlighted = stop.id === nextId || stop.id === previousId;
         const stopIndex = plan.stops.findIndex(
           (s: PlanStop) => s.id === stop.id,

@@ -45,12 +45,13 @@ test('recommendation rings retain anchors and selection without floating distanc
   );
   assert.equal(ring.props.radiusUnits, 'pixels');
   assert.equal(ring.props.getRadius, 12);
-  // The stops of the fuel plan belong to the fuel layer: they are shown
-  // while fuel is being looked at, and not over a map asked to be about
-  // something else.
+  // The stops of the fuel plan stay drawn with the station layer off: the
+  // plan is the picked truck's, and the owner wants to see where it fuels
+  // without every station on (September 26). Only the ordinary stations
+  // go with the layer.
   assert.deepEqual(
     build({ ...input, stationsVisible: false }).map(layer => layer.props.id),
-    [],
+    ['fuel-recommendation-points', 'fuel-recommendation-rings'],
   );
 });
 
@@ -254,11 +255,13 @@ test('current, future, deadhead and selected future roads stay below all fuel po
     selected.find(layer => layer.props.id === 'fuel-recommendation-points'),
     recommendedLayer,
   );
-  // Fuel off takes the whole fuel layer with it, the plan's own stops
-  // included: they are shown while fuel is being looked at, and not over a
-  // map asked to be about something else.
+  // Fuel off takes the ordinary stations with it; the plan's own stops
+  // stay, above the roads as before.
   const hidden = build({ ...input, stationsVisible: false });
-  assert.ok(hidden.every(layer => !layer.props.id.startsWith('fuel-')));
+  assert.ok(hidden.every(layer => layer.props.id !== 'fuel-points'));
+  assert.ok(
+    hidden.some(layer => layer.props.id === 'fuel-recommendation-points'),
+  );
   assert.ok(hidden.some(layer => layer.props.id === 'current'));
   const restored = build(input);
   assertOrder(restored);
@@ -366,8 +369,12 @@ test('fuel visits use compact rectangular order badges without changing selectab
   assert.equal(station.numbers, '1/3', 'popup visit metadata stays untouched');
   assert.deepEqual(
     build({ ...input, stationsVisible: false }).map(layer => layer.props.id),
-    [],
-    "fuel off hides the plan's stops with the rest of the fuel layer",
+    [
+      'fuel-recommendation-points',
+      'fuel-recommendation-rings',
+      'fuel-recommendation-numbers',
+    ],
+    "fuel off keeps the plan's stops and their order badges",
   );
   const filtered = build({
     ...input,
@@ -489,15 +496,18 @@ test('editing has one visible price-colored point, a larger ring and a distinct 
     'the edit badge replaces the active station order badge without overlap',
   );
   assert.ok(visible.some(layer => layer.props.id === 'fuel-points'));
-  // Closing the editor leaves the plan's stops to the fuel layer: with fuel
-  // off they go with it, and with fuel on they come back without the
-  // ordinary stations being asked for.
+  // Closing the editor gives the station back to the plan's stops, which
+  // stay drawn with fuel off; the ordinary stations are not asked for.
   assert.deepEqual(
     build({
       ...input,
       stationData: [{ ...editing, editing: false }, ordinary],
     }).map(layer => layer.props.id),
-    [],
+    [
+      'fuel-recommendation-points',
+      'fuel-recommendation-rings',
+      'fuel-recommendation-numbers',
+    ],
   );
   assert.deepEqual(
     build({

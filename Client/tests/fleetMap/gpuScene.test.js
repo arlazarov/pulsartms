@@ -485,6 +485,7 @@ test('scene reuses static layers across motion, invalidates only changed stops a
     const far = new scene.StopMarker({
       position: { lng: -70, lat: 40 },
       number: '9',
+      next: true,
     });
     flush();
     const badge = () =>
@@ -559,9 +560,9 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   flush();
   assert.equal(layers()['fuel-editing-points'], undefined);
   assert.equal(layers()['fuel-editing-label'], undefined);
-  // Out of the editor, a planned stop is part of the fuel layer again, and
-  // the fuel layer is off - it comes back with it.
-  assert.equal(layers()['fuel-recommendation-points'], undefined);
+  // Out of the editor, a planned stop is drawn again at once: the plan's
+  // stops stay on the map with the station layer off (September 26).
+  assert.notEqual(layers()['fuel-recommendation-points'], undefined);
   stations.setVisible(true);
   stations.redraw();
   flush();
