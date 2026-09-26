@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 using Microsoft.JSInterop;
+using Channels = System.Threading.Channels;
 
 namespace Client.Tests.Messaging;
 
@@ -89,33 +90,27 @@ public sealed class MessagingSignalsTests
   }
 
   // A mailbox lost on every request - each reaching another instance -
-  // must not become a loop of full reads: the second replacement in a row
-  // waits out the backoff before asking again.
+  // must not become a loop of full reads: from the second replacement in a
+  // row the reader waits, and the wait doubles while replacements go on.
+  // The waits are read off the timers the reader starts, not guessed.
   [Fact]
   public async Task AMailboxReplacedAgainAndAgainBacksOff()
   {
     await using var f = new Fixture();
     var server = f.Server();
-    var seen = f.LocalOnly();
+    f.LocalOnly();
     await f.Signals.JoinAsync();
     (await server.NextAsync()).Answer(mailbox: Guid.NewGuid());
     (await server.NextAsync()).Answer(mailbox: Guid.NewGuid());
 
-    await Eventually(() => Assert.Contains("poll", Kinds(seen)));
-    await Task.Delay(50);
+    Assert.Equal(TimeSpan.FromSeconds(2), await f.NextWaitAsync());
     Assert.Equal(3, server.Requests);
     f.Time.Advance(TimeSpan.FromSeconds(2));
-    // Replaced a third time: the wait doubles rather than starting over.
     (await server.NextAsync()).Answer(mailbox: Guid.NewGuid());
-    await Eventually(
-      () => Assert.Equal(2, Kinds(seen).Count(x => x == "poll"))
-    );
-    // The wait starts just after the tick; the clock moves once it has.
-    await Task.Delay(50);
-    f.Time.Advance(TimeSpan.FromSeconds(2));
-    await Task.Delay(50);
+
+    Assert.Equal(TimeSpan.FromSeconds(4), await f.NextWaitAsync());
     Assert.Equal(4, server.Requests);
-    f.Time.Advance(TimeSpan.FromSeconds(2));
+    f.Time.Advance(TimeSpan.FromSeconds(4));
     await server.NextAsync();
     Assert.Equal(5, server.Requests);
     await f.Signals.LeaveAsync();
@@ -336,6 +331,7 @@ public sealed class MessagingSignalsTests
 
     public Fixture()
     {
+      _timers = new TimerLog(Time);
       Context = new ClientComponentContext(SendAsync);
       Context.JSInterop.Mode = JSRuntimeMode.Strict;
       Auth = Context.AddAuthorization();
@@ -355,8 +351,25 @@ public sealed class MessagingSignalsTests
           )
         );
       Context.Services.AddSingleton<TokenStorageService>();
-      Context.Services.AddSingleton<TimeProvider>(Time);
+      Context.Services.AddSingleton<TimeProvider>(_timers);
       Context.Services.AddSingleton<MessagingSignals>();
+    }
+
+    private readonly TimerLog _timers;
+
+    // The next wait the reader starts, other than the limit it puts on each
+    // answer: a backoff or a poll interval.
+    public async Task<TimeSpan> NextWaitAsync()
+    {
+      while (true)
+      {
+        var due = await _timers
+          .Started.Reader.ReadAsync()
+          .AsTask()
+          .WaitAsync(TimeSpan.FromSeconds(5));
+        if (due != MessagingSignals.AnswerTimeout)
+          return due;
+      }
     }
 
     public MessagingSignals Signals =>
@@ -436,6 +449,34 @@ public sealed class MessagingSignalsTests
     public ValueTask DisposeAsync() => Context.DisposeAsync();
   }
 
+  // The test's clock, which also says when each timer is started and for
+  // how long, so a test waits for the reader's wait instead of for time.
+  private sealed class TimerLog(FakeTimeProvider inner) : TimeProvider
+  {
+    public Channels.Channel<TimeSpan> Started { get; } =
+      Channels.Channel.CreateUnbounded<TimeSpan>();
+
+    public override DateTimeOffset GetUtcNow() => inner.GetUtcNow();
+
+    public override long GetTimestamp() => inner.GetTimestamp();
+
+    public override long TimestampFrequency => inner.TimestampFrequency;
+
+    public override TimeZoneInfo LocalTimeZone => inner.LocalTimeZone;
+
+    public override ITimer CreateTimer(
+      TimerCallback callback,
+      object? state,
+      TimeSpan dueTime,
+      TimeSpan period
+    )
+    {
+      var timer = inner.CreateTimer(callback, state, dueTime, period);
+      Started.Writer.TryWrite(dueTime);
+      return timer;
+    }
+  }
+
   // The server's side of the conversation: the first request (no mailbox)
   // opens one and is told to resync; every other waits for the test, or
   // answers empty after answerAfter on the test's clock.
@@ -443,8 +484,8 @@ public sealed class MessagingSignalsTests
   {
     public Guid Mailbox { get; } = Guid.NewGuid();
     public int Requests;
-    private readonly System.Threading.Channels.Channel<Pending> _pending =
-      System.Threading.Channels.Channel.CreateUnbounded<Pending>();
+    private readonly Channels.Channel<Pending> _pending =
+      Channels.Channel.CreateUnbounded<Pending>();
 
     public async Task<HttpResponseMessage> Receive(
       Uri uri,
