@@ -48,6 +48,70 @@ public partial class FleetFuelPlan
   [Parameter]
   public EventCallback Stations { get; set; }
 
+  // The load's own stops, so the plan reads as the drive it belongs to:
+  // each fuel stop stands before the stop it is planned before.
+  [Parameter]
+  public IReadOnlyList<PlanStop> Stops { get; set; } = [];
+
+  // The stop the truck is going to; the ones before it are behind it.
+  [Parameter]
+  public Guid? NextStopId { get; set; }
+
+  // With the next loads not shown, only the fuel stops of this dispatch
+  // are listed - and any before one of its own stops, which is on this
+  // road whatever load it is booked to; the plan's totals stay the plan's.
+  [Parameter]
+  public Guid? OnlyDispatch { get; set; }
+
+  private sealed record Entry(
+    FuelPlanStop? Fuel,
+    PlanStop? Stop,
+    FuelPlanStop? Previous
+  );
+
+  private List<Entry> Timeline(FuelPlan plan)
+  {
+    var remaining = Stops.OrderBy(stop => stop.Sequence).ToList();
+    var from = NextStopId is { } next
+      ? remaining.FindIndex(stop => stop.Id == next)
+      : 0;
+    if (from > 0)
+      remaining = remaining.Skip(from).ToList();
+    var known = remaining.Select(stop => stop.Id).ToHashSet();
+    var shown = plan
+      .Stops.Where(f =>
+        OnlyDispatch is null
+        || f.DispatchId == OnlyDispatch
+        || f.DispatchId == Guid.Empty
+        || known.Contains(f.BeforeStopId)
+      )
+      .ToList();
+    var entries = new List<Entry>();
+    var placed = new HashSet<FuelPlanStop>();
+    FuelPlanStop? previous = null;
+    void Add(FuelPlanStop fuel)
+    {
+      entries.Add(new(fuel, null, previous));
+      previous = fuel;
+      placed.Add(fuel);
+    }
+    // A fuel stop before a stop the truck has passed, or one the plan does
+    // not name, is not lost: it comes first.
+    foreach (var fuel in shown.Where(f => !known.Contains(f.BeforeStopId)))
+      Add(fuel);
+    foreach (var stop in remaining)
+    {
+      foreach (
+        var fuel in shown.Where(f =>
+          f.BeforeStopId == stop.Id && !placed.Contains(f)
+        )
+      )
+        Add(fuel);
+      entries.Add(new(null, stop, null));
+    }
+    return entries;
+  }
+
   private bool KnownTank =>
     TankGallons is > 0 and var tank && double.IsFinite(tank);
 

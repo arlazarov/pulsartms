@@ -7,9 +7,15 @@ const finite = (value: unknown) =>
  * @param {import('../contracts.d.ts').RouteProgress | null} progress
  */
 // The stations the plan suggests, and how far along the road each one is.
+// A plan runs on into the next loads; with those not shown, the stops it
+// makes for them are not shown either (the owner, September 26). A stop
+// before one of this dispatch's own stops is on this road whatever load
+// it is booked to, and a plan that does not name its dispatch cannot say
+// which stops are its own: neither is hidden.
 export function fuelRecommendations(
   plan: any,
   progress: any,
+  nextLoadsVisible = true,
 ): { key: string; stops: any[] } {
   const access = plan?.fuelRecommendations?.accessProblem
     ? plan.fuelRecommendations
@@ -35,7 +41,20 @@ export function fuelRecommendations(
       (fuel?.needsRefresh && !fuel?.pricesOutOfDate));
   if (!plan || plan.inputsChanged || !fuel) return { key: '', stops: [] };
   const current = finite(progress?.progressMiles);
+  const named = (id: unknown) =>
+    typeof id === 'string' && id.length > 0 && !/^[0-]+$/.test(id);
+  const ownStops = new Set(
+    (Array.isArray(plan.stops) ? plan.stops : []).map((stop: any) => stop.id),
+  );
   const visits = fuel.stops.flatMap((saved: any, index: number) => {
+    if (
+      !nextLoadsVisible &&
+      named(saved.dispatchId) &&
+      named(plan.dispatchId) &&
+      saved.dispatchId !== plan.dispatchId &&
+      !ownStops.has(saved.beforeStopId)
+    )
+      return [];
     const stop = refreshing
       ? {
           ...saved,

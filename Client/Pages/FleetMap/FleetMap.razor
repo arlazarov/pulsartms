@@ -381,6 +381,9 @@
                     ViewStation="OpenPlannedStationAsync"
                     Edit="OpenFuelEditorAsync"
                     Send="OpenSendPlanAsync"
+                    Stops="@(_routeState?.Plan?.Stops ?? [])"
+                    NextStopId="@_routeState?.Plan?.Tracking.NextStopId"
+                    OnlyDispatch="@(ShowNextLoads ? null : SelectedDispatchId)"
                     Stations="OpenFuelStationsAsync" />
             </div>
         }
@@ -446,10 +449,15 @@
                     </span>
                 }
             </div>
+            @* Where the truck is, beside where it is going: only on the
+               open card. The address is one long word to a browser; it
+               folds rather than pushing the card sideways. *@
+            <TruckLocationLine Label="@TruckLocationLabel"
+                Address="@SelectedTruck?.FormattedLocation"
+                OnCopy="CopyTextAsync" />
             </div>
-            @* Beside the stop, what the truck will have when it gets there,
-               then where it is now: the stop's appointment and ETA are in
-               the head. *@
+            @* Beside them, what the truck will have when it gets there:
+               the stop's appointment and ETA are in the head. *@
             <div class="fleet-map-route-info__facts">
                 @* Kept in place through loading; a final stop's remainder is
                    the head's Left, so the card hides it rather than saying
@@ -496,12 +504,6 @@
                 }
                 </span>
             </div>
-            @* Where the truck is: only on the open card, under what it will
-               have on arrival. The address is one long word to a browser;
-               it folds rather than pushing the card sideways. *@
-            <TruckLocationLine Label="@TruckLocationLabel"
-                Address="@SelectedTruck?.FormattedLocation"
-                OnCopy="CopyTextAsync" />
             </div>
             <div class="fleet-map-route-info__messages">
                 @foreach (var warning in routePlan?.Route.Warnings ?? [])

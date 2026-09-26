@@ -604,7 +604,9 @@ test('fuel invalidation retains non-actionable station markers on the saved rout
   assert.equal(calls.plans.at(-1).id, route.id);
 });
 
-test('Next loads leaves saved fuel visits visible without new geometry or calculations', async t => {
+// The toggle used to hide nothing; since September 26 it hides the fuel
+// booked to the next loads, and still asks for no geometry or calculation.
+test('Next loads hides the fuel booked to them without new geometry or calculations', async t => {
   const { api, calls, state } = await fixture(t);
   const saved = {
     ...plan(),
@@ -636,13 +638,11 @@ test('Next loads leaves saved fuel visits visible without new geometry or calcul
     },
   };
   const snapshot = structuredClone(saved);
+  // The next loads are hidden until asked for: only this load's fuel.
   await api.setRoute(saved, { progressMiles: 100 }, false);
   assert.deepEqual(
     calls.stations.at(-1).map(x => [x.id, x.numbers]),
-    [
-      ['same', '1/2'],
-      ['future-only', '3'],
-    ],
+    [['same', '1']],
   );
   const plans = calls.plans.length;
   await api.setNextLoadsVisible(true);
@@ -658,11 +658,8 @@ test('Next loads leaves saved fuel visits visible without new geometry or calcul
   await api.setNextLoadsVisible(false);
   assert.deepEqual(
     calls.stations.at(-1).map(x => [x.id, x.numbers]),
-    [
-      ['same', '2'],
-      ['future-only', '3'],
-    ],
-    'passed visits stay removed while future fuel remains visible',
+    [],
+    'passed visits stay removed, and the fuel booked to the next loads is hidden',
   );
   await api.setNextLoadsVisible(true);
   assert.deepEqual(
@@ -681,7 +678,9 @@ test('Next loads leaves saved fuel visits visible without new geometry or calcul
   assert.deepEqual(calls.stations.at(-1), []);
 });
 
-test('Next loads cannot hide fuel while recommendation rendering is pending', async t => {
+// Hidden while the first drawing is still pending, the fuel booked to
+// the next loads is gone once both have settled: the later word wins.
+test('Next loads hides fuel booked to them even while rendering is pending', async t => {
   const { api, calls, state } = await fixture(t);
   await api.setNextLoadsVisible(true);
   let finish;
@@ -716,16 +715,16 @@ test('Next loads cannot hide fuel while recommendation rendering is pending', as
     false,
   );
   await Promise.resolve();
-  const hiding = api.setNextLoadsVisible(false);
   assert.deepEqual(
     calls.stations.at(-1).map(x => x.id),
     ['a', 'b'],
   );
+  const hiding = api.setNextLoadsVisible(false);
   finish();
   await Promise.all([applying, hiding]);
   assert.deepEqual(
     calls.stations.at(-1).map(x => x.id),
-    ['a', 'b'],
+    ['a'],
   );
 });
 

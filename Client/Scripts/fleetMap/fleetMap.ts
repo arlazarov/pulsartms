@@ -313,7 +313,11 @@ export async function createFleetMap(
     let currentProgress: RouteProgress | null = null;
     let nextLoadsVisible = false;
     function refreshFuelRecommendations() {
-      const recommendations = fuelRecommendations(currentPlan, currentProgress);
+      const recommendations = fuelRecommendations(
+        currentPlan,
+        currentProgress,
+        nextLoadsVisible,
+      );
       if (recommendations.key === fuelRecommendationKey) return;
       fuelRecommendationKey = recommendations.key;
       return stations.setRecommended(recommendations.stops);

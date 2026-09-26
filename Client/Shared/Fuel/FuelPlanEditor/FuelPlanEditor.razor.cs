@@ -828,11 +828,9 @@ public partial class FuelPlanEditor : IAsyncDisposable
       : $"Before {StopJob(segment.BeforeStop)} · {segment.BeforeStop.Name}";
   }
 
-  private static bool IsPickup(PlanStop stop) =>
-    stop.Job.Contains("pick", StringComparison.OrdinalIgnoreCase);
+  private static bool IsPickup(PlanStop stop) => StopJobs.IsPickup(stop);
 
-  private static string StopJob(PlanStop stop) =>
-    IsPickup(stop) ? "Pickup" : "Delivery";
+  private static string StopJob(PlanStop stop) => StopJobs.Label(stop);
 
   private async Task PublishSelectionAsync()
   {

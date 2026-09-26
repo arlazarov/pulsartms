@@ -1840,13 +1840,19 @@ public sealed class FleetMapComponentTests
         )
       );
       // The stop column reserves where it is going before it has an
-      // answer; the window it has to make is the head's one appointment row,
-      // reserved as a dash while the stop loads.
+      // answer, beside where the truck is now; the window it has to make
+      // is the head's one appointment row, reserved as a dash while the
+      // stop loads.
       Assert.Equal(
-        1,
+        2,
         panel
           .QuerySelectorAll(":scope > .fleet-map-route-info__visit > *")
           .Length
+      );
+      Assert.NotNull(
+        panel.QuerySelector(
+          ":scope > .fleet-map-route-info__visit > #fleet-map-truck-location"
+        )
       );
       Assert.Single(component.FindAll(".fleet-map-inspector__appointment"));
       Assert.Contains("Remaining load", panel.TextContent);
@@ -1909,8 +1915,9 @@ public sealed class FleetMapComponentTests
           ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__next"
         )
       );
+      // The next stop and, beside it, where the truck is now.
       Assert.Equal(
-        1,
+        2,
         panel
           .QuerySelectorAll(":scope > .fleet-map-route-info__visit > *")
           .Length

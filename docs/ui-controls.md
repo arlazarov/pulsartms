@@ -353,6 +353,17 @@ Every row of the truck card - the load and its arrival, the vehicle and
 its clocks, the next stop and its facts - splits at the same place
 (`--truck-card-columns`, 11:9), so the hairline and the answers stand in
 one column down the card instead of stepping sideways row by row.
+In the stop row, where the truck is now stands beside the next stop (two
+columns of the left cell when it has room, one under the other when it
+has not); the right cell keeps the cycle and the fuel on arrival.
+
+The Fuel plan lists the load's remaining stops between the fuel stops -
+each fuel stop before the stop it is planned before, pickups and
+deliveries in their own colours, outlined where a fuel stop is filled -
+so the plan reads as the drive. With the Next loads layer off, the fuel
+stops booked to the next loads are neither listed nor drawn on the map,
+except one before this load's own stop, which is on this road whatever
+load it is booked to; the plan's totals stay the plan's.
 Telemetry, HOS/current duty and GPS location stay together above load/order,
 remaining distance, next location, appointment and ETA. Do not introduce another
 disclosure or widen the inspector when data arrives.

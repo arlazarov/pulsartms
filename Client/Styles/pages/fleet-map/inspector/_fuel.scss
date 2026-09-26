@@ -125,6 +125,53 @@
     color: ui.theme(on-accent);
     font-weight: 600;
   }
+  // The load's own stops between the fuel stops, so the plan reads as the
+  // drive it belongs to: each in the colour its kind has everywhere else,
+  // outlined where a fuel stop is filled.
+  &__anchor {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: start;
+    gap: 0 ui.pg(md);
+    padding-block: ui.pg(sm);
+    border-top: 1px solid ui.theme(border-subtle);
+    &.is-pickup {
+      color: ui.theme(pickup);
+    }
+    &.is-delivery {
+      color: ui.theme(delivery);
+    }
+    > div {
+      display: grid;
+      min-width: 0;
+    }
+    > div > small {
+      font-size: ui.fs(caption);
+      font-weight: 600;
+    }
+    > div > strong {
+      color: ui.theme(text);
+      font-size: ui.fs(small);
+      font-weight: 600;
+    }
+    > div > span {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(caption);
+    }
+  }
+  &__anchor + &__stop {
+    border-top: 1px solid ui.theme(border-subtle);
+  }
+  &__anchor-symbol {
+    display: grid;
+    place-items: center;
+    inline-size: 2rem;
+    block-size: 2rem;
+    border: 1px solid currentColor;
+    border-radius: ui.radius(pill);
+    font-size: ui.fs(small);
+    font-weight: 600;
+  }
   &__station {
     display: grid;
     min-width: 0;

@@ -1,4 +1,5 @@
 @using Client.Models.DTO.Planning
+@using Client.Shared.Fuel
 <section id="fleet-map-fuel-panel" class="fleet-fuel-plan"
          aria-label="Fuel plan">
     <div class="fleet-fuel-plan__summary">
@@ -34,10 +35,24 @@
     else
     {
         <ol class="fleet-fuel-plan__stops">
-            @for (var i = 0; i < Plan.Stops.Count; i++)
+            @foreach (var entry in Timeline(Plan))
             {
-                var stop = Plan.Stops[i];
-                var previous = i > 0 ? Plan.Stops[i - 1] : null;
+                if (entry.Stop is { } place)
+                {
+                    <li class="fleet-fuel-plan__anchor @(StopJobs.IsPickup(place) ? "is-pickup" : "is-delivery")"
+                        @key="@($"stop:{place.Id}")">
+                        <span class="fleet-fuel-plan__anchor-symbol"
+                              aria-hidden="true">@place.Sequence</span>
+                        <div>
+                            <small>@StopJobs.Label(place)</small>
+                            <strong>@place.Name</strong>
+                            <span>@place.DisplayAddress</span>
+                        </div>
+                    </li>
+                    continue;
+                }
+                var stop = entry.Fuel!;
+                var previous = entry.Previous;
                 <li class="fleet-fuel-plan__stop" @key="stop.VisitKey">
                     <span class="fleet-fuel-plan__number">@stop.Number</span>
                     <div class="fleet-fuel-plan__station">

@@ -128,14 +128,17 @@ test('the booking sits under the ETA for the same stop, and the address is last'
     'utf8',
   );
   assert.match(code, /forecast\.StopId != stop\.Id/);
-  // Where the truck is: only on the open card since September 26, under
-  // the fuel on arrival, its address on a line under its label.
+  // Where the truck is: only on the open card since September 26, beside
+  // the next stop - where it is and where it is going, in one column -
+  // and not among the facts on the right.
   assert.equal(head.indexOf('TruckLocationLine'), -1);
   const body = markup.slice(markup.indexOf('id="fleet-map-route-details"'));
   assert.ok(body.indexOf('fleet-map-route-info__arrival-fuel') >= 0);
   assert.ok(
-    body.indexOf('fleet-map-route-info__arrival-fuel') <
-      body.indexOf('<TruckLocationLine'),
+    body.indexOf('fleet-map-route-info__next') <
+      body.indexOf('<TruckLocationLine') &&
+      body.indexOf('<TruckLocationLine') <
+        body.indexOf('fleet-map-route-info__facts'),
   );
   assert.match(
     card,

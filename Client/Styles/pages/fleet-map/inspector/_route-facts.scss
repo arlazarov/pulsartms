@@ -12,14 +12,16 @@
     gap: ui.pg(xs) ui.pg(lg);
     min-height: 0;
     padding: ui.pg(sm) ui.pg(md);
+    // The next stop and where the truck is now, side by side when the
+    // column has room for both and one under the other when it has not.
     &__visit {
       grid-column: 1;
       grid-row: 1;
       align-self: stretch;
       display: grid;
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
       align-content: start;
-      gap: ui.pg(xs);
+      gap: ui.pg(xs) ui.pg(lg);
       min-width: 0;
       padding-inline-end: ui.pg(lg);
       border-inline-end: 1px solid ui.theme(border-subtle);

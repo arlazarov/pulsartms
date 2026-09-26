@@ -177,7 +177,11 @@ test('planned stations carry their saved location and quote without requiring th
     assert.deepEqual(result.stops[0][key], stop[key]);
 });
 
-test('Next loads visibility does not hide any saved fuel visits', () => {
+// A plan runs on into the next loads. With those hidden on the map, the
+// return visit booked to the next load is not shown, and the station's
+// badge names the visit that is; shown again, both are (the owner,
+// September 26 - the toggle used to hide nothing).
+test('with the next loads hidden the visits booked to them are not shown', () => {
   const plan = {
     dispatchId: 'current',
     tankGallons: 200,
@@ -229,11 +233,11 @@ test('Next loads visibility does not hide any saved fuel visits', () => {
   const current = fuelRecommendations(plan, null, false);
   assert.deepEqual(
     current.stops.map(stop => stop.numbers),
-    ['1/2', '3'],
+    ['1', '3'],
   );
-  assert.deepEqual(current.stops[0].visits, all.stops[0].visits);
+  assert.deepEqual(current.stops[0].visits, [all.stops[0].visits[0]]);
   assert.deepEqual(current.stops[1], all.stops[1]);
-  assert.equal(current.key, all.key);
+  assert.notEqual(current.key, all.key);
   assert.deepEqual(fuelRecommendations(plan, null, true), all);
   assert.deepEqual(plan, original, 'visibility does not mutate the saved plan');
 });
@@ -472,4 +476,36 @@ test('arrival by another road retains the station without using old progress', (
   assert.equal(station.gallons, 0);
   assert.equal(station.arrivalGallons, null);
   assert.equal(plan.fuelPlan.stops[0].buyGallons, 80);
+});
+
+// A plan runs on into the next loads. With those not shown on the map,
+// the stops it makes for them are not shown either; the current
+// dispatch's own stay, and a stop that names no dispatch is not guessed at.
+test('with the next loads hidden only the current dispatch keeps its planned stops', () => {
+  const stop = (stationId, dispatchId) => ({
+    stationId,
+    buyGallons: 30,
+    milesAhead: 10,
+    ...(dispatchId ? { dispatchId } : {}),
+  });
+  const plan = {
+    dispatchId: 'now',
+    fuelPlan: { stops: [stop('a', 'now'), stop('b', 'next'), stop('c')] },
+  };
+  assert.deepEqual(
+    fuelRecommendations(plan, null, false).stops.map(s => s.id),
+    ['a', 'c'],
+  );
+  assert.deepEqual(
+    fuelRecommendations(plan, null, true).stops.map(s => s.id),
+    ['a', 'b', 'c'],
+  );
+  assert.deepEqual(
+    fuelRecommendations(plan, null).stops.map(s => s.id),
+    ['a', 'b', 'c'],
+  );
+  assert.notEqual(
+    fuelRecommendations(plan, null, false).key,
+    fuelRecommendations(plan, null, true).key,
+  );
 });
