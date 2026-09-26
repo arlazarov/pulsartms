@@ -27,7 +27,8 @@ public sealed class GetNextLoadRoutesHandler(
   DeadheadHistoryService historyReader,
   RoutePlanningService planning,
   SourceRoadDemand preparation,
-  ISender sender
+  ISender sender,
+  TimeProvider clock
 )
   : IRequestHandler<
     GetNextLoadRoutesQuery,
@@ -89,8 +90,24 @@ public sealed class GetNextLoadRoutesHandler(
           || x.TruckId != current.TruckId
         )
         .ToArray();
+    // Whether a load is still work is the board's and the ETA chain's rule
+    // (ExecutionWorkRelevance): a load delivered by its recorded times, or
+    // cancelled at the source with its leg still open, is not upcoming.
+    // NextLoadSelection's own test caught only hand-completed loads, so a
+    // finished load was drawn as the next one (AMF1373 on 54777).
+    var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
     var upcoming = NextLoadSelection.Select(
-      loads,
+      loads
+        .Where(x =>
+          x.Id == request.CurrentDispatchId
+            && x.ExecutionLegId == request.CurrentExecutionLegId
+          || ExecutionWorkRelevance.IsCurrentOrUpcoming(
+            x,
+            today,
+            includeOverdue: true
+          )
+        )
+        .ToArray(),
       request.CurrentDispatchId,
       request.CurrentExecutionLegId
     );

@@ -118,7 +118,8 @@ public sealed partial class DeadheadGeometryRepairTests
       f.Services.DeadheadHistory,
       f.Services.Routes,
       new SourceRoadDemand(new SourceRoadStore(f.Db), TimeProvider.System),
-      f.Services.Sender
+      f.Services.Sender,
+      TimeProvider.System
     );
     var response = (
       await handler.Handle(

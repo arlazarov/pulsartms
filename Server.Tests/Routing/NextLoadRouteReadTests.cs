@@ -341,6 +341,39 @@ public sealed class NextLoadRouteReadTests
     Assert.Equal(1, fixture.Reader.GeometryReads);
   }
 
+  // AMF1373 on 54777: a load finished by its recorded times, with no hand
+  // completion, still read as assigned at the source and was drawn between
+  // the current load and the real next one. The board and the ETA chain
+  // read it as done (ExecutionWorkRelevance); the next loads now do too. A
+  // load the source cancelled is not next either. Both stay in history.
+  [Theory]
+  [InlineData("delivered")]
+  [InlineData("departed")]
+  [InlineData("cancelled")]
+  public async Task AFinishedOrCancelledLoadIsNotDrawnAsTheNextOne(string ended)
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var current = fixture.Loads[0];
+    var finished = fixture.Loads[1];
+    var delivery = finished.Stops[^1];
+    if (ended == "delivered")
+      delivery.DeliveredAt = DateTime.UtcNow.AddHours(-3);
+    else if (ended == "departed")
+      delivery.DepartedAt = DateTime.UtcNow.AddHours(-3);
+    else
+      finished.Status = "cancelled";
+    await fixture.Db.SaveChangesAsync();
+
+    var routes = (
+      await fixture.Handler.Handle(new(fixture.Truck, current.Id), default)
+    )
+      .Response!
+      .Routes!;
+    Assert.DoesNotContain(routes, x => x.Id == finished.Id);
+    Assert.Equal(new[] { fixture.Loads[2].Id }, routes.Select(x => x.Id));
+    Assert.NotNull(await fixture.Db.Dispatches.FindAsync(finished.Id));
+  }
+
   [Fact]
   public async Task UpcomingRoadsAreThinnedToWhatALineOnAMapNeeds()
   {
@@ -561,7 +594,8 @@ public sealed class NextLoadRouteReadTests
           services.DeadheadHistory,
           services.Routes,
           new SourceRoadDemand(new SourceRoadStore(db), TimeProvider.System),
-          services.Sender
+          services.Sender,
+          TimeProvider.System
         ),
         queue
       );

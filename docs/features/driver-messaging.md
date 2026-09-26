@@ -300,8 +300,8 @@ deleting shrinks it, and a sent, cleared or restored reply refits it. The
 stylesheet sizes it with `field-sizing` where the browser can, and the
 composer module measures it where it cannot
 (`tests/browser/messagesComposerSmoke.mjs`). A reply keeps its retry key
-until it is sent; a reply refused as stale offers "Send anyway" with the same key.
-A send belongs to its conversation: its answer never clears or blocks
+until it is sent; a reply refused as stale offers "Send anyway" with the
+same key. A send belongs to its conversation: its answer never clears or blocks
 another conversation opened meanwhile.
 
 Files picked with the paperclip or dropped on the conversation wait under
