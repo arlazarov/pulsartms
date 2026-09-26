@@ -141,7 +141,7 @@ basemap with the colours back).
 
 ## API, second release (16:51-16:59 UTC)
 
-The owner authorized it ("так поправь") for the review notices by kind
+The owner authorized it ("so fix it") for the review notices by kind
 (`e6531949`, code in `c9422d85`). Backup first:
 `local-backups/pulsartms-release-backup.RhA2N9/before-2026-09-26-late-api-e6531949.dump`,
 29,585,152 bytes, SHA-256
