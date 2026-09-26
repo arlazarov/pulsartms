@@ -225,5 +225,52 @@ public class IdentityTests
     )
       await db.SaveChangesAsync();
     Assert.False(await auth.LoginAsync(user.Email, "password123"));
+
+    // An active account of a deactivated carrier: no sign-in, no session,
+    // no refresh. It used to keep working after its carrier was switched
+    // off, although every background pass had left the carrier out.
+    (await db.Users.IgnoreQueryFilters().SingleAsync()).IsActive = true;
+    using (
+      scope
+        .ServiceProvider.GetRequiredService<ICurrentCompany>()
+        .As(Company.Amf)
+    )
+      await db.SaveChangesAsync();
+    Assert.True(await auth.LoginAsync(user.Email, "password123"));
+    var live = await signIn.CreateUserPrincipalAsync(user);
+    live.Identities.First()
+      .AddClaim(
+        new(
+          Infrastructure.Identity.CurrentCompany.Claim,
+          Domain.Entities.Company.Amf.ToString()
+        )
+      );
+    var session = new DefaultHttpContext
+    {
+      RequestServices = scope.ServiceProvider,
+      User = live,
+    };
+    var served = 0;
+    var check = new SessionValidationMiddleware(_ =>
+    {
+      served++;
+      return Task.CompletedTask;
+    });
+    await check.InvokeAsync(session, signIn, db);
+    Assert.Equal(1, served);
+    db.Companies.Add(
+      new Company
+      {
+        Id = Company.Amf,
+        Key = "amfcarrier",
+        Name = "AMF",
+        IsActive = false,
+      }
+    );
+    await db.SaveChangesAsync();
+    await check.InvokeAsync(session, signIn, db);
+    Assert.Equal(1, served);
+    Assert.Equal(401, session.Response.StatusCode);
+    Assert.False(await auth.LoginAsync(user.Email, "password123"));
   }
 }

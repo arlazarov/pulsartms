@@ -33,9 +33,9 @@ public class AuthService(
     // company is what every later query is then narrowed by.
     var account = user is null
       ? null
-      : await dbContext
-        .Users.IgnoreQueryFilters()
-        .Where(x => x.IdentityUserId == user.Id && x.IsActive)
+      : await LiveAccounts
+        .Of(dbContext)
+        .Where(x => x.IdentityUserId == user.Id)
         .Select(x => new { x.CompanyId })
         .SingleOrDefaultAsync(cancellationToken);
     if (user is null || account is null)
@@ -88,9 +88,9 @@ public class AuthService(
 
     var account = user is null
       ? null
-      : await dbContext
-        .Users.IgnoreQueryFilters()
-        .Where(x => x.IdentityUserId == user.Id && x.IsActive)
+      : await LiveAccounts
+        .Of(dbContext)
+        .Where(x => x.IdentityUserId == user.Id)
         .Select(x => new { x.CompanyId })
         .SingleOrDefaultAsync(cancellationToken);
     if (user is null || account is null)
