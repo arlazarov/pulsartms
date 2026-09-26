@@ -19,12 +19,16 @@
   margin-inline: ui.pg(md);
   padding: ui.pg(sm) 0;
   border-top: 1px solid ui.theme(border-subtle);
-  // Each reading past a hairline of its own, like the clocks beside them.
+  // Each reading past a hairline of its own, like the clocks beside them,
+  // in four equal cells: sized to their values, the hairlines moved from
+  // truck to truck ("0 mph" is narrower than "71 mph"), and the owner
+  // wants nothing on the card to jump (September 26).
   &__telemetry {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     align-items: baseline;
     gap: ui.pg(xs) ui.pg(md);
+    font-variant-numeric: tabular-nums;
     --fuel-reading-columns: max-content max-content max-content;
     --fuel-reading-value-column: auto;
     --fuel-reading-row-gap: 0;

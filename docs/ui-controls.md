@@ -247,8 +247,10 @@ a rule that runs the width of the card:
 - the load number as a link to its page, the order to copy, and the
   tracked stop's visit and name; at the right, ETA, and under it the
   Appointment for the same stop in that stop's zone (the forecast's zone
-  for that stop, else the source's; none said when neither is known). An
-  unknown ETA keeps its dash; the appointment never stands in for it;
+  for that stop, else the source's; none said when neither is known). A
+  window that ends on another day is two lines, the start over the end
+  (September 26). An unknown ETA keeps its dash; the appointment never
+  stands in for it;
 - speed, fuel, engine (with the running dot: success while moving,
   warning while idling) and temperature, each with its icon; at the right,
   the HOS clocks under a clock icon that keeps the name HOS;
@@ -256,8 +258,12 @@ a rule that runs the width of the card:
 Every label in the head is its value's size, only quieter, so each row
 has one baseline; an icon whose word is only for a screen reader centres
 on the line. ETA and Appointment share one label column
-(`--route-fact-label`), and a word about the cycle ("Cycle short") stands
-on the ETA's line, folding under it only when the line is full. Below
+(`--route-fact-label`), and a word about the cycle ("Cycle short by
+1h 20m": by how much, from the driving still needed beyond the cycle or
+the cycle below zero, September 26) stands on the ETA's line, folding
+under it only when the line is full. The vehicle line's four readings
+stand in four equal cells with tabular figures, so a wider value moves
+nothing from truck to truck. Below
 `map-truck-arrival-stacked` each label takes its own width and the
 booking's value goes under its label.
 On narrow cards the crew and Left take rows of their own and each row
@@ -287,8 +293,8 @@ enlarged text. Do not clip facts to conceal overflow. On phones, place the addre
 and load link across the full width beneath telemetry and HOS.
 Wide bodies top-align GPS beside telemetry and HOS. Current duty and its elapsed
 time stay directly below the HOS clocks; omit the static provider label and Next
-recap from the truck inspector. Dispatch retains Next recap and detailed rest/reset
-countdowns. Route & load details uses an external-link icon at the end of the
+recap from the truck inspector and from the map's stop cards (September 26).
+Dispatch retains Next recap and detailed rest/reset countdowns. Route & load details uses an external-link icon at the end of the
 truck action row on desktop. Keep its accessible
 name, tooltip and disabled slot before the current load identity arrives.
 On phones it follows the other icons in the action row.

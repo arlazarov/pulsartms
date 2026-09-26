@@ -63,6 +63,21 @@ public partial class FleetMap
     return StopZone(stop) is { } zone ? $"{text}\u00a0{zone}" : text;
   }
 
+  // A window that ends on another day is two lines, the start over the
+  // end: on one line it broke wherever the card ran out, mid-date (the
+  // owner, September 26).
+  private IReadOnlyList<string> HeadAppointmentLines(PlanStop? stop)
+  {
+    var text = HeadAppointmentText(stop);
+    if (
+      stop?.ScheduledDate2 is { } end
+      && end != stop.ScheduledDate
+      && text.IndexOf(" – ", StringComparison.Ordinal) is > 0 and var at
+    )
+      return [text[..at], text[(at + 3)..]];
+    return [text];
+  }
+
   // The zone a stop's booking is written in: the forecast for that same
   // stop knows the stop's zone; failing that, the source's own. None
   // known, none said.

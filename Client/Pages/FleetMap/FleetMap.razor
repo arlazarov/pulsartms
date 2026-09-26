@@ -304,8 +304,10 @@
                                 <div class="fleet-map-inspector__appointment"
                                      title="Booked time at the stop, in its local time">
                                     <span class="fleet-map-inspector__appointment-label">Appointment</span>
-                                    <strong>@HeadAppointmentText(
-                                        HeadAppointmentStop)</strong>
+                                    <strong>
+                                        @foreach (var line in HeadAppointmentLines(HeadAppointmentStop))
+                                        { <span class="fleet-map-inspector__appointment-line">@line</span> }
+                                    </strong>
                                 </div>
                             }
                         </div>

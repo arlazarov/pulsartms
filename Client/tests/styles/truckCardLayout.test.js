@@ -118,7 +118,7 @@ test('the booking sits under the ETA for the same stop, and the address is last'
   // zone, and shown only for the stop the ETA is for.
   assert.match(
     head,
-    /appointment-label">Appointment<\/span>\s*<strong>@HeadAppointmentText\(\s*HeadAppointmentStop\)/,
+    /appointment-label">Appointment<\/span>\s*<strong>\s*@foreach \(var line in HeadAppointmentLines\(HeadAppointmentStop\)\)/,
   );
   // The card's one appointment row: shown as a dash while the stop loads
   // or has no booking, and not at all while the ETA is for another stop.
@@ -390,7 +390,7 @@ test('the vehicle is one line: every reading the same shape', () => {
   );
   assert.match(
     card,
-    /__telemetry\s*\{[^}]*display: flex;[^}]*flex-wrap: wrap;/,
+    /__telemetry\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/,
   );
   assert.match(card, /__telemetry\s*\{[^}]*--fuel-reading-value-column: auto;/);
   assert.match(

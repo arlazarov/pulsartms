@@ -1187,6 +1187,41 @@ public sealed class FleetMapComponentTests
   // visit and with its window, so the two times read as two things. With a
   // forecast for another stop it is not shown; with no forecast the ETA
   // keeps its dash and the booking stands under it, never in its place.
+  // A window that ends on another day reads as two lines, the start over
+  // the end; on one line it broke wherever the card ran out, mid-date.
+  [Fact]
+  public async Task ABookingOverTwoDaysReadsAsTwoLines()
+  {
+    using var fixture = new SelectionFixture();
+    var plan = fixture.Plan(fixture.TruckA).State!.Plan!;
+    var stop = new PlanStop(Guid.NewGuid(), "Target DC", "", 1, new(40, -80))
+    {
+      Job = "Drop Off",
+      ScheduledDate = new(2026, 9, 29),
+      ScheduledTime = new(7, 0),
+      ScheduledDate2 = new(2026, 9, 30),
+      ScheduledTime2 = new(15, 0),
+    };
+    plan.Stops = [stop];
+    plan.FromCurrentPosition = true;
+    plan.Tracking.NextStopId = stop.Id;
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, call => call.Name == "setTrucks")
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
+    );
+    component.WaitForAssertion(() =>
+    {
+      var lines = component
+        .FindAll(".fleet-map-inspector__appointment-line")
+        .Select(line => line.TextContent.Trim())
+        .ToArray();
+      Assert.Equal(["Sep 29 · 07:00\u00a0AM", "Sep 30 · 03:00\u00a0PM"], lines);
+    });
+  }
+
   [Theory]
   [InlineData("same stop")]
   [InlineData("other stop")]

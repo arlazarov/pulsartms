@@ -233,7 +233,16 @@ function stopsFor(truck) {
       job: 'Delivery',
       scheduledDate: new Date(now + 2 * 86400000).toISOString().slice(0, 10),
       scheduledTime: '08:00:00',
-      scheduledTime2: '13:00:00',
+      // A long stop books a window over two days: the head says it as two
+      // lines.
+      ...(truck.longStop
+        ? {
+            scheduledDate2: new Date(now + 3 * 86400000)
+              .toISOString()
+              .slice(0, 10),
+            scheduledTime2: '15:00:00',
+          }
+        : { scheduledTime2: '13:00:00' }),
       appointmentTimeZoneId: 'America/New_York',
       notes: 'DEL # 5510932',
     },

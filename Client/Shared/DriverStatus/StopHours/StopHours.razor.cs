@@ -54,10 +54,21 @@ public partial class StopHours
     : "";
   private string StatusTone =>
     Estimate.LateMinutes is > 0 ? "danger" : "success";
+
+  // Short by how much, when the forecast says: the driving the run still
+  // needs beyond the cycle, else the cycle below zero on arrival or now.
+  private int? CycleShortfall =>
+    Hours.DrivingShortfallMinutes is > 0 and var driving ? driving
+    : Hours.CycleAtArrivalMinutes is < 0 and var arrival ? -arrival
+    : Hours.CurrentCycleMinutes is < 0 and var current ? -current
+    : null;
   private string CycleStatus =>
     !HasForecast ? ""
     : !CycleKnown ? "Cycle unknown"
-    : CycleShort ? "Cycle short"
+    : CycleShort
+      ? CycleShortfall is { } minutes
+          ? $"Cycle short by {StopHoursDisplay.Lateness(minutes)}"
+        : "Cycle short"
     : "";
   private string CycleStatusTone => !CycleKnown ? "muted" : "danger";
   private IEnumerable<StopHoursAlternative> Alternatives =>

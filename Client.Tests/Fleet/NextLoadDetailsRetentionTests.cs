@@ -337,10 +337,8 @@ public sealed class NextLoadDetailsRetentionTests
       component.Find(".stop-hours__arrival-cycle").TextContent
     );
     Assert.Empty(component.FindAll(".stop-hours__departure-cycle"));
-    Assert.Contains(
-      "+3h 05m",
-      component.Find(".stop-hours__recap").TextContent
-    );
+    // The next recap left the stop card (the owner, September 26).
+    Assert.Empty(component.FindAll(".stop-hours__recap"));
     Assert.Equal(previousMarkup, component.Find(".arrival-estimate").OuterHtml);
     Assert.Contains(
       "Cycle short",

@@ -32,7 +32,7 @@ test('compact truck inspection retains content-sized telemetry and HOS', () => {
   // reading itself is never dropped.
   assert.doesNotMatch(compact, /__reading\s*\{[^}]*display: none/);
   // The vehicle line has one owner, and it is not the card's stylesheet.
-  assert.match(css, /__telemetry\s*\{[^}]*display: flex;/);
+  assert.match(css, /__telemetry\s*\{[^}]*display: grid;/);
   assert.doesNotMatch(compact, /fleet-map-truck-info/);
   assert.match(
     compact,
@@ -49,9 +49,15 @@ test('compact truck inspection retains content-sized telemetry and HOS', () => {
     /__metric > \.fleet-map-route-info__secondary[^{}]*\{[^}]*display: none;/,
   );
   const telemetry = css.match(/__telemetry\s*\{([^}]*)\}/)?.[1];
-  // The vehicle's readings sit on one line and wrap only if they must.
-  assert.match(telemetry, /display: flex;/);
-  assert.match(telemetry, /flex-wrap: wrap;/);
+  // The vehicle's readings stand in four equal cells with tabular figures,
+  // so a wider value moves nothing from truck to truck (the owner,
+  // September 26).
+  assert.match(telemetry, /display: grid;/);
+  assert.match(
+    telemetry,
+    /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/,
+  );
+  assert.match(telemetry, /font-variant-numeric: tabular-nums;/);
   // The head: the truck and what is left beside it, then its rows - the
   // load and its arrival, the vehicle and its clocks, where the truck is -
   // each under a rule that runs the width of the card.

@@ -182,6 +182,10 @@
   .fleet-map-inspector__appointment-label {
     color: ui.theme(text-secondary);
   }
+  // A window over two days: the start on one line, the end under it.
+  .fleet-map-inspector__appointment-line {
+    display: block;
+  }
   // The load is a way into its page: it reads as a link, not as a number
   // to copy.
   .fleet-map-inspector__load-link {

@@ -321,8 +321,9 @@ public sealed class StopHoursComponentTests
     Assert.NotNull(arrival.QuerySelector("time"));
     Assert.Contains("Late by 1h 05m", arrival.TextContent);
     Assert.Null(arrival.QuerySelector(".stop-hours__cycle-status"));
+    // Short by how much: the cycle is 80 minutes below zero on arrival.
     Assert.Equal(
-      "Cycle short",
+      "Cycle short by 1h 20m",
       component.Find(".stop-hours__cycle-status").TextContent
     );
   }
