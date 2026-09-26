@@ -1,4 +1,3 @@
-using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Services;
 using Application.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,23 +20,31 @@ public sealed class GmailWatchOperation(
       {
         await using var scope = scopes.CreateAsyncScope();
         // Each carrier watches its own mailbox, so maintenance runs once
-        // for each of them.
-        GmailWatchRunResult result = new();
+        // for each of them and each says for itself how it went. One result
+        // kept across the loop used to be overwritten by the next carrier's,
+        // and amfcarrier's failures were never logged.
+        var companies = scope.ServiceProvider.GetService<ICurrentCompany>();
         await CompanyPasses.ForEachCompanyAsync(
           scope.ServiceProvider,
           async token =>
-            result = await scope
+          {
+            var result = await scope
               .ServiceProvider.GetRequiredService<GmailWatchLifecycle>()
-              .RunAsync(false, token),
+              .RunAsync(false, token);
+            if (
+              result.RenewalError is not null
+              || result.RecoveryError is not null
+            )
+              logger.LogWarning(
+                "Gmail maintenance {RunId} for company {CompanyId} failed; renewal {RenewalErrorCode}, recovery {RecoveryErrorCode}; persisted retry schedule retained",
+                runId,
+                companies?.Id,
+                result.RenewalError,
+                result.RecoveryError
+              );
+          },
           ct
         );
-        if (result.RenewalError is not null || result.RecoveryError is not null)
-          logger.LogWarning(
-            "Gmail maintenance {RunId} failed; renewal {RenewalErrorCode}, recovery {RecoveryErrorCode}; persisted retry schedule retained",
-            runId,
-            result.RenewalError,
-            result.RecoveryError
-          );
       }
       catch (OperationCanceledException) when (ct.IsCancellationRequested)
       {
