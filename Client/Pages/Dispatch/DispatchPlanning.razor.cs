@@ -68,8 +68,6 @@ public partial class DispatchPlanning : IDisposable, IAsyncDisposable
 
   [Parameter]
   public EventCallback DisplayChanged { get; set; }
-  private readonly string _detailsId = $"truck-duty-{Guid.NewGuid():N}";
-  private bool _detailsOpen;
   private AutomaticPlanningResult? _result;
   private AutomaticPlanningResult? _retainedResult;
   private string? _error;

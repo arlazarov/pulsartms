@@ -1,9 +1,5 @@
 @if (BoardHeader)
 {
-    @* A truck on the board reads as its Fleet Map card does: the unit and
-       its crew with what is left to the next stop beside them, then the
-       vehicle line and the driver's clocks, and - behind Details - the
-       duty and the rest built up (the owner, September 26). *@
     <section class="dispatch-planning dispatch-planning--board"
              aria-label="Truck summary">
         <header class="dispatch-truck__header">
@@ -19,21 +15,6 @@
                         {<small> ·&#160;@Units.Kilometers(left)&#160;km</small>}</span>
                 </span>
             }
-            @* Says what it does; both words share one cell, so opening does
-               not change the button's width and move the row beside it. *@
-            <button type="button"
-                    class="btn btn--small dispatch-planning__toggle"
-                    aria-expanded="@(_detailsOpen ? "true" : "false")"
-                    aria-controls="@_detailsId"
-                    @onclick="() => _detailsOpen = !_detailsOpen">
-                <span class="dispatch-planning__toggle-words">
-                    <span aria-hidden="@(_detailsOpen ? "true" : "false")"
-                        >Details</span>
-                    <span aria-hidden="@(_detailsOpen ? "false" : "true")"
-                        >Hide details</span>
-                </span>
-                <ActionIcon Kind="chevron-down" />
-            </button>
         </header>
         <div class="dispatch-planning__readings">
             <TruckReadings Speed="Speed"
@@ -71,8 +52,7 @@
                     >Off planned route</p>
             }
         }
-        <div id="@_detailsId" class="dispatch-planning__duty"
-             hidden="@(!_detailsOpen)">
+        <div class="dispatch-planning__duty">
             <DriverDutySummary Reading="row" Status="DutyStatus"
                                CurrentStatus="@(Hos?.CurrentDutyStatus)"
                                ClockUpdatedAt="Hos?.UpdatedAt" />

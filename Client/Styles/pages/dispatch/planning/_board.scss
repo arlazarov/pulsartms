@@ -1,9 +1,5 @@
 @use '../../../base' as ui;
 
-// A truck's summary on the board, in the rows of its Fleet Map card: the
-// head, the vehicle beside the driver's clocks, any word about the route,
-// and - behind Details - the duty and the rest built up. It is the truck
-// card's own content, so it has no frame of its own.
 .dispatch-planning--board {
   display: block;
   margin: 0;
@@ -27,44 +23,6 @@
     small {
       color: ui.theme(text-muted);
       font-size: ui.fs(small);
-    }
-  }
-  // Says what it does. Both words share one cell, so the button keeps the
-  // width of the longer and opening does not move the row beside it.
-  .dispatch-planning__toggle {
-    grid-area: toggle;
-    display: inline-flex;
-    align-items: center;
-    gap: ui.pg(xs);
-    // The link role, which dark theme lightens: the action blue read dark
-    // on a dark card.
-    --button-text: #{ui.theme(link)};
-    --button-border: #{ui.theme(link)};
-    --button-hover-text: #{ui.theme(link)};
-    --button-hover-border: #{ui.theme(link)};
-    font-weight: 600;
-    white-space: nowrap;
-    > svg {
-      inline-size: 1.1em;
-      block-size: 1.1em;
-      transition: transform 120ms ease;
-    }
-    &[aria-expanded='true'] > svg {
-      transform: rotate(180deg);
-    }
-    @media (prefers-reduced-motion: reduce) {
-      > svg {
-        transition: none;
-      }
-    }
-  }
-  .dispatch-planning__toggle-words {
-    display: grid;
-    > span {
-      grid-area: 1 / 1;
-    }
-    > [aria-hidden='true'] {
-      visibility: hidden;
     }
   }
   // The vehicle at the left and the driver's clocks at the right, split
@@ -99,8 +57,6 @@
     color: ui.theme(text-muted);
     font-size: ui.fs(small);
   }
-  // Behind Details: the duty and how long it has lasted, the rest built
-  // up, then the next recap past a hairline.
   .dispatch-planning__duty {
     display: flex;
     flex-wrap: wrap;
@@ -139,7 +95,7 @@
 @include ui.below(narrow-card) {
   .dispatch-planning--board {
     // What is left takes the rest of its line, and folds before it runs
-    // under the map and Details.
+    // under the map button.
     .dispatch-planning__left {
       flex: 1 1 auto;
       white-space: normal;

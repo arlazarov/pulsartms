@@ -1,7 +1,7 @@
 @use '../../../base' as ui;
 
 // On a phone the unit and its crew take the head's first line whole, and
-// what is left shares the next with the map and Details, each folding to a
+// what is left shares the next with the map button, each folding to a
 // line of its own when enlarged text needs it; the map button says itself
 // with its icon alone, and the loads stack.
 @include ui.below(narrow-card) {
@@ -12,12 +12,9 @@
     > .dispatch-truck__identity {
       flex-basis: 100%;
     }
-    // What is left first, then the map and Details, as on a wide head.
+    // What is left first, then the map button, as on a wide head.
     > a.dispatch-truck__map {
       order: 1;
-    }
-    > .dispatch-planning__toggle {
-      order: 2;
     }
   }
   a.dispatch-truck__map > span {

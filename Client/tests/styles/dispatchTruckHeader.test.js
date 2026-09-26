@@ -16,9 +16,6 @@ const planningRazor = readFileSync(
   new URL('../../Pages/Dispatch/DispatchPlanning.razor', import.meta.url),
   'utf8',
 );
-// The truck's summary on the board (the owner's Dispatch cards of
-// September 26): the Fleet Map truck card's head and rows, and behind
-// Details the duty and the recap.
 const board = planningRazor.slice(0, planningRazor.indexOf('\nelse\n'));
 
 test('dispatch board uses horizontal load lanes and the Fleet truck card head', () => {
@@ -26,10 +23,10 @@ test('dispatch board uses horizontal load lanes and the Fleet truck card head', 
     truckCss,
     /\.dispatch-truck__loads\s*\{[^}]*grid-auto-flow: column;[^}]*grid-auto-columns: min\(100%,\s*max\(var\(--size-dispatch-load-card\),\s*\(100% - var\(--space-section\) \* 2\) \/ 3\)\);[^}]*overflow-x: auto;/s,
   );
-  // The unit and its crew, what is left, the map and Details: one line.
+  // The unit and its crew, what is left, the map button: one line.
   assert.match(
     truckCss,
-    /\.dispatch-truck__header\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto auto auto;\s*grid-template-areas: "identity left map toggle";/,
+    /\.dispatch-truck__header\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) auto auto;\s*grid-template-areas: "identity left map";/,
   );
   assert.doesNotMatch(
     truckCss,
@@ -153,15 +150,9 @@ test('narrow Dispatch summaries wrap to one column while preserving clocks and r
   assert.doesNotMatch(css, /driver-details|route-disclosure/);
 });
 
-test('the duty and the recap wait behind Details, as on the map card', () => {
-  assert.match(
-    board,
-    /aria-expanded="@\(_detailsOpen \? "true" : "false"\)"\s*aria-controls="@_detailsId"/,
-  );
-  assert.match(
-    board,
-    /<div id="@_detailsId" class="dispatch-planning__duty"\s*hidden="@\(!_detailsOpen\)">/,
-  );
+test('the duty and recap remain visible without a disclosure', () => {
+  assert.doesNotMatch(board, /_detailsOpen|_detailsId|aria-expanded/);
+  assert.match(board, /<div class="dispatch-planning__duty">/);
   const duty = board.slice(board.indexOf('class="dispatch-planning__duty"'));
   assert.match(duty, /<DriverDutySummary Reading="row"/);
   assert.match(duty, /<DriverNextRecap Snapshot="CurrentCycle" \/>/);
@@ -173,14 +164,10 @@ test('the duty and the recap wait behind Details, as on the map card', () => {
   assert.doesNotMatch(board, /Total Distance|OriginalPlannedMiles/);
 });
 
-test('what is left stands beside the unit, before the map and Details', () => {
+test('what is left stands beside the unit, before the map button', () => {
   assert.match(
     css,
     /\.dispatch-planning--board \.dispatch-planning__left\s*\{\s*grid-area: left;\s*justify-self: end;/,
-  );
-  assert.match(
-    css,
-    /\.dispatch-planning--board \.dispatch-planning__toggle\s*\{\s*grid-area: toggle;/,
   );
   assert.match(truckCss, /a\.dispatch-truck__map\s*\{\s*grid-area: map;/);
   assert.match(board, /DistanceLeft\.Miles|LeftMiles/);

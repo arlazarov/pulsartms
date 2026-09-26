@@ -335,9 +335,6 @@ public sealed class DispatchTruckHeaderTests
 
     component.WaitForAssertion(() =>
     {
-      // The truck reads as its Fleet Map card: the unit and its crew with
-      // what is left to the next stop, the vehicle line and the clocks, and
-      // behind Details the duty and the recap (the owner, September 26).
       var truckHeader = component.Find(".dispatch-truck__header");
       Assert.Contains("11005", truckHeader.TextContent);
       Assert.Contains("Test Driver", truckHeader.TextContent);
@@ -380,7 +377,7 @@ public sealed class DispatchTruckHeaderTests
       )
         Assert.Contains(value, clocks.TextContent);
       var duty = summary.QuerySelector(".dispatch-planning__duty")!;
-      Assert.True(duty.HasAttribute("hidden"));
+      Assert.False(duty.HasAttribute("hidden"));
       Assert.Contains(
         "Driving",
         duty.QuerySelector(".driver-duty--row")!.TextContent
@@ -455,10 +452,8 @@ public sealed class DispatchTruckHeaderTests
     });
   }
 
-  // On the board the duty and the recap wait behind Details, as on the
-  // Fleet Map truck card; the clocks stay in view as text.
   [Fact]
-  public async Task BoardSummaryKeepsClocksInViewAndDutyAndRecapBehindDetails()
+  public void BoardSummaryKeepsClocksDutyAndRecapVisibleWithoutDisclosure()
   {
     var load = Load();
     using var context = new ClientComponentContext(
@@ -480,23 +475,12 @@ public sealed class DispatchTruckHeaderTests
       Assert.Empty(component.FindAll(".dispatch-planning__metric"));
       Assert.Empty(component.FindAll(".driver-hours__dial"));
       Assert.Equal(4, component.FindAll(".driver-hours__clock").Count);
-      Assert.True(
+      Assert.False(
         component.Find(".dispatch-planning__duty").HasAttribute("hidden")
       );
+      Assert.Empty(component.FindAll(".dispatch-planning__toggle"));
     });
-    var toggle = component.Find(".dispatch-planning__toggle");
-    Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
-    Assert.Equal(
-      component.Find(".dispatch-planning__duty").Id,
-      toggle.GetAttribute("aria-controls")
-    );
-    await toggle.ClickAsync(new());
-    Assert.Equal(
-      "true",
-      component.Find(".dispatch-planning__toggle").GetAttribute("aria-expanded")
-    );
     var duty = component.Find(".dispatch-planning__duty");
-    Assert.False(duty.HasAttribute("hidden"));
     Assert.Contains(
       "Driving",
       duty.QuerySelector(".driver-duty--row")!.TextContent

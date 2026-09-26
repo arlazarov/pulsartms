@@ -2576,18 +2576,10 @@ try {
         await future.getByRole('link', { name: '← Back to Dispatch' }).click();
         await future.waitFor({ state: 'detached' });
         await board.locator('.stop-hours').nth(2).waitFor();
-        // The duty, the rest and the recap wait behind Details, as on the
-        // map's truck card (the owner, September 26).
-        const details = page.locator('.dispatch-planning__toggle').first();
         check(
-          (await details.getAttribute('aria-expanded')) === 'false' &&
-            !(await page
-              .locator('.dispatch-planning__duty')
-              .first()
-              .isVisible()),
-          `${name}: duty and recap start behind Details`,
+          (await page.locator('.dispatch-planning__toggle').count()) === 0,
+          `${name}: Dispatch has no header disclosure`,
         );
-        await details.click();
         await page
           .locator('.dispatch-planning__duty .driver-duty--row')
           .first()
@@ -2599,7 +2591,7 @@ try {
           (await dispatchRecap.count()) === 1 &&
             normalize(await dispatchRecap.innerText()) ===
               'Next recap Sep 9 +3h 05m',
-          `${name}: one current-driver recap behind Details with date and hours only`,
+          `${name}: one visible current-driver recap with date and hours only`,
         );
         check(
           (await page
@@ -2623,7 +2615,7 @@ try {
             (await compactHeader
               .locator('.driver-hours-panel .driver-duty')
               .count()) === 0,
-          `${name}: duty status belongs behind Details, not beneath HOS`,
+          `${name}: duty status appears once in its own row`,
         );
         check(
           (await compactHeader

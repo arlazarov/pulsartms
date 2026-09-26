@@ -904,13 +904,13 @@ value line height; the compact pill retains its existing appearance.
 Fleet Map uses the named `telemetry-icon` size for those three icons without
 enlarging their labels or values. Metric Fuel accepts `--fuel-reading-icon-size`
 from its owner and otherwise keeps its existing heading-sized icon.
-Dispatch keeps the HOS clocks in view as text. Its duty and rest line and Next
-recap wait behind Details, as on the map card, under a hairline when opened
-(the owner, September 26). The board no longer shows the plan's total
+Dispatch keeps the HOS clocks, duty and rest line, and Next recap always
+visible. There is no Details toggle on the board; the duty row remains
+under a hairline (the owner, September 26). The board no longer shows the plan's total
 distance; what is left to the next stop stands in the head. Narrow screens and
 enlarged text fold the vehicle line and the clocks onto lines of their own
 without hiding information; a phone's head keeps the unit and crew on its
-first line and what is left, the map and Details on the next. Fleet Map also
+first line and what is left and the map action on the next. Fleet Map also
 keeps HOS clocks and current duty visible above load information. Detailed
 stop forecasts remain in the workspace.
 The sidebar account uses the current authentication claims, not illustrative names.

@@ -10,14 +10,10 @@
   border-radius: ui.radius(sm);
   overflow: hidden;
 
-  // The unit, what is left to its next stop, and the two ways on: the
-  // truck on the map and the detail behind Details. A head without the
-  // truck's summary (Completed, a load awaiting a truck) has the unit and
-  // the map alone; the columns it does not use take no room.
   &__header {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
-    grid-template-areas: 'identity left map toggle';
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: 'identity left map';
     align-items: center;
     gap: ui.pg(xs) ui.pg(md);
     min-width: 0;

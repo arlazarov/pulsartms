@@ -2206,11 +2206,11 @@ try {
                   .count()) === 4,
               name + ' Dispatch HOS clocks read as text, as on the map card',
             );
-            const headParts = ['identityGroup', 'left', 'mapAction', 'toggle']
+            const headParts = ['identityGroup', 'left', 'mapAction']
               .map(key => header?.[key])
               .filter(Boolean);
             check(
-              headParts.length === 4 &&
+              headParts.length === 3 &&
                 headParts.every((part, index) =>
                   headParts.every(
                     (other, otherIndex) =>
@@ -2221,19 +2221,17 @@ try {
                       other.y + other.height <= part.y + 1,
                   ),
                 ),
-              name +
-                ' truck head keeps unit, what is left, map and Details apart',
+              name + ' truck head keeps unit, what is left, map apart',
             );
             if (width > 550)
               check(
-                header.toggle.x + header.toggle.width <=
+                header.mapAction.x + header.mapAction.width <=
                   header.frame.x + header.frame.width &&
-                  header.toggle.x + header.toggle.width >=
+                  header.mapAction.x + header.mapAction.width >=
                     header.frame.x + header.frame.width - 2 * rootFont &&
-                  Math.abs(header.left.y - header.toggle.y) <=
-                    header.toggle.height,
-                name +
-                  " what is left, the map and Details stand at the head's end",
+                  Math.abs(header.left.y - header.mapAction.y) <=
+                    header.mapAction.height,
+                name + " what is left, the map stands at the head's end",
               );
             for (const card of cards) {
               const { overview, stopGrid, footer } = card;
@@ -2298,11 +2296,9 @@ try {
               name + ' the planned total and the old distance columns are gone',
             );
             check(
-              summary?.dutyHidden === true && summary.toggle === 'false',
-              name + ' duty and recap wait behind Details',
+              summary?.dutyHidden === false && summary.toggle == null,
+              name + ' duty and recap are always visible',
             );
-            const toggle = page.locator('.dispatch-planning__toggle').first();
-            await toggle.click();
             const recap = page.locator(
               '.dispatch-planning__duty .driver-next-recap',
             );
@@ -2312,16 +2308,14 @@ try {
                 `Next recap ${recapLabel} +3h 05m` &&
                 Date.parse(
                   await recap.locator('time').getAttribute('datetime'),
-                ) === Date.parse(cycleAtCalculation().nextRecapAt) &&
-                (await toggle.getAttribute('aria-expanded')) === 'true',
+                ) === Date.parse(cycleAtCalculation().nextRecapAt),
               name +
-                ' Details shows the current recap date and credited hours without delivery-derived data',
+                ' shows the current recap date and credited hours without delivery-derived data',
             );
             await page.screenshot({
               path: resolve(output, `${name}-truck-details.png`),
               fullPage: true,
             });
-            await toggle.click();
             check(
               cards[0]?.stops.length === 3 && cards[1]?.stops.length === 2,
               name + ' every stop is visible',
