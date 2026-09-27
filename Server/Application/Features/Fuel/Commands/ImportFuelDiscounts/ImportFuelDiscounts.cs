@@ -22,7 +22,8 @@ public class ImportFuelDiscountsHandler(
 ) : IRequestHandler<ImportFuelDiscountsCommand, RequestResponse<int>>
 {
   // The mailbox is read from two days before the last import, so an outage
-  // loses nothing, but never further back than this.
+  // up to Furthest loses no message; one longer does lose the messages
+  // received more than Furthest ago.
   public static readonly TimeSpan Overlap = TimeSpan.FromDays(2);
   public static readonly TimeSpan Furthest = TimeSpan.FromDays(30);
 

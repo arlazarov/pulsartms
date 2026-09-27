@@ -827,9 +827,13 @@ failed on the new worktree's missing Client packages and is marked.
   provider marks an attachment it cannot read (`Unreadable`), the
   handler skips only that message and imports the rest, and the skip is
   logged once per process (`FuelImportSkips`, 256 message ids). The
-  message is not marked imported: it is met again while in the window,
-  and a corrected parser still imports it. The mailbox is read `after:`
-  two days before the last import (at most 30 days back). Red on the old
+  message is not marked imported. The mailbox is read `after:` two days
+  before the last import, at most 30 days back. Limits, explicit: an
+  outage longer than 30 days still loses the older messages; a skipped
+  message is retried, and a corrected parser imports it, only while it
+  stays in the window - about two days once later messages import -
+  after which nothing retries it and one warning per process is its
+  only trace (stored skips are the open gap below). Red on the old
   handler (diagnostic-td0Jkw); green diagnostic-YWTwxK; mutations of the
   once-only report, the 30-day limit, the window, the provider's catch
   and the query all fail (diagnostic-BBaWUC). Production, read only: 25

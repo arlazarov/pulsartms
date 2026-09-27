@@ -2,8 +2,10 @@ namespace Application.Features.Fuel.Services;
 
 // Messages the fuel import skipped, remembered by this process so that
 // each is reported once, not on every push that meets it again (audit F20).
-// A skipped message is not marked imported: it is met again until it
-// leaves the mailbox window, and a corrected parser still imports it.
+// A skipped message is not marked imported: it is met again, and a
+// corrected parser imports it, only while it is in the mailbox window -
+// about two days once later messages import. After that nothing retries
+// it; its one warning is the only trace.
 // Bounded; a message forgotten is reported once more, which is all it
 // costs.
 public sealed class FuelImportSkips
