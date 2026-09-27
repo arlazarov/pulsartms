@@ -530,7 +530,7 @@ or Client change.
 Root continues the financial recovery and its validation; nothing was
 requeued, reset or replanned here.
 
-## API and frontend of September 27, Dispatch views (04:25 UTC, partial)
+## API and frontend of September 27, Dispatch views (04:25-10:29 UTC)
 
 The owner authorized publishing the Dispatch view corrections, the
 current load read from planning in Dispatch and Messenger, and the
@@ -569,8 +569,22 @@ the cost evidence and the gate. No migration (73), no DTO change.
   pinned with a manifest) and then stopped: the Firebase login had
   expired. Hosting still serves `release-kRy7jd` (`index.html`
   `20c3a06f8b9937a55bfa6aba060508212a7ac56b7d3b0faa0d689a23021eae50`).
-  After the owner signs in again, `release-GTsl5s` is published as
-  tested, without another gate.
+  After the owner signed in again, `release-GTsl5s` was published as
+  tested at 10:29 UTC, without another gate: its 284-file manifest (the
+  settings file aside) was identical to the pinned one, the hosted
+  settings check passed, and the API was still
+  `amftms-api-b-fd2d5f25-…` at generation 274. `firebase deploy` found
+  285 files and completed. Live: `index.html`
+  (`5b52effcd6bf3b29d7b32471d14d6e564df716e4ac1a7f51c00489e8beea0497`),
+  `css/main.css?v=c100ad13d28d4c91`, `appsettings.json` (JSON, 39-character
+  Maps key) and `dotnet.*.js`, `dotnet.native.*.wasm`, `Client.*.wasm`,
+  `blazor.webassembly.*.js` match the artifact; entry HTML, stylesheet
+  and settings answer `no-cache`, fingerprinted framework files one-year
+  `immutable`; health 200. No error-level entry or 5xx on the API
+  revision in its first six hours. Protected data after, read-only
+  counts: unchanged (73, 3, 5, 55, 0, 0, 0, 2). The evidence, including
+  the Firebase log, is in the main checkout's
+  `artifacts/managed/release-GTsl5s/evidence`.
 - **Known cost:** Messenger's driver work reads planning inputs; warm 5
   statements (as before), cold 17 (DriverWorkCostTests). Recorded as
   debt for the application audit; the production warm/cold ratio is not
