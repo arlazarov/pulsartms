@@ -197,6 +197,79 @@ public sealed class BaseRouteOperationTests
     Assert.Equal(100m, saved.Miles);
   }
 
+  [Fact]
+  public async Task ExplicitCompletedNativeDemandPreparesReadableFinancials()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var previous = await fixture.AddAsync(-2, "completed");
+    var next = await fixture.AddAsync(-1, "completed");
+    Guid legId;
+    await using (var scope = fixture.Root.CreateAsyncScope())
+    {
+      var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+      var load = await db
+        .Dispatches.Include(x => x.Stops)
+        .SingleAsync(x => x.Id == next);
+      var leg = new ExecutionLeg
+      {
+        Id = Guid.NewGuid(),
+        Trip = new Trip { Id = Guid.NewGuid() },
+        TruckId = fixture.Truck.Id,
+        Status = "completed",
+        Revision = 1,
+        Stops = ExecutionStopRows.Capture(load.Stops),
+        Loads =
+        [
+          new()
+          {
+            Id = Guid.NewGuid(),
+            DispatchId = next,
+            Sequence = 1,
+            StartVisitId = load.Stops[0].Id,
+            EndVisitId = load.Stops[^1].Id,
+          },
+        ],
+      };
+      legId = leg.Id;
+      db.ExecutionLegs.Add(leg);
+      await db.SaveChangesAsync();
+      await scope
+        .ServiceProvider.GetRequiredService<ISourceRoadStore>()
+        .DemandAsync(
+          next,
+          "historical-mileage",
+          3,
+          fixture.Clock.GetUtcNow().UtcDateTime,
+          default
+        );
+    }
+    await fixture.Operation.RunOnceAsync(default);
+    Assert.Equal(0, await fixture.PendingAsync());
+    await using var check = fixture.Root.CreateAsyncScope();
+    var context = check.ServiceProvider.GetRequiredService<AppDbContext>();
+    var saved = await context.DispatchDeadheads.SingleAsync();
+    Assert.Equal(next, saved.DispatchId);
+    Assert.Equal(legId, saved.ExecutionLegId);
+    Assert.Equal(previous, saved.PreviousDispatchId);
+    Assert.Equal(100m, saved.Miles);
+    var services =
+      check.ServiceProvider.GetRequiredService<PlanningTestServices>();
+    var reader = new GetDispatchQueryHandler(
+      context,
+      services.Deadheads,
+      new TestDriverScope()
+    );
+    var calls = fixture.Router.Calls;
+    var page = (
+      await reader.Handle(new(Status: "completed"), default)
+    ).Response!;
+    var row = page.Items.Single(x => x.Id == next);
+    Assert.Equal(200m, row.TotalMiles);
+    Assert.Equal(0.5m, row.TotalRatePerMile);
+    await fixture.Operation.RunOnceAsync(default);
+    Assert.Equal(calls, fixture.Router.Calls);
+  }
+
   [Theory]
   [InlineData("Drop Off", false, false)]
   [InlineData("Drop Off", false, true)]
