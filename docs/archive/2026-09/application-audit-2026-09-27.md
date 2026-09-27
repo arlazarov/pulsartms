@@ -867,6 +867,23 @@ failed on the new worktree's missing Client packages and is marked.
   mailbox; a refusal lasts at most one wait, while the Client backs off
   and polls. Not released.
 
+- **D3, the dead HOS read path.** `SamsaraDriverHosProvider` kept a
+  read that no production caller reaches (the board, ETA, fuel and fleet
+  read `DriverHosSnapshot`) but that cached every carrier's clocks under
+  one key without a company, written by every refresh; and a static gate
+  made carriers' refreshes wait for each other. Red on the old provider
+  (diagnostic-u0Fqww: carrier B's read returned carrier A's clocks without
+  asking B's account; two carriers never refreshed at once). The provider
+  now only refreshes the serving carrier and keeps nothing; the snapshot
+  already keeps clocks per carrier and one refresh per carrier at a time
+  (`CompanySnapshotTests`). A missing permission still leaves the board
+  open, now through the refresh operation. Green diagnostic-Pc2lPC;
+  restoring the static gate fails (diagnostic-OftlPq; an earlier run with
+  a weak concurrency test let it survive, diagnostic-vnCrB8, and one did
+  not compile, diagnostic-kYNM3X); group fleet exit 0, Server 609,
+  Client 321 (diagnostic-f6E4NN, before the one-line test fix). One
+  shared-cache entry fewer for F26.
+
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done

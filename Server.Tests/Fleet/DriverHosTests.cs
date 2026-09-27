@@ -7,10 +7,8 @@ using Application.Features.Synchronization.Models;
 using Application.Features.Synchronization.Options;
 using Domain.Models.Fleet;
 using Infrastructure.Integrations.Samsara;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Server.Tests.Support;
 
@@ -20,28 +18,80 @@ namespace Server.Tests.Fleet;
 [Trait("Kind", "Integration")]
 public class DriverHosTests
 {
+  // Audit D3: the provider keeps nothing. Each refresh asks the carrier's
+  // own account; the snapshot keeps the clocks per carrier.
   [Fact]
-  public async Task MapsActualClocksAndCachesAllDrivers()
+  public async Task MapsActualClocksAndKeepsNothing()
   {
     var handler = new Handler();
-    using var cache = new MemoryCache(new MemoryCacheOptions());
-    var provider = Provider(handler, cache);
-    var clocks = await provider.GetClocksAsync(default);
+    var provider = Provider(handler);
+    var clocks = await provider.RefreshClocksAsync(default);
     Assert.Equal(3600000L, clocks["123"].DriveMs);
     Assert.Equal(0L, clocks["123"].BreakMs);
     Assert.Equal("sleeperBerth", clocks["123"].CurrentDutyStatus);
     Assert.Null(clocks["123"].CycleMs);
     Assert.True(clocks["123"].UpdatedAt > DateTime.UtcNow.AddMinutes(-1));
-    await provider.GetClocksAsync(default);
-    Assert.Equal(1, handler.Count);
+    await provider.RefreshClocksAsync(default);
+    Assert.Equal(2, handler.Count);
   }
 
+  // A missing permission fails the background refresh, which says so; the
+  // board reads the snapshot and still opens.
   [Fact]
   public async Task MissingPermissionDoesNotBreakDispatchBoard()
   {
-    var handler = new Handler { Status = HttpStatusCode.Forbidden };
-    using var cache = new MemoryCache(new MemoryCacheOptions());
-    Assert.Empty(await Provider(handler, cache).GetClocksAsync(default));
+    var snapshot = new DriverHosSnapshot(
+      TimeProvider.System,
+      new TestCompany()
+    );
+    var logger = new CaptureLogger<DriverHosRefreshOperation>();
+    await using var services = new ServiceCollection()
+      .AddSingleton<IDriverHosRefreshProvider>(
+        Provider(new Handler { Status = HttpStatusCode.Forbidden })
+      )
+      .BuildServiceProvider();
+
+    await new DriverHosRefreshOperation(
+      snapshot,
+      services.GetRequiredService<IServiceScopeFactory>(),
+      new TestFleetCollectionState(Enabled: true, Active: true),
+      logger
+    ).RunOnceAsync(default);
+
+    Assert.Empty(await snapshot.GetClocksAsync(default));
+    Assert.Single(logger.Messages);
+  }
+
+  // Two carriers' refreshes reach the provider at once: nothing makes one
+  // carrier wait for another (the static gate D3 removed did).
+  [Fact]
+  public async Task TwoCarriersRefreshAtOnce()
+  {
+    var inside = 0;
+    var most = 0;
+    var both = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    Handler Held() =>
+      new()
+      {
+        During = async () =>
+        {
+          var now = Interlocked.Increment(ref inside);
+          InterlockedMax(ref most, now);
+          if (now == 2)
+            both.TrySetResult();
+          await Task.WhenAny(both.Task, Task.Delay(TimeSpan.FromSeconds(2)));
+          Interlocked.Decrement(ref inside);
+        },
+      };
+
+    await Task.WhenAll(
+      Provider(Held()).RefreshClocksAsync(default),
+      Provider(Held()).RefreshClocksAsync(default)
+    );
+
+    Assert.Equal(2, most);
   }
 
   [Theory]
@@ -70,15 +120,11 @@ public class DriverHosTests
       Timeout = timeout,
     };
     using var http = new HttpClient(handler);
-    using var cache = new MemoryCache(new MemoryCacheOptions());
-    var providerLogger = new CaptureLogger<SamsaraDriverHosProvider>();
     var provider = new SamsaraDriverHosProvider(
       new SamsaraApiService(
         http,
         new StubProviderCredentials(("apiKey", "test"))
-      ),
-      cache,
-      providerLogger
+      )
     );
     await using var services = new ServiceCollection()
       .AddSingleton<IDriverHosRefreshProvider>(provider)
@@ -108,7 +154,6 @@ public class DriverHosTests
       }
     }
     Assert.Equal(empty || timeout ? 0 : 1, operationLogger.Messages.Count);
-    Assert.Empty(providerLogger.Messages);
     time.Advance(TimeSpan.FromSeconds(15));
     Assert.Empty(await snapshot.GetClocksAsync(default));
     await operation.RunOnceAsync(default);
@@ -133,19 +178,22 @@ public class DriverHosTests
     ) => Messages.Add(formatter(state, exception));
   }
 
-  private static SamsaraDriverHosProvider Provider(
-    Handler handler,
-    IMemoryCache cache
-  )
-  {
-    return new(
+  private static SamsaraDriverHosProvider Provider(Handler handler) =>
+    new(
       new SamsaraApiService(
         new HttpClient(handler),
         new StubProviderCredentials(("apiKey", "test"))
-      ),
-      cache,
-      NullLogger<SamsaraDriverHosProvider>.Instance
+      )
     );
+
+  private static void InterlockedMax(ref int most, int value)
+  {
+    for (
+      var seen = Volatile.Read(ref most);
+      value > seen
+        && Interlocked.CompareExchange(ref most, value, seen) != seen;
+      seen = Volatile.Read(ref most)
+    ) { }
   }
 
   private class Handler : HttpMessageHandler
@@ -153,20 +201,24 @@ public class DriverHosTests
     public int Count;
     public HttpStatusCode Status = HttpStatusCode.OK;
     public bool Timeout;
+    public Func<Task>? During;
     public string Body =
       """{"data":[{"driver":{"id":"123"},"currentDutyStatus":{"hosStatusType":"sleeperBed"},"clocks":{"drive":{"driveRemainingDurationMs":3600000},"break":{"timeUntilBreakDurationMs":0}}}]}""";
 
-    protected override Task<HttpResponseMessage> SendAsync(
+    protected override async Task<HttpResponseMessage> SendAsync(
       HttpRequestMessage request,
       CancellationToken ct
     )
     {
-      Count++;
+      Interlocked.Increment(ref Count);
       if (Timeout)
         throw new OperationCanceledException();
-      return Task.FromResult(
-        new HttpResponseMessage(Status) { Content = new StringContent(Body) }
-      );
+      if (During is { } during)
+        await during();
+      return new HttpResponseMessage(Status)
+      {
+        Content = new StringContent(Body),
+      };
     }
   }
 }
