@@ -99,6 +99,7 @@ export function createScene(
   // and picks it up again when shown.
   const sonarPeriod = 4400;
   const routePulsePeriod = 5200;
+  const routeFlowPeriod = 9000;
   const sonarFrame = 40;
   const sonarBreathPeriod = 3000;
   // The reader's own choice for this map's animation (the Layers menu):
@@ -194,6 +195,11 @@ export function createScene(
     const sonarBreath = 0;
     // The chosen road's glow breathes on a slow cosine while the map is
     // animated, and stands at full strength when it is not.
+    // The chosen road's direction marks slide forward slowly while the map
+    // is animated, and stand where they are when it is not.
+    const routeFlow = still
+      ? 0
+      : (performance.now() % routeFlowPeriod) / routeFlowPeriod;
     const routePulse = still
       ? 1
       : 0.5 +
@@ -208,6 +214,7 @@ export function createScene(
         sonar,
         sonarBreath,
         routePulse,
+        routeFlow,
         lines: routeEditing
           ? [...lines].filter(line => line.routeRole === 'preview')
           : lines,

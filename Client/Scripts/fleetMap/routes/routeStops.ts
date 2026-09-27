@@ -29,7 +29,7 @@ export function createRouteStops(
   map: google.maps.Map,
   StopMarker: any,
   popup: { show(content: Node, position: unknown): void; hide(): void },
-  onOpen: () => void,
+  onOpen: (position: google.maps.LatLngLiteral) => void,
   formatDistance: (miles: number) => string = distanceLabel,
 ) {
   const entries = new Map<string, Entry>();
@@ -111,9 +111,17 @@ export function createRouteStops(
     popup.show(entry.content!, point(entry.stop.point!));
   }
 
+  // The chosen stop wears the reticle: the one whose card is open, else
+  // the one the chain focused.
+  function markSelected() {
+    for (const [id, entry] of entries)
+      entry.marker.selected = id === (selectedId ?? focusedId);
+  }
+
   function show(entry: Entry) {
     selectedId = entry.stop.id;
-    onOpen();
+    markSelected();
+    onOpen(point(entry.stop.point!));
     refreshContent(entry, true);
   }
 
@@ -263,6 +271,7 @@ export function createRouteStops(
       focusedId = stopId;
       for (const [id, entry] of entries)
         entry.marker.highlighted = highlight.get(id) || id === focusedId;
+      markSelected();
     },
     setProgress(value: number | null) {
       progress = value;
@@ -271,6 +280,7 @@ export function createRouteStops(
     close() {
       selectedId = null;
       popup.hide();
+      markSelected();
     },
     clear() {
       for (const entry of entries.values()) entry.marker.map = null;

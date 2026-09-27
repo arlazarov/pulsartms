@@ -313,14 +313,19 @@ test('both current stops show and copy authoritative load and order numbers', as
       rows(state.shown.children[0].children[0]).includes(header),
       'identity is in the head, before the stop/company/address',
     );
+    // The load number opens that load (the owner, September 27); the
+    // order is the number a click copies.
+    const link = rows(header).find(node => node.tagName === 'a');
+    assert.equal(link.href, `/dispatch/${dispatchId}`);
+    assert.equal(link.children[0].textContent, 'AMF1373');
     const buttons = rows(header).filter(node => node.tagName === 'button');
     assert.deepEqual(
       buttons.map(button => button.children[0].textContent),
-      ['AMF1373', '566126837'],
+      ['566126837'],
     );
     assert.deepEqual(
       buttons.map(button => button.title),
-      ['Copy load number', 'Copy order number'],
+      ['Copy order number'],
     );
     for (const button of buttons) {
       let stopped = false;
@@ -333,10 +338,10 @@ test('both current stops show and copy authoritative load and order numbers', as
       assert.equal(button.title, 'Copied');
     }
   }
-  assert.deepEqual(copied, ['1373', '566126837', '1373', '566126837']);
+  assert.deepEqual(copied, ['566126837', '566126837']);
 });
 
-test('presentation prefix updates only popup text and copies the original numeric identity', async t => {
+test('presentation prefix updates only the load link text, never as HTML', async t => {
   const { stops, markers, state, calls } = fixture(t);
   const dispatchId = '33333333-3333-3333-3333-333333333333';
   const originalNavigator = Object.getOwnPropertyDescriptor(
@@ -358,7 +363,7 @@ test('presentation prefix updates only popup text and copies the original numeri
   markers[0].onSelect();
   const displayed = () =>
     rows(row(state.shown, 'fleet-map-route-info__load')).find(
-      node => node.tagName === 'button',
+      node => node.tagName === 'a',
     );
   assert.equal(
     displayed().children[0].textContent,
@@ -373,13 +378,12 @@ test('presentation prefix updates only popup text and copies the original numeri
   ]) {
     stops.setLoadReference({ dispatchId, loadNumber: 1373, loadLabel });
     assert.equal(displayed().children[0].textContent, loadLabel);
-    await displayed().listeners.click({ stopPropagation() {} });
     assert.ok(
       rows(state.shown).every(node => node.tagName !== 'img'),
       'prefix is plain text, never HTML',
     );
   }
-  assert.deepEqual(copied, ['1373', '1373', '1373', '1373']);
+  assert.deepEqual(copied, [], 'the load number opens; it is not copied');
   assert.equal(markers.length, 1, 'prefix updates do not rebuild stop markers');
   assert.equal(calls.opens, 1, 'prefix changes do not reselect a stop');
   const content = state.shown,
@@ -464,8 +468,16 @@ test('reference clipboard errors are retryable and missing order is not invented
       : delete globalThis.navigator,
   );
   stops.setPlan({ ...plan(), dispatchId });
+  // A blank order is not invented as a number to copy.
   stops.setLoadReference({ dispatchId, loadNumber: 1373, orderNumber: '  ' });
   markers[0].onSelect();
+  assert.equal(
+    rows(row(state.shown, 'fleet-map-route-info__load')).filter(
+      node => node.tagName === 'button',
+    ).length,
+    0,
+  );
+  stops.setLoadReference({ dispatchId, loadNumber: 1373, orderNumber: '568' });
   const header = row(state.shown, 'fleet-map-route-info__load');
   const buttons = rows(header).filter(node => node.tagName === 'button');
   assert.equal(buttons.length, 1);
@@ -492,16 +504,16 @@ test('current pickup and delivery link only to the authoritative dispatch and pr
   stops.setPlan(route);
   for (const marker of markers) {
     marker.onSelect();
-    const link = row(state.shown, 'fleet-route-popup__details-link');
+    // No load number yet: the head opens the load in words, a small link,
+    // not a button (the owner, September 27).
+    const link = row(state.shown, 'fleet-route-popup__load-link');
     assert.equal(link.tagName, 'a');
     assert.equal(link.href, `/dispatch/${dispatchId}`);
     // The arrow is tied to the last word so it never lands on a line alone.
     assert.equal(link.textContent, 'Open load\u00a0↗');
-    assert.equal(link.title, 'Route & load details');
     assert.equal(
-      state.shown.children[1].children.at(-1),
-      link,
-      'the link ends the information column',
+      row(state.shown, 'fleet-route-popup__details-link'),
+      undefined,
     );
   }
   const content = state.shown,
@@ -521,7 +533,7 @@ test('current pickup and delivery link only to the authoritative dispatch and pr
     dispatchId: '44444444-4444-4444-4444-444444444444',
   });
   assert.equal(
-    row(state.shown, 'fleet-route-popup__details-link').href,
+    row(state.shown, 'fleet-route-popup__load-link').href,
     '/dispatch/44444444-4444-4444-4444-444444444444',
   );
 });

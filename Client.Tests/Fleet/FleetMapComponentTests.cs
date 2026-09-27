@@ -4330,18 +4330,20 @@ public sealed class FleetMapComponentTests
           "fleet-route-popup__head"
         )
       );
-      Assert.Empty(location.QuerySelectorAll("a"));
+      // The load number in the head opens the load, with the stop being
+      // read so the return reopens it; there is no Open load button (the
+      // owner, September 27).
+      Assert.Single(location.QuerySelectorAll("a"));
+      Assert.Empty(card.QuerySelectorAll(".fleet-route-popup__details-link"));
       Assert.Equal(
         ReturnNavigation.Load(
           future.Id,
-          // With the stop being read, so the return reopens it.
           ReturnNavigation.FleetMap(
             new MapPlace(fixture.TruckA, Guid.Parse(current), future.Id)
           )
         ),
-        card.QuerySelector(
-              ".fleet-route-popup__information > .fleet-route-popup__details-link"
-            )!
+        location
+          .QuerySelector(".fleet-route-popup__load-link")!
           .GetAttribute("href")
       );
       Assert.Matches(

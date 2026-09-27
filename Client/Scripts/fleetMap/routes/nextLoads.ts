@@ -15,6 +15,7 @@ type NextLoadMarker = {
   setNumber(number: string): void;
   setOrder?(order: number): void;
   highlighted: boolean;
+  selected?: boolean;
   setMap?(map: google.maps.Map | null): void;
   setOptions?(options: Record<string, unknown>): void;
   setVisible?(visible: boolean): void;
@@ -28,7 +29,7 @@ type NextLoadMarker = {
  *   Which load is picked, which of its stops the card should open on, and -
  *   when the stop belongs to a leg already being driven - which leg.
  * @param reveal Asks the map to bring that load's road into view.
- * @param revealStop Where the picked stop stands, for the card that opens.
+ * @param revealStop Where the picked stop stands; the camera goes there.
  */
 export function createNextLoadsLayer(
   map: google.maps.Map,
@@ -68,10 +69,18 @@ export function createNextLoadsLayer(
   // so hover speaks only when nothing is picked.
   function applySelection() {
     const shown = selectedId ?? hoveredId;
-    for (const group of markerGroups)
+    for (const group of markerGroups) {
       group.marker.highlighted = group.members.some(
         row => identity(row) === shown,
       );
+      // The picked stop wears the selection reticle.
+      group.marker.selected = group.members.some(
+        row =>
+          selectedId !== null &&
+          identity(row) === selectedId &&
+          row.index === selectedStopIndex,
+      );
+    }
     for (const { line, loadId, chain } of renderedLines)
       line?.setOptions({
         strokeWeight: 2,
@@ -132,9 +141,11 @@ export function createNextLoadsLayer(
     selectedId = identity(member);
     selectedStopIndex = member.index;
     applySelection();
-    reveal(loadGeometry.get(loadId ?? selectedId!) ?? null);
+    // A chosen stop takes the camera to itself; the whole road is fitted
+    // only when the stop's place is not known.
     const at = stopPositions.get(`${selectedId}:${member.index}`);
     if (at) revealStop(at);
+    else reveal(loadGeometry.get(loadId ?? selectedId!) ?? null);
     if (member.executionLegId)
       onSelection(member.loadId ?? null, member.index, member.executionLegId);
     else onSelection(member.loadId ?? null, member.index);

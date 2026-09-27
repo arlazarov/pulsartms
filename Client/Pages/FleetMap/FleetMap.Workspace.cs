@@ -212,21 +212,26 @@ public partial class FleetMap
       var route = _nextLoadRoutes.FirstOrDefault(route =>
         route.Id == load.Id && route.ExecutionLegId == load.ExecutionLegId
       );
-      if (ShowNextLoads && route is not null)
+      var index = stop is { } id && route is not null
+        ? route.Stops.ToList().FindIndex(x => x.Id == id)
+        : -1;
+      if (stop is { } chosen && (!ShowNextLoads || index < 0))
       {
-        if (stop is { } id)
-        {
-          // The exact stop or none: a stop the drawn road does not have
-          // never opens another one in its place.
-          var index = route.Stops.ToList().FindIndex(x => x.Id == id);
-          if (index >= 0)
-            await _map!.InvokeVoidAsync(
-              "selectNextStop",
-              load.Id.ToString(),
-              index,
-              load.ExecutionLegId?.ToString()
-            );
-        }
+        // No drawn road to open the stop on: the camera still goes to that
+        // exact stop, never to another one in its place.
+        var place = load.Stops.FirstOrDefault(x => x.Id == chosen);
+        if (place is { Latitude: { } lat, Longitude: { } lng })
+          await _map!.InvokeVoidAsync("centerStop", lat, lng);
+      }
+      else if (ShowNextLoads && route is not null)
+      {
+        if (stop is not null)
+          await _map!.InvokeVoidAsync(
+            "selectNextStop",
+            load.Id.ToString(),
+            index,
+            load.ExecutionLegId?.ToString()
+          );
         else
           await _map!.InvokeVoidAsync(
             "fitNextLoad",

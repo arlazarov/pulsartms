@@ -34,6 +34,9 @@ const mountMap = createMapHost(
 );
 
 // Mainland USA and southern Canada, the fleet's working area.
+// Street zoom for a chosen stop; satellite imagery starts here too.
+const stopZoom = 15;
+
 export const fleetBounds = { north: 62, south: 23, west: -130, east: -52 };
 
 const schemeOf = (element: HTMLElement) =>
@@ -167,6 +170,14 @@ export async function createFleetMap(
     const gpuScene = gpuModule?.createGpuScene(map);
     cleanup.push(() => gpuScene?.dispose());
     await yieldToBrowser();
+    // A P or D chosen on the map or in the chain: that exact stop in the
+    // middle at street zoom, where the satellite policy takes over. It is
+    // the reader's own camera, so Follow ends; editors keep theirs.
+    function focusStop(position: google.maps.LatLngLiteral) {
+      if (disposed || fuelEditing || routeEditor.active) return;
+      trucks.releaseCamera();
+      map.moveCamera({ center: position, zoom: stopZoom });
+    }
     const route = createRouteLayer(
       map,
       (truckId, miles, remaining) => {
@@ -174,10 +185,11 @@ export async function createFleetMap(
         stations.setProgress(miles);
         notify('OnRouteProgress', truckId, remaining, miles);
       },
-      () => {
+      position => {
         inspector.activate('stop');
         stations.closePopup();
         nextLoads.clearSelection();
+        focusStop(position);
       },
       gpuScene?.Polyline,
       gpuScene?.StopMarker,
@@ -245,7 +257,7 @@ export async function createFleetMap(
         cameraViewport.refresh();
         map.fitBounds(bounds, cameraViewport.padding(55));
       },
-      position => cameraViewport.reveal(position),
+      position => focusStop(position),
     );
     cleanup.push(() => nextLoads.dispose());
     // Where the camera came to rest, for the page's address.
@@ -506,15 +518,15 @@ export async function createFleetMap(
         if (!disposed) route.focusStop(stopId ?? null);
       },
       // A stop chosen in the trip chain: its card opens as from its badge,
-      // and the camera goes to it - a camera move of the reader's own.
+      // and the camera goes to it exactly as a badge press takes it.
       openRouteStop(stopId: string) {
         if (disposed) return;
-        const at = route.openStop(stopId) as
-          | { lat: number; lng: number }
-          | null;
-        if (!at) return;
-        trucks.releaseCamera();
-        map.moveCamera({ center: at, zoom: Math.max(map.getZoom() ?? 0, 11) });
+        route.openStop(stopId);
+      },
+      // A later load's stop chosen in the chain while its road is not drawn.
+      centerStop(lat: number, lng: number) {
+        if (Number.isFinite(lat) && Number.isFinite(lng))
+          focusStop({ lat, lng });
       },
       // A later load chosen whole in the chain: all of its road in view.
       fitNextLoad(loadId: string, executionLegId?: string | null) {

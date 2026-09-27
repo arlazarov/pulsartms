@@ -708,7 +708,7 @@ try {
           // current trip's pickup, then a later trip's first stop.
           const markers = tab.locator('button.fleet-trip-chain__stop');
           if ((await markers.count()) > 3) {
-            await markers.nth(0).click();
+            await markers.nth(1).click();
             await tab.waitForTimeout(1500);
             await shot(tab, `${name}-stop-current`);
             await markers.nth(3).click();

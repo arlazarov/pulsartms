@@ -22,8 +22,7 @@ import { stopEtaIdentity } from './stopEtaIdentity.ts';
  * itself is drawn by routeRoad; what this layer decides is when the truck
  * has moved far enough for the road, the stops and the page to be told.
  *
- * @param onOpen a stop's card opened here; which stop it is stays this
- *   layer's business
+ * @param onOpen a stop's card opened here, with where that stop stands
  */
 export function createRouteLayer(
   map: google.maps.Map,
@@ -32,7 +31,7 @@ export function createRouteLayer(
     miles: number,
     remaining: number,
   ) => void = () => {},
-  onOpen: () => void = () => {},
+  onOpen: (position: google.maps.LatLngLiteral) => void = () => {},
   Polyline?: RouteLineFactory,
   StopMarker?: any,
   popupFactory: (

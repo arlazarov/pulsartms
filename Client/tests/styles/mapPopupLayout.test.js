@@ -96,7 +96,8 @@ test('the link out of the map keeps its arrow on the last word', () => {
     ),
     'utf8',
   );
-  // "Open load" as the truck card says it; the old words stay its title.
+  // The head's own link, while the load's number is not known yet: its
+  // arrow stays on the last word.
   assert.match(stops, /'Open load\\u00a0↗'/);
-  assert.match(stops, /link\.title = 'Route & load details'/);
+  assert.match(stops, /link\.title = 'Open load'/);
 });

@@ -175,6 +175,16 @@ export function createSceneMarks(scene: MarkedScene) {
       this.nextTruck = truck;
       scene.stopsChanged();
     }
+    // The one stop the reader has chosen (its card open, or picked in the
+    // chain): it wears the selection reticle.
+    get selected() {
+      return this._selected === true;
+    }
+    set selected(value: boolean) {
+      if (this.selected === value) return;
+      this._selected = value;
+      scene.stopsChanged();
+    }
     get highlighted() {
       return this._highlighted === true;
     }

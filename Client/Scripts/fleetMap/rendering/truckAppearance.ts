@@ -1,3 +1,5 @@
+import { isLightMap } from './stopAppearance.ts';
+
 const icons = new Map<string, unknown>();
 
 // Two facts, each told one way (the owner, September 27). The shape says
@@ -32,9 +34,12 @@ export function truckState(engine: unknown, speed = 0): string {
       : 'off';
 }
 
-// The ring a stop badge wears while a truck stands on it says the engine,
-// as the truck's own edge does.
-export function truckColor(engine: unknown, _speed = 0): string {
+// The ring a stop badge wears while a truck stands on it says what the
+// truck's mark says: on the light map its engine, as the truck's edge does;
+// on the dark map, the approved marks' colour (green running, grey off).
+export function truckColor(engine: unknown, speed = 0): string {
+  if (!isLightMap())
+    return truckState(engine, speed) === 'off' ? ringQuiet : engineOn;
   return truckEngine(engine) === 'on' ? engineOn : ringQuiet;
 }
 
@@ -45,7 +50,36 @@ const engineQuiet = '#94a3b8';
 const ringQuiet = '#64748b';
 const body = '#1e293b';
 
+// The dark map keeps the approved truck marks (the owner, September 27): a
+// green arrow moving, a green circle standing with the engine on, a grey one
+// with it off. The neutral body with an engine edge is the light map's.
+function darkTruckIcon(engine: unknown, speed: number) {
+  const key = `dark:${truckState(engine, speed)}`;
+  if (!icons.has(key)) {
+    const silhouette = 'M13 1 L24 23 Q25 26 22 25 L13 22 L4 25 Q1 26 2 23 Z';
+    const shape =
+      key === 'dark:moving'
+        ? `
+<path d="${silhouette}" fill="none" stroke="white" stroke-width="4" stroke-linejoin="round"/>
+<path d="${silhouette}" fill="${engineOn}" stroke="${body}" stroke-width="2" stroke-linejoin="round"/>`
+        : `
+<circle cx="13" cy="13" r="11" fill="none" stroke="white" stroke-width="4"/>
+<circle cx="13" cy="13" r="11" fill="${key === 'dark:idle' ? engineOn : ringQuiet}" stroke="${body}" stroke-width="2"/>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="112" height="120" viewBox="-1 -1 28 30">${shape}</svg>`;
+    icons.set(key, {
+      url: 'data:image/svg+xml,' + encodeURIComponent(svg),
+      width: 112,
+      height: 120,
+      anchorX: 56,
+      anchorY: 56,
+      mask: false,
+    });
+  }
+  return icons.get(key);
+}
+
 export function truckIcon(engine: unknown, speed = 0) {
+  if (!isLightMap()) return darkTruckIcon(engine, speed);
   const motion = truckMotion(speed);
   const reading = truckEngine(engine);
   const key = `${motion}:${reading}`;

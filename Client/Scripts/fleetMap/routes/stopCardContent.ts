@@ -117,7 +117,19 @@ export function stopContent(
       ),
     );
   identity.append(job);
-  if (loadReference) identity.append(loadReferenceContent(loadReference));
+  if (loadReference)
+    identity.append(loadReferenceContent(loadReference, stop.detailsHref));
+  else if (stop.detailsHref) {
+    // Until the load's number is known the head still opens it, in words.
+    const link = element(
+      'a',
+      'fleet-route-popup__load-link',
+      'Open load\u00a0↗',
+    ) as HTMLAnchorElement;
+    link.href = stop.detailsHref;
+    link.title = 'Open load';
+    identity.append(link);
+  }
   const kind = element('div', 'fleet-route-popup__kind', stop.position);
   if (stop.stateAfter && stop.stateAfter !== 'Unknown')
     kind.append(element('span', '', `After: ${stop.stateAfter}`));
@@ -265,18 +277,6 @@ export function stopContent(
     }
     block.append(cycle);
     information.append(block);
-  }
-  if (stop.detailsHref) {
-    const link = element(
-      'a',
-      'btn btn--primary fleet-route-popup__details-link',
-      // The arrow belongs to the last word; on its own line it reads as a
-      // stray mark rather than as a link that leaves the map.
-      'Open load\u00a0↗',
-    );
-    (link as HTMLAnchorElement).href = stop.detailsHref;
-    link.title = 'Route & load details';
-    information.append(link);
   }
   details.append(location, information);
   return details;

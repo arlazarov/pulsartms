@@ -73,6 +73,7 @@ export function createSceneLayers({
     sonar = null,
     sonarBreath = 0,
     routePulse = 1,
+    routeFlow = 0,
   }: {
     lines: Iterable<SceneRouteLine & { map?: unknown; path?: unknown[] }>;
     stationData: StationMark[];
@@ -100,6 +101,8 @@ export function createSceneLayers({
     sonarBreath?: number;
     // The chosen road's glow, 0..1, breathing slowly; 1 when still.
     routePulse?: number;
+    // How far the chosen road's direction marks have slid, 0..1.
+    routeFlow?: number;
   }): DeckLayer[] => {
     const fonts = labelFonts([pixelRatio, stopLabelStyle.size], () =>
       createLabelFonts(pixelRatio, stopLabelStyle.size),
@@ -125,6 +128,15 @@ export function createSceneLayers({
         hasSelectedNextRoute && line.routeSelected !== true,
         hasSelectedNextRoute,
         routePulse,
+      ),
+    );
+    const flow = sorted.flatMap(line =>
+      flowLayers(
+        IconLayer,
+        line,
+        hasSelectedNextRoute && line.routeSelected !== true,
+        hasSelectedNextRoute,
+        routeFlow,
       ),
     );
     const drawn = sorted.flatMap(line =>
@@ -153,6 +165,7 @@ export function createSceneLayers({
       [
         ...glow,
         ...drawn,
+        ...flow,
         // All station fills cover roads; recommendations, stops and trucks
         // retain priority.
         ...stations({
@@ -165,11 +178,12 @@ export function createSceneLayers({
           selectStation,
           fonts,
         }),
-        fleet.clusters,
+        ...fleet.clusters,
         ...(sonar === null
           ? []
           : sonarLayers(ScatterplotLayer, trucks, sonar, sonarBreath)),
         ...fleet.icons,
+        ...reticleLayers(IconLayer, stopData, stationData),
         ...stops({ stopData, setHover, selectStop, fonts }),
         ...fleet.labels,
         ...cards,
@@ -232,4 +246,175 @@ function sonarLayers(
         ring('truck-sonar-echo-2', (sonar + 0.5) % 1),
         ring('truck-sonar-echo-3', (sonar + 0.75) % 1),
       ];
+}
+
+// The chosen stop or fuel station wears a selection reticle: a thin ring
+// with four short ticks and a soft glow, under its badge so the letter stays
+// readable. Static - it marks the choice, it does not animate - and never
+// picked. One icon per theme, cached.
+const reticleIcons = new Map<
+  boolean,
+  {
+    url: string;
+    width: number;
+    height: number;
+    anchorX: number;
+    anchorY: number;
+  }
+>();
+function reticleIcon(light: boolean) {
+  const cached = reticleIcons.get(light);
+  if (cached) return cached;
+  const ink = (light ? lightSonarInk : darkSonarInk).join(',');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="176" height="176" viewBox="0 0 44 44"><circle cx="22" cy="22" r="16.5" fill="none" stroke="rgb(${ink})" stroke-opacity="0.22" stroke-width="5"/><circle cx="22" cy="22" r="16.5" fill="none" stroke="rgb(${ink})" stroke-width="1.4"/><g stroke="rgb(${ink})" stroke-width="2" stroke-linecap="round"><path d="M22 2.5v5M22 36.5v5M2.5 22h5M36.5 22h5"/></g></svg>`;
+  const icon = {
+    url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
+    width: 176,
+    height: 176,
+    anchorX: 88,
+    anchorY: 88,
+  };
+  reticleIcons.set(light, icon);
+  return icon;
+}
+
+function reticleLayers(
+  IconLayer: DeckLayerFactory,
+  stopData: StopRow[],
+  stationData: StationMark[],
+): DeckLayer[] {
+  const icon = reticleIcon(isLightMap());
+  const stops = stopData.filter(stop => stop.selected);
+  const stations = stationData.filter(station => station.selected);
+  return [
+    ...(stops.length
+      ? [
+          new IconLayer({
+            id: 'stop-reticle',
+            data: stops,
+            getPosition: (stop: StopRow) => stop.position,
+            getIcon: () => icon,
+            getSize: 44,
+            sizeUnits: 'pixels',
+            getPixelOffset: (stop: StopRow) => [
+              stop.markerOffsetX ?? 0,
+              stop.markerOffsetY ?? 0,
+            ],
+            billboard: true,
+            pickable: false,
+            parameters: { depthCompare: 'always' },
+          }),
+        ]
+      : []),
+    ...(stations.length
+      ? [
+          new IconLayer({
+            id: 'station-reticle',
+            data: stations,
+            getPosition: (station: StationMark) => station.position,
+            getIcon: () => icon,
+            getSize: 40,
+            sizeUnits: 'pixels',
+            billboard: true,
+            pickable: false,
+            parameters: { depthCompare: 'always' },
+          }),
+        ]
+      : []),
+  ];
+}
+
+// The chosen road's direction: a few fine chevrons along its own geometry,
+// pointing the way it runs and sliding slowly forward while the map is
+// animated (standing still when it is not). A cue of direction, not of the
+// truck's progress. The road's lengths are measured once per geometry;
+// each frame only places a dozen marks. Never picked.
+type FlowPath = { points: number[][]; lengths: number[]; total: number };
+const flowPaths = new WeakMap<object, FlowPath>();
+const flowCount = 14;
+
+function flowPath(data: unknown): FlowPath | null {
+  if (!data || typeof data !== 'object') return null;
+  const cached = flowPaths.get(data);
+  if (cached) return cached;
+  const points = (data as unknown[][])
+    .flat()
+    .filter(
+      (point): point is number[] =>
+        Array.isArray(point) &&
+        Number.isFinite(point[0]) &&
+        Number.isFinite(point[1]),
+    );
+  if (points.length < 2) return null;
+  const lengths = [0];
+  for (let i = 1; i < points.length; i++) {
+    const [x0, y0] = points[i - 1];
+    const [x1, y1] = points[i];
+    const dx = (x1 - x0) * Math.cos((((y0 + y1) / 2) * Math.PI) / 180);
+    lengths.push(lengths[i - 1] + Math.hypot(dx, y1 - y0));
+  }
+  const path = { points, lengths, total: lengths.at(-1)! };
+  flowPaths.set(data, path);
+  return path.total > 0 ? path : null;
+}
+
+function flowMarks(path: FlowPath, phase: number) {
+  const marks: { position: number[]; angle: number }[] = [];
+  let segment = 1;
+  for (let i = 0; i < flowCount; i++) {
+    const at = ((i + phase) / flowCount) * path.total;
+    while (segment < path.lengths.length - 1 && path.lengths[segment] < at)
+      segment++;
+    const [x0, y0] = path.points[segment - 1];
+    const [x1, y1] = path.points[segment];
+    const span = path.lengths[segment] - path.lengths[segment - 1] || 1;
+    const t = (at - path.lengths[segment - 1]) / span;
+    const dx = (x1 - x0) * Math.cos((y0 * Math.PI) / 180);
+    const bearing = (Math.atan2(dx, y1 - y0) * 180) / Math.PI;
+    marks.push({
+      position: [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t],
+      angle: -bearing,
+    });
+  }
+  return marks;
+}
+
+const chevron = {
+  url: `data:image/svg+xml,${encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 12 12"><path d="M3 8.2 6 5l3 3.2" fill="none" stroke="rgb(255,255,255)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  )}`,
+  width: 48,
+  height: 48,
+  anchorX: 24,
+  anchorY: 24,
+};
+
+function flowLayers(
+  IconLayer: DeckLayerFactory,
+  line: SceneRouteLine,
+  selectionMuted: boolean,
+  laterPicked: boolean,
+  phase: number,
+): DeckLayer[] {
+  const chosen =
+    (line.routeRole === 'current' && !laterPicked) ||
+    (line.routeRole === 'future' && line.routeSelected === true);
+  if (line.visible === false || selectionMuted || !chosen) return [];
+  const path = flowPath(line.data);
+  if (!path) return [];
+  return [
+    new IconLayer({
+      id: `${line.id}-flow`,
+      data: flowMarks(path, phase),
+      getPosition: (mark: { position: number[] }) => mark.position,
+      getAngle: (mark: { angle: number }) => mark.angle,
+      getIcon: () => chevron,
+      getSize: 12,
+      sizeUnits: 'pixels',
+      opacity: 0.8,
+      billboard: true,
+      pickable: false,
+      parameters: { depthCompare: 'always' },
+    }),
+  ];
 }

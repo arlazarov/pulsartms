@@ -40,6 +40,10 @@
   &__label {
     overflow-wrap: normal;
     white-space: nowrap;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-size: ui.fs(micro);
+    color: ui.theme(text-muted);
   }
   &__kind {
     display: flex;
@@ -62,26 +66,39 @@
     min-width: 0;
     margin-bottom: ui.pg(xs);
   }
+  // The stop's emblem: its letter on a glass core lit from within, a fine
+  // accent rim and a soft halo - the instrument the map's badges are.
   &__number {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     align-self: start;
-    inline-size: 2rem;
-    block-size: 2rem;
-    border: 2px solid ui.theme(link);
+    inline-size: 2.75rem;
+    block-size: 2.75rem;
+    border: 1.5px solid ui.theme(accent);
     border-radius: 50%;
-    background: ui.theme(link);
-    color: ui.theme(on-accent);
+    background: radial-gradient(
+      circle at 35% 30%,
+      ui.theme(accent, 0.34),
+      ui.theme(surface-muted) 72%
+    );
+    box-shadow:
+      0 0 0 3px ui.theme(accent, 0.1),
+      0 0 16px ui.theme(accent, 0.28),
+      inset 0 0 10px ui.theme(accent, 0.22);
+    color: ui.theme(accent);
     font-size: ui.fs(lead);
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: 0.02em;
     font-variant-numeric: tabular-nums;
-    // A stop behind the truck is outlined, not filled: it no longer asks
+    // A stop behind the truck: a dashed rim and no halo; it no longer asks
     // for anything.
     &.is-done {
-      background: transparent;
-      color: ui.theme(link);
+      border-style: dashed;
+      background: ui.theme(surface-muted);
+      box-shadow: none;
+      color: ui.theme(text-secondary);
     }
   }
   // What happens at the stop, whose load it is and where the stop sits in
@@ -90,12 +107,25 @@
     display: grid;
     gap: ui.pg(micro);
     min-width: 0;
-    // The load leads, in the link colour and the card's lead size; a click
-    // copies it, and Open load at the foot of the card goes to its page.
-    .fleet-map-route-info__load
-      > .fleet-map-route-info__copy-number:first-of-type {
-      color: ui.theme(action);
+    // The load leads, in the accent at the card's lead size, and opens its
+    // own page; the order beside it is the number a click copies.
+    .fleet-route-popup__load-link {
+      display: inline-flex;
+      align-items: baseline;
+      gap: ui.pg(micro);
+      color: ui.theme(accent);
       font-size: ui.fs(lead);
+      font-weight: 700;
+      text-decoration: none;
+      svg {
+        width: ui.pg(md);
+        height: ui.pg(md);
+      }
+      &:hover,
+      &:focus-visible {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
     }
   }
   &__job {
@@ -162,7 +192,7 @@
   }
   &__section-start {
     padding-top: ui.pg(micro);
-    border-top: 1px solid ui.theme(border-subtle);
+    border-top: 1px solid ui.theme(accent, 0.18);
   }
   &__company {
     font-size: ui.fs(body);

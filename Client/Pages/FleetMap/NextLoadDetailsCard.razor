@@ -29,6 +29,7 @@
                             <span class="fleet-map-route-info__load"
                                   aria-busy="@(Loading ? "true" : "false")">
                                 <LoadReference LoadNumber="Route.LoadNumber"
+                                    Href="@DetailsHref"
                                     OrderNumber="@(Details?.OrderNumber ?? "")"
                                     OnCopy="OnCopy" />
                             </span>
@@ -178,10 +179,6 @@
                     ShowAppointment="false" ShowSummary="false"
                     ShowRecap="false" ShowDetails="Expanded"
                     Reading="facts" />
-                <a class="btn btn--primary fleet-route-popup__details-link"
-                   href="@DetailsHref" title="Route &amp; load details">
-                    Open load ↗
-                </a>
             </div>
         </div>
         @if (CopyMessage is not null)
