@@ -96,8 +96,8 @@
 </div>
 
 @code {
-    // A distance as whole words: the miles, then the kilometres under them,
-    // each kept on one line.
+    // A distance as whole words: the miles, then the kilometres beside
+    // them, each kept whole.
     private RenderFragment Distance(decimal? value) =>
         @<text>@if (value is { } miles)
         {

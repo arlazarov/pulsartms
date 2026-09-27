@@ -113,6 +113,11 @@
     gap: 0 ui.pg(sm);
     min-width: 0;
   }
+  &__tab-units {
+    display: inline-flex;
+    gap: ui.pg(sm);
+    white-space: nowrap;
+  }
   &__tab-number {
     font-size: ui.fs(body);
     color: ui.theme(text);

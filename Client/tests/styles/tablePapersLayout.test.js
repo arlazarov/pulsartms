@@ -45,6 +45,12 @@ test('Table differentiates current rows while leaving upcoming loads neutral and
     rule('.dispatch-page .dispatch-table .dispatch-table__distances dd > *'),
     /white-space: nowrap;/,
   );
+  // Miles and kilometres on one line, not stacked.
+  const distance = rule(
+    '.dispatch-page .dispatch-table .dispatch-table__distances dd',
+  );
+  assert.match(distance, /flex-wrap: wrap;/);
+  assert.doesNotMatch(distance, /flex-direction: column;/);
   assert.match(
     rule('.dispatch-page .dispatch-table .dispatch-table__day > th'),
     /background: var\(--ui-surface-muted\);[\s\S]*color: var\(--ui-text\);[\s\S]*font-size: var\(--type-lead\);[\s\S]*font-weight: 700;/,
@@ -313,5 +319,9 @@ test('every Papers folder keeps one shape whatever its words', () => {
   assert.doesNotMatch(
     rule('.dispatch-paper__tab-financials > span'),
     /justify-self: end;/,
+  );
+  assert.match(
+    rule('.dispatch-paper__tab-units'),
+    /display: inline-flex;[\s\S]*white-space: nowrap;/,
   );
 });

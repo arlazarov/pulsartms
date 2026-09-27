@@ -66,9 +66,19 @@ public sealed class DispatchFinancialViewsTests
     var papers = context.Render<DispatchPapers>(parameters =>
       parameters.Add(view => view.Trucks, trucks)
     );
-    Assert.Contains(
-      "1,000.00 CAD · Loaded RPM 17.23 CAD · Total RPM 4.56 CAD",
-      papers.Find(".dispatch-paper__tab-financials").TextContent
+    // Short names on the folder; the full ones in its tooltip.
+    var money = papers.Find(".dispatch-paper__tab-financials > span");
+    Assert.Equal("1,000.00 CAD · RPM 17.23 · Total 4.56", money.TextContent);
+    Assert.Equal(
+      "Loaded RPM 17.23 CAD · Total RPM 4.56 CAD",
+      money.GetAttribute("title")
+    );
+    // The truck and its trailer are one unit that folds whole.
+    Assert.Equal(
+      2,
+      papers
+        .FindAll(".dispatch-paper__tab-units > .dispatch-paper__tab-equipment")
+        .Count
     );
     Assert.Equal(
       $"/dispatch/{load.Id}",
