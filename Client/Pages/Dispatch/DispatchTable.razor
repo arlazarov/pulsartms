@@ -1,12 +1,12 @@
 <div class="dispatch-table-wrap" role="region" aria-label="Dispatch load table" tabindex="0">
 <table class="dispatch-table">
     <caption class="visually-hidden">Dispatches on this page</caption>
-    <colgroup><col class="dispatch-table__column-load" /><col class="dispatch-table__column-truck" /><col class="dispatch-table__column-stop" span="2" /><col class="dispatch-table__column-miles" /><col class="dispatch-table__column-rate" /><col class="dispatch-table__column-rpm" span="2" /></colgroup>
-    <thead><tr><th scope="col">Load / status</th><th scope="col">Truck / driver</th><th scope="col">@(HasOtherStops ? "Pickup / other stops" : "Pickup")</th><th scope="col">Delivery</th><th scope="col">Distance</th><th scope="col" class="dispatch-table__money">Rate</th><th scope="col" class="dispatch-table__money">Loaded RPM</th><th scope="col" class="dispatch-table__money">Total RPM</th></tr></thead>
+    <colgroup><col class="dispatch-table__column-load" /><col class="dispatch-table__column-truck" /><col class="dispatch-table__column-stop" span="2" /><col class="dispatch-table__column-miles" /><col class="dispatch-table__column-money" /></colgroup>
+    <thead><tr><th scope="col">Load / status</th><th scope="col">Truck / driver</th><th scope="col">@(HasOtherStops ? "Pickup / other stops" : "Pickup")</th><th scope="col">Delivery</th><th scope="col">Distance</th><th scope="col" class="dispatch-table__money">Rate / RPM</th></tr></thead>
     @foreach (var day in _days)
     {
     <tbody class="dispatch-table__day-group">
-    <tr class="dispatch-table__day"><th colspan="8" scope="rowgroup">@day.Label</th></tr>
+    <tr class="dispatch-table__day"><th colspan="6" scope="rowgroup">@day.Label</th></tr>
     @foreach (var row in day.Rows)
     {
         var phase = Phase(row);
@@ -73,9 +73,15 @@
                 </dl>
                 <small>@row.Load.Stops.Count stops</small>
             </td>
-            <td class="dispatch-table__money"><strong>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency)</strong></td>
-            <td class="dispatch-table__money"><strong>@DispatchFinancialDisplay.Money(row.Load.LoadedRatePerMile, row.Load.Currency)</strong></td>
-            <td class="dispatch-table__money"><strong>@DispatchFinancialDisplay.Money(row.Load.TotalRatePerMile, row.Load.Currency)</strong></td>
+            @* The rate and both rates per mile in one column, named as the
+               distances are (the owner, September 27). *@
+            <td class="dispatch-table__money">
+                <dl class="dispatch-table__figures">
+                    <div><dt>Rate</dt><dd>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency)</dd></div>
+                    <div><dt>Loaded RPM</dt><dd>@DispatchFinancialDisplay.Money(row.Load.LoadedRatePerMile, row.Load.Currency)</dd></div>
+                    <div class="is-total"><dt>Total RPM</dt><dd>@DispatchFinancialDisplay.Money(row.Load.TotalRatePerMile, row.Load.Currency)</dd></div>
+                </dl>
+            </td>
         </tr>
     }
     </tbody>
@@ -83,7 +89,7 @@
     <tbody>
     @foreach (var truck in Trucks.Where(x => x.Dispatches.Count == 0))
     {
-        <tr @key="truck.Key"><td>No active load</td><td class="dispatch-table__equipment"><strong>Truck @DispatchBoardRow.Text(truck.TruckNumber)</strong><span>@DispatchBoardRow.Text(truck.DriverName)</span><small>Trailer @DispatchBoardRow.Text(truck.TrailerNumber)</small></td><td colspan="6">Ready for assignment</td></tr>
+        <tr @key="truck.Key"><td>No active load</td><td class="dispatch-table__equipment"><strong>Truck @DispatchBoardRow.Text(truck.TruckNumber)</strong><span>@DispatchBoardRow.Text(truck.DriverName)</span><small>Trailer @DispatchBoardRow.Text(truck.TrailerNumber)</small></td><td colspan="4">Ready for assignment</td></tr>
     }
     </tbody>
 </table>

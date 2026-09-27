@@ -37,8 +37,8 @@ test('Table differentiates current rows while leaving upcoming loads neutral and
     /text-align: right;[\s\S]*font-variant-numeric: tabular-nums;/,
   );
   assert.match(
-    rule('.dispatch-page .dispatch-table .dispatch-table__money strong'),
-    /font-size: var\(--type-body\);[\s\S]*font-weight: 500;/,
+    rule('.dispatch-page .dispatch-table .dispatch-table__figures dd'),
+    /white-space: nowrap;/,
   );
   // Loaded, empty and total named, a value never folding inside itself.
   assert.match(
@@ -64,10 +64,9 @@ test('Table allocates more width to stops and keeps identity and schedule readab
   const columns = {
     load: 13,
     truck: 15,
-    stop: 17,
-    miles: 14,
-    rate: 10,
-    rpm: 7,
+    stop: 18,
+    miles: 17,
+    money: 19,
   };
   for (const [name, width] of Object.entries(columns)) {
     assert.match(
@@ -80,8 +79,7 @@ test('Table allocates more width to stops and keeps identity and schedule readab
       columns.truck +
       columns.stop * 2 +
       columns.miles +
-      columns.rate +
-      columns.rpm * 2,
+      columns.money,
     100,
   );
   assert.ok(columns.stop * 2 > columns.load + columns.truck);

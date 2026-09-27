@@ -168,7 +168,7 @@ public sealed class DispatchTableInteractionTests
     Assert.Contains("2 pickups · 1 completed", table.Markup);
     Assert.Empty(table.FindAll("details"));
     Assert.Equal(
-      8,
+      6,
       table.Find("tr.dispatch-table__row").QuerySelectorAll("td").Length
     );
     load.Status = "completed";

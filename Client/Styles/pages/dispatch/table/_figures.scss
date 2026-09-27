@@ -26,9 +26,29 @@
   td.dispatch-table__money {
     color: ui.theme(text-secondary);
   }
-  .dispatch-table__money strong {
-    font-size: ui.fs(body);
-    font-weight: 500;
+  // The rate, then its loaded and total rates per mile, each named, the
+  // values aligned at the right.
+  .dispatch-table__figures {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: ui.pg(xs) ui.pg(sm);
+    margin: 0;
+    > div {
+      display: contents;
+    }
+    dt {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+      text-align: start;
+    }
+    dd {
+      margin: 0;
+      color: ui.theme(text);
+      white-space: nowrap;
+    }
+    .is-total dd {
+      font-weight: 700;
+    }
   }
   .dispatch-table__mileage {
     font-variant-numeric: tabular-nums;

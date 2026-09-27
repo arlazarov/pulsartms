@@ -81,7 +81,7 @@ public sealed class DispatchFinancialViewsTests
   }
 
   [Fact]
-  public void TableGroupsHistoricalTruckDriverAndKeepsEightFinancialColumns()
+  public void TableGroupsHistoricalTruckDriverAndKeepsTheMoneyInOneColumn()
   {
     using var context = new BunitContext();
     var load = Load();
@@ -111,14 +111,12 @@ public sealed class DispatchFinancialViewsTests
         "Pickup",
         "Delivery",
         "Distance",
-        "Rate",
-        "Loaded RPM",
-        "Total RPM",
+        "Rate / RPM",
       ],
       table.FindAll("thead th").Select(cell => cell.TextContent).ToArray()
     );
     Assert.Equal(
-      8,
+      6,
       table.Find("tr.dispatch-table__row").QuerySelectorAll("td").Length
     );
     var equipment = table.Find(".dispatch-table__equipment").TextContent;
@@ -146,10 +144,14 @@ public sealed class DispatchFinancialViewsTests
     );
     Assert.Equal(2, table.FindAll(".dispatch-table__stop-completed").Count);
     Assert.Equal(
-      ["1,000.00 CAD", "17.23 CAD", "4.56 CAD"],
+      ["Rate 1,000.00 CAD", "Loaded RPM 17.23 CAD", "Total RPM 4.56 CAD"],
       table
-        .FindAll("tbody .dispatch-table__money strong")
-        .Select(cell => cell.TextContent)
+        .FindAll("tbody .dispatch-table__figures > div")
+        .Select(cell =>
+          cell.QuerySelector("dt")!.TextContent
+          + " "
+          + cell.QuerySelector("dd")!.TextContent
+        )
         .ToArray()
     );
     Assert.Single(table.FindAll(".dispatch-table__map"));

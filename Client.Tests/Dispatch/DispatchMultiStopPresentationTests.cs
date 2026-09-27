@@ -134,7 +134,7 @@ public sealed class DispatchMultiStopPresentationTests
     );
     Assert.Empty(table.FindAll(".dispatch-table__stop-completed"));
     Assert.Equal(
-      8,
+      6,
       table.Find("tr.dispatch-table__row").QuerySelectorAll("td").Length
     );
     Assert.Equal(
