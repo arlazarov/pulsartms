@@ -81,7 +81,7 @@ public sealed class PlanningSummaryScopeTests
     Assert.Equal(cold.AssignmentRevision, scope?.AssignmentRevision ?? 0);
   }
 
-  // No reads: the inputs reader and route service are absent, and a cold
+  // No reads: the inputs reader, route and ETA services are absent; a cold
   // summary is built from the inputs it was handed.
   private static PlanningSummaryReader Reader() =>
     new(
@@ -89,7 +89,8 @@ public sealed class PlanningSummaryScopeTests
       null!,
       null!,
       new TestCompany(),
-      TestCache.Create()
+      TestCache.Create(),
+      null!
     );
 
   private static TruckPlanningInputs Inputs(DispatchResponse? current)

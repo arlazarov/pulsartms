@@ -1117,7 +1117,8 @@ public sealed class TruckRoutePreviewTests
       fixture.Services.PlanningInputs,
       fixture.Services.Routes,
       new TestCompany(),
-      fixture.Services.Reads
+      fixture.Services.Reads,
+      fixture.Services.Eta
     );
 
   // Marks the saved plan's stops passed. With invalidateInputs false the

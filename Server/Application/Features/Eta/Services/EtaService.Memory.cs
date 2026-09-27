@@ -134,6 +134,38 @@ public sealed partial class EtaService
     return null;
   }
 
+  // The forecast a display shows for a plan it already holds - a prepared
+  // planning summary - read with no side effects: no demand is marked, no
+  // worker woken, nothing dropped or counted, no scope registered. It
+  // answers as GetCached does from the same keys, which name the saved
+  // plan's identity and version, its tracking, stops and progress - never
+  // its display geometry - so a display-trimmed plan reads the same: the
+  // current forecast, an older one for the same work marked updating, or
+  // none for other work. The worker and the map's own reads keep deciding
+  // refreshes (stage 4c).
+  public DispatchEta? PeekForDisplay(RoutePlanningState state)
+  {
+    if (
+      state.Plan is not { } plan
+      || !memory.Results.TryGetValue(
+        plan.ExecutionLegId ?? plan.DispatchId,
+        out var entry
+      )
+      || entry.WorkKey is not { } work
+      || work != WorkKey(state)
+    )
+      return null;
+    return
+      entry.RouteKey == RouteKey(state)
+      && !entry.Superseded
+      && entry.Value.ValidUntil > DateTime.UtcNow
+      ? entry.Value
+      : entry.Value with
+      {
+        RouteUpdatePending = true,
+      };
+  }
+
   // Why a map read found a forecast or not, counted for
   // `GET /api/diagnostics/stages` (the open truck 11007 ETA incident): a
   // count per answer, no log line per poll and no change to what is shown.

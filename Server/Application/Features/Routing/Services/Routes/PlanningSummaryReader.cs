@@ -1,4 +1,5 @@
 using Application.Caching;
+using Application.Features.Eta.Services;
 using Domain.Models.Execution;
 using Domain.Models.Routing;
 using Domain.Rules.Routing;
@@ -10,7 +11,8 @@ public sealed class PlanningSummaryReader(
   TruckPlanningInputsReader inputs,
   RoutePlanningService routes,
   ICurrentCompany company,
-  ReadCache reads
+  ReadCache reads,
+  EtaService eta
 )
 {
   // The work a summary without its own result speaks for: the dispatch it
@@ -87,6 +89,17 @@ public sealed class PlanningSummaryReader(
     return result with
     {
       Hos = work.Hos,
+      // The forecast as it stands now, not as it stood when the summary
+      // was prepared up to half a minute ago: read from memory without
+      // side effects, against the prepared plan's own identity. Without a
+      // plan there is no identity to read against; the prepared answer
+      // stands.
+      State = result.State is { Plan: not null } state
+        ? state with
+        {
+          Eta = eta.PeekForDisplay(state),
+        }
+        : result.State,
       WorkConflicts = WorkPlacements.Conflicts(work),
       Message =
         result.IsRefreshing && result.Message is null

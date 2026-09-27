@@ -1,12 +1,14 @@
 using System.Data.Common;
 using Application;
 using Application.Caching;
+using Application.Features.Eta.Services;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
+using Domain.Models.Eta;
 using Domain.Models.Routing;
 using Domain.Rules;
 using Domain.Rules.Routing;
@@ -132,6 +134,39 @@ public sealed class PlanningSummaryRefreshTests
     Assert.Equal(f.Next.Id, after.DispatchId);
     Assert.True(after.IsRefreshing);
     Assert.Equal(f.Signature(), f.Cache.Take()?.Signature);
+  }
+
+  // Stage 4c: a forecast published after the summary was prepared shows at
+  // once, read without side effects: no capture, no new preparation, no
+  // demand marked on the forecast.
+  [Fact]
+  public async Task APreparedSummaryShowsTheForecastPublishedSinceWithoutWork()
+  {
+    await using var f = await Fixture.CreateAsync();
+    f.Summary();
+    await f.PrepareAsync();
+    var prepared = f.Summary();
+    Assert.Null(prepared.State!.Eta);
+    var eta = f.Root.GetRequiredService<EtaService>();
+    var memory = f.Root.GetRequiredService<EtaMemory>();
+    var forecast = new DispatchEta(
+      DateTime.UtcNow,
+      DateTime.UtcNow.AddMinutes(10),
+      [],
+      null,
+      []
+    );
+    eta.Record(prepared.State, "signature", forecast);
+    var viewed = memory.Viewed.ToArray();
+
+    f.Probe.Start();
+    var shown = f.Summary();
+    f.Probe.Stop();
+
+    Assert.Equal(forecast, shown.State!.Eta);
+    Assert.Equal(0, f.Probe.Captures);
+    Assert.Null(f.Cache.Take());
+    Assert.Equal(viewed, memory.Viewed.ToArray());
   }
 
   // Planning refuses the current work. The refusal speaks for it - not for
