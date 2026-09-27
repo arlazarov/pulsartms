@@ -1,4 +1,6 @@
 using System.Runtime.ExceptionServices;
+using Application.Caching;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Application.Interfaces;
 
@@ -26,13 +28,14 @@ public static class CompanyPasses
       await pass(ct);
       return;
     }
+    var reads = services.GetRequiredService<IReadCache>();
     // One carrier's failure does not cost the carriers after it their turn.
     // The failure still reaches the caller, after every carrier has been
     // served, so it is logged once at the job's own boundary; one failure is
     // rethrown as it was, so a caller's filters (planning busy, for one)
     // still recognise it.
     List<ExceptionDispatchInfo>? failures = null;
-    foreach (var company in await roster.ActiveAsync(ct))
+    foreach (var company in await ActiveAsync(roster, reads, ct))
     {
       ct.ThrowIfCancellationRequested();
       using var serving = current.As(company);
@@ -54,4 +57,24 @@ public static class CompanyPasses
     if (failures is { Count: > 1 })
       throw new AggregateException(failures.Select(x => x.SourceException));
   }
+
+  // How long a pass may go on using the carriers it read. Every clock-driven
+  // loop asks each time it wakes, some every second, and the list read
+  // uncached was about 270 scans a minute of a two-row table. A new carrier
+  // is served, and a retired one left, within this lifetime; each carrier's
+  // own schedule is still checked inside its turn.
+  internal static readonly TimeSpan RosterLifetime = TimeSpan.FromSeconds(30);
+
+  private static Task<Guid[]> ActiveAsync(
+    ICompanyRoster roster,
+    IReadCache reads,
+    CancellationToken ct
+  ) =>
+    reads.GetAsync<Guid[]>(
+      ReadGroups.Companies,
+      "active",
+      async () => [.. await roster.ActiveAsync(ct)],
+      RosterLifetime,
+      ct
+    );
 }

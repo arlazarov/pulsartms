@@ -15,6 +15,11 @@ public static class ReadGroups
   public const string Settings = "settings";
   public const string DriverGroups = "driver-groups";
 
+  // The active carriers. No command adds or retires one (a migration or an
+  // operator does), so a short lifetime, not invalidation, is how a change
+  // is noticed.
+  public const string Companies = "companies";
+
   // What a change to a load's work - its stops, their times or order, its
   // truck or its execution - makes stale.
   public static readonly IReadOnlyList<string> Work =

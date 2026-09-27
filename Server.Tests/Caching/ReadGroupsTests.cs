@@ -21,6 +21,7 @@ public sealed class ReadGroupsTests
         "fleet-catalog",
         "settings",
         "driver-groups",
+        "companies",
       ],
       new[]
       {
@@ -32,6 +33,7 @@ public sealed class ReadGroupsTests
         ReadGroups.FleetCatalog,
         ReadGroups.Settings,
         ReadGroups.DriverGroups,
+        ReadGroups.Companies,
       }
     );
     Assert.Equal(

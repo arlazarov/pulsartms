@@ -7,13 +7,15 @@ using Application.Interfaces;
 using Application.Models;
 using Domain.Entities.Dispatch;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Internal;
 using Microsoft.Extensions.Options;
 
 namespace Application.Caching;
 
 public sealed partial class ReadCache(
   IOptions<SynchronizationOptions> options,
-  ICurrentCompany? companies
+  ICurrentCompany? companies,
+  TimeProvider? time = null
 ) : IReadCache, IDisposable, ICacheMemorySource
 {
   public IReadOnlyList<CacheMemorySnapshot> ReadMemory()
@@ -41,8 +43,15 @@ public sealed partial class ReadCache(
     {
       TrackStatistics = true,
       SizeLimit = CacheBudgets.Reads,
+      // Lifetimes run on the host's clock, so a test can pass one.
+      Clock = new HostClock(time ?? TimeProvider.System),
     }
   );
+
+  private sealed class HostClock(TimeProvider time) : ISystemClock
+  {
+    public DateTimeOffset UtcNow => time.GetUtcNow();
+  }
 
   private sealed record Cached(
     byte[]? Json,

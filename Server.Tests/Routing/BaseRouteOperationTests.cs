@@ -1001,6 +1001,7 @@ public sealed class BaseRouteOperationTests
         services.AddSingleton<ICompanyRoster, Roster>();
       }
       services.AddSingleton(reads);
+      services.AddSingleton<IReadCache>(reads);
       services.AddScoped(provider => new AppDbContext(
         new DbContextOptionsBuilder<AppDbContext>()
           .UseSqlite(connection)
