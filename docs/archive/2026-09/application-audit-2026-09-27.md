@@ -1028,6 +1028,118 @@ failed on the new worktree's missing Client packages and is marked.
     plans. It changes the mechanism Root accepted.
   Owner decision: Root. Neither is made until chosen.
 
+- **F24 design: schema compatibility.** Re-read (read-only review of all
+  77 migrations, verified at the guards and the initializer). Two
+  corrections to the finding: 22 migrations follow `RecordRouteMovement`
+  (not 17), none with a guarded `Down`; and a rollback does not reach
+  `IsolateCarrierIntegrationCredentials` first - `Down`s run newest
+  first, so `RecordRouteMovement` and `StoreRouteChunks` raise before
+  it, but only after the 22 newer `Down`s have run, and EF may commit
+  those steps (`release.md:32-33`). Facts: migration runs only in
+  `DatabaseInitializer` at instance start when `Database:ApplyMigrations`
+  is true (production), and the last release applied migration 74 by
+  script because a revision without traffic never starts; its comment
+  "this revision migrates before it is given any traffic" is therefore
+  not what happens. Of the last 22 `Up`s, two are breaking for the
+  previous binary (`AddConversationReadRevisions`,
+  `AddConversationArrivalSequence` drop columns); the rest are additive
+  or widen keys. Nothing at runtime compares the binary with the schema.
+  Constraints: the previous revision must keep serving on an additive
+  newer schema (it serves until drained and is the rollback target),
+  migrations can be applied by script outside the binary, and local,
+  restore and cutover runs use `ApplyMigrations=false`.
+  Design, owner persistence (Infrastructure): each migration that the
+  previous binary cannot serve raises a stored floor - one row naming the
+  oldest migration a binary must know to serve this schema, written by
+  that migration's `Up`; additive migrations leave it. Every binary
+  reads it at start, whatever `ApplyMigrations` says, and refuses to
+  start (and reports not ready) if its own newest migration is older
+  than the floor; the newer binary knows its own migrations, the older
+  one learns only the floor, which is why the answer lives in the
+  database. An architecture test requires every migration after the
+  floor's introduction to be classified, compatible or floor-raising,
+  and the reset inventory's count stays the release check. `Down`s: the
+  documented policy is forward repair; make it executable by guarding
+  every data-dropping `Down` of a carrier table the way the two route
+  migrations do (raise if rows exist), starting with messaging, files,
+  driver groups and approved templates, so a mistaken downgrade stops
+  before it drops a customer's messages rather than after. Adoption:
+  its first run failing stops every start and it is skipped when
+  migration is off; with more than one carrier it no longer runs at all.
+  Make its first run report instead of failing the start, and run it
+  whatever `ApplyMigrations` says while one carrier exists. Tests: a
+  binary older than the floor refuses to start; an additive migration
+  leaves an older binary serving; each guarded `Down` raises over a row.
+- **F25 design: one owner for fuel-plan cost.** Re-read (read-only
+  review, verified at each copy): seven copies, not five - the finding's
+  five plus the chain comparison (`FuelChainComparison.cs:108,173`) and
+  the schedule-delay charge. All take the same per-gallon USD prices
+  (IFTA, discount and currency are applied once, in
+  `FuelRegionGrid.Prices`); they differ in terms and guards:
+  - access time: the optimizer charges each stop's stored
+    `DetourMinutes` (clamped at 0) and not the initial access; the chain
+    comparison adds the initial access and the schedule delay to the
+    winner; the manual replay derives minutes from access miles and
+    charges the initial access; the projection charges stored minutes
+    unclamped plus the current GPS access, and drops the delay;
+  - price day: automatic plans use arrival-date prices, manual edits
+    today's;
+  - invalid prices: the optimizer drops a candidate silently, the replay
+    reports it;
+  - future fuel: never repriced - price refreshes (`FuelPriceMateriality`)
+    move purchase costs only; its test is per stop, while choosing
+    compares totals;
+  - the arrival floor, a validity rule, not a cost: the replay requires
+    `Max(Reserve, Minimum)`, the projection `Minimum ?? Reserve`, so a
+    policy whose minimum is below the reserve passes projection and
+    fails replay.
+  No test compares the optimizer's cost with the replay's or the
+  projection's for the same stops; one compares replay with projection,
+  with symmetric access only. Design, owner fuel planning (Domain rules):
+  a `FuelPlanCost` rule taking explicit inputs - per stop gallons, cash
+  and economic price per gallon and access minutes; the initial-access
+  minutes; stop cost and driver hourly cost; the arrival target,
+  arriving gallons and replacement price; an optional delay charge - and
+  returning each component (purchase, stops, access time, delay, future
+  fuel), so a caller chooses its minutes source visibly instead of in a
+  private formula. Steps: first pin each copy's current numbers in
+  characterization tests; then route the copies through the rule one at
+  a time with no change in any number; only then change the
+  differences, each as its own decision with its own test - they change
+  figures dispatchers see: one minutes source, the initial access, the
+  delay in projections, the arrival floor, and whether a price refresh
+  moves the future-fuel value. Owner decisions before the last step:
+  fuel planning with the owner. Noted: `FuelCheckedRouteSearch` appears
+  to be reachable only from tests (unconfirmed).
+- **F26 design: the shared memory cache.** Re-read (read-only review,
+  verified at the geocoder): eleven writes in eight files, none sizing
+  its entry. One family is unbounded: stop geocodes
+  (`GoogleAddressGeocoder.cs:37,127`), keyed by the address across
+  carriers, twelve hours for a success and up to an hour for a failure,
+  fed by the load import, the TomTom provider and a user endpoint that
+  accepts ~900 characters of address under the global rate limit only;
+  each entry ~1-2 KB with its key. Everything else is bounded by carrier
+  count, active loads or request rate and lives 5 s to 1 h - the largest
+  are the fleet route preview (up to 8 MiB per carrier, 30 s) and the
+  import snapshot (up to ~2.5 MiB per carrier). The diagnostics count
+  entries only; nothing is in the 80 MiB budget. Design, owner the
+  geocoder (Infrastructure): move the geocode entries into their own
+  bounded memory - a private `MemoryCache` with a byte `SizeLimit`
+  (4 MiB proposed, sized per entry from key and value), reported through
+  `ICacheMemorySource` as `stop-geocodes` and added to `CacheBudgets` -
+  the pattern `ReadCache` and `SamsaraHosHistoryCache` already follow. A
+  geocode dropped early is only looked up again: resolved points are
+  stored on the stop, so this cache never holds the only copy. No
+  `SizeLimit` on the shared cache itself: when full it would refuse
+  entries whose loss changes behaviour (a camera request answers
+  "expired", an import snapshot forces a full reconciliation) to make
+  room for geocodes. Tests: many distinct addresses stay within the
+  bound; a failure entry still expires at its retry time; the report
+  shows bytes. Noted beside it: the geocoder's static gate serializes
+  every carrier's lookups (as D3's did for hours), and
+  `FleetTelemetryCache` keeps one never-evicted response per carrier -
+  bounded by carriers, reported for completeness.
+
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done
@@ -1054,8 +1166,7 @@ failed on the new worktree's missing Client packages and is marked.
   referrer and API restrictions are confirmed in the console.
 - **Payload sizes of locations, HOS and planning.** Owner: Client (F6).
   Done when measured in a browser trace.
-- **Reported findings not re-read (F10 scan, F12, F15, F19,
-  F24-F27).** Owner: this audit. Done when each is re-read, or fixed
+- **Reported findings not re-read (F10 scan, F12, F15, F19, F27).** Owner: this audit. Done when each is re-read, or fixed
   with its test.
 - **Role model (F18).** Owner: the owner. Done when a limited role is
   chosen or explicitly declined.
