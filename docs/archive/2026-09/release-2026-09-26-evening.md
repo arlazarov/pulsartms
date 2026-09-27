@@ -590,6 +590,39 @@ the cost evidence and the gate. No migration (73), no DTO change.
   debt for the application audit; the production warm/cold ratio is not
   measured.
 
+## Frontend 76653109 (September 27, 10:47 UTC)
+
+The owner asked for four marks on the released screens to be fixed and
+published: the Dispatch clocks folded Cycle onto a second line behind a
+hairline; the Table's day headings were nearly invisible; Papers put
+the price and both rates per mile on the miles' line; the truck card's
+"ETA" and "At stop" ran apart. Commits `3b75f79e` (clocks, days, Papers)
+and `76653109` (ETA column), on `dbfec037`; Client styles and style tests
+only. No server, contract, migration or deployment change; the API
+(`amftms-api-b-fd2d5f25-…`) and the database were not touched, so no
+backup was needed.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a clean
+  detached worktree with the local settings file copied in (10:41-10:47
+  UTC), exit 0: JavaScript 665, Client 1,255, Server 3,791; offline UI
+  smoke without failures (`browser-ui-YATcyD`); messaging tabs smoke
+  without errors. A first run on `3b75f79e` was stopped mid-gate to add
+  the ETA fix; nothing from it was published. PostgreSQL execution
+  checks were not run.
+- **Artifact:** `release-TDTuIV`, 285 files, pinned in the main
+  checkout's `artifacts/managed/release-TDTuIV` with the gate log and
+  the smoke report under `gate/`.
+- **Live:** Hosting live channel released 10:47:35 UTC. `index.html`
+  (`c90a085c68496cc8fdf8c9f72c029c04d014d8d1ae518db1f65a359e1eedeec9`)
+  and `css/main.css?v=54904b0f7353a2c4` are byte-identical to the
+  artifact; entry HTML answers `no-cache`. Rollback target: the
+  previous release, `release-GTsl5s`.
+- **Seen before release:** each fix in a static page built from the
+  compiled stylesheet (clocks at 1100 and 800 px on one line; day
+  bands; money under the miles; ETA beside its label without a booking,
+  aligned with Appointment when there is one). Not yet seen on live
+  data.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
