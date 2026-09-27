@@ -29,7 +29,8 @@ public partial class SyncDispatchesCommandHandler(
   ReadCache reads,
   IMemoryCache memory,
   RoutePreparationQueue preparation,
-  ICurrentCompany companies
+  ICurrentCompany companies,
+  IDispatchReadTickets tickets
 ) : IRequestHandler<SyncDispatchesCommand, RequestResponse<int>>
 {
   private sealed record LoadSnapshot(string Signature, DateTime ReconciledAt);
@@ -81,6 +82,14 @@ public partial class SyncDispatchesCommandHandler(
     var memoryKey = FleetSyncKeys.DispatchSnapshot(companies.Id, providerKey);
     var catalogGeneration = reads.Generation(ReadGroups.FleetCatalog);
     var dispatchGeneration = reads.Generation(ReadGroups.Dispatch);
+    // Taken before the provider is read, so a pass that began reading later
+    // holds a larger ticket; the transaction below writes a load only for
+    // a ticket larger than the one that last wrote it (audit F21). Another
+    // process's pass - the leased loop, a manual sync on another instance
+    // or during a revision change, the history tool - can commit a newer
+    // reading while this one is still reading, and the provider carries no
+    // version to tell.
+    var ticket = await tickets.TakeAsync(providerKey, cancellationToken);
     IReadOnlyList<ExternalDispatch> allSources;
     using (PerformanceStages.Start("dispatch-sync", "provider-wait"))
       allSources = await dispatchProvider.GetDispatchesAsync(cancellationToken);
@@ -177,6 +186,15 @@ public partial class SyncDispatchesCommandHandler(
         x.Provider == providerKey && externalIds.Contains(x.ExternalId)
       )
       .ToListAsync(cancellationToken);
+    // Written since this pass began reading, by a pass that began reading
+    // after it: this older reading waits for the next pass instead.
+    var deferred = links
+      .Where(x => x.ReadTicket > ticket)
+      .Select(x => x.ExternalId)
+      .ToHashSet(StringComparer.Ordinal);
+    PerformanceStages.Count("dispatch-sync", "deferred-loads", deferred.Count);
+    sources = [.. sources.Where(x => !deferred.Contains(x.ExternalId))];
+    links = [.. links.Where(x => !deferred.Contains(x.ExternalId))];
     var dispatches = links.ToDictionary(x => x.ExternalId, x => x.Dispatch);
     var newSources = sources
       .Where(x => !dispatches.ContainsKey(x.ExternalId))
@@ -224,6 +242,21 @@ public partial class SyncDispatchesCommandHandler(
       cancellationToken
     );
     var changed = await dbContext.SaveChangesAsync(cancellationToken);
+    // Every load this pass wrote, changed or not, now carries its ticket:
+    // a reading that began before this one, between the last write and
+    // this pass, must not replace what this pass confirmed. Not a change of
+    // the load, so it is not counted as one.
+    var applied = sources.Select(x => x.ExternalId).ToArray();
+    await dbContext
+      .DispatchSourceLinks.Where(x =>
+        x.Provider == providerKey
+        && applied.Contains(x.ExternalId)
+        && x.ReadTicket < ticket
+      )
+      .ExecuteUpdateAsync(
+        setters => setters.SetProperty(x => x.ReadTicket, ticket),
+        cancellationToken
+      );
     var initial = await ExecutionImportAcceptance.ApplyAsync(
       dbContext,
       links,
@@ -294,6 +327,8 @@ public partial class SyncDispatchesCommandHandler(
         catalogGeneration,
         reads.Generation(ReadGroups.Dispatch),
         fingerprints
+          // A deferred load is not reconciled: the next pass reads it again.
+          .Where(x => !deferred.Contains(x.Key))
           .Take(8192)
           .ToDictionary(
             x => x.Key,

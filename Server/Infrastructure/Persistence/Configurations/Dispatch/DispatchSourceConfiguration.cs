@@ -32,6 +32,16 @@ public sealed class DispatchSourceConfiguration
   }
 }
 
+public sealed class DispatchImportReadConfiguration
+  : IEntityTypeConfiguration<DispatchImportRead>
+{
+  public void Configure(EntityTypeBuilder<DispatchImportRead> builder)
+  {
+    builder.HasKey(x => new { x.CompanyId, x.Provider });
+    builder.Property(x => x.Provider).HasMaxLength(100);
+  }
+}
+
 public sealed class DispatchNumberCounterConfiguration
   : IEntityTypeConfiguration<DispatchNumberCounter>
 {

@@ -440,7 +440,8 @@ public class SynchronizationTests
       reads,
       memory,
       new(Options.Create(new RoutePreparationOptions()), TimeProvider.System),
-      new TestCompany()
+      new TestCompany(),
+      new DispatchReadTicketStore(fixture.Db)
     );
     await handler.Handle(new(), default);
     var load = await fixture.Db.Dispatches.Include(x => x.Stops).SingleAsync();
@@ -578,7 +579,8 @@ public class SynchronizationTests
       reads,
       memory,
       new(Options.Create(new RoutePreparationOptions()), TimeProvider.System),
-      new TestCompany()
+      new TestCompany(),
+      new DispatchReadTicketStore(db)
     );
     Task<RequestResponse<int>> Import() => handler.Handle(new(), default);
     return new TruckTrailerRefreshBehavior<

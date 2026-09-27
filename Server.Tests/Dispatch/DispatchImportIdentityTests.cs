@@ -2,6 +2,7 @@ using Application.Features.Dispatch.Commands.SyncDispatche;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Options;
 using Domain.Entities.Dispatch;
+using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Load = Domain.Entities.Dispatch.Dispatch;
@@ -118,7 +119,8 @@ public sealed class DispatchImportIdentityTests
       f.Reads,
       f.Memory,
       TestCache.Preparation(),
-      new TestCompany()
+      new TestCompany(),
+      new DispatchReadTicketStore(f.Db)
     );
     Assert.Equal(409, (await handler.Handle(new(), default)).StatusCode);
     Assert.False(await f.Db.Dispatches.AnyAsync());

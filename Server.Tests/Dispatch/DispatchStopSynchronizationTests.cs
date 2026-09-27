@@ -48,7 +48,8 @@ public sealed class DispatchStopSynchronizationTests
       reads,
       memory,
       preparation,
-      new TestCompany()
+      new TestCompany(),
+      new DispatchReadTicketStore(db)
     );
     await handler.Handle(new(), default);
     var saved = await db
@@ -148,7 +149,8 @@ public sealed class DispatchStopSynchronizationTests
       reads,
       memory,
       preparation,
-      new TestCompany()
+      new TestCompany(),
+      new DispatchReadTicketStore(db)
     );
     await handler.Handle(new(), default);
     var originalIds = await db
@@ -325,7 +327,8 @@ public sealed class DispatchStopSynchronizationTests
       reads,
       memory,
       TestCache.Preparation(),
-      new TestCompany()
+      new TestCompany(),
+      new DispatchReadTicketStore(db)
     );
     Assert.True((await handler.Handle(new(), default)).Success);
     var old = await db

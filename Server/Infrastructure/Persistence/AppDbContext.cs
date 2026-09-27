@@ -139,6 +139,8 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
   public DbSet<DispatchStopCompletionEvent> DispatchStopCompletionEvents =>
     Set<DispatchStopCompletionEvent>();
   public DbSet<DispatchSettings> DispatchSettings => Set<DispatchSettings>();
+  public DbSet<DispatchImportRead> DispatchImportReads =>
+    Set<DispatchImportRead>();
   public DbSet<DispatchSourceLink> DispatchSourceLinks =>
     Set<DispatchSourceLink>();
   public DbSet<DispatchNumberCounter> DispatchNumberCounters =>

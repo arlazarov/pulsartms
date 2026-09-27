@@ -898,6 +898,51 @@ failed on the new worktree's missing Client packages and is marked.
   Client 321 (diagnostic-f6E4NN, before the one-line test fix). One
   shared-cache entry fewer for F26.
 
+- **F21, an import restoring older data.** Verified: the provider is
+  read before the pass's serializable transaction and the source has no
+  version, so a pass whose reading is older can begin its transaction
+  after a newer pass committed and write the older reading back without
+  a conflict. Within one process the dispatch gate orders passes; across
+  processes (the leased loop, a manual sync on another instance or
+  during a revision change, the history tool) nothing did. Red on the
+  old handler (diagnostic-qM6cbz, with a clock-based first draft that
+  Root rejected: it assumed clock order). Now the database orders
+  readings: each pass takes a read ticket (`DispatchImportReads`, an
+  upsert committed before the provider is read, per carrier and
+  provider); a load keeps the ticket of the pass that last wrote it
+  (`DispatchSourceLink.ReadTicket`, migration 75
+  `RecordDispatchReadTickets`), and a pass writes, inside its
+  serializable transaction, only loads whose ticket is smaller than its
+  own - a concurrent commit is a serialization conflict and a retry. A
+  deferred load is neither written nor marked reconciled; the next pass
+  reads it again. Every load a pass applies takes its ticket, changed
+  or not. No clock is compared, and no two passes share a ticket.
+  Tests (`DispatchSyncOrderingTests`): a reading begun later and
+  committed during this one defers it, also in a process that never saw
+  the load; a reading begun earlier is replaced, whatever time it
+  stamped (a clock an hour ahead too); a pass that changes nothing
+  stamps its ticket; tickets grow and are never shared - on PostgreSQL
+  too, eight taken at once (diagnostic-LOb3Jj). Green diagnostic-8rxi3H;
+  mutations of the deferral, the stamp and the reconciliation all fail
+  (diagnostic-ojteeE; an earlier run let the last survive until a
+  fresh-process case was added, diagnostic-EPWsQT). Costs: one ticket
+  statement per pass, including a poll that finds nothing new (once a
+  minute per carrier; the identical-replay test now pins exactly that
+  statement), and one update per pass that applies loads. Limits: a
+  load this process skips as unchanged since its own last pass is not
+  stamped (the half-hourly repair pass stamps it); during a revision
+  change a previous binary writes without tickets; the history tool's
+  reading counts as current, by design. Migration additive (a column
+  with default 0 and a table), applied before the API that writes them;
+  the reset inventory names the table and schema 75. Runtime detection:
+  the `deferred-loads` stage count; the defect leaves no row to audit.
+- **F28 - P2: load numbers share one counter row across carriers.**
+  Reported from the model snapshot, not reproduced: `DispatchNumberCounters`
+  is keyed by `Id` alone while each row belongs to a carrier, so a second
+  carrier's first counter row (`Id` "loads") would collide with the first
+  carrier's. One carrier today; owner Dispatch, before a second carrier
+  imports loads.
+
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done
@@ -924,8 +969,8 @@ failed on the new worktree's missing Client packages and is marked.
   referrer and API restrictions are confirmed in the console.
 - **Payload sizes of locations, HOS and planning.** Owner: Client (F6).
   Done when measured in a browser trace.
-- **Reported findings not re-read (F10 scan, F12, F15, F19, F21,
-  F24-F27).** Owner: this audit. Done when each is re-read, or fixed
+- **Reported findings not re-read (F10 scan, F12, F15, F19,
+  F24-F28).** Owner: this audit. Done when each is re-read, or fixed
   with its test.
 - **Role model (F18).** Owner: the owner. Done when a limited role is
   chosen or explicitly declined.

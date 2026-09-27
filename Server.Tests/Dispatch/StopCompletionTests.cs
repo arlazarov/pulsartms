@@ -95,7 +95,8 @@ public sealed class StopCompletionTests
       f.Reads,
       memory,
       f.Queue,
-      new TestCompany()
+      new TestCompany(),
+      new DispatchReadTicketStore(f.Db)
     );
     await sync.Handle(new(), default);
     Assert.NotNull(f.Load.Stops[0].ManualCompletedAt);

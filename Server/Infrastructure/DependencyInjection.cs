@@ -182,6 +182,7 @@ public static class DependencyInjection
     services.AddScoped<IExecutionPlanningStore, ExecutionPlanningStore>();
     services.AddScoped<IPlanningRefreshStore, PlanningRefreshStore>();
     services.AddScoped<ISourceRoadStore, SourceRoadStore>();
+    services.AddScoped<IDispatchReadTickets, DispatchReadTicketStore>();
     services.AddScoped<IExecutionReadScope, ExecutionReadScope>();
     services.AddScoped<IPlanningPublicationScope, PlanningPublicationScope>();
     services.AddHostedService<ApplicationWorker<IExecutionPlanningOperation>>();
