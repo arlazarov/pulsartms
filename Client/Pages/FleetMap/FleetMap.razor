@@ -533,17 +533,20 @@
                     <ActionIcon Kind="location" />
                     <div>
                         <dt>Location</dt>
-                        <dd>@(string.IsNullOrWhiteSpace(panelTruck.FormattedLocation)
-                            ? "—" : panelTruck.FormattedLocation)</dd>
+                        <dd title="@panelTruck.FormattedLocation"
+                            >@LocationSummary(panelTruck.FormattedLocation)</dd>
                     </div>
                     @if (!string.IsNullOrWhiteSpace(panelTruck.FormattedLocation))
                     {
                         <button type="button" class="fleet-truck-facts__copy"
                                 title="Copy location" aria-label="Copy location"
                                 @onclick="() => CopyLocationAsync(panelTruck.FormattedLocation)">
-                            <ActionIcon Kind="@(_locationCopy == "Copied" ? "check" : "copy")" />
+                            <ActionIcon Kind="@(_locationCopy == "Copied"
+                                && _locationCopyTruck == panelTruck.TruckId
+                                ? "check" : "copy")" />
                         </button>
-                        @if (_locationCopy is { } copyStatus)
+                        @if (_locationCopy is { } copyStatus
+                            && _locationCopyTruck == panelTruck.TruckId)
                         {
                             <span class="fleet-truck-facts__copied" role="status">@copyStatus</span>
                         }

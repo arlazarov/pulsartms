@@ -8,6 +8,7 @@ using System.Threading.Channels;
 using AngleSharp.Dom;
 using Bunit;
 using Client.Models;
+using Client.Models.DTO;
 using Client.Models.DTO.Dispatch;
 using Client.Models.DTO.Fleet;
 using Client.Models.DTO.Planning;
@@ -2955,6 +2956,181 @@ public sealed class FleetMapComponentTests
     Assert.Equal(1, Drawn());
   }
 
+  // The panel names the truck's locality; the whole address, street and
+  // all, is its title and what is copied (the owner, September 27).
+  [Fact]
+  public async Task ThePanelShowsTheLocalityAndCopiesTheWholeAddress()
+  {
+    const string address =
+      "8205 Parkhill Drive, Spring Township, PA 17072, USA";
+    using var fixture = new Fixture { Location = address };
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Single(component.FindAll(".fleet-truck-list__row"))
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckId.ToString())
+    );
+    var shown = component.Find(".fleet-truck-facts__fact--location dd");
+    Assert.Equal("Spring Township, PA 17072, USA", shown.TextContent.Trim());
+    Assert.Equal(address, shown.GetAttribute("title"));
+    await component.InvokeAsync(
+      () => component.Find(".fleet-truck-facts__copy").Click()
+    );
+    var copied = fixture.Js.Calls.Last(call =>
+      call.Name == "navigator.clipboard.writeText"
+    );
+    Assert.Equal(address, copied.Args![0]);
+    component.WaitForAssertion(
+      () =>
+        Assert.Equal(
+          "Copied",
+          component.Find(".fleet-truck-facts__copied").TextContent
+        )
+    );
+  }
+
+  private static DispatchResponse ChainLoad(
+    Guid id,
+    int number,
+    string phase,
+    params Guid[] stops
+  ) =>
+    new()
+    {
+      Id = id,
+      LoadNumber = number,
+      WorkPhase = phase,
+      Stops = stops
+        .Select(
+          (stop, i) =>
+            new DispatchStopResponse
+            {
+              Id = stop,
+              Sequence = i + 1,
+              Job = i == 0 ? "Pickup" : "Delivery",
+              City = "Nashville",
+              Province = "TN",
+            }
+        )
+        .ToList(),
+    };
+
+  // A chain marker opens its own stop or none: a later load's stop the
+  // drawn road does not have never opens another one in its place.
+  [Fact]
+  public async Task AChainMarkerOpensItsExactStopOrNone()
+  {
+    using var fixture = new SelectionFixture();
+    var future = fixture.FutureLoad(202);
+    var current = fixture.Plan(fixture.TruckA).DispatchId!.Value;
+    fixture.Chain =
+    [
+      ChainLoad(current, 1358, "current", Guid.NewGuid(), Guid.NewGuid()),
+      ChainLoad(future.Id, 202, "next", Guid.NewGuid(), future.Stops[1].Id),
+    ];
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, x => x.Name == "setTrucks")
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
+    );
+    var toggle = component.InvokeAsync(
+      () =>
+        Toggle(component, "Next loads")
+          .ChangeAsync(new ChangeEventArgs { Value = true })
+    );
+    (await fixture.ReadNextAsync()).Reply("future", [future]);
+    await toggle;
+    component.WaitForAssertion(
+      () =>
+        Assert.Equal(
+          4,
+          component.FindAll("button.fleet-trip-chain__stop").Count
+        )
+    );
+    // The later load's pickup is not on its drawn road: nothing opens.
+    await component.InvokeAsync(
+      () => component.FindAll("button.fleet-trip-chain__stop")[2].Click()
+    );
+    Assert.DoesNotContain(fixture.Js.Calls, x => x.Name == "selectNextStop");
+    // Its delivery is: that exact stop opens.
+    await component.InvokeAsync(
+      () => component.FindAll("button.fleet-trip-chain__stop")[3].Click()
+    );
+    var opened = fixture.Js.Calls.Last(x => x.Name == "selectNextStop");
+    Assert.Equal([future.Id.ToString(), 1, null], opened.Args!);
+  }
+
+  // A stop chosen while the map is still busy with it, then another truck:
+  // the old choice stops where it waited and opens nothing.
+  [Fact]
+  public async Task AnOvertakenChainChoiceOpensNothing()
+  {
+    using var fixture = new SelectionFixture();
+    var current = fixture.Plan(fixture.TruckA).DispatchId!.Value;
+    var stop = Guid.NewGuid();
+    fixture.Chain = [ChainLoad(current, 1358, "current", stop, Guid.NewGuid())];
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, x => x.Name == "setTrucks")
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
+    );
+    component.WaitForAssertion(
+      () =>
+        Assert.Equal(
+          2,
+          component.FindAll("button.fleet-trip-chain__stop").Count
+        )
+    );
+    fixture.Js.HoldName = "clearNextLoadSelection";
+    var choosing = component.InvokeAsync(
+      () =>
+        component.FindAll("button.fleet-trip-chain__stop")[0].ClickAsync(new())
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckB.ToString())
+    );
+    fixture.Js.Release();
+    await choosing;
+    Assert.DoesNotContain(fixture.Js.Calls, x => x.Name == "openRouteStop");
+  }
+
+  // "Copied" belongs to the truck whose location was copied: a copy the
+  // browser takes after another truck was chosen says nothing on either.
+  [Fact]
+  public async Task ALateCopySaysNothingOnAnotherTruck()
+  {
+    using var fixture = new SelectionFixture
+    {
+      AddressA = "8205 Parkhill Drive, Spring Township, PA 17072, USA",
+    };
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, x => x.Name == "setTrucks")
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
+    );
+    fixture.Js.HoldName = "navigator.clipboard.writeText";
+    var copying = component.InvokeAsync(
+      () => component.Find(".fleet-truck-facts__copy").ClickAsync(new())
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckB.ToString())
+    );
+    fixture.Js.Release();
+    await copying;
+    Assert.Empty(component.FindAll(".fleet-truck-facts__copied"));
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
+    );
+    Assert.Empty(component.FindAll(".fleet-truck-facts__copied"));
+  }
+
   [Fact]
   public void FailedInitialLocationsRevealTheMapInsteadOfLeavingTheStartupHostHidden()
   {
@@ -5473,6 +5649,7 @@ public sealed class FleetMapComponentTests
     public FakeTimeProvider Clock { get; } = new();
     public MapJs Js { get; } = new();
     public bool DeferPlanning { get; set; }
+    public List<DispatchResponse> Chain { get; set; } = [];
     public bool DeferDetails { get; set; }
     public bool DeferPreview { get; set; }
     public bool PreviewUnavailable { get; set; }
@@ -5724,6 +5901,30 @@ public sealed class FleetMapComponentTests
     {
       Interlocked.Increment(ref HttpCalls);
       var uri = request.RequestUri!;
+      // Truck A's row of the Dispatch board: the trip chain.
+      if (uri.AbsolutePath == "/api/dispatch/board")
+        return Task.FromResult(
+          Ok(
+            new PaginatedListDTO<TruckDispatchBoardResponse>
+            {
+              Items =
+              [
+                new()
+                {
+                  TruckId = uri.Query.Contains(TruckA.ToString())
+                    ? TruckA
+                    : TruckB,
+                  Dispatches = uri.Query.Contains(TruckA.ToString())
+                    ? Chain
+                    : [],
+                },
+              ],
+              Page = 1,
+              PageSize = 12,
+              TotalCount = 1,
+            }
+          )
+        );
       if (uri.AbsolutePath.EndsWith("/weather", StringComparison.Ordinal))
         return Task.FromResult(
           Ok(
@@ -6000,6 +6201,7 @@ public sealed class FleetMapComponentTests
     public int StationCalls;
     public bool FailLocations;
     public bool FleetUsesIfta = true;
+    public string Location = "";
     private readonly ClientComponentContext _context;
 
     public Fixture()
@@ -6048,7 +6250,12 @@ public sealed class FleetMapComponentTests
             {
               trucks = new[]
               {
-                new { truckId = TruckId, unitNumber = "54777" },
+                new
+                {
+                  truckId = TruckId,
+                  unitNumber = "54777",
+                  formattedLocation = Location,
+                },
               },
               points = Array.Empty<object>(),
             }
@@ -6114,6 +6321,18 @@ public sealed class FleetMapComponentTests
       object?[]? args
     ) => InvokeAsync<TValue>(identifier, default, args);
 
+    // One call a test holds until it lets go, to overtake it.
+    public string? HoldName { get; set; }
+    private TaskCompletionSource _held = new(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+
+    public void Release()
+    {
+      HoldName = null;
+      _held.TrySetResult();
+    }
+
     public ValueTask<TValue> InvokeAsync<TValue>(
       string identifier,
       CancellationToken ct,
@@ -6122,6 +6341,10 @@ public sealed class FleetMapComponentTests
     {
       ct.ThrowIfCancellationRequested();
       Calls.Enqueue((identifier, args));
+      if (identifier == HoldName)
+        return new(
+          _held.Task.ContinueWith(_ => default(TValue)!, TaskScheduler.Default)
+        );
       if (identifier == "setRouteBytes")
         _currentPayloads.Writer.TryWrite((byte[])args![0]!);
       if (identifier == "setNextLoadsBytes")

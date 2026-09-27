@@ -156,6 +156,15 @@ export function createNextLoadsLayer(
   }
   return {
     clearSelection,
+    // One later load chosen whole (its trip card): its road is the picked
+    // one, with no stop open and no card; the page already knows.
+    pickLoad(loadId: string, executionLegId?: string) {
+      if (disposed || !visible) return;
+      pending = null;
+      selectedId = nextLoadKey(loadId, executionLegId);
+      selectedStopIndex = null;
+      applySelection();
+    },
     // The drawn road of one later load, for a camera that wants all of it.
     geometryOf(loadId: string, executionLegId?: string) {
       return loadGeometry.get(nextLoadKey(loadId, executionLegId)) ?? null;

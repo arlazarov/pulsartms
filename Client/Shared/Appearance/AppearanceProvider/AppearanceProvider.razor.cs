@@ -57,9 +57,14 @@ public partial class AppearanceProvider : IAsyncDisposable
     Busy = false;
     Saved = false;
     Error = null;
-    Theme = "light";
+    // Dark is the default (the owner, September 27). Signed in, the page
+    // keeps the theme it was painted in (index.html: the last one used
+    // here, else dark) until the account's choice is read, so no other
+    // theme flashes first; signed out, it is the default again.
+    Theme = "dark";
     Units = DisplayUnits.Default;
-    await ApplyAsync(generation);
+    if (account is null)
+      await ApplyAsync(generation);
     if (!IsCurrent(generation))
       return;
     if (account is not null)

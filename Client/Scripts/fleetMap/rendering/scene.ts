@@ -98,6 +98,7 @@ export function createScene(
   // About 25 frames a second for the sonar alone; a hidden page draws none
   // and picks it up again when shown.
   const sonarPeriod = 4400;
+  const routePulsePeriod = 5200;
   const sonarFrame = 40;
   const sonarBreathPeriod = 3000;
   // The reader's own choice for this map's animation (the Layers menu):
@@ -191,6 +192,12 @@ export function createScene(
         ? ('still' as const)
         : (performance.now() % sonarPeriod) / sonarPeriod;
     const sonarBreath = 0;
+    // The chosen road's glow breathes on a slow cosine while the map is
+    // animated, and stands at full strength when it is not.
+    const routePulse = still
+      ? 1
+      : 0.5 +
+        0.5 * Math.cos((2 * Math.PI * performance.now()) / routePulsePeriod);
     if (chosen && !still && !globalThis.document?.hidden && sonarTimer === null)
       sonarTimer = setTimeout(() => {
         sonarTimer = null;
@@ -200,6 +207,7 @@ export function createScene(
       buildLayers({
         sonar,
         sonarBreath,
+        routePulse,
         lines: routeEditing
           ? [...lines].filter(line => line.routeRole === 'preview')
           : lines,

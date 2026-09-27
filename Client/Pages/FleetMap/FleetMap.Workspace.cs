@@ -3,6 +3,7 @@ using Client.Models.DTO;
 using Client.Models.DTO.Dispatch;
 using Client.Models.DTO.Fleet;
 using Client.Models.DTO.Planning;
+using Client.Services;
 using Client.Shared.DriverStatus.DriverDutySummary;
 using Client.Shared.Trucks;
 using Microsoft.AspNetCore.Components;
@@ -171,10 +172,21 @@ public partial class FleetMap
   // stops opens that stop's card, as its badge on the map does, and brings
   // the camera to it. The current trip goes through the route's own owner,
   // a later one through the next-loads layer.
+  // Each choice is numbered: one that another choice, another truck or the
+  // page's end overtook while it waited on the map stops where it is.
+  private int _tripChoiceVersion;
+
   private async Task ChooseTripAsync(DispatchResponse load, Guid? stop)
   {
     if (_map is null || _disposed)
       return;
+    var version = ++_tripChoiceVersion;
+    var truck = _activeTruckId;
+    bool Current() =>
+      !_disposed
+      && _map is not null
+      && version == _tripChoiceVersion
+      && truck == _activeTruckId;
     _trip = (load.Id, load.ExecutionLegId);
     _tripStop = stop;
     if (stop is not null)
@@ -182,36 +194,49 @@ public partial class FleetMap
     if (IsCurrentTrip(load))
     {
       await _map.InvokeVoidAsync("clearNextLoadSelection");
+      if (!Current())
+        return;
       await FocusMapStopAsync(stop);
+      if (!Current())
+        return;
       if (stop is { } id)
-        await _map.InvokeVoidAsync("openRouteStop", id.ToString());
+        await _map!.InvokeVoidAsync("openRouteStop", id.ToString());
       else if (CanShowRoute)
         await ShowRouteAsync();
     }
     else
     {
       await FocusMapStopAsync(null);
+      if (!Current())
+        return;
       var route = _nextLoadRoutes.FirstOrDefault(route =>
         route.Id == load.Id && route.ExecutionLegId == load.ExecutionLegId
       );
       if (ShowNextLoads && route is not null)
       {
         if (stop is { } id)
-          await _map.InvokeVoidAsync(
-            "selectNextStop",
-            load.Id.ToString(),
-            Math.Max(0, route.Stops.ToList().FindIndex(x => x.Id == id)),
-            load.ExecutionLegId?.ToString()
-          );
+        {
+          // The exact stop or none: a stop the drawn road does not have
+          // never opens another one in its place.
+          var index = route.Stops.ToList().FindIndex(x => x.Id == id);
+          if (index >= 0)
+            await _map!.InvokeVoidAsync(
+              "selectNextStop",
+              load.Id.ToString(),
+              index,
+              load.ExecutionLegId?.ToString()
+            );
+        }
         else
-          await _map.InvokeVoidAsync(
+          await _map!.InvokeVoidAsync(
             "fitNextLoad",
             load.Id.ToString(),
             load.ExecutionLegId?.ToString()
           );
       }
     }
-    StateHasChanged();
+    if (Current())
+      StateHasChanged();
   }
 
   private async Task FocusMapStopAsync(Guid? stop)
@@ -311,23 +336,42 @@ public partial class FleetMap
       ? DriverDutySummary.StatusName(status)
       : "—";
 
+  // The panel shows where the truck is as its locality - town, region and
+  // postal code - by the shared address formatter; the street stays in the
+  // title and in what is copied. A location the formatter cannot split is
+  // shown whole.
+  private static string LocationSummary(string? location) =>
+    string.IsNullOrWhiteSpace(location) ? "—"
+    : StopAddressLines.Create(location).Locality is { Length: > 0 } locality
+      ? locality
+    : location;
+
   // The panel's location, copied whole through the page's clipboard call.
   // "Copied" is said only once the browser took it; a refusal says so.
   private string? _locationCopy;
+  private Guid? _locationCopyTruck;
   private int _locationCopyVersion;
 
   private async Task CopyLocationAsync(string location)
   {
     var version = ++_locationCopyVersion;
+    var truck = _activeTruckId;
+    string status;
     try
     {
       await JS.InvokeVoidAsync("navigator.clipboard.writeText", location);
-      _locationCopy = "Copied";
+      status = "Copied";
     }
     catch (JSException)
     {
-      _locationCopy = "Could not copy";
+      status = "Could not copy";
     }
+    // A copy that finishes after another truck was chosen says nothing on
+    // that truck's card.
+    if (_disposed || version != _locationCopyVersion || truck != _activeTruckId)
+      return;
+    _locationCopy = status;
+    _locationCopyTruck = truck;
     StateHasChanged();
     try
     {

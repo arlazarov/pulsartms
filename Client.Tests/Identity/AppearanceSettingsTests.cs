@@ -290,7 +290,7 @@ public sealed class AppearanceSettingsTests
   }
 
   [Fact]
-  public async Task LogoutRestoresLightAndRepeatedIdentityDoesNotReload()
+  public async Task LogoutRestoresTheDarkDefaultAndRepeatedIdentityDoesNotReload()
   {
     var reads = 0;
     await using var context = new ClientComponentContext(
@@ -324,14 +324,16 @@ public sealed class AppearanceSettingsTests
           provider.AddChildContent<ThemeControl>()
         )
     );
+    // Dark is the default once no account is signed in (the owner,
+    // September 27; it was light).
     component.WaitForAssertion(
       () =>
         Assert.Equal(
-          "light",
+          "dark",
           component.FindComponent<AppearanceProvider>().Instance.Theme
         )
     );
-    Assert.Equal("light", js.Invocations.Last().Arguments[0]);
+    Assert.Equal("dark", js.Invocations.Last().Arguments[0]);
     Assert.Equal(1, reads);
   }
 
@@ -356,8 +358,9 @@ public sealed class AppearanceSettingsTests
     js.SetupVoid("applyTheme", _ => true).SetVoidResult();
     var component = Render(context, Account("one"));
     component.WaitForElement("[role=alert]");
+    // The dark default stands while the account's choice cannot be read.
     Assert.Equal(
-      "light",
+      "dark",
       component.FindComponent<AppearanceProvider>().Instance.Theme
     );
     await component.Find("[role=alert] button").ClickAsync(new());

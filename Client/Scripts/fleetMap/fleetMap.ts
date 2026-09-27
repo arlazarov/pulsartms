@@ -519,6 +519,7 @@ export async function createFleetMap(
       // A later load chosen whole in the chain: all of its road in view.
       fitNextLoad(loadId: string, executionLegId?: string | null) {
         if (disposed) return;
+        nextLoads.pickLoad(loadId, executionLegId ?? undefined);
         const geometry = nextLoads.geometryOf(
           loadId,
           executionLegId ?? undefined,

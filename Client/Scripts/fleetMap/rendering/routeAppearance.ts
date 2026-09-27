@@ -71,7 +71,11 @@ export function routeLayers(
   // A load's road is solid in its colour, an upcoming one as much as the
   // one being driven: dashed and grey, upcoming roads read as the basemap's
   // own, and several loads on one corridor were told apart by nothing.
-  const dashed = empty;
+  // Unpicked later loads are fine dashes; the picked one is solid and
+  // glows (routeGlowLayers).
+  const futureDashed =
+    line.routeRole === 'future' && line.routeSelected !== true;
+  const dashed = empty || futureDashed;
   const upcoming = line.routeRole === 'future' || line.routeRole === 'deadhead';
   const muted =
     selectionMuted ||
@@ -132,8 +136,11 @@ export function routeLayers(
     onClick: line.onMapClick ?? line.onClick,
     onHover: line.onHover,
   };
-  const width =
-    upcoming && !line.routeSelected
+  const traveled =
+    line.routeRole === 'traveled' || line.routeRole === 'traveled-empty';
+  const width = traveled
+    ? metrics.routeTraveledWidth
+    : upcoming && !line.routeSelected
       ? metrics.routeSecondaryWidth
       : Math.max(
           line.routeRole === 'current'
@@ -146,7 +153,9 @@ export function routeLayers(
         );
   const outlineWidth = width + metrics.routeOutlineWidth;
   const dash = dashed ? { extensions, dashJustified: false } : {};
-  const pattern = metrics.routeDashArray;
+  const pattern = futureDashed
+    ? metrics.routeFutureDashArray
+    : metrics.routeDashArray;
   // Dash units use half-width. Both strokes must share physical dash boundaries.
   const outlineDash = pattern.map(
     (value: number) => (value * width) / outlineWidth,
@@ -171,21 +180,31 @@ export function routeLayers(
   ]);
 }
 
-// The road being driven glows: two soft halos of its own colour under it,
-// stronger on the light theme's pale ground than on the dark. Later loads
-// do not glow; they carry a fine segmented centre line instead (below).
-// Never picked.
+// The chosen trip's road glows: the road being driven while no later load
+// is picked, or the picked later load's road - by what is selected, not by
+// the load's phase. Two soft halos of the road's own colour, stronger on the
+// light theme's pale ground; their strength breathes slowly with the map's
+// animation (pulse, 0..1) and stands at full when it is off. Never picked.
 export function routeGlowLayers(
   line: SceneRouteLine,
   PathLayer: DeckLayerFactory,
   selectionMuted = false,
+  laterPicked = false,
+  pulse = 1,
 ) {
-  if (line.visible === false || selectionMuted || line.routeRole !== 'current')
-    return [];
-  const color = colors.current;
+  const chosen =
+    (line.routeRole === 'current' && !laterPicked) ||
+    (line.routeRole === 'future' && line.routeSelected === true);
+  if (line.visible === false || selectionMuted || !chosen) return [];
+  const color =
+    line.routeRole === 'current'
+      ? colors.current
+      : line.routeColor || colors[line.routeRole] || colors.current;
   const light = globalThis.document?.documentElement?.dataset?.theme !== 'dark';
   const width = Math.max(metrics.routeCurrentMinWidth, line.strokeWeight);
-  const key = [color.join(','), light, width].join('|');
+  // Twenty steps of breathing: each is built once and reused.
+  const step = Math.round(Math.min(1, Math.max(0, pulse)) * 20) / 20;
+  const key = [color.join(','), light, width, step].join('|');
   const cached = line as SceneRouteLine & {
     cachedGlow?: unknown[];
     cachedGlowKey?: string;
@@ -197,6 +216,7 @@ export function routeGlowLayers(
     cached.cachedGlowData === line.data
   )
     return cached.cachedGlow;
+  const strength = 0.72 + 0.28 * step;
   const halo = (id: string, extra: number, alpha: number) =>
     new PathLayer({
       id: `${line.id}-${id}`,
@@ -207,8 +227,9 @@ export function routeGlowLayers(
       jointRounded: true,
       parameters: { depthCompare: 'always' },
       pickable: false,
-      getColor: [color[0], color[1], color[2], alpha],
+      getColor: [color[0], color[1], color[2], Math.round(alpha * strength)],
       getWidth: width + extra,
+      updateTriggers: { getColor: step },
     });
   const tier = light
     ? { wide: 24, near: 11, wideAlpha: 52, nearAlpha: 104 }
@@ -218,59 +239,5 @@ export function routeGlowLayers(
   return (cached.cachedGlow = [
     halo('glow-wide', tier.wide, tier.wideAlpha),
     halo('glow', tier.near, tier.nearAlpha),
-  ]);
-}
-
-// A later load's road as a fine instrument line: over its own coloured
-// stroke, a thin segmented centre line that reads its direction of travel
-// by the dashes' run. A chosen later load's segments are longer and
-// brighter than the rest. Muted roads and empty miles have none. Never
-// picked.
-export function routeDetailLayers(
-  line: SceneRouteLine,
-  PathLayer: DeckLayerFactory,
-  routeDashExtensions: unknown,
-  selectionMuted = false,
-) {
-  if (
-    line.visible === false ||
-    selectionMuted ||
-    line.routeRole !== 'future' ||
-    line.routeMuted === true ||
-    !routeDashExtensions
-  )
-    return [];
-  const chosen = line.routeSelected === true;
-  const light = globalThis.document?.documentElement?.dataset?.theme !== 'dark';
-  const key = [chosen, light].join('|');
-  const cached = line as SceneRouteLine & {
-    cachedDetail?: unknown[];
-    cachedDetailKey?: string;
-    cachedDetailData?: unknown;
-  };
-  if (
-    cached.cachedDetail &&
-    cached.cachedDetailKey === key &&
-    cached.cachedDetailData === line.data
-  )
-    return cached.cachedDetail;
-  cached.cachedDetailKey = key;
-  cached.cachedDetailData = line.data;
-  return (cached.cachedDetail = [
-    new PathLayer({
-      id: `${line.id}-detail`,
-      data: line.data,
-      getPath: (path: unknown) => path,
-      widthUnits: 'pixels',
-      capRounded: false,
-      jointRounded: true,
-      parameters: { depthCompare: 'always' },
-      pickable: false,
-      extensions: routeDashExtensions,
-      dashJustified: false,
-      getColor: [255, 255, 255, chosen ? 235 : light ? 170 : 140],
-      getWidth: chosen ? 1.5 : 1,
-      getDashArray: chosen ? [6, 4] : [3, 5],
-    }),
   ]);
 }

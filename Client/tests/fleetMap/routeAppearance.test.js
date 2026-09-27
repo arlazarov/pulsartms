@@ -494,11 +494,11 @@ test('traveled route stays solid and dimmer than remaining route', () => {
   assert.equal(history[1].getDashArray, undefined);
 });
 
-// An upcoming load's road is solid in the load's colour, like the road
-// being driven: dashed and grey, it read as one of the basemap's own roads,
-// and two loads on one corridor were told apart by nothing. Empty miles
-// are the dashed ones, in orange, whichever load they lead to.
-test('an upcoming road is solid in its colour and empty miles are dashed orange', () => {
+// An unpicked later load's road is fine dashes in the load's colour, told
+// from empty miles (dashed orange) by the dashes' rhythm; the picked one is
+// solid at full width (the owner, September 27, replacing the solid rule of
+// September 26).
+test('an unpicked upcoming road is fine dashes in its colour and empty miles are dashed orange', () => {
   class Layer {
     constructor(options) {
       Object.assign(this, options);
@@ -519,9 +519,15 @@ test('an upcoming road is solid in its colour and empty miles are dashed orange'
   const extensions = [{ dash: true }];
   const [outline, loaded] = routeLayers(road('future'), Layer, extensions);
   assert.deepEqual(loaded.getColor, futureRouteColor(0));
-  assert.equal(loaded.getDashArray, undefined);
-  assert.equal(loaded.extensions, undefined);
+  assert.deepEqual(loaded.getDashArray, sceneMetrics.routeFutureDashArray);
+  assert.equal(loaded.extensions, extensions);
   assert.deepEqual(outline.getColor, [255, 255, 255, 210]);
+  const picked = routeLayers(
+    { ...road('future'), routeSelected: true },
+    Layer,
+    extensions,
+  )[1];
+  assert.equal(picked.getDashArray, undefined);
   const empty = routeLayers(road('deadhead'), Layer, extensions)[1];
   assert.deepEqual(empty.getColor, [234, 88, 12, 255]);
   assert.deepEqual(empty.getDashArray, sceneMetrics.routeDashArray);

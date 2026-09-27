@@ -6,11 +6,11 @@ import type { StopCard } from './stopCardLayers.ts';
 import type { StopLabelStyle } from './stopLabelStyle.ts';
 import type { LabelledCluster, LabelledTruck } from './truckClusters.ts';
 import { memoizeLast } from './layerCache.ts';
-import {
-  routeDetailLayers,
-  routeGlowLayers,
-  routeLayers,
-} from './routeAppearance.ts';
+import { routeGlowLayers, routeLayers } from './routeAppearance.ts';
+import { isLightMap } from './stopAppearance.ts';
+
+const darkSonarInk = [34, 211, 238];
+const lightSonarInk = [14, 116, 144];
 import { createStationLayers } from './stationLayers.ts';
 import { createStopLayers } from './stopLayers.ts';
 import { createVehicleLayers } from './vehicleLayers.ts';
@@ -72,6 +72,7 @@ export function createSceneLayers({
     stopLabelStyle = defaultStopLabelStyle,
     sonar = null,
     sonarBreath = 0,
+    routePulse = 1,
   }: {
     lines: Iterable<SceneRouteLine & { map?: unknown; path?: unknown[] }>;
     stationData: StationMark[];
@@ -97,6 +98,8 @@ export function createSceneLayers({
     sonar?: number | 'still' | null;
     // Under reduced motion, 0..1 through one slow change of brightness.
     sonarBreath?: number;
+    // The chosen road's glow, 0..1, breathing slowly; 1 when still.
+    routePulse?: number;
   }): DeckLayer[] => {
     const fonts = labelFonts([pixelRatio, stopLabelStyle.size], () =>
       createLabelFonts(pixelRatio, stopLabelStyle.size),
@@ -120,14 +123,8 @@ export function createSceneLayers({
         line,
         PathLayer,
         hasSelectedNextRoute && line.routeSelected !== true,
-      ),
-    );
-    const detail = sorted.flatMap(line =>
-      routeDetailLayers(
-        line,
-        PathLayer,
-        routeDashExtensions,
-        hasSelectedNextRoute && line.routeSelected !== true,
+        hasSelectedNextRoute,
+        routePulse,
       ),
     );
     const drawn = sorted.flatMap(line =>
@@ -156,7 +153,6 @@ export function createSceneLayers({
       [
         ...glow,
         ...drawn,
-        ...detail,
         // All station fills cover roads; recommendations, stops and trucks
         // retain priority.
         ...stations({
@@ -195,6 +191,10 @@ function sonarLayers(
   breath = 0,
 ): DeckLayer[] {
   const chosen = trucks.filter(t => t.selected);
+  // Bright cyan on the dark map; on the light one the deep accent, a little
+  // firmer, so the rings read against a pale ground.
+  const light = isLightMap();
+  const ink = light ? lightSonarInk : darkSonarInk;
   // 0.45 to 1 and back, along a cosine: calm, never gone.
   const glow = 0.725 - 0.275 * Math.cos(breath * 2 * Math.PI);
   const ring = (id: string, phase: number | 'still') => {
@@ -212,9 +212,9 @@ function sonarLayers(
       stroked: true,
       filled: true,
       lineWidthUnits: 'pixels',
-      getLineWidth: 1.5,
-      getLineColor: [34, 211, 238, Math.round(255 * fade)],
-      getFillColor: [34, 211, 238, Math.round(26 * fade)],
+      getLineWidth: light ? 2 : 1.5,
+      getLineColor: [...ink, Math.round(255 * fade)],
+      getFillColor: [...ink, Math.round((light ? 34 : 26) * fade)],
       pickable: false,
       updateTriggers: {
         getRadius: phase,
