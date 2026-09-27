@@ -330,9 +330,21 @@ completed.
      Work per read: no database read, no capture, no preparation;
      overlap is a pure memory read. Measured by tests; not measured in
      production.
-   - **4d-4e, next.** Deadhead, base road and duty changes reach the
-     summary after commit; one ETA reader for the board as well; no
-     duplicate fuel projection replays.
+   - **4d, implemented (not released).** Commits that change what a
+     prepared summary shows reach it after commit, once: base road and
+     route commits already did (`PlanningWorkPublication.CommitAsync`); a
+     deadhead connection now does too (`DeadheadHistoryPublication.
+     CommitAsync`), because the summary's fuel plan is checked against the
+     saved connections. A rolled-back publication announces nothing.
+     Duty changes are not announced: doing so needs a driver-to-truck read
+     on every HOS refresh; the prepared fuel hand-over can lag up to the
+     30-second refresh, while the summary's clocks are already read fresh
+     at read time. Recorded, not built.
+   - **4e, next.** One ETA reader for the board as well (the board reads
+     saved forecasts across processes; the summary reads the process'
+     memory - the owner of that choice must weigh durability against
+     freshness); no duplicate fuel projection replays.
+
 Each stage is a separate candidate with its own review; none resets
 pending work, forces routing or changes historical stops.
 

@@ -1,5 +1,6 @@
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
+using Domain.Entities;
 using Domain.Rules;
 using Microsoft.EntityFrameworkCore;
 using Server.Tests.Support;
@@ -95,6 +96,7 @@ public sealed partial class DeadheadGeometryRepairTests
     var commit = new PublicationCommitFailureProbe();
     var rates = new DeadheadRatesFailureProbe();
     await using var f = await Fixture.CreateAsync(null, commit, rates);
+    var summary = PreparedSummary(f);
     f.Publication.BeforeBegin = () =>
     {
       if (f.Publication.Calls == 2)
@@ -115,6 +117,8 @@ public sealed partial class DeadheadGeometryRepairTests
       );
 
     Assert.Null(f.Db.Database.CurrentTransaction);
+    // Nothing was committed, so nothing is announced to the summary.
+    Assert.Null(summary.Take());
     Assert.Equal(1, f.Router.Calls);
     if (!atCommit)
       Assert.Equal(1, rates.RouteWritesBeforeFailure);
@@ -148,8 +152,13 @@ public sealed partial class DeadheadGeometryRepairTests
       Assert.Null(f.Db.Database.CurrentTransaction);
       return Task.FromResult(Complete(points));
     };
+    var summary = PreparedSummary(f);
 
     await f.Services.Deadheads.EnsureAsync(f.Load, f.Profile, default);
+
+    // Stage 4d: the truck's summary checked its fuel plan against the
+    // saved connections, so the committed connection makes it due again.
+    Assert.NotNull(summary.Take());
 
     Assert.Null(f.Db.Database.CurrentTransaction);
     Assert.Equal(2, f.Publication.Calls);
@@ -160,6 +169,24 @@ public sealed partial class DeadheadGeometryRepairTests
     Assert.Equal(saved.Miles, financial.EmptyMiles);
     Assert.Equal(saved.InputHash, financial.ConnectionHash);
     Assert.Equal(2m, financial.TotalRatePerMile);
+  }
+
+  // A summary prepared for the load's truck and not yet due again.
+  private static PlanningSummaryCache PreparedSummary(Fixture f)
+  {
+    var cache = f.Services.Summaries;
+    var key = new PlanningSummaryCache.Key(Company.Amf, f.Load.TruckId!.Value);
+    cache.Read(key, "work");
+    cache.Complete(
+      cache.Take()!,
+      "work",
+      new(key.Truck, f.Load.Id, f.Load.LoadNumber, null, null)
+      {
+        CalculatedAt = DateTimeOffset.UtcNow,
+      }
+    );
+    Assert.Null(cache.Take());
+    return cache;
   }
 
   [Fact]

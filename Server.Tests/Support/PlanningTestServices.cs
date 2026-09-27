@@ -43,6 +43,9 @@ internal sealed class PlanningTestServices : IDisposable
   public FleetNames Names { get; private set; } = null!;
   public ActiveTransfers Transfers { get; private set; } = null!;
   public ReadCache Reads { get; }
+
+  // The one planning summary cache the publications here notify.
+  public PlanningSummaryCache Summaries { get; } = new(TimeProvider.System);
   public RouteDisplayCache Displays { get; }
   public PlanningSettingsService Settings { get; }
   public FuelExchangeRateService ExchangeRates { get; }
@@ -134,7 +137,7 @@ internal sealed class PlanningTestServices : IDisposable
       Itineraries,
       publicationScope ?? new PlanningPublicationScope((AppDbContext)db),
       DeadheadHistory,
-      new PlanningSummaryCache(TimeProvider.System),
+      Summaries,
       new TestCompany(),
       Reads
     );
@@ -184,7 +187,9 @@ internal sealed class PlanningTestServices : IDisposable
       DeadheadHistory,
       new(
         DeadheadHistory,
-        publicationScope ?? new PlanningPublicationScope((AppDbContext)db)
+        publicationScope ?? new PlanningPublicationScope((AppDbContext)db),
+        Summaries,
+        new TestCompany()
       ),
       NullLogger<DeadheadService>.Instance
     );

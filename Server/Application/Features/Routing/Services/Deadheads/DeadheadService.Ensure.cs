@@ -153,7 +153,7 @@ public sealed partial class DeadheadService
       await db.SaveChangesAsync(ct);
       if (load.ExecutionLegId is null)
         await financials.SaveAsync(RateInputs(load), saved.Miles, hash, ct);
-      await transaction.CommitAsync(ct);
+      await publication.CommitAsync(transaction, load.TruckId, ct);
     }
     catch (DbUpdateConcurrencyException ex)
       when (saved is not null

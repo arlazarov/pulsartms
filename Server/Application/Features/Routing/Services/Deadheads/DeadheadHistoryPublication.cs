@@ -1,4 +1,5 @@
 using Application.Features.Routing.Interfaces;
+using Application.Features.Routing.Services.Routes;
 using Domain.Models.Routing;
 using Domain.Rules;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -7,9 +8,26 @@ namespace Application.Features.Routing.Services.Deadheads;
 
 public sealed class DeadheadHistoryPublication(
   DeadheadHistoryService history,
-  IPlanningPublicationScope scope
+  IPlanningPublicationScope scope,
+  PlanningSummaryCache summaries,
+  ICurrentCompany company
 )
 {
+  // Commits a connection, then tells the truck's planning summary: the
+  // fuel plan it shows was checked against the saved connections
+  // (FuelSavedInputsValidation), so a new one is a changed dependency,
+  // prepared again once rather than waited out (stage 4d).
+  public async Task CommitAsync(
+    IDbContextTransaction transaction,
+    Guid? truck,
+    CancellationToken ct
+  )
+  {
+    await transaction.CommitAsync(ct);
+    if (company.Id is { } owner && truck is { } id)
+      summaries.Committed(owner, id);
+  }
+
   public async Task<IDbContextTransaction> BeginAsync(
     DeadheadHistorySnapshot expected,
     CancellationToken ct
