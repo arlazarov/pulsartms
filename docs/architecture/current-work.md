@@ -314,12 +314,13 @@ completed.
      | Legs all completed, source stops open | yes | yes |
      | Source closed and delivered, a leg open | yes | no |
 
-     Existing data, to check before release: a started load whose
-     delivery is recorded and whose later attended stop (a trailer drop)
-     was never recorded used to leave the truck's itinerary at the
-     delivery; it now stays until the stop is recorded or the load is
-     closed. Count such loads with one bounded read first; recovery is the
-     dispatcher recording the drop or closing the load. Not counted yet.
+     Existing data, counted read-only in production on 2026-09-27: no
+     load not in execution has a recorded delivery with a later attended
+     stop open (so none re-enters a truck's itinerary); two loads in
+     execution, 1403 and 1385, are closed at the source with a leg still
+     active and leave the Completed tab. They are "source ahead of
+     accepted execution" rows (auditor CW2) for recovery through the
+     execution owner, not a code change.
    - **4c, implemented (not released).** A prepared summary shows the
      forecast as it stands now: `EtaService.PeekForDisplay`, called when
      the summary is read, answers as `GetCached` does from the same
