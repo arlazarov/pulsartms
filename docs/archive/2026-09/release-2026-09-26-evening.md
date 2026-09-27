@@ -623,6 +623,27 @@ backup was needed.
   aligned with Appointment when there is one). Not yet seen on live
   data.
 
+## Frontend 2f798c05 (September 27, 11:14 UTC)
+
+Three more of the owner's marks, published on the owner's word: in
+Papers the truck and its trailer fold as one unit, and the money line
+reads "590.00 USD · RPM 2.60 · Total 1.70" with the full names in its
+tooltip; in the Table each distance shows miles and kilometres on one
+line. Commit `2f798c05` on `2b92c3ca`; Client, Client tests and style
+tests only. API and database untouched; no backup needed.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a clean
+  detached worktree with the local settings copied in (11:07-11:14 UTC),
+  exit 0: JavaScript 665, Client 1,255, Server 3,791; offline UI smoke
+  without errors (`browser-ui-ZITcwj`). PostgreSQL checks not run.
+- **Artifact:** `release-OYVBFR`, 285 files, pinned in the main
+  checkout's `artifacts/managed/release-OYVBFR` with the gate log and the
+  smoke report under `gate/`.
+- **Live:** `index.html`
+  (`9c718281c8b52138982e2835858e76d78584cff42a5db49a7886dea1f7f8b87f`)
+  and `css/main.css?v=24d21b66de4c8b3d` byte-identical to the artifact.
+  Rollback target: `release-TDTuIV`.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
