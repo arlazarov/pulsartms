@@ -226,11 +226,11 @@ public static partial class ExecutionWorkReader
     foreach (
       var snapshot in loads
         .Where(x =>
-          conflictingActuals.Contains(x.Work.Id)
-          || ExecutionWorkRelevance.IsCurrentOrUpcoming(
+          ExecutionWorkRelevance.IsCurrentOrUpcoming(
             x.Work,
             date,
-            includeOverdue || pendingReview.Contains(x.Work.Id)
+            includeOverdue || pendingReview.Contains(x.Work.Id),
+            conflictingActuals.Contains(x.Work.Id)
           )
         )
         .OrderBy(x => Order(x.Work))

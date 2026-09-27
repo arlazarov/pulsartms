@@ -16,7 +16,8 @@ public static class ExecutionWorkRelevance
   public static bool IsCurrentOrUpcoming(
     RouteWorkSnapshot load,
     DateOnly date,
-    bool includeOverdue
+    bool includeOverdue,
+    bool requiresActualReview = false
   )
   {
     // A load the source has cancelled is not work, whatever its execution
@@ -31,6 +32,8 @@ public static class ExecutionWorkRelevance
       return load.ExecutionStatus is "active" or "planned";
     if (load.Status.Equals("completed", StringComparison.OrdinalIgnoreCase))
       return false;
+    if (requiresActualReview)
+      return true;
     var final = load.Stops.LastOrDefault(x =>
       x.StateAfter != "No truck"
       && (

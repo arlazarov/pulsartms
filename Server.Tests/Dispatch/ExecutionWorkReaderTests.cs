@@ -20,6 +20,38 @@ public sealed class ExecutionWorkReaderTests
 {
   private static readonly DateOnly Today = new(2026, 9, 16);
 
+  [Theory]
+  [InlineData("completed", false)]
+  [InlineData("cancelled", false)]
+  [InlineData("assigned", true)]
+  public async Task ConflictingActualReviewDoesNotReopenTerminalSourceWork(
+    string status,
+    bool visible
+  )
+  {
+    await using var f = await StopCompletionFixture.CreateAsync();
+    var truck = await AssignAsync(f);
+    f.Load.Status = status;
+    f.Load.Stops[0].PickedUpAt = Today.ToDateTime(new TimeOnly(12, 0));
+    f.Load.Stops[1].DeliveredAt = Today.ToDateTime(new TimeOnly(10, 0));
+    f.Db.DispatchSourceLinks.Add(
+      new()
+      {
+        Provider = "torqueai",
+        ExternalId = "conflicting-history",
+        DispatchId = f.Load.Id,
+        ExecutionReviewReason = "Source actual chronology conflicts.",
+      }
+    );
+    await f.Db.SaveChangesAsync();
+    var work = await ReadAsync(f, truck);
+    Assert.Equal(visible, work.Loads.Any(x => x.Id == f.Load.Id));
+    Assert.Equal(status, f.Load.Status);
+    Assert.NotNull(
+      (await f.Db.DispatchSourceLinks.SingleAsync()).ExecutionReviewReason
+    );
+  }
+
   [Fact]
   public async Task StartedWorkPrecedesAnEarlierUnstartedAppointment()
   {
