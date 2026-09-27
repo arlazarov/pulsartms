@@ -130,8 +130,9 @@ fingerprinted files `public, max-age=31536000, immutable`.
   as each truck's first committed refresh wrote its keys: the keyless
   window measured under 45 seconds for the 4 active trucks.
 - Container memory (p99 of 1 GiB): the previous revision held 67-69%;
-  the new one rose from 37% at 18:46 to 61% at 18:52 while warming.
-  Followed below.
+  the new one rose from 37% at 18:46 to 61% at 18:52 while warming, then
+  held 60-65% to 19:03. No error and no 5xx to 19:03. Twenty minutes
+  are not a long-run bound; the daily trend is still to be read.
 
 ## Open, with owners
 
