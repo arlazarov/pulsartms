@@ -83,6 +83,8 @@ const mapsOwn = new Map([
   ['#006aeb', 'the line a truck is driving now'],
   ['#315eea', 'the badge of a stop on that line'],
   ['#1e293b', 'the edge of a stop that is picked'],
+  ['#0b1626', 'the dark glass core under every mark on the map'],
+  ['#22d3ee', "the map instruments' accent: sonar, fuel pump and its number"],
   ['#9169c9', 'a road still to come'],
   ['#ffffff', 'paper, behind a badge or under a line'],
   ['#000000', 'ink, where a shadow is drawn'],

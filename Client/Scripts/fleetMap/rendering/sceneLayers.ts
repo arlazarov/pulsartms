@@ -42,7 +42,11 @@ export function createSceneLayers({
   TextLayer: DeckLayerFactory;
   routeDashExtensions?: unknown;
 }) {
-  const stations = createStationLayers({ ScatterplotLayer, TextLayer });
+  const stations = createStationLayers({
+    ScatterplotLayer,
+    TextLayer,
+    IconLayer,
+  });
   const stops = createStopLayers({ ScatterplotLayer, IconLayer, TextLayer });
   const vehicles = createVehicleLayers({ IconLayer, TextLayer });
   const distanceLabels = memoizeLast<DeckLayer[]>();
@@ -180,8 +184,8 @@ export function createSceneLayers({
   };
 }
 
-// The selected truck's sonar, as the concept draws it: two thin rings half
-// a slow sweep apart, each growing from just outside the mark and fading
+// The selected truck's sonar, as the concept draws it: four thin rings a
+// quarter of a slow sweep apart, each growing from just outside the mark and fading
 // in and out gently. Drawn under the marks and badges, never picked;
 // the mark itself keeps its size.
 function sonarLayers(
@@ -222,5 +226,10 @@ function sonarLayers(
   };
   return sonar === 'still'
     ? [ring('truck-sonar', 'still')]
-    : [ring('truck-sonar', sonar), ring('truck-sonar-echo', (sonar + 0.5) % 1)];
+    : [
+        ring('truck-sonar', sonar),
+        ring('truck-sonar-echo', (sonar + 0.25) % 1),
+        ring('truck-sonar-echo-2', (sonar + 0.5) % 1),
+        ring('truck-sonar-echo-3', (sonar + 0.75) % 1),
+      ];
 }

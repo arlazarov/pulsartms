@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.ts';
 import { snapshotStops } from '../../Scripts/fleetMap/rendering/stopData.ts';
 import { currentRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.ts';
-import { stopMarkerIcon } from '../../Scripts/fleetMap/rendering/stopAppearance.ts';
+import {
+  stopAppearance,
+  stopMarkerIcon,
+} from '../../Scripts/fleetMap/rendering/stopAppearance.ts';
 
 test('one stop update preserves other GPU data; hover only reorders opaque pairs', () => {
   let allocations = 0;
@@ -49,8 +52,8 @@ test('one stop update preserves other GPU data; hover only reorders opaque pairs
   snapshot = snapshotStops(stops, snapshot.stopData);
   allocations = 0;
   const hovered = build({ ...input, stopData: snapshot.stopData });
-  // The picked badge is drawn again because it looks different - its edge
-  // darkens to name the load being looked at - and nothing else is: no
+  // The picked badge is drawn again because it looks different - its rim
+  // turns white to name the load being looked at - and nothing else is: no
   // neighbour is rebuilt, resized or moved, because badges that shuffle
   // when a load is picked are what made one hard to follow.
   assert.equal(allocations, 2, 'only the picked badge is drawn again');
@@ -59,7 +62,7 @@ test('one stop update preserves other GPU data; hover only reorders opaque pairs
   );
   assert.deepEqual(
     decodeURIComponent(picked.props.iconAtlas).match(/stroke="([^"]+)"/)[1],
-    'rgb(30,41,59)',
+    'rgb(255,255,255)',
   );
   assert.equal(picked.props.getSize, 28, 'and it is not a size larger');
   assert.deepEqual(
@@ -70,11 +73,14 @@ test('one stop update preserves other GPU data; hover only reorders opaque pairs
     if (!layer.props.id.startsWith('route-stop-1-'))
       assert.equal(layer, byId.get(layer.props.id));
   const delivery = hovered.at(-2);
-  // The picked badge is the same circle with a darker edge; everything else
-  // about it - fill, size, the number on it - is unchanged.
+  // The picked badge is the same circle with a white rim; everything else
+  // about it - core, size, the letter on it - is unchanged.
   assert.equal(
     delivery.props.iconAtlas,
-    stopMarkerIcon(currentRouteColor, [30, 41, 59, 255]).url,
+    stopMarkerIcon(
+      stopAppearance('Delivery', currentRouteColor).fill,
+      [255, 255, 255, 255],
+    ).url,
   );
   assert.equal(delivery.props.getIcon(delivery.props.data[0]), 'circle');
   assert.equal(delivery.props.getSize, 28);
@@ -92,7 +98,11 @@ test('one stop update preserves other GPU data; hover only reorders opaque pairs
     false,
     'text width cannot stretch the circle',
   );
-  assert.deepEqual(hovered.at(-1).props.getColor, [255, 255, 255, 255]);
+  // The letter is the load's colour on the dark core.
+  assert.deepEqual(
+    hovered.at(-1).props.getColor,
+    stopAppearance('Delivery', currentRouteColor).text,
+  );
   assert.deepEqual(
     hovered.at(-1).props.getPixelOffset(hovered.at(-1).props.data[0]),
     [0, 0],
@@ -172,7 +182,8 @@ test('one- and two-digit stop circles share fixed geometry and preserve individu
       circle.iconMapping.circle.width,
       circle.iconMapping.circle.height,
     );
-    assert.equal(circle.iconAtlas, stopMarkerIcon(stop.color).url);
+    const look = stopAppearance(stop.job, stop.color, stop.done);
+    assert.equal(circle.iconAtlas, stopMarkerIcon(look.fill, look.border).url);
     assert.deepEqual(circle.getPixelOffset(stop), digits.getPixelOffset(stop));
     assert.equal(digits.background, false);
     for (const props of [circle, digits, anchor]) {

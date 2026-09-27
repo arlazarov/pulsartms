@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createScene } from '../../Scripts/fleetMap/rendering/scene.ts';
 import { currentRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.ts';
-import { stopMarkerIcon } from '../../Scripts/fleetMap/rendering/stopAppearance.ts';
+import {
+  stopAppearance,
+  stopMarkerIcon,
+} from '../../Scripts/fleetMap/rendering/stopAppearance.ts';
 
 test('scene reuses static layers across motion, invalidates only changed stops and cleans up', t => {
   let now = 0;
@@ -247,7 +250,10 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   }
   assert.equal(
     initial['route-stop-1-points'].props.iconAtlas,
-    stopMarkerIcon(currentRouteColor).url,
+    stopMarkerIcon(
+      stopAppearance('', currentRouteColor).fill,
+      stopAppearance('', currentRouteColor).border,
+    ).url,
   );
   assert.equal(initial['route-stop-1-numbers'].props.background, false);
   assert.equal(initial['route-stop-distances'].props.fontWeight, 400);

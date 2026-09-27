@@ -1,83 +1,71 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  markCore,
   stopAppearance,
   stopMarkerIcon,
   isDelivery,
 } from '../../Scripts/fleetMap/rendering/stopAppearance.ts';
 
-test('number badges use opaque route colors with a white border and readable digits', () => {
+// Every map mark shares one instrument core: a dark glass disc under a fine
+// rim of the load's colour, the letter in that colour (the owner,
+// September 27). No white discs or chunky white edges.
+test('a stop still to come is a dark core with its load colour as rim and letter', () => {
   for (const color of [
     [46, 80, 231],
     [147, 98, 217, 100],
   ]) {
     const accent = [...color.slice(0, 3), 255];
-    const white = [255, 255, 255, 255];
-    assert.deepEqual(stopAppearance('Pick Up', color), {
-      fill: accent,
-      border: white,
-      text: white,
-    });
-    for (const job of ['Delivery', 'Drop Off', 'drop_off', 'DropOff']) {
-      assert.ok(isDelivery(job));
+    for (const job of ['Pick Up', 'Delivery', 'Drop Off', 'drop_off']) {
       assert.deepEqual(stopAppearance(job, color), {
-        fill: accent,
-        border: white,
-        text: white,
+        fill: markCore,
+        border: accent,
+        text: accent,
       });
     }
+    assert.ok(isDelivery('DropOff'));
   }
 });
 
-test('stop backgrounds are high-density circles with centered square bounds, not rounded text boxes', () => {
-  const icon = stopMarkerIcon([32, 122, 99, 255]);
+test('stop backgrounds are high-density circles with a fine rim, not text boxes', () => {
+  const { fill, border } = stopAppearance('Delivery', [32, 122, 99, 255]);
+  const icon = stopMarkerIcon(fill, border);
   assert.equal(icon.width, 112);
   assert.equal(icon.height, 112);
   assert.equal(icon.anchorX, icon.width / 2);
   assert.equal(icon.anchorY, icon.height / 2);
-  assert.equal(
-    icon.mask,
-    false,
-    'the white border and route fill remain distinct',
-  );
+  assert.equal(icon.mask, false);
   const svg = decodeURIComponent(icon.url.split(',').slice(1).join(','));
   assert.match(svg, /width="112" height="112" viewBox="0 0 28 28"/);
   assert.match(svg, /<circle cx="14" cy="14" r="12.5"/);
   assert.match(
     svg,
-    /fill="rgb\(32,122,99\)" stroke="rgb\(255,255,255\)" stroke-width="2.5"/,
+    /fill="rgb\(11,22,38\)" fill-opacity="0.92" stroke="rgb\(32,122,99\)" stroke-opacity="1.00" stroke-width="1.75"/,
   );
+  assert.doesNotMatch(svg, /stroke-dasharray/);
   assert.doesNotMatch(svg, /<(?:rect|ellipse|text)\b/);
 });
 
-// A stop behind the truck is outlined, not filled: it no longer asks for
-// anything. The card has said it that way all along, while the map drew it
-// with the same filled circle as the stop still to come.
-test('a stop already visited is drawn outlined, like its badge in the card', () => {
+// A stop behind the truck no longer asks for anything: its rim turns quiet
+// and dashed and its letter quiet, on the same core and at a smaller
+// radius, so it never reads as the louder of the two.
+test('a stop already visited has a quiet dashed rim', () => {
   const color = [32, 122, 99, 255];
-  const pending = stopAppearance('Pickup', color);
   const done = stopAppearance('Pickup', color, true);
-  assert.deepEqual(done.fill, pending.border, 'the fill and the ring swap');
-  assert.deepEqual(done.border, pending.fill);
-  assert.deepEqual(done.text, color, 'and the number is the colour itself');
-  assert.match(
-    decodeURIComponent(stopMarkerIcon(done.fill, done.border, 13).url),
-    /r="13" fill="rgb\(255,255,255\)" stroke="rgb\(32,122,99\)"/,
+  assert.deepEqual(done.fill.slice(0, 3), markCore.slice(0, 3));
+  assert.ok(done.border[3] < 255 && done.text[3] < 255);
+  const svg = decodeURIComponent(
+    stopMarkerIcon(done.fill, done.border, 11).url,
   );
-  // A filled badge shows as the disc inside its white ring; an outlined one
-  // shows as the ring itself, at the outer edge. At one radius the outlined
-  // one reads as the larger, which is backwards for a stop already behind
-  // the truck.
-  assert.match(
-    decodeURIComponent(stopMarkerIcon(pending.fill, pending.border).url),
-    /r="12.5"/,
-  );
+  assert.match(svg, /r="11"/);
+  assert.match(svg, /stroke="rgb\(32,122,99\)" stroke-opacity="0.59"/);
+  assert.match(svg, /stroke-dasharray="2.2 1.6"/);
 });
 
 // Two marks on one point meant one had to be moved off the place it names,
 // so neither moves any more: a truck standing on a stop is drawn as a ring
 // around its badge, and a truck it has not reached yet is a disc behind a
-// badge wearing a wider white rim. The gap between them stays the distance.
+// badge on a dark rim. The gap between them stays the distance.
 test('a truck at a stop is its ring, and a truck near it stands behind', () => {
   const blue = [40, 76, 220, 255];
   const { fill, border } = stopAppearance('Delivery', blue);
@@ -85,17 +73,12 @@ test('a truck at a stop is its ring, and a truck near it stands behind', () => {
     stopMarkerIcon(fill, border, undefined, '#16a34a').url,
   );
   assert.match(at, /viewBox="0 0 36 36"/);
-  assert.match(at, /r="16.75" fill="#16a34a"/, 'the ring is the truck');
-  // Inside a ring the badge keeps a thinner white edge: at full width the
-  // ring was too narrow to see, and dropped altogether a stop on a teal
-  // route inside a green ring was one blot.
-  assert.match(at, /r="12.5"[^/]*stroke-width="1.5"/);
+  assert.match(at, /r="16.75" fill="#16a34a" stroke="rgb\(11,22,38\)"/);
   const near = decodeURIComponent(
     stopMarkerIcon(fill, border, undefined, null, true).url,
   );
   assert.match(near, /viewBox="0 0 32 32"/);
-  assert.match(near, /r="15" fill="rgb\(255,255,255\)"/, 'the wider rim');
-  assert.match(near, /r="12.5"[^/]*stroke-width="2.5"/);
+  assert.match(near, /r="15" fill="rgb\(11,22,38\)"/, 'the dark rim');
   const plain = decodeURIComponent(stopMarkerIcon(fill, border).url);
   assert.match(plain, /viewBox="0 0 28 28"/);
   assert.doesNotMatch(plain, /fill="rgb\(255,255,255\)"/);

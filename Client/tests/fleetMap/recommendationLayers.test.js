@@ -3,6 +3,21 @@ import assert from 'node:assert/strict';
 import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.ts';
 import { sceneMetrics as metrics } from '../../Scripts/fleetMap/rendering/sceneMetrics.ts';
 
+// The price colour is a station's rim on the map's dark core, or the rim
+// of a planned stop's pump (the owner, September 27).
+const priceShown = (layer, station) =>
+  layer.props.getIcon
+    ? decodeURIComponent(layer.props.getIcon(station).url).includes(
+        `stroke="rgb(${station.color.slice(0, 3).join(',')})"`,
+      )
+    : JSON.stringify(
+        layer.props.getLineColor({
+          ...station,
+          recommended: false,
+          selected: false,
+        }),
+      ) === JSON.stringify(station.color);
+
 test('recommendation rings retain anchors and selection without floating distance labels', () => {
   class Layer {
     constructor(props) {
@@ -106,12 +121,12 @@ test('all station fills cover the route and recommendation rings remain above or
   );
   assert.deepEqual(layers[2].props.data, [ordinary]);
   assert.equal(layers[2].props.getRadius, 8);
-  assert.equal(layers[2].props.getFillColor(ordinary), ordinary.color);
+  assert.ok(priceShown(layers[2], ordinary));
   const points = layers[3];
   assert.deepEqual(points.props.data, [recommended]);
-  // A planned stop is drawn larger than the stations it was chosen from.
-  assert.equal(points.props.getRadius, 8);
-  assert.deepEqual(points.props.getFillColor(recommended), recommended.color);
+  // A planned stop is a pump in a rim of its price colour.
+  assert.equal(points.props.getSize, 22);
+  assert.ok(priceShown(points, recommended));
   assert.equal(points.props.pickable, true);
   assert.equal(points.props.onClick, selectStation);
   assert.equal(build(input)[3], points);
@@ -228,11 +243,7 @@ test('current, future, deadhead and selected future roads stay below all fuel po
     [ordinaryLayer, ordinary],
     [recommendedLayer, recommended],
   ]) {
-    assert.equal(
-      layer.props.getFillColor(station),
-      station.color,
-      'price colors are unchanged',
-    );
+    assert.ok(priceShown(layer, station), 'price colors are unchanged');
     assert.equal(layer.props.pickable, true);
     layer.props.onClick({ object: station });
   }
@@ -265,17 +276,17 @@ test('current, future, deadhead and selected future roads stay below all fuel po
   assert.ok(hidden.some(layer => layer.props.id === 'current'));
   const restored = build(input);
   assertOrder(restored);
-  assert.equal(
-    restored
-      .find(layer => layer.props.id === 'fuel-points')
-      .props.getFillColor(ordinary),
-    ordinary.color,
+  assert.ok(
+    priceShown(
+      restored.find(layer => layer.props.id === 'fuel-points'),
+      ordinary,
+    ),
   );
-  assert.equal(
-    restored
-      .find(layer => layer.props.id === 'fuel-recommendation-points')
-      .props.getFillColor(recommended),
-    recommended.color,
+  assert.ok(
+    priceShown(
+      restored.find(layer => layer.props.id === 'fuel-recommendation-points'),
+      recommended,
+    ),
   );
 });
 
@@ -325,12 +336,12 @@ test('fuel visits use compact rectangular order badges without changing selectab
       assert.equal(layer.props.onClick, selectStation);
       assert.equal(layer.props.onHover, setHover);
     }
-    assert.equal(result[0].props.getFillColor(station), station.color);
-    assert.deepEqual(result[1].props.getLineColor, [49, 94, 234]);
-    assert.equal(result[0].props.getRadius, 8);
+    assert.ok(priceShown(result[0], station));
+    assert.deepEqual(result[1].props.getLineColor, [49, 94, 234, 170]);
+    if (!result[0].props.getIcon) assert.equal(result[0].props.getRadius, 8);
     assert.equal(result[1].props.getRadius, 12);
     const badge = result[2].props;
-    assert.equal(badge.getText(badge.data[0]), `Fuel ${badge.data[0].numbers}`);
+    assert.equal(badge.getText(badge.data[0]), badge.data[0].numbers);
     assert.equal(badge.getPosition(station), station.position);
     // Above the ring, clear of it: the label used to sit on the marker.
     assert.deepEqual(badge.getPixelOffset, [0, -25]);
@@ -341,8 +352,9 @@ test('fuel visits use compact rectangular order badges without changing selectab
       4,
       'fuel badges stay rectangular, unlike load circles',
     );
-    assert.deepEqual(badge.getBackgroundColor, [30, 41, 59]);
-    assert.deepEqual(badge.getColor, [255, 255, 255]);
+    // The number in the accent on the map's dark core.
+    assert.deepEqual(badge.getBackgroundColor, [11, 22, 38, 235]);
+    assert.deepEqual(badge.getColor, [34, 211, 238]);
     assert.equal(
       badge.getText(badge.data[0]).includes('mi'),
       false,
@@ -420,7 +432,7 @@ test('ordinary stations and recommendations without visit numbers never receive 
     labels.data.map(station => station.id),
     ['numbered'],
   );
-  assert.equal(labels.getText(labels.data[0]), 'Fuel 4');
+  assert.equal(labels.getText(labels.data[0]), '4');
   // Above the ring it names, not on it: the offset clears the ring's radius
   // and half the label's own height, with a gap left over. At twenty-one it
   // sat across the marker.
@@ -476,7 +488,7 @@ test('editing has one visible price-colored point, a larger ring and a distinct 
       layer => layer.props.data.length === 1 && layer.props.data[0] === editing,
     ),
   );
-  assert.equal(layers[0].props.getFillColor(editing), editing.color);
+  assert.ok(priceShown(layers[0], editing));
   assert.equal(
     layers[1].props.filled,
     false,
