@@ -343,6 +343,12 @@ public partial class AutomaticPlanningTests
           transport,
           new TestCompany(),
           clock,
+          new EarlyDeliveryStatuses(
+            db,
+            new DeliveryStatusLocks(db),
+            new TestCompany(),
+            clock
+          ),
           NullLogger<DriverTextDelivery>.Instance
         ),
         new FuelIssueRecords(

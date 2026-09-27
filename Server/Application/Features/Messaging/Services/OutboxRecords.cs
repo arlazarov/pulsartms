@@ -45,6 +45,7 @@ public sealed class OutboxRecords(MessagingEvents events, TimeProvider clock)
           ) == 0
       )
         return;
+      await ApplyEarlyAsync(services, db, id, ct);
       revision = await BumpAsync(db, conversation, ct);
       await transaction.CommitAsync(ct);
     }
@@ -86,11 +87,33 @@ public sealed class OutboxRecords(MessagingEvents events, TimeProvider clock)
           ) == 0
       )
         return false;
+      if (providerId is not null)
+        await ApplyEarlyAsync(services, db, id, ct);
       revision = await BumpAsync(db, conversation, ct);
       await transaction.CommitAsync(ct);
     }
     Publish(services, conversation, revision);
     return true;
+  }
+
+  // What the provider reported before the id was saved (audit F27), in the
+  // same transaction as the id.
+  private static async Task ApplyEarlyAsync(
+    IServiceProvider services,
+    IAppDbContext db,
+    Guid id,
+    CancellationToken ct
+  )
+  {
+    var message = await db.ConversationMessages.SingleAsync(
+      x => x.Id == id,
+      ct
+    );
+    // Kept statuses are taken even when none moves the message on.
+    await services
+      .GetRequiredService<EarlyDeliveryStatuses>()
+      .ApplyAsync(message, ct);
+    await db.SaveChangesAsync(ct);
   }
 
   private static async Task<long> BumpAsync(

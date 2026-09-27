@@ -122,6 +122,7 @@ public static class DependencyInjection
     services.AddScoped<InboxRecorder>();
     services.AddScoped<IDriverScope, DriverScopeReader>();
     services.AddScoped<ApprovedTemplates>();
+    services.AddScoped<EarlyDeliveryStatuses>();
     services.AddScoped<IDriverTextDelivery, DriverTextDelivery>();
     services.AddSingleton<MessagingEvents>();
     services.AddSingleton<MessagingMailboxes>();

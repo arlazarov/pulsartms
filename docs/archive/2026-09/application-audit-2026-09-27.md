@@ -1362,6 +1362,44 @@ failed on the new worktree's missing Client packages and is marked.
   rounds can legitimately take long (road preparation, ETA refresh)
   first need a bounded round. No change made.
 
+- **F27 fixed: a delivery status before the provider id is saved.**
+  Reproduced (diagnostic-Voxdnm): a webhook, as another request during
+  the provider call, reported "failed" (131047); the attempt stayed
+  "accepted". Messaging now keeps such a status (`EarlyDeliveryStatuses`,
+  `PendingDeliveryStatuses`, migration 78 `KeepEarlyDeliveryStatuses`):
+  per carrier, channel, business number and provider id, once per
+  status, for an hour, at most 1,000 per carrier; and applies it when the
+  id is saved - by the fuel-text sender (`DriverTextDelivery`), by the
+  outbox when a reply finishes and when a late answer arrives - in the
+  same transaction as the id. Ordering (Root's review): the webhook takes
+  its carrier's admission lock, then message locks sorted by provider
+  id; the sender takes one message lock; under the lock the webhook
+  looks for the id again. So whichever comes second sees what the first
+  committed, the bound is counted by one webhook at a time, and opposite
+  batches cannot deadlock. PostgreSQL advisory locks, behind
+  `IDeliveryStatusLocks`; SQLite serializes writers already. Tests: the
+  race through the real sender and webhook, a repeated early status
+  kept and applied once, another carrier's status for the same id left
+  alone, a reply's early status at finish and at a late answer, expiry,
+  the bound (webhook class, green diagnostic-nhouBX and after the late
+  answer test the groups below); on PostgreSQL, owner-level overlaps in
+  two real transactions - webhooks against the bound, opposite batches,
+  the sender first and the webhook first (diagnostic-3joWht), and the
+  primitive lock (diagnostic-kswDRW). Mutations - the sender, the webhook
+  and the outbox at finish and at a late answer not applying, no expiry,
+  no bound, no de-duplication, no admission lock, no message lock on
+  either side, the lock a no-op - all fail (diagnostic-rFSEGT,
+  diagnostic-UFR69t, diagnostic-GDOWlB; in rFSEGT an outbox mutation
+  survived because it reached the untested late-answer path, since
+  tested, and in UFR69t one did not compile, rerun in GDOWlB). Groups
+  messaging and database exit 0, Server 1404, Client 147
+  (diagnostic-H5TfRf; the run before failed only because a messaging
+  fixture did not register the owner, diagnostic-7Fpbcx). Invalid runs
+  marked: diagnostic-ZzuVpg, diagnostic-QrN68t. Not covered: a status
+  for an id never saved stays an hour and applies to nothing; no
+  auditor rule, because a kept status that finds its id is applied by
+  construction.
+
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done

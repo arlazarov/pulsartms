@@ -699,6 +699,12 @@ public sealed class FuelIssueSenderTests
           Transport,
           company,
           Time,
+          new EarlyDeliveryStatuses(
+            db,
+            new DeliveryStatusLocks(db),
+            company,
+            Time
+          ),
           NullLogger<DriverTextDelivery>.Instance
         ),
         new FuelIssueRecords(
@@ -724,6 +730,12 @@ public sealed class FuelIssueSenderTests
         Transport,
         Refresh.Services.GetRequiredService<ICurrentCompany>(),
         Time,
+        new EarlyDeliveryStatuses(
+          Db,
+          new DeliveryStatusLocks(Db),
+          Refresh.Services.GetRequiredService<ICurrentCompany>(),
+          Time
+        ),
         NullLogger<DriverTextDelivery>.Instance
       );
 

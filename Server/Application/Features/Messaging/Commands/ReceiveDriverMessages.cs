@@ -44,6 +44,7 @@ public sealed class DriverMessagingWebhookHandlers(
   InboxRecorder inbox,
   MessagingEvents events,
   IEnumerable<IDriverTextObserver> observers,
+  EarlyDeliveryStatuses early,
   ILogger<DriverMessagingWebhookHandlers> logger
 )
   : IRequestHandler<VerifyDriverMessagingWebhookQuery, RequestResponse<string>>,
@@ -117,8 +118,13 @@ public sealed class DriverMessagingWebhookHandlers(
         notification.OtherSenders
       );
     }
-    var outbound = await ApplyConversationStatusesAsync(notification, ct);
-    var texts = await ApplyTextStatusesAsync(notification, ct);
+    var matched = new HashSet<string>(StringComparer.Ordinal);
+    var outbound = await ApplyConversationStatusesAsync(
+      notification,
+      matched,
+      ct
+    );
+    var texts = await ApplyTextStatusesAsync(notification, matched, ct);
     await RecordLegacyWindowsAsync(notification.Inbound, ct);
     var conversations = await inbox.RecordAsync(
       messaging.Channel,
@@ -126,7 +132,28 @@ public sealed class DriverMessagingWebhookHandlers(
       notification.Inbound,
       ct
     );
-    await db.SaveChangesAsync(ct);
+    // Statuses for ids nobody has saved yet: looked for again under the
+    // lock and kept if still unknown (audit F27), in one transaction with
+    // everything else this notification records.
+    var unmatched = notification
+      .Statuses.Where(x => !matched.Contains(x.ProviderMessageId))
+      .ToList();
+    if (unmatched.Count == 0)
+      await db.SaveChangesAsync(ct);
+    else
+    {
+      await using var transaction = await db.Database.BeginTransactionAsync(ct);
+      var found = await early.KeepAsync(
+        messaging.Channel,
+        notification.BusinessNumberId,
+        unmatched,
+        ct
+      );
+      outbound = [.. outbound.Concat(found.Conversations).Distinct()];
+      texts = [.. texts.Concat(found.Attempts).DistinctBy(x => x.Id)];
+      await db.SaveChangesAsync(ct);
+      await transaction.CommitAsync(ct);
+    }
     // After the commit: the conversations that gained or changed a message.
     foreach (
       var (conversation, revision) in await RevisionsAsync(
@@ -145,6 +172,7 @@ public sealed class DriverMessagingWebhookHandlers(
   // id under this business number; they only move forward.
   private async Task<IReadOnlyList<Guid>> ApplyConversationStatusesAsync(
     DriverMessagingNotification notification,
+    HashSet<string> matched,
     CancellationToken ct
   )
   {
@@ -162,6 +190,7 @@ public sealed class DriverMessagingWebhookHandlers(
         && ids.Contains(x.ProviderMessageId)
       )
       .ToDictionaryAsync(x => x.ProviderMessageId!, ct);
+    matched.UnionWith(messages.Keys);
     var changed = new HashSet<Guid>();
     foreach (var status in notification.Statuses.OrderBy(x => x.At))
       if (
@@ -183,6 +212,7 @@ public sealed class DriverMessagingWebhookHandlers(
   // before the number was kept have none and are not moved at all.
   private async Task<IReadOnlyList<DriverMessage>> ApplyTextStatusesAsync(
     DriverMessagingNotification notification,
+    HashSet<string> matched,
     CancellationToken ct
   )
   {
@@ -200,6 +230,7 @@ public sealed class DriverMessagingWebhookHandlers(
         && ids.Contains(x.ProviderMessageId)
       )
       .ToDictionaryAsync(x => x.ProviderMessageId!, ct);
+    matched.UnionWith(attempts.Keys);
     var changed = new Dictionary<Guid, DriverMessage>();
     foreach (var status in notification.Statuses.OrderBy(x => x.At))
       if (

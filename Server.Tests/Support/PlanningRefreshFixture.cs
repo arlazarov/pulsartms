@@ -1,3 +1,5 @@
+using Application.Features.Messaging.Interfaces;
+using Application.Features.Messaging.Services;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.Routes;
@@ -50,6 +52,8 @@ internal sealed class PlanningRefreshFixture : IAsyncDisposable
     services.AddSingleton<PlanningRefreshSignal>();
     services.AddSingleton<PlanningSummaryCache>();
     services.AddScoped<ICurrentCompany, TestCompany>();
+    services.AddScoped<IDeliveryStatusLocks, DeliveryStatusLocks>();
+    services.AddScoped<EarlyDeliveryStatuses>();
     services.AddSingleton<PlanningRefreshOperation>();
     services.AddSingleton<IFuelSavedInputsValidation>(fixture.SavedInputs);
     configure?.Invoke(services);

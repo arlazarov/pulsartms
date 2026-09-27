@@ -6,6 +6,7 @@ using Application.Diagnostics;
 using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Models;
 using Application.Features.Messaging.Commands;
+using Application.Features.Messaging.Interfaces;
 using Application.Features.Messaging.Services;
 using Application.Interfaces;
 using Domain.Entities;
@@ -13,11 +14,13 @@ using Domain.Entities.Fleet;
 using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
 using Infrastructure.Integrations.WhatsApp;
+using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Server.Tests.Support;
 
 namespace Server.Tests.Messaging;
 
@@ -556,6 +559,267 @@ public sealed class DriverMessagingWebhookTests
       Assert.Equal(403, (await handler.Handle(wrong, default)).StatusCode);
   }
 
+  // Audit F27: a status can arrive before the provider id it names is
+  // saved - here while the send is still waiting for the provider's answer,
+  // as another request. It was dropped, so an early failure left the
+  // attempt showing accepted. It is kept and applied when the id is saved.
+  [Fact]
+  public async Task AStatusBeforeTheSendIsAnsweredIsAppliedWhenTheIdIsSaved()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var (driver, truck) = await f.RecipientAsync("+15558234327");
+    var transport = new FakeDriverMessaging();
+    transport.During = async () =>
+      Assert.Equal(
+        200,
+        await f.PostFromAnotherRequestAsync(
+          Status("wamid.1", "failed", 10, code: 131047)
+        )
+      );
+    var attempt = new DriverMessage
+    {
+      DriverId = driver,
+      TruckId = truck,
+      DispatchId = Guid.NewGuid(),
+      Recipient = "+15558234327",
+      Text = "Fuel for this shift",
+      IdempotencyKey = Guid.NewGuid().ToString("N"),
+    };
+
+    var outcome = await f.Delivery(transport)
+      .SendAsync(attempt, false, _ => Task.FromResult(true), default);
+
+    Assert.Equal(DriverTextResult.Accepted, outcome.Result);
+    f.Db.ChangeTracker.Clear();
+    var row = await f.Db.DriverMessages.AsNoTracking().SingleAsync();
+    Assert.Equal(
+      ("wamid.1", DriverMessageStatuses.Failed, (int?)131047),
+      (row.ProviderMessageId, row.Status, row.ErrorCode)
+    );
+  }
+
+  // The provider repeats a notification it thinks went unanswered: the
+  // early status is kept once and applied once.
+  [Fact]
+  public async Task AnEarlyStatusRepeatedIsKeptOnceAndAppliedOnce()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var (driver, truck) = await f.RecipientAsync("+15558234327");
+    var transport = new FakeDriverMessaging();
+    var keptDuringSend = -1;
+    transport.During = async () =>
+    {
+      for (var i = 0; i < 2; i++)
+        await f.PostFromAnotherRequestAsync(
+          Status("wamid.1", "failed", 10, code: 131047)
+        );
+      await using var scope = f.Refresh.NewScope();
+      keptDuringSend = await scope
+        .ServiceProvider.GetRequiredService<AppDbContext>()
+        .PendingDeliveryStatuses.CountAsync();
+    };
+
+    await f.Delivery(transport)
+      .SendAsync(
+        f.Attempt(driver, truck),
+        false,
+        _ => Task.FromResult(true),
+        default
+      );
+
+    Assert.Equal(1, keptDuringSend);
+    Assert.Equal(
+      DriverMessageStatuses.Failed,
+      (await f.Db.DriverMessages.AsNoTracking().SingleAsync()).Status
+    );
+    Assert.Empty(
+      await f.Db.PendingDeliveryStatuses.AsNoTracking().ToListAsync()
+    );
+  }
+
+  // Another carrier's early status for the same provider id is that
+  // carrier's: it waits under its own number and touches nothing here.
+  [Fact]
+  public async Task AnotherCarriersEarlyStatusDoesNotTouchThisSend()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var (driver, truck) = await f.RecipientAsync("+15558234327");
+    var transport = new FakeDriverMessaging();
+    transport.During = async () =>
+      Assert.Equal(
+        200,
+        await f.PostFromAnotherRequestAsync(
+          Status("wamid.1", "failed", 10, code: 131047, number: "654321"),
+          key: "other",
+          secret: "secret-other"
+        )
+      );
+
+    await f.Delivery(transport)
+      .SendAsync(
+        f.Attempt(driver, truck),
+        false,
+        _ => Task.FromResult(true),
+        default
+      );
+
+    Assert.Equal(
+      DriverMessageStatuses.Accepted,
+      (await f.Db.DriverMessages.AsNoTracking().SingleAsync()).Status
+    );
+    Assert.Empty(
+      await f.Db.PendingDeliveryStatuses.AsNoTracking().ToListAsync()
+    );
+    using (f.Company.As(Other))
+      Assert.Single(
+        await f.Db.PendingDeliveryStatuses.AsNoTracking().ToListAsync()
+      );
+  }
+
+  // A dispatcher's reply: its status arrives before the outbox saves the
+  // provider id; it applies when the id is saved.
+  [Fact]
+  public async Task AReplysEarlyStatusIsAppliedWhenTheOutboxSavesItsId()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var (conversation, reply) = await f.ReplyInFlightAsync();
+    Assert.Equal(
+      200,
+      await f.PostAsync(Status("wamid.reply", "delivered", 20))
+    );
+
+    await using (var scope = f.Refresh.NewScope())
+      Assert.True(
+        await new OutboxRecords(f.Events, f.Refresh.Time).FinishAsync(
+          scope.ServiceProvider,
+          reply,
+          conversation,
+          1,
+          DriverMessageStatuses.Sending,
+          DriverMessageStatuses.Accepted,
+          "wamid.reply",
+          null,
+          default
+        )
+      );
+
+    var row = await f
+      .Db.ConversationMessages.AsNoTracking()
+      .SingleAsync(x => x.Id == reply);
+    Assert.Equal(
+      ("wamid.reply", DriverMessageStatuses.Delivered),
+      (row.ProviderMessageId, row.Status)
+    );
+    Assert.Empty(
+      await f.Db.PendingDeliveryStatuses.AsNoTracking().ToListAsync()
+    );
+  }
+
+  // The provider's answer came late - the attempt was marked unknown or
+  // another worker held it - and its status came before that: it applies
+  // when the late answer saves the id.
+  [Fact]
+  public async Task AReplysEarlyStatusIsAppliedWhenALateAnswerSavesItsId()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var (conversation, reply) = await f.ReplyInFlightAsync();
+    Assert.Equal(200, await f.PostAsync(Status("wamid.reply", "read", 20)));
+
+    await using (var scope = f.Refresh.NewScope())
+      await new OutboxRecords(f.Events, f.Refresh.Time).LateAnswerAsync(
+        scope.ServiceProvider,
+        reply,
+        conversation,
+        "wamid.reply",
+        default
+      );
+
+    var row = await f
+      .Db.ConversationMessages.AsNoTracking()
+      .SingleAsync(x => x.Id == reply);
+    Assert.Equal(
+      ("wamid.reply", DriverMessageStatuses.Read),
+      (row.ProviderMessageId, row.Status)
+    );
+    Assert.Empty(
+      await f.Db.PendingDeliveryStatuses.AsNoTracking().ToListAsync()
+    );
+  }
+
+  // A status for an id never saved is kept only for its lifetime: the next
+  // status kept after that drops it, and it applies to nothing later.
+  [Fact]
+  public async Task AnEarlyStatusExpires()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var (driver, truck) = await f.RecipientAsync("+15558234327");
+    Assert.Equal(
+      200,
+      await f.PostAsync(Status("wamid.1", "failed", 10, code: 131047))
+    );
+    f.Refresh.Time.Advance(
+      EarlyDeliveryStatuses.Keep + TimeSpan.FromMinutes(1)
+    );
+    Assert.Equal(200, await f.PostAsync(Status("wamid.other", "read", 20)));
+
+    Assert.Equal(
+      ["wamid.other"],
+      await f
+        .Db.PendingDeliveryStatuses.AsNoTracking()
+        .Select(x => x.ProviderMessageId)
+        .ToListAsync()
+    );
+    await f.Delivery(new FakeDriverMessaging())
+      .SendAsync(
+        f.Attempt(driver, truck),
+        false,
+        _ => Task.FromResult(true),
+        default
+      );
+    Assert.Equal(
+      DriverMessageStatuses.Accepted,
+      (await f.Db.DriverMessages.AsNoTracking().SingleAsync()).Status
+    );
+  }
+
+  // A carrier keeps at most PerCompany of them.
+  [Fact]
+  public async Task ACarrierKeepsABoundedNumber()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var early = new EarlyDeliveryStatuses(
+      f.Db,
+      new DeliveryStatusLocks(f.Db),
+      f.Company,
+      f.Refresh.Time
+    );
+    await using (var transaction = await f.Db.Database.BeginTransactionAsync())
+    {
+      await early.KeepAsync(
+        DriverMessageChannels.WhatsApp,
+        "123456",
+        [
+          .. Enumerable
+            .Range(0, EarlyDeliveryStatuses.PerCompany + 5)
+            .Select(i => new DriverMessageStatusEvent(
+              $"wamid.{i}",
+              "read",
+              DateTime.UtcNow,
+              null
+            )),
+        ],
+        default
+      );
+      await f.Db.SaveChangesAsync();
+      await transaction.CommitAsync();
+    }
+
+    Assert.Equal(
+      EarlyDeliveryStatuses.PerCompany,
+      await f.Db.PendingDeliveryStatuses.CountAsync()
+    );
+  }
+
   private static byte[] Status(
     string id,
     string status,
@@ -670,10 +934,12 @@ public sealed class DriverMessagingWebhookTests
     // notification must never make one.
     public int ProviderCalls { get; private set; }
 
-    private WhatsAppCloudMessaging Provider() =>
+    private WhatsAppCloudMessaging Provider() => Provider(Company);
+
+    private WhatsAppCloudMessaging Provider(ICurrentCompany company) =>
       new(
         new HttpClient(new Counting(() => ProviderCalls++)),
-        new Credentials(Company),
+        new Credentials(company),
         new ConfigurationBuilder().Build()
       );
 
@@ -685,6 +951,12 @@ public sealed class DriverMessagingWebhookTests
         new InboxRecorder(Db, TimeProvider.System),
         Events,
         [new Observer(Notified)],
+        new EarlyDeliveryStatuses(
+          Db,
+          new DeliveryStatusLocks(Db),
+          Company,
+          Refresh.Time
+        ),
         Logger
       );
 
@@ -696,8 +968,147 @@ public sealed class DriverMessagingWebhookTests
         Provider(),
         Company,
         Refresh.Time,
+        new EarlyDeliveryStatuses(
+          Db,
+          new DeliveryStatusLocks(Db),
+          Company,
+          Refresh.Time
+        ),
         NullLogger<DriverTextDelivery>.Instance
       );
+
+    public DriverTextDelivery Delivery(IDriverMessaging transport) =>
+      new(
+        Db,
+        transport,
+        Company,
+        Refresh.Time,
+        new EarlyDeliveryStatuses(
+          Db,
+          new DeliveryStatusLocks(Db),
+          Company,
+          Refresh.Time
+        ),
+        NullLogger<DriverTextDelivery>.Instance
+      );
+
+    // A driver with a truck, whose window under the business number is open.
+    public async Task<(Guid Driver, Guid Truck)> RecipientAsync(string phone)
+    {
+      var truck = new Truck
+      {
+        Id = Guid.NewGuid(),
+        ExternalId = Guid.NewGuid().ToString("N"),
+        UnitNumber = Guid.NewGuid().ToString("N")[..8],
+        IsActive = true,
+      };
+      var driver = new Driver
+      {
+        Id = Guid.NewGuid(),
+        ExternalId = Guid.NewGuid().ToString("N"),
+        Name = "Driver",
+        IsActive = true,
+        WhatsAppPhone = phone,
+      };
+      Db.AddRange(
+        truck,
+        driver,
+        new Conversation
+        {
+          Id = Guid.NewGuid(),
+          Channel = DriverMessageChannels.WhatsApp,
+          BusinessNumberId = "123456",
+          Participant = phone,
+          LastInboundAt = Refresh.Time.GetUtcNow().UtcDateTime.AddHours(-1),
+          LastMessageAt = Refresh.Time.GetUtcNow().UtcDateTime.AddHours(-1),
+        }
+      );
+      await Db.SaveChangesAsync();
+      Db.ChangeTracker.Clear();
+      return (driver.Id, truck.Id);
+    }
+
+    public DriverMessage Attempt(Guid driver, Guid truck) =>
+      new()
+      {
+        DriverId = driver,
+        TruckId = truck,
+        DispatchId = Guid.NewGuid(),
+        Recipient = "+15558234327",
+        Text = "Fuel for this shift",
+        IdempotencyKey = Guid.NewGuid().ToString("N"),
+      };
+
+    // A dispatcher's reply the outbox is sending: fence 1, no provider id.
+    public async Task<(Guid Conversation, Guid Reply)> ReplyInFlightAsync()
+    {
+      var conversation = new Conversation
+      {
+        Id = Guid.NewGuid(),
+        Channel = DriverMessageChannels.WhatsApp,
+        BusinessNumberId = "123456",
+        Participant = "+15558234327",
+        LastInboundAt = Refresh.Time.GetUtcNow().UtcDateTime.AddHours(-1),
+        LastMessageAt = Refresh.Time.GetUtcNow().UtcDateTime.AddHours(-1),
+      };
+      var reply = new ConversationMessage
+      {
+        Id = Guid.NewGuid(),
+        ConversationId = conversation.Id,
+        Channel = DriverMessageChannels.WhatsApp,
+        BusinessNumberId = "123456",
+        Direction = "outbound",
+        Kind = "text",
+        Body = "On my way",
+        Status = DriverMessageStatuses.Sending,
+        StatusAt = Refresh.Time.GetUtcNow().UtcDateTime,
+        Fence = 1,
+        Attempt = 1,
+      };
+      Db.AddRange(conversation, reply);
+      await Db.SaveChangesAsync();
+      Db.ChangeTracker.Clear();
+      return (conversation.Id, reply.Id);
+    }
+
+    // The webhook as another request handles it, in its own unit of work.
+    public async Task<int> PostFromAnotherRequestAsync(
+      byte[] body,
+      string key = "amfcarrier",
+      string secret = "secret-amf"
+    )
+    {
+      await using var scope = Refresh.NewScope();
+      var db =
+        scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.AppDbContext>();
+      var signature =
+        "sha256="
+        + Convert
+          .ToHexString(
+            HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), body)
+          )
+          .ToLowerInvariant();
+      // The request's own carrier, as its context sees it.
+      var company = scope.ServiceProvider.GetRequiredService<ICurrentCompany>();
+      var received = await new DriverMessagingWebhookHandlers(
+        db,
+        Provider(company),
+        company,
+        new InboxRecorder(db, TimeProvider.System),
+        Events,
+        [new Observer(Notified)],
+        scope.ServiceProvider.GetRequiredService<EarlyDeliveryStatuses>(),
+        Logger
+      ).Handle(
+        new ReceiveDriverMessagesCommand(
+          key,
+          signature,
+          new MemoryStream(body)
+        ),
+        default
+      );
+      return received.StatusCode;
+    }
 
     public MessagingEvents Events { get; } = new();
 

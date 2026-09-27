@@ -31,6 +31,7 @@ public interface IAppDbContext
   DbSet<DriverMessagingWindow> DriverMessagingWindows { get; }
   DbSet<Conversation> Conversations { get; }
   DbSet<ConversationMessage> ConversationMessages { get; }
+  DbSet<PendingDeliveryStatus> PendingDeliveryStatuses { get; }
   DbSet<MessageAttachment> MessageAttachments { get; }
   DbSet<ConversationRead> ConversationReads { get; }
   DbSet<ConversationArrivalHead> ConversationArrivalHeads { get; }

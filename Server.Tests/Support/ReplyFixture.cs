@@ -67,6 +67,10 @@ internal sealed class ReplyFixture : IAsyncDisposable
     collection.AddScoped<StorageTargets>();
     collection.AddScoped<FileStore>();
     collection.AddScoped<ApprovedTemplates>();
+    collection.AddScoped<IDeliveryStatusLocks>(sp => new DeliveryStatusLocks(
+      (AppDbContext)sp.GetRequiredService<IAppDbContext>()
+    ));
+    collection.AddScoped<EarlyDeliveryStatuses>();
     f.services = collection.BuildServiceProvider();
     foreach (var name in new[] { "me", "colleague" })
       f.Db.Users.Add(

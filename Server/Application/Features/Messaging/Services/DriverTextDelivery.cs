@@ -16,6 +16,7 @@ public sealed class DriverTextDelivery(
   IDriverMessaging messaging,
   ICurrentCompany company,
   TimeProvider time,
+  EarlyDeliveryStatuses early,
   ILogger<DriverTextDelivery> logger
 ) : IDriverTextDelivery
 {
@@ -177,12 +178,7 @@ public sealed class DriverTextDelivery(
         );
       case DriverMessageOutcome.Accepted:
         request.ProviderMessageId = result.ProviderMessageId;
-        return await FinishAsync(
-          request,
-          DriverTextResult.Accepted,
-          DriverMessageStatuses.Accepted,
-          null
-        );
+        return await AcceptedAsync(request);
       case DriverMessageOutcome.Unknown:
         logger.LogWarning(
           "WhatsApp send {DriverMessageId} has no answer, code {ErrorCode}",
@@ -208,6 +204,22 @@ public sealed class DriverTextDelivery(
           result.ErrorCode
         );
     }
+  }
+
+  // The id, its acceptance and whatever the provider already reported about
+  // it commit together, under the lock the webhook takes (audit F27).
+  private async Task<DriverTextOutcome> AcceptedAsync(DriverMessage attempt)
+  {
+    await using var transaction = await db.Database.BeginTransactionAsync(
+      CancellationToken.None
+    );
+    attempt.Status = DriverMessageStatuses.Accepted;
+    attempt.StatusAt = time.GetUtcNow().UtcDateTime;
+    attempt.ErrorCode = null;
+    await early.ApplyAsync(attempt, CancellationToken.None);
+    await db.SaveChangesAsync(CancellationToken.None);
+    await transaction.CommitAsync(CancellationToken.None);
+    return new(DriverTextResult.Accepted, attempt);
   }
 
   private async Task<DriverTextOutcome> FinishAsync(

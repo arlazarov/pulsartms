@@ -23,6 +23,8 @@ public sealed partial class TenantFilterBypassTests
       "unnests captured inputs; the rows it joins come through LINQ",
     ["Server/Infrastructure/Persistence/EtaForecastStore.cs"] =
       "upsert that writes the serving CompanyId",
+    ["Server/Infrastructure/Persistence/DeliveryStatusLocks.cs"] =
+      "advisory lock keyed by the serving carrier; reads no rows",
     ["Server/Infrastructure/Persistence/DispatchReadTicketStore.cs"] =
       "upsert that writes and conflicts on the serving CompanyId",
     ["Server/Infrastructure/Persistence/ExecutionPlanningStore.cs"] =
