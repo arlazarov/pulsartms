@@ -919,7 +919,7 @@ async function checkRepeatedVisits(page, name, screenshots) {
   const cardImage = resolve(output, `${name}-repeated-visits.png`);
   await page.screenshot({ path: cardImage, fullPage: true });
   screenshots.push(cardImage);
-  await card.locator('.dispatch-load__details').click();
+  await card.locator('.dispatch-load__number').click();
   const workspace = await workspacePage(page);
   const details = workspace.locator('.stop-workspace__stop');
   check(
@@ -988,7 +988,7 @@ async function checkRepeatedVisits(page, name, screenshots) {
   const table = page.getByRole('button', { name: 'Table', exact: true });
   if (await table.isVisible()) {
     await table.click();
-    const row = page.locator('.dispatch-table tbody tr').first();
+    const row = page.locator('.dispatch-table tr.dispatch-table__row').first();
     await row.locator('.dispatch-table__stop-entry').nth(1).waitFor();
     check(
       (await row.locator('.dispatch-table__stop-entry').count()) === 2,
@@ -1203,6 +1203,18 @@ try {
             assert.equal(typeof scope.search, 'string');
             const summary = planning();
             summary.state.plan.geometryOmitted = true;
+            // The board's head keeps these behind one warning sign.
+            summary.notices = [
+              {
+                kind: 'source-review',
+                loadNumber: 1441,
+                dispatchId: currentLoadId,
+                text: 'Source resources are unresolved.',
+              },
+            ];
+            summary.state.plan.route.warnings = [
+              'TomTom has not confirmed truck access on some route sections.',
+            ];
             await route.fulfill({ status: 200, json: success([summary]) });
           } else if (
             url.origin === origin &&
@@ -1675,6 +1687,11 @@ try {
                   fuel: textBlock(summary.querySelector('.fuel-reading')),
                   readings: textBlock(summary.querySelector('.truck-readings')),
                   recap: textBlock(summary.querySelector('.driver-next-recap')),
+                  warnings: summary
+                    .querySelector(
+                      '.dispatch-truck__header .dispatch-planning__warnings',
+                    )
+                    ?.getAttribute('title'),
                   recapTime: summary
                     .querySelector('.driver-next-recap time')
                     ?.getAttribute('datetime'),
@@ -2297,20 +2314,20 @@ try {
             );
             check(
               summary?.dutyHidden === false && summary.toggle == null,
-              name + ' duty and recap are always visible',
+              name + ' duty is always visible',
             );
-            const recap = page.locator(
-              '.dispatch-planning__duty .driver-next-recap',
-            );
-            await recap.waitFor();
+            // The Next recap left the board card (the owner, September 27).
             check(
-              (await recap.innerText()).replace(/\s+/g, ' ').trim() ===
-                `Next recap ${recapLabel} +3h 05m` &&
-                Date.parse(
-                  await recap.locator('time').getAttribute('datetime'),
-                ) === Date.parse(cycleAtCalculation().nextRecapAt),
+              summary?.recap == null && !/Next recap/.test(summary?.text ?? ''),
+              name + ' the board card shows no Next recap',
+            );
+            check(
+              summary?.warnings ===
+                'Load 1441: Source resources are unresolved.\n' +
+                  'TomTom has not confirmed truck access on some route sections.' &&
+                !/Source resources|TomTom/.test(summary?.text ?? ''),
               name +
-                ' shows the current recap date and credited hours without delivery-derived data',
+                ' the load notice and the road warning wait behind one sign',
             );
             await page.screenshot({
               path: resolve(output, `${name}-truck-details.png`),
@@ -2422,7 +2439,9 @@ try {
                 name + ' Table',
               );
               releaseTable();
-              const firstRow = page.locator('.dispatch-table tbody tr').first();
+              const firstRow = page
+                .locator('.dispatch-table tr.dispatch-table__row')
+                .first();
               await firstRow.waitFor();
               await checkDispatchTop(
                 page,
@@ -2584,14 +2603,22 @@ try {
               ).includes('Completed'),
               name + ' completed papers have no active-phase folders',
             );
+            // History has no cards (the owner, September 27): it reads as
+            // the table, newest pickup day first.
+            check(
+              await page
+                .getByRole('button', { name: 'Cards', exact: true })
+                .isDisabled(),
+              name + ' completed offers no Cards view',
+            );
             await page
-              .getByRole('button', { name: 'Cards', exact: true })
+              .getByRole('button', { name: 'Table', exact: true })
               .click();
-            await page.locator('.dispatch-load').nth(1).waitFor();
+            await page.locator('tr.dispatch-table__row').nth(1).waitFor();
             await checkDispatchTop(
               page,
               dispatchTopBaseline,
-              name + ' completed Cards',
+              name + ' completed Table',
             );
             check(
               (await page
@@ -2606,19 +2633,21 @@ try {
               name + ' archive does not imply a missing next assignment',
             );
             check(
-              (await page.locator('.dispatch-load__stop').count()) === 5,
-              name + ' archive preserves all pickup/delivery stops',
+              (await page.locator('tr.dispatch-table__row').count()) === 2,
+              name + ' archive lists both completed loads',
             );
+            // AMF1442 is picked up the day after AMF1441.
             check(
-              (await page
-                .locator('.dispatch-load__metrics, .dispatch-paper__financials')
-                .count()) === 0,
-              name + ' archive cards keep financial details collapsed',
+              (
+                await page.locator('tr.dispatch-table__row').first().innerText()
+              ).includes('AMF1442') &&
+                (await page.locator('.dispatch-table__day').count()) === 2,
+              name + ' archive reads its days newest first',
             );
             await page
-              .locator('.dispatch-load')
-              .first()
-              .locator('.dispatch-load__details')
+              .locator('tr.dispatch-table__row')
+              .filter({ hasText: 'AMF1441' })
+              .locator('.dispatch-table__open')
               .click();
             await workspacePage(page);
             await workspaceFinancials(
@@ -2628,7 +2657,7 @@ try {
               completedDispatches()[0],
               { output, screenshots: detailScreenshots },
             );
-            await returnToDispatch(page, 'Cards', true);
+            await returnToDispatch(page, 'Table', true);
             check(
               !/CURRENT LOAD|NEXT LOAD/.test(
                 await page.locator('.dispatch-board').innerText(),
@@ -2646,6 +2675,9 @@ try {
             detailScreenshots.push(completedImage);
             showRepeatedVisits = true;
             await page.locator('#dispatch-active').click();
+            await page
+              .getByRole('button', { name: 'Cards', exact: true })
+              .click();
             await checkRepeatedVisits(page, name, detailScreenshots);
             showRepeatedVisits = false;
             showCompletedHistory = true;

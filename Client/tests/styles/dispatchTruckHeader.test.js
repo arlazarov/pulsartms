@@ -51,7 +51,7 @@ test('dispatch board uses horizontal load lanes and the Fleet truck card head', 
 test('the vehicle line stands beside the clocks while connector arrows disappear in the stacked lane', () => {
   assert.match(
     css,
-    /\.dispatch-planning--board \.dispatch-planning__readings\s*\{[^}]*grid-template-columns: minmax\(0, 11fr\) minmax\(0, 9fr\);[^}]*border-top: 1px solid var\(--ui-border-subtle\);/,
+    /\.dispatch-planning--board \.dispatch-planning__readings\s*\{[^}]*grid-template-columns: max-content minmax\(0, max-content\);\s*justify-content: start;[^}]*border-top: 1px solid var\(--ui-border-subtle\);/,
   );
   assert.match(
     css,
@@ -150,12 +150,13 @@ test('narrow Dispatch summaries wrap to one column while preserving clocks and r
   assert.doesNotMatch(css, /driver-details|route-disclosure/);
 });
 
-test('the duty and recap remain visible without a disclosure', () => {
+test('the duty remains visible without a disclosure or the recap', () => {
   assert.doesNotMatch(board, /_detailsOpen|_detailsId|aria-expanded/);
   assert.match(board, /<div class="dispatch-planning__duty">/);
   const duty = board.slice(board.indexOf('class="dispatch-planning__duty"'));
   assert.match(duty, /<DriverDutySummary Reading="row"/);
-  assert.match(duty, /<DriverNextRecap Snapshot="CurrentCycle" \/>/);
+  // The Next recap left the board card (the owner, September 27).
+  assert.doesNotMatch(board, /<DriverNextRecap/);
   assert.match(
     css,
     /\.dispatch-planning--board \.dispatch-planning__duty\s*\{[^}]*display: flex;\s*flex-wrap: wrap;[^}]*border-top: 1px solid var\(--ui-border-subtle\);/,
@@ -167,7 +168,7 @@ test('the duty and recap remain visible without a disclosure', () => {
 test('what is left stands beside the unit, before the map button', () => {
   assert.match(
     css,
-    /\.dispatch-planning--board \.dispatch-planning__left\s*\{\s*grid-area: left;\s*justify-self: end;/,
+    /\.dispatch-planning--board \.dispatch-planning__status\s*\{\s*grid-area: left;\s*justify-self: end;/,
   );
   assert.match(truckCss, /a\.dispatch-truck__map\s*\{\s*grid-area: map;/);
   assert.match(board, /DistanceLeft\.Miles|LeftMiles/);
@@ -223,13 +224,23 @@ test('Dispatch view framing cannot move the shared title or toolbar', () => {
   );
 });
 
-test('duty, both rest countdowns and recap wrap on their row without hiding text', () => {
-  assert.match(
-    css,
-    /\.dispatch-planning--board \.dispatch-planning__duty > \.driver-next-recap\s*\{\s*display: flex;\s*flex-wrap: wrap;/,
-  );
+test('duty and both rest countdowns wrap on their row without hiding text', () => {
   assert.doesNotMatch(
     css.slice(css.indexOf('.dispatch-planning--board')),
     /(?:driver-duty|driver-next-recap|__duty)[^{]*\{[^}]*(?:white-space: nowrap|text-overflow: ellipsis|overflow: hidden|display: none)/,
+  );
+});
+
+test('notices and road warnings wait behind one warning sign in the head', () => {
+  const head = board.slice(0, board.indexOf('</header>'));
+  assert.match(head, /class="dispatch-planning__warnings" role="img"/);
+  assert.match(head, /aria-label="@\("Warnings: "/);
+  assert.match(head, /title="@string\.Join\("\\n", warnings\)"/);
+  assert.match(head, /<ActionIcon Kind="warning" \/>/);
+  assert.doesNotMatch(board, /Route\.Warnings|DisplayMessage/);
+  // Speed, fuel and engine sit together in equal cells, not spread across.
+  assert.match(
+    css,
+    /\.dispatch-planning--board \.dispatch-planning__readings > \.truck-readings\s*\{\s*grid-template-columns: none;\s*grid-auto-flow: column;/,
   );
 });

@@ -26,6 +26,15 @@
       color: ui.theme(text-muted);
     }
   }
+  // Each day heads its loads: a quiet full-width line above them.
+  .dispatch-table__day > th {
+    padding: ui.pg(xs) ui.pg(md);
+    border-top: 1px solid ui.theme(border-subtle);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    font-weight: 600;
+    text-align: start;
+  }
   .dispatch-table__truck > strong,
   .dispatch-table__equipment > strong,
   .dispatch-table__stop-entry > strong {

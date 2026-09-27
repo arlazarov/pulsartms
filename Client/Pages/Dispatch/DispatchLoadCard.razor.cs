@@ -38,12 +38,6 @@ public partial class DispatchLoadCard
   public bool Refreshing { get; set; }
 
   [Parameter]
-  public string HeaderDriverName { get; set; } = "";
-
-  [Parameter]
-  public string HeaderTrailerNumber { get; set; } = "";
-
-  [Parameter]
   public double? RemainingMiles { get; set; }
 
   [Parameter]
@@ -68,18 +62,6 @@ public partial class DispatchLoadCard
     : Next ? "Next"
     : "Upcoming";
   private string Status => new DispatchBoardRow(new(), Load).Status;
-  private bool ShowDriverAssignment =>
-    HasDifferentAssignment(Load.DriverName, HeaderDriverName);
-  private bool ShowTrailerAssignment =>
-    HasDifferentAssignment(Load.TrailerNumber, HeaderTrailerNumber);
-
-  private static bool HasDifferentAssignment(string? value, string? header) =>
-    !string.IsNullOrWhiteSpace(value)
-    && !string.Equals(
-      value.Trim(),
-      header?.Trim(),
-      StringComparison.OrdinalIgnoreCase
-    );
 
   private readonly DispatchStopDisplayCache _stopDisplay = new();
   private IReadOnlyList<DispatchStopResponse> OrderedStops =>

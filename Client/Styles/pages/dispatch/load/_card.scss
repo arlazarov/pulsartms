@@ -155,15 +155,21 @@
     font-size: ui.fs(caption);
     color: ui.theme(text-secondary);
   }
-  &__assignment {
+  &__assignment,
+  &__figure {
     display: inline-flex;
     flex-wrap: wrap;
     gap: ui.pg(xs);
     min-width: 0;
     overflow-wrap: anywhere;
   }
-  &__assignment strong {
+  &__assignment strong,
+  &__figure strong {
     color: ui.theme(text);
     font-weight: 500;
+  }
+  &__money {
+    margin-top: ui.pg(xs);
+    font-variant-numeric: tabular-nums;
   }
 }

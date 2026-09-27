@@ -40,7 +40,7 @@ public sealed class DispatchMultiStopPresentationTests
     );
     Assert.Equal(
       $"/dispatch/{load.Id}",
-      card.Find(".dispatch-load__details").GetAttribute("href")
+      card.Find(".dispatch-load__number").GetAttribute("href")
     );
     Assert.Empty(card.FindAll("dialog"));
     var dialog = context.Render<DispatchLoadDialog>(p =>
@@ -133,7 +133,10 @@ public sealed class DispatchMultiStopPresentationTests
         .Select(button => button.TextContent)
     );
     Assert.Empty(table.FindAll(".dispatch-table__stop-completed"));
-    Assert.Equal(8, table.FindAll("tbody tr:first-child td").Count);
+    Assert.Equal(
+      8,
+      table.Find("tr.dispatch-table__row").QuerySelectorAll("td").Length
+    );
     Assert.Equal(
       $"/dispatch/{load.Id}",
       table.Find(".dispatch-table__stops-summary").GetAttribute("href")

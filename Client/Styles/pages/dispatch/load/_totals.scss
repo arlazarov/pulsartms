@@ -48,9 +48,6 @@
     font-size: ui.fs(caption);
     color: ui.theme(text-muted);
   }
-  &__footer .dispatch-load__details {
-    margin-left: auto;
-  }
   &__remaining,
   &__fuel-count {
     display: inline-flex;
@@ -66,23 +63,5 @@
   }
   &__fuel-count strong {
     font-weight: 600;
-  }
-  // Open load, as the map's stop card says it.
-  &__details {
-    display: inline-flex;
-    align-items: center;
-    gap: ui.pg(xs);
-    color: ui.theme(action);
-    font-size: ui.fs(body);
-    font-weight: 600;
-    text-decoration: none;
-    svg {
-      inline-size: 1em;
-      block-size: 1em;
-    }
-    &:hover,
-    &:focus-visible {
-      text-decoration: underline;
-    }
   }
 }

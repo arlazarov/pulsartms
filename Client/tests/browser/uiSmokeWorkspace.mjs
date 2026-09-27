@@ -110,7 +110,7 @@ export async function returnToDispatch(
     await button.click();
   const ready = {
     Cards: '.dispatch-load',
-    Table: '.dispatch-table tbody tr',
+    Table: '.dispatch-table tr.dispatch-table__row',
     Papers: '.dispatch-paper__tab',
   };
   await page.locator(ready[view]).first().waitFor();
@@ -254,7 +254,7 @@ export async function checkWorkspaceLoads(
 ) {
   for (const [index, load] of loads.entries()) {
     const link = page
-      .locator('.dispatch-load__footer .dispatch-load__details')
+      .locator('.dispatch-load .dispatch-load__number')
       .nth(index);
     await link.focus();
     await link.press('Enter');

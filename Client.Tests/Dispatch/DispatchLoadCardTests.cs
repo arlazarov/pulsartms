@@ -280,16 +280,10 @@ public sealed class DispatchLoadCardTests
       "true",
       component.Find(".dispatch-load__connector").GetAttribute("aria-hidden")
     );
-    Assert.Equal(
-      "a",
-      component.Find(".dispatch-load__footer .dispatch-load__details").LocalName
-    );
-    Assert.StartsWith(
-      "Open load ",
-      component
-        .Find(".dispatch-load__footer .dispatch-load__details")
-        .GetAttribute("aria-label")
-    );
+    // The load opens from its number; the footer's Open load repeated it
+    // (the owner, September 27).
+    Assert.Empty(component.FindAll(".dispatch-load__details"));
+    Assert.Equal("a", component.Find(".dispatch-load__number").LocalName);
     Assert.Contains(
       "3 stops",
       component.Find(".dispatch-load__footer").TextContent
@@ -312,7 +306,7 @@ public sealed class DispatchLoadCardTests
   }
 
   [Fact]
-  public void LaneCardOnlyOmitsAssignmentsAlreadyShownInItsTruckHeader()
+  public void EveryLoadNamesItsOwnDriverAndTrailer()
   {
     using var context = new BunitContext();
     context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
@@ -321,23 +315,24 @@ public sealed class DispatchLoadCardTests
     load.TrailerNumber = "GG1030";
     var component = context.Render<DispatchLoadCard>(p =>
       p.Add(card => card.Load, load)
-        .Add(card => card.HeaderDriverName, " same driver ")
-        .Add(card => card.HeaderTrailerNumber, "gg1030")
     );
-    Assert.Empty(component.FindAll(".dispatch-load__assignment"));
+    Assert.Equal(
+      ["Driver Same Driver", "Trailer GG1030"],
+      component
+        .FindAll(".dispatch-load__assignment")
+        .Select(x => x.TextContent)
+        .ToArray()
+    );
 
-    load.DriverName = "Next Driver";
+    load.DriverName = "";
+    load.TrailerNumber = "";
     component.Render(p => p.Add(card => card.Load, load));
     Assert.Equal(
-      "Driver Next Driver",
-      Assert.Single(component.FindAll(".dispatch-load__assignment")).TextContent
-    );
-    load.TrailerNumber = "NEXT-TRAILER";
-    component.Render(p => p.Add(card => card.Load, load));
-    Assert.Equal(2, component.FindAll(".dispatch-load__assignment").Count);
-    Assert.Contains(
-      "Trailer NEXT-TRAILER",
-      component.Find(".dispatch-load__meta").TextContent
+      ["Driver —", "Trailer —"],
+      component
+        .FindAll(".dispatch-load__assignment")
+        .Select(x => x.TextContent)
+        .ToArray()
     );
   }
 
@@ -990,7 +985,7 @@ public sealed class DispatchLoadCardTests
       JSRuntimeMode.Loose;
     Assert.Equal(
       $"/dispatch/{component.Instance.Load.Id}",
-      component.Find(".dispatch-load__details").GetAttribute("href")
+      component.Find(".dispatch-load__number").GetAttribute("href")
     );
     Assert.Empty(component.FindAll("dialog"));
     return context.Render<DispatchLoadDialog>(p =>

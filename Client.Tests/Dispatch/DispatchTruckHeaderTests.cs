@@ -260,7 +260,13 @@ public sealed class DispatchTruckHeaderTests
 
     component.WaitForAssertion(() =>
     {
-      Assert.Equal(count, component.FindAll(".dispatch-load").Count);
+      // History reads as the table: it has no cards (September 27).
+      Assert.Equal(
+        count,
+        component
+          .FindAll(archive ? "tr.dispatch-table__row" : ".dispatch-load")
+          .Count
+      );
       var placeholders = component.FindAll(".dispatch-truck__available--next");
       Assert.Equal(expected ? 1 : 0, placeholders.Count);
       if (!expected)
@@ -382,10 +388,8 @@ public sealed class DispatchTruckHeaderTests
         "Driving",
         duty.QuerySelector(".driver-duty--row")!.TextContent
       );
-      Assert.Contains(
-        "+3h 05m",
-        duty.QuerySelector(".driver-next-recap")!.TextContent
-      );
+      // The Next recap left the board card (the owner, September 27).
+      Assert.Null(duty.QuerySelector(".driver-next-recap"));
       Assert.Empty(
         summary.QuerySelectorAll(".driver-hours-panel .driver-duty")
       );
@@ -412,7 +416,7 @@ public sealed class DispatchTruckHeaderTests
         stop.QuerySelector(".stop-hours__road")!.TextContent
       );
       Assert.Null(stop.QuerySelector(".stop-hours__cycle"));
-      Assert.NotNull(component.Find(".dispatch-load__details"));
+      Assert.NotNull(component.Find(".dispatch-load__number"));
     });
   }
 
@@ -453,7 +457,7 @@ public sealed class DispatchTruckHeaderTests
   }
 
   [Fact]
-  public void BoardSummaryKeepsClocksDutyAndRecapVisibleWithoutDisclosure()
+  public void BoardSummaryKeepsClocksAndDutyVisibleWithoutRecapOrDisclosure()
   {
     var load = Load();
     using var context = new ClientComponentContext(
@@ -485,11 +489,11 @@ public sealed class DispatchTruckHeaderTests
       "Driving",
       duty.QuerySelector(".driver-duty--row")!.TextContent
     );
-    Assert.NotNull(duty.QuerySelector(".driver-next-recap"));
+    Assert.Null(duty.QuerySelector(".driver-next-recap"));
   }
 
   [Fact]
-  public void TruckWithoutActiveLoadsKeepsClocksStatusAndQuietRecapWithoutRequestingAPlan()
+  public void TruckWithoutActiveLoadsKeepsClocksAndStatusWithoutRequestingAPlan()
   {
     var truckId = Guid.NewGuid();
     var planningRequests = 0;
@@ -539,10 +543,7 @@ public sealed class DispatchTruckHeaderTests
 
     component.WaitForAssertion(() =>
     {
-      Assert.Equal(
-        "—",
-        component.Find(".driver-next-recap strong").TextContent.Trim()
-      );
+      Assert.Empty(component.FindAll(".driver-next-recap"));
       Assert.Equal(4, component.FindAll(".driver-hours__clock").Count);
       Assert.Contains(
         "Driving",
@@ -560,7 +561,7 @@ public sealed class DispatchTruckHeaderTests
   }
 
   [Fact]
-  public async Task TelemetryCannotRelabelTheBoardDriverHoursAndRecapBeforeTheirReplacementArrives()
+  public async Task TelemetryCannotRelabelTheBoardDriverAndHoursBeforeTheirReplacementArrives()
   {
     var load = Load();
     var clock = new FakeTimeProvider(Start);
@@ -650,10 +651,6 @@ public sealed class DispatchTruckHeaderTests
         component.Find(".dispatch-truck__header-driver").TextContent
       );
       Assert.Contains("20:00", component.Find(".driver-hours").TextContent);
-      Assert.Contains(
-        "+3h 05m",
-        component.Find(".driver-next-recap").TextContent
-      );
     });
 
     await component.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(10)));
@@ -670,10 +667,6 @@ public sealed class DispatchTruckHeaderTests
         component.Find(".truck-readings__reading--speed").TextContent
       );
       Assert.Contains("20:00", component.Find(".driver-hours").TextContent);
-      Assert.Contains(
-        "+3h 05m",
-        component.Find(".driver-next-recap").TextContent
-      );
     });
 
     await component.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(51)));
@@ -692,14 +685,6 @@ public sealed class DispatchTruckHeaderTests
       Assert.Contains(
         "Off duty",
         component.Find(".dispatch-planning__duty").TextContent
-      );
-      Assert.Contains(
-        "+1h 00m",
-        component.Find(".driver-next-recap").TextContent
-      );
-      Assert.DoesNotContain(
-        "+3h 05m",
-        component.Find(".driver-next-recap").TextContent
       );
     });
   }
@@ -944,6 +929,58 @@ public sealed class DispatchTruckHeaderTests
       Assert.False(first.Completed);
     });
     Assert.Equal(1, reads);
+  }
+
+  [Fact]
+  public void BoardHeadKeepsNoticesAndRoadWarningsBehindOneWarningSign()
+  {
+    var load = Load();
+    var result = Result(load) with
+    {
+      Notices =
+      [
+        new(
+          PlanningNotice.SourceReview,
+          1410,
+          load.Id,
+          "Source resources are unresolved."
+        ),
+      ],
+    };
+    result.State!.Plan!.Route.Warnings =
+    [
+      "TomTom has not confirmed truck access on some route sections.",
+    ];
+    using var context = new ClientComponentContext(
+      (_, _) => Task.FromResult(Json(result))
+    );
+    context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
+    var component = context.Render<DispatchPlanning>(parameters =>
+      parameters
+        .Add(part => part.Load, load)
+        .Add(part => part.TruckId, load.TruckId)
+        .Add(part => part.Compact, true)
+        .Add(part => part.BoardHeader, true)
+        .Add(part => part.Hos, Clocks())
+    );
+
+    component.WaitForAssertion(() =>
+    {
+      var sign = component.Find(
+        ".dispatch-truck__header .dispatch-planning__warnings"
+      );
+      Assert.Equal(
+        "Load 1410: Source resources are unresolved.\n"
+          + "TomTom has not confirmed truck access on some route sections.",
+        sign.GetAttribute("title")
+      );
+      Assert.StartsWith("Warnings: ", sign.GetAttribute("aria-label"));
+      Assert.DoesNotContain("TomTom", component.Find("section").TextContent);
+      Assert.DoesNotContain(
+        "Source resources",
+        component.Markup.Replace(sign.OuterHtml, "")
+      );
+    });
   }
 
   private static DispatchResponse Load() =>

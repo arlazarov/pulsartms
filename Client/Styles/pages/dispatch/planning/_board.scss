@@ -8,10 +8,27 @@
   border-radius: 0;
   background: transparent;
 
-  // What is left to the next stop, beside the unit.
-  .dispatch-planning__left {
+  // The warning sign and what is left to the next stop, beside the unit.
+  .dispatch-planning__status {
     grid-area: left;
     justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-width: 0;
+  }
+  // One small sign for the load's notices and the road's warnings; its
+  // tooltip reads them.
+  .dispatch-planning__warnings {
+    display: inline-flex;
+    color: ui.theme(warning-text);
+    cursor: help;
+    > svg {
+      inline-size: ui.fs(heading);
+      block-size: ui.fs(heading);
+    }
+  }
+  .dispatch-planning__left {
     color: ui.theme(text-secondary);
     font-size: ui.fs(body);
     white-space: nowrap;
@@ -25,15 +42,24 @@
       font-size: ui.fs(small);
     }
   }
-  // The vehicle at the left and the driver's clocks at the right, split
-  // as the map card splits its rows, with a hairline between them.
+  // The vehicle and then the driver's clocks, each as wide as it reads,
+  // with a hairline between them: split in fixed shares, the readings
+  // spread apart and the clocks folded Cycle onto a second line.
   .dispatch-planning__readings {
     display: grid;
-    grid-template-columns: minmax(0, 11fr) minmax(0, 9fr);
+    grid-template-columns: max-content minmax(0, max-content);
+    justify-content: start;
     align-items: center;
     gap: ui.pg(xs) ui.pg(md);
     padding: ui.pg(sm) ui.pg(lg);
     border-top: 1px solid ui.theme(border-subtle);
+    // Speed, fuel and engine close together, in equal cells so values
+    // move nothing between trucks, as on the map card.
+    > .truck-readings {
+      grid-template-columns: none;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(#{ui.size(map-telemetry-reading)}, max-content);
+    }
   }
   // The clocks, read as numbers that never shrink below what they say,
   // each past a hairline of its own.
@@ -66,14 +92,6 @@
     border-top: 1px solid ui.theme(border-subtle);
     color: ui.theme(text-secondary);
     font-size: ui.fs(body);
-    > .driver-next-recap {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: ui.pg(xs);
-      padding-inline-start: ui.pg(md);
-      border-inline-start: 1px solid ui.theme(border-subtle);
-    }
   }
 }
 
@@ -115,9 +133,14 @@
       --hos-divider: 0;
       --hos-divider-gap: 0;
     }
-    .dispatch-planning__duty > .driver-next-recap {
-      padding-inline-start: 0;
-      border-inline-start: 0;
+    // A phone's line is too narrow for the three cells abreast; they
+    // fold as the shared line does.
+    .dispatch-planning__readings > .truck-readings {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, #{ui.size(map-telemetry-reading)}), 1fr)
+      );
     }
   }
 }

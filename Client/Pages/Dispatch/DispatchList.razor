@@ -28,9 +28,12 @@
             { <a class="btn" href="/dispatch">Show all trucks</a> }
         </div>
         <div class="dispatch-view filter-toolbar__views" role="group" aria-label="Dispatch view">
-            <button type="button" aria-pressed="@(_view == 0 ? "true" : "false")" @onclick="() => SelectViewAsync(0)"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" /><path d="M3 8h14M7 8v9" /></svg>Cards</button>
-            <button type="button" aria-pressed="@(_view == 1 ? "true" : "false")" @onclick="() => SelectViewAsync(1)"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" /><path d="M3 8h14M3 12h14M8 3v14" /></svg>Table</button>
-            <button type="button" aria-pressed="@(_view == 2 ? "true" : "false")" @onclick="() => SelectViewAsync(2)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2h7l4 4v12H5zM12 2v5h4M8 10h5M8 13h5" /></svg>Papers</button>
+            @* History has no live trucks to show as cards (the owner,
+               September 27): in Completed the button stays, so the toolbar
+               does not move, but is off. *@
+            <button type="button" aria-pressed="@(ShownView == 0 ? "true" : "false")" disabled="@_showCompleted" title="@(_showCompleted ? "Completed loads read as the table or the papers" : null)" @onclick="() => SelectViewAsync(0)"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" /><path d="M3 8h14M7 8v9" /></svg>Cards</button>
+            <button type="button" aria-pressed="@(ShownView == 1 ? "true" : "false")" @onclick="() => SelectViewAsync(1)"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" /><path d="M3 8h14M3 12h14M8 3v14" /></svg>Table</button>
+            <button type="button" aria-pressed="@(ShownView == 2 ? "true" : "false")" @onclick="() => SelectViewAsync(2)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2h7l4 4v12H5zM12 2v5h4M8 10h5M8 13h5" /></svg>Papers</button>
         </div>
         <div class="dispatch-board__scope filter-toolbar__views" role="group" aria-label="Load scope">
             <button id="dispatch-active" type="button" aria-pressed="@(!_showCompleted ? "true" : "false")" @onclick="() => SelectScopeAsync(false)">Active</button>
@@ -45,15 +48,15 @@
     @if (_loading && _data is null) { <p class="dispatch-board__message" role="status"><LoadingIndicator /></p> }
     else if (_data is not null)
     {
-        <div class="dispatch-board__count">@_data.TotalCount @(_showCompleted ? _data.TotalCount == 1 ? "completed load" : "completed loads" : _data.TotalCount == 1 ? "truck" : "trucks")<span>@(_showCompleted ? "Newest load numbers first, grouped by truck on this page" : _view == 2 ? "Loads on this page" : "Ordered by truck number")</span></div>
+        <div class="dispatch-board__count">@_data.TotalCount @(_showCompleted ? _data.TotalCount == 1 ? "completed load" : "completed loads" : _data.TotalCount == 1 ? "truck" : "trucks")<span>@CountNote</span></div>
         @if (_data.Items.Count == 0) { <div class="dispatch-board__empty">@(_showCompleted ? "No completed loads match this search." : "No trucks or upcoming loads match this search.")</div> }
-        @if (_view == 1)
+        @if (ShownView == 1)
         {
             <DispatchTable Trucks="_data.Items" Completed="_showCompleted"
                 LoadPhase="LoadPhase" Refreshing="RefreshingEstimates"
                 ReturnOrigin="@ReturnOrigin" />
         }
-        else if (_view == 2)
+        else if (ShownView == 2)
         {
             <DispatchPapers Trucks="_data.Items" Completed="_showCompleted"
                 LoadPhase="LoadPhase" Refreshing="RefreshingEstimates"
@@ -107,8 +110,7 @@
                             Refreshing="RefreshingEstimates"
                             ReturnOrigin="@ReturnOrigin"
                             StopChanged="() => StopChangedAsync(load)"
-                            RemainingMiles="summary.RemainingMiles" FuelStopCount="summary.FuelStopCount"
-                            HeaderDriverName="@truck.DriverName" HeaderTrailerNumber="@truck.TrailerNumber" />
+                            RemainingMiles="summary.RemainingMiles" FuelStopCount="summary.FuelStopCount" />
                     }
                     @if (truck.TruckId.HasValue && truck.Dispatches.Count == 1 && IsCurrent(truck.Dispatches[0]))
                     {

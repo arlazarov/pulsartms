@@ -1,3 +1,5 @@
+using System.Globalization;
+using Client.Models;
 using Client.Models.DTO;
 using Client.Models.DTO.Dispatch;
 using Client.Services;
@@ -14,6 +16,9 @@ public partial class DispatchTable
 
   [CascadingParameter]
   public DispatchSettingsState? DisplaySettings { get; set; }
+
+  [CascadingParameter]
+  public DisplayUnits Units { get; set; } = DisplayUnits.Default;
 
   // The list's own address, so the load page can return to it.
   [Parameter]
@@ -44,10 +49,53 @@ public partial class DispatchTable
       : LoadPhase?.Invoke(row.Truck, row.Load)
         ?? (row.Planned ? "Planned" : "");
 
-  private IEnumerable<DispatchBoardRow> Rows =>
-    Trucks.SelectMany(truck =>
-      truck.Dispatches.Select(load => new DispatchBoardRow(truck, load))
-    );
+  // The rows by the day each load is picked up: the earliest day at the
+  // top and the future below it (the owner, September 27); history reads
+  // from its latest day. A load without a date closes the list.
+  private sealed record DispatchDay(
+    string Label,
+    IReadOnlyList<DispatchBoardRow> Rows
+  );
+
+  private IReadOnlyList<DispatchBoardRow> _rows = [];
+  private IReadOnlyList<DispatchDay> _days = [];
+
+  protected override void OnParametersSet()
+  {
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    _rows = Trucks
+      .SelectMany(truck =>
+        truck.Dispatches.Select(load => new DispatchBoardRow(truck, load))
+      )
+      .ToArray();
+    var days = _rows.GroupBy(row => row.PickupDate);
+    var ordered = Completed
+      ? days.OrderBy(day => day.Key is null).ThenByDescending(day => day.Key)
+      : days.OrderBy(day => day.Key is null).ThenBy(day => day.Key);
+    _days = ordered
+      .Select(day => new DispatchDay(
+        DayLabel(day.Key, today),
+        // A stable order: loads booked alike keep the board's order, so a
+        // truck's current load stays ahead of its next.
+        day.OrderBy(row => row.Origin?.ScheduledTime ?? TimeOnly.MaxValue)
+          .ToArray()
+      ))
+      .ToArray();
+  }
+
+  private static string DayLabel(DateOnly? day, DateOnly today)
+  {
+    if (day is not { } value)
+      return "No pickup date";
+    var date = value.ToString("ddd, MMM d", CultureInfo.InvariantCulture);
+    return (value.DayNumber - today.DayNumber) switch
+    {
+      -1 => $"Yesterday · {date}",
+      0 => $"Today · {date}",
+      1 => $"Tomorrow · {date}",
+      _ => date,
+    };
+  }
 
   private string LoadUrl(DispatchBoardRow row) =>
     ReturnNavigation.Load(row.Load.Id, ReturnOrigin);
@@ -85,7 +133,7 @@ public partial class DispatchTable
   }
 
   private bool HasOtherStops =>
-    Rows.Any(row =>
+    _rows.Any(row =>
       row.Load.Stops.Any(stop => !IsPickup(stop) && !IsDelivery(stop))
     );
 

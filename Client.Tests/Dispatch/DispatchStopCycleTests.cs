@@ -331,7 +331,7 @@ public sealed class DispatchStopCycleTests
       JSRuntimeMode.Loose;
     Assert.Equal(
       $"/dispatch/{component.Instance.Load.Id}",
-      component.Find(".dispatch-load__details").GetAttribute("href")
+      component.Find(".dispatch-load__number").GetAttribute("href")
     );
     Assert.Empty(component.FindAll("dialog"));
     return context.Render<DispatchLoadDialog>(p =>

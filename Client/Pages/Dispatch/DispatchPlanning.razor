@@ -4,6 +4,20 @@
              aria-label="Truck summary">
         <header class="dispatch-truck__header">
             @Identity
+            @{ var warnings = BoardWarnings(); }
+            @if (warnings.Count > 0 || LeftMiles is not null)
+            {
+            <span class="dispatch-planning__status">
+            @* The load's notices and the road's warnings wait behind one
+               small sign; its tooltip reads them all, and the load's own
+               page still shows them in full. *@
+            @if (warnings.Count > 0)
+            {
+                <span class="dispatch-planning__warnings" role="img"
+                      aria-label="@("Warnings: " + string.Join(" ", warnings))"
+                      title="@string.Join("\n", warnings)"
+                    ><ActionIcon Kind="warning" /></span>
+            }
             @if (LeftMiles is { } left)
             {
                 <span class="dispatch-planning__left"
@@ -18,6 +32,8 @@
                         >&#160;@Units.DistanceUnit</span>@if (Units.BothDistances)
                         {<small> ·&#160;@Units.Kilometers(left)&#160;km</small>}</span>
                 </span>
+            }
+            </span>
             }
         </header>
         <div class="dispatch-planning__readings">
@@ -41,26 +57,17 @@
             <p class="dispatch-planning__hint" role="status"
                 >@RouteMessageDisplay.Concise(_error)</p>
         }
-        @if (DisplayMessage is { } boardMessage)
+        @if (BoardMessage is { } boardMessage)
         { <p class="dispatch-planning__hint" role="status">@boardMessage</p> }
-        @if (DisplayResult?.State is { Plan: { } boardPlan } boardState)
+        @if (DisplayResult?.State?.Progress?.OffRoute == true)
         {
-            @foreach (var warning in boardPlan.Route.Warnings)
-            {
-                <p class="dispatch-planning__hint" role="status"
-                    >@RouteMessageDisplay.Concise(warning)</p>
-            }
-            @if (boardState.Progress?.OffRoute == true)
-            {
-                <p class="dispatch-planning__hint" role="status"
-                    >Off planned route</p>
-            }
+            <p class="dispatch-planning__hint" role="status"
+                >Off planned route</p>
         }
         <div class="dispatch-planning__duty">
             <DriverDutySummary Reading="row" Status="DutyStatus"
                                CurrentStatus="@(Hos?.CurrentDutyStatus)"
                                ClockUpdatedAt="Hos?.UpdatedAt" />
-            <DriverNextRecap Snapshot="CurrentCycle" />
         </div>
     </section>
 }

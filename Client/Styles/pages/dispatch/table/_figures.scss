@@ -33,19 +33,36 @@
   .dispatch-table__mileage {
     font-variant-numeric: tabular-nums;
   }
-  .dispatch-table__mileage-values {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: ui.pg(xs);
-    color: ui.theme(text);
-  }
-  .dispatch-table__mileage-values strong {
-    font-size: ui.fs(lead);
-    font-weight: 700;
-  }
-  .dispatch-table__mileage-values > span {
-    color: ui.theme(text-muted);
+  // Loaded, empty and total, each named; a value is its miles with its
+  // kilometres quietly under them, never folded inside a number.
+  .dispatch-table__distances {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: ui.pg(xs) ui.pg(sm);
+    margin: 0 0 ui.pg(xs);
+    > div {
+      display: contents;
+    }
+    dt {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+    }
+    dd {
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      color: ui.theme(text);
+      > * {
+        white-space: nowrap;
+      }
+      > small {
+        color: ui.theme(text-muted);
+        font-size: ui.fs(small);
+      }
+    }
+    .is-total dd > span {
+      font-weight: 700;
+    }
   }
   .dispatch-table__stop-completed {
     display: block;

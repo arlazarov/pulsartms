@@ -2512,7 +2512,7 @@ try {
           `${name}: initial Dispatch reads one summary batch ` +
             'without per-truck planning',
         );
-        await futureCard.locator('.dispatch-load__details').focus();
+        await futureCard.locator('.dispatch-load__number').focus();
         await page.keyboard.press('Enter');
         await future
           .locator('.stop-workspace__stop')
@@ -2716,7 +2716,7 @@ try {
           ).some(text => text.includes('34h reset in 27h 52m')),
           `${name}: current-driver reset countdown missing`,
         );
-        await futureCard.locator('.dispatch-load__details').click();
+        await futureCard.locator('.dispatch-load__number').click();
         await future
           .locator('.stop-workspace__stop')
           .first()

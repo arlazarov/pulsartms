@@ -167,7 +167,10 @@ public sealed class DispatchTableInteractionTests
     Assert.Empty(table.FindAll(".dispatch-table__stop-completed"));
     Assert.Contains("2 pickups · 1 completed", table.Markup);
     Assert.Empty(table.FindAll("details"));
-    Assert.Equal(8, table.FindAll("tbody tr:first-child td").Count);
+    Assert.Equal(
+      8,
+      table.Find("tr.dispatch-table__row").QuerySelectorAll("td").Length
+    );
     load.Status = "completed";
     load.Completed = true;
     table.Render();

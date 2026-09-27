@@ -26,8 +26,10 @@
                                         @phase
                                     </span>
                                 }
-                                @* A flex line: whitespace between its items is not drawn. *@
+                                @* Grid and flex lines: whitespace between their items is
+                                   not drawn. *@
                                 <span class="dispatch-paper__tab-line">
+                                    <span class="dispatch-paper__tab-identity">
                                     <strong class="dispatch-paper__tab-number">
                                         <LoadNumber Value="row.Load.LoadNumber" />
                                     </strong>
@@ -38,11 +40,12 @@
                                                  dispatch-paper__tab-trailer">
                                         Trailer @row.TrailerNumber
                                     </span>
+                                    </span>
                                     <span class="dispatch-paper__tab-schedule"
                                           aria-label="@($"{EventLabel(row)} {EventSchedule(row)}")">@EventSchedule(row)</span>
                                 </span>
                                 <span class="dispatch-paper__tab-line"><span class="dispatch-paper__tab-driver">@row.DriverName</span><span class="dispatch-paper__tab-status @(row.Completed ? "is-completed" : row.InTransit ? "is-moving" : "")">@row.Status</span></span>
-                                <span class="dispatch-paper__tab-financials"><strong class="dispatch-paper__tab-miles"><DistanceText Miles="@((double?)row.Load.TotalMiles)" /> total</strong><span>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency) · Total RPM @DispatchFinancialDisplay.Money(row.Load.TotalRatePerMile, row.Load.Currency)</span></span>
+                                <span class="dispatch-paper__tab-financials"><strong class="dispatch-paper__tab-miles"><DistanceText Miles="@((double?)row.Load.TotalMiles)" /> total</strong><span>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency) · Loaded RPM @DispatchFinancialDisplay.Money(row.Load.LoadedRatePerMile, row.Load.Currency) · Total RPM @DispatchFinancialDisplay.Money(row.Load.TotalRatePerMile, row.Load.Currency)</span></span>
                             </span>
                         </a>
                     </div>

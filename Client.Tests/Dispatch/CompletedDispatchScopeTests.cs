@@ -51,7 +51,7 @@ public sealed class CompletedDispatchScopeTests
       () =>
         Assert.Equal(
           "Completed",
-          component.Find(".dispatch-load__phase").TextContent
+          component.Find(".dispatch-table__status").TextContent
         )
     );
     Assert.Contains(
@@ -90,7 +90,14 @@ public sealed class CompletedDispatchScopeTests
       requests.Last(uri => uri.AbsolutePath == "/api/dispatch").Query
     );
 
-    foreach (var view in new[] { "Table", "Papers", "Cards" })
+    // History has no cards (the owner, September 27).
+    Assert.True(
+      component
+        .FindAll(".dispatch-view button")
+        .Single(button => button.TextContent == "Cards")
+        .HasAttribute("disabled")
+    );
+    foreach (var view in new[] { "Table", "Papers" })
     {
       await component
         .FindAll(".dispatch-view button")
@@ -132,12 +139,11 @@ public sealed class CompletedDispatchScopeTests
     Assert.Empty(component.FindAll(".dispatch-load__phase"));
   }
 
-  // A page of completed loads, newest load number first, is shown one
-  // truck at a time: 54777's three loads under one heading, not three
-  // headings interleaved with the other trucks. Trucks come in the order
-  // of their newest load on the page; each load keeps its own driver.
+  // Completed has no cards (the owner, September 27): a dispatcher who
+  // chose Cards reads history in the table, newest day first, and finds
+  // the cards again on Active.
   [Fact]
-  public async Task CompletedCardsShowEachTruckOnceWithItsLoads()
+  public async Task CompletedReadsAsTheTableAndActiveKeepsTheCards()
   {
     using var context = Context(
       new FakeTimeProvider(),
@@ -161,39 +167,37 @@ public sealed class CompletedDispatchScopeTests
       () => component.Find("#dispatch-completed").ClickAsync(new())
     );
     component.WaitForAssertion(
-      () => Assert.Equal(4, component.FindAll("article.dispatch-truck").Count)
+      () => Assert.NotEmpty(component.FindAll("tr.dispatch-table__row"))
     );
 
-    var trucks = component.FindAll("article.dispatch-truck");
-    Assert.Equal(
-      ["Truck 54777", "Truck 11005", "Truck 11007", "Truck 11006"],
-      trucks.Select(x => x.GetAttribute("aria-label"))
+    Assert.Empty(component.FindAll("article.dispatch-truck"));
+    Assert.True(
+      component
+        .FindAll(".dispatch-view button")
+        .Single(button => button.TextContent == "Cards")
+        .HasAttribute("disabled")
     );
     Assert.Equal(
-      ["1408", "1397", "1396"],
-      trucks[0]
-        .QuerySelectorAll("section.dispatch-load")
-        .Select(x =>
-          System
-            .Text.RegularExpressions.Regex.Match(
-              x.GetAttribute("aria-label") ?? "",
-              "\\d{4}"
-            )
-            .Value
-        )
+      "true",
+      component
+        .FindAll(".dispatch-view button")
+        .Single(button => button.TextContent == "Table")
+        .GetAttribute("aria-pressed")
     );
-    // One driver throughout: named once in the heading. Two drivers on
-    // 11006's loads: no heading driver, each load names its own.
     Assert.Contains(
-      "Ann",
-      trucks[0].QuerySelector(".dispatch-truck__header")!.TextContent
-    );
-    Assert.Null(trucks[3].QuerySelector(".dispatch-truck__header-driver"));
-    Assert.Contains("Maksims", trucks[3].TextContent);
-    Assert.Contains("Earlier Driver", trucks[3].TextContent);
-    Assert.Contains(
-      "grouped by truck on this page",
+      "Newest pickup days first",
       component.Find(".dispatch-board__count").TextContent
+    );
+
+    await component.InvokeAsync(
+      () => component.Find("#dispatch-active").ClickAsync(new())
+    );
+    Assert.Equal(
+      "true",
+      component
+        .FindAll(".dispatch-view button")
+        .Single(button => button.TextContent == "Cards")
+        .GetAttribute("aria-pressed")
     );
   }
 
@@ -223,7 +227,7 @@ public sealed class CompletedDispatchScopeTests
     var component = context.Render<DispatchList>();
 
     component.WaitForAssertion(
-      () => Assert.NotEmpty(component.FindAll("section.dispatch-load"))
+      () => Assert.NotEmpty(component.FindAll("tr.dispatch-table__row"))
     );
     var read = Assert.Single(
       requests,
@@ -241,7 +245,7 @@ public sealed class CompletedDispatchScopeTests
       component.Find("#dispatch-completed").GetAttribute("aria-pressed")
     );
     var loads = component
-      .FindAll("section.dispatch-load a")
+      .FindAll("tr.dispatch-table__row a")
       .Select(link => link.GetAttribute("href") ?? "")
       .Where(href => href.StartsWith("/dispatch/", StringComparison.Ordinal))
       .ToList();
@@ -283,7 +287,7 @@ public sealed class CompletedDispatchScopeTests
     context.Services.GetRequiredService<NavigationManager>().NavigateTo(place);
     var component = context.Render<DispatchList>();
     component.WaitForAssertion(
-      () => Assert.NotEmpty(component.FindAll("section.dispatch-load"))
+      () => Assert.NotEmpty(component.FindAll("tr.dispatch-table__row"))
     );
 
     component.Render();
@@ -435,12 +439,12 @@ public sealed class CompletedDispatchScopeTests
       () =>
         Assert.Contains(
           "9000",
-          component.Find(".dispatch-load__number").TextContent
+          component.Find(".dispatch-table__open strong").TextContent
         )
     );
     Assert.DoesNotContain(
       "1111",
-      component.Find(".dispatch-load__number").TextContent
+      component.Find(".dispatch-table__open strong").TextContent
     );
   }
 

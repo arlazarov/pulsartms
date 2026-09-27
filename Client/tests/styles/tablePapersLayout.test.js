@@ -40,11 +40,14 @@ test('Table differentiates current rows while leaving upcoming loads neutral and
     rule('.dispatch-page .dispatch-table .dispatch-table__money strong'),
     /font-size: var\(--type-body\);[\s\S]*font-weight: 500;/,
   );
+  // Loaded, empty and total named, a value never folding inside itself.
   assert.match(
-    rule(
-      '.dispatch-page .dispatch-table .dispatch-table__mileage-values strong',
-    ),
-    /font-size: var\(--type-lead\);[\s\S]*font-weight: 700;/,
+    rule('.dispatch-page .dispatch-table .dispatch-table__distances dd > *'),
+    /white-space: nowrap;/,
+  );
+  assert.match(
+    rule('.dispatch-page .dispatch-table .dispatch-table__day > th'),
+    /font-size: var\(--type-small\);/,
   );
   assert.match(
     rule('.dispatch-page .dispatch-table .dispatch-table__truck'),
@@ -296,5 +299,17 @@ test('Stop facts wrap within their view and group resting actions in one footer'
   assert.match(
     rule('.dispatch-load-dialog .dispatch-paper__stop-metadata'),
     /grid-template-columns: minmax\(0,\s*1fr\);/,
+  );
+});
+
+test('every Papers folder keeps one shape whatever its words', () => {
+  assert.match(
+    rule('.dispatch-paper__tab-line'),
+    /display: grid;[\s\S]*grid-template-columns: minmax\(0, 1fr\) max-content;/,
+  );
+  assert.match(rule('.dispatch-paper__tab-schedule'), /white-space: nowrap;/);
+  assert.match(
+    rule('.dispatch-paper__tab-financials'),
+    /grid-template-columns: max-content minmax\(0, 1fr\);/,
   );
 });

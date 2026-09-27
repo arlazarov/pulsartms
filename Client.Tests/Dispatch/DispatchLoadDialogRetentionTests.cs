@@ -43,7 +43,7 @@ public sealed class DispatchLoadDialogRetentionTests
     {
       1 => ".dispatch-table__open",
       2 => ".dispatch-paper__tab",
-      _ => ".dispatch-load__details",
+      _ => ".dispatch-load__number",
     };
     Assert.Equal(
       $"/dispatch/{fixture.Load.Id}",
@@ -120,7 +120,7 @@ public sealed class DispatchLoadDialogRetentionTests
     {
       1 => ".dispatch-table__open",
       2 => ".dispatch-paper__tab",
-      _ => ".dispatch-load__details",
+      _ => ".dispatch-load__number",
     };
     Assert.Equal(
       $"/dispatch/{fixture.Load.Id}",

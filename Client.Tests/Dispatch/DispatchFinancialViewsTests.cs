@@ -30,6 +30,15 @@ public sealed class DispatchFinancialViewsTests
     Assert.Empty(
       cards.FindAll(".dispatch-load__metrics, .dispatch-paper__financials")
     );
+    // The rate and both rates per mile on every card and folder (the
+    // owner, September 27).
+    Assert.Equal(
+      ["Rate 1,000.00 CAD", "Loaded RPM 17.23 CAD", "Total RPM 4.56 CAD"],
+      cards
+        .FindAll(".dispatch-load__money .dispatch-load__figure")
+        .Select(x => x.TextContent)
+        .ToArray()
+    );
     Assert.Equal(2, cards.FindAll(".dispatch-load__stop").Count);
     Assert.NotNull(
       cards
@@ -38,7 +47,7 @@ public sealed class DispatchFinancialViewsTests
     );
     Assert.Equal(
       $"/dispatch/{load.Id}",
-      cards.Find(".dispatch-load__details").GetAttribute("href")
+      cards.Find(".dispatch-load__number").GetAttribute("href")
     );
     var details = context.Render<DispatchLoadDialog>(p =>
       p.Add(x => x.Load, load)
@@ -58,7 +67,7 @@ public sealed class DispatchFinancialViewsTests
       parameters.Add(view => view.Trucks, trucks)
     );
     Assert.Contains(
-      "1,000.00 CAD",
+      "1,000.00 CAD · Loaded RPM 17.23 CAD · Total RPM 4.56 CAD",
       papers.Find(".dispatch-paper__tab-financials").TextContent
     );
     Assert.Equal(
@@ -108,7 +117,10 @@ public sealed class DispatchFinancialViewsTests
       ],
       table.FindAll("thead th").Select(cell => cell.TextContent).ToArray()
     );
-    Assert.Equal(8, table.FindAll("tbody tr:first-child td").Count);
+    Assert.Equal(
+      8,
+      table.Find("tr.dispatch-table__row").QuerySelectorAll("td").Length
+    );
     var equipment = table.Find(".dispatch-table__equipment").TextContent;
     foreach (
       var text in new[] { "54777", "Historic Driver", "Trailer ARCHIVE-1" }
@@ -145,6 +157,69 @@ public sealed class DispatchFinancialViewsTests
     Assert.Empty(
       table.FindAll(".dispatch-table__equipment > .dispatch-table__map")
     );
+  }
+
+  [Fact]
+  public void TableGroupsLoadsByPickupDayFromThePastDownToTheFuture()
+  {
+    using var context = new BunitContext();
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    DispatchResponse On(int number, int days, int hour)
+    {
+      var load = Load(number);
+      load.Stops[0].ScheduledDate = today.AddDays(days);
+      load.Stops[0].ScheduledTime = new(hour, 0);
+      return load;
+    }
+    var trucks = new[]
+    {
+      new TruckDispatchBoardResponse
+      {
+        Key = "a",
+        TruckNumber = "11005",
+        Dispatches = [On(3, 1, 8), On(1, -1, 9)],
+      },
+      new TruckDispatchBoardResponse
+      {
+        Key = "b",
+        TruckNumber = "11006",
+        Dispatches = [On(4, 0, 15), On(2, 0, 7)],
+      },
+    };
+    var table = context.Render<DispatchTable>(parameters =>
+      parameters.Add(view => view.Trucks, trucks)
+    );
+
+    Assert.Equal(
+      ["Yesterday · " + Day(-1), "Today · " + Day(0), "Tomorrow · " + Day(1)],
+      table
+        .FindAll(".dispatch-table__day > th")
+        .Select(cell => cell.TextContent)
+        .ToArray()
+    );
+    Assert.Equal(
+      ["1", "2", "4", "3"],
+      table
+        .FindAll(".dispatch-table__open strong")
+        .Select(cell => cell.TextContent.Trim())
+        .ToArray()
+    );
+    Assert.Equal(
+      ["Loaded", "Empty", "Total"],
+      table
+        .Find(".dispatch-table__distances")
+        .QuerySelectorAll("dt")
+        .Select(cell => cell.TextContent)
+        .ToArray()
+    );
+
+    string Day(int offset) =>
+      today
+        .AddDays(offset)
+        .ToString(
+          "ddd, MMM d",
+          System.Globalization.CultureInfo.InvariantCulture
+        );
   }
 
   [Fact]
@@ -362,11 +437,11 @@ public sealed class DispatchFinancialViewsTests
     Assert.Single(table.FindAll("tr.is-next"));
     Assert.Contains(
       "500\u00a0mi",
-      table.Find(".dispatch-table__mileage-values").TextContent
+      table.Find(".dispatch-table__distances").TextContent
     );
     Assert.Contains(
       "550\u00a0mi",
-      table.Find(".dispatch-table__mileage-values").TextContent
+      table.Find(".dispatch-table__distances").TextContent
     );
 
     var papers = context.Render<DispatchPapers>(parameters =>
