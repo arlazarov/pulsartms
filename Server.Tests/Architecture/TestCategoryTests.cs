@@ -69,4 +69,39 @@ public sealed class TestCategoryTests
       );
     }
   }
+
+  // A declared Kind is one of the kinds docs/testing.md names, so a filter
+  // by kind selects what it says (audit F12). Classes that declare none
+  // yet are older debt; this does not require one.
+  [Fact]
+  public void EveryDeclaredKindIsKnown()
+  {
+    string[] kinds =
+    [
+      "Unit",
+      "Integration",
+      "Component",
+      "Architecture",
+      "Allocation",
+    ];
+    var unknown = typeof(TestCategoryTests)
+      .Assembly.GetTypes()
+      .SelectMany(type =>
+        type.GetCustomAttributesData()
+          .Where(trait =>
+            trait.AttributeType == typeof(TraitAttribute)
+            && trait.ConstructorArguments[0].Value as string == "Kind"
+            && !kinds.Contains(trait.ConstructorArguments[1].Value as string)
+          )
+          .Select(trait =>
+            $"{type.Name}: {trait.ConstructorArguments[1].Value}"
+          )
+      )
+      .ToArray();
+
+    Assert.True(
+      unknown.Length == 0,
+      "Unknown test kinds: " + string.Join(", ", unknown)
+    );
+  }
 }

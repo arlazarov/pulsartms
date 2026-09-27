@@ -17,7 +17,7 @@ namespace Server.Tests.Persistence;
 // (ANALYZE, BUFFERS) and printed; the test checks the answers, not the
 // timings, which are recorded in docs/features/driver-messaging.md.
 [Trait("Category", "Database")]
-[Trait("Kind", "Performance")]
+[Trait("Kind", "Integration")]
 public sealed class MessageSearchPostgresTests(ITestOutputHelper output)
 {
   private const int Conversations = 200;

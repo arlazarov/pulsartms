@@ -1200,6 +1200,58 @@ failed on the new worktree's missing Client packages and is marked.
   - `migrate.sh` applied each migration to the configured database as
     soon as it was added - fixed here: it only creates the migration.
 
+- **F15 re-read (authentication and providers).** Verified: a refresh
+  token is a stateless protected ticket checked for expiry and the
+  security stamp, reusable until then, with no reuse detection
+  (`AuthService.cs:70-110`); tokens are kept in `localStorage`, and
+  neither `firebase.json` nor `index.html` sets a Content-Security-Policy
+  or other security header; disconnecting Drive discards the secret
+  without revoking it at Google; the Drive consent is bound to a
+  single-use state (carrier, connection, nonce) with PKCE and an expiry,
+  not to the browser that began it; the WhatsApp webhook answers 404 for
+  an unknown carrier key and 401 for a bad signature
+  (`ReceiveDriverMessages.cs:80,97`), which tells a caller whether a key
+  exists; a Gmail push validates its history id but the import ignores
+  it and lists its window; both production maps use `DEMO_MAP_ID`. Out
+  of date: logout does not clear sessions on its own instance only - it
+  changes the security stamp, which ends every refresh token of the
+  user, and its session invalidation is relayed to other instances
+  (one relay round). The sign-in contract is kept; no change here.
+- **F12 re-read (verification hygiene).** Verified: 21 test classes
+  declare no `Kind`; `test.sh` has no Persistence group; the API names
+  `Domain` in seven files while the architecture test rejects only
+  `Domain.Entities`; `.dockerignore` has the `.env` and `secrets.json`
+  patterns but not `**/*credentials*.json`. Fixed here: a declared `Kind`
+  must be one `docs/testing.md` names (`TestCategoryTests`), red on
+  `MessageSearchPostgresTests` declaring "Performance" (diagnostic-3imBI3),
+  now `Integration`; `migrate.sh` (F27). PostgreSQL tests run where the
+  fixture is recorded and skip, saying so, where it is not; the gate on
+  a machine without one still passes them as skipped (open gap).
+- **F19 re-read.** Verified: fuel stations are a shared table ("a place
+  in the world, the same for everyone"); any carrier's Admin can start
+  the discount import that creates and overwrites them; the Gmail push
+  is fixed to AMF (`GmailPushValidator`). Blocks a second carrier's
+  fuel intake, not today's operation; owner decision with the product
+  direction (per-client discounts, Gmail intake temporary).
+- **F10 re-read (the scan).** Verified in shape: each road-preparation
+  scan page observes every eligible load with one upsert, a no-op when
+  nothing changed - one round trip per eligible load per scan. Not
+  measured in production; the eligible set is small there.
+- **Runtime inventory: background liveness.** Seventeen hosted
+  services: the database initializer, the cache relay, and fifteen
+  operations behind `ApplicationWorker`. Only the synchronization loop
+  reports a heartbeat (`BackgroundHeartbeat`); the consistency auditor
+  has none on purpose (a stall shows as stale coverage); the other
+  thirteen have none. An exception escaping an operation stops the host
+  (the .NET default), which Cloud Run restarts; each loop catches its
+  round's failures, so what goes unseen is a stall - a call that never
+  returns. Design, owner each background owner: register an expected
+  interval and beat once per loop round, before the work, with an
+  interval well above the longest normal round, as the heartbeat tests
+  require (never call a working instance stalled); operations whose
+  rounds can legitimately take long (road preparation, ETA refresh)
+  first need a bounded round. No change made.
+
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done
@@ -1226,8 +1278,8 @@ failed on the new worktree's missing Client packages and is marked.
   referrer and API restrictions are confirmed in the console.
 - **Payload sizes of locations, HOS and planning.** Owner: Client (F6).
   Done when measured in a browser trace.
-- **Reported findings not re-read (F10 scan, F12, F15, F19).**
-  Owner: this audit. Done when each is re-read, or fixed with its test.
+- **Findings re-read.** Every reported finding has been re-read against
+  the code (F10-F27); what remains open is listed with its owner above.
 - **Role model (F18).** Owner: the owner. Done when a limited role is
   chosen or explicitly declined.
 - **PostgreSQL fixture.** Owner: tests. Done when an isolated fixture,
