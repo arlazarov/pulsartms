@@ -830,13 +830,14 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     );
 
   // Where the truck is in its loads, as the Fleet Map reads it: the load
-  // its planning summary names is the current one, and the loads ahead of
-  // it on the board are those whose stops tracking has already passed,
-  // waiting for their delivery to be confirmed. Deciding "current" from
-  // the board's first row instead gave 11005 and 11006 a current load
-  // with no arrival while the map showed the next one's (September 27).
-  // Without a summary the first load is current once under way or due.
-  private (int Passed, int Current) LoadPosition(
+  // its accepted planning summary names is the current one, wherever it
+  // stands on the board. Deciding "current" from the board's first row
+  // gave 11005 and 11006 a current load with no arrival while the map
+  // showed the next one's (September 27). Loads ahead of it on the board
+  // are only earlier rows: why planning passed them over is not known
+  // here, so they carry no phase. Without an accepted summary the first
+  // load is current once under way or due.
+  private (int Earlier, int Current) LoadPosition(
     TruckDispatchBoardResponse truck
   )
   {
@@ -845,10 +846,12 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     var planned = truck.TruckId is { } id
       ? MatchingPlanningLoad(truck, _planningSummaries.GetValueOrDefault(id))
       : null;
-    var passed = planned is null ? 0 : truck.Dispatches.IndexOf(planned);
-    return passed > 0 ? (passed, passed)
-      : IsCurrent(truck.Dispatches.FirstOrDefault()) ? (0, 0)
-      : (0, -1);
+    if (planned is not null)
+    {
+      var index = truck.Dispatches.IndexOf(planned);
+      return (index, index);
+    }
+    return IsCurrent(truck.Dispatches.FirstOrDefault()) ? (0, 0) : (0, -1);
   }
 
   private string LoadPhase(
@@ -859,16 +862,16 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     if (_showCompleted || load.Completed)
       return "Completed";
     var index = truck.Dispatches.IndexOf(load);
-    var (passed, current) = LoadPosition(truck);
-    if (index < passed)
-      return "Stops passed";
+    var (earlier, current) = LoadPosition(truck);
+    if (index < earlier)
+      return "";
     if (index == current)
       return "Current";
-    return LoadOrder(index, passed, current) == 1 ? "Next" : "Upcoming";
+    return LoadOrder(index, earlier, current) == 1 ? "Next" : "Upcoming";
   }
 
-  private static int LoadOrder(int index, int passed, int current) =>
-    current >= 0 ? index - current : index - passed + 1;
+  private static int LoadOrder(int index, int earlier, int current) =>
+    current >= 0 ? index - current : index - earlier + 1;
 
   private DispatchCardPlanningSummary CardPlanningSummary(
     TruckDispatchBoardResponse truck,

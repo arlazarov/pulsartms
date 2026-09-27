@@ -926,23 +926,31 @@ public sealed class DispatchTruckHeaderTests
         Assert.False(firstCard.Instance.Load.Completed);
         Assert.NotNull(nextCard.Instance.Load.Eta);
         // The map's reading of the truck: its current load is the one the
-        // summary names, and the one before it has had its stops passed.
-        Assert.True(firstCard.Instance.StopsPassed);
+        // summary names; the row before it claims no phase, since why
+        // planning passed it over is not known here.
+        Assert.True(firstCard.Instance.Earlier);
         Assert.False(firstCard.Instance.Current);
+        Assert.Empty(firstCard.FindAll(".dispatch-load__phase"));
         Assert.True(nextCard.Instance.Current);
-        Assert.Equal(
-          "Stops passed",
-          firstCard.Find(".dispatch-load__phase").TextContent
-        );
         Assert.Equal(
           "Current",
           nextCard.Find(".dispatch-load__phase").TextContent
+        );
+        // The same forecast the map reads for this load, leg and stop.
+        var mapEta = summary.State!.Eta!;
+        Assert.Equal(
+          mapEta.CalculatedAt,
+          nextCard.Instance.Load.Eta!.CalculatedAt
+        );
+        Assert.Equal(
+          mapEta.Stops.Select(x => (x.StopId, x.Arrival)),
+          nextCard.Instance.Load.Eta.Stops.Select(x => (x.StopId, x.Arrival))
         );
       }
       else
         Assert.All(
           component.FindComponents<DispatchLoadCard>(),
-          card => Assert.False(card.Instance.StopsPassed)
+          card => Assert.False(card.Instance.Earlier)
         );
       Assert.False(first.Completed);
     });
@@ -998,6 +1006,78 @@ public sealed class DispatchTruckHeaderTests
         "Source resources",
         component.Markup.Replace(sign.OuterHtml, "")
       );
+    });
+  }
+
+  // A summary that names the board's first load makes it current even
+  // before its day comes, as the map reads it; the date rule stands only
+  // when there is no accepted summary.
+  [Theory]
+  [InlineData(true)]
+  [InlineData(false)]
+  public void AcceptedSummaryMakesTheFirstLoadCurrentWhateverItsDate(
+    bool summarized
+  )
+  {
+    var load = Load();
+    load.Status = "assigned";
+    load.Stops[0].Job = "Pick Up";
+    load.Stops[0].ScheduledDate = new(2026, 12, 1);
+    load.ShipDate = new(2026, 12, 1);
+    var later = Load();
+    later.TruckId = load.TruckId;
+    later.Status = "assigned";
+    later.Stops[0].ScheduledDate = new(2026, 12, 3);
+    later.ShipDate = new(2026, 12, 3);
+    var summary = Result(load);
+    using var context = new ClientComponentContext(
+      (request, _) =>
+        Task.FromResult(
+          Json(
+            request.RequestUri!.AbsolutePath switch
+            {
+              "/api/dispatch/board/planning" => summarized
+                ? new[] { summary }
+                : Array.Empty<AutomaticPlanningResult>(),
+              "/api/dispatch/board" => new
+              {
+                items = new[]
+                {
+                  new TruckDispatchBoardResponse
+                  {
+                    Key = load.TruckId.ToString()!,
+                    TruckId = load.TruckId,
+                    TruckNumber = "11005",
+                    Dispatches = [load, later],
+                  },
+                },
+                page = 1,
+                totalCount = 1,
+                totalPages = 1,
+              },
+              _ => Array.Empty<object>(),
+            }
+          )
+        )
+    );
+    context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
+    context.JSInterop.Mode = JSRuntimeMode.Loose;
+    var component = context.Render<DispatchList>();
+
+    component.WaitForAssertion(() =>
+    {
+      var cards = component.FindComponents<DispatchLoadCard>();
+      Assert.Equal(2, cards.Count);
+      Assert.Equal(summarized, cards[0].Instance.Current);
+      Assert.Equal(
+        summarized ? "Current" : "Next",
+        cards[0].Find(".dispatch-load__phase").TextContent
+      );
+      Assert.Equal(
+        summarized ? "Next" : "Upcoming",
+        cards[1].Find(".dispatch-load__phase").TextContent
+      );
+      Assert.All(cards, card => Assert.False(card.Instance.Earlier));
     });
   }
 
