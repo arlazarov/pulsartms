@@ -1452,6 +1452,63 @@ first version's runs diagnostic-sP3KzC and -A4qt2n checked what it
 changed, not its compatibility; diagnostic-TQzqoy is invalid (the API did
 not build).
 
+## Release and rollback constraints (branch at `3e15aeba`)
+
+What the branch stores differently, measured against the released binary
+`0e6add5d` where stated. Everything else on the branch (D1, D2, D3, D6,
+F20, F22, F23, F25, F26, the messaging mailbox bounds) is code only and
+rolls back with the previous image. The Client changes one file
+(`MessagingSignals`, the mailbox kept across a rejoin); it uses the
+mailbox parameter the released API already accepts, so the frontend and
+the API can be released in either order.
+
+| Migration | Change | Previous binary on it | Down |
+| --- | --- | --- | --- |
+| 75 `RecordDispatchReadTickets` | table `DispatchImportReads`; `DispatchSourceLinks.ReadTicket` default 0 | run: imports, links with ticket 0 (diagnostic-vdc2U5) | drops both; tickets forgotten |
+| 76 `ScopeCarrierNaturalKeys` | keys of `DispatchNumberCounters`, `DriverHosReadings` start with `CompanyId` | run with one carrier (vdc2U5); its model keys by `Id` and driver id | refuses if two carriers repeat a key |
+| 77 `CountDispatchImportWrites` | `LastWrite` on the new table | not mapped (vdc2U5) | drops the column |
+| 78 `KeepEarlyDeliveryStatuses` | table `PendingDeliveryStatuses` | not mapped; by construction, not exercised | drops kept statuses (at most an hour's, 1,000 a carrier) |
+| 79 `LetThemeBeUnchosen` | `Users.Theme` default `''` | run: reads, saves, loads (diagnostic-CHECIp) | restores the `light` default; run with an unchosen user (diagnostic-TmQKay) |
+
+Release order:
+
+1. Back up (`local-backups/`) and record the protected counts, as for
+   `0e6add5d`.
+2. Apply 75-79 as the EF idempotent script, in one transaction with a
+   5 s lock timeout, while the previous revision serves: the new API
+   reads the new columns and tables and fails without them, and a
+   no-traffic revision does not run start-up migrations. 76 rebuilds two
+   primary keys (an exclusive lock on two small tables). Then 79
+   migrations; the reset guard names 79.
+3. Deploy the new revision without traffic, verify its identity, move
+   traffic, and wait for the previous revision's drain (`TrafficShutDown`
+   true). No manual sync or history-tool run until then (F21).
+
+During the overlap, bounded by it: the previous binary writes loads
+without a ticket (corrected within one relay round and one poll, F21);
+its webhook drops a delivery status that arrives before the provider id
+is saved (the behaviour before F27); it creates users with `light`; and
+a stale sending attempt still blocks that truck's fuel publication
+(the behaviour before D6/F16).
+
+Rollback of the API: redeploy the previous image; no Down is needed for
+any of 75-79. After it, those four behaviours return; kept statuses stay
+unapplied until a new binary prunes or takes them; empty themes read as
+the released Client's default. Hard boundary: no second carrier while a
+binary older than 76 serves or is kept as the rollback target.
+
+Integration: `main` (`66f8801e`) does not yet contain the release
+`0e6add5d`; this branch and `claude/current-work-design` do. The latter
+adds no migration after 74, so 75-79 need no reordering. A trial merge
+of it into `3e15aeba` (not committed; a disposable worktree) conflicts
+in three places, each two lists of auditor rules added side by side -
+the DI registrations, `ConsistencyAuditSqlTests` and the auditor's
+register - and is resolved by keeping both. The merged tree passed the
+database, ETA, Dispatch and Routing groups with architecture (Server
+2,244, Client 747, JavaScript 16 and 67, none skipped; PostgreSQL tests
+ran): diagnostic-UVuFOS, with the merge diff. Not run on it: the
+messaging, fuel, identity and caching groups, and the full gate.
+
 ## Owner decisions: proposals with examples
 
 Each item is a proposal; nothing below is implemented. The examples are
