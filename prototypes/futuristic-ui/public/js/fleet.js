@@ -541,7 +541,11 @@ function layerMenu() {
     row('cities', 'City labels');
 }
 
+// This sketch map is not the product map. The real Fleet Map (Google,
+// satellite at close zoom, Follow) is the integrated Client on :5180.
 function mapNote() {
-  return `<div class="map-pill">${icon('map', 'sm')}Boundaries: US Census
-    via us-atlas · no traffic layer</div>`;
+  return `<div class="map-pill map-pill--warn">${icon('alert', 'sm')}Layout
+    sketch map (boundaries: US Census, us-atlas) · not the product map ·
+    the real Google map runs at
+    <a href="http://localhost:5180/fleet/map">localhost:5180</a></div>`;
 }

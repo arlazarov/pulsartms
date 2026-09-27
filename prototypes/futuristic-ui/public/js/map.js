@@ -519,31 +519,35 @@ export class FleetMapView {
       const [sx, sy] = this.toScreen(t.lat, t.lng);
       if (!inView(sx, sy)) continue;
       const selected = t.id === sel;
+      // Shape says motion; the edge says the engine reading (never speed);
+      // the chosen truck wears a sonar and keeps its size.
+      const engine = /^(on|running|idle|idling)$/i.test(
+        String(t.engine ?? '').trim())
+        ? 'on'
+        : /^off$/i.test(String(t.engine ?? '').trim()) ? 'off' : 'unknown';
       const g = el('g', {
-        class: `truck${selected ? ' selected' : ''}${
+        class: `truck engine-${engine}${selected ? ' selected' : ''}${
           t.moving ? '' : ' stopped'}${sel && !selected ? ' quiet' : ''}`,
         transform: `translate(${sx.toFixed(1)} ${sy.toFixed(1)})`,
         'data-hit': 'truck',
         'data-id': t.id,
         tabindex: '0',
         role: 'button',
-        'aria-label': `Truck ${t.unit}, ${t.motion}${
+        'aria-label': `Truck ${t.unit}, ${t.motion}, engine ${engine}${
           selected ? ', selected' : ''}`,
         'aria-pressed': selected ? 'true' : 'false',
       }, this.overlay);
       if (selected) {
-        el('circle', { class: 'ring fill', r: 26 }, g);
-        el('circle', { class: 'ring r3', r: 34 }, g);
-        el('circle', { class: 'ring r2', r: 25 }, g);
-        el('circle', { class: 'ring r1', r: 16 }, g);
-        el('circle', { class: 'ring pulse', r: 22 }, g);
+        el('circle', { class: 'ring r1', r: 14 }, g);
+        el('circle', { class: 'ring pulse', r: 18 }, g);
       }
-      const s = selected ? 1.35 : 1;
-      el('path', {
-        class: 'arrow',
-        d: 'M0,-9 L7,7 L0,3.2 L-7,7 Z',
-        transform: `rotate(${t.heading ?? 0}) scale(${s})`,
-      }, g);
+      if (t.moving)
+        el('path', {
+          class: 'arrow',
+          d: 'M0,-9 L7,7 L0,3.2 L-7,7 Z',
+          transform: `rotate(${t.heading ?? 0})`,
+        }, g);
+      else el('circle', { class: 'arrow', r: 6.5 }, g);
       const label = String(t.unit);
       const lw = label.length * 7 + 12;
       const lab = el('g', {

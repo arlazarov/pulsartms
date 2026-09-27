@@ -2509,7 +2509,9 @@ button:disabled {
     right: 10px;
   }
   .map-ctl.bl {
-    display: none;
+    top: 64px;
+    bottom: auto;
+    right: 64px;
   }
   .lane-row {
     grid-template-columns: minmax(0, 1fr);
@@ -2592,4 +2594,39 @@ a.btn {
   flex: 1;
   height: 34px;
   padding: 0 10px;
+}
+
+.map-pill--warn {
+  color: var(--warn);
+  border-color: var(--warn-line);
+  background: var(--panel-solid);
+  white-space: normal;
+  max-width: min(520px, calc(100vw - 48px));
+}
+
+.map-pill--warn a {
+  color: inherit;
+  font-weight: 700;
+}
+
+.map-ctl.bl {
+  pointer-events: auto;
+}
+
+/* Truck marks: one ink body for every truck; the engine is its edge. */
+.map-svg .truck .arrow,
+.map-svg .truck.stopped .arrow,
+.map-svg .truck.selected .arrow {
+  fill: var(--marker);
+  stroke: var(--idle-dot);
+  stroke-width: 1.8;
+}
+
+.map-svg .truck.engine-on .arrow {
+  stroke: var(--ok-dot);
+  stroke-width: 2.4;
+}
+
+.map-svg .truck.engine-unknown .arrow {
+  stroke-dasharray: 3 2;
 }

@@ -29,13 +29,15 @@
         @if (Load.Price.HasValue)
         { <div><dt>Rate</dt><dd>@DispatchFinancialDisplay.Money(Load.Price, Load.Currency)</dd></div> }
     </dl>
-    <ol class="fleet-trip-detail__stops" aria-label="Stops in route order">
+    @* The Dispatch stop row draws its badge on the load's timeline, so the
+       list and its items are that timeline, as on the Dispatch card. *@
+    <ol class="fleet-trip-detail__stops dispatch-load__route" aria-label="Stops in route order">
         @foreach (var visit in DispatchStopPresentation.OrderedVisits(Load.Stops))
         {
             var stop = visit.Stop;
             var focused = stop.Id == FocusedStopId;
             <li @key="stop.Id" id="@($"fleet-trip-stop-{stop.Id:N}")" tabindex="-1"
-                class="fleet-trip-detail__stop @DispatchStopPresentation.Tone(stop) @(focused ? "is-focused" : "")"
+                class="fleet-trip-detail__stop dispatch-load__route-stop @(stop.IsCompleted ? "is-history" : "is-remaining") @DispatchStopPresentation.Tone(stop) @(focused ? "is-focused" : "")"
                 @ref="_stops[stop.Id]">
                 <DispatchLoadStop DispatchId="Load.Id" Stop="stop" Number="visit.Number"
                                   Marker="@visit.Marker" VisitLabel="@visit.VisitLabel"

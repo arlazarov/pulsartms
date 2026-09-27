@@ -20,4 +20,12 @@ export const routes = [
   ['GET', /^\/api\/dispatch\/board$/],
   ['GET', /^\/api\/dispatch\/board\/(enrichment|telemetry)$/],
   ['POST', /^\/api\/dispatch\/board\/planning$/],
+  // Further reads the real Client makes on these pages (CONCEPT_ROOT).
+  ['GET', /^\/api\/settings\/(dispatch|appearance)$/],
+  ['GET', /^\/api\/driver-groups$/],
+  ['GET', /^\/api\/messaging\/(unread|changes)$/],
+  ['GET', /^\/api\/fuel\/(price-overview|stations)$/],
+  ['GET', /^\/api\/fleet\/planning\/previews$/],
+  ['GET', new RegExp(`^/api/fleet/trucks/${id}/weather$`)],
+  ['GET', new RegExp(`^/api/dispatch/${id}/(workspace|planning/map)$`)],
 ];

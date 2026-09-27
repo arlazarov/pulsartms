@@ -489,7 +489,8 @@ Truck selection retains its road without fitting or zooming out. Show route,
 beside Follow, explicitly fits the retained remaining road and turns Follow off.
 It does not fetch, republish geometry or recalculate a route. At overview
 zoom, nearby unselected trucks share a counted, clickable marker that zooms in;
-the selected truck is never clustered and remains larger than surrounding trucks.
+the selected truck is never clustered; it keeps its size and is found by its
+sonar (see Futuristic interface: truck marks).
 The count label sits directly at the group's geographic center with zero screen
 offset. Nearby markers, polling and zoom must not push it away from that point.
 Only individual truck labels use collision displacement and short connectors.
@@ -602,50 +603,77 @@ fallback) and **Futuristic**. `AppearanceProvider` owns the choice beside the
 theme. Until an account preference exists it is kept on the device, per
 account (`pulsr.interface.<account>`), and applied as
 `data-interface="futuristic"` on the root; a missing, unreadable or unknown
-value, a sign-out and a new account all mean Current. It changes only layout
-and styling. Every function, request, refresh loop, selection path and map
-policy is the one the current interface uses.
+value, a sign-out and a new account all mean Current. It changes layout and
+styling, and how a trip is chosen; requests, refresh loops, the map's camera
+and zoom policy are the current interface's.
 
 Colours come from `base/_interface.scss`: complete light and dark role maps
-over the same contract, checked for contrast like the themes. Surfaces,
-actions, focus and navigation turn cyan on ice or night; operational colours
-(routes, stops, fuel prices, status text) keep their theme values. In the
-light theme the navigation is light, so the reversed wordmark takes the
-navigation text colour.
+over the same contract, checked for contrast like the themes. Operational
+colours keep their theme values. On wide screens the navigation is a narrow
+rail with the pulse icon (brand-design.md's small-space lockup); the light
+rail takes the navigation text colour for the wordmark.
 
-Fleet Map, from `futuristic-docked` up, becomes a fleet list, the map, the
-docked truck inspector and a trip chain across the bottom. The list is the
-page's trucks under its own truck search, and choosing a row is choosing the
-truck in search. The inspector keeps all its content and actions (Follow,
-Fit route, Fuel, Camera, Route options); docked beside the map it no longer
-covers it, so the camera needs no inset. The docked column is narrower than
-`map-compact-columns`, so by the card's own rule the truck card is open
-whole and scrolls, as on a phone: there is no Details button and nothing
-waits behind one. The fuel editor replaces the card in that column; route
-choices, the send window and the key stay over the map; the camera stays the
-page's modal dialog. With no truck selected and no editor open the map takes
-the inspector's column. The chain
-is the selected truck's row of the Dispatch board: the same server read,
-order and `WorkPhase` the board shows, asked for that truck when it is
-chosen and again at the board's one-minute cadence, with late answers for
-another truck dropped. Its labels and conflict text come from
-`DispatchWorkPhase`, so Fleet and Dispatch name every load alike; a stale or
-unplaced load is never coloured as a place. The current load returns to the
-truck card without moving the camera, so Follow continues; a later load
-whose road is drawn opens its stop card through `selectNextStop`, the path a
-stop click takes, and any other load links to its workspace. When Next loads is off the chain offers to show them on the map. Below
-`futuristic-docked` the inspector floats as in the current interface, the
-list is left to search and the chain runs beneath the map.
+Fleet Map, from `futuristic-docked` up, is a collapsible fleet list, the map,
+the docked truck panel and the trip chain. The list is the page's trucks
+under its own truck search. The right panel is the truck card (all its
+content and actions: Follow, Fit route, Fuel, Camera, Route options) and
+under it ONE selected trip in full - never the other trips: its phase and
+status, route, customer, order, miles, rate and every stop through the
+Dispatch stop row (appointment or window with its time zone, ETA shown
+separately, completion, facility, address, reference, cargo and
+instructions when present). The trip is the one chosen, else the current
+one. The docked card is narrower than `map-compact-columns`, so by its own
+rule it is open whole. The fuel editor replaces the card in its column;
+route choices, the send window and the key stay over the map; the camera
+stays the page's modal dialog.
 
-The map's zoom policy is unchanged: hybrid at zoom 15 and above, the road map
-below. Follow opens at zoom 15 and so on satellite; a reader's zoom or drag
-ends Follow as before. `tests/browser/futuristicSmoke.mjs` checks this on the
-real basemap, with a moving truck, alongside both interfaces' screens.
+The trip chain lists every trip of the truck: the truck's row of the
+Dispatch board (server order, `WorkPhase` and `WorkConflict`, words from
+`DispatchWorkPhase`), read when the truck is chosen and at the board's
+one-minute cadence. Each trip card carries its stops as P / D chips. Cards
+wrap into rows, at most two until All trips (N) is pressed, and the chosen
+trip is always among those shown; nothing scrolls sideways. On a phone the
+chain is a sheet showing the chosen trip that opens into a vertical list,
+and the truck card opens closed with its summary rows, Details / Hide
+details and a Follow button in its head.
+
+Choosing a trip or a stop - in the chain, in the panel, or on a map badge -
+selects that trip and opens that stop in the panel, and the map highlights
+it: the current trip's stop in place (`focusRouteStop`), a later trip
+through the next-loads layer. With trip choice on (`setStopChoice`) a
+current-route badge reports `OnRouteStopChosen` and a next-load selection
+leaves the truck card in place instead of opening a stop card. Nothing here
+moves the camera, so Follow continues; only a reader's drag or zoom, or an
+explicit camera action, ends it.
+
+Stop badges everywhere say what the stop is within its own load: P for a
+pickup, D for the only delivery, D1, D2... for several, in stop order
+(`StopMarkers`, `stopLabels.ts`); a stop that neither loads nor unloads
+keeps its position. They never carry the load's place in the chain, which
+only the chain numbers. The map's text atlas holds these letters
+(`stopBadgeCharacters`).
+
+Truck marks, in both interfaces: the shape says motion (an arrow moving, a
+circle standing, from speed); a subtle edge says the telemetry's engine
+reading - green for on, idling included; neutral for off; dashed neutral
+when missing or unknown - never inferred from speed. The locations feed
+has no per-truck freshness fact, so staleness is not drawn on the mark.
+The chosen truck wears a sonar that is never picked and does not grow the
+mark; it stands still for reduced motion and stops when the page is hidden,
+nothing is chosen, or the map is disposed.
+
+The map keeps to Canada and the USA with soft bounds on the provider map.
+Its zoom policy is unchanged (hybrid at 15 and above, road map below), and
+the page says which it shows (Satellite / Road map). Follow opens at 15 and
+so on satellite. `tests/browser/futuristicSmoke.mjs` checks this on the
+real basemap, including successive GPS reports, a stop in GPS, drag and
+resume, and the rendered imagery.
 
 Dispatch keeps Cards, Papers, Table, the scope (Completed is read in the
-Table alone), search, groups and every link and action; only the frame and
-the load colours change, using the same route colours as the Fleet Map
-chain, whose phase words are the board's.
+Table alone), search, groups and every action. In Futuristic the cards take
+their own height, Table rows stay neutral with the row under pointer or
+keyboard marked, and Papers cards (both interfaces) say the route and name
+the time they show as the next stop's appointment.
 
 ## Dispatch information hierarchy
 

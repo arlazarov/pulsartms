@@ -12,6 +12,7 @@
 //   node tests/browser/futuristicSmoke.mjs
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
+import { inflateSync } from 'node:zlib';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { browserOutput } from '../../../scripts/artifacts.mjs';
@@ -51,6 +52,7 @@ const places = {
   albany: ['Albany', 'NY', 42.65, -73.76],
   boston: ['Boston', 'MA', 42.36, -71.06],
 };
+const cycle = Object.keys(places);
 const plans = [
   ['54777', ['nashville', 'knoxville', 'richmond', 'baltimore'], 52],
   ['11006', ['chicago', 'detroit', 'columbus'], 61],
@@ -58,6 +60,20 @@ const plans = [
   ['11018', ['pittsburgh', 'columbus'], 0],
   ['11022', ['albany', 'boston', 'albany'], 55],
   ['11027', ['charlotte', 'atlanta'], 0],
+  // One trip, four trips and many trips, for the chain's rows.
+  ['11031', ['detroit', 'chicago'], 48],
+  ['11044', ['boston', 'albany', 'pittsburgh', 'columbus', 'chicago'], 57],
+  ['11052', cycle.slice(0, 10), 60],
+  // The rest of a twenty-truck fleet.
+  ...Array.from({ length: 11 }, (_, i) => [
+    String(12000 + i * 7),
+    [
+      cycle[i % cycle.length],
+      cycle[(i + 3) % cycle.length],
+      cycle[(i + 5) % cycle.length],
+    ],
+    i % 3 === 0 ? 0 : 50 + i,
+  ]),
 ];
 let stopNumber = 0;
 const stopOf = (place, sequence, job, date, done) => {
@@ -127,6 +143,10 @@ plans.forEach(([unit, route, speed], t) => {
       stops: [
         stopOf(route[i], 1, 'Pickup', day(i), i === 0),
         stopOf(route[i + 1], 2, 'Delivery', day(i + 1), false),
+        // The first truck's current load drops at two receivers: D1, D2.
+        ...(t === 0 && i === 0
+          ? [stopOf(route[i + 1], 3, 'Delivery', day(i + 1), false)]
+          : []),
       ],
       eta: null,
     };
@@ -147,6 +167,7 @@ plans.forEach(([unit, route, speed], t) => {
 const first = trucks[0];
 // Positions are a function of time, so every read agrees with the last.
 const started = Date.now();
+const gps = { stoppedAt: null };
 const point = (latitude, longitude) => ({ latitude, longitude });
 // A saved fuel plan with one purchase, so the plan card, its editor and the
 // send window have something to show. Values are synthetic.
@@ -369,7 +390,15 @@ const recorder = () => {
     const move = Map.prototype.moveCamera;
     Map.prototype.moveCamera = function (...args) {
       window.cameraMoves += 1;
+      window.mapRef = this;
       return move.apply(this, args);
+    };
+    window.camera = () => {
+      const map = window.mapRef;
+      const center = map?.getCenter();
+      return center
+        ? { lat: center.lat(), lng: center.lng(), zoom: map.getZoom() }
+        : null;
     };
     clearInterval(hook);
   }, 20);
@@ -428,7 +457,8 @@ async function open({ theme, face, width, height }) {
         // The first truck is moving: its recent positions, ten seconds
         // apart, advance east. The map plays positions back 90 s behind the
         // reports, so the history must cover that window.
-        const now = Date.now();
+        // Once GPS stops (gps.stoppedAt) no newer report is ever sent.
+        const now = gps.stoppedAt ?? Date.now();
         const history = Array.from({ length: 19 }, (_, i) => {
           const at = now - (18 - i) * 10_000;
           return {
@@ -563,6 +593,51 @@ async function open({ theme, face, width, height }) {
   return { context, tab };
 }
 
+// How many distinct colours (to 5 bits a channel) a PNG screenshot holds:
+// imagery has thousands, a road map a few hundred. Reads 8-bit RGB(A).
+function colours(png) {
+  const ihdr = png.indexOf('IHDR');
+  const width = png.readUInt32BE(ihdr + 4);
+  const height = png.readUInt32BE(ihdr + 8);
+  const channels = png[ihdr + 13] === 6 ? 4 : 3;
+  const chunks = [];
+  for (let at = 8; at < png.length; ) {
+    const length = png.readUInt32BE(at);
+    const type = png.toString('ascii', at + 4, at + 8);
+    if (type === 'IDAT') chunks.push(png.subarray(at + 8, at + 8 + length));
+    at += length + 12;
+  }
+  const raw = inflateSync(Buffer.concat(chunks));
+  const stride = width * channels;
+  const rows = [];
+  let previous = new Uint8Array(stride);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)];
+    const line = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+    const out = new Uint8Array(stride);
+    for (let x = 0; x < stride; x++) {
+      const a = x >= channels ? out[x - channels] : 0;
+      const b = previous[x];
+      const c = x >= channels ? previous[x - channels] : 0;
+      const p = a + b - c;
+      const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+      const predictor = [0, a, b, (a + b) >> 1,
+        pa <= pb && pa <= pc ? a : pb <= pc ? b : c][filter];
+      out[x] = (line[x] + predictor) & 255;
+    }
+    rows.push(out);
+    previous = out;
+  }
+  const seen = new Set();
+  for (let y = 0; y < height; y += 2)
+    for (let x = 0; x < width; x += 2) {
+      const i = x * channels;
+      seen.add(((rows[y][i] >> 3) << 10) | ((rows[y][i + 1] >> 3) << 5) |
+        (rows[y][i + 2] >> 3));
+    }
+  return seen.size;
+}
+
 const shot = async (tab, name) => {
   const path = resolve(output, `${name}.png`);
   await tab.screenshot({ path });
@@ -628,17 +703,13 @@ try {
     await tab.locator('.fleet-truck-list__row').first().waitFor();
     await tab.waitForTimeout(5000);
     const rowsShown = await tab.locator('.fleet-truck-list__row').count();
-    check(rowsShown === trucks.length, 'the list shows every truck', {
+    check(rowsShown === trucks.length, 'the list shows all twenty trucks', {
       rowsShown,
     });
     const title = () =>
       tab.locator('.fleet-map-inspector__desktop-title').textContent();
     check((await title()).trim() === first.unitNumber,
       'the addressed truck opens in the inspector', await title());
-
-    // Docked in its column the card is narrower than the compact columns,
-    // so, as on a phone, it is open whole and scrolls: no Details button,
-    // and nothing waits behind one.
     const toggleShown = await tab
       .locator('.fleet-map-mobile-summary__toggle')
       .isVisible();
@@ -647,7 +718,7 @@ try {
       'the docked truck card shows its details whole',
       { toggleShown, detailsShown });
 
-    // The list selects through the page's own path.
+    // The list selects through the page's own path; the chain follows.
     await tab.locator('.fleet-truck-list__row').nth(1).click();
     await tab.waitForTimeout(1500);
     check((await title()).trim() === trucks[1].unitNumber,
@@ -665,7 +736,6 @@ try {
       'a load the server marks stale says so in the chain', staleChain);
     await tab.locator('.fleet-truck-list__row').nth(0).click();
     await tab.waitForTimeout(2500);
-    // Three choices (first, second, first again): one read each.
     const perTruck = boardReads.slice(readsBefore).filter(Boolean);
     check(
       JSON.stringify(perTruck) ===
@@ -674,81 +744,212 @@ try {
       perTruck,
     );
 
-    // The chain opens the next load's stop card through the map.
-    const links = tab.locator('.fleet-trip-chain__card');
-    check((await links.count()) === 3,
-      'the chain shows the current load and the next loads',
-      await links.count());
+    // Trips and their stops: badges within each trip, never its place.
+    const chips = await tab.evaluate(() =>
+      [...document.querySelectorAll('.fleet-trip-chain__link')].map(link =>
+        [...link.querySelectorAll('.fleet-trip-chain__stop')].map(x =>
+          x.textContent.trim(),
+        ),
+      ),
+    );
+    check(
+      JSON.stringify(chips) ===
+        JSON.stringify([['P', 'D1', 'D2'], ['P', 'D'], ['P', 'D']]),
+      'each trip shows its own P and D stops', chips);
     const chainPhases = await tab
       .locator('.fleet-trip-chain__phase')
       .allTextContents();
     check(
       JSON.stringify(chainPhases) ===
         JSON.stringify(['Current', 'Next', 'Upcoming']),
-      'the chain names the server work phases',
-      chainPhases,
-    );
-    await links.nth(1).click();
-    await tab.waitForTimeout(1500);
-    const mode = await tab
-      .locator('.fleet-map-inspector')
-      .getAttribute('data-inspector-mode');
-    check(mode === 'nextstop', 'a next load in the chain opens its stop card',
-      { mode });
-    await links.nth(0).click();
-    await tab.waitForTimeout(800);
-    const back = await tab
-      .locator('.fleet-map-inspector')
-      .getAttribute('data-inspector-mode');
-    check(back === 'truck', 'the current load returns to the truck card',
-      { back });
-    await shot(tab, 'behaviour-chain-next-load');
+      'the chain names the server work phases', chainPhases);
+    const panel = async () => ({
+      trip: (await tab.locator('#fleet-trip-detail-title').textContent())
+        .trim(),
+      trips: await tab.locator('.fleet-trip-detail').count(),
+      focused: await tab
+        .locator('.fleet-trip-detail__stop.is-focused .dispatch-load__stop-number')
+        .allTextContents(),
+      mode: await tab
+        .locator('.fleet-map-inspector')
+        .getAttribute('data-inspector-mode'),
+    });
+    let now = await panel();
+    check(now.trips === 1 && now.trip === 'AMF1409' && now.mode === 'truck',
+      'the panel shows only the current trip at first', now);
 
-    // Follow: close zoom turns to satellite, and holds through updates.
-    const before = await tab.evaluate(() => window.mapTypes.slice());
-    await tab.locator('button[aria-label="Follow"]').click();
+    // Follow: close zoom, satellite, and the moving truck kept in view.
+    const follow = tab.locator('button[aria-label="Follow"]');
+    await follow.click();
     await tab.waitForTimeout(3000);
-    const following = await tab
-      .locator('button[aria-label="Follow"]')
-      .getAttribute('aria-pressed');
-    const afterFollow = await tab.evaluate(() => window.mapTypes.slice());
-    check(following === 'true', 'Follow starts', { following });
-    check(afterFollow.at(-1) === 'hybrid',
-      'Follow at close zoom shows satellite', { before, afterFollow });
+    const c0 = await tab.evaluate(() => window.camera());
+    check((await follow.getAttribute('aria-pressed')) === 'true' &&
+        c0?.zoom === 15,
+      'Follow starts at close zoom', c0);
+    check((await tab.evaluate(() => window.mapTypes.at(-1))) === 'hybrid',
+      'Follow at close zoom switches the map to hybrid');
+    const mode = (await tab.locator('.fleet-map-mode').textContent()).trim();
+    check(/Satellite/.test(mode), 'the map says it is in satellite', mode);
+    const satellite = colours(
+      await tab.locator('#fleet-map').screenshot({ type: 'png' }),
+    );
     await shot(tab, 'behaviour-follow-satellite');
-    const moves = await tab.evaluate(() => window.cameraMoves);
-    await tab.waitForTimeout(22000);
-    const still = await tab
-      .locator('button[aria-label="Follow"]')
-      .getAttribute('aria-pressed');
-    const movesAfter = await tab.evaluate(() => window.cameraMoves);
-    const typeAfter = await tab.evaluate(() => window.mapTypes.at(-1));
-    check(still === 'true' && movesAfter > moves && typeAfter === 'hybrid',
-      'Follow keeps the moving truck in view on satellite',
-      { still, moves, movesAfter, typeAfter });
+    await tab.waitForTimeout(21000);
+    const c1 = await tab.evaluate(() => window.camera());
+    check(
+      (await follow.getAttribute('aria-pressed')) === 'true' &&
+        c1.zoom === c0.zoom &&
+        c1.lng - c0.lng > 0.0005 &&
+        Math.abs(c1.lat - c0.lat) < 0.01,
+      'successive GPS reports move the camera with the truck, zoom kept',
+      { c0, c1 },
+    );
     await shot(tab, 'behaviour-follow-after-updates');
 
-    // Zooming out is the reader's camera: Follow ends, the road map returns.
+    // Choosing another trip or stop keeps Follow and the camera's zoom.
+    await tab.locator('.fleet-trip-chain__trip').nth(1).click();
+    await tab.waitForTimeout(1200);
+    now = await panel();
+    const c2 = await tab.evaluate(() => window.camera());
+    check(now.trips === 1 && now.trip === 'AMF1410' && now.mode === 'truck' &&
+        (await follow.getAttribute('aria-pressed')) === 'true' &&
+        c2.zoom === c0.zoom,
+      'choosing a later trip shows only it and keeps Follow', { now, c2 });
+    await tab.locator('.fleet-trip-chain__link').nth(0)
+      .locator('.fleet-trip-chain__stop').nth(2).click();
+    await tab.waitForTimeout(1200);
+    now = await panel();
+    check(now.trip === 'AMF1409' &&
+        JSON.stringify(now.focused) === JSON.stringify(['D2']) &&
+        (await follow.getAttribute('aria-pressed')) === 'true',
+      'a D2 chip opens that stop in the current trip, Follow kept', now);
+    await shot(tab, 'behaviour-trip-stop-focus');
+
+    // A drag is the reader's camera: Follow ends; pressing it resumes.
     const box = await tab.locator('#fleet-map').boundingBox();
+    await tab.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await tab.mouse.down();
+    await tab.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2,
+      { steps: 8 });
+    await tab.mouse.up();
+    await tab.waitForTimeout(800);
+    const c3 = await tab.evaluate(() => window.camera());
+    check((await follow.getAttribute('aria-pressed')) === 'false' &&
+        c3.zoom === c0.zoom,
+      'dragging the map ends Follow without changing zoom', c3);
+    await follow.click();
+    await tab.waitForTimeout(2000);
+    check((await follow.getAttribute('aria-pressed')) === 'true' &&
+        (await tab.evaluate(() => window.camera().zoom)) === 15,
+      'Follow resumes on the truck');
+
+    // GPS stops: the truck plays out what was reported, then stands; the
+    // camera does not invent motion.
+    gps.stoppedAt = Date.now();
+    await tab.waitForTimeout(100000);
+    const c4 = await tab.evaluate(() => window.camera());
+    await tab.waitForTimeout(12000);
+    const c5 = await tab.evaluate(() => window.camera());
+    check(
+      (await follow.getAttribute('aria-pressed')) === 'true' &&
+        Math.abs(c5.lng - c4.lng) < 1e-7 &&
+        Math.abs(c5.lat - c4.lat) < 1e-7,
+      'without new GPS reports the followed camera stands still',
+      { c4, c5 },
+    );
+    gps.stoppedAt = null;
+
+    // Zooming out is the reader's camera: Follow ends, the road map returns.
     await tab.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     for (let i = 0; i < 8; i++) {
       await tab.mouse.wheel(0, 400);
       await tab.waitForTimeout(250);
     }
-    await tab.waitForTimeout(2500);
-    const ended = await tab
-      .locator('button[aria-label="Follow"]')
-      .getAttribute('aria-pressed');
+    await tab.waitForTimeout(3000);
+    const ended = await follow.getAttribute('aria-pressed');
     const typeOut = await tab.evaluate(() => window.mapTypes.at(-1));
-    check(ended === 'false' && typeOut === 'roadmap',
-      'zooming out ends Follow and returns the road map', { ended, typeOut });
+    const modeOut = (await tab.locator('.fleet-map-mode').textContent()).trim();
+    check(ended === 'false' && typeOut === 'roadmap' && /Road map/.test(modeOut),
+      'zooming out ends Follow and returns the road map', {
+        ended, typeOut, modeOut });
+    const roadmap = colours(
+      await tab.locator('#fleet-map').screenshot({ type: 'png' }),
+    );
+    check(satellite > roadmap * 2,
+      'the satellite view is drawn as imagery, not as the road map',
+      { satellite, roadmap });
     await shot(tab, 'behaviour-zoomed-out-roadmap');
+    await context.close();
+  }
 
-    // Following again returns to satellite.
-    await tab.locator('button[aria-label="Follow"]').click();
-    await tab.waitForTimeout(2500);
-    const again = await tab.evaluate(() => window.mapTypes.at(-1));
-    check(again === 'hybrid', 'following again shows satellite', { again });
+  // The chain's rows with one, four and many trips, desktop and phone.
+  for (const [size, width, height] of [
+    ['desktop', 1440, 900],
+    ['narrow', 360, 780],
+  ]) {
+    const { context, tab } = await open({
+      theme: 'light', face: 'futuristic', width, height });
+    for (const [unit, count] of [['11031', 1], ['11044', 4], ['11052', 9]]) {
+      const truck = trucks.find(t => t.unitNumber === unit);
+      await tab.goto(`${origin}/fleet/map?truckId=${truck.truckId}`);
+      await tab.locator('.fleet-trip-chain__link').first().waitFor();
+      await tab.waitForTimeout(2500);
+      const rows = await tab.evaluate(() => {
+        const list = document.querySelector('.fleet-trip-chain__links');
+        const shown = [...list.children].filter(
+          li => getComputedStyle(li).display !== 'none');
+        const tops = new Set(shown.map(li => Math.round(
+          li.getBoundingClientRect().top)));
+        return {
+          total: list.children.length,
+          shown: shown.length,
+          rows: tops.size,
+          selected: shown.some(li => li.classList.contains('is-selected')),
+          across: list.scrollWidth - list.clientWidth,
+          page: document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
+        };
+      });
+      const limit = size === 'narrow' ? 1 : 2;
+      check(rows.total === count && rows.rows <= limit && rows.selected &&
+          rows.across <= 0 && rows.page <= 0,
+        `${size}: ${count} trip(s) wrap without sideways scrolling`, rows);
+      await shot(tab, `chain-${size}-${count}-trips`);
+      if (count > 1) {
+        await tab.locator('.fleet-trip-chain__all').click();
+        await tab.waitForTimeout(500);
+        const all = await tab.evaluate(() => {
+          const list = document.querySelector('.fleet-trip-chain__links');
+          return {
+            shown: [...list.children].filter(
+              li => getComputedStyle(li).display !== 'none').length,
+            across: list.scrollWidth - list.clientWidth,
+          };
+        });
+        check(all.shown === count && all.across <= 0,
+          `${size}: All trips (${count}) shows every trip`, all);
+        await shot(tab, `chain-${size}-${count}-trips-all`);
+        await tab.locator('.fleet-trip-chain__all').click();
+      }
+    }
+    if (size === 'narrow') {
+      // The phone card opens closed with its summary, Details and Follow.
+      const card = await tab.evaluate(() => ({
+        follow: !!document.querySelector('.fleet-map-inspector__quick-follow')
+          ?.offsetParent,
+        details: !!document.querySelector('.fleet-map-mobile-summary__toggle')
+          ?.offsetParent,
+        hidden: getComputedStyle(document.querySelector('#fleet-map-details'))
+          .display === 'none',
+      }));
+      check(card.follow && card.details && card.hidden,
+        'narrow: the card opens closed with Details and Follow in reach',
+        card);
+      await shot(tab, 'narrow-card-closed');
+      await tab.locator('.fleet-map-mobile-summary__toggle').click();
+      await tab.waitForTimeout(400);
+      await shot(tab, 'narrow-card-open');
+    }
     await context.close();
   }
 
@@ -770,8 +971,14 @@ try {
       const name = `editors-${theme}-${size}`;
       const fresh = async () => {
         await tab.goto(`${origin}/fleet/map?truckId=${first.truckId}`);
-        await tab.locator('button[aria-label="Fuel"]').waitFor();
+        await tab.locator('.fleet-map-inspector__desktop-title').waitFor({
+          state: 'attached',
+        });
         await tab.waitForTimeout(3500);
+        // A phone's card opens closed; its actions are behind Details.
+        const details = tab.locator('.fleet-map-mobile-summary__toggle');
+        if (await details.isVisible()) await details.click();
+        await tab.locator('button[aria-label="Fuel"]').waitFor();
       };
       const inView = async (selector, label) => {
         const box = await tab.locator(selector).first().boundingBox();

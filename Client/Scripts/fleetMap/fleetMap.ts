@@ -71,6 +71,13 @@ export async function createFleetMap(
   const mountedMap = mountMap(element, {
     center: { lat: 41.5, lng: -87.5 },
     zoom: 5,
+    // The fleet works in Canada and the USA: the map keeps to them (the
+    // owner, September 27). Soft bounds, so a fitted route near an edge is
+    // never cut; Follow and every fit work inside them unchanged.
+    restriction: {
+      latLngBounds: { north: 72, south: 14, west: -170, east: -48 },
+      strictBounds: false,
+    },
     mapId: 'DEMO_MAP_ID',
     mapTypeId: 'roadmap',
     colorScheme:
@@ -164,18 +171,21 @@ export async function createFleetMap(
     const traffic = new google.maps.TrafficLayer();
     cleanup.push(() => traffic.setMap(null));
     let nextLoadIdentity: NextLoadIdentity | null = null;
+    let tripChoice = false;
     const nextLoads = createNextLoadsLayer(
       map,
       gpuScene.Polyline,
       gpuScene.StopMarker,
       (id, stopIndex, executionLegId) => {
         if (inspector.suspended) return;
-        if (id !== null) {
+        // A page showing the chosen trip in its own panel keeps the truck
+        // card: the selection is reported below, the card is not replaced.
+        if (!tripChoice && id !== null) {
           inspectionTruckId = nextLoadIdentity?.truckId ?? inspectionTruckId;
           inspector.setMode('next-stop');
           route.closePopup();
           stations.closePopup();
-        } else if (inspector.mode === 'next-stop')
+        } else if (!tripChoice && inspector.mode === 'next-stop')
           inspector.setMode(inspectionTruckId ? 'truck' : 'closed');
         if (nextLoadIdentity) {
           const scope =
@@ -483,6 +493,7 @@ export async function createFleetMap(
       // and the panel's chosen stop is highlighted on the map.
       setStopChoice(enabled: unknown) {
         if (disposed) return;
+        tripChoice = enabled === true;
         route.setStopChooser(
           enabled === true
             ? stopId => notify('OnRouteStopChosen', stopId)

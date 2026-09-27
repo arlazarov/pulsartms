@@ -273,6 +273,10 @@ public partial class FleetMap
       return Task.CompletedTask;
     if (load is null || !Guid.TryParse(load, out var id))
     {
+      // The layer lets go of a later trip - also when the current trip is
+      // chosen, which clears it. Only a later trip's choice ends here.
+      if (SelectedTrip is { } shown && IsCurrentTrip(shown))
+        return Task.CompletedTask;
       _trip = null;
       _tripStop = null;
       return InvokeAsync(StateHasChanged);

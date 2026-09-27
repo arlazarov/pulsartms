@@ -11,7 +11,12 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = fileURLToPath(new URL('./public/', import.meta.url));
+// CONCEPT_ROOT serves a Client publish (its wwwroot) instead of the concept:
+// the real Fleet Map and Dispatch, on the provider map, with this host's
+// read-only API allow-list.
+const root = process.env.CONCEPT_ROOT
+  ? process.env.CONCEPT_ROOT.replace(/\/?$/, '/')
+  : fileURLToPath(new URL('./public/', import.meta.url));
 const host = '127.0.0.1';
 const port = Number(process.env.PORT ?? 5179);
 const upstream = new URL(
@@ -28,6 +33,12 @@ const types = {
   '.svg': 'image/svg+xml',
   '.json': 'application/json',
   '.png': 'image/png',
+  '.wasm': 'application/wasm',
+  '.dat': 'application/octet-stream',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.webmanifest': 'application/manifest+json',
 };
 
 const forwardHeaders = [
