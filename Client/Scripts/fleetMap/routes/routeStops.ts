@@ -247,6 +247,14 @@ export function createRouteStops(
         if (selectedId === id) this.close();
       }
     },
+    // Opens one stop's card as a click on its badge would, and says where
+    // it stands so the camera can go there.
+    open(stopId: string) {
+      const entry = entries.get(stopId);
+      if (!entry?.stop.point) return null;
+      show(entry);
+      return point(entry.stop.point);
+    },
     setChooser(value: ((stopId: string) => void) | null) {
       chooser = value;
     },

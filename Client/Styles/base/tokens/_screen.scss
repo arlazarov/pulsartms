@@ -31,6 +31,8 @@ $screen-places: (
   station-price-days-stacked: 20rem,
   map-next-stop-tight: 18rem,
   map-toolbar-stacked: 14rem,
+  // A stop card narrower than this stacks its place over its facts.
+  stop-card-stacked: 34rem,
   // Below this the head's ETA and Appointment stop sharing a label column.
   map-truck-arrival-stacked: 20rem,
   map-route-columns: 1101px,

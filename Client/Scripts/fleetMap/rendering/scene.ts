@@ -100,9 +100,12 @@ export function createScene(
   const sonarPeriod = 4400;
   const sonarFrame = 40;
   const sonarBreathPeriod = 3000;
-  // The reader's own choice for this map's sonar: rings moving out even
-  // when the system asks for less motion elsewhere.
-  let sonarMotion = false;
+  // The reader's own choice for this map's animation (the Layers menu):
+  // rings moving out even when the system asks for less motion elsewhere,
+  // or no motion at all. Until the page says, the system's setting stands.
+  let sonarMotion =
+    globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches !==
+    true;
   const sonarBreathFrame = 80;
   let sonarTimer: ReturnType<typeof setTimeout> | null = null;
   const onVisibility = () => {
@@ -179,28 +182,20 @@ export function createScene(
     // The selected truck's sonar sweeps while the page is shown, and stands
     // still for a reader who asked for less motion.
     const chosen = vehicleDisplay.vehicles.some(t => t.selected);
-    const still =
-      !sonarMotion &&
-      globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ===
-        true;
-    // Reduced motion keeps the rings where they are and only lets them
-    // breathe - a slow change of brightness, no growth and no travel.
+    const still = !sonarMotion;
+    // With the animation off the sonar is one still ring: no growth, no
+    // travel, no timer.
     const sonar = !chosen
       ? null
       : still
         ? ('still' as const)
         : (performance.now() % sonarPeriod) / sonarPeriod;
-    const sonarBreath = still
-      ? (performance.now() % sonarBreathPeriod) / sonarBreathPeriod
-      : 0;
-    if (chosen && !globalThis.document?.hidden && sonarTimer === null)
-      sonarTimer = setTimeout(
-        () => {
-          sonarTimer = null;
-          schedule();
-        },
-        still ? sonarBreathFrame : sonarFrame,
-      );
+    const sonarBreath = 0;
+    if (chosen && !still && !globalThis.document?.hidden && sonarTimer === null)
+      sonarTimer = setTimeout(() => {
+        sonarTimer = null;
+        schedule();
+      }, sonarFrame);
     overlay.draw(
       buildLayers({
         sonar,

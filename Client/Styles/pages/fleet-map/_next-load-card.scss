@@ -10,7 +10,9 @@
   // The route stop's size: the two cards are one kind of card and read
   // alike (the owner, September 26).
   font-size: ui.fs(body);
-  overflow-wrap: anywhere;
+  // An address may break inside a word where nothing else fits; a label
+  // never does ("Appointme / nt" was the anywhere rule's doing).
+  overflow-wrap: break-word;
 
   // One line: the load and its order, with the loading mark beside them.
   // As a grid the mark took a row of its own and left a blank band under
@@ -37,6 +39,8 @@
     dt {
       color: ui.theme(text-muted);
       font-size: ui.fs(small);
+      overflow-wrap: normal;
+      white-space: nowrap;
     }
     dd {
       margin: 0;

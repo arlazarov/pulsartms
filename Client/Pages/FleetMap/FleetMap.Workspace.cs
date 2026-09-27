@@ -145,7 +145,6 @@ public partial class FleetMap
   // chain or on the map, else the current one. A stop may be chosen in it.
   private (Guid Id, Guid? Leg)? _trip;
   private Guid? _tripStop;
-  private bool _stopChoiceSent;
 
   private DispatchResponse? SelectedTrip =>
     (
@@ -161,22 +160,17 @@ public partial class FleetMap
   private bool IsCurrentTrip(DispatchResponse load) =>
     load.Id == SelectedDispatchId;
 
-  // The map learns once that its current-route badges choose a stop here.
-  private async Task SendStopChoiceAsync()
-  {
-    if (_map is null || _disposed || _stopChoiceSent)
-      return;
-    _stopChoiceSent = true;
-    await _map.InvokeVoidAsync("setStopChoice", true);
-  }
-
   private Task ChooseChainLoadAsync(DispatchResponse load) =>
     ChooseTripAsync(load, null);
 
-  // Chooses a trip, and a stop in it, then shows the same on the map: the
-  // current trip's stop is highlighted where it stands; a later trip is
-  // picked through the next-loads layer, as a click on it would. The camera
-  // is not moved, so Follow continues.
+  private Task ChooseChainStopAsync(
+    (DispatchResponse Load, Guid Stop) choice
+  ) => ChooseTripAsync(choice.Load, choice.Stop);
+
+  // A trip chosen in the chain brings all of its road into view; one of its
+  // stops opens that stop's card, as its badge on the map does, and brings
+  // the camera to it. The current trip goes through the route's own owner,
+  // a later one through the next-loads layer.
   private async Task ChooseTripAsync(DispatchResponse load, Guid? stop)
   {
     if (_map is null || _disposed)
@@ -189,6 +183,10 @@ public partial class FleetMap
     {
       await _map.InvokeVoidAsync("clearNextLoadSelection");
       await FocusMapStopAsync(stop);
+      if (stop is { } id)
+        await _map.InvokeVoidAsync("openRouteStop", id.ToString());
+      else if (CanShowRoute)
+        await ShowRouteAsync();
     }
     else
     {
@@ -198,15 +196,19 @@ public partial class FleetMap
       );
       if (ShowNextLoads && route is not null)
       {
-        var index = stop is { } id
-          ? Math.Max(0, route.Stops.ToList().FindIndex(x => x.Id == id))
-          : 0;
-        await _map.InvokeVoidAsync(
-          "selectNextStop",
-          load.Id.ToString(),
-          index,
-          load.ExecutionLegId?.ToString()
-        );
+        if (stop is { } id)
+          await _map.InvokeVoidAsync(
+            "selectNextStop",
+            load.Id.ToString(),
+            Math.Max(0, route.Stops.ToList().FindIndex(x => x.Id == id)),
+            load.ExecutionLegId?.ToString()
+          );
+        else
+          await _map.InvokeVoidAsync(
+            "fitNextLoad",
+            load.Id.ToString(),
+            load.ExecutionLegId?.ToString()
+          );
       }
     }
     StateHasChanged();
@@ -218,21 +220,8 @@ public partial class FleetMap
       await _map.InvokeVoidAsync("focusRouteStop", stop?.ToString());
   }
 
-  // A current-route badge pressed on the map.
-  [JSInvokable]
-  public Task OnRouteStopChosen(string stopId)
-  {
-    if (
-      _disposed
-      || !Guid.TryParse(stopId, out var stop)
-      || _chainLoads.FirstOrDefault(IsCurrentTrip) is not { } current
-    )
-      return Task.CompletedTask;
-    return InvokeAsync(() => ChooseTripAsync(current, stop));
-  }
-
   // A later trip's badge pressed on the map, or picked from the chain: it
-  // chooses that trip and stop in the panel under the truck.
+  // chooses that trip and stop, and the chain marks them.
   private Task OnTripStopChosenAsync(
     string truck,
     string? load,
@@ -321,4 +310,37 @@ public partial class FleetMap
     _hos?.CurrentDutyStatus is { } status
       ? DriverDutySummary.StatusName(status)
       : "—";
+
+  // The panel's location, copied whole through the page's clipboard call.
+  // "Copied" is said only once the browser took it; a refusal says so.
+  private string? _locationCopy;
+  private int _locationCopyVersion;
+
+  private async Task CopyLocationAsync(string location)
+  {
+    var version = ++_locationCopyVersion;
+    try
+    {
+      await JS.InvokeVoidAsync("navigator.clipboard.writeText", location);
+      _locationCopy = "Copied";
+    }
+    catch (JSException)
+    {
+      _locationCopy = "Could not copy";
+    }
+    StateHasChanged();
+    try
+    {
+      await Task.Delay(TimeSpan.FromSeconds(2), _lifetime.Token);
+    }
+    catch (OperationCanceledException)
+    {
+      return;
+    }
+    if (!_disposed && version == _locationCopyVersion)
+    {
+      _locationCopy = null;
+      StateHasChanged();
+    }
+  }
 }

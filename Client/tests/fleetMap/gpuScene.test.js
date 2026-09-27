@@ -191,7 +191,8 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   map.getZoom = () => 12;
   listeners.get('zoom_changed')();
   flush();
-  assert.equal(initial['fuel-points'].props.getRadius, 8);
+  // Every station is an 18px pump (the owner, September 27).
+  assert.equal(initial['fuel-points'].props.getSize, 18);
   assert.equal(initial['route-stop-1-points'].props.getSize, 28);
   // Marks in this order: a truck under the badges, its label over them. A
   // badge is never moved to clear a truck - the gap between the two is how

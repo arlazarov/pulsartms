@@ -33,6 +33,9 @@ const mountMap = createMapHost(
   map => google.maps.event.clearInstanceListeners(map),
 );
 
+// Mainland USA and southern Canada, the fleet's working area.
+export const fleetBounds = { north: 62, south: 23, west: -130, east: -52 };
+
 const schemeOf = (element: HTMLElement) =>
   element.ownerDocument?.documentElement?.dataset?.theme === 'dark'
     ? 'DARK'
@@ -76,12 +79,14 @@ export async function createFleetMap(
   const mountedMap = mountMap(element, {
     center: { lat: 41.5, lng: -87.5 },
     zoom: 5,
-    // The fleet works in Canada and the USA: the map keeps to them (the
-    // owner, September 27). Soft bounds, so a fitted route near an edge is
-    // never cut; Follow and every fit work inside them unchanged.
+    // The fleet works in mainland Canada and the USA: the map keeps to
+    // them and never zooms out past them - no world, no remote islands, no
+    // open ocean (the owner, September 27). Strict bounds let Google clamp
+    // every move (wheel, pinch, pan, a fit, a restored view) without a
+    // bounce; street zoom and satellite are untouched.
     restriction: {
-      latLngBounds: { north: 72, south: 14, west: -170, east: -48 },
-      strictBounds: false,
+      latLngBounds: fleetBounds,
+      strictBounds: true,
     },
     mapId: 'DEMO_MAP_ID',
     mapTypeId: 'roadmap',
@@ -497,19 +502,33 @@ export async function createFleetMap(
       clearNextLoadSelection() {
         if (!disposed) nextLoads.clearSelection();
       },
-      // The trip panel: a current-route badge chooses its stop
-      // in the panel (OnRouteStopChosen) rather than opening the stop card,
-      // and the panel's chosen stop is highlighted on the map.
-      setStopChoice(enabled: unknown) {
-        if (disposed) return;
-        route.setStopChooser(
-          enabled === true
-            ? stopId => notify('OnRouteStopChosen', stopId)
-            : null,
-        );
-      },
       focusRouteStop(stopId: string | null) {
         if (!disposed) route.focusStop(stopId ?? null);
+      },
+      // A stop chosen in the trip chain: its card opens as from its badge,
+      // and the camera goes to it - a camera move of the reader's own.
+      openRouteStop(stopId: string) {
+        if (disposed) return;
+        const at = route.openStop(stopId) as
+          | { lat: number; lng: number }
+          | null;
+        if (!at) return;
+        trucks.releaseCamera();
+        map.moveCamera({ center: at, zoom: Math.max(map.getZoom() ?? 0, 11) });
+      },
+      // A later load chosen whole in the chain: all of its road in view.
+      fitNextLoad(loadId: string, executionLegId?: string | null) {
+        if (disposed) return;
+        const geometry = nextLoads.geometryOf(
+          loadId,
+          executionLegId ?? undefined,
+        );
+        if (!geometry?.length) return;
+        const bounds = new google.maps.LatLngBounds();
+        for (const point of geometry) bounds.extend(point);
+        trucks.releaseCamera();
+        cameraViewport.refresh();
+        map.fitBounds(bounds, cameraViewport.padding(55));
       },
       setLoadReference(payload: any) {
         if (!disposed) route.setLoadReference(payload);

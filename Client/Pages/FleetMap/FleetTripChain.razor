@@ -51,26 +51,34 @@
                                 else if (!string.IsNullOrEmpty(label))
                                 { <span class="fleet-trip-chain__phase">@label</span> }
                             </span>
-                            @* The route as its stops: each marker beside its
-                               own city, checked once the server says the stop
-                               is done (never from GPS passing it). *@
-                            <span class="fleet-trip-chain__route">
-                                @foreach (var (visit, at) in DispatchStopPresentation.OrderedVisits(load.Stops).Select((v, i) => (v, i)))
-                                {
-                                    var stop = visit.Stop;
-                                    @if (at > 0)
-                                    { <span class="fleet-trip-chain__arrow" aria-hidden="true">→</span> }
-                                    <span class="fleet-trip-chain__place"
-                                          title="@($"{stop.Job} · {DispatchBoardRow.Location(stop)}{(stop.IsCompleted ? " · completed" : "")}")">
-                                        <span class="fleet-trip-chain__stop @DispatchStopPresentation.Tone(stop) @(stop.IsCompleted ? "is-done" : "")"
-                                              aria-label="@($"{visit.Marker}, {stop.Job}{(stop.IsCompleted ? ", completed" : "")}")"
-                                            >@visit.Marker@if (stop.IsCompleted)
-                                            {<ActionIcon Kind="check" />}</span>
-                                        <span class="fleet-trip-chain__city">@DispatchBoardRow.Location(stop)</span>
-                                    </span>
-                                }
-                            </span>
                         </button>
+                        @* The route as its stops: a marker chooses that exact
+                           stop; anywhere else on the line chooses the whole
+                           trip, as its button does for the keyboard. Each
+                           marker is checked once the server says the stop is
+                           done (never from GPS passing it). *@
+                        <div class="fleet-trip-chain__route"
+                             @onclick="() => Selected.InvokeAsync(load)">
+                            @foreach (var (visit, at) in DispatchStopPresentation.OrderedVisits(load.Stops).Select((v, i) => (v, i)))
+                            {
+                                var stop = visit.Stop;
+                                var focused = selected && stop.Id == FocusedStopId;
+                                @if (at > 0)
+                                { <span class="fleet-trip-chain__arrow" aria-hidden="true">→</span> }
+                                <span class="fleet-trip-chain__place"
+                                      title="@($"{stop.Job} · {DispatchBoardRow.Location(stop)}{(stop.IsCompleted ? " · completed" : "")}")">
+                                    <button type="button"
+                                            class="fleet-trip-chain__stop @DispatchStopPresentation.Tone(stop) @(stop.IsCompleted ? "is-done" : "")"
+                                            aria-pressed="@(focused ? "true" : "false")"
+                                            aria-label="@($"{visit.Marker}, {stop.Job}{(stop.IsCompleted ? ", completed" : "")}")"
+                                            @onclick="() => StopSelected.InvokeAsync((load, stop.Id))"
+                                            @onclick:stopPropagation="true"
+                                        >@visit.Marker@if (stop.IsCompleted)
+                                        {<ActionIcon Kind="check" />}</button>
+                                    <span class="fleet-trip-chain__city">@DispatchBoardRow.Location(stop)</span>
+                                </span>
+                            }
+                        </div>
                         @if (LoadHref?.Invoke(load) is { } href)
                         {
                             <a class="fleet-trip-chain__open" href="@href"

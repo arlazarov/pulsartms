@@ -120,8 +120,9 @@ public partial class FleetMap
     public bool ShowTraffic { get; init; } = true;
     public bool ShowNextLoads { get; init; }
 
-    // The chosen truck's sonar rings move even when the system asks for
-    // less motion; the reader turns it off here.
+    // The map's decorative motion (the sonar, the empty panel's radar):
+    // on by the owner's wish even when the system asks for less motion;
+    // the reader turns it off in the Layers menu.
     public bool SonarMotion { get; init; } = true;
   }
 }

@@ -156,6 +156,10 @@ export function createNextLoadsLayer(
   }
   return {
     clearSelection,
+    // The drawn road of one later load, for a camera that wants all of it.
+    geometryOf(loadId: string, executionLegId?: string) {
+      return loadGeometry.get(nextLoadKey(loadId, executionLegId)) ?? null;
+    },
     selectStop(loadId: string, index: number, executionLegId?: string) {
       if (disposed) return;
       pending = { loadId, index, executionLegId };

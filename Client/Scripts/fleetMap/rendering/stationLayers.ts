@@ -2,6 +2,7 @@ import type { DeckLayer, DeckLayerFactory } from './deckLayer.ts';
 import type { MarkPoint } from './truckClusters.ts';
 import type { LabelFonts } from './sceneMetrics.ts';
 import { memoizeLast } from './layerCache.ts';
+import { isLightMap, lightMarkCore, markCore } from './stopAppearance.ts';
 import { sceneMetrics as metrics, labelSubLayers } from './sceneMetrics.ts';
 
 // A fuel station as the scene draws it: where it is, what its price makes
@@ -16,12 +17,19 @@ export type StationMark = {
 };
 
 const selectedBlue = [49, 94, 234];
-// The instrument core the stop badges share, and the plan's accent.
-const core = [11, 22, 38, 235];
-const accent = [34, 211, 238];
+// The instrument core the stop badges share, and the ink the pump and the
+// plan's numbers are drawn in: bright cyan on the dark map, the deep accent
+// on the light one.
+const darkInk = [34, 211, 238];
+const lightInk = [14, 116, 144];
+const theme = () =>
+  isLightMap()
+    ? { core: lightMarkCore, ink: lightInk }
+    : { core: markCore, ink: darkInk };
 
-// A planned fuel stop: a pump drawn in the accent on the dark core, inside
-// a fine rim of the station's price colour. One icon per colour, cached.
+// Every fuel station is a pump on the core inside a fine rim of its price
+// colour; a stop of the fuel plan is the same pump, a size larger. One icon
+// per colour and theme, cached.
 const pumpIcons = new Map<
   string,
   {
@@ -33,12 +41,13 @@ const pumpIcons = new Map<
   }
 >();
 function pumpIcon(color: readonly number[]) {
-  const key = color.slice(0, 3).join(',');
+  const { core, ink } = theme();
+  const key = `${color.slice(0, 3).join(',')}|${core.join(',')}`;
   const cached = pumpIcons.get(key);
   if (cached) return cached;
-  const rim = `rgb(${key})`;
-  const ink = `rgb(${accent.join(',')})`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="rgb(${core.slice(0, 3).join(',')})" fill-opacity="0.92" stroke="${rim}" stroke-width="1.6"/><g fill="none" stroke="${ink}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 17V8.5A1.5 1.5 0 0 1 9.5 7h3.5A1.5 1.5 0 0 1 14.5 8.5V17M7 17h8.5M9.5 10.2h3.5"/><path d="M14.5 11l1.6 1.2v3a.9.9 0 0 0 1.8 0V10l-1.4-1.4"/></g></svg>`;
+  const rim = `rgb(${color.slice(0, 3).join(',')})`;
+  const glyph = `rgb(${ink.join(',')})`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="rgb(${core.slice(0, 3).join(',')})" fill-opacity="${(core[3] / 255).toFixed(2)}" stroke="${rim}" stroke-width="1.8"/><g fill="none" stroke="${glyph}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 17V8.5A1.5 1.5 0 0 1 9.5 7h3.5A1.5 1.5 0 0 1 14.5 8.5V17M7 17h8.5M9.5 10.2h3.5"/><path d="M14.5 11l1.6 1.2v3a.9.9 0 0 0 1.8 0V10l-1.4-1.4"/></g></svg>`;
   const icon = {
     url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
     width: 96,
@@ -50,13 +59,6 @@ function pumpIcon(color: readonly number[]) {
   return icon;
 }
 
-/**
- * Every fuel station on the scene: the plain ones, the ones the plan
- * recommends with their rings and numbers, and the one being edited.
- *
- * Each group keeps its own cache, so a station list that has not changed is
- * never rebuilt when the camera moves.
- */
 export function createStationLayers({
   ScatterplotLayer,
   TextLayer,
@@ -79,28 +81,45 @@ export function createStationLayers({
     onClick: unknown,
     radius: number = metrics.stationRadius,
   ) =>
-    new ScatterplotLayer({
-      id,
-      data,
-      visible,
-      pickable: true,
-      getPosition: (d: StationMark) => d.position,
-      radiusUnits: 'pixels',
-      getRadius: radius,
-      stroked: true,
-      lineWidthUnits: 'pixels',
-      // A fine ring of the price colour on the dark core, as every mark
-      // on the map is drawn; a chosen one takes the selection blue.
-      getLineWidth: (d: StationMark) => (d.selected ? 2.5 : 1.75),
-      getFillColor: core,
-      getLineColor: (d: StationMark) =>
-        d.selected || d.recommended ? selectedBlue : d.color,
-      autoHighlight: true,
-      highlightColor: [49, 94, 234, 100],
-      onHover,
-      onClick,
-      parameters: { depthCompare: 'always' },
-    });
+    IconLayer
+      ? new IconLayer({
+          id,
+          data,
+          visible,
+          pickable: true,
+          getPosition: (d: StationMark) => d.position,
+          getIcon: (d: StationMark) => pumpIcon(d.color),
+          getSize: radius * 2.25,
+          sizeUnits: 'pixels',
+          billboard: true,
+          autoHighlight: true,
+          highlightColor: [49, 94, 234, 100],
+          onHover,
+          onClick,
+          parameters: { depthCompare: 'always' },
+        })
+      : new ScatterplotLayer({
+          id,
+          data,
+          visible,
+          pickable: true,
+          getPosition: (d: StationMark) => d.position,
+          radiusUnits: 'pixels',
+          getRadius: radius,
+          stroked: true,
+          lineWidthUnits: 'pixels',
+          // A fine ring of the price colour on the dark core, as every mark
+          // on the map is drawn; a chosen one takes the selection blue.
+          getLineWidth: (d: StationMark) => (d.selected ? 2.5 : 1.75),
+          getFillColor: theme().core,
+          getLineColor: (d: StationMark) =>
+            d.selected || d.recommended ? selectedBlue : d.color,
+          autoHighlight: true,
+          highlightColor: [49, 94, 234, 100],
+          onHover,
+          onClick,
+          parameters: { depthCompare: 'always' },
+        });
 
   const badge = (
     id: string,
@@ -126,12 +145,12 @@ export function createStationLayers({
       getPixelOffset: [0, -offset],
       getTextAnchor: 'middle',
       getAlignmentBaseline: 'center',
-      getColor: accent,
+      getColor: theme().ink,
       background: true,
       getBackgroundColor: background,
       backgroundPadding: metrics.fuelVisitLabelPadding,
       backgroundBorderRadius: 4,
-      getBorderColor: [...accent, 140],
+      getBorderColor: [...theme().ink, 140],
       getBorderWidth: 1,
       fontFamily: 'Arial, sans-serif',
       fontSettings: fonts.fuelVisit,
@@ -198,28 +217,14 @@ export function createStationLayers({
     ...recommended([stationData, setHover, selectStation], () => {
       const data = stationData.filter(d => d.recommended && !d.editing);
       return [
-        IconLayer
-          ? new IconLayer({
-              id: 'fuel-recommendation-points',
-              data,
-              getPosition: (d: StationMark) => d.position,
-              getIcon: (d: StationMark) => pumpIcon(d.color),
-              getSize: metrics.recommendationDotRadius * 2.75,
-              sizeUnits: 'pixels',
-              billboard: true,
-              pickable: true,
-              onHover: setHover,
-              onClick: selectStation,
-              parameters: { depthCompare: 'always' },
-            })
-          : points(
-              'fuel-recommendation-points',
-              data,
-              true,
-              setHover,
-              selectStation,
-              metrics.recommendationDotRadius,
-            ),
+        points(
+          'fuel-recommendation-points',
+          data,
+          true,
+          setHover,
+          selectStation,
+          metrics.recommendationDotRadius * 1.2,
+        ),
         ring(
           'fuel-recommendation-rings',
           data,
@@ -241,11 +246,11 @@ export function createStationLayers({
             d.numbers.trim(),
         ),
         true,
-        d => String(d.numbers).trim(),
+        d => `Fuel ${String(d.numbers).trim()}`,
         // The badge now carries how much is bought there, so its alphabet
         // is whatever the quantity and its unit need.
         'auto',
-        core,
+        theme().core,
         metrics.fuelVisitLabelOffset,
         fonts,
         setHover,

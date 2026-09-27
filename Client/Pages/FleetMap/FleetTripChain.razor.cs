@@ -39,6 +39,16 @@ public partial class FleetTripChain : IAsyncDisposable
   [Parameter]
   public EventCallback<DispatchResponse> Selected { get; set; }
 
+  // One stop of a trip, chosen by its marker.
+  [Parameter]
+  public EventCallback<(
+    DispatchResponse Load,
+    Guid Stop
+  )> StopSelected { get; set; }
+
+  [Parameter]
+  public Guid? FocusedStopId { get; set; }
+
   // Where a card's load opens, returning to this map.
   [Parameter]
   public Func<DispatchResponse, string>? LoadHref { get; set; }

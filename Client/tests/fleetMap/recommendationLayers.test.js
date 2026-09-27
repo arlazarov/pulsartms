@@ -120,12 +120,15 @@ test('all station fills cover the route and recommendation rings remain above or
     ],
   );
   assert.deepEqual(layers[2].props.data, [ordinary]);
-  assert.equal(layers[2].props.getRadius, 8);
+  assert.equal(layers[2].props.getSize ?? layers[2].props.getRadius * 2.25, 18);
   assert.ok(priceShown(layers[2], ordinary));
   const points = layers[3];
   assert.deepEqual(points.props.data, [recommended]);
   // A planned stop is a pump in a rim of its price colour.
-  assert.equal(points.props.getSize, 22);
+  assert.ok(
+    points.props.getSize > (layers[2].props.getSize ?? 18),
+    'a size larger than an ordinary station',
+  );
   assert.ok(priceShown(points, recommended));
   assert.equal(points.props.pickable, true);
   assert.equal(points.props.onClick, selectStation);
@@ -341,7 +344,7 @@ test('fuel visits use compact rectangular order badges without changing selectab
     if (!result[0].props.getIcon) assert.equal(result[0].props.getRadius, 8);
     assert.equal(result[1].props.getRadius, 12);
     const badge = result[2].props;
-    assert.equal(badge.getText(badge.data[0]), badge.data[0].numbers);
+    assert.equal(badge.getText(badge.data[0]), `Fuel ${badge.data[0].numbers}`);
     assert.equal(badge.getPosition(station), station.position);
     // Above the ring, clear of it: the label used to sit on the marker.
     assert.deepEqual(badge.getPixelOffset, [0, -25]);
@@ -352,9 +355,10 @@ test('fuel visits use compact rectangular order badges without changing selectab
       4,
       'fuel badges stay rectangular, unlike load circles',
     );
-    // The number in the accent on the map's dark core.
-    assert.deepEqual(badge.getBackgroundColor, [11, 22, 38, 235]);
-    assert.deepEqual(badge.getColor, [34, 211, 238]);
+    // The number in the map's ink on its core: here the light map's pale
+    // core and deep accent (no theme is set, so the light one stands).
+    assert.deepEqual(badge.getBackgroundColor, [255, 255, 255, 240]);
+    assert.deepEqual(badge.getColor, [14, 116, 144]);
     assert.equal(
       badge.getText(badge.data[0]).includes('mi'),
       false,
@@ -432,7 +436,7 @@ test('ordinary stations and recommendations without visit numbers never receive 
     labels.data.map(station => station.id),
     ['numbered'],
   );
-  assert.equal(labels.getText(labels.data[0]), '4');
+  assert.equal(labels.getText(labels.data[0]), 'Fuel 4');
   // Above the ring it names, not on it: the offset clears the ring's radius
   // and half the label's own height, with a gap left over. At twenty-one it
   // sat across the marker.

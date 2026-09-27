@@ -684,7 +684,7 @@ try {
         await tab.waitForTimeout(6000);
         await noOverflow(tab, `${name} fleet`);
         await shot(tab, `${name}-fleet`);
-        if (name === 'dark-desktop') {
+        if (name.endsWith('-desktop')) {
           // The chosen truck's sonar moves on the real map: frames a sweep's
           // fraction apart differ, and each is kept for a look.
           const frames = [];
@@ -692,7 +692,10 @@ try {
             const png = await tab
               .locator('#fleet-map')
               .screenshot({ type: 'png' });
-            await writeFile(resolve(output, `sonar-frame-${i}.png`), png);
+            await writeFile(
+              resolve(output, `${name}-sonar-frame-${i}.png`),
+              png,
+            );
             frames.push(png.toString('base64'));
             await tab.waitForTimeout(150);
           }
@@ -701,6 +704,17 @@ try {
             "the selected truck's sonar animates on the map",
             { distinct: new Set(frames).size },
           );
+          // The chain's markers open the stops' cards in the panel: the
+          // current trip's pickup, then a later trip's first stop.
+          const markers = tab.locator('button.fleet-trip-chain__stop');
+          if ((await markers.count()) > 3) {
+            await markers.nth(0).click();
+            await tab.waitForTimeout(1500);
+            await shot(tab, `${name}-stop-current`);
+            await markers.nth(3).click();
+            await tab.waitForTimeout(2000);
+            await shot(tab, `${name}-stop-next`);
+          }
         }
         await tab.goto(`${origin}/dispatch`);
         await tab.locator('article.dispatch-truck').first().waitFor();

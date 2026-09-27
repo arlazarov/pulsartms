@@ -274,7 +274,6 @@ public partial class FleetMap : IAsyncDisposable
   {
     await PublishInspectorSuspensionAsync();
     await ReflectSelectionAsync();
-    await SendStopChoiceAsync();
     await RefreshChainIfDueAsync();
     if (!firstRender)
       return;

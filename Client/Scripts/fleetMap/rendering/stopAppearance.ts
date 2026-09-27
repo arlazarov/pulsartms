@@ -5,9 +5,14 @@ export function isDelivery(job: string | null | undefined): boolean {
   return /^(delivery|dropoff)$/i.test((job || '').replace(/[\s_-]/g, ''));
 }
 
-// The instrument core every map mark shares: a dark glass disc under a
-// fine rim of the mark's own colour, in both themes.
+// The instrument core every map mark shares: a glass disc under a fine rim
+// of the mark's own colour - dark on the dark theme, pale on the light one,
+// where the rim and letter carry the colour instead. The map is made again
+// when the theme changes, so a mark reads the theme when it is drawn.
 export const markCore = [11, 22, 38, 235];
+export const lightMarkCore = [255, 255, 255, 240];
+export const isLightMap = () =>
+  globalThis.document?.documentElement?.dataset?.theme !== 'dark';
 
 // How a stop's badge is painted: a dark glass core, a fine rim and the
 // letter in its load's colour while it is still to come; once it is behind
@@ -19,13 +24,14 @@ export function stopAppearance(
   done = false,
 ): { fill: number[]; border: number[]; text: number[] } {
   const accent = [...color.slice(0, 3), 255];
+  const core = isLightMap() ? lightMarkCore : markCore;
   return done
     ? {
-        fill: [...markCore.slice(0, 3), 200],
+        fill: [...core.slice(0, 3), 200],
         border: [...color.slice(0, 3), 150],
         text: [...color.slice(0, 3), 170],
       }
-    : { fill: [...markCore], border: accent, text: accent };
+    : { fill: [...core], border: accent, text: accent };
 }
 
 // A filled badge shows as the disc inside its white ring; an outlined one
@@ -59,7 +65,7 @@ export function stopMarkerIcon(
   // A fine rim; a quiet (translucent) rim is a stop behind the truck, drawn
   // dashed so it reads as done even at a glance.
   const quiet = alpha(border) < 1;
-  const badge = `<circle cx="${half}" cy="${half}" r="${radius}" fill="${paint(color)}" fill-opacity="${alpha(color).toFixed(2)}" stroke="${paint(border)}" stroke-opacity="${alpha(border).toFixed(2)}" stroke-width="1.75"${quiet ? ' stroke-dasharray="2.2 1.6"' : ''}/>`;
+  const badge = `<circle cx="${half}" cy="${half}" r="${radius}" fill="${paint(color)}" fill-opacity="${alpha(color).toFixed(2)}" stroke="${paint(border)}" stroke-opacity="${alpha(border).toFixed(2)}" stroke-width="${isLightMap() ? 2 : 1.75}"${quiet ? ' stroke-dasharray="2.2 1.6"' : ''}/>`;
   const around = ring
     ? `<circle cx="${half}" cy="${half}" r="${half - 1.25}" fill="${paint(ring)}" stroke="rgb(${markCore.slice(0, 3).join(',')})" stroke-width="1.5"/>`
     : '';

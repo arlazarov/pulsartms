@@ -111,7 +111,7 @@
         <p class="fleet-map-page__message" role="alert">@StationError <button class="btn btn--small" @onclick="OnDateChanged">Retry</button></p>
     }
     </div>
-    <div class="fleet-map-stage">
+    <div class="fleet-map-stage @(SonarMotion ? "" : "is-still")">
     <FleetTruckList Trucks="ListedTrucks" Total="_trucks.Count"
                     SelectedId="_activeTruckId"
                     Selected="ChooseListTruckAsync"
@@ -192,7 +192,7 @@
                         <span>Next loads</span></label>
                     <label><input type="checkbox" @bind="SonarMotion"
                         @bind:after="OnSonarMotionChanged" />
-                        <span>Sonar animation</span></label>
+                        <span>Map animation</span></label>
                 </fieldset>
             }
         </div>
@@ -529,11 +529,25 @@
                     <div><dt>Fuel</dt><dd>@(panelTruck.FuelPercent is { } fuel
                         ? $"{fuel:0}%" : "—")</dd></div>
                 </div>
-                <div class="fleet-truck-facts__fact">
+                <div class="fleet-truck-facts__fact fleet-truck-facts__fact--location">
                     <ActionIcon Kind="location" />
-                    <div><dt>Location</dt><dd title="@panelTruck.FormattedLocation"
-                        >@(string.IsNullOrWhiteSpace(panelTruck.FormattedLocation)
-                            ? "—" : panelTruck.FormattedLocation)</dd></div>
+                    <div>
+                        <dt>Location</dt>
+                        <dd>@(string.IsNullOrWhiteSpace(panelTruck.FormattedLocation)
+                            ? "—" : panelTruck.FormattedLocation)</dd>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(panelTruck.FormattedLocation))
+                    {
+                        <button type="button" class="fleet-truck-facts__copy"
+                                title="Copy location" aria-label="Copy location"
+                                @onclick="() => CopyLocationAsync(panelTruck.FormattedLocation)">
+                            <ActionIcon Kind="@(_locationCopy == "Copied" ? "check" : "copy")" />
+                        </button>
+                        @if (_locationCopy is { } copyStatus)
+                        {
+                            <span class="fleet-truck-facts__copied" role="status">@copyStatus</span>
+                        }
+                    }
                 </div>
             </dl>
             <div class="fleet-truck-clocks">
@@ -765,6 +779,8 @@
                     CurrentId="SelectedDispatchId"
                     SelectedTrip="SelectedTrip"
                     Selected="ChooseChainLoadAsync"
+                    StopSelected="ChooseChainStopAsync"
+                    FocusedStopId="_tripStop"
                     LoadHref="@(load => ReturnNavigation.Load(load.Id, ReturnOrigin))" />
     </div>
 

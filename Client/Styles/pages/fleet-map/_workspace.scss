@@ -457,6 +457,46 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  // The location in full, selectable, with its own copy button.
+  &__fact--location {
+    position: relative;
+    dd {
+      overflow: visible;
+      white-space: normal;
+      overflow-wrap: break-word;
+      user-select: text;
+    }
+  }
+  &__copy {
+    display: grid;
+    place-items: center;
+    flex: none;
+    align-self: start;
+    width: ui.size(control-compact);
+    height: ui.size(control-compact);
+    margin-left: auto;
+    border: 0;
+    border-radius: ui.radius(sm);
+    background: none;
+    color: ui.theme(text-muted);
+    cursor: pointer;
+    svg {
+      width: ui.pg(lg);
+      height: ui.pg(lg);
+    }
+    &:hover {
+      background: ui.theme(accent, 0.1);
+      color: ui.theme(accent);
+    }
+  }
+  &__copied {
+    position: absolute;
+    right: ui.pg(sm);
+    bottom: ui.pg(micro);
+    color: ui.theme(success-text);
+    font-size: ui.fs(micro);
+    font-weight: 600;
+  }
 }
 
 .fleet-truck-clocks {
@@ -480,8 +520,12 @@
 .fleet-map-inspector__empty {
   display: none;
 }
+// With nothing chosen the reserved panel is a calm instrument: a radar
+// sweeping over three rings, and the prompt. Drawn by CSS alone - no data,
+// no timer - and gone the moment a truck is chosen.
 @include ui.above(fleet-docked) {
   .fleet-map-inspector__empty {
+    position: relative;
     display: grid;
     align-content: center;
     justify-items: center;
@@ -492,9 +536,48 @@
     font-size: ui.fs(small);
     text-align: center;
     strong {
+      margin-top: ui.pg(lg);
       color: ui.theme(text-secondary);
       font-size: ui.fs(lead);
     }
+    &::before {
+      content: '';
+      width: 9rem;
+      height: 9rem;
+      border-radius: 50%;
+      background:
+        radial-gradient(
+          circle,
+          transparent 30%,
+          ui.theme(accent, 0.28) 31%,
+          transparent 32%,
+          transparent 63%,
+          ui.theme(accent, 0.22) 64%,
+          transparent 65%,
+          transparent 97%,
+          ui.theme(accent, 0.3) 98%,
+          transparent 100%
+        ),
+        conic-gradient(
+          from 0deg,
+          ui.theme(accent, 0.34),
+          ui.theme(accent, 0) 22%,
+          transparent 100%
+        );
+      box-shadow: 0 0 24px ui.theme(accent, 0.12);
+      animation: fleet-radar-sweep 6s linear infinite;
+    }
+  }
+}
+
+// The Layers menu's Map animation, off: nothing decorative moves.
+.fleet-map-stage.is-still .fleet-map-inspector__empty::before {
+  animation: none;
+}
+
+@keyframes fleet-radar-sweep {
+  to {
+    transform: rotate(1turn);
   }
 }
 
@@ -668,8 +751,11 @@
     white-space: nowrap;
   }
   // The route as its stops, on one line: each marker beside its city.
+  // Anywhere but a marker chooses the whole trip.
   &__route {
     grid-column: 1 / -1;
+    padding: 0 ui.pg(xs) ui.pg(micro);
+    cursor: pointer;
     display: flex;
     align-items: center;
     gap: ui.pg(xs);
@@ -704,8 +790,11 @@
     padding: 0 ui.pg(xs);
     border: 1.5px solid ui.theme(text-muted);
     border-radius: ui.radius(pill);
+    background: none;
     color: ui.theme(text);
+    font-family: inherit;
     font-size: ui.fs(micro);
+    cursor: pointer;
     font-weight: 700;
     line-height: 1;
     justify-content: center;
@@ -716,6 +805,11 @@
     &.is-delivery {
       border-color: ui.theme(delivery);
       color: ui.theme(delivery);
+    }
+    &[aria-pressed='true'] {
+      box-shadow:
+        0 0 0 2px ui.theme(surface),
+        0 0 0 3px currentColor;
     }
     &.is-done {
       background: ui.theme(success-text, 0.14);
@@ -736,6 +830,8 @@
     max-width: ui.size(trip-card);
   }
   &__open {
+    grid-row: 1;
+    grid-column: 2;
     display: grid;
     place-items: center;
     width: ui.size(control-compact);

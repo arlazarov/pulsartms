@@ -36,6 +36,11 @@
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);
   }
+  // A label is one word or two and never breaks inside one.
+  &__label {
+    overflow-wrap: normal;
+    white-space: nowrap;
+  }
   &__kind {
     display: flex;
     flex-wrap: wrap;
@@ -291,4 +296,30 @@
 
 .fleet-map-inspector__native {
   container: map-inspector / inline-size;
+}
+
+// A stop card as narrow as the docked panel: its two halves stack, the
+// facts under the place, and the load link spans the card. The card
+// decides by its own width, not the screen's - the current route's stop
+// in the map's inspector and a later load's stop alike.
+@mixin stacked-stop-card {
+  .fleet-route-popup {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: ui.pg(md);
+  }
+  .fleet-route-popup__information {
+    padding: ui.pg(md) 0 0;
+    border-top: 1px solid ui.theme(border-subtle);
+    border-left: 0;
+  }
+  .fleet-route-popup__details-link {
+    align-self: stretch;
+    justify-content: center;
+  }
+}
+@container map-inspector (width < #{ui.breakpoint(stop-card-stacked)}) {
+  @include stacked-stop-card;
+}
+@container next-stop-inspection (width < #{ui.breakpoint(stop-card-stacked)}) {
+  @include stacked-stop-card;
 }

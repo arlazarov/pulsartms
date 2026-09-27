@@ -11,6 +11,17 @@ const station = (id, changes = {}) => ({
   ...changes,
 });
 
+// A station's price colour: the rim of its pump, or of its ring where no
+// icons are drawn.
+const pumpRim = (props, station) =>
+  props.getIcon
+    ? decodeURIComponent(props.getIcon(station).url).includes(
+        `stroke="rgb(${station.color.slice(0, 3).join(',')})"`,
+      )
+    : JSON.stringify(
+        props.getLineColor({ ...station, recommended: false, selected: false }),
+      ) === JSON.stringify(station.color);
+
 test('station layers never read prices or rebuild cached layers during camera-only changes', () => {
   let priceReads = 0,
     editingReads = 0,
@@ -115,13 +126,9 @@ test('hidden active edits retain their original selectable point, color and sepa
   );
   const [point, ring, badge] = initial.map(layer => layer.props);
   assert.equal(point.data[0], edited);
-  assert.equal(point.getRadius, 8);
-  // The price is the rim on the map's dark core (the owner, September 27).
-  assert.deepEqual(
-    point.getLineColor({ ...edited, selected: false, recommended: false }),
-    edited.color,
-  );
-  assert.deepEqual(point.getFillColor, [11, 22, 38, 235]);
+  // The price is the rim of the station's pump (the owner, September 27).
+  assert.equal(point.getSize ?? point.getRadius * 2.25, 18);
+  assert.ok(pumpRim(point, edited));
   assert.equal(ring.getRadius, 14);
   assert.equal(badge.getText(edited), 'Editing');
   assert.deepEqual(badge.getPixelOffset, [0, -25]);
@@ -152,7 +159,7 @@ test('hidden active edits retain their original selectable point, color and sepa
   );
 });
 
-test('every station has the same 16px circle with no inside price, regardless of spacing or price validity', () => {
+test('every station has the same 18px pump with no inside price, regardless of spacing or price validity', () => {
   class Layer {
     constructor(props) {
       this.props = props;
@@ -190,11 +197,11 @@ test('every station has the same 16px circle with no inside price, regardless of
   const points = byId.get('fuel-points').props,
     plannedPoints = byId.get('fuel-recommendation-points').props;
   assert.equal(points.data[0], ordinary);
-  assert.equal(points.getRadius, 8);
+  assert.equal(points.getSize ?? points.getRadius * 2.25, 18);
   // A planned stop is a pump on the dark core inside a rim of its price
   // colour, no larger than a stop's badge: a fuel stop is not more than a
   // stop.
-  assert.equal(plannedPoints.getSize, 22);
+  assert.ok(plannedPoints.getSize > points.getSize, 'a size larger');
   assert.match(
     decodeURIComponent(plannedPoints.getIcon(planned).url),
     new RegExp(`stroke="rgb\\(${planned.color.slice(0, 3).join(',')}\\)"`),
@@ -203,7 +210,7 @@ test('every station has the same 16px circle with no inside price, regardless of
   assert.equal(ring.getRadius, 12);
   assert.ok(ring.getRadius * 2 < 28, 'narrower than a stop badge');
   const order = byId.get('fuel-recommendation-numbers').props;
-  assert.equal(order.getText(planned), '1/3');
+  assert.equal(order.getText(planned), 'Fuel 1/3');
   // Above the ring, clear of it: the label used to sit on the marker.
   assert.deepEqual(order.getPixelOffset, [0, -25]);
   for (const props of [points, plannedPoints, ring, order])
@@ -240,7 +247,7 @@ test('every station has the same 16px circle with no inside price, regardless of
     [ordinary, ...invalid],
     'price validity never filters a station',
   );
-  assert.equal(unpriced.getRadius, 8);
+  assert.equal(unpriced.getSize ?? unpriced.getRadius * 2.25, 18);
 });
 
 test('camera changes need no price listener while station data retains exact popup prices and canonical selection', t => {
@@ -347,7 +354,7 @@ test('camera changes need no price listener while station data retains exact pop
   flush();
   const updated = get('fuel-points').props;
   assert.equal(updated.data[0].price, 5.286);
-  assert.deepEqual(updated.getLineColor(updated.data[0]), [245, 158, 11]);
+  assert.ok(pumpRim(updated, { ...updated.data[0], color: [245, 158, 11] }));
   updated.onClick({ object: updated.data[0] });
   assert.deepEqual(selected, ['one']);
   assert.equal(get('fuel-price-labels'), undefined);

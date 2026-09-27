@@ -74,7 +74,9 @@ public sealed class FleetTripChainTests
         .Select(x => x.TextContent.Trim())
     );
     Assert.Empty(
-      component.FindAll(".fleet-trip-chain button:not(.fleet-trip-chain__trip)")
+      component.FindAll(
+        ".fleet-trip-chain button:not(.fleet-trip-chain__trip):not(.fleet-trip-chain__stop)"
+      )
     );
     Assert.DoesNotContain("All trips", component.Markup);
     Assert.DoesNotContain("Show next loads", component.Markup);
@@ -199,6 +201,35 @@ public sealed class FleetTripChainTests
       Released.TrySetResult();
       return ValueTask.CompletedTask;
     }
+  }
+
+  // A marker chooses that exact stop and nothing else; the rest of the
+  // route line chooses the whole trip (the owner, September 27).
+  [Fact]
+  public void AMarkerChoosesItsStopAndTheLineChoosesTheTrip()
+  {
+    using var context = Context();
+    var load = Load(1409, "current", 2);
+    (DispatchResponse Load, Guid Stop)? stop = null;
+    DispatchResponse? trip = null;
+    var component = context.Render<FleetTripChain>(p =>
+      p.Add(x => x.Truck, Truck)
+        .Add(x => x.Loads, [load])
+        .Add(x => x.SelectedTrip, load)
+        .Add(x => x.FocusedStopId, load.Stops[2].Id)
+        .Add(x => x.Selected, value => trip = value)
+        .Add(x => x.StopSelected, value => stop = value)
+    );
+    var markers = component.FindAll("button.fleet-trip-chain__stop");
+    Assert.Equal(3, markers.Count);
+    Assert.Equal("true", markers[2].GetAttribute("aria-pressed"));
+    markers[1].Click();
+    Assert.Equal(load.Stops[1].Id, stop?.Stop);
+    Assert.Null(trip);
+    component.Find(".fleet-trip-chain__route").Click();
+    Assert.Same(load, trip);
+    // No button inside another.
+    Assert.Empty(component.FindAll("button button"));
   }
 
   [Fact]

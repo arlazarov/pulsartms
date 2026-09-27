@@ -1,5 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+// The dark map, unless a test says otherwise.
+globalThis.document = { documentElement: { dataset: { theme: 'dark' } } };
+const { lightMarkCore } = await import(
+  '../../Scripts/fleetMap/rendering/stopAppearance.ts'
+);
 import {
   markCore,
   stopAppearance,
@@ -82,4 +87,19 @@ test('a truck at a stop is its ring, and a truck near it stands behind', () => {
   const plain = decodeURIComponent(stopMarkerIcon(fill, border).url);
   assert.match(plain, /viewBox="0 0 28 28"/);
   assert.doesNotMatch(plain, /fill="rgb\(255,255,255\)"/);
+});
+
+// The light map has its own variant: a pale glass core under a firmer rim,
+// the letter in the load's colour - not the dark badge pasted on.
+test('the light map draws a pale core with a firmer rim', () => {
+  globalThis.document.documentElement.dataset.theme = 'light';
+  try {
+    const look = stopAppearance('Pickup', [46, 80, 231]);
+    assert.deepEqual(look.fill, lightMarkCore);
+    assert.deepEqual(look.border, [46, 80, 231, 255]);
+    const svg = decodeURIComponent(stopMarkerIcon(look.fill, look.border).url);
+    assert.match(svg, /fill="rgb\(255,255,255\)"[^>]*stroke-width="2"/);
+  } finally {
+    globalThis.document.documentElement.dataset.theme = 'dark';
+  }
 });

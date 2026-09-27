@@ -287,6 +287,9 @@ export function createRouteLayer(
     focusStop(stopId: string | null) {
       if (!disposed) stops.focus(stopId);
     },
+    openStop(stopId: string) {
+      return disposed ? null : stops.open(stopId);
+    },
     dispose,
   };
 }
