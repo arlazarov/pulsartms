@@ -488,6 +488,48 @@ Root owns the recovery and its validation; a finished queue is not proof
 that the historical totals are recovered. Nothing was requeued, reset or
 replanned here.
 
+## API release of September 27, completed reviews (02:43-02:51 UTC)
+
+The owner asked for this fix to be published and the work finished.
+AMF1309, completed in the source and never accepted into execution,
+stood in the active list: a load whose actuals need review was admitted
+before the completed and cancelled checks. Root's fix `4ac9871d` (see
+[the record](completed-review-active-leak-2026-09-27.md)) moves that
+flag into the shared relevance rule after the terminal and execution-leg
+checks; the review warning stays on the load, and no assignment or
+status changes. Reviewed here before release: unfinished imported loads
+needing review still show; the other caller keeps its default. Only that
+commit was added. Candidate
+`a2dd5b1da6e4d90a9642c01a577e0d6f2a70d7a8`. No migration (73), no DTO
+or Client change.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash verify-release.sh` on
+  `a2dd5b1d`, exit 0: Server 3,786, Client 1,251, JavaScript 663, no
+  failure or skip. UI smoke `browser-ui-pWJerh` (12 cases, clean) and
+  `browser-messaging-tabs-iiCODb`; artifact `release-E8E3VK`, raw log in
+  its `evidence/`.
+- **Backup** (02:43 UTC):
+  `local-backups/pulsartms-release-backup.T6UFZI/before-2026-09-27-api-release-a2dd5b1d.dump`,
+  41,865,020 bytes, SHA-256
+  `050ec762a449c55eca0e231f75a6e2e698d5e77797206d57264636e2322f5ad2`,
+  720 entries, 104 table data; in the inventory. No restore rehearsed.
+- **API:** before, `amftms-api-b-7a7f4da3-2fab-4f9a-a470-1c352a4f7288`
+  (`25362c19`), generation 270. Cloud Build
+  `85ebbd68-d093-4c24-be6b-3465a2871d6f`; image
+  `us-east4-docker.pkg.dev/amftms/amftms/api@sha256:aa9d001114a4c80bcc77ed71fdf268889fd8a0ab44ade741674c2875680a81ae`;
+  revision `amftms-api-b-85ebbd68-d093-4c24-be6b-3465a2871d6f`,
+  generation 272, spec and status traffic 100%; Ready, Active,
+  ContainerHealthy and MinInstancesProvisioned true; 1 GiB, minimum 1,
+  maximum 1, scaling automatic, unchanged. The previous revision is
+  Retired, Active false and TrafficShutDown true: drained. Health 200 on
+  the service and through Hosting; no error-level entry or 5xx in the
+  first minutes. Hosting still serves `release-kRy7jd`.
+- **Protected data** before and after, read-only counts: unchanged
+  (73, 3, 5, 55, 0, 0, 0, 2).
+
+Root continues the financial recovery and its validation; nothing was
+requeued, reset or replanned here.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
