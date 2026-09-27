@@ -54,7 +54,11 @@ public sealed class GetLoadCostsHandler(
     // one currency gets one total per currency rather than a converted sum,
     // because the rate and the moment it applied belong to the conversion.
     // They cover every share, not the page of rows shown (audit F22): past
-    // the page they are summed in the database under the same filter.
+    // the page they are summed in the database under the same filter, as a
+    // second read. A cut page never claims to add up to its totals, so the
+    // totals are as of that read: a share written between the two is
+    // counted there before a later page shows it. An uncut page is totalled
+    // from its own rows.
     var totals = truncated
       ? await (
         from attribution in db.ExpenseAttributions.AsNoTracking()

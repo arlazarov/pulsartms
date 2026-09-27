@@ -9,6 +9,7 @@ using Domain.Entities.Fleet;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Support;
@@ -59,13 +60,22 @@ internal sealed class CostFixture : IAsyncDisposable
     return expense.Id;
   }
 
-  public static async Task<CostFixture> CreateAsync()
+  // The connection the fixture's context uses, for a second context that
+  // writes as another carrier or between two of the first one's reads.
+  public SqliteConnection Shared => Connection;
+
+  public static async Task<CostFixture> CreateAsync(
+    IInterceptor? interceptor = null
+  )
   {
     var connection = new SqliteConnection("Data Source=:memory:");
     await connection.OpenAsync();
-    var db = new AppDbContext(
-      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    var options = new DbContextOptionsBuilder<AppDbContext>().UseSqlite(
+      connection
     );
+    if (interceptor is not null)
+      options.AddInterceptors(interceptor);
+    var db = new AppDbContext(options.Options);
     await db.Database.EnsureCreatedAsync();
     var actor = new User
     {
@@ -102,6 +112,13 @@ internal sealed class CostFixture : IAsyncDisposable
       Recording = new(db, caller, roles, TimeProvider.System),
     };
   }
+
+  public static Expense NewExpense(
+    string kind,
+    decimal amount,
+    string currency,
+    Guid actor
+  ) => Expense(kind, amount, currency, actor);
 
   private static Expense Expense(
     string kind,
