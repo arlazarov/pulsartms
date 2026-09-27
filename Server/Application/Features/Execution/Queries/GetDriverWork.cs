@@ -1,17 +1,20 @@
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
+using Application.Features.Routing.Services.Routes;
 using Application.Models;
 using Application.Reference;
+using Domain.Models.Execution;
 
 namespace Application.Features.Execution.Queries;
 
 // What a driver is driving: the trucks of their planned and active
 // execution legs, as driver or co-driver, and only when there are none, the
 // truck the fleet assigns them (one driver per truck). One truck: its
-// current and upcoming loads as the Dispatch board reads them
-// (ExecutionWorkReader), so the two never disagree. Several trucks: all are
-// listed and no load is chosen, since choosing one would be a guess. No
-// driver: nothing to read.
+// loads as the Dispatch board reads them (ExecutionWorkReader), starting
+// from the current load planning names (TruckPlanningInputs), the one the
+// Fleet Map and Dispatch show; rows planning has moved past are not the
+// driver's work. Several trucks: all are listed and no load is chosen,
+// since choosing one would be a guess. No driver: nothing to read.
 public sealed record GetDriverWorkQuery(Guid? DriverId)
   : IRequest<RequestResponse<DriverWork>>;
 
@@ -53,7 +56,8 @@ public sealed class DriverWorkHandler(
   IUserRoleService roles,
   FleetNames names,
   ActiveTransfers transfers,
-  TimeProvider clock
+  TimeProvider clock,
+  TruckPlanningInputsReader planning
 ) : IRequestHandler<GetDriverWorkQuery, RequestResponse<DriverWork>>
 {
   public const int MaximumLoads = 5;
@@ -87,11 +91,14 @@ public sealed class DriverWorkHandler(
       includeOverdue: false,
       ct
     );
+    var current = (
+      await planning.ReadAsync(trucks[0].Id, ct, includeHos: false)
+    )?.CurrentWork;
     return Ok(
       DriverWorkStates.OneTruck,
       trucks,
       [
-        .. work.SelectMany(x => x.Loads)
+        .. FromCurrent([.. work.SelectMany(x => x.Loads)], current)
           .Take(MaximumLoads)
           .Select(x => new DriverLoad(
             x.Id,
@@ -106,6 +113,23 @@ public sealed class DriverWorkHandler(
           }),
       ]
     );
+
+    static IEnumerable<WorkLoadReference> FromCurrent(
+      IReadOnlyList<WorkLoadReference> loads,
+      WorkIdentity? current
+    )
+    {
+      var index = current is null
+        ? -1
+        : loads
+          .Select((load, i) => (load, i))
+          .FirstOrDefault(x =>
+            x.load.Id == current.DispatchId
+            && x.load.ExecutionLegId == current.ExecutionLegId
+          )
+          .i;
+      return index > 0 ? loads.Skip(index) : loads;
+    }
 
     static RequestResponse<DriverWork> Ok(
       string state,

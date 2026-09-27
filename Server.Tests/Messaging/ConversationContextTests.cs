@@ -212,13 +212,15 @@ public sealed class ConversationContextTests
       new ReplyFixture.Caller("me")
     ).Handle(new(conversation), default);
     Assert.True(driver.Success, string.Join(";", driver.Errors ?? []));
+    using var planning = new PlanningTestServices(f.Db);
     var work = await new DriverWorkHandler(
       f.Db,
       new ReplyFixture.Caller("me"),
       new DispatchRole(),
       new FleetNames(f.Db),
       new ActiveTransfers(f.Db),
-      f.Clock
+      f.Clock,
+      planning.PlanningInputs
     ).Handle(new(driver.Response!.DriverId), default);
     Assert.True(work.Success, string.Join(";", work.Errors ?? []));
     return new(
