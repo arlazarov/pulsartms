@@ -20,15 +20,25 @@ public static class DispatchWorkPhase
   // Null where the server holds the load but plans no place for it, or the
   // row has no truck: a view may then say what it knows (planned).
   public static string? Label(DispatchResponse load) =>
-    load.Completed
-      ? "Completed"
-      : load.WorkPhase switch
-      {
-        "current" => "Current",
-        "next" => "Next",
-        "upcoming" => "Upcoming",
-        "stale" => "Updating",
-        "earlier" or "unknown" => "",
-        _ => null,
-      };
+    load.Completed ? "Completed" : Label(load.WorkPhase);
+
+  // The same for a view that has only the server's placement (Messenger).
+  public static string? Label(string? phase) =>
+    phase switch
+    {
+      "current" => "Current",
+      "next" => "Next",
+      "upcoming" => "Upcoming",
+      // The row and the inputs disagree on the assignment; nothing says a
+      // refresh is under way, so none is claimed.
+      "stale" => "Needs refresh",
+      "earlier" or "unknown" => "",
+      _ => null,
+    };
+
+  // The server's conflict in words, the same on every view.
+  public static string? ConflictText(string? conflict) =>
+    conflict == "route_passed_not_delivered"
+      ? "Route passed · not delivered"
+      : null;
 }

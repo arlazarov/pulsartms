@@ -16,7 +16,12 @@ public sealed record WorkLoadReference(
   Guid? DriverId,
   WorkOrderKey Order,
   ImmutableArray<WorkVisitReference> Visits
-);
+)
+{
+  // The revision the itinerary records for this work
+  // (PlanningWorkPolicy.AcceptedRevision).
+  public long AcceptedRevision { get; init; }
+}
 
 public sealed record TruckWorkSelection(
   string Key,

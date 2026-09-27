@@ -244,14 +244,35 @@ completed.
      through `DispatchWorkPhase` and `DispatchBoardRow.Status`/
      `StatusTone`: a conflict reads as "Route passed · not delivered"
      (warning tone) and is filed with work under way, not "Awaiting
-     pickup"; a stale place reads "Updating", never a planned or
+     pickup"; a stale place reads "Needs refresh", never a planned or
      upcoming phase. Removed: the client's `IsCurrent`, `LoadPosition`
      and `LoadOrder`, the card's position parameters, and the
      first-row fallback for the planning header.
-   - **3b, next.** The same placement and conflict on Messenger
-     context, the map payload and the workspace; business and source
-     states (`source_ahead_of_accepted`, `source_unresolved`) beside the
-     route state; board and planning pages on one date basis.
+   - **3b, implemented (not released).** The same placements reach every
+     other view through `WorkPlacements` (phase, conflict, one list of
+     conflicts per truck) and `PlanningWorkPolicy.AcceptedRevision` (a
+     leg's revision or an older load's planning revision, one rule):
+     - Messenger (`DriverWorkOrder`) no longer hides passed work: the
+       current load first, then conflicts, then the work after it; loads
+       beyond the list limit are counted with their conflicts. Older
+       loads compare at their planning revision (divergence 6 closed for
+       Messenger). The panel names the server's current load, not the
+       first listed; filing offers only that load by default, follows it
+       as it changes and keeps a load the dispatcher picked.
+     - The map shows `AutomaticPlanningResult.WorkConflicts`, read with
+       the same inputs as the summary, cold or prepared.
+     - The load workspace places each accepted leg by its own truck and
+       the load by its active leg (or its truck for an older load).
+     - A load handed between trucks is placed under each truck by its
+       own leg.
+     A stale place reads "Needs refresh": nothing says a refresh runs.
+     Gaps: map switch reset is defensive and not observable in the
+     current rendering (its mutation survives); board, Messenger and map
+     use the itinerary's membership as "not delivered" while the board
+     also checks LoadCompletion - stage 4 makes them one rule; no
+     call-count test on the placement pass; business and source states
+     (`source_ahead_of_accepted`, `source_unresolved`) and one date basis
+     for board and planning pages remain for stage 4.
 4. **Completion and invalidation.** One completion owner with membership
    rules expressed through it; tracking version in the summary signature;
    ETA, deadhead, base road and duty commits notify the summary after

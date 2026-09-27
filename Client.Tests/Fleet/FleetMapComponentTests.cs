@@ -754,6 +754,105 @@ public sealed class FleetMapComponentTests
     Assert.DoesNotContain("accepted assignment", component.Markup);
   }
 
+  // A load whose route planning passed but execution has not completed is
+  // not a dispatcher's review note: the map shows it beside the current
+  // route, as the board does (stage 3b), from the same summary.
+  [Fact]
+  public async Task PassedWorkNotDeliveredIsShownOnTheMap()
+  {
+    using var fixture = new SelectionFixture();
+    var result = fixture.Plan(fixture.TruckA);
+    fixture.SetPlanningResult(
+      fixture.TruckA,
+      result with
+      {
+        WorkConflicts =
+        [
+          new(Guid.NewGuid(), null, 1395, "route_passed_not_delivered"),
+        ],
+      }
+    );
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, call => call.Name == "setTrucks")
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
+    );
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          component.FindAll(".fleet-map-route-info__error"),
+          x => x.TextContent == "Load 1395: Route passed · not delivered"
+        )
+    );
+  }
+
+  // The conflict arrives with the truck's planning response, and belongs
+  // to that truck: after switching trucks, the first truck's late answer
+  // never shows its conflict against the second.
+  [Fact]
+  public async Task AConflictIsShownOnlyForTheTruckWhoseAnswerCarriesIt()
+  {
+    // Nothing cached: each truck's saved preview is read, and held.
+    using var fixture = new SelectionFixture(cacheCurrentPlans: false)
+    {
+      DeferPlanning = true,
+      DeferPreview = true,
+    };
+    var withConflict = fixture.Plan(fixture.TruckA) with
+    {
+      WorkConflicts =
+      [
+        new(Guid.NewGuid(), null, 1395, "route_passed_not_delivered"),
+      ],
+    };
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, call => call.Name == "setTrucks")
+    );
+    bool Shown() =>
+      component
+        .FindAll(".fleet-map-route-info__error")
+        .Any(x => x.TextContent == "Load 1395: Route passed · not delivered");
+
+    var first = component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
+    );
+    (await fixture.ReadPreviewAsync()).Reply(fixture.Plan(fixture.TruckA));
+    (await fixture.ReadPlanningAsync()).Reply(withConflict);
+    await first;
+    component.WaitForAssertion(() => Assert.True(Shown()));
+
+    // Switching trucks clears the first truck's conflict at once - while
+    // the second truck's saved preview is still on its way - and the
+    // second truck's answers bring none.
+    var other = component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckB.ToString())
+    );
+    var preview = await fixture.ReadPreviewAsync();
+    component.WaitForAssertion(() => Assert.False(Shown()));
+    preview.Reply(fixture.Plan(fixture.TruckB));
+    (await fixture.ReadPlanningAsync()).Reply(fixture.Plan(fixture.TruckB));
+    await other;
+    component.WaitForAssertion(() => Assert.False(Shown()));
+
+    // Back to the first truck, whose answer is held; the dispatcher
+    // switches away before it arrives, and it arrives after the second's.
+    var again = component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
+    );
+    var late = await fixture.ReadPlanningAsync();
+    var switched = component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckB.ToString())
+    );
+    var answer = await fixture.ReadPlanningAsync();
+    answer.Reply(fixture.Plan(fixture.TruckB));
+    late.Reply(withConflict);
+    await Task.WhenAll(again, switched);
+    component.WaitForAssertion(() => Assert.False(Shown()));
+  }
+
   [Fact]
   public async Task SelectedTruckLocationUsesTelemetryRefreshAndNeverAnotherTruckOrRouteAddress()
   {

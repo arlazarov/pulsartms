@@ -63,6 +63,7 @@ public sealed class PlanningSummaryReader(
       )
       {
         Hos = work.Hos,
+        WorkConflicts = WorkPlacements.Conflicts(work),
         ExecutionLegId = first?.Work.ExecutionLegId,
         AssignmentRevision = first?.AssignmentRevision ?? 0,
         IsRefreshing = true,
@@ -77,6 +78,7 @@ public sealed class PlanningSummaryReader(
     return result with
     {
       Hos = work.Hos,
+      WorkConflicts = WorkPlacements.Conflicts(work),
       Message =
         result.IsRefreshing && result.Message is null
           ? "Planning summary is updating."

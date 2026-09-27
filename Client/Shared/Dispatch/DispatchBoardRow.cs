@@ -72,7 +72,7 @@ public sealed record DispatchBoardRow(
 
   public string Status =>
     Completed ? "Completed"
-    : RoutePassedNotDelivered ? "Route passed · not delivered"
+    : RoutePassedNotDelivered ? DispatchWorkPhase.ConflictText(Load.WorkConflict)!
     : Load.Status.Equals("unassigned", StringComparison.OrdinalIgnoreCase)
       ? "Unassigned"
     : Planned ? "Planned"

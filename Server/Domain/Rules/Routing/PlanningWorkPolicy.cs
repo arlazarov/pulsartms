@@ -28,6 +28,24 @@ public static class PlanningWorkPolicy
     return new(null, passed);
   }
 
+  // The assignment revision a piece of work was accepted at, as the
+  // itinerary records it: a leg's revision, or an older load's planning
+  // revision (its own AssignmentRevision is never stored and reads 0).
+  // Every reader comparing a row with the planning inputs compares this.
+  public static long AcceptedRevision(
+    Guid? executionLegId,
+    long assignmentRevision,
+    long planningAssignmentRevision
+  ) =>
+    executionLegId.HasValue ? assignmentRevision : planningAssignmentRevision;
+
+  public static long AcceptedRevision(RouteWorkSnapshot load) =>
+    AcceptedRevision(
+      load.ExecutionLegId,
+      load.AssignmentRevision,
+      load.PlanningAssignmentRevision
+    );
+
   // The work after the current, in the itinerary's order (WorkOrderKey,
   // the board's) and with the board's membership: work still open to the
   // truck, overdue work included, as the board shows it. A planned leg of

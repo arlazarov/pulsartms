@@ -2,6 +2,7 @@ using Client.Models.DTO.Messaging;
 using Client.Models.DTO.Mileage;
 using Client.Models.DTO.Planning;
 using Client.Services;
+using Client.Shared.Dispatch;
 using Microsoft.AspNetCore.Components;
 
 namespace Client.Pages.Messages;
@@ -95,6 +96,21 @@ public partial class ConversationContextPanel : IDisposable
 
   // A load opens with the way back to this conversation, where the reply
   // being written is kept (Messages leaves it with ReturnPlaces).
+  // The driver's current load as the server placed it; never simply the
+  // first one listed.
+  private ContextLoad? Current =>
+    Context?.Loads.FirstOrDefault(x => x.Phase == "current");
+
+  private IReadOnlyList<ContextLoad> Others =>
+    Context is null ? [] : [.. Context.Loads.Where(x => x != Current)];
+
+  private string OthersTitle =>
+    Others.All(x => x.Phase is "next" or "upcoming")
+      ? Others.Count > 1
+        ? "Next loads"
+        : "Next load"
+      : "Other loads";
+
   private string LoadHref(Guid load) =>
     ReturnNavigation.Load(load, ReturnNavigation.Conversation(ConversationId));
 

@@ -54,10 +54,11 @@ public sealed class DispatchWorkPhaseViewTests
   }
 
   // A row read at another assignment revision than the planning inputs
-  // is stale and says it is updating; a load the inputs do not hold, or
+  // is stale and says it needs a refresh - no refresh is known to be
+  // running, so none is claimed; a load the inputs do not hold, or
   // hold without a place, claims no phase. None is given a planned phase.
   [Theory]
-  [InlineData("stale", "Updating")]
+  [InlineData("stale", "Needs refresh")]
   [InlineData("unknown", "")]
   [InlineData("unplaced", "Planned")]
   public void AStaleOrUnknownPlaceIsNotReadAsPlanned(
@@ -76,7 +77,7 @@ public sealed class DispatchWorkPhaseViewTests
 
     // The phase badge; the status beside it is the load's own ("Planned").
     Assert.Equal(
-      shown == "Updating" ? ["Updating"] : [],
+      shown == "Needs refresh" ? ["Needs refresh"] : [],
       table.FindAll(".dispatch-table__phase").Select(x => x.TextContent)
     );
     Assert.Equal("Planned", table.Find(".dispatch-table__status").TextContent);

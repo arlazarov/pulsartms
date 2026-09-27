@@ -213,12 +213,12 @@ public sealed class DispatchLoadCardTests
   }
 
   // The card names the place the server gave the load; only the next load
-  // is purple, and a place read at another assignment says it is updating.
+  // is purple, and a place read at another assignment needs a refresh.
   [Theory]
   [InlineData("current", "Current", false)]
   [InlineData("next", "Next", true)]
   [InlineData("upcoming", "Upcoming", false)]
-  [InlineData("stale", "Updating", false)]
+  [InlineData("stale", "Needs refresh", false)]
   public void OnlyTheNextLoadGetsThePurplePresentationState(
     string placement,
     string phase,

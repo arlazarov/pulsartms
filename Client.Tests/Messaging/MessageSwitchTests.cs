@@ -87,6 +87,9 @@ public sealed class MessageSwitchTests
     page.WaitForAssertion(() => Assert.Contains("a.pdf", page.Markup));
     page.Settle();
     await Button(page, "File to load").ClickAsync(new());
+    // No load is the driver's current one here, so none is chosen for the
+    // dispatcher (stage 3b): they name it.
+    page.WaitForElement("[id^=filing-number]").Change("1441");
     var filing = page.Find(".messages__file .messages__filing").SubmitAsync();
 
     page.Render(x => x.Add(p => p.Id, B));

@@ -21,7 +21,19 @@ public sealed record AutomaticPlanningResult(
   // a screen for the load shows the whole of it, the map a word and a way
   // there. The message stays what it was without them.
   public IReadOnlyList<PlanningNotice> Notices { get; init; } = [];
+
+  // The truck's work planning has passed without a delivery, from the
+  // same inputs the summary was read with (WorkPlacements.Conflicts): the
+  // map shows it beside the current work, as the board does.
+  public IReadOnlyList<WorkConflictNotice> WorkConflicts { get; init; } = [];
 }
+
+public sealed record WorkConflictNotice(
+  Guid DispatchId,
+  Guid? ExecutionLegId,
+  int LoadNumber,
+  string Conflict
+);
 
 // A notice about one load of the plan. SourceReview: the load's source
 // changed or is ambiguous and the assignment needs a dispatcher's review;

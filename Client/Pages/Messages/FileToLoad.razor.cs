@@ -29,6 +29,19 @@ public partial class FileToLoad : IDisposable
 
   private bool _open,
     _busy;
+  private bool _choiceIsDefault;
+
+  // The select's value: a choice made there is the dispatcher's own.
+  private string Choice
+  {
+    get => _choice;
+    set
+    {
+      _choice = value;
+      _choiceIsDefault = false;
+    }
+  }
+
   private string _choice = "",
     _kind = "bol";
   private int? _number;
@@ -41,9 +54,19 @@ public partial class FileToLoad : IDisposable
 
   protected override void OnParametersSet()
   {
-    if (_choice.Length == 0 && Loads.Count > 0 && !_open)
-      _choice = Loads[0].Id.ToString();
+    // A default follows the server's current load as it changes, and goes
+    // when there is none; a load the dispatcher chose stays theirs.
+    if (_choice.Length == 0 || _choiceIsDefault)
+    {
+      _choice = Current?.Id.ToString() ?? "";
+      _choiceIsDefault = _choice.Length > 0;
+    }
   }
+
+  // Only the load the server placed as current is offered by default; a
+  // stale, unknown or conflicting place needs the dispatcher's choice.
+  private ContextLoad? Current =>
+    Loads.FirstOrDefault(x => x.Phase == "current" && x.Conflict is null);
 
   private bool Ready => !_busy && (_choice.Length > 0 || _number is > 0);
 

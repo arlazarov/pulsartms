@@ -75,6 +75,31 @@ public sealed class PlanningSummaryRefreshTests
     Assert.Equal(f.Next.Id, f.Summary().DispatchId);
   }
 
+  // The map shows the passed first load beside the current one: the
+  // summary carries its conflict, cold and prepared, from the same inputs
+  // that name the current work (stage 3b).
+  [Fact]
+  public async Task TheSummaryCarriesThePassedWorksConflict()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var expected = new WorkConflictNotice(
+      f.Passed.Id,
+      null,
+      1395,
+      "route_passed_not_delivered"
+    );
+
+    var cold = f.Summary();
+    await f.PrepareAsync();
+    var warm = f.Summary();
+
+    Assert.True(cold.IsRefreshing);
+    Assert.Equal([expected], cold.WorkConflicts);
+    Assert.False(warm.IsRefreshing);
+    Assert.Equal([expected], warm.WorkConflicts);
+    Assert.Equal(f.Next.Id, warm.DispatchId);
+  }
+
   // Planning refuses the current work. The refusal speaks for it - not for
   // the passed first load - and is checked with one more capture before it
   // is kept.

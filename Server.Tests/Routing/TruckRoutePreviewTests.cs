@@ -2,6 +2,7 @@ using System.Data.Common;
 using System.Text.Json;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Queries;
+using Application.Features.Dispatch.Services;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Application.Features.Fleet.Services;
@@ -890,6 +891,187 @@ public sealed class TruckRoutePreviewTests
     Assert.Equal("stale", moved.Single(x => x.Id == third.Id).WorkPhase);
     Assert.Equal("unknown", moved.Single(x => x.Id == fifth.Id).WorkPhase);
     Assert.Equal("current", moved.Single(x => x.Id == second.Id).WorkPhase);
+  }
+
+  // One load handed from one truck to another stands under both on the
+  // board, each row with its own leg. Each row is placed by its own
+  // truck's inputs and its own leg - the outgoing truck's current work is
+  // not the incoming truck's, and neither row borrows the other's place.
+  [Fact]
+  public async Task ATransferredLoadIsPlacedUnderEachTruckByItsOwnLeg()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var incoming = new Truck
+    {
+      Id = Guid.NewGuid(),
+      ExternalId = "incoming",
+      UnitNumber = "Incoming",
+      IsActive = true,
+    };
+    fixture.Db.Trucks.Add(incoming);
+    var load = await fixture.AddAsync(1);
+    ExecutionLeg Leg(Guid truck, string status, long revision, int sequence) =>
+      new()
+      {
+        Id = Guid.NewGuid(),
+        Trip = new() { Id = Guid.NewGuid() },
+        TruckId = truck,
+        Status = status,
+        Revision = revision,
+        Stops = ExecutionStopRows.Capture(load.Stops),
+        Loads =
+        [
+          new()
+          {
+            Id = Guid.NewGuid(),
+            DispatchId = load.Id,
+            Sequence = sequence,
+            StartVisitId = load.Stops[0].Id,
+            EndVisitId = load.Stops[^1].Id,
+          },
+        ],
+      };
+    var outgoing = Leg(fixture.Truck.Id, "active", 3, 0);
+    var handed = Leg(incoming.Id, "planned", 1, 1);
+    fixture.Db.ExecutionLegs.AddRange(outgoing, handed);
+    await fixture.Db.SaveChangesAsync();
+    fixture.Hos.Allow = fixture.Sender.AllowTelemetry = true;
+
+    async Task<
+      List<(Guid? Truck, Guid? Leg, string? Phase, string? Conflict)>
+    > BoardAsync()
+    {
+      fixture.Services.Reads.Invalidate("board");
+      return (
+        await fixture.Sender.Board.Handle(
+          new GetDispatchBoardQuery(
+            IncludeHos: false,
+            IncludeFinancials: false,
+            IncludeEta: false,
+            IncludePlanned: true,
+            Date: DateOnly.FromDateTime(DateTime.UtcNow)
+          ),
+          default
+        )
+      )
+        .Response!.Items.SelectMany(row =>
+          row.Dispatches.Where(x => x.Id == load.Id)
+            .Select(x =>
+              (row.TruckId, x.ExecutionLegId, x.WorkPhase, x.WorkConflict)
+            )
+        )
+        .OrderBy(x => x.ExecutionLegId == handed.Id)
+        .ToList();
+    }
+
+    Assert.Equal(
+      [
+        (fixture.Truck.Id, outgoing.Id, "current", null),
+        (incoming.Id, handed.Id, "current", null),
+      ],
+      await BoardAsync()
+    );
+
+    // The outgoing truck's route for its leg is passed, its leg not
+    // completed: its row shows the conflict, the incoming truck's row -
+    // the same load - does not.
+    await SavePassedLegPlanAsync(fixture, load, outgoing);
+    Assert.Equal(
+      [
+        (
+          fixture.Truck.Id,
+          outgoing.Id,
+          "earlier",
+          "route_passed_not_delivered"
+        ),
+        (incoming.Id, handed.Id, "current", null),
+      ],
+      await BoardAsync()
+    );
+
+    // The load's workspace places each accepted leg the same way, by its
+    // own truck; the load itself stands where its active leg does.
+    var workspace = (
+      await DispatchWorkspaceReader.ReadAsync(
+        fixture.Db,
+        load.Id,
+        true,
+        default
+      )
+    )!.Response;
+    await GetDispatchWorkspaceHandler.PlaceAsync(
+      workspace,
+      fixture.Services.PlanningInputs,
+      default
+    );
+    Assert.Equal(
+      [
+        (outgoing.Id, "earlier", "route_passed_not_delivered"),
+        (handed.Id, "current", null),
+      ],
+      workspace
+        .AcceptedAssignments.DistinctBy(x => x.ExecutionLegId)
+        .OrderBy(x => x.ExecutionLegId == handed.Id)
+        .Select(x => (x.ExecutionLegId, x.Phase, x.Conflict))
+    );
+    Assert.Equal(
+      ("earlier", "route_passed_not_delivered"),
+      (workspace.Load.WorkPhase, workspace.Load.WorkConflict)
+    );
+  }
+
+  // A saved plan for a leg whose stops are all passed, at the leg's
+  // revision and inputs, committed as the tracking writer does.
+  private static async Task SavePassedLegPlanAsync(
+    Fixture fixture,
+    Dispatch load,
+    ExecutionLeg leg
+  )
+  {
+    var inputs = (
+      await fixture.Services.PlanningInputs.ReadFreshAsync(leg.TruckId, default)
+    )!;
+    var segment = inputs.Itinerary.Segments.Single(x =>
+      x.Work.ExecutionLegId == leg.Id
+    );
+    var work = RouteWorkProjection.Capture(
+      segment,
+      inputs.Itinerary.Resources.TruckNumber
+    );
+    var profile = (
+      await fixture.Services.Profiles.GetManyAsync([leg.TruckId], default)
+    )[leg.TruckId];
+    var plan = new RoutePlan
+    {
+      Id = Guid.NewGuid(),
+      DispatchId = load.Id,
+      ExecutionLegId = leg.Id,
+      AssignmentRevision = leg.Revision,
+      TruckId = leg.TruckId,
+      Version = 1,
+      CalculatedAt = DateTime.UtcNow,
+      Profile = profile,
+      Tracking = new() { AllStopsPassed = true },
+      Route = new()
+      {
+        Miles = 10,
+        Legs = [new(10, 600, [new(40, -80), new(41, -80)])],
+      },
+    };
+    fixture.Db.DispatchRoutePlans.Add(
+      new()
+      {
+        Id = plan.Id,
+        DispatchId = load.Id,
+        ExecutionLegId = leg.Id,
+        AssignmentRevision = leg.Revision,
+        TruckId = leg.TruckId,
+        InputHash = RoutePlanInputs.Hash(work, profile),
+        PlanJson = RoutePlanStorage.Serialize(plan),
+      }
+    );
+    await fixture.Db.SaveChangesAsync();
+    fixture.Services.Reads.InvalidateItem("planning-inputs", leg.TruckId);
   }
 
   private static async Task<(T Result, int Reads, int Captures)> Measured<T>(

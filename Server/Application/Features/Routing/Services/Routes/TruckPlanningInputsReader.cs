@@ -74,6 +74,52 @@ public sealed record PassedWork(WorkIdentity Work, long AssignmentRevision);
 
 public sealed record WorkPlacement(long AssignmentRevision, string Phase);
 
+// A row's place and conflict from a truck's placements
+// (TruckPlanningInputs.Placements): every reader that shows where a load
+// stands - the board, Messenger, the load workspace - asks here.
+public static class WorkPlacements
+{
+  // Stale: the row was read at another accepted revision than the inputs.
+  // Unknown: the inputs do not hold it. Null: no inputs to ask.
+  public static string? Phase(
+    IReadOnlyDictionary<WorkIdentity, WorkPlacement>? placements,
+    WorkIdentity work,
+    long acceptedRevision
+  ) =>
+    placements is null ? null
+    : placements.GetValueOrDefault(work) is not { } placement ? "unknown"
+    : placement.AssignmentRevision != acceptedRevision ? "stale"
+    : placement.Phase;
+
+  // Planning passed the route; execution has not completed the work.
+  public static string? Conflict(string? phase, bool completed) =>
+    phase == "earlier" && !completed ? "route_passed_not_delivered" : null;
+
+  // The conflicts of a truck's own itinerary. Itinerary work is not yet
+  // delivered by the board's membership rule (ExecutionWorkRelevance), so
+  // passed work there is a conflict; the board also checks LoadCompletion
+  // (stage 4 makes the two rules one).
+  public static IReadOnlyList<WorkConflictNotice> Conflicts(
+    TruckPlanningInputs work
+  )
+  {
+    if (work.PassedWork.Count == 0)
+      return [];
+    var passed = work.PassedWork.Select(x => x.Work).ToHashSet();
+    return
+    [
+      .. work
+        .Itinerary.Segments.Where(x => passed.Contains(x.Work))
+        .Select(x => new WorkConflictNotice(
+          x.Work.DispatchId,
+          x.Work.ExecutionLegId,
+          x.LoadNumber,
+          Conflict("earlier", completed: false)!
+        )),
+    ];
+  }
+}
+
 public sealed class TruckPlanningInputsReader(
   IAppDbContext db,
   TruckItineraryReader itineraries,

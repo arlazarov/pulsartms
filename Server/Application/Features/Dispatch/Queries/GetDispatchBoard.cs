@@ -11,6 +11,7 @@ using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
 using Application.Models;
 using Application.Reference;
+using Domain.Rules.Routing;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Dispatch.Queries;
@@ -236,22 +237,20 @@ public class GetDispatchBoardHandler(
       var placements = work.GetValueOrDefault(truckId)?.Placements();
       foreach (var load in row.Dispatches)
       {
-        // A row read at another assignment revision than the inputs is
-        // stale, and one the inputs do not hold is unknown: neither is
-        // passed off as planned.
-        var revision = load.ExecutionLegId.HasValue
-          ? load.AssignmentRevision
-          : load.PlanningAssignmentRevision;
         load.WorkPhase =
-          placements?.GetValueOrDefault(new(load.Id, load.ExecutionLegId))
-            is not { } placement
-            ? "unknown"
-          : placement.AssignmentRevision != revision ? "stale"
-          : placement.Phase;
-        load.WorkConflict =
-          load.WorkPhase == "earlier" && !load.Completed
-            ? "route_passed_not_delivered"
-            : null;
+          WorkPlacements.Phase(
+            placements,
+            new(load.Id, load.ExecutionLegId),
+            PlanningWorkPolicy.AcceptedRevision(
+              load.ExecutionLegId,
+              load.AssignmentRevision,
+              load.PlanningAssignmentRevision
+            )
+          ) ?? "unknown";
+        load.WorkConflict = WorkPlacements.Conflict(
+          load.WorkPhase,
+          load.Completed
+        );
       }
     }
     var workMs = Take("work", ref stage);

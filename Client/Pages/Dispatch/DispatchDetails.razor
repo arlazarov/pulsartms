@@ -65,6 +65,14 @@
         }
       </div>
       </div>
+    @if (DispatchWorkPhase.ConflictText(_workspace.Load.WorkConflict) is { } conflict)
+    {
+      @* As on the board and the map: planning passed the route, execution
+         has not completed the load. *@
+      <div class="dispatch-details__notice" role="status">
+        <p>@conflict</p>
+      </div>
+    }
     @if (_workspace.SourceReviewReason is not null && _tab != "Assignments")
     {
       <div class="dispatch-details__notice" role="status">

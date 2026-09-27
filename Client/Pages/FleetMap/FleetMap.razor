@@ -526,6 +526,8 @@
             @truckActions
             </div>
             <div class="fleet-map-route-info__messages">
+                @foreach (var conflict in _planningConflicts)
+                { <span class="fleet-map-route-info__error" role="status">Load @conflict.LoadNumber: @Client.Shared.Dispatch.DispatchWorkPhase.ConflictText(conflict.Conflict)</span> }
                 @foreach (var warning in routePlan?.Route.Warnings ?? [])
                 { <span class="fleet-map-route-info__error" role="status">@Client.Shared.RouteMessageDisplay.Concise(warning)</span> }
                 @if (routePlan is not null && (_routeState?.Progress?.OffRoute == true || _routeState?.Progress?.LocationStale == true))
