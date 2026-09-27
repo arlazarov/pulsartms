@@ -81,12 +81,17 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   // refuse to show them as current.
   public bool Publish(Guid key, Entry entry)
   {
-    Touch(key);
-    var kept = Results.AddOrUpdate(
-      key,
-      entry,
-      (_, existing) => Older(entry, existing) ? existing : entry
-    );
+    Entry kept;
+    lock (Lifecycle(key))
+    {
+      Touch(key);
+      kept = Results.AddOrUpdate(
+        key,
+        entry,
+        (_, existing) => Older(entry, existing) ? existing : entry
+      );
+    }
+    Bound();
     return ReferenceEquals(kept, entry);
   }
 
@@ -111,17 +116,55 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   // quarters of it, so the sort runs once per quarter of new scopes. A
   // forgotten forecast costs a display read one saved-forecast read; the
   // store is the truth (stage 4e).
+  //
+  // A scope's touch and the write it stands for happen under the scope's
+  // lifecycle lock, and forgetting a scope takes the same lock and drops
+  // every map together - the forecast, the leg's identity, the view, the
+  // answers and the touch - so no write is left untracked and no identity
+  // outlives or predeceases the rest. Due and the bound decide from a
+  // snapshot, then forget only if the scope is, under its lock, still idle
+  // or still untouched since that snapshot: a scope refreshed meanwhile is
+  // kept.
   public const int MaximumScopes = 1024;
-  private readonly ConcurrentDictionary<Guid, DateTime> touched = new();
+
+  private readonly record struct Touched(DateTime At, long Sequence);
+
+  private readonly ConcurrentDictionary<Guid, Touched> touched = new();
+  private readonly object[] lifecycle = Enumerable
+    .Range(0, 64)
+    .Select(_ => new object())
+    .ToArray();
+  private long touches;
   private int trimming;
   private long trims;
 
   // How often the bound had to trim, for tests that count the work.
   internal long Trims => Interlocked.Read(ref trims);
 
+  internal bool Tracks(Guid key) => touched.ContainsKey(key);
+
+  // Seams for tests that interleave a write with a forget
+  // deterministically: after a touch, still holding the scope's lock; and
+  // before a forget takes it.
+  internal Action<Guid>? AfterTouch { get; set; }
+  internal Action<Guid>? BeforeForget { get; set; }
+
+  private object Lifecycle(Guid key) =>
+    lifecycle[(uint)key.GetHashCode() % lifecycle.Length];
+
+  // Held under the scope's lifecycle lock, with the write it stands for.
   private void Touch(Guid key)
   {
-    touched[key] = time.GetUtcNow().UtcDateTime;
+    touched[key] = new(
+      time.GetUtcNow().UtcDateTime,
+      Interlocked.Increment(ref touches)
+    );
+    AfterTouch?.Invoke(key);
+  }
+
+  // Outside any lifecycle lock, after a write.
+  private void Bound()
+  {
     if (touched.Count > MaximumScopes)
       Trim();
   }
@@ -137,17 +180,39 @@ public sealed class EtaMemory(TimeProvider? clock = null)
         return;
       Interlocked.Increment(ref trims);
       foreach (
-        var key in touched
-          .OrderBy(x => x.Value)
+        var (key, seen) in touched
+          .OrderBy(x => x.Value.At)
+          .ThenBy(x => x.Value.Sequence)
           .Take(excess)
-          .Select(x => x.Key)
           .ToArray()
       )
-        Forget(key);
+        ForgetUntouchedSince(key, seen.Sequence);
     }
     finally
     {
       Volatile.Write(ref trimming, 0);
+    }
+  }
+
+  private void ForgetUntouchedSince(Guid key, long sequence)
+  {
+    BeforeForget?.Invoke(key);
+    lock (Lifecycle(key))
+      if (!touched.TryGetValue(key, out var now) || now.Sequence == sequence)
+        ForgetLocked(key);
+  }
+
+  private void ForgetIfIdle(Guid key, DateTime idle)
+  {
+    BeforeForget?.Invoke(key);
+    lock (Lifecycle(key))
+    {
+      var last =
+        Viewed.TryGetValue(key, out var viewed) ? viewed
+        : touched.TryGetValue(key, out var at) ? at.At
+        : DateTime.MinValue;
+      if (last < idle)
+        ForgetLocked(key);
     }
   }
 
@@ -163,8 +228,12 @@ public sealed class EtaMemory(TimeProvider? clock = null)
 
   public void NoteMapAnswer(Guid key, string answer)
   {
-    Touch(key);
-    mapAnswers[key] = answer;
+    lock (Lifecycle(key))
+    {
+      Touch(key);
+      mapAnswers[key] = answer;
+    }
+    Bound();
   }
 
   public string? MapAnswer(Guid key) => mapAnswers.GetValueOrDefault(key);
@@ -178,12 +247,19 @@ public sealed class EtaMemory(TimeProvider? clock = null)
     bool hasEta
   )
   {
-    var key = Scope(dispatchId, executionLegId);
-    Touch(key);
-    var answer = hasEta ? "shown" : MapAnswer(key) ?? "not-read";
-    var previous = publishedAnswers.GetValueOrDefault(key);
-    publishedAnswers[key] = answer;
-    return previous == answer ? null : answer;
+    var key = executionLegId ?? dispatchId;
+    string? change;
+    lock (Lifecycle(key))
+    {
+      ScopeLocked(dispatchId, executionLegId);
+      Touch(key);
+      var answer = hasEta ? "shown" : MapAnswer(key) ?? "not-read";
+      var previous = publishedAnswers.GetValueOrDefault(key);
+      publishedAnswers[key] = answer;
+      change = previous == answer ? null : answer;
+    }
+    Bound();
+    return change;
   }
 
   private readonly ConcurrentDictionary<Guid, ScopeIdentity> scopes = new();
@@ -213,12 +289,20 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   public Guid Scope(Guid dispatchId, Guid? executionLegId)
   {
     var key = executionLegId ?? dispatchId;
-    if (executionLegId.HasValue)
-    {
-      Touch(key);
-      scopes[key] = new(dispatchId, executionLegId);
-    }
+    if (!executionLegId.HasValue)
+      return key;
+    lock (Lifecycle(key))
+      ScopeLocked(dispatchId, executionLegId);
+    Bound();
     return key;
+  }
+
+  private void ScopeLocked(Guid dispatchId, Guid? executionLegId)
+  {
+    if (executionLegId is not { } leg)
+      return;
+    Touch(leg);
+    scopes[leg] = new(dispatchId, executionLegId);
   }
 
   public ScopeIdentity Resolve(Guid key) =>
@@ -226,12 +310,21 @@ public sealed class EtaMemory(TimeProvider? clock = null)
 
   public void View(Guid id, DateTime now)
   {
+    bool firstView;
+    lock (Lifecycle(id))
+      firstView = ViewLocked(id, now);
+    Bound();
+    if (firstView)
+      RequestRefresh();
+  }
+
+  private bool ViewLocked(Guid id, DateTime now)
+  {
     Touch(id);
     var firstView = Viewed.TryAdd(id, now);
     if (!firstView)
       Viewed[id] = now;
-    if (firstView)
-      RequestRefresh();
+    return firstView;
   }
 
   public void RequestRefresh() => refresh.Writer.TryWrite(true);
@@ -270,6 +363,13 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   // True when a forecast readers could see was dropped.
   public bool Forget(Guid dispatchId)
   {
+    BeforeForget?.Invoke(dispatchId);
+    lock (Lifecycle(dispatchId))
+      return ForgetLocked(dispatchId);
+  }
+
+  private bool ForgetLocked(Guid dispatchId)
+  {
     Viewed.TryRemove(dispatchId, out _);
     var dropped = Results.TryRemove(dispatchId, out _);
     demandedInputs.TryRemove(dispatchId, out _);
@@ -282,7 +382,19 @@ public sealed class EtaMemory(TimeProvider? clock = null)
 
   public void Demand(Guid rootDispatchId, string inputHash, DateTime now)
   {
-    View(rootDispatchId, now);
+    bool firstView;
+    lock (Lifecycle(rootDispatchId))
+    {
+      firstView = ViewLocked(rootDispatchId, now);
+      DemandLocked(rootDispatchId, inputHash);
+    }
+    Bound();
+    if (firstView)
+      RequestRefresh();
+  }
+
+  private void DemandLocked(Guid rootDispatchId, string inputHash)
+  {
     while (true)
     {
       if (demandedInputs.TryGetValue(rootDispatchId, out var previous))
@@ -419,13 +531,13 @@ public sealed class EtaMemory(TimeProvider? clock = null)
     // forgotten in every map - not only the ones a view created.
     var idle = now.AddMinutes(-10);
     foreach (var (key, at) in touched)
-      if ((Viewed.TryGetValue(key, out var viewed) ? viewed : at) < idle)
-        Forget(key);
+      if ((Viewed.TryGetValue(key, out var viewed) ? viewed : at.At) < idle)
+        ForgetIfIdle(key, idle);
     foreach (var item in Viewed)
     {
       if (item.Value < idle)
       {
-        Forget(item.Key);
+        ForgetIfIdle(item.Key, idle);
         continue;
       }
       if (

@@ -434,6 +434,10 @@ completed.
      quarters, so trimming sorts once per 256 new scopes. A forgotten
      forecast costs a display read one saved-forecast read. Reported as
      `eta-current` scopes with its limit. Size per scope is not measured.
+     A scope's touch and its write, and forgetting it, share one lock per
+     scope, and a forget drops every map together, the leg's identity
+     included; `Due` and the bound decide from a snapshot and forget only
+     if the scope is still idle, or untouched since, under that lock.
    - **4e duty, implemented (not released).** A prepared summary's fuel
      hand-over line (`FuelPlan.IssueState`, each stop's `IssueHorizon`)
      is drawn with the hours read when it was prepared. The reader now
