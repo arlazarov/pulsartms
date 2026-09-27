@@ -1425,6 +1425,78 @@ JavaScript 67), focused and PostgreSQL migration tests
 diagnostic-A4qt2n. diagnostic-TQzqoy is invalid: the API did not build
 (the controller passed the now-nullable theme).
 
+## Owner decisions: proposals with examples
+
+Each item is a proposal; nothing below is implemented. The examples are
+illustrations of the mechanism, not measured production cases, unless a
+figure names its source.
+
+1. **D6 read cost - reuse within an operation.** Today a planning
+   refresh reads a truck's fuel hand-over records four times (summary,
+   display copy, refresh, fleet loop). Proposal: read once per operation
+   and truck, reused while the `fuel-hand-overs` generation is
+   unchanged. Example: 4 active trucks, one refresh each - 16 reads
+   become 4. Cost: a hand-over recorded by another instance during an
+   operation shows on the next one (seconds); with one instance, never.
+   The write-time option stays available but changes what Root accepted.
+2. **F25 cost semantics - one rule per question, in `FuelPlanCost`.**
+   Proposed answers, each its own release note:
+   - Access minutes (1): stored `DetourMinutes` everywhere. Example: a
+     stop 3 miles off the interstate by a one-way ramp stores 11
+     minutes; the replay derives 6 from miles and so charges less than
+     the optimizer chose on.
+   - Initial access (2): include it in `SavingsUsd`; ranking unchanged,
+     the saving shown stops overstating by that access.
+   - Schedule delay (3): keep the shown figure as "remaining" and label
+     it so; show the chosen total beside it. Example: a plan chosen at
+     $412 with $18 of delay shows $394 after publication today, which
+     reads as a saving that did not happen.
+   - Negative detours (4) and invalid prices (8): refuse at the owner and
+     report, as the replay does; the optimizer stops dropping silently.
+   - Arrival floor (5): `Max(Reserve, Minimum)` in one owner; a plan the
+     projection calls valid with 40 gallons can be invalid in the replay
+     when the reserve is 50.
+   - Future fuel on a price refresh (6): repriced at the new price, so
+     fuel left in the tank is valued as it would be bought today.
+   - Materiality (7): total-based, as the choice is; a per-stop test can
+     call a $2 difference on each of five stops immaterial while the
+     plan differs by $10.
+3. **Diagnostics - an operator role.** Proposal: a carrier's Admin sees
+   its own carrier's figures; process-wide figures (other carriers'
+   activity counts, memory, queues) only for an operator role held by
+   the product's owners. Example: with a second carrier, its Admin would
+   see how many loads AMF is running. No personal data is exposed today.
+4. **F19 shared fuel data - catalogue shared, discounts per carrier.**
+   Proposal: `FuelStations` keeps location and brand, written only by the
+   operator's import; each carrier's discount mail writes a carrier-owned
+   discount table, and pricing reads the serving carrier's discount.
+   Example: a second carrier's discount file today overwrites the rows
+   AMF plans with, so AMF's plans would use the other carrier's
+   discounts. Needs a migration; blocks selling, not today's work.
+5. **Background liveness - one heartbeat per operation.** Proposal:
+   each of the thirteen operations registers an expected interval and
+   beats once per round before its work; road preparation and ETA
+   refresh first get a bounded round. Example: an ETA refresh blocked on
+   a provider call that never returns leaves forecasts ageing with no
+   signal; with a heartbeat, readiness names the operation after its
+   interval.
+6. **Google address attempts - keep 60 a minute per process.** Example:
+   an import bringing 150 new addresses geocodes 60 in the first minute;
+   the rest answer "busy" (the saved route is kept), are not
+   remembered, and are asked again when next needed - three minutes at
+   the earliest; when a later import retries them is not measured.
+   Raise only if an import measures longer waits than dispatchers
+   accept; the limit is one constant.
+7. **F18 role model - no limited role yet.** Every signed-in non-Admin
+   is Dispatch and reaches 65 state-changing endpoints. Proposal: keep
+   it while each carrier's users are its own dispatchers; define a
+   limited role (read, messaging, no broker/expense/driver-number edits)
+   before selling to carriers with outside staff.
+8. **Kept, no decision proposed.** The sign-in contract (a sign-in name
+   unique across carriers; a WhatsApp number held by another carrier
+   refused) stays as it is. D4 key custody and D5 proxy limits keep
+   their designs above; they need owner and platform access.
+
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done
