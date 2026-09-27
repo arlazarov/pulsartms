@@ -141,6 +141,34 @@ public sealed class MessagingSignalsTests
     await f.Signals.LeaveAsync();
   }
 
+  // A tab that leaves the messaging views and comes back asks with the
+  // mailbox it had. Opening a new one each time left the last request
+  // holding the old one on the server for its whole wait - Hosting does
+  // not pass the abort on - and a few returns within a wait used up the
+  // account's share: the 503s of September 27. Another account, or
+  // another sign-in, never reuses it.
+  [Fact]
+  public async Task ATabThatComesBackAsksWithTheMailboxItHad()
+  {
+    await using var f = new Fixture();
+    var server = f.Server();
+    f.LocalOnly();
+    await f.Signals.JoinAsync();
+    Assert.Equal(server.Mailbox, (await server.NextAsync()).Mailbox);
+
+    await f.Signals.LeaveAsync();
+    await f.Signals.JoinAsync();
+
+    Assert.Equal(server.Mailbox, (await server.NextAsync()).Mailbox);
+    Assert.Equal(1, server.Opens);
+
+    f.Auth.SetClaims(
+      new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())
+    );
+    await Eventually(() => Assert.Equal(2, server.Opens));
+    await f.Signals.LeaveAsync();
+  }
+
   [Fact]
   public async Task ATabJoinsUnderItsAccountAndRejoinsWhenTheAccountChanges()
   {
@@ -484,6 +512,7 @@ public sealed class MessagingSignalsTests
   {
     public Guid Mailbox { get; } = Guid.NewGuid();
     public int Requests;
+    public int Opens;
     private readonly Channels.Channel<Pending> _pending =
       Channels.Channel.CreateUnbounded<Pending>();
 
@@ -496,7 +525,10 @@ public sealed class MessagingSignalsTests
       var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
       Guid? asked = Guid.TryParse(query["mailbox"], out var id) ? id : null;
       if (asked is null)
+      {
+        Interlocked.Increment(ref Opens);
         return Fixture.Json(Mailbox, true, []);
+      }
       if (answerAfter is { } after)
       {
         await Task.Delay(after, time, ct);

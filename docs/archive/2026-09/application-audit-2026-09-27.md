@@ -841,6 +841,32 @@ failed on the new worktree's missing Client packages and is marked.
   change: this branch does not contain the released migration 74, and a
   second migration here would have to be ordered at integration.
 
+- **Messaging 503s after the 0e6add5d release.** Twelve 503s on
+  `GET /api/messaging/changes` (20:35, 20:49, 20:52 UTC), none logged in
+  the three days before. Attribution, proven from the code path and the
+  request log (diagnostic-FG2rAH, no IPs or ids): every refused request
+  named no mailbox, so each was an open; the waiting bound is checked only
+  for a known mailbox and the process bound needs 512 mailboxes, so every
+  refusal was the account's share (4). At 20:35:10 four waits with a
+  mailbox were in flight from one user agent. Consistent with the log,
+  not proven: every one of the 198 waits lasted 20.0 s, none ended early,
+  across 13 new mailboxes in 20 minutes - a browser that stops listening
+  does not end its request on the server, so each new leader leaves the
+  old mailbox held for up to one wait. The 503s come in pairs 0.12 s
+  apart and the Client does not retry: an intermediary retrying a 503
+  once is the likely reading, unconfirmed. Changes: a refusal now logs
+  which bound refused with the counts, never the account
+  (`MessagingMailboxes`); a tab that leaves the messaging views and comes
+  back asks with its own mailbox under the same account and sign-in
+  (`MessagingSignals`, red diagnostic-kgopft, green diagnostic-hPOhI1).
+  Tests pin the lifecycle: four leaders restarted within one wait refuse
+  the fifth open, which is admitted once the waits end
+  (diagnostic-jToIxx); mutations of the scope check and the bound name
+  fail (diagnostic-9RkEfZ). Limits: leadership moving to another tab,
+  and each separate sign-in of one account, still opens its own
+  mailbox; a refusal lasts at most one wait, while the Client backs off
+  and polls. Not released.
+
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done

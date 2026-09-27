@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+
 namespace Application.Features.Messaging.Services;
 
 // A browser's subscription to MessagingEvents, kept between its requests so
@@ -27,6 +29,7 @@ namespace Application.Features.Messaging.Services;
 public sealed class MessagingMailboxes(
   MessagingEvents events,
   TimeProvider clock,
+  ILogger<MessagingMailboxes> logger,
   int limit = MessagingMailboxes.Limit,
   int perAccount = MessagingMailboxes.PerAccount,
   int held = MessagingMailboxes.Held
@@ -80,8 +83,9 @@ public sealed class MessagingMailboxes(
     CancellationToken ct
   )
   {
-    Mailbox mailbox;
-    Guid known;
+    Mailbox? mailbox = null;
+    var known = Guid.Empty;
+    Refusal? refused = null;
     lock (gate)
     {
       Sweep();
@@ -91,14 +95,36 @@ public sealed class MessagingMailboxes(
         || found.Company != company
         || found.Account != account
       )
-        return Open(company, account) is { } opened
-          ? new(opened, true, [])
-          : null;
-      if (holding >= held)
-        return null;
-      (mailbox, known) = (found, asked);
-      mailbox.Leases++;
-      holding++;
+      {
+        if (Open(company, account, out var bound) is { } opened)
+          return new(opened, true, []);
+        refused = Counted(bound, company, account);
+      }
+      else if (holding >= held)
+        refused = Counted("waiting", company, account);
+      else
+      {
+        (mailbox, known) = (found, asked);
+        mailbox.Leases++;
+        holding++;
+      }
+    }
+    if (mailbox is null)
+    {
+      // Which bound refused, with the counts that decided it - never the
+      // account - so a refusal in production can be attributed.
+      logger.LogWarning(
+        "Messaging mailbox refused by the {Bound} bound for {CompanyId}: "
+          + "account mailboxes {AccountMailboxes}, held {AccountHeld}; "
+          + "process mailboxes {Mailboxes}, waiting requests {Waiting}",
+        refused!.Bound,
+        company,
+        refused.AccountMailboxes,
+        refused.AccountHeld,
+        refused.Mailboxes,
+        refused.Waiting
+      );
+      return null;
     }
     try
     {
@@ -114,6 +140,36 @@ public sealed class MessagingMailboxes(
       }
     }
   }
+
+  private sealed record Refusal(
+    string Bound,
+    int AccountMailboxes,
+    int AccountHeld,
+    int Mailboxes,
+    int Waiting
+  );
+
+  // Under the lock.
+  private Refusal Counted(string bound, Guid company, string account)
+  {
+    var own = Own(company, account).ToList();
+    return new(
+      bound,
+      own.Count,
+      own.Count(x => x.Value.Leases > 0),
+      mailboxes.Count,
+      holding
+    );
+  }
+
+  // Under the lock.
+  private IEnumerable<KeyValuePair<Guid, Mailbox>> Own(
+    Guid company,
+    string account
+  ) =>
+    mailboxes.Where(x =>
+      x.Value.Company == company && x.Value.Account == account
+    );
 
   private async Task<MessagingChanges> ReadAsync(
     Guid id,
@@ -162,13 +218,13 @@ public sealed class MessagingMailboxes(
   // Under the lock. The account's own oldest gives way at its share, then
   // the process's idlest at the limit; when those are all held, nothing is
   // admitted.
-  private Guid? Open(Guid company, string account)
+  private Guid? Open(Guid company, string account, out string bound)
   {
-    var own = mailboxes.Where(x =>
-      x.Value.Company == company && x.Value.Account == account
-    );
+    var own = Own(company, account);
+    bound = "account";
     if (own.Count() >= perAccount && !EvictIdlest(own))
       return null;
+    bound = "process";
     if (mailboxes.Count >= limit && !EvictIdlest(mailboxes))
       return null;
     var id = Guid.NewGuid();

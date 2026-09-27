@@ -1,5 +1,6 @@
 using Application.Features.Messaging.Services;
 using Domain.Entities;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Server.Tests.Messaging;
@@ -17,11 +18,13 @@ public sealed class MessagingMailboxesTests
   private readonly MessagingEvents events = new();
   private readonly FakeTimeProvider clock = new();
 
+  private readonly Refusals refusals = new();
+
   private MessagingMailboxes Mailboxes(
     int limit = MessagingMailboxes.Limit,
     int perAccount = MessagingMailboxes.PerAccount,
     int held = MessagingMailboxes.Held
-  ) => new(events, clock, limit, perAccount, held);
+  ) => new(events, clock, refusals, limit, perAccount, held);
 
   [Fact]
   public async Task AWaitingRequestAnswersAsSoonAsAChangeCommits()
@@ -437,6 +440,63 @@ public sealed class MessagingMailboxesTests
     );
   }
 
+  // The 503s of September 27 (20:35-20:52 UTC) were opens refused by the
+  // account's share. A browser that stops listening - a tab leaving the
+  // messaging views, another tab taking the lead - does not end its
+  // request on the server, since Hosting does not pass the abort on: that
+  // wait holds its mailbox until the wait ends. Four new leaders of one
+  // account within one wait use up its share; the fifth open is refused
+  // and says which bound refused it; once the waits end, it is admitted.
+  [Fact]
+  public async Task LeadersRestartedWithinOneWaitUseUpTheShareUntilItEnds()
+  {
+    var mailboxes = Mailboxes();
+    var abandoned = new List<Task<MessagingChanges?>>();
+    for (var leader = 0; leader < MessagingMailboxes.PerAccount; leader++)
+    {
+      var box = await OpenAsync(mailboxes);
+      abandoned.Add(mailboxes.WaitAsync(Company.Amf, Ann, box, default));
+      clock.Advance(TimeSpan.FromSeconds(3));
+    }
+
+    Assert.Null(await mailboxes.WaitAsync(Company.Amf, Ann, null, default));
+    var refusal = Assert.Single(refusals.Seen);
+    Assert.Equal(
+      ("account", 4, 4, 4, 4),
+      (
+        refusal.Bound,
+        refusal.AccountMailboxes,
+        refusal.AccountHeld,
+        refusal.Mailboxes,
+        refusal.Waiting
+      )
+    );
+    Assert.NotNull(
+      await mailboxes.WaitAsync(Company.Amf, "bob", null, default)
+    );
+
+    clock.Advance(MessagingMailboxes.Wait);
+    await Task.WhenAll(abandoned).WaitAsync(TimeSpan.FromSeconds(5));
+    Assert.NotNull(await mailboxes.WaitAsync(Company.Amf, Ann, null, default));
+    Assert.Single(refusals.Seen);
+  }
+
+  // The two other bounds name themselves too.
+  [Fact]
+  public async Task TheProcessAndWaitingBoundsNameThemselves()
+  {
+    var mailboxes = Mailboxes(limit: 1, held: 1);
+    var ann = await OpenAsync(mailboxes);
+    var waiting = mailboxes.WaitAsync(Company.Amf, Ann, ann, default);
+
+    Assert.Null(await mailboxes.WaitAsync(Company.Amf, "bob", null, default));
+    Assert.Null(await mailboxes.WaitAsync(Company.Amf, Ann, ann, default));
+
+    Assert.Equal(["process", "waiting"], refusals.Seen.Select(x => x.Bound));
+    clock.Advance(MessagingMailboxes.Wait);
+    await waiting.WaitAsync(TimeSpan.FromSeconds(5));
+  }
+
   private static void InterlockedMax(ref int most, int value)
   {
     for (
@@ -464,5 +524,49 @@ public sealed class MessagingMailboxesTests
     Assert.True(opened.Resync);
     Assert.Empty(opened.Conversations);
     return opened.Mailbox;
+  }
+
+  private sealed record Refusal(
+    string Bound,
+    int AccountMailboxes,
+    int AccountHeld,
+    int Mailboxes,
+    int Waiting
+  );
+
+  // The refusal warnings, by their structured values.
+  private sealed class Refusals : ILogger<MessagingMailboxes>
+  {
+    public List<Refusal> Seen { get; } = [];
+
+    public IDisposable? BeginScope<TState>(TState state)
+      where TState : notnull => null;
+
+    public bool IsEnabled(LogLevel logLevel) => true;
+
+    public void Log<TState>(
+      LogLevel logLevel,
+      EventId eventId,
+      TState state,
+      Exception? exception,
+      Func<TState, Exception?, string> formatter
+    )
+    {
+      var values = (
+        (IEnumerable<KeyValuePair<string, object?>>)state!
+      ).ToDictionary(x => x.Key, x => x.Value);
+      Assert.Equal(LogLevel.Warning, logLevel);
+      Assert.False(values.ContainsKey("Account"));
+      lock (Seen)
+        Seen.Add(
+          new(
+            (string)values["Bound"]!,
+            (int)values["AccountMailboxes"]!,
+            (int)values["AccountHeld"]!,
+            (int)values["Mailboxes"]!,
+            (int)values["Waiting"]!
+          )
+        );
+    }
   }
 }
