@@ -62,6 +62,25 @@ public sealed class GetLoadCostsTests
     );
   }
 
+  // The rows shown stop at a page; the totals do not (audit F22). A load
+  // with more shares than the page used to total the page alone.
+  [Fact]
+  public async Task TotalsCoverEveryShareWhenTheRowsStopAtAPage()
+  {
+    await using var f = await CostFixture.CreateAsync();
+    for (var i = 0; i < 201; i++)
+    {
+      var toll = await f.AddExpenseAsync("toll", 1m, "USD");
+      await f.AttributeAsync([new(f.First, 1m)], 0, toll);
+    }
+
+    var result = (await f.CostsAsync(f.First)).Response!;
+
+    Assert.True(result.Truncated);
+    Assert.Equal(200, result.Rows.Count);
+    Assert.Equal(201m, Assert.Single(result.Totals).Amount);
+  }
+
   [Fact]
   public async Task AMissingLoadIsReportedRatherThanReturningAnEmptyReading()
   {
