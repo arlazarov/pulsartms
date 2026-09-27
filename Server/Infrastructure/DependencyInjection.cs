@@ -236,6 +236,10 @@ public static class DependencyInjection
         client.Timeout = TimeSpan.FromSeconds(30)
       )
       .RemoveAllLoggers();
+    services.AddSingleton<StopGeocodeMemory>();
+    services.AddSingleton<ICacheMemorySource>(sp =>
+      sp.GetRequiredService<StopGeocodeMemory>()
+    );
     services.AddSingleton<SamsaraHosHistoryCache>();
     services.AddSingleton<ICacheMemorySource>(sp =>
       sp.GetRequiredService<SamsaraHosHistoryCache>()

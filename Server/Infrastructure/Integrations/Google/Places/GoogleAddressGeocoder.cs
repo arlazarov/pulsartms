@@ -3,7 +3,6 @@ using System.Text.RegularExpressions;
 using Application.Features.Routing.Interfaces;
 using Domain.Models.Routing;
 using Domain.Rules;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 
 namespace Infrastructure.Integrations.Google.Places;
@@ -11,12 +10,10 @@ namespace Infrastructure.Integrations.Google.Places;
 public sealed class GoogleAddressGeocoder(
   HttpClient http,
   IConfiguration configuration,
-  IMemoryCache cache
+  StopGeocodeMemory memory
 ) : IAddressGeocoder
 {
   private static readonly SemaphoreSlim Gate = new(1, 1);
-
-  private sealed record FailedLookup(string Message, DateTime RetryAfter);
 
   public async Task<RoutePoint> GeocodeAsync(
     string address,
@@ -34,15 +31,13 @@ public sealed class GoogleAddressGeocoder(
       throw new RoutePlanningException(
         "Google address lookup is not configured."
       );
-    var cacheKey = "stop-geocode:" + address.Trim().ToUpperInvariant();
-    var failureKey = cacheKey + ":failure";
     await Gate.WaitAsync(ct);
     try
     {
-      if (cache.TryGetValue<ResolvedAddress>(cacheKey, out var cached))
-        return cached!;
-      if (cache.TryGetValue<FailedLookup>(failureKey, out var failed))
-        throw new RoutePlanningException(failed!.Message, failed.RetryAfter);
+      if (memory.Find(address) is { } cached)
+        return cached;
+      if (memory.FindFailure(address) is { } failed)
+        throw new RoutePlanningException(failed.Message, failed.RetryAfter);
       using var response = await http.GetAsync(
         "https://maps.googleapis.com/maps/api/geocode/json?address="
           + Uri.EscapeDataString(address)
@@ -53,7 +48,7 @@ public sealed class GoogleAddressGeocoder(
       if (!response.IsSuccessStatusCode)
         throw new RoutePlanningException(
           $"Google address lookup failed (HTTP {(int)response.StatusCode}).",
-          DateTime.UtcNow.AddMinutes(5)
+          memory.Now.AddMinutes(5)
         );
       using var json = JsonDocument.Parse(
         await response.Content.ReadAsStringAsync(ct)
@@ -62,7 +57,7 @@ public sealed class GoogleAddressGeocoder(
       if (root.GetProperty("status").GetString() != "OK")
         throw new RoutePlanningException(
           "Google could not resolve the stop address. Check the address and API configuration.",
-          DateTime.UtcNow.AddHours(1)
+          memory.Now.AddHours(1)
         );
       var candidates = root.GetProperty("results").EnumerateArray().ToArray();
       var matches = candidates
@@ -124,7 +119,7 @@ public sealed class GoogleAddressGeocoder(
         Part("country"),
         Part("postal_code")
       );
-      cache.Set(cacheKey, resolved, TimeSpan.FromHours(12));
+      memory.Remember(address, resolved);
       return resolved;
     }
     catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -136,15 +131,11 @@ public sealed class GoogleAddressGeocoder(
       // Share failures across route consumers without storing provider response
       // data.
       var expiry =
-        ex.RetryAfter < DateTime.UtcNow.AddHours(1)
+        ex.RetryAfter < memory.Now.AddHours(1)
           ? ex.RetryAfter
-          : DateTime.UtcNow.AddHours(1);
-      if (expiry > DateTime.UtcNow && !cache.TryGetValue(failureKey, out _))
-        cache.Set(
-          failureKey,
-          new FailedLookup(ex.Message, ex.RetryAfter),
-          expiry
-        );
+          : memory.Now.AddHours(1);
+      if (memory.FindFailure(address) is null)
+        memory.RememberFailure(address, new(ex.Message, ex.RetryAfter), expiry);
       throw;
     }
     catch (Exception ex)
@@ -156,11 +147,11 @@ public sealed class GoogleAddressGeocoder(
             or InvalidOperationException
       )
     {
-      var failure = new FailedLookup(
+      var failure = new StopGeocodeMemory.Failure(
         "Google address lookup is temporarily unavailable. The saved route has been kept.",
-        DateTime.UtcNow.AddMinutes(5)
+        memory.Now.AddMinutes(5)
       );
-      cache.Set(failureKey, failure, failure.RetryAfter);
+      memory.RememberFailure(address, failure, failure.RetryAfter);
       throw new RoutePlanningException(failure.Message, failure.RetryAfter);
     }
     finally

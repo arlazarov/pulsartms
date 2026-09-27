@@ -1170,6 +1170,23 @@ failed on the new worktree's missing Client packages and is marked.
   every carrier's lookups (as D3's did for hours), and
   `FleetTelemetryCache` keeps one never-evicted response per carrier -
   bounded by carriers, reported for completeness.
+  Implemented (Root approved the scoped geocode budget):
+  `StopGeocodeMemory` holds resolved and failed addresses in a private
+  cache limited to `CacheBudgets.Geocodes` (4 MiB, entries sized from
+  their strings), reported as `stop-geocodes` in bytes; each entry keeps
+  its expiry by the injected clock (twelve hours resolved, a failure
+  until its retry, at most an hour). The geocoder's global gate is
+  unchanged, so a concurrent lookup of one address still asks Google
+  once and the provider sees no more concurrency than before. Tests:
+  ten thousand distinct addresses stay within the budget; lifetimes by
+  a test clock; five lookups of one address make one call; failures by
+  status and by transport are not asked again until their retry
+  (diagnostic-8VWO2W for the first version; mutations of the limit, the
+  expiry and the transport failure fail, diagnostic-G0Drow after the
+  transport case was added - an earlier run let that mutation survive,
+  marked; groups addresses and synchronization exit 0, Server 1946,
+  Client 747, diagnostic-T0qmvm). The shared cache itself still has no
+  byte ceiling.
 
 - **F27 re-read against the code.** Each item, as it stands at this
   branch:
