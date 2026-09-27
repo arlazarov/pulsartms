@@ -782,6 +782,39 @@ public sealed class DriverMessagingWebhookTests
     );
   }
 
+  // Root's review: an early status past its lifetime is not applied even
+  // when no later webhook has pruned it - the sender saving the id after
+  // Keep, with nothing received meanwhile, discards it instead.
+  [Fact]
+  public async Task AnExpiredEarlyStatusIsNotAppliedByALateSender()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var (driver, truck) = await f.RecipientAsync("+15558234327");
+    Assert.Equal(
+      200,
+      await f.PostAsync(Status("wamid.1", "failed", 10, code: 131047))
+    );
+    f.Refresh.Time.Advance(
+      EarlyDeliveryStatuses.Keep + TimeSpan.FromMinutes(1)
+    );
+
+    await f.Delivery(new FakeDriverMessaging())
+      .SendAsync(
+        f.Attempt(driver, truck),
+        false,
+        _ => Task.FromResult(true),
+        default
+      );
+
+    Assert.Equal(
+      DriverMessageStatuses.Accepted,
+      (await f.Db.DriverMessages.AsNoTracking().SingleAsync()).Status
+    );
+    Assert.Empty(
+      await f.Db.PendingDeliveryStatuses.AsNoTracking().ToListAsync()
+    );
+  }
+
   // A carrier keeps at most PerCompany of them.
   [Fact]
   public async Task ACarrierKeepsABoundedNumber()

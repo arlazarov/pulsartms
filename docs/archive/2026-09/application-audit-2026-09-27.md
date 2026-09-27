@@ -1399,6 +1399,13 @@ failed on the new worktree's missing Client packages and is marked.
   for an id never saved stays an hour and applies to nothing; no
   auditor rule, because a kept status that finds its id is applied by
   construction.
+  Root's review of `b538ba7c`: taking kept statuses applied them without
+  checking their age, and pruning ran only when a webhook kept another,
+  so a sender saving the id after an hour with nothing received
+  meanwhile applied an expired status. Taking now discards expired rows
+  in the same transaction and applies only those within the hour. Red
+  diagnostic-IZQNIn; green, and a mutation applying expired rows fails
+  (diagnostic-lJLgaw).
 
 ## Open gaps, owners and completion criteria
 

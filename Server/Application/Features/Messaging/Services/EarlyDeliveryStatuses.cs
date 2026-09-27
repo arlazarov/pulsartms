@@ -172,8 +172,12 @@ public sealed class EarlyDeliveryStatuses(
     var pending = await Pending(channel, businessNumber, providerMessageId)
       .OrderBy(x => x.At)
       .ToListAsync(ct);
+    // All are taken; only those still within Keep are applied. Pruning runs
+    // when a webhook keeps a status, so an id saved after Keep with none
+    // received meanwhile would otherwise apply an expired one.
     db.PendingDeliveryStatuses.RemoveRange(pending);
-    return pending;
+    var since = clock.GetUtcNow().UtcDateTime - Keep;
+    return [.. pending.Where(x => x.ReceivedAt >= since)];
   }
 
   private IQueryable<PendingDeliveryStatus> Pending(
