@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Features.Eta.Services;
 using Application.Features.Routing.Services.Routes;
 using Domain.Models.Eta;
 using Domain.Models.Routing;
@@ -137,6 +138,67 @@ public sealed class EtaDisplayReadTests
       }
     )
       Assert.Equal(eta.PeekForDisplay(read), eta.GetCached(read));
+  }
+
+  // Stage 4e: a forecast from the store and one from memory are judged by
+  // the same decision; the later calculation of the same work wins in
+  // either direction, the first offered of two made together, and one for
+  // other work never, however new. Both cost the plan's two keys once.
+  [Fact]
+  public void TheLaterForecastOfTheSameWorkWinsWhereverItIsKept()
+  {
+    using var fixture = new Fixture();
+    var eta = fixture.Services.Eta;
+    var state = State(Plan());
+    var earlier = Forecast();
+    var later = earlier with
+    {
+      CalculatedAt = earlier.CalculatedAt.AddSeconds(1),
+    };
+    var (work, route) = eta.SavedKeys(state);
+    EtaMemory.Entry? Saved(DispatchEta value, string? key = null) =>
+      EtaService.Saved(
+        new(
+          state.Plan!.DispatchId,
+          state.Plan.TruckId,
+          state.Plan.DispatchId,
+          "inputs",
+          "",
+          value
+        )
+        {
+          WorkKey = key ?? work,
+          RouteKey = route,
+        }
+      );
+    var other = eta.SavedKeys(state with { Plan = Other(state.Plan!) }).Work;
+
+    eta.Record(state, "signature", earlier);
+    var before = eta.KeysBuilt;
+    Assert.Same(
+      later,
+      eta.ForDisplay(state, Saved(later), eta.Remembered(state))
+    );
+    Assert.Equal(2, eta.KeysBuilt - before);
+    Assert.Same(
+      earlier,
+      eta.ForDisplay(state, Saved(later, other), eta.Remembered(state))
+    );
+    eta.Record(state, "signature", later);
+    Assert.Same(
+      later,
+      eta.ForDisplay(state, Saved(earlier), eta.Remembered(state))
+    );
+    var together = later with { UnavailableReason = "the stored one" };
+    Assert.Same(
+      together,
+      eta.ForDisplay(state, Saved(together), eta.Remembered(state))
+    );
+    Assert.Null(
+      EtaService.Saved(
+        new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "", "", later)
+      )
+    );
   }
 
   private sealed class Fixture : IDisposable

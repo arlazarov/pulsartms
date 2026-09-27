@@ -69,6 +69,7 @@ public sealed partial class EtaForecastService
       cachedTelemetryOnly: true
     );
     var committed = false;
+    EtaForecastSnapshot[] snapshots = [];
     var changed = false;
     // Why a forecast was not saved: truck 11006's forecast failed to save
     // every few minutes and the log could not say which of these it was.
@@ -124,19 +125,30 @@ public sealed partial class EtaForecastService
         unsaved = "inputs-changed";
         return;
       }
-      var snapshots = description
-        .Loads.Select(load => new EtaForecastSnapshot(
-          load.Id,
+      // The root's row keeps the whole chain's forecast - what this
+      // process' memory holds and the map shows - with the keys of the plan
+      // it was calculated on, so another process reads the same answer;
+      // readers of one load take their part (PopulateAsync). A waiting
+      // result has no keys here as it has none in memory.
+      var keys = calculation is null
+        ? ((string, string)?)null
+        : eta.SavedKeys(state);
+      snapshots = description
+        .Loads.Select(load => (Load: load, Root: IsRoot(load, description)))
+        .Select(x => new EtaForecastSnapshot(
+          x.Load.Id,
           truckId,
           description.RootDispatchId,
           description.InputHash,
           description.DriverExternalId,
-          Filter(result, load.Id)
+          x.Root ? result : Filter(result, x.Load.Id)
         )
         {
-          ExecutionLegId = load.ExecutionLegId,
+          ExecutionLegId = x.Load.ExecutionLegId,
           RootExecutionLegId = description.RootExecutionLegId,
-          AssignmentRevision = load.AssignmentRevision,
+          AssignmentRevision = x.Load.AssignmentRevision,
+          WorkKey = x.Root ? keys?.Item1 : null,
+          RouteKey = x.Root ? keys?.Item2 : null,
         })
         .ToArray();
       await using (
@@ -199,6 +211,7 @@ public sealed partial class EtaForecastService
     {
       if (committed)
       {
+        Committed(snapshots);
         if (calculation is { Published: false })
           eta.Publish(state, calculation, description.InputHash);
         else if (waiting is not null)
@@ -224,6 +237,13 @@ public sealed partial class EtaForecastService
       }
     }
   }
+
+  private static bool IsRoot(
+    RouteWorkSnapshot load,
+    EtaChainDescription chain
+  ) =>
+    load.Id == chain.RootDispatchId
+    && load.ExecutionLegId == chain.RootExecutionLegId;
 
   // A forecast readers could see, dropped by a refresh: said once with why
   // (the open map ETA incident, where trucks lost theirs every half minute).

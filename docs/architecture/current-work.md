@@ -340,20 +340,61 @@ completed.
      on every HOS refresh; the prepared fuel hand-over can lag up to the
      30-second refresh, while the summary's clocks are already read fresh
      at read time. Recorded, not built.
-   - **4e, analysed, not built.**
+   - **4e ETA display read, implemented (not released).** One owner
+     chooses the forecast a summary shows: `EtaForecastService.
+     ReadForDisplayAsync`, for every plan of a board, map or preview read
+     at once. The store is the truth; a process' memory holds only
+     forecasts it committed and is a faster copy. Both are judged by the
+     one decision (`EtaService.Decide`) against the plan's work and road,
+     and the later calculation of the same work wins in either direction;
+     of two calculated at the same instant the saved one wins, because
+     the store kept the first committed and refused the other, whose
+     process may still hold it. A forecast for other work is never
+     chosen, however new.
+     - The root's row now holds the whole chain's forecast, as memory does
+       and the map shows (pending later loads included), with SHA-256
+       hashes of the work and road keys of the plan it was calculated on
+       (`DispatchEtaForecasts.WorkKey`, `RouteKey`, migration
+       `RecordEtaForecastWork`, not applied anywhere). Followers' rows
+       stay filtered and keyless. The board takes each load's part when
+       it reads (`PopulateAsync`), which is what it got before.
+     - Saved forecasts are read through the read cache, one statement per
+       batch of scopes, keyed by the generation the load started under:
+       a warm read costs no query, and a load that raced an invalidation
+       is stored under the old generation and never read again. A commit
+       invalidates its scopes after commit, locally and, through
+       `CacheInvalidationRelay`, on other processes; until the relay
+       delivers it another process keeps showing the older committed
+       forecast - honestly older, never an uncommitted one.
+     - Old rows: saved before the keys, they cannot be judged against a
+       plan and are never shown by this read; a process without its own
+       copy shows none until the next committed refresh of that truck
+       writes the keys (how soon after release is not measured). Their filtered forecast still serves the board.
+     - Tests (two processes on one database, each with its own memory,
+       read cache and relay): cold read of the other's commit in one
+       query, warm in none; a warm reader moves only through the relay; a
+       load across a commit and relay is not kept; an older calculation
+       refused by the store is neither remembered nor shown; a tie shows
+       the stored one on both; keyless rows are not shown until
+       recommitted; the board's part of the chain matches the old row
+       shape; the keys' upsert on SQLite and PostgreSQL.
+     - Gap: the test fixture has no hours or position, so its refresh
+       commits a forecast without stops. The chain with stops in these
+       tests is written into the saved row by hand: it proves the
+       selection and the board's filtering, not that a real refresh's
+       populated chain reaches another process intact. A fixture with
+       hours and a position for that producer-to-consumer agreement is
+       still to be built.
+   - **4e fuel and duty, open.**
      - Fuel projection: `TruckFuelPlans.ApplyAsync` runs for the summary
        and its publisher with the fresh itinerary and HOS, and for the
        route refresh and the fleet loop without them, before a price
        refresh. The inputs differ, so these are not duplicates by the
        shared-read invariant; merging them would change what the price
-       refresh sees. Next step is measuring each call's cost, not
-       removing one.
-     - ETA reader: the board reads saved forecasts, valid across
-       processes; the summary reads the process' memory, fresher but
-       absent on a process that has not refreshed the truck. One reader
-       needs the ETA owner's decision between durability and freshness
-       (for example memory first, saved forecast as the fallback with its
-       own validity), then parity tests between board and map.
+       refresh sees. Measurement of each caller, including shared
+       subwork, is next.
+     - Duty: a prepared summary does not name the duty it was prepared
+       with; it is to be marked stale when the duty differs.
 
 Each stage is a separate candidate with its own review; none resets
 pending work, forces routing or changes historical stops.
@@ -398,9 +439,9 @@ either invalidate `planning-inputs` after commit and send
 - execution commands and source reconciliation through `MarkTruckDirty`.
 
 Gaps to close: tracking is not in the summary signature (stage 4), and
-`Committed` reaches only the local process; whether
-`CacheInvalidationRelay` carries item invalidations across processes is
-not verified. A late summary must not replace one built from a newer
+`Committed` reaches only the local process. `CacheInvalidationRelay`
+carries read-cache item invalidations across processes; this is tested
+for saved ETA forecasts (stage 4e), not for the summary cache. A late summary must not replace one built from a newer
 capture (stage 2 stores under the capture it was built from).
 
 ## Work counts
@@ -444,6 +485,10 @@ a reviewed reconciliation, never an automatic change from GPS or source:
 - Legacy loads with a stored planning revision: none open on 2026-09-27.
 - Summaries, previews and ETA memory are per process and expire; a
   release needs no cache migration.
+- Saved ETA forecasts without keys (every row before stage 4e): not
+  shown by the display read until the truck's next committed refresh
+  writes them; no backfill, since keys can only come from the plan the
+  forecast was calculated on.
 
 ## Rules for future features
 

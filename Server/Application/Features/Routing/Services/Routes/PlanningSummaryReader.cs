@@ -12,7 +12,7 @@ public sealed class PlanningSummaryReader(
   RoutePlanningService routes,
   ICurrentCompany company,
   ReadCache reads,
-  EtaService eta
+  EtaForecastService forecasts
 )
 {
   // The work a summary without its own result speaks for: the dispatch it
@@ -41,7 +41,9 @@ public sealed class PlanningSummaryReader(
     + $"/{work.CurrentAssignmentRevision}"
     + $":{reads.Generation(ReadGroups.Settings)}";
 
-  public AutomaticPlanningResult Read(
+  // The prepared part of a summary, without its forecast: readers get the
+  // whole through ReadAsync or ReadManyAsync.
+  internal AutomaticPlanningResult Read(
     TruckPlanningInputs work,
     Guid? dispatch = null,
     Guid? knownPlanId = null,
@@ -89,23 +91,65 @@ public sealed class PlanningSummaryReader(
     return result with
     {
       Hos = work.Hos,
-      // The forecast as it stands now, not as it stood when the summary
-      // was prepared up to half a minute ago: read from memory without
-      // side effects, against the prepared plan's own identity. Without a
-      // plan there is no identity to read against; the prepared answer
-      // stands.
-      State = result.State is { Plan: not null } state
-        ? state with
-        {
-          Eta = eta.PeekForDisplay(state),
-        }
-        : result.State,
       WorkConflicts = WorkPlacements.Conflicts(work),
       Message =
         result.IsRefreshing && result.Message is null
           ? "Planning summary is updating."
           : result.Message,
     };
+  }
+
+  public async Task<AutomaticPlanningResult> ReadAsync(
+    TruckPlanningInputs work,
+    CancellationToken ct,
+    Guid? dispatch = null,
+    Guid? knownPlanId = null,
+    int? knownVersion = null,
+    bool summaryOnly = false
+  ) =>
+    (
+      await WithForecastsAsync(
+        [Read(work, dispatch, knownPlanId, knownVersion, summaryOnly)],
+        ct
+      )
+    )[0];
+
+  // Many trucks' summaries, their forecasts read in one batch.
+  public Task<IReadOnlyList<AutomaticPlanningResult>> ReadManyAsync(
+    IEnumerable<TruckPlanningInputs> works,
+    CancellationToken ct,
+    bool summaryOnly = false
+  ) =>
+    WithForecastsAsync(
+      [.. works.Select(work => Read(work, summaryOnly: summaryOnly))],
+      ct
+    );
+
+  // The forecast as it stands now - the newest valid committed one, from
+  // this process' memory or the saved forecasts - not as it stood when the
+  // summary was prepared. Without a plan there is no identity to read
+  // against, and the prepared answer stands.
+  private async Task<IReadOnlyList<AutomaticPlanningResult>> WithForecastsAsync(
+    List<AutomaticPlanningResult> results,
+    CancellationToken ct
+  )
+  {
+    var planned = results
+      .Select((result, index) => (result.State, Index: index))
+      .Where(x => x.State?.Plan is not null)
+      .ToList();
+    if (planned.Count == 0)
+      return results;
+    var etas = await forecasts.ReadForDisplayAsync(
+      [.. planned.Select(x => x.State!)],
+      ct
+    );
+    for (var i = 0; i < planned.Count; i++)
+      results[planned[i].Index] = results[planned[i].Index] with
+      {
+        State = planned[i].State! with { Eta = etas[i] },
+      };
+    return results;
   }
 
   // summaryOnly: the result without route geometry, for a reader that
@@ -121,8 +165,9 @@ public sealed class PlanningSummaryReader(
     var work = await inputs.ReadAsync(truckId, ct);
     return work is null
       ? new(truckId, null, null, null, "No remaining dispatches.")
-      : Read(
+      : await ReadAsync(
         work,
+        ct,
         knownPlanId: knownPlanId,
         knownVersion: knownVersion,
         summaryOnly: summaryOnly
@@ -147,8 +192,9 @@ public sealed class PlanningSummaryReader(
         "No remaining dispatches."
       );
     var current = work.CurrentSegment;
-    return Read(
+    return await ReadAsync(
       work,
+      ct,
       current?.Work.DispatchId == dispatchId ? null : dispatchId,
       knownPlanId,
       knownVersion

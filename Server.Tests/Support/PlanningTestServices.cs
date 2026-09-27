@@ -290,6 +290,7 @@ internal sealed class PlanningTestServices : IDisposable
       Eta,
       Routes,
       Publication,
+      Reads,
       NullLogger<EtaForecastService>.Instance
     );
     Board = new(

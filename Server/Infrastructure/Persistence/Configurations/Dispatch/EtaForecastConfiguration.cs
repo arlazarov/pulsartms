@@ -32,6 +32,8 @@ public sealed class EtaForecastConfiguration
     b.HasIndex(x => x.RootDispatchId);
     b.Property(x => x.InputHash).HasMaxLength(64);
     b.Property(x => x.DriverExternalId).HasMaxLength(128);
+    b.Property(x => x.WorkKey).HasMaxLength(64);
+    b.Property(x => x.RouteKey).HasMaxLength(64);
     b.HasOne<DispatchEntity>()
       .WithMany()
       .HasForeignKey(x => x.DispatchId)
