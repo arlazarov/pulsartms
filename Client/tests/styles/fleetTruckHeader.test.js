@@ -350,12 +350,13 @@ test('mobile keeps one compact row until Details is selected', () => {
   const narrow = compact.slice(
     compact.indexOf('@container map-truck-card (width < 40rem)'),
   );
-  // On a phone the top line is the unit and the controls; the crew and
-  // what is left share the line below it.
+  // Docked or on a phone the top lines are the unit under its eyebrow,
+  // with the Route / Fuel tabs and the controls beside it (the workspace
+  // design, September 27); the crew and what is left follow.
   assert.match(narrow, /\.fleet-map-inspector__title\s*\{\s*grid-area: title;/);
   assert.match(
     narrow,
-    /grid-template-areas: "title controls" "crew crew" "distance distance" "hours hours";/,
+    /grid-template-areas: "eyebrow tabs controls" "title tabs controls" "crew crew crew" "distance distance distance" "hours hours hours";/,
   );
   assert.match(narrow, /\.fleet-map-inspector__crew\s*\{\s*grid-area: crew;/);
   assert.doesNotMatch(narrow, /is-mobile-collapsed/);

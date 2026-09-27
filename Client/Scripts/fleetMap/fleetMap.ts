@@ -654,6 +654,12 @@ export async function createFleetMap(
         }
         return focused;
       },
+      showFleet() {
+        if (!disposed) trucks.showFleet();
+      },
+      zoomBy(step: unknown) {
+        if (!disposed && typeof step === 'number') trucks.zoomBy(step);
+      },
       setFollow(id: string, enabled?: boolean) {
         if (!disposed) cameraViewport.refresh();
         return !disposed && trucks.setFollow(id, enabled);

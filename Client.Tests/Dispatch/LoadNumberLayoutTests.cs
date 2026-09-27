@@ -34,6 +34,7 @@ public sealed class LoadNumberLayoutTests
       }
     );
     context.ComponentFactories.AddStub<Sidebar>();
+    context.ComponentFactories.AddStub<Topbar>();
     var component = context.Render<MainLayout>(parameters =>
       parameters.Add(layout => layout.Body, Numbers)
     );
@@ -69,6 +70,7 @@ public sealed class LoadNumberLayoutTests
       }
     );
     context.ComponentFactories.AddStub<Sidebar>();
+    context.ComponentFactories.AddStub<Topbar>();
     RenderFragment body = builder =>
     {
       builder.OpenComponent<DistanceText>(0);
@@ -122,6 +124,7 @@ public sealed class LoadNumberLayoutTests
       }
     );
     context.ComponentFactories.AddStub<Sidebar>();
+    context.ComponentFactories.AddStub<Topbar>();
     RenderFragment body = builder =>
     {
       builder.AddContent(0, Numbers);

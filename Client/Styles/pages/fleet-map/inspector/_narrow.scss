@@ -40,21 +40,30 @@
     .fleet-map-mobile-summary__toggle {
       display: none;
     }
-    // A phone keeps the head in the same order: the unit and the controls,
-    // then the crew and what is left, then the rows, each of which stacks
-    // its answer under its fact instead of squeezing the two abreast.
+    // The docked card and a phone keep the head in the same order: the
+    // unit under its eyebrow, with the Route / Fuel tabs and the controls
+    // beside it, then the crew and what is left, then the rows, each of
+    // which stacks its answer under its fact instead of squeezing the two
+    // abreast.
     .fleet-map-inspector__header {
       position: static;
-      grid-template-columns: minmax(0, 1fr) max-content;
+      grid-template-columns: minmax(0, 1fr) max-content max-content;
       grid-template-areas:
-        'title controls'
-        'crew crew'
-        'distance distance'
-        'hours hours';
-      gap: ui.pg(xs);
+        'eyebrow tabs controls'
+        'title tabs controls'
+        'crew crew crew'
+        'distance distance distance'
+        'hours hours hours';
+      gap: ui.pg(xs) ui.pg(sm);
     }
     .fleet-map-inspector__identity {
       display: contents;
+    }
+    .fleet-map-inspector__eyebrow {
+      grid-area: eyebrow;
+    }
+    .fleet-map-inspector__tabs {
+      grid-area: tabs;
     }
     .fleet-map-inspector__title {
       grid-area: title;
@@ -131,6 +140,22 @@
     }
     .fleet-map-inspector__appointment {
       grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+// A card as narrow as a phone's gives the Route / Fuel tabs a line of
+// their own under the unit and its controls.
+.fleet-map-inspector[data-inspector-mode='truck'] {
+  @container map-truck-card (width < #{ui.breakpoint(truck-card-tabs-row)}) {
+    .fleet-map-inspector__header {
+      grid-template-columns: minmax(0, 1fr) max-content;
+      grid-template-areas:
+        'title controls'
+        'tabs tabs'
+        'crew crew'
+        'distance distance'
+        'hours hours';
     }
   }
 }

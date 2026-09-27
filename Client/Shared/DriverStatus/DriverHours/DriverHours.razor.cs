@@ -18,6 +18,11 @@ public partial class DriverHours
   [Parameter]
   public bool Dials { get; set; } = true;
 
+  // Text clocks with a thin bar of what is left, as the workspace's clock
+  // cells draw them.
+  [Parameter]
+  public bool Bars { get; set; }
+
   [Parameter]
   public DriverDutyStatus? Status { get; set; }
 

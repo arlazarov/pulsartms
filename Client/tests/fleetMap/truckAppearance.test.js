@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   truckColor,
   truckEngine,
@@ -59,4 +60,19 @@ test('motion follows finite speed, and each shape and reading is cached once', (
   assert.equal(truckIcon('on', 5), truckIcon('running', 60));
   assert.notEqual(truckIcon('on', 5), truckIcon('off', 5));
   assert.notEqual(truckIcon('off', 0), truckIcon(undefined, 0));
+});
+
+// The fleet list's Moving / Stopped chips read motion in C# (TruckMotion);
+// a truck the list calls moving is the one the map draws as an arrow.
+test('the list and the map split moving from standing at one speed', () => {
+  const source = readFileSync(
+    new URL('../../Shared/Trucks/TruckMotion.cs', import.meta.url),
+    'utf8',
+  );
+  const threshold = Number(
+    source.match(/MovingSpeed = ([\d.]+)m;/)?.[1] ?? NaN,
+  );
+  assert.ok(Number.isFinite(threshold), 'TruckMotion names no threshold');
+  assert.equal(truckMotion(threshold), 'moving');
+  assert.equal(truckMotion(threshold - 0.01), 'standing');
 });

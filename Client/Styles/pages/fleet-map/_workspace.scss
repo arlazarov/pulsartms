@@ -3,59 +3,238 @@
 // The Fleet Map workspace: the stage, laid out as a fleet list, the
 // map, the docked inspector and the trip chain. Every panel is an existing
 // owner; this file only places and dresses them.
-.fleet-map-toolbar {
-  border: 1px solid ui.theme(accent, 0.22);
-  background: ui.theme(surface);
-  box-shadow: ui.shadow(card);
+// The page's title and what it is for, before the search and filters on
+// the same line; a phone has no room for it.
+.fleet-map-title {
+  flex: 0 0 auto;
+  h1 {
+    margin: 0;
+    color: ui.theme(text);
+    font-size: ui.fs(title);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+  }
+  p {
+    margin: ui.pg(micro) 0 0;
+    color: ui.theme(text-muted);
+    font-size: ui.fs(caption);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  @include ui.below(map-mobile) {
+    display: none;
+  }
 }
 
+.fleet-map-toolbar {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  .search-input input {
+    border-color: ui.theme(border);
+    border-radius: ui.radius(md);
+    background: ui.theme(surface);
+    &:focus {
+      border-color: ui.theme(accent, 0.42);
+      box-shadow:
+        0 0 0 1px ui.theme(accent, 0.18),
+        0 0 18px ui.theme(accent, 0.16);
+    }
+  }
+}
+
+// The motion chips across the head, filtering the fleet list.
+.fleet-map-motion {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: ui.pg(sm);
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-height: ui.size(control);
+    padding: 0 ui.pg(md);
+    font-size: ui.fs(label);
+    border: 1px solid ui.theme(border);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface);
+    color: ui.theme(text-secondary);
+    font-family: inherit;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    &[aria-pressed='true'] {
+      border-color: ui.theme(accent, 0.42);
+      background: ui.theme(accent, 0.1);
+      color: ui.theme(accent);
+      box-shadow:
+        0 0 0 1px ui.theme(accent, 0.18),
+        0 0 18px ui.theme(accent, 0.16);
+    }
+  }
+  &__dot {
+    width: ui.pg(sm);
+    height: ui.pg(sm);
+    border-radius: 50%;
+    background: ui.theme(text-muted);
+  }
+  &__chip--moving &__dot {
+    background: ui.theme(success-text);
+  }
+  &__count {
+    min-width: ui.pg(xxl);
+    padding: 0 ui.pg(xs);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-soft);
+    font-size: ui.fs(small);
+    text-align: center;
+  }
+}
+
+// Every panel of the workspace is glass with corner ticks; the map is a
+// panel too, its ticks drawn by the stage around it.
 #fleet-map {
-  border-color: ui.theme(accent, 0.28);
-  border-radius: ui.radius(md);
-  box-shadow:
-    0 0 0 1px ui.theme(accent, 0.06),
-    ui.shadow(card);
+  border-color: ui.theme(accent, 0.2);
+  border-radius: ui.radius(panel);
+  box-shadow: ui.shadow(panel);
 }
 
 .fleet-map-info-reserved {
-  border: 1px solid ui.theme(accent, 0.28);
+  border: 1px solid ui.theme(accent, 0.2);
 }
 
 .fleet-map-key {
   border-color: ui.theme(accent, 0.22);
 }
 
+// The map's own buttons, over its top right corner.
+.fleet-map-controls {
+  position: relative;
+  z-index: ui.layer(map-controls);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: ui.pg(xs);
+  align-self: start;
+  justify-self: end;
+  margin: ui.pg(md);
+  pointer-events: none;
+  &__layers {
+    position: relative;
+  }
+  &__button {
+    display: grid;
+    place-items: center;
+    width: ui.size(control);
+    height: ui.size(control);
+    border: 1px solid ui.theme(accent, 0.2);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface, 0.86);
+    backdrop-filter: blur(10px);
+    color: ui.theme(text-secondary);
+    box-shadow: ui.shadow(panel);
+    cursor: pointer;
+    pointer-events: auto;
+    &:hover:not(:disabled) {
+      border-color: ui.theme(accent, 0.42);
+      color: ui.theme(accent);
+    }
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    &--compass {
+      width: ui.size(control-touch);
+      height: ui.size(control-touch);
+      border-radius: 50%;
+    }
+  }  // A phone's card floats over the map's top, and fingers zoom: the whole
+  // fleet and the route stay, low in the corner, clear of the card. The
+  // layers are in the Filters drawer.
+  @include ui.below(map-mobile) {
+    align-self: end;
+    margin-bottom: ui.pg(section);
+    &__button--zoom {
+      display: none;
+    }
+  }
+}
+
+// The layers menu beside the map's Layers button.
+.fleet-map-layer-menu {
+  position: absolute;
+  top: 0;
+  right: calc(100% + #{ui.pg(sm)});
+  display: grid;
+  gap: ui.pg(micro);
+  width: 13rem;
+  margin: 0;
+  padding: ui.pg(sm);
+  border: 1px solid ui.theme(accent, 0.2);
+  border-radius: ui.radius(md);
+  background: ui.theme(surface);
+  box-shadow: ui.shadow(panel);
+  pointer-events: auto;
+  label {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    padding: ui.pg(sm);
+    border-radius: ui.radius(sm);
+    color: ui.theme(text);
+    cursor: pointer;
+    &:hover {
+      background: ui.theme(accent, 0.1);
+    }
+  }
+  input {
+    width: ui.pg(lg);
+    height: ui.pg(lg);
+    accent-color: ui.theme(accent);
+  }
+}
+
+// Wider than a phone the layers are the map's menu, not the toolbar's
+// chips; a phone keeps them in its Filters drawer.
+@include ui.above(map-mobile) {
+  .fleet-map-toolbar .fleet-map-layer-controls {
+    display: none;
+  }
+}
+@include ui.below(map-mobile) {
+  .fleet-map-controls__layers {
+    display: none;
+  }
+  .fleet-map-motion {
+    display: none;
+  }
+}
+
 .fleet-truck-list {
+  @include ui.glass-panel;
   display: flex;
   flex-direction: column;
   min-height: 0;
-  border: 1px solid ui.theme(accent, 0.28);
-  border-radius: ui.radius(md);
-  background: ui.theme(surface);
-  box-shadow: ui.shadow(card);
   overflow: hidden;
 
   &__header {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
+    align-items: center;
     gap: ui.pg(sm);
-    padding: ui.pg(md) ui.pg(lg) ui.pg(sm);
-    border-bottom: 1px solid ui.theme(border-subtle);
+    padding: ui.pg(lg) ui.pg(lg) ui.pg(md);
     h2 {
+      flex: 1;
+      min-width: 0;
       margin: 0;
+      color: ui.theme(text);
       font-size: ui.fs(subtitle);
       font-weight: 700;
-      color: ui.theme(text);
+      white-space: nowrap;
     }
-  }
-  &__count {
-    margin-left: auto;
-    color: ui.theme(text-muted);
-    font-size: ui.fs(caption);
-  }
-  &__header > h2 {
-    margin-right: auto;
   }
   &__collapse {
     flex: none;
@@ -64,6 +243,11 @@
     border: 0;
     background: none;
     box-shadow: none;
+    backdrop-filter: none;
+    &::before,
+    &::after {
+      display: none;
+    }
   }
   &__expand {
     writing-mode: vertical-rl;
@@ -83,59 +267,267 @@
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
+    scrollbar-width: thin;
   }
   &__empty {
     margin: 0;
     padding: ui.pg(lg);
     color: ui.theme(text-muted);
   }
+  // A table in all but markup: the rows are buttons, so a row is chosen
+  // the way every other control is.
+  &__columns,
+  &__row {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: ui.pg(sm);
+    align-items: center;
+  }
+  &__columns {
+    position: sticky;
+    top: 0;
+    z-index: ui.layer(raised);
+    padding: ui.pg(xs) ui.pg(lg);
+    border-bottom: 1px solid ui.theme(border-subtle);
+    background: ui.theme(surface);
+    color: ui.theme(text-muted);
+    font-size: ui.fs(caption);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    > :last-child {
+      text-align: right;
+    }
+  }
   &__rows {
     margin: 0;
-    padding: ui.pg(xs) 0;
+    padding: 0;
     list-style: none;
   }
   &__row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: ui.pg(micro) ui.pg(sm);
     width: 100%;
     min-height: ui.size(control-touch);
     padding: ui.pg(sm) ui.pg(lg);
     border: 0;
-    border-left: 3px solid transparent;
+    border-bottom: 1px solid ui.theme(border-subtle);
     background: none;
     color: ui.theme(text);
     text-align: left;
     font: inherit;
     cursor: pointer;
     &:hover {
-      background: ui.theme(selected);
+      background: ui.theme(accent, 0.1);
     }
     &.is-selected {
-      border-left-color: ui.theme(accent);
-      background: ui.theme(selected);
+      background: ui.theme(accent, 0.1);
+      box-shadow: inset 3px 0 0 ui.theme(accent);
     }
   }
   &__unit {
-    font-size: ui.fs(body);
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-width: 0;
+    font-size: ui.fs(lead);
     font-weight: 700;
   }
-  &__speed {
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(caption);
-    font-variant-numeric: tabular-nums;
+  &__motion {
+    flex: none;
+    width: ui.pg(sm);
+    height: ui.pg(sm);
+    border-radius: 50%;
+    background: ui.theme(text-muted);
+    &.is-moving {
+      background: ui.theme(success-text);
+    }
   }
+  &__load,
+  &__place,
   &__driver,
-  &__place {
-    grid-column: 1 / -1;
+  &__speed {
     overflow: hidden;
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(caption);
+    font-size: ui.fs(small);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  &__load {
+    color: ui.theme(text-secondary);
+  }
   &__place {
     color: ui.theme(text-muted);
+    text-align: right;
+  }
+  // Read by a screen reader with the row; the dot and the table say the
+  // rest on screen.
+  &__driver,
+  &__speed {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+  }
+  &__foot {
+    padding: ui.pg(sm) ui.pg(lg);
+    border-top: 1px solid ui.theme(border-subtle);
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+}
+
+// The truck panel's body, as the concept drew it: the actions in one row,
+// the facts in bordered cells, the clocks with bars.
+.fleet-map-inspector > .fleet-map-inspector__actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: ui.pg(xs);
+  margin: 0;
+  padding: 0 ui.pg(lg) ui.pg(md);
+  border: 0;
+  .map-action-icon {
+    flex: 1 1 0;
+    justify-content: center;
+    min-width: 0;
+    border-radius: ui.radius(sm);
+    font-weight: 600;
+  }
+  // Camera and Route options say their names on hover; the row keeps the
+  // concept's three words.
+  .fleet-map-inspector__more-action {
+    flex: 0 0 auto;
+    > span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
+}
+
+.fleet-truck-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 ui.pg(lg) ui.pg(md);
+  border: 1px solid ui.theme(border);
+  border-radius: ui.radius(md);
+  background: ui.theme(surface);
+  &__fact {
+    display: flex;
+    gap: ui.pg(sm);
+    min-width: 0;
+    padding: ui.pg(sm) ui.pg(md);
+    border-bottom: 1px solid ui.theme(border-subtle);
+    &:nth-child(odd) {
+      border-right: 1px solid ui.theme(border-subtle);
+    }
+    &:nth-last-child(-n + 2) {
+      border-bottom: 0;
+    }
+    > svg {
+      flex: none;
+      width: ui.pg(lg);
+      height: ui.pg(lg);
+      margin-top: ui.pg(micro);
+      color: ui.theme(accent);
+    }
+    > div {
+      min-width: 0;
+    }
+  }
+  dt {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(caption);
+    letter-spacing: 0.04em;
+  }
+  dd {
+    margin: ui.pg(hair) 0 0;
+    overflow: hidden;
+    color: ui.theme(text);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.fleet-truck-clocks {
+  margin: 0 ui.pg(lg) ui.pg(md);
+}
+
+// Docked, the concept's panel replaces the card's dense head rows; the
+// phone keeps them until its own pass.
+@include ui.above(fleet-docked) {
+  .fleet-map-inspector[data-inspector-mode='truck'] {
+    .fleet-map-inspector__crew,
+    .fleet-map-mobile-summary__distance,
+    .fleet-map-inspector__hours,
+    .fleet-map-inspector__where,
+    .fleet-map-route-info > :not(.fleet-map-route-info__messages) {
+      display: none;
+    }
+  }
+}
+
+// The truck panel's head, as the concept drew it: a quiet eyebrow over the
+// unit, the Route / Fuel tabs, facts and clocks in bordered cells.
+.fleet-map-inspector {
+  // Docked, the unit reads as the panel's title, as large as the concept's.
+  @include ui.above(fleet-docked) {
+    &[data-inspector-mode='truck'] .fleet-map-inspector__title {
+      font-size: ui.fs(heading);
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+  }
+  &__eyebrow {
+    display: block;
+    color: ui.theme(text-muted);
+    font-size: ui.fs(caption);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  // A phone's head has no room for the eyebrow.
+  @include ui.below(map-mobile) {
+    &__eyebrow {
+      display: none;
+    }
+  }
+  &__tabs {
+    display: flex;
+    gap: ui.pg(xs);
+    padding: ui.pg(micro);
+    border: 1px solid ui.theme(border);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-soft);
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: ui.pg(xs);
+      min-height: ui.size(control-compact);
+      padding: 0 ui.pg(md);
+      border: 0;
+      border-radius: ui.radius(sm);
+      background: none;
+      color: ui.theme(text-secondary);
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      svg {
+        width: ui.pg(lg);
+        height: ui.pg(lg);
+      }
+      &[aria-selected='true'] {
+        background: ui.theme(surface);
+        color: ui.theme(accent);
+        box-shadow:
+          0 0 0 1px ui.theme(accent, 0.42),
+          0 0 14px ui.theme(accent, 0.12);
+      }
+      &:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+    }
   }
 }
 
@@ -156,6 +548,7 @@
 }
 
 .fleet-trip-chain {
+  @include ui.glass-panel;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
@@ -163,10 +556,6 @@
     'label more';
   align-items: start;
   min-width: 0;
-  border: 1px solid ui.theme(accent, 0.28);
-  border-radius: ui.radius(md);
-  background: ui.theme(surface);
-  box-shadow: ui.shadow(card);
 
   &__label {
     grid-area: label;
@@ -581,6 +970,7 @@
     grid-area: chain;
   }
   .fleet-map-info-reserved {
+    @include ui.glass-panel;
     grid-area: inspector;
     position: relative;
     top: auto;
@@ -600,7 +990,8 @@
   .route-editor,
   .fuel-send-plan,
   .fleet-map-key,
-  .fleet-map-mode {
+  .fleet-map-mode,
+  .fleet-map-controls {
     grid-area: map;
   }
 }
@@ -652,7 +1043,8 @@
   .route-editor,
   .fuel-send-plan,
   .fleet-map-key,
-  .fleet-map-mode {
+  .fleet-map-mode,
+  .fleet-map-controls {
     grid-area: map;
   }
   .fleet-trip-chain {

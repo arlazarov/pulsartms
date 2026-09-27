@@ -601,10 +601,30 @@ instead of covering the stop facts with a tall sticky area.
 This is the application's only interface; the earlier layout was removed on
 2026-09-27 and is kept only in Git (tag `ui-legacy-2026-09-27`, branch
 `recovery/pre-futuristic-ui-2026-09-27`, both at `0e6add5d`). The theme
-roles carry its colours, with operational colours unchanged. On wide
-screens the navigation is a narrow rail (`layouts/_rail.scss`) with the
-pulse icon (brand-design.md's small-space lockup); the light rail takes the
-navigation text colour for the wordmark.
+roles carry its colours, with operational colours unchanged. It follows
+the approved concept in `prototypes/futuristic-ui` (served on :5179).
+
+The frame, on wide screens: a top bar (`Layout/Topbar`, `layouts/_topbar`)
+with the wordmark, the section and page, the theme switch (the appearance
+owner's saved theme), the clock and the account; under it a rail of
+destinations (`layouts/_rail`); the page beside it; all on the canvas with
+two faint glows. Workspace panels are glass with two corner ticks
+(`ui.glass-panel`, `radius(panel)`, `shadow(panel)`). The account menu is
+one component (`Layout/AccountMenu`) in the top bar and, on phones, in the
+navigation menu, which keeps its own head there.
+
+Fleet Map's head is the title and what the page is for, then the search,
+driver groups and layer chips on the same line. The fleet list is a table
+of Truck (motion dot and unit), Driver and Location with Moving / Stopped
+chips under its title; the split is `TruckMotion` (1 mph, the map's arrow
+threshold, held equal by `truckAppearance.test.js`), and the chips filter
+the list only. The map has its own buttons: the whole fleet, zoom steps
+and the chosen route; each is the reader's camera, so it ends Follow. The
+truck panel's head is an eyebrow over the unit, the Route / Fuel tabs
+(the truck card and the fuel plan) and the controls. The list does not
+show each truck's load and next stop yet: no light fleet-wide summary
+exists (the fleet planning previews carry route geometry, the Dispatch
+board is paged); adding one belongs to the planning read owner.
 
 Fleet Map, from `fleet-docked` up, is a collapsible fleet list, the map,
 the docked truck panel and the trip chain. The list is the page's trucks

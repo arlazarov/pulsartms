@@ -1,5 +1,6 @@
 using System.Globalization;
 using Client.Models.DTO.Fleet;
+using Client.Shared.Trucks;
 using Microsoft.AspNetCore.Components;
 
 namespace Client.Pages.FleetMap;
@@ -21,6 +22,10 @@ public partial class FleetTruckList
   [Parameter]
   public bool Collapsed { get; set; }
 
+  // A truck's current load and the stop it is heading for, when known.
+  [Parameter]
+  public Func<Guid, FleetTruckWork>? Work { get; set; }
+
   [Parameter]
   public EventCallback<bool> CollapsedChanged { get; set; }
 
@@ -30,3 +35,5 @@ public partial class FleetTruckList
   private static string Text(string? value) =>
     string.IsNullOrWhiteSpace(value) ? "—" : value;
 }
+
+public readonly record struct FleetTruckWork(int? LoadNumber, string? NextStop);

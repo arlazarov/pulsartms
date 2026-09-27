@@ -90,11 +90,13 @@ public sealed class FleetMapComponentTests
     );
     Assert.Single(component.FindAll("#fleet-map-telemetry-details"));
     Assert.Empty(component.FindAll("#fleet-map-details .fleet-map-truck-info"));
-    // The actions stand at the foot of the stop row's facts column.
+    // The actions are one row at the top of the truck panel, under its
+    // head, as the workspace concept draws them (the owner, September 27).
     Assert.Single(
-      component.FindAll(
-        "#fleet-map-route-details .fleet-map-route-info__facts > .fleet-map-inspector__actions"
-      )
+      component.FindAll(".fleet-map-inspector > .fleet-map-inspector__actions")
+    );
+    Assert.Empty(
+      component.FindAll("#fleet-map-details .fleet-map-inspector__actions")
     );
     Assert.Equal("fleet-map-telemetry-details", telemetry.Id);
     Assert.Single(component.FindAll(".fleet-map-mobile-summary__toggle"));
@@ -1116,11 +1118,7 @@ public sealed class FleetMapComponentTests
     AssertTruckPanelsVisible(component);
     var summary = component.Find("#fleet-map-route-details");
     Assert.False(summary.HasAttribute("hidden"));
-    Assert.NotNull(
-      summary.QuerySelector(
-        ".fleet-map-route-info__facts > .fleet-map-inspector__actions"
-      )
-    );
+    Assert.Null(summary.QuerySelector(".fleet-map-inspector__actions"));
     Assert.NotNull(
       component.Find(
         ".fleet-map-inspector__identity .fleet-map-inspector__trailer"
@@ -2004,13 +2002,9 @@ public sealed class FleetMapComponentTests
       );
       Assert.Single(component.FindAll(".fleet-map-inspector__appointment"));
       Assert.Contains("Remaining load", panel.TextContent);
-      // The facts column carries the actions at its foot; the cycle and
-      // the fuel on arrival left it.
-      Assert.NotNull(
-        panel.QuerySelector(
-          ":scope > .fleet-map-route-info__facts > .fleet-map-inspector__actions"
-        )
-      );
+      // The actions left the facts column for the panel's top row (the
+      // owner, September 27); the cycle and the fuel on arrival left it.
+      Assert.Null(panel.QuerySelector(".fleet-map-inspector__actions"));
       Assert.Null(panel.QuerySelector(".fleet-map-route-info__arrival-fuel"));
       Assert.DoesNotContain("Loading saved route", component.Markup);
       Assert.Equal(
@@ -2073,9 +2067,9 @@ public sealed class FleetMapComponentTests
           .Length
       );
       Assert.Single(component.FindAll(".fleet-map-inspector__appointment"));
-      Assert.NotNull(
-        panel.QuerySelector(
-          ":scope > .fleet-map-route-info__facts > .fleet-map-inspector__actions"
+      Assert.Single(
+        component.FindAll(
+          ".fleet-map-inspector > .fleet-map-inspector__actions"
         )
       );
       // What is left of the load is the truck's own remaining distance: a
@@ -2333,7 +2327,7 @@ public sealed class FleetMapComponentTests
         component.FindAll(".fleet-map-truck-info .truck-illustration")
       );
       Assert.Single(
-        component.FindAll("#fleet-map-details [aria-label='Truck actions']")
+        component.FindAll(".fleet-map-inspector > [aria-label='Truck actions']")
       );
       Assert.Single(component.FindAll(".fleet-map-inspector__driver"));
       Assert.Equal(
@@ -2894,6 +2888,55 @@ public sealed class FleetMapComponentTests
       reflections,
       fixture.Js.Calls.Count(call => call.Name == "reflect")
     );
+  }
+
+  // The list's motion chips count and filter the trucks the page already
+  // has, at the map's own moving speed; the map keeps every truck.
+  [Fact]
+  public async Task MotionChipsFilterTheListWithoutTouchingTheMap()
+  {
+    using var fixture = new Fixture();
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Single(component.FindAll(".fleet-truck-list__row"))
+    );
+    var chips = component.FindAll(".fleet-map-motion__chip");
+    Assert.Equal(
+      ["All1", "Moving0", "Stopped1"],
+      chips.Select(chip =>
+        string.Concat(
+          chip.TextContent.Split(
+            (char[])[' ', '\n', '\r'],
+            StringSplitOptions.RemoveEmptyEntries
+          )
+        )
+      )
+    );
+    var trucksSent = fixture.Js.Calls.Count(call => call.Name == "setTrucks");
+
+    await component.InvokeAsync(
+      () => component.Find(".fleet-map-motion__chip--moving").Click()
+    );
+    Assert.Empty(component.FindAll(".fleet-truck-list__row"));
+    Assert.Contains(
+      "No trucks match the search and filter.",
+      component.Find(".fleet-truck-list__empty").TextContent
+    );
+    Assert.Equal(
+      "true",
+      component
+        .Find(".fleet-map-motion__chip--moving")
+        .GetAttribute("aria-pressed")
+    );
+    Assert.Equal(
+      trucksSent,
+      fixture.Js.Calls.Count(call => call.Name == "setTrucks")
+    );
+
+    await component.InvokeAsync(
+      () => component.Find(".fleet-map-motion__chip--stopped").Click()
+    );
+    Assert.Single(component.FindAll(".fleet-truck-list__row"));
   }
 
   [Fact]

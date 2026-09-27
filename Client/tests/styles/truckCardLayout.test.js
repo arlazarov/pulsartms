@@ -155,9 +155,21 @@ test('the booking sits under the ETA for the same stop, and the address is last'
     body.indexOf('fleet-map-route-info__next') <
       body.indexOf('<TruckLocationLine') &&
       body.indexOf('<TruckLocationLine') <
-        body.indexOf('fleet-map-route-info__facts') &&
-      body.indexOf('fleet-map-route-info__facts') <
-        body.indexOf('@truckActions'),
+        body.indexOf('fleet-map-route-info__facts'),
+  );
+  // The actions are one row at the top of the truck panel, under its head,
+  // as the workspace concept draws them (the owner, September 27): drawn
+  // once, before the facts and the clocks.
+  const panel = markup.slice(markup.indexOf('</header>'));
+  assert.equal(
+    markup.split('class="fleet-map-inspector__actions"').length - 1,
+    1,
+  );
+  assert.ok(
+    panel.indexOf('fleet-map-inspector__actions') <
+      panel.indexOf('fleet-truck-facts') &&
+      panel.indexOf('fleet-truck-facts') <
+        panel.indexOf('fleet-truck-clocks'),
   );
   assert.match(
     card,

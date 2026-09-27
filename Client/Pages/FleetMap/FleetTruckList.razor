@@ -1,3 +1,4 @@
+@using Client.Shared.Trucks
 @* the trucks the page already has, filtered by
    the page's own truck search. Choosing one takes the same path as
    choosing it in search. *@
@@ -18,10 +19,6 @@ else
 <section class="fleet-truck-list" aria-labelledby="fleet-truck-list-title">
     <header class="fleet-truck-list__header">
         <h2 id="fleet-truck-list-title">Fleet · @Total</h2>
-        @if (Trucks.Count != Total)
-        {
-            <span class="fleet-truck-list__count">@Trucks.Count shown</span>
-        }
         <button type="button" class="btn btn--small fleet-truck-list__collapse"
                 aria-expanded="true" aria-controls="fleet-truck-list-rows"
                 title="Hide the fleet list to widen the map"
@@ -31,29 +28,50 @@ else
         @if (Trucks.Count == 0)
         {
             <p class="fleet-truck-list__empty">
-                @(Total == 0 ? "No trucks to show." : "No trucks match the search.")
+                @(Total == 0 ? "No trucks to show." : "No trucks match the search and filter.")
             </p>
         }
         else
         {
+            <div class="fleet-truck-list__columns" aria-hidden="true">
+                <span>Truck</span><span>Load</span><span>Next stop</span>
+            </div>
             <ul class="fleet-truck-list__rows">
                 @foreach (var truck in Trucks)
                 {
                     var selected = truck.TruckId == SelectedId;
+                    var moving = TruckMotion.IsMoving(truck.Speed);
+                    var work = Work?.Invoke(truck.TruckId) ?? default;
                     <li @key="truck.TruckId">
                         <button type="button"
                                 class="fleet-truck-list__row @(selected ? "is-selected" : "")"
                                 aria-pressed="@(selected ? "true" : "false")"
                                 @onclick="() => Selected.InvokeAsync(truck.TruckId)">
-                            <strong class="fleet-truck-list__unit">@truck.UnitNumber</strong>
-                            <span class="fleet-truck-list__speed">@SpeedText(truck)</span>
+                            <span class="fleet-truck-list__unit">
+                                <span class="fleet-truck-list__motion
+                                             @(moving ? "is-moving" : "is-stopped")"
+                                      title="@(moving ? "Moving" : "Stopped")"
+                                      aria-hidden="true"></span>
+                                <strong>@truck.UnitNumber</strong>
+                            </span>
+                            <span class="fleet-truck-list__load">
+                                @if (work.LoadNumber is { } load)
+                                { <Client.Shared.Dispatch.LoadNumber.LoadNumber Value="load" /> }
+                                else { <text>—</text> }
+                            </span>
+                            <span class="fleet-truck-list__place"
+                                  title="@(work.NextStop ?? truck.FormattedLocation)"
+                                >@Text(work.NextStop)</span>
                             <span class="fleet-truck-list__driver">@Text(truck.DriverName)</span>
-                            <span class="fleet-truck-list__place">@Text(truck.FormattedLocation)</span>
+                            <span class="fleet-truck-list__speed">@SpeedText(truck)</span>
                         </button>
                     </li>
                 }
             </ul>
         }
     </div>
+    <footer class="fleet-truck-list__foot">
+        Showing @Trucks.Count of @Total
+    </footer>
 </section>
 }

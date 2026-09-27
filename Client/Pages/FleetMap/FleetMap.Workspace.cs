@@ -1,15 +1,18 @@
 using System.Globalization;
 using Client.Models.DTO;
 using Client.Models.DTO.Dispatch;
+using Client.Models.DTO.Fleet;
 using Client.Models.DTO.Planning;
+using Client.Shared.DriverStatus.DriverDutySummary;
+using Client.Shared.Trucks;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 namespace Client.Pages.FleetMap;
 
-// The workspace around the map: a truck list, the trip chain and the one
-// chosen trip under the truck. Both only route into the page's existing selection paths, so
-// selection, Follow and the inspector behave as in the current interface.
+// The workspace around the map: the truck list and its motion chips, the
+// map's own buttons, the trip chain and the one chosen trip under the
+// truck. Each routes into the page's existing selection and camera paths.
 public partial class FleetMap
 {
   // What the map is showing, as the map's own zoom policy chose it
@@ -298,5 +301,99 @@ public partial class FleetMap
       return;
     ShowNextLoads = true;
     await OnNextLoadsChanged();
+  }
+
+  private static readonly (string Motion, string Label)[] MotionChoices =
+  [
+    ("all", "All"),
+    ("moving", "Moving"),
+    ("stopped", "Stopped"),
+  ];
+
+  private string _motion = "all";
+  private bool _layersOpen;
+
+  private static bool InMotion(TruckLocationMapDto truck, string motion) =>
+    motion switch
+    {
+      "moving" => TruckMotion.IsMoving(truck.Speed),
+      "stopped" => !TruckMotion.IsMoving(truck.Speed),
+      _ => true,
+    };
+
+  private int MotionCount(string motion) =>
+    MatchingTrucks.Count(truck => InMotion(truck, motion));
+
+  private List<TruckLocationMapDto> ListedTrucks =>
+    _motion == "all"
+      ? MatchingTrucks
+      : MatchingTrucks.Where(truck => InMotion(truck, _motion)).ToList();
+
+  private async Task ShowFleetAsync()
+  {
+    if (_map is null || _disposed)
+      return;
+    try
+    {
+      await _map.InvokeVoidAsync("showFleet");
+    }
+    catch (JSException) { }
+  }
+
+  private async Task ZoomAsync(int step)
+  {
+    if (_map is null || _disposed)
+      return;
+    try
+    {
+      await _map.InvokeVoidAsync("zoomBy", step);
+    }
+    catch (JSException) { }
+  }
+
+  private Task ShowRouteTabAsync() =>
+    _inspectorMode == MapInspectorMode.Truck
+      ? Task.CompletedTask
+      : BackToTruckAsync();
+
+  private Task ShowFuelTabAsync() =>
+    _inspectorMode == MapInspectorMode.Truck
+      ? OpenFuelPlanAsync()
+      : Task.CompletedTask;
+
+  // The panel's motion fact: what the map's shape says, with the reported
+  // speed; nothing when the speed is not known (stale GPS).
+  private string MotionFact(TruckLocationMapDto truck) =>
+    KnownSpeed(truck) is not { } speed ? "—"
+    : TruckMotion.IsMoving(speed)
+      ? $"Moving · {speed.ToString("0", CultureInfo.InvariantCulture)} mph"
+    : "Stopped";
+
+  private string DutyFact =>
+    _hos?.CurrentDutyStatus is { } status
+      ? DriverDutySummary.StatusName(status)
+      : "—";
+
+  // The list's Load and Next stop: the fleet's planning summaries, read in
+  // one request by the shared planning cache (its own two-minute guard),
+  // the same entries this page and Dispatch read for one truck. The list
+  // shows them at the next position poll's render; none is forced here.
+  private async Task PreloadListWorkAsync()
+  {
+    try
+    {
+      await PlanningCache.PreloadAsync();
+    }
+    catch (Exception ex) when (IsLoadError(ex)) { }
+  }
+
+  private FleetTruckWork TruckWork(Guid truckId)
+  {
+    var result = PlanningCache.Get($"api/fleet/trucks/{truckId}/planning");
+    var plan = result?.State?.Plan;
+    var next = plan?.Stops.FirstOrDefault(stop =>
+      stop.Id == plan.Tracking.NextStopId
+    );
+    return new(result?.LoadNumber, next?.Name);
   }
 }

@@ -153,6 +153,50 @@
         <path d="M3 6h4m4 0h10M3 12h10m4 0h4M3 18h4m4 0h10" />
         <circle cx="9" cy="6" r="2" /><circle cx="15" cy="12" r="2" /><circle cx="9" cy="18" r="2" />
     }
+    else if (Kind == "layers")
+    {
+        <path d="m12 4 8.5 4.5L12 13 3.5 8.5z" />
+        <path d="m3.5 12.5 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5" />
+    }
+    else if (Kind == "plus")
+    {
+        <path d="M12 5v14M5 12h14" />
+    }
+    else if (Kind == "minus")
+    {
+        <path d="M5 12h14" />
+    }
+    else if (Kind == "compass")
+    {
+        <path d="m12 3 5 16-5-3.5L7 19z" />
+    }
+    else if (Kind == "fit")
+    {
+        <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+    }
+    else if (Kind == "panel-left")
+    {
+        <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+        <path d="M9.5 4.5v15" />
+    }
+    else if (Kind == "panel-right")
+    {
+        <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+        <path d="M14.5 4.5v15" />
+    }
+    else if (Kind == "user")
+    {
+        <circle cx="12" cy="8.5" r="3.5" />
+        <path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" />
+    }
+    else if (Kind == "gauge")
+    {
+        <path d="M4.5 16a8 8 0 1 1 15 0" /><path d="m12 13 3.5-4" />
+    }
+    else if (Kind == "sign-out")
+    {
+        <path d="M10 4H4v16h6M14 8l4 4-4 4M8 12h12" />
+    }
     else
     {
         <circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" />

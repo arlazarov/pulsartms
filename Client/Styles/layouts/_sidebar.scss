@@ -125,32 +125,6 @@
     font-size: ui.fs(small);
     color: ui.theme(navigation-muted);
   }
-  @include ui.above(md) {
-    position: sticky;
-    top: 0;
-    height: 100dvh;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    // A narrow rail (layouts/rail): icons over short names.
-    align-items: center;
-    padding: ui.pg(lg) ui.pg(xs);
-    &__brand {
-      padding: 0 0 ui.pg(md);
-    }
-    &__nav {
-      flex: 0;
-      display: grid;
-      gap: ui.pg(xs);
-    }
-    &__footer {
-      margin: auto 0 0;
-      border-top: 1px solid ui.theme(navigation-border);
-      padding-top: ui.pg(md);
-    }
-    &__footer .btn {
-      justify-content: flex-start;
-    }
-  }
   &__panel {
     display: contents;
   }

@@ -27,66 +27,67 @@
   border-color: ui.theme(accent, 0.22);
 }
 
-// A narrow rail: each destination as its icon over a short name, the
-// pulse instead of the wordmark, the account as its initials. The map
-// gets the width.
+// The wide-screen rail under the top bar: a glass panel of destinations,
+// each its icon over a short name, the current one lit with a side mark.
+// The brand and the account live in the top bar there (layouts/topbar).
 @include ui.above(md) {
-  .sidebar__brand {
-    justify-content: center;
+  .sidebar {
+    @include ui.glass-panel;
+    grid-area: rail;
+    position: sticky;
+    top: ui.pg(md);
+    align-self: start;
+    height: calc(100dvh - #{ui.size(topbar)} - #{ui.pg(md)} * 3);
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: ui.pg(xs);
+    padding: ui.pg(sm) 0;
   }
-  .sidebar .brand-logo:not(.brand-logo--compact) {
+  .sidebar__header,
+  .sidebar__footer {
     display: none;
   }
-  .sidebar .brand-logo--compact {
-    display: block;
-  }
   .sidebar__nav {
-    width: 100%;
+    flex: 0;
+    display: grid;
+    gap: ui.pg(xs);
   }
   .sidebar__nav a {
     flex-direction: column;
-    gap: ui.pg(micro);
+    gap: ui.pg(xs);
+    min-height: 0;
+    margin: 0 ui.pg(xs);
     padding: ui.pg(sm) ui.pg(micro);
-    font-size: ui.fs(micro);
+    border-radius: ui.radius(sm);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+    font-weight: 600;
     line-height: 1.2;
     text-align: center;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+  }
+  .sidebar__nav a:hover {
+    color: ui.theme(accent);
+    background: ui.theme(accent, 0.1);
   }
   .sidebar__nav a.active {
-    box-shadow:
-      inset 0 -2px 0 ui.theme(navigation-indicator),
-      0 0 14px ui.theme(accent, 0.18);
+    color: ui.theme(accent);
+    background: ui.theme(accent, 0.1);
+    box-shadow: inset 0 0 0 1px ui.theme(accent, 0.42);
+  }
+  .sidebar__nav a.active::before {
+    content: '';
+    position: absolute;
+    top: ui.pg(sm);
+    bottom: ui.pg(sm);
+    left: calc(-1 * #{ui.pg(xs)} - 1px);
+    width: 3px;
+    border-radius: ui.radius(pill);
+    background: ui.theme(accent);
+    box-shadow: 0 0 10px ui.theme(accent);
   }
   .sidebar__badge {
     left: calc(50% + #{ui.pg(xs)});
   }
-  .sidebar__footer {
-    width: 100%;
-  }
-  .sidebar__account {
-    justify-content: center;
-  }
-  .sidebar__account-text,
-  .sidebar__account-chevron {
-    display: none;
-  }
-  // The account's actions open beside the rail rather than inside it.
-  .sidebar__footer {
-    position: relative;
-  }
-  #sidebar-account-actions {
-    position: absolute;
-    left: calc(100% + #{ui.pg(sm)});
-    bottom: 0;
-    z-index: ui.layer(dropdown);
-    display: grid;
-    gap: ui.pg(xs);
-    min-width: ui.size(form-field);
-    padding: ui.pg(sm);
-    border: 1px solid ui.theme(accent, 0.28);
-    border-radius: ui.radius(md);
-    background: ui.theme(navigation);
-    box-shadow: ui.shadow(popup);
-  }
 }
-

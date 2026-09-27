@@ -154,3 +154,40 @@
     min-width: fn.size(control-touch);
   }
 }
+
+// The workspace's glass panel: a translucent surface over the canvas glow,
+// a fine accent edge and two corner ticks, its only ornament. The ticks
+// take ::before and ::after, so a panel does not use those for anything
+// else.
+@mixin glass-panel {
+  position: relative;
+  border: 1px solid fn.theme(accent, 0.2);
+  border-radius: fn.radius(panel);
+  background: fn.theme(surface, 0.86);
+  backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: fn.shadow(panel);
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    width: fn.pg(md);
+    height: fn.pg(md);
+    border: 0 solid fn.theme(accent, 0.38);
+    pointer-events: none;
+  }
+  &::before {
+    top: fn.pg(sm);
+    left: fn.pg(sm);
+    border-top-width: 1px;
+    border-left-width: 1px;
+    border-top-left-radius: fn.radius(sm);
+  }
+  &::after {
+    right: fn.pg(sm);
+    bottom: fn.pg(sm);
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-bottom-right-radius: fn.radius(sm);
+  }
+}

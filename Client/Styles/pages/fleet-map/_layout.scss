@@ -12,7 +12,7 @@
   }
 
   @include ui.above(md) {
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-rows: ui.size(topbar) minmax(0, 1fr);
   }
 }
 
@@ -118,10 +118,20 @@
     display: grid;
     gap: ui.pg(sm);
   }
-  // Wider than a phone the key is always open, so its chip is not rendered
-  // to assistive technology either.
+  // The key folds behind one chip at every width, so the map stays quiet
+  // (the workspace concept); opened, it explains the corner it covers.
   &__toggle {
-    display: none;
+    @include ui.icon-control;
+    display: inline-flex;
+    font-weight: 700;
+  }
+  &:not(.is-open) {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    .fleet-map-key__content {
+      display: none;
+    }
   }
 
   @include ui.below(map-mobile) {
@@ -134,21 +144,6 @@
     &__routes,
     &__fuel {
       gap: ui.pg(xs) ui.pg(sm);
-    }
-    &__toggle {
-      @include ui.icon-control;
-      display: inline-flex;
-      font-weight: 700;
-    }
-    // Shut, the key is the chip: it stops covering the corner of the map
-    // it is there to explain.
-    &:not(.is-open) {
-      padding: 0;
-      border: 0;
-      background: transparent;
-      .fleet-map-key__content {
-        display: none;
-      }
     }
   }
 }

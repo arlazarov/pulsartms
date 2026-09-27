@@ -4,7 +4,10 @@
 
 <div class="fleet-map-page">
     <div class="fleet-map-page__background">
-    <PageHeader Title="Fleet Map" />
+    <div class="fleet-map-title">
+        <h1>Fleet Map</h1>
+        <p>Live positions · trips · fuel</p>
+    </div>
 
     <fieldset class="fleet-map-toolbar filter-toolbar"
               disabled="@(_disposed || !_preferencesLoaded || _initializing)">
@@ -72,6 +75,24 @@
         }
         </div>
     </fieldset>
+    @* Which trucks the list shows, by what they are doing now: the same
+       motion the map draws as an arrow or a circle. *@
+    <div class="fleet-map-motion" role="group" aria-label="Trucks in the list">
+        @foreach (var (motion, label) in MotionChoices)
+        {
+            <button type="button"
+                    class="fleet-map-motion__chip fleet-map-motion__chip--@motion"
+                    aria-pressed="@(_motion == motion ? "true" : "false")"
+                    @onclick="() => _motion = motion">
+                @if (motion != "all")
+                {
+                    <span class="fleet-map-motion__dot" aria-hidden="true"></span>
+                }
+                <span>@label</span>
+                <span class="fleet-map-motion__count">@MotionCount(motion)</span>
+            </button>
+        }
+    </div>
     @if (MapError is not null)
     {
         <p class="fleet-map-page__message" role="alert">
@@ -90,9 +111,10 @@
     }
     </div>
     <div class="fleet-map-stage">
-    <FleetTruckList Trucks="MatchingTrucks" Total="_trucks.Count"
+    <FleetTruckList Trucks="ListedTrucks" Total="_trucks.Count"
                     SelectedId="_activeTruckId"
                     Selected="ChooseListTruckAsync"
+                    Work="TruckWork"
                     @bind-Collapsed="_listCollapsed" />
     <div
         id="fleet-map"
@@ -100,6 +122,61 @@
         tabindex="-1"
         aria-label="Fleet and fuel station map"
         aria-busy="@_initializing">
+    </div>
+    @* The map's own buttons, beside it as the reader's camera: the whole
+       fleet, a step of zoom, the chosen truck's route. *@
+    <div class="fleet-map-controls" role="group" aria-label="Map view">
+        <button type="button" class="fleet-map-controls__button
+                    fleet-map-controls__button--compass"
+                title="Whole fleet" aria-label="Show the whole fleet"
+                disabled="@(_map is null)" @onclick="ShowFleetAsync">
+            <ActionIcon Kind="compass" />
+        </button>
+        <button type="button"
+                class="fleet-map-controls__button fleet-map-controls__button--zoom"
+                title="Zoom in" aria-label="Zoom in"
+                disabled="@(_map is null)" @onclick="() => ZoomAsync(1)">
+            <ActionIcon Kind="plus" />
+        </button>
+        <button type="button"
+                class="fleet-map-controls__button fleet-map-controls__button--zoom"
+                title="Zoom out" aria-label="Zoom out"
+                disabled="@(_map is null)" @onclick="() => ZoomAsync(-1)">
+            <ActionIcon Kind="minus" />
+        </button>
+        <button type="button" class="fleet-map-controls__button"
+                title="Fit route" aria-label="Fit the selected route"
+                disabled="@(!CanShowRoute)" @onclick="ShowRouteAsync">
+            <ActionIcon Kind="fit" />
+        </button>
+        @* The layers, behind the map's own button as the concept keeps them;
+           the same switches as the phone's Filters drawer. *@
+        <div class="fleet-map-controls__layers">
+            <button type="button"
+                    class="fleet-map-controls__button fleet-map-controls__button--layers"
+                    title="Map layers" aria-label="Map layers"
+                    aria-expanded="@(_layersOpen ? "true" : "false")"
+                    aria-controls="fleet-map-layer-menu"
+                    @onclick="() => _layersOpen = !_layersOpen">
+                <ActionIcon Kind="layers" />
+            </button>
+            @if (_layersOpen)
+            {
+                <fieldset id="fleet-map-layer-menu" class="fleet-map-layer-menu"
+                          disabled="@(_disposed || !_preferencesLoaded || _initializing)">
+                    <legend class="visually-hidden">Map layers</legend>
+                    <label><input type="checkbox" @bind="ShowFuelStations"
+                        @bind:after="OnFuelStationsToggleChanged" />
+                        <span>Fuel stations</span></label>
+                    <label><input type="checkbox" @bind="ShowTraffic"
+                        @bind:after="OnTrafficToggleChanged" />
+                        <span>Traffic</span></label>
+                    <label><input type="checkbox" @bind="ShowNextLoads"
+                        @bind:after="OnNextLoadsChanged" />
+                        <span>Next loads</span></label>
+                </fieldset>
+            }
+        </div>
     </div>
     @if (_mapType is not null)
     {
@@ -126,6 +203,7 @@
             @* The unit names the card. Trailer and driver read as one quiet
                line beside it, the way a dispatcher says them out loud. *@
             <div class="fleet-map-inspector__identity">
+                <span class="fleet-map-inspector__eyebrow" aria-hidden="true">Truck</span>
                 <strong class="fleet-map-inspector__title fleet-map-inspector__desktop-title">@(SelectedTruck is { } named ? named.UnitNumber : InspectorTitle)</strong>
                 @if (SelectedTruck is { } identityTruck)
                 {
@@ -180,6 +258,30 @@
                     })
                 </button>
             }
+        }
+        @if (SelectedTruck is not null
+            && _inspectorMode is MapInspectorMode.Truck
+                or MapInspectorMode.FuelPlan
+                or MapInspectorMode.FuelStations)
+        {
+            @* The truck's two views: its route and trips, and its fuel. The
+               same doors as Fuel and Back to truck. *@
+            <div class="fleet-map-inspector__tabs" role="tablist"
+                 aria-label="Truck views">
+                <button type="button" role="tab"
+                        aria-selected="@(_inspectorMode == MapInspectorMode.Truck
+                            ? "true" : "false")"
+                        @onclick="ShowRouteTabAsync">
+                    <ActionIcon Kind="route" /><span>Route</span>
+                </button>
+                <button type="button" role="tab"
+                        aria-selected="@(_inspectorMode == MapInspectorMode.Truck
+                            ? "false" : "true")"
+                        disabled="@(_fuelEditorOpen || _sendPlanOpen)"
+                        @onclick="ShowFuelTabAsync">
+                    <ActionIcon Kind="fuel" /><span>Fuel</span>
+                </button>
+            </div>
         }
         @* The close control belongs to every card. A stop opened from the
            map used to offer only "Back to truck", which is a different
@@ -398,6 +500,90 @@
             </div>
         }
         </header>
+        @if (_inspectorMode == MapInspectorMode.Truck
+            && SelectedTruck is { } panelTruck)
+        {
+            @* The truck as the workspace concept draws it: its actions in one
+               row, six facts in bordered cells, the driver's clocks with what
+               is left of each, then the chosen trip. Every value comes from
+               the owner the card's head reads. *@
+            <div class="fleet-map-inspector__actions" role="group"
+                 aria-label="Truck actions">
+                <button type="button"
+                        class="btn map-action-icon
+                            @(_followingTruck ? "btn--primary" : "")"
+                        title="Follow" aria-label="Follow"
+                        aria-pressed="@(_followingTruck ? "true" : "false")"
+                        @onclick="ToggleFollowAsync">
+                    <ActionIcon Kind="follow" /><span>Follow</span>
+                </button>
+                <button type="button" class="btn map-action-icon"
+                        title="Show route" aria-label="Show route"
+                        disabled="@(!CanShowRoute)"
+                        @onclick="ShowRouteAsync">
+                    <ActionIcon Kind="fit" /><span>Fit route</span>
+                </button>
+                <button type="button" class="btn map-action-icon"
+                        title="Fuel plan" aria-label="Fuel"
+                        disabled="@(_fuelEditorOpen || _sendPlanOpen)"
+                        @onclick="OpenFuelPlanAsync">
+                    <ActionIcon Kind="fuel" /><span>Fuel</span>
+                </button>
+                <button type="button"
+                        class="btn map-action-icon fleet-map-inspector__more-action"
+                        title="Camera" aria-label="Camera"
+                        @onclick="OpenCameraAsync">
+                    <ActionIcon Kind="camera" /><span>Camera</span>
+                </button>
+                <button type="button"
+                        class="btn map-action-icon fleet-map-inspector__more-action"
+                        title="Route options" aria-label="Route options"
+                        disabled="@(_fuelEditorOpen || SelectedDispatchId is null)"
+                        @onclick="OpenSelectedRouteEditorAsync">
+                    <ActionIcon Kind="route" /><span>Route options</span>
+                </button>
+            </div>
+            <dl class="fleet-truck-facts" aria-label="Truck facts">
+                <div class="fleet-truck-facts__fact">
+                    <ActionIcon Kind="user" />
+                    <div><dt>Driver</dt><dd>@(string.IsNullOrWhiteSpace(
+                        HosDriverName(panelTruck)) ? "—"
+                        : HosDriverName(panelTruck))</dd></div>
+                </div>
+                <div class="fleet-truck-facts__fact">
+                    <ActionIcon Kind="trailer" />
+                    <div><dt>Trailer</dt><dd title="@TrailerTitle(panelTruck)"
+                        >@(TrailerDiscrepancy(panelTruck) is { } conflict
+                            ? conflict.Text
+                            : string.IsNullOrWhiteSpace(panelTruck.TrailerNumber)
+                                ? "—" : panelTruck.TrailerNumber)</dd></div>
+                </div>
+                <div class="fleet-truck-facts__fact">
+                    <ActionIcon Kind="gauge" />
+                    <div><dt>Motion</dt><dd>@MotionFact(panelTruck)</dd></div>
+                </div>
+                <div class="fleet-truck-facts__fact">
+                    <ActionIcon Kind="clock" />
+                    <div><dt>Duty</dt><dd>@DutyFact</dd></div>
+                </div>
+                <div class="fleet-truck-facts__fact">
+                    <ActionIcon Kind="fuel" />
+                    <div><dt>Fuel</dt><dd>@(panelTruck.FuelPercent is { } fuel
+                        ? $"{fuel:0}%" : "—")</dd></div>
+                </div>
+                <div class="fleet-truck-facts__fact">
+                    <ActionIcon Kind="location" />
+                    <div><dt>Location</dt><dd title="@panelTruck.FormattedLocation"
+                        >@(string.IsNullOrWhiteSpace(panelTruck.FormattedLocation)
+                            ? "—" : panelTruck.FormattedLocation)</dd></div>
+                </div>
+            </dl>
+            <div class="fleet-truck-clocks">
+                <DriverHours @key="_activeTruckId" Clocks="_hos"
+                    Jurisdiction="@HeadDutyStatus?.Jurisdiction"
+                    Dials="false" Bars="true" ShowDutyStatus="false" />
+            </div>
+        }
         <div class="fleet-map-inspector__native" hidden="@(_inspectorMode is not (MapInspectorMode.Stop or MapInspectorMode.Fuel))"></div>
         @if (_inspectorMode == MapInspectorMode.FuelPlan
             && SelectedTruck is { } fuelTruck)
@@ -435,36 +621,6 @@
         }
         @if (HasTruckInspection)
         {
-        // The actions, with the words that say what they do rather than six
-        // bare icons: beside the stop when there is one to drive to, under
-        // where the truck stands when there is not.
-        RenderFragment truckActions =
-        @<div class="fleet-map-inspector__actions" role="group" aria-label="Truck actions">
-            <button type="button"
-                    class="btn map-action-icon
-                        @(_followingTruck ? "btn--primary" : "")"
-                    title="Follow" aria-label="Follow"
-                    aria-pressed="@(_followingTruck ? "true" : "false")"
-                    @onclick="ToggleFollowAsync">
-                <ActionIcon Kind="follow" /><span>Follow</span>
-            </button>
-            <button type="button" class="btn map-action-icon"
-                    title="Show route" aria-label="Show route"
-                    disabled="@(!CanShowRoute)"
-                    @onclick="ShowRouteAsync">
-                <ActionIcon Kind="route-overview" /><span>Fit route</span>
-            </button>
-            @* Fuel opens its own panel; viewing and sending the plan live
-               there, not in this row. *@
-            <button type="button" class="btn map-action-icon"
-                    title="Fuel plan" aria-label="Fuel"
-                    disabled="@(_fuelEditorOpen || _sendPlanOpen)"
-                    @onclick="OpenFuelPlanAsync"
-                ><ActionIcon Kind="fuel" /><span>Fuel</span></button>
-            <button type="button" class="btn map-action-icon" title="Camera" aria-label="Camera" @onclick="OpenCameraAsync"><ActionIcon Kind="camera" /><span>Camera</span></button>
-            <button type="button" class="btn map-action-icon" title="Route options" aria-label="Route options"
-                    disabled="@(_fuelEditorOpen || SelectedDispatchId is null)" @onclick="OpenSelectedRouteEditorAsync"><ActionIcon Kind="route" /><span>Route options</span></button>
-        </div>;
             <div id="fleet-map-details" class="fleet-map-info-content" hidden="@(_inspectorMode != MapInspectorMode.Truck)">
     <div id="fleet-map-route-details" class="fleet-map-route-details">
     @if (!NothingToDrive && (_routeLoading || _loadDetails is not null || ScheduledStop is not null || _routeState?.Plan is not null))
@@ -553,7 +709,6 @@
                         ShowSummary="true" ShowDetails="false" Reading="compact" />
                 </div></div>
             }
-            @truckActions
             </div>
             <div class="fleet-map-route-info__messages">
                 @foreach (var conflict in _planningConflicts)
@@ -581,7 +736,6 @@
                 Address="@SelectedTruck.FormattedLocation"
                 OnCopy="CopyTextAsync" />
         </div>
-        @truckActions
     }
     @if (NothingToDrive && VisibleRouteError is { } emptyRouteError) { <p class="fleet-map-route-info__error" role="status">@emptyRouteError</p> }
     </div>

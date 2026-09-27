@@ -128,3 +128,60 @@
     color: ui.theme(text-muted);
   }
 }
+
+// The clocks as a row of cells, each its name, its reading and a thin bar
+// of what is left: the workspace's truck panel, across its whole width.
+.driver-hours-panel:has(> .driver-hours--cells) {
+  margin-left: 0;
+  max-width: none;
+}
+.driver-hours--cells {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: ui.pg(xs);
+  .driver-hours__clock {
+    display: block;
+    padding: ui.pg(xs) ui.pg(sm) ui.pg(sm);
+    border: 1px solid ui.theme(border);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface);
+  }
+  .driver-hours__label {
+    display: block;
+    color: ui.theme(text-muted);
+    font-size: ui.fs(micro);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .driver-hours__reading {
+    display: block;
+    color: ui.theme(text);
+    font-size: ui.fs(lead);
+    font-weight: 700;
+  }
+  .driver-hours__clock + .driver-hours__clock {
+    padding-inline-start: ui.pg(sm);
+    border-inline-start: 1px solid ui.theme(border);
+  }
+}
+
+// A thin bar of what is left, under a text reading that asks for it.
+.driver-hours__bar {
+  display: block;
+  height: 3px;
+  margin-top: ui.pg(xs);
+  overflow: hidden;
+  border-radius: ui.radius(pill);
+  background: ui.theme(border-subtle);
+  > i {
+    display: block;
+    height: 100%;
+    background: ui.theme(accent);
+    box-shadow: 0 0 6px ui.theme(accent);
+  }
+}
+.driver-hours__clock.is-low .driver-hours__bar > i {
+  background: ui.theme(warning-text);
+  box-shadow: none;
+}

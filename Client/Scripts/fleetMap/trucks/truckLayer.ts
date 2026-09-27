@@ -229,6 +229,18 @@ export function createTruckLayer(
         })),
       );
     },
+    showFleet() {
+      if (disposed) return;
+      camera.showFleet(
+        [...trucks.values()].map(truck => ({
+          id: truck.id,
+          position: truck.position,
+        })),
+      );
+    },
+    zoomBy(step: number) {
+      if (!disposed) camera.zoomBy(step);
+    },
     releaseCamera() {
       if (!disposed) camera.releaseCamera();
     },

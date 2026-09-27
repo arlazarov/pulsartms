@@ -46,32 +46,7 @@
     </nav>
 
     <div class="sidebar__footer">
-      <AuthorizeView Context="account">
-        <button class="btn btn--sidebar sidebar__account" type="button" @ref="AccountToggle"
-                aria-expanded="@(AccountOpen ? "true" : "false")" aria-controls="sidebar-account-actions"
-                @onclick="ToggleAccount">
-          <span class="sidebar__avatar" aria-hidden="true">@AccountInitials(account.User)</span>
-          <span class="sidebar__account-text"><strong>@AccountName(account.User)</strong><span>@(account.User.IsInRole("Admin") ? "Administrator" : "Dispatch")</span></span>
-          <svg class="sidebar__account-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 14 4-4 4 4" /></svg>
-        </button>
-      @if (AccountOpen)
-      {
-      <div id="sidebar-account-actions" role="group" aria-label="Account actions">
-      <NavLink href="/settings/personal" class="btn btn--sidebar"
-               @onclick="CloseMenu">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h16M4 17h16M8 4v6m8 4v6" />
-          </svg>Personal settings
-      </NavLink>
-      <button
-          class="btn btn--sidebar"
-          type="button"
-          @onclick="LogoutAsync">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H4v16h6M14 8l4 4-4 4M8 12h12" /></svg>Logout
-      </button>
-      </div>
-      }
-      </AuthorizeView>
+        <AccountMenu Block="sidebar" Navigated="CloseMenu" />
     </div>
     </div>
 </aside>
