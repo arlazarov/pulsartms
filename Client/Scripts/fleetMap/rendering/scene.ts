@@ -6,6 +6,7 @@ import { createSceneLayers } from './sceneLayers.ts';
 import { createSceneOverlay } from './sceneOverlay.ts';
 import { createScenePointer } from './scenePointer.ts';
 import { snapshotStops } from './stopData.ts';
+import { movingRingKey } from './stopMarkerLayout.ts';
 import { clusterTrucks } from './truckClusters.ts';
 import { layoutMapLabels } from './truckLabelLayout.ts';
 
@@ -106,12 +107,16 @@ export function createScene(
       // badge, so which trucks are standing and where is part of what the
       // stops are laid out against. Without this a badge kept a ring for a
       // truck that had since driven off, until something else happened to
-      // move the stops. A truck in motion is not in the key, so driving
-      // relays nothing.
-      const standing = vehicles
-        .filter(t => !(t.speed > 0))
-        .map(t => t.position.join(','))
-        .join(';');
+      // move the stops. A truck in motion counts only by which next stop,
+      // if any, it covers at this zoom, so driving relays the badges when
+      // that changes and not on every frame.
+      const standing =
+        vehicles
+          .filter(t => !(t.speed > 0))
+          .map(t => t.position.join(','))
+          .join(';') +
+        '|' +
+        movingRingKey(vehicles, stopData, stopZoom);
       if (standing !== standingTrucks) {
         standingTrucks = standing;
         stopsDirty = true;
