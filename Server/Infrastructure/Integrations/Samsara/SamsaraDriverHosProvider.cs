@@ -5,9 +5,9 @@ namespace Infrastructure.Integrations.Samsara;
 
 // The serving carrier's clocks, read through its own credentials. Nothing
 // is kept here: DriverHosSnapshot keeps each carrier's clocks and runs one
-// refresh per carrier at a time. The read path this had before (audit D3)
-// cached every carrier's clocks under one key, so any carrier could be
-// served another's, and a static gate made carriers wait for each other.
+// refresh per carrier at a time. The read path this had before (audit D3),
+// which no production caller reached, cached every carrier's clocks under
+// one key, and a static gate made carriers wait for each other.
 public class SamsaraDriverHosProvider(SamsaraApiService api)
   : IDriverHosRefreshProvider
 {

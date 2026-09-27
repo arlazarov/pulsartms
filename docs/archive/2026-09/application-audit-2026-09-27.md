@@ -871,9 +871,12 @@ failed on the new worktree's missing Client packages and is marked.
   read that no production caller reaches (the board, ETA, fuel and fleet
   read `DriverHosSnapshot`) but that cached every carrier's clocks under
   one key without a company, written by every refresh; and a static gate
-  made carriers' refreshes wait for each other. Red on the old provider
-  (diagnostic-u0Fqww: carrier B's read returned carrier A's clocks without
-  asking B's account; two carriers never refreshed at once). The provider
+  made carriers' refreshes wait for each other. This was a dead path, not
+  a production tenant leak: nothing in production read that cache, and
+  no carrier was ever served another's clocks. Red on the old provider,
+  calling the dead read directly (diagnostic-u0Fqww: carrier B's read
+  returned carrier A's clocks without asking B's account; two carriers
+  never refreshed at once). The provider
   now only refreshes the serving carrier and keeps nothing; the snapshot
   already keeps clocks per carrier and one refresh per carrier at a time
   (`CompanySnapshotTests`). A missing permission still leaves the board
