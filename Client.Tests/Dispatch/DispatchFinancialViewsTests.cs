@@ -359,6 +359,57 @@ public sealed class DispatchFinancialViewsTests
     );
   }
 
+  // Within a day the first pickup is first and, picked up alike, the first
+  // delivery; a truck is named once only over loads that follow each other
+  // in that order (the owner, September 27).
+  [Fact]
+  public void TableOrdersADayByPickupThenDelivery()
+  {
+    using var context = new BunitContext();
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    Guid x = Guid.NewGuid(),
+      y = Guid.NewGuid();
+    DispatchResponse On(int number, Guid truck, int pickup, int delivery)
+    {
+      var load = Load(number);
+      load.TruckId = truck;
+      load.Stops[0].ScheduledDate = today;
+      load.Stops[0].ScheduledTime = new(pickup, 0);
+      load.Stops[1].ScheduledDate = today.AddDays(1);
+      load.Stops[1].ScheduledTime = new(delivery, 0);
+      return load;
+    }
+    var table = context.Render<DispatchTable>(parameters =>
+      parameters.Add(
+        view => view.Trucks,
+        [
+          new TruckDispatchBoardResponse
+          {
+            Key = "board",
+            Dispatches =
+            [
+              On(3, x, 10, 9),
+              On(1, x, 8, 12),
+              On(2, y, 8, 9),
+              On(4, y, 11, 8),
+            ],
+          },
+        ]
+      )
+    );
+
+    Assert.Equal(
+      ["2", "1", "3", "4"],
+      table
+        .FindAll(".dispatch-table__open strong")
+        .Select(cell => cell.TextContent.Trim())
+        .ToArray()
+    );
+    // x's loads 1 and 3 follow each other; y's 2 and 4 do not.
+    var run = Assert.Single(table.FindAll(".dispatch-table__run"));
+    Assert.Contains("2 loads", run.TextContent);
+  }
+
   // Today always has its band on the active table, so the eye finds where
   // the plan starts even on a day without pickups.
   [Theory]

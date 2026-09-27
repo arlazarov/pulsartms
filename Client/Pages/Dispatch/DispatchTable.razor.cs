@@ -106,15 +106,35 @@ public partial class DispatchTable
       : days.OrderBy(day => day.Date is null).ThenBy(day => day.Date).ToArray();
   }
 
-  // A stable order: loads booked alike keep the board's order, so a truck's
-  // current load stays ahead of its next; a truck's loads stay together.
-  private static IReadOnlyList<TruckRun> Runs(
-    IEnumerable<DispatchBoardRow> day
-  ) =>
-    day.OrderBy(row => row.Origin?.ScheduledTime ?? TimeOnly.MaxValue)
-      .GroupBy(row => row.TruckIdentity?.ToString() ?? row.Key)
-      .Select(run => new TruckRun(run.ToArray()))
-      .ToArray();
+  // Within a day, the first pickup first, and of two picked up alike the
+  // first delivery first (the owner, September 27); an unknown time goes
+  // last, and loads booked alike keep the board's order, so a truck's
+  // current load stays ahead of its next. A truck is named once over its
+  // loads only where they follow each other in that order, so the order
+  // is never bent to keep a truck's loads together.
+  private static IReadOnlyList<TruckRun> Runs(IEnumerable<DispatchBoardRow> day)
+  {
+    var runs = new List<List<DispatchBoardRow>>();
+    foreach (
+      var row in day.OrderBy(row =>
+          row.Origin?.ScheduledTime ?? TimeOnly.MaxValue
+        )
+        .ThenBy(row => row.DeliveryDate ?? DateOnly.MaxValue)
+        .ThenBy(row => row.Destination?.ScheduledTime ?? TimeOnly.MaxValue)
+    )
+    {
+      var last = runs.LastOrDefault();
+      if (
+        last is not null
+        && row.TruckIdentity is { } truck
+        && last[0].TruckIdentity == truck
+      )
+        last.Add(row);
+      else
+        runs.Add([row]);
+    }
+    return runs.Select(run => new TruckRun(run)).ToArray();
+  }
 
   private static DispatchDay Day(
     DateOnly? day,
