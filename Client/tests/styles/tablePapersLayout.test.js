@@ -28,6 +28,8 @@ test('Table differentiates current rows while leaving upcoming loads neutral and
     rule('.dispatch-page .dispatch-table tr.is-current td'),
     /background: var\(--ui-selected\);/,
   );
+  // No edge bar repeats the Current or Next label.
+  assert.doesNotMatch(css, /tr\.is-(current|next) td:first-child/);
   assert.match(
     rule('.dispatch-page .dispatch-table tr.is-planned td'),
     /background: var\(--ui-surface\);/,
