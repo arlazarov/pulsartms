@@ -5,15 +5,11 @@ using Client.Models.DTO.Dispatch;
 using Client.Services;
 using Client.Shared.Dispatch;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 
 namespace Client.Pages.Dispatch;
 
 public partial class DispatchTable
 {
-  [Inject]
-  private NavigationManager Navigation { get; set; } = default!;
-
   [CascadingParameter]
   public DispatchSettingsState? DisplaySettings { get; set; }
 
@@ -170,12 +166,6 @@ public partial class DispatchTable
 
   private string LoadUrl(DispatchBoardRow row) =>
     ReturnNavigation.Load(row.Load.Id, ReturnOrigin);
-
-  private void OpenFromRow(DispatchBoardRow row, MouseEventArgs e)
-  {
-    if (e.Button == 0 && !e.CtrlKey && !e.MetaKey && !e.ShiftKey && !e.AltKey)
-      Navigation.NavigateTo(LoadUrl(row));
-  }
 
   private static IReadOnlyList<DispatchStopVisit> Stops(
     IReadOnlyList<DispatchStopVisit> visits,

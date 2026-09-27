@@ -15,7 +15,7 @@ namespace Client.Tests.Dispatch;
 public sealed class DispatchTableInteractionTests
 {
   [Fact]
-  public async Task OpenLoadHasNativeUrlAndOrdinaryRowClickNavigates()
+  public async Task OnlyTheLoadNumberOpensTheLoad()
   {
     await using var context = Context();
     var load = DispatchFinancialViewsTests.Load();
@@ -33,16 +33,20 @@ public sealed class DispatchTableInteractionTests
     Assert.Null(open.GetAttribute("aria-haspopup"));
     Assert.StartsWith("Open load ", open.GetAttribute("aria-label"));
     Assert.Empty(table.FindAll("dialog, details"));
-    await table.Find("tr.dispatch-table__row").ClickAsync(new MouseEventArgs());
-    Assert.EndsWith(
-      $"/dispatch/{load.Id}",
+    // A click on the row is not a click on the load (the owner,
+    // September 27): the row has no handler to click.
+    Assert.Throws<MissingEventHandlerException>(
+      () => table.Find("tr.dispatch-table__row").Click(new MouseEventArgs())
+    );
+    Assert.Equal(
+      "http://localhost/",
       context.Services.GetRequiredService<NavigationManager>().Uri
     );
     Assert.Empty(table.FindAll("dialog"));
   }
 
   [Fact]
-  public async Task MapNavigationAndModifiedRowClicksDoNotOpenDialog()
+  public async Task TheMapLinkCarriesTheLoadAndOpensNoDialog()
   {
     await using var context = Context();
     var load = DispatchFinancialViewsTests.Load();
@@ -60,17 +64,6 @@ public sealed class DispatchTableInteractionTests
       invocation => invocation.Identifier == "import"
     );
     Assert.Empty(table.FindAll("dialog"));
-    foreach (
-      var args in new[]
-      {
-        new MouseEventArgs { CtrlKey = true },
-        new MouseEventArgs { MetaKey = true },
-        new MouseEventArgs { ShiftKey = true },
-        new MouseEventArgs { AltKey = true },
-        new MouseEventArgs { Button = 1 },
-      }
-    )
-      await table.Find("tr.dispatch-table__row").ClickAsync(args);
     Assert.Empty(table.FindAll("dialog"));
     Assert.Equal(
       "http://localhost/",

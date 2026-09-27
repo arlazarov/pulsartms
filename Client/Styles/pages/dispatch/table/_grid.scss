@@ -63,9 +63,6 @@
     margin-top: ui.pg(xs);
     font-size: ui.fs(small);
   }
-  .dispatch-table__row {
-    cursor: pointer;
-  }
   .dispatch-table__row > td {
     transition: background 150ms ease;
   }

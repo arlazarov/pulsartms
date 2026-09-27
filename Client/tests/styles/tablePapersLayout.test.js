@@ -133,10 +133,9 @@ test('Table rows offer visible keyboard focus and pointer feedback without expan
     rule('.dispatch-table-wrap:focus-visible'),
     /outline: 2px solid var\(--ui-focus\);/,
   );
-  assert.match(
-    rule('.dispatch-page .dispatch-table .dispatch-table__row'),
-    /cursor: pointer;/,
-  );
+  // Only the load number opens the load; the row is not a link (the
+  // owner, September 27).
+  assert.doesNotMatch(css, /\.dispatch-table__row\s*\{[^}]*cursor: pointer/);
   assert.match(
     rule('.dispatch-page .dispatch-table .dispatch-table__open:focus-visible'),
     /outline: 3px solid var\(--ui-focus\);/,
