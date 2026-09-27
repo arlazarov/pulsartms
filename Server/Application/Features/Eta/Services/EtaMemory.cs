@@ -32,7 +32,7 @@ public sealed class EtaMemory(TimeProvider? clock = null)
         32768,
         "units"
       ),
-      new("eta-current", Results.Count, null, null, "unmeasured"),
+      new("eta-current", touched.Count, null, MaximumScopes, "scopes"),
       new("eta-timing", Timing.Count, Timing.RetainedUnits, 32768, "units"),
     ];
   }
@@ -81,6 +81,7 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   // refuse to show them as current.
   public bool Publish(Guid key, Entry entry)
   {
+    Touch(key);
     var kept = Results.AddOrUpdate(
       key,
       entry,
@@ -101,6 +102,55 @@ public sealed class EtaMemory(TimeProvider? clock = null)
     );
 
   public readonly ConcurrentDictionary<Guid, Entry> Results = new();
+
+  // Every scope this memory holds anything for - a forecast, an identity,
+  // a demand, an answer - with when it was last written or read. A scope
+  // untouched for ten minutes is forgotten in every map at once (Due), and
+  // the number of scopes is bounded whatever roles this process runs: past
+  // the bound the least recently touched are forgotten, down to three
+  // quarters of it, so the sort runs once per quarter of new scopes. A
+  // forgotten forecast costs a display read one saved-forecast read; the
+  // store is the truth (stage 4e).
+  public const int MaximumScopes = 1024;
+  private readonly ConcurrentDictionary<Guid, DateTime> touched = new();
+  private int trimming;
+  private long trims;
+
+  // How often the bound had to trim, for tests that count the work.
+  internal long Trims => Interlocked.Read(ref trims);
+
+  private void Touch(Guid key)
+  {
+    touched[key] = time.GetUtcNow().UtcDateTime;
+    if (touched.Count > MaximumScopes)
+      Trim();
+  }
+
+  private void Trim()
+  {
+    if (Interlocked.Exchange(ref trimming, 1) == 1)
+      return;
+    try
+    {
+      var excess = touched.Count - MaximumScopes * 3 / 4;
+      if (touched.Count <= MaximumScopes || excess <= 0)
+        return;
+      Interlocked.Increment(ref trims);
+      foreach (
+        var key in touched
+          .OrderBy(x => x.Value)
+          .Take(excess)
+          .Select(x => x.Key)
+          .ToArray()
+      )
+        Forget(key);
+    }
+    finally
+    {
+      Volatile.Write(ref trimming, 0);
+    }
+  }
+
   public readonly ConcurrentDictionary<Guid, DateTime> Viewed = new();
   private readonly ConcurrentDictionary<Guid, string> demandedInputs = new();
 
@@ -111,8 +161,11 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   private readonly ConcurrentDictionary<Guid, string> mapAnswers = new();
   private readonly ConcurrentDictionary<Guid, string> publishedAnswers = new();
 
-  public void NoteMapAnswer(Guid key, string answer) =>
+  public void NoteMapAnswer(Guid key, string answer)
+  {
+    Touch(key);
     mapAnswers[key] = answer;
+  }
 
   public string? MapAnswer(Guid key) => mapAnswers.GetValueOrDefault(key);
 
@@ -126,6 +179,7 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   )
   {
     var key = Scope(dispatchId, executionLegId);
+    Touch(key);
     var answer = hasEta ? "shown" : MapAnswer(key) ?? "not-read";
     var previous = publishedAnswers.GetValueOrDefault(key);
     publishedAnswers[key] = answer;
@@ -160,7 +214,10 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   {
     var key = executionLegId ?? dispatchId;
     if (executionLegId.HasValue)
+    {
+      Touch(key);
       scopes[key] = new(dispatchId, executionLegId);
+    }
     return key;
   }
 
@@ -169,6 +226,7 @@ public sealed class EtaMemory(TimeProvider? clock = null)
 
   public void View(Guid id, DateTime now)
   {
+    Touch(id);
     var firstView = Viewed.TryAdd(id, now);
     if (!firstView)
       Viewed[id] = now;
@@ -218,6 +276,7 @@ public sealed class EtaMemory(TimeProvider? clock = null)
     scopes.TryRemove(dispatchId, out _);
     mapAnswers.TryRemove(dispatchId, out _);
     publishedAnswers.TryRemove(dispatchId, out _);
+    touched.TryRemove(dispatchId, out _);
     return dropped;
   }
 
@@ -356,9 +415,15 @@ public sealed class EtaMemory(TimeProvider? clock = null)
 
   public IEnumerable<Guid> Due(DateTime now)
   {
+    // A scope not viewed, or not touched at all, for ten minutes is
+    // forgotten in every map - not only the ones a view created.
+    var idle = now.AddMinutes(-10);
+    foreach (var (key, at) in touched)
+      if ((Viewed.TryGetValue(key, out var viewed) ? viewed : at) < idle)
+        Forget(key);
     foreach (var item in Viewed)
     {
-      if (item.Value < now.AddMinutes(-10))
+      if (item.Value < idle)
       {
         Forget(item.Key);
         continue;

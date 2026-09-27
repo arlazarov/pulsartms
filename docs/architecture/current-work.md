@@ -423,6 +423,17 @@ completed.
        measurement does not prove equal parameters; the repetition is
        established by the code and the share tests. Production cost not
        measured.
+   - **4e ETA memory bound, implemented (not released).** `EtaMemory`
+     held scopes it was never asked to view - leg identities, published
+     summary answers, forecasts - for the process' life, and only a
+     process running the ETA worker swept even the viewed ones. Every
+     scope is now touched when written or read; `Due` forgets a scope
+     idle for ten minutes in every map; and at most
+     `EtaMemory.MaximumScopes` (1,024) are held whatever roles the
+     process runs - past it the least recently touched go, down to three
+     quarters, so trimming sorts once per 256 new scopes. A forgotten
+     forecast costs a display read one saved-forecast read. Reported as
+     `eta-current` scopes with its limit. Size per scope is not measured.
    - **4e duty, implemented (not released).** A prepared summary's fuel
      hand-over line (`FuelPlan.IssueState`, each stop's `IssueHorizon`)
      is drawn with the hours read when it was prepared. The reader now
