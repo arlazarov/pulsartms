@@ -143,21 +143,23 @@ sample. Tests: idle ticks read the roster once per cache lifetime; a
 new company is run within one lifetime; each company keeps its
 schedule; an inactive company stops.
 
-### F3 — P1 (latent): HOS clocks are cached for all carriers under one key
+### F3 — P3 (latent, corrected): a dead HOS read path under a shared key
 
-Verified in code. `SamsaraDriverHosProvider` caches the clock table under
-the fixed key `samsara:hos-clocks` with one process-wide lock
-(`SamsaraDriverHosProvider.cs:15-16,32,82`), while Samsara credentials
-are per company. With one carrier there is no exposure today; with a
-second, one carrier's clocks, or an empty table, can be served to the
-other for up to a minute. `RoutePreviewService.cs:30-35` fixed the same
-pattern. Proposal, first in the post-publication batch: company in the
-key and one gate per company in a bounded map, credential change
-invalidating that company's entry. Tests with two companies: cache hit
-per company; refresh per company; an empty table for one never served
-to the other; a provider error for one not cached for the other;
-concurrent reads for both neither cross nor serialize; the gate map
-stays bounded; a credential change clears only its own entry.
+Verified in code, and corrected after tracing the callers. The Samsara
+provider caches under the fixed key `samsara:hos-clocks` with one static
+gate (`SamsaraDriverHosProvider.cs:15-16,32,82`). But production reaches
+it only through `IDriverHosRefreshProvider.RefreshClocksAsync`
+(`IDriverHosRefreshProvider.cs:7`, the one consumer
+`DriverHosRefreshOperation.cs:53-54`), and a refresh never reads that
+cache; it only writes it. Every request reads clocks from
+`DriverHosSnapshot`, a singleton already keyed by company
+(`DriverHosSnapshot.cs`, `CompanyState` per `ICurrentCompany.Id`). The
+non-refresh `GetClocksAsync` that would serve the shared entry is called
+only by tests (`DriverHosTests.cs:74-75,136-147`). So no carrier can be
+served another's clocks today. What remains: a dead read path that would
+leak the moment anything wires it, a dead cache write, and a static gate
+that queues every company's refresh behind the others. The earlier P1
+ranking is withdrawn.
 
 ### F4 — P2: board planning summaries are read for a different page
 
@@ -364,31 +366,164 @@ run; `RebuildExecutionStorage` refuses to run on populated tables.
 
 ## Proposed order, for root
 
-First batch after the frontend publication (tenant isolation and
-safety first, each small and separately tested):
+First batch after the frontend publication, each small and separately
+tested:
 
-1. F3 HOS clocks per company, with the two-company cases listed there.
-2. F2 roster through ReadCache, preserving per-company schedules and
-   new-company discovery; a query-count test over idle ticks.
-3. F1 (a): record the road-request failure reason; then decide (b) on
-   evidence, and (c) only with an owner policy.
-4. F8 Dispatch policy and cooldown on the manual syncs.
+1. F2 roster through ReadCache (design D2); a count test over idle
+   passes.
+2. F1 (a) record the road-request failure reason (design D1); then (b)
+   on evidence, and (c) only with an owner policy.
+3. F8 Dispatch policy and cooldown on the manual syncs.
+4. F3 cleanup (design D3): remove the dead read path and key the gate
+   per company.
 
-Then: F14 forwarded addresses; F13 key custody (owner decision); F4
-page identity; F7 per-load identity; F5 shared work read in steps; F6
-cadences; F9 auditor rules; the P3 items.
+Then: F14 limits that do not depend on addresses (design D5); F13 key
+custody (design D4, owner decision); F4 page identity; F7 per-load
+identity; F5 shared work read in steps; F6 cadences; F9 auditor rules;
+the P3 items.
 
-Each fix: affected test groups during work, a before/after table-scan
-sample for load claims, the full gate only for publication.
+## Implementation designs (not implemented)
 
-## Gaps
+### D1 — road preparation says why it waits (F1 a)
 
-- No per-query production counts (`pg_stat_statements` absent) and no
-  latency or payload measurement; costs outside the table sample are
-  inferred from code.
-- Findings marked reported were not re-read line by line; every P1 and
-  every finding named in root's review was verified.
-- Not covered: database roles and who can read backups; Cloud Run
-  ingress and the proxy chain; deployed key-rotation settings; the
-  cross-instance cache relay; admin unlock paths; Google API key
-  restrictions; Samsara and BVD beyond timeouts; tests' content.
+Owner: `BaseRouteOperation` (Application, Routing background). No schema
+change. In `PrepareAsync`'s `RoutePlanningException` branch, log once at
+Information when a dispatch's (input signature, message) pair is new or
+has changed: template `Route preparation for {DispatchId} waits:
+{Reason}; retry {RetryAfter}; attempt {Attempts}`. The operation, a
+singleton, keeps the last pair per dispatch in a bounded map
+(`RoutePreparationOptions.StateCapacity`, least-recently-seen evicted)
+and forgets a dispatch on success. Messages are the application's own
+fixed texts (checked: TomTom, Google and stop-location messages carry no
+provider payload or address beyond a stop number). Failure semantics: a
+logging failure never changes the settle; the settle and retry time are
+unchanged. Work counts: no statement, no provider call added. Tests
+(`BaseRouteOperationTests`, Kind Integration): one log for repeated
+identical failures; a new log when the reason or signature changes; no
+log after success; bound respected. Later, with the auditor rule of F9:
+an additive nullable `LastFailure`, `LastFailureAt` on
+`SourceRoadRequests` written by `SourceRoadStore.CompleteAsync`.
+
+### D2 — the carrier roster is read once per lifetime (F2)
+
+Owner: Application. `CompanyPasses.ForEachCompanyAsync` (15 callers)
+reads the roster through a new Application service, `CompanyRosterReader`,
+that wraps `ICompanyRoster` in `ReadCache.GetAsync` under a new group
+`ReadGroups.Companies` with a 30 s lifetime; `ReadGroupsTests` pins the
+new name. No application command creates or deactivates a company today
+(companies change by migration or operator), so discovery is bounded by
+the lifetime rather than by invalidation: a new carrier starts within
+30 s, a deactivated one stops within 30 s. Each company's own schedule
+is untouched: `RunJobAsync` still checks that company's `NextRun`
+inside the per-company call. The roster is not company data, so it is
+read outside any company scope. Estimated effect from the scan counters
+only: about 270 `Companies` scans a minute down to about 2 per instance.
+Tests (`CompanyPassTests`, Kind Unit, counting fake roster): many passes
+within a lifetime read once; after `InvalidateGlobally(Companies)` a new
+company is served; each company still runs only when due; an inactive
+company is no longer served after invalidation.
+
+### D3 — the dead HOS read path goes (F3)
+
+Owner: `SamsaraDriverHosProvider` (Infrastructure). Delete the
+non-refresh `GetClocksAsync`, the cache read and write and the fixed key;
+`RefreshClocksAsync` fetches for the current company and returns. Replace
+the static gate with one gate per company in a bounded map, so two
+companies refresh concurrently and one company's refreshes still do not
+overlap. Tests move from the dead path to `RefreshClocksAsync`, plus a
+two-company test at `DriverHosSnapshot` level: each company's clocks are
+served only to it, an empty or failed refresh for one leaves the other's
+clocks intact. Work counts unchanged.
+
+### D4 — protect the key ring without losing what it decrypts (F13)
+
+Owner decision on custody first: Cloud KMS (a runtime dependency on KMS
+availability) or a certificate from Secret Manager (no runtime call, a
+secret to hold). Recoverable sequence, no rotation and no deletion:
+
+1. Back up the database (the key rows included) and record the count of
+   stored credentials that decrypt today, by provider, without values.
+2. Deploy `ProtectKeysWith…` for keys written from then on. Existing
+   plain keys stay readable: Data Protection decrypts key XML only when
+   it is encrypted.
+3. Re-protect the existing key XML in place with a one-off tool that
+   reads each key element, encrypts it with the chosen protector and
+   writes it back in one transaction, keeping a copy of the plain rows
+   in the protected backup.
+4. Verify the same decrypt counts by provider.
+5. Rollback: restore the plain rows from the backup and deploy without
+   the protector (or keep `UnprotectKeysWith…` for a certificate) and
+   verify the counts again.
+
+Needs production permission changes (KMS or Secret Manager access), so
+it is a proposal only; backups made before step 3 remain secret-bearing.
+
+### D5 — sign-in and refresh limits that no forwarded address can fool (F14)
+
+Established: ingress is `all` (the `run.app` URL is reachable directly,
+not only through Hosting), Hosting rewrites `/api/**` to the service,
+and the request log shows a Google Hosting proxy as the caller. A client
+calling `run.app` directly controls every `X-Forwarded-For` entry except
+the last one Google appends, and for Hosting traffic that last entry is
+the Hosting proxy, shared by many users. So no forwarded entry can be
+trusted to name the user without an allow-list of Hosting proxy ranges,
+which Google does not publish for this purpose. Proposal: partition
+sign-in by the normalised account name (plus a higher global cap), and
+refresh by the token's user once validated, instead of by address; keep
+the address partition only as a coarse global guard. Lockout stays per
+account. Tests: one account's failures do not block another; a flood on
+one account is capped; refresh of user A does not consume B's budget.
+
+## Coverage matrix
+
+Each area: what was inventoried; what this audit verified itself; what
+remains.
+
+- **API endpoints and auth:** 28 controllers, 171 endpoints; verified
+  the sync endpoints, the sign-in limiter and the fallback policy;
+  remains a per-endpoint role review.
+- **Background work:** 17 hosted services; verified the roster reads,
+  road preparation and the summary worker; remains liveness for the
+  operations without a heartbeat.
+- **Shared reads and caches:** 9 caches; verified the F4, F5 and F7
+  paths and the planning-inputs entry; remains per-statement counts.
+- **Client requests:** per-screen rates; verified the map and board
+  planning cadences; remains payload sizes.
+- **Consistency auditor:** 10 rules; verified the register against the
+  workflows; remains the cost of each rule's SQL.
+- **Providers:** 6; verified exception texts, the Samsara HOS path and
+  ingress; remains API key restrictions.
+- **Authentication:** login, refresh, logout; verified the key ring and
+  the limiter; remains proof of the proxy chain.
+- **Schema and migrations:** 73; verified the adoption loop; remains the
+  bodies of rollback paths.
+- **Tests and gates:** categories and probes; verified the PostgreSQL
+  skip behaviour; remains a review of test content.
+- **Live data:** table scans and loads 1341 and 1355, read-only; remains
+  per-statement counts.
+
+## Open gaps, owners and completion criteria
+
+- **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done
+  when D1 is deployed and a reason is logged for each.
+- **Per-statement production counts.** Owner: operations with root.
+  Done when `pg_stat_statements` is enabled by owner decision, or a
+  sampled statement log exists, and F2 and F5 are re-measured.
+- **Hosting proxy chain.** Owner: platform (D5). Done when an Admin-only
+  diagnostic has sampled the header shape, with no addresses stored.
+- **Key custody for the key ring.** Owner: the owner (D4). Done when
+  custody is chosen and D4 steps 1 to 4 pass with equal decrypt counts.
+- **Who can read backups and the database.** Owner: the owner and
+  operations. Done when roles are listed and backups are classified as
+  secret-bearing.
+- **Google API key restrictions.** Owner: the owner. Done when the
+  referrer and API restrictions are confirmed in the console.
+- **Payload sizes of locations, HOS and planning.** Owner: Client (F6).
+  Done when measured in a browser trace.
+- **Reported findings not re-read (F10 scan, F12, F15).** Owner: this
+  audit. Done when each is re-read, or fixed with its test.
+- **Liveness of operations without a heartbeat.** Owner: the background
+  owners. Done when each has a heartbeat or a documented reason.
+
+The audit is not complete until these are closed or explicitly accepted
+by root.
