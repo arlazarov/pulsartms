@@ -24,7 +24,8 @@
     <div class="dispatch-load__reference">
         <span>@Load.CustomerName</span>
         <span class="dispatch-load__status @(!Completed && Load.Status == "in_transit" ? "is-moving" : "")">@Status</span>
-        <span class="dispatch-load__phase">@Phase</span>
+        <span class="dispatch-load__phase"
+              title="@(StopsPassed ? "Tracking passed every stop; confirm the delivery" : null)">@Phase</span>
     </div>
     @* Every load names its own driver and trailer: they change from load
        to load on one truck (the owner, September 27). *@

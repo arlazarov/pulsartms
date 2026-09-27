@@ -34,6 +34,10 @@ public partial class DispatchLoadCard
   [Parameter]
   public int Order { get; set; }
 
+  // Tracking has passed every stop, but the delivery is not confirmed.
+  [Parameter]
+  public bool StopsPassed { get; set; }
+
   [Parameter]
   public bool Refreshing { get; set; }
 
@@ -48,7 +52,7 @@ public partial class DispatchLoadCard
       DisplaySettings?.LoadNumberPrefix
     );
   private bool Completed => Load.Completed;
-  private bool Next => !Current && !Completed && Order <= 1;
+  private bool Next => !Current && !Completed && !StopsPassed && Order <= 1;
   private bool ShowRemaining =>
     Current
     && !Completed
@@ -58,6 +62,7 @@ public partial class DispatchLoadCard
   private bool ShowFuelStops => !Completed && FuelStopCount is >= 0;
   private string Phase =>
     Completed ? "Completed"
+    : StopsPassed ? "Stops passed"
     : Current ? "Current"
     : Next ? "Next"
     : "Upcoming";

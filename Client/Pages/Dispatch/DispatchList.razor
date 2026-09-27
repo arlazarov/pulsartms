@@ -99,14 +99,16 @@
                 <div class="dispatch-truck__loads" role="region" aria-label="@($"Loads for truck {truck.TruckNumber}")" tabindex="0">
                     @if (truck.Dispatches.Count == 0)
                     { <div class="dispatch-truck__available"><span aria-hidden="true">○</span><div><strong>No active dispatch</strong><p>Ready for the next assignment.</p></div></div> }
+                    @{ var (passed, currentIndex) = LoadPosition(truck); }
                     @for (var index = 0; index < truck.Dispatches.Count; index++)
                     {
                         var load = truck.Dispatches[index];
-                        var current = index == 0 && IsCurrent(load);
-                        var order = index + (IsCurrent(truck.Dispatches.FirstOrDefault()) ? 0 : 1);
+                        var current = index == currentIndex;
+                        var order = LoadOrder(index, passed, currentIndex);
                         var summary = CardPlanningSummary(truck, load);
                         <DispatchLoadCard @key="LoadIdentity(load)" Load="load"
                             Truck="truck" Current="current" Order="order"
+                            StopsPassed="index < passed"
                             Refreshing="RefreshingEstimates"
                             ReturnOrigin="@ReturnOrigin"
                             StopChanged="() => StopChangedAsync(load)"

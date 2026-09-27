@@ -925,7 +925,25 @@ public sealed class DispatchTruckHeaderTests
         Assert.Equal(75, nextCard.Instance.RemainingMiles);
         Assert.False(firstCard.Instance.Load.Completed);
         Assert.NotNull(nextCard.Instance.Load.Eta);
+        // The map's reading of the truck: its current load is the one the
+        // summary names, and the one before it has had its stops passed.
+        Assert.True(firstCard.Instance.StopsPassed);
+        Assert.False(firstCard.Instance.Current);
+        Assert.True(nextCard.Instance.Current);
+        Assert.Equal(
+          "Stops passed",
+          firstCard.Find(".dispatch-load__phase").TextContent
+        );
+        Assert.Equal(
+          "Current",
+          nextCard.Find(".dispatch-load__phase").TextContent
+        );
       }
+      else
+        Assert.All(
+          component.FindComponents<DispatchLoadCard>(),
+          card => Assert.False(card.Instance.StopsPassed)
+        );
       Assert.False(first.Completed);
     });
     Assert.Equal(1, reads);
