@@ -35,6 +35,12 @@
     font-size: ui.fs(small);
     color: ui.theme(text-secondary);
   }
+  // Completed is read in the Table alone. In Cards and Papers the scope
+  // keeps its room, so the toolbar stands still between views, but it is
+  // not seen or reached (the owner, September 27).
+  &__scope.is-unavailable {
+    visibility: hidden;
+  }
   &__count {
     display: flex;
     justify-content: space-between;

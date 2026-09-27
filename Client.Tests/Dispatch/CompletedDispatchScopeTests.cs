@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
+using AngleSharp.Dom;
 using Bunit;
 using Client.Pages.Dispatch;
 using Client.Services;
@@ -90,47 +91,31 @@ public sealed class CompletedDispatchScopeTests
       requests.Last(uri => uri.AbsolutePath == "/api/dispatch").Query
     );
 
-    // History has no cards (the owner, September 27).
-    Assert.True(
-      component
-        .FindAll(".dispatch-view button")
-        .Single(button => button.TextContent == "Cards")
-        .HasAttribute("disabled")
+    // Completed loads are read in the Table alone (the owner, September
+    // 27): it is the view drawn, and no live planning is asked for.
+    Assert.Equal("true", View(component, "Table").GetAttribute("aria-pressed"));
+    var query = requests.Last(uri => uri.AbsolutePath == "/api/dispatch").Query;
+    Assert.Contains("status=completed", query);
+    Assert.Contains("search=Historic", query);
+    Assert.Empty(
+      component.FindAll(".dispatch-planning, .driver-hours, .fuel-recalculate")
     );
-    foreach (var view in new[] { "Table", "Papers" })
-    {
-      await component
-        .FindAll(".dispatch-view button")
-        .Single(button => button.TextContent == view)
-        .ClickAsync(new MouseEventArgs());
-      var query = requests
-        .Last(uri => uri.AbsolutePath == "/api/dispatch")
-        .Query;
-      Assert.Contains("status=completed", query);
-      Assert.Contains("page=1", query);
-      Assert.Contains("search=Historic", query);
-      Assert.Empty(
-        component.FindAll(
-          ".dispatch-planning, .driver-hours, .fuel-recalculate"
-        )
-      );
-      if (view == "Papers")
-      {
-        Assert.Single(component.FindAll(".dispatch-paper-column"));
-        Assert.Contains(
-          "Completed loads",
-          component.Find(".dispatch-paper-column__heading").TextContent
-        );
-      }
-    }
     Assert.DoesNotContain(
       requests,
       uri =>
         uri.AbsolutePath.Contains("/planning", StringComparison.Ordinal)
         && !uri.AbsolutePath.EndsWith("/previews", StringComparison.Ordinal)
     );
-    await component.InvokeAsync(
-      () => component.Find("#dispatch-active").ClickAsync(new())
+    // Papers are for active loads: choosing them reads Active again, and
+    // the scope is no longer there to reach.
+    await View(component, "Papers").ClickAsync(new MouseEventArgs());
+    Assert.Equal(
+      "true",
+      component.Find("#dispatch-active").GetAttribute("aria-pressed")
+    );
+    Assert.Contains(
+      "is-unavailable",
+      component.Find(".dispatch-board__scope").ClassName
     );
     Assert.Contains(
       "search=Historic",
@@ -139,9 +124,8 @@ public sealed class CompletedDispatchScopeTests
     Assert.Empty(component.FindAll(".dispatch-load__phase"));
   }
 
-  // Completed has no cards (the owner, September 27): a dispatcher who
-  // chose Cards reads history in the table, newest day first, and finds
-  // the cards again on Active.
+  // Completed loads are read in the Table alone, newest day first (the
+  // owner, September 27); Cards read Active again.
   [Fact]
   public async Task CompletedReadsAsTheTableAndActiveKeepsTheCards()
   {
@@ -171,12 +155,7 @@ public sealed class CompletedDispatchScopeTests
     );
 
     Assert.Empty(component.FindAll("article.dispatch-truck"));
-    Assert.True(
-      component
-        .FindAll(".dispatch-view button")
-        .Single(button => button.TextContent == "Cards")
-        .HasAttribute("disabled")
-    );
+    Assert.False(View(component, "Cards").HasAttribute("disabled"));
     Assert.Equal(
       "true",
       component
@@ -189,17 +168,22 @@ public sealed class CompletedDispatchScopeTests
       component.Find(".dispatch-board__count").TextContent
     );
 
-    await component.InvokeAsync(
-      () => component.Find("#dispatch-active").ClickAsync(new())
-    );
+    // Cards read Active again.
+    await View(component, "Cards").ClickAsync(new MouseEventArgs());
+    Assert.Equal("true", View(component, "Cards").GetAttribute("aria-pressed"));
     Assert.Equal(
       "true",
-      component
-        .FindAll(".dispatch-view button")
-        .Single(button => button.TextContent == "Cards")
-        .GetAttribute("aria-pressed")
+      component.Find("#dispatch-active").GetAttribute("aria-pressed")
     );
   }
+
+  private static IElement View(
+    IRenderedComponent<DispatchList> component,
+    string name
+  ) =>
+    component
+      .FindAll(".dispatch-view button")
+      .Single(button => button.TextContent == name);
 
   // The list's place lives in its address: opened there (a return from a
   // load, browser Back or a reload), it reads that scope, search and page

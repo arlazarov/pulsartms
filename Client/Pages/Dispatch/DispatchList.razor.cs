@@ -77,23 +77,26 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     catch (JSException) { }
   }
 
-  // The view drawn: Completed has no cards, so a dispatcher who chose
-  // Cards reads history in the table and finds the cards again on Active.
-  private int ShownView => _showCompleted && _view == 0 ? 1 : _view;
+  // The view drawn: completed loads are read in the Table alone (the owner,
+  // September 27), whatever view was chosen before.
+  private int ShownView => _showCompleted ? 1 : _view;
 
   private string CountNote =>
     (_showCompleted, ShownView) switch
     {
-      (true, 1) => "Newest pickup days first",
-      (true, _) => "Newest load numbers first",
+      (true, _) => "Newest pickup days first",
       (false, 1) => "By pickup day, earliest first",
       (false, 2) => "Loads on this page",
       _ => "Ordered by truck number",
     };
 
+  // Cards and Papers are for active loads: leaving the completed Table for
+  // either reads Active again.
   private async Task SelectViewAsync(int view)
   {
     _view = view;
+    if (view != 1)
+      _showCompleted = false;
     await LoadAsync(1);
     try
     {

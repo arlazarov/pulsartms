@@ -11,15 +11,6 @@
   gap: ui.pg(md);
   align-items: stretch;
 }
-.dispatch-papers--completed {
-  grid-template-columns: minmax(0, 1fr);
-}
-.dispatch-papers--completed .dispatch-paper-tabs {
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(min(100%, ui.size(dispatch-load-card)), 1fr)
-  );
-}
 .dispatch-paper-tabs {
   display: grid;
   gap: ui.pg(sm);

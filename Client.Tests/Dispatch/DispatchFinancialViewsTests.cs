@@ -681,11 +681,7 @@ public sealed class DispatchFinancialViewsTests
       "Completed",
       table.Find(".dispatch-table__status").TextContent
     );
-    papers.Render(parameters =>
-      parameters
-        .Add(view => view.Trucks, trucks)
-        .Add(view => view.Completed, true)
-    );
+    papers.Render(parameters => parameters.Add(view => view.Trucks, trucks));
     Assert.Equal(
       $"/dispatch/{current.Id}",
       papers.Find(".dispatch-paper__tab").GetAttribute("href")
