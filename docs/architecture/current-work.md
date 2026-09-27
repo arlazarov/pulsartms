@@ -441,6 +441,11 @@ completed.
      it, so a result that differs only in it replaces the shown one; a
      server released before the mark sends none, read as none.
 
+The publication checklist for stages 1 to 4e, with the bounded memory
+review, is [current-work-candidate-2026-09-27.md][candidate].
+
+[candidate]: ../archive/2026-09/current-work-candidate-2026-09-27.md
+
 Each stage is a separate candidate with its own review; none resets
 pending work, forces routing or changes historical stops.
 

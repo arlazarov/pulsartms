@@ -10,6 +10,7 @@ started again under the current project policy.
 
 ### Reviews and implementation records
 
+- [Current-work publication candidate](2026-09/current-work-candidate-2026-09-27.md)
 - [Application architecture audit](2026-09/application-audit-2026-09-26.md)
 - [Architecture guardrail corrections][architecture-guardrails]
 - [Architecture audit conclusion](2026-09/architecture-audit-conclusion-2026-09-26.md)
