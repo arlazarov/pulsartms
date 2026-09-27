@@ -22,8 +22,8 @@
         <dl class="dispatch-paper__financials" aria-label="Load mileage and rate">
             <div class="dispatch-paper__mileage"><dt>Loaded distance</dt><dd><DistanceText Miles="@((double?)Load.LoadedMiles)" /><small>Total <DistanceText Miles="@((double?)Load.TotalMiles)" /> · <span class="dispatch-paper__empty-miles" title="@EmptyMilesHint">Empty <DistanceText Miles="@((double?)Load.EmptyMiles)" /></span></small></dd></div>
             <div><dt>Rate</dt><dd>@DispatchFinancialDisplay.Money(Load.Price, Load.Currency)</dd></div>
-            <div><dt>Loaded RPM</dt><dd>@DispatchFinancialDisplay.Money(Load.LoadedRatePerMile, Load.Currency)</dd></div>
-            <div><dt>Total RPM</dt><dd>@DispatchFinancialDisplay.Money(Load.TotalRatePerMile, Load.Currency)</dd></div>
+            <div><dt>@DispatchFinancialDisplay.LoadedRpm</dt><dd>@DispatchFinancialDisplay.Money(Load.LoadedRatePerMile, Load.Currency)</dd></div>
+            <div><dt>@DispatchFinancialDisplay.TotalRpm</dt><dd>@DispatchFinancialDisplay.Money(Load.TotalRatePerMile, Load.Currency)</dd></div>
         </dl>
         @if (OrderedStops.Count > 2) { <p class="dispatch-load__stop-summary">@StopSummary</p> }
         </div>

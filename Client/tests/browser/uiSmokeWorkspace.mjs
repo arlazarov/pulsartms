@@ -165,11 +165,14 @@ export async function workspaceFinancials(
     ['Loaded distance', `${load.loadedMiles} mi`],
     ['Empty distance', `${load.emptyMiles} mi`],
     ['Total distance', `${load.totalMiles} mi`],
-    ['Loaded RPM', `${load.loadedRatePerMile.toFixed(2)} ${load.currency}`],
+    ['RPM', `${load.loadedRatePerMile.toFixed(2)} ${load.currency}`],
     ['Total RPM', `${load.totalRatePerMile.toFixed(2)} ${load.currency}`],
   ];
   for (const [label, value] of expected) {
-    const field = financials.locator('div').filter({ hasText: label });
+    // Matched by the whole label: "RPM" is also inside "Total RPM".
+    const field = financials.locator('div').filter({
+      has: page.getByText(label, { exact: true }),
+    });
     check(
       (await field.locator('dd').innerText())
         .replace(/\s+/g, ' ')

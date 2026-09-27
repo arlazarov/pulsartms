@@ -78,8 +78,8 @@
             <td class="dispatch-table__money">
                 <dl class="dispatch-table__figures">
                     <div><dt>Rate</dt><dd>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency)</dd></div>
-                    <div><dt>Loaded RPM</dt><dd>@DispatchFinancialDisplay.Money(row.Load.LoadedRatePerMile, row.Load.Currency)</dd></div>
-                    <div class="is-total"><dt>Total RPM</dt><dd>@DispatchFinancialDisplay.Money(row.Load.TotalRatePerMile, row.Load.Currency)</dd></div>
+                    <div><dt>@DispatchFinancialDisplay.LoadedRpm</dt><dd>@DispatchFinancialDisplay.Money(row.Load.LoadedRatePerMile, row.Load.Currency)</dd></div>
+                    <div class="is-total"><dt>@DispatchFinancialDisplay.TotalRpm</dt><dd>@DispatchFinancialDisplay.Money(row.Load.TotalRatePerMile, row.Load.Currency)</dd></div>
                 </dl>
             </td>
         </tr>

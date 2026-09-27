@@ -35,8 +35,8 @@
     @* The rate and both rates per mile, as the server reports them. *@
     <div class="dispatch-load__meta dispatch-load__money">
         <span class="dispatch-load__figure">Rate <strong>@DispatchFinancialDisplay.Money(Load.Price, Load.Currency)</strong></span>
-        <span class="dispatch-load__figure">Loaded RPM <strong>@DispatchFinancialDisplay.Money(Load.LoadedRatePerMile, Load.Currency)</strong></span>
-        <span class="dispatch-load__figure">Total RPM <strong>@DispatchFinancialDisplay.Money(Load.TotalRatePerMile, Load.Currency)</strong></span>
+        <span class="dispatch-load__figure">@DispatchFinancialDisplay.LoadedRpm <strong>@DispatchFinancialDisplay.Money(Load.LoadedRatePerMile, Load.Currency)</strong></span>
+        <span class="dispatch-load__figure">@DispatchFinancialDisplay.TotalRpm <strong>@DispatchFinancialDisplay.Money(Load.TotalRatePerMile, Load.Currency)</strong></span>
     </div>
     <div class="dispatch-load__overview">
         @if (OrderedStops.Count > 2) { <p class="dispatch-load__stop-summary">@StopSummary</p> }

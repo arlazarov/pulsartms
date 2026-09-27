@@ -4,6 +4,11 @@ namespace Client.Shared.Dispatch;
 
 public static class DispatchFinancialDisplay
 {
+  // One name for each rate per mile on every Dispatch view (the owner,
+  // September 27): the loaded rate is plain RPM.
+  public const string LoadedRpm = "RPM";
+  public const string TotalRpm = "Total RPM";
+
   public static string Miles(decimal? value) =>
     value is >= 0
       ? $"{value.Value.ToString("N0", CultureInfo.InvariantCulture)} mi"

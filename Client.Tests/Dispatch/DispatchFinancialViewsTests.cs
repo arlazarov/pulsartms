@@ -33,7 +33,7 @@ public sealed class DispatchFinancialViewsTests
     // The rate and both rates per mile on every card and folder (the
     // owner, September 27).
     Assert.Equal(
-      ["Rate 1,000.00 CAD", "Loaded RPM 17.23 CAD", "Total RPM 4.56 CAD"],
+      ["Rate 1,000.00 CAD", "RPM 17.23 CAD", "Total RPM 4.56 CAD"],
       cards
         .FindAll(".dispatch-load__money .dispatch-load__figure")
         .Select(x => x.TextContent)
@@ -66,12 +66,10 @@ public sealed class DispatchFinancialViewsTests
     var papers = context.Render<DispatchPapers>(parameters =>
       parameters.Add(view => view.Trucks, trucks)
     );
-    // Short names on the folder; the full ones in its tooltip.
-    var money = papers.Find(".dispatch-paper__tab-financials > span");
-    Assert.Equal("1,000.00 CAD · RPM 17.23 · Total 4.56", money.TextContent);
+    // The same names as every other Dispatch view; the currency once.
     Assert.Equal(
-      "Loaded RPM 17.23 CAD · Total RPM 4.56 CAD",
-      money.GetAttribute("title")
+      "1,000.00 CAD · RPM 17.23 · Total RPM 4.56",
+      papers.Find(".dispatch-paper__tab-financials > span").TextContent
     );
     // The truck and its trailer are one unit that folds whole.
     Assert.Equal(
@@ -154,7 +152,7 @@ public sealed class DispatchFinancialViewsTests
     );
     Assert.Equal(2, table.FindAll(".dispatch-table__stop-completed").Count);
     Assert.Equal(
-      ["Rate 1,000.00 CAD", "Loaded RPM 17.23 CAD", "Total RPM 4.56 CAD"],
+      ["Rate 1,000.00 CAD", "RPM 17.23 CAD", "Total RPM 4.56 CAD"],
       table
         .FindAll("tbody .dispatch-table__figures > div")
         .Select(cell =>

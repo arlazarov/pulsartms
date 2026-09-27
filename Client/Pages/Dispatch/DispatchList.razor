@@ -126,7 +126,7 @@
         }
         <footer class="dispatch-board__footer">
         @if (_view == 1)
-        { <p class="dispatch-board__rpm-note">Loaded RPM: rate ÷ loaded miles · Total RPM: rate ÷ (loaded + empty miles)</p> }
+        { <p class="dispatch-board__rpm-note">@DispatchFinancialDisplay.LoadedRpm: rate ÷ loaded miles · @DispatchFinancialDisplay.TotalRpm: rate ÷ (loaded + empty miles)</p> }
         @if (_data.TotalPages > 1 || (_view == 1 && _data.TotalCount > 0))
         {
             <nav class="dispatch-page__pagination" aria-label="@(_showCompleted ? "Completed load pages" : "Truck pages")">
