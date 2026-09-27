@@ -27,6 +27,15 @@ public sealed record DispatchBoardRow(
   public DispatchStopResponse? Destination =>
     Load.Stops.OrderBy(x => x.Sequence).LastOrDefault();
   public bool OriginCompleted => Completed || StopCompleted(Origin);
+
+  // The stop the load waits on next: the first, in stop order, not yet
+  // done - a pickup, an intermediate stop or the delivery - and a completed
+  // load's last stop.
+  public DispatchStopResponse? NextStop =>
+    Completed
+      ? Destination
+      : Load.Stops.OrderBy(x => x.Sequence)
+        .FirstOrDefault(x => !x.DriverOnly && !StopCompleted(x)) ?? Destination;
   public bool DestinationCompleted => Completed || StopCompleted(Destination);
   public DateOnly? DeliveryDate =>
     Destination?.ScheduledDate ?? Load.DeliveryDate;

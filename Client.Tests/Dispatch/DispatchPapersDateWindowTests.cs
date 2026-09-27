@@ -8,14 +8,18 @@ namespace Client.Tests.Dispatch;
 [Trait("Kind", "Component")]
 public sealed class DispatchPapersDateWindowTests
 {
+  // Each load is read by its next stop not yet done, never by which of its
+  // dates falls today or tomorrow (root's review, September 27): 200's
+  // pickup, two days ago and still not done, is its event - earlier than
+  // today's and tomorrow's pickups - although its delivery is tomorrow.
   [Fact]
-  public void TomorrowPickupAndDeliveryShowTheirOwnDateAfterToday()
+  public void AnUnfinishedEarlierPickupIsTheEventOutsideTheDateWindow()
   {
     using var context = new BunitContext();
     var today = DateOnly.FromDateTime(DateTime.Today);
     var tomorrow = today.AddDays(1);
     var pickup = Load(100, tomorrow, today.AddDays(4));
-    var delivery = Load(200, today.AddDays(-2), tomorrow);
+    var overdue = Load(200, today.AddDays(-2), tomorrow);
     var current = Load(300, today, today.AddDays(4));
     var later = Load(400, today.AddDays(2), today.AddDays(4));
     var papers = context.Render<DispatchPapers>(parameters =>
@@ -24,7 +28,7 @@ public sealed class DispatchPapersDateWindowTests
         [
           new TruckDispatchBoardResponse
           {
-            Dispatches = [later, delivery, pickup, current],
+            Dispatches = [later, overdue, pickup, current],
           },
         ]
       )
@@ -35,26 +39,57 @@ public sealed class DispatchPapersDateWindowTests
       column.QuerySelector("h2")!.TextContent
     );
     var tabs = column.QuerySelectorAll(".dispatch-paper__tab");
-    Assert.Equal(3, tabs.Length);
-    Assert.Contains("300", tabs[0].TextContent);
-    Assert.Contains("100", tabs[1].TextContent);
-    Assert.Contains("200", tabs[2].TextContent);
-    Assert.StartsWith(
-      "Pickup ",
-      tabs[1]
-        .QuerySelector(".dispatch-paper__tab-schedule")!
-        .GetAttribute("aria-label")
+    Assert.Equal(
+      ["200", "300", "100"],
+      tabs.Select(tab =>
+          tab.QuerySelector(".dispatch-paper__tab-number")!.TextContent.Trim()
+        )
+        .ToArray()
     );
-    Assert.StartsWith(
-      "Delivery ",
-      tabs[2]
-        .QuerySelector(".dispatch-paper__tab-schedule")!
-        .GetAttribute("aria-label")
-    );
+    foreach (var tab in tabs)
+      Assert.StartsWith(
+        "Pickup ",
+        tab.QuerySelector(".dispatch-paper__tab-schedule")!
+          .GetAttribute("aria-label")
+      );
     Assert.Contains(
       "400",
       papers.Find(".dispatch-paper-column--0").TextContent
     );
+  }
+
+  // A stop between pickup and delivery is the event once the pickup is
+  // done and until it is.
+  [Fact]
+  public void AnIntermediateStopIsTheEventBetweenPickupAndDelivery()
+  {
+    using var context = new BunitContext();
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var load = Load(700, today, today.AddDays(1));
+    load.Stops[0].IsCompleted = true;
+    load.Stops.Insert(
+      1,
+      new()
+      {
+        Sequence = 2,
+        Job = "Drop Off",
+        ScheduledDate = today,
+        ScheduledTime = new(15, 0),
+      }
+    );
+    load.Stops[2].Sequence = 3;
+    var papers = context.Render<DispatchPapers>(parameters =>
+      parameters.Add(
+        view => view.Trucks,
+        [new TruckDispatchBoardResponse { Dispatches = [load] }]
+      )
+    );
+
+    var schedule = papers
+      .Find(".dispatch-paper__tab-schedule")
+      .GetAttribute("aria-label");
+    Assert.StartsWith("Delivery ", schedule);
+    Assert.Contains("03:00 PM", schedule);
   }
 
   // The nearest event not yet done orders the folders: a pickup already

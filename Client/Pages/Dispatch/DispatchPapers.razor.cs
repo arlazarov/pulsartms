@@ -54,29 +54,28 @@ public partial class DispatchPapers
   ];
   private DateOnly _today;
 
-  // The event a folder is about: its pickup until that is done, then its
-  // delivery. A pickup already done never orders or names the folder (the
-  // owner, September 27).
-  private bool ShowDelivery(DispatchBoardRow row) =>
-    row.Completed || row.OriginCompleted ? true
-    : row.Planned ? false
-    : InDateWindow(row.PickupDate) && !InDateWindow(row.DeliveryDate) ? false
-    : InDateWindow(row.DeliveryDate) && !InDateWindow(row.PickupDate) ? true
-    : row.InTransit;
+  // The event a folder is about is the load's next stop not yet done
+  // (the owner, September 27): its pickup until that is done, then any stop
+  // between, then its delivery - never a stop already done, and never a
+  // guess from which dates fall today or tomorrow.
+  private static string EventLabel(DispatchBoardRow row) =>
+    row.NextStop?.Job switch
+    {
+      "Pick Up" or "Pickup" => "Pickup",
+      "Drop Off" or "Delivery" => "Delivery",
+      var job => DispatchBoardRow.Text(job, "Stop"),
+    };
 
-  private bool InDateWindow(DateOnly? date) =>
-    DispatchBoardRow.IsTodayOrTomorrow(date, _today);
+  private static string EventSchedule(DispatchBoardRow row) =>
+    DispatchBoardRow.Schedule(row.NextStop, EventFallback(row));
 
-  private string EventLabel(DispatchBoardRow row) =>
-    ShowDelivery(row) ? "Delivery"
-    : row.Origin?.Job is "Pick Up" or "Pickup" ? "Pickup"
-    : DispatchBoardRow.Text(row.Origin?.Job, "Stop");
-
-  private string EventSchedule(DispatchBoardRow row) =>
-    DispatchBoardRow.Schedule(
-      ShowDelivery(row) ? row.Destination : row.Origin,
-      ShowDelivery(row) ? row.Load.DeliveryDate : row.Load.ShipDate
-    );
+  // The load's own ship or delivery date stands in for a first or last
+  // stop that has none.
+  private static DateOnly? EventFallback(DispatchBoardRow row) =>
+    row.NextStop is not { } stop ? null
+    : stop == row.Origin ? row.Load.ShipDate
+    : stop == row.Destination ? row.Load.DeliveryDate
+    : null;
 
   protected override void OnParametersSet()
   {
@@ -111,14 +110,9 @@ public partial class DispatchPapers
     }
   }
 
-  private (DateOnly, TimeOnly) Due(DispatchBoardRow row) =>
+  private static (DateOnly, TimeOnly) Due(DispatchBoardRow row) =>
     (
-      (ShowDelivery(row) ? row.DeliveryDate : row.PickupDate)
-        ?? DateOnly.MaxValue,
-      (
-        ShowDelivery(row)
-          ? row.Destination?.ScheduledTime
-          : row.Origin?.ScheduledTime
-      ) ?? TimeOnly.MaxValue
+      row.NextStop?.ScheduledDate ?? EventFallback(row) ?? DateOnly.MaxValue,
+      row.NextStop?.ScheduledTime ?? TimeOnly.MaxValue
     );
 }
