@@ -128,6 +128,8 @@ const dispatches = () => [
     loadNumber: 1441,
     orderNumber: 'CURRENT-ORD-1441',
     status: 'in_transit',
+    // The board places each load on its truck (DispatchResponse.WorkPhase).
+    workPhase: 'current',
     customerName: 'Fixture Current Customer',
     truckNumber: '11006',
     driverName: 'Fixture Driver',
@@ -160,6 +162,7 @@ const dispatches = () => [
     loadNumber: 1442,
     orderNumber: 'FUTURE-ORD-1442',
     status: 'planned',
+    workPhase: 'next',
     customerName: 'Fixture Future Customer',
     truckNumber: '11006',
     driverName: 'Fixture Driver',
