@@ -3,6 +3,7 @@ using System.Reflection;
 using Application.Interfaces;
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace Server.Tests.Architecture;
 
@@ -93,6 +94,64 @@ public sealed class CompanyOwnershipTests
         + string.Join(", ", unfiltered)
     );
   }
+
+  // A carrier's row is unique only among that carrier's rows. A key or a
+  // unique index must name the carrier, or be scoped by a generated id
+  // (a Guid of a row that already belongs to one carrier), or be generated
+  // by the database. Otherwise the second carrier's first row can collide
+  // with the first carrier's: load numbering and stored hours readings did
+  // (audit F28).
+  [Fact]
+  public void EveryCarriersNaturalKeyNamesTheCarrier()
+  {
+    using var db = new Infrastructure.Persistence.AppDbContext(
+      new DbContextOptionsBuilder<Infrastructure.Persistence.AppDbContext>()
+        .UseNpgsql("Host=none;Database=none")
+        .Options
+    );
+    var unscoped = db
+      .Model.GetEntityTypes()
+      .Where(x => typeof(ICompanyOwned).IsAssignableFrom(x.ClrType))
+      .SelectMany(x =>
+        x.GetKeys()
+          .Where(key => key.IsPrimaryKey())
+          .Select(key => (Kind: "key", Columns: key.Properties))
+          .Concat(
+            x.GetIndexes()
+              .Where(index => index.IsUnique)
+              .Select(index => (Kind: "unique", Columns: index.Properties))
+          )
+          .Where(key => !Scoped(key.Columns))
+          .Select(key =>
+            $"{x.ClrType.Name} {key.Kind} "
+            + $"({string.Join(", ", key.Columns.Select(c => c.Name))})"
+          )
+      )
+      .Where(x => !OneCarrierByDesign.ContainsKey(x))
+      .Order()
+      .ToArray();
+
+    Assert.True(
+      unscoped.Length == 0,
+      "These carrier keys can collide across carriers: "
+        + string.Join("; ", unscoped)
+    );
+  }
+
+  private static bool Scoped(IReadOnlyList<IReadOnlyProperty> columns) =>
+    columns.Any(x =>
+      x.Name == nameof(ICompanyOwned.CompanyId)
+      || x.ClrType == typeof(Guid)
+      || x.ClrType == typeof(Guid?)
+    )
+    || columns.Count == 1 && columns[0].ValueGenerated == ValueGenerated.OnAdd;
+
+  // Unique across carriers on purpose, with the reason.
+  private static readonly Dictionary<string, string> OneCarrierByDesign = new()
+  {
+    ["User unique (IdentityUserId)"] =
+      "one sign-in belongs to one carrier (the identity boundary)",
+  };
 
   // row.CompanyId == ServingCompany, alone or as one side of an &&.
   private static bool ComparesServingCarrier(

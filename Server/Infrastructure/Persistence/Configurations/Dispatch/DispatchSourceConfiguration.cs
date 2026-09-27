@@ -47,7 +47,8 @@ public sealed class DispatchNumberCounterConfiguration
 {
   public void Configure(EntityTypeBuilder<DispatchNumberCounter> builder)
   {
-    builder.HasKey(x => x.Id);
+    // One counter per carrier (audit F28).
+    builder.HasKey(x => new { x.CompanyId, x.Id });
     builder.Property(x => x.Id).HasMaxLength(40);
     builder.Property(x => x.NextNumber).IsConcurrencyToken();
   }
