@@ -821,6 +821,30 @@ refresh replaces a plan, and manual or unchanged plans stay.
   plan is not claimed repaired by this release; root verifies its normal
   refresh and retry.
 
+## Frontend aae625bc: truck marks smaller than stops (September 27, 13:59 UTC)
+
+Client only, after root's review of the diff and the offline WebGL
+screenshots: a moving truck is drawn 24 and a standing one 20 against a
+stop's 28, the same size chosen or not; layout and picking keep the
+badge's size, the pick disc offset with its mark and under the stops;
+the chosen truck drawn last. On `a9727482` (the record of the live
+`2c76b88c`); no API redeploy - the API stays `amftms-api-b-9fb1edab-…`,
+generation 280.
+
+- **Gate, once:** `PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a
+  clean detached worktree with the local settings copied in (13:51-13:59
+  UTC), exit 0: JavaScript 669, Client 1,279, Server 3,807, none skipped;
+  offline UI smoke without errors (`browser-ui-xE6XDV`). Artifact
+  `release-iCH61Y`, 285 files, pinned with the log and smoke report
+  under `gate/`.
+- **Evidence before the gate:** offline WebGL marker smoke, 1x and 2x,
+  no errors or failures, screenshots in
+  `artifacts/managed/browser-map-markers-4tT4Ce`.
+- **Live:** `index.html`
+  (`050216d2b5b685e55e8e235ddcb9fa58459aacdb9a0063f8ca48cc63b8638306`),
+  `css/main.css?v=fae65e94d4cee073`, `Client.*.wasm` and `dotnet.*.js`
+  match the artifact. Rollback target: `release-BdSW74`.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module

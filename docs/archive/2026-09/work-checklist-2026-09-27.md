@@ -18,6 +18,7 @@ someone named). Nothing leaves this list without a state. Times are UTC.
 | `4b3adbf6` frontend 12:20 | speed, map focus, day order, views | `release-FlPysI` |
 | `6ff3f19c` API + frontend 12:56 | search by displayed number, completed from Cards/Papers | `release-2RmBrJ`, backup `…Q95QKd` |
 | `2c76b88c` API + frontend 13:46 | prefix search + paging, map ring, Papers order, 11006 fuel (root) | `release-BdSW74`, backup `…PuYcTF` |
+| `aae625bc` frontend 13:59 | truck marks smaller than stops | `release-iCH61Y` |
 
 Records: `docs/archive/2026-09/release-2026-09-26-evening.md`.
 
@@ -47,7 +48,7 @@ written before it are correct.
 | 11006 ringed with its delivery while driving, far out | deployed | `9c0180d5`, `7b294f89`, `release-BdSW74` |
 | Prefix search (AMF10 and 10), all history pages | deployed | `e6fed730`, `release-BdSW74` |
 | Papers by next unfinished stop | deployed | `160498e5`, `3e8c174f`, `release-BdSW74` |
-| Truck markers smaller than stops; selection does not enlarge | implemented locally | `claude/map-truck-size`, not released |
+| Truck markers smaller than stops; selection does not enlarge | deployed | `aae625bc`, `release-iCH61Y` |
 | Arrow between pickup and delivery | blocked: owner | never existed in the Table; asked whether to add one |
 | Search by displayed number (AMF1408); Cards and Papers also find completed loads, labelled, openable | deployed, root to verify live | `6ff3f19c`, `release-2RmBrJ`, gen 278 |
 
