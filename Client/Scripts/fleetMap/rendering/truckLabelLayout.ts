@@ -107,7 +107,7 @@ export function layoutMapLabels({
   // Markers stay where they are; only what is written beside them moves.
   for (const [item, point] of points)
     area.reserve(
-      [...point, metrics.truckSize / 2, metrics.truckSize / 2],
+      [...point, metrics.truckHitSize / 2, metrics.truckHitSize / 2],
       item,
     );
   const place = (

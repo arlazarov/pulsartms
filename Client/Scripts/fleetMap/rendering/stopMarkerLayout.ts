@@ -106,7 +106,7 @@ function owns(row: StopRow, truck: LabelledTruck) {
 function covers(truck: MarkPoint, badge: MarkPoint) {
   return (
     Math.hypot(truck[0] - badge[0], truck[1] - badge[1]) +
-      metrics.truckSize / 2 <
+      metrics.truckHitSize / 2 <
     metrics.stopBadgeStackedDiameter / 2 + metrics.truckCrescent
   );
 }
@@ -322,7 +322,7 @@ export function layoutStopMarkers(
     item.row.stacked = parked.some(
       ({ at: truck }) =>
         Math.hypot(item.at[0] - truck[0], item.at[1] - truck[1]) <
-        radius + metrics.truckSize / 2,
+        radius + metrics.truckHitSize / 2,
     );
   }
 

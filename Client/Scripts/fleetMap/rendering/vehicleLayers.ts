@@ -1,7 +1,7 @@
 import type { DeckLayer, DeckLayerFactory } from './deckLayer.ts';
 import type { LabelledCluster, LabelledTruck } from './truckClusters.ts';
 import type { LabelFonts } from './sceneMetrics.ts';
-import { truckIcon } from './truckAppearance.ts';
+import { truckHitIcon, truckIcon, truckState } from './truckAppearance.ts';
 import { markerAnchor } from './markerAnchor.ts';
 import { clusterText } from './truckLabelLayout.ts';
 import { memoizeLast } from './layerCache.ts';
@@ -43,8 +43,10 @@ export function createVehicleLayers({
 }) {
   const parts = memoizeLast<DeckLayer[]>();
   const clusterLabels = memoizeLast<DeckLayer>();
+  // The pick area goes with the marks, under the stops: over them it would
+  // take a click meant for a stop's badge.
   const isIcon = (layer: DeckLayer) =>
-    /^truck-icons/.test(layer.props?.id ?? '');
+    /^truck-(icons|hits)/.test(layer.props?.id ?? '');
 
   return ({
     vehicles,
@@ -89,11 +91,28 @@ export function createVehicleLayers({
           onClick: selectTruck,
           parameters: { depthCompare: 'always' },
         }),
-        // Two icon layers, not one: with a truck chosen the rest of the
-        // fleet is drawn smaller so it does not compete with the route.
-        // Smaller, not faded - a truck half there reads as a truck whose
-        // position is doubtful, and every one of them is equally real.
-        ...[false, true].map(
+        // The area that picks a truck is the badge's size, centred where
+        // its mark is drawn, however much smaller the mark is.
+        new IconLayer({
+          id: 'truck-hits',
+          data: vehicles.filter(t => !t.merged),
+          getPosition: (t: Truck) => t.position,
+          getPixelOffset: (t: Truck) => t.markerOffset ?? [0, 0],
+          getIcon: () => truckHitIcon(),
+          getSize: metrics.truckHitSize,
+          sizeUnits: 'pixels',
+          billboard: true,
+          // The disc is all but transparent: nothing of it may be cut away.
+          alphaCutoff: 0,
+          pickable: true,
+          onHover: hoverTruck,
+          onClick: selectTruck,
+          parameters: { depthCompare: 'always' },
+        }),
+        // Two icon layers, the rest first and the chosen truck last, so the
+        // chosen one is drawn over them. Chosen or not, a truck keeps its
+        // size.
+        ...[true, false].map(
           quiet =>
             new IconLayer({
               id: quiet ? 'truck-icons-quiet' : 'truck-icons',
@@ -109,8 +128,12 @@ export function createVehicleLayers({
               getPixelOffset: (t: Truck) => t.markerOffset ?? [0, 0],
               getIcon: (t: Truck) => truckIcon(t.engine, t.speed),
               getSize: (t: Truck) =>
-                (quiet ? metrics.truckSecondarySize : metrics.truckSize) *
-                (t.unit === hoveredTruck ? metrics.truckHoverScale : 1),
+                (truckState(t.engine, t.speed) === 'moving'
+                  ? metrics.truckSize
+                  : metrics.truckStandingSize) *
+                (t.unit === hoveredTruck && !t.selected
+                  ? metrics.truckHoverScale
+                  : 1),
               sizeUnits: 'pixels',
               billboard: true,
               getAngle: (t: Truck) => -t.heading!,
