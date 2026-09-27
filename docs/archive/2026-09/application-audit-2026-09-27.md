@@ -993,6 +993,23 @@ failed on the new worktree's missing Client packages and is marked.
   work for two. Green diagnostic-YjnWHK; every migration applies to an
   empty PostgreSQL schema (diagnostic-F41Wt2); the reset inventory names
   schema 76.
+- **Migrations 75-77 against the previous binary (Root's review).** The
+  released binary `0e6add5d` was run, unchanged, against a PostgreSQL
+  schema migrated to 77 by this branch (diagnostic-nCoRvK made the
+  schema; diagnostic-vdc2U5 ran the binary's own code from a worktree of
+  that commit; the first attempt, diagnostic-5LJXG0, reached the shared
+  schema through an ignored search path and wrote nothing - invalid):
+  the import numbered a new load and updated the counter, inserted and
+  changed source links (their `ReadTicket` stays 0), hours readings were
+  inserted, updated and removed, and the road queue's raw upsert,
+  claim and completion worked. It touches the two re-keyed tables only
+  through EF; its raw `ON CONFLICT` statements name other tables. With
+  one carrier it serves this schema. Its model still keys those tables
+  by `Id` and by the driver id alone, so once a second carrier exists
+  its updates and deletes by that key would reach the other carrier's
+  rows: the boundary is no second carrier while any binary older than
+  76 can run - not as traffic, not as a rollback target. The probe
+  schema was dropped after the run.
 
 - **D6 read cost: options, investigated, nothing changed.** The
   late-withdrawn rule stays read-time, as accepted. Facts (production,
@@ -1072,6 +1089,16 @@ failed on the new worktree's missing Client packages and is marked.
   whatever `ApplyMigrations` says while one carrier exists. Tests: a
   binary older than the floor refuses to start; an additive migration
   leaves an older binary serving; each guarded `Down` raises over a row.
+  Root's review: a floor read at start protects neither a binary already
+  running when the migration lands nor a binary older than the floor
+  itself, which never reads it. The enforceable boundary is operational:
+  a migration the previous binary cannot serve is applied only after the
+  previous revision is drained (traffic moved, `TrafficShutDown`, no
+  instance) and removed as a rollback target; the floor then guards
+  starts after that, not the overlap. And "additive" is not the same as
+  compatible: widening a key changes what the previous binary's SQL
+  means, so each such migration is proven by running the previous
+  binary's statements against the migrated schema (below, for 75-77).
 - **F25 design: one owner for fuel-plan cost.** Re-read (read-only
   review, verified at each copy): seven copies, not five - the finding's
   five plus the chain comparison (`FuelChainComparison.cs:108,173`) and
@@ -1105,8 +1132,9 @@ failed on the new worktree's missing Client packages and is marked.
   returning each component (purchase, stops, access time, delay, future
   fuel), so a caller chooses its minutes source visibly instead of in a
   private formula. Steps: first pin each copy's current numbers in
-  characterization tests; then route the copies through the rule one at
-  a time with no change in any number; only then change the
+  characterization tests - a record of today's behaviour, not the
+  product's invariant; then route the copies through the rule one at a
+  time with no change in any number; only then change the
   differences, each as its own decision with its own test - they change
   figures dispatchers see: one minutes source, the initial access, the
   delay in projections, the arrival floor, and whether a price refresh
@@ -1120,10 +1148,11 @@ failed on the new worktree's missing Client packages and is marked.
   carriers, twelve hours for a success and up to an hour for a failure,
   fed by the load import, the TomTom provider and a user endpoint that
   accepts ~900 characters of address under the global rate limit only;
-  each entry ~1-2 KB with its key. Everything else is bounded by carrier
-  count, active loads or request rate and lives 5 s to 1 h - the largest
-  are the fleet route preview (up to 8 MiB per carrier, 30 s) and the
-  import snapshot (up to ~2.5 MiB per carrier). The diagnostics count
+  each entry ~1-2 KB with its key. The others are limited in number by
+  carriers, active loads or request rate and live 5 s to 1 h - which is
+  not a byte bound: the fleet route preview is up to 8 MiB per carrier
+  (30 s) and the import snapshot up to ~2.5 MiB per carrier, so the
+  shared cache still grows with carriers and has no ceiling in bytes. The diagnostics count
   entries only; nothing is in the 80 MiB budget. Design, owner the
   geocoder (Infrastructure): move the geocode entries into their own
   bounded memory - a private `MemoryCache` with a byte `SizeLimit`
