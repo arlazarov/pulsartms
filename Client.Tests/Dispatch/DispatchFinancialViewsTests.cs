@@ -221,12 +221,9 @@ public sealed class DispatchFinancialViewsTests
         .Select(group => group.ClassList.Last())
         .ToArray()
     );
-    // Today's two loads carry the same truck (the load's own, 54777), so
-    // it is named once above them.
-    var run = Assert.Single(table.FindAll(".dispatch-table__run"));
-    Assert.Contains("Truck 54777", run.TextContent);
-    Assert.Contains("2 loads", run.TextContent);
-    Assert.Equal(2, table.FindAll("tr.is-run").Count);
+    // Today's two loads show the same number, 54777, but each is on a
+    // truck of its own: identity, not the number, makes a run.
+    Assert.Empty(table.FindAll(".dispatch-table__run"));
     Assert.Equal(
       ["1", "2", "4", "3"],
       table
@@ -282,6 +279,82 @@ public sealed class DispatchFinancialViewsTests
         .FindAll(".dispatch-paper__tab-trailer")
         .Select(cell => cell.TextContent.Trim())
         .OrderBy(text => text)
+        .ToArray()
+    );
+  }
+
+  // Several loads on one truck that day are named once above them; the
+  // truck is its identity, and a driver or trailer is named there only
+  // when every load shares it (root's review, September 27).
+  [Theory]
+  [InlineData("same", true, "Driver A", "Trailer T1")]
+  [InlineData("mixed", true, null, null)]
+  [InlineData("distinct", false, null, null)]
+  [InlineData("unknown", false, null, null)]
+  public void TableNamesATruckOnceOnlyForItsOwnLoads(
+    string trucks,
+    bool run,
+    string? driver,
+    string? trailer
+  )
+  {
+    using var context = new BunitContext();
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var shared = Guid.NewGuid();
+    DispatchResponse On(int number, int hour, string driverName, string unit)
+    {
+      var load = Load(number);
+      load.Stops[0].ScheduledDate = today;
+      load.Stops[0].ScheduledTime = new(hour, 0);
+      load.DriverName = driverName;
+      load.TrailerNumber = unit;
+      load.TruckId = trucks switch
+      {
+        "same" or "mixed" => shared,
+        "distinct" => Guid.NewGuid(),
+        _ => null,
+      };
+      if (trucks == "unknown")
+        load.TruckNumber = "";
+      return load;
+    }
+    var first = On(1, 8, "Driver A", "T1");
+    var second =
+      trucks == "mixed"
+        ? On(2, 12, "Driver B", "T2")
+        : On(2, 12, "Driver A", "T1");
+    var table = context.Render<DispatchTable>(parameters =>
+      parameters.Add(
+        view => view.Trucks,
+        [
+          new TruckDispatchBoardResponse
+          {
+            Key = "board",
+            Dispatches = [first, second],
+          },
+        ]
+      )
+    );
+
+    var runs = table.FindAll(".dispatch-table__run");
+    Assert.Equal(run ? 1 : 0, runs.Count);
+    Assert.Equal(run ? 2 : 0, table.FindAll("tr.is-run").Count);
+    Assert.Equal(2, table.FindAll("tr.dispatch-table__row").Count);
+    if (!run)
+      return;
+    var names = runs[0]
+      .QuerySelectorAll("span")
+      .Select(x => x.TextContent.Trim())
+      .ToArray();
+    Assert.Equal(new[] { driver, trailer }.OfType<string>().ToArray(), names);
+    // Each load still says its own driver and trailer.
+    Assert.Equal(
+      trucks == "mixed"
+        ? ["Trailer T1", "Trailer T2"]
+        : ["Trailer T1", "Trailer T1"],
+      table
+        .FindAll(".dispatch-table__trailer")
+        .Select(x => x.TextContent.Trim())
         .ToArray()
     );
   }

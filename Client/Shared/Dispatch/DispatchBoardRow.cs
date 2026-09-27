@@ -16,6 +16,9 @@ public sealed record DispatchBoardRow(
   // render rather than diff them.
   public string Key => $"{Truck.Key}:{Load.Id}:{Load.ExecutionLegId}";
 
+  // The truck the row is on, by the same precedence as its number: the
+  // load's own truck, else the board truck it stands under.
+  public Guid? TruckIdentity => Load.TruckId ?? Truck.TruckId;
   public string TruckNumber => Text(Load.TruckNumber, Truck.TruckNumber);
   public string TrailerNumber => Text(Load.TrailerNumber, Truck.TrailerNumber);
   public string DriverName => Text(Load.DriverName, Truck.DriverName);

@@ -26,8 +26,9 @@
         <tr class="dispatch-table__run">
             <td colspan="6">
                 <strong>Truck @run.First.TruckNumber</strong>
-                <span>@run.First.DriverName ·
-                    Trailer @run.First.TrailerNumber</span>
+                @if (run.Driver is { } driver) { <span>@driver</span> }
+                @if (run.Trailer is { } trailer)
+                { <span>Trailer @trailer</span> }
                 <small>@Loads(run.Rows.Count)</small>
             </td>
         </tr>

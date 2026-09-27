@@ -68,11 +68,19 @@ public partial class DispatchTable
   }
 
   // The loads one truck picks up that day, as for LTL: named once above
-  // them when there is more than one.
-  private sealed record TruckRun(
-    DispatchBoardRow First,
-    IReadOnlyList<DispatchBoardRow> Rows
-  );
+  // them when there is more than one. The truck is its identity, never its
+  // displayed number, so trucks without one are never merged; a driver or
+  // trailer is named above only when every load shares it, since the truck
+  // can change either during the day.
+  private sealed record TruckRun(IReadOnlyList<DispatchBoardRow> Rows)
+  {
+    public DispatchBoardRow First => Rows[0];
+    public string? Driver => Common(row => row.DriverName);
+    public string? Trailer => Common(row => row.TrailerNumber);
+
+    private string? Common(Func<DispatchBoardRow, string> fact) =>
+      Rows.Select(fact).Distinct().Count() == 1 ? fact(First) : null;
+  }
 
   private IReadOnlyList<DispatchBoardRow> _rows = [];
   private IReadOnlyList<DispatchDay> _days = [];
@@ -104,8 +112,8 @@ public partial class DispatchTable
     IEnumerable<DispatchBoardRow> day
   ) =>
     day.OrderBy(row => row.Origin?.ScheduledTime ?? TimeOnly.MaxValue)
-      .GroupBy(row => row.TruckNumber)
-      .Select(run => new TruckRun(run.First(), run.ToArray()))
+      .GroupBy(row => row.TruckIdentity?.ToString() ?? row.Key)
+      .Select(run => new TruckRun(run.ToArray()))
       .ToArray();
 
   private static DispatchDay Day(

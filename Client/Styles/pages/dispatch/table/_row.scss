@@ -105,8 +105,10 @@
     background: ui.theme(surface-soft);
     color: ui.theme(text-secondary);
     > strong {
-      margin-inline-end: ui.pg(sm);
       color: ui.theme(text);
+    }
+    > span::before {
+      content: ' · ';
     }
     > small {
       float: inline-end;
