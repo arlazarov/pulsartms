@@ -61,7 +61,11 @@ public sealed class PlanningSummaryRefreshTests
 
   // This process' cached inputs are out of date: tracking passed the first
   // load elsewhere. The preparation builds from its own fresh capture, not
-  // from the cached copy, so it captures once and needs no second look.
+  // from the cached copy, so it captures once and needs no second look. Its
+  // result is for other work than the readers here still ask about, so it
+  // is not published under their signature (stage 4a): until the inputs
+  // are invalidated, this process' readers agree on their own current work,
+  // marked updating; after, they all move to the next.
   [Fact]
   public async Task APreparationBuildsFromItsOwnCaptureNotACachedOne()
   {
@@ -70,9 +74,14 @@ public sealed class PlanningSummaryRefreshTests
     await f.PassFirstAsync();
 
     var captures = await f.PrepareAsync();
+    var behind = f.Summary();
+    f.Root.GetRequiredService<ReadCache>()
+      .InvalidateItem("planning-inputs", f.Truck.Id);
+    var caughtUp = f.Summary();
 
     Assert.Equal(1, captures);
-    Assert.Equal(f.Next.Id, f.Summary().DispatchId);
+    Assert.Equal((f.Passed.Id, true), (behind.DispatchId, behind.IsRefreshing));
+    Assert.Equal(f.Next.Id, caughtUp.DispatchId);
   }
 
   // The map shows the passed first load beside the current one: the
@@ -98,6 +107,31 @@ public sealed class PlanningSummaryRefreshTests
     Assert.False(warm.IsRefreshing);
     Assert.Equal([expected], warm.WorkConflicts);
     Assert.Equal(f.Next.Id, warm.DispatchId);
+  }
+
+  // Stage 4a: tracking passes the first load on another process. The
+  // commit's summary notice never reaches this one; only the planning
+  // inputs are invalidated here, as the cache relay does. The summary
+  // prepared for the passed load is not served as current: readers get the
+  // inputs' new current work at once, and it is prepared again.
+  [Fact]
+  public async Task ASummaryForWorkTrackingPassedIsRetiredWithoutACommitNotice()
+  {
+    await using var f = await Fixture.CreateAsync(firstPassed: false);
+    f.Summary();
+    await f.PrepareAsync();
+    var prepared = f.Summary();
+    Assert.Equal(f.Passed.Id, prepared.DispatchId);
+    Assert.False(prepared.IsRefreshing);
+
+    await f.PassFirstAsync();
+    f.Root.GetRequiredService<ReadCache>()
+      .InvalidateItem("planning-inputs", f.Truck.Id);
+    var after = f.Summary();
+
+    Assert.Equal(f.Next.Id, after.DispatchId);
+    Assert.True(after.IsRefreshing);
+    Assert.Equal(f.Signature(), f.Cache.Take()?.Signature);
   }
 
   // Planning refuses the current work. The refusal speaks for it - not for

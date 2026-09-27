@@ -273,11 +273,29 @@ completed.
      call-count test on the placement pass; business and source states
      (`source_ahead_of_accepted`, `source_unresolved`) and one date basis
      for board and planning pages remain for stage 4.
-4. **Completion and invalidation.** One completion owner with membership
-   rules expressed through it; tracking version in the summary signature;
-   ETA, deadhead, base road and duty commits notify the summary after
-   commit; one ETA reader; remove duplicate fuel replays.
-
+4. **Completion and invalidation.**
+   - **4a, implemented (not released).** The summary signature names the
+     current work the inputs chose (identity and accepted revision), not
+     only the itinerary and settings. A summary prepared for work that
+     tracking then passed is retired as soon as the inputs move on -
+     on processes the commit's summary notice never reaches, too - and
+     a preparation from fresher inputs than a process' readers is not
+     published under their older signature: all of that process'
+     readers agree until its inputs are invalidated.
+   - **4b, needs a decision.** "Completed" has two readings of the same
+     facts. `LoadCompletion` (the `Completed` flag, the conflict on the
+     board) looks at the last stop, which must be a delivery, and needs
+     every non-driver-only stop done for a hand confirmation.
+     `ExecutionWorkRelevance` (itinerary membership, so Messenger's and
+     the map's conflicts) looks at the last delivery among the stops the
+     truck attends and needs every truck-attended stop done. A load that
+     ends with a trailer drop after its delivery is delivered by the
+     second and not by the first. Which reading is the business rule is
+     the owner's to say; the code change is one owner either way, plus
+     the SQL filter of the Completed tab (which ignores legs today).
+   - **4c-4e, next.** ETA publish, deadhead, base road and duty changes
+     notify the summary after commit; one ETA reader; no duplicate fuel
+     projection replays.
 Each stage is a separate candidate with its own review; none resets
 pending work, forces routing or changes historical stops.
 

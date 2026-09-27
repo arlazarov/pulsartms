@@ -27,8 +27,17 @@ public sealed class PlanningSummaryReader(
         .Candidates(work.Itinerary)
         .FirstOrDefault(x => x.Work.DispatchId == dispatch);
 
+  // What a summary was prepared for: the truck's work, the current work
+  // the inputs chose at its revision, and the settings. The itinerary alone
+  // does not change when tracking passes a load, so a summary prepared for
+  // the passed load stayed "current" until its next refresh on any process
+  // the commit did not reach (stage 4a); naming the choice here retires it
+  // as soon as the inputs move on.
   public string Signature(TruckPlanningInputs work) =>
-    $"{work.Itinerary.InputSignature}:{reads.Generation(ReadGroups.Settings)}";
+    $"{work.Itinerary.InputSignature}"
+    + $":{work.CurrentWork?.DispatchId:N}/{work.CurrentWork?.ExecutionLegId:N}"
+    + $"/{work.CurrentAssignmentRevision}"
+    + $":{reads.Generation(ReadGroups.Settings)}";
 
   public AutomaticPlanningResult Read(
     TruckPlanningInputs work,
