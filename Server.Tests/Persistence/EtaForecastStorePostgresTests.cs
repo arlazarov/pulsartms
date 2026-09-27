@@ -1,3 +1,5 @@
+using Application.Interfaces;
+using Microsoft.Extensions.DependencyInjection;
 using Server.Tests.Eta;
 using Server.Tests.Support;
 
@@ -16,5 +18,19 @@ public sealed class EtaForecastStorePostgresTests
     await using var db = fixture.Connect();
 
     await EtaForecastStoreTests.KeysCheckAsync(db);
+  }
+
+  [RequiresPostgresFact]
+  public async Task AnotherCarriersForecastIsNeverReplaced()
+  {
+    await using var fixture = await PostgresFixture.CreateAsync();
+    var company = new TestCompany();
+    await using var db = fixture.Connect(
+      new ServiceCollection()
+        .AddSingleton<ICurrentCompany>(company)
+        .BuildServiceProvider()
+    );
+
+    await EtaForecastStoreTests.ForeignCheckAsync(db, company);
   }
 }

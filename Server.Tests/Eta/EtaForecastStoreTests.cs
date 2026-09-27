@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Application.Interfaces;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
@@ -6,7 +7,9 @@ using Domain.Models.Eta;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Server.Tests.Support;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Eta;
@@ -381,6 +384,71 @@ public sealed class EtaForecastStoreTests
     await db.Database.EnsureCreatedAsync();
 
     await KeysCheckAsync(db);
+  }
+
+  // The upsert is raw SQL, outside the company filter: a save naming
+  // another carrier's load conflicts with that carrier's row and must not
+  // replace it.
+  [Fact]
+  public async Task AnotherCarriersForecastIsNeverReplaced()
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    var company = new TestCompany();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>()
+        .UseSqlite(connection)
+        .UseApplicationServiceProvider(
+          new ServiceCollection()
+            .AddSingleton<ICurrentCompany>(company)
+            .BuildServiceProvider()
+        )
+        .Options
+    );
+    await db.Database.EnsureCreatedAsync();
+
+    await ForeignCheckAsync(db, company);
+  }
+
+  internal static async Task ForeignCheckAsync(
+    AppDbContext db,
+    TestCompany company
+  )
+  {
+    var truck = new Truck { Id = Guid.NewGuid() };
+    var load = new Load
+    {
+      Id = Guid.NewGuid(),
+      LoadNumber = 1,
+      TruckId = truck.Id,
+    };
+    db.Trucks.Add(truck);
+    db.Dispatches.Add(load);
+    await db.SaveChangesAsync();
+    var store = new EtaForecastStore(db, NullLogger<EtaForecastStore>.Instance);
+    EtaForecastSnapshot At(DateTime at, string hash) =>
+      new(
+        load.Id,
+        truck.Id,
+        load.Id,
+        hash,
+        "",
+        new(at, at.AddMinutes(2), [], null, [])
+      );
+    Assert.True(await store.SaveAsync([At(Now, "owner")], default));
+
+    bool foreign;
+    using (company.As(Guid.NewGuid()))
+      foreign = await store.SaveAsync(
+        [At(Now.AddMinutes(1), "foreign")],
+        default
+      );
+    var kept = await db.Set<DispatchEtaForecast>()
+      .AsNoTracking()
+      .SingleAsync(x => x.DispatchId == load.Id);
+
+    Assert.False(foreign);
+    Assert.Equal("owner", kept.InputHash);
   }
 
   internal static async Task KeysCheckAsync(AppDbContext db)
