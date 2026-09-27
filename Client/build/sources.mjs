@@ -19,6 +19,7 @@ export const sources = [
   'shared/messagingChannel',
   'shared/messagingNotices',
   'shared/returnPlace',
+  'shared/horizontalWheel',
   'messages/composer',
   'messages/thread',
   'dispatch/dispatch',

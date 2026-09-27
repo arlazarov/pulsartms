@@ -439,24 +439,17 @@ test('the load opens from its number in the head, with no Open load button in th
   assert.doesNotMatch(compact, /__actions \.map-action-icon\s*\{[^}]*width:/);
 });
 
-test('map key stays over the map and uses the actual fixed station comparison palette', () => {
-  assert.match(css, /\.fleet-map-key\s*\{\s*position: absolute;/);
-  assert.match(
-    css,
-    /\.fleet-map-key__scale > i\s*\{[^}]*background: linear-gradient\(to right,\s*var\(--ui-map-price-low\),\s*var\(--ui-map-price-middle\),\s*var\(--ui-map-price-high\)\);/,
+// The map carries no key (the owner, September 27); the attribution
+// Google asks for while its weather is shown stays, over the map.
+test('the map has no key, and keeps the weather attribution', () => {
+  assert.doesNotMatch(css, /\.fleet-map-key/);
+  assert.match(css, /\.fleet-map-weather-source\s*\{\s*position: absolute;/);
+  const razor = readFileSync(
+    new URL('../../Pages/FleetMap/FleetMap.razor', import.meta.url),
+    'utf8',
   );
-  assert.match(
-    css,
-    /\.fleet-map-key__missing > i\s*\{[^}]*background: var\(--ui-map-price-unavailable\);/,
-  );
-  assert.match(
-    css,
-    /\.fleet-map-key__planned\s*\{[^}]*color: var\(--ui-navigation-text\);/,
-  );
-  assert.match(
-    css,
-    /\.fleet-map-key__stop\s*\{[^}]*border-radius: 50%;[^}]*background: var\(--ui-map-route-current\);[^}]*color: var\(--ui-on-accent\);/,
-  );
+  assert.doesNotMatch(razor, /fleet-map-key/);
+  assert.match(razor, /Source: Includes weather data from Google/);
 });
 
 test('the planned stop has its own title size, and no dials or illustration are left', () => {

@@ -22,18 +22,21 @@ public partial class FleetTruckList
   [Parameter]
   public bool Collapsed { get; set; }
 
-  // A truck's current load and the stop it is heading for, when known.
-  [Parameter]
-  public Func<Guid, FleetTruckWork>? Work { get; set; }
-
   [Parameter]
   public EventCallback<bool> CollapsedChanged { get; set; }
 
   private static string SpeedText(TruckLocationMapDto truck) =>
     $"{truck.Speed.ToString("0", CultureInfo.InvariantCulture)} mph";
 
+  // The number the truck is said to pull, or the one another source names
+  // for it when none is reported; nothing is chosen between them here.
+  private static string Trailer(TruckLocationMapDto truck) =>
+    Text(
+      string.IsNullOrWhiteSpace(truck.TrailerNumber)
+        ? truck.TrailerConflictNumber
+        : truck.TrailerNumber
+    );
+
   private static string Text(string? value) =>
     string.IsNullOrWhiteSpace(value) ? "—" : value;
 }
-
-public readonly record struct FleetTruckWork(int? LoadNumber, string? NextStop);

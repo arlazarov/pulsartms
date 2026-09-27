@@ -2888,16 +2888,22 @@ public sealed class FleetMapComponentTests
     );
   }
 
-  // The list's motion chips count and filter the trucks the page already
-  // has, at the map's own moving speed; the map keeps every truck.
+  // The list's motion chips and the search filter one set of trucks, at
+  // the map's own moving speed: the list shows it and the map draws it. A
+  // chosen truck the filters leave out is let go (the owner, September 27).
   [Fact]
-  public async Task MotionChipsFilterTheListWithoutTouchingTheMap()
+  public async Task MotionChipsAndSearchFilterTheListAndTheMapAlike()
   {
     using var fixture = new Fixture();
     var component = fixture.Render();
     component.WaitForAssertion(
       () => Assert.Single(component.FindAll(".fleet-truck-list__row"))
     );
+    int Drawn() =>
+      (
+        (System.Collections.ICollection)
+          fixture.Js.Calls.Last(call => call.Name == "setTrucks").Args![0]!
+      ).Count;
     var chips = component.FindAll(".fleet-map-motion__chip");
     Assert.Equal(
       ["All1", "Moving0", "Stopped1"],
@@ -2910,8 +2916,14 @@ public sealed class FleetMapComponentTests
         )
       )
     );
-    var trucksSent = fixture.Js.Calls.Count(call => call.Name == "setTrucks");
+    Assert.Equal(1, Drawn());
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckId.ToString())
+    );
+    var clears = fixture.Js.Calls.Count(call => call.Name == "clearSelection");
 
+    // Moving: the standing truck leaves the list and the map, and its
+    // selection with it.
     await component.InvokeAsync(
       () => component.Find(".fleet-map-motion__chip--moving").Click()
     );
@@ -2920,21 +2932,27 @@ public sealed class FleetMapComponentTests
       "No trucks match the search and filter.",
       component.Find(".fleet-truck-list__empty").TextContent
     );
-    Assert.Equal(
-      "true",
-      component
-        .Find(".fleet-map-motion__chip--moving")
-        .GetAttribute("aria-pressed")
+    Assert.Equal(0, Drawn());
+    Assert.True(
+      fixture.Js.Calls.Count(call => call.Name == "clearSelection") > clears
     );
-    Assert.Equal(
-      trucksSent,
-      fixture.Js.Calls.Count(call => call.Name == "setTrucks")
-    );
+    Assert.NotNull(component.Find(".fleet-map-inspector__empty"));
 
+    // Stopped brings it back; a search that matches nothing hides it again.
     await component.InvokeAsync(
       () => component.Find(".fleet-map-motion__chip--stopped").Click()
     );
     Assert.Single(component.FindAll(".fleet-truck-list__row"));
+    Assert.Equal(1, Drawn());
+    await component.InvokeAsync(
+      () => component.Find("#fleet-truck-search").Input("no such truck")
+    );
+    Assert.Empty(component.FindAll(".fleet-truck-list__row"));
+    Assert.Equal(0, Drawn());
+    await component.InvokeAsync(
+      () => component.Find("#fleet-truck-search").Input("")
+    );
+    Assert.Equal(1, Drawn());
   }
 
   [Fact]
@@ -3081,7 +3099,8 @@ public sealed class FleetMapComponentTests
     component.WaitForAssertion(
       () => Assert.Contains(fixture.Js.Calls, x => x.Name == "setTrucks")
     );
-    Assert.Empty(component.FindAll(".fleet-map-key__fuel"));
+    // The map carries no key (the owner, September 27).
+    Assert.Empty(component.FindAll(".fleet-map-key"));
     await component.InvokeAsync(
       () =>
         Toggle(component, "Fuel Stations")
@@ -3089,24 +3108,11 @@ public sealed class FleetMapComponentTests
     );
     Assert.Equal(1, fixture.StationCalls);
     Assert.Single(fixture.Js.Calls, x => x.Name == "setStations");
-    Assert.Equal(
-      "Fuel price",
-      component.Find(".fleet-map-key__fuel-label").TextContent
-    );
-    Assert.Equal(
-      "Within each currency · zoom in for stations",
-      component.Find(".fleet-map-key__note").TextContent
-    );
-    Assert.Equal(
-      "No price",
-      component.Find(".fleet-map-key__missing").TextContent
-    );
     await component.InvokeAsync(
       () =>
         Toggle(component, "Fuel Stations")
           .ChangeAsync(new ChangeEventArgs { Value = false })
     );
-    Assert.Empty(component.FindAll(".fleet-map-key__fuel"));
     await component.InvokeAsync(
       () =>
         Toggle(component, "Fuel Stations")

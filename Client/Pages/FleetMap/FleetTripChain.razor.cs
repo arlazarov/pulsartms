@@ -2,11 +2,20 @@ using Client.Models.DTO.Dispatch;
 using Client.Models.DTO.Fleet;
 using Client.Shared.Dispatch;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace Client.Pages.FleetMap;
 
-public partial class FleetTripChain
+public partial class FleetTripChain : IAsyncDisposable
 {
+  [Inject]
+  private IJSRuntime JS { get; set; } = default!;
+
+  private ElementReference _links;
+  private ElementReference? _bound;
+  private IJSObjectReference? _module;
+  private IJSObjectReference? _wheel;
+
   [Parameter]
   public TruckLocationMapDto? Truck { get; set; }
 
@@ -52,10 +61,77 @@ public partial class FleetTripChain
         _ => "is-unplaced",
       };
 
-  private static string Lane(DispatchResponse load)
+  // The list is rebuilt when the truck changes; the wheel follows it. A
+  // bind that finishes after the component is gone is released at once.
+  private bool _disposed;
+
+  protected override async Task OnAfterRenderAsync(bool firstRender)
   {
-    var stops = load.Stops.OrderBy(x => x.Sequence).ToList();
-    return $"{DispatchBoardRow.Location(stops.FirstOrDefault(x => !x.DriverOnly))}"
-      + $" → {DispatchBoardRow.Location(stops.LastOrDefault())}";
+    if (_disposed || _links.Context is null || _bound?.Id == _links.Id)
+      return;
+    var target = _links;
+    _bound = target;
+    try
+    {
+      var module = _module;
+      if (module is null)
+      {
+        // Held here until it is known the component still wants it: a
+        // disposal during the import must not leave it behind.
+        var imported = await JS.InvokeAsync<IJSObjectReference>(
+          "import",
+          "./js/generated/shared/horizontalWheel.js"
+        );
+        if (_disposed)
+        {
+          await imported.DisposeAsync();
+          return;
+        }
+        module = _module ??= imported;
+        if (!ReferenceEquals(module, imported))
+          await imported.DisposeAsync();
+      }
+      await ReleaseWheelAsync();
+      if (_disposed)
+        return;
+      var wheel = await module.InvokeAsync<IJSObjectReference>(
+        "bindHorizontalWheel",
+        target
+      );
+      if (_disposed || _bound?.Id != target.Id)
+      {
+        await wheel.InvokeVoidAsync("dispose");
+        await wheel.DisposeAsync();
+        return;
+      }
+      _wheel = wheel;
+    }
+    catch (JSException) { }
+    catch (JSDisconnectedException) { }
+  }
+
+  private async Task ReleaseWheelAsync()
+  {
+    var wheel = _wheel;
+    _wheel = null;
+    if (wheel is null)
+      return;
+    await wheel.InvokeVoidAsync("dispose");
+    await wheel.DisposeAsync();
+  }
+
+  public async ValueTask DisposeAsync()
+  {
+    _disposed = true;
+    try
+    {
+      await ReleaseWheelAsync();
+      var module = _module;
+      _module = null;
+      if (module is not null)
+        await module.DisposeAsync();
+    }
+    catch (JSException) { }
+    catch (JSDisconnectedException) { }
   }
 }

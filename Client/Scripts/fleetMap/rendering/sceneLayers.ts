@@ -6,7 +6,11 @@ import type { StopCard } from './stopCardLayers.ts';
 import type { StopLabelStyle } from './stopLabelStyle.ts';
 import type { LabelledCluster, LabelledTruck } from './truckClusters.ts';
 import { memoizeLast } from './layerCache.ts';
-import { routeLayers } from './routeAppearance.ts';
+import {
+  routeDetailLayers,
+  routeGlowLayers,
+  routeLayers,
+} from './routeAppearance.ts';
 import { createStationLayers } from './stationLayers.ts';
 import { createStopLayers } from './stopLayers.ts';
 import { createVehicleLayers } from './vehicleLayers.ts';
@@ -63,6 +67,7 @@ export function createSceneLayers({
     pixelRatio = 1,
     stopLabelStyle = defaultStopLabelStyle,
     sonar = null,
+    sonarBreath = 0,
   }: {
     lines: Iterable<SceneRouteLine & { map?: unknown; path?: unknown[] }>;
     stationData: StationMark[];
@@ -86,6 +91,8 @@ export function createSceneLayers({
     // reader who asked for less motion. It says which truck is chosen, not
     // what its engine is doing, and it is never picked.
     sonar?: number | 'still' | null;
+    // Under reduced motion, 0..1 through one slow change of brightness.
+    sonarBreath?: number;
   }): DeckLayer[] => {
     const fonts = labelFonts([pixelRatio, stopLabelStyle.size], () =>
       createLabelFonts(pixelRatio, stopLabelStyle.size),
@@ -101,16 +108,32 @@ export function createSceneLayers({
         line.routeSelected === true &&
         (line.routeRole === 'future' || line.routeRole === 'deadhead'),
     );
-    const drawn = roads
-      .sort((a, b) => ((a as any).zIndex ?? 0) - ((b as any).zIndex ?? 0))
-      .flatMap(line =>
-        routeLayers(
-          line,
-          PathLayer,
-          routeDashExtensions,
-          hasSelectedNextRoute && line.routeSelected !== true,
-        ),
-      );
+    const sorted = roads.sort(
+      (a, b) => ((a as any).zIndex ?? 0) - ((b as any).zIndex ?? 0),
+    );
+    const glow = sorted.flatMap(line =>
+      routeGlowLayers(
+        line,
+        PathLayer,
+        hasSelectedNextRoute && line.routeSelected !== true,
+      ),
+    );
+    const detail = sorted.flatMap(line =>
+      routeDetailLayers(
+        line,
+        PathLayer,
+        routeDashExtensions,
+        hasSelectedNextRoute && line.routeSelected !== true,
+      ),
+    );
+    const drawn = sorted.flatMap(line =>
+      routeLayers(
+        line,
+        PathLayer,
+        routeDashExtensions,
+        hasSelectedNextRoute && line.routeSelected !== true,
+      ),
+    );
     const fleet = vehicles({
       vehicles: trucks,
       clusters,
@@ -127,7 +150,9 @@ export function createSceneLayers({
     );
     return (
       [
+        ...glow,
         ...drawn,
+        ...detail,
         // All station fills cover roads; recommendations, stops and trucks
         // retain priority.
         ...stations({
@@ -141,7 +166,9 @@ export function createSceneLayers({
           fonts,
         }),
         fleet.clusters,
-        ...(sonar === null ? [] : sonarLayers(ScatterplotLayer, trucks, sonar)),
+        ...(sonar === null
+          ? []
+          : sonarLayers(ScatterplotLayer, trucks, sonar, sonarBreath)),
         ...fleet.icons,
         ...stops({ stopData, setHover, selectStop, fonts }),
         ...fleet.labels,
@@ -153,35 +180,42 @@ export function createSceneLayers({
   };
 }
 
-// The selected truck's sonar, as the concept draws it: two rings a half
-// sweep apart, each growing from just outside the mark and fading as it
-// goes, over a faint glow. Drawn under the marks and badges, never picked;
+// The selected truck's sonar, as the concept draws it: two thin rings half
+// a slow sweep apart, each growing from just outside the mark and fading
+// in and out gently. Drawn under the marks and badges, never picked;
 // the mark itself keeps its size.
 function sonarLayers(
   ScatterplotLayer: DeckLayerFactory,
   trucks: LabelledTruck[],
   sonar: number | 'still',
+  breath = 0,
 ): DeckLayer[] {
   const chosen = trucks.filter(t => t.selected);
+  // 0.45 to 1 and back, along a cosine: calm, never gone.
+  const glow = 0.725 - 0.275 * Math.cos(breath * 2 * Math.PI);
   const ring = (id: string, phase: number | 'still') => {
     const eased = phase === 'still' ? 0.35 : 1 - (1 - phase) ** 2;
+    // Fades in over the first tenth of a sweep and out to nothing at its
+    // end, so a ring never pops in or snaps back.
+    const fade =
+      phase === 'still' ? glow : Math.min(1, phase / 0.1) * (1 - eased) ** 0.6;
     return new ScatterplotLayer({
       id,
       data: chosen,
       getPosition: (t: LabelledTruck) => t.position,
       radiusUnits: 'pixels',
-      getRadius: 18 + eased * 44,
+      getRadius: 16 + eased * 30,
       stroked: true,
       filled: true,
       lineWidthUnits: 'pixels',
-      getLineWidth: 3,
-      getLineColor: [34, 211, 238, Math.round(255 * (1 - eased) ** 0.6)],
-      getFillColor: [34, 211, 238, Math.round(70 * (1 - eased))],
+      getLineWidth: 1.5,
+      getLineColor: [34, 211, 238, Math.round(255 * fade)],
+      getFillColor: [34, 211, 238, Math.round(26 * fade)],
       pickable: false,
       updateTriggers: {
         getRadius: phase,
-        getLineColor: phase,
-        getFillColor: phase,
+        getLineColor: [phase, glow],
+        getFillColor: [phase, glow],
       },
       parameters: { depthCompare: 'always' },
     });

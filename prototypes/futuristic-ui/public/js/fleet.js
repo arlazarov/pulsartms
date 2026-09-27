@@ -51,21 +51,20 @@ export function mountFleet(root, scope, ctx) {
           <div class="mobile-only tabs" role="tablist" data-region="msheet"
             style="background:var(--panel)"></div>
         </div>
-        <div class="map-ctl tr">
-          <button class="map-btn compass" data-action="fit-fleet"
-            data-key="fit-fleet" aria-label="Show the whole fleet"
-            title="Whole fleet">${icon('compass')}</button>
-          <button class="map-btn" data-action="zoom-in" aria-label="Zoom in"
-            data-key="zin">${icon('plus')}</button>
-          <button class="map-btn" data-action="zoom-out" aria-label="Zoom out"
-            data-key="zout">${icon('minus')}</button>
+        <div class="map-ctl tr" role="toolbar" aria-label="Map tools">
+          <button class="map-btn" data-action="follow" data-key="map-follow"
+            aria-label="Follow" title="Follow" aria-pressed="false">
+            ${icon('compass')}</button>
           <button class="map-btn" data-action="fit-route" data-key="fit-route"
             aria-label="Fit the selected route" title="Fit route">
             ${icon('fit')}</button>
+          <button class="map-btn" data-action="tab" data-value="fuel"
+            data-key="map-fuel" aria-label="Fuel" title="Fuel">
+            ${icon('fuel')}</button>
           <div style="position:relative">
             <button class="map-btn" data-action="layers" data-key="layers"
-              aria-label="Map layers" aria-expanded="false">
-              ${icon('layers')}</button>
+              aria-label="Map layers" title="Map layers"
+              aria-expanded="false">${icon('layers')}</button>
             <div class="layer-menu" data-region="layers" hidden></div>
           </div>
           <button class="map-btn desktop-only" data-action="toggle-right"
@@ -227,6 +226,8 @@ export function mountFleet(root, scope, ctx) {
     patch(r('dock'), chain(t, trip?.id));
     patch(r('msheet'), mobileTabs(t));
     patch(r('mapnote'), mapNote());
+    root.querySelector('[data-key="map-follow"]')
+      ?.setAttribute('aria-pressed', state.following ? 'true' : 'false');
     const layers = r('layers');
     if (!layers.hidden) patch(layers, layerMenu());
 
@@ -537,8 +538,7 @@ function mobileTabs(t) {
 function layerMenu() {
   const row = (k, label) => `<label><input type="checkbox" data-layer="${k}"
     ${state.layers[k] ? 'checked' : ''}> ${label}</label>`;
-  return row('others', 'Other trucks') + row('future', 'Future routes') +
-    row('cities', 'City labels');
+  return row('future', 'Future routes');
 }
 
 // This sketch map is not the product map. The real Fleet Map (Google,

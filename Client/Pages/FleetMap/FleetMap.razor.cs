@@ -114,8 +114,6 @@ public partial class FleetMap : IAsyncDisposable
   private bool _followingTruck;
   private bool _mobileFiltersOpen;
 
-  // Only a phone hides the key behind its chip; wider screens ignore this.
-  private bool _keyOpen;
   private bool _selectionDismissed;
   private List<TruckLocationMapDto> _trucks = [];
   private List<TruckLocationMapDto> _truckPoints = [];
@@ -204,6 +202,7 @@ public partial class FleetMap : IAsyncDisposable
   private bool UseIfta { get; set; } = true;
   private bool ShowFuelStations { get; set; }
   private bool ShowTraffic { get; set; } = true;
+  private bool SonarMotion { get; set; } = true;
 
   protected override async Task OnParametersSetAsync()
   {
@@ -327,6 +326,7 @@ public partial class FleetMap : IAsyncDisposable
       _displayedDistanceUnit = Units.Distance;
       await _map.InvokeVoidAsync("setDistanceUnit", Units.Distance);
       await _map.InvokeVoidAsync("setNextLoadsVisible", ShowNextLoads);
+      await _map.InvokeVoidAsync("setSonarMotion", SonarMotion);
       if (_disposed)
         return;
       _stations = new(Http, _map);
@@ -395,7 +395,6 @@ public partial class FleetMap : IAsyncDisposable
     _trucks = result.Response.Trucks;
     _truckPoints = result.Response.Points;
     await UpdateTruckSearchAsync();
-    _ = PreloadListWorkAsync();
     var nextLoadsTask = RefreshNextLoadsAsync(polled: true);
     await Task.WhenAll(nextLoadsTask, LoadRouteAsync(false));
     await FocusTruckAsync();
@@ -713,7 +712,25 @@ public partial class FleetMap : IAsyncDisposable
     if (_map is null || _disposed)
       return;
     var matches = MatchingTrucks;
-    await _map.InvokeVoidAsync("setTrucks", _trucks, _truckPoints);
+    // The map draws the trucks the list shows: the search and the motion
+    // chip together. A chosen truck they leave out is let go - its card,
+    // route and Follow with it - while the panel keeps its place.
+    var shown = ListedTrucks;
+    if (
+      _activeTruckId is { } active
+      && shown.All(truck => truck.TruckId != active)
+    )
+      await ClearSelectionAsync();
+    if (_map is null || _disposed)
+      return;
+    var ids = shown
+      .Select(truck => truck.TruckExternalId)
+      .ToHashSet(StringComparer.Ordinal);
+    await _map.InvokeVoidAsync(
+      "setTrucks",
+      shown,
+      _truckPoints.Where(point => ids.Contains(point.TruckExternalId)).ToList()
+    );
     if (
       !string.IsNullOrWhiteSpace(TruckSearch)
       && matches.Count == 1
@@ -948,6 +965,13 @@ public partial class FleetMap : IAsyncDisposable
     }
     else if (_map is not null && _stations?.LoadedDate != SelectedDate)
       await OnDateChanged();
+  }
+
+  private async Task OnSonarMotionChanged()
+  {
+    await SaveMapPreferencesAsync();
+    if (_map is not null && !_disposed)
+      await _map.InvokeVoidAsync("setSonarMotion", SonarMotion);
   }
 
   private async Task OnTrafficToggleChanged()

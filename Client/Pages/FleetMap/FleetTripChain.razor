@@ -28,7 +28,8 @@
     else
     {
         @* Every trip, wrapping into rows; the stops are the map's. *@
-        <ol id="fleet-trip-chain-list" class="fleet-trip-chain__links">
+        <ol id="fleet-trip-chain-list" class="fleet-trip-chain__links"
+            @ref="_links" tabindex="0" aria-label="Trips">
             @foreach (var (load, index) in Loads.Select((load, i) => (load, i)))
             {
                 var label = DispatchWorkPhase.Label(load);
@@ -44,22 +45,29 @@
                             <span class="fleet-trip-chain__load">
                                 <Client.Shared.Dispatch.LoadNumber.LoadNumber Value="load.LoadNumber" />
                             </span>
-                            @if (!string.IsNullOrEmpty(label))
-                            { <span class="fleet-trip-chain__phase">@label</span> }
-                            <span class="fleet-trip-chain__lane">@Lane(load)</span>
-                            @if (conflict is not null)
-                            { <span class="fleet-trip-chain__conflict" role="status">@conflict</span> }
-                            @* Each stop as its marker, checked once the server
-                               says it is done (never from GPS passing it). *@
-                            <span class="fleet-trip-chain__stops">
-                                @foreach (var visit in DispatchStopPresentation.OrderedVisits(load.Stops))
+                            <span class="fleet-trip-chain__status">
+                                @if (conflict is not null)
+                                { <span class="fleet-trip-chain__conflict" role="status" title="@conflict">@conflict</span> }
+                                else if (!string.IsNullOrEmpty(label))
+                                { <span class="fleet-trip-chain__phase">@label</span> }
+                            </span>
+                            @* The route as its stops: each marker beside its
+                               own city, checked once the server says the stop
+                               is done (never from GPS passing it). *@
+                            <span class="fleet-trip-chain__route">
+                                @foreach (var (visit, at) in DispatchStopPresentation.OrderedVisits(load.Stops).Select((v, i) => (v, i)))
                                 {
                                     var stop = visit.Stop;
-                                    <span class="fleet-trip-chain__stop @DispatchStopPresentation.Tone(stop) @(stop.IsCompleted ? "is-done" : "")"
-                                          title="@($"{stop.Job} · {DispatchBoardRow.Location(stop)}{(stop.IsCompleted ? " · completed" : "")}")"
-                                          aria-label="@($"{visit.Marker}, {stop.Job}{(stop.IsCompleted ? ", completed" : "")}")"
-                                        >@visit.Marker@if (stop.IsCompleted)
-                                        {<ActionIcon Kind="check" />}</span>
+                                    @if (at > 0)
+                                    { <span class="fleet-trip-chain__arrow" aria-hidden="true">→</span> }
+                                    <span class="fleet-trip-chain__place"
+                                          title="@($"{stop.Job} · {DispatchBoardRow.Location(stop)}{(stop.IsCompleted ? " · completed" : "")}")">
+                                        <span class="fleet-trip-chain__stop @DispatchStopPresentation.Tone(stop) @(stop.IsCompleted ? "is-done" : "")"
+                                              aria-label="@($"{visit.Marker}, {stop.Job}{(stop.IsCompleted ? ", completed" : "")}")"
+                                            >@visit.Marker@if (stop.IsCompleted)
+                                            {<ActionIcon Kind="check" />}</span>
+                                        <span class="fleet-trip-chain__city">@DispatchBoardRow.Location(stop)</span>
+                                    </span>
                                 }
                             </span>
                         </button>

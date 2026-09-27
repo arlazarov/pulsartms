@@ -1227,6 +1227,34 @@ button:disabled {
 .map-ctl.tr {
   top: 12px;
   right: 12px;
+  flex-direction: row;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 10px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--panel-shadow);
+}
+
+.map-ctl.tr .map-btn {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.map-ctl.tr .map-btn[aria-pressed='true'] {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent-line), var(--glow);
+}
+
+.map-ctl.tr .layer-menu {
+  right: 0;
+  top: calc(100% + 8px);
 }
 
 .map-ctl.tl {

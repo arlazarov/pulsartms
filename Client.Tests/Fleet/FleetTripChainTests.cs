@@ -2,6 +2,8 @@ using Bunit;
 using Client.Models.DTO.Dispatch;
 using Client.Models.DTO.Fleet;
 using Client.Pages.FleetMap;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.JSInterop;
 
 namespace Client.Tests.Fleet;
 
@@ -20,7 +22,7 @@ public sealed class FleetTripChainTests
   [Fact]
   public void LoadsReadTheServerPhaseInTheBoardsOrder()
   {
-    using var context = new BunitContext();
+    using var context = Context();
     var current = Load(1409, "current");
     var next = Load(1410, "next");
     var stale = Load(1411, "stale");
@@ -49,7 +51,7 @@ public sealed class FleetTripChainTests
   [Fact]
   public void EveryTripIsShownAndChosenWithoutStopChipsOrControls()
   {
-    using var context = new BunitContext();
+    using var context = Context();
     var loads = Enumerable
       .Range(0, 7)
       .Select(i => Load(1400 + i, i == 0 ? "current" : "upcoming", 2))
@@ -89,7 +91,7 @@ public sealed class FleetTripChainTests
   [Fact]
   public void AStopIsCheckedOnlyWhenTheServerSaysItIsDone()
   {
-    using var context = new BunitContext();
+    using var context = Context();
     var load = Load(1409, "current");
     load.Stops[0].IsCompleted = true;
     load.Stops[1].StateAfter = "Passed";
@@ -104,10 +106,105 @@ public sealed class FleetTripChainTests
     Assert.Null(stops[1].QuerySelector("svg"));
   }
 
+  // The strip's wheel handler follows the list: a new list (another truck)
+  // releases the old handler and its reference, and leaving releases the
+  // last one.
+  [Fact]
+  public async Task TheWheelHandlerIsReleasedOnRebindAndOnDisposal()
+  {
+    using var context = new BunitContext();
+    var module = context.JSInterop.SetupModule(
+      "./js/generated/shared/horizontalWheel.js"
+    );
+    var handler = module.SetupModule("bindHorizontalWheel", _ => true);
+    handler.SetupVoid("dispose").SetVoidResult();
+    var loads = new List<DispatchResponse> { Load(1409, "current") };
+    var component = context.Render<FleetTripChain>(p =>
+      p.Add(x => x.Truck, Truck).Add(x => x.Loads, loads)
+    );
+    Assert.Single(module.Invocations["bindHorizontalWheel"]);
+
+    // Another truck: the list goes while it loads and comes back anew.
+    component.Render(p => p.Add(x => x.Loading, true));
+    component.Render(p => p.Add(x => x.Loading, false));
+    Assert.Equal(2, module.Invocations["bindHorizontalWheel"].Count);
+    Assert.Single(handler.Invocations["dispose"]);
+
+    await component.Instance.DisposeAsync();
+    Assert.Equal(2, handler.Invocations["dispose"].Count);
+  }
+
+  // Leaving while the module is still being imported: the import that
+  // arrives afterwards is released at once and binds nothing.
+  [Fact]
+  public async Task AnImportThatArrivesAfterDisposalIsReleased()
+  {
+    using var context = new BunitContext();
+    var runtime = new HeldImportRuntime();
+    context.Services.AddSingleton<IJSRuntime>(runtime);
+    var component = context.Render<FleetTripChain>(p =>
+      p.Add(x => x.Truck, Truck).Add(x => x.Loads, [Load(1409, "current")])
+    );
+    await component.Instance.DisposeAsync();
+    var late = new CountingModule();
+    runtime.Import.SetResult(late);
+    await late.Released.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    Assert.Equal(1, late.Disposals);
+    Assert.Empty(late.Calls);
+  }
+
+  private sealed class HeldImportRuntime : IJSRuntime
+  {
+    public TaskCompletionSource<IJSObjectReference> Import { get; } = new();
+
+    public ValueTask<TValue> InvokeAsync<TValue>(
+      string identifier,
+      object?[]? args
+    ) =>
+      identifier == "import"
+        ? new(Import.Task.ContinueWith(t => (TValue)t.Result))
+        : ValueTask.FromResult(default(TValue)!);
+
+    public ValueTask<TValue> InvokeAsync<TValue>(
+      string identifier,
+      CancellationToken cancellationToken,
+      object?[]? args
+    ) => InvokeAsync<TValue>(identifier, args);
+  }
+
+  private sealed class CountingModule : IJSObjectReference
+  {
+    public int Disposals;
+    public List<string> Calls { get; } = [];
+    public TaskCompletionSource Released { get; } = new();
+
+    public ValueTask<TValue> InvokeAsync<TValue>(
+      string identifier,
+      object?[]? args
+    )
+    {
+      Calls.Add(identifier);
+      return ValueTask.FromResult(default(TValue)!);
+    }
+
+    public ValueTask<TValue> InvokeAsync<TValue>(
+      string identifier,
+      CancellationToken cancellationToken,
+      object?[]? args
+    ) => InvokeAsync<TValue>(identifier, args);
+
+    public ValueTask DisposeAsync()
+    {
+      Disposals++;
+      Released.TrySetResult();
+      return ValueTask.CompletedTask;
+    }
+  }
+
   [Fact]
   public void TheServersConflictIsSaidOnTheLoad()
   {
-    using var context = new BunitContext();
+    using var context = Context();
     var passed = Load(1408, "earlier");
     passed.WorkConflict = "route_passed_not_delivered";
     var component = context.Render<FleetTripChain>(p =>
@@ -123,12 +220,24 @@ public sealed class FleetTripChainTests
   [Fact]
   public void AFailedReadSaysSoInsteadOfAnEmptyChain()
   {
-    using var context = new BunitContext();
+    using var context = Context();
     var component = context.Render<FleetTripChain>(p =>
       p.Add(x => x.Truck, Truck).Add(x => x.Failed, true)
     );
     Assert.Contains("could not be read", component.Markup);
     Assert.Empty(component.FindAll(".fleet-trip-chain__trip"));
+  }
+
+  // The strip binds its wheel through a module; the other tests do not
+  // look at it.
+  private static BunitContext Context()
+  {
+    var context = new BunitContext();
+    context.JSInterop.Mode = JSRuntimeMode.Loose;
+    context
+      .JSInterop.SetupModule("./js/generated/shared/horizontalWheel.js")
+      .Mode = JSRuntimeMode.Loose;
+    return context;
   }
 
   private static DispatchResponse Load(

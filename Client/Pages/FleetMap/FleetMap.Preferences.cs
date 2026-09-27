@@ -51,6 +51,7 @@ public partial class FleetMap
       ShowFuelStations = saved.ShowFuelStations;
       ShowTraffic = saved.ShowTraffic;
       ShowNextLoads = saved.ShowNextLoads;
+      SonarMotion = saved.SonarMotion;
     }
     catch (Exception ex) when (ex is JSException or JsonException) { }
     catch (OperationCanceledException) when (_disposed) { }
@@ -96,6 +97,7 @@ public partial class FleetMap
       ShowFuelStations = ShowFuelStations,
       ShowTraffic = ShowTraffic,
       ShowNextLoads = ShowNextLoads,
+      SonarMotion = SonarMotion,
     };
     try
     {
@@ -117,5 +119,9 @@ public partial class FleetMap
     public bool ShowFuelStations { get; init; }
     public bool ShowTraffic { get; init; } = true;
     public bool ShowNextLoads { get; init; }
+
+    // The chosen truck's sonar rings move even when the system asks for
+    // less motion; the reader turns it off here.
+    public bool SonarMotion { get; init; } = true;
   }
 }

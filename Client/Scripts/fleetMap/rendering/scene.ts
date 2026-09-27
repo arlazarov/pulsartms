@@ -97,8 +97,13 @@ export function createScene(
   }
   // About 25 frames a second for the sonar alone; a hidden page draws none
   // and picks it up again when shown.
-  const sonarPeriod = 2400;
+  const sonarPeriod = 4400;
   const sonarFrame = 40;
+  const sonarBreathPeriod = 3000;
+  // The reader's own choice for this map's sonar: rings moving out even
+  // when the system asks for less motion elsewhere.
+  let sonarMotion = false;
+  const sonarBreathFrame = 80;
   let sonarTimer: ReturnType<typeof setTimeout> | null = null;
   const onVisibility = () => {
     if (!globalThis.document?.hidden) schedule();
@@ -175,21 +180,31 @@ export function createScene(
     // still for a reader who asked for less motion.
     const chosen = vehicleDisplay.vehicles.some(t => t.selected);
     const still =
+      !sonarMotion &&
       globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ===
-      true;
+        true;
+    // Reduced motion keeps the rings where they are and only lets them
+    // breathe - a slow change of brightness, no growth and no travel.
     const sonar = !chosen
       ? null
       : still
         ? ('still' as const)
         : (performance.now() % sonarPeriod) / sonarPeriod;
-    if (chosen && !still && !globalThis.document?.hidden && sonarTimer === null)
-      sonarTimer = setTimeout(() => {
-        sonarTimer = null;
-        schedule();
-      }, sonarFrame);
+    const sonarBreath = still
+      ? (performance.now() % sonarBreathPeriod) / sonarBreathPeriod
+      : 0;
+    if (chosen && !globalThis.document?.hidden && sonarTimer === null)
+      sonarTimer = setTimeout(
+        () => {
+          sonarTimer = null;
+          schedule();
+        },
+        still ? sonarBreathFrame : sonarFrame,
+      );
     overlay.draw(
       buildLayers({
         sonar,
+        sonarBreath,
         lines: routeEditing
           ? [...lines].filter(line => line.routeRole === 'preview')
           : lines,
@@ -268,6 +283,11 @@ export function createScene(
       for (const line of lines) line.cachedLayer = null;
       setHover({ object: null });
       invalidateStops();
+    },
+    setSonarMotion(value: boolean) {
+      if (sonarMotion === value) return;
+      sonarMotion = value;
+      schedule();
     },
     consumeTruckClick() {
       return pointer.tookRecently();

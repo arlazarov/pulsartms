@@ -34,14 +34,13 @@ else
         else
         {
             <div class="fleet-truck-list__columns" aria-hidden="true">
-                <span>Truck</span><span>Load</span><span>Next stop</span>
+                <span>Truck</span><span>Trailer</span><span>Driver</span>
             </div>
             <ul class="fleet-truck-list__rows">
                 @foreach (var truck in Trucks)
                 {
                     var selected = truck.TruckId == SelectedId;
                     var moving = TruckMotion.IsMoving(truck.Speed);
-                    var work = Work?.Invoke(truck.TruckId) ?? default;
                     <li @key="truck.TruckId">
                         <button type="button"
                                 class="fleet-truck-list__row @(selected ? "is-selected" : "")"
@@ -54,14 +53,9 @@ else
                                       aria-hidden="true"></span>
                                 <strong>@truck.UnitNumber</strong>
                             </span>
-                            <span class="fleet-truck-list__load">
-                                @if (work.LoadNumber is { } load)
-                                { <Client.Shared.Dispatch.LoadNumber.LoadNumber Value="load" /> }
-                                else { <text>—</text> }
-                            </span>
-                            <span class="fleet-truck-list__place"
-                                  title="@(work.NextStop ?? truck.FormattedLocation)"
-                                >@Text(work.NextStop)</span>
+                            @* The trailer number alone; a disagreement between
+                               sources is the truck card's to explain. *@
+                            <span class="fleet-truck-list__trailer">@Trailer(truck)</span>
                             <span class="fleet-truck-list__driver">@Text(truck.DriverName)</span>
                             <span class="fleet-truck-list__speed">@SpeedText(truck)</span>
                         </button>

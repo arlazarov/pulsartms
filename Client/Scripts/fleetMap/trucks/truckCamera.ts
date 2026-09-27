@@ -217,20 +217,6 @@ export function createTruckCamera(
         }
       }, false);
     },
-    // The reader's own move from the map's bar: the whole fleet. Like a
-    // drag, it ends Follow.
-    showFleet(trucks: CameraTruck[]) {
-      keepUserCamera();
-      endFollow();
-      const bounds = new google.maps.LatLngBounds();
-      for (const truck of trucks)
-        if (truck.position)
-          bounds.extend({
-            lat: truck.position.latitude,
-            lng: truck.position.longitude,
-          });
-      if (!bounds.isEmpty()) map.fitBounds(bounds, viewport.padding(70));
-    },
     // The one camera move made before anyone has touched anything: the truck
     // the page was opened on, or all of them at once.
     fitInitial(trucks: CameraTruck[]) {

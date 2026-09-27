@@ -170,3 +170,107 @@ export function routeLayers(
     }),
   ]);
 }
+
+// The road being driven glows: two soft halos of its own colour under it,
+// stronger on the light theme's pale ground than on the dark. Later loads
+// do not glow; they carry a fine segmented centre line instead (below).
+// Never picked.
+export function routeGlowLayers(
+  line: SceneRouteLine,
+  PathLayer: DeckLayerFactory,
+  selectionMuted = false,
+) {
+  if (line.visible === false || selectionMuted || line.routeRole !== 'current')
+    return [];
+  const color = colors.current;
+  const light = globalThis.document?.documentElement?.dataset?.theme !== 'dark';
+  const width = Math.max(metrics.routeCurrentMinWidth, line.strokeWeight);
+  const key = [color.join(','), light, width].join('|');
+  const cached = line as SceneRouteLine & {
+    cachedGlow?: unknown[];
+    cachedGlowKey?: string;
+    cachedGlowData?: unknown;
+  };
+  if (
+    cached.cachedGlow &&
+    cached.cachedGlowKey === key &&
+    cached.cachedGlowData === line.data
+  )
+    return cached.cachedGlow;
+  const halo = (id: string, extra: number, alpha: number) =>
+    new PathLayer({
+      id: `${line.id}-${id}`,
+      data: line.data,
+      getPath: (path: unknown) => path,
+      widthUnits: 'pixels',
+      capRounded: true,
+      jointRounded: true,
+      parameters: { depthCompare: 'always' },
+      pickable: false,
+      getColor: [color[0], color[1], color[2], alpha],
+      getWidth: width + extra,
+    });
+  const tier = light
+    ? { wide: 24, near: 11, wideAlpha: 52, nearAlpha: 104 }
+    : { wide: 20, near: 9, wideAlpha: 38, nearAlpha: 80 };
+  cached.cachedGlowKey = key;
+  cached.cachedGlowData = line.data;
+  return (cached.cachedGlow = [
+    halo('glow-wide', tier.wide, tier.wideAlpha),
+    halo('glow', tier.near, tier.nearAlpha),
+  ]);
+}
+
+// A later load's road as a fine instrument line: over its own coloured
+// stroke, a thin segmented centre line that reads its direction of travel
+// by the dashes' run. A chosen later load's segments are longer and
+// brighter than the rest. Muted roads and empty miles have none. Never
+// picked.
+export function routeDetailLayers(
+  line: SceneRouteLine,
+  PathLayer: DeckLayerFactory,
+  routeDashExtensions: unknown,
+  selectionMuted = false,
+) {
+  if (
+    line.visible === false ||
+    selectionMuted ||
+    line.routeRole !== 'future' ||
+    line.routeMuted === true ||
+    !routeDashExtensions
+  )
+    return [];
+  const chosen = line.routeSelected === true;
+  const light = globalThis.document?.documentElement?.dataset?.theme !== 'dark';
+  const key = [chosen, light].join('|');
+  const cached = line as SceneRouteLine & {
+    cachedDetail?: unknown[];
+    cachedDetailKey?: string;
+    cachedDetailData?: unknown;
+  };
+  if (
+    cached.cachedDetail &&
+    cached.cachedDetailKey === key &&
+    cached.cachedDetailData === line.data
+  )
+    return cached.cachedDetail;
+  cached.cachedDetailKey = key;
+  cached.cachedDetailData = line.data;
+  return (cached.cachedDetail = [
+    new PathLayer({
+      id: `${line.id}-detail`,
+      data: line.data,
+      getPath: (path: unknown) => path,
+      widthUnits: 'pixels',
+      capRounded: false,
+      jointRounded: true,
+      parameters: { depthCompare: 'always' },
+      pickable: false,
+      extensions: routeDashExtensions,
+      dashJustified: false,
+      getColor: [255, 255, 255, chosen ? 235 : light ? 170 : 140],
+      getWidth: chosen ? 1.5 : 1,
+      getDashArray: chosen ? [6, 4] : [3, 5],
+    }),
+  ]);
+}

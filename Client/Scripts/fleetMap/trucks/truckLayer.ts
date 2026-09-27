@@ -229,15 +229,6 @@ export function createTruckLayer(
         })),
       );
     },
-    showFleet() {
-      if (disposed) return;
-      camera.showFleet(
-        [...trucks.values()].map(truck => ({
-          id: truck.id,
-          position: truck.position,
-        })),
-      );
-    },
     releaseCamera() {
       if (!disposed) camera.releaseCamera();
     },

@@ -107,10 +107,6 @@
   border: 1px solid ui.theme(accent, 0.2);
 }
 
-.fleet-map-key {
-  border-color: ui.theme(accent, 0.22);
-}
-
 // The map's own view controls: one compact glass bar over its top right
 // corner.
 .fleet-map-controls {
@@ -324,7 +320,7 @@
   &__columns,
   &__row {
     display: grid;
-    grid-template-columns: 5.5rem minmax(0, 1fr) minmax(0, 1.2fr);
+    grid-template-columns: 5.5rem minmax(0, 0.8fr) minmax(0, 1.2fr);
     gap: ui.pg(sm);
     align-items: center;
   }
@@ -386,8 +382,7 @@
       background: ui.theme(success-text);
     }
   }
-  &__load,
-  &__place,
+  &__trailer,
   &__driver,
   &__speed {
     overflow: hidden;
@@ -395,16 +390,14 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  &__load {
+  &__trailer {
     color: ui.theme(text-secondary);
   }
-  &__place {
+  &__driver {
     color: ui.theme(text-muted);
     text-align: right;
   }
-  // Read by a screen reader with the row; the dot and the table say the
-  // rest on screen.
-  &__driver,
+  // Read by a screen reader with the row; the dot says it on screen.
   &__speed {
     position: absolute;
     width: 1px;
@@ -484,6 +477,27 @@
   }
 }
 
+.fleet-map-inspector__empty {
+  display: none;
+}
+@include ui.above(fleet-docked) {
+  .fleet-map-inspector__empty {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: ui.pg(xs);
+    flex: 1;
+    padding: ui.pg(xl);
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+    text-align: center;
+    strong {
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(lead);
+    }
+  }
+}
+
 // The truck panel's head, as the concept drew it: a quiet eyebrow over the
 // unit.
 .fleet-map-inspector {
@@ -536,24 +550,45 @@
   &__links {
     grid-area: list;
     align-self: stretch;
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-width: thin;
     display: grid;
-    grid-template-columns: repeat(
-      auto-fill,
-      minmax(ui.size(trip-card), 1fr)
-    );
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    justify-content: start;
+    align-content: center;
+    align-items: center;
     gap: ui.pg(sm);
     min-width: 0;
+    min-height: 0;
     margin: 0;
-    padding: ui.pg(sm) ui.pg(md);
+    padding: ui.pg(xs) ui.pg(md);
+    overflow-x: auto;
+    overflow-y: hidden;
+    // The horizontal bar, when there are more cards than fit, takes its
+    // own room instead of the cards', in the theme's colours.
+    scrollbar-gutter: stable;
+    scrollbar-color: ui.theme(accent, 0.45) transparent;
+    &::-webkit-scrollbar {
+      height: ui.pg(sm);
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      border-radius: ui.radius(pill);
+      background: ui.theme(accent, 0.45);
+    }
+    &:focus-visible {
+      outline: 2px solid ui.theme(focus);
+      outline-offset: -2px;
+    }
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
     list-style: none;
   }
+
   &__link {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: ui.pg(sm);
     min-width: 0;
     color: ui.theme(text-muted);
@@ -564,7 +599,6 @@
     flex: none;
     width: ui.size(control-compact);
     height: ui.size(control-compact);
-    margin-top: ui.pg(xs);
     border: 1.5px solid currentColor;
     border-radius: 50%;
     font-size: ui.fs(caption);
@@ -590,7 +624,7 @@
   }
   &__trip {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
     gap: ui.pg(micro) ui.pg(sm);
     width: 100%;
@@ -617,28 +651,54 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
-  &__lane,
-  &__conflict {
-    grid-column: 1 / -1;
+  // The phase or the server's conflict, in its own bounded place after the
+  // load number: never over it, cut with an ellipsis, whole in its title.
+  &__status {
+    display: flex;
+    justify-content: flex-end;
+    min-width: 0;
     overflow: hidden;
+  }
+  &__conflict {
+    overflow: hidden;
+    color: ui.theme(warning-text);
     font-size: ui.fs(caption);
+    font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  &__lane {
-    color: ui.theme(text-secondary);
-  }
-  // Each stop as a small marker; a check once the server says it is done.
-  &__stops {
+  // The route as its stops, on one line: each marker beside its city.
+  &__route {
     grid-column: 1 / -1;
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
     gap: ui.pg(xs);
+    min-width: 0;
+    overflow: hidden;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+    white-space: nowrap;
   }
+  &__place {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(xs);
+    min-width: 0;
+  }
+  &__city {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  &__arrow {
+    flex: none;
+    color: ui.theme(text-muted);
+  }
+  // Each stop as a small marker; a check once the server says it is done.
   &__stop {
     display: inline-flex;
     align-items: center;
     gap: ui.pg(hair);
+    flex: none;
     min-width: ui.pg(xl);
     height: ui.pg(xl);
     padding: 0 ui.pg(xs);
@@ -667,9 +727,13 @@
       height: ui.pg(sm);
     }
   }
+  // As wide as its load and route need, within bounds: never stretched to
+  // fill the strip.
   &__card {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
+    min-width: ui.size(trip-card-min);
+    max-width: ui.size(trip-card);
   }
   &__open {
     display: grid;
@@ -710,8 +774,12 @@
   @include ui.below(map-mobile) {
     height: ui.size(trip-chain-phone);
     &__links {
+      grid-auto-flow: row;
+      grid-auto-columns: auto;
       grid-template-columns: minmax(0, 1fr);
       padding: ui.pg(sm);
+      overflow-x: hidden;
+      overflow-y: auto;
     }
   }
 }
@@ -735,14 +803,14 @@
       ui.size(control-touch) minmax(0, 1fr)
       ui.size(fleet-panel);
   }
-  // No truck selected and no editor open: the map takes the inspector's
-  // column too. The fuel editor replaces the card in that column.
-  .fleet-map-stage:not(:has(.fleet-map-info-reserved.has-selection)):not(
-      :has(.fuel-plan-editor)
-    ) {
-    grid-template-areas:
-      'list map map'
-      'chain chain chain';
+  // The panel's column is kept whether or not a truck is chosen: the map
+  // and the chain keep their place. With nothing chosen the panel shows
+  // only its empty state.
+  .fleet-map-info-reserved:not(.has-selection) {
+    display: flex;
+    > :not(.fleet-map-inspector__empty) {
+      display: none;
+    }
   }
   #fleet-map {
     grid-area: map;
@@ -773,8 +841,7 @@
   }
   .route-editor,
   .fuel-send-plan,
-  .fleet-map-key,
-  .fleet-map-mode,
+  .fleet-map-weather-source,
   .fleet-map-controls {
     grid-area: map;
   }
@@ -784,11 +851,6 @@
   display: none;
 }
 
-// A later trip's stop hides the truck's action row: Follow stays in the head.
-.fleet-map-inspector[data-inspector-mode='nextstop']
-  .fleet-map-inspector__quick-follow {
-  display: inline-flex;
-}
 
 // On a phone the card opens closed: the head and its summary rows (load,
 // next stop, ETA, appointment, readings, clocks), an explicit Details /
@@ -826,8 +888,7 @@
   .fuel-plan-editor,
   .route-editor,
   .fuel-send-plan,
-  .fleet-map-key,
-  .fleet-map-mode,
+  .fleet-map-weather-source,
   .fleet-map-controls {
     grid-area: map;
   }

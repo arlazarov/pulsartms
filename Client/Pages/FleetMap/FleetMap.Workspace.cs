@@ -15,19 +15,6 @@ namespace Client.Pages.FleetMap;
 // truck. Each routes into the page's existing selection and camera paths.
 public partial class FleetMap
 {
-  // What the map is showing, as the map's own zoom policy chose it
-  // (hybrid at close zoom, the road map further out).
-  private string? _mapType;
-
-  [JSInvokable]
-  public Task OnMapTypeChanged(string mapType)
-  {
-    if (_disposed || mapType == _mapType)
-      return Task.CompletedTask;
-    _mapType = mapType;
-    return InvokeAsync(StateHasChanged);
-  }
-
   // Hiding the fleet list gives its width to the map; kept for the visit.
   private bool _listCollapsed;
 
@@ -306,6 +293,14 @@ public partial class FleetMap
       _ => true,
     };
 
+  private async Task ChooseMotionAsync(string motion)
+  {
+    if (_motion == motion)
+      return;
+    _motion = motion;
+    await UpdateTruckSearchAsync();
+  }
+
   private int MotionCount(string motion) =>
     MatchingTrucks.Count(truck => InMotion(truck, motion));
 
@@ -313,17 +308,6 @@ public partial class FleetMap
     _motion == "all"
       ? MatchingTrucks
       : MatchingTrucks.Where(truck => InMotion(truck, _motion)).ToList();
-
-  private async Task ShowFleetAsync()
-  {
-    if (_map is null || _disposed)
-      return;
-    try
-    {
-      await _map.InvokeVoidAsync("showFleet");
-    }
-    catch (JSException) { }
-  }
 
   // The panel's motion fact: what the map's shape says, with the reported
   // speed; nothing when the speed is not known (stale GPS).
@@ -337,27 +321,4 @@ public partial class FleetMap
     _hos?.CurrentDutyStatus is { } status
       ? DriverDutySummary.StatusName(status)
       : "—";
-
-  // The list's Load and Next stop: the fleet's planning summaries, read in
-  // one request by the shared planning cache (its own two-minute guard),
-  // the same entries this page and Dispatch read for one truck. The list
-  // shows them at the next position poll's render; none is forced here.
-  private async Task PreloadListWorkAsync()
-  {
-    try
-    {
-      await PlanningCache.PreloadAsync();
-    }
-    catch (Exception ex) when (IsLoadError(ex)) { }
-  }
-
-  private FleetTruckWork TruckWork(Guid truckId)
-  {
-    var result = PlanningCache.Get($"api/fleet/trucks/{truckId}/planning");
-    var plan = result?.State?.Plan;
-    var next = plan?.Stops.FirstOrDefault(stop =>
-      stop.Id == plan.Tracking.NextStopId
-    );
-    return new(result?.LoadNumber, next?.Name);
-  }
 }

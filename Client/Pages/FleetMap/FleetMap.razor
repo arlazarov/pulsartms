@@ -84,7 +84,7 @@
             <button type="button"
                     class="fleet-map-motion__chip fleet-map-motion__chip--@motion"
                     aria-pressed="@(_motion == motion ? "true" : "false")"
-                    @onclick="() => _motion = motion">
+                    @onclick="() => ChooseMotionAsync(motion)">
                 @if (motion != "all")
                 {
                     <span class="fleet-map-motion__dot" aria-hidden="true"></span>
@@ -115,7 +115,6 @@
     <FleetTruckList Trucks="ListedTrucks" Total="_trucks.Count"
                     SelectedId="_activeTruckId"
                     Selected="ChooseListTruckAsync"
-                    Work="TruckWork"
                     @bind-Collapsed="_listCollapsed" />
     <div
         id="fleet-map"
@@ -125,8 +124,8 @@
         aria-busy="@_initializing">
     </div>
     @* One compact bar over the map: the chosen truck's actions (Follow,
-       Fit route, Fuel, Camera, Route options), then the whole fleet and
-       the layers. Zoom is the map's own gestures. *@
+       Fit route, Camera, Route options, Fuel), then the layers. Zoom and
+       panning are the map's own gestures. *@
     <div class="fleet-map-controls" role="toolbar" aria-label="Map tools">
         @if (SelectedTruck is not null)
         {
@@ -148,12 +147,6 @@
                 <ActionIcon Kind="fit" /><span>Fit route</span>
             </button>
             <button type="button" class="btn map-action-icon"
-                    title="Fuel plan" aria-label="Fuel"
-                    disabled="@(_fuelEditorOpen || _sendPlanOpen)"
-                    @onclick="OpenFuelPlanAsync">
-                <ActionIcon Kind="fuel" /><span>Fuel</span>
-            </button>
-            <button type="button" class="btn map-action-icon"
                     title="Camera" aria-label="Camera"
                     @onclick="OpenCameraAsync">
                 <ActionIcon Kind="camera" /><span>Camera</span>
@@ -164,13 +157,14 @@
                     @onclick="OpenSelectedRouteEditorAsync">
                 <ActionIcon Kind="route" /><span>Route options</span>
             </button>
+            <button type="button" class="btn map-action-icon"
+                    title="Fuel plan" aria-label="Fuel"
+                    disabled="@(_fuelEditorOpen || _sendPlanOpen)"
+                    @onclick="OpenFuelPlanAsync">
+                <ActionIcon Kind="fuel" /><span>Fuel</span>
+            </button>
         </div>
         }
-        <button type="button" class="fleet-map-controls__button"
-                title="Whole fleet" aria-label="Show the whole fleet"
-                disabled="@(_map is null)" @onclick="ShowFleetAsync">
-            <ActionIcon Kind="compass" />
-        </button>
         @* The layers, behind the map's own button as the concept keeps them;
            the same switches as the phone's Filters drawer. *@
         <div class="fleet-map-controls__layers">
@@ -196,21 +190,13 @@
                     <label><input type="checkbox" @bind="ShowNextLoads"
                         @bind:after="OnNextLoadsChanged" />
                         <span>Next loads</span></label>
+                    <label><input type="checkbox" @bind="SonarMotion"
+                        @bind:after="OnSonarMotionChanged" />
+                        <span>Sonar animation</span></label>
                 </fieldset>
             }
         </div>
     </div>
-    @if (_mapType is not null)
-    {
-        @* Which view the map is in: satellite imagery at close zoom, the
-           road map further out. *@
-        <span class="fleet-map-mode @(_mapType == "hybrid" ? "is-satellite" : "is-roadmap")"
-              role="status" aria-live="polite">
-            <ActionIcon Kind="@(_mapType == "hybrid" ? "satellite" : "map")" />
-            <span>@(_mapType == "hybrid" ? "Satellite" : "Road map")</span>
-            <small>@(_mapType == "hybrid" ? "close zoom" : "zoom in for satellite")</small>
-        </span>
-    }
     <section class="fleet-map-info-reserved fleet-map-inspector
                     @(InspectorVisible ? "has-selection" : "")
                     @(_mobileTruckDetailsOpen
@@ -219,6 +205,16 @@
              data-inspector-mode="@_inspectorMode.ToString().ToLowerInvariant()"
              @onkeydown="OnInspectorKeyDownAsync"
              @onkeydown:stopPropagation="true">
+        @if (!InspectorVisible)
+        {
+            @* Docked, the panel keeps its place with nothing chosen, so the
+               map and the chain never move; it says so and shows nothing
+               of the truck that was. *@
+            <div class="fleet-map-inspector__empty" role="status">
+                <strong>No truck selected</strong>
+                <span>Choose a truck on the map or in the list.</span>
+            </div>
+        }
         <header class="fleet-map-inspector__header">
         @if (_inspectorMode == MapInspectorMode.Truck)
         {
@@ -307,12 +303,11 @@
                     <ActionIcon Kind="chevron-down" />
                 </button>
             }
-            @if (_inspectorMode
-                is MapInspectorMode.Truck or MapInspectorMode.NextStop)
+            @if (_inspectorMode == MapInspectorMode.Truck)
             {
                 @* On a phone the card opens closed, and the actions row
-                   closes with it; a later trip's stop hides the row. Follow
-                   stays in reach here. The same control as the row's. *@
+                   closes with it: Follow stays in reach here. A stop's card
+                   has none; Follow is the map bar's. *@
                 <button type="button"
                         class="btn btn--small map-action-icon fleet-map-inspector__quick-follow
                             @(_followingTruck ? "btn--primary" : "")"
@@ -729,49 +724,14 @@
             TruckNumber="@cameraTruck.UnitNumber" ShowTrigger="false" OpenChanged="OnCameraOpenChangedAsync" />
     }
 
-    @if (!_fuelEditorOpen && (ShowFuelStations
-        || _routeState?.Plan is not null || SelectedTruck is not null))
+    @* The map carries no key (the owner, September 27); only the
+       attribution Google asks for while its weather is shown. *@
+    @if (!_fuelEditorOpen && SelectedTruck is not null
+        && SelectedDate == DateOnly.FromDateTime(DateTime.Today))
     {
-        @* On a phone the key ate the corner of the map it explains, so it
-           folds behind one chip there and stays open everywhere else. *@
-        <aside class="fleet-map-key @(_keyOpen ? "is-open" : "")"
-               aria-label="Map key">
-            <button type="button" class="btn fleet-map-key__toggle"
-                    aria-expanded="@(_keyOpen ? "true" : "false")"
-                    aria-controls="fleet-map-key-content"
-                    aria-label="Map key"
-                    @onclick="() => _keyOpen = !_keyOpen">?</button>
-            <div id="fleet-map-key-content" class="fleet-map-key__content">
-            @if (_routeState?.Plan is not null)
-            {
-                <div class="fleet-map-key__routes">
-                    <span><i class="fleet-map-key__line" aria-hidden="true"></i>Current route</span>
-                    @if (ShowNextLoads)
-                    { <span><i class="fleet-map-key__line fleet-map-key__line--next" aria-hidden="true"></i>Next loads · color by load</span> }
-                    <span><i class="fleet-map-key__line fleet-map-key__line--empty" aria-hidden="true"></i>Empty miles</span>
-                    <span><i class="fleet-map-key__stop" aria-hidden="true">1</i>Pickup / delivery</span>
-                    @if (ShowFuelStations || Usable(_routeState?.Plan?.FuelPlan))
-                    { <span><i class="fleet-map-key__planned" aria-hidden="true">Fuel</i>Planned fuel</span> }
-                </div>
-            }
-            @if (ShowFuelStations)
-            {
-                <div class="fleet-map-key__fuel">
-                    <span class="fleet-map-key__fuel-label">Fuel price</span>
-                    <span class="fleet-map-key__scale"><span>Cheap</span><i aria-hidden="true"></i><span>Expensive</span></span>
-                    <span class="fleet-map-key__note">Within each currency · zoom in for stations</span>
-                    <span class="fleet-map-key__missing"><i aria-hidden="true"></i>No price</span>
-                </div>
-            }
-            @if (SelectedTruck is not null
-                && SelectedDate == DateOnly.FromDateTime(DateTime.Today))
-            {
-                <small class="fleet-map-weather-source">
-                    Source: Includes weather data from Google
-                </small>
-            }
-            </div>
-        </aside>
+        <small class="fleet-map-weather-source">
+            Source: Includes weather data from Google
+        </small>
     }
     @if (_fuelEditorOpen && _fuelEditorIdentity is { } editorIdentity)
     {
