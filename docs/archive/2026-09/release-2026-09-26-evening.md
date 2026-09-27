@@ -773,6 +773,54 @@ of 12 at most, with its own error and Retry. `da777263` + `6ff3f19c` on
 - **Data:** protected counts before and after unchanged (73, 3, 3, 5,
   57, 0, 0, 0, 2). Not seen on live data by me; root verifies.
 
+## Prefix search, map ring, Papers order, 11006 fuel: 2c76b88c (September 27, 13:46 UTC)
+
+API and frontend, one release after root's review of each part:
+search by the first digits of a load number everywhere, with every
+completed match reachable page by page (`e6fed730`); a moving truck
+ringed by its own next stop when far out, its number anchored on the
+badge (`9c0180d5`, `7b294f89`); Papers ordered and labelled by each
+load's next unfinished stop, a started load leading its truck
+(`160498e5`, `3e8c174f`); root's 11006 fuel fix, `85832f96` as
+`2c76b88c` - accepted fuel coverage stops before the unaccepted future
+load 1416 with an explicit notice, and a stale plan says it needs
+updating. On `b00325c8`. No migration.
+
+`CoverageNotice` is an additive field in the saved plan's JSON: old
+plans are not rewritten for it; only an ordinary eligible stale-plan
+refresh replaces a plan, and manual or unchanged plans stay.
+
+- **Gate, once:** `PULSARTMS_RELEASE_UI=1 bash verify-release.sh` on a
+  clean detached worktree of `2c76b88c` with the local settings copied
+  in (13:30-13:37 UTC), exit 0: JavaScript 669, Client 1,279, Server
+  3,807, none skipped; offline UI smoke without errors
+  (`browser-ui-ggHWeF`). Artifact `release-BdSW74`, 285 files, pinned
+  with both logs and the smoke report under `gate/`.
+- **Evidence before the gate:** prefix search and Papers in
+  `artifacts/managed/diagnostic-OYFE8z`, map in
+  `artifacts/managed/diagnostic-X4ZQwy` (focused runs, mutation logs).
+  Candidate focused runs: Server Fuel/Routing/Architecture 1,942, Client
+  Fleet/Dispatch/Architecture 866.
+- **Backup:** `local-backups/pulsartms-release-backup.PuYcTF/
+  before-2026-09-27-release-2c76b88c.dump`, sha256
+  `396f59bde528cddd3a28a5023040b0d543a569a87971001e5c3cb4a79c94144a`,
+  720 entries, 104 table data, 13:37 UTC; in the inventory; restore not
+  rehearsed.
+- **API:** build `9fb1edab-02d4-4492-b969-8842cd2faa13`, image
+  `api@sha256:2707eee5c248dd9029a8cd2aa198eba35ecb4e898529e6de6c569144946b7b63`,
+  revision `amftms-api-b-9fb1edab-…` at 100%, generation 280 (rollback:
+  `amftms-api-b-769b7fb5-…`, 278). 1 GiB, at most one instance. Health
+  200 direct and through Hosting; no ERROR or 5xx at the time of
+  recording.
+- **Frontend:** the gate's artifact published as tested (13:46:24-31
+  UTC). Live `index.html`
+  (`e4e2902a2bc9c3f389c56e8c5508dbbb14afe51d844a38f0baaa73618229f794`),
+  `css/main.css?v=fae65e94d4cee073`, `Client.*.wasm`, `dotnet.*.js`
+  match the artifact.
+- **Data:** protected counts before and after unchanged. 11006's fuel
+  plan is not claimed repaired by this release; root verifies its normal
+  refresh and retry.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
