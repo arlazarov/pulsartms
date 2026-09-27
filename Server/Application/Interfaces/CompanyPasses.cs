@@ -59,10 +59,10 @@ public static class CompanyPasses
   }
 
   // How long a pass may go on using the carriers it read. Every clock-driven
-  // loop asks each time it wakes, some every second, and the list read
-  // uncached was about 270 scans a minute of a two-row table. A new carrier
-  // is served, and a retired one left, within this lifetime; each carrier's
-  // own schedule is still checked inside its turn.
+  // loop asks each time it wakes, some every second, so uncached each wake
+  // was a roster query. A new carrier is served, and a retired one left,
+  // within this lifetime; each carrier's own schedule is still checked
+  // inside its turn.
   internal static readonly TimeSpan RosterLifetime = TimeSpan.FromSeconds(30);
 
   private static Task<Guid[]> ActiveAsync(
