@@ -120,11 +120,7 @@ public sealed class PlanningSummaryOperation(
     }
     if (now is null || summaries.Signature(now) != capturedSignature)
       return (now is null ? null : summaries.Signature(now), null);
-    var first = PlanningWorkPolicy
-      .Candidates(captured.Itinerary)
-      .FirstOrDefault(x =>
-        work.Key.Dispatch is not { } dispatch || x.Work.DispatchId == dispatch
-      );
+    var first = PlanningSummaryReader.Scope(captured, work.Key.Dispatch);
     return (
       capturedSignature,
       new AutomaticPlanningResult(

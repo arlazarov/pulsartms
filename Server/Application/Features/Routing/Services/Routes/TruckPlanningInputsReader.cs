@@ -18,6 +18,14 @@ public sealed record TruckPlanningInputs(
 {
   public WorkIdentity? CurrentWork { get; init; }
 
+  // The segment of the current work: the one answer to "which work is this
+  // truck on" that a reader of these inputs may use. The first candidate is
+  // not it - a candidate planning has moved past comes first too.
+  public TruckWorkSegment? CurrentSegment =>
+    CurrentWork is { } work
+      ? Itinerary.Segments.FirstOrDefault(x => x.Work == work)
+      : null;
+
   // The assignment the current work was chosen at, so a consumer that read
   // the truck's work separately can tell a reassignment from the same work.
   public long? CurrentAssignmentRevision { get; init; }

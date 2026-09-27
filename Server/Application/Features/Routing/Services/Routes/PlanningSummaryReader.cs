@@ -1,4 +1,5 @@
 using Application.Caching;
+using Domain.Models.Execution;
 using Domain.Models.Routing;
 using Domain.Rules.Routing;
 
@@ -12,6 +13,20 @@ public sealed class PlanningSummaryReader(
   ReadCache reads
 )
 {
+  // The work a summary without its own result speaks for: the dispatch it
+  // was asked about, or else the truck's current work as its inputs chose
+  // it - never simply the first candidate, which may be work planning has
+  // already moved past.
+  internal static TruckWorkSegment? Scope(
+    TruckPlanningInputs work,
+    Guid? dispatch
+  ) =>
+    dispatch is null
+      ? work.CurrentSegment
+      : PlanningWorkPolicy
+        .Candidates(work.Itinerary)
+        .FirstOrDefault(x => x.Work.DispatchId == dispatch);
+
   public string Signature(TruckPlanningInputs work) =>
     $"{work.Itinerary.InputSignature}:{reads.Generation(ReadGroups.Settings)}";
 
@@ -38,9 +53,7 @@ public sealed class PlanningSummaryReader(
     );
     if (result is null)
     {
-      var first = PlanningWorkPolicy
-        .Candidates(work.Itinerary)
-        .FirstOrDefault(x => dispatch is null || x.Work.DispatchId == dispatch);
+      var first = Scope(work, dispatch);
       return new(
         truck,
         first?.Work.DispatchId,
@@ -109,9 +122,7 @@ public sealed class PlanningSummaryReader(
         null,
         "No remaining dispatches."
       );
-    var current = PlanningWorkPolicy
-      .Candidates(work.Itinerary)
-      .FirstOrDefault();
+    var current = work.CurrentSegment;
     return Read(
       work,
       current?.Work.DispatchId == dispatchId ? null : dispatchId,
