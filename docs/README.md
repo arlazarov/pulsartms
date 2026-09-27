@@ -22,6 +22,7 @@ them directly: [architecture](ARCHITECTURE.md), [test selection](testing.md), an
 ## Development and architecture
 
 - [Fleet read ownership and efficiency rules](architecture/fleet-efficiency.md)
+- [Truck current work: one server owner](architecture/current-work.md)
 - [Consistency auditor and completion evidence](architecture/consistency-auditor.md)
 - [Cohesion review](architecture/cohesion-review.md)
 - [Core rebuild specification](architecture/core-rebuild.md) and
