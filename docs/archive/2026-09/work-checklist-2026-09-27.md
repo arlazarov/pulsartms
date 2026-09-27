@@ -19,6 +19,10 @@ someone named). Nothing leaves this list without a state. Times are UTC.
 
 Records: `docs/archive/2026-09/release-2026-09-26-evening.md`.
 
+A publication proves the code that is served, not the data: a release
+repairs no existing row, and "deployed" below never means that rows
+written before it are correct.
+
 ## Owner's UI requests
 
 | Request | State | Evidence |
@@ -50,6 +54,7 @@ These six shipped together as `4b3adbf6` (`release-FlPysI`, 12:20).
 | Blocker found in review (price scale) | fixed by root | `944fa9d6` |
 | Table review: truck identity, shared equipment | deployed | `c2618995` |
 | Truck 11005 resource conflict (AMF1403, 55904 vs 055904) | blocked: root owns | not touched here |
+| Historical Total / RPM recovery for loads saved before the fixes | open: root owns | existing rows unchanged by any release |
 
 ## Application audit (September 27)
 
@@ -59,11 +64,11 @@ Document: `docs/archive/2026-09/application-audit-2026-09-27.md` on
 
 | Item | State | Next step |
 | --- | --- | --- |
-| Coverage closure (endpoints, migrations, money, state, tests) | done, awaiting root review | root reads `1ddba3a8` |
-| D2 roster through ReadCache (F2) | implemented, awaiting root review | `07631585`; full gate at release |
+| Coverage closure (endpoints, migrations, money, state, tests) | inventoried, awaiting root review; gaps below | root reads `1ddba3a8` |
+| D2 roster through ReadCache (F2) | implemented, in root review | `07631585`, comment `02299cd7`; saving unmeasured |
+| F22 cost totals over a truncated page | proposed with fix, awaiting root review | `88331393`; no load affected today |
 | D6 fuel hand-over recovery (F16, F17) | proposed | design for root |
 | D1 road request reason, attempt cap, rule (F1, F23) | proposed, accepted in principle | implement after D6 |
-| F22 cost totals over a truncated page | open | small fix |
 | F20 fuel import stops on one bad email | open | quarantine per message |
 | F8/F18 manual syncs Admin-only; role model | proposed; role model blocked: owner | |
 | D3 dead HOS read path (F3) | proposed, accepted in principle | |
@@ -74,6 +79,27 @@ Document: `docs/archive/2026-09/application-audit-2026-09-27.md` on
 | F4-F7, F9-F12, F15, F27 | open | after the above |
 | Cold-read debt: Messenger driver work, cold 17 statements | open, measured | `DriverWorkCostTests`; production ratio unmeasured |
 | PostgreSQL fixture for 42 skipped tests | blocked: tests owner | |
+
+The audit's coverage is an inventory, not a proof: its remaining gaps
+are listed in the audit's "Open gaps" and below, and no area is claimed
+complete while they stand.
+
+## Runtime detection gaps
+
+Invariants no running check watches today; each needs an auditor rule
+or a documented reason (owner in brackets).
+
+- A WhatsApp fuel hand-over left `Sending` (F16) [routing, with D6].
+- An accepted hand-over with no recorded visit (F17) [routing, with D6].
+- `SourceRoadRequests` overdue or retried without end (F1, F23)
+  [routing, with D1].
+- A switch operation left planned or half-received [execution].
+- Gmail watch lag and the synchronization and odometer leases [fuel,
+  synchronization].
+- Assignment revisions, route plans, planning summaries and ETA memory,
+  listed as not checked by the auditor itself [planning].
+- Sweep cursors are in memory: after a restart every rule reports
+  never-run until it has run [auditor].
 
 ## Rules kept
 
