@@ -15,7 +15,8 @@ namespace Infrastructure.Persistence.Migrations
                 table: "Users",
                 type: "character varying(5)",
                 maxLength: 5,
-                nullable: true,
+                nullable: false,
+                defaultValue: "",
                 oldClrType: typeof(string),
                 oldType: "character varying(5)",
                 oldMaxLength: 5,
@@ -35,7 +36,7 @@ namespace Infrastructure.Persistence.Migrations
                 oldClrType: typeof(string),
                 oldType: "character varying(5)",
                 oldMaxLength: 5,
-                oldNullable: true);
+                oldDefaultValue: "");
         }
     }
 }

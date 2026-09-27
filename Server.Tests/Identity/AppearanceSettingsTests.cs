@@ -38,15 +38,11 @@ public sealed class AppearanceSettingsTests
       Assert.True(result.Success);
     }
     await using var fresh = new AppDbContext(options);
-    // "second" never chose: no theme, and the Client applies the product
-    // default (dark). It used to read back as light, indistinguishable from
+    // "second" never chose: an empty theme, and the Client applies the
+    // product default (dark). It used to read back as light, indistinguishable from
     // a choice; the owner asked for dark by default.
     foreach (
-      var (identity, theme) in new[]
-      {
-        ("first", "dark"),
-        ("second", (string?)null),
-      }
+      var (identity, theme) in new[] { ("first", "dark"), ("second", "") }
     )
     {
       var result = await new GetAppearanceSettingsHandler(
@@ -74,7 +70,7 @@ public sealed class AppearanceSettingsTests
     );
     fresh.ChangeTracker.Clear();
     Assert.Equal(
-      [("first", "light"), ("second", (string?)null)],
+      [("first", "light"), ("second", "")],
       await fresh
         .Users.OrderBy(x => x.IdentityUserId)
         .Select(x => ValueTuple.Create(x.IdentityUserId, x.Theme))
@@ -124,7 +120,7 @@ public sealed class AppearanceSettingsTests
         )
       ).StatusCode
     );
-    Assert.Null((await db.Users.SingleAsync()).Theme);
+    Assert.Equal("", (await db.Users.SingleAsync()).Theme);
   }
 
   [Theory]
@@ -190,11 +186,12 @@ public sealed class AppearanceSettingsTests
     Assert.Equal(ConnectionState.Closed, db.Database.GetDbConnection().State);
   }
 
-  // The owner asked for dark by default. A theme nobody chose is now null -
-  // the Client applies the default - and the migration only lets it be:
-  // it changes no saved choice, light or dark.
+  // The owner asked for dark by default. A theme nobody chose is now empty
+  // - the Client applies the default - and the migration changes no saved
+  // choice. The column stays required: the released binary reads it as
+  // required and fails on a null (diagnostic-gjLyqP).
   [Fact]
-  public void UnchosenThemesBecomeNullWithoutChangingSavedChoices()
+  public void UnchosenThemesBecomeEmptyWithoutChangingSavedChoices()
   {
     using var db = new AppDbContext(
       new DbContextOptionsBuilder<AppDbContext>()
@@ -204,10 +201,15 @@ public sealed class AppearanceSettingsTests
     var sql = db.GetService<IMigrator>()
       .GenerateScript(
         "20260927230607_KeepEarlyDeliveryStatuses",
-        "20260927233013_LetThemeBeUnchosen"
+        "20260927234430_LetThemeBeUnchosen"
       );
-    Assert.Contains("DROP NOT NULL", sql);
-    Assert.Contains("DROP DEFAULT", sql);
+    Assert.False(
+      db.Model.FindEntityType(typeof(User))!
+        .FindProperty(nameof(User.Theme))!
+        .IsNullable
+    );
+    Assert.Contains("SET DEFAULT ''", sql);
+    Assert.DoesNotContain("NOT NULL", sql);
     Assert.DoesNotContain("UPDATE", sql);
     Assert.False(db.Database.HasPendingModelChanges());
   }

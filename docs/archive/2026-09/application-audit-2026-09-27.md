@@ -1412,18 +1412,45 @@ failed on the new worktree's missing Client packages and is marked.
 The owner requires dark as the default. The server stored `light` for
 every account that never chose (column NOT NULL DEFAULT 'light'), so the
 Client could not tell a choice from the default. Migration 79
-`LetThemeBeUnchosen` drops the NOT NULL and the default without an
-UPDATE: new accounts read null, existing rows keep their value (in
-production two light and one dark; whether a light was chosen is not
-knowable, so none is overwritten). A save still has to name light or
-dark. The released Client applies the server theme only when it is
-`light` or `dark`, so null is compatible with it and with the previous
-API, which never reads a null it did not write; the designer's Client
-bootstrap owns the dark default. Apply the migration before the API.
-Checks: identity group diagnostic-sP3KzC (Server 291, Client 83,
-JavaScript 67), focused and PostgreSQL migration tests
-diagnostic-A4qt2n. diagnostic-TQzqoy is invalid: the API did not build
-(the controller passed the now-nullable theme).
+`LetThemeBeUnchosen` changes only the column default to an empty string,
+which means unchosen; the column stays NOT NULL and no row is updated:
+new accounts read `""`, existing rows keep their value (in production
+two light and one dark; whether a light was chosen is not knowable, so
+none is overwritten). A save still has to name light or dark. The
+released Client applies the server theme only when it is `light` or
+`dark`; the designer's Client bootstrap owns the dark default and must
+treat anything else, empty or null, as unchosen.
+
+Superseded first version (`b914da76`): it made the column nullable and
+claimed the previous API was unaffected. That was wrong. The released
+binary `0e6add5d`, run against a schema migrated by it
+(diagnostic-lKujST, -gjLyqP), maps `Theme` as required and threw
+`InvalidCastException: Column 'Theme' is null` reading or saving the
+appearance of a user created with a null theme, and loading that user
+as an entity; a rollback would have failed for every account created
+after the migration. The revised migration, same checks
+(diagnostic-TmQKay, -CHECIp): the released binary reads the empty theme
+(the released Client then ignores it), saves light or dark over it, and
+loads every user.
+
+Release and rollback, measured on PostgreSQL with that binary:
+
+- Apply 79 before the API. It changes only a default, so the previous
+  revision keeps serving throughout.
+- During the overlap the previous revision still creates users with
+  `light` (its entity sets it), which reads as a choice: an account
+  created in those minutes starts light and can switch. Bounded by the
+  overlap; not corrected afterwards, as it cannot be told from a choice.
+- Rollback of the API needs no Down: the previous binary serves the
+  schema as it is. Down (79 to 78) only restores the `light` default and
+  leaves empty themes empty; it ran with an unchosen user present.
+
+Checks: appearance, reset inventory and PostgreSQL migration tests
+diagnostic-h9CY4P (34); identity and architecture groups
+diagnostic-EaxPbk (Server 291, Client 83, JavaScript 67 and 7). The
+first version's runs diagnostic-sP3KzC and -A4qt2n checked what it
+changed, not its compatibility; diagnostic-TQzqoy is invalid (the API did
+not build).
 
 ## Owner decisions: proposals with examples
 

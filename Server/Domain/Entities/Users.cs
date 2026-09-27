@@ -9,9 +9,10 @@ public class User : BaseEntity, ICompanyOwned
   public string Email { get; set; } = string.Empty;
   public bool IsActive { get; set; } = true;
 
-  // Null until the user chooses: the Client then applies the product
-  // default (dark). A saved choice, light or dark, is kept as chosen.
-  public string? Theme { get; set; }
+  // Empty until the user chooses; the Client then applies the product
+  // default (dark). Never null: a binary released before this reads the
+  // column as required and fails on a null.
+  public string Theme { get; set; } = "";
   public string TemperatureUnit { get; set; } = "both";
   public string DistanceUnit { get; set; } = "both";
 

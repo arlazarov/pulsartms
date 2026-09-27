@@ -5226,8 +5226,11 @@ namespace Infrastructure.Persistence.Migrations
                         .HasDefaultValue("both");
 
                     b.Property<string>("Theme")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(5)
-                        .HasColumnType("character varying(5)");
+                        .HasColumnType("character varying(5)")
+                        .HasDefaultValue("");
 
                     b.HasKey("Id");
 

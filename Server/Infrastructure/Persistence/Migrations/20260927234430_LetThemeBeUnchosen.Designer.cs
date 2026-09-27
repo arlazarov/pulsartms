@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260927233013_LetThemeBeUnchosen")]
+    [Migration("20260927234430_LetThemeBeUnchosen")]
     partial class LetThemeBeUnchosen
     {
         /// <inheritdoc />
@@ -5229,8 +5229,11 @@ namespace Infrastructure.Persistence.Migrations
                         .HasDefaultValue("both");
 
                     b.Property<string>("Theme")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
                         .HasMaxLength(5)
-                        .HasColumnType("character varying(5)");
+                        .HasColumnType("character varying(5)")
+                        .HasDefaultValue("");
 
                     b.HasKey("Id");
 
