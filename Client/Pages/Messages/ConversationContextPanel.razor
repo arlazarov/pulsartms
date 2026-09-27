@@ -99,7 +99,7 @@
                     </p>
                     break;
                 default:
-                    @if (Context.Loads.FirstOrDefault() is { } current)
+                    @if (Current is { } current)
                     {
                         <div class="messages__load">
                             <span class="messages__load-top">
@@ -139,22 +139,30 @@
                     }
                     else
                     {
-                        <p class="messages__note">No current or upcoming load.</p>
+                        <p class="messages__note">@(Context.Loads.Count == 0 ? "No current or upcoming load." : "No current load.")</p>
                     }
                     break;
             }
         </section>
-        @if (Context.State == "one-truck" && Context.Loads.Count > 1)
+        @if (Context.State == "one-truck" && Others.Count > 0)
         {
             <section class="messages__ctx">
-                <h3>@(Context.Loads.Count > 2 ? "Next loads" : "Next load")</h3>
-                @foreach (var load in Context.Loads.Skip(1))
+                <h3>@OthersTitle</h3>
+                @foreach (var load in Others)
                 {
                     <p class="messages__next">
                         <a href="@LoadHref(load.Id)">
                             <LoadNumber Value="load.LoadNumber" />
                         </a>
                         @load.CustomerName
+                        @if (DispatchWorkPhase.ConflictText(load.Conflict) is { } conflict)
+                        {
+                            <span class="messages__pill is-conflict">@conflict</span>
+                        }
+                        else if (DispatchWorkPhase.Label(load.Phase) is { Length: > 0 } phase && load.Phase is not ("next" or "upcoming"))
+                        {
+                            <span class="messages__pill">@phase</span>
+                        }
                         @if (load.Places.Count > 0)
                         {
                             <small>@string.Join(" → ", load.Places)</small>
@@ -162,6 +170,12 @@
                     </p>
                 }
             </section>
+        }
+        @if (Context.State == "one-truck" && Context.OmittedLoads > 0)
+        {
+            <p class="messages__note messages__ctx" role="note">
+                @(Context.OmittedLoads == 1 ? "1 more load" : $"{Context.OmittedLoads} more loads")@(Context.OmittedConflicts > 0 ? $", {Context.OmittedConflicts} with a route passed but not delivered" : "") - see the Dispatch board.
+            </p>
         }
         @if (_error is not null)
         {

@@ -76,23 +76,44 @@ public static class DispatchWorkspaceReader
     Guid id,
     bool canEdit,
     CancellationToken ct
+  ) => await ReadCoreAsync(db, id, canEdit, false, ct);
+
+  public static async Task<DispatchWorkspaceState?> ReadSavedAsync(
+    IAppDbContext db,
+    Guid id,
+    bool canEdit,
+    CancellationToken ct
+  ) => await ReadCoreAsync(db, id, canEdit, true, ct);
+
+  private static async Task<DispatchWorkspaceState?> ReadCoreAsync(
+    IAppDbContext db,
+    Guid id,
+    bool canEdit,
+    bool saved,
+    CancellationToken ct
   )
   {
+    // Write responses must describe persisted values, including timestamp
+    // precision, rather than the write context's retained entity values.
+    var tracking = saved
+      ? QueryTrackingBehavior.NoTrackingWithIdentityResolution
+      : QueryTrackingBehavior.TrackAll;
     var load = await db
-      .Dispatches.Include(x => x.Stops)
+      .Dispatches.AsTracking(tracking)
+      .Include(x => x.Stops)
       .SingleOrDefaultAsync(x => x.Id == id, ct);
     if (load is null)
       return null;
-    var workspace = await db.DispatchWorkspaces.SingleOrDefaultAsync(
-      x => x.Id == id,
-      ct
-    );
+    var workspace = await db
+      .DispatchWorkspaces.AsTracking(tracking)
+      .SingleOrDefaultAsync(x => x.Id == id, ct);
     var sourceLink = await db
       .DispatchSourceLinks.AsNoTracking()
       .Where(x => x.DispatchId == id)
       .SingleOrDefaultAsync(ct);
     var links = await db
-      .LoadExecutionLegs.Include(x => x.ExecutionLeg)
+      .LoadExecutionLegs.AsTracking(tracking)
+      .Include(x => x.ExecutionLeg)
       .ThenInclude(x => x.Loads)
       .Where(x => x.DispatchId == id)
       .OrderBy(x => x.Sequence)

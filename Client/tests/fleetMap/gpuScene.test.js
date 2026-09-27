@@ -198,6 +198,11 @@ test('scene reuses static layers across motion, invalidates only changed stops a
     assert.ok(
       order.indexOf('truck-icons') < order.indexOf('route-stop-1-points'),
     );
+    // The truck's pick area is under the badges too: a click on a badge is
+    // the stop's.
+    assert.ok(
+      order.indexOf('truck-hits') < order.indexOf('route-stop-1-points'),
+    );
     assert.ok(
       order.indexOf('route-stop-1-points') < order.indexOf('truck-numbers'),
     );
@@ -206,7 +211,12 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   assert.equal(initial['route-stop-distances'].props.getSize, 14);
   assert.equal(initial['truck-numbers'].props.getSize, 13);
   assert.deepEqual(initial['truck-numbers'].props.backgroundPadding, [9, 4]);
-  assert.equal(initial['truck-icons'].props.getSize({ unit: '11006' }), 28);
+  // Smaller than the stop's badge (28), a standing dot smaller still.
+  assert.equal(
+    initial['truck-icons'].props.getSize({ unit: '11006', speed: 45 }),
+    24,
+  );
+  assert.equal(initial['truck-icons'].props.getSize({ unit: '11006' }), 20);
   // The truck stands on the stop here and keeps its unit above its own
   // marker: sending the number off on a leader line reads far worse than
   // the overlap, and the badge is drawn over the truck instead.
@@ -356,7 +366,7 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   flush();
   assert.equal(
     layers()['truck-icons'].props.getSize({ unit: '11006' }),
-    28 * 1.1,
+    20 * 1.1,
   );
   assert.equal(layers()['truck-numbers'].props.getSize, 13);
   assert.deepEqual(layers()['truck-numbers'].props.backgroundPadding, [9, 4]);

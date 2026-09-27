@@ -4,10 +4,10 @@ using Domain.Rules.Routing;
 
 namespace Application.Features.Routing.Services.Routes;
 
-// Whether every saved plan of the work a truck is doing was built from what
-// that work says now. The question is a rule - PlanningWorkPolicy answers
-// which work counts - but answering it means reading the saved plans, so it
-// is asked here and not there.
+// Whether a load is the work its truck is on now, for a writer holding its
+// own snapshot. PlanningWorkPolicy decides which candidate is passed; this
+// reads the saved plans one at a time through the store's cache and stops
+// at the first one not passed, so work after the current is never read.
 public static class PlanningCurrency
 {
   public static async Task<bool> IsCurrentAsync(
@@ -27,10 +27,8 @@ public static class PlanningCurrency
         ct,
         candidate.Work.ExecutionLegId
       );
-      var resolved = PlanningWorkPolicy.Resolve(work, candidate);
-      if (PlanningWorkPolicy.IsCompleted(saved, resolved, profile))
-        continue;
-      return candidate.Work == new WorkIdentity(load.Id, load.ExecutionLegId);
+      if (!PlanningWorkPolicy.IsPassed(work, candidate, saved, profile))
+        return candidate.Work == new WorkIdentity(load.Id, load.ExecutionLegId);
     }
     return false;
   }

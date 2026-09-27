@@ -24,25 +24,34 @@ public sealed class AutomaticPlanningService(
   )
   {
     var captured = await inputs.ReadFreshAsync(truckId, ct, includeHos: true);
-    if (captured is not null)
-      foreach (var segment in PlanningWorkPolicy.Candidates(captured.Itinerary))
-      {
-        var result = await ForWorkAsync(
-          captured.Itinerary,
-          segment.Work.DispatchId,
-          ct,
-          connectFromTruck: segment.Work.ExecutionLegId.HasValue
-            || segment.Status == "assigned",
-          executionLegId: segment.Work.ExecutionLegId
-        );
-        if (
-          !PlanningWorkPolicy.IsCompleted(
-            result.State?.Plan,
-            PlanningWorkPolicy.Resolve(captured.Itinerary, segment)
-          )
+    // Plans the work the inputs chose. When this pass's own tracking passes
+    // it, the inputs are captured again and choose the next; the pass never
+    // steps on by itself, and it ends within the truck's candidates.
+    var turns = captured is null
+      ? 0
+      : PlanningWorkPolicy.Candidates(captured.Itinerary).Count();
+    for (var turn = 0; turn < turns; turn++)
+    {
+      if (captured?.CurrentSegment is not { } segment)
+        break;
+      var result = await ForWorkAsync(
+        captured.Itinerary,
+        segment.Work.DispatchId,
+        ct,
+        connectFromTruck: segment.Work.ExecutionLegId.HasValue
+          || segment.Status == "assigned",
+        executionLegId: segment.Work.ExecutionLegId,
+        current: segment.Work
+      );
+      if (
+        !PlanningWorkPolicy.IsCompleted(
+          result.State?.Plan,
+          PlanningWorkPolicy.Resolve(captured.Itinerary, segment)
         )
-          return result with { Hos = captured.Hos };
-      }
+      )
+        return result with { Hos = captured.Hos };
+      captured = await inputs.ReadFreshAsync(truckId, ct, includeHos: true);
+    }
     return new(
       truckId,
       null,
@@ -86,7 +95,8 @@ public sealed class AutomaticPlanningService(
     CancellationToken ct,
     bool connectFromTruck,
     Guid? executionLegId,
-    long? assignmentRevision = null
+    long? assignmentRevision = null,
+    WorkIdentity? current = null
   )
   {
     var gate = Gates.For(work.TruckId);
@@ -129,8 +139,16 @@ public sealed class AutomaticPlanningService(
               || load.Stops.Length == 1
                 && (
                   connectFromTruck
-                  || PlanningWorkPolicy.Candidates(work).FirstOrDefault()?.Work
-                    == new WorkIdentity(load.Id, load.ExecutionLegId)
+                  || (
+                    current
+                    ?? (
+                      await inputs.ReadAsync(
+                        work.TruckId,
+                        ct,
+                        includeHos: false
+                      )
+                    )?.CurrentWork
+                  ) == new WorkIdentity(load.Id, load.ExecutionLegId)
                 )
             );
           await plans.BuildAsync(

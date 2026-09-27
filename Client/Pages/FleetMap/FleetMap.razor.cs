@@ -143,6 +143,10 @@ public partial class FleetMap : IAsyncDisposable
   private Guid? _activeTruckId;
   private Guid? _activeDispatchId;
   private Guid? _planningDispatchId;
+
+  // The truck's work planning passed without a delivery, from the same
+  // summary that names its current work (AutomaticPlanningResult).
+  private IReadOnlyList<WorkConflictNotice> _planningConflicts = [];
   private bool _routeLoading;
   private bool _etaRefreshPending;
   private bool _recalculatingFuel;
@@ -543,6 +547,7 @@ public partial class FleetMap : IAsyncDisposable
     _followingTruck = false;
     _activeDispatchId = null;
     _planningDispatchId = null;
+    _planningConflicts = [];
     _planningExecutionLegId = null;
     _planningAssignmentRevision = 0;
     SetRouteState(null);
@@ -605,6 +610,7 @@ public partial class FleetMap : IAsyncDisposable
     _activeTruckId = truckId;
     _activeDispatchId = dispatchId;
     _planningDispatchId = null;
+    _planningConflicts = [];
     _planningExecutionLegId = null;
     _planningAssignmentRevision = 0;
     SetRouteState(null);
@@ -647,6 +653,7 @@ public partial class FleetMap : IAsyncDisposable
         return;
     }
     _planningDispatchId = cached?.DispatchId;
+    _planningConflicts = cached?.WorkConflicts ?? [];
     _planningExecutionLegId =
       cached?.ExecutionLegId ?? cached?.State?.Plan?.ExecutionLegId;
     _planningAssignmentRevision =
@@ -801,6 +808,7 @@ public partial class FleetMap : IAsyncDisposable
       var previousExecutionLegId = SelectedExecutionLegId;
       var previousAssignmentRevision = SelectedAssignmentRevision;
       _planningDispatchId = result.Response?.DispatchId;
+      _planningConflicts = result.Response?.WorkConflicts ?? [];
       _planningExecutionLegId =
         result.Response?.ExecutionLegId
         ?? result.Response?.State?.Plan?.ExecutionLegId;

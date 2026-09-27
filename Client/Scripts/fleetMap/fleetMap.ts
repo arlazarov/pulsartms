@@ -614,6 +614,12 @@ export async function createFleetMap(
         if (focused) {
           inspectionTruckId = id;
           inspector.setMode('truck');
+          // Opened from another page - Dispatch's map link - the card is as
+          // much about this truck as one picked on the map: it comes out
+          // from under the card, and again when Details reshapes it.
+          const at = trucks.getPosition(id);
+          if (at)
+            cameraViewport.reveal({ lat: at.latitude, lng: at.longitude });
           route.closePopup();
           stations.closePopup();
           nextLoads.clearSelection();

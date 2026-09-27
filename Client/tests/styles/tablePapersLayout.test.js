@@ -28,6 +28,8 @@ test('Table differentiates current rows while leaving upcoming loads neutral and
     rule('.dispatch-page .dispatch-table tr.is-current td'),
     /background: var\(--ui-selected\);/,
   );
+  // No edge bar repeats the Current or Next label.
+  assert.doesNotMatch(css, /tr\.is-(current|next) td:first-child/);
   assert.match(
     rule('.dispatch-page .dispatch-table tr.is-planned td'),
     /background: var\(--ui-surface\);/,
@@ -45,9 +47,33 @@ test('Table differentiates current rows while leaving upcoming loads neutral and
     rule('.dispatch-page .dispatch-table .dispatch-table__distances dd > *'),
     /white-space: nowrap;/,
   );
+  // Miles and kilometres on one line, not stacked.
+  const distance = rule(
+    '.dispatch-page .dispatch-table .dispatch-table__distances dd',
+  );
+  assert.match(distance, /flex-wrap: wrap;/);
+  assert.doesNotMatch(distance, /flex-direction: column;/);
   assert.match(
     rule('.dispatch-page .dispatch-table .dispatch-table__day > th'),
-    /font-size: var\(--type-small\);/,
+    /background: linear-gradient\(var\(--ui-canvas\) 0 var\(--space-md\), var\(--day-fill\) var\(--space-md\)\);[\s\S]*color: var\(--ui-on-day\);[\s\S]*font-weight: 700;/,
+  );
+  // Past, today and future each fill the band with their own role.
+  const days = rule(
+    '.dispatch-page .dispatch-table .dispatch-table__day-group',
+  );
+  assert.match(days, /--day-fill: var\(--ui-day-past\);/);
+  assert.match(
+    rule('.dispatch-page .dispatch-table .dispatch-table__day-group.is-today'),
+    /--day-fill: var\(--ui-day-today\);/,
+  );
+  assert.match(
+    rule('.dispatch-page .dispatch-table .dispatch-table__day-group.is-future'),
+    /--day-fill: var\(--ui-day-future\);/,
+  );
+  // A truck's several loads read their figures on short lines.
+  assert.match(
+    rule('.dispatch-page .dispatch-table tr.is-run .dispatch-table__figures'),
+    /display: flex;[\s\S]*flex-wrap: wrap;/,
   );
   assert.match(
     rule('.dispatch-page .dispatch-table .dispatch-table__truck'),
@@ -107,10 +133,9 @@ test('Table rows offer visible keyboard focus and pointer feedback without expan
     rule('.dispatch-table-wrap:focus-visible'),
     /outline: 2px solid var\(--ui-focus\);/,
   );
-  assert.match(
-    rule('.dispatch-page .dispatch-table .dispatch-table__row'),
-    /cursor: pointer;/,
-  );
+  // Only the load number opens the load; the row is not a link (the
+  // owner, September 27).
+  assert.doesNotMatch(css, /\.dispatch-table__row\s*\{[^}]*cursor: pointer/);
   assert.match(
     rule('.dispatch-page .dispatch-table .dispatch-table__open:focus-visible'),
     /outline: 3px solid var\(--ui-focus\);/,
@@ -308,6 +333,14 @@ test('every Papers folder keeps one shape whatever its words', () => {
   assert.match(rule('.dispatch-paper__tab-schedule'), /white-space: nowrap;/);
   assert.match(
     rule('.dispatch-paper__tab-financials'),
-    /grid-template-columns: max-content minmax\(0, 1fr\);/,
+    /grid-template-columns: minmax\(0, 1fr\);/,
+  );
+  assert.doesNotMatch(
+    rule('.dispatch-paper__tab-financials > span'),
+    /justify-self: end;/,
+  );
+  assert.match(
+    rule('.dispatch-paper__tab-units'),
+    /display: inline-flex;[\s\S]*white-space: nowrap;/,
   );
 });

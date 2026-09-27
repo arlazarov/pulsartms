@@ -241,11 +241,112 @@ public sealed class PlanningSummaryCacheTests
     cache.Committed(key.Company, key.Truck);
     Assert.False(cache.IsCurrent(old));
     Assert.True(cache.Read(key, "a")!.IsRefreshing);
+    // The earlier work still holds the entry: the commit waits for it
+    // rather than starting a second preparation alongside it.
+    Assert.Null(cache.Take());
+    cache.Complete(old, "a", Result(key, time) with { Message = "old" });
+    Assert.NotEqual("old", cache.Read(key, "a")!.Message);
     var fresh = cache.Take()!;
     cache.Complete(fresh, "a", Result(key, time) with { Message = "new" });
-    cache.Complete(old, "a", Result(key, time) with { Message = "old" });
     Assert.Equal("new", cache.Read(key, "a")!.Message);
     Assert.False(cache.Read(key, "a")!.IsRefreshing);
+  }
+
+  // Overlap, counted: commits and other inputs arriving while one
+  // preparation runs make one more preparation after it - not one each,
+  // and none alongside it.
+  [Fact]
+  public void ChangesDuringAPreparationAddOnePreparationAfterIt()
+  {
+    var time = new FakeTimeProvider();
+    var cache = new PlanningSummaryCache(time);
+    var key = new PlanningSummaryCache.Key(Guid.NewGuid(), Guid.NewGuid());
+    cache.Read(key, "a");
+    var preparations = new List<PlanningSummaryCache.Work> { cache.Take()! };
+
+    cache.Committed(key.Company, key.Truck);
+    preparations.AddRange(Taken());
+    cache.Committed(key.Company, key.Truck);
+    cache.Read(key, "b");
+    preparations.AddRange(Taken());
+    cache.Committed(key.Company, key.Truck);
+    preparations.AddRange(Taken());
+    Assert.Single(preparations);
+
+    cache.Complete(preparations[0], "a", Result(key, time));
+    Assert.Null(cache.Read(key, "b"));
+    preparations.AddRange(Taken());
+    Assert.Equal(2, preparations.Count);
+    Assert.Equal("b", preparations[1].Signature);
+    cache.Complete(preparations[1], "b", Result(key, time));
+    Assert.False(cache.Read(key, "b")!.IsRefreshing);
+    Assert.Empty(Taken());
+
+    IEnumerable<PlanningSummaryCache.Work> Taken() =>
+      cache.Take() is { } work ? [work] : [];
+  }
+
+  // The route refresh publishes what it prepared into entries it captured,
+  // taking them from a consumer that was preparing them. That consumer's
+  // work is lost - two computations, not one - but nothing runs alongside
+  // the refresh after its own commit, and the consumer's late result is not
+  // stored over the refresh's.
+  [Fact]
+  public void ARouteRefreshCaptureOverlappingAConsumerIsCountedNotCoalesced()
+  {
+    var time = new FakeTimeProvider();
+    var cache = new PlanningSummaryCache(time);
+    var key = new PlanningSummaryCache.Key(Guid.NewGuid(), Guid.NewGuid());
+    cache.Read(key, "a");
+    var consumer = cache.Take()!;
+    var refresh = cache.Capture(key, "a")!;
+    var committed = Assert.Single(cache.Committed(key.Company, key.Truck));
+    Assert.Equal(refresh.Lease, committed.Lease);
+    Assert.Null(cache.Take());
+
+    cache.Complete(
+      committed,
+      "a",
+      Result(key, time) with
+      {
+        Message = "refresh",
+      }
+    );
+    cache.Complete(
+      consumer,
+      "a",
+      Result(key, time) with
+      {
+        Message = "consumer",
+      }
+    );
+    cache.Complete(refresh, null, null);
+
+    Assert.Equal("refresh", cache.Read(key, "a")!.Message);
+    Assert.Null(cache.Take());
+  }
+
+  // A preparation whose holder never completes stops holding the entry.
+  [Fact]
+  public void AnAbandonedPreparationIsTakenAgainAfterItsLease()
+  {
+    var time = new FakeTimeProvider();
+    var cache = new PlanningSummaryCache(time);
+    var key = new PlanningSummaryCache.Key(Guid.NewGuid(), Guid.NewGuid());
+    cache.Read(key, "a");
+    var abandoned = cache.Take()!;
+    cache.Committed(key.Company, key.Truck);
+    time.Advance(TimeSpan.FromMinutes(1));
+    cache.Read(key, "a");
+    Assert.Null(cache.Take());
+    time.Advance(TimeSpan.FromMinutes(5));
+    cache.Read(key, "a");
+    var again = cache.Take()!;
+    Assert.NotEqual(abandoned.Lease, again.Lease);
+    cache.Complete(abandoned, "a", Result(key, time) with { Message = "old" });
+    Assert.Null(cache.Take());
+    cache.Complete(again, "a", Result(key, time) with { Message = "new" });
+    Assert.Equal("new", cache.Read(key, "a")!.Message);
   }
 
   [Fact]
@@ -281,6 +382,36 @@ public sealed class PlanningSummaryCacheTests
     Assert.True(cache.IsCurrent(work));
     cache.Complete(work, "a", result);
     Assert.False(cache.IsCurrent(work));
+  }
+
+  // Nothing changed while an abandoned preparation ran; its lease ran out
+  // and another took the entry over. The first one finishing late may
+  // neither publish nor end the replacement's lease.
+  [Fact]
+  public void AnExpiredPreparationCannotPublishOverItsReplacement()
+  {
+    var time = new FakeTimeProvider();
+    var cache = new PlanningSummaryCache(time);
+    var key = new PlanningSummaryCache.Key(Guid.NewGuid(), Guid.NewGuid());
+    cache.Read(key, "a");
+    var expired = cache.Take()!;
+    time.Advance(TimeSpan.FromMinutes(6));
+    cache.Read(key, "a");
+    var replacement = cache.Take()!;
+
+    Assert.False(cache.IsCurrent(expired));
+    cache.Complete(expired, "a", Result(key, time) with { Message = "old" });
+    Assert.Null(cache.Read(key, "a"));
+    Assert.Null(cache.Take());
+    cache.Complete(
+      replacement,
+      "a",
+      Result(key, time) with
+      {
+        Message = "new",
+      }
+    );
+    Assert.Equal("new", cache.Read(key, "a")!.Message);
   }
 
   private sealed class FakeTimeProvider : TimeProvider
@@ -325,7 +456,11 @@ public sealed class PlanningSummaryCacheTests
       }
     );
 
+    // Not prepared again while nobody asks for the fresher work: that
+    // would repeat the same mismatch.
+    Assert.Null(cache.Take());
     Assert.Null(cache.Read(key, "work:cached"));
+    Assert.Null(cache.Take());
     Assert.Null(cache.Read(key, "work:fresh"));
     var again = cache.Take()!;
     Assert.Equal("work:fresh", again.Signature);

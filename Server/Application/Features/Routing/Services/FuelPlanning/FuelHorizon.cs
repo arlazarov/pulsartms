@@ -44,7 +44,7 @@ public sealed partial class FuelHorizon(
     // does: a missing row means it was handed them, not that it was free.
     if (suppliedInputs is null)
       PerformanceStages.Elapsed("fuel-horizon", "inputs", reading);
-    var loads = captured.Select(plan);
+    var loads = captured.Select(plan, out var coverageNotice);
     var index = loads.FindIndex(x =>
       x.Id == plan.DispatchId && x.ExecutionLegId == plan.ExecutionLegId
     );
@@ -240,6 +240,7 @@ public sealed partial class FuelHorizon(
       notes
     )
     {
+      CoverageNotice = coverageNotice,
       Itinerary = itinerary,
       History = history.ToImmutable(),
       Roads = roads.ToImmutable(),

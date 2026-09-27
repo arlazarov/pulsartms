@@ -140,6 +140,7 @@ public sealed class NextLoadRouteReadTests
 
     leg.Revision++;
     await fixture.Db.SaveChangesAsync();
+    fixture.Changed();
     var changed = (
       await fixture.Handler.Handle(
         new(fixture.Truck, root.Id, first.Revision, leg.Id),
@@ -232,6 +233,7 @@ public sealed class NextLoadRouteReadTests
     );
     fixture.Loads[1].Stops[0].Name = "Updated pickup company";
     await fixture.Db.SaveChangesAsync();
+    fixture.Changed();
     var labels = (
       await fixture.Handler.Handle(
         new(fixture.Truck, fixture.Loads[0].Id, first.Revision),
@@ -265,6 +267,7 @@ public sealed class NextLoadRouteReadTests
     var inserted = Fixture.Load(fixture.Truck, 4, 1);
     fixture.Db.Dispatches.Add(inserted);
     await fixture.Db.SaveChangesAsync();
+    fixture.Changed();
     var changed = (
       await fixture.Handler.Handle(
         new(fixture.Truck, fixture.Loads[0].Id, original.Revision),
@@ -497,6 +500,12 @@ public sealed class NextLoadRouteReadTests
     public GetNextLoadRoutesHandler Handler => handler;
     public RoutePreparationQueue Queue => queue;
 
+    // What a writer does after changing the truck's work in the database
+    // (RoutePreparationQueue.MarkTruckDirty); the tests change rows
+    // directly and then say so.
+    public void Changed() =>
+      services.Reads.InvalidateItem("planning-inputs", truck);
+
     public static async Task<Fixture> CreateAsync()
     {
       var connection = new SqliteConnection("Data Source=:memory:");
@@ -591,11 +600,10 @@ public sealed class NextLoadRouteReadTests
         reader,
         new(
           reader,
+          services.PlanningInputs,
           services.DeadheadHistory,
           services.Routes,
-          new SourceRoadDemand(new SourceRoadStore(db), TimeProvider.System),
-          services.Sender,
-          TimeProvider.System
+          new SourceRoadDemand(new SourceRoadStore(db), TimeProvider.System)
         ),
         queue
       );
@@ -648,11 +656,6 @@ public sealed class NextLoadRouteReadTests
   {
     public int VersionReads { get; private set; }
     public int GeometryReads { get; private set; }
-
-    public Task<IReadOnlyList<Load>> ReadLoadsAsync(
-      Guid truckId,
-      CancellationToken ct
-    ) => inner.ReadLoadsAsync(truckId, ct);
 
     public Task<IReadOnlyList<NextLoadRouteVersion>> ReadVersionsAsync(
       IReadOnlyCollection<Guid> ids,

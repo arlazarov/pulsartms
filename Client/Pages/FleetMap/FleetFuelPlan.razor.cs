@@ -20,7 +20,7 @@ public partial class FleetFuelPlan
   [Parameter]
   public FuelPlan? Plan { get; set; }
 
-  // A plan exists but is being recalculated, rather than no plan at all.
+  // A saved plan exists but is not valid for the current inputs.
   [Parameter]
   public bool Unusable { get; set; }
 

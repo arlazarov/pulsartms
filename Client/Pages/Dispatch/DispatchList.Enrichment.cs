@@ -232,7 +232,7 @@ public partial class DispatchList
     MatchingPlanningLoad(
       truck,
       truck.TruckId is { } id ? _planningSummaries.GetValueOrDefault(id) : null
-    ) ?? truck.Dispatches.FirstOrDefault();
+    ) ?? truck.Dispatches.FirstOrDefault(x => x.WorkPhase == "current");
 
   private object PlanningIdentity(TruckDispatchBoardResponse truck) =>
     PlanningLoad(truck) is not { } load

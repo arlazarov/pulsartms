@@ -40,23 +40,66 @@ const draw = vehicles =>
 const byId = layers =>
   Object.fromEntries(layers.map(layer => [layer.props.id, layer]));
 
-// A dispatcher who picked a truck is reading its route. Everything else on
-// the map is context, and context that is as loud as the subject is noise.
-test('choosing a truck makes the rest smaller, and leaves them solid', () => {
+// A truck is drawn smaller than a stop's badge, a standing dot smaller
+// still, and choosing a truck changes no truck's size. The area that picks
+// a truck keeps the badge's size.
+test('choosing a truck changes no truck size, and trucks stay smaller than stops', () => {
   const chosen = truck('11006', true),
-    other = truck('54777');
-  const layers = byId(draw([chosen, other]));
+    other = truck('54777'),
+    moving = { ...truck('11007'), speed: 50 };
+  const layers = byId(draw([chosen, other, moving]));
 
   const loud = layers['truck-icons'],
     quiet = layers['truck-icons-quiet'];
   assert.deepEqual(loud.props.data, [chosen]);
-  assert.deepEqual(quiet.props.data, [other]);
-  // Smaller, not faded: a truck half there reads as a truck whose position
-  // is doubtful, and every one of them is equally real.
+  assert.deepEqual(quiet.props.data, [other, moving]);
   assert.equal(loud.props.opacity, 1);
   assert.equal(quiet.props.opacity, 1);
-  assert.equal(quiet.props.getSize(other), metrics.truckSecondarySize);
-  assert.equal(loud.props.getSize(chosen), metrics.truckSize);
+  assert.equal(loud.props.getSize(chosen), metrics.truckStandingSize);
+  assert.equal(quiet.props.getSize(other), metrics.truckStandingSize);
+  assert.equal(quiet.props.getSize(moving), metrics.truckSize);
+  assert.ok(metrics.truckSize < metrics.stopBadgeDiameter);
+  assert.ok(metrics.truckStandingSize < metrics.truckSize);
+
+  // Hovering the chosen truck does not enlarge it either.
+  const hovered = byId(
+    scene()({
+      lines: [],
+      stationData: [],
+      stationsVisible: false,
+      stopData: [],
+      distanceData: [],
+      vehicles: [chosen, other],
+      hasSelectedTruck: true,
+      hoveredTruck: '11006',
+    }),
+  );
+  assert.equal(
+    hovered['truck-icons'].props.getSize(chosen),
+    metrics.truckStandingSize,
+  );
+
+  // Picked by the badge's size, whatever is drawn, centred where the mark
+  // is drawn: a truck moved aside by a stop is picked where it is shown.
+  const hits = layers['truck-hits'].props;
+  assert.equal(hits.pickable, true);
+  assert.equal(hits.sizeUnits, 'pixels');
+  assert.equal(hits.getSize, metrics.truckHitSize);
+  assert.equal(hits.alphaCutoff, 0);
+  assert.equal(metrics.truckHitSize, metrics.stopBadgeDiameter);
+  assert.deepEqual(hits.data, [chosen, other, moving]);
+  const aside = { ...truck('22001'), markerOffset: [12, -8] };
+  const moved = byId(draw([aside]));
+  assert.deepEqual(
+    moved['truck-hits'].props.getPixelOffset(aside),
+    moved['truck-icons'].props.getPixelOffset(aside),
+  );
+  assert.deepEqual(moved['truck-hits'].props.getPixelOffset(aside), [12, -8]);
+  // The rest first, the chosen truck last, so it is drawn over them; the
+  // pick area under both, and all of them under the stops.
+  const order = Object.keys(layers);
+  assert.ok(order.indexOf('truck-hits') < order.indexOf('truck-icons-quiet'));
+  assert.ok(order.indexOf('truck-icons-quiet') < order.indexOf('truck-icons'));
 
   const numbers = layers['truck-numbers'].props;
   assert.deepEqual(numbers.getColor, [255, 255, 255, 255]);

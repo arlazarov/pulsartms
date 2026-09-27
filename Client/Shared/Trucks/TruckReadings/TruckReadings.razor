@@ -4,7 +4,7 @@
    as the line's own content. *@
 <div class="truck-readings" aria-label="Current truck readings">
     <span class="truck-readings__reading truck-readings__reading--speed
-                 @TelemetryTone.Speed(Speed)">
+                 @TelemetryTone.Speed(Speed, Engine)">
         <small><ActionIcon Kind="speed" /><span>Speed</span></small>
         <strong>@(Speed?.ToString("N0") ?? "—") <small>mph</small></strong>
     </span>

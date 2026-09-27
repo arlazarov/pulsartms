@@ -38,7 +38,16 @@ public sealed class PlanningExceptionBehavior<TRequest, TData>
         409
       );
     }
-    catch (RoutePlanningException ex) when (request is IPlanningRequest)
+    // The background owner needs the refusal's retry time and busy flag.
+    // HTTP-style errors cannot carry that scheduling contract.
+    catch (RoutePlanningException ex)
+      when (request is IPlanningRequest
+        && request
+          is not RecalculateFuelPlanCommand
+          {
+            AutomaticRefreshRevision: not null
+          }
+      )
     {
       return RequestResponse<TData>.Fail(ex.Message, ex.Busy ? 409 : 400);
     }

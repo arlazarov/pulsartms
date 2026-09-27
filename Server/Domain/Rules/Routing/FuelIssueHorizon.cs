@@ -25,7 +25,42 @@ public static class FuelIssueHorizon
     var end = WorkPeriodEnd(clocks, now, freshness);
     plan.IssueState = State(clocks, end);
     plan.IssueHorizonEndsAt = end + buffer;
-    var inside = end is { } until;
+    foreach (var (stop, horizon) in plan.Stops.Zip(Horizons(plan, end, buffer)))
+      stop.IssueHorizon = horizon;
+    // A stop the tank no longer reaches is not a matter for the driver's
+    // next message; it is for the dispatcher, now.
+    plan.IssueCritical = plan.Stops.Any(stop =>
+      stop.ArrivalGallons < FuelReservePolicy.PhysicalArrivalMinimumGallons
+    );
+  }
+
+  // Whether the line a plan shows is still the one these hours draw now:
+  // the same state and the same stops on each side. The end time itself
+  // moves by seconds with every reading and is not compared. A plan never
+  // given a line has nothing that depends on the hours.
+  public static bool Holds(
+    FuelPlan plan,
+    DriverHosClocks? clocks,
+    DateTimeOffset now,
+    TimeSpan buffer,
+    TimeSpan freshness
+  )
+  {
+    if (plan.IssueState is null)
+      return true;
+    var end = WorkPeriodEnd(clocks, now, freshness);
+    return plan.IssueState == State(clocks, end)
+      && plan.Stops.Select(x => x.IssueHorizon)
+        .SequenceEqual(Horizons(plan, end, buffer));
+  }
+
+  private static IEnumerable<string> Horizons(
+    FuelPlan plan,
+    DateTimeOffset? end,
+    TimeSpan buffer
+  )
+  {
+    var inside = end is not null;
     foreach (var stop in plan.Stops)
     {
       // Once one stop is past the line, every later one is too.
@@ -33,15 +68,10 @@ public static class FuelIssueHorizon
         inside
         && stop.EstimatedArrival is { } arrival
         && arrival <= end!.Value + buffer;
-      stop.IssueHorizon = inside
+      yield return inside
         ? FuelIssueHorizons.Current
         : FuelIssueHorizons.Upcoming;
     }
-    // A stop the tank no longer reaches is not a matter for the driver's
-    // next message; it is for the dispatcher, now.
-    plan.IssueCritical = plan.Stops.Any(stop =>
-      stop.ArrivalGallons < FuelReservePolicy.PhysicalArrivalMinimumGallons
-    );
   }
 
   // The end of the on-duty window, as a wall-clock time. Without a fresh

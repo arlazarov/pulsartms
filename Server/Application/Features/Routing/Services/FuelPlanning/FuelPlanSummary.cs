@@ -32,6 +32,7 @@ public static class FuelPlanSummary
       );
       fuel.Notes.Add(firstPurchase.Warning);
     }
+    fuel.CoverageNotice = horizon.CoverageNotice;
     winner.Result = "Selected";
     fuel.RouteChecks = checks;
     fuel.UsDiscountSignature = calendar.Signature;

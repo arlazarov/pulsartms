@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text.Json;
+using Application.Caching;
 using Application.Features.Execution.Interfaces;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.Deadheads;
@@ -8,9 +11,53 @@ namespace Application.Features.Routing.Services.FuelPlanning;
 public sealed class FuelSavedInputsValidation(
   ISavedRoadValidation roads,
   DeadheadHistoryService history,
-  IExecutionReadScope scope
+  IExecutionReadScope scope,
+  ReadCache reads
 ) : IFuelSavedInputsValidation
 {
+  // The item family a committed saved connection bumps for its truck
+  // (DeadheadHistoryPublication); route, base road and execution commits
+  // bump the truck's planning inputs.
+  public const string SavedInputsFamily = "fuel-saved-inputs";
+
+  // One planning refresh checked the same saved plan against the same
+  // roads and history up to four times in a row - its preparation, the
+  // summary publisher, the check before the price refresh and the price
+  // refresh itself - 6 statements each on SQLite (FuelCallerCostTests).
+  // An operation that is one unit shares the answer for the same inputs
+  // of the check - the remaining roads, the history batches it replays
+  // with their signatures, and the selected loads - as long as the
+  // generations read before the check are unchanged: a commit here, or
+  // one relayed from another process, drops it. A write another process
+  // has not yet announced is seen by the next operation, not this one.
+  // One share per scope: an operation inside another would end the outer
+  // one's early, so it is refused.
+  private Dictionary<string, Shared>? shared;
+
+  private sealed record Shared(long Inputs, long Connections, bool Matches);
+
+  public IDisposable Share()
+  {
+    if (shared is not null)
+      throw new InvalidOperationException(
+        "The saved fuel inputs check is already shared in this scope."
+      );
+    shared = [];
+    return new Ending(this, shared);
+  }
+
+  private sealed class Ending(
+    FuelSavedInputsValidation owner,
+    Dictionary<string, Shared> share
+  ) : IDisposable
+  {
+    public void Dispose()
+    {
+      if (ReferenceEquals(owner.shared, share))
+        owner.shared = null;
+    }
+  }
+
   public Task<bool> MatchesAsync(
     TruckFuelPlanSnapshot saved,
     RoutePlan current,
@@ -37,7 +84,46 @@ public sealed class FuelSavedInputsValidation(
       ) > 0
     )
       selected.Remove(current.DispatchId);
-    return MatchesAsync(remaining, dependencies, selected, ct);
+    if (shared is null)
+      return MatchesAsync(remaining, dependencies, selected, ct);
+    return SharedAsync(saved, remaining, dependencies, selected, ct);
+  }
+
+  private async Task<bool> SharedAsync(
+    TruckFuelPlanSnapshot saved,
+    IReadOnlyCollection<SavedRoadVersion> remaining,
+    FuelHistoryDependencies dependencies,
+    HashSet<Guid> selected,
+    CancellationToken ct
+  )
+  {
+    var key = Convert.ToHexString(
+      SHA256.HashData(
+        JsonSerializer.SerializeToUtf8Bytes(
+          new
+          {
+            saved.TruckId,
+            remaining,
+            History = dependencies.Batches.Where(batch =>
+              Replayed(batch, selected)
+            ),
+            Selected = selected.Order(),
+          }
+        )
+      )
+    );
+    // Read before the check, so a commit during it drops its answer.
+    var inputs = reads.ItemGeneration("planning-inputs", saved.TruckId);
+    var connections = reads.ItemGeneration(SavedInputsFamily, saved.TruckId);
+    if (
+      shared!.TryGetValue(key, out var known)
+      && known.Inputs == inputs
+      && known.Connections == connections
+    )
+      return known.Matches;
+    var matches = await MatchesAsync(remaining, dependencies, selected, ct);
+    shared?[key] = new(inputs, connections, matches);
+    return matches;
   }
 
   public Task<bool> MatchesAsync(
@@ -74,7 +160,7 @@ public sealed class FuelSavedInputsValidation(
           return false;
         foreach (var batch in dependencies.Batches)
         {
-          if (!batch.Inputs.Any(x => selected.Contains(x.Current.Id)))
+          if (!Replayed(batch, selected))
             continue;
           // Replay the complete lookup batch; native predecessor selection
           // can share completed-leg references between its members.
@@ -96,4 +182,9 @@ public sealed class FuelSavedInputsValidation(
       ct
     );
   }
+
+  private static bool Replayed(
+    FuelHistoryBatch batch,
+    HashSet<Guid> selected
+  ) => batch.Inputs.Any(x => selected.Contains(x.Current.Id));
 }

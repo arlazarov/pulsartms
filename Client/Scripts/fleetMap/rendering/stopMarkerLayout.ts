@@ -18,6 +18,8 @@ export type StopRow = {
   stacked?: boolean;
   // The stop the plan's truck is driving to: the only one it can stand on.
   next?: boolean;
+  // Whose next stop it is, when the route says: only that truck is its ring.
+  nextTruck?: string | null;
   [key: string]: any;
 };
 
@@ -80,15 +82,58 @@ export function stopMarkerLabel(_job: unknown, number: unknown) {
 // grid by stop number was tried for the far zooms, and the badges changed
 // places as the camera crossed from one way of laying out to the other.
 //
-// Only a standing truck counts. One driving past a stop is over it for a
-// moment and gone, and laying badges out for every frame of that would
-// rebuild the map for nothing anyone could read.
+// A truck driving to its next stop is ringed by it too, whenever at this
+// zoom it would sit on the badge (the owner, September 27): far out, a
+// truck minutes from its delivery and the delivery are one place. Its
+// frames do not relay the badges; the scene lays them out again only when
+// a moving truck starts or stops covering its next stop (movingRingKey).
+// For everything else - the crescent drawn behind a badge - only a
+// standing truck counts: one driving past covers a badge for a moment.
 const passes = 48;
 const most = 80;
 // Which way two stops part is read from where they are on the ground, at one
 // fixed zoom where a pixel is about thirty metres, so that the constellation
 // does not rearrange itself as the camera moves.
 const groundZoom = 12;
+
+// A next stop belongs to the truck whose route it is on. A route that does
+// not say whose it is keeps the old rule, any truck standing on it.
+function owns(row: StopRow, truck: LabelledTruck) {
+  return !!row.next && (!row.nextTruck || row.nextTruck === truck.truckId);
+}
+
+// Whether a truck drawn at one point would sit on a badge drawn at another.
+function covers(truck: MarkPoint, badge: MarkPoint) {
+  return (
+    Math.hypot(truck[0] - badge[0], truck[1] - badge[1]) +
+      metrics.truckHitSize / 2 <
+    metrics.stopBadgeStackedDiameter / 2 + metrics.truckCrescent
+  );
+}
+
+// Which moving trucks sit on a next stop at this zoom: the part of the
+// picture a moving truck can change, so the scene lays the badges out again
+// when it changes and not on every frame of the drive.
+export function movingRingKey(
+  trucks: LabelledTruck[],
+  rows: StopRow[],
+  zoom: number,
+) {
+  const project = markerProjection(zoom);
+  const next = rows.filter(row => row.next);
+  if (!next.length) return '';
+  return trucks
+    .filter(truck => truck.position && truck.speed > 0)
+    .map(truck => {
+      const at = project(truck.position);
+      const on = next.find(
+        row => owns(row, truck) && covers(at, project(row.position)),
+      );
+      return on ? `${truck.unit}>${on.id ?? on.number}` : '';
+    })
+    .filter(Boolean)
+    .join(';');
+}
 
 export function layoutStopMarkers(
   rows: StopRow[],
@@ -131,15 +176,17 @@ export function layoutStopMarkers(
   for (const truck of trucks) {
     truck.merged = false;
     truck.markerOffset = null;
+    truck.mergedPosition = null;
   }
-  const parked = trucks
-    .filter(truck => truck.position && !(truck.speed > 0))
+  const placed = trucks
+    .filter(truck => truck.position)
     .map(truck => ({
       truck,
       at: project(truck.position),
       ground: ground(truck.position),
       holds: undefined as Badge | undefined,
     }));
+  const parked = placed.filter(({ truck }) => !(truck.speed > 0));
   // The formation stops at one address have always had - a pair, a
   // triangle, rows of two - in stop order, rising from the place they mark.
   const form = (members: Badge[], [x, y]: MarkPoint, apart: number) => {
@@ -167,9 +214,7 @@ export function layoutStopMarkers(
       truck.ground[1] - item.ground[1],
     );
   const covered = (truck: ParkedTruck, item: Badge) =>
-    Math.hypot(truck.at[0] - item.at[0], truck.at[1] - item.at[1]) +
-      metrics.truckSize / 2 <
-    metrics.stopBadgeStackedDiameter / 2 + metrics.truckCrescent;
+    covers(truck.at, item.at);
   // One ring to a truck, around its own next stop and no other. Far enough
   // out a truck covers half a state's worth of badges, and ringing every
   // one of them says it is standing on all of them at once - and holds
@@ -178,10 +223,12 @@ export function layoutStopMarkers(
   // stop 12 at the same yard (September 26): the ring says "he is here",
   // and "here" is the stop he is driving to.
   const groups = [...places.values()];
-  for (const truck of parked) {
+  for (const truck of placed) {
     const reached = groups
       .filter(
-        group => group.some(item => item.row.next) && covered(truck, group[0]),
+        group =>
+          group.some(item => owns(item.row, truck.truck)) &&
+          covered(truck, group[0]),
       )
       .sort((a, b) => away(truck, a[0]) - away(truck, b[0]))[0];
     if (!reached) continue;
@@ -199,10 +246,16 @@ export function layoutStopMarkers(
   // The unit number belongs over the mark the truck has become, so the truck
   // rows carry the way from where the truck is to the badge it is drawn in.
   // Its own icon is not drawn at all while it is there.
-  for (const { truck, at, holds } of parked) {
+  // Marked at the badge's own stop and offset as the badge is, so a truck
+  // that keeps driving between layouts leaves its number where the ring is.
+  for (const { truck, holds } of placed) {
     truck.merged = !!holds;
+    truck.mergedPosition = holds ? holds.row.position : null;
     truck.markerOffset = holds
-      ? [Math.round(holds.at[0] - at[0]), Math.round(holds.at[1] - at[1])]
+      ? [
+          Math.round(holds.at[0] - holds.anchor[0]),
+          Math.round(holds.at[1] - holds.anchor[1]),
+        ]
       : null;
   }
 
@@ -269,7 +322,7 @@ export function layoutStopMarkers(
     item.row.stacked = parked.some(
       ({ at: truck }) =>
         Math.hypot(item.at[0] - truck[0], item.at[1] - truck[1]) <
-        radius + metrics.truckSize / 2,
+        radius + metrics.truckHitSize / 2,
     );
   }
 

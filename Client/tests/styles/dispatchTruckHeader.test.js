@@ -179,6 +179,12 @@ test('truck readings and clocks fold locally instead of clipping enlarged mobile
     css,
     /\.dispatch-planning--board \.dispatch-planning__clocks\s*\{[^}]*--hos-wrap: wrap;/,
   );
+  // Held to the dial panel's cap, the four text clocks folded Cycle onto
+  // a second line behind its hairline even where the card had room.
+  assert.match(
+    css,
+    /\.dispatch-planning--board \.dispatch-planning__clocks > \.driver-hours-panel\s*\{\s*max-width: 100%;\s*min-width: 0;\s*margin-left: 0;/,
+  );
   assert.match(
     css,
     /@container dispatch-truck \(width < 1050px\)[\s\S]*\.dispatch-planning--board \.dispatch-planning__readings\s*\{\s*grid-template-columns: minmax\(0, 1fr\);/,

@@ -2,6 +2,7 @@ namespace Client.Models.DTO.Planning;
 
 public sealed class FuelPlan
 {
+  public string? CoverageNotice { get; set; }
   public Guid TruckId { get; set; }
   public Guid? ExecutionLegId { get; set; }
   public long AssignmentRevision { get; set; }

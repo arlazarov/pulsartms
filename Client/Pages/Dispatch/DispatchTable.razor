@@ -2,31 +2,56 @@
 <table class="dispatch-table">
     <caption class="visually-hidden">Dispatches on this page</caption>
     <colgroup><col class="dispatch-table__column-load" /><col class="dispatch-table__column-truck" /><col class="dispatch-table__column-stop" span="2" /><col class="dispatch-table__column-miles" /><col class="dispatch-table__column-money" /></colgroup>
-    <thead><tr><th scope="col">Load / status</th><th scope="col">Truck / driver</th><th scope="col">@(HasOtherStops ? "Pickup / other stops" : "Pickup")</th><th scope="col">Delivery</th><th scope="col">Distance</th><th scope="col" class="dispatch-table__money">Rate / RPM</th></tr></thead>
+    @* The names stay for a screen reader; on screen every figure names
+       itself and the days lead (the owner, September 27). *@
+    <thead class="visually-hidden"><tr><th scope="col">Load / status</th><th scope="col">Truck / driver</th><th scope="col">@(HasOtherStops ? "Pickup / other stops" : "Pickup")</th><th scope="col">Delivery</th><th scope="col">Distance</th><th scope="col" class="dispatch-table__money">Rate / RPM</th></tr></thead>
     @foreach (var day in _days)
     {
-    <tbody class="dispatch-table__day-group">
-    <tr class="dispatch-table__day"><th colspan="6" scope="rowgroup">@day.Label</th></tr>
-    @foreach (var row in day.Rows)
+    <tbody class="dispatch-table__day-group @day.Tone">
+    <tr class="dispatch-table__day">
+        <th colspan="6" scope="rowgroup">
+            <span class="dispatch-table__day-chip" aria-hidden="true"
+                ><small>@day.Weekday</small><b>@day.Number</b></span>
+            <span class="dispatch-table__day-date">@day.Label</span>
+            @if (day.When is { } when)
+            { <span class="dispatch-table__day-when">@when</span> }
+            <span class="dispatch-table__day-count">@(day.Count == 0
+                ? "No pickups" : Loads(day.Count))</span>
+        </th>
+    </tr>
+    @foreach (var run in day.Runs)
+    {
+    @if (run.Rows.Count > 1)
+    {
+        <tr class="dispatch-table__run">
+            <td colspan="6">
+                <strong>Truck @run.First.TruckNumber</strong>
+                @if (run.Driver is { } driver) { <span>@driver</span> }
+                @if (run.Trailer is { } trailer)
+                { <span>Trailer @trailer</span> }
+                <small>@Loads(run.Rows.Count)</small>
+            </td>
+        </tr>
+    }
+    @foreach (var row in run.Rows)
     {
         var phase = Phase(row);
         var visits = DispatchStopPresentation.OrderedVisits(row.Load.Stops);
-        <tr @key="row.Key" class="dispatch-table__row @(phase == "Current" ? "is-current" : phase == "Next" ? "is-next" : row.Planned ? "is-planned" : "")" @onclick="e => OpenFromRow(row, e)">
+        <tr @key="row.Key" class="dispatch-table__row @(phase == "Current" ? "is-current" : phase == "Next" ? "is-next" : row.Planned ? "is-planned" : "") @(run.Rows.Count > 1 ? "is-run" : "")">
             <td class="dispatch-table__load">
                 <a class="dispatch-table__open" href="@LoadUrl(row)"
-                   aria-label="@($"Open load {LoadLabel(row.Load.LoadNumber)}")"
-                   @onclick:stopPropagation="true">
+                   aria-label="@($"Open load {LoadLabel(row.Load.LoadNumber)}")">
                     <strong><LoadNumber Value="row.Load.LoadNumber" /></strong><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
                 </a>
                 <div class="dispatch-table__labels">
                     @if (!string.IsNullOrEmpty(phase) && phase != row.Status) { <span class="dispatch-table__phase @(phase == "Current" ? "is-current" : phase == "Next" ? "is-next" : "")">@phase</span> }
-                    <span class="dispatch-table__status @(row.Completed ? "is-completed" : row.InTransit ? "is-moving" : "")">@row.Status</span>
+                    <span class="dispatch-table__status @row.StatusTone">@row.Status</span>
                 </div>
                 <span class="dispatch-table__customer">@DispatchBoardRow.Text(row.Load.CustomerName)</span>
                 @if (!string.IsNullOrWhiteSpace(row.Load.OrderNumber)) { <small class="dispatch-table__order">Order @row.Load.OrderNumber</small> }
             </td>
             <td class="dispatch-table__equipment">
-                <div class="dispatch-table__truck"><strong>Truck @row.TruckNumber</strong>@if ((row.Load.TruckId ?? row.Truck.TruckId).HasValue) { <a class="dispatch-table__map" href="@row.MapUrl" aria-label="@($"View {LoadLabel(row.Load.LoadNumber)} on map")" @onclick:stopPropagation="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10" /></svg></a> }</div>
+                <div class="dispatch-table__truck"><strong>Truck @row.TruckNumber</strong>@if ((row.Load.TruckId ?? row.Truck.TruckId).HasValue) { <a class="dispatch-table__map" href="@row.MapUrl" aria-label="@($"View {LoadLabel(row.Load.LoadNumber)} on map")"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 17 17 7M7 7h10v10" /></svg></a> }</div>
                 <span>@row.DriverName</span><small class="dispatch-table__trailer">Trailer @row.TrailerNumber</small>
             </td>
             @foreach (var pickup in new[] { true, false })
@@ -39,8 +64,7 @@
                             dispatch-table__stops-summary"
                            href="@LoadUrl(row)"
                            aria-label="@($"View all stops for {LoadLabel(
-                               row.Load.LoadNumber)}")"
-                           @onclick:stopPropagation="true">
+                               row.Load.LoadNumber)}")">
                             @StopSummary(row, stops, pickup)
                         </a>
                     }
@@ -78,10 +102,17 @@
             <td class="dispatch-table__money">
                 <dl class="dispatch-table__figures">
                     <div><dt>Rate</dt><dd>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency)</dd></div>
-                    <div><dt>Loaded RPM</dt><dd>@DispatchFinancialDisplay.Money(row.Load.LoadedRatePerMile, row.Load.Currency)</dd></div>
-                    <div class="is-total"><dt>Total RPM</dt><dd>@DispatchFinancialDisplay.Money(row.Load.TotalRatePerMile, row.Load.Currency)</dd></div>
+                    <div><dt>@DispatchFinancialDisplay.LoadedRpm</dt><dd>@DispatchFinancialDisplay.Money(row.Load.LoadedRatePerMile, row.Load.Currency)</dd></div>
+                    <div class="is-total"><dt>@DispatchFinancialDisplay.TotalRpm</dt><dd>@DispatchFinancialDisplay.Money(row.Load.TotalRatePerMile, row.Load.Currency)</dd></div>
                 </dl>
             </td>
+        </tr>
+    }
+    }
+    @if (day.Count == 0)
+    {
+        <tr class="dispatch-table__empty">
+            <td colspan="6">No pickups today</td>
         </tr>
     }
     </tbody>
@@ -96,8 +127,8 @@
 </div>
 
 @code {
-    // A distance as whole words: the miles, then the kilometres under them,
-    // each kept on one line.
+    // A distance as whole words: the miles, then the kilometres beside
+    // them, each kept whole.
     private RenderFragment Distance(decimal? value) =>
         @<text>@if (value is { } miles)
         {

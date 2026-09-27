@@ -18,6 +18,53 @@ public sealed record TruckPlanningInputs(
 {
   public WorkIdentity? CurrentWork { get; init; }
 
+  // The segment of the current work: the one answer to "which work is this
+  // truck on" that a reader of these inputs may use. The first candidate is
+  // not it - a candidate planning has moved past comes first too.
+  public TruckWorkSegment? CurrentSegment =>
+    CurrentWork is { } work
+      ? Itinerary.Segments.FirstOrDefault(x => x.Work == work)
+      : null;
+
+  // The work the truck does after the current, in order.
+  public IEnumerable<TruckWorkSegment> Followers =>
+    PlanningWorkPolicy.Followers(Itinerary, CurrentWork);
+
+  // Where each piece of this truck's work stands, by these inputs' choice,
+  // with the assignment revision it was placed at: current, next,
+  // upcoming, earlier (planning has passed its route) or unplaced (the
+  // inputs hold it but plan no place for it). Built once per call - a
+  // caller placing many rows asks once per truck, then looks rows up.
+  public IReadOnlyDictionary<WorkIdentity, WorkPlacement> Placements()
+  {
+    var placements = Itinerary.Segments.ToDictionary(
+      x => x.Work,
+      x => new WorkPlacement(x.AssignmentRevision, "unplaced")
+    );
+    var number = Itinerary.Resources.TruckNumber;
+    var segments = Itinerary.Segments.ToDictionary(x => x.Work);
+    // Passed work only: whether its cargo was delivered decides which
+    // conflict it shows, and no other placement needs it.
+    foreach (var passed in PassedWork)
+      placements[passed.Work] = placements[passed.Work] with
+      {
+        Phase = "earlier",
+        CargoDelivered = WorkPlacements.CargoDelivered(
+          segments[passed.Work],
+          number
+        ),
+      };
+    if (CurrentWork is { } current)
+      placements[current] = placements[current] with { Phase = "current" };
+    var order = 0;
+    foreach (var follower in Followers)
+      placements[follower.Work] = placements[follower.Work] with
+      {
+        Phase = order++ == 0 ? "next" : "upcoming",
+      };
+    return placements;
+  }
+
   // The assignment the current work was chosen at, so a consumer that read
   // the truck's work separately can tell a reassignment from the same work.
   public long? CurrentAssignmentRevision { get; init; }
@@ -33,6 +80,80 @@ public sealed record TruckPlanningInputs(
 
 public sealed record PassedWork(WorkIdentity Work, long AssignmentRevision);
 
+public sealed record WorkPlacement(long AssignmentRevision, string Phase)
+{
+  // Known for passed work only (CargoDelivery over the segment's stops).
+  public bool CargoDelivered { get; init; }
+}
+
+// A row's place and conflict from a truck's placements
+// (TruckPlanningInputs.Placements): every reader that shows where a load
+// stands - the board, Messenger, the load workspace - asks here.
+public static class WorkPlacements
+{
+  // Stale: the row was read at another accepted revision than the inputs.
+  // Unknown: the inputs do not hold it. Null: no inputs to ask.
+  public static string? Phase(
+    IReadOnlyDictionary<WorkIdentity, WorkPlacement>? placements,
+    WorkIdentity work,
+    long acceptedRevision
+  ) =>
+    placements is null ? null
+    : placements.GetValueOrDefault(work) is not { } placement ? "unknown"
+    : placement.AssignmentRevision != acceptedRevision ? "stale"
+    : placement.Phase;
+
+  // Planning passed the route; execution has not finished the truck's work.
+  // Two cases the dispatcher acts on differently: the cargo is not recorded
+  // as delivered, or it is and a later stop - a trailer drop - is open.
+  public static string? Conflict(
+    string? phase,
+    bool workFinished,
+    bool cargoDelivered
+  ) =>
+    phase != "earlier" || workFinished ? null
+    : cargoDelivered ? "route_passed_work_open"
+    : "route_passed_not_delivered";
+
+  public static bool CargoDelivered(
+    TruckWorkSegment segment,
+    string truckNumber
+  ) =>
+    CargoDelivery.IsDelivered(
+      RouteWorkProjection
+        .Capture(segment, truckNumber)
+        .Stops.Select(CompletionStop.From)
+    );
+
+  // The conflicts of a truck's own itinerary. Itinerary work is not yet
+  // delivered by the board's membership rule (ExecutionWorkRelevance), so
+  // passed work there is a conflict; the board also checks LoadCompletion
+  // (stage 4 makes the two rules one).
+  public static IReadOnlyList<WorkConflictNotice> Conflicts(
+    TruckPlanningInputs work
+  )
+  {
+    if (work.PassedWork.Count == 0)
+      return [];
+    var passed = work.PassedWork.Select(x => x.Work).ToHashSet();
+    return
+    [
+      .. work
+        .Itinerary.Segments.Where(x => passed.Contains(x.Work))
+        .Select(x => new WorkConflictNotice(
+          x.Work.DispatchId,
+          x.Work.ExecutionLegId,
+          x.LoadNumber,
+          Conflict(
+            "earlier",
+            workFinished: false,
+            CargoDelivered(x, work.Itinerary.Resources.TruckNumber)
+          )!
+        )),
+    ];
+  }
+}
+
 public sealed class TruckPlanningInputsReader(
   IAppDbContext db,
   TruckItineraryReader itineraries,
@@ -40,7 +161,8 @@ public sealed class TruckPlanningInputsReader(
   ReadCache reads,
   IDriverHosProvider hos,
   ISavedRoutePlanReader savedRoutes,
-  TruckPlanningProfileService profiles
+  TruckPlanningProfileService profiles,
+  TimeProvider time
 )
 {
   public async Task<TruckPlanningInputs?> ReadAsync(
@@ -49,6 +171,36 @@ public sealed class TruckPlanningInputsReader(
     bool includeHos = true
   ) =>
     (await ReadManyAsync([truckId], ct, includeHos)).GetValueOrDefault(truckId);
+
+  // The version of the truck's cached inputs, taken before reading them, so
+  // a reader that finds them out of date can say which entry it found.
+  public long Version(Guid truckId) =>
+    reads.ItemGeneration("planning-inputs", truckId);
+
+  // Whether inputs were captured within the last `age` by this owner's
+  // clock: a reader deciding whether a disagreement is worth a capture.
+  public bool CapturedWithin(TruckPlanningInputs work, TimeSpan age) =>
+    work.Itinerary.AsOf > time.GetUtcNow() - age;
+
+  // For a reader that found its inputs out of date - the current work's
+  // plan passed after they were captured. The entry it read (seen) is
+  // dropped and captured again; readers that found the same entry share
+  // that one capture, and the next reader meets the new entry.
+  public async Task<TruckPlanningInputs?> ReadAgainAsync(
+    Guid truckId,
+    long seen,
+    CancellationToken ct,
+    bool includeHos = true
+  )
+  {
+    await reads.InvalidateItemIfUnchangedAsync(
+      "planning-inputs",
+      truckId,
+      seen,
+      ct
+    );
+    return await ReadAsync(truckId, ct, includeHos);
+  }
 
   public async Task<
     IReadOnlyDictionary<Guid, TruckPlanningInputs>
@@ -62,7 +214,7 @@ public sealed class TruckPlanningInputsReader(
     if (truckIds.Count == 0)
       return new Dictionary<Guid, TruckPlanningInputs>();
     var ids = truckIds.Distinct().Order().ToArray();
-    var asOf = DateTimeOffset.UtcNow;
+    var asOf = time.GetUtcNow();
     var key =
       $"{asOf.UtcDateTime:yyyy-MM-dd}:"
       + $"{reads.Generation(ReadGroups.FleetCatalog)}:"
@@ -128,7 +280,7 @@ public sealed class TruckPlanningInputsReader(
     var settings = await ReadProfilesAsync([truckId], ct);
     var captured = await CaptureAsync(
       [truckId],
-      asOf ?? DateTimeOffset.UtcNow,
+      asOf ?? time.GetUtcNow(),
       settings,
       ct,
       requireFreshSnapshot: true
@@ -183,27 +335,16 @@ public sealed class TruckPlanningInputsReader(
         {
           var profile = settings[snapshot.TruckId];
           var done = passed[snapshot.TruckId] = [];
-          current[snapshot.TruckId] = null;
-          foreach (var segment in PlanningWorkPolicy.Candidates(snapshot))
-          {
-            if (
-              !PlanningWorkPolicy.IsCompleted(
-                segment.Work.ExecutionLegId is { } leg
-                  ? native.GetValueOrDefault(leg)
-                  : saved.GetValueOrDefault(segment.Work.DispatchId),
-                RouteWorkProjection.Capture(
-                  segment,
-                  snapshot.Resources.TruckNumber
-                ),
-                profile
-              )
-            )
-            {
-              current[snapshot.TruckId] = segment;
-              break;
-            }
-            done.Add(segment);
-          }
+          var choice = PlanningWorkPolicy.ChooseCurrent(
+            snapshot,
+            profile,
+            segment =>
+              segment.Work.ExecutionLegId is { } leg
+                ? native.GetValueOrDefault(leg)
+                : saved.GetValueOrDefault(segment.Work.DispatchId)
+          );
+          current[snapshot.TruckId] = choice.Current;
+          done.AddRange(choice.Passed);
         }
         var driverIds = snapshots
           .Values.Select(x => Driver(x, current[x.TruckId]))

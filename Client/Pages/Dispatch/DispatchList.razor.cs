@@ -77,23 +77,26 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     catch (JSException) { }
   }
 
-  // The view drawn: Completed has no cards, so a dispatcher who chose
-  // Cards reads history in the table and finds the cards again on Active.
-  private int ShownView => _showCompleted && _view == 0 ? 1 : _view;
+  // The view drawn: completed loads are read in the Table alone (the owner,
+  // September 27), whatever view was chosen before.
+  private int ShownView => _showCompleted ? 1 : _view;
 
   private string CountNote =>
     (_showCompleted, ShownView) switch
     {
-      (true, 1) => "Newest pickup days first",
-      (true, _) => "Newest load numbers first",
+      (true, _) => "Newest pickup days first",
       (false, 1) => "By pickup day, earliest first",
       (false, 2) => "Loads on this page",
       _ => "Ordered by truck number",
     };
 
+  // Cards and Papers are for active loads: leaving the completed Table for
+  // either reads Active again.
   private async Task SelectViewAsync(int view)
   {
     _view = view;
+    if (view != 1)
+      _showCompleted = false;
     await LoadAsync(1);
     try
     {
@@ -340,6 +343,10 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
       _boardRefreshFailed = false;
       _planningSummaries.Clear();
       _latestTelemetry.Clear();
+      _history = null;
+      _historyPages = 0;
+      _historyFailed = false;
+      _historyRequest?.Cancel();
     }
     _planningRequest?.Cancel();
     _planningRequest = null;
@@ -373,6 +380,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
         _loadedQuery = query;
         _boardRefreshFailed = false;
         _loadedSearch = query.Search;
+        StartHistory(query, version);
         // Not awaited: the board's state is settled before anything else
         // may run, and the address follows it.
         _ = Places.ReflectAsync(
@@ -819,59 +827,12 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     await _visibility.DisposeAsync();
   }
 
-  private bool IsCurrent(DispatchResponse? load) =>
-    !_showCompleted
-    && load is not null
-    && !load.Completed
-    && (
-      load.Status == "in_transit"
-      || (load.Stops.FirstOrDefault()?.ScheduledDate ?? load.ShipDate)
-        <= DateOnly.FromDateTime(Clock.GetLocalNow().DateTime)
-    );
-
-  // Where the truck is in its loads, as the Fleet Map reads it: the load
-  // its accepted planning summary names is the current one, wherever it
-  // stands on the board. Deciding "current" from the board's first row
-  // gave 11005 and 11006 a current load with no arrival while the map
-  // showed the next one's (September 27). Loads ahead of it on the board
-  // are only earlier rows: why planning passed them over is not known
-  // here, so they carry no phase. Without an accepted summary the first
-  // load is current once under way or due.
-  private (int Earlier, int Current) LoadPosition(
-    TruckDispatchBoardResponse truck
-  )
-  {
-    if (_showCompleted)
-      return (0, -1);
-    var planned = truck.TruckId is { } id
-      ? MatchingPlanningLoad(truck, _planningSummaries.GetValueOrDefault(id))
-      : null;
-    if (planned is not null)
-    {
-      var index = truck.Dispatches.IndexOf(planned);
-      return (index, index);
-    }
-    return IsCurrent(truck.Dispatches.FirstOrDefault()) ? (0, 0) : (0, -1);
-  }
-
-  private string LoadPhase(
+  // The load's place on its truck, as the server placed it; history is
+  // all completed.
+  private string? LoadPhase(
     TruckDispatchBoardResponse truck,
     DispatchResponse load
-  )
-  {
-    if (_showCompleted || load.Completed)
-      return "Completed";
-    var index = truck.Dispatches.IndexOf(load);
-    var (earlier, current) = LoadPosition(truck);
-    if (index < earlier)
-      return "";
-    if (index == current)
-      return "Current";
-    return LoadOrder(index, earlier, current) == 1 ? "Next" : "Upcoming";
-  }
-
-  private static int LoadOrder(int index, int earlier, int current) =>
-    current >= 0 ? index - current : index - earlier + 1;
+  ) => _showCompleted ? "Completed" : DispatchWorkPhase.Label(load);
 
   private DispatchCardPlanningSummary CardPlanningSummary(
     TruckDispatchBoardResponse truck,

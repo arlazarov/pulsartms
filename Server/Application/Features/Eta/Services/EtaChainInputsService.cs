@@ -214,8 +214,23 @@ public sealed partial class EtaChainInputsService(
     var roots = ImmutableArray.CreateBuilder<EtaRootRoadVersion>();
     var exclusions = ImmutableArray.CreateBuilder<EtaWorkExclusion>();
     var blocked = false;
+    // The chain starts at the work planning chose as current. Work planning
+    // has passed is behind the truck: it neither starts the chain nor ends
+    // it, even when it would now need review.
+    var passed = PlanningWorkPolicy
+      .ChooseCurrent(itinerary, profile, x => Saved(batch, x.Work))
+      .Passed.Select(x => x.Work)
+      .ToHashSet();
     foreach (var item in itinerary.Segments)
     {
+      if (loads.Count == 0 && passed.Contains(item.Work))
+      {
+        roots.Add(RootVersion(item.Work, Saved(batch, item.Work)));
+        exclusions.Add(
+          new(item.Work, EtaWorkExclusionReason.SavedRouteCompleted)
+        );
+        continue;
+      }
       var reason = EtaWorkSelection.Exclusion(item, loads, blocked);
       if (reason is { } excluded)
       {
@@ -223,25 +238,11 @@ public sealed partial class EtaChainInputsService(
         blocked |= EtaWorkSelection.EndsTheRun(excluded);
         continue;
       }
-      var load = RouteWorkProjection.Capture(
-        item,
-        itinerary.Resources.TruckNumber
-      );
       if (loads.Count == 0)
-      {
-        var saved = load.ExecutionLegId is { } legId
-          ? batch.ExecutionRoots.GetValueOrDefault(legId)
-          : batch.Roots.GetValueOrDefault(load.Id);
-        roots.Add(RootVersion(item.Work, saved));
-        if (PlanningWorkPolicy.IsCompleted(saved, load, profile))
-        {
-          exclusions.Add(
-            new(item.Work, EtaWorkExclusionReason.SavedRouteCompleted)
-          );
-          continue;
-        }
-      }
-      loads.Add(load);
+        roots.Add(RootVersion(item.Work, Saved(batch, item.Work)));
+      loads.Add(
+        RouteWorkProjection.Capture(item, itinerary.Resources.TruckNumber)
+      );
     }
     if (loads.Count == 0)
       return null;
@@ -253,6 +254,14 @@ public sealed partial class EtaChainInputsService(
       exclusions.ToImmutable()
     );
   }
+
+  private static SavedRoutePlanMetadata? Saved(
+    ReadBatch batch,
+    WorkIdentity work
+  ) =>
+    work.ExecutionLegId is { } legId
+      ? batch.ExecutionRoots.GetValueOrDefault(legId)
+      : batch.Roots.GetValueOrDefault(work.DispatchId);
 
   private EtaChainDescription DescribeCore(
     SelectedWork selected,

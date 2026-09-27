@@ -128,6 +128,8 @@ const dispatches = () => [
     loadNumber: 1441,
     orderNumber: 'CURRENT-ORD-1441',
     status: 'in_transit',
+    // The board places each load on its truck (DispatchResponse.WorkPhase).
+    workPhase: 'current',
     customerName: 'Fixture Current Customer',
     truckNumber: '11006',
     driverName: 'Fixture Driver',
@@ -160,6 +162,7 @@ const dispatches = () => [
     loadNumber: 1442,
     orderNumber: 'FUTURE-ORD-1442',
     status: 'planned',
+    workPhase: 'next',
     customerName: 'Fixture Future Customer',
     truckNumber: '11006',
     driverName: 'Fixture Driver',
@@ -2593,27 +2596,17 @@ try {
             await page.screenshot({ path: papersImage, fullPage: true });
             detailScreenshots.push(papersImage);
             await returnToDispatch(page, 'Papers');
-            await page.locator('#dispatch-completed').click();
-            await page.locator('.dispatch-papers--completed').waitFor();
+            // Completed is read in the Table alone (the owner, September
+            // 27): Papers offer no scope, and the Table reads history
+            // newest pickup day first.
             check(
-              (
-                await page
-                  .locator('.dispatch-paper-column__heading')
-                  .innerText()
-              ).includes('Completed'),
-              name + ' completed papers have no active-phase folders',
-            );
-            // History has no cards (the owner, September 27): it reads as
-            // the table, newest pickup day first.
-            check(
-              await page
-                .getByRole('button', { name: 'Cards', exact: true })
-                .isDisabled(),
-              name + ' completed offers no Cards view',
+              !(await page.locator('#dispatch-completed').isVisible()),
+              name + ' papers offer no Completed scope',
             );
             await page
               .getByRole('button', { name: 'Table', exact: true })
               .click();
+            await page.locator('#dispatch-completed').click();
             await page.locator('tr.dispatch-table__row').nth(1).waitFor();
             await checkDispatchTop(
               page,
@@ -2674,10 +2667,16 @@ try {
             await page.screenshot({ path: completedImage, fullPage: true });
             detailScreenshots.push(completedImage);
             showRepeatedVisits = true;
-            await page.locator('#dispatch-active').click();
+            // Cards read Active again.
             await page
               .getByRole('button', { name: 'Cards', exact: true })
               .click();
+            check(
+              (await page
+                .locator('#dispatch-active')
+                .getAttribute('aria-pressed')) === 'true',
+              name + ' leaving the completed Table reads Active',
+            );
             await checkRepeatedVisits(page, name, detailScreenshots);
             showRepeatedVisits = false;
             showCompletedHistory = true;

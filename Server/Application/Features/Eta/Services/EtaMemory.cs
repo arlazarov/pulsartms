@@ -63,6 +63,10 @@ public sealed class EtaMemory(TimeProvider? clock = null)
     // The saved road it was calculated on, to order two results of it.
     public Guid? PlanId { get; init; }
     public int? PlanVersion { get; init; }
+
+    // A saved forecast read back (EtaService.Saved): its keys are the
+    // hashes the store keeps, not the keys themselves.
+    public bool KeysHashed { get; init; }
   }
 
   // A calculation reads its road before it waits for the dispatch's gate,

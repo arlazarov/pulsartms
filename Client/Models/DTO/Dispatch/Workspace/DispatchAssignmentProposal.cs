@@ -36,6 +36,11 @@ public sealed record DispatchAcceptedAssignment(
 {
   public Guid FromStopId { get; init; }
   public Guid ThroughStopId { get; init; }
+
+  // Where this leg stands on its truck and its conflict, as on the board
+  // (DispatchResponse.WorkPhase, WorkConflict).
+  public string? Phase { get; init; }
+  public string? Conflict { get; init; }
 }
 
 public sealed record CloseCancelledExecutionRequest(

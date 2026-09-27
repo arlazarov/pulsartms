@@ -54,7 +54,8 @@
     font-variant-numeric: tabular-nums;
   }
   // Loaded, empty and total, each named; a value is its miles with its
-  // kilometres quietly under them, never folded inside a number.
+  // kilometres quietly beside them on one line (the owner, September 27),
+  // never folded inside a number.
   .dispatch-table__distances {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
@@ -69,7 +70,9 @@
     }
     dd {
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
+      align-items: baseline;
+      column-gap: ui.pg(xs);
       margin: 0;
       color: ui.theme(text);
       > * {
@@ -78,6 +81,9 @@
       > small {
         color: ui.theme(text-muted);
         font-size: ui.fs(small);
+      }
+      > small::before {
+        content: '· ';
       }
     }
     .is-total dd > span {

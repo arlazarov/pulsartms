@@ -25,8 +25,8 @@ public sealed class DispatchRefreshRetentionTests
         )
     );
     var card = component.FindComponent<DispatchLoadCard>().Instance;
-    // The card settles once the planning summary names its load current
-    // (the map's reading); retention is measured from there.
+    // The card settles once the board shows its load current (the phase
+    // the server places); retention is measured from there.
     component.WaitForAssertion(
       () => Assert.Single(component.FindAll(".dispatch-load--current"))
     );
@@ -115,8 +115,8 @@ public sealed class DispatchRefreshRetentionTests
             .Count
         )
     );
-    // The card settles once the planning summary names its load current
-    // (the map's reading); retention is measured from there.
+    // The card settles once the board shows its load current (the phase
+    // the server places); retention is measured from there.
     component.WaitForAssertion(
       () => Assert.Single(component.FindAll(".dispatch-load--current"))
     );

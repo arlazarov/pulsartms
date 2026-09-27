@@ -590,6 +590,261 @@ the cost evidence and the gate. No migration (73), no DTO change.
   debt for the application audit; the production warm/cold ratio is not
   measured.
 
+## Frontend 76653109 (September 27, 10:47 UTC)
+
+The owner asked for four marks on the released screens to be fixed and
+published: the Dispatch clocks folded Cycle onto a second line behind a
+hairline; the Table's day headings were nearly invisible; Papers put
+the price and both rates per mile on the miles' line; the truck card's
+"ETA" and "At stop" ran apart. Commits `3b75f79e` (clocks, days, Papers)
+and `76653109` (ETA column), on `dbfec037`; Client styles and style tests
+only. No server, contract, migration or deployment change; the API
+(`amftms-api-b-fd2d5f25-…`) and the database were not touched, so no
+backup was needed.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a clean
+  detached worktree with the local settings file copied in (10:41-10:47
+  UTC), exit 0: JavaScript 665, Client 1,255, Server 3,791; offline UI
+  smoke without failures (`browser-ui-YATcyD`); messaging tabs smoke
+  without errors. A first run on `3b75f79e` was stopped mid-gate to add
+  the ETA fix; nothing from it was published. PostgreSQL execution
+  checks were not run.
+- **Artifact:** `release-TDTuIV`, 285 files, pinned in the main
+  checkout's `artifacts/managed/release-TDTuIV` with the gate log and
+  the smoke report under `gate/`.
+- **Live:** Hosting live channel released 10:47:35 UTC. `index.html`
+  (`c90a085c68496cc8fdf8c9f72c029c04d014d8d1ae518db1f65a359e1eedeec9`)
+  and `css/main.css?v=54904b0f7353a2c4` are byte-identical to the
+  artifact; entry HTML answers `no-cache`. Rollback target: the
+  previous release, `release-GTsl5s`.
+- **Seen before release:** each fix in a static page built from the
+  compiled stylesheet (clocks at 1100 and 800 px on one line; day
+  bands; money under the miles; ETA beside its label without a booking,
+  aligned with Appointment when there is one). Not yet seen on live
+  data.
+
+## Frontend 2f798c05 (September 27, 11:14 UTC)
+
+Three more of the owner's marks, published on the owner's word: in
+Papers the truck and its trailer fold as one unit, and the money line
+reads "590.00 USD · RPM 2.60 · Total 1.70" with the full names in its
+tooltip; in the Table each distance shows miles and kilometres on one
+line. Commit `2f798c05` on `2b92c3ca`; Client, Client tests and style
+tests only. API and database untouched; no backup needed.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a clean
+  detached worktree with the local settings copied in (11:07-11:14 UTC),
+  exit 0: JavaScript 665, Client 1,255, Server 3,791; offline UI smoke
+  without errors (`browser-ui-ZITcwj`). PostgreSQL checks not run.
+- **Artifact:** `release-OYVBFR`, 285 files, pinned in the main
+  checkout's `artifacts/managed/release-OYVBFR` with the gate log and the
+  smoke report under `gate/`.
+- **Live:** `index.html`
+  (`9c718281c8b52138982e2835858e76d78584cff42a5db49a7886dea1f7f8b87f`)
+  and `css/main.css?v=24d21b66de4c8b3d` byte-identical to the artifact.
+  Rollback target: `release-TDTuIV`.
+
+## Stop-save and Discard incident, 20b6ec91 (September 27, 11:49 UTC)
+
+API and frontend, on root's authorization after root's own fix and
+review. Candidate `claude/stop-save-candidate` = `49b0b277` (the released
+frontend) plus root's `d04ad9f6` (Discard and leave clears every stop
+editor draft), `fe9778ac` (write responses read persisted values; a stop
+draft's 409 offers reload instead of an endless retry), `944fa9d6`
+(canonical price scale in workspace fingerprints) and `fae9f9cb`
+(consecutive stop saves in fresh contexts), cherry-picked as `296c1554`,
+`ecc6de31`, `4a2f32fc`, `20b6ec91`. No migration, no guard removed.
+The truck 11005 resource conflict (AMF1403 active, trailer 55904 versus
+055904) is root's separate repair and is not fixed by this release.
+
+- **Gate, once:** `PULSARTMS_RELEASE_UI=1 bash verify-release.sh` on a
+  clean detached worktree of `20b6ec91` with the local settings copied in
+  (11:33-11:40 UTC), exit 0: JavaScript 665, Client 1,258, Server 3,793,
+  none skipped; offline UI smoke without errors (`browser-ui-q8XVBH`).
+  Verified artifact `release-H5e12a`, 285 files, pinned in the main
+  checkout's `artifacts/managed/release-H5e12a` with both logs and the
+  smoke report under `gate/`.
+- **Backup:** `local-backups/pulsartms-release-backup.5M7i0m/
+  before-2026-09-27-release-20b6ec91.dump`, sha256
+  `a1ec2d13a5e90ee80bc36b185d0a284e296b4bb81ac3a47125848820835b930a`,
+  pg_dump custom, 720 entries, 104 table data, 11:41 UTC; recorded in
+  the inventory; restore not rehearsed.
+- **API:** `deploy-server.sh`, build `944ddc8d-982c-4975-95c5-5a8c04a9869c`,
+  image `api@sha256:815c0dd3c1d7ff33169d7d703a235b4492bbae1d97b6639a81b6c60af1c23015`,
+  revision `amftms-api-b-944ddc8d-…` at 100%, generation 276 (was 274,
+  `amftms-api-b-fd2d5f25-…`, the rollback target). 1 GiB, 1 CPU, at most
+  one instance, as before. Health 200 on the service and through
+  Hosting; no error-level entry or 5xx in its first minutes.
+- **Frontend:** the gate's artifact published as tested, without a
+  second gate (11:49:53-11:50:00 UTC, 285 files). Live `index.html`
+  (`5340dba08ebac8230f701a7a94718a750c3f04b8d74c9f8186184f68848a3809`),
+  `css/main.css?v=24d21b66de4c8b3d`, `Client.*.wasm` and `dotnet.*.js`
+  match the artifact; entry HTML `no-cache`; settings served.
+- **Data:** protected counts before and after, read-only: unchanged
+  (73 migrations, 3 and 3 users, 5 conversations, 57 messages, 0 driver
+  messages, 0 broadcasts, 0 hand-overs, 2 credentials). No production
+  row was written by this release.
+
+## Frontend c2618995: Table by coloured days (September 27, 12:01 UTC)
+
+The owner's chosen Table design and the RPM names, on the owner's word
+and after root's review of `354fcb33` (runs keyed by truck identity;
+shared equipment only), fixed in `c2618995`. Branch
+`claude/ui-after-incident`: `c240e8d3` (the incident release) plus
+`a692d5bb` (RPM and Total RPM on every Dispatch view), `354fcb33`
+(coloured day bands, today always shown, a truck's several loads named
+once, column names for screen readers only) and `c2618995`. Client,
+styles and tests only; API and database untouched. A first run on
+`354fcb33` was stopped during its build, before any publication.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a clean
+  detached worktree with the local settings copied in (11:55-12:01 UTC),
+  exit 0: JavaScript 665, Client 1,264, Server 3,793, none skipped;
+  offline UI smoke without errors (`browser-ui-J6r6MO`).
+- **Artifact:** `release-ZyxGZ4`, 285 files, pinned in the main
+  checkout's `artifacts/managed/release-ZyxGZ4` with the log and smoke
+  report under `gate/`.
+- **Live:** `index.html`
+  (`1437878d27f63ddc13fe1840a438154cacdc13498680af16c4cd0047b53f43ab`)
+  and `css/main.css?v=8c5efad3c931ee5d` byte-identical to the artifact.
+  Rollback target: `release-H5e12a` (the incident frontend).
+
+## Frontend 4b3adbf6: the owner's Dispatch batch (September 27, 12:20 UTC)
+
+On the owner's word and root's coordination: a truck's speed is green
+only while its engine runs (`5d1fac61`); a truck opened from Dispatch is
+revealed from under its card (`c76e8af7`); a Table day is ordered by
+pickup, then delivery (`d2f2e441`); no Current/Next edge bar
+(`4f446b04`); only the load number opens a load (`2d606052`); the views
+read Cards, Papers, Table, and Completed is read in the Table alone
+(`4b3adbf6`). On `fb239cd3`; Client, styles and tests only.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a clean
+  detached worktree with the local settings copied in (12:15-12:20 UTC),
+  exit 0: JavaScript 666, Client 1,270, Server 3,793, none skipped;
+  offline UI smoke without errors (`browser-ui-V1IKsO`).
+- **Artifact:** `release-FlPysI`, 285 files, pinned in the main
+  checkout's `artifacts/managed/release-FlPysI` with the log and smoke
+  report under `gate/`.
+- **Live:** `index.html`
+  (`536a6a2f8f244a23c51a98b11da3bbab22580c063ce6e906ade3325aac301e81`)
+  and `css/main.css?v=a7cdc4f74aeb0c24` byte-identical to the artifact.
+  Rollback target: `release-ZyxGZ4`.
+- **Not seen live:** the map reveal from Dispatch was checked by its
+  regression and the offline smoke only, not on the real map.
+
+## Search by displayed number, 6ff3f19c (September 27, 12:56 UTC)
+
+API and frontend, on the owner's requirement and root's acceptance of
+`6ff3f19c`: Dispatch search reads AMF1408 as load 1408 (one owner,
+`LoadNumberSearch`, for the board and history; a displayed number is
+exact, bare digits keep the board's as-you-type prefix); a search from
+Cards or Papers also lists completed loads, labelled, openable, one page
+of 12 at most, with its own error and Retry. `da777263` + `6ff3f19c` on
+`250446a7`. No migration.
+
+- **Gate, once:** `PULSARTMS_RELEASE_UI=1 bash verify-release.sh` on a
+  clean detached worktree of `6ff3f19c` with the local settings copied
+  in (12:42-12:48 UTC), exit 0: JavaScript 666, Client 1,274, Server
+  3,806, none skipped; offline UI smoke without errors
+  (`browser-ui-Ba7jxb`). Artifact `release-2RmBrJ`, 285 files, pinned
+  with both logs and the smoke report under `gate/`.
+- **Focused and mutation evidence:** `artifacts/managed/diagnostic-PbPVPy` (pinned):
+  focused Server Dispatch + Architecture 794 and Client
+  Dispatch/Fleet/Architecture 861; five mutations (no stale checks,
+  failure read as empty, no history read, board StartsWith, the old
+  TryParse), each failing its regression, with the diff in each log.
+- **Backup:** `local-backups/pulsartms-release-backup.Q95QKd/
+  before-2026-09-27-release-6ff3f19c.dump`, sha256
+  `567463130764d05b29a36f57c52d0ae27c0162545152b645513611d39f16f327`,
+  720 entries, 104 table data, 12:48 UTC; in the inventory; restore not
+  rehearsed.
+- **API:** build `769b7fb5-9f29-4e3c-95d5-21793f1d40e4`, image
+  `api@sha256:157cf7d2b230272904535eb3acb1febb5a1fdc601f5a6b54d78f9447c06f1315`,
+  revision `amftms-api-b-769b7fb5-…` at 100%, generation 278 (rollback:
+  `amftms-api-b-944ddc8d-…`, 276). 1 GiB, at most one instance, as
+  before. Health 200 direct and through Hosting; no ERROR or 5xx at the
+  time of recording.
+- **Frontend:** the gate's artifact published as tested (12:56:15-22
+  UTC). Live `index.html`
+  (`39030063bb2311a16d6b09a9f6fafc636b5a70a46ee2ea71e14e28e82fa602b3`),
+  `css/main.css?v=fae65e94d4cee073`, `Client.*.wasm` and `dotnet.*.js`
+  match the artifact.
+- **Data:** protected counts before and after unchanged (73, 3, 3, 5,
+  57, 0, 0, 0, 2). Not seen on live data by me; root verifies.
+
+## Prefix search, map ring, Papers order, 11006 fuel: 2c76b88c (September 27, 13:46 UTC)
+
+API and frontend, one release after root's review of each part:
+search by the first digits of a load number everywhere, with every
+completed match reachable page by page (`e6fed730`); a moving truck
+ringed by its own next stop when far out, its number anchored on the
+badge (`9c0180d5`, `7b294f89`); Papers ordered and labelled by each
+load's next unfinished stop, a started load leading its truck
+(`160498e5`, `3e8c174f`); root's 11006 fuel fix, `85832f96` as
+`2c76b88c` - accepted fuel coverage stops before the unaccepted future
+load 1416 with an explicit notice, and a stale plan says it needs
+updating. On `b00325c8`. No migration.
+
+`CoverageNotice` is an additive field in the saved plan's JSON: old
+plans are not rewritten for it; only an ordinary eligible stale-plan
+refresh replaces a plan, and manual or unchanged plans stay.
+
+- **Gate, once:** `PULSARTMS_RELEASE_UI=1 bash verify-release.sh` on a
+  clean detached worktree of `2c76b88c` with the local settings copied
+  in (13:30-13:37 UTC), exit 0: JavaScript 669, Client 1,279, Server
+  3,807, none skipped; offline UI smoke without errors
+  (`browser-ui-ggHWeF`). Artifact `release-BdSW74`, 285 files, pinned
+  with both logs and the smoke report under `gate/`.
+- **Evidence before the gate:** prefix search and Papers in
+  `artifacts/managed/diagnostic-OYFE8z`, map in
+  `artifacts/managed/diagnostic-X4ZQwy` (focused runs, mutation logs).
+  Candidate focused runs: Server Fuel/Routing/Architecture 1,942, Client
+  Fleet/Dispatch/Architecture 866.
+- **Backup:** `local-backups/pulsartms-release-backup.PuYcTF/
+  before-2026-09-27-release-2c76b88c.dump`, sha256
+  `396f59bde528cddd3a28a5023040b0d543a569a87971001e5c3cb4a79c94144a`,
+  720 entries, 104 table data, 13:37 UTC; in the inventory; restore not
+  rehearsed.
+- **API:** build `9fb1edab-02d4-4492-b969-8842cd2faa13`, image
+  `api@sha256:2707eee5c248dd9029a8cd2aa198eba35ecb4e898529e6de6c569144946b7b63`,
+  revision `amftms-api-b-9fb1edab-…` at 100%, generation 280 (rollback:
+  `amftms-api-b-769b7fb5-…`, 278). 1 GiB, at most one instance. Health
+  200 direct and through Hosting; no ERROR or 5xx at the time of
+  recording.
+- **Frontend:** the gate's artifact published as tested (13:46:24-31
+  UTC). Live `index.html`
+  (`e4e2902a2bc9c3f389c56e8c5508dbbb14afe51d844a38f0baaa73618229f794`),
+  `css/main.css?v=fae65e94d4cee073`, `Client.*.wasm`, `dotnet.*.js`
+  match the artifact.
+- **Data:** protected counts before and after unchanged. 11006's fuel
+  plan is not claimed repaired by this release; root verifies its normal
+  refresh and retry.
+
+## Frontend aae625bc: truck marks smaller than stops (September 27, 13:59 UTC)
+
+Client only, after root's review of the diff and the offline WebGL
+screenshots: a moving truck is drawn 24 and a standing one 20 against a
+stop's 28, the same size chosen or not; layout and picking keep the
+badge's size, the pick disc offset with its mark and under the stops;
+the chosen truck drawn last. On `a9727482` (the record of the live
+`2c76b88c`); no API redeploy - the API stays `amftms-api-b-9fb1edab-…`,
+generation 280.
+
+- **Gate, once:** `PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a
+  clean detached worktree with the local settings copied in (13:51-13:59
+  UTC), exit 0: JavaScript 669, Client 1,279, Server 3,807, none skipped;
+  offline UI smoke without errors (`browser-ui-xE6XDV`). Artifact
+  `release-iCH61Y`, 285 files, pinned with the log and smoke report
+  under `gate/`.
+- **Evidence before the gate:** offline WebGL marker smoke, 1x and 2x,
+  no errors or failures, screenshots in
+  `artifacts/managed/browser-map-markers-4tT4Ce`.
+- **Live:** `index.html`
+  (`050216d2b5b685e55e8e235ddcb9fa58459aacdb9a0063f8ca48cc63b8638306`),
+  `css/main.css?v=fae65e94d4cee073`, `Client.*.wasm` and `dotnet.*.js`
+  match the artifact. Rollback target: `release-BdSW74`.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module

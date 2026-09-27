@@ -46,8 +46,12 @@ export const sceneMetrics = Object.freeze({
   fuelVisitLabelOffset: 25,
   fuelVisitLabelPadding: [6, 4],
   labelOffset: 34,
-  truckSize: 28,
-  truckSecondarySize: 23,
+  // A truck is drawn smaller than a stop's badge, a standing one - a dot -
+  // smaller still, and choosing it does not change its size. The room it
+  // takes in the layout and the area that picks it are the badge's size.
+  truckSize: 24,
+  truckStandingSize: 20,
+  truckHitSize: 28,
   truckClusterRadius: 64,
   truckClusterMaxZoom: 12,
   truckHoverScale: 1.1,

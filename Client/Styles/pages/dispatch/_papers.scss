@@ -11,15 +11,6 @@
   gap: ui.pg(md);
   align-items: stretch;
 }
-.dispatch-papers--completed {
-  grid-template-columns: minmax(0, 1fr);
-}
-.dispatch-papers--completed .dispatch-paper-tabs {
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(min(100%, ui.size(dispatch-load-card)), 1fr)
-  );
-}
 .dispatch-paper-tabs {
   display: grid;
   gap: ui.pg(sm);
@@ -113,6 +104,11 @@
     gap: 0 ui.pg(sm);
     min-width: 0;
   }
+  &__tab-units {
+    display: inline-flex;
+    gap: ui.pg(sm);
+    white-space: nowrap;
+  }
   &__tab-number {
     font-size: ui.fs(body);
     color: ui.theme(text);
@@ -135,6 +131,10 @@
     &.is-completed {
       color: ui.theme(success-text);
     }
+    &.is-conflict {
+      color: ui.theme(warning-text);
+      background: ui.theme(warning-surface);
+    }
   }
   &__tab-driver {
     min-width: 0;
@@ -149,8 +149,10 @@
     font-size: ui.fs(caption);
     white-space: nowrap;
   }
+  // The miles, then the money on the line under them (the owner,
+  // September 27): beside the miles it crowded one line with both.
   &__tab-financials {
-    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     margin-top: ui.pg(xs);
     font-size: ui.fs(small);
     font-variant-numeric: tabular-nums;
@@ -160,10 +162,8 @@
     font-weight: 600;
   }
   &__tab-financials > span {
-    justify-self: end;
     color: ui.theme(text-secondary);
     font-size: ui.fs(caption);
-    text-align: end;
   }
   &__tab:hover {
     background: ui.theme(surface-soft);

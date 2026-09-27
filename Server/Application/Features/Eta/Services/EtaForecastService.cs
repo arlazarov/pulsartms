@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Application.Caching;
 using Application.Diagnostics;
 using Application.Features.Dispatch.Models;
 using Application.Features.Eta.Interfaces;
@@ -18,6 +19,7 @@ public sealed partial class EtaForecastService(
   EtaService eta,
   RoutePlanningService routes,
   PlanningWorkPublication publication,
+  ReadCache reads,
   ILogger<EtaForecastService> logger
 )
 {
@@ -125,10 +127,12 @@ public sealed partial class EtaForecastService(
           );
         if (matches)
         {
+          // A root's row holds its whole chain; a load shows its part.
+          var forecast = Filter(snapshot!.Forecast, load.Id);
           load.Eta =
-            snapshot!.Forecast.ValidUntil > now
-              ? snapshot.Forecast
-              : snapshot.Forecast with
+            forecast.ValidUntil > now
+              ? forecast
+              : forecast with
               {
                 RouteUpdatePending = true,
               };

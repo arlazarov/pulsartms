@@ -315,7 +315,7 @@ public sealed class CorrectDispatchStopHandler(
       };
       db.DispatchWorkspaceRevisions.Add(history);
       await db.SaveChangesAsync(ct);
-      var saved = await DispatchWorkspaceReader.ReadAsync(
+      var saved = await DispatchWorkspaceReader.ReadSavedAsync(
         db,
         state.Load.Id,
         true,

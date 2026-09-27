@@ -63,7 +63,7 @@ public sealed class DispatchStopCycleTests
         .ToArray(),
     };
     var component = context.Render<DispatchLoadCard>(p =>
-      p.Add(x => x.Load, load).Add(x => x.Current, current)
+      p.Add(x => x.Load, Placed(load, current))
     );
     Assert.Empty(component.FindAll("section.stop-hours__cycle, details"));
     var dialog = RenderDetails(context, component);
@@ -110,7 +110,7 @@ public sealed class DispatchStopCycleTests
     var load = Load();
     load.Eta = load.Eta! with { Stops = load.Eta.Stops.Reverse().ToArray() };
     var component = context.Render<DispatchLoadCard>(parameters =>
-      parameters.Add(card => card.Load, load).Add(card => card.Current, current)
+      parameters.Add(card => card.Load, Placed(load, current))
     );
 
     Assert.Empty(component.FindAll(".dispatch-load__stop-cycle, details"));
@@ -421,6 +421,14 @@ public sealed class DispatchStopCycleTests
       null,
       []
     );
+    return load;
+  }
+
+  // The load as the server places it on its truck: current or not.
+  private static DispatchResponse Placed(DispatchResponse load, bool current)
+  {
+    if (current)
+      load.WorkPhase = "current";
     return load;
   }
 }

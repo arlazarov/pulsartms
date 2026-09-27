@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
+using AngleSharp.Dom;
 using Bunit;
 using Client.Pages.Dispatch;
 using Client.Services;
@@ -90,47 +91,31 @@ public sealed class CompletedDispatchScopeTests
       requests.Last(uri => uri.AbsolutePath == "/api/dispatch").Query
     );
 
-    // History has no cards (the owner, September 27).
-    Assert.True(
-      component
-        .FindAll(".dispatch-view button")
-        .Single(button => button.TextContent == "Cards")
-        .HasAttribute("disabled")
+    // Completed loads are read in the Table alone (the owner, September
+    // 27): it is the view drawn, and no live planning is asked for.
+    Assert.Equal("true", View(component, "Table").GetAttribute("aria-pressed"));
+    var query = requests.Last(uri => uri.AbsolutePath == "/api/dispatch").Query;
+    Assert.Contains("status=completed", query);
+    Assert.Contains("search=Historic", query);
+    Assert.Empty(
+      component.FindAll(".dispatch-planning, .driver-hours, .fuel-recalculate")
     );
-    foreach (var view in new[] { "Table", "Papers" })
-    {
-      await component
-        .FindAll(".dispatch-view button")
-        .Single(button => button.TextContent == view)
-        .ClickAsync(new MouseEventArgs());
-      var query = requests
-        .Last(uri => uri.AbsolutePath == "/api/dispatch")
-        .Query;
-      Assert.Contains("status=completed", query);
-      Assert.Contains("page=1", query);
-      Assert.Contains("search=Historic", query);
-      Assert.Empty(
-        component.FindAll(
-          ".dispatch-planning, .driver-hours, .fuel-recalculate"
-        )
-      );
-      if (view == "Papers")
-      {
-        Assert.Single(component.FindAll(".dispatch-paper-column"));
-        Assert.Contains(
-          "Completed loads",
-          component.Find(".dispatch-paper-column__heading").TextContent
-        );
-      }
-    }
     Assert.DoesNotContain(
       requests,
       uri =>
         uri.AbsolutePath.Contains("/planning", StringComparison.Ordinal)
         && !uri.AbsolutePath.EndsWith("/previews", StringComparison.Ordinal)
     );
-    await component.InvokeAsync(
-      () => component.Find("#dispatch-active").ClickAsync(new())
+    // Papers are for active loads: choosing them reads Active again, and
+    // the scope is no longer there to reach.
+    await View(component, "Papers").ClickAsync(new MouseEventArgs());
+    Assert.Equal(
+      "true",
+      component.Find("#dispatch-active").GetAttribute("aria-pressed")
+    );
+    Assert.Contains(
+      "is-unavailable",
+      component.Find(".dispatch-board__scope").ClassName
     );
     Assert.Contains(
       "search=Historic",
@@ -139,9 +124,256 @@ public sealed class CompletedDispatchScopeTests
     Assert.Empty(component.FindAll(".dispatch-load__phase"));
   }
 
-  // Completed has no cards (the owner, September 27): a dispatcher who
-  // chose Cards reads history in the table, newest day first, and finds
-  // the cards again on Active.
+  // A search from Cards or Papers finds a load by its displayed number and
+  // also finds completed ones, listed apart and labelled, while the view
+  // stays Active; clearing the search reads Active alone again (the owner,
+  // September 27).
+  [Theory]
+  [InlineData("Cards")]
+  [InlineData("Papers")]
+  public async Task ASearchFromCardsOrPapersAlsoFindsCompletedLoads(string view)
+  {
+    var requests = new ConcurrentQueue<Uri>();
+    var clock = new FakeTimeProvider(
+      new DateTimeOffset(2026, 9, 9, 12, 0, 0, TimeSpan.Zero)
+    );
+    using var context = Context(
+      clock,
+      (request, _) =>
+      {
+        requests.Enqueue(request.RequestUri!);
+        return Task.FromResult(
+          request.RequestUri!.AbsolutePath == "/api/dispatch"
+            ? Archive(1, 1408)
+            : Auxiliary(request.RequestUri)
+        );
+      }
+    );
+    var component = context.Render<DispatchList>();
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          requests,
+          uri => uri.AbsolutePath == "/api/dispatch/board"
+        )
+    );
+    if (view == "Papers")
+      await View(component, "Papers").ClickAsync(new MouseEventArgs());
+    Assert.DoesNotContain(requests, uri => uri.AbsolutePath == "/api/dispatch");
+
+    await Search(component, clock, "AMF1408");
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find(".dispatch-history"))
+    );
+
+    var history = requests
+      .Last(uri => uri.AbsolutePath == "/api/dispatch")
+      .Query;
+    Assert.Contains("status=completed", history);
+    Assert.Contains("search=AMF1408", history);
+    Assert.Contains("pageSize=12", history);
+    Assert.Contains(
+      "search=AMF1408",
+      requests.Last(uri => uri.AbsolutePath == "/api/dispatch/board").Query
+    );
+    Assert.Equal(
+      "Completed",
+      component.Find(".dispatch-history__tag").TextContent
+    );
+    Assert.StartsWith(
+      "/dispatch/",
+      component.Find("a.dispatch-history__open").GetAttribute("href")
+    );
+    Assert.Equal("true", View(component, view).GetAttribute("aria-pressed"));
+    Assert.Equal(
+      "true",
+      component.Find("#dispatch-active").GetAttribute("aria-pressed")
+    );
+
+    var asked = requests.Count(uri => uri.AbsolutePath == "/api/dispatch");
+    await Search(component, clock, "");
+    component.WaitForAssertion(
+      () => Assert.Empty(component.FindAll(".dispatch-history"))
+    );
+    Assert.Equal(
+      asked,
+      requests.Count(uri => uri.AbsolutePath == "/api/dispatch")
+    );
+  }
+
+  // A history search that fails says so, with a retry, and is never shown
+  // as "no completed loads" (root's review, September 27).
+  [Fact]
+  public async Task AFailedHistorySearchOffersARetryNotAnEmptyAnswer()
+  {
+    var fail = true;
+    var clock = new FakeTimeProvider(
+      new DateTimeOffset(2026, 9, 9, 12, 0, 0, TimeSpan.Zero)
+    );
+    using var context = Context(
+      clock,
+      (request, _) =>
+        Task.FromResult(
+          request.RequestUri!.AbsolutePath != "/api/dispatch"
+            ? Auxiliary(request.RequestUri)
+          : fail ? new HttpResponseMessage(HttpStatusCode.InternalServerError)
+          : Archive(1, 1408)
+        )
+    );
+    var component = context.Render<DispatchList>();
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find("#dispatch-search"))
+    );
+
+    await Search(component, clock, "AMF1408");
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find(".dispatch-history__error"))
+    );
+    Assert.Empty(component.FindAll(".dispatch-history__open"));
+
+    fail = false;
+    await component.InvokeAsync(
+      () =>
+        component
+          .Find(".dispatch-history__error button")
+          .ClickAsync(new MouseEventArgs())
+    );
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find(".dispatch-history__open"))
+    );
+    Assert.Empty(component.FindAll(".dispatch-history__error"));
+  }
+
+  // An answer for a search the dispatcher has since cleared or replaced is
+  // dropped: history held back for AMF1408 does not appear after the search
+  // is cleared, nor over the answer for AMF1409.
+  [Fact]
+  public async Task ALateHistoryAnswerForAnOlderSearchIsDropped()
+  {
+    var held = new TaskCompletionSource<HttpResponseMessage>(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    var clock = new FakeTimeProvider(
+      new DateTimeOffset(2026, 9, 9, 12, 0, 0, TimeSpan.Zero)
+    );
+    using var context = Context(
+      clock,
+      (request, _) =>
+        request.RequestUri!.AbsolutePath != "/api/dispatch"
+          ? Task.FromResult(Auxiliary(request.RequestUri))
+        : request.RequestUri.Query.Contains("AMF1408") ? held.Task
+        : Task.FromResult(Archive(1, 1409))
+    );
+    var component = context.Render<DispatchList>();
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find("#dispatch-search"))
+    );
+
+    await Search(component, clock, "AMF1408");
+    await Search(component, clock, "");
+    held.SetResult(Archive(1, 1408));
+    await component.InvokeAsync(async () => await Task.Yield());
+    Assert.Empty(component.FindAll(".dispatch-history"));
+
+    var late = new TaskCompletionSource<HttpResponseMessage>(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    held = late;
+    await Search(component, clock, "AMF1408");
+    await Search(component, clock, "AMF1409");
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find(".dispatch-history__open"))
+    );
+    late.SetResult(Archive(1, 1408));
+    await component.InvokeAsync(async () => await Task.Yield());
+    Assert.Contains(
+      "1409",
+      Assert.Single(component.FindAll(".dispatch-history__open")).TextContent
+    );
+  }
+
+  // Every load the search finds can be reached, a page of 12 at a time
+  // (the owner, September 27): AMF10 finds 1014 on the first page and 1030
+  // on the second, asked for with the same search.
+  [Fact]
+  public async Task HistoryPagesThroughEveryMatch()
+  {
+    var requests = new ConcurrentQueue<Uri>();
+    var clock = new FakeTimeProvider(
+      new DateTimeOffset(2026, 9, 9, 12, 0, 0, TimeSpan.Zero)
+    );
+    using var context = Context(
+      clock,
+      (request, _) =>
+      {
+        requests.Enqueue(request.RequestUri!);
+        return Task.FromResult(
+          request.RequestUri!.AbsolutePath != "/api/dispatch"
+            ? Auxiliary(request.RequestUri)
+          : request.RequestUri.Query.Contains("page=2") ? Archive(2, 1030)
+          : Archive(1, 1014)
+        );
+      }
+    );
+    var component = context.Render<DispatchList>();
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find("#dispatch-search"))
+    );
+
+    await Search(component, clock, "AMF10");
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          "1014",
+          component.Find(".dispatch-history__open").TextContent
+        )
+    );
+    var pages = component.Find(".dispatch-history .dispatch-page__pagination");
+    Assert.Contains("Page 1 of 2", pages.TextContent);
+
+    await component.InvokeAsync(
+      () =>
+        component
+          .FindAll(".dispatch-history .dispatch-page__pagination button")
+          .Single(button => button.TextContent == "Next")
+          .ClickAsync(new MouseEventArgs())
+    );
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          "1030",
+          component.Find(".dispatch-history__open").TextContent
+        )
+    );
+    var second = requests
+      .Last(uri => uri.AbsolutePath == "/api/dispatch")
+      .Query;
+    Assert.Contains("page=2", second);
+    Assert.Contains("search=AMF10", second);
+    Assert.Contains("status=completed", second);
+    Assert.Contains(
+      "Page 2 of 2",
+      component.Find(".dispatch-history .dispatch-page__pagination").TextContent
+    );
+  }
+
+  private static async Task Search(
+    IRenderedComponent<DispatchList> component,
+    FakeTimeProvider clock,
+    string text
+  )
+  {
+    var input = component
+      .Find("#dispatch-search")
+      .InputAsync(new ChangeEventArgs { Value = text });
+    await component.InvokeAsync(
+      () => clock.Advance(TimeSpan.FromMilliseconds(300))
+    );
+    await input;
+  }
+
+  // Completed loads are read in the Table alone, newest day first (the
+  // owner, September 27); Cards read Active again.
   [Fact]
   public async Task CompletedReadsAsTheTableAndActiveKeepsTheCards()
   {
@@ -171,12 +403,7 @@ public sealed class CompletedDispatchScopeTests
     );
 
     Assert.Empty(component.FindAll("article.dispatch-truck"));
-    Assert.True(
-      component
-        .FindAll(".dispatch-view button")
-        .Single(button => button.TextContent == "Cards")
-        .HasAttribute("disabled")
-    );
+    Assert.False(View(component, "Cards").HasAttribute("disabled"));
     Assert.Equal(
       "true",
       component
@@ -189,17 +416,22 @@ public sealed class CompletedDispatchScopeTests
       component.Find(".dispatch-board__count").TextContent
     );
 
-    await component.InvokeAsync(
-      () => component.Find("#dispatch-active").ClickAsync(new())
-    );
+    // Cards read Active again.
+    await View(component, "Cards").ClickAsync(new MouseEventArgs());
+    Assert.Equal("true", View(component, "Cards").GetAttribute("aria-pressed"));
     Assert.Equal(
       "true",
-      component
-        .FindAll(".dispatch-view button")
-        .Single(button => button.TextContent == "Cards")
-        .GetAttribute("aria-pressed")
+      component.Find("#dispatch-active").GetAttribute("aria-pressed")
     );
   }
+
+  private static IElement View(
+    IRenderedComponent<DispatchList> component,
+    string name
+  ) =>
+    component
+      .FindAll(".dispatch-view button")
+      .Single(button => button.TextContent == name);
 
   // The list's place lives in its address: opened there (a return from a
   // load, browser Back or a reload), it reads that scope, search and page

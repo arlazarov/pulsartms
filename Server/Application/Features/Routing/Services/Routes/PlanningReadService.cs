@@ -76,11 +76,30 @@ public sealed class PlanningReadService(
     int? knownVersion = null
   )
   {
+    var seen = inputs.Version(truckId);
     var work = await inputs.ReadAsync(truckId, ct);
-    return work is null
-      ? NoRemaining(truckId, null)
-      : await ForItineraryAsync(work, ct, knownPlanId, knownVersion);
+    if (work is null)
+      return NoRemaining(truckId, null);
+    try
+    {
+      return await ForItineraryAsync(work, ct, knownPlanId, knownVersion);
+    }
+    catch (RoutePlanningException ex) when (ex.DependencyChanged)
+    {
+      // Once, through the owner: a second change is answered as a change.
+      work = await inputs.ReadAgainAsync(truckId, seen, ct);
+      return work is null
+        ? NoRemaining(truckId, null)
+        : await ForItineraryAsync(work, ct, knownPlanId, knownVersion);
+    }
   }
+
+  // The summary of inputs the caller already captured, so what it is built
+  // from and what it is checked and stored under are the same capture.
+  internal Task<AutomaticPlanningResult> ForInputsAsync(
+    TruckPlanningInputs work,
+    CancellationToken ct
+  ) => ForItineraryAsync(work, ct);
 
   public async Task<List<AutomaticPlanningResult>> ForBoardAsync(
     GetDispatchBoardQuery query,
@@ -130,28 +149,29 @@ public sealed class PlanningReadService(
     CancellationToken ct
   )
   {
-    var first = PlanningWorkPolicy.Candidates(work.Itinerary).FirstOrDefault();
-    if (first is null)
+    if (PlanningWorkPolicy.Candidates(work.Itinerary).FirstOrDefault() is null)
       return null;
+    var current = work.CurrentSegment;
     try
     {
       return await ForItineraryAsync(work, ct, metadataOnly: true);
     }
-    catch (RoutePlanningException ex)
+    catch (RoutePlanningException ex) when (!ex.DependencyChanged)
     {
       return new(
         work.Itinerary.TruckId,
-        first.Work.DispatchId,
-        first.LoadNumber,
+        current?.Work.DispatchId,
+        current?.LoadNumber,
         null,
         ex.Message
       )
       {
         Hos = work.Hos,
-        ExecutionLegId = first.Work.ExecutionLegId,
-        AssignmentRevision = first.Work.ExecutionLegId.HasValue
-          ? first.AssignmentRevision
-          : 0,
+        ExecutionLegId = current?.Work.ExecutionLegId,
+        AssignmentRevision =
+          current?.Work.ExecutionLegId.HasValue == true
+            ? current.AssignmentRevision
+            : 0,
       };
     }
   }
@@ -165,31 +185,42 @@ public sealed class PlanningReadService(
   )
   {
     var snapshot = work.Itinerary;
-    foreach (var segment in PlanningWorkPolicy.Candidates(snapshot))
+    if (work.CurrentSegment is not { } segment)
+      return NoRemaining(snapshot.TruckId, work.Hos);
+    var load = PlanningWorkPolicy.Resolve(snapshot, segment);
+    var result = await ReadDispatchAsync(
+      load,
+      work.Hos,
+      snapshot.InputSignature,
+      ct,
+      knownPlanId,
+      knownVersion,
+      metadataOnly
+    );
+    RequireStillCurrent(result.State?.Plan, load);
+    CheckAssignments(result.State?.Plan, snapshot);
+    await ApplyFuelAsync(result.State, ct, snapshot, work.Hos);
+    if (metadataOnly && result.State?.Plan is { } plan)
     {
-      var load = PlanningWorkPolicy.Resolve(snapshot, segment);
-      var result = await ReadDispatchAsync(
-        load,
-        work.Hos,
-        snapshot.InputSignature,
-        ct,
-        knownPlanId,
-        knownVersion,
-        metadataOnly
-      );
-      CheckAssignments(result.State?.Plan, snapshot);
-      if (!PlanningWorkPolicy.IsCompleted(result.State?.Plan, load))
-      {
-        await ApplyFuelAsync(result.State, ct, snapshot, work.Hos);
-        if (metadataOnly && result.State?.Plan is { } plan)
-        {
-          TrimForDisplay(plan, plan.Id, plan.Version);
-          plan.FuelRecommendations = null;
-        }
-        return PlanningWorkPolicy.WithWarnings(result, segment);
-      }
+      TrimForDisplay(plan, plan.Id, plan.Version);
+      plan.FuelRecommendations = null;
     }
-    return NoRemaining(snapshot.TruckId, work.Hos);
+    return PlanningWorkPolicy.WithWarnings(result, segment);
+  }
+
+  // The inputs chose this work as current, and its plan now says all its
+  // stops are passed: tracking moved after the capture. Which work follows
+  // is the inputs' decision, so a reader does not step on by itself; the
+  // caller captures the inputs again.
+  internal static void RequireStillCurrent(
+    RoutePlan? plan,
+    RouteWorkSnapshot load
+  )
+  {
+    if (PlanningWorkPolicy.IsCompleted(plan, load))
+      throw RoutePlanningException.Changed(
+        "The truck's current work changed while it was read."
+      );
   }
 
   private static AutomaticPlanningResult NoRemaining(
@@ -213,11 +244,15 @@ public sealed class PlanningReadService(
     Guid? knownPlanId = null,
     int? knownVersion = null,
     Guid? executionLegId = null,
-    Guid? truckId = null
+    Guid? truckId = null,
+    TruckPlanningInputs? captured = null
   )
   {
     var load = await routes.LoadAsync(id, ct, executionLegId, truckId);
-    var work = await inputs.ReadAsync(load.TruckId!.Value, ct);
+    var work =
+      captured?.Itinerary.TruckId == load.TruckId
+        ? captured
+        : await inputs.ReadAsync(load.TruckId!.Value, ct);
     var segment = work?.Itinerary.Segments.FirstOrDefault(x =>
       x.Work.DispatchId == id && x.Work.ExecutionLegId == load.ExecutionLegId
     );

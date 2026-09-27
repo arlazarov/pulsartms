@@ -157,6 +157,15 @@
     &:has(> .arrival-estimate) > .fleet-map-inspector__arrival-placeholder {
       display: none;
     }
+    // With no booking to line up with, the column is the label's own
+    // width: held at the booking's, "ETA" and its value ran apart. A
+    // stacked card keeps its own floor of zero.
+    @container map-truck-card
+      (width >= #{ui.breakpoint(map-truck-arrival-stacked)}) {
+      &:not(:has(> .fleet-map-inspector__appointment)) {
+        --route-fact-label: max-content;
+      }
+    }
   }
   // The booking at the same stop, under its forecast: its own label, the
   // visit's, so a scheduled time is never read as a predicted one.
