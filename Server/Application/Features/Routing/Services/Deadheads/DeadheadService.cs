@@ -172,6 +172,54 @@ public sealed partial class DeadheadService(
     return result;
   }
 
+  public async Task ReadCompletedAsync(
+    IReadOnlyCollection<DispatchResponse> items,
+    CancellationToken ct
+  )
+  {
+    if (items.Count == 0)
+      return;
+    var sources = items
+      .Select(x => new Load
+      {
+        Id = x.Id,
+        LoadNumber = x.LoadNumber,
+        Status = x.Status,
+        ShipDate = x.ShipDate,
+        DeliveryDate = x.DeliveryDate,
+        Price = x.Price,
+        Currency = x.Currency,
+        LoadedMiles = x.LoadedMiles,
+      })
+      .ToArray();
+    var sections = await ExecutionRouteSections.ReadAsync(db, sources, ct);
+    var legacy = new List<DispatchResponse>();
+    var native = new List<(DispatchResponse Item, RouteWorkSnapshot Work)>();
+    foreach (var item in items)
+    {
+      if (!sections.TryGetValue(item.Id, out var work))
+      {
+        legacy.Add(item);
+        continue;
+      }
+      if (work.Length == 1)
+      {
+        native.Add((item, work[0]));
+        continue;
+      }
+      // A load-level history row cannot use an arbitrary transfer leg's
+      // connection as its total. Keep an unresolved aggregate unknown.
+      item.EmptyMiles = null;
+      item.EmptyMilesStatus = "unavailable";
+      item.LoadedRatePerMile = DispatchRates.PerMile(
+        item.Price,
+        item.LoadedMiles
+      );
+      item.TotalRatePerMile = null;
+    }
+    await ReadAsync(legacy, native, ct);
+  }
+
   public Task ReadAsync(
     IReadOnlyCollection<DispatchResponse> items,
     CancellationToken ct

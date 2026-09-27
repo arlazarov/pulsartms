@@ -8,6 +8,71 @@ using Microsoft.Extensions.DependencyInjection;
 
 internal static class HistoryVerification
 {
+  public static async Task ReadFinancialsAsync(
+    IServiceProvider services,
+    CancellationToken ct
+  )
+  {
+    var db = services.GetRequiredService<AppDbContext>();
+    if (db.ServingCompany != Company.Amf)
+      throw new InvalidOperationException("Unexpected company.");
+    var result = await services
+      .GetRequiredService<ISender>()
+      .Send(new GetDispatchQuery(Status: "completed", PageSize: 100), ct);
+    if (!result.Success || result.Response is null)
+      throw new InvalidOperationException("Completed read failed.");
+    var page = result.Response;
+    var ids = page.Items.Select(x => x.Id).ToArray();
+    var links = await db
+      .LoadExecutionLegs.AsNoTracking()
+      .Where(x => ids.Contains(x.DispatchId))
+      .Select(x => new { x.DispatchId, x.ExecutionLeg.Status })
+      .ToArrayAsync(ct);
+    var native = links.Select(x => x.DispatchId).ToHashSet();
+    var saved = await db
+      .DispatchDeadheads.AsNoTracking()
+      .Where(x => ids.Contains(x.DispatchId))
+      .Select(x => new
+      {
+        x.DispatchId,
+        x.ExecutionLegId,
+        x.Miles,
+      })
+      .ToArrayAsync(ct);
+    Console.WriteLine(
+      JsonSerializer.Serialize(
+        new
+        {
+          totalCompleted = page.TotalCount,
+          checkedPageRows = page.Items.Count,
+          native = page
+            .Items.Where(x => native.Contains(x.Id))
+            .Select(x => new
+            {
+              x.LoadNumber,
+              x.EmptyMilesStatus,
+              x.LoadedMiles,
+              x.EmptyMiles,
+              x.TotalMiles,
+              x.TotalRatePerMile,
+              saved = saved
+                .Where(y => y.DispatchId == x.Id)
+                .Select(y => new
+                {
+                  native = y.ExecutionLegId.HasValue,
+                  y.Miles,
+                })
+                .ToArray(),
+              execution = links
+                .Where(y => y.DispatchId == x.Id)
+                .Select(y => y.Status)
+                .ToArray(),
+            }),
+        }
+      )
+    );
+  }
+
   public static async Task ReadAsync(
     IServiceProvider services,
     CancellationToken ct

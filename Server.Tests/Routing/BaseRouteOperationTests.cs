@@ -353,6 +353,46 @@ public sealed class BaseRouteOperationTests
         default
       )
     );
+    if (nativeSuccessor)
+    {
+      var completed = await context.Dispatches.SingleAsync(x => x.Id == next);
+      completed.Status = "completed";
+      var completedLeg = await context.ExecutionLegs.SingleAsync(x =>
+        x.Id == nextLeg
+      );
+      completedLeg.Status = "completed";
+      await context.SaveChangesAsync();
+      var providerCalls = fixture.Router.Calls;
+      var reader = new GetDispatchQueryHandler(
+        context,
+        services.Deadheads,
+        new TestDriverScope()
+      );
+      var page = (
+        await reader.Handle(new(Status: "completed"), default)
+      ).Response!;
+      var item = page.Items.Single(x => x.Id == next);
+      Assert.Equal(100m, item.EmptyMiles);
+      Assert.Equal(200m, item.TotalMiles);
+      Assert.Equal(0.5m, item.TotalRatePerMile);
+      Assert.Equal(providerCalls, fixture.Router.Calls);
+      Assert.DoesNotContain(
+        context.ChangeTracker.Entries(),
+        x =>
+          x.State
+            is EntityState.Added
+              or EntityState.Modified
+              or EntityState.Deleted
+      );
+      saved.InputHash = "obsolete-connection";
+      await context.SaveChangesAsync();
+      page = (await reader.Handle(new(Status: "completed"), default)).Response!;
+      item = page.Items.Single(x => x.Id == next);
+      Assert.Null(item.EmptyMiles);
+      Assert.Null(item.TotalMiles);
+      Assert.Null(item.TotalRatePerMile);
+      Assert.Equal(providerCalls, fixture.Router.Calls);
+    }
   }
 
   [Fact]

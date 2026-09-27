@@ -150,7 +150,7 @@ public class GetDispatchQueryHandler(
     {
       foreach (var load in items)
         DispatchProjection.Complete(load);
-      await deadhead.ReadAsync(items, cancellationToken);
+      await deadhead.ReadCompletedAsync(items, cancellationToken);
     }
     return RequestResponse<PaginatedList<DispatchResponse>>.Ok(
       new()

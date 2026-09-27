@@ -114,6 +114,12 @@ static async Task RunAsync(string[] args)
     .As(Company.Amf);
   using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(20));
   var ct = timeout.Token;
+  if (args.Contains("--verify-completed-financials"))
+  {
+    await using var scope = provider.CreateAsyncScope();
+    await HistoryVerification.ReadFinancialsAsync(scope.ServiceProvider, ct);
+    return;
+  }
   if (args.Contains("--verify-history"))
   {
     await using var scope = provider.CreateAsyncScope();
