@@ -40,7 +40,14 @@ public class TorqueDispatchProvider(TorqueApiService apiService)
       ExternalId = source.LoadNumber.ToString(CultureInfo.InvariantCulture),
       LoadNumber = source.LoadNumber,
       OrderNumber = source.OrderNumber,
-      Status = source.Status,
+      // Torque's sent status describes the invoice, after load completion.
+      Status = string.Equals(
+        source.Status?.Trim(),
+        "sent",
+        StringComparison.OrdinalIgnoreCase
+      )
+        ? "completed"
+        : source.Status ?? string.Empty,
       OrderDate = ParseDate(source.OrderDate),
       InvoiceDate = ParseDate(source.InvoiceDate),
       ShipDate = ParseDate(source.ShipDate),

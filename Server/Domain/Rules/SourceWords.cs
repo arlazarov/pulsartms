@@ -3,7 +3,7 @@ namespace Domain.Rules;
 // The words a load arrives wearing.
 //
 // A load's status and its stops' jobs are written by whoever sent the load
-// and are never normalised: DispatchMapper assigns source.Status and
+// and may retain provider spellings: DispatchMapper assigns source.Status and
 // source.Job straight through. So "is this a pickup" and "has this been
 // cancelled" are questions about someone else's spelling, and every place
 // that asks them has to accept the same set of answers.

@@ -5,6 +5,7 @@ using Application.Features.Dispatch.Commands.SyncDispatche;
 using Application.Features.Dispatch.Interfaces;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Options;
+using Application.Features.Synchronization.Options;
 using Application.Interfaces;
 using Domain.Entities;
 using Infrastructure;
@@ -39,6 +40,9 @@ catch (Exception ex)
 static async Task RunAsync(string[] args)
 {
   var apply = args.Contains("--apply");
+  var reconcile = args.Contains("--reconcile-invoiced");
+  var historicalOnly = args.Contains("--historical-only");
+  var refreshFloor = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-7);
   string Value(string name) =>
     args.Single(x => x.StartsWith(name + "=")).Split('=', 2)[1];
   var from = DateOnly.ParseExact(Value("--from"), "yyyy-MM-dd");
@@ -74,6 +78,19 @@ static async Task RunAsync(string[] args)
       }
     )
     .Build();
+  var backupArgument = args.SingleOrDefault(x =>
+    x.StartsWith("--create-backup=")
+  );
+  if (backupArgument is not null)
+  {
+    if (apply)
+      throw new InvalidOperationException("Separate backup and apply.");
+    await ImportBackup.CreateAsync(
+      config.GetConnectionString("DefaultConnection")!,
+      backupArgument.Split('=', 2)[1]
+    );
+    return;
+  }
   var services = new ServiceCollection();
   services.AddSingleton<IConfiguration>(config);
   services.AddLogging(x => x.ClearProviders());
@@ -83,6 +100,11 @@ static async Task RunAsync(string[] args)
   services.Configure<DispatchImportOptions>(
     config.GetSection("DispatchImport")
   );
+  var syncOptions =
+    config.GetSection("Synchronization").Get<SynchronizationOptions>() ?? new();
+  var orderFloor = DateOnly
+    .FromDateTime(DateTime.UtcNow)
+    .AddDays(-syncOptions.DispatchLookbackDays);
   var batch = new ImportBatch();
   services.RemoveAll<IDispatchProvider>();
   services.AddSingleton<IDispatchProvider>(batch);
@@ -92,9 +114,19 @@ static async Task RunAsync(string[] args)
     .As(Company.Amf);
   using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(20));
   var ct = timeout.Token;
+  if (args.Contains("--verify-history"))
+  {
+    await using var scope = provider.CreateAsyncScope();
+    await HistoryVerification.ReadAsync(scope.ServiceProvider, ct);
+    return;
+  }
   var seen = new HashSet<string>();
   var totalNew = 0;
   var totalExisting = 0;
+  var totalRepairs = 0;
+  var totalEligible = 0;
+  var retired = new[] { "11", "11001", "11002", "11003", "11004" };
+  var retiredCounts = new Dictionary<string, int>();
   for (var start = from; start <= to; start = start.AddDays(30))
   {
     var end = start.AddDays(29) < to ? start.AddDays(29) : to;
@@ -118,8 +150,82 @@ static async Task RunAsync(string[] args)
     var existing = await db
       .DispatchSourceLinks.AsNoTracking()
       .Where(x => x.Provider == "torqueai" && ids.Contains(x.ExternalId))
-      .Select(x => x.ExternalId)
+      .Select(x => new { x.ExternalId, x.Dispatch.Status })
       .ToListAsync(ct);
+    var examples = new[] { 1016, 1059, 1133, 1172 };
+    var examplesHere = unique
+      .Where(x => examples.Contains(x.LoadNumber))
+      .Select(x => x.ExternalId)
+      .ToArray();
+    if (examplesHere.Length > 0)
+    {
+      var exampleLoads = await db
+        .DispatchSourceLinks.AsNoTracking()
+        .Where(x =>
+          x.Provider == "torqueai" && examplesHere.Contains(x.ExternalId)
+        )
+        .Select(x => new
+        {
+          x.ExternalId,
+          x.DispatchId,
+          x.Dispatch.Status,
+        })
+        .ToListAsync(ct);
+      var exampleIds = exampleLoads.Select(x => x.DispatchId).ToArray();
+      var exampleLegs = await db
+        .LoadExecutionLegs.AsNoTracking()
+        .Where(x => exampleIds.Contains(x.DispatchId))
+        .Select(x => new { x.DispatchId, x.ExecutionLeg.Status })
+        .ToListAsync(ct);
+      Console.WriteLine(
+        JsonSerializer.Serialize(
+          new
+          {
+            examples = exampleLoads.Select(x => new
+            {
+              number = x.ExternalId,
+              sourceStatus = unique
+                .Single(y => y.ExternalId == x.ExternalId)
+                .Status,
+              storedStatus = x.Status,
+              execution = exampleLegs
+                .Where(y => y.DispatchId == x.DispatchId)
+                .Select(y => y.Status)
+                .ToArray(),
+            }),
+          }
+        )
+      );
+    }
+    var known = existing
+      .Select(x => x.ExternalId)
+      .ToHashSet(StringComparer.Ordinal);
+    var invoiced = existing
+      .Where(x =>
+        string.Equals(
+          x.Status?.Trim(),
+          "sent",
+          StringComparison.OrdinalIgnoreCase
+        )
+      )
+      .Select(x => x.ExternalId)
+      .ToHashSet(StringComparer.Ordinal);
+    var repairs = unique
+      .Where(x => invoiced.Contains(x.ExternalId) && x.Status == "completed")
+      .ToArray();
+    var eligible = historicalOnly
+      ? repairs
+        .Where(x => x.DeliveryDate < refreshFloor || end < orderFloor)
+        .ToArray()
+      : repairs;
+    var selected = reconcile
+      ? eligible
+      : unique.Where(x => !known.Contains(x.ExternalId)).ToArray();
+    totalRepairs += repairs.Length;
+    totalEligible += eligible.Length;
+    foreach (var row in eligible.Where(x => retired.Contains(x.TruckNumber)))
+      retiredCounts[row.TruckNumber] =
+        retiredCounts.GetValueOrDefault(row.TruckNumber) + 1;
     var fresh = unique.Length - existing.Count;
     totalNew += fresh;
     totalExisting += existing.Count;
@@ -134,18 +240,21 @@ static async Task RunAsync(string[] args)
           distinct = unique.Length,
           existing = existing.Count,
           missing = fresh,
+          invoicedRepairs = repairs.Length,
+          reconcile,
+          eligibleRepairs = eligible.Length,
+          historicalOnly,
           statuses = unique
             .GroupBy(x => x.Status)
             .ToDictionary(x => x.Key, x => x.Count()),
         }
       )
     );
-    if (!apply || fresh == 0)
+    if (!apply || selected.Length == 0)
       continue;
     // The normal command owns identity, reconciliation and its transaction.
     // No host is started: this process runs no background jobs or migrations.
-    var known = existing.ToHashSet(StringComparer.Ordinal);
-    batch.Items = unique.Where(x => !known.Contains(x.ExternalId)).ToArray();
+    batch.Items = selected;
     var result = await sp.GetRequiredService<ISender>()
       .Send(new SyncDispatchesCommand(), ct);
     if (!result.Success)
@@ -161,6 +270,21 @@ static async Task RunAsync(string[] args)
       .CountAsync(ct);
     if (linked != unique.Length)
       throw new InvalidOperationException("Committed identity check failed.");
+    if (reconcile)
+    {
+      var repairedIds = selected.Select(x => x.ExternalId).ToArray();
+      var verified = await db
+        .DispatchSourceLinks.AsNoTracking()
+        .CountAsync(
+          x =>
+            x.Provider == "torqueai"
+            && repairedIds.Contains(x.ExternalId)
+            && x.Dispatch.Status == "completed",
+          ct
+        );
+      if (verified != selected.Length)
+        throw new InvalidOperationException("Completion check failed.");
+    }
     Console.WriteLine(
       JsonSerializer.Serialize(
         new
@@ -184,6 +308,9 @@ static async Task RunAsync(string[] args)
         sourceIdentities = seen.Count,
         missingBefore = totalNew,
         existingBefore = totalExisting,
+        invoicedRepairsBefore = totalRepairs,
+        eligibleRepairsBefore = totalEligible,
+        retiredTruckRepairs = retiredCounts,
       }
     )
   );
