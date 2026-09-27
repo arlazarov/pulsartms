@@ -259,6 +259,9 @@ export function createRouteLayer(
     refreshDistances() {
       if (!disposed) stops.refreshDistances();
     },
+    setCompletions(list: { id: string; at: string | null }[]) {
+      if (!disposed) stops.setCompletions(list);
+    },
     setLoadReference(value: (LoadReference & { dispatchId?: string }) | null) {
       if (!disposed) stops.setLoadReference(value);
     },

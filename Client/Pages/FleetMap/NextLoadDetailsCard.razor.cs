@@ -86,6 +86,12 @@ public partial class NextLoadDetailsCard
   [Parameter]
   public EventCallback OnClose { get; set; }
   private readonly ArrivalDisplayMemory _arrivalMemory = new();
+  private string? CompletedAt =>
+    Stop is not null && Details?.Id == Route.Id
+      ? Details.Stops.FirstOrDefault(stop => stop.Id == Stop.Id) is { } done
+        ? StopCompletion.Time(done)
+        : null
+      : null;
   private bool StopCompleted =>
     Stop is null
     || Details?.Id == Route.Id

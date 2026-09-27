@@ -45,6 +45,8 @@ export function createRouteStops(
   let dispatchId: string | null = null,
     loadReference: LoadReference | null = null;
   let fuelArrivals: any[] = [];
+  // The stops the server says are completed, and when; not GPS passage.
+  let completions = new Map<string, string | null>();
 
   function updateDistance(entry: Entry) {
     const valid = Number.isFinite(progress) && Number.isFinite(entry.miles);
@@ -81,7 +83,11 @@ export function createRouteStops(
             quantity: `${arrival.gallons.toFixed(0)} US gal`,
           }
         : '—';
+    const completion = completions.has(entry.stop.id)
+      ? { at: completions.get(entry.stop.id) ?? null }
+      : null;
     const key = JSON.stringify([
+      completion,
       entry.metadata,
       loadReference,
       etaText,
@@ -95,17 +101,21 @@ export function createRouteStops(
     ]);
     if (entry.contentKey === key && !opening) return;
     if (entry.contentKey !== key) {
-      entry.content = stopContent(entry.details!, {
-        loadReference,
-        etaText,
-        etaStatus,
-        cycleStatus,
-        etaTone: etaTone ?? undefined,
-        remaining: entry.remaining ?? undefined,
-        etaLabel,
-        hours,
-        fuelText,
-      });
+      entry.content = stopContent(
+        { ...entry.details!, done: !!completion },
+        {
+          completion,
+          loadReference,
+          etaText,
+          etaStatus,
+          cycleStatus,
+          etaTone: etaTone ?? undefined,
+          remaining: entry.remaining ?? undefined,
+          etaLabel,
+          hours,
+          fuelText,
+        },
+      );
       entry.contentKey = key;
     }
     popup.show(entry.content!, point(entry.stop.point!));
@@ -150,6 +160,12 @@ export function createRouteStops(
               driver: text(value.driver),
             }
           : null;
+      for (const entry of entries.values()) refreshContent(entry);
+    },
+    setCompletions(list: { id: string; at: string | null }[]) {
+      completions = new Map(
+        (Array.isArray(list) ? list : []).map(x => [x.id, x.at ?? null]),
+      );
       for (const entry of entries.values()) refreshContent(entry);
     },
     setEtas(labels: Map<string, StopEtaLabel>) {

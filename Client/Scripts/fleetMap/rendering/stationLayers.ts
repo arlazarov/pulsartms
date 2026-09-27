@@ -17,18 +17,19 @@ export type StationMark = {
 };
 
 const selectedBlue = [49, 94, 234];
-// The dark map keeps the approved stations: a dot of the price colour in a
-// white rim, white badges on slate (the owner, September 27). Only the
-// light map wears the instrument set: a pump on the light core in a fine
-// rim of its price colour, the plan's numbers in the deep accent.
+// The instrument core the stop badges share, and the ink the pump and the
+// plan's numbers are drawn in: bright cyan on the dark map, the deep accent
+// on the light one.
+const darkInk = [34, 211, 238];
 const lightInk = [14, 116, 144];
 const theme = () =>
   isLightMap()
-    ? { light: true, core: lightMarkCore, ink: lightInk }
-    : { light: false, core: markCore, ink: [255, 255, 255] };
+    ? { core: lightMarkCore, ink: lightInk }
+    : { core: markCore, ink: darkInk };
 
-// A light-map station: the pump; a stop of the fuel plan is the same pump,
-// a size larger. One icon per colour, cached.
+// Every fuel station is a pump on the core inside a fine rim of its price
+// colour; a stop of the fuel plan is the same pump, a size larger. One icon
+// per colour and theme, cached.
 const pumpIcons = new Map<
   string,
   {
@@ -80,7 +81,7 @@ export function createStationLayers({
     onClick: unknown,
     radius: number = metrics.stationRadius,
   ) =>
-    IconLayer && theme().light
+    IconLayer
       ? new IconLayer({
           id,
           data,
@@ -107,10 +108,12 @@ export function createStationLayers({
           getRadius: radius,
           stroked: true,
           lineWidthUnits: 'pixels',
-          getLineWidth: (d: StationMark) => (d.selected ? 3 : 2),
-          getFillColor: (d: StationMark) => d.color,
+          // A fine ring of the price colour on the dark core, as every mark
+          // on the map is drawn; a chosen one takes the selection blue.
+          getLineWidth: (d: StationMark) => (d.selected ? 2.5 : 1.75),
+          getFillColor: theme().core,
           getLineColor: (d: StationMark) =>
-            d.selected || d.recommended ? selectedBlue : [255, 255, 255],
+            d.selected || d.recommended ? selectedBlue : d.color,
           autoHighlight: true,
           highlightColor: [49, 94, 234, 100],
           onHover,
@@ -147,9 +150,7 @@ export function createStationLayers({
       getBackgroundColor: background,
       backgroundPadding: metrics.fuelVisitLabelPadding,
       backgroundBorderRadius: 4,
-      getBorderColor: theme().light
-        ? [...theme().ink, 140]
-        : [255, 255, 255, 220],
+      getBorderColor: [...theme().ink, 140],
       getBorderWidth: 1,
       fontFamily: 'Arial, sans-serif',
       fontSettings: fonts.fuelVisit,
@@ -179,8 +180,8 @@ export function createStationLayers({
       radiusUnits: 'pixels',
       filled: false,
       stroked: true,
-      getLineColor: theme().light ? [...selectedBlue, 170] : selectedBlue,
-      getLineWidth: theme().light ? 1.25 : 3,
+      getLineColor: [...selectedBlue, 170],
+      getLineWidth: 1.25,
       lineWidthUnits: 'pixels',
       pickable: true,
       onHover,
@@ -249,7 +250,7 @@ export function createStationLayers({
         // The badge now carries how much is bought there, so its alphabet
         // is whatever the quantity and its unit need.
         'auto',
-        theme().light ? theme().core : [30, 41, 59],
+        theme().core,
         metrics.fuelVisitLabelOffset,
         fonts,
         setHover,

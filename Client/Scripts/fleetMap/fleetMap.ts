@@ -543,6 +543,9 @@ export async function createFleetMap(
         cameraViewport.refresh();
         map.fitBounds(bounds, cameraViewport.padding(55));
       },
+      setStopCompletions(list: { id: string; at: string | null }[]) {
+        if (!disposed) route.setCompletions(list);
+      },
       setLoadReference(payload: any) {
         if (!disposed) route.setLoadReference(payload);
       },

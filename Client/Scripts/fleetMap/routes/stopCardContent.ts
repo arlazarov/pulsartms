@@ -69,6 +69,9 @@ export type StopCardWords = {
   // What the tank will hold on arrival: the two figures, the em dash when
   // the plan cannot say, or null when there is nothing to show at all.
   fuelText?: { percent: number; quantity: string } | '—' | null;
+  // Set only when the server says the stop is completed: no forecast is
+  // left, only when it was done, if that is known.
+  completion?: { at: string | null } | null;
 };
 
 export function stopContent(
@@ -83,6 +86,7 @@ export function stopContent(
     etaLabel,
     hours,
     fuelText,
+    completion,
   }: StopCardWords,
 ): HTMLElement {
   function element(tag: string, className: string, text?: string) {
@@ -113,7 +117,7 @@ export function stopContent(
       element(
         'span',
         'fleet-route-popup__state fleet-route-popup__state--success',
-        'Done',
+        completion ? 'Completed' : 'Done',
       ),
     );
   identity.append(job);
@@ -186,6 +190,26 @@ export function stopContent(
     group.append(element('dt', 'fleet-route-popup__label', label), value);
     parent.append(group);
     return value;
+  }
+  if (completion) {
+    // A completed stop keeps its booking and says when it was done; the
+    // forecast, distance, fuel and cycle all looked ahead and are gone.
+    field(
+      facts,
+      'Appointment',
+      stop.appointment,
+      'fleet-route-popup__appointment',
+    );
+    if (completion.at)
+      field(
+        facts,
+        'Completed at',
+        completion.at,
+        'fleet-route-popup__completed',
+      );
+    information.append(facts);
+    details.append(location, information);
+    return details;
   }
   // The forecast leads, with the one word about it: on time, late, short
   // of cycle. The booking follows on the same label column.

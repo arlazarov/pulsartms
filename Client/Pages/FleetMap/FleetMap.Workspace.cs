@@ -74,6 +74,7 @@ public partial class FleetMap
       _trip = null;
       _tripStop = null;
       await FocusMapStopAsync(null);
+      await PushStopCompletionsAsync();
       StateHasChanged();
     }
     var date = DateOnly
@@ -98,10 +99,13 @@ public partial class FleetMap
       _chainLoading = false;
       _chainFailed = !result.Success || result.Response is null;
       if (!_chainFailed)
+      {
         _chainLoads =
           result
             .Response!.Items.FirstOrDefault(row => row.TruckId == truck)
             ?.Dispatches ?? [];
+        await PushStopCompletionsAsync();
+      }
       StateHasChanged();
     }
     catch (OperationCanceledException) when (request.IsCancellationRequested)
@@ -111,6 +115,24 @@ public partial class FleetMap
       if (ReferenceEquals(_chainRequest, request))
         _chainRequest = null;
     }
+  }
+
+  // The stop cards on the map hear which stops the server has completed,
+  // from the same board read the chain shows.
+  private async Task PushStopCompletionsAsync()
+  {
+    if (_map is null || _disposed)
+      return;
+    var completed = _chainLoads
+      .SelectMany(load => load.Stops)
+      .Where(stop => stop.IsCompleted)
+      .Select(stop => new
+      {
+        id = stop.Id.ToString(),
+        at = StopCompletion.Time(stop),
+      })
+      .ToArray();
+    await _map.InvokeVoidAsync("setStopCompletions", (object)completed);
   }
 
   private void DisposeChain()
@@ -212,9 +234,10 @@ public partial class FleetMap
       var route = _nextLoadRoutes.FirstOrDefault(route =>
         route.Id == load.Id && route.ExecutionLegId == load.ExecutionLegId
       );
-      var index = stop is { } id && route is not null
-        ? route.Stops.ToList().FindIndex(x => x.Id == id)
-        : -1;
+      var index =
+        stop is { } id && route is not null
+          ? route.Stops.ToList().FindIndex(x => x.Id == id)
+          : -1;
       if (stop is { } chosen && (!ShowNextLoads || index < 0))
       {
         // No drawn road to open the stop on: the camera still goes to that

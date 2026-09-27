@@ -40,8 +40,7 @@ visual inspection only, never acceptance.
 | Truck number and "N trucks" cluster tags: HUD plates (clipped corners, fine accent outline, edge ticks, glass sheen), both themes; icons, counts, clustering and picking unchanged | Built |
 | Sonar: four thin compact rings, slow, brighter ink on light map | Built, Seen dark (light ink not yet seen) |
 | Stop badges: glass core, fine rim, crisp P / D, dashed when done; light variant | Built, Seen dark and light |
-| Fuel stations, dark map: the approved earlier dots (price colour, white rim, white badges on slate); plan stop slightly larger, "Fuel N" | Built (correction: the pump redesign was asked for the light map only) |
-| Fuel stations, light map: pump in its price rim; plan stop same pump larger, "Fuel N" | Built (not yet seen on a plan) |
+| Fuel stations, both maps: pump on the glass core in a fine price-colour rim (dark: cyan ink, as the owner praised; light: its own deep-accent variant); plan stop same pump slightly larger, "Fuel N" | Built (correction: the dark pump is kept; only the truck marks went back to the approved dark look) |
 | Selected route glows (current or picked later load), slow breathing | Built, Seen (picked later load) |
 | Unselected later routes: fine dashes, no glow; travelled part thin and quiet | Built (not yet seen) |
 | Selected P / D / fuel: HUD reticle with four ticks and soft glow | Built |
@@ -60,6 +59,7 @@ visual inspection only, never acceptance.
 | Stop card (current and next): HUD glass, corner brackets, dimensional emblem, compact facts | Built, Seen dark current / light next |
 | Load number opens the load; no large Open load button | Built, Seen |
 | Stop card stacks in the narrow panel; no mid-word breaks | Built, Seen |
+| Stop the server completed (IsCompleted, not GPS or load state), current and next cards: no ETA, Left, Fuel on arrival, cycle or late warnings; Completed status, completion time only when recorded; address, load link, appointment kept | Built |
 
 ## Trip chain
 
