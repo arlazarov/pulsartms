@@ -105,3 +105,11 @@ driver and co-driver identities match. The reconciliation resource check stops
 before copying actuals. Do not globally strip zeros or bypass inactive-resource
 checks: resolve the confirmed duplicate identity with preserved history first.
 No production repair has occurred yet.
+
+## Handler sequence verification
+
+The isolated PostgreSQL regression now exercises CorrectDispatchStopHandler
+with a fresh context for each of two consecutive saves, passing the preceding
+response fingerprint and revision into the next request. Both succeed and
+workspace revision advances to 2. This extended test passed, zero skips.
+This supplements the reader precision regression; it is not a production test.

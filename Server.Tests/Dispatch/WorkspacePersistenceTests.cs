@@ -1,5 +1,8 @@
+using Application.Features.Dispatch.Commands;
 using Application.Features.Dispatch.Services;
 using Application.Features.Execution.Models;
+using Application.Interfaces;
+using Domain.Entities;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
@@ -98,5 +101,68 @@ public sealed class WorkspacePersistenceTests
       saved.Response.SourceFingerprint,
       changed!.Response.SourceFingerprint
     );
+    db.Users.Add(
+      new User
+      {
+        Id = Guid.NewGuid(),
+        IdentityUserId = "workspace-operator",
+        Name = "Workspace operator",
+        Email = "workspace@example.invalid",
+      }
+    );
+    await db.SaveChangesAsync();
+    using var reads = TestCache.Create();
+    var current = changed.Response;
+    foreach (var completion in new[] { "completed", "pending" })
+    {
+      var handler = new CorrectDispatchStopHandler(
+        fixture.Connect(),
+        new Caller(),
+        new Roles(),
+        TimeProvider.System,
+        reads,
+        TestCache.Preparation()
+      );
+      var result = await handler.Handle(
+        new(
+          load.Id,
+          stop.Id,
+          new()
+          {
+            ExpectedRevision = current.Revision,
+            SourceFingerprint = current.SourceFingerprint,
+            IdempotencyKey = Guid.NewGuid(),
+            Completion = completion,
+          }
+        ),
+        default
+      );
+      Assert.True(result.Success, string.Join("; ", result.Errors ?? []));
+      current = result.Response!;
+    }
+    Assert.Equal(2, current.Revision);
+  }
+
+  private sealed class Caller : ICurrentUser
+  {
+    public bool IsAuthenticated => true;
+    public string IdentityUserId => "workspace-operator";
+  }
+
+  private sealed class Roles : IUserRoleService
+  {
+    public Task<string?> GetAsync(string id, CancellationToken ct = default) =>
+      Task.FromResult<string?>("Dispatch");
+
+    public Task<Dictionary<Guid, string>> GetAsync(
+      IReadOnlyCollection<Guid> ids,
+      CancellationToken ct = default
+    ) => throw new NotSupportedException();
+
+    public Task SetAsync(
+      string id,
+      string role,
+      CancellationToken ct = default
+    ) => throw new NotSupportedException();
   }
 }
