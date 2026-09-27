@@ -1029,7 +1029,9 @@ failed on the new worktree's missing Client packages and is marked.
   Owner decision: Root. Neither is made until chosen.
 
 - **F24 design: schema compatibility.** Re-read (read-only review of all
-  77 migrations, verified at the guards and the initializer). Two
+  77 migrations, verified at the guards and the initializer; the F24-F26
+  reviewers' reports were not retained - the facts used are restated
+  here with the file and line they were checked at). Two
   corrections to the finding: 22 migrations follow `RecordRouteMovement`
   (not 17), none with a guarded `Down`; and a rollback does not reach
   `IsolateCarrierIntegrationCredentials` first - `Down`s run newest
@@ -1166,8 +1168,8 @@ failed on the new worktree's missing Client packages and is marked.
   referrer and API restrictions are confirmed in the console.
 - **Payload sizes of locations, HOS and planning.** Owner: Client (F6).
   Done when measured in a browser trace.
-- **Reported findings not re-read (F10 scan, F12, F15, F19, F27).** Owner: this audit. Done when each is re-read, or fixed
-  with its test.
+- **Reported findings not re-read (F10 scan, F12, F15, F19, F27).**
+  Owner: this audit. Done when each is re-read, or fixed with its test.
 - **Role model (F18).** Owner: the owner. Done when a limited role is
   chosen or explicitly declined.
 - **PostgreSQL fixture.** Owner: tests. Done when an isolated fixture,
