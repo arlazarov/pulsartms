@@ -384,6 +384,36 @@ public sealed class PlanningSummaryCacheTests
     Assert.False(cache.IsCurrent(work));
   }
 
+  // Nothing changed while an abandoned preparation ran; its lease ran out
+  // and another took the entry over. The first one finishing late may
+  // neither publish nor end the replacement's lease.
+  [Fact]
+  public void AnExpiredPreparationCannotPublishOverItsReplacement()
+  {
+    var time = new FakeTimeProvider();
+    var cache = new PlanningSummaryCache(time);
+    var key = new PlanningSummaryCache.Key(Guid.NewGuid(), Guid.NewGuid());
+    cache.Read(key, "a");
+    var expired = cache.Take()!;
+    time.Advance(TimeSpan.FromMinutes(6));
+    cache.Read(key, "a");
+    var replacement = cache.Take()!;
+
+    Assert.False(cache.IsCurrent(expired));
+    cache.Complete(expired, "a", Result(key, time) with { Message = "old" });
+    Assert.Null(cache.Read(key, "a"));
+    Assert.Null(cache.Take());
+    cache.Complete(
+      replacement,
+      "a",
+      Result(key, time) with
+      {
+        Message = "new",
+      }
+    );
+    Assert.Equal("new", cache.Read(key, "a")!.Message);
+  }
+
   private sealed class FakeTimeProvider : TimeProvider
   {
     private DateTimeOffset now = DateTimeOffset.UtcNow;

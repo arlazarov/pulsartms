@@ -165,8 +165,9 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
         || entry.RequestedAt <= time.GetUtcNow().AddMinutes(-2)
       )
         return null;
+      var lease = Lease(entry);
       entry.Ticket = Guid.NewGuid();
-      return new(key, entry.Ticket, entry.Signature, Lease(entry));
+      return new(key, entry.Ticket, entry.Signature, lease);
     }
   }
 
@@ -186,9 +187,13 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
   public bool IsCurrent(Work work)
   {
     lock (gate)
-      return entries.TryGetValue(work.Key, out var entry)
-        && entry.Ticket == work.Ticket;
+      return entries.TryGetValue(work.Key, out var entry) && Holds(entry, work);
   }
+
+  // The work's ticket is the entry's, and so is its lease if it has one.
+  private static bool Holds(Entry entry, Work work) =>
+    entry.Ticket == work.Ticket
+    && (work.Lease == default || entry.Lease == work.Lease);
 
   public Work? Take()
   {
@@ -205,17 +210,17 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
         .FirstOrDefault();
       if (pair.Value is null)
         return null;
-      return new(
-        pair.Key,
-        pair.Value.Ticket,
-        pair.Value.Signature,
-        Lease(pair.Value)
-      );
+      var lease = Lease(pair.Value);
+      return new(pair.Key, pair.Value.Ticket, pair.Value.Signature, lease);
     }
   }
 
   private Guid Lease(Entry entry)
   {
+    // Taking over a lease that ran out: the earlier holder's ticket goes
+    // with it, so its late result cannot be published.
+    if (entry.Busy)
+      entry.Ticket = Guid.NewGuid();
     entry.Busy = true;
     entry.Lease = Guid.NewGuid();
     entry.LeasedAt = time.GetUtcNow();
@@ -282,7 +287,7 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
     {
       if (!entries.TryGetValue(work.Key, out var entry))
         return;
-      if (entry.Ticket != work.Ticket)
+      if (!Holds(entry, work))
       {
         if (work.Lease != default && entry.Lease == work.Lease)
           entry.Busy = false;
