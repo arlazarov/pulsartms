@@ -38,7 +38,10 @@ public static class DispatchWorkPhase
 
   // The server's conflict in words, the same on every view.
   public static string? ConflictText(string? conflict) =>
-    conflict == "route_passed_not_delivered"
-      ? "Route passed · not delivered"
-      : null;
+    conflict switch
+    {
+      "route_passed_not_delivered" => "Route passed · not delivered",
+      "route_passed_work_open" => "Route passed · delivered, work open",
+      _ => null,
+    };
 }

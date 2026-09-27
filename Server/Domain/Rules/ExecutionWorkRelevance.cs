@@ -3,14 +3,11 @@ using Domain.Models.Routing;
 namespace Domain.Rules;
 
 // Whether a load is still work: something the truck is driving now or will
-// drive. A load leaves this set when the source cancels it, when its
-// delivery is done, or when its date has passed without it ever starting.
-//
-// The delivery test here is a second reading of the question [[LoadCompletion]]
-// answers, and it is not the same reading: this one looks back for the last
-// delivery among the stops a truck attends, so a load whose final stop is a
-// trailer drop still counts as delivered. LoadCompletion looks only at the
-// last stop. Both are in use; neither was written knowing about the other.
+// drive. A load leaves this set when the source cancels it, when the
+// truck's work on it is finished (TruckWorkCompletion - cargo delivered and
+// any trailer drop after it done), or when its date has passed without it
+// ever starting. It shares its reading of delivery with LoadCompletion
+// (CargoDelivery); before stage 4b each read "delivered" its own way.
 public static class ExecutionWorkRelevance
 {
   public static bool IsCurrentOrUpcoming(
@@ -34,24 +31,10 @@ public static class ExecutionWorkRelevance
       return false;
     if (requiresActualReview)
       return true;
-    var final = load.Stops.LastOrDefault(x =>
-      x.StateAfter != "No truck"
-      && (
-        x.Job.Equals("Drop Off", StringComparison.OrdinalIgnoreCase)
-        || x.Job.Equals("Delivery", StringComparison.OrdinalIgnoreCase)
-      )
-    );
-    if (
-      final?.CompletionOverride == true
-      || final?.CompletionOverride != false
-        && (
-          final?.DeliveredAt is not null
-          || final?.DepartedAt is not null
-          || final?.ManualCompletedAt is not null
-            && load.Stops.Where(s => s.StateAfter != "No truck")
-              .All(s => s.IsCompleted)
-        )
-    )
+    // Truck work, not cargo: a load whose cargo is delivered while the
+    // truck still has a trailer to drop stays the truck's work until the
+    // drop is done (TruckWorkCompletion).
+    if (TruckWorkCompletion.IsFinished(load.Stops.Select(CompletionStop.From)))
       return false;
     // A missed appointment or UTC midnight does not complete an active load.
     if (HasStarted(load))

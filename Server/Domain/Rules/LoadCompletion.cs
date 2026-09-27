@@ -1,41 +1,22 @@
 namespace Domain.Rules;
 
-// Whether a load is done.
-//
-// It is when it has been marked so. Otherwise it is when its last stop is a
-// delivery and that delivery is done: said to be by a dispatcher's override,
-// or, unless a dispatcher has said it is not, recorded by the truck leaving
-// or the freight being delivered - or confirmed by hand, which counts only
-// once every other stop that carries cargo is done too. A delivery confirmed
-// by hand on a load whose pickup never happened is a mistake, not a
-// completed load.
+// Whether a load is done: closed by the source or a dispatcher, or its
+// cargo delivered and the truck's work on it finished (CargoDelivery,
+// TruckWorkCompletion). The three are distinct facts; this only combines
+// them for the "Completed" a load carries. A load whose cargo is delivered
+// while the truck still has a trailer to drop is not completed yet.
 //
 // This was decided in the browser, from a copy of the stops, by a rule the
-// server could not see - and the browser's copy of "a stop is done" had
-// already drifted from the server's: it did not know a stop can be waiting
-// for a handoff.
+// server could not see; then here, by a reading of "the last stop" that
+// ExecutionWorkRelevance did not share (stage 4b of
+// docs/architecture/current-work.md).
 public static class LoadCompletion
 {
+  public static bool IsClosed(string status) =>
+    status.Equals("completed", StringComparison.OrdinalIgnoreCase);
+
   public static bool IsCompleted(
     string status,
-    string? finalStopJob,
-    bool? finalStopOverride,
-    bool finalStopRecorded,
-    bool finalStopConfirmedByHand,
-    bool everyCargoStopCompleted
-  ) =>
-    status.Equals("completed", StringComparison.OrdinalIgnoreCase)
-    || finalStopJob is not null
-      && (
-        finalStopJob.Equals("Drop Off", StringComparison.OrdinalIgnoreCase)
-        || finalStopJob.Equals("Delivery", StringComparison.OrdinalIgnoreCase)
-      )
-      && (
-        finalStopOverride == true
-        || finalStopOverride != false
-          && (
-            finalStopRecorded
-            || finalStopConfirmedByHand && everyCargoStopCompleted
-          )
-      );
+    IReadOnlyCollection<CompletionStop> stops
+  ) => IsClosed(status) || TruckWorkCompletion.IsFinished(stops);
 }

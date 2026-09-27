@@ -137,7 +137,11 @@ public sealed class GetDispatchWorkspaceHandler(
         return x with
         {
           Phase = phase,
-          Conflict = WorkPlacements.Conflict(phase, load.Completed),
+          Conflict = WorkPlacements.Conflict(
+            phase,
+            load.Completed,
+            load.CargoDelivered
+          ),
         };
       }),
     ];
@@ -155,6 +159,10 @@ public sealed class GetDispatchWorkspaceHandler(
           load.PlanningAssignmentRevision
         )
       );
-    load.WorkConflict = WorkPlacements.Conflict(load.WorkPhase, load.Completed);
+    load.WorkConflict = WorkPlacements.Conflict(
+      load.WorkPhase,
+      load.Completed,
+      load.CargoDelivered
+    );
   }
 }

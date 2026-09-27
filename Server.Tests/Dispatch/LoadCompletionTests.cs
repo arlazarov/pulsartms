@@ -12,54 +12,64 @@ public sealed class LoadCompletionTests
 {
   [Fact]
   public void ALoadMarkedCompletedIsCompletedWhateverItsStopsSay() =>
-    Assert.True(
-      LoadCompletion.IsCompleted("Completed", null, null, false, false, false)
-    );
+    Assert.True(LoadCompletion.IsCompleted("Completed", []));
 
   [Theory]
   [InlineData("Drop Off")]
   [InlineData("delivery")]
   public void ARecordedFinalDeliveryCompletesTheLoad(string job) =>
     Assert.True(
-      LoadCompletion.IsCompleted("in_transit", job, null, true, false, false)
-    );
-
-  [Fact]
-  public void ALoadThatDoesNotEndInADeliveryIsNotCompletedByItsLastStop() =>
-    Assert.False(
       LoadCompletion.IsCompleted(
         "in_transit",
-        "Pick Up",
-        true,
-        true,
-        true,
-        true
+        [Stop("Pick Up", done: true), Stop(job, recorded: true, done: true)]
       )
     );
 
-  // A dispatcher's word on the final stop wins over what was recorded, in
-  // both directions.
+  // Kept from the rule before stage 4b: work without a delivery is not
+  // completed by its stops, however they are marked. Changed on purpose: a
+  // later stop that is not a delivery (a trailer drop) no longer hides the
+  // delivery before it - the cargo is delivered - but the load completes
+  // only when that stop is done too (CompletedLoadsParityTests).
   [Fact]
-  public void TheOverrideOnTheFinalStopWinsOverWhatWasRecorded()
+  public void ALoadWithoutADeliveryIsNotCompletedByItsStops() =>
+    Assert.False(
+      LoadCompletion.IsCompleted(
+        "in_transit",
+        [
+          Stop(
+            "Pick Up",
+            overridden: true,
+            recorded: true,
+            confirmed: true,
+            done: true
+          ),
+        ]
+      )
+    );
+
+  // A dispatcher's word on the final delivery wins over what was recorded,
+  // in both directions.
+  [Fact]
+  public void TheOverrideOnTheFinalDeliveryWinsOverWhatWasRecorded()
   {
     Assert.False(
       LoadCompletion.IsCompleted(
         "in_transit",
-        "Delivery",
-        false,
-        true,
-        true,
-        true
+        [
+          Stop(
+            "Delivery",
+            overridden: false,
+            recorded: true,
+            confirmed: true,
+            done: false
+          ),
+        ]
       )
     );
     Assert.True(
       LoadCompletion.IsCompleted(
         "in_transit",
-        "Delivery",
-        true,
-        false,
-        false,
-        false
+        [Stop("Pick Up"), Stop("Delivery", overridden: true, done: true)]
       )
     );
   }
@@ -72,24 +82,38 @@ public sealed class LoadCompletionTests
     Assert.False(
       LoadCompletion.IsCompleted(
         "in_transit",
-        "Delivery",
-        null,
-        false,
-        true,
-        false
+        [Stop("Pick Up"), Stop("Delivery", confirmed: true, done: true)]
       )
     );
     Assert.True(
       LoadCompletion.IsCompleted(
         "in_transit",
-        "Delivery",
-        null,
-        false,
-        true,
-        true
+        [
+          Stop("Pick Up", done: true),
+          Stop("Delivery", confirmed: true, done: true),
+        ]
       )
     );
   }
+
+  private static int sequence;
+
+  private static CompletionStop Stop(
+    string job,
+    bool? overridden = null,
+    bool recorded = false,
+    bool confirmed = false,
+    bool done = false
+  ) =>
+    new(
+      Interlocked.Increment(ref sequence),
+      job,
+      false,
+      overridden,
+      recorded,
+      confirmed,
+      done
+    );
 
   // The browser reads both verdicts off the wire rather than working them
   // out, so both must be on it.
@@ -121,6 +145,9 @@ public sealed class LoadCompletionTests
     );
     using var document = JsonDocument.Parse(json);
     Assert.True(document.RootElement.GetProperty("completed").GetBoolean());
+    Assert.True(
+      document.RootElement.GetProperty("cargoDelivered").GetBoolean()
+    );
     foreach (
       var stop in document.RootElement.GetProperty("stops").EnumerateArray()
     )

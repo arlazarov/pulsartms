@@ -42,11 +42,15 @@ public sealed record DispatchBoardRow(
   public DateOnly? PickupDate => Origin?.ScheduledDate ?? Load.ShipDate;
   public bool Completed => Load.Completed;
 
-  // Planning passed the route; execution has not completed the load. The
-  // server says so (DispatchResponse.WorkConflict), and every view shows
-  // it instead of a status the load's own stops would suggest.
-  public bool RoutePassedNotDelivered =>
-    !Completed && Load.WorkConflict == "route_passed_not_delivered";
+  // Planning passed the route; execution has not finished the truck's
+  // work. The server says so (DispatchResponse.WorkConflict), and every
+  // view shows it instead of a status the load's own stops would suggest.
+  public bool RoutePassedWorkOpen =>
+    !Completed && DispatchWorkPhase.ConflictText(Load.WorkConflict) is not null;
+
+  // The cargo is delivered and the truck is still finishing - a trailer to
+  // drop. Not completed, and not awaiting pickup either.
+  public bool Finishing => !Completed && Load.CargoDelivered;
   public bool InTransit =>
     !Completed
     && (
@@ -60,7 +64,7 @@ public sealed record DispatchBoardRow(
     || Load.Status.Equals("unassigned", StringComparison.OrdinalIgnoreCase);
 
   public int Column(DateOnly today) =>
-    RoutePassedNotDelivered || InTransit ? 1
+    RoutePassedWorkOpen || Finishing || InTransit ? 1
     : Planned ? 0
     : IsTodayOrTomorrow(PickupDate, today)
     || IsTodayOrTomorrow(DeliveryDate, today)
@@ -72,7 +76,8 @@ public sealed record DispatchBoardRow(
 
   public string Status =>
     Completed ? "Completed"
-    : RoutePassedNotDelivered ? DispatchWorkPhase.ConflictText(Load.WorkConflict)!
+    : RoutePassedWorkOpen ? DispatchWorkPhase.ConflictText(Load.WorkConflict)!
+    : Finishing ? "Delivered · finishing"
     : Load.Status.Equals("unassigned", StringComparison.OrdinalIgnoreCase)
       ? "Unassigned"
     : Planned ? "Planned"
@@ -82,7 +87,7 @@ public sealed record DispatchBoardRow(
   // The status's tone, one answer for every view.
   public string StatusTone =>
     Completed ? "is-completed"
-    : RoutePassedNotDelivered ? "is-conflict"
+    : RoutePassedWorkOpen ? "is-conflict"
     : InTransit ? "is-moving"
     : "";
 

@@ -112,6 +112,35 @@ public sealed class DispatchWorkPhaseViewTests
     Assert.Equal("Upcoming", Phase(later));
   }
 
+  // Stage 4b: the cargo delivered with a trailer still to drop is neither
+  // completed nor awaiting pickup; the conflict for passed work says which
+  // of the two facts is missing.
+  [Theory]
+  [InlineData(null, "Delivered · finishing")]
+  [InlineData("route_passed_work_open", "Route passed · delivered, work open")]
+  [InlineData("route_passed_not_delivered", "Route passed · not delivered")]
+  public void DeliveredCargoAndOpenTruckWorkReadAsTheirOwnFacts(
+    string? conflict,
+    string status
+  )
+  {
+    using var context = Context();
+    var load = DispatchFinancialViewsTests.Load(1395);
+    load.Completed = false;
+    load.CargoDelivered = conflict != "route_passed_not_delivered";
+    load.WorkPhase = conflict is null ? "current" : "earlier";
+    load.WorkConflict = conflict;
+    var table = context.Render<DispatchTable>(p =>
+      p.Add(view => view.Trucks, [Truck(load)])
+        .Add(view => view.LoadPhase, (_, row) => DispatchWorkPhase.Label(row))
+    );
+    Assert.Equal(status, table.Find(".dispatch-table__status").TextContent);
+    Assert.DoesNotContain(
+      "Completed",
+      table.Find(".dispatch-table__status").TextContent
+    );
+  }
+
   private static TruckDispatchBoardResponse Truck(DispatchResponse load) =>
     new()
     {

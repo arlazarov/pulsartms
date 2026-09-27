@@ -41,10 +41,18 @@ public sealed record TruckPlanningInputs(
       x => x.Work,
       x => new WorkPlacement(x.AssignmentRevision, "unplaced")
     );
+    var number = Itinerary.Resources.TruckNumber;
+    var segments = Itinerary.Segments.ToDictionary(x => x.Work);
+    // Passed work only: whether its cargo was delivered decides which
+    // conflict it shows, and no other placement needs it.
     foreach (var passed in PassedWork)
       placements[passed.Work] = placements[passed.Work] with
       {
         Phase = "earlier",
+        CargoDelivered = WorkPlacements.CargoDelivered(
+          segments[passed.Work],
+          number
+        ),
       };
     if (CurrentWork is { } current)
       placements[current] = placements[current] with { Phase = "current" };
@@ -72,7 +80,11 @@ public sealed record TruckPlanningInputs(
 
 public sealed record PassedWork(WorkIdentity Work, long AssignmentRevision);
 
-public sealed record WorkPlacement(long AssignmentRevision, string Phase);
+public sealed record WorkPlacement(long AssignmentRevision, string Phase)
+{
+  // Known for passed work only (CargoDelivery over the segment's stops).
+  public bool CargoDelivered { get; init; }
+}
 
 // A row's place and conflict from a truck's placements
 // (TruckPlanningInputs.Placements): every reader that shows where a load
@@ -91,9 +103,27 @@ public static class WorkPlacements
     : placement.AssignmentRevision != acceptedRevision ? "stale"
     : placement.Phase;
 
-  // Planning passed the route; execution has not completed the work.
-  public static string? Conflict(string? phase, bool completed) =>
-    phase == "earlier" && !completed ? "route_passed_not_delivered" : null;
+  // Planning passed the route; execution has not finished the truck's work.
+  // Two cases the dispatcher acts on differently: the cargo is not recorded
+  // as delivered, or it is and a later stop - a trailer drop - is open.
+  public static string? Conflict(
+    string? phase,
+    bool workFinished,
+    bool cargoDelivered
+  ) =>
+    phase != "earlier" || workFinished ? null
+    : cargoDelivered ? "route_passed_work_open"
+    : "route_passed_not_delivered";
+
+  public static bool CargoDelivered(
+    TruckWorkSegment segment,
+    string truckNumber
+  ) =>
+    CargoDelivery.IsDelivered(
+      RouteWorkProjection
+        .Capture(segment, truckNumber)
+        .Stops.Select(CompletionStop.From)
+    );
 
   // The conflicts of a truck's own itinerary. Itinerary work is not yet
   // delivered by the board's membership rule (ExecutionWorkRelevance), so
@@ -114,7 +144,11 @@ public static class WorkPlacements
           x.Work.DispatchId,
           x.Work.ExecutionLegId,
           x.LoadNumber,
-          Conflict("earlier", completed: false)!
+          Conflict(
+            "earlier",
+            workFinished: false,
+            CargoDelivered(x, work.Itinerary.Resources.TruckNumber)
+          )!
         )),
     ];
   }

@@ -282,47 +282,44 @@ completed.
      a preparation from fresher inputs than a process' readers is not
      published under their older signature: all of that process'
      readers agree until its inputs are invalidated.
-   - **4b, proposal.** Three facts, not one "completed":
-     - *Load closed*: the source or a dispatcher marked it completed.
-     - *Cargo delivered*: the load's final cargo delivery is recorded
-       (delivered or departed), overridden as done, or confirmed by hand
-       once every cargo stop is done.
-     - *Truck work finished*: every stop this truck attends in this piece
-       of work is done - a trailer drop after the delivery included; for
-       a leg, the leg is completed.
+   - **4b, implemented (not released).** Three facts, three owners in
+     Domain (`WorkCompletion.cs`): *cargo delivered* (`CargoDelivery`: the
+     last Delivery/Drop Off among the stops the truck attends, overridden
+     done, recorded, or confirmed by hand once the attended stops up to it
+     are done), *truck work finished* (`TruckWorkCompletion`: cargo
+     delivered and every attended stop after it done), and *load closed*
+     (status). `LoadCompletion`: closed or truck work finished; a load in
+     accepted execution is completed when all its legs are, whatever the
+     source says. Itinerary membership reads truck work finished, so a
+     load delivered with a trailer still to drop stays the truck's work
+     ("Delivered · finishing" on the board, `DispatchResponse.
+     CargoDelivered`). The conflict for passed work says which fact is
+     missing: `route_passed_not_delivered` or `route_passed_work_open`.
+     The Completed tab's filter (`CompletedLoads.Filter`) is the same rule
+     in SQL - driver-only stops before the start and while a confirmed "No
+     truck" state carries on, the dispatcher's action as the job, legs for
+     loads in execution - and `CompletedLoadsParityTests` checks both
+     against expected answers, shape by shape, on SQLite and PostgreSQL.
 
-     Today `LoadCompletion` (the `Completed` flag, the board's conflict)
-     and `ExecutionWorkRelevance` (itinerary membership, so Messenger,
-     the map and planning) each answer a blend of the two last facts.
-     `DriverOnly` and `StateAfter == "No truck"` are the same test; the
-     rules differ only in which stop is the final delivery:
+     | Shape | Cargo delivered | Completed |
+     |---|---|---|
+     | Pickup, delivery (done) | yes | yes |
+     | Pickup, delivery (done), trailer drop (open / done) | yes | no / yes |
+     | Pickup, delivery (done), driver-only stop | yes | yes |
+     | Multi-drop, last open / delivered | no / yes | no / yes |
+     | Delivery by hand, pickup open | no | no |
+     | Delivery by hand, pickup done, later drop open | yes | no |
+     | Final delivery overridden not done / done | no / yes | no / yes |
+     | "No truck" carried to a stop without a truck | yes | yes |
+     | Legs all completed, source stops open | yes | yes |
+     | Source closed and delivered, a leg open | yes | no |
 
-     | Shape | LoadCompletion | Membership | Cargo delivered | Truck work finished |
-     |---|---|---|---|---|
-     | Pickup, delivery (done) | done | left | yes | yes |
-     | Pickup, delivery (done), trailer drop (open) | not done | left | yes | no |
-     | Pickup, delivery (done), driver-only stop | not done | left | yes | yes |
-     | Multi-drop, last delivery done | done | left | yes | yes |
-     | Last delivery confirmed by hand, pickup open | not done | stays | no | no |
-     | Final delivery overridden not done | not done | stays | no | no |
-     | Leg completed, source still in transit | stops decide | left | stops decide | yes |
-     | Transfer: outgoing leg ends in a drop | incoming decides | per leg | incoming decides | outgoing: at the drop |
-
-     Rows 2 and 3 are where the rules disagree today, and both are wrong
-     in one direction: row 2 leaves the itinerary while the truck still
-     has a trailer to drop, and `Completed` never becomes true although
-     the cargo was delivered.
-
-     Proposed owners, one each, in Domain: `CargoDelivery` (last
-     Delivery/Drop Off among cargo stops; the hand-confirmation rule),
-     `TruckWorkCompletion` (the truck's attended stops, or the leg), and
-     the status for load closed. Consumers: `Completed` and the Completed
-     tab (with legs) read load closed or cargo delivered; itinerary
-     membership and the conflict read truck work finished, so the
-     conflict becomes "route passed, truck work open". Cargo delivered
-     with truck work open is a phase ("finishing"), not a conflict. Not
-     built until reviewed; the auditor rules CW1/CW2 follow the same
-     split.
+     Existing data, to check before release: a started load whose
+     delivery is recorded and whose later attended stop (a trailer drop)
+     was never recorded used to leave the truck's itinerary at the
+     delivery; it now stays until the stop is recorded or the load is
+     closed. Count such loads with one bounded read first; recovery is the
+     dispatcher recording the drop or closing the load. Not counted yet.
    - **4c, implemented (not released).** A prepared summary shows the
      forecast as it stands now: `EtaService.PeekForDisplay`, called when
      the summary is read, answers as `GetCached` does from the same

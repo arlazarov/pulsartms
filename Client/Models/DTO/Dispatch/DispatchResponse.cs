@@ -41,8 +41,13 @@ public class DispatchResponse
   public decimal? EmptyMiles { get; set; }
   public decimal? TotalMiles { get; set; }
 
-  // Whether the load is done, said by the server.
+  // Whether the load is done, said by the server: closed, or its cargo
+  // delivered and the truck's work on it finished.
   public bool Completed { get; set; }
+
+  // Whether its cargo was delivered, which can come before the truck's
+  // work is finished (a trailer still to drop).
+  public bool CargoDelivered { get; set; }
   public decimal? LoadedRatePerMile { get; set; }
   public decimal? TotalRatePerMile { get; set; }
   public string EmptyMilesStatus { get; set; } = "unavailable";

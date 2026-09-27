@@ -209,7 +209,19 @@ internal static class DriverWorkOrder
           new(load.Id, load.ExecutionLegId),
           load.AcceptedRevision
         );
-        return (load, phase, WorkPlacements.Conflict(phase, completed: false));
+        // Board rows are work the truck has not finished
+        // (ExecutionWorkRelevance), so a passed one is a conflict.
+        return (
+          load,
+          phase,
+          WorkPlacements.Conflict(
+            phase,
+            workFinished: false,
+            placements
+              ?.GetValueOrDefault(new(load.Id, load.ExecutionLegId))
+              ?.CargoDelivered == true
+          )
+        );
       })
       .OrderBy(x =>
         x.phase switch

@@ -249,7 +249,8 @@ public class GetDispatchBoardHandler(
           ) ?? "unknown";
         load.WorkConflict = WorkPlacements.Conflict(
           load.WorkPhase,
-          load.Completed
+          load.Completed,
+          load.CargoDelivered
         );
       }
     }
