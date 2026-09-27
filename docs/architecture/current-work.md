@@ -340,10 +340,20 @@ completed.
      on every HOS refresh; the prepared fuel hand-over can lag up to the
      30-second refresh, while the summary's clocks are already read fresh
      at read time. Recorded, not built.
-   - **4e, next.** One ETA reader for the board as well (the board reads
-     saved forecasts across processes; the summary reads the process'
-     memory - the owner of that choice must weigh durability against
-     freshness); no duplicate fuel projection replays.
+   - **4e, analysed, not built.**
+     - Fuel projection: `TruckFuelPlans.ApplyAsync` runs for the summary
+       and its publisher with the fresh itinerary and HOS, and for the
+       route refresh and the fleet loop without them, before a price
+       refresh. The inputs differ, so these are not duplicates by the
+       shared-read invariant; merging them would change what the price
+       refresh sees. Next step is measuring each call's cost, not
+       removing one.
+     - ETA reader: the board reads saved forecasts, valid across
+       processes; the summary reads the process' memory, fresher but
+       absent on a process that has not refreshed the truck. One reader
+       needs the ETA owner's decision between durability and freshness
+       (for example memory first, saved forecast as the fallback with its
+       own validity), then parity tests between board and map.
 
 Each stage is a separate candidate with its own review; none resets
 pending work, forces routing or changes historical stops.
