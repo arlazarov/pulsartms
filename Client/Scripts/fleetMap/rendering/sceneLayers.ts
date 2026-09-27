@@ -141,32 +141,7 @@ export function createSceneLayers({
           fonts,
         }),
         fleet.clusters,
-        ...(sonar === null
-          ? []
-          : [
-              new ScatterplotLayer({
-                id: 'truck-sonar',
-                data: trucks.filter(t => t.selected),
-                getPosition: (t: LabelledTruck) => t.position,
-                radiusUnits: 'pixels',
-                getRadius: sonar === 'still' ? 20 : 14 + (sonar as number) * 22,
-                stroked: true,
-                filled: false,
-                lineWidthUnits: 'pixels',
-                getLineWidth: 1.5,
-                getLineColor: [
-                  6,
-                  182,
-                  212,
-                  sonar === 'still'
-                    ? 150
-                    : Math.round(170 * (1 - (sonar as number))),
-                ],
-                pickable: false,
-                updateTriggers: { getRadius: sonar, getLineColor: sonar },
-                parameters: { depthCompare: 'always' },
-              }),
-            ]),
+        ...(sonar === null ? [] : sonarLayers(ScatterplotLayer, trucks, sonar)),
         ...fleet.icons,
         ...stops({ stopData, setHover, selectStop, fonts }),
         ...fleet.labels,
@@ -176,4 +151,42 @@ export function createSceneLayers({
       layer => layer.props.visible !== false && layer.props.data?.length > 0,
     );
   };
+}
+
+// The selected truck's sonar, as the concept draws it: two rings a half
+// sweep apart, each growing from just outside the mark and fading as it
+// goes, over a faint glow. Drawn under the marks and badges, never picked;
+// the mark itself keeps its size.
+function sonarLayers(
+  ScatterplotLayer: DeckLayerFactory,
+  trucks: LabelledTruck[],
+  sonar: number | 'still',
+): DeckLayer[] {
+  const chosen = trucks.filter(t => t.selected);
+  const ring = (id: string, phase: number | 'still') => {
+    const eased = phase === 'still' ? 0.35 : 1 - (1 - phase) ** 2;
+    return new ScatterplotLayer({
+      id,
+      data: chosen,
+      getPosition: (t: LabelledTruck) => t.position,
+      radiusUnits: 'pixels',
+      getRadius: 18 + eased * 44,
+      stroked: true,
+      filled: true,
+      lineWidthUnits: 'pixels',
+      getLineWidth: 3,
+      getLineColor: [34, 211, 238, Math.round(255 * (1 - eased) ** 0.6)],
+      getFillColor: [34, 211, 238, Math.round(70 * (1 - eased))],
+      pickable: false,
+      updateTriggers: {
+        getRadius: phase,
+        getLineColor: phase,
+        getFillColor: phase,
+      },
+      parameters: { depthCompare: 'always' },
+    });
+  };
+  return sonar === 'still'
+    ? [ring('truck-sonar', 'still')]
+    : [ring('truck-sonar', sonar), ring('truck-sonar-echo', (sonar + 0.5) % 1)];
 }

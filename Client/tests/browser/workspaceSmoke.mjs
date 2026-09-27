@@ -684,6 +684,24 @@ try {
         await tab.waitForTimeout(6000);
         await noOverflow(tab, `${name} fleet`);
         await shot(tab, `${name}-fleet`);
+        if (name === 'dark-desktop') {
+          // The chosen truck's sonar moves on the real map: frames a sweep's
+          // fraction apart differ, and each is kept for a look.
+          const frames = [];
+          for (let i = 0; i < 4; i++) {
+            const png = await tab
+              .locator('#fleet-map')
+              .screenshot({ type: 'png' });
+            await writeFile(resolve(output, `sonar-frame-${i}.png`), png);
+            frames.push(png.toString('base64'));
+            await tab.waitForTimeout(150);
+          }
+          check(
+            new Set(frames).size >= 3,
+            "the selected truck's sonar animates on the map",
+            { distinct: new Set(frames).size },
+          );
+        }
         await tab.goto(`${origin}/dispatch`);
         await tab.locator('article.dispatch-truck').first().waitFor();
         await tab.waitForTimeout(800);

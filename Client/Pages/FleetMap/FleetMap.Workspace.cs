@@ -186,13 +186,6 @@ public partial class FleetMap
   private Task ChooseChainLoadAsync(DispatchResponse load) =>
     ChooseTripAsync(load, null);
 
-  private Task ChooseChainStopAsync(
-    (DispatchResponse Load, Guid Stop) choice
-  ) => ChooseTripAsync(choice.Load, choice.Stop);
-
-  private Task ChooseTripStopAsync(Guid? stop) =>
-    SelectedTrip is { } trip ? ChooseTripAsync(trip, stop) : Task.CompletedTask;
-
   // Chooses a trip, and a stop in it, then shows the same on the map: the
   // current trip's stop is highlighted where it stands; a later trip is
   // picked through the next-loads layer, as a click on it would. The camera
@@ -295,14 +288,6 @@ public partial class FleetMap
     return InvokeAsync(StateHasChanged);
   }
 
-  private async Task ShowNextLoadsFromChainAsync()
-  {
-    if (ShowNextLoads)
-      return;
-    ShowNextLoads = true;
-    await OnNextLoadsChanged();
-  }
-
   private static readonly (string Motion, string Label)[] MotionChoices =
   [
     ("all", "All"),
@@ -339,27 +324,6 @@ public partial class FleetMap
     }
     catch (JSException) { }
   }
-
-  private async Task ZoomAsync(int step)
-  {
-    if (_map is null || _disposed)
-      return;
-    try
-    {
-      await _map.InvokeVoidAsync("zoomBy", step);
-    }
-    catch (JSException) { }
-  }
-
-  private Task ShowRouteTabAsync() =>
-    _inspectorMode == MapInspectorMode.Truck
-      ? Task.CompletedTask
-      : BackToTruckAsync();
-
-  private Task ShowFuelTabAsync() =>
-    _inspectorMode == MapInspectorMode.Truck
-      ? OpenFuelPlanAsync()
-      : Task.CompletedTask;
 
   // The panel's motion fact: what the map's shape says, with the reported
   // speed; nothing when the speed is not known (stale GPS).

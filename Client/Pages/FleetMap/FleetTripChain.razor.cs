@@ -23,30 +23,16 @@ public partial class FleetTripChain
   [Parameter]
   public Guid? CurrentId { get; set; }
 
-  // The trip the panel under the truck shows, and its chosen stop.
+  // The trip the panel under the truck shows.
   [Parameter]
   public DispatchResponse? SelectedTrip { get; set; }
 
   [Parameter]
-  public Guid? FocusedStopId { get; set; }
-
-  [Parameter]
-  public bool NextLoadsShown { get; set; }
-
-  [Parameter]
   public EventCallback<DispatchResponse> Selected { get; set; }
 
+  // Where a card's load opens, returning to this map.
   [Parameter]
-  public EventCallback<(
-    DispatchResponse Load,
-    Guid Stop
-  )> StopSelected { get; set; }
-
-  [Parameter]
-  public EventCallback ShowNextLoads { get; set; }
-
-  // Every trip shown, not only the rows that fit.
-  private bool _expanded;
+  public Func<DispatchResponse, string>? LoadHref { get; set; }
 
   private bool IsSelected(DispatchResponse load) =>
     SelectedTrip is { } trip

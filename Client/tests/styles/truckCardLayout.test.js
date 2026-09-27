@@ -157,19 +157,22 @@ test('the booking sits under the ETA for the same stop, and the address is last'
       body.indexOf('<TruckLocationLine') <
         body.indexOf('fleet-map-route-info__facts'),
   );
-  // The actions are one row at the top of the truck panel, under its head,
-  // as the workspace concept draws them (the owner, September 27): drawn
-  // once, before the facts and the clocks.
-  const panel = markup.slice(markup.indexOf('</header>'));
+  // The truck's actions lead the map's one bar of tools (the owner,
+  // September 27): drawn once, there; the panel keeps the facts before the
+  // clocks.
   assert.equal(
     markup.split('class="fleet-map-inspector__actions"').length - 1,
     1,
   );
+  const bar = markup.slice(
+    markup.indexOf('<div class="fleet-map-controls"'),
+    markup.indexOf('title="Whole fleet"'),
+  );
+  assert.match(bar, /class="fleet-map-inspector__actions"/);
+  const panel = markup.slice(markup.indexOf('</header>'));
   assert.ok(
-    panel.indexOf('fleet-map-inspector__actions') <
-      panel.indexOf('fleet-truck-facts') &&
-      panel.indexOf('fleet-truck-facts') <
-        panel.indexOf('fleet-truck-clocks'),
+    panel.indexOf('fleet-truck-facts') > 0 &&
+      panel.indexOf('fleet-truck-facts') < panel.indexOf('fleet-truck-clocks'),
   );
   assert.match(
     card,

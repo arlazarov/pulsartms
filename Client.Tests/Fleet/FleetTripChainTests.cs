@@ -5,7 +5,7 @@ using Client.Pages.FleetMap;
 
 namespace Client.Tests.Fleet;
 
-// The Futuristic trip chain names each load as the Dispatch board does,
+// The trip chain names each load as the Dispatch board does,
 // from the server's placement; it never places a load itself.
 [Trait("Category", "Fleet")]
 [Trait("Kind", "Component")]
@@ -29,7 +29,6 @@ public sealed class FleetTripChainTests
       p.Add(x => x.Truck, Truck)
         .Add(x => x.Loads, [current, next, stale, unknown])
         .Add(x => x.CurrentId, current.Id)
-        .Add(x => x.NextLoadsShown, true)
     );
     Assert.Equal(
       ["Current", "Next", "Needs refresh"],
@@ -45,50 +44,64 @@ public sealed class FleetTripChainTests
     Assert.Contains("is-unplaced", links[3].ClassName);
   }
 
+  // A trip card is chosen whole; its stops are small markers, and the
+  // chain has no controls of its own (the owner, September 27).
   [Fact]
-  public void EachTripOffersItsStopsWithTheMapsLabels()
+  public void EveryTripIsShownAndChosenWithoutStopChipsOrControls()
   {
     using var context = new BunitContext();
-    var current = Load(1409, "current");
-    var next = Load(1410, "next", deliveries: 2);
-    (DispatchResponse Load, Guid Stop)? chosen = null;
+    var loads = Enumerable
+      .Range(0, 7)
+      .Select(i => Load(1400 + i, i == 0 ? "current" : "upcoming", 2))
+      .ToList();
     DispatchResponse? trip = null;
     var component = context.Render<FleetTripChain>(p =>
       p.Add(x => x.Truck, Truck)
-        .Add(x => x.Loads, [current, next])
-        .Add(x => x.CurrentId, current.Id)
-        .Add(x => x.SelectedTrip, next)
-        .Add(x => x.FocusedStopId, next.Stops[2].Id)
+        .Add(x => x.Loads, loads)
+        .Add(x => x.CurrentId, loads[0].Id)
+        .Add(x => x.SelectedTrip, loads[3])
         .Add(x => x.Selected, load => trip = load)
-        .Add(x => x.StopSelected, value => chosen = value)
     );
-    var links = component.FindAll(".fleet-trip-chain__link");
-    Assert.Equal(
-      ["P", "D"],
-      links[0]
-        .QuerySelectorAll(".fleet-trip-chain__stop")
-        .Select(x => x.TextContent.Trim())
-    );
-    // The trip's own deliveries, never its place in the chain.
+    Assert.Equal(7, component.FindAll(".fleet-trip-chain__link").Count);
+    // Each card marks its stops, P and D1 / D2, as markers, not controls.
     Assert.Equal(
       ["P", "D1", "D2"],
-      links[1]
+      component
+        .FindAll(".fleet-trip-chain__link")[0]
         .QuerySelectorAll(".fleet-trip-chain__stop")
         .Select(x => x.TextContent.Trim())
     );
-    Assert.Contains("is-selected", links[1].ClassName);
-    Assert.Equal(
-      "true",
-      links[1]
-        .QuerySelectorAll(".fleet-trip-chain__stop")[2]
-        .GetAttribute("aria-pressed")
+    Assert.Empty(
+      component.FindAll(".fleet-trip-chain button:not(.fleet-trip-chain__trip)")
     );
+    Assert.DoesNotContain("All trips", component.Markup);
+    Assert.DoesNotContain("Show next loads", component.Markup);
+    Assert.Contains(
+      "is-selected",
+      component.FindAll(".fleet-trip-chain__link")[3].ClassName
+    );
+    component.FindAll(".fleet-trip-chain__trip")[5].Click();
+    Assert.Same(loads[5], trip);
+  }
 
-    component.FindAll(".fleet-trip-chain__stop")[3].Click();
-    Assert.Same(next, chosen?.Load);
-    Assert.Equal(next.Stops[1].Id, chosen?.Stop);
-    component.FindAll(".fleet-trip-chain__trip")[0].Click();
-    Assert.Same(current, trip);
+  // A stop is checked when the server says it is done; a stop the truck
+  // only drove past is not.
+  [Fact]
+  public void AStopIsCheckedOnlyWhenTheServerSaysItIsDone()
+  {
+    using var context = new BunitContext();
+    var load = Load(1409, "current");
+    load.Stops[0].IsCompleted = true;
+    load.Stops[1].StateAfter = "Passed";
+    var component = context.Render<FleetTripChain>(p =>
+      p.Add(x => x.Truck, Truck).Add(x => x.Loads, [load])
+    );
+    var stops = component.FindAll(".fleet-trip-chain__stop");
+    Assert.Contains("is-done", stops[0].ClassName);
+    Assert.NotNull(stops[0].QuerySelector("svg"));
+    Assert.Equal("P, Pickup, completed", stops[0].GetAttribute("aria-label"));
+    Assert.DoesNotContain("is-done", stops[1].ClassName);
+    Assert.Null(stops[1].QuerySelector("svg"));
   }
 
   [Fact]

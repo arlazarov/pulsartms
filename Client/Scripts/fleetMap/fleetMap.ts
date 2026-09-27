@@ -33,6 +33,11 @@ const mountMap = createMapHost(
   map => google.maps.event.clearInstanceListeners(map),
 );
 
+const schemeOf = (element: HTMLElement) =>
+  element.ownerDocument?.documentElement?.dataset?.theme === 'dark'
+    ? 'DARK'
+    : 'LIGHT';
+
 export async function createFleetMap(
   element: HTMLElement,
   apiKey: string,
@@ -80,10 +85,7 @@ export async function createFleetMap(
     },
     mapId: 'DEMO_MAP_ID',
     mapTypeId: 'roadmap',
-    colorScheme:
-      element.ownerDocument?.documentElement?.dataset?.theme === 'dark'
-        ? 'DARK'
-        : 'LIGHT',
+    colorScheme: schemeOf(element),
     clickableIcons: false,
     draggableCursor: 'default',
     draggingCursor: 'default',
@@ -102,6 +104,22 @@ export async function createFleetMap(
   });
   const map = mountedMap.map;
   const cleanup = [() => mountedMap.release()];
+  // Google sets a map's colour scheme only when the map is made, and the
+  // provider map outlives a mount: a theme switch reloads the page, which
+  // makes the map again in the new scheme. Where the reader was comes back
+  // from the address and the tab.
+  const scheme = schemeOf(element);
+  const root = element.ownerDocument?.documentElement;
+  if (root && typeof MutationObserver !== 'undefined') {
+    const themeWatch = new MutationObserver(() => {
+      if (!disposed && schemeOf(element) !== scheme) location.reload();
+    });
+    themeWatch.observe(root, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+    cleanup.push(() => themeWatch.disconnect());
+  }
   function dispose() {
     if (disposed) return;
     disposed = true;
@@ -656,9 +674,6 @@ export async function createFleetMap(
       },
       showFleet() {
         if (!disposed) trucks.showFleet();
-      },
-      zoomBy(step: unknown) {
-        if (!disposed && typeof step === 'number') trucks.zoomBy(step);
       },
       setFollow(id: string, enabled?: boolean) {
         if (!disposed) cameraViewport.refresh();

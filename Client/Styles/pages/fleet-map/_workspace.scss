@@ -111,50 +111,95 @@
   border-color: ui.theme(accent, 0.22);
 }
 
-// The map's own buttons, over its top right corner.
+// The map's own view controls: one compact glass bar over its top right
+// corner.
 .fleet-map-controls {
   position: relative;
   z-index: ui.layer(map-controls);
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: ui.pg(xs);
+  align-items: center;
+  gap: ui.pg(micro);
   align-self: start;
   justify-self: end;
   margin: ui.pg(md);
-  pointer-events: none;
+  padding: ui.pg(micro);
+  border: 1px solid ui.theme(accent, 0.2);
+  border-radius: ui.radius(sm);
+  background: ui.theme(surface, 0.86);
+  backdrop-filter: blur(10px);
+  box-shadow: ui.shadow(panel);
   &__layers {
     position: relative;
+  }
+  // The chosen truck's actions lead the bar, set off by a hairline.
+  > .fleet-map-inspector__actions {
+    display: flex;
+    gap: ui.pg(micro);
+    margin: 0;
+    padding: 0 ui.pg(xs) 0 0;
+    border: 0;
+    border-right: 1px solid ui.theme(border);
+  }
+  .map-action-icon {
+    display: grid;
+    place-items: center;
+    width: ui.size(control-compact);
+    min-height: 0;
+    height: ui.size(control-compact);
+    padding: 0;
+    border: 0;
+    border-radius: ui.radius(sm);
+    background: none;
+    color: ui.theme(text-secondary);
+    box-shadow: none;
+    > span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    svg {
+      width: ui.pg(lg);
+      height: ui.pg(lg);
+    }
+    &:hover:not(:disabled) {
+      background: ui.theme(accent, 0.1);
+      color: ui.theme(accent);
+    }
+    // Follow is lit while it runs.
+    &[aria-pressed='true'] {
+      background: ui.theme(accent, 0.16);
+      color: ui.theme(accent);
+      box-shadow: 0 0 0 1px ui.theme(accent), 0 0 12px ui.theme(accent, 0.35);
+    }
   }
   &__button {
     display: grid;
     place-items: center;
-    width: ui.size(control);
-    height: ui.size(control);
-    border: 1px solid ui.theme(accent, 0.2);
+    width: ui.size(control-compact);
+    height: ui.size(control-compact);
+    border: 0;
     border-radius: ui.radius(sm);
-    background: ui.theme(surface, 0.86);
-    backdrop-filter: blur(10px);
+    background: none;
     color: ui.theme(text-secondary);
-    box-shadow: ui.shadow(panel);
     cursor: pointer;
-    pointer-events: auto;
-    &:hover:not(:disabled) {
-      border-color: ui.theme(accent, 0.42);
+    svg {
+      width: ui.pg(lg);
+      height: ui.pg(lg);
+    }
+    &:hover:not(:disabled),
+    &[aria-expanded='true'] {
+      background: ui.theme(accent, 0.1);
       color: ui.theme(accent);
     }
     &:disabled {
       opacity: 0.5;
       cursor: default;
     }
-    &--compass {
-      width: ui.size(control-touch);
-      height: ui.size(control-touch);
-      border-radius: 50%;
-    }
-  }  // A phone's card floats over the map's top, and fingers zoom: the whole
-  // fleet and the route stay, low in the corner, clear of the card. The
-  // layers are in the Filters drawer.
+  }
+  // A phone's card floats over the map's top: the bar sits low in the
+  // corner, clear of it; fingers zoom, and the layers are in Filters.
   @include ui.below(map-mobile) {
     align-self: end;
     margin-bottom: ui.pg(section);
@@ -167,8 +212,8 @@
 // The layers menu beside the map's Layers button.
 .fleet-map-layer-menu {
   position: absolute;
-  top: 0;
-  right: calc(100% + #{ui.pg(sm)});
+  top: calc(100% + #{ui.pg(sm)});
+  right: 0;
   display: grid;
   gap: ui.pg(micro);
   width: 13rem;
@@ -376,34 +421,6 @@
 
 // The truck panel's body, as the concept drew it: the actions in one row,
 // the facts in bordered cells, the clocks with bars.
-.fleet-map-inspector > .fleet-map-inspector__actions {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: ui.pg(xs);
-  margin: 0;
-  padding: 0 ui.pg(lg) ui.pg(md);
-  border: 0;
-  .map-action-icon {
-    flex: 1 1 0;
-    justify-content: center;
-    min-width: 0;
-    border-radius: ui.radius(sm);
-    font-weight: 600;
-  }
-  // Camera and Route options say their names on hover; the row keeps the
-  // concept's three words.
-  .fleet-map-inspector__more-action {
-    flex: 0 0 auto;
-    > span {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-    }
-  }
-}
-
 .fleet-truck-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -468,7 +485,7 @@
 }
 
 // The truck panel's head, as the concept drew it: a quiet eyebrow over the
-// unit, the Route / Fuel tabs, facts and clocks in bordered cells.
+// unit.
 .fleet-map-inspector {
   // Docked, the unit reads as the panel's title, as large as the concept's.
   @include ui.above(fleet-docked) {
@@ -492,95 +509,22 @@
       display: none;
     }
   }
-  &__tabs {
-    display: flex;
-    gap: ui.pg(xs);
-    padding: ui.pg(micro);
-    border: 1px solid ui.theme(border);
-    border-radius: ui.radius(sm);
-    background: ui.theme(surface-soft);
-    button {
-      display: inline-flex;
-      align-items: center;
-      gap: ui.pg(xs);
-      min-height: ui.size(control-compact);
-      padding: 0 ui.pg(md);
-      border: 0;
-      border-radius: ui.radius(sm);
-      background: none;
-      color: ui.theme(text-secondary);
-      font: inherit;
-      font-weight: 600;
-      cursor: pointer;
-      svg {
-        width: ui.pg(lg);
-        height: ui.pg(lg);
-      }
-      &[aria-selected='true'] {
-        background: ui.theme(surface);
-        color: ui.theme(accent);
-        box-shadow:
-          0 0 0 1px ui.theme(accent, 0.42),
-          0 0 14px ui.theme(accent, 0.12);
-      }
-      &:disabled {
-        opacity: 0.5;
-        cursor: default;
-      }
-    }
-  }
 }
 
-// The trip chain: every trip of the truck as a card, wrapping into rows.
-// Two rows at most until All trips is pressed, the chosen trip always among
-// them; on a phone it is a sheet showing the chosen trip, opening into a
-// list. Nothing in it scrolls sideways.
-@mixin two-rows($per-row) {
-  .fleet-trip-chain__links:not(.is-expanded) {
-    > li:nth-child(n + #{2 * $per-row + 1}):not(.is-selected) {
-      display: none;
-    }
-    &:has(> li.is-selected:nth-child(n + #{2 * $per-row + 1}))
-      > li:nth-child(#{2 * $per-row}):not(.is-selected) {
-      display: none;
-    }
-  }
-}
-
+// The trip chain: every trip of the truck as a card, wrapping into rows;
+// nothing in it scrolls sideways. A phone lists them down, scrolling.
 .fleet-trip-chain {
   @include ui.glass-panel;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas:
-    'label list'
-    'label more';
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'list';
   align-items: start;
   min-width: 0;
+  // One height whatever the truck, its trips, the choice or a reading in
+  // progress: the map above never moves. More trips scroll inside.
+  height: ui.size(trip-chain);
+  overflow: hidden;
 
-  &__label {
-    grid-area: label;
-    align-self: stretch;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: ui.pg(micro);
-    padding: ui.pg(sm) ui.pg(lg);
-    border-right: 1px solid ui.theme(border-subtle);
-    h2 {
-      margin: 0;
-      font-size: ui.fs(body);
-      font-weight: 700;
-      color: ui.theme(text);
-      white-space: nowrap;
-    }
-  }
-  &__eyebrow {
-    color: ui.theme(text-muted);
-    font-size: ui.fs(micro);
-    font-weight: 650;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
   &__hint {
     grid-area: list;
     align-self: center;
@@ -591,7 +535,11 @@
   }
   &__links {
     grid-area: list;
-    container: fleet-trip-list / inline-size;
+    align-self: stretch;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
     display: grid;
     grid-template-columns: repeat(
       auto-fill,
@@ -600,25 +548,8 @@
     gap: ui.pg(sm);
     min-width: 0;
     margin: 0;
-    padding: ui.pg(sm) ui.pg(md) 0;
+    padding: ui.pg(sm) ui.pg(md);
     list-style: none;
-  }
-  &__more {
-    grid-area: more;
-    display: flex;
-    flex-wrap: wrap;
-    gap: ui.pg(sm);
-    padding: ui.pg(xs) ui.pg(md) ui.pg(sm);
-    &:empty {
-      display: none;
-    }
-  }
-  &__all > svg {
-    width: ui.pg(lg);
-    height: ui.pg(lg);
-  }
-  &__all[aria-expanded='true'] > svg {
-    transform: rotate(180deg);
   }
   &__link {
     display: flex;
@@ -661,9 +592,9 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: ui.pg(micro) ui.pg(md);
+    gap: ui.pg(micro) ui.pg(sm);
     width: 100%;
-    padding: ui.pg(xs) ui.pg(sm);
+    padding: ui.pg(micro) ui.pg(xs);
     border: 0;
     border-radius: ui.radius(sm);
     background: none;
@@ -697,30 +628,27 @@
   &__lane {
     color: ui.theme(text-secondary);
   }
-  &__conflict {
-    color: ui.theme(warning-text);
-    font-weight: 600;
-  }
+  // Each stop as a small marker; a check once the server says it is done.
   &__stops {
+    grid-column: 1 / -1;
     display: flex;
     flex-wrap: wrap;
     gap: ui.pg(xs);
-    padding: 0 ui.pg(sm) ui.pg(xs);
   }
   &__stop {
-    display: grid;
-    place-items: center;
-    min-width: ui.size(control-compact);
-    min-height: ui.size(control-compact);
-    padding: 0 ui.pg(sm);
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(hair);
+    min-width: ui.pg(xl);
+    height: ui.pg(xl);
+    padding: 0 ui.pg(xs);
     border: 1.5px solid ui.theme(text-muted);
     border-radius: ui.radius(pill);
-    background: ui.theme(surface);
     color: ui.theme(text);
-    font: inherit;
-    font-size: ui.fs(caption);
+    font-size: ui.fs(micro);
     font-weight: 700;
-    cursor: pointer;
+    line-height: 1;
+    justify-content: center;
     &.is-pickup {
       border-color: ui.theme(pickup);
       color: ui.theme(pickup);
@@ -730,13 +658,38 @@
       color: ui.theme(delivery);
     }
     &.is-done {
-      opacity: 0.65;
+      background: ui.theme(success-text, 0.14);
+      border-color: ui.theme(success-text);
+      color: ui.theme(success-text);
     }
-    &[aria-pressed='true'] {
-      border-color: ui.theme(accent);
-      background: ui.theme(accent);
-      color: ui.theme(surface);
+    svg {
+      width: ui.pg(sm);
+      height: ui.pg(sm);
     }
+  }
+  &__card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+  &__open {
+    display: grid;
+    place-items: center;
+    width: ui.size(control-compact);
+    height: ui.size(control-compact);
+    border-radius: ui.radius(sm);
+    color: ui.theme(text-muted);
+    svg {
+      width: ui.pg(lg);
+      height: ui.pg(lg);
+    }
+    &:hover {
+      color: ui.theme(accent);
+      background: ui.theme(accent, 0.1);
+    }
+  }
+  &__conflict {
+    color: ui.theme(warning-text);
+    font-weight: 600;
   }
   // The text roles of the colours the map draws these loads in: the map's
   // own line colours are too dark to read on the dark theme's surfaces.
@@ -752,183 +705,14 @@
     color: ui.theme(text-muted);
   }
 
-  @container fleet-trip-list (width < #{ui.breakpoint(trip-chain-two)}) {
-    @include two-rows(1);
-  }
-  @container fleet-trip-list (width >= #{ui.breakpoint(trip-chain-two)}) and (width < #{ui.breakpoint(trip-chain-three)}) {
-    @include two-rows(2);
-  }
-  @container fleet-trip-list (width >= #{ui.breakpoint(trip-chain-three)}) and (width < #{ui.breakpoint(trip-chain-four)}) {
-    @include two-rows(3);
-  }
-  @container fleet-trip-list (width >= #{ui.breakpoint(trip-chain-four)}) and (width < #{ui.breakpoint(trip-chain-five)}) {
-    @include two-rows(4);
-  }
-  @container fleet-trip-list (width >= #{ui.breakpoint(trip-chain-five)}) {
-    @include two-rows(5);
-  }
 
-  // A phone: a sheet with the chosen trip, opening into the whole list,
-  // which scrolls down, never across.
+  // A phone lists every trip down the sheet, scrolling, never across.
   @include ui.below(map-mobile) {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      'more'
-      'list';
-    &__label {
-      display: none;
-    }
-    &__more {
-      justify-content: space-between;
-      padding: ui.pg(xs) ui.pg(sm) 0;
-      &::before {
-        content: '';
-        align-self: center;
-        width: ui.size(control-touch);
-        height: ui.pg(xs);
-        border-radius: ui.radius(pill);
-        background: ui.theme(border);
-      }
-    }
-    &__all {
-      min-height: ui.size(control-touch);
-    }
+    height: ui.size(trip-chain-phone);
     &__links {
       grid-template-columns: minmax(0, 1fr);
-      padding: ui.pg(xs) ui.pg(sm) ui.pg(sm);
-      &:not(.is-expanded) > li:not(.is-selected) {
-        display: none;
-      }
-      &.is-expanded {
-        max-height: 45dvh;
-        overflow-y: auto;
-        overscroll-behavior: contain;
-      }
+      padding: ui.pg(sm);
     }
-  }
-}
-
-.fleet-trip-detail {
-  display: grid;
-  gap: ui.pg(sm);
-  padding: ui.pg(md);
-  border-top: 1px solid ui.theme(border-subtle);
-
-  &__head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: ui.pg(xs) ui.pg(sm);
-    h3 {
-      margin: 0;
-      font-size: ui.fs(lead);
-    }
-  }
-  &__eyebrow {
-    flex-basis: 100%;
-    color: ui.theme(text-muted);
-    font-size: ui.fs(micro);
-    font-weight: 650;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-  &__phase {
-    padding: 0 ui.pg(xs);
-    border: 1px solid currentColor;
-    border-radius: ui.radius(sm);
-    font-size: ui.fs(micro);
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: ui.theme(text-muted);
-    &.is-current {
-      color: ui.theme(transit);
-    }
-    &.is-next,
-    &.is-upcoming {
-      color: ui.theme(route-next);
-    }
-  }
-  &__status {
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(caption);
-  }
-  &__conflict {
-    margin: 0;
-    color: ui.theme(warning-text);
-    font-weight: 600;
-  }
-  &__route {
-    display: grid;
-    margin: 0;
-    color: ui.theme(text);
-    font-weight: 600;
-    small {
-      color: ui.theme(text-muted);
-      font-weight: 400;
-    }
-  }
-  &__facts {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(ui.size(route-metric), 1fr));
-    gap: ui.pg(xs) ui.pg(md);
-    margin: 0;
-    dt {
-      color: ui.theme(text-muted);
-      font-size: ui.fs(caption);
-    }
-    dd {
-      margin: 0;
-      color: ui.theme(text);
-      font-weight: 600;
-    }
-  }
-  &__stops {
-    display: grid;
-    gap: ui.pg(xs);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-  &__stop {
-    border-radius: ui.radius(sm);
-    scroll-margin: ui.pg(md);
-    &.is-focused {
-      box-shadow: 0 0 0 2px ui.theme(accent, 0.5);
-    }
-    &:focus {
-      outline: none;
-    }
-  }
-  &__stop-facts {
-    display: grid;
-    gap: ui.pg(xs);
-    margin: 0;
-    > div {
-      display: grid;
-      grid-template-columns: ui.size(route-metric) minmax(0, 1fr);
-      gap: ui.pg(sm);
-    }
-    dt {
-      color: ui.theme(text-muted);
-    }
-    dd {
-      margin: 0;
-      overflow-wrap: anywhere;
-    }
-  }
-  &__notes {
-    margin: ui.pg(xs) 0 0;
-    strong {
-      display: block;
-      color: ui.theme(text-muted);
-      font-weight: 600;
-    }
-  }
-  &__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: ui.pg(sm);
   }
 }
 

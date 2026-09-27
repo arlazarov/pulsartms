@@ -238,9 +238,6 @@ export function createTruckLayer(
         })),
       );
     },
-    zoomBy(step: number) {
-      if (!disposed) camera.zoomBy(step);
-    },
     releaseCamera() {
       if (!disposed) camera.releaseCamera();
     },

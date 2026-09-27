@@ -22,6 +22,9 @@ export const routes = [
   ['POST', /^\/api\/dispatch\/board\/planning$/],
   // Further reads the real Client makes on these pages (CONCEPT_ROOT).
   ['GET', /^\/api\/settings\/(dispatch|appearance)$/],
+  // The one write: the reader's own theme and units, so the preview's
+  // theme switch works and survives a reload (the owner, September 27).
+  ['PUT', /^\/api\/settings\/appearance$/],
   ['GET', /^\/api\/driver-groups$/],
   ['GET', /^\/api\/fleet\/drivers$/],
   ['GET', /^\/api\/messaging\/(unread|changes)$/],

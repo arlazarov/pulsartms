@@ -90,10 +90,10 @@ public sealed class FleetMapComponentTests
     );
     Assert.Single(component.FindAll("#fleet-map-telemetry-details"));
     Assert.Empty(component.FindAll("#fleet-map-details .fleet-map-truck-info"));
-    // The actions are one row at the top of the truck panel, under its
-    // head, as the workspace concept draws them (the owner, September 27).
+    // The truck's actions lead the map's one bar of tools (the owner,
+    // September 27); the panel has none of its own.
     Assert.Single(
-      component.FindAll(".fleet-map-inspector > .fleet-map-inspector__actions")
+      component.FindAll(".fleet-map-controls > .fleet-map-inspector__actions")
     );
     Assert.Empty(
       component.FindAll("#fleet-map-details .fleet-map-inspector__actions")
@@ -2068,9 +2068,7 @@ public sealed class FleetMapComponentTests
       );
       Assert.Single(component.FindAll(".fleet-map-inspector__appointment"));
       Assert.Single(
-        component.FindAll(
-          ".fleet-map-inspector > .fleet-map-inspector__actions"
-        )
+        component.FindAll(".fleet-map-controls > .fleet-map-inspector__actions")
       );
       // What is left of the load is the truck's own remaining distance: a
       // preview carries none, so it reads as unknown, not as the plan's
@@ -2327,7 +2325,7 @@ public sealed class FleetMapComponentTests
         component.FindAll(".fleet-map-truck-info .truck-illustration")
       );
       Assert.Single(
-        component.FindAll(".fleet-map-inspector > [aria-label='Truck actions']")
+        component.FindAll(".fleet-map-controls > [aria-label='Truck actions']")
       );
       Assert.Single(component.FindAll(".fleet-map-inspector__driver"));
       Assert.Equal(

@@ -217,8 +217,8 @@ export function createTruckCamera(
         }
       }, false);
     },
-    // The reader's own moves from the map's buttons: the whole fleet, or a
-    // step of zoom. Like a drag, each ends Follow.
+    // The reader's own move from the map's bar: the whole fleet. Like a
+    // drag, it ends Follow.
     showFleet(trucks: CameraTruck[]) {
       keepUserCamera();
       endFollow();
@@ -230,13 +230,6 @@ export function createTruckCamera(
             lng: truck.position.longitude,
           });
       if (!bounds.isEmpty()) map.fitBounds(bounds, viewport.padding(70));
-    },
-    zoomBy(step: number) {
-      keepUserCamera();
-      endFollow();
-      const zoom = map.getZoom?.();
-      if (typeof zoom === 'number' && Number.isFinite(step))
-        map.setZoom(zoom + step);
     },
     // The one camera move made before anyone has touched anything: the truck
     // the page was opened on, or all of them at once.

@@ -184,6 +184,11 @@ test('the chosen truck wears a sonar that is never picked and never grows it', (
     layersAt('still')['truck-sonar'].props.getRadius,
   );
   assert.equal(layersAt(null)['truck-sonar'], undefined, 'no choice, no sonar');
+  // A second ring half a sweep behind; one still ring for reduced motion.
+  const echo = layersAt(0.1)['truck-sonar-echo'];
+  assert.equal(echo.props.pickable, false);
+  assert.ok(echo.props.getRadius > early.props.getRadius);
+  assert.equal(layersAt('still')['truck-sonar-echo'], undefined);
   assert.equal(
     layersAt(0.5)['truck-icons'].props.getSize(chosen),
     layersAt(null)['truck-icons'].props.getSize(chosen),
