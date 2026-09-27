@@ -97,24 +97,16 @@ public sealed class ReturnNavigationTests
   }
 
   [Fact]
-  public void TheMapKeepsItsNextStopCameraAndSearch()
+  public void TheMapKeepsItsNextStopAndSearchButNotItsCamera()
   {
     var next = Guid.Parse("2b3c4d5e-6f70-4812-9a3b-4c5d6e7f8091");
-    var place = new MapPlace(
-      Truck,
-      Load,
-      next,
-      2,
-      null,
-      new MapView(43.651234567, -79.38, 11.25),
-      " 110 "
-    );
+    var place = new MapPlace(Truck, Load, next, 2, null, " 110 ");
 
     var address = ReturnNavigation.FleetMap(place);
 
     Assert.Equal(
       $"/fleet/map?truckId={Truck}&dispatchId={Load}&nextLoadId={next}"
-        + "&nextStop=2&view=43.65123%2C-79.38%2C11.25&q=110",
+        + "&nextStop=2&q=110",
       address
     );
     Assert.Equal("Back to map", ReturnNavigation.Resolve(address).Label);

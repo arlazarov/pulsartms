@@ -2,22 +2,16 @@ using System.Globalization;
 using Client.Models.DTO;
 using Client.Models.DTO.Dispatch;
 using Client.Models.DTO.Planning;
-using Client.Shared.Appearance.AppearanceProvider;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 namespace Client.Pages.FleetMap;
 
-// The Futuristic interface adds a truck list and a trip chain around the
-// same map. Both only route into the page's existing selection paths, so
+// The workspace around the map: a truck list, the trip chain and the one
+// chosen trip under the truck. Both only route into the page's existing selection paths, so
 // selection, Follow and the inspector behave as in the current interface.
 public partial class FleetMap
 {
-  [CascadingParameter]
-  private AppearanceProvider? Appearance { get; set; }
-
-  private bool Futuristic => Appearance?.Futuristic == true;
-
   // What the map is showing, as the map's own zoom policy chose it
   // (hybrid at close zoom, the road map further out).
   private string? _mapType;
@@ -51,7 +45,7 @@ public partial class FleetMap
 
   private async Task RefreshChainIfDueAsync()
   {
-    if (_disposed || !Futuristic)
+    if (_disposed)
       return;
     var truck = _activeTruckId;
     if (truck is null)
@@ -161,7 +155,7 @@ public partial class FleetMap
   // chain or on the map, else the current one. A stop may be chosen in it.
   private (Guid Id, Guid? Leg)? _trip;
   private Guid? _tripStop;
-  private bool? _stopChoiceSent;
+  private bool _stopChoiceSent;
 
   private DispatchResponse? SelectedTrip =>
     (
@@ -180,10 +174,10 @@ public partial class FleetMap
   // The map learns once that its current-route badges choose a stop here.
   private async Task SendStopChoiceAsync()
   {
-    if (_map is null || _disposed || _stopChoiceSent == Futuristic)
+    if (_map is null || _disposed || _stopChoiceSent)
       return;
-    _stopChoiceSent = Futuristic;
-    await _map.InvokeVoidAsync("setStopChoice", Futuristic);
+    _stopChoiceSent = true;
+    await _map.InvokeVoidAsync("setStopChoice", true);
   }
 
   private Task ChooseChainLoadAsync(DispatchResponse load) =>
@@ -241,13 +235,12 @@ public partial class FleetMap
       await _map.InvokeVoidAsync("focusRouteStop", stop?.ToString());
   }
 
-  // A current-route badge pressed on the map (Futuristic only).
+  // A current-route badge pressed on the map.
   [JSInvokable]
   public Task OnRouteStopChosen(string stopId)
   {
     if (
       _disposed
-      || !Futuristic
       || !Guid.TryParse(stopId, out var stop)
       || _chainLoads.FirstOrDefault(IsCurrentTrip) is not { } current
     )
@@ -255,10 +248,9 @@ public partial class FleetMap
     return InvokeAsync(() => ChooseTripAsync(current, stop));
   }
 
-  // A later trip's badge pressed on the map, or picked from the chain: in
-  // the Futuristic interface it chooses that trip and stop in the panel
-  // under the truck instead of opening the stop card.
-  private Task OnFuturisticNextStopAsync(
+  // A later trip's badge pressed on the map, or picked from the chain: it
+  // chooses that trip and stop in the panel under the truck.
+  private Task OnTripStopChosenAsync(
     string truck,
     string? load,
     int stopIndex,

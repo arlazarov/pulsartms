@@ -171,21 +171,18 @@ export async function createFleetMap(
     const traffic = new google.maps.TrafficLayer();
     cleanup.push(() => traffic.setMap(null));
     let nextLoadIdentity: NextLoadIdentity | null = null;
-    let tripChoice = false;
     const nextLoads = createNextLoadsLayer(
       map,
       gpuScene.Polyline,
       gpuScene.StopMarker,
       (id, stopIndex, executionLegId) => {
         if (inspector.suspended) return;
-        // A page showing the chosen trip in its own panel keeps the truck
-        // card: the selection is reported below, the card is not replaced.
-        if (!tripChoice && id !== null) {
+        if (id !== null) {
           inspectionTruckId = nextLoadIdentity?.truckId ?? inspectionTruckId;
           inspector.setMode('next-stop');
           route.closePopup();
           stations.closePopup();
-        } else if (!tripChoice && inspector.mode === 'next-stop')
+        } else if (inspector.mode === 'next-stop')
           inspector.setMode(inspectionTruckId ? 'truck' : 'closed');
         if (nextLoadIdentity) {
           const scope =
@@ -488,12 +485,11 @@ export async function createFleetMap(
       clearNextLoadSelection() {
         if (!disposed) nextLoads.clearSelection();
       },
-      // The Futuristic trip panel: a current-route badge chooses its stop
+      // The trip panel: a current-route badge chooses its stop
       // in the panel (OnRouteStopChosen) rather than opening the stop card,
       // and the panel's chosen stop is highlighted on the map.
       setStopChoice(enabled: unknown) {
         if (disposed) return;
-        tripChoice = enabled === true;
         route.setStopChooser(
           enabled === true
             ? stopId => notify('OnRouteStopChosen', stopId)

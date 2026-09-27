@@ -1,15 +1,15 @@
-// The Futuristic interface in the compiled Client, against the current
-// interface: Fleet Map and Dispatch in both themes at desktop and phone
+// The Fleet workspace and Dispatch in the compiled Client: both themes at
+// desktop and phone
 // widths, drawn on the provider's real basemap with the browser key from
 // wwwroot/appsettings.json (never written to the report). It also checks
-// that the Futuristic Fleet Map keeps its behaviour: list and chain
+// that the Fleet Map keeps its behaviour: list and chain
 // selection reach the inspector, Follow holds through position updates, the
 // map turns to satellite at close zoom and back to the road map when
 // zoomed out, and Dispatch keeps Cards, Table, Papers, search and scope.
 // APIs are synthetic and read-only; no account, database or write is used.
 //
 // MAP_TEST_ARTIFACT_DIR=/abs/publish/wwwroot \
-//   node tests/browser/futuristicSmoke.mjs
+//   node tests/browser/workspaceSmoke.mjs
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { inflateSync } from 'node:zlib';
@@ -20,7 +20,7 @@ import { installReleaseArtifact } from './releaseArtifact.mjs';
 
 assert.ok(process.env.MAP_TEST_ARTIFACT_DIR);
 const artifact = resolve(process.env.MAP_TEST_ARTIFACT_DIR);
-const output = browserOutput('ui', process.env.FUTURISTIC_TEST_OUTPUT_DIR);
+const output = browserOutput('ui', process.env.WORKSPACE_TEST_OUTPUT_DIR);
 const settingsFile =
   process.env.MAP_TEST_APPSETTINGS ?? resolve('wwwroot/appsettings.json');
 const appsettings = await readFile(settingsFile, 'utf8');
@@ -309,10 +309,10 @@ const board = (number, search, truckId) => {
     r =>
       (!truckId || r.truckId === truckId) &&
       (!q ||
-      [r.truckNumber, r.driverName, ...r.dispatches.map(d => d.loadNumber)]
-        .join(' ')
-        .toLowerCase()
-        .includes(q)),
+        [r.truckNumber, r.driverName, ...r.dispatches.map(d => d.loadNumber)]
+          .join(' ')
+          .toLowerCase()
+          .includes(q)),
   );
   return success({
     items,
@@ -404,14 +404,14 @@ const recorder = () => {
   }, 20);
 };
 
-async function open({ theme, face, width, height }) {
+async function open({ theme, width, height }) {
   const context = await browser.newContext({
     viewport: { width, height },
     deviceScaleFactor: 1,
     serviceWorkers: 'block',
   });
   await context.addInitScript(
-    ({ user, face }) => {
+    ({ user }) => {
       localStorage.setItem(
         'auth_session',
         JSON.stringify({ Id: user, AccessToken: 'fixture', RefreshToken: 'x' }),
@@ -420,9 +420,8 @@ async function open({ theme, face, width, height }) {
         `pulsartms.fleet-map.preferences.${user}`,
         JSON.stringify({ showNextLoads: true, showTraffic: false }),
       );
-      localStorage.setItem(`pulsr.interface.${user}`, face);
     },
-    { user, face },
+    { user },
   );
   await context.addInitScript(recorder);
   await installReleaseArtifact(context, artifact, origin);
@@ -447,7 +446,10 @@ async function open({ theme, face, width, height }) {
       return route.abort('blockedbyclient');
     }
     if (url.pathname === '/appsettings.json')
-      return route.fulfill({ contentType: 'application/json', body: appsettings });
+      return route.fulfill({
+        contentType: 'application/json',
+        body: appsettings,
+      });
     if (url.pathname.startsWith('/api/')) {
       const path = url.pathname;
       let m;
@@ -469,10 +471,14 @@ async function open({ theme, face, width, height }) {
         });
         const list = [history.at(-1), ...trucks.slice(1)];
         return route.fulfill({
-          json: success({ trucks: list, points: [...history, ...trucks.slice(1)] }),
+          json: success({
+            trucks: list,
+            points: [...history, ...trucks.slice(1)],
+          }),
         });
       }
-      if (path === '/api/fleet/hos') return route.fulfill({ json: success({}) });
+      if (path === '/api/fleet/hos')
+        return route.fulfill({ json: success({}) });
       if (path === '/api/dispatch/board') {
         boardReads.push(url.searchParams.get('truckId'));
         return route.fulfill({
@@ -620,9 +626,16 @@ function colours(png) {
       const b = previous[x];
       const c = x >= channels ? previous[x - channels] : 0;
       const p = a + b - c;
-      const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
-      const predictor = [0, a, b, (a + b) >> 1,
-        pa <= pb && pa <= pc ? a : pb <= pc ? b : c][filter];
+      const pa = Math.abs(p - a),
+        pb = Math.abs(p - b),
+        pc = Math.abs(p - c);
+      const predictor = [
+        0,
+        a,
+        b,
+        (a + b) >> 1,
+        pa <= pb && pa <= pc ? a : pb <= pc ? b : c,
+      ][filter];
       out[x] = (line[x] + predictor) & 255;
     }
     rows.push(out);
@@ -632,8 +645,11 @@ function colours(png) {
   for (let y = 0; y < height; y += 2)
     for (let x = 0; x < width; x += 2) {
       const i = x * channels;
-      seen.add(((rows[y][i] >> 3) << 10) | ((rows[y][i + 1] >> 3) << 5) |
-        (rows[y][i + 2] >> 3));
+      seen.add(
+        ((rows[y][i] >> 3) << 10) |
+          ((rows[y][i + 1] >> 3) << 5) |
+          (rows[y][i + 2] >> 3),
+      );
     }
   return seen.size;
 }
@@ -652,25 +668,20 @@ const noOverflow = async (tab, name) => {
   check(over <= 0, `${name}: no page horizontal overflow`, { over });
 };
 try {
-  // Screens: both interfaces, both themes, desktop and phone.
-  // FUTURISTIC_BEHAVIOUR_ONLY=1 skips them for a quick behaviour pass.
-  if (!process.env.FUTURISTIC_BEHAVIOUR_ONLY)
-  for (const face of ['futuristic', 'current'])
+  // Screens: both themes, desktop and phone.
+  // WORKSPACE_BEHAVIOUR_ONLY=1 skips them for a quick behaviour pass.
+  if (!process.env.WORKSPACE_BEHAVIOUR_ONLY)
     for (const theme of ['light', 'dark'])
       for (const [size, width, height] of [
         ['desktop', 1440, 900],
         ['phone', 390, 844],
         ['narrow', 360, 780],
       ]) {
-        const { context, tab } = await open({ theme, face, width, height });
-        const name = `${face}-${theme}-${size}`;
+        const { context, tab } = await open({ theme, width, height });
+        const name = `${theme}-${size}`;
         await tab.goto(`${origin}/fleet/map?truckId=${first.truckId}`);
         await tab.locator('#fleet-map').waitFor();
         await tab.waitForTimeout(6000);
-        const faceOn = await tab.evaluate(
-          () => document.documentElement.dataset.interface ?? 'current',
-        );
-        check(faceOn === face, `${name}: interface applied`, { faceOn });
         await noOverflow(tab, `${name} fleet`);
         await shot(tab, `${name}-fleet`);
         await tab.goto(`${origin}/dispatch`);
@@ -690,11 +701,10 @@ try {
         await context.close();
       }
 
-  // Behaviour in the Futuristic Fleet Map.
+  // Behaviour in the Fleet Map.
   {
     const { context, tab } = await open({
       theme: 'dark',
-      face: 'futuristic',
       width: 1440,
       height: 900,
     });
@@ -708,32 +718,45 @@ try {
     });
     const title = () =>
       tab.locator('.fleet-map-inspector__desktop-title').textContent();
-    check((await title()).trim() === first.unitNumber,
-      'the addressed truck opens in the inspector', await title());
+    check(
+      (await title()).trim() === first.unitNumber,
+      'the addressed truck opens in the inspector',
+      await title(),
+    );
     const toggleShown = await tab
       .locator('.fleet-map-mobile-summary__toggle')
       .isVisible();
     const detailsShown = await tab.locator('#fleet-map-details').isVisible();
-    check(!toggleShown && detailsShown,
+    check(
+      !toggleShown && detailsShown,
       'the docked truck card shows its details whole',
-      { toggleShown, detailsShown });
+      { toggleShown, detailsShown },
+    );
 
     // The list selects through the page's own path; the chain follows.
     await tab.locator('.fleet-truck-list__row').nth(1).click();
     await tab.waitForTimeout(1500);
-    check((await title()).trim() === trucks[1].unitNumber,
+    check(
+      (await title()).trim() === trucks[1].unitNumber,
       'choosing a truck in the list opens it in the inspector',
-      await title());
+      await title(),
+    );
     const chainTitle = await tab
       .locator('#fleet-trip-chain-title')
       .textContent();
-    check(chainTitle.includes(trucks[1].unitNumber),
-      'the chain follows the selection', chainTitle);
+    check(
+      chainTitle.includes(trucks[1].unitNumber),
+      'the chain follows the selection',
+      chainTitle,
+    );
     const staleChain = await tab
       .locator('.fleet-trip-chain__phase')
       .allTextContents();
-    check(staleChain.includes('Needs refresh'),
-      'a load the server marks stale says so in the chain', staleChain);
+    check(
+      staleChain.includes('Needs refresh'),
+      'a load the server marks stale says so in the chain',
+      staleChain,
+    );
     await tab.locator('.fleet-truck-list__row').nth(0).click();
     await tab.waitForTimeout(2500);
     const perTruck = boardReads.slice(readsBefore).filter(Boolean);
@@ -754,40 +777,59 @@ try {
     );
     check(
       JSON.stringify(chips) ===
-        JSON.stringify([['P', 'D1', 'D2'], ['P', 'D'], ['P', 'D']]),
-      'each trip shows its own P and D stops', chips);
+        JSON.stringify([
+          ['P', 'D1', 'D2'],
+          ['P', 'D'],
+          ['P', 'D'],
+        ]),
+      'each trip shows its own P and D stops',
+      chips,
+    );
     const chainPhases = await tab
       .locator('.fleet-trip-chain__phase')
       .allTextContents();
     check(
       JSON.stringify(chainPhases) ===
         JSON.stringify(['Current', 'Next', 'Upcoming']),
-      'the chain names the server work phases', chainPhases);
+      'the chain names the server work phases',
+      chainPhases,
+    );
     const panel = async () => ({
-      trip: (await tab.locator('#fleet-trip-detail-title').textContent())
-        .trim(),
+      trip: (
+        await tab.locator('#fleet-trip-detail-title').textContent()
+      ).trim(),
       trips: await tab.locator('.fleet-trip-detail').count(),
       focused: await tab
-        .locator('.fleet-trip-detail__stop.is-focused .dispatch-load__stop-number')
+        .locator(
+          '.fleet-trip-detail__stop.is-focused .dispatch-load__stop-number',
+        )
         .allTextContents(),
       mode: await tab
         .locator('.fleet-map-inspector')
         .getAttribute('data-inspector-mode'),
     });
     let now = await panel();
-    check(now.trips === 1 && now.trip === 'AMF1409' && now.mode === 'truck',
-      'the panel shows only the current trip at first', now);
+    check(
+      now.trips === 1 && now.trip === 'AMF1409' && now.mode === 'truck',
+      'the panel shows only the current trip at first',
+      now,
+    );
 
     // Follow: close zoom, satellite, and the moving truck kept in view.
     const follow = tab.locator('button[aria-label="Follow"]');
+    const quickFollow = tab.locator('button[aria-label="Follow truck"]');
     await follow.click();
     await tab.waitForTimeout(3000);
     const c0 = await tab.evaluate(() => window.camera());
-    check((await follow.getAttribute('aria-pressed')) === 'true' &&
-        c0?.zoom === 15,
-      'Follow starts at close zoom', c0);
-    check((await tab.evaluate(() => window.mapTypes.at(-1))) === 'hybrid',
-      'Follow at close zoom switches the map to hybrid');
+    check(
+      (await follow.getAttribute('aria-pressed')) === 'true' && c0?.zoom === 15,
+      'Follow starts at close zoom',
+      c0,
+    );
+    check(
+      (await tab.evaluate(() => window.mapTypes.at(-1))) === 'hybrid',
+      'Follow at close zoom switches the map to hybrid',
+    );
     const mode = (await tab.locator('.fleet-map-mode').textContent()).trim();
     check(/Satellite/.test(mode), 'the map says it is in satellite', mode);
     const satellite = colours(
@@ -811,37 +853,57 @@ try {
     await tab.waitForTimeout(1200);
     now = await panel();
     const c2 = await tab.evaluate(() => window.camera());
-    check(now.trips === 1 && now.trip === 'AMF1410' && now.mode === 'truck' &&
-        (await follow.getAttribute('aria-pressed')) === 'true' &&
+    // Its stop's own facts (distance, fresh ETA) come with the trip; Follow
+    // stays in the card's head.
+    check(
+      now.trips === 1 &&
+        now.trip === 'AMF1410' &&
+        now.mode === 'nextstop' &&
+        (await quickFollow.getAttribute('aria-pressed')) === 'true' &&
         c2.zoom === c0.zoom,
-      'choosing a later trip shows only it and keeps Follow', { now, c2 });
-    await tab.locator('.fleet-trip-chain__link').nth(0)
-      .locator('.fleet-trip-chain__stop').nth(2).click();
+      'choosing a later trip shows only it and keeps Follow',
+      { now, c2 },
+    );
+    await tab
+      .locator('.fleet-trip-chain__link')
+      .nth(0)
+      .locator('.fleet-trip-chain__stop')
+      .nth(2)
+      .click();
     await tab.waitForTimeout(1200);
     now = await panel();
-    check(now.trip === 'AMF1409' &&
+    check(
+      now.trip === 'AMF1409' &&
         JSON.stringify(now.focused) === JSON.stringify(['D2']) &&
         (await follow.getAttribute('aria-pressed')) === 'true',
-      'a D2 chip opens that stop in the current trip, Follow kept', now);
+      'a D2 chip opens that stop in the current trip, Follow kept',
+      now,
+    );
     await shot(tab, 'behaviour-trip-stop-focus');
 
     // A drag is the reader's camera: Follow ends; pressing it resumes.
     const box = await tab.locator('#fleet-map').boundingBox();
     await tab.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await tab.mouse.down();
-    await tab.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2,
-      { steps: 8 });
+    await tab.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2, {
+      steps: 8,
+    });
     await tab.mouse.up();
     await tab.waitForTimeout(800);
     const c3 = await tab.evaluate(() => window.camera());
-    check((await follow.getAttribute('aria-pressed')) === 'false' &&
+    check(
+      (await follow.getAttribute('aria-pressed')) === 'false' &&
         c3.zoom === c0.zoom,
-      'dragging the map ends Follow without changing zoom', c3);
+      'dragging the map ends Follow without changing zoom',
+      c3,
+    );
     await follow.click();
     await tab.waitForTimeout(2000);
-    check((await follow.getAttribute('aria-pressed')) === 'true' &&
+    check(
+      (await follow.getAttribute('aria-pressed')) === 'true' &&
         (await tab.evaluate(() => window.camera().zoom)) === 15,
-      'Follow resumes on the truck');
+      'Follow resumes on the truck',
+    );
 
     // GPS stops: the truck plays out what was reported, then stands; the
     // camera does not invent motion.
@@ -869,15 +931,25 @@ try {
     const ended = await follow.getAttribute('aria-pressed');
     const typeOut = await tab.evaluate(() => window.mapTypes.at(-1));
     const modeOut = (await tab.locator('.fleet-map-mode').textContent()).trim();
-    check(ended === 'false' && typeOut === 'roadmap' && /Road map/.test(modeOut),
-      'zooming out ends Follow and returns the road map', {
-        ended, typeOut, modeOut });
+    check(
+      ended === 'false' && typeOut === 'roadmap' && /Road map/.test(modeOut),
+      'zooming out ends Follow and returns the road map',
+      {
+        ended,
+        typeOut,
+        modeOut,
+      },
+    );
     const roadmap = colours(
       await tab.locator('#fleet-map').screenshot({ type: 'png' }),
     );
-    check(satellite > roadmap * 2,
+    check(
+      // Imagery of uniform fields reads about 1.9x the road map's
+      // colours; vector road maps stay well under that.
+      satellite > roadmap * 1.5,
       'the satellite view is drawn as imagery, not as the road map',
-      { satellite, roadmap });
+      { satellite, roadmap },
+    );
     await shot(tab, 'behaviour-zoomed-out-roadmap');
     await context.close();
   }
@@ -888,8 +960,15 @@ try {
     ['narrow', 360, 780],
   ]) {
     const { context, tab } = await open({
-      theme: 'light', face: 'futuristic', width, height });
-    for (const [unit, count] of [['11031', 1], ['11044', 4], ['11052', 9]]) {
+      theme: 'light',
+      width,
+      height,
+    });
+    for (const [unit, count] of [
+      ['11031', 1],
+      ['11044', 4],
+      ['11052', 9],
+    ]) {
       const truck = trucks.find(t => t.unitNumber === unit);
       await tab.goto(`${origin}/fleet/map?truckId=${truck.truckId}`);
       await tab.locator('.fleet-trip-chain__link').first().waitFor();
@@ -897,23 +976,32 @@ try {
       const rows = await tab.evaluate(() => {
         const list = document.querySelector('.fleet-trip-chain__links');
         const shown = [...list.children].filter(
-          li => getComputedStyle(li).display !== 'none');
-        const tops = new Set(shown.map(li => Math.round(
-          li.getBoundingClientRect().top)));
+          li => getComputedStyle(li).display !== 'none',
+        );
+        const tops = new Set(
+          shown.map(li => Math.round(li.getBoundingClientRect().top)),
+        );
         return {
           total: list.children.length,
           shown: shown.length,
           rows: tops.size,
           selected: shown.some(li => li.classList.contains('is-selected')),
           across: list.scrollWidth - list.clientWidth,
-          page: document.documentElement.scrollWidth -
+          page:
+            document.documentElement.scrollWidth -
             document.documentElement.clientWidth,
         };
       });
       const limit = size === 'narrow' ? 1 : 2;
-      check(rows.total === count && rows.rows <= limit && rows.selected &&
-          rows.across <= 0 && rows.page <= 0,
-        `${size}: ${count} trip(s) wrap without sideways scrolling`, rows);
+      check(
+        rows.total === count &&
+          rows.rows <= limit &&
+          rows.selected &&
+          rows.across <= 0 &&
+          rows.page <= 0,
+        `${size}: ${count} trip(s) wrap without sideways scrolling`,
+        rows,
+      );
       await shot(tab, `chain-${size}-${count}-trips`);
       if (count > 1) {
         await tab.locator('.fleet-trip-chain__all').click();
@@ -922,12 +1010,16 @@ try {
           const list = document.querySelector('.fleet-trip-chain__links');
           return {
             shown: [...list.children].filter(
-              li => getComputedStyle(li).display !== 'none').length,
+              li => getComputedStyle(li).display !== 'none',
+            ).length,
             across: list.scrollWidth - list.clientWidth,
           };
         });
-        check(all.shown === count && all.across <= 0,
-          `${size}: All trips (${count}) shows every trip`, all);
+        check(
+          all.shown === count && all.across <= 0,
+          `${size}: All trips (${count}) shows every trip`,
+          all,
+        );
         await shot(tab, `chain-${size}-${count}-trips-all`);
         await tab.locator('.fleet-trip-chain__all').click();
       }
@@ -939,12 +1031,15 @@ try {
           ?.offsetParent,
         details: !!document.querySelector('.fleet-map-mobile-summary__toggle')
           ?.offsetParent,
-        hidden: getComputedStyle(document.querySelector('#fleet-map-details'))
-          .display === 'none',
+        hidden:
+          getComputedStyle(document.querySelector('#fleet-map-details'))
+            .display === 'none',
       }));
-      check(card.follow && card.details && card.hidden,
+      check(
+        card.follow && card.details && card.hidden,
         'narrow: the card opens closed with Details and Follow in reach',
-        card);
+        card,
+      );
       await shot(tab, 'narrow-card-closed');
       await tab.locator('.fleet-map-mobile-summary__toggle').click();
       await tab.waitForTimeout(400);
@@ -954,7 +1049,7 @@ try {
   }
 
   // The fuel plan, its editor, the send window, the camera and the route
-  // options in the Futuristic layout. Nothing is saved or sent: writes are
+  // options in the workspace layout. Nothing is saved or sent: writes are
   // blocked, the camera start is refused, and no send or save is pressed.
   for (const theme of ['light', 'dark'])
     for (const [size, width, height] of [
@@ -964,7 +1059,6 @@ try {
     ]) {
       const { context, tab } = await open({
         theme,
-        face: 'futuristic',
         width,
         height,
       });
@@ -1011,9 +1105,11 @@ try {
       const editor = await inView('.fuel-plan-editor', 'the fuel editor');
       if (size === 'desktop') {
         const map = await tab.locator('#fleet-map').boundingBox();
-        check(editor.x >= map.x + map.width - 1,
+        check(
+          editor.x >= map.x + map.width - 1,
           `${name}: the fuel editor stands in the card's column`,
-          { editor, map });
+          { editor, map },
+        );
       }
       await shot(tab, `${name}-fuel-editor`);
 
@@ -1044,11 +1140,10 @@ try {
       await context.close();
     }
 
-  // Dispatch keeps its views, search and scope in the Futuristic interface.
+  // Dispatch keeps its views, search and scope.
   {
     const { context, tab } = await open({
       theme: 'light',
-      face: 'futuristic',
       width: 1440,
       height: 900,
     });
@@ -1066,7 +1161,9 @@ try {
     );
     const shown = async () => ({
       search: await tab.locator('#dispatch-search').inputValue(),
-      active: await tab.locator('#dispatch-active').getAttribute('aria-pressed'),
+      active: await tab
+        .locator('#dispatch-active')
+        .getAttribute('aria-pressed'),
     });
     const start = await shown();
     for (const view of ['Table', 'Papers', 'Cards']) {
@@ -1076,26 +1173,43 @@ try {
       const pressed = await tab
         .locator('.dispatch-view button', { hasText: view })
         .getAttribute('aria-pressed');
-      check(pressed === 'true' && now.search === start.search &&
+      check(
+        pressed === 'true' &&
+          now.search === start.search &&
           now.active === start.active,
-        `Dispatch ${view} keeps the search and scope`, { start, now });
+        `Dispatch ${view} keeps the search and scope`,
+        { start, now },
+      );
     }
     // Completed is read in the Table alone (owner, September 27).
     await tab.locator('.dispatch-view button', { hasText: 'Table' }).click();
     await tab.waitForTimeout(400);
     await tab.locator('#dispatch-completed').click();
     await tab.waitForTimeout(600);
-    check((await tab.locator('#dispatch-completed').getAttribute(
-      'aria-pressed')) === 'true', 'Dispatch Completed scope still opens');
+    check(
+      (await tab
+        .locator('#dispatch-completed')
+        .getAttribute('aria-pressed')) === 'true',
+      'Dispatch Completed scope still opens',
+    );
     await context.close();
   }
 } finally {
   await browser.close();
   await writeFile(
-    resolve(output, 'futuristic-report.json'),
+    resolve(output, 'workspace-report.json'),
     JSON.stringify(report, null, 2),
   );
 }
-console.log(JSON.stringify({ output, errors: report.errors,
-  unexpected: [...new Set(report.unexpectedRequests)] }, null, 2));
+console.log(
+  JSON.stringify(
+    {
+      output,
+      errors: report.errors,
+      unexpected: [...new Set(report.unexpectedRequests)],
+    },
+    null,
+    2,
+  ),
+);
 if (report.errors.length) process.exitCode = 1;

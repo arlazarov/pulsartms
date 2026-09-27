@@ -14,7 +14,7 @@
   &--reversed {
     color: ui.theme(on-accent);
   }
-  // Shown only where a layout asks for it (the Futuristic rail).
+  // Shown only where a layout asks for it (the navigation rail).
   &--compact {
     display: none;
     width: ui.size(control-touch);

@@ -23,6 +23,7 @@ export const routes = [
   // Further reads the real Client makes on these pages (CONCEPT_ROOT).
   ['GET', /^\/api\/settings\/(dispatch|appearance)$/],
   ['GET', /^\/api\/driver-groups$/],
+  ['GET', /^\/api\/fleet\/drivers$/],
   ['GET', /^\/api\/messaging\/(unread|changes)$/],
   ['GET', /^\/api\/fuel\/(price-overview|stations)$/],
   ['GET', /^\/api\/fleet\/planning\/previews$/],

@@ -490,7 +490,7 @@ beside Follow, explicitly fits the retained remaining road and turns Follow off.
 It does not fetch, republish geometry or recalculate a route. At overview
 zoom, nearby unselected trucks share a counted, clickable marker that zooms in;
 the selected truck is never clustered; it keeps its size and is found by its
-sonar (see Futuristic interface: truck marks).
+sonar (see Fleet workspace: truck marks).
 The count label sits directly at the group's geographic center with zero screen
 offset. Nearby markers, polling and zoom must not push it away from that point.
 Only individual truck labels use collision displacement and short connectors.
@@ -596,24 +596,17 @@ On phones, keep the title in the first row and Back below it.
 At very narrow or enlarged-text widths, let this header scroll with the card
 instead of covering the stop facts with a tall sticky area.
 
-## Futuristic interface
+## Fleet workspace
 
-Personal settings offer two interfaces: **Current** (the default and the
-fallback) and **Futuristic**. `AppearanceProvider` owns the choice beside the
-theme. Until an account preference exists it is kept on the device, per
-account (`pulsr.interface.<account>`), and applied as
-`data-interface="futuristic"` on the root; a missing, unreadable or unknown
-value, a sign-out and a new account all mean Current. It changes layout and
-styling, and how a trip is chosen; requests, refresh loops, the map's camera
-and zoom policy are the current interface's.
+This is the application's only interface; the earlier layout was removed on
+2026-09-27 and is kept only in Git (tag `ui-legacy-2026-09-27`, branch
+`recovery/pre-futuristic-ui-2026-09-27`, both at `0e6add5d`). The theme
+roles carry its colours, with operational colours unchanged. On wide
+screens the navigation is a narrow rail (`layouts/_rail.scss`) with the
+pulse icon (brand-design.md's small-space lockup); the light rail takes the
+navigation text colour for the wordmark.
 
-Colours come from `base/_interface.scss`: complete light and dark role maps
-over the same contract, checked for contrast like the themes. Operational
-colours keep their theme values. On wide screens the navigation is a narrow
-rail with the pulse icon (brand-design.md's small-space lockup); the light
-rail takes the navigation text colour for the wordmark.
-
-Fleet Map, from `futuristic-docked` up, is a collapsible fleet list, the map,
+Fleet Map, from `fleet-docked` up, is a collapsible fleet list, the map,
 the docked truck panel and the trip chain. The list is the page's trucks
 under its own truck search. The right panel is the truck card (all its
 content and actions: Follow, Fit route, Fuel, Camera, Route options) and
@@ -639,12 +632,14 @@ details and a Follow button in its head.
 
 Choosing a trip or a stop - in the chain, in the panel, or on a map badge -
 selects that trip and opens that stop in the panel, and the map highlights
-it: the current trip's stop in place (`focusRouteStop`), a later trip
-through the next-loads layer. With trip choice on (`setStopChoice`) a
-current-route badge reports `OnRouteStopChosen` and a next-load selection
-leaves the truck card in place instead of opening a stop card. Nothing here
-moves the camera, so Follow continues; only a reader's drag or zoom, or an
-explicit camera action, ends it.
+it. The current trip's stop is opened in place (`focusRouteStop`; with
+`setStopChoice` a current-route badge reports `OnRouteStopChosen`). A later
+trip's stop, chosen through the next-loads layer, opens the next-load stop
+card above that trip: its distance through every load before it, its
+fresh ETA and fuel arrival come from the next-load owner, and Back to truck
+returns to the truck card. Follow stays in the card's head there. Nothing
+here moves the camera, so Follow continues; only a reader's drag or zoom,
+or an explicit camera action, ends it.
 
 Stop badges everywhere say what the stop is within its own load: P for a
 pickup, D for the only delivery, D1, D2... for several, in stop order
@@ -653,7 +648,7 @@ keeps its position. They never carry the load's place in the chain, which
 only the chain numbers. The map's text atlas holds these letters
 (`stopBadgeCharacters`).
 
-Truck marks, in both interfaces: the shape says motion (an arrow moving, a
+Truck marks: the shape says motion (an arrow moving, a
 circle standing, from speed); a subtle edge says the telemetry's engine
 reading - green for on, idling included; neutral for off; dashed neutral
 when missing or unknown - never inferred from speed. The locations feed
@@ -665,14 +660,14 @@ nothing is chosen, or the map is disposed.
 The map keeps to Canada and the USA with soft bounds on the provider map.
 Its zoom policy is unchanged (hybrid at 15 and above, road map below), and
 the page says which it shows (Satellite / Road map). Follow opens at 15 and
-so on satellite. `tests/browser/futuristicSmoke.mjs` checks this on the
+so on satellite. `tests/browser/workspaceSmoke.mjs` checks this on the
 real basemap, including successive GPS reports, a stop in GPS, drag and
 resume, and the rendered imagery.
 
 Dispatch keeps Cards, Papers, Table, the scope (Completed is read in the
-Table alone), search, groups and every action. In Futuristic the cards take
-their own height, Table rows stay neutral with the row under pointer or
-keyboard marked, and Papers cards (both interfaces) say the route and name
+Table alone), search, groups and every action. The cards take their own
+height, Table rows stay neutral with the row under pointer or keyboard
+marked, and Papers cards say the route and name
 the time they show as the next stop's appointment.
 
 ## Dispatch information hierarchy
@@ -1180,10 +1175,15 @@ origins join it rather than building the query themselves.
   - Dispatch: Active or Completed, the search and the page, with the view
     kept in the browser and the driver group on the server as before;
   - the map: the selected truck and its load, a next load's stop being
-    read (`nextLoadId`, `nextStop`, `nextLeg`), the camera (`view`, centre
-    and zoom, reported when the map comes to rest) and the truck search
-    (`q`). A restored camera counts as the reader's own, so focusing the
-    truck it showed does not move it. The next load's stop is opened when
+    read (`nextLoadId`, `nextStop`, `nextLeg`) and the truck search (`q`).
+    The camera is not in the address: where the map came to rest is kept
+    in the tab's `sessionStorage`, one record per signed-in user
+    (`pulsartms.fleet-map.preferences.<user>.camera`, with the truck it was
+    left on), and given back only to the same truck or to none, so a link
+    to another truck still frames that truck. An older link's `view` is used
+    once and dropped by the next replace, adding no history entry. A
+    restored camera counts as the reader's own, so focusing the truck it
+    showed does not move it. The next load's stop is opened when
     that load is drawn, through the same path as a click, so the truck,
     load and assignment checks still decide; picking something first
     replaces it;

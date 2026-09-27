@@ -23,15 +23,15 @@ export type StopLabelStyle = {
 };
 
 export const defaultStopLabelStyle: Readonly<StopLabelStyle> = Object.freeze({
-  color: [23, 36, 56],
+  color: [14, 28, 48],
   background: [255, 255, 255, 255],
-  border: [226, 232, 240],
+  border: [223, 232, 242],
   pickup: [128, 96, 50],
   delivery: [32, 122, 99],
-  eta: [35, 65, 176],
+  eta: [21, 94, 117],
   success: [20, 125, 59],
   danger: [185, 28, 28],
-  muted: [71, 85, 105],
+  muted: [58, 76, 99],
   size: sceneMetrics.stopLabelSize,
   padding: [12, 8],
   radius: 8,

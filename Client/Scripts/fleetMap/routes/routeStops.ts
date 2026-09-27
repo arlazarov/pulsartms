@@ -36,7 +36,7 @@ export function createRouteStops(
   let progress: number | null = null,
     selectedId: string | null = null;
   // Set by a layout that shows a chosen stop in its own panel (the
-  // Futuristic trip panel): a badge press then chooses the stop there
+  // trip panel): a badge press then chooses the stop there
   // instead of opening the stop card. The focused stop is highlighted.
   let chooser: ((stopId: string) => void) | null = null;
   let focusedId: string | null = null;

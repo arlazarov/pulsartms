@@ -106,8 +106,8 @@ test('theme roles derive all colors from the primitive palette', () => {
   assert.doesNotThrow(() =>
     compileString(
       `@use 'sass:map'; @use 'base/colors' as p; @use 'base/themes' as t;
-    @if map.get(t.$roles, action) != p.value(primary, 600) { @error 'Action does not use primary'; }
-    @if map.get(t.$roles, surface) != p.value(neutral, 0) { @error 'Surface does not use neutral'; }`,
+    @if map.get(t.$roles, action) != p.value('cyan', 700) { @error 'Action does not use cyan'; }
+    @if map.get(t.$roles, surface) != p.value(ice, 0) { @error 'Surface does not use ice'; }`,
       { loadPaths },
     ),
   );
@@ -187,7 +187,7 @@ test('spacing rejects the obsolete numeric scale and breakpoints retain exact bo
 });
 
 // A role that keeps its light value in dark is a decision, and the decision
-// is written above the map. These are the three kinds it may belong to; a
+// is written above the map. These are the two kinds it may belong to; a
 // new one outside them is an oversight until the reasoning is extended.
 test('a role that stays light in dark is one we said would', () => {
   const source = readFileSync(
@@ -200,27 +200,10 @@ test('a role that stays light in dark is one we said would', () => {
     [...body.matchAll(/^\s+([a-z][a-z0-9-]*):/gm)].map(m => m[1]);
   const unchanged = names(light).filter(role => !names(dark).includes(role));
   const expected =
-    /^(?:map-|navigation|brand|pulse-|telemetry-)|^(?:action|action-hover|danger-action|danger-action-hover|shadow|overlay)$/;
+    /^(?:map-|brand|pulse-|telemetry-)|^(?:action|action-hover|danger-action|danger-action-hover|shadow|overlay)$/;
   for (const role of unchanged)
     assert.match(role, expected, `${role} keeps its light value unexplained`);
-  assert.ok(unchanged.length > 20, 'the light-kept roles were not found');
-});
-
-test('the Futuristic interface exports the same role contract', () => {
-  assert.doesNotThrow(() =>
-    compileString(
-      `@use 'sass:map'; @use 'base/themes' as t; @use 'base/interface' as i;
-    @each $map in (i.$futuristic-roles, i.$futuristic-dark-roles) {
-      @each $name, $value in t.$roles {
-        @if not map.has-key($map, $name) { @error 'Missing role #{$name}'; }
-      }
-      @each $name, $value in $map {
-        @if not map.has-key(t.$roles, $name) { @error 'Unknown #{$name}'; }
-      }
-    }`,
-      { loadPaths },
-    ),
-  );
+  assert.ok(unchanged.length > 15, 'the light-kept roles were not found');
 });
 
 test('both themes export the same role contract', () => {
@@ -422,17 +405,8 @@ test('truck motion is owned by its animation module', () => {
 test('theme text roles meet normal-text contrast on their supported surfaces', () => {
   const css = compileString(
     `@use 'base/themes' as t;
-    @use 'base/interface' as i;
     .light { @each $key, $value in t.$roles { --#{$key}: #{$value}; } }
-    .dark { @each $key, $value in t.$dark-roles { --#{$key}: #{$value}; } }
-    .futuristic-light {
-      @each $key, $value in i.$futuristic-roles { --#{$key}: #{$value}; }
-    }
-    .futuristic-dark {
-      @each $key, $value in i.$futuristic-dark-roles {
-        --#{$key}: #{$value};
-      }
-    }`,
+    .dark { @each $key, $value in t.$dark-roles { --#{$key}: #{$value}; } }`,
     { loadPaths },
   ).css;
   const luminance = hex => {
@@ -442,11 +416,7 @@ test('theme text roles meet normal-text contrast on their supported surfaces', (
       .map(x => (x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
     return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
   };
-  const themes = [
-    ...css.matchAll(/\.((?:futuristic-)?(?:light|dark))\s*\{([^}]+)\}/g),
-  ];
-  assert.equal(themes.length, 4, 'all four role maps were read');
-  for (const [, theme, body] of themes) {
+  for (const [, theme, body] of css.matchAll(/\.(light|dark)\s*\{([^}]+)\}/g)) {
     const roles = Object.fromEntries(
       [...body.matchAll(/--([\w-]+):\s*#([0-9a-f]{6});/gi)].map(x => [
         x[1],

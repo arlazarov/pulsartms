@@ -10,19 +10,17 @@ Explicit `*_OUTPUT_DIR` overrides remain caller-owned and bypass cleanup.
 
 ## Offline staged UI smoke
 
-`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/futuristicSmoke.mjs`
-from Client renders Fleet Map and Dispatch in the Current and Futuristic
-interfaces, light and dark, at 1440, 390 and 360px, on the real basemap (the
-publish must contain the ignored `wwwroot/appsettings.json`; the key is
-never written out). In the Futuristic Fleet Map it checks list and chain
-selection, next-load stop cards, Follow on satellite through position
-updates, the road map after zooming out, the chain's server work phases
-matching Dispatch, and the fuel plan, fuel editor, send window, camera and
-route options staying on screen at every width. Writes, the camera start and
-the route preview are refused; no save or send is pressed.
-`FUTURISTIC_BEHAVIOUR_ONLY=1` skips the screens. APIs are synthetic and
-read-only. Not gated. `UI_TEST_INTERFACE=futuristic` runs `fuelEditorSmoke`
-and `routeEditorSmoke` in that interface.
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/workspaceSmoke.mjs`
+from Client renders Fleet Map and Dispatch light and dark, at 1440, 390 and
+360px, on the real basemap (the publish must contain the ignored
+`wwwroot/appsettings.json`; the key is never written out). In the Fleet Map
+it checks list and chain selection, next-load stop cards, Follow on
+satellite through position updates, the road map after zooming out, the
+chain's server work phases matching Dispatch, and the fuel plan, fuel
+editor, send window, camera and route options staying on screen at every
+width. Writes, the camera start and the route preview are refused; no save
+or send is pressed. `WORKSPACE_BEHAVIOUR_ONLY=1` skips the screens. APIs are
+synthetic and read-only. Not gated.
 
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/dispatchCreationSmoke.mjs`
 checks the compiled New load workflow at 1440/390/320px, light/dark themes and

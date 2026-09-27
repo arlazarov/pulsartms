@@ -21,7 +21,7 @@ const hex = ([red, green, blue]) =>
   `#${[red, green, blue].map(c => c.toString(16).padStart(2, '0')).join('')}`;
 
 // The :root contract, which is the first value each role is given; theme
-// and interface scopes that follow it override roles on their own roots.
+// scopes that follow it override roles on their own roots.
 const exported = new Map();
 for (const [, name, value] of compileString("@use 'global/root';", {
   loadPaths,

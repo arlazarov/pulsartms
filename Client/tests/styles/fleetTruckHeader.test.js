@@ -206,7 +206,7 @@ test('map information caps its top gap by actual side clearance rather than view
   );
   assert.match(
     css,
-    /\.fleet-map-info-reserved\s*\{[^}]*border-radius: var\(--radius-sm\);[^}]*box-shadow: var\(--shadow-card\);/,
+    /\.fleet-map-info-reserved\s*\{[^}]*border-radius: var\(--radius-md\);[^}]*box-shadow: var\(--shadow-card\);/,
   );
   assert.doesNotMatch(
     css,

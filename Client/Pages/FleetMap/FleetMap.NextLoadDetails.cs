@@ -208,10 +208,7 @@ public partial class FleetMap
     string current,
     string? load,
     int stopIndex
-  ) =>
-    Futuristic
-      ? OnFuturisticNextStopAsync(truck, load, stopIndex, null)
-      : SelectNextLoadAsync(truck, current, load, stopIndex, null, null, 0);
+  ) => ChooseLaterStopAsync(truck, current, load, stopIndex, null, null, 0);
 
   [JSInvokable]
   public Task OnNextExecutionLegSelected(
@@ -223,17 +220,39 @@ public partial class FleetMap
     string? currentExecutionLeg,
     long currentAssignmentRevision
   ) =>
-    Futuristic
-      ? OnFuturisticNextStopAsync(truck, load, stopIndex, executionLeg)
-      : SelectNextLoadAsync(
-        truck,
-        current,
-        load,
-        stopIndex,
-        executionLeg,
-        currentExecutionLeg,
-        currentAssignmentRevision
-      );
+    ChooseLaterStopAsync(
+      truck,
+      current,
+      load,
+      stopIndex,
+      executionLeg,
+      currentExecutionLeg,
+      currentAssignmentRevision
+    );
+
+  // The trip becomes the panel's trip; the stop's own facts (distance
+  // through the loads before it, fresh ETA) come from the next-load owner.
+  private async Task ChooseLaterStopAsync(
+    string truck,
+    string current,
+    string? load,
+    int stopIndex,
+    string? executionLeg,
+    string? currentExecutionLeg,
+    long currentAssignmentRevision
+  )
+  {
+    await OnTripStopChosenAsync(truck, load, stopIndex, executionLeg);
+    await SelectNextLoadAsync(
+      truck,
+      current,
+      load,
+      stopIndex,
+      executionLeg,
+      currentExecutionLeg,
+      currentAssignmentRevision
+    );
+  }
 
   private async Task SelectNextLoadAsync(
     string truck,

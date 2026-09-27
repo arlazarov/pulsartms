@@ -60,7 +60,9 @@
     min-width: 1.4em;
     padding: 0 ui.pg(micro);
     border-radius: ui.radius(pill);
-    background: ui.theme(accent);
+    // White on the action colour: the bright dark-theme accent would not
+    // carry it.
+    background: ui.theme(action);
     color: ui.theme(on-accent);
     font-size: ui.fs(small);
     font-weight: 600;
@@ -129,10 +131,11 @@
     height: 100dvh;
     flex-direction: column;
     flex-wrap: nowrap;
-    align-items: stretch;
-    padding: ui.pg(xxl) ui.pg(md) ui.pg(lg);
+    // A narrow rail (layouts/rail): icons over short names.
+    align-items: center;
+    padding: ui.pg(lg) ui.pg(xs);
     &__brand {
-      padding: 0 ui.pg(xs) ui.pg(lg);
+      padding: 0 0 ui.pg(md);
     }
     &__nav {
       flex: 0;

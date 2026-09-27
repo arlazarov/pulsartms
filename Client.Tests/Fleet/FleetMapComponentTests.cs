@@ -2841,11 +2841,11 @@ public sealed class FleetMapComponentTests
     Assert.Equal(true, focus.Args![2]);
   }
 
-  // Coming back to the map from a load: the camera, the truck search and
-  // the next load's stop that was open all come back from the address,
-  // and the address follows the camera from then on.
+  // An older link with a camera: the camera is used once, and the address
+  // the map writes back names the truck, next stop and search, never the
+  // camera, however the camera moves afterwards.
   [Fact]
-  public async Task AReturnRestoresTheCameraTheSearchAndTheNextStop()
+  public async Task AnOlderCameraLinkIsUsedOnceAndLeftOutOfTheAddress()
   {
     using var fixture = new Fixture();
     var next = Guid.NewGuid();
@@ -2883,15 +2883,16 @@ public sealed class FleetMapComponentTests
     // Until the stop is open, the address still names it.
     var address = (string)calls.Last(call => call.Name == "reflect").Args![0]!;
     Assert.Contains($"nextLoadId={next}", address);
-    Assert.Contains("view=43.65%2C-79.38%2C11", address);
+    Assert.DoesNotContain("view=", address);
     Assert.Contains("q=110", address);
+    var reflections = fixture.Js.Calls.Count(call => call.Name == "reflect");
 
     await component.InvokeAsync(
       () => component.Instance.OnMapViewChanged(44.12345678, -78.2, 9.5)
     );
-    Assert.Contains(
-      "view=44.12346%2C-78.2%2C9.5",
-      (string)fixture.Js.Calls.Last(call => call.Name == "reflect").Args![0]!
+    Assert.Equal(
+      reflections,
+      fixture.Js.Calls.Count(call => call.Name == "reflect")
     );
   }
 

@@ -1,145 +1,28 @@
 @use '../../base' as ui;
 
-// The Futuristic Fleet Map: the same stage, laid out as a fleet list, the
+// The Fleet Map workspace: the stage, laid out as a fleet list, the
 // map, the docked inspector and the trip chain. Every panel is an existing
-// owner; this file only places and dresses them. The current interface
-// never matches these selectors.
-[data-interface='futuristic'] {
-  .fleet-map-page {
-    gap: ui.pg(md);
-  }
+// owner; this file only places and dresses them.
+.fleet-map-toolbar {
+  border: 1px solid ui.theme(accent, 0.22);
+  background: ui.theme(surface);
+  box-shadow: ui.shadow(card);
+}
 
-  .fleet-map-toolbar {
-    border: 1px solid ui.theme(accent, 0.22);
-    background: ui.theme(surface);
-    box-shadow: ui.shadow(card);
-  }
+#fleet-map {
+  border-color: ui.theme(accent, 0.28);
+  border-radius: ui.radius(md);
+  box-shadow:
+    0 0 0 1px ui.theme(accent, 0.06),
+    ui.shadow(card);
+}
 
-  #fleet-map {
-    border-color: ui.theme(accent, 0.28);
-    border-radius: ui.radius(md);
-    box-shadow:
-      0 0 0 1px ui.theme(accent, 0.06),
-      ui.shadow(card);
-  }
+.fleet-map-info-reserved {
+  border: 1px solid ui.theme(accent, 0.28);
+}
 
-  .fleet-map-info-reserved {
-    border: 1px solid ui.theme(accent, 0.28);
-    border-radius: ui.radius(md);
-  }
-
-  .fleet-map-key {
-    border-color: ui.theme(accent, 0.22);
-  }
-
-  @include ui.above(futuristic-docked) {
-    .fleet-map-stage {
-      display: grid;
-      grid-template-columns:
-        ui.size(futuristic-list) minmax(0, 1fr)
-        ui.size(futuristic-inspector);
-      grid-template-rows: minmax(0, 1fr) auto;
-      grid-template-areas:
-        'list map inspector'
-        'chain chain chain';
-      gap: ui.pg(md);
-    }
-    .fleet-map-stage:has(.fleet-truck-list.is-collapsed) {
-      grid-template-columns:
-        ui.size(control-touch) minmax(0, 1fr)
-        ui.size(futuristic-inspector);
-    }
-    // No truck selected and no editor open: the map takes the inspector's
-    // column too. The fuel editor replaces the card in that column.
-    .fleet-map-stage:not(:has(.fleet-map-info-reserved.has-selection)):not(
-        :has(.fuel-plan-editor)
-      ) {
-      grid-template-areas:
-        'list map map'
-        'chain chain chain';
-    }
-    #fleet-map {
-      grid-area: map;
-    }
-    .fleet-truck-list {
-      grid-area: list;
-    }
-    .fleet-trip-chain {
-      grid-area: chain;
-    }
-    .fleet-map-info-reserved {
-      grid-area: inspector;
-      position: relative;
-      top: auto;
-      width: auto;
-      max-height: none;
-      margin: 0;
-      align-self: stretch;
-    }
-    // Editors stand where the card they edit stands; the route choices and
-    // the key belong over the map.
-    .fuel-plan-editor {
-      grid-area: inspector;
-      top: 0;
-      width: 100%;
-      max-height: 100%;
-    }
-    .route-editor,
-    .fuel-send-plan,
-    .fleet-map-key,
-    .fleet-map-mode {
-      grid-area: map;
-    }
-  }
-
-  .fleet-map-inspector__quick-follow {
-    display: none;
-  }
-
-  // On a phone the card opens closed: the head and its summary rows (load,
-  // next stop, ETA, appointment, readings, clocks), an explicit Details /
-  // Hide details, and Follow beside it. Details opens the rest.
-  @include ui.below(futuristic-docked) {
-    @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
-      .fleet-map-inspector[data-inspector-mode='truck']
-        .fleet-map-mobile-summary__toggle,
-      .fleet-map-inspector__quick-follow {
-        display: inline-flex;
-      }
-      .fleet-map-inspector.is-mobile-collapsed .fleet-map-info-content,
-      .fleet-map-inspector.is-mobile-collapsed .fleet-map-inspector__duty,
-      .fleet-map-inspector.is-mobile-collapsed .fleet-trip-stops {
-        display: none;
-      }
-    }
-  }
-
-  // Narrower screens: the current floating inspector over the map, the
-  // chain beneath it, and the list left to search.
-  @include ui.below(futuristic-docked) {
-    .fleet-truck-list {
-      display: none;
-    }
-    .fleet-map-stage {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      grid-template-rows: minmax(0, 1fr) auto;
-      grid-template-areas: 'map' 'chain';
-      gap: ui.pg(sm);
-    }
-    #fleet-map,
-    .fleet-map-info-reserved,
-    .fuel-plan-editor,
-    .route-editor,
-    .fuel-send-plan,
-    .fleet-map-key,
-    .fleet-map-mode {
-      grid-area: map;
-    }
-    .fleet-trip-chain {
-      grid-area: chain;
-    }
-  }
+.fleet-map-key {
+  border-color: ui.theme(accent, 0.22);
 }
 
 .fleet-truck-list {
@@ -188,7 +71,7 @@
     align-items: center;
     gap: ui.pg(sm);
     width: ui.size(control-touch);
-    min-height: ui.size(futuristic-trip);
+    min-height: ui.size(trip-card);
     padding: ui.pg(md) 0;
     border-color: ui.theme(accent, 0.28);
     > svg {
@@ -323,7 +206,7 @@
     display: grid;
     grid-template-columns: repeat(
       auto-fill,
-      minmax(ui.size(futuristic-trip), 1fr)
+      minmax(ui.size(trip-card), 1fr)
     );
     gap: ui.pg(sm);
     min-width: 0;
@@ -657,5 +540,122 @@
     display: flex;
     flex-wrap: wrap;
     gap: ui.pg(sm);
+  }
+}
+
+// The layout comes last: its narrow-screen rules override the components'
+// own display above, by order at equal specificity.
+@include ui.above(fleet-docked) {
+  .fleet-map-stage {
+    display: grid;
+    grid-template-columns:
+      ui.size(fleet-list) minmax(0, 1fr)
+      ui.size(fleet-panel);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'list map inspector'
+      'chain chain chain';
+    gap: ui.pg(md);
+  }
+  .fleet-map-stage:has(.fleet-truck-list.is-collapsed) {
+    grid-template-columns:
+      ui.size(control-touch) minmax(0, 1fr)
+      ui.size(fleet-panel);
+  }
+  // No truck selected and no editor open: the map takes the inspector's
+  // column too. The fuel editor replaces the card in that column.
+  .fleet-map-stage:not(:has(.fleet-map-info-reserved.has-selection)):not(
+      :has(.fuel-plan-editor)
+    ) {
+    grid-template-areas:
+      'list map map'
+      'chain chain chain';
+  }
+  #fleet-map {
+    grid-area: map;
+  }
+  .fleet-truck-list {
+    grid-area: list;
+  }
+  .fleet-trip-chain {
+    grid-area: chain;
+  }
+  .fleet-map-info-reserved {
+    grid-area: inspector;
+    position: relative;
+    top: auto;
+    width: auto;
+    max-height: none;
+    margin: 0;
+    align-self: stretch;
+  }
+  // Editors stand where the card they edit stands; the route choices and
+  // the key belong over the map.
+  .fuel-plan-editor {
+    grid-area: inspector;
+    top: 0;
+    width: 100%;
+    max-height: 100%;
+  }
+  .route-editor,
+  .fuel-send-plan,
+  .fleet-map-key,
+  .fleet-map-mode {
+    grid-area: map;
+  }
+}
+
+.fleet-map-inspector__quick-follow {
+  display: none;
+}
+
+// A later trip's stop hides the truck's action row: Follow stays in the head.
+.fleet-map-inspector[data-inspector-mode='nextstop']
+  .fleet-map-inspector__quick-follow {
+  display: inline-flex;
+}
+
+// On a phone the card opens closed: the head and its summary rows (load,
+// next stop, ETA, appointment, readings, clocks), an explicit Details /
+// Hide details, and Follow beside it. Details opens the rest.
+@include ui.below(fleet-docked) {
+  @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
+    .fleet-map-inspector[data-inspector-mode='truck']
+      .fleet-map-mobile-summary__toggle,
+    .fleet-map-inspector__quick-follow {
+      display: inline-flex;
+    }
+    .fleet-map-inspector.is-mobile-collapsed .fleet-map-info-content,
+    .fleet-map-inspector.is-mobile-collapsed .fleet-map-inspector__duty,
+    .fleet-map-inspector.is-mobile-collapsed .fleet-trip-stops {
+      display: none;
+    }
+  }
+}
+
+// Narrower screens: the current floating inspector over the map, the
+// chain beneath it, and the list left to search.
+@include ui.below(fleet-docked) {
+  .fleet-truck-list {
+    display: none;
+  }
+  .fleet-map-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas: 'map' 'chain';
+    gap: ui.pg(sm);
+  }
+  #fleet-map,
+  .fleet-map-info-reserved,
+  .fuel-plan-editor,
+  .route-editor,
+  .fuel-send-plan,
+  .fleet-map-key,
+  .fleet-map-mode {
+    grid-area: map;
+  }
+  .fleet-trip-chain {
+    grid-area: chain;
   }
 }
