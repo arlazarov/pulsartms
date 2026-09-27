@@ -36,6 +36,7 @@ public sealed class ConsistencyAuditSqlTests
       "execution.cancelled-source-held",
       "execution.planning-change-overdue",
       "routing.planning-refresh-overdue",
+      "routing.source-road-overdue",
       "messaging.unread-arrival-behind",
       "messaging.outbound-overdue",
       "dispatch.filed-document-unavailable",
@@ -72,6 +73,11 @@ public sealed class ConsistencyAuditSqlTests
         new ExecutionPlanningDemandRule(db).ReadAsync(request, default),
       "routing.planning-refresh-overdue" => () =>
         new PlanningRefreshDemandRule(new PlanningRefreshStore(db)).ReadAsync(
+          request,
+          default
+        ),
+      "routing.source-road-overdue" => () =>
+        new SourceRoadDemandRule(new SourceRoadStore(db)).ReadAsync(
           request,
           default
         ),

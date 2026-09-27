@@ -279,6 +279,7 @@ does; everything else in this guide is target design.
 | `execution.cancelled-source-held` | `CloseCancelledExecution` | review, warning | none; dispatcher | implemented |
 | `execution.planning-change-overdue` | `ExecutionPlanningOperation` | violation, warning | none | implemented |
 | `routing.planning-refresh-overdue` | `PlanningRefreshOperation` | violation, warning | requeue, allowlisted | implemented |
+| `routing.source-road-overdue` | `BaseRouteOperation` | violation, warning | none; the wait line names the step | implemented, detection tested |
 | `messaging.unread-arrival-behind` | `InboxRecorder` | violation, warning | none; next driver message | implemented, detection tested |
 | `messaging.outbound-overdue` | `OutboundMessageOperation` | violation, warning | none; the outbox's next pass | implemented, detection tested |
 | `dispatch.filed-document-unavailable` | `FileMessageAttachment` | violation, warning | none; stored file's owner | implemented, detection tested |
@@ -290,7 +291,8 @@ does; everything else in this guide is target design.
 
 Detectors live in `Application/Features/Execution/Audit` and
 `Application/Features/Routing/Audit` behind `IConsistencyRule`; the refresh
-rule reads through `IPlanningRefreshStore`. Tests:
+rule reads through `IPlanningRefreshStore` and the road rule through
+`ISourceRoadStore`. Tests:
 `Server.Tests/Dispatch/ConsistencyAuditTests.cs`,
 `Server.Tests/Dispatch/HeldExecutionTests.cs` and
 `Server.Tests/Persistence/ConsistencyAuditSqlTests.cs`. The border rules

@@ -153,6 +153,7 @@ public static class DependencyInjection
     services.AddScoped<IConsistencyRule, CancelledSourceHeldRule>();
     services.AddScoped<IConsistencyRule, ExecutionPlanningDemandRule>();
     services.AddScoped<IConsistencyRule, PlanningRefreshDemandRule>();
+    services.AddScoped<IConsistencyRule, SourceRoadDemandRule>();
     services.AddScoped<IConsistencyRule, UnreadArrivalRule>();
     services.AddScoped<IConsistencyRule, OutboundOverdueRule>();
     services.AddScoped<IConsistencyRule, FiledDocumentRule>();

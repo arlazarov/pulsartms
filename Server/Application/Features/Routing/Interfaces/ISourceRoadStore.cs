@@ -38,4 +38,25 @@ public interface ISourceRoadStore
   );
 
   Task PruneAsync(DateTime before, CancellationToken ct);
+
+  // The serving company's unfinished work last requested at or before due,
+  // keyset-paged by dispatch, for the consistency audit. Limit + 1 rows at
+  // most.
+  Task<IReadOnlyList<SourceRoadOverdue>> OverdueAsync(
+    DateTime due,
+    Guid? after,
+    int limit,
+    CancellationToken ct
+  );
 }
+
+public sealed record SourceRoadOverdue(
+  Guid DispatchId,
+  string? DispatchStatus,
+  long RequestedVersion,
+  long CompletedVersion,
+  bool Explicit,
+  DateTime RequestedAt,
+  DateTime AvailableAt,
+  int Attempts
+);

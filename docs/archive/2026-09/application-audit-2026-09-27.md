@@ -784,10 +784,36 @@ failed on the new worktree's missing Client packages and is marked.
     second message if the first was only slow; clocks are assumed shared
     (one instance).
 
+- **F23, road requests.** Re-read: retries are already bounded - the
+  claim skips waiting rows, and a failure backs off to at most one
+  attempt an hour per load - so no work starves; what was missing is
+  escalation. A cap would turn endless retries into a silent stop, so
+  none was added. `routing.source-road-overdue` (violation, warning)
+  reports a request still unfinished 30 minutes after its last demand,
+  through `ISourceRoadStore.OverdueAsync`, for the serving carrier only
+  (`SourceRoadDemandRule`; tests in `SourceRoadStoreTests`, SQL
+  translation in `ConsistencyAuditSqlTests`; diagnostic-3vA9vy, and
+  mutations of the carrier, grace, unfinished and cursor conditions all
+  fail it, diagnostic-ppPtcs). PostgreSQL behavior not run. The other
+  two queues already had rules.
+- **Production, read only, 20:45 UTC:** 30 of 168 road requests are
+  unfinished, 24 of them past the grace window, and every one is for a
+  completed load (execution leg completed, both stops unverified, no
+  recorded mileage); one has 50 attempts, eight have 8. The rule would
+  report 24 today. Nothing is logged: a wait is silent until D1 is
+  released, so which step stops them is not known. Hypothesis, not
+  checked: address verification skips completed legs, so their stops
+  stay unverified and the base road step fails on them, or reaches a
+  provider, on every attempt.
+
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done
   when D1 is deployed and a reason is logged for each.
+- **Road requests for completed loads never finish (F23).** Owner:
+  Routing. Done when, with D1 released, the step is known for the 30
+  requests, and completed legs either get their road or settle without
+  retrying hourly - by a decision of the road's owner, not by a cap.
 - **Per-statement production counts.** Owner: operations with root.
   Done when `pg_stat_statements` is enabled by owner decision, or a
   sampled statement log exists, and F2 and F5 are re-measured.
@@ -803,7 +829,7 @@ failed on the new worktree's missing Client packages and is marked.
 - **Payload sizes of locations, HOS and planning.** Owner: Client (F6).
   Done when measured in a browser trace.
 - **Reported findings not re-read (F10 scan, F12, F15, F19-F21,
-  F23-F27).** Owner: this audit. Done when each is re-read, or fixed
+  F24-F27).** Owner: this audit. Done when each is re-read, or fixed
   with its test.
 - **Role model (F18).** Owner: the owner. Done when a limited role is
   chosen or explicitly declined.
