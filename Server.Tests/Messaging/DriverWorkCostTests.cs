@@ -11,8 +11,9 @@ namespace Server.Tests.Messaging;
 // for the current load. Counted, not timed. Warm, planning answers from the
 // shared "planning-inputs" read the planning summary also uses, and the
 // handler sends what it sent before (5). Cold, planning captures the truck's
-// itinerary, saved plans, profiles and driver itself (14 more), repeating
-// part of the board read. Raising either number needs a reason.
+// itinerary, saved plans, profiles and driver itself (12 more); three of
+// them (trucks, native work, loads) repeat the board read, asked with other
+// filters inside planning's own snapshot. Raising either needs a reason.
 [Trait("Category", "Messaging")]
 [Trait("Kind", "Integration")]
 public sealed class DriverWorkCostTests(ITestOutputHelper output)
@@ -47,8 +48,9 @@ public sealed class DriverWorkCostTests(ITestOutputHelper output)
       f.Db,
       new ReplyFixture.Caller("dispatcher"),
       new DispatchRole(),
-      new FleetNames(f.Db),
-      new ActiveTransfers(f.Db),
+      // Scoped in the application, so shared with planning as here.
+      f.Services.Names,
+      f.Services.Transfers,
       TimeProvider.System,
       f.Services.PlanningInputs
     );
@@ -67,6 +69,8 @@ public sealed class DriverWorkCostTests(ITestOutputHelper output)
       $"cold {cold.Length}, warm {warm.Length}, planning alone "
         + $"{planningAlone.Length}"
     );
+    foreach (var statement in cold)
+      output.WriteLine("COLD " + First(statement));
     Assert.Equal(StatementsWarm, warm.Length);
     Assert.Equal(StatementsWarm + PlanningCaptureCold, cold.Length);
     Assert.DoesNotContain(
@@ -76,7 +80,13 @@ public sealed class DriverWorkCostTests(ITestOutputHelper output)
   }
 
   private const int StatementsWarm = 5;
-  private const int PlanningCaptureCold = 14;
+  private const int PlanningCaptureCold = 12;
+
+  private static string First(string statement)
+  {
+    var line = statement.Split('\n')[0];
+    return line[..Math.Min(90, line.Length)];
+  }
 
   private sealed class DispatchRole : IUserRoleService
   {
