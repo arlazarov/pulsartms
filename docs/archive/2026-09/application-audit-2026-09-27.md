@@ -1142,6 +1142,64 @@ failed on the new worktree's missing Client packages and is marked.
   `FleetTelemetryCache` keeps one never-evicted response per carrier -
   bounded by carriers, reported for completeness.
 
+- **F27 re-read against the code.** Each item, as it stands at this
+  branch:
+  - IFTA rates keyed without currency - verified, latent: the unique
+    index is (jurisdiction, fuel type, effective from) and the import
+    matches the same way, overwriting currency and unit, so a source
+    with one row per currency keeps the last; the production table is
+    empty (read only).
+  - A delivery status arriving before the provider id is saved -
+    verified in both paths (dispatchers' replies and module texts): it
+    is dropped, with no retry. The harmful case is an early "failed",
+    after which the attempt keeps showing accepted. Owner Messaging;
+    design: keep unmatched statuses briefly (bounded, by provider id)
+    and apply them when the id is saved.
+  - A second Total RPM formula - partly: the division has one owner
+    (`DispatchRates.PerMile`); the loaded-plus-empty composition and its
+    guard are written twice, identically (store and display fallback).
+  - Stored savings the read ignores - verified: `FuelPriceCalculator`
+    replaces the stored retail-minus-discount with retail minus the
+    price paid; the column is redundant.
+  - Litres per gallon - four literal copies, one in the Client; the
+    Client also derives yesterday's price as today's minus the change,
+    against the rule that the Client formats server values only.
+  - Fuel-stop price day - verified: the arrival's local calendar day
+    (`FuelPriceCalendar`), not the Toronto business day that pricing
+    dates use elsewhere; a late-evening arrival in a western zone is
+    priced a day early.
+  - Stop geocoding - see F26.
+  - The deadhead publication re-check - verified dead: it compares the
+    captured connection's signature with itself; the protection is the
+    publication's re-read of the history under the truck's lock, which
+    exists. Harmless, misleading.
+  - Diagnostics and readiness - verified: the Admin policy shows
+    process-wide figures, including other carriers' activity counts,
+    to any carrier's Admin; no personal data. Owner decision: an
+    operator role separate from a carrier's Admin.
+  - The credential store's and Identity's yes-or-no - verified and by
+    contract: a WhatsApp number held by another carrier is refused on
+    purpose, and a sign-in name is unique across carriers, so creating
+    a user with another carrier's e-mail reports it taken. No change;
+    the sign-in contract is kept.
+  - The forecast upsert without a company predicate - latent (the
+    conflict is on a leg's Guid); fixed on the current-work branch
+    (`cc6e53d8`, unreleased), not on this one.
+  - Caches keyed without company - out of date: Samsara hours history is
+    keyed by carrier; ETA memory and route display are keyed by Guids.
+  - Auditor guide - the register now lists every rule;
+    `storage.file-on-disconnected-storage` is still tested under
+    PostgreSQL only.
+  - Expired-lease reclaim tests - the road store has one; the planning
+    refresh store and the odometer capture lease still have none.
+  - Tests accepting any exception - five by the direct pattern
+    (`Assert.Throws*<Exception>`).
+  - `CheckpointLeaseStore` - verified: acquire and renew take the
+    caller's time, save and release read the system clock; equal in
+    production, wrong under a test clock.
+  - `migrate.sh` applied each migration to the configured database as
+    soon as it was added - fixed here: it only creates the migration.
+
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done
@@ -1168,7 +1226,7 @@ failed on the new worktree's missing Client packages and is marked.
   referrer and API restrictions are confirmed in the console.
 - **Payload sizes of locations, HOS and planning.** Owner: Client (F6).
   Done when measured in a browser trace.
-- **Reported findings not re-read (F10 scan, F12, F15, F19, F27).**
+- **Reported findings not re-read (F10 scan, F12, F15, F19).**
   Owner: this audit. Done when each is re-read, or fixed with its test.
 - **Role model (F18).** Owner: the owner. Done when a limited role is
   chosen or explicitly declined.
