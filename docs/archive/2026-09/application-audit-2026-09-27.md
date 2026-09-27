@@ -993,6 +993,43 @@ failed on the new worktree's missing Client packages and is marked.
   work for two. Green diagnostic-YjnWHK; every migration applies to an
   empty PostgreSQL schema (diagnostic-F41Wt2); the reset inventory names
   schema 76.
+
+- **D6 read cost: options, investigated, nothing changed.** The
+  late-withdrawn rule stays read-time, as accepted. Facts (production,
+  read only): no hand-over has ever been recorded (0 visit sends, 0
+  driver messages), so no existing row constrains a change; about one
+  of the four saved plans has no fuel stop (a text match over the saved
+  JSON, approximate) - the case that pays the extra statement.
+  - Keep as is: one statement per projection of a stop-less plan, four
+    per truck per planning refresh (summary, display copy, refresh,
+    fleet loop).
+  - Reuse within an operation (recommended): the hand-over records read
+    shared per operation and truck, as `FuelSavedInputsValidation.Share`
+    shares the saved-inputs check - reused only while the truck's item
+    generation of a new family (`fuel-hand-overs`) is unchanged, bumped
+    by `FuelIssueRecords.RecordAsync` after its commit and relayed to
+    other instances (`ReadCache.InvalidateItem` is published). It removes
+    three of the four reads per refresh for every plan, stops or not -
+    the read plans with stops already made before D6 included - so it
+    costs less than before D6. Race: a hand-over recorded by another
+    instance during an operation is seen by the next operation (seconds),
+    the bound the saved-inputs share accepts; one recorded in this
+    process ends the share at once.
+  - Write-time: the late record, which already holds the truck's
+    publication lock, amends the current saved plan's withdrawn list
+    (compare-and-set on its calculation time), so reads need nothing
+    more. Races: a publication committing first is amended by the late
+    record under the lock; a record committing first changes the attempt
+    after the publication's stamp, and `RequireUnchangedAsync` refuses
+    that publication, which recalculates knowing the hand-over. Costs: a
+    narrow write of the saved plan's summary JSON owned by the store
+    (Infrastructure), invalidation of its 30-second read cache and the
+    relay, and moving the D6 tests from synthetic snapshots to stored
+    plans. It changes the mechanism Root accepted.
+  Owner decision: Root. Neither is made until chosen.
+
+## Open gaps, owners and completion criteria
+
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done
   when D1 is deployed and a reason is logged for each.
 - **A skipped fuel-import message is only logged (F20).** Owner: Fuel.
