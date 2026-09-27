@@ -1230,6 +1230,27 @@ failed on the new worktree's missing Client packages and is marked.
   marked; groups addresses and synchronization exit 0, Server 1946,
   Client 747, diagnostic-T0qmvm). The shared cache itself still has no
   byte ceiling.
+  Root's review of `a01e5927`: in one 4 MiB cache, pressure could refuse
+  or evict a failure before its retry, and the global gate bounds
+  concurrency, not how often Google is asked. Now failures have their
+  own part of the budget (one eighth, reported as
+  `stop-geocode-failures`), so no number of resolved addresses pushes
+  one out; and every call to Google takes an attempt from a limit of 60
+  a minute for the process, so when failures cannot be kept - their own
+  part full - consumers asking again reach Google at most 60 times a
+  minute; an attempt refused by the limit answers "busy" with the time
+  the limit reopens and is not remembered as the address's failure.
+  Contract, revised: a failure held is not asked again before its
+  retry; if it cannot be held, provider attempts are bounded by the
+  limit. Tests: a failure survives ten thousand resolved addresses; with
+  failures unkeepable (a failure budget below one entry), 200 lookups in
+  a minute make 60 calls and the next minute one more. Removing the
+  limit or putting failures back beside resolved addresses fails them in
+  each of three runs (diagnostic-JmwLEo); green
+  diagnostic-wVHWCR; groups addresses and synchronization exit 0,
+  Server 1948, Client 747 (diagnostic-uVFm3L). The limit, 60, is a new
+  bound on imports that resolve many new addresses at once; the owner
+  may tune it.
 
 - **F27 re-read against the code.** Each item, as it stands at this
   branch:

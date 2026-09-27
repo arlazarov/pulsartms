@@ -596,7 +596,10 @@ public sealed class GoogleAddressGeocoderTests
         new(point, "Street", "City", "ST", "US", "00000")
       );
 
-    var held = Assert.Single(memory.ReadMemory());
+    var held = Assert.Single(
+      memory.ReadMemory(),
+      x => x.Name == "stop-geocodes"
+    );
     Assert.InRange(held.EstimatedSize ?? 0, 1, CacheBudgets.Geocodes);
     Assert.InRange(held.Entries ?? 0, 1, 9_999);
   }
@@ -679,6 +682,69 @@ public sealed class GoogleAddressGeocoderTests
         () => service.ResolveAsync(unreachable, default)
       );
     Assert.Equal(4, handler.Calls);
+  }
+
+  // Root's review: a full memory could lose a failure before its retry.
+  // Resolved addresses, however many, cannot push a failure out: failures
+  // have their own part of the budget.
+  [Fact]
+  public async Task NoNumberOfResolvedAddressesPushesAFailureOut()
+  {
+    using var memory = new StopGeocodeMemory(TimeProvider.System);
+    using var handler = new Handler(Candidate("1", "Main", "City", "CA", "1"))
+    {
+      Status = HttpStatusCode.InternalServerError,
+    };
+    using var http = new HttpClient(handler);
+    var service = new GoogleAddressGeocoder(http, Configuration(), memory);
+    const string failing = "1 Nowhere Road, Lathrop, CA, USA, 95330";
+    await Assert.ThrowsAsync<RoutePlanningException>(
+      () => service.ResolveAsync(failing, default)
+    );
+
+    for (var i = 0; i < 10_000; i++)
+      memory.Remember(
+        $"{i} {new string('x', 400)} Street, City, ST",
+        new(new(40, -79), "Street", "City", "ST", "US", "00000")
+      );
+    await Assert.ThrowsAsync<RoutePlanningException>(
+      () => service.ResolveAsync(failing, default)
+    );
+
+    Assert.Equal(1, handler.Calls);
+  }
+
+  // And when failures themselves cannot be kept - their part is full; here
+  // smaller than one entry - consumers asking again and again reach Google
+  // at most AttemptsPerMinute times a minute, and again once it passes.
+  [Fact]
+  public async Task WhenAFailureCannotBeKeptGoogleIsAskedAtMostTheLimit()
+  {
+    var time = new ManualTimeProvider();
+    using var memory = new StopGeocodeMemory(time, failureBudget: 1);
+    using var handler = new Handler(Candidate("1", "Main", "City", "CA", "1"))
+    {
+      Status = HttpStatusCode.InternalServerError,
+    };
+    using var http = new HttpClient(handler);
+    var service = new GoogleAddressGeocoder(http, Configuration(), memory);
+
+    for (var i = 0; i < 200; i++)
+      await Assert.ThrowsAsync<RoutePlanningException>(
+        () =>
+          service.ResolveAsync(
+            $"{i % 3} Nowhere Road, Lathrop, CA, USA, 95330",
+            default
+          )
+      );
+    Assert.Equal(StopGeocodeMemory.AttemptsPerMinute, handler.Calls);
+
+    time.Advance(TimeSpan.FromMinutes(1));
+    await Assert.ThrowsAsync<RoutePlanningException>(
+      () =>
+        service.ResolveAsync("0 Nowhere Road, Lathrop, CA, USA, 95330", default)
+    );
+    Assert.Equal(StopGeocodeMemory.AttemptsPerMinute + 1, handler.Calls);
   }
 
   private static IConfiguration Configuration() =>

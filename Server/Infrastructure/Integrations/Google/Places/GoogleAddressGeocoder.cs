@@ -31,6 +31,7 @@ public sealed class GoogleAddressGeocoder(
       throw new RoutePlanningException(
         "Google address lookup is not configured."
       );
+    var busy = false;
     await Gate.WaitAsync(ct);
     try
     {
@@ -38,6 +39,16 @@ public sealed class GoogleAddressGeocoder(
         return cached;
       if (memory.FindFailure(address) is { } failed)
         throw new RoutePlanningException(failed.Message, failed.RetryAfter);
+      // Google was asked as often as the attempt limit allows this minute.
+      // That is not the address's failure, so it is not remembered as one.
+      if (!memory.TryAttempt(out var attemptAfter))
+      {
+        busy = true;
+        throw new RoutePlanningException(
+          "Google address lookup is busy. The saved route has been kept.",
+          attemptAfter
+        );
+      }
       using var response = await http.GetAsync(
         "https://maps.googleapis.com/maps/api/geocode/json?address="
           + Uri.EscapeDataString(address)
@@ -126,7 +137,7 @@ public sealed class GoogleAddressGeocoder(
     {
       throw;
     }
-    catch (RoutePlanningException ex)
+    catch (RoutePlanningException ex) when (!busy)
     {
       // Share failures across route consumers without storing provider response
       // data.

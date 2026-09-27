@@ -40,13 +40,18 @@ public sealed class MemoryDiagnosticsTests
     var result = response.Response!;
     Assert.Equal(Environment.ProcessId, result.Runtime.ProcessId);
     Assert.True(result.Runtime.WorkingSetBytes > 0);
-    // Twelve since stop geocodes left the shared cache for their own
-    // bounded memory (audit F26), reported in bytes like the others.
-    Assert.Equal(12, result.Caches.Count);
-    Assert.Equal(12, result.Caches.Select(x => x.Name).Distinct().Count());
+    // Thirteen since stop geocodes left the shared cache for their own
+    // bounded memory (audit F26) - resolved addresses and failures, each
+    // reported in bytes like the others.
+    Assert.Equal(13, result.Caches.Count);
+    Assert.Equal(13, result.Caches.Select(x => x.Name).Distinct().Count());
     Assert.Contains(
       result.Caches,
       x => x.Name == "stop-geocodes" && x.Unit == "bytes" && x.Limit > 0
+    );
+    Assert.Contains(
+      result.Caches,
+      x => x.Name == "stop-geocode-failures" && x.Unit == "bytes"
     );
     var shared = Assert.Single(result.Caches, x => x.Name == "shared");
     Assert.True(shared.Entries >= 1);
