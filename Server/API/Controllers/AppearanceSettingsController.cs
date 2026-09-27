@@ -20,8 +20,9 @@ public sealed class AppearanceSettingsController : BaseController
     CancellationToken cancellationToken
   ) =>
     HandleRequest(
+      // A save names its theme; none is refused as a wrong one.
       new UpdateAppearanceSettingsCommand(
-        request.Theme,
+        request.Theme ?? "",
         request.TemperatureUnit,
         request.DistanceUnit
       ),

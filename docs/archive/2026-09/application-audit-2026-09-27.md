@@ -1407,6 +1407,24 @@ failed on the new worktree's missing Client packages and is marked.
   diagnostic-IZQNIn; green, and a mutation applying expired rows fails
   (diagnostic-lJLgaw).
 
+### Dark default: the server no longer invents a theme
+
+The owner requires dark as the default. The server stored `light` for
+every account that never chose (column NOT NULL DEFAULT 'light'), so the
+Client could not tell a choice from the default. Migration 79
+`LetThemeBeUnchosen` drops the NOT NULL and the default without an
+UPDATE: new accounts read null, existing rows keep their value (in
+production two light and one dark; whether a light was chosen is not
+knowable, so none is overwritten). A save still has to name light or
+dark. The released Client applies the server theme only when it is
+`light` or `dark`, so null is compatible with it and with the previous
+API, which never reads a null it did not write; the designer's Client
+bootstrap owns the dark default. Apply the migration before the API.
+Checks: identity group diagnostic-sP3KzC (Server 291, Client 83,
+JavaScript 67), focused and PostgreSQL migration tests
+diagnostic-A4qt2n. diagnostic-TQzqoy is invalid: the API did not build
+(the controller passed the now-nullable theme).
+
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done

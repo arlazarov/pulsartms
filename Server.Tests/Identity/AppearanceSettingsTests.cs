@@ -38,8 +38,15 @@ public sealed class AppearanceSettingsTests
       Assert.True(result.Success);
     }
     await using var fresh = new AppDbContext(options);
+    // "second" never chose: no theme, and the Client applies the product
+    // default (dark). It used to read back as light, indistinguishable from
+    // a choice; the owner asked for dark by default.
     foreach (
-      var (identity, theme) in new[] { ("first", "dark"), ("second", "light") }
+      var (identity, theme) in new[]
+      {
+        ("first", "dark"),
+        ("second", (string?)null),
+      }
     )
     {
       var result = await new GetAppearanceSettingsHandler(
@@ -66,9 +73,12 @@ public sealed class AppearanceSettingsTests
       ).Success
     );
     fresh.ChangeTracker.Clear();
-    Assert.All(
-      await fresh.Users.ToListAsync(),
-      x => Assert.Equal("light", x.Theme)
+    Assert.Equal(
+      [("first", "light"), ("second", (string?)null)],
+      await fresh
+        .Users.OrderBy(x => x.IdentityUserId)
+        .Select(x => ValueTuple.Create(x.IdentityUserId, x.Theme))
+        .ToListAsync()
     );
     var preserved = await fresh.Users.SingleAsync(x =>
       x.IdentityUserId == "first"
@@ -114,7 +124,7 @@ public sealed class AppearanceSettingsTests
         )
       ).StatusCode
     );
-    Assert.Equal("light", (await db.Users.SingleAsync()).Theme);
+    Assert.Null((await db.Users.SingleAsync()).Theme);
   }
 
   [Theory]
@@ -178,6 +188,28 @@ public sealed class AppearanceSettingsTests
     Assert.DoesNotContain("DispatchRoutePlans", sql);
     Assert.False(db.Database.HasPendingModelChanges());
     Assert.Equal(ConnectionState.Closed, db.Database.GetDbConnection().State);
+  }
+
+  // The owner asked for dark by default. A theme nobody chose is now null -
+  // the Client applies the default - and the migration only lets it be:
+  // it changes no saved choice, light or dark.
+  [Fact]
+  public void UnchosenThemesBecomeNullWithoutChangingSavedChoices()
+  {
+    using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>()
+        .UseNpgsql("Host=unused;Database=unused;Username=unused")
+        .Options
+    );
+    var sql = db.GetService<IMigrator>()
+      .GenerateScript(
+        "20260927230607_KeepEarlyDeliveryStatuses",
+        "20260927233013_LetThemeBeUnchosen"
+      );
+    Assert.Contains("DROP NOT NULL", sql);
+    Assert.Contains("DROP DEFAULT", sql);
+    Assert.DoesNotContain("UPDATE", sql);
+    Assert.False(db.Database.HasPendingModelChanges());
   }
 
   private sealed record Caller(bool IsAuthenticated, string? IdentityUserId)

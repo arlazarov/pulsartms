@@ -638,7 +638,11 @@ invariants, not routine statements. See [operational diagnostics](operations/dia
 - Users owns the authenticated `settings/appearance` read/write requests.
   Handlers derive the target from `ICurrentUser` and require an active profile;
   clients cannot choose another user ID. `Users.Theme` stores only `light` or
-  `dark`, defaulting to Light through the additive `AddUserTheme` migration.
+  `dark` as a user's explicit choice, or null when none was made
+  (`LetThemeBeUnchosen`); the Client owns the default for null, which is
+  dark. Rows saved before that migration keep their value: a stored light
+  cannot be told apart from an old default, so none is rewritten. A save
+  must name a theme.
   Appearance is not a company preference, role, token claim or routing input.
   The same authenticated contract includes optional temperature/distance units.
   Omitted write fields preserve saved units, including older theme-only clients.
