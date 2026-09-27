@@ -17,10 +17,21 @@ public sealed record TruckPlanningInputs(
 )
 {
   public WorkIdentity? CurrentWork { get; init; }
+
+  // The assignment the current work was chosen at, so a consumer that read
+  // the truck's work separately can tell a reassignment from the same work.
+  public long? CurrentAssignmentRevision { get; init; }
+
+  // The candidates ahead of the current work whose saved plans say they
+  // are done, each at the assignment it was judged at: the rows planning
+  // moved past, not merely the rows that come first.
+  public IReadOnlyList<PassedWork> PassedWork { get; init; } = [];
   public Guid? DriverId { get; init; }
   public Guid? CoDriverId { get; init; }
   public bool CanUseGps { get; init; }
 }
+
+public sealed record PassedWork(WorkIdentity Work, long AssignmentRevision);
 
 public sealed class TruckPlanningInputsReader(
   IAppDbContext db,
@@ -167,12 +178,15 @@ public sealed class TruckPlanningInputsReader(
         var saved = plans.Loads;
         var native = plans.Legs;
         var current = new Dictionary<Guid, TruckWorkSegment?>();
+        var passed = new Dictionary<Guid, List<TruckWorkSegment>>();
         foreach (var snapshot in snapshots.Values)
         {
           var profile = settings[snapshot.TruckId];
-          current[snapshot.TruckId] = PlanningWorkPolicy
-            .Candidates(snapshot)
-            .FirstOrDefault(segment =>
+          var done = passed[snapshot.TruckId] = [];
+          current[snapshot.TruckId] = null;
+          foreach (var segment in PlanningWorkPolicy.Candidates(snapshot))
+          {
+            if (
               !PlanningWorkPolicy.IsCompleted(
                 segment.Work.ExecutionLegId is { } leg
                   ? native.GetValueOrDefault(leg)
@@ -183,7 +197,13 @@ public sealed class TruckPlanningInputsReader(
                 ),
                 profile
               )
-            );
+            )
+            {
+              current[snapshot.TruckId] = segment;
+              break;
+            }
+            done.Add(segment);
+          }
         }
         var driverIds = snapshots
           .Values.Select(x => Driver(x, current[x.TruckId]))
@@ -203,6 +223,7 @@ public sealed class TruckPlanningInputsReader(
           x => new CapturedWork(
             x.Value,
             current[x.Key],
+            passed[x.Key],
             Driver(x.Value, current[x.Key]) is { } id
               ? drivers.GetValueOrDefault(id)
               : null
@@ -233,6 +254,14 @@ public sealed class TruckPlanningInputsReader(
         )
         {
           CurrentWork = x.Value.Current?.Work,
+          CurrentAssignmentRevision = x.Value.Current?.AssignmentRevision,
+          PassedWork =
+          [
+            .. x.Value.Passed.Select(segment => new PassedWork(
+              segment.Work,
+              segment.AssignmentRevision
+            )),
+          ],
           DriverId = Driver(x.Value.Itinerary, x.Value.Current),
           CoDriverId = x.Value.Current?.CoDriverId,
           CanUseGps =
@@ -246,6 +275,7 @@ public sealed class TruckPlanningInputsReader(
   private sealed record CapturedWork(
     TruckItinerarySnapshot Itinerary,
     TruckWorkSegment? Current,
+    IReadOnlyList<TruckWorkSegment> Passed,
     string? DriverExternalId
   );
 

@@ -10,11 +10,13 @@ namespace Application.Features.Execution.Queries;
 // What a driver is driving: the trucks of their planned and active
 // execution legs, as driver or co-driver, and only when there are none, the
 // truck the fleet assigns them (one driver per truck). One truck: its
-// loads as the Dispatch board reads them (ExecutionWorkReader), starting
-// from the current load planning names (TruckPlanningInputs), the one the
-// Fleet Map and Dispatch show; rows planning has moved past are not the
-// driver's work. Several trucks: all are listed and no load is chosen,
-// since choosing one would be a guess. No driver: nothing to read.
+// loads as the Dispatch board reads them (ExecutionWorkReader), led by the
+// current load planning names (TruckPlanningInputs), the one the Fleet Map
+// and Dispatch show, and without the loads planning says it has moved past.
+// Both answers must name the same assignment: a load read at another
+// revision is left where the board has it. Several trucks: all are listed
+// and no load is chosen, since choosing one would be a guess. No driver:
+// nothing to read.
 public sealed record GetDriverWorkQuery(Guid? DriverId)
   : IRequest<RequestResponse<DriverWork>>;
 
@@ -91,14 +93,13 @@ public sealed class DriverWorkHandler(
       includeOverdue: false,
       ct
     );
-    var current = (
-      await planning.ReadAsync(trucks[0].Id, ct, includeHos: false)
-    )?.CurrentWork;
+    var inputs = await planning.ReadAsync(trucks[0].Id, ct, includeHos: false);
     return Ok(
       DriverWorkStates.OneTruck,
       trucks,
       [
-        .. FromCurrent([.. work.SelectMany(x => x.Loads)], current)
+        .. DriverWorkOrder
+          .Apply([.. work.SelectMany(x => x.Loads)], inputs)
           .Take(MaximumLoads)
           .Select(x => new DriverLoad(
             x.Id,
@@ -113,23 +114,6 @@ public sealed class DriverWorkHandler(
           }),
       ]
     );
-
-    static IEnumerable<WorkLoadReference> FromCurrent(
-      IReadOnlyList<WorkLoadReference> loads,
-      WorkIdentity? current
-    )
-    {
-      var index = current is null
-        ? -1
-        : loads
-          .Select((load, i) => (load, i))
-          .FirstOrDefault(x =>
-            x.load.Id == current.DispatchId
-            && x.load.ExecutionLegId == current.ExecutionLegId
-          )
-          .i;
-      return index > 0 ? loads.Skip(index) : loads;
-    }
 
     static RequestResponse<DriverWork> Ok(
       string state,
@@ -176,5 +160,39 @@ public sealed class DriverWorkHandler(
       .OrderBy(x => x.UnitNumber)
       .Select(x => new DriverTruck(x.Id, x.UnitNumber, "assigned"))
       .ToListAsync(ct);
+  }
+}
+
+// A driver's loads led by planning's current load, without the loads it
+// has moved past; each only when read at the same assignment.
+internal static class DriverWorkOrder
+{
+  public static IEnumerable<WorkLoadReference> Apply(
+    IReadOnlyList<WorkLoadReference> loads,
+    TruckPlanningInputs? inputs
+  )
+  {
+    if (inputs is null)
+      return loads;
+    static bool Same(
+      WorkLoadReference load,
+      WorkIdentity work,
+      long revision
+    ) =>
+      load.Id == work.DispatchId
+      && load.ExecutionLegId == work.ExecutionLegId
+      && load.AssignmentRevision == revision;
+    var current =
+      inputs.CurrentWork is { } work
+      && inputs.CurrentAssignmentRevision is { } revision
+        ? loads.FirstOrDefault(load => Same(load, work, revision))
+        : null;
+    var remaining = loads.Where(load =>
+      !ReferenceEquals(load, current)
+      && !inputs.PassedWork.Any(passed =>
+        Same(load, passed.Work, passed.AssignmentRevision)
+      )
+    );
+    return current is null ? remaining : remaining.Prepend(current);
   }
 }
