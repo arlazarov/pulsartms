@@ -533,6 +533,238 @@ public sealed class TruckRoutePreviewTests
     Assert.Equal(0, fixture.Router.Calls);
   }
 
+  // Stage 2 of docs/architecture/current-work.md: the inputs choose the
+  // current work and every reader names that one - the warm summary, the
+  // cold summary, the preview - with the same leg and revision.
+  [Fact]
+  public async Task EveryReaderNamesTheCurrentWorkTheInputsChose()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var first = await fixture.AddAsync(1);
+    var next = await fixture.AddAsync(2);
+    await fixture.SavePlanAsync(first, completed: true);
+    await fixture.SavePlanAsync(next);
+    fixture.Hos.Allow = fixture.Sender.AllowTelemetry = true;
+    var inputs = (
+      await fixture.Services.PlanningInputs.ReadAsync(fixture.Truck.Id, default)
+    )!;
+    Assert.Equal(next.Id, inputs.CurrentWork?.DispatchId);
+
+    var warm = await Normal(fixture).ForTruckAsync(fixture.Truck.Id, default);
+    var cold = Summaries(fixture).Read(inputs);
+    var preview = await fixture.Preview.ForTruckAsync(
+      fixture.Truck.Id,
+      default
+    );
+
+    foreach (var result in new[] { warm, cold, preview })
+    {
+      Assert.Equal(inputs.CurrentWork!.DispatchId, result.DispatchId);
+      Assert.Equal(inputs.CurrentWork.ExecutionLegId, result.ExecutionLegId);
+      Assert.Equal(inputs.CurrentAssignmentRevision, result.AssignmentRevision);
+    }
+  }
+
+  // A passed load that now needs review is behind the truck: it used to be
+  // resolved before its completion was checked, which refused the truck's
+  // summary and dropped the truck from the previews.
+  [Fact]
+  public async Task APassedLoadNeedingReviewDoesNotRefuseTheCurrentWork()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var first = await fixture.AddAsync(1);
+    var next = await fixture.AddAsync(2);
+    await fixture.SavePlanAsync(first, completed: true);
+    await fixture.SavePlanAsync(next);
+    fixture.Db.DispatchSourceLinks.Add(
+      new DispatchSourceLink
+      {
+        Provider = "source",
+        ExternalId = "1",
+        DispatchId = first.Id,
+        Dispatch = first,
+        ExecutionReviewReason = "Review the initial assignment.",
+      }
+    );
+    await fixture.Db.SaveChangesAsync();
+    fixture.Services.Reads.InvalidateItem("planning-inputs", fixture.Truck.Id);
+    fixture.Hos.Allow = fixture.Sender.AllowTelemetry = true;
+
+    var warm = await Normal(fixture).ForTruckAsync(fixture.Truck.Id, default);
+    var preview = await fixture.Preview.ForTruckAsync(
+      fixture.Truck.Id,
+      default
+    );
+
+    Assert.Equal(next.Id, warm.DispatchId);
+    Assert.NotNull(warm.State?.Plan);
+    Assert.Equal(next.Id, preview.DispatchId);
+    Assert.NotNull(preview.State?.Plan);
+  }
+
+  // Tracking passes the current work after the inputs were captured. A
+  // reader built from that capture does not step on to the next load by
+  // itself: it says the work changed, and the next capture decides.
+  [Fact]
+  public async Task TrackingThatPassesTheCurrentWorkMidReadIsAChange()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var first = await fixture.AddAsync(1);
+    var next = await fixture.AddAsync(2);
+    var entry = await fixture.SavePlanAsync(first);
+    await fixture.SavePlanAsync(next);
+    fixture.Hos.Allow = fixture.Sender.AllowTelemetry = true;
+    var captured = (
+      await fixture.Services.PlanningInputs.ReadFreshAsync(
+        fixture.Truck.Id,
+        default
+      )
+    )!;
+    Assert.Equal(first.Id, captured.CurrentWork?.DispatchId);
+    await PassAsync(fixture, entry, invalidateInputs: true);
+
+    var changed = await Assert.ThrowsAsync<RoutePlanningException>(
+      () => Normal(fixture).ForInputsAsync(captured, default)
+    );
+    Assert.True(changed.DependencyChanged);
+    Assert.Equal(
+      next.Id,
+      (
+        await Normal(fixture).ForTruckAsync(fixture.Truck.Id, default)
+      ).DispatchId
+    );
+  }
+
+  // The same change seen through inputs another process has not yet
+  // invalidated: the reader captures once more through the owner - one
+  // capture, not a loop, and not the reader stepping on by itself - and
+  // the owner's entry is replaced, so the next read captures nothing.
+  [Fact]
+  public async Task AStaleCaptureIsReplacedOnceThroughTheOwner()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var first = await fixture.AddAsync(1);
+    var next = await fixture.AddAsync(2);
+    var entry = await fixture.SavePlanAsync(first);
+    await fixture.SavePlanAsync(next);
+    fixture.Hos.Allow = fixture.Sender.AllowTelemetry = true;
+    var reader = Normal(fixture);
+    Assert.Equal(
+      first.Id,
+      (await reader.ForTruckAsync(fixture.Truck.Id, default)).DispatchId
+    );
+    await PassAsync(fixture, entry, invalidateInputs: false);
+
+    var stale = await CapturesOf(fixture, reader);
+    var settled = await CapturesOf(fixture, reader);
+
+    Assert.Equal((next.Id, 1), (stale.Result.DispatchId, stale.Captures));
+    Assert.Equal((next.Id, 0), (settled.Result.DispatchId, settled.Captures));
+  }
+
+  // Two readers found the same stale entry. The first drops and recaptures
+  // it; the second finds the entry already replaced and reads that - one
+  // capture between them, not one each.
+  [Fact]
+  public async Task ReadersThatFoundTheSameStaleEntryShareOneCapture()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var first = await fixture.AddAsync(1);
+    var next = await fixture.AddAsync(2);
+    var entry = await fixture.SavePlanAsync(first);
+    await fixture.SavePlanAsync(next);
+    var inputs = fixture.Services.PlanningInputs;
+    var truck = fixture.Truck.Id;
+    var seen = inputs.Version(truck);
+    await inputs.ReadAsync(truck, default, includeHos: false);
+    await PassAsync(fixture, entry, invalidateInputs: false);
+
+    fixture.Probe.Start();
+    var a = await inputs.ReadAgainAsync(truck, seen, default, false);
+    var b = await inputs.ReadAgainAsync(truck, seen, default, false);
+    var captures = fixture.Probe.Statements.Count(x =>
+      x.Contains("'storedAssignmentRevision'")
+    );
+    fixture.Probe.Stop();
+
+    Assert.Equal(1, captures);
+    Assert.Equal(next.Id, a?.CurrentWork?.DispatchId);
+    Assert.Equal(next.Id, b?.CurrentWork?.DispatchId);
+  }
+
+  private static PlanningReadService Normal(Fixture fixture)
+  {
+    var options = Options.Create(new SynchronizationOptions { Enabled = true });
+    return new(
+      fixture.Services.Routes,
+      fixture.Services.PlanningInputs,
+      fixture.Services.Refreshes(fixture.Memory, options),
+      fixture.Sender,
+      options,
+      fixture.Services.Eta,
+      fixture.Services.FuelPlans
+    );
+  }
+
+  private static PlanningSummaryReader Summaries(Fixture fixture) =>
+    new(
+      new PlanningSummaryCache(TimeProvider.System),
+      fixture.Services.PlanningInputs,
+      fixture.Services.Routes,
+      new TestCompany(),
+      fixture.Services.Reads
+    );
+
+  // Marks the saved plan's stops passed. With invalidateInputs false the
+  // row and its route cache change but the truck's cached inputs do not,
+  // as on a process the invalidation has not reached yet.
+  private static async Task PassAsync(
+    Fixture fixture,
+    DispatchRoutePlan entry,
+    bool invalidateInputs
+  )
+  {
+    var plan = RoutePlanStorage.Read(entry)!;
+    plan.Tracking.AllStopsPassed = true;
+    // Inside the caller's transaction the store leaves the inputs alone.
+    await using (
+      var transaction = await fixture.Db.Database.BeginTransactionAsync()
+    )
+    {
+      await fixture.Services.RoutePlans.SaveAsync(entry, plan, default);
+      await transaction.CommitAsync();
+    }
+    if (invalidateInputs)
+      fixture.Services.Reads.InvalidateItem(
+        "planning-inputs",
+        fixture.Truck.Id
+      );
+  }
+
+  // Captures of the truck's inputs a planning read made, counted by the
+  // saved-plan metadata read that every capture makes exactly once.
+  private static async Task<(
+    AutomaticPlanningResult Result,
+    int Captures
+  )> CapturesOf(Fixture fixture, PlanningReadService reader)
+  {
+    fixture.Probe.Start();
+    try
+    {
+      var result = await reader.ForTruckAsync(fixture.Truck.Id, default);
+      return (
+        result,
+        fixture.Probe.Statements.Count(x =>
+          x.Contains("'storedAssignmentRevision'")
+        )
+      );
+    }
+    finally
+    {
+      fixture.Probe.Stop();
+    }
+  }
+
   [Fact]
   public async Task ChangedStopsDoNotLetAnOldCompletedPlanSkipTheCurrentDispatch()
   {
@@ -1223,10 +1455,12 @@ public sealed class TruckRoutePreviewTests
   {
     public bool Enabled { get; private set; }
     public int Reads { get; private set; }
+    public List<string> Statements { get; } = [];
 
     public void Start()
     {
       Reads = 0;
+      Statements.Clear();
       Enabled = true;
     }
 
@@ -1242,6 +1476,7 @@ public sealed class TruckRoutePreviewTests
         StringComparison.OrdinalIgnoreCase
       );
       Reads++;
+      Statements.Add(command.CommandText);
     }
 
     public override ValueTask<

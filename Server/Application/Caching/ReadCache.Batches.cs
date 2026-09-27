@@ -16,6 +16,47 @@ public sealed partial class ReadCache
   private string ItemGroup(string family, Guid id) =>
     $"{family}:{companies?.Id:N}:{id:N}";
 
+  public long ItemGeneration(string family, Guid id) =>
+    generations.Get(ItemGroup(family, id));
+
+  // Drops an item only if it is still the version the caller read. Readers
+  // that found the same entry stale drop it once between them: the first
+  // one does, under the gate the family's loads take, and the others then
+  // read the entry it loaded instead of dropping that too.
+  public async Task InvalidateItemIfUnchangedAsync(
+    string family,
+    Guid id,
+    long seen,
+    CancellationToken ct
+  )
+  {
+    var gate = BatchGate(family);
+    await gate.WaitAsync(ct);
+    try
+    {
+      var group = ItemGroup(family, id);
+      if (generations.Get(group) == seen)
+        InvalidateIdentity(group);
+    }
+    finally
+    {
+      gate.Release();
+    }
+  }
+
+  private SemaphoreSlim BatchGate(string family)
+  {
+    var stripes = batchGates.GetOrAdd(
+      family,
+      _ =>
+        Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1, 1)).ToArray()
+    );
+    var stripe = $"{companies?.Id:N}";
+    return stripes[
+      (uint)StringComparer.Ordinal.GetHashCode(stripe) % stripes.Length
+    ];
+  }
+
   public async Task<IReadOnlyDictionary<Guid, T>> GetManyAsync<T>(
     string family,
     IReadOnlyCollection<Guid> ids,
@@ -31,15 +72,7 @@ public sealed partial class ReadCache
     var missing = FindMissing();
     if (missing.Count == 0)
       return result;
-    var stripes = batchGates.GetOrAdd(
-      family,
-      _ =>
-        Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1, 1)).ToArray()
-    );
-    var stripe = $"{companies?.Id:N}";
-    var gate = stripes[
-      (uint)StringComparer.Ordinal.GetHashCode(stripe) % stripes.Length
-    ];
+    var gate = BatchGate(family);
     await gate.WaitAsync(ct);
     try
     {

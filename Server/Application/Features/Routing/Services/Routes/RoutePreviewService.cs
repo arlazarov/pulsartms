@@ -98,10 +98,11 @@ public sealed class RoutePreviewService(
   )
   {
     ct.ThrowIfCancellationRequested();
+    var seen = inputs.Version(truckId);
     var work = await inputs.ReadAsync(truckId, ct, includeHos: false);
     return work is null
       ? NoRemaining(truckId)
-      : await ReadRowAsync(work.Itinerary, null, ct);
+      : await ReadCurrentRowAsync(work, seen, null, ct);
   }
 
   private async Task<List<AutomaticPlanningResult>> LoadAsync(
@@ -129,17 +130,15 @@ public sealed class RoutePreviewService(
       if (!board.Response.HasNextPage)
         break;
     }
-    var snapshots = await inputs.ReadManyAsync(
-      rows.Where(x => x.TruckId.HasValue)
-        .Select(x => x.TruckId!.Value)
-        .Distinct()
-        .ToArray(),
-      ct,
-      includeHos: false
-    );
+    var trucks = rows.Where(x => x.TruckId.HasValue)
+      .Select(x => x.TruckId!.Value)
+      .Distinct()
+      .ToArray();
+    var seen = trucks.ToDictionary(x => x, inputs.Version);
+    var snapshots = await inputs.ReadManyAsync(trucks, ct, includeHos: false);
     var ids = snapshots
-      .Values.SelectMany(x => PlanningWorkPolicy.Candidates(x.Itinerary))
-      .Select(x => x.Work.DispatchId)
+      .Values.Select(x => x.CurrentWork?.DispatchId)
+      .OfType<Guid>()
       .Distinct()
       .ToArray();
     var saved = (
@@ -156,7 +155,12 @@ public sealed class RoutePreviewService(
     {
       try
       {
-        var result = await ReadRowAsync(snapshot.Itinerary, saved, ct);
+        var result = await ReadCurrentRowAsync(
+          snapshot,
+          seen[snapshot.Itinerary.TruckId],
+          saved,
+          ct
+        );
         if (result.State is not null)
           results.Add(result);
       }
@@ -165,14 +169,43 @@ public sealed class RoutePreviewService(
     return results;
   }
 
-  private async Task<AutomaticPlanningResult> ReadRowAsync(
-    TruckItinerarySnapshot snapshot,
+  // The row of the work the inputs chose. If its plan was passed after the
+  // capture, the inputs are captured again once; the row never steps on to
+  // other work by itself.
+  private async Task<AutomaticPlanningResult> ReadCurrentRowAsync(
+    TruckPlanningInputs work,
+    long seen,
     IReadOnlySet<(Guid DispatchId, Guid? ExecutionLegId)>? savedIds,
     CancellationToken ct
   )
   {
+    try
+    {
+      return await ReadRowAsync(work, savedIds, ct);
+    }
+    catch (RoutePlanningException ex) when (ex.DependencyChanged)
+    {
+      var fresh = await inputs.ReadAgainAsync(
+        work.Itinerary.TruckId,
+        seen,
+        ct,
+        includeHos: false
+      );
+      return fresh is null
+        ? NoRemaining(work.Itinerary.TruckId)
+        : await ReadRowAsync(fresh, null, ct);
+    }
+  }
+
+  private async Task<AutomaticPlanningResult> ReadRowAsync(
+    TruckPlanningInputs work,
+    IReadOnlySet<(Guid DispatchId, Guid? ExecutionLegId)>? savedIds,
+    CancellationToken ct
+  )
+  {
+    var snapshot = work.Itinerary;
     var truckId = snapshot.TruckId;
-    foreach (var segment in PlanningWorkPolicy.Candidates(snapshot))
+    if (work.CurrentSegment is { } segment)
     {
       var load = PlanningWorkPolicy.Resolve(snapshot, segment);
       var savedPlan =
@@ -192,8 +225,7 @@ public sealed class RoutePreviewService(
           AssignmentRevision = load.AssignmentRevision,
         };
       var plan = savedPlan.Plan;
-      if (PlanningWorkPolicy.IsCompleted(plan, load))
-        continue;
+      PlanningReadService.RequireStillCurrent(plan, load);
       plan.FuelPlan = null;
       plan.FuelRecommendations = null;
       var truck = (

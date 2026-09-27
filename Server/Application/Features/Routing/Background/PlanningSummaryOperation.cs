@@ -148,92 +148,131 @@ public sealed class PlanningSummaryOperation(
         await Task.Delay(TimeSpan.FromSeconds(1), time, ct);
         continue;
       }
-      AutomaticPlanningResult? result = null;
-      string? signature = null;
-      await using var scope = scopes.CreateAsyncScope();
-      var services = scope.ServiceProvider;
-      TruckPlanningInputs? captured = null;
-      string? capturedSignature = null;
       try
       {
-        using var owner = services
-          .GetRequiredService<ICurrentCompany>()
-          .As(work.Key.Company);
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(TimeSpan.FromSeconds(60));
-        var token = timeout.Token;
-        var inputs = services.GetRequiredService<TruckPlanningInputsReader>();
+        await RefreshAsync(work, ct);
+      }
+      catch (OperationCanceledException) when (ct.IsCancellationRequested)
+      {
+        break;
+      }
+    }
+  }
+
+  // One preparation of one entry, completed whatever happens: published,
+  // refused, or given up so the entry is prepared again.
+  internal async Task RefreshAsync(
+    PlanningSummaryCache.Work work,
+    CancellationToken ct
+  )
+  {
+    AutomaticPlanningResult? result = null;
+    string? signature = null;
+    await using var scope = scopes.CreateAsyncScope();
+    var services = scope.ServiceProvider;
+    TruckPlanningInputs? captured = null;
+    string? capturedSignature = null;
+    try
+    {
+      using var owner = services
+        .GetRequiredService<ICurrentCompany>()
+        .As(work.Key.Company);
+      using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+      timeout.CancelAfter(TimeSpan.FromSeconds(60));
+      var token = timeout.Token;
+      var inputs = services.GetRequiredService<TruckPlanningInputsReader>();
+      var summaries = services.GetRequiredService<PlanningSummaryReader>();
+      var reader = services.GetRequiredService<PlanningReadService>();
+      // Built from one capture and stored under its signature. Tracking
+      // that passes the current work while it is built is a change: the
+      // inputs are captured again, once.
+      AutomaticPlanningResult? candidate = null;
+      for (var attempt = 0; candidate is null; attempt++)
+      {
         captured = await inputs.ReadFreshAsync(
           work.Key.Truck,
           token,
           includeHos: true
         );
         if (captured is null)
-          continue;
-        var summaries = services.GetRequiredService<PlanningSummaryReader>();
+          return;
         capturedSignature = summaries.Signature(captured);
-        var reader = services.GetRequiredService<PlanningReadService>();
-        var candidate = work.Key.Dispatch is { } dispatch
-          ? await reader.ForDispatchAsync(dispatch, token)
-          : await reader.ForTruckAsync(work.Key.Truck, token);
-        await inputs.RequireCurrentAsync(captured.Itinerary, token);
-        signature = summaries.Signature(captured);
-        if (signature != capturedSignature)
-          continue;
-        if (candidate.State?.Plan is { } plan)
+        try
         {
-          PlanningReadService.TrimForDisplay(plan);
-          // The map's ETA is this summary's: say once when it starts or
-          // stops carrying one, and why (the open map ETA incident).
-          if (
-            services
-              .GetRequiredService<EtaMemory>()
-              .SummaryAnswerChange(
-                plan.DispatchId,
-                plan.ExecutionLegId,
-                candidate.State.Eta is not null
-              ) is
-            { } answer
-          )
-            logger.LogInformation(
-              "Planning summary ETA for truck {TruckId} load {DispatchId} "
-                + "leg {ExecutionLegId}: {EtaAnswer}",
-              work.Key.Truck,
+          candidate = work.Key.Dispatch is { } dispatch
+            ? await reader.ForDispatchAsync(dispatch, token, captured: captured)
+            : await reader.ForInputsAsync(captured, token);
+        }
+        catch (RoutePlanningException ex)
+          when (ex.DependencyChanged && attempt == 0) { }
+      }
+      // Before publication, both halves of the signature are checked
+      // against what holds now: a fresh read proves the itinerary, and the
+      // signature taken again carries the settings generation as it is now.
+      // A result built under settings that changed meanwhile is not stored;
+      // the entry is prepared again under the new ones.
+      await inputs.RequireCurrentAsync(captured!.Itinerary, token);
+      signature = summaries.Signature(captured);
+      if (signature != capturedSignature)
+        return;
+      if (candidate.State?.Plan is { } plan)
+      {
+        PlanningReadService.TrimForDisplay(plan);
+        // The map's ETA is this summary's: say once when it starts or
+        // stops carrying one, and why (the open map ETA incident).
+        if (
+          services
+            .GetRequiredService<EtaMemory>()
+            .SummaryAnswerChange(
               plan.DispatchId,
               plan.ExecutionLegId,
-              answer
-            );
-        }
-        result = candidate with { CalculatedAt = time.GetUtcNow() };
+              candidate.State.Eta is not null
+            ) is
+          { } answer
+        )
+          logger.LogInformation(
+            "Planning summary ETA for truck {TruckId} load {DispatchId} "
+              + "leg {ExecutionLegId}: {EtaAnswer}",
+            work.Key.Truck,
+            plan.DispatchId,
+            plan.ExecutionLegId,
+            answer
+          );
       }
-      catch (OperationCanceledException) when (ct.IsCancellationRequested)
-      {
-        break;
-      }
-      catch (RoutePlanningException ex)
-      {
-        (signature, result) = await RefusedAsync(
-          services,
-          work,
-          captured,
-          capturedSignature,
-          ex.Message,
-          ct
-        );
-      }
-      catch (OperationCanceledException) { }
-      catch (Exception ex)
-      {
-        logger.LogWarning(
-          ex,
-          "Planning summary refresh failed for truck {TruckId}",
-          work.Key.Truck
-        );
-      }
-      finally
-      {
-        cache.Complete(work, signature, result);
-      }
+      result = candidate with { CalculatedAt = time.GetUtcNow() };
+    }
+    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+    {
+      throw;
+    }
+    catch (RoutePlanningException ex) when (ex.DependencyChanged)
+    {
+      // Changed twice while it was built: nothing is published, and the
+      // entry is prepared again on its next turn.
+    }
+    catch (RoutePlanningException ex)
+    {
+      (signature, result) = await RefusedAsync(
+        services,
+        work,
+        captured,
+        capturedSignature,
+        ex.Message,
+        ct
+      );
+    }
+    catch (OperationCanceledException) { }
+    catch (Exception ex)
+    {
+      logger.LogWarning(
+        ex,
+        "Planning summary refresh failed for truck {TruckId}",
+        work.Key.Truck
+      );
+    }
+    finally
+    {
+      cache.Complete(work, signature, result);
     }
   }
 }

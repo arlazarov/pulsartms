@@ -58,6 +58,31 @@ public sealed class TruckPlanningInputsReader(
   ) =>
     (await ReadManyAsync([truckId], ct, includeHos)).GetValueOrDefault(truckId);
 
+  // The version of the truck's cached inputs, taken before reading them, so
+  // a reader that finds them out of date can say which entry it found.
+  public long Version(Guid truckId) =>
+    reads.ItemGeneration("planning-inputs", truckId);
+
+  // For a reader that found its inputs out of date - the current work's
+  // plan passed after they were captured. The entry it read (seen) is
+  // dropped and captured again; readers that found the same entry share
+  // that one capture, and the next reader meets the new entry.
+  public async Task<TruckPlanningInputs?> ReadAgainAsync(
+    Guid truckId,
+    long seen,
+    CancellationToken ct,
+    bool includeHos = true
+  )
+  {
+    await reads.InvalidateItemIfUnchangedAsync(
+      "planning-inputs",
+      truckId,
+      seen,
+      ct
+    );
+    return await ReadAsync(truckId, ct, includeHos);
+  }
+
   public async Task<
     IReadOnlyDictionary<Guid, TruckPlanningInputs>
   > ReadManyAsync(

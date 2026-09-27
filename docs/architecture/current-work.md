@@ -42,16 +42,16 @@ Proved from data (Root, 2026-09-27):
   `continue` after `Observe`) before it reaches actuals.
 - Papers shows "Awaiting pickup Sep 25 / Next"; the normal Map shows 1412.
 
-Inferred from code, not reproduced:
+Proved by Root (read-only, 2026-09-27): the saved plan for the same leg
+at revision 3 has tracking `AllStopsPassed = true`. So
+`TruckPlanningInputsReader.CaptureAsync` counts 1395 as route-passed and
+names 1412 current, and the Map follows that, while the accepted stops
+have no actuals. This is route-passed work that is not
+business-delivered (CW1), not a source fallback.
 
-- The Map follows the planning summary, whose current work skips a
-  candidate that is route-passed. The likely path is that GPS tracking of
-  the 1395 leg's saved plan reports all stops passed, so 1412 becomes
-  current while the accepted stops have no actuals. Confirming it needs a
-  read-only look at that plan's tracking row. A source fallback on the Map
-  is not proven and is not assumed.
-- Papers' phase and label come from client derivations over the board row
-  (see "Client derivations"), not from the server's current work.
+Inferred from code, not reproduced: Papers' phase and label come from
+client derivations over the board row (see "Consumers"), not from the
+server's current work.
 
 Neither is a trailer switch; no design here invents one.
 
@@ -169,17 +169,40 @@ completed.
    `PlanningSummaryReader.Scope` for cold and refused summaries;
    `ForDispatchAsync` compares with `CurrentSegment`. No new reads. Tests:
    `PlanningSummaryScopeTests` (fails when scope is the first candidate).
-   Gap: they prove the cold summary and the scope function only. They do
-   not prove that a warm summary (`ForItineraryAsync`) or an actual
-   refused result from `PlanningSummaryOperation.RefusedAsync` agrees
-   with it; that proof belongs to stage 2.
-2. **One selection loop.** `ForItineraryAsync`, `RoutePreviewService`,
-   `AutomaticPlanningService`, `PlanningCurrency` and the ETA root take
-   the current segment from one capture; `Resolve` runs after selection.
-   The summary refresh uses one capture for build, check and store.
-   Next-routes takes current from the server. Tests: cold, warm, refused,
-   preview and ETA root agree on the AMF1395 shape (first candidate
-   route-passed, second current), plus call counts.
+   The warm and actual refused agreement they did not prove is covered
+   in stage 2a.
+2. **One selection owner.**
+   - **2a, implemented (not released).** The summary (`ForItineraryAsync`)
+     and the previews read only the inputs' `CurrentSegment`. A plan read
+     that finds that work passed after the capture is a change
+     (`RoutePlanningException.Changed`), never a step to the next load:
+     foreground readers capture again once through
+     `TruckPlanningInputsReader.ReadAgainAsync`, which drops the cached
+     entry only if it is still the version the reader saw, so readers
+     that found the same stale entry share one capture. The background
+     preparation builds from its one fresh capture, retries a change
+     once, and before publishing checks the itinerary with a fresh read
+     and the settings generation as it is now. `PlanningSummaryCache`
+     leaves a preparation's lease with it when a commit, a capture or new
+     inputs arrive, so changes during a preparation add one preparation
+     after it; a lease ends after five minutes. A result prepared for
+     other inputs than the entry's is no longer prepared again at once in
+     a loop; a reader asking with the new inputs makes it due.
+     Tests: `PlanningSummaryRefreshTests` (one capture per preparation,
+     refusal names the current work, settings change and commit while
+     building, stale cached inputs), `TruckRoutePreviewTests` (every
+     reader agrees; a passed load needing review no longer refuses; a
+     change mid-read; one recapture; shared recapture) and
+     `PlanningSummaryCacheTests` (overlap counts, lease limit, no loop).
+     Each fails under its mutation.
+     Known limits: the interleavings are sequential and controlled, not
+     parallel threads. A route refresh's `Capture` still takes an entry
+     from a consumer preparing it; that is counted as two computations,
+     not coalesced. Cross-process invalidation is not covered.
+   - **2b, next.** `AutomaticPlanningService`, `PlanningCurrency` and the
+     ETA root take the current segment from the owner; next-routes takes
+     current from the server; architecture test limiting selection
+     calls to the owner.
 3. **Truck work state on every consumer.** The fields above on board rows
    for all views, Messenger, map payload and workspace; remove client
    `IsCurrent`, `LoadPosition` fallback, `DispatchBoardRow.InTransit`,
