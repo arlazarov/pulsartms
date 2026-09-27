@@ -22,6 +22,8 @@ $sizes: (
   content-login: 25rem,
   content-load-dialog: 56rem,
   form-field: 15rem,
+  // The least a toolbar search keeps beside its Filters button on a phone.
+  filter-search: 10rem,
   address-suggestions: 20rem,
 
   // The map's floating cards.
@@ -36,6 +38,11 @@ $sizes: (
   map-fuel-quote: 22.5rem,
   map-driver-duty-width: 11rem,
 
+  // One reading on a truck's vehicle line (speed, fuel, engine), on the
+  // Fleet Map truck card and the Dispatch truck row alike.
+  telemetry-reading: 9rem,
+  map-telemetry-reading: 6rem,
+
   // Facts read off a route: each figure keeps its column.
   route-metric: 5.5rem,
   route-progress: 10rem,
@@ -46,6 +53,8 @@ $sizes: (
   dispatch-dialog-metric: 10rem,
   dispatch-load-card: 22.5rem,
   dispatch-stop-marker: 1.5rem,
+  // The label column (Appt, ETA) of a stop on a board card.
+  dispatch-stop-fact-label: 2.5rem,
   dispatch-stop-list: 22rem,
   dispatch-stop-list-compact: 15rem,
   dispatch-stop-map: 20rem,
@@ -54,6 +63,7 @@ $sizes: (
   // the plan card's own width (map-stop-inspector).
   fuel-editor: 46rem,
   fuel-editor-card: 26rem,
+  fuel-editor-action: 6rem,
   fuel-visit: 14rem,
   fuel-visit-number: 1.375rem,
   popup-stop-badge: 1.625rem,

@@ -79,7 +79,12 @@ test('selected toolbar view uses filled action colors without changing native ma
     css,
     /\.filter-toolbar__toggle\s*\{\s*--button-bg: transparent;/,
   );
-  assert.doesNotMatch(css, /box-shadow|appearance:\s*none/);
+  // The phone's filters panel floats over the page with the shared popup
+  // shadow; no control on the toolbar draws a shadow of its own.
+  const panel = /\.filter-toolbar__drawer\.is-open\s*\{[^}]*\}/;
+  assert.match(css, panel);
+  assert.match(css.match(panel)[0], /box-shadow: var\(--shadow-popup\);/);
+  assert.doesNotMatch(css.replace(panel, ''), /box-shadow|appearance:\s*none/);
 });
 
 test('form and dialog actions wrap instead of clipping when text grows', () => {

@@ -9,6 +9,7 @@ using Application.Features.Routing.Services;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
 using Application.Models;
+using Domain.Models.Execution;
 using Domain.Models.Routing;
 using Domain.Rules;
 using Domain.Rules.Routing;
@@ -24,11 +25,10 @@ public sealed record GetNextLoadRoutesQuery(
 
 public sealed class GetNextLoadRoutesHandler(
   INextLoadRouteReader reader,
+  TruckPlanningInputsReader inputs,
   DeadheadHistoryService historyReader,
   RoutePlanningService planning,
-  SourceRoadDemand preparation,
-  ISender sender,
-  TimeProvider clock
+  SourceRoadDemand preparation
 )
   : IRequestHandler<
     GetNextLoadRoutesQuery,
@@ -41,76 +41,39 @@ public sealed class GetNextLoadRoutesHandler(
   )
   {
     var started = Stopwatch.GetTimestamp();
-    var imported = await reader.ReadLoadsAsync(request.TruckId, ct);
-    started = Mark("loads", started);
-    var execution = await sender.Send(
-      new GetTruckExecutionLoadsQuery(
-        request.TruckId,
-        imported.Select(x => x.Id).ToArray()
-      ),
-      ct
-    );
-    started = Mark("execution", started);
-    var loads = imported
-      .Where(x => !execution.OwnedDispatchIds.Contains(x.Id))
-      .Select(x => RouteWorkProjection.Capture(x.TruckItinerary()))
-      .Concat(execution.Loads.Select(x => x.Work))
-      .ToArray();
+    // The truck's current work and the work after it are the planning
+    // inputs' - the same choice and the same order (WorkOrderKey) the
+    // board, the summary and the ETA use. A current work the client names
+    // that the inputs do not is either the client's or this process' cache
+    // being behind: inputs older than a moment are captured once more, and
+    // if they still disagree the client is told to refresh. Nothing is
+    // guessed from the client's value, and a client polling with a stale
+    // value costs at most one capture per moment.
+    var seen = inputs.Version(request.TruckId);
+    var work = await inputs.ReadAsync(request.TruckId, ct, includeHos: false);
     if (
-      request.CurrentExecutionLegId.HasValue
-      && !loads.Any(x =>
-        x.Id == request.CurrentDispatchId
-        && x.ExecutionLegId == request.CurrentExecutionLegId
-      )
+      work is not null
+      && !Names(work, request)
+      && !inputs.CapturedWithin(work, RecaptureAge)
     )
+      work = await inputs.ReadAgainAsync(
+        request.TruckId,
+        seen,
+        ct,
+        includeHos: false
+      );
+    started = Mark("inputs", started);
+    if (work?.CurrentSegment is null)
+      return Respond([]);
+    if (!Names(work, request))
       return RequestResponse<NextLoadRoutesResponse>.Fail(
         "The current truck assignment changed. Refresh its route.",
         409
       );
-    var current = loads.FirstOrDefault(x =>
-      x.Id == request.CurrentDispatchId
-      && x.ExecutionLegId == request.CurrentExecutionLegId
-      && x.ExecutionLegId.HasValue
-      && PlanningWorkPolicy.CanUseGps(x)
-      && x.TruckId == request.TruckId
-    );
-    var end = current?.Stops.OrderBy(x => x.Sequence).LastOrDefault();
-    var action = end?.ManualAction ?? end?.Job;
-    if (
-      current is not null
-      && (
-        string.Equals(action, "Drop Off", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(action, "Delivery", StringComparison.OrdinalIgnoreCase)
-      )
-    )
-      loads = loads
-        .Where(x =>
-          x.Id != current.Id
-          || x.ExecutionStatus != "planned"
-          || x.TruckId != current.TruckId
-        )
-        .ToArray();
-    // Whether a load is still work is the board's and the ETA chain's rule
-    // (ExecutionWorkRelevance): a load delivered by its recorded times, or
-    // cancelled at the source with its leg still open, is not upcoming.
-    // NextLoadSelection's own test caught only hand-completed loads, so a
-    // finished load was drawn as the next one (AMF1373 on 54777).
-    var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
-    var upcoming = NextLoadSelection.Select(
-      loads
-        .Where(x =>
-          x.Id == request.CurrentDispatchId
-            && x.ExecutionLegId == request.CurrentExecutionLegId
-          || ExecutionWorkRelevance.IsCurrentOrUpcoming(
-            x,
-            today,
-            includeOverdue: true
-          )
-        )
-        .ToArray(),
-      request.CurrentDispatchId,
-      request.CurrentExecutionLegId
-    );
+    var truckNumber = work.Itinerary.Resources.TruckNumber;
+    var upcoming = work
+      .Followers.Select(x => RouteWorkProjection.Capture(x, truckNumber))
+      .ToList();
     var ids = upcoming
       .Where(x => !x.ExecutionLegId.HasValue)
       .Select(x => x.Id)
@@ -385,6 +348,18 @@ public sealed class GetNextLoadRoutesHandler(
         )
       );
   }
+
+  private static readonly TimeSpan RecaptureAge = TimeSpan.FromSeconds(5);
+
+  private static bool Names(
+    TruckPlanningInputs work,
+    GetNextLoadRoutesQuery request
+  ) =>
+    work.CurrentWork
+    == new WorkIdentity(
+      request.CurrentDispatchId ?? Guid.Empty,
+      request.CurrentExecutionLegId
+    );
 
   private static (Guid, Guid?) Key(RouteWorkSnapshot load) =>
     (load.Id, load.ExecutionLegId);

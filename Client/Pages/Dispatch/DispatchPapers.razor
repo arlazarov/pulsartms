@@ -1,5 +1,5 @@
 <div class="dispatch-papers-workspace">
-    <div class="dispatch-papers @(Completed ? "dispatch-papers--completed" : "")">
+    <div class="dispatch-papers">
     @for (var column = 0; column < Titles.Length; column++)
     {
         var rows = _columns[column];
@@ -26,9 +26,30 @@
                                         @phase
                                     </span>
                                 }
-                                <span class="dispatch-paper__tab-line"><strong class="dispatch-paper__tab-number"><LoadNumber Value="row.Load.LoadNumber" /></strong><span class="dispatch-paper__tab-equipment">Truck @row.TruckNumber</span><span class="dispatch-paper__tab-schedule" aria-label="@($"{EventLabel(row)} {EventSchedule(row)}")">@EventSchedule(row)</span></span>
-                                <span class="dispatch-paper__tab-line"><span class="dispatch-paper__tab-driver">@row.DriverName</span><span class="dispatch-paper__tab-status @(row.Completed ? "is-completed" : row.InTransit ? "is-moving" : "")">@row.Status</span></span>
-                                <span class="dispatch-paper__tab-financials"><strong class="dispatch-paper__tab-miles"><DistanceText Miles="@((double?)row.Load.TotalMiles)" /> total</strong><span>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency) · Total RPM @DispatchFinancialDisplay.Money(row.Load.TotalRatePerMile, row.Load.Currency)</span></span>
+                                @* Grid and flex lines: whitespace between their items is
+                                   not drawn. *@
+                                <span class="dispatch-paper__tab-line">
+                                    <span class="dispatch-paper__tab-identity">
+                                    <strong class="dispatch-paper__tab-number">
+                                        <LoadNumber Value="row.Load.LoadNumber" />
+                                    </strong>
+                                    @* The truck and its trailer fold as one,
+                                       never apart (the owner, September 27). *@
+                                    <span class="dispatch-paper__tab-units">
+                                    <span class="dispatch-paper__tab-equipment">
+                                        Truck @row.TruckNumber
+                                    </span>
+                                    <span class="dispatch-paper__tab-equipment
+                                                 dispatch-paper__tab-trailer">
+                                        Trailer @row.TrailerNumber
+                                    </span>
+                                    </span>
+                                    </span>
+                                    <span class="dispatch-paper__tab-schedule"
+                                          aria-label="@($"{EventLabel(row)} {EventSchedule(row)}")">@EventSchedule(row)</span>
+                                </span>
+                                <span class="dispatch-paper__tab-line"><span class="dispatch-paper__tab-driver">@row.DriverName</span><span class="dispatch-paper__tab-status @row.StatusTone">@row.Status</span></span>
+                                <span class="dispatch-paper__tab-financials"><strong class="dispatch-paper__tab-miles"><DistanceText Miles="@((double?)row.Load.TotalMiles)" /> total</strong><span>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency) · @DispatchFinancialDisplay.LoadedRpm @DispatchFinancialDisplay.Amount(row.Load.LoadedRatePerMile) · @DispatchFinancialDisplay.TotalRpm @DispatchFinancialDisplay.Amount(row.Load.TotalRatePerMile)</span></span>
                             </span>
                         </a>
                     </div>

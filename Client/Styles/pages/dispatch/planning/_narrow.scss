@@ -15,26 +15,6 @@
       padding-left: ui.pg(md);
     }
   }
-  .dispatch-planning--board {
-    grid-template-columns: minmax(0, 1fr) max-content;
-    .dispatch-planning__content {
-      grid-column: 1 / -1;
-      grid-row: 2;
-      border-top: 1px solid ui.theme(border-subtle);
-      padding-top: ui.pg(sm);
-    }
-    > .driver-hours-panel {
-      grid-column: 1;
-      grid-row: 1;
-      padding-left: 0;
-    }
-    .dispatch-planning__driver {
-      grid-column: 2;
-      grid-row: 1;
-      padding-left: ui.pg(md);
-      border-left: 1px solid ui.theme(border-subtle);
-    }
-  }
 }
 
 @include ui.below(narrow-card) {
@@ -97,32 +77,6 @@
     }
     .dispatch-planning__metrics > .dispatch-planning__hint {
       grid-column: 1 / -1;
-    }
-  }
-  .dispatch-planning--board {
-    grid-template-columns: minmax(0, 1fr);
-    gap: ui.pg(sm);
-    > .driver-hours-panel {
-      grid-column: 1;
-      grid-row: 1;
-      padding: 0;
-      border: 0;
-    }
-    .dispatch-planning__driver {
-      grid-column: 1;
-      grid-row: 2;
-      padding: ui.pg(sm) 0;
-      border: 0;
-    }
-    .dispatch-planning__content {
-      grid-column: 1;
-      grid-row: 3;
-    }
-    .dispatch-planning__metrics {
-      display: flex;
-      flex-wrap: wrap;
-      gap: ui.pg(sm) ui.pg(lg);
-      border: 0;
     }
   }
 }

@@ -11,10 +11,17 @@ public partial class FleetTripChain
   public TruckLocationMapDto? Truck { get; set; }
 
   [Parameter]
-  public DispatchResponse? Current { get; set; }
+  public IReadOnlyList<DispatchResponse> Loads { get; set; } = [];
 
   [Parameter]
-  public bool CurrentLoading { get; set; }
+  public bool Loading { get; set; }
+
+  [Parameter]
+  public bool Failed { get; set; }
+
+  // The load the page's route and truck card are for.
+  [Parameter]
+  public Guid? CurrentId { get; set; }
 
   [Parameter]
   public IReadOnlyList<NextLoadRoute> Next { get; set; } = [];
@@ -29,13 +36,29 @@ public partial class FleetTripChain
   public Guid? InspectedLegId { get; set; }
 
   [Parameter]
-  public EventCallback CurrentSelected { get; set; }
-
-  [Parameter]
-  public EventCallback<NextLoadRoute> NextSelected { get; set; }
+  public EventCallback<DispatchResponse> Selected { get; set; }
 
   [Parameter]
   public EventCallback ShowNextLoads { get; set; }
+
+  private bool Drawn(DispatchResponse load) =>
+    NextLoadsShown
+    && Next.Any(route =>
+      route.Id == load.Id && route.ExecutionLegId == load.ExecutionLegId
+    );
+
+  // The colour is the server's phase; an unplaced or stale load stays
+  // neutral rather than borrowing a place.
+  private static string PhaseClass(DispatchResponse load) =>
+    load.Completed
+      ? "is-completed"
+      : load.WorkPhase switch
+      {
+        "current" => "is-current",
+        "next" => "is-next",
+        "upcoming" => "is-upcoming",
+        _ => "is-unplaced",
+      };
 
   private static string Lane(DispatchResponse load)
   {
@@ -45,24 +68,16 @@ public partial class FleetTripChain
     return $"{Place(from)} → {Place(to)}";
   }
 
-  private static string Lane(NextLoadRoute route)
-  {
-    var first = route.Stops.FirstOrDefault()?.Name;
-    var last = route.Stops.LastOrDefault()?.Name;
-    var count = Math.Max(route.StopCount, route.Stops.Count);
-    return string.IsNullOrWhiteSpace(first)
-      ? $"{count} stops"
-      : $"{first.Trim()} → {last?.Trim()}";
-  }
-
   private static string Place(DispatchStopResponse? stop)
   {
     if (stop is null)
       return "Pending";
-    var parts = new[] { stop.City, stop.Province }.Where(x =>
-      !string.IsNullOrWhiteSpace(x)
+    var text = string.Join(
+      ", ",
+      new[] { stop.City, stop.Province }.Where(x =>
+        !string.IsNullOrWhiteSpace(x)
+      )
     );
-    var text = string.Join(", ", parts);
     return text.Length > 0 ? text : stop.Name;
   }
 }

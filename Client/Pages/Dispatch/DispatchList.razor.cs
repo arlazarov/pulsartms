@@ -22,6 +22,10 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
   [Inject]
   private TimeProvider Clock { get; set; } = default!;
 
+  // Only a phone keeps the filters behind their button; wider screens
+  // ignore this.
+  private bool _filtersOpen;
+
   [Inject]
   private ChosenDriverGroup DriverGroup { get; set; } = default!;
   private const string ViewStorageKey = "pulsartms.dispatch.view";
@@ -73,9 +77,26 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     catch (JSException) { }
   }
 
+  // The view drawn: completed loads are read in the Table alone (the owner,
+  // September 27), whatever view was chosen before.
+  private int ShownView => _showCompleted ? 1 : _view;
+
+  private string CountNote =>
+    (_showCompleted, ShownView) switch
+    {
+      (true, _) => "Newest pickup days first",
+      (false, 1) => "By pickup day, earliest first",
+      (false, 2) => "Loads on this page",
+      _ => "Ordered by truck number",
+    };
+
+  // Cards and Papers are for active loads: leaving the completed Table for
+  // either reads Active again.
   private async Task SelectViewAsync(int view)
   {
     _view = view;
+    if (view != 1)
+      _showCompleted = false;
     await LoadAsync(1);
     try
     {
@@ -176,24 +197,6 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
       await Places.ArmAsync();
     }
   }
-
-  private string TruckMotion(TruckDispatchBoardResponse truck) =>
-    DispatchRigStatus.Resolve(
-      truck.Speed,
-      truck.EngineState,
-      truck.Hos,
-      Clock.GetUtcNow().UtcDateTime
-    );
-
-  private string TruckMotionLabel(TruckDispatchBoardResponse truck) =>
-    TruckMotion(truck) switch
-    {
-      "moving" => $"Driving · {truck.Speed:0} mph",
-      "sleeping" => "Sleeper Berth",
-      "idling" => "Idle",
-      "off" => "Engine off",
-      _ => "Parked",
-    };
 
   private DispatchBoardRequest BoardRequest(int page) =>
     new(
@@ -340,6 +343,10 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
       _boardRefreshFailed = false;
       _planningSummaries.Clear();
       _latestTelemetry.Clear();
+      _history = null;
+      _historyPages = 0;
+      _historyFailed = false;
+      _historyRequest?.Cancel();
     }
     _planningRequest?.Cancel();
     _planningRequest = null;
@@ -373,6 +380,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
         _loadedQuery = query;
         _boardRefreshFailed = false;
         _loadedSearch = query.Search;
+        StartHistory(query, version);
         // Not awaited: the board's state is settled before anything else
         // may run, and the address follows it.
         _ = Places.ReflectAsync(
@@ -438,7 +446,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     var truck = _data?.Items.FirstOrDefault(item =>
       item.Key == owner.Key
       && item.TruckId == truckId
-      && item.Dispatches.FirstOrDefault()?.Id == currentId
+      && PlanningLoad(item)?.Id == currentId
     );
     if (truck is null)
       return;
@@ -726,8 +734,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
           if (truck.TruckId is not { } truckId)
             continue;
           var summary = response.Response.FirstOrDefault(result =>
-            result.TruckId == truckId
-            && result.DispatchId == truck.Dispatches.FirstOrDefault()?.Id
+            MatchingPlanningLoad(truck, result) is not null
           );
           if (summary is null)
           {
@@ -820,29 +827,12 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     await _visibility.DisposeAsync();
   }
 
-  private bool IsCurrent(DispatchResponse? load) =>
-    !_showCompleted
-    && load is not null
-    && !load.Completed
-    && (
-      load.Status == "in_transit"
-      || (load.Stops.FirstOrDefault()?.ScheduledDate ?? load.ShipDate)
-        <= DateOnly.FromDateTime(Clock.GetLocalNow().DateTime)
-    );
-
-  private string LoadPhase(
+  // The load's place on its truck, as the server placed it; history is
+  // all completed.
+  private string? LoadPhase(
     TruckDispatchBoardResponse truck,
     DispatchResponse load
-  )
-  {
-    if (_showCompleted || load.Completed)
-      return "Completed";
-    var index = truck.Dispatches.TakeWhile(item => item.Id != load.Id).Count();
-    var hasCurrent = IsCurrent(truck.Dispatches.FirstOrDefault());
-    if (index == 0 && hasCurrent)
-      return "Current";
-    return index + (hasCurrent ? 0 : 1) == 1 ? "Next" : "Upcoming";
-  }
+  ) => _showCompleted ? "Completed" : DispatchWorkPhase.Label(load);
 
   private DispatchCardPlanningSummary CardPlanningSummary(
     TruckDispatchBoardResponse truck,
@@ -853,7 +843,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
       : DispatchCardPlanningSummary.From(
         _planningSummaries.GetValueOrDefault(truckId),
         truckId,
-        truck.Dispatches.FirstOrDefault()?.Id,
+        PlanningLoad(truck)?.Id,
         load.Id
       );
 }

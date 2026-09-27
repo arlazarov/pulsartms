@@ -36,14 +36,15 @@ public sealed class DispatchLoadDialogRetentionTests
     await component.InvokeAsync(
       () =>
         component
-          .FindAll(".dispatch-view button")[view]
+          .FindAll(".dispatch-view button")
+          .Single(button => button.TextContent == ViewName(view))
           .ClickAsync(new MouseEventArgs())
     );
     var opener = view switch
     {
       1 => ".dispatch-table__open",
       2 => ".dispatch-paper__tab",
-      _ => ".dispatch-load__details",
+      _ => ".dispatch-load__number",
     };
     Assert.Equal(
       $"/dispatch/{fixture.Load.Id}",
@@ -113,14 +114,15 @@ public sealed class DispatchLoadDialogRetentionTests
       await component.InvokeAsync(
         () =>
           component
-            .FindAll(".dispatch-view button")[view]
+            .FindAll(".dispatch-view button")
+            .Single(button => button.TextContent == ViewName(view))
             .ClickAsync(new MouseEventArgs())
       );
     var opener = view switch
     {
       1 => ".dispatch-table__open",
       2 => ".dispatch-paper__tab",
-      _ => ".dispatch-load__details",
+      _ => ".dispatch-load__number",
     };
     Assert.Equal(
       $"/dispatch/{fixture.Load.Id}",
@@ -335,5 +337,15 @@ public sealed class DispatchLoadDialogRetentionTests
           }
         )
         .ToArray(),
+    };
+
+  // The views by their names: the buttons read Cards, Papers, Table (the
+  // owner, September 27), not in the order of their numbers.
+  private static string ViewName(int view) =>
+    view switch
+    {
+      1 => "Table",
+      2 => "Papers",
+      _ => "Cards",
     };
 }

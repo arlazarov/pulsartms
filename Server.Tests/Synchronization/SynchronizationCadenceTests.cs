@@ -1,3 +1,4 @@
+using Application.Behaviors;
 using Application.Caching;
 using Application.Features.Dispatch.Commands.SyncDispatche;
 using Application.Features.Dispatch.Models;
@@ -43,12 +44,14 @@ namespace Server.Tests.Synchronization;
 public sealed class SynchronizationCadenceTests
 {
   [Theory]
-  [InlineData(false, false)]
-  [InlineData(true, false)]
-  [InlineData(false, true)]
+  [InlineData(false, false, false)]
+  [InlineData(true, false, false)]
+  [InlineData(false, true, false)]
+  [InlineData(false, false, true)]
   public async Task FailedFuelRefreshRetriesWithoutBlockingUpcomingRoutes(
     bool exchangeRateFails,
-    bool publicationBusy
+    bool publicationBusy,
+    bool fuelBusy
   )
   {
     var truckId = Guid.NewGuid();
@@ -93,6 +96,8 @@ public sealed class SynchronizationCadenceTests
     var services = new ServiceCollection().AddMemoryCache();
     var exchange = AddExchangeRates(services, exchangeRateFails);
     var retryAt = DateTime.UtcNow.AddMinutes(2);
+    if (fuelBusy)
+      sender.FuelRefusal = RoutePlanningException.InputsBusy(retryAt);
     if (publicationBusy)
       exchange.Read = _ => throw new RoutePlanningException("Busy", retryAt);
     services.AddSingleton<IOptions<SynchronizationOptions>>(options);
@@ -134,7 +139,8 @@ public sealed class SynchronizationCadenceTests
           new FleetNames(db),
           new ActiveTransfers(db)
         ),
-        new ExecutionReadScope(db)
+        new ExecutionReadScope(db),
+        provider.GetRequiredService<ReadCache>()
       );
     });
     services.AddSingleton<IFleetTelemetryFeedProvider>(new Feed());
@@ -175,10 +181,16 @@ public sealed class SynchronizationCadenceTests
         await Task.Delay(10, bound.Token);
       var status = operation.Status;
       var failed = status.Jobs[$"fuel:{truckId}"];
-      Assert.Equal(1, failed.Failures);
+      Assert.Equal(fuelBusy ? 0 : 1, failed.Failures);
       Assert.Null(failed.LastSuccess);
-      Assert.Equal(nameof(RoutePlanningException), failed.Error);
-      Assert.True(failed.NextRun >= startedAt.AddSeconds(60));
+      Assert.Equal(
+        fuelBusy ? null : nameof(RoutePlanningException),
+        failed.Error
+      );
+      if (fuelBusy)
+        Assert.Equal(retryAt, failed.NextRun);
+      else
+        Assert.True(failed.NextRun >= startedAt.AddSeconds(60));
       var truck = status.Jobs[$"truck:{truckId}"];
       Assert.Equal(0, truck.Failures);
       Assert.Null(truck.Error);
@@ -529,6 +541,7 @@ public sealed class SynchronizationCadenceTests
     public AutomaticPlanningResult? PlanningResult { get; init; }
     public List<DispatchResponse> PlanningLoads { get; init; } = [];
     public int FuelAttempts;
+    public RoutePlanningException? FuelRefusal;
     public List<PrepareUpcomingPlanningCommand> Upcoming { get; } = [];
     public TaskCompletionSource UpcomingPrepared { get; } =
       new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -585,12 +598,17 @@ public sealed class SynchronizationCadenceTests
       }
       else if (request is PrepareTruckPlanningCommand)
         result = RequestResponse<AutomaticPlanningResult>.Ok(PlanningResult!);
-      else if (request is RecalculateFuelPlanCommand)
+      else if (request is RecalculateFuelPlanCommand fuelRequest)
       {
         FuelAttempts++;
-        result = RequestResponse<AutomaticPlanningResult>.Fail(
-          "Fuel preparation is temporarily unavailable."
-        );
+        result = FuelRefusal is { } refusal
+          ? await new PlanningExceptionBehavior<
+            RecalculateFuelPlanCommand,
+            AutomaticPlanningResult
+          >().Handle(fuelRequest, _ => throw refusal, ct)
+          : RequestResponse<AutomaticPlanningResult>.Fail(
+            "Fuel preparation is temporarily unavailable."
+          );
       }
       else if (request is PrepareUpcomingPlanningCommand upcoming)
       {

@@ -7,17 +7,110 @@ because they require a running application and an authenticated session; follow
 `Client/tests/browser/README.md`. No deployment or database changes are performed
 by this runner.
 
+## Verification stages
+
+Choose checks by the changed invariant and its dependencies, not by the number
+of edited files. Record the owner, risk and intended checks before starting.
+
+1. While editing, run a specific regression or class using the narrow filters
+   below. Reuse the existing build cache. A narrow run is feedback only.
+2. When a coherent change is ready for review, run focused affected and
+   dependent checks, including relevant architecture checks. Combine overlapping
+   selections. If a category is expensive, select the relevant classes rather
+   than automatically running the entire category. Build changed Client code
+   and inspect the affected UI flow; do not repeat the full browser matrix.
+3. Reserve the full suite and long browser/release checks for the final candidate
+   being published, once before deployment. Shared contracts, persistence, DI,
+   authentication and test infrastructure still require focused safety and
+   dependency regressions during development. They do not independently trigger
+   a full suite. The release gate already includes it; do not run a duplicate
+   full suite immediately before the gate.
+4. If proving a particular fix requires a long check before publication, explain
+   the concrete need first and run only that necessary check. Record any deferred
+   coverage honestly; short checks must not be reported as a full pass.
+
+Pure documentation changes need link/content and diff review. Cosmetic text,
+spacing and color changes need the applicable style/build and visual checks;
+add a behavior regression only when behavior or an invariant changes. Financial
+calculations, authorization, tenant separation, duplicate sends and stale-result
+ownership require substantive regression coverage, including controlled
+interleavings where relevant. Never weaken or skip these to meet a time target.
+
+### Avoid duplicate work
+
+- Do not rerun a passing check without changed inputs, a new failure or a
+  concrete unresolved concern. Do not run full suites to keep an agent busy.
+- Main and worktrees may run full gates in parallel with separate build outputs
+  and isolated database fixtures. Never allow simultaneous conflicting writers
+  to the same cache or fixture. Serialize only a shared resource conflict or
+  measured resource contention; another running gate alone is not a blocker.
+- Record the revision and relevant uncommitted diff with results. A later code
+  change invalidates affected evidence; rerun affected checks and the full gate
+  if its completion-boundary conditions apply. Do not label older results as
+  verification of the final candidate.
+- For a flaky test, state a hypothesis and use a bounded narrow reproduction.
+  Prefer explicit request/completion signals and fake time to wall-clock waits.
+  A longer timeout or a successful retry alone is not a demonstrated repair.
+- Cancel obsolete jobs owned by the task after preserving useful diagnostics.
+  Do not interrupt another task's gate without coordination.
+- Record elapsed build/test time from existing output when available. Investigate
+  slow phases before changing the runner; do not claim measured savings without
+  comparable evidence. Report missing database/browser checks explicitly.
+
+## Invariant contract review
+
+For behavior changes, record a short contract before choosing tests: expected
+result, authoritative owner, permitted dependencies, affected consumers and the
+failure that must be rejected. Derive expected values from the product rule or
+an independently worked example, not by invoking the implementation under test.
+This applies across the application, not only to routing or ETA.
+
+Use the relevant rows below. Mark non-applicable rows with a reason; identify
+uncovered applicable cases explicitly. Do not generate a Cartesian test suite
+or run expensive full gates during each iteration. Extend existing fixtures and
+owner tests with small deterministic examples at the affected boundary.
+
+| Change | Required evidence |
+| --- | --- |
+| Shared item reads or signatures | Alone versus batch, reordered peers and partitions give identical per-item values and signatures. Adding unrelated work does not change the item. |
+| Dependencies and invalidation | Unrelated edits do not refresh work; a relevant assignment, policy or source revision does invalidate it. |
+| Consumer projections | Affected screens/jobs agree on the same owner's facts for matching scope/version; intentional scope differences are explicit. |
+| Repeated or cached work | Warm, cold and overlapping consumers preserve results; count provider/DB calls and materialization where the work occurs. |
+| Stateful publication | Controlled interleavings reject stale results and preserve company/assignment/version boundaries, including after failure. |
+| Queue/demand production | Identical observations do not continually create new versions or clear backoff; duplicate demands and old completions preserve newer work. |
+| Queue scheduling | Under a stated bounded service-time/arrival model, eligible low-priority work makes progress within the declared bound; failed work respects backoff. |
+| Existing invalid data | Seed the old state, exercise the owner recovery path and read the actual result; distinguish unresolved inputs from repaired state. |
+
+Use explicit completion signals and fake time for queue/interleaving tests.
+Exercise the real claim/complete persistence contract in an isolated supported
+fixture when changing it. If unavailable, report the missing provider coverage;
+an in-memory queue imitation does not prove the database scheduling contract.
+Do not add production test traffic, unlimited retries or priority resets.
+
+For a bug regression, retain the failing assertion on the old implementation
+and the passing assertion on the fixed one. A test that merely mirrors a loop,
+formula or snapshot cannot independently establish correctness. When an old
+expectation contradicts the product contract, document the conflict and keep
+its valid safeguards (for example, rejection after a predecessor changes).
+
+Review evidence names the exact candidate, contract, representative cases,
+consumer paths, checks run and coverage gaps. Differentiate result correctness,
+work-count reduction and measured latency. Documentation of a required check
+is not evidence that every existing module implements that check.
+
+After publication, use the consistency-auditor guide's authorized bounded
+verification through the normal owner. For example, a finished mileage request
+must yield valid Total/RPM or an explicit missing-input reason before recovery
+is reported complete. Retain a compact incident record, not repeated full dumps.
+
 ## Database test environment
 
-Docker is permitted for tooling and builds, but local SQL database servers must
-not be deployed or started in Docker, through Testcontainers or through substitute
-container runtimes, even for disposable tests. Real PostgreSQL execution checks
-require a separate, isolated fixture that respects this restriction; application
-and production databases are not test fixtures. If no suitable fixture is available,
-report those checks as not run rather than starting a database container,
-automatically installing a host database server or claiming SQLite proves
-PostgreSQL behavior. Earlier reports of local disposable PostgreSQL containers
-are historical results, not an approved workflow for future runs.
+Local disposable SQL databases are permitted, including Docker and
+Testcontainers. PostgreSQL execution checks require isolated test credentials,
+storage and connection settings; the working application and production
+databases are not disposable fixtures. Bound resource use and clean up only
+task-owned test resources. If no suitable fixture is available, report the
+checks as not run. SQLite does not prove PostgreSQL behavior.
 
 ## Affected checks
 
@@ -34,7 +127,7 @@ are historical results, not an approved workflow for future runs.
 | Expenses, load attribution | `bash test.sh costs` | Finance, architecture |
 | Identity helpers | `bash test.sh identity` | Auth storage JS, both architecture suites |
 | Synchronization | `bash test.sh synchronization` | Dispatch, addresses, server architecture |
-| Shared contracts, persistence, DI, authentication, test infrastructure | `bash test.sh all` | Both .NET test assemblies and all Node suites |
+| Shared contracts, persistence, DI, authentication, test infrastructure | Focused affected/dependent classes during development; full release gate before publication | Relevant owners and architecture; all assemblies/Node suites at release |
 
 Every category runs the server and Client C# `Architecture` category and the
 Client JavaScript architecture suite. The .NET command targets `pulsartms.slnx`, so

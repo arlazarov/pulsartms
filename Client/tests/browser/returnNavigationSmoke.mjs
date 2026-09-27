@@ -418,7 +418,7 @@ try {
   await tab.evaluate(() => window.scrollTo(0, 600));
   await tab.waitForTimeout(200);
   const scrolled = await tab.evaluate(() => window.scrollY);
-  const details = tab.locator('section.dispatch-load a.dispatch-load__details');
+  const details = tab.locator('section.dispatch-load a.dispatch-load__number');
   const href = await details.first().getAttribute('href');
   check(
     href.includes(`from=${encodeURIComponent(place)}`),
@@ -449,7 +449,7 @@ try {
 
   // Browser Back.
   await tab
-    .locator('section.dispatch-load a.dispatch-load__details')
+    .locator('section.dispatch-load a.dispatch-load__number')
     .first()
     .click();
   await back('Back to Dispatch');

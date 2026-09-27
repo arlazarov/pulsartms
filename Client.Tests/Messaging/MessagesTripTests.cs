@@ -257,6 +257,8 @@ public sealed class MessagesTripTests
                   ["Windsor", "Toronto"]
                 )
                 {
+                  // The server places the driver's only load as current.
+                  Phase = "current",
                   OrderNumber = "PO 55-1180",
                   Stops =
                   [

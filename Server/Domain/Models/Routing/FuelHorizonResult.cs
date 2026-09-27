@@ -15,6 +15,7 @@ public sealed record FuelHorizonResult(
   List<string> Notes
 )
 {
+  public string? CoverageNotice { get; init; }
   public List<FuelItineraryStop> Itinerary { get; init; } = [];
   public Dictionary<Guid, string> DispatchSignatures { get; init; } = [];
   public double StartAccessMiles { get; init; }

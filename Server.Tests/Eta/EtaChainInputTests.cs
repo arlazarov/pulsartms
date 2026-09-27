@@ -1001,6 +1001,7 @@ public sealed partial class EtaChainInputTests
   ) : IAsyncDisposable
   {
     public AppDbContext Db => db;
+    public SqliteConnection Connection => connection;
     public TestCompany Company => company;
     public PublicationProbe Publication => publication;
     public GeometryProbe Probe => probe;

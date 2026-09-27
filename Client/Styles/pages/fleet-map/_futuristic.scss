@@ -44,8 +44,11 @@
         'chain chain chain';
       gap: ui.pg(md);
     }
-    // No truck selected: the map takes the inspector's column too.
-    .fleet-map-stage:not(:has(.fleet-map-info-reserved.has-selection)) {
+    // No truck selected and no editor open: the map takes the inspector's
+    // column too. The fuel editor replaces the card in that column.
+    .fleet-map-stage:not(:has(.fleet-map-info-reserved.has-selection)):not(
+        :has(.fuel-plan-editor)
+      ) {
       grid-template-areas:
         'list map map'
         'chain chain chain';
@@ -271,6 +274,9 @@
     font-size: ui.fs(caption);
     font-weight: 700;
   }
+  a.fleet-trip-chain__card {
+    text-decoration: none;
+  }
   &__card {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -306,6 +312,12 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
+  &__conflict {
+    grid-column: 1 / -1;
+    color: ui.theme(warning-text);
+    font-size: ui.fs(caption);
+    font-weight: 600;
+  }
   &__lane {
     grid-column: 1 / -1;
     overflow: hidden;
@@ -324,6 +336,10 @@
   .is-next,
   .is-upcoming {
     color: ui.theme(map-route-future);
+  }
+  .is-unplaced,
+  .is-completed {
+    color: ui.theme(text-muted);
   }
 
   @include ui.below(map-mobile) {

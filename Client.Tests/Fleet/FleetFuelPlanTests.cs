@@ -12,6 +12,29 @@ namespace Client.Tests.Fleet;
 public sealed class FleetFuelPlanTests
 {
   [Fact]
+  public void CoverageLimitIsVisibleBesideThePlan()
+  {
+    using var context = new BunitContext();
+    const string note =
+      "Fuel coverage ends before load 1416, which needs assignment review.";
+    var component = context.Render<FleetFuelPlan>(p =>
+      p.Add(x => x.Plan, new FuelPlan { CoverageNotice = note })
+    );
+    Assert.Contains(note, component.Find("[role=note]").TextContent);
+  }
+
+  [Fact]
+  public void StalePlanDoesNotClaimARecalculationIsRunning()
+  {
+    using var context = new BunitContext();
+    var component = context.Render<FleetFuelPlan>(p =>
+      p.Add(x => x.Unusable, true)
+    );
+    Assert.Contains("needs updating", component.Markup);
+    Assert.DoesNotContain("being recalculated", component.Markup);
+  }
+
+  [Fact]
   public void TheLoadsStopsStandBetweenTheFuelStops()
   {
     using var context = new BunitContext();
@@ -89,7 +112,13 @@ public sealed class FleetFuelPlanTests
   }
 
   private static PlanStop Stop(int sequence, string job, string name) =>
-    new(Guid.NewGuid(), name, "1 Main St, Albany, NY 12207, US", sequence, new(0, 0))
+    new(
+      Guid.NewGuid(),
+      name,
+      "1 Main St, Albany, NY 12207, US",
+      sequence,
+      new(0, 0)
+    )
     {
       Job = job,
     };

@@ -30,23 +30,24 @@ export async function checkTruckReadingsLayout(page, output, name) {
         available: right - left,
         gap: parseFloat(style.columnGap),
         columns: style.gridTemplateColumns.split(' ').length,
-        telemetry: rect(
-          element.querySelector('.fleet-map-truck-info__telemetry'),
-        ),
+        telemetry: rect(element.querySelector('.truck-readings')),
         location: rect(
           document.querySelector('.fleet-map-inspector__location'),
         ),
-        // A reading is a quiet word and its value; only the weather keeps
-        // an icon, because there the icon is the reading.
+        // Every reading leads with its icon (the approved card of
+        // September 26); the weather's icon is its reading and is counted
+        // on its own. The weather is a cell of the same shared line
+        // (TruckReadings), so the provider readings exclude it.
         icons: [
           ...element.querySelectorAll(
-            '.fleet-map-truck-info__reading > small > svg, .fuel-reading__icon',
+            '.truck-readings__reading:not(.truck-readings__reading--outside)' +
+              ' > small > svg, .fuel-reading__icon',
           ),
         ]
           .map(rect)
           .filter(box => box.width > 0),
         weather: [
-          ...element.querySelectorAll('.fleet-map-truck-info__outside svg'),
+          ...element.querySelectorAll('.truck-readings__reading--outside svg'),
         ]
           .map(rect)
           .filter(box => box.width > 0),
@@ -54,11 +55,14 @@ export async function checkTruckReadingsLayout(page, output, name) {
         // below carries only what the truck itself is doing.
         dials: [...element.querySelectorAll('.driver-hours__dial')].map(rect),
         readings: [
-          ...element.querySelectorAll('.fleet-map-truck-info__reading'),
+          ...element.querySelectorAll(
+            '.truck-readings__reading:not(.truck-readings__reading--outside)',
+          ),
         ].map(rect),
         labels: [
           ...element.querySelectorAll(
-            '.fleet-map-truck-info__reading > small > span, ' +
+            '.truck-readings__reading:not(.truck-readings__reading--outside)' +
+              ' > small > span, ' +
               '.fuel-reading__label',
           ),
         ].map(rect),
@@ -81,6 +85,10 @@ export async function checkTruckReadingsLayout(page, output, name) {
           })),
         scale:
           parseFloat(getComputedStyle(document.documentElement).fontSize) / 16,
+        cardScroll: element.closest('.fleet-map-inspector').scrollTop,
+        headPosition: getComputedStyle(
+          element.closest('.fleet-map-inspector__header'),
+        ).position,
       };
     });
   try {
@@ -94,6 +102,16 @@ export async function checkTruckReadingsLayout(page, output, name) {
       }, font);
       for (const width of [767, 600, 520, 441, 390, 320]) {
         await page.setViewportSize({ ...originalViewport, width });
+        // A card at least map-compact-columns (40rem) wide has a closed
+        // state, with where the truck is behind Details; open it, as a
+        // dispatcher would, before reading the lower rows. A narrower card
+        // is open whole and shows no disclosure.
+        const toggle = page.locator('.fleet-map-mobile-summary__toggle');
+        if (
+          (await toggle.isVisible()) &&
+          (await toggle.getAttribute('aria-expanded')) === 'false'
+        )
+          await toggle.click();
         const g = await geometry();
         const variant = `${name}-${width}-${font}-readings`;
         assert.equal(
@@ -109,8 +127,8 @@ export async function checkTruckReadingsLayout(page, output, name) {
         );
         assert.equal(
           g.icons.length,
-          0,
-          `${variant}: a reading draws no icon of its own`,
+          3,
+          `${variant}: speed, fuel and engine each lead with one icon`,
         );
         assert.equal(
           g.weather.length,
@@ -183,7 +201,13 @@ export async function checkTruckReadingsLayout(page, output, name) {
         }
         assert.ok(
           g.location.y >= g.telemetry.bottom - 1,
-          `${variant}: the address is last, below the vehicle's line`,
+          `${variant}: the address is last, below the vehicle's line ` +
+            JSON.stringify({
+              location: g.location,
+              telemetry: g.telemetry,
+              cardScroll: g.cardScroll,
+              headPosition: g.headPosition,
+            }),
         );
         if (width === 390 || width === 441 || width === 600) {
           await page.screenshot({ path: resolve(output, `${variant}.png`) });

@@ -99,7 +99,7 @@ export function layoutMapLabels({
   const retained = new Map(previous.map(truck => [truck.unit, truck]));
   const points = new Map<LabelledTruck | LabelledCluster, [number, number]>(
     [...vehicles, ...clusters].map(item => {
-      const [x, y] = project(item.position);
+      const [x, y] = project(item.mergedPosition ?? item.position);
       const [dx, dy] = item.markerOffset ?? [0, 0];
       return [item, [x + dx, y + dy] as [number, number]];
     }),
@@ -107,7 +107,7 @@ export function layoutMapLabels({
   // Markers stay where they are; only what is written beside them moves.
   for (const [item, point] of points)
     area.reserve(
-      [...point, metrics.truckSize / 2, metrics.truckSize / 2],
+      [...point, metrics.truckHitSize / 2, metrics.truckHitSize / 2],
       item,
     );
   const place = (

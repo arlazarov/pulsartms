@@ -76,6 +76,10 @@
     color: ui.theme(transit);
     font-size: ui.fs(caption);
     font-weight: 600;
+    &.is-conflict {
+      background: ui.theme(warning-surface);
+      color: ui.theme(warning-text);
+    }
   }
   &__stops {
     display: grid;

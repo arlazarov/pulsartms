@@ -128,6 +128,8 @@ const dispatches = () => [
     loadNumber: 1441,
     orderNumber: 'CURRENT-ORD-1441',
     status: 'in_transit',
+    // The board places each load on its truck (DispatchResponse.WorkPhase).
+    workPhase: 'current',
     customerName: 'Fixture Current Customer',
     truckNumber: '11006',
     driverName: 'Fixture Driver',
@@ -160,6 +162,7 @@ const dispatches = () => [
     loadNumber: 1442,
     orderNumber: 'FUTURE-ORD-1442',
     status: 'planned',
+    workPhase: 'next',
     customerName: 'Fixture Future Customer',
     truckNumber: '11006',
     driverName: 'Fixture Driver',
@@ -919,7 +922,7 @@ async function checkRepeatedVisits(page, name, screenshots) {
   const cardImage = resolve(output, `${name}-repeated-visits.png`);
   await page.screenshot({ path: cardImage, fullPage: true });
   screenshots.push(cardImage);
-  await card.locator('.dispatch-load__details').click();
+  await card.locator('.dispatch-load__number').click();
   const workspace = await workspacePage(page);
   const details = workspace.locator('.stop-workspace__stop');
   check(
@@ -988,7 +991,7 @@ async function checkRepeatedVisits(page, name, screenshots) {
   const table = page.getByRole('button', { name: 'Table', exact: true });
   if (await table.isVisible()) {
     await table.click();
-    const row = page.locator('.dispatch-table tbody tr').first();
+    const row = page.locator('.dispatch-table tr.dispatch-table__row').first();
     await row.locator('.dispatch-table__stop-entry').nth(1).waitFor();
     check(
       (await row.locator('.dispatch-table__stop-entry').count()) === 2,
@@ -1203,6 +1206,18 @@ try {
             assert.equal(typeof scope.search, 'string');
             const summary = planning();
             summary.state.plan.geometryOmitted = true;
+            // The board's head keeps these behind one warning sign.
+            summary.notices = [
+              {
+                kind: 'source-review',
+                loadNumber: 1441,
+                dispatchId: currentLoadId,
+                text: 'Source resources are unresolved.',
+              },
+            ];
+            summary.state.plan.route.warnings = [
+              'TomTom has not confirmed truck access on some route sections.',
+            ];
             await route.fulfill({ status: 200, json: success([summary]) });
           } else if (
             url.origin === origin &&
@@ -1452,8 +1467,7 @@ try {
           if (path === '/dispatch') {
             await page.locator('.dispatch-load__stop').nth(4).waitFor();
             await page
-              .locator('.dispatch-planning__metric')
-              .nth(2)
+              .locator('.dispatch-planning__left')
               .waitFor({ state: 'attached' });
             check(
               summaryReads === 1 && telemetryReads >= 1,
@@ -1622,11 +1636,12 @@ try {
                   locationText: textBlock(
                     stop.querySelector('.dispatch-load__location'),
                   ),
+                  // The place is named first, its street and town under it.
                   facility: stop
-                    .querySelector('.dispatch-load__facility')
+                    .querySelector('.dispatch-load__locality')
                     ?.textContent.trim(),
                   facilityText: textBlock(
-                    stop.querySelector('.dispatch-load__facility'),
+                    stop.querySelector('.dispatch-load__locality'),
                   ),
                   appointmentReference: textBlock(
                     stop.querySelector('.dispatch-load__appointment-reference'),
@@ -1636,7 +1651,7 @@ try {
                   ),
                   appointment: textBlock(
                     stop.querySelector(
-                      '.arrival-estimate__appointment, .dispatch-load__history-time',
+                      '.dispatch-load__appointment, .dispatch-load__history-time',
                     ),
                   ),
                   estimate: textBlock(stop.querySelector('.stop-hours__road')),
@@ -1665,46 +1680,30 @@ try {
                 }),
               ),
             }));
-            const summary = document.querySelector(
-              '.dispatch-planning--compact',
-            );
+            const summary = document.querySelector('.dispatch-planning--board');
             const routeSummary = summary
               ? {
                   ...rect(summary),
-                  heading: textBlock(
-                    summary.querySelector('.dispatch-planning__heading'),
-                  ),
-                  identity: textBlock(
-                    summary.querySelector('.dispatch-planning__identity'),
+                  left: textBlock(
+                    summary.querySelector('.dispatch-planning__left'),
                   ),
                   fuel: textBlock(summary.querySelector('.fuel-reading')),
+                  readings: textBlock(summary.querySelector('.truck-readings')),
                   recap: textBlock(summary.querySelector('.driver-next-recap')),
+                  warnings: summary
+                    .querySelector(
+                      '.dispatch-truck__header .dispatch-planning__warnings',
+                    )
+                    ?.getAttribute('title'),
                   recapTime: summary
                     .querySelector('.driver-next-recap time')
                     ?.getAttribute('datetime'),
-                  nextStop: textBlock(
-                    summary.querySelector('.dispatch-planning__next'),
-                  ),
-                  nextStopInk: inkRect(
-                    summary.querySelector('.dispatch-planning__next > strong'),
-                  ),
-                  appointment: textBlock(
-                    summary.querySelector(
-                      '.dispatch-planning__details .arrival-estimate__appointment',
-                    ),
-                  ),
-                  metrics: [
-                    ...summary.querySelectorAll('.dispatch-planning__metric'),
-                  ].map(metric => ({
-                    ...rect(metric),
-                    label: textBlock(metric.querySelector(':scope > span')),
-                    miles: textBlock(
-                      metric.querySelector('.dispatch-planning__miles'),
-                    ),
-                    kilometres: textBlock(metric.querySelector('small')),
-                    scrollWidth: metric.scrollWidth,
-                    clientWidth: metric.clientWidth,
-                  })),
+                  dutyHidden: summary.querySelector('.dispatch-planning__duty')
+                    ?.hidden,
+                  toggle: summary
+                    .querySelector('.dispatch-planning__toggle')
+                    ?.getAttribute('aria-expanded'),
+                  text: summary.textContent,
                 }
               : null;
             const truck = document.querySelector('.dispatch-truck');
@@ -1723,12 +1722,13 @@ try {
             const truckHeader = truck
               ? {
                   frame: rect(truck),
-                  identity: headerZone(':scope > .dispatch-truck__header'),
-                  content: headerZone('.dispatch-planning__content'),
-                  hos: headerZone('.driver-hours-panel'),
-                  driver: headerZone('.dispatch-planning__driver'),
+                  identity: headerZone('.dispatch-truck__header'),
+                  readings: headerZone('.truck-readings'),
+                  hos: headerZone('.dispatch-planning__clocks'),
                   identityGroup: headerZone('.dispatch-truck__identity'),
+                  left: headerZone('.dispatch-planning__left'),
                   mapAction: headerZone('.dispatch-truck__map'),
+                  toggle: headerZone('.dispatch-planning__toggle'),
                   identityGap: parseFloat(
                     getComputedStyle(
                       truck.querySelector('.dispatch-truck__header'),
@@ -2177,7 +2177,7 @@ try {
             }
             const rootFont = parseFloat(metrics.rootFont);
             const header = metrics.truckHeader;
-            const zones = ['identity', 'content', 'hos', 'driver'].map(key => [
+            const zones = ['identity', 'readings', 'hos'].map(key => [
               key,
               header?.[key],
             ]);
@@ -2213,81 +2213,46 @@ try {
                 );
               }
             }
-            const hosDials = await page
-              .locator(
-                '.dispatch-truck .driver-hours__clock .driver-hours__dial',
-              )
-              .evaluateAll(nodes =>
-                nodes.map(node => {
-                  const dial = node.getBoundingClientRect(),
-                    text = node.querySelector('strong').getBoundingClientRect();
-                  return {
-                    diameter: dial.width,
-                    height: dial.height,
-                    corner: Math.hypot(text.width / 2, text.height / 2),
-                    centered: Math.abs(
-                      (text.left + text.right - dial.left - dial.right) / 2,
-                    ),
-                    fontSize: parseFloat(
-                      getComputedStyle(node.querySelector('strong')).fontSize,
-                    ),
-                  };
-                }),
-              );
+            // The clocks read as the map card's: words and numbers on one
+            // line, no rings.
             check(
-              hosDials.length >= 4 &&
-                hosDials.every(
-                  dial =>
-                    Math.abs(dial.height - dial.diameter) <= 1 &&
-                    dial.centered <= 1 &&
-                    dial.corner < (dial.diameter * 26) / 64 - 1 &&
-                    dial.fontSize <= dial.diameter * 0.24 + 0.02,
-                ),
-              name +
-                ' Dispatch HOS values share the responsive diameter and stay inside their rings',
+              (await page
+                .locator('.dispatch-truck .driver-hours__dial')
+                .count()) === 0 &&
+                (await page
+                  .locator(
+                    '.dispatch-truck .driver-hours--text .driver-hours__clock',
+                  )
+                  .count()) === 4,
+              name + ' Dispatch HOS clocks read as text, as on the map card',
             );
-            if (width === 2344 && scale === 100) {
+            const headParts = ['identityGroup', 'left', 'mapAction']
+              .map(key => header?.[key])
+              .filter(Boolean);
+            check(
+              headParts.length === 3 &&
+                headParts.every((part, index) =>
+                  headParts.every(
+                    (other, otherIndex) =>
+                      otherIndex === index ||
+                      part.x + part.width <= other.x + 1 ||
+                      other.x + other.width <= part.x + 1 ||
+                      part.y + part.height <= other.y + 1 ||
+                      other.y + other.height <= part.y + 1,
+                  ),
+                ),
+              name + ' truck head keeps unit, what is left, map apart',
+            );
+            if (width > 550)
               check(
-                header?.identity &&
-                  header?.content &&
-                  header?.hos &&
-                  Math.abs(
-                    header.content.x -
-                      header.identity.x -
-                      header.identity.width,
-                  ) <= 1 &&
-                  Math.abs(
-                    header.hos.x - header.content.x - header.content.width,
-                  ) <= 1 &&
-                  Math.max(header.identity.y, header.content.y, header.hos.y) <
-                    Math.min(
-                      header.identity.y + header.identity.height,
-                      header.content.y + header.content.height,
-                      header.hos.y + header.hos.height,
-                    ),
-                name +
-                  ' wide truck header left-packs adjacent content-sized identity, telemetry and HOS groups',
+                header.mapAction.x + header.mapAction.width <=
+                  header.frame.x + header.frame.width &&
+                  header.mapAction.x + header.mapAction.width >=
+                    header.frame.x + header.frame.width - 2 * rootFont &&
+                  Math.abs(header.left.y - header.mapAction.y) <=
+                    header.mapAction.height,
+                name + " what is left, the map stands at the head's end",
               );
-              check(
-                header?.hos &&
-                  header.hos.x + header.hos.width <
-                    header.frame.x + header.frame.width - rootFont,
-                name +
-                  ' unused wide-header space remains after HOS, not between header groups',
-              );
-              check(
-                header?.identityGroup &&
-                  header?.mapAction &&
-                  Math.abs(
-                    header.mapAction.x -
-                      header.identityGroup.x -
-                      header.identityGroup.width -
-                      header.identityGap,
-                  ) <= 1,
-                name +
-                  ' truck map action stays beside identity with its named control gap',
-              );
-            }
             for (const card of cards) {
               const { overview, stopGrid, footer } = card;
               check(
@@ -2339,91 +2304,38 @@ try {
             }
             const summary = metrics.routeSummary;
             check(
-              summary?.recap?.text.replace(/\s+/g, ' ') ===
-                `Next recap ${recapLabel} +3h 05m` &&
-                Date.parse(summary.recapTime) ===
-                  Date.parse(cycleAtCalculation().nextRecapAt),
+              summary?.left?.text.replace(/\s+/g, ' ') ===
+                'Left 44 mi · 71 km' &&
+                summary.fuel?.text === 'Fuel 28%' &&
+                /65\s*mph/.test(summary.readings?.text ?? ''),
               name +
-                ' truck header shows the current recap date and credited hours without delivery-derived data',
+                ' truck head says what is left to the next stop and the vehicle line reads speed and fuel',
             );
             check(
-              summary?.heading?.text.includes('Route') &&
-                summary.heading.text.includes('Load AMF1441') &&
-                summary.fuel?.text === 'Fuel 28%',
-              name + ' route/load/fuel summary identity',
+              !/Total Distance|Remaining|Next Stop/.test(summary?.text ?? ''),
+              name + ' the planned total and the old distance columns are gone',
             );
             check(
-              JSON.stringify(
-                summary?.metrics.map(metric => metric.label.text),
-              ) ===
-                JSON.stringify(['Total Distance', 'Remaining', 'Next Stop']),
-              name + ' separate route distance labels',
+              summary?.dutyHidden === false && summary.toggle == null,
+              name + ' duty is always visible',
+            );
+            // The Next recap left the board card (the owner, September 27).
+            check(
+              summary?.recap == null && !/Next recap/.test(summary?.text ?? ''),
+              name + ' the board card shows no Next recap',
             );
             check(
-              JSON.stringify(
-                summary?.metrics.map(metric => metric.miles.text),
-              ) === JSON.stringify(['2,509 mi', '44 mi', '44 mi']) &&
-                JSON.stringify(
-                  summary?.metrics.map(metric => metric.kilometres.text),
-                ) === JSON.stringify(['4,038 km', '71 km', '71 km']),
-              name + ' unchanged total/remaining/next-stop distances',
+              summary?.warnings ===
+                'Load 1441: Source resources are unresolved.\n' +
+                  'TomTom has not confirmed truck access on some route sections.' &&
+                !/Source resources|TomTom/.test(summary?.text ?? ''),
+              name +
+                ' the load notice and the road warning wait behind one sign',
             );
-            for (const metric of summary?.metrics ?? []) {
-              check(
-                metric.x >= summary.x - 1 &&
-                  metric.x + metric.width <= summary.x + summary.width + 1 &&
-                  metric.scrollWidth <= metric.clientWidth + 2,
-                name + ` route metric ${metric.label.text} is not clipped`,
-              );
-              if (width > 390)
-                check(
-                  metric.label.fontSize >= (rootFont * 11) / 16 - 0.01 &&
-                    metric.miles.fontSize >= (rootFont * 14) / 16 - 0.01,
-                  name + ` readable desktop route metric ${metric.label.text}`,
-                );
-              if (width === 390)
-                check(
-                  metric.miles.y >= metric.label.y + metric.label.height - 1 &&
-                    metric.kilometres.y >=
-                      metric.miles.y + metric.miles.height - 1,
-                  name +
-                    ` mobile ${metric.label.text} label/miles/km hierarchy`,
-                );
-            }
-            if (
-              summary?.nextStop &&
-              summary.appointment &&
-              summary.appointment.x >=
-                summary.nextStop.x + summary.nextStop.width - 1
-            ) {
-              check(
-                summary.appointment.x -
-                  summary.nextStop.x -
-                  summary.nextStop.width <=
-                  2 * rootFont + 1 &&
-                  summary.appointment.x -
-                    summary.nextStopInk.x -
-                    summary.nextStopInk.width <=
-                    4 * rootFont + 1,
-                name + ' next-stop appointment stays close to its destination',
-              );
-            }
-            if (width === 390 && scale === 100) {
-              check(
-                summary.metrics.every(
-                  metric =>
-                    Math.abs(metric.miles.y - summary.metrics[0].miles.y) <= 1,
-                ),
-                name + ' aligned mobile route values',
-              );
-              check(
-                summary.metrics[0].x + summary.metrics[0].width <
-                  summary.metrics[1].x &&
-                  summary.metrics[1].x + summary.metrics[1].width <
-                    summary.metrics[2].x,
-                name + ' three distinct compact mobile distance columns',
-              );
-            }
+            await page.screenshot({
+              path: resolve(output, `${name}-truck-details.png`),
+              fullPage: true,
+            });
             check(
               cards[0]?.stops.length === 3 && cards[1]?.stops.length === 2,
               name + ' every stop is visible',
@@ -2530,7 +2442,9 @@ try {
                 name + ' Table',
               );
               releaseTable();
-              const firstRow = page.locator('.dispatch-table tbody tr').first();
+              const firstRow = page
+                .locator('.dispatch-table tr.dispatch-table__row')
+                .first();
               await firstRow.waitFor();
               await checkDispatchTop(
                 page,
@@ -2682,24 +2596,22 @@ try {
             await page.screenshot({ path: papersImage, fullPage: true });
             detailScreenshots.push(papersImage);
             await returnToDispatch(page, 'Papers');
-            await page.locator('#dispatch-completed').click();
-            await page.locator('.dispatch-papers--completed').waitFor();
+            // Completed is read in the Table alone (the owner, September
+            // 27): Papers offer no scope, and the Table reads history
+            // newest pickup day first.
             check(
-              (
-                await page
-                  .locator('.dispatch-paper-column__heading')
-                  .innerText()
-              ).includes('Completed'),
-              name + ' completed papers have no active-phase folders',
+              !(await page.locator('#dispatch-completed').isVisible()),
+              name + ' papers offer no Completed scope',
             );
             await page
-              .getByRole('button', { name: 'Cards', exact: true })
+              .getByRole('button', { name: 'Table', exact: true })
               .click();
-            await page.locator('.dispatch-load').nth(1).waitFor();
+            await page.locator('#dispatch-completed').click();
+            await page.locator('tr.dispatch-table__row').nth(1).waitFor();
             await checkDispatchTop(
               page,
               dispatchTopBaseline,
-              name + ' completed Cards',
+              name + ' completed Table',
             );
             check(
               (await page
@@ -2714,19 +2626,21 @@ try {
               name + ' archive does not imply a missing next assignment',
             );
             check(
-              (await page.locator('.dispatch-load__stop').count()) === 5,
-              name + ' archive preserves all pickup/delivery stops',
+              (await page.locator('tr.dispatch-table__row').count()) === 2,
+              name + ' archive lists both completed loads',
             );
+            // AMF1442 is picked up the day after AMF1441.
             check(
-              (await page
-                .locator('.dispatch-load__metrics, .dispatch-paper__financials')
-                .count()) === 0,
-              name + ' archive cards keep financial details collapsed',
+              (
+                await page.locator('tr.dispatch-table__row').first().innerText()
+              ).includes('AMF1442') &&
+                (await page.locator('.dispatch-table__day').count()) === 2,
+              name + ' archive reads its days newest first',
             );
             await page
-              .locator('.dispatch-load')
-              .first()
-              .locator('.dispatch-load__details')
+              .locator('tr.dispatch-table__row')
+              .filter({ hasText: 'AMF1441' })
+              .locator('.dispatch-table__open')
               .click();
             await workspacePage(page);
             await workspaceFinancials(
@@ -2736,7 +2650,7 @@ try {
               completedDispatches()[0],
               { output, screenshots: detailScreenshots },
             );
-            await returnToDispatch(page, 'Cards', true);
+            await returnToDispatch(page, 'Table', true);
             check(
               !/CURRENT LOAD|NEXT LOAD/.test(
                 await page.locator('.dispatch-board').innerText(),
@@ -2753,7 +2667,16 @@ try {
             await page.screenshot({ path: completedImage, fullPage: true });
             detailScreenshots.push(completedImage);
             showRepeatedVisits = true;
-            await page.locator('#dispatch-active').click();
+            // Cards read Active again.
+            await page
+              .getByRole('button', { name: 'Cards', exact: true })
+              .click();
+            check(
+              (await page
+                .locator('#dispatch-active')
+                .getAttribute('aria-pressed')) === 'true',
+              name + ' leaving the completed Table reads Active',
+            );
             await checkRepeatedVisits(page, name, detailScreenshots);
             showRepeatedVisits = false;
             showCompletedHistory = true;

@@ -1,9 +1,13 @@
 using System.Text.Json;
 using Application.Features.Dispatch.Queries;
 using Application.Features.Execution.Models;
+using Application.Features.Execution.Queries;
+using Application.Features.Execution.Services;
 using Application.Features.Fuel.Models;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.Routes;
+using Application.Interfaces;
+using Application.Reference;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
@@ -127,6 +131,30 @@ public sealed class FuelSavedHorizonTests
     Assert.Equal(
       completed && !stale ? driver.Id : (Guid?)null,
       captured.DriverId
+    );
+    // Messenger names the same current load as planning, the map and
+    // Dispatch: a leg planning moved past is not the driver's work.
+    f.Db.Users.Add(
+      new()
+      {
+        Id = Guid.NewGuid(),
+        IdentityUserId = "dispatcher",
+        IsActive = true,
+      }
+    );
+    await f.Db.SaveChangesAsync();
+    var driverWork = await new DriverWorkHandler(
+      f.Db,
+      new ReplyFixture.Caller("dispatcher"),
+      new DispatchRole(),
+      new FleetNames(f.Db),
+      new ActiveTransfers(f.Db),
+      TimeProvider.System,
+      f.Services.PlanningInputs
+    ).Handle(new(driver.Id), default);
+    Assert.Equal(
+      completed && !stale ? f.Current.Id : earlier.Id,
+      driverWork.Response!.Loads[0].Id
     );
     var eta = await f.Services.EtaInputs.DescribeAsync(plan.TruckId, default);
     Assert.NotNull(eta);
@@ -821,5 +849,22 @@ public sealed class FuelSavedHorizonTests
     );
 
     Assert.Equal(0, fixture.Router.Calls);
+  }
+
+  private sealed class DispatchRole : IUserRoleService
+  {
+    public Task<string?> GetAsync(string id, CancellationToken ct = default) =>
+      Task.FromResult<string?>("Dispatch");
+
+    public Task<Dictionary<Guid, string>> GetAsync(
+      IReadOnlyCollection<Guid> ids,
+      CancellationToken ct = default
+    ) => throw new NotSupportedException();
+
+    public Task SetAsync(
+      string id,
+      string role,
+      CancellationToken ct = default
+    ) => throw new NotSupportedException();
   }
 }

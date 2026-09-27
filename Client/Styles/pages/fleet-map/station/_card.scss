@@ -151,3 +151,18 @@
     max-height: calc(100% - #{ui.size(control-touch)});
   }
 }
+
+// Ordinary station quotes own their single-column reading.
+.fleet-station-popup:not(.fleet-station-popup--planned) {
+  display: block;
+  .fleet-station-popup__prices {
+    margin-top: ui.pg(sm);
+    padding: 0;
+    border: 0;
+  }
+  .fleet-station-popup__comparison {
+    margin-top: ui.pg(sm);
+    padding-left: 0;
+    border-left: 0;
+  }
+}

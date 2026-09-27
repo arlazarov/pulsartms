@@ -1,0 +1,21 @@
+@* The vehicle in one line: its speed, its fuel and its engine, each a quiet
+   word or icon and then its value. Fleet Map and Dispatch read a truck the
+   same way; a holder adds what only it has (the weather, a reserve mark)
+   as the line's own content. *@
+<div class="truck-readings" aria-label="Current truck readings">
+    <span class="truck-readings__reading truck-readings__reading--speed
+                 @TelemetryTone.Speed(Speed, Engine)">
+        <small><ActionIcon Kind="speed" /><span>Speed</span></small>
+        <strong>@(Speed?.ToString("N0") ?? "—") <small>mph</small></strong>
+    </span>
+    <span class="truck-readings__reading truck-readings__reading--fuel">
+        <FuelReading Percent="Fuel" Variant="metric" />
+        @FuelNote
+    </span>
+    <span class="truck-readings__reading truck-readings__reading--engine
+                 @EngineTone">
+        <small><ActionIcon Kind="engine" /><span>Engine</span></small>
+        <strong>@(string.IsNullOrWhiteSpace(Engine) ? "—" : Engine)</strong>
+    </span>
+    @ChildContent
+</div>

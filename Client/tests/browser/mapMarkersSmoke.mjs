@@ -61,6 +61,9 @@ try {
       () => window.markerFrames > 0 && window.markerReport?.().loaded,
     );
     const markers = await page.evaluate(() => window.markerReport());
+    // The chosen truck (54777) is drawn last, over the rest; read it first
+    // as the checks below always have.
+    markers.trucks.sort((a, b) => (b.unit === '54777') - (a.unit === '54777'));
     assert.equal(markers.trucks.length, 4);
     assert.deepEqual(
       markers.trucks.map(truck => truck.angle || 0),
@@ -69,7 +72,8 @@ try {
     assert.ok(
       markers.trucks.every(
         truck =>
-          truck.size === (truck.unit === '54777' ? 28 : 23) &&
+          // Moving 24, standing 20, chosen or not; a stop's badge is 28.
+          truck.size === (truck.svg.includes('M13 1 L24 23') ? 24 : 20) &&
           !truck.svg.includes('linearGradient') &&
           !truck.svg.includes('r="2.1"'),
       ),
@@ -177,8 +181,11 @@ try {
       { png: screenshot.toString('base64'), trucks: markers.trucks },
     );
     assert.ok(
-      pixels.every(truck => truck.statePixels > 100 * density * density),
-      'actual GPU pixels retain green moving/idle markers and gray engine-off markers',
+      // Sized for the smaller marks (24 moving, 20 standing, from 28 and
+      // 23): the arrow's state colour covers about 94 pixels at 1x.
+      pixels.every(truck => truck.statePixels > 70 * density * density),
+      'actual GPU pixels retain green moving/idle markers and gray engine-off markers: ' +
+        JSON.stringify(pixels),
     );
     const ordinary = markers.stations.find(station => station.id === 'green');
     const fillWidth = await page.evaluate(

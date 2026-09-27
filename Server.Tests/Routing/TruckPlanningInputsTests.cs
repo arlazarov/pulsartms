@@ -237,6 +237,7 @@ public sealed class TruckPlanningInputsTests
       f.Reads,
       hos,
       new SavedRoutePlanReader(f.Db, NullLogger<SavedRoutePlanReader>.Instance),
-      f.Planning.Profiles
+      f.Planning.Profiles,
+      TimeProvider.System
     );
 }

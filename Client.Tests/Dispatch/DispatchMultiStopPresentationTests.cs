@@ -21,8 +21,7 @@ public sealed class DispatchMultiStopPresentationTests
     load.Stops.Reverse();
     var card = context.Render<DispatchLoadCard>(parameters =>
       parameters
-        .Add(component => component.Load, load)
-        .Add(component => component.Current, true)
+        .Add(component => component.Load, Placed(load, true))
         .Add(component => component.RemainingMiles, 1200)
         .Add(component => component.FuelStopCount, 2)
     );
@@ -40,7 +39,7 @@ public sealed class DispatchMultiStopPresentationTests
     );
     Assert.Equal(
       $"/dispatch/{load.Id}",
-      card.Find(".dispatch-load__details").GetAttribute("href")
+      card.Find(".dispatch-load__number").GetAttribute("href")
     );
     Assert.Empty(card.FindAll("dialog"));
     var dialog = context.Render<DispatchLoadDialog>(p =>
@@ -133,7 +132,10 @@ public sealed class DispatchMultiStopPresentationTests
         .Select(button => button.TextContent)
     );
     Assert.Empty(table.FindAll(".dispatch-table__stop-completed"));
-    Assert.Equal(8, table.FindAll("tbody tr:first-child td").Count);
+    Assert.Equal(
+      6,
+      table.Find("tr.dispatch-table__row").QuerySelectorAll("td").Length
+    );
     Assert.Equal(
       $"/dispatch/{load.Id}",
       table.Find(".dispatch-table__stops-summary").GetAttribute("href")
@@ -191,7 +193,8 @@ public sealed class DispatchMultiStopPresentationTests
         times[index],
         stops[index]
           .QuerySelector(
-            ".arrival-estimate__appointment, .dispatch-load__history-time"
+            ".arrival-estimate__appointment, .dispatch-load__appointment,"
+              + " .dispatch-load__history-time"
           )!
           .TextContent
       );
@@ -202,12 +205,15 @@ public sealed class DispatchMultiStopPresentationTests
         $"{visit.TextContent} at this address",
         visit.GetAttribute("title")
       );
+      // A board card names the place (as the map's stop card does); the
+      // dialog names the town and keeps the place in its title.
+      var stop = visit.Closest(".dispatch-load__stop")!;
+      var location = stop.QuerySelector(".dispatch-load__location")!;
       Assert.Equal(
         "FAIRLIFE WEBSTER",
-        visit
-          .Closest(".dispatch-load__stop")!
-          .QuerySelector(".dispatch-load__location")!
-          .GetAttribute("title")
+        stop.ClassList.Contains("dispatch-load__stop--summary")
+          ? location.TextContent
+          : location.GetAttribute("title")
       );
     }
   }
@@ -255,5 +261,13 @@ public sealed class DispatchMultiStopPresentationTests
       Status = "in_transit",
       Stops = stops,
     };
+  }
+
+  // The load as the server places it on its truck: current or not.
+  private static DispatchResponse Placed(DispatchResponse load, bool current)
+  {
+    if (current)
+      load.WorkPhase = "current";
+    return load;
   }
 }

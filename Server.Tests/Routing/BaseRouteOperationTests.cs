@@ -197,6 +197,79 @@ public sealed class BaseRouteOperationTests
     Assert.Equal(100m, saved.Miles);
   }
 
+  [Fact]
+  public async Task ExplicitCompletedNativeDemandPreparesReadableFinancials()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var previous = await fixture.AddAsync(-2, "completed");
+    var next = await fixture.AddAsync(-1, "completed");
+    Guid legId;
+    await using (var scope = fixture.Root.CreateAsyncScope())
+    {
+      var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+      var load = await db
+        .Dispatches.Include(x => x.Stops)
+        .SingleAsync(x => x.Id == next);
+      var leg = new ExecutionLeg
+      {
+        Id = Guid.NewGuid(),
+        Trip = new Trip { Id = Guid.NewGuid() },
+        TruckId = fixture.Truck.Id,
+        Status = "completed",
+        Revision = 1,
+        Stops = ExecutionStopRows.Capture(load.Stops),
+        Loads =
+        [
+          new()
+          {
+            Id = Guid.NewGuid(),
+            DispatchId = next,
+            Sequence = 1,
+            StartVisitId = load.Stops[0].Id,
+            EndVisitId = load.Stops[^1].Id,
+          },
+        ],
+      };
+      legId = leg.Id;
+      db.ExecutionLegs.Add(leg);
+      await db.SaveChangesAsync();
+      await scope
+        .ServiceProvider.GetRequiredService<ISourceRoadStore>()
+        .DemandAsync(
+          next,
+          "historical-mileage",
+          3,
+          fixture.Clock.GetUtcNow().UtcDateTime,
+          default
+        );
+    }
+    await fixture.Operation.RunOnceAsync(default);
+    Assert.Equal(0, await fixture.PendingAsync());
+    await using var check = fixture.Root.CreateAsyncScope();
+    var context = check.ServiceProvider.GetRequiredService<AppDbContext>();
+    var saved = await context.DispatchDeadheads.SingleAsync();
+    Assert.Equal(next, saved.DispatchId);
+    Assert.Equal(legId, saved.ExecutionLegId);
+    Assert.Equal(previous, saved.PreviousDispatchId);
+    Assert.Equal(100m, saved.Miles);
+    var services =
+      check.ServiceProvider.GetRequiredService<PlanningTestServices>();
+    var reader = new GetDispatchQueryHandler(
+      context,
+      services.Deadheads,
+      new TestDriverScope()
+    );
+    var calls = fixture.Router.Calls;
+    var page = (
+      await reader.Handle(new(Status: "completed"), default)
+    ).Response!;
+    var row = page.Items.Single(x => x.Id == next);
+    Assert.Equal(200m, row.TotalMiles);
+    Assert.Equal(0.5m, row.TotalRatePerMile);
+    await fixture.Operation.RunOnceAsync(default);
+    Assert.Equal(calls, fixture.Router.Calls);
+  }
+
   [Theory]
   [InlineData("Drop Off", false, false)]
   [InlineData("Drop Off", false, true)]
@@ -289,6 +362,28 @@ public sealed class BaseRouteOperationTests
     Assert.Equal(current, saved.PreviousDispatchId);
     Assert.Equal(incoming.Id, saved.PreviousExecutionLegId);
     Assert.Equal(100m, saved.Miles);
+    if (nativeSuccessor)
+    {
+      // The board reads an accepted load's connection by its leg; read by
+      // the load alone, Papers showed no total or Total RPM (September 26).
+      var board = await services.Board.Handle(
+        new GetDispatchBoardQuery(
+          TruckId: incoming.TruckId,
+          IncludeHos: false,
+          IncludePlanned: true,
+          IncludeEta: false,
+          IncludeOverdue: true
+        ),
+        default
+      );
+      var card = board
+        .Response!.Items.SelectMany(x => x.Dispatches)
+        .Single(x => x.Id == next && x.ExecutionLegId == nextLeg);
+      Assert.Equal("ready", card.EmptyMilesStatus);
+      Assert.Equal(100m, card.EmptyMiles);
+      Assert.Equal(200m, card.TotalMiles);
+      Assert.Equal(0.5m, card.TotalRatePerMile);
+    }
     var loadToRead = await services.Routes.LoadAsync(next, default, nextLeg);
     var profile = await services.Routes.ProfileAsync(incoming.TruckId, default);
     Assert.NotNull(
@@ -331,6 +426,46 @@ public sealed class BaseRouteOperationTests
         default
       )
     );
+    if (nativeSuccessor)
+    {
+      var completed = await context.Dispatches.SingleAsync(x => x.Id == next);
+      completed.Status = "completed";
+      var completedLeg = await context.ExecutionLegs.SingleAsync(x =>
+        x.Id == nextLeg
+      );
+      completedLeg.Status = "completed";
+      await context.SaveChangesAsync();
+      var providerCalls = fixture.Router.Calls;
+      var reader = new GetDispatchQueryHandler(
+        context,
+        services.Deadheads,
+        new TestDriverScope()
+      );
+      var page = (
+        await reader.Handle(new(Status: "completed"), default)
+      ).Response!;
+      var item = page.Items.Single(x => x.Id == next);
+      Assert.Equal(100m, item.EmptyMiles);
+      Assert.Equal(200m, item.TotalMiles);
+      Assert.Equal(0.5m, item.TotalRatePerMile);
+      Assert.Equal(providerCalls, fixture.Router.Calls);
+      Assert.DoesNotContain(
+        context.ChangeTracker.Entries(),
+        x =>
+          x.State
+            is EntityState.Added
+              or EntityState.Modified
+              or EntityState.Deleted
+      );
+      saved.InputHash = "obsolete-connection";
+      await context.SaveChangesAsync();
+      page = (await reader.Handle(new(Status: "completed"), default)).Response!;
+      item = page.Items.Single(x => x.Id == next);
+      Assert.Null(item.EmptyMiles);
+      Assert.Null(item.TotalMiles);
+      Assert.Null(item.TotalRatePerMile);
+      Assert.Equal(providerCalls, fixture.Router.Calls);
+    }
   }
 
   [Fact]

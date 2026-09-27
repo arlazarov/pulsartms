@@ -30,6 +30,15 @@ public sealed class DispatchFinancialViewsTests
     Assert.Empty(
       cards.FindAll(".dispatch-load__metrics, .dispatch-paper__financials")
     );
+    // The rate and both rates per mile on every card and folder (the
+    // owner, September 27).
+    Assert.Equal(
+      ["Rate 1,000.00 CAD", "RPM 17.23 CAD", "Total RPM 4.56 CAD"],
+      cards
+        .FindAll(".dispatch-load__money .dispatch-load__figure")
+        .Select(x => x.TextContent)
+        .ToArray()
+    );
     Assert.Equal(2, cards.FindAll(".dispatch-load__stop").Count);
     Assert.NotNull(
       cards
@@ -38,7 +47,7 @@ public sealed class DispatchFinancialViewsTests
     );
     Assert.Equal(
       $"/dispatch/{load.Id}",
-      cards.Find(".dispatch-load__details").GetAttribute("href")
+      cards.Find(".dispatch-load__number").GetAttribute("href")
     );
     var details = context.Render<DispatchLoadDialog>(p =>
       p.Add(x => x.Load, load)
@@ -57,9 +66,17 @@ public sealed class DispatchFinancialViewsTests
     var papers = context.Render<DispatchPapers>(parameters =>
       parameters.Add(view => view.Trucks, trucks)
     );
-    Assert.Contains(
-      "1,000.00 CAD",
-      papers.Find(".dispatch-paper__tab-financials").TextContent
+    // The same names as every other Dispatch view; the currency once.
+    Assert.Equal(
+      "1,000.00 CAD · RPM 17.23 · Total RPM 4.56",
+      papers.Find(".dispatch-paper__tab-financials > span").TextContent
+    );
+    // The truck and its trailer are one unit that folds whole.
+    Assert.Equal(
+      2,
+      papers
+        .FindAll(".dispatch-paper__tab-units > .dispatch-paper__tab-equipment")
+        .Count
     );
     Assert.Equal(
       $"/dispatch/{load.Id}",
@@ -72,7 +89,7 @@ public sealed class DispatchFinancialViewsTests
   }
 
   [Fact]
-  public void TableGroupsHistoricalTruckDriverAndKeepsEightFinancialColumns()
+  public void TableGroupsHistoricalTruckDriverAndKeepsTheMoneyInOneColumn()
   {
     using var context = new BunitContext();
     var load = Load();
@@ -102,13 +119,14 @@ public sealed class DispatchFinancialViewsTests
         "Pickup",
         "Delivery",
         "Distance",
-        "Rate",
-        "Loaded RPM",
-        "Total RPM",
+        "Rate / RPM",
       ],
       table.FindAll("thead th").Select(cell => cell.TextContent).ToArray()
     );
-    Assert.Equal(8, table.FindAll("tbody tr:first-child td").Count);
+    Assert.Equal(
+      6,
+      table.Find("tr.dispatch-table__row").QuerySelectorAll("td").Length
+    );
     var equipment = table.Find(".dispatch-table__equipment").TextContent;
     foreach (
       var text in new[] { "54777", "Historic Driver", "Trailer ARCHIVE-1" }
@@ -134,16 +152,296 @@ public sealed class DispatchFinancialViewsTests
     );
     Assert.Equal(2, table.FindAll(".dispatch-table__stop-completed").Count);
     Assert.Equal(
-      ["1,000.00 CAD", "17.23 CAD", "4.56 CAD"],
+      ["Rate 1,000.00 CAD", "RPM 17.23 CAD", "Total RPM 4.56 CAD"],
       table
-        .FindAll("tbody .dispatch-table__money strong")
-        .Select(cell => cell.TextContent)
+        .FindAll("tbody .dispatch-table__figures > div")
+        .Select(cell =>
+          cell.QuerySelector("dt")!.TextContent
+          + " "
+          + cell.QuerySelector("dd")!.TextContent
+        )
         .ToArray()
     );
     Assert.Single(table.FindAll(".dispatch-table__map"));
     Assert.Single(table.FindAll(".dispatch-table__truck .dispatch-table__map"));
     Assert.Empty(
       table.FindAll(".dispatch-table__equipment > .dispatch-table__map")
+    );
+  }
+
+  [Fact]
+  public void TableGroupsLoadsByPickupDayFromThePastDownToTheFuture()
+  {
+    using var context = new BunitContext();
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    DispatchResponse On(int number, int days, int hour)
+    {
+      var load = Load(number);
+      load.Stops[0].ScheduledDate = today.AddDays(days);
+      load.Stops[0].ScheduledTime = new(hour, 0);
+      return load;
+    }
+    var trucks = new[]
+    {
+      new TruckDispatchBoardResponse
+      {
+        Key = "a",
+        TruckNumber = "11005",
+        Dispatches = [On(3, 1, 8), On(1, -1, 9)],
+      },
+      new TruckDispatchBoardResponse
+      {
+        Key = "b",
+        TruckNumber = "11006",
+        Dispatches = [On(4, 0, 15), On(2, 0, 7)],
+      },
+    };
+    var table = context.Render<DispatchTable>(parameters =>
+      parameters.Add(view => view.Trucks, trucks)
+    );
+
+    Assert.Equal(
+      [Day(-1), Day(0), Day(1)],
+      table
+        .FindAll(".dispatch-table__day-date")
+        .Select(cell => cell.TextContent)
+        .ToArray()
+    );
+    Assert.Equal(
+      ["Yesterday", "Today", "Tomorrow"],
+      table
+        .FindAll(".dispatch-table__day-when")
+        .Select(cell => cell.TextContent)
+        .ToArray()
+    );
+    Assert.Equal(
+      ["is-past", "is-today", "is-future"],
+      table
+        .FindAll(".dispatch-table__day-group")
+        .Select(group => group.ClassList.Last())
+        .ToArray()
+    );
+    // Today's two loads show the same number, 54777, but each is on a
+    // truck of its own: identity, not the number, makes a run.
+    Assert.Empty(table.FindAll(".dispatch-table__run"));
+    Assert.Equal(
+      ["1", "2", "4", "3"],
+      table
+        .FindAll(".dispatch-table__open strong")
+        .Select(cell => cell.TextContent.Trim())
+        .ToArray()
+    );
+    Assert.Equal(
+      ["Loaded", "Empty", "Total"],
+      table
+        .Find(".dispatch-table__distances")
+        .QuerySelectorAll("dt")
+        .Select(cell => cell.TextContent)
+        .ToArray()
+    );
+
+    string Day(int offset) =>
+      today
+        .AddDays(offset)
+        .ToString(
+          "ddd, MMM d",
+          System.Globalization.CultureInfo.InvariantCulture
+        );
+  }
+
+  [Fact]
+  public void PapersNameTheTrailerOfTheLoadOrElseOfTheTruck()
+  {
+    using var context = new BunitContext();
+    var own = Load();
+    own.TrailerNumber = "LOAD-7";
+    var inherited = Load();
+    inherited.Id = Guid.NewGuid();
+    inherited.LoadNumber = own.LoadNumber + 1;
+    inherited.TrailerNumber = "";
+    var trucks = new[]
+    {
+      new TruckDispatchBoardResponse
+      {
+        Key = "truck",
+        TruckNumber = "11005",
+        TrailerNumber = "TRUCK-9",
+        Dispatches = [own, inherited],
+      },
+    };
+    var papers = context.Render<DispatchPapers>(parameters =>
+      parameters.Add(view => view.Trucks, trucks)
+    );
+
+    Assert.Equal(
+      ["Trailer LOAD-7", "Trailer TRUCK-9"],
+      papers
+        .FindAll(".dispatch-paper__tab-trailer")
+        .Select(cell => cell.TextContent.Trim())
+        .OrderBy(text => text)
+        .ToArray()
+    );
+  }
+
+  // Several loads on one truck that day are named once above them; the
+  // truck is its identity, and a driver or trailer is named there only
+  // when every load shares it (root's review, September 27).
+  [Theory]
+  [InlineData("same", true, "Driver A", "Trailer T1")]
+  [InlineData("mixed", true, null, null)]
+  [InlineData("distinct", false, null, null)]
+  [InlineData("unknown", false, null, null)]
+  public void TableNamesATruckOnceOnlyForItsOwnLoads(
+    string trucks,
+    bool run,
+    string? driver,
+    string? trailer
+  )
+  {
+    using var context = new BunitContext();
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var shared = Guid.NewGuid();
+    DispatchResponse On(int number, int hour, string driverName, string unit)
+    {
+      var load = Load(number);
+      load.Stops[0].ScheduledDate = today;
+      load.Stops[0].ScheduledTime = new(hour, 0);
+      load.DriverName = driverName;
+      load.TrailerNumber = unit;
+      load.TruckId = trucks switch
+      {
+        "same" or "mixed" => shared,
+        "distinct" => Guid.NewGuid(),
+        _ => null,
+      };
+      if (trucks == "unknown")
+        load.TruckNumber = "";
+      return load;
+    }
+    var first = On(1, 8, "Driver A", "T1");
+    var second =
+      trucks == "mixed"
+        ? On(2, 12, "Driver B", "T2")
+        : On(2, 12, "Driver A", "T1");
+    var table = context.Render<DispatchTable>(parameters =>
+      parameters.Add(
+        view => view.Trucks,
+        [
+          new TruckDispatchBoardResponse
+          {
+            Key = "board",
+            Dispatches = [first, second],
+          },
+        ]
+      )
+    );
+
+    var runs = table.FindAll(".dispatch-table__run");
+    Assert.Equal(run ? 1 : 0, runs.Count);
+    Assert.Equal(run ? 2 : 0, table.FindAll("tr.is-run").Count);
+    Assert.Equal(2, table.FindAll("tr.dispatch-table__row").Count);
+    if (!run)
+      return;
+    var names = runs[0]
+      .QuerySelectorAll("span")
+      .Select(x => x.TextContent.Trim())
+      .ToArray();
+    Assert.Equal(new[] { driver, trailer }.OfType<string>().ToArray(), names);
+    // Each load still says its own driver and trailer.
+    Assert.Equal(
+      trucks == "mixed"
+        ? ["Trailer T1", "Trailer T2"]
+        : ["Trailer T1", "Trailer T1"],
+      table
+        .FindAll(".dispatch-table__trailer")
+        .Select(x => x.TextContent.Trim())
+        .ToArray()
+    );
+  }
+
+  // Within a day the first pickup is first and, picked up alike, the first
+  // delivery; a truck is named once only over loads that follow each other
+  // in that order (the owner, September 27).
+  [Fact]
+  public void TableOrdersADayByPickupThenDelivery()
+  {
+    using var context = new BunitContext();
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    Guid x = Guid.NewGuid(),
+      y = Guid.NewGuid();
+    DispatchResponse On(int number, Guid truck, int pickup, int delivery)
+    {
+      var load = Load(number);
+      load.TruckId = truck;
+      load.Stops[0].ScheduledDate = today;
+      load.Stops[0].ScheduledTime = new(pickup, 0);
+      load.Stops[1].ScheduledDate = today.AddDays(1);
+      load.Stops[1].ScheduledTime = new(delivery, 0);
+      return load;
+    }
+    var table = context.Render<DispatchTable>(parameters =>
+      parameters.Add(
+        view => view.Trucks,
+        [
+          new TruckDispatchBoardResponse
+          {
+            Key = "board",
+            Dispatches =
+            [
+              On(3, x, 10, 9),
+              On(1, x, 8, 12),
+              On(2, y, 8, 9),
+              On(4, y, 11, 8),
+            ],
+          },
+        ]
+      )
+    );
+
+    Assert.Equal(
+      ["2", "1", "3", "4"],
+      table
+        .FindAll(".dispatch-table__open strong")
+        .Select(cell => cell.TextContent.Trim())
+        .ToArray()
+    );
+    // x's loads 1 and 3 follow each other; y's 2 and 4 do not.
+    var run = Assert.Single(table.FindAll(".dispatch-table__run"));
+    Assert.Contains("2 loads", run.TextContent);
+  }
+
+  // Today always has its band on the active table, so the eye finds where
+  // the plan starts even on a day without pickups.
+  [Theory]
+  [InlineData(false, 2)]
+  [InlineData(true, 1)]
+  public void TableShowsTodayEvenWithoutPickups(bool completed, int bands)
+  {
+    using var context = new BunitContext();
+    var load = Load(7);
+    load.Stops[0].ScheduledDate = DateOnly
+      .FromDateTime(DateTime.Today)
+      .AddDays(-2);
+    var table = context.Render<DispatchTable>(parameters =>
+      parameters
+        .Add(
+          view => view.Trucks,
+          [
+            new TruckDispatchBoardResponse
+            {
+              Key = "a",
+              TruckNumber = "11005",
+              Dispatches = [load],
+            },
+          ]
+        )
+        .Add(view => view.Completed, completed)
+    );
+
+    Assert.Equal(bands, table.FindAll(".dispatch-table__day").Count);
+    Assert.Equal(
+      completed ? 0 : 1,
+      table.FindAll(".dispatch-table__empty").Count
     );
   }
 
@@ -328,11 +626,11 @@ public sealed class DispatchFinancialViewsTests
     Assert.Single(table.FindAll("tr.is-next"));
     Assert.Contains(
       "500\u00a0mi",
-      table.Find(".dispatch-table__mileage-values").TextContent
+      table.Find(".dispatch-table__distances").TextContent
     );
     Assert.Contains(
       "550\u00a0mi",
-      table.Find(".dispatch-table__mileage-values").TextContent
+      table.Find(".dispatch-table__distances").TextContent
     );
 
     var papers = context.Render<DispatchPapers>(parameters =>
@@ -383,11 +681,7 @@ public sealed class DispatchFinancialViewsTests
       "Completed",
       table.Find(".dispatch-table__status").TextContent
     );
-    papers.Render(parameters =>
-      parameters
-        .Add(view => view.Trucks, trucks)
-        .Add(view => view.Completed, true)
-    );
+    papers.Render(parameters => parameters.Add(view => view.Trucks, trucks));
     Assert.Equal(
       $"/dispatch/{current.Id}",
       papers.Find(".dispatch-paper__tab").GetAttribute("href")
@@ -413,7 +707,7 @@ public sealed class DispatchFinancialViewsTests
       stop.IsCompleted = false;
     }
     var card = context.Render<DispatchLoadCard>(parameters =>
-      parameters.Add(view => view.Load, load).Add(view => view.Current, true)
+      parameters.Add(view => view.Load, Placed(load, true))
     );
     Assert.Equal("Completed", card.Find(".dispatch-load__phase").TextContent);
     Assert.Equal("Completed", card.Find(".dispatch-load__status").TextContent);
@@ -479,5 +773,13 @@ public sealed class DispatchFinancialViewsTests
       }
     )
       Assert.Contains(value, text);
+  }
+
+  // The load as the server places it on its truck: current or not.
+  private static DispatchResponse Placed(DispatchResponse load, bool current)
+  {
+    if (current)
+      load.WorkPhase = "current";
+    return load;
   }
 }

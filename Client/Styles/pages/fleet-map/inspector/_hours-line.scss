@@ -50,8 +50,20 @@
     --hos-divider: 1px solid #{ui.theme(border-subtle)};
     --hos-divider-gap: #{ui.pg(md)};
     > .driver-hours-panel {
+      // Text clocks use the column, not the dial panel's fixed cap.
+      max-width: 100%;
       min-width: 0;
       margin-left: 0;
+    }
+  }
+  @container map-truck-card (width < #{ui.breakpoint(map-truck-readings-stacked)}) {
+    .fleet-map-inspector__row:has(> .fleet-map-inspector__vehicle) {
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: ui.pg(sm);
+      > .fleet-map-inspector__clocks {
+        padding-inline-start: 0;
+        border-inline-start: 0;
+      }
     }
   }
   // The driver's duty and rest, on a line of their own under the clocks,
@@ -64,12 +76,19 @@
   // when the load lands.
   .fleet-map-mobile-summary__remaining {
     display: flex;
+    // A later forecast badge must not recenter the load beside it.
+    align-self: start;
     flex-wrap: wrap;
     align-items: baseline;
     gap: ui.pg(xs);
     min-inline-size: min(100%, #{ui.size(route-load)});
     color: ui.theme(text-secondary);
     font-variant-numeric: tabular-nums;
+    // The loading dash keeps the loaded link's line height.
+    > .fleet-map-inspector__value {
+      font-size: ui.fs(lead);
+      font-weight: 600;
+    }
     strong {
       color: ui.theme(text);
       font-weight: 600;
@@ -95,14 +114,18 @@
   }
   // Says what it does, with an arrow that says which way. Both words sit in
   // one cell, so the button keeps the width of the longer and opening the
-  // card does not move the row beside it.
+  // card does not move the row beside it. Its words are a link's colour:
+  // the action colour stays dark on a dark card, and link is lightened for
+  // it.
   .fleet-map-mobile-summary__toggle {
+    --button-text: #{ui.theme(link)};
+    --button-border: #{ui.theme(link)};
+    --button-hover-text: #{ui.theme(link)};
+    --button-hover-border: #{ui.theme(link)};
     display: inline-flex;
     align-items: center;
     gap: ui.pg(xs);
     min-block-size: ui.size(control-compact);
-    border-color: ui.theme(action);
-    color: ui.theme(action);
     font-weight: 600;
     white-space: nowrap;
     > svg {

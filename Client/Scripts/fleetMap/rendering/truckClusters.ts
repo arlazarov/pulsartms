@@ -11,6 +11,9 @@ export type LabelledTruck = {
   unit: string;
   position: MarkPoint;
   markerOffset?: MarkPoint | null;
+  // A truck drawn as a stop's ring is marked at that stop, not where it
+  // is: its number stays on the badge however far it drives meanwhile.
+  mergedPosition?: MarkPoint | null;
   selected?: boolean;
   labelOffset?: MarkPoint;
   [key: string]: any;

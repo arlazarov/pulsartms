@@ -4,6 +4,7 @@ using Application.Features.Routing.Queries;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Rules;
+using Domain.Rules.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,9 +13,14 @@ namespace Server.Tests.Routing;
 public sealed partial class DeadheadGeometryRepairTests
 {
   [Theory]
-  [InlineData(false)]
-  [InlineData(true)]
-  public async Task NativeConnectionBuildsPersistsAndReachesMap(bool mutate)
+  [InlineData(false, false)]
+  [InlineData(true, false)]
+  [InlineData(false, true)]
+  [InlineData(true, true)]
+  public async Task NativeConnectionBuildsPersistsAndReachesMap(
+    bool mutate,
+    bool completed
+  )
   {
     await using var f = await Fixture.CreateAsync(null);
     var loads = await f
@@ -56,14 +62,27 @@ public sealed partial class DeadheadGeometryRepairTests
         EmptyMiles = 80,
       }
     );
+    if (completed)
+    {
+      foreach (var load in loads)
+        load.Status = "completed";
+      foreach (var leg in legs)
+        leg.Status = "completed";
+    }
     f.Db.ExecutionLegs.AddRange(legs);
     await f.Db.SaveChangesAsync();
-    var work = await f.Services.Routes.LoadAsync(
-      loads[1].Id,
-      default,
-      legs[1].Id,
-      legs[1].TruckId
-    );
+    var work = completed
+      ? RouteWorkProjection.Capture(
+        loads[1],
+        legs[1],
+        ExecutionStopRows.Read(legs[1])
+      )
+      : await f.Services.Routes.LoadAsync(
+        loads[1].Id,
+        default,
+        legs[1].Id,
+        legs[1].TruckId
+      );
     var inputs = new SourceRoadInputs(
       f.Db,
       f.Services.Profiles,
@@ -113,13 +132,14 @@ public sealed partial class DeadheadGeometryRepairTests
         default
       )
     );
+    if (completed)
+      return;
     var handler = new GetNextLoadRoutesHandler(
       new NextLoadRouteReader(f.Db),
+      f.Services.PlanningInputs,
       f.Services.DeadheadHistory,
       f.Services.Routes,
-      new SourceRoadDemand(new SourceRoadStore(f.Db), TimeProvider.System),
-      f.Services.Sender,
-      TimeProvider.System
+      new SourceRoadDemand(new SourceRoadStore(f.Db), TimeProvider.System)
     );
     var response = (
       await handler.Handle(

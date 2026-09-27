@@ -163,7 +163,11 @@ public sealed class MessagingController : BaseController
     IReadOnlyList<DriverLoad> Loads,
     DriverHoursView? Hours,
     DriverDutyView? Duty
-  );
+  )
+  {
+    public int OmittedLoads { get; init; }
+    public int OmittedConflicts { get; init; }
+  }
 
   [HttpGet("conversations/{id:guid}/context")]
   public async Task<IActionResult> Context(
@@ -216,6 +220,10 @@ public sealed class MessagingController : BaseController
           hours,
           duty
         )
+        {
+          OmittedLoads = driving.OmittedLoads,
+          OmittedConflicts = driving.OmittedConflicts,
+        }
       )
     );
   }

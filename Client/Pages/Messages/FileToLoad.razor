@@ -13,9 +13,9 @@ else if (!_open)
 {
     <div class="messages__suggest">
         <span>
-            @if (Loads.FirstOrDefault() is { } first)
+            @if (Current is { } current)
             {
-                <text>File this to </text><strong><LoadNumber Value="first.LoadNumber" /></strong><text>, the driver's current load, or another. </text>
+                <text>File this to </text><strong><LoadNumber Value="current.LoadNumber" /></strong><text>, the driver's current load, or another. </text>
             }
             else
             {
@@ -37,7 +37,7 @@ else
           @onsubmit:preventDefault>
         <label for="@Id("load")">
             Load
-            <select id="@Id("load")" @bind="_choice" disabled="@_busy">
+            <select id="@Id("load")" @bind="Choice" disabled="@_busy">
                 @foreach (var load in Loads)
                 {
                     <option value="@load.Id">

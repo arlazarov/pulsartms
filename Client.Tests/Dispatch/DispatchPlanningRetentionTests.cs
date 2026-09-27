@@ -28,8 +28,10 @@ public sealed class DispatchPlanningRetentionTests
     TimeSpan.Zero
   );
 
+  // The board reads a truck as the Fleet Map card does: speed, fuel and
+  // engine on one vehicle line, from the planning read it already has.
   [Fact]
-  public void BoardHeaderGroupsTheDrivingStatusAndPumpReadingWithoutAnotherDataRequest()
+  public void BoardHeaderReadsTheVehicleLineAndPumpReadingWithoutAnotherDataRequest()
   {
     var load = Load();
     var source = Result(load);
@@ -51,29 +53,32 @@ public sealed class DispatchPlanningRetentionTests
         .Add(x => x.Load, load)
         .Add(x => x.Compact, true)
         .Add(x => x.BoardHeader, true)
-        .Add(x => x.MotionState, "moving")
-        .Add(x => x.MotionLabel, "Driving")
+        .Add(x => x.Speed, 65m)
+        .Add(x => x.EngineState, "On")
     );
 
     component.WaitForAssertion(() =>
     {
-      var telemetry = component.Find(".dispatch-planning__telemetry");
+      var line = component.Find(".dispatch-planning__readings .truck-readings");
       Assert.Contains(
-        "Driving",
-        telemetry
-          .QuerySelector(".dispatch-truck__status.is-moving")!
-          .TextContent
+        "65",
+        line.QuerySelector(
+          ".truck-readings__reading--speed.is-normal"
+        )!.TextContent
       );
       Assert.Equal(
         "Fuel 28%",
-        telemetry.QuerySelector(".fuel-reading.is-low")!.TextContent.Trim()
+        line.QuerySelector(".fuel-reading.is-low")!.TextContent.Trim()
       );
       Assert.Equal(
         "true",
-        telemetry
-          .QuerySelector(".fuel-reading__icon")!
-          .GetAttribute("aria-hidden")
+        line.QuerySelector(".fuel-reading__icon")!.GetAttribute("aria-hidden")
       );
+      Assert.Contains(
+        "On",
+        line.QuerySelector(".truck-readings__reading--engine")!.TextContent
+      );
+      Assert.Empty(component.FindAll(".dispatch-truck__status"));
       Assert.Equal(1, reads);
     });
   }

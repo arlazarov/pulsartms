@@ -40,7 +40,17 @@ public sealed class MessageSwitchTests
 
     page.WaitForAssertion(() => Assert.Contains("b.pdf", page.Markup));
     Assert.Empty(page.FindAll(".messages__file .messages__filing"));
-    Assert.DoesNotContain("1407", page.Markup);
+    // The number typed on A, in no field and no text on B. The markup as a
+    // whole also holds random message IDs, one of which once contained
+    // "1407" and failed a release gate (September 27).
+    Assert.DoesNotContain(
+      page.FindAll("input, textarea"),
+      x => (x.GetAttribute("value") ?? "").Contains("1407")
+    );
+    Assert.DoesNotContain(
+      "1407",
+      string.Concat(page.Nodes.Select(x => x.TextContent))
+    );
   }
 
   // The thread is read again while a filing choice is open, and a message
@@ -77,6 +87,9 @@ public sealed class MessageSwitchTests
     page.WaitForAssertion(() => Assert.Contains("a.pdf", page.Markup));
     page.Settle();
     await Button(page, "File to load").ClickAsync(new());
+    // No load is the driver's current one here, so none is chosen for the
+    // dispatcher (stage 3b): they name it.
+    page.WaitForElement("[id^=filing-number]").Change("1441");
     var filing = page.Find(".messages__file .messages__filing").SubmitAsync();
 
     page.Render(x => x.Add(p => p.Id, B));

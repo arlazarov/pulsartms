@@ -11,13 +11,27 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
   private const int MaximumEntries = 256;
   private const int MaximumEntryBytes = 512 * 1024;
   private const int MaximumBytes = 8 * 1024 * 1024;
+
+  // A preparation that never completes - its holder gone without a word -
+  // stops holding the entry after this, so the entry is prepared again.
+  private static readonly TimeSpan LeaseLimit = TimeSpan.FromMinutes(5);
   private readonly object gate = new();
   private readonly Dictionary<Key, Entry> entries = [];
   private int bytes;
 
   public sealed record Key(Guid Company, Guid Truck, Guid? Dispatch = null);
 
-  public sealed record Work(Key Key, Guid Ticket, string Signature);
+  // Ticket: the version of the entry this work may publish to; a commit or
+  // other inputs change it. Lease: the one preparation the entry is waiting
+  // on; a commit leaves it with that preparation, which releases it when it
+  // completes, however late - so changes during a preparation add one more
+  // preparation after it, not one alongside it for each change.
+  public sealed record Work(
+    Key Key,
+    Guid Ticket,
+    string Signature,
+    Guid Lease = default
+  );
 
   private sealed class Entry
   {
@@ -32,6 +46,8 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
     public DateTimeOffset RequestedAt { get; set; }
     public DateTimeOffset RefreshAt { get; set; }
     public bool Busy { get; set; }
+    public Guid Lease { get; set; }
+    public DateTimeOffset LeasedAt { get; set; }
   }
 
   public AutomaticPlanningResult? Read(
@@ -111,10 +127,24 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
       entry.Map = null;
       entry.Signature = signature;
       entry.Ticket = Guid.NewGuid();
-      entry.Busy = false;
       entry.RefreshAt = DateTimeOffset.MinValue;
     }
     return entry;
+  }
+
+  // A reader found the prepared summary behind a dependency its signature
+  // does not name (the driver's duty): prepare it again soon. A preparation
+  // under way keeps its ticket - its result is still the latest prepared,
+  // and the next reader asks again if it is behind too.
+  public void Due(Key key, string signature)
+  {
+    lock (gate)
+      if (
+        entries.TryGetValue(key, out var entry)
+        && entry.Signature == signature
+        && !entry.Busy
+      )
+        entry.RefreshAt = DateTimeOffset.MinValue;
   }
 
   public IReadOnlyList<Work> Committed(Guid company, Guid truck)
@@ -126,9 +156,15 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
         if (pair.Key.Company == company && pair.Key.Truck == truck)
         {
           pair.Value.Ticket = Guid.NewGuid();
-          pair.Value.Busy = false;
           pair.Value.RefreshAt = DateTimeOffset.MinValue;
-          committed.Add(new(pair.Key, pair.Value.Ticket, pair.Value.Signature));
+          committed.Add(
+            new(
+              pair.Key,
+              pair.Value.Ticket,
+              pair.Value.Signature,
+              pair.Value.Busy ? pair.Value.Lease : default
+            )
+          );
         }
       return committed;
     }
@@ -144,9 +180,9 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
         || entry.RequestedAt <= time.GetUtcNow().AddMinutes(-2)
       )
         return null;
+      var lease = Lease(entry);
       entry.Ticket = Guid.NewGuid();
-      entry.Busy = true;
-      return new(key, entry.Ticket, entry.Signature);
+      return new(key, entry.Ticket, entry.Signature, lease);
     }
   }
 
@@ -166,9 +202,13 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
   public bool IsCurrent(Work work)
   {
     lock (gate)
-      return entries.TryGetValue(work.Key, out var entry)
-        && entry.Ticket == work.Ticket;
+      return entries.TryGetValue(work.Key, out var entry) && Holds(entry, work);
   }
+
+  // The work's ticket is the entry's, and so is its lease if it has one.
+  private static bool Holds(Entry entry, Work work) =>
+    entry.Ticket == work.Ticket
+    && (work.Lease == default || entry.Lease == work.Lease);
 
   public Work? Take()
   {
@@ -177,7 +217,7 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
       var now = time.GetUtcNow();
       var pair = entries
         .Where(x =>
-          !x.Value.Busy
+          (!x.Value.Busy || x.Value.LeasedAt <= now - LeaseLimit)
           && x.Value.RefreshAt <= now
           && x.Value.RequestedAt > now.AddMinutes(-2)
         )
@@ -185,9 +225,35 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
         .FirstOrDefault();
       if (pair.Value is null)
         return null;
-      pair.Value.Busy = true;
-      return new(pair.Key, pair.Value.Ticket, pair.Value.Signature);
+      var lease = Lease(pair.Value);
+      return new(pair.Key, pair.Value.Ticket, pair.Value.Signature, lease);
     }
+  }
+
+  private Guid Lease(Entry entry)
+  {
+    // Taking over a lease that ran out: the earlier holder's ticket goes
+    // with it, so its late result cannot be published.
+    if (entry.Busy)
+      entry.Ticket = Guid.NewGuid();
+    entry.Busy = true;
+    entry.Lease = Guid.NewGuid();
+    entry.LeasedAt = time.GetUtcNow();
+    return entry.Lease;
+  }
+
+  // Work that may no longer publish still ends its lease, so the entry is
+  // prepared again once, after it.
+  private void Release(Work work)
+  {
+    lock (gate)
+      if (
+        work.Lease != default
+        && entries.TryGetValue(work.Key, out var entry)
+        && entry.Busy
+        && entry.Lease == work.Lease
+      )
+        entry.Busy = false;
   }
 
   public void Complete(
@@ -197,7 +263,10 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
   )
   {
     if (!IsCurrent(work))
+    {
+      Release(work);
       return;
+    }
     byte[]? json = null;
     byte[]? map = null;
     var plan = result?.State?.Plan;
@@ -231,19 +300,23 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
     }
     lock (gate)
     {
-      if (
-        !entries.TryGetValue(work.Key, out var entry)
-        || entry.Ticket != work.Ticket
-      )
+      if (!entries.TryGetValue(work.Key, out var entry))
         return;
+      if (!Holds(entry, work))
+      {
+        if (work.Lease != default && entry.Lease == work.Lease)
+          entry.Busy = false;
+        return;
+      }
       entry.Ticket = Guid.NewGuid();
       entry.Busy = false;
       entry.RefreshAt = time.GetUtcNow().AddSeconds(30);
+      // Prepared for other inputs than the entry's: not stored, and not
+      // prepared again at once either - that would only repeat the same
+      // mismatch until a reader asks with the new inputs, and a reader that
+      // does makes the entry due immediately.
       if (signature is not null && signature != entry.Signature)
-      {
-        entry.RefreshAt = DateTimeOffset.MinValue;
         return;
-      }
       if (json is null || json.Length + (map?.Length ?? 0) > MaximumEntryBytes)
         return;
       bytes -= entry.Size;

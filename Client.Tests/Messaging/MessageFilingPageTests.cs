@@ -99,7 +99,13 @@ public sealed class MessageFilingPageTests
       "Ann Driver",
       "one-truck",
       [new(Guid.NewGuid(), "11006", "assigned")],
-      [new(Load, 1441, "Fixture Customer", "active", ["Toronto", "Ottawa"])]
+      [
+        // The server places the driver's only load as current.
+        new(Load, 1441, "Fixture Customer", "active", ["Toronto", "Ottawa"])
+        {
+          Phase = "current",
+        },
+      ]
     );
 
   private static IElement Button(

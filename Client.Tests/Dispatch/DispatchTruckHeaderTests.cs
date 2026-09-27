@@ -206,9 +206,14 @@ public sealed class DispatchTruckHeaderTests
     );
     if (!assigned)
       load.TruckId = null;
+    // Where the server's planning inputs place the loads: an assigned
+    // load under way is the truck's current work, and a second one follows
+    // it. Legacy planned or completed work is not placed.
+    if (assigned && status == "in_transit")
+      load.WorkPhase = "current";
     var loads = Enumerable
       .Range(0, count)
-      .Select(index => index == 0 ? load : Load())
+      .Select(index => index == 0 ? load : SetPhase(Load(), "next"))
       .ToArray();
     using var context = new ClientComponentContext(
       (request, _) =>
@@ -260,7 +265,13 @@ public sealed class DispatchTruckHeaderTests
 
     component.WaitForAssertion(() =>
     {
-      Assert.Equal(count, component.FindAll(".dispatch-load").Count);
+      // History reads as the table: it has no cards (September 27).
+      Assert.Equal(
+        count,
+        component
+          .FindAll(archive ? "tr.dispatch-table__row" : ".dispatch-load")
+          .Count
+      );
       var placeholders = component.FindAll(".dispatch-truck__available--next");
       Assert.Equal(expected ? 1 : 0, placeholders.Count);
       if (!expected)
@@ -338,23 +349,30 @@ public sealed class DispatchTruckHeaderTests
       var truckHeader = component.Find(".dispatch-truck__header");
       Assert.Contains("11005", truckHeader.TextContent);
       Assert.Contains("Test Driver", truckHeader.TextContent);
-      Assert.NotNull(truckHeader.QuerySelector(".dispatch-truck__icon"));
-      Assert.Empty(component.FindAll(".dispatch-rig"));
-      var summary = component.Find(".dispatch-truck__equipment");
+      // What is left to the next stop, by the plan's own reading.
+      Assert.Matches(
+        @"^Left\s\d[\d,]*\smi\s·\s\d[\d,]*\skm$",
+        truckHeader
+          .QuerySelector(".dispatch-planning__left")!
+          .TextContent.Trim()
+      );
+      Assert.Empty(component.FindAll(".dispatch-truck__icon, .dispatch-rig"));
+      var summary = component.Find(".dispatch-planning--board");
       Assert.Empty(
         summary.QuerySelectorAll(
-          ".dispatch-planning__details, .dispatch-planning__next, .arrival-estimate, .stop-hours__cycle"
+          ".dispatch-planning__details, .dispatch-planning__next, .arrival-estimate, .stop-hours__cycle, .dispatch-planning__metrics"
         )
       );
       Assert.DoesNotContain("Middletown", summary.TextContent);
       Assert.DoesNotContain("Cycle remaining", summary.TextContent);
-      Assert.Contains("Fuel 50%", summary.TextContent);
+      Assert.DoesNotContain("Total Distance", summary.TextContent);
+      Assert.Contains(
+        "Fuel 50%",
+        summary.QuerySelector(".truck-readings")!.TextContent
+      );
       Assert.Empty(summary.QuerySelectorAll("details"));
-      var distances = summary.QuerySelector(".dispatch-planning__metrics")!;
-      Assert.Contains("100 mi", distances.TextContent);
-      Assert.Contains("75 mi", distances.TextContent);
-      Assert.Contains("Next Stop", distances.TextContent);
       var clocks = Assert.Single(summary.QuerySelectorAll(".driver-hours"));
+      Assert.True(clocks.ClassList.Contains("driver-hours--text"));
       foreach (
         var value in new[]
         {
@@ -369,21 +387,17 @@ public sealed class DispatchTruckHeaderTests
         }
       )
         Assert.Contains(value, clocks.TextContent);
+      var duty = summary.QuerySelector(".dispatch-planning__duty")!;
+      Assert.False(duty.HasAttribute("hidden"));
       Assert.Contains(
         "Driving",
-        summary.QuerySelector(".driver-duty__current")!.TextContent
+        duty.QuerySelector(".driver-duty--row")!.TextContent
       );
+      // The Next recap left the board card (the owner, September 27).
+      Assert.Null(duty.QuerySelector(".driver-next-recap"));
       Assert.Empty(
         summary.QuerySelectorAll(".driver-hours-panel .driver-duty")
       );
-      var recap = Assert.Single(summary.QuerySelectorAll(".driver-next-recap"));
-      Assert.Contains("+3h 05m", recap.TextContent);
-      Assert.Null(recap.Closest("details"));
-      Assert.Null(clocks.Closest("details"));
-      Assert.Null(
-        summary.QuerySelector(".driver-duty__current")!.Closest("details")
-      );
-      Assert.DoesNotContain("Driver details", summary.TextContent);
       Assert.DoesNotContain(
         "Next recap",
         component.Find(".dispatch-truck__loads").TextContent
@@ -394,25 +408,24 @@ public sealed class DispatchTruckHeaderTests
         "Middletown, DE",
         stop.QuerySelector(".dispatch-load__location")!.TextContent
       );
-      Assert.Contains(
+      Assert.Equal(
         "Delivery",
-        stop.QuerySelector(".arrival-estimate__appointment")!.TextContent
+        stop.QuerySelector(".dispatch-load__stop-job")!.TextContent
       );
       Assert.Contains(
         "Sep 8",
-        stop.QuerySelector(".arrival-estimate__appointment")!.TextContent
+        stop.QuerySelector(".dispatch-load__appointment")!.TextContent
       );
       Assert.Contains(
         "01:00 PM",
         stop.QuerySelector(".stop-hours__road")!.TextContent
       );
       Assert.Null(stop.QuerySelector(".stop-hours__cycle"));
-      Assert.NotNull(component.Find(".dispatch-load__details"));
+      Assert.NotNull(component.Find(".dispatch-load__number"));
     });
   }
 
   [Theory]
-  [InlineData(true)]
   [InlineData(false)]
   public void CompactSummaryKeepsDutyRecapClocksAndDistancesVisibleWithoutDisclosures(
     bool boardHeader
@@ -449,7 +462,43 @@ public sealed class DispatchTruckHeaderTests
   }
 
   [Fact]
-  public void TruckWithoutActiveLoadsKeepsClocksStatusAndQuietRecapWithoutRequestingAPlan()
+  public void BoardSummaryKeepsClocksAndDutyVisibleWithoutRecapOrDisclosure()
+  {
+    var load = Load();
+    using var context = new ClientComponentContext(
+      (_, _) => Task.FromResult(Json(Result(load)))
+    );
+    context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
+    var component = context.Render<DispatchPlanning>(parameters =>
+      parameters
+        .Add(part => part.Load, load)
+        .Add(part => part.TruckId, load.TruckId)
+        .Add(part => part.Compact, true)
+        .Add(part => part.BoardHeader, true)
+        .Add(part => part.Hos, Clocks())
+    );
+
+    component.WaitForAssertion(() =>
+    {
+      Assert.Empty(component.FindAll("details"));
+      Assert.Empty(component.FindAll(".dispatch-planning__metric"));
+      Assert.Empty(component.FindAll(".driver-hours__dial"));
+      Assert.Equal(4, component.FindAll(".driver-hours__clock").Count);
+      Assert.False(
+        component.Find(".dispatch-planning__duty").HasAttribute("hidden")
+      );
+      Assert.Empty(component.FindAll(".dispatch-planning__toggle"));
+    });
+    var duty = component.Find(".dispatch-planning__duty");
+    Assert.Contains(
+      "Driving",
+      duty.QuerySelector(".driver-duty--row")!.TextContent
+    );
+    Assert.Null(duty.QuerySelector(".driver-next-recap"));
+  }
+
+  [Fact]
+  public void TruckWithoutActiveLoadsKeepsClocksAndStatusWithoutRequestingAPlan()
   {
     var truckId = Guid.NewGuid();
     var planningRequests = 0;
@@ -499,22 +548,25 @@ public sealed class DispatchTruckHeaderTests
 
     component.WaitForAssertion(() =>
     {
-      Assert.Equal(
-        "—",
-        component.Find(".driver-next-recap strong").TextContent.Trim()
-      );
+      Assert.Empty(component.FindAll(".driver-next-recap"));
       Assert.Equal(4, component.FindAll(".driver-hours__clock").Count);
       Assert.Contains(
         "Driving",
-        component.Find(".dispatch-planning__driver").TextContent
+        component.Find(".dispatch-planning__duty").TextContent
       );
       Assert.Empty(component.FindAll(".driver-hours-panel .driver-duty"));
+      // No plan, so nothing is said to be left and the fuel is unknown.
+      Assert.Empty(component.FindAll(".dispatch-planning__left"));
+      Assert.Equal(
+        "Fuel —",
+        component.Find(".truck-readings .fuel-reading").TextContent.Trim()
+      );
       Assert.Equal(0, planningRequests);
     });
   }
 
   [Fact]
-  public async Task TelemetryCannotRelabelTheBoardDriverHoursAndRecapBeforeTheirReplacementArrives()
+  public async Task TelemetryCannotRelabelTheBoardDriverAndHoursBeforeTheirReplacementArrives()
   {
     var load = Load();
     var clock = new FakeTimeProvider(Start);
@@ -604,10 +656,6 @@ public sealed class DispatchTruckHeaderTests
         component.Find(".dispatch-truck__header-driver").TextContent
       );
       Assert.Contains("20:00", component.Find(".driver-hours").TextContent);
-      Assert.Contains(
-        "+3h 05m",
-        component.Find(".driver-next-recap").TextContent
-      );
     });
 
     await component.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(10)));
@@ -620,14 +668,10 @@ public sealed class DispatchTruckHeaderTests
         component.Find(".dispatch-truck__header-driver").TextContent
       );
       Assert.Contains(
-        "25 mph",
-        component.Find(".dispatch-truck__status").TextContent
+        "25",
+        component.Find(".truck-readings__reading--speed").TextContent
       );
       Assert.Contains("20:00", component.Find(".driver-hours").TextContent);
-      Assert.Contains(
-        "+3h 05m",
-        component.Find(".driver-next-recap").TextContent
-      );
     });
 
     await component.InvokeAsync(() => clock.Advance(TimeSpan.FromSeconds(51)));
@@ -644,16 +688,8 @@ public sealed class DispatchTruckHeaderTests
         component.Find(".driver-hours").TextContent
       );
       Assert.Contains(
-        "Off Duty",
-        component.Find(".dispatch-planning__driver").TextContent
-      );
-      Assert.Contains(
-        "+1h 00m",
-        component.Find(".driver-next-recap").TextContent
-      );
-      Assert.DoesNotContain(
-        "+3h 05m",
-        component.Find(".driver-next-recap").TextContent
+        "Off duty",
+        component.Find(".dispatch-planning__duty").TextContent
       );
     });
   }
@@ -733,7 +769,7 @@ public sealed class DispatchTruckHeaderTests
   [InlineData(70, "is-low", true)]
   [InlineData(71, "is-critical", true)]
   [InlineData(67, "is-low", false)]
-  public void MovingBadgeUsesSpeedThresholdsWithOrWithoutAnAssignedLoad(
+  public void SpeedReadingUsesSpeedThresholdsWithOrWithoutAnAssignedLoad(
     int speed,
     string tone,
     bool assigned
@@ -785,9 +821,278 @@ public sealed class DispatchTruckHeaderTests
     var component = context.Render<DispatchList>();
     component.WaitForAssertion(() =>
     {
-      var badge = component.Find(".dispatch-truck__status.is-moving");
-      Assert.True(badge.ClassList.Contains(tone));
-      Assert.Contains($"Driving · {speed} mph", badge.TextContent);
+      var reading = component.Find(".truck-readings__reading--speed");
+      Assert.True(reading.ClassList.Contains(tone));
+      Assert.Contains($"{speed} mph", reading.TextContent);
+    });
+  }
+
+  [Theory]
+  [InlineData("matching", true)]
+  [InlineData("other-truck", false)]
+  [InlineData("unknown-load", false)]
+  [InlineData("other-leg", false)]
+  [InlineData("old-assignment", false)]
+  [InlineData("completed", false)]
+  public async Task TruckSummaryUsesItsMatchingVisibleLoadInsteadOfBoardOrder(
+    string scenario,
+    bool accepted
+  )
+  {
+    var first = Load();
+    first.LoadNumber = 1403;
+    var next = Load();
+    next.TruckId = first.TruckId;
+    next.LoadNumber = 1410;
+    next.ExecutionLegId = Guid.NewGuid();
+    next.AssignmentRevision = 7;
+    if (scenario == "completed")
+      next.Completed = true;
+    // The server's planning inputs place the loads: 1403's route is passed
+    // and 1410 is current - unless 1410 is completed, when 1403 is.
+    first.WorkPhase = scenario == "completed" ? "current" : "earlier";
+    next.WorkPhase = scenario == "completed" ? null : "current";
+    var current = scenario == "completed" ? first : next;
+    var summary = Result(next) with
+    {
+      ExecutionLegId = next.ExecutionLegId,
+      AssignmentRevision = next.AssignmentRevision,
+    };
+    summary = scenario switch
+    {
+      "other-truck" => summary with { TruckId = Guid.NewGuid() },
+      "unknown-load" => summary with { DispatchId = Guid.NewGuid() },
+      "other-leg" => summary with { ExecutionLegId = Guid.NewGuid() },
+      "old-assignment" => summary with { AssignmentRevision = 6 },
+      _ => summary,
+    };
+    var response = new TaskCompletionSource<HttpResponseMessage>(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    var requested = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    var reads = 0;
+    using var context = new ClientComponentContext(
+      (request, _) =>
+      {
+        if (request.RequestUri!.AbsolutePath == "/api/dispatch/board/planning")
+        {
+          Interlocked.Increment(ref reads);
+          requested.TrySetResult();
+          return response.Task;
+        }
+        return Task.FromResult(
+          Json(
+            request.RequestUri.AbsolutePath == "/api/dispatch/board"
+              ? (object)
+                new
+                {
+                  items = new[]
+                  {
+                    new TruckDispatchBoardResponse
+                    {
+                      Key = first.TruckId.ToString()!,
+                      TruckId = first.TruckId,
+                      TruckNumber = "11005",
+                      Dispatches = [first, next],
+                    },
+                  },
+                  page = 1,
+                  totalCount = 1,
+                  totalPages = 1,
+                }
+              : Array.Empty<object>()
+          )
+        );
+      }
+    );
+    context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
+    context.JSInterop.Mode = JSRuntimeMode.Loose;
+    var component = context.Render<DispatchList>();
+    await requested.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    Assert.Null(component.FindComponent<DispatchPlanning>().Instance.Snapshot);
+    response.SetResult(Json(new[] { summary }));
+    component.WaitForAssertion(() =>
+    {
+      var header = component.FindComponent<DispatchPlanning>();
+      Assert.False(header.Instance.Refreshing);
+      // Without an accepted summary the header still names the server's
+      // current load, only without a plan.
+      Assert.Equal(current.Id, header.Instance.Load?.Id);
+      Assert.Equal(accepted, header.Instance.Snapshot is not null);
+      // The header names its load when that is not the board's first row.
+      Assert.Equal(current.Id != first.Id, header.Instance.ShowPlanningLoad);
+      var fuel = header.Find(".fuel-reading").TextContent;
+      Assert.Equal(accepted, fuel.Contains("50%"));
+      if (accepted)
+      {
+        Assert.Contains(
+          "1410",
+          header.Find(".dispatch-planning__left").TextContent
+        );
+        var cards = component.FindComponents<DispatchLoadCard>();
+        var firstCard = cards.Single(card => card.Instance.Load.Id == first.Id);
+        var nextCard = cards.Single(card => card.Instance.Load.Id == next.Id);
+        Assert.Null(firstCard.Instance.RemainingMiles);
+        Assert.Equal(75, nextCard.Instance.RemainingMiles);
+        Assert.False(firstCard.Instance.Load.Completed);
+        Assert.NotNull(nextCard.Instance.Load.Eta);
+        // The server's reading of the truck, which the summary shares: the
+        // row before the current one is earlier and claims no phase.
+        Assert.True(firstCard.Instance.Earlier);
+        Assert.False(firstCard.Instance.Current);
+        Assert.Empty(firstCard.FindAll(".dispatch-load__phase"));
+        Assert.True(nextCard.Instance.Current);
+        Assert.Equal(
+          "Current",
+          nextCard.Find(".dispatch-load__phase").TextContent
+        );
+        // The same forecast the map reads for this load, leg and stop.
+        var mapEta = summary.State!.Eta!;
+        Assert.Equal(
+          mapEta.CalculatedAt,
+          nextCard.Instance.Load.Eta!.CalculatedAt
+        );
+        Assert.Equal(
+          mapEta.Stops.Select(x => (x.StopId, x.Arrival)),
+          nextCard.Instance.Load.Eta.Stops.Select(x => (x.StopId, x.Arrival))
+        );
+      }
+      else
+        Assert.Equal(
+          scenario != "completed",
+          component
+            .FindComponents<DispatchLoadCard>()
+            .Single(card => card.Instance.Load.Id == first.Id)
+            .Instance.Earlier
+        );
+      Assert.False(first.Completed);
+    });
+    Assert.Equal(1, reads);
+  }
+
+  [Fact]
+  public void BoardHeadKeepsNoticesAndRoadWarningsBehindOneWarningSign()
+  {
+    var load = Load();
+    var result = Result(load) with
+    {
+      Notices =
+      [
+        new(
+          PlanningNotice.SourceReview,
+          1410,
+          load.Id,
+          "Source resources are unresolved."
+        ),
+      ],
+    };
+    result.State!.Plan!.Route.Warnings =
+    [
+      "TomTom has not confirmed truck access on some route sections.",
+    ];
+    using var context = new ClientComponentContext(
+      (_, _) => Task.FromResult(Json(result))
+    );
+    context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
+    var component = context.Render<DispatchPlanning>(parameters =>
+      parameters
+        .Add(part => part.Load, load)
+        .Add(part => part.TruckId, load.TruckId)
+        .Add(part => part.Compact, true)
+        .Add(part => part.BoardHeader, true)
+        .Add(part => part.Hos, Clocks())
+    );
+
+    component.WaitForAssertion(() =>
+    {
+      var sign = component.Find(
+        ".dispatch-truck__header .dispatch-planning__warnings"
+      );
+      Assert.Equal(
+        "Load 1410: Source resources are unresolved.\n"
+          + "TomTom has not confirmed truck access on some route sections.",
+        sign.GetAttribute("title")
+      );
+      Assert.StartsWith("Warnings: ", sign.GetAttribute("aria-label"));
+      Assert.DoesNotContain("TomTom", component.Find("section").TextContent);
+      Assert.DoesNotContain(
+        "Source resources",
+        component.Markup.Replace(sign.OuterHtml, "")
+      );
+    });
+  }
+
+  // A summary that names the board's first load makes it current even
+  // before its day comes, as the map reads it; the date rule stands only
+  // when there is no accepted summary.
+  [Theory]
+  [InlineData(true)]
+  [InlineData(false)]
+  public void TheServersPhaseStandsWhateverTheDateOrTheSummary(bool summarized)
+  {
+    // Before stage 3 the client made a future load current only when a
+    // summary named it, and otherwise judged by date. The server places
+    // the loads now; the summary and the date change nothing.
+    var load = Load();
+    load.WorkPhase = "current";
+    load.Status = "assigned";
+    load.Stops[0].Job = "Pick Up";
+    load.Stops[0].ScheduledDate = new(2026, 12, 1);
+    load.ShipDate = new(2026, 12, 1);
+    var later = Load();
+    later.TruckId = load.TruckId;
+    later.Status = "assigned";
+    later.Stops[0].ScheduledDate = new(2026, 12, 3);
+    later.ShipDate = new(2026, 12, 3);
+    later.WorkPhase = "next";
+    var summary = Result(load);
+    using var context = new ClientComponentContext(
+      (request, _) =>
+        Task.FromResult(
+          Json(
+            request.RequestUri!.AbsolutePath switch
+            {
+              "/api/dispatch/board/planning" => summarized
+                ? new[] { summary }
+                : Array.Empty<AutomaticPlanningResult>(),
+              "/api/dispatch/board" => new
+              {
+                items = new[]
+                {
+                  new TruckDispatchBoardResponse
+                  {
+                    Key = load.TruckId.ToString()!,
+                    TruckId = load.TruckId,
+                    TruckNumber = "11005",
+                    Dispatches = [load, later],
+                  },
+                },
+                page = 1,
+                totalCount = 1,
+                totalPages = 1,
+              },
+              _ => Array.Empty<object>(),
+            }
+          )
+        )
+    );
+    context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
+    context.JSInterop.Mode = JSRuntimeMode.Loose;
+    var component = context.Render<DispatchList>();
+
+    component.WaitForAssertion(() =>
+    {
+      var cards = component.FindComponents<DispatchLoadCard>();
+      Assert.Equal(2, cards.Count);
+      Assert.True(cards[0].Instance.Current);
+      Assert.Equal(
+        "Current",
+        cards[0].Find(".dispatch-load__phase").TextContent
+      );
+      Assert.Equal("Next", cards[1].Find(".dispatch-load__phase").TextContent);
+      Assert.All(cards, card => Assert.False(card.Instance.Earlier));
     });
   }
 
@@ -879,4 +1184,10 @@ public sealed class DispatchTruckHeaderTests
     {
       Content = JsonContent.Create(new { success = true, response = value }),
     };
+
+  private static DispatchResponse SetPhase(DispatchResponse load, string phase)
+  {
+    load.WorkPhase = phase;
+    return load;
+  }
 }

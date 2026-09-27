@@ -1,17 +1,22 @@
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
+using Application.Features.Routing.Services.Routes;
 using Application.Models;
 using Application.Reference;
+using Domain.Models.Execution;
 
 namespace Application.Features.Execution.Queries;
 
 // What a driver is driving: the trucks of their planned and active
 // execution legs, as driver or co-driver, and only when there are none, the
 // truck the fleet assigns them (one driver per truck). One truck: its
-// current and upcoming loads as the Dispatch board reads them
-// (ExecutionWorkReader), so the two never disagree. Several trucks: all are
-// listed and no load is chosen, since choosing one would be a guess. No
-// driver: nothing to read.
+// loads as the Dispatch board reads them (ExecutionWorkReader), each placed
+// as the board places it (TruckPlanningInputs.Placements, WorkPlacements):
+// the current load first, then the work after it, then work planning has
+// passed without a delivery, shown with its conflict rather than hidden. A
+// load read at another accepted revision is stale, never current. Several
+// trucks: all are listed and no load is chosen, since choosing one would be
+// a guess. No driver: nothing to read.
 public sealed record GetDriverWorkQuery(Guid? DriverId)
   : IRequest<RequestResponse<DriverWork>>;
 
@@ -27,7 +32,13 @@ public sealed record DriverWork(
   string State,
   IReadOnlyList<DriverTruck> Trucks,
   IReadOnlyList<DriverLoad> Loads
-);
+)
+{
+  // Loads beyond MaximumLoads, and how many of them carry a conflict: not
+  // listed, but never silently absent.
+  public int OmittedLoads { get; init; }
+  public int OmittedConflicts { get; init; }
+}
 
 // Role: driver or co-driver on an execution leg, or assigned in the fleet.
 public sealed record DriverTruck(Guid Id, string Number, string Role);
@@ -43,6 +54,10 @@ public sealed record DriverLoad(
 {
   public string OrderNumber { get; init; } = "";
   public IReadOnlyList<DriverStop> Stops { get; init; } = [];
+
+  // As on the board: DispatchResponse.WorkPhase and WorkConflict.
+  public string? Phase { get; init; }
+  public string? Conflict { get; init; }
 }
 
 public sealed record DriverStop(string Name, string City);
@@ -53,7 +68,8 @@ public sealed class DriverWorkHandler(
   IUserRoleService roles,
   FleetNames names,
   ActiveTransfers transfers,
-  TimeProvider clock
+  TimeProvider clock,
+  TruckPlanningInputsReader planning
 ) : IRequestHandler<GetDriverWorkQuery, RequestResponse<DriverWork>>
 {
   public const int MaximumLoads = 5;
@@ -87,25 +103,40 @@ public sealed class DriverWorkHandler(
       includeOverdue: false,
       ct
     );
-    return Ok(
+    var inputs = await planning.ReadAsync(trucks[0].Id, ct, includeHos: false);
+    var placed = DriverWorkOrder
+      .Apply([.. work.SelectMany(x => x.Loads)], inputs)
+      .ToList();
+    var omitted = placed.Skip(MaximumLoads).ToList();
+    var listed = new DriverWork(
       DriverWorkStates.OneTruck,
       trucks,
       [
-        .. work.SelectMany(x => x.Loads)
+        .. placed
           .Take(MaximumLoads)
           .Select(x => new DriverLoad(
-            x.Id,
-            x.LoadNumber,
-            x.CustomerName,
-            x.ExecutionStatus,
-            [.. x.Visits.Select(v => v.City).Where(c => c.Length > 0)]
+            x.Load.Id,
+            x.Load.LoadNumber,
+            x.Load.CustomerName,
+            x.Load.ExecutionStatus,
+            [.. x.Load.Visits.Select(v => v.City).Where(c => c.Length > 0)]
           )
           {
-            OrderNumber = x.OrderNumber,
-            Stops = [.. x.Visits.Select(v => new DriverStop(v.Name, v.City))],
+            OrderNumber = x.Load.OrderNumber,
+            Stops =
+            [
+              .. x.Load.Visits.Select(v => new DriverStop(v.Name, v.City)),
+            ],
+            Phase = x.Phase,
+            Conflict = x.Conflict,
           }),
       ]
-    );
+    )
+    {
+      OmittedLoads = omitted.Count,
+      OmittedConflicts = omitted.Count(x => x.Conflict is not null),
+    };
+    return RequestResponse<DriverWork>.Ok(listed);
 
     static RequestResponse<DriverWork> Ok(
       string state,
@@ -152,5 +183,55 @@ public sealed class DriverWorkHandler(
       .OrderBy(x => x.UnitNumber)
       .Select(x => new DriverTruck(x.Id, x.UnitNumber, "assigned"))
       .ToListAsync(ct);
+  }
+}
+
+// A driver's loads as the board places them: the current one, work
+// planning has passed without a delivery (its conflict shown, so a limit
+// on the list cuts the least urgent last), the work after the current,
+// then loads it does not place - each group in the board's order.
+// Board rows are work not yet delivered (ExecutionWorkReader), so a passed
+// row is a conflict here; the board itself also checks LoadCompletion.
+internal static class DriverWorkOrder
+{
+  public static IEnumerable<(
+    WorkLoadReference Load,
+    string? Phase,
+    string? Conflict
+  )> Apply(IReadOnlyList<WorkLoadReference> loads, TruckPlanningInputs? inputs)
+  {
+    var placements = inputs?.Placements();
+    return loads
+      .Select(load =>
+      {
+        var phase = WorkPlacements.Phase(
+          placements,
+          new(load.Id, load.ExecutionLegId),
+          load.AcceptedRevision
+        );
+        // Board rows are work the truck has not finished
+        // (ExecutionWorkRelevance), so a passed one is a conflict.
+        return (
+          load,
+          phase,
+          WorkPlacements.Conflict(
+            phase,
+            workFinished: false,
+            placements
+              ?.GetValueOrDefault(new(load.Id, load.ExecutionLegId))
+              ?.CargoDelivered == true
+          )
+        );
+      })
+      .OrderBy(x =>
+        x.phase switch
+        {
+          "current" => 0,
+          "earlier" => 1,
+          "next" => 2,
+          "upcoming" => 3,
+          _ => 4,
+        }
+      );
   }
 }

@@ -95,6 +95,8 @@ public sealed class EtaForecastStore(
           ExecutionLegId = row.ExecutionLegId,
           RootExecutionLegId = row.RootExecutionLegId,
           AssignmentRevision = row.AssignmentRevision,
+          WorkKey = row.WorkKey,
+          RouteKey = row.RouteKey,
         }
       );
     }
@@ -212,12 +214,13 @@ public sealed class EtaForecastStore(
           ("Id", "CompanyId", "DispatchId", "ExecutionLegId", "AssignmentRevision",
            "TruckId",
            "RootDispatchId", "RootExecutionLegId", "InputHash",
-           "DriverExternalId", "CalculatedAt", "ValidUntil", "ForecastJson")
+           "DriverExternalId", "CalculatedAt", "ValidUntil", "ForecastJson",
+           "WorkKey", "RouteKey")
         VALUES ({id}, {Company()}, {value.DispatchId}, {value.ExecutionLegId},
           {value.AssignmentRevision},
           {value.TruckId}, {value.RootDispatchId}, {value.RootExecutionLegId},
           {value.InputHash}, {value.DriverExternalId}, {calculatedAt},
-          {validUntil}, {json})
+          {validUntil}, {json}, {value.WorkKey}, {value.RouteKey})
         ON CONFLICT ("ExecutionLegId")
           WHERE "ExecutionLegId" IS NOT NULL DO UPDATE SET
           "TruckId" = excluded."TruckId",
@@ -228,7 +231,9 @@ public sealed class EtaForecastStore(
           "DriverExternalId" = excluded."DriverExternalId",
           "CalculatedAt" = excluded."CalculatedAt",
           "ValidUntil" = excluded."ValidUntil",
-          "ForecastJson" = excluded."ForecastJson"
+          "ForecastJson" = excluded."ForecastJson",
+          "WorkKey" = excluded."WorkKey",
+          "RouteKey" = excluded."RouteKey"
         WHERE "DispatchEtaForecasts"."CalculatedAt" < excluded."CalculatedAt"
           AND "DispatchEtaForecasts"."DispatchId" = excluded."DispatchId"
         """,
@@ -239,10 +244,11 @@ public sealed class EtaForecastStore(
       INSERT INTO "DispatchEtaForecasts"
         ("Id", "CompanyId", "DispatchId", "AssignmentRevision", "TruckId",
          "RootDispatchId", "InputHash",
-         "DriverExternalId", "CalculatedAt", "ValidUntil", "ForecastJson")
+         "DriverExternalId", "CalculatedAt", "ValidUntil", "ForecastJson",
+         "WorkKey", "RouteKey")
       VALUES ({id}, {Company()}, {value.DispatchId}, 0, {value.TruckId}, {value.RootDispatchId},
         {value.InputHash}, {value.DriverExternalId}, {calculatedAt},
-        {validUntil}, {json})
+        {validUntil}, {json}, {value.WorkKey}, {value.RouteKey})
       ON CONFLICT ("DispatchId") WHERE "ExecutionLegId" IS NULL DO UPDATE SET
         "TruckId" = excluded."TruckId",
         "RootDispatchId" = excluded."RootDispatchId",
@@ -251,7 +257,9 @@ public sealed class EtaForecastStore(
         "DriverExternalId" = excluded."DriverExternalId",
         "CalculatedAt" = excluded."CalculatedAt",
         "ValidUntil" = excluded."ValidUntil",
-        "ForecastJson" = excluded."ForecastJson"
+        "ForecastJson" = excluded."ForecastJson",
+        "WorkKey" = excluded."WorkKey",
+        "RouteKey" = excluded."RouteKey"
       WHERE "DispatchEtaForecasts"."CalculatedAt" < excluded."CalculatedAt"
       """,
       ct

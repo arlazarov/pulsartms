@@ -63,21 +63,6 @@
     .fleet-map-inspector__native {
       container-type: normal;
     }
-    .fleet-station-popup {
-      display: block;
-    }
-    .fleet-station-popup__prices {
-      margin-top: ui.pg(sm);
-      padding: 0;
-      border: 0;
-    }
-    // Stacked here, so the days sit flush under the prices rather than in
-    // the column the wider layouts give them.
-    .fleet-station-popup__comparison {
-      margin-top: ui.pg(sm);
-      padding-left: 0;
-      border-left: 0;
-    }
   }
 
   &__header {

@@ -7,6 +7,9 @@ public sealed class DispatchSettings : BaseEntity, ICompanyOwned
   public static readonly Guid SingletonId = new(
     "731f4d30-c85a-4af0-a14a-29db18bd4a47"
   );
+
+  // The prefix a company without a settings row shows its loads with.
+  public const string DefaultLoadNumberPrefix = "AMF";
   public string LoadNumberPrefix { get; set; } = string.Empty;
   public string TemperatureUnit { get; set; } = "both";
   public string DistanceUnit { get; set; } = "both";

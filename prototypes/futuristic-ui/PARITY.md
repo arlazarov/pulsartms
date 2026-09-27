@@ -1,7 +1,8 @@
 # Futuristic interface: feature parity checklist
 
 Updated 2026-09-27 for the Blazor integration on branch
-`claude/futuristic-pulsar-ui-concept-80ccd4`. The Futuristic interface is now
+`claude/futuristic-pulsar-ui-concept-80ccd4`, merged with the current-work
+candidate `0e6add5d` (server `WorkPhase`). The Futuristic interface is now
 a layout and style scope inside the existing Client pages, chosen in Personal
 settings, with the current interface as default and fallback. The localhost
 concept in this folder remains a design reference only.
@@ -23,26 +24,26 @@ not exercised in a browser in this pass.
 | **Follow selected truck** | `truckCamera.ts` | Kept, Verified: stays on through position updates |
 | Satellite at close zoom, road map when zoomed out | `fleetMap.ts` idle policy | Kept, Verified: Follow gives hybrid, zoom-out gives roadmap, Follow again gives hybrid |
 | Follow ends on a reader's zoom or drag | `truckCamera.ts` | Kept, Verified (zoom) |
-| Fit route, Fuel, Camera, Route options | inspector actions | Kept, Not checked in this pass |
+| Fit route, Fuel, Camera, Route options | inspector actions | Kept; Fuel, Camera and Route options Verified at 1440/390/360 px, both themes (layout only; nothing saved or sent) |
 | Truck search, driver groups, layer chips | toolbar | Kept, Verified (render) |
-| Truck inspector content and details toggle | `FleetMap.razor` | Kept, docked beside the map on wide screens |
+| Truck inspector content | `FleetMap.razor` | Kept; docked, the card is open whole (its narrow-container rule), so the Details button is not shown - Verified |
 | Next-load stop card | `NextLoadDetailsCard`, `selectNextStop` | Kept, Verified (opened from the chain) |
-| Fuel plan, fuel editor, send plan | `FleetFuelPlan`, `FuelPlanEditor`, `FuelSendPlan` | Kept; editor placed in the inspector column; Not checked |
+| Fuel plan, fuel editor, send plan | `FleetFuelPlan`, `FuelPlanEditor`, `FuelSendPlan` | Kept; editor in the inspector column on desktop, half the stage on phones; Verified (open, bounds); save and send not pressed |
 | Fuel stations layer and quotes | `FleetStationLayer` | Kept, Not checked |
-| Route editor | `RouteEditor` | Kept, placed over the map; Not checked |
+| Route editor | `RouteEditor` | Kept, over the map; frame Verified; its preview request was refused in the harness, so options content was not drawn |
 | Weather, map key | `TruckWeather`, key | Kept, Verified (render) |
 | Return navigation, playback, historical date | page owners | Kept, Not checked |
 | Fleet list (left) | `FleetTruckList` over the page's own search | New, Verified |
-| Trip chain (bottom) | `FleetTripChain` over current load and next routes | New, Verified |
+| Trip chain (bottom) | `FleetTripChain` over the truck's Dispatch board row (server `WorkPhase`) | New, Verified: same phase words as Dispatch, stale load says Needs refresh, one board read per truck chosen |
 
 ## Dispatch
 
 | Capability | Owner | Status |
 | --- | --- | --- |
-| Cards, Table, Papers | `DispatchList` and views | Kept, Verified: each keeps search and scope |
-| Active / Completed | `DispatchList` | Kept, Verified |
+| Cards, Papers, Table | `DispatchList` and views | Kept, Verified: each keeps search and scope |
+| Active / Completed | `DispatchList` (Completed in Table only, per candidate) | Kept, Verified |
 | Search, driver groups, paging | `DispatchList` | Kept, Verified (search) |
-| Phases (Current / Next / Upcoming) and ETA | Dispatch phase resolver, server ETA | Kept, same resolver in all three views |
+| Phases and conflicts | server `WorkPhase` / `WorkConflict` via `DispatchWorkPhase` | Kept; Fleet chain uses the same source - Verified |
 | Board, telemetry, enrichment, planning, HOS polling | `DispatchList` | Kept |
 | New load, load workspace, stop editors, assignment | existing pages and editors | Kept, Not checked |
 | Locate on map | lane link | Kept |
@@ -54,21 +55,20 @@ not exercised in a browser in this pass.
 | Theme saved to the account | Kept |
 | Interface choice | New: on this device, per account; covered by `AppearanceSettingsTests` |
 | Contrast of text roles in both Futuristic themes | Checked by `styleTokens.test.js` |
-| No page overflow at 390 px, both interfaces and themes | Verified |
+| No page overflow at 390 and 360 px, both interfaces and themes | Verified |
 
 ## Known differences and gaps
 
-- The Fleet chain names loads Next and Upcoming by their order in the
-  server's next-routes list; Dispatch names them with its own phase resolver.
-  They agree on this fixture. They could differ where the board and next
-  routes disagree about order. The server-owned work model under
-  construction on the Dispatch architecture branch should become the single
-  source for both.
-- The chain shows next loads only while the Next loads layer is on (it
-  offers a button to turn it on), because that layer owns the reads.
-- The interface choice is not yet an account preference; it does not follow
-  the user to another device.
-- Live data: the renders use synthetic read-only fixtures. A signed-in check
-  against real data has not been done.
+- Docked, the truck card has no Details / Hide details button: it is open
+  whole, as the card already is below `map-compact-columns`.
+- The chain shows a later load's stop card only while its road is drawn
+  (Next loads on); otherwise the load links to its workspace.
+- The interface choice is kept on the device, not yet on the account.
+- The existing `fuelEditorSmoke` and `routeEditorSmoke` fail on the
+  untouched candidate `0e6add5d` at their first card-layout assertion
+  (probe rot from the September 26-27 card changes), so they could not
+  serve as Futuristic evidence; `futuristicSmoke` covers the editors'
+  layout instead. Repairing those probes belongs with the card owner.
+- Live data: renders use synthetic read-only fixtures; no signed-in check.
 - Release: not deployed. Integration goes through the Dispatch release owner
   after its frozen release.

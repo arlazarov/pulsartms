@@ -1,6 +1,7 @@
-@* Futuristic interface only: the selected truck's current load, then the
-   next loads in the order the server sends them. Choosing a next load opens
-   its stop card through the map, the same path as clicking its stop. *@
+@* Futuristic interface only: the selected truck's loads as the Dispatch
+   board places them (server order and work phase). The current load goes
+   back to the truck card; a later load whose road is drawn opens its stop
+   card through the map, as a click on its stop does. *@
 <section class="fleet-trip-chain" aria-labelledby="fleet-trip-chain-title">
     <div class="fleet-trip-chain__label">
         <span class="fleet-trip-chain__eyebrow">Trip chain</span>
@@ -14,67 +15,77 @@
             Choose a truck on the map, in the list or with search.
         </p>
     }
+    else if (Loading)
+    {
+        <p class="fleet-trip-chain__hint" role="status">Reading the truck's loads…</p>
+    }
+    else if (Failed)
+    {
+        <p class="fleet-trip-chain__hint" role="status">
+            The truck's loads could not be read; retrying with the board.
+        </p>
+    }
+    else if (Loads.Count == 0)
+    {
+        <p class="fleet-trip-chain__hint">No active or planned loads.</p>
+    }
     else
     {
         <ol class="fleet-trip-chain__links">
-            @if (Current is { } current)
+            @foreach (var (load, index) in Loads.Select((load, i) => (load, i)))
             {
-                <li class="fleet-trip-chain__link is-current">
-                    <span class="fleet-trip-chain__number" aria-hidden="true">1</span>
-                    <button type="button" class="fleet-trip-chain__card"
-                            aria-pressed="@(InspectedLoadId is null ? "true" : "false")"
-                            @onclick="CurrentSelected">
-                        <span class="fleet-trip-chain__load">
-                            <Client.Shared.Dispatch.LoadNumber.LoadNumber Value="current.LoadNumber" />
-                        </span>
-                        <span class="fleet-trip-chain__phase">Current</span>
-                        <span class="fleet-trip-chain__lane">@Lane(current)</span>
-                    </button>
-                </li>
-            }
-            else if (CurrentLoading)
-            {
-                <li class="fleet-trip-chain__link is-current">
-                    <span class="fleet-trip-chain__hint">Reading the current load…</span>
-                </li>
-            }
-            else
-            {
-                <li class="fleet-trip-chain__link">
-                    <span class="fleet-trip-chain__hint">No current load.</span>
-                </li>
-            }
-            @if (NextLoadsShown)
-            {
-                var index = 1;
-                foreach (var route in Next)
-                {
-                    var position = ++index;
-                    var inspected = InspectedLoadId == route.Id
-                        && InspectedLegId == route.ExecutionLegId;
-                    <li class="fleet-trip-chain__link @(position == 2 ? "is-next" : "is-upcoming")"
-                        @key="(route.Id, route.ExecutionLegId)">
-                        <ActionIcon Kind="chevron-right" />
-                        <span class="fleet-trip-chain__number" aria-hidden="true">@position</span>
+                var phase = PhaseClass(load);
+                var label = Client.Shared.Dispatch.DispatchWorkPhase.Label(load);
+                var conflict = Client.Shared.Dispatch.DispatchWorkPhase.ConflictText(load.WorkConflict);
+                var current = load.Id == CurrentId;
+                var drawn = Drawn(load);
+                var pressed = current
+                    ? InspectedLoadId is null
+                    : InspectedLoadId == load.Id && InspectedLegId == load.ExecutionLegId;
+                <li class="fleet-trip-chain__link @phase"
+                    @key="(load.Id, load.ExecutionLegId)">
+                    @if (index > 0) { <ActionIcon Kind="chevron-right" /> }
+                    <span class="fleet-trip-chain__number" aria-hidden="true">@(index + 1)</span>
+                    @if (current || drawn)
+                    {
                         <button type="button" class="fleet-trip-chain__card"
-                                aria-pressed="@(inspected ? "true" : "false")"
-                                @onclick="() => NextSelected.InvokeAsync(route)">
-                            <span class="fleet-trip-chain__load">
-                                <Client.Shared.Dispatch.LoadNumber.LoadNumber Value="route.LoadNumber" />
-                            </span>
-                            <span class="fleet-trip-chain__phase">@(position == 2 ? "Next" : "Upcoming")</span>
-                            <span class="fleet-trip-chain__lane">@Lane(route)</span>
+                                aria-pressed="@(pressed ? "true" : "false")"
+                                @onclick="() => Selected.InvokeAsync(load)">
+                            @Card(load, label, conflict)
                         </button>
-                    </li>
-                }
+                    }
+                    else
+                    {
+                        <a class="fleet-trip-chain__card" href="@($"/dispatch/{load.Id}")"
+                           title="Open load">
+                            @Card(load, label, conflict)
+                        </a>
+                    }
+                </li>
             }
-            else
+            @if (!NextLoadsShown && Loads.Count > 1)
             {
                 <li class="fleet-trip-chain__link">
                     <button type="button" class="btn btn--small"
-                            @onclick="ShowNextLoads">Show next loads</button>
+                            @onclick="ShowNextLoads">Show next loads on the map</button>
                 </li>
             }
         </ol>
     }
 </section>
+
+@code {
+    private static RenderFragment Card(
+        Client.Models.DTO.Dispatch.DispatchResponse load,
+        string? label,
+        string? conflict) => @<text>
+        <span class="fleet-trip-chain__load">
+            <Client.Shared.Dispatch.LoadNumber.LoadNumber Value="load.LoadNumber" />
+        </span>
+        @if (!string.IsNullOrEmpty(label))
+        { <span class="fleet-trip-chain__phase">@label</span> }
+        <span class="fleet-trip-chain__lane">@Lane(load)</span>
+        @if (conflict is not null)
+        { <span class="fleet-trip-chain__conflict" role="status">@conflict</span> }
+    </text>;
+}

@@ -48,9 +48,6 @@
     font-size: ui.fs(caption);
     color: ui.theme(text-muted);
   }
-  &__footer .dispatch-load__details {
-    margin-left: auto;
-  }
   &__remaining,
   &__fuel-count {
     display: inline-flex;
@@ -66,12 +63,5 @@
   }
   &__fuel-count strong {
     font-weight: 600;
-  }
-  &__details {
-    display: inline-flex;
-    align-items: center;
-    gap: ui.pg(xs);
-    color: ui.theme(link);
-    font-size: ui.fs(small);
   }
 }

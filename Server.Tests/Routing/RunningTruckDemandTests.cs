@@ -144,7 +144,7 @@ public sealed class RunningTruckDemandTests
   }
 
   private static TruckPlanningInputsReader Reader(PlanningRefreshFixture f) =>
-    new(f.Db, null!, null!, null!, null!, null!, null!);
+    new(f.Db, null!, null!, null!, null!, null!, null!, TimeProvider.System);
 
   private static async Task<Guid> TruckAsync(
     PlanningRefreshFixture f,

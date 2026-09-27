@@ -7,19 +7,20 @@ before changing UI or styles. These are requirements, not optional recommendatio
 
 - Publish or deploy only after the user explicitly requests it or approves a
   deployment. Local implementation and verification do not authorize deployment.
-- Work locally by default. Earlier cutover approval does not authorize further
-  releases; wait for a new explicit publication request. During iteration use
+- Work locally by default. An explicit request to implement and publish covers
+  releases within that requested scope until completed or revoked; do not ask
+  again at each implementation stage. An unrelated earlier cutover does not
+  authorize a new release. During iteration use
   affected test groups and existing build caches, with full checks at the
   boundaries required below. See `docs/development/setup.md`.
 - Docker is permitted for builds, tooling and deployment, including the existing
   Cloud Build/Cloud Run workflow.
-- Do not deploy or start local SQL database servers in Docker, through
-  Testcontainers or through a substitute container runtime, even for disposable
-  tests or diagnostics.
-- Database tests require a safe, isolated fixture that respects this restriction.
-  Never substitute the application or production database for a disposable test
-  database. Report PostgreSQL checks as not run when no suitable fixture is
-  available; do not automatically install a host database server as a workaround.
+- Local disposable SQL databases are permitted for tests and diagnostics,
+  including Docker and Testcontainers. Use isolated test credentials, storage
+  and connection settings; never use the working application or production
+  database as a disposable fixture. Limit resource use and clean up only
+  task-owned test resources. Report PostgreSQL checks as not run when no
+  suitable fixture is available; SQLite does not prove PostgreSQL behavior.
 
 ## Documentation, comments and logging
 
@@ -79,6 +80,17 @@ Application commands directly.
 
 ## Shared ownership and duplicate work (application-wide)
 
+- Assign ownership by business responsibility, not by screen. Dispatch owns
+  assignments and execution; routing, ETA, fuel and financial rules belong to
+  their respective owners behind small layer-appropriate contracts. A shared
+  state does not require one central service that depends on every module.
+- Keep distinct facts explicit: cargo delivery, completion of truck work and
+  GPS passage are not interchangeable. Screens must agree about the same fact
+  at the same version, but must not collapse different facts into one status.
+- Recalculation and repeated reads are allowed for changed dependencies,
+  freshness, recovery or authorization. Name the reason and bound retries,
+  concurrency and retained state. Coalesce equivalent work; do not suppress
+  necessary validation to claim zero repeated work.
 - Before adding a calculation, query, provider call, projection or cache, find
   its existing owner and trace the callers across all affected screens and
   jobs. Record what is reused and why any new work is necessary. This applies
@@ -110,6 +122,40 @@ Application commands directly.
   permissions or freshness) must be explicit. Cosmetic changes do not require
   performance tests, and unchanged passing gates must not be repeated.
 
+## Invariant-first regression review
+
+- Before changing behavior, state the product invariant independently of the
+  implementation, its authoritative owner and allowed dependencies. Follow
+  the contract matrix in `docs/testing.md#invariant-contract-review`.
+- Shared reads and calculations must produce the same per-item result and
+  dependency signature for the same authorized inputs, whether read alone,
+  reordered, partitioned or with unrelated peers. Batch size, page composition
+  and unrelated trucks/companies must not become business dependencies.
+  Legitimate aggregation must have an explicit contract and separate tests.
+- For affected paths, test both sides: irrelevant changes leave results and
+  work requests unchanged; relevant changes invalidate them. Preserve tenant,
+  authorization, assignment and version guards. Do not normalize away a real
+  dependency merely to make signatures stable.
+- Review test expectations against the product invariant. Tests, snapshots and
+  current production behavior are not the specification. Never update an
+  expectation solely because the implementation produces it. Record the reason
+  for changing an old expectation and retain its valid safety assertions.
+- For a reproducible bug, demonstrate that the regression fails on the old
+  behavior and passes on the correction. If reproduction is unavailable,
+  record the limitation and alternative evidence; do not claim red/green proof.
+- Changes to queues or their input/demand producers require deterministic checks
+  for unchanged-input idempotency, retry preservation, stale-worker completion
+  and bounded progress of eligible lower-priority work under sustained arrivals.
+  Declare the scheduling assumptions and progress bound; pending forever is not
+  success. Never reset production priorities or retries to hide the defect.
+- Review affected foreground and background consumers together. Record result
+  equivalence and work-count coverage separately. A shared owner alone does not
+  prove consumer agreement or absence of repeated work.
+- A release gate proves only its tested contract. Close an incident only after
+  an authorized, bounded read through the normal owner confirms the user-visible
+  result. Health, queue completion and deployment success are not substitutes.
+  Record remaining cases and runtime detection gaps with owners and criteria.
+
 ## Shared reads and background planning
 
 - Before changing Dispatch, Fleet Map, planning reads or their persistence, read
@@ -132,20 +178,39 @@ Application commands directly.
 
 ## Required completion checks
 
+- Continue authorized implementation between coherent stages. Independent
+  review gates integration and publication, not every intermediate edit.
+  While a review is pending, continue independent work. Pause dependent work
+  only for a concrete correctness blocker or a material unresolved product
+  decision; explain the exact issue rather than requesting blanket approval.
 - Before editing, identify the owning layer and existing shared implementation.
 - Keep provider-specific SQL and provider detection in Infrastructure, behind an
   Application interface. Do not construct optional fallback business services.
 - Keep financial formulas on the server; Client formats response values only.
 - For UI changes, follow `docs/ui-controls.md` and reuse named style tokens.
-- Select checks using `docs/testing.md` before editing. During iteration, run the
-  affected categories and their dependent categories, plus architecture checks.
-  Run the full suite before deployment and after shared contract, persistence,
-  dependency-injection, authentication, or test-infrastructure changes. Build the
-  Client when Razor, Client C#, or Client contracts change. Add a regression check
-  for each corrected invariant where practical. Do not claim a full pass after a
-  category-only run. Every xUnit test class must declare a Category trait. New or
-  substantially changed classes must also declare a Kind trait according to
-  `docs/testing.md`; Kind must not replace the feature Category.
+- Select checks using `docs/testing.md` before editing. During an unfinished
+  change, use the smallest relevant test class or filter for feedback. At the
+  end of a coherent change, run affected categories, dependent categories and
+  architecture checks, using focused filters when a category is expensive.
+  Reserve the full suite and long browser/release checks for the final candidate
+  being published, once before deployment. Shared contract, persistence, DI,
+  authentication or test-infrastructure edits require focused dependency and
+  safety regressions during development, not an automatic full-suite run.
+  If a long check is essential to establish a specific fix before that boundary,
+  explain the concrete reason first and run only that necessary check.
+  Build the Client when Razor, Client C#, or Client contracts change.
+  Add regression coverage for corrected invariants where practical; cosmetic
+  changes alone do not require new behavior tests. Never claim a full pass
+  after a narrow run. Every xUnit class must declare a Category trait; new or
+  substantially changed classes also declare Kind per `docs/testing.md`.
+- Do not repeat a passing gate on unchanged inputs. Main and isolated worktrees
+  may run checks in parallel with separate build outputs and isolated database
+  fixtures. Coordinate shared resources; serialize only conflicting operations
+  or when measured resource contention warrants it. Record the
+  candidate revision/diff and checks performed; later relevant changes require
+  fresh affected checks and, at publication, the final release gate. Investigate
+  flaky failures with controlled signals and bounded reproductions, not loops
+  until green. Stop obsolete jobs owned by the task; preserve useful evidence.
 - Keep server tests in `Server.Tests`, Client C# tests in `Client.Tests`, and
   JavaScript tests in `Client/tests`. Client C# tests must reference the compiled
   Client project, not linked production source or substitute partial components.

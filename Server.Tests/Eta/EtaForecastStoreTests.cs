@@ -367,6 +367,66 @@ public sealed class EtaForecastStoreTests
     );
   }
 
+  // Stage 4e: the root's row carries the keys of the plan it was
+  // calculated on. They are replaced with the row and only by a later
+  // calculation; a row saved without them reads back without them.
+  [Fact]
+  public async Task KeysAreSavedWithTheRowAndOnlyALaterOneReplacesThem()
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await db.Database.EnsureCreatedAsync();
+
+    await KeysCheckAsync(db);
+  }
+
+  internal static async Task KeysCheckAsync(AppDbContext db)
+  {
+    var truck = new Truck { Id = Guid.NewGuid() };
+    var load = new Load
+    {
+      Id = Guid.NewGuid(),
+      LoadNumber = 1,
+      TruckId = truck.Id,
+    };
+    db.Trucks.Add(truck);
+    db.Dispatches.Add(load);
+    await db.SaveChangesAsync();
+    var store = new EtaForecastStore(db, NullLogger<EtaForecastStore>.Instance);
+    EtaForecastSnapshot At(DateTime at, string? key) =>
+      new(
+        load.Id,
+        truck.Id,
+        load.Id,
+        new string('a', 64),
+        "",
+        new(at, at.AddMinutes(2), [], null, [])
+      )
+      {
+        WorkKey = key is null ? null : $"{key}-work",
+        RouteKey = key is null ? null : $"{key}-road",
+      };
+    async Task<EtaForecastSnapshot> Read() =>
+      Assert.Single(await store.ReadAsync([load.Id], default));
+
+    Assert.True(await store.SaveAsync([At(Now, "first")], default));
+    Assert.False(
+      await store.SaveAsync([At(Now.AddSeconds(-1), "older")], default)
+    );
+    Assert.False(await store.SaveAsync([At(Now, "tied")], default));
+    var kept = await Read();
+    Assert.True(await store.SaveAsync([At(Now.AddSeconds(1), null)], default));
+    var unkeyed = await Read();
+
+    Assert.Equal("first-work", kept.WorkKey);
+    Assert.Equal("first-road", kept.RouteKey);
+    Assert.Null(unkeyed.WorkKey);
+    Assert.Null(unkeyed.RouteKey);
+  }
+
   private sealed class Fixture(
     SqliteConnection connection,
     AppDbContext db,

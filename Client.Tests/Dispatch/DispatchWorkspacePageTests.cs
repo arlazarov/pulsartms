@@ -924,6 +924,74 @@ public sealed class DispatchWorkspacePageTests
     Assert.EndsWith("/dispatch", navigation.Uri);
   }
 
+  [Theory]
+  [InlineData(false, false)]
+  [InlineData(false, true)]
+  [InlineData(true, false)]
+  public async Task StopEditorDraftCanBeDiscardedToLeave(
+    bool operation,
+    bool conflict
+  )
+  {
+    var data = Workspace();
+    var stop = data.Stops[0];
+    stop.CanCorrect = true;
+    data.Load.Stops =
+    [
+      new()
+      {
+        Id = stop.Id,
+        Job = "Pick Up",
+        StateAfter = "Loaded",
+        CompletionIdentity = "source",
+      },
+    ];
+    using var context = Context(
+      (request, _) =>
+        Task.FromResult(
+          request.Method != HttpMethod.Get && conflict
+            ? MileageComponentResponses.Error<DispatchWorkspaceResponse>(
+              HttpStatusCode.Conflict,
+              "The load changed. Reload it."
+            )
+          : request.RequestUri!.AbsolutePath.StartsWith("/api/fleet/")
+            ? MileageComponentResponses.Ok(
+              new { items = Array.Empty<object>(), totalCount = 0 }
+            )
+          : MileageComponentResponses.Ok(data)
+        )
+    );
+    var navigation = context.Services.GetRequiredService<NavigationManager>();
+    var page = context.Render<DispatchDetails>(p =>
+      p.Add(x => x.Id, data.Load.Id)
+    );
+    page.WaitForElement("#correction-status");
+    if (operation)
+      await page.InvokeAsync(
+        () =>
+          page.Find(".stop-operation select")
+            .ChangeAsync(new() { Value = "Driver start" })
+      );
+    else
+      await page.InvokeAsync(
+        () => page.Find("#correction-status").ClickAsync(new())
+      );
+    if (conflict)
+    {
+      await Click(page, "Save changes");
+      Assert.NotNull(Button(page, "Reload saved version"));
+      Assert.DoesNotContain("Retry save", page.Markup);
+    }
+    await page.InvokeAsync(() => navigation.NavigateTo("/dispatch"));
+    page.WaitForElement("[role=alertdialog]");
+    await Click(page, "Keep editing");
+    if (!conflict)
+      Assert.False(Button(page, "Save changes").HasAttribute("disabled"));
+    await page.InvokeAsync(() => navigation.NavigateTo("/dispatch"));
+    await Click(page, "Discard and leave");
+    Assert.EndsWith("/dispatch", navigation.Uri);
+  }
+
   private static ClientComponentContext Context(
     Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send,
     Action<HttpRequestMessage>? observe = null

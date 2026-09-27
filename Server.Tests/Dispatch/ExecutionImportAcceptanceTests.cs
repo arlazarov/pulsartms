@@ -134,7 +134,7 @@ public sealed class ExecutionImportAcceptanceTests
   [InlineData("duplicate-sequence")]
   [InlineData("reversed-visits")]
   [InlineData("completed-with-invalid-actuals")]
-  public async Task AmbiguousSourceIsVisibleButCannotBecomePlanningAuthority(
+  public async Task AmbiguousSourceRetainsReviewWithoutReopeningCompletedWork(
     string kind
   )
   {
@@ -211,10 +211,13 @@ public sealed class ExecutionImportAcceptanceTests
         new ActiveTransfers(f.Db)
       ).ReadAsync(truck.Id, DateTimeOffset.UtcNow, default);
       Assert.NotNull(itinerary);
-      Assert.Contains(
-        itinerary.Segments,
-        x => x.Problems.Contains(WorkReadProblem.SourceReviewRequired)
-      );
+      if (kind == "completed-with-invalid-actuals")
+        Assert.Empty(itinerary.Segments);
+      else
+        Assert.Contains(
+          itinerary.Segments,
+          x => x.Problems.Contains(WorkReadProblem.SourceReviewRequired)
+        );
     }
   }
 

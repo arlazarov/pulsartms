@@ -15,10 +15,14 @@
             @if (!string.IsNullOrWhiteSpace(TruckSearch))
             { <span class="visually-hidden" role="status">@MatchingTrucks.Count found</span> }
         </div>
-        <button type="button" class="btn fleet-map-mobile-filters" aria-expanded="@(_mobileFiltersOpen ? "true" : "false")" aria-controls="fleet-map-filters" @onclick="() => _mobileFiltersOpen = !_mobileFiltersOpen">
+        <button type="button"
+                class="btn fleet-map-mobile-filters filter-toolbar__drawer-toggle"
+                aria-expanded="@(_mobileFiltersOpen ? "true" : "false")" aria-controls="fleet-map-filters" @onclick="() => _mobileFiltersOpen = !_mobileFiltersOpen">
             <ActionIcon Kind="filters" /><span>Filters</span>
         </button>
-        <div id="fleet-map-filters" class="fleet-map-filters @(_mobileFiltersOpen ? "is-open" : "")">
+        <div id="fleet-map-filters"
+             class="fleet-map-filters filter-toolbar__drawer @(_mobileFiltersOpen
+                 ? "is-open" : "")">
         @* The driver filter is a filter: on a phone it waits behind the
            Filters button with the layers (the owner, September 26), and
            on a wide toolbar the group is transparent, so it stands where
@@ -326,19 +330,11 @@
                     <div id="fleet-map-telemetry-details"
                          class="fleet-map-inspector__vehicle">
                         <div class="fleet-map-truck-info" aria-label="Selected truck">
-                            <div class="fleet-map-truck-info__telemetry"
-                                 aria-label="Current truck readings">
-                                <span class="fleet-map-truck-info__reading
-                                             fleet-map-truck-info__reading--speed
-                                             @TelemetryTone.Speed(KnownSpeed(truck))">
-                                    <small><ActionIcon Kind="speed" /><span>Speed</span></small>
-                                    <strong>@(KnownSpeed(truck)?.ToString("N0") ?? "—") <small>mph</small>
-                                    </strong>
-                                </span>
-                                <span class="fleet-map-truck-info__reading
-                                             fleet-map-truck-info__reading--fuel">
-                                    <FuelReading Percent="@((double?)truck.FuelPercent)"
-                                                 Variant="metric" />
+                            <TruckReadings Speed="KnownSpeed(truck)"
+                                           EngineSpeed="truck.Speed"
+                                           Fuel="@((double?)truck.FuelPercent)"
+                                           Engine="@truck.EngineState">
+                                <FuelNote>
                                     @if (FuelReserveWarning is { } reserve)
                                     {
                                         <span
@@ -346,22 +342,16 @@
                                               role="note" title="@reserve"
                                               aria-label="@reserve">!</span>
                                     }
-                                </span>
-                                <span class="fleet-map-truck-info__reading
-                                    fleet-map-truck-info__reading--engine
-                                    @TelemetryTone.Engine(truck.Speed, truck.EngineState)">
-                                    <small><ActionIcon Kind="engine" /><span>Engine</span>
-                                    </small>
-                                    <strong>@(string.IsNullOrWhiteSpace(truck.EngineState)
-                                        ? "—" : truck.EngineState)</strong>
-                                </span>
-                                <Client.Shared.Trucks.TruckWeather.TruckWeather
-                                    TruckId="truck.TruckId"
-                                    Visibility="_visibility"
-                                    OwnerCancellation="_lifetime.Token"
-                                    Current="@(SelectedDate == DateOnly.FromDateTime(
-                                        DateTime.Today))" />
-                            </div>
+                                </FuelNote>
+                                <ChildContent>
+                                    <Client.Shared.Trucks.TruckWeather.TruckWeather
+                                        TruckId="truck.TruckId"
+                                        Visibility="_visibility"
+                                        OwnerCancellation="_lifetime.Token"
+                                        Current="@(SelectedDate == DateOnly.FromDateTime(
+                                            DateTime.Today))" />
+                                </ChildContent>
+                            </TruckReadings>
                         </div>
                     </div>
                     @* The driver's clocks, named by their labels alone; the
@@ -542,6 +532,8 @@
             @truckActions
             </div>
             <div class="fleet-map-route-info__messages">
+                @foreach (var conflict in _planningConflicts)
+                { <span class="fleet-map-route-info__error" role="status">Load @conflict.LoadNumber: @Client.Shared.Dispatch.DispatchWorkPhase.ConflictText(conflict.Conflict)</span> }
                 @foreach (var warning in routePlan?.Route.Warnings ?? [])
                 { <span class="fleet-map-route-info__error" role="status">@Client.Shared.RouteMessageDisplay.Concise(warning)</span> }
                 @if (routePlan is not null && (_routeState?.Progress?.OffRoute == true || _routeState?.Progress?.LocationStale == true))
@@ -669,13 +661,13 @@
     }
     @if (Futuristic)
     {
-        <FleetTripChain Truck="SelectedTruck" Current="_loadDetails"
-                        CurrentLoading="_routeLoading && _loadDetails is null"
+        <FleetTripChain Truck="SelectedTruck" Loads="_chainLoads"
+                        Loading="_chainLoading" Failed="_chainFailed"
+                        CurrentId="SelectedDispatchId"
                         Next="_nextLoadRoutes" NextLoadsShown="ShowNextLoads"
                         InspectedLoadId="_inspectedLoadId"
                         InspectedLegId="_inspectedExecutionLegId"
-                        CurrentSelected="ChooseCurrentLoadAsync"
-                        NextSelected="ChooseNextLoadAsync"
+                        Selected="ChooseChainLoadAsync"
                         ShowNextLoads="ShowNextLoadsFromChainAsync" />
     }
     </div>

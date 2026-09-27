@@ -1,13 +1,85 @@
-
-<section class="dispatch-planning @(Compact ? "dispatch-planning--compact" : "") @(BoardHeader ? "dispatch-planning--board" : "")" aria-label="Route">
+@if (BoardHeader)
+{
+    <section class="dispatch-planning dispatch-planning--board"
+             aria-label="Truck summary">
+        <header class="dispatch-truck__header">
+            @Identity
+            @{ var warnings = BoardWarnings(); }
+            @if (warnings.Count > 0 || LeftMiles is not null)
+            {
+            <span class="dispatch-planning__status">
+            @* The load's notices and the road's warnings wait behind one
+               small sign; its tooltip reads them all, and the load's own
+               page still shows them in full. *@
+            @if (warnings.Count > 0)
+            {
+                <span class="dispatch-planning__warnings" role="img"
+                      aria-label="@("Warnings: " + string.Join(" ", warnings))"
+                      title="@string.Join("\n", warnings)"
+                    ><ActionIcon Kind="warning" /></span>
+            }
+            @if (LeftMiles is { } left)
+            {
+                <span class="dispatch-planning__left"
+                      aria-label="@(Units.FormatDistance(left)
+                          + " left to the next stop")">
+                    @if (ShowPlanningLoad && DisplayResult?.LoadNumber is { } number)
+                    {
+                        <span>Load <LoadNumber Value="number" /> · </span>
+                    }
+                    <span aria-hidden="true">Left&#160;<strong
+                        >@Units.DistanceValue(left)</strong><span
+                        >&#160;@Units.DistanceUnit</span>@if (Units.BothDistances)
+                        {<small> ·&#160;@Units.Kilometers(left)&#160;km</small>}</span>
+                </span>
+            }
+            </span>
+            }
+        </header>
+        <div class="dispatch-planning__readings">
+            <TruckReadings Speed="Speed"
+                           Fuel="@DisplayResult?.State?.FuelPercent"
+                           Engine="@EngineState" />
+            @* The driver's clocks, named by their labels alone; the group
+               keeps "HOS" as its name for a screen reader. *@
+            <span class="dispatch-planning__clocks" aria-label="HOS">
+                <DriverHours Clocks="Hos" Dials="false" ShowDutyStatus="false"
+                             Jurisdiction="@DutyStatus?.Jurisdiction" />
+            </span>
+        </div>
+        @if (_loading && _result is null)
+        {
+            <p class="dispatch-planning__hint" role="status"
+                ><LoadingIndicator /></p>
+        }
+        @if (ShowRefreshError)
+        {
+            <p class="dispatch-planning__hint" role="status"
+                >@RouteMessageDisplay.Concise(_error)</p>
+        }
+        @if (BoardMessage is { } boardMessage)
+        { <p class="dispatch-planning__hint" role="status">@boardMessage</p> }
+        @if (DisplayResult?.State?.Progress?.OffRoute == true)
+        {
+            <p class="dispatch-planning__hint" role="status"
+                >Off planned route</p>
+        }
+        <div class="dispatch-planning__duty">
+            <DriverDutySummary Reading="row" Status="DutyStatus"
+                               CurrentStatus="@(Hos?.CurrentDutyStatus)"
+                               ClockUpdatedAt="Hos?.UpdatedAt" />
+        </div>
+    </section>
+}
+else
+{
+<section class="dispatch-planning @(Compact ? "dispatch-planning--compact" : "")" aria-label="Route">
     <div class="dispatch-planning__content">
     <div class="dispatch-planning__heading">
         <div class="dispatch-planning__identity"><strong>Route</strong>
             @if (DisplayResult?.LoadNumber is { } number && Compact) { <span>Load <LoadNumber Value="number" /></span> }
         </div>
         <div class="dispatch-planning__telemetry">
-            @if (BoardHeader && !string.IsNullOrWhiteSpace(MotionLabel))
-            { <span class="dispatch-truck__status is-@MotionState @TelemetryTone.Speed(Speed)"><span aria-hidden="true">●</span>@MotionLabel</span> }
             @if (DisplayResult?.State?.FuelPercent is { } percent) { <span class="dispatch-planning__fuel"><FuelReading Percent="percent" /></span> }
         </div>
     </div>
@@ -43,10 +115,11 @@
     @if (Compact)
     {
         <div class="dispatch-planning__driver">
-            <DriverDutySummary Status="DisplayResult?.State?.Eta?.DutyStatus" CurrentStatus="@(Hos?.CurrentDutyStatus)" ClockUpdatedAt="Hos?.UpdatedAt" Compact="BoardHeader" />
+            <DriverDutySummary Status="DutyStatus" CurrentStatus="@(Hos?.CurrentDutyStatus)" ClockUpdatedAt="Hos?.UpdatedAt" />
             <DriverNextRecap Snapshot="CurrentCycle" />
         </div>
         <DriverHours Clocks="Hos" ShowDutyStatus="false"
-                     Status="DisplayResult?.State?.Eta?.DutyStatus" />
+                     Status="DutyStatus" />
     }
 </section>
+}

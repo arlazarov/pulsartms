@@ -57,6 +57,57 @@ public sealed class PlanningConcurrencyTests
     }
   }
 
+  // Stage 4e: one refresh is one operation for the saved fuel inputs
+  // check - its preparation, summary publisher and price refresh share it
+  // while it runs, and the share ends with it.
+  [Fact]
+  public async Task ARefreshPreparesInsideOneSharedCheck()
+  {
+    var sender = new Sender();
+    await using var fixture = await PlanningRefreshFixture.CreateAsync(
+      services => services.AddSingleton<ISender>(sender)
+    );
+    var id = Guid.NewGuid();
+    fixture.Db.Dispatches.Add(
+      new()
+      {
+        Id = id,
+        Status = "assigned",
+        LoadNumber = 1,
+      }
+    );
+    await fixture.Db.SaveChangesAsync();
+    await fixture.Store.RequestAsync(
+      new(id, null),
+      "one",
+      fixture.Now,
+      default
+    );
+    using var cancellation = new CancellationTokenSource();
+    var running = fixture
+      .Services.GetRequiredService<PlanningRefreshOperation>()
+      .RunAsync(cancellation.Token);
+    try
+    {
+      var started = await sender
+        .Started.Reader.ReadAsync()
+        .AsTask()
+        .WaitAsync(TimeSpan.FromSeconds(5));
+      var during = fixture.SavedInputs.Open;
+      started.Done.SetResult();
+      await fixture.SavedInputs.Closed.WaitAsync(TimeSpan.FromSeconds(5));
+
+      Assert.Equal(1, during);
+      Assert.Equal(0, fixture.SavedInputs.Open);
+      Assert.Equal(1, fixture.SavedInputs.Shares);
+    }
+    finally
+    {
+      cancellation.Cancel();
+      await running.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+  }
+
   [Fact]
   public async Task SlowWorkDoesNotBlockAnotherSlotAndRepeatedDemandDoesNotDuplicateWork()
   {

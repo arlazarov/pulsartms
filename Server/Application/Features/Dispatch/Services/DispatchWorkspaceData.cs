@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Application.Features.Dispatch.Models;
@@ -29,7 +30,7 @@ public static class DispatchWorkspaceData
     {
       load.OrderNumber,
       load.CustomerName,
-      load.Price,
+      Price = CanonicalPrice(load.Price),
       load.Currency,
     };
 
@@ -38,9 +39,18 @@ public static class DispatchWorkspaceData
     {
       metadata.OrderNumber,
       metadata.CustomerName,
-      metadata.Price,
+      Price = CanonicalPrice(metadata.Price),
       metadata.Currency,
     };
+
+  private static decimal? CanonicalPrice(decimal? price) =>
+    price.HasValue
+      ? decimal.Parse(
+        price.Value.ToString("G29", CultureInfo.InvariantCulture),
+        NumberStyles.Float,
+        CultureInfo.InvariantCulture
+      )
+      : null;
 
   public static void ApplyCommercial(
     DispatchEntity load,

@@ -168,6 +168,30 @@ public sealed class FuelIssueHorizonTests
     Assert.True(plan.IssueCritical);
   }
 
+  // Stage 4e: a line drawn earlier holds while the hours draw the same
+  // one - a later reading of the same shift included - and not once the
+  // duty, the window or the reading's freshness moves a stop or the state.
+  [Fact]
+  public void ALineHoldsOnlyWhileTheHoursDrawTheSameOne()
+  {
+    var plan = Plan(3, 9, 12);
+    var driving = Clocks("driving", shiftHours: 9);
+    FuelIssueHorizon.Apply(plan, driving, Now, Buffer, Fresh);
+    var later = Now.AddMinutes(5);
+    bool Holds(DriverHosClocks? clocks, DateTimeOffset at) =>
+      FuelIssueHorizon.Holds(plan, clocks, at, Buffer, Fresh);
+
+    Assert.True(Holds(driving, Now));
+    Assert.True(
+      Holds(Clocks("driving", shiftHours: 9 - 5d / 60, at: later), later)
+    );
+    Assert.False(Holds(Clocks("offDuty", shiftHours: 9), Now));
+    Assert.False(Holds(Clocks("driving", shiftHours: 6), Now));
+    Assert.False(Holds(driving, Now.AddMinutes(11)));
+    Assert.False(Holds(null, Now));
+    Assert.True(FuelIssueHorizon.Holds(Plan(3), null, Now, Buffer, Fresh));
+  }
+
   private static DriverHosClocks Clocks(
     string duty,
     double? shiftHours,

@@ -1,4 +1,5 @@
 using Application.Features.Dispatch.Models;
+using Application.Features.Dispatch.Services;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Models;
 
@@ -45,9 +46,16 @@ public class GetDispatchQueryHandler(
     if (!string.IsNullOrWhiteSpace(request.Search))
     {
       var search = request.Search.Trim();
-      int.TryParse(search, out var loadNumber);
+      var loadNumber = await LoadNumberSearch.NumberAsync(
+        dbContext,
+        search,
+        cancellationToken
+      );
+      var digits = loadNumber is { } number
+        ? LoadNumberSearch.Prefix(number)
+        : null;
       query = query.Where(x =>
-        x.LoadNumber == loadNumber
+        digits != null && x.LoadNumber.ToString().StartsWith(digits)
         || x.OrderNumber.Contains(search)
         || x.CustomerName.Contains(search)
         || x.TruckNumber.Contains(search)
@@ -56,41 +64,7 @@ public class GetDispatchQueryHandler(
       );
     }
     if (request.Status == "completed")
-      query = query.Where(x =>
-        x.Status == "completed"
-        || x.Stops.Any(s =>
-          !x.Stops.Any(later => later.Sequence > s.Sequence)
-          && (s.Job.ToLower() == "drop off" || s.Job.ToLower() == "delivery")
-          && s.CompletionOverride != false
-          && (s.DeliveredAt != null || s.DepartedAt != null)
-        )
-        || x.Stops.Any(s =>
-          s.ManualCompletedAt != null || s.CompletionOverride == true
-        )
-          && x.Stops.All(s =>
-            s.CompletionOverride == true
-            || s.CompletionOverride != false
-              && (
-                s.ManualCompletedAt != null
-                || s.DepartedAt != null
-                || s.DeliveredAt != null
-                || s.PickedUpAt != null
-              )
-            || s.Sequence
-              < (
-                x.PlanningFromStopId != null
-                  ? x
-                    .Stops.Where(p => p.Id == x.PlanningFromStopId)
-                    .Select(p => (int?)p.Sequence)
-                    .FirstOrDefault()
-                  : x
-                    .Stops.Where(p => p.TruckId != null || p.TruckNumber != "")
-                    .OrderBy(p => p.Sequence)
-                    .Select(p => (int?)p.Sequence)
-                    .FirstOrDefault()
-              )
-          )
-      );
+      query = query.Where(CompletedLoads.Filter(dbContext.LoadExecutionLegs));
     else if (!string.IsNullOrWhiteSpace(request.Status))
       query = query.Where(x => x.Status == request.Status);
     if (request.TruckId.HasValue)
@@ -150,7 +124,12 @@ public class GetDispatchQueryHandler(
     {
       foreach (var load in items)
         DispatchProjection.Complete(load);
-      await deadhead.ReadAsync(items, cancellationToken);
+      await CompletedLoads.MarkExecutionAsync(
+        dbContext.LoadExecutionLegs,
+        items,
+        cancellationToken
+      );
+      await deadhead.ReadCompletedAsync(items, cancellationToken);
     }
     return RequestResponse<PaginatedList<DispatchResponse>>.Ok(
       new()

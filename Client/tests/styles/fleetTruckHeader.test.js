@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
 const css = compileString(
-  "@use 'shared/driver-status'; @use 'pages/fleet-map/truck-info'; @use 'pages/fleet-map/route-info'; @use 'pages/fleet-map/stage'; @use 'pages/fleet-map/inspector'; @use 'pages/fleet-map/layout'; @use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';",
+  "@use 'shared/driver-status'; @use 'shared/trucks'; @use 'pages/fleet-map/truck-info'; @use 'pages/fleet-map/route-info'; @use 'pages/fleet-map/stage'; @use 'pages/fleet-map/inspector'; @use 'pages/fleet-map/layout'; @use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';",
   { loadPaths },
 ).css;
 // The truck card is these four files; the rest of the inspector folder is
@@ -27,12 +27,13 @@ test('supporting truck values have semantic contrast without another font size o
   assert.doesNotMatch(rule, /font-size:|line-height:|padding:|margin:/);
 });
 
-test('compact truck inspection retains content-sized telemetry and HOS', () => {
+test('compact truck inspection retains bounded telemetry and HOS', () => {
   // Only the icons the words repeat are hidden on the vehicle line; a
   // reading itself is never dropped.
   assert.doesNotMatch(compact, /__reading\s*\{[^}]*display: none/);
-  // The vehicle line has one owner, and it is not the card's stylesheet.
-  assert.match(css, /__telemetry\s*\{[^}]*display: grid;/);
+  // The vehicle line has one owner, and it is not the card's stylesheet:
+  // the shared TruckReadings, which Dispatch reads a truck with too.
+  assert.match(css, /\.truck-readings\s*\{[^}]*display: grid;/);
   assert.doesNotMatch(compact, /fleet-map-truck-info/);
   assert.match(
     compact,
@@ -48,14 +49,12 @@ test('compact truck inspection retains content-sized telemetry and HOS', () => {
     compact,
     /__metric > \.fleet-map-route-info__secondary[^{}]*\{[^}]*display: none;/,
   );
-  const telemetry = css.match(/__telemetry\s*\{([^}]*)\}/)?.[1];
-  // The vehicle's readings stand in four equal cells with tabular figures,
-  // so a wider value moves nothing from truck to truck (the owner,
-  // September 26).
+  const telemetry = css.match(/\.truck-readings\s*\{([^}]*)\}/)?.[1];
+  // Equal cells retain stable alignment but wrap before values overlap.
   assert.match(telemetry, /display: grid;/);
   assert.match(
     telemetry,
-    /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/,
+    /grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, var\(--truck-readings-min-width, var\(--size-telemetry-reading\)\)\), 1fr\)\);/,
   );
   assert.match(telemetry, /font-variant-numeric: tabular-nums;/);
   // The head: the truck and what is left beside it, then its rows - the
@@ -83,10 +82,20 @@ test('truck inspector keeps one disclosure on wide cards and none on a phone', (
   assert.match(markup, /fleet-map-mobile-summary__toggle/);
   assert.match(markup, /aria-controls="fleet-map-details"/);
   assert.doesNotMatch(markup, /fleet-map-truck-info__more/);
-  assert.match(
-    compact,
-    /\.fleet-map-mobile-summary__toggle\s*\{\s*display: inline-flex;/,
-  );
+  const toggle = compact.match(
+    /\] \.fleet-map-mobile-summary__toggle\s*\{([^}]*)\}/,
+  )?.[1];
+  assert.match(toggle, /display: inline-flex;/);
+  // The words are the link colour, which the dark theme lightens; the
+  // action colour stays primary 600 there and falls below AA on the card.
+  for (const property of [
+    'button-text',
+    'button-border',
+    'button-hover-text',
+    'button-hover-border',
+  ])
+    assert.match(toggle, new RegExp(`--${property}: var\\(--ui-link\\);`));
+  assert.doesNotMatch(toggle, /--ui-action\b/);
   // The closed state belongs to a card wide enough for two columns; a
   // phone's card is open whole and hides the toggle. Narrow is narrow
   // wherever the card stands: it reads its own width, not the window's.
@@ -279,10 +288,7 @@ test('selected-truck header left-packs identity readings clocks duty and actions
   assert.match(css, /\.driver-hours-panel\s*\{\s*display: grid;/);
   // A reading is a word and a value on one baseline - no frame, and no rule
   // between it and the next, which is what the towers had.
-  assert.doesNotMatch(
-    css,
-    /\.fleet-map-truck-info__reading[^{]*\{[^}]*border-left:/,
-  );
+  assert.doesNotMatch(css, /\.truck-readings__reading[^{]*\{[^}]*border-left:/);
   assert.doesNotMatch(css, /--hos-dial-size: var\(--size-map-hos-dial\)/);
 });
 
@@ -309,7 +315,7 @@ test('HOS circles keep the same compact gap instead of stretching across wide or
   // was reading an empty string and could never have found anything.
   assert.doesNotMatch(
     css,
-    /\.fleet-map-truck-info__telemetry\s*\{[^}]*grid-template-columns: repeat\(3,\s*minmax/,
+    /\.truck-readings\s*\{[^}]*grid-template-columns: repeat\(3,\s*minmax/,
   );
 });
 

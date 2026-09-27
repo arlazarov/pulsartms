@@ -74,7 +74,10 @@ test('both filter toolbars share aligned controls and restrained native checkbox
     css,
     /\.filter-toolbar__toggle:has\(input:checked\)\s*\{\s*color: var\(--ui-text\);\s*\}/,
   );
-  assert.doesNotMatch(css, /box-shadow|appearance:\s*none/);
+  assert.doesNotMatch(
+    css.replace(/\.filter-toolbar__drawer\.is-open\s*\{[^}]*\}/, ''),
+    /box-shadow|appearance:\s*none/,
+  );
 });
 
 test('Fleet and Dispatch keep their native bindings and use the same toolbar classes', () => {
@@ -118,6 +121,16 @@ test('Fleet and Dispatch keep their native bindings and use the same toolbar cla
     /class="dispatch-view filter-toolbar__views" role="group" aria-label="Dispatch view"/,
   );
   assert.equal((dispatch.match(/aria-pressed=/g) ?? []).length, 5);
+  // On a phone the driver filter waits behind the same Filters drawer as
+  // on Fleet Map; the view and the scope stay outside it.
+  const drawer = dispatch.slice(
+    dispatch.indexOf('<div id="dispatch-filters"'),
+    dispatch.indexOf('<div class="dispatch-view'),
+  );
+  assert.match(drawer, /class="filter-toolbar__drawer /);
+  assert.match(drawer, /<DriverGroupPicker Id="dispatch-driver-group" \/>/);
+  assert.doesNotMatch(drawer, /aria-pressed=/);
+  assert.match(dispatch, /class="btn filter-toolbar__drawer-toggle"/);
   assert.match(dispatch, /aria-label="Load scope"/);
   assert.match(dispatch, /id="dispatch-active"/);
   assert.match(dispatch, /id="dispatch-completed"/);
@@ -135,9 +148,13 @@ test('Fleet layer chips use shared control metrics, native keyboard focus and th
     css,
     /\.fleet-map-layer-controls\s*\{[^}]*border-inline-start: 1px solid var\(--ui-border-subtle\);/s,
   );
+  // The phone's panel is the shared toolbar drawer, the same on Dispatch.
+  const shared = compileString("@use 'components/filter-toolbar';", {
+    loadPaths,
+  }).css;
   assert.match(
-    css,
-    /\.fleet-map-filters\.is-open\s*\{[^}]*display: grid;[^}]*position: absolute;/s,
+    shared,
+    /@media \(width < 768px\)[\s\S]*\.filter-toolbar__drawer\.is-open\s*\{[^}]*display: grid;[^}]*position: absolute;/,
   );
   assert.doesNotMatch(css, /font-size:\s*\d+px|appearance:\s*none/);
   const razor = readFileSync(
@@ -147,6 +164,14 @@ test('Fleet layer chips use shared control metrics, native keyboard focus and th
   assert.match(
     razor,
     /class="fleet-map-layers" role="group" aria-label="Map layers"/,
+  );
+  assert.match(
+    razor,
+    /class="btn fleet-map-mobile-filters filter-toolbar__drawer-toggle"/,
+  );
+  assert.match(
+    razor,
+    /id="fleet-map-filters"\s+class="fleet-map-filters filter-toolbar__drawer /,
   );
   assert.doesNotMatch(razor, /fleet-map-pricing|fleet-map-date/);
   assert.match(

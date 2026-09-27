@@ -29,6 +29,8 @@ public sealed class FuelIssueRecords(
   IPlanningPublicationScope publication
 )
 {
+  private readonly FuelIssueWindow window = new(options, time);
+
   // What a fuel calculation saw of the truck's hand-overs when it began: the
   // latest one recorded, and the moment it began.
   public sealed record Stamp(Guid TruckId, DateTime At, DateTime? LatestSentAt);
@@ -217,13 +219,7 @@ public sealed class FuelIssueRecords(
         .Where(x => latestSent is null || latestSent <= x.WithdrawnAt)
         .ToList();
     }
-    FuelIssueHorizon.Apply(
-      plan,
-      hos,
-      time.GetUtcNow(),
-      TimeSpan.FromHours(options.Value.ShiftBufferHours),
-      TimeSpan.FromMinutes(options.Value.HosFreshMinutes)
-    );
+    window.Apply(plan, hos);
   }
 
   // Records that these visits, as the plan reads now, were passed on.

@@ -89,9 +89,9 @@ its observed duration and the recovery procedure before approval.
   defaults and deployed overrides without logging secrets.
 - Record a known rollback artifact and configuration. Verify backup recovery into
   a safe isolated database; a backup existing is not proof it can be restored.
-- Arrange an approved isolated PostgreSQL fixture. Do not use application or
-  production databases, SQL containers, Testcontainers, or an automatically
-  installed host database. Provisioning requires separate authorization.
+- Use an isolated PostgreSQL fixture following `../testing.md`. Local disposable
+  Docker or Testcontainers fixtures are permitted; working application and
+  production databases must never be used as disposable test fixtures.
 - Create sanitized fixtures for repeated visits, partial completion, driver-only
   travel, bobtail/empty legs, next-load assignments, selected route options, fuel
   arrival values, provider outages and concurrent manual edits.

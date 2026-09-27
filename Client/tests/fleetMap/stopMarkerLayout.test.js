@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { stopMarkerLabel } from '../../Scripts/fleetMap/rendering/stopMarkerLayout.ts';
+import {
+  movingRingKey,
+  stopMarkerLabel,
+} from '../../Scripts/fleetMap/rendering/stopMarkerLayout.ts';
 import { snapshotStops } from '../../Scripts/fleetMap/rendering/stopData.ts';
 
 test('compact markers show only ordered numbers while stop type remains in the card', () => {
@@ -440,4 +443,35 @@ test('no badge is ever thrown far from the place it marks', () => {
         `zoom ${zoom}, stop ${row.number}`,
       );
   }
+});
+
+// Far out, a truck driving the last miles to its delivery and the delivery
+// are one place, and are drawn as one ring even while it moves (the owner,
+// September 27: 11006, seven kilometres out at 59 mph). Zoomed in they
+// part; and its frames relay nothing until it starts or stops covering it.
+test('a truck driving to its next stop is its ring when far out', () => {
+  const truck = {
+    unit: '11006',
+    position: [-74.3255, 42.93314],
+    speed: 59,
+    engine: 'On',
+  };
+  const stops = [
+    { id: 'del', number: '2', position: [-74.241, 42.9379], next: true },
+  ];
+  const [far] = snapshotStops(stops, [], [], 7, [truck]).stopData;
+  assert.equal(far.standing, '#16a34a', 'a running truck rings green');
+  assert.equal(truck.merged, true);
+  assert.equal(movingRingKey([truck], stops, 7), '11006>del');
+  const [near] = snapshotStops(stops, [], [], 14, [truck]).stopData;
+  assert.equal(near.standing, undefined, 'zoomed in, two marks');
+  assert.equal(truck.merged, false);
+  assert.equal(movingRingKey([truck], stops, 14), '');
+  // A stop that is not the truck's next is never its ring, moving or not.
+  const other = [{ ...stops[0], next: false }];
+  assert.equal(
+    snapshotStops(other, [], [], 7, [truck]).stopData[0].standing,
+    undefined,
+  );
+  assert.equal(movingRingKey([truck], other, 7), '');
 });

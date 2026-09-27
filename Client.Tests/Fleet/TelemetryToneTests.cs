@@ -14,12 +14,27 @@ public sealed class TelemetryToneTests
   [InlineData(70, "is-low")]
   [InlineData(70.1, "is-critical")]
   public void SpeedUsesInclusiveLimits(double speed, string tone) =>
-    Assert.Equal(tone, TelemetryTone.Speed((decimal)speed));
+    Assert.Equal(tone, TelemetryTone.Speed((decimal)speed, "On"));
+
+  // The band is for a running engine, even at 0 mph; an engine that is off,
+  // or a standing truck with no word of its engine, keeps the quiet icon
+  // (the owner, September 27). Moving says the engine runs.
+  [Theory]
+  [InlineData(0, "Off", "is-stopped")]
+  [InlineData(0, null, "is-stopped")]
+  [InlineData(0, " idle ", "is-normal")]
+  [InlineData(0, "Running", "is-normal")]
+  [InlineData(40, null, "is-normal")]
+  public void SpeedIsGreenOnlyWhileTheEngineRuns(
+    int speed,
+    string? engine,
+    string tone
+  ) => Assert.Equal(tone, TelemetryTone.Speed(speed, engine));
 
   // No report is not a stopped truck: it never reads as a normal speed.
   [Fact]
   public void AnUnknownSpeedIsNeverNormal() =>
-    Assert.Equal("is-unknown", TelemetryTone.Speed(null));
+    Assert.Equal("is-unknown", TelemetryTone.Speed(null, "On"));
 
   [Theory]
   [InlineData(65, "On", "is-normal")]

@@ -106,6 +106,29 @@ public partial class DispatchLoadStop
     : !string.IsNullOrWhiteSpace(Stop.Address) ? Stop.Address
     : "Location pending";
 
+  // A board card names the place as the map's stop card does: the place by
+  // name, then its street, then its town. A stop without a name keeps the
+  // town first and the street under it.
+  private string Place =>
+    string.IsNullOrWhiteSpace(Stop.Name) ? Location : Stop.Name.Trim();
+  private IEnumerable<(string Kind, string Text)> PlaceLines
+  {
+    get
+    {
+      if (HasStreet)
+        yield return ("street", Stop.Address);
+      // Without a town the location already is the street.
+      if (
+        !string.IsNullOrWhiteSpace(Stop.Name)
+        && Location != "Location pending"
+      )
+        yield return (
+          string.IsNullOrWhiteSpace(Stop.City) ? "street" : "locality",
+          Location
+        );
+    }
+  }
+
   protected override void OnParametersSet()
   {
     if (_referenceNotes != Stop.Notes || _referenceJob != Stop.Job)

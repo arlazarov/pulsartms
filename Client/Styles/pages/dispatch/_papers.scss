@@ -11,15 +11,6 @@
   gap: ui.pg(md);
   align-items: stretch;
 }
-.dispatch-papers--completed {
-  grid-template-columns: minmax(0, 1fr);
-}
-.dispatch-papers--completed .dispatch-paper-tabs {
-  grid-template-columns: repeat(
-    auto-fit,
-    minmax(min(100%, ui.size(dispatch-load-card)), 1fr)
-  );
-}
 .dispatch-paper-tabs {
   display: grid;
   gap: ui.pg(sm);
@@ -94,12 +85,29 @@
     gap: ui.pg(xs);
     min-width: 0;
   }
-  &__tab-line {
-    display: flex;
+  // Every folder keeps one shape whatever its words: what the load is at
+  // the left and its hour at the right, the driver and the status, then
+  // the miles and the money. Folded by content, the hour and the money
+  // each moved to a line of their own on some folders and not others.
+  &__tab-line,
+  &__tab-financials {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
     align-items: baseline;
-    flex-wrap: wrap;
     gap: ui.pg(xs) ui.pg(sm);
     min-width: 0;
+  }
+  &__tab-identity {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 ui.pg(sm);
+    min-width: 0;
+  }
+  &__tab-units {
+    display: inline-flex;
+    gap: ui.pg(sm);
+    white-space: nowrap;
   }
   &__tab-number {
     font-size: ui.fs(body);
@@ -123,22 +131,28 @@
     &.is-completed {
       color: ui.theme(success-text);
     }
+    &.is-conflict {
+      color: ui.theme(warning-text);
+      background: ui.theme(warning-surface);
+    }
   }
   &__tab-driver {
-    flex: 1 1 auto;
+    min-width: 0;
     color: ui.theme(text-secondary);
   }
+  &__tab-status,
   &__tab-schedule {
-    margin-left: auto;
+    justify-self: end;
+  }
+  &__tab-schedule {
     color: ui.theme(text-muted);
     font-size: ui.fs(caption);
+    white-space: nowrap;
   }
+  // The miles, then the money on the line under them (the owner,
+  // September 27): beside the miles it crowded one line with both.
   &__tab-financials {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: ui.pg(xs) ui.pg(sm);
+    grid-template-columns: minmax(0, 1fr);
     margin-top: ui.pg(xs);
     font-size: ui.fs(small);
     font-variant-numeric: tabular-nums;

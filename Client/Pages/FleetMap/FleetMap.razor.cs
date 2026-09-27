@@ -8,6 +8,7 @@ using Client.Models.DTO.Fleet;
 using Client.Models.DTO.Planning;
 using Client.Services;
 using Client.Shared;
+using Client.Shared.Measurements;
 using Client.Shared.Search;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -94,12 +95,8 @@ public partial class FleetMap : IAsyncDisposable
         ?? _routeState?.Progress?.ProgressMiles
     );
 
-  // What the head of the card says is left: to the stop the truck is heading
-  // for, because that is the stop its ETA beside it is for. It was the
-  // remainder of the whole run, so a truck on its way to a pickup read the
-  // miles to its delivery next to the hour of its pickup. Only where no next
-  // stop is known is the run's remainder said instead.
-  private double? LeftMiles => NextStopMiles ?? RemainingMiles;
+  private double? LeftMiles =>
+    DistanceLeft.Miles(NextStopMiles, RemainingMiles);
 
   // The truck has reached the stop it was heading for and the stop is still
   // open: it is standing there, waiting on the appointment. There is nothing
@@ -146,6 +143,10 @@ public partial class FleetMap : IAsyncDisposable
   private Guid? _activeTruckId;
   private Guid? _activeDispatchId;
   private Guid? _planningDispatchId;
+
+  // The truck's work planning passed without a delivery, from the same
+  // summary that names its current work (AutomaticPlanningResult).
+  private IReadOnlyList<WorkConflictNotice> _planningConflicts = [];
   private bool _routeLoading;
   private bool _etaRefreshPending;
   private bool _recalculatingFuel;
@@ -274,6 +275,7 @@ public partial class FleetMap : IAsyncDisposable
   {
     await PublishInspectorSuspensionAsync();
     await ReflectSelectionAsync();
+    await RefreshChainIfDueAsync();
     if (!firstRender)
       return;
     await _visibility.StartAsync(JS);
@@ -546,6 +548,7 @@ public partial class FleetMap : IAsyncDisposable
     _followingTruck = false;
     _activeDispatchId = null;
     _planningDispatchId = null;
+    _planningConflicts = [];
     _planningExecutionLegId = null;
     _planningAssignmentRevision = 0;
     SetRouteState(null);
@@ -608,6 +611,7 @@ public partial class FleetMap : IAsyncDisposable
     _activeTruckId = truckId;
     _activeDispatchId = dispatchId;
     _planningDispatchId = null;
+    _planningConflicts = [];
     _planningExecutionLegId = null;
     _planningAssignmentRevision = 0;
     SetRouteState(null);
@@ -650,6 +654,7 @@ public partial class FleetMap : IAsyncDisposable
         return;
     }
     _planningDispatchId = cached?.DispatchId;
+    _planningConflicts = cached?.WorkConflicts ?? [];
     _planningExecutionLegId =
       cached?.ExecutionLegId ?? cached?.State?.Plan?.ExecutionLegId;
     _planningAssignmentRevision =
@@ -804,6 +809,7 @@ public partial class FleetMap : IAsyncDisposable
       var previousExecutionLegId = SelectedExecutionLegId;
       var previousAssignmentRevision = SelectedAssignmentRevision;
       _planningDispatchId = result.Response?.DispatchId;
+      _planningConflicts = result.Response?.WorkConflicts ?? [];
       _planningExecutionLegId =
         result.Response?.ExecutionLegId
         ?? result.Response?.State?.Plan?.ExecutionLegId;
@@ -961,6 +967,7 @@ public partial class FleetMap : IAsyncDisposable
     if (_disposed)
       return;
     _disposed = true;
+    DisposeChain();
     DriverGroup.Changed -= OnDriverGroupChanged;
     ResetFuelEditor();
     ResetInspectedLoad();

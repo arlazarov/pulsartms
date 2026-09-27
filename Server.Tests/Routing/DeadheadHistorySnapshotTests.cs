@@ -49,6 +49,18 @@ public sealed class DeadheadHistorySnapshotTests
       [second],
       default
     );
+    var combined = await f.Services.DeadheadHistory.ReadLoadedAsync(
+      [first, second],
+      default
+    );
+    Assert.Equal(
+      expectedFirst[first.Id].InputSignature,
+      combined[first.Id].InputSignature
+    );
+    Assert.Equal(
+      expectedSecond[second.Id].InputSignature,
+      combined[second.Id].InputSignature
+    );
     var actual = await f.Services.DeadheadHistory.ReadLoadedBatchesAsync(
       [
         [first],

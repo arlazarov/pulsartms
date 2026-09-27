@@ -100,15 +100,6 @@ public sealed partial class DeadheadService(
     return (route, road);
   }
 
-  private Task<Dictionary<Guid, DispatchDeadhead>> ReadSavedAsync(
-    IReadOnlyCollection<Guid> ids,
-    CancellationToken ct
-  ) =>
-    db
-      .DispatchDeadheads.AsNoTracking()
-      .Where(x => ids.Contains(x.DispatchId) && x.ExecutionLegId == null)
-      .ToDictionaryAsync(x => x.DispatchId, ct);
-
   public Task<TruckRoute?> ReadRouteAsync(
     Guid previousId,
     Load current,
@@ -181,24 +172,108 @@ public sealed partial class DeadheadService(
     return result;
   }
 
-  public async Task ReadAsync(
+  public async Task ReadCompletedAsync(
     IReadOnlyCollection<DispatchResponse> items,
     CancellationToken ct
   )
   {
     if (items.Count == 0)
       return;
-    var ids = items.Select(x => x.Id).ToArray();
+    var sources = items
+      .Select(x => new Load
+      {
+        Id = x.Id,
+        LoadNumber = x.LoadNumber,
+        Status = x.Status,
+        ShipDate = x.ShipDate,
+        DeliveryDate = x.DeliveryDate,
+        Price = x.Price,
+        Currency = x.Currency,
+        LoadedMiles = x.LoadedMiles,
+      })
+      .ToArray();
+    var sections = await ExecutionRouteSections.ReadAsync(db, sources, ct);
+    var legacy = new List<DispatchResponse>();
+    var native = new List<(DispatchResponse Item, RouteWorkSnapshot Work)>();
+    foreach (var item in items)
+    {
+      if (!sections.TryGetValue(item.Id, out var work))
+      {
+        legacy.Add(item);
+        continue;
+      }
+      if (work.Length == 1)
+      {
+        native.Add((item, work[0]));
+        continue;
+      }
+      // A load-level history row cannot use an arbitrary transfer leg's
+      // connection as its total. Keep an unresolved aggregate unknown.
+      item.EmptyMiles = null;
+      item.EmptyMilesStatus = "unavailable";
+      item.LoadedRatePerMile = DispatchRates.PerMile(
+        item.Price,
+        item.LoadedMiles
+      );
+      item.TotalRatePerMile = null;
+    }
+    await ReadAsync(legacy, native, ct);
+  }
+
+  public Task ReadAsync(
+    IReadOnlyCollection<DispatchResponse> items,
+    CancellationToken ct
+  ) => ReadAsync(items, [], ct);
+
+  // A load accepted into execution keeps its connection per leg, captured
+  // from that leg's work. Read by the load alone it matched no saved
+  // connection, and a board of such loads showed no total or Total RPM.
+  public async Task ReadAsync(
+    IReadOnlyCollection<DispatchResponse> items,
+    IReadOnlyCollection<(DispatchResponse Item, RouteWorkSnapshot Work)> legs,
+    CancellationToken ct
+  )
+  {
+    if (items.Count == 0 && legs.Count == 0)
+      return;
+    var sourceIds = items.Select(x => x.Id).Distinct().ToArray();
+    var ids = sourceIds
+      .Concat(legs.Select(x => x.Work.Id))
+      .Distinct()
+      .ToArray();
     // Totals are cumulative, so this request's share is the difference. A
     // running total printed as if it were one request reads as a number that
     // grows on its own.
     var before = PerformanceStages.Snapshot();
     var stage = Stopwatch.GetTimestamp();
-    var history = await ReadHistoryAsync(ids, ct);
+    var history = new Dictionary<(Guid, Guid?), DeadheadHistorySnapshot>();
+    if (sourceIds.Length > 0)
+      foreach (var (id, snapshot) in await ReadHistoryAsync(sourceIds, ct))
+        history[(id, null)] = snapshot;
+    if (legs.Count > 0)
+      foreach (
+        var (key, snapshot) in await historyReader.ReadSectionsAsync(
+          legs.Select(x => x.Work).ToArray(),
+          ct
+        )
+      )
+        history[key] = snapshot;
     var historyMs = Stopwatch.GetElapsedTime(stage).TotalMilliseconds;
     PerformanceStages.Record("deadhead-read", "history", historyMs);
     stage = Stopwatch.GetTimestamp();
-    var saved = await ReadSavedAsync(ids, ct);
+    var withLegs = legs.Count > 0;
+    var saved = await db
+      .DispatchDeadheads.AsNoTracking()
+      .Where(x =>
+        ids.Contains(x.DispatchId) && (withLegs || x.ExecutionLegId == null)
+      )
+      .Select(x => new SavedMiles(
+        x.DispatchId,
+        x.ExecutionLegId,
+        x.InputHash,
+        x.Miles
+      ))
+      .ToDictionaryAsync(x => (x.DispatchId, x.ExecutionLegId), ct);
     var savedMs = Stopwatch.GetElapsedTime(stage).TotalMilliseconds;
     PerformanceStages.Record("deadhead-read", "saved", savedMs);
     stage = Stopwatch.GetTimestamp();
@@ -211,7 +286,12 @@ public sealed partial class DeadheadService(
     stage = Stopwatch.GetTimestamp();
     var profilesElapsed = 0d;
     var profiles = new Dictionary<Guid, TruckRouteProfile>();
-    foreach (var item in items)
+    var keyed = items
+      .Select(x => (Item: x, Key: (x.Id, (Guid?)null)))
+      .Concat(
+        legs.Select(x => (x.Item, Key: (x.Work.Id, x.Work.ExecutionLegId)))
+      );
+    foreach (var (item, key) in keyed)
     {
       item.EmptyMiles = null;
       item.EmptyMilesStatus = "unavailable";
@@ -220,7 +300,7 @@ public sealed partial class DeadheadService(
         item.LoadedMiles
       );
       item.TotalRatePerMile = null;
-      var snapshot = history.GetValueOrDefault(item.Id);
+      var snapshot = history.GetValueOrDefault(key);
       var load = snapshot?.Current;
       var pair = DeadheadConnection.Find(snapshot);
       if (pair is null)
@@ -236,7 +316,7 @@ public sealed partial class DeadheadService(
       }
       item.EmptyMilesStatus = "pending";
       if (
-        saved.TryGetValue(item.Id, out var entry)
+        saved.TryGetValue(key, out var entry)
         && entry.InputHash == pair.Signature(profile)
       )
       {
@@ -318,4 +398,11 @@ public sealed partial class DeadheadService(
         .Where(x => x.Calls > 0)
         .Select(x => $"{x.Name}={Math.Round(x.Ms)}/{x.Calls}")
     );
+
+  private sealed record SavedMiles(
+    Guid DispatchId,
+    Guid? ExecutionLegId,
+    string InputHash,
+    decimal? Miles
+  );
 }

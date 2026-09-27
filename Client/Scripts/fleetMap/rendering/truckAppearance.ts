@@ -45,3 +45,23 @@ export function truckIcon(engine: unknown, speed = 0) {
   }
   return icons.get(key);
 }
+
+// The disc a truck is picked by: drawn, but nearly transparent, so the
+// picking pass sees all of it and the eye nothing.
+const hitIcon = {
+  url:
+    'data:image/svg+xml,' +
+    encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">' +
+        '<circle cx="32" cy="32" r="32" fill="#000" fill-opacity="0.01"/></svg>',
+    ),
+  width: 64,
+  height: 64,
+  anchorX: 32,
+  anchorY: 32,
+  mask: false,
+};
+
+export function truckHitIcon() {
+  return hitIcon;
+}

@@ -114,7 +114,7 @@ public sealed class DispatchCycleForecastTests
   {
     using var context = Context();
     var component = context.Render<DispatchLoadCard>(parameters =>
-      parameters.Add(card => card.Load, Load()).Add(card => card.Current, true)
+      parameters.Add(card => card.Load, Placed(Load(), true))
     );
 
     Assert.Empty(component.FindAll(".dispatch-load__cycle"));
@@ -129,7 +129,7 @@ public sealed class DispatchCycleForecastTests
       JSRuntimeMode.Loose;
     Assert.Equal(
       $"/dispatch/{component.Instance.Load.Id}",
-      component.Find(".dispatch-load__details").GetAttribute("href")
+      component.Find(".dispatch-load__number").GetAttribute("href")
     );
     Assert.Empty(component.FindAll("dialog"));
     return context.Render<DispatchLoadDialog>(p =>
@@ -492,6 +492,14 @@ public sealed class DispatchCycleForecastTests
     {
       CycleAtCalculation = BaselineCycle(),
     };
+    return load;
+  }
+
+  // The load as the server places it on its truck: current or not.
+  private static DispatchResponse Placed(DispatchResponse load, bool current)
+  {
+    if (current)
+      load.WorkPhase = "current";
     return load;
   }
 }

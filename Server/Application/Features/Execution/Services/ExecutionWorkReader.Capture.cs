@@ -5,6 +5,7 @@ using Domain.Entities.Dispatch;
 using Domain.Models.Execution;
 using Domain.Models.Routing;
 using Domain.Rules;
+using Domain.Rules.Routing;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Execution.Services;
@@ -85,7 +86,10 @@ public static partial class ExecutionWorkReader
           stop.Name
         ))
         .ToImmutableArray()
-    );
+    )
+    {
+      AcceptedRevision = PlanningWorkPolicy.AcceptedRevision(load),
+    };
   }
 
   private static WorkOrderKey Order(RouteWorkSnapshot load)

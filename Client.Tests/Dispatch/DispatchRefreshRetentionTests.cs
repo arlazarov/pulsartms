@@ -25,6 +25,11 @@ public sealed class DispatchRefreshRetentionTests
         )
     );
     var card = component.FindComponent<DispatchLoadCard>().Instance;
+    // The card settles once the board shows its load current (the phase
+    // the server places); retention is measured from there.
+    component.WaitForAssertion(
+      () => Assert.Single(component.FindAll(".dispatch-load--current"))
+    );
     var previous = component.FindComponent<DispatchLoadCard>().Markup;
     fixture.DeferBoard = true;
     await component.InvokeAsync(
@@ -109,6 +114,11 @@ public sealed class DispatchRefreshRetentionTests
             .FindAll(".stop-hours__arrival .stop-hours__status--success")
             .Count
         )
+    );
+    // The card settles once the board shows its load current (the phase
+    // the server places); retention is measured from there.
+    component.WaitForAssertion(
+      () => Assert.Single(component.FindAll(".dispatch-load--current"))
     );
     var previous = component.FindComponent<DispatchLoadCard>().Markup;
     fixture.DeferBoard = true;

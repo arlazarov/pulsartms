@@ -110,6 +110,12 @@ plans.forEach(([unit, route, speed], t) => {
       orderNumber: `ORD-${t}${i}`,
       status: i === 0 ? 'in_transit' : 'planned',
       completed: false,
+      // The server's placement of the load on its truck. One load of the
+      // second truck is read at another revision than its inputs.
+      workPhase:
+        t === 1 && i === 1
+          ? 'stale'
+          : ['current', 'next', 'upcoming'][Math.min(i, 2)],
       customerName: `Fixture Customer ${t + 1}`,
       truckNumber: unit,
       driverName: `Fixture Driver ${t + 1}`,
@@ -142,6 +148,45 @@ const first = trucks[0];
 // Positions are a function of time, so every read agrees with the last.
 const started = Date.now();
 const point = (latitude, longitude) => ({ latitude, longitude });
+// A saved fuel plan with one purchase, so the plan card, its editor and the
+// send window have something to show. Values are synthetic.
+const fuelPlanOf = (truck, load, destination) => ({
+  truckId: truck.truckId,
+  calculatedAt: new Date().toISOString(),
+  pricingDate: day(0),
+  needsRefresh: false,
+  manuallyEdited: false,
+  dispatchIds: [load.id],
+  purchaseGallons: 90,
+  purchaseCostUsd: 330.48,
+  arrivalGallons: 60,
+  startingGallons: 120,
+  remainingMiles: 180,
+  stops: [
+    {
+      number: 1,
+      stationId: guid(700),
+      beforeStopId: destination.id,
+      dispatchId: load.id,
+      name: 'Fixture Travel Center #1',
+      point: point(
+        (truck.latitude + destination.latitude) / 2,
+        (truck.longitude + destination.longitude) / 2,
+      ),
+      address: '1 Fixture Exit, Fixture, TN',
+      arrivalGallons: 40,
+      departureGallons: 130,
+      buyGallons: 90,
+      fillToTarget: false,
+      milesAhead: 80,
+      purchaseCostUsd: 330.48,
+      yourPrice: 3.672,
+      cashUsdPerGallon: 3.672,
+      currency: 'USD',
+      unit: 'US gal',
+    },
+  ],
+});
 const planning = truck => {
   const row = rows.find(r => r.truckId === truck.truckId);
   const current = row.dispatches[0];
@@ -166,7 +211,7 @@ const planning = truck => {
         originalPlannedMiles: 320,
         fromCurrentPosition: true,
         profile: {},
-        fuelPlan: null,
+        fuelPlan: fuelPlanOf(truck, current, destination),
         stops: [
           {
             ...destination,
@@ -236,15 +281,17 @@ const nextRoutes = truckId => {
     })),
   });
 };
-const board = (number, search) => {
+const boardReads = [];
+const board = (number, search, truckId) => {
   const q = (search ?? '').toLowerCase();
   const items = rows.filter(
     r =>
-      !q ||
+      (!truckId || r.truckId === truckId) &&
+      (!q ||
       [r.truckNumber, r.driverName, ...r.dispatches.map(d => d.loadNumber)]
         .join(' ')
         .toLowerCase()
-        .includes(q),
+        .includes(q)),
   );
   return success({
     items,
@@ -358,7 +405,11 @@ async function open({ theme, face, width, height }) {
       request.method() === 'POST' &&
       (url.pathname === '/api/dispatch/board/planning' ||
         /^\/api\/fleet\/trucks\/[^/]+\/planning$/.test(url.pathname) ||
-        /^\/api\/dispatch\/[^/]+\/planning\/automatic$/.test(url.pathname));
+        /^\/api\/dispatch\/[^/]+\/planning\/automatic$/.test(url.pathname) ||
+        // The editor's preview computes a draft; it saves nothing.
+        /^\/api\/dispatch\/[^/]+\/planning\/fuel\/edit\/preview$/.test(
+          url.pathname,
+        ));
     if (
       url.origin !== origin ||
       (!['GET', 'HEAD'].includes(request.method()) && !readPost)
@@ -392,13 +443,16 @@ async function open({ theme, face, width, height }) {
         });
       }
       if (path === '/api/fleet/hos') return route.fulfill({ json: success({}) });
-      if (path === '/api/dispatch/board')
+      if (path === '/api/dispatch/board') {
+        boardReads.push(url.searchParams.get('truckId'));
         return route.fulfill({
           json: board(
             Number(url.searchParams.get('page') ?? 1),
             url.searchParams.get('search'),
+            url.searchParams.get('truckId'),
           ),
         });
+      }
       if (path === '/api/dispatch')
         return route.fulfill({
           json: success({
@@ -431,6 +485,36 @@ async function open({ theme, face, width, height }) {
         const truck = trucks.find(t => t.truckId === load?.truckId);
         return route.fulfill({ json: planning(truck) });
       }
+      if (
+        (m = path.match(
+          /^\/api\/dispatch\/([^/]+)\/planning\/fuel\/edit\/preview$/,
+        ))
+      ) {
+        const load = loads.get(m[1]);
+        const truck = trucks.find(t => t.truckId === load?.truckId);
+        const plan = planning(truck).response.state.plan.fuelPlan;
+        return route.fulfill({
+          json: success({
+            plan,
+            stops: plan.stops.map(stop => ({
+              stationId: stop.stationId,
+              beforeStopId: stop.beforeStopId,
+              buyGallons: stop.buyGallons,
+              fillToTarget: false,
+              purchaseLimitGallons: 150,
+            })),
+            expectedCalculatedAt: plan.calculatedAt,
+            tankGallons: 200,
+            fillLimitGallons: 190,
+            errors: [],
+            valuesAvailable: true,
+          }),
+        });
+      }
+      if (/^\/api\/fleet\/trucks\/[^/]+\/camera$/.test(path))
+        return route.fulfill({
+          json: success({ status: 'unavailable', url: null, capturedAt: null }),
+        });
       if ((m = path.match(/^\/api\/dispatch\/truck\/([^/]+)\/next-routes$/)))
         return route.fulfill({ json: nextRoutes(m[1]) });
       if ((m = path.match(/^\/api\/dispatch\/truck\/([^/]+)$/)))
@@ -468,7 +552,11 @@ async function open({ theme, face, width, height }) {
     // Missing reads are listed as unexpected requests instead.
     if (
       message.type() === 'error' &&
-      !/favicon|Failed to load resource/.test(message.text())
+      // The route preview is refused on purpose (it would ask the
+      // provider); the editor logs that and shows its retry.
+      !/favicon|Failed to load resource|Route preview failed/.test(
+        message.text(),
+      )
     )
       report.errors.push(`console: ${redact(message.text()).slice(0, 300)}`);
   });
@@ -490,11 +578,14 @@ const noOverflow = async (tab, name) => {
 };
 try {
   // Screens: both interfaces, both themes, desktop and phone.
+  // FUTURISTIC_BEHAVIOUR_ONLY=1 skips them for a quick behaviour pass.
+  if (!process.env.FUTURISTIC_BEHAVIOUR_ONLY)
   for (const face of ['futuristic', 'current'])
     for (const theme of ['light', 'dark'])
       for (const [size, width, height] of [
         ['desktop', 1440, 900],
         ['phone', 390, 844],
+        ['narrow', 360, 780],
       ]) {
         const { context, tab } = await open({ theme, face, width, height });
         const name = `${face}-${theme}-${size}`;
@@ -532,6 +623,7 @@ try {
       width: 1440,
       height: 900,
     });
+    const readsBefore = boardReads.length;
     await tab.goto(`${origin}/fleet/map?truckId=${first.truckId}`);
     await tab.locator('.fleet-truck-list__row').first().waitFor();
     await tab.waitForTimeout(5000);
@@ -544,6 +636,17 @@ try {
     check((await title()).trim() === first.unitNumber,
       'the addressed truck opens in the inspector', await title());
 
+    // Docked in its column the card is narrower than the compact columns,
+    // so, as on a phone, it is open whole and scrolls: no Details button,
+    // and nothing waits behind one.
+    const toggleShown = await tab
+      .locator('.fleet-map-mobile-summary__toggle')
+      .isVisible();
+    const detailsShown = await tab.locator('#fleet-map-details').isVisible();
+    check(!toggleShown && detailsShown,
+      'the docked truck card shows its details whole',
+      { toggleShown, detailsShown });
+
     // The list selects through the page's own path.
     await tab.locator('.fleet-truck-list__row').nth(1).click();
     await tab.waitForTimeout(1500);
@@ -555,14 +658,36 @@ try {
       .textContent();
     check(chainTitle.includes(trucks[1].unitNumber),
       'the chain follows the selection', chainTitle);
+    const staleChain = await tab
+      .locator('.fleet-trip-chain__phase')
+      .allTextContents();
+    check(staleChain.includes('Needs refresh'),
+      'a load the server marks stale says so in the chain', staleChain);
     await tab.locator('.fleet-truck-list__row').nth(0).click();
     await tab.waitForTimeout(2500);
+    // Three choices (first, second, first again): one read each.
+    const perTruck = boardReads.slice(readsBefore).filter(Boolean);
+    check(
+      JSON.stringify(perTruck) ===
+        JSON.stringify([first.truckId, trucks[1].truckId, first.truckId]),
+      'the chain reads the board once per truck chosen',
+      perTruck,
+    );
 
     // The chain opens the next load's stop card through the map.
     const links = tab.locator('.fleet-trip-chain__card');
     check((await links.count()) === 3,
       'the chain shows the current load and the next loads',
       await links.count());
+    const chainPhases = await tab
+      .locator('.fleet-trip-chain__phase')
+      .allTextContents();
+    check(
+      JSON.stringify(chainPhases) ===
+        JSON.stringify(['Current', 'Next', 'Upcoming']),
+      'the chain names the server work phases',
+      chainPhases,
+    );
     await links.nth(1).click();
     await tab.waitForTimeout(1500);
     const mode = await tab
@@ -627,6 +752,91 @@ try {
     await context.close();
   }
 
+  // The fuel plan, its editor, the send window, the camera and the route
+  // options in the Futuristic layout. Nothing is saved or sent: writes are
+  // blocked, the camera start is refused, and no send or save is pressed.
+  for (const theme of ['light', 'dark'])
+    for (const [size, width, height] of [
+      ['desktop', 1440, 900],
+      ['phone', 390, 844],
+      ['narrow', 360, 780],
+    ]) {
+      const { context, tab } = await open({
+        theme,
+        face: 'futuristic',
+        width,
+        height,
+      });
+      const name = `editors-${theme}-${size}`;
+      const fresh = async () => {
+        await tab.goto(`${origin}/fleet/map?truckId=${first.truckId}`);
+        await tab.locator('button[aria-label="Fuel"]').waitFor();
+        await tab.waitForTimeout(3500);
+      };
+      const inView = async (selector, label) => {
+        const box = await tab.locator(selector).first().boundingBox();
+        const over = await tab.evaluate(
+          () =>
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
+        );
+        check(
+          box &&
+            box.width > 0 &&
+            box.x >= -1 &&
+            box.x + box.width <= width + 1 &&
+            over <= 0,
+          `${name}: ${label} is shown within the screen`,
+          { box, over },
+        );
+        return box;
+      };
+      await fresh();
+      await tab.locator('button[aria-label="Fuel"]').click();
+      await tab.waitForTimeout(800);
+      await inView('.fleet-map-inspector', 'the fuel plan card');
+      await shot(tab, `${name}-fuel-plan`);
+      const edit = tab.locator('.fleet-map-fuel-panel__view');
+      check(await edit.isEnabled(), `${name}: Edit plan is offered`);
+      await edit.click();
+      await tab.locator('.fuel-plan-editor').waitFor({ timeout: 10000 });
+      await tab.waitForTimeout(800);
+      const editor = await inView('.fuel-plan-editor', 'the fuel editor');
+      if (size === 'desktop') {
+        const map = await tab.locator('#fleet-map').boundingBox();
+        check(editor.x >= map.x + map.width - 1,
+          `${name}: the fuel editor stands in the card's column`,
+          { editor, map });
+      }
+      await shot(tab, `${name}-fuel-editor`);
+
+      await fresh();
+      await tab.locator('button[aria-label="Fuel"]').click();
+      await tab.waitForTimeout(800);
+      await tab.getByRole('button', { name: 'Send fuel plan' }).click();
+      await tab.locator('.fuel-send-plan').waitFor({ timeout: 10000 });
+      await tab.waitForTimeout(800);
+      await inView('.fuel-send-plan', 'the send window');
+      await shot(tab, `${name}-send-plan`);
+
+      await fresh();
+      await tab.getByRole('button', { name: 'Camera', exact: true }).click();
+      await tab.locator('dialog.truck-camera[open]').waitFor({
+        timeout: 10000,
+      });
+      await tab.waitForTimeout(800);
+      await inView('dialog.truck-camera[open]', 'the camera');
+      await shot(tab, `${name}-camera`);
+
+      await fresh();
+      await tab.locator('button[aria-label="Route options"]').click();
+      await tab.locator('.route-editor').waitFor({ timeout: 10000 });
+      await tab.waitForTimeout(800);
+      await inView('.route-editor', 'the route options');
+      await shot(tab, `${name}-route-options`);
+      await context.close();
+    }
+
   // Dispatch keeps its views, search and scope in the Futuristic interface.
   {
     const { context, tab } = await open({
@@ -638,6 +848,15 @@ try {
     await tab.goto(`${origin}/dispatch?q=11006`);
     await tab.locator('article.dispatch-truck').first().waitFor();
     await tab.waitForTimeout(600);
+    const boardPhases = (
+      await tab.locator('.dispatch-load__phase').allTextContents()
+    ).map(x => x.trim());
+    check(
+      JSON.stringify(boardPhases) ===
+        JSON.stringify(['Current', 'Needs refresh']),
+      'Dispatch names the same server phases as the Fleet chain',
+      boardPhases,
+    );
     const shown = async () => ({
       search: await tab.locator('#dispatch-search').inputValue(),
       active: await tab.locator('#dispatch-active').getAttribute('aria-pressed'),
@@ -654,6 +873,9 @@ try {
           now.active === start.active,
         `Dispatch ${view} keeps the search and scope`, { start, now });
     }
+    // Completed is read in the Table alone (owner, September 27).
+    await tab.locator('.dispatch-view button', { hasText: 'Table' }).click();
+    await tab.waitForTimeout(400);
     await tab.locator('#dispatch-completed').click();
     await tab.waitForTimeout(600);
     check((await tab.locator('#dispatch-completed').getAttribute(

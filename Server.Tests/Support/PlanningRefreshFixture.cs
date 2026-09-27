@@ -18,6 +18,7 @@ internal sealed class PlanningRefreshFixture : IAsyncDisposable
   private ServiceProvider root = null!;
   private AsyncServiceScope scope;
   public ManualTimeProvider Time { get; } = new();
+  public SharedInputsProbe SavedInputs { get; } = new();
   public IServiceProvider Services => scope.ServiceProvider;
   public AppDbContext Db => Services.GetRequiredService<AppDbContext>();
   public PlanningRefreshQueue Queue =>
@@ -50,6 +51,7 @@ internal sealed class PlanningRefreshFixture : IAsyncDisposable
     services.AddSingleton<PlanningSummaryCache>();
     services.AddScoped<ICurrentCompany, TestCompany>();
     services.AddSingleton<PlanningRefreshOperation>();
+    services.AddSingleton<IFuelSavedInputsValidation>(fixture.SavedInputs);
     configure?.Invoke(services);
     fixture.root = services.BuildServiceProvider(
       new ServiceProviderOptions { ValidateScopes = true }

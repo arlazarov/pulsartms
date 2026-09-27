@@ -159,9 +159,13 @@ export function createSceneMarks(scene: MarkedScene) {
       this.done = value;
       scene.stopsChanged();
     }
-    setNext(value: boolean) {
-      if (this.next === value) return;
+    // The stop a truck is driving to, and whose: only that truck is ever
+    // drawn as its ring.
+    setNext(value: boolean, truckId: string | null = null) {
+      const truck = value ? truckId : null;
+      if (this.next === value && this.nextTruck === truck) return;
       this.next = value;
+      this.nextTruck = truck;
       scene.stopsChanged();
     }
     get highlighted() {
@@ -200,12 +204,19 @@ export function createSceneMarks(scene: MarkedScene) {
       };
       scene.trucks.add(t);
       return {
-        update(value: { unitNumber?: string; engineState?: string }) {
+        update(value: {
+          unitNumber?: string;
+          engineState?: string;
+          truckId?: string;
+        }) {
           const unit = value.unitNumber || '',
-            engine = value.engineState?.toLowerCase() || '';
-          if (t.unit === unit && t.engine === engine) return;
+            engine = value.engineState?.toLowerCase() || '',
+            truckId = value.truckId ?? null;
+          if (t.unit === unit && t.engine === engine && t.truckId === truckId)
+            return;
           t.unit = unit;
           t.engine = engine;
+          t.truckId = truckId;
           scene.vehiclesChanged();
         },
         render(p: {

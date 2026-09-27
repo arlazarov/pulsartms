@@ -582,6 +582,17 @@ const stationRows = Object.values(stations).map(station => ({
   address: station.address,
   latitude: station.point.latitude,
   longitude: station.point.longitude,
+  cashPreviousComparison: {
+    date: new Date(now - 86400000).toISOString().slice(0, 10),
+    nextDate: today,
+    discountChange: -0.029,
+  },
+  cashComparison: {
+    date: today,
+    nextDate: new Date(now + 86400000).toISOString().slice(0, 10),
+    next: { discountPrice: station.price - 0.06 },
+    discountChange: -0.06,
+  },
   cashDiscount: {
     unit: 'US gal',
     currency: 'USD',
@@ -714,6 +725,7 @@ function answer(path, url, theme) {
 const cases = [
   ['1440-light', 1440, 900, 'light', 1],
   ['1024-light', 1024, 800, 'light', 1],
+  ['1200-light', 1200, 900, 'light', 1],
   ['390-light', 390, 844, 'light', 1],
   ['1440-dark', 1440, 900, 'dark', 1],
   ['390-text200', 390, 844, 'light', 2],
@@ -737,10 +749,10 @@ const browser = await chromium.launch({
 
 // What a card looks like to a person at this size: nothing wider than the
 // map, nothing clipped sideways.
-async function measure(page) {
-  return page.evaluate(() => {
-    const card = document.querySelector('.fleet-map-inspector');
-    if (!card) return null;
+async function measure(page, selector) {
+  return page.evaluate(selector => {
+    const card = document.querySelector(selector);
+    if (!card) return { missing: true, selector };
     const box = card.getBoundingClientRect();
     const clipped = [...card.querySelectorAll('*')]
       .filter(
@@ -751,14 +763,88 @@ async function measure(page) {
       )
       .map(node => node.className?.toString?.() ?? node.tagName);
     return {
+      selector,
+      missing: box.width <= 0 || box.height <= 0,
       left: Math.round(box.left),
       width: Math.round(box.width),
       height: Math.round(box.height),
       viewport: window.innerWidth,
       outside: box.left < -0.5 || box.right > window.innerWidth + 0.5,
       clipped,
+      telemetryRows: new Set(
+        [...card.querySelectorAll('.truck-readings > *')].map(node =>
+          Math.round(node.getBoundingClientRect().top),
+        ),
+      ).size,
+      overlappingReadings: [
+        ...card.querySelectorAll('.truck-readings > *'),
+      ].some((node, index, nodes) => {
+        const a = node.getBoundingClientRect();
+        const content = document.createRange();
+        content.selectNodeContents(node);
+        const text = content.getBoundingClientRect();
+        return nodes.slice(index + 1).some(other => {
+          const b = other.getBoundingClientRect();
+          return (
+            a.width > 0 &&
+            b.width > 0 &&
+            Math.min(text.right, b.right) - Math.max(text.left, b.left) > 1 &&
+            Math.min(text.bottom, b.bottom) - Math.max(text.top, b.top) > 1
+          );
+        });
+      }),
     };
-  });
+  }, selector);
+}
+
+// Text against its composed background, as WCAG counts
+// it. Colors are resolved by painting them, so any CSS color syntax and
+// any translucent layer between the button and the page are read as drawn.
+async function textContrast(
+  page,
+  selector = '.fleet-map-mobile-summary__toggle',
+) {
+  return page.evaluate(selector => {
+    const toggle = document.querySelector(selector);
+    if (!toggle) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const paint = canvas.getContext('2d', { willReadFrequently: true });
+    const layers = [];
+    for (let node = toggle; node; node = node.parentElement)
+      layers.unshift(getComputedStyle(node).backgroundColor);
+    paint.fillStyle = '#fff';
+    paint.fillRect(0, 0, 1, 1);
+    for (const layer of layers) {
+      paint.fillStyle = layer;
+      paint.fillRect(0, 0, 1, 1);
+    }
+    const background = [...paint.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+    const style = getComputedStyle(toggle);
+    paint.fillStyle = style.color;
+    paint.fillRect(0, 0, 1, 1);
+    const foreground = [...paint.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+    const luminance = rgb =>
+      rgb
+        .map(v => v / 255)
+        .map(v => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+        .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const [light, dark] = [luminance(foreground), luminance(background)].sort(
+      (a, b) => b - a,
+    );
+    const size = parseFloat(style.fontSize);
+    const weight = Number(style.fontWeight);
+    const large = size >= 24 || (size >= 18.66 && weight >= 700);
+    return {
+      color: style.color,
+      foreground,
+      background,
+      fontSize: size,
+      fontWeight: weight,
+      ratio: Math.round(((light + 0.05) / (dark + 0.05)) * 100) / 100,
+      required: large ? 3 : 4.5,
+    };
+  }, selector);
 }
 
 try {
@@ -871,11 +957,14 @@ try {
     const shot = async (step, fullCard = false) => {
       await page.waitForTimeout(250);
       const file = resolve(output, `${name}-${step}.png`);
-      const card = page.locator('.fleet-map-inspector');
+      const selector = step.startsWith('fuel-editor')
+        ? '.fuel-plan-editor'
+        : '.fleet-map-inspector';
+      const card = page.locator(selector);
       if (fullCard && (await card.count()))
         await card.first().screenshot({ path: file });
       else await page.screenshot({ path: file, fullPage: false });
-      steps.push({ step, file, layout: await measure(page) });
+      steps.push({ step, file, layout: await measure(page, selector) });
     };
     const attempt = async (step, action) => {
       try {
@@ -933,6 +1022,35 @@ try {
         await toggleDetails(false);
         await shot(`${truck.key}-compact`);
       });
+      if (truck === trucks[0])
+        await attempt('toggle-contrast', async () => {
+          const toggle = page.locator('.fleet-map-mobile-summary__toggle');
+          if (!(await toggle.isVisible())) return;
+          await page.mouse.move(0, 0);
+          const rest = await textContrast(page);
+          await toggle.hover();
+          await page.waitForTimeout(250);
+          const hover = await textContrast(page);
+          await page.mouse.move(0, 0);
+          steps.push({ step: 'toggle-contrast', rest, hover });
+          for (const [state, value] of Object.entries({ rest, hover }))
+            assert.ok(
+              value.ratio >= value.required,
+              `Details ${state} contrast ${value.ratio} < ${value.required}`,
+            );
+        });
+      if (truck === trucks[0])
+        await attempt('load-link-contrast', async () => {
+          const selector = '.fleet-map-inspector__load-link';
+          const link = page.locator(selector);
+          await link.waitFor({ state: 'visible' });
+          const value = await textContrast(page, selector);
+          steps.push({ step: 'load-link-contrast', ...value });
+          assert.ok(
+            value.ratio >= value.required,
+            `Load link contrast ${value.ratio} < ${value.required}`,
+          );
+        });
       if (truck.key === 'us' || truck.key === 'ca' || width < 768)
         await attempt(`${truck.key}-expanded`, async () => {
           await toggleDetails(true);
@@ -1010,6 +1128,29 @@ try {
         )
         .waitFor({ timeout: 10000 });
       await shot('fuel-editor');
+      for (const [part, selector] of [
+        ['quantity', '.fuel-plan-editor input[type="range"]'],
+        ['save', '.fuel-plan-editor__footer .btn:last-child'],
+      ]) {
+        const control = page.locator(selector).first();
+        await control.scrollIntoViewIfNeeded();
+        const reachable = await control.evaluate(node => {
+          const box = node.getBoundingClientRect();
+          const card = node
+            .closest('.fuel-plan-editor')
+            .getBoundingClientRect();
+          return (
+            box.width > 0 &&
+            box.height > 0 &&
+            box.top >= card.top - 1 &&
+            box.bottom <= card.bottom + 1 &&
+            box.left >= card.left - 1 &&
+            box.right <= card.right + 1
+          );
+        });
+        assert.ok(reachable, `Editor ${part} must be reachable by scrolling`);
+        await shot(`fuel-editor-${part}`);
+      }
       await page
         .getByRole('button', { name: 'Cancel', exact: true })
         .click({ timeout: 3000 });
@@ -1058,6 +1199,29 @@ try {
       await page
         .locator('.fleet-map-inspector[data-inspector-mode="fuel"]')
         .waitFor({ timeout: 5000 });
+      const days = page.locator('.fleet-station-popup__day');
+      assert.equal(await days.count(), 3, 'all price comparison days render');
+      const dayBoxes = await days.evaluateAll(nodes =>
+        nodes.map(node => {
+          const box = node.getBoundingClientRect();
+          return {
+            y: box.y,
+            right: box.right,
+            left: box.left,
+            width: box.width,
+            overflow: node.scrollWidth > node.clientWidth + 1,
+          };
+        }),
+      );
+      assert.ok(
+        dayBoxes.every(box => !box.overflow),
+        'price days never clip',
+      );
+      if (width >= 1024 && text === 1)
+        assert.ok(
+          dayBoxes.every(box => Math.abs(box.y - dayBoxes[0].y) < 1),
+          'wide price days stay aligned',
+        );
       await shot('planned-station');
       // Back returns to the plan it was opened from.
       await page.getByRole('button', { name: /Back to plan/ }).click();
@@ -1115,3 +1279,18 @@ console.log(
     2,
   ),
 );
+
+const failures = report.cases.flatMap(c =>
+  c.steps
+    .filter(
+      s =>
+        s.failed ||
+        s.layout?.missing ||
+        s.layout?.outside ||
+        s.layout?.overlappingReadings,
+    )
+    .map(s => `${c.name}: ${s.step}`),
+);
+assert.deepEqual(report.errors, [], 'Browser errors');
+assert.deepEqual(report.unexpectedRequests, [], 'Unexpected requests');
+assert.deepEqual(failures, [], 'Fleet design layout failures');

@@ -1,6 +1,7 @@
 using System.Data;
 using Application.Features.Dispatch.Queries;
 using Application.Features.Routing.Services.FuelPlanning;
+using Domain.Models.Execution;
 using Domain.Rules;
 using Domain.Rules.Routing;
 using Infrastructure.Persistence;
@@ -13,6 +14,68 @@ namespace Server.Tests.Fuel;
 [Trait("Kind", "Integration")]
 public sealed class FuelWorkInputsTests
 {
+  [Fact]
+  public async Task UnacceptedFutureWorkDoesNotBlockAcceptedFuelCoverage()
+  {
+    await using var f = await SavedFuelHorizonFixture.CreateAsync();
+    await f.ReceiveCurrentAsync();
+    var plan = f.State.Plan!;
+    var captured = await f.Services.FuelInputs.ReadFreshAsync(
+      plan.TruckId,
+      default
+    );
+    var future = captured.Itinerary.Segments.Single(x =>
+      x.Work.DispatchId == f.Future.Id
+    );
+    var blocked = captured with
+    {
+      Itinerary = captured.Itinerary with
+      {
+        Segments = captured.Itinerary.Segments.Replace(
+          future,
+          future with
+          {
+            Problems = [WorkReadProblem.SourceReviewRequired],
+          }
+        ),
+      },
+    };
+
+    var later = future with
+    {
+      Work = new(Guid.NewGuid(), null),
+      LoadNumber = future.LoadNumber + 1,
+    };
+    blocked = blocked with
+    {
+      Itinerary = blocked.Itinerary with
+      {
+        Segments = blocked.Itinerary.Segments.Add(later),
+      },
+    };
+    Assert.Single(blocked.Select(plan));
+    var horizon = await f.Horizon.BuildAsync(
+      f.State,
+      f.State.Profile,
+      default,
+      blocked
+    );
+    Assert.Equal([f.Current.Id], horizon.DispatchIds);
+    Assert.Contains("needs assignment review", horizon.CoverageNotice);
+    Assert.DoesNotContain(
+      horizon.Stops,
+      x => f.Future.Stops.Any(stop => stop.Id == x.Id)
+    );
+    Assert.Equal(2, captured.Select(plan).Count);
+    Assert.Throws<RoutePlanningException>(
+      () =>
+        blocked.Select(
+          new() { TruckId = plan.TruckId, DispatchId = f.Future.Id }
+        )
+    );
+    Assert.Equal(0, f.Router.Calls);
+  }
+
   [Theory]
   [InlineData(false)]
   [InlineData(true)]

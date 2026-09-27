@@ -100,17 +100,22 @@ export async function returnToDispatch(
 ) {
   await page.getByRole('link', { name: '← Back to Dispatch' }).click();
   await page.locator('.filter-toolbar').waitFor();
-  const scope = page.locator(
-    completed ? '#dispatch-completed' : '#dispatch-active',
-  );
-  if ((await scope.getAttribute('aria-pressed')) !== 'true')
-    await scope.click();
+  // Completed is read in the Table alone; choosing another view reads
+  // Active, so the view comes first and the scope, in the Table, after.
   const button = page.getByRole('button', { name: view, exact: true });
   if ((await button.getAttribute('aria-pressed')) !== 'true')
     await button.click();
+  if (view === 'Table') {
+    const scope = page.locator(
+      completed ? '#dispatch-completed' : '#dispatch-active',
+    );
+    if ((await scope.getAttribute('aria-pressed')) !== 'true')
+      await scope.click();
+  } else if (completed)
+    throw new Error('Completed loads are read in the Table alone.');
   const ready = {
     Cards: '.dispatch-load',
-    Table: '.dispatch-table tbody tr',
+    Table: '.dispatch-table tr.dispatch-table__row',
     Papers: '.dispatch-paper__tab',
   };
   await page.locator(ready[view]).first().waitFor();
@@ -165,11 +170,14 @@ export async function workspaceFinancials(
     ['Loaded distance', `${load.loadedMiles} mi`],
     ['Empty distance', `${load.emptyMiles} mi`],
     ['Total distance', `${load.totalMiles} mi`],
-    ['Loaded RPM', `${load.loadedRatePerMile.toFixed(2)} ${load.currency}`],
+    ['RPM', `${load.loadedRatePerMile.toFixed(2)} ${load.currency}`],
     ['Total RPM', `${load.totalRatePerMile.toFixed(2)} ${load.currency}`],
   ];
   for (const [label, value] of expected) {
-    const field = financials.locator('div').filter({ hasText: label });
+    // Matched by the whole label: "RPM" is also inside "Total RPM".
+    const field = financials.locator('div').filter({
+      has: page.getByText(label, { exact: true }),
+    });
     check(
       (await field.locator('dd').innerText())
         .replace(/\s+/g, ' ')
@@ -254,7 +262,7 @@ export async function checkWorkspaceLoads(
 ) {
   for (const [index, load] of loads.entries()) {
     const link = page
-      .locator('.dispatch-load__footer .dispatch-load__details')
+      .locator('.dispatch-load .dispatch-load__number')
       .nth(index);
     await link.focus();
     await link.press('Enter');

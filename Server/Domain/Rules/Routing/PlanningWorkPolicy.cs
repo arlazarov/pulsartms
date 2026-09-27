@@ -7,6 +7,106 @@ namespace Domain.Rules.Routing;
 
 public static class PlanningWorkPolicy
 {
+  // Which work a truck is on: the first candidate whose saved plan has not
+  // passed all its stops at the same assignment and inputs, and the
+  // candidates passed before it. This is the one rule. Each caller reads
+  // the saved plans its own way and hands them in; none walks the
+  // candidates itself.
+  public static CurrentWorkChoice ChooseCurrent(
+    TruckItinerarySnapshot snapshot,
+    TruckRouteProfile profile,
+    Func<TruckWorkSegment, SavedRoutePlanMetadata?> saved
+  )
+  {
+    var passed = new List<TruckWorkSegment>();
+    foreach (var segment in Candidates(snapshot))
+    {
+      if (!IsPassed(snapshot, segment, saved(segment), profile))
+        return new(segment, passed);
+      passed.Add(segment);
+    }
+    return new(null, passed);
+  }
+
+  // The assignment revision a piece of work was accepted at, as the
+  // itinerary records it: a leg's revision, or an older load's planning
+  // revision (its own AssignmentRevision is never stored and reads 0).
+  // Every reader comparing a row with the planning inputs compares this.
+  public static long AcceptedRevision(
+    Guid? executionLegId,
+    long assignmentRevision,
+    long planningAssignmentRevision
+  ) =>
+    executionLegId.HasValue ? assignmentRevision : planningAssignmentRevision;
+
+  public static long AcceptedRevision(RouteWorkSnapshot load) =>
+    AcceptedRevision(
+      load.ExecutionLegId,
+      load.AssignmentRevision,
+      load.PlanningAssignmentRevision
+    );
+
+  // The work after the current, in the itinerary's order (WorkOrderKey,
+  // the board's) and with the board's membership: work still open to the
+  // truck, overdue work included, as the board shows it. A planned leg of
+  // the load the current work delivers is not work after it; one after a
+  // hand-over (the current ends in a drop, not a delivery) is.
+  public static IEnumerable<TruckWorkSegment> Followers(
+    TruckItinerarySnapshot snapshot,
+    WorkIdentity? current
+  )
+  {
+    if (
+      current is null
+      || snapshot.Segments.FirstOrDefault(x => x.Work == current) is not { } now
+    )
+      return [];
+    var delivers = Delivers(now);
+    return snapshot
+      .Segments.SkipWhile(x => x.Work != current)
+      .Skip(1)
+      .Where(x =>
+        x.Work.ExecutionLegId.HasValue
+          ? HasOpenAssignment(x)
+            && !(
+              delivers
+              && x.Work.DispatchId == now.Work.DispatchId
+              && x.Status == "planned"
+            )
+          : x.Status is "assigned" or "in_transit"
+      );
+  }
+
+  private static bool Delivers(TruckWorkSegment segment) =>
+    segment.Work.ExecutionLegId.HasValue
+    && CanUseGps(segment)
+    && segment
+      .Visits.Where(x => x.InTruckPath)
+      .OrderBy(x => x.Sequence)
+      .LastOrDefault()
+      is { } end
+    && (end.ManualAction ?? end.Operation) is { } action
+    && (
+      string.Equals(action, "Drop Off", StringComparison.OrdinalIgnoreCase)
+      || string.Equals(action, "Delivery", StringComparison.OrdinalIgnoreCase)
+    );
+
+  // Whether planning has moved past a candidate: its saved plan passed all
+  // its stops for this assignment and these inputs. A caller that must read
+  // the saved plans one at a time, stopping at the current work, asks this
+  // in candidate order instead of ChooseCurrent.
+  public static bool IsPassed(
+    TruckItinerarySnapshot snapshot,
+    TruckWorkSegment segment,
+    SavedRoutePlanMetadata? saved,
+    TruckRouteProfile profile
+  ) =>
+    IsCompleted(
+      saved,
+      RouteWorkProjection.Capture(segment, snapshot.Resources.TruckNumber),
+      profile
+    );
+
   public static IEnumerable<TruckWorkSegment> Candidates(
     TruckItinerarySnapshot snapshot
   ) =>

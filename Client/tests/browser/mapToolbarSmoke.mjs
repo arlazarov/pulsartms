@@ -36,6 +36,11 @@ const fixtures = new Map([
   ],
   ['/api/settings/dispatch', success({ loadNumberPrefix: 'AMF', revision: 1 })],
   ['/api/fleet/hos', success({})],
+  ['/api/driver-groups', success({ selected: null, groups: [] })],
+  [
+    '/api/messaging/unread',
+    success({ conversations: 0, more: false, newest: 0 }),
+  ],
   ['/api/fleet/locations', success({ trucks, points: [] })],
   ['/api/fleet/planning/previews', success([])],
   ['/api/fuel/stations', success([])],
@@ -123,6 +128,19 @@ try {
               `${request.method()} ${url.pathname}`,
             );
             return route.abort();
+          }
+          if (url.pathname === '/api/messaging/changes') {
+            const mailbox = url.searchParams.get('mailbox');
+            if (mailbox) await new Promise(done => setTimeout(done, 5000));
+            return route
+              .fulfill({
+                json: success({
+                  mailbox: mailbox ?? '00000000-0000-4000-8000-00000000c4a9',
+                  resync: !mailbox,
+                  conversations: [],
+                }),
+              })
+              .catch(() => {});
           }
           if (url.pathname.startsWith('/api/')) {
             const json =
@@ -337,8 +355,14 @@ try {
           name: 'Truck, driver or trailer',
         });
         await search.fill('1100');
-        await page.getByRole('option').first().waitFor();
-        assert.equal(await page.getByRole('option').count(), 2);
+        const results = page.locator(
+          `#${await search.getAttribute('aria-controls')}`,
+        );
+        await results.getByRole('option').first().waitFor();
+        assert.deepEqual(
+          await results.getByRole('option').locator('strong').allTextContents(),
+          ['11006', '11007'],
+        );
         assert.deepEqual(
           await mapRect(),
           original,
@@ -369,6 +393,9 @@ try {
           .click();
         if (mobile) await filterButton.click();
         await search.fill('1100');
+        await page.waitForFunction(
+          () => new URL(location.href).searchParams.get('q') === '1100',
+        );
         await page.reload();
         await page.waitForFunction(() => window.releasePreferences);
         const pending = await toolbar.evaluate(element => {
@@ -427,7 +454,7 @@ try {
         assert.equal(restored.useIfta, true);
         assert.equal(restored.stationsVisible, true);
         assert.equal(restored.trafficVisible, false);
-        assert.equal(await search.inputValue(), '');
+        assert.equal(await search.inputValue(), '1100');
         report.cases.push({
           width,
           theme,

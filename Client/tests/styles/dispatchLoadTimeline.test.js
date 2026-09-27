@@ -91,10 +91,8 @@ test('stop details and footer shrink within the card instead of overflowing at t
     css,
     /\.dispatch-load__stop\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/,
   );
-  assert.match(
-    css,
-    /\.dispatch-load__footer \.dispatch-load__details\s*\{\s*margin-left: auto;/,
-  );
+  // The load opens from its number; the footer has no Open load.
+  assert.doesNotMatch(css, /dispatch-load__details/);
 });
 
 test('wide summary stops put arrival facts beside the address without changing the detailed dialog', () => {
@@ -105,7 +103,7 @@ test('wide summary stops put arrival facts beside the address without changing t
   );
   assert.match(
     css,
-    /\.dispatch-load__stop--summary > \.dispatch-load__stop-times\s*\{[^}]*grid-column: 2;[^}]*grid-row: 1\s*\/\s*span 3;[^}]*align-content: start;/,
+    /\.dispatch-load__stop--summary > \.dispatch-load__stop-times\s*\{[^}]*grid-column: 2;[^}]*grid-row: 1\s*\/\s*span 4;[^}]*align-content: start;/,
   );
   assert.match(
     css,

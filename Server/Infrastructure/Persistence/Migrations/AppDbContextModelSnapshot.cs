@@ -1113,11 +1113,19 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("RootExecutionLegId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("RouteKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<Guid>("TruckId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("ValidUntil")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("WorkKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.HasKey("Id");
 

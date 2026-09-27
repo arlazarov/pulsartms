@@ -43,6 +43,9 @@ internal sealed class PlanningTestServices : IDisposable
   public FleetNames Names { get; private set; } = null!;
   public ActiveTransfers Transfers { get; private set; } = null!;
   public ReadCache Reads { get; }
+
+  // The one planning summary cache the publications here notify.
+  public PlanningSummaryCache Summaries { get; } = new(TimeProvider.System);
   public RouteDisplayCache Displays { get; }
   public PlanningSettingsService Settings { get; }
   public FuelExchangeRateService ExchangeRates { get; }
@@ -68,6 +71,8 @@ internal sealed class PlanningTestServices : IDisposable
   public FuelScheduleEvaluator FuelSchedules { get; }
   public FuelPlanningService Fuel { get; }
   public FuelIssueRecords Issues { get; private set; } = null!;
+  public FuelIssueWindow IssueWindow { get; } =
+    new(Options.Create(new FuelIssueOptions()), TimeProvider.System);
   public ISender Sender { get; }
   public NoHos Hos { get; } = new();
 
@@ -78,7 +83,8 @@ internal sealed class PlanningTestServices : IDisposable
     ReadCache? reads = null,
     RouteRecalculationBudgetOptions? recalculationBudget = null,
     IPlanningPublicationScope? publicationScope = null,
-    IFuelExchangeRateStore? exchangeRateStore = null
+    IFuelExchangeRateStore? exchangeRateStore = null,
+    TimeProvider? time = null
   )
   {
     refreshStore = new PlanningRefreshStore((AppDbContext)db);
@@ -119,7 +125,8 @@ internal sealed class PlanningTestServices : IDisposable
         (AppDbContext)db,
         NullLogger<SavedRoutePlanReader>.Instance
       ),
-      profiles
+      profiles,
+      time ?? TimeProvider.System
     );
     DeadheadHistory = new(
       db,
@@ -132,7 +139,7 @@ internal sealed class PlanningTestServices : IDisposable
       Itineraries,
       publicationScope ?? new PlanningPublicationScope((AppDbContext)db),
       DeadheadHistory,
-      new PlanningSummaryCache(TimeProvider.System),
+      Summaries,
       new TestCompany(),
       Reads
     );
@@ -182,7 +189,10 @@ internal sealed class PlanningTestServices : IDisposable
       DeadheadHistory,
       new(
         DeadheadHistory,
-        publicationScope ?? new PlanningPublicationScope((AppDbContext)db)
+        publicationScope ?? new PlanningPublicationScope((AppDbContext)db),
+        Summaries,
+        new TestCompany(),
+        Reads
       ),
       NullLogger<DeadheadService>.Instance
     );
@@ -214,7 +224,8 @@ internal sealed class PlanningTestServices : IDisposable
     SavedFuelInputs = new(
       Roads,
       DeadheadHistory,
-      new ExecutionReadScope((AppDbContext)db)
+      new ExecutionReadScope((AppDbContext)db),
+      Reads
     );
     FuelPlans = new(
       new TruckFuelPlanStore(
@@ -283,6 +294,7 @@ internal sealed class PlanningTestServices : IDisposable
       Eta,
       Routes,
       Publication,
+      Reads,
       NullLogger<EtaForecastService>.Instance
     );
     Board = new(
@@ -294,6 +306,7 @@ internal sealed class PlanningTestServices : IDisposable
       Names,
       Transfers,
       new TestDriverScope(),
+      PlanningInputs,
       NullLogger<GetDispatchBoardHandler>.Instance
     );
   }
@@ -353,10 +366,12 @@ internal sealed class PlanningTestServices : IDisposable
     ) => throw new NotSupportedException();
   }
 
+  // No hours unless a test gives a driver some; no history.
   internal sealed class NoHos : IDriverHosProvider, IHosHistoryProvider
   {
     public int ClockCalls { get; private set; }
     public int HistoryCalls { get; private set; }
+    public Dictionary<string, DriverHosClocks> Clocks { get; } = [];
 
     public Task<IReadOnlyDictionary<string, DriverHosClocks>> GetClocksAsync(
       CancellationToken ct
@@ -364,7 +379,7 @@ internal sealed class PlanningTestServices : IDisposable
     {
       ClockCalls++;
       return Task.FromResult<IReadOnlyDictionary<string, DriverHosClocks>>(
-        new Dictionary<string, DriverHosClocks>()
+        new Dictionary<string, DriverHosClocks>(Clocks)
       );
     }
 

@@ -9,6 +9,20 @@
     align-items: center;
     gap: ui.pg(sm);
   }
+  // Room for a unit, a driver, a trailer or a load, not the width of the
+  // page, as on Fleet Map. The search and the driver filter start from a
+  // field's width and give it up before the view or the scope is pushed
+  // to a second line; with enlarged text the row wraps instead of running
+  // off the page.
+  &__filters > .search-input {
+    flex: 1 1 ui.size(form-field);
+    width: auto;
+    max-width: 28rem;
+  }
+  &__filters .driver-group-picker {
+    flex: 0 1 ui.size(form-field);
+    flex-wrap: nowrap;
+  }
   &__scope,
   &__filters &__scope {
     display: inline-flex;
@@ -20,6 +34,74 @@
     margin-left: auto;
     font-size: ui.fs(small);
     color: ui.theme(text-secondary);
+  }
+  // The completed loads a search found, under the active results: a quiet
+  // card of one line per load, each tagged Completed, the number the way
+  // in to the load.
+  &__body .dispatch-history {
+    display: grid;
+    gap: ui.pg(sm);
+    padding: ui.pg(md) ui.pg(lg);
+    border: 1px solid ui.theme(border-subtle);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface);
+    > h2 {
+      margin: 0;
+      font-size: ui.fs(lead);
+      font-weight: 700;
+      > small {
+        margin-inline-start: ui.pg(sm);
+        color: ui.theme(text-muted);
+        font-size: ui.fs(small);
+        font-weight: 400;
+      }
+    }
+    > ul {
+      display: grid;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    li {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: ui.pg(xs) ui.pg(sm);
+      padding-block: ui.pg(sm);
+      border-top: 1px solid ui.theme(border-subtle);
+      color: ui.theme(text-secondary);
+    }
+  }
+  .dispatch-history__open {
+    color: ui.theme(link);
+    font-size: ui.fs(lead);
+    text-decoration: none;
+    &:hover,
+    &:focus-visible {
+      text-decoration: underline;
+    }
+  }
+  .dispatch-history__error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(sm);
+    margin: 0;
+    color: ui.theme(text-secondary);
+  }
+  .dispatch-history__tag {
+    padding: ui.pg(micro) ui.pg(sm);
+    border-radius: ui.radius(pill);
+    background: ui.theme(success-surface);
+    color: ui.theme(success-text);
+    font-size: ui.fs(small);
+    font-weight: 600;
+  }
+  // Completed is read in the Table alone. In Cards and Papers the scope
+  // keeps its room, so the toolbar stands still between views, but it is
+  // not seen or reached (the owner, September 27).
+  &__scope.is-unavailable {
+    visibility: hidden;
   }
   &__count {
     display: flex;
@@ -82,6 +164,21 @@
   }
   &__footer .dispatch-page__pagination {
     margin-left: auto;
+  }
+}
+
+// On a phone the search and Filters share the first line; the view and the
+// scope follow on the next.
+@include ui.below(filter-toolbar-drawer) {
+  .dispatch-board__filters {
+    > .search-input {
+      flex: 1 1 ui.size(filter-search);
+      max-width: none;
+    }
+    .dispatch-view,
+    .dispatch-board__scope {
+      order: 2;
+    }
   }
 }
 

@@ -1,66 +1,153 @@
 @use '../../../base' as ui;
 
-// The board reading, where the block shares a row with the truck.
 .dispatch-planning--board {
-  grid-template-columns: minmax(0, max-content) max-content minmax(
-      0,
-      max-content
-    );
-  gap: ui.pg(md) ui.pg(lg);
+  display: block;
+  margin: 0;
   padding: 0;
   border: 0;
+  border-radius: 0;
   background: transparent;
-  .dispatch-planning__content {
-    grid-column: 1;
-    grid-row: 1;
+
+  // The warning sign and what is left to the next stop, beside the unit.
+  .dispatch-planning__status {
+    grid-area: left;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-width: 0;
   }
-  > .driver-hours-panel {
-    grid-column: 2;
-    grid-row: 1;
-    padding-left: 0;
-    border: 0;
+  // One small sign for the load's notices and the road's warnings; its
+  // tooltip reads them.
+  .dispatch-planning__warnings {
+    display: inline-flex;
+    color: ui.theme(warning-text);
+    cursor: help;
+    > svg {
+      inline-size: ui.fs(heading);
+      block-size: ui.fs(heading);
+    }
   }
-  .dispatch-planning__driver {
-    grid-column: 3;
-    grid-row: 1;
-    padding-left: ui.pg(lg);
-    max-width: ui.size(map-driver-duty-width);
-  }
-  .dispatch-planning__metrics {
-    gap: ui.pg(sm) ui.pg(lg);
-    padding: ui.pg(xs) 0 0;
-  }
-  .dispatch-planning__metrics > div {
-    display: grid;
-    gap: ui.pg(micro);
-  }
-  .dispatch-planning__metrics > div > span {
-    font-size: ui.fs(caption);
-  }
-  .dispatch-planning__metrics strong {
+  .dispatch-planning__left {
+    color: ui.theme(text-secondary);
     font-size: ui.fs(body);
-    font-weight: 600;
+    white-space: nowrap;
+    strong {
+      color: ui.theme(text);
+      font-size: ui.fs(lead);
+      font-weight: 600;
+    }
+    small {
+      color: ui.theme(text-muted);
+      font-size: ui.fs(small);
+    }
   }
-  .dispatch-planning__metrics small {
-    font-size: ui.fs(caption);
-  }
-  .dispatch-planning__heading {
-    gap: ui.pg(md);
-  }
-  .dispatch-planning__identity {
-    font-size: ui.fs(small);
-  }
-  .dispatch-planning__identity > strong {
-    display: none;
-  }
-  .dispatch-planning__identity > span {
-    font-size: ui.fs(small);
-  }
-  .dispatch-planning__identity {
-    display: none;
-  }
-  .driver-next-recap {
+  // The vehicle and then the driver's clocks, each as wide as it reads,
+  // with a hairline between them: split in fixed shares, the readings
+  // spread apart and the clocks folded Cycle onto a second line.
+  .dispatch-planning__readings {
     display: grid;
-    gap: ui.pg(xs);
+    grid-template-columns: max-content minmax(0, max-content);
+    justify-content: start;
+    align-items: center;
+    gap: ui.pg(xs) ui.pg(md);
+    padding: ui.pg(sm) ui.pg(lg);
+    border-top: 1px solid ui.theme(border-subtle);
+    // Speed, fuel and engine close together, in equal cells so values
+    // move nothing between trucks, as on the map card.
+    > .truck-readings {
+      grid-template-columns: none;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(#{ui.size(map-telemetry-reading)}, max-content);
+    }
+  }
+  // The clocks, read as numbers that never shrink below what they say,
+  // each past a hairline of its own.
+  .dispatch-planning__clocks {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding-inline-start: ui.pg(md);
+    border-inline-start: 1px solid ui.theme(border-subtle);
+    --hos-display: flex;
+    --hos-wrap: wrap;
+    --hos-gap: #{ui.pg(xs)} #{ui.pg(md)};
+    --hos-clock-min-width: 0;
+    --hos-label-font-size: #{ui.fs(body)};
+    --hos-divider: 1px solid #{ui.theme(border-subtle)};
+    --hos-divider-gap: #{ui.pg(md)};
+    // Text clocks use the line, not the dial panel's fixed cap: held to it,
+    // four clocks and their hairlines folded Cycle under a leading rule.
+    > .driver-hours-panel {
+      max-width: 100%;
+      min-width: 0;
+      margin-left: 0;
+    }
+  }
+  .dispatch-planning__hint {
+    margin: 0;
+    padding: 0 ui.pg(lg) ui.pg(sm);
+    color: ui.theme(text-muted);
+    font-size: ui.fs(small);
+  }
+  .dispatch-planning__duty {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(md);
+    padding: ui.pg(sm) ui.pg(lg);
+    border-top: 1px solid ui.theme(border-subtle);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+  }
+}
+
+// Without room for the vehicle and the clocks abreast, the clocks take a
+// line of their own under it, and a hairline a fold would put at the start
+// of a line gives way to space.
+@container dispatch-truck (width < #{ui.breakpoint(dispatch-truck-compact)}) {
+  .dispatch-planning--board {
+    .dispatch-planning__readings {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .dispatch-planning__clocks {
+      padding: ui.pg(xs) 0 0;
+      border-inline-start: 0;
+      border-top: 1px solid ui.theme(border-subtle);
+    }
+  }
+}
+@include ui.below(narrow-card) {
+  .dispatch-planning--board {
+    // What is left takes the rest of its line, and folds before it runs
+    // under the map button.
+    .dispatch-planning__left {
+      flex: 1 1 auto;
+      white-space: normal;
+    }
+    .dispatch-planning__readings,
+    .dispatch-planning__duty {
+      padding-inline: ui.pg(md);
+    }
+    .dispatch-planning__hint {
+      padding-inline: ui.pg(md);
+    }
+    .dispatch-planning__readings {
+      --truck-readings-divider: 0;
+      --truck-readings-divider-gap: 0;
+    }
+    .dispatch-planning__clocks {
+      --hos-divider: 0;
+      --hos-divider-gap: 0;
+    }
+    // A phone's line is too narrow for the three cells abreast; they
+    // fold as the shared line does.
+    .dispatch-planning__readings > .truck-readings {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, #{ui.size(map-telemetry-reading)}), 1fr)
+      );
+    }
   }
 }

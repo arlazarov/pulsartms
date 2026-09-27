@@ -16,6 +16,9 @@ public sealed record DispatchBoardRow(
   // render rather than diff them.
   public string Key => $"{Truck.Key}:{Load.Id}:{Load.ExecutionLegId}";
 
+  // The truck the row is on, by the same precedence as its number: the
+  // load's own truck, else the board truck it stands under.
+  public Guid? TruckIdentity => Load.TruckId ?? Truck.TruckId;
   public string TruckNumber => Text(Load.TruckNumber, Truck.TruckNumber);
   public string TrailerNumber => Text(Load.TrailerNumber, Truck.TrailerNumber);
   public string DriverName => Text(Load.DriverName, Truck.DriverName);
@@ -24,11 +27,30 @@ public sealed record DispatchBoardRow(
   public DispatchStopResponse? Destination =>
     Load.Stops.OrderBy(x => x.Sequence).LastOrDefault();
   public bool OriginCompleted => Completed || StopCompleted(Origin);
+
+  // The stop the load waits on next: the first, in stop order, not yet
+  // done - a pickup, an intermediate stop or the delivery - and a completed
+  // load's last stop.
+  public DispatchStopResponse? NextStop =>
+    Completed
+      ? Destination
+      : Load.Stops.OrderBy(x => x.Sequence)
+        .FirstOrDefault(x => !x.DriverOnly && !StopCompleted(x)) ?? Destination;
   public bool DestinationCompleted => Completed || StopCompleted(Destination);
   public DateOnly? DeliveryDate =>
     Destination?.ScheduledDate ?? Load.DeliveryDate;
   public DateOnly? PickupDate => Origin?.ScheduledDate ?? Load.ShipDate;
   public bool Completed => Load.Completed;
+
+  // Planning passed the route; execution has not finished the truck's
+  // work. The server says so (DispatchResponse.WorkConflict), and every
+  // view shows it instead of a status the load's own stops would suggest.
+  public bool RoutePassedWorkOpen =>
+    !Completed && DispatchWorkPhase.ConflictText(Load.WorkConflict) is not null;
+
+  // The cargo is delivered and the truck is still finishing - a trailer to
+  // drop. Not completed, and not awaiting pickup either.
+  public bool Finishing => !Completed && Load.CargoDelivered;
   public bool InTransit =>
     !Completed
     && (
@@ -42,7 +64,7 @@ public sealed record DispatchBoardRow(
     || Load.Status.Equals("unassigned", StringComparison.OrdinalIgnoreCase);
 
   public int Column(DateOnly today) =>
-    InTransit ? 1
+    RoutePassedWorkOpen || Finishing || InTransit ? 1
     : Planned ? 0
     : IsTodayOrTomorrow(PickupDate, today)
     || IsTodayOrTomorrow(DeliveryDate, today)
@@ -54,11 +76,21 @@ public sealed record DispatchBoardRow(
 
   public string Status =>
     Completed ? "Completed"
+    : RoutePassedWorkOpen ? DispatchWorkPhase.ConflictText(Load.WorkConflict)!
+    : Finishing ? "Delivered · finishing"
     : Load.Status.Equals("unassigned", StringComparison.OrdinalIgnoreCase)
       ? "Unassigned"
     : Planned ? "Planned"
     : InTransit ? "In transit"
     : "Awaiting pickup";
+
+  // The status's tone, one answer for every view.
+  public string StatusTone =>
+    Completed ? "is-completed"
+    : RoutePassedWorkOpen ? "is-conflict"
+    : InTransit ? "is-moving"
+    : "";
+
   public string MapUrl =>
     $"/fleet/map?truckId={Load.TruckId ?? Truck.TruckId}&dispatchId={Load.Id}";
 

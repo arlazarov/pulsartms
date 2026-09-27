@@ -4,6 +4,7 @@ using Client.Models.DTO.Dispatch;
 using Client.Models.DTO.Planning;
 using Client.Services;
 using Client.Shared;
+using Client.Shared.Measurements;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -49,13 +50,18 @@ public partial class DispatchPlanning : IDisposable, IAsyncDisposable
   public bool BoardHeader { get; set; }
 
   [Parameter]
-  public string? MotionState { get; set; }
+  public bool ShowPlanningLoad { get; set; }
+
+  // The board's truck row: its identity (unit, crew and map link), drawn
+  // in the head beside what is left to the next stop.
+  [Parameter]
+  public RenderFragment? Identity { get; set; }
 
   [Parameter]
-  public string? MotionLabel { get; set; }
+  public decimal? Speed { get; set; }
 
   [Parameter]
-  public decimal Speed { get; set; }
+  public string? EngineState { get; set; }
 
   [Parameter]
   public bool Refreshing { get; set; }
@@ -144,6 +150,40 @@ public partial class DispatchPlanning : IDisposable, IAsyncDisposable
       is not null;
   private AutomaticPlanningResult? DisplayResult =>
     RetainingPlan ? _retainedResult : _result;
+  private DriverDutyStatus? DutyStatus => DisplayResult?.State?.Eta?.DutyStatus;
+
+  // Left to the next stop, as the Fleet Map head says it. A plan whose
+  // inputs changed has no distance to offer until it is recalculated.
+  private double? LeftMiles =>
+    DisplayResult?.State
+      is { Plan: { InputsChanged: false } plan, Progress: var progress }
+      ? DistanceLeft.Miles(
+        plan.RemainingToNextStop(progress?.ProgressMiles),
+        progress?.RemainingMiles
+      )
+      : null;
+
+  // On the board the status message stands alone; the notices go with the
+  // road's warnings behind the head's warning sign.
+  private string? BoardMessage =>
+    RouteMessageDisplay.For(
+      _result?.Message,
+      DisplayResult?.State?.Plan
+        is { InputsChanged: false, Tracking.AllStopsPassed: false }
+    );
+
+  private List<string> BoardWarnings()
+  {
+    var warnings = new List<string>();
+    foreach (var notice in _result?.Notices ?? [])
+      if (PlanningMessages.WithNotices(null, [notice]) is { } text)
+        warnings.Add(text);
+    foreach (var warning in DisplayResult?.State?.Plan?.Route.Warnings ?? [])
+      if (RouteMessageDisplay.Concise(warning) is { } text)
+        warnings.Add(text);
+    return warnings;
+  }
+
   private string? DisplayMessage =>
     RouteMessageDisplay.For(
       PlanningMessages.WithNotices(_result?.Message, _result?.Notices),

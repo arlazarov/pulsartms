@@ -1,11 +1,9 @@
 using Domain.Models.Routing;
-using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Routing.Interfaces;
 
 public interface INextLoadRouteReader
 {
-  Task<IReadOnlyList<Load>> ReadLoadsAsync(Guid truckId, CancellationToken ct);
   Task<IReadOnlyList<NextLoadRouteVersion>> ReadVersionsAsync(
     IReadOnlyCollection<Guid> ids,
     CancellationToken ct

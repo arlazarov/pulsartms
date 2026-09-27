@@ -29,14 +29,11 @@ public sealed partial class DeadheadService
   )
   {
     profile = profile.Copy();
-    if (source.Status is not ("assigned" or "in_transit" or "unassigned"))
+    if (!CanPrepareConnection(source))
       return;
     var captured = await historyReader.ReadAsync(source, ct);
     var latestLoad = captured?.Current;
-    if (
-      latestLoad is null
-      || latestLoad.Status is not ("assigned" or "in_transit" or "unassigned")
-    )
+    if (latestLoad is null || !CanPrepareConnection(latestLoad))
       return;
     var load = latestLoad;
     var pair = DeadheadConnection.Find(captured);
@@ -156,7 +153,7 @@ public sealed partial class DeadheadService
       await db.SaveChangesAsync(ct);
       if (load.ExecutionLegId is null)
         await financials.SaveAsync(RateInputs(load), saved.Miles, hash, ct);
-      await transaction.CommitAsync(ct);
+      await publication.CommitAsync(transaction, load.TruckId, ct);
     }
     catch (DbUpdateConcurrencyException ex)
       when (saved is not null
@@ -177,6 +174,12 @@ public sealed partial class DeadheadService
       gate.Release();
     }
   }
+
+  private static bool CanPrepareConnection(RouteWorkSnapshot load) =>
+    load.Status is "assigned" or "in_transit" or "unassigned"
+    || load.Status == "completed"
+      && load.ExecutionLegId.HasValue
+      && load.ExecutionStatus == "completed";
 
   private static DispatchRateInputs RateInputs(RouteWorkSnapshot load) =>
     new(load.Id, load.Price, load.LoadedMiles, load.Currency);

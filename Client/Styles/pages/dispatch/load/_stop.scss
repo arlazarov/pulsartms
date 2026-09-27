@@ -77,6 +77,7 @@
     color: ui.theme(text);
   }
   &__street,
+  &__locality,
   &__facility {
     font-size: ui.fs(body);
     color: ui.theme(text-secondary);
@@ -112,14 +113,63 @@
       > .dispatch-load__stop-heading,
       > .dispatch-load__location,
       > .dispatch-load__street,
+      > .dispatch-load__locality,
       > .dispatch-load__facility {
         grid-column: 1;
       }
       > .dispatch-load__stop-times {
         grid-column: 2;
-        grid-row: 1 / span 3;
+        grid-row: 1 / span 4;
         align-content: start;
         margin-top: 0;
+      }
+    }
+  }
+  // A stop on a board card reads as the map's stop card: what happens
+  // there in its pickup or delivery colour, the place, then the booked hour
+  // and the forecast on one label column, the forecast's word as a badge.
+  &__stop--summary {
+    --route-fact-label: #{ui.size(dispatch-stop-fact-label)};
+    .dispatch-load__stop-job {
+      font-weight: 600;
+      &.is-pickup {
+        color: ui.theme(pickup);
+      }
+      &.is-delivery {
+        color: ui.theme(delivery);
+      }
+    }
+    .dispatch-load__stop-times {
+      gap: ui.pg(xs);
+    }
+    .dispatch-load__appointment,
+    .dispatch-load__eta-missing {
+      display: grid;
+      grid-template-columns:
+        minmax(var(--route-fact-label), max-content)
+        minmax(0, 1fr);
+      column-gap: ui.pg(sm);
+      align-items: baseline;
+      > span {
+        color: ui.theme(text-secondary);
+      }
+      > strong {
+        color: ui.theme(text);
+        font-weight: 600;
+      }
+    }
+  }
+  // Too narrow for a label column beside the hours (a phone at enlarged
+  // text): each label takes only what it needs, and the booked hour goes
+  // under its label, as on the map's truck card.
+  @container dispatch-load
+    (width < #{ui.breakpoint(dispatch-stop-facts-stacked)}) {
+    &__stop--summary {
+      --route-fact-label: 0px;
+      --stop-hours-columns: minmax(0, 1fr);
+      .dispatch-load__appointment,
+      .dispatch-load__eta-missing {
+        grid-template-columns: minmax(0, 1fr);
       }
     }
   }

@@ -1,12 +1,16 @@
 using Application.Features.Execution.Queries;
 using Application.Features.Messaging.Commands;
 using Application.Features.Messaging.Queries;
+using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
 using Application.Reference;
 using Domain.Entities;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
+using Domain.Models.Routing;
+using Domain.Rules.Routing;
 using Microsoft.EntityFrameworkCore;
+using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Messaging;
 
@@ -125,6 +129,118 @@ public sealed class ConversationContextTests
     );
   }
 
+  // Seven loads, the first six passed by planning without a delivery: the
+  // current load leads, the conflicts follow it so a list limit cuts the
+  // least urgent work, and those the limit leaves out are counted - two
+  // loads, both with conflicts - never silently absent (stage 3b).
+  [Fact]
+  public async Task ConflictsBeyondTheListLimitAreCounted()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    var (_, driver) = await LinkedAsync(f);
+    var truck = await TruckAsync(f, "11006", driver);
+    var today = DateOnly.FromDateTime(f.Clock.GetUtcNow().UtcDateTime);
+    var loads = Enumerable
+      .Range(1, 7)
+      .Select(number => new Load
+      {
+        Id = Guid.NewGuid(),
+        LoadNumber = 1400 + number,
+        Status = "assigned",
+        TruckId = truck,
+        ShipDate = today.AddDays(number),
+        DeliveryDate = today.AddDays(number),
+        Stops =
+        [
+          new()
+          {
+            Id = Guid.NewGuid(),
+            Sequence = 1,
+            Job = "Pick Up",
+            TruckId = truck,
+            ScheduledDate = today.AddDays(number),
+            Latitude = 40,
+            Longitude = -80,
+          },
+          new()
+          {
+            Id = Guid.NewGuid(),
+            Sequence = 2,
+            Job = "Drop Off",
+            TruckId = truck,
+            ScheduledDate = today.AddDays(number),
+            Latitude = 41,
+            Longitude = -80,
+          },
+        ],
+      })
+      .ToList();
+    f.Db.Dispatches.AddRange(loads);
+    await f.Db.SaveChangesAsync();
+    foreach (var created in loads.Take(6))
+    {
+      var load = await f
+        .Db.Dispatches.AsNoTracking()
+        .Include(x => x.Stops)
+        .SingleAsync(x => x.Id == created.Id);
+      var plan = new RoutePlan
+      {
+        Id = Guid.NewGuid(),
+        DispatchId = load.Id,
+        TruckId = truck,
+        Version = 1,
+        CalculatedAt = DateTime.UtcNow,
+        Tracking = new() { AllStopsPassed = true },
+        Route = new()
+        {
+          Miles = 10,
+          Legs = [new(10, 600, [new(40, -80), new(41, -80)])],
+        },
+      };
+      f.Db.DispatchRoutePlans.Add(
+        new()
+        {
+          Id = plan.Id,
+          DispatchId = load.Id,
+          TruckId = truck,
+          InputHash = RoutePlanInputs.Hash(load, plan.Profile),
+          PlanJson = RoutePlanStorage.Serialize(plan),
+        }
+      );
+    }
+    await f.Db.SaveChangesAsync();
+    f.Db.ChangeTracker.Clear();
+
+    var work = await WorkAsync(f, driver);
+
+    Assert.Equal(DriverWorkHandler.MaximumLoads, work.Loads.Count);
+    Assert.Equal(
+      (1407, "current"),
+      (work.Loads[0].LoadNumber, work.Loads[0].Phase)
+    );
+    Assert.All(
+      work.Loads.Skip(1),
+      x => Assert.Equal("route_passed_not_delivered", x.Conflict)
+    );
+    Assert.Equal((2, 2), (work.OmittedLoads, work.OmittedConflicts));
+  }
+
+  private static async Task<DriverWork> WorkAsync(ReplyFixture f, Guid driver)
+  {
+    using var planning = new PlanningTestServices(f.Db);
+    var work = await new DriverWorkHandler(
+      f.Db,
+      new ReplyFixture.Caller("me"),
+      new DispatchRole(),
+      new FleetNames(f.Db),
+      new ActiveTransfers(f.Db),
+      f.Clock,
+      planning.PlanningInputs
+    ).Handle(new(driver), default);
+    Assert.True(work.Success, string.Join(";", work.Errors ?? []));
+    return work.Response!;
+  }
+
   private static async Task<(Guid Conversation, Guid Driver)> LinkedAsync(
     ReplyFixture f
   )
@@ -212,13 +328,15 @@ public sealed class ConversationContextTests
       new ReplyFixture.Caller("me")
     ).Handle(new(conversation), default);
     Assert.True(driver.Success, string.Join(";", driver.Errors ?? []));
+    using var planning = new PlanningTestServices(f.Db);
     var work = await new DriverWorkHandler(
       f.Db,
       new ReplyFixture.Caller("me"),
       new DispatchRole(),
       new FleetNames(f.Db),
       new ActiveTransfers(f.Db),
-      f.Clock
+      f.Clock,
+      planning.PlanningInputs
     ).Handle(new(driver.Response!.DriverId), default);
     Assert.True(work.Success, string.Join(";", work.Errors ?? []));
     return new(

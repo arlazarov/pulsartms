@@ -1,10 +1,13 @@
 using Application.Features.Dispatch.Queries;
+using Application.Features.Execution.Models;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Interfaces;
+using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Server.Tests.Support;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Dispatch;
@@ -269,6 +272,84 @@ public sealed class CompletedDispatchReadTests
 
     Assert.Equal([1402, 1401], page.Items.Select(x => x.LoadNumber));
     Assert.Equal([1403, 1402, 1401], unscoped.Items.Select(x => x.LoadNumber));
+  }
+
+  [Fact]
+  public async Task NativeHistoryReadsBatchLegsAndKeepAmbiguousTotalsUnknown()
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    var probe = new QueryColumnProbe();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>()
+        .UseSqlite(connection)
+        .AddInterceptors(probe)
+        .Options
+    );
+    await db.Database.EnsureCreatedAsync();
+    var truck = new Truck { Id = Guid.NewGuid(), ExternalId = "history" };
+    var loads = new[]
+    {
+      Completed(truck, 100, new(2026, 8, 1)),
+      Completed(truck, 200, new(2026, 8, 3)),
+    };
+    db.Dispatches.AddRange(loads);
+    foreach (var load in loads)
+      for (var i = 0; i < 2; i++)
+        db.ExecutionLegs.Add(
+          new()
+          {
+            Id = Guid.NewGuid(),
+            Trip = new Trip { Id = Guid.NewGuid() },
+            TruckId = truck.Id,
+            Status = "completed",
+            Revision = 1,
+            Stops = ExecutionStopRows.Capture(load.Stops),
+            Loads =
+            [
+              new()
+              {
+                Id = Guid.NewGuid(),
+                DispatchId = load.Id,
+                Sequence = i + 1,
+              },
+            ],
+          }
+        );
+    await db.SaveChangesAsync();
+    db.ChangeTracker.Clear();
+    using var services = new PlanningTestServices(db);
+    var reader = new GetDispatchQueryHandler(
+      db,
+      services.Deadheads,
+      new TestDriverScope()
+    );
+    probe.Clear();
+    var first = (
+      await reader.Handle(new(Status: "completed", PageSize: 1), default)
+    ).Response!;
+    Assert.Single(first.Items);
+    var singleStatements = probe.Statements.Count;
+    probe.Clear();
+    var both = (
+      await reader.Handle(new(Status: "completed", PageSize: 2), default)
+    ).Response!;
+    Assert.Equal(2, both.Items.Count);
+    Assert.Equal(singleStatements, probe.Statements.Count);
+    Assert.All(
+      both.Items,
+      x =>
+      {
+        Assert.Null(x.EmptyMiles);
+        Assert.Null(x.TotalMiles);
+        Assert.Null(x.TotalRatePerMile);
+        Assert.Equal(5m, x.LoadedRatePerMile);
+      }
+    );
+    Assert.DoesNotContain(
+      probe.Columns.SelectMany(x => x),
+      x => x is "RouteJson" or "HistoryJson"
+    );
   }
 
   private static Load Completed(Truck truck, int number, DateOnly day) =>

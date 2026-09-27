@@ -30,7 +30,12 @@ appropriate shared group, together with its reusable presentation helpers.
 Shared UI, models and services must not import page namespaces. DTOs live under
 `Models/DTO/` in their feature folders and must not depend on UI components.
 For example, both Fleet Map and Dispatch use `Shared/DriverStatus/DriverHours`,
-while its input model is `Models/DTO/Planning/DriverHosClocks`.
+while its input model is `Models/DTO/Planning/DriverHosClocks`. Both read a
+truck's vehicle line (speed, fuel, engine) through
+`Shared/Trucks/TruckReadings` and say what is left to the next stop through
+`Shared/Measurements/DistanceLeft`;
+a page adds only what it alone has, such as Fleet Map's weather and reserve
+mark, as the line's own content.
 
 Shared compatibility load dialogs and their stop/cycle children live together
 under `Shared/Dispatch/`. The full-page load workspace and its editor components
@@ -141,7 +146,8 @@ mounted, full-sized and independently interactive, and leave background
 controls accessible. Trucks are always shown; there is no manual
 truck-layer visibility toggle. While editing fuel, show only the edited
 truck; restore all trucks when editing ends, including empty drafts. On a
-phone the editor takes the card's whole width and half the stage, the map
+phone the editor takes the card's whole width and half the stage; the whole card
+scrolls so that large text cannot trap the quantity or Save controls. The map
 staying under it so a station can still be picked there; there are no
 Route / Fuel / Map tabs any more. The older paragraph below describes the
 retired two-column card.
@@ -612,15 +618,22 @@ docked truck inspector and a trip chain across the bottom. The list is the
 page's trucks under its own truck search, and choosing a row is choosing the
 truck in search. The inspector keeps all its content and actions (Follow,
 Fit route, Fuel, Camera, Route options); docked beside the map it no longer
-covers it, so the camera needs no inset. The fuel editor stands in the
-inspector's column; route choices, the send window and the key stay over the
-map. With no truck selected the map takes the inspector's column. The chain
-is the selected truck's current load (the planning dispatch the page already
-reads) and then the next loads in the server's order, named Next and
-Upcoming by position; choosing a next load opens its stop card through
-`selectNextStop`, the path a stop click takes, and choosing the current load
-returns to the truck card without moving the camera, so Follow continues.
-When Next loads is off the chain offers to turn it on. Below
+covers it, so the camera needs no inset. The docked column is narrower than
+`map-compact-columns`, so by the card's own rule the truck card is open
+whole and scrolls, as on a phone: there is no Details button and nothing
+waits behind one. The fuel editor replaces the card in that column; route
+choices, the send window and the key stay over the map; the camera stays the
+page's modal dialog. With no truck selected and no editor open the map takes
+the inspector's column. The chain
+is the selected truck's row of the Dispatch board: the same server read,
+order and `WorkPhase` the board shows, asked for that truck when it is
+chosen and again at the board's one-minute cadence, with late answers for
+another truck dropped. Its labels and conflict text come from
+`DispatchWorkPhase`, so Fleet and Dispatch name every load alike; a stale or
+unplaced load is never coloured as a place. The current load returns to the
+truck card without moving the camera, so Follow continues; a later load
+whose road is drawn opens its stop card through `selectNextStop`, the path a
+stop click takes, and any other load links to its workspace. When Next loads is off the chain offers to show them on the map. Below
 `futuristic-docked` the inspector floats as in the current interface, the
 list is left to search and the chain runs beneath the map.
 
@@ -629,9 +642,10 @@ below. Follow opens at zoom 15 and so on satellite; a reader's zoom or drag
 ends Follow as before. `tests/browser/futuristicSmoke.mjs` checks this on the
 real basemap, with a moving truck, alongside both interfaces' screens.
 
-Dispatch keeps Cards, Table, Papers, Active and Completed, search, groups
-and every link and action; only the frame and the load colours change, using
-the same route colours as the Fleet Map chain.
+Dispatch keeps Cards, Papers, Table, the scope (Completed is read in the
+Table alone), search, groups and every link and action; only the frame and
+the load colours change, using the same route colours as the Fleet Map
+chain, whose phase words are the board's.
 
 ## Dispatch information hierarchy
 
@@ -784,10 +798,19 @@ For current-road options, show the server's GPS origin time and Remaining stops
 only caption. Compare Saved remaining route with the preview, not a full-load
 distance. Render only the returned one, two or three options; never pad the list.
 
-Cards use a compact truck header and horizontal current/next/upcoming load lanes
-on wide screens, with vertical pickup/delivery timelines inside each card. Keep
-the same page heading and filter toolbar outside the view-specific body frame
-for Cards, Table and Papers; switching views must not move that shared top area.
+Cards read a truck as the Fleet Map truck card does (the owner, September 26).
+Its head names the unit and, past a hairline, the trailer and driver; what is
+left to the next stop, Show on map and Details stand at the head's end. Under a
+hairline the shared vehicle line and the text HOS clocks share one row, split
+11:9 like the map card's rows; below that, horizontal current/next/upcoming load
+lanes on wide screens, with vertical pickup/delivery timelines inside each
+card. Keep the same page heading and filter toolbar outside the view-specific
+body frame for Cards, Table and Papers; switching views must not move that
+shared top area. On a wide screen the toolbar is one row: search, driver
+filter, view and, at its end, the scope; the search and driver filter give up
+width before anything wraps. Below the shared `filter-toolbar-drawer` width the
+driver filter waits behind the same Filters drawer Fleet Map uses, while the
+view and scope stay in reach.
 Keep horizontal cards and their footers aligned to the tallest content-driven card in
 their row; do not reserve a fixed height. Stacked mobile cards keep independent
 heights. Completed visits remain visible as short numbered rows with a completion
@@ -800,7 +823,8 @@ for loading, failed, completed or next-only lists. Wide cards place completed hi
 beside remaining stops, while narrow cards stack them. The compact footer keeps remaining
 miles and the fuel-stop count. Loaded, empty and total miles, rate and both
 server-provided rate-per-mile values belong in Details, not a permanent card strip.
-Street addresses and ETA stay in the compact stop timeline. References,
+Named places, street addresses and ETA stay in the compact stop timeline.
+References,
 facility details, editing and cycle forecasts belong in the full load workspace,
 not inline board-card accordions. The workspace retains an ordered stop list
 with the selected stop's editor in a separate region below it. Selection follows
@@ -820,10 +844,16 @@ Resting operation/completion buttons share a wrapping footer; open editors use
 its width. Do not show empty More details actions. These dialog controls and
 modal focus behavior do not apply to the full-page workspace.
 
-Within a wide load card, each stop places its location/address on the left and
-appointment/ETA on the right. Narrow cards stack those facts without shrinking
-the type or hiding stops. Facility names do not add another summary row when the
-street is present; they remain in Details and on the location's title.
+A stop on a board card reads as the map's stop card: its number, its operation
+in the pickup or delivery colour, the place by name, then its street and town;
+a stop without a name leads with its town. The booked hour (Appt) and the
+forecast (ETA) share one label column, and the forecast's word (late, on time,
+short on cycle) is a toned badge, the `compact` StopHours reading. Within a wide
+load card the place stands on the left and Appt/ETA on the right. Narrow cards
+stack those facts without shrinking the type or hiding stops; below
+`dispatch-stop-facts-stacked` each value goes under its label, the forecast
+through StopHours' published `--stop-hours-columns`. The load's number
+links to its page, as on the map's truck card, and the footer says Open load.
 Loads with more than two stops show a compact total with pickup/delivery counts.
 Repeated visits to the same complete address retain separate numbered timeline
 entries and appointments, with `Visit 1 of 3` context on Cards and in Details.
@@ -890,24 +920,26 @@ time separately from provider facts; undo must say whether provider completion
 will remain. Opening, validating invalid input or cancelling must not send writes.
 
 The next load uses the named `route-next` and `route-next-surface` roles, while the
-current card retains its blue outline. These card roles do not change fuel-price
+current card stands out by a light `selection-border` ring and its Current tag,
+not a heavy blue frame. These card roles do not change fuel-price
 or map marker colors. Table and Papers retain the same financial data and
 completed-stop information. Table rows offer a native Open load link; map links and modified clicks retain
 their separate behavior. Papers opens the full load page after explicit
 selection, never during a background refresh.
 
-Truck status and fuel belong together in a compact telemetry group. Reuse
-`FuelReading` for its pump icon, percentage and soft warning/success surface;
-the selected Fleet Map header uses its `metric` variant to align with Speed and
-Engine, while Dispatch keeps the compact pill. Speed units inherit their number's
+A truck's speed, fuel and engine belong together on one vehicle line, the
+shared `TruckReadings`, on Fleet Map and Dispatch alike. It uses `FuelReading`'s
+`metric` variant to align the pump with Speed and Engine; the compact pill
+remains for other holders. Speed units inherit their number's
 font size, using regular weight beside the semibold number. These telemetry colors must not
 recolor fuel-station price markers.
 Fuel icons are yellow at 30% or below and warm orange at 15% or below. Speed icons are
 green through 65 mph, yellow above 65 through 70 mph, and warm orange above 70 mph.
 Engine icons are green while moving, yellow while idling, and neutral when off
 or unavailable. Values and labels retain their normal readable text colors.
-Dispatch's Driving pill uses the same speed thresholds, including trucks without
-an assigned load. This does not change the green moving/Idle map markers.
+Dispatch reads the same thresholds through the same line, including trucks
+without an assigned load. This does not change the green moving/Idle map
+markers.
 Duty details use their content height; do not reserve empty lines above Next recap.
 Truck action icons use one wrapping row rather than a forced two-column grid.
 The truck's single pump action opens Fuel plan for both automatic and manual
@@ -920,18 +952,19 @@ If the edit preview is unavailable, keep automatic calculation accessible after
 loading; its server-checked version comes from the opened plan and must not follow
 later polling updates.
 The metric Fuel reading shares Speed/Engine icon size, label font, row gap and
-value line height; the compact Dispatch pill retains its existing appearance.
+value line height; the compact pill retains its existing appearance.
 Fleet Map uses the named `telemetry-icon` size for those three icons without
 enlarging their labels or values. Metric Fuel accepts `--fuel-reading-icon-size`
 from its owner and otherwise keeps its existing heading-sized icon.
-Dispatch headers left-pack truck identity, telemetry with route distances, and HOS
-clocks in adjacent content-sized groups. Keep normal named gaps and the map action
-beside identity; unused desktop width stays to the right, not between groups.
-Duty/rest and Next recap remain below identity and telemetry. Narrow screens and
-enlarged text wrap without hiding information or stretching these groups apart.
-Dispatch keeps HOS clocks, Next recap, current duty/rest and route distances
-visible without accordions. Fleet Map also keeps HOS clocks and current duty
-visible above load information. Detailed stop forecasts remain in the workspace.
+Dispatch keeps the HOS clocks, duty and rest line, and Next recap always
+visible. There is no Details toggle on the board; the duty row remains
+under a hairline (the owner, September 26). The board no longer shows the plan's total
+distance; what is left to the next stop stands in the head. Narrow screens and
+enlarged text fold the vehicle line and the clocks onto lines of their own
+without hiding information; a phone's head keeps the unit and crew on its
+first line and what is left and the map action on the next. Fleet Map also
+keeps HOS clocks and current duty visible above load information. Detailed
+stop forecasts remain in the workspace.
 The sidebar account uses the current authentication claims, not illustrative names.
 The account name/role toggles a compact disclosure containing Personal settings
 and Logout, hidden initially. Both entries use shared sidebar button metrics.

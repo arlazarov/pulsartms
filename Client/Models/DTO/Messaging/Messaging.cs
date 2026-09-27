@@ -136,7 +136,12 @@ public sealed record ConversationContext(
   IReadOnlyList<ContextLoad> Loads,
   ContextHours? Hours = null,
   ContextDuty? Duty = null
-);
+)
+{
+  // Loads the server left out of the list, and how many carry a conflict.
+  public int OmittedLoads { get; init; }
+  public int OmittedConflicts { get; init; }
+}
 
 // Known is false when the provider holds no clocks for this driver.
 public sealed record ContextHours(
@@ -170,6 +175,11 @@ public sealed record ContextLoad(
 {
   public string OrderNumber { get; init; } = "";
   public IReadOnlyList<ContextStop> Stops { get; init; } = [];
+
+  // Where the server placed the load on its truck, and its conflict, as
+  // on the Dispatch board (DispatchResponse.WorkPhase, WorkConflict).
+  public string? Phase { get; init; }
+  public string? Conflict { get; init; }
 }
 
 public sealed record ContextStop(string Name, string City);

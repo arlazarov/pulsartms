@@ -12,7 +12,11 @@ public sealed class BoardPlanningReader(
     GetDispatchBoardQuery query,
     CancellationToken ct
   ) =>
-    (await planning.ReadBoardInputsAsync(query, ct))
-      .Select(work => summaries.Read(work, summaryOnly: true))
-      .ToList();
+    [
+      .. await summaries.ReadManyAsync(
+        await planning.ReadBoardInputsAsync(query, ct),
+        ct,
+        summaryOnly: true
+      ),
+    ];
 }

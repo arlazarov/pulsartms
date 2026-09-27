@@ -38,10 +38,10 @@
     <div><dt>Total distance</dt><dd>
       <DistanceText Miles="@((double?)Load.TotalMiles)" />
     </dd></div>
-    <div><dt>Loaded RPM</dt><dd>
+    <div><dt>@DispatchFinancialDisplay.LoadedRpm</dt><dd>
       @DispatchFinancialDisplay.Money(Load.LoadedRatePerMile, Load.Currency)
     </dd></div>
-    <div><dt>Total RPM</dt><dd>
+    <div><dt>@DispatchFinancialDisplay.TotalRpm</dt><dd>
       @DispatchFinancialDisplay.Money(Load.TotalRatePerMile, Load.Currency)
     </dd></div>
   </dl>

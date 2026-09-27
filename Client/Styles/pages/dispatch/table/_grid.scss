@@ -23,16 +23,13 @@
     width: 15%;
   }
   .dispatch-table__column-stop {
-    width: 17%;
+    width: 18%;
   }
   .dispatch-table__column-miles {
-    width: 14%;
+    width: 17%;
   }
-  .dispatch-table__column-rate {
-    width: 10%;
-  }
-  .dispatch-table__column-rpm {
-    width: 7%;
+  .dispatch-table__column-money {
+    width: 19%;
   }
   th {
     font-size: ui.fs(label);
@@ -66,23 +63,16 @@
     margin-top: ui.pg(xs);
     font-size: ui.fs(small);
   }
-  .dispatch-table__row {
-    cursor: pointer;
-  }
   .dispatch-table__row > td {
     transition: background 150ms ease;
   }
+  // The row's own Current or Next label says which it is; a bar at its
+  // edge said it twice (the owner, September 27).
   tr.is-current td {
     background: ui.theme(selected);
   }
-  tr.is-current td:first-child {
-    box-shadow: inset 3px 0 ui.theme(accent);
-  }
   tr.is-planned td {
     background: ui.theme(surface);
-  }
-  tr.is-next td:first-child {
-    box-shadow: inset 3px 0 ui.theme(route-next);
   }
   tr.dispatch-table__row:hover td,
   tr.dispatch-table__row:focus-within td {

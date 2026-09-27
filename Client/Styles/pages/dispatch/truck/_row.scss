@@ -1,7 +1,7 @@
 @use '../../../base' as ui;
 
-// A truck on the board: what it is, who is driving it, whether it is
-// moving, and the loads it is carrying.
+// A truck on the board, read as its Fleet Map card is: a head that names
+// the unit and its crew, its rows under hairlines, then its loads.
 .dispatch-truck {
   container: dispatch-truck / inline-size;
   min-width: 0;
@@ -9,110 +9,61 @@
   border: 1px solid ui.theme(border-subtle);
   border-radius: ui.radius(sm);
   overflow: hidden;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
-  align-items: center;
 
   &__header {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: 'identity left map';
     align-items: center;
-    justify-content: flex-start;
-    gap: ui.pg(md);
-    padding: ui.pg(lg);
+    gap: ui.pg(xs) ui.pg(md);
     min-width: 0;
+    padding: ui.pg(sm) ui.pg(md) ui.pg(sm) ui.pg(lg);
   }
   &__identity {
+    grid-area: identity;
     display: flex;
-    align-items: center;
+    align-items: baseline;
     flex-wrap: wrap;
-    gap: ui.pg(sm) ui.pg(md);
+    gap: ui.pg(xs) ui.pg(md);
     min-width: 0;
   }
   &__identity h2 {
-    font-size: ui.fs(title);
-    letter-spacing: -0.02em;
-    line-height: 1.25;
+    margin: 0;
+    font-size: ui.fs(subtitle);
+    font-weight: 700;
+    line-height: 1.3;
     font-variant-numeric: tabular-nums;
   }
-  &__icon {
-    width: ui.size(control-compact);
-    height: ui.size(control-compact);
-    flex-shrink: 0;
-    fill: ui.theme(text-secondary);
-    stroke: ui.theme(surface);
-    stroke-width: 1.5;
+  // The trailer and the driver, past a hairline, as one quiet line.
+  &__crew {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 ui.pg(xs);
+    min-width: 0;
+    padding-inline-start: ui.pg(md);
+    border-inline-start: 1px solid ui.theme(border-subtle);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(body);
+  }
+  &__trailer + &__header-driver::before {
+    content: '· ';
   }
   &__header-driver {
-    color: ui.theme(text);
-    font-size: ui.fs(body);
-    font-weight: 500;
     overflow-wrap: anywhere;
   }
-  &__trailer {
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(body);
-    padding-left: ui.pg(md);
-    border-left: 1px solid ui.theme(border);
-  }
-  &__trailer strong {
-    font-weight: 500;
-  }
-  &__status {
+  a.dispatch-truck__map {
+    grid-area: map;
     display: inline-flex;
     align-items: center;
-    gap: ui.pg(sm);
-    min-height: ui.size(control-compact);
-    padding: ui.pg(xs) ui.pg(md);
-    margin: 0;
-    border-radius: ui.radius(pill);
-    background: ui.theme(surface-muted);
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(body);
-    font-weight: 600;
+    gap: ui.pg(xs);
     white-space: nowrap;
-  }
-  &__status.is-moving {
-    background: ui.theme(success-surface);
-    color: ui.theme(success-text);
-  }
-  &__status.is-moving.is-low {
-    background: ui.theme(warning-surface);
-    color: ui.theme(warning-text);
-  }
-  &__status.is-moving.is-low > span {
-    color: ui.theme(telemetry-warning-icon);
-  }
-  &__status.is-moving.is-critical {
-    background: ui.theme(warning-surface);
-    color: ui.theme(telemetry-critical-icon);
-  }
-  &__status.is-idling {
-    background: ui.theme(warning-surface);
-    color: ui.theme(warning-text);
-  }
-  a.dispatch-truck__map {
-    --button-bg: #{ui.theme(selected)};
-    --button-text: #{ui.theme(link)};
-    @include ui.icon-control;
-    & {
-      align-self: flex-start;
+    svg {
+      inline-size: 1.1em;
+      block-size: 1.1em;
     }
   }
-  &__map svg {
-    width: 18px;
-    height: 18px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-  &__equipment {
-    min-width: 0;
-    padding: ui.pg(lg);
-  }
   &__loads {
-    grid-column: 1 / -1;
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: min(
@@ -124,9 +75,8 @@
     );
     align-items: stretch;
     gap: ui.pg(section);
-    padding: ui.pg(md);
+    padding: ui.pg(md) ui.pg(lg) ui.pg(lg);
     border-top: 1px solid ui.theme(border-subtle);
-    background: ui.theme(surface-soft);
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     scroll-snap-type: x proximity;
@@ -166,15 +116,6 @@
     border-style: dashed;
     background: transparent;
     font-size: ui.fs(body);
-  }
-}
-
-@include ui.below(truck-details) {
-  .dispatch-truck {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .dispatch-truck__equipment {
-    padding-top: 0;
   }
 }
 

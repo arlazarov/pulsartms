@@ -71,3 +71,49 @@
     }
   }
 }
+
+// On a phone the filters wait behind one Filters button and open as a
+// panel under the toolbar; on a wide toolbar their group is transparent,
+// so each control stands in the row where it always did. Fleet Map and
+// Dispatch fold the same way (the owner, September 26).
+.filter-toolbar__drawer-toggle {
+  display: none;
+}
+.filter-toolbar__drawer {
+  display: contents;
+}
+@include ui.below(filter-toolbar-drawer) {
+  .filter-toolbar:has(> .filter-toolbar__drawer) {
+    position: relative;
+  }
+  .filter-toolbar__drawer-toggle {
+    display: inline-flex;
+    order: 1;
+    flex-shrink: 0;
+    svg {
+      width: ui.size(checkbox);
+      height: ui.size(checkbox);
+      flex-shrink: 0;
+    }
+  }
+  .filter-toolbar__drawer {
+    display: none;
+    &.is-open {
+      display: grid;
+      gap: ui.pg(sm);
+      position: absolute;
+      z-index: ui.layer(dropdown);
+      top: calc(100% + #{ui.pg(xs)});
+      left: 0;
+      right: 0;
+      max-height: 50dvh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: ui.pg(md);
+      background: ui.theme(surface);
+      border: 1px solid ui.theme(border-subtle);
+      border-radius: ui.radius(sm);
+      box-shadow: ui.shadow(popup);
+    }
+  }
+}

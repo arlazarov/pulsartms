@@ -10,19 +10,14 @@ const css = compileString(
   },
 ).css;
 
-// The days are one line under the price list: each day its name, its price
-// and what the price did, today set apart by a quiet ground, and no rules
-// between them. The line breaks between days, never inside one. Stacked in
-// three columns it stood two lines tall under a list of one-line rows; a
-// table of every price by day, before that, was a grid of rules.
-test('the days are one even line under the prices, and the prices keep their accents', () => {
+test('the days keep three aligned columns under the prices, and the prices keep their accents', () => {
   assert.match(
     css,
-    /\.fleet-station-popup__days\s*\{[^}]*display: flex;[^}]*flex-wrap: wrap;/,
+    /\.fleet-station-popup__days\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/,
   );
   assert.match(
     css,
-    /\.fleet-station-popup__day\s*\{[^}]*display: flex;[^}]*align-items: baseline;[^}]*white-space: nowrap;/,
+    /\.fleet-station-popup__day\s*\{[^}]*display: flex;[^}]*flex-direction: column;[^}]*align-items: flex-start;[^}]*white-space: nowrap;/,
   );
   assert.match(
     css,
@@ -55,7 +50,7 @@ test('ordinary fuel inspector fits its quote without changing truck or planned f
   );
   assert.match(
     css,
-    /\.fleet-map-inspector\[data-inspector-mode=fuel\]:not\(:has\(\.fleet-station-popup--planned\)\) \.fleet-station-popup\s*\{[^}]*display: block;/,
+    /\.fleet-station-popup:not\(\.fleet-station-popup--planned\)\s*\{[^}]*display: block;/,
   );
 });
 

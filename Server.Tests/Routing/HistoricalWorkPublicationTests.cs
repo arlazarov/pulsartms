@@ -56,7 +56,7 @@ public sealed class HistoricalWorkPublicationTests
   }
 
   [Fact]
-  public async Task NativeHistoryRevalidationRetainsEachOriginalBatch()
+  public async Task NativeHistoryRevalidationPreservesPerWorkDependencies()
   {
     await using var f = await SavedFuelHorizonFixture.CreateAsync();
     var first = await HistoricalWorkFixture.AddAsync(f.Db, f.Current);
@@ -94,12 +94,16 @@ public sealed class HistoricalWorkPublicationTests
       default
     );
     Assert.Contains(
-      grouped[f.Future.Id].Predecessors,
+      grouped[f.Current.Id].Predecessors,
       x => x.ExecutionLegId == leg.Id
     );
     Assert.DoesNotContain(
       separate[f.Future.Id].Predecessors,
       x => x.ExecutionLegId == leg.Id
+    );
+    Assert.Equal(
+      separate[f.Future.Id].InputSignature,
+      grouped[f.Future.Id].InputSignature
     );
     DeadheadHistoryBatch[] batches =
     [

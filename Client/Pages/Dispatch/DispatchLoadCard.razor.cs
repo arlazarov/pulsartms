@@ -28,20 +28,12 @@ public partial class DispatchLoadCard
   [Parameter]
   public TruckDispatchBoardResponse? Truck { get; set; }
 
-  [Parameter]
-  public bool Current { get; set; }
-
-  [Parameter]
-  public int Order { get; set; }
+  // The load's place on its truck, as the server placed it.
+  public bool Current => DispatchWorkPhase.IsCurrent(Load);
+  public bool Earlier => DispatchWorkPhase.IsEarlier(Load);
 
   [Parameter]
   public bool Refreshing { get; set; }
-
-  [Parameter]
-  public string HeaderDriverName { get; set; } = "";
-
-  [Parameter]
-  public string HeaderTrailerNumber { get; set; } = "";
 
   [Parameter]
   public double? RemainingMiles { get; set; }
@@ -54,7 +46,7 @@ public partial class DispatchLoadCard
       DisplaySettings?.LoadNumberPrefix
     );
   private bool Completed => Load.Completed;
-  private bool Next => !Current && !Completed && Order <= 1;
+  private bool Next => DispatchWorkPhase.IsNext(Load);
   private bool ShowRemaining =>
     Current
     && !Completed
@@ -62,24 +54,9 @@ public partial class DispatchLoadCard
     && double.IsFinite(miles)
     && miles >= 0;
   private bool ShowFuelStops => !Completed && FuelStopCount is >= 0;
-  private string Phase =>
-    Completed ? "Completed"
-    : Current ? "Current"
-    : Next ? "Next"
-    : "Upcoming";
-  private string Status => new DispatchBoardRow(new(), Load).Status;
-  private bool ShowDriverAssignment =>
-    HasDifferentAssignment(Load.DriverName, HeaderDriverName);
-  private bool ShowTrailerAssignment =>
-    HasDifferentAssignment(Load.TrailerNumber, HeaderTrailerNumber);
-
-  private static bool HasDifferentAssignment(string? value, string? header) =>
-    !string.IsNullOrWhiteSpace(value)
-    && !string.Equals(
-      value.Trim(),
-      header?.Trim(),
-      StringComparison.OrdinalIgnoreCase
-    );
+  private string Phase => DispatchWorkPhase.Label(Load) ?? "";
+  private DispatchBoardRow Row => new(new(), Load);
+  private string Status => Row.Status;
 
   private readonly DispatchStopDisplayCache _stopDisplay = new();
   private IReadOnlyList<DispatchStopResponse> OrderedStops =>

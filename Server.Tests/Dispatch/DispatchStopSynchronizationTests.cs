@@ -305,6 +305,55 @@ public sealed class DispatchStopSynchronizationTests
     Assert.Empty(saved.TruckItinerary().Stops);
   }
 
+  [Fact]
+  public async Task CorrectedInvoiceStatusRepairsExistingHistoryIdempotently()
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await db.Database.EnsureCreatedAsync();
+    var source = Load(100, [Visit(1, "Archive", 1, "Drop Off")]);
+    source.Status = "sent";
+    using var reads = TestCache.Create();
+    using var memory = new MemoryCache(new MemoryCacheOptions());
+    var handler = new SyncDispatchesCommandHandler(
+      db,
+      [new Provider([source])],
+      DispatchImportTestData.Options,
+      reads,
+      memory,
+      TestCache.Preparation(),
+      new TestCompany()
+    );
+    Assert.True((await handler.Handle(new(), default)).Success);
+    var old = await db
+      .Dispatches.AsNoTracking()
+      .Include(x => x.Stops)
+      .SingleAsync();
+    var id = old.Id;
+    var stopId = Assert.Single(old.Stops).Id;
+    db.ChangeTracker.Clear();
+    source.Status = "completed";
+    Assert.True((await handler.Handle(new(), default)).Success);
+    db.ChangeTracker.Clear();
+    var repaired = await db
+      .Dispatches.AsNoTracking()
+      .Include(x => x.Stops)
+      .SingleAsync();
+    Assert.Equal(id, repaired.Id);
+    Assert.Equal("completed", repaired.Status);
+    var stop = Assert.Single(repaired.Stops);
+    Assert.Equal(stopId, stop.Id);
+    Assert.Null(stop.DepartedAt);
+    Assert.Null(stop.DeliveredAt);
+    Assert.Null(stop.ManualCompletedAt);
+    memory.Remove(FleetSyncKeys.DispatchSnapshot(Company.Amf, "fixture"));
+    Assert.Equal(0, (await handler.Handle(new(), default)).Response);
+    Assert.Equal(1, await db.DispatchSourceLinks.CountAsync());
+  }
+
   private static ExternalDispatch Load(
     int number,
     List<ExternalDispatchStop> stops

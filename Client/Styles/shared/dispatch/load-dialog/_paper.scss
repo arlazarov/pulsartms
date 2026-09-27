@@ -49,6 +49,10 @@
     &.is-completed {
       color: ui.theme(success-text);
     }
+    &.is-conflict {
+      color: ui.theme(warning-text);
+      background: ui.theme(warning-surface);
+    }
   }
   .dispatch-paper__equipment {
     color: ui.theme(text-secondary);

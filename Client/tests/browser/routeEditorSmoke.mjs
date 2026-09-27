@@ -179,7 +179,7 @@ try {
         timezoneId: 'America/Toronto',
       });
       await context.addInitScript(
-        ({ userId, theme }) => {
+        ({ userId, theme, face }) => {
           localStorage.setItem(
             'auth_session',
             JSON.stringify({
@@ -188,11 +188,14 @@ try {
               RefreshToken: 'fixture',
             }),
           );
+          // UI_TEST_INTERFACE=futuristic runs the same checks in the
+          // Futuristic interface.
+          if (face) localStorage.setItem(`pulsr.interface.${userId}`, face);
           document.addEventListener('DOMContentLoaded', () => {
             document.documentElement.dataset.theme = theme;
           });
         },
-        { userId, theme },
+        { userId, theme, face: process.env.UI_TEST_INTERFACE ?? null },
       );
       await installReleaseArtifact(context, artifact, origin);
       await context.route('**/*', async route => {

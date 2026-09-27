@@ -1,3 +1,4 @@
+using Application.Features.Dispatch.Services;
 using Application.Models;
 
 namespace Application.Features.Dispatch.Models;
@@ -90,7 +91,8 @@ public sealed class DispatchBoardIndex
     int pageSize,
     string? query,
     Guid? truckId,
-    DriverScope scope
+    DriverScope scope,
+    int? loadNumber = null
   )
   {
     IEnumerable<Row> result = rows;
@@ -120,6 +122,11 @@ public sealed class DispatchBoardIndex
         : result.Where(x =>
           x.Loads.Any(d =>
             Prefix(d.Number)
+            || loadNumber is { } number
+              && d.Number.StartsWith(
+                LoadNumberSearch.Prefix(number),
+                StringComparison.Ordinal
+              )
             || Prefix(d.Order)
             || Matches(d.Customer)
             || Matches(d.Driver)
