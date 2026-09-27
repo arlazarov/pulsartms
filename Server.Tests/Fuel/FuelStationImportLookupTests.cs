@@ -8,6 +8,7 @@ using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Server.Tests.Fuel;
 
@@ -279,7 +280,10 @@ public sealed class FuelStationImportLookupTests
         Db,
         new Provider(imports),
         new(Store, places, TimeProvider.System),
-        reads
+        reads,
+        TimeProvider.System,
+        new(),
+        NullLogger<ImportFuelDiscountsHandler>.Instance
       );
 
     public static async Task<Fixture> Create()
@@ -314,6 +318,7 @@ public sealed class FuelStationImportLookupTests
   {
     public Task<IReadOnlyList<FuelDiscountImportData>> GetDiscountsAsync(
       IReadOnlyCollection<string> ids,
+      DateTime since,
       CancellationToken ct = default
     ) => Task.FromResult(imports);
   }

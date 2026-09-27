@@ -82,6 +82,7 @@ public static class DependencyInjection
     services.AddMemoryCache(options => options.TrackStatistics = true);
     services.AddSingleton<ICacheMemorySource, SharedCacheMemorySource>();
     services.AddSingleton(TimeProvider.System);
+    services.AddSingleton<FuelImportSkips>();
     services.AddScoped<GmailWatchLifecycle>();
     services.AddScoped<FuelStationLookupService>();
     services.AddSingleton<

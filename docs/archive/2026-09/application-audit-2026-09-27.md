@@ -819,10 +819,32 @@ failed on the new worktree's missing Client packages and is marked.
   stay unverified and the base road step fails on them, or reaches a
   provider, on every attempt.
 
+- **F20, fuel import.** Verified by reading: a parse error in one
+  attachment threw from the provider for the whole run, and an empty one
+  threw in the handler; every later push failed on the same message, and
+  newer prices waited until it left the `newer_than:2d` window, which
+  also lost any message older than two days after an outage. Now the
+  provider marks an attachment it cannot read (`Unreadable`), the
+  handler skips only that message and imports the rest, and the skip is
+  logged once per process (`FuelImportSkips`, 256 message ids). The
+  message is not marked imported: it is met again while in the window,
+  and a corrected parser still imports it. The mailbox is read `after:`
+  two days before the last import (at most 30 days back). Red on the old
+  handler (diagnostic-td0Jkw); green diagnostic-YWTwxK; mutations of the
+  once-only report, the 30-day limit, the window, the provider's catch
+  and the query all fail (diagnostic-BBaWUC). Production, read only: 25
+  imports since September 18, none on the 19th; no loss seen. No schema
+  change: this branch does not contain the released migration 74, and a
+  second migration here would have to be ordered at integration.
+
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done
   when D1 is deployed and a reason is logged for each.
+- **A skipped fuel-import message is only logged (F20).** Owner: Fuel.
+  Done when, after this branch is integrated with the released
+  migrations, the skip is stored with the message and an auditor rule
+  reports it, or the Gmail intake is retired.
 - **Road requests for completed loads never finish (F23).** Owner:
   Routing. Done when, with D1 released, the step is known for the 30
   requests, and completed legs either get their road or settle without
@@ -841,7 +863,7 @@ failed on the new worktree's missing Client packages and is marked.
   referrer and API restrictions are confirmed in the console.
 - **Payload sizes of locations, HOS and planning.** Owner: Client (F6).
   Done when measured in a browser trace.
-- **Reported findings not re-read (F10 scan, F12, F15, F19-F21,
+- **Reported findings not re-read (F10 scan, F12, F15, F19, F21,
   F24-F27).** Owner: this audit. Done when each is re-read, or fixed
   with its test.
 - **Role model (F18).** Owner: the owner. Done when a limited role is

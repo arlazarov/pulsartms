@@ -5,6 +5,7 @@ using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Services;
 using Application.Models;
 using Domain.Entities.Fuel;
+using Microsoft.Extensions.Logging;
 
 namespace Application.Features.Fuel.Commands.ImportFuelDiscounts;
 
@@ -14,9 +15,17 @@ public class ImportFuelDiscountsHandler(
   IAppDbContext dbContext,
   IFuelDiscountProvider fuelDiscountProvider,
   FuelStationLookupService lookups,
-  ReadCache reads
+  ReadCache reads,
+  TimeProvider time,
+  FuelImportSkips skips,
+  ILogger<ImportFuelDiscountsHandler> logger
 ) : IRequestHandler<ImportFuelDiscountsCommand, RequestResponse<int>>
 {
+  // The mailbox is read from two days before the last import, so an outage
+  // loses nothing, but never further back than this.
+  public static readonly TimeSpan Overlap = TimeSpan.FromDays(2);
+  public static readonly TimeSpan Furthest = TimeSpan.FromDays(30);
+
   public async Task<RequestResponse<int>> Handle(
     ImportFuelDiscountsCommand request,
     CancellationToken cancellationToken
@@ -26,8 +35,15 @@ public class ImportFuelDiscountsHandler(
       .FuelImportSources.AsNoTracking()
       .Select(x => x.GmailMessageId)
       .ToListAsync(cancellationToken);
+    var now = time.GetUtcNow().UtcDateTime;
+    var last = await dbContext.FuelImportSources.MaxAsync(
+      x => (DateTime?)x.ImportedAt,
+      cancellationToken
+    );
+    var since = Since(now, last);
     var imports = await fuelDiscountProvider.GetDiscountsAsync(
       importedMessageIds,
+      since,
       cancellationToken
     );
     var count = 0;
@@ -41,13 +57,22 @@ public class ImportFuelDiscountsHandler(
         )
       )
         continue;
+      // One message's bad attachment skips that message only (audit F20).
       if (
         string.IsNullOrWhiteSpace(message.Key)
-        || message.Any(x => x.Rows.Count == 0 || x.EffectiveDate == default)
+        || message.Any(x =>
+          x.Unreadable || x.Rows.Count == 0 || x.EffectiveDate == default
+        )
       )
-        throw new InvalidOperationException(
-          "Fuel import contains an empty or invalid attachment."
-        );
+      {
+        if (skips.First(message.Key))
+          logger.LogWarning(
+            "Fuel import skipped message {MessageId}: {Reason}",
+            message.Key,
+            message.Any(x => x.Unreadable) ? "unreadable" : "empty"
+          );
+        continue;
+      }
 
       IReadOnlyDictionary<
         (string StationId, string Query),
@@ -124,5 +149,13 @@ public class ImportFuelDiscountsHandler(
       reads.Invalidate(ReadGroups.Fuel);
     }
     return RequestResponse<int>.Ok(count);
+  }
+
+  internal static DateTime Since(DateTime now, DateTime? lastImport)
+  {
+    var since = (lastImport ?? now) - Overlap;
+    return since > now - Overlap ? now - Overlap
+      : since < now - Furthest ? now - Furthest
+      : since;
   }
 }
