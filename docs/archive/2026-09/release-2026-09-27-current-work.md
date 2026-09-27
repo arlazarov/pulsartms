@@ -134,6 +134,35 @@ fingerprinted files `public, max-age=31536000, immutable`.
   held 60-65% to 19:03. No error and no 5xx to 19:03. Twenty minutes
   are not a long-run bound; the daily trend is still to be read.
 
+## Server memory to 21:06 UTC
+
+Read only from Cloud Monitoring and the revision's logs, 5-minute
+alignment, no load injected and no limit changed; run
+`diagnostic-OG0AUp` (`memory.txt`, `logs.txt`, `5xx.txt`), copied to the
+main checkout's `artifacts/managed`. This is the deployed revision
+`amftms-api-b-13babfb4-…` (1 GiB, one instance). The ETA count bound
+(`3063cf47` and after, on this branch) and the audit branch are not
+deployed: their tests measure nothing here, and nothing here measures
+them.
+
+- Container memory, p99 of the limit: 37% at 18:46, 57% at 18:51, 62-66%
+  from 18:56 to 19:11 while warming; then a plateau of 63-65% from 19:16
+  to 20:41 (p50 62.2-63.6%), 65-67% from 20:46 to 21:06 (p50
+  64.5-65.5%). Peak p99 67% at 20:46. A step of about 2 points at 20:46,
+  not a steady slope; two hours are still not a long-run bound, and the
+  daily trend remains to be read.
+- The previous revision held 67.5-68% (p99 69%) before the release.
+- Instances: one active and none idle in every interval. One start
+  (18:44:39, minimum instances), no restart since; no memory-limit, OOM
+  or termination line in the revision's logs.
+- 5xx: none from failures. Twelve 503s from `GET /api/messaging/changes`
+  in bursts at 20:35, 20:49 and 20:52, answered in about 45 ms: the
+  mailbox bounds of `MessagingMailboxes` (per account, waiting requests)
+  refusing rather than growing, as designed; the Client backs off and
+  polls. The bounds shipped before this release, and no 5xx at all is
+  logged from September 24 to the release. Which bound refused is not
+  logged. Owner: Messaging.
+
 ## Open, with owners
 
 - ETA memory has no count bound (pre-existing; `eta-current`
