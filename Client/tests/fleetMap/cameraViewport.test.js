@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createCameraViewport } from '../../Scripts/fleetMap/ui/cameraViewport.ts';
+import { readFileSync } from 'node:fs';
 
 const rect = (left, top, width, height) => ({
   left,
@@ -477,4 +478,22 @@ test('a card that changes shape after a drag reveals the current pick again', t 
   height = 360;
   f.camera.refresh();
   assert.equal(f.pans.length, 2);
+});
+
+// A truck opened from Dispatch's map link used to be focused without the
+// viewport being told what the card was about, so opening Details covered
+// it (the owner, September 27). The focus path reveals it as a pick does.
+test('a truck focused from another page is revealed like a picked one', () => {
+  const source = readFileSync(
+    new URL('../../Scripts/fleetMap/fleetMap.ts', import.meta.url),
+    'utf8',
+  );
+  const focus = source.slice(
+    source.indexOf('focusTruck(id: string'),
+    source.indexOf('setFollow(id: string'),
+  );
+  assert.match(
+    focus,
+    /inspector\.setMode\('truck'\);[\s\S]*trucks\.getPosition\(id\)[\s\S]*cameraViewport\.reveal\(\{ lat: at\.latitude, lng: at\.longitude \}\)/,
+  );
 });
