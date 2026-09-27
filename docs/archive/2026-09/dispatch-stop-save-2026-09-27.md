@@ -83,3 +83,25 @@ registered fixture, never the application database.
 11005 resource conflict still needs owner-level resolution and confirmation
 of predecessor completion. An explicit question about AMF1403 is pending.
 No production writes or incident deployment performed by root.
+
+## Review follow-up
+
+Independent review found NativeLoadCanBeEditedWithoutImport failing when its
+create and edit share a context: equal prices with decimal scales 1200 and
+1200.0 serialized differently. Reproduced locally along with a new direct
+fingerprint invariant. Commercial's price projection now has canonical decimal
+scale, while remaining a JSON number compatible with stored commercial
+baselines. No price value is rounded. Both previously failing cases pass.
+Focused creation/correction/persistence/import checks: 45 passed, zero skips.
+The added numeric JSON round-trip assertion passed separately. JavaScript
+architecture: 67 passed. Full gate remains the deploy owner's responsibility.
+
+The user confirms AMF1403 was fully delivered and the correct trailer number
+is 055904 (our accepted row is named 55904). Bounded source reads contain
+AMF1403 delivery 2026-09-26T12:43:40.010Z and AMF1410 pickup
+2026-09-26T20:41:54.488Z. Source assignment resolves a different inactive
+trailer row named 055904, while accepted execution references 55904. Truck,
+driver and co-driver identities match. The reconciliation resource check stops
+before copying actuals. Do not globally strip zeros or bypass inactive-resource
+checks: resolve the confirmed duplicate identity with preserved history first.
+No production repair has occurred yet.
