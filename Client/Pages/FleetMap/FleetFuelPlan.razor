@@ -28,7 +28,7 @@
     @if (Plan is null)
     {
         <p class="fleet-fuel-plan__empty">
-            @(Unusable ? "The fuel plan is being recalculated."
+            @(Unusable ? "The saved fuel plan needs updating."
                 : "No fuel stops are planned for this load.")
         </p>
     }
@@ -102,6 +102,10 @@
                 </li>
             }
         </ol>
+    }
+    @if (Plan?.CoverageNotice is { Length: > 0 } coverageNotice)
+    {
+        <p class="fleet-fuel-plan__warning" role="note">@coverageNotice</p>
     }
     <footer class="fleet-fuel-plan__actions">
         <button type="button" class="btn btn--small"

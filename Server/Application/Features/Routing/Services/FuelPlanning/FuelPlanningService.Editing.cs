@@ -285,6 +285,7 @@ public sealed partial class FuelPlanningService
     );
     at = Mark("replay", at);
     var fuel = replay.Plan;
+    fuel.CoverageNotice = horizon.CoverageNotice;
     fuel.TruckId = plan.TruckId;
     fuel.ExecutionLegId = plan.ExecutionLegId;
     fuel.AssignmentRevision = plan.AssignmentRevision;
