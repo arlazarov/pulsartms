@@ -109,11 +109,19 @@ public sealed class PlanningSummaryReader(
         ? []
         : [AutomaticPlanningResult.DutyDependency],
       Message =
-        refreshing && result.Message is null
-          ? "Planning summary is updating."
-          : result.Message,
+        result.Message
+        ?? (
+          !dutyHolds ? DutyChanged
+          : refreshing ? "Planning summary is updating."
+          : null
+        ),
     };
   }
+
+  // Said where the summary's status is shown (Dispatch and the map), so
+  // the fuel hand-over it still shows is not read as current.
+  public const string DutyChanged =
+    "Driver duty changed. The fuel hand-over is updating.";
 
   public async Task<AutomaticPlanningResult> ReadAsync(
     TruckPlanningInputs work,

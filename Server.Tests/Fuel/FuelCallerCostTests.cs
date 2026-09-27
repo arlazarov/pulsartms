@@ -1,7 +1,11 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Application.Features.Fuel.Services;
+using Application.Features.Routing.Services.FuelPlanning;
 using Domain.Models.Routing;
+using Infrastructure.Persistence;
+using Microsoft.Extensions.Logging.Abstractions;
 using Server.Tests.Support;
 using Xunit.Abstractions;
 
@@ -13,8 +17,11 @@ namespace Server.Tests.Fuel;
 // order is a refresh's: the summary's preparation (itinerary and hours
 // supplied), the summary publisher's display copy (a fresh itinerary and
 // hours), the refresh operation before its price refresh (neither
-// supplied, on the prepared state), then the fleet loop (neither, a new
-// state). Statements are counted where they reach the database and
+// supplied, on the prepared state), the price refresh itself, then the
+// fleet loop (neither, a new state). The price refresh reads the saved
+// plan from the store, not the read cache - it decides whether to
+// recalculate from the latest saved plan, a justified fresh read - and
+// then runs the same check. Statements are counted where they reach the database and
 // labelled by the table they read first. Local SQLite timings are
 // recorded for orientation only; they say nothing about production.
 //
@@ -98,6 +105,26 @@ public sealed partial class FuelCallerCostTests(ITestOutputHelper output)
       "refresh before prices",
       () => f.Services.FuelPlans.ApplyAsync(prepared, default)
     );
+    var prices = new FuelPriceRefreshService(
+      new TruckFuelPlanStore(f.Db, NullLogger<TruckFuelPlanStore>.Instance),
+      f.Services.FuelInputs,
+      f.Services.Sender,
+      new CarrierFuelPrices(f.Services.Sender),
+      TimeProvider.System,
+      f.Services.SavedFuelInputs
+    );
+    await Measure(
+      "price refresh",
+      () =>
+        prices.RefreshAsync(
+          new(root.TruckId, root.DispatchId, 1, prepared, null)
+          {
+            ExecutionLegId = root.ExecutionLegId,
+            AssignmentRevision = root.AssignmentRevision,
+          },
+          default
+        )
+    );
     operation?.Dispose();
     await Measure(
       "fleet loop",
@@ -139,14 +166,14 @@ public sealed partial class FuelCallerCostTests(ITestOutputHelper output)
         )
       );
 
-    var check = calls[4].Statements;
-    var itinerary = calls[5].Statements;
+    var check = calls[5].Statements;
+    var itinerary = calls[6].Statements;
     Assert.All(
       new[] { prepared, copy, later },
       state => Assert.False(state.Plan!.FuelPlan!.NeedsRefresh)
     );
     Assert.Equal(
-      shared ? [8, 0, 4, 6, 6, 4] : [8, 6, 10, 6, 6, 4],
+      shared ? [8, 0, 4, 1, 6, 6, 4] : [8, 6, 10, 7, 6, 6, 4],
       calls.Select(x => x.Statements.Count)
     );
     if (shared)
@@ -154,7 +181,7 @@ public sealed partial class FuelCallerCostTests(ITestOutputHelper output)
     // Every caller repeats the same check of the same saved plan against
     // the same saved roads and history, whatever it supplied.
     Assert.All(
-      calls.Take(4),
+      calls.Take(5),
       call => Assert.Equal(check, call.Statements.TakeLast(check.Count))
     );
     // Beyond the check, the summary reads the saved plan and its geometry

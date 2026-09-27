@@ -48,7 +48,8 @@ public sealed class PlanningSummaryDutyTests
       off.StaleDependencies
     );
     Assert.True(off.IsRefreshing);
-    Assert.Equal("Planning summary is updating.", off.Message);
+    Assert.Equal(PlanningSummaryReader.DutyChanged, off.Message);
+    Assert.Null(same.Message);
     Assert.Equal(
       same.State!.Plan!.FuelPlan!.IssueState,
       off.State!.Plan!.FuelPlan!.IssueState

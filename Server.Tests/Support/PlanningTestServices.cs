@@ -366,10 +366,12 @@ internal sealed class PlanningTestServices : IDisposable
     ) => throw new NotSupportedException();
   }
 
+  // No hours unless a test gives a driver some; no history.
   internal sealed class NoHos : IDriverHosProvider, IHosHistoryProvider
   {
     public int ClockCalls { get; private set; }
     public int HistoryCalls { get; private set; }
+    public Dictionary<string, DriverHosClocks> Clocks { get; } = [];
 
     public Task<IReadOnlyDictionary<string, DriverHosClocks>> GetClocksAsync(
       CancellationToken ct
@@ -377,7 +379,7 @@ internal sealed class PlanningTestServices : IDisposable
     {
       ClockCalls++;
       return Task.FromResult<IReadOnlyDictionary<string, DriverHosClocks>>(
-        new Dictionary<string, DriverHosClocks>()
+        new Dictionary<string, DriverHosClocks>(Clocks)
       );
     }
 

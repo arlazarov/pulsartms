@@ -6,7 +6,9 @@ using Application.Features.Eta.Services;
 using Application.Features.Synchronization.Options;
 using Application.Interfaces;
 using Domain.Entities.Dispatch;
+using Domain.Entities.Fleet;
 using Domain.Models.Eta;
+using Domain.Models.Fleet;
 using Domain.Models.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -278,6 +280,93 @@ public sealed partial class EtaChainInputTests
         )
       );
 
+  // A real calculation, not a row written by hand: the driver's hours and
+  // a fresh position on the road give the chain a forecast with stops.
+  // It is committed by one process, and another shows the same forecast
+  // - every stop, the pending later loads - read from the store in one
+  // query; the board shows the root load its own part of it.
+  [Fact]
+  public async Task AForecastWithStopsCommittedHereIsShownElsewhereIntact()
+  {
+    var fleet = Positioned();
+    await using var f = await Fixture.CreateAsync(
+      sender: new DispatchTelemetrySender(fleet)
+    );
+    fleet.Trucks[0].TruckId = f.Truck.Id;
+    await GiveHoursAsync(f);
+    await using var b = Process.Create(f, fleet);
+
+    await f.Services.Forecasts.RefreshAsync(f.Current.Id, default);
+    var made = await Shown(f.Services, f.Services.Forecasts, f.Truck.Id);
+    var elsewhere = await b.ShownAsync(f.Truck.Id);
+    var reads = b.Queries.Take();
+    var loads = f.Ordered;
+    await f.Services.Forecasts.PopulateAsync(loads, default);
+    var board = loads.Single(x => x.Id == f.Current.Id).Eta!;
+
+    Assert.NotNull(made);
+    Assert.Null(made.UnavailableReason);
+    Assert.Contains(made.Stops, x => x.DispatchId == f.Current.Id);
+    Assert.Contains(made.Stops, x => x.DispatchId == f.Next.Id);
+    Assert.Empty(b.Services.EtaMemory.Results);
+    Assert.Equal(Json(made), Json(elsewhere));
+    Assert.Equal(1, reads);
+    Assert.Equal(
+      Json(EtaForecastService.Filter(made, f.Current.Id)),
+      Json(board)
+    );
+  }
+
+  private static FleetLocationsResponse Positioned() =>
+    new()
+    {
+      Trucks =
+      [
+        new()
+        {
+          // Named once the fixture made the truck.
+          Latitude = 35,
+          Longitude = -80.9m,
+          Speed = 55,
+          EngineState = "On",
+          UpdatedAt = DateTime.UtcNow,
+          ObservedAt = DateTime.UtcNow,
+        },
+      ],
+    };
+
+  // A driver on the truck and its loads, with a fresh reading of every
+  // clock.
+  private static async Task GiveHoursAsync(Fixture f)
+  {
+    var driver = new Driver
+    {
+      Id = Guid.NewGuid(),
+      ExternalId = "eta-driver",
+      Name = "ETA Driver",
+      IsActive = true,
+    };
+    f.Db.Drivers.Add(driver);
+    var truck = await f.Db.Trucks.SingleAsync(x => x.Id == f.Truck.Id);
+    truck.DriverId = driver.Id;
+    await f.Db.SaveChangesAsync();
+    // The chain is one driver's run: the loads' stops name the same one.
+    await f
+      .Db.Set<DispatchStop>()
+      .ExecuteUpdateAsync(x => x.SetProperty(s => s.DriverId, driver.Id));
+    f.Db.ChangeTracker.Clear();
+    f.Services.Reads.Invalidate("dispatch");
+    f.Services.Hos.Clocks[driver.ExternalId] = new()
+    {
+      DriveMs = (long)TimeSpan.FromHours(8).TotalMilliseconds,
+      ShiftMs = (long)TimeSpan.FromHours(11).TotalMilliseconds,
+      CycleMs = (long)TimeSpan.FromHours(50).TotalMilliseconds,
+      BreakMs = (long)TimeSpan.FromHours(6).TotalMilliseconds,
+      CurrentDutyStatus = "driving",
+      UpdatedAt = DateTime.UtcNow,
+    };
+  }
+
   // The next refresh calculates anew instead of reusing the result.
   private static async Task Recalculate(Fixture f)
   {
@@ -360,7 +449,10 @@ public sealed partial class EtaChainInputTests
       return new(relays, NewRelay(relays, f.Services.Reads), null, null);
     }
 
-    public static Process Create(Fixture f)
+    public static Process Create(
+      Fixture f,
+      FleetLocationsResponse? fleet = null
+    )
     {
       var queries = new ForecastQueries();
       var db = new AppDbContext(
@@ -381,7 +473,7 @@ public sealed partial class EtaChainInputTests
       var publication = new PublicationProbe(db);
       var services = new PlanningTestServices(
         db,
-        sender: new DispatchTelemetrySender(new()),
+        sender: new DispatchTelemetrySender(fleet ?? new()),
         reads: reads,
         publicationScope: publication
       );

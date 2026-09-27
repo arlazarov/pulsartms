@@ -379,21 +379,22 @@ completed.
        the stored one on both; keyless rows are not shown until
        recommitted; the board's part of the chain matches the old row
        shape; the keys' upsert on SQLite and PostgreSQL.
-     - Gap: the test fixture has no hours or position, so its refresh
-       commits a forecast without stops. The chain with stops in these
-       tests is written into the saved row by hand: it proves the
-       selection and the board's filtering, not that a real refresh's
-       populated chain reaches another process intact. A fixture with
-       hours and a position for that producer-to-consumer agreement is
-       still to be built.
+     - Producer to consumer: with a driver's fresh hours and a fresh
+       position on the road, a real refresh calculates the chain with
+       stops of both loads, commits it, and another process shows the
+       same forecast from one query; the board shows the root load its
+       part. Rows written by hand in the other tests prove selection and
+       filtering only.
    - **4e fuel callers, measured and shared (not released).**
      `TruckFuelPlans.ApplyAsync` runs for the summary's preparation and
      its publisher (itinerary and hours supplied), before the price
      refresh (neither) and in the fleet loop (neither). Measured on the
      SQLite fixture (`FuelCallerCostTests`): 8, 6, 10 and 6 statements;
      the same 6-statement check of the saved plan's roads and history
-     (`FuelSavedInputsValidation`) ran in each, so one refresh checked
-     it three times, four with the price refresh (not counted here). The
+     (`FuelSavedInputsValidation`) ran in each. The price refresh that
+     follows costs 7: a fresh read of the saved plan from the store (it
+     decides whether to recalculate, a justified fresh read) and the
+     same check. One refresh checked it four times. The
      final inputs differ; the check's inputs - saved plan, remaining
      roads, selected loads - do not.
      - The owner now shares the check within an operation that declares
@@ -407,7 +408,7 @@ completed.
        committed connection (`DeadheadHistoryPublication`) the second,
        locally and through the relay. Outside a share every call checks.
        Measured: preparation 8, publisher 0, refresh 4 (its itinerary
-       capture), 12 instead of 24 for the refresh's three calls.
+       capture), price refresh 1 - 13 statements instead of 31.
        One share per scope: a nested one is refused, and ending an old
        share never ends a newer one. Tests: unchanged inputs checked once;
        an announced road or connection commit checked again and found; an
@@ -434,8 +435,11 @@ completed.
      reading and is not compared; a stale reading is a change (the line
      becomes unknown). Tests: same duty current, other duty stale and
      due, a duty change during a preparation caught by the next read,
-     the domain rule. Gap: the Client does not yet name the stale
-     dependency; it shows the summary as updating.
+     the domain rule. The message says it where the summary's status is
+     shown (Dispatch, the map): "Driver duty changed. The fuel hand-over
+     is updating." The Client carries the mark in its result and compares
+     it, so a result that differs only in it replaces the shown one; a
+     server released before the mark sends none, read as none.
 
 Each stage is a separate candidate with its own review; none resets
 pending work, forces routing or changes historical stops.
