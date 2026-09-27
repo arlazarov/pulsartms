@@ -1141,6 +1141,49 @@ failed on the new worktree's missing Client packages and is marked.
   moves the future-fuel value. Owner decisions before the last step:
   fuel planning with the owner. Noted: `FuelCheckedRouteSearch` appears
   to be reachable only from tests (unconfirmed).
+- **F25, step two done: one owner for the terms.** `FuelPlanCost`
+  (Domain rules) owns the arithmetic of the purchase, access time, stop
+  and future-fuel terms, and `FuelScheduleRanking.DelayBeyondAccess` the
+  delay charged beyond access time; the optimizer (three future-fuel
+  copies and the stop cost), the chain comparison, the manual replay,
+  the projection, the price refresh and the replay lower bound call
+  them. Each caller keeps its own inputs - the optimizer's clamp and
+  stored minutes, the replay's minutes from miles, the projection's
+  totals-based time - so no figure changed: every existing test that
+  pins a figure passed without an expectation changed (fuel and routing
+  groups, Server 2505 of 2506, diagnostic-E0yd1K; the one failure was
+  the new component test comparing a double exactly, fixed,
+  diagnostic of the fix after it). Mutating the owner's access time
+  fails 29 of those tests and its future-fuel floor 20, across the
+  optimizer, replay, projection and tier search (diagnostic-mjhWQ1):
+  the copies compute through it. Those tests record today's behaviour;
+  they are not the product's rules.
+- **F25 proposed semantic corrections (not applied).** Each changes a
+  figure dispatchers or drivers see, so each needs the owner's decision,
+  then its own test and its own release note:
+  1. One source of access minutes: stored `DetourMinutes` everywhere, or
+     minutes from miles everywhere (the replay derives them, the
+     optimizer and projection store them; they agree only for
+     symmetric access).
+  2. The initial access: charged by the chain comparison, the replay
+     and the projection, not by the optimizer's own score; decide
+     whether the optimizer's ranking should include it (it is constant
+     within one search, so ranking is unaffected, but its `SavingsUsd`
+     is computed without it).
+  3. Schedule delay in the projection: the projection drops it, so a
+     plan shown after publication costs less than it did when chosen;
+     decide whether the shown figure is "remaining" (as labelled) or
+     comparable to the chosen one.
+  4. Negative detour minutes: clamped by the optimizer only; clamp in
+     the owner, or reject at the source (`Nearby` never produces them).
+  5. The arrival floor: `Max(Reserve, Minimum)` in the replay,
+     `Minimum ?? Reserve` in the projection - a validity rule, not a
+     cost; one rule in one owner.
+  6. Future fuel under a price refresh: never repriced; decide whether
+     the replacement value follows the new price.
+  7. The materiality test: per stop against a total-based choice.
+  8. Invalid prices: the optimizer drops a candidate silently, the
+     replay reports it.
 - **F26 design: the shared memory cache.** Re-read (read-only review,
   verified at the geocoder): eleven writes in eight files, none sizing
   its entry. One family is unbounded: stop geocodes

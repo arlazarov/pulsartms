@@ -268,21 +268,26 @@ public static partial class FuelPlanProjection
       Invalid("The remaining plan does not preserve the arrival fuel reserve.");
     fuel.PurchaseGallons = remaining.Sum(x => x.BuyGallons);
     fuel.PurchaseCostUsd = remaining.Sum(x =>
-      x.BuyGallons * x.CashUsdPerGallon
+      FuelPlanCost.Purchase(x.BuyGallons, x.CashUsdPerGallon)
     );
     fuel.ExtraMinutes =
       FuelAccessEstimate.DrivingMinutes(fuel.StartAccessMiles)
       + remaining.Sum(x => x.DetourMinutes);
+    // Access time is priced on the total, after the stops.
     fuel.EconomicCostUsd =
       remaining.Sum(x =>
-        x.BuyGallons * x.EconomicUsdPerGallon + state.Profile.StopCostUsd
+        FuelPlanCost.Purchase(x.BuyGallons, x.EconomicUsdPerGallon)
+        + state.Profile.StopCostUsd
       )
-      + fuel.ExtraMinutes / 60 * state.Profile.DriverHourlyCostUsd;
-    fuel.ExpectedFutureFuelCostUsd =
-      Math.Max(
-        0,
-        (fuel.ArrivalPolicy?.TargetGallons ?? 0) - fuel.ArrivalGallons
-      ) * (fuel.ArrivalPolicy?.ReplacementPriceUsd ?? 0);
+      + FuelPlanCost.AccessTime(
+        fuel.ExtraMinutes,
+        state.Profile.DriverHourlyCostUsd
+      );
+    fuel.ExpectedFutureFuelCostUsd = FuelPlanCost.FutureFuel(
+      fuel.ArrivalPolicy?.TargetGallons ?? 0,
+      fuel.ArrivalGallons,
+      fuel.ArrivalPolicy?.ReplacementPriceUsd ?? 0
+    );
     fuel.RemainingCostEstimate = true;
     // Remaining access is priced; historical schedule wait/rest is not
     // replayed.

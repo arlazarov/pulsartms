@@ -86,8 +86,11 @@ public static partial class FuelOptimizer
       + (
         arrivalPolicy is null
           ? 0
-          : Math.Max(0, arrivalPolicy.TargetGallons - state.Fuel)
-            * arrivalPolicy.ReplacementPriceUsd
+          : FuelPlanCost.FutureFuel(
+            arrivalPolicy.TargetGallons,
+            state.Fuel,
+            arrivalPolicy.ReplacementPriceUsd
+          )
       );
     var buckets = Enumerable
       .Range(0, stations.Count + 2)
@@ -120,11 +123,13 @@ public static partial class FuelOptimizer
             continue;
           var stopCost = from is null
             ? 0
-            : quantity * from.EconomicPriceUsd
-              + profile.StopCostUsd
-              + Math.Max(0, from.Station.DetourMinutes)
-                / 60
-                * profile.DriverHourlyCostUsd;
+            : FuelPlanCost.Stop(
+              quantity,
+              from.EconomicPriceUsd,
+              profile.StopCostUsd,
+              Math.Max(0, from.Station.DetourMinutes),
+              profile.DriverHourlyCostUsd
+            );
           List<Purchase>? stops = null;
           for (var j = i + 1; j < buckets.Count; j++)
           {
@@ -282,7 +287,7 @@ public static partial class FuelOptimizer
         "No fuel plan can maintain the reserve using the verified BVD stations. Review fuel level, MPG or the permitted detour; do not rely on these stations to complete the trip."
       );
     var cash = best.Purchases.Sum(x =>
-      x.Stop.BuyGallons * x.Candidate.PriceUsd
+      FuelPlanCost.Purchase(x.Stop.BuyGallons, x.Candidate.PriceUsd)
     );
     var purchasedStops = best.Purchases.Select(x => x.Stop).ToList();
     for (var i = 0; i < purchasedStops.Count; i++)
@@ -295,8 +300,11 @@ public static partial class FuelOptimizer
     var economicCost = best.Cost;
     var futureCost = arrivalPolicy is null
       ? 0
-      : Math.Max(0, arrivalPolicy.TargetGallons - best.Fuel)
-        * arrivalPolicy.ReplacementPriceUsd;
+      : FuelPlanCost.FutureFuel(
+        arrivalPolicy.TargetGallons,
+        best.Fuel,
+        arrivalPolicy.ReplacementPriceUsd
+      );
     var baseline = compare
       ? Optimize(
         miles,

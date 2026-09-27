@@ -50,8 +50,14 @@ public static class FuelPriceMateriality
       if (quote(stop) is not { } now)
         continue;
       var gallons = Math.Max(0, stop.BuyGallons);
-      cash += gallons * (now.CashUsd - stop.CashUsdPerGallon);
-      economic += gallons * (now.EconomicUsd - stop.EconomicUsdPerGallon);
+      cash += FuelPlanCost.Purchase(
+        gallons,
+        now.CashUsd - stop.CashUsdPerGallon
+      );
+      economic += FuelPlanCost.Purchase(
+        gallons,
+        now.EconomicUsd - stop.EconomicUsdPerGallon
+      );
       stop.CashUsdPerGallon = now.CashUsd;
       stop.EconomicUsdPerGallon = now.EconomicUsd;
       stop.YourPrice = now.YourPrice;
