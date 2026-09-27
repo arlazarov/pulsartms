@@ -212,6 +212,12 @@ test('the head reads as rows of one table, on one line each', () => {
     card,
     /\.fleet-map-inspector__arrival\s*\{[^}]*--route-fact-label: 6rem;/,
   );
+  // Without a booking the column is the label's own width, so "ETA" and
+  // "At stop" do not run apart (the owner, September 27).
+  assert.match(
+    card,
+    /@container map-truck-card\s+\(width >= 20rem\)\s*\{\s*[^{]*\.fleet-map-inspector__arrival:not\(:has\(> \.fleet-map-inspector__appointment\)\)\s*\{\s*--route-fact-label: max-content;/,
+  );
   assert.match(
     card,
     /\.fleet-map-inspector__appointment\s*\{[^}]*grid-template-columns: minmax\(var\(--route-fact-label\), max-content\) minmax\(0, 1fr\);/,
