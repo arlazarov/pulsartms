@@ -33,7 +33,7 @@ public partial class DispatchTable
   public Func<
     TruckDispatchBoardResponse,
     DispatchResponse,
-    string
+    string?
   >? LoadPhase { get; set; }
 
   private string LoadLabel(int number) =>

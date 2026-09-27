@@ -8,6 +8,7 @@ using Application.Features.Execution.Queries;
 using Application.Features.Execution.Services;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Routing.Services.Deadheads;
+using Application.Features.Routing.Services.Routes;
 using Application.Models;
 using Application.Reference;
 using Microsoft.Extensions.Logging;
@@ -51,6 +52,7 @@ public class GetDispatchBoardHandler(
   FleetNames names,
   ActiveTransfers transfers,
   IDriverScope scope,
+  TruckPlanningInputsReader inputs,
   ILogger<GetDispatchBoardHandler> logger
 )
   : IRequestHandler<
@@ -216,6 +218,43 @@ public class GetDispatchBoardHandler(
         row.Hos = clocks.GetValueOrDefault(driver);
     }
     var rowsMs = Take("rows", ref stage);
+    // Each load's phase is the planning inputs' - the same capture the
+    // summary, the map and the ETA use, read for the page's trucks in one
+    // cached batch - never worked out from the board's own order.
+    var work =
+      truckIds.Length == 0
+        ? new Dictionary<Guid, TruckPlanningInputs>()
+        : await inputs.ReadManyAsync(
+          truckIds,
+          cancellationToken,
+          includeHos: false
+        );
+    foreach (var row in page)
+    {
+      if (row.TruckId is not { } truckId)
+        continue;
+      var placements = work.GetValueOrDefault(truckId)?.Placements();
+      foreach (var load in row.Dispatches)
+      {
+        // A row read at another assignment revision than the inputs is
+        // stale, and one the inputs do not hold is unknown: neither is
+        // passed off as planned.
+        var revision = load.ExecutionLegId.HasValue
+          ? load.AssignmentRevision
+          : load.PlanningAssignmentRevision;
+        load.WorkPhase =
+          placements?.GetValueOrDefault(new(load.Id, load.ExecutionLegId))
+            is not { } placement
+            ? "unknown"
+          : placement.AssignmentRevision != revision ? "stale"
+          : placement.Phase;
+        load.WorkConflict =
+          load.WorkPhase == "earlier" && !load.Completed
+            ? "route_passed_not_delivered"
+            : null;
+      }
+    }
+    var workMs = Take("work", ref stage);
     if (request.IncludeEta)
       await eta.PopulateAsync(
         scopedDetails.Values.ToArray(),
@@ -228,18 +267,26 @@ public class GetDispatchBoardHandler(
     // measurement available was the total, which cannot tell a cold index
     // from a slow forecast, and the stage meters had no reader at all.
     var total =
-      indexMs + detailsMs + executionMs + financialsMs + rowsMs + etaMs;
+      indexMs
+      + detailsMs
+      + executionMs
+      + financialsMs
+      + rowsMs
+      + workMs
+      + etaMs;
     if (total >= 1000)
       logger.LogInformation(
         "BoardTiming TotalMs={Total} IndexMs={Index} DetailsMs={Details} "
           + "ExecutionMs={Execution} FinancialsMs={Financials} RowsMs={Rows} "
-          + "EtaMs={Eta} Loads={Loads} Financials={WithFinancials} Eta={WithEta}",
+          + "WorkMs={Work} EtaMs={Eta} Loads={Loads} "
+          + "Financials={WithFinancials} Eta={WithEta}",
         Math.Round(total),
         Math.Round(indexMs),
         Math.Round(detailsMs),
         Math.Round(executionMs),
         Math.Round(financialsMs),
         Math.Round(rowsMs),
+        Math.Round(workMs),
         Math.Round(etaMs),
         loadIds.Length,
         request.IncludeFinancials,

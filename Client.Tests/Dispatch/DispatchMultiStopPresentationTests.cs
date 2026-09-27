@@ -21,8 +21,7 @@ public sealed class DispatchMultiStopPresentationTests
     load.Stops.Reverse();
     var card = context.Render<DispatchLoadCard>(parameters =>
       parameters
-        .Add(component => component.Load, load)
-        .Add(component => component.Current, true)
+        .Add(component => component.Load, Placed(load, true))
         .Add(component => component.RemainingMiles, 1200)
         .Add(component => component.FuelStopCount, 2)
     );
@@ -262,5 +261,13 @@ public sealed class DispatchMultiStopPresentationTests
       Status = "in_transit",
       Stops = stops,
     };
+  }
+
+  // The load as the server places it on its truck: current or not.
+  private static DispatchResponse Placed(DispatchResponse load, bool current)
+  {
+    if (current)
+      load.WorkPhase = "current";
+    return load;
   }
 }

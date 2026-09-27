@@ -46,8 +46,7 @@ public sealed class DispatchLoadCardTests
       load.Status = "completed";
     load.Completed = completed;
     var component = context.Render<DispatchLoadCard>(p =>
-      p.Add(card => card.Load, load)
-        .Add(card => card.Current, current)
+      p.Add(card => card.Load, Placed(load, current))
         .Add(card => card.RemainingMiles, 302)
         .Add(card => card.FuelStopCount, 2)
     );
@@ -82,7 +81,7 @@ public sealed class DispatchLoadCardTests
     using var context = new BunitContext();
     context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
     var component = context.Render<DispatchLoadCard>(p =>
-      p.Add(card => card.Load, Load()).Add(card => card.Current, true)
+      p.Add(card => card.Load, Placed(Load(), true))
     );
     Assert.Empty(
       component.FindAll(".dispatch-load__remaining, .dispatch-load__fuel-count")
@@ -132,7 +131,7 @@ public sealed class DispatchLoadCardTests
     load.Stops[0].PickedUpAt = Start.AddHours(-1).UtcDateTime;
     load.Stops[0].IsCompleted = true;
     var component = context.Render<DispatchLoadCard>(p =>
-      p.Add(card => card.Load, load).Add(card => card.Current, true)
+      p.Add(card => card.Load, Placed(load, true))
     );
 
     foreach (var stop in component.FindAll(".dispatch-load__stop"))
@@ -213,29 +212,51 @@ public sealed class DispatchLoadCardTests
     Assert.Equal(0, requests);
   }
 
+  // The card names the place the server gave the load; only the next load
+  // is purple, and a place read at another assignment says it is updating.
   [Theory]
-  [InlineData(true, 0, "Current", false)]
-  [InlineData(false, 1, "Next", true)]
-  [InlineData(false, 2, "Upcoming", false)]
+  [InlineData("current", "Current", false)]
+  [InlineData("next", "Next", true)]
+  [InlineData("upcoming", "Upcoming", false)]
+  [InlineData("stale", "Updating", false)]
   public void OnlyTheNextLoadGetsThePurplePresentationState(
-    bool current,
-    int order,
+    string placement,
     string phase,
     bool next
   )
   {
     using var context = new BunitContext();
     context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
+    var load = Load();
+    load.WorkPhase = placement;
     var component = context.Render<DispatchLoadCard>(p =>
-      p.Add(card => card.Load, Load())
-        .Add(card => card.Current, current)
-        .Add(card => card.Order, order)
+      p.Add(card => card.Load, load)
     );
     Assert.Equal(phase, component.Find(".dispatch-load__phase").TextContent);
     Assert.Equal(
       next,
       component.Find(".dispatch-load").ClassList.Contains("dispatch-load--next")
     );
+  }
+
+  // Planning passed the route, execution has not completed the load: the
+  // card says so, warning-toned, and claims no phase.
+  [Fact]
+  public void APassedRouteNotDeliveredShowsItsConflict()
+  {
+    using var context = new BunitContext();
+    context.Services.AddSingleton<TimeProvider>(new FakeTimeProvider(Start));
+    var load = Load();
+    load.WorkPhase = "earlier";
+    load.WorkConflict = "route_passed_not_delivered";
+    var component = context.Render<DispatchLoadCard>(p =>
+      p.Add(card => card.Load, load)
+    );
+    var status = component.Find(".dispatch-load__status");
+    Assert.Equal("Route passed · not delivered", status.TextContent);
+    Assert.Contains("is-conflict", status.ClassList);
+    Assert.Empty(component.FindAll(".dispatch-load__phase"));
+    Assert.Empty(component.FindAll(".dispatch-load--current"));
   }
 
   [Fact]
@@ -249,7 +270,7 @@ public sealed class DispatchLoadCardTests
     foreach (var stop in load.Stops)
       stop.Address = $"{stop.Sequence} Warehouse Road";
     var component = context.Render<DispatchLoadCard>(p =>
-      p.Add(card => card.Load, load).Add(card => card.Current, true)
+      p.Add(card => card.Load, Placed(load, true))
     );
 
     Assert.Equal(
@@ -415,7 +436,7 @@ public sealed class DispatchLoadCardTests
       .JSInterop.SetupVoid("navigator.clipboard.writeText", load.OrderNumber)
       .SetVoidResult();
     var component = context.Render<DispatchLoadCard>(parameters =>
-      parameters.Add(card => card.Load, load).Add(card => card.Current, current)
+      parameters.Add(card => card.Load, Placed(load, current))
     );
     var button = component.Find("button[aria-label='Copy order number']");
     Assert.Contains($"Order {load.OrderNumber}", button.TextContent);
@@ -506,7 +527,7 @@ public sealed class DispatchLoadCardTests
     };
 
     var component = context.Render<DispatchLoadCard>(parameters =>
-      parameters.Add(card => card.Load, load).Add(card => card.Current, true)
+      parameters.Add(card => card.Load, Placed(load, true))
     );
     var stops = component.FindAll(".dispatch-load__stop");
 
@@ -738,7 +759,7 @@ public sealed class DispatchLoadCardTests
     load.Stops[0].IsCompleted = current;
 
     var component = context.Render<DispatchLoadCard>(parameters =>
-      parameters.Add(card => card.Load, load).Add(card => card.Current, current)
+      parameters.Add(card => card.Load, Placed(load, current))
     );
     Assert.Empty(
       component.FindAll(
@@ -991,7 +1012,14 @@ public sealed class DispatchLoadCardTests
     return context.Render<DispatchLoadDialog>(p =>
       p.Add(x => x.Load, component.Instance.Load)
         .Add(x => x.Truck, component.Instance.Truck)
-        .Add(x => x.Phase, component.Find(".dispatch-load__phase").TextContent)
+        .Add(
+          x => x.Phase,
+          // A load the server has not placed shows no phase.
+          component
+            .FindAll(".dispatch-load__phase")
+            .FirstOrDefault()
+            ?.TextContent ?? ""
+        )
     );
   }
 
@@ -1046,6 +1074,14 @@ public sealed class DispatchLoadCardTests
       null,
       []
     );
+    return load;
+  }
+
+  // The load as the server places it on its truck: current or not.
+  private static DispatchResponse Placed(DispatchResponse load, bool current)
+  {
+    if (current)
+      load.WorkPhase = "current";
     return load;
   }
 }

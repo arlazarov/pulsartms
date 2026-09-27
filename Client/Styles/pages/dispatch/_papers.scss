@@ -131,6 +131,10 @@
     &.is-completed {
       color: ui.theme(success-text);
     }
+    &.is-conflict {
+      color: ui.theme(warning-text);
+      background: ui.theme(warning-surface);
+    }
   }
   &__tab-driver {
     min-width: 0;

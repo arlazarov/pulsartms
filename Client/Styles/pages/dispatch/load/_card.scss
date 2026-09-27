@@ -146,6 +146,9 @@
   &__status.is-moving {
     color: ui.theme(success-text);
   }
+  &__status.is-conflict {
+    color: ui.theme(warning-text);
+  }
   &__meta {
     display: flex;
     flex-wrap: wrap;

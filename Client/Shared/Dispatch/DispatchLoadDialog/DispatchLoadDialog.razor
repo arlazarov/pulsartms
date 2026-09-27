@@ -3,7 +3,7 @@
 <dialog @ref="_dialog" id="@DialogId" class="dispatch-load-dialog @(_selectedStopId.HasValue ? "is-stop-view" : "")" aria-labelledby="@TitleId" @onclose="NotifyClosedAsync">
     <header class="dispatch-paper__identity" tabindex="-1" autofocus>
         <div class="dispatch-paper__heading">
-            <div class="dispatch-paper__title"><h2 id="@TitleId"><LoadNumber Value="Load.LoadNumber" /></h2>@if (!string.IsNullOrEmpty(DisplayPhase) && DisplayPhase != Row.Status) { <span class="dispatch-paper__phase @(DisplayPhase == "Current" ? "is-current" : DisplayPhase == "Next" ? "is-next" : "")">@DisplayPhase</span> }<span class="dispatch-paper__tab-status @(IsCompleted ? "is-completed" : Row.InTransit ? "is-moving" : "")">@(IsCompleted ? "Completed" : Row.Status)</span></div>
+            <div class="dispatch-paper__title"><h2 id="@TitleId"><LoadNumber Value="Load.LoadNumber" /></h2>@if (!string.IsNullOrEmpty(DisplayPhase) && DisplayPhase != Row.Status) { <span class="dispatch-paper__phase @(DisplayPhase == "Current" ? "is-current" : DisplayPhase == "Next" ? "is-next" : "")">@DisplayPhase</span> }<span class="dispatch-paper__tab-status @(IsCompleted ? "is-completed" : Row.StatusTone)">@(IsCompleted ? "Completed" : Row.Status)</span></div>
             <div class="dispatch-paper__equipment">Truck @Row.TruckNumber · Trailer @Row.TrailerNumber · @Row.DriverName</div>
         </div>
         <div class="dispatch-paper__customer"><strong>@DispatchBoardRow.Text(Load.CustomerName)</strong>@if (!string.IsNullOrWhiteSpace(Load.OrderNumber)) { <span>Order @Load.OrderNumber</span> }</div>

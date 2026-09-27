@@ -23,7 +23,7 @@
     @if (_copyError is not null) { <span class="dispatch-load__copy-error" role="alert">@_copyError</span> }
     <div class="dispatch-load__reference">
         <span>@Load.CustomerName</span>
-        <span class="dispatch-load__status @(!Completed && Load.Status == "in_transit" ? "is-moving" : "")">@Status</span>
+        <span class="dispatch-load__status @Row.StatusTone">@Status</span>
         @if (Phase.Length > 0) { <span class="dispatch-load__phase">@Phase</span> }
     </div>
     @* Every load names its own driver and trailer: they change from load

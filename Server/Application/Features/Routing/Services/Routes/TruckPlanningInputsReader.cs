@@ -30,6 +30,33 @@ public sealed record TruckPlanningInputs(
   public IEnumerable<TruckWorkSegment> Followers =>
     PlanningWorkPolicy.Followers(Itinerary, CurrentWork);
 
+  // Where each piece of this truck's work stands, by these inputs' choice,
+  // with the assignment revision it was placed at: current, next,
+  // upcoming, earlier (planning has passed its route) or unplaced (the
+  // inputs hold it but plan no place for it). Built once per call - a
+  // caller placing many rows asks once per truck, then looks rows up.
+  public IReadOnlyDictionary<WorkIdentity, WorkPlacement> Placements()
+  {
+    var placements = Itinerary.Segments.ToDictionary(
+      x => x.Work,
+      x => new WorkPlacement(x.AssignmentRevision, "unplaced")
+    );
+    foreach (var passed in PassedWork)
+      placements[passed.Work] = placements[passed.Work] with
+      {
+        Phase = "earlier",
+      };
+    if (CurrentWork is { } current)
+      placements[current] = placements[current] with { Phase = "current" };
+    var order = 0;
+    foreach (var follower in Followers)
+      placements[follower.Work] = placements[follower.Work] with
+      {
+        Phase = order++ == 0 ? "next" : "upcoming",
+      };
+    return placements;
+  }
+
   // The assignment the current work was chosen at, so a consumer that read
   // the truck's work separately can tell a reassignment from the same work.
   public long? CurrentAssignmentRevision { get; init; }
@@ -44,6 +71,8 @@ public sealed record TruckPlanningInputs(
 }
 
 public sealed record PassedWork(WorkIdentity Work, long AssignmentRevision);
+
+public sealed record WorkPlacement(long AssignmentRevision, string Phase);
 
 public sealed class TruckPlanningInputsReader(
   IAppDbContext db,

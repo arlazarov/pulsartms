@@ -45,7 +45,7 @@
                 </a>
                 <div class="dispatch-table__labels">
                     @if (!string.IsNullOrEmpty(phase) && phase != row.Status) { <span class="dispatch-table__phase @(phase == "Current" ? "is-current" : phase == "Next" ? "is-next" : "")">@phase</span> }
-                    <span class="dispatch-table__status @(row.Completed ? "is-completed" : row.InTransit ? "is-moving" : "")">@row.Status</span>
+                    <span class="dispatch-table__status @row.StatusTone">@row.Status</span>
                 </div>
                 <span class="dispatch-table__customer">@DispatchBoardRow.Text(row.Load.CustomerName)</span>
                 @if (!string.IsNullOrWhiteSpace(row.Load.OrderNumber)) { <small class="dispatch-table__order">Order @row.Load.OrderNumber</small> }

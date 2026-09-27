@@ -178,6 +178,9 @@
     &.is-completed {
       color: ui.theme(success-text);
     }
+    &.is-conflict {
+      color: ui.theme(warning-text);
+    }
   }
   .dispatch-table__phase {
     display: inline-flex;

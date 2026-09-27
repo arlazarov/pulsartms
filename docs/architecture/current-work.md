@@ -232,11 +232,26 @@ completed.
      another truck's work, cold/warm counts, and two readers meeting at
      the load gate by handshake, not scheduling). Existing next-routes
      tests now mark their direct database edits as a writer does.
-3. **Truck work state on every consumer.** The fields above on board rows
-   for all views, Messenger, map payload and workspace; remove client
-   `IsCurrent`, `LoadPosition` fallback, `DispatchBoardRow.InTransit`,
-   `DispatchLoadCard.Phase`; normalize revisions; align the board and
-   planning pages.
+3. **Truck work state on every consumer.**
+   - **3a, implemented (not released).** The board places each load from
+     the planning inputs: `TruckPlanningInputs.Placements()` (built once
+     per truck per request, looked up per row) gives current, next,
+     upcoming, earlier or unplaced; a row read at another assignment
+     revision is `stale`, one the inputs do not hold `unknown`
+     (`DispatchResponse.WorkPhase`). `WorkConflict` says
+     `route_passed_not_delivered` for earlier work execution has not
+     completed. Cards, Table, Papers and the load dialog read both
+     through `DispatchWorkPhase` and `DispatchBoardRow.Status`/
+     `StatusTone`: a conflict reads as "Route passed · not delivered"
+     (warning tone) and is filed with work under way, not "Awaiting
+     pickup"; a stale place reads "Updating", never a planned or
+     upcoming phase. Removed: the client's `IsCurrent`, `LoadPosition`
+     and `LoadOrder`, the card's position parameters, and the
+     first-row fallback for the planning header.
+   - **3b, next.** The same placement and conflict on Messenger
+     context, the map payload and the workspace; business and source
+     states (`source_ahead_of_accepted`, `source_unresolved`) beside the
+     route state; board and planning pages on one date basis.
 4. **Completion and invalidation.** One completion owner with membership
    rules expressed through it; tracking version in the summary signature;
    ETA, deadhead, base road and duty commits notify the summary after

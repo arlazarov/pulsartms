@@ -28,7 +28,7 @@ public partial class DispatchPapers
   public Func<
     TruckDispatchBoardResponse,
     DispatchResponse,
-    string
+    string?
   >? LoadPhase { get; set; }
 
   private string Phase(DispatchBoardRow row) =>

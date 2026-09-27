@@ -707,7 +707,7 @@ public sealed class DispatchFinancialViewsTests
       stop.IsCompleted = false;
     }
     var card = context.Render<DispatchLoadCard>(parameters =>
-      parameters.Add(view => view.Load, load).Add(view => view.Current, true)
+      parameters.Add(view => view.Load, Placed(load, true))
     );
     Assert.Equal("Completed", card.Find(".dispatch-load__phase").TextContent);
     Assert.Equal("Completed", card.Find(".dispatch-load__status").TextContent);
@@ -773,5 +773,13 @@ public sealed class DispatchFinancialViewsTests
       }
     )
       Assert.Contains(value, text);
+  }
+
+  // The load as the server places it on its truck: current or not.
+  private static DispatchResponse Placed(DispatchResponse load, bool current)
+  {
+    if (current)
+      load.WorkPhase = "current";
+    return load;
   }
 }

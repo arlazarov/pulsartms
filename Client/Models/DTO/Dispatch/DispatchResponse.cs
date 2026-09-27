@@ -15,6 +15,15 @@ public class DispatchResponse
   public Guid? PlanningTruckId { get; set; }
   public Guid? PlanningFromStopId { get; set; }
   public long PlanningAssignmentRevision { get; set; }
+
+  // Where the load stands for its truck, placed by the server from the
+  // planning inputs: current, next, upcoming or earlier; null when it is
+  // not placed. The client formats it and decides nothing.
+  public string? WorkPhase { get; set; }
+
+  // route_passed_not_delivered: planning passed the route, execution has
+  // not completed the load.
+  public string? WorkConflict { get; set; }
   public long RouteChoiceRevision { get; set; }
   public DateTime? PlanningAssignmentRecordedAt { get; set; }
   public int LoadNumber { get; set; }

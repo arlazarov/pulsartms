@@ -296,6 +296,7 @@ internal sealed class PlanningTestServices : IDisposable
       Names,
       Transfers,
       new TestDriverScope(),
+      PlanningInputs,
       NullLogger<GetDispatchBoardHandler>.Instance
     );
   }

@@ -43,6 +43,18 @@ public class DispatchResponse : IWorkFacts
   public DateTime LastSyncedAt { get; set; }
   public List<DispatchStopResponse> Stops { get; set; } = [];
 
+  // Where this load stands for its truck, from the planning inputs
+  // (TruckPlanningInputs.Placements): current, next, upcoming, earlier or
+  // unplaced; stale when the row was read at another assignment revision
+  // than the inputs, unknown when the inputs do not hold it, null on a row
+  // without a truck. Whether it is done is Completed.
+  public string? WorkPhase { get; set; }
+
+  // A disagreement a dispatcher must see and nothing resolves silently:
+  // route_passed_not_delivered - planning has passed the load's route, but
+  // accepted execution has not completed it.
+  public string? WorkConflict { get; set; }
+
   // Whether the load is done - decided here, once, and sent. The browser
   // used to work this out for itself from its copy of the stops.
   public bool Completed

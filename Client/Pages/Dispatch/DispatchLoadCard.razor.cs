@@ -28,17 +28,9 @@ public partial class DispatchLoadCard
   [Parameter]
   public TruckDispatchBoardResponse? Truck { get; set; }
 
-  [Parameter]
-  public bool Current { get; set; }
-
-  [Parameter]
-  public int Order { get; set; }
-
-  // A row ahead of the truck's current load on the board: planning has
-  // moved past it, for a reason this card does not know, so it claims
-  // no phase.
-  [Parameter]
-  public bool Earlier { get; set; }
+  // The load's place on its truck, as the server placed it.
+  public bool Current => DispatchWorkPhase.IsCurrent(Load);
+  public bool Earlier => DispatchWorkPhase.IsEarlier(Load);
 
   [Parameter]
   public bool Refreshing { get; set; }
@@ -54,7 +46,7 @@ public partial class DispatchLoadCard
       DisplaySettings?.LoadNumberPrefix
     );
   private bool Completed => Load.Completed;
-  private bool Next => !Current && !Completed && !Earlier && Order <= 1;
+  private bool Next => DispatchWorkPhase.IsNext(Load);
   private bool ShowRemaining =>
     Current
     && !Completed
@@ -62,13 +54,9 @@ public partial class DispatchLoadCard
     && double.IsFinite(miles)
     && miles >= 0;
   private bool ShowFuelStops => !Completed && FuelStopCount is >= 0;
-  private string Phase =>
-    Completed ? "Completed"
-    : Earlier ? ""
-    : Current ? "Current"
-    : Next ? "Next"
-    : "Upcoming";
-  private string Status => new DispatchBoardRow(new(), Load).Status;
+  private string Phase => DispatchWorkPhase.Label(Load) ?? "";
+  private DispatchBoardRow Row => new(new(), Load);
+  private string Status => Row.Status;
 
   private readonly DispatchStopDisplayCache _stopDisplay = new();
   private IReadOnlyList<DispatchStopResponse> OrderedStops =>

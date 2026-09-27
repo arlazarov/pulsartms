@@ -39,6 +39,8 @@ internal sealed class DispatchRefreshFixture : IDisposable, IAsyncDisposable
       TruckId = Truck,
       LoadNumber = 1373,
       DriverName = "Fixture driver",
+      // The server places the truck's only load as its current work.
+      WorkPhase = "current",
       Stops =
       [
         new()

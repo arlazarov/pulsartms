@@ -803,6 +803,95 @@ public sealed class TruckRoutePreviewTests
     Assert.Equal((1, 0, 0), (cold.Reads, warm.Reads, passed.Reads));
   }
 
+  // Stage 3a: the board says where each load stands, from the same inputs
+  // the summary and the preview use. The first load's route is passed but
+  // it is not delivered - earlier, with a conflict to show - the second is
+  // current, the third next and the fourth upcoming, the same on a filtered
+  // board. A load read at another assignment revision
+  // than the inputs is stale, one they do not hold unknown. Once the
+  // inputs are warm, the board captures nothing to say so.
+  [Fact]
+  public async Task TheBoardPlacesEachLoadByTheOwnersChoice()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var first = await fixture.AddAsync(1);
+    var second = await fixture.AddAsync(2);
+    var third = await fixture.AddAsync(3);
+    var fourth = await fixture.AddAsync(4);
+    await fixture.SavePlanAsync(first, completed: true);
+    await fixture.SavePlanAsync(second);
+    fixture.Hos.Allow = fixture.Sender.AllowTelemetry = true;
+    var truck = fixture.Truck.Id;
+    var query = new GetDispatchBoardQuery(
+      IncludeHos: false,
+      IncludeFinancials: false,
+      IncludeEta: false,
+      Date: DateOnly.FromDateTime(DateTime.UtcNow)
+    );
+    async Task<List<DispatchResponse>> BoardAsync() =>
+      Assert
+        .Single(
+          (await fixture.Sender.Board.Handle(query, default)).Response!.Items
+        )
+        .Dispatches;
+
+    await fixture.Services.PlanningInputs.ReadAsync(truck, default);
+    var (loads, _, captures) = await Measured(fixture, BoardAsync);
+    var summary = await Normal(fixture).ForTruckAsync(truck, default);
+
+    Assert.Equal(0, captures);
+    Assert.Equal(
+      [
+        ("earlier", "route_passed_not_delivered"),
+        ("current", null),
+        ("next", null),
+        ("upcoming", null),
+      ],
+      new[] { first, second, third, fourth }.Select(load =>
+      {
+        var row = loads.Single(x => x.Id == load.Id);
+        return (row.WorkPhase, row.WorkConflict);
+      })
+    );
+    Assert.Equal(
+      summary.DispatchId,
+      loads.Single(x => x.WorkPhase == "current").Id
+    );
+
+    // A filtered board keeps the truck's row whole - pages and searches
+    // never split one truck's work - and places each load as before.
+    var searched = Assert
+      .Single(
+        (
+          await fixture.Sender.Board.Handle(
+            query with
+            {
+              Search = "3",
+            },
+            default
+          )
+        )
+          .Response!
+          .Items
+      )
+      .Dispatches;
+    Assert.Equal(
+      loads.Select(x => (x.Id, x.WorkPhase)).OrderBy(x => x.Id),
+      searched.Select(x => (x.Id, x.WorkPhase)).OrderBy(x => x.Id)
+    );
+
+    // The board reads rows fresh; the inputs are still the cached capture.
+    // A row at another revision is stale, and a load the inputs do not
+    // hold is unknown - neither is given a place.
+    third.PlanningAssignmentRevision = 7;
+    var fifth = await fixture.AddAsync(5);
+    fixture.Services.Reads.Invalidate("board");
+    var moved = await BoardAsync();
+    Assert.Equal("stale", moved.Single(x => x.Id == third.Id).WorkPhase);
+    Assert.Equal("unknown", moved.Single(x => x.Id == fifth.Id).WorkPhase);
+    Assert.Equal("current", moved.Single(x => x.Id == second.Id).WorkPhase);
+  }
+
   private static async Task<(T Result, int Reads, int Captures)> Measured<T>(
     Fixture fixture,
     Func<Task<T>> read
@@ -1373,6 +1462,7 @@ public sealed class TruckRoutePreviewTests
         fixture.Services.Names,
         fixture.Services.Transfers,
         fixture.Scope,
+        fixture.Services.PlanningInputs,
         NullLogger<GetDispatchBoardHandler>.Instance
       );
       fixture.TelemetryCache = new(fixture.Memory, new TestCompany());

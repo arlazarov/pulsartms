@@ -206,9 +206,14 @@ public sealed class DispatchTruckHeaderTests
     );
     if (!assigned)
       load.TruckId = null;
+    // Where the server's planning inputs place the loads: an assigned
+    // load under way is the truck's current work, and a second one follows
+    // it. Legacy planned or completed work is not placed.
+    if (assigned && status == "in_transit")
+      load.WorkPhase = "current";
     var loads = Enumerable
       .Range(0, count)
-      .Select(index => index == 0 ? load : Load())
+      .Select(index => index == 0 ? load : SetPhase(Load(), "next"))
       .ToArray();
     using var context = new ClientComponentContext(
       (request, _) =>
@@ -843,6 +848,11 @@ public sealed class DispatchTruckHeaderTests
     next.AssignmentRevision = 7;
     if (scenario == "completed")
       next.Completed = true;
+    // The server's planning inputs place the loads: 1403's route is passed
+    // and 1410 is current - unless 1410 is completed, when 1403 is.
+    first.WorkPhase = scenario == "completed" ? "current" : "earlier";
+    next.WorkPhase = scenario == "completed" ? null : "current";
+    var current = scenario == "completed" ? first : next;
     var summary = Result(next) with
     {
       ExecutionLegId = next.ExecutionLegId,
@@ -907,9 +917,12 @@ public sealed class DispatchTruckHeaderTests
     {
       var header = component.FindComponent<DispatchPlanning>();
       Assert.False(header.Instance.Refreshing);
-      Assert.Equal(accepted ? next.Id : first.Id, header.Instance.Load?.Id);
+      // Without an accepted summary the header still names the server's
+      // current load, only without a plan.
+      Assert.Equal(current.Id, header.Instance.Load?.Id);
       Assert.Equal(accepted, header.Instance.Snapshot is not null);
-      Assert.Equal(accepted, header.Instance.ShowPlanningLoad);
+      // The header names its load when that is not the board's first row.
+      Assert.Equal(current.Id != first.Id, header.Instance.ShowPlanningLoad);
       var fuel = header.Find(".fuel-reading").TextContent;
       Assert.Equal(accepted, fuel.Contains("50%"));
       if (accepted)
@@ -925,9 +938,8 @@ public sealed class DispatchTruckHeaderTests
         Assert.Equal(75, nextCard.Instance.RemainingMiles);
         Assert.False(firstCard.Instance.Load.Completed);
         Assert.NotNull(nextCard.Instance.Load.Eta);
-        // The map's reading of the truck: its current load is the one the
-        // summary names; the row before it claims no phase, since why
-        // planning passed it over is not known here.
+        // The server's reading of the truck, which the summary shares: the
+        // row before the current one is earlier and claims no phase.
         Assert.True(firstCard.Instance.Earlier);
         Assert.False(firstCard.Instance.Current);
         Assert.Empty(firstCard.FindAll(".dispatch-load__phase"));
@@ -948,9 +960,12 @@ public sealed class DispatchTruckHeaderTests
         );
       }
       else
-        Assert.All(
-          component.FindComponents<DispatchLoadCard>(),
-          card => Assert.False(card.Instance.Earlier)
+        Assert.Equal(
+          scenario != "completed",
+          component
+            .FindComponents<DispatchLoadCard>()
+            .Single(card => card.Instance.Load.Id == first.Id)
+            .Instance.Earlier
         );
       Assert.False(first.Completed);
     });
@@ -1015,11 +1030,13 @@ public sealed class DispatchTruckHeaderTests
   [Theory]
   [InlineData(true)]
   [InlineData(false)]
-  public void AcceptedSummaryMakesTheFirstLoadCurrentWhateverItsDate(
-    bool summarized
-  )
+  public void TheServersPhaseStandsWhateverTheDateOrTheSummary(bool summarized)
   {
+    // Before stage 3 the client made a future load current only when a
+    // summary named it, and otherwise judged by date. The server places
+    // the loads now; the summary and the date change nothing.
     var load = Load();
+    load.WorkPhase = "current";
     load.Status = "assigned";
     load.Stops[0].Job = "Pick Up";
     load.Stops[0].ScheduledDate = new(2026, 12, 1);
@@ -1029,6 +1046,7 @@ public sealed class DispatchTruckHeaderTests
     later.Status = "assigned";
     later.Stops[0].ScheduledDate = new(2026, 12, 3);
     later.ShipDate = new(2026, 12, 3);
+    later.WorkPhase = "next";
     var summary = Result(load);
     using var context = new ClientComponentContext(
       (request, _) =>
@@ -1068,15 +1086,12 @@ public sealed class DispatchTruckHeaderTests
     {
       var cards = component.FindComponents<DispatchLoadCard>();
       Assert.Equal(2, cards.Count);
-      Assert.Equal(summarized, cards[0].Instance.Current);
+      Assert.True(cards[0].Instance.Current);
       Assert.Equal(
-        summarized ? "Current" : "Next",
+        "Current",
         cards[0].Find(".dispatch-load__phase").TextContent
       );
-      Assert.Equal(
-        summarized ? "Next" : "Upcoming",
-        cards[1].Find(".dispatch-load__phase").TextContent
-      );
+      Assert.Equal("Next", cards[1].Find(".dispatch-load__phase").TextContent);
       Assert.All(cards, card => Assert.False(card.Instance.Earlier));
     });
   }
@@ -1169,4 +1184,10 @@ public sealed class DispatchTruckHeaderTests
     {
       Content = JsonContent.Create(new { success = true, response = value }),
     };
+
+  private static DispatchResponse SetPhase(DispatchResponse load, string phase)
+  {
+    load.WorkPhase = phase;
+    return load;
+  }
 }
