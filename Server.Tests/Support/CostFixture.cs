@@ -18,7 +18,7 @@ namespace Server.Tests.Support;
 // which a single purchase can be divided between loads for different brokers.
 internal sealed class CostFixture : IAsyncDisposable
 {
-  private SqliteConnection Connection { get; init; } = null!;
+  private SqliteConnection? Connection { get; init; }
   public required AppDbContext Db { get; init; }
   public required Guid ExpenseId { get; init; }
   public required Guid First { get; init; }
@@ -62,7 +62,8 @@ internal sealed class CostFixture : IAsyncDisposable
 
   // The connection the fixture's context uses, for a second context that
   // writes as another carrier or between two of the first one's reads.
-  public SqliteConnection Shared => Connection;
+  public SqliteConnection Shared =>
+    Connection ?? throw new InvalidOperationException("Not on SQLite.");
 
   public static async Task<CostFixture> CreateAsync(
     IInterceptor? interceptor = null
@@ -77,6 +78,19 @@ internal sealed class CostFixture : IAsyncDisposable
       options.AddInterceptors(interceptor);
     var db = new AppDbContext(options.Options);
     await db.Database.EnsureCreatedAsync();
+    return await SeedAsync(db, connection);
+  }
+
+  // Over a database the caller made and created, such as the PostgreSQL
+  // fixture's.
+  public static Task<CostFixture> ForAsync(AppDbContext db) =>
+    SeedAsync(db, null);
+
+  private static async Task<CostFixture> SeedAsync(
+    AppDbContext db,
+    SqliteConnection? connection
+  )
+  {
     var actor = new User
     {
       Id = Guid.NewGuid(),
@@ -151,7 +165,8 @@ internal sealed class CostFixture : IAsyncDisposable
   public async ValueTask DisposeAsync()
   {
     await Db.DisposeAsync();
-    await Connection.DisposeAsync();
+    if (Connection is not null)
+      await Connection.DisposeAsync();
   }
 
   private sealed class Caller : ICurrentUser

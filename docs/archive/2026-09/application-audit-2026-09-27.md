@@ -664,8 +664,8 @@ one account is capped; refresh of user A does not consume B's budget.
 Each area: what was inventoried and verified; what is left open.
 
 - **API endpoints and auth:** all 171 endpoints tabulated with policy and
-  tenant scope (evidence run); F18, F19, F27. Open: proof of the proxy
-  chain (D5).
+  tenant scope (evidence run); F18, F19, F27. The table is now executable
+  (below). Open: proof of the proxy chain (D5).
 - **Background work:** 17 hosted services and 16 stateful workflows with
   their recovery; F16, F23. Open: liveness of operations without a
   heartbeat.
@@ -688,6 +688,45 @@ Each area: what was inventoried and verified; what is left open.
   fixture for the 42 skipped tests.
 - **Live data:** scans, loads 1341 and 1355, hand-over rows. Open:
   per-statement counts.
+
+## Follow-up (September 27, evening)
+
+Focused checks only; nothing released from this branch.
+
+- **Endpoint rules are executable.** `EndpointAuthorizationTests` reads
+  every controller action's effective rule from its attributes -
+  anonymous, named policies (all must pass), or any signed-in user - and
+  compares it with `Server.Tests/Architecture/EndpointAuthorization.txt`
+  (171 lines); a new or changed endpoint fails until its line is written.
+  A second test pins the six anonymous endpoints (sign-in, refresh, the
+  Gmail push, the storage callback, the two WhatsApp webhook verbs). The
+  counts match the review once `70eb2e98` (F8 proposal: the two manual
+  syncs Admin-only) is counted: Dispatch 79, Admin 46, Admin and
+  Dispatch together 1 (mileage policy), signed-in 39, anonymous 6. The
+  four minimal-API mappings in `Program.cs` are not controllers and are
+  not in the table.
+- **Tenant filters are checked in the built model.** Classification
+  (`CompanyOwnershipTests`) did not prove the filter: it is applied in one
+  loop and a later `HasQueryFilter` on the same table would replace it.
+  `EveryCarriersTableIsFilteredByTheServingCarrier` walks each carrier
+  table's filter expression for `CompanyId == ServingCompany`.
+- **F22 on PostgreSQL.** The totals past the page are summed in the
+  database; `LoadCostsPostgresTests` runs that read on the isolated
+  fixture (150 USD toll and 60 CAD fuel shares, written as rows in one
+  save; through the command the same test took 12 minutes).
+- **PostgreSQL skips.** The recorded fixture now runs the PostgreSQL
+  tests (the release gate of `0e6add5d` on another branch skipped none);
+  the "42 skipped tests" gap stands only where no fixture is recorded.
+- **D1 and D2 evidence** still needs this branch released: D1 is done
+  when a wait reason is logged for loads 1341 and 1355, D2 when the
+  roster read rate is measured after release.
+
+Mutations, each killed (diagnostic-WMUKSO in this worktree): a
+controller's policy dropped, an endpoint made anonymous, the tenant
+filter without its company comparison, F22 totalling the page alone on
+PostgreSQL. Checks: `bash test.sh costs database` with Architecture:
+Server 287, Client, JavaScript passed (diagnostic-OYe2Di); a first run
+failed on the new worktree's missing Client packages and is marked.
 
 ## Open gaps, owners and completion criteria
 

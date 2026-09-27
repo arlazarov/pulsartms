@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Reflection;
 using Application.Interfaces;
 using Domain.Entities;
@@ -57,6 +58,81 @@ public sealed class CompanyOwnershipTests
         + string.Join(", ", unclassified)
     );
   }
+
+  // Classified is not filtered: the filter is applied to every carrier's
+  // table in one loop, and a later HasQueryFilter on the same table would
+  // replace it without a word. What the built model holds is checked: each
+  // carrier's table filters its CompanyId against the serving carrier.
+  [Fact]
+  public void EveryCarriersTableIsFilteredByTheServingCarrier()
+  {
+    using var db = new Infrastructure.Persistence.AppDbContext(
+      new DbContextOptionsBuilder<Infrastructure.Persistence.AppDbContext>()
+        .UseNpgsql("Host=none;Database=none")
+        .Options
+    );
+    var unfiltered = db
+      .Model.GetEntityTypes()
+      .Where(x =>
+        typeof(ICompanyOwned).IsAssignableFrom(x.ClrType) && x.BaseType is null
+      )
+      .Where(x =>
+        !x.GetDeclaredQueryFilters()
+          .Any(filter =>
+            filter.Expression is { } lambda
+            && ComparesServingCarrier(lambda.Body, lambda.Parameters[0])
+          )
+      )
+      .Select(x => x.ClrType.Name)
+      .Order()
+      .ToArray();
+
+    Assert.True(
+      unfiltered.Length == 0,
+      "These carrier tables have no filter by the serving carrier: "
+        + string.Join(", ", unfiltered)
+    );
+  }
+
+  // row.CompanyId == ServingCompany, alone or as one side of an &&.
+  private static bool ComparesServingCarrier(
+    Expression body,
+    ParameterExpression row
+  ) =>
+    body switch
+    {
+      BinaryExpression { NodeType: ExpressionType.AndAlso } both =>
+        ComparesServingCarrier(both.Left, row)
+          || ComparesServingCarrier(both.Right, row),
+      BinaryExpression { NodeType: ExpressionType.Equal } equal => IsCompanyOf(
+        equal.Left,
+        row
+      ) && IsServing(equal.Right)
+        || IsCompanyOf(equal.Right, row) && IsServing(equal.Left),
+      _ => false,
+    };
+
+  private static bool IsCompanyOf(Expression side, ParameterExpression row) =>
+    Unwrap(side)
+      is MemberExpression
+      {
+        Member.Name: nameof(ICompanyOwned.CompanyId),
+      } member
+    && member.Expression == row;
+
+  private static bool IsServing(Expression side) =>
+    Unwrap(side)
+      is MemberExpression
+      {
+        Member.Name: nameof(
+          Infrastructure.Persistence.AppDbContext.ServingCompany
+        ),
+      };
+
+  private static Expression Unwrap(Expression side) =>
+    side is UnaryExpression { NodeType: ExpressionType.Convert } convert
+      ? Unwrap(convert.Operand)
+      : side;
 
   [Fact]
   public void NothingIsBothOwnedAndShared()
