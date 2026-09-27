@@ -91,7 +91,8 @@
   }
   // How the speed stands against the limit, in its icon's colour: normal,
   // a little over (above 65 mph), well over (above 70 mph), as
-  // TelemetryTone.Speed decides. An unknown speed keeps the quiet icon.
+  // TelemetryTone.Speed decides. An unknown speed, and a truck whose engine
+  // is off, keep the quiet icon.
   &__reading--speed.is-normal > small svg {
     color: ui.theme(success-text);
   }

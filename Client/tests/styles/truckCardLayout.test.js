@@ -274,8 +274,10 @@ test('the speed icon carries its band, and an unknown speed stays quiet', () => 
       ),
     );
   assert.doesNotMatch(card, /__reading--speed\.is-unknown/);
+  // An engine that is off keeps the speed quiet (the owner, September 27).
+  assert.doesNotMatch(card, /__reading--speed\.is-stopped/);
   assert.match(markup, /<TruckReadings Speed="KnownSpeed\(truck\)"/);
-  assert.match(readings, /@TelemetryTone\.Speed\(Speed\)/);
+  assert.match(readings, /@TelemetryTone\.Speed\(Speed, Engine\)/);
 });
 
 test('HOS travels with its clocks, at the far end under the arrival', () => {
