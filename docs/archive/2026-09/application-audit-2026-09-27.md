@@ -796,6 +796,17 @@ failed on the new worktree's missing Client packages and is marked.
     or the record's summary notice removed (diagnostic-lLNmFz); green
     diagnostic-bJ0Vun. `PlanningTestServices` now shares one summary
     cache between publication and records, as production does.
+  - Cost, found when the released 0e6add5d was merged in and its stage
+    4e count tests ran (diagnostic-iGURcZ): the late rule reads the
+    hand-over records for a plan without fuel stops too, which read
+    nothing before - one statement per projection of such a plan, four
+    per truck per planning refresh (summary, display copy, refresh,
+    fleet loop). The saved-inputs check is unchanged and still once per
+    operation; the tests now count the records read separately
+    (diagnostic-HLCV0v). Alternative for Root: move the rule to the
+    write - the late record, which already holds the truck's publication
+    lock, amends the current saved plan's withdrawn list - so reads cost
+    nothing more; it changes the mechanism reviewed here.
 
 - **F23, road requests.** Re-read: retries are already bounded - the
   claim skips waiting rows, and a failure backs off to at most one
