@@ -8,6 +8,12 @@ public partial class AppearanceSettings
   [CascadingParameter]
   private AppearanceProvider? Appearance { get; set; }
 
+  private static readonly (string Value, string Label)[] Interfaces =
+  [
+    (AppearanceProvider.CurrentInterface, "Current"),
+    (AppearanceProvider.FuturisticInterface, "Futuristic"),
+  ];
+
   private Task ChangeTemperatureAsync(string value) =>
     Appearance is null
       ? Task.CompletedTask

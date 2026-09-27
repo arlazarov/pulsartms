@@ -1,0 +1,337 @@
+@use '../../base' as ui;
+
+// The Futuristic Fleet Map: the same stage, laid out as a fleet list, the
+// map, the docked inspector and the trip chain. Every panel is an existing
+// owner; this file only places and dresses them. The current interface
+// never matches these selectors.
+[data-interface='futuristic'] {
+  .fleet-map-page {
+    gap: ui.pg(md);
+  }
+
+  .fleet-map-toolbar {
+    border: 1px solid ui.theme(accent, 0.22);
+    background: ui.theme(surface);
+    box-shadow: ui.shadow(card);
+  }
+
+  #fleet-map {
+    border-color: ui.theme(accent, 0.28);
+    border-radius: ui.radius(md);
+    box-shadow:
+      0 0 0 1px ui.theme(accent, 0.06),
+      ui.shadow(card);
+  }
+
+  .fleet-map-info-reserved {
+    border: 1px solid ui.theme(accent, 0.28);
+    border-radius: ui.radius(md);
+  }
+
+  .fleet-map-key {
+    border-color: ui.theme(accent, 0.22);
+  }
+
+  @include ui.above(futuristic-docked) {
+    .fleet-map-stage {
+      display: grid;
+      grid-template-columns:
+        ui.size(futuristic-list) minmax(0, 1fr)
+        ui.size(futuristic-inspector);
+      grid-template-rows: minmax(0, 1fr) auto;
+      grid-template-areas:
+        'list map inspector'
+        'chain chain chain';
+      gap: ui.pg(md);
+    }
+    // No truck selected: the map takes the inspector's column too.
+    .fleet-map-stage:not(:has(.fleet-map-info-reserved.has-selection)) {
+      grid-template-areas:
+        'list map map'
+        'chain chain chain';
+    }
+    #fleet-map {
+      grid-area: map;
+    }
+    .fleet-truck-list {
+      grid-area: list;
+    }
+    .fleet-trip-chain {
+      grid-area: chain;
+    }
+    .fleet-map-info-reserved {
+      grid-area: inspector;
+      position: relative;
+      top: auto;
+      width: auto;
+      max-height: none;
+      margin: 0;
+      align-self: stretch;
+    }
+    // Editors stand where the card they edit stands; the route choices and
+    // the key belong over the map.
+    .fuel-plan-editor {
+      grid-area: inspector;
+      top: 0;
+      width: 100%;
+      max-height: 100%;
+    }
+    .route-editor,
+    .fuel-send-plan,
+    .fleet-map-key {
+      grid-area: map;
+    }
+  }
+
+  // Narrower screens: the current floating inspector over the map, the
+  // chain beneath it, and the list left to search.
+  @include ui.below(futuristic-docked) {
+    .fleet-truck-list {
+      display: none;
+    }
+    .fleet-map-stage {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr) auto;
+      grid-template-areas: 'map' 'chain';
+      gap: ui.pg(sm);
+    }
+    #fleet-map,
+    .fleet-map-info-reserved,
+    .fuel-plan-editor,
+    .route-editor,
+    .fuel-send-plan,
+    .fleet-map-key {
+      grid-area: map;
+    }
+    .fleet-trip-chain {
+      grid-area: chain;
+    }
+  }
+}
+
+.fleet-truck-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid ui.theme(accent, 0.28);
+  border-radius: ui.radius(md);
+  background: ui.theme(surface);
+  box-shadow: ui.shadow(card);
+  overflow: hidden;
+
+  &__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+    padding: ui.pg(md) ui.pg(lg) ui.pg(sm);
+    border-bottom: 1px solid ui.theme(border-subtle);
+    h2 {
+      margin: 0;
+      font-size: ui.fs(subtitle);
+      font-weight: 700;
+      color: ui.theme(text);
+    }
+  }
+  &__count {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(caption);
+  }
+  &__body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  &__empty {
+    margin: 0;
+    padding: ui.pg(lg);
+    color: ui.theme(text-muted);
+  }
+  &__rows {
+    margin: 0;
+    padding: ui.pg(xs) 0;
+    list-style: none;
+  }
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: ui.pg(micro) ui.pg(sm);
+    width: 100%;
+    min-height: ui.size(control-touch);
+    padding: ui.pg(sm) ui.pg(lg);
+    border: 0;
+    border-left: 3px solid transparent;
+    background: none;
+    color: ui.theme(text);
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    &:hover {
+      background: ui.theme(selected);
+    }
+    &.is-selected {
+      border-left-color: ui.theme(accent);
+      background: ui.theme(selected);
+    }
+  }
+  &__unit {
+    font-size: ui.fs(body);
+    font-weight: 700;
+  }
+  &__speed {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+    font-variant-numeric: tabular-nums;
+  }
+  &__driver,
+  &__place {
+    grid-column: 1 / -1;
+    overflow: hidden;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &__place {
+    color: ui.theme(text-muted);
+  }
+}
+
+.fleet-trip-chain {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  border: 1px solid ui.theme(accent, 0.28);
+  border-radius: ui.radius(md);
+  background: ui.theme(surface);
+  box-shadow: ui.shadow(card);
+
+  &__label {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: ui.pg(micro);
+    flex: none;
+    padding: ui.pg(sm) ui.pg(lg);
+    border-right: 1px solid ui.theme(border-subtle);
+    h2 {
+      margin: 0;
+      font-size: ui.fs(body);
+      font-weight: 700;
+      color: ui.theme(text);
+      white-space: nowrap;
+    }
+  }
+  &__eyebrow {
+    color: ui.theme(text-muted);
+    font-size: ui.fs(micro);
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  &__hint {
+    align-self: center;
+    margin: 0;
+    padding: 0 ui.pg(lg);
+    color: ui.theme(text-muted);
+    font-size: ui.fs(caption);
+  }
+  &__links {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: ui.pg(sm) ui.pg(lg);
+    list-style: none;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  &__link {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    flex: none;
+    color: ui.theme(text-muted);
+    > svg {
+      width: ui.pg(lg);
+      height: ui.pg(lg);
+    }
+  }
+  &__number {
+    display: grid;
+    place-items: center;
+    width: ui.size(control-compact);
+    height: ui.size(control-compact);
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    font-size: ui.fs(caption);
+    font-weight: 700;
+  }
+  &__card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: ui.pg(micro) ui.pg(md);
+    width: ui.size(futuristic-trip);
+    min-height: ui.size(control-touch);
+    padding: ui.pg(sm) ui.pg(md);
+    border: 1.5px dashed currentColor;
+    border-radius: ui.radius(md);
+    background: ui.theme(surface);
+    color: inherit;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    &[aria-pressed='true'] {
+      border-style: solid;
+      background: ui.theme(selected);
+      box-shadow: 0 0 0 3px ui.theme(accent, 0.14);
+    }
+  }
+  &__load {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 700;
+  }
+  &__phase {
+    padding: 0 ui.pg(xs);
+    border: 1px solid currentColor;
+    border-radius: ui.radius(sm);
+    font-size: ui.fs(micro);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  &__lane {
+    grid-column: 1 / -1;
+    overflow: hidden;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  // The same colours the map draws these loads in.
+  .is-current {
+    color: ui.theme(map-route-current);
+  }
+  .is-current .fleet-trip-chain__card {
+    border-style: solid;
+  }
+  .is-next,
+  .is-upcoming {
+    color: ui.theme(map-route-future);
+  }
+
+  @include ui.below(map-mobile) {
+    &__label {
+      display: none;
+    }
+    &__links {
+      padding: ui.pg(sm);
+    }
+  }
+}

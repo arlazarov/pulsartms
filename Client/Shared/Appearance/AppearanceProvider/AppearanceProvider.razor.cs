@@ -24,6 +24,13 @@ public partial class AppearanceProvider : IAsyncDisposable
 
   public string Theme { get; private set; } = "light";
   public DisplayUnits Units { get; private set; } = DisplayUnits.Default;
+
+  // "current" or "futuristic". Kept on this device per account; the current
+  // interface is the default and the fallback.
+  public string Interface { get; private set; } = CurrentInterface;
+  public bool Futuristic => Interface == FuturisticInterface;
+  public const string CurrentInterface = "current";
+  public const string FuturisticInterface = "futuristic";
   public bool Busy { get; private set; }
   public string? Error { get; private set; }
   public bool Saved { get; private set; }
@@ -59,11 +66,17 @@ public partial class AppearanceProvider : IAsyncDisposable
     Error = null;
     Theme = "light";
     Units = DisplayUnits.Default;
+    Interface = CurrentInterface;
     await ApplyAsync(generation);
     if (!IsCurrent(generation))
       return;
     if (account is not null)
+    {
+      await ReadInterfaceAsync(account, generation);
+      if (!IsCurrent(generation))
+        return;
       await ReloadAsync();
+    }
     if (IsCurrent(generation))
       _ready = true;
   }
@@ -149,6 +162,64 @@ public partial class AppearanceProvider : IAsyncDisposable
     StateHasChanged();
   }
 
+  public async Task SaveInterfaceAsync(string value)
+  {
+    if (
+      _disposed
+      || _account is null
+      || value is not (CurrentInterface or FuturisticInterface)
+      || value == Interface
+    )
+      return;
+    var generation = _generation;
+    try
+    {
+      var module = await ModuleAsync();
+      if (!IsCurrent(generation))
+        return;
+      // A device that cannot store the choice still switches for now.
+      await module.InvokeAsync<bool>("saveInterface", _account, value);
+      Interface = value;
+      await module.InvokeVoidAsync("applyInterface", Interface);
+    }
+    catch (JSException)
+    {
+      if (_module?.IsFaulted == true)
+        _module = null;
+    }
+    if (IsCurrent(generation))
+      StateHasChanged();
+  }
+
+  private async Task ReadInterfaceAsync(string account, long generation)
+  {
+    try
+    {
+      var module = await ModuleAsync();
+      if (!IsCurrent(generation))
+        return;
+      Interface =
+        await module.InvokeAsync<string>("readInterface", account)
+        == FuturisticInterface
+          ? FuturisticInterface
+          : CurrentInterface;
+      if (IsCurrent(generation))
+        await module.InvokeVoidAsync("applyInterface", Interface);
+    }
+    catch (JSException)
+    {
+      if (_module?.IsFaulted == true)
+        _module = null;
+    }
+  }
+
+  private Task<IJSObjectReference> ModuleAsync() =>
+    _module ??= JS.InvokeAsync<IJSObjectReference>(
+        "import",
+        "./js/generated/shared/appearance.js"
+      )
+      .AsTask();
+
   private bool IsCurrent(long generation) =>
     !_disposed && generation == _generation;
 
@@ -162,14 +233,11 @@ public partial class AppearanceProvider : IAsyncDisposable
   {
     try
     {
-      _module ??= JS.InvokeAsync<IJSObjectReference>(
-          "import",
-          "./js/generated/shared/appearance.js"
-        )
-        .AsTask();
-      var module = await _module;
-      if (IsCurrent(generation))
-        await module.InvokeVoidAsync("applyTheme", Theme);
+      var module = await ModuleAsync();
+      if (!IsCurrent(generation))
+        return;
+      await module.InvokeVoidAsync("applyTheme", Theme);
+      await module.InvokeVoidAsync("applyInterface", Interface);
     }
     catch (JSException)
     {

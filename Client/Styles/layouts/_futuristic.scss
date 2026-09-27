@@ -1,0 +1,35 @@
+@use '../base' as ui;
+
+// The Futuristic navigation and page frame. Roles come from the Futuristic
+// token scope; this file adds the fine cyan detail those roles cannot say.
+[data-interface='futuristic'] {
+  .sidebar {
+    border-right-color: ui.theme(accent, 0.22);
+    box-shadow: 1px 0 0 ui.theme(accent, 0.08);
+  }
+  // The navigation is light in the Futuristic light theme, so the lockup
+  // on it takes the navigation's own lettering colour, as brand-design.md
+  // asks of any surface.
+  .sidebar .brand-logo--reversed {
+    color: ui.theme(navigation-text);
+  }
+  // The current navigation writes on-accent over its dark hover colour;
+  // over the light Futuristic hover that is the navigation's own text.
+  .sidebar__nav a:hover,
+  .sidebar__toggle {
+    color: ui.theme(navigation-text);
+  }
+  // White count on the action colour: the bright dark-theme accent would
+  // not carry it.
+  .sidebar__badge {
+    background: ui.theme(action);
+  }
+  .sidebar__nav a.active {
+    box-shadow:
+      inset 3px 0 0 ui.theme(navigation-indicator),
+      0 0 14px ui.theme(accent, 0.18);
+  }
+  .filter-toolbar {
+    border-color: ui.theme(accent, 0.22);
+  }
+}

@@ -86,6 +86,12 @@
     }
     </div>
     <div class="fleet-map-stage">
+    @if (Futuristic)
+    {
+        <FleetTruckList Trucks="MatchingTrucks" Total="_trucks.Count"
+                        SelectedId="_activeTruckId"
+                        Selected="ChooseListTruckAsync" />
+    }
     <div
         id="fleet-map"
         @ref="_mapElement"
@@ -660,6 +666,17 @@
             ExecutionLegId="_routeEditorExecutionLeg"
             TruckNumber="@(SelectedTruck?.UnitNumber ?? "")" MapChanged="PublishRouteEditorAsync"
             Saved="RouteChoiceSavedAsync" Closed="CloseRouteEditorAsync" />
+    }
+    @if (Futuristic)
+    {
+        <FleetTripChain Truck="SelectedTruck" Current="_loadDetails"
+                        CurrentLoading="_routeLoading && _loadDetails is null"
+                        Next="_nextLoadRoutes" NextLoadsShown="ShowNextLoads"
+                        InspectedLoadId="_inspectedLoadId"
+                        InspectedLegId="_inspectedExecutionLegId"
+                        CurrentSelected="ChooseCurrentLoadAsync"
+                        NextSelected="ChooseNextLoadAsync"
+                        ShowNextLoads="ShowNextLoadsFromChainAsync" />
     }
     </div>
 

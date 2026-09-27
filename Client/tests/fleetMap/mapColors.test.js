@@ -20,13 +20,13 @@ const loadPaths = [fileURLToPath(new URL('../../Styles/', import.meta.url))];
 const hex = ([red, green, blue]) =>
   `#${[red, green, blue].map(c => c.toString(16).padStart(2, '0')).join('')}`;
 
-const exported = new Map(
-  [
-    ...compileString("@use 'global/root';", { loadPaths }).css.matchAll(
-      /--ui-([a-z0-9-]+):\s*(#[0-9a-f]{6})/gi,
-    ),
-  ].map(([, role, value]) => [role, value.toLowerCase()]),
-);
+// The :root contract, which is the first value each role is given; theme
+// and interface scopes that follow it override roles on their own roots.
+const exported = new Map();
+for (const [, name, value] of compileString("@use 'global/root';", {
+  loadPaths,
+}).css.matchAll(/--ui-([a-z0-9-]+):\s*(#[0-9a-f]{6})/gi))
+  if (!exported.has(name)) exported.set(name, value.toLowerCase());
 const role = name => {
   const value = exported.get(name);
   assert.ok(value, `the theme exports no ${name}`);

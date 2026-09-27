@@ -1,88 +1,74 @@
 # Futuristic interface: feature parity checklist
 
-Status on 2026-09-27. "Concept" is the localhost prototype in this folder.
-"Integration" is how the capability reaches production: the existing Blazor
-page and its owners stay; the Futuristic interface changes layout and styling
-only, behind the current interface as a fallback. Nothing here is a second
-implementation of business logic.
+Updated 2026-09-27 for the Blazor integration on branch
+`claude/futuristic-pulsar-ui-concept-80ccd4`. The Futuristic interface is now
+a layout and style scope inside the existing Client pages, chosen in Personal
+settings, with the current interface as default and fallback. The localhost
+concept in this folder remains a design reference only.
 
-Legend: **Yes** works in the concept on live and demo data; **Partial**
-visible but reduced; **No** not in the concept; the production owner keeps it.
+"Owner" is the existing implementation the Futuristic interface uses.
+Status: **Kept**: same owner, unchanged behaviour. **Verified**: exercised
+in the Futuristic interface by `Client/tests/browser/futuristicSmoke.mjs`
+(compiled Client, real basemap, synthetic read-only APIs). **New**: layout
+added by the Futuristic interface. **Not checked**: kept by construction but
+not exercised in a browser in this pass.
 
 ## Fleet Map
 
-| Capability | Current owner | Concept | Integration |
-| --- | --- | --- | --- |
-| Truck positions, 10 s refresh, paused when hidden | `FleetMap.razor.cs`, `RefreshLoop` | Yes (same endpoint, cadence, visibility pause) | Keep owner |
-| Google basemap, dark/light scheme | `Scripts/fleetMap` | No (vector boundaries only) | Keep Google map; restyle chrome |
-| Compact arrow markers with unit labels | `truckLayer.ts` | Yes | Restyle marker SVG only |
-| Selected truck rings | `truckLayer.ts` | Yes | Restyle only |
-| Nearby truck clustering with counted groups | `truckLayer.ts` | No | Keep owner |
-| Label collision and connectors | `truckLayer.ts` | No (cities avoid markers only) | Keep owner |
-| **Follow selected truck** | `truckCamera.ts` | Yes: anchor kept across position frames (0 px drift); ends on drag, zoom, selection change, Fit route, close | Keep owner; button moves into the new panel |
-| Fit route / Show route | `FleetMap.razor.cs` | Yes (ends Follow) | Keep owner |
-| Truck search (truck, driver, trailer) | FleetMap toolbar | Yes, plus load numbers | Keep owner; restyle |
-| Driver group picker | `ChosenDriverGroup` | No | Keep owner (server-side filter) |
-| Layer chips: Fuel stations, Traffic, Next loads | FleetMap toolbar | Partial: future routes, other trucks, city labels | Keep owners |
-| Fleet list panel (left) | none today | Yes (new layout, same data) | New layout component, reads existing feeds |
-| Truck card: unit, trailer, driver, trailer conflict | inspector | Yes | Reuse inspector content |
-| Left-to-next-stop, ETA, Appointment in zone | inspector | Partial (ETA from planning, appointment as sent) | Reuse `StopAppointmentDisplay`, arrival components |
-| Speed, fuel %, engine, temperature | inspector | Partial (no temperature) | Reuse |
-| HOS clocks (Break rules for Canada) | `DriverHours` | Partial (four clocks, no jurisdiction rule) | Reuse `DriverHours` |
-| Duty summary and rest build-up | `DriverDutySummary` | Partial (duty label only) | Reuse |
-| GPS address copy | inspector | No | Reuse |
-| Current route + next loads with deadhead | `MapRoutePublisher`, next-routes | Yes | Keep owners |
-| Off route / GPS stale / notices | planning result | Yes | Reuse |
-| Trip list with stops (right) and trip chain (bottom) | none today | Yes | New layout components over board/planning reads |
-| Stop inspector / Back to truck | inspector | Partial (stop highlight, no inspector) | Reuse inspector |
-| Fuel plan read | `FleetFuelPlan` | Yes (read only) | Reuse |
-| Fuel plan editor, Recalculate, Send fuel plan | `FuelPlanEditor`, `FuelSendPlan` | No (disabled, read-only concept) | Reuse; must work in the new layout |
-| Fuel stations layer and station card | `FleetStationLayer` | No | Reuse |
-| Camera | `TruckCamera` | No (route blocked by the concept host) | Reuse |
-| Route options / route editor | `RouteEditor` | No | Reuse |
-| Next-load details card | `NextLoadDetailsCard` | Partial (trip card) | Reuse |
-| Weather with attribution | `TruckWeather` | No | Reuse |
-| Map key | FleetMap | Yes (legend in chain) | Restyle |
-| Historical date / playback | playback modules | No | Keep owner |
-| Mobile: filters sheet, details toggle | FleetMap | Yes (sheets, trip strip) | New layout; same owners |
+| Capability | Owner | Status |
+| --- | --- | --- |
+| Truck positions, 10 s polling, hidden-tab pause | `FleetMap.razor.cs`, `RefreshLoop` | Kept, Verified (moving truck) |
+| Google basemap, light/dark scheme | `Scripts/fleetMap` | Kept, Verified |
+| Arrow markers, labels, selected rings, clustering | `truckLayer.ts` | Kept, Verified (render) |
+| **Follow selected truck** | `truckCamera.ts` | Kept, Verified: stays on through position updates |
+| Satellite at close zoom, road map when zoomed out | `fleetMap.ts` idle policy | Kept, Verified: Follow gives hybrid, zoom-out gives roadmap, Follow again gives hybrid |
+| Follow ends on a reader's zoom or drag | `truckCamera.ts` | Kept, Verified (zoom) |
+| Fit route, Fuel, Camera, Route options | inspector actions | Kept, Not checked in this pass |
+| Truck search, driver groups, layer chips | toolbar | Kept, Verified (render) |
+| Truck inspector content and details toggle | `FleetMap.razor` | Kept, docked beside the map on wide screens |
+| Next-load stop card | `NextLoadDetailsCard`, `selectNextStop` | Kept, Verified (opened from the chain) |
+| Fuel plan, fuel editor, send plan | `FleetFuelPlan`, `FuelPlanEditor`, `FuelSendPlan` | Kept; editor placed in the inspector column; Not checked |
+| Fuel stations layer and quotes | `FleetStationLayer` | Kept, Not checked |
+| Route editor | `RouteEditor` | Kept, placed over the map; Not checked |
+| Weather, map key | `TruckWeather`, key | Kept, Verified (render) |
+| Return navigation, playback, historical date | page owners | Kept, Not checked |
+| Fleet list (left) | `FleetTruckList` over the page's own search | New, Verified |
+| Trip chain (bottom) | `FleetTripChain` over current load and next routes | New, Verified |
 
 ## Dispatch
 
-| Capability | Current owner | Concept | Integration |
-| --- | --- | --- | --- |
-| Board projection, 12 per page, 1 min refresh | `DispatchList.razor.cs` | Yes (same endpoint and page size) | Keep owner |
-| Telemetry 10 s, HOS 15 s, planning summaries 10 s/1 min | `DispatchList` | Yes (locations feed instead of telemetry) | Keep owners |
-| Enrichment (ETA, financials) | `DispatchList.Enrichment.cs` | No | Keep owner |
-| Search (truck, driver, trailer, load) | toolbar | Yes | Keep owner |
-| Cards / Table / Papers views | `DispatchList`, `DispatchTable` | Partial (cards-style lanes only) | Keep all three |
-| Active / Completed scope | toolbar | No | Keep owner |
-| Driver group picker | `ChosenDriverGroup` | No | Keep owner |
-| Truck lane: truck, driver, trailer, motion, HOS | `DispatchRig`, `DriverHours` | Yes | Reuse components |
-| Load card: phase, status, stops, appointment, ETA | `DispatchLoadCard` | Yes | Reuse; restyle |
-| Order copy, customer, rate | `DispatchLoadCard` | Partial (no copy) | Reuse |
-| Locate on map | lane link | Yes (keeps selection) | Keep |
-| Open load / load workspace | `DispatchStopWorkspace` | No (disabled) | Reuse |
-| New load | header | No (disabled) | Reuse |
-| Truck assignment, stop operation, completion, correction | `TruckAssignmentEditor` and editors | No (blocked, read-only) | Reuse |
-| Unassigned loads | board rows without truck | Yes (queue) | New queue layout over the same rows |
-| Attention list | none today (facts scattered) | Yes (server facts only) | New layout; no new rules |
-| Pagination | `DispatchList` | Yes | Keep |
+| Capability | Owner | Status |
+| --- | --- | --- |
+| Cards, Table, Papers | `DispatchList` and views | Kept, Verified: each keeps search and scope |
+| Active / Completed | `DispatchList` | Kept, Verified |
+| Search, driver groups, paging | `DispatchList` | Kept, Verified (search) |
+| Phases (Current / Next / Upcoming) and ETA | Dispatch phase resolver, server ETA | Kept, same resolver in all three views |
+| Board, telemetry, enrichment, planning, HOS polling | `DispatchList` | Kept |
+| New load, load workspace, stop editors, assignment | existing pages and editors | Kept, Not checked |
+| Locate on map | lane link | Kept |
 
 ## Shared
 
-| Capability | Concept | Note |
-| --- | --- | --- |
-| Normal sign-in, token refresh, sign-out | Yes | Existing auth endpoints through the loopback host |
-| Light/dark | Yes | Production keeps the saved account preference |
-| Live / stale / loading / unavailable states | Yes | Per feed, with last-good time |
-| Demo fixtures | Yes | Only when explicitly chosen; labelled everywhere |
-| Keyboard: search `/`, arrow list/results, map arrows and +/- | Yes | |
-| Phone 390/360 without page overflow | Yes | Checked by `check.mjs` |
+| Capability | Status |
+| --- | --- |
+| Theme saved to the account | Kept |
+| Interface choice | New: on this device, per account; covered by `AppearanceSettingsTests` |
+| Contrast of text roles in both Futuristic themes | Checked by `styleTokens.test.js` |
+| No page overflow at 390 px, both interfaces and themes | Verified |
 
-## Not release-ready yet
+## Known differences and gaps
 
-The concept is a design and data-agreement reference. Release requires the
-integration column above: the Futuristic layout built into the existing Blazor
-pages behind a fallback to the current interface, every **No** row working
-through its existing owner, and the owner-run release through the Dispatch
-deploy owner.
+- The Fleet chain names loads Next and Upcoming by their order in the
+  server's next-routes list; Dispatch names them with its own phase resolver.
+  They agree on this fixture. They could differ where the board and next
+  routes disagree about order. The server-owned work model under
+  construction on the Dispatch architecture branch should become the single
+  source for both.
+- The chain shows next loads only while the Next loads layer is on (it
+  offers a button to turn it on), because that layer owns the reads.
+- The interface choice is not yet an account preference; it does not follow
+  the user to another device.
+- Live data: the renders use synthetic read-only fixtures. A signed-in check
+  against real data has not been done.
+- Release: not deployed. Integration goes through the Dispatch release owner
+  after its frozen release.

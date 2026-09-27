@@ -20,6 +20,26 @@
             Your theme is saved to your account and used on all devices.
             Other users keep their own theme.
         </p>
+        <h3 class="settings-page__subtitle" id="interface-title">
+            Interface</h3>
+        <div class="settings-page__theme" role="group"
+             aria-labelledby="interface-title">
+            @foreach (var (value, label) in Interfaces)
+            {
+                <button type="button" disabled="@Appearance.Busy"
+                        class="btn @(Appearance.Interface == value
+                            ? "btn--primary" : "")"
+                        aria-pressed="@(Appearance.Interface == value
+                            ? "true" : "false")"
+                        @onclick="() => Appearance.SaveInterfaceAsync(value)">
+                    @label
+                </button>
+            }
+        </div>
+        <p class="settings-page__hint">
+            Futuristic changes the look and layout of Fleet Map and Dispatch;
+            every function stays the same. The choice is kept on this device.
+        </p>
         @if (Appearance.Busy)
         {
             <p role="status">Saving personal preferences…</p>

@@ -206,6 +206,23 @@ test('a role that stays light in dark is one we said would', () => {
   assert.ok(unchanged.length > 20, 'the light-kept roles were not found');
 });
 
+test('the Futuristic interface exports the same role contract', () => {
+  assert.doesNotThrow(() =>
+    compileString(
+      `@use 'sass:map'; @use 'base/themes' as t; @use 'base/interface' as i;
+    @each $map in (i.$futuristic-roles, i.$futuristic-dark-roles) {
+      @each $name, $value in t.$roles {
+        @if not map.has-key($map, $name) { @error 'Missing role #{$name}'; }
+      }
+      @each $name, $value in $map {
+        @if not map.has-key(t.$roles, $name) { @error 'Unknown #{$name}'; }
+      }
+    }`,
+      { loadPaths },
+    ),
+  );
+});
+
 test('both themes export the same role contract', () => {
   assert.doesNotThrow(() =>
     compileString(
@@ -405,8 +422,17 @@ test('truck motion is owned by its animation module', () => {
 test('theme text roles meet normal-text contrast on their supported surfaces', () => {
   const css = compileString(
     `@use 'base/themes' as t;
+    @use 'base/interface' as i;
     .light { @each $key, $value in t.$roles { --#{$key}: #{$value}; } }
-    .dark { @each $key, $value in t.$dark-roles { --#{$key}: #{$value}; } }`,
+    .dark { @each $key, $value in t.$dark-roles { --#{$key}: #{$value}; } }
+    .futuristic-light {
+      @each $key, $value in i.$futuristic-roles { --#{$key}: #{$value}; }
+    }
+    .futuristic-dark {
+      @each $key, $value in i.$futuristic-dark-roles {
+        --#{$key}: #{$value};
+      }
+    }`,
     { loadPaths },
   ).css;
   const luminance = hex => {
@@ -416,7 +442,11 @@ test('theme text roles meet normal-text contrast on their supported surfaces', (
       .map(x => (x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
     return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
   };
-  for (const [, theme, body] of css.matchAll(/\.(light|dark)\s*\{([^}]+)\}/g)) {
+  const themes = [
+    ...css.matchAll(/\.((?:futuristic-)?(?:light|dark))\s*\{([^}]+)\}/g),
+  ];
+  assert.equal(themes.length, 4, 'all four role maps were read');
+  for (const [, theme, body] of themes) {
     const roles = Object.fromEntries(
       [...body.matchAll(/--([\w-]+):\s*#([0-9a-f]{6});/gi)].map(x => [
         x[1],

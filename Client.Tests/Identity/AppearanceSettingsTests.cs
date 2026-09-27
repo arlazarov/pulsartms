@@ -20,6 +20,65 @@ namespace Client.Tests.Identity;
 [Trait("Kind", "Component")]
 public sealed class AppearanceSettingsTests
 {
+  // The interface choice is read and applied beside the theme.
+  private static BunitJSModuleInterop Appearance(
+    BunitJSModuleInterop module,
+    string face = AppearanceProvider.CurrentInterface
+  )
+  {
+    module.SetupVoid("applyTheme", _ => true).SetVoidResult();
+    module.SetupVoid("applyInterface", _ => true).SetVoidResult();
+    module.Setup<string>("readInterface", _ => true).SetResult(face);
+    module.Setup<bool>("saveInterface", _ => true).SetResult(true);
+    return module;
+  }
+
+  [Fact]
+  public async Task InterfaceChoiceIsReadPerAccountAppliedAndSavedOnTheDevice()
+  {
+    await using var context = new ClientComponentContext(
+      (_, _) => Task.FromResult(Response("light"))
+    );
+    var js = Appearance(
+      context.JSInterop.SetupModule("./js/generated/shared/appearance.js"),
+      AppearanceProvider.FuturisticInterface
+    );
+    var component = Render(context, Account("one"));
+    var futuristic = component.WaitForElement(
+      "[aria-labelledby=interface-title] button[aria-pressed=true]"
+    );
+    Assert.Equal("Futuristic", futuristic.TextContent.Trim());
+    var provider = component.FindComponent<AppearanceProvider>().Instance;
+    Assert.True(provider.Futuristic);
+    Assert.Contains(
+      js.Invocations,
+      call =>
+        call.Identifier == "readInterface" && Equals(call.Arguments[0], "one")
+    );
+    Assert.Equal(
+      "futuristic",
+      js
+        .Invocations.Last(call => call.Identifier == "applyInterface")
+        .Arguments[0]
+    );
+
+    await component
+      .FindAll("[aria-labelledby=interface-title] button")
+      .Single(button => button.TextContent.Trim() == "Current")
+      .ClickAsync(new());
+    Assert.False(provider.Futuristic);
+    var saved = js.Invocations.Single(call =>
+      call.Identifier == "saveInterface"
+    );
+    Assert.Equal(new object?[] { "one", "current" }, saved.Arguments);
+    Assert.Equal(
+      "current",
+      js
+        .Invocations.Last(call => call.Identifier == "applyInterface")
+        .Arguments[0]
+    );
+  }
+
   [Fact]
   public async Task InitialReadShowsAnimationUntilPreferencesAreApplied()
   {
@@ -27,10 +86,9 @@ public sealed class AppearanceSettingsTests
     await using var context = new ClientComponentContext(
       (_, _) => pending.Task
     );
-    context
-      .JSInterop.SetupModule("./js/generated/shared/appearance.js")
-      .SetupVoid("applyTheme", _ => true)
-      .SetVoidResult();
+    Appearance(
+      context.JSInterop.SetupModule("./js/generated/shared/appearance.js")
+    );
     var component = Render(context, Account("one"));
     var loader = component.WaitForElement(".appearance-loader[role=status]");
     Assert.Equal(
@@ -70,7 +128,7 @@ public sealed class AppearanceSettingsTests
     var js = context.JSInterop.SetupModule(
       "./js/generated/shared/appearance.js"
     );
-    js.SetupVoid("applyTheme", _ => true).SetVoidResult();
+    Appearance(js);
     var component = Render(context, Account("one"));
     component.WaitForElement("button[aria-pressed=true]");
     var provider = component.FindComponent<AppearanceProvider>();
@@ -111,7 +169,7 @@ public sealed class AppearanceSettingsTests
     var js = context.JSInterop.SetupModule(
       "./js/generated/shared/appearance.js"
     );
-    js.SetupVoid("applyTheme", _ => true).SetVoidResult();
+    Appearance(js);
     var component = Render(context, Account("one"));
     component.WaitForElement("button[aria-pressed=true]");
     var control = component.FindComponent<ThemeControl>().Instance;
@@ -119,7 +177,10 @@ public sealed class AppearanceSettingsTests
     Assert.Equal("light", Assert.Single(writes).Theme);
     component.WaitForElement(".settings-page__saved");
     Assert.Same(control, component.FindComponent<ThemeControl>().Instance);
-    Assert.Equal("light", js.Invocations.Last().Arguments[0]);
+    Assert.Equal(
+      "light",
+      js.Invocations.Last(call => call.Identifier == "applyTheme").Arguments[0]
+    );
   }
 
   [Theory]
@@ -143,7 +204,7 @@ public sealed class AppearanceSettingsTests
     var js = context.JSInterop.SetupModule(
       "./js/generated/shared/appearance.js"
     );
-    js.SetupVoid("applyTheme", _ => true).SetVoidResult();
+    Appearance(js);
     var component = Render(context, Account("one"));
     component.WaitForAssertion(() => Assert.Equal(1, reads));
     Task? saving = null;
@@ -225,10 +286,9 @@ public sealed class AppearanceSettingsTests
         return Response(saved.Theme, saved.TemperatureUnit, saved.DistanceUnit);
       }
     );
-    context
-      .JSInterop.SetupModule("./js/generated/shared/appearance.js")
-      .SetupVoid("applyTheme", _ => true)
-      .SetVoidResult();
+    Appearance(
+      context.JSInterop.SetupModule("./js/generated/shared/appearance.js")
+    );
     var component = Render(context, Account("one"));
     await component
       .WaitForElement("#personal-temperature")
@@ -270,10 +330,9 @@ public sealed class AppearanceSettingsTests
             : new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
         )
     );
-    context
-      .JSInterop.SetupModule("./js/generated/shared/appearance.js")
-      .SetupVoid("applyTheme", _ => true)
-      .SetVoidResult();
+    Appearance(
+      context.JSInterop.SetupModule("./js/generated/shared/appearance.js")
+    );
     var component = Render(context, Account("one"));
     await component
       .WaitForElement("#personal-distance")
@@ -303,7 +362,7 @@ public sealed class AppearanceSettingsTests
     var js = context.JSInterop.SetupModule(
       "./js/generated/shared/appearance.js"
     );
-    js.SetupVoid("applyTheme", _ => true).SetVoidResult();
+    Appearance(js);
     var component = Render(context, Account("one"));
     component.WaitForElement("button[aria-pressed=true]");
     component.Render(parameters =>
@@ -331,7 +390,10 @@ public sealed class AppearanceSettingsTests
           component.FindComponent<AppearanceProvider>().Instance.Theme
         )
     );
-    Assert.Equal("light", js.Invocations.Last().Arguments[0]);
+    Assert.Equal(
+      "light",
+      js.Invocations.Last(call => call.Identifier == "applyTheme").Arguments[0]
+    );
     Assert.Equal(1, reads);
   }
 
@@ -353,7 +415,7 @@ public sealed class AppearanceSettingsTests
     var js = context.JSInterop.SetupModule(
       "./js/generated/shared/appearance.js"
     );
-    js.SetupVoid("applyTheme", _ => true).SetVoidResult();
+    Appearance(js);
     var component = Render(context, Account("one"));
     component.WaitForElement("[role=alert]");
     Assert.Equal(
@@ -363,7 +425,10 @@ public sealed class AppearanceSettingsTests
     await component.Find("[role=alert] button").ClickAsync(new());
     Assert.Equal(2, reads);
     Assert.Empty(component.FindAll("[role=alert]"));
-    Assert.Equal("dark", js.Invocations.Last().Arguments[0]);
+    Assert.Equal(
+      "dark",
+      js.Invocations.Last(call => call.Identifier == "applyTheme").Arguments[0]
+    );
   }
 
   private static Task<AuthenticationState> Account(string id) =>

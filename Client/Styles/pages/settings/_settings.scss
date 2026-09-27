@@ -27,6 +27,11 @@
     max-width: ui.size(content-form);
     width: 100%;
   }
+  &__subtitle {
+    margin: ui.pg(md) 0 0;
+    font-size: ui.fs(label);
+    font-weight: 650;
+  }
   &__hint {
     color: ui.theme(text-muted);
     font-size: ui.fs(body);

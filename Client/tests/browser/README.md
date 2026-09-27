@@ -10,6 +10,15 @@ Explicit `*_OUTPUT_DIR` overrides remain caller-owned and bypass cleanup.
 
 ## Offline staged UI smoke
 
+`MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/futuristicSmoke.mjs`
+from Client renders Fleet Map and Dispatch in the Current and Futuristic
+interfaces, light and dark, at 1440px and 390px, on the real basemap (the
+publish must contain the ignored `wwwroot/appsettings.json`; the key is
+never written out). In the Futuristic Fleet Map it checks list and chain
+selection, next-load stop cards, Follow on satellite through position
+updates, the road map after zooming out, and that Dispatch views keep search
+and scope. APIs are synthetic and read-only. Not gated.
+
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/dispatchCreationSmoke.mjs`
 checks the compiled New load workflow at 1440/390/320px, light/dark themes and
 200% root text. Synthetic address lookups and creation are intercepted in memory;

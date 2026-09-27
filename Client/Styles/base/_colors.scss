@@ -114,6 +114,40 @@ $colors: (
     700: #7c3aed,
     950: #2e1654,
   ),
+  // The Futuristic interface: fine cyan detail on ice and night surfaces.
+  'cyan': (
+    50: #e3f6fc,
+    200: #8fdcf0,
+    300: #67e8f9,
+    400: #3fd3f7,
+    500: #06b6d4,
+    700: #0e7490,
+    800: #155e75,
+    900: #0b3a4f,
+    950: #0a2a3d,
+  ),
+  ice: (
+    0: #ffffff,
+    50: #f4f8fc,
+    100: #eef3f9,
+    150: #ebf1f8,
+    200: #dfe8f2,
+    300: #cfdbe8,
+    500: #52637a,
+    700: #3a4c63,
+    900: #0e1c30,
+  ),
+  night: (
+    100: #e7f2ff,
+    300: #a9bed8,
+    400: #8aa1bf,
+    700: #1f3350,
+    800: #16263d,
+    850: #102039,
+    900: #0a1628,
+    950: #081221,
+    1000: #040a14,
+  ),
 );
 
 @function value($group, $shade) {

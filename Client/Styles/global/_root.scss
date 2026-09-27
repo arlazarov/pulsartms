@@ -1,5 +1,6 @@
 @use 'token-export' as tokens;
 @use '../base/themes' as themes;
+@use '../base/interface' as interface;
 @use '../base/functions' as fn;
 @use '../base/colors' as colors;
 @use '../base/tokens' as vars;
@@ -44,6 +45,21 @@
 [data-theme='light'] {
   color-scheme: light;
   @each $name, $value in themes.$roles {
+    --ui-#{$name}: #{$value};
+  }
+}
+
+// The Futuristic interface is an opt-in scope over the same roles; the
+// current interface stays the default and the fallback.
+[data-interface='futuristic'][data-theme='light'],
+[data-interface='futuristic']:not([data-theme]) {
+  @each $name, $value in interface.$futuristic-roles {
+    --ui-#{$name}: #{$value};
+  }
+}
+
+[data-interface='futuristic'][data-theme='dark'] {
+  @each $name, $value in interface.$futuristic-dark-roles {
     --ui-#{$name}: #{$value};
   }
 }

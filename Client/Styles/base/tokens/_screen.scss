@@ -27,6 +27,9 @@ $screen-places: (
   // Below this the head's ETA and Appointment stop sharing a label column.
   map-truck-arrival-stacked: 20rem,
   map-route-columns: 1101px,
+  // Below this the Futuristic Fleet Map floats its inspector over the map
+  // as the current interface does, and leaves the list to search.
+  futuristic-docked: 1100px,
 
   // Dispatch.
   dispatch-load-history: 48rem,

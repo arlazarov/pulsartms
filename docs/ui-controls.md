@@ -589,6 +589,50 @@ On phones, keep the title in the first row and Back below it.
 At very narrow or enlarged-text widths, let this header scroll with the card
 instead of covering the stop facts with a tall sticky area.
 
+## Futuristic interface
+
+Personal settings offer two interfaces: **Current** (the default and the
+fallback) and **Futuristic**. `AppearanceProvider` owns the choice beside the
+theme. Until an account preference exists it is kept on the device, per
+account (`pulsr.interface.<account>`), and applied as
+`data-interface="futuristic"` on the root; a missing, unreadable or unknown
+value, a sign-out and a new account all mean Current. It changes only layout
+and styling. Every function, request, refresh loop, selection path and map
+policy is the one the current interface uses.
+
+Colours come from `base/_interface.scss`: complete light and dark role maps
+over the same contract, checked for contrast like the themes. Surfaces,
+actions, focus and navigation turn cyan on ice or night; operational colours
+(routes, stops, fuel prices, status text) keep their theme values. In the
+light theme the navigation is light, so the reversed wordmark takes the
+navigation text colour.
+
+Fleet Map, from `futuristic-docked` up, becomes a fleet list, the map, the
+docked truck inspector and a trip chain across the bottom. The list is the
+page's trucks under its own truck search, and choosing a row is choosing the
+truck in search. The inspector keeps all its content and actions (Follow,
+Fit route, Fuel, Camera, Route options); docked beside the map it no longer
+covers it, so the camera needs no inset. The fuel editor stands in the
+inspector's column; route choices, the send window and the key stay over the
+map. With no truck selected the map takes the inspector's column. The chain
+is the selected truck's current load (the planning dispatch the page already
+reads) and then the next loads in the server's order, named Next and
+Upcoming by position; choosing a next load opens its stop card through
+`selectNextStop`, the path a stop click takes, and choosing the current load
+returns to the truck card without moving the camera, so Follow continues.
+When Next loads is off the chain offers to turn it on. Below
+`futuristic-docked` the inspector floats as in the current interface, the
+list is left to search and the chain runs beneath the map.
+
+The map's zoom policy is unchanged: hybrid at zoom 15 and above, the road map
+below. Follow opens at zoom 15 and so on satellite; a reader's zoom or drag
+ends Follow as before. `tests/browser/futuristicSmoke.mjs` checks this on the
+real basemap, with a moving truck, alongside both interfaces' screens.
+
+Dispatch keeps Cards, Table, Papers, Active and Completed, search, groups
+and every link and action; only the frame and the load colours change, using
+the same route colours as the Fleet Map chain.
+
 ## Dispatch information hierarchy
 
 The [Dispatch load workspace](features/dispatch-workspace.md) supersedes the
