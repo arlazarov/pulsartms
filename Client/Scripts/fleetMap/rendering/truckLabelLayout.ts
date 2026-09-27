@@ -99,7 +99,7 @@ export function layoutMapLabels({
   const retained = new Map(previous.map(truck => [truck.unit, truck]));
   const points = new Map<LabelledTruck | LabelledCluster, [number, number]>(
     [...vehicles, ...clusters].map(item => {
-      const [x, y] = project(item.position);
+      const [x, y] = project(item.mergedPosition ?? item.position);
       const [dx, dy] = item.markerOffset ?? [0, 0];
       return [item, [x + dx, y + dy] as [number, number]];
     }),

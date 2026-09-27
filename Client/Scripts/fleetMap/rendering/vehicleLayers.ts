@@ -78,7 +78,7 @@ export function createVehicleLayers({
               (t.labelOffset[0] !== 0 ||
                 t.labelOffset[1] !== -metrics.truckLabelOffset),
           ),
-          getPosition: (t: Truck) => t.position,
+          getPosition: (t: Truck) => t.mergedPosition ?? t.position,
           getPixelOffset: (t: Truck) => t.markerOffset ?? [0, 0],
           getIcon: (t: Truck) => markerAnchor(t.labelOffset!),
           getSize: (t: Truck) => markerAnchor(t.labelOffset!).size,
@@ -125,7 +125,7 @@ export function createVehicleLayers({
           id: 'truck-numbers',
           characterSet: 'auto',
           data: vehicles,
-          getPosition: (t: Truck) => t.position,
+          getPosition: (t: Truck) => t.mergedPosition ?? t.position,
           getText: (t: Truck) => t.unit,
           getSize: metrics.truckLabelSize,
           sizeUnits: 'pixels',

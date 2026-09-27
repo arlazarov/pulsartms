@@ -18,6 +18,8 @@ export type StopRow = {
   stacked?: boolean;
   // The stop the plan's truck is driving to: the only one it can stand on.
   next?: boolean;
+  // Whose next stop it is, when the route says: only that truck is its ring.
+  nextTruck?: string | null;
   [key: string]: any;
 };
 
@@ -94,6 +96,12 @@ const most = 80;
 // does not rearrange itself as the camera moves.
 const groundZoom = 12;
 
+// A next stop belongs to the truck whose route it is on. A route that does
+// not say whose it is keeps the old rule, any truck standing on it.
+function owns(row: StopRow, truck: LabelledTruck) {
+  return !!row.next && (!row.nextTruck || row.nextTruck === truck.truckId);
+}
+
 // Whether a truck drawn at one point would sit on a badge drawn at another.
 function covers(truck: MarkPoint, badge: MarkPoint) {
   return (
@@ -118,7 +126,9 @@ export function movingRingKey(
     .filter(truck => truck.position && truck.speed > 0)
     .map(truck => {
       const at = project(truck.position);
-      const on = next.find(row => covers(at, project(row.position)));
+      const on = next.find(
+        row => owns(row, truck) && covers(at, project(row.position)),
+      );
       return on ? `${truck.unit}>${on.id ?? on.number}` : '';
     })
     .filter(Boolean)
@@ -166,6 +176,7 @@ export function layoutStopMarkers(
   for (const truck of trucks) {
     truck.merged = false;
     truck.markerOffset = null;
+    truck.mergedPosition = null;
   }
   const placed = trucks
     .filter(truck => truck.position)
@@ -215,7 +226,9 @@ export function layoutStopMarkers(
   for (const truck of placed) {
     const reached = groups
       .filter(
-        group => group.some(item => item.row.next) && covered(truck, group[0]),
+        group =>
+          group.some(item => owns(item.row, truck.truck)) &&
+          covered(truck, group[0]),
       )
       .sort((a, b) => away(truck, a[0]) - away(truck, b[0]))[0];
     if (!reached) continue;
@@ -233,10 +246,16 @@ export function layoutStopMarkers(
   // The unit number belongs over the mark the truck has become, so the truck
   // rows carry the way from where the truck is to the badge it is drawn in.
   // Its own icon is not drawn at all while it is there.
-  for (const { truck, at, holds } of placed) {
+  // Marked at the badge's own stop and offset as the badge is, so a truck
+  // that keeps driving between layouts leaves its number where the ring is.
+  for (const { truck, holds } of placed) {
     truck.merged = !!holds;
+    truck.mergedPosition = holds ? holds.row.position : null;
     truck.markerOffset = holds
-      ? [Math.round(holds.at[0] - at[0]), Math.round(holds.at[1] - at[1])]
+      ? [
+          Math.round(holds.at[0] - holds.anchor[0]),
+          Math.round(holds.at[1] - holds.anchor[1]),
+        ]
       : null;
   }
 
