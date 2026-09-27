@@ -446,6 +446,48 @@ The first deploy attempt stopped before any change: the gcloud login had
 expired and the owner signed in again. Root alone resumes the historical
 recovery; nothing was requeued or replanned here.
 
+## API recovery release of September 27 (02:07-02:16 UTC)
+
+Historical recovery found that a load's captured history differed when
+it was read in a batch and when it was read alone: a completed leg that
+one load in the batch needed was added to every load on the same truck,
+so the recorded dependencies never matched and the requests churned.
+Root's fix `392c9bb1` (see
+[the record](historical-road-input-isolation-2026-09-27.md)) selects
+completed legs per load, as a single read does; the database reads are
+the same two batched queries. Reviewed here before release; only that
+commit was added. Candidate
+`25362c19560b94ee81c8372ea87fb0f79a69ca1e`. No migration (73), no DTO
+or Client change.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash verify-release.sh` on
+  `25362c19`, exit 0: Server 3,783, Client 1,251, JavaScript 663, no
+  failure or skip. UI smoke `browser-ui-tEcQuq` (12 cases, clean) and
+  `browser-messaging-tabs-aoOt6t`; artifact `release-pqllMO`, raw log in
+  its `evidence/`.
+- **Backup** (02:07 UTC):
+  `local-backups/pulsartms-release-backup.lPnzmP/before-2026-09-27-api-release-25362c19.dump`,
+  40,053,636 bytes, SHA-256
+  `3ed581c4d5d8cc20bff79cc54ef3ab790054dfe322127fc5ea8110ff28f1faeb`,
+  720 entries, 104 table data; in the inventory. No restore rehearsed.
+- **API:** before, `amftms-api-b-ff6c836e-849b-487d-8a20-b452f7ae1146`
+  (`c331aa00`), generation 268. Cloud Build
+  `7a7f4da3-2fab-4f9a-a470-1c352a4f7288`; image
+  `us-east4-docker.pkg.dev/amftms/amftms/api@sha256:dc5310d074b7487193fbd2630bdcf67814a4a91eeff9a87bd93e82228aa22f1b`;
+  revision `amftms-api-b-7a7f4da3-2fab-4f9a-a470-1c352a4f7288`,
+  generation 270, spec and status traffic 100%; Ready, Active,
+  ContainerHealthy and MinInstancesProvisioned true; 1 GiB, minimum 1,
+  maximum 1, scaling automatic, unchanged. The previous revision is
+  Retired, Active false and TrafficShutDown true: drained. Health 200 on
+  the service and through Hosting; no error-level entry or 5xx in the
+  first minutes. Hosting still serves `release-kRy7jd`.
+- **Protected data** before and after, read-only counts: unchanged
+  (73, 3, 5, 55, 0, 0, 0, 2).
+
+Root owns the recovery and its validation; a finished queue is not proof
+that the historical totals are recovered. Nothing was requeued, reset or
+replanned here.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
