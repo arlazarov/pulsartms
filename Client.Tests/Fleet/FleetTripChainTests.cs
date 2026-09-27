@@ -118,7 +118,11 @@ public sealed class FleetTripChainTests
     Assert.Empty(component.FindAll(".fleet-trip-chain__trip"));
   }
 
-  private static DispatchResponse Load(int number, string phase) =>
+  private static DispatchResponse Load(
+    int number,
+    string phase,
+    int deliveries = 1
+  ) =>
     new()
     {
       Id = Guid.NewGuid(),
@@ -128,16 +132,22 @@ public sealed class FleetTripChainTests
       [
         new()
         {
+          Id = Guid.NewGuid(),
           Sequence = 1,
+          Job = "Pickup",
           City = "Nashville",
           Province = "TN",
         },
-        new()
-        {
-          Sequence = 2,
-          City = "Knoxville",
-          Province = "TN",
-        },
+        .. Enumerable
+          .Range(0, deliveries)
+          .Select(i => new DispatchStopResponse
+          {
+            Id = Guid.NewGuid(),
+            Sequence = i + 2,
+            Job = "Delivery",
+            City = "Knoxville",
+            Province = "TN",
+          }),
       ],
     };
 }

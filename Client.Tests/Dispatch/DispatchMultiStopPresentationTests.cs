@@ -2,6 +2,7 @@ using AngleSharp.Dom;
 using Bunit;
 using Client.Models.DTO.Dispatch;
 using Client.Pages.Dispatch;
+using Client.Shared.Dispatch;
 using Client.Shared.Dispatch.DispatchLoadDialog;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -106,7 +107,7 @@ public sealed class DispatchMultiStopPresentationTests
     );
 
     Assert.Equal(
-      new[] { "Stop 3 · Visit 2 of 3" },
+      new[] { "P · Stop 3 · Visit 2 of 3" },
       table
         .FindAll(
           ".dispatch-table__stop.is-pickup .dispatch-table__stop-position"
@@ -114,7 +115,7 @@ public sealed class DispatchMultiStopPresentationTests
         .Select(position => position.TextContent)
     );
     Assert.Equal(
-      new[] { "Stop 2" },
+      new[] { "D1 · Stop 2" },
       table
         .FindAll(
           ".dispatch-table__stop.is-delivery .dispatch-table__stop-position"
@@ -166,8 +167,10 @@ public sealed class DispatchMultiStopPresentationTests
       expected.Select(stop => stop.Id.ToString()),
       stops.Select(stop => stop.GetAttribute("data-stop-id"))
     );
+    // Each stop wears its badge within the load (StopMarkers, tested on
+    // its own), in the load's order.
     Assert.Equal(
-      new[] { "1", "2", "3", "4", "5" },
+      StopMarkers.Labels(expected.Select(stop => stop.Job).ToArray()),
       stops.Select(stop =>
         stop.QuerySelector(".dispatch-load__stop-number")!.TextContent
       )

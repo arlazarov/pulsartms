@@ -62,6 +62,7 @@ export function createSceneLayers({
     selectStation,
     pixelRatio = 1,
     stopLabelStyle = defaultStopLabelStyle,
+    sonar = null,
   }: {
     lines: Iterable<SceneRouteLine & { map?: unknown; path?: unknown[] }>;
     stationData: StationMark[];
@@ -81,6 +82,10 @@ export function createSceneLayers({
     pixelRatio?: number;
     zoom?: number | null;
     stopLabelStyle?: StopLabelStyle;
+    // The selected truck's sonar: 0..1 through one sweep, or 'still' for a
+    // reader who asked for less motion. It says which truck is chosen, not
+    // what its engine is doing, and it is never picked.
+    sonar?: number | 'still' | null;
   }): DeckLayer[] => {
     const fonts = labelFonts([pixelRatio, stopLabelStyle.size], () =>
       createLabelFonts(pixelRatio, stopLabelStyle.size),
@@ -136,6 +141,32 @@ export function createSceneLayers({
           fonts,
         }),
         fleet.clusters,
+        ...(sonar === null
+          ? []
+          : [
+              new ScatterplotLayer({
+                id: 'truck-sonar',
+                data: trucks.filter(t => t.selected),
+                getPosition: (t: LabelledTruck) => t.position,
+                radiusUnits: 'pixels',
+                getRadius: sonar === 'still' ? 20 : 14 + (sonar as number) * 22,
+                stroked: true,
+                filled: false,
+                lineWidthUnits: 'pixels',
+                getLineWidth: 1.5,
+                getLineColor: [
+                  6,
+                  182,
+                  212,
+                  sonar === 'still'
+                    ? 150
+                    : Math.round(170 * (1 - (sonar as number))),
+                ],
+                pickable: false,
+                updateTriggers: { getRadius: sonar, getLineColor: sonar },
+                parameters: { depthCompare: 'always' },
+              }),
+            ]),
         ...fleet.icons,
         ...stops({ stopData, setHover, selectStop, fonts }),
         ...fleet.labels,

@@ -95,6 +95,15 @@ export function createScene(
     if (frame !== null || disposed) return;
     frame = requestAnimationFrame(render);
   }
+  // About 25 frames a second for the sonar alone; a hidden page draws none
+  // and picks it up again when shown.
+  const sonarPeriod = 2400;
+  const sonarFrame = 40;
+  let sonarTimer: ReturnType<typeof setTimeout> | null = null;
+  const onVisibility = () => {
+    if (!globalThis.document?.hidden) schedule();
+  };
+  globalThis.document?.addEventListener?.('visibilitychange', onVisibility);
   // Standing trucks by position, moving ones by the next stop they cover.
   function trucksKey() {
     return (
@@ -162,8 +171,25 @@ export function createScene(
       });
       vehiclesDirty = false;
     }
+    // The selected truck's sonar sweeps while the page is shown, and stands
+    // still for a reader who asked for less motion.
+    const chosen = vehicleDisplay.vehicles.some(t => t.selected);
+    const still =
+      globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ===
+      true;
+    const sonar = !chosen
+      ? null
+      : still
+        ? ('still' as const)
+        : (performance.now() % sonarPeriod) / sonarPeriod;
+    if (chosen && !still && !globalThis.document?.hidden && sonarTimer === null)
+      sonarTimer = setTimeout(() => {
+        sonarTimer = null;
+        schedule();
+      }, sonarFrame);
     overlay.draw(
       buildLayers({
+        sonar,
         lines: routeEditing
           ? [...lines].filter(line => line.routeRole === 'preview')
           : lines,
@@ -257,6 +283,12 @@ export function createScene(
         () => {
           if (frame !== null) cancelAnimationFrame(frame);
           frame = null;
+          if (sonarTimer !== null) clearTimeout(sonarTimer);
+          sonarTimer = null;
+          globalThis.document?.removeEventListener?.(
+            'visibilitychange',
+            onVisibility,
+          );
         },
         () => {
           stationSelect = () => {};

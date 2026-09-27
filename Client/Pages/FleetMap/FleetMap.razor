@@ -104,6 +104,17 @@
         aria-label="Fleet and fuel station map"
         aria-busy="@_initializing">
     </div>
+    @if (_mapType is not null)
+    {
+        @* Which view the map is in: satellite imagery at close zoom, the
+           road map further out. *@
+        <span class="fleet-map-mode @(_mapType == "hybrid" ? "is-satellite" : "is-roadmap")"
+              role="status" aria-live="polite">
+            <ActionIcon Kind="@(_mapType == "hybrid" ? "satellite" : "map")" />
+            <span>@(_mapType == "hybrid" ? "Satellite" : "Road map")</span>
+            <small>@(_mapType == "hybrid" ? "close zoom" : "zoom in for satellite")</small>
+        </span>
+    }
     <section class="fleet-map-info-reserved fleet-map-inspector
                     @(InspectorVisible ? "has-selection" : "")
                     @(_mobileTruckDetailsOpen
@@ -587,7 +598,7 @@
                 Route options · <LoadNumber Value="inspected.LoadNumber" />
             </button>
             <NextLoadDetailsCard Embedded="true" Route="inspected" Stop="InspectedStop" StopIndex="_inspectedStopIndex"
-                Marker="InspectedStopMarker"
+                Marker="@InspectedStopMarker"
                 FuelArrival="InspectedFuelArrival"
                 DistanceMiles="InspectedDistanceMiles"
                 Details="_inspectedDetails" Eta="InspectedEta" Refreshing="InspectedEtaRefreshing" Loading="@(_inspectedDetailsRequest is not null)"

@@ -348,19 +348,20 @@ test('scene reuses static layers across motion, invalidates only changed stops a
     decodeURIComponent(
       movingTruckLayer.props.getIcon(movingTruckLayer.props.data[0]).url,
     ),
-    /<path[^>]*fill="#16a34a"/,
+    // One ink body; the engine is its edge (truckAppearance.ts).
+    /<path[^>]*fill="#1e293b"[^>]*stroke="#16a34a"/,
   );
   assert.match(
     decodeURIComponent(
       movingTruckLayer.props.getIcon({ engine: 'on', speed: 0 }).url,
     ),
-    /<circle[^>]*fill="#16a34a"/,
+    /<circle[^>]*fill="#1e293b"[^>]*stroke="#16a34a"/,
   );
   assert.match(
     decodeURIComponent(
       movingTruckLayer.props.getIcon({ engine: 'off', speed: 0 }).url,
     ),
-    /<circle[^>]*fill="#64748b"/,
+    /<circle[^>]*fill="#1e293b"[^>]*stroke="#94a3b8" stroke-width="2"\/>/,
   );
   movingTruckLayer.props.onHover({ object: movingTruckLayer.props.data[0] });
   flush();

@@ -140,7 +140,8 @@ export function attentionList(t) {
     ${t.attention
       .map(
         (a) => `<div class="alert ${a.level === 'danger' ? 'danger' : ''}">
-        ${icon('alert', 'sm')}<span>${esc(a.text)}</span></div>`
+        ${icon('alert', 'sm')}<span>${esc(a.text)}${a.detail
+          ? `<span class="sub">${esc(a.detail)}</span>` : ''}</span></div>`
       )
       .join('')}</div>`;
 }

@@ -37,6 +37,12 @@ $screen-places: (
   // Below this the Futuristic Fleet Map floats its inspector over the map
   // as the current interface does, and leaves the list to search.
   futuristic-docked: 1100px,
+  // How many trip cards (size futuristic-trip, sm gaps) the chain's list
+  // fits in one row: two from the first width, three, four, five.
+  trip-chain-two: 30.5rem,
+  trip-chain-three: 46rem,
+  trip-chain-four: 61.5rem,
+  trip-chain-five: 77rem,
 
   // Dispatch.
   dispatch-load-history: 48rem,

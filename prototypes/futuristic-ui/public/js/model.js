@@ -3,6 +3,10 @@
 // projection and every label from rules.js.
 import { state } from './store.js';
 import {
+  appointment,
+  formatInstant,
+  stopDone,
+  tripStopLabels,
   destination,
   hosClocks,
   isLowClock,
@@ -138,16 +142,70 @@ function attention(t) {
       kind: 'gps',
       text: 'GPS unavailable or stale',
     });
-  for (const e of s?.state?.eta?.stops ?? [])
-    if (e.lateMinutes > 0)
-      out.push({
-        level: 'danger',
-        kind: 'late',
-        text: `Late ${e.lateMinutes} min at a stop`,
-        stopId: e.stopId,
-      });
+  out.push(...lateness(t));
   return out;
 }
+
+// Lateness as the Client's stop forecast states it (Shared/DriverStatus/
+// StopHours, StopHoursDisplay.Lateness): only from a current forecast, only
+// for a stop of one of the truck's trips that is not completed, and named
+// by its trip, badge and facility with the appointment beside the ETA. A
+// forecast that is not current still says a delay exists, as not current.
+function lateness(t) {
+  const eta = t.summary?.state?.eta;
+  if (!eta) return [];
+  const now = Date.now();
+  const current =
+    !eta.unavailableReason &&
+    !eta.routeUpdatePending &&
+    !(t.summary?.staleDependencies?.length) &&
+    !(eta.validUntil && Date.parse(eta.validUntil) < now);
+  const out = [];
+  for (const e of eta.stops ?? []) {
+    if (!(e.lateMinutes > 0)) continue;
+    const trip = t.trips.find(
+      (x) =>
+        (!e.dispatchId || e.dispatchId === x.id) &&
+        x.stops.some((s) => s.id === e.stopId),
+    );
+    const index = trip?.stops.findIndex((s) => s.id === e.stopId) ?? -1;
+    const stop = index >= 0 ? trip.stops[index] : null;
+    // A stop nobody can name, or one already done, is not late now.
+    if (!stop || stopDone(stop) || stop.driverOnly) continue;
+    const badge = tripStopLabels(trip.stops.map((s) => s.job))[index];
+    const where = `${trip.loadNumber} ${badge} · ${text(stop.name, location(stop))}`;
+    const times = `Appt ${appointment(stop)} · ETA ${formatInstant(
+      e.arrival, e.timeZoneId)}`;
+    out.push(
+      current
+        ? {
+            level: 'danger',
+            kind: 'late',
+            text: `Late by ${lateBy(e.lateMinutes)} · ${where}`,
+            detail: times,
+            stopId: e.stopId,
+            tripId: trip.id,
+          }
+        : {
+            level: 'warn',
+            kind: 'forecast',
+            text: `Forecast not current · ${where}`,
+            detail: `${times} · said late by ${lateBy(e.lateMinutes)} at ${
+              formatInstant(eta.calculatedAt)}`,
+            stopId: e.stopId,
+            tripId: trip.id,
+          },
+    );
+  }
+  return out;
+}
+
+// StopHoursDisplay.Lateness: minutes under an hour, else hours and minutes.
+export const lateBy = (minutes) => {
+  const m = Math.abs(Math.round(minutes));
+  return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${String(m % 60).padStart(
+    2, '0')}m`;
+};
 
 export const etaFor = (t, stopId) =>
   t?.summary?.state?.eta?.stops?.find((e) => e.stopId === stopId) ?? null;

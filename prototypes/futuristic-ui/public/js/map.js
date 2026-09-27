@@ -494,14 +494,20 @@ export class FleetMapView {
         'aria-label': s.aria,
         style: `color: var(--${s.phase})`,
       }, this.overlay);
-      el('circle', { class: 'sel', r: 17 }, g);
-      el('circle', {
+      // Every badge has one size and one type size whatever it says; a
+      // two-character label (D1) widens into a pill rather than shrinking.
+      const half = Math.max(11, 4 + String(s.label).length * 4);
+      el('rect', {
+        class: 'sel', x: -half - 6, y: -17, width: 2 * half + 12, height: 34,
+        rx: 17,
+      }, g);
+      el('rect', {
         class: 'bg',
-        r: s.major ? 11 : 8,
+        x: -half, y: -11, width: 2 * half, height: 22, rx: 11,
         stroke: 'currentColor',
         opacity: s.dim ? 0.55 : 1,
       }, g);
-      el('text', { fill: 'currentColor', 'font-size': s.major ? 11 : 9 }, g)
+      el('text', { fill: 'currentColor', 'font-size': 11 }, g)
         .textContent = s.label;
     }
     const trucks = [...this.data.trucks].sort(

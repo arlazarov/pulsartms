@@ -18,6 +18,19 @@ public partial class FleetMap
 
   private bool Futuristic => Appearance?.Futuristic == true;
 
+  // What the map is showing, as the map's own zoom policy chose it
+  // (hybrid at close zoom, the road map further out).
+  private string? _mapType;
+
+  [JSInvokable]
+  public Task OnMapTypeChanged(string mapType)
+  {
+    if (_disposed || mapType == _mapType)
+      return Task.CompletedTask;
+    _mapType = mapType;
+    return InvokeAsync(StateHasChanged);
+  }
+
   // Hiding the fleet list gives its width to the map; kept for the visit.
   private bool _listCollapsed;
 

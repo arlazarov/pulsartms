@@ -28,3 +28,7 @@ export function tripStopLabels(jobs: readonly unknown[]): string[] {
     return String(index + 1);
   });
 }
+
+// Every character a badge can say, for the text atlas that draws them: a
+// character missing from it is drawn as nothing.
+export const stopBadgeCharacters = 'PD0123456789/';

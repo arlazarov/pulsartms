@@ -45,27 +45,13 @@ public partial class FleetTripChain
   [Parameter]
   public EventCallback ShowNextLoads { get; set; }
 
-  private readonly Dictionary<int, ElementReference> _cards = [];
-  private int _position;
+  // Every trip shown, not only the rows that fit.
+  private bool _expanded;
 
   private bool IsSelected(DispatchResponse load) =>
     SelectedTrip is { } trip
     && trip.Id == load.Id
     && trip.ExecutionLegId == load.ExecutionLegId;
-
-  private async Task MoveAsync(int step)
-  {
-    var target = Math.Clamp(_position + step, 0, Loads.Count - 1);
-    _position = target;
-    if (_cards.TryGetValue(target, out var card))
-      await card.FocusAsync();
-  }
-
-  protected override void OnParametersSet()
-  {
-    if (_position >= Loads.Count)
-      _position = 0;
-  }
 
   // The colour is the server's phase; an unplaced or stale load stays
   // neutral rather than borrowing a place.

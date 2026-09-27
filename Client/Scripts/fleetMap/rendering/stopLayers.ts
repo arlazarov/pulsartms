@@ -1,3 +1,4 @@
+import { stopBadgeCharacters } from '../routes/stopLabels.ts';
 import type { DeckLayer, DeckLayerFactory } from './deckLayer.ts';
 import type { StopRow } from './stopMarkerLayout.ts';
 import type { LabelFonts } from './sceneMetrics.ts';
@@ -137,7 +138,9 @@ export function createStopLayers({
           }),
           new TextLayer({
             id: `${id}-numbers`,
-            characterSet: '0123456789/',
+            // Without the badges' letters deck drew P and D as nothing and
+            // D1 as a lone, shifted 1.
+            characterSet: stopBadgeCharacters,
             data,
             getPosition: (s: StopRow) => s.position,
             getText: (s: StopRow) => s.markerLabel,

@@ -196,7 +196,7 @@ export function mountFleet(root, scope, ctx) {
           lng: s.longitude,
           phase: x.phase === 'completed' ? 'later' : x.phase,
           label: labels[i],
-          major: last,
+          major: true,
           dim: focus && focus !== x.id,
           selected: state.selection.stopId === s.id,
           aria: `${x.loadNumber} ${labels[i]} ${stopJob(s.job)} ${location(

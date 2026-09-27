@@ -4075,10 +4075,10 @@ public sealed class FleetMapComponentTests
     Assert.Contains("10 First St", details);
     Assert.Contains("Appointment", details);
     Assert.Contains("Sep 9", details);
-    // The card wears the number its badge has on the map: counted on from
-    // the current plan's stops (the owner, September 26).
+    // The card wears the badge its stop has on the map: its place among
+    // its own load's stops, never counted on from the current plan's.
     Assert.Equal(
-      (fixture.Plan(fixture.TruckA).State!.Plan!.Stops.Count + 1).ToString(),
+      "P",
       component
         .Find("[aria-label='Selected next load'] .fleet-route-popup__number")
         .TextContent.Trim()

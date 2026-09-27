@@ -1,53 +1,62 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { truckIcon } from '../../Scripts/fleetMap/rendering/truckAppearance.ts';
+import {
+  truckColor,
+  truckEngine,
+  truckIcon,
+  truckMotion,
+} from '../../Scripts/fleetMap/rendering/truckAppearance.ts';
 
-test('GPU trucks use the original north-facing arrow in green with its original heading anchor', () => {
-  for (const state of ['on', 'idle', 'off']) {
-    const icon = truckIcon(state, 45),
-      svg = decodeURIComponent(icon.url);
+const svg = (engine, speed) => decodeURIComponent(truckIcon(engine, speed).url);
+
+test('a moving truck is the north-facing arrow with its original anchor', () => {
+  for (const engine of ['on', 'idle', 'off', '', null]) {
+    const icon = truckIcon(engine, 45);
     assert.equal(icon.anchorX, 56);
     assert.equal(icon.anchorY, 56);
     assert.equal(icon.width, 112);
     assert.equal(icon.height, 120);
     assert.equal(icon.mask, false);
-    assert.match(svg, /viewBox="-1 -1 28 30"/);
+    assert.match(svg(engine, 45), /viewBox="-1 -1 28 30"/);
     assert.match(
-      svg,
-      /d="M13 1 L24 23 Q25 26 22 25 L13 22 L4 25 Q1 26 2 23 Z" fill="#16a34a"/,
+      svg(engine, 45),
+      /d="M13 1 L24 23 Q25 26 22 25 L13 22 L4 25 Q1 26 2 23 Z" fill="#1e293b"/,
     );
-    assert.match(svg, /stroke="white" stroke-width="4"/);
-    assert.match(svg, /stroke="#1e293b" stroke-width="2"/);
-    assert.doesNotMatch(
-      svg,
-      /linearGradient|filter|blur|#trailer|#cab|<circle/,
-    );
+    assert.doesNotMatch(svg(engine, 45), /<circle|filter|blur|gradient/);
   }
 });
 
-test('stationary trucks use green idle circles or neutral off circles without a center dot', () => {
-  for (const state of ['on', 'running', 'idle', 'idling', ' IDLE ']) {
-    const svg = decodeURIComponent(truckIcon(state, 0).url);
-    assert.match(svg, /<circle cx="13" cy="13" r="11" fill="#16a34a"/);
-    assert.doesNotMatch(svg, /<path|r="2/);
-  }
-  for (const state of ['off', '', 'unknown', 'driving', null, undefined]) {
-    const svg = decodeURIComponent(truckIcon(state, 0).url);
-    assert.match(svg, /<circle cx="13" cy="13" r="11" fill="#64748b"/);
-    assert.doesNotMatch(svg, /<path|r="2/);
+test('a standing truck is a circle, whatever its engine', () => {
+  for (const engine of ['on', 'idling', 'off', 'unknown', undefined]) {
+    assert.match(
+      svg(engine, 0),
+      /<circle cx="13" cy="13" r="11" fill="#1e293b"/,
+    );
+    assert.doesNotMatch(svg(engine, 0), /<path/);
   }
 });
 
-test('movement follows speed rather than engine-on and only three visual states are cached', () => {
-  const moving = truckIcon('on', 1),
-    idle = truckIcon('on', 0),
-    off = truckIcon('off', 0);
-  assert.notEqual(moving, idle);
-  assert.notEqual(idle, off);
-  for (const state of ['off', 'idle', '', 'unknown', null])
-    assert.equal(truckIcon(state, 40), moving);
+test('the engine accent comes from the engine reading, never from speed', () => {
+  for (const speed of [0, 45]) {
+    for (const engine of ['on', 'running', 'idle', ' IDLING '])
+      assert.match(svg(engine, speed), /stroke="#16a34a" stroke-width="2.5"/);
+    assert.match(svg('off', speed), /stroke="#94a3b8" stroke-width="2"\/?/);
+    assert.doesNotMatch(svg('off', speed), /#16a34a|dasharray/);
+    // Moving says nothing about the engine: no reading stays unknown.
+    for (const engine of ['', 'driving', null, undefined])
+      assert.match(svg(engine, speed), /stroke-dasharray="3 2"/);
+  }
+  assert.equal(truckEngine('driving'), 'unknown');
+  assert.equal(truckColor('', 60), '#64748b');
+  assert.equal(truckColor('idle', 0), '#16a34a');
+});
+
+test('motion follows finite speed, and each shape and reading is cached once', () => {
   for (const speed of [0, 0.5, -0.5, NaN, Infinity, undefined])
-    assert.equal(truckIcon('running', speed), idle);
-  assert.equal(truckIcon('IDLE', 0), idle);
-  assert.equal(truckIcon(undefined, undefined), off);
+    assert.equal(truckMotion(speed), 'standing');
+  assert.equal(truckMotion(1), 'moving');
+  assert.equal(truckIcon('on', 0), truckIcon('idle', 0));
+  assert.equal(truckIcon('on', 5), truckIcon('running', 60));
+  assert.notEqual(truckIcon('on', 5), truckIcon('off', 5));
+  assert.notEqual(truckIcon('off', 0), truckIcon(undefined, 0));
 });

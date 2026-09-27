@@ -396,6 +396,10 @@ function build() {
         },
         eta: {
           calculatedAt: iso(t0),
+          // One demo forecast has expired: its delay is shown as not
+          // current rather than as lateness now.
+          validUntil: iso(new Date(t0.getTime() + (ti === 10 ? -60 : 15) *
+            60000)),
           stops: first.stops.map((s, i) => ({
             stopId: s.id,
             arrival: iso(
@@ -405,7 +409,14 @@ function build() {
                   (ti === 6 ? 50 * 60000 : -20 * 60000)
               )
             ),
-            lateMinutes: ti === 6 && i === 1 ? 50 : 0,
+            // A genuine delay (D-107), a completed pickup still carrying a
+            // predicted delay (D-119, not late now), an expired forecast
+            // (D-111).
+            lateMinutes:
+              ti === 6 && i === 1 ? 50
+              : ti === 18 && i === 0 ? 427
+              : ti === 10 && i === first.stops.length - 1 ? 109
+              : 0,
             timeZoneId: 'America/New_York',
           })),
         },

@@ -86,7 +86,8 @@
     }
     .route-editor,
     .fuel-send-plan,
-    .fleet-map-key {
+    .fleet-map-key,
+    .fleet-map-mode {
       grid-area: map;
     }
   }
@@ -131,7 +132,8 @@
     .fuel-plan-editor,
     .route-editor,
     .fuel-send-plan,
-    .fleet-map-key {
+    .fleet-map-key,
+    .fleet-map-mode {
       grid-area: map;
     }
     .fleet-trip-chain {
@@ -254,9 +256,29 @@
   }
 }
 
+// The trip chain: every trip of the truck as a card, wrapping into rows.
+// Two rows at most until All trips is pressed, the chosen trip always among
+// them; on a phone it is a sheet showing the chosen trip, opening into a
+// list. Nothing in it scrolls sideways.
+@mixin two-rows($per-row) {
+  .fleet-trip-chain__links:not(.is-expanded) {
+    > li:nth-child(n + #{2 * $per-row + 1}):not(.is-selected) {
+      display: none;
+    }
+    &:has(> li.is-selected:nth-child(n + #{2 * $per-row + 1}))
+      > li:nth-child(#{2 * $per-row}):not(.is-selected) {
+      display: none;
+    }
+  }
+}
+
 .fleet-trip-chain {
-  display: flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'label list'
+    'label more';
+  align-items: start;
   min-width: 0;
   border: 1px solid ui.theme(accent, 0.28);
   border-radius: ui.radius(md);
@@ -264,11 +286,12 @@
   box-shadow: ui.shadow(card);
 
   &__label {
+    grid-area: label;
+    align-self: stretch;
     display: flex;
     flex-direction: column;
     justify-content: center;
     gap: ui.pg(micro);
-    flex: none;
     padding: ui.pg(sm) ui.pg(lg);
     border-right: 1px solid ui.theme(border-subtle);
     h2 {
@@ -287,47 +310,58 @@
     text-transform: uppercase;
   }
   &__hint {
+    grid-area: list;
     align-self: center;
     margin: 0;
-    padding: 0 ui.pg(lg);
+    padding: ui.pg(md) ui.pg(lg);
     color: ui.theme(text-muted);
     font-size: ui.fs(caption);
   }
   &__links {
-    display: flex;
-    align-items: center;
+    grid-area: list;
+    container: fleet-trip-list / inline-size;
+    display: grid;
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(ui.size(futuristic-trip), 1fr)
+    );
     gap: ui.pg(sm);
-    flex: 1;
     min-width: 0;
     margin: 0;
-    padding: ui.pg(sm) ui.pg(lg);
+    padding: ui.pg(sm) ui.pg(md) 0;
     list-style: none;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scroll-snap-type: x proximity;
-    // The far edge fades while more trips wait past it.
-    mask-image: linear-gradient(
-      to right,
-      ui.theme(surface) calc(100% - #{ui.pg(xxl)}),
-      transparent
-    );
+  }
+  &__more {
+    grid-area: more;
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
+    padding: ui.pg(xs) ui.pg(md) ui.pg(sm);
+    &:empty {
+      display: none;
+    }
+  }
+  &__all > svg {
+    width: ui.pg(lg);
+    height: ui.pg(lg);
+  }
+  &__all[aria-expanded='true'] > svg {
+    transform: rotate(180deg);
   }
   &__link {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: ui.pg(sm);
-    flex: none;
+    min-width: 0;
     color: ui.theme(text-muted);
-    > svg {
-      width: ui.pg(lg);
-      height: ui.pg(lg);
-    }
   }
   &__number {
     display: grid;
     place-items: center;
+    flex: none;
     width: ui.size(control-compact);
     height: ui.size(control-compact);
+    margin-top: ui.pg(xs);
     border: 1.5px solid currentColor;
     border-radius: 50%;
     font-size: ui.fs(caption);
@@ -336,7 +370,8 @@
   &__card {
     display: grid;
     gap: ui.pg(xs);
-    width: ui.size(futuristic-trip);
+    flex: 1;
+    min-width: 0;
     padding: ui.pg(xs);
     border: 1.5px dashed currentColor;
     border-radius: ui.radius(md);
@@ -364,6 +399,35 @@
     text-align: left;
     font: inherit;
     cursor: pointer;
+  }
+  &__load {
+    color: ui.theme(text);
+    font-size: ui.fs(body);
+    font-weight: 700;
+  }
+  &__phase {
+    padding: 0 ui.pg(xs);
+    border: 1px solid currentColor;
+    border-radius: ui.radius(sm);
+    font-size: ui.fs(micro);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  &__lane,
+  &__conflict {
+    grid-column: 1 / -1;
+    overflow: hidden;
+    font-size: ui.fs(caption);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  &__lane {
+    color: ui.theme(text-secondary);
+  }
+  &__conflict {
+    color: ui.theme(warning-text);
+    font-weight: 600;
   }
   &__stops {
     display: flex;
@@ -397,64 +461,15 @@
       opacity: 0.65;
     }
     &[aria-pressed='true'] {
-      background: ui.theme(accent);
       border-color: ui.theme(accent);
+      background: ui.theme(accent);
       color: ui.theme(surface);
     }
-  }
-  &__nav {
-    display: flex;
-    align-items: center;
-    gap: ui.pg(xs);
-    flex: none;
-    padding: 0 ui.pg(sm);
-    border-right: 1px solid ui.theme(border-subtle);
-  }
-  &__step.is-back > svg {
-    transform: rotate(180deg);
-  }
-  &__position {
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(caption);
-    font-weight: 600;
-    text-align: center;
-    white-space: nowrap;
-  }
-  &__load {
-    color: ui.theme(text);
-    font-size: ui.fs(body);
-    font-weight: 700;
-  }
-  &__phase {
-    padding: 0 ui.pg(xs);
-    border: 1px solid currentColor;
-    border-radius: ui.radius(sm);
-    font-size: ui.fs(micro);
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  &__conflict {
-    grid-column: 1 / -1;
-    color: ui.theme(warning-text);
-    font-size: ui.fs(caption);
-    font-weight: 600;
-  }
-  &__lane {
-    grid-column: 1 / -1;
-    overflow: hidden;
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(caption);
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   // The text roles of the colours the map draws these loads in: the map's
   // own line colours are too dark to read on the dark theme's surfaces.
   .is-current {
     color: ui.theme(transit);
-  }
-  .is-current .fleet-trip-chain__card {
-    border-style: solid;
   }
   .is-next,
   .is-upcoming {
@@ -465,16 +480,61 @@
     color: ui.theme(text-muted);
   }
 
+  @container fleet-trip-list (width < #{ui.breakpoint(trip-chain-two)}) {
+    @include two-rows(1);
+  }
+  @container fleet-trip-list (width >= #{ui.breakpoint(trip-chain-two)}) and (width < #{ui.breakpoint(trip-chain-three)}) {
+    @include two-rows(2);
+  }
+  @container fleet-trip-list (width >= #{ui.breakpoint(trip-chain-three)}) and (width < #{ui.breakpoint(trip-chain-four)}) {
+    @include two-rows(3);
+  }
+  @container fleet-trip-list (width >= #{ui.breakpoint(trip-chain-four)}) and (width < #{ui.breakpoint(trip-chain-five)}) {
+    @include two-rows(4);
+  }
+  @container fleet-trip-list (width >= #{ui.breakpoint(trip-chain-five)}) {
+    @include two-rows(5);
+  }
+
+  // A phone: a sheet with the chosen trip, opening into the whole list,
+  // which scrolls down, never across.
   @include ui.below(map-mobile) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'more'
+      'list';
     &__label {
       display: none;
     }
+    &__more {
+      justify-content: space-between;
+      padding: ui.pg(xs) ui.pg(sm) 0;
+      &::before {
+        content: '';
+        align-self: center;
+        width: ui.size(control-touch);
+        height: ui.pg(xs);
+        border-radius: ui.radius(pill);
+        background: ui.theme(border);
+      }
+    }
+    &__all {
+      min-height: ui.size(control-touch);
+    }
     &__links {
-      padding: ui.pg(sm);
+      grid-template-columns: minmax(0, 1fr);
+      padding: ui.pg(xs) ui.pg(sm) ui.pg(sm);
+      &:not(.is-expanded) > li:not(.is-selected) {
+        display: none;
+      }
+      &.is-expanded {
+        max-height: 45dvh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+      }
     }
   }
 }
-
 
 .fleet-trip-detail {
   display: grid;

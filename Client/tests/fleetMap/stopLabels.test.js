@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { tripStopLabels } from '../../Scripts/fleetMap/routes/stopLabels.ts';
+import {
+  stopBadgeCharacters,
+  tripStopLabels,
+} from '../../Scripts/fleetMap/routes/stopLabels.ts';
 import { nextLoadDisplay } from '../../Scripts/fleetMap/routes/nextLoadDisplay.ts';
 
 test('a load with one delivery says P and D', () => {
@@ -68,4 +71,20 @@ test('each next load restarts its labels while numbers keep the chain order', ()
     groups.map(group => [...group.numbers]),
     [[1], [2], [3], [4], [5]],
   );
+});
+
+test('the badge atlas holds every character a badge can say', () => {
+  const labels = [
+    ...tripStopLabels(['Pickup', 'Delivery']),
+    ...tripStopLabels(
+      ['Pickup', 'Hook trailer'].concat(Array(12).fill('Delivery')),
+    ),
+    'P/D1',
+  ];
+  for (const label of labels)
+    for (const character of label)
+      assert.ok(
+        stopBadgeCharacters.includes(character),
+        `${character} of ${label} is drawn`,
+      );
 });

@@ -130,3 +130,38 @@
     }
   }
 }
+
+// Which view the map is in. It sits at the map's top-left corner, clear of
+// the provider's controls, and says it in words as well as colour.
+.fleet-map-mode {
+  position: absolute;
+  top: ui.pg(sm);
+  left: ui.pg(sm);
+  z-index: ui.layer(map-legend);
+  display: inline-flex;
+  align-items: center;
+  gap: ui.pg(xs);
+  padding: ui.pg(micro) ui.pg(sm);
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(pill);
+  background: ui.theme(surface);
+  box-shadow: ui.shadow(card);
+  color: ui.theme(text);
+  font-size: ui.fs(caption);
+  font-weight: 650;
+  pointer-events: none;
+  > svg {
+    width: ui.pg(lg);
+    height: ui.pg(lg);
+  }
+  small {
+    color: ui.theme(text-muted);
+    font-weight: 500;
+  }
+  &.is-satellite {
+    border-color: ui.theme(success-text);
+    > svg {
+      color: ui.theme(success-text);
+    }
+  }
+}

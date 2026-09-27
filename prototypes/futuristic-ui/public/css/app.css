@@ -1077,7 +1077,7 @@ button:disabled {
   cursor: pointer;
 }
 
-.map-svg .stop circle.bg {
+.map-svg .stop .bg {
   fill: var(--panel-solid);
   stroke-width: 2;
 }

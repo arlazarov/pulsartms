@@ -153,3 +153,40 @@ test('stations are drawn wherever the camera is', () => {
     assert.equal(drawn['fuel-recommendation-numbers'].props.visible, true);
   }
 });
+
+// The chosen truck is found by a sonar round it, not by growing: one ring,
+// never picked, only for the chosen truck, and still for reduced motion.
+test('the chosen truck wears a sonar that is never picked and never grows it', () => {
+  const chosen = truck('11006', true),
+    other = truck('54777');
+  const layersAt = sonar =>
+    byId(
+      scene()({
+        lines: [],
+        stationData: [],
+        stationsVisible: false,
+        stopData: [],
+        distanceData: [],
+        vehicles: [chosen, other],
+        hasSelectedTruck: true,
+        sonar,
+      }),
+    );
+  const early = layersAt(0.1)['truck-sonar'];
+  const late = layersAt(0.9)['truck-sonar'];
+  assert.deepEqual(early.props.data, [chosen]);
+  assert.equal(early.props.pickable, false);
+  assert.ok(late.props.getRadius > early.props.getRadius, 'it sweeps out');
+  assert.ok(late.props.getLineColor[3] < early.props.getLineColor[3]);
+  const still = layersAt('still')['truck-sonar'];
+  assert.equal(
+    still.props.getRadius,
+    layersAt('still')['truck-sonar'].props.getRadius,
+  );
+  assert.equal(layersAt(null)['truck-sonar'], undefined, 'no choice, no sonar');
+  assert.equal(
+    layersAt(0.5)['truck-icons'].props.getSize(chosen),
+    layersAt(null)['truck-icons'].props.getSize(chosen),
+    'the chosen truck keeps its size',
+  );
+});

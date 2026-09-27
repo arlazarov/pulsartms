@@ -183,7 +183,9 @@ export function mountDispatch(root, scope, ctx) {
             <span class="bar ${a.level === 'danger' ? 'danger' : ''}"></span>
             <span class="t">Truck ${esc(a.t.unit)}</span>
             <span class="muted">${esc(a.t.driver)}</span>
-            <span class="s">${esc(a.text)}</span></button>`).join('') ||
+            <span class="s">${esc(a.text)}${a.detail ? `<br><span
+              class="muted">${esc(a.detail)}</span>` : ''}</span></button>`)
+          .join('') ||
           '<p class="note">Nothing needs attention.</p>'}
         <p class="note">Assigning and reassigning stay in the production
           Dispatch workspace; this concept only reads.</p>

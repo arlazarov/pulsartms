@@ -32,27 +32,11 @@
     }
     else
     {
-        @if (Loads.Count > 1)
-        {
-            @* The chain scrolls sideways on a narrow screen; these say so
-               and move through it a trip at a time. *@
-            <div class="fleet-trip-chain__nav" role="group" aria-label="Move through the trip chain">
-                <button type="button" class="btn btn--small fleet-trip-chain__step is-back"
-                        aria-label="Previous trip" disabled="@(_position <= 0)"
-                        @onclick="() => MoveAsync(-1)">
-                    <ActionIcon Kind="chevron-right" />
-                </button>
-                <span class="fleet-trip-chain__position" aria-live="polite">
-                    @(_position + 1) of @Loads.Count
-                </span>
-                <button type="button" class="btn btn--small fleet-trip-chain__step"
-                        aria-label="Next trip" disabled="@(_position >= Loads.Count - 1)"
-                        @onclick="() => MoveAsync(1)">
-                    <ActionIcon Kind="chevron-right" />
-                </button>
-            </div>
-        }
-        <ol class="fleet-trip-chain__links">
+        @* Trips wrap into rows; two rows at most until All trips is
+           pressed, and the chosen trip is always among those shown. A
+           phone shows the chosen trip until the sheet is opened. *@
+        <ol id="fleet-trip-chain-list"
+            class="fleet-trip-chain__links @(_expanded ? "is-expanded" : "")">
             @foreach (var (load, index) in Loads.Select((load, i) => (load, i)))
             {
                 var label = DispatchWorkPhase.Label(load);
@@ -60,13 +44,10 @@
                 var selected = IsSelected(load);
                 <li class="fleet-trip-chain__link @PhaseClass(load) @(selected ? "is-selected" : "")"
                     @key="(load.Id, load.ExecutionLegId)">
-                    @if (index > 0) { <ActionIcon Kind="chevron-right" /> }
                     <span class="fleet-trip-chain__number" aria-hidden="true">@(index + 1)</span>
                     <div class="fleet-trip-chain__card">
                         <button type="button" class="fleet-trip-chain__trip"
                                 aria-pressed="@(selected ? "true" : "false")"
-                                @ref="_cards[index]"
-                                @onfocus="() => _position = index"
                                 @onclick="() => Selected.InvokeAsync(load)">
                             <span class="fleet-trip-chain__load">
                                 <Client.Shared.Dispatch.LoadNumber.LoadNumber Value="load.LoadNumber" />
@@ -95,13 +76,23 @@
                     </div>
                 </li>
             }
+        </ol>
+        <div class="fleet-trip-chain__more">
+            @if (Loads.Count > 1)
+            {
+                <button type="button" class="btn btn--small fleet-trip-chain__all"
+                        aria-expanded="@(_expanded ? "true" : "false")"
+                        aria-controls="fleet-trip-chain-list"
+                        @onclick="() => _expanded = !_expanded">
+                    @(_expanded ? "Fewer trips" : $"All trips ({Loads.Count})")
+                    <ActionIcon Kind="chevron-down" />
+                </button>
+            }
             @if (!NextLoadsShown && Loads.Count > 1)
             {
-                <li class="fleet-trip-chain__link">
-                    <button type="button" class="btn btn--small"
-                            @onclick="ShowNextLoads">Show next loads on the map</button>
-                </li>
+                <button type="button" class="btn btn--small"
+                        @onclick="ShowNextLoads">Show next loads on the map</button>
             }
-        </ol>
+        </div>
     }
 </section>

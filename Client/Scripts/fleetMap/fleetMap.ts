@@ -313,9 +313,16 @@ export async function createFleetMap(
       },
     );
     cleanup.push(() => clickListener.remove());
+    // The page says which the map is showing, so a reader can tell the
+    // satellite view from the road map (the switch itself is unchanged).
+    let reportedMapType: string | null = null;
     const mapTypeListener = map.addListener('idle', () => {
       const mapType = (map.getZoom() ?? 0) >= 15 ? 'hybrid' : 'roadmap';
       if (map.getMapTypeId() !== mapType) map.setMapTypeId(mapType);
+      if (mapType !== reportedMapType) {
+        reportedMapType = mapType;
+        notify('OnMapTypeChanged', mapType);
+      }
     });
     cleanup.push(() => mapTypeListener.remove());
     let routeVersion = 0;
