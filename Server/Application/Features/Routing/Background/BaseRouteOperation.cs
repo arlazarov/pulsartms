@@ -252,6 +252,8 @@ public sealed partial class BaseRouteOperation(
     CancellationToken ct
   )
   {
+    if (succeeded)
+      ForgetWait(work);
     await using var scope = scopes.CreateAsyncScope();
     var now = time.GetUtcNow().UtcDateTime;
     var next =

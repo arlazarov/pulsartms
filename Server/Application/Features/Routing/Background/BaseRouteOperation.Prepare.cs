@@ -21,6 +21,9 @@ public sealed partial class BaseRouteOperation
   private async Task PrepareAsync(SourceRoadWork work, CancellationToken ct)
   {
     Guid? truckId = work.TruckId;
+    // The inputs the wait is about: their signature once read, the claimed
+    // version until then.
+    var signature = $"v{work.Version}";
     using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
     timeout.CancelAfter(TimeSpan.FromMinutes(2));
     try
@@ -31,6 +34,8 @@ public sealed partial class BaseRouteOperation
         .ServiceProvider.GetRequiredService<SourceRoadInputs>()
         .ReadAsync(work.DispatchId, timeout.Token);
       if (observation is not null)
+      {
+        signature = observation.Signature;
         await scope
           .ServiceProvider.GetRequiredService<ISourceRoadStore>()
           .ObserveAsync(
@@ -43,6 +48,7 @@ public sealed partial class BaseRouteOperation
             time.GetUtcNow().UtcDateTime,
             timeout.Token
           );
+      }
       var token = timeout.Token;
       var load = await db
         .Dispatches.AsNoTracking()
@@ -165,6 +171,7 @@ public sealed partial class BaseRouteOperation
     catch (RoutePlanningException ex)
     {
       await FinishAsync(work, false, ex.RetryAfter, ct);
+      ReportWait(work, signature, ex);
     }
     catch (OperationCanceledException)
     {
