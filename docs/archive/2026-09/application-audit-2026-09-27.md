@@ -364,23 +364,208 @@ characters appears in any committed JSON file in the 650 commits.
 Migrations that drop or rewrite data in `Up` are listed in the evidence
 run; `RebuildExecutionStorage` refuses to run on populated tables.
 
+## Coverage closure (September 27, afternoon)
+
+Root asked for the inventory to be closed before more fixes: per-endpoint
+role and tenant scope, migration recovery, financial and idempotency
+owners, state and import recovery, shared reads, and test content. Four
+more read-only code reviews did this (no build, no database, no
+network). Their full reports, with the per-endpoint table of all 171
+endpoints, are pinned in the main checkout's
+`artifacts/managed/diagnostic-XrL576`. Findings below say **verified**
+when this audit re-read the lines itself, **reported** otherwise.
+One production read, read-only: `DriverMessages` has 0 rows and
+`FuelVisitSends` 0, so WhatsApp fuel hand-over has never been used and
+F16/F17 have no existing invalid rows.
+
+Inventory, as counted by the reviews:
+
+- **Endpoints:** 171 in 28 controllers (79 GET, 63 POST, 25 PUT,
+  3 DELETE, 1 PATCH) and 4 minimal-API mappings. 45 Admin-only; 79 under
+  the Dispatch policy; 41 any signed-in user; 6 anonymous (sign-in,
+  refresh, two WhatsApp webhook verbs, Gmail push, Drive callback).
+  Every tenant table is filtered by `CompanyId` through the global filter
+  (`AppDbContext.Companies.cs:51-106`); the shared tables are listed in
+  `SharedTables.cs:18-56`. No endpoint found reading another carrier's
+  rows; the exceptions are yes/no probes (F27).
+- **Migrations:** 73; 18 change or drop data, 55 are additive. Every
+  NOT NULL column added to a populated table has a default; no step runs
+  outside a transaction.
+- **Money:** every figure has a server owner; the Client formats values
+  only, except the two derivations in F27.
+- **External sends and inputs:** 16 paths. Conversation and broadcast
+  sends are fenced and leased with a reaper; inbound WhatsApp is
+  deduplicated by a unique provider id; TomTom calls are reserved in the
+  database before they are made.
+- **Stateful workflows:** 16; caches: 6 owners plus the shared
+  `IMemoryCache`. Auditor rules: 10 in code; the operating guide lists 9.
+- **Tests:** Server 2,348 facts in 443 files, Client 806, JavaScript
+  641. Category traits are enforced; 42 PostgreSQL tests skip with a
+  named reason when no fixture is present.
+
+### F16 — P1 (latent): a stuck fuel hand-over blocks that truck's plans
+
+Verified. A WhatsApp fuel hand-over is committed as `Sending` before the
+provider call (`DriverTextDelivery.cs:127-134`). Nothing moves a
+`DriverMessage` out of `Sending` after a crash: the reaper and the
+auditor rule read `ConversationMessages` only
+(`OutboundMessageOperation.cs:109-117`, `OutboundOverdueRule.cs:35-45`).
+`FuelIssueRecords.RequireUnchangedAsync` refuses every fuel publication
+for the truck while such a row exists (`FuelIssueRecords.cs:48-60`), so
+background refreshes fail for ever and dispatchers see "a fuel stop was
+handed to the driver during the calculation". A send-again adds a new
+attempt and leaves the old row. No test covers publication after it.
+
+### F17 — P1 (latent): an accepted hand-over can go unrecorded
+
+Verified. The hand-over (`FuelVisitSend`) is recorded only after the
+provider accepted and the attempt was committed
+(`FuelIssueSender.cs:98-106`). If recording fails or the process stops
+in between, a retry of the same content returns `AlreadyTaken`
+(`DriverTextDelivery.cs:107-108`), which falls to `default: return
+Outcome.Done` (`FuelIssueSender.cs:142-143`) and records nothing. Fuel
+planning can then drop a stop the driver already holds.
+
+### F18 — P2: the Dispatch policy restricts nothing
+
+Verified. Any active user without exactly one Admin claim resolves to
+Dispatch (`UserRoleService.cs:101-102`) and the policy admits Admin or
+Dispatch (`DispatchAuthorization.cs:21`). So 120 endpoints, 65 of them
+state-changing, are open to every signed-in user: WhatsApp broadcasts
+and sends, a driver's messaging number, expenses, IFTA movements,
+broker records, truck route profiles. This corrects the F8 proposal:
+putting the syncs under the Dispatch policy would change nothing. Whether
+a limited role is wanted is an owner decision.
+
+### F19 — P2: one carrier's Admin writes data every carrier reads
+
+Reported, entry points re-read. The fuel-discount import creates and
+overwrites the shared `FuelStations` from one carrier's mail
+(`FuelController.cs:50-52`, `FuelStationSync.cs:115-147`); the IFTA
+sync rewrites the shared rates (`IftaTaxRateSync.cs:19-36`, public
+data, lower risk). Gmail push is fixed to AMF
+(`GmailPushValidator.cs:11`, verified), so a second carrier's mailbox
+cannot be served. Blocks selling the product, not today's operation.
+
+### F20 — P2: one bad email stops the fuel import; old mail is lost
+
+Reported. An empty or unreadable attachment throws for the whole run
+(`ImportFuelDiscounts.cs:44-50`, `BvdFuelParser.cs:37-47`); the message
+is never marked, so every push and recovery fails on it again. The
+mailbox query is `newer_than:2d` (`GmailAttachmentService.cs:25-27`), so
+an outage over two days loses messages with no quarantine.
+
+### F21 — P2: a load import can put back older data
+
+Reported. The dispatch gate is per process (`ProcessGates.cs:3-6`); the
+leased loop, a manual sync on another instance and the history-import
+tool can run together. The provider is read before the transaction
+(`SyncDispatche.cs:86-87` vs `:128-132`) and the source carries no
+version, so a slower pass can restore an older price, status or miles.
+Not reproduced.
+
+### F22 — P2: load cost totals are summed over a truncated list
+
+Verified. `GetLoadCosts.cs:47-64` takes 201 rows, drops the last, then
+totals what is left; `truncated` is set but the totals are wrong for a
+load with more than 200 cost rows. No such load checked in production.
+
+### F23 — P2: three durable queues retry for ever without escalation
+
+Reported. `SourceRoadRequests`, `PlanningRefreshRequests` and
+`ExecutionPlanningChanges` have no attempt cap (`SourceRoadStore.cs:164`,
+`PlanningRefreshStore.cs:89`, `ExecutionPlanningStore.cs:31`);
+`SourceRoadRequests` has no auditor rule at all. This is the mechanism
+behind F1; D1 records the reason, a cap and a rule remain.
+
+### F24 — P2: schema compatibility is procedure only
+
+Reported, startup path re-read. Nothing at runtime refuses an old binary
+on a newer schema; `deploy-server.sh` migrates while the old revision
+still serves. The company adoption pass is skipped when
+`Database:ApplyMigrations` is false, and its first run is not guarded,
+so a failing adoption stops every start (`DatabaseInitializer.cs:22-28`).
+The 17 migrations after `RecordRouteMovement` drop messaging and file
+data in `Down` with no guard, and `IntroduceCompanies` `Down` would merge
+carriers; today only the throwing `Down` of
+`IsolateCarrierIntegrationCredentials` stops a rollback reaching it.
+
+### F25 — P2: fuel-plan cost formulas have five copies
+
+Reported. Per-stop economic cost and future-fuel cost are computed in
+`FuelOptimizer.cs:84-125`, `FuelOptimizer.States.cs:79-82`,
+`FuelManualReplay.cs:183-267`, `FuelPlanProjection.Project.cs:270-285`
+and `FuelPriceMateriality.cs:44-61`, and the copies already differ
+(guards, which costs are repriced, access minutes). All on the server,
+but against the one-owner rule.
+
+### F26 — P2: the shared memory cache has no bound
+
+Reported. The host `IMemoryCache` has no `SizeLimit`
+(`Application/DependencyInjection.cs:82`) and sits outside the 80 MiB
+`CacheBudgets`; stop geocodes stay 12 hours, unbounded in count. The
+planning-summary `Committed` notice is per process, so another instance
+corrects only on its next signature change or 30-second pass.
+
+### F27 — P3: smaller items
+
+Reported unless marked: IFTA rates keyed without currency
+(`IftaTaxRateConfiguration.cs:19-26`, not checked against the source
+file); a delivery status that arrives before the provider id is saved is
+dropped (`ReceiveDriverMessages.cs:157-202`); a second Total RPM formula
+(`DeadheadService.cs:341-345`) and stored savings that the read ignores
+(`FuelDiscountSync.cs:49`); the litres-per-gallon constant four times,
+one in the Client (`stationQuantity.ts:24`); the Client derives
+yesterday's price (`stationPriceComparison.ts:74-78`); fuel-stop price
+dates use the offset's local day, not the Toronto business day
+(`FuelPriceCalendar.cs:53-55`); stop geocoding has no durable dedup
+(`GoogleAddressGeocoder.cs:17-127`); the deadhead publication re-check
+compares a copy with itself (`DeadheadService.Ensure.cs:146`); process
+diagnostics and readiness are shown to any carrier's Admin; the
+credential store and Identity answer yes/no about another carrier's
+WhatsApp number and e-mail (`IntegrationCredentialStore.cs:169-195`,
+`IdentityService.cs:22-28`); `EtaForecastStore.cs:221,246` upserts
+without a company predicate; caches keyed without company (EtaMemory,
+route display, Samsara HOS, latent); the auditor guide lists 9 of 10
+rules and `storage.file-on-disconnected-storage` is tested only under
+PostgreSQL; no expired-lease reclaim test for the planning-refresh and
+road stores, none for odometer capture; about nine tests assert only
+that some error exists; `CheckpointLeaseStore` mixes the system clock
+with the injected one (`:77,99`); `migrate.sh` applies each migration as
+soon as it is added.
+
+Checked and sound, as reported: sign-in and refresh take the company
+from the database, never the request; the WhatsApp, Gmail and Drive
+anonymous paths authenticate as described in F15; conversation sends,
+broadcasts, inbound messages, expenses and TomTom calls are idempotent
+under retry; every tenant read goes through the global filter.
+
 ## Proposed order, for root
 
-First batch after the frontend publication, each small and separately
-tested:
+Bounded; each item small, separately reviewed and tested, published
+only through the gate.
 
-1. F2 roster through ReadCache (design D2); a count test over idle
-   passes.
-2. F1 (a) record the road-request failure reason (design D1); then (b)
-   on evidence, and (c) only with an owner policy.
-3. F8 Dispatch policy and cooldown on the manual syncs.
-4. F3 cleanup (design D3): remove the dead read path and key the gate
-   per company.
+1. **D2** roster through ReadCache — implemented locally (`07631585`),
+   waiting for review.
+2. **F16 + F17** fuel hand-over recovery (design D6): a reaper that
+   turns a `DriverMessage` past its lease into `Uncertain`, publication
+   that stops counting such a row, `AlreadyTaken` recorded from the found
+   attempt, an auditor rule, and regressions for crash-after-accept and
+   crash-before-accept. No existing rows to repair.
+3. **D1** road requests say why they wait, plus an attempt cap and an
+   auditor rule for `SourceRoadRequests` (F23).
+4. **F22** cost totals computed in the query, not over the page.
+5. **F20** fuel import: one message's failure is recorded and skipped;
+   the window follows the last imported message, not two days.
+6. **F8/F18** manual syncs Admin-only now; a limited role waits for the
+   owner.
+7. **D3** dead HOS read path.
 
-Then: F14 limits that do not depend on addresses (design D5); F13 key
-custody (design D4, owner decision); F4 page identity; F7 per-load
-identity; F5 shared work read in steps; F6 cadences; F9 auditor rules;
-the P3 items.
+Owner decisions before code: F18 role model, D4 key custody (F13), D5
+proxy chain (F14), F19 shared stations for more than one carrier.
+Designs needed before code: F21 source versions, F24 schema guard,
+F25 one fuel-cost owner, F26 cache bound (a `SizeLimit` makes every
+entry declare a size). Then F4-F7, F9 and the P3 items.
 
 ## Implementation designs (not implemented)
 
@@ -476,30 +661,32 @@ one account is capped; refresh of user A does not consume B's budget.
 
 ## Coverage matrix
 
-Each area: what was inventoried; what this audit verified itself; what
-remains.
+Each area: what was inventoried and verified; what is left open.
 
-- **API endpoints and auth:** 28 controllers, 171 endpoints; verified
-  the sync endpoints, the sign-in limiter and the fallback policy;
-  remains a per-endpoint role review.
-- **Background work:** 17 hosted services; verified the roster reads,
-  road preparation and the summary worker; remains liveness for the
-  operations without a heartbeat.
-- **Shared reads and caches:** 9 caches; verified the F4, F5 and F7
-  paths and the planning-inputs entry; remains per-statement counts.
-- **Client requests:** per-screen rates; verified the map and board
-  planning cadences; remains payload sizes.
-- **Consistency auditor:** 10 rules; verified the register against the
-  workflows; remains the cost of each rule's SQL.
-- **Providers:** 6; verified exception texts, the Samsara HOS path and
-  ingress; remains API key restrictions.
-- **Authentication:** login, refresh, logout; verified the key ring and
-  the limiter; remains proof of the proxy chain.
-- **Schema and migrations:** 73; verified the adoption loop; remains the
-  bodies of rollback paths.
-- **Tests and gates:** categories and probes; verified the PostgreSQL
-  skip behaviour; remains a review of test content.
-- **Live data:** table scans and loads 1341 and 1355, read-only; remains
+- **API endpoints and auth:** all 171 endpoints tabulated with policy and
+  tenant scope (evidence run); F18, F19, F27. Open: proof of the proxy
+  chain (D5).
+- **Background work:** 17 hosted services and 16 stateful workflows with
+  their recovery; F16, F23. Open: liveness of operations without a
+  heartbeat.
+- **Shared reads and caches:** 6 owners and the shared cache, keys,
+  bounds and invalidation; F2, F4, F5, F7, F26. Open: per-statement
+  counts.
+- **Money and idempotency:** every figure's owner and 16 external paths;
+  F17, F20, F21, F22, F25. Open: IFTA source shape, arrival offsets.
+- **Client requests:** per-screen rates. Open: payload sizes.
+- **Consistency auditor:** 10 rules against the workflows; F9, F16, F23.
+  Open: the cost of each rule's SQL.
+- **Providers:** 6; exception texts, HOS, ingress. Open: Google key
+  restrictions.
+- **Authentication:** login, refresh, logout, key ring, limiter. Open:
+  proxy chain, key custody.
+- **Schema and migrations:** 73, with the 18 non-additive ones' Down and
+  rerun behaviour; F24. Open: none beyond F24's design.
+- **Tests and gates:** content reviewed for asserts, categories,
+  PostgreSQL skips and missing regressions; F27. Open: a PostgreSQL
+  fixture for the 42 skipped tests.
+- **Live data:** scans, loads 1341 and 1355, hand-over rows. Open:
   per-statement counts.
 
 ## Open gaps, owners and completion criteria
@@ -520,8 +707,13 @@ remains.
   referrer and API restrictions are confirmed in the console.
 - **Payload sizes of locations, HOS and planning.** Owner: Client (F6).
   Done when measured in a browser trace.
-- **Reported findings not re-read (F10 scan, F12, F15).** Owner: this
-  audit. Done when each is re-read, or fixed with its test.
+- **Reported findings not re-read (F10 scan, F12, F15, F19-F21,
+  F23-F27).** Owner: this audit. Done when each is re-read, or fixed
+  with its test.
+- **Role model (F18).** Owner: the owner. Done when a limited role is
+  chosen or explicitly declined.
+- **PostgreSQL fixture.** Owner: tests. Done when an isolated fixture,
+  not in Docker, runs the 42 skipped tests in the gate.
 - **Liveness of operations without a heartbeat.** Owner: the background
   owners. Done when each has a heartbeat or a documented reason.
 
