@@ -29,10 +29,12 @@ public sealed class RoadWaitReportTests
     );
 
     for (var attempt = 0; attempt < 5; attempt++)
-      operation.ReportWait(load, "inputs-1", pending);
+      operation.ReportWait(load, "inputs-1", Address, pending);
 
     var line = Assert.Single(log.Lines);
-    Assert.Contains("address-pending", line);
+    Assert.Contains("address", line);
+    Assert.Contains("inputs-1", line);
+    Assert.Contains(Carrier.ToString(), line);
     Assert.Contains(load.DispatchId.ToString(), line);
   }
 
@@ -48,14 +50,14 @@ public sealed class RoadWaitReportTests
       "Deadhead preparation is pending."
     );
 
-    operation.ReportWait(load, "inputs-1", address);
-    operation.ReportWait(load, "inputs-1", deadhead);
-    operation.ReportWait(load, "inputs-2", deadhead);
+    operation.ReportWait(load, "inputs-1", Address, address);
+    operation.ReportWait(load, "inputs-1", Deadhead, deadhead);
+    operation.ReportWait(load, "inputs-2", Deadhead, deadhead);
     operation.ForgetWait(load);
-    operation.ReportWait(load, "inputs-2", deadhead);
+    operation.ReportWait(load, "inputs-2", Deadhead, deadhead);
 
     Assert.Equal(4, log.Lines.Count);
-    Assert.Contains("deadhead-pending", log.Lines[1]);
+    Assert.Contains("waits: deadhead;", log.Lines[1]);
   }
 
   // The same load id under two carriers is two loads.
@@ -68,8 +70,8 @@ public sealed class RoadWaitReportTests
       "Deadhead preparation is pending."
     );
 
-    operation.ReportWait(Work(id), "inputs", failure);
-    operation.ReportWait(Work(id, Guid.NewGuid()), "inputs", failure);
+    operation.ReportWait(Work(id), "inputs", Deadhead, failure);
+    operation.ReportWait(Work(id, Guid.NewGuid()), "inputs", Deadhead, failure);
 
     Assert.Equal(2, log.Lines.Count);
   }
@@ -87,19 +89,20 @@ public sealed class RoadWaitReportTests
     var second = Work(Guid.NewGuid());
     var third = Work(Guid.NewGuid());
 
-    operation.ReportWait(first, "i", failure);
-    operation.ReportWait(second, "i", failure);
-    operation.ReportWait(third, "i", failure);
-    operation.ReportWait(third, "i", failure);
-    operation.ReportWait(first, "i", failure);
+    operation.ReportWait(first, "i", Deadhead, failure);
+    operation.ReportWait(second, "i", Deadhead, failure);
+    operation.ReportWait(third, "i", Deadhead, failure);
+    operation.ReportWait(third, "i", Deadhead, failure);
+    operation.ReportWait(first, "i", Deadhead, failure);
 
     Assert.Equal(4, log.Lines.Count);
   }
 
-  // A code, never the text: a planning message becomes a short fixed
-  // digest, and the busy and changed states their own names.
+  // A category from an allowlist, never the message: the step that stopped
+  // the road, the busy and changed states, or unknown - no text, no digest
+  // of it (root's review, September 27).
   [Fact]
-  public void TheReasonIsACodeAndNotTheMessage()
+  public void TheReasonIsACategoryAndNeverTheMessage()
   {
     var (operation, log) = Operation();
     var message = "Truck 11005 route through Somewhere, NY failed.";
@@ -107,26 +110,47 @@ public sealed class RoadWaitReportTests
     operation.ReportWait(
       Work(Guid.NewGuid()),
       "i",
+      BaseRouteOperation.WaitStage.Inputs,
       new RoutePlanningException(message)
     );
 
-    Assert.DoesNotContain("Somewhere", Assert.Single(log.Lines));
-    Assert.Matches("planning-[0-9a-f]{8}", log.Lines[0]);
+    var line = Assert.Single(log.Lines);
+    Assert.Contains("waits: unknown;", line);
+    Assert.DoesNotContain("Somewhere", line);
+    Assert.DoesNotMatch("[0-9a-f]{8};", line.Split("waits:")[1]);
     Assert.Equal(
-      BaseRouteOperation.ReasonCode(new RoutePlanningException(message)),
-      BaseRouteOperation.ReasonCode(new RoutePlanningException(message))
+      "road-provider",
+      BaseRouteOperation.ReasonCode(Road, new RoutePlanningException(message))
+    );
+    Assert.Equal(
+      "profile",
+      BaseRouteOperation.ReasonCode(
+        BaseRouteOperation.WaitStage.Profile,
+        new RoutePlanningException(message)
+      )
     );
     Assert.Equal(
       "inputs-busy",
       BaseRouteOperation.ReasonCode(
+        Road,
         RoutePlanningException.InputsBusy(DateTime.UtcNow)
       )
     );
     Assert.Equal(
-      "inputs-changed",
-      BaseRouteOperation.ReasonCode(RoutePlanningException.Changed("x"))
+      "dependency-changed",
+      BaseRouteOperation.ReasonCode(Road, RoutePlanningException.Changed("x"))
     );
   }
+
+  private const BaseRouteOperation.WaitStage Address = BaseRouteOperation
+    .WaitStage
+    .Address;
+  private const BaseRouteOperation.WaitStage Deadhead = BaseRouteOperation
+    .WaitStage
+    .Deadhead;
+  private const BaseRouteOperation.WaitStage Road = BaseRouteOperation
+    .WaitStage
+    .Road;
 
   private static SourceRoadWork Work(Guid dispatch, Guid? company = null) =>
     new(

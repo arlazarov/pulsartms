@@ -230,7 +230,7 @@ public sealed class BaseRouteOperationTests
     await operation.RunOnceAsync(default);
 
     var line = Assert.Single(log.Lines);
-    Assert.Contains("address-pending", line);
+    Assert.Contains("waits: address;", line);
     Assert.Contains(next.ToString(), line);
     Assert.DoesNotContain("New Road", line);
   }

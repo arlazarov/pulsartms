@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using Domain.Models.Routing;
 using Domain.Rules;
 using Microsoft.Extensions.Logging;
@@ -8,8 +6,10 @@ namespace Application.Features.Routing.Background;
 
 // Why a load's road waits (audit D1, F1): loads 1341 and 1355 retried for
 // days and nothing said why. Each time a load's reason or inputs change, one
-// Information line names the reason as a code; the same reason again on the
-// same inputs says nothing, so a load retrying every few minutes logs once.
+// Information line names the reason as a category from an allowlist - the
+// step that stopped it - with the carrier and the input signature; the same
+// reason again on the same inputs says nothing, so a load retrying every few
+// minutes logs once.
 // Retries and their times are untouched: this only reports them.
 public sealed partial class BaseRouteOperation
 {
@@ -19,29 +19,44 @@ public sealed partial class BaseRouteOperation
 
   private sealed record Wait(string Signature, string Reason, long Seen);
 
-  // A code, never the text: the texts are the application's own, but a code
-  // is what a reader can count and search, and no message can carry more
-  // than it should into the log.
-  internal static string ReasonCode(RoutePlanningException failure) =>
+  // Where preparation stopped: the owner of the step that raised the wait.
+  internal enum WaitStage
+  {
+    Inputs,
+    Address,
+    Assignment,
+    Profile,
+    Road,
+    Deadhead,
+  }
+
+  // A category from an allowlist, never the message: the step that stopped
+  // the road, or the exception's own busy and changed states. A step that
+  // is not one of these says unknown.
+  internal static string ReasonCode(
+    WaitStage stage,
+    RoutePlanningException failure
+  ) =>
     failure.Busy ? "inputs-busy"
-    : failure.DependencyChanged ? "inputs-changed"
-    : failure.Message switch
+    : failure.DependencyChanged ? "dependency-changed"
+    : stage switch
     {
-      "Deadhead preparation is pending." => "deadhead-pending",
-      "Stop address verification is pending." => "address-pending",
-      var text => "planning-"
-        + Convert
-          .ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)))[..8]
-          .ToLowerInvariant(),
+      WaitStage.Address => "address",
+      WaitStage.Assignment => "assignment",
+      WaitStage.Profile => "profile",
+      WaitStage.Road => "road-provider",
+      WaitStage.Deadhead => "deadhead",
+      _ => "unknown",
     };
 
   internal void ReportWait(
     SourceRoadWork work,
     string signature,
+    WaitStage stage,
     RoutePlanningException failure
   )
   {
-    var reason = ReasonCode(failure);
+    var reason = ReasonCode(stage, failure);
     var key = (work.Company, work.DispatchId);
     lock (waitsLock)
     {
@@ -62,9 +77,11 @@ public sealed partial class BaseRouteOperation
         waits.Remove(waits.MinBy(x => x.Value.Seen).Key);
     }
     logger.LogInformation(
-      "Route preparation for {DispatchId} waits: {Reason}; retry {RetryAfter}; attempt {Attempts}",
+      "Route preparation for {DispatchId} of {CompanyId} waits: {Reason}; inputs {InputSignature}; retry {RetryAfter}; attempt {Attempts}",
       work.DispatchId,
+      work.Company,
       reason,
+      signature,
       failure.RetryAfter == DateTime.MaxValue ? null : failure.RetryAfter,
       work.Attempts
     );
