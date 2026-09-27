@@ -294,7 +294,7 @@ reads the notices (`530f8e6c`) was already published.
 ## API and frontend, night release (23:49-00:02 UTC)
 
 The owner asked, through Root, to publish Root's Dispatch corrections and
-the Papers fix together ("грузи на сервер"). Candidate
+the Papers fix together ("put it on the server"). Candidate
 `64c8ebfc6d6b23e973c0d59c2c2ac1e127540ed5`: Root's
 `codex/dispatch-fleet-integration` at `48eb706a` (`3557cf1c` Dispatch
 truck information always open; `48eb706a` the summary bound to the
