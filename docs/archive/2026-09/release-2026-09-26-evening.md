@@ -733,6 +733,46 @@ read Cards, Papers, Table, and Completed is read in the Table alone
 - **Not seen live:** the map reveal from Dispatch was checked by its
   regression and the offline smoke only, not on the real map.
 
+## Search by displayed number, 6ff3f19c (September 27, 12:56 UTC)
+
+API and frontend, on the owner's requirement and root's acceptance of
+`6ff3f19c`: Dispatch search reads AMF1408 as load 1408 (one owner,
+`LoadNumberSearch`, for the board and history; a displayed number is
+exact, bare digits keep the board's as-you-type prefix); a search from
+Cards or Papers also lists completed loads, labelled, openable, one page
+of 12 at most, with its own error and Retry. `da777263` + `6ff3f19c` on
+`250446a7`. No migration.
+
+- **Gate, once:** `PULSARTMS_RELEASE_UI=1 bash verify-release.sh` on a
+  clean detached worktree of `6ff3f19c` with the local settings copied
+  in (12:42-12:48 UTC), exit 0: JavaScript 666, Client 1,274, Server
+  3,806, none skipped; offline UI smoke without errors
+  (`browser-ui-Ba7jxb`). Artifact `release-2RmBrJ`, 285 files, pinned
+  with both logs and the smoke report under `gate/`.
+- **Focused and mutation evidence:** `artifacts/managed/diagnostic-PbPVPy` (pinned):
+  focused Server Dispatch + Architecture 794 and Client
+  Dispatch/Fleet/Architecture 861; five mutations (no stale checks,
+  failure read as empty, no history read, board StartsWith, the old
+  TryParse), each failing its regression, with the diff in each log.
+- **Backup:** `local-backups/pulsartms-release-backup.Q95QKd/
+  before-2026-09-27-release-6ff3f19c.dump`, sha256
+  `567463130764d05b29a36f57c52d0ae27c0162545152b645513611d39f16f327`,
+  720 entries, 104 table data, 12:48 UTC; in the inventory; restore not
+  rehearsed.
+- **API:** build `769b7fb5-9f29-4e3c-95d5-21793f1d40e4`, image
+  `api@sha256:157cf7d2b230272904535eb3acb1febb5a1fdc601f5a6b54d78f9447c06f1315`,
+  revision `amftms-api-b-769b7fb5-…` at 100%, generation 278 (rollback:
+  `amftms-api-b-944ddc8d-…`, 276). 1 GiB, at most one instance, as
+  before. Health 200 direct and through Hosting; no ERROR or 5xx at the
+  time of recording.
+- **Frontend:** the gate's artifact published as tested (12:56:15-22
+  UTC). Live `index.html`
+  (`39030063bb2311a16d6b09a9f6fafc636b5a70a46ee2ea71e14e28e82fa602b3`),
+  `css/main.css?v=fae65e94d4cee073`, `Client.*.wasm` and `dotnet.*.js`
+  match the artifact.
+- **Data:** protected counts before and after unchanged (73, 3, 3, 5,
+  57, 0, 0, 0, 2). Not seen on live data by me; root verifies.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module

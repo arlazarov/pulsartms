@@ -16,6 +16,7 @@ someone named). Nothing leaves this list without a state. Times are UTC.
 | `20b6ec91` API + frontend 11:49 | stop-save and Discard incident (root) | `release-H5e12a`, backup `…5M7i0m` |
 | `c2618995` frontend 12:01 | Table by coloured days, RPM names | `release-ZyxGZ4` |
 | `4b3adbf6` frontend 12:20 | speed, map focus, day order, views | `release-FlPysI` |
+| `6ff3f19c` API + frontend 12:56 | search by displayed number, completed from Cards/Papers | `release-2RmBrJ`, backup `…Q95QKd` |
 
 Records: `docs/archive/2026-09/release-2026-09-26-evening.md`.
 
@@ -42,8 +43,9 @@ written before it are correct.
 | No Current/Next edge bar | deployed | `4f446b04` |
 | Only the load number opens a load | deployed | `2d606052` |
 | Views Cards, Papers, Table; Completed in Table only | deployed | `4b3adbf6` |
+| 11006 ringed with its delivery while driving, far out | implemented, in root review | `claude/map-moving-ring`; label anchoring and route ownership being added |
 | Arrow between pickup and delivery | blocked: owner | never existed in the Table; asked whether to add one |
-| Search by displayed number (AMF1408); Cards and Papers also find completed loads, labelled, openable | implemented | this branch; release below |
+| Search by displayed number (AMF1408); Cards and Papers also find completed loads, labelled, openable | deployed, root to verify live | `6ff3f19c`, `release-2RmBrJ`, gen 278 |
 
 These six shipped together as `4b3adbf6` (`release-FlPysI`, 12:20).
 
@@ -69,7 +71,8 @@ Document: `docs/archive/2026-09/application-audit-2026-09-27.md` on
 | D2 roster through ReadCache (F2) | implemented, in root review | `07631585`, comment `02299cd7`; saving unmeasured |
 | F22 cost totals over a truncated page | proposed with fix, awaiting root review | `88331393`; no load affected today |
 | D6 fuel hand-over recovery (F16, F17) | proposed | design for root |
-| D1 road request reason, attempt cap, rule (F1, F23) | proposed, accepted in principle | implement after D6 |
+| D1 road wait reason (F1) | implemented, in root review | `207a0a5a`, `3db48240` (categories, company, signature) |
+| F23 attempt cap and auditor rule for road requests | open | after D1 |
 | F20 fuel import stops on one bad email | open | quarantine per message |
 | F8/F18 manual syncs Admin-only; role model | proposed; role model blocked: owner | |
 | D3 dead HOS read path (F3) | proposed, accepted in principle | |
