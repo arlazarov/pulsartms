@@ -1,4 +1,6 @@
+using Application.Diagnostics.Consistency;
 using Application.Features.Messaging.Services;
+using Application.Features.Routing.Audit;
 using Application.Features.Routing.Commands;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
@@ -8,6 +10,7 @@ using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
 using Domain.Models.Routing;
 using Domain.Policies;
+using Domain.Rules;
 using Domain.Rules.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -338,6 +341,69 @@ public sealed class FuelIssueSenderTests
       sendAgain
     );
 
+  // Audit F17: the provider took the hand-over and the process stopped
+  // before it was recorded (the record is removed here, as the stop left
+  // it). The auditor finds it; sending the same plan again records it
+  // from the accepted attempt, without a second message.
+  [Fact]
+  public async Task AnAcceptedHandOverLeftUnrecordedIsRecordedWhenSentAgain()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var shown = await f.CurrentAsync(First, fill: true);
+    Assert.Equal(200, (await f.SendAsync(Request(shown), shown)).Status);
+    await f.Db.FuelVisitSends.ExecuteDeleteAsync();
+    var attempt = await f.Db.DriverMessages.SingleAsync();
+    var rule = new FuelHandOverUnrecordedRule(f.Db);
+
+    var found = await rule.ReadAsync(f.Audit(), default);
+    var again = await f.SendAsync(Request(shown), shown);
+    var recorded = await f.Db.FuelVisitSends.SingleAsync();
+    var after = await rule.ReadAsync(f.Audit(), default);
+
+    Assert.Equal(
+      attempt.Id.ToString(),
+      Assert.Single(found.Observed).EntityKey
+    );
+    Assert.Equal(200, again.Status);
+    Assert.Single(f.Transport.Sent);
+    Assert.Equal(attempt.Id, recorded.MessageId);
+    Assert.Empty(after.Observed);
+  }
+
+  // Audit F16: an attempt left sending by a stopped process refused every
+  // fuel publication for the truck for ever. It refuses them only while it
+  // may still be in flight; past Messaging's timeout it is uncertain, the
+  // plans publish, and the auditor asks for the driver to be checked.
+  [Fact]
+  public async Task AnAttemptLeftSendingStopsHoldingFuelPlansAfterItsTimeout()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var shown = await f.CurrentAsync(First, fill: true);
+    f.Transport.During = () => throw new OperationCanceledException();
+    await Assert.ThrowsAsync<OperationCanceledException>(
+      () => f.SendAsync(Request(shown), shown)
+    );
+    f.Transport.During = null;
+    var rule = new FuelHandOverUncertainRule(f.Db);
+
+    f.Time.Advance(TimeSpan.FromMinutes(1));
+    var early = await f.Records.StampAsync(f.Truck, default);
+    await Assert.ThrowsAsync<PlanningSettingsConflictException>(
+      () => f.Records.RequireUnchangedAsync(early, default)
+    );
+    var inFlight = await rule.ReadAsync(f.Audit(TimeSpan.Zero), default);
+    f.Time.Advance(TimeSpan.FromMinutes(2));
+    var late = await f.Records.StampAsync(f.Truck, default);
+    await f.Records.RequireUnchangedAsync(late, default);
+    var uncertain = await rule.ReadAsync(f.Audit(TimeSpan.Zero), default);
+
+    Assert.Empty(inFlight.Observed);
+    Assert.Equal(
+      (await f.Db.DriverMessages.SingleAsync()).Id.ToString(),
+      Assert.Single(uncertain.Observed).EntityKey
+    );
+  }
+
   private sealed class Fixture : IAsyncDisposable
   {
     public required PlanningRefreshFixture Refresh { get; init; }
@@ -393,6 +459,17 @@ public sealed class FuelIssueSenderTests
       (f.Truck, f.Dispatch, f.Driver) = (truck.Id, load.Id, driver.Id);
       return f;
     }
+
+    // An audit page as the auditor asks for it, by default an hour on -
+    // past its grace window.
+    public ConsistencyPageRequest Audit(TimeSpan? later = null) =>
+      new(
+        Refresh.Services.GetRequiredService<ICurrentCompany>().Id!.Value,
+        Time.GetUtcNow().UtcDateTime + (later ?? TimeSpan.FromHours(1)),
+        null,
+        10,
+        TimeSpan.FromMinutes(30)
+      );
 
     public FuelIssueRecords Records =>
       new(

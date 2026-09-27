@@ -105,7 +105,7 @@ public sealed class DriverTextDelivery(
     if (latest is not null)
     {
       if (DriverMessageProgress.Taken(latest.Status))
-        return new(DriverTextResult.AlreadyTaken, null);
+        return new(DriverTextResult.AlreadyTaken, latest);
       if (DriverMessageProgress.InProgress(latest.Status, latest.StatusAt, now))
         return new(DriverTextResult.InProgress, null);
       if (

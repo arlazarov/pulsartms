@@ -55,7 +55,8 @@ public enum DriverTextResult
   TooLong,
   NotConfigured,
 
-  // An earlier attempt under the key was taken by the provider.
+  // An earlier attempt under the key was taken by the provider; the
+  // outcome's Attempt is that attempt.
   AlreadyTaken,
 
   // An earlier attempt is being sent now, or won the race for this one.
@@ -74,7 +75,8 @@ public enum DriverTextResult
   Rejected,
 }
 
-// Attempt: the row this call recorded, when it recorded one.
+// Attempt: the row this call recorded, when it recorded one, or the earlier
+// attempt the provider took (AlreadyTaken).
 public sealed record DriverTextOutcome(
   DriverTextResult Result,
   DriverMessage? Attempt

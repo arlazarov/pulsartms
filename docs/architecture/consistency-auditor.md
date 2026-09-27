@@ -285,6 +285,8 @@ does; everything else in this guide is target design.
 | `routing.base-road-leaves-country` | `BaseRouteService` | violation, warning | none; rebuild the load | implemented, detection tested |
 | `routing.base-road-border-unverified` | `BaseRouteService` | review, warning | none; dispatcher | implemented, detection tested |
 | `storage.file-on-disconnected-storage` | `FileStore`, `DisconnectStorageCommand` | violation, warning | none; reconnect or move the files | implemented; detection tested under PostgreSQL only, SQL translation offline |
+| `routing.fuel-handover-uncertain` | `FuelIssueSender` | review, warning | none; dispatcher asks the driver | implemented, detection tested |
+| `routing.fuel-handover-unrecorded` | `FuelIssueSender` | violation, warning | send the plan again; recorded from the accepted attempt | implemented, detection tested |
 
 Detectors live in `Application/Features/Execution/Audit` and
 `Application/Features/Routing/Audit` behind `IConsistencyRule`; the refresh

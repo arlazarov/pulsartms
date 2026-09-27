@@ -105,6 +105,20 @@ public sealed class FuelIssueSender(
           outcome.Attempt!.Id
         );
         return Outcome.Done;
+      // The provider took an earlier attempt of this very message. Its
+      // hand-over may never have been recorded - the process stopped
+      // between the acceptance and the record (audit F17) - so it is
+      // recorded now from that attempt; RecordAsync keeps it once.
+      case DriverTextResult.AlreadyTaken:
+        await records.RecordAsync(
+          saved,
+          visits,
+          outcome.Attempt!.Channel,
+          actor,
+          CancellationToken.None,
+          outcome.Attempt.Id
+        );
+        return Outcome.Done;
       case DriverTextResult.TooLong:
         return new(400, "The message exceeds the delivery size limit.");
       case DriverTextResult.InProgress:

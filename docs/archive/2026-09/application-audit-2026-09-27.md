@@ -728,6 +728,45 @@ PostgreSQL. Checks: `bash test.sh costs database` with Architecture:
 Server 287, Client, JavaScript passed (diagnostic-OYe2Di); a first run
 failed on the new worktree's missing Client packages and is marked.
 
+## Follow-up (September 27, night)
+
+- **Tenant scope in handlers.** Every raw SQL and IgnoreQueryFilters use
+  in Application and Infrastructure (15 files) is listed with its reason
+  (`TenantFilterBypassTests`). One was not safe: `SavedRoutePlanReader`
+  read `DispatchRoutePlans` by id in raw SQL without the company, so
+  another carrier's plans would be returned for their ids; both queries
+  now name the serving carrier (`9b369651`, tested on SQLite and
+  PostgreSQL). The forecast upsert's conflict update did not check the
+  existing row's carrier either; fixed on `claude/current-work-design`
+  (`cc6e53d8`), where that code lives now.
+- **Messenger driver work, cold 17 statements.** Measured again
+  (`DriverWorkCostTests`): 5 of the handler's own (actor, the driver's
+  trucks, the board rows), 12 of the planning capture. Three statements
+  repeat word for word - the truck row, the native-work check and the
+  load legs. They are not merged: the planning capture is a shared,
+  cached and coherent snapshot read in its own transaction, and the
+  board rows decide which loads Messenger lists; reading one from the
+  other would break the snapshot's coherence or change the list. Warm,
+  only the handler's 5 remain. Kept as justified repetition, no change.
+- **D6, F16 and F17.** No reaper was needed: Messaging already reads an
+  attempt left sending past its two-minute timeout as uncertain.
+  - F16: `FuelIssueRecords.RequireUnchangedAsync` refused a truck's fuel
+    publications while any attempt was sending, for ever after a stopped
+    process. It now refuses only while the attempt may still be in
+    flight, by Messaging's own rule.
+  - F17: a send of a message the provider already took returned
+    `AlreadyTaken` and recorded nothing, so a hand-over accepted before
+    a stop stayed unrecorded. Delivery now returns the taken attempt and
+    the sender records the hand-over from it, once, without a second
+    message.
+  - Auditor: `routing.fuel-handover-uncertain` (review: the last attempt
+    has no answer) and `routing.fuel-handover-unrecorded` (violation: an
+    accepted hand-over with no record for the truck since it was sent).
+  - Regressions start from the stopped states (sending left behind; an
+    acceptance whose record is gone) and are red on the old code
+    (diagnostic-A3DBEV/red.log). No existing rows: WhatsApp hand-over
+    has never been used (0 driver messages, 0 visit sends).
+
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done

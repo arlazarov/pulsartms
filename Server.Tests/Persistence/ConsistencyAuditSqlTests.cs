@@ -42,6 +42,8 @@ public sealed class ConsistencyAuditSqlTests
       "routing.base-road-leaves-country",
       "routing.base-road-border-unverified",
       "storage.file-on-disconnected-storage",
+      "routing.fuel-handover-uncertain",
+      "routing.fuel-handover-unrecorded",
       "journal-events",
       "journal-incidents",
     ];
@@ -85,6 +87,10 @@ public sealed class ConsistencyAuditSqlTests
         new BaseRoadBorderUnknownRule(db).ReadAsync(request, default),
       "storage.file-on-disconnected-storage" => () =>
         new StoredFileConnectionRule(db).ReadAsync(request, default),
+      "routing.fuel-handover-uncertain" => () =>
+        new FuelHandOverUncertainRule(db).ReadAsync(request, default),
+      "routing.fuel-handover-unrecorded" => () =>
+        new FuelHandOverUnrecordedRule(db).ReadAsync(request, default),
       "journal-events" => () =>
         new ConsistencyJournalReads(db).EventsAsync(
           Company.Amf,

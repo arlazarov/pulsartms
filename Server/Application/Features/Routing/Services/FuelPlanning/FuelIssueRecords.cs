@@ -6,6 +6,7 @@ using Domain.Models.Messaging;
 using Domain.Models.Routing;
 using Domain.Policies;
 using Domain.Rules;
+using Domain.Rules.Messaging;
 using Domain.Rules.Routing;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
@@ -45,14 +46,26 @@ public sealed class FuelIssueRecords(
   // or while a WhatsApp attempt for the truck is in flight or has changed
   // state (an acceptance not yet recorded as a hand-over), is refused and
   // calculated again, so it can never drop that hand-over unseen.
+  //
+  // In flight is Messaging's own reading (DriverMessageProgress): sending
+  // for less than its timeout. An attempt left sending past it - the
+  // process stopped mid-call - is uncertain, and used to refuse every
+  // publication for the truck for ever (audit F16); it is reviewed by the
+  // auditor and sent again by a dispatcher instead.
   public async Task RequireUnchangedAsync(Stamp stamp, CancellationToken ct)
   {
     var latest = await LatestSentAtAsync(stamp.TruckId, ct);
+    var inFlightSince =
+      time.GetUtcNow().UtcDateTime - DriverMessageProgress.SendingTimeout;
     var attempts = await db.DriverMessages.AnyAsync(
       x =>
         x.TruckId == stamp.TruckId
         && x.VisitKeys != ""
-        && (x.Status == DriverMessageStatuses.Sending || x.StatusAt > stamp.At),
+        && (
+          x.Status == DriverMessageStatuses.Sending
+            && x.StatusAt > inFlightSince
+          || x.StatusAt > stamp.At
+        ),
       ct
     );
     if (latest != stamp.LatestSentAt || attempts)
