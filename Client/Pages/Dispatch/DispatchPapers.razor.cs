@@ -54,8 +54,11 @@ public partial class DispatchPapers
   ];
   private DateOnly _today;
 
+  // The event a folder is about: its pickup until that is done, then its
+  // delivery. A pickup already done never orders or names the folder (the
+  // owner, September 27).
   private bool ShowDelivery(DispatchBoardRow row) =>
-    row.Completed ? true
+    row.Completed || row.OriginCompleted ? true
     : row.Planned ? false
     : InDateWindow(row.PickupDate) && !InDateWindow(row.DeliveryDate) ? false
     : InDateWindow(row.DeliveryDate) && !InDateWindow(row.PickupDate) ? true
@@ -83,21 +86,39 @@ public partial class DispatchPapers
         truck.Dispatches.Select(load => new DispatchBoardRow(truck, load))
       )
       .ToList();
+    // The work in the order it comes: by the nearest event not yet done;
+    // and a load a truck has started - its pickup done - stands before that
+    // truck's other loads, so a current delivery comes before the pickup
+    // that follows it on the same truck (the owner, September 27).
+    var due = rows.ToDictionary(row => row, Due);
+    foreach (var started in rows.Where(x => !x.Completed && x.OriginCompleted))
+    foreach (
+      var later in rows.Where(x =>
+        ReferenceEquals(x.Truck, started.Truck)
+        && x != started
+        && !x.OriginCompleted
+      )
+    )
+      if (due[later].CompareTo(due[started]) < 0)
+        due[later] = due[started];
     for (var i = 0; i < 3; i++)
     {
       _columns[i] = rows.Where(x => x.Column(_today) == i)
-        .OrderBy(x =>
-          (ShowDelivery(x) ? x.DeliveryDate : x.PickupDate) ?? DateOnly.MaxValue
-        )
-        .ThenBy(x =>
-          (
-            ShowDelivery(x)
-              ? x.Destination?.ScheduledTime
-              : x.Origin?.ScheduledTime
-          ) ?? TimeOnly.MaxValue
-        )
+        .OrderBy(x => due[x])
+        .ThenBy(x => x.OriginCompleted ? 0 : 1)
         .ThenBy(x => x.Load.LoadNumber)
         .ToList();
     }
   }
+
+  private (DateOnly, TimeOnly) Due(DispatchBoardRow row) =>
+    (
+      (ShowDelivery(row) ? row.DeliveryDate : row.PickupDate)
+        ?? DateOnly.MaxValue,
+      (
+        ShowDelivery(row)
+          ? row.Destination?.ScheduledTime
+          : row.Origin?.ScheduledTime
+      ) ?? TimeOnly.MaxValue
+    );
 }

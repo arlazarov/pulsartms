@@ -57,6 +57,65 @@ public sealed class DispatchPapersDateWindowTests
     );
   }
 
+  // The nearest event not yet done orders the folders: a pickup already
+  // done never does, and a truck's started load stands before its next one
+  // (the owner, September 27 - 11006's delivery before its next pickup).
+  [Fact]
+  public void WorkIsOrderedByTheNextUnfinishedEvent()
+  {
+    using var context = new BunitContext();
+    var today = DateOnly.FromDateTime(DateTime.Today);
+    var tomorrow = today.AddDays(1);
+    // Picked up this morning, delivering tomorrow at nine; still "assigned"
+    // at the source, so it reads in the today-and-tomorrow folder.
+    var current = Load(1395, today, tomorrow);
+    current.Stops[0].ScheduledTime = new(6, 0);
+    current.Stops[0].IsCompleted = true;
+    current.Stops[1].ScheduledTime = new(9, 0);
+    // The same truck's next load, due to be picked up this evening.
+    var next = Load(1412, today, tomorrow.AddDays(1));
+    next.Stops[0].ScheduledTime = new(20, 0);
+    // Another truck's pickup at noon.
+    var other = Load(1500, today, tomorrow.AddDays(2));
+    other.Stops[0].ScheduledTime = new(12, 0);
+    var papers = context.Render<DispatchPapers>(parameters =>
+      parameters.Add(
+        view => view.Trucks,
+        [
+          new TruckDispatchBoardResponse
+          {
+            Key = "11006",
+            TruckNumber = "11006",
+            Dispatches = [current, next],
+          },
+          new TruckDispatchBoardResponse
+          {
+            Key = "54777",
+            TruckNumber = "54777",
+            Dispatches = [other],
+          },
+        ]
+      )
+    );
+
+    var tabs = papers
+      .Find(".dispatch-paper-column--2")
+      .QuerySelectorAll(".dispatch-paper__tab");
+    Assert.Equal(
+      ["1500", "1395", "1412"],
+      tabs.Select(tab =>
+          tab.QuerySelector(".dispatch-paper__tab-number")!.TextContent.Trim()
+        )
+        .ToArray()
+    );
+    Assert.StartsWith(
+      "Delivery ",
+      tabs[1]
+        .QuerySelector(".dispatch-paper__tab-schedule")!
+        .GetAttribute("aria-label")
+    );
+  }
+
   private static DispatchResponse Load(
     int number,
     DateOnly pickup,
