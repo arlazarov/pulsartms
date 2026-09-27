@@ -936,6 +936,44 @@ failed on the new worktree's missing Client packages and is marked.
   with default 0 and a table), applied before the API that writes them;
   the reset inventory names the table and schema 75. Runtime detection:
   the `deferred-loads` stage count; the defect leaves no row to audit.
+- **F21, Root's review of the tickets: a write behind a warm skip.** Two
+  warm processes: B wrote V2 and skips it since as unchanged; A, holding
+  the older V1, took its ticket after B's last write. While A reads, B
+  polls, finds V2 unchanged and returns without writing - a skipped load
+  takes no ticket - and A commits V1. Reproduced
+  (`AWriteBehindAWarmSkipIsRepairedByTheNextPoll`, diagnostic-Q12eoH):
+  with the cache relay, A's commit invalidates the dispatch group, B
+  learns it on its relay round and its next poll reconciles every load
+  and puts V2 back; without it - the history tool runs no relay, and a
+  round can fail - V1 stayed until the half-hourly repair. Now the ticket
+  row also counts the passes that changed loads (`LastWrite`, migration
+  77 `CountDispatchImportWrites`, counted inside the pass's transaction);
+  the ticket upsert returns the count in the same statement, and a
+  process whose count moved since its own last pass reconciles every
+  load instead of skipping. Both variants green (diagnostic-e7IkMs);
+  ignoring the count or not counting the write fails the variant without
+  the relay (diagnostic-kntNFq). Bound: an older reading can be shown
+  from its commit until the next poll of a process holding the newer
+  one - one poll interval (60 s) - independent of the relay. Cost: one
+  statement more per pass that changes loads; a poll that finds nothing
+  new stays one statement. A pass that reconciles everything after
+  another process's write costs what a relay invalidation already cost.
+- **F21 cutover: ticketless writes of the previous binary.** Migrations
+  75-77 are additive or rebuild keys over one carrier's rows, and the
+  previous binary does not read the new column or tables, so they are
+  applied before the new API, as for 74. During the revision change the
+  previous binary can still write: its loop only while it holds the
+  synchronization lease (the new one's loop waits for it), and a manual
+  sync while it serves requests. Such a write takes no ticket and counts
+  no write; it does invalidate its caches and relays that, so the new
+  binary reconciles on its next poll after the relay round, and a new
+  process starts with no snapshot and reconciles everything on its first
+  pass. Safe cutover: apply the migrations; move traffic; wait for the
+  previous revision's drain (its "Shutting down user disabled instance"
+  line, `TrafficShutDown` true), since only then can it write no more;
+  a ticketless write before that is corrected within one relay round and
+  one poll, or by the half-hourly repair if the relay failed. No manual
+  sync or history-tool run during the change.
 - **F28 - P2: carrier rows keyed without the carrier.** Reproduced
   (diagnostic-7Coojh, -OH6eyE): `DispatchNumberCounters` was keyed by
   `Id` alone, so a second carrier's first load could not be numbered

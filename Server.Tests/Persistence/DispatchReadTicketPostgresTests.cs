@@ -26,19 +26,28 @@ public sealed class DispatchReadTicketPostgresTests
           new DispatchReadTicketStore(db).TakeAsync("torqueai", default)
         )
       );
+      var tickets = taken.Select(x => x.Ticket).ToArray();
 
-      Assert.Equal(Enumerable.Range(1, 8).Select(x => (long)x), taken.Order());
+      Assert.Equal(
+        Enumerable.Range(1, 8).Select(x => (long)x),
+        tickets.Order()
+      );
       await using var read = postgres.Connect();
+      var store = new DispatchReadTicketStore(read);
+      Assert.Equal(new(9, 0), await store.TakeAsync("torqueai", default));
+      Assert.Equal(new(1, 0), await store.TakeAsync("other", default));
+      // A write is counted inside the pass's transaction, and the next
+      // ticket carries the count.
+      await using (
+        var transaction = await read.Database.BeginTransactionAsync()
+      )
+      {
+        Assert.Equal(1, await store.WroteAsync("torqueai", default));
+        await transaction.CommitAsync();
+      }
+      Assert.Equal(new(10, 1), await store.TakeAsync("torqueai", default));
       Assert.Equal(
-        9,
-        await new DispatchReadTicketStore(read).TakeAsync("torqueai", default)
-      );
-      Assert.Equal(
-        1,
-        await new DispatchReadTicketStore(read).TakeAsync("other", default)
-      );
-      Assert.Equal(
-        9,
+        10,
         await read
           .DispatchImportReads.Where(x => x.Provider == "torqueai")
           .Select(x => x.LastTicket)

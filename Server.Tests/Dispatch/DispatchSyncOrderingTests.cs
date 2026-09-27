@@ -1,7 +1,15 @@
+using Application.Caching;
 using Application.Features.Dispatch.Models;
+using Application.Features.Synchronization.Options;
+using Application.Interfaces;
 using Application.Models;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Server.Tests.Support;
 
 namespace Server.Tests.Dispatch;
 
@@ -91,6 +99,56 @@ public sealed class DispatchSyncOrderingTests
     );
   }
 
+  // Root's review of the tickets: two warm processes. B wrote V2 and has
+  // since skipped it as unchanged; A, holding the older V1, took its
+  // ticket after B's last write. While A reads, B polls again, finds V2
+  // unchanged and returns without writing - its ticket stamps nothing -
+  // and A then commits V1. B's next poll must put V2 back: through the
+  // relay (B learns another process wrote) or, where no relay runs - the
+  // history tool, a failed round - by itself.
+  [Theory]
+  [InlineData(true)]
+  [InlineData(false)]
+  public async Task AWriteBehindAWarmSkipIsRepairedByTheNextPoll(bool relay)
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    using var readsB = TestCache.Create();
+    using var memoryB = new MemoryCache(new MemoryCacheOptions());
+    var sourcesB = new List<ExternalDispatch> { Load(200) };
+    async Task<RequestResponse<int>> PollB()
+    {
+      await using var db = f.NewContext();
+      return await f.HandlerFor(db, sourcesB, readsB, memoryB)
+        .Handle(new(), default);
+    }
+    await PollB();
+    Assert.Equal(0, (await PollB()).Response);
+    f.Sources.Add(Load(150));
+    // B's skipped poll, as the database sees it: a ticket and nothing more.
+    f.DuringRead = async () => await TicketAsync(f);
+
+    Assert.True((await PassAsync(f)).Success);
+    Assert.Equal(150, await PriceAsync(f));
+
+    if (relay)
+    {
+      await using var services = new ServiceCollection()
+        .AddScoped<IAppDbContext>(_ => f.NewContext())
+        .BuildServiceProvider();
+      foreach (var cache in new[] { f.Reads, readsB })
+        await new CacheInvalidationRelay(
+          cache,
+          services.GetRequiredService<IServiceScopeFactory>(),
+          Options.Create(new SynchronizationOptions()),
+          TimeProvider.System,
+          NullLogger<CacheInvalidationRelay>.Instance
+        ).RunOnceAsync(default);
+    }
+    await PollB();
+
+    Assert.Equal(200, await PriceAsync(f));
+  }
+
   // Tickets only grow and are never shared, per carrier and provider.
   [Fact]
   public async Task TicketsGrowAndAreNeverShared()
@@ -103,7 +161,7 @@ public sealed class DispatchSyncOrderingTests
     Assert.Equal([1, 2, 3], taken);
     await using var other = f.NewContext();
     Assert.Equal(
-      1,
+      new(1, 0),
       await new DispatchReadTicketStore(other).TakeAsync("other", default)
     );
   }
@@ -128,10 +186,12 @@ public sealed class DispatchSyncOrderingTests
   private static async Task<long> TicketAsync(DispatchSyncFixture f)
   {
     await using var other = f.NewContext();
-    return await new DispatchReadTicketStore(other).TakeAsync(
-      DispatchImportTestData.Key,
-      default
-    );
+    return (
+      await new DispatchReadTicketStore(other).TakeAsync(
+        DispatchImportTestData.Key,
+        default
+      )
+    ).Ticket;
   }
 
   // Another process's pass as the database sees it once committed: the

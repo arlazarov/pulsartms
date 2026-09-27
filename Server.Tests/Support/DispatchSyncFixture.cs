@@ -35,6 +35,25 @@ internal sealed class DispatchSyncFixture : IAsyncDisposable
       new DispatchReadTicketStore(Db)
     );
 
+  // Another process's handler over the same database: its own provider
+  // answer, read cache and load snapshots.
+  public SyncDispatchesCommandHandler HandlerFor(
+    AppDbContext db,
+    IReadOnlyList<ExternalDispatch> sources,
+    ReadCache reads,
+    MemoryCache memory
+  ) =>
+    new(
+      db,
+      [new Provider(sources, () => null)],
+      DispatchImportTestData.Options,
+      reads,
+      memory,
+      TestCache.Preparation(),
+      new TestCompany(),
+      new DispatchReadTicketStore(db)
+    );
+
   public static async Task<DispatchSyncFixture> CreateAsync()
   {
     var fixture = new DispatchSyncFixture();

@@ -35,9 +35,12 @@ public partial class SyncDispatchesCommandHandler(
 {
   private sealed record LoadSnapshot(string Signature, DateTime ReconciledAt);
 
+  // Written: the count of passes that had changed loads when this process
+  // last reconciled (DispatchImportRead.LastWrite).
   private sealed record Snapshot(
     long CatalogGeneration,
     long DispatchGeneration,
+    long Written,
     IReadOnlyDictionary<string, LoadSnapshot> Loads
   );
 
@@ -118,9 +121,13 @@ public partial class SyncDispatchesCommandHandler(
         )
     );
     var previous = memory.Get<Snapshot>(memoryKey);
+    // A load this process saw as it reads now is skipped - unless another
+    // process has changed loads since, which the database counts: that
+    // write may have replaced what this process last confirmed.
     var reusable =
       previous?.CatalogGeneration == catalogGeneration
-      && previous.DispatchGeneration == dispatchGeneration;
+      && previous.DispatchGeneration == dispatchGeneration
+      && previous.Written == ticket.Written;
     var repairAfter = DateTime.UtcNow.AddMinutes(-30);
     var sources = allSources
       .Where(x =>
@@ -189,7 +196,7 @@ public partial class SyncDispatchesCommandHandler(
     // Written since this pass began reading, by a pass that began reading
     // after it: this older reading waits for the next pass instead.
     var deferred = links
-      .Where(x => x.ReadTicket > ticket)
+      .Where(x => x.ReadTicket > ticket.Ticket)
       .Select(x => x.ExternalId)
       .ToHashSet(StringComparer.Ordinal);
     PerformanceStages.Count("dispatch-sync", "deferred-loads", deferred.Count);
@@ -251,10 +258,10 @@ public partial class SyncDispatchesCommandHandler(
       .DispatchSourceLinks.Where(x =>
         x.Provider == providerKey
         && applied.Contains(x.ExternalId)
-        && x.ReadTicket < ticket
+        && x.ReadTicket < ticket.Ticket
       )
       .ExecuteUpdateAsync(
-        setters => setters.SetProperty(x => x.ReadTicket, ticket),
+        setters => setters.SetProperty(x => x.ReadTicket, ticket.Ticket),
         cancellationToken
       );
     var initial = await ExecutionImportAcceptance.ApplyAsync(
@@ -265,6 +272,10 @@ public partial class SyncDispatchesCommandHandler(
     );
     executions = executions.Concat(initial).ToArray();
     changed += await dbContext.SaveChangesAsync(cancellationToken);
+    var written =
+      changed > 0
+        ? await tickets.WroteAsync(providerKey, cancellationToken)
+        : ticket.Written;
     await transaction.CommitAsync(cancellationToken);
     if (changed > 0)
     {
@@ -326,6 +337,7 @@ public partial class SyncDispatchesCommandHandler(
       new Snapshot(
         catalogGeneration,
         reads.Generation(ReadGroups.Dispatch),
+        written,
         fingerprints
           // A deferred load is not reconciled: the next pass reads it again.
           .Where(x => !deferred.Contains(x.Key))

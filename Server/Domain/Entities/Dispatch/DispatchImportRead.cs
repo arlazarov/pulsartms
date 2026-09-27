@@ -11,4 +11,10 @@ public sealed class DispatchImportRead : ICompanyOwned
   public Guid CompanyId { get; set; }
   public string Provider { get; set; } = "";
   public long LastTicket { get; set; }
+
+  // Counts the passes that changed loads. A process that finds it moved
+  // since its own last pass knows another process wrote, and reconciles
+  // every load instead of trusting what it last saw - even where no cache
+  // relay runs (the history tool) or a relay round failed.
+  public long LastWrite { get; set; }
 }
