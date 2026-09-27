@@ -18,6 +18,12 @@ public partial class FleetTruckList
   [Parameter]
   public EventCallback<Guid> Selected { get; set; }
 
+  [Parameter]
+  public bool Collapsed { get; set; }
+
+  [Parameter]
+  public EventCallback<bool> CollapsedChanged { get; set; }
+
   private static string SpeedText(TruckLocationMapDto truck) =>
     $"{truck.Speed.ToString("0", CultureInfo.InvariantCulture)} mph";
 

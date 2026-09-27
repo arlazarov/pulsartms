@@ -18,9 +18,9 @@
         <div class="fleet-route-popup fleet-route-popup--stop">
             <div class="fleet-route-popup__location">
                 <div class="fleet-route-popup__head">
-                    @if (Number is { } number)
+                    @if (!string.IsNullOrEmpty(Marker))
                     {
-                        <span class="fleet-route-popup__number">@number</span>
+                        <span class="fleet-route-popup__number">@Marker</span>
                     }
                     <div class="fleet-route-popup__identity">
                         <strong class="fleet-route-popup__job"

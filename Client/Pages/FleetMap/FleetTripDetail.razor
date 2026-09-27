@@ -1,0 +1,79 @@
+@using Client.Shared.Dispatch
+@using Client.Shared.Dispatch.DispatchLoadStop
+@* Futuristic interface only: the ONE trip chosen in the chain or on the
+   map, in full, under the truck. Its stops use the Dispatch stop row, so
+   appointments, windows, time zones, ETA and completion read as they do on
+   the board; the chosen stop opens and is brought into view. Other trips
+   are the chain's, never listed here. *@
+<section class="fleet-trip-detail" aria-labelledby="fleet-trip-detail-title">
+    <header class="fleet-trip-detail__head">
+        <span class="fleet-trip-detail__eyebrow">Trip @Position of @Count</span>
+        <h3 id="fleet-trip-detail-title">
+            <a href="@($"/dispatch/{Load.Id}")" title="Open load"><LoadNumber Value="Load.LoadNumber" /></a>
+        </h3>
+        @if (DispatchWorkPhase.Label(Load) is { Length: > 0 } phase)
+        { <span class="fleet-trip-detail__phase @PhaseClass">@phase</span> }
+        <span class="fleet-trip-detail__status">@Row.Status</span>
+    </header>
+    @if (DispatchWorkPhase.ConflictText(Load.WorkConflict) is { } conflict)
+    { <p class="fleet-trip-detail__conflict" role="status">@conflict</p> }
+    <p class="fleet-trip-detail__route">
+        @DispatchBoardRow.Location(Row.Origin) → @DispatchBoardRow.Location(Row.Destination)
+        <small>@DispatchStopPresentation.Summary(Load.Stops)</small>
+    </p>
+    <dl class="fleet-trip-detail__facts">
+        <div><dt>Customer</dt><dd>@DispatchBoardRow.Text(Load.CustomerName)</dd></div>
+        <div><dt>Order</dt><dd>@DispatchBoardRow.Text(Load.OrderNumber)</dd></div>
+        <div><dt>Loaded</dt><dd>@DispatchFinancialDisplay.Miles(Load.LoadedMiles)</dd></div>
+        <div><dt>Empty</dt><dd>@DispatchFinancialDisplay.Miles(Load.EmptyMiles)</dd></div>
+        @if (Load.Price.HasValue)
+        { <div><dt>Rate</dt><dd>@DispatchFinancialDisplay.Money(Load.Price, Load.Currency)</dd></div> }
+    </dl>
+    <ol class="fleet-trip-detail__stops" aria-label="Stops in route order">
+        @foreach (var visit in DispatchStopPresentation.OrderedVisits(Load.Stops))
+        {
+            var stop = visit.Stop;
+            var focused = stop.Id == FocusedStopId;
+            <li @key="stop.Id" id="@($"fleet-trip-stop-{stop.Id:N}")" tabindex="-1"
+                class="fleet-trip-detail__stop @DispatchStopPresentation.Tone(stop) @(focused ? "is-focused" : "")"
+                @ref="_stops[stop.Id]">
+                <DispatchLoadStop DispatchId="Load.Id" Stop="stop" Number="visit.Number"
+                                  Marker="@visit.Marker" VisitLabel="@visit.VisitLabel"
+                                  Eta="Eta" CompletedLoad="Load.Completed"
+                                  Refreshing="Refreshing" Detailed="true"
+                                  CollapsibleDetails="true"
+                                  DetailsOpen="focused"
+                                  OpenDetails="() => StopChosen.InvokeAsync(focused ? null : stop.Id)"
+                                  HasAdditionalDetails="true">
+                    <AdditionalDetails>
+                        <dl class="fleet-trip-detail__stop-facts">
+                            @if (!string.IsNullOrWhiteSpace(stop.Name)) { <div><dt>Facility</dt><dd>@stop.Name</dd></div> }
+                            @if (!string.IsNullOrWhiteSpace(stop.Address)) { <div><dt>Address</dt><dd>@stop.Address</dd></div> }
+                            @if (!string.IsNullOrWhiteSpace(stop.ZipCode) || !string.IsNullOrWhiteSpace(stop.Country)) { <div><dt>Postal / country</dt><dd>@string.Join(" · ", new[] { stop.ZipCode, stop.Country }.Where(value => !string.IsNullOrWhiteSpace(value)))</dd></div> }
+                            @if (!string.IsNullOrWhiteSpace(stop.AppointmentTimeZoneId)) { <div><dt>Time zone</dt><dd>@stop.AppointmentTimeZoneId</dd></div> }
+                            @if (!string.IsNullOrWhiteSpace(stop.StopNo)) { <div><dt>Reference</dt><dd>@stop.StopNo</dd></div> }
+                            @if (DispatchStopPresentation.ShowsCargo(stop))
+                            {
+                                @if (!string.IsNullOrWhiteSpace(stop.Commodity)) { <div><dt>Commodity</dt><dd>@stop.Commodity</dd></div> }
+                                @if (stop.Weight.HasValue) { <div><dt>Weight</dt><dd>@stop.Weight?.ToString("N0") @stop.WeightUnit</dd></div> }
+                                @if (stop.Pieces.HasValue) { <div><dt>Pieces</dt><dd>@stop.Pieces?.ToString("N0")</dd></div> }
+                                @if (stop.Pallets.HasValue) { <div><dt>Pallets</dt><dd>@stop.Pallets?.ToString("N0")</dd></div> }
+                                @if (!string.IsNullOrWhiteSpace(stop.Temperature)) { <div><dt>Temperature</dt><dd>@stop.Temperature @stop.TemperatureUnit</dd></div> }
+                            }
+                        </dl>
+                        @if (!string.IsNullOrWhiteSpace(stop.Notes))
+                        { <p class="fleet-trip-detail__notes"><strong>Instructions</strong> @stop.Notes</p> }
+                    </AdditionalDetails>
+                </DispatchLoadStop>
+            </li>
+        }
+    </ol>
+    <div class="fleet-trip-detail__actions">
+        <a class="btn btn--small" href="@($"/dispatch/{Load.Id}")">Open load</a>
+        @if (RouteOptions.HasDelegate)
+        {
+            <button type="button" class="btn btn--small"
+                    @onclick="() => RouteOptions.InvokeAsync(Load)">Route options</button>
+        }
+    </div>
+</section>

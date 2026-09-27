@@ -1,3 +1,17 @@
+@if (Compact)
+{
+    @* The supplied pulse, for a place too narrow for a legible lockup
+       (brand-design.md); the same artwork as the wordmark's and favicon's. *@
+    <svg class="brand-logo brand-logo--compact"
+         viewBox="0 0 128 104"
+         role="img"
+         aria-label="PulsR TMS"
+         focusable="false">
+        <use href="brand/pulsr.svg?v=pulse-red-2#pulse" transform="translate(25)" />
+    </svg>
+}
+else
+{
 <svg class="@LogoClass"
      viewBox="0 0 480 104"
      role="img"
@@ -5,3 +19,4 @@
      focusable="false">
     <use href="brand/pulsr.svg?v=pulse-red-2#wordmark" />
 </svg>
+}

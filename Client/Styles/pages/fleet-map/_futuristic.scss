@@ -44,6 +44,11 @@
         'chain chain chain';
       gap: ui.pg(md);
     }
+    .fleet-map-stage:has(.fleet-truck-list.is-collapsed) {
+      grid-template-columns:
+        ui.size(control-touch) minmax(0, 1fr)
+        ui.size(futuristic-inspector);
+    }
     // No truck selected and no editor open: the map takes the inspector's
     // column too. The fuel editor replaces the card in that column.
     .fleet-map-stage:not(:has(.fleet-map-info-reserved.has-selection)):not(
@@ -83,6 +88,28 @@
     .fuel-send-plan,
     .fleet-map-key {
       grid-area: map;
+    }
+  }
+
+  .fleet-map-inspector__quick-follow {
+    display: none;
+  }
+
+  // On a phone the card opens closed: the head and its summary rows (load,
+  // next stop, ETA, appointment, readings, clocks), an explicit Details /
+  // Hide details, and Follow beside it. Details opens the rest.
+  @include ui.below(futuristic-docked) {
+    @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
+      .fleet-map-inspector[data-inspector-mode='truck']
+        .fleet-map-mobile-summary__toggle,
+      .fleet-map-inspector__quick-follow {
+        display: inline-flex;
+      }
+      .fleet-map-inspector.is-mobile-collapsed .fleet-map-info-content,
+      .fleet-map-inspector.is-mobile-collapsed .fleet-map-inspector__duty,
+      .fleet-map-inspector.is-mobile-collapsed .fleet-trip-stops {
+        display: none;
+      }
     }
   }
 
@@ -138,8 +165,33 @@
     }
   }
   &__count {
+    margin-left: auto;
     color: ui.theme(text-muted);
     font-size: ui.fs(caption);
+  }
+  &__header > h2 {
+    margin-right: auto;
+  }
+  &__collapse {
+    flex: none;
+  }
+  &.is-collapsed {
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  &__expand {
+    writing-mode: vertical-rl;
+    display: inline-flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    width: ui.size(control-touch);
+    min-height: ui.size(futuristic-trip);
+    padding: ui.pg(md) 0;
+    border-color: ui.theme(accent, 0.28);
+    > svg {
+      transform: rotate(90deg);
+    }
   }
   &__body {
     flex: 1;
@@ -252,6 +304,13 @@
     list-style: none;
     overflow-x: auto;
     overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    // The far edge fades while more trips wait past it.
+    mask-image: linear-gradient(
+      to right,
+      ui.theme(surface) calc(100% - #{ui.pg(xxl)}),
+      transparent
+    );
   }
   &__link {
     display: flex;
@@ -274,29 +333,92 @@
     font-size: ui.fs(caption);
     font-weight: 700;
   }
-  a.fleet-trip-chain__card {
-    text-decoration: none;
-  }
   &__card {
+    display: grid;
+    gap: ui.pg(xs);
+    width: ui.size(futuristic-trip);
+    padding: ui.pg(xs);
+    border: 1.5px dashed currentColor;
+    border-radius: ui.radius(md);
+    background: ui.theme(surface);
+  }
+  .is-current &__card {
+    border-style: solid;
+  }
+  .is-selected &__card {
+    border-style: solid;
+    background: ui.theme(selected);
+    box-shadow: 0 0 0 3px ui.theme(accent, 0.16);
+  }
+  &__trip {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: ui.pg(micro) ui.pg(md);
-    width: ui.size(futuristic-trip);
-    min-height: ui.size(control-touch);
-    padding: ui.pg(sm) ui.pg(md);
-    border: 1.5px dashed currentColor;
-    border-radius: ui.radius(md);
-    background: ui.theme(surface);
+    width: 100%;
+    padding: ui.pg(xs) ui.pg(sm);
+    border: 0;
+    border-radius: ui.radius(sm);
+    background: none;
     color: inherit;
     text-align: left;
     font: inherit;
     cursor: pointer;
-    &[aria-pressed='true'] {
-      border-style: solid;
-      background: ui.theme(selected);
-      box-shadow: 0 0 0 3px ui.theme(accent, 0.14);
+  }
+  &__stops {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(xs);
+    padding: 0 ui.pg(sm) ui.pg(xs);
+  }
+  &__stop {
+    display: grid;
+    place-items: center;
+    min-width: ui.size(control-compact);
+    min-height: ui.size(control-compact);
+    padding: 0 ui.pg(sm);
+    border: 1.5px solid ui.theme(text-muted);
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface);
+    color: ui.theme(text);
+    font: inherit;
+    font-size: ui.fs(caption);
+    font-weight: 700;
+    cursor: pointer;
+    &.is-pickup {
+      border-color: ui.theme(pickup);
+      color: ui.theme(pickup);
     }
+    &.is-delivery {
+      border-color: ui.theme(delivery);
+      color: ui.theme(delivery);
+    }
+    &.is-done {
+      opacity: 0.65;
+    }
+    &[aria-pressed='true'] {
+      background: ui.theme(accent);
+      border-color: ui.theme(accent);
+      color: ui.theme(surface);
+    }
+  }
+  &__nav {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(xs);
+    flex: none;
+    padding: 0 ui.pg(sm);
+    border-right: 1px solid ui.theme(border-subtle);
+  }
+  &__step.is-back > svg {
+    transform: rotate(180deg);
+  }
+  &__position {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
   }
   &__load {
     color: ui.theme(text);
@@ -326,16 +448,17 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  // The same colours the map draws these loads in.
+  // The text roles of the colours the map draws these loads in: the map's
+  // own line colours are too dark to read on the dark theme's surfaces.
   .is-current {
-    color: ui.theme(map-route-current);
+    color: ui.theme(transit);
   }
   .is-current .fleet-trip-chain__card {
     border-style: solid;
   }
   .is-next,
   .is-upcoming {
-    color: ui.theme(map-route-future);
+    color: ui.theme(route-next);
   }
   .is-unplaced,
   .is-completed {
@@ -349,5 +472,130 @@
     &__links {
       padding: ui.pg(sm);
     }
+  }
+}
+
+
+.fleet-trip-detail {
+  display: grid;
+  gap: ui.pg(sm);
+  padding: ui.pg(md);
+  border-top: 1px solid ui.theme(border-subtle);
+
+  &__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: ui.pg(xs) ui.pg(sm);
+    h3 {
+      margin: 0;
+      font-size: ui.fs(lead);
+    }
+  }
+  &__eyebrow {
+    flex-basis: 100%;
+    color: ui.theme(text-muted);
+    font-size: ui.fs(micro);
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  &__phase {
+    padding: 0 ui.pg(xs);
+    border: 1px solid currentColor;
+    border-radius: ui.radius(sm);
+    font-size: ui.fs(micro);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: ui.theme(text-muted);
+    &.is-current {
+      color: ui.theme(transit);
+    }
+    &.is-next,
+    &.is-upcoming {
+      color: ui.theme(route-next);
+    }
+  }
+  &__status {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(caption);
+  }
+  &__conflict {
+    margin: 0;
+    color: ui.theme(warning-text);
+    font-weight: 600;
+  }
+  &__route {
+    display: grid;
+    margin: 0;
+    color: ui.theme(text);
+    font-weight: 600;
+    small {
+      color: ui.theme(text-muted);
+      font-weight: 400;
+    }
+  }
+  &__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(ui.size(route-metric), 1fr));
+    gap: ui.pg(xs) ui.pg(md);
+    margin: 0;
+    dt {
+      color: ui.theme(text-muted);
+      font-size: ui.fs(caption);
+    }
+    dd {
+      margin: 0;
+      color: ui.theme(text);
+      font-weight: 600;
+    }
+  }
+  &__stops {
+    display: grid;
+    gap: ui.pg(xs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  &__stop {
+    border-radius: ui.radius(sm);
+    scroll-margin: ui.pg(md);
+    &.is-focused {
+      box-shadow: 0 0 0 2px ui.theme(accent, 0.5);
+    }
+    &:focus {
+      outline: none;
+    }
+  }
+  &__stop-facts {
+    display: grid;
+    gap: ui.pg(xs);
+    margin: 0;
+    > div {
+      display: grid;
+      grid-template-columns: ui.size(route-metric) minmax(0, 1fr);
+      gap: ui.pg(sm);
+    }
+    dt {
+      color: ui.theme(text-muted);
+    }
+    dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+  &__notes {
+    margin: ui.pg(xs) 0 0;
+    strong {
+      display: block;
+      color: ui.theme(text-muted);
+      font-weight: 600;
+    }
+  }
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.pg(sm);
   }
 }

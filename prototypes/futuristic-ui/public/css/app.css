@@ -1615,7 +1615,7 @@ button:disabled {
 
 .stop-row {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
   gap: 2px 10px;
   width: 100%;
   padding: 7px 6px;
@@ -1636,9 +1636,13 @@ button:disabled {
 
 .stop-row .mark {
   grid-row: 1 / span 2;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 3px;
+  border-radius: 11px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-2);
   border: 1.5px solid var(--text-3);
   display: grid;
   place-items: center;

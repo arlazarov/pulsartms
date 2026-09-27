@@ -32,7 +32,7 @@
         {
             var stop = visit.Stop;
             <li @key="(stop.Id, DispatchStopPresentation.CompletionRevision(Load.Stops))" hidden="@(_selectedStopId.HasValue && _selectedStopId != stop.Id)" class="@(IsPickup(stop) ? "is-pickup" : stop.Job is "Drop Off" or "Delivery" ? "is-delivery" : "is-waypoint")">
-                <DispatchLoadStop DispatchId="Load.Id" Stop="stop" Number="visit.Number" VisitLabel="@visit.VisitLabel" FallbackDate="FallbackDate(visit.Number - 1)" Eta="Load.Eta" CompletedLoad="IsCompleted" Refreshing="Refreshing" Detailed="true" CollapsibleDetails="true" OpenDetails="() => OpenStopAsync(stop.Id)" DetailsOpen="@(_selectedStopId == stop.Id)" HasAdditionalDetails="DispatchStopPresentation.HasSupplementalFacts(stop)">
+                <DispatchLoadStop DispatchId="Load.Id" Stop="stop" Number="visit.Number" Marker="@visit.Marker" VisitLabel="@visit.VisitLabel" FallbackDate="FallbackDate(visit.Number - 1)" Eta="Load.Eta" CompletedLoad="IsCompleted" Refreshing="Refreshing" Detailed="true" CollapsibleDetails="true" OpenDetails="() => OpenStopAsync(stop.Id)" DetailsOpen="@(_selectedStopId == stop.Id)" HasAdditionalDetails="DispatchStopPresentation.HasSupplementalFacts(stop)">
                 <AdditionalDetails>
                 <div class="dispatch-paper__stop-metadata">
                     <dl class="dispatch-paper__stop-facts">

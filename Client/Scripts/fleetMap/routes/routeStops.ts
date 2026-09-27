@@ -1,3 +1,4 @@
+import { tripStopLabels } from './stopLabels.ts';
 import type { LoadReference, PlanStop, RoutePoint } from '../contracts.d.ts';
 import type { StopEtaLabel } from './stopEtaLabels.ts';
 import type { StopFacts } from './stopCardContent.ts';
@@ -34,6 +35,12 @@ export function createRouteStops(
   const entries = new Map<string, Entry>();
   let progress: number | null = null,
     selectedId: string | null = null;
+  // Set by a layout that shows a chosen stop in its own panel (the
+  // Futuristic trip panel): a badge press then chooses the stop there
+  // instead of opening the stop card. The focused stop is highlighted.
+  let chooser: ((stopId: string) => void) | null = null;
+  let focusedId: string | null = null;
+  const highlight = new Map<string, boolean>();
   let etaLabels = new Map<string, StopEtaLabel>();
   let dispatchId: string | null = null,
     loadReference: LoadReference | null = null;
@@ -165,6 +172,7 @@ export function createRouteStops(
       // a truck is standing on one, where the mark it makes with the truck
       // says it already.
       const ordered = orderedStops(plan);
+      const labels = tripStopLabels(ordered.map(stop => stop.job));
       const nextId = plan?.tracking?.nextStopId ?? null;
       const nextIndex = ordered.findIndex(stop => stop.id === nextId);
       const previousId =
@@ -179,7 +187,8 @@ export function createRouteStops(
           const marker = new StopMarker({
             map,
             position: point(stop.point),
-            number: `${index + 1}`,
+            number: labels[index],
+            order: index + 1,
             job: stop.job,
           });
           entry = {
@@ -192,7 +201,8 @@ export function createRouteStops(
             contentKey: undefined,
           };
           const selected: Entry = entry;
-          marker.onSelect = () => show(selected);
+          marker.onSelect = () =>
+            chooser ? chooser(selected.stop.id) : show(selected);
           entries.set(stop.id, entry);
         }
         const row: Entry = entry!;
@@ -204,15 +214,18 @@ export function createRouteStops(
           stop,
           detailsHref ?? '',
           visits.get(stop.id),
-          `${index + 1}`,
+          labels[index],
           completed,
         );
         row.metadata = JSON.stringify(row.details);
-        row.marker.setNumber?.(`${index + 1}`);
+        row.marker.setNumber?.(labels[index]);
+        row.marker.setOrder?.(index + 1);
         row.marker.setJob?.(stop.job);
         row.marker.setDone?.(completed);
         row.marker.setNext?.(stop.id === nextId, plan?.truckId ?? null);
-        row.marker.highlighted = stop.id === nextId || stop.id === previousId;
+        highlight.set(stop.id, stop.id === nextId || stop.id === previousId);
+        row.marker.highlighted =
+          highlight.get(stop.id) || stop.id === focusedId;
         const stopIndex = plan.stops.findIndex(
           (s: PlanStop) => s.id === stop.id,
         );
@@ -233,6 +246,15 @@ export function createRouteStops(
         entries.delete(id);
         if (selectedId === id) this.close();
       }
+    },
+    setChooser(value: ((stopId: string) => void) | null) {
+      chooser = value;
+    },
+    // Highlights one stop as chosen, or none; the camera does not move.
+    focus(stopId: string | null) {
+      focusedId = stopId;
+      for (const [id, entry] of entries)
+        entry.marker.highlighted = highlight.get(id) || id === focusedId;
     },
     setProgress(value: number | null) {
       progress = value;

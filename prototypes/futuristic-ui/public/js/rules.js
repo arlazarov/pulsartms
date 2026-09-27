@@ -190,3 +190,22 @@ export function ago(ms) {
   if (m < 60) return `${m} min ago`;
   return `${Math.round(m / 60)} h ago`;
 }
+
+// Client/Shared/Dispatch/StopMarkers: P for a pickup, D for a load's only
+// delivery, D1, D2... for several, in the load's stop order; other stops
+// keep their place. Never the load's place in the chain.
+const jobWords = (job) =>
+  String(job ?? '').trim().split(/\s+/).join(' ').toUpperCase();
+export const isPickupJob = (job) => ['PICKUP', 'PICK UP'].includes(
+  jobWords(job));
+export const isDeliveryJob = (job) =>
+  ['DELIVERY', 'DROP OFF', 'DROPOFF'].includes(jobWords(job));
+
+export function tripStopLabels(jobs) {
+  const deliveries = jobs.filter(isDeliveryJob).length;
+  let delivery = 0;
+  return jobs.map((job, index) =>
+    isPickupJob(job) ? 'P'
+    : isDeliveryJob(job) ? (deliveries === 1 ? 'D' : `D${++delivery}`)
+    : String(index + 1));
+}

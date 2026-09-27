@@ -42,4 +42,29 @@
   .dispatch-board__count {
     letter-spacing: 0.02em;
   }
+
+  // Cards take the height of their own stops, not the tallest beside them.
+  .dispatch-truck__loads {
+    align-items: start;
+    gap: ui.pg(xl);
+    padding: ui.pg(sm) ui.pg(md) ui.pg(md);
+  }
+  .dispatch-load {
+    padding: ui.pg(sm) ui.pg(md);
+  }
+  // Table rows stay neutral: the Current badge says the phase. The row a
+  // reader is on - pointer or keyboard - is the one marked.
+  .dispatch-table tr.is-current td,
+  .dispatch-table tr.is-current:hover td,
+  .dispatch-table tr.is-current:focus-within td {
+    background: ui.theme(surface);
+  }
+  .dispatch-table tr.dispatch-table__row:hover td,
+  .dispatch-table tr.dispatch-table__row:focus-within td {
+    background: ui.theme(selected);
+  }
+  .dispatch-table tr.dispatch-table__row:hover td:first-child,
+  .dispatch-table tr.dispatch-table__row:focus-within td:first-child {
+    box-shadow: inset 3px 0 0 ui.theme(accent);
+  }
 }

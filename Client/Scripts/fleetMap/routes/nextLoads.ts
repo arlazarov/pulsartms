@@ -13,6 +13,7 @@ type NextLoadLine = {
 };
 type NextLoadMarker = {
   setNumber(number: string): void;
+  setOrder?(order: number): void;
   highlighted: boolean;
   setMap?(map: google.maps.Map | null): void;
   setOptions?(options: Record<string, unknown>): void;
@@ -230,7 +231,7 @@ export function createNextLoadsLayer(
           return { line, loadId, chain };
         },
       );
-      for (const { stop, numbers, members, color } of display.groups) {
+      for (const { stop, numbers, labels, members, color } of display.groups) {
         const loadId = identity(members[0]);
         remember(loadId, { lat: stop.latitude, lng: stop.longitude });
         for (const member of members)
@@ -243,7 +244,8 @@ export function createNextLoadsLayer(
           map,
           job: stop.job,
           position: { lat: stop.latitude, lng: stop.longitude },
-          number: [...numbers].map(number => number + offset).join('/'),
+          number: labels.join('/'),
+          order: Math.min(...numbers) + offset,
           color,
           transientLabel: true,
           onHover: (over: unknown) =>
@@ -258,11 +260,10 @@ export function createNextLoadsLayer(
             select(row, identity(row));
           },
         });
-        markerUpdates.push(() =>
-          marker.setNumber(
-            [...numbers].map(number => number + offset).join('/'),
-          ),
-        );
+        markerUpdates.push(() => {
+          marker.setNumber(labels.join('/'));
+          marker.setOrder?.(Math.min(...numbers) + offset);
+        });
         markerGroups.push({ marker, members });
         objects.push(marker);
       }

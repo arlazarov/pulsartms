@@ -1,6 +1,6 @@
 using Client.Models.DTO.Dispatch;
 using Client.Models.DTO.Fleet;
-using Client.Models.DTO.Planning;
+using Client.Shared.Dispatch;
 using Microsoft.AspNetCore.Components;
 
 namespace Client.Pages.FleetMap;
@@ -23,29 +23,49 @@ public partial class FleetTripChain
   [Parameter]
   public Guid? CurrentId { get; set; }
 
+  // The trip the panel under the truck shows, and its chosen stop.
   [Parameter]
-  public IReadOnlyList<NextLoadRoute> Next { get; set; } = [];
+  public DispatchResponse? SelectedTrip { get; set; }
+
+  [Parameter]
+  public Guid? FocusedStopId { get; set; }
 
   [Parameter]
   public bool NextLoadsShown { get; set; }
 
   [Parameter]
-  public Guid? InspectedLoadId { get; set; }
-
-  [Parameter]
-  public Guid? InspectedLegId { get; set; }
-
-  [Parameter]
   public EventCallback<DispatchResponse> Selected { get; set; }
+
+  [Parameter]
+  public EventCallback<(
+    DispatchResponse Load,
+    Guid Stop
+  )> StopSelected { get; set; }
 
   [Parameter]
   public EventCallback ShowNextLoads { get; set; }
 
-  private bool Drawn(DispatchResponse load) =>
-    NextLoadsShown
-    && Next.Any(route =>
-      route.Id == load.Id && route.ExecutionLegId == load.ExecutionLegId
-    );
+  private readonly Dictionary<int, ElementReference> _cards = [];
+  private int _position;
+
+  private bool IsSelected(DispatchResponse load) =>
+    SelectedTrip is { } trip
+    && trip.Id == load.Id
+    && trip.ExecutionLegId == load.ExecutionLegId;
+
+  private async Task MoveAsync(int step)
+  {
+    var target = Math.Clamp(_position + step, 0, Loads.Count - 1);
+    _position = target;
+    if (_cards.TryGetValue(target, out var card))
+      await card.FocusAsync();
+  }
+
+  protected override void OnParametersSet()
+  {
+    if (_position >= Loads.Count)
+      _position = 0;
+  }
 
   // The colour is the server's phase; an unplaced or stale load stays
   // neutral rather than borrowing a place.
@@ -63,21 +83,7 @@ public partial class FleetTripChain
   private static string Lane(DispatchResponse load)
   {
     var stops = load.Stops.OrderBy(x => x.Sequence).ToList();
-    var from = stops.FirstOrDefault(x => !x.DriverOnly);
-    var to = stops.LastOrDefault();
-    return $"{Place(from)} → {Place(to)}";
-  }
-
-  private static string Place(DispatchStopResponse? stop)
-  {
-    if (stop is null)
-      return "Pending";
-    var text = string.Join(
-      ", ",
-      new[] { stop.City, stop.Province }.Where(x =>
-        !string.IsNullOrWhiteSpace(x)
-      )
-    );
-    return text.Length > 0 ? text : stop.Name;
+    return $"{DispatchBoardRow.Location(stops.FirstOrDefault(x => !x.DriverOnly))}"
+      + $" → {DispatchBoardRow.Location(stops.LastOrDefault())}";
   }
 }

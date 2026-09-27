@@ -362,7 +362,8 @@ for (const change of [
         'stop advancement does not replace unchanged geometry',
       );
       assert.ok(markers[0].map);
-      assert.equal(markers[1].number, '2');
+      assert.equal(markers[1].number, 'D');
+      assert.equal(markers[1].order, 2);
     }
   });
 }

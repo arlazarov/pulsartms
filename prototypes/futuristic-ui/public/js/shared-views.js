@@ -12,6 +12,7 @@ import {
   stopDone,
   stopJob,
   location,
+  tripStopLabels,
 } from './rules.js';
 import { state } from './store.js';
 
@@ -71,15 +72,17 @@ export function hos(t) {
 export function stopList(t, x) {
   const sel = state.selection.stopId;
   const firstOpen = x.stops.find((s) => !stopDone(s));
+  const labels = tripStopLabels(x.stops.map((s) => s.job));
   return `<ol class="stops">${x.stops
-    .map((s) => {
+    .map((s, i) => {
       const done = stopDone(s);
       const eta = etaFor(t, s.id);
       const markCls = done ? 'done' : s === firstOpen ? 'next' : '';
       return `<li><button class="stop-row" data-action="stop"
         data-trip="${x.id}" data-id="${s.id}" data-key="stop-${s.id}"
         aria-pressed="${s.id === sel}">
-        <span class="mark ${markCls}">${done ? icon('check', 'sm') : ''}</span>
+        <span class="mark ${markCls}" aria-label="${esc(labels[i])}">${
+          done ? icon('check', 'sm') : esc(labels[i])}</span>
         <span class="job">${stopJob(s.job)}${
           done ? ' <span class="muted">· Completed</span>' : s === firstOpen
             ? ' <span class="muted">· Next stop</span>' : ''}</span>

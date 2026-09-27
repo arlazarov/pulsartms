@@ -281,6 +281,12 @@ export function createRouteLayer(
     closePopup() {
       if (!disposed) stops.close();
     },
+    setStopChooser(value: ((stopId: string) => void) | null) {
+      if (!disposed) stops.setChooser(value);
+    },
+    focusStop(stopId: string | null) {
+      if (!disposed) stops.focus(stopId);
+    },
     dispose,
   };
 }

@@ -274,6 +274,21 @@ function build() {
           isCompleted: false,
         },
       ];
+      // One demo trip drops at two receivers: its deliveries read D1, D2.
+      if (ti === 1 && k === 0) {
+        const mid = cities.TOL;
+        stops.splice(1, 0, {
+          ...stops[1],
+          id: uuid(50000 + stopNo++),
+          sequence: 2,
+          name: facilities[(ti + 9) % facilities.length],
+          city: mid[0],
+          province: mid[1],
+          latitude: mid[2],
+          longitude: mid[3],
+        });
+        stops[2] = { ...stops[2], sequence: 3 };
+      }
       const price = Math.round((m * (2.3 + ((ti + k) % 5) * 0.18)) / 25) * 25;
       return {
         id: uuid(20000 + loadNo),

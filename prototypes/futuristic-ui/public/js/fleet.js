@@ -27,6 +27,7 @@ import {
   location,
   stopJob,
   text,
+  tripStopLabels,
 } from './rules.js';
 
 export function mountFleet(root, scope, ctx) {
@@ -183,7 +184,8 @@ export function mountFleet(root, scope, ctx) {
     const out = [];
     const trips = state.layers.future ? t.trips
       : t.trips.filter((x) => x.phase === 'current');
-    for (const x of trips)
+    for (const x of trips) {
+      const labels = tripStopLabels(x.stops.map((s) => s.job));
       x.stops.forEach((s, i) => {
         if (s.latitude == null) return;
         const last = i === x.stops.length - 1;
@@ -193,13 +195,15 @@ export function mountFleet(root, scope, ctx) {
           lat: s.latitude,
           lng: s.longitude,
           phase: x.phase === 'completed' ? 'later' : x.phase,
-          label: last ? String(x.index) : stopJob(s.job)[0],
+          label: labels[i],
           major: last,
           dim: focus && focus !== x.id,
           selected: state.selection.stopId === s.id,
-          aria: `${x.loadNumber} ${stopJob(s.job)} ${location(s)}`,
+          aria: `${x.loadNumber} ${labels[i]} ${stopJob(s.job)} ${location(
+            s)}`,
         });
       });
+    }
     return out;
   }
 

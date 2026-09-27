@@ -94,7 +94,8 @@
     {
         <FleetTruckList Trucks="MatchingTrucks" Total="_trucks.Count"
                         SelectedId="_activeTruckId"
-                        Selected="ChooseListTruckAsync" />
+                        Selected="ChooseListTruckAsync"
+                        @bind-Collapsed="_listCollapsed" />
     }
     <div
         id="fleet-map"
@@ -197,6 +198,20 @@
                     </span>
                     <ActionIcon Kind="chevron-down" />
                 </button>
+                @if (Futuristic)
+                {
+                    @* On a Futuristic phone the card opens closed, and the
+                       actions row closes with it: Follow stays in reach
+                       here. The same control as the row's. *@
+                    <button type="button"
+                            class="btn btn--small map-action-icon fleet-map-inspector__quick-follow
+                                @(_followingTruck ? "btn--primary" : "")"
+                            title="Follow" aria-label="Follow truck"
+                            aria-pressed="@(_followingTruck ? "true" : "false")"
+                            @onclick="ToggleFollowAsync">
+                        <ActionIcon Kind="follow" /><span>Follow</span>
+                    </button>
+                }
             }
             @if (_inspectorMode is MapInspectorMode.FuelPlan
                 or MapInspectorMode.FuelStations)
@@ -572,13 +587,25 @@
                 Route options · <LoadNumber Value="inspected.LoadNumber" />
             </button>
             <NextLoadDetailsCard Embedded="true" Route="inspected" Stop="InspectedStop" StopIndex="_inspectedStopIndex"
-                Number="InspectedStopNumber"
+                Marker="InspectedStopMarker"
                 FuelArrival="InspectedFuelArrival"
                 DistanceMiles="InspectedDistanceMiles"
                 Details="_inspectedDetails" Eta="InspectedEta" Refreshing="InspectedEtaRefreshing" Loading="@(_inspectedDetailsRequest is not null)"
                 Error="@_inspectedDetailsError" CopyMessage="@_addressCopyMessage"
                 OnCopy="CopyTextAsync" OnClose="BackToTruckAsync"
                 ReturnOrigin="@ReturnOrigin" />
+        }
+        @if (Futuristic && _inspectorMode == MapInspectorMode.Truck
+            && SelectedTrip is { } trip)
+        {
+            <FleetTripDetail @key="(trip.Id, trip.ExecutionLegId)" Load="trip"
+                Position="@(_chainLoads.ToList().IndexOf(trip) + 1)"
+                Count="_chainLoads.Count"
+                Eta="@(IsCurrentTrip(trip) ? DisplayRouteState?.Eta : trip.Eta)"
+                Refreshing="@(IsCurrentTrip(trip) && _etaRefreshPending)"
+                FocusedStopId="_tripStop"
+                StopChosen="ChooseTripStopAsync"
+                RouteOptions="@(load => OpenRouteEditorAsync(load.Id, load.ExecutionLegId))" />
         }
     </section>
 
@@ -664,10 +691,10 @@
         <FleetTripChain Truck="SelectedTruck" Loads="_chainLoads"
                         Loading="_chainLoading" Failed="_chainFailed"
                         CurrentId="SelectedDispatchId"
-                        Next="_nextLoadRoutes" NextLoadsShown="ShowNextLoads"
-                        InspectedLoadId="_inspectedLoadId"
-                        InspectedLegId="_inspectedExecutionLegId"
+                        SelectedTrip="SelectedTrip" FocusedStopId="_tripStop"
+                        NextLoadsShown="ShowNextLoads"
                         Selected="ChooseChainLoadAsync"
+                        StopSelected="ChooseChainStopAsync"
                         ShowNextLoads="ShowNextLoadsFromChainAsync" />
     }
     </div>

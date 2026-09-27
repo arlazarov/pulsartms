@@ -43,6 +43,9 @@ function fixture(t, formatDistance) {
     setNumber(number) {
       this.number = number;
     }
+    setOrder(order) {
+      this.order = order;
+    }
     setJob(job) {
       this.job = job;
     }
@@ -616,7 +619,7 @@ test('current stop shows only its appointment reference under the address and up
   );
 });
 
-test('current stops keep numbered pickup and delivery circles without persistent text labels', t => {
+test('current stops keep P and D badges without persistent text labels', t => {
   const { stops, markers, calls, state } = fixture(t);
   const route = plan([
     stop(),
@@ -634,9 +637,13 @@ test('current stops keep numbered pickup and delivery circles without persistent
   assert.deepEqual(
     markers.map(marker => [marker.number, marker.job, marker.distance]),
     [
-      ['1', 'Pickup', null],
-      ['2', 'Delivery', null],
+      ['P', 'Pickup', null],
+      ['D', 'Delivery', null],
     ],
+  );
+  assert.deepEqual(
+    markers.map(marker => marker.order),
+    [1, 2],
   );
   assert.ok(
     markers.every(
@@ -720,7 +727,7 @@ test('current-stop details show the local appointment window, exact ETA status a
     head.children.map(node => node.className),
     ['fleet-route-popup__number', 'fleet-route-popup__identity'],
   );
-  assert.equal(head.children[0].textContent, '1');
+  assert.equal(head.children[0].textContent, 'P');
   assert.deepEqual(
     head.children[1].children.map(node => [node.className, node.textContent]),
     [
@@ -811,7 +818,11 @@ test('five load occurrences keep exact appointments and repeat context without m
   assert.equal(markers.length, 5);
   assert.deepEqual(
     markers.map(marker => marker.number),
-    ['1', '2', '3', '4', '5'],
+    ['P', 'P', 'P', 'P', 'D'],
+  );
+  assert.deepEqual(
+    markers.map(marker => marker.order),
+    [1, 2, 3, 4, 5],
   );
   for (const [index, time, visit] of [
     [0, '02:00 AM', 'Visit 1 of 3'],
@@ -852,10 +863,10 @@ test('five load occurrences keep exact appointments and repeat context without m
     stops: routeStops.slice(1),
     tracking: { passedStopIds: ['webster-1'] },
   });
-  assert.equal(
-    markers[3].number,
-    '4',
-    'passed stops retain their place in the full route numbering',
+  assert.deepEqual(
+    [markers[3].number, markers[3].order],
+    ['P', 4],
+    'passed stops retain their label and place in the full route',
   );
   assert.equal(
     row(state.shown, 'fleet-route-popup__kind').textContent,
@@ -1159,7 +1170,7 @@ test('a passed stop is marked done and its badge is outlined, not filled', t => 
   markers[0].onSelect();
   const head = row(state.shown, 'fleet-route-popup__head');
   assert.equal(head.children[0].className, 'fleet-route-popup__number is-done');
-  assert.equal(head.children[0].textContent, '1');
+  assert.equal(head.children[0].textContent, 'P');
   const done = row(head, 'fleet-route-popup__job').children[0];
   assert.deepEqual(
     [done.className, done.textContent],
@@ -1322,21 +1333,73 @@ test('the stop just left and the stop being driven to are named', t => {
     tracking: { passedStopIds: ['one', 'two'], nextStopId: 'three' },
   });
   const marked = () =>
-    markers.filter(marker => marker.highlighted).map(marker => marker.number);
+    markers
+      .filter(marker => marker.highlighted)
+      .map(marker => [marker.number, marker.order]);
 
-  assert.deepEqual(marked(), ['2', '3']);
+  assert.deepEqual(marked(), [
+    ['D1', 2],
+    ['P', 3],
+  ]);
 
   // Driving on moves both marks along with the truck.
   stops.setPlan({
     ...plan(route),
     tracking: { passedStopIds: ['one', 'two', 'three'], nextStopId: 'four' },
   });
-  assert.deepEqual(marked(), ['3', '4']);
+  assert.deepEqual(marked(), [
+    ['P', 3],
+    ['D2', 4],
+  ]);
 
   // Nothing driven yet: there is a stop ahead and none behind.
   stops.setPlan({
     ...plan(route),
     tracking: { passedStopIds: [], nextStopId: 'one' },
   });
-  assert.deepEqual(marked(), ['1']);
+  assert.deepEqual(marked(), [['P', 1]]);
+});
+
+test('reordered stops of the same plan keep their labels and badge order', t => {
+  const { stops, markers } = fixture(t);
+  const pickup = stop();
+  const first = stop({ id: 'first', job: 'Delivery', name: 'First' });
+  const second = stop({ id: 'second', job: 'Delivery', name: 'Second' });
+  stops.setPlan(plan([pickup, first, second]));
+  stops.setPlan(plan([pickup, second, first]));
+  // Markers are kept in creation order: pickup, first, second.
+  assert.deepEqual(
+    markers.map(marker => [marker.number, marker.order]),
+    [
+      ['P', 1],
+      ['D2', 3],
+      ['D1', 2],
+    ],
+  );
+  assert.equal(markers.length, 3, 'the same markers are updated, not added');
+});
+
+test('a trip panel chooses the stop a badge names and highlights it', t => {
+  const { stops, markers, state } = fixture(t);
+  const chosen = [];
+  stops.setPlan(
+    plan([stop(), stop({ id: 'delivery', job: 'Delivery', name: 'Customer' })]),
+  );
+  stops.setChooser(id => chosen.push(id));
+  markers[1].onSelect();
+  assert.deepEqual(chosen, ['delivery']);
+  assert.equal(state.shown ?? null, null, 'the stop card does not open');
+
+  stops.focus('delivery');
+  assert.equal(markers[1].highlighted, true);
+  stops.focus(null);
+  assert.equal(
+    markers[1].highlighted,
+    false,
+    'clearing the choice leaves only the route highlights',
+  );
+
+  stops.setChooser(null);
+  markers[1].onSelect();
+  assert.ok(state.shown, 'without a panel the badge opens its card');
 });

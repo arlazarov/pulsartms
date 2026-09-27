@@ -471,6 +471,20 @@ export async function createFleetMap(
       clearNextLoadSelection() {
         if (!disposed) nextLoads.clearSelection();
       },
+      // The Futuristic trip panel: a current-route badge chooses its stop
+      // in the panel (OnRouteStopChosen) rather than opening the stop card,
+      // and the panel's chosen stop is highlighted on the map.
+      setStopChoice(enabled: unknown) {
+        if (disposed) return;
+        route.setStopChooser(
+          enabled === true
+            ? stopId => notify('OnRouteStopChosen', stopId)
+            : null,
+        );
+      },
+      focusRouteStop(stopId: string | null) {
+        if (!disposed) route.focusStop(stopId ?? null);
+      },
       setLoadReference(payload: any) {
         if (!disposed) route.setLoadReference(payload);
       },

@@ -46,8 +46,11 @@
                                     </span>
                                     </span>
                                     <span class="dispatch-paper__tab-schedule"
-                                          aria-label="@($"{EventLabel(row)} {EventSchedule(row)}")">@EventSchedule(row)</span>
+                                          aria-label="@($"{EventLabel(row)} appointment {EventSchedule(row)}")"><small>@EventLabel(row) appointment</small>@EventSchedule(row)</span>
                                 </span>
+                                @* Where the load goes, in one line: the card
+                                   named neither end. *@
+                                <span class="dispatch-paper__tab-route">@DispatchBoardRow.Location(row.Origin) → @DispatchBoardRow.Location(row.Destination)</span>
                                 <span class="dispatch-paper__tab-line"><span class="dispatch-paper__tab-driver">@row.DriverName</span><span class="dispatch-paper__tab-status @row.StatusTone">@row.Status</span></span>
                                 <span class="dispatch-paper__tab-financials"><strong class="dispatch-paper__tab-miles"><DistanceText Miles="@((double?)row.Load.TotalMiles)" /> total</strong><span>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency) · @DispatchFinancialDisplay.LoadedRpm @DispatchFinancialDisplay.Amount(row.Load.LoadedRatePerMile) · @DispatchFinancialDisplay.TotalRpm @DispatchFinancialDisplay.Amount(row.Load.TotalRatePerMile)</span></span>
                             </span>

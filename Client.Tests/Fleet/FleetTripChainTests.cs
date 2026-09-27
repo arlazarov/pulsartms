@@ -1,7 +1,6 @@
 using Bunit;
 using Client.Models.DTO.Dispatch;
 using Client.Models.DTO.Fleet;
-using Client.Models.DTO.Planning;
 using Client.Pages.FleetMap;
 
 namespace Client.Tests.Fleet;
@@ -31,7 +30,6 @@ public sealed class FleetTripChainTests
         .Add(x => x.Loads, [current, next, stale, unknown])
         .Add(x => x.CurrentId, current.Id)
         .Add(x => x.NextLoadsShown, true)
-        .Add(x => x.Next, [Route(next)])
     );
     Assert.Equal(
       ["Current", "Next", "Needs refresh"],
@@ -48,28 +46,49 @@ public sealed class FleetTripChainTests
   }
 
   [Fact]
-  public void DrawnLoadsOpenOnTheMapAndOthersLinkToTheirWorkspace()
+  public void EachTripOffersItsStopsWithTheMapsLabels()
   {
     using var context = new BunitContext();
     var current = Load(1409, "current");
-    var next = Load(1410, "next");
-    var later = Load(1411, "upcoming");
-    DispatchResponse? chosen = null;
+    var next = Load(1410, "next", deliveries: 2);
+    (DispatchResponse Load, Guid Stop)? chosen = null;
+    DispatchResponse? trip = null;
     var component = context.Render<FleetTripChain>(p =>
       p.Add(x => x.Truck, Truck)
-        .Add(x => x.Loads, [current, next, later])
+        .Add(x => x.Loads, [current, next])
         .Add(x => x.CurrentId, current.Id)
-        .Add(x => x.NextLoadsShown, true)
-        .Add(x => x.Next, [Route(next)])
-        .Add(x => x.Selected, load => chosen = load)
+        .Add(x => x.SelectedTrip, next)
+        .Add(x => x.FocusedStopId, next.Stops[2].Id)
+        .Add(x => x.Selected, load => trip = load)
+        .Add(x => x.StopSelected, value => chosen = value)
     );
-    Assert.Equal(2, component.FindAll("button.fleet-trip-chain__card").Count);
+    var links = component.FindAll(".fleet-trip-chain__link");
     Assert.Equal(
-      $"/dispatch/{later.Id}",
-      component.Find("a.fleet-trip-chain__card").GetAttribute("href")
+      ["P", "D"],
+      links[0]
+        .QuerySelectorAll(".fleet-trip-chain__stop")
+        .Select(x => x.TextContent.Trim())
     );
-    component.FindAll("button.fleet-trip-chain__card")[1].Click();
-    Assert.Same(next, chosen);
+    // The trip's own deliveries, never its place in the chain.
+    Assert.Equal(
+      ["P", "D1", "D2"],
+      links[1]
+        .QuerySelectorAll(".fleet-trip-chain__stop")
+        .Select(x => x.TextContent.Trim())
+    );
+    Assert.Contains("is-selected", links[1].ClassName);
+    Assert.Equal(
+      "true",
+      links[1]
+        .QuerySelectorAll(".fleet-trip-chain__stop")[2]
+        .GetAttribute("aria-pressed")
+    );
+
+    component.FindAll(".fleet-trip-chain__stop")[3].Click();
+    Assert.Same(next, chosen?.Load);
+    Assert.Equal(next.Stops[1].Id, chosen?.Stop);
+    component.FindAll(".fleet-trip-chain__trip")[0].Click();
+    Assert.Same(current, trip);
   }
 
   [Fact]
@@ -96,7 +115,7 @@ public sealed class FleetTripChainTests
       p.Add(x => x.Truck, Truck).Add(x => x.Failed, true)
     );
     Assert.Contains("could not be read", component.Markup);
-    Assert.Empty(component.FindAll(".fleet-trip-chain__card"));
+    Assert.Empty(component.FindAll(".fleet-trip-chain__trip"));
   }
 
   private static DispatchResponse Load(int number, string phase) =>
@@ -121,7 +140,4 @@ public sealed class FleetTripChainTests
         },
       ],
     };
-
-  private static NextLoadRoute Route(DispatchResponse load) =>
-    new(load.Id, load.LoadNumber, "planned", [], []);
 }

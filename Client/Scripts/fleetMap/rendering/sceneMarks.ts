@@ -115,6 +115,8 @@ export function createSceneMarks(scene: MarkedScene) {
       this.id = ++stopId;
       this.position = xy(options.position);
       this.number = options.number;
+      // Where the badge falls among overlapping badges; its text is a label.
+      this.order = options.order;
       this.color = options.color;
       this.onSelect = options.onSelect;
       this.onHover = options.onHover;
@@ -147,6 +149,11 @@ export function createSceneMarks(scene: MarkedScene) {
     setNumber(value: string) {
       if (this.number === value) return;
       this.number = value;
+      scene.stopsChanged();
+    }
+    setOrder(value: number) {
+      if (this.order === value) return;
+      this.order = value;
       scene.stopsChanged();
     }
     setJob(value: string) {

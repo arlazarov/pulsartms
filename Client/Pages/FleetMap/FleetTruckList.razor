@@ -1,6 +1,20 @@
 @* Futuristic interface only: the trucks the page already has, filtered by
    the page's own truck search. Choosing one takes the same path as
    choosing it in search. *@
+@if (Collapsed)
+{
+    <section class="fleet-truck-list is-collapsed" aria-label="Fleet list, hidden">
+        <button type="button" class="btn fleet-truck-list__expand"
+                aria-expanded="false" aria-controls="fleet-truck-list-rows"
+                title="Show the fleet list"
+                @onclick="() => CollapsedChanged.InvokeAsync(false)">
+            <ActionIcon Kind="truck" />
+            <span>Fleet · @Total</span>
+        </button>
+    </section>
+}
+else
+{
 <section class="fleet-truck-list" aria-labelledby="fleet-truck-list-title">
     <header class="fleet-truck-list__header">
         <h2 id="fleet-truck-list-title">Fleet · @Total</h2>
@@ -8,8 +22,12 @@
         {
             <span class="fleet-truck-list__count">@Trucks.Count shown</span>
         }
+        <button type="button" class="btn btn--small fleet-truck-list__collapse"
+                aria-expanded="true" aria-controls="fleet-truck-list-rows"
+                title="Hide the fleet list to widen the map"
+                @onclick="() => CollapsedChanged.InvokeAsync(true)">Hide</button>
     </header>
-    <div class="fleet-truck-list__body">
+    <div class="fleet-truck-list__body" id="fleet-truck-list-rows">
         @if (Trucks.Count == 0)
         {
             <p class="fleet-truck-list__empty">
@@ -38,3 +56,4 @@
         }
     </div>
 </section>
+}
