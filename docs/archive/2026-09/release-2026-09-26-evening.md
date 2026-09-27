@@ -291,6 +291,71 @@ through Hosting; no error-level entry or 5xx in the new revision's first
 minutes; protected data unchanged (73/3/5/55/0/2). The frontend that
 reads the notices (`530f8e6c`) was already published.
 
+## API and frontend, night release (23:49-00:02 UTC)
+
+The owner asked, through Root, to publish Root's Dispatch corrections and
+the Papers fix together ("грузи на сервер"). Candidate
+`64c8ebfc6d6b23e973c0d59c2c2ac1e127540ed5`: Root's
+`codex/dispatch-fleet-integration` at `48eb706a` (`3557cf1c` Dispatch
+truck information always open; `48eb706a` the summary bound to the
+visible truck, leg and assignment rather than the first row, Fleet
+telemetry wrap, the station day grid; see
+[the record](dispatch-summary-and-card-wrap-2026-09-26.md)), this
+record's fifteenth publication section (`0c5de609`), and `64c8ebfc`
+(from `d302c989`): the board reads an accepted load's empty miles by its
+leg, so Cards, Table and Papers show total and Total RPM, and Papers
+names the trailer. Root reviewed the Papers diff. No migration (73, the
+latest `20260925190516_RecordBaseRoadBorderCheck`, in the database and
+the candidate).
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash verify-release.sh` on
+  `64c8ebfc`, exit 0: Server 3,773, Client 1,251, JavaScript 663, no
+  failure or skip; the PostgreSQL tests ran on the recorded isolated
+  development database. Offline UI smoke `browser-ui-e0U0UV` (12 cases,
+  no failure, browser error or unexpected request) and
+  `browser-messaging-tabs-Dec7iE`; verified artifact `release-i7KlEz`
+  with the raw log in its `evidence/`.
+- **Backup** (23:48 UTC):
+  `local-backups/pulsartms-release-backup.AzEK1i/before-2026-09-26-night-release-64c8ebfc.dump`,
+  `pg_dump` 18.6 custom format, 30,798,740 bytes, SHA-256
+  `b29c6ca2e9e3109561969f6b81e0baaaea6fdbc5dc767ee863e4e1e1167f6604`,
+  720 entries, 104 table data; in the inventory. No restore rehearsed.
+- **API:** before, `amftms-api-b-c59a3784-a92c-400d-9989-8648631ab2e2`
+  (`e6531949`), generation 262. Cloud Build
+  `c073d3c1-2b69-4079-a641-bed83855636a` from a clean worktree; image
+  `us-east4-docker.pkg.dev/amftms/amftms/api@sha256:f67e61f2e972d32b1d271acfad028791bb16cbb0fac984b0ed0d380661a5c9b8`;
+  revision `amftms-api-b-c073d3c1-2b69-4079-a641-bed83855636a`,
+  generation 264, spec and status traffic 100%; Ready, Active,
+  ContainerHealthy and MinInstancesProvisioned true; 1 GiB, minimum 1,
+  maximum 1, scaling automatic, unchanged. The previous revision is
+  Retired, Active false and TrafficShutDown true: drained. Health 200 on
+  the service and through Hosting; no error-level entry or 5xx in the
+  new revision's first minutes.
+- **Frontend:** `deploy-client.sh` from the same worktree with the local
+  `Client/wwwroot/appsettings.json` copied in; its own gate passed
+  (Server 3,773, Client 1,251, JavaScript 663), artifact
+  `release-kRy7jd`, 285 files. Served `index.html` (SHA-256
+  `20c3a06f8b9937a55bfa6aba060508212a7ac56b7d3b0faa0d689a23021eae50`)
+  and `css/main.css?v=9a48f1e1d21eb66e` match the artifact, as do
+  `appsettings.json` (JSON, 39-character Maps key), `dotnet.*.js`,
+  `dotnet.native.*.wasm`, `Client.*.wasm` and
+  `blazor.webassembly.*.js`. Entry HTML and the stylesheet answer
+  `no-cache`, fingerprinted framework files one-year `immutable`.
+- **Protected data** before and after, read only: migrations 73, users
+  3, conversations 5, conversation messages 55, driver messages 0,
+  broadcasts 0, fuel visit sends 0, stored credentials 2.
+
+The four artifacts are copied to the main checkout's
+`artifacts/managed/` and pinned. The service descriptions kept as
+evidence have their environment values redacted: `gcloud run services
+describe` prints the service's secrets in plain text.
+
+Not done: the completed list still reads empty miles by load alone, so
+completed accepted loads show no total or Total RPM there. Load 1403
+(truck 11005) still lacks its final completion confirmation; this
+release does not repair it. No message sent; no reset, replan, payment
+or Driver Pay change; maximum instances unchanged.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
