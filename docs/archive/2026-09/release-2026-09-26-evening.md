@@ -408,6 +408,44 @@ bounded historical mileage preparation; neither was run here. Completed
 loads with several sections keep an unknown total. No message sent; no
 reset, replan, payment or Driver Pay change.
 
+## API follow-up of September 27 (01:20-01:29 UTC)
+
+Historical recovery found that background preparation skipped every
+completed load, so a completed accepted leg never got its empty miles.
+Root fixed the guard (`93fb6e19`, see
+[the record](completed-native-preparation-2026-09-27.md)) and cleared
+it for this release; only that commit was added. Candidate
+`c331aa00530b3600beafd80fb3fdb84f977a5cc2` (the previous candidate, its
+record, and `93fb6e19`). No migration (73), no DTO or Client change.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash verify-release.sh` on
+  `c331aa00`, exit 0: Server 3,783, Client 1,251, JavaScript 663, no
+  failure or skip. UI smoke `browser-ui-c3qzjq` (12 cases, clean) and
+  `browser-messaging-tabs-KAWrUr`; artifact `release-i5W4Lc`, raw log in
+  its `evidence/`.
+- **Backup** (01:20 UTC):
+  `local-backups/pulsartms-release-backup.GRE0DF/before-2026-09-27-api-release-c331aa00.dump`,
+  40,027,225 bytes, SHA-256
+  `9e1d0c267dc7c2df5c793e053bcab1cd5e3f04c019d732f70e08f6be93dc775a`,
+  720 entries, 104 table data; in the inventory. No restore rehearsed.
+- **API:** before, `amftms-api-b-643f1ba7-66c8-4b70-ab87-850853fbf5f4`
+  (`fc56a735`), generation 266. Cloud Build
+  `ff6c836e-849b-487d-8a20-b452f7ae1146`; image
+  `us-east4-docker.pkg.dev/amftms/amftms/api@sha256:8dc8042d0bef92b3a0c0aa68efcd3d3ff71341e6e6a60732c1821f4111f4715b`;
+  revision `amftms-api-b-ff6c836e-849b-487d-8a20-b452f7ae1146`,
+  generation 268, spec and status traffic 100%; Ready, Active,
+  ContainerHealthy and MinInstancesProvisioned true; 1 GiB, minimum 1,
+  maximum 1, scaling automatic, unchanged. The previous revision is
+  Retired, Active false and TrafficShutDown true: drained. Health 200 on
+  the service and through Hosting; no error-level entry or 5xx in the
+  first minutes. Hosting still serves `release-kRy7jd`.
+- **Protected data** before and after, read-only counts: unchanged
+  (73, 3, 5, 55, 0, 0, 0, 2).
+
+The first deploy attempt stopped before any change: the gcloud login had
+expired and the owner signed in again. Root alone resumes the historical
+recovery; nothing was requeued or replanned here.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
