@@ -685,6 +685,30 @@ The truck 11005 resource conflict (AMF1403 active, trailer 55904 versus
   messages, 0 broadcasts, 0 hand-overs, 2 credentials). No production
   row was written by this release.
 
+## Frontend c2618995: Table by coloured days (September 27, 12:01 UTC)
+
+The owner's chosen Table design and the RPM names, on the owner's word
+and after root's review of `354fcb33` (runs keyed by truck identity;
+shared equipment only), fixed in `c2618995`. Branch
+`claude/ui-after-incident`: `c240e8d3` (the incident release) plus
+`a692d5bb` (RPM and Total RPM on every Dispatch view), `354fcb33`
+(coloured day bands, today always shown, a truck's several loads named
+once, column names for screen readers only) and `c2618995`. Client,
+styles and tests only; API and database untouched. A first run on
+`354fcb33` was stopped during its build, before any publication.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a clean
+  detached worktree with the local settings copied in (11:55-12:01 UTC),
+  exit 0: JavaScript 665, Client 1,264, Server 3,793, none skipped;
+  offline UI smoke without errors (`browser-ui-J6r6MO`).
+- **Artifact:** `release-ZyxGZ4`, 285 files, pinned in the main
+  checkout's `artifacts/managed/release-ZyxGZ4` with the log and smoke
+  report under `gate/`.
+- **Live:** `index.html`
+  (`1437878d27f63ddc13fe1840a438154cacdc13498680af16c4cd0047b53f43ab`)
+  and `css/main.css?v=8c5efad3c931ee5d` byte-identical to the artifact.
+  Rollback target: `release-H5e12a` (the incident frontend).
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
