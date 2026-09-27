@@ -128,6 +128,14 @@
             </article>
         }
         }
+        @if (ShownView != 1 && _historyFailed)
+        {
+            <section class="dispatch-history" aria-label="Completed loads found">
+                <p class="dispatch-history__error" role="alert">Completed loads could not be searched.
+                    <button type="button" class="btn btn--small"
+                            @onclick="RetryHistory">Retry</button></p>
+            </section>
+        }
         @if (ShownView != 1 && _history is { Count: > 0 } history)
         {
             @* Completed loads the search found: Cards and Papers stay

@@ -344,6 +344,8 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
       _planningSummaries.Clear();
       _latestTelemetry.Clear();
       _history = null;
+      _historyFailed = false;
+      _historyRequest?.Cancel();
     }
     _planningRequest?.Cancel();
     _planningRequest = null;
@@ -377,10 +379,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
         _loadedQuery = query;
         _boardRefreshFailed = false;
         _loadedSearch = query.Search;
-        if (SearchesHistory(query))
-          _ = ReadHistoryAsync(query, version, _lifetime.Token);
-        else
-          _history = null;
+        StartHistory(query, version);
         // Not awaited: the board's state is settled before anything else
         // may run, and the address follows it.
         _ = Places.ReflectAsync(

@@ -81,6 +81,14 @@
       text-decoration: underline;
     }
   }
+  .dispatch-history__error {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ui.pg(sm);
+    margin: 0;
+    color: ui.theme(text-secondary);
+  }
   .dispatch-history__tag {
     padding: ui.pg(micro) ui.pg(sm);
     border-radius: ui.radius(pill);

@@ -13,6 +13,8 @@ public partial class DispatchList
 {
   private IReadOnlyList<DispatchResponse>? _history;
   private int _historyTotal;
+  private bool _historyFailed;
+  private CancellationTokenSource? _historyRequest;
 
   // A completed load opens like any other, with the way back to this list.
   private string HistoryUrl(DispatchResponse load) =>
@@ -45,29 +47,62 @@ public partial class DispatchList
     && query.View != 1
     && !string.IsNullOrWhiteSpace(query.Search);
 
+  // The read of one search's history: a newer search, a cleared one or
+  // another view cancels it, and an answer for anything but the list now
+  // shown is dropped.
+  private void StartHistory(DispatchBoardRequest query, int version)
+  {
+    _historyRequest?.Cancel();
+    _historyRequest = null;
+    _historyFailed = false;
+    if (!SearchesHistory(query))
+    {
+      _history = null;
+      return;
+    }
+    var request = CancellationTokenSource.CreateLinkedTokenSource(
+      _lifetime.Token
+    );
+    _historyRequest = request;
+    _ = ReadHistoryAsync(query, version, request);
+  }
+
+  private void RetryHistory()
+  {
+    if (_loadedQuery is { } query)
+      StartHistory(query, _boardVersion);
+  }
+
   private async Task ReadHistoryAsync(
     DispatchBoardRequest query,
     int version,
-    CancellationToken ct
+    CancellationTokenSource request
   )
   {
     try
     {
       var result = await Api.GetAsync<PaginatedListDTO<DispatchResponse>>(
         (query with { Page = 1, Completed = true }).Url,
-        ct
+        request.Token
       );
       if (
         _disposed
-        || ct.IsCancellationRequested
+        || request.IsCancellationRequested
         || version != _boardVersion
         || query != BoardRequest(_page)
       )
         return;
-      _history = result.Success ? result.Response?.Items : null;
+      // A failed read is said as one, never shown as "nothing found".
+      _historyFailed = !result.Success || result.Response is null;
+      _history = _historyFailed ? null : result.Response!.Items;
       _historyTotal = result.Response?.TotalCount ?? 0;
       await InvokeAsync(StateHasChanged);
     }
-    catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+    finally
+    {
+      if (ReferenceEquals(_historyRequest, request))
+        _historyRequest = null;
+      request.Dispose();
+    }
   }
 }

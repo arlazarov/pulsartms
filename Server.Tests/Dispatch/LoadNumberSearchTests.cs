@@ -33,7 +33,10 @@ public sealed class LoadNumberSearchTests
     int? number
   ) => Assert.Equal(number, LoadNumberSearch.Number(search, prefix));
 
-  // The board finds trucks: the one carrying AMF1408, not another.
+  // The board finds trucks. A displayed number names one load exactly:
+  // AMF1408 finds the truck with 1408 and not the one with 14080. Typed
+  // bare, the digits are also the start of a number on the board, as the
+  // dispatcher types, so 1408 finds both.
   [Fact]
   public void TheBoardFindsTheTruckCarryingALoadByItsDisplayedNumber()
   {
@@ -46,24 +49,30 @@ public sealed class LoadNumberSearchTests
         Dispatches = [new() { Id = Guid.NewGuid(), LoadNumber = load }],
       };
     var index = new DispatchBoardIndex(
-      [Truck("11005", 1408), Truck("11006", 1500)]
+      [Truck("11005", 1408), Truck("11006", 14080), Truck("11007", 1500)]
     );
+    string[] Find(string search) =>
+      index
+        .SelectPage(
+          1,
+          12,
+          search,
+          null,
+          DriverScope.All,
+          LoadNumberSearch.Number(search, "AMF")
+        )
+        .Items.Select(x => x.TruckNumber)
+        .ToArray();
 
-    var page = index.SelectPage(
-      1,
-      12,
-      "AMF1408",
-      null,
-      DriverScope.All,
-      LoadNumberSearch.Number("AMF1408", "AMF")
-    );
-
-    Assert.Equal("11005", Assert.Single(page.Items).TruckNumber);
+    Assert.Equal(["11005"], Find("AMF1408"));
+    Assert.Equal(["11005", "11006"], Find("1408"));
   }
 
+  // History takes a number exactly, displayed or bare: 1408, not 14080.
   [Theory]
   [InlineData(null, "AMF1408")]
   [InlineData("XYZ", "xyz1408")]
+  [InlineData(null, "1408")]
   public async Task HistoryFindsACompletedLoadByItsDisplayedNumber(
     string? savedPrefix,
     string search
@@ -93,7 +102,7 @@ public sealed class LoadNumberSearchTests
       new Load
       {
         Id = Guid.NewGuid(),
-        LoadNumber = 1409,
+        LoadNumber = 14080,
         Status = "completed",
       }
     );

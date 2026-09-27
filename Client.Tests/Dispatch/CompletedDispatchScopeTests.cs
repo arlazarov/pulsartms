@@ -201,6 +201,97 @@ public sealed class CompletedDispatchScopeTests
     );
   }
 
+  // A history search that fails says so, with a retry, and is never shown
+  // as "no completed loads" (root's review, September 27).
+  [Fact]
+  public async Task AFailedHistorySearchOffersARetryNotAnEmptyAnswer()
+  {
+    var fail = true;
+    var clock = new FakeTimeProvider(
+      new DateTimeOffset(2026, 9, 9, 12, 0, 0, TimeSpan.Zero)
+    );
+    using var context = Context(
+      clock,
+      (request, _) =>
+        Task.FromResult(
+          request.RequestUri!.AbsolutePath != "/api/dispatch"
+            ? Auxiliary(request.RequestUri)
+          : fail ? new HttpResponseMessage(HttpStatusCode.InternalServerError)
+          : Archive(1, 1408)
+        )
+    );
+    var component = context.Render<DispatchList>();
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find("#dispatch-search"))
+    );
+
+    await Search(component, clock, "AMF1408");
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find(".dispatch-history__error"))
+    );
+    Assert.Empty(component.FindAll(".dispatch-history__open"));
+
+    fail = false;
+    await component.InvokeAsync(
+      () =>
+        component
+          .Find(".dispatch-history__error button")
+          .ClickAsync(new MouseEventArgs())
+    );
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find(".dispatch-history__open"))
+    );
+    Assert.Empty(component.FindAll(".dispatch-history__error"));
+  }
+
+  // An answer for a search the dispatcher has since cleared or replaced is
+  // dropped: history held back for AMF1408 does not appear after the search
+  // is cleared, nor over the answer for AMF1409.
+  [Fact]
+  public async Task ALateHistoryAnswerForAnOlderSearchIsDropped()
+  {
+    var held = new TaskCompletionSource<HttpResponseMessage>(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    var clock = new FakeTimeProvider(
+      new DateTimeOffset(2026, 9, 9, 12, 0, 0, TimeSpan.Zero)
+    );
+    using var context = Context(
+      clock,
+      (request, _) =>
+        request.RequestUri!.AbsolutePath != "/api/dispatch"
+          ? Task.FromResult(Auxiliary(request.RequestUri))
+        : request.RequestUri.Query.Contains("AMF1408") ? held.Task
+        : Task.FromResult(Archive(1, 1409))
+    );
+    var component = context.Render<DispatchList>();
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find("#dispatch-search"))
+    );
+
+    await Search(component, clock, "AMF1408");
+    await Search(component, clock, "");
+    held.SetResult(Archive(1, 1408));
+    await component.InvokeAsync(async () => await Task.Yield());
+    Assert.Empty(component.FindAll(".dispatch-history"));
+
+    var late = new TaskCompletionSource<HttpResponseMessage>(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    held = late;
+    await Search(component, clock, "AMF1408");
+    await Search(component, clock, "AMF1409");
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find(".dispatch-history__open"))
+    );
+    late.SetResult(Archive(1, 1408));
+    await component.InvokeAsync(async () => await Task.Yield());
+    Assert.Contains(
+      "1409",
+      Assert.Single(component.FindAll(".dispatch-history__open")).TextContent
+    );
+  }
+
   private static async Task Search(
     IRenderedComponent<DispatchList> component,
     FakeTimeProvider clock,

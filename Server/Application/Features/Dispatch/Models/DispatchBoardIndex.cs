@@ -123,10 +123,7 @@ public sealed class DispatchBoardIndex
           x.Loads.Any(d =>
             Prefix(d.Number)
             || loadNumber is { } number
-              && d.Number.StartsWith(
-                number.ToString(CultureInfo.InvariantCulture),
-                StringComparison.Ordinal
-              )
+              && d.Number == number.ToString(CultureInfo.InvariantCulture)
             || Prefix(d.Order)
             || Matches(d.Customer)
             || Matches(d.Driver)
