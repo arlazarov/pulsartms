@@ -26,19 +26,108 @@
       color: ui.theme(text-muted);
     }
   }
-  // Each day heads its loads as a band the eye finds while scrolling: the
-  // days are how the owner reads the table (September 27), and a quiet
-  // small line was nearly invisible between the rows.
+  // Each day heads its loads as a coloured band, the way a truck heads
+  // its loads in Cards (the owner, September 27): the days are how the
+  // table is read, and a quiet line was lost between the rows. A strip of
+  // the canvas above each band sets the days apart as cards.
+  .dispatch-table__day-group {
+    --day-fill: #{ui.theme(day-past)};
+    &.is-today {
+      --day-fill: #{ui.theme(day-today)};
+    }
+    &.is-future {
+      --day-fill: #{ui.theme(day-future)};
+    }
+    &.is-undated {
+      --day-fill: #{ui.theme(text-muted)};
+    }
+  }
+  // The strip is painted, not a border: a collapsed border straddles the
+  // row above, and its column rules showed through the gap.
   .dispatch-table__day > th {
-    padding: ui.pg(sm) ui.pg(md);
-    border-top: 1px solid ui.theme(border);
-    border-bottom: 1px solid ui.theme(border-subtle);
-    box-shadow: inset 3px 0 0 ui.theme(accent);
-    background: ui.theme(surface-muted);
-    color: ui.theme(text);
-    font-size: ui.fs(lead);
+    padding: calc(#{ui.pg(md)} + #{ui.pg(sm)}) ui.pg(md) ui.pg(sm);
+    background: linear-gradient(
+      ui.theme(canvas) 0 ui.pg(md),
+      var(--day-fill) ui.pg(md)
+    );
+    color: ui.theme(on-day);
+    font-size: ui.fs(heading);
     font-weight: 700;
     text-align: start;
+    white-space: nowrap;
+    > * {
+      vertical-align: middle;
+    }
+  }
+  .dispatch-table__day-group:first-of-type .dispatch-table__day > th {
+    padding-top: ui.pg(sm);
+    background: var(--day-fill);
+  }
+  .dispatch-table__day-chip {
+    display: inline-grid;
+    place-items: center;
+    min-inline-size: ui.size(control-touch);
+    margin-inline-end: ui.pg(md);
+    padding: ui.pg(xs);
+    border-radius: ui.radius(sm);
+    background: ui.theme(on-day);
+    color: var(--day-fill);
+    line-height: 1;
+    > small {
+      margin: 0;
+      font-size: ui.fs(caption);
+      font-weight: 700;
+    }
+    > b {
+      font-size: ui.fs(lead);
+    }
+  }
+  .dispatch-table__day-when {
+    margin-inline-start: ui.pg(md);
+    padding: ui.pg(micro) ui.pg(sm);
+    border: 1px solid ui.theme(on-day, 0.5);
+    border-radius: ui.radius(pill);
+    background: ui.theme(on-day, 0.16);
+    font-size: ui.fs(small);
+    font-weight: 600;
+  }
+  .dispatch-table__day-count {
+    float: inline-end;
+    font-size: ui.fs(small);
+    font-weight: 600;
+    line-height: 2.4;
+  }
+  // A truck with several loads that day, as for LTL, is named once above
+  // them; its rows read their figures on two short lines.
+  .dispatch-table__run > td {
+    padding-block: ui.pg(sm);
+    border-bottom: 1px solid ui.theme(border-subtle);
+    background: ui.theme(surface-soft);
+    color: ui.theme(text-secondary);
+    > strong {
+      margin-inline-end: ui.pg(sm);
+      color: ui.theme(text);
+    }
+    > small {
+      float: inline-end;
+      margin: 0;
+    }
+  }
+  tr.is-run > td {
+    padding-block: ui.pg(sm);
+  }
+  tr.is-run .dispatch-table__distances,
+  tr.is-run .dispatch-table__figures {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 ui.pg(sm);
+    > div {
+      display: flex;
+      gap: ui.pg(xs);
+    }
+  }
+  .dispatch-table__empty > td {
+    color: ui.theme(text-muted);
   }
   .dispatch-table__truck > strong,
   .dispatch-table__equipment > strong,

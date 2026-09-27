@@ -201,12 +201,32 @@ public sealed class DispatchFinancialViewsTests
     );
 
     Assert.Equal(
-      ["Yesterday · " + Day(-1), "Today · " + Day(0), "Tomorrow · " + Day(1)],
+      [Day(-1), Day(0), Day(1)],
       table
-        .FindAll(".dispatch-table__day > th")
+        .FindAll(".dispatch-table__day-date")
         .Select(cell => cell.TextContent)
         .ToArray()
     );
+    Assert.Equal(
+      ["Yesterday", "Today", "Tomorrow"],
+      table
+        .FindAll(".dispatch-table__day-when")
+        .Select(cell => cell.TextContent)
+        .ToArray()
+    );
+    Assert.Equal(
+      ["is-past", "is-today", "is-future"],
+      table
+        .FindAll(".dispatch-table__day-group")
+        .Select(group => group.ClassList.Last())
+        .ToArray()
+    );
+    // Today's two loads carry the same truck (the load's own, 54777), so
+    // it is named once above them.
+    var run = Assert.Single(table.FindAll(".dispatch-table__run"));
+    Assert.Contains("Truck 54777", run.TextContent);
+    Assert.Contains("2 loads", run.TextContent);
+    Assert.Equal(2, table.FindAll("tr.is-run").Count);
     Assert.Equal(
       ["1", "2", "4", "3"],
       table
@@ -263,6 +283,41 @@ public sealed class DispatchFinancialViewsTests
         .Select(cell => cell.TextContent.Trim())
         .OrderBy(text => text)
         .ToArray()
+    );
+  }
+
+  // Today always has its band on the active table, so the eye finds where
+  // the plan starts even on a day without pickups.
+  [Theory]
+  [InlineData(false, 2)]
+  [InlineData(true, 1)]
+  public void TableShowsTodayEvenWithoutPickups(bool completed, int bands)
+  {
+    using var context = new BunitContext();
+    var load = Load(7);
+    load.Stops[0].ScheduledDate = DateOnly
+      .FromDateTime(DateTime.Today)
+      .AddDays(-2);
+    var table = context.Render<DispatchTable>(parameters =>
+      parameters
+        .Add(
+          view => view.Trucks,
+          [
+            new TruckDispatchBoardResponse
+            {
+              Key = "a",
+              TruckNumber = "11005",
+              Dispatches = [load],
+            },
+          ]
+        )
+        .Add(view => view.Completed, completed)
+    );
+
+    Assert.Equal(bands, table.FindAll(".dispatch-table__day").Count);
+    Assert.Equal(
+      completed ? 0 : 1,
+      table.FindAll(".dispatch-table__empty").Count
     );
   }
 

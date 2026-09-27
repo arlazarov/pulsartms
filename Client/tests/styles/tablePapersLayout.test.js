@@ -53,7 +53,25 @@ test('Table differentiates current rows while leaving upcoming loads neutral and
   assert.doesNotMatch(distance, /flex-direction: column;/);
   assert.match(
     rule('.dispatch-page .dispatch-table .dispatch-table__day > th'),
-    /background: var\(--ui-surface-muted\);[\s\S]*color: var\(--ui-text\);[\s\S]*font-size: var\(--type-lead\);[\s\S]*font-weight: 700;/,
+    /background: linear-gradient\(var\(--ui-canvas\) 0 var\(--space-md\), var\(--day-fill\) var\(--space-md\)\);[\s\S]*color: var\(--ui-on-day\);[\s\S]*font-weight: 700;/,
+  );
+  // Past, today and future each fill the band with their own role.
+  const days = rule(
+    '.dispatch-page .dispatch-table .dispatch-table__day-group',
+  );
+  assert.match(days, /--day-fill: var\(--ui-day-past\);/);
+  assert.match(
+    rule('.dispatch-page .dispatch-table .dispatch-table__day-group.is-today'),
+    /--day-fill: var\(--ui-day-today\);/,
+  );
+  assert.match(
+    rule('.dispatch-page .dispatch-table .dispatch-table__day-group.is-future'),
+    /--day-fill: var\(--ui-day-future\);/,
+  );
+  // A truck's several loads read their figures on short lines.
+  assert.match(
+    rule('.dispatch-page .dispatch-table tr.is-run .dispatch-table__figures'),
+    /display: flex;[\s\S]*flex-wrap: wrap;/,
   );
   assert.match(
     rule('.dispatch-page .dispatch-table .dispatch-table__truck'),

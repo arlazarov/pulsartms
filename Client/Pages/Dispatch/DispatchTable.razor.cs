@@ -51,9 +51,26 @@ public partial class DispatchTable
 
   // The rows by the day each load is picked up: the earliest day at the
   // top and the future below it (the owner, September 27); history reads
-  // from its latest day. A load without a date closes the list.
+  // from its latest day. A load without a date closes the list. Each day
+  // is a card whose colour says past, today or future, and today always
+  // has one, so the eye finds where the plan starts.
   private sealed record DispatchDay(
+    DateOnly? Date,
+    string Tone,
+    string Weekday,
+    string Number,
     string Label,
+    string? When,
+    IReadOnlyList<TruckRun> Runs
+  )
+  {
+    public int Count => Runs.Sum(run => run.Rows.Count);
+  }
+
+  // The loads one truck picks up that day, as for LTL: named once above
+  // them when there is more than one.
+  private sealed record TruckRun(
+    DispatchBoardRow First,
     IReadOnlyList<DispatchBoardRow> Rows
   );
 
@@ -68,34 +85,60 @@ public partial class DispatchTable
         truck.Dispatches.Select(load => new DispatchBoardRow(truck, load))
       )
       .ToArray();
-    var days = _rows.GroupBy(row => row.PickupDate);
-    var ordered = Completed
-      ? days.OrderBy(day => day.Key is null).ThenByDescending(day => day.Key)
-      : days.OrderBy(day => day.Key is null).ThenBy(day => day.Key);
-    _days = ordered
-      .Select(day => new DispatchDay(
-        DayLabel(day.Key, today),
-        // A stable order: loads booked alike keep the board's order, so a
-        // truck's current load stays ahead of its next.
-        day.OrderBy(row => row.Origin?.ScheduledTime ?? TimeOnly.MaxValue)
-          .ToArray()
-      ))
-      .ToArray();
+    var days = _rows
+      .GroupBy(row => row.PickupDate)
+      .Select(day => Day(day.Key, today, Runs(day)))
+      .ToList();
+    if (!Completed && days.Count > 0 && days.All(day => day.Date != today))
+      days.Add(Day(today, today, []));
+    _days = Completed
+      ? days.OrderBy(day => day.Date is null)
+        .ThenByDescending(day => day.Date)
+        .ToArray()
+      : days.OrderBy(day => day.Date is null).ThenBy(day => day.Date).ToArray();
   }
 
-  private static string DayLabel(DateOnly? day, DateOnly today)
+  // A stable order: loads booked alike keep the board's order, so a truck's
+  // current load stays ahead of its next; a truck's loads stay together.
+  private static IReadOnlyList<TruckRun> Runs(
+    IEnumerable<DispatchBoardRow> day
+  ) =>
+    day.OrderBy(row => row.Origin?.ScheduledTime ?? TimeOnly.MaxValue)
+      .GroupBy(row => row.TruckNumber)
+      .Select(run => new TruckRun(run.First(), run.ToArray()))
+      .ToArray();
+
+  private static DispatchDay Day(
+    DateOnly? day,
+    DateOnly today,
+    IReadOnlyList<TruckRun> runs
+  )
   {
     if (day is not { } value)
-      return "No pickup date";
-    var date = value.ToString("ddd, MMM d", CultureInfo.InvariantCulture);
-    return (value.DayNumber - today.DayNumber) switch
-    {
-      -1 => $"Yesterday · {date}",
-      0 => $"Today · {date}",
-      1 => $"Tomorrow · {date}",
-      _ => date,
-    };
+      return new(null, "is-undated", "", "—", "No pickup date", null, runs);
+    var offset = value.DayNumber - today.DayNumber;
+    return new(
+      value,
+      offset < 0 ? "is-past"
+        : offset == 0 ? "is-today"
+        : "is-future",
+      value.ToString("ddd", CultureInfo.InvariantCulture).ToUpperInvariant(),
+      value.Day.ToString(CultureInfo.InvariantCulture),
+      value.ToString("ddd, MMM d", CultureInfo.InvariantCulture),
+      offset switch
+      {
+        0 => "Today",
+        -1 => "Yesterday",
+        1 => "Tomorrow",
+        < 0 => $"{-offset} days ago",
+        _ => $"In {offset} days",
+      },
+      runs
+    );
   }
+
+  private static string Loads(int count) =>
+    count == 1 ? "1 load" : $"{count} loads";
 
   private string LoadUrl(DispatchBoardRow row) =>
     ReturnNavigation.Load(row.Load.Id, ReturnOrigin);
