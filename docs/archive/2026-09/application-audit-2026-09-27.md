@@ -766,6 +766,23 @@ failed on the new worktree's missing Client packages and is marked.
     acceptance whose record is gone) and are red on the old code
     (diagnostic-A3DBEV/red.log). No existing rows: WhatsApp hand-over
     has never been used (0 driver messages, 0 visit sends).
+  - Root's review of `7db23d82`: the timeout does not prove the provider
+    stopped. With the call held past two minutes and a plan published
+    meanwhile, a late acceptance recorded the hand-over after the plan
+    that dropped the stop, and that plan's withdrawn list could not know
+    it: the driver's stop was lost from view (red on `7db23d82`,
+    diagnostic-Q7uMxs). `FuelIssueRecords.ApplyAsync` now shows as
+    withdrawn a hand-over from an older plan recorded after the viewed
+    plan was calculated, for a stop still ahead, that the plan no longer
+    has - from the query it already made. A plan that kept the stop shows
+    it sent and refuses to send it again; a plain press while the call is
+    held is uncertain and sends nothing; the original request found taken
+    sends nothing. `AlreadyTaken` is recorded only if the taken attempt
+    is the same truck, root leg, assignment and visit set (the key does
+    not name the plan's calculation). Limits: an explicit "send again"
+    after the uncertain warning is a dispatcher's decision and can send a
+    second message if the first was only slow; clocks are assumed shared
+    (one instance).
 
 ## Open gaps, owners and completion criteria
 

@@ -404,6 +404,114 @@ public sealed class FuelIssueSenderTests
     );
   }
 
+  // Root's review of D6: a timeout does not prove the provider stopped.
+  // The call is held past Messaging's two minutes, a fuel plan is
+  // published meanwhile (the attempt no longer holds it), and then the
+  // provider takes the message. Whether the new plan dropped the stop or
+  // kept it, the driver's stop is not lost from view, and nothing is sent
+  // twice.
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task AnAcceptanceHeldPastTheTimeoutLosesNoStopAndSendsNothingTwice(
+    bool kept
+  )
+  {
+    await using var f = await Fixture.CreateAsync();
+    // Plans calculated on the fixture's clock, which the records use too.
+    var shown = await f.CurrentAsync(
+      f.Time.GetUtcNow().UtcDateTime,
+      fill: true
+    );
+    var reached = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    var held = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    f.Transport.During = async () =>
+    {
+      reached.TrySetResult();
+      await held.Task;
+    };
+    var sending = f.SendAsync(Request(shown), shown);
+    await reached.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+    f.Time.Advance(TimeSpan.FromMinutes(3));
+    var stamp = await f.Records.StampAsync(f.Truck, default);
+    await f.Records.RequireUnchangedAsync(stamp, default);
+    var station = kept ? Fixture.Station : Fixture.OtherStation;
+    var published = f.Time.GetUtcNow().UtcDateTime;
+    // The dispatcher presses send again, plainly, while the call is held:
+    // the attempt is uncertain, and nothing more is sent.
+    var meanwhile = await f.SendFromAnotherRequestAsync(Request(shown), shown);
+    held.SetResult();
+    Assert.Equal(200, (await sending).Status);
+    f.Transport.During = null;
+    var now = await f.CurrentAsync(published, fill: true, station: station);
+    var again = await f.SendAsync(Request(shown), shown);
+
+    Assert.Equal(409, meanwhile.Status);
+    Assert.Equal(200, again.Status);
+    var recorded = await f.Db.FuelVisitSends.SingleAsync();
+    Assert.Equal(Fixture.Station, recorded.StationId);
+    if (kept)
+    {
+      Assert.NotNull(Assert.Single(now.Saved.Plan.Stops).Sent);
+      Assert.Empty(now.Saved.Plan.Withdrawn ?? []);
+      Assert.Equal(409, (await f.SendAsync(Request(now), now)).Status);
+    }
+    else
+      Assert.Equal(
+        Fixture.Station,
+        Assert.Single(now.Saved.Plan.Withdrawn ?? []).StationId
+      );
+    Assert.Single(f.Transport.Sent);
+  }
+
+  // The key does not name the plan's calculation. An attempt found under
+  // it is recorded only if it carried these very visits for this work;
+  // otherwise nothing is recorded and nothing is sent.
+  [Fact]
+  public async Task ATakenAttemptForOtherVisitsRecordsNothing()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var shown = await f.CurrentAsync(First, fill: true);
+    Assert.Equal(200, (await f.SendAsync(Request(shown), shown)).Status);
+    await f.Db.FuelVisitSends.ExecuteDeleteAsync();
+    await f.Db.DriverMessages.ExecuteUpdateAsync(x =>
+      x.SetProperty(m => m.VisitKeys, "another-visit")
+    );
+
+    var again = await f.SendAsync(Request(shown), shown);
+
+    Assert.Equal(409, again.Status);
+    Assert.Empty(await f.Db.FuelVisitSends.ToListAsync());
+    Assert.Single(f.Transport.Sent);
+  }
+
+  // A view of an older plan - a summary prepared a moment before a newer
+  // plan was handed over - does not show the newer plan's stops as
+  // withdrawn: only an older plan's hand-over that the viewed plan dropped
+  // is.
+  [Fact]
+  public async Task ANewerPlansHandOverIsNotWithdrawnFromAnOlderView()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var older = f.Time.GetUtcNow().UtcDateTime;
+    f.Time.Advance(TimeSpan.FromMinutes(1));
+    var newer = await f.CurrentAsync(
+      f.Time.GetUtcNow().UtcDateTime,
+      fill: true,
+      station: Fixture.OtherStation
+    );
+    Assert.Equal(200, (await f.SendAsync(Request(newer), newer)).Status);
+
+    var view = await f.CurrentAsync(older, fill: true);
+
+    Assert.Empty(view.Saved.Plan.Withdrawn ?? []);
+  }
+
   private sealed class Fixture : IAsyncDisposable
   {
     public required PlanningRefreshFixture Refresh { get; init; }
@@ -412,6 +520,12 @@ public sealed class FuelIssueSenderTests
     public Guid Dispatch { get; private set; }
     public Guid Driver { get; private set; }
     public Guid Before { get; } = Guid.NewGuid();
+    public static readonly Guid Station = new(
+      "11111111-1111-1111-1111-111111111111"
+    );
+    public static readonly Guid OtherStation = new(
+      "22222222-2222-2222-2222-222222222222"
+    );
     public Infrastructure.Persistence.AppDbContext Db => Refresh.Db;
     public ManualTimeProvider Time => Refresh.Time;
 
@@ -488,12 +602,13 @@ public sealed class FuelIssueSenderTests
       bool fill = false,
       double gallons = 0,
       string text = "fuel at LOVES",
-      string state = FuelIssueChannelStates.Ready
+      string state = FuelIssueChannelStates.Ready,
+      Guid? station = null
     )
     {
       var stop = new FuelPlanStop
       {
-        StationId = new Guid("11111111-1111-1111-1111-111111111111"),
+        StationId = station ?? Station,
         DispatchId = Dispatch,
         BeforeStopId = Before,
         FillToTarget = fill,
@@ -563,6 +678,40 @@ public sealed class FuelIssueSenderTests
       return new FuelIssueSender(Delivery, Records).SendAsync(
         request,
         _ => read(),
+        "dispatcher",
+        default
+      );
+    }
+
+    // The same send from another request's own context, while this
+    // fixture's context holds an attempt in flight.
+    public async Task<FuelIssueSender.Outcome> SendFromAnotherRequestAsync(
+      FuelIssueSendRequest request,
+      FuelIssuePreviews.Current current
+    )
+    {
+      await using var scope = Refresh.NewScope();
+      var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+      var company = Refresh.Services.GetRequiredService<ICurrentCompany>();
+      return await new FuelIssueSender(
+        new DriverTextDelivery(
+          db,
+          Transport,
+          company,
+          Time,
+          NullLogger<DriverTextDelivery>.Instance
+        ),
+        new FuelIssueRecords(
+          db,
+          Refresh.Services.GetRequiredService<PlanningSummaryCache>(),
+          company,
+          Options.Create(new FuelIssueOptions()),
+          Time,
+          new PlanningPublicationScope(db)
+        )
+      ).SendAsync(
+        request,
+        _ => Task.FromResult<FuelIssuePreviews.Current?>(current),
         "dispatcher",
         default
       );

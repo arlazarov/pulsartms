@@ -108,13 +108,21 @@ public sealed class FuelIssueSender(
       // The provider took an earlier attempt of this very message. Its
       // hand-over may never have been recorded - the process stopped
       // between the acceptance and the record (audit F17) - so it is
-      // recorded now from that attempt; RecordAsync keeps it once.
+      // recorded now from that attempt; RecordAsync keeps it once. The key
+      // does not name the plan's calculation, so the attempt is checked to
+      // be these visits of this work before anything is recorded.
       case DriverTextResult.AlreadyTaken:
+        if (!SameHandOver(outcome.Attempt!, saved, visits))
+          return new(
+            409,
+            "An earlier message with these words was sent for other "
+              + "stops. Nothing was recorded; open the plan again."
+          );
         await records.RecordAsync(
           saved,
           visits,
           outcome.Attempt!.Channel,
-          actor,
+          outcome.Attempt.CreatedBy ?? actor,
           CancellationToken.None,
           outcome.Attempt.Id
         );
@@ -157,6 +165,19 @@ public sealed class FuelIssueSender(
         return Outcome.Done;
     }
   }
+
+  private static bool SameHandOver(
+    DriverMessage taken,
+    TruckFuelPlanSnapshot saved,
+    IReadOnlyList<(FuelPlanStop Stop, string Text)> visits
+  ) =>
+    taken.TruckId == saved.TruckId
+    && taken.ExecutionLegId == saved.RootExecutionLegId
+    && taken.AssignmentRevision == saved.AssignmentRevision
+    && taken
+      .VisitKeys.Split(',', StringSplitOptions.RemoveEmptyEntries)
+      .ToHashSet()
+      .SetEquals(visits.Select(x => FuelVisitIdentity.Key(x.Stop)));
 
   // Whether the plan the dispatcher saw is still the one to send, to a
   // recipient the delivery owner currently marks ready.
