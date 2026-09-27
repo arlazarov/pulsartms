@@ -159,8 +159,8 @@ public sealed partial class DeadheadHistoryService(
       throw new InvalidOperationException(
         "Historical validation requires the work publication transaction."
       );
-    // Current work is validated by the publication owner. Native completed-leg
-    // selection shares references within each original lookup batch.
+    // Current work is validated by the publication owner; each captured
+    // history keeps its own completed-leg dependencies.
     foreach (var batch in batches)
     {
       if (batch.Snapshots.IsEmpty)

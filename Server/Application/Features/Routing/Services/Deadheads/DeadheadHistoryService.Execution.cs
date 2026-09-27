@@ -66,26 +66,6 @@ public sealed partial class DeadheadHistoryService
     PerformanceStages.Elapsed("deadhead-history", "legs", started);
     if (legs.Count == 0)
       return batches;
-    var allowed = batches
-      .Select(batch =>
-      {
-        var ownTrucks = batch.Values.Select(x => x.Current.TruckId).ToHashSet();
-        var ownPredecessors = batch
-          .Values.SelectMany(x => x.Predecessors)
-          .Select(x => x.Id)
-          .ToHashSet();
-        return legs.Where(x =>
-            ownTrucks.Contains(x.TruckId)
-            && (
-              x.Status != "completed"
-              || x.Predecessors.Any(ownPredecessors.Contains)
-              || x.SavedFor.Any(batch.ContainsKey)
-            )
-          )
-          .Select(x => x.Id)
-          .ToHashSet();
-      })
-      .ToArray();
     started = Stopwatch.GetTimestamp();
     var execution = await ExecutionLoads.ReadAsync(
       db,
@@ -107,30 +87,39 @@ public sealed partial class DeadheadHistoryService
     for (var index = 0; index < batches.Count; index++)
     {
       var batch = batches[index];
-      var eligible = allowed[index];
-      var eligibleTrucks = legs.Where(x => eligible.Contains(x.Id))
-        .Select(x => x.TruckId)
-        .ToHashSet();
-      var loads = execution
-        .Loads.Where(x =>
-          x.Work.ExecutionLegId is { } leg && eligible.Contains(leg)
-        )
-        .GroupBy(x => x.Work.TruckId)
-        .ToDictionary(x => x.Key!.Value, x => x.Select(y => y.Work).ToArray());
       var applied = batch.ToDictionary();
       foreach (var snapshot in batch.Values)
       {
-        if (
-          snapshot.Current.TruckId is not { } truck
-          || !eligibleTrucks.Contains(truck)
-        )
+        if (snapshot.Current.TruckId is not { } truck)
           continue;
-        // A union read must not widen the original batch's completed history.
+        var ownPredecessors = snapshot
+          .Predecessors.Select(x => x.Id)
+          .ToHashSet();
+        var eligible = legs.Where(x =>
+            x.TruckId == truck
+            && (
+              x.Status != "completed"
+              || x.Predecessors.Any(ownPredecessors.Contains)
+              || x.SavedFor.Contains(snapshot.Current.Id)
+            )
+          )
+          .Select(x => x.Id)
+          .ToHashSet();
+        if (eligible.Count == 0)
+          continue;
+        var loads = execution
+          .Loads.Where(x =>
+            x.Work.TruckId == truck
+            && x.Work.ExecutionLegId is { } leg
+            && eligible.Contains(leg)
+          )
+          .Select(x => x.Work);
+        // Completed history belongs to this work item, not its lookup peers.
         applied[snapshot.Current.Id] = snapshot with
         {
           Predecessors = snapshot
             .Predecessors.Where(x => !execution.OwnedDispatchIds.Contains(x.Id))
-            .Concat(loads.GetValueOrDefault(truck, []))
+            .Concat(loads)
             .ToImmutableArray(),
         };
       }
