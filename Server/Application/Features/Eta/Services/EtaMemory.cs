@@ -79,11 +79,18 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   // kept here either. Results for other roads or other
   // work cannot be ordered this way and replace as before; readers already
   // refuse to show them as current.
-  public bool Publish(Guid key, Entry entry)
+  // A scope is written with its identity: a leg's scope names its load in
+  // the same step as the write, so the bound can never leave a leg's
+  // forecast, view or demand without the identity the refresh worker
+  // resolves it by (Root's review of b1401ddb). The Guid overloads are a
+  // load's own scope, for tests and the load itself.
+  public bool Publish(ScopeIdentity scope, Entry entry)
   {
+    var key = Key(scope);
     Entry kept;
     lock (Lifecycle(key))
     {
+      ScopeLocked(scope.DispatchId, scope.ExecutionLegId);
       Touch(key);
       kept = Results.AddOrUpdate(
         key,
@@ -94,6 +101,12 @@ public sealed class EtaMemory(TimeProvider? clock = null)
     Bound();
     return ReferenceEquals(kept, entry);
   }
+
+  internal bool Publish(Guid key, Entry entry) =>
+    Publish(new ScopeIdentity(key, null), entry);
+
+  public static Guid Key(ScopeIdentity scope) =>
+    scope.ExecutionLegId ?? scope.DispatchId;
 
   private static bool Older(Entry candidate, Entry existing) =>
     candidate.WorkKey is not null
@@ -226,15 +239,20 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   private readonly ConcurrentDictionary<Guid, string> mapAnswers = new();
   private readonly ConcurrentDictionary<Guid, string> publishedAnswers = new();
 
-  public void NoteMapAnswer(Guid key, string answer)
+  public void NoteMapAnswer(ScopeIdentity scope, string answer)
   {
+    var key = Key(scope);
     lock (Lifecycle(key))
     {
+      ScopeLocked(scope.DispatchId, scope.ExecutionLegId);
       Touch(key);
       mapAnswers[key] = answer;
     }
     Bound();
   }
+
+  internal void NoteMapAnswer(Guid key, string answer) =>
+    NoteMapAnswer(new ScopeIdentity(key, null), answer);
 
   public string? MapAnswer(Guid key) => mapAnswers.GetValueOrDefault(key);
 
@@ -286,7 +304,7 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   public SemaphoreSlim Gate(Guid id) =>
     gates[(uint)id.GetHashCode() % gates.Length];
 
-  public Guid Scope(Guid dispatchId, Guid? executionLegId)
+  internal Guid Scope(Guid dispatchId, Guid? executionLegId)
   {
     var key = executionLegId ?? dispatchId;
     if (!executionLegId.HasValue)
@@ -308,15 +326,22 @@ public sealed class EtaMemory(TimeProvider? clock = null)
   public ScopeIdentity Resolve(Guid key) =>
     scopes.GetValueOrDefault(key) ?? new(key, null);
 
-  public void View(Guid id, DateTime now)
+  public void View(ScopeIdentity scope, DateTime now)
   {
+    var key = Key(scope);
     bool firstView;
-    lock (Lifecycle(id))
-      firstView = ViewLocked(id, now);
+    lock (Lifecycle(key))
+    {
+      ScopeLocked(scope.DispatchId, scope.ExecutionLegId);
+      firstView = ViewLocked(key, now);
+    }
     Bound();
     if (firstView)
       RequestRefresh();
   }
+
+  internal void View(Guid id, DateTime now) =>
+    View(new ScopeIdentity(id, null), now);
 
   private bool ViewLocked(Guid id, DateTime now)
   {
@@ -380,18 +405,23 @@ public sealed class EtaMemory(TimeProvider? clock = null)
     return dropped;
   }
 
-  public void Demand(Guid rootDispatchId, string inputHash, DateTime now)
+  public void Demand(ScopeIdentity scope, string inputHash, DateTime now)
   {
+    var key = Key(scope);
     bool firstView;
-    lock (Lifecycle(rootDispatchId))
+    lock (Lifecycle(key))
     {
-      firstView = ViewLocked(rootDispatchId, now);
-      DemandLocked(rootDispatchId, inputHash);
+      ScopeLocked(scope.DispatchId, scope.ExecutionLegId);
+      firstView = ViewLocked(key, now);
+      DemandLocked(key, inputHash);
     }
     Bound();
     if (firstView)
       RequestRefresh();
   }
+
+  internal void Demand(Guid rootDispatchId, string inputHash, DateTime now) =>
+    Demand(new ScopeIdentity(rootDispatchId, null), inputHash, now);
 
   private void DemandLocked(Guid rootDispatchId, string inputHash)
   {

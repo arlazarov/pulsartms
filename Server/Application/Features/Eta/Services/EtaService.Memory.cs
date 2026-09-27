@@ -89,7 +89,7 @@ public sealed partial class EtaService
     if (state.Plan is not { } plan)
       return;
     memory.Publish(
-      memory.Scope(plan.DispatchId, plan.ExecutionLegId),
+      new EtaMemory.ScopeIdentity(plan.DispatchId, plan.ExecutionLegId),
       new(signature, value, RouteKey(state))
       {
         ChainInputHash = chainInputHash,
@@ -111,20 +111,24 @@ public sealed partial class EtaService
   {
     if (state.Plan is not { } plan)
       return null;
-    var key = memory.Scope(plan.DispatchId, plan.ExecutionLegId);
+    var scope = new EtaMemory.ScopeIdentity(
+      plan.DispatchId,
+      plan.ExecutionLegId
+    );
+    var key = EtaMemory.Key(scope);
     var now = DateTime.UtcNow;
-    memory.View(key, now);
+    memory.View(scope, now);
     memory.Results.TryGetValue(key, out var entry);
     var read = Decide(entry, state, now);
     switch (read.Answer)
     {
       case EtaAnswer.Current:
         MapRead("current");
-        memory.NoteMapAnswer(key, "current");
+        memory.NoteMapAnswer(scope, "current");
         return entry!.Value;
       case EtaAnswer.Updating:
         MapRead("updating");
-        memory.NoteMapAnswer(key, "updating");
+        memory.NoteMapAnswer(scope, "updating");
         if (read.RouteMatches || memory.SupersedeIfCurrent(key, entry!))
           memory.RequestRefresh();
         return entry!.Value with { RouteUpdatePending = true };
@@ -133,13 +137,13 @@ public sealed partial class EtaService
         var parts = Differing(entry!.WorkKey, read.WorkKey!).ToList();
         foreach (var part in parts)
           MapRead($"other-work-{part}");
-        memory.NoteMapAnswer(key, $"other-work:{string.Join(',', parts)}");
+        memory.NoteMapAnswer(scope, $"other-work:{string.Join(',', parts)}");
         if (memory.RemoveIfCurrent(key, entry))
           memory.RequestRefresh();
         return null;
       default:
         MapRead("no-entry");
-        memory.NoteMapAnswer(key, "no-entry");
+        memory.NoteMapAnswer(scope, "no-entry");
         return null;
     }
   }

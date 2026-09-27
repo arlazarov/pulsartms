@@ -52,9 +52,13 @@ public sealed partial class EtaService(
     if (state.Plan is not { } plan)
       return null;
     var now = DateTime.UtcNow;
-    var key = memory.Scope(plan.DispatchId, plan.ExecutionLegId);
+    var scope = new EtaMemory.ScopeIdentity(
+      plan.DispatchId,
+      plan.ExecutionLegId
+    );
+    var key = EtaMemory.Key(scope);
     if (viewed)
-      memory.View(key, now);
+      memory.View(scope, now);
     var driver = plan.ExecutionLegId is { } legId
       ? await db
         .ExecutionLegs.AsNoTracking()
