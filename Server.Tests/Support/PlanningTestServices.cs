@@ -78,7 +78,8 @@ internal sealed class PlanningTestServices : IDisposable
     ReadCache? reads = null,
     RouteRecalculationBudgetOptions? recalculationBudget = null,
     IPlanningPublicationScope? publicationScope = null,
-    IFuelExchangeRateStore? exchangeRateStore = null
+    IFuelExchangeRateStore? exchangeRateStore = null,
+    TimeProvider? time = null
   )
   {
     refreshStore = new PlanningRefreshStore((AppDbContext)db);
@@ -119,7 +120,8 @@ internal sealed class PlanningTestServices : IDisposable
         (AppDbContext)db,
         NullLogger<SavedRoutePlanReader>.Instance
       ),
-      profiles
+      profiles,
+      time ?? TimeProvider.System
     );
     DeadheadHistory = new(
       db,

@@ -2,28 +2,11 @@ using Application.Features.Routing.Interfaces;
 using Domain.Entities.Dispatch;
 using Domain.Models.Routing;
 using Microsoft.EntityFrameworkCore;
-using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Infrastructure.Persistence;
 
 public sealed class NextLoadRouteReader(AppDbContext db) : INextLoadRouteReader
 {
-  public async Task<IReadOnlyList<Load>> ReadLoadsAsync(
-    Guid truckId,
-    CancellationToken ct
-  ) =>
-    await db
-      .Dispatches.AsNoTracking()
-      .Include(x => x.Stops)
-      .Where(x =>
-        (
-          x.PlanningTruckId == truckId
-          || x.TruckId == truckId
-          || x.Stops.Any(s => s.TruckId == truckId)
-        ) && (x.Status == "assigned" || x.Status == "in_transit")
-      )
-      .ToListAsync(ct);
-
   public async Task<IReadOnlyList<NextLoadRouteVersion>> ReadVersionsAsync(
     IReadOnlyCollection<Guid> ids,
     CancellationToken ct

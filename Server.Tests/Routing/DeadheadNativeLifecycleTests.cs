@@ -136,11 +136,10 @@ public sealed partial class DeadheadGeometryRepairTests
       return;
     var handler = new GetNextLoadRoutesHandler(
       new NextLoadRouteReader(f.Db),
+      f.Services.PlanningInputs,
       f.Services.DeadheadHistory,
       f.Services.Routes,
-      new SourceRoadDemand(new SourceRoadStore(f.Db), TimeProvider.System),
-      f.Services.Sender,
-      TimeProvider.System
+      new SourceRoadDemand(new SourceRoadStore(f.Db), TimeProvider.System)
     );
     var response = (
       await handler.Handle(

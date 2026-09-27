@@ -215,8 +215,23 @@ completed.
      0 after it, currency check 1 cold, 0 warm, 0 repeated.
      Known repeat: the writer's currency check re-reads, per plan and
      cached, metadata the capture read in its batch.
-   - **2c, next.** Next-routes takes the current work from the server
-     rather than from the client.
+   - **2c, implemented (not released).** Next-routes takes the current
+     work and the work after it from the planning inputs
+     (`TruckPlanningInputs.Followers`, `PlanningWorkPolicy.Followers`):
+     the itinerary's order (WorkOrderKey, as on the board: ties by load
+     number, undated work by ship date), the board's membership (overdue
+     work included) and one rule the old reader alone had (a planned leg
+     of the load the current leg delivers is not next work).
+     `NextLoadSelection`, `INextLoadRouteReader.ReadLoadsAsync` and the
+     fallback to the client's current are removed. A client naming other
+     work gets 409; inputs older than five seconds by the owner's clock
+     (`CapturedWithin`) are captured once more first, so a client polling
+     with a stale value costs at most one capture per five seconds.
+     Tests: `NextLoadFollowersTests` (ties, missing dates, passed work
+     needing review, stale client current with repeated requests,
+     another truck's work, cold/warm counts, and two readers meeting at
+     the load gate by handshake, not scheduling). Existing next-routes
+     tests now mark their direct database edits as a writer does.
 3. **Truck work state on every consumer.** The fields above on board rows
    for all views, Messenger, map payload and workspace; remove client
    `IsCurrent`, `LoadPosition` fallback, `DispatchBoardRow.InTransit`,

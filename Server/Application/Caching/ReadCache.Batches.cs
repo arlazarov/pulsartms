@@ -16,6 +16,11 @@ public sealed partial class ReadCache
   private string ItemGroup(string family, Guid id) =>
     $"{family}:{companies?.Id:N}:{id:N}";
 
+  // Told that a family's gate is about to be waited on: the seam a test uses
+  // to prove a second reader reached the gate while the first holds it,
+  // without depending on how threads happen to be scheduled.
+  internal Action<string>? WaitingForGate { get; set; }
+
   public long ItemGeneration(string family, Guid id) =>
     generations.Get(ItemGroup(family, id));
 
@@ -31,6 +36,7 @@ public sealed partial class ReadCache
   )
   {
     var gate = BatchGate(family);
+    WaitingForGate?.Invoke(family);
     await gate.WaitAsync(ct);
     try
     {
@@ -73,6 +79,7 @@ public sealed partial class ReadCache
     if (missing.Count == 0)
       return result;
     var gate = BatchGate(family);
+    WaitingForGate?.Invoke(family);
     await gate.WaitAsync(ct);
     try
     {

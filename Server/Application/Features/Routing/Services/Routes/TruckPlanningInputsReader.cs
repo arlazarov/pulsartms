@@ -26,6 +26,10 @@ public sealed record TruckPlanningInputs(
       ? Itinerary.Segments.FirstOrDefault(x => x.Work == work)
       : null;
 
+  // The work the truck does after the current, in order.
+  public IEnumerable<TruckWorkSegment> Followers =>
+    PlanningWorkPolicy.Followers(Itinerary, CurrentWork);
+
   // The assignment the current work was chosen at, so a consumer that read
   // the truck's work separately can tell a reassignment from the same work.
   public long? CurrentAssignmentRevision { get; init; }
@@ -48,7 +52,8 @@ public sealed class TruckPlanningInputsReader(
   ReadCache reads,
   IDriverHosProvider hos,
   ISavedRoutePlanReader savedRoutes,
-  TruckPlanningProfileService profiles
+  TruckPlanningProfileService profiles,
+  TimeProvider time
 )
 {
   public async Task<TruckPlanningInputs?> ReadAsync(
@@ -62,6 +67,11 @@ public sealed class TruckPlanningInputsReader(
   // a reader that finds them out of date can say which entry it found.
   public long Version(Guid truckId) =>
     reads.ItemGeneration("planning-inputs", truckId);
+
+  // Whether inputs were captured within the last `age` by this owner's
+  // clock: a reader deciding whether a disagreement is worth a capture.
+  public bool CapturedWithin(TruckPlanningInputs work, TimeSpan age) =>
+    work.Itinerary.AsOf > time.GetUtcNow() - age;
 
   // For a reader that found its inputs out of date - the current work's
   // plan passed after they were captured. The entry it read (seen) is
@@ -95,7 +105,7 @@ public sealed class TruckPlanningInputsReader(
     if (truckIds.Count == 0)
       return new Dictionary<Guid, TruckPlanningInputs>();
     var ids = truckIds.Distinct().Order().ToArray();
-    var asOf = DateTimeOffset.UtcNow;
+    var asOf = time.GetUtcNow();
     var key =
       $"{asOf.UtcDateTime:yyyy-MM-dd}:"
       + $"{reads.Generation(ReadGroups.FleetCatalog)}:"
@@ -161,7 +171,7 @@ public sealed class TruckPlanningInputsReader(
     var settings = await ReadProfilesAsync([truckId], ct);
     var captured = await CaptureAsync(
       [truckId],
-      asOf ?? DateTimeOffset.UtcNow,
+      asOf ?? time.GetUtcNow(),
       settings,
       ct,
       requireFreshSnapshot: true
