@@ -216,27 +216,16 @@ public sealed class TruckPlanningInputsReader(
         {
           var profile = settings[snapshot.TruckId];
           var done = passed[snapshot.TruckId] = [];
-          current[snapshot.TruckId] = null;
-          foreach (var segment in PlanningWorkPolicy.Candidates(snapshot))
-          {
-            if (
-              !PlanningWorkPolicy.IsCompleted(
-                segment.Work.ExecutionLegId is { } leg
-                  ? native.GetValueOrDefault(leg)
-                  : saved.GetValueOrDefault(segment.Work.DispatchId),
-                RouteWorkProjection.Capture(
-                  segment,
-                  snapshot.Resources.TruckNumber
-                ),
-                profile
-              )
-            )
-            {
-              current[snapshot.TruckId] = segment;
-              break;
-            }
-            done.Add(segment);
-          }
+          var choice = PlanningWorkPolicy.ChooseCurrent(
+            snapshot,
+            profile,
+            segment =>
+              segment.Work.ExecutionLegId is { } leg
+                ? native.GetValueOrDefault(leg)
+                : saved.GetValueOrDefault(segment.Work.DispatchId)
+          );
+          current[snapshot.TruckId] = choice.Current;
+          done.AddRange(choice.Passed);
         }
         var driverIds = snapshots
           .Values.Select(x => Driver(x, current[x.TruckId]))

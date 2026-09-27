@@ -14,6 +14,7 @@ using Application.Models;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
+using Domain.Models.Eta;
 using Domain.Models.Fleet;
 using Domain.Models.Routing;
 using Domain.Rules;
@@ -692,6 +693,139 @@ public sealed class TruckRoutePreviewTests
     Assert.Equal(next.Id, b?.CurrentWork?.DispatchId);
   }
 
+  // Stage 2b: every consumer of the truck's work asks the same rule. The
+  // first load's route is passed and it now needs review; the second is
+  // current. The ETA root, automatic planning, the preview, the summary and
+  // a writer's currency check all name the second - none is refused or cut
+  // short by the passed load - and the reads each makes are counted cold,
+  // warm and when two ask for the same thing in turn.
+  [Fact]
+  public async Task EveryConsumerOfTheSharedInputsFollowsTheOwner()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    var first = await fixture.AddAsync(1);
+    var next = await fixture.AddAsync(2);
+    await fixture.SavePlanAsync(first, completed: true);
+    await fixture.SavePlanAsync(next);
+    fixture.Db.DispatchSourceLinks.Add(
+      new DispatchSourceLink
+      {
+        Provider = "source",
+        ExternalId = "1",
+        DispatchId = first.Id,
+        Dispatch = first,
+        ExecutionReviewReason = "Review the initial assignment.",
+      }
+    );
+    await fixture.Db.SaveChangesAsync();
+    fixture.Services.Reads.InvalidateItem("planning-inputs", fixture.Truck.Id);
+    fixture.Hos.Allow = fixture.Sender.AllowTelemetry = true;
+    var truck = fixture.Truck.Id;
+    fixture.Sender.AllowLiveTelemetry = true;
+    var automatic = new AutomaticPlanningService(
+      fixture.Services.Routes,
+      fixture.Services.Fuel,
+      fixture.Services.PlanningInputs,
+      fixture.Memory,
+      Normal(fixture)
+    );
+
+    var owner = (
+      await fixture.Services.PlanningInputs.ReadFreshAsync(truck, default)
+    )!;
+    var eta = await Measured(
+      fixture,
+      () => fixture.Services.EtaInputs.DescribeAsync(truck, default)
+    );
+    fixture.Probe.AllowWrites = true;
+    var planned = await Measured(
+      fixture,
+      () => automatic.ForTruckAsync(truck, default)
+    );
+    fixture.Probe.AllowWrites = false;
+    var preview = await Measured(
+      fixture,
+      () => fixture.Preview.ForTruckAsync(truck, default)
+    );
+    var summary = await Measured(
+      fixture,
+      () => Normal(fixture).ForTruckAsync(truck, default)
+    );
+    var itinerary = owner.Itinerary;
+    var profile = (
+      await fixture.Services.Profiles.GetManyAsync([truck], default)
+    )[truck];
+    bool Current(Dispatch load) =>
+      PlanningCurrency
+        .IsCurrentAsync(
+          itinerary,
+          RouteWorkProjection.Capture(
+            itinerary.Segments.Single(x => x.Work.DispatchId == load.Id),
+            itinerary.Resources.TruckNumber
+          ),
+          fixture.Services.RoutePlans,
+          profile,
+          default
+        )
+        .GetAwaiter()
+        .GetResult();
+    var cold = await Measured(fixture, () => Task.FromResult(Current(next)));
+    var warm = await Measured(fixture, () => Task.FromResult(Current(next)));
+    var passed = await Measured(fixture, () => Task.FromResult(Current(first)));
+
+    Assert.Equal(next.Id, owner.CurrentWork?.DispatchId);
+    Assert.Equal(next.Id, eta.Result?.RootDispatchId);
+    Assert.Contains(
+      new EtaWorkExclusion(
+        new(first.Id, null),
+        EtaWorkExclusionReason.SavedRouteCompleted
+      ),
+      eta.Result!.Exclusions
+    );
+    Assert.Equal(next.Id, planned.Result.DispatchId);
+    Assert.Equal(next.Id, preview.Result.DispatchId);
+    Assert.NotNull(preview.Result.State);
+    Assert.Equal(next.Id, summary.Result.DispatchId);
+    Assert.True(cold.Result);
+    Assert.False(passed.Result);
+
+    // ETA reads its own itinerary and saved roots in one batch.
+    Assert.Equal(1, eta.Captures);
+    // Automatic planning captures once; its writer's currency check then
+    // reads the passed and the current plan's metadata one at a time -
+    // the rows the capture read in its batch, again (a known repeat).
+    Assert.Equal(3, planned.Captures);
+    // Its writes dropped the cached inputs: the preview captures once, and
+    // the summary after it reuses that capture.
+    Assert.Equal(1, preview.Captures);
+    Assert.Equal(0, summary.Captures);
+    // The currency check reads only the plan that changed, then nothing.
+    Assert.Equal((1, 0, 0), (cold.Reads, warm.Reads, passed.Reads));
+  }
+
+  private static async Task<(T Result, int Reads, int Captures)> Measured<T>(
+    Fixture fixture,
+    Func<Task<T>> read
+  )
+  {
+    fixture.Probe.Start();
+    try
+    {
+      var result = await read();
+      return (
+        result,
+        fixture.Probe.Reads,
+        fixture.Probe.Statements.Count(x =>
+          x.Contains("'storedAssignmentRevision'")
+        )
+      );
+    }
+    finally
+    {
+      fixture.Probe.Stop();
+    }
+  }
+
   private static PlanningReadService Normal(Fixture fixture)
   {
     var options = Options.Create(new SynchronizationOptions { Enabled = true });
@@ -1365,6 +1499,9 @@ public sealed class TruckRoutePreviewTests
     public List<GetDispatchBoardQuery> Requests { get; } = [];
     public Action<TruckDispatchBoardResponse>? AlterRow { get; set; }
     public bool AllowTelemetry { get; set; }
+
+    // Automatic planning is a writer and asks for the live position.
+    public bool AllowLiveTelemetry { get; set; }
     public int TelemetryCalls { get; private set; }
     public FleetLocationsResponse Telemetry { get; set; } = new();
 
@@ -1383,6 +1520,7 @@ public sealed class TruckRoutePreviewTests
       }
       if (
         AllowTelemetry && request is GetFleetLocationsQuery { CachedOnly: true }
+        || AllowLiveTelemetry && request is GetFleetLocationsQuery
       )
       {
         TelemetryCalls++;
@@ -1457,6 +1595,9 @@ public sealed class TruckRoutePreviewTests
     public int Reads { get; private set; }
     public List<string> Statements { get; } = [];
 
+    // A writer's statements are counted too, but only reads are asserted.
+    public bool AllowWrites { get; set; }
+
     public void Start()
     {
       Reads = 0;
@@ -1470,11 +1611,12 @@ public sealed class TruckRoutePreviewTests
     {
       if (!Enabled)
         return;
-      Assert.StartsWith(
-        "SELECT",
-        command.CommandText.TrimStart(),
-        StringComparison.OrdinalIgnoreCase
-      );
+      if (!AllowWrites)
+        Assert.StartsWith(
+          "SELECT",
+          command.CommandText.TrimStart(),
+          StringComparison.OrdinalIgnoreCase
+        );
       Reads++;
       Statements.Add(command.CommandText);
     }

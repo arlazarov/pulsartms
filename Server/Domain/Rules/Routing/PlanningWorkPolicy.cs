@@ -7,6 +7,43 @@ namespace Domain.Rules.Routing;
 
 public static class PlanningWorkPolicy
 {
+  // Which work a truck is on: the first candidate whose saved plan has not
+  // passed all its stops at the same assignment and inputs, and the
+  // candidates passed before it. This is the one rule. Each caller reads
+  // the saved plans its own way and hands them in; none walks the
+  // candidates itself.
+  public static CurrentWorkChoice ChooseCurrent(
+    TruckItinerarySnapshot snapshot,
+    TruckRouteProfile profile,
+    Func<TruckWorkSegment, SavedRoutePlanMetadata?> saved
+  )
+  {
+    var passed = new List<TruckWorkSegment>();
+    foreach (var segment in Candidates(snapshot))
+    {
+      if (!IsPassed(snapshot, segment, saved(segment), profile))
+        return new(segment, passed);
+      passed.Add(segment);
+    }
+    return new(null, passed);
+  }
+
+  // Whether planning has moved past a candidate: its saved plan passed all
+  // its stops for this assignment and these inputs. A caller that must read
+  // the saved plans one at a time, stopping at the current work, asks this
+  // in candidate order instead of ChooseCurrent.
+  public static bool IsPassed(
+    TruckItinerarySnapshot snapshot,
+    TruckWorkSegment segment,
+    SavedRoutePlanMetadata? saved,
+    TruckRouteProfile profile
+  ) =>
+    IsCompleted(
+      saved,
+      RouteWorkProjection.Capture(segment, snapshot.Resources.TruckNumber),
+      profile
+    );
+
   public static IEnumerable<TruckWorkSegment> Candidates(
     TruckItinerarySnapshot snapshot
   ) =>

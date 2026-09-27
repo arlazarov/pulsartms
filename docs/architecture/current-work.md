@@ -199,10 +199,24 @@ completed.
      parallel threads. A route refresh's `Capture` still takes an entry
      from a consumer preparing it; that is counted as two computations,
      not coalesced. Cross-process invalidation is not covered.
-   - **2b, next.** `AutomaticPlanningService`, `PlanningCurrency` and the
-     ETA root take the current segment from the owner; next-routes takes
-     current from the server; architecture test limiting selection
-     calls to the owner.
+   - **2b, implemented (not released).** The rule is
+     `PlanningWorkPolicy.ChooseCurrent` (and `IsPassed` for a caller that
+     reads saved plans one at a time). The inputs owner, the ETA root and
+     `PlanningCurrency` ask it; automatic planning starts at the inputs'
+     current work and, when its own tracking passes it, captures again
+     instead of stepping on. Work planning has passed no longer starts or
+     ends the ETA chain, refuses automatic planning or fails a writer's
+     currency check, even when it now needs review.
+     `CurrentWorkOwnershipTests` lists the remaining direct uses of
+     `Candidates` and `IsCompleted` with what each does.
+     `EveryConsumerOfTheSharedInputsFollowsTheOwner` checks agreement and
+     counts reads: ETA 1 batch, automatic planning 1 capture plus 2 lazy
+     metadata reads, preview 1 capture after the writer's commit, summary
+     0 after it, currency check 1 cold, 0 warm, 0 repeated.
+     Known repeat: the writer's currency check re-reads, per plan and
+     cached, metadata the capture read in its batch.
+   - **2c, next.** Next-routes takes the current work from the server
+     rather than from the client.
 3. **Truck work state on every consumer.** The fields above on board rows
    for all views, Messenger, map payload and workspace; remove client
    `IsCurrent`, `LoadPosition` fallback, `DispatchBoardRow.InTransit`,
