@@ -356,6 +356,58 @@ completed accepted loads show no total or Total RPM there. Load 1403
 release does not repair it. No message sent; no reset, replan, payment
 or Driver Pay change; maximum instances unchanged.
 
+## API release of September 27 (00:50-00:59 UTC)
+
+The owner approved, through Root, publishing the Torque invoice-status
+correction and the completed-list mileage read. Candidate
+`fc56a7359d2aecf3807efc9f9a591400a2bfe5f8`: Root's
+`codex/dispatch-history-import` at `dcf26214`, based on the released
+`64c8ebfc` (`a74a6b1b`, `8272aa41` the bounded history import tool and
+its record; `41b5d3ef` Torque `sent` read as completed, see
+[the record](torque-invoice-completion-2026-09-27.md); `dcf26214`
+completed accepted loads read their mileage by leg, see
+[the record](completed-native-financials-2026-09-27.md)), plus this
+record's night section and its English quotation fix. No migration
+(73), no DTO change, no Client source change against `64c8ebfc`.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash verify-release.sh` on
+  `fc56a735`, exit 0: Server 3,780, Client 1,251, JavaScript 663, no
+  failure or skip (isolated development PostgreSQL). UI smoke
+  `browser-ui-QkGj3S` (12 cases, clean) and
+  `browser-messaging-tabs-OpqOmN`; artifact `release-XYv2Uq`, raw logs
+  in its `evidence/`. The first gate, on `810b441a`, failed one check:
+  this record quoted the owner in Cyrillic; that log is kept beside it.
+- **Backup** (00:50 UTC):
+  `local-backups/pulsartms-release-backup.2lmAQQ/before-2026-09-27-api-release-fc56a735.dump`,
+  40,017,680 bytes, SHA-256
+  `ad0b226b8672baa48da79529fdc3b9eb0f7fb79eb7a4c681ee0c5880bef6256a`,
+  720 entries, 104 table data; in the inventory. No restore rehearsed.
+- **API:** before, `amftms-api-b-c073d3c1-2b69-4079-a641-bed83855636a`
+  (`64c8ebfc`), generation 264. Cloud Build
+  `643f1ba7-66c8-4b70-ab87-850853fbf5f4`; image
+  `us-east4-docker.pkg.dev/amftms/amftms/api@sha256:e7898d741d8dbaf591ca4fe1ba058905d8e71ef268da6b945ac205176e6d5d79`;
+  revision `amftms-api-b-643f1ba7-66c8-4b70-ab87-850853fbf5f4`,
+  generation 266, spec and status traffic 100%; Ready, Active,
+  ContainerHealthy and MinInstancesProvisioned true; 1 GiB, minimum 1,
+  maximum 1, scaling automatic, unchanged. The previous revision is
+  Retired, Active false and TrafficShutDown true: its workers, including
+  the old Torque adapter, are drained. Health 200 on the service and
+  through Hosting; no error-level entry or 5xx in the first minutes.
+- **Frontend:** not republished. The Client source is identical to
+  `64c8ebfc`, and Hosting still serves `release-kRy7jd` (`index.html`
+  `20c3a06f8b9937a55bfa6aba060508212a7ac56b7d3b0faa0d689a23021eae50`,
+  `css/main.css?v=9a48f1e1d21eb66e`), checked after the API release. A
+  rebuild in another worktree gives a different `Client.*.wasm` and
+  therefore `index.html`, not different behaviour.
+- **Protected data** before and after, read-only counts: migrations 73,
+  users 3, conversations 5, conversation messages 55, driver messages 0,
+  broadcasts 0, fuel visit sends 0, stored credentials 2.
+
+Root owns the remaining twelve Torque status reconciliations and the
+bounded historical mileage preparation; neither was run here. Completed
+loads with several sections keep an unknown total. No message sent; no
+reset, replan, payment or Driver Pay change.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
