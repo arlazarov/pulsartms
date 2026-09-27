@@ -709,6 +709,30 @@ styles and tests only; API and database untouched. A first run on
   and `css/main.css?v=8c5efad3c931ee5d` byte-identical to the artifact.
   Rollback target: `release-H5e12a` (the incident frontend).
 
+## Frontend 4b3adbf6: the owner's Dispatch batch (September 27, 12:20 UTC)
+
+On the owner's word and root's coordination: a truck's speed is green
+only while its engine runs (`5d1fac61`); a truck opened from Dispatch is
+revealed from under its card (`c76e8af7`); a Table day is ordered by
+pickup, then delivery (`d2f2e441`); no Current/Next edge bar
+(`4f446b04`); only the load number opens a load (`2d606052`); the views
+read Cards, Papers, Table, and Completed is read in the Table alone
+(`4b3adbf6`). On `fb239cd3`; Client, styles and tests only.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash deploy-client.sh` from a clean
+  detached worktree with the local settings copied in (12:15-12:20 UTC),
+  exit 0: JavaScript 666, Client 1,270, Server 3,793, none skipped;
+  offline UI smoke without errors (`browser-ui-V1IKsO`).
+- **Artifact:** `release-FlPysI`, 285 files, pinned in the main
+  checkout's `artifacts/managed/release-FlPysI` with the log and smoke
+  report under `gate/`.
+- **Live:** `index.html`
+  (`536a6a2f8f244a23c51a98b11da3bbab22580c063ce6e906ade3325aac301e81`)
+  and `css/main.css?v=a7cdc4f74aeb0c24` byte-identical to the artifact.
+  Rollback target: `release-ZyxGZ4`.
+- **Not seen live:** the map reveal from Dispatch was checked by its
+  regression and the offline smoke only, not on the real map.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
