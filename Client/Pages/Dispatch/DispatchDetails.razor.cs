@@ -578,6 +578,9 @@ public partial class DispatchDetails : IDisposable
     _pendingNavigation = null;
     _dirty = _uncertain = false;
     _activityDirty = _documentDirty = false;
+    _transferDirty = _correctionDirty = _operationDirty = false;
+    _brokerBusy = false;
+    _stopDrafts.Clear();
     if (target is not null)
       Navigation.NavigateTo(target);
   }
