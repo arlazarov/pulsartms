@@ -345,7 +345,8 @@ public partial class DispatchDetails : IDisposable
             $"Stop {sequence}: "
             + (result.ErrorMessage ?? "Save not confirmed. Retry saving.")
             + " Remaining stop changes are still in your draft.";
-          if (result.HttpStatusCode == HttpStatusCode.BadRequest)
+          _conflict = result.HttpStatusCode == HttpStatusCode.Conflict;
+          if (result.HttpStatusCode == HttpStatusCode.BadRequest || _conflict)
             _stopDrafts.PendingStopId = null;
           _selectedStop = stopId;
           return;
@@ -559,6 +560,7 @@ public partial class DispatchDetails : IDisposable
   private async Task ReloadAsync()
   {
     _confirmReload = false;
+    _stopDrafts.Clear();
     await LoadAsync();
   }
 

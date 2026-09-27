@@ -135,7 +135,7 @@ public sealed class CreateDispatchHandler(
       };
       db.DispatchWorkspaceRevisions.Add(history);
       await db.SaveChangesAsync(ct);
-      var saved = await DispatchWorkspaceReader.ReadAsync(
+      var saved = await DispatchWorkspaceReader.ReadSavedAsync(
         db,
         load.Id,
         true,

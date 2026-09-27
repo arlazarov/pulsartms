@@ -47,3 +47,39 @@ Fix and verify save rejection and automatic pickup ownership; preserve history.
 Review all navigation draft kinds and pending-response safety. Run focused
 dependencies and architecture checks before handing a candidate to the sole
 deploy owner. Publication and repaired live state remain unverified.
+
+## Save-response defect established
+
+For 54777, accepted revision JSON retains ManualCompletionRecordedAt
+10:54:51.2928948Z; the typed PostgreSQL row stores 10:54:51.292894Z.
+Workspace fingerprints include accepted stop serialization. EF's write context
+retains pre-persistence values, so the original post-save response can disagree
+with the next request even without another writer.
+
+A dedicated, isolated PostgresFixture regression reproduced the mismatch
+between the write-context response and a new context. It failed on the original
+reader. ReadSavedAsync now uses the same workspace owner and query chain with
+no-tracking identity resolution for saved response entities. CorrectDispatchStop,
+CreateDispatch and UpdateDispatchWorkspace use it after SaveChanges. Ordinary
+command reads stay tracked. No timestamp is rounded by Application, no version
+check is removed, and receipt history is preserved. Relevant leg revision
+changes still change the fingerprint. No new provider calls or query chain were
+introduced; allocation/latency performance was not measured.
+
+Existing old receipts may retain their original fingerprint. Explicit reload
+reads current persisted facts; do not rewrite historical receipts. Stop-draft
+409 responses now expose the existing explicit reload flow rather than asking
+for an identical retry forever. The draft remains until explicit discard.
+Actual uncertain/network retries keep their request identity.
+
+Evidence: the original PostgreSQL fingerprint test failed; fixed persistence
+and stop-correction checks passed 25 tests. Expanded persistence, workspace,
+creation and server Architecture selection passed 146 tests, zero skips.
+The client conflict regression failed before the UI correction; workspace plus
+client Architecture checks passed 24 tests, zero skips. Client compiled.
+These are focused checks, not a full release gate. Tests used an isolated
+registered fixture, never the application database.
+
+11005 resource conflict still needs owner-level resolution and confirmation
+of predecessor completion. An explicit question about AMF1403 is pending.
+No production writes or incident deployment performed by root.
