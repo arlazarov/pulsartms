@@ -75,6 +75,70 @@ public sealed class EtaDisplayReadTests
     Assert.False(services.Eta.PeekForDisplay(state)!.RouteUpdatePending);
   }
 
+  // The work a read does, counted where it happens: the keys it
+  // serializes. A current forecast costs two keys, other work one (the road
+  // key is not built), no entry none - per read, so N repeated rows cost
+  // 2N, with nothing hidden per row beyond that.
+  [Fact]
+  public void AReadSerializesAtMostTwoKeys()
+  {
+    using var fixture = new Fixture();
+    var eta = fixture.Services.Eta;
+    var state = State(Plan());
+    eta.Record(state, "signature", Forecast());
+    long Cost(Action read)
+    {
+      var before = eta.KeysBuilt;
+      read();
+      return eta.KeysBuilt - before;
+    }
+
+    Assert.Equal(2, Cost(() => eta.PeekForDisplay(state)));
+    Assert.Equal(
+      1,
+      Cost(() => eta.PeekForDisplay(state with { Plan = Other(state.Plan!) }))
+    );
+    Assert.Equal(0, Cost(() => eta.PeekForDisplay(State(Plan()))));
+    Assert.Equal(
+      24,
+      Cost(() =>
+      {
+        for (var i = 0; i < 12; i++)
+          eta.PeekForDisplay(state);
+      })
+    );
+  }
+
+  // One decision, two readers: the display read answers as the map's own
+  // read does - current, updating or none - and only the map's read acts.
+  [Fact]
+  public void TheDisplayReadAnswersAsTheMapsRead()
+  {
+    using var fixture = new Fixture();
+    var eta = fixture.Services.Eta;
+    var state = State(Plan());
+    eta.Record(state, "signature", Forecast());
+    var moved = Clone(state.Plan!);
+    moved.Tracking.NextStopId = moved.Stops[^1].Id;
+
+    foreach (
+      var read in new[]
+      {
+        state,
+        state with
+        {
+          Plan = moved,
+        },
+        State(Plan()),
+        state with
+        {
+          Plan = Other(state.Plan!),
+        },
+      }
+    )
+      Assert.Equal(eta.PeekForDisplay(read), eta.GetCached(read));
+  }
+
   private sealed class Fixture : IDisposable
   {
     private readonly SqliteConnection connection = new("Data Source=:memory:");

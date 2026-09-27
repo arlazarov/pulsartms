@@ -10,7 +10,24 @@ namespace Application.Features.Eta.Services;
 // may still see it.
 public sealed partial class EtaService
 {
-  private static string RouteKey(RoutePlanningState state) =>
+  // Keys serialized by this service's reads, for tests that count the work
+  // a read does per row, not only its database calls.
+  private long keysBuilt;
+  internal long KeysBuilt => Interlocked.Read(ref keysBuilt);
+
+  private string RouteKey(RoutePlanningState state)
+  {
+    Interlocked.Increment(ref keysBuilt);
+    return RouteKeyOf(state);
+  }
+
+  private string WorkKey(RoutePlanningState state)
+  {
+    Interlocked.Increment(ref keysBuilt);
+    return WorkKeyOf(state);
+  }
+
+  private static string RouteKeyOf(RoutePlanningState state) =>
     JsonSerializer.Serialize(
       new
       {
@@ -30,7 +47,7 @@ public sealed partial class EtaService
   // The load, its leg, the assignment and its stops: what a forecast is a
   // forecast of. The road, its version and the truck's place on it are not
   // part of this - they change while the work stays the same.
-  private static string WorkKey(RoutePlanningState state) =>
+  private static string WorkKeyOf(RoutePlanningState state) =>
     JsonSerializer.Serialize(
       new
       {
@@ -93,45 +110,79 @@ public sealed partial class EtaService
     if (state.Plan is not { } plan)
       return null;
     var key = memory.Scope(plan.DispatchId, plan.ExecutionLegId);
-    memory.View(key, DateTime.UtcNow);
-    if (memory.Results.TryGetValue(key, out var entry))
+    var now = DateTime.UtcNow;
+    memory.View(key, now);
+    memory.Results.TryGetValue(key, out var entry);
+    var read = Decide(entry, state, now);
+    switch (read.Answer)
     {
-      // The road key does not name the truck, so the work has to match
-      // before a forecast counts as current, not only before it is kept.
-      var sameWork = entry.WorkKey is { } work && work == WorkKey(state);
-      var current = sameWork && entry.RouteKey == RouteKey(state);
-      if (
-        current
-        && !entry.Superseded
-        && entry.Value.ValidUntil > DateTime.UtcNow
-      )
-      {
+      case EtaAnswer.Current:
         MapRead("current");
         memory.NoteMapAnswer(key, "current");
-        return entry.Value;
-      }
-      if (sameWork)
-      {
+        return entry!.Value;
+      case EtaAnswer.Updating:
         MapRead("updating");
         memory.NoteMapAnswer(key, "updating");
-        if (current || memory.SupersedeIfCurrent(key, entry))
+        if (read.RouteMatches || memory.SupersedeIfCurrent(key, entry!))
           memory.RequestRefresh();
-        return entry.Value with { RouteUpdatePending = true };
-      }
-      MapRead("other-work");
-      var parts = Differing(entry.WorkKey, WorkKey(state)).ToList();
-      foreach (var part in parts)
-        MapRead($"other-work-{part}");
-      memory.NoteMapAnswer(key, $"other-work:{string.Join(',', parts)}");
-      if (memory.RemoveIfCurrent(key, entry))
-        memory.RequestRefresh();
+        return entry!.Value with { RouteUpdatePending = true };
+      case EtaAnswer.OtherWork:
+        MapRead("other-work");
+        var parts = Differing(entry!.WorkKey, read.WorkKey!).ToList();
+        foreach (var part in parts)
+          MapRead($"other-work-{part}");
+        memory.NoteMapAnswer(key, $"other-work:{string.Join(',', parts)}");
+        if (memory.RemoveIfCurrent(key, entry))
+          memory.RequestRefresh();
+        return null;
+      default:
+        MapRead("no-entry");
+        memory.NoteMapAnswer(key, "no-entry");
+        return null;
     }
-    else
-    {
-      MapRead("no-entry");
-      memory.NoteMapAnswer(key, "no-entry");
-    }
-    return null;
+  }
+
+  internal enum EtaAnswer
+  {
+    None,
+    Current,
+    Updating,
+    OtherWork,
+  }
+
+  internal readonly record struct EtaRead(
+    EtaAnswer Answer,
+    bool RouteMatches,
+    string? WorkKey
+  );
+
+  // The one decision both reads make, with no effects: whether the entry
+  // kept for a plan's scope is a forecast of the same work (truck, load,
+  // leg, assignment, stops) and, if so, whether it was made on the same
+  // road (saved plan identity and version, tracking, stops, progress) and
+  // is still valid. Each key is serialized at most once, the road's only
+  // for the same work.
+  internal EtaRead Decide(
+    EtaMemory.Entry? entry,
+    RoutePlanningState state,
+    DateTime now
+  )
+  {
+    if (entry is null)
+      return new(EtaAnswer.None, false, null);
+    var work = WorkKey(state);
+    // The road key does not name the truck, so the work has to match
+    // before a forecast counts as current, not only before it is kept.
+    if (entry.WorkKey is not { } kept || kept != work)
+      return new(EtaAnswer.OtherWork, false, work);
+    var route = entry.RouteKey == RouteKey(state);
+    return new(
+      route && !entry.Superseded && entry.Value.ValidUntil > now
+        ? EtaAnswer.Current
+        : EtaAnswer.Updating,
+      route,
+      work
+    );
   }
 
   // The forecast a display shows for a plan it already holds - a prepared
@@ -151,19 +202,14 @@ public sealed partial class EtaService
         plan.ExecutionLegId ?? plan.DispatchId,
         out var entry
       )
-      || entry.WorkKey is not { } work
-      || work != WorkKey(state)
     )
       return null;
-    return
-      entry.RouteKey == RouteKey(state)
-      && !entry.Superseded
-      && entry.Value.ValidUntil > DateTime.UtcNow
-      ? entry.Value
-      : entry.Value with
-      {
-        RouteUpdatePending = true,
-      };
+    return Decide(entry, state, DateTime.UtcNow).Answer switch
+    {
+      EtaAnswer.Current => entry.Value,
+      EtaAnswer.Updating => entry.Value with { RouteUpdatePending = true },
+      _ => null,
+    };
   }
 
   // Why a map read found a forecast or not, counted for
