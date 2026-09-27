@@ -149,8 +149,10 @@
     font-size: ui.fs(caption);
     white-space: nowrap;
   }
+  // The miles, then the money on the line under them (the owner,
+  // September 27): beside the miles it crowded one line with both.
   &__tab-financials {
-    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     margin-top: ui.pg(xs);
     font-size: ui.fs(small);
     font-variant-numeric: tabular-nums;
@@ -160,10 +162,8 @@
     font-weight: 600;
   }
   &__tab-financials > span {
-    justify-self: end;
     color: ui.theme(text-secondary);
     font-size: ui.fs(caption);
-    text-align: end;
   }
   &__tab:hover {
     background: ui.theme(surface-soft);

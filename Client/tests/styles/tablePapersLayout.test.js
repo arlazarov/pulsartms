@@ -47,7 +47,7 @@ test('Table differentiates current rows while leaving upcoming loads neutral and
   );
   assert.match(
     rule('.dispatch-page .dispatch-table .dispatch-table__day > th'),
-    /font-size: var\(--type-small\);/,
+    /background: var\(--ui-surface-muted\);[\s\S]*color: var\(--ui-text\);[\s\S]*font-size: var\(--type-lead\);[\s\S]*font-weight: 700;/,
   );
   assert.match(
     rule('.dispatch-page .dispatch-table .dispatch-table__truck'),
@@ -308,6 +308,10 @@ test('every Papers folder keeps one shape whatever its words', () => {
   assert.match(rule('.dispatch-paper__tab-schedule'), /white-space: nowrap;/);
   assert.match(
     rule('.dispatch-paper__tab-financials'),
-    /grid-template-columns: max-content minmax\(0, 1fr\);/,
+    /grid-template-columns: minmax\(0, 1fr\);/,
+  );
+  assert.doesNotMatch(
+    rule('.dispatch-paper__tab-financials > span'),
+    /justify-self: end;/,
   );
 });
