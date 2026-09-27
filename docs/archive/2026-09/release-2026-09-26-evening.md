@@ -644,6 +644,47 @@ tests only. API and database untouched; no backup needed.
   and `css/main.css?v=24d21b66de4c8b3d` byte-identical to the artifact.
   Rollback target: `release-TDTuIV`.
 
+## Stop-save and Discard incident, 20b6ec91 (September 27, 11:49 UTC)
+
+API and frontend, on root's authorization after root's own fix and
+review. Candidate `claude/stop-save-candidate` = `49b0b277` (the released
+frontend) plus root's `d04ad9f6` (Discard and leave clears every stop
+editor draft), `fe9778ac` (write responses read persisted values; a stop
+draft's 409 offers reload instead of an endless retry), `944fa9d6`
+(canonical price scale in workspace fingerprints) and `fae9f9cb`
+(consecutive stop saves in fresh contexts), cherry-picked as `296c1554`,
+`ecc6de31`, `4a2f32fc`, `20b6ec91`. No migration, no guard removed.
+The truck 11005 resource conflict (AMF1403 active, trailer 55904 versus
+055904) is root's separate repair and is not fixed by this release.
+
+- **Gate, once:** `PULSARTMS_RELEASE_UI=1 bash verify-release.sh` on a
+  clean detached worktree of `20b6ec91` with the local settings copied in
+  (11:33-11:40 UTC), exit 0: JavaScript 665, Client 1,258, Server 3,793,
+  none skipped; offline UI smoke without errors (`browser-ui-q8XVBH`).
+  Verified artifact `release-H5e12a`, 285 files, pinned in the main
+  checkout's `artifacts/managed/release-H5e12a` with both logs and the
+  smoke report under `gate/`.
+- **Backup:** `local-backups/pulsartms-release-backup.5M7i0m/
+  before-2026-09-27-release-20b6ec91.dump`, sha256
+  `a1ec2d13a5e90ee80bc36b185d0a284e296b4bb81ac3a47125848820835b930a`,
+  pg_dump custom, 720 entries, 104 table data, 11:41 UTC; recorded in
+  the inventory; restore not rehearsed.
+- **API:** `deploy-server.sh`, build `944ddc8d-982c-4975-95c5-5a8c04a9869c`,
+  image `api@sha256:815c0dd3c1d7ff33169d7d703a235b4492bbae1d97b6639a81b6c60af1c23015`,
+  revision `amftms-api-b-944ddc8d-…` at 100%, generation 276 (was 274,
+  `amftms-api-b-fd2d5f25-…`, the rollback target). 1 GiB, 1 CPU, at most
+  one instance, as before. Health 200 on the service and through
+  Hosting; no error-level entry or 5xx in its first minutes.
+- **Frontend:** the gate's artifact published as tested, without a
+  second gate (11:49:53-11:50:00 UTC, 285 files). Live `index.html`
+  (`5340dba08ebac8230f701a7a94718a750c3f04b8d74c9f8186184f68848a3809`),
+  `css/main.css?v=24d21b66de4c8b3d`, `Client.*.wasm` and `dotnet.*.js`
+  match the artifact; entry HTML `no-cache`; settings served.
+- **Data:** protected counts before and after, read-only: unchanged
+  (73 migrations, 3 and 3 users, 5 conversations, 57 messages, 0 driver
+  messages, 0 broadcasts, 0 hand-overs, 2 credentials). No production
+  row was written by this release.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
