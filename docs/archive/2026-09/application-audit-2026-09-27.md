@@ -25,8 +25,11 @@ whose findings A1 to A10 are not repeated.
 
 Table scan rates, `pg_stat_user_tables`, two samples 60 s apart at about
 04:50 UTC; they cover every consumer (background work, users, this
-audit's two reads). `pg_stat_statements` is not installed, so per-query
-counts are not available.
+audit's two reads). These are cumulative scan counters, not
+statements: one statement can scan several tables, and a scan is not
+attributable to its caller. `pg_stat_statements` is not installed, so
+per-statement counts are not available. Raw samples: managed run
+`diagnostic-Ge9izA` (`table-stats-sample-1.txt`, `-2.txt`).
 
 | Table | Rows | Seq scans / min | Index scans / min |
 | --- | ---: | ---: | ---: |
@@ -36,10 +39,10 @@ counts are not available.
 | Trucks | 4 | 176.6 | 160.7 |
 | SourceRoadRequests | 168 | 6.0 | 24.8 |
 
-A two-row table read 4.5 times a second, and four trucks' work read
-about 15 times a second, is the application's steady cost with at most
-a few people using it. Earlier measurement put one round trip at about
-66 ms from the API, whatever it asks.
+A two-row table scanned 4.5 times a second, and four trucks' work
+tables scanned about 15 times a second, is the steady cost with at most
+a few people using it. Any saving quoted below from these counters is
+an estimate until a per-statement count confirms it.
 
 ## Coverage inventory
 
@@ -71,7 +74,8 @@ a few people using it. Earlier measurement put one round trip at about
 
 Verified live and in code. Loads 1341 and 1355 are completed, each with
 one completed native leg at revision 1. Their explicit road requests
-show 39 attempts since 01:00 UTC and no completion; both legs' stops
+showed 39 attempts at 04:4x UTC and 43 at 05:06 UTC, no completion,
+and the next attempt about five minutes ahead; both legs' stops
 have coordinates but no `AddressVerifiedAt` and no `AddressRetryAfter`;
 no deadhead or route plan row exists.
 
@@ -82,33 +86,38 @@ no deadhead or route plan row exists.
 2. `StopLocation.ReliablePoint` accepts imported coordinates for such an
    address only while `AddressRetryAfter` is in the future
    (`StopLocation.cs:187-199`).
-3. `StopLocation.ResolveAsync` geocodes the street address through
-   Google (`StopLocation.cs:144-161`); an ambiguous result is a
-   `RoutePlanningException` without a retry time, which means permanent
-   (`RetryAfter = MaxValue`).
-4. `BaseRouteOperation.PrepareAsync` catches it without a log
+3. `StopLocation.ResolveAsync` then geocodes the street address through
+   Google (`StopLocation.cs:144-161`), which can fail permanently
+   (ambiguous address, no retry time) or temporarily (a five-minute or
+   one-hour retry time, `GoogleAddressGeocoder.cs:54-72,150-164`).
+4. `BaseRouteOperation.PrepareAsync` catches every
+   `RoutePlanningException` without a log
    (`BaseRouteOperation.Prepare.cs:165-168`); `FinishAsync` takes no
-   reason and treats `MaxValue` as "back off" to at most an hour
-   (`BaseRouteOperation.cs:248-271`). `SourceRoadRequests` has no reason
-   column, and a lost lease on completion goes unnoticed
-   (`SourceRoadStore.cs:223-253`).
+   reason, uses the exception's retry time when it has one and
+   otherwise backs off to at most an hour (`BaseRouteOperation.cs:248-271`).
+   `SourceRoadRequests` has no reason column, and a lost lease on
+   completion goes unnoticed (`SourceRoadStore.cs:223-253`).
 
-Inferred, not observed: the exact exception (nothing records it) and
-the Google cost, at most about one geocode per distinct address per
-hour, since `GoogleAddressGeocoder` caches a failure for up to an hour
-in process memory (`GoogleAddressGeocoder.cs:134-148`). The same
-reason-dropping pattern is reported in `PlanningRefreshOperation.cs:160`,
-`FleetSynchronizationOperation.cs:283-291` and
-`FleetSynchronizationOperation.Planning.cs:96-104`.
+Not established: which exception it is. Nothing records it; Cloud
+Logging has no application entry naming either load in six hours, and
+no application warning at all in the last two. The five-minute cadence
+(the backoff alone would be an hour by the 43rd attempt) says the
+exception carries a finite retry time of about five minutes, so the
+permanent ambiguous-address failure is unlikely; a transient provider
+failure or another step's pending state fits. Provider cost is
+therefore unknown. The same reason-dropping pattern is in
+`PlanningRefreshOperation.cs:160`, `FleetSynchronizationOperation.cs:283-291`
+and `FleetSynchronizationOperation.Planning.cs:96-104` (reported).
 
-Proposals: (a) keep the last failure message, time and retry on the
-road request, or log it once per dispatch, signature and message;
-(b) park a permanent failure until the request's input signature
-changes, as the deadhead worker already does; (c) owner decision for
-history: accept imported coordinates as the reliable point for a
-completed leg's stop that still equals its imported source
-(`MatchesImportedSource`), read-only, and list the rest for review. No
-forced routing, no edit to accepted stops, no reset of pending work.
+Proposals: (a) first, record the reason: the last failure message,
+time and retry on the road request, or one Information log per
+dispatch, input signature and message; this identifies the exception
+without guessing. (b) Then park a permanent failure until the request's
+input signature changes, as the deadhead worker does. (c) Only with an
+authoritative policy from the owner: how a completed leg's unverified
+stop may be located. Accepting imported coordinates is one possible
+policy, not a finding. No forced routing, no edit to accepted stops, no
+reset of pending work.
 
 ### F2 — P1: the carrier list is read several times a second while idle
 
@@ -121,10 +130,18 @@ and 5 s (`FleetSynchronizationOperation.Feeds.cs:81,110,155,174`,
 `...Planning.cs:164`). Live: 271.8 sequential scans a minute of a
 two-row `Companies` table.
 
-Proposal: check `NextRun` before reading the roster, or keep the roster
-in ReadCache invalidated when a company changes. Expected effect about
-270 fewer round trips a minute; measure with the same table-scan sample
-and a query-count test.
+Proposal, preserving each company's own schedule and the discovery of a
+new company: keep the roster in ReadCache under the company-catalog
+group, invalidated by the commands that create, activate or deactivate
+a company and bounded by `ReadCacheSeconds`, so each tick still runs
+every company's due check against its own `NextRun`. Moving the
+`NextRun` check ahead of the roster alone would not do: the per-company
+schedule lives inside the per-company call. Estimated effect, from the
+scan counters only: up to about 270 fewer `Companies` scans a minute;
+to be confirmed by a query-count test over idle ticks and a repeated
+sample. Tests: idle ticks read the roster once per cache lifetime; a
+new company is run within one lifetime; each company keeps its
+schedule; an inactive company stops.
 
 ### F3 — P1 (latent): HOS clocks are cached for all carriers under one key
 
@@ -134,21 +151,35 @@ the fixed key `samsara:hos-clocks` with one process-wide lock
 are per company. With one carrier there is no exposure today; with a
 second, one carrier's clocks, or an empty table, can be served to the
 other for up to a minute. `RoutePreviewService.cs:30-35` fixed the same
-pattern. Proposal: company in the key and one lock per company, with a
-two-company test.
+pattern. Proposal, first in the post-publication batch: company in the
+key and one gate per company in a bounded map, credential change
+invalidating that company's entry. Tests with two companies: cache hit
+per company; refresh per company; an empty table for one never served
+to the other; a provider error for one not cached for the other;
+concurrent reads for both neither cross nor serialize; the gate map
+stays bounded; a credential change clears only its own entry.
 
 ### F4 — P2: board planning summaries are read for a different page
 
-Verified in code. `PlanningReadService.ReadBoardInputsAsync` asks for the
-page with `IncludePlanned = false` (`PlanningReadService.cs:96-110`) and,
-as reported, without `InChosenGroup`, while the screen shows
-`includePlanned=true` and the dispatcher's groups
-(`DispatchBoardRequest.cs:18`, `DispatchController.cs:123`). Page 1
-usually agrees; later pages can name other trucks, whose summaries the
-Client then drops (`DispatchList.razor.cs:733`), and the different
-filters build a second fleet-wide board index. Not reproduced live.
-Proposal: the Client sends the truck ids on screen (at most 12), and
-the server resolves them through company-scoped planning inputs.
+Verified in code. `GetDispatchPlanningSummariesHandler` builds the board
+query from page, search, truck and date only, and
+`PlanningReadService.ReadBoardInputsAsync` asks with
+`IncludePlanned = false` (`PlanningReadService.cs:96-110`); the screen's
+board uses `includePlanned=true` and `InChosenGroup = true`
+(`DispatchBoardRequest.cs:18`, `DispatchController.cs:105,123,136`).
+Page 1 usually agrees; later pages can name other trucks, whose
+summaries the Client drops (`DispatchList.razor.cs:733`), and the
+different filters build a second board index. Not reproduced live.
+
+Authorization: the chosen group is a dispatcher's view preference, not
+an access boundary ("Narrow only the page a dispatcher reads, never
+shared planning reads", `5f4c6733`; `docs/features/driver-groups.md`).
+Every read stays company-scoped through the query filter, and the
+planning endpoint has the fallback (signed-in) policy only, like the
+board. So the mismatch is identity, not a leak. Proposal: the Client
+sends the truck ids on screen (at most 12); the server keeps only ids
+of its own company and resolves them through planning inputs; tests
+for a foreign id, a page with planned-only trucks and a narrowed group.
 
 ### F5 — P2: work is read two or three times per request or cycle
 
@@ -156,21 +187,24 @@ Messenger (verified, measured): cold 17 statements, warm 5, recorded as
 debt at the release. Reported beside it:
 
 - `GetDriverDutyStatus` in the same Messenger request reads the planning
-  inputs again with HOS (`GetDriverDutyStatus.cs:63`,
-  `PlanningSummaryReader.cs:84`).
-- The summary worker reads each running truck's work fresh, cached, and
-  fresh again every 30 s (`PlanningSummaryOperation.cs:170-186`), each
+  inputs again (`GetDriverDutyStatus.cs:63`, `PlanningSummaryReader.cs:84`);
+  verified to be a hit on the entry `GetDriverWork` just filled, so no
+  database statement, only the HOS clocks from memory. Not a repeat.
+- Verified: the summary worker reads each running truck's work fresh,
+  cached, and fresh again every 30 s
+  (`PlanningSummaryOperation.cs:170-186`), each
   read loading the whole `Trucks` table
   (`ExecutionWorkReader.cs:58-72`), for up to 128 trucks.
-- The board ETA step reads the page's work afresh
-  (`EtaChainInputsService.cs:94-150`) moments before the summaries read
-  it through planning inputs.
-- A board page view runs the board handler three times: the board and
+- Verified: the board ETA step reads the page's itineraries afresh
+  (`EtaChainInputsService.cs:94-110`) moments before the summaries read
+  them through planning inputs.
+- Verified: a board page view runs the board handler three times: the board and
   two enrichments, each re-reading execution loads and details
   (`GetDispatchBoardEnrichment.cs:21-29`,
   `DispatchList.Enrichment.cs:76-79`).
-- The itinerary re-reads older loads with every stop
-  (`TruckItineraryReader.cs:89-103`) already read in the same snapshot.
+- Verified: the itinerary re-reads older (source, no execution leg)
+  loads with every stop (`TruckItineraryReader.cs:81-103`) already read
+  in the same snapshot.
 
 Proposal, one change of owner rather than five local ones:
 `ExecutionWorkReader` owns the relevance filter once (the SQL
@@ -184,36 +218,45 @@ a before/after table-scan sample.
 
 ### F6 — P2: the map and board poll planning harder than needed
 
-Reported, Client. Fleet Map posts the selected truck's planning every
-10 s with no freshness check, inside the location poll
-(`FleetMap.razor.cs:359-375,393,727-767`); the longest routes, over the
-Client cache's geometry bound, come down in full each time
-(`PlanningDisplayCache.cs:12,218-223,467-469`); the board's planning post
-stays at 10 s while any truck on the page lacks a plan
-(`DispatchList.razor.cs:678-687`); `next-routes` can poll every 10 s
-while a leg stays pending (`FleetMap.NextLoads.cs:84-93`); switching
-Cards, Table and Papers downloads the same board again
+Verified in code: the map's 10 s location poll awaits the selected
+truck's planning refresh (`FleetMap.razor.cs:379-393,727-767`), whose
+only throttle applies after a validation failure (`:743,791`), and
+`PlanningDisplayCache.RefreshAsync` coalesces concurrent calls only;
+the board's planning post stays at 10 s while any truck lacks a plan
+(`DispatchList.razor.cs:678-687`); `next-routes` skips the poll only
+when no route is pending and every deadhead is known
+(`FleetMap.NextLoads.cs:84-93`). Reported: the longest routes, over the
+Client cache's geometry bound, come down in full on each refresh
+(`PlanningDisplayCache.cs:12,218-223,467-469`), and switching Cards,
+Table and Papers downloads the same board again
 (`DispatchBoardRequest.cs:7,12-18`). Proposal: send the known plan
 version on every planning read, back off the pending cadences, and key
 the board by URL, not view.
 
-### F7 — P2: road preparation queue loses backoff and starves prewarm
+### F7 — P2: an unrelated peer resets a failing request's backoff
 
-Reported. A next-load request's identity is a revision over all upcoming
-loads, and a changed identity resets `Attempts` and `AvailableAt`
-(`GetNextLoadRoutes.cs:188,204,265-279`, `SourceRoadStore.cs:107-124`),
-so a failing load loses its backoff whenever a later load gets a road;
-claims order by priority then time with 10 a minute for every carrier
-(`SourceRoadStore.cs:160`, `RoutePreparationOptions.cs:8-11`). With F1,
-this is the mechanism behind the historical starvation seen during the
-recovery. Proposal: keep attempts per dispatch across identity changes
-and give history its own share.
+Verified in code. `GetNextLoadRoutes` requests preparation with one
+geometry revision computed over every upcoming load's versions as the
+demand identity (`GetNextLoadRoutes.cs:185-201`), and the store resets
+`Attempts` and `AvailableAt` whenever the identity changes
+(`SourceRoadStore.cs:85-124`). So a failing load loses its backoff when
+another load on the truck changes, although its own inputs did not.
+Claims order by priority then time, 10 a minute for all carriers
+(reported, `SourceRoadStore.cs:160`). Not reproduced, and not shown to
+have caused the historical starvation seen during recovery.
+
+Proposal: the identity for a load's own request is that load's own
+input and connection signatures. Unchanged inputs keep the backoff;
+a relevant change (its base inputs, its predecessor connection)
+resets it so recovery is immediate; a peer's change does not. Tests
+for those three cases.
 
 ### F8 — P2: manual syncs are open to every signed-in user
 
-Reported. `POST /api/dispatch/sync` and `POST /api/fleet/sync` need only
-a signed-in user, the handlers check no role and no cooldown, and both
-take the server-wide lock background sync uses
+Verified in code. `POST /api/dispatch/sync` and `POST /api/fleet/sync`
+carry only `[Authorize]`, their controllers have no class policy, the
+handlers (`SyncDispatche.cs:48`, `SyncFleet.cs:26`) check no role and no
+cooldown, and both take the server-wide lock background sync uses
 (`DispatchController.cs:95-98`, `FleetController.cs:59-62`,
 `ProcessGates.cs:9-10`). Fuel import and IFTA sync require Admin.
 Proposal: Dispatch policy and a cooldown. Also reported: controllers
@@ -233,9 +276,11 @@ Proposal: add the first two as bounded, company-scoped rules.
 
 ### F10 — P3: writes and provider use repeated without change
 
-Reported. Truck positions are rewritten on every publish because
-`ObservedAt` is set to now (`FleetSynchronizationOperation.Publication.cs:90,101`,
-`TruckLocationStore.cs:70`); the base-route scan re-reads 100 loads and
+Verified: truck positions are rewritten on every publish, because the
+publish stamps `ObservedAt` with the current time
+(`FleetSynchronizationOperation.Publication.cs:90,101`) and the store
+skips only rows not older than that (`TruckLocationStore.cs:70`); with
+four trucks the cost is small. Reported: the base-route scan re-reads 100 loads and
 upserts each every minute, with uncached per-truck profiles
 (`SourceRoadInputs.cs:68`, `BaseRouteOperation.cs:228-245`); Google
 Places has only a per-pass batch of 15 and no daily cap; prewarm shares
@@ -265,15 +310,73 @@ although the rules forbid it; the architecture test only rejects
 `Domain.Entities` (`LayerBoundaryTests.cs:248`). `.dockerignore` lacks the
 secret patterns `.gitignore` has.
 
+### F13 — P1: the key ring that protects every secret is not protected
+
+Verified in code. Data Protection keys persist to PostgreSQL with no
+`ProtectKeysWith` (`Infrastructure/DependencyInjection.cs:80-83`), and
+the integration credentials (`IntegrationCredentialStore.cs:24,279-280`),
+storage refresh tokens (`StorageSecrets.cs:27-32`) and border private
+data (`BorderDataProtection.cs:9-10`) are encrypted with those keys. Any
+reader of the database or of a backup in `local-backups/` can therefore
+decrypt WhatsApp, Gmail and Drive secrets. The release guide already
+notes the plain key XML; this audit ranks it. Proposal: protect the key
+ring with a key held outside the database (Cloud KMS or a Secret
+Manager certificate), rotate once protected, and treat existing backups
+as secret-bearing. Needs an owner decision on key custody.
+
+### F14 — P2: the sign-in limit is probably one bucket for everyone
+
+Verified in code: anonymous callers are partitioned by
+`Connection.RemoteIpAddress` (`RequestLimits.cs:108-109`), sign-in and
+refresh share 10 per 5 minutes (`:65-77`, `AuthController.cs:31`), and no
+forwarded-headers handling exists anywhere in `Server`. Inferred, not
+reproduced: behind the Firebase Hosting rewrite and Cloud Run the
+connection address is the proxy's (the request log shows a Google proxy
+address, `66.102.6.196`, as the caller), so one client could exhaust
+sign-in and refresh for all users, and the lockout (5 failures, 15
+minutes) lets anyone who knows an address lock that account. Proposal:
+forwarded headers restricted to the platform proxies, partition by the
+forwarded client address, and a check against real request logs.
+
+### F15 — P3: authentication and provider details
+
+Verified by the delegated review (file and line given), not re-read:
+refresh tokens are stateless and remain valid after use, with no reuse
+detection (`AuthService.cs:70-110`); tokens live in `localStorage` with
+no Content-Security-Policy (`authStorage.ts:41`); logout clears the
+session cache on its own instance only (`ReadCache.cs:156-160`,
+`SessionValidationMiddleware.cs:42-49`); Drive disconnect deletes the
+stored secret without revoking it at Google (`StorageConnections.cs:190`),
+and a Drive consent link is bound to company and connection, not to the
+browser that started it; the WhatsApp webhook answers 404 for an unknown
+company key and 401 for a bad signature (`ReceiveDriverMessages.cs:77-97`);
+every Gmail push runs a full fuel-discount import and ignores the
+history id (`ImportFuelDiscounts.cs:72`); production maps use Google's
+`DEMO_MAP_ID` (`fleetMap.ts:74`, `dispatch.ts:87`). Sound as reviewed:
+the WhatsApp signature (HMAC-SHA256 over the raw body, per-company
+secret, constant-time, size-capped, replay harmless by message id), the
+Drive OAuth flow (nonce, PKCE S256, one-time state, HTTPS redirect from
+configuration, `drive.file` scope), Gmail push validation (audience,
+verified email, service account). No secret value of eight or more
+characters appears in any committed JSON file in the 650 commits.
+Migrations that drop or rewrite data in `Up` are listed in the evidence
+run; `RebuildExecutionStorage` refuses to run on populated tables.
+
 ## Proposed order, for root
 
-1. F2 roster (smallest change, largest measured reduction).
-2. F1 (a) and (b): reason and parking; then root decides (c).
-3. F3 HOS key, before any second carrier.
-4. F4 page identity for summaries.
-5. F5 shared work read, in steps, each with a query-count test.
-6. F6 and F7 cadence and queue identity.
-7. F8, F9, then the P3 items.
+First batch after the frontend publication (tenant isolation and
+safety first, each small and separately tested):
+
+1. F3 HOS clocks per company, with the two-company cases listed there.
+2. F2 roster through ReadCache, preserving per-company schedules and
+   new-company discovery; a query-count test over idle ticks.
+3. F1 (a): record the road-request failure reason; then decide (b) on
+   evidence, and (c) only with an owner policy.
+4. F8 Dispatch policy and cooldown on the manual syncs.
+
+Then: F14 forwarded addresses; F13 key custody (owner decision); F4
+page identity; F7 per-load identity; F5 shared work read in steps; F6
+cadences; F9 auditor rules; the P3 items.
 
 Each fix: affected test groups during work, a before/after table-scan
 sample for load claims, the full gate only for publication.
@@ -283,7 +386,9 @@ sample for load claims, the full gate only for publication.
 - No per-query production counts (`pg_stat_statements` absent) and no
   latency or payload measurement; costs outside the table sample are
   inferred from code.
-- Reported findings were not re-read line by line.
-- Not covered: Gmail watch and Drive OAuth flows, WhatsApp signature
-  internals, migration bodies, git history for past secrets, Client
-  provider traffic (tiles), and all tests' content.
+- Findings marked reported were not re-read line by line; every P1 and
+  every finding named in root's review was verified.
+- Not covered: database roles and who can read backups; Cloud Run
+  ingress and the proxy chain; deployed key-rotation settings; the
+  cross-instance cache relay; admin unlock paths; Google API key
+  restrictions; Samsara and BVD beyond timeouts; tests' content.
