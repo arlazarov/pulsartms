@@ -530,6 +530,52 @@ or Client change.
 Root continues the financial recovery and its validation; nothing was
 requeued, reset or replanned here.
 
+## API and frontend of September 27, Dispatch views (04:25 UTC, partial)
+
+The owner authorized publishing the Dispatch view corrections, the
+current load read from planning in Dispatch and Messenger, and the
+money column; Root cleared the exact candidate
+`79bd05172e97cf25133b28969e8cf71d54d0c6e8` after reviewing the diff,
+the cost evidence and the gate. No migration (73), no DTO change.
+
+- **Gate:** `PULSARTMS_RELEASE_UI=1 bash verify-release.sh` on
+  `79bd0517`, exit 0: Server 3,791, Client 1,251 + 4, JavaScript 665,
+  no failure or skip. UI smoke `browser-ui-moFpZB` (12 cases, clean),
+  `browser-messaging-tabs-2kguzB`; artifact `release-sQu6vd` with a
+  SHA-256 manifest. The gate on `305e76d2` failed one Client test that
+  looked for "1407" in the whole markup, where a random message ID held
+  it (`release-lzqcLe`, log kept); `79bd0517` fixes that test only.
+- **Backup** (04:25 UTC):
+  `local-backups/pulsartms-release-backup.nnfc0V/before-2026-09-27-release-79bd0517.dump`,
+  41,967,707 bytes, SHA-256
+  `3bc7d53e973bd66a23fd109ff4dd383992c140bdd5dc19a4dee3d642e89305c8`,
+  720 entries, 104 table data; in the inventory. No restore rehearsed.
+- **API:** before, `amftms-api-b-85ebbd68-d093-4c24-be6b-3465a2871d6f`
+  (`a2dd5b1d`), generation 272. Cloud Build
+  `fd2d5f25-986e-44ef-9757-6bf84a67e1e3`; image
+  `us-east4-docker.pkg.dev/amftms/amftms/api@sha256:01b64098801d7a4ff44ae772f7ed6e17e9deaeaed0ceff35887d5f08b588d37a`;
+  revision `amftms-api-b-fd2d5f25-986e-44ef-9757-6bf84a67e1e3`,
+  generation 274, spec and status traffic 100%; Ready and Active; 1 GiB,
+  minimum 1, maximum 1, scaling automatic, unchanged. The previous
+  revision is Retired, Active false and TrafficShutDown true. Health 200
+  on the service and through Hosting; no error-level entry or 5xx in
+  the first minutes. The response contracts are unchanged, so the
+  published frontend works against it.
+- **Current work, live and read-only (04:34 UTC):** 11005 current 1410
+  with 1403 passed at the same revision; 11006 current 1395 with 1385
+  passed; 11007 and 54777 current on their first rows, nothing passed.
+- **Frontend: not published.** `deploy-client.sh` passed its own gate
+  (Server 3,791, Client 1,255; artifact `release-GTsl5s`, 285 files,
+  pinned with a manifest) and then stopped: the Firebase login had
+  expired. Hosting still serves `release-kRy7jd` (`index.html`
+  `20c3a06f8b9937a55bfa6aba060508212a7ac56b7d3b0faa0d689a23021eae50`).
+  After the owner signs in again, `release-GTsl5s` is published as
+  tested, without another gate.
+- **Known cost:** Messenger's driver work reads planning inputs; warm 5
+  statements (as before), cold 17 (DriverWorkCostTests). Recorded as
+  debt for the application audit; the production warm/cold ratio is not
+  measured.
+
 ## Not done
 
 Cross-instance messaging notifications and the broader module
