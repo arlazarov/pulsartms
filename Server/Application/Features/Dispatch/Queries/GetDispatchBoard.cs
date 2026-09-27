@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Application.Caching;
 using Application.Diagnostics;
 using Application.Features.Dispatch.Models;
+using Application.Features.Dispatch.Services;
 using Application.Features.Eta.Services;
 using Application.Features.Execution.Queries;
 using Application.Features.Execution.Services;
@@ -91,7 +92,12 @@ public class GetDispatchBoardHandler(
       request.TruckId,
       request.InChosenGroup
         ? await scope.CurrentAsync(cancellationToken)
-        : DriverScope.All
+        : DriverScope.All,
+      await LoadNumberSearch.NumberAsync(
+        dbContext,
+        request.Search,
+        cancellationToken
+      )
     );
     if (request.IdentitiesOnly)
       return RequestResponse<PaginatedList<TruckDispatchBoardResponse>>.Ok(

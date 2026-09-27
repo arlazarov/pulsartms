@@ -1,4 +1,5 @@
 using Application.Features.Dispatch.Models;
+using Application.Features.Dispatch.Services;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Models;
 
@@ -45,7 +46,11 @@ public class GetDispatchQueryHandler(
     if (!string.IsNullOrWhiteSpace(request.Search))
     {
       var search = request.Search.Trim();
-      int.TryParse(search, out var loadNumber);
+      var loadNumber = await LoadNumberSearch.NumberAsync(
+        dbContext,
+        search,
+        cancellationToken
+      );
       query = query.Where(x =>
         x.LoadNumber == loadNumber
         || x.OrderNumber.Contains(search)

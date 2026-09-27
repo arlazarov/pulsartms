@@ -124,6 +124,98 @@ public sealed class CompletedDispatchScopeTests
     Assert.Empty(component.FindAll(".dispatch-load__phase"));
   }
 
+  // A search from Cards or Papers finds a load by its displayed number and
+  // also finds completed ones, listed apart and labelled, while the view
+  // stays Active; clearing the search reads Active alone again (the owner,
+  // September 27).
+  [Theory]
+  [InlineData("Cards")]
+  [InlineData("Papers")]
+  public async Task ASearchFromCardsOrPapersAlsoFindsCompletedLoads(string view)
+  {
+    var requests = new ConcurrentQueue<Uri>();
+    var clock = new FakeTimeProvider(
+      new DateTimeOffset(2026, 9, 9, 12, 0, 0, TimeSpan.Zero)
+    );
+    using var context = Context(
+      clock,
+      (request, _) =>
+      {
+        requests.Enqueue(request.RequestUri!);
+        return Task.FromResult(
+          request.RequestUri!.AbsolutePath == "/api/dispatch"
+            ? Archive(1, 1408)
+            : Auxiliary(request.RequestUri)
+        );
+      }
+    );
+    var component = context.Render<DispatchList>();
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          requests,
+          uri => uri.AbsolutePath == "/api/dispatch/board"
+        )
+    );
+    if (view == "Papers")
+      await View(component, "Papers").ClickAsync(new MouseEventArgs());
+    Assert.DoesNotContain(requests, uri => uri.AbsolutePath == "/api/dispatch");
+
+    await Search(component, clock, "AMF1408");
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find(".dispatch-history"))
+    );
+
+    var history = requests
+      .Last(uri => uri.AbsolutePath == "/api/dispatch")
+      .Query;
+    Assert.Contains("status=completed", history);
+    Assert.Contains("search=AMF1408", history);
+    Assert.Contains("pageSize=12", history);
+    Assert.Contains(
+      "search=AMF1408",
+      requests.Last(uri => uri.AbsolutePath == "/api/dispatch/board").Query
+    );
+    Assert.Equal(
+      "Completed",
+      component.Find(".dispatch-history__tag").TextContent
+    );
+    Assert.StartsWith(
+      "/dispatch/",
+      component.Find("a.dispatch-history__open").GetAttribute("href")
+    );
+    Assert.Equal("true", View(component, view).GetAttribute("aria-pressed"));
+    Assert.Equal(
+      "true",
+      component.Find("#dispatch-active").GetAttribute("aria-pressed")
+    );
+
+    var asked = requests.Count(uri => uri.AbsolutePath == "/api/dispatch");
+    await Search(component, clock, "");
+    component.WaitForAssertion(
+      () => Assert.Empty(component.FindAll(".dispatch-history"))
+    );
+    Assert.Equal(
+      asked,
+      requests.Count(uri => uri.AbsolutePath == "/api/dispatch")
+    );
+  }
+
+  private static async Task Search(
+    IRenderedComponent<DispatchList> component,
+    FakeTimeProvider clock,
+    string text
+  )
+  {
+    var input = component
+      .Find("#dispatch-search")
+      .InputAsync(new ChangeEventArgs { Value = text });
+    await component.InvokeAsync(
+      () => clock.Advance(TimeSpan.FromMilliseconds(300))
+    );
+    await input;
+  }
+
   // Completed loads are read in the Table alone, newest day first (the
   // owner, September 27); Cards read Active again.
   [Fact]

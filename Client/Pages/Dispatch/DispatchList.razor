@@ -128,6 +128,30 @@
             </article>
         }
         }
+        @if (ShownView != 1 && _history is { Count: > 0 } history)
+        {
+            @* Completed loads the search found: Cards and Papers stay
+               Active, so history is listed apart and labelled. *@
+            <section class="dispatch-history" aria-label="Completed loads found">
+                <h2>Completed loads
+                    <small>@(_historyTotal > history.Count
+                        ? $"{history.Count} of {_historyTotal} shown"
+                        : _historyTotal == 1 ? "1 found" : $"{_historyTotal} found")</small></h2>
+                <ul>
+                @foreach (var load in history)
+                {
+                    <li @key="load.Id">
+                        <a class="dispatch-history__open"
+                           href="@HistoryUrl(load)"
+                           aria-label="@($"Open completed load {load.LoadNumber}")"
+                            ><strong><LoadNumber Value="load.LoadNumber" /></strong></a>
+                        <span class="dispatch-history__tag">Completed</span>
+                        <span>@HistoryLine(load)</span>
+                    </li>
+                }
+                </ul>
+            </section>
+        }
         <footer class="dispatch-board__footer">
         @if (_view == 1)
         { <p class="dispatch-board__rpm-note">@DispatchFinancialDisplay.LoadedRpm: rate ÷ loaded miles · @DispatchFinancialDisplay.TotalRpm: rate ÷ (loaded + empty miles)</p> }

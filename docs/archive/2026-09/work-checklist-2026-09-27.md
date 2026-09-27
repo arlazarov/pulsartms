@@ -43,6 +43,7 @@ written before it are correct.
 | Only the load number opens a load | deployed | `2d606052` |
 | Views Cards, Papers, Table; Completed in Table only | deployed | `4b3adbf6` |
 | Arrow between pickup and delivery | blocked: owner | never existed in the Table; asked whether to add one |
+| Search by displayed number (AMF1408); Cards and Papers also find completed loads, labelled, openable | implemented | this branch; release below |
 
 These six shipped together as `4b3adbf6` (`release-FlPysI`, 12:20).
 

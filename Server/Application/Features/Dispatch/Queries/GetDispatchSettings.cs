@@ -31,7 +31,7 @@ public sealed class GetDispatchSettingsHandler(IAppDbContext db)
       ))
       .SingleOrDefaultAsync(cancellationToken);
     return RequestResponse<DispatchSettingsState>.Ok(
-      saved ?? new("AMF", 0, null)
+      saved ?? new(DispatchSettings.DefaultLoadNumberPrefix, 0, null)
     );
   }
 }
