@@ -1,5 +1,6 @@
 using Application.Caching;
 using Application.Features.Eta.Services;
+using Application.Features.Routing.Services.FuelPlanning;
 using Domain.Models.Execution;
 using Domain.Models.Routing;
 using Domain.Rules.Routing;
@@ -12,7 +13,8 @@ public sealed class PlanningSummaryReader(
   RoutePlanningService routes,
   ICurrentCompany company,
   ReadCache reads,
-  EtaForecastService forecasts
+  EtaForecastService forecasts,
+  FuelIssueWindow duty
 )
 {
   // The work a summary without its own result speaks for: the dispatch it
@@ -52,14 +54,16 @@ public sealed class PlanningSummaryReader(
   )
   {
     var truck = work.Itinerary.TruckId;
+    var key = new PlanningSummaryCache.Key(
+      company.Id
+        ?? throw new InvalidOperationException("A company is required."),
+      truck,
+      dispatch
+    );
+    var signature = Signature(work);
     var result = cache.Read(
-      new(
-        company.Id
-          ?? throw new InvalidOperationException("A company is required."),
-        truck,
-        dispatch
-      ),
-      Signature(work),
+      key,
+      signature,
       !summaryOnly,
       knownPlanId,
       knownVersion
@@ -88,12 +92,24 @@ public sealed class PlanningSummaryReader(
         summaryOnly ? plan.Id : knownPlanId,
         summaryOnly ? plan.Version : knownVersion
       );
+    // The hours are read fresh; what the summary drew with them when it
+    // was prepared is checked against them, not shown as current.
+    var dutyHolds =
+      result.State?.Plan?.FuelPlan is not { } fuel
+      || duty.Holds(fuel, work.Hos);
+    if (!dutyHolds)
+      cache.Due(key, signature);
+    var refreshing = result.IsRefreshing || !dutyHolds;
     return result with
     {
       Hos = work.Hos,
       WorkConflicts = WorkPlacements.Conflicts(work),
+      IsRefreshing = refreshing,
+      StaleDependencies = dutyHolds
+        ? []
+        : [AutomaticPlanningResult.DutyDependency],
       Message =
-        result.IsRefreshing && result.Message is null
+        refreshing && result.Message is null
           ? "Planning summary is updating."
           : result.Message,
     };

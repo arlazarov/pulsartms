@@ -369,7 +369,8 @@ completed.
      - Old rows: saved before the keys, they cannot be judged against a
        plan and are never shown by this read; a process without its own
        copy shows none until the next committed refresh of that truck
-       writes the keys (how soon after release is not measured). Their filtered forecast still serves the board.
+       writes the keys (how soon after release is not measured). Their
+       filtered forecast still serves the board.
      - Tests (two processes on one database, each with its own memory,
        read cache and relay): cold read of the other's commit in one
        query, warm in none; a warm reader moves only through the relay; a
@@ -385,16 +386,56 @@ completed.
        populated chain reaches another process intact. A fixture with
        hours and a position for that producer-to-consumer agreement is
        still to be built.
-   - **4e fuel and duty, open.**
-     - Fuel projection: `TruckFuelPlans.ApplyAsync` runs for the summary
-       and its publisher with the fresh itinerary and HOS, and for the
-       route refresh and the fleet loop without them, before a price
-       refresh. The inputs differ, so these are not duplicates by the
-       shared-read invariant; merging them would change what the price
-       refresh sees. Measurement of each caller, including shared
-       subwork, is next.
-     - Duty: a prepared summary does not name the duty it was prepared
-       with; it is to be marked stale when the duty differs.
+   - **4e fuel callers, measured and shared (not released).**
+     `TruckFuelPlans.ApplyAsync` runs for the summary's preparation and
+     its publisher (itinerary and hours supplied), before the price
+     refresh (neither) and in the fleet loop (neither). Measured on the
+     SQLite fixture (`FuelCallerCostTests`): 8, 6, 10 and 6 statements;
+     the same 6-statement check of the saved plan's roads and history
+     (`FuelSavedInputsValidation`) ran in each, so one refresh checked
+     it three times, four with the price refresh (not counted here). The
+     final inputs differ; the check's inputs - saved plan, remaining
+     roads, selected loads - do not.
+     - The owner now shares the check within an operation that declares
+       itself one unit (`Share`, held by `PlanningRefreshOperation` for a
+       refresh). The answer is reused for the same inputs of the check -
+       remaining roads, the history batches it replays with their
+       signatures, and the selected loads (a saved plan's calculation time
+       is not an identity) - while the truck's `planning-inputs` item and the
+       new `fuel-saved-inputs` item keep the generations read before the
+       check; route, base road and execution commits bump the first, a
+       committed connection (`DeadheadHistoryPublication`) the second,
+       locally and through the relay. Outside a share every call checks.
+       Measured: preparation 8, publisher 0, refresh 4 (its itinerary
+       capture), 12 instead of 24 for the refresh's three calls.
+       One share per scope: a nested one is refused, and ending an old
+       share never ends a newer one. Tests: unchanged inputs checked once;
+       an announced road or connection commit checked again and found; an
+       unannounced write found by the next operation; a commit during the
+       check not shared; another history signature checked again;
+       operations one after another and two open at once in separate
+       scopes each check; the refresh operation holds one share for its
+       preparation; nesting and late ends.
+     - Limits: a write another process has not yet announced is seen by
+       the next operation, not this one (tested). The fleet loop is its
+       own operation and checks for itself. Equal SQL text in the
+       measurement does not prove equal parameters; the repetition is
+       established by the code and the share tests. Production cost not
+       measured.
+   - **4e duty, implemented (not released).** A prepared summary's fuel
+     hand-over line (`FuelPlan.IssueState`, each stop's `IssueHorizon`)
+     is drawn with the hours read when it was prepared. The reader now
+     checks it against the hours read with the summary
+     (`FuelIssueWindow.Holds`, one owner of the buffer and freshness): a
+     line the hours now draw otherwise is shown as prepared, with
+     `StaleDependencies = ["duty"]` and refreshing, and the entry is made
+     due (`PlanningSummaryCache.Due`) without taking the ticket of a
+     preparation under way. The end time moves by seconds with each
+     reading and is not compared; a stale reading is a change (the line
+     becomes unknown). Tests: same duty current, other duty stale and
+     due, a duty change during a preparation caught by the next read,
+     the domain rule. Gap: the Client does not yet name the stale
+     dependency; it shows the summary as updating.
 
 Each stage is a separate candidate with its own review; none resets
 pending work, forces routing or changes historical stops.
@@ -441,8 +482,9 @@ either invalidate `planning-inputs` after commit and send
 Gaps to close: tracking is not in the summary signature (stage 4), and
 `Committed` reaches only the local process. `CacheInvalidationRelay`
 carries read-cache item invalidations across processes; this is tested
-for saved ETA forecasts (stage 4e), not for the summary cache. A late summary must not replace one built from a newer
-capture (stage 2 stores under the capture it was built from).
+for saved ETA forecasts (stage 4e), not for the summary cache. A late
+summary must not replace one built from a newer capture (stage 2 stores
+under the capture it was built from).
 
 ## Work counts
 

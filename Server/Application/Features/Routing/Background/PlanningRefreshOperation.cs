@@ -137,6 +137,11 @@ public sealed class PlanningRefreshOperation(
     var captured = owner is { } company
       ? summaries.CaptureDispatch(company, work.DispatchId)
       : [];
+    // One refresh is one unit: its preparation, the summary publisher and
+    // the price refresh check the same saved fuel plan once between them.
+    using var check = services
+      .GetRequiredService<IFuelSavedInputsValidation>()
+      .Share();
     try
     {
       var result = await services

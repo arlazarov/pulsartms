@@ -132,6 +132,21 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
     return entry;
   }
 
+  // A reader found the prepared summary behind a dependency its signature
+  // does not name (the driver's duty): prepare it again soon. A preparation
+  // under way keeps its ticket - its result is still the latest prepared,
+  // and the next reader asks again if it is behind too.
+  public void Due(Key key, string signature)
+  {
+    lock (gate)
+      if (
+        entries.TryGetValue(key, out var entry)
+        && entry.Signature == signature
+        && !entry.Busy
+      )
+        entry.RefreshAt = DateTimeOffset.MinValue;
+  }
+
   public IReadOnlyList<Work> Committed(Guid company, Guid truck)
   {
     lock (gate)

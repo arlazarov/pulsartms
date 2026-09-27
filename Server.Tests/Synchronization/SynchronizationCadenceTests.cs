@@ -139,7 +139,8 @@ public sealed class SynchronizationCadenceTests
           new FleetNames(db),
           new ActiveTransfers(db)
         ),
-        new ExecutionReadScope(db)
+        new ExecutionReadScope(db),
+        provider.GetRequiredService<ReadCache>()
       );
     });
     services.AddSingleton<IFleetTelemetryFeedProvider>(new Feed());

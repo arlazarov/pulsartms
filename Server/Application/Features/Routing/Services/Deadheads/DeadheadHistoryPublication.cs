@@ -1,4 +1,6 @@
+using Application.Caching;
 using Application.Features.Routing.Interfaces;
+using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
 using Domain.Models.Routing;
 using Domain.Rules;
@@ -10,7 +12,8 @@ public sealed class DeadheadHistoryPublication(
   DeadheadHistoryService history,
   IPlanningPublicationScope scope,
   PlanningSummaryCache summaries,
-  ICurrentCompany company
+  ICurrentCompany company,
+  ReadCache reads
 )
 {
   // Commits a connection, then tells the truck's planning summary: the
@@ -24,6 +27,11 @@ public sealed class DeadheadHistoryPublication(
   )
   {
     await transaction.CommitAsync(ct);
+    if (truck is { } changed)
+      reads.InvalidateItem(
+        FuelSavedInputsValidation.SavedInputsFamily,
+        changed
+      );
     if (company.Id is { } owner && truck is { } id)
       summaries.Committed(owner, id);
   }

@@ -26,6 +26,14 @@ public sealed record AutomaticPlanningResult(
   // same inputs the summary was read with (WorkPlacements.Conflicts): the
   // map shows it beside the current work, as the board does.
   public IReadOnlyList<WorkConflictNotice> WorkConflicts { get; init; } = [];
+
+  // Inputs read since the summary was prepared that it no longer agrees
+  // with and its signature does not name: shown as it was prepared,
+  // marked refreshing, and due again. Duty: the fuel hand-over line was
+  // drawn with hours that now draw it otherwise.
+  public IReadOnlyList<string> StaleDependencies { get; init; } = [];
+
+  public const string DutyDependency = "duty";
 }
 
 public sealed record WorkConflictNotice(

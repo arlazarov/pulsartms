@@ -203,6 +203,7 @@ public static class DependencyInjection
     services.AddScoped<ICarrierFuelPrices, CarrierFuelPrices>();
     services.AddScoped<TruckFuelPlans>();
     services.AddScoped<FuelIssueRecords>();
+    services.AddSingleton<FuelIssueWindow>();
     services.AddScoped<FuelIssueChannel>();
     services.AddScoped<FuelIssueSender>();
     services.AddSingleton<IDriverTextObserver, FuelDeliveryObserver>();

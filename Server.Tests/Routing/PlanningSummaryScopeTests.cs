@@ -1,6 +1,8 @@
 using Application.Features.Dispatch.Models;
 using Application.Features.Routing.Services.Routes;
 using Domain.Models.Execution;
+using Domain.Policies;
+using Microsoft.Extensions.Options;
 using Server.Tests.Support;
 
 namespace Server.Tests.Routing;
@@ -90,7 +92,8 @@ public sealed class PlanningSummaryScopeTests
       null!,
       new TestCompany(),
       TestCache.Create(),
-      null!
+      null!,
+      new(Options.Create(new FuelIssueOptions()), TimeProvider.System)
     );
 
   private static TruckPlanningInputs Inputs(DispatchResponse? current)

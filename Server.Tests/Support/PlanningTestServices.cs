@@ -71,6 +71,8 @@ internal sealed class PlanningTestServices : IDisposable
   public FuelScheduleEvaluator FuelSchedules { get; }
   public FuelPlanningService Fuel { get; }
   public FuelIssueRecords Issues { get; private set; } = null!;
+  public FuelIssueWindow IssueWindow { get; } =
+    new(Options.Create(new FuelIssueOptions()), TimeProvider.System);
   public ISender Sender { get; }
   public NoHos Hos { get; } = new();
 
@@ -189,7 +191,8 @@ internal sealed class PlanningTestServices : IDisposable
         DeadheadHistory,
         publicationScope ?? new PlanningPublicationScope((AppDbContext)db),
         Summaries,
-        new TestCompany()
+        new TestCompany(),
+        Reads
       ),
       NullLogger<DeadheadService>.Instance
     );
@@ -221,7 +224,8 @@ internal sealed class PlanningTestServices : IDisposable
     SavedFuelInputs = new(
       Roads,
       DeadheadHistory,
-      new ExecutionReadScope((AppDbContext)db)
+      new ExecutionReadScope((AppDbContext)db),
+      Reads
     );
     FuelPlans = new(
       new TruckFuelPlanStore(
