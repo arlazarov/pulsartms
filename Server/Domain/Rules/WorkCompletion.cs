@@ -33,54 +33,58 @@ public readonly record struct CompletionStop(
     );
 }
 
-// Whether the cargo was delivered: the load's final cargo delivery - the
-// last Drop Off or Delivery among the stops the truck attends, so a trailer
-// drop or a driver-only stop after it does not hide it - is overridden as
-// done, or, unless overridden as not done, recorded, or confirmed by hand
-// once every attended stop up to it is done - a trailer still to drop after
-// it is the truck's work, not the cargo's. A delivery confirmed by hand
-// while the pickup never happened is a mistake, not a delivery. Multi-drop
-// loads are delivered at their last delivery.
-public static class CargoDelivery
+// The two facts a load's stops say, read in one pass (one ordering of
+// the stops, nothing kept between calls):
+// - cargo delivered: the last Delivery or Drop Off among the stops the
+//   truck attends - so a trailer drop or a driver-only stop after it does
+//   not hide it - is overridden done, or, unless overridden not done,
+//   recorded, or confirmed by hand once the attended stops up to it are
+//   done (a trailer still to drop is the truck's work, not the cargo's; a
+//   delivery confirmed by hand while the pickup never happened is a
+//   mistake). Multi-drop loads are delivered at their last delivery.
+// - truck work finished: the cargo is delivered and every attended stop
+//   after that delivery is done. Work without a delivery is not judged
+//   finished here; for an execution leg its status decides.
+public readonly record struct CompletionFacts(
+  bool CargoDelivered,
+  bool TruckWorkFinished
+);
+
+public static class WorkCompletion
 {
-  public static bool IsDelivered(IEnumerable<CompletionStop> stops)
+  public static CompletionFacts Of(IEnumerable<CompletionStop> stops)
   {
     var attended = stops
       .Where(x => !x.DriverOnly)
       .OrderBy(x => x.Sequence)
       .ToList();
-    return attended.LastOrDefault(x => x.IsDelivery) is { Job: not null } final
-      && (
-        final.CompletionOverride == true
-        || final.CompletionOverride != false
-          && (
-            final.Recorded
-            || final.ConfirmedByHand
-              && attended
-                .Where(x => x.Sequence <= final.Sequence)
-                .All(x => x.IsCompleted)
-          )
-      );
+    var final = attended.FindLastIndex(x => x.IsDelivery);
+    if (final < 0)
+      return default;
+    var delivery = attended[final];
+    var delivered =
+      delivery.CompletionOverride == true
+      || delivery.CompletionOverride != false
+        && (
+          delivery.Recorded
+          || delivery.ConfirmedByHand
+            && attended.Take(final + 1).All(x => x.IsCompleted)
+        );
+    return new(
+      delivered,
+      delivered && attended.Skip(final + 1).All(x => x.IsCompleted)
+    );
   }
 }
 
-// Whether the truck's work on a load is finished: the cargo is delivered
-// and every stop the truck attends after that delivery - a trailer drop -
-// is done. Delivered cargo with a trailer still to drop is work the truck
-// is finishing, not finished work. Work without a delivery is not judged
-// finished here; for an execution leg its status decides.
+public static class CargoDelivery
+{
+  public static bool IsDelivered(IEnumerable<CompletionStop> stops) =>
+    WorkCompletion.Of(stops).CargoDelivered;
+}
+
 public static class TruckWorkCompletion
 {
-  public static bool IsFinished(IEnumerable<CompletionStop> stops)
-  {
-    var attended = stops
-      .Where(x => !x.DriverOnly)
-      .OrderBy(x => x.Sequence)
-      .ToList();
-    return attended.LastOrDefault(x => x.IsDelivery) is { Job: not null } final
-      && CargoDelivery.IsDelivered(attended)
-      && attended
-        .Where(x => x.Sequence > final.Sequence)
-        .All(x => x.IsCompleted);
-  }
+  public static bool IsFinished(IEnumerable<CompletionStop> stops) =>
+    WorkCompletion.Of(stops).TruckWorkFinished;
 }

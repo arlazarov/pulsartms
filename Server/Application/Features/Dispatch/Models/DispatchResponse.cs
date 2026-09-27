@@ -61,10 +61,11 @@ public class DispatchResponse : IWorkFacts
   // source rows set it). Otherwise closed, or its cargo delivered and the
   // truck's work on it finished (LoadCompletion).
   public bool Completed =>
-    ExecutionFinished ?? LoadCompletion.IsCompleted(Status, CompletionStops);
+    ExecutionFinished ?? LoadCompletion.IsCompleted(Status, Facts());
 
   // Null unless a reader of the load's source rows found it in accepted
-  // execution; then whether all its legs are completed. Not sent.
+  // execution; then whether all its legs not cancelled are completed.
+  // Not sent.
   [JsonIgnore]
   public bool? ExecutionFinished { get; set; }
 
@@ -73,11 +74,13 @@ public class DispatchResponse : IWorkFacts
   public bool CargoDelivered =>
     ExecutionFinished == true
     || LoadCompletion.IsClosed(Status)
-    || CargoDelivery.IsDelivered(CompletionStops);
+    || Facts().CargoDelivered;
 
-  private CompletionStop[] CompletionStops =>
-    [
-      .. Stops.Select(stop => new CompletionStop(
+  // Read from the stops as they are now, in one pass, each time: nothing
+  // is kept that a later change to the stops could leave stale.
+  private CompletionFacts Facts() =>
+    WorkCompletion.Of(
+      Stops.Select(stop => new CompletionStop(
         stop.Sequence,
         stop.Job,
         stop.DriverOnly,
@@ -85,8 +88,8 @@ public class DispatchResponse : IWorkFacts
         stop.DeliveredAt is not null || stop.DepartedAt is not null,
         stop.ManualCompletedAt is not null,
         stop.IsCompleted
-      )),
-    ];
+      ))
+    );
 
   internal DispatchResponse CopyForBoardRow()
   {

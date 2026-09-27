@@ -9,9 +9,12 @@ namespace Application.Features.Dispatch.Queries;
 // The Completed tab's filter: LoadCompletion said in a form the database
 // can run, over the same stored facts the C# owner reads.
 //
-// A load in accepted execution is completed when all its legs are: its
-// accepted execution decides, not the source's stops or status (a source
-// ahead of accepted execution is a conflict for review, not a completion).
+// A load in accepted execution - with a leg that is not cancelled - is
+// completed when all such legs are: its accepted execution decides, not
+// the source's stops or status (a source ahead of accepted execution is a
+// conflict for review, not a completion). Cancelled legs were replaced or
+// withdrawn and say nothing about the work; a load whose legs are all
+// cancelled is read like any other.
 // Any other load is completed when closed, or when its cargo is delivered
 // and the truck's work on it finished (CargoDelivery, TruckWorkCompletion)
 // over its source stops as DispatchProjection.Complete reads them:
@@ -50,13 +53,18 @@ public static class CompletedLoads
       .Select(x => new
       {
         x.Key,
-        Finished = x.All(l => l.ExecutionLeg.Status == "completed"),
+        Finished = x.All(l =>
+          l.ExecutionLeg.Status == "completed"
+          || l.ExecutionLeg.Status == "cancelled"
+        ),
+        Owned = x.Any(l => l.ExecutionLeg.Status != "cancelled"),
       })
-      .ToDictionaryAsync(x => x.Key, x => x.Finished, ct);
+      .ToDictionaryAsync(x => x.Key, ct);
     foreach (var load in loads)
-      load.ExecutionFinished = finished.TryGetValue(load.Id, out var done)
-        ? done
-        : null;
+      load.ExecutionFinished =
+        finished.TryGetValue(load.Id, out var legs) && legs.Owned
+          ? legs.Finished
+          : null;
   }
 
   private static readonly Expression<Func<DispatchEntity, int?>> Start = x =>
@@ -174,12 +182,17 @@ public static class CompletedLoads
         nameof(IsDone) => Done,
         nameof(IsDelivery) => Delivery,
         nameof(Owned) => (Expression<Func<DispatchEntity, bool>>)(
-          x => links.Any(l => l.DispatchId == x.Id)
+          x =>
+            links.Any(l =>
+              l.DispatchId == x.Id && l.ExecutionLeg.Status != "cancelled"
+            )
         ),
         nameof(LegsFinished) => (Expression<Func<DispatchEntity, bool>>)(
           x =>
             links
-              .Where(l => l.DispatchId == x.Id)
+              .Where(l =>
+                l.DispatchId == x.Id && l.ExecutionLeg.Status != "cancelled"
+              )
               .All(l => l.ExecutionLeg.Status == "completed")
         ),
         _ => throw new InvalidOperationException(node.Method.Name),

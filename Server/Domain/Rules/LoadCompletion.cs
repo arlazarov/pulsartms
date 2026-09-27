@@ -17,6 +17,9 @@ public static class LoadCompletion
 
   public static bool IsCompleted(
     string status,
-    IReadOnlyCollection<CompletionStop> stops
-  ) => IsClosed(status) || TruckWorkCompletion.IsFinished(stops);
+    IEnumerable<CompletionStop> stops
+  ) => IsCompleted(status, WorkCompletion.Of(stops));
+
+  public static bool IsCompleted(string status, CompletionFacts facts) =>
+    IsClosed(status) || facts.TruckWorkFinished;
 }

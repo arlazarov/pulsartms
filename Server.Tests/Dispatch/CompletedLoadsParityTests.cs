@@ -148,6 +148,27 @@ public sealed class CompletedLoadsParityTests
         Legs: ["completed", "completed"]
       ),
       new(
+        "a cancelled leg beside a completed one",
+        true,
+        true,
+        [Pickup(done: false), Delivery(null)],
+        Legs: ["cancelled", "completed"]
+      ),
+      new(
+        "all legs cancelled, the source delivered",
+        true,
+        true,
+        [Pickup(done: true), Delivery(At)],
+        Legs: ["cancelled", "cancelled"]
+      ),
+      new(
+        "all legs cancelled, the source open",
+        false,
+        false,
+        [Pickup(done: true), Delivery(null)],
+        Legs: ["cancelled"]
+      ),
+      new(
         "source says delivered, a leg still open",
         false,
         true,
