@@ -3,6 +3,7 @@ using Application.Features.Dispatch.Audit;
 using Application.Features.Execution.Audit;
 using Application.Features.Messaging.Audit;
 using Application.Features.Routing.Audit;
+using Application.Storage;
 using Domain.Entities;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +41,7 @@ public sealed class ConsistencyAuditSqlTests
       "dispatch.filed-document-unavailable",
       "routing.base-road-leaves-country",
       "routing.base-road-border-unverified",
+      "storage.file-on-disconnected-storage",
       "journal-events",
       "journal-incidents",
     ];
@@ -81,6 +83,8 @@ public sealed class ConsistencyAuditSqlTests
         new BaseRoadBorderRule(db).ReadAsync(request, default),
       "routing.base-road-border-unverified" => () =>
         new BaseRoadBorderUnknownRule(db).ReadAsync(request, default),
+      "storage.file-on-disconnected-storage" => () =>
+        new StoredFileConnectionRule(db).ReadAsync(request, default),
       "journal-events" => () =>
         new ConsistencyJournalReads(db).EventsAsync(
           Company.Amf,
