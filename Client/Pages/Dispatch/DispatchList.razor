@@ -142,9 +142,7 @@
                Active, so history is listed apart and labelled. *@
             <section class="dispatch-history" aria-label="Completed loads found">
                 <h2>Completed loads
-                    <small>@(_historyTotal > history.Count
-                        ? $"{history.Count} of {_historyTotal} shown"
-                        : _historyTotal == 1 ? "1 found" : $"{_historyTotal} found")</small></h2>
+                    <small>@(_historyTotal == 1 ? "1 found" : $"{_historyTotal} found")</small></h2>
                 <ul>
                 @foreach (var load in history)
                 {
@@ -158,6 +156,16 @@
                     </li>
                 }
                 </ul>
+                @if (_historyPages > 1)
+                {
+                    <nav class="dispatch-page__pagination" aria-label="Completed load pages found">
+                        <button class="btn" disabled="@(_historyPage <= 1)"
+                                @onclick="() => HistoryPage(_historyPage - 1)">Previous</button>
+                        <span>Page @_historyPage of @_historyPages</span>
+                        <button class="btn" disabled="@(_historyPage >= _historyPages)"
+                                @onclick="() => HistoryPage(_historyPage + 1)">Next</button>
+                    </nav>
+                }
             </section>
         }
         <footer class="dispatch-board__footer">

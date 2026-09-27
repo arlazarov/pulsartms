@@ -344,6 +344,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
       _planningSummaries.Clear();
       _latestTelemetry.Clear();
       _history = null;
+      _historyPages = 0;
       _historyFailed = false;
       _historyRequest?.Cancel();
     }

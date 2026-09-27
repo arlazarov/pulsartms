@@ -292,6 +292,71 @@ public sealed class CompletedDispatchScopeTests
     );
   }
 
+  // Every load the search finds can be reached, a page of 12 at a time
+  // (the owner, September 27): AMF10 finds 1014 on the first page and 1030
+  // on the second, asked for with the same search.
+  [Fact]
+  public async Task HistoryPagesThroughEveryMatch()
+  {
+    var requests = new ConcurrentQueue<Uri>();
+    var clock = new FakeTimeProvider(
+      new DateTimeOffset(2026, 9, 9, 12, 0, 0, TimeSpan.Zero)
+    );
+    using var context = Context(
+      clock,
+      (request, _) =>
+      {
+        requests.Enqueue(request.RequestUri!);
+        return Task.FromResult(
+          request.RequestUri!.AbsolutePath != "/api/dispatch"
+            ? Auxiliary(request.RequestUri)
+          : request.RequestUri.Query.Contains("page=2") ? Archive(2, 1030)
+          : Archive(1, 1014)
+        );
+      }
+    );
+    var component = context.Render<DispatchList>();
+    component.WaitForAssertion(
+      () => Assert.NotNull(component.Find("#dispatch-search"))
+    );
+
+    await Search(component, clock, "AMF10");
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          "1014",
+          component.Find(".dispatch-history__open").TextContent
+        )
+    );
+    var pages = component.Find(".dispatch-history .dispatch-page__pagination");
+    Assert.Contains("Page 1 of 2", pages.TextContent);
+
+    await component.InvokeAsync(
+      () =>
+        component
+          .FindAll(".dispatch-history .dispatch-page__pagination button")
+          .Single(button => button.TextContent == "Next")
+          .ClickAsync(new MouseEventArgs())
+    );
+    component.WaitForAssertion(
+      () =>
+        Assert.Contains(
+          "1030",
+          component.Find(".dispatch-history__open").TextContent
+        )
+    );
+    var second = requests
+      .Last(uri => uri.AbsolutePath == "/api/dispatch")
+      .Query;
+    Assert.Contains("page=2", second);
+    Assert.Contains("search=AMF10", second);
+    Assert.Contains("status=completed", second);
+    Assert.Contains(
+      "Page 2 of 2",
+      component.Find(".dispatch-history .dispatch-page__pagination").TextContent
+    );
+  }
+
   private static async Task Search(
     IRenderedComponent<DispatchList> component,
     FakeTimeProvider clock,

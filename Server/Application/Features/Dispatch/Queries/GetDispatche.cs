@@ -51,8 +51,11 @@ public class GetDispatchQueryHandler(
         search,
         cancellationToken
       );
+      var digits = loadNumber is { } number
+        ? LoadNumberSearch.Prefix(number)
+        : null;
       query = query.Where(x =>
-        x.LoadNumber == loadNumber
+        digits != null && x.LoadNumber.ToString().StartsWith(digits)
         || x.OrderNumber.Contains(search)
         || x.CustomerName.Contains(search)
         || x.TruckNumber.Contains(search)
