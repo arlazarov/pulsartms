@@ -783,6 +783,19 @@ failed on the new worktree's missing Client packages and is marked.
     after the uncertain warning is a dispatcher's decision and can send a
     second message if the first was only slow; clocks are assumed shared
     (one instance).
+  - Root's review of `292d31aa`: that test published nothing while the
+    call was held. `AnAcceptanceHeldOverAPublicationLosesNoStopAndSendsOnce`
+    (Routing) now holds a real sender at the provider, lets the attempt
+    age past the timeout, and saves the fuel plan through the real owner
+    (`FuelPlanningService.EditAsync`) meanwhile - keeping stop A, or
+    choosing C - which commits without knowing A went. After the release:
+    the prepared summary is no longer current; the plan read through
+    `PlanningReadService` shows A sent, or A withdrawn; a plain press
+    during and after sends nothing; the provider got one message. Red on
+    the `7db23d82` sources (A not withdrawn) and with either the late rule
+    or the record's summary notice removed (diagnostic-lLNmFz); green
+    diagnostic-bJ0Vun. `PlanningTestServices` now shares one summary
+    cache between publication and records, as production does.
 
 - **F23, road requests.** Re-read: retries are already bounded - the
   claim skips waiting rows, and a failure backs off to at most one

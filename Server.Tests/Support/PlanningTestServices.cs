@@ -68,6 +68,10 @@ internal sealed class PlanningTestServices : IDisposable
   public FuelScheduleEvaluator FuelSchedules { get; }
   public FuelPlanningService Fuel { get; }
   public FuelIssueRecords Issues { get; private set; } = null!;
+
+  // One per process in production: what a publication commits and what a
+  // hand-over records reach the same prepared summaries.
+  public PlanningSummaryCache Summaries { get; } = new(TimeProvider.System);
   public ISender Sender { get; }
   public NoHos Hos { get; } = new();
 
@@ -132,7 +136,7 @@ internal sealed class PlanningTestServices : IDisposable
       Itineraries,
       publicationScope ?? new PlanningPublicationScope((AppDbContext)db),
       DeadheadHistory,
-      new PlanningSummaryCache(TimeProvider.System),
+      Summaries,
       new TestCompany(),
       Reads
     );
@@ -229,7 +233,7 @@ internal sealed class PlanningTestServices : IDisposable
       SavedFuelInputs,
       Issues = new FuelIssueRecords(
         db,
-        new PlanningSummaryCache(TimeProvider.System),
+        Summaries,
         new TestCompany(),
         Options.Create(new FuelIssueOptions()),
         TimeProvider.System,

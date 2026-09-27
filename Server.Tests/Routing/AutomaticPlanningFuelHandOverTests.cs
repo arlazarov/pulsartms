@@ -1,13 +1,23 @@
 using System.Text.Json;
+using Application.Features.Messaging.Services;
+using Application.Features.Routing.Commands;
 using Application.Features.Routing.Services.FuelPlanning;
+using Application.Features.Routing.Services.Routes;
+using Domain.Entities;
 using Domain.Entities.Fleet;
 using Domain.Entities.Fuel;
 using Domain.Entities.Messaging;
 using Domain.Models.Fuel;
 using Domain.Models.Messaging;
 using Domain.Models.Routing;
+using Domain.Policies;
 using Domain.Rules;
+using Domain.Rules.Routing;
+using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Server.Tests.Support;
 
 namespace Server.Tests.Routing;
 
@@ -232,6 +242,227 @@ public partial class AutomaticPlanningTests
           automaticRefreshRevision: saved.CalculatedAt
         )
     );
+  }
+
+  // Root's review of D6: Messaging's two-minute timeout does not prove the
+  // provider stopped. A WhatsApp hand-over of stop A is held at the
+  // provider; past the timeout the dispatcher saves the fuel plan through
+  // the real owner - keeping A, or choosing C instead - and it commits
+  // without knowing A went. Then the provider takes the message. The late
+  // record reaches the prepared summaries; the plan read afterwards shows
+  // A sent, or A withdrawn for review; and the driver got one message.
+  [Theory]
+  [InlineData(true)]
+  [InlineData(false)]
+  public async Task AnAcceptanceHeldOverAPublicationLosesNoStopAndSendsOnce(
+    bool kept
+  )
+  {
+    var a = Station("A", 40m, -79.3m, 3.0m);
+    var c = Station("C", 40m, -79.25m, 3.6m);
+    await using var f = await Fixture.CreateAsync([a, c], pickedUp: true);
+    await FueledAsync(f, DateTime.UtcNow.AddMinutes(-5));
+    var first = (
+      await f.Services.FuelPlans.ReadCheckedAsync(f.Truck.Id, default)
+    )!;
+    var stop = Assert.Single(first.Plan.Stops);
+    Assert.Equal(a.Id, stop.StationId);
+    var driver = new Driver
+    {
+      Id = Guid.NewGuid(),
+      ExternalId = "driver",
+      Name = "Driver",
+      IsActive = true,
+      WhatsAppPhone = "+15558234327",
+    };
+    f.Db.Drivers.Add(driver);
+    // The driver wrote an hour ago, so Messaging's window is open.
+    f.Db.Conversations.Add(
+      new Conversation
+      {
+        Id = Guid.NewGuid(),
+        Channel = DriverMessageChannels.WhatsApp,
+        BusinessNumberId = "123456",
+        Participant = driver.WhatsAppPhone,
+        LastInboundAt = DateTime.UtcNow.AddHours(-1),
+        LastMessageAt = DateTime.UtcNow.AddHours(-1),
+      }
+    );
+    await f.Db.SaveChangesAsync();
+    f.Db.ChangeTracker.Clear();
+    var shown = new FuelIssuePreviews.Current(
+      first,
+      new(
+        f.Truck.Id,
+        first.CalculatedAt,
+        first.RootExecutionLegId,
+        first.AssignmentRevision,
+        FuelIssueStates.Ready,
+        null,
+        false,
+        [],
+        "Fuel at A"
+      )
+      {
+        Recipient = new(
+          driver.Id,
+          driver.Name,
+          driver.WhatsAppPhone,
+          FuelIssueChannelStates.Ready,
+          null
+        ),
+      },
+      [(stop, "Fuel at A")]
+    );
+    var request = new FuelIssueSendRequest(
+      new(first.CalculatedAt, [FuelVisitIdentity.Key(stop)])
+      {
+        AssignmentRevision = first.AssignmentRevision,
+      },
+      false
+    );
+    // The request's own context and clock: its attempt was made three
+    // minutes before the plan is saved, so it no longer holds plans.
+    var clock = new ManualTimeProvider(DateTimeOffset.UtcNow.AddMinutes(-3));
+    var transport = new FakeDriverMessaging();
+    var reached = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    var held = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    transport.During = async () =>
+    {
+      reached.TrySetResult();
+      await held.Task;
+    };
+    FuelIssueSender Issuer(AppDbContext db) =>
+      new(
+        new DriverTextDelivery(
+          db,
+          transport,
+          new TestCompany(),
+          clock,
+          NullLogger<DriverTextDelivery>.Instance
+        ),
+        new FuelIssueRecords(
+          db,
+          f.Services.Summaries,
+          new TestCompany(),
+          Options.Create(new FuelIssueOptions()),
+          TimeProvider.System,
+          new PlanningPublicationScope(db)
+        )
+      );
+    AppDbContext Context() =>
+      new(
+        new DbContextOptionsBuilder<AppDbContext>()
+          .UseSqlite(f.Connection)
+          .Options
+      );
+    await using var sender = Context();
+    var sending = Issuer(sender)
+      .SendAsync(
+        request,
+        _ => Task.FromResult<FuelIssuePreviews.Current?>(shown),
+        "dispatcher",
+        default
+      );
+    // The call reaches the provider; a send that ends before it says why.
+    await Task.WhenAny(reached.Task, sending)
+      .WaitAsync(TimeSpan.FromSeconds(10));
+    Assert.False(
+      sending.IsCompleted,
+      sending.IsCompleted ? (await sending).Error : null
+    );
+
+    // While the call is held: the plan is saved through its owner and
+    // committed, knowing nothing of A's hand-over.
+    f.Location.FuelUpdatedAt = DateTime.UtcNow;
+    f.Db.ChangeTracker.Clear();
+    await f.Services.Fuel.EditAsync(
+      f.Load.Id,
+      new(
+        first.CalculatedAt,
+        [
+          kept
+            ? new(a.Id, stop.BeforeStopId, stop.BuyGallons, stop.FillToTarget)
+            : new(c.Id, stop.BeforeStopId, 0, true),
+        ]
+      ),
+      true,
+      default
+    );
+    var second = (
+      await f.Services.FuelPlans.ReadCheckedAsync(f.Truck.Id, default)
+    )!;
+    Assert.True(second.CalculatedAt > first.CalculatedAt);
+    Assert.Equal(
+      kept ? a.Id : c.Id,
+      Assert.Single(second.Plan.Stops).StationId
+    );
+    Assert.Null(second.Plan.Withdrawn);
+    Assert.Empty(await f.Db.FuelVisitSends.ToListAsync());
+    // A plain press from another request meanwhile sends nothing.
+    await using (var other = Context())
+      Assert.Equal(
+        409,
+        (
+          await Issuer(other)
+            .SendAsync(
+              request,
+              _ => Task.FromResult<FuelIssuePreviews.Current?>(shown),
+              "dispatcher",
+              default
+            )
+        ).Status
+      );
+    // A board summary prepared from the plan as it now stands.
+    var summary = new PlanningSummaryCache.Key(Company.Amf, f.Truck.Id);
+    f.Services.Summaries.Keep(summary, "prepared");
+    var prepared = f.Services.Summaries.Capture(summary, "prepared")!;
+
+    clock.UtcNow = DateTimeOffset.UtcNow;
+    held.SetResult();
+    Assert.Equal(200, (await sending).Status);
+
+    Assert.False(f.Services.Summaries.IsCurrent(prepared));
+    var sent = await f.Db.FuelVisitSends.AsNoTracking().SingleAsync();
+    Assert.Equal(
+      (a.Id, first.CalculatedAt),
+      (sent.StationId, sent.PlanCalculatedAt)
+    );
+    Assert.True(sent.SentAt >= second.CalculatedAt);
+    f.Db.ChangeTracker.Clear();
+    var read = await f.Reader.ForDispatchAsync(f.Load.Id, default);
+    var fuel = read.State!.Plan!.FuelPlan!;
+    if (kept)
+    {
+      Assert.NotNull(Assert.Single(fuel.Stops).Sent);
+      Assert.Empty(fuel.Withdrawn ?? []);
+    }
+    else
+    {
+      Assert.Null(Assert.Single(fuel.Stops).Sent);
+      Assert.Equal(a.Id, Assert.Single(fuel.Withdrawn ?? []).StationId);
+    }
+    // The same press from the view the dispatcher had records nothing new
+    // and sends nothing: the provider already took this message.
+    await using (var again = Context())
+      Assert.Equal(
+        200,
+        (
+          await Issuer(again)
+            .SendAsync(
+              request,
+              _ => Task.FromResult<FuelIssuePreviews.Current?>(shown),
+              "dispatcher",
+              default
+            )
+        ).Status
+      );
+    Assert.Single(transport.Sent);
+    Assert.Equal(1, await f.Db.FuelVisitSends.CountAsync());
   }
 
   private static async Task<Guid> AttemptAsync(
