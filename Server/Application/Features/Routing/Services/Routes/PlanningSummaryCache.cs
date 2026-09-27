@@ -147,6 +147,30 @@ public sealed class PlanningSummaryCache(TimeProvider time) : ICacheMemorySource
         entry.RefreshAt = DateTimeOffset.MinValue;
   }
 
+  // A stored truck summary as the consistency audit compares it with the
+  // owner's current work: the signature it was stored under and the
+  // dispatch it speaks for. Process-local, like the cache.
+  public sealed record Stored(Guid Truck, string Signature, Guid? DispatchId);
+
+  public IReadOnlyList<Stored> StoredFor(Guid company)
+  {
+    lock (gate)
+      return
+      [
+        .. entries
+          .Where(x =>
+            x.Key.Company == company
+            && x.Key.Dispatch is null
+            && x.Value.Json is not null
+          )
+          .Select(x => new Stored(
+            x.Key.Truck,
+            x.Value.Signature,
+            x.Value.DispatchId
+          )),
+      ];
+  }
+
   public IReadOnlyList<Work> Committed(Guid company, Guid truck)
   {
     lock (gate)

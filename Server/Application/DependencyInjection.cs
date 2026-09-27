@@ -159,6 +159,10 @@ public static class DependencyInjection
     services.AddScoped<IConsistencyRule, BaseRoadBorderRule>();
     services.AddScoped<IConsistencyRule, BaseRoadBorderUnknownRule>();
     services.AddScoped<IConsistencyRule, StoredFileConnectionRule>();
+    services.AddScoped<IConsistencyRule, SourceClosedWorkOpenRule>();
+    services.AddScoped<IConsistencyRule, SourceReviewOpenRule>();
+    services.AddScoped<IConsistencyRule, RoutePassedWorkOpenRule>();
+    services.AddScoped<IConsistencyRule, SummaryNamesCurrentWorkRule>();
     services.AddSingleton<TruckHistoryQueue>();
     services.AddSingleton<TruckHistoryCache>();
     services.AddSingleton<ICacheMemorySource>(sp =>

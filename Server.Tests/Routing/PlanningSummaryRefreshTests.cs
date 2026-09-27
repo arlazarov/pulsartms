@@ -33,7 +33,7 @@ namespace Server.Tests.Routing;
 // something at the moment the preparation reads the current route.
 [Trait("Category", "Routing")]
 [Trait("Kind", "Integration")]
-public sealed class PlanningSummaryRefreshTests
+public sealed partial class PlanningSummaryRefreshTests
 {
   [Fact]
   public async Task OnePreparationCapturesOnceAndNamesTheCurrentWork()

@@ -40,6 +40,8 @@ public sealed class ConsistencyAuditSqlTests
       "dispatch.filed-document-unavailable",
       "routing.base-road-leaves-country",
       "routing.base-road-border-unverified",
+      "execution.source-closed-work-open",
+      "execution.source-review-open",
       "journal-events",
       "journal-incidents",
     ];
@@ -81,6 +83,10 @@ public sealed class ConsistencyAuditSqlTests
         new BaseRoadBorderRule(db).ReadAsync(request, default),
       "routing.base-road-border-unverified" => () =>
         new BaseRoadBorderUnknownRule(db).ReadAsync(request, default),
+      "execution.source-closed-work-open" => () =>
+        new SourceClosedWorkOpenRule(db).ReadAsync(request, default),
+      "execution.source-review-open" => () =>
+        new SourceReviewOpenRule(db).ReadAsync(request, default),
       "journal-events" => () =>
         new ConsistencyJournalReads(db).EventsAsync(
           Company.Amf,

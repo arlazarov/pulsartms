@@ -284,6 +284,10 @@ does; everything else in this guide is target design.
 | `dispatch.filed-document-unavailable` | `FileMessageAttachment` | violation, warning | none; stored file's owner | implemented, detection tested |
 | `routing.base-road-leaves-country` | `BaseRouteService` | violation, warning | none; rebuild the load | implemented, detection tested |
 | `routing.base-road-border-unverified` | `BaseRouteService` | review, warning | none; dispatcher | implemented, detection tested |
+| `routing.route-passed-work-open` | `TruckPlanningInputs` | review, warning | none; dispatcher | implemented, detection tested |
+| `execution.source-closed-work-open` | `AcceptExecutionSourceChanges` | review, warning | none; dispatcher | implemented, detection tested |
+| `execution.source-review-open` | `ExecutionImportAcceptance` | review, warning | none; dispatcher | implemented, detection tested |
+| `routing.summary-names-current-work` | `PlanningSummaryCache` | violation, warning | none; next preparation | implemented, detection tested |
 
 Detectors live in `Application/Features/Execution/Audit` and
 `Application/Features/Routing/Audit` behind `IConsistencyRule`; the refresh
@@ -297,6 +301,15 @@ only work that can still run. A road that could not be fully placed is
 migration `RecordBaseRoadBorderCheck` (not applied anywhere) are covered only
 after `BaseRoadBorderCheck` has judged them; until then they are unchecked
 (`Server.Tests/Routing/BaseRoadBorderAuditTests.cs`).
+
+The current-work rules (not released) are described in
+[current-work.md](current-work.md#auditor-rules). The route-passed rule
+asks the planning inputs' owner for the whole fleet per page rather than
+one statement, and the summary rule reads this process' summaries only.
+Tests: `Server.Tests/Dispatch/SourceAheadAuditTests.cs` (and
+`Server.Tests/Persistence/SourceAheadAuditPostgresTests.cs` on the
+isolated fixture) and
+`Server.Tests/Routing/PlanningSummaryRefreshTests.Audit.cs`.
 
 Implemented behavior:
 

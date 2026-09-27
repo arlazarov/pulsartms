@@ -523,18 +523,36 @@ background cost are reported separately; a fast response is not evidence.
 ## Auditor rules
 
 Per [consistency-auditor.md](consistency-auditor.md), company-scoped and
-bounded, with coverage reported. None is implemented; each stays a
-recorded gap until it is.
+bounded, with coverage reported. Implemented as version 1 (not released),
+detection only; each rule's limits are part of its contract.
 
-- **CW1 route-passed-not-delivered:** tracking passed all stops for the
-  accepted assignment and no delivery actual after a threshold.
-- **CW2 source-ahead-of-accepted:** source actuals or status beyond the
-  accepted leg (the AMF1395 shape).
-- **CW3 unresolved source review:** an open review older than a
-  threshold.
-- **CW4 consumer agreement:** a stored summary's dispatch, leg or
-  revision differs from a fresh capture's current work beyond the
-  freshness window.
+- **CW1 `routing.route-passed-work-open`** (review): work planning has
+  passed is not finished - its delivery not recorded, or delivered with
+  a later truck stop open. It asks the owner, `WorkPlacements.Conflicts`
+  over `TruckPlanningInputs`, for every active truck of the company in
+  batches of 100, and decides nothing itself. No grace window: GPS
+  passage is not delivery, so it is a review from the moment it shows,
+  and its age is the journal's first-seen time. A page reads the whole
+  fleet through the owner's cache, not one statement.
+- **CW2 `execution.source-closed-work-open`** (review): a load closed at
+  its source (`LoadCompletion.ClosedStatus`) whose accepted execution is
+  still planned or active - the AMF1395 shape. Source stop actuals ahead
+  of the leg are not covered by version 1; the closed status is.
+- **CW3 `execution.source-review-open`** (review): a source change
+  waiting for a dispatcher (`ExecutionReviewReason`), on a load neither
+  closed nor cancelled. The link keeps no time, so the age is the
+  journal's first-seen time rather than a threshold.
+- **CW4 `routing.summary-names-current-work`** (violation): a stored
+  truck summary under the current signature names the owner's current
+  work. An entry under an older signature is stale and retired by the
+  cache, not reported. Summaries are per process: each process checks
+  only its own, and the report says so.
+
+Existing rows found read-only on 2026-09-27 (19:20 UTC), before these
+rules run anywhere: CW2 loads 1385 (active leg), 1395 (planned) and 1403
+(active); CW3 load 1416 (initial assignment review). CW1 and CW4 need
+the running API. Recovery stays with Root and the dispatcher; the rules
+change nothing.
 
 ## Existing data
 
