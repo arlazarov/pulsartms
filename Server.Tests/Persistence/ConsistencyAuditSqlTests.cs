@@ -49,6 +49,8 @@ public sealed class ConsistencyAuditSqlTests
       "storage.file-on-disconnected-storage",
       "routing.fuel-handover-uncertain",
       "routing.fuel-handover-unrecorded",
+      "execution.source-closed-work-open",
+      "execution.source-review-open",
       "journal-events",
       "journal-incidents",
     ];
@@ -107,6 +109,10 @@ public sealed class ConsistencyAuditSqlTests
         new FuelHandOverUncertainRule(db).ReadAsync(request, default),
       "routing.fuel-handover-unrecorded" => () =>
         new FuelHandOverUnrecordedRule(db).ReadAsync(request, default),
+      "execution.source-closed-work-open" => () =>
+        new SourceClosedWorkOpenRule(db).ReadAsync(request, default),
+      "execution.source-review-open" => () =>
+        new SourceReviewOpenRule(db).ReadAsync(request, default),
       "journal-events" => () =>
         new ConsistencyJournalReads(db).EventsAsync(
           Company.Amf,

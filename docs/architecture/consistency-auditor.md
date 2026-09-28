@@ -291,6 +291,10 @@ does; everything else in this guide is target design.
 | `storage.file-on-disconnected-storage` | `FileStore`, `DisconnectStorageCommand` | violation, warning | none; reconnect or move the files | implemented; detection tested under PostgreSQL only, SQL translation offline |
 | `routing.fuel-handover-uncertain` | `FuelIssueSender` | review, warning | none; dispatcher asks the driver | implemented, detection tested |
 | `routing.fuel-handover-unrecorded` | `FuelIssueSender` | violation, warning | send the plan again; recorded from the accepted attempt | implemented, detection tested |
+| `routing.route-passed-work-open` | `TruckPlanningInputs` | review, warning | none; dispatcher | implemented, detection tested |
+| `execution.source-closed-work-open` | `AcceptExecutionSourceChanges` | review, warning | none; dispatcher | implemented, detection tested |
+| `execution.source-review-open` | `ExecutionImportAcceptance` | review, warning | none; dispatcher | implemented, detection tested |
+| `routing.summary-names-current-work` | `PlanningSummaryCache` | violation, warning | none; next preparation | implemented, detection tested |
 
 Detectors live in `Application/Features/Execution/Audit` and
 `Application/Features/Routing/Audit` behind `IConsistencyRule`; the refresh
@@ -305,6 +309,15 @@ only work that can still run. A road that could not be fully placed is
 migration `RecordBaseRoadBorderCheck` (not applied anywhere) are covered only
 after `BaseRoadBorderCheck` has judged them; until then they are unchecked
 (`Server.Tests/Routing/BaseRoadBorderAuditTests.cs`).
+
+The current-work rules (not released) are described in
+[current-work.md](current-work.md#auditor-rules). The route-passed rule
+asks the planning inputs' owner for the whole fleet per page rather than
+one statement, and the summary rule reads this process' summaries only.
+Tests: `Server.Tests/Dispatch/SourceAheadAuditTests.cs` (and
+`Server.Tests/Persistence/SourceAheadAuditPostgresTests.cs` on the
+isolated fixture) and
+`Server.Tests/Routing/PlanningSummaryRefreshTests.Audit.cs`.
 
 Implemented behavior:
 

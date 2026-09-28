@@ -31,7 +31,8 @@ public sealed class ConsistencyAuditor(
   [
     "ETA forecasts, route plans and fuel plans against the current "
       + "assignment revision",
-    "the in-memory planning summary cache and its published signature",
+    "another process' in-memory planning summaries (each process checks "
+      + "only its own)",
     "cross-company rows in server-owned tables other than planning demand",
     "driver message delivery state and messaging windows",
     "trailer catalog and assignment authority",

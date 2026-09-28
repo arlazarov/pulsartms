@@ -93,11 +93,14 @@ public sealed partial class EtaForecastService(
       if (description is null)
         continue;
       var now = DateTime.UtcNow;
-      var key = memory.Scope(
-        description.RootDispatchId,
-        description.RootExecutionLegId
+      memory.Demand(
+        new EtaMemory.ScopeIdentity(
+          description.RootDispatchId,
+          description.RootExecutionLegId
+        ),
+        description.InputHash,
+        now
       );
-      memory.Demand(key, description.InputHash, now);
       if (rows is not null)
       {
         var currentCycle = ReadCurrentCycle(
