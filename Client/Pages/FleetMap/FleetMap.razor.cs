@@ -921,6 +921,7 @@ public partial class FleetMap : IAsyncDisposable
     _recalculatingFuel = busy;
     if (busy)
     {
+      _fuelUpdateFailed = false;
       _fuelRevalidationPending = false;
       _routeRequest?.Cancel();
       _routeRequest = null;
@@ -935,10 +936,15 @@ public partial class FleetMap : IAsyncDisposable
 
   private Task OnFuelFailed()
   {
+    _fuelUpdateFailed = true;
     if (!_disposed && _routeState?.Plan is not null)
       _fuelRevalidationPending = true;
     return Task.CompletedTask;
   }
+
+  // The last recalculation this page started failed; the kept plan says so
+  // until another starts.
+  private bool _fuelUpdateFailed;
 
   private async Task OnFuelRecalculated(AutomaticPlanningResult result)
   {
@@ -1055,11 +1061,11 @@ public partial class FleetMap : IAsyncDisposable
     GC.SuppressFinalize(this);
   }
 
-  // A plan is worth showing when it still holds - whether its prices belong
-  // to an earlier pricing day or the truck's position could not be read.
-  // Only a plan whose stops no longer match the work is hidden, because a
-  // driver with no fuel stop at all is the worse answer.
-  private static bool Usable(FuelPlan? fuel) =>
-    fuel is { Stops.Count: > 0 }
-    && (!fuel.NeedsRefresh || fuel.PricesOutOfDate || fuel.PositionUnverified);
+  // The last saved plan the server returns for this truck's current
+  // assignment stays on the map and in the panel until the fuel owner
+  // publishes its replacement (the owner, September 28): a driver with no
+  // fuel stop at all is the worse answer. A plan that needs updating is
+  // shown as stale (FuelPlan.Stale); the server's scope guard hides a plan
+  // made for another truck, leg or assignment revision.
+  private static bool Usable(FuelPlan? fuel) => fuel is { Stops.Count: > 0 };
 }

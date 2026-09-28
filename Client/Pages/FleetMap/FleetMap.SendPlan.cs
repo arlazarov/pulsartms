@@ -15,7 +15,9 @@ public partial class FleetMap
     && !_recalculatingFuel
     && _routeEditorDispatch is null
     && !_cameraOpen
-    && _routeState?.Plan?.FuelPlan is not null;
+    && _routeState?.Plan?.FuelPlan is not null
+    // A kept plan awaiting its replacement is shown, never sent.
+    && !FuelPlanStale;
 
   private async Task OpenSendPlanAsync()
   {

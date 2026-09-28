@@ -484,6 +484,9 @@
             <div class="fleet-map-inspector__body">
                 <FleetFuelPlan
                     Plan="@CurrentFuelPlan"
+                    Stale="@FuelPlanStale"
+                    Updating="@_recalculatingFuel"
+                    UpdateFailed="@_fuelUpdateFailed"
                     Unusable="@(_routeState?.Plan?.FuelPlan is not null)"
                     CurrentPercent="@((double?)fuelTruck.FuelPercent)"
                     TankGallons="@_routeState?.Profile.TankGallons"

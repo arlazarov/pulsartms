@@ -35,11 +35,14 @@ export function fuelRecommendations(
         })),
       }
     : plan?.fuelPlan;
+  // The last saved stops stay, marked, while a replacement is pending:
+  // the route's inputs changed or the owner asks for an update.
   const refreshing =
     !access &&
     (progress?.offRoute === true ||
+      plan?.inputsChanged === true ||
       (fuel?.needsRefresh && !fuel?.pricesOutOfDate));
-  if (!plan || plan.inputsChanged || !fuel) return { key: '', stops: [] };
+  if (!plan || !fuel) return { key: '', stops: [] };
   const current = finite(progress?.progressMiles);
   const named = (id: unknown) =>
     typeof id === 'string' && id.length > 0 && !/^[0-]+$/.test(id);

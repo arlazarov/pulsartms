@@ -68,14 +68,19 @@ public partial class FleetMap
   // The plan the Fuel view shows: the selected route's own, while it is
   // usable.
   private FuelPlan? CurrentFuelPlan =>
-    _routeState?.Plan is { InputsChanged: false, FuelPlan: { } fuel }
-    && Usable(fuel)
-      ? fuel
-      : null;
+    _routeState?.Plan is { FuelPlan: { } fuel } && Usable(fuel) ? fuel : null;
 
+  // Kept until a replacement is published: its route inputs changed or the
+  // owner asks for an update.
+  private bool FuelPlanStale =>
+    _routeState?.Plan is { FuelPlan: { } fuel } plan
+    && (plan.InputsChanged || fuel.Stale);
+
+  // A stale plan's reserve figures are not current: no warning from them.
   private string? FuelReserveWarning =>
     _routeState?.Plan is { InputsChanged: false, FuelPlan: { } fuel }
     && Usable(fuel)
+    && !fuel.Stale
     && fuel.Stops.FirstOrDefault(stop => stop.Warning.Length > 0) is { } stop
       ? $"Fuel stop {stop.Number}: {stop.Warning}"
       : null;

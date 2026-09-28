@@ -20,9 +20,20 @@ public partial class FleetFuelPlan
   [Parameter]
   public FuelPlan? Plan { get; set; }
 
-  // A saved plan exists but is not valid for the current inputs.
+  // A saved plan exists but has no stops to show.
   [Parameter]
   public bool Unusable { get; set; }
+
+  // The plan shown is the last saved one, kept until its replacement is
+  // published; Updating only while a recalculation actually runs here.
+  [Parameter]
+  public bool Stale { get; set; }
+
+  [Parameter]
+  public bool Updating { get; set; }
+
+  [Parameter]
+  public bool UpdateFailed { get; set; }
 
   [Parameter]
   public double? CurrentPercent { get; set; }
@@ -140,16 +151,24 @@ public partial class FleetFuelPlan
       : lines.Street;
   }
 
-  private static string StateLabel(FuelPlan plan) =>
-    plan.NeedsRefresh && !plan.PricesOutOfDate ? "Updating"
+  private string StateLabel(FuelPlan plan) =>
+    Updating ? "Updating"
+    : Stale && UpdateFailed ? "Update failed"
+    : Stale ? "Needs update"
     : plan.PricesOutOfDate ? "Earlier prices"
     : plan.ManuallyEdited ? "Saved plan"
     : "Automatic plan";
 
-  private static string StateTitle(FuelPlan plan) =>
-    plan.PricesOutOfDate
+  private string StateTitle(FuelPlan plan) =>
+    Updating ? "Recalculating fuel; the saved plan stays until it is replaced."
+    : Stale && UpdateFailed
+      ? "The last recalculation failed. This is the last saved plan; its "
+        + "stations stay until a new plan is published."
+    : Stale
+      ? "The last saved plan, kept until a new one is published. "
+        + string.Join(" ", plan.RefreshReasons)
+    : plan.PricesOutOfDate
       ? $"The plan holds; its prices are from {plan.PricingDate:MMM d}."
-      : plan.ManuallyEdited
-        ? "A dispatcher saved this plan."
-        : "Calculated automatically for this load.";
+    : plan.ManuallyEdited ? "A dispatcher saved this plan."
+    : "Calculated automatically for this load.";
 }
