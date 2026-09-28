@@ -77,7 +77,7 @@ visual inspection only, never acceptance.
 | Reserved column; empty state with calm radar when nothing is chosen | Built, Seen |
 | Truck head: eyebrow, large unit; no Route / Fuel tabs | Built, Seen |
 | Next stop line: the booking row says Appointment (the visit is on the place line) and its hours start in the ETA's column; a stop with no booking shows no row | Built |
-| Next stop line at the top of the truck panel: the stop (visit, name, locality), its ETA with on-time / late word and appointment, and the miles still to drive - the route's own forecast and distance, no new reads | Built (not yet seen) |
+| Next stop line at the top of the truck panel: the stop (visit, name, locality), its ETA with on-time / late word and appointment, and the miles still to drive - the route's own forecast and distance, no new reads | Built, Seen dark 1280 / 375 px |
 | Facts 2x4: Driver, Trailer, Motion, Duty, Fuel, Engine, Temperature (the readings' own weather, not read again), Location; clocks in cells with bars; no action row; no trip block | Built |
 | Location: locality only, full address in title; clicking the text copies it (no copy button); honest status | Built |
 | Stop card (current and next): HUD glass, corner brackets, dimensional emblem, compact facts | Built, Seen dark current / light next |
@@ -123,7 +123,9 @@ visual inspection only, never acceptance.
 | Load page and Messages: the top bar keeps its own grid row (a one-row frame drew the page's head over the bar); the load frame clips instead of hiding, so focus cannot scroll it | Built, Seen 1280 px |
 | Load Overview in the HUD: glass side panels (Route, Notes, Documents, Mileage) with accent HUD headings, the stop table's head as HUD labels on an accent band, the chosen stop lit, editor sections headed in the accent | Built, Seen dark 1280 px |
 
-## Deferred by the owner
+## Not in this candidate
 
-- Tests, harness, mobile checks: only when the owner asks.
-- Dispatch page redesign to the concept.
+- Phone shell of the concept (pulse top bar, bottom nav): the phone keeps
+  the existing head and menu.
+- Passed (completed) stops openable from the chain and the map.
+- Seen only in part: sonar ink on the light map, unselected later routes.
