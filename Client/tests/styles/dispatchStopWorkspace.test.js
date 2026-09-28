@@ -65,7 +65,7 @@ test('itinerary and details scroll independently within one viewport-sized works
   const list = declarations('.stop-workspace__list');
   assert.match(
     list,
-    /max-block-size: min\(30%, var\(--size-dispatch-stop-list-compact\)\);/,
+    /max-block-size: min\(40%, var\(--size-dispatch-stop-list\)\);/,
   );
   assert.match(list, /overflow-y: auto;/);
   assert.match(list, /display: block;/);

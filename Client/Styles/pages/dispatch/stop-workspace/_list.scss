@@ -18,7 +18,9 @@
     padding: 0;
     list-style: none;
     display: block;
-    max-block-size: min(30%, ui.size(dispatch-stop-list-compact));
+    // Room for about four stops before the list scrolls (the owner,
+    // September 28); the editor under it keeps the rest.
+    max-block-size: min(40%, ui.size(dispatch-stop-list));
     border: 1px solid ui.theme(border-subtle);
     border-radius: 0 0 ui.radius(sm) ui.radius(sm);
     min-block-size: 0;
