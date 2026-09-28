@@ -3,37 +3,62 @@
 // The Dispatch board's frame: Cards, Table and Papers keep their markup
 // and behaviour; trucks and loads take the cyan frame and the trip-chain
 // colours the Fleet Map uses for the same loads.
-.dispatch-truck,
 .dispatch-table,
 .dispatch-paper {
   border-color: ui.theme(accent, 0.24);
   border-radius: ui.radius(md);
   box-shadow: ui.shadow(card);
 }
+// A truck on the board is the workspace's glass panel, named by the same
+// truck emblem the Fleet Map's truck panel wears (the owner, September
+// 27: the whole design, Dispatch included).
+.dispatch-truck {
+  @include ui.glass-panel;
+  overflow: hidden;
+}
+.dispatch-truck__identity {
+  @include ui.hud-emblem(truck, 2.25rem);
+  align-items: center;
+}
 .dispatch-truck:focus-within {
   border-color: ui.theme(accent, 0.5);
 }
+// A load is a tile as in the trip chain: a fine rim, a straight line of
+// its phase colour along the top, the phase a soft tint; the current load
+// ringed and softly lit.
 .dispatch-load {
-  border-style: dashed;
-  border-color: ui.theme(map-route-future, 0.55);
+  --load-accent: #{ui.theme(text-muted)};
+  border: 1px solid ui.theme(border);
   border-radius: ui.radius(md);
+  background:
+    linear-gradient(var(--load-accent), var(--load-accent)) top center /
+      calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
+    ui.theme(surface);
 }
 .dispatch-load--current {
-  border-style: solid;
-  border-color: ui.theme(map-route-current);
+  --load-accent: #{ui.theme(map-route-current)};
+  border-color: color-mix(in srgb, var(--load-accent) 60%, transparent);
   box-shadow:
-    0 0 0 1px ui.theme(map-route-current),
-    0 0 16px ui.theme(accent, 0.16);
+    0 0 14px color-mix(in srgb, var(--load-accent) 18%, transparent),
+    0 6px 16px ui.theme(shadow, 0.1);
 }
 .dispatch-load--next {
-  border-color: ui.theme(map-route-future);
+  --load-accent: #{ui.theme(route-next)};
 }
 .dispatch-load__phase {
-  border: 1px solid currentColor;
-  letter-spacing: 0.06em;
+  border: 0;
+  background: color-mix(in srgb, var(--load-accent) 14%, transparent);
+  color: var(--load-accent);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-size: ui.fs(caption);
+  font-size: ui.fs(micro);
   font-weight: 700;
+}
+// Stop markers as the map's emblems: a lit disc with a soft halo.
+.dispatch-load__stop-number {
+  box-shadow:
+    0 0 0 3px ui.theme(accent, 0.12),
+    0 0 10px ui.theme(accent, 0.3);
 }
 .dispatch-load__connector {
   color: ui.theme(accent);
