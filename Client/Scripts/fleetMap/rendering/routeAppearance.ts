@@ -160,7 +160,7 @@ export function routeLayers(
   const outlineWidth = light
     ? drawnWidth + 5
     : width + metrics.routeOutlineWidth;
-  const casing = light ? [color[0], color[1], color[2], 46] : outline;
+  const casing = light ? [color[0], color[1], color[2], 28] : outline;
   const dash = dashed ? { extensions, dashJustified: false } : {};
   const pattern = futureDashed
     ? metrics.routeFutureDashArray
@@ -295,8 +295,11 @@ export function routeGlowLayers(
       getWidth: width + extra,
       updateTriggers: { getColor: [step, chosen] },
     });
+  // In daylight only the chosen road glows, and softly: a haze on every
+  // road read as fuzz (the owner, September 27).
+  if (light && !chosen) return [];
   const tier = light
-    ? { wide: 16, near: 7, wideAlpha: 28, nearAlpha: 64 }
+    ? { wide: 10, near: 4, wideAlpha: 22, nearAlpha: 48 }
     : { wide: 20, near: 9, wideAlpha: 38, nearAlpha: 80 };
   cached.cachedGlowKey = key;
   cached.cachedGlowData = line.data;

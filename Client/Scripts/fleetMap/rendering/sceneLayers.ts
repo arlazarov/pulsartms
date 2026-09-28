@@ -504,16 +504,21 @@ function flowLayers(
       ],
       getWidth: 1.5,
     }),
-    new PathLayer({
-      ...shared,
-      id: `${line.id}-tracer-glow`,
-      data: heads,
-      getColor: (row: { alpha: number }) => [
-        ...glow,
-        Math.round(120 * strength * row.alpha),
-      ],
-      getWidth: 5,
-    }),
+    // Daylight grains carry no glow of their own: it read as fuzz.
+    ...(light
+      ? []
+      : [
+          new PathLayer({
+            ...shared,
+            id: `${line.id}-tracer-glow`,
+            data: heads,
+            getColor: (row: { alpha: number }) => [
+              ...glow,
+              Math.round(120 * strength * row.alpha),
+            ],
+            getWidth: 5,
+          }),
+        ]),
     new PathLayer({
       ...shared,
       id: `${line.id}-tracer-head`,
