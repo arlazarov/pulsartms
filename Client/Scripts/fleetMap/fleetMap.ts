@@ -11,6 +11,7 @@ import * as payload from './geometry/encodedPath.ts';
 import { createMapHost } from './provider/mapHost.ts';
 import { mergeRoutePayload } from './routes/routePayload.ts';
 import { createStopEtaWindow } from './routes/stopEtaWindow.ts';
+import { watchInspectorScroll } from './ui/inspectorScroll.ts';
 import { createCameraViewport } from './ui/cameraViewport.ts';
 import { createFuelEditorFocus } from './ui/fuelEditorFocus.ts';
 import { createDockedDetails } from './ui/dockedDetails.ts';
@@ -146,6 +147,7 @@ export async function createFleetMap(
   try {
     const cameraViewport = createCameraViewport(element, map);
     cleanup.push(() => cameraViewport.dispose());
+    cleanup.push(watchInspectorScroll(element.parentElement));
     const viewport = element.ownerDocument?.defaultView;
     let inspectionTruckId: string | null = null;
     const inspector = createDockedDetails(
