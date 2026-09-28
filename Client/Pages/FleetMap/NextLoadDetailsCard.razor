@@ -18,9 +18,11 @@
         <div class="fleet-route-popup fleet-route-popup--stop">
             <div class="fleet-route-popup__location">
                 <div class="fleet-route-popup__head">
-                    @if (Number is { } number)
+                    @if (!string.IsNullOrEmpty(Marker))
                     {
-                        <span class="fleet-route-popup__number">@number</span>
+                        <span class="fleet-route-popup__number
+                            @(Stop is not null && StopCompleted ? "is-done" : "")"
+                            >@Marker</span>
                     }
                     <div class="fleet-route-popup__identity">
                         <strong class="fleet-route-popup__job"
@@ -29,6 +31,7 @@
                             <span class="fleet-map-route-info__load"
                                   aria-busy="@(Loading ? "true" : "false")">
                                 <LoadReference LoadNumber="Route.LoadNumber"
+                                    Href="@DetailsHref"
                                     OrderNumber="@(Details?.OrderNumber ?? "")"
                                     OnCopy="OnCopy" />
                             </span>
@@ -124,64 +127,93 @@
                 @* The forecast leads, with its one word about the arrival;
                    the booking, the distances and the fuel follow on the
                    same label column, then the cycle. *@
-                <ArrivalEstimate @key="(Route.Id, StopIndex, 0)"
-                    Eta="Eta" Stop="Stop" DispatchId="Route.Id"
-                    Memory="_arrivalMemory" Completed="StopCompleted"
-                    Refreshing="Refreshing" ShowDutyStatus="false"
-                    ShowAppointment="false" ShowDetails="false"
-                    Reading="facts" />
-                <dl class="fleet-route-popup__facts">
-                    @if (!HasDisplayedEta)
-                    {
+                @if (Stop is not null && StopCompleted)
+                {
+                    @* A stop the server completed has no forecast left:
+                       its booking, then when it was done if known. *@
+                    <dl class="fleet-route-popup__facts">
                         <div class="fleet-route-popup__field
-                            fleet-route-popup__eta"><dt
-                            class="fleet-route-popup__label">ETA</dt> <dd
-                            class="fleet-route-popup__value">—</dd></div>
-                    }
-                    <div class="fleet-route-popup__field
-                        fleet-route-popup__appointment">
-                        <dt class="fleet-route-popup__label">Appointment</dt>
-                        <dd class="fleet-route-popup__value">@Appointment</dd>
-                    </div>
-                </dl>
-                <dl hidden="@(!Expanded)"
-                    class="fleet-map-next-load-card__metrics
-                        fleet-route-popup__section-start">
-                    <div>
-                        <dt>@(StopIndex == 0 ? "Empty" : "Leg")</dt>
-                        <dd><DistanceText Miles="LegMiles" /></dd>
-                    </div>
-                    @* What is left to this stop from where the truck
-                       stands, which is not the length of the run. *@
-                    <div>
-                        <dt>Left</dt>
-                        <dd><DistanceText Miles="DistanceMiles" /></dd>
-                    </div>
-                </dl>
-                <dl class="fleet-route-popup__facts">
-                    @* Fuel is one more fact about the stop, on the same
-                       label column, not a block of its own with a dial. *@
-                    <div class="fleet-route-popup__field
-                        fleet-route-popup__fuel"
-                         title="Estimated from the current fuel plan">
-                        <dt class="fleet-route-popup__label">
-                            Fuel on arrival
-                        </dt>
-                        <dd class="fleet-route-popup__value"
-                            >@ArrivalFuelText</dd>
-                    </div>
-                </dl>
-                <ArrivalEstimate @key="(Route.Id, StopIndex, 1)"
-                    Eta="Eta" Stop="Stop" DispatchId="Route.Id"
-                    Memory="_arrivalMemory" Completed="StopCompleted"
-                    Refreshing="Refreshing" ShowDutyStatus="false"
-                    ShowAppointment="false" ShowSummary="false"
-                    ShowRecap="false" ShowDetails="Expanded"
-                    Reading="facts" />
-                <a class="btn btn--primary fleet-route-popup__details-link"
-                   href="@DetailsHref" title="Route &amp; load details">
-                    Open load ↗
-                </a>
+                            fleet-route-popup__completed">
+                            <dt class="fleet-route-popup__label">Status</dt>
+                            <dd class="fleet-route-popup__value"><span
+                                class="fleet-route-popup__state
+                                    fleet-route-popup__state--success"
+                                >Completed</span></dd>
+                        </div>
+                        @if (CompletedAt is { } at)
+                        {
+                            <div class="fleet-route-popup__field">
+                                <dt class="fleet-route-popup__label"
+                                    >Completed at</dt>
+                                <dd class="fleet-route-popup__value">@at</dd>
+                            </div>
+                        }
+                        <div class="fleet-route-popup__field
+                            fleet-route-popup__appointment">
+                            <dt class="fleet-route-popup__label"
+                                >Appointment</dt>
+                            <dd class="fleet-route-popup__value"
+                                >@Appointment</dd>
+                        </div>
+                    </dl>
+                }
+                else
+                {
+                    <ArrivalEstimate @key="(Route.Id, StopIndex, 0)"
+                        Eta="Eta" Stop="Stop" DispatchId="Route.Id"
+                        Memory="_arrivalMemory" Completed="StopCompleted"
+                        Refreshing="Refreshing" ShowDutyStatus="false"
+                        ShowAppointment="false" ShowDetails="false"
+                        Reading="facts" />
+                    <dl class="fleet-route-popup__facts">
+                        @if (!HasDisplayedEta)
+                        {
+                            <div class="fleet-route-popup__field
+                                fleet-route-popup__eta"><dt
+                                class="fleet-route-popup__label">ETA</dt> <dd
+                                class="fleet-route-popup__value">—</dd></div>
+                        }
+                        <div class="fleet-route-popup__field
+                            fleet-route-popup__appointment">
+                            <dt class="fleet-route-popup__label">Appointment</dt>
+                            <dd class="fleet-route-popup__value">@Appointment</dd>
+                        </div>
+                    </dl>
+                    <dl hidden="@(!Expanded)"
+                        class="fleet-map-next-load-card__metrics
+                            fleet-route-popup__section-start">
+                        <div>
+                            <dt>@(StopIndex == 0 ? "Empty" : "Leg")</dt>
+                            <dd><DistanceText Miles="LegMiles" /></dd>
+                        </div>
+                        @* What is left to this stop from where the truck
+                           stands, which is not the length of the run. *@
+                        <div>
+                            <dt>Left</dt>
+                            <dd><DistanceText Miles="DistanceMiles" /></dd>
+                        </div>
+                    </dl>
+                    <dl class="fleet-route-popup__facts">
+                        @* Fuel is one more fact about the stop, on the same
+                           label column, not a block of its own with a dial. *@
+                        <div class="fleet-route-popup__field
+                            fleet-route-popup__fuel"
+                             title="Estimated from the current fuel plan">
+                            <dt class="fleet-route-popup__label">
+                                Fuel on arrival
+                            </dt>
+                            <dd class="fleet-route-popup__value"
+                                >@ArrivalFuelText</dd>
+                        </div>
+                    </dl>
+                    <ArrivalEstimate @key="(Route.Id, StopIndex, 1)"
+                        Eta="Eta" Stop="Stop" DispatchId="Route.Id"
+                        Memory="_arrivalMemory" Completed="StopCompleted"
+                        Refreshing="Refreshing" ShowDutyStatus="false"
+                        ShowAppointment="false" ShowSummary="false"
+                        ShowRecap="false" ShowDetails="Expanded"
+                        Reading="facts" />
+                }
             </div>
         </div>
         @if (CopyMessage is not null)

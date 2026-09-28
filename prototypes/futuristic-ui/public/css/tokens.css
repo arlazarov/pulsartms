@@ -1,0 +1,155 @@
+/* One token set shared by Fleet and Dispatch. Light is the default;
+   data-theme="dark" overrides semantic roles only, never layout. */
+:root {
+  color-scheme: light;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI',
+    Inter, system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+    'Segoe UI', Inter, system-ui, sans-serif;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --fs-micro: 0.6875rem;
+  --fs-small: 0.75rem;
+  --fs-body: 0.8125rem;
+  --fs-lead: 0.9375rem;
+  --fs-title: 1.125rem;
+  --fs-page: 1.625rem;
+
+  --sp-xs: 4px;
+  --sp-sm: 8px;
+  --sp-md: 12px;
+  --sp-lg: 16px;
+  --sp-xl: 24px;
+
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --touch: 44px;
+
+  --z-map-ui: 10;
+  --z-panel: 20;
+  --z-sheet: 30;
+  --z-dropdown: 40;
+  --z-dialog: 50;
+
+  --bg: #e8eff7;
+  --bg-glow: radial-gradient(
+      1200px 600px at 20% -10%,
+      rgba(56, 189, 248, 0.14),
+      transparent 60%
+    ),
+    radial-gradient(900px 500px at 110% 110%, rgba(99, 102, 241, 0.08),
+      transparent 60%);
+  --panel: rgba(255, 255, 255, 0.86);
+  --panel-solid: #ffffff;
+  --panel-raised: #f6f9fd;
+  --panel-edge: rgba(14, 140, 200, 0.2);
+  --panel-shadow: 0 1px 2px rgba(15, 40, 80, 0.06),
+    0 8px 28px rgba(15, 40, 80, 0.07);
+  --line: #d9e3ee;
+  --line-soft: #e8eef5;
+  --text: #0e1c30;
+  --text-2: #3a4c63;
+  --text-3: #62748b;
+  --accent: #0284c7;
+  --accent-text: #0369a1;
+  --accent-soft: rgba(2, 132, 199, 0.09);
+  --accent-line: rgba(2, 132, 199, 0.38);
+  --glow: 0 0 0 1px rgba(2, 132, 199, 0.18),
+    0 0 18px rgba(14, 165, 233, 0.16);
+  --action: #2850d9;
+  --on-action: #ffffff;
+  --focus: #0ea5e9;
+
+  --current: #1f6fe0;
+  --next: #0d9488;
+  --upcoming: #7c3aed;
+  --later: #64748b;
+  --completed: #64748b;
+  --ok: #15803d;
+  --ok-dot: #22c55e;
+  --warn: #b45309;
+  --warn-soft: rgba(245, 158, 11, 0.12);
+  --warn-line: rgba(217, 119, 6, 0.45);
+  --danger: #b91c1c;
+  --danger-soft: rgba(239, 68, 68, 0.1);
+  --idle-dot: #94a3b8;
+
+  --map-bg: #cfe3f2;
+  --map-land: #f5f8fc;
+  --map-land-2: #eef3f9;
+  --map-foreign: #eaf0f6;
+  --map-border: #b7c8dc;
+  --map-border-strong: #97aec8;
+  --map-label: #7d91a9;
+  --map-city: #3f5169;
+  --map-grid: rgba(2, 110, 170, 0.05);
+  --marker: #14294a;
+  --marker-quiet: #5a7394;
+  --marker-label-bg: rgba(255, 255, 255, 0.92);
+  --marker-label-text: #14294a;
+  --ring: #06b6d4;
+  --route-glow: 0;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #040a14;
+  --bg-glow: radial-gradient(
+      1200px 600px at 20% -10%,
+      rgba(34, 211, 238, 0.1),
+      transparent 60%
+    ),
+    radial-gradient(900px 500px at 110% 110%, rgba(59, 130, 246, 0.08),
+      transparent 60%);
+  --panel: rgba(9, 19, 35, 0.84);
+  --panel-solid: #0a1628;
+  --panel-raised: #0e1d33;
+  --panel-edge: rgba(56, 205, 245, 0.2);
+  --panel-shadow: 0 0 0 1px rgba(56, 205, 245, 0.04),
+    0 12px 36px rgba(0, 0, 0, 0.45);
+  --line: rgba(125, 175, 225, 0.16);
+  --line-soft: rgba(125, 175, 225, 0.09);
+  --text: #e7f2ff;
+  --text-2: #a9bed8;
+  --text-3: #7a91ae;
+  --accent: #3fd3f7;
+  --accent-text: #6fe0fb;
+  --accent-soft: rgba(63, 211, 247, 0.1);
+  --accent-line: rgba(63, 211, 247, 0.42);
+  --glow: 0 0 0 1px rgba(63, 211, 247, 0.28),
+    0 0 22px rgba(63, 211, 247, 0.18);
+  --action: #3fd3f7;
+  --on-action: #04111f;
+  --focus: #67e8f9;
+
+  --current: #38bdf8;
+  --next: #2dd4bf;
+  --upcoming: #a78bfa;
+  --later: #8394ad;
+  --completed: #7a8aa3;
+  --ok: #4ade80;
+  --ok-dot: #22c55e;
+  --warn: #fbbf24;
+  --warn-soft: rgba(251, 191, 36, 0.1);
+  --warn-line: rgba(251, 191, 36, 0.4);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.1);
+  --idle-dot: #64748b;
+
+  --map-bg: #030a14;
+  --map-land: #07111f;
+  --map-land-2: #081424;
+  --map-foreign: #060e1a;
+  --map-border: rgba(90, 160, 220, 0.22);
+  --map-border-strong: rgba(110, 185, 240, 0.36);
+  --map-label: rgba(150, 185, 220, 0.5);
+  --map-city: #9fb6d2;
+  --map-grid: rgba(63, 211, 247, 0.045);
+  --marker: #d6ebff;
+  --marker-quiet: #6c87aa;
+  --marker-label-bg: rgba(8, 20, 38, 0.9);
+  --marker-label-text: #d6ebff;
+  --ring: #3fd3f7;
+  --route-glow: 1;
+}

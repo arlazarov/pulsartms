@@ -1,5 +1,6 @@
 using Client.Models.DTO.Dispatch;
 using Client.Models.DTO.Planning;
+using Client.Shared.Dispatch;
 using Microsoft.JSInterop;
 
 namespace Client.Pages.FleetMap;
@@ -24,27 +25,16 @@ public partial class FleetMap
       && route.ExecutionLegId == _inspectedExecutionLegId
     );
 
-  // The badge number of the inspected stop, as the map counts it: the
-  // current plan's stops, then each earlier next load's, then this one.
-  private int? InspectedStopNumber
-  {
-    get
-    {
-      if (InspectedRoute is not { } inspected)
-        return null;
-      var number = _routeState?.Plan?.Stops.Count ?? 0;
-      foreach (var route in _nextLoadRoutes)
-      {
-        if (ReferenceEquals(route, inspected))
-          return number + _inspectedStopIndex + 1;
-        number +=
-          route.Stops.Count > 0 ? route.Stops.Count
-          : route.Legs.Count > 0 ? 1
-          : 0;
-      }
-      return null;
-    }
-  }
+  // The badge of the inspected stop, as the map draws it: its place among
+  // its own load's stops (StopMarkers), never the load's place in a chain.
+  private string? InspectedStopMarker =>
+    InspectedRoute is { } inspected
+    && _inspectedStopIndex >= 0
+    && _inspectedStopIndex < inspected.Stops.Count
+      ? StopMarkers.Labels(inspected.Stops.Select(stop => stop.Job).ToArray())[
+        _inspectedStopIndex
+      ]
+      : null;
   private FuelStopArrival? InspectedFuelArrival =>
     _routeState is { } state
       ? state.FuelStopArrivals.FirstOrDefault(x =>
@@ -218,7 +208,7 @@ public partial class FleetMap
     string current,
     string? load,
     int stopIndex
-  ) => SelectNextLoadAsync(truck, current, load, stopIndex, null, null, 0);
+  ) => ChooseLaterStopAsync(truck, current, load, stopIndex, null, null, 0);
 
   [JSInvokable]
   public Task OnNextExecutionLegSelected(
@@ -230,7 +220,7 @@ public partial class FleetMap
     string? currentExecutionLeg,
     long currentAssignmentRevision
   ) =>
-    SelectNextLoadAsync(
+    ChooseLaterStopAsync(
       truck,
       current,
       load,
@@ -239,6 +229,30 @@ public partial class FleetMap
       currentExecutionLeg,
       currentAssignmentRevision
     );
+
+  // The trip becomes the panel's trip; the stop's own facts (distance
+  // through the loads before it, fresh ETA) come from the next-load owner.
+  private async Task ChooseLaterStopAsync(
+    string truck,
+    string current,
+    string? load,
+    int stopIndex,
+    string? executionLeg,
+    string? currentExecutionLeg,
+    long currentAssignmentRevision
+  )
+  {
+    await OnTripStopChosenAsync(truck, load, stopIndex, executionLeg);
+    await SelectNextLoadAsync(
+      truck,
+      current,
+      load,
+      stopIndex,
+      executionLeg,
+      currentExecutionLeg,
+      currentAssignmentRevision
+    );
+  }
 
   private async Task SelectNextLoadAsync(
     string truck,

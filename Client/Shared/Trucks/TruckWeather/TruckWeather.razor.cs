@@ -31,6 +31,10 @@ public partial class TruckWeather : IDisposable
   [Parameter]
   public CancellationToken OwnerCancellation { get; set; }
 
+  // "reading" (the truck readings' line) or "fact" (a truck panel fact).
+  [Parameter]
+  public string Variant { get; set; } = "reading";
+
   private (Guid, bool)? selection;
   private CancellationTokenSource? lifetime;
   private WeatherReadingDto? reading;

@@ -24,16 +24,17 @@ $screen-places: (
 
   // The map's cards.
   map-compact-columns: 40rem,
-  // Four text clocks need more room than the other paired facts.
-  map-truck-readings-stacked: 54rem,
   map-info-stacked: 20rem,
   map-fuel-halves: 34rem,
   station-price-days-stacked: 20rem,
   map-next-stop-tight: 18rem,
   map-toolbar-stacked: 14rem,
-  // Below this the head's ETA and Appointment stop sharing a label column.
-  map-truck-arrival-stacked: 20rem,
+  // A stop card narrower than this stacks its place over its facts.
+  stop-card-stacked: 34rem,
   map-route-columns: 1101px,
+  // Below this the Fleet Map floats its truck panel over the map and
+  // leaves the list to search.
+  fleet-docked: 1100px,
 
   // Dispatch.
   dispatch-load-history: 48rem,

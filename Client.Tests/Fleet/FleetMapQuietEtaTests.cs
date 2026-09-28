@@ -322,10 +322,14 @@ public sealed class FleetMapQuietEtaTests
     Assert.DoesNotContain("Updating", component.Markup);
   }
 
-  // The current route's arrival, kept in the retained details while a next
-  // stop has the head; the cycle row itself is gone (September 26).
+  // The current route's arrival, in the truck panel's next stop line; the
+  // panel stays mounted (hidden) while a next stop has the inspector. A
+  // cleared forecast draws nothing there, as the booking has its own row.
   private static string CurrentEta(IRenderedComponent<FleetMap> component) =>
-    component.Find("[aria-label='Current dispatch route'] .arrival-estimate").OuterHtml;
+    component
+      .FindAll(".fleet-truck-next__eta .arrival-estimate")
+      .SingleOrDefault()
+      ?.OuterHtml ?? "";
 
   private static string FutureEta(IRenderedComponent<FleetMap> component) =>
     component

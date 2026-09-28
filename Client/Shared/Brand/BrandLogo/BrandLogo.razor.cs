@@ -10,6 +10,10 @@ public partial class BrandLogo
   [Parameter]
   public bool Prominent { get; set; }
 
+  // The pulse alone, for a narrow navigation rail.
+  [Parameter]
+  public bool Compact { get; set; }
+
   private string LogoClass =>
     $"brand-logo{(Reversed ? " brand-logo--reversed" : "")}{(Prominent ? " brand-logo--prominent" : "")}";
 }

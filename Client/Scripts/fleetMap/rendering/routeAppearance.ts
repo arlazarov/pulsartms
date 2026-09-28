@@ -1,6 +1,7 @@
 import type { DeckLayer, DeckLayerFactory } from './deckLayer.ts';
 import { sceneMetrics as metrics } from './sceneMetrics.ts';
 import { currentRouteLineColor } from './routePalette.ts';
+import { isLightMap } from './stopAppearance.ts';
 
 // What a stretch of road is: the one being driven, the one behind, a load
 // still to come, or miles driven with nothing on board.
@@ -71,7 +72,11 @@ export function routeLayers(
   // A load's road is solid in its colour, an upcoming one as much as the
   // one being driven: dashed and grey, upcoming roads read as the basemap's
   // own, and several loads on one corridor were told apart by nothing.
-  const dashed = empty;
+  // Unpicked later loads are fine dashes; the picked one is solid and
+  // glows (routeGlowLayers).
+  const futureDashed =
+    line.routeRole === 'future' && line.routeSelected !== true;
+  const dashed = empty || futureDashed;
   const upcoming = line.routeRole === 'future' || line.routeRole === 'deadhead';
   const muted =
     selectionMuted ||
@@ -132,8 +137,11 @@ export function routeLayers(
     onClick: line.onMapClick ?? line.onClick,
     onHover: line.onHover,
   };
-  const width =
-    upcoming && !line.routeSelected
+  const traveled =
+    line.routeRole === 'traveled' || line.routeRole === 'traveled-empty';
+  const width = traveled
+    ? metrics.routeTraveledWidth
+    : upcoming && !line.routeSelected
       ? metrics.routeSecondaryWidth
       : Math.max(
           line.routeRole === 'current'
@@ -144,19 +152,80 @@ export function routeLayers(
               ? metrics.routeCurrentWidthScale
               : metrics.routeWidthScale),
         );
-  const outlineWidth = width + metrics.routeOutlineWidth;
+  // In daylight a road is a crisp line of its colour in a soft haze of the
+  // same colour - no white casing, a little finer (the owner, September
+  // 27: the light roads were heavy). The dark map keeps its casing.
+  const light = isLightMap();
+  const drawnWidth = light ? Math.max(3, width * 0.75) : width;
+  const outlineWidth = light
+    ? drawnWidth + 5
+    : width + metrics.routeOutlineWidth;
+  const casing = light ? [color[0], color[1], color[2], 28] : outline;
   const dash = dashed ? { extensions, dashJustified: false } : {};
-  const pattern = metrics.routeDashArray;
+  const pattern = futureDashed
+    ? metrics.routeFutureDashArray
+    : metrics.routeDashArray;
   // Dash units use half-width. Both strokes must share physical dash boundaries.
   const outlineDash = pattern.map(
-    (value: number) => (value * width) / outlineWidth,
+    (value: number) => (value * drawnWidth) / outlineWidth,
   );
+  if (empty && !traveled) {
+    // Empty miles as the HUD draws them (the owner, September 27: the
+    // orange casing did not belong): a fine dashed amber line over a faint
+    // amber halo, no white casing - still told from loaded road by colour
+    // and dashes.
+    const amber = isLightMap() ? [217, 119, 6] : [251, 191, 36];
+    return (line.cachedLayer = [
+      new PathLayer({
+        ...shared,
+        id: `${line.id}-outline`,
+        pickable: false,
+        getColor: [...amber, isLightMap() ? 50 : 40],
+        getWidth: 8,
+      }),
+      new PathLayer({
+        ...shared,
+        extensions,
+        dashJustified: false,
+        id: line.id,
+        getColor: [...amber, 235],
+        getWidth: 2.5,
+        getDashArray: [2.2, 2.2],
+      }),
+    ]);
+  }
+  if (traveled) {
+    // The road already driven is a trace, as a HUD draws a flight path: a
+    // fine line of the instrument ink over a faint wide halo of the same,
+    // with no white casing; empty miles keep their dashes (the owner,
+    // September 27).
+    const ink = isLightMap() ? [14, 116, 144] : [34, 211, 238];
+    return (line.cachedLayer = [
+      new PathLayer({
+        ...shared,
+        id: `${line.id}-outline`,
+        opacity: 1,
+        pickable: false,
+        getColor: [...ink, isLightMap() ? 46 : 38],
+        getWidth: metrics.routeTraveledWidth * 3,
+      }),
+      new PathLayer({
+        ...shared,
+        ...dash,
+        id: line.id,
+        opacity: 1,
+        getColor: [...ink, isLightMap() ? 190 : 170],
+        getWidth: metrics.routeTraveledWidth * 0.6,
+        ...(dashed ? { getDashArray: metrics.routeDashArray } : {}),
+      }),
+    ]);
+  }
   return (line.cachedLayer = [
     new PathLayer({
       ...shared,
       ...dash,
       id: `${line.id}-outline`,
-      getColor: outline,
+      getColor: casing,
       getWidth: outlineWidth,
       ...(dashed ? { getDashArray: outlineDash } : {}),
     }),
@@ -165,8 +234,77 @@ export function routeLayers(
       ...dash,
       id: line.id,
       getColor: color,
-      getWidth: width,
+      getWidth: drawnWidth,
       ...(dashed ? { getDashArray: pattern } : {}),
     }),
+  ]);
+}
+
+// Every road ahead glows - the road being driven and each later load's -
+// and the chosen one (the current road while no later load is picked, or
+// the picked later load's) glows a little brighter. Two soft halos of the road's own colour, stronger on the
+// light theme's pale ground; their strength breathes slowly with the map's
+// animation (pulse, 0..1) and stands at full when it is off. Never picked.
+export function routeGlowLayers(
+  line: SceneRouteLine,
+  PathLayer: DeckLayerFactory,
+  selectionMuted = false,
+  laterPicked = false,
+  pulse = 1,
+) {
+  if (line.routeRole !== 'current' && line.routeRole !== 'future') return [];
+  if (line.visible === false) return [];
+  // Every road ahead glows, the current one and each later load's; the
+  // chosen one a little brighter (the owner, September 27).
+  const chosen =
+    !selectionMuted &&
+    ((line.routeRole === 'current' && !laterPicked) ||
+      (line.routeRole === 'future' && line.routeSelected === true));
+  const color =
+    line.routeRole === 'current'
+      ? colors.current
+      : line.routeColor || colors[line.routeRole] || colors.current;
+  const light = globalThis.document?.documentElement?.dataset?.theme !== 'dark';
+  const width = Math.max(metrics.routeCurrentMinWidth, line.strokeWeight);
+  // Twenty steps of breathing: each is built once and reused.
+  const step = Math.round(Math.min(1, Math.max(0, pulse)) * 20) / 20;
+  const key = [color.join(','), light, width, step, chosen].join('|');
+  const cached = line as SceneRouteLine & {
+    cachedGlow?: unknown[];
+    cachedGlowKey?: string;
+    cachedGlowData?: unknown;
+  };
+  if (
+    cached.cachedGlow &&
+    cached.cachedGlowKey === key &&
+    cached.cachedGlowData === line.data
+  )
+    return cached.cachedGlow;
+  const strength = (0.72 + 0.28 * step) * (chosen ? 1 : 0.6);
+  const halo = (id: string, extra: number, alpha: number) =>
+    new PathLayer({
+      id: `${line.id}-${id}`,
+      data: line.data,
+      getPath: (path: unknown) => path,
+      widthUnits: 'pixels',
+      capRounded: true,
+      jointRounded: true,
+      parameters: { depthCompare: 'always' },
+      pickable: false,
+      getColor: [color[0], color[1], color[2], Math.round(alpha * strength)],
+      getWidth: width + extra,
+      updateTriggers: { getColor: [step, chosen] },
+    });
+  // In daylight only the chosen road glows, and softly: a haze on every
+  // road read as fuzz (the owner, September 27).
+  if (light && !chosen) return [];
+  const tier = light
+    ? { wide: 10, near: 4, wideAlpha: 22, nearAlpha: 48 }
+    : { wide: 20, near: 9, wideAlpha: 38, nearAlpha: 80 };
+  cached.cachedGlowKey = key;
+  cached.cachedGlowData = line.data;
+  return (cached.cachedGlow = [
+    halo('glow-wide', tier.wide, tier.wideAlpha),
+    halo('glow', tier.near, tier.nearAlpha),
   ]);
 }

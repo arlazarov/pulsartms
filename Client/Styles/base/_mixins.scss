@@ -154,3 +154,235 @@
     min-width: fn.size(control-touch);
   }
 }
+
+// The workspace's glass panel: a translucent surface over the canvas glow,
+// a fine accent edge and two corner ticks, its only ornament. The ticks
+// take ::before and ::after, so a panel does not use those for anything
+// else.
+@mixin glass-panel {
+  position: relative;
+  border: 1px solid fn.theme(accent, 0.2);
+  border-radius: fn.radius(panel);
+  background: fn.theme(surface, 0.86);
+  backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: fn.shadow(panel);
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    width: fn.pg(md);
+    height: fn.pg(md);
+    border: 0 solid fn.theme(accent, 0.38);
+    pointer-events: none;
+  }
+  &::before {
+    top: fn.pg(sm);
+    left: fn.pg(sm);
+    border-top-width: 1px;
+    border-left-width: 1px;
+    border-top-left-radius: fn.radius(sm);
+  }
+  &::after {
+    right: fn.pg(sm);
+    bottom: fn.pg(sm);
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-bottom-right-radius: fn.radius(sm);
+  }
+
+  // The light theme's instrument (the owner, September 27: the light mode
+  // did not match the dark one's class): bright white glass falling to a
+  // cool tint, a cyan hairline rim, bold corner ticks, a lit top edge, a
+  // cool shadow and a faint cyan halo - the dark panel's parts in daylight.
+  :root[data-theme='light'] & {
+    border-color: fn.theme(hud-glow, 0.45);
+    // Pure white, not a grey glass (the owner, September 27), with a thin
+    // cyan light sweeping slowly along its top edge, as a HUD scans.
+    background:
+      linear-gradient(
+          90deg,
+          transparent,
+          fn.theme(hud-glow, 0.9),
+          transparent
+        ) -40%
+        0 / 28% 1px no-repeat,
+      fn.theme(surface, 0.98);
+    animation: hud-sweep 7s linear infinite;
+    // A hairline lift only: large soft shadows spread a grey haze over the
+    // bright canvas around every panel (the owner, September 27).
+    box-shadow:
+      0 1px 2px fn.theme(shadow, 0.05),
+      0 2px 8px fn.theme(shadow, 0.04);
+    // Fine corner ticks in the bright HUD cyan.
+    &::before,
+    &::after {
+      border-color: fn.theme(hud-line, 0.75);
+    }
+  }
+}
+
+// A glass panel over a live map, as tempered glass: thinner, so the map
+// reads through it, more strongly blurred and saturated, with a fine lit
+// top edge and a faint sheen falling from it.
+@mixin tempered-glass {
+  @include glass-panel;
+  background:
+    linear-gradient(180deg, fn.theme(text, 0.05), transparent 38%),
+    fn.theme(surface, 0.44);
+  backdrop-filter: blur(22px) saturate(1.5);
+  box-shadow:
+    inset 0 1px 0 fn.theme(text, 0.12),
+    fn.shadow(panel);
+
+  :root[data-theme='light'] & {
+    // Clean white glass: opaque enough, and not saturating, so the map's
+    // colours do not tint it.
+    background:
+      linear-gradient(
+          90deg,
+          transparent,
+          fn.theme(hud-glow, 0.9),
+          transparent
+        ) -40%
+        0 / 28% 1px no-repeat,
+      fn.theme(surface, 0.97);
+    animation: hud-sweep 7s linear infinite;
+    backdrop-filter: blur(18px) saturate(1);
+    box-shadow:
+      0 1px 2px fn.theme(shadow, 0.06),
+      0 3px 10px fn.theme(shadow, 0.05);
+  }
+}
+
+// The instrument look the stop cards set (the owner, September 27), for
+// every card in the docked panel: a line of light along the top edge and
+// short accent brackets at the upper corners, over the element's own
+// background colour.
+@mixin hud-frame {
+  position: relative;
+  background-image:
+    linear-gradient(90deg, transparent, fn.theme(accent, 0.55), transparent),
+    linear-gradient(fn.theme(accent), fn.theme(accent)),
+    linear-gradient(fn.theme(accent), fn.theme(accent)),
+    linear-gradient(fn.theme(accent), fn.theme(accent)),
+    linear-gradient(fn.theme(accent), fn.theme(accent));
+  background-position:
+    top,
+    top left,
+    top left,
+    top right,
+    top right;
+  background-size:
+    100% 1px,
+    12px 2px,
+    2px 12px,
+    12px 2px,
+    2px 12px;
+  background-repeat: no-repeat;
+
+  // In daylight neither: the brackets clashed with the rounded rims and
+  // the fading line doubled the rim (the owner, September 27). A plain
+  // fine rim is the frame there.
+  :root[data-theme='light'] & {
+    background-image: none;
+  }
+}
+
+// A HUD label: small, spaced capitals in the muted ink.
+// A strip's scrollbar as a HUD rail: a fine lit thumb on a faint track,
+// in the accent, taking its own room under the content.
+@mixin hud-scrollbar {
+  scrollbar-gutter: stable;
+  scrollbar-color: fn.theme(accent, 0.45) fn.theme(accent, 0.06);
+  scrollbar-width: thin;
+  &::-webkit-scrollbar {
+    height: fn.pg(xs);
+  }
+  &::-webkit-scrollbar-track {
+    border-radius: fn.radius(pill);
+    background: fn.theme(accent, 0.06);
+  }
+  &::-webkit-scrollbar-thumb {
+    border-radius: fn.radius(pill);
+    background: linear-gradient(
+      90deg,
+      fn.theme(accent, 0.35),
+      fn.theme(accent, 0.7),
+      fn.theme(accent, 0.35)
+    );
+    box-shadow: 0 0 6px fn.theme(hud-glow, 0.5);
+  }
+}
+
+@mixin hud-label {
+  color: fn.theme(text-muted);
+  font-size: fn.fs(micro);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+// A card's emblem, as the stop cards' P / D: a glass core lit from within,
+// a fine accent rim and a soft halo, with a glyph in the accent. Drawn by
+// the element's ::before (the ring) and ::after (the glyph) at its start;
+// the element makes room for it.
+$hud-glyphs: (
+  truck:
+    url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.8%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M2 5h12v12H2zM14 9h4l4 4v4h-8z%22/%3E%3Ccircle cx=%226%22 cy=%2218%22 r=%222%22/%3E%3Ccircle cx=%2218%22 cy=%2218%22 r=%222%22/%3E%3C/svg%3E'),
+  fuel:
+    url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.8%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M3 21h12M5 21V4h8v17M5 10h8M13 12h2a2 2 0 0 1 2 2v3a2 2 0 0 0 4 0V8l-4-4M18 5v4h3%22/%3E%3C/svg%3E'),
+);
+@mixin hud-emblem($glyph, $size: 2.75rem, $position: relative) {
+  position: $position;
+  min-height: $size;
+  padding-left: calc(#{$size} + #{fn.pg(md)});
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: $size;
+    height: $size;
+    transform: translateY(-50%);
+  }
+  &::before {
+    box-sizing: border-box;
+    border: 1.5px solid fn.theme(accent);
+    border-radius: 50%;
+    // A dashed sight ring turning slowly around the disc.
+    outline: 1px dashed fn.theme(accent, 0.6);
+    outline-offset: 4px;
+    animation: hud-spin 14s linear infinite;
+    background: radial-gradient(
+      circle at 35% 30%,
+      fn.theme(accent, 0.34),
+      fn.theme(surface-muted) 72%
+    );
+    box-shadow:
+      0 0 0 3px fn.theme(accent, 0.1),
+      0 0 16px fn.theme(accent, 0.28),
+      inset 0 0 10px fn.theme(accent, 0.22);
+  }
+  &::after {
+    background: fn.theme(accent);
+    mask: map.get($hud-glyphs, $glyph) center / 48% no-repeat;
+  }
+  // In daylight the emblem is a lit accent disc with a white glyph: a
+  // pale core read washed out (the owner, September 27).
+  :root[data-theme='light'] &::before {
+    border-color: fn.theme(hud-glow);
+    background: radial-gradient(
+      circle at 35% 30%,
+      fn.theme(hud-glow),
+      fn.theme(accent) 80%
+    );
+    box-shadow:
+      0 0 0 3px fn.theme(hud-glow, 0.18),
+      0 0 16px fn.theme(hud-glow, 0.45);
+  }
+  :root[data-theme='light'] &::after {
+    background: fn.theme(on-accent);
+  }
+}

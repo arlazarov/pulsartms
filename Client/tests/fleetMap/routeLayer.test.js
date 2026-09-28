@@ -769,7 +769,8 @@ test('same-version stop metadata and tracking update without replacing route geo
   layer.setPlan(updated, false);
   assert.equal(lines[2].path, tail);
   assert.ok(markers[0].map);
-  assert.equal(markers[1].number, '2');
+  assert.equal(markers[1].number, 'D');
+  assert.equal(markers[1].order, 2);
   assert.equal(shown, null, 'passing the selected stop closes its details');
   layer.setEtas(
     new Map([

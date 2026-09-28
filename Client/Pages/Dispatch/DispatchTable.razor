@@ -76,7 +76,7 @@
                             else if (!IsPickup(stop) && !IsDelivery(stop)) { <small>@stop.Job</small> }
                             @if (visits.Count > 2)
                             {
-                                <small class="dispatch-table__stop-position">Stop @visit.Number@if (visit.VisitCount > 1) { <span title="@($"{visit.VisitLabel} at this address")"> · @visit.VisitLabel</span> }</small>
+                                <small class="dispatch-table__stop-position"><b class="dispatch-table__stop-marker">@visit.Marker</b> · Stop @visit.Number@if (visit.VisitCount > 1) { <span title="@($"{visit.VisitLabel} at this address")"> · @visit.VisitLabel</span> }</small>
                             }
                             <strong>@DispatchBoardRow.Location(stop)</strong>
                             <small class="dispatch-table__schedule">@DispatchBoardRow.Schedule(stop, pickup ? row.Load.ShipDate : row.Load.DeliveryDate)</small>

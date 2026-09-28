@@ -8,7 +8,14 @@ const ports = {
   'routes/routeLayer': `export const createRouteLayer = (...args) => {
     const fixture = globalThis.fleetInteropFixture;
     fixture.routePopup = args[5]({}, {onClose: () => fixture.route.closePopup()});
-    fixture.openCurrentStop = (content = {kind: 'stop'}) => { args[2](); fixture.routePopup.show(content); };
+    // The route layer names where the opened stop stands (the P / D press
+    // brings it into view, owner September 27). Each opening is its own
+    // stop, so repeated openings are not read as a double press to zoom 15.
+    let opened = 0;
+    fixture.openCurrentStop = (
+      content = {kind: 'stop'},
+      position = {lat: 40, lng: -90 + opened++},
+    ) => { args[2](position); fixture.routePopup.show(content); };
     fixture.routeProgress = args[1];
     fixture.routeCanFit = args[6];
     fixture.routeFitPadding = args[7];
@@ -294,8 +301,16 @@ async function fixture(t, { failInspector = false } = {}) {
       this.events.delete(name);
     },
   };
+  const classes = new Set();
   const element = {
     isConnected: true,
+    classList: {
+      contains: name => classes.has(name),
+      toggle: (name, force) =>
+        (force ?? !classes.has(name))
+          ? (classes.add(name), true)
+          : (classes.delete(name), false),
+    },
     ownerDocument: { defaultView: viewport },
     parentElement: {
       querySelector: selector =>
@@ -523,7 +538,7 @@ const etaPayload = () => ({
 });
 
 test('zoom settles into hybrid at 15 and roadmap below without redundant replacements', async t => {
-  const { api, state, listeners } = await fixture(t);
+  const { api, state, listeners, element } = await fixture(t);
   let mapType = 'roadmap';
   const replacements = [];
   state.map.getMapTypeId = () => mapType;
@@ -552,6 +567,12 @@ test('zoom settles into hybrid at 15 and roadmap below without redundant replace
     listeners.get('idle')();
     listeners.get('idle')();
     assert.equal(mapType, expectedType);
+    // The host is marked while it shows imagery, so the dark theme can dim
+    // it (owner, September 27: "Dark satellite imagery dimmed").
+    assert.equal(
+      element.classList.contains('is-satellite'),
+      expectedType === 'hybrid',
+    );
     assert.equal(
       replacements.length,
       expectedReplacements,

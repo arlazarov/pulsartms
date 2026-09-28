@@ -11,6 +11,10 @@ public partial class LoadReference
   [Parameter]
   public string OrderNumber { get; set; } = "";
 
+  // Where the load number leads; without it the number is copied.
+  [Parameter]
+  public string? Href { get; set; }
+
   [Parameter]
   public EventCallback<string> OnCopy { get; set; }
 

@@ -19,6 +19,15 @@ public partial class DispatchLoadStop
   [Parameter]
   public int Number { get; set; }
 
+  // The badge text (P, D, D1...); the position when none is given.
+  [Parameter]
+  public string? Marker { get; set; }
+
+  private string Badge =>
+    string.IsNullOrEmpty(Marker)
+      ? Number.ToString(System.Globalization.CultureInfo.InvariantCulture)
+      : Marker;
+
   [Parameter]
   public string VisitLabel { get; set; } = "";
 

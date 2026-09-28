@@ -26,6 +26,7 @@ public sealed class PageTransitionTests
       }
     );
     context.ComponentFactories.AddStub<Sidebar>();
+    context.ComponentFactories.AddStub<Topbar>();
     var navigation = context.Services.GetRequiredService<NavigationManager>();
     navigation.NavigateTo("/fleet/map");
     var component = context.Render<MainLayout>(p => p.Add(x => x.Body, Body));
@@ -67,6 +68,7 @@ public sealed class PageTransitionTests
       (_, ct) => pending.Task.WaitAsync(ct)
     );
     context.ComponentFactories.AddStub<Sidebar>();
+    context.ComponentFactories.AddStub<Topbar>();
     var component = context.Render<MainLayout>(p => p.Add(x => x.Body, Body));
     Assert.Null(component.Find("main").GetAttribute("data-page-transition"));
     await component.InvokeAsync(() => pending.SetResult(SettingsResponse()));

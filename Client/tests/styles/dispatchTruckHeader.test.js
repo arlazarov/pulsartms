@@ -36,10 +36,12 @@ test('dispatch board uses horizontal load lanes and the Fleet truck card head', 
     truckCss,
     /@media \(width < 551px\)[\s\S]*\.dispatch-truck__loads\s*\{\s*grid-auto-flow: row;/,
   );
-  // A phone keeps the unit and its crew on the head's first line whole.
+  // A phone keeps the unit and its crew on the head's first line with the
+  // map button at its end, what is left on the next (the owner, September
+  // 27: a button alone on a line wasted a row).
   assert.match(
     truckCss,
-    /@media \(width < 551px\)[\s\S]*\.dispatch-truck__header\s*\{[^}]*display: flex;\s*flex-wrap: wrap;[\s\S]*\.dispatch-truck__header > \.dispatch-truck__identity\s*\{\s*flex-basis: 100%;/,
+    /@media \(width < 551px\)[\s\S]*\.dispatch-truck__header\s*\{[^}]*display: flex;\s*flex-wrap: wrap;[\s\S]*\.dispatch-truck__header > \.dispatch-truck__identity\s*\{\s*flex: 1 1 0;/,
   );
   assert.match(
     css,
@@ -202,11 +204,11 @@ test('Dispatch view framing cannot move the shared title or toolbar', () => {
   assert.match(razor, /<section class="dispatch-page dispatch-board">/);
   assert.ok(
     razor.indexOf('<PageHeader Title="Dispatch"') <
-      razor.indexOf('<div class="dispatch-board__body">'),
+      razor.indexOf('<div class="dispatch-board__body"'),
   );
   assert.ok(
     razor.indexOf('aria-label="Load scope"') <
-      razor.indexOf('<div class="dispatch-board__body">'),
+      razor.indexOf('<div class="dispatch-board__body"'),
   );
   assert.doesNotMatch(razor, /dispatch-board--document/);
   assert.match(

@@ -166,3 +166,24 @@
     border-left: 0;
   }
 }
+
+// Docked in the panel, a station's card is drawn as the stop cards are
+// (the owner, September 27): a pump emblem at its name, a lit frame, HUD
+// labels.
+@include ui.above(fleet-docked) {
+  .fleet-map-inspector[data-inspector-mode='fuel'] {
+    .fleet-station-popup {
+      @include ui.hud-frame;
+      padding-top: ui.pg(md);
+    }
+    .fleet-station-popup__title {
+      @include ui.hud-emblem(fuel, 2.25rem);
+      display: flex;
+      align-items: center;
+    }
+    .fleet-station-popup__plan-label,
+    .fleet-station-popup__day-label {
+      @include ui.hud-label;
+    }
+  }
+}

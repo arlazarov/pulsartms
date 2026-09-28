@@ -47,6 +47,9 @@ function selectionFixture() {
     setNumber(number) {
       this.number = number;
     }
+    setOrder(order) {
+      this.order = order;
+    }
     setVisible(visible) {
       this.visible = visible;
     }
@@ -283,7 +286,14 @@ test('selection emphasizes the chosen road and subdues others without replacing 
       part => part.opacity === 0.4 && part.data === currentLayers[0].data,
     ),
   );
-  assert.equal(mutedCurrent[1].getWidth, 5);
+  // On the light map a road is a finer line in a haze of its own colour
+  // (the owner, September 27): three quarters of its width, never under 3;
+  // empty miles are one fine dashed amber line whether picked or not.
+  const drawnWidth = (line, chosen) =>
+    line.routeRole === 'deadhead'
+      ? 2.5
+      : Math.max(3, (chosen ? 5 : sceneMetrics.routeSecondaryWidth) * 0.75);
+  assert.equal(mutedCurrent[1].getWidth, 3.75);
   assert.equal(mutedCurrent[1].getColor, currentLayers[1].getColor);
   assert.equal(
     Object.hasOwn(current, 'routeMuted'),
@@ -296,13 +306,11 @@ test('selection emphasizes the chosen road and subdues others without replacing 
         part => part.opacity === (index < 3 ? 1 : 0.4) && part.visible,
       ),
     );
-    assert.equal(
-      pair[1].getWidth,
-      index < 3 ? 5 : sceneMetrics.routeSecondaryWidth,
-    );
+    assert.equal(pair[1].getWidth, drawnWidth(lines[index], index < 3));
     assert.equal(pair[0].data, paths[index]);
     assert.equal(pair[1].data, paths[index]);
-    assert.equal(
+    // By value: empty miles build their amber afresh with the layer.
+    assert.deepEqual(
       pair[1].getColor,
       initial[index][1].getColor,
       'per-load hue and deadhead alpha remain unchanged',
@@ -346,7 +354,7 @@ test('selection emphasizes the chosen road and subdues others without replacing 
   );
   assert.deepEqual(
     render().map(pair => pair[1].getWidth),
-    [...Array(3).fill(sceneMetrics.routeSecondaryWidth), 5, 5, 5],
+    lines.map((line, index) => drawnWidth(line, index >= 3)),
   );
   layer.clearSelection();
   // Clearing the selection restores the upcoming roads to their resting
@@ -360,11 +368,11 @@ test('selection emphasizes the chosen road and subdues others without replacing 
   );
   assert.ok(
     render().every(
-      pair => pair[1].getWidth === sceneMetrics.routeSecondaryWidth,
+      (pair, index) => pair[1].getWidth === drawnWidth(lines[index], false),
     ),
   );
   assert.ok(current.cachedLayer.every(part => part.opacity === 1));
-  assert.equal(current.cachedLayer[1].getWidth, 5);
+  assert.equal(current.cachedLayer[1].getWidth, 3.75);
   assert.ok(lines.every((line, index) => line.data === paths[index]));
   const restoredCurrent = current.cachedLayer;
   current.routeMuted = true;
@@ -383,7 +391,11 @@ test('selected identity survives numbering and same-id geometry updates without 
   layer.setStopOffset(2);
   assert.deepEqual(
     markers.map(marker => marker.number),
-    ['3', '4', '5', '6', '7', '8'],
+    ['P', 'D1', 'D2', 'P', 'D1', 'D2'],
+  );
+  assert.deepEqual(
+    markers.map(marker => marker.order),
+    [3, 4, 5, 6, 7, 8],
   );
   assert.ok(markers.every(marker => marker.label === null));
   assert.deepEqual(markers, originalMarkers);
@@ -557,7 +569,11 @@ test('click pins all stop circles by load identity without road geometry or labe
   assert.ok(markers.every(marker => marker.highlighted));
   assert.deepEqual(
     markers.map(marker => marker.number),
-    ['1', '2'],
+    ['P', 'D'],
+  );
+  assert.deepEqual(
+    markers.map(marker => marker.order),
+    [1, 2],
   );
   assert.ok(markers.every(marker => marker.label === null));
   assert.deepEqual(selections, [['load-1', 1]]);
@@ -628,7 +644,8 @@ test('reopening uses cached routes and changing selection releases the cache', (
   assert.equal(lines[0].path, path);
   assert.equal(markers.length, 1, 'reopening keeps the same marker');
   assert.equal(markers[0].visible, true);
-  assert.equal(markers[0].number, '1');
+  assert.equal(markers[0].number, 'P');
+  assert.equal(markers[0].order, 1);
   layer.setVisible(false);
   layer.clear();
   layer.setVisible(true);
@@ -664,7 +681,8 @@ test('pending routes reserve stop numbers before their geometry arrives', () => 
       legs: [],
     },
   ]);
-  assert.equal(markers[0].number, '4');
+  assert.equal(markers[0].number, 'P');
+  assert.equal(markers[0].order, 4);
 });
 
 test('future numbering continues across loaded and empty legs and the selected load retains pickup and delivery emphasis', () => {
@@ -688,6 +706,9 @@ test('future numbering continues across loaded and empty legs and the selected l
     setNumber(number) {
       this.number = number;
     }
+    setOrder(order) {
+      this.order = order;
+    }
   }
   const loads = [0, 1].map(i => {
     const stops = [
@@ -706,7 +727,11 @@ test('future numbering continues across loaded and empty legs and the selected l
   layer.set(loads);
   assert.deepEqual(
     markers.map(m => m.number),
-    ['2', '3', '4', '5'],
+    ['P', 'D', 'P', 'D'],
+  );
+  assert.deepEqual(
+    markers.map(m => m.order),
+    [2, 3, 4, 5],
   );
   markers[3].onSelect();
   assert.equal(
@@ -721,7 +746,11 @@ test('future numbering continues across loaded and empty legs and the selected l
   assert.equal(markers.length, 4);
   assert.deepEqual(
     markers.map(m => m.number),
-    ['3', '4', '5', '6'],
+    ['P', 'D', 'P', 'D'],
+  );
+  assert.deepEqual(
+    markers.map(m => m.order),
+    [3, 4, 5, 6],
   );
   assert.ok(markers.every(marker => marker.label === null));
   layer.clearSelection();
@@ -840,7 +869,8 @@ test('next loads use separate geometry and release it when hidden or replaced', 
   assert.equal(objects[0].routeRole, 'future');
   objects[1].onSelect();
   assert.equal(objects[1].label, null);
-  assert.equal(objects[1].number, '1');
+  assert.equal(objects[1].number, 'D');
+  assert.equal(objects[1].order, 1);
   assert.deepEqual(objects[0].path, [
     { lat: 40, lng: -80 },
     { lat: 41, lng: -79 },
@@ -892,7 +922,11 @@ test('coincident stops from different loads stay separately selectable in their 
   assert.equal(markers.length, 4);
   assert.deepEqual(
     markers.map(marker => marker.number),
-    ['1', '2', '3', '4'],
+    ['P', 'D', 'P', 'D'],
+  );
+  assert.deepEqual(
+    markers.map(marker => marker.order),
+    [1, 2, 3, 4],
   );
   assert.equal(markers[0].color, futureRouteColor(0));
   assert.equal(markers[2].color, futureRouteColor(1));
@@ -958,6 +992,9 @@ test('each coincident occurrence selects its own stop while load colors and refr
     setNumber(number) {
       this.number = number;
     }
+    setOrder(order) {
+      this.order = order;
+    }
   }
   const layer = createNextLoadsLayer({}, Line, Stop, (...args) =>
     selections.push(args),
@@ -990,7 +1027,11 @@ test('each coincident occurrence selects its own stop while load colors and refr
   assert.equal(markers.length, 4);
   assert.deepEqual(
     markers.map(marker => marker.number),
-    ['1', '2', '3', '4'],
+    ['P', 'D1', 'D2', 'D'],
+  );
+  assert.deepEqual(
+    markers.map(marker => marker.order),
+    [1, 2, 3, 4],
   );
   assert.equal(markers[1].color, futureRouteColor(0));
   assert.equal(markers[2].color, futureRouteColor(0));
@@ -1013,7 +1054,11 @@ test('each coincident occurrence selects its own stop while load colors and refr
   assert.equal(markers.length, 4);
   assert.deepEqual(
     markers.map(marker => marker.number),
-    ['2', '3', '4', '5'],
+    ['P', 'D1', 'D2', 'D'],
+  );
+  assert.deepEqual(
+    markers.map(marker => marker.order),
+    [2, 3, 4, 5],
   );
   markers[1].onSelect();
   assert.deepEqual(
@@ -1093,7 +1138,8 @@ test('pointing at a load lights its road and its badges, and lets go when the cu
 // else: the circles it was picked for were off the screen, and there was no
 // way to ask the map for them.
 test('picking a load road selects that load and offers it to be revealed', () => {
-  const revealed = [];
+  const revealed = [],
+    stopsRevealed = [];
   const markers = [],
     lines = [],
     selections = [];
@@ -1123,6 +1169,7 @@ test('picking a load road selects that load and offers it to be revealed', () =>
     Stop,
     (...args) => selections.push(args),
     geometry => revealed.push(geometry),
+    position => stopsRevealed.push(position),
   );
   layer.set([
     {
@@ -1149,20 +1196,26 @@ test('picking a load road selects that load and offers it to be revealed', () =>
 
   assert.deepEqual(selections, [['far', 0, 'leg']]);
   assert.ok(markers.every(marker => marker.highlighted));
-  // Everything the load stands on: its road and the stops at its ends, so
-  // the map can decide whether any of it is on the screen already.
-  const geometry = revealed.at(-1);
+  // The pick opens the load's stop, and the camera brings that stop into
+  // view (the owner, September 27: a P / D press opens it, a hidden stop
+  // brought into the free part); the whole road is fitted only when the
+  // stop's place is not known.
+  assert.deepEqual(stopsRevealed, [{ lat: 35.6, lng: -80.8 }]);
+  assert.deepEqual(revealed, []);
+  // Everything the load stands on stays available to a camera that wants
+  // all of it: its road and the stops at its ends.
+  const geometry = layer.geometryOf('far', 'leg');
   assert.ok(geometry.length >= 4);
   assert.ok(
     geometry.some(point => point.lat === 35.6 && point.lng === -80.8) &&
       geometry.some(point => point.lat === 42.9 && point.lng === -74.2),
   );
 
-  // A badge picked by hand reveals its load the same way.
-  revealed.length = 0;
+  // A badge picked by hand reveals its own stop the same way.
   markers[1].onSelect();
   assert.equal(selections.length, 2);
-  assert.ok(revealed.at(-1).length >= 4);
+  assert.deepEqual(stopsRevealed.at(-1), { lat: 42.9, lng: -74.2 });
+  assert.deepEqual(revealed, []);
 });
 
 test('a stop asked for before its load is drawn opens when the load arrives', () => {

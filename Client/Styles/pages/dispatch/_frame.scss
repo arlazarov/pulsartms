@@ -1,0 +1,220 @@
+@use '../../base' as ui;
+
+// The Dispatch board's frame: Cards, Table and Papers keep their markup
+// and behaviour; trucks and loads take the cyan frame and the trip-chain
+// colours the Fleet Map uses for the same loads.
+.dispatch-table,
+.dispatch-paper {
+  border-color: ui.theme(accent, 0.24);
+  border-radius: ui.radius(md);
+  box-shadow: ui.shadow(card);
+}
+// A truck on the board is the workspace's glass panel, named by the same
+// truck emblem the Fleet Map's truck panel wears (the owner, September
+// 27: the whole design, Dispatch included).
+.dispatch-truck {
+  @include ui.glass-panel;
+  overflow: hidden;
+}
+.dispatch-truck__identity {
+  @include ui.hud-emblem(truck, 2.25rem);
+  align-items: center;
+}
+.dispatch-truck:focus-within {
+  border-color: ui.theme(accent, 0.5);
+}
+// A load is a tile as in the trip chain: a fine rim, a straight line of
+// its phase colour along the top, the phase a soft tint; the current load
+// ringed and softly lit.
+.dispatch-load {
+  --load-accent: #{ui.theme(text-muted)};
+  border: 1px solid ui.theme(border);
+  border-radius: ui.radius(md);
+  background:
+    linear-gradient(var(--load-accent), var(--load-accent)) top center /
+      calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
+    ui.theme(surface);
+}
+.dispatch-load--current {
+  --load-accent: #{ui.theme(map-route-current)};
+  border-color: color-mix(in srgb, var(--load-accent) 60%, transparent);
+  box-shadow:
+    0 0 14px color-mix(in srgb, var(--load-accent) 18%, transparent),
+    0 6px 16px ui.theme(shadow, 0.1);
+}
+.dispatch-load--next {
+  --load-accent: #{ui.theme(route-next)};
+}
+.dispatch-load__phase {
+  border: 0;
+  background: color-mix(in srgb, var(--load-accent) 14%, transparent);
+  color: var(--load-accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: ui.fs(micro);
+  font-weight: 700;
+}
+// Stop markers as the map's emblems: a lit disc with a soft halo.
+.dispatch-load__stop-number {
+  box-shadow:
+    0 0 0 3px ui.theme(accent, 0.12),
+    0 0 10px ui.theme(accent, 0.3);
+}
+.dispatch-load__connector {
+  color: ui.theme(accent);
+}
+.dispatch-board__count {
+  letter-spacing: 0.02em;
+}
+
+// Cards take the height of their own stops, not the tallest beside them.
+// The mouse wheel moves the strip across; its bar is the HUD rail.
+.dispatch-truck__loads {
+  @include ui.hud-scrollbar;
+  align-items: start;
+  gap: ui.pg(xl);
+  padding: ui.pg(sm) ui.pg(md) ui.pg(sm);
+  // Snapping pulled each small wheel step back to the card it left; the
+  // phone's swipe keeps it.
+  @include ui.above(md) {
+    scroll-snap-type: none;
+  }
+}
+// Compact tiles (the owner, September 27: "they take a lot of room"): one
+// step smaller type, tighter rows, the place's street on one line.
+.dispatch-load {
+  --arrival-font-size: #{ui.fs(small)};
+  --arrival-detail-font-size: #{ui.fs(caption)};
+  padding: ui.pg(sm) ui.pg(md);
+}
+.dispatch-load__number {
+  font-size: ui.fs(body);
+}
+.dispatch-load__reference,
+.dispatch-load__status {
+  font-size: ui.fs(small);
+}
+.dispatch-load__reference {
+  margin-top: ui.pg(micro);
+  padding-bottom: ui.pg(xs);
+}
+.dispatch-load__meta {
+  gap: ui.pg(micro) ui.pg(sm);
+  margin-top: ui.pg(xs);
+}
+.dispatch-load__money {
+  margin-top: 0;
+}
+.dispatch-load__overview {
+  gap: ui.pg(sm);
+  margin-top: ui.pg(sm);
+}
+.dispatch-load__route-stop {
+  padding-bottom: ui.pg(xs);
+}
+.dispatch-load__stop {
+  gap: 0;
+}
+.dispatch-load__stop-job,
+.dispatch-load__stop-times {
+  font-size: ui.fs(small);
+}
+.dispatch-load__location {
+  font-size: ui.fs(body);
+}
+.dispatch-load__history-time {
+  font-size: ui.fs(small);
+}
+.dispatch-load__street,
+.dispatch-load__locality,
+.dispatch-load__facility {
+  overflow: hidden;
+  font-size: ui.fs(small);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dispatch-load__stop--summary .dispatch-load__stop-times {
+  gap: 0;
+  margin-top: ui.pg(micro);
+}
+// Table rows stay neutral: the Current badge says the phase. The row a
+// reader is on - pointer or keyboard - is the one marked.
+.dispatch-table tr.is-current td,
+.dispatch-table tr.is-current:hover td,
+.dispatch-table tr.is-current:focus-within td {
+  background: ui.theme(surface);
+}
+.dispatch-table tr.dispatch-table__row:hover td,
+.dispatch-table tr.dispatch-table__row:focus-within td {
+  background: ui.theme(selected);
+}
+.dispatch-table tr.dispatch-table__row:hover td:first-child,
+.dispatch-table tr.dispatch-table__row:focus-within td:first-child {
+  box-shadow: inset 3px 0 0 ui.theme(accent);
+}
+
+// A load's own page in the workspace style (the owner, September 27): its
+// panels are glass with the cyan rim and corner ticks, their headings HUD
+// labels in the accent, the page's tabs lit when current.
+.dispatch-details__panel {
+  @include ui.glass-panel;
+  h2 {
+    @include ui.hud-label;
+    color: ui.theme(accent);
+    font-size: ui.fs(caption);
+  }
+}
+.stop-workspace__editor {
+  border: 1px solid ui.theme(accent, 0.2);
+  border-radius: ui.radius(md);
+}
+.dispatch-details__tab[aria-current='page'] {
+  box-shadow: 0 0 12px ui.theme(accent, 0.25);
+}
+.dispatch-details__title h1 {
+  letter-spacing: 0.01em;
+}
+// The Overview in the same instrument (the owner, September 27): the
+// side panels are glass with HUD headings; the stop table's head reads
+// as HUD labels on a faint accent band, the chosen stop is lit, and the
+// editor's sections are headed in the accent.
+.dispatch-stop-map,
+.dispatch-activity,
+.dispatch-documents,
+.dispatch-mileage {
+  @include ui.glass-panel;
+  h2 {
+    @include ui.hud-label;
+    color: ui.theme(accent);
+    font-size: ui.fs(caption);
+  }
+  h2 svg {
+    color: ui.theme(accent);
+  }
+}
+.stop-workspace__table-heading {
+  border-color: ui.theme(accent, 0.22);
+  background: ui.theme(accent, 0.06);
+  h2,
+  > * {
+    @include ui.hud-label;
+  }
+}
+.stop-workspace__list {
+  border-color: ui.theme(accent, 0.22);
+}
+.stop-workspace__stop.is-selected {
+  background: ui.theme(accent, 0.1);
+  box-shadow:
+    inset 3px 0 ui.theme(accent),
+    0 0 14px ui.theme(accent, 0.12);
+}
+.stop-workspace__editor h3 {
+  @include ui.hud-label;
+  color: ui.theme(accent);
+  font-size: ui.fs(caption);
+  svg {
+    color: ui.theme(accent);
+  }
+}

@@ -186,10 +186,18 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     || _enrichmentRequest is not null
     || _enrichmentFailed;
 
+  // A truck's loads scroll across under the mouse wheel (the owner,
+  // September 27), through one listener on the board for every strip.
+  private ElementReference _board;
+  private IJSObjectReference? _wheel;
+
   protected override async Task OnAfterRenderAsync(bool firstRender)
   {
     if (firstRender)
+    {
       await _visibility.StartAsync(JS);
+      await BindWheelAsync();
+    }
     // Once the board is drawn, the scroll kept for this address returns.
     if (!_armed && _data is not null && !_disposed)
     {
@@ -820,9 +828,44 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
     GC.SuppressFinalize(this);
   }
 
+  private async Task BindWheelAsync()
+  {
+    try
+    {
+      await using var module = await JS.InvokeAsync<IJSObjectReference>(
+        "import",
+        "./js/generated/shared/horizontalWheel.js"
+      );
+      var wheel = await module.InvokeAsync<IJSObjectReference>(
+        "bindHorizontalWheelWithin",
+        _board,
+        ".dispatch-truck__loads"
+      );
+      if (_disposed)
+      {
+        await wheel.InvokeVoidAsync("dispose");
+        await wheel.DisposeAsync();
+        return;
+      }
+      _wheel = wheel;
+    }
+    catch (JSException) { }
+    catch (JSDisconnectedException) { }
+  }
+
   public async ValueTask DisposeAsync()
   {
     Dispose();
+    if (_wheel is { } wheel)
+    {
+      _wheel = null;
+      try
+      {
+        await wheel.InvokeVoidAsync("dispose");
+        await wheel.DisposeAsync();
+      }
+      catch (JSDisconnectedException) { }
+    }
     await Places.DisarmAsync();
     await _visibility.DisposeAsync();
   }

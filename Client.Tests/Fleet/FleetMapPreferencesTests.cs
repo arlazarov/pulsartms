@@ -49,6 +49,50 @@ public sealed class FleetMapPreferencesTests
     Assert.DoesNotContain(calls, c => c.Name == "localStorage.setItem");
   }
 
+  // The camera stays in the tab, per user: coming back to the same truck
+  // (Back, a return link, a reload) restores it; another truck is framed
+  // as usual, and the address never carries the camera.
+  [Theory]
+  [InlineData(true)]
+  [InlineData(false)]
+  public async Task TheTabKeepsTheCameraForTheSameTruckOnly(bool same)
+  {
+    var truck = Guid.NewGuid();
+    using var fixture = new Fixture();
+    fixture.Session[fixture.Key + ".camera"] = $"{truck}|43.65,-79.38,11";
+    var cut = fixture.Render(
+      $"/fleet/map?truckId={(same ? truck : Guid.NewGuid())}"
+    );
+    Ready(cut);
+    var view = JsonSerializer
+      .SerializeToElement(
+        fixture.Js.Calls.Single(call => call.Name == "setOptions").Args![0]
+      )
+      .GetProperty("initialView");
+    if (same)
+      Assert.Equal(
+        (43.65, -79.38, 11d),
+        (
+          view.GetProperty("latitude").GetDouble(),
+          view.GetProperty("longitude").GetDouble(),
+          view.GetProperty("zoom").GetDouble()
+        )
+      );
+    else
+      Assert.Equal(JsonValueKind.Null, view.ValueKind);
+
+    await cut.InvokeAsync(() => cut.Instance.OnMapViewChanged(44.1, -78.2, 9));
+    Assert.EndsWith("|44.1,-78.2,9", fixture.Session[fixture.Key + ".camera"]);
+    Assert.DoesNotContain(
+      fixture.Js.Calls,
+      call =>
+        call.Name == "reflect" && ((string)call.Args![0]!).Contains("view=")
+    );
+    // One record per user in the tab, nothing in lasting storage.
+    Assert.Single(fixture.Session);
+    Assert.DoesNotContain(fixture.Values.Keys, key => key.EndsWith(".camera"));
+  }
+
   [Theory]
   [InlineData(null)]
   [InlineData("invalid json")]
@@ -97,8 +141,11 @@ public sealed class FleetMapPreferencesTests
         first.Js.Calls.Count(call => call.Name == "localStorage.setItem")
       );
       using var json = JsonDocument.Parse(values[first.Key]);
+      // Map animation is always on and no longer a stored choice (the
+      // owner, September 27): three layer choices remain.
       Assert.Equal(3, json.RootElement.EnumerateObject().Count());
       Assert.False(json.RootElement.GetProperty("showTraffic").GetBoolean());
+      Assert.False(json.RootElement.TryGetProperty("sonarMotion", out _));
     }
     using (var returning = new Fixture(user, values))
     {
@@ -205,6 +252,7 @@ public sealed class FleetMapPreferencesTests
     private readonly Guid user;
     public MapInteropStub Js { get; } = new();
     public Dictionary<string, string> Values { get; }
+    public Dictionary<string, string> Session { get; } = [];
     public string Key => $"pulsartms.fleet-map.preferences.{user:D}";
     public bool BlockStorage { get; init; }
     public TaskCompletionSource<string?>? PendingRead { get; init; }
@@ -247,6 +295,13 @@ public sealed class FleetMapPreferencesTests
           return Js;
         if (name == "isVisible")
           return true;
+        if (name == "sessionStorage.getItem")
+          return Session.GetValueOrDefault((string)args![0]!);
+        if (name == "sessionStorage.setItem")
+        {
+          Session[(string)args![0]!] = (string)args[1]!;
+          return null;
+        }
         if (!name.StartsWith("localStorage.", StringComparison.Ordinal))
           return null;
         if (BlockStorage)
@@ -265,8 +320,12 @@ public sealed class FleetMapPreferencesTests
       );
     }
 
-    public IRenderedComponent<FleetMap> Render()
+    public IRenderedComponent<FleetMap> Render(string? address = null)
     {
+      if (address is not null)
+        context
+          .Services.GetRequiredService<NavigationManager>()
+          .NavigateTo(address);
       var state = Task.FromResult(
         new AuthenticationState(
           new ClaimsPrincipal(

@@ -489,7 +489,8 @@ Truck selection retains its road without fitting or zooming out. Show route,
 beside Follow, explicitly fits the retained remaining road and turns Follow off.
 It does not fetch, republish geometry or recalculate a route. At overview
 zoom, nearby unselected trucks share a counted, clickable marker that zooms in;
-the selected truck is never clustered and remains larger than surrounding trucks.
+the selected truck is never clustered; it keeps its size and is found by its
+sonar (see Fleet workspace: truck marks).
 The count label sits directly at the group's geographic center with zero screen
 offset. Nearby markers, polling and zoom must not push it away from that point.
 Only individual truck labels use collision displacement and short connectors.
@@ -594,6 +595,87 @@ card, capped at 40% of the column for phones at large text.
 On phones, keep the title in the first row and Back below it.
 At very narrow or enlarged-text widths, let this header scroll with the card
 instead of covering the stop facts with a tall sticky area.
+
+## Fleet workspace
+
+This is the application's only interface; the earlier layout was removed on
+2026-09-27 and is kept only in Git (tag `ui-legacy-2026-09-27`, branch
+`recovery/pre-futuristic-ui-2026-09-27`, both at `0e6add5d`). The theme
+roles carry its colours, with operational colours unchanged. It follows
+the approved concept in `prototypes/futuristic-ui` (served on :5179).
+
+The frame, on wide screens: a top bar (`Layout/Topbar`, `layouts/_topbar`)
+with the wordmark, the section and page, the theme switch (the appearance
+owner's saved theme), the clock and the account; under it a rail of
+destinations (`layouts/_rail`); the page beside it. Workspace panels are
+glass with two corner ticks (`ui.glass-panel`); panels over the live map
+are `ui.tempered-glass`. The instrument details are shared mixins:
+`ui.hud-frame` (a line of light and corner brackets), `ui.hud-label`
+(spaced capitals) and `ui.hud-emblem` (a lit disc with a truck or pump
+glyph and a turning sight ring). The account menu is one component
+(`Layout/AccountMenu`) in the top bar and, on phones, in the navigation
+menu.
+
+Themes. Dark is the default before any choice (`index.html` paints from
+`localStorage` `pulsr.theme`). A switch applies in place: the page
+cross-fades (View Transitions) and the Google map, whose scheme is fixed
+at creation, is made again in place (`OnMapSchemeChanged`), keeping the
+camera, the chosen truck and Follow; the last map stays under the new one
+until it has drawn. The light theme is white with bright cyan light
+(`clr('cyan', ...)`): white panels with a cyan rim and hairline shadows,
+accent labels, fine cyan grid lines, lit clock bars, lit emblems; the
+Google basemap keeps its own colours and no grey fill or haze is used.
+Inner blocks carry no corner brackets in the light theme.
+
+Fleet Map's head is the title and purpose, then search, driver groups and
+All / Moving / Stopped chips; the chips and the search filter the list and
+the map alike, and an excluded chosen truck is released. From
+`fleet-docked` up the map lies under the whole workspace and the fleet
+list (Truck / Trailer / Driver, as tall as its trucks), the truck panel and
+the trip chain float over it. The camera viewport treats the list, the
+panel, the chain and the map's tool bar as covering the map, so fits,
+reveals and stop focus land in the free part.
+
+The map's one tool bar is centred over the map and always whole: Follow,
+Fit route, Camera, Route options, Fuel (dimmed and disabled with no truck)
+and Layers (Fuel stations, Traffic, Next loads; closes on a press outside
+it). The map zooms out to the continent (min zoom 3) with its centre kept
+over mainland US / Canada; hybrid at 15 and above, road map below. Motion
+is always on: the chosen truck's sonar, the chosen road's breathing glow,
+a slow current of fine grains along the current and later roads, and a
+cluster press glides the camera.
+
+The truck panel (as tall as its content): a truck emblem and the unit;
+a Next stop line (the stop, its ETA with on-time / late word and
+appointment, miles still to drive - the route's own forecast and
+distance); eight facts (Driver, Trailer, Motion, Duty, Fuel, Engine,
+Temperature - the readings' own weather, not read again - and Location,
+whose text copies the full address); the driver's clocks. A stop card
+(current or next) shows a completed stop - the server's `IsCompleted`,
+never GPS - with its completion time only, no forecast. A station quote
+is a narrower card at the column's right edge.
+
+The trip chain lists every trip of the truck from the Dispatch board row.
+Each later trip wears its own road's colour (its place among the map's
+next loads). One press on a chain P / D opens that stop and fits its
+whole trip; a double press centres the stop at zoom 15. On the map one
+press opens a stop and brings a hidden stop into the free part; a double
+press zooms to 15. Stop badges say what the stop is within its own load
+(P, D, D1...), never its place in the chain.
+
+Truck marks: the shape says motion (an arrow moving, a circle standing);
+the engine reading - never speed - colours the mark. Dark theme: a lit
+glass arrow or a HUD sight in green (running), cyan (off) or grey with a
+dashed edge (unknown). Light theme: the classic green arrow and green /
+grey circle. Truck number and cluster tags are HUD plates. Fuel stations
+are dots (never pump icons); on the light map they are filled with their
+price colour.
+
+Dispatch keeps Cards, Papers, Table, the scope, search, groups and every
+action. A truck on the board is a glass panel with the truck emblem; a
+load is a tile with a straight line of its phase colour and a soft phase
+chip; stop markers are lit. A load's page uses glass panels with accent
+HUD headings.
 
 ## Dispatch information hierarchy
 
@@ -1100,10 +1182,15 @@ origins join it rather than building the query themselves.
   - Dispatch: Active or Completed, the search and the page, with the view
     kept in the browser and the driver group on the server as before;
   - the map: the selected truck and its load, a next load's stop being
-    read (`nextLoadId`, `nextStop`, `nextLeg`), the camera (`view`, centre
-    and zoom, reported when the map comes to rest) and the truck search
-    (`q`). A restored camera counts as the reader's own, so focusing the
-    truck it showed does not move it. The next load's stop is opened when
+    read (`nextLoadId`, `nextStop`, `nextLeg`) and the truck search (`q`).
+    The camera is not in the address: where the map came to rest is kept
+    in the tab's `sessionStorage`, one record per signed-in user
+    (`pulsartms.fleet-map.preferences.<user>.camera`, with the truck it was
+    left on), and given back only to the same truck or to none, so a link
+    to another truck still frames that truck. An older link's `view` is used
+    once and dropped by the next replace, adding no history entry. A
+    restored camera counts as the reader's own, so focusing the truck it
+    showed does not move it. The next load's stop is opened when
     that load is drawn, through the same path as a click, so the truck,
     load and assignment checks still decide; picking something first
     replaces it;

@@ -14,6 +14,12 @@
   &--reversed {
     color: ui.theme(on-accent);
   }
+  // Shown only where a layout asks for it (the navigation rail).
+  &--compact {
+    display: none;
+    width: ui.size(control-touch);
+    aspect-ratio: 128 / 104;
+  }
   &--prominent {
     --brand-logo-width: #{ui.size(brand-logo-prominent)};
   }

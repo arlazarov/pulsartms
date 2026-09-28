@@ -16,6 +16,20 @@ export function createMapHost(
 ) {
   let cached: Mounted | null = null;
   let mounted = false;
+  // The last map's picture, kept under the next one until that one has
+  // drawn, then faded out: a theme switch cross-fades instead of flashing
+  // an empty frame. It is only ever a picture - nothing listens to it.
+  let ghost: HTMLElement | null = null,
+    ghostTimer: ReturnType<typeof setTimeout> | null = null;
+  function dropGhost(delay = 0) {
+    const leaving = ghost;
+    ghost = null;
+    if (ghostTimer !== null) clearTimeout(ghostTimer);
+    ghostTimer = null;
+    if (!leaving) return;
+    if (delay > 0) setTimeout(() => leaving.remove(), delay);
+    else leaving.remove();
+  }
   return (
     element: HTMLElement,
     options: google.maps.MapOptions & { colorScheme?: string },
@@ -29,7 +43,7 @@ export function createMapHost(
       options = { ...options, ...(center ? { center, zoom } : {}) };
       const replaced = cached;
       cached = null;
-      replaced.host.remove();
+      if (ghost !== replaced.host) replaced.host.remove();
       // The provider has no way to destroy a map, so whatever still listens
       // to the old one keeps it, and everything those listeners close over,
       // alive. A failure here must not stop the new map from mounting.
@@ -50,6 +64,7 @@ export function createMapHost(
         throw error;
       }
     } else {
+      if (ghost === cached.host) dropGhost();
       cached.host.className = 'fleet-map-host fleet-map-host--initializing';
       element.append(cached.host);
       const {
@@ -79,7 +94,10 @@ export function createMapHost(
       if (released || revealed) return;
       revealed = true;
       stopWaiting();
-      host.className = 'fleet-map-host';
+      if (ghost && ghost !== host) {
+        host.className = 'fleet-map-host fleet-map-host--entering';
+        dropGhost(400);
+      } else host.className = 'fleet-map-host';
     }
     return {
       map,
@@ -112,7 +130,14 @@ export function createMapHost(
         if (released) return;
         released = true;
         stopWaiting();
-        host.remove();
+        // Left in place as the next map's backdrop; gone after a while if
+        // no next map comes.
+        dropGhost();
+        if (host.isConnected) {
+          host.classList.add('fleet-map-host--leaving');
+          ghost = host;
+          ghostTimer = setTimeout(() => dropGhost(), 5000);
+        }
         mounted = false;
       },
     };

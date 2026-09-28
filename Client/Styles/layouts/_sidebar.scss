@@ -60,7 +60,9 @@
     min-width: 1.4em;
     padding: 0 ui.pg(micro);
     border-radius: ui.radius(pill);
-    background: ui.theme(accent);
+    // White on the action colour: the bright dark-theme accent would not
+    // carry it.
+    background: ui.theme(action);
     color: ui.theme(on-accent);
     font-size: ui.fs(small);
     font-weight: 600;
@@ -122,31 +124,6 @@
   &__account-text span {
     font-size: ui.fs(small);
     color: ui.theme(navigation-muted);
-  }
-  @include ui.above(md) {
-    position: sticky;
-    top: 0;
-    height: 100dvh;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    padding: ui.pg(xxl) ui.pg(md) ui.pg(lg);
-    &__brand {
-      padding: 0 ui.pg(xs) ui.pg(lg);
-    }
-    &__nav {
-      flex: 0;
-      display: grid;
-      gap: ui.pg(xs);
-    }
-    &__footer {
-      margin: auto 0 0;
-      border-top: 1px solid ui.theme(navigation-border);
-      padding-top: ui.pg(md);
-    }
-    &__footer .btn {
-      justify-content: flex-start;
-    }
   }
   &__panel {
     display: contents;

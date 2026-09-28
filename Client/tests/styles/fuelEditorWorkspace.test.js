@@ -34,7 +34,14 @@ test('the fuel editor takes the plan card place and width as one column over the
     css,
     /grid-template-areas: "header" "errors" "totals" "list" "footer";/,
   );
-  assert.doesNotMatch(css, /top: 50%|translate\(-50%, -50%\)|translateX/);
+  // The editor itself is never a centred modal. Its title's emblem (the
+  // owner, September 27) centres its own disc and glyph vertically, so the
+  // check reads the editor's own rule, not the whole file.
+  const editorRule = css.match(/\.fuel-plan-editor\s*\{[^}]*\}/)[0];
+  assert.doesNotMatch(
+    editorRule,
+    /top: 50%|translate\(-50%, -50%\)|translateX/,
+  );
   assert.doesNotMatch(
     css,
     /fuel-editor-wide|fuel-editor-route|fuel-editor-height|"timeline content"/,

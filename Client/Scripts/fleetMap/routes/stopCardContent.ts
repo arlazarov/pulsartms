@@ -69,6 +69,12 @@ export type StopCardWords = {
   // What the tank will hold on arrival: the two figures, the em dash when
   // the plan cannot say, or null when there is nothing to show at all.
   fuelText?: { percent: number; quantity: string } | '—' | null;
+  // Set only when the server says the stop is completed: no forecast is
+  // left, only when it was done, if that is known.
+  completion?: { at: string | null } | null;
+  // The whole planned road to this stop and the share of it already
+  // driven, from the route's own progress.
+  route?: { total: string; percent: number } | null;
 };
 
 export function stopContent(
@@ -83,6 +89,8 @@ export function stopContent(
     etaLabel,
     hours,
     fuelText,
+    completion,
+    route,
   }: StopCardWords,
 ): HTMLElement {
   function element(tag: string, className: string, text?: string) {
@@ -113,11 +121,23 @@ export function stopContent(
       element(
         'span',
         'fleet-route-popup__state fleet-route-popup__state--success',
-        'Done',
+        completion ? 'Completed' : 'Done',
       ),
     );
   identity.append(job);
-  if (loadReference) identity.append(loadReferenceContent(loadReference));
+  if (loadReference)
+    identity.append(loadReferenceContent(loadReference, stop.detailsHref));
+  else if (stop.detailsHref) {
+    // Until the load's number is known the head still opens it, in words.
+    const link = element(
+      'a',
+      'fleet-route-popup__load-link',
+      'Open load\u00a0↗',
+    ) as HTMLAnchorElement;
+    link.href = stop.detailsHref;
+    link.title = 'Open load';
+    identity.append(link);
+  }
   const kind = element('div', 'fleet-route-popup__kind', stop.position);
   if (stop.stateAfter && stop.stateAfter !== 'Unknown')
     kind.append(element('span', '', `After: ${stop.stateAfter}`));
@@ -175,6 +195,26 @@ export function stopContent(
     parent.append(group);
     return value;
   }
+  if (completion) {
+    // A completed stop keeps its booking and says when it was done; the
+    // forecast, distance, fuel and cycle all looked ahead and are gone.
+    field(
+      facts,
+      'Appointment',
+      stop.appointment,
+      'fleet-route-popup__appointment',
+    );
+    if (completion.at)
+      field(
+        facts,
+        'Completed at',
+        completion.at,
+        'fleet-route-popup__completed',
+      );
+    information.append(facts);
+    details.append(location, information);
+    return details;
+  }
   // The forecast leads, with the one word about it: on time, late, short
   // of cycle. The booking follows on the same label column.
   const eta = field(
@@ -215,6 +255,22 @@ export function stopContent(
     remaining ?? '—',
     'fleet-route-popup__distance fleet-route-popup__section-start',
   );
+  // The whole road to the stop, and how much of it is behind the truck
+  // (the owner, September 27).
+  if (route) {
+    const percent = route.percent;
+    field(facts, 'Route', route.total, 'fleet-route-popup__route');
+    const bar = element('div', 'fleet-route-popup__progress');
+    const meter = element(
+      'progress',
+      'fleet-route-popup__progress-bar',
+    ) as HTMLProgressElement;
+    meter.max = 100;
+    meter.value = percent;
+    meter.title = 'Route driven';
+    bar.append(meter, element('small', '', `${percent}% driven`));
+    facts.append(bar);
+  }
   // The card says fuel as a named figure on its line, not as a dial. This is
   // one more fact about the stop, so it reads as one: the same label column
   // as the appointment and the ETA above it.
@@ -265,18 +321,6 @@ export function stopContent(
     }
     block.append(cycle);
     information.append(block);
-  }
-  if (stop.detailsHref) {
-    const link = element(
-      'a',
-      'btn btn--primary fleet-route-popup__details-link',
-      // The arrow belongs to the last word; on its own line it reads as a
-      // stray mark rather than as a link that leaves the map.
-      'Open load\u00a0↗',
-    );
-    (link as HTMLAnchorElement).href = stop.detailsHref;
-    link.title = 'Route & load details';
-    information.append(link);
   }
   details.append(location, information);
   return details;

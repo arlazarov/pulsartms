@@ -23,3 +23,24 @@
     grid-row: 3;
   }
 }
+
+// On a phone the page's tabs stay one line that scrolls across; wrapped,
+// Assignments fell to a line of its own under a stray rule.
+@include ui.below(md) {
+  .dispatch-details__navigation {
+    flex-wrap: nowrap;
+    flex-direction: column;
+    align-items: stretch;
+    gap: ui.pg(xs);
+  }
+  .dispatch-details__tabs {
+    @include ui.hud-scrollbar;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-inline-start: 0;
+    border-inline-start: 0;
+    > * {
+      flex: none;
+    }
+  }
+}

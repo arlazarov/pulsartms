@@ -5,6 +5,8 @@ import { truckHitIcon, truckIcon, truckState } from './truckAppearance.ts';
 import { markerAnchor } from './markerAnchor.ts';
 import { clusterText } from './truckLabelLayout.ts';
 import { memoizeLast } from './layerCache.ts';
+import { isLightMap } from './stopAppearance.ts';
+import { labelPlate, plateHeight, plateText } from './labelPlates.ts';
 import { sceneMetrics as metrics, labelSubLayers } from './sceneMetrics.ts';
 
 // A truck on the scene: where it stands, which way and how fast it is
@@ -18,7 +20,7 @@ type Truck = LabelledTruck & {
 
 export type VehicleLayers = {
   // The cluster badges, drawn under the stops.
-  clusters: DeckLayer;
+  clusters: DeckLayer[];
   // The trucks themselves, drawn under the stops.
   icons: DeckLayer[];
   // Their numbers, drawn over the stops.
@@ -42,7 +44,7 @@ export function createVehicleLayers({
   TextLayer: DeckLayerFactory;
 }) {
   const parts = memoizeLast<DeckLayer[]>();
-  const clusterLabels = memoizeLast<DeckLayer>();
+  const clusterLabels = memoizeLast<DeckLayer[]>();
   // The pick area goes with the marks, under the stops: over them it would
   // take a click meant for a stop's badge.
   const isIcon = (layer: DeckLayer) =>
@@ -128,9 +130,11 @@ export function createVehicleLayers({
               getPixelOffset: (t: Truck) => t.markerOffset ?? [0, 0],
               getIcon: (t: Truck) => truckIcon(t.engine, t.speed),
               getSize: (t: Truck) =>
-                (truckState(t.engine, t.speed) === 'moving'
-                  ? metrics.truckSize
-                  : metrics.truckStandingSize) *
+                (!isLightMap()
+                  ? metrics.truckDarkSize
+                  : truckState(t.engine, t.speed) === 'moving'
+                    ? metrics.truckSize
+                    : metrics.truckStandingSize) *
                 (t.unit === hoveredTruck && !t.selected
                   ? metrics.truckHoverScale
                   : 1),
@@ -144,6 +148,28 @@ export function createVehicleLayers({
               parameters: { depthCompare: 'always' },
             }),
         ),
+        new IconLayer({
+          id: 'truck-number-plates',
+          data: vehicles,
+          getPosition: (t: Truck) => t.mergedPosition ?? t.position,
+          getIcon: (t: Truck) =>
+            labelPlate(
+              t.unit,
+              t.selected || t.unit === hoveredTruck ? 'chosen' : 'truck',
+              metrics.truckLabelPadding,
+            ),
+          getSize: plateHeight(metrics.truckLabelPadding),
+          sizeUnits: 'pixels',
+          getPixelOffset: (t: Truck) => {
+            const [dx, dy] = t.labelOffset ?? [0, -metrics.truckLabelOffset];
+            const [ax, ay] = t.markerOffset ?? [0, 0];
+            return [dx + ax, dy + ay];
+          },
+          billboard: true,
+          pickable: false,
+          updateTriggers: { getIcon: [hoveredTruck, hasSelectedTruck] },
+          parameters: { depthCompare: 'always' },
+        }),
         new TextLayer({
           id: 'truck-numbers',
           characterSet: 'auto',
@@ -152,27 +178,22 @@ export function createVehicleLayers({
           getText: (t: Truck) => t.unit,
           getSize: metrics.truckLabelSize,
           sizeUnits: 'pixels',
-          getColor: [255, 255, 255, 255],
+          getColor: (t: Truck) =>
+            plateText(
+              t.selected || t.unit === hoveredTruck ? 'chosen' : 'truck',
+            ),
           getPixelOffset: (t: Truck) => {
             const [dx, dy] = t.labelOffset ?? [0, -metrics.truckLabelOffset];
             const [ax, ay] = t.markerOffset ?? [0, 0];
             return [dx + ax, dy + ay];
           },
+          // The plate beneath is drawn; this background only keeps the
+          // label's whole box pickable, all but invisible.
           background: true,
-          getBackgroundColor: (t: Truck) => [
-            ...(t.selected || t.unit === hoveredTruck
-              ? [49, 94, 234]
-              : [30, 41, 59]),
-            255,
-          ],
+          getBackgroundColor: [0, 0, 0, 1],
           backgroundPadding: metrics.truckLabelPadding,
-          backgroundBorderRadius: 5,
-          getBorderColor: [255, 255, 255, 220],
-          getBorderWidth: 1,
           updateTriggers: {
-            getColor: hasSelectedTruck,
-            getBorderColor: hasSelectedTruck,
-            getBackgroundColor: [hoveredTruck, hasSelectedTruck],
+            getColor: [hoveredTruck, hasSelectedTruck],
           },
           fontFamily: 'Arial, sans-serif',
           fontSettings: fonts.truck,
@@ -195,7 +216,23 @@ export function createVehicleLayers({
       // drawn over it and truck labels step around it instead.
       clusters: clusterLabels(
         [clusters, selectCluster, setHover, fonts],
-        () =>
+        () => [
+          new IconLayer({
+            id: 'truck-cluster-plates',
+            data: clusters,
+            getPosition: (d: LabelledCluster) => d.position,
+            getIcon: (d: LabelledCluster) =>
+              labelPlate(
+                clusterText(d),
+                'cluster',
+                metrics.truckClusterPadding,
+              ),
+            getSize: plateHeight(metrics.truckClusterPadding),
+            sizeUnits: 'pixels',
+            billboard: true,
+            pickable: false,
+            parameters: { depthCompare: 'always' },
+          }),
           new TextLayer({
             id: 'truck-clusters',
             data: clusters,
@@ -204,13 +241,10 @@ export function createVehicleLayers({
             getText: clusterText,
             getSize: metrics.truckLabelSize,
             sizeUnits: 'pixels',
-            getColor: [255, 255, 255],
+            getColor: plateText('cluster'),
             background: true,
-            getBackgroundColor: [30, 41, 59],
+            getBackgroundColor: [0, 0, 0, 1],
             backgroundPadding: metrics.truckClusterPadding,
-            backgroundBorderRadius: metrics.truckClusterBadge,
-            getBorderColor: [255, 255, 255],
-            getBorderWidth: 2,
             fontFamily: 'Arial, sans-serif',
             fontSettings: fonts.truck,
             _subLayerProps: labelSubLayers,
@@ -221,6 +255,7 @@ export function createVehicleLayers({
             onClick: selectCluster,
             parameters: { depthCompare: 'always' },
           }),
+        ],
       ),
       icons: drawn.filter(isIcon),
       labels: drawn.filter(layer => !isIcon(layer)),

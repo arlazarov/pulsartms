@@ -44,7 +44,7 @@
             <button id="dispatch-completed" type="button" aria-pressed="@(_showCompleted ? "true" : "false")" @onclick="() => SelectScopeAsync(true)">Completed</button>
         </div>
     </div>
-    <div class="dispatch-board__body">
+    <div class="dispatch-board__body" @ref="_board">
     @if (_error is not null)
     {
         <p class="dispatch-board__message dispatch-page__error" role="alert">@_error <button class="btn" @onclick="() => LoadAsync(_page)">Retry</button></p>

@@ -1,0 +1,194 @@
+@use '../base' as ui;
+
+// The wide-screen bar: the product, where the reader is, the theme, the
+// time and the account. Phones keep the navigation's own head.
+.topbar {
+  display: none;
+}
+
+@include ui.above(md) {
+  .topbar {
+    @include ui.glass-panel;
+    // Above the page: the account menu opens over the map and its panels.
+    z-index: ui.layer(dropdown);
+    grid-area: top;
+    // A long page scrolls under the bar, which stays whole in its place
+    // (the owner, September 27); the canvas around it hides the page in
+    // the frame's gaps.
+    position: sticky;
+    top: ui.pg(md);
+    outline: ui.pg(md) solid ui.theme(canvas);
+    display: flex;
+    align-items: center;
+    gap: ui.pg(lg);
+    min-width: 0;
+    padding: 0 ui.pg(lg);
+    // A faint line of light along the bar's lower edge.
+    &::after {
+      top: auto;
+      left: ui.pg(xxl);
+      right: ui.pg(xxl);
+      bottom: -1px;
+      width: auto;
+      height: 1px;
+      border: 0;
+      border-radius: 0;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        ui.theme(accent, 0.42),
+        transparent
+      );
+    }
+  }
+  .topbar__brand {
+    display: flex;
+    flex: none;
+    color: ui.theme(text);
+    .brand-logo {
+      width: 8.25rem;
+      height: auto;
+    }
+  }
+  .topbar__crumbs {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-width: 0;
+    padding-left: ui.pg(lg);
+    border-left: 1px solid ui.theme(border);
+    color: ui.theme(text-muted);
+    font-size: ui.fs(caption);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    b {
+      color: ui.theme(text-secondary);
+    }
+  }
+  .topbar__spacer {
+    flex: 1;
+  }
+  .topbar__icon-button {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: ui.size(control);
+    height: ui.size(control);
+    border: 1px solid ui.theme(border);
+    border-radius: ui.radius(sm);
+    background: ui.theme(surface-soft);
+    color: ui.theme(text-secondary);
+    cursor: pointer;
+    &:hover {
+      color: ui.theme(accent);
+      border-color: ui.theme(accent, 0.42);
+    }
+  }
+  .topbar__clock {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    padding-left: ui.pg(lg);
+    border-left: 1px solid ui.theme(border);
+    color: ui.theme(text-muted);
+    white-space: nowrap;
+  }
+  .topbar__date {
+    font-size: ui.fs(caption);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .topbar__time {
+    color: ui.theme(text);
+    font-size: ui.fs(lead);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .topbar__account-menu {
+    position: relative;
+    flex: none;
+  }
+  .topbar__account {
+    display: flex;
+    align-items: center;
+    gap: ui.pg(sm);
+    max-width: 14rem;
+    min-height: 0;
+    padding: ui.pg(xs) ui.pg(md) ui.pg(xs) ui.pg(xs);
+    border: 1px solid ui.theme(border);
+    border-radius: ui.radius(pill);
+    background: ui.theme(surface-soft);
+    color: ui.theme(text);
+  }
+  .topbar__avatar {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: ui.size(control-compact);
+    height: ui.size(control-compact);
+    border: 1px solid ui.theme(accent, 0.42);
+    border-radius: ui.radius(pill);
+    background: ui.theme(accent, 0.1);
+    color: ui.theme(accent);
+    font-size: ui.fs(caption);
+    font-weight: 700;
+  }
+  .topbar__account-text {
+    display: grid;
+    min-width: 0;
+    text-align: left;
+    line-height: 1.2;
+    strong,
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    strong {
+      font-size: ui.fs(small);
+    }
+    span {
+      color: ui.theme(text-muted);
+      font-size: ui.fs(caption);
+    }
+  }
+  .topbar__account-chevron {
+    width: ui.pg(lg);
+    height: ui.pg(lg);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    transform: rotate(180deg);
+  }
+  .topbar__account[aria-expanded='true'] .topbar__account-chevron {
+    transform: none;
+  }
+  #topbar-account-actions {
+    position: absolute;
+    top: calc(100% + #{ui.pg(sm)});
+    right: 0;
+    z-index: ui.layer(dropdown);
+    display: grid;
+    gap: ui.pg(xs);
+    min-width: ui.size(form-field);
+    padding: ui.pg(sm);
+    border: 1px solid ui.theme(accent, 0.28);
+    border-radius: ui.radius(md);
+    background: ui.theme(surface);
+    box-shadow: ui.shadow(popup);
+    .btn {
+      justify-content: flex-start;
+      gap: ui.pg(sm);
+      svg {
+        width: ui.pg(lg);
+        height: ui.pg(lg);
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+      }
+    }
+  }
+}

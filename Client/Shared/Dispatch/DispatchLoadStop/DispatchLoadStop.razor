@@ -27,7 +27,7 @@
             <a class="btn btn--text dispatch-load__history-stop" href="@href"
                title="@($"{Job} · {VisitLabel} · Completed · {Stop.Address}")">
                 <span class="dispatch-load__stop-number"
-                      aria-label="@($"Stop {Number}, completed")">@Number</span>
+                      aria-label="@($"Stop {Number}, {Badge}, completed")">@Badge</span>
                 <span class="dispatch-load__history-check"
                       aria-label="Completed">✓</span>
                 <strong class="dispatch-load__location">@Location</strong>
@@ -40,7 +40,7 @@
         else
         {
         <button type="button" class="btn btn--text dispatch-load__history-stop" @onclick="OpenDetails" title="@($"{Job} · {VisitLabel} · Completed · {Stop.Address}")">
-            <span class="dispatch-load__stop-number" aria-label="@($"Stop {Number}, completed")">@Number</span>
+            <span class="dispatch-load__stop-number" aria-label="@($"Stop {Number}, {Badge}, completed")">@Badge</span>
             <span class="dispatch-load__history-check" aria-label="Completed">✓</span>
             <strong class="dispatch-load__location">@Location</strong>
             <span class="dispatch-load__history-time" title="Scheduled appointment">@Client.Services.StopAppointmentDisplay.Format(PlannedStop)</span>
@@ -54,7 +54,7 @@
        then the booked hour and the forecast beside their labels. *@
     <div class="dispatch-load__stop-heading">
         <span class="dispatch-load__stop-number"
-              aria-label="@($"Stop {Number}")">@Number</span>
+              aria-label="@($"Stop {Number}, {Badge}")">@Badge</span>
         <span class="dispatch-load__stop-job
                      @DispatchStopPresentation.Tone(Stop)">@Job</span>
         @if (VisitLabel.Length > 0)
@@ -95,7 +95,7 @@
     else
     {
     <div class="dispatch-load__stop-heading">
-        <span class="dispatch-load__stop-number" aria-label="@($"Stop {Number}")">@Number</span>
+        <span class="dispatch-load__stop-number" aria-label="@($"Stop {Number}, {Badge}")">@Badge</span>
         <span class="dispatch-load__stop-job">@Job</span>
         @if (VisitLabel.Length > 0) { <span class="dispatch-load__stop-visit" title="@($"{VisitLabel} at this address")">@VisitLabel</span> }
         @if (Completed) { <span class="dispatch-load__completed">Completed</span> }

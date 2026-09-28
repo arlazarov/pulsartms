@@ -18,19 +18,31 @@
 .fleet-station-popup__day {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  // Each day centred in its equal column, so the gaps either side of
+  // today's rim are equal (the owner, September 27).
+  align-items: center;
   gap: ui.pg(xs);
   min-width: 0;
   white-space: nowrap;
-  padding: ui.pg(micro) ui.pg(xs);
+  text-align: center;
+  padding: ui.pg(xs) ui.pg(sm);
+  border: 1px solid transparent;
   border-radius: ui.radius(sm);
   font-variant-numeric: tabular-nums;
+  // Today is the reading being looked at, marked as an instrument marks
+  // it (the owner, September 27): a faint accent tint in a fine rim with
+  // the lit corner brackets, and its price in the accent.
   &.is-current {
-    background: ui.theme(surface-soft);
+    @include ui.hud-frame;
+    border-color: ui.theme(accent, 0.28);
+    background-color: ui.theme(accent, 0.07);
+    box-shadow: 0 0 14px ui.theme(accent, 0.12);
+    .fleet-station-popup__day-price {
+      color: ui.theme(accent);
+    }
   }
   &-label {
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(caption);
+    @include ui.hud-label;
   }
   &-price {
     color: ui.theme(text);
@@ -59,5 +71,6 @@
     flex-direction: row;
     flex-wrap: wrap;
     align-items: baseline;
+    text-align: left;
   }
 }

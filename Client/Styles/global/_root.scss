@@ -91,3 +91,36 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+// The HUD's motions, shared by its instruments: a light sweeping along a
+// panel's edge, a sight ring turning, current flowing along a line.
+@keyframes hud-sweep {
+  from {
+    background-position:
+      -40% 0,
+      0 0;
+  }
+  to {
+    background-position:
+      140% 0,
+      0 0;
+  }
+}
+@keyframes hud-spin {
+  from {
+    transform: translateY(-50%) rotate(0);
+  }
+  to {
+    transform: translateY(-50%) rotate(1turn);
+  }
+}
+@keyframes hud-spin-free {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@keyframes hud-flow {
+  to {
+    background-position-x: 14px;
+  }
+}

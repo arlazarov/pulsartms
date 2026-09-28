@@ -2,6 +2,7 @@ import type { DeckLayer, DeckLayerFactory } from './deckLayer.ts';
 import type { MarkPoint } from './truckClusters.ts';
 import type { LabelFonts } from './sceneMetrics.ts';
 import { memoizeLast } from './layerCache.ts';
+import { isLightMap, lightMarkCore, markCore } from './stopAppearance.ts';
 import { sceneMetrics as metrics, labelSubLayers } from './sceneMetrics.ts';
 
 // A fuel station as the scene draws it: where it is, what its price makes
@@ -16,20 +17,22 @@ export type StationMark = {
 };
 
 const selectedBlue = [49, 94, 234];
+// Every station is a dot, never a pump icon (the owner, September 27). The plan's numbers are drawn in the ink: bright cyan on the dark
+// map, the deep accent on the light one.
+const darkInk = [34, 211, 238];
+const lightInk = [14, 116, 144];
+const theme = () =>
+  isLightMap()
+    ? { core: lightMarkCore, ink: lightInk }
+    : { core: markCore, ink: darkInk };
 
-/**
- * Every fuel station on the scene: the plain ones, the ones the plan
- * recommends with their rings and numbers, and the one being edited.
- *
- * Each group keeps its own cache, so a station list that has not changed is
- * never rebuilt when the camera moves.
- */
 export function createStationLayers({
   ScatterplotLayer,
   TextLayer,
 }: {
   ScatterplotLayer: DeckLayerFactory;
   TextLayer: DeckLayerFactory;
+  IconLayer?: DeckLayerFactory;
 }) {
   const plain = memoizeLast<DeckLayer>(),
     recommended = memoizeLast<DeckLayer[]>(),
@@ -54,10 +57,17 @@ export function createStationLayers({
       getRadius: radius,
       stroked: true,
       lineWidthUnits: 'pixels',
-      getLineWidth: (d: StationMark) => (d.selected ? 3 : 2),
-      getFillColor: (d: StationMark) => d.color,
+      // On the dark map a fine rim of the price colour on the core; on the
+      // pale light map a rim alone did not tell cheap from dear, so the dot
+      // is filled with its price colour inside a white rim.
+      getLineWidth: (d: StationMark) => (d.selected ? 2.5 : 1.75),
+      getFillColor: isLightMap() ? (d: StationMark) => d.color : theme().core,
       getLineColor: (d: StationMark) =>
-        d.selected || d.recommended ? selectedBlue : [255, 255, 255],
+        d.selected || d.recommended
+          ? selectedBlue
+          : isLightMap()
+            ? [255, 255, 255]
+            : d.color,
       autoHighlight: true,
       highlightColor: [49, 94, 234, 100],
       onHover,
@@ -89,12 +99,12 @@ export function createStationLayers({
       getPixelOffset: [0, -offset],
       getTextAnchor: 'middle',
       getAlignmentBaseline: 'center',
-      getColor: [255, 255, 255],
+      getColor: theme().ink,
       background: true,
       getBackgroundColor: background,
       backgroundPadding: metrics.fuelVisitLabelPadding,
       backgroundBorderRadius: 4,
-      getBorderColor: [255, 255, 255, 220],
+      getBorderColor: [...theme().ink, 140],
       getBorderWidth: 1,
       fontFamily: 'Arial, sans-serif',
       fontSettings: fonts.fuelVisit,
@@ -124,8 +134,8 @@ export function createStationLayers({
       radiusUnits: 'pixels',
       filled: false,
       stroked: true,
-      getLineColor: selectedBlue,
-      getLineWidth: 3,
+      getLineColor: [...selectedBlue, 170],
+      getLineWidth: 1.25,
       lineWidthUnits: 'pixels',
       pickable: true,
       onHover,
@@ -167,7 +177,7 @@ export function createStationLayers({
           true,
           setHover,
           selectStation,
-          metrics.recommendationDotRadius,
+          metrics.recommendationDotRadius * 1.2,
         ),
         ring(
           'fuel-recommendation-rings',
@@ -190,11 +200,11 @@ export function createStationLayers({
             d.numbers.trim(),
         ),
         true,
-        d => `Fuel ${d.numbers}`,
+        d => `Fuel ${String(d.numbers).trim()}`,
         // The badge now carries how much is bought there, so its alphabet
         // is whatever the quantity and its unit need.
         'auto',
-        [30, 41, 59],
+        theme().core,
         metrics.fuelVisitLabelOffset,
         fonts,
         setHover,

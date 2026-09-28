@@ -22,12 +22,38 @@
     }
   }
 
+  // The workspace frame: the top bar across, the rail under it and the
+  // page beside, on a canvas lit by two faint glows.
   @include ui.above(md) {
-    grid-template-columns: 192px minmax(0, 1fr);
-    grid-template-rows: 1fr;
+    grid-template-columns: ui.size(rail) minmax(0, 1fr);
+    grid-template-rows: ui.size(topbar) minmax(0, 1fr);
+    grid-template-areas:
+      'top top'
+      'rail main';
+    gap: ui.pg(md);
+    padding: ui.pg(md);
+    background:
+      radial-gradient(
+        75rem 37.5rem at 20% -10%,
+        ui.theme(accent, 0.12),
+        transparent 60%
+      ),
+      radial-gradient(
+        56rem 31rem at 110% 110%,
+        ui.theme(route-next, 0.08),
+        transparent 60%
+      ),
+      ui.theme(canvas);
+    background-attachment: fixed;
+    // In daylight the dark-teal glows read as a grey haze: a plain bright
+    // canvas instead (the owner, September 27).
+    :root[data-theme='light'] & {
+      background: ui.theme(canvas);
+    }
 
     &__content {
-      padding: ui.pg(xl);
+      grid-area: main;
+      padding: 0;
     }
   }
 }

@@ -18,13 +18,6 @@
   // card opens takes 15px off the header and shifts every row that was
   // already on screen.
   scrollbar-gutter: stable;
-  .fleet-map-inspector__value {
-    color: ui.theme(text);
-    font-weight: 600;
-  }
-  .fleet-map-inspector__crew {
-    display: contents;
-  }
   .fleet-map-info-content {
     display: flex;
   }
@@ -36,10 +29,8 @@
   --truck-card-columns: minmax(0, 11fr) minmax(0, 9fr);
   .fleet-map-inspector__header {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, max-content) max-content;
-    grid-template-areas:
-      'identity distance controls'
-      'hours hours hours';
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-areas: 'identity controls';
     align-items: center;
     column-gap: ui.pg(md);
   }
@@ -67,30 +58,6 @@
     @include ui.overlay-title;
     display: block;
     margin-right: 0;
-  }
-  .fleet-map-inspector__driver,
-  .fleet-map-inspector__trailer {
-    min-width: 0;
-    color: ui.theme(text-secondary);
-    font-size: ui.fs(body);
-    overflow-wrap: anywhere;
-  }
-  // The unit, then past a hairline the trailer and the driver.
-  .fleet-map-inspector__title + .fleet-map-inspector__crew > :first-child {
-    padding-inline-start: ui.pg(md);
-    border-inline-start: 1px solid ui.theme(border-subtle);
-  }
-  .fleet-map-inspector__trailer + .fleet-map-inspector__driver::before,
-  .fleet-map-inspector__trailer-conflict
-    + .fleet-map-inspector__driver::before {
-    content: '· ';
-  }
-  // Two sources name different trailers for the truck.
-  .fleet-map-inspector__trailer-conflict {
-    min-width: 0;
-    color: ui.theme(warning-text);
-    font-size: ui.fs(small);
-    overflow-wrap: anywhere;
   }
   // The actions read as words, under the detail they act on. They were six
   // bare icons in the header, where the row had no room to say what any of
@@ -141,81 +108,5 @@
         white-space: nowrap;
       }
     }
-  }
-  // The forecast and the booking read as two rows of one table: their
-  // labels in one column, so both values start at the same line. The
-  // column is a length, not a share of the card: a percentage is not known
-  // while the row measures how wide the block wants to be, and the booking
-  // folded in room that had been promised to it.
-  .fleet-map-inspector__arrival {
-    --route-fact-label: 6rem;
-    display: grid;
-    row-gap: ui.pg(xs);
-    min-width: 0;
-    font-size: ui.fs(body);
-    // The real estimate replaces the dash rather than joining it.
-    &:has(> .arrival-estimate) > .fleet-map-inspector__arrival-placeholder {
-      display: none;
-    }
-    // With no booking to line up with, the column is the label's own
-    // width: held at the booking's, "ETA" and its value ran apart. A
-    // stacked card keeps its own floor of zero.
-    @container map-truck-card
-      (width >= #{ui.breakpoint(map-truck-arrival-stacked)}) {
-      &:not(:has(> .fleet-map-inspector__appointment)) {
-        --route-fact-label: max-content;
-      }
-    }
-  }
-  // The booking at the same stop, under its forecast: its own label, the
-  // visit's, so a scheduled time is never read as a predicted one.
-  .fleet-map-inspector__appointment {
-    display: grid;
-    grid-template-columns:
-      minmax(var(--route-fact-label), max-content)
-      minmax(0, 1fr);
-    align-items: baseline;
-    column-gap: ui.pg(sm);
-    min-width: 0;
-    > strong {
-      min-width: 0;
-      color: ui.theme(text);
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-    }
-  }
-  .fleet-map-inspector__appointment-label {
-    color: ui.theme(text-secondary);
-  }
-  // A window over two days: the start on one line, the end under it.
-  .fleet-map-inspector__appointment-line {
-    display: block;
-  }
-  // The load is a way into its page: it reads as a link, not as a number
-  // to copy.
-  .fleet-map-inspector__load-link {
-    display: inline-flex;
-    align-items: baseline;
-    gap: ui.pg(micro);
-    color: ui.theme(link);
-    font-size: ui.fs(lead);
-    font-weight: 600;
-    text-decoration: none;
-    &:hover,
-    &:focus-visible {
-      text-decoration: underline;
-    }
-    > svg {
-      inline-size: 1em;
-      block-size: 1em;
-      align-self: center;
-    }
-  }
-  // Where the truck is going, under its load: the visit and the place.
-  .fleet-map-inspector__heading-to {
-    flex-basis: 100%;
-    min-width: 0;
-    color: ui.theme(text);
-    overflow-wrap: anywhere;
   }
 }

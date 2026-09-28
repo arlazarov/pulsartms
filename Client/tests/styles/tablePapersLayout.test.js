@@ -53,22 +53,29 @@ test('Table differentiates current rows while leaving upcoming loads neutral and
   );
   assert.match(distance, /flex-wrap: wrap;/);
   assert.doesNotMatch(distance, /flex-direction: column;/);
+  // The day bands were restyled by the owner (September 27: the solid
+  // day colours were garish): a surface band under the canvas gap, marked
+  // by a fine line and a faint wash of the day's colour, the text in the
+  // page's own ink.
+  const band = rule('.dispatch-page .dispatch-table .dispatch-table__day > th');
   assert.match(
-    rule('.dispatch-page .dispatch-table .dispatch-table__day > th'),
-    /background: linear-gradient\(var\(--ui-canvas\) 0 var\(--space-md\), var\(--day-fill\) var\(--space-md\)\);[\s\S]*color: var\(--ui-on-day\);[\s\S]*font-weight: 700;/,
+    band,
+    /linear-gradient\(var\(--ui-canvas\) 0 var\(--space-md\), transparent var\(--space-md\)\)/,
   );
-  // Past, today and future each fill the band with their own role.
+  assert.match(band, /linear-gradient\(var\(--day-fill\), var\(--day-fill\)\)/);
+  assert.match(band, /color: var\(--ui-text\);[\s\S]*font-weight: 700;/);
+  // Past is quiet, today the accent, the future the next-route colour.
   const days = rule(
     '.dispatch-page .dispatch-table .dispatch-table__day-group',
   );
-  assert.match(days, /--day-fill: var\(--ui-day-past\);/);
+  assert.match(days, /--day-fill: var\(--ui-text-muted\);/);
   assert.match(
     rule('.dispatch-page .dispatch-table .dispatch-table__day-group.is-today'),
-    /--day-fill: var\(--ui-day-today\);/,
+    /--day-fill: var\(--ui-accent\);/,
   );
   assert.match(
     rule('.dispatch-page .dispatch-table .dispatch-table__day-group.is-future'),
-    /--day-fill: var\(--ui-day-future\);/,
+    /--day-fill: var\(--ui-route-next\);/,
   );
   // A truck's several loads read their figures on short lines.
   assert.match(

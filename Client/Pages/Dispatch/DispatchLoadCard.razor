@@ -45,7 +45,7 @@
             {
                 var stop = visit.Stop;
                 <li @key="(Load.Id, stop.Id, stop.Sequence, DispatchStopPresentation.CompletionRevision(Load.Stops))" class="dispatch-load__route-stop @(stop.IsCompleted || Completed && !stop.DriverOnly ? "is-history" : "is-remaining")">
-                    <DispatchLoadStop DispatchId="Load.Id" Stop="stop" Number="visit.Number" VisitLabel="@visit.VisitLabel"
+                    <DispatchLoadStop DispatchId="Load.Id" Stop="stop" Number="visit.Number" Marker="@visit.Marker" VisitLabel="@visit.VisitLabel"
                         FallbackDate="FallbackDate(stop)" Eta="Load.Eta"
                         Refreshing="Refreshing" CompletedLoad="Completed"
                         Detailed="false" DetailsHref="@StopUrl(stop.Id)" />

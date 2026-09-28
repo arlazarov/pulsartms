@@ -280,7 +280,7 @@ public sealed class DispatchLoadCardTests
         .Count
     );
     Assert.Equal(
-      new[] { "1", "2", "3" },
+      new[] { "P", "D1", "D2" },
       component
         .FindAll(".dispatch-load__stop-number")
         .Select(item => item.TextContent)
@@ -814,14 +814,15 @@ public sealed class DispatchLoadCardTests
       "PU-REF / 123",
       stops[1].QuerySelector(".dispatch-load__reference-number")!.TextContent
     );
+    // Badges name the stop within its load (StopMarkers), as on the map.
     Assert.Equal(
-      new[] { "1", "2" },
+      new[] { "P", "D" },
       stops.Select(stop =>
         stop.QuerySelector(".dispatch-load__stop-number")!.TextContent.Trim()
       )
     );
     Assert.Equal(
-      new[] { "Stop 1", "Stop 2" },
+      new[] { "Stop 1, P", "Stop 2, D" },
       stops.Select(stop =>
         stop.QuerySelector(".dispatch-load__stop-number")!
           .GetAttribute("aria-label")

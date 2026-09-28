@@ -34,6 +34,7 @@ public partial class FleetMap
       )
         return;
       _preferencesKey = $"pulsartms.fleet-map.preferences.{userId:D}";
+      await RestoreCameraAsync();
       var json = await JS.InvokeAsync<string?>(
         "localStorage.getItem",
         _lifetime.Token,

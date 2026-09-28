@@ -43,6 +43,9 @@ function fixture(t, formatDistance) {
     setNumber(number) {
       this.number = number;
     }
+    setOrder(order) {
+      this.order = order;
+    }
     setJob(job) {
       this.job = job;
     }
@@ -310,14 +313,19 @@ test('both current stops show and copy authoritative load and order numbers', as
       rows(state.shown.children[0].children[0]).includes(header),
       'identity is in the head, before the stop/company/address',
     );
+    // The load number opens that load (the owner, September 27); the
+    // order is the number a click copies.
+    const link = rows(header).find(node => node.tagName === 'a');
+    assert.equal(link.href, `/dispatch/${dispatchId}`);
+    assert.equal(link.children[0].textContent, 'AMF1373');
     const buttons = rows(header).filter(node => node.tagName === 'button');
     assert.deepEqual(
       buttons.map(button => button.children[0].textContent),
-      ['AMF1373', '566126837'],
+      ['566126837'],
     );
     assert.deepEqual(
       buttons.map(button => button.title),
-      ['Copy load number', 'Copy order number'],
+      ['Copy order number'],
     );
     for (const button of buttons) {
       let stopped = false;
@@ -330,10 +338,10 @@ test('both current stops show and copy authoritative load and order numbers', as
       assert.equal(button.title, 'Copied');
     }
   }
-  assert.deepEqual(copied, ['1373', '566126837', '1373', '566126837']);
+  assert.deepEqual(copied, ['566126837', '566126837']);
 });
 
-test('presentation prefix updates only popup text and copies the original numeric identity', async t => {
+test('presentation prefix updates only the load link text, never as HTML', async t => {
   const { stops, markers, state, calls } = fixture(t);
   const dispatchId = '33333333-3333-3333-3333-333333333333';
   const originalNavigator = Object.getOwnPropertyDescriptor(
@@ -355,7 +363,7 @@ test('presentation prefix updates only popup text and copies the original numeri
   markers[0].onSelect();
   const displayed = () =>
     rows(row(state.shown, 'fleet-map-route-info__load')).find(
-      node => node.tagName === 'button',
+      node => node.tagName === 'a',
     );
   assert.equal(
     displayed().children[0].textContent,
@@ -370,13 +378,12 @@ test('presentation prefix updates only popup text and copies the original numeri
   ]) {
     stops.setLoadReference({ dispatchId, loadNumber: 1373, loadLabel });
     assert.equal(displayed().children[0].textContent, loadLabel);
-    await displayed().listeners.click({ stopPropagation() {} });
     assert.ok(
       rows(state.shown).every(node => node.tagName !== 'img'),
       'prefix is plain text, never HTML',
     );
   }
-  assert.deepEqual(copied, ['1373', '1373', '1373', '1373']);
+  assert.deepEqual(copied, [], 'the load number opens; it is not copied');
   assert.equal(markers.length, 1, 'prefix updates do not rebuild stop markers');
   assert.equal(calls.opens, 1, 'prefix changes do not reselect a stop');
   const content = state.shown,
@@ -461,8 +468,16 @@ test('reference clipboard errors are retryable and missing order is not invented
       : delete globalThis.navigator,
   );
   stops.setPlan({ ...plan(), dispatchId });
+  // A blank order is not invented as a number to copy.
   stops.setLoadReference({ dispatchId, loadNumber: 1373, orderNumber: '  ' });
   markers[0].onSelect();
+  assert.equal(
+    rows(row(state.shown, 'fleet-map-route-info__load')).filter(
+      node => node.tagName === 'button',
+    ).length,
+    0,
+  );
+  stops.setLoadReference({ dispatchId, loadNumber: 1373, orderNumber: '568' });
   const header = row(state.shown, 'fleet-map-route-info__load');
   const buttons = rows(header).filter(node => node.tagName === 'button');
   assert.equal(buttons.length, 1);
@@ -489,16 +504,16 @@ test('current pickup and delivery link only to the authoritative dispatch and pr
   stops.setPlan(route);
   for (const marker of markers) {
     marker.onSelect();
-    const link = row(state.shown, 'fleet-route-popup__details-link');
+    // No load number yet: the head opens the load in words, a small link,
+    // not a button (the owner, September 27).
+    const link = row(state.shown, 'fleet-route-popup__load-link');
     assert.equal(link.tagName, 'a');
     assert.equal(link.href, `/dispatch/${dispatchId}`);
     // The arrow is tied to the last word so it never lands on a line alone.
     assert.equal(link.textContent, 'Open load\u00a0↗');
-    assert.equal(link.title, 'Route & load details');
     assert.equal(
-      state.shown.children[1].children.at(-1),
-      link,
-      'the link ends the information column',
+      row(state.shown, 'fleet-route-popup__details-link'),
+      undefined,
     );
   }
   const content = state.shown,
@@ -518,7 +533,7 @@ test('current pickup and delivery link only to the authoritative dispatch and pr
     dispatchId: '44444444-4444-4444-4444-444444444444',
   });
   assert.equal(
-    row(state.shown, 'fleet-route-popup__details-link').href,
+    row(state.shown, 'fleet-route-popup__load-link').href,
     '/dispatch/44444444-4444-4444-4444-444444444444',
   );
 });
@@ -616,7 +631,7 @@ test('current stop shows only its appointment reference under the address and up
   );
 });
 
-test('current stops keep numbered pickup and delivery circles without persistent text labels', t => {
+test('current stops keep P and D badges without persistent text labels', t => {
   const { stops, markers, calls, state } = fixture(t);
   const route = plan([
     stop(),
@@ -634,9 +649,13 @@ test('current stops keep numbered pickup and delivery circles without persistent
   assert.deepEqual(
     markers.map(marker => [marker.number, marker.job, marker.distance]),
     [
-      ['1', 'Pickup', null],
-      ['2', 'Delivery', null],
+      ['P', 'Pickup', null],
+      ['D', 'Delivery', null],
     ],
+  );
+  assert.deepEqual(
+    markers.map(marker => marker.order),
+    [1, 2],
   );
   assert.ok(
     markers.every(
@@ -720,7 +739,7 @@ test('current-stop details show the local appointment window, exact ETA status a
     head.children.map(node => node.className),
     ['fleet-route-popup__number', 'fleet-route-popup__identity'],
   );
-  assert.equal(head.children[0].textContent, '1');
+  assert.equal(head.children[0].textContent, 'P');
   assert.deepEqual(
     head.children[1].children.map(node => [node.className, node.textContent]),
     [
@@ -745,13 +764,19 @@ test('current-stop details show the local appointment window, exact ETA status a
     rows(information)
       .filter(node => node.tagName === 'dt')
       .map(node => node.textContent),
-    ['ETA', 'Appointment', 'Left', 'Fuel on arrival'],
+    // The whole road to the stop follows what is left of it (the owner,
+    // September 27), with a bar of the share already driven.
+    ['ETA', 'Appointment', 'Left', 'Route', 'Fuel on arrival'],
   );
   assert.deepEqual(
     rows(state.shown)
       .filter(node => node.tagName === 'dt')
       .map(node => node.textContent),
-    ['ETA', 'Appointment', 'Left', 'Fuel on arrival'],
+    ['ETA', 'Appointment', 'Left', 'Route', 'Fuel on arrival'],
+  );
+  assert.equal(
+    fieldValue(state.shown, 'fleet-route-popup__route'),
+    '100 mi · 161 km',
   );
   assert.equal(
     fieldValue(state.shown, 'fleet-route-popup__appointment'),
@@ -811,7 +836,11 @@ test('five load occurrences keep exact appointments and repeat context without m
   assert.equal(markers.length, 5);
   assert.deepEqual(
     markers.map(marker => marker.number),
-    ['1', '2', '3', '4', '5'],
+    ['P', 'P', 'P', 'P', 'D'],
+  );
+  assert.deepEqual(
+    markers.map(marker => marker.order),
+    [1, 2, 3, 4, 5],
   );
   for (const [index, time, visit] of [
     [0, '02:00 AM', 'Visit 1 of 3'],
@@ -852,10 +881,10 @@ test('five load occurrences keep exact appointments and repeat context without m
     stops: routeStops.slice(1),
     tracking: { passedStopIds: ['webster-1'] },
   });
-  assert.equal(
-    markers[3].number,
-    '4',
-    'passed stops retain their place in the full route numbering',
+  assert.deepEqual(
+    [markers[3].number, markers[3].order],
+    ['P', 4],
+    'passed stops retain their label and place in the full route',
   );
   assert.equal(
     row(state.shown, 'fleet-route-popup__kind').textContent,
@@ -1144,8 +1173,10 @@ test('ETA expiry and unknown distance stay explicit, and a closed or passed stop
 });
 
 // A stop the truck has already worked reads as finished at a glance, and
-// says so instead of forecasting an arrival it has already made.
-test('a passed stop is marked done and its badge is outlined, not filled', t => {
+// says so instead of forecasting an arrival it has already made. Finished
+// is the server's completion, not GPS passage (the owner, September 27:
+// "Stop the server completed (IsCompleted, not GPS or load state)").
+test('a completed stop is marked done and its badge is outlined; passage alone is not done', t => {
   const { stops, markers, state } = fixture(t);
   const route = plan([
     stop({ id: 'pickup', job: 'Pickup' }),
@@ -1156,19 +1187,25 @@ test('a passed stop is marked done and its badge is outlined, not filled', t => 
     referenceStops: route.stops,
     tracking: { passedStopIds: ['pickup'] },
   });
+  // Driven past, but not completed: the card claims nothing.
+  markers[0].onSelect();
+  const passed = row(state.shown, 'fleet-route-popup__head');
+  assert.equal(passed.children[0].className, 'fleet-route-popup__number');
+  assert.equal(row(passed, 'fleet-route-popup__state'), undefined);
+  stops.setCompletions([{ id: 'pickup', at: null }]);
   markers[0].onSelect();
   const head = row(state.shown, 'fleet-route-popup__head');
   assert.equal(head.children[0].className, 'fleet-route-popup__number is-done');
-  assert.equal(head.children[0].textContent, '1');
+  assert.equal(head.children[0].textContent, 'P');
   const done = row(head, 'fleet-route-popup__job').children[0];
   assert.deepEqual(
     [done.className, done.textContent],
-    ['fleet-route-popup__state fleet-route-popup__state--success', 'Done'],
+    ['fleet-route-popup__state fleet-route-popup__state--success', 'Completed'],
   );
   assert.equal(
     row(state.shown, 'fleet-route-popup__status'),
     undefined,
-    'a stop behind the truck says Done, not how its arrival stood',
+    'a completed stop says so, not how its arrival stood',
   );
   markers[1].onSelect();
   const next = row(state.shown, 'fleet-route-popup__head');
@@ -1322,21 +1359,73 @@ test('the stop just left and the stop being driven to are named', t => {
     tracking: { passedStopIds: ['one', 'two'], nextStopId: 'three' },
   });
   const marked = () =>
-    markers.filter(marker => marker.highlighted).map(marker => marker.number);
+    markers
+      .filter(marker => marker.highlighted)
+      .map(marker => [marker.number, marker.order]);
 
-  assert.deepEqual(marked(), ['2', '3']);
+  assert.deepEqual(marked(), [
+    ['D1', 2],
+    ['P', 3],
+  ]);
 
   // Driving on moves both marks along with the truck.
   stops.setPlan({
     ...plan(route),
     tracking: { passedStopIds: ['one', 'two', 'three'], nextStopId: 'four' },
   });
-  assert.deepEqual(marked(), ['3', '4']);
+  assert.deepEqual(marked(), [
+    ['P', 3],
+    ['D2', 4],
+  ]);
 
   // Nothing driven yet: there is a stop ahead and none behind.
   stops.setPlan({
     ...plan(route),
     tracking: { passedStopIds: [], nextStopId: 'one' },
   });
-  assert.deepEqual(marked(), ['1']);
+  assert.deepEqual(marked(), [['P', 1]]);
+});
+
+test('reordered stops of the same plan keep their labels and badge order', t => {
+  const { stops, markers } = fixture(t);
+  const pickup = stop();
+  const first = stop({ id: 'first', job: 'Delivery', name: 'First' });
+  const second = stop({ id: 'second', job: 'Delivery', name: 'Second' });
+  stops.setPlan(plan([pickup, first, second]));
+  stops.setPlan(plan([pickup, second, first]));
+  // Markers are kept in creation order: pickup, first, second.
+  assert.deepEqual(
+    markers.map(marker => [marker.number, marker.order]),
+    [
+      ['P', 1],
+      ['D2', 3],
+      ['D1', 2],
+    ],
+  );
+  assert.equal(markers.length, 3, 'the same markers are updated, not added');
+});
+
+test('a trip panel chooses the stop a badge names and highlights it', t => {
+  const { stops, markers, state } = fixture(t);
+  const chosen = [];
+  stops.setPlan(
+    plan([stop(), stop({ id: 'delivery', job: 'Delivery', name: 'Customer' })]),
+  );
+  stops.setChooser(id => chosen.push(id));
+  markers[1].onSelect();
+  assert.deepEqual(chosen, ['delivery']);
+  assert.equal(state.shown ?? null, null, 'the stop card does not open');
+
+  stops.focus('delivery');
+  assert.equal(markers[1].highlighted, true);
+  stops.focus(null);
+  assert.equal(
+    markers[1].highlighted,
+    false,
+    'clearing the choice leaves only the route highlights',
+  );
+
+  stops.setChooser(null);
+  markers[1].onSelect();
+  assert.ok(state.shown, 'without a panel the badge opens its card');
 });

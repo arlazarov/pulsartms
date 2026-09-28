@@ -1,3 +1,4 @@
+import { tripStopLabels } from './stopLabels.ts';
 import type { LoadReference, PlanStop, RoutePoint } from '../contracts.d.ts';
 import type { StopEtaLabel } from './stopEtaLabels.ts';
 import type { StopFacts } from './stopCardContent.ts';
@@ -19,6 +20,7 @@ type Entry = {
   details?: StopFacts;
   miles: number;
   remaining: string | null;
+  route: { total: string; percent: number } | null;
   content?: HTMLElement;
   contentKey?: string;
   [key: string]: unknown;
@@ -28,22 +30,41 @@ export function createRouteStops(
   map: google.maps.Map,
   StopMarker: any,
   popup: { show(content: Node, position: unknown): void; hide(): void },
-  onOpen: () => void,
+  onOpen: (position: google.maps.LatLngLiteral) => void,
   formatDistance: (miles: number) => string = distanceLabel,
 ) {
   const entries = new Map<string, Entry>();
   let progress: number | null = null,
     selectedId: string | null = null;
+  // Set by a layout that shows a chosen stop in its own panel (the
+  // trip panel): a badge press then chooses the stop there
+  // instead of opening the stop card. The focused stop is highlighted.
+  let chooser: ((stopId: string) => void) | null = null;
+  let focusedId: string | null = null;
+  const highlight = new Map<string, boolean>();
   let etaLabels = new Map<string, StopEtaLabel>();
   let dispatchId: string | null = null,
     loadReference: LoadReference | null = null;
   let fuelArrivals: any[] = [];
+  // The stops the server says are completed, and when; not GPS passage.
+  let completions = new Map<string, string | null>();
 
   function updateDistance(entry: Entry) {
     const valid = Number.isFinite(progress) && Number.isFinite(entry.miles);
     entry.remaining = valid
       ? formatDistance(Math.max(0, entry.miles - progress!))
       : null;
+    entry.route =
+      valid && entry.miles > 0
+        ? {
+            total: formatDistance(entry.miles),
+            // Whole percent, so a sample that moves no figure on the card
+            // does not rebuild it.
+            percent: Math.round(
+              Math.min(1, Math.max(0, progress! / entry.miles)) * 100,
+            ),
+          }
+        : null;
     refreshContent(entry);
   }
 
@@ -74,7 +95,11 @@ export function createRouteStops(
             quantity: `${arrival.gallons.toFixed(0)} US gal`,
           }
         : '—';
+    const completion = completions.has(entry.stop.id)
+      ? { at: completions.get(entry.stop.id) ?? null }
+      : null;
     const key = JSON.stringify([
+      completion,
       entry.metadata,
       loadReference,
       etaText,
@@ -84,29 +109,43 @@ export function createRouteStops(
       etaLabel,
       hours,
       entry.remaining,
+      entry.route,
       fuelText,
     ]);
     if (entry.contentKey === key && !opening) return;
     if (entry.contentKey !== key) {
-      entry.content = stopContent(entry.details!, {
-        loadReference,
-        etaText,
-        etaStatus,
-        cycleStatus,
-        etaTone: etaTone ?? undefined,
-        remaining: entry.remaining ?? undefined,
-        etaLabel,
-        hours,
-        fuelText,
-      });
+      entry.content = stopContent(
+        { ...entry.details!, done: !!completion },
+        {
+          completion,
+          loadReference,
+          etaText,
+          etaStatus,
+          cycleStatus,
+          etaTone: etaTone ?? undefined,
+          remaining: entry.remaining ?? undefined,
+          route: entry.route,
+          etaLabel,
+          hours,
+          fuelText,
+        },
+      );
       entry.contentKey = key;
     }
     popup.show(entry.content!, point(entry.stop.point!));
   }
 
+  // The chosen stop wears the reticle: the one whose card is open, else
+  // the one the chain focused.
+  function markSelected() {
+    for (const [id, entry] of entries)
+      entry.marker.selected = id === (selectedId ?? focusedId);
+  }
+
   function show(entry: Entry) {
     selectedId = entry.stop.id;
-    onOpen();
+    markSelected();
+    onOpen(point(entry.stop.point!));
     refreshContent(entry, true);
   }
 
@@ -137,6 +176,12 @@ export function createRouteStops(
           : null;
       for (const entry of entries.values()) refreshContent(entry);
     },
+    setCompletions(list: { id: string; at: string | null }[]) {
+      completions = new Map(
+        (Array.isArray(list) ? list : []).map(x => [x.id, x.at ?? null]),
+      );
+      for (const entry of entries.values()) refreshContent(entry);
+    },
     setEtas(labels: Map<string, StopEtaLabel>) {
       etaLabels = labels;
       for (const entry of entries.values()) updateDistance(entry);
@@ -165,6 +210,7 @@ export function createRouteStops(
       // a truck is standing on one, where the mark it makes with the truck
       // says it already.
       const ordered = orderedStops(plan);
+      const labels = tripStopLabels(ordered.map(stop => stop.job));
       const nextId = plan?.tracking?.nextStopId ?? null;
       const nextIndex = ordered.findIndex(stop => stop.id === nextId);
       const previousId =
@@ -179,7 +225,8 @@ export function createRouteStops(
           const marker = new StopMarker({
             map,
             position: point(stop.point),
-            number: `${index + 1}`,
+            number: labels[index],
+            order: index + 1,
             job: stop.job,
           });
           entry = {
@@ -188,11 +235,13 @@ export function createRouteStops(
             miles: Number.NaN,
             metadata: null,
             remaining: null,
+            route: null,
             content: undefined,
             contentKey: undefined,
           };
           const selected: Entry = entry;
-          marker.onSelect = () => show(selected);
+          marker.onSelect = () =>
+            chooser ? chooser(selected.stop.id) : show(selected);
           entries.set(stop.id, entry);
         }
         const row: Entry = entry!;
@@ -204,15 +253,18 @@ export function createRouteStops(
           stop,
           detailsHref ?? '',
           visits.get(stop.id),
-          `${index + 1}`,
+          labels[index],
           completed,
         );
         row.metadata = JSON.stringify(row.details);
-        row.marker.setNumber?.(`${index + 1}`);
+        row.marker.setNumber?.(labels[index]);
+        row.marker.setOrder?.(index + 1);
         row.marker.setJob?.(stop.job);
         row.marker.setDone?.(completed);
         row.marker.setNext?.(stop.id === nextId, plan?.truckId ?? null);
-        row.marker.highlighted = stop.id === nextId || stop.id === previousId;
+        highlight.set(stop.id, stop.id === nextId || stop.id === previousId);
+        row.marker.highlighted =
+          highlight.get(stop.id) || stop.id === focusedId;
         const stopIndex = plan.stops.findIndex(
           (s: PlanStop) => s.id === stop.id,
         );
@@ -234,6 +286,24 @@ export function createRouteStops(
         if (selectedId === id) this.close();
       }
     },
+    // Opens one stop's card as a click on its badge would, and says where
+    // it stands so the camera can go there.
+    open(stopId: string) {
+      const entry = entries.get(stopId);
+      if (!entry?.stop.point) return null;
+      show(entry);
+      return point(entry.stop.point);
+    },
+    setChooser(value: ((stopId: string) => void) | null) {
+      chooser = value;
+    },
+    // Highlights one stop as chosen, or none; the camera does not move.
+    focus(stopId: string | null) {
+      focusedId = stopId;
+      for (const [id, entry] of entries)
+        entry.marker.highlighted = highlight.get(id) || id === focusedId;
+      markSelected();
+    },
     setProgress(value: number | null) {
       progress = value;
       for (const entry of entries.values()) updateDistance(entry);
@@ -241,6 +311,7 @@ export function createRouteStops(
     close() {
       selectedId = null;
       popup.hide();
+      markSelected();
     },
     clear() {
       for (const entry of entries.values()) entry.marker.map = null;

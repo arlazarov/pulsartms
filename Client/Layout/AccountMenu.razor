@@ -1,0 +1,39 @@
+@* The signed-in account and its actions, shared by the top bar (wide
+   screens) and the navigation menu (phones). Block names the holder's
+   BEM block, so each keeps its own look. *@
+<AuthorizeView Context="account">
+<div class="@(Block)__account-menu" @onkeydown="HandleKeyAsync"
+     @onkeydown:stopPropagation="@Open">
+    <button class="btn btn--@(Block) @(Block)__account" type="button"
+            @ref="_toggle"
+            aria-expanded="@(Open ? "true" : "false")"
+            aria-controls="@(Block)-account-actions"
+            @onclick="Toggle">
+        <span class="@(Block)__avatar" aria-hidden="true"
+            >@Initials(account.User)</span>
+        <span class="@(Block)__account-text"><strong
+            >@Name(account.User)</strong><span>@(account.User.IsInRole(
+                "Admin") ? "Administrator" : "Dispatch")</span></span>
+        <svg class="@(Block)__account-chevron" viewBox="0 0 24 24"
+             aria-hidden="true"><path d="m8 14 4-4 4 4" /></svg>
+    </button>
+    @if (Open)
+    {
+        <div id="@(Block)-account-actions" role="group"
+             aria-label="Account actions">
+            <NavLink href="/settings/personal" class="@($"btn btn--{Block}")"
+                     @onclick="LeaveAsync">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 7h16M4 17h16M8 4v6m8 4v6" />
+                </svg>Personal settings
+            </NavLink>
+            <button class="btn btn--@(Block)" type="button"
+                    @onclick="LogoutAsync">
+                <svg viewBox="0 0 24 24" aria-hidden="true"
+                    ><path d="M10 4H4v16h6M14 8l4 4-4 4M8 12h12" /></svg
+                >Logout
+            </button>
+        </div>
+    }
+</div>
+</AuthorizeView>

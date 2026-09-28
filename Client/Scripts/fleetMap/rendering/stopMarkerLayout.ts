@@ -9,6 +9,8 @@ import { truckColor } from './truckAppearance.ts';
 export type StopRow = {
   position: MarkPoint;
   number?: string | number;
+  // Where the badge falls among badges that overlap; the text is a label.
+  order?: number;
   job?: string;
   markerLabel?: string;
   markerOffsetX?: number;
@@ -142,9 +144,9 @@ export function layoutStopMarkers(
 ) {
   const project = markerProjection(zoom);
   const radius = metrics.stopBadgeDiameter / 2;
-  const byNumber = (a: Badge, b: Badge) =>
-    (parseInt(String(a.row.number ?? ''), 10) || 0) -
-    (parseInt(String(b.row.number ?? ''), 10) || 0);
+  const rank = (row: StopRow) =>
+    row.order ?? (parseInt(String(row.number ?? ''), 10) || 0);
+  const byNumber = (a: Badge, b: Badge) => rank(a.row) - rank(b.row);
 
   const ground = markerProjection(groundZoom);
   // How wide a badge is depends on whether it is wearing a truck.

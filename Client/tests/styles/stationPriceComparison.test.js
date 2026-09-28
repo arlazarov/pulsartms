@@ -15,13 +15,17 @@ test('the days keep three aligned columns under the prices, and the prices keep 
     css,
     /\.fleet-station-popup__days\s*\{[^}]*display: grid;[^}]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/,
   );
+  // Each day is centred in its equal column, so the gaps either side of
+  // today's rim are equal (the owner, September 27).
   assert.match(
     css,
-    /\.fleet-station-popup__day\s*\{[^}]*display: flex;[^}]*flex-direction: column;[^}]*align-items: flex-start;[^}]*white-space: nowrap;/,
+    /\.fleet-station-popup__day\s*\{[^}]*display: flex;[^}]*flex-direction: column;[^}]*align-items: center;[^}]*white-space: nowrap;/,
   );
+  // Today is marked as an instrument: an accent rim and tint, not a
+  // solid block (the owner, September 27).
   assert.match(
     css,
-    /\.fleet-station-popup__day\.is-current\s*\{[^}]*background: var\(--ui-surface-soft\);/,
+    /\.fleet-station-popup__day\.is-current\s*\{[^}]*border-color: color-mix\(in srgb, var\(--ui-accent\)/,
   );
   assert.doesNotMatch(css, /\.fleet-station-popup__comparison (table|td|th)/);
   assert.match(

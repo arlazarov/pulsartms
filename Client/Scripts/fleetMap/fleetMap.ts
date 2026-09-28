@@ -33,6 +33,21 @@ const mountMap = createMapHost(
   map => google.maps.event.clearInstanceListeners(map),
 );
 
+// Street zoom for a chosen stop; satellite imagery starts here too.
+const stopZoom = 15;
+// How soon a second press on the same stop counts as a double press.
+const stopPressWindow = 500;
+
+// Mainland USA and southern Canada, the fleet's working area, with room
+// around it: the map now lies under the workspace's panels, so the whole
+// area must still fit in the part left free (the owner, September 27).
+export const fleetBounds = { north: 70, south: 14, west: -145, east: -45 };
+
+const schemeOf = (element: HTMLElement) =>
+  element.ownerDocument?.documentElement?.dataset?.theme === 'dark'
+    ? 'DARK'
+    : 'LIGHT';
+
 export async function createFleetMap(
   element: HTMLElement,
   apiKey: string,
@@ -71,12 +86,18 @@ export async function createFleetMap(
   const mountedMap = mountMap(element, {
     center: { lat: 41.5, lng: -87.5 },
     zoom: 5,
+    // The fleet works in mainland Canada and the USA: the camera's centre
+    // keeps to them, and the map zooms out as far as the whole continent -
+    // enough for a load from coast to coast in the part of the map the
+    // panels leave free (the owner, September 27) - but not to the world.
+    restriction: {
+      latLngBounds: fleetBounds,
+      strictBounds: false,
+    },
+    minZoom: 3,
     mapId: 'DEMO_MAP_ID',
     mapTypeId: 'roadmap',
-    colorScheme:
-      element.ownerDocument?.documentElement?.dataset?.theme === 'dark'
-        ? 'DARK'
-        : 'LIGHT',
+    colorScheme: schemeOf(element),
     clickableIcons: false,
     draggableCursor: 'default',
     draggingCursor: 'default',
@@ -92,9 +113,28 @@ export async function createFleetMap(
     fullscreenControl: false,
     cameraControl: false,
     zoomControl: false,
+    // No keyboard-shortcuts link in the corner (the owner, September 27);
+    // Google's own data credit and Terms link are required and stay.
+    keyboardShortcuts: false,
   });
   const map = mountedMap.map;
   const cleanup = [() => mountedMap.release()];
+  // Google sets a map's colour scheme only when the map is made: a theme
+  // switch asks the page to make this map again in the new scheme, in
+  // place, carrying the camera and the selection over; nothing reloads.
+  const scheme = schemeOf(element);
+  const root = element.ownerDocument?.documentElement;
+  if (root && typeof MutationObserver !== 'undefined') {
+    const themeWatch = new MutationObserver(() => {
+      if (!disposed && schemeOf(element) !== scheme)
+        notify('OnMapSchemeChanged');
+    });
+    themeWatch.observe(root, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+    cleanup.push(() => themeWatch.disconnect());
+  }
   function dispose() {
     if (disposed) return;
     disposed = true;
@@ -137,6 +177,60 @@ export async function createFleetMap(
     const gpuScene = gpuModule?.createGpuScene(map);
     cleanup.push(() => gpuScene?.dispose());
     await yieldToBrowser();
+    // A P or D chosen on the map or in the chain. One press opens it and
+    // keeps the zoom, only bringing a hidden stop into view; a second
+    // press on the same stop soon after puts it in the middle at street
+    // zoom, where the satellite policy takes over (the owner, September
+    // 27). A camera move is the reader's own, so Follow ends; editors keep
+    // theirs.
+    let lastStopPress: { key: string; at: number } | null = null;
+    // Set by a press in the trip chain: there one press shows the stop's
+    // whole trip instead (the owner, September 27); a double press still
+    // takes the stop to street zoom.
+    let chainFit: (() => void) | null = null;
+    function focusStop(position: google.maps.LatLngLiteral) {
+      const fit = chainFit;
+      chainFit = null;
+      if (disposed || fuelEditing || routeEditor.active) return;
+      const key = `${position.lat},${position.lng}`;
+      const now = Date.now();
+      const repeated =
+        lastStopPress?.key === key && now - lastStopPress.at < stopPressWindow;
+      lastStopPress = repeated ? null : { key, at: now };
+      // The middle is the middle of the map left free by the panels over it.
+      cameraViewport.refresh();
+      if (repeated) {
+        trucks.releaseCamera();
+        map.moveCamera({
+          center: cameraViewport.center(position, stopZoom),
+          zoom: stopZoom,
+        });
+        return;
+      }
+      if (fit) {
+        trucks.releaseCamera();
+        fit();
+        return;
+      }
+      // One press: a stop off the map or under a panel is brought the
+      // least distance into the free part; one already there stays put.
+      if (map.getBounds?.()?.contains(position) === false)
+        trucks.releaseCamera();
+      cameraViewport.reveal(position);
+    }
+    // All of a later load's drawn road, or a set of places, in the part of
+    // the map the panels leave free.
+    function fitPoints(points: google.maps.LatLngLiteral[] | null) {
+      if (disposed || !points?.length) return;
+      const bounds = new google.maps.LatLngBounds();
+      for (const point of points) bounds.extend(point);
+      trucks.releaseCamera();
+      cameraViewport.refresh();
+      map.fitBounds(bounds, cameraViewport.padding(55));
+    }
+    function fitLoadRoad(loadId: string, executionLegId?: string) {
+      fitPoints(nextLoads.geometryOf(loadId, executionLegId));
+    }
     const route = createRouteLayer(
       map,
       (truckId, miles, remaining) => {
@@ -144,10 +238,11 @@ export async function createFleetMap(
         stations.setProgress(miles);
         notify('OnRouteProgress', truckId, remaining, miles);
       },
-      () => {
+      position => {
         inspector.activate('stop');
         stations.closePopup();
         nextLoads.clearSelection();
+        focusStop(position);
       },
       gpuScene?.Polyline,
       gpuScene?.StopMarker,
@@ -215,7 +310,7 @@ export async function createFleetMap(
         cameraViewport.refresh();
         map.fitBounds(bounds, cameraViewport.padding(55));
       },
-      position => cameraViewport.reveal(position),
+      position => focusStop(position),
     );
     cleanup.push(() => nextLoads.dispose());
     // Where the camera came to rest, for the page's address.
@@ -313,9 +408,12 @@ export async function createFleetMap(
       },
     );
     cleanup.push(() => clickListener.remove());
+    // Satellite imagery at close zoom, the road map further out.
     const mapTypeListener = map.addListener('idle', () => {
       const mapType = (map.getZoom() ?? 0) >= 15 ? 'hybrid' : 'roadmap';
       if (map.getMapTypeId() !== mapType) map.setMapTypeId(mapType);
+      // The page's styles dim the imagery on the dark theme.
+      element.classList.toggle('is-satellite', mapType === 'hybrid');
     });
     cleanup.push(() => mapTypeListener.remove());
     let routeVersion = 0;
@@ -464,12 +562,47 @@ export async function createFleetMap(
         loadId: string,
         stopIndex: number,
         executionLegId?: string | null,
+        fromChain = false,
       ) {
-        if (!disposed)
-          nextLoads.selectStop(loadId, stopIndex, executionLegId ?? undefined);
+        if (disposed) return;
+        if (fromChain)
+          chainFit = () => fitLoadRoad(loadId, executionLegId ?? undefined);
+        nextLoads.selectStop(loadId, stopIndex, executionLegId ?? undefined);
       },
       clearNextLoadSelection() {
         if (!disposed) nextLoads.clearSelection();
+      },
+      focusRouteStop(stopId: string | null) {
+        if (!disposed) route.focusStop(stopId ?? null);
+      },
+      // A stop chosen in the trip chain: its card opens as from its badge,
+      // and the camera goes to it exactly as a badge press takes it.
+      openRouteStop(stopId: string) {
+        if (disposed) return;
+        chainFit = () => route.fitRemaining();
+        route.openStop(stopId);
+        chainFit = null;
+      },
+      // A later load's stop chosen in the chain while its road is not drawn:
+      // one press shows all of the load's stops, a double press the stop.
+      centerStop(lat: number, lng: number, stops?: number[][] | null) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        const places = (stops ?? []).filter(
+          point => Number.isFinite(point?.[0]) && Number.isFinite(point?.[1]),
+        );
+        if (places.length > 1)
+          chainFit = () =>
+            fitPoints(places.map(([pLat, pLng]) => ({ lat: pLat, lng: pLng })));
+        focusStop({ lat, lng });
+      },
+      // A later load chosen whole in the chain: all of its road in view.
+      fitNextLoad(loadId: string, executionLegId?: string | null) {
+        if (disposed) return;
+        nextLoads.pickLoad(loadId, executionLegId ?? undefined);
+        fitLoadRoad(loadId, executionLegId ?? undefined);
+      },
+      setStopCompletions(list: { id: string; at: string | null }[]) {
+        if (!disposed) route.setCompletions(list);
       },
       setLoadReference(payload: any) {
         if (!disposed) route.setLoadReference(payload);

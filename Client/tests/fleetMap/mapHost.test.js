@@ -5,11 +5,17 @@ import { createMapHost } from '../../Scripts/fleetMap/provider/mapHost.ts';
 function container() {
   return {
     ownerDocument: {
-      createElement: () => ({
-        remove() {
-          this.parent = null;
-        },
-      }),
+      createElement: () => {
+        const node = {
+          classes: new Set(),
+          remove() {
+            this.parent = null;
+            this.isConnected = false;
+          },
+        };
+        node.classList = { add: name => node.classes.add(name) };
+        return node;
+      },
     },
     append(host) {
       host.parent = this;
@@ -65,7 +71,8 @@ test('a replaced map is handed back exactly once, and a failing release cannot b
   assert.deepEqual(discarded, [first.map]);
 });
 
-test('provider host is bounded and reuse does not move the camera before fleet data arrives', () => {
+test('provider host is bounded and reuse does not move the camera before fleet data arrives', t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
   let creations = 0,
     host;
   const map = {
@@ -80,8 +87,12 @@ test('provider host is bounded and reuse does not move the camera before fleet d
   });
   const first = mount(container(), {});
   assert.throws(() => mount(container(), {}), /already mounted/);
+  host.isConnected = true;
   first.release();
-  assert.equal(host.parent, null);
+  // A released map stays as the next map's backdrop until that one has
+  // drawn (the owner, September 27: the theme switch cross-fades), marked
+  // as leaving; the next mount takes it back out of that role.
+  assert.ok(host.classes.has('fleet-map-host--leaving'));
   const target = container();
   const second = mount(target, {
     center: { lat: 41.5, lng: -87.5 },
@@ -95,7 +106,13 @@ test('provider host is bounded and reuse does not move the camera before fleet d
   assert.equal(creations, 1);
   assert.equal(first.map, second.map);
   assert.deepEqual(map.options, { mapTypeId: 'roadmap' });
+  assert.equal(host.className, 'fleet-map-host fleet-map-host--initializing');
+  host.isConnected = true;
   second.release();
+  // With no next map the backdrop is bounded: gone after a while.
+  assert.equal(host.parent, target);
+  t.mock.timers.tick(5000);
+  assert.equal(host.parent, null);
 });
 
 test('provider initialization can be retried after failure', () => {

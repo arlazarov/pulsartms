@@ -45,7 +45,6 @@ public static class ReturnNavigation
       ("nextLoadId", place.NextLoadId?.ToString()),
       ("nextStop", place.NextLoadId is null ? null : place.NextStop.ToString()),
       ("nextLeg", place.NextLoadId is null ? null : place.NextLeg?.ToString()),
-      ("view", place.View?.ToString()),
       ("q", place.Search?.Trim().Length > 0 ? place.Search.Trim() : null)
     );
 
@@ -112,19 +111,19 @@ public static class ReturnNavigation
 public sealed record ReturnLink(string Href, string Label);
 
 // Where the map was: the chosen truck and load, a next load's stop being
-// looked at, the camera and the truck search.
+// looked at and the truck search. The camera is not part of an address:
+// the map keeps it in the tab (FleetMap.ReturnPlace).
 public sealed record MapPlace(
   Guid? TruckId,
   Guid? DispatchId,
   Guid? NextLoadId = null,
   int NextStop = 0,
   Guid? NextLeg = null,
-  MapView? View = null,
   string? Search = null
 );
 
 // The camera, written compactly and read back only when it is a real
-// place on the map.
+// place on the map. An older link may still carry it as `view`.
 public sealed record MapView(double Latitude, double Longitude, double Zoom)
 {
   public override string ToString() =>

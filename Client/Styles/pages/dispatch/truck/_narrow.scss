@@ -1,21 +1,29 @@
 @use '../../../base' as ui;
 
-// On a phone the unit and its crew take the head's first line whole, and
-// what is left shares the next with the map button, each folding to a
-// line of its own when enlarged text needs it; the map button says itself
-// with its icon alone, and the loads stack.
+// On a phone the unit and its crew share the head's first line with the
+// map button at its end (a button alone on a line wasted a row), and what
+// is left takes the next; the map button says itself with its icon alone,
+// and the loads stack.
 @include ui.below(narrow-card) {
   .dispatch-truck__header {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     padding-inline: ui.pg(md);
     > .dispatch-truck__identity {
+      flex: 1 1 0;
+    }
+    > :not(.dispatch-truck__identity, a.dispatch-truck__map) {
+      order: 1;
       flex-basis: 100%;
     }
-    // What is left first, then the map button, as on a wide head.
-    > a.dispatch-truck__map {
-      order: 1;
-    }
+  }
+  // Beside the map button the crew goes under the unit, where a hairline
+  // at the start of its line would separate nothing.
+  .dispatch-truck__crew {
+    flex-basis: 100%;
+    padding-inline-start: 0;
+    border-inline-start: 0;
   }
   a.dispatch-truck__map > span {
     position: absolute;

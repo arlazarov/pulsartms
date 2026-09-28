@@ -395,10 +395,11 @@ const back = async label => {
 };
 
 try {
-  // Dispatch: arrive with a place in the address.
+  // Dispatch: arrive with a place in the address. Completed loads are
+  // read in the Table alone, so the rows are the table's.
   const place = '/dispatch?scope=completed&q=AMF&page=2';
   await tab.goto(origin + place);
-  await tab.locator('section.dispatch-load').first().waitFor();
+  await tab.locator('a.dispatch-table__open').first().waitFor();
   const listState = async () => ({
     address: await here(),
     completed: await tab
@@ -418,11 +419,11 @@ try {
   await tab.evaluate(() => window.scrollTo(0, 600));
   await tab.waitForTimeout(200);
   const scrolled = await tab.evaluate(() => window.scrollY);
-  const details = tab.locator('section.dispatch-load a.dispatch-load__number');
+  const details = tab.locator('a.dispatch-table__open');
   const href = await details.first().getAttribute('href');
   check(
     href.includes(`from=${encodeURIComponent(place)}`),
-    'a card carries the list address',
+    'a row carries the list address',
     href,
   );
 
@@ -435,7 +436,7 @@ try {
     await link.getAttribute('href'),
   );
   await link.click();
-  await tab.locator('section.dispatch-load').first().waitFor();
+  await tab.locator('a.dispatch-table__open').first().waitFor();
   await tab.waitForFunction(y => Math.abs(window.scrollY - y) <= 2, scrolled);
   state = await listState();
   check(state.address === place, 'the list is back at its address', state);
@@ -448,13 +449,10 @@ try {
   await tab.screenshot({ path: resolve(output, 'dispatch-returned.png') });
 
   // Browser Back.
-  await tab
-    .locator('section.dispatch-load a.dispatch-load__number')
-    .first()
-    .click();
+  await tab.locator('a.dispatch-table__open').first().click();
   await back('Back to Dispatch');
   await tab.goBack();
-  await tab.locator('section.dispatch-load').first().waitFor();
+  await tab.locator('a.dispatch-table__open').first().waitFor();
   await tab.waitForFunction(y => Math.abs(window.scrollY - y) <= 2, scrolled);
   state = await listState();
   check(
@@ -472,7 +470,8 @@ try {
     await here(),
   );
 
-  // Fleet Map: arrive with truck, load, next stop, camera and search.
+  // Fleet Map: arrive with truck, load, next stop and search, and a camera
+  // from an older link, which is used once and left out of the address.
   const truck = trucks[0].truckId;
   const current = guid(200);
   const next = guid(201);
@@ -480,6 +479,7 @@ try {
     `/fleet/map?truckId=${truck}&dispatchId=${current}` +
     `&nextLoadId=${next}&nextStop=1&view=43.65,-79.38,11&q=110`;
   await tab.goto(origin + map);
+  const entries = await tab.evaluate(() => history.length);
   await tab.locator('[data-return-fixture]').waitFor();
   await tab.waitForFunction(() =>
     (window.mapCalls ?? []).some(([name]) => name === 'selectNextStop'),
@@ -489,8 +489,14 @@ try {
   check(
     JSON.stringify(options?.initialView) ===
       JSON.stringify({ latitude: 43.65, longitude: -79.38, zoom: 11 }),
-    'the map is given the camera from the address',
+    'the map is given the camera from an older link',
     options?.initialView,
+  );
+  await tab.waitForFunction(() => !location.search.includes('view='));
+  check(
+    (await tab.evaluate(() => history.length)) === entries,
+    'the older link is cleaned without a new history entry',
+    await here(),
   );
   const selected = calls.find(([name]) => name === 'selectNextStop')?.[1];
   check(
@@ -504,19 +510,25 @@ try {
     await tab.locator('#fleet-truck-search').inputValue(),
   );
 
-  // The camera comes to rest somewhere else: the address follows.
+  // The camera comes to rest somewhere else: the tab keeps it, the address
+  // stays as it was.
+  const before = await here();
   await tab.evaluate(() =>
     window.mapCallbacks.invokeMethodAsync('OnMapViewChanged', 44.1, -78.2, 9),
   );
   await tab.waitForFunction(() =>
-    location.search.includes('view=44.1%2C-78.2%2C9'),
+    Object.keys(sessionStorage).some(key =>
+      sessionStorage.getItem(key)?.endsWith('|44.1,-78.2,9'),
+    ),
   );
   const moved = await here();
   check(
-    moved.includes(`truckId=${truck}`) &&
+    moved === before &&
+      !moved.includes('view=') &&
+      moved.includes(`truckId=${truck}`) &&
       moved.includes(`nextLoadId=${next}`) &&
       moved.includes('q=110'),
-    'the map address keeps truck, next stop and search with the new camera',
+    'the map address keeps truck, next stop and search, never the camera',
     moved,
   );
 
@@ -549,7 +561,7 @@ try {
     (await stopLink.getAttribute('href')).startsWith(`/dispatch/${next}?`) &&
       detailsFrom.includes(`nextLoadId=${next}`) &&
       detailsFrom.includes('nextStop=1') &&
-      detailsFrom.includes('view=44.1%2C-78.2%2C9'),
+      !detailsFrom.includes('view='),
     "the stop's load link carries the map with that stop open",
     detailsFrom,
   );
@@ -592,12 +604,17 @@ try {
   );
 
   // Back to the truck: its own card, and Open load on it, visible.
-  // The truck card opens collapsed; its actions are behind its own
-  // chevron, which a reader presses first.
+  // A narrow card opens collapsed, its actions behind Details, which a
+  // reader presses first; docked, the card is open whole.
   const expand = async () => {
+    await tab.locator('.fleet-map-inspector__load-link').waitFor({
+      state: 'attached',
+    });
     const toggle = tab.locator('.fleet-map-mobile-summary__toggle');
-    await toggle.waitFor({ state: 'visible' });
-    if ((await toggle.getAttribute('aria-expanded')) !== 'true')
+    if (
+      (await toggle.isVisible()) &&
+      (await toggle.getAttribute('aria-expanded')) !== 'true'
+    )
       await toggle.click();
   };
   await tab.locator('.fleet-map-inspector__back').click();

@@ -15,8 +15,9 @@ function rule(selector) {
 }
 
 test('application page cards share neutral surfaces and compact semantic corners', () => {
+  // Settings cards became the workspace's glass panels (the owner,
+  // September 27: the whole design, settings included); checked below.
   for (const selector of [
-    '.settings-page__card',
     '.add-user-page form',
     '.login-page .container',
     '.dispatch-truck',
@@ -33,6 +34,16 @@ test('application page cards share neutral surfaces and compact semantic corners
       selector,
     );
   }
+});
+
+test('settings cards are the workspace glass panels with HUD headings', () => {
+  const card = rule('.settings-page__card');
+  assert.match(card, /backdrop-filter: blur\(16px\)/);
+  assert.match(card, /border-radius: var\(--radius-panel\);/);
+  assert.match(
+    rule('.settings-page__card h2'),
+    /text-transform: uppercase;[\s\S]*color: var\(--ui-accent\);/,
+  );
 });
 
 // The current load stands out by a light ring and its Current tag, not a

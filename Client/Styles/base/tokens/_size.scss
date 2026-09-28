@@ -45,8 +45,6 @@ $sizes: (
 
   // Facts read off a route: each figure keeps its column.
   route-metric: 5.5rem,
-  route-progress: 10rem,
-  route-load: 20rem,
 
   // Dispatch.
   dispatch-metric: 8rem,
@@ -67,6 +65,17 @@ $sizes: (
   fuel-visit: 14rem,
   fuel-visit-number: 1.375rem,
   popup-stop-badge: 1.625rem,
+
+  // The Fleet Map workspace: its fleet list and truck panel columns,
+  // and a trip in its chain.
+  rail: 5.25rem,
+  topbar: 3.5rem,
+  fleet-list: 20rem,
+  fleet-panel: 26rem,
+  trip-card: 22rem,
+  trip-card-min: 14rem,
+  trip-chain: 5.25rem,
+  trip-chain-phone: 7rem,
 
   // Hours of service.
   hos-dial: 3.625rem,

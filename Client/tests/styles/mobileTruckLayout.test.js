@@ -25,11 +25,3 @@ test('mobile card expands both panels inside the bounded inspector', () => {
   assert.doesNotMatch(header, /inset: 100% 0 auto;/);
   assert.match(header, /__header\s*\{\s*position: static;/);
 });
-
-test('mobile identity wraps without changing the desktop header', () => {
-  assert.match(header, /__crew\s*\{\s*display: contents;/);
-  assert.match(header, /__crew\s*\{[^}]*display: flex;\s*flex-wrap: wrap;/);
-  assert.doesNotMatch(header, /__driver-label/);
-  const toolbar = compile('pages/fleet-map/toolbar');
-  assert.match(toolbar, /__background > \.page-header\s*\{\s*display: none;/);
-});

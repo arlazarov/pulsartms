@@ -67,6 +67,9 @@ public partial class DriverDutySummary
       || Status.ObservedAt >= DateTimeOffset.UtcNow.AddMinutes(-3)
     );
 
+  // The status as a word, for a holder that shows it on its own.
+  public static string StatusName(string? value) => Label(value);
+
   private static string Label(string? value) =>
     value switch
     {

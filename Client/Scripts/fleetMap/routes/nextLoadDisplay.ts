@@ -1,6 +1,7 @@
 import type { NextLoad, NextLoadStop, RoutePoint } from '../contracts.d.ts';
 import type { RouteColor } from '../rendering/routePalette.ts';
 import { futureRouteColor } from '../rendering/routePalette.ts';
+import { tripStopLabels } from './stopLabels.ts';
 
 // Which load a badge stands for, and which of its stops the card opens on.
 // A stop on a leg already being driven names that leg as well.
@@ -11,11 +12,12 @@ export type StopSelection = {
   index: number;
 };
 
-// Stops of several loads that fall on the same place are one badge, which
-// says every number it stands for.
+// One badge for one stop of one load: its label within that load, and the
+// number that orders it among every badge drawn.
 export type StopGroup = {
   stop: NextLoadStop;
   numbers: Set<number>;
+  labels: string[];
   members: StopSelection[];
   color: RouteColor;
 };
@@ -58,11 +60,13 @@ export function nextLoadDisplay(loads: NextLoad[]) {
       : points.length > 1 && lastPoint
         ? [{ ...lastPoint, job: 'Pickup' }]
         : [];
+    const labels = tripStopLabels(stops.map(stop => stop.job));
     for (const [index, stop] of stops.entries()) {
       const number = ++stopNumber;
       groups.push({
         stop,
         numbers: new Set([number]),
+        labels: [labels[index]],
         members: [
           {
             loadId: load.id,

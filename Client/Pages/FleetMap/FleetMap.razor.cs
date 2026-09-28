@@ -98,24 +98,10 @@ public partial class FleetMap : IAsyncDisposable
   private double? LeftMiles =>
     DistanceLeft.Miles(NextStopMiles, RemainingMiles);
 
-  // The truck has reached the stop it was heading for and the stop is still
-  // open: it is standing there, waiting on the appointment. There is nothing
-  // left to forecast, which is why the server sends an ETA with no stops in
-  // it.
-  private bool AtNextStop =>
-    _routeState?.Plan
-      is { InputsChanged: false, Tracking.AllStopsPassed: false } plan
-    && plan.Tracking.NextStopId is not null
-    && LeftMiles is { } remaining
-    && double.IsFinite(remaining)
-    && remaining < 0.5;
-
   private bool _showTruckInfo;
   private bool _followingTruck;
   private bool _mobileFiltersOpen;
 
-  // Only a phone hides the key behind its chip; wider screens ignore this.
-  private bool _keyOpen;
   private bool _selectionDismissed;
   private List<TruckLocationMapDto> _trucks = [];
   private List<TruckLocationMapDto> _truckPoints = [];
@@ -275,6 +261,7 @@ public partial class FleetMap : IAsyncDisposable
   {
     await PublishInspectorSuspensionAsync();
     await ReflectSelectionAsync();
+    await RefreshChainIfDueAsync();
     if (!firstRender)
       return;
     await _visibility.StartAsync(JS);
@@ -316,7 +303,7 @@ public partial class FleetMap : IAsyncDisposable
           trafficVisible = ShowTraffic,
           useIfta = UseIfta,
           distanceUnit = Units.Distance,
-          initialTruckId = TruckId,
+          initialTruckId = _activeTruckId ?? TruckId,
           initialView = InitialView,
         }
       );
@@ -330,7 +317,7 @@ public partial class FleetMap : IAsyncDisposable
       _stations = new(Http, _map);
       _initializing = false;
       await InvokeAsync(StateHasChanged);
-      _truckPollingTask = PollTrucksAsync(_lifetime.Token);
+      _truckPollingTask ??= PollTrucksAsync(_lifetime.Token);
       _ = OnDateChanged();
       _ = ReadFuelPricingBasisAsync();
     }
@@ -442,6 +429,42 @@ public partial class FleetMap : IAsyncDisposable
     return SelectRouteAsync(truckId, null);
   }
 
+  // Google fixes a map's colour scheme when it is made, so a theme switch
+  // makes the map again in place instead of reloading the page: the list,
+  // chain, panel and selection stay, the camera and the chosen truck come
+  // over, the map is drawn again at once, and Follow resumes if it was on.
+  [JSInvokable]
+  public Task OnMapSchemeChanged() => InvokeAsync(RestartMapForSchemeAsync);
+
+  private async Task RestartMapForSchemeAsync()
+  {
+    if (_disposed || _initializing || _session is null)
+      return;
+    var following = _followingTruck;
+    var truck = _activeTruckId;
+    var session = _session;
+    _session = null;
+    await session.DisposeAsync();
+    if (_disposed)
+      return;
+    await StartMapAsync();
+    if (_disposed || _map is null)
+      return;
+    try
+    {
+      await RefreshTrucksAsync(_lifetime.Token);
+    }
+    catch (Exception ex) when (IsLoadError(ex)) { }
+    await PushStopCompletionsAsync();
+    if (
+      following
+      && truck is { } id
+      && id == _activeTruckId
+      && _map is not null
+    )
+      await _map.InvokeVoidAsync("setFollow", id.ToString(), true);
+  }
+
   [JSInvokable]
   public Task OnFollowChanged(bool following)
   {
@@ -540,7 +563,6 @@ public partial class FleetMap : IAsyncDisposable
     _fuelRevalidationPending = false;
     _activeTruckId = null;
     _arrivalMemory.Update(null, null, null);
-    _headArrivalMemory.Update(null, null, null);
     _loadDetailsVersion++;
     _loadDetails = null;
     ResetNextLoads();
@@ -606,7 +628,6 @@ public partial class FleetMap : IAsyncDisposable
     _recalculatingFuel = false;
     _fuelRevalidationPending = false;
     _arrivalMemory.Update(null, null, null);
-    _headArrivalMemory.Update(null, null, null);
     _activeTruckId = truckId;
     _activeDispatchId = dispatchId;
     _planningDispatchId = null;
@@ -710,7 +731,25 @@ public partial class FleetMap : IAsyncDisposable
     if (_map is null || _disposed)
       return;
     var matches = MatchingTrucks;
-    await _map.InvokeVoidAsync("setTrucks", _trucks, _truckPoints);
+    // The map draws the trucks the list shows: the search and the motion
+    // chip together. A chosen truck they leave out is let go - its card,
+    // route and Follow with it - while the panel keeps its place.
+    var shown = ListedTrucks;
+    if (
+      _activeTruckId is { } active
+      && shown.All(truck => truck.TruckId != active)
+    )
+      await ClearSelectionAsync();
+    if (_map is null || _disposed)
+      return;
+    var ids = shown
+      .Select(truck => truck.TruckExternalId)
+      .ToHashSet(StringComparer.Ordinal);
+    await _map.InvokeVoidAsync(
+      "setTrucks",
+      shown,
+      _truckPoints.Where(point => ids.Contains(point.TruckExternalId)).ToList()
+    );
     if (
       !string.IsNullOrWhiteSpace(TruckSearch)
       && matches.Count == 1
@@ -966,6 +1005,7 @@ public partial class FleetMap : IAsyncDisposable
     if (_disposed)
       return;
     _disposed = true;
+    DisposeChain();
     DriverGroup.Changed -= OnDriverGroupChanged;
     ResetFuelEditor();
     ResetInspectedLoad();

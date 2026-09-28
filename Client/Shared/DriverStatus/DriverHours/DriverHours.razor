@@ -1,5 +1,5 @@
 <div class="driver-hours-panel">
-<div class="driver-hours @(Dials ? "" : "driver-hours--text")" role="group" aria-label="Driver hours remaining"
+<div class="driver-hours @(Dials ? "" : "driver-hours--text") @(Bars ? "driver-hours--cells" : "")" role="group" aria-label="Driver hours remaining"
      title="@(Clocks is null ? "Samsara HOS unavailable" : "Samsara · updated " + Clocks.UpdatedAt.ToLocalTime().ToString("hh:mm tt", System.Globalization.CultureInfo.InvariantCulture))">
     @foreach (var clock in Readings)
     {
@@ -22,6 +22,12 @@
                 <strong class="driver-hours__reading"
                         title="@($"{Format(clock.Item2)} remaining")"
                     >@Format(clock.Item2)</strong>
+                @if (Bars)
+                {
+                    <span class="driver-hours__bar" aria-hidden="true"
+                        ><i style="width: @(Fill(clock.Item2, clock.Item3))%"></i
+                    ></span>
+                }
             }
         </div>
     }

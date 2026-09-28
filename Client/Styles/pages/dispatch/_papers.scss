@@ -145,8 +145,23 @@
     justify-self: end;
   }
   &__tab-schedule {
-    color: ui.theme(text-muted);
+    display: grid;
+    color: ui.theme(text);
     font-size: ui.fs(caption);
+    text-align: right;
+    white-space: nowrap;
+    small {
+      color: ui.theme(text-muted);
+      font-size: ui.fs(micro);
+    }
+  }
+  &__tab-route {
+    display: block;
+    overflow: hidden;
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    font-weight: 600;
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
   // The miles, then the money on the line under them (the owner,

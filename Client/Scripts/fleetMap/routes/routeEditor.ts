@@ -1,3 +1,4 @@
+import { tripStopLabels } from './stopLabels.ts';
 import type {
   RouteChoicePreview,
   RouteEditorUpdate,
@@ -198,12 +199,14 @@ export function createRouteEditor(
             });
           }
         }
+        const labels = tripStopLabels(preview.stops.map(stop => stop.job));
         for (const [index, stop] of preview.stops.entries())
           stops.push(
             new StopMarker({
               map,
               position: literal(stop.point),
-              number: String(index + 1),
+              number: labels[index],
+              order: index + 1,
               job: stop.job,
               routeRole: 'preview',
             }),

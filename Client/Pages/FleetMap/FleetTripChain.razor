@@ -1,0 +1,95 @@
+@using Client.Shared.Dispatch
+@* every trip of the selected truck, as the
+   Dispatch board places them (server order and work phase), with its stops
+   are the map's markers. A trip chooses what the panel under the truck
+   shows in full. *@
+<section class="fleet-trip-chain"
+         aria-label="@(Truck is null ? "Trip chain" : $"Trip chain, truck {Truck.UnitNumber}")">
+    @if (Truck is null)
+    {
+        <p class="fleet-trip-chain__hint">
+            Choose a truck on the map, in the list or with search.
+        </p>
+    }
+    else if (Loading)
+    {
+        <p class="fleet-trip-chain__hint" role="status">Reading the truck's loads…</p>
+    }
+    else if (Failed)
+    {
+        <p class="fleet-trip-chain__hint" role="status">
+            The truck's loads could not be read; retrying with the board.
+        </p>
+    }
+    else if (Loads.Count == 0)
+    {
+        <p class="fleet-trip-chain__hint">No active or planned loads.</p>
+    }
+    else
+    {
+        @* Every trip, wrapping into rows; the stops are the map's. *@
+        <ol id="fleet-trip-chain-list" class="fleet-trip-chain__links"
+            @ref="_links" tabindex="0" aria-label="Trips">
+            @foreach (var (load, index) in Loads.Select((load, i) => (load, i)))
+            {
+                var label = DispatchWorkPhase.Label(load);
+                var conflict = DispatchWorkPhase.ConflictText(load.WorkConflict);
+                var selected = IsSelected(load);
+                <li class="fleet-trip-chain__link @PhaseClass(load) @RouteClass(load, index) @(selected ? "is-selected" : "")"
+                    @key="(load.Id, load.ExecutionLegId)">
+                    <span class="fleet-trip-chain__number" aria-hidden="true">@(index + 1)</span>
+                    <div class="fleet-trip-chain__card">
+                        <button type="button" class="fleet-trip-chain__trip"
+                                aria-pressed="@(selected ? "true" : "false")"
+                                @onclick="() => Selected.InvokeAsync(load)">
+                            <span class="fleet-trip-chain__load">
+                                <Client.Shared.Dispatch.LoadNumber.LoadNumber Value="load.LoadNumber" />
+                            </span>
+                            <span class="fleet-trip-chain__status">
+                                @if (conflict is not null)
+                                { <span class="fleet-trip-chain__conflict" role="status" title="@conflict">@conflict</span> }
+                                else if (!string.IsNullOrEmpty(label))
+                                { <span class="fleet-trip-chain__phase">@label</span> }
+                            </span>
+                        </button>
+                        @* The route as its stops: a marker chooses that exact
+                           stop; anywhere else on the line chooses the whole
+                           trip, as its button does for the keyboard. Each
+                           marker is checked once the server says the stop is
+                           done (never from GPS passing it). *@
+                        <div class="fleet-trip-chain__route"
+                             @onclick="() => Selected.InvokeAsync(load)">
+                            @foreach (var (visit, at) in DispatchStopPresentation.OrderedVisits(load.Stops).Select((v, i) => (v, i)))
+                            {
+                                var stop = visit.Stop;
+                                var focused = selected && stop.Id == FocusedStopId;
+                                @if (at > 0)
+                                { <span class="fleet-trip-chain__arrow" aria-hidden="true">→</span> }
+                                <span class="fleet-trip-chain__place"
+                                      title="@($"{stop.Job} · {DispatchBoardRow.Location(stop)}{(stop.IsCompleted ? " · completed" : "")}")">
+                                    <button type="button"
+                                            class="fleet-trip-chain__stop @DispatchStopPresentation.Tone(stop) @(stop.IsCompleted ? "is-done" : "")"
+                                            aria-pressed="@(focused ? "true" : "false")"
+                                            aria-label="@($"{visit.Marker}, {stop.Job}{(stop.IsCompleted ? ", completed" : "")}")"
+                                            @onclick="() => StopSelected.InvokeAsync((load, stop.Id))"
+                                            @onclick:stopPropagation="true"
+                                        >@visit.Marker@if (stop.IsCompleted)
+                                        {<ActionIcon Kind="check" />}</button>
+                                    <span class="fleet-trip-chain__city">@DispatchBoardRow.Location(stop)</span>
+                                </span>
+                            }
+                        </div>
+                        @if (LoadHref?.Invoke(load) is { } href)
+                        {
+                            <a class="fleet-trip-chain__open" href="@href"
+                               title="Open load"
+                               aria-label="@($"Open load {load.LoadNumber}")">
+                                <ActionIcon Kind="external-link" />
+                            </a>
+                        }
+                    </div>
+                </li>
+            }
+        </ol>
+    }
+</section>

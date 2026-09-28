@@ -6,7 +6,11 @@ namespace Client.Pages.FleetMap;
 
 // The map's place, kept in its own address so that a load opened from here,
 // browser Back and a reload all come back to it: the chosen truck and load,
-// the next load's stop being looked at, the camera and the truck search.
+// the next load's stop being looked at and the truck search. The camera is
+// kept out of the address, in this tab's storage for the signed-in user,
+// and comes back only to the same truck (or to none), so a link to another
+// truck still frames that truck. A `view` in an older link is used once and
+// then dropped from the address by the usual replace.
 public partial class FleetMap
 {
   [Inject]
@@ -72,15 +76,9 @@ public partial class FleetMap
         InspectingNextStop ? _inspectedExecutionLegId
           : _nextRestorePending ? NextLeg
           : null,
-        _view,
         TruckSearch
       )
     );
-
-  private string? OpenLoadHref =>
-    SelectedDispatchId is { } id
-      ? ReturnNavigation.Load(id, ReturnOrigin)
-      : null;
 
   // Written into the map's own history entry, never pushed: browser Back
   // leaves the map rather than stepping through its selections.
@@ -95,7 +93,8 @@ public partial class FleetMap
     await Places.ReflectAsync(address);
   }
 
-  // The camera came to rest. Only the address follows; nothing is drawn.
+  // The camera came to rest. Only the tab's record follows; nothing is
+  // drawn and the address is not touched.
   [JSInvokable]
   public Task OnMapViewChanged(double latitude, double longitude, double zoom)
   {
@@ -103,7 +102,49 @@ public partial class FleetMap
     if (view is null || view == _view)
       return Task.CompletedTask;
     _view = view;
-    return ReflectSelectionAsync();
+    return SaveCameraAsync(view);
+  }
+
+  private string? CameraKey =>
+    _preferencesKey is null ? null : _preferencesKey + ".camera";
+
+  private async Task SaveCameraAsync(MapView view)
+  {
+    if (_disposed || CameraKey is not { } key)
+      return;
+    var truck = SelectionSettled ? _activeTruckId : TruckId;
+    try
+    {
+      await JS.InvokeVoidAsync(
+        "sessionStorage.setItem",
+        _lifetime.Token,
+        key,
+        $"{truck?.ToString() ?? ""}|{view}"
+      );
+    }
+    catch (JSException) { }
+    catch (OperationCanceledException) when (_disposed) { }
+  }
+
+  private async Task RestoreCameraAsync()
+  {
+    if (_view is not null || _disposed || CameraKey is not { } key)
+      return;
+    try
+    {
+      var saved = await JS.InvokeAsync<string?>(
+        "sessionStorage.getItem",
+        _lifetime.Token,
+        key
+      );
+      if (
+        saved?.Split('|') is [var truck, var place]
+        && truck == (TruckId?.ToString() ?? "")
+      )
+        _view = MapView.Parse(place);
+    }
+    catch (JSException) { }
+    catch (OperationCanceledException) when (_disposed) { }
   }
 
   // Asked once, as soon as the truck is focused; the map applies it when

@@ -2,6 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.ts';
 import { createScene } from '../../Scripts/fleetMap/rendering/scene.ts';
+import {
+  isLightMap,
+  markCore,
+} from '../../Scripts/fleetMap/rendering/stopAppearance.ts';
 
 const station = (id, changes = {}) => ({
   id,
@@ -10,6 +14,19 @@ const station = (id, changes = {}) => ({
   color: [21, 128, 61],
   ...changes,
 });
+
+// Every station is a dot, never a pump icon (the owner, September 27): on
+// the light map it is filled with its price colour inside a white rim; on
+// the dark map a glass core sits inside a rim of its price colour.
+const sameColor = (a, b) =>
+  JSON.stringify(a?.slice(0, 3)) === JSON.stringify(b.slice(0, 3));
+const priceShown = (props, station) => {
+  const plain = { ...station, recommended: false, selected: false };
+  return isLightMap()
+    ? sameColor(props.getFillColor(station), station.color) &&
+        sameColor(props.getLineColor(plain), [255, 255, 255])
+    : sameColor(props.getLineColor(plain), station.color);
+};
 
 test('station layers never read prices or rebuild cached layers during camera-only changes', () => {
   let priceReads = 0,
@@ -116,7 +133,7 @@ test('hidden active edits retain their original selectable point, color and sepa
   const [point, ring, badge] = initial.map(layer => layer.props);
   assert.equal(point.data[0], edited);
   assert.equal(point.getRadius, 8);
-  assert.equal(point.getFillColor(edited), edited.color);
+  assert.ok(priceShown(point, edited));
   assert.equal(ring.getRadius, 14);
   assert.equal(badge.getText(edited), 'Editing');
   assert.deepEqual(badge.getPixelOffset, [0, -25]);
@@ -147,7 +164,7 @@ test('hidden active edits retain their original selectable point, color and sepa
   );
 });
 
-test('every station has the same 16px circle with no inside price, regardless of spacing or price validity', () => {
+test('every station has the same 16px dot with no inside price, regardless of spacing or price validity', () => {
   class Layer {
     constructor(props) {
       this.props = props;
@@ -186,9 +203,11 @@ test('every station has the same 16px circle with no inside price, regardless of
     plannedPoints = byId.get('fuel-recommendation-points').props;
   assert.equal(points.data[0], ordinary);
   assert.equal(points.getRadius, 8);
-  // A step larger than the stations it was chosen from, and its ring still
-  // narrower than a stop's badge: a fuel stop is not more than a stop.
-  assert.equal(plannedPoints.getRadius, 8);
+  assert.ok(priceShown(points, ordinary));
+  // A planned stop is a step larger than the stations it was chosen from
+  // (the owner, September 27), and its ring still narrower than a stop's
+  // badge: a fuel stop is not more than a stop.
+  assert.ok(plannedPoints.getRadius > points.getRadius, 'a size larger');
   assert.equal(plannedPoints.getFillColor(planned), planned.color);
   const ring = byId.get('fuel-recommendation-rings').props;
   assert.equal(ring.getRadius, 12);
@@ -232,6 +251,23 @@ test('every station has the same 16px circle with no inside price, regardless of
     'price validity never filters a station',
   );
   assert.equal(unpriced.getRadius, 8);
+  // The dark map draws the same dots as a glass core in a rim of the price
+  // colour (the owner, September 27).
+  const outerDocument = globalThis.document;
+  globalThis.document = { documentElement: { dataset: { theme: 'dark' } } };
+  try {
+    const dark = createSceneLayers({
+      ScatterplotLayer: Layer,
+      PathLayer: Layer,
+      IconLayer: Layer,
+      TextLayer: Layer,
+    })(input).find(layer => layer.props.id === 'fuel-points').props;
+    assert.equal(dark.getRadius, 8);
+    assert.deepEqual(dark.getFillColor, markCore);
+    assert.ok(priceShown(dark, ordinary));
+  } finally {
+    globalThis.document = outerDocument;
+  }
 });
 
 test('camera changes need no price listener while station data retains exact popup prices and canonical selection', t => {

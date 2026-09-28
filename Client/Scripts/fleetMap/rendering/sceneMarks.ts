@@ -115,6 +115,8 @@ export function createSceneMarks(scene: MarkedScene) {
       this.id = ++stopId;
       this.position = xy(options.position);
       this.number = options.number;
+      // Where the badge falls among overlapping badges; its text is a label.
+      this.order = options.order;
       this.color = options.color;
       this.onSelect = options.onSelect;
       this.onHover = options.onHover;
@@ -149,6 +151,11 @@ export function createSceneMarks(scene: MarkedScene) {
       this.number = value;
       scene.stopsChanged();
     }
+    setOrder(value: number) {
+      if (this.order === value) return;
+      this.order = value;
+      scene.stopsChanged();
+    }
     setJob(value: string) {
       if (this.job === value) return;
       this.job = value;
@@ -166,6 +173,16 @@ export function createSceneMarks(scene: MarkedScene) {
       if (this.next === value && this.nextTruck === truck) return;
       this.next = value;
       this.nextTruck = truck;
+      scene.stopsChanged();
+    }
+    // The one stop the reader has chosen (its card open, or picked in the
+    // chain): it wears the selection reticle.
+    get selected() {
+      return this._selected === true;
+    }
+    set selected(value: boolean) {
+      if (this.selected === value) return;
+      this._selected = value;
       scene.stopsChanged();
     }
     get highlighted() {

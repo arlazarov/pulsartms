@@ -12,145 +12,24 @@
   }
 
   @include ui.above(md) {
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-rows: ui.size(topbar) minmax(0, 1fr);
   }
 }
 
 .fleet-map-weather-source {
-  font-size: inherit;
-  color: ui.theme(text-secondary);
-}
-
-.fleet-map-key {
   position: absolute;
   left: ui.pg(md);
-  bottom: ui.pg(xl);
+  bottom: ui.pg(xxl);
   z-index: ui.layer(map-legend);
-  display: grid;
-  gap: ui.pg(sm);
-  max-width: calc(100% - #{ui.pg(md)} * 2 - #{ui.size(control-touch)});
-  padding: ui.pg(sm) ui.pg(md);
-  border: 1px solid ui.theme(border-subtle);
-  border-radius: ui.radius(sm);
-  background: ui.theme(surface);
-  color: ui.theme(text-secondary);
-  font-size: ui.fs(caption);
-  line-height: 1.3;
-
-  &__routes,
-  &__fuel {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: ui.pg(sm) ui.pg(md);
-  }
-  &__routes > span,
-  &__missing,
-  &__scale {
-    display: inline-flex;
-    align-items: center;
-    gap: ui.pg(xs);
-  }
-  &__line {
-    width: ui.pg(lg);
-    height: ui.pg(xs);
-    border-radius: ui.radius(pill);
-    background: ui.theme(map-route-current);
-  }
-  &__line--next {
-    background: ui.theme(map-route-future);
-  }
-  &__line--empty {
-    background: repeating-linear-gradient(
-      90deg,
-      ui.theme(map-route-empty) 0 ui.pg(xs),
-      transparent ui.pg(xs) calc(2 * #{ui.pg(xs)})
-    );
-  }
-  &__stop {
-    display: grid;
-    place-items: center;
-    width: ui.pg(lg);
-    height: ui.pg(lg);
-    border: 1px solid ui.theme(on-accent);
-    border-radius: 50%;
-    background: ui.theme(map-route-current);
-    color: ui.theme(on-accent);
-    font-size: ui.fs(micro);
-    font-style: normal;
-    font-weight: 700;
-  }
-  &__planned {
-    padding: ui.pg(micro) ui.pg(xs);
-    border-radius: ui.radius(sm);
-    background: ui.theme(navigation);
-    color: ui.theme(navigation-text);
-    font-size: ui.fs(micro);
-    font-style: normal;
-    font-weight: 650;
-  }
-  &__fuel-label {
-    color: ui.theme(text);
-    font-weight: 600;
-  }
-  &__scale > i {
-    width: ui.size(control-touch);
-    height: ui.pg(xs);
-    border-radius: ui.radius(pill);
-    background: linear-gradient(
-      to right,
-      ui.theme(map-price-low),
-      ui.theme(map-price-middle),
-      ui.theme(map-price-high)
-    );
-  }
-  &__note {
-    color: ui.theme(text-muted);
-  }
-  &__missing > i {
-    width: ui.pg(sm);
-    height: ui.pg(sm);
-    border-radius: 50%;
-    background: ui.theme(map-price-unavailable);
-  }
-
-  &__content {
-    display: grid;
-    gap: ui.pg(sm);
-  }
-  // Wider than a phone the key is always open, so its chip is not rendered
-  // to assistive technology either.
-  &__toggle {
-    display: none;
-  }
-
-  @include ui.below(map-mobile) {
-    gap: ui.pg(xs);
-    padding: ui.pg(sm);
-    font-size: ui.fs(micro);
-    &__content {
-      gap: ui.pg(xs);
-    }
-    &__routes,
-    &__fuel {
-      gap: ui.pg(xs) ui.pg(sm);
-    }
-    &__toggle {
-      @include ui.icon-control;
-      display: inline-flex;
-      font-weight: 700;
-    }
-    // Shut, the key is the chip: it stops covering the corner of the map
-    // it is there to explain.
-    &:not(.is-open) {
-      padding: 0;
-      border: 0;
-      background: transparent;
-      .fleet-map-key__content {
-        display: none;
-      }
-    }
-  }
+  align-self: end;
+  justify-self: start;
+  // A quiet credit line, not a plate floating on the map.
+  padding: 0;
+  background: none;
+  color: ui.theme(text-muted);
+  font-size: ui.fs(micro);
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 6px ui.theme(canvas);
 }
 
 .fleet-map-page {
@@ -191,5 +70,29 @@
     &--initializing {
       visibility: hidden;
     }
+    // A theme switch: the new map fades in over the last one's picture.
+    &--entering {
+      animation: fleet-map-host-in 360ms ease-out;
+    }
+    &--leaving {
+      pointer-events: none;
+    }
   }
+}
+
+@keyframes fleet-map-host-in {
+  from {
+    opacity: 0;
+  }
+}
+
+// Satellite imagery on the dark theme, dimmed to the night the rest of the
+// workspace is drawn on (the owner, September 27). Only Google's layer is
+// filtered: trucks, roads and marks are drawn above it and keep their
+// light.
+:root[data-theme='dark'] #fleet-map.is-satellite .gm-style {
+  filter: brightness(0.55) saturate(0.75) contrast(1.1);
+}
+#fleet-map .gm-style {
+  transition: filter 300ms ease;
 }

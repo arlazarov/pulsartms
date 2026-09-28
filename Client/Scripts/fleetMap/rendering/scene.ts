@@ -95,6 +95,19 @@ export function createScene(
     if (frame !== null || disposed) return;
     frame = requestAnimationFrame(render);
   }
+  // About 25 frames a second for the sonar alone; a hidden page draws none
+  // and picks it up again when shown.
+  const sonarPeriod = 4400;
+  const routePulsePeriod = 5200;
+  const routeFlowPeriod = 1300;
+  const sonarFrame = 40;
+  const sonarBreathPeriod = 3000;
+  const sonarBreathFrame = 80;
+  let sonarTimer: ReturnType<typeof setTimeout> | null = null;
+  const onVisibility = () => {
+    if (!globalThis.document?.hidden) schedule();
+  };
+  globalThis.document?.addEventListener?.('visibilitychange', onVisibility);
   // Standing trucks by position, moving ones by the next stop they cover.
   function trucksKey() {
     return (
@@ -162,8 +175,44 @@ export function createScene(
       });
       vehiclesDirty = false;
     }
+    // The selected truck's sonar sweeps, the chosen road's glow breathes and
+    // its direction marks slide, always - the owner wants the map alive
+    // even where the system asks for less motion; the timer runs only while
+    // a truck is chosen and the page is shown.
+    const chosen = vehicleDisplay.vehicles.some(t => t.selected);
+    const now = performance.now();
+    const sonar = chosen ? (now % sonarPeriod) / sonarPeriod : null;
+    const sonarBreath = 0;
+    const routeFlow = (now % routeFlowPeriod) / routeFlowPeriod;
+    const zoom = map.getZoom?.();
+    const box = map.getBounds?.();
+    const routeFlowView = Number.isFinite(zoom)
+      ? {
+          zoom: zoom!,
+          bounds: box
+            ? [
+                box.getSouthWest().lng(),
+                box.getSouthWest().lat(),
+                box.getNorthEast().lng(),
+                box.getNorthEast().lat(),
+              ]
+            : null,
+        }
+      : null;
+    const routePulse =
+      0.5 + 0.5 * Math.cos((2 * Math.PI * now) / routePulsePeriod);
+    if (chosen && !globalThis.document?.hidden && sonarTimer === null)
+      sonarTimer = setTimeout(() => {
+        sonarTimer = null;
+        schedule();
+      }, sonarFrame);
     overlay.draw(
       buildLayers({
+        sonar,
+        sonarBreath,
+        routePulse,
+        routeFlow,
+        routeFlowView,
         lines: routeEditing
           ? [...lines].filter(line => line.routeRole === 'preview')
           : lines,
@@ -257,6 +306,12 @@ export function createScene(
         () => {
           if (frame !== null) cancelAnimationFrame(frame);
           frame = null;
+          if (sonarTimer !== null) clearTimeout(sonarTimer);
+          sonarTimer = null;
+          globalThis.document?.removeEventListener?.(
+            'visibilitychange',
+            onVisibility,
+          );
         },
         () => {
           stationSelect = () => {};

@@ -111,3 +111,32 @@
     gap: ui.pg(sm);
   }
 }
+
+// The fuel plan as the stop cards are drawn (the owner, September 27): a
+// pump emblem at its title, a lit frame over its head, HUD labels over
+// the totals and the timeline.
+.fuel-plan-editor {
+  &__header {
+    @include ui.hud-frame;
+  }
+  &__header > div > strong {
+    @include ui.hud-emblem(fuel, 2.25rem);
+  }
+  &__totals > span {
+    @include ui.hud-label;
+    strong {
+      color: ui.theme(text);
+      font-size: ui.fs(label);
+      letter-spacing: normal;
+      text-transform: none;
+    }
+  }
+  &__timeline-heading,
+  &__range-labels {
+    @include ui.hud-label;
+  }
+  .fleet-fuel-visit__number {
+    border: 1.5px solid ui.theme(accent);
+    box-shadow: 0 0 10px ui.theme(accent, 0.3);
+  }
+}

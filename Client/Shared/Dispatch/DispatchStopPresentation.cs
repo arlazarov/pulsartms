@@ -11,6 +11,9 @@ public sealed record DispatchStopVisit(
 {
   public string VisitLabel =>
     VisitCount > 1 ? $"Visit {VisitNumber} of {VisitCount}" : "";
+
+  // The badge the stop wears in lists and on the map (StopMarkers).
+  public string Marker { get; init; } = "";
 }
 
 public static class DispatchStopPresentation
@@ -70,6 +73,9 @@ public static class DispatchStopPresentation
   )
   {
     var ordered = stops.OrderBy(stop => stop.Sequence).ToArray();
+    var markers = StopMarkers.Labels(
+      ordered.Select(stop => stop.Job).ToArray()
+    );
     var addresses = ordered.Select(AddressIdentity).ToArray();
     var counts = addresses
       .Where(address => address.Length > 0)
@@ -82,15 +88,16 @@ public static class DispatchStopPresentation
         {
           var address = addresses[index];
           if (address.Length == 0)
-            return new DispatchStopVisit(stop, index + 1, 1, 1);
+            return new DispatchStopVisit(stop, index + 1, 1, 1)
+            {
+              Marker = markers[index],
+            };
           var number = visits.GetValueOrDefault(address) + 1;
           visits[address] = number;
-          return new DispatchStopVisit(
-            stop,
-            index + 1,
-            number,
-            counts[address]
-          );
+          return new DispatchStopVisit(stop, index + 1, number, counts[address])
+          {
+            Marker = markers[index],
+          };
         }
       )
       .ToArray();
@@ -100,10 +107,16 @@ public static class DispatchStopPresentation
   // view counts and colours stops by. Equipment and driver moves are
   // neither and keep a neutral tone.
   public static bool IsPickup(DispatchStopResponse stop) =>
-    Job(stop) is "PICKUP" or "PICK UP";
+    IsPickupJob(stop.Job);
 
   public static bool IsDelivery(DispatchStopResponse stop) =>
-    Job(stop) is "DELIVERY" or "DROP OFF" or "DROPOFF";
+    IsDeliveryJob(stop.Job);
+
+  public static bool IsPickupJob(string? job) =>
+    Normalize(job) is "PICKUP" or "PICK UP";
+
+  public static bool IsDeliveryJob(string? job) =>
+    Normalize(job) is "DELIVERY" or "DROP OFF" or "DROPOFF";
 
   public static string Tone(DispatchStopResponse stop) =>
     IsPickup(stop) ? "is-pickup"

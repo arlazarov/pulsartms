@@ -10,7 +10,9 @@
   // The route stop's size: the two cards are one kind of card and read
   // alike (the owner, September 26).
   font-size: ui.fs(body);
-  overflow-wrap: anywhere;
+  // An address may break inside a word where nothing else fits; a label
+  // never does ("Appointme / nt" was the anywhere rule's doing).
+  overflow-wrap: break-word;
 
   // One line: the load and its order, with the loading mark beside them.
   // As a grid the mark took a row of its own and left a blank band under
@@ -34,9 +36,14 @@
       grid-template-columns: subgrid;
       align-items: baseline;
     }
+    // Labelled as the stop card's facts are: small caps in the quiet ink.
     dt {
       color: ui.theme(text-muted);
-      font-size: ui.fs(small);
+      font-size: ui.fs(micro);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      overflow-wrap: normal;
+      white-space: nowrap;
     }
     dd {
       margin: 0;
@@ -45,9 +52,8 @@
     }
   }
 
-  // Who takes the truck there, as the route stop says it: "Truck 54777 ·
-  // Trailer GG1030" on one line, the driver under them, all in the card's
-  // quiet line. The terms keep their names for a screen reader.
+  // Who takes the truck there on one line (the owner, September 27):
+  // "Truck 54777 · Trailer GG1030 · Driver", the terms as HUD labels.
   &__assignment {
     display: flex;
     flex-wrap: wrap;
@@ -64,12 +70,15 @@
       gap: ui.pg(xs);
       min-width: 0;
     }
-    > div:nth-child(2)::before {
+    > div + div::before {
       content: '·';
       margin-inline-end: ui.pg(xs);
     }
-    > div:last-child {
-      flex-basis: 100%;
+    dt {
+      @include ui.hud-label;
+    }
+    dd {
+      margin: 0;
     }
     > div:last-child dt {
       position: absolute;
