@@ -40,21 +40,21 @@
     gap: ui.pg(lg);
     min-width: 0;
   }
+  // Settings in the workspace style (the owner, September 27): each card
+  // a glass panel with the cyan rim, its heading a HUD label in the accent.
   &__card {
+    @include ui.glass-panel;
     padding: ui.pg(lg) ui.pg(xl);
-    border: 1px solid ui.theme(border-subtle);
-    border-radius: ui.radius(sm);
-    background: ui.theme(surface);
     color: ui.theme(text);
     min-width: 0;
   }
   &__card h2 {
+    @include ui.hud-label;
     margin: 0 0 ui.pg(lg);
     padding-bottom: ui.pg(md);
-    border-bottom: 1px solid ui.theme(border-subtle);
-    font-size: ui.fs(body);
-    font-weight: 650;
-    color: ui.theme(text);
+    border-bottom: 1px solid ui.theme(accent, 0.18);
+    color: ui.theme(accent);
+    font-size: ui.fs(caption);
   }
   &__card > p {
     margin: ui.pg(md) 0 0;

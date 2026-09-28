@@ -10,7 +10,12 @@ test('settings surfaces pair their background with themed text', () => {
   const css = compile("@use 'pages/settings';");
   assert.match(css, /\.settings-page\s*\{[^}]*color: var\(--ui-text\);/);
   const card = css.match(/^\.settings-page__card\s*\{([^}]+)\}/m)[1];
-  assert.match(card, /background: var\(--ui-surface\);/);
+  // The workspace's glass panel (the owner, September 27): the surface,
+  // slightly translucent, still under themed text.
+  assert.match(
+    card,
+    /background: color-mix\(in srgb, var\(--ui-surface\) 86%, transparent\);/,
+  );
   assert.match(card, /color: var\(--ui-text\);/);
 });
 
