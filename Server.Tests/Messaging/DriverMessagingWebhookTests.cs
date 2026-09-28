@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Application.Diagnostics;
+using Application.Diagnostics.Consistency;
 using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Models;
 using Application.Features.Messaging.Audit;
@@ -1051,6 +1052,70 @@ public sealed class DriverMessagingWebhookTests
     Assert.Equal(0, f.Retries.Count);
   }
 
+  // Root: an accepted message the provider has said nothing about is
+  // reported for review past the grace - never as failed. Recent ones,
+  // ones with a later status, and texts recorded before the business
+  // number was kept (which no status moves) are not findings; a status
+  // arriving clears the finding.
+  [Fact]
+  public async Task AnAcceptedMessageWithoutAStatusIsReviewedNotFailed()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var now = f.Refresh.Time.GetUtcNow().UtcDateTime;
+    var silent = await f.MessageAsync("wamid.silent");
+    var recent = await f.MessageAsync("wamid.recent");
+    var legacy = await f.MessageAsync("wamid.legacy", number: null);
+    var sent = await f.MessageAsync("wamid.sent", DriverMessageStatuses.Sent);
+    var (_, reply) = await f.ReplyInFlightAsync();
+    await f
+      .Db.ConversationMessages.Where(x => x.Id == reply)
+      .ExecuteUpdateAsync(x =>
+        x.SetProperty(m => m.ProviderMessageId, "wamid.reply")
+          .SetProperty(m => m.Status, DriverMessageStatuses.Accepted)
+          .SetProperty(m => m.StatusAt, now.AddHours(-1))
+      );
+    await f.Db.DriverMessages.ExecuteUpdateAsync(x =>
+      x.SetProperty(m => m.StatusAt, now.AddHours(-1))
+    );
+    await f
+      .Db.DriverMessages.Where(x => x.Id == recent)
+      .ExecuteUpdateAsync(x => x.SetProperty(m => m.StatusAt, now));
+
+    Assert.Equal(
+      new[] { silent, reply }.Order().Select(x => x.ToString()),
+      (await ReviewAsync(f, now)).Select(x => x.EntityKey)
+    );
+    Assert.DoesNotContain(
+      (await ReviewAsync(f, now)).SelectMany(x => x.Evidence.Values),
+      x => x == DriverMessageStatuses.Failed
+    );
+    _ = (legacy, sent);
+
+    await f.PostAsync(Status("wamid.silent", "delivered", 20));
+    Assert.Equal(
+      [reply.ToString()],
+      (await ReviewAsync(f, now)).Select(x => x.EntityKey)
+    );
+    Assert.Equal(DriverMessageStatuses.Delivered, await f.StatusAsync(silent));
+  }
+
+  private static async Task<IReadOnlyList<ConsistencyObservation>> ReviewAsync(
+    Fixture f,
+    DateTime now
+  ) =>
+    (
+      await new AcceptedWithoutStatusRule(f.Db).ReadAsync(
+        new(
+          Domain.Entities.Company.Amf,
+          now,
+          null,
+          10,
+          TimeSpan.FromMinutes(30)
+        ),
+        default
+      )
+    ).Observed;
+
   private static Task<long> RevisionAsync(Fixture f, Guid conversation) =>
     f
       .Db.Conversations.AsNoTracking()
@@ -1323,7 +1388,7 @@ public sealed class DriverMessagingWebhookTests
         ConversationId = conversation.Id,
         Channel = DriverMessageChannels.WhatsApp,
         BusinessNumberId = "123456",
-        Direction = "outbound",
+        Direction = MessageDirections.Outbound,
         Kind = "text",
         Body = "On my way",
         Status = DriverMessageStatuses.Sending,

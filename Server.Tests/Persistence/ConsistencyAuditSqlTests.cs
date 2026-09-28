@@ -40,6 +40,7 @@ public sealed class ConsistencyAuditSqlTests
       "messaging.unread-arrival-behind",
       "messaging.outbound-overdue",
       "messaging.kept-status-unapplied",
+      "messaging.accepted-without-status",
       "dispatch.filed-document-unavailable",
       "routing.base-road-leaves-country",
       "routing.base-road-border-unverified",
@@ -88,6 +89,8 @@ public sealed class ConsistencyAuditSqlTests
         new OutboundOverdueRule(db).ReadAsync(request, default),
       "messaging.kept-status-unapplied" => () =>
         new KeptStatusUnappliedRule(db).ReadAsync(request, default),
+      "messaging.accepted-without-status" => () =>
+        new AcceptedWithoutStatusRule(db).ReadAsync(request, default),
       "dispatch.filed-document-unavailable" => () =>
         new FiledDocumentRule(db).ReadAsync(request, default),
       "routing.base-road-leaves-country" => () =>

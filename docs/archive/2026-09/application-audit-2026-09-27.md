@@ -1582,6 +1582,21 @@ advisory lock shows as not granted in `pg_locks`; removing the locks
 fails all five (diagnostic-hsJElx). diagnostic-3joWht and -kswDRW are
 marked accordingly.
 
+The second case - a status the previous binary dropped - leaves only a
+message still "accepted". `messaging.accepted-without-status` reviews
+fuel texts and replies the provider accepted and has reported nothing
+on past the auditor's pending grace (30 minutes; "sent" normally comes
+within seconds). It is a review, not a violation, and says delivery is
+unknown: the message may have been delivered, a lost notification or a
+subscription delivering elsewhere look the same, and nothing is marked
+failed or sent again. Texts recorded before the business number was
+kept, which no status moves, are excluded. Test and SQL translation on
+PostgreSQL green; removing the legacy exclusion, the grace or the
+replies fails it (diagnostic-XEjl8a; the first run, diagnostic-46AAw5,
+failed on a fixture that wrote the direction "outbound" where the
+product writes "out" - fixed, invalid). Messaging and Database groups
+with architecture green (diagnostic-GQjcTc).
+
 **Fuel publication and hand-overs (D6, F16, F17).** The truck's
 publication lock (`PlanningPublicationScope`, `FOR UPDATE SKIP LOCKED`)
 is unchanged, so the two binaries exclude each other. Until the drain,
@@ -1731,11 +1746,11 @@ figure names its source.
 - **PostgreSQL fixture.** Owner: tests. Done when an isolated fixture,
   not in Docker, runs the 42 skipped tests in the gate.
 - **Delivery statuses lost in a release overlap.** Owner: Messaging.
-  Kept statuses whose id names a saved message are reconciled and what
-  is not is reported. Open: a status the previous binary dropped leaves
-  no trace; done when an accepted message with no status past a stated
-  age is reported without calling it failed - or root accepts the loss
-  as the bounded cost of a release.
+  Kept statuses whose id names a saved message are reconciled; an
+  accepted message with no status past the grace is reviewed as
+  unknown. Open: a dropped status itself cannot be recovered (no
+  provider query); done when root accepts that as the bounded cost of a
+  release, or the release drains webhooks before moving traffic.
 - **Liveness of operations without a heartbeat.** Owner: the background
   owners. Done when each has a heartbeat or a documented reason.
 
