@@ -1337,6 +1337,14 @@ failed on the new worktree's missing Client packages and is marked.
   now `Integration`; `migrate.sh` (F27). PostgreSQL tests run where the
   fixture is recorded and skip, saying so, where it is not; the gate on
   a machine without one still passes them as skipped (open gap).
+  `.dockerignore` now also excludes every key and credential pattern
+  `.gitignore` names (`**/*credentials*.json`, `**/*token*.json`,
+  `**/*.pem`, `**/*.key`, `**/*.p12`): a local Docker build's context is
+  the working tree, ignored files included, and the API's content and
+  publish guards list names, not patterns. Cloud Build's upload already
+  excluded them (`.gcloudignore` includes `.gitignore`). Red on the old
+  file, green (diagnostic-PpPWIu). Still open: the API names `Domain` in
+  seven files (routing and fleet models, a policy, two JSON converters).
 - **F19 re-read.** Verified: fuel stations are a shared table ("a place
   in the world, the same for everyone"); any carrier's Admin can start
   the discount import that creates and overwrites them; the Gmail push

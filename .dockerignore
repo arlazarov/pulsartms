@@ -9,6 +9,13 @@ artifacts
 **/gmail-credentials.json
 **/gmail-token
 **/secrets.json
+# The key and credential patterns .gitignore keeps out of the repository:
+# a local build context contains the working tree, ignored files included.
+**/*credentials*.json
+**/*token*.json
+**/*.pem
+**/*.key
+**/*.p12
 **/appsettings.Local.json
 **/node_modules
 tools/

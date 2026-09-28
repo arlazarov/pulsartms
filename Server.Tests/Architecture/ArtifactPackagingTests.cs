@@ -46,6 +46,42 @@ public sealed class ArtifactPackagingTests
     Assert.Equal(required, patterns.TakeLast(required.Length));
   }
 
+  // Audit F12: a local Docker build's context is the working tree, with
+  // the files .gitignore keeps out of the repository; Cloud Build's upload
+  // already excludes them through .gcloudignore, which includes
+  // .gitignore. Every key and credential pattern .gitignore names is
+  // excluded from the Docker context too.
+  [Fact]
+  public void DockerContextExcludesTheKeyAndCredentialFilesGitIgnores()
+  {
+    var root = RepositoryFiles.Root();
+    var docker = File.ReadAllLines(Path.Combine(root, ".dockerignore"))
+      .Select(line => line.Trim())
+      .ToHashSet();
+    string[] secrets =
+    [
+      "**/secrets.json",
+      "**/*credentials*.json",
+      "**/*token*.json",
+      "*.pem",
+      "*.key",
+      "*.p12",
+    ];
+    var git = File.ReadAllLines(Path.Combine(root, ".gitignore"))
+      .Select(line => line.Trim())
+      .ToHashSet();
+    foreach (var pattern in secrets)
+    {
+      Assert.Contains(pattern, git);
+      Assert.Contains(
+        pattern.StartsWith("**/", StringComparison.Ordinal)
+          ? pattern
+          : "**/" + pattern,
+        docker
+      );
+    }
+  }
+
   [Fact]
   public void CloudSourceIncludesMaintainedToolsForArchitectureAuditButDockerExcludesThem()
   {
