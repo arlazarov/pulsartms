@@ -50,6 +50,61 @@ public class DispatchBoardIndexTests
     Assert.Equal(id, Assert.Single(second.Items.Single().Dispatches).Id);
   }
 
+  // Cards and Papers search active loads only (the owner, September 28):
+  // a completed load neither matches nor comes back, a truck left with none
+  // is not listed, and the Table's search and the unsearched board keep it.
+  [Fact]
+  public void AnActiveSearchNeitherMatchesNorReturnsACompletedLoad()
+  {
+    var mixed = Row("54777", 1413);
+    var active = mixed.Dispatches[0].Id;
+    var done = Guid.NewGuid();
+    mixed.Dispatches.Add(
+      new()
+      {
+        Id = done,
+        LoadNumber = 1385,
+        OrderNumber = "ORDER-1385",
+        CustomerName = "Delivered Customer",
+        Status = "completed",
+        Stops = [new() { City = "Amsterdam", Name = "Dock" }],
+      }
+    );
+    var finished = Row("11008", 1395);
+    finished.Dispatches[0].Status = "completed";
+    var index = new DispatchBoardIndex([mixed, finished]);
+    string[] Loads(string query, bool activeSearch) =>
+      [
+        .. index
+          .SelectPage(
+            1,
+            12,
+            query,
+            null,
+            DriverScope.All,
+            activeSearch: activeSearch
+          )
+          .Items.SelectMany(x => x.Dispatches)
+          .Select(x => x.Id.ToString()),
+      ];
+
+    Assert.Empty(Loads("Amsterdam", true));
+    Assert.Empty(Loads("1395", true));
+    Assert.Empty(Loads("11008", true));
+    Assert.Equal([active.ToString()], Loads("54777", true));
+    Assert.Equal([active.ToString()], Loads("Toronto", true));
+    Assert.Equal(
+      0,
+      index
+        .SelectPage(1, 12, "Amsterdam", null, DriverScope.All, null, true)
+        .TotalCount
+    );
+
+    Assert.Equal([done.ToString()], Loads("Amsterdam", false).Skip(1));
+    Assert.Contains(finished.Dispatches[0].Id.ToString(), Loads("1395", false));
+    Assert.Equal(3, Loads("", true).Length);
+  }
+
   // A chosen driver group narrows the shared index, not a copy per user: a
   // truck its drivers are on, or a load one of them drives. All is all.
   [Fact]

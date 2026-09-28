@@ -723,6 +723,7 @@ public partial class DispatchList : IDisposable, IAsyncDisposable
           query.Search,
           query.TruckId,
           query.Date,
+          query.ActiveSearch,
         },
         request.Token
       );

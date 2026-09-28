@@ -28,7 +28,8 @@ public record GetDispatchBoardQuery(
   bool IncludeEta = true,
   bool IncludeOverdue = false,
   bool IdentitiesOnly = false,
-  bool InChosenGroup = false
+  bool InChosenGroup = false,
+  bool ActiveSearch = false
 )
   : IRequest<RequestResponse<PaginatedList<TruckDispatchBoardResponse>>>,
     IChecked
@@ -100,7 +101,8 @@ public class GetDispatchBoardHandler(
         dbContext,
         request.Search,
         cancellationToken
-      )
+      ),
+      request.ActiveSearch
     );
     if (request.IdentitiesOnly)
       return RequestResponse<PaginatedList<TruckDispatchBoardResponse>>.Ok(

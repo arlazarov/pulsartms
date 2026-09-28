@@ -19,7 +19,8 @@ public sealed class DispatchBoardIndex
     string Customer,
     string Driver,
     Guid? DriverId,
-    string[] Stops
+    string[] Stops,
+    bool Completed
   );
 
   private sealed record Row(
@@ -57,7 +58,8 @@ public sealed class DispatchBoardIndex
             d.CustomerName,
             d.DriverName,
             d.DriverId,
-            d.Stops.SelectMany(s => new[] { s.City, s.Name }).ToArray()
+            d.Stops.SelectMany(s => new[] { s.City, s.Name }).ToArray(),
+            d.Completed
           ))
           .ToArray()
       ))
@@ -86,16 +88,24 @@ public sealed class DispatchBoardIndex
 
   // Scope narrows the shared index to the dispatcher's chosen driver
   // group: a truck its drivers are on, or a load one of them drives.
+  // An active search (Cards and Papers, the owner, September 28) neither
+  // matches nor returns a completed load, and a truck left with none is
+  // not listed; the Table and the Completed history keep their scope.
   public PaginatedList<TruckDispatchBoardResponse> SelectPage(
     int page,
     int pageSize,
     string? query,
     Guid? truckId,
     DriverScope scope,
-    int? loadNumber = null
+    int? loadNumber = null,
+    bool activeSearch = false
   )
   {
     IEnumerable<Row> result = rows;
+    if (activeSearch && !string.IsNullOrWhiteSpace(query))
+      result = result
+        .Select(x => x with { Loads = [.. x.Loads.Where(d => !d.Completed)] })
+        .Where(x => x.Loads.Length > 0);
     if (truckId.HasValue)
       result = result.Where(x => x.TruckId == truckId);
     if (!scope.IsAll)
