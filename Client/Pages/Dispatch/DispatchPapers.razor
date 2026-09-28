@@ -20,10 +20,11 @@
                 {
                     var phase = Phase(row);
                     <div @key="row.Key" class="dispatch-paper-tab-entry">
-                        <a class="dispatch-paper__tab"
-                           href="@LoadUrl(row)"
-                           aria-label="@($"Open load {LoadLabel(
-                               row.Load.LoadNumber)}")">
+                        @* The number opens the load; it and the order copy
+                           beside it, and a link cannot hold buttons, so the
+                           folder itself is no longer one link (the owner,
+                           September 28). *@
+                        <div class="dispatch-paper__tab">
                             <svg class="dispatch-paper__folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" /></svg>
                             <span class="dispatch-paper__tab-content">
                                 @if (!string.IsNullOrEmpty(phase)
@@ -33,35 +34,38 @@
                                         @phase
                                     </span>
                                 }
-                                @* Grid and flex lines: whitespace between their items is
-                                   not drawn. *@
                                 <span class="dispatch-paper__tab-line">
                                     <span class="dispatch-paper__tab-identity">
-                                    <strong class="dispatch-paper__tab-number">
-                                        <LoadNumber Value="row.Load.LoadNumber" />
-                                    </strong>
-                                    @* The truck and its trailer fold as one,
-                                       never apart (the owner, September 27). *@
-                                    <span class="dispatch-paper__tab-units">
-                                    <span class="dispatch-paper__tab-equipment">
-                                        Truck @row.TruckNumber
-                                    </span>
-                                    <span class="dispatch-paper__tab-equipment
-                                                 dispatch-paper__tab-trailer">
-                                        Trailer @row.TrailerNumber
-                                    </span>
-                                    </span>
+                                        <a class="dispatch-paper__tab-number"
+                                           href="@LoadUrl(row)"
+                                           aria-label="@($"Open load {LoadLabel(
+                                               row.Load.LoadNumber)}")"><LoadNumber Value="row.Load.LoadNumber" /></a>
+                                        <CopyValue Value="@LoadLabel(row.Load.LoadNumber)"
+                                                   Title="Copy the load number"
+                                                   Class="dispatch-paper__copy"><span aria-hidden="true">⧉</span><span class="visually-hidden">Copy the load number</span></CopyValue>
+                                        @if (!string.IsNullOrWhiteSpace(row.Load.OrderNumber))
+                                        {
+                                            <span class="dispatch-paper__order">Order
+                                                <CopyValue Value="@row.Load.OrderNumber"
+                                                           Title="Copy the order number"
+                                                           Class="dispatch-paper__copy dispatch-paper__order-value">@row.Load.OrderNumber</CopyValue></span>
+                                        }
                                     </span>
                                     <span class="dispatch-paper__tab-schedule"
                                           aria-label="@($"{EventLabel(row)} appointment {EventSchedule(row)}")"><small class="dispatch-paper__event @EventTone(row)">@EventLabel(row)</small>@EventSchedule(row)</span>
                                 </span>
-                                @* Where the load goes, in one line: the card
-                                   named neither end. *@
+                                @* Truck, trailer and driver on one row, folding
+                                   whole on a narrow folder. *@
+                                <span class="dispatch-paper__tab-units">
+                                    <span class="dispatch-paper__tab-equipment">Truck @row.TruckNumber</span>
+                                    <span class="dispatch-paper__tab-equipment dispatch-paper__tab-trailer">Trailer @row.TrailerNumber</span>
+                                    <span class="dispatch-paper__tab-driver">@row.DriverName</span>
+                                </span>
                                 <span class="dispatch-paper__tab-route">@DispatchBoardRow.Location(row.Origin) → @DispatchBoardRow.Location(row.Destination)</span>
-                                <span class="dispatch-paper__tab-line"><span class="dispatch-paper__tab-driver">@row.DriverName</span><span class="dispatch-paper__tab-status @row.StatusTone">@row.Status</span></span>
+                                <span class="dispatch-paper__tab-line"><span></span><span class="dispatch-paper__tab-status @row.StatusTone">@row.Status</span></span>
                                 <span class="dispatch-paper__tab-financials"><strong class="dispatch-paper__tab-miles"><DistanceText Miles="@((double?)row.Load.TotalMiles)" /> total</strong><span>@DispatchFinancialDisplay.Money(row.Load.Price, row.Load.Currency) · @DispatchFinancialDisplay.LoadedRpm @DispatchFinancialDisplay.Amount(row.Load.LoadedRatePerMile) · @DispatchFinancialDisplay.TotalRpm @DispatchFinancialDisplay.Amount(row.Load.TotalRatePerMile)</span></span>
                             </span>
-                        </a>
+                        </div>
                     </div>
                 }
                 </div>

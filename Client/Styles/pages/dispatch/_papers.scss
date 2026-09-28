@@ -74,7 +74,6 @@
     text-decoration: none;
     background: ui.theme(surface);
     color: ui.theme(text-secondary);
-    cursor: pointer;
     font-size: ui.fs(small);
     overflow-wrap: anywhere;
   }
@@ -108,10 +107,47 @@
     gap: 0 ui.pg(sm);
     min-width: 0;
   }
+  // Truck, trailer and driver: one row where it fits, each folding whole.
   &__tab-units {
-    display: inline-flex;
-    gap: ui.pg(sm);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 ui.pg(sm);
+    min-width: 0;
+    > * {
+      white-space: nowrap;
+    }
+    > * + *::before {
+      content: '·';
+      margin-inline-end: ui.pg(sm);
+      color: ui.theme(text-muted);
+    }
+  }
+  &__tab-number {
+    text-decoration: none;
+    &:hover,
+    &:focus-visible {
+      text-decoration: underline;
+    }
+  }
+  &__copy {
+    padding: 0 ui.pg(micro);
+    border: 0;
+    background: none;
+    color: ui.theme(text-muted);
+    font: inherit;
+    cursor: copy;
+    &:hover,
+    &:focus-visible {
+      color: ui.theme(link);
+    }
+  }
+  &__order {
+    color: ui.theme(text-muted);
     white-space: nowrap;
+  }
+  &__order-value {
+    color: ui.theme(text-secondary);
   }
   &__tab-number {
     font-size: ui.fs(body);
