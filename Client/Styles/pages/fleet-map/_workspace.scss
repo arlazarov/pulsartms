@@ -430,6 +430,52 @@
 
 // The truck panel's body, as the concept drew it: the actions in one row,
 // the facts in bordered cells, the clocks with bars.
+.fleet-truck-next {
+  display: grid;
+  gap: ui.pg(xs);
+  margin: ui.pg(xs) ui.pg(lg) ui.pg(md);
+  padding: ui.pg(sm) ui.pg(md);
+  border: 1px solid ui.theme(accent, 0.28);
+  border-radius: ui.radius(md);
+  background:
+    linear-gradient(ui.theme(accent), ui.theme(accent)) top center /
+      calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
+    ui.theme(accent, 0.05);
+  &__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: ui.pg(sm);
+  }
+  &__label {
+    @include ui.hud-label;
+    color: ui.theme(accent);
+  }
+  &__left {
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    white-space: nowrap;
+    strong {
+      color: ui.theme(text);
+      font-size: ui.fs(subtitle);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+  &__place {
+    display: grid;
+    color: ui.theme(text);
+    font-weight: 600;
+    span {
+      color: ui.theme(text-secondary);
+      font-weight: 400;
+    }
+  }
+  &__eta {
+    margin-top: ui.pg(micro);
+  }
+}
+
 .fleet-truck-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

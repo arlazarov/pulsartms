@@ -76,6 +76,7 @@ visual inspection only, never acceptance.
 | --- | --- |
 | Reserved column; empty state with calm radar when nothing is chosen | Built, Seen |
 | Truck head: eyebrow, large unit; no Route / Fuel tabs | Built, Seen |
+| Next stop line at the top of the truck panel: the stop (visit, name, locality), its ETA with on-time / late word and appointment, and the miles still to drive - the route's own forecast and distance, no new reads | Built (not yet seen) |
 | Facts 2x4: Driver, Trailer, Motion, Duty, Fuel, Engine, Temperature (the readings' own weather, not read again), Location; clocks in cells with bars; no action row; no trip block | Built |
 | Location: locality only, full address in title; clicking the text copies it (no copy button); honest status | Built |
 | Stop card (current and next): HUD glass, corner brackets, dimensional emblem, compact facts | Built, Seen dark current / light next |
@@ -98,6 +99,12 @@ visual inspection only, never acceptance.
 | P / D beside their cities, checked when the server says done | Built, Seen |
 | P / D opens that exact stop and zooms; the rest of the card fits the whole trip | Built, Seen (current and next) |
 | Status in its own slot, load link separate | Built, Seen |
+
+## Dispatch
+
+| Request | Status |
+| --- | --- |
+| Board in the workspace style: glass truck panels with the truck emblem, load tiles with a straight phase line, soft phase chips, lit stop markers | Built, Seen dark |
 
 ## Deferred by the owner
 

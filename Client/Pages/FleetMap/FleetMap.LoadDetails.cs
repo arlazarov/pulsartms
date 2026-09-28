@@ -14,6 +14,10 @@ public partial class FleetMap
   // own memory: one instance updated twice per render would advance its
   // "stop changed" state twice for a single change.
   private readonly ArrivalDisplayMemory _headArrivalMemory = new();
+
+  // The docked truck panel's next-stop line, a third reader of the same
+  // forecast, with its own memory for the same reason.
+  private readonly ArrivalDisplayMemory _panelArrivalMemory = new();
   private bool NextStopIsFinal =>
     _routeState?.Plan
       is { InputsChanged: false, Tracking.AllStopsPassed: false } plan

@@ -89,6 +89,7 @@ public partial class FleetMap
       if (!sameStops || state?.Plan?.InputsChanged == true)
         _arrivalMemory.Update(null, null, null);
       _headArrivalMemory.Update(null, null, null);
+      _panelArrivalMemory.Update(null, null, null);
     }
     var previousPlan = _routeState?.Plan;
     _routeState = state;

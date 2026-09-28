@@ -510,6 +510,43 @@
                each. Its actions are in the map's bar; its trips are the
                chain's cards. Every value comes from the owner the card's head
                reads. *@
+            @* Where the truck is going next, when it gets there and how
+               far it still has to drive (the owner, September 27): the
+               route's own forecast and distance, read here too. *@
+            @if (ScheduledStop is { } upcoming)
+            {
+                <section class="fleet-truck-next" aria-label="Next stop">
+                    <div class="fleet-truck-next__head">
+                        <span class="fleet-truck-next__label">Next stop</span>
+                        <span class="fleet-truck-next__left"
+                              title="Distance to the next stop">
+                            <strong>@Units.DistanceValue(_routeState?.Plan is null
+                                ? null : NextStopMiles)</strong>
+                            <small>@Units.DistanceUnit left</small>
+                        </span>
+                    </div>
+                    <div class="fleet-truck-next__place">
+                        @FleetAppointmentDisplay.Visit(upcoming)@(string.IsNullOrWhiteSpace(upcoming.Name)
+                            ? "" : $" · {upcoming.Name.Trim()}")
+                        @if (!string.IsNullOrWhiteSpace(upcoming.Address))
+                        {
+                            <span>@Client.Services.StopAddressLines.Create(upcoming.Address).Locality</span>
+                        }
+                    </div>
+                    <div class="fleet-truck-next__eta arrival-estimate">
+                        <ArrivalEstimate
+                            Eta="@(_routeState?.Plan is { InputsChanged: false }
+                                ? DisplayRouteState?.Eta : null)"
+                            Stop="ScheduledStop" Memory="_panelArrivalMemory"
+                            DispatchId="SelectedDispatchId"
+                            Refreshing="_etaRefreshPending"
+                            Completed="@(_routeState?.Plan?.Tracking
+                                .AllStopsPassed == true)"
+                            ShowDutyStatus="false" ShowAppointment="true"
+                            ShowDetails="false" Reading="compact" />
+                    </div>
+                </section>
+            }
             <dl class="fleet-truck-facts" aria-label="Truck facts">
                 <div class="fleet-truck-facts__fact">
                     <ActionIcon Kind="user" />
