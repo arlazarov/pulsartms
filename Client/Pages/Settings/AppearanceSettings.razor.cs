@@ -11,10 +11,10 @@ public partial class AppearanceSettings
   private Task ChangeTemperatureAsync(string value) =>
     Appearance is null
       ? Task.CompletedTask
-      : Appearance.SaveAsync(Appearance.Theme, temperature: value);
+      : Appearance.SaveAsync(Appearance.ThemeToKeep, temperature: value);
 
   private Task ChangeDistanceAsync(string value) =>
     Appearance is null
       ? Task.CompletedTask
-      : Appearance.SaveAsync(Appearance.Theme, distance: value);
+      : Appearance.SaveAsync(Appearance.ThemeToKeep, distance: value);
 }

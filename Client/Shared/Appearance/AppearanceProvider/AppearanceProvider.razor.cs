@@ -22,7 +22,21 @@ public partial class AppearanceProvider : IAsyncDisposable
   [Parameter]
   public RenderFragment? ChildContent { get; set; }
 
+  // Light is withdrawn for now (the owner, September 28): the page is
+  // always painted dark. Theme stays the account's saved choice, which is
+  // kept and sent back unchanged with a units change, so turning light on
+  // again restores every account's own theme.
+  private const bool LightThemeAvailable = false;
+
   public string Theme { get; private set; } = "light";
+
+  public string AppliedTheme =>
+    LightThemeAvailable && Theme == "light" ? "light" : "dark";
+
+  // The theme a units change sends back: the saved choice as it is, or
+  // dark for an account that never chose (stored empty; the server takes
+  // only light or dark, and dark is what that account already sees).
+  public string ThemeToKeep => Theme is "light" ? "light" : "dark";
   public DisplayUnits Units { get; private set; } = DisplayUnits.Default;
   public bool Busy { get; private set; }
   public string? Error { get; private set; }
@@ -30,7 +44,8 @@ public partial class AppearanceProvider : IAsyncDisposable
   private string? _account;
   private bool _initialized,
     _ready,
-    _disposed;
+    _disposed,
+    _themeKnown;
   private long _generation;
   private CancellationTokenSource _accountLifetime = new();
   private Task<IJSObjectReference>? _module;
@@ -54,13 +69,12 @@ public partial class AppearanceProvider : IAsyncDisposable
     _accountLifetime = new();
     var generation = ++_generation;
     _ready = false;
+    _themeKnown = false;
     Busy = false;
     Saved = false;
     Error = null;
-    // Dark is the default (the owner, September 27). Signed in, the page
-    // keeps the theme it was painted in (index.html: the last one used
-    // here, else dark) until the account's choice is read, so no other
-    // theme flashes first; signed out, it is the default again.
+    // Dark is the default (the owner, September 27) and, for now, the
+    // only theme painted (index.html paints dark first).
     Theme = "dark";
     Units = DisplayUnits.Default;
     if (account is null)
@@ -92,10 +106,16 @@ public partial class AppearanceProvider : IAsyncDisposable
     );
     if (!IsCurrent(generation))
       return;
-    if (result.Success && result.Response?.Theme is "light" or "dark")
+    // An account that never chose a theme reads as empty (migration 79):
+    // it is known, and painted dark.
+    if (
+      result.Success
+      && result.Response is { Theme: null or "" or "light" or "dark" } settings
+    )
     {
-      Theme = result.Response.Theme;
-      ApplyUnits(result.Response);
+      Theme = settings.Theme ?? "";
+      _themeKnown = true;
+      ApplyUnits(settings);
       await ApplyAsync(generation);
     }
     else
@@ -112,10 +132,13 @@ public partial class AppearanceProvider : IAsyncDisposable
     string? distance = null
   )
   {
+    // A save sends the theme too: until the account's own choice has been
+    // read, a units change would overwrite it with the default.
     if (
       _disposed
       || Busy
       || _account is null
+      || !_themeKnown
       || theme is not ("light" or "dark")
       || temperature is not (null or "fahrenheit" or "celsius")
       || distance is not (null or "miles" or "kilometers" or "both")
@@ -174,7 +197,7 @@ public partial class AppearanceProvider : IAsyncDisposable
         .AsTask();
       var module = await _module;
       if (IsCurrent(generation))
-        await module.InvokeVoidAsync("applyTheme", Theme);
+        await module.InvokeVoidAsync("applyTheme", AppliedTheme);
     }
     catch (JSException)
     {

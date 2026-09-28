@@ -8,13 +8,9 @@
     <link href="css/main.css?v=bcb13239cb5051e9" rel="stylesheet" />
     <link rel="preload" id="webassembly" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg?v=pulse-red-2" />
-    <script>
-      try {
-        var theme = localStorage.getItem('pulsr.theme');
-        if (theme === 'light' || theme === 'dark')
-          document.documentElement.dataset.theme = theme;
-      } catch (e) {}
-    </script>
+    <!-- Dark is the only theme for now (the owner, September 28): the
+         first paint stays dark whatever this browser last used. The
+         account's saved theme is kept for when light returns. -->
     <script type="importmap"></script>
   </head>
 

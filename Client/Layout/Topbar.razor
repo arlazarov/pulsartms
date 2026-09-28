@@ -1,8 +1,9 @@
 @using System.Globalization
 @using Client.Shared.Brand.BrandLogo
 @* The wide-screen bar over the rail: the product, where the reader is,
-   the theme, the time and the account. Phones keep the navigation's own
-   head instead. *@
+   the time and the account. Phones keep the navigation's own head
+   instead. The theme switch is withdrawn while dark is the only theme
+   (the owner, September 28). *@
 <header class="topbar">
     <a class="topbar__brand" href="/fleet/map" aria-label="PulsR TMS home">
         <BrandLogo />
@@ -12,16 +13,6 @@
         <b>@Place.Page</b>
     </nav>
     <span class="topbar__spacer"></span>
-    @if (Appearance is { } appearance)
-    {
-        <button type="button" class="topbar__icon-button"
-                aria-label="@(appearance.Theme == "dark"
-                    ? "Use the light theme" : "Use the dark theme")"
-                title="Theme" disabled="@appearance.Busy"
-                @onclick="ToggleThemeAsync">
-            <ActionIcon Kind="@(appearance.Theme == "dark" ? "sun" : "moon")" />
-        </button>
-    }
     <div class="topbar__clock" aria-hidden="true">
         <ActionIcon Kind="clock" />
         <div>

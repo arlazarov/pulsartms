@@ -45,7 +45,7 @@ public sealed class AppearanceSettingsTests
     Assert.DoesNotContain("Loading personal preferences", component.Markup);
 
     pending.SetResult(Response("dark"));
-    component.WaitForElement("button[aria-pressed=true]");
+    component.WaitForElement("#personal-temperature");
     Assert.Empty(component.FindAll(".appearance-loader"));
     Assert.Equal(
       "dark",
@@ -72,40 +72,43 @@ public sealed class AppearanceSettingsTests
     );
     js.SetupVoid("applyTheme", _ => true).SetVoidResult();
     var component = Render(context, Account("one"));
-    component.WaitForElement("button[aria-pressed=true]");
+    component.WaitForElement("#personal-temperature");
     var provider = component.FindComponent<AppearanceProvider>();
     var save = provider.InvokeAsync(() => provider.Instance.SaveAsync("dark"));
     component.WaitForAssertion(() => Assert.Equal(1, writes));
     await provider.InvokeAsync(() => provider.Instance.SaveAsync("dark"));
-    Assert.All(
-      component.FindAll("button"),
-      button => Assert.True(button.HasAttribute("disabled"))
+    Assert.True(
+      component.Find(".settings-page__form").HasAttribute("disabled")
     );
     pending.SetResult(new(HttpStatusCode.ServiceUnavailable));
     await save;
     component.WaitForElement("[role=alert]");
     Assert.Equal("light", provider.Instance.Theme);
     Assert.Equal(1, writes);
-    Assert.DoesNotContain(
-      js.Invocations,
-      call =>
-        call.Identifier == "applyTheme" && Equals(call.Arguments[0], "dark")
+    // The saved light choice is kept, but only dark is ever painted.
+    Assert.All(
+      js.Invocations.Where(call => call.Identifier == "applyTheme"),
+      call => Assert.Equal("dark", call.Arguments[0])
     );
   }
 
+  // Light is withdrawn for now (the owner, September 28): no theme choice
+  // is offered, an account that saved light is painted dark, and its
+  // saved choice is sent back unchanged with a units change - never
+  // overwritten with dark.
   [Fact]
-  public async Task SuccessfulSaveAppliesServerValueAndDoesNotRemountChildren()
+  public async Task ASavedLightChoiceIsKeptButOnlyDarkIsPainted()
   {
     var writes = new List<AppearanceSettings>();
     await using var context = new ClientComponentContext(
       async (request, ct) =>
       {
         if (request.Method == HttpMethod.Get)
-          return Response("dark");
+          return Response("light");
         writes.Add(
           (await request.Content!.ReadFromJsonAsync<AppearanceSettings>(ct))!
         );
-        return Response(writes[^1].Theme);
+        return Response(writes[^1].Theme, distance: writes[^1].DistanceUnit);
       }
     );
     var js = context.JSInterop.SetupModule(
@@ -113,13 +116,93 @@ public sealed class AppearanceSettingsTests
     );
     js.SetupVoid("applyTheme", _ => true).SetVoidResult();
     var component = Render(context, Account("one"));
-    component.WaitForElement("button[aria-pressed=true]");
+    var distance = component.WaitForElement("#personal-distance");
     var control = component.FindComponent<ThemeControl>().Instance;
-    await component.FindAll("button")[0].ClickAsync(new());
-    Assert.Equal("light", Assert.Single(writes).Theme);
+    await distance.ChangeAsync(new() { Value = "kilometers" });
+    Assert.Empty(component.FindAll("[aria-label=Theme], [aria-pressed]"));
+    Assert.DoesNotContain("Light", component.Markup);
+    var write = Assert.Single(writes);
+    Assert.Equal("light", write.Theme);
+    Assert.Null(write.TemperatureUnit);
     component.WaitForElement(".settings-page__saved");
     Assert.Same(control, component.FindComponent<ThemeControl>().Instance);
-    Assert.Equal("light", js.Invocations.Last().Arguments[0]);
+    var provider = component.FindComponent<AppearanceProvider>().Instance;
+    Assert.Equal("light", provider.Theme);
+    Assert.Equal("dark", provider.AppliedTheme);
+    Assert.NotEmpty(js.Invocations);
+    Assert.All(
+      js.Invocations.Where(call => call.Identifier == "applyTheme"),
+      call => Assert.Equal("dark", call.Arguments[0])
+    );
+  }
+
+  // An account that never chose a theme reads as empty (migration 79).
+  // It loads without an error, is painted dark, and a units change sends
+  // dark: the server takes only light or dark, and dark is what that
+  // account already sees.
+  [Fact]
+  public async Task AnUnchosenThemeLoadsAndAUnitsChangeSendsDark()
+  {
+    var writes = new List<AppearanceSettings>();
+    await using var context = new ClientComponentContext(
+      async (request, ct) =>
+      {
+        if (request.Method == HttpMethod.Get)
+          return Response("");
+        writes.Add(
+          (await request.Content!.ReadFromJsonAsync<AppearanceSettings>(ct))!
+        );
+        return Response(writes[^1].Theme, distance: writes[^1].DistanceUnit);
+      }
+    );
+    var js = context.JSInterop.SetupModule(
+      "./js/generated/shared/appearance.js"
+    );
+    js.SetupVoid("applyTheme", _ => true).SetVoidResult();
+    var component = Render(context, Account("one"));
+    await component
+      .WaitForElement("#personal-distance")
+      .ChangeAsync(new() { Value = "miles" });
+    Assert.Empty(component.FindAll("[role=alert]"));
+    Assert.Equal("dark", Assert.Single(writes).Theme);
+    component.WaitForElement(".settings-page__saved");
+    Assert.Equal(
+      "dark",
+      component.FindComponent<AppearanceProvider>().Instance.AppliedTheme
+    );
+    Assert.All(
+      js.Invocations.Where(call => call.Identifier == "applyTheme"),
+      call => Assert.Equal("dark", call.Arguments[0])
+    );
+  }
+
+  // Until the account's own theme has been read a units change is not
+  // sent: it would carry the dark default over a saved light choice.
+  [Fact]
+  public async Task NoSaveBeforeTheAccountsThemeIsKnown()
+  {
+    var writes = 0;
+    await using var context = new ClientComponentContext(
+      (request, _) =>
+      {
+        if (request.Method != HttpMethod.Get)
+          writes++;
+        return Task.FromResult(
+          new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
+        );
+      }
+    );
+    context
+      .JSInterop.SetupModule("./js/generated/shared/appearance.js")
+      .SetupVoid("applyTheme", _ => true)
+      .SetVoidResult();
+    var component = Render(context, Account("one"));
+    component.WaitForElement("[role=alert]");
+    var provider = component.FindComponent<AppearanceProvider>();
+    await provider.InvokeAsync(
+      () => provider.Instance.SaveAsync("dark", distance: "miles")
+    );
+    Assert.Equal(0, writes);
   }
 
   [Theory]
@@ -149,7 +232,7 @@ public sealed class AppearanceSettingsTests
     Task? saving = null;
     if (save)
     {
-      component.WaitForElement("button");
+      component.WaitForElement("#personal-temperature");
       var provider = component.FindComponent<AppearanceProvider>();
       saving = provider.InvokeAsync(() => provider.Instance.SaveAsync("dark"));
     }
@@ -161,7 +244,7 @@ public sealed class AppearanceSettingsTests
         )
     );
     component.WaitForAssertion(() => Assert.Equal(2, reads));
-    component.WaitForElement("button[aria-pressed=true]");
+    component.WaitForElement("#personal-temperature");
     pending.SetResult(Response("dark", "celsius", "kilometers"));
     if (saving is not null)
       await saving;
@@ -180,10 +263,9 @@ public sealed class AppearanceSettingsTests
           component.FindComponent<AppearanceProvider>().Instance.Theme
         )
     );
-    Assert.DoesNotContain(
-      js.Invocations,
-      call =>
-        call.Identifier == "applyTheme" && Equals(call.Arguments[0], "dark")
+    Assert.All(
+      js.Invocations.Where(call => call.Identifier == "applyTheme"),
+      call => Assert.Equal("dark", call.Arguments[0])
     );
   }
 
@@ -305,7 +387,7 @@ public sealed class AppearanceSettingsTests
     );
     js.SetupVoid("applyTheme", _ => true).SetVoidResult();
     var component = Render(context, Account("one"));
-    component.WaitForElement("button[aria-pressed=true]");
+    component.WaitForElement("#personal-temperature");
     component.Render(parameters =>
       parameters
         .Add(x => x.Value, Account("one"))

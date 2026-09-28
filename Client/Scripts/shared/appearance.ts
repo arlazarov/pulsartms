@@ -1,7 +1,6 @@
-// The theme on the page, and remembered in this browser so the next visit
-// paints in it before the app has loaded (index.html reads it; dark when
-// nothing was ever applied here). The account's saved choice still decides
-// once it is read.
+// The theme on the page, and remembered in this browser. While dark is the
+// only theme (the owner, September 28) index.html does not read it and
+// the app applies dark; light stays supported here for its return.
 export function applyTheme(theme: string): void {
   const value = theme === 'dark' ? 'dark' : 'light';
   const root = document.documentElement;
