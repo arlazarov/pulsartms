@@ -3292,6 +3292,12 @@ try {
         name: 'Selected next load',
         exact: true,
       });
+      const panelBox = () =>
+        page.locator('.fleet-map-info-reserved').evaluate(element => {
+          const { x, y, width, height } = element.getBoundingClientRect();
+          return { x, y: y + scrollY, width, height };
+        });
+      const truckBox = await panelBox();
       await page.evaluate(() => window.hoursFixture.selectStop(0));
       // The next load's stop card reads as the route stop card and may
       // carry more than one forecast; its first is the stop's.
@@ -3516,10 +3522,32 @@ try {
         mapRect,
         `${name}-replaced-forecast`,
       );
+      const stopBox = await panelBox();
       const returnTruckReads = apiReads;
+      // Back to truck shows the retained panel again; it must not arrive
+      // anew (release session, 2026-09-28).
+      const backMark = await page.evaluate(() => performance.now());
       await page
         .getByRole('button', { name: 'Back to truck', exact: true })
         .click();
+      await page.locator(panelSelector).waitFor();
+      await settleArrivals(page);
+      await checkNoReplayedArrival(
+        page,
+        `${name}-back-from-next-load`,
+        backMark,
+      );
+      const backBox = await panelBox();
+      // One box whatever the card shows (the owner, September 28).
+      check(
+        [stopBox, backBox].every(box =>
+          ['x', 'y', 'width', 'height'].every(
+            key => Math.abs(box[key] - truckBox[key]) <= 1,
+          ),
+        ),
+        `${name}: the map card keeps one box for the truck, the stop and ` +
+          `back again ${JSON.stringify({ truckBox, stopBox, backBox })}`,
+      );
       await measureTruckControls(page, `${name}-back-from-next-load`);
       assert.equal(
         apiReads,
