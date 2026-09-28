@@ -10,6 +10,7 @@ started again under the current project policy.
 
 ### Reviews and implementation records
 
+- [Frontend release, September 28](2026-09/release-2026-09-28-frontend.md)
 - [Current-work release](2026-09/release-2026-09-27-current-work.md)
 - [Current-work publication candidate](2026-09/current-work-candidate-2026-09-27.md)
 - [Fleet workspace candidate (sole interface; legacy at tag ui-legacy-2026-09-27)](2026-09/futuristic-interface-candidate-2026-09-27.md)
