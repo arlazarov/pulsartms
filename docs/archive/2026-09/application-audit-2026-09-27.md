@@ -1727,10 +1727,37 @@ waits and a fuel send answers 503 until the release. Mutations - no
 coalescing, any revision's record, ignoring the requirement, the
 sender's missing case, the delivery's or outbox's hold removed - each
 fail. Messaging, fuel, database (PostgreSQL migrations) and
-synchronization groups green. `EveryProviderSendIsHeld` finds the
-provider's send called only by the outbox and Messaging's delivery, and
-each of them asking the hold; a delivery without it fails
-(diagnostic-T728dK, diagnostic-4PX3zN).
+synchronization groups green. `OnlyTheHeldPathsCallTheProvidersSend`
+(first named `EveryProviderSendIsHeld`, diagnostic-T728dK, -4PX3zN) is
+an inventory, not a proof of control flow: the provider's send is called
+from the outbox and Messaging's delivery only; that each holds is shown
+by the two behaviour tests above.
+
+Root's review of dacf2361, corrected: the release reaches every carrier,
+so it is a deployment operator's, not a carrier Admin's. The endpoint
+takes the `Operator` policy - Admin and an identity listed in
+`Operations:Operators`, the deployment's configuration; none listed,
+nobody - and the handler refuses anyone else with 403 as well. A
+required release with no valid `K_REVISION` (the platform's form:
+lowercase letters, digits, hyphens, a letter first, at most 63) fails
+closed: held without reading, never released by another process's
+record, and a release answers 409; there is no "local" default. Tests:
+`DeploymentOperatorTests` evaluates the real policies with their
+handlers (operator Admin passes; a carrier Admin, an operator without
+Admin, a signed-out caller and an empty list fail; Admin endpoints stay
+open to a carrier Admin) and the revision names;
+`ACarrierAdminWhoIsNotAnOperatorCannotRelease`,
+`ANamelessRevisionStaysHeldAndCannotBeReleased`; and on PostgreSQL
+`TwoOperatorsReleasingAtOnceLeaveOneRecord` - both find no record, the
+first insert is held until the other has committed, and the late one
+meets the unique index and answers with the first record. Mutations -
+the handler's operator check, the policy's operator requirement, a
+"local" fallback, the conflict handling - fail (diagnostic-NxKwCc);
+removing the nameless guard is equivalent, since EF answers a required
+column compared with null without reading and nothing matches. Identity,
+messaging and database groups green (diagnostic-BFwmaB). The operator
+list must be set in the deployment before a release is possible: an
+owner decision on which identities, recorded with the release.
 
 What it guarantees: no message this revision sends can have a status
 dropped by the revision before it, provided the release is recorded
@@ -1753,7 +1780,8 @@ Cutover steps:
    `Active` false and `TrafficShutDown` true, its last request log line
    older than the traffic move, and no instance of it in the revision's
    instance count.
-4. Only then an administrator calls `POST api/diagnostics/sends/release`;
+4. Only then a deployment operator calls
+   `POST api/diagnostics/sends/release`;
    `GET api/diagnostics/sends` shows it released; the queued replies go
    (`api/diagnostics/background`, outbox progressing).
 5. Two minutes after: `messaging.kept-status-unapplied` has no finding,

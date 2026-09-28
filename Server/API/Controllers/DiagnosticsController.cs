@@ -40,6 +40,7 @@ public sealed class DiagnosticsController : BaseController
     HandleUnwrappedRequest(new GetSendHoldQuery(), cancellationToken);
 
   [HttpPost("sends/release")]
+  [Authorize(Policy = "Operator")]
   public Task<IActionResult> ReleaseSends(
     CancellationToken cancellationToken
   ) => HandleUnwrappedRequest(new ReleaseSendsCommand(), cancellationToken);

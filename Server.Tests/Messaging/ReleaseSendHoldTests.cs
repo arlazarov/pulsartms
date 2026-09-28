@@ -92,17 +92,17 @@ public sealed class ReleaseSendHoldTests
     Assert.Equal(2, f.Reads.Count);
   }
 
-  // The administrator's release: recorded once with who released it,
+  // A deployment operator's release: recorded once with who released it,
   // idempotent, and reported.
   [Fact]
-  public async Task AnAdministratorReleasesTheRevisionOnce()
+  public async Task AnOperatorReleasesTheRevisionOnce()
   {
     await using var f = await Database.CreateAsync();
     var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
     var hold = TestSendHold.Required(f.Scopes, "rev-4", clock);
     await using var scope = f.Scopes.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var handlers = new SendHoldHandlers(db, hold, new Caller(), clock);
+    var handlers = Handlers(db, hold, "operator-1", clock);
 
     var before = (
       await handlers.Handle(new GetSendHoldQuery(), default)
@@ -118,7 +118,7 @@ public sealed class ReleaseSendHoldTests
     Assert.True(before.Held);
     Assert.Null(before.ReleasedAt);
     Assert.Equal(
-      ("rev-4", true, "admin-1"),
+      ("rev-4", true, "operator-1"),
       (first.Revision, first.Required, first.ReleasedBy)
     );
     Assert.Equal(first.ReleasedAt, second.ReleasedAt);
@@ -127,11 +127,72 @@ public sealed class ReleaseSendHoldTests
     Assert.False(await hold.HeldAsync(default));
   }
 
-  // Every call to the provider goes through a held path: the outbox and
-  // Messaging's delivery. A new caller of the provider's send fails this
-  // until it is held too.
+  // Root: the release reaches every carrier. A carrier's Admin who is not
+  // a deployment operator is refused by the handler too, not only by the
+  // endpoint's policy; nothing is recorded and sends stay held.
   [Fact]
-  public void EveryProviderSendIsHeld()
+  public async Task ACarrierAdminWhoIsNotAnOperatorCannotRelease()
+  {
+    await using var f = await Database.CreateAsync();
+    var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+    var hold = TestSendHold.Required(f.Scopes, "rev-5", clock);
+    await using var scope = f.Scopes.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    var refused = await Handlers(db, hold, "carrier-admin", clock)
+      .Handle(new ReleaseSendsCommand(), default);
+
+    Assert.Equal(403, refused.StatusCode);
+    Assert.Empty(await db.SendReleases.AsNoTracking().ToListAsync());
+    clock.Advance(SendHold.Recheck);
+    Assert.True(await hold.HeldAsync(default));
+  }
+
+  // Root: a required release with no valid revision name fails closed -
+  // held without reading, not released by another process's record (a
+  // "local" one included), and an operator's release is refused.
+  [Fact]
+  public async Task ANamelessRevisionStaysHeldAndCannotBeReleased()
+  {
+    await using var f = await Database.CreateAsync();
+    await f.ReleaseAsync("local");
+    var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+    var hold = TestSendHold.Required(f.Scopes, null, clock);
+    await using var scope = f.Scopes.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var reads = f.Reads.Count;
+
+    Assert.True(await hold.HeldAsync(default));
+    clock.Advance(SendHold.Recheck);
+    Assert.True(await hold.HeldAsync(default));
+    Assert.Equal(reads, f.Reads.Count);
+    var refused = await Handlers(db, hold, "operator-1", clock)
+      .Handle(new ReleaseSendsCommand(), default);
+    Assert.Equal(409, refused.StatusCode);
+    Assert.Single(await db.SendReleases.AsNoTracking().ToListAsync());
+  }
+
+  private static SendHoldHandlers Handlers(
+    AppDbContext db,
+    SendHold hold,
+    string identity,
+    TimeProvider clock
+  ) => new(db, hold, new Caller(identity), new Operators(), clock);
+
+  private sealed class Operators : IDeploymentOperators
+  {
+    public bool Includes(string? identityUserId) =>
+      identityUserId == "operator-1";
+  }
+
+  // An inventory, not a proof of control flow: the provider's send is
+  // called from these two files only, so a new caller fails here until it
+  // is held and tested. That each holds is shown by behaviour:
+  // AQueuedReplyWaitsUntilTheRevisionIsReleased (the outbox, before it
+  // takes any queued message) and ASendBeforeTheReleaseIsHeldNotLost
+  // (Messaging's delivery).
+  [Fact]
+  public void OnlyTheHeldPathsCallTheProvidersSend()
   {
     var root = RepositoryFiles.Root();
     var callers = new[] { "Application", "Infrastructure" }
@@ -164,25 +225,12 @@ public sealed class ReleaseSendHoldTests
       ["DriverTextDelivery.cs", "OutboundMessageOperation.cs"],
       callers
     );
-    foreach (var file in callers)
-      Assert.Contains(
-        "HeldAsync(",
-        File.ReadAllText(
-          Directory
-            .GetFiles(
-              Path.Combine(root, "Server", "Application"),
-              file!,
-              SearchOption.AllDirectories
-            )
-            .Single()
-        )
-      );
   }
 
-  private sealed class Caller : ICurrentUser
+  private sealed class Caller(string identity) : ICurrentUser
   {
     public bool IsAuthenticated => true;
-    public string IdentityUserId => "admin-1";
+    public string IdentityUserId => identity;
   }
 
   private sealed class Database : IAsyncDisposable

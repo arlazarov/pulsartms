@@ -7,7 +7,7 @@ namespace Application.Features.Messaging.Commands;
 // Whether this revision may send to the messaging provider, and who
 // released it.
 public sealed record SendHoldState(
-  string Revision,
+  string? Revision,
   bool Required,
   bool Held,
   DateTime? ReleasedAt,
@@ -17,9 +17,12 @@ public sealed record SendHoldState(
 public sealed record GetSendHoldQuery
   : IRequest<RequestResponse<SendHoldState>>;
 
-// An administrator's release of this revision, after seeing the platform
-// drain the revision before it (the cutover plan). Recorded once; asking
-// again answers with the first record.
+// A deployment operator's release of this revision, after seeing the
+// platform drain the revision before it (the cutover plan). It reaches
+// every carrier, so a carrier's Admin who is not an operator is refused
+// here as well as by the endpoint's policy. Recorded once; asking again
+// answers with the first record. A revision without a valid name is not
+// released.
 public sealed record ReleaseSendsCommand
   : IRequest<RequestResponse<SendHoldState>>;
 
@@ -27,6 +30,7 @@ public sealed class SendHoldHandlers(
   IAppDbContext db,
   SendHold hold,
   ICurrentUser user,
+  IDeploymentOperators operators,
   TimeProvider clock
 )
   : IRequestHandler<GetSendHoldQuery, RequestResponse<SendHoldState>>,
@@ -42,13 +46,24 @@ public sealed class SendHoldHandlers(
     CancellationToken ct
   )
   {
-    if (!await db.SendReleases.AnyAsync(x => x.Revision == hold.Revision, ct))
+    if (!operators.Includes(user.IdentityUserId))
+      return RequestResponse<SendHoldState>.Fail(
+        "Only a deployment operator releases sends.",
+        403
+      );
+    if (hold.Revision is not { } revision)
+      return RequestResponse<SendHoldState>.Fail(
+        "This process has no deployment revision name, so its sends stay "
+          + "held.",
+        409
+      );
+    if (!await db.SendReleases.AnyAsync(x => x.Revision == revision, ct))
     {
       db.SendReleases.Add(
         new SendRelease
         {
           Id = Guid.NewGuid(),
-          Revision = hold.Revision,
+          Revision = revision,
           ReleasedAt = clock.GetUtcNow().UtcDateTime,
           ReleasedBy = user.IdentityUserId ?? "",
         }
@@ -64,7 +79,7 @@ public sealed class SendHoldHandlers(
         if (
           !await db
             .SendReleases.AsNoTracking()
-            .AnyAsync(x => x.Revision == hold.Revision, ct)
+            .AnyAsync(x => x.Revision == revision, ct)
         )
           throw;
       }

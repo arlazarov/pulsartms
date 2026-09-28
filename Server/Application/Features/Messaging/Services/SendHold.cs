@@ -17,7 +17,8 @@ namespace Application.Features.Messaging.Services;
 //
 // Asked of the database at most every Recheck, one read shared by
 // concurrent callers; a recorded release is kept for the process's life,
-// as the record is.
+// as the record is. A process whose revision has no valid name is never
+// released.
 public sealed class SendHold(
   IServiceScopeFactory scopes,
   IDeploymentRevision revision,
@@ -31,13 +32,17 @@ public sealed class SendHold(
   private DateTimeOffset checkedAt = DateTimeOffset.MinValue;
   private Task<bool>? reading;
 
-  public string Revision => revision.Name;
+  public string? Revision => revision.Name;
   public bool Required => options.Value.RequireRelease;
 
   public async Task<bool> HeldAsync(CancellationToken ct)
   {
     if (!Required)
       return false;
+    // A revision the platform did not name cannot be released: its sends
+    // stay held, and no other process's release can apply to it.
+    if (revision.Name is null)
+      return true;
     Task<bool> read;
     lock (gate)
     {
@@ -61,7 +66,7 @@ public sealed class SendHold(
         found = await scope
           .ServiceProvider.GetRequiredService<IAppDbContext>()
           .SendReleases.AsNoTracking()
-          .AnyAsync(x => x.Revision == revision.Name);
+          .AnyAsync(x => x.Revision == revision.Name!);
       lock (gate)
       {
         released |= found;

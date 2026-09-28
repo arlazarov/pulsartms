@@ -94,26 +94,7 @@ public static class DependencyInjection
       .AddAuthentication(IdentityConstants.BearerScheme)
       .AddBearerToken(IdentityConstants.BearerScheme);
 
-    services.AddAuthorization(options =>
-    {
-      options.AddPolicy(
-        "Admin",
-        policy =>
-          policy
-            .RequireAuthenticatedUser()
-            .AddRequirements(new AdminRequirement())
-      );
-      options.AddPolicy(
-        "Dispatch",
-        policy =>
-          policy
-            .RequireAuthenticatedUser()
-            .AddRequirements(new DispatchRequirement())
-      );
-      options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
-    });
+    services.AddAuthorization(AuthorizationPolicies.Configure);
 
     services
       .AddIdentityCore<AppUser>(options =>
@@ -134,6 +115,10 @@ public static class DependencyInjection
 
     services.AddScoped<IAuthorizationHandler, AdminAuthorizationHandler>();
     services.AddScoped<IAuthorizationHandler, DispatchAuthorizationHandler>();
+    services.AddScoped<IAuthorizationHandler, OperatorAuthorizationHandler>();
+    services.AddSingleton<IDeploymentOperators>(
+      new DeploymentOperators(configuration)
+    );
     services.AddHttpContextAccessor();
 
     services.AddScoped<IAppDbContext>(provider =>
@@ -214,7 +199,9 @@ public static class DependencyInjection
     services.AddScoped<IFuelDiscountProvider, BvdFuelDiscountProvider>();
 
     services.AddScoped<ISynchronizationStore, SynchronizationStore>();
-    services.AddSingleton<IDeploymentRevision, DeploymentRevision>();
+    services.AddSingleton<IDeploymentRevision>(
+      new DeploymentRevision(configuration)
+    );
     services.AddHostedService<
       ApplicationWorker<IFleetSynchronizationOperation>
     >();

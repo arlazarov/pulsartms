@@ -22,7 +22,7 @@ internal static class TestSendHold
 
   public static SendHold Required(
     IServiceScopeFactory scopes,
-    string revision,
+    string? revision,
     TimeProvider clock
   ) =>
     new(
@@ -32,5 +32,5 @@ internal static class TestSendHold
       clock
     );
 
-  public sealed record Revision(string Name) : IDeploymentRevision;
+  public sealed record Revision(string? Name) : IDeploymentRevision;
 }
