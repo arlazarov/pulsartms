@@ -92,6 +92,20 @@
     font-weight: 700;
     letter-spacing: 0.02em;
     font-variant-numeric: tabular-nums;
+    position: relative;
+    // A dashed sight ring turning slowly around the emblem.
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border: 1px dashed ui.theme(accent, 0.6);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: hud-spin-free 14s linear infinite;
+    }
+    &.is-done::after {
+      content: none;
+    }
     // A stop behind the truck: a dashed rim and no halo; it no longer asks
     // for anything.
     // In daylight a lit accent disc with a white letter, as the truck's

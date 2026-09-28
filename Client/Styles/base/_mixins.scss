@@ -197,8 +197,18 @@
   // cool shadow and a faint cyan halo - the dark panel's parts in daylight.
   :root[data-theme='light'] & {
     border-color: fn.clr('cyan', 400, 0.45);
-    // Pure white, not a grey glass (the owner, September 27).
-    background: fn.theme(surface, 0.98);
+    // Pure white, not a grey glass (the owner, September 27), with a thin
+    // cyan light sweeping slowly along its top edge, as a HUD scans.
+    background:
+      linear-gradient(
+          90deg,
+          transparent,
+          fn.clr('cyan', 400, 0.9),
+          transparent
+        )
+        -40% 0 / 28% 1px no-repeat,
+      fn.theme(surface, 0.98);
+    animation: hud-sweep 7s linear infinite;
     // A hairline lift only: large soft shadows spread a grey haze over the
     // bright canvas around every panel (the owner, September 27).
     box-shadow:
@@ -228,7 +238,16 @@
   :root[data-theme='light'] & {
     // Clean white glass: opaque enough, and not saturating, so the map's
     // colours do not tint it.
-    background: fn.theme(surface, 0.97);
+    background:
+      linear-gradient(
+          90deg,
+          transparent,
+          fn.clr('cyan', 400, 0.9),
+          transparent
+        )
+        -40% 0 / 28% 1px no-repeat,
+      fn.theme(surface, 0.97);
+    animation: hud-sweep 7s linear infinite;
     backdrop-filter: blur(18px) saturate(1);
     box-shadow:
       0 1px 2px fn.theme(shadow, 0.06),
@@ -305,6 +324,10 @@ $hud-glyphs: (
     box-sizing: border-box;
     border: 1.5px solid fn.theme(accent);
     border-radius: 50%;
+    // A dashed sight ring turning slowly around the disc.
+    outline: 1px dashed fn.theme(accent, 0.6);
+    outline-offset: 4px;
+    animation: hud-spin 14s linear infinite;
     background: radial-gradient(
       circle at 35% 30%,
       fn.theme(accent, 0.34),
