@@ -79,6 +79,10 @@ public sealed class DispatchWorkspaceResponse
   public List<DispatchWorkspaceStop> Stops { get; set; } = [];
   public bool CanEdit { get; set; }
   public string? ReadOnlyReason { get; set; }
+
+  // A stop of this load whose leg is still active with no stop done: a
+  // pending correction there returns it to planned (server's rule).
+  public Guid? ActiveWithoutWorkStopId { get; set; }
   public bool LocallyManaged { get; set; }
   public string SourceName { get; set; } = "";
   public DateTime? SourceUpdatedAt { get; set; }

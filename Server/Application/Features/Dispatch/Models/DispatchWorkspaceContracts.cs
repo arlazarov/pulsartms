@@ -87,6 +87,11 @@ public sealed class DispatchWorkspaceResponse
   public IReadOnlyList<DispatchAcceptedAssignment> AcceptedAssignments { get; set; } =
     [];
   public List<DispatchWorkspaceHistory> History { get; set; } = [];
+
+  // The first correctable stop of this load's leg that is still active
+  // with no stop done or arrived (ExecutionLegProgress.ActiveWithoutWork):
+  // a pending correction there returns the leg to planned.
+  public Guid? ActiveWithoutWorkStopId { get; set; }
 }
 
 public sealed class DispatchWorkspaceTransfer

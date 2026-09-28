@@ -4,6 +4,7 @@ using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
+using Domain.Models.Execution;
 using DispatchEntity = Domain.Entities.Dispatch.Dispatch;
 
 namespace Application.Features.Dispatch.Services;
@@ -410,6 +411,22 @@ public static class DispatchWorkspaceReader
         segment++;
       previousLeg = leg?.Id;
     }
+    foreach (var leg in legs)
+      if (
+        leg.Loads.Count == 1
+        && ExecutionLegProgress.ActiveWithoutWork(
+          leg,
+          ExecutionStopRows.Read(leg)
+        )
+        && response.Stops.FirstOrDefault(x =>
+          x.ExecutionLegId == leg.Id && x.CanCorrect
+        )
+          is { } first
+      )
+      {
+        response.ActiveWithoutWorkStopId = first.Id;
+        break;
+      }
     if (legs.Count > 0)
     {
       var projected = new DispatchEntity

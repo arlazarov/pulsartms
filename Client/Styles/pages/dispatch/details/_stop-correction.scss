@@ -100,3 +100,24 @@
     margin-block: ui.pg(sm);
   }
 }
+
+// Beside the stop editor: another load blocks this correction, or this
+// load's assignment is active with no stop done (AMF1405, September 28).
+.dispatch-details__blocked {
+  display: grid;
+  gap: ui.pg(xs);
+  margin-block-end: ui.pg(sm);
+  padding: ui.pg(sm);
+  border: 1px solid ui.theme(warning-text);
+  border-radius: ui.radius(sm);
+  background: ui.theme(surface-soft);
+  color: ui.theme(text-secondary);
+
+  p {
+    margin: 0;
+  }
+
+  .btn {
+    justify-self: start;
+  }
+}

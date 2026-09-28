@@ -154,23 +154,38 @@ public sealed class CorrectDispatchStopHandler(
         var trailerId = selectedRequest.ChangeAssignment
           ? selectedRequest.TrailerId
           : leg.TrailerId;
-        if (
-          await db.ExecutionLegs.AnyAsync(
-            x =>
-              x.Id != leg.Id
-              && x.Status == "active"
-              && (
-                x.TruckId == truckId
-                || trailerId != null && x.TrailerId == trailerId
-                || driverId != null
-                  && (x.DriverId == driverId || x.CoDriverId == driverId)
-              ),
-            ct
+        var blocking = await db
+          .ExecutionLegs.Where(x =>
+            x.Id != leg.Id
+            && x.Status == "active"
+            && (
+              x.TruckId == truckId
+              || trailerId != null && x.TrailerId == trailerId
+              || driverId != null
+                && (x.DriverId == driverId || x.CoDriverId == driverId)
+            )
           )
-        )
-          return Fail(
-            "Reopening this leg conflicts with another active assignment. Correct the assignment before reopening."
+          .SelectMany(x => x.Loads)
+          .OrderBy(x => x.Sequence)
+          .Join(
+            db.Dispatches,
+            link => link.DispatchId,
+            load => load.Id,
+            (link, load) => new { load.Id, load.LoadNumber }
+          )
+          .FirstOrDefaultAsync(ct);
+        if (blocking is not null)
+        {
+          var errors = new ValidationErrors(
+            $"Reopening this leg conflicts with load {blocking.LoadNumber}, "
+              + "whose assignment on the same truck, trailer or driver is "
+              + "still active. Correct that load first."
           );
+          errors.Add(
+            DispatchCorrectionErrors.BlockedBy(blocking.Id, blocking.LoadNumber)
+          );
+          return RequestResponse<DispatchWorkspaceResponse>.Fail(errors, 409);
+        }
       }
       foreach (var target in scope.Targets)
       {

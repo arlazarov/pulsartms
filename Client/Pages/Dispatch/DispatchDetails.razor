@@ -150,6 +150,30 @@
                 && _workspace.Load.Stops.FirstOrDefault(x => x.Id == selectedId)
                   is { } actualStop)
               {
+                @if (_correctionBlock is { } blocked)
+                {
+                    <div class="dispatch-details__blocked" role="alert">
+                        <p>@blocked.Message</p>
+                        <p>
+                            <a href="@($"/dispatch/{blocked.Block.DispatchId}")">Open load
+                                <LoadNumber Value="blocked.Block.LoadNumber" /></a>
+                            to correct it. This change is kept as an unsaved
+                            draft; save it here afterwards.
+                        </p>
+                    </div>
+                }
+                @if (_workspace.ActiveWithoutWorkStopId is not null)
+                {
+                    <div class="dispatch-details__blocked" role="status">
+                        <p>This load's assignment is still active although
+                            no stop is done, so it blocks other work of the
+                            same truck, trailer or driver.</p>
+                        <button type="button" class="btn btn--small"
+                                disabled="@(_saving || HasToolbarDraft)"
+                                @onclick="ReturnToPlannedAsync">Return to
+                            planned</button>
+                    </div>
+                }
                 <fieldset class="stop-workspace__actions" disabled="@(HasUnsaved || _saving || _brokerBusy || _transferDirty)">
                   <legend class="visually-hidden">Actions for the selected stop</legend>
                   @if (!Completed && _workspace.Stops.All(x => x.Id != selectedId || x.Transfer is null))

@@ -322,6 +322,63 @@ public partial class DispatchDetails : IDisposable
       await SaveAsync();
   }
 
+  // The last stop save a different load blocked: shown beside the stop
+  // editor until the draft is saved or discarded.
+  private (
+    Guid StopId,
+    DispatchCorrectionBlock Block,
+    string Message
+  )? _correctionBlock;
+
+  // Returns this load's leg to planned when no stop of it is done: a
+  // pending correction of an already pending stop, recorded in history
+  // like any correction (the server re-applies the leg's progress).
+  private async Task ReturnToPlannedAsync()
+  {
+    if (
+      _workspace?.ActiveWithoutWorkStopId is not { } stopId
+      || _saving
+      || HasToolbarDraft
+    )
+      return;
+    var owner = _identityRequest;
+    var id = Id;
+    _saving = true;
+    _error = null;
+    try
+    {
+      var result = await Api.PutAsync<
+        StopCorrectionRequest,
+        DispatchWorkspaceResponse
+      >(
+        $"api/dispatch/{id}/stops/{stopId}/correction",
+        new()
+        {
+          IdempotencyKey = Guid.NewGuid(),
+          ExpectedRevision = _workspace.Revision,
+          SourceFingerprint = _workspace.SourceFingerprint,
+          Completion = "pending",
+        },
+        owner.Token
+      );
+      if (!Owns(owner, id))
+        return;
+      if (!result.Success || result.Response?.Load.Id != id)
+      {
+        _error = result.ErrorMessage ?? "The assignment was not changed.";
+        return;
+      }
+      InvalidatePlanning(_workspace.Load);
+      Accept(result.Response);
+      InvalidatePlanning(_workspace.Load);
+    }
+    finally
+    {
+      if (Owns(owner, id))
+        _saving = false;
+    }
+  }
+
   private async Task SaveStopDraftsAsync()
   {
     if (_workspace is null)
@@ -350,11 +407,18 @@ public partial class DispatchDetails : IDisposable
         if (!result.Success || result.Response?.Load.Id != id)
         {
           var sequence = _workspace.Stops.Find(x => x.Id == stopId)?.Sequence;
+          var (message, block) = DispatchCorrectionBlock.Read(result.Errors);
+          _correctionBlock = block is null ? null : (stopId, block, message);
           _error =
             $"Stop {sequence}: "
-            + (result.ErrorMessage ?? "Save not confirmed. Retry saving.")
+            + (
+              message.Length > 0 ? message : "Save not confirmed. Retry saving."
+            )
             + " Remaining stop changes are still in your draft.";
-          _conflict = result.HttpStatusCode == HttpStatusCode.Conflict;
+          // A load that blocks it is not a stale page: the draft stays
+          // and can be saved once that load is corrected.
+          _conflict =
+            block is null && result.HttpStatusCode == HttpStatusCode.Conflict;
           if (result.HttpStatusCode == HttpStatusCode.BadRequest || _conflict)
             _stopDrafts.PendingStopId = null;
           _selectedStop = stopId;
@@ -362,6 +426,8 @@ public partial class DispatchDetails : IDisposable
         }
         InvalidatePlanning(_workspace.Load);
         _stopDrafts.Entries.Remove(stopId);
+        if (_correctionBlock?.StopId == stopId)
+          _correctionBlock = null;
         _stopDrafts.PendingStopId = null;
         Accept(result.Response);
         InvalidatePlanning(_workspace.Load);
@@ -378,6 +444,7 @@ public partial class DispatchDetails : IDisposable
   {
     if (ToolbarSaving)
       return;
+    _correctionBlock = null;
     if (_stopDrafts.HasChanges)
     {
       var reload = _stopDrafts.PendingStopId.HasValue;
