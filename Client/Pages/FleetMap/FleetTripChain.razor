@@ -35,7 +35,7 @@
                 var label = DispatchWorkPhase.Label(load);
                 var conflict = DispatchWorkPhase.ConflictText(load.WorkConflict);
                 var selected = IsSelected(load);
-                <li class="fleet-trip-chain__link @PhaseClass(load) @(selected ? "is-selected" : "")"
+                <li class="fleet-trip-chain__link @PhaseClass(load) @RouteClass(load, index) @(selected ? "is-selected" : "")"
                     @key="(load.Id, load.ExecutionLegId)">
                     <span class="fleet-trip-chain__number" aria-hidden="true">@(index + 1)</span>
                     <div class="fleet-trip-chain__card">

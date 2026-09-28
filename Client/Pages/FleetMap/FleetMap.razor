@@ -472,6 +472,7 @@
                                     <Client.Shared.Trucks.TruckWeather.TruckWeather
                                         TruckId="truck.TruckId"
                                         Visibility="_visibility"
+                                        Shown="OnWeatherShown"
                                         OwnerCancellation="_lifetime.Token"
                                         Current="@(SelectedDate == DateOnly.FromDateTime(
                                             DateTime.Today))" />
@@ -534,6 +535,20 @@
                     <ActionIcon Kind="fuel" />
                     <div><dt>Fuel</dt><dd>@(panelTruck.FuelPercent is { } fuel
                         ? $"{fuel:0}%" : "—")</dd></div>
+                </div>
+                <div class="fleet-truck-facts__fact">
+                    <ActionIcon Kind="engine" />
+                    <div><dt>Engine</dt><dd>@(string.IsNullOrWhiteSpace(
+                        panelTruck.EngineState) ? "—"
+                        : panelTruck.EngineState)</dd></div>
+                </div>
+                @* The outside temperature the truck's readings already show,
+                   repeated here, not read again. *@
+                <div class="fleet-truck-facts__fact"
+                     title="@_weatherShown?.Title">
+                    <ActionIcon Kind="@(_weatherShown?.Icon ?? "temperature")" />
+                    <div><dt>Temperature</dt>
+                        <dd>@(_weatherShown?.Value ?? "—")</dd></div>
                 </div>
                 <div class="fleet-truck-facts__fact fleet-truck-facts__fact--location">
                     <ActionIcon Kind="location" />
@@ -790,6 +805,7 @@
     <FleetTripChain Truck="SelectedTruck" Loads="_chainLoads"
                     Loading="_chainLoading" Failed="_chainFailed"
                     CurrentId="SelectedDispatchId"
+                    RouteIndex="NextRouteIndex"
                     SelectedTrip="SelectedTrip"
                     Selected="ChooseChainLoadAsync"
                     StopSelected="ChooseChainStopAsync"

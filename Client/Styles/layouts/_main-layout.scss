@@ -45,6 +45,11 @@
       ),
       ui.theme(canvas);
     background-attachment: fixed;
+    // In daylight the dark-teal glows read as a grey haze: a plain bright
+    // canvas instead (the owner, September 27).
+    :root[data-theme='light'] & {
+      background: ui.theme(canvas);
+    }
 
     &__content {
       grid-area: main;

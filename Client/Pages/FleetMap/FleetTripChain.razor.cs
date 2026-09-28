@@ -32,6 +32,11 @@ public partial class FleetTripChain : IAsyncDisposable
   [Parameter]
   public Guid? CurrentId { get; set; }
 
+  // Where a later trip stands among the next loads the map draws, whose
+  // place picks its road's colour; unknown when the map has not drawn it.
+  [Parameter]
+  public Func<DispatchResponse, int?>? RouteIndex { get; set; }
+
   // The trip the panel under the truck shows.
   [Parameter]
   public DispatchResponse? SelectedTrip { get; set; }
@@ -70,6 +75,21 @@ public partial class FleetTripChain : IAsyncDisposable
         "upcoming" => "is-upcoming",
         _ => "is-unplaced",
       };
+
+  // A later trip wears its own road's colour (the owner, September 27):
+  // its place among the map's next loads, else among the chain's later
+  // trips, picks one of the map's series of five.
+  private string RouteClass(DispatchResponse load, int position)
+  {
+    if (PhaseClass(load) is not ("is-next" or "is-upcoming"))
+      return "";
+    var place =
+      RouteIndex?.Invoke(load)
+      ?? Loads
+        .Take(position)
+        .Count(x => PhaseClass(x) is "is-next" or "is-upcoming");
+    return $"has-route-{place % 5}";
+  }
 
   // The list is rebuilt when the truck changes; the wheel follows it. A
   // bind that finishes after the component is gone is released at once.

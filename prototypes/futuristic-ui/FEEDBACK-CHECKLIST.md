@@ -18,6 +18,7 @@ visual inspection only, never acceptance.
 | Truck panel as tall as its content; the map shows beneath it | Built, Seen |
 | Light theme roads: a finer crisp line of the trip's colour in a faint haze, no white casing; only the chosen road glows, softly; the flow grains carry no glow. Light basemap in Google's full colours, no filter (grey, dimmed and desaturated versions were rejected) | Built |
 | Light chain: trips strung on a fine line through filled step tokens; white tiles with a straight colour line along the top (clear of the corners), soft-tint phase chips; chosen trip rimmed in its colour, softly lit and lifted | Built |
+| Each later trip in the chain wears its own road's colour (its place among the map's next loads picks the series colour; lighter shade on dark) | Built |
 | Light emblems (truck, stop P / D, pump): a lit accent disc with a white glyph; a passed stop stays dashed | Built |
 | Fleet list as tall as its trucks; weather credit a quiet line, not a plate | Built |
 | Theme switch applies without a page reload: the map is made again in place (Google fixes its scheme at creation), keeping camera, chosen truck, Follow, list, chain and panel | Built, Seen dark→light |
@@ -71,7 +72,7 @@ visual inspection only, never acceptance.
 | --- | --- |
 | Reserved column; empty state with calm radar when nothing is chosen | Built, Seen |
 | Truck head: eyebrow, large unit; no Route / Fuel tabs | Built, Seen |
-| Facts 2x3, clocks in cells with bars; no action row; no trip block | Built, Seen |
+| Facts 2x4: Driver, Trailer, Motion, Duty, Fuel, Engine, Temperature (the readings' own weather, not read again), Location; clocks in cells with bars; no action row; no trip block | Built |
 | Location: locality only, full address in title; clicking the text copies it (no copy button); honest status | Built |
 | Stop card (current and next): HUD glass, corner brackets, dimensional emblem, compact facts | Built, Seen dark current / light next |
 | Load number opens the load; no large Open load button | Built, Seen |

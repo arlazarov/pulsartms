@@ -264,17 +264,11 @@
     2px 12px;
   background-repeat: no-repeat;
 
-  // In daylight only the line of light: the corner brackets clashed with
-  // the rounded rims (the owner, September 27).
+  // In daylight neither: the brackets clashed with the rounded rims and
+  // the fading line doubled the rim (the owner, September 27). A plain
+  // fine rim is the frame there.
   :root[data-theme='light'] & {
-    background-image: linear-gradient(
-      90deg,
-      transparent,
-      fn.theme(accent, 0.55),
-      transparent
-    );
-    background-position: top;
-    background-size: 100% 1px;
+    background-image: none;
   }
 }
 
