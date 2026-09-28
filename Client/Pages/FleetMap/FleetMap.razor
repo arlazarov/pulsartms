@@ -1,3 +1,4 @@
+@using Client.Models
 @page "/fleet/map"
 @using Client.Services
 
@@ -240,7 +241,7 @@
                        page's unit (the owner, September 28). *@
                     <span>@(_routeState?.Plan is null || LeftMiles is null
                         ? "Next stop —"
-                        : Client.Models.DisplayUnits.Default.FormatDistance(LeftMiles)
+                        : DisplayUnits.Default.FormatDistance(LeftMiles)
                           + " to next stop")</span>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
                 </button>
