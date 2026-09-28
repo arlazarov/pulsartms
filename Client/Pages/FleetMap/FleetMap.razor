@@ -3,7 +3,7 @@
 
 <PageTitle>Fleet Map · PulsR</PageTitle>
 
-<div class="fleet-map-page">
+<div class="fleet-map-page @(TruckCollapsed ? "is-truck-collapsed" : "")">
     <div class="fleet-map-page__background">
     <div class="fleet-map-title">
         <h1>Fleet Map</h1>
@@ -226,6 +226,22 @@
         <header class="fleet-map-inspector__header">
         @if (_inspectorMode == MapInspectorMode.Truck)
         {
+            @* On a phone the chosen truck opens as its number and the
+               distance to its next stop; the whole line opens and closes
+               the details and the trips (the owner, September 28). *@
+            @if (SelectedTruck is { } compact)
+            {
+                <button type="button" class="fleet-map-inspector__compact"
+                        aria-expanded="@(_mobileExpanded ? "true" : "false")"
+                        aria-controls="fleet-map-details"
+                        @onclick="ToggleMobileDetails">
+                    <strong>Truck @compact.UnitNumber</strong>
+                    <span>@(_routeState?.Plan is null || LeftMiles is null
+                        ? "Next stop —"
+                        : $"{Units.DistanceValue(LeftMiles)} {Units.DistanceUnit} to next stop")</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+                </button>
+            }
             @* The unit names the card, under its emblem. *@
             <div class="fleet-map-inspector__identity">
                 <span class="fleet-map-inspector__eyebrow" aria-hidden="true">Truck</span>

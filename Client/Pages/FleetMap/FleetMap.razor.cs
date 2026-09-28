@@ -95,6 +95,16 @@ public partial class FleetMap : IAsyncDisposable
         ?? _routeState?.Progress?.ProgressMiles
     );
 
+  // A phone opens a chosen truck collapsed; the header expands its details
+  // and the trips together, and never moves the camera.
+  private bool _mobileExpanded;
+  private bool TruckCollapsed =>
+    SelectedTruck is not null
+    && _inspectorMode == MapInspectorMode.Truck
+    && !_mobileExpanded;
+
+  private void ToggleMobileDetails() => _mobileExpanded = !_mobileExpanded;
+
   private double? LeftMiles =>
     DistanceLeft.Miles(NextStopMiles, RemainingMiles);
 
@@ -611,6 +621,8 @@ public partial class FleetMap : IAsyncDisposable
     if (_routeEditorDispatch.HasValue && truckId != _activeTruckId)
       await CloseRouteEditorAsync();
     ResetInspectedLoad();
+    if (truckId != _activeTruckId)
+      _mobileExpanded = false;
     _selectionDismissed = false;
     _showTruckInfo = true;
     _fuelReturn = null;

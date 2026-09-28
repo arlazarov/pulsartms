@@ -78,3 +78,66 @@
     height: 50%;
   }
 }
+
+// A phone's chosen truck, collapsed to one line (the owner, September 28):
+// its number and the distance to its next stop. The line opens the
+// details and the trips together; X still deselects. Hidden parts are
+// parked, not display: none, so their arrival does not replay.
+.fleet-map-inspector__compact {
+  display: none;
+}
+@include ui.below(map-mobile) {
+  .fleet-map-inspector__compact {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: ui.pg(sm);
+    min-width: 0;
+    min-height: ui.size(control-touch);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: ui.theme(text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    > span {
+      overflow: hidden;
+      color: ui.theme(text-secondary);
+      font-size: ui.fs(small);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    > svg {
+      flex: none;
+      width: 1.25rem;
+      height: 1.25rem;
+      margin-inline-start: auto;
+      transition: transform ui.motion(hud-still) ui.motion(hud-ease);
+    }
+    &[aria-expanded='true'] > svg {
+      transform: rotate(180deg);
+    }
+  }
+  .fleet-map-inspector:has(.fleet-map-inspector__compact)
+    .fleet-map-inspector__identity {
+    display: none;
+  }
+  .fleet-map-page.is-truck-collapsed {
+    .fleet-map-info-reserved {
+      height: auto;
+    }
+    .fleet-truck-panel,
+    .fleet-trip-chain {
+      position: absolute;
+      height: 0;
+      overflow: hidden;
+      visibility: hidden;
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fleet-map-inspector__compact > svg {
+    transition: none;
+  }
+}
