@@ -191,6 +191,8 @@ const loads = (pending, timing) =>
       loadNumber: 1441,
       orderNumber: 'CURRENT-1441',
       status: 'in_transit',
+      // The server's work phase decides which load is current.
+      workPhase: 'current',
       stops: stops.slice(0, 1),
       eta: forecast(estimates.slice(0, 1), pending, timing),
       loadedMiles: 500,
@@ -203,6 +205,7 @@ const loads = (pending, timing) =>
       loadNumber: 1442,
       orderNumber: 'FUTURE-1442',
       status: 'planned',
+      workPhase: 'next',
       stops: stops.slice(1),
       eta: forecast(estimates.slice(1), pending, timing),
       loadedMiles: 300,
@@ -399,6 +402,12 @@ export async function createFleetMap(element, _key, callbacks) {
       fixture.focusCalls = (fixture.focusCalls ?? 0) + 1;
       return true;
     },
+    finishInitialView(){},setFuelEditorTruck(){},setRouteEditor(){},
+    openStation(){},closeStationPopup(){},focusFuelStation(){},
+    clearFuelStationFocus(){},selectNextStop(){},fitNextLoad(){},
+    setStations(){},setStopCompletions(){},
+    focusRouteStop(id){fixture.routeStopFocus = id;},
+    openRouteStop(){},centerStop(){},
     dispose(){viewport.dispose();delete window.hoursFixture;}};
 }`;
 const mapStub = (
@@ -870,9 +879,757 @@ async function checkCycleAlignment(card, name) {
     );
   }
 }
-async function checkHeaderLoadingSpace(page, name) {
-  const sizes = await page.evaluate(() => {
-    const source = document.querySelector('.fleet-map-inspector');
+// The known lateness or cycle word of a compact forecast stands beside the
+// hour where the value column has room for it, and folds directly under the
+// hour, at the value column's edge, only where it has not; either way it
+// never overlaps the hour.
+async function checkBadgeBesideHour(scope, name) {
+  const badges = await scope.locator('.stop-hours__road').evaluateAll(rows =>
+    rows.flatMap(row => {
+      const value = row.querySelector('.stop-hours__value');
+      const time = row.querySelector('time').getBoundingClientRect();
+      const box = value.getBoundingClientRect();
+      const gap = parseFloat(getComputedStyle(value).columnGap) || 0;
+      return [...row.querySelectorAll('.stop-hours__status')].map(node => {
+        const badge = node.getBoundingClientRect();
+        return {
+          text: node.textContent.trim(),
+          fits: time.width + gap + badge.width <= box.width + 1,
+          beside:
+            Math.abs(badge.top - time.top) <= 3 && badge.left >= time.right - 1,
+          under:
+            badge.top >= time.bottom - 1 &&
+            Math.abs(badge.left - box.left) <= 1,
+          inside: badge.left >= box.left - 1 && badge.right <= box.right + 1,
+        };
+      });
+    }),
+  );
+  for (const badge of badges)
+    check(
+      badge.inside && (badge.fits ? badge.beside : badge.under || badge.beside),
+      `${name}: "${badge.text}" stands beside the hour when it fits and ` +
+        `under it otherwise (${JSON.stringify(badge)})`,
+    );
+  return badges;
+}
+
+// The truck panel (the owner, September 27): the unit and its controls in
+// the head, the next stop with the route's one forecast, eight facts and
+// the driver's clocks. The old card's rows, route groups and actions are
+// gone; the actions are the map tool bar's.
+const panelSelector = '.fleet-map-inspector[data-inspector-mode="truck"]';
+const factNames = [
+  'Driver',
+  'Trailer',
+  'Motion',
+  'Duty',
+  'Fuel',
+  'Engine',
+  'Temperature',
+  'Location',
+];
+
+// A phone's panel (narrower than map-compact-columns, 40rem) opens closed
+// on the next stop; Details opens the facts and the clocks. A wider panel
+// shows them whole.
+async function isPhonePanel(page) {
+  return page
+    .locator('.fleet-map-info-reserved')
+    .evaluate(
+      element =>
+        innerWidth < 1100 &&
+        element.clientWidth <
+          40 * parseFloat(getComputedStyle(document.documentElement).fontSize),
+    );
+}
+
+async function expandTruckCard(page, name) {
+  const toggle = page.locator(
+    `${panelSelector} .fleet-map-mobile-summary__toggle`,
+  );
+  if (
+    (await toggle.isVisible()) &&
+    (await toggle.getAttribute('aria-expanded')) === 'false'
+  )
+    await toggle.click();
+  check(
+    (await page.locator('.fleet-truck-facts').isVisible()) &&
+      (await page.locator('.fleet-truck-clocks').isVisible()),
+    `${name}: the open panel shows the facts and the clocks`,
+  );
+}
+
+async function measureTruckControls(page, name) {
+  const panel = page.locator(panelSelector);
+  const toggle = panel.locator('.fleet-map-mobile-summary__toggle');
+  if (await toggle.isVisible()) {
+    // The disclosure says what it does; both words share one cell, so it
+    // keeps one width open and closed.
+    check(
+      (await panel
+        .getByRole('button', { name: /^(Details|Hide details)$/ })
+        .count()) === 1,
+      `${name}: the panel has one disclosure, named Details or Hide details`,
+    );
+    if ((await toggle.getAttribute('aria-expanded')) === 'true')
+      await toggle.click();
+    const closed = await toggle.boundingBox();
+    await toggle.click();
+    const opened = await toggle.boundingBox();
+    check(
+      ['x', 'y', 'width', 'height'].every(
+        key => Math.abs(closed[key] - opened[key]) <= 1,
+      ),
+      `${name}: opening the panel does not move its own control`,
+    );
+  }
+  for (const selector of [
+    '.fleet-map-inspector__title',
+    '.fleet-truck-facts',
+    '.fleet-truck-clocks',
+  ])
+    check(
+      await panel.locator(selector).isVisible(),
+      `${name}: ${selector} is shown once the panel is open`,
+    );
+  const result = await page
+    .getByRole('button', { name: 'Close map information', exact: true })
+    .evaluate(element => {
+      const style = getComputedStyle(element),
+        bounds = element.getBoundingClientRect();
+      const root = parseFloat(
+        getComputedStyle(document.documentElement).fontSize,
+      );
+      const header = element.closest('.fleet-map-inspector__header');
+      const title = header.querySelector('.fleet-map-inspector__title');
+      const own = title.getBoundingClientRect();
+      // The unit is read whole: whatever is on top at points across its
+      // text - a control of the head, the map's tool bar - is the unit.
+      const text = document.createRange();
+      text.selectNodeContents(title);
+      const words = text.getBoundingClientRect();
+      const covering = [0.1, 0.5, 0.9]
+        .map(share => {
+          const x = words.left + words.width * share,
+            y = words.top + words.height / 2;
+          const top = document.elementFromPoint(x, y);
+          return top && !title.contains(top)
+            ? { x, y, by: top.className?.baseVal ?? top.className }
+            : null;
+        })
+        .filter(Boolean);
+      return {
+        width: bounds.width,
+        height: bounds.height,
+        minimumHeight: ((innerWidth < 800 ? 44 : 32) * root) / 16,
+        flexGrow: Number(style.flexGrow),
+        title: title.textContent.trim(),
+        titleVisible: own.width > 0,
+        titleClipped: title.scrollWidth > title.clientWidth + 1,
+        covering,
+      };
+    });
+  check(
+    result.titleVisible &&
+      result.flexGrow === 0 &&
+      Math.abs(result.width - result.height) <= 1,
+    `${name}: Close stays square beside the visible truck identity`,
+  );
+  check(
+    Math.abs(result.height - result.minimumHeight) <= 1,
+    `${name}: Close matches compact desktop and touch mobile action heights`,
+  );
+  check(
+    result.covering.length === 0 && !result.titleClipped,
+    `${name}: the unit ${result.title} is read whole, under nothing ` +
+      JSON.stringify({
+        covering: result.covering,
+        clipped: result.titleClipped,
+      }),
+  );
+  return result;
+}
+
+// Where each part of the panel stands, against the panel's own scrolled
+// content, and what the next stop has received so far.
+async function truckLoadingGeometry(page) {
+  return page.locator(panelSelector).evaluate(host => {
+    const rect = node => {
+      if (!node || node.getClientRects().length === 0) return null;
+      const { x, y, width, height } = node.getBoundingClientRect();
+      return { x, y: y + host.scrollTop, width, height };
+    };
+    const next = host.querySelector('.fleet-truck-next');
+    const nextStyle = next && getComputedStyle(next);
+    return {
+      header: rect(host.querySelector('.fleet-map-inspector__header')),
+      title: rect(host.querySelector('.fleet-map-inspector__title')),
+      next: rect(next),
+      // The most the next stop can move what is under it as it arrives:
+      // its box and both its margins.
+      nextFlow: next
+        ? next.getBoundingClientRect().height +
+          parseFloat(nextStyle.marginTop) +
+          parseFloat(nextStyle.marginBottom)
+        : 0,
+      nextHead: rect(host.querySelector('.fleet-truck-next__head')),
+      // Content of the next stop that may arrive with the data.
+      nextParts: next
+        ? {
+            roads: next.querySelectorAll('.stop-hours__road').length,
+            statuses: next.querySelectorAll('.stop-hours__status').length,
+            bookings: next.querySelectorAll('.fleet-truck-next__booking')
+              .length,
+            place: next.querySelector('.fleet-truck-next__place')?.children
+              .length,
+            text: next.textContent.replace(/\s+/g, ' ').trim(),
+          }
+        : null,
+      facts: rect(host.querySelector('.fleet-truck-facts')),
+      cells: [...host.querySelectorAll('.fleet-truck-facts__fact')].map(rect),
+      clocks: rect(host.querySelector('.fleet-truck-clocks')),
+    };
+  });
+}
+
+// Nothing on the panel moves while the selection's data loads, except by
+// content arriving for the first time: the next stop (its forecast, its
+// booking, its town), which pushes the facts and the clocks down by exactly
+// its own growth. The facts and the clocks keep their shape throughout.
+function checkLoadingStage(name, stage, at, ready) {
+  const same = (one, other, keys) =>
+    one && other && keys.every(key => Math.abs(one[key] - other[key]) <= 1);
+  check(
+    same(at.header, ready.header, ['x', 'y', 'width', 'height']),
+    `${name}: ${stage} the panel's head moves or resizes while data loads`,
+  );
+  let allowed;
+  if (!at.next && ready.next) {
+    // The whole next stop arrived: what is under it moves by at least its
+    // box and at most its box with both margins.
+    allowed = [ready.next.height - 1, ready.nextFlow + 1];
+  } else if (at.next && ready.next) {
+    const grew = ready.next.height - at.next.height;
+    const arrived =
+      ready.nextParts.roads > at.nextParts.roads ||
+      ready.nextParts.statuses > at.nextParts.statuses ||
+      ready.nextParts.bookings > at.nextParts.bookings ||
+      ready.nextParts.place > at.nextParts.place;
+    check(
+      Math.abs(grew) <= 1 || (grew > 0 && arrived),
+      `${name}: ${stage} the next stop grows ${grew.toFixed(1)}px with no ` +
+        'content arriving ' +
+        JSON.stringify({ at: at.nextParts, ready: ready.nextParts }),
+    );
+    check(
+      same(at.next, ready.next, ['x', 'y', 'width']) &&
+        same(at.nextHead, ready.nextHead, ['x', 'width', 'height']),
+      `${name}: ${stage} the next stop's line moves while its data loads`,
+    );
+    allowed = [grew - 1, grew + 1];
+  } else allowed = [-1, 1];
+  for (const part of ['facts', 'clocks']) {
+    const dy = ready[part] && at[part] ? ready[part].y - at[part].y : 0;
+    check(
+      same(at[part], ready[part], ['x', 'width', 'height']) &&
+        dy >= allowed[0] &&
+        dy <= allowed[1],
+      `${name}: ${stage} ${part} move ${dy.toFixed(1)}px or resize while ` +
+        `data loads (allowed ${allowed.map(v => v.toFixed(1)).join('..')})`,
+    );
+  }
+  check(
+    at.cells.length === ready.cells.length &&
+      at.cells.every(
+        (cell, index) =>
+          (cell === null) === (ready.cells[index] === null) &&
+          (!cell || Math.abs(cell.height - ready.cells[index].height) <= 1),
+      ),
+    `${name}: ${stage} a fact cell changes height as its value arrives`,
+  );
+}
+
+// A longer forecast (more rows in the next stop's ETA) may push the facts
+// and the clocks down as a whole, but never reshape them.
+async function checkIndependentPanelGroups(page, name) {
+  const result = await page.locator(panelSelector).evaluate(source => {
+    const host = source.cloneNode(true);
+    host.style.visibility = 'hidden';
+    host.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
+    source.parentElement.append(host);
+    try {
+      const rect = node => {
+        const { x, y, width, height } = node.getBoundingClientRect();
+        return { x, y, width, height };
+      };
+      const measure = () => ({
+        eta: host.querySelector('.fleet-truck-next__eta').offsetHeight,
+        facts: rect(host.querySelector('.fleet-truck-facts')),
+        clocks: rect(host.querySelector('.fleet-truck-clocks')),
+        cells: [...host.querySelectorAll('.fleet-truck-facts__fact')].map(
+          node => {
+            const box = rect(node),
+              grid = rect(host.querySelector('.fleet-truck-facts'));
+            return { ...box, x: box.x - grid.x, y: box.y - grid.y };
+          },
+        ),
+      });
+      const before = measure();
+      const road = host.querySelector('.fleet-truck-next .stop-hours__road');
+      for (let i = 0; i < 4; i++) road.after(road.cloneNode(true));
+      return { before, after: measure() };
+    } finally {
+      host.remove();
+    }
+  });
+  const grew = result.after.eta - result.before.eta;
+  check(
+    grew > 20,
+    `${name}: extra forecast rows must exercise a taller ETA (${grew}px)`,
+  );
+  for (const part of ['facts', 'clocks']) {
+    const [was, is] = [result.before[part], result.after[part]];
+    check(
+      ['x', 'width', 'height'].every(
+        key => Math.abs(was[key] - is[key]) <= 1,
+      ) && Math.abs(is.y - was.y - grew) <= 1,
+      `${name}: a longer forecast reshapes ${part} or moves it by other ` +
+        `than its growth (${JSON.stringify({ was, is, grew })})`,
+    );
+  }
+  check(
+    result.before.cells.every((cell, index) =>
+      ['x', 'y', 'width', 'height'].every(
+        key => Math.abs(cell[key] - result.after.cells[index][key]) <= 1,
+      ),
+    ),
+    `${name}: a longer forecast rearranges the facts`,
+  );
+  (report.independentPanelGroups ??= []).push({ name, ...result });
+}
+
+// The next stop's line: the stop and its town, the miles still to drive in
+// the saved unit on the label's line, the booked window and the one
+// forecast on one value column.
+async function checkNextStopLine(page, name, units) {
+  const next = page.locator(`${panelSelector} .fleet-truck-next`);
+  const texts = await next.evaluate(element => ({
+    label: element.querySelector('.fleet-truck-next__label').textContent,
+    place: [...element.querySelector('.fleet-truck-next__place').childNodes]
+      .filter(node => node.nodeType === Node.TEXT_NODE)
+      .map(node => node.textContent)
+      .join('')
+      .trim(),
+    town: element.querySelector('.fleet-truck-next__place > span')?.textContent,
+    miles: element.querySelector('.fleet-truck-next__left strong').textContent,
+    unit: element
+      .querySelector('.fleet-truck-next__left small')
+      .textContent.replace(/\s+/g, ' ')
+      .trim(),
+    booking: element
+      .querySelector('.fleet-truck-next__hours')
+      ?.textContent.replace(/\s+/g, ' ')
+      .trim(),
+    forecasts: element.querySelectorAll('.stop-hours').length,
+    roads: element.querySelectorAll('.stop-hours__road').length,
+    time: element.querySelector('.stop-hours__road time')?.dateTime,
+    cycle: element
+      .querySelector('.stop-hours__cycle-status')
+      ?.textContent.trim(),
+  }));
+  const expectedUnit =
+    units.distanceUnit === 'kilometers'
+      ? 'km left'
+      : units.distanceUnit === 'miles'
+        ? 'mi left'
+        : 'mi · 193 km left';
+  check(
+    texts.label === 'Next stop' &&
+      texts.place.trim() === `Delivery · ${stops[0].name}` &&
+      texts.town === 'Toronto, ON, Canada' &&
+      texts.miles === (units.distanceUnit === 'kilometers' ? '193' : '120') &&
+      texts.unit === expectedUnit,
+    `${name}: the next stop says the stop, its town and the miles left in ` +
+      `the saved unit (${JSON.stringify(texts)})`,
+  );
+  check(
+    texts.forecasts === 1 &&
+      texts.roads === 1 &&
+      texts.time === '2026-09-08T16:00:00.0000000-04:00' &&
+      texts.cycle === 'Cycle short by 3h 00m' &&
+      texts.booking === 'Sep 8 · 04:00 PM EDT',
+    `${name}: the next stop carries one forecast with its cycle word and ` +
+      `the booked window (${JSON.stringify(texts)})`,
+  );
+  await checkBadgeBesideHour(next, `${name}-next-stop`);
+  const layout = await next.evaluate(element => {
+    const rect = node => node.getBoundingClientRect().toJSON();
+    const label = rect(element.querySelector('.fleet-truck-next__label'));
+    const left = rect(element.querySelector('.fleet-truck-next__left'));
+    const head = element.querySelector('.fleet-truck-next__head');
+    const hours = element.querySelector('.fleet-truck-next__hours > span');
+    const time = element.querySelector('.stop-hours__road time');
+    const term = element.querySelector('.fleet-truck-next__term');
+    const eta = element.querySelector('.stop-hours__road .stop-hours__label');
+    return {
+      label,
+      left,
+      headOverflow: head.scrollWidth > head.clientWidth + 1,
+      hoursLeft: hours.getBoundingClientRect().left,
+      timeLeft: time.getBoundingClientRect().left,
+      termLeft: term.getBoundingClientRect().left,
+      etaLeft: eta.getBoundingClientRect().left,
+      termTop: term.getBoundingClientRect().top,
+      etaTop: eta.getBoundingClientRect().top,
+      overflow: element.scrollWidth > element.clientWidth + 1,
+    };
+  });
+  check(
+    !layout.headOverflow &&
+      layout.left.left >= layout.label.right - 1 &&
+      layout.left.top < layout.label.bottom &&
+      layout.left.bottom > layout.label.top,
+    `${name}: the miles left share the Next stop line without overflow`,
+  );
+  // Appointment and ETA share one label column, so both hours start at
+  // the same edge, the booking above the forecast.
+  check(
+    Math.abs(layout.termLeft - layout.etaLeft) <= 1 &&
+      Math.abs(layout.hoursLeft - layout.timeLeft) <= 1 &&
+      layout.termTop < layout.etaTop &&
+      !layout.overflow,
+    `${name}: the appointment shares the ETA's value column ` +
+      `(${JSON.stringify(layout)})`,
+  );
+  // A long window, facility and town fold inside the line.
+  const long = await page.locator(panelSelector).evaluate(source => {
+    const host = source.cloneNode(true);
+    host.style.visibility = 'hidden';
+    host.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
+    source.parentElement.append(host);
+    try {
+      const next = host.querySelector('.fleet-truck-next');
+      next.querySelector('.fleet-truck-next__hours > span').textContent =
+        'Sep 8 · 04:00 PM – Sep 9 · 06:00 AM EDT';
+      next
+        .querySelector('.fleet-truck-next__place')
+        .prepend('Delivery · COSTCO SOUTHEAST REGIONAL DEPOT 174 RECEIVING ');
+      next.querySelector('.fleet-truck-next__place > span').textContent =
+        'Port St. Lucie, FL 34987, United States of America';
+      return {
+        overflow: next.scrollWidth > next.clientWidth + 1,
+        panelOverflow: host.scrollWidth > host.clientWidth + 1,
+      };
+    } finally {
+      host.remove();
+    }
+  });
+  check(
+    !long.overflow && !long.panelOverflow,
+    `${name}: a long window, facility or town overflows the next stop`,
+  );
+  (report.nextStopLine ??= []).push({ name, texts, layout, long });
+}
+
+// The eight facts in two columns, each led by one icon, with the values
+// the fixtures give and the saved temperature unit.
+async function checkPanelFacts(page, name, units) {
+  const facts = page.locator(`${panelSelector} .fleet-truck-facts`);
+  const expectedTemperature =
+    units.temperatureUnit === 'fahrenheit' ? '72.5 °F' : '22.5 °C';
+  const result = await facts.evaluate(element => {
+    const rect = node => node.getBoundingClientRect().toJSON();
+    const grid = rect(element);
+    return {
+      columns: getComputedStyle(element).gridTemplateColumns.split(' ').length,
+      overflow: element.scrollWidth > element.clientWidth + 1,
+      grid,
+      cells: [...element.querySelectorAll('.fleet-truck-facts__fact')].map(
+        cell => ({
+          name: cell.querySelector('dt').textContent.trim(),
+          value: cell
+            .querySelector('dd')
+            .textContent.replace(/\s+/g, ' ')
+            .trim(),
+          label: cell.getAttribute('aria-label'),
+          icons: [...cell.querySelectorAll(':scope > svg')].map(rect),
+          box: rect(cell),
+        }),
+      ),
+    };
+  });
+  const values = Object.fromEntries(
+    result.cells.map(cell => [cell.name, cell.value]),
+  );
+  check(
+    JSON.stringify(result.cells.map(cell => cell.name)) ===
+      JSON.stringify(factNames),
+    `${name}: the panel says its eight facts in order ` +
+      `(${result.cells.map(cell => cell.name).join(', ')})`,
+  );
+  check(
+    values.Driver === truck.driverName &&
+      values.Trailer === truck.trailerNumber &&
+      values.Motion === 'Moving · 45 mph' &&
+      values.Duty === 'Sleeper Berth' &&
+      values.Fuel === '75%' &&
+      values.Engine === 'Driving' &&
+      values.Temperature === expectedTemperature &&
+      values.Location === 'Chicago, IL 60601, US',
+    `${name}: the facts say the fixture's truck (${JSON.stringify(values)})`,
+  );
+  check(
+    result.cells.find(cell => cell.name === 'Temperature')?.label ===
+      'Outside temperature',
+    `${name}: the temperature is named as the outside temperature`,
+  );
+  check(
+    result.columns === 2 &&
+      result.cells.every((cell, index) =>
+        index % 2
+          ? cell.box.left >= result.cells[index - 1].box.right - 1 &&
+            Math.abs(cell.box.top - result.cells[index - 1].box.top) <= 1
+          : Math.abs(cell.box.left - result.grid.left - 1) <= 1,
+      ),
+    `${name}: the facts stand in two columns, in reading order`,
+  );
+  check(
+    result.cells.every(
+      cell =>
+        cell.icons.length === 1 &&
+        cell.icons[0].width > 0 &&
+        Math.abs(cell.icons[0].width - cell.icons[0].height) <= 1,
+    ),
+    `${name}: every fact leads with one square icon`,
+  );
+  check(
+    !result.overflow &&
+      result.cells.every(
+        cell =>
+          cell.box.left >= result.grid.left - 1 &&
+          cell.box.right <= result.grid.right + 1,
+      ),
+    `${name}: the facts stay inside their grid`,
+  );
+  // Where the truck is reads as its town; the words copy the whole
+  // address, and a long one folds in its cell without widening the grid.
+  const copy = page.locator(`${panelSelector} .fleet-truck-facts__copy`);
+  check(
+    (await copy.getAttribute('title')) ===
+      `Copy location: ${truck.formattedLocation}`,
+    `${name}: the location keeps the full address in its tooltip`,
+  );
+  const longLocation = await copy.evaluate(element => {
+    const original = element.textContent;
+    const grid = element.closest('.fleet-truck-facts');
+    const width = grid.clientWidth;
+    element.textContent =
+      '13077 SW Anthony F. Sansone Sr. Boulevard receiving entrance, ' +
+      'Port St. Lucie, FL 34987, United States of America';
+    const result = {
+      overflow: grid.scrollWidth > grid.clientWidth + 1,
+      widened: Math.abs(grid.clientWidth - width),
+      lines: Math.round(
+        element.getBoundingClientRect().height /
+          parseFloat(getComputedStyle(element).lineHeight),
+      ),
+    };
+    element.textContent = original;
+    return result;
+  });
+  check(
+    !longLocation.overflow && longLocation.widened <= 1,
+    `${name}: a long location folds in its cell ` +
+      `(${JSON.stringify(longLocation)})`,
+  );
+  await copy.click();
+  check(
+    (await page.evaluate(() => window.hoursFixtureCopiedText)) ===
+      truck.formattedLocation,
+    `${name}: the location copies the whole address`,
+  );
+  (report.panelFacts ??= []).push({ name, ...result, longLocation });
+  return values;
+}
+
+// The driver's clocks: four fresh text readings with bars in cells, no
+// dials, no duty line and no recap anywhere on the panel.
+async function checkPanelClocks(page, name) {
+  const result = await page.locator(panelSelector).evaluate(host => {
+    const panel = host
+      .querySelector('.fleet-truck-clocks')
+      .getBoundingClientRect();
+    return {
+      fresh: host.querySelectorAll(
+        '.fleet-truck-clocks .driver-hours__clock:not(.is-unavailable)',
+      ).length,
+      text: host.querySelectorAll('.fleet-truck-clocks .driver-hours--text')
+        .length,
+      dials: host.querySelectorAll('.driver-hours__dial').length,
+      duty: host.querySelectorAll('.driver-duty').length,
+      recap: host.querySelectorAll('.driver-next-recap').length,
+      clocks: [...host.querySelectorAll('.driver-hours__clock')].map(clock => {
+        const rect = clock.getBoundingClientRect();
+        return {
+          label: clock.querySelector('.driver-hours__label').textContent,
+          reading: clock.querySelector('.driver-hours__reading').textContent,
+          contained:
+            rect.left >= panel.left - 1 && rect.right <= panel.right + 1,
+          clipped: clock.scrollWidth > clock.clientWidth + 1,
+        };
+      }),
+    };
+  });
+  check(
+    result.fresh === 4 &&
+      result.text === 1 &&
+      result.dials === 0 &&
+      result.duty === 0 &&
+      result.recap === 0,
+    `${name}: the panel reads four fresh clocks as text, with no dials, ` +
+      `duty line or recap (${JSON.stringify(result)})`,
+  );
+  check(
+    JSON.stringify(result.clocks.map(clock => clock.label)) ===
+      JSON.stringify(['Break', 'Drive', 'Shift', 'Cycle']) &&
+      result.clocks.every(clock => clock.contained && !clock.clipped),
+    `${name}: Break, Drive, Shift and Cycle stay whole inside the clocks`,
+  );
+  return result;
+}
+
+async function checkPanelTypography(page, name) {
+  const result = await page.locator(panelSelector).evaluate(host => {
+    const style = node => getComputedStyle(node);
+    const nodes = [
+      ...host.querySelectorAll(
+        '.fleet-map-inspector__title, .fleet-truck-next__label, ' +
+          '.fleet-truck-next__place, .fleet-truck-facts dt, ' +
+          '.fleet-truck-facts dd, .stop-hours__label, .stop-hours__clock, ' +
+          '.driver-hours__label, .driver-hours__reading',
+      ),
+    ];
+    const value = host.querySelector('.fleet-truck-facts dd');
+    const label = host.querySelector('.fleet-truck-facts dt');
+    const title = host.querySelector('.fleet-map-inspector__title');
+    return {
+      families: [...new Set(nodes.map(node => style(node).fontFamily))],
+      valueWeight: Number(style(value).fontWeight),
+      valueSize: parseFloat(style(value).fontSize),
+      labelSize: parseFloat(style(label).fontSize),
+      titleSize: parseFloat(style(title).fontSize),
+    };
+  });
+  check(
+    result.families.length === 1,
+    `${name}: the panel uses one font family (${result.families})`,
+  );
+  // A fact's value is emphasised over its quieter label, and the unit
+  // names the panel above both.
+  check(
+    result.valueWeight >= 600 &&
+      result.valueSize >= result.labelSize &&
+      result.titleSize > result.valueSize,
+    `${name}: the unit, a fact's value and its label keep their hierarchy ` +
+      `(${JSON.stringify(result)})`,
+  );
+  (report.panelTypography ??= []).push({ name, ...result });
+}
+
+// Where the panel stands: docked, in its own column of the stage and as
+// tall as its content; narrower, floating over the map, bounded and
+// scrolling inside. Never over the page's heading.
+async function panelGeometry(page) {
+  return page.locator('.fleet-map-info-reserved').evaluate(element => {
+    const rect = node => node.getBoundingClientRect().toJSON();
+    const style = getComputedStyle(element);
+    const visible = [...element.querySelectorAll('*')].filter(
+      node => node.getClientRects().length > 0,
+    );
+    const own = rect(element);
+    return {
+      own,
+      map: rect(document.querySelector('#fleet-map')),
+      stage: rect(document.querySelector('.fleet-map-stage')),
+      heading: rect(document.querySelector('.fleet-map-page h1')),
+      position: style.position,
+      overflowY: style.overflowY,
+      maxHeight: style.maxHeight,
+      scrollHeight: element.scrollHeight,
+      clientHeight: element.clientHeight,
+      contentGap:
+        own.bottom -
+        parseFloat(style.paddingBottom) -
+        parseFloat(style.borderBottomWidth) -
+        Math.max(...visible.map(node => node.getBoundingClientRect().bottom)) -
+        element.scrollTop,
+      horizontalOverflow: element.scrollWidth > element.clientWidth + 1,
+      // The glass's own light may sweep for ever (the HUD's motion); what
+      // must not happen is an entrance replayed on retained content.
+      animations: [
+        element,
+        ...element.querySelectorAll(
+          '.fleet-truck-next, .fleet-truck-facts, .fleet-truck-clocks',
+        ),
+      ].map(node => {
+        const style = getComputedStyle(node);
+        return {
+          name: style.animationName,
+          count: style.animationIterationCount,
+        };
+      }),
+    };
+  });
+}
+
+function checkPanelGeometry(geometry, name, docked, phoneOpen) {
+  const { own, map } = geometry;
+  check(
+    own.top >= geometry.heading.bottom &&
+      own.left >= map.left - 1 &&
+      own.right <= map.right + 1 &&
+      own.top >= map.top - 1 &&
+      own.bottom <= map.bottom + 1,
+    `${name}: the panel stays over the map, under the page heading ` +
+      `(${JSON.stringify({ own, map })})`,
+  );
+  check(
+    !geometry.horizontalOverflow &&
+      ['auto', 'scroll'].includes(geometry.overflowY),
+    `${name}: the panel scrolls up and down inside itself, never sideways`,
+  );
+  check(
+    geometry.animations.every(
+      (animation, index) =>
+        animation.name === 'none' ||
+        (index === 0 && animation.count === 'infinite'),
+    ),
+    `${name}: the retained panel replays no animation ` +
+      `(${JSON.stringify(geometry.animations)})`,
+  );
+  if (docked)
+    // As tall as what it says, the map showing beneath it.
+    check(
+      geometry.scrollHeight > geometry.clientHeight + 1 ||
+        geometry.contentGap <= 1,
+      `${name}: the docked panel is content-sized ` +
+        `(${geometry.contentGap.toFixed(1)}px below its content)`,
+    );
+  else
+    // On a phone the closed panel takes half the map at most; opened, most
+    // of it (inspector/_stage).
+    check(
+      own.height <= map.height * (phoneOpen ? 0.85 : 0.6) + 1,
+      `${name}: the floating panel leaves the map visible ` +
+        `(${own.height.toFixed(0)} of ${map.height.toFixed(0)})`,
+    );
+}
+
+// With every value blank, as while it loads, the panel keeps its width and
+// the map its place, and nothing on it scrolls sideways.
+async function checkLoadingSpace(page, name) {
+  const sizes = await page.locator(panelSelector).evaluate(source => {
     const map = document.querySelector('#fleet-map');
     const rect = node => {
       const r = node.getBoundingClientRect();
@@ -883,68 +1640,22 @@ async function checkHeaderLoadingSpace(page, name) {
     host.style.visibility = 'hidden';
     host.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
     source.parentElement.append(host);
-    const truckCopy = host.querySelector('.fleet-map-truck-info');
-    const routeCopy = host.querySelector(
-      '.fleet-map-route-info[aria-label="Current dispatch route"]',
-    );
     const measure = () => ({
-      truckHeight: truckCopy.getBoundingClientRect().height,
-      routeHeight: routeCopy.getBoundingClientRect().height,
       map: rect(map),
-      overlay: rect(host),
-      maxHeight:
-        (parseFloat(getComputedStyle(host).maxHeight) *
-          map.getBoundingClientRect().height) /
-        100,
-      widthCap:
-        parseFloat(
-          getComputedStyle(host).getPropertyValue(
-            '--size-map-compact-inspector',
-          ),
-        ) * parseFloat(getComputedStyle(document.documentElement).fontSize),
-      insetCap:
-        parseFloat(getComputedStyle(host).getPropertyValue('--space-md')) *
-        parseFloat(getComputedStyle(document.documentElement).fontSize),
-      position: getComputedStyle(host).position,
-      truckWidth: truckCopy.clientWidth,
-      truckScrollWidth: truckCopy.scrollWidth,
-      routeWidth: routeCopy.clientWidth,
-      routeScrollWidth: routeCopy.scrollWidth,
+      width: host.getBoundingClientRect().width,
+      overflow: host.scrollWidth > host.clientWidth + 1,
     });
     try {
       const ready = measure();
-      // The map asks DriverHours for clocks without a duty line, so there
-      // is no duty text to blank here.
-      truckCopy.querySelectorAll('.driver-hours__dial strong').forEach(node => {
-        node.textContent = '—';
-      });
-      truckCopy
-        .querySelectorAll('.driver-hours__reading')
+      host
+        .querySelectorAll(
+          '.fleet-truck-facts dd, .driver-hours__reading, ' +
+            '.fleet-truck-next__left strong, .fleet-truck-next__hours',
+        )
         .forEach(node => (node.textContent = '—'));
-      // The arrival and the booked hour are in the head on the approved
-      // card (September 26), not in a timing column of the route.
       host
-        .querySelectorAll('.fleet-map-inspector__arrival .arrival-estimate')
+        .querySelectorAll('.fleet-truck-next__eta .arrival-estimate')
         .forEach(node => node.replaceChildren());
-      routeCopy
-        .querySelectorAll('.fleet-map-route-info__metric strong')
-        .forEach(node => {
-          node.firstChild.textContent = '— ';
-        });
-      const next = routeCopy.querySelector('.fleet-map-route-info__next');
-      next
-        .querySelectorAll(':scope > :not(.fleet-map-route-info__label)')
-        .forEach(node => node.remove());
-      host
-        .querySelectorAll('.fleet-map-mobile-summary__remaining strong')
-        .forEach(node => {
-          node.textContent = '—';
-        });
-      host
-        .querySelectorAll('.fleet-map-inspector__appointment strong')
-        .forEach(node => {
-          node.textContent = '—';
-        });
       return { before, ready, loading: measure() };
     } finally {
       host.remove();
@@ -954,47 +1665,16 @@ async function checkHeaderLoadingSpace(page, name) {
     for (const key of ['x', 'y', 'width', 'height'])
       check(
         Math.abs(state.map[key] - sizes.before[key]) <= 1,
-        `${name}: ${key} of the actual map shifts while inspector values load`,
+        `${name}: ${key} of the map shifts while panel values load`,
       );
-    const sideClearance = Math.max(
-      0,
-      Math.min(
-        state.overlay.x - state.map.x,
-        state.map.x + state.map.width - state.overlay.x - state.overlay.width,
-      ),
-    );
     check(
-      state.position === 'absolute' &&
-        state.overlay.height <= state.maxHeight + 1 &&
-        Math.abs(
-          state.overlay.x +
-            state.overlay.width / 2 -
-            state.map.x -
-            state.map.width / 2,
-        ) <= 1 &&
-        Math.abs(
-          state.overlay.y -
-            state.map.y -
-            Math.min(state.insetCap, sideClearance),
-        ) <= 1 &&
-        Math.abs(
-          state.overlay.width - Math.min(state.map.width, state.widthCap),
-        ) <= 1,
-      `${name}: loading/ready inspector must remain centered and width-capped with coordinated top/side clearance`,
-    );
-    check(
-      state.truckScrollWidth <= state.truckWidth + 1 &&
-        state.routeScrollWidth <= state.routeWidth + 1,
-      `${name}: loading/ready inspector content overflows horizontally`,
+      !state.overflow && Math.abs(state.width - sizes.ready.width) <= 1,
+      `${name}: loading values widen the panel or scroll it sideways`,
     );
   }
-  if (sizes.ready.routeWidth >= 1101)
-    check(
-      sizes.ready.routeHeight <= 113,
-      `${name}: ordinary route summary reserves excess vertical space`,
-    );
-  (report.headerLoadingSpace ??= []).push({ name, ...sizes });
+  (report.loadingSpace ??= []).push({ name, ...sizes });
 }
+
 async function checkInspectorLargeText(page, name) {
   const original = await page.evaluate(() => {
     const style = document.documentElement.style;
@@ -1003,14 +1683,6 @@ async function checkInspectorLargeText(page, name) {
       value: style.getPropertyValue('font-size'),
       priority: style.getPropertyPriority('font-size'),
       root: parseFloat(getComputedStyle(document.documentElement).fontSize),
-      label: parseFloat(
-        getComputedStyle(document.querySelector('.fleet-map-route-info__label'))
-          .fontSize,
-      ),
-      padding: parseFloat(
-        getComputedStyle(document.querySelector('.fleet-map-truck-info'))
-          .paddingLeft,
-      ),
       map: { x: map.x, y: map.y, width: map.width, height: map.height },
     };
     style.setProperty('font-size', '200%', 'important');
@@ -1021,161 +1693,90 @@ async function checkInspectorLargeText(page, name) {
     await page.waitForFunction(
       expected =>
         parseFloat(getComputedStyle(document.documentElement).fontSize) ===
-          expected.root * 2 &&
-        parseFloat(
-          getComputedStyle(
-            document.querySelector('.fleet-map-route-info__label'),
-          ).fontSize,
-        ) ===
-          expected.label * 2 &&
-        parseFloat(
-          getComputedStyle(document.querySelector('.fleet-map-truck-info'))
-            .paddingLeft,
-        ) ===
-          expected.padding * 2,
+        expected.root * 2,
       original,
       { polling: 50 },
     );
     await page.screenshot({
       path: resolve(output, `${name}-selected-info-large-text.png`),
     });
-    const layout = await page
-      .locator('.fleet-map-info-content')
-      .evaluate(element => {
-        const rect = node => {
-          const r = node.getBoundingClientRect();
-          return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
-        };
-        const panels = [
-          ...element.querySelectorAll(
-            '.fleet-map-truck-info, .fleet-map-route-info',
-          ),
-        ];
-        return panels.map(panel => ({
-          bounds: rect(panel),
-          width: panel.clientWidth,
-          scroll: panel.scrollWidth,
-          children: [...panel.children]
-            .filter(child => getComputedStyle(child).display !== 'none')
+    const layout = await page.locator(panelSelector).evaluate(host => {
+      const rect = node => node.getBoundingClientRect().toJSON();
+      const panel = rect(host);
+      const parts = [
+        '.fleet-map-inspector__header',
+        '.fleet-truck-next',
+        '.fleet-truck-facts',
+        '.fleet-truck-clocks',
+      ]
+        .map(selector => host.querySelector(selector))
+        .filter(node => node && node.getClientRects().length > 0)
+        .map(node => ({
+          name: node.className,
+          ...rect(node),
+          scroll: node.scrollWidth,
+          width: node.clientWidth,
+          // What does not fold, named.
+          past: [...node.querySelectorAll('*')]
+            .filter(
+              child =>
+                child.getBoundingClientRect().right >
+                  node.getBoundingClientRect().right + 1 ||
+                // An ellipsis is a value cut short on purpose.
+                (child.clientWidth > 2 &&
+                  getComputedStyle(child).textOverflow !== 'ellipsis' &&
+                  child.scrollWidth > child.clientWidth + 1),
+            )
             .map(child => ({
-              ...rect(child),
-              width: child.clientWidth,
-              scroll: child.scrollWidth,
-              className: child.className,
-              // A group that scrolls says nothing about what is too wide
-              // inside it. These are the boxes that reach past its edge or
-              // hold more than they can show - the words that would not fold.
-              past: [...child.querySelectorAll('*')]
-                .filter(
-                  node =>
-                    node.getBoundingClientRect().right >
-                      child.getBoundingClientRect().right + 1 ||
-                    node.scrollWidth > node.clientWidth + 1,
-                )
-                .map(node => ({
-                  className: node.className,
-                  text: (node.textContent ?? '').trim().slice(0, 40),
-                  right: node.getBoundingClientRect().right,
-                  width: node.clientWidth,
-                  scroll: node.scrollWidth,
-                })),
+              name: child.className,
+              text: (child.textContent ?? '').trim().slice(0, 40),
             })),
         }));
-      });
-    const textSize = await page
-      .locator('.fleet-map-route-info__label')
-      .first()
-      .evaluate(element => parseFloat(getComputedStyle(element).fontSize));
-    check(
-      Math.abs(textSize - original.label * 2) <= 0.1,
-      `${name}: large-text probe did not apply 200% label sizing`,
-    );
-    // The clocks read as text in the card's head. At 200% they must still
-    // stay inside the line that holds them rather than spill out of it.
-    const clocks = await page
-      .locator('.fleet-map-inspector__hours')
-      .evaluate(element => {
-        const panel = element.getBoundingClientRect();
-        const box = node => {
-          if (!node) return null;
-          const r = node.getBoundingClientRect();
-          return { left: r.left, right: r.right, top: r.top, width: r.width };
-        };
-        const textBox = node => {
-          if (!node) return null;
-          const range = document.createRange();
-          range.selectNodeContents(node);
-          const r = range.getBoundingClientRect();
-          return { left: r.left, right: r.right, width: r.width };
-        };
-        const all = [...element.querySelectorAll('.driver-hours__clock')];
-        return all.map((clock, index) => {
-          const rect = clock.getBoundingClientRect();
-          const style = getComputedStyle(clock);
-          const label = clock.querySelector('.driver-hours__label');
-          const reading = clock.querySelector('.driver-hours__reading');
-          const next = all[index + 1]?.getBoundingClientRect();
-          return {
-            contained:
-              rect.left >= panel.left - 1 && rect.right <= panel.right + 1,
-            clipped: clock.scrollWidth > clock.clientWidth + 1,
-            // Diagnostics for the enlarged-text clocks (report only).
-            rect: box(clock),
-            clientWidth: clock.clientWidth,
-            scrollWidth: clock.scrollWidth,
-            overflowX: style.overflowX,
-            flexShrink: style.flexShrink,
-            flexBasis: style.flexBasis,
-            minWidth: style.minWidth,
-            label: box(label),
-            labelText: textBox(label),
-            reading: box(reading),
-            readingText: textBox(reading),
-            overlapsNext: next ? rect.right - next.left : null,
-            group: box(clock.parentElement),
-            groupWrap: getComputedStyle(clock.parentElement).flexWrap,
-          };
-        });
-      });
-    (report.largeTextClocks ??= []).push({ name, clocks });
-    check(
-      clocks.length === 4 &&
-        clocks.every(clock => clock.contained && !clock.clipped),
-      `${name}: enlarged HOS times stay inside the head's line unclipped`,
-    );
-    for (const panel of layout) {
-      check(
-        panel.scroll <= panel.width + 1,
-        `${name}: 200% text overflows the inspector horizontally`,
-      );
-      for (const child of panel.children)
-        check(
-          child.left >= panel.bounds.left - 1 &&
-            child.right <= panel.bounds.right + 1 &&
-            child.scroll <= child.width + 1,
-          `${name}: 200% text clips ${child.className}`,
-        );
-      for (let i = 0; i < panel.children.length; i++)
-        for (const other of panel.children.slice(i + 1)) {
-          const child = panel.children[i];
-          check(
-            !(
-              child.left < other.right - 1 &&
-              child.right > other.left + 1 &&
-              child.top < other.bottom - 1 &&
-              child.bottom > other.top + 1
-            ),
-            `${name}: 200% text overlaps ${child.className} and ${other.className}`,
-          );
-        }
-    }
-    (report.largeTextInspector ??= []).push({
-      name,
-      labelSize: textSize,
-      ordinaryLabelSize: original.label,
-      clocks,
-      panels: layout,
+      return {
+        panel,
+        overflow: host.scrollWidth > host.clientWidth + 1,
+        parts,
+        clocks: [...host.querySelectorAll('.driver-hours__clock')].map(
+          clock => {
+            const box = clock.getBoundingClientRect();
+            return {
+              contained:
+                box.left >= panel.left - 1 && box.right <= panel.right + 1,
+              clipped: clock.scrollWidth > clock.clientWidth + 1,
+            };
+          },
+        ),
+      };
     });
+    check(!layout.overflow, `${name}: 200% text scrolls the panel sideways`);
+    for (const part of layout.parts)
+      check(
+        part.left >= layout.panel.left - 1 &&
+          part.right <= layout.panel.right + 1 &&
+          part.scroll <= part.width + 1 &&
+          part.past.length === 0,
+        `${name}: 200% text clips ${part.name} ` +
+          `(${JSON.stringify(part.past)})`,
+      );
+    for (let i = 0; i < layout.parts.length; i++)
+      for (const other of layout.parts.slice(i + 1)) {
+        const part = layout.parts[i];
+        check(
+          !(
+            part.left < other.right - 1 &&
+            part.right > other.left + 1 &&
+            part.top < other.bottom - 1 &&
+            part.bottom > other.top + 1
+          ),
+          `${name}: 200% text overlaps ${part.name} and ${other.name}`,
+        );
+      }
+    check(
+      layout.clocks.length === 4 &&
+        layout.clocks.every(clock => clock.contained && !clock.clipped),
+      `${name}: enlarged clocks stay inside the panel unclipped`,
+    );
+    (report.largeTextInspector ??= []).push({ name, ...layout });
   } finally {
     await page.evaluate(saved => {
       const style = document.documentElement.style;
@@ -1191,15 +1792,6 @@ async function checkInspectorLargeText(page, name) {
         return (
           parseFloat(getComputedStyle(document.documentElement).fontSize) ===
             expected.root &&
-          parseFloat(
-            getComputedStyle(
-              document.querySelector('.fleet-map-route-info__label'),
-            ).fontSize,
-          ) === expected.label &&
-          parseFloat(
-            getComputedStyle(document.querySelector('.fleet-map-truck-info'))
-              .paddingLeft,
-          ) === expected.padding &&
           ['x', 'y', 'width', 'height'].every(
             key => Math.abs(rect[key] - expected.map[key]) <= 1,
           )
@@ -1210,638 +1802,85 @@ async function checkInspectorLargeText(page, name) {
     );
   }
 }
-async function checkTruckTypography(page, name, phase, units) {
-  // Sizes and weights as the card's own stylesheets set them (the approved
-  // card of September 26): a label on the head's rows is its value's size,
-  // only quieter; the route's section labels and echoes are small; a value
-  // is body weight 600 unless its own rule says otherwise; the unit and the
-  // next stop's name are the lead size.
-  const groups = [
-    {
-      size: 12,
-      selectors: [
-        '.fleet-map-inspector__location > span',
-        '.fleet-map-route-info__label',
-      ],
-    },
-    {
-      size: 14,
-      selectors: [
-        '.truck-readings__reading > small',
-        '.fuel-reading--metric .fuel-reading__label',
-        '.driver-hours__label',
-        '.stop-hours__road > .stop-hours__label',
-      ],
-    },
-    {
-      size: 14,
-      weight: 600,
-      selectors: [
-        // The next stop's distance; its town is a quiet address line.
-        '.fleet-map-route-info__visit-heading strong',
-        '.stop-hours__road time',
-        '.fleet-map-route-info__metric strong',
-        '.truck-readings__reading > strong',
-        '.fuel-reading--metric .fuel-reading__value',
-        '[title="Copy order number"] > strong',
-      ],
-    },
-    {
-      size: 14,
-      weight: 400,
-      selectors: [
-        // The crew reads beside the unit, quietly; the address and the
-        // unit of a distance are values that do not need the emphasis.
-        '.fleet-map-inspector__driver',
-        '.fleet-map-inspector__trailer',
-        '.fleet-map-inspector__location > strong',
-        '.fleet-map-route-info__address',
-        '.fleet-map-route-info__total',
-        '.truck-readings__reading > strong > small',
-      ],
-    },
-    {
-      size: 16,
-      weight: 600,
-      selectors: [
-        '.fleet-map-inspector__title',
-        '.fleet-map-route-info__facility',
-      ],
-    },
-  ];
-  // The second unit is an echo of the first and exists only when both are
-  // asked for: small beside the run's total, and inline with the next
-  // stop's distance at that reading's own size.
-  if (units.distanceUnit === 'both') {
-    groups.push({
-      size: 12,
-      selectors: [
-        '.fleet-map-route-info__metric .fleet-map-route-info__secondary',
-      ],
-    });
-    groups.push({
-      size: 14,
-      weight: 400,
-      selectors: [
-        '.fleet-map-route-info__distance > ' +
-          '.fleet-map-route-info__secondary',
-      ],
-    });
-  }
-  const typography = await page
-    .locator('.fleet-map-inspector[data-inspector-mode="truck"]')
-    .evaluate((element, groups) => {
-      const root = parseFloat(
-        getComputedStyle(document.documentElement).fontSize,
-      );
-      return groups.flatMap(group =>
-        group.selectors.map(selector => ({
-          selector,
-          expectedSize: (group.size * root) / 16,
-          expectedWeight: group.weight,
-          nodes: [...element.querySelectorAll(selector)].map(node => {
-            const style = getComputedStyle(node);
-            return {
-              text: node.textContent.trim(),
-              size: parseFloat(style.fontSize),
-              weight: Number(style.fontWeight),
-              family: style.fontFamily,
-            };
-          }),
+
+// The truck's actions are the map tool bar's: whole over the map, and
+// touch-sized on a phone.
+async function checkToolBar(page, name, selected) {
+  const bar = await page.locator('.fleet-map-controls').evaluate(element => {
+    const map = document.querySelector('#fleet-map').getBoundingClientRect();
+    return {
+      map: map.toJSON(),
+      viewport: innerWidth,
+      buttons: [...element.querySelectorAll('button')]
+        .filter(button => button.getClientRects().length > 0)
+        .map(button => ({
+          name: button.getAttribute('aria-label'),
+          disabled: button.disabled,
+          ...button.getBoundingClientRect().toJSON(),
         })),
-      );
-    }, groups);
-  for (const sample of typography) {
-    check(
-      sample.nodes.length > 0,
-      `${name}: typography fixture is missing ${sample.selector}`,
-    );
-    for (const node of sample.nodes) {
-      check(
-        Math.abs(node.size - sample.expectedSize) <= 0.1,
-        `${name}: ${sample.selector} uses ${node.size}px instead of ${sample.expectedSize}px`,
-      );
-      if (sample.expectedWeight)
-        check(
-          node.weight === sample.expectedWeight,
-          `${name}: ${sample.selector} uses inconsistent value emphasis`,
-        );
-    }
-  }
+    };
+  });
+  const names = bar.buttons.map(button => button.name);
   check(
-    new Set(typography.flatMap(sample => sample.nodes.map(node => node.family)))
-      .size === 1,
-    `${name}: inspector text must use one shared font family`,
+    // A phone keeps the layers in its Filters drawer instead.
+    ['Follow', 'Show route', 'Camera', 'Route options', 'Fuel']
+      .concat(bar.map.width < 768 ? [] : ['Map layers'])
+      .every(label => names.includes(label)),
+    `${name}: the tool bar keeps Follow, Fit route, Camera, Route options, ` +
+      `Fuel and, wider than a phone, Layers (${names.join(', ')})`,
   );
-  const hierarchy = await page
-    .locator('.fleet-map-inspector[data-inspector-mode="truck"]')
-    .evaluate(element => {
-      const valueColor = getComputedStyle(
-        document.querySelector('.fleet-map-inspector__location > strong'),
-      ).color;
-      // The load and its order are the card head's own label/value pair;
-      // the route card below says neither again.
-      return ['.fleet-map-mobile-summary__order'].map(selector => {
-        const label = element.querySelector(selector),
-          value = label.querySelector('.fleet-map-inspector__value');
-        const labelStyle = getComputedStyle(label),
-          valueStyle = getComputedStyle(value);
-        return {
-          selector,
-          labelColor: labelStyle.color,
-          valueColor: valueStyle.color,
-          expectedColor: valueColor,
-          labelWeight: Number(labelStyle.fontWeight),
-          valueWeight: Number(valueStyle.fontWeight),
-        };
-      });
-    });
-  for (const sample of hierarchy) {
-    check(
-      sample.labelColor !== sample.valueColor &&
-        sample.valueColor === sample.expectedColor,
-      `${name}: ${sample.selector} label and value need distinct semantic colors`,
-    );
-    check(
-      sample.valueWeight > sample.labelWeight,
-      `${name}: ${sample.selector} label and value need distinct emphasis`,
-    );
-  }
-  (report.truckTypography ??= []).push({ name, phase, typography });
-}
-async function measureTruckControls(page, name) {
-  const inspector = page.locator(
-    '.fleet-map-inspector[data-inspector-mode="truck"]',
-  );
-  const toggle = inspector.locator('.fleet-map-mobile-summary__toggle');
-  if (await opensWhole(page))
-    // A card narrower than map-compact-columns (40rem) has no room for a
-    // closed state: it is open whole and shows no disclosure (the approved
-    // card of September 26).
-    check(
-      (await inspector.locator('#fleet-map-details').isVisible()) &&
-        (await inspector.locator('.fleet-map-inspector__driver').isVisible()) &&
-        (await inspector.locator('.fleet-map-inspector__trailer').isVisible()),
-      `${name}: a narrow card is open whole, without a disclosure`,
-    );
-  else {
-    // The approved disclosure says what it does (a bare chevron was too faint
-    // to be found, September 26); both words share one cell, so it keeps one
-    // width open and closed, which is measured below.
-    check(
-      (await toggle.count()) === 1 &&
-        (await inspector
-          .getByRole('button', { name: /^(Details|Hide details)$/ })
-          .count()) === 1,
-      `${name}: the card has one disclosure, named Details or Hide details`,
-    );
-    if ((await toggle.getAttribute('aria-expanded')) === 'true')
-      await toggle.click();
-    const closedToggle = await toggle.boundingBox();
-    check(
-      !(await inspector.locator('#fleet-map-details').isVisible()),
-      `${name}: the closed card hides the lower section`,
-    );
-    // Half of what a dispatcher looks a truck up by stays in the closed card.
-    for (const selector of [
-      '.fleet-map-inspector__driver',
-      '.fleet-map-inspector__trailer',
-    ])
-      check(
-        await inspector.locator(selector).isVisible(),
-        `${name}: ${selector} stays in the closed card`,
-      );
-    await toggle.click();
-    const openToggle = await toggle.boundingBox();
-    check(
-      ['x', 'y', 'width', 'height'].every(
-        key => Math.abs(closedToggle[key] - openToggle[key]) <= 1,
-      ),
-      `${name}: opening the card does not move its own control`,
-    );
-  }
-  for (const selector of [
-    '#fleet-map-telemetry-details',
-    '#fleet-map-route-details',
-    '#fleet-map-truck-location',
-    '.fleet-map-inspector__driver',
-    '.fleet-map-inspector__trailer',
-    '.fleet-map-inspector__actions',
-  ])
-    check(
-      await inspector.locator(selector).isVisible(),
-      `${name}: ${selector} is shown once the card is open`,
-    );
-  const result = await page
-    .getByRole('button', { name: 'Close map information', exact: true })
-    .evaluate(element => {
-      const style = getComputedStyle(element),
-        bounds = element.getBoundingClientRect();
-      const root = parseFloat(
-        getComputedStyle(document.documentElement).fontSize,
-      );
-      return {
-        width: bounds.width,
-        height: bounds.height,
-        minimumHeight: ((innerWidth < 800 ? 44 : 32) * root) / 16,
-        flexGrow: Number(style.flexGrow),
-        titleVisible:
-          document
-            .querySelector('.fleet-map-inspector__title')
-            .getBoundingClientRect().width > 0,
-      };
-    });
-  check(
-    result.titleVisible &&
-      result.flexGrow === 0 &&
-      Math.abs(result.width - result.height) <= 1,
-    `${name}: Close stays square beside the separate visible truck identity`,
+  const outside = bar.buttons.filter(
+    button =>
+      button.left < bar.map.left - 1 ||
+      button.right > bar.map.right + 1 ||
+      button.top < bar.map.top - 1 ||
+      button.bottom > bar.map.bottom + 1,
   );
   check(
-    Math.abs(result.height - result.minimumHeight) <= 1,
-    `${name}: Close matches compact desktop and touch mobile action heights`,
+    outside.length === 0,
+    `${name}: the tool bar is whole over the map ` +
+      `(${JSON.stringify(outside)})`,
   );
-  return result;
-}
-async function checkIndependentRouteGroups(page, name) {
-  // The approved card (September 26) says the forecast in its head; the
-  // route under it holds the next stop and, beside it, what is left of the
-  // load and where the truck is. A taller forecast may push the route down
-  // as a whole but may not change its groups: their places relative to the
-  // route, their sizes and their facts stay. The old timing column (cycle
-  // and fuel on arrival) is gone from the truck card; the fuel on arrival is
-  // the stop card's, covered by stopCardsSmoke and fleetDesignSmoke.
-  const result = await page
-    .locator('.fleet-map-inspector[data-inspector-mode="truck"]')
-    .evaluate(source => {
-      const host = source.cloneNode(true);
-      host.style.visibility = 'hidden';
-      host.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
-      source.parentElement.append(host);
-      try {
-        const route = host.querySelector(
-          '.fleet-map-route-info[aria-label="Current dispatch route"]',
-        );
-        route.classList.remove('has-final-stop');
-        const bounds = node => {
-          const rect = node.getBoundingClientRect(),
-            origin = route.getBoundingClientRect();
-          return {
-            x: rect.x - origin.x,
-            y: rect.y - origin.y,
-            width: rect.width,
-            height: rect.height,
-          };
-        };
-        const forecast = host.querySelector(
-          '.fleet-map-inspector__arrival .arrival-estimate',
-        );
-        const measure = () => ({
-          eta: forecast.getBoundingClientRect().height,
-          groups: [
-            '.fleet-map-route-info__next',
-            '.fleet-map-route-info__where',
-          ].map(selector => {
-            const group = route.querySelector(selector);
-            const children = [...group.children]
-              .filter(node => getComputedStyle(node).display !== 'none')
-              .map(bounds);
-            const style = getComputedStyle(group);
-            return {
-              selector,
-              ...bounds(group),
-              children,
-              rowGap: parseFloat(style.rowGap),
-              columnGap: parseFloat(style.columnGap),
-            };
-          }),
-        });
-        const before = measure();
-        const road = forecast.querySelector('.stop-hours__road');
-        for (let i = 0; i < 4; i++) road.after(road.cloneNode(true));
-        if (
-          route.clientWidth >=
-          52 * parseFloat(getComputedStyle(document.documentElement).fontSize)
-        )
-          route.querySelector('.fleet-map-route-info__total').textContent =
-            'mi · 4,833 km of 3,003 mi';
-        return { before, after: measure() };
-      } finally {
-        host.remove();
-      }
-    });
   check(
-    result.after.eta > result.before.eta + 20,
-    `${name}: extra forecast rows must exercise an increased ETA height`,
+    bar.buttons.find(button => button.name === 'Fuel')?.disabled === !selected,
+    `${name}: Fuel is ${selected ? 'enabled with' : 'disabled without'} ` +
+      'a chosen truck',
   );
-  for (const [index, group] of result.before.groups.entries()) {
-    const after = result.after.groups[index];
-    // The stop keeps its heading and address; what is left keeps the load's
-    // remainder and the truck's place.
-    check(
-      group.children.length === 2 && after.children.length === 2,
-      `${name}: ${group.selector} keeps its two facts ` +
-        `(${group.children.length}/${after.children.length})`,
+  if (bar.viewport < 800) {
+    const small = bar.buttons.filter(
+      button => button.width < 44 || button.height < 44,
     );
-    for (const key of ['x', 'y', 'width', 'height'])
-      check(
-        Math.abs(group[key] - after[key]) <= 1,
-        `${name}: a longer forecast changes ${group.selector} ${key}`,
-      );
-    for (const sample of [group, after]) {
-      const [first, second] = sample.children;
-      const horizontal = Math.abs(first.y - second.y) <= 1;
-      const gap = horizontal
-        ? second.x - first.x - first.width
-        : second.y - first.y - first.height;
-      check(
-        gap >= -1 && gap <= (horizontal ? sample.columnGap : sample.rowGap) + 1,
-        `${name}: ${sample.selector} reserves blank space between adjacent facts`,
-      );
-    }
+    check(
+      small.length === 0,
+      `${name}: phone tool bar buttons keep touch targets ` +
+        JSON.stringify(
+          small.map(({ name, width, height }) => ({ name, width, height })),
+        ),
+    );
   }
-  (report.independentRouteGroups ??= []).push({ name, ...result });
-}
-async function checkNextStopDistanceLayout(page, name) {
-  await page
-    .locator('.fleet-map-inspector[data-inspector-mode="truck"]')
-    .evaluate(source => {
-      const host = source.cloneNode(true);
-      host.dataset.nextDistancePreview = 'true';
-      host.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
-      host
-        .querySelector('.fleet-map-route-info')
-        .classList.remove('has-final-stop');
-      host.querySelector(
-        '.fleet-map-route-info__visit-heading > .fleet-map-route-info__label',
-      ).textContent = 'Pick Up';
-      source.parentElement.append(host);
-    });
-  const preview = page.locator('[data-next-distance-preview]');
-  try {
-    const result = await preview.evaluate(host => {
-      const route = host.querySelector('.fleet-map-route-info');
-      const heading = route.querySelector(
-        '.fleet-map-route-info__visit-heading',
-      );
-      const distance = heading.querySelector('.fleet-map-route-info__distance');
-      const rect = node => {
-        const { x, y, width, height } = node.getBoundingClientRect();
-        return { x, y, width, height };
-      };
-      return {
-        wide:
-          route.clientWidth >=
-          52 * parseFloat(getComputedStyle(document.documentElement).fontSize),
-        // What is left of the load is the route's one metric.
-        metrics: route.querySelectorAll('.fleet-map-route-info__metric').length,
-        heading: rect(heading),
-        label: rect(heading.firstElementChild),
-        distance: rect(distance),
-        overflow: heading.scrollWidth > heading.clientWidth + 1,
-        visible: getComputedStyle(distance).display !== 'none',
-      };
-    });
-    check(
-      result.metrics === 1 && result.visible && !result.overflow,
-      `${name}: next-stop distance is visible beside the visit without a second Remaining metric or overflow`,
-    );
-    if (result.wide)
-      check(
-        result.distance.x >= result.label.x + result.label.width &&
-          result.distance.y < result.label.y + result.label.height,
-        `${name}: next-stop distance shares the pickup heading line on wide cards`,
-      );
-    (report.nextStopDistance ??= []).push({ name, ...result });
-    await preview.screenshot({
-      path: resolve(output, `${name}-next-pickup.png`),
-    });
-  } finally {
-    await preview.evaluate(host => host.remove());
-  }
-}
-async function checkRouteFactRows(page, name, distanceUnit) {
-  const result = await page
-    .locator('.fleet-map-inspector[data-inspector-mode="truck"]')
-    .evaluate(source => {
-      const measure = host => {
-        const route = host.querySelector(
-          '.fleet-map-route-info[aria-label="Current dispatch route"]',
-        );
-        // The approved card (September 26) says the arrival and the booked
-        // hour in its head; the route below keeps the stop and what is left.
-        const arrival = host.querySelector('.fleet-map-inspector__arrival');
-        const rect = node => {
-          const bounds = node.getBoundingClientRect();
-          const marker = document.createElement('span');
-          marker.style.cssText =
-            'display:inline-block;width:0;height:0;vertical-align:baseline';
-          node.append(marker);
-          const baseline = marker.getBoundingClientRect().top;
-          marker.remove();
-          return {
-            left: bounds.left,
-            right: bounds.right,
-            top: bounds.top,
-            bottom: bounds.bottom,
-            baseline,
-          };
-        };
-        const metric = route.querySelector('.fleet-map-route-info__metric');
-        const visit = route.querySelector('.fleet-map-route-info__visit');
-        const appointment = host.querySelector(
-          '.fleet-map-inspector__appointment',
-        );
-        const eta = arrival.querySelector(
-          '.arrival-estimate .stop-hours__road',
-        );
-        const labelText = node => {
-          const range = document.createRange();
-          range.selectNodeContents(node);
-          return range.getBoundingClientRect().right;
-        };
-        return {
-          wide:
-            route.clientWidth >=
-            52 *
-              parseFloat(getComputedStyle(document.documentElement).fontSize),
-          factGap: parseFloat(getComputedStyle(appointment).columnGap),
-          appointmentTextRight: labelText(appointment.firstElementChild),
-          etaTextRight: labelText(eta.querySelector('.stop-hours__label')),
-          label: rect(metric.querySelector('.fleet-map-route-info__label')),
-          miles: rect(metric.querySelector('strong')),
-          kilometres: metric.querySelector('.fleet-map-route-info__secondary')
-            ? rect(metric.querySelector('.fleet-map-route-info__secondary'))
-            : null,
-          appointment: rect(appointment),
-          appointmentLabel: rect(
-            appointment.querySelector(
-              '.fleet-map-inspector__appointment-label',
-            ),
-          ),
-          // The booking's first line; a long window may take a second.
-          appointmentValue: rect(
-            appointment.querySelector('strong > :first-child') ??
-              appointment.querySelector('strong'),
-          ),
-          eta: rect(eta),
-          etaLabel: rect(eta.querySelector('.stop-hours__label')),
-          etaTime: rect(eta.querySelector('time')),
-          etaStatuses: [
-            ...eta.querySelectorAll('.stop-hours__arrival .stop-hours__status'),
-          ].map(rect),
-          cycleWarnings: [
-            ...eta.querySelectorAll('.stop-hours__cycle-status'),
-          ].map(node => ({
-            ...rect(node),
-            text: node.textContent.trim(),
-          })),
-          visitWidth: visit.clientWidth,
-          visitScrollWidth: visit.scrollWidth,
-          timingWidth: arrival.clientWidth,
-          timingScrollWidth: arrival.scrollWidth,
-          appointmentWidth: appointment.clientWidth,
-          appointmentScrollWidth: appointment.scrollWidth,
-        };
-      };
-      const normal = measure(source);
-      const host = source.cloneNode(true);
-      host.style.visibility = 'hidden';
-      host.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
-      source.parentElement.append(host);
-      try {
-        host.querySelector(
-          '.fleet-map-inspector__appointment > strong',
-        ).textContent = 'Sep 8 · 04:00 PM – 06:00 PM';
-        host.querySelector('.fleet-map-route-info__facility').textContent =
-          'COSTCO SE DEPOT 174';
-        host.querySelector(
-          '.fleet-map-route-info__address-lines > span:not(.fleet-map-route-info__facility)',
-        ).textContent = '13077 SW Anthony F. Sansone Sr. Blvd';
-        host.querySelector('.fleet-map-route-info__address').textContent =
-          'Port St. Lucie, FL 34987, US';
-        return { normal, window: measure(host) };
-      } finally {
-        host.remove();
-      }
-    });
-  for (const [variant, layout] of Object.entries(result)) {
-    // Every fact is the same two cells: a quiet label, then its value.
-    check(
-      Math.abs(layout.miles.baseline - layout.label.baseline) <= 1 &&
-        layout.miles.left >= layout.label.right - 1,
-      `${name}-${variant}: the run's label and its value read as one row`,
-    );
-    check(
-      distanceUnit === 'both'
-        ? layout.kilometres !== null &&
-            (layout.kilometres.left >= layout.miles.right - 1 ||
-              layout.kilometres.top >= layout.miles.bottom - 1)
-        : layout.kilometres === null,
-      `${name}-${variant}: the second unit echoes the first, never before it`,
-    );
-    // The arrival reads in the card's head, above everything the card
-    // opens; the window the stop has to make reads with the stop.
-    check(
-      layout.eta.bottom <= layout.appointment.top + 1,
-      `${name}-${variant}: the ETA reads above the stop's window`,
-    );
-    check(
-      layout.timingScrollWidth <= layout.timingWidth + 1 &&
-        layout.appointmentScrollWidth <= layout.appointmentWidth + 1,
-      `${name}-${variant}: the appointment window overflows the head's ` +
-        'arrival column',
-    );
-    check(
-      layout.visitScrollWidth <= layout.visitWidth + 1,
-      `${name}-${variant}: facility and long address overflow their location column`,
-    );
-    // The cycle's badge stands beside the hour where the line has room and
-    // folds under it where it has not (the compact StopHours reading); it
-    // never overlaps the hour or the lateness, and stays in the ETA's box.
-    check(
-      layout.cycleWarnings.length === 1 &&
-        layout.cycleWarnings.every(warning => {
-          const arrival = [layout.etaTime, ...layout.etaStatuses];
-          const clear = arrival.every(
-            part =>
-              warning.top >= part.bottom - 1 || warning.left >= part.right - 1,
-          );
-          return (
-            warning.text.startsWith('Cycle short') &&
-            warning.bottom > warning.top &&
-            clear &&
-            warning.left >= layout.eta.left - 1 &&
-            warning.right <= layout.eta.right + 1
-          );
-        }),
-      `${name}-${variant}: Cycle short remains visible beside or below the ` +
-        'arrival without overlapping it',
-    );
-    if (layout.wide) {
-      // In the head the booking shares the ETA's label column: its value
-      // starts where the forecast's time does, one gap past the column.
-      check(
-        Math.abs(
-          layout.appointmentValue.left -
-            layout.appointmentLabel.right -
-            layout.factGap,
-        ) <= 1 &&
-          Math.abs(layout.appointmentValue.left - layout.etaTime.left) <= 1,
-        `${name}-${variant}: the appointment shares the ETA's value column`,
-      );
-      // Relocated: the old route had a distances column as wide as the
-      // stop; the approved card has none. How the stop, what is left and
-      // the actions share the route is drawn by fleetDesignSmoke and pinned
-      // by truckCardLayout.test.js.
-      check(
-        Math.abs(
-          layout.appointmentLabel.baseline - layout.appointmentValue.baseline,
-        ) <= 1 &&
-          layout.appointmentValue.left >= layout.appointmentLabel.right - 1,
-        `${name}-${variant}: wide appointments keep their label and value inline`,
-      );
-      check(
-        Math.abs(layout.etaLabel.baseline - layout.etaTime.baseline) <= 1 &&
-          layout.etaTime.left >= layout.etaLabel.right - 1 &&
-          layout.etaStatuses.every(
-            status => Math.abs(status.baseline - layout.etaTime.baseline) <= 1,
-          ),
-        `${name}-${variant}: wide ETA keeps label, time and status inline`,
-      );
-    }
-  }
-  (report.routeFactRows ??= []).push({ name, ...result });
+  (report.toolBar ??= []).push({ name, ...bar });
 }
 
-// The selected-truck card opens collapsed at every width: the top line
-// carries the load, the miles left to the next stop and the clocks, and
-// everything else waits behind the chevron. Every new selection closes it
-// again, so anything that reads the lower section opens it first, by the
-// same click a dispatcher would use.
-// A card narrower than map-compact-columns (40rem) is open whole: its
-// disclosure stays in the markup but is not shown.
-async function opensWhole(page) {
-  const toggle = page.locator('.fleet-map-mobile-summary__toggle');
-  return (await toggle.count()) === 1 && !(await toggle.isVisible());
-}
-
-async function expandTruckCard(page, name) {
-  const toggle = page.locator('.fleet-map-mobile-summary__toggle');
-  if (await opensWhole(page)) {
-    check(
-      await page.locator('#fleet-map-details').isVisible(),
-      `${name}: a narrow card is open whole`,
-    );
+// The map's layers are behind the tool bar's Layers button; a phone keeps
+// the same switches behind Filters as well.
+async function setNextLoads(page, width) {
+  if (width === 390) {
+    await page.getByRole('button', { name: 'Filters', exact: true }).click();
+    await page
+      .locator('#fleet-map-filters')
+      .getByRole('checkbox', { name: 'Next loads', exact: true })
+      .locator('..')
+      .click();
+    await page.getByRole('button', { name: 'Filters', exact: true }).click();
     return;
   }
-  if ((await toggle.getAttribute('aria-expanded')) === 'false')
-    await toggle.click();
-  check(
-    (await toggle.getAttribute('aria-expanded')) === 'true' &&
-      (await page.locator('#fleet-map-details').isVisible()),
-    `${name}: the chevron opens the truck card`,
-  );
+  const layers = page.getByRole('button', { name: 'Map layers', exact: true });
+  await layers.click();
+  await page
+    .locator('#fleet-map-layer-menu')
+    .getByText('Next loads', { exact: true })
+    .click();
+  await layers.click();
 }
 
 const shellReads = new Set([
@@ -1849,169 +1888,6 @@ const shellReads = new Set([
   '/api/messaging/unread',
   '/api/messaging/changes',
 ]);
-
-async function truckLoadingGeometry(page) {
-  return page
-    .locator('.fleet-map-inspector[data-inspector-mode="truck"]')
-    .evaluate(host => {
-      // Named, so a selector the card no longer has says which one it is
-      // instead of throwing on null.
-      const rect = selector => {
-        const element = host.querySelector(selector);
-        if (!element) throw new Error(`No ${selector} in the truck card`);
-        const { x, y, width, height } = element.getBoundingClientRect();
-        return { x, y, width, height };
-      };
-      // What the head's first row says that may arrive only with the data:
-      // the stop the truck is heading for (with the load), the forecast's
-      // word about the cycle and the booked hour (with the forecast). Each
-      // is recorded with its height and the row gap its container opens
-      // for it, so growth can be told apart from movement of what was
-      // already on screen.
-      const arrived = Object.fromEntries(
-        [
-          '.fleet-map-inspector__heading-to',
-          '.fleet-map-inspector__arrival .stop-hours__cycle-status',
-          '.fleet-map-inspector__appointment',
-        ].flatMap(selector => {
-          const element = host.querySelector(selector);
-          return element
-            ? [
-                [
-                  selector,
-                  {
-                    height: element.getBoundingClientRect().height,
-                    gap:
-                      parseFloat(
-                        getComputedStyle(element.parentElement).rowGap,
-                      ) || 0,
-                  },
-                ],
-              ]
-            : [];
-        }),
-      );
-      return Object.fromEntries(
-        [
-          '.fleet-map-inspector__header',
-          '.fleet-map-inspector__hours > .fleet-map-inspector__row',
-          '.fleet-map-inspector__duty',
-          // The head's own rows: the card is anchored at the map's top, so
-          // anything that grows here pushes every row below it down.
-          '.fleet-map-inspector__identity',
-          '.fleet-map-inspector__arrival',
-          '.fleet-map-inspector__clocks',
-          '.fleet-map-truck-info',
-          '.fleet-map-inspector__hours',
-          '.fleet-map-inspector__location',
-          '.fleet-map-route-info',
-          // The load and its order moved into the header line; the group is
-          // drawn empty so nothing to the right of it shifts as they land.
-          '.fleet-map-mobile-summary__remaining',
-          // The route's groups as the approved card draws them (September
-          // 26): the next stop and, beside it, what is left of the load and
-          // where the truck is, inside the visit; the facts column holds
-          // the actions (the arrival itself is in the head). These replace
-          // the old distances, delivery and timing groups one for one.
-          '.fleet-map-route-info__visit',
-          '.fleet-map-route-info__next',
-          '.fleet-map-route-info__where',
-          '.fleet-map-route-info__facts',
-          '.fleet-map-route-info__visit-heading > .fleet-map-route-info__label',
-          'button[aria-label="Route options"]',
-        ]
-          .map(selector => [selector, rect(selector)])
-          .concat([
-            ['#arrived', arrived],
-            // At a final stop the route hides its Remaining load metric (the
-            // head's Left says the same miles); the node stays in the card.
-            [
-              // Content that arrives with the data, by zone: the driver's
-              // rest countdowns in the duty row, and the next stop's street
-              // and town in the route.
-              '#content',
-              (() => {
-                const lines = [
-                  ...host.querySelectorAll(
-                    '.fleet-map-route-info__street, .fleet-map-route-info__address',
-                  ),
-                ];
-                const rests = [
-                  ...host.querySelectorAll(
-                    '.fleet-map-inspector__duty .driver-duty__rest',
-                  ),
-                ].map(node => node.getBoundingClientRect());
-                const status = host
-                  .querySelector(
-                    '.fleet-map-inspector__duty .driver-duty__status',
-                  )
-                  ?.getBoundingClientRect();
-                return {
-                  rests: rests.length,
-                  // What the rest countdowns add under the duty's status
-                  // line: nothing while they share its line, and the lines
-                  // they fold onto, with the row gap before them, when not.
-                  restsBelowStatus:
-                    rests.length && status
-                      ? Math.max(
-                          0,
-                          Math.max(...rests.map(rest => rest.bottom)) -
-                            status.bottom,
-                        )
-                      : 0,
-                  addressLines: lines.length,
-                  addressHeight: lines.reduce(
-                    (total, line) =>
-                      total + line.getBoundingClientRect().height,
-                    0,
-                  ),
-                };
-              })(),
-            ],
-            [
-              // Diagnostics (report only): the load's line, part by part,
-              // with the type each part is set in.
-              '#loadLine',
-              [
-                ...(host.querySelector('.fleet-map-mobile-summary__remaining')
-                  ?.children ?? []),
-              ].map(node => {
-                const style = getComputedStyle(node);
-                const r = node.getBoundingClientRect();
-                return {
-                  name: node.className || node.localName,
-                  top: r.top,
-                  height: r.height,
-                  fontSize: style.fontSize,
-                  lineHeight: style.lineHeight,
-                  display: style.display,
-                  text: (node.textContent ?? '').trim().slice(0, 30),
-                };
-              }),
-            ],
-            [
-              '#final',
-              (() => {
-                const route = host.querySelector('.fleet-map-route-info');
-                const where = host.querySelector(
-                  '.fleet-map-route-info__where',
-                );
-                const metric = host.querySelector(
-                  '.fleet-map-route-info__metric',
-                );
-                return {
-                  final: route.classList.contains('has-final-stop'),
-                  metricPresent: !!metric,
-                  metricVisible: !!metric && metric.getClientRects().length > 0,
-                  metricHeight: metric?.getBoundingClientRect().height ?? 0,
-                  gap: parseFloat(getComputedStyle(where).rowGap) || 0,
-                };
-              })(),
-            ],
-          ]),
-      );
-    });
-}
 
 try {
   for (const width of widths)
@@ -2584,14 +2460,12 @@ try {
           .locator('.dispatch-planning__duty .driver-duty--row')
           .first()
           .waitFor();
-        const dispatchRecap = page.locator(
-          '.dispatch-planning__duty .driver-next-recap',
-        );
+        // The Next recap left the board card (the owner, September 27);
+        // the duty row keeps the rest countdowns checked below.
         check(
-          (await dispatchRecap.count()) === 1 &&
-            normalize(await dispatchRecap.innerText()) ===
-              'Next recap Sep 9 +3h 05m',
-          `${name}: one visible current-driver recap with date and hours only`,
+          (await page.locator('.dispatch-truck .driver-next-recap').count()) ===
+            0,
+          `${name}: the board card no longer says the next recap`,
         );
         check(
           (await page
@@ -2830,136 +2704,36 @@ try {
         const { x, y, width, height } = element.getBoundingClientRect();
         return { x, y, width, height };
       });
-      const unselectedHeight = await page
+      const docked = width >= 1100;
+      const unselected = await page
         .locator('.fleet-map-info-reserved')
-        .evaluate(element => element.getBoundingClientRect().height);
-      if (width >= 1200) {
-        const toolbar = await page
-          .locator('.fleet-map-toolbar')
-          .evaluate(el => {
-            const rect = node => node.getBoundingClientRect();
-            const heading = rect(document.querySelector('.fleet-map-page h1'));
-            const search = rect(el.querySelector('.fleet-map-search'));
-            // The layer controls are the search's right-hand neighbour: the
-            // date input that used to sit between them left the map with the
-            // IFTA switch.
-            const layers = rect(el.querySelector('.fleet-map-layer-controls'));
-            const style = getComputedStyle(el);
-            return {
-              headingCenter: heading.top + heading.height / 2,
-              searchCenter: search.top + search.height / 2,
-              layersCenter: layers.top + layers.height / 2,
-              toolbarCenter: rect(el).top + rect(el).height / 2,
-              // The controls' rows, and whether they sit inside the bar.
-              rows: {
-                searchTop: search.top,
-                searchBottom: search.bottom,
-                layersTop: layers.top,
-                layersBottom: layers.bottom,
-              },
-              inside: [search, layers].every(
-                box =>
-                  box.left >= rect(el).left - 1 &&
-                  box.right <= rect(el).right + 1 &&
-                  box.top >= rect(el).top - 1 &&
-                  box.bottom <= rect(el).bottom + 1,
-              ),
-              searchWidth: search.width,
-              // Whether the toolbar's own controls fit its content box on
-              // one line, as they stand.
-              oneLine: (() => {
-                // A display: contents wrapper (the filters drawer on a wide
-                // toolbar) lays its children out in the toolbar itself.
-                const items = parent =>
-                  [...parent.children].flatMap(child =>
-                    child.localName === 'legend'
-                      ? []
-                      : getComputedStyle(child).display === 'contents'
-                        ? items(child)
-                        : child.getClientRects().length > 0 &&
-                            rect(child).width > 1
-                          ? [child]
-                          : [],
-                  );
-                const needed = items(el).reduce(
-                  (total, child, index) =>
-                    total +
-                    rect(child).width +
-                    (index ? parseFloat(style.columnGap) || 0 : 0),
-                  0,
-                );
-                const available =
-                  rect(el).width -
-                  parseFloat(style.paddingLeft) -
-                  parseFloat(style.paddingRight) -
-                  parseFloat(style.borderLeftWidth) -
-                  parseFloat(style.borderRightWidth);
-                return { needed, available, fits: needed <= available + 1 };
-              })(),
-              searchLimit:
-                28 *
-                parseFloat(getComputedStyle(document.documentElement).fontSize),
-              layersEndGap:
-                rect(el).right -
-                parseFloat(style.paddingRight) -
-                parseFloat(style.borderRightWidth) -
-                layers.right,
-            };
-          });
-        // Where the toolbar's controls fit one line, the heading, the
-        // search and the named layer chips share it. Where they do not, the
-        // chips wrap to a row of their own: the heading centres on the
-        // whole toolbar, the controls stay inside it, the rows do not
-        // overlap, and the chips keep the toolbar's end (checked next).
-        check(
-          toolbar.oneLine.fits
-            ? Math.abs(toolbar.headingCenter - toolbar.searchCenter) <= 1 &&
-                Math.abs(toolbar.layersCenter - toolbar.searchCenter) <= 1
-            : Math.abs(toolbar.headingCenter - toolbar.toolbarCenter) <= 1 &&
-                toolbar.inside &&
-                toolbar.rows.layersTop >= toolbar.rows.searchBottom - 1,
-          `${name}: heading, search and layers share one line where they ` +
-            'fit, and the heading centres on a wrapped toolbar ' +
-            `(${JSON.stringify({ ...toolbar.oneLine, ...toolbar.rows })})`,
-        );
-        // The approved toolbar (docs/ui-controls.md): the search has room
-        // for a unit, a driver or a trailer, not the page's width (at most
-        // 28rem), and the named layer chips stand at the toolbar's end.
-        check(
-          toolbar.searchWidth > 192 &&
-            toolbar.searchWidth <= toolbar.searchLimit + 1,
-          `${name}: search keeps its bounded width`,
-        );
-        check(
-          Math.abs(toolbar.layersEndGap) <= 1,
-          `${name}: layer chips stand at the toolbar's end`,
-        );
-        for (const label of ['Fuel Stations', 'Traffic', 'Next loads']) {
-          const control = page.getByRole('checkbox', {
-            name: label,
-            exact: true,
-          });
-          // Each chip names its layer in visible words (September 26);
-          // a colour swatch, where it has one, is decoration.
-          const words = control
-            .locator('..')
-            .locator('span:not([aria-hidden])');
-          check(
-            (await control.locator('..').getAttribute('title')) === label &&
-              (await words.count()) === 1 &&
-              (await words.isVisible()) &&
-              (await words.innerText()).trim() === label,
-            `${name}: ${label} keeps an accessible name, tooltip and label`,
-          );
-        }
-      }
+        .evaluate(element => ({
+          height: element.getBoundingClientRect().height,
+          empty:
+            element
+              .querySelector('.fleet-map-inspector__empty')
+              ?.getClientRects().length > 0,
+          text: element
+            .querySelector('.fleet-map-inspector__empty')
+            ?.textContent.replace(/\s+/g, ' ')
+            .trim(),
+          panel: !!element.querySelector('.fleet-truck-panel'),
+        }));
+      // Nothing chosen: no truck panel, and nothing reserved over a map
+      // narrower than the docked workspace. Whether the docked column shows
+      // its empty state is recorded, not asserted: its stylesheets disagree
+      // (the workspace draws it, the stage hides it).
       check(
-        unselectedHeight <= (width === 390 ? 48 : 80) &&
+        !unselected.panel &&
+          (docked || unselected.height <= (width === 390 ? 48 : 80)) &&
           (await page
             .locator('.fleet-map-info-reserved.has-selection')
             .count()) === 0,
-        `${name}: an unselected map wastes viewport height on an empty selected-truck reserve`,
+        `${name}: an unselected map shows no truck and reserves no ` +
+          `space over the map (${JSON.stringify(unselected)})`,
       );
+      (report.unselected ??= []).push({ name, ...unselected });
+      await checkToolBar(page, `${name}-unselected`, false);
       await page.screenshot({
         path: resolve(output, `${name}-unselected-map.png`),
       });
@@ -2979,114 +2753,78 @@ try {
         `${name}: successful daily prices must not show a marker-price error`,
       );
       await waitForHeld(previewHeld, `${name}-cold-preview`);
-      await page
-        .locator('.fleet-map-route-info[aria-busy="true"]')
-        .waitFor({ state: 'attached' });
+      await page.locator(panelSelector).waitFor();
+      const phone = await isPhonePanel(page);
       const titleControls = () =>
         page
           .locator(
-            '.fleet-map-inspector__title, ' +
-              '.fleet-map-mobile-summary__remaining, ' +
-              '.fleet-map-inspector__close',
+            `${panelSelector} .fleet-map-inspector__title, ` +
+              `${panelSelector} .fleet-map-inspector__close`,
           )
           .evaluateAll(elements =>
             elements.map(element => {
               const { x, y, width, height } = element.getBoundingClientRect();
-              // Against the card's content: a phone card's head is not
-              // sticky, and focus moving to its actions scrolls the card
-              // without moving anything within it.
-              const scroll = element.closest(
-                '.fleet-map-info-reserved',
-              ).scrollTop;
-              return {
-                x,
-                y: y + scroll,
-                width,
-                // Slots, not sizes, for the load: its line grows as the
-                // stop it is heading for arrives, which the loading
-                // geometry accounts for.
-                ...(element.classList.contains(
-                  'fleet-map-mobile-summary__remaining',
-                )
-                  ? {}
-                  : { height }),
-              };
+              // Against the panel's content: focus moving to a control
+              // scrolls the panel without moving anything within it. A
+              // sticky head does not scroll with the content.
+              const sticky =
+                getComputedStyle(
+                  element.closest('.fleet-map-inspector__header'),
+                ).position === 'sticky';
+              const scroll = sticky
+                ? 0
+                : element.closest('.fleet-map-info-reserved').scrollTop;
+              return { x, y: y + scroll + scrollY, width, height };
             }),
           );
       const initialTitleControls = await titleControls();
-      const checkPhoneTitleControls = async stage => {
-        if (width !== 390) return;
+      const checkTitleControls = async stage => {
         const controls = await titleControls();
         check(
-          controls.every((bounds, index) =>
-            Object.keys(bounds).every(
-              key =>
-                Math.abs(bounds[key] - initialTitleControls[index][key]) <= 1,
+          controls.length === initialTitleControls.length &&
+            controls.every((bounds, index) =>
+              Object.keys(bounds).every(
+                key =>
+                  Math.abs(bounds[key] - initialTitleControls[index][key]) <= 1,
+              ),
             ),
-          ),
-          `${name}-${stage}: phone title, remaining distance and Close ` +
-            `retain their slots (${JSON.stringify({
-              initial: initialTitleControls,
-              now: controls,
-              scroll: await page
-                .locator('.fleet-map-info-reserved')
-                .evaluate(element => element.scrollTop),
-            })})`,
+          `${name}-${stage}: the unit and Close keep their slots ` +
+            JSON.stringify({ initial: initialTitleControls, now: controls }),
         );
       };
-      // A cold card is closed, and what it says closed is the load, the
-      // miles left to the next stop and the four clocks. Nothing below is
-      // shown until it is asked for - except on a card narrower than 40rem,
-      // which is open whole.
-      const whole = await opensWhole(page);
-      const coldClosed = {
-        lowerHidden:
-          whole === (await page.locator('#fleet-map-details').isVisible()),
-        load: await page
-          .locator('.fleet-map-mobile-summary__remaining')
+      // A cold panel: on a phone it opens closed on the next stop, with the
+      // facts and the clocks behind Details; wider, it shows them whole.
+      const cold = {
+        facts: await page.locator('.fleet-truck-facts').isVisible(),
+        clocks: await page.locator('.fleet-truck-clocks').isVisible(),
+        toggle: await page
+          .locator(`${panelSelector} .fleet-map-mobile-summary__toggle`)
           .isVisible(),
-        distance: await page
-          .locator('.fleet-map-mobile-summary__distance')
+        quickFollow: await page
+          .getByRole('button', { name: 'Follow truck', exact: true })
           .isVisible(),
-        hours: await page
-          .locator('.fleet-map-inspector__hours .driver-hours-panel')
-          .isVisible(),
-        noRecap:
-          (await page
-            .locator('.fleet-map-inspector__hours .driver-next-recap')
-            .count()) === 0,
       };
       check(
-        Object.values(coldClosed).every(Boolean),
-        `${name}: a cold card is closed and still says load, miles left ` +
-          `and clocks (${JSON.stringify(coldClosed)})`,
+        phone
+          ? !cold.facts && !cold.clocks && cold.toggle && cold.quickFollow
+          : cold.facts && cold.clocks,
+        `${name}: a cold ${
+          phone
+            ? 'phone panel is closed with Details and Follow'
+            : 'panel shows its facts and clocks'
+        } (${JSON.stringify(cold)})`,
       );
       await expandTruckCard(page, `${name}-cold`);
-      const coldPlaceholders = {
-        route: await page.locator('#fleet-map-route-details').isVisible(),
-        telemetry: await page
-          .locator('#fleet-map-telemetry-details')
-          .isVisible(),
-        location: await page.locator('#fleet-map-truck-location').isVisible(),
-      };
-      check(
-        Object.values(coldPlaceholders).every(Boolean),
-        `${name}: opening a cold card shows readings, location and route ` +
-          `placeholders (${JSON.stringify(coldPlaceholders)})`,
-      );
-      if (width === 390) await checkPhoneTitleControls('readings');
+      await checkTitleControls('cold-open');
       const loadingMapRect = await stableMapRect(
         page,
         mapRect,
         `${name}-first-selection-loading`,
       );
       const loadingGeometry = await truckLoadingGeometry(page);
-      await page.locator('.fleet-map-route-info').evaluate(panel => {
-        window.hoursFixtureRoutePanel = panel;
-        window.hoursFixtureRouteGroups = [...panel.children];
-        window.hoursFixtureDelivery = panel.querySelector(
-          '.fleet-map-route-info__next',
-        );
+      await page.locator('.fleet-truck-facts').evaluate(facts => {
+        window.hoursFixtureFacts = facts;
+        window.hoursFixtureCells = [...facts.children];
       });
       await page.screenshot({
         path: resolve(output, `${name}-route-loading.png`),
@@ -3095,290 +2833,77 @@ try {
         await page
           .getByRole('button', { name: 'Route options', exact: true })
           .isDisabled(),
-        `${name}: route icon keeps its action slot disabled before load identity is known`,
+        `${name}: Route options stays disabled before the load is known`,
       );
+      const afterRender = () =>
+        page.evaluate(
+          () =>
+            new Promise(done =>
+              requestAnimationFrame(() => requestAnimationFrame(done)),
+            ),
+        );
       previewHeld.release();
       await waitForHeld(detailsHeld, `${name}-load-reference`);
-      await page
-        .locator('.fleet-map-mobile-summary__remaining[aria-busy="true"]')
-        .waitFor();
+      await afterRender();
       const partialGeometry = await truckLoadingGeometry(page);
       await stableMapRect(page, mapRect, `${name}-preview-ready`);
       await waitForHeld(planningHeld, `${name}-live-planning`);
       await page.screenshot({
         path: resolve(output, `${name}-route-preview.png`),
       });
-      detailsHeld.release();
-      await page.waitForFunction(
-        () =>
-          document
-            .querySelector('.fleet-map-mobile-summary__remaining')
-            ?.getAttribute('aria-busy') === 'false',
+      const detailsRead = page.waitForResponse(
+        response =>
+          new URL(response.url()).pathname === `/api/dispatch/${currentId}`,
       );
+      detailsHeld.release();
+      await detailsRead;
+      await afterRender();
       const detailsGeometry = await truckLoadingGeometry(page);
       await stableMapRect(page, mapRect, `${name}-load-reference-ready`);
       await page.screenshot({
         path: resolve(output, `${name}-route-reference.png`),
       });
       planningHeld.release();
-      await page.waitForFunction(() => {
+      await page.waitForFunction(selector => {
         const route = document.querySelector('.fleet-map-route-info');
         return (
           route?.getAttribute('aria-busy') === 'false' &&
-          !route.classList.contains('is-awaiting-route')
+          !route.classList.contains('is-awaiting-route') &&
+          !!document.querySelector(
+            `${selector} .fleet-truck-next .stop-hours__road time`,
+          )
         );
-      });
+      }, panelSelector);
+      await afterRender();
       const selectedMapRect = await stableMapRect(
         page,
         mapRect,
         `${name}-first-selection-ready`,
       );
-      await page.waitForFunction(
-        () =>
-          document
-            .querySelector('.fleet-map-mobile-summary__remaining')
-            ?.getAttribute('aria-busy') === 'false',
-      );
       const readyGeometry = await truckLoadingGeometry(page);
-      check(
-        (await page
-          .locator('.fleet-map-route-info__facility')
-          .textContent()) === stops[0].name,
-        `${name}: the current stop keeps its facility name beside its address`,
-      );
-      check(
-        await page
-          .locator('.fleet-map-route-info')
-          .evaluate(
-            panel =>
-              panel === window.hoursFixtureRoutePanel &&
-              [...panel.children].every(
-                (group, index) =>
-                  group === window.hoursFixtureRouteGroups[index],
-              ) &&
-              panel.querySelector('.fleet-map-route-info__next') ===
-                window.hoursFixtureDelivery &&
-              window.hoursFixtureDelivery.parentElement.classList.contains(
-                'fleet-map-route-info__visit',
-              ),
-          ),
-        `${name}: route loading must populate the retained panel and groups, not replace their layout`,
-      );
       for (const [stage, geometry] of Object.entries({
         loading: loadingGeometry,
         partial: partialGeometry,
         details: detailsGeometry,
-      })) {
-        const at = selector => geometry[selector];
-        const ready = selector => readyGeometry[selector];
-        const grew = selector => ready(selector).height - at(selector).height;
-        const below = (selector, zone) =>
-          ready(selector).y >= ready(zone).y + ready(zone).height - 1;
-        // Zones that may grow as content arrives for the first time. Each
-        // may grow by no more than what arrived in it; everything under a
-        // zone then moves down by exactly the zone's measured growth, so a
-        // violation is reported once, at its zone, not as a cascade.
-        // 1. The head's first row: the stop the truck is heading for, the
-        //    booked hour, the forecast's word about the cycle.
-        const firstRow =
-          '.fleet-map-inspector__hours > .fleet-map-inspector__row';
-        const rowGrowth = grew(firstRow);
-        const arrived = Object.entries(ready('#arrived')).filter(
-          ([selector]) => !(selector in at('#arrived')),
-        );
-        const arrivedHeight = arrived.reduce(
-          (total, [, { height, gap }]) => total + height + gap,
-          0,
-        );
-        check(
-          Math.abs(rowGrowth) <= 1 ||
-            (rowGrowth > 0 && rowGrowth <= arrivedHeight + 1),
-          `${name}: ${stage} the head's first row grows ` +
-            `${rowGrowth.toFixed(1)}px beyond content arriving for the ` +
-            `first time (${arrivedHeight.toFixed(1)}px: ` +
-            `${arrived.map(([selector]) => selector).join(', ') || 'none'})`,
-        );
-        // On a narrow card the first row stacks: the load's column above
-        // the arrival. The load's column may grow only by the stop it is
-        // heading for; the arrival moves down by the column's growth.
-        const load = '.fleet-map-mobile-summary__remaining';
-        const headingTo = '.fleet-map-inspector__heading-to';
-        const stacked = below('.fleet-map-inspector__arrival', load);
-        const loadGrowth = stacked ? grew(load) : 0;
-        if (stacked) {
-          const headingArrived =
-            headingTo in ready('#arrived') && !(headingTo in at('#arrived'))
-              ? ready('#arrived')[headingTo].height +
-                ready('#arrived')[headingTo].gap
-              : 0;
-          check(
-            Math.abs(loadGrowth - headingArrived) <= 1,
-            `${name}: ${stage} the load's line grows ` +
-              `${loadGrowth.toFixed(1)}px where only ` +
-              `${headingArrived.toFixed(1)}px of new content arrived`,
-          );
-        }
-        // 2. The duty row: the rest built up arrives with the forecast.
-        const duty = '.fleet-map-inspector__duty';
-        const dutyGrowth = grew(duty);
-        const restsArrived =
-          at('#content').rests === 0 && ready('#content').rests > 0
-            ? ready('#content').restsBelowStatus
-            : 0;
-        check(
-          Math.abs(dutyGrowth) <= 1 ||
-            (dutyGrowth > 0 && dutyGrowth <= restsArrived + 1),
-          `${name}: ${stage} the duty row grows ${dutyGrowth.toFixed(1)}px ` +
-            `beyond its arriving rest countdowns (${restsArrived.toFixed(1)}px)`,
-        );
-        // 3. The route's next stop, where it stands above what is left (a
-        //    narrow card): its street and town arrive with the route.
-        const next = '.fleet-map-route-info__next';
-        const where = '.fleet-map-route-info__where';
-        const routeStacked = below(where, next);
-        const nextGrowth = routeStacked ? grew(next) : 0;
-        if (routeStacked)
-          check(
-            Math.abs(nextGrowth) <= 1 ||
-              (nextGrowth > 0 &&
-                at('#content').addressLines < ready('#content').addressLines &&
-                nextGrowth <=
-                  ready('#content').addressHeight -
-                    at('#content').addressHeight +
-                    1),
-            `${name}: ${stage} the next stop grows ${nextGrowth.toFixed(1)}px ` +
-              'beyond its arriving street and town',
-          );
-        // 4. Learning that the next stop is the final one removes the
-        //    Remaining load metric (its node retained); what stood under it
-        //    rises by exactly its height and the row gap it took.
-        const removal =
-          at('#final').metricVisible &&
-          !ready('#final').metricVisible &&
-          ready('#final').final &&
-          ready('#final').metricPresent
-            ? at('#final').metricHeight + at('#final').gap
-            : 0;
-        check(
-          !at('#final').metricVisible ||
-            ready('#final').metricVisible ||
-            removal > 0,
-          `${name}: ${stage} the Remaining load metric disappears without ` +
-            'the final stop being known, or loses its node',
-        );
-        // The vehicle line sits between the first row and the duty row;
-        // the route follows the duty row at the same gap in every stage.
-        const telemetry = '.fleet-map-truck-info';
-        const route = '.fleet-map-route-info';
-        const routeGap = s => s[route].y - s[telemetry].y - s[telemetry].height;
-        check(
-          routeGap(geometry) >= -1 &&
-            Math.abs(
-              routeGap(readyGeometry) - routeGap(geometry) - dutyGrowth,
-            ) <= 1,
-          `${name}: ${stage} the route follows the vehicle line without ` +
-            'changing its gap beyond the duty row it passes',
-        );
-        const visit = '.fleet-map-route-info__visit';
-        const facts = '.fleet-map-route-info__facts';
-        const factsUnder = below(facts, visit);
-        const visitGrowth = grew(visit);
-        const bottomInset = snapshot => {
-          const panel = snapshot[route];
-          const contentBottom = Math.max(
-            ...[visit, facts].map(
-              group => snapshot[group].y + snapshot[group].height,
-            ),
-          );
-          return panel.y + panel.height - contentBottom;
-        };
-        check(
-          bottomInset(geometry) >= -1 &&
-            Math.abs(bottomInset(geometry) - bottomInset(readyGeometry)) <= 1,
-          `${name}: ${stage} route height fits its facts, ` +
-            'including the cycle warning, without blank reserved space',
-        );
-        // Where each part may be in each stage, from the zones above it.
-        const headShift = selector =>
-          (below(selector, firstRow) ? rowGrowth : 0) +
-          (below(selector, duty) ? dutyGrowth : 0);
-        const frames = [
-          '.fleet-map-inspector__header',
-          '.fleet-map-inspector__hours',
-        ];
-        for (const selector of Object.keys(geometry)) {
-          if (selector.startsWith('#')) continue;
-          const now = at(selector),
-            then = ready(selector);
-          const same = keys =>
-            keys.every(key => Math.abs(now[key] - then[key]) <= 1);
-          const dy = then.y - now.y,
-            dh = then.height - now.height;
-          const withinRoute = selector.startsWith('.fleet-map-route-info');
-          const inFacts = selector === 'button[aria-label="Route options"]';
-          let expectedDy = 0,
-            heightHolds = true;
-          if (selector === '.fleet-map-inspector__identity') {
-            heightHolds = Math.abs(dh) <= 1;
-          } else if (selector === firstRow || selector === load) {
-            expectedDy = 0;
-          } else if (selector === '.fleet-map-inspector__arrival') {
-            expectedDy = loadGrowth;
-          } else if (frames.includes(selector)) {
-            heightHolds = Math.abs(dh - rowGrowth - dutyGrowth) <= 1;
-          } else if (selector === duty) {
-            expectedDy = rowGrowth;
-          } else if (withinRoute || inFacts || selector.includes('location')) {
-            // Inside the route: it moves as a whole by the head's zones,
-            // then by its own.
-            expectedDy = headShift(route);
-            if (selector === where) {
-              expectedDy += nextGrowth;
-              heightHolds = dh <= 1 && dh >= -removal - 1;
-            } else if (selector === '.fleet-map-inspector__location') {
-              expectedDy += nextGrowth - removal;
-              heightHolds = Math.abs(dh) <= 1;
-            } else if (selector === next) {
-              heightHolds = routeStacked
-                ? Math.abs(dh - nextGrowth) <= 1
-                : dh <= 1 && dh >= -removal - 1;
-            } else if (selector === facts || inFacts) {
-              if (factsUnder) expectedDy += visitGrowth;
-              // Beside the stop, the actions keep their place from the
-              // foot of their column.
-              else if (inFacts) expectedDy += grew(facts);
-              heightHolds =
-                selector === facts && !factsUnder
-                  ? Math.abs(dh - grew(route)) <= 1
-                  : inFacts || Math.abs(dh) <= 1;
-            } else if (selector === visit || selector === route) {
-              heightHolds =
-                dh <= Math.max(nextGrowth, 0) + 1 &&
-                dh >= -removal - 1 + Math.min(nextGrowth, 0);
-            }
-          } else {
-            expectedDy = headShift(selector);
-          }
-          const keepsX = same(
-            selector.endsWith('> .fleet-map-route-info__label')
-              ? ['x']
-              : selector === '.fleet-map-inspector__identity' ||
-                  selector === '.fleet-map-inspector__arrival'
-                ? ['x']
-                : ['x', 'width'],
-          );
-          check(
-            keepsX && Math.abs(dy - expectedDy) <= 1 && heightHolds,
-            `${name}: ${stage} ${selector} moves while selection data loads ` +
-              `(dy ${dy.toFixed(1)} expected ${expectedDy.toFixed(1)}, ` +
-              `dh ${dh.toFixed(1)})`,
-          );
-        }
-      }
+      }))
+        checkLoadingStage(name, stage, geometry, readyGeometry);
+      check(
+        await page
+          .locator('.fleet-truck-facts')
+          .evaluate(
+            facts =>
+              facts === window.hoursFixtureFacts &&
+              [...facts.children].every(
+                (cell, index) => cell === window.hoursFixtureCells[index],
+              ),
+          ),
+        `${name}: loading fills the retained facts, not a new layout`,
+      );
       (report.loadingGeometry ??= []).push({
         name,
         loading: loadingGeometry,
         partial: partialGeometry,
+        details: detailsGeometry,
         ready: readyGeometry,
       });
       const repeatSelectionReads = apiReads;
@@ -3389,298 +2914,33 @@ try {
         `${name}: reselecting the same truck does not reread ` +
           'planning or weather',
       );
-      check(
-        (await opensWhole(page)) ===
-          (await page.locator('#fleet-map-details').isVisible()),
-        `${name}: reselecting a truck closes its card again ` +
-          '(a narrow card stays open whole)',
-      );
       await expandTruckCard(page, `${name}-reselected`);
       await page.screenshot({
         path: resolve(output, `${name}-selected-info-initial.png`),
       });
-      if (width === 390) {
-        // A phone keeps the head in the approved order (inspector/_narrow):
-        // the unit and its controls, then the crew and what is left, then
-        // the rows - so the miles left take their own row above the load,
-        // from the same edge.
-        const distance = page.locator('.fleet-map-mobile-summary__distance');
-        check(
-          (await distance.isVisible()) &&
-            normalize(await distance.locator('strong').innerText()) ===
-              (units.distanceUnit === 'kilometers' ? '193' : '120'),
-          `${name}: phone header keeps remaining distance in the primary unit`,
-        );
-        check(
-          await distance.evaluate(element => {
-            const own = element.getBoundingClientRect();
-            const head = document
-              .querySelector('.fleet-map-inspector__hours')
-              .getBoundingClientRect();
-            const load = document
-              .querySelector('.fleet-map-mobile-summary__remaining')
-              .getBoundingClientRect();
-            return (
-              own.left >= head.left - 1 &&
-              own.right <= head.right + 1 &&
-              Math.abs(own.left - load.left) <= 1 &&
-              own.bottom <= load.top + 1
-            );
-          }),
-          `${name}: the miles left take their own row above the load, ` +
-            "from the load's edge",
-        );
-        check(
-          (await page.locator('#fleet-map-details').isVisible()) &&
-            (await page.locator('#fleet-map-telemetry-details').isVisible()) &&
-            (await page.locator('.fleet-map-inspector__title').isVisible()) &&
-            (await page.locator('.fleet-map-inspector__driver').isVisible()) &&
-            (await page.locator('.fleet-map-inspector__trailer').isVisible()) &&
-            (await page.locator('.fleet-map-inspector__actions').isVisible()) &&
-            (await page.locator('.fleet-map-inspector__close').isVisible()),
-          `${name}: phone inspector keeps crew, actions and readings visible`,
-        );
-        check(
-          (await page.locator('.fleet-map-info-reserved').boundingBox())
-            .height <=
-            mapRect.height * 0.6 + 1,
-          `${name}: phone card stays bounded so the map remains visible`,
-        );
-        await measureTruckControls(page, `${name}-phone-ready`);
-        await stableMapRect(page, mapRect, `${name}-phone-ready`);
-        check(
-          (await page.locator('#fleet-map-route-details').isVisible()) &&
-            (await page.locator('#fleet-map-truck-location').isVisible()) &&
-            (await page
-              .locator('.fleet-map-inspector__clocks > .driver-hours-panel')
-              .isVisible()) &&
-            (await page
-              .locator('.truck-readings__reading--outside')
-              .isVisible()),
-          `${name}: phone card exposes readings, HOS and location/load`,
-        );
-        await checkPhoneTitleControls('summary');
-        await page.screenshot({
-          path: resolve(output, `${name}-phone-readings.png`),
-        });
-        await checkMobileTruckScrolling(page, output, name);
-        await checkTruckReadingsLayout(page, output, name);
-        check(
-          (await page.locator('.fleet-map-truck-info__more').count()) === 0,
-          `${name}: phone details do not require a secondary disclosure`,
-        );
-      } else
-        check(
-          (await page.locator('.fleet-map-truck-info__more').count()) === 0 &&
-            (await page
-              .locator('.fleet-map-mobile-summary__remaining')
-              .isVisible()) &&
-            (await page
-              .locator('#fleet-map-details .fleet-map-mobile-summary__distance')
-              .count()) === 0,
-          `${name}: the desktop head carries the load and the miles left ` +
-            'once, with no second disclosure',
-        );
-      check(
-        (await page.locator('.fleet-map-inspector__hours').isVisible()) &&
-          (await page
-            .locator('.fleet-map-inspector__actions button[aria-label="Fuel"]')
-            .isVisible()),
-        `${name}: always-visible readings retain fuel controls and HOS`,
-      );
-      check(
-        (await page.locator('#fleet-map-route-details').isVisible()) &&
-          (await page
-            .locator(
-              '.fleet-map-inspector__identity .fleet-map-inspector__trailer',
-            )
-            .isVisible()) &&
-          // The approved card keeps one duty and rest line under the clocks
-          // and no recap; the load's number is the link to its page.
-          (await page
-            .locator('.fleet-map-inspector__duty .driver-duty--row')
-            .count()) === 1 &&
-          (await page
-            .locator('.fleet-map-inspector__hours .driver-next-recap')
-            .count()) === 0 &&
-          (await page.locator('.fleet-map-inspector__load-link').isVisible()) &&
-          (await page
-            .locator('.fleet-map-inspector__hours .driver-hours__clock')
-            .count()) === 4,
-        `${name}: the card retains trailer, load link, four clocks and one ` +
-          'duty line without a recap',
-      );
-      // The weather is a cell of the same line; the three provider
-      // readings are the others.
-      const compactReadings = page.locator(
-        '.truck-readings__reading:not(.truck-readings__reading--outside)',
-      );
-      check(
-        (await compactReadings.count()) === 3 &&
-          (await compactReadings.nth(0).isVisible()) &&
-          (await compactReadings.nth(1).isVisible()) &&
-          (await compactReadings.nth(2).isVisible()) &&
-          normalize(await compactReadings.nth(0).innerText()).includes(
-            '45 mph',
-          ) &&
-          normalize(await compactReadings.nth(2).innerText()).includes(
-            'Driving',
-          ),
-        `${name}: the card shows provider speed, fuel and engine`,
-      );
-      const readingBounds = await compactReadings.evaluateAll(elements =>
-        elements.map(element => {
-          const rect = element.getBoundingClientRect();
-          return {
-            top: rect.top,
-            bottom: rect.bottom,
-            left: rect.left,
-            right: rect.right,
-          };
-        }),
-      );
-      const outside = page.locator(
-        '.truck-readings > .truck-readings__reading--outside',
-      );
-      const expectedOutside =
-        units.temperatureUnit === 'fahrenheit' ? '72.5 °F' : '22.5 °C';
-      check(
-        normalize(await outside.innerText()) === `Temp ${expectedOutside}`,
-        `${name}: outside temperature follows the saved preference`,
-      );
+      await checkNextStopLine(page, name, units);
       check(
         (await page.evaluate(() => window.hoursFixture.distanceUnit)) ===
           units.distanceUnit,
         `${name}: map stop and station formatting receives the same preference`,
       );
-      const outsideBounds = await outside.boundingBox();
-      check(
-        (await outside.getAttribute('aria-label')) === 'Outside temperature' &&
-          (await outside.locator('svg').count()) === 1,
-        `${name}: outside temperature has a named thermometer icon`,
-      );
-      (report.readingRows ??= []).push({
-        name,
-        width,
-        readings: readingBounds,
-        outside: outsideBounds,
-      });
-      // On a wide card the temperature closes the line of readings. A phone
-      // card has no room for a fourth: the three readings fill the row and
-      // the temperature folds under them, at the same edge they start from.
-      // Both arms of this used to ask for the wide arrangement.
-      // The line's cells are equal and fold before they overlap (the
-      // approved line of September 26): the temperature either closes the
-      // row after the third reading (a row of four, or on a phone the
-      // second row of two), or starts the next row at the first reading's
-      // edge (a row of three).
-      const closesRow =
-        outsideBounds.x >= readingBounds[2].right - 1 &&
-        outsideBounds.y < readingBounds[2].bottom;
-      const foldsUnder =
-        Math.abs(outsideBounds.x - readingBounds[0].left) <= 1 &&
-        outsideBounds.y >= readingBounds[2].bottom - 1;
-      check(
-        closesRow || foldsUnder,
-        `${name}: temperature closes the readings' row or folds under its ` +
-          'first reading',
-      );
-      // The readings sit on one baseline, so their boxes share a row
-      // without their tops matching to the pixel.
-      const sameRow = (one, other) =>
-        one.top < other.bottom - 1 && other.top < one.bottom - 1;
-      // Three readings in the order they are said: on one line where there
-      // is room for them, and otherwise the third folds under the first two.
-      const alignedReadings = readingBounds.every(rect =>
-        sameRow(rect, readingBounds[0]),
-      )
-        ? readingBounds[0].right <= readingBounds[1].left + 1 &&
-          readingBounds[1].right <= readingBounds[2].left + 1
-        : sameRow(readingBounds[0], readingBounds[1]) &&
-          readingBounds[2].top >= readingBounds[0].bottom - 1;
-      check(
-        alignedReadings,
-        `${name}: compact telemetry stays aligned without overlapping ` +
-          `(${JSON.stringify(readingBounds)})`,
-      );
-      const compactBounds = await page
-        .locator('.fleet-map-info-reserved')
-        .boundingBox();
-      const compactLayout = await page
-        .locator('.fleet-map-info-reserved')
-        .evaluate(element => {
-          const rect = node => node.getBoundingClientRect();
-          const map = rect(document.querySelector('#fleet-map'));
-          const route = rect(element.querySelector('.fleet-map-route-info'));
-          const actionsNode = element.querySelector(
-            '.fleet-map-inspector__actions',
-          );
-          const actions = rect(actionsNode);
-          const style = getComputedStyle(element),
-            root = parseFloat(
-              getComputedStyle(document.documentElement).fontSize,
-            );
-          return {
-            mapLeft: map.left,
-            mapWidth: map.width,
-            cap:
-              parseFloat(
-                style.getPropertyValue('--size-map-compact-inspector'),
-              ) * root,
-            // The actions stand beside the stop they act on, in the route's
-            // own facts column (the approved card of September 26).
-            adjacent:
-              !!actionsNode.closest('.fleet-map-route-info__facts') &&
-              actions.top >= route.top - 1 &&
-              actions.bottom <= route.bottom + 1,
-          };
+      const factValues = await checkPanelFacts(page, name, units);
+      await checkPanelClocks(page, name);
+      await checkPanelTypography(page, `${name}-ready`);
+      await checkToolBar(page, `${name}-selected`, true);
+      if (phone) {
+        await measureTruckControls(page, `${name}-phone-ready`);
+        await stableMapRect(page, mapRect, `${name}-phone-ready`);
+        await checkTitleControls('phone-ready');
+        await page.screenshot({
+          path: resolve(output, `${name}-phone-readings.png`),
         });
-      check(
-        Math.abs(
-          compactBounds.width -
-            Math.min(compactLayout.mapWidth, compactLayout.cap),
-        ) <= 1 &&
-          Math.abs(
-            compactBounds.x +
-              compactBounds.width / 2 -
-              compactLayout.mapLeft -
-              compactLayout.mapWidth / 2,
-          ) <= 1 &&
-          compactLayout.adjacent,
-        `${name}: the card uses its smaller centred cap and keeps the ` +
-          'actions beside the stop they act on',
-      );
-      const gpsLocation = page.locator('[aria-label="Truck GPS location"]');
-      check(
-        (await gpsLocation.isVisible()) &&
-          (await gpsLocation.innerText()).includes(truck.formattedLocation),
-        `${name}: compact truck shows its GPS address independently of route stops`,
-      );
-      check(
-        (await gpsLocation.locator('time').count()) === 0,
-        `${name}: the location card omits the GPS timestamp row`,
-      );
-      check(
-        compactBounds.width <= 1024 + 1 &&
-          compactBounds.height <= mapRect.height + 1,
-        `${name}: compact inspector must leave most of the map visible`,
-      );
-      check(
-        (await page
-          .locator('.fleet-map-inspector .driver-duty:not(.driver-duty--row)')
-          .count()) === 0 &&
-          (await page
-            .locator('.fleet-map-inspector__hours .driver-hours--text')
-            .count()) === 1 &&
-          (await page
-            .locator('.fleet-map-inspector__hours .driver-hours__dial')
-            .count()) === 0,
-        `${name}: the head reads four clocks as text, with only its duty ` +
-          'row and no second copy of the dials',
-      );
+        await checkMobileTruckScrolling(page, output, name, check);
+        await checkTruckReadingsLayout(page, output, name, check);
+      }
       const headClocks = () =>
         page
-          .locator('.fleet-map-inspector__hours .driver-hours__reading')
+          .locator('.fleet-truck-clocks .driver-hours__reading')
           .allTextContents();
       const clocksBefore = await headClocks();
       const primaryGeometry = () =>
@@ -3690,30 +2950,34 @@ try {
               '.fleet-map-inspector__header',
               '.fleet-map-inspector__title',
               '.fleet-map-inspector__close',
-              '.fleet-map-inspector__driver',
-              '.fleet-map-inspector__trailer',
-              '.truck-readings',
-              '.fleet-map-inspector__hours',
-              '.fleet-map-inspector__actions',
-              '.fleet-map-inspector__location',
-            ].join(', '),
+              '.fleet-truck-next',
+              '.fleet-truck-facts',
+              '.fleet-truck-facts__fact',
+              '.fleet-truck-clocks',
+            ]
+              .map(selector => `${panelSelector} ${selector}`)
+              .join(', '),
           )
           .evaluateAll(elements =>
             elements.map(element => {
               const { x, y, width, height } = element.getBoundingClientRect();
-              // Measured against the card's content, not the viewport: the
-              // card scrolls inside the map, and moving focus to a button
-              // may scroll it without moving anything within it. The
-              // scroll itself is recorded, not hidden.
+              // Measured against the panel's content: moving focus to a
+              // button may scroll it without moving anything within it.
+              // The scroll itself is recorded, not hidden.
               const card = document.querySelector('.fleet-map-info-reserved');
-              return { x, y: y + card.scrollTop, width, height };
+              const sticky =
+                getComputedStyle(
+                  card.querySelector('.fleet-map-inspector__header'),
+                ).position === 'sticky' &&
+                !!element.closest('.fleet-map-inspector__header');
+              const scroll = sticky ? 0 : card.scrollTop;
+              return { x, y: y + scroll + scrollY, width, height };
             }),
           );
       const cardScroll = () =>
         page
           .locator('.fleet-map-info-reserved')
           .evaluate(element => element.scrollTop);
-      await checkTruckTypography(page, `${name}-ready`, 'ready', units);
       const initialControls = await measureTruckControls(page, `${name}-ready`);
       const initialPrimary = await primaryGeometry();
       const initialScroll = await cardScroll();
@@ -3743,7 +3007,7 @@ try {
       await page.evaluate(() => window.hoursFixture.background());
       await measureTruckControls(page, `${name}-following-background`);
       await stableMapRect(page, mapRect, `${name}-following-background`);
-      await checkPhoneTitleControls('following-background');
+      await checkTitleControls('following-background');
       await follow.focus();
       await page.keyboard.press('Enter');
       await page.waitForFunction(
@@ -3757,61 +3021,15 @@ try {
         apiReads === interactionReads,
         `${name}: Follow and background clicks do not reread retained data`,
       );
-      await page.waitForFunction(() => {
-        const inspector = document.querySelector(
-          '.fleet-map-inspector[data-inspector-mode="truck"]',
-        );
-        if (!inspector) return false;
-        const cap =
-          parseFloat(
-            getComputedStyle(inspector).getPropertyValue(
-              '--size-map-compact-inspector',
-            ),
-          ) * parseFloat(getComputedStyle(document.documentElement).fontSize);
-        const bounds = inspector.getBoundingClientRect(),
-          map = document.querySelector('#fleet-map').getBoundingClientRect();
-        const insetCap =
-          parseFloat(
-            getComputedStyle(inspector).getPropertyValue('--space-md'),
-          ) * parseFloat(getComputedStyle(document.documentElement).fontSize);
-        const gap = Math.max(
-          0,
-          Math.min(bounds.left - map.left, map.right - bounds.right),
-        );
-        return (
-          Math.abs(bounds.width - Math.min(map.width, cap)) <= 1 &&
-          Math.abs(bounds.top - map.top - Math.min(insetCap, gap)) <= 1
-        );
-      });
       await stableMapRect(page, mapRect, `${name}-retained-selection`);
       check(
-        (await page.locator('#fleet-map-route-details').isVisible()) &&
-          (
-            await page
-              .locator('.fleet-map-mobile-summary__remaining')
-              .innerText()
-          ).includes('CURRENT-1441') &&
-          // The booked hour is said in the head on the approved card.
-          normalize(
-            await page.locator('.fleet-map-inspector__appointment').innerText(),
-          ).includes('Sep 8 · 04:00 PM'),
-        `${name}: interactions retain the load/order and appointment`,
-      );
-      check(
-        !(await page.locator('.fleet-map-route-info__distance').isVisible()) &&
-          (await page.locator('.fleet-map-route-info__next').isVisible()) &&
+        normalize(
+          await page.locator(`${panelSelector} .fleet-truck-next`).innerText(),
+        ).includes('Sep 8 · 04:00 PM EDT') &&
           (await page
-            .locator(
-              '.fleet-map-inspector__appointment, .fleet-map-route-info__appointment',
-            )
-            .count()) === 1 &&
-          (await page
-            .locator('.fleet-map-route-info__metric')
-            .first()
-            .locator('.fleet-map-route-info__secondary')
-            .count()) === (units.distanceUnit === 'both' ? 1 : 0),
-        `${name}: final-stop summary follows units ` +
-          'without duplicate distance or appointment',
+            .locator(`${panelSelector} .fleet-truck-next__booking`)
+            .count()) === 1,
+        `${name}: interactions retain the one appointment`,
       );
       const retainedPrimary = await primaryGeometry();
       (report.interactionScroll ??= []).push({
@@ -3819,7 +3037,7 @@ try {
         before: initialScroll,
         after: await cardScroll(),
       });
-      await checkTruckTypography(page, `${name}-retained`, 'retained', units);
+      await checkPanelTypography(page, `${name}-retained`);
       const retainedControls = await measureTruckControls(
         page,
         `${name}-retained`,
@@ -3846,640 +3064,14 @@ try {
               ),
           )})`,
       );
-      const overlayGeometry = await page
-        .locator('.fleet-map-info-reserved')
-        .evaluate(element => {
-          const rect = element.getBoundingClientRect(),
-            style = getComputedStyle(element);
-          const truck = element.querySelector('.fleet-map-truck-info'),
-            route = element.querySelector('.fleet-map-route-info');
-          const truckStyle = getComputedStyle(truck),
-            routeStyle = getComputedStyle(route);
-          const shadowReference = document.createElement('div');
-          shadowReference.style.boxShadow =
-            style.getPropertyValue('--shadow-card');
-          element.append(shadowReference);
-          const expectedShadow = getComputedStyle(shadowReference).boxShadow;
-          shadowReference.remove();
-          return {
-            position: style.position,
-            height: rect.height,
-            top: rect.top,
-            left: rect.left,
-            right: rect.right,
-            width: rect.width,
-            widthCap:
-              parseFloat(
-                style.getPropertyValue('--size-map-compact-inspector'),
-              ) *
-              parseFloat(getComputedStyle(document.documentElement).fontSize),
-            insetCap:
-              parseFloat(style.getPropertyValue('--space-md')) *
-              parseFloat(getComputedStyle(document.documentElement).fontSize),
-            expectedShadow,
-            expectedRadius:
-              parseFloat(style.getPropertyValue('--radius-sm')) *
-              parseFloat(getComputedStyle(document.documentElement).fontSize),
-            shadow: style.boxShadow,
-            radius: style.borderRadius,
-            background: style.backgroundColor,
-            // The approved card (September 26): the vehicle's line reads in
-            // the head, and the route follows it, below and after it.
-            rowGap:
-              route.getBoundingClientRect().top -
-              truck.getBoundingClientRect().bottom,
-            vehicleFirst: !!(
-              truck.compareDocumentPosition(route) &
-              Node.DOCUMENT_POSITION_FOLLOWING
-            ),
-            // Content-sized: no blank space under the card's last part.
-            contentGap:
-              rect.bottom -
-              parseFloat(style.paddingBottom) -
-              parseFloat(style.borderBottomWidth) -
-              Math.max(
-                ...[...element.querySelectorAll('*')]
-                  .filter(node => node.getClientRects().length > 0)
-                  .map(node => node.getBoundingClientRect().bottom),
-              ),
-            truckRadius: truckStyle.borderRadius,
-            routeRadius: routeStyle.borderRadius,
-            divider: routeStyle.borderTopWidth,
-            scrollHeight: element.scrollHeight,
-            overflowY: style.overflowY,
-            parent: element.parentElement.className,
-            headingBottom: document
-              .querySelector('.fleet-map-page h1')
-              .getBoundingClientRect().bottom,
-            filtersBottom: document
-              .querySelector('.fleet-map-toolbar')
-              .getBoundingClientRect().bottom,
-          };
-        });
-      check(
-        await page
-          .locator(
-            '.fleet-map-info-reserved, .fleet-map-info-content, .fleet-map-reveal',
-          )
-          .evaluateAll(elements =>
-            elements.every(
-              element => getComputedStyle(element).animationName === 'none',
-            ),
-          ),
-        `${name}: retained inspector must not animate ` +
-          'even without reduced motion',
-      );
-      // The old card's 275px ceiling does not describe the approved card;
-      // what it guarded is that the card is its content's height, with the
-      // bounded-overlay check below capping it against the map.
-      if (width >= 1440)
-        check(
-          overlayGeometry.scrollHeight <= overlayGeometry.height + 1 &&
-            overlayGeometry.contentGap <= 1,
-          `${name}: truck details must remain content-sized ` +
-            `(${overlayGeometry.contentGap.toFixed(1)}px below the content)`,
-        );
-      check(
-        overlayGeometry.position === 'absolute' &&
-          overlayGeometry.parent.includes('fleet-map-stage') &&
-          overlayGeometry.height <=
-            mapRect.height * (width === 390 ? 0.6 : 0.55) + 2 &&
-          overlayGeometry.top >= mapRect.y &&
-          overlayGeometry.overflowY === 'auto',
-        `${name}: selected information must scroll inside a bounded overlay without covering the full map`,
-      );
-      check(
-        overlayGeometry.top >= mapRect.y &&
-          mapRect.y >= overlayGeometry.filtersBottom - 1 &&
-          overlayGeometry.top >= overlayGeometry.headingBottom,
-        `${name}: the info overlay must stay inside the map, never cover the page heading or filters`,
-      );
-      const sideClearance = Math.max(
-        0,
-        Math.min(
-          overlayGeometry.left - mapRect.x,
-          mapRect.x + mapRect.width - overlayGeometry.right,
-        ),
-      );
-      check(
-        Math.abs(
-          overlayGeometry.top -
-            mapRect.y -
-            Math.min(overlayGeometry.insetCap, sideClearance),
-        ) <= 1 &&
-          Math.abs(
-            overlayGeometry.left +
-              overlayGeometry.width / 2 -
-              mapRect.x -
-              mapRect.width / 2,
-          ) <= 1 &&
-          Math.abs(
-            overlayGeometry.width -
-              Math.min(mapRect.width, overlayGeometry.widthCap),
-          ) <= 1 &&
-          overlayGeometry.rowGap >= -1 &&
-          overlayGeometry.vehicleFirst,
-        `${name}: the centred card reads the vehicle's line in its head and ` +
-          `the route after it (gap ${overlayGeometry.rowGap})`,
-      );
-      check(
-        overlayGeometry.expectedShadow !== 'none' &&
-          overlayGeometry.shadow === overlayGeometry.expectedShadow &&
-          Math.abs(
-            parseFloat(overlayGeometry.radius) - overlayGeometry.expectedRadius,
-          ) <= 1 &&
-          overlayGeometry.truckRadius === '0px' &&
-          overlayGeometry.routeRadius === '0px' &&
-          overlayGeometry.divider === '1px',
-        `${name}: information must use the shared popup surface, radius and shadow without separate row corners`,
-      );
+      const overlayGeometry = await panelGeometry(page);
+      checkPanelGeometry(overlayGeometry, name, docked, phone);
       await page.screenshot({
         path: resolve(output, `${name}-selected-info-retained.png`),
       });
-      const fuelReading = page
-        .locator('.truck-readings__reading')
-        .filter({ hasText: 'Fuel' });
-      check(
-        (await fuelReading.locator('.fuel-reading__value').textContent()) ===
-          '75%' &&
-          !normalize(await fuelReading.textContent()).includes('last reading'),
-        `${name}: map fuel reading remains a compact percentage`,
-      );
-      check(
-        (await fuelReading.locator('.fuel-reading--metric').count()) === 1 &&
-          (await page.locator('.fleet-map-inspector__driver').isVisible()),
-        `${name}: selected map keeps the metric fuel column and visible header driver`,
-      );
-      const truckHeader = page.locator('.fleet-map-truck-info');
-      const headHours = page.locator('.fleet-map-inspector__hours');
-      check(
-        // The clocks are named by their labels alone; the group keeps
-        // "HOS" as its name for a screen reader (the approved card).
-        (await headHours
-          .locator('.fleet-map-inspector__clocks[aria-label="HOS"]')
-          .count()) === 1 &&
-          (await headHours.locator('.driver-hours-panel').count()) === 1 &&
-          (await truckHeader
-            .locator(
-              '.truck-readings__reading:not(.truck-readings__reading--outside)' +
-                ' > small > svg[aria-hidden="true"]',
-            )
-            .count()) === 2,
-        `${name}: the clocks are one HOS group in the head, and the ` +
-          'vehicle line keeps its own icons',
-      );
-      check(
-        (await page
-          .locator('.fleet-map-inspector .driver-next-recap')
-          .count()) === 0,
-        `${name}: truck inspector omits duplicate Next recap`,
-      );
-      check(
-        (await headHours
-          .locator('.driver-hours__clock:not(.is-unavailable)')
-          .count()) === 4,
-        `${name}: the selected head has four fresh HOS clocks`,
-      );
-      const headerGeometry = await truckHeader.evaluate(element => {
-        const rect = node => {
-          if (!node) return null;
-          const bounds = node.getBoundingClientRect();
-          return {
-            left: bounds.left,
-            right: bounds.right,
-            top: bounds.top,
-            bottom: bounds.bottom,
-            width: bounds.width,
-            height: bounds.height,
-          };
-        };
-        const dutyNode = element.querySelector('.driver-duty');
-        const textBounds = [];
-        if (dutyNode) {
-          const text = document.createTreeWalker(
-            dutyNode,
-            NodeFilter.SHOW_TEXT,
-          );
-          while (text.nextNode())
-            if (text.currentNode.textContent.trim()) {
-              const range = document.createRange();
-              range.selectNodeContents(text.currentNode);
-              textBounds.push(...range.getClientRects());
-            }
-        }
-        return {
-          header: rect(element),
-          hours: rect(element.querySelector('.driver-hours')),
-          hoursGroup: rect(
-            element.querySelector('.fleet-map-inspector__hours'),
-          ),
-          dials: [...element.querySelectorAll('.driver-hours__dial')].map(rect),
-          hosGap: element.querySelector('.driver-hours')
-            ? parseFloat(
-                getComputedStyle(element.querySelector('.driver-hours'))
-                  .columnGap,
-              )
-            : null,
-          identity: rect(
-            document.querySelector('.fleet-map-inspector__driver'),
-          ),
-          telemetry: rect(element.querySelector('.truck-readings')),
-          location: rect(
-            document.querySelector('.fleet-map-inspector__location'),
-          ),
-          duty: rect(element.querySelector('.driver-duty')),
-          clientWidth: element.clientWidth,
-          scrollWidth: element.scrollWidth,
-          dutyGroup: rect(document.querySelector('.fleet-map-inspector__duty')),
-          card: rect(
-            document.querySelector(
-              '.fleet-map-inspector[data-inspector-mode="truck"]',
-            ),
-          ),
-          telemetryIcons: [
-            ...element.querySelectorAll(
-              '.truck-readings__reading:not(.truck-readings__reading--outside)' +
-                ' > small > svg, .fuel-reading__icon',
-            ),
-          ]
-            .map(rect)
-            .filter(icon => icon.width > 0),
-          weather: rect(
-            element.querySelector('.truck-readings__reading--outside svg'),
-          ),
-          readings: [
-            ...element.querySelectorAll('.truck-readings__reading'),
-          ].map(rect),
-          actions: rect(
-            document.querySelector('.fleet-map-inspector__actions'),
-          ),
-          buttons: [
-            ...document.querySelectorAll(
-              '.fleet-map-inspector__actions .map-action-icon',
-            ),
-          ].map(rect),
-          dutyTextRight: textBounds.length
-            ? Math.max(...textBounds.map(bounds => bounds.right))
-            : null,
-          columnGap: parseFloat(getComputedStyle(element).columnGap),
-          paddingRight: parseFloat(getComputedStyle(element).paddingRight),
-          rows: [...(dutyNode?.children ?? [])].map(row => ({
-            ...rect(row),
-            clientWidth: row.clientWidth,
-            scrollWidth: row.scrollWidth,
-          })),
-        };
-      });
-      check(
-        headerGeometry.scrollWidth <= headerGeometry.clientWidth + 1,
-        `${name}: selected truck header has horizontal overflow`,
-      );
-      // The vehicle line is the truck's own readings and where it is. The
-      // clocks read in the card's head, as text, and there is no duty line
-      // anywhere on the map.
-      check(
-        headerGeometry.dials.length === 0 && headerGeometry.duty === null,
-        `${name}: the vehicle line draws no clocks or duty of its own`,
-      );
-      // Every reading leads with its icon on the approved card (September
-      // 26): speed, fuel and engine each have one; the weather's icon is its
-      // reading and is checked on its own below.
-      check(
-        headerGeometry.telemetryIcons.length === 3,
-        `${name}: each reading leads with one icon ` +
-          `(${headerGeometry.telemetryIcons.length})`,
-      );
-      check(
-        headerGeometry.weather !== null &&
-          Math.abs(
-            headerGeometry.weather.width - headerGeometry.weather.height,
-          ) <= 1,
-        `${name}: the weather keeps the square icon that is its reading`,
-      );
-      for (const reading of headerGeometry.readings)
-        check(
-          reading.left >= headerGeometry.header.left - 1 &&
-            reading.right <= headerGeometry.header.right + 1,
-          `${name}: a reading leaves the vehicle's line`,
-        );
-      if (width >= 1440) {
-        check(
-          headerGeometry.identity !== null &&
-            headerGeometry.telemetry !== null &&
-            headerGeometry.identity.bottom <= headerGeometry.telemetry.top + 1,
-          `${name}: the unit names the card above the readings`,
-        );
-        // Where the truck is has a row of its own under the vehicle line
-        // on the approved card, and the actions stand beside the stop
-        // below it (previously the address ended this line and the
-        // actions sat above it).
-        check(
-          headerGeometry.location !== null &&
-            headerGeometry.telemetry !== null &&
-            headerGeometry.location.top >= headerGeometry.telemetry.bottom - 1,
-          `${name}: where the truck is reads under the vehicle's line`,
-        );
-        check(
-          headerGeometry.actions !== null &&
-            headerGeometry.actions.top >= headerGeometry.header.bottom - 1,
-          `${name}: truck actions stand with the route, under the readings`,
-        );
-      }
-      for (const button of headerGeometry.buttons) {
-        check(
-          button.left >= headerGeometry.card.left &&
-            button.right <= headerGeometry.card.right,
-          `${name}: truck action leaves the selected card`,
-        );
-        if (width === 390)
-          check(
-            button.width >= 44 && button.height >= 44,
-            `${name}: mobile truck actions retain touch targets`,
-          );
-      }
-      await truckHeader.screenshot({
+      await checkIndependentPanelGroups(page, name);
+      await page.locator(panelSelector).screenshot({
         path: resolve(output, `${name}-current-status.png`),
-      });
-      const routeInfo = page.locator(
-        '.fleet-map-route-info[aria-label="Current dispatch route"]',
-      );
-      const adjacentRoute = await routeInfo.evaluate(element => {
-        const style = getComputedStyle(element);
-        const rootSize = parseFloat(
-          getComputedStyle(document.documentElement).fontSize,
-        );
-        return {
-          wide: element.getBoundingClientRect().width >= 52 * rootSize,
-          gap: parseFloat(style.columnGap),
-          groups: ['visit', 'facts'].map(group => {
-            const bounds = element
-              .querySelector(`:scope > .fleet-map-route-info__${group}`)
-              .getBoundingClientRect();
-            return { group, x: bounds.x, y: bounds.y, width: bounds.width };
-          }),
-        };
-      });
-      // Two columns on the card's own split: the stop and what is left on
-      // the left, the actions on the right (the old distances and timing
-      // columns are gone; the arrival reads in the head).
-      if (adjacentRoute.wide) {
-        const [visit, facts] = adjacentRoute.groups;
-        check(
-          Math.abs(facts.y - visit.y) <= 1 &&
-            Math.abs(facts.x - visit.x - visit.width - adjacentRoute.gap) <= 1,
-          `${name}: the actions stand beside the stop, not below it`,
-        );
-      }
-      (report.adjacentRouteGroups ??= []).push({ name, ...adjacentRoute });
-      // The stop and the facts are two columns with one hairline between
-      // them, drawn on the stop's own inline end. A card too narrow for two
-      // columns turns that line under the stop instead.
-      const routeDividers = await routeInfo.evaluate(element => {
-        const visit = element.querySelector(
-          ':scope > .fleet-map-route-info__visit',
-        );
-        const style = getComputedStyle(visit);
-        return {
-          columns:
-            getComputedStyle(element).gridTemplateColumns.split(' ').length,
-          inlineEnd: parseFloat(style.borderInlineEndWidth),
-          blockEnd: parseFloat(style.borderBlockEndWidth),
-          separators: [
-            ...element.querySelectorAll(
-              ':scope > .fleet-map-route-info__facts',
-            ),
-          ].map(node => ({
-            name: node.className,
-            inlineStart: parseFloat(
-              getComputedStyle(node).borderInlineStartWidth,
-            ),
-          })),
-        };
-      });
-      check(
-        routeDividers.columns === 2
-          ? routeDividers.inlineEnd === 1 && routeDividers.blockEnd === 0
-          : routeDividers.blockEnd === 1 && routeDividers.inlineEnd === 0,
-        `${name}: one hairline divides the stop from the facts ` +
-          `(${JSON.stringify(routeDividers)})`,
-      );
-      check(
-        routeDividers.separators.every(group => group.inlineStart === 0),
-        `${name}: the facts are not divided again from their own side`,
-      );
-      (report.routeDividers ??= []).push({ name, ...routeDividers });
-      const routeGroups = await routeInfo.evaluate(element => {
-        const bounds = [...element.children]
-          .filter(
-            child =>
-              !child.classList.contains('fleet-map-route-info__messages'),
-          )
-          .map(child => {
-            const r = child.getBoundingClientRect();
-            return {
-              left: r.left,
-              right: r.right,
-              top: r.top,
-              bottom: r.bottom,
-            };
-          });
-        return {
-          bounds,
-          gap: parseFloat(getComputedStyle(element).columnGap),
-          display: getComputedStyle(element).display,
-        };
-      });
-      if (routeGroups.display === 'flex')
-        for (let i = 1; i < routeGroups.bounds.length; i++) {
-          const previous = routeGroups.bounds[i - 1],
-            group = routeGroups.bounds[i];
-          check(
-            Math.abs(group.top - previous.top) <= 1
-              ? Math.abs(group.left - previous.right - routeGroups.gap) <= 1
-              : Math.abs(group.left - routeGroups.bounds[0].left) <= 1,
-            `${name}: address, appointment and ETA must follow compact left-packed route groups`,
-          );
-        }
-      assert.deepEqual(
-        await routeInfo
-          .locator(
-            ':scope > .fleet-map-route-info__visit > .fleet-map-route-info__where .fleet-map-route-info__metric .fleet-map-route-info__label',
-          )
-          .allTextContents(),
-        ['Remaining load'],
-        `${name}: only what is left of the load is the route's distance`,
-      );
-      // The approved card (September 26): the stop and, beside it, what is
-      // left of the load and where the truck is make the visit; the actions
-      // are the facts beside it; the load and the miles to the next stop
-      // are said once, in the head. The old run total ("Run 500 mi") and
-      // the timing column of cycle and arrival fuel are gone from the truck
-      // card; what is left of the load now carries the load's distance, in
-      // the saved unit.
-      const where = normalize(
-        await routeInfo
-          .locator(
-            ':scope > .fleet-map-route-info__visit > .fleet-map-route-info__where',
-          )
-          .textContent(),
-      );
-      check(
-        (await routeInfo
-          .locator(':scope > .fleet-map-route-info__load')
-          .count()) === 0 &&
-          (await page
-            .locator('.fleet-map-mobile-summary__remaining')
-            .count()) === 1 &&
-          (await routeInfo
-            .locator(
-              ':scope > .fleet-map-route-info__visit > ' +
-                '.fleet-map-route-info__next + ' +
-                '.fleet-map-route-info__where',
-            )
-            .count()) === 1 &&
-          (await routeInfo
-            .locator(':scope > .fleet-map-route-info__visit > *')
-            .count()) === 2 &&
-          (await routeInfo
-            .locator(
-              ':scope > .fleet-map-route-info__facts > ' +
-                '.fleet-map-inspector__actions',
-            )
-            .count()) === 1 &&
-          where.includes('Remaining load') &&
-          (units.distanceUnit === 'kilometers'
-            ? / km\b/.test(where) && !/ mi\b/.test(where)
-            : units.distanceUnit === 'miles'
-              ? / mi\b/.test(where) && !/ km\b/.test(where)
-              : / mi\b/.test(where) && / km\b/.test(where)),
-        `${name}: the stop, what is left and the actions are distinct ` +
-          `groups in the saved unit (${where})`,
-      );
-      await checkIndependentRouteGroups(page, name);
-      await checkNextStopDistanceLayout(page, name);
-      await checkRouteFactRows(page, name, units.distanceUnit);
-      const address = routeInfo.locator('.fleet-map-route-info__copy-address');
-      check(
-        (await address.locator('svg').count()) === 0 &&
-          (await address.locator('[title]').getAttribute('title')) ===
-            stops[0].address,
-        `${name}: the address uses the pin's space and retains its full tooltip`,
-      );
-      const longStreet = await address
-        .locator('.fleet-map-route-info__street')
-        .evaluate(element => {
-          const original = element.textContent;
-          const column = element.closest('.fleet-map-route-info__visit');
-          const originalWidth = column.clientWidth;
-          element.textContent = (
-            '13077 SW Anthony F. Sansone Sr. Boulevard, ' +
-            'receiving entrance and secondary security checkpoint, '
-          ).repeat(4);
-          const style = getComputedStyle(element);
-          const result = {
-            truncated: element.scrollWidth > element.clientWidth,
-            ellipsis: style.textOverflow,
-            whiteSpace: style.whiteSpace,
-            columnOverflow: column.scrollWidth > column.clientWidth + 1,
-            columnWidthChanged: Math.abs(column.clientWidth - originalWidth),
-          };
-          element.textContent = original;
-          return result;
-        });
-      check(
-        longStreet.truncated &&
-          longStreet.ellipsis === 'ellipsis' &&
-          longStreet.whiteSpace === 'nowrap' &&
-          !longStreet.columnOverflow &&
-          longStreet.columnWidthChanged <= 1,
-        `${name}: a genuinely overflowing street uses ellipsis ` +
-          `without stretching its column (${JSON.stringify(longStreet)})`,
-      );
-      check(
-        (await address
-          .locator(
-            '.fleet-map-route-info__address-lines > .fleet-map-route-info__facility:first-child',
-          )
-          .textContent()) === stops[0].name &&
-          (await address
-            .locator(
-              '.fleet-map-route-info__address-lines > span:not(.fleet-map-route-info__facility)',
-            )
-            .textContent()) === '100 Current Street' &&
-          (await address
-            .locator('strong.fleet-map-route-info__address')
-            .textContent()) === 'Toronto, ON, Canada',
-        `${name}: current route address places facility above street and locality`,
-      );
-      // The route's heading names the section; the stop's kind is said in
-      // the head, beside the load (the approved card), never in the address.
-      check(
-        (await routeInfo
-          .locator(
-            '.fleet-map-route-info__visit-heading > .fleet-map-route-info__label',
-          )
-          .textContent()) === 'Next stop' &&
-          normalize(
-            await page.locator('.fleet-map-inspector__heading-to').innerText(),
-          ).startsWith('Delivery') &&
-          !(await address.innerText()).includes('Delivery'),
-        `${name}: stop kind stays separate from its address`,
-      );
-      const addressGeometry = await address.evaluate(element => {
-        const facilityElement = element.querySelector(
-          '.fleet-map-route-info__facility',
-        );
-        const streetElement = element.querySelector(
-          '.fleet-map-route-info__address-lines > span:not(.fleet-map-route-info__facility)',
-        );
-        const localityElement = element.querySelector(
-          'strong.fleet-map-route-info__address',
-        );
-        const facility = facilityElement.getBoundingClientRect();
-        const street = streetElement.getBoundingClientRect();
-        const locality = localityElement.getBoundingClientRect();
-        return {
-          facilityBottom: facility.bottom,
-          facilityLeft: facility.left,
-          streetTop: street.top,
-          streetBottom: street.bottom,
-          localityTop: locality.top,
-          streetLeft: street.left,
-          localityLeft: locality.left,
-          clientWidth: element.clientWidth,
-          scrollWidth: element.scrollWidth,
-          streetWeight: Number(getComputedStyle(streetElement).fontWeight),
-          localityWeight: Number(getComputedStyle(localityElement).fontWeight),
-        };
-      });
-      // The facility names the stop on a row of its own; the street and the
-      // city each take a line under it, as an envelope does (the approved
-      // card; they once shared a row).
-      check(
-        addressGeometry.streetTop >= addressGeometry.facilityBottom - 1 &&
-          Math.abs(addressGeometry.facilityLeft - addressGeometry.streetLeft) <=
-            1 &&
-          addressGeometry.localityTop >= addressGeometry.streetBottom - 1 &&
-          Math.abs(addressGeometry.localityLeft - addressGeometry.streetLeft) <=
-            1 &&
-          addressGeometry.scrollWidth <= addressGeometry.clientWidth + 1,
-        `${name}: current route address lines overlap or clip ` +
-          `(${JSON.stringify(addressGeometry)})`,
-      );
-      // Under the facility's name the address is one quiet block: street
-      // and city at the same weight.
-      check(
-        addressGeometry.streetWeight === addressGeometry.localityWeight,
-        `${name}: the street and the city read at one weight under the facility`,
-      );
-      await address.click();
-      check(
-        (await page.evaluate(() => window.hoursFixtureCopiedText)) ===
-          stops[0].address,
-        `${name}: copying the compact route address preserves its full original value`,
-      );
-      await routeInfo.screenshot({
-        path: resolve(output, `${name}-current-route.png`),
       });
       await page.screenshot({
         path: resolve(output, `${name}-selected-map.png`),
@@ -4507,30 +3099,28 @@ try {
           routeFits: window.hoursFixture.routeFits,
           shownRoute: window.hoursFixture.shownRoute,
           focusCalls: window.hoursFixture.focusCalls ?? 0,
+          routeStopFocus: window.hoursFixture.routeStopFocus,
         }));
       const beforeBackgroundCamera = await cameraState();
       await page.locator('.fleet-map-inspector').evaluate(element => {
         element.scrollTop = 0;
-        window.hoursFixtureRetainedTruck = element.querySelector(
-          '.fleet-map-truck-info',
-        );
+        window.hoursFixtureRetainedTruck =
+          element.querySelector('.fleet-truck-panel');
       });
       const beforeBackgroundFacts = await primaryGeometry();
       for (let click = 0; click < 2; click++) {
         await page.evaluate(() => window.hoursFixture.background());
         assert.equal(
-          await page.locator('.fleet-map-inspector').isVisible(),
+          await page.locator(panelSelector).isVisible(),
           true,
+          `${name}: background clicks keep the truck panel`,
         );
         assert.equal(
-          await page.locator('#fleet-map-telemetry-details').isVisible(),
+          (await page.locator('.fleet-truck-facts').isVisible()) &&
+            (await page.locator('.fleet-truck-clocks').isVisible()) &&
+            (await page.locator('.fleet-truck-next').isVisible()),
           true,
-          `${name}: background clicks retain visible readings and HOS`,
-        );
-        assert.equal(
-          await page.locator('#fleet-map-route-details').isVisible(),
-          true,
-          `${name}: background retains all route facts on phone and desktop`,
+          `${name}: background clicks retain the next stop, facts and clocks`,
         );
         assert.deepEqual(
           await page.evaluate(() => window.hoursFixture.plan),
@@ -4549,10 +3139,10 @@ try {
         );
         assert.equal(
           await page
-            .locator('.fleet-map-truck-info')
+            .locator('.fleet-truck-panel')
             .evaluate(element => element === window.hoursFixtureRetainedTruck),
           true,
-          `${name}: background retains the mounted truck information`,
+          `${name}: background retains the mounted truck panel`,
         );
         const afterBackgroundFacts = await primaryGeometry();
         check(
@@ -4568,23 +3158,9 @@ try {
         );
         await stableMapRect(page, mapRect, `${name}-background-${click}`);
       }
-      await checkHeaderLoadingSpace(page, name);
+      await checkLoadingSpace(page, name);
       await checkInspectorLargeText(page, name);
       await stableMapRect(page, mapRect, `${name}-restored-text-size`);
-      const mapKey = page.getByRole('complementary', { name: 'Map key' });
-      check(
-        normalize(await mapKey.textContent()).includes('Current route') &&
-          normalize(await mapKey.textContent()).includes('Pickup / delivery') &&
-          (await mapKey.locator('.fleet-map-key__line--next').count()) === 0 &&
-          (await mapKey.locator('.fleet-map-key__fuel').count()) === 0,
-        `${name}: map key distinguishes current stops and does not advertise disabled layers`,
-      );
-      check(
-        (await mapKey.evaluate(
-          element => getComputedStyle(element).position,
-        )) === 'absolute',
-        `${name}: map key must not change the map's available height`,
-      );
       await page.waitForFunction(
         () => window.hoursFixture?.plan?.fuelPlan?.stops?.length === 1,
       );
@@ -4609,33 +3185,10 @@ try {
           fuelBefore.scheduleImpact.cycleShort === true,
         `${name}: historical fuel schedule metadata was lost`,
       );
-      if (width === 390)
-        await page
-          .getByRole('button', { name: 'Filters', exact: true })
-          .click();
-      await page
-        .getByRole('checkbox', { name: 'Next loads', exact: true })
-        .locator('..')
-        .click();
-      assert.equal(
-        await page
-          .getByRole('checkbox', { name: 'Next loads', exact: true })
-          .isChecked(),
-        true,
-      );
+      await setNextLoads(page, width);
       await page.waitForFunction(
         () => window.hoursFixture?.next?.routes?.length === 1,
       );
-      check(
-        normalize(await mapKey.textContent()).includes(
-          'Next loads · color by load',
-        ),
-        `${name}: future route key explains per-load colors`,
-      );
-      if (width === 390)
-        await page
-          .getByRole('button', { name: 'Filters', exact: true })
-          .click();
       const card = page.getByRole('region', {
         name: 'Selected next load',
         exact: true,
@@ -4670,11 +3223,14 @@ try {
           (await page.locator('.fleet-map-details-card').count()) === 0,
         `${name}: future details must replace the shared inspector content, not open a lower popup`,
       );
+      // The truck panel stays mounted, hidden, while the stop's card has the
+      // inspector, so its readings are not fetched again on the way back.
       check(
-        (await page
-          .locator('#fleet-map-details')
-          .evaluate(element => getComputedStyle(element).display)) === 'none',
-        `${name}: selected future details must hide, not duplicate, the retained truck and route information`,
+        (await page.locator('.fleet-truck-panel').count()) === 1 &&
+          !(await page.locator('.fleet-truck-facts').isVisible()) &&
+          !(await page.locator('.fleet-truck-next').isVisible()),
+        `${name}: selected future details must hide, not duplicate, ` +
+          'the retained truck panel',
       );
       await stableMapRect(page, mapRect, `${name}-future-inspection`);
       const nextHead = await card.evaluate(element => {
@@ -4756,19 +3312,12 @@ try {
         planningReads > initialPlanningReads,
         `${name}: pending planning response was not polled`,
       );
-      // The clocks read in the truck card's head, and a selected next-load
-      // stop takes that head over, so they are compared only when the truck
-      // still owns it.
-      if (
-        (await page
-          .locator('.fleet-map-inspector[data-inspector-mode="truck"]')
-          .count()) === 1
-      )
-        assert.deepEqual(
-          await headClocks(),
-          clocksBefore,
-          `${name}: pending refresh changed the head's HOS clocks`,
-        );
+      // The hidden panel keeps its clocks while the stop's card is open.
+      assert.deepEqual(
+        await headClocks(),
+        clocksBefore,
+        `${name}: pending refresh changed the panel's HOS clocks`,
+      );
       assert.deepEqual(
         await card
           .locator('.stop-hours time')
@@ -4899,9 +3448,8 @@ try {
         selectedPending,
         fuelBefore,
         fuelPending,
-        headerGeometry,
+        factValues,
         dispatchHeaderGeometry,
-        addressGeometry,
         dispatchQuiet,
         mapQuiet,
         boardReads,
@@ -4955,9 +3503,7 @@ try {
             id => window.hoursFixture.selectTruck(id),
             truckId,
           );
-          await page
-            .locator('.fleet-map-inspector__hours .driver-hours')
-            .waitFor();
+          await page.locator('.fleet-truck-clocks .driver-hours').waitFor();
           samples.push({
             cycle,
             jsHeapBytes: heap.usedSize,

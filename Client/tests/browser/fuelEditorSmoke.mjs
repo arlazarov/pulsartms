@@ -5,13 +5,17 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 
-// The fuel plan opens from the Fuel panel under the truck card's actions:
-// the panel is opened when it is closed, and its View fuel plan button is
-// the one a dispatcher presses.
+// The fuel plan opens from the map tool bar's Fuel (the owner, September
+// 27): the plan takes the panel, and its Edit plan button is the one a
+// dispatcher presses.
 async function fuelPlan(page) {
-  const fuel = page.locator('button[aria-controls="fleet-map-fuel-panel"]');
-  if ((await fuel.getAttribute('aria-expanded')) !== 'true') await fuel.click();
-  return page.locator('#fleet-map-fuel-panel .fleet-map-fuel-panel__view');
+  await page
+    .locator('.fleet-map-controls')
+    .getByRole('button', { name: 'Fuel', exact: true })
+    .click();
+  const plan = page.locator('section[aria-label="Fuel plan"]');
+  await plan.waitFor();
+  return plan.getByRole('button', { name: 'Edit plan', exact: true });
 }
 import { installReleaseArtifact } from './releaseArtifact.mjs';
 
@@ -230,7 +234,11 @@ const mapStub = `export async function createFleetMap(element, _key, callbacks) 
       if (identity) fixture.returnToRoute = identity;
     },
     setRouteBytes(bytes){fixture.plan = JSON.parse(new TextDecoder().decode(bytes));return true;},
-    setNextLoadsBytes(){},focusTruck(){return true;},dispose(){delete window.fuelFixture;}};
+    setNextLoadsBytes(){},focusTruck(){return true;},
+    setRouteEditor(){},openStation(){},selectNextStop(){},fitNextLoad(){},
+    setStations(){},setPriceOverview(){},setStopCompletions(){},
+    focusRouteStop(){},openRouteStop(){},centerStop(){},showRoute(){},
+    dispose(){delete window.fuelFixture;}};
 }`;
 const stubIntegrity = `sha256-${createHash('sha256').update(mapStub).digest('base64')}`;
 const html = (await readFile(resolve(artifact, 'index.html'), 'utf8')).replace(
@@ -251,47 +259,51 @@ const report = {
   errors: [],
   unexpectedRequests: [],
 };
-// The truck card opens closed at every width, so its readings and route are
-// read after the chevron opens them, by the same click a dispatcher uses.
+// The truck panel (the owner, September 27): the next stop, the facts and
+// the driver's clocks; a phone's panel opens closed and Details opens the
+// facts and the clocks. Its actions are the map tool bar's.
+const panelSelector = '.fleet-map-inspector[data-inspector-mode="truck"]';
 async function assertTruckInformation(page, name) {
-  const toggle = page.locator('.fleet-map-mobile-summary__toggle');
-  assert.equal(
-    await toggle.count(),
-    1,
-    `${name}: truck information keeps its one disclosure`,
-  );
-  if ((await toggle.getAttribute('aria-expanded')) === 'false')
+  const panel = page.locator(panelSelector);
+  const toggle = panel.locator('.fleet-map-mobile-summary__toggle');
+  if (
+    (await toggle.isVisible()) &&
+    (await toggle.getAttribute('aria-expanded')) === 'false'
+  )
     await toggle.click();
-  assert.equal(
-    await page.locator('#fleet-map-telemetry-details').isVisible(),
-    true,
-    `${name}: truck readings become visible once the card is open`,
-  );
-  assert.equal(
-    await page.locator('#fleet-map-route-details').isVisible(),
-    true,
-    `${name}: load information becomes visible once the card is open`,
-  );
-  const panels = await page
-    .locator('#fleet-map-details')
-    .evaluate(element =>
-      [...element.children].map(child => child.id || child.className),
+  for (const part of [
+    '.fleet-truck-next',
+    '.fleet-truck-facts',
+    '.fleet-truck-clocks',
+  ])
+    assert.equal(
+      await panel.locator(part).isVisible(),
+      true,
+      `${name}: ${part} is shown once the panel is open`,
     );
-  assert.deepEqual(
-    panels.filter(
-      panel =>
-        panel.startsWith('fleet-map-') && panel !== 'fleet-map-fuel-panel',
-    ),
-    ['fleet-map-route-details', 'fleet-map-inspector__actions'],
-    `${name}: the actions sit under the detail they act on`,
-  );
-  // The vehicle line is the card's head, open or closed.
   assert.equal(
     await page
-      .locator('.fleet-map-inspector__header #fleet-map-telemetry-details')
-      .count(),
-    1,
-    `${name}: the vehicle line is in the card's head`,
+      .locator('.fleet-map-controls')
+      .getByRole('button', { name: 'Fuel', exact: true })
+      .isEnabled(),
+    true,
+    `${name}: the tool bar's Fuel acts on the chosen truck`,
+  );
+}
+// The editor returns to the fuel plan card it was opened from when it is
+// saved, reset or cancelled (the owner, September 26); the truck panel
+// stays mounted, hidden, behind it.
+async function assertFuelPlanCard(page, name) {
+  assert.equal(
+    await page.locator('section[aria-label="Fuel plan"]').isVisible(),
+    true,
+    `${name}: the fuel plan card is shown`,
+  );
+  assert.equal(
+    (await page.locator('.fleet-truck-panel').count()) === 1 &&
+      !(await page.locator(`${panelSelector} .fleet-truck-facts`).isVisible()),
+    true,
+    `${name}: the truck panel stays mounted behind the plan`,
   );
 }
 const browser = await chromium.launch({
@@ -350,6 +362,9 @@ try {
           stops: canonical.map((edit, index) => ({
             ...edit,
             number: index + 1,
+            // The server's identity of a planned visit, which the plan's
+            // list is keyed by.
+            visitKey: `${edit.stationId}:${index}`,
             dispatchId,
             name: names[stations.indexOf(edit.stationId)],
             point,
@@ -549,6 +564,33 @@ try {
             value = success({ trucks: [truck], points: [truck] });
           else if (url.pathname === '/api/fleet/planning/previews')
             value = success([]);
+          // The layout's own reads, answered as a read-only account with no
+          // driver groups and an empty mailbox; the mailbox's long poll is
+          // held briefly, as the server holds it, so it does not spin.
+          else if (url.pathname === '/api/fuel/price-overview')
+            value = success([]);
+          // The trip chain reads the truck's board row; none is needed here.
+          else if (url.pathname === '/api/dispatch/board')
+            value = success({
+              items: [],
+              page: 1,
+              pageSize: 20,
+              totalCount: 0,
+              totalPages: 0,
+            });
+          else if (url.pathname === '/api/driver-groups')
+            value = success({ selected: null, groups: [] });
+          else if (url.pathname === '/api/messaging/unread')
+            value = success({ conversations: 0, more: false, newest: 0 });
+          else if (url.pathname === '/api/messaging/changes') {
+            const mailbox = url.searchParams.get('mailbox');
+            if (mailbox) await new Promise(done => setTimeout(done, 2000));
+            value = success({
+              mailbox: mailbox ?? '00000000-0000-4000-8000-00000000c4a9',
+              resync: !mailbox,
+              conversations: [],
+            });
+          }
           // The map reads the fuel price basis beside itself; it keeps the
           // page's own default, so the answer changes nothing here.
           else if (url.pathname === '/api/settings/planning')
@@ -690,7 +732,7 @@ try {
         );
       });
       await page
-        .locator('.fleet-map-route-info [title="Copy full address"]')
+        .locator(`${panelSelector} .fleet-truck-next`)
         .waitFor({ state: 'attached' });
       await assertTruckInformation(page, name);
       if (!mobile) {
@@ -708,11 +750,11 @@ try {
               page,
               `${name}/${probeWidth}/${scale}`,
             );
-            // The card's head reads the clocks as text. What the page may
+            // The panel reads the clocks as text. What the page may
             // ask of the component is a minimum width for a clock, which
             // is the property the component publishes for it.
             const clocks = await page
-              .locator('.fleet-map-inspector__hours .driver-hours__clock')
+              .locator('.fleet-truck-clocks .driver-hours__clock')
               .evaluateAll(elements =>
                 elements.map(element => {
                   const box = element.getBoundingClientRect();
@@ -729,10 +771,10 @@ try {
             assert.equal(clocks.length, 4);
             assert.equal(
               await page
-                .locator('.fleet-map-inspector__hours .driver-hours__dial')
+                .locator('.fleet-truck-clocks .driver-hours__dial')
                 .count(),
               0,
-              `${name}/${probeWidth}/${scale}: the head's clocks are text`,
+              `${name}/${probeWidth}/${scale}: the panel's clocks are text`,
             );
             for (const clock of clocks)
               assert.ok(
@@ -743,7 +785,7 @@ try {
             // The clocks' own group is where the page sets what it wants
             // of them, so that is where the property is read from.
             await page
-              .locator('.fleet-map-inspector__clocks')
+              .locator('.fleet-truck-clocks')
               .evaluate(node =>
                 node.style.setProperty('--hos-clock-min-width', '96px'),
               );
@@ -751,7 +793,7 @@ try {
               () => {
                 const clocks = [
                   ...document.querySelectorAll(
-                    '.fleet-map-inspector__hours .driver-hours__clock',
+                    '.fleet-truck-clocks .driver-hours__clock',
                   ),
                 ];
                 return (
@@ -765,7 +807,7 @@ try {
               { timeout: 5000 },
             );
             await page
-              .locator('.fleet-map-inspector__clocks')
+              .locator('.fleet-truck-clocks')
               .evaluate(node =>
                 node.style.removeProperty('--hos-clock-min-width'),
               );
@@ -786,36 +828,34 @@ try {
           mapBeforeProbes,
           { timeout: 5000 },
         );
+        // The facts read as one table: the values of a row share one
+        // baseline, every value one type, every icon one size.
         const metrics = await page
-          .locator('.truck-readings__reading')
-          .evaluateAll(readings =>
-            readings.map(reading => {
-              const value =
-                reading.querySelector('.fuel-reading__value') ??
-                reading.querySelector(':scope > strong');
-              const icon = reading.querySelector('svg');
+          .locator(`${panelSelector} .fleet-truck-facts__fact`)
+          .evaluateAll(cells =>
+            cells.map(cell => {
+              const value = cell.querySelector('dd');
+              const icon = cell.querySelector(':scope > svg');
               return {
                 top: value.getBoundingClientRect().top,
-                bottom: value.getBoundingClientRect().bottom,
-                className: value.className,
                 text: value.textContent.trim().slice(0, 20),
                 font: getComputedStyle(value).fontSize,
                 lineHeight: getComputedStyle(value).lineHeight,
-                // A reading is a word and a value; its icon, where the
-                // markup still carries one, is not drawn.
                 iconHeight: icon ? icon.getBoundingClientRect().height : 0,
               };
             }),
           );
-        (report.telemetryMetrics ??= []).push({ name, metrics });
-        assert.equal(metrics.length, 3);
-        for (const metric of metrics) {
-          assert.ok(
-            Math.abs(metric.top - metrics[0].top) <= 1,
-            `${name}: telemetry values share one baseline`,
-          );
+        (report.factMetrics ??= []).push({ name, metrics });
+        assert.equal(metrics.length, 8);
+        for (const [index, metric] of metrics.entries()) {
+          if (index % 2)
+            assert.ok(
+              Math.abs(metric.top - metrics[index - 1].top) <= 1,
+              `${name}: the values of a row share one baseline`,
+            );
           assert.equal(metric.font, metrics[0].font);
           assert.equal(metric.lineHeight, metrics[0].lineHeight);
+          assert.ok(metric.iconHeight > 0);
           assert.equal(metric.iconHeight, metrics[0].iconHeight);
         }
       }
@@ -827,7 +867,8 @@ try {
       await page.locator('#fleet-map').evaluate(element => {
         window.fuelFixture.mapElement = element;
       });
-      await page.locator('#fleet-map-details').evaluate(element => {
+      await page.locator('.fleet-truck-panel').evaluate(element => {
+        window.fuelFixture.truckPanel = element;
         window.fuelFixture.truckPanels = [...element.children];
       });
       assert.equal(
@@ -842,12 +883,13 @@ try {
           .count(),
         0,
       );
-      await (await fuelPlan(page)).click();
+      const edit = await fuelPlan(page);
+      // Where the plan card stands: the editor takes its place.
+      const planCard = await page
+        .locator('.fleet-map-info-reserved')
+        .evaluate(element => element.getBoundingClientRect().toJSON());
+      await edit.click();
       const editor = page.locator('.fuel-plan-editor');
-      const view = label =>
-        editor
-          .getByRole('group', { name: 'Fuel editor view' })
-          .getByRole('button', { name: label, exact: true });
       await editor
         .locator('.fuel-plan-editor__stop')
         .nth(1)
@@ -905,9 +947,13 @@ try {
         await editor.locator('input[type="range"]').getAttribute('min'),
         '25',
       );
-      assert.equal(
-        await editor.locator('.fleet-fuel-visit__percent').last().innerText(),
-        '28%',
+      // The tank around the chosen stop is said in words (the rings went
+      // with the old editor): after fueling 59 of 211.3 gallons.
+      assert.match(
+        await editor
+          .locator('.fuel-plan-editor__levels > span:last-child strong')
+          .innerText(),
+        /\b28%/,
       );
       assert.equal(
         await editor
@@ -963,17 +1009,13 @@ try {
         stations[0],
       );
       assert.equal(writes.length, 0);
-      if (mobile) {
-        assert.equal(
-          await editor.locator('.fuel-plan-editor__timeline').isVisible(),
-          false,
-        );
-        await view('Route').click();
-        assert.equal(
-          await editor.locator('.fuel-plan-editor__content').isVisible(),
-          false,
-        );
-      }
+      // One list at every width: the Route / Fuel / Map tabs of the phone
+      // are gone (the owner, September 26).
+      assert.equal(
+        await editor.getByRole('group', { name: 'Fuel editor view' }).count(),
+        0,
+        `${name}: the editor has no view tabs`,
+      );
       const initialTimeline = await editor
         .locator('.fuel-plan-editor__stops')
         .evaluate(list => {
@@ -997,20 +1039,17 @@ try {
           };
         });
       await editor.screenshot({ path: resolve(output, `${name}-initial.png`) });
-      if (width === 1440) {
-        assert.equal(
-          initialTimeline.visible.length,
-          initialTimeline.total,
-          `${name}: the whole three-stop route and both fuel rows must be visible together without scrolling`,
-        );
-        assert.ok(
-          initialTimeline.height >= 480,
-          `${name}: route timeline uses the full editor body height`,
-        );
-      } else {
+      await page.screenshot({
+        path: resolve(output, `${name}-initial-page.png`),
+      });
+      // The editor has the plan card's height at every width (the owner,
+      // September 26), so the route scrolls in one list with the chosen
+      // stop opened in place; the old desktop's whole route at once went
+      // with its two-column card. Every row stays reachable.
+      {
         assert.ok(
           initialTimeline.firstPairHeight <= initialTimeline.height + 1,
-          `${name}: mobile pane has room for two complete operational rows`,
+          `${name}: the list has room for two complete operational rows`,
         );
         if (initialTimeline.firstPairBottom <= initialTimeline.height + 1)
           assert.ok(
@@ -1039,27 +1078,35 @@ try {
             const bounds = surface.getBoundingClientRect();
             surface.scrollTop += row.getBoundingClientRect().top - bounds.top;
             const box = row.getBoundingClientRect();
+            // The chosen stop opens in place and may be taller than the
+            // list; it is reachable when it starts at the list's top and
+            // fills it. Any other row is whole in view.
+            const visibleBottom = Math.min(box.bottom, bounds.bottom);
             const hit = document.elementFromPoint(
               box.left + box.width / 2,
-              box.top + box.height / 2,
+              (box.top + visibleBottom) / 2,
             );
-            return (
-              box.top >= bounds.top - 1 &&
-              box.bottom <= bounds.bottom + 1 &&
-              hit?.closest('[data-reorder-key]') === row
-            );
+            return {
+              ok:
+                box.top >= bounds.top - 1 &&
+                (box.bottom <= bounds.bottom + 1 ||
+                  box.height > bounds.height) &&
+                hit?.closest('[data-reorder-key]') === row,
+              row: { top: box.top, bottom: box.bottom },
+              list: { top: bounds.top, bottom: bounds.bottom },
+              hit: hit?.className?.baseVal ?? hit?.className,
+            };
           });
-          assert.equal(
-            reachable,
-            true,
-            `${name}: route row ${index + 1} is fully reachable and uncovered`,
+          assert.ok(
+            reachable.ok,
+            `${name}: route row ${index + 1} is fully reachable and ` +
+              `uncovered (${JSON.stringify(reachable)})`,
           );
         }
         await list.evaluate(surface => {
           surface.scrollTop = 0;
         });
       }
-      if (mobile) await view('Fuel details').click();
       const purchaseSlider = editor.getByRole('slider', {
         name: 'Gallons to buy',
       });
@@ -1095,9 +1142,11 @@ try {
           document.querySelector('.fuel-plan-editor__full input')?.checked ===
           true,
       );
-      assert.equal(
-        await editor.locator('.fleet-fuel-visit__percent').last().innerText(),
-        '100%',
+      assert.match(
+        await editor
+          .locator('.fuel-plan-editor__levels > span:last-child strong')
+          .innerText(),
+        /\b100%/,
       );
       await purchaseSlider.press('ArrowLeft');
       await page.waitForFunction(
@@ -1135,7 +1184,6 @@ try {
       await page.evaluate(() => {
         window.fuelTestPhase = 'drag';
       });
-      if (mobile) await view('Route').click();
       const anchorInput = await dragStop(
         page,
         context,
@@ -1195,13 +1243,6 @@ try {
         target: 'fuel row',
         order: [stations[1], stations[0]],
       });
-      if (mobile) {
-        await editor.locator('.fuel-plan-editor__stop-select').first().click();
-        assert.equal(
-          await view('Fuel details').getAttribute('aria-pressed'),
-          'true',
-        );
-      }
       await editor.locator('.fuel-plan-editor__cost').scrollIntoViewIfNeeded();
       await page.evaluate(() => {
         window.fuelTestPhase = 'controls';
@@ -1220,7 +1261,7 @@ try {
         true,
       );
       for (const selector of [
-        '.fleet-fuel-visit__levels',
+        '.fuel-plan-editor__levels',
         'input[type="range"]',
         '.fuel-plan-editor__cost',
       ]) {
@@ -1229,7 +1270,7 @@ try {
         assert.equal(
           await control.evaluate(element => {
             const content = element
-              .closest('.fuel-plan-editor__content')
+              .closest('.fuel-plan-editor__stops')
               .getBoundingClientRect();
             const bounds = element.getBoundingClientRect();
             return (
@@ -1238,7 +1279,7 @@ try {
             );
           }),
           true,
-          `${name}: ${selector} is fully reachable inside the compact details scroller`,
+          `${name}: ${selector} is fully reachable inside the list`,
         );
       }
       assert.equal(
@@ -1252,17 +1293,19 @@ try {
         window.fuelTestPhase = 'reopen';
       });
       await editor.waitFor({ state: 'detached' });
-      await assertTruckInformation(page, `${name}-cancelled`);
+      await assertFuelPlanCard(page, `${name}-cancelled`);
       assert.equal(
         await page
-          .locator('#fleet-map-details')
-          .evaluate(element =>
-            window.fuelFixture.truckPanels.every(
-              (panel, index) => panel === element.children[index],
-            ),
+          .locator('.fleet-truck-panel')
+          .evaluate(
+            element =>
+              element === window.fuelFixture.truckPanel &&
+              window.fuelFixture.truckPanels.every(
+                (panel, index) => panel === element.children[index],
+              ),
           ),
         true,
-        `${name}: cancelling retains the mounted truck information panels`,
+        `${name}: cancelling retains the mounted truck panel`,
       );
       assert.deepEqual(
         loadReads,
@@ -1301,7 +1344,6 @@ try {
         .locator('.fuel-plan-editor__stop')
         .nth(2)
         .waitFor({ state: 'attached' });
-      if (mobile) await view('Route').click();
       const handle = editor.getByRole('button', {
         name: `Move ${names[2]}`,
         exact: true,
@@ -1318,7 +1360,6 @@ try {
         station => window.fuelFixture.focusedStation?.stationId === station,
         stations[2],
       );
-      if (mobile) await view('Fuel details').click();
       const slider = editor.getByRole('slider', { name: 'Gallons to buy' });
       await page.waitForFunction(
         () =>
@@ -1341,9 +1382,12 @@ try {
           .isEnabled(),
         false,
       );
-      assert.equal(
-        await editor.locator('.fleet-fuel-visit__percent').first().innerText(),
-        '16%',
+      // Arriving with 34 of 211.3 gallons.
+      assert.match(
+        await editor
+          .locator('.fuel-plan-editor__levels > span:first-child strong')
+          .innerText(),
+        /\b16%/,
       );
       await editor.screenshot({
         path: resolve(output, `${name}-validation.png`),
@@ -1396,21 +1440,17 @@ try {
         const map = document
           .querySelector('#fleet-map')
           .getBoundingClientRect();
-        const timeline = element
-          .querySelector('.fuel-plan-editor__timeline')
-          .getBoundingClientRect();
-        const content = element
-          .querySelector('.fuel-plan-editor__content')
+        const list = element.querySelector('.fuel-plan-editor__stops');
+        const content = list.getBoundingClientRect();
+        const above = element
+          .querySelector('.fuel-plan-editor__totals')
           .getBoundingClientRect();
         const footer = element
           .querySelector('.fuel-plan-editor__footer')
           .getBoundingClientRect();
-        const views = element
-          .querySelector('.fuel-plan-editor__views')
-          .getBoundingClientRect();
         const requiredControlHeight = Math.max(
           ...[
-            '.fleet-fuel-visit__levels',
+            '.fuel-plan-editor__levels',
             'input[type="range"]',
             '.fuel-plan-editor__cost',
           ].map(
@@ -1439,27 +1479,19 @@ try {
             window.fuelFixture.mapElement ===
             document.querySelector('#fleet-map'),
           mapReceivesPointer,
-          timeline: {
-            left: timeline.left,
-            right: timeline.right,
-            top: timeline.top,
-            bottom: timeline.bottom,
-            height: timeline.height,
-          },
           content: {
             left: content.left,
             top: content.top,
             right: content.right,
             bottom: content.bottom,
           },
+          aboveBottom: above.bottom,
           footerTop: footer.top,
-          viewsBottom: views.bottom,
           requiredControlHeight,
           mapCount: document.querySelectorAll('#fleet-map').length,
           documentWidth: document.documentElement.scrollWidth,
           viewport: innerWidth,
-          contentWidth: element.querySelector('.fuel-plan-editor__content')
-            .clientWidth,
+          contentWidth: list.clientWidth,
           horizontalScrollers: [...document.querySelectorAll('*')]
             .filter(node => node.scrollLeft)
             .map(node => ({
@@ -1471,8 +1503,7 @@ try {
             })),
           horizontalEvents: window.fuelHorizontalEvents,
           pageScroll: { x: scrollX, y: scrollY },
-          scrollWidth: element.querySelector('.fuel-plan-editor__content')
-            .scrollWidth,
+          scrollWidth: list.scrollWidth,
         };
       });
       assert.ok(
@@ -1510,97 +1541,37 @@ try {
           `${name}: editing must preserve map document bounds while allowing page scrolling: ${key}`,
         );
       }
-      if (width === 1440) {
-        assert.ok(
-          Math.abs(
-            (geometry.left + geometry.right) / 2 -
-              (geometry.map.x + geometry.map.width / 2),
-          ) <= 1,
-          `${name}: desktop editor is horizontally centered inside the map`,
-        );
-        assert.ok(
-          Math.abs(
-            geometry.map.y + geometry.map.height - geometry.bottom - 12,
-          ) <= 1,
-          `${name}: desktop editor retains the bottom map inset`,
-        );
-        assert.equal(
-          geometry.mapReceivesPointer,
-          true,
-          `${name}: an uncovered part of the main map stays interactive`,
-        );
-        assert.ok(
-          geometry.width >= 800 && geometry.width <= 866,
-          `${name}: desktop editing surface must be wide enough for two usable columns`,
-        );
-        assert.ok(
-          geometry.timeline.right <= geometry.content.left + 1 &&
-            Math.abs(geometry.timeline.top - geometry.content.top) <= 1 &&
-            Math.abs(geometry.timeline.bottom - geometry.content.bottom) <= 1,
-          `${name}: full-height timeline stays beside selected station controls`,
-        );
-      } else {
-        assert.ok(
-          Math.abs(geometry.top - geometry.map.y) <= 1,
-          `${name}: no mobile top gap`,
-        );
-        assert.ok(
-          Math.abs(geometry.width - geometry.map.width) <= 1,
-          `${name}: mobile uses available map width`,
-        );
-        assert.ok(
-          Math.abs(geometry.content.top - geometry.viewsBottom) <= 1 &&
-            Math.abs(geometry.content.bottom - geometry.footerTop) <= 1,
-          `${name}: selected controls use all space between tabs and footer`,
-        );
-        assert.ok(
-          geometry.content.bottom - geometry.content.top >=
-            geometry.requiredControlHeight,
-          `${name}: the pane fits each complete operating control`,
-        );
-        await view('Map').click();
-        assert.equal(
-          await editor.locator('.fuel-plan-editor__content').isVisible(),
-          false,
-        );
-        assert.equal(
-          await editor
-            .getByRole('button', { name: 'Save plan', exact: true })
-            .isVisible(),
-          false,
-        );
-        assert.equal(
-          await page.locator('#fleet-map').evaluate(map => {
-            const bounds = map.getBoundingClientRect();
-            return Boolean(
-              document
-                .elementFromPoint(
-                  bounds.left + bounds.width / 2,
-                  bounds.bottom - 20,
-                )
-                ?.closest('#fleet-map'),
-            );
-          }),
-          true,
-          `${name}: Map view exposes the same map without closing the draft`,
-        );
-        const previewsBefore = editsSeen.length;
-        await view('Fuel details').click();
-        assert.equal(
-          await editor
-            .getByRole('slider', { name: 'Gallons to buy' })
-            .inputValue(),
-          '30',
-        );
-        assert.equal(
-          editsSeen.length,
-          previewsBefore,
-          `${name}: changing views does not recalculate or save`,
-        );
-      }
+      // The editor is the plan card in edit (the owner, September 26): it
+      // stands where the plan card stood, at the card's width, and the map
+      // stays under it so a station can still be picked there. The wide
+      // two-column card, its bottom inset and the phone's Map tab are gone.
+      assert.ok(
+        Math.abs(geometry.left - planCard.left) <= 1 &&
+          Math.abs(geometry.width - planCard.width) <= 1 &&
+          Math.abs(geometry.top - planCard.top) <= 1,
+        `${name}: the editor takes the plan card's place and width ` +
+          JSON.stringify({ editor: geometry, planCard }),
+      );
+      assert.equal(
+        geometry.mapReceivesPointer,
+        true,
+        `${name}: an uncovered part of the main map stays interactive`,
+      );
+      // One list between the totals and the footer, tall enough for each
+      // complete control of the chosen stop.
+      assert.ok(
+        Math.abs(geometry.content.top - geometry.aboveBottom) <= 1 &&
+          Math.abs(geometry.content.bottom - geometry.footerTop) <= 1,
+        `${name}: the list uses all space between the totals and the footer`,
+      );
+      assert.ok(
+        geometry.content.bottom - geometry.content.top >=
+          geometry.requiredControlHeight,
+        `${name}: the list fits each complete operating control`,
+      );
       assert.ok(
         geometry.content.bottom <= geometry.footerTop + 1,
-        `${name}: fixed footer remains outside the detail scroller`,
+        `${name}: fixed footer remains outside the list scroller`,
       );
       await editor
         .getByRole('button', { name: 'Save plan', exact: true })
@@ -1656,7 +1627,7 @@ try {
         0,
         `${name}: stale truck/dispatch callback opened editor`,
       );
-      await assertTruckInformation(page, `${name}-stale-callback`);
+      await assertFuelPlanCard(page, `${name}-stale-callback`);
       await (await fuelPlan(page)).click();
       assert.equal(
         writes.length,
@@ -1673,7 +1644,7 @@ try {
       assert.equal(writes.length, 2, `${name}: one click calculates directly`);
       assert.equal(writes[1].reset, true);
       assert.equal(writes[1].expectedCalculatedAt, savedToken);
-      await assertTruckInformation(page, `${name}-calculated`);
+      await assertFuelPlanCard(page, `${name}-calculated`);
       assert.equal(await (await fuelPlan(page)).isEnabled(), true);
       await page.getByRole('button', { name: 'Camera', exact: true }).click();
       const camera = page.getByRole('dialog', { name: 'Road-facing camera' });

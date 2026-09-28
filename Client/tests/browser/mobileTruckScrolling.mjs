@@ -1,8 +1,21 @@
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 
-export async function checkMobileTruckScrolling(page, output, name) {
+// A phone's truck panel (the owner, September 27) floats over the map,
+// takes at most its stylesheet's share of the stage (half closed, most of
+// it opened), scrolls up and down inside itself and never sideways, and
+// reads the next stop, the facts and the clocks in that order down to the
+// last clock.
+// Failures go to check, so one run reports every broken variant; without
+// it the first one throws.
+export async function checkMobileTruckScrolling(
+  page,
+  output,
+  name,
+  check = (condition, message) => assert.ok(condition, message),
+) {
   const inspector = page.locator('.fleet-map-inspector');
+  const toggle = inspector.locator('.fleet-map-mobile-summary__toggle');
   const originalViewport = page.viewportSize();
   const originalFont = await page.evaluate(() => ({
     value: document.documentElement.style.getPropertyValue('font-size'),
@@ -13,49 +26,46 @@ export async function checkMobileTruckScrolling(page, output, name) {
       const style = getComputedStyle(element);
       const bounds = element.getBoundingClientRect();
       const map = document.querySelector('#fleet-map').getBoundingClientRect();
-      const main = element.querySelector('.fleet-map-route-details');
-      const readings = element.querySelector('#fleet-map-telemetry-details');
-      // Whatever comes last in the card, and the card's own padding under
-      // it: the route no longer closes the card since the vehicle line
-      // moved onto the summary.
-      const contentBottom =
-        Math.max(
-          ...[...element.children].map(
-            child => child.getBoundingClientRect().bottom,
-          ),
-        ) +
-        parseFloat(style.paddingBottom) +
-        parseFloat(style.borderBottomWidth) +
-        element.scrollTop;
-      // The card's own cap, read from its stylesheet (half the stage on a
-      // phone, the approved card of September 26) against the stage it is
-      // a percentage of, rather than a number written here.
+      const part = selector => {
+        const node = element.querySelector(selector);
+        return node && node.getClientRects().length > 0
+          ? node.getBoundingClientRect()
+          : null;
+      };
+      const next = part('.fleet-truck-next'),
+        facts = part('.fleet-truck-facts'),
+        clocks = part('.fleet-truck-clocks');
+      // All the panel holds, with its padding, borders and the margins of
+      // what it holds.
+      const contentHeight =
+        element.scrollHeight +
+        parseFloat(style.borderTopWidth) +
+        parseFloat(style.borderBottomWidth);
+      // The panel's own cap, read from its stylesheet: a share of the grid
+      // area it floats in, which is the map's.
       const cap = style.maxHeight.endsWith('%')
-        ? (parseFloat(style.maxHeight) / 100) *
-          element.parentElement.getBoundingClientRect().height
+        ? (parseFloat(style.maxHeight) / 100) * map.height
         : parseFloat(style.maxHeight);
       return {
         height: bounds.height,
-        contentHeight: contentBottom - bounds.top,
+        contentHeight,
         maximumHeight: cap,
         maxHeight: style.maxHeight,
-        // The phone contract, independent of the stylesheet: the card
-        // takes at most half of the map it floats over.
-        halfMap: map.height / 2,
+        map: { x: map.x, y: map.y, width: map.width, height: map.height },
         available: map.bottom - bounds.top,
         clientHeight: element.clientHeight,
         scrollHeight: element.scrollHeight,
-        scrollbar: style.scrollbarWidth,
-        webkitScrollbar: getComputedStyle(element, '::-webkit-scrollbar')
-          .display,
         overflow: style.overflowY,
-        readingsBeforeRoute:
-          readings.getBoundingClientRect().bottom <=
-          main.getBoundingClientRect().top + 1,
-        // Whether the card actually scrolls sideways, which is the thing a
-        // reader complains about. A scroll width past the client width is
-        // not that on its own: a box that clips its own text to an ellipsis
-        // has one and cannot be scrolled.
+        // Read in order: the next stop, then the facts, then the clocks.
+        order:
+          !!next &&
+          !!facts &&
+          !!clocks &&
+          next.bottom <= facts.top + 1 &&
+          facts.bottom <= clocks.top + 1,
+        // Whether the panel actually scrolls sideways, which is what a
+        // reader complains about; a box that clips its own text to an
+        // ellipsis has a scroll width and cannot be scrolled.
         horizontalOverflow: (() => {
           const start = element.scrollLeft;
           element.scrollLeft = element.scrollWidth;
@@ -64,50 +74,21 @@ export async function checkMobileTruckScrolling(page, output, name) {
           return moved;
         })(),
         clientWidth: element.clientWidth,
-        scrollWidth: element.scrollWidth,
-        // Name what sticks out, so a sideways scroll says which part of the
-        // card is too wide instead of only that one is. Two ways to be too
-        // wide: reaching past the card's edge, or being a box whose own
-        // contents do not fit it.
-        overflowing: (() => {
-          const edge =
-            element.getBoundingClientRect().left + element.clientWidth;
-          const worst = {
-            over: Math.round(element.scrollWidth - element.clientWidth),
-            past: null,
-            wider: null,
-          };
+        // Name what reaches past the panel's edge, so a failure says which
+        // part is too wide.
+        past: (() => {
+          const edge = bounds.left + element.clientLeft + element.clientWidth;
+          let worst = null;
           for (const node of element.querySelectorAll('*')) {
-            const past = node.getBoundingClientRect().right - edge;
-            if (past > 1 && past > (worst.past?.by ?? 0))
-              worst.past = { name: node.className, by: Math.round(past) };
+            const by = node.getBoundingClientRect().right - edge;
+            if (by > 1 && by > (worst?.by ?? 0))
+              worst = { name: node.className, by: Math.round(by) };
           }
-          // The innermost boxes that do not fit their own contents: an
-          // ancestor is wide only because one of these is.
-          worst.wider = [...element.querySelectorAll('*')]
-            .filter(
-              node =>
-                // A visually hidden label (a 1px clipped box) always holds
-                // more than it shows; it is not what makes a card wide.
-                getComputedStyle(node).clipPath !== 'inset(50%)' &&
-                node.scrollWidth - node.clientWidth > 1 &&
-                ![...node.querySelectorAll('*')].some(
-                  child => child.scrollWidth - child.clientWidth > 1,
-                ),
-            )
-            .map(node => ({
-              name: node.className || node.tagName,
-              parent: node.parentElement?.className,
-              text: (node.textContent ?? '').trim().slice(0, 40),
-              by: Math.round(node.scrollWidth - node.clientWidth),
-            }));
           return worst;
         })(),
         withinMap: bounds.top >= map.top - 1 && bounds.bottom <= map.bottom + 1,
-        map: { x: map.x, y: map.y, width: map.width, height: map.height },
       };
     });
-  assert.equal(await page.locator('.fleet-map-truck-info__more').count(), 0);
   const variants = [
     { label: 'portrait', height: originalViewport.height, font: '100%' },
     { label: 'short', height: 600, font: '100%' },
@@ -126,131 +107,101 @@ export async function checkMobileTruckScrolling(page, output, name) {
           'important',
         );
       }, variant.font);
-      await inspector.evaluate(element => {
-        element.scrollTop = 0;
-      });
-      const before = await geometry();
-      await page.screenshot({
-        path: resolve(output, `${name}-${variant.label}-readings.png`),
-      });
-      assert.equal(before.scrollbar, 'auto');
-      assert.equal(before.overflow, 'auto', 'Overflow must remain reachable');
-      assert.equal(
-        before.horizontalOverflow,
-        false,
-        `The phone card scrolls sideways at ${variant.label}/${variant.font}: ` +
-          `${JSON.stringify(before.overflowing)} in ${before.clientWidth}px`,
-      );
-      assert.equal(
-        before.overflowing.past,
-        null,
-        `Part of the phone card reaches past its edge at ` +
-          `${variant.label}/${variant.font}: ` +
-          `${JSON.stringify(before.overflowing.past)}`,
-      );
-      assert.equal(before.withinMap, true);
-      assert.equal(
-        before.readingsBeforeRoute,
-        true,
-        'The vehicle line sits on the summary, above the route',
-      );
-      assert.ok(
-        Math.abs(
-          before.height -
-            Math.min(
-              before.contentHeight,
-              before.available,
-              before.maximumHeight,
-            ),
-        ) <= 2,
-        `The phone card fits its content up to its own cap ` +
-          `(${before.maxHeight} of the stage) at ${variant.label}: ` +
-          `${JSON.stringify({
-            height: before.height,
-            content: before.contentHeight,
-            available: before.available,
-            maximum: before.maximumHeight,
-          })}`,
-      );
-      assert.ok(
-        before.height <= before.halfMap + 1,
-        `The phone card stays within half of the map at ${variant.label}: ` +
-          `${before.height} of ${before.map.height}`,
-      );
-      assert.equal(
-        await page.locator('#fleet-map-route-details').isVisible(),
-        true,
-      );
-      assert.equal(
-        await page.locator('#fleet-map-truck-location').isVisible(),
-        true,
-      );
-      if (variant.label === 'portrait') {
-        const groups = await page
-          .locator('.fleet-map-route-info')
-          .evaluate(element => {
-            const box = suffix =>
-              element
-                .querySelector(`.fleet-map-route-info__${suffix}`)
-                .getBoundingClientRect();
-            // The load, the miles left and the arrival read in the card
-            // head; the route carries the visit (the next stop, then what
-            // is left of the load and where the truck is) and the facts
-            // column of actions (the approved card of September 26).
-            const visit = box('visit'),
-              next = box('next'),
-              where = box('where'),
-              facts = box('facts');
-            return {
-              // A phone card is narrower than the two-column threshold, so
-              // the groups stack in the order they are read.
-              arrivalBelowStop:
-                where.top >= next.bottom - 1 && facts.top >= visit.bottom - 1,
-              columnsAligned:
-                Math.abs(next.left - visit.left) <= 1 &&
-                Math.abs(where.left - visit.left) <= 1 &&
-                Math.abs(facts.left - visit.left) <= 1,
-              sameWidth: Math.abs(visit.width - facts.width) <= 1,
-            };
-          });
-        assert.ok(
-          groups.arrivalBelowStop,
-          'A stacked card puts what is left under the stop and the actions ' +
-            'under both',
+      for (const open of [false, true]) {
+        if ((await toggle.getAttribute('aria-expanded')) !== String(open))
+          await toggle.click();
+        await inspector.evaluate(element => {
+          element.scrollTop = 0;
+        });
+        const state = `${name}-${variant.label}/${open ? 'open' : 'closed'}`;
+        const before = await geometry();
+        await page.screenshot({
+          path: resolve(
+            output,
+            `${name}-${variant.label}-${open ? 'open' : 'closed'}.png`,
+          ),
+        });
+        check(
+          ['auto', 'scroll'].includes(before.overflow),
+          `${state}: overflow must remain reachable`,
         );
-        assert.ok(groups.columnsAligned, 'Stacked groups share one left edge');
-        assert.ok(groups.sameWidth, 'Stacked groups fill the same width');
+        check(
+          !before.horizontalOverflow,
+          `${state}: the phone panel scrolls sideways ` +
+            `(${JSON.stringify(before.past)} in ${before.clientWidth}px)`,
+        );
+        check(
+          before.past === null,
+          `${state}: part of the phone panel reaches past its edge: ` +
+            JSON.stringify(before.past),
+        );
+        check(before.withinMap, `${state}: panel leaves the map`);
+        check(
+          Math.abs(
+            before.height -
+              Math.min(
+                before.contentHeight,
+                before.available,
+                before.maximumHeight,
+              ),
+          ) <= 2,
+          `${state}: the panel fits its content up to its own cap ` +
+            `(${before.maxHeight} of the stage): ${JSON.stringify({
+              height: before.height,
+              content: before.contentHeight,
+              available: before.available,
+              maximum: before.maximumHeight,
+            })}`,
+        );
+        // Independent of the stylesheet: closed, the panel leaves at least
+        // half of the map; opened, some of it.
+        check(
+          before.height <= before.map.height * (open ? 0.85 : 0.5) + 1,
+          `${state}: the panel covers ${before.height} of ` +
+            `${before.map.height}px of map`,
+        );
+        if (!open) {
+          check(
+            await inspector.locator('.fleet-truck-next').isVisible(),
+            `${state}: the closed panel still says the next stop`,
+          );
+          check(
+            !(await inspector.locator('.fleet-truck-facts').isVisible()) &&
+              !(await inspector.locator('.fleet-truck-clocks').isVisible()),
+            `${state}: the closed panel keeps the facts and clocks behind ` +
+              'Details',
+          );
+          continue;
+        }
+        check(
+          before.order,
+          `${state}: the next stop, the facts and the clocks read in order`,
+        );
         await inspector.evaluate(element => {
           element.scrollTop = element.scrollHeight;
         });
+        const end = await inspector.evaluate(element => ({
+          top: element.scrollTop,
+          maximum: Math.max(0, element.scrollHeight - element.clientHeight),
+          last: [...element.querySelectorAll('.driver-hours__clock')]
+            .at(-1)
+            .getBoundingClientRect().bottom,
+          bottom: element.getBoundingClientRect().bottom,
+        }));
+        check(
+          Math.abs(end.top - end.maximum) <= 1,
+          `${state}: scrolling reaches the end whenever content overflows`,
+        );
+        check(
+          end.last <= end.bottom + 1,
+          `${state}: the last clock remains reachable inside the panel`,
+        );
+        if (before.scrollHeight <= before.clientHeight)
+          check(end.top === 0, `${state}: fitting content needs no scroll`);
         await page.screenshot({
-          path: resolve(output, `${name}-grouped-details.png`),
+          path: resolve(output, `${name}-${variant.label}-end.png`),
         });
       }
-      await inspector.evaluate(element => {
-        element.scrollTop = element.scrollHeight;
-      });
-      const end = await inspector.evaluate(element => ({
-        top: element.scrollTop,
-        maximum: Math.max(0, element.scrollHeight - element.clientHeight),
-        routeBottom: element
-          .querySelector('#fleet-map-route-details')
-          .getBoundingClientRect().bottom,
-        bottom: element.getBoundingClientRect().bottom,
-      }));
-      assert.ok(
-        Math.abs(end.top - end.maximum) <= 1,
-        'Scrolling reaches the end whenever content overflows',
-      );
-      assert.ok(
-        end.routeBottom <= end.bottom + 1,
-        'The final load facts remain reachable inside the card',
-      );
-      if (before.scrollHeight <= before.clientHeight)
-        assert.equal(end.top, 0, 'Fitting content needs no scrolling');
-      await page.screenshot({
-        path: resolve(output, `${name}-${variant.label}-grouped-details.png`),
-      });
     }
   } finally {
     await page.setViewportSize(originalViewport);
@@ -263,5 +214,7 @@ export async function checkMobileTruckScrolling(page, output, name) {
       }
       document.querySelector('.fleet-map-inspector').scrollTop = 0;
     }, originalFont);
+    if ((await toggle.getAttribute('aria-expanded')) !== 'true')
+      await toggle.click();
   }
 }
