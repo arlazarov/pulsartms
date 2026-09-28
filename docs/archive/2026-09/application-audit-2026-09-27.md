@@ -1592,8 +1592,13 @@ the DI registrations, `ConsistencyAuditSqlTests` and the auditor's
 register - and is resolved by keeping both. The merged tree passed the
 database, ETA, Dispatch and Routing groups with architecture (Server
 2,244, Client 747, JavaScript 16 and 67, none skipped; PostgreSQL tests
-ran): diagnostic-UVuFOS, with the merge diff. Not run on it: the
-messaging, fuel, identity and caching groups, and the full gate.
+ran): diagnostic-UVuFOS, with the merge diff. A second trial, of
+`f98cb44c` (with `messaging.kept-status-unapplied`, one more line in the
+same three lists), passed the messaging, fuel, identity, caching and
+synchronization groups with architecture (Server 3,264, Client 973,
+JavaScript 7, 16, 13 and 67, none skipped): diagnostic-jjVorf. Between
+them every test group has run on a merged tree; the full gate, the
+strict builds and the browser checks have not.
 
 ## Owner decisions: proposals with examples
 
