@@ -360,10 +360,12 @@ const success = response => ({ success: true, response, errors: [] });
 // ran and every Fleet Map case timed out waiting for its marker.
 const mapStubSource = `
 import {createCameraViewport} from './Scripts/fleetMap/ui/cameraViewport.ts';
+import {watchInspectorScroll} from './Scripts/fleetMap/ui/inspectorScroll.ts';
 export async function createFleetMap(element, _key, callbacks) {
   element.dataset.hoursFixture = 'offline-map-callbacks';
   element.style.background = 'var(--ui-surface-muted)';
   const viewport = createCameraViewport(element, {});
+  const stopScrollWatch = watchInspectorScroll(element.parentElement);
   let revision = 0, selectedTruck = null;
   const transition = kind => callbacks.invokeMethodAsync('OnMapInspectorChanged', kind, selectedTruck, ++revision);
   const fixture = window.hoursFixture = {next: null, async selectTruck(id) {
@@ -408,7 +410,7 @@ export async function createFleetMap(element, _key, callbacks) {
     setStations(){},setStopCompletions(){},
     focusRouteStop(id){fixture.routeStopFocus = id;},
     openRouteStop(){},centerStop(){},
-    dispose(){viewport.dispose();delete window.hoursFixture;}};
+    dispose(){viewport.dispose();stopScrollWatch();delete window.hoursFixture;}};
 }`;
 const mapStub = (
   await build({
