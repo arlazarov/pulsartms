@@ -141,11 +141,11 @@ public sealed class FleetMapPreferencesTests
         first.Js.Calls.Count(call => call.Name == "localStorage.setItem")
       );
       using var json = JsonDocument.Parse(values[first.Key]);
-      Assert.Equal(4, json.RootElement.EnumerateObject().Count());
+      // Map animation is always on and no longer a stored choice (the
+      // owner, September 27): three layer choices remain.
+      Assert.Equal(3, json.RootElement.EnumerateObject().Count());
       Assert.False(json.RootElement.GetProperty("showTraffic").GetBoolean());
-      // The sonar moves unless the reader turns it off (the owner,
-      // September 27).
-      Assert.True(json.RootElement.GetProperty("sonarMotion").GetBoolean());
+      Assert.False(json.RootElement.TryGetProperty("sonarMotion", out _));
     }
     using (var returning = new Fixture(user, values))
     {

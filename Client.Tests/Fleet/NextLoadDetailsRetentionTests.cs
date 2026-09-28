@@ -470,15 +470,18 @@ public sealed class NextLoadDetailsRetentionTests
         .Add(x => x.Details, details)
         .Add(x => x.Eta, (DispatchEta?)null)
     );
+    // The prior estimate is never retained. A stop the server completed
+    // has no forecast row at all (the owner, September 27); any other
+    // change keeps the row, empty.
     Assert.Empty(component.FindAll(".arrival-estimate"));
-    Assert.Equal(
-      "ETA —",
-      component.Find(".fleet-route-popup__eta").TextContent
-    );
-    Assert.DoesNotContain(
-      "Sep 8 · 01:00 PM",
-      component.Find(".fleet-route-popup__eta").TextContent
-    );
+    Assert.DoesNotContain("Sep 8 · 01:00 PM", component.Markup);
+    if (changed == "completed")
+      Assert.Empty(component.FindAll(".fleet-route-popup__eta"));
+    else
+      Assert.Equal(
+        "ETA —",
+        component.Find(".fleet-route-popup__eta").TextContent
+      );
   }
 
   private static (NextLoadRoute, PlanStop, DispatchEta) Inputs(

@@ -2973,7 +2973,11 @@ public sealed class FleetMapComponentTests
     );
     var shown = component.Find(".fleet-truck-facts__fact--location dd");
     Assert.Equal("Spring Township, PA 17072, USA", shown.TextContent.Trim());
-    Assert.Equal(address, shown.GetAttribute("title"));
+    // The words themselves are the copy control and name the whole address.
+    Assert.Contains(
+      address,
+      component.Find(".fleet-truck-facts__copy").GetAttribute("title")
+    );
     await component.InvokeAsync(
       () => component.Find(".fleet-truck-facts__copy").Click()
     );
@@ -3060,7 +3064,9 @@ public sealed class FleetMapComponentTests
       () => component.FindAll("button.fleet-trip-chain__stop")[3].Click()
     );
     var opened = fixture.Js.Calls.Last(x => x.Name == "selectNextStop");
-    Assert.Equal([future.Id.ToString(), 1, null], opened.Args!);
+    // The last argument says the press came from the chain, where one
+    // press shows the whole trip (the owner, September 27).
+    Assert.Equal([future.Id.ToString(), 1, null, true], opened.Args!);
   }
 
   // A stop chosen while the map is still busy with it, then another truck:

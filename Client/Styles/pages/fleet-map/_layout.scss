@@ -86,3 +86,14 @@
   }
 }
 
+// Satellite imagery on the dark theme, dimmed to the night the rest of the
+// workspace is drawn on (the owner, September 27). Only Google's layer is
+// filtered: trucks, roads and marks are drawn above it and keep their
+// light.
+:root[data-theme='dark'] #fleet-map.is-satellite .gm-style {
+  filter: brightness(0.55) saturate(0.75) contrast(1.1);
+}
+#fleet-map .gm-style {
+  transition: filter 300ms ease;
+}
+

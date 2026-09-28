@@ -412,6 +412,8 @@ export async function createFleetMap(
     const mapTypeListener = map.addListener('idle', () => {
       const mapType = (map.getZoom() ?? 0) >= 15 ? 'hybrid' : 'roadmap';
       if (map.getMapTypeId() !== mapType) map.setMapTypeId(mapType);
+      // The page's styles dim the imagery on the dark theme.
+      element.classList.toggle('is-satellite', mapType === 'hybrid');
     });
     cleanup.push(() => mapTypeListener.remove());
     let routeVersion = 0;

@@ -117,8 +117,13 @@
   align-items: center;
   gap: ui.pg(micro);
   align-self: start;
-  // Centred across the map (the owner, September 27).
+  // Centred across the map (the owner, September 27), and never wider
+  // than the map's free column: on a narrow workspace it wraps rather than
+  // reaching over the fleet list.
   justify-self: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: calc(100% - 2 * #{ui.pg(md)});
   margin: ui.pg(md);
   padding: ui.pg(micro);
   border: 1px solid ui.theme(accent, 0.2);
