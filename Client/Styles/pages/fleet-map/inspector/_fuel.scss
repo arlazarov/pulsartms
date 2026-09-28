@@ -5,7 +5,6 @@
 .fleet-map-inspector {
   &[data-inspector-mode='fuelplan'],
   &[data-inspector-mode='fuelstations'] {
-    width: min(100%, #{ui.size(map-stop-inspector)});
     container: fleet-fuel / inline-size;
     .fleet-map-inspector__identity {
       display: flex;

@@ -37,7 +37,7 @@ test('map information caps its top gap by actual side clearance rather than view
   );
   assert.match(
     css,
-    /\.fleet-map-info-reserved\s*\{[^}]*width: min\(100%,\s*var\(--size-map-inspector\)\);\s*margin-inline: auto;/,
+    /\.fleet-map-info-reserved\s*\{[^}]*width: min\(100%,\s*var\(--size-map-compact-inspector\)\);\s*margin-inline: auto;/,
   );
   assert.match(
     css,
@@ -63,7 +63,7 @@ test('map information caps its top gap by actual side clearance rather than view
     /\.fleet-map-info-content\s*\{[^}]*display: flex;[^}]*flex-direction: column;/,
   );
   const mobilePanel = css.match(
-    /\.fleet-map-info-reserved\s*\{(\s*max-height: 50%;[^}]+)\}/,
+    /\.fleet-map-info-reserved\s*\{(\s*height: 50%;[^}]*)\}/,
   );
   assert.ok(
     mobilePanel,

@@ -3,7 +3,6 @@
 // The truck card itself: how wide it is, the width everything on it reads,
 // and the head that names the truck.
 .fleet-map-inspector[data-inspector-mode='truck'] {
-  width: min(100%, #{ui.size(map-compact-inspector)});
   // Everything on this card - its head and its body - changes shape at one
   // width, and it is the card's own. The head used to read the window
   // instead, in a stylesheet of its own, so the two halves of the same card

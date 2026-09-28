@@ -331,12 +331,17 @@
                         {
                             <span class="arrival-estimate__appointment fleet-truck-next__booking"><span
                                 class="fleet-truck-next__term">Appointment</span>
-                                <strong class="fleet-truck-next__hours">
+                                <CopyValue Value="@HeadAppointmentText(booked)"
+                                    Scope="(_activeTruckId, booked.Id)"
+                                    Class="fleet-truck-next__copy"
+                                    StatusClass="fleet-truck-next__copied"
+                                    Title="@($"Copy appointment: {HeadAppointmentText(booked)}")"
+                                    ><strong class="fleet-truck-next__hours">
                                     @foreach (var line in HeadAppointmentLines(booked))
                                     {
                                         <span>@line</span>
                                     }
-                                </strong>
+                                </strong></CopyValue>
                             </span>
                         }
                         <ArrivalEstimate
@@ -407,21 +412,14 @@
                         else
                         {
                             @* The text itself copies the full address. *@
-                            <dd><button type="button"
-                                class="fleet-truck-facts__copy"
-                                title="Copy location: @panelTruck.FormattedLocation"
-                                @onclick="() => CopyLocationAsync(panelTruck.FormattedLocation)"
-                                >@LocationSummary(panelTruck.FormattedLocation)</button></dd>
+                            <dd><CopyValue Value="@panelTruck.FormattedLocation"
+                                Scope="panelTruck.TruckId"
+                                Class="fleet-truck-facts__copy"
+                                StatusClass="fleet-truck-facts__copied"
+                                Title="@($"Copy location: {panelTruck.FormattedLocation}")"
+                                >@LocationSummary(panelTruck.FormattedLocation)</CopyValue></dd>
                         }
                     </div>
-                    @if (!string.IsNullOrWhiteSpace(panelTruck.FormattedLocation))
-                    {
-                        @if (_locationCopy is { } copyStatus
-                            && _locationCopyTruck == panelTruck.TruckId)
-                        {
-                            <span class="fleet-truck-facts__copied" role="status">@copyStatus</span>
-                        }
-                    }
                 </div>
             </dl>
             <div class="fleet-truck-clocks" @key="(2, panelTruck.TruckId)">

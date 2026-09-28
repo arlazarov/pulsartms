@@ -27,15 +27,15 @@ $sizes: (
   address-suggestions: 20rem,
 
   // The map's floating cards.
-  map-inspector: 76rem,
   map-compact-inspector: 56rem,
   map-stop-inspector: 46rem,
-  // A stop or station card is never shorter than this, so it does not
-  // grow when its details arrive.
-  map-stop-inspector-height: 15rem,
+  // The docked panel is this tall whatever it shows - a truck, a stop, a
+  // station, or nothing yet - so another choice or a late answer never
+  // moves its edges; longer content scrolls inside (the owner,
+  // September 28). A truck's panel measured 540-563 px at 1440 x 900.
+  map-panel-height: 36rem,
   map-details-card: 37.5rem,
   map-fuel-card: 32rem,
-  map-fuel-quote: 22.5rem,
   map-driver-duty-width: 11rem,
 
   // One reading on a truck's vehicle line (speed, fuel, engine), on the

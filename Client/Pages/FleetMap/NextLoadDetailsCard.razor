@@ -152,8 +152,21 @@
                             fleet-route-popup__appointment">
                             <dt class="fleet-route-popup__label"
                                 >Appointment</dt>
-                            <dd class="fleet-route-popup__value"
-                                >@Appointment</dd>
+                            <dd class="fleet-route-popup__value">
+                                @if (AppointmentCopy is { } copy)
+                                {
+                                    <CopyValue Value="@copy"
+                                        Scope="(Route.Id, Stop?.Id)"
+                                        Class="fleet-route-popup__copy"
+                                        StatusClass="fleet-route-popup__copied"
+                                        Title="@($"Copy appointment: {copy}")"
+                                        >@Appointment</CopyValue>
+                                }
+                                else
+                                {
+                                    @Appointment
+                                }
+                            </dd>
                         </div>
                     </dl>
                 }
@@ -176,7 +189,21 @@
                         <div class="fleet-route-popup__field
                             fleet-route-popup__appointment">
                             <dt class="fleet-route-popup__label">Appointment</dt>
-                            <dd class="fleet-route-popup__value">@Appointment</dd>
+                            <dd class="fleet-route-popup__value">
+                                @if (AppointmentCopy is { } copy)
+                                {
+                                    <CopyValue Value="@copy"
+                                        Scope="(Route.Id, Stop?.Id)"
+                                        Class="fleet-route-popup__copy"
+                                        StatusClass="fleet-route-popup__copied"
+                                        Title="@($"Copy appointment: {copy}")"
+                                        >@Appointment</CopyValue>
+                                }
+                                else
+                                {
+                                    @Appointment
+                                }
+                            </dd>
                         </div>
                     </dl>
                     <dl hidden="@(!Expanded)"

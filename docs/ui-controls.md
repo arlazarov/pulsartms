@@ -541,9 +541,12 @@ its card closed is a new one and is revealed again. The pick is kept as
 long as it is what the card is about: a card that changes shape later -
 opened, Details, a stop card grown taller - reveals it again, even after
 the reader has dragged the map away; an unchanged card after a drag moves
-nothing, and closing the card forgets the pick. A stop, next-stop or station card is
-at least `map-stop-inspector-height` tall (half the stage at most on a
-phone), so it does not grow under the reader (September 26). Fuel details
+nothing, and closing the card forgets the pick. The card is one box at
+each width, whatever it shows and whenever its answers arrive (September
+28): docked, its column's width and `map-panel-height` from the column's
+top; floating, `map-compact-inspector` wide and 55 % of the stage tall; on
+a phone, full width and half the stage. What does not fit scrolls inside,
+and loading content already has its room. Fuel details
 reuse existing server prices, quantities and costs, with compact gauges and
 side-by-side station, quote and purchases when width permits.
 Valid planned fuel markers stay visible and selectable with the route when the
@@ -565,9 +568,8 @@ savings values only in the baseline column. The following day's values use the
 same favorable/unfavorable/unchanged tones as the change columns, without the
 baseline highlight. Deltas are server-provided and only compare matching currencies
 and units; missing values remain blank dashes.
-Ordinary station cards retain the fuel-quote minimum width, bounded by the
-available map width, even without tomorrow's prices. Content may widen them up
-to the fuel-card token. Title and Back to truck (or Close without a selected
+Ordinary station cards take the card's one box, like every other card.
+Title and Back to truck (or Close without a selected
 truck) share one header row when they fit; narrow or enlarged-text layouts may
 wrap without clipping. Available next-day prices use the same bounded comparison
 layout. Keep both variants centered with the same top-gap rule. Planned fuel
@@ -656,15 +658,19 @@ is always on: the chosen truck's sonar, the chosen road's breathing glow,
 a slow current of fine grains along the current and later roads, and a
 cluster press glides the camera.
 
-The truck panel (as tall as its content): a truck emblem and the unit;
-a Next stop line (the stop, its ETA with on-time / late word and
+The truck panel (the card's one box; see above): a truck emblem and the
+unit; a Next stop line (the stop, its ETA with on-time / late word and
 appointment, miles still to drive - the route's own forecast and
 distance); eight facts (Driver, Trailer, Motion, Duty, Fuel, Engine,
 Temperature - the readings' own weather, not read again - and Location,
 whose text copies the full address); the driver's clocks. A stop card
 (current or next) shows a completed stop - the server's `IsCompleted`,
-never GPS - with its completion time only, no forecast. A station quote
-is a narrower card at the column's right edge.
+never GPS - with its completion time only, no forecast. A stop's
+Appointment, in the Next stop line and on the stop card, copies itself on
+a click or tap: the window as shown with the zone it is read in, never
+the ETA (`CopyValue`, shared with Location). "Copied" floats over the
+row only after the browser took the text, and a copy that finishes after
+the truck, stop or value changed says nothing.
 
 The trip chain lists every trip of the truck from the Dispatch board row.
 Each later trip wears its own road's colour (its place among the map's

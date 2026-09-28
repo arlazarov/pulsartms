@@ -2774,6 +2774,52 @@ public sealed class FleetMapComponentTests
     );
   }
 
+  // The next stop's Appointment copies the window it shows with its zone,
+  // not the ETA beside it (the owner, September 28).
+  [Fact]
+  public async Task TheNextStopCopiesItsAppointmentWindowAndZone()
+  {
+    using var fixture = new SelectionFixture();
+    var plan = fixture.Plan(fixture.TruckA).State!.Plan!;
+    var pickup = new PlanStop(
+      Guid.NewGuid(),
+      "Pickup",
+      "Webster, NY",
+      1,
+      new(43, -77)
+    )
+    {
+      Job = "Pick Up",
+      ScheduledDate = new(2026, 9, 28),
+      ScheduledTime = new(8, 0),
+      ScheduledTime2 = new(13, 0),
+      AppointmentTimeZoneId = "America/New_York",
+    };
+    plan.Stops = [pickup];
+    plan.Tracking.NextStopId = pickup.Id;
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, call => call.Name == "setTrucks")
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
+    );
+    await component.InvokeAsync(
+      () => component.Find(".fleet-truck-next__copy").Click()
+    );
+    var copied = fixture.Js.Calls.Last(call =>
+      call.Name == "navigator.clipboard.writeText"
+    );
+    Assert.Equal("Sep 28 · 08:00 AM – 01:00 PM EDT", copied.Args![0]);
+    component.WaitForAssertion(
+      () =>
+        Assert.Equal(
+          "Copied",
+          component.Find(".fleet-truck-next__copied").TextContent
+        )
+    );
+  }
+
   private static DispatchResponse ChainLoad(
     Guid id,
     int number,

@@ -1,0 +1,30 @@
+@use '../base' as ui;
+
+// A shown value whose words copy it (Location, Appointment): the text
+// stays as it reads, and "Copied" floats over the row so the layout never
+// moves. Each place positions the word; this owns how it looks.
+.copy-value {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: copy;
+  &:hover,
+  &:focus-visible {
+    color: ui.theme(accent);
+  }
+}
+
+.copy-value__status {
+  position: absolute;
+  padding: 0 ui.pg(micro);
+  border-radius: ui.radius(sm);
+  background: ui.theme(surface);
+  color: ui.theme(success-text);
+  font-size: ui.fs(micro);
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}

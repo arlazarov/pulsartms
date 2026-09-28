@@ -8,6 +8,7 @@ public partial class FleetMap
 {
   private DispatchResponse? _loadDetails;
   private int _loadDetailsVersion;
+
   // The truck panel's arrival, kept while the panel is mounted (hidden in
   // the other views) so coming back to the truck shows the same forecast.
   private readonly ArrivalDisplayMemory _arrivalMemory = new();
@@ -40,7 +41,9 @@ public partial class FleetMap
     var text = booked.Date is null
       ? booked.Value
       : $"{booked.Date} · {booked.Value}";
-    return StopZone(stop) is { } zone ? $"{text}\u00a0{zone}" : text;
+    // An ordinary space before the zone: at 320 px and 200 % text the
+    // clock and zone held together were wider than the card.
+    return StopZone(stop) is { } zone ? $"{text} {zone}" : text;
   }
 
   // A window that ends on another day is two lines, the start over the
@@ -58,26 +61,18 @@ public partial class FleetMap
     return [text];
   }
 
-  // The zone a stop's booking is written in: the forecast for that same
-  // stop knows the stop's zone; failing that, the source's own. None
-  // known, none said.
-  private string? StopZone(PlanStop stop)
-  {
-    if (stop.ScheduledDate is not { } date)
-      return null;
-    var forecast = (
-      _routeState?.Plan is { InputsChanged: false }
-        ? DisplayRouteState?.Eta
-        : null
-    )?.Stops.FirstOrDefault(value => value.StopId == stop.Id);
-    return Client.Services.StopTimeZoneLabel.For(
-      string.IsNullOrWhiteSpace(forecast?.TimeZoneId)
-        ? stop.AppointmentTimeZoneId
-        : forecast.TimeZoneId,
-      date,
-      stop.ScheduledTime
+  // The forecast for the same stop names the zone the booking is read in.
+  private string? StopZone(PlanStop stop) =>
+    StopTimeZoneLabel.ForAppointment(
+      stop,
+      (
+        _routeState?.Plan is { InputsChanged: false }
+          ? DisplayRouteState?.Eta
+          : null
+      )
+        ?.Stops.FirstOrDefault(value => value.StopId == stop.Id)
+        ?.TimeZoneId
     );
-  }
 
   private PlanStop? ScheduledStop
   {

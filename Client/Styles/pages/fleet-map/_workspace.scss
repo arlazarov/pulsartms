@@ -516,10 +516,20 @@
     margin-top: ui.pg(micro);
   }
   &__booking {
+    position: relative;
     display: grid;
     grid-template-columns: var(--route-fact-label) minmax(0, 1fr);
     column-gap: ui.pg(sm);
     align-items: baseline;
+  }
+  // The hours are the copy control; "Copied" floats at the row's end.
+  &__copy {
+    justify-self: start;
+    min-width: 0;
+  }
+  &__copied {
+    top: 0;
+    right: 0;
   }
   &__term {
     color: ui.theme(text-secondary);
@@ -628,26 +638,11 @@
   // A place name longer than a narrow cell at enlarged text breaks
   // inside itself rather than pushing the facts sideways.
   &__copy {
-    padding: 0;
-    border: 0;
-    background: none;
-    color: inherit;
-    font: inherit;
-    text-align: left;
     overflow-wrap: anywhere;
-    cursor: copy;
-    &:hover,
-    &:focus-visible {
-      color: ui.theme(accent);
-    }
   }
   &__copied {
-    position: absolute;
     right: ui.pg(sm);
     bottom: ui.pg(micro);
-    color: ui.theme(success-text);
-    font-size: ui.fs(micro);
-    font-weight: 600;
   }
 }
 
@@ -1170,36 +1165,21 @@
     @include ui.tempered-glass;
     z-index: ui.layer(raised);
   }
-  // Whatever card the panel shows - truck, stop, station - it fills its
-  // column to the right edge; the floating card's own widths do not apply
-  // here (the owner, September 27).
-  .fleet-map-stage
-    > .fleet-map-info-reserved.fleet-map-inspector[data-inspector-mode] {
+  // Whatever the panel shows - truck, stop, station, or nothing yet - it
+  // is one box: its column's width to the right edge, one height from the
+  // column's top, longer content scrolling inside (the owner, September
+  // 28; a station quote was a narrower card, and each truck or stop its
+  // own height, so the panel's edges jumped between choices).
+  .fleet-map-stage > .fleet-map-info-reserved {
     width: auto;
     min-width: 0;
     max-width: none;
     justify-self: stretch;
-  }
-  // A station's quote is a narrower card, kept at the column's right edge
-  // (the owner, September 27).
-  .fleet-map-stage
-    > .fleet-map-info-reserved.fleet-map-inspector[data-inspector-mode='fuel']:not(
-      :has(.fleet-station-popup--planned)
-    ) {
-    width: min(100%, #{ui.size(map-fuel-quote)});
-    min-width: 0;
-    max-width: 100%;
-    justify-self: end;
+    align-self: start;
+    height: min(100%, #{ui.size(map-panel-height)});
   }
   // The list is as tall as its trucks; the map shows beneath it.
   .fleet-map-stage > .fleet-truck-list:not(.is-collapsed) {
-    align-self: start;
-    max-height: 100%;
-  }
-  // A chosen truck's panel is as tall as what it says; the map shows
-  // beneath it. The empty state keeps the column.
-  .fleet-map-stage
-    > .fleet-map-info-reserved.fleet-map-inspector.has-selection {
     align-self: start;
     max-height: 100%;
   }
