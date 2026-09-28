@@ -45,9 +45,9 @@
       ),
       ui.theme(canvas);
     background-attachment: fixed;
-    // In daylight the canvas is cool steel with a fine instrument grid and
-    // stronger cyan light, so the white glass stands on it as the dark
-    // glass stands on the night (the owner, September 27).
+    // In daylight the canvas is bright with a fine instrument grid and
+    // cyan light, so the white glass stands on it as the dark glass stands
+    // on the night (the owner, September 27).
     :root[data-theme='light'] & {
       background:
         radial-gradient(
