@@ -243,8 +243,12 @@ public partial class FleetMap
         // No drawn road to open the stop on: the camera still goes to that
         // exact stop, never to another one in its place.
         var place = load.Stops.FirstOrDefault(x => x.Id == chosen);
+        var places = load
+          .Stops.Where(x => x.Latitude.HasValue && x.Longitude.HasValue)
+          .Select(x => new[] { x.Latitude!.Value, x.Longitude!.Value })
+          .ToArray();
         if (place is { Latitude: { } lat, Longitude: { } lng })
-          await _map!.InvokeVoidAsync("centerStop", lat, lng);
+          await _map!.InvokeVoidAsync("centerStop", lat, lng, places);
       }
       else if (ShowNextLoads && route is not null)
       {
@@ -253,7 +257,8 @@ public partial class FleetMap
             "selectNextStop",
             load.Id.ToString(),
             index,
-            load.ExecutionLegId?.ToString()
+            load.ExecutionLegId?.ToString(),
+            true
           );
         else
           await _map!.InvokeVoidAsync(

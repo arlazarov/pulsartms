@@ -105,8 +105,64 @@ export function createScenePointer(
         element?.clientHeight,
         clusterPadding(),
       );
-      if (camera) map.moveCamera(camera);
+      if (camera) glide(map, camera);
       return true;
     },
   };
+}
+
+// The camera eased to where a cluster comes apart instead of jumping there
+// (the owner, September 27): the centre and zoom travel together over a
+// short ease-in-out; a drag or wheel meanwhile takes the camera back.
+function glide(
+  map: google.maps.Map,
+  camera: google.maps.CameraOptions,
+  duration = 700,
+) {
+  const from = map.getCenter?.();
+  const fromZoom = map.getZoom?.();
+  const to = camera.center as google.maps.LatLngLiteral | undefined;
+  const toZoom = camera.zoom;
+  const frame = globalThis.requestAnimationFrame;
+  if (
+    !from ||
+    !to ||
+    !Number.isFinite(fromZoom) ||
+    !Number.isFinite(toZoom) ||
+    typeof frame !== 'function'
+  ) {
+    map.moveCamera(camera);
+    return;
+  }
+  const start = { lat: from.lat(), lng: from.lng(), zoom: fromZoom! };
+  const end = {
+    lat: typeof to.lat === 'function' ? (to as any).lat() : to.lat,
+    lng: typeof to.lng === 'function' ? (to as any).lng() : to.lng,
+    zoom: toZoom!,
+  };
+  let stopped = false;
+  const stops = ['dragstart', 'mousedown', 'wheel'].map(name =>
+    map.addListener?.(name, () => {
+      stopped = true;
+    }),
+  );
+  const begun = performance.now();
+  const step = (now: number) => {
+    if (stopped) {
+      for (const listener of stops) listener?.remove?.();
+      return;
+    }
+    const t = Math.min(1, (now - begun) / duration);
+    const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+    map.moveCamera({
+      center: {
+        lat: start.lat + (end.lat - start.lat) * e,
+        lng: start.lng + (end.lng - start.lng) * e,
+      },
+      zoom: start.zoom + (end.zoom - start.zoom) * e,
+    });
+    if (t < 1) frame(step);
+    else for (const listener of stops) listener?.remove?.();
+  };
+  frame(step);
 }

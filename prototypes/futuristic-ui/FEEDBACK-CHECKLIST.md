@@ -30,7 +30,7 @@ visual inspection only, never acceptance.
 
 | Request | Status |
 | --- | --- |
-| Real Google map kept to mainland US / Canada with room around it (bounds 14–70 N, 145–45 W) so it zooms out further now that it lies under the panels | Built |
+| Real Google map: the camera's centre kept to mainland US / Canada; zooms out to the whole continent (min zoom 3) so a coast-to-coast load fits in the free part, never the world | Built |
 | Auto satellite at close zoom, no mode caption | Built |
 | One compact tool bar: Follow, Fit route, Camera, Route options, Fuel, Layers; no zoom or whole-fleet ; centred across the map | Built, Seen |
 | Layers menu: Fuel stations, Traffic, Next loads; no Map animation option | Built |
@@ -38,6 +38,8 @@ visual inspection only, never acceptance.
 | No map legend; weather attribution kept | Built, Seen |
 | Truck marks, dark map: coloured glass by engine - green running, bright cyan off, grey with a dashed edge unknown - in a dark casing with a glow of the same colour; moving an arrow, standing a HUD sight (bold ring around the glass core); one size (24 px) | Built |
 | Truck marks, light map: classic green arrow moving, green / grey circle standing | Built |
+| Empty miles as HUD: fine dashed amber line over a faint amber halo, no white casing | Built |
+| Clicking a truck cluster glides the camera (0.7 s ease) instead of jumping | Built |
 | Truck number and "N trucks" cluster tags: HUD plates (clipped corners, fine accent outline, edge ticks, glass sheen), both themes; icons, counts, clustering and picking unchanged | Built |
 | Sonar: four thin compact rings, slow, brighter ink on light map | Built, Seen dark (light ink not yet seen) |
 | Stop badges: glass core, fine rim, crisp P / D, dashed when done; light variant | Built, Seen dark and light |
@@ -47,7 +49,7 @@ visual inspection only, never acceptance.
 | Travelled road as a HUD trace: fine instrument-ink line over a faint halo, no white casing; empty miles dashed | Built |
 | Selected P / D / fuel: HUD reticle with four ticks and soft glow | Built |
 | Direction motion, constant and calm, like current: many fine grains (13 px apart, 2 px heads, short tails, about 10 px/s) over a fine steady glowing wire, on the current and later roads, brightest on the chosen one | Built |
-| P / D on the map or in the chain (current and later loads): one press opens it, zoom kept, a stop off the map or under a panel brought into the free part; a double press centres it in the free part at zoom 15, satellite by the zoom rule; Follow ends on a camera move | Built |
+| P / D in the chain (current and later loads): one press opens the stop and shows its whole trip; a double press centres the stop in the free part at zoom 15. P / D on the map: one press opens it (a hidden stop brought into the free part), a double press zooms to 15. Satellite by the zoom rule; Follow ends on a camera move | Built |
 | Passed (completed) stops openable from chain and map | Open |
 
 ## Workspace surface
@@ -68,8 +70,10 @@ visual inspection only, never acceptance.
 | Stop card (current and next): HUD glass, corner brackets, dimensional emblem, compact facts | Built, Seen dark current / light next |
 | Load number opens the load; no large Open load button | Built, Seen |
 | Stop card stacks in the narrow panel; no mid-word breaks | Built, Seen |
+| Stop card assignment on one line: Truck · Trailer · Driver (HUD labels in the next card) | Built |
 | Stop the server completed (IsCompleted, not GPS or load state), current and next cards: no ETA, Left, Fuel on arrival, cycle or late warnings; Completed status, completion time only when recorded; address, load link, appointment kept | Built |
 | Truck panel, station card and fuel plan drawn as the stop cards: glass emblem (truck / pump), lit frame with corner brackets, HUD labels, accent-edged clocks and visit numbers | Built |
+| Station price days: Today marked as an instrument (faint accent tint, fine rim, lit brackets, price in the accent) instead of a solid block; HUD labels, even cells | Built |
 
 ## Trip chain
 

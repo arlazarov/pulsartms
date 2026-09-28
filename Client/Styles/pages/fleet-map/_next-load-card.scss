@@ -52,9 +52,8 @@
     }
   }
 
-  // Who takes the truck there, as the route stop says it: "Truck 54777 ·
-  // Trailer GG1030" on one line, the driver under them, all in the card's
-  // quiet line. The terms keep their names for a screen reader.
+  // Who takes the truck there on one line (the owner, September 27):
+  // "Truck 54777 · Trailer GG1030 · Driver", the terms as HUD labels.
   &__assignment {
     display: flex;
     flex-wrap: wrap;
@@ -71,12 +70,15 @@
       gap: ui.pg(xs);
       min-width: 0;
     }
-    > div:nth-child(2)::before {
+    > div + div::before {
       content: '·';
       margin-inline-end: ui.pg(xs);
     }
-    > div:last-child {
-      flex-basis: 100%;
+    dt {
+      @include ui.hud-label;
+    }
+    dd {
+      margin: 0;
     }
     > div:last-child dt {
       position: absolute;

@@ -86,15 +86,15 @@ export async function createFleetMap(
   const mountedMap = mountMap(element, {
     center: { lat: 41.5, lng: -87.5 },
     zoom: 5,
-    // The fleet works in mainland Canada and the USA: the map keeps to
-    // them and never zooms out past them - no world, no remote islands, no
-    // open ocean (the owner, September 27). Strict bounds let Google clamp
-    // every move (wheel, pinch, pan, a fit, a restored view) without a
-    // bounce; street zoom and satellite are untouched.
+    // The fleet works in mainland Canada and the USA: the camera's centre
+    // keeps to them, and the map zooms out as far as the whole continent -
+    // enough for a load from coast to coast in the part of the map the
+    // panels leave free (the owner, September 27) - but not to the world.
     restriction: {
       latLngBounds: fleetBounds,
-      strictBounds: true,
+      strictBounds: false,
     },
+    minZoom: 3,
     mapId: 'DEMO_MAP_ID',
     mapTypeId: 'roadmap',
     colorScheme: schemeOf(element),
@@ -181,7 +181,13 @@ export async function createFleetMap(
     // 27). A camera move is the reader's own, so Follow ends; editors keep
     // theirs.
     let lastStopPress: { key: string; at: number } | null = null;
+    // Set by a press in the trip chain: there one press shows the stop's
+    // whole trip instead (the owner, September 27); a double press still
+    // takes the stop to street zoom.
+    let chainFit: (() => void) | null = null;
     function focusStop(position: google.maps.LatLngLiteral) {
+      const fit = chainFit;
+      chainFit = null;
       if (disposed || fuelEditing || routeEditor.active) return;
       const key = `${position.lat},${position.lng}`;
       const now = Date.now();
@@ -198,11 +204,29 @@ export async function createFleetMap(
         });
         return;
       }
+      if (fit) {
+        trucks.releaseCamera();
+        fit();
+        return;
+      }
       // One press: a stop off the map or under a panel is brought the
       // least distance into the free part; one already there stays put.
       if (map.getBounds?.()?.contains(position) === false)
         trucks.releaseCamera();
       cameraViewport.reveal(position);
+    }
+    // All of a later load's drawn road, or a set of places, in the part of
+    // the map the panels leave free.
+    function fitPoints(points: google.maps.LatLngLiteral[] | null) {
+      if (disposed || !points?.length) return;
+      const bounds = new google.maps.LatLngBounds();
+      for (const point of points) bounds.extend(point);
+      trucks.releaseCamera();
+      cameraViewport.refresh();
+      map.fitBounds(bounds, cameraViewport.padding(55));
+    }
+    function fitLoadRoad(loadId: string, executionLegId?: string) {
+      fitPoints(nextLoads.geometryOf(loadId, executionLegId));
     }
     const route = createRouteLayer(
       map,
@@ -533,9 +557,12 @@ export async function createFleetMap(
         loadId: string,
         stopIndex: number,
         executionLegId?: string | null,
+        fromChain = false,
       ) {
-        if (!disposed)
-          nextLoads.selectStop(loadId, stopIndex, executionLegId ?? undefined);
+        if (disposed) return;
+        if (fromChain)
+          chainFit = () => fitLoadRoad(loadId, executionLegId ?? undefined);
+        nextLoads.selectStop(loadId, stopIndex, executionLegId ?? undefined);
       },
       clearNextLoadSelection() {
         if (!disposed) nextLoads.clearSelection();
@@ -547,27 +574,27 @@ export async function createFleetMap(
       // and the camera goes to it exactly as a badge press takes it.
       openRouteStop(stopId: string) {
         if (disposed) return;
+        chainFit = () => route.fitRemaining();
         route.openStop(stopId);
+        chainFit = null;
       },
-      // A later load's stop chosen in the chain while its road is not drawn.
-      centerStop(lat: number, lng: number) {
-        if (Number.isFinite(lat) && Number.isFinite(lng))
-          focusStop({ lat, lng });
+      // A later load's stop chosen in the chain while its road is not drawn:
+      // one press shows all of the load's stops, a double press the stop.
+      centerStop(lat: number, lng: number, stops?: number[][] | null) {
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        const places = (stops ?? []).filter(
+          point => Number.isFinite(point?.[0]) && Number.isFinite(point?.[1]),
+        );
+        if (places.length > 1)
+          chainFit = () =>
+            fitPoints(places.map(([pLat, pLng]) => ({ lat: pLat, lng: pLng })));
+        focusStop({ lat, lng });
       },
       // A later load chosen whole in the chain: all of its road in view.
       fitNextLoad(loadId: string, executionLegId?: string | null) {
         if (disposed) return;
         nextLoads.pickLoad(loadId, executionLegId ?? undefined);
-        const geometry = nextLoads.geometryOf(
-          loadId,
-          executionLegId ?? undefined,
-        );
-        if (!geometry?.length) return;
-        const bounds = new google.maps.LatLngBounds();
-        for (const point of geometry) bounds.extend(point);
-        trucks.releaseCamera();
-        cameraViewport.refresh();
-        map.fitBounds(bounds, cameraViewport.padding(55));
+        fitLoadRoad(loadId, executionLegId ?? undefined);
       },
       setStopCompletions(list: { id: string; at: string | null }[]) {
         if (!disposed) route.setCompletions(list);

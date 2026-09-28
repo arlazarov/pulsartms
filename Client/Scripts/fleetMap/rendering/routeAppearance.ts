@@ -161,6 +161,31 @@ export function routeLayers(
   const outlineDash = pattern.map(
     (value: number) => (value * width) / outlineWidth,
   );
+  if (empty && !traveled) {
+    // Empty miles as the HUD draws them (the owner, September 27: the
+    // orange casing did not belong): a fine dashed amber line over a faint
+    // amber halo, no white casing - still told from loaded road by colour
+    // and dashes.
+    const amber = isLightMap() ? [217, 119, 6] : [251, 191, 36];
+    return (line.cachedLayer = [
+      new PathLayer({
+        ...shared,
+        id: `${line.id}-outline`,
+        pickable: false,
+        getColor: [...amber, isLightMap() ? 50 : 40],
+        getWidth: 8,
+      }),
+      new PathLayer({
+        ...shared,
+        extensions,
+        dashJustified: false,
+        id: line.id,
+        getColor: [...amber, 235],
+        getWidth: 2.5,
+        getDashArray: [2.2, 2.2],
+      }),
+    ]);
+  }
   if (traveled) {
     // The road already driven is a trace, as a HUD draws a flight path: a
     // fine line of the instrument ink over a faint wide halo of the same,

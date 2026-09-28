@@ -140,9 +140,16 @@
     // badge and the state chip that share the row with it.
     overflow-wrap: break-word;
   }
-  // Who takes the truck there: the unit and trailer, then the driver.
+  // Who takes the truck there, on one line: the unit and trailer, then
+  // the driver.
   &__assignment {
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 ui.pg(xs);
+    > span + span::before {
+      content: '·';
+      margin-inline-end: ui.pg(xs);
+    }
     margin-top: ui.pg(sm);
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);
