@@ -43,7 +43,8 @@ export function createCameraViewport(
   // September 26).
   let current: google.maps.LatLngLiteral | null = null,
     covering = '',
-    folded = false;
+    folded = false,
+    foldedAt = 0;
   // A reader who drags the map has taken it back: nothing more is moved for
   // them. Any other move - a route fitted, a zoom, our own pan - ends in an
   // idle, where the pick's place is measured again against the camera at
@@ -74,28 +75,34 @@ export function createCameraViewport(
 
   function refresh() {
     if (disposed) return;
+    // A phone's truck card folded or unfolded by its reader is the same
+    // card: the sizes it changes - the card, and the map when the trips
+    // under it fold too - never move the camera (the owner, September 28).
+    // Its resizes arrive over a few frames, so a short window covers them.
+    const fold =
+      element
+        .closest?.('.fleet-map-page')
+        ?.classList?.contains('is-truck-collapsed') === true;
+    if (fold !== folded) {
+      folded = fold;
+      foldedAt = Date.now();
+    }
+    const folding = Date.now() - foldedAt < 600;
     measure();
     // Overlay disclosure updates future focus insets, never the current camera.
     const next = [bounds?.width, bounds?.height].join(':');
     if (next !== signature) {
       signature = next;
-      changed();
+      if (!folding) changed();
     }
     // A card of another shape than last time is a new card over the pick.
     const cover = region
       ? [region.x, region.y, region.width, region.height].join(':')
       : '';
-    // A phone's truck card folded or unfolded by its reader is the same
-    // card: it never moves the camera (the owner, September 28).
-    const fold =
-      element
-        .closest?.('.fleet-map-page')
-        ?.classList?.contains('is-truck-collapsed') === true;
     if (cover !== covering) {
       covering = cover;
-      if (cover && !pending && current && fold === folded) begin(current);
+      if (cover && !pending && current && !folding) begin(current);
     }
-    folded = fold;
     attemptReveal();
   }
 

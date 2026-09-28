@@ -157,9 +157,12 @@
       max-height: none;
       overflow: visible;
     }
+    // The truck panel is display: contents, which ignores position and
+    // height: it is given a box so its parking takes effect.
     .fleet-map-inspector > :not(.fleet-map-inspector__header),
     .fleet-truck-panel,
     .fleet-trip-chain {
+      display: block;
       position: absolute;
       height: 0;
       overflow: hidden;
