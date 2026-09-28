@@ -237,11 +237,14 @@ function sonarLayers(
       radiusUnits: 'pixels',
       getRadius: 16 + eased * 30,
       stroked: true,
-      filled: true,
+      // On the light map the rings are lines only: four overlapping tinted
+      // discs read as a grey filled halo around the truck (the owner,
+      // September 28).
+      filled: !light,
       lineWidthUnits: 'pixels',
-      getLineWidth: light ? 2 : 1.5,
+      getLineWidth: 1.5,
       getLineColor: [...ink, Math.round(255 * fade)],
-      getFillColor: [...ink, Math.round((light ? 34 : 26) * fade)],
+      getFillColor: [...ink, Math.round(26 * fade)],
       pickable: false,
       updateTriggers: {
         getRadius: phase,
