@@ -26,6 +26,93 @@
     &__footer > div {
       display: contents;
     }
+    // The opened stop, compact (the owner, September 28): it and the next
+    // row fit the list together. Its number is the row's badge, the slider
+    // needs no end labels beside Full tank, the tank readings stand in
+    // three columns, and the price and the cost share one line.
+    &__detail {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: ui.pg(micro) ui.pg(sm);
+      padding-block: ui.pg(xs);
+      > * {
+        grid-column: 1 / -1;
+      }
+    }
+    &__station-heading small,
+    &__range-labels {
+      display: none;
+    }
+    &__address,
+    &__position {
+      line-height: 1.25;
+    }
+    &__levels {
+      display: grid;
+      // Each column as wide as its reading, so a full tank's longer
+      // reading keeps one line while the others give it room.
+      grid-template-columns: repeat(3, minmax(0, max-content));
+      justify-content: space-between;
+      gap: ui.pg(xs);
+      font-size: ui.fs(caption);
+      > span {
+        display: grid;
+        align-content: start;
+      }
+    }
+    &__levels strong {
+      font-size: ui.fs(small);
+      white-space: normal;
+    }
+    &__buy {
+      padding-inline: 0;
+      border-inline: 0;
+    }
+    // The slider and Full tank share one line; the quantity it sets reads
+    // in Buy above and in the row's head, so its label is for assistive
+    // technology only here.
+    &__quantity {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 0 ui.pg(sm);
+    }
+    &__quantity-heading {
+      display: contents;
+    }
+    &__quantity-heading > label:first-child {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    &__quantity input[type='range'] {
+      grid-row: 1;
+      grid-column: 1;
+    }
+    &__full {
+      grid-row: 1;
+      grid-column: 2;
+    }
+    &__detail > &__price,
+    &__detail > &__cost {
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      align-items: baseline;
+      gap: 0 ui.pg(xs);
+      padding-top: ui.pg(xs);
+      font-size: ui.fs(caption);
+      line-height: 1.25;
+      strong {
+        font-size: ui.fs(small);
+      }
+    }
+    &__detail > &__price {
+      grid-column: 1;
+    }
+    &__detail > &__cost {
+      grid-column: 2;
+    }
     &__footer .btn {
       min-width: 0;
       min-height: ui.size(control-touch);

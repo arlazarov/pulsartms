@@ -146,8 +146,12 @@ mounted, full-sized and independently interactive, and leave background
 controls accessible. Trucks are always shown; there is no manual
 truck-layer visibility toggle. While editing fuel, show only the edited
 truck; restore all trucks when editing ends, including empty drafts. On a
-phone the editor takes the card's whole width and at most 90% of the map
-(more room for the opened stop, the owner, September 28). The editor
+phone the editor takes the card's whole width and at most 90% of the map,
+and the opened stop is compact so it and the next row fit the list (the
+owner, September 28): its tank readings in three columns, the slider and
+Full tank on one line (the quantity reads in Buy and in the row's head;
+its label stays for assistive technology), price and cost on one line,
+and no repeated "Fuel stop N" or slider end labels. The editor
 keeps its frame, the list scrolling between the totals and the footer,
 so Calculate automatically, Cancel and Save stay in view. The map does
 not grow for it: a taller stage made the page scroll under the map.
