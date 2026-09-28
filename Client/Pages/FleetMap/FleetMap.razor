@@ -4,7 +4,7 @@
 
 <PageTitle>Fleet Map · PulsR</PageTitle>
 
-<div class="fleet-map-page @(TruckCollapsed ? "is-truck-collapsed" : "")">
+<div class="fleet-map-page @(SelectedTruck is null ? "" : "has-truck") @(TruckCollapsed ? "is-truck-collapsed" : "")">
     <div class="fleet-map-page__background">
     <div class="fleet-map-title">
         <h1>Fleet Map</h1>

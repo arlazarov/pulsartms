@@ -139,6 +139,23 @@
     max-height: 100%;
     overflow-y: auto;
   }
+  // The trips under the map are the chosen truck's, shown only while its
+  // card is open (the owner, September 28): with no truck, or a collapsed
+  // one, they are parked and the stage drops their row's gap, so the map
+  // takes the space back.
+  .fleet-map-page:not(.has-truck),
+  .fleet-map-page.is-truck-collapsed {
+    .fleet-map-stage {
+      row-gap: 0;
+    }
+    .fleet-trip-chain {
+      display: block;
+      position: absolute;
+      height: 0;
+      overflow: hidden;
+      visibility: hidden;
+    }
+  }
   // Expanded, the truck's panel has the stage to itself: the map's tool
   // bar steps aside and returns when it collapses.
   .fleet-map-page:not(.is-truck-collapsed):has(.fleet-map-inspector__compact)
