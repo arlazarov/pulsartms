@@ -28,8 +28,9 @@ $screen-places: (
   truck-next-stacked: 16rem,
   // The truck panel's facts go to one column.
   truck-facts-stacked: 18rem,
-  // The truck panel's four clocks fold two by two.
-  truck-clocks-stacked: 22rem,
+  // The truck panel's four clocks fold two by two - only at enlarged
+  // text; a phone at normal size keeps them in one row (the owner).
+  truck-clocks-stacked: 16rem,
   // Below this the map's tool bar leaves the map for a row above it
   // (enlarged text on a phone).
   map-tools-apart: 18rem,
