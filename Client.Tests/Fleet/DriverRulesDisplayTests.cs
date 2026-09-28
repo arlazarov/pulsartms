@@ -56,7 +56,12 @@ public sealed class DriverRulesDisplayTests
         .Add(x => x.ShowDutyStatus, false)
         .Add(
           x => x.Status,
-          new DriverDutyStatus("sleeperBerth", null, null, DateTimeOffset.UtcNow)
+          new DriverDutyStatus(
+            "sleeperBerth",
+            null,
+            null,
+            DateTimeOffset.UtcNow
+          )
           {
             Jurisdiction = rules,
           }
