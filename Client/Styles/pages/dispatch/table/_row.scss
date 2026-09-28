@@ -247,3 +247,22 @@
     gap: ui.pg(xs);
   }
 }
+
+// The lane's direction between a row's pickup and its delivery, as the
+// trip chain draws it: a quiet arrow standing on the line between the two
+// columns, so neither column moves for it.
+.dispatch-page .dispatch-table {
+  td.is-delivery {
+    position: relative;
+  }
+  .dispatch-table__lane-arrow {
+    position: absolute;
+    top: ui.pg(md);
+    left: 0;
+    transform: translateX(-50%);
+    color: ui.theme(text-muted);
+    font-size: ui.fs(body);
+    line-height: 1.4;
+    pointer-events: none;
+  }
+}
