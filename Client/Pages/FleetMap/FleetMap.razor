@@ -297,6 +297,38 @@
             <div class="fleet-truck-panel
                         @(_inspectorMode != MapInspectorMode.Truck ? "is-parked" : "")"
                  inert="@(_inspectorMode != MapInspectorMode.Truck)">
+            @* The truck's current load (the owner, September 28): its
+               number opens the load, its order number copies. Only the
+               work the planning owner names current, never a first or
+               later load of the truck. *@
+            @if (CurrentLoad is { } current)
+            {
+                <div class="fleet-truck-load" aria-label="Current load"
+                     @key="(3, current.Id)">
+                    <span class="fleet-truck-load__pair">
+                        <span class="fleet-truck-load__term">Load</span>
+                        <a class="fleet-truck-load__link" title="Open load"
+                           href="@ReturnNavigation.Load(current.Id,
+                               ReturnOrigin)"
+                           ><strong><Client.Shared.Dispatch.LoadNumber.LoadNumber
+                               Value="current.LoadNumber" /></strong><ActionIcon
+                               Kind="external-link" /></a>
+                    </span>
+                    @if (!string.IsNullOrWhiteSpace(current.OrderNumber))
+                    {
+                        <span class="fleet-truck-load__pair">
+                            <span class="fleet-truck-load__term">Order</span>
+                            <span class="fleet-truck-load__order"
+                                ><CopyValue Value="@current.OrderNumber"
+                                    Scope="(_activeTruckId, current.Id)"
+                                    Class="fleet-truck-load__copy"
+                                    StatusClass="fleet-truck-load__copied"
+                                    Title="Copy order number"
+                                    >@current.OrderNumber</CopyValue></span>
+                        </span>
+                    }
+                </div>
+            }
             @* Where the truck is going next, when it gets there and how
                far it still has to drive (the owner, September 27): the
                route's own forecast and distance, read here too. *@
