@@ -119,7 +119,9 @@ visual inspection only, never acceptance.
 
 | Request | Status |
 | --- | --- |
-| Top bar and rail stay in place while a long page scrolls under them (the load page no longer runs into the bar) | Built, Seen 1280 px |
+| Top bar and rail stay in place while a long page scrolls under them | Built, Seen 1280 px |
+| Load page and Messages: the top bar keeps its own grid row (a one-row frame drew the page's head over the bar); the load frame clips instead of hiding, so focus cannot scroll it | Built, Seen 1280 px |
+| Load Overview in the HUD: glass side panels (Route, Notes, Documents, Mileage) with accent HUD headings, the stop table's head as HUD labels on an accent band, the chosen stop lit, editor sections headed in the accent | Built, Seen dark 1280 px |
 
 ## Deferred by the owner
 

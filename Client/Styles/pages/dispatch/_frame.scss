@@ -175,3 +175,46 @@
 .dispatch-details__title h1 {
   letter-spacing: 0.01em;
 }
+// The Overview in the same instrument (the owner, September 27): the
+// side panels are glass with HUD headings; the stop table's head reads
+// as HUD labels on a faint accent band, the chosen stop is lit, and the
+// editor's sections are headed in the accent.
+.dispatch-stop-map,
+.dispatch-activity,
+.dispatch-documents,
+.dispatch-mileage {
+  @include ui.glass-panel;
+  h2 {
+    @include ui.hud-label;
+    color: ui.theme(accent);
+    font-size: ui.fs(caption);
+  }
+  h2 svg {
+    color: ui.theme(accent);
+  }
+}
+.stop-workspace__table-heading {
+  border-color: ui.theme(accent, 0.22);
+  background: ui.theme(accent, 0.06);
+  h2,
+  > * {
+    @include ui.hud-label;
+  }
+}
+.stop-workspace__list {
+  border-color: ui.theme(accent, 0.22);
+}
+.stop-workspace__stop.is-selected {
+  background: ui.theme(accent, 0.1);
+  box-shadow:
+    inset 3px 0 ui.theme(accent),
+    0 0 14px ui.theme(accent, 0.12);
+}
+.stop-workspace__editor h3 {
+  @include ui.hud-label;
+  color: ui.theme(accent);
+  font-size: ui.fs(caption);
+  svg {
+    color: ui.theme(accent);
+  }
+}
