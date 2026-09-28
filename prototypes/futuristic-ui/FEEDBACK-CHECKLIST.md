@@ -76,6 +76,7 @@ visual inspection only, never acceptance.
 | --- | --- |
 | Reserved column; empty state with calm radar when nothing is chosen | Built, Seen |
 | Truck head: eyebrow, large unit; no Route / Fuel tabs | Built, Seen |
+| Next stop line: the booking row says Appointment (the visit is on the place line) and its hours start in the ETA's column; a stop with no booking shows no row | Built |
 | Next stop line at the top of the truck panel: the stop (visit, name, locality), its ETA with on-time / late word and appointment, and the miles still to drive - the route's own forecast and distance, no new reads | Built (not yet seen) |
 | Facts 2x4: Driver, Trailer, Motion, Duty, Fuel, Engine, Temperature (the readings' own weather, not read again), Location; clocks in cells with bars; no action row; no trip block | Built |
 | Location: locality only, full address in title; clicking the text copies it (no copy button); honest status | Built |
@@ -83,6 +84,7 @@ visual inspection only, never acceptance.
 | Load number opens the load; no large Open load button | Built, Seen |
 | Stop card stacks in the narrow panel; no mid-word breaks | Built, Seen |
 | Stop card assignment on one line: Truck · Trailer · Driver (HUD labels in the next card) | Built |
+| Stop card: Route - the whole planned road to the stop in miles and km (the account's units) - with a fine lit bar and "N% driven" from the route's progress | Built |
 | Stop the server completed (IsCompleted, not GPS or load state), current and next cards: no ETA, Left, Fuel on arrival, cycle or late warnings; Completed status, completion time only when recorded; address, load link, appointment kept | Built |
 | Truck panel, station card and fuel plan drawn as the stop cards: glass emblem (truck / pump), lit frame with corner brackets, HUD labels, accent-edged clocks and visit numbers | Built |
 | Station price days: Today marked as an instrument (faint accent tint, fine rim, lit brackets, price in the accent) instead of a solid block; HUD labels, each day centred in its equal column so the gaps around Today are equal | Built |
@@ -105,6 +107,15 @@ visual inspection only, never acceptance.
 | Request | Status |
 | --- | --- |
 | Board in the workspace style: glass truck panels with the truck emblem, load tiles with a straight phase line, soft phase chips, lit stop markers | Built, Seen dark |
+| Load tiles compact: one step smaller type, tighter rows, street on one line | Built, Seen dark 1280 px |
+| A truck's loads scroll across under the mouse wheel (no snapping on wide screens); the bar is a HUD rail (shared with the trip chain) | Built, checked 1280 px |
+| Table day bands: surface band, fine day-colour line and wash; past muted, today accent, future next-route colour (garish solid fills removed with their roles) | Built |
+
+## Frame, all pages
+
+| Request | Status |
+| --- | --- |
+| Top bar and rail stay in place while a long page scrolls under them (the load page no longer runs into the bar) | Built, Seen 1280 px |
 
 ## Deferred by the owner
 

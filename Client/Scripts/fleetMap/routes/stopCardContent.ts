@@ -72,6 +72,9 @@ export type StopCardWords = {
   // Set only when the server says the stop is completed: no forecast is
   // left, only when it was done, if that is known.
   completion?: { at: string | null } | null;
+  // The whole planned road to this stop and the share of it already
+  // driven, from the route's own progress.
+  route?: { total: string; percent: number } | null;
 };
 
 export function stopContent(
@@ -87,6 +90,7 @@ export function stopContent(
     hours,
     fuelText,
     completion,
+    route,
   }: StopCardWords,
 ): HTMLElement {
   function element(tag: string, className: string, text?: string) {
@@ -251,6 +255,22 @@ export function stopContent(
     remaining ?? '—',
     'fleet-route-popup__distance fleet-route-popup__section-start',
   );
+  // The whole road to the stop, and how much of it is behind the truck
+  // (the owner, September 27).
+  if (route) {
+    const percent = route.percent;
+    field(facts, 'Route', route.total, 'fleet-route-popup__route');
+    const bar = element('div', 'fleet-route-popup__progress');
+    const meter = element(
+      'progress',
+      'fleet-route-popup__progress-bar',
+    ) as HTMLProgressElement;
+    meter.max = 100;
+    meter.value = percent;
+    meter.title = 'Route driven';
+    bar.append(meter, element('small', '', `${percent}% driven`));
+    facts.append(bar);
+  }
   // The card says fuel as a named figure on its line, not as a dial. This is
   // one more fact about the stop, so it reads as one: the same label column
   // as the appointment and the ETA above it.

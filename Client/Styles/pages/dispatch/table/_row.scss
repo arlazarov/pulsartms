@@ -26,17 +26,19 @@
       color: ui.theme(text-muted);
     }
   }
-  // Each day heads its loads as a coloured band, the way a truck heads
-  // its loads in Cards (the owner, September 27): the days are how the
-  // table is read, and a quiet line was lost between the rows. A strip of
-  // the canvas above each band sets the days apart as cards.
+  // Each day heads its loads as a band, the way a truck heads its loads
+  // in Cards: the days are how the table is read. The band is the table's
+  // own surface, its day told by a line of colour at the left, a soft
+  // wash from it, the date chip and the when-pill; today is the accent
+  // and lit (the owner, September 27: solid colour bands were garish). A
+  // strip of the canvas above each band sets the days apart as cards.
   .dispatch-table__day-group {
-    --day-fill: #{ui.theme(day-past)};
+    --day-fill: #{ui.theme(text-muted)};
     &.is-today {
-      --day-fill: #{ui.theme(day-today)};
+      --day-fill: #{ui.theme(accent)};
     }
     &.is-future {
-      --day-fill: #{ui.theme(day-future)};
+      --day-fill: #{ui.theme(route-next)};
     }
     &.is-undated {
       --day-fill: #{ui.theme(text-muted)};
@@ -46,11 +48,19 @@
   // row above, and its column rules showed through the gap.
   .dispatch-table__day > th {
     padding: calc(#{ui.pg(md)} + #{ui.pg(sm)}) ui.pg(md) ui.pg(sm);
-    background: linear-gradient(
-      ui.theme(canvas) 0 ui.pg(md),
-      var(--day-fill) ui.pg(md)
-    );
-    color: ui.theme(on-day);
+    background:
+      linear-gradient(ui.theme(canvas) 0 ui.pg(md), transparent ui.pg(md)),
+      linear-gradient(var(--day-fill), var(--day-fill)) left bottom / 3px
+        calc(100% - #{ui.pg(md)}) no-repeat,
+      linear-gradient(
+          90deg,
+          color-mix(in srgb, var(--day-fill) 14%, transparent),
+          transparent 55%
+        )
+        left bottom / 100% calc(100% - #{ui.pg(md)}) no-repeat,
+      linear-gradient(ui.theme(surface), ui.theme(surface)) left bottom /
+        100% calc(100% - #{ui.pg(md)}) no-repeat;
+    color: ui.theme(text);
     font-size: ui.fs(heading);
     font-weight: 700;
     text-align: start;
@@ -61,7 +71,15 @@
   }
   .dispatch-table__day-group:first-of-type .dispatch-table__day > th {
     padding-top: ui.pg(sm);
-    background: var(--day-fill);
+    background:
+      linear-gradient(var(--day-fill), var(--day-fill)) left / 3px 100%
+        no-repeat,
+      linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--day-fill) 14%, transparent),
+        transparent 55%
+      ),
+      ui.theme(surface);
   }
   .dispatch-table__day-chip {
     display: inline-grid;
@@ -69,8 +87,9 @@
     min-inline-size: ui.size(control-touch);
     margin-inline-end: ui.pg(md);
     padding: ui.pg(xs);
+    border: 1px solid color-mix(in srgb, var(--day-fill) 40%, transparent);
     border-radius: ui.radius(sm);
-    background: ui.theme(on-day);
+    background: color-mix(in srgb, var(--day-fill) 14%, transparent);
     color: var(--day-fill);
     line-height: 1;
     > small {
@@ -85,11 +104,16 @@
   .dispatch-table__day-when {
     margin-inline-start: ui.pg(md);
     padding: ui.pg(micro) ui.pg(sm);
-    border: 1px solid ui.theme(on-day, 0.5);
+    border: 1px solid color-mix(in srgb, var(--day-fill) 45%, transparent);
     border-radius: ui.radius(pill);
-    background: ui.theme(on-day, 0.16);
+    background: transparent;
+    color: var(--day-fill);
     font-size: ui.fs(small);
     font-weight: 600;
+  }
+  // Today is lit, as the workspace lights what is current.
+  .dispatch-table__day-group.is-today .dispatch-table__day-chip {
+    box-shadow: 0 0 14px color-mix(in srgb, var(--day-fill) 40%, transparent);
   }
   .dispatch-table__day-count {
     float: inline-end;

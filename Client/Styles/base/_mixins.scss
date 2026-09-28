@@ -290,6 +290,31 @@
 }
 
 // A HUD label: small, spaced capitals in the muted ink.
+// A strip's scrollbar as a HUD rail: a fine lit thumb on a faint track,
+// in the accent, taking its own room under the content.
+@mixin hud-scrollbar {
+  scrollbar-gutter: stable;
+  scrollbar-color: fn.theme(accent, 0.45) fn.theme(accent, 0.06);
+  scrollbar-width: thin;
+  &::-webkit-scrollbar {
+    height: fn.pg(xs);
+  }
+  &::-webkit-scrollbar-track {
+    border-radius: fn.radius(pill);
+    background: fn.theme(accent, 0.06);
+  }
+  &::-webkit-scrollbar-thumb {
+    border-radius: fn.radius(pill);
+    background: linear-gradient(
+      90deg,
+      fn.theme(accent, 0.35),
+      fn.theme(accent, 0.7),
+      fn.theme(accent, 0.35)
+    );
+    box-shadow: 0 0 6px fn.theme(hud-glow, 0.5);
+  }
+}
+
 @mixin hud-label {
   color: fn.theme(text-muted);
   font-size: fn.fs(micro);

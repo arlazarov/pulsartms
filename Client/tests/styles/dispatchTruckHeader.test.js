@@ -202,11 +202,11 @@ test('Dispatch view framing cannot move the shared title or toolbar', () => {
   assert.match(razor, /<section class="dispatch-page dispatch-board">/);
   assert.ok(
     razor.indexOf('<PageHeader Title="Dispatch"') <
-      razor.indexOf('<div class="dispatch-board__body">'),
+      razor.indexOf('<div class="dispatch-board__body"'),
   );
   assert.ok(
     razor.indexOf('aria-label="Load scope"') <
-      razor.indexOf('<div class="dispatch-board__body">'),
+      razor.indexOf('<div class="dispatch-board__body"'),
   );
   assert.doesNotMatch(razor, /dispatch-board--document/);
   assert.match(

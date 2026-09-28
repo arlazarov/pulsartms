@@ -25,7 +25,7 @@ test('the next stop line leads the panel with its distance and forecast', () => 
   assert.match(razor, /fleet-truck-next__left[\s\S]*?LeftMiles/);
   assert.match(
     razor,
-    /fleet-truck-next__eta[\s\S]*?Memory="_panelArrivalMemory"/,
+    /fleet-truck-next__eta[\s\S]*?Memory="_arrivalMemory"/,
   );
   assert.ok(
     razor.indexOf('fleet-truck-next') < razor.indexOf('fleet-truck-facts"'),

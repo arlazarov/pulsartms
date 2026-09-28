@@ -320,14 +320,16 @@
             }
         </div>
         </header>
-        @if (_inspectorMode == MapInspectorMode.Truck
-            && SelectedTruck is { } panelTruck)
+        @if (SelectedTruck is { } panelTruck)
         {
-            @* The truck as the workspace concept draws it: six facts in
-               bordered cells and the driver's clocks with what is left of
-               each. Its actions are in the map's bar; its trips are the
-               chain's cards. Every value comes from the owner the card's head
-               reads. *@
+            @* The truck as the workspace concept draws it: the next stop,
+               eight facts in bordered cells and the driver's clocks. Its
+               actions are in the map's bar; its trips are the chain's cards.
+               Kept mounted while a truck is selected and hidden in the other
+               views, so the truck's readings (the weather) are not fetched
+               again on the way back. *@
+            <div class="fleet-truck-panel"
+                 hidden="@(_inspectorMode != MapInspectorMode.Truck)">
             @* Where the truck is going next, when it gets there and how
                far it still has to drive (the owner, September 27): the
                route's own forecast and distance, read here too. *@
@@ -340,7 +342,9 @@
                               title="Distance to the next stop">
                             <strong>@Units.DistanceValue(_routeState?.Plan is null
                                 ? null : LeftMiles)</strong>
-                            <small>@Units.DistanceUnit left</small>
+                            <small>@Units.DistanceUnit@(Units.BothDistances
+                                ? $" · {Units.Kilometers(_routeState?.Plan is null ? null : LeftMiles)} km"
+                                : "") left</small>
                         </span>
                     </div>
                     <div class="fleet-truck-next__place">
@@ -352,15 +356,32 @@
                         }
                     </div>
                     <div class="fleet-truck-next__eta arrival-estimate">
+                        @* The booking of the stop the forecast is for, in the
+                           stop's own time zone; a window ending another day
+                           is two lines. The visit is named on the place line
+                           above, so the row says Appointment and its hours
+                           stand in the ETA's column (the owner, Sept 27). *@
+                        @if (HeadAppointmentStop is { } booked)
+                        {
+                            <span class="arrival-estimate__appointment fleet-truck-next__booking"><span
+                                class="fleet-truck-next__term">Appointment</span>
+                                <strong class="fleet-truck-next__hours">
+                                    @foreach (var line in HeadAppointmentLines(booked))
+                                    {
+                                        <span>@line</span>
+                                    }
+                                </strong>
+                            </span>
+                        }
                         <ArrivalEstimate
                             Eta="@(_routeState?.Plan is { InputsChanged: false }
                                 ? DisplayRouteState?.Eta : null)"
-                            Stop="ScheduledStop" Memory="_panelArrivalMemory"
+                            Stop="ScheduledStop" Memory="_arrivalMemory"
                             DispatchId="SelectedDispatchId"
                             Refreshing="_etaRefreshPending"
                             Completed="@(_routeState?.Plan?.Tracking
                                 .AllStopsPassed == true)"
-                            ShowDutyStatus="false" ShowAppointment="true"
+                            ShowDutyStatus="false" ShowAppointment="false"
                             ShowDetails="false" Reading="compact" />
                     </div>
                 </section>
@@ -439,6 +460,7 @@
                     Jurisdiction="@HeadDutyStatus?.Jurisdiction"
                     Dials="false" Bars="true" ShowDutyStatus="false" />
             </div>
+            </div>
         }
         <div class="fleet-map-inspector__native" hidden="@(_inspectorMode is not (MapInspectorMode.Stop or MapInspectorMode.Fuel))"></div>
         @if (_inspectorMode == MapInspectorMode.FuelPlan
@@ -483,25 +505,6 @@
     {
         var routePlan = _routeState?.Plan is { InputsChanged: false } availablePlan ? availablePlan : null;
         <div class="fleet-map-route-info @(routePlan is null ? "is-awaiting-route" : "") @(NextStopIsFinal ? "has-final-stop" : "")" aria-label="Current dispatch route" aria-busy="@(_routeLoading ? "true" : "false")">
-            <div class="fleet-map-route-info__facts">
-            @* While the head is given to a next stop, the route keeps its own
-               arrival here, in the details that stay retained under it, so
-               that coming back to the truck shows the same forecast; in the
-               truck's own view the head says it and this says nothing. *@
-            @if (_inspectorMode != MapInspectorMode.Truck)
-            {
-                <div class="fleet-map-route-info__timing"><div class="arrival-estimate">
-                    <ArrivalEstimate
-                        Eta="@(routePlan is null ? null : DisplayRouteState?.Eta)"
-                        Stop="ScheduledStop" Memory="_arrivalMemory"
-                        DispatchId="SelectedDispatchId"
-                        Refreshing="_etaRefreshPending"
-                        Completed="@(routePlan?.Tracking.AllStopsPassed == true)"
-                        ShowDutyStatus="false" ShowAppointment="false"
-                        ShowSummary="true" ShowDetails="false" Reading="compact" />
-                </div></div>
-            }
-            </div>
             <div class="fleet-map-route-info__messages">
                 @foreach (var conflict in _planningConflicts)
                 { <span class="fleet-map-route-info__error" role="status">Load @conflict.LoadNumber: @Client.Shared.Dispatch.DispatchWorkPhase.ConflictText(conflict.Conflict)</span> }

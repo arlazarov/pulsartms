@@ -20,6 +20,7 @@ type Entry = {
   details?: StopFacts;
   miles: number;
   remaining: string | null;
+  route: { total: string; percent: number } | null;
   content?: HTMLElement;
   contentKey?: string;
   [key: string]: unknown;
@@ -53,6 +54,17 @@ export function createRouteStops(
     entry.remaining = valid
       ? formatDistance(Math.max(0, entry.miles - progress!))
       : null;
+    entry.route =
+      valid && entry.miles > 0
+        ? {
+            total: formatDistance(entry.miles),
+            // Whole percent, so a sample that moves no figure on the card
+            // does not rebuild it.
+            percent: Math.round(
+              Math.min(1, Math.max(0, progress! / entry.miles)) * 100,
+            ),
+          }
+        : null;
     refreshContent(entry);
   }
 
@@ -97,6 +109,7 @@ export function createRouteStops(
       etaLabel,
       hours,
       entry.remaining,
+      entry.route,
       fuelText,
     ]);
     if (entry.contentKey === key && !opening) return;
@@ -111,6 +124,7 @@ export function createRouteStops(
           cycleStatus,
           etaTone: etaTone ?? undefined,
           remaining: entry.remaining ?? undefined,
+          route: entry.route,
           etaLabel,
           hours,
           fuelText,
@@ -221,6 +235,7 @@ export function createRouteStops(
             miles: Number.NaN,
             metadata: null,
             remaining: null,
+            route: null,
             content: undefined,
             contentKey: undefined,
           };

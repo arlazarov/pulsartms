@@ -68,13 +68,75 @@
 }
 
 // Cards take the height of their own stops, not the tallest beside them.
+// The mouse wheel moves the strip across; its bar is the HUD rail.
 .dispatch-truck__loads {
+  @include ui.hud-scrollbar;
   align-items: start;
   gap: ui.pg(xl);
-  padding: ui.pg(sm) ui.pg(md) ui.pg(md);
+  padding: ui.pg(sm) ui.pg(md) ui.pg(sm);
+  // Snapping pulled each small wheel step back to the card it left; the
+  // phone's swipe keeps it.
+  @include ui.above(md) {
+    scroll-snap-type: none;
+  }
 }
+// Compact tiles (the owner, September 27: "they take a lot of room"): one
+// step smaller type, tighter rows, the place's street on one line.
 .dispatch-load {
+  --arrival-font-size: #{ui.fs(small)};
+  --arrival-detail-font-size: #{ui.fs(caption)};
   padding: ui.pg(sm) ui.pg(md);
+}
+.dispatch-load__number {
+  font-size: ui.fs(body);
+}
+.dispatch-load__reference,
+.dispatch-load__status {
+  font-size: ui.fs(small);
+}
+.dispatch-load__reference {
+  margin-top: ui.pg(micro);
+  padding-bottom: ui.pg(xs);
+}
+.dispatch-load__meta {
+  gap: ui.pg(micro) ui.pg(sm);
+  margin-top: ui.pg(xs);
+}
+.dispatch-load__money {
+  margin-top: 0;
+}
+.dispatch-load__overview {
+  gap: ui.pg(sm);
+  margin-top: ui.pg(sm);
+}
+.dispatch-load__route-stop {
+  padding-bottom: ui.pg(xs);
+}
+.dispatch-load__stop {
+  gap: 0;
+}
+.dispatch-load__stop-job,
+.dispatch-load__stop-times {
+  font-size: ui.fs(small);
+}
+.dispatch-load__location {
+  font-size: ui.fs(body);
+}
+.dispatch-load__history-time {
+  font-size: ui.fs(small);
+}
+.dispatch-load__street,
+.dispatch-load__locality,
+.dispatch-load__facility {
+  overflow: hidden;
+  font-size: ui.fs(small);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dispatch-load__stop--summary .dispatch-load__stop-times {
+  gap: 0;
+  margin-top: ui.pg(micro);
 }
 // Table rows stay neutral: the Current badge says the phase. The row a
 // reader is on - pointer or keyboard - is the one marked.

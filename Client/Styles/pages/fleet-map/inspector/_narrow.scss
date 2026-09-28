@@ -15,7 +15,6 @@
       grid-template-rows: none;
       row-gap: ui.pg(xs);
       padding-block: ui.pg(xs);
-      > .fleet-map-route-info__facts,
       > .fleet-map-route-info__messages {
         grid-column: 1;
         grid-row: auto;

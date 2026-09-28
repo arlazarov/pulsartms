@@ -764,13 +764,19 @@ test('current-stop details show the local appointment window, exact ETA status a
     rows(information)
       .filter(node => node.tagName === 'dt')
       .map(node => node.textContent),
-    ['ETA', 'Appointment', 'Left', 'Fuel on arrival'],
+    // The whole road to the stop follows what is left of it (the owner,
+    // September 27), with a bar of the share already driven.
+    ['ETA', 'Appointment', 'Left', 'Route', 'Fuel on arrival'],
   );
   assert.deepEqual(
     rows(state.shown)
       .filter(node => node.tagName === 'dt')
       .map(node => node.textContent),
-    ['ETA', 'Appointment', 'Left', 'Fuel on arrival'],
+    ['ETA', 'Appointment', 'Left', 'Route', 'Fuel on arrival'],
+  );
+  assert.equal(
+    fieldValue(state.shown, 'fleet-route-popup__route'),
+    '100 mi · 161 km',
   );
   assert.equal(
     fieldValue(state.shown, 'fleet-route-popup__appointment'),

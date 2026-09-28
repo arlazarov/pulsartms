@@ -54,43 +54,48 @@ public sealed class FleetMapComponentTests
   )
   {
     Assert.False(component.Find("#fleet-map-details").HasAttribute("hidden"));
-    var telemetry = component.Find("#fleet-map-telemetry-details");
     var route = component.Find("#fleet-map-route-details");
-    Assert.False(telemetry.HasAttribute("hidden"));
     Assert.False(route.HasAttribute("hidden"));
-    // What is left stands beside the name; under it the head's rows,
-    // visible collapsed and not repeated in the details: the load and its
-    // arrival, the vehicle and its clocks, and the driver's duty and rest.
-    // Where the truck is belongs to the open card only (September 26). In
-    // the document too, so reading order matches.
-    Assert.Single(
-      component.FindAll(
-        ".fleet-map-inspector__header > .fleet-map-mobile-summary__distance"
-      )
+    // The owner's panel (September 27) replaced the head's rows: under the
+    // header the next stop (when one is scheduled), the truck's facts and
+    // the driver's clocks, in that reading order, each drawn once and none
+    // repeated in the retained details.
+    string[] parts =
+    [
+      "fleet-map-inspector__header",
+      "fleet-truck-next",
+      "fleet-truck-facts",
+      "fleet-truck-clocks",
+    ];
+    var hasNext = component.FindAll(".fleet-truck-next").Count > 0;
+    Assert.Equal(
+      parts.Where(x => hasNext || x != "fleet-truck-next"),
+      component
+        .Find(".fleet-map-inspector")
+        .Children.SelectMany<IElement, IElement>(
+          x => x.ClassList.Contains("fleet-truck-panel") ? x.Children : [x]
+        )
+        .Select(x => x.ClassList[0] ?? "")
+        .Where(parts.Contains)
     );
+    Assert.False(component.Find(".fleet-truck-panel").HasAttribute("hidden"));
     Assert.Equal(
       [
-        ["fleet-map-mobile-summary__remaining", "fleet-map-inspector__arrival"],
-        ["fleet-map-telemetry-details", "fleet-map-inspector__clocks"],
-        ["driver-duty"],
+        "Driver",
+        "Trailer",
+        "Motion",
+        "Duty",
+        "Fuel",
+        "Engine",
+        "Temperature",
+        "Location",
       ],
-      component
-        .Find(".fleet-map-inspector__hours")
-        .Children.Select(row =>
-          row.Id is { Length: > 0 } id
-            ? [id]
-            : row
-              .Children.Select(x =>
-                x.Id is { Length: > 0 } cell ? cell : x.ClassList[0] ?? ""
-              )
-              .ToArray()
-        )
+      component.FindAll(".fleet-truck-facts dt").Select(x => x.TextContent)
     );
-    Assert.Single(
-      component.FindAll("#fleet-map-route-details #fleet-map-truck-location")
-    );
-    Assert.Single(component.FindAll("#fleet-map-telemetry-details"));
-    Assert.Empty(component.FindAll("#fleet-map-details .fleet-map-truck-info"));
+    Assert.Single(component.FindAll(".fleet-truck-facts__fact--location"));
+    Assert.Single(component.FindAll(".fleet-truck-clocks .driver-hours"));
+    Assert.Empty(component.FindAll("#fleet-map-details .fleet-truck-facts"));
+    Assert.Empty(component.FindAll("#fleet-map-details .driver-hours"));
     // The truck's actions lead the map's one bar of tools (the owner,
     // September 27); the panel has none of its own.
     Assert.Single(
@@ -99,10 +104,19 @@ public sealed class FleetMapComponentTests
     Assert.Empty(
       component.FindAll("#fleet-map-details .fleet-map-inspector__actions")
     );
-    Assert.Equal("fleet-map-telemetry-details", telemetry.Id);
     Assert.Single(component.FindAll(".fleet-map-mobile-summary__toggle"));
     Assert.Empty(component.FindAll(".fleet-map-truck-info__more"));
   }
+
+  // One of the truck panel's facts, by its term, as its value.
+  private static IElement TruckFact(
+    IRenderedComponent<FleetMap> component,
+    string term
+  ) =>
+    component
+      .FindAll(".fleet-truck-facts dt")
+      .Single(x => x.TextContent == term)
+      .NextElementSibling!;
 
   [Fact]
   // The closed state is the wide card's: a phone's styles keep the card
@@ -404,21 +418,26 @@ public sealed class FleetMapComponentTests
       () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
     );
     var preview = await fixture.ReadPreviewAsync();
+    // The panel stands while the route is pending; with no plan yet no
+    // distance is invented (the phone "Left" line was replaced by the
+    // panel's next stop, the owner, September 27).
+    component.WaitForAssertion(
+      () => Assert.Single(component.FindAll(".fleet-truck-clocks"))
+    );
+    Assert.All(
+      component.FindAll(".fleet-truck-next__left strong"),
+      left => Assert.Contains("—", left.TextContent)
+    );
     component.WaitForAssertion(
       () =>
         Assert.Contains(
-          "—",
-          component
-            .Find(".fleet-map-mobile-summary__distance strong")
-            .TextContent
+          "2:00",
+          component.Find(".fleet-truck-clocks .driver-hours").TextContent
         )
-    );
-    component.WaitForAssertion(
-      () => Assert.Contains("2:00", component.Find(".driver-hours").TextContent)
     );
     Assert.Contains(
       "Current driver",
-      component.Find(".fleet-map-inspector__driver").TextContent
+      TruckFact(component, "Driver").TextContent
     );
     preview.Reply(
       fixture.Plan(fixture.TruckA) with
@@ -449,7 +468,8 @@ public sealed class FleetMapComponentTests
       () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
     );
     await component.InvokeAsync(() => component.Instance.OnFollowChanged(true));
-    var truck = component.Find(".fleet-map-truck-info").TextContent;
+    // The readings are the panel's facts now (the owner, September 27).
+    var truck = component.Find(".fleet-truck-facts").TextContent;
     var route = component.Find(".fleet-map-route-info").TextContent;
     var requests = fixture.HttpCalls;
     var interop = fixture.Js.Calls.Count;
@@ -463,11 +483,8 @@ public sealed class FleetMapComponentTests
         .Find(".fleet-map-info-reserved")
         .ClassList.Contains("has-selection")
     );
-    Assert.Equal(truck, component.Find(".fleet-map-truck-info").TextContent);
+    Assert.Equal(truck, component.Find(".fleet-truck-facts").TextContent);
     Assert.Equal(route, component.Find(".fleet-map-route-info").TextContent);
-    Assert.False(
-      component.Find("#fleet-map-telemetry-details").HasAttribute("hidden")
-    );
     Assert.Equal(requests, fixture.HttpCalls);
     Assert.Equal(interop, fixture.Js.Calls.Count);
     Assert.Equal(0, fixture.FuelWrites);
@@ -513,80 +530,35 @@ public sealed class FleetMapComponentTests
     );
     var route = component.Find("[aria-label='Current dispatch route']");
     Assert.Equal(final, route.ClassList.Contains("has-final-stop"));
-    // The rest of the load keeps its place through loading; at the last
-    // stop the card's has-final-stop hides it, since the head's Left says
-    // the same number.
-    Assert.Single(
-      route.QuerySelectorAll(
-        ".fleet-map-route-info__where > .fleet-map-route-info__metric"
-      )
-    );
-    Assert.Empty(
-      route.QuerySelectorAll(
-        ".fleet-map-route-info__facts .fleet-map-route-info__distance"
-      )
-    );
-    // The section names itself; the visit is said in the head, with the
-    // stop's name, and its booking under the head's ETA.
-    var heading = component.Find(".fleet-map-route-info__visit-heading");
+    // "Remaining load" and the head's rows were removed with the old card
+    // (the owner, September 27): the one distance is the panel's next
+    // stop's, said once, and nothing in the retained details repeats it.
+    Assert.Empty(route.QuerySelectorAll(".fleet-map-route-info__metric"));
+    Assert.Empty(route.QuerySelectorAll(".fleet-map-route-info__distance"));
+    var next = component.Find(".fleet-truck-next");
     Assert.Equal(
       "Next stop",
-      heading.QuerySelector(".fleet-map-route-info__label")!.TextContent
+      next.QuerySelector(".fleet-truck-next__label")!.TextContent
     );
+    // The visit is the tracked stop's, said with its name.
     Assert.StartsWith(
       final ? "Delivery" : "Pickup",
-      component.Find(".fleet-map-inspector__heading-to").TextContent
-    );
-    Assert.Empty(component.FindAll(".fleet-map-route-info__delivery"));
-    Assert.NotNull(
-      heading.QuerySelector(
-        ".fleet-map-route-info__distance[title='Distance to next stop']"
-      )
-    );
-    Assert.Contains(
-      "km",
-      heading.QuerySelector(".fleet-map-route-info__distance")!.TextContent
-    );
-    // Under the name: the load and its arrival, the vehicle and its
-    // clocks, and the driver's duty and rest, each a row of its own.
-    var second = component.Find(".fleet-map-inspector__hours");
-    Assert.Equal(
-      [
-        "fleet-map-inspector__row",
-        "fleet-map-inspector__row",
-        "fleet-map-inspector__row",
-      ],
-      second.Children.Select(node => node.ClassList[0] ?? "")
-    );
-    Assert.Contains("fleet-map-inspector__duty", second.Children[2].ClassList);
-    // The clocks name themselves; "HOS" is their group's name for a screen
-    // reader, not a word on the card.
-    Assert.Equal(
-      ["driver-hours-panel"],
-      second.Children[1].Children[1].Children.Select(node => node.ClassName)
-    );
-    Assert.Equal(
-      "HOS",
-      second.Children[1].Children[1].GetAttribute("aria-label")
-    );
-    // What is left is the middle of the line: named and said.
-    Assert.StartsWith(
-      "Left",
-      component.Find(".fleet-map-mobile-summary__distance-text").TextContent
-    );
-    Assert.All(
-      route.QuerySelectorAll(".fleet-map-route-info__metric"),
-      metric =>
-        Assert.Contains(
-          "km",
-          metric.QuerySelector(".fleet-map-route-info__secondary")!.TextContent
-        )
+      next.QuerySelector(".fleet-truck-next__place")!.TextContent.Trim()
     );
     Assert.Single(
-      component.FindAll(
-        ".fleet-map-inspector__hours [aria-label='Driver hours remaining']"
+      next.QuerySelectorAll(
+        ".fleet-truck-next__left[title='Distance to the next stop']"
       )
     );
+    Assert.Single(component.FindAll(".fleet-truck-next__left"));
+    Assert.Empty(component.FindAll(".fleet-map-route-info__delivery"));
+    // The clocks are drawn once, in their own cells.
+    Assert.Single(
+      component.FindAll(
+        ".fleet-truck-clocks [aria-label='Driver hours remaining']"
+      )
+    );
+    Assert.Single(component.FindAll("[aria-label='Driver hours remaining']"));
     Assert.Equal(0, fixture.FuelWrites);
   }
 
@@ -656,61 +628,44 @@ public sealed class FleetMapComponentTests
       }
     );
     await selection;
-    // The load's number is said once, in the card head, where it is also
-    // the control that copies it; the facts column carries the order.
-    Assert.Contains(
-      "1376",
-      component.Find(".fleet-map-mobile-summary__remaining").TextContent
-    );
-    // The order rides beside the load in the head; the facts column does
-    // not say either of them again.
-    var summary = component.Find(".fleet-map-mobile-summary__remaining");
-    Assert.Contains("ORDER-5678", summary.TextContent);
+    // The load number, its order and "Remaining load" left the truck panel
+    // with the old head (the owner, September 27: the trips are the
+    // chain's cards); what stays is that only the tracked stop's booking
+    // is shown.
     Assert.Empty(component.FindAll(".fleet-map-route-info__load"));
-    Assert.Equal(
-      "ORDER-5678",
-      summary
-        .QuerySelector(
-          "[title='Copy order number'] strong.fleet-map-inspector__value"
-        )!
-        .TextContent
-    );
-    Assert.Equal(
-      "Remaining load",
-      component
-        .Find(".fleet-map-route-info__metric .fleet-map-route-info__label")
-        .TextContent
-    );
-    await component
-      .Find("[title='Copy order number']")
-      .ClickAsync(new MouseEventArgs());
-    Assert.Equal(
-      "ORDER-5678",
-      fixture
-        .Js.Calls.Last(x => x.Name == "navigator.clipboard.writeText")
-        .Args![0]
-    );
-    Assert.Empty(summary.QuerySelectorAll(".fleet-map-route-info__delivery"));
-    // One appointment row, the head's, under the ETA; the visit is named
-    // with the stop in the head's load line.
+    Assert.Empty(component.FindAll(".fleet-map-route-info__metric"));
+    Assert.Empty(component.FindAll(".fleet-map-route-info__delivery"));
+    // One appointment, the tracked stop's, beside its ETA in the next stop
+    // line; not the later delivery's nor the driver-only stop's.
     var appointment = Assert.Single(
-      component.FindAll(".fleet-map-inspector__appointment")
+      component.FindAll(".arrival-estimate__appointment")
     );
+    Assert.NotNull(appointment.Closest(".fleet-truck-next__eta"));
+    // The visit is named on the place line; the booking row says
+    // Appointment (the owner, September 27).
+    Assert.StartsWith(
+      label,
+      component.Find(".fleet-truck-next__place").TextContent.Trim()
+    );
+    Assert.StartsWith("Appointment", appointment.TextContent.Trim());
     Assert.StartsWith(
       "Sep 12 · 01:00 PM",
       appointment.QuerySelector("strong")!.TextContent.Replace('\u00a0', ' ')
     );
+    Assert.DoesNotContain(
+      "Sep 15",
+      component.Find(".fleet-truck-next").TextContent
+    );
+    Assert.DoesNotContain(
+      "Sep 16",
+      component.Find(".fleet-truck-next").TextContent
+    );
     Assert.Empty(component.FindAll(".fleet-map-route-info__appointment"));
     Assert.StartsWith(
       label,
-      component.Find(".fleet-map-inspector__heading-to").TextContent
+      component.Find(".fleet-truck-next__place").TextContent.Trim()
     );
     AssertTruckPanelsVisible(component);
-    Assert.Single(
-      component.FindAll(
-        ".fleet-map-inspector__hours [aria-label='Driver hours remaining']"
-      )
-    );
     fixture.DeferDetails = false;
     await component.InvokeAsync(
       () => component.Instance.OnTruckSelected(fixture.TruckB.ToString())
@@ -870,71 +825,58 @@ public sealed class FleetMapComponentTests
     await component.InvokeAsync(
       () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
     );
-    var location = component.Find("[aria-label='Truck GPS location']");
-    Assert.Contains(fixture.AddressA, location.TextContent);
-    Assert.Contains("Current location", location.TextContent);
-    await component
-      .Find("[title='Copy location address']")
-      .ClickAsync(new MouseEventArgs());
-    Assert.Equal(
-      fixture.AddressA,
-      fixture
-        .Js.Calls.Last(x => x.Name == "navigator.clipboard.writeText")
-        .Args![0]
-    );
-    Assert.Null(location.QuerySelector("time"));
-    Assert.DoesNotContain("GPS", location.TextContent);
+    // The location is the panel's Location fact (the owner, September 27):
+    // the locality on the card, the full telemetry address in its title,
+    // and a click on the text copies that address. The "Current location"
+    // label and its copy button went with the old location line.
+    IElement Location() => TruckFact(component, "Location");
+    async Task AssertCopies(string address)
+    {
+      var copy = Location().QuerySelector(".fleet-truck-facts__copy")!;
+      Assert.Contains(address, copy.GetAttribute("title"));
+      await copy.ClickAsync(new MouseEventArgs());
+      Assert.Equal(
+        address,
+        fixture
+          .Js.Calls.Last(x => x.Name == "navigator.clipboard.writeText")
+          .Args![0]
+      );
+    }
+    Assert.Contains("Webster, NY", Location().TextContent);
+    await AssertCopies(fixture.AddressA);
+    Assert.Null(Location().QuerySelector("time"));
+    Assert.DoesNotContain("GPS", Location().TextContent);
     AssertTruckPanelsVisible(component);
-    Assert.Contains(
-      fixture.AddressA,
-      component.Find("[aria-label='Truck GPS location']").TextContent
-    );
-    await component
-      .Find("[title='Copy location address']")
-      .ClickAsync(new MouseEventArgs());
-    Assert.Equal(
-      fixture.AddressA,
-      fixture
-        .Js.Calls.Last(x => x.Name == "navigator.clipboard.writeText")
-        .Args![0]
-    );
+    Assert.Contains("Webster, NY", Location().TextContent);
+    await AssertCopies(fixture.AddressA);
     fixture.AddressA = "1730 NY-5S, Amsterdam, NY";
     await component.InvokeAsync(
       () => fixture.Clock.Advance(TimeSpan.FromSeconds(10))
     );
     component.WaitForAssertion(
-      () =>
-        Assert.Contains(
-          fixture.AddressA,
-          component.Find("[aria-label='Truck GPS location']").TextContent
-        )
+      () => Assert.Contains("Amsterdam, NY", Location().TextContent)
     );
+    Assert.DoesNotContain("Webster", Location().TextContent);
     Assert.DoesNotContain(
       "Webster",
-      component.Find("[aria-label='Truck GPS location']").TextContent
+      Location()
+        .QuerySelector(".fleet-truck-facts__copy")!
+        .GetAttribute("title")
     );
-    await component
-      .Find("[title='Copy location address']")
-      .ClickAsync(new MouseEventArgs());
-    Assert.Equal(
-      fixture.AddressA,
-      fixture
-        .Js.Calls.Last(x => x.Name == "navigator.clipboard.writeText")
-        .Args![0]
-    );
+    await AssertCopies(fixture.AddressA);
     await component.InvokeAsync(
       () => component.Instance.OnTruckSelected(fixture.TruckB.ToString())
     );
-    Assert.Contains(
-      "Address unavailable",
-      component.Find("[aria-label='Truck GPS location']").TextContent
-    );
+    // Truck B has no address: an honest dash, never truck A's address or
+    // the route's.
+    Assert.Equal("—", Location().TextContent.Trim());
+    Assert.DoesNotContain("Amsterdam", Location().TextContent);
     Assert.DoesNotContain(
       "Amsterdam",
-      component.Find("[aria-label='Truck GPS location']").TextContent
+      component.Find(".fleet-truck-facts").OuterHtml
     );
-    Assert.Empty(component.FindAll("[aria-label='Truck GPS location'] time"));
-    Assert.Empty(component.FindAll("[title='Copy location address']"));
+    Assert.Empty(component.FindAll(".fleet-truck-facts__fact--location time"));
+    Assert.Empty(component.FindAll(".fleet-truck-facts__copy"));
     Assert.Equal(0, fixture.FuelWrites);
   }
 
@@ -970,35 +912,24 @@ public sealed class FleetMapComponentTests
         )
         .AddChildContent<FleetMap>()
     );
-    Assert.Contains(
-      "26.5 °C",
-      component.Find(".truck-readings__reading--outside").TextContent
-    );
-    Assert.DoesNotContain(
-      "°F",
-      component.Find(".truck-readings__reading--outside").TextContent
-    );
-    // The facts column carries the run's length, in the chosen unit, when
-    // the stop is not the load's last; the head's Left always does.
-    Assert.All(
-      component.FindAll(".fleet-map-route-info__metric"),
-      metric => Assert.Contains("km", metric.TextContent)
-    );
-    // The card head follows the chosen unit too: ten miles is sixteen
+    // The temperature is the panel's fact and the distance its next stop's
+    // (the owner, September 27).
+    IElement Outside() => TruckFact(component, "Temperature");
+    Assert.Contains("26.5 °C", Outside().TextContent);
+    Assert.DoesNotContain("°F", Outside().TextContent);
+    // The panel follows the chosen unit too: ten miles is sixteen
     // kilometres to a dispatcher who works in them.
     Assert.Equal(
       "16",
-      component.Find(".fleet-map-mobile-summary__distance strong").TextContent
+      component.Find(".fleet-truck-next__left strong").TextContent
     );
     Assert.Contains(
       "km",
-      component.Find(".fleet-map-mobile-summary__distance").TextContent
+      component.Find(".fleet-truck-next__left").TextContent
     );
-    // One unit chosen, one unit shown: no second reading beside it.
-    Assert.Empty(
-      component.FindAll(
-        ".fleet-map-route-info__metric .fleet-map-route-info__secondary"
-      )
+    Assert.DoesNotContain(
+      "mi",
+      component.Find(".fleet-truck-next__left small").TextContent
     );
     Assert.Contains(
       fixture.Js.Calls,
@@ -1011,25 +942,19 @@ public sealed class FleetMapComponentTests
         .Add(cascade => cascade.Value, new DisplayUnits("fahrenheit", "miles"))
         .AddChildContent<FleetMap>()
     );
-    Assert.Contains(
-      "79.7 °F",
-      component.Find(".truck-readings__reading--outside").TextContent
-    );
-    Assert.DoesNotContain(
-      "°C",
-      component.Find(".truck-readings__reading--outside").TextContent
-    );
+    Assert.Contains("79.7 °F", Outside().TextContent);
+    Assert.DoesNotContain("°C", Outside().TextContent);
     wrapper.Render(parameters =>
       parameters
         .Add(cascade => cascade.Value, DisplayUnits.Default)
         .AddChildContent<FleetMap>()
     );
+    // The panel says the distance in one unit; the second reading beside
+    // it went with the old "Left" line (the owner, September 27).
     Assert.Equal(
       "10",
-      component.Find(".fleet-map-mobile-summary__distance strong").TextContent
+      component.Find(".fleet-truck-next__left strong").TextContent
     );
-    // Back on both units, what is left carries its second reading.
-    Assert.Single(component.FindAll(".fleet-map-mobile-summary__alternate"));
     Assert.Equal(calls, fixture.HttpCalls);
     Assert.Equal(
       routes,
@@ -1049,33 +974,30 @@ public sealed class FleetMapComponentTests
     await component.InvokeAsync(
       () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
     );
-    var outside = component.Find(
-      ".truck-readings > .truck-readings__reading--outside"
-    );
+    // The panel's Temperature fact, read by the weather owner itself (the
+    // owner, September 27), is the one outside reading on the card.
+    IElement Outside() =>
+      Assert.Single(component.FindAll(".fleet-truck-facts .truck-weather"));
+    var outside = Outside();
     Assert.Equal("Outside temperature", outside.GetAttribute("aria-label"));
-    Assert.Contains("0 °C", outside.TextContent);
+    Assert.Equal("Temperature", outside.QuerySelector("dt")!.TextContent);
+    Assert.Contains("0 °C", outside.QuerySelector("dd")!.TextContent);
     Assert.DoesNotContain("°F", outside.TextContent);
     Assert.NotNull(outside.QuerySelector("svg"));
     Assert.Contains("Google Weather", outside.GetAttribute("title"));
+    Assert.Empty(component.FindAll(".truck-readings__reading--outside"));
     fixture.OutsideA = -40;
     await component.InvokeAsync(
       () => fixture.Clock.Advance(TimeSpan.FromMinutes(10))
     );
     component.WaitForAssertion(
-      () =>
-        Assert.Contains(
-          "-40 °C",
-          component.Find(".truck-readings__reading--outside").TextContent
-        )
+      () => Assert.Contains("-40 °C", Outside().TextContent)
     );
-    Assert.DoesNotContain(
-      "°F",
-      component.Find(".truck-readings__reading--outside").TextContent
-    );
+    Assert.DoesNotContain("°F", Outside().TextContent);
     await component.InvokeAsync(
       () => component.Instance.OnTruckSelected(fixture.TruckB.ToString())
     );
-    outside = component.Find(".truck-readings__reading--outside");
+    outside = Outside();
     Assert.Contains("—", outside.TextContent);
     Assert.DoesNotContain("°F", outside.TextContent);
     Assert.DoesNotContain("°C", outside.TextContent);
@@ -1120,39 +1042,21 @@ public sealed class FleetMapComponentTests
     var summary = component.Find("#fleet-map-route-details");
     Assert.False(summary.HasAttribute("hidden"));
     Assert.Null(summary.QuerySelector(".fleet-map-inspector__actions"));
-    Assert.NotNull(
-      component.Find(
-        ".fleet-map-inspector__identity .fleet-map-inspector__trailer"
-      )
-    );
-    // The clocks read from the header, with the duty and rest line under
-    // them (September 26); the recap is not on the card at all.
+    // The trailer and the duty are the panel's facts, the clocks its own
+    // cells; the head's rows, the duty-and-rest line and the load link
+    // went with the old card (the owner, September 27). The recap and the
+    // Open load button stay off the card.
     Assert.Single(
-      component.FindAll(
-        ".fleet-map-inspector__header > .fleet-map-inspector__hours"
-      )
+      component.FindAll(".fleet-truck-panel > .fleet-truck-facts")
     );
-    Assert.Single(
-      component.FindAll(
-        ".fleet-map-inspector__hours .fleet-map-inspector__duty .driver-duty--row"
-      )
-    );
+    Assert.NotEmpty(TruckFact(component, "Trailer").TextContent.Trim());
+    Assert.NotEmpty(TruckFact(component, "Duty").TextContent.Trim());
+    Assert.Empty(component.FindAll(".fleet-map-inspector__hours"));
+    Assert.Empty(component.FindAll(".driver-duty--row"));
     Assert.Empty(component.FindAll(".driver-next-recap"));
-    // The load opens from its number in the head; the Open load button
-    // that repeated it is gone (the owner, September 26).
     Assert.Empty(component.FindAll(".fleet-map-inspector__open-load"));
-    var loadLink = component.Find(".fleet-map-inspector__load-link");
-    Assert.Equal("Open load", loadLink.GetAttribute("title"));
-    Assert.Single(loadLink.QuerySelectorAll("svg"));
-    // The load opens with the way back to this truck and its load.
+    // The map's own history entry still names this truck and its load.
     var openedLoad = fixture.Plan(fixture.TruckA).DispatchId!.Value;
-    Assert.Equal(
-      ReturnNavigation.Load(
-        openedLoad,
-        ReturnNavigation.FleetMap(fixture.TruckA, openedLoad)
-      ),
-      loadLink.GetAttribute("href")
-    );
     Assert.Contains(
       fixture.Js.Calls,
       call =>
@@ -1259,15 +1163,22 @@ public sealed class FleetMapComponentTests
 
     void AssertDelivery(string expected)
     {
-      // The window the stop has to make is the card's one appointment row,
-      // under the head's ETA for the same stop.
-      var row = Assert.Single(
-        component.FindAll(".fleet-map-inspector__appointment")
-      );
-      Assert.StartsWith(
-        expected,
-        row.QuerySelector("strong")!.TextContent.Replace('\u00a0', ' ')
-      );
+      // The window the stop has to make is the card's one appointment, in
+      // the panel's next stop line beside its ETA (the owner, September
+      // 27). A stop with no booking now shows none rather than a dash row;
+      // it never borrows another stop's.
+      var rows = component.FindAll(".arrival-estimate__appointment");
+      if (expected == "—")
+        Assert.Empty(rows);
+      else
+      {
+        var row = Assert.Single(rows);
+        Assert.NotNull(row.Closest(".fleet-truck-next__eta"));
+        Assert.StartsWith(
+          expected,
+          row.QuerySelector("strong")!.TextContent.Replace('\u00a0', ' ')
+        );
+      }
       Assert.Empty(component.FindAll(".fleet-map-route-info__delivery"));
       Assert.Empty(
         component.FindAll(".fleet-map-route-info__next-appointment")
@@ -1312,8 +1223,11 @@ public sealed class FleetMapComponentTests
     );
     component.WaitForAssertion(() =>
     {
+      // The booking now stands in the panel's next stop line (the owner,
+      // September 27); the two-line rule of September 26 still applies.
       var lines = component
-        .FindAll(".fleet-map-inspector__appointment-line")
+        .FindAll(".fleet-truck-next__eta .arrival-estimate__appointment strong")
+        .SelectMany(x => x.Children)
         .Select(line => line.TextContent.Trim())
         .ToArray();
       Assert.Equal(["Sep 29 · 07:00\u00a0AM", "Sep 30 · 03:00\u00a0PM"], lines);
@@ -1382,22 +1296,22 @@ public sealed class FleetMapComponentTests
 
     component.WaitForAssertion(() =>
     {
-      // The ETA and the booking under it read in the card head.
-      var arrival = component.Find(".fleet-map-inspector__arrival");
-      Assert.Contains("ETA", arrival.TextContent);
-      var booking = arrival.QuerySelector(".fleet-map-inspector__appointment");
+      // The ETA and the booking read in the panel's next stop line (the
+      // owner, September 27), the booking labelled by its visit.
+      var arrival = component.Find(".fleet-truck-next__eta");
+      var booking = Assert.Single(
+        arrival.QuerySelectorAll(".arrival-estimate__appointment")
+      );
+      Assert.StartsWith("Appointment", booking.TextContent.Trim());
       if (forecast == "other stop")
       {
-        Assert.Null(booking);
+        // The old head hid the booking beside another stop's forecast; the
+        // panel's arrival memory drops that forecast instead, so the two
+        // times shown together are still about one visit.
+        Assert.DoesNotContain("Sep 27", arrival.TextContent);
+        Assert.Empty(arrival.QuerySelectorAll(".stop-hours"));
         return;
       }
-      Assert.NotNull(booking);
-      Assert.Equal(
-        "Appointment",
-        booking
-          .QuerySelector(".fleet-map-inspector__appointment-label")!
-          .TextContent
-      );
       // Written in the stop's zone when one is known: the forecast for the
       // same stop knows it; without a forecast and with no zone from the
       // source, none is said.
@@ -1407,15 +1321,8 @@ public sealed class FleetMapComponentTests
           : "Sep 28 · 08:00 AM – 01:00 PM",
         booking.QuerySelector("strong")!.TextContent.Replace('\u00a0', ' ')
       );
-      // Under the forecast, in the document as on screen.
-      Assert.Same(arrival.LastElementChild, booking);
       if (forecast == "no forecast")
-        Assert.Contains(
-          "—",
-          arrival
-            .QuerySelector(".fleet-map-inspector__arrival-placeholder")!
-            .TextContent
-        );
+        Assert.Empty(arrival.QuerySelectorAll(".stop-hours"));
       else
         Assert.Contains("Sep 27", arrival.TextContent);
     });
@@ -1439,7 +1346,9 @@ public sealed class FleetMapComponentTests
     await component.InvokeAsync(
       () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
     );
-    var summary = component.Find(".fleet-map-mobile-summary__remaining");
+    // The phone "Left" line and load summary were replaced by the panel's
+    // next stop line (the owner, September 27); its distance keeps the
+    // rules below.
     await component.InvokeAsync(
       () =>
         component.Instance.OnMapInspectorChanged(
@@ -1453,14 +1362,14 @@ public sealed class FleetMapComponentTests
       () =>
         component.Instance.OnRouteProgress(fixture.TruckA.ToString(), 1617, 10)
     );
-    // The head says what is left to the stop the truck is heading for - the
+    // The panel says what is left to the stop the truck is heading for - the
     // stop its ETA beside it is for. The leg to it is 30 miles and 10 are
     // driven. It used to say the 1,617 left of the whole run, so a truck on
     // its way to a pickup read the miles to its delivery next to the hour of
     // its pickup.
     Assert.Equal(
       "20",
-      component.Find(".fleet-map-mobile-summary__distance strong").TextContent
+      component.Find(".fleet-truck-next__left strong").TextContent
     );
     for (var i = 0; i < 2; i++)
     {
@@ -1472,12 +1381,11 @@ public sealed class FleetMapComponentTests
           )
       );
       AssertTruckPanelsVisible(component);
-      var current = Assert.Single(
-        component.FindAll(".fleet-map-mobile-summary__remaining")
-      );
       Assert.Equal(
         "20",
-        component.Find(".fleet-map-mobile-summary__distance strong").TextContent
+        Assert
+          .Single(component.FindAll(".fleet-truck-next__left strong"))
+          .TextContent
       );
     }
     await component.InvokeAsync(
@@ -1486,7 +1394,7 @@ public sealed class FleetMapComponentTests
     );
     Assert.Equal(
       "0",
-      component.Find(".fleet-map-mobile-summary__distance strong").TextContent
+      component.Find(".fleet-truck-next__left strong").TextContent
     );
     Assert.Equal(calls, fixture.HttpCalls);
   }
@@ -1515,7 +1423,8 @@ public sealed class FleetMapComponentTests
     AssertTruckPanelsVisible(component);
     var route = component.Find("#fleet-map-route-details");
     var routeText = route.TextContent;
-    var readings = component.Find("#fleet-map-telemetry-details").TextContent;
+    // The readings are the panel's facts (the owner, September 27).
+    var readings = component.Find(".fleet-truck-facts").TextContent;
     Assert.Contains(
       "54777",
       component.Find(".fleet-map-inspector__title").TextContent
@@ -1534,10 +1443,7 @@ public sealed class FleetMapComponentTests
         routeText,
         component.Find("#fleet-map-route-details").TextContent
       );
-      Assert.Equal(
-        readings,
-        component.Find("#fleet-map-telemetry-details").TextContent
-      );
+      Assert.Equal(readings, component.Find(".fleet-truck-facts").TextContent);
     }
     Assert.Equal(requests, fixture.HttpCalls);
     Assert.Equal(publications, fixture.Js.Calls.Count);
@@ -1612,9 +1518,11 @@ public sealed class FleetMapComponentTests
       () =>
         component.Instance.OnRouteProgress(fixture.TruckA.ToString(), 900, 600)
     );
+    // The next stop's street left the card with the old route section
+    // (the owner, September 27); the panel names the stop instead.
     Assert.Contains(
-      "Old Florida warehouse",
-      component.Find("[aria-label='Current dispatch route']").TextContent
+      "Florida delivery",
+      component.Find(".fleet-truck-next__place").TextContent
     );
 
     var invalidated = JsonSerializer.Deserialize<AutomaticPlanningResult>(
@@ -1639,21 +1547,32 @@ public sealed class FleetMapComponentTests
       Assert.Null(fixture.Js.Calls.Last(x => x.Name == "setStopEtas").Args![0]);
       Assert.Equal(JsonValueKind.Null, fixture.LastLoadReference().ValueKind);
       var panel = component.Find("[aria-label='Current dispatch route']");
-      Assert.DoesNotContain("Old Florida warehouse", panel.TextContent);
-      Assert.DoesNotContain("Amsterdam pickup", panel.TextContent);
-      // The retained booking stays in its one row, under the head's ETA.
+      var next = component.Find(".fleet-truck-next");
+      foreach (var shown in new[] { panel, next })
+      {
+        Assert.DoesNotContain("Old Florida warehouse", shown.TextContent);
+        Assert.DoesNotContain("Florida delivery", shown.TextContent);
+        Assert.DoesNotContain("Amsterdam pickup", shown.TextContent);
+        Assert.Empty(
+          shown.QuerySelectorAll(
+            ".stop-hours__arrival .stop-hours__status--success"
+          )
+        );
+      }
+      // The retained booking stays in its one row, beside the panel's ETA.
       Assert.Contains(
         "02:00\u00a0AM",
-        component.Find(".fleet-map-inspector__appointment").TextContent
+        Assert
+          .Single(
+            component.FindAll(
+              ".fleet-truck-next__eta .arrival-estimate__appointment"
+            )
+          )
+          .TextContent.Replace(" AM", "\u00a0AM")
       );
-      Assert.All(
-        panel.QuerySelectorAll(".fleet-map-route-info__metric strong"),
-        value => Assert.Equal("—", value.TextContent)
-      );
-      Assert.Empty(
-        panel.QuerySelectorAll(
-          ".stop-hours__arrival .stop-hours__status--success"
-        )
+      Assert.Equal(
+        "—",
+        component.Find(".fleet-truck-next__left strong").TextContent
       );
       Assert.False(FuelPlan(component).HasAttribute("disabled"));
     });
@@ -1661,9 +1580,9 @@ public sealed class FleetMapComponentTests
       () =>
         component.Instance.OnRouteProgress(fixture.TruckA.ToString(), 899, 601)
     );
-    Assert.All(
-      component.FindAll(".fleet-map-route-info__metric strong"),
-      value => Assert.Equal("—", value.TextContent)
+    Assert.Equal(
+      "—",
+      component.Find(".fleet-truck-next__left strong").TextContent
     );
     await FuelPlan(component).ClickAsync(new MouseEventArgs());
     Assert.Equal(
@@ -1949,60 +1868,18 @@ public sealed class FleetMapComponentTests
       // The action says what it does rather than leaving the icon to.
       Assert.Equal("Route options", routeOptions.TextContent.Trim());
       Assert.Equal("Route options", routeOptions.GetAttribute("title"));
-      // The load and its order are said in the head; while they are still
-      // being read the head says so rather than leaving a hole in the body.
-      Assert.Equal(
-        "true",
-        component
-          .Find(".fleet-map-mobile-summary__remaining")
-          .GetAttribute("aria-busy")
+      // The head's load line, its ETA placeholder, "Remaining load" and the
+      // next stop's street column went with the old card (the owner,
+      // September 27). While the route is read the panel's facts and
+      // clocks already stand, and no distance is invented.
+      Assert.Single(component.FindAll(".fleet-truck-facts"));
+      Assert.Single(component.FindAll(".fleet-truck-clocks"));
+      Assert.All(
+        component.FindAll(".fleet-truck-next__left strong"),
+        left => Assert.Equal("—", left.TextContent)
       );
-      Assert.NotNull(panel.QuerySelector(".fleet-map-route-info__total"));
-      Assert.Contains(
-        "ETA",
-        component.Find(".fleet-map-inspector__arrival-placeholder").TextContent
-      );
-      Assert.Equal(
-        new[] { "Remaining load" },
-        panel
-          .QuerySelectorAll(
-            ".fleet-map-route-info__metric .fleet-map-route-info__label"
-          )
-          .Select(x => x.TextContent)
-      );
-      Assert.Single(
-        panel.QuerySelectorAll(
-          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__where > .fleet-map-route-info__metric"
-        )
-      );
-      Assert.NotNull(
-        panel.QuerySelector(
-          ".fleet-map-route-info__visit-heading > .fleet-map-route-info__distance"
-        )
-      );
+      Assert.Null(panel.QuerySelector(".fleet-map-route-info__metric"));
       Assert.Null(panel.QuerySelector(":scope > .fleet-map-route-info__load"));
-      Assert.NotNull(
-        panel.QuerySelector(
-          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__next"
-        )
-      );
-      // The stop column reserves where it is going before it has an
-      // answer, beside where the truck is now; the window it has to make
-      // is the head's one appointment row, reserved as a dash while the
-      // stop loads.
-      Assert.Equal(
-        2,
-        panel
-          .QuerySelectorAll(":scope > .fleet-map-route-info__visit > *")
-          .Length
-      );
-      Assert.NotNull(
-        panel.QuerySelector(
-          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__where > #fleet-map-truck-location"
-        )
-      );
-      Assert.Single(component.FindAll(".fleet-map-inspector__appointment"));
-      Assert.Contains("Remaining load", panel.TextContent);
       // The actions left the facts column for the panel's top row (the
       // owner, September 27); the cycle and the fuel on arrival left it.
       Assert.Null(panel.QuerySelector(".fleet-map-inspector__actions"));
@@ -2023,9 +1900,12 @@ public sealed class FleetMapComponentTests
       .Children.Select(group => group.ClassName)
       .ToArray();
     Assert.Equal("fleet-map-route-details", originalPanel.ParentElement!.Id);
-    var originalArrival = component.FindComponent<ArrivalEstimate>().Instance;
     preview.Reply(fixture.Plan(fixture.TruckA));
     var refresh = await fixture.ReadPlanningAsync();
+    // The head's always-drawn arrival went with the old card (the owner,
+    // September 27); the panel draws one only for a scheduled next stop.
+    // Whatever arrival the preview drew, the live read keeps the same.
+    ArrivalEstimate[] originalArrivals = [];
     component.WaitForAssertion(() =>
     {
       var panel = component.Find("[aria-label='Current dispatch route']");
@@ -2035,51 +1915,15 @@ public sealed class FleetMapComponentTests
         originalGroups,
         panel.Children.Select(group => group.ClassName).ToArray()
       );
-      Assert.Same(
-        originalArrival,
-        component.FindComponent<ArrivalEstimate>().Instance
-      );
       Assert.False(
         component
           .Find("button[aria-label='Route options']")
           .HasAttribute("disabled")
       );
-      Assert.Single(
-        panel.QuerySelectorAll(
-          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__where > .fleet-map-route-info__metric"
-        )
-      );
-      Assert.NotNull(
-        panel.QuerySelector(
-          ".fleet-map-route-info__visit-heading > .fleet-map-route-info__distance"
-        )
-      );
       Assert.Null(panel.QuerySelector(":scope > .fleet-map-route-info__load"));
-      Assert.NotNull(
-        panel.QuerySelector(
-          ":scope > .fleet-map-route-info__visit > .fleet-map-route-info__next"
-        )
-      );
-      // The next stop and, beside it, where the truck is now.
-      Assert.Equal(
-        2,
-        panel
-          .QuerySelectorAll(":scope > .fleet-map-route-info__visit > *")
-          .Length
-      );
-      Assert.Single(component.FindAll(".fleet-map-inspector__appointment"));
+      Assert.Single(component.FindAll(".fleet-truck-facts"));
       Assert.Single(
         component.FindAll(".fleet-map-controls > .fleet-map-inspector__actions")
-      );
-      // What is left of the load is the truck's own remaining distance: a
-      // preview carries none, so it reads as unknown, not as the plan's
-      // total.
-      var remaining = fixture
-        .Plan(fixture.TruckA)
-        .State!.Progress?.RemainingMiles;
-      Assert.Contains(
-        remaining is { } miles ? Math.Round(miles).ToString("N0") : "—",
-        panel.QuerySelector(".fleet-map-route-info__metric")!.TextContent
       );
       Assert.DoesNotContain("Loading saved route", component.Markup);
       Assert.Equal(
@@ -2087,20 +1931,27 @@ public sealed class FleetMapComponentTests
         component.Find(".fleet-map-stage > #fleet-map").OuterHtml
       );
       Assert.Single(fixture.Js.Calls, call => call.Name == "createFleetMap");
+      originalArrivals =
+      [
+        .. component.FindComponents<ArrivalEstimate>().Select(x => x.Instance),
+      ];
     });
     refresh.Reply(fixture.Plan(fixture.TruckA));
     await selecting;
     Assert.Equal("false", originalPanel.GetAttribute("aria-busy"));
-    Assert.Same(
-      originalArrival,
-      component.FindComponent<ArrivalEstimate>().Instance
+    Assert.Equal(
+      originalArrivals,
+      component.FindComponents<ArrivalEstimate>().Select(x => x.Instance)
     );
   }
 
+  // The next stop's street line, bold locality and its copy button were
+  // removed with the old route section (the owner, September 27): the
+  // panel names the visit and the stop with its locality only.
   [Theory]
   [InlineData(true)]
   [InlineData(false)]
-  public async Task CurrentRouteAddressShowsNormalStreetThenBoldLocalityAndCopiesTheOriginal(
+  public async Task NextStopPlaceNamesTheVisitAndLocalityWithoutTheStreet(
     bool hasJob
   )
   {
@@ -2126,44 +1977,22 @@ public sealed class FleetMapComponentTests
     await component.InvokeAsync(
       () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
     );
-    var next = component.Find(
-      "[aria-label='Current dispatch route'] .fleet-map-route-info__next"
-    );
+    var next = component.Find(".fleet-truck-next");
     Assert.Equal(
       "Next stop",
-      next.QuerySelector(".fleet-map-route-info__label")!.TextContent
+      next.QuerySelector(".fleet-truck-next__label")!.TextContent
     );
-    var address = next.QuerySelector("[title='Copy full address']")!;
-    var lines = address.QuerySelector(".fleet-map-route-info__address-lines")!;
+    var place = next.QuerySelector(".fleet-truck-next__place")!;
+    Assert.StartsWith(
+      hasJob ? "Delivery · Mid 972" : "Stop · Mid 972",
+      place.TextContent.Trim()
+    );
     Assert.Equal(
-      new[] { "Mid 972", "50 Patriot Dr", "Middletown, DE 19709, US" },
-      lines.Children.Select(line => line.TextContent)
+      "Middletown, DE 19709, US",
+      Assert.Single(place.Children).TextContent
     );
-    Assert.Contains(
-      "fleet-map-route-info__facility",
-      lines.Children[0].ClassList
-    );
-    Assert.Equal("SPAN", lines.Children[1].TagName);
-    Assert.Equal("STRONG", lines.Children[2].TagName);
-    Assert.Empty(lines.Children[1].QuerySelectorAll("strong, b"));
-    Assert.Empty(address.QuerySelectorAll("svg"));
-    Assert.Equal(stop.Address, lines.GetAttribute("title"));
-    Assert.Contains(
-      "fleet-map-route-info__street",
-      lines.Children[1].ClassList
-    );
-    await component.InvokeAsync(
-      () =>
-        component
-          .Find("[title='Copy full address']")
-          .ClickAsync(new MouseEventArgs())
-    );
-    Assert.Contains(
-      fixture.Js.Calls,
-      call =>
-        call.Name == "navigator.clipboard.writeText"
-        && Equals(call.Args![0], stop.Address)
-    );
+    Assert.DoesNotContain("Patriot", place.TextContent);
+    Assert.Empty(place.QuerySelectorAll("button, strong, b, svg"));
   }
 
   [Theory]
@@ -2207,47 +2036,42 @@ public sealed class FleetMapComponentTests
     await component.InvokeAsync(
       () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
     );
-    var facilities = component.FindAll(".fleet-map-route-info__facility");
+    // The tracked stop's name stands in the panel's next stop line (the
+    // owner, September 27); the old street copy button went with it.
+    var place = component.Find(".fleet-truck-next__place");
+    var said = place.TextContent.Trim();
+    Assert.StartsWith(job == "Pick Up" ? "Pickup" : "Delivery", said);
     if (expected is null)
-      Assert.Empty(facilities);
+      Assert.DoesNotContain(" · ", said);
     else
-    {
-      Assert.Equal(expected, Assert.Single(facilities).TextContent);
-      Assert.Empty(facilities[0].Children);
-    }
-    Assert.DoesNotContain(
-      "Another facility",
-      component.Find(".fleet-map-route-info__next").TextContent
-    );
-    await component
-      .Find("[title='Copy full address']")
-      .ClickAsync(new MouseEventArgs());
+      Assert.StartsWith(
+        $"{(job == "Pick Up" ? "Pickup" : "Delivery")} · {expected}",
+        said
+      );
+    // Text, never markup: the only element is the locality.
     Assert.Equal(
-      stop.Address,
-      fixture
-        .Js.Calls.Last(x => x.Name == "navigator.clipboard.writeText")
-        .Args![0]
+      "Maxton, NC 28364, US",
+      Assert.Single(place.Children).TextContent
     );
+    Assert.DoesNotContain("Another facility", place.TextContent);
     await component.InvokeAsync(
       () => component.Instance.OnTruckSelected(fixture.TruckB.ToString())
     );
-    Assert.DoesNotContain(
-      "Receiver",
-      component.Find(".fleet-map-route-info__next").TextContent
-    );
-    Assert.DoesNotContain(
-      "Shipper",
-      component.Find(".fleet-map-route-info__next").TextContent
-    );
+    foreach (var other in component.FindAll(".fleet-truck-next"))
+    {
+      Assert.DoesNotContain("Receiver", other.TextContent);
+      Assert.DoesNotContain("Shipper", other.TextContent);
+    }
     Assert.Equal(0, fixture.FuelWrites);
   }
 
   [Theory]
   [InlineData(true)]
   [InlineData(false)]
-  public async Task UnifiedTruckHeaderKeepsDutyBelowClocksWithoutRecap(
-    bool available
-  )
+  // The head's readings and the duty-and-rest line under the clocks went
+  // with the old card (the owner, September 27): the duty is a fact, the
+  // clocks their own cells, and the recap stays off the card.
+  public async Task TruckPanelKeepsClocksAndFactsWithoutRecap(bool available)
   {
     using var fixture = new SelectionFixture();
     var now = fixture.Clock.GetUtcNow();
@@ -2300,49 +2124,36 @@ public sealed class FleetMapComponentTests
         "54777",
         component.Find(".fleet-map-inspector__title").TextContent
       );
-      Assert.Equal(
-        3,
-        component
-          .FindAll(
-            ".truck-readings > .truck-readings__reading"
-              + ":not(.truck-readings__reading--outside)"
-          )
-          .Count
-      );
       Assert.Single(
-        component.FindAll(".fleet-map-inspector__clocks > .driver-hours-panel")
+        component.FindAll(".fleet-truck-clocks > .driver-hours-panel")
       );
+      Assert.Single(component.FindAll(".driver-hours-panel"));
       Assert.Empty(component.FindAll(".fleet-map-truck-info__hours-label"));
       Assert.Empty(component.FindAll(".driver-next-recap"));
-      Assert.Single(
-        component.FindAll(".truck-readings__reading--fuel > .fuel-reading")
-      );
-      Assert.Single(
-        component.FindAll(
-          ".truck-readings__reading--fuel > .fuel-reading--metric"
-        )
-      );
-      Assert.Empty(
-        component.FindAll(".fleet-map-truck-info .truck-illustration")
-      );
+      Assert.Empty(component.FindAll(".truck-readings"));
+      Assert.Empty(component.FindAll(".truck-illustration"));
       Assert.Single(
         component.FindAll(".fleet-map-controls > [aria-label='Truck actions']")
       );
-      Assert.Single(component.FindAll(".fleet-map-inspector__driver"));
+      Assert.Single(
+        component.FindAll(".fleet-truck-facts dt"),
+        x => x.TextContent == "Driver"
+      );
+      Assert.Single(
+        component.FindAll(".fleet-truck-facts dt"),
+        x => x.TextContent == "Duty"
+      );
+      // Each fact wears its own decorative icon.
       Assert.Equal(
-        2,
+        8,
         component
-          .FindAll(
-            ".truck-readings__reading:not(.truck-readings__reading--outside)"
-              + " > small > svg[aria-hidden='true']"
-          )
+          .FindAll(".fleet-truck-facts__fact > svg[aria-hidden='true']")
           .Count
       );
-      // The duty and rest line under the clocks; no recap on the card.
-      Assert.Single(component.FindAll(".driver-duty--row"));
+      Assert.Empty(component.FindAll(".driver-duty--row"));
       Assert.DoesNotContain(
         "Next recap",
-        component.Find(".fleet-map-truck-info").TextContent
+        component.Find(".fleet-map-inspector").TextContent
       );
     });
     await component.InvokeAsync(
@@ -2352,7 +2163,7 @@ public sealed class FleetMapComponentTests
     {
       Assert.Empty(component.FindAll(".driver-next-recap"));
       Assert.Single(
-        component.FindAll(".fleet-map-inspector__clocks > .driver-hours-panel")
+        component.FindAll(".fleet-truck-clocks > .driver-hours-panel")
       );
     });
   }
@@ -2522,10 +2333,14 @@ public sealed class FleetMapComponentTests
     Assert.Single(component.FindAll(".fleet-map-inspector__close"));
     Assert.Single(component.FindAll(".fleet-map-inspector__back"));
     var requests = fixture.HttpCalls;
+    var weather = fixture.WeatherCalls;
     var clears = fixture.Js.Calls.Count(c => c.Name == "clearSelection");
     await component.InvokeAsync(
       () => component.Instance.OnMapBackgroundClicked(truck, 10)
     );
+    // Back on the truck card its readings are not read again, the outside
+    // temperature included (a named count, so a failure says which).
+    Assert.Equal(weather, fixture.WeatherCalls);
     Assert.Equal(
       "truck",
       component.Find(".fleet-map-inspector").GetAttribute("data-inspector-mode")
@@ -2618,6 +2433,7 @@ public sealed class FleetMapComponentTests
     );
     var header = component.Find("#fleet-map-details").TextContent;
     var httpCalls = fixture.HttpCalls;
+    var weather = fixture.WeatherCalls;
     var mapMarkup = component.Find("#fleet-map").OuterHtml;
     await component.InvokeAsync(
       () =>
@@ -2687,6 +2503,7 @@ public sealed class FleetMapComponentTests
       component.Find(".fleet-map-inspector__native").HasAttribute("hidden")
     );
     Assert.Equal(header, component.Find("#fleet-map-details").TextContent);
+    Assert.Equal(weather, fixture.WeatherCalls);
     Assert.Equal(httpCalls + 1, fixture.HttpCalls);
     Assert.Single(fixture.Js.Calls, call => call.Name == "setStations");
     Assert.Equal(mapMarkup, component.Find("#fleet-map").OuterHtml);
@@ -3647,13 +3464,26 @@ public sealed class FleetMapComponentTests
           id = saved.DispatchId,
           loadNumber = 1373,
           orderNumber = "566126837",
+          stops = new[]
+          {
+            new
+            {
+              id = Guid.NewGuid(),
+              sequence = 1,
+              name = "Details pickup",
+              job = "Pick Up",
+            },
+          },
         }
       );
+      // The order number left the card with the old head (the owner,
+      // September 27); the details are seen landing through the next stop
+      // they name while the geometry is still pending.
       component.WaitForAssertion(
         () =>
-          Assert.Equal(
-            "566126837",
-            component.Find("[title='Copy order number']").TextContent
+          Assert.Contains(
+            "Details pickup",
+            component.Find(".fleet-truck-next__place").TextContent
           )
       );
       Assert.Equal(JsonValueKind.Null, fixture.LastLoadReference().ValueKind);
@@ -3787,15 +3617,13 @@ public sealed class FleetMapComponentTests
       "64888",
       component.Find(".fleet-map-inspector__header").TextContent
     );
-    Assert.Equal(
-      "1373",
-      component.Find(".fleet-map-inspector__load-link").TextContent.Trim()
-    );
-    Assert.Equal(
-      "566126837",
-      component.Find("[title='Copy order number']").TextContent
-    );
+    // The load link and order number left the card with the old head (the
+    // owner, September 27); the late reply still leaves no trace on it.
     Assert.DoesNotContain("565606595", component.Markup);
+    Assert.DoesNotContain(
+      "1358",
+      component.Find(".fleet-map-inspector").TextContent
+    );
     using var route = fixture.LastCurrentPayload();
     Assert.Equal(
       fixture.TruckB,
@@ -4518,6 +4346,7 @@ public sealed class FleetMapComponentTests
     );
     var pending = await fixture.ReadDetailsAsync();
     var httpCalls = fixture.HttpCalls;
+    var weather = fixture.WeatherCalls;
     var mapCalls = fixture.Js.Calls.Count;
 
     await component.InvokeAsync(async () =>
@@ -4546,6 +4375,7 @@ public sealed class FleetMapComponentTests
       AssertTruckPanelsVisible(component);
     });
     Assert.True(pending.Cancellation.IsCancellationRequested);
+    Assert.Equal(weather, fixture.WeatherCalls);
     Assert.Equal(httpCalls, fixture.HttpCalls);
     // One map instruction; the address follows it and no longer names the
     // next load's stop.
@@ -5113,7 +4943,7 @@ public sealed class FleetMapComponentTests
       component.FindComponent<NextLoadDetailsCard>().Instance.DistanceMiles
     );
     var previousCurrentEta = component
-      .Find("[aria-label='Current dispatch route'] .arrival-estimate")
+      .Find(".fleet-truck-next__eta .arrival-estimate")
       .OuterHtml;
     var previousFutureEta = component
       .Find("[aria-label='Selected next load'] .arrival-estimate")
@@ -5166,7 +4996,7 @@ public sealed class FleetMapComponentTests
     Assert.Equal(
       previousCurrentEta,
       component
-        .Find("[aria-label='Current dispatch route'] .arrival-estimate")
+        .Find(".fleet-truck-next__eta .arrival-estimate")
         .OuterHtml
     );
     Assert.Equal(
@@ -5329,16 +5159,11 @@ public sealed class FleetMapComponentTests
     );
     component.WaitForAssertion(() =>
     {
-      var panel = component.Find("[aria-label='Current dispatch route']");
-      Assert.Single(panel.QuerySelectorAll(".fleet-map-route-info__metric"));
-      Assert.Equal(
-        "— mi",
-        panel
-          .QuerySelector(".fleet-map-route-info__distance strong")!
-          .TextContent
-      );
+      // The distances are the panel's next stop line's now; "Remaining
+      // load" went with the old route section (the owner, September 27).
+      var panel = component.Find(".fleet-map-inspector");
       Assert.All(
-        panel.QuerySelectorAll(".fleet-map-route-info__metric strong"),
+        panel.QuerySelectorAll(".fleet-truck-next__left strong"),
         value => Assert.Equal("—", value.TextContent)
       );
       Assert.Empty(
@@ -5662,6 +5487,7 @@ public sealed class FleetMapComponentTests
     public bool DeferPreview { get; set; }
     public bool PreviewUnavailable { get; set; }
     public int HttpCalls;
+    public int WeatherCalls;
     public int NextCalls;
     public int PlanningCalls;
     public int PreviewCalls;
@@ -5934,6 +5760,8 @@ public sealed class FleetMapComponentTests
           )
         );
       if (uri.AbsolutePath.EndsWith("/weather", StringComparison.Ordinal))
+      {
+        Interlocked.Increment(ref WeatherCalls);
         return Task.FromResult(
           Ok(
             uri.AbsolutePath.Contains(TruckA.ToString())
@@ -5948,6 +5776,7 @@ public sealed class FleetMapComponentTests
               : null
           )
         );
+      }
       if (
         uri.AbsolutePath.EndsWith("/camera", StringComparison.Ordinal)
         || uri.AbsolutePath.EndsWith(

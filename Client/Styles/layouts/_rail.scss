@@ -35,7 +35,7 @@
     @include ui.glass-panel;
     grid-area: rail;
     position: sticky;
-    top: ui.pg(md);
+    top: calc(#{ui.size(topbar)} + #{ui.pg(md)} * 2);
     align-self: start;
     height: calc(100dvh - #{ui.size(topbar)} - #{ui.pg(md)} * 3);
     flex-direction: column;

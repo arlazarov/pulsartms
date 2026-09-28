@@ -80,11 +80,6 @@ public partial class FleetMap
       )
     );
 
-  private string? OpenLoadHref =>
-    SelectedDispatchId is { } id
-      ? ReturnNavigation.Load(id, ReturnOrigin)
-      : null;
-
   // Written into the map's own history entry, never pushed: browser Back
   // leaves the map rather than stepping through its selections.
   private async Task ReflectSelectionAsync()

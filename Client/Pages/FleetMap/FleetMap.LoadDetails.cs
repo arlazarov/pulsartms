@@ -8,13 +8,10 @@ public partial class FleetMap
 {
   private DispatchResponse? _loadDetails;
   private int _loadDetailsVersion;
+  // The truck panel's arrival, kept while the panel is mounted (hidden in
+  // the other views) so coming back to the truck shows the same forecast.
   private readonly ArrivalDisplayMemory _arrivalMemory = new();
 
-  // The truck panel's next-stop line shows the same arrival as the retained
-  // route section, but keeps its own memory: one instance updated twice per
-  // render would advance its "stop changed" state twice for a single
-  // change.
-  private readonly ArrivalDisplayMemory _panelArrivalMemory = new();
   private bool NextStopIsFinal =>
     _routeState?.Plan
       is { InputsChanged: false, Tracking.AllStopsPassed: false } plan
@@ -25,33 +22,15 @@ public partial class FleetMap
       ?.Stops.OrderBy(s => s.Sequence)
       .FirstOrDefault(s => !s.DriverOnly && !s.IsCompleted);
 
-  // The booking shown under the head's ETA: the tracked stop's own, and
-  // only while the forecast shown there is for that same stop, so the two
-  // times beside each other are always about one visit. A stop with no
-  // booking says so with a dash; it is the card's only appointment row.
-  private PlanStop? HeadAppointmentStop
-  {
-    get
-    {
-      if (ScheduledStop is not { } stop)
-        return null;
-      var eta = _routeState?.Plan is { InputsChanged: false }
-        ? DisplayRouteState?.Eta
-        : null;
-      return
-        eta?.Stops.FirstOrDefault() is { } forecast
-        && forecast.StopId != stop.Id
-        ? null
-        : stop;
-    }
-  }
-
-  // The booking as read beside the ETA: its date and window, then the
-  // zone they are written in.
-  // The row stands while the stop is still loading, as a dash, so the
-  // arrival beside the load does not change height when it lands.
-  private bool HeadAppointmentShown =>
-    ScheduledStop is null || HeadAppointmentStop is not null;
+  // The booking beside the panel's ETA: the tracked stop's own. The
+  // estimate beside it keeps only a forecast for that same stop, so the
+  // two times shown together are always about one visit. A stop with no
+  // booking shows no row (the owner, September 27).
+  private PlanStop? HeadAppointmentStop =>
+    ScheduledStop is { } stop
+    && (stop.ScheduledDate is not null || stop.ScheduledTime is not null)
+      ? stop
+      : null;
 
   private string HeadAppointmentText(PlanStop? stop)
   {

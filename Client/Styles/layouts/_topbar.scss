@@ -9,7 +9,15 @@
 @include ui.above(md) {
   .topbar {
     @include ui.glass-panel;
+    // Above the page: the account menu opens over the map and its panels.
+    z-index: ui.layer(dropdown);
     grid-area: top;
+    // A long page scrolls under the bar, which stays whole in its place
+    // (the owner, September 27); the canvas around it hides the page in
+    // the frame's gaps.
+    position: sticky;
+    top: ui.pg(md);
+    outline: ui.pg(md) solid ui.theme(canvas);
     display: flex;
     align-items: center;
     gap: ui.pg(lg);

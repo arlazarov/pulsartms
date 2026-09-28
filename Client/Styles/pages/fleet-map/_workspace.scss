@@ -434,6 +434,11 @@
 
 // The truck panel's body, as the concept drew it: the actions in one row,
 // the facts in bordered cells, the clocks with bars.
+// The truck panel's wrapper only keeps it mounted; it lays nothing out.
+.fleet-truck-panel {
+  display: contents;
+}
+
 .fleet-truck-next {
   display: grid;
   gap: ui.pg(xs);
@@ -475,8 +480,25 @@
       font-weight: 400;
     }
   }
+  // Appointment and ETA share one label column, so both hours start at
+  // the same edge; the compact forecast reads the width from
+  // --route-fact-label.
   &__eta {
+    --route-fact-label: 6.5rem;
     margin-top: ui.pg(micro);
+  }
+  &__booking {
+    display: grid;
+    grid-template-columns: var(--route-fact-label) minmax(0, 1fr);
+    column-gap: ui.pg(sm);
+    align-items: baseline;
+  }
+  &__term {
+    color: ui.theme(text-secondary);
+  }
+  &__hours {
+    display: grid;
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -747,25 +769,13 @@
     overflow-x: auto;
     overflow-y: hidden;
     // The horizontal bar, when there are more cards than fit, takes its
-    // own room instead of the cards', in the theme's colours.
-    scrollbar-gutter: stable;
-    scrollbar-color: ui.theme(accent, 0.45) transparent;
-    &::-webkit-scrollbar {
-      height: ui.pg(sm);
-    }
-    &::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    &::-webkit-scrollbar-thumb {
-      border-radius: ui.radius(pill);
-      background: ui.theme(accent, 0.45);
-    }
+    // own room instead of the cards'.
+    @include ui.hud-scrollbar;
     &:focus-visible {
       outline: 2px solid ui.theme(focus);
       outline-offset: -2px;
     }
     overscroll-behavior: contain;
-    scrollbar-width: thin;
     list-style: none;
   }
 
