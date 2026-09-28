@@ -10,15 +10,6 @@ public sealed record FuelPlanEditStop(
   public double? PurchaseLimitGallons { get; init; }
 }
 
-public sealed record FuelPlanEditRequest(
-  DateTime? ExpectedCalculatedAt,
-  List<FuelPlanEditStop>? Stops,
-  int? QuantityStopIndex = null
-)
-{
-  public Guid? ExecutionLegId { get; init; }
-  public long? AssignmentRevision { get; init; }
-}
 
 public sealed record FuelPlanEditPreview(
   FuelPlan Plan,

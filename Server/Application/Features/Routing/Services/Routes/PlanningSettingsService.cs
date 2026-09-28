@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Application.Caching;
+using Application.Features.Routing.Models;
 using Domain.Entities.Fleet;
 using Domain.Models.Routing;
 using Domain.Rules;

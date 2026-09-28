@@ -2,6 +2,7 @@ using Application.Diagnostics.Consistency;
 using Application.Features.Messaging.Services;
 using Application.Features.Routing.Audit;
 using Application.Features.Routing.Commands;
+using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;

@@ -759,9 +759,15 @@ and endpoint anchoring both gate geometry reuse. Completed demand is pruned
 only after its retention interval. The preparation queue is not calculation
 input and does not narrow the publication lock boundary.
 
-API's `OptionsRegistration.AddApplicationOptions` groups binding and startup
-validation. Options and policies remain in Application; external adapter DI remains
-in Infrastructure. This grouping does not move ownership between layers.
+Infrastructure's `OptionsRegistration.AddApplicationOptions` groups binding
+and startup validation; the API calls it from its composition root. Options
+and policies keep their owners (Application options, Domain policies). The
+API names Application alone: request bodies are Application contracts
+(`Application.Features.Routing.Models`, `Application.Features.Fleet.Models`;
+`TruckRouteProfileBody` is the profile on the wire), and the route geometry
+converters, which choose the encoded form per request from the
+`X-Route-Geometry` header, live in `Infrastructure.Serialization`.
+`LayerBoundaryTests` rejects `Domain` anywhere in the API.
 
 Fleet Map keeps a component-owned Next Loads display cache keyed by truck and
 current dispatch: at most 12 complete serialized snapshots, eight MiB in total,

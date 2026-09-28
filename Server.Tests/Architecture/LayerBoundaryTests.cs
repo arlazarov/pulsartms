@@ -242,10 +242,11 @@ public class LayerBoundaryTests
     foreach (var file in Sources(Path.Combine(root, "Server/API"), "*.cs"))
     {
       var source = File.ReadAllText(file);
-      // The web layer may name the vocabulary - the models and policies the
-      // whole server speaks in - but never a stored entity: what the
-      // database holds is not what a controller answers with.
-      Assert.DoesNotMatch(@"\bDomain\.Entities\b", source);
+      // The web layer names Application alone (AGENTS.md): request bodies
+      // are Application contracts, and what reads configuration or writes
+      // route geometry for HTTP is registered from Infrastructure. It used
+      // to allow the Domain vocabulary; root ruled that debt, not rule.
+      Assert.DoesNotMatch(@"\bDomain\b", source);
       if (Path.GetFileName(file) != "DependencyInjection.cs")
         Assert.DoesNotMatch(@"\bInfrastructure(?:\.|;)", source);
       Assert.DoesNotMatch(
@@ -264,8 +265,7 @@ public class LayerBoundaryTests
   public void InfrastructureIsNeverGivenAConcreteApplicationClass()
   {
     var application = typeof(GetDispatchBoardHandler).Assembly;
-    var infrastructure =
-      typeof(AppDbContext).Assembly;
+    var infrastructure = typeof(AppDbContext).Assembly;
     var found = infrastructure
       .GetTypes()
       .SelectMany(type =>

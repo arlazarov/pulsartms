@@ -1,12 +1,13 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Domain.Models.Routing;
+using Microsoft.AspNetCore.Http;
 
-namespace API.Serialization;
+namespace Infrastructure.Serialization;
 
-// The empty drive between two loads is the other place route geometry leaves
-// the API. It is not a leg, so it needs its own converter, but the two forms
-// and the rule for choosing between them are the leg's.
+// The empty drive between two loads is the other place route geometry
+// leaves the web API; it is not a leg, so it needs its own converter, but
+// the two forms and the rule for choosing between them are the leg's.
 public sealed class NextLoadConnectionJsonConverter(IHttpContextAccessor http)
   : JsonConverter<NextLoadConnection>
 {

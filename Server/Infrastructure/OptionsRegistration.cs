@@ -4,8 +4,10 @@ using Application.Features.Fuel.Options;
 using Application.Features.Synchronization.Options;
 using Application.Storage;
 using Domain.Policies;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace API;
+namespace Infrastructure;
 
 public static class OptionsRegistration
 {

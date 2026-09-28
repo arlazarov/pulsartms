@@ -1359,6 +1359,21 @@ failed on the new worktree's missing Client packages and is marked.
   tightening the test to reject `Domain.` in the API. `RouteLeg` alone
   is named in 18 files, so it is not done during integration
   preparation. Owner: root, to say which text is the rule.
+  Root ruled AGENTS.md authoritative; done. The request records moved to
+  `Application.Features.Routing.Models` and `...Fleet.Models` (namespace
+  only; JSON unchanged). The profile endpoint takes
+  `TruckRouteProfileBody`, the profile on the wire read with the caller's
+  options, so missing fields keep the profile's defaults; its one
+  observable difference is the model-state key of an invalid body with a
+  null `hazmat` (`Value.Hazmat` for `Hazmat`, still 400; the Client
+  always sends a string and reads no keys). The geometry converters, an
+  HTTP choice by header, and the options binding moved to Infrastructure,
+  registered from the API's composition root. `LayerBoundaryTests` now
+  rejects `Domain` anywhere in the API; a `Domain` using put back fails it.
+  Routing, fleet, dispatch (diagnostic-LBS01N) and fuel groups with
+  architecture green; wire tests `TruckRouteProfileBodyTests`
+  (diagnostic-dYozyC). diagnostic-GrCXEI invalid: a moved comment read
+  "the API." and met the Infrastructure rule; reworded.
 - **F19 re-read.** Verified: fuel stations are a shared table ("a place
   in the world, the same for everyone"); any carrier's Admin can start
   the discount import that creates and overwrites them; the Gmail push

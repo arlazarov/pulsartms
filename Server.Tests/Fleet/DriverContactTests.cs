@@ -1,5 +1,6 @@
 using Application.Features.Fleet.Commands;
 using Application.Features.Fleet.Commands.SyncFleet;
+using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Queries;
 using Application.Interfaces;
 using Application.Models;
