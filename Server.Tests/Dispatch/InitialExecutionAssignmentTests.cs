@@ -466,6 +466,87 @@ public sealed class InitialExecutionAssignmentTests
     Assert.NotNull(f.Load.Stops[0].PickedUpAt);
   }
 
+  // Load 1395: the source reports both stops done with different trailers
+  // while the accepted leg is still planned and its own stops are open.
+  // Completing the delivery through the correction owner must complete the
+  // leg's pickup too, leave the source facts as they were and invent no
+  // transfer for the trailer difference.
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task CompletingDeliveryClosesOpenNativeStopsSourceMarksDone(
+    bool truckWorksElsewhere
+  )
+  {
+    await using var f = await StopCompletionFixture.CreateAsync();
+    f.Db.DispatchStops.RemoveRange(f.Load.Stops.Skip(1).Take(3));
+    f.Load.Stops.RemoveRange(1, 3);
+    await f.Db.SaveChangesAsync();
+    var truck = await TruckAsync(f);
+    Assert.True(
+      (
+        await f.CorrectionHandler()
+          .Handle(await AssignmentAsync(f, truck.Id), default)
+      ).Success
+    );
+    if (truckWorksElsewhere)
+    {
+      // As live: the truck already runs a later load's active leg.
+      var trip = new Trip { Id = Guid.NewGuid() };
+      f.Db.AddRange(
+        trip,
+        new ExecutionLeg
+        {
+          Id = Guid.NewGuid(),
+          TripId = trip.Id,
+          TruckId = truck.Id,
+          Status = "active",
+          Revision = 1,
+        }
+      );
+      await f.Db.SaveChangesAsync();
+    }
+    var at = f.Clock.GetUtcNow().UtcDateTime;
+    var (pickup, delivery) = (f.Load.Stops[0], f.Load.Stops[1]);
+    pickup.TrailerNumber = "44120";
+    pickup.PickedUpAt = pickup.DepartedAt = at.AddHours(-6);
+    delivery.TrailerNumber = "9P1175";
+    delivery.DeliveredAt = delivery.DepartedAt = at.AddHours(-1);
+    f.Load.Status = "completed";
+    await f.Db.SaveChangesAsync();
+    var before = (
+      await DispatchWorkspaceReader.ReadAsync(f.Db, f.Load.Id, true, default)
+    )!;
+    Assert.Equal("planned", before.Legs.Single().Status);
+    Assert.All(
+      before.Response.Stops,
+      x => Assert.False(before.EffectiveStops[x.Id].IsCompleted)
+    );
+    // The correction scope and the editor read this native projection,
+    // never the source's completion.
+    Assert.All(before.Response.Load.Stops, x => Assert.False(x.IsCompleted));
+
+    await CompleteAsync(f, delivery.Id);
+
+    f.Db.ChangeTracker.Clear();
+    var leg = await f
+      .Db.ExecutionLegs.Include(x => x.Stops)
+      .SingleAsync(x => x.Loads.Any(l => l.DispatchId == f.Load.Id));
+    Assert.All(
+      ExecutionStopRows.Read(leg),
+      x => Assert.True(x.IsCompleted, x.Job)
+    );
+    Assert.Equal("completed", leg.Status);
+    Assert.Empty(await f.Db.SwitchParticipants.ToListAsync());
+    var source = await f
+      .Db.DispatchStops.Where(x => x.DispatchId == f.Load.Id)
+      .OrderBy(x => x.Sequence)
+      .ToListAsync();
+    Assert.Equal(["44120", "9P1175"], source.Select(x => x.TrailerNumber));
+    Assert.Equal(at.AddHours(-6), source[0].PickedUpAt);
+    Assert.Equal(at.AddHours(-1), source[1].DeliveredAt);
+  }
+
   private static async Task<Truck> TruckAsync(StopCompletionFixture f)
   {
     var truck = new Truck
