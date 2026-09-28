@@ -1393,7 +1393,9 @@ try {
         page.on('pageerror', error => report.browserErrors.push(error.message));
         await page.goto(origin + '/login');
         await page.waitForURL(origin + '/fleet/map');
-        await page.locator('.fleet-map-page .page-header').waitFor({
+        // The workspace head's title is hidden below the map-mobile
+        // breakpoint (768px), so a phone only needs it rendered.
+        await page.locator('.fleet-map-page .fleet-map-title h1').waitFor({
           state: width < 768 ? 'attached' : 'visible',
         });
         check(
@@ -1404,7 +1406,11 @@ try {
           await page
             .getByRole('button', { name: 'Open menu', exact: true })
             .click();
-        const accountButton = page.locator('.sidebar__account');
+        // From the md breakpoint (800px) the account menu is in the top bar;
+        // a phone keeps it in the navigation menu.
+        const accountButton = page.locator(
+          width < 800 ? '.sidebar__account' : '.topbar__account',
+        );
         check(
           (await accountButton.getAttribute('aria-expanded')) === 'false',
           'Account actions start collapsed',
@@ -2795,7 +2801,20 @@ try {
           }
           if (path === '/fleet/map') {
             // IFTA left the map with the date; Traffic is the layer chip
-            // that is on by default.
+            // that is on by default. From 768px the layers are the map tool
+            // bar's Layers menu; a phone keeps them in its Filters drawer.
+            if (width >= 768) {
+              const layers = page.getByRole('button', {
+                name: 'Map layers',
+                exact: true,
+              });
+              await layers.click();
+              assert.equal(
+                await layers.getAttribute('aria-expanded'),
+                'true',
+                name + ' map layers menu opens',
+              );
+            }
             const traffic = page.getByRole('checkbox', {
               name: 'Traffic',
               exact: true,

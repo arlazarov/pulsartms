@@ -262,8 +262,9 @@ try {
   );
   report.steps.push({ step: 'hand-over', to: followerName });
 
-  // Signing out stops the stream.
-  await follower.locator('.sidebar__account').click();
+  // Signing out stops the stream. At this width the account menu is in the
+  // top bar.
+  await follower.locator('.topbar__account').click();
   await follower.getByRole('button', { name: 'Logout', exact: true }).click();
   await follower.waitForURL(/\/login/);
   const afterLogout = report.streams.length;
