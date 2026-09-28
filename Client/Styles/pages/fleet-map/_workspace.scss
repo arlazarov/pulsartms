@@ -933,6 +933,11 @@
     // panel still scrolls by wheel, touch and keyboard.
     scrollbar-gutter: auto;
     scrollbar-width: none;
+    // The head's words clear the glass's corner tick.
+    .fleet-map-inspector__header {
+      padding-top: ui.pg(sm);
+      padding-left: calc(#{ui.pg(lg)} + #{ui.pg(sm)});
+    }
   }
   .fleet-map-stage:has(.fleet-truck-list.is-collapsed) {
     grid-template-columns:
