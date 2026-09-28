@@ -27,7 +27,9 @@ public static class TelemetryTone
 
   private const decimal Moving = 1;
 
-  private static bool Running(decimal speed, string? engine) =>
+  // Moving, or standing with the engine reported on (idling included). A
+  // standing truck with no word of its engine is not called running.
+  public static bool Running(decimal speed, string? engine) =>
     speed >= Moving || IsOn(engine);
 
   private static bool IsOn(string? engine) =>

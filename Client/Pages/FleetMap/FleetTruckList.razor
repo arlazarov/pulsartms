@@ -41,6 +41,11 @@ else
                 {
                     var selected = truck.TruckId == SelectedId;
                     var moving = TruckMotion.IsMoving(truck.Speed);
+                    @* Green while the truck moves or its engine runs,
+                       idling included (the owner, September 28); the
+                       Moving / Stopped chips still go by motion alone. *@
+                    var running = TelemetryTone.Running(truck.Speed,
+                        truck.EngineState);
                     <li @key="truck.TruckId">
                         <button type="button"
                                 class="fleet-truck-list__row @(selected ? "is-selected" : "")"
@@ -48,8 +53,10 @@ else
                                 @onclick="() => Selected.InvokeAsync(truck.TruckId)">
                             <span class="fleet-truck-list__unit">
                                 <span class="fleet-truck-list__motion
-                                             @(moving ? "is-moving" : "is-stopped")"
-                                      title="@(moving ? "Moving" : "Stopped")"
+                                             @(running ? "is-moving" : "is-stopped")"
+                                      title="@(moving ? "Moving"
+                                          : running ? "Stopped, engine on"
+                                          : "Stopped")"
                                       aria-hidden="true"></span>
                                 <strong>@truck.UnitNumber</strong>
                             </span>
