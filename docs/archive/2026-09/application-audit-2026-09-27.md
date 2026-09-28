@@ -1596,9 +1596,9 @@ ran): diagnostic-UVuFOS, with the merge diff. A second trial, of
 `f98cb44c` (with `messaging.kept-status-unapplied`, one more line in the
 same three lists), passed the messaging, fuel, identity, caching and
 synchronization groups with architecture (Server 3,264, Client 973,
-JavaScript 7, 16, 13 and 67, none skipped): diagnostic-jjVorf. Between
-them every test group has run on a merged tree; the full gate, the
-strict builds and the browser checks have not.
+JavaScript 7, 16, 13 and 67, none skipped): diagnostic-jjVorf. Not run
+on a merged tree: the fleet, map, costs and styles groups, the full
+gate, the strict builds and the browser checks.
 
 ## Owner decisions: proposals with examples
 
