@@ -196,14 +196,14 @@
   // cool tint, a cyan hairline rim, bold corner ticks, a lit top edge, a
   // cool shadow and a faint cyan halo - the dark panel's parts in daylight.
   :root[data-theme='light'] & {
-    border-color: fn.clr('cyan', 400, 0.45);
+    border-color: fn.theme(hud-glow, 0.45);
     // Pure white, not a grey glass (the owner, September 27), with a thin
     // cyan light sweeping slowly along its top edge, as a HUD scans.
     background:
       linear-gradient(
           90deg,
           transparent,
-          fn.clr('cyan', 400, 0.9),
+          fn.theme(hud-glow, 0.9),
           transparent
         )
         -40% 0 / 28% 1px no-repeat,
@@ -217,7 +217,7 @@
     // Fine corner ticks in the bright HUD cyan.
     &::before,
     &::after {
-      border-color: fn.clr('cyan', 500, 0.75);
+      border-color: fn.theme(hud-line, 0.75);
     }
   }
 }
@@ -242,7 +242,7 @@
       linear-gradient(
           90deg,
           transparent,
-          fn.clr('cyan', 400, 0.9),
+          fn.theme(hud-glow, 0.9),
           transparent
         )
         -40% 0 / 28% 1px no-repeat,
@@ -345,15 +345,15 @@ $hud-glyphs: (
   // In daylight the emblem is a lit accent disc with a white glyph: a
   // pale core read washed out (the owner, September 27).
   :root[data-theme='light'] &::before {
-    border-color: fn.clr('cyan', 400);
+    border-color: fn.theme(hud-glow);
     background: radial-gradient(
       circle at 35% 30%,
-      fn.clr('cyan', 400),
-      fn.clr('cyan', 700) 80%
+      fn.theme(hud-glow),
+      fn.theme(accent) 80%
     );
     box-shadow:
-      0 0 0 3px fn.clr('cyan', 400, 0.18),
-      0 0 16px fn.clr('cyan', 400, 0.45);
+      0 0 0 3px fn.theme(hud-glow, 0.18),
+      0 0 16px fn.theme(hud-glow, 0.45);
   }
   :root[data-theme='light'] &::after {
     background: fn.theme(on-accent);

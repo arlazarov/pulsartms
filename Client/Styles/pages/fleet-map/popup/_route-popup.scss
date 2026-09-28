@@ -111,15 +111,15 @@
     // In daylight a lit accent disc with a white letter, as the truck's
     // emblem: a pale core read washed out (the owner, September 27).
     :root[data-theme='light'] &:not(.is-done) {
-      border-color: ui.clr('cyan', 400);
+      border-color: ui.theme(hud-glow);
       background: radial-gradient(
         circle at 35% 30%,
-        ui.clr('cyan', 400),
-        ui.clr('cyan', 700) 80%
+        ui.theme(hud-glow),
+        ui.theme(accent) 80%
       );
       box-shadow:
-        0 0 0 3px ui.clr('cyan', 400, 0.18),
-        0 0 16px ui.clr('cyan', 400, 0.45);
+        0 0 0 3px ui.theme(hud-glow, 0.18),
+        0 0 16px ui.theme(hud-glow, 0.45);
       color: ui.theme(on-accent);
     }
     &.is-done {

@@ -62,6 +62,17 @@ $roles: (
   border: colors.value(ice, 300),
   border-subtle: colors.value(ice, 200),
   accent: colors.value('cyan', 700),
+  // The HUD's light: the bright cyan the instruments glow and draw their
+  // lines with, over either theme's surfaces.
+  hud-glow: colors.value('cyan', 400),
+  hud-line: colors.value('cyan', 500),
+  // The map's series of later-load road colours, in order, as text and
+  // lines on the workspace's surfaces (lighter on the dark theme).
+  route-series-0: colors.value('violet', 700),
+  route-series-1: colors.value('teal', 700),
+  route-series-2: colors.value(rose, 700),
+  route-series-3: colors.value(amber, 700),
+  route-series-4: colors.value('brown', 700),
   on-accent: colors.value(neutral, 0),
   selected: colors.value('cyan', 50),
   selection-border: colors.value('cyan', 200),
@@ -112,6 +123,13 @@ $dark-roles: map.merge(
     border: colors.value(night, 700),
     border-subtle: colors.value(night, 800),
     accent: colors.value('cyan', 400),
+    hud-glow: colors.value('cyan', 400),
+    hud-line: colors.value('cyan', 400),
+    route-series-0: colors.value('violet', 300),
+    route-series-1: colors.value('teal', 300),
+    route-series-2: colors.value(rose, 300),
+    route-series-3: colors.value(amber, 300),
+    route-series-4: colors.value('brown', 300),
     on-accent: colors.value(neutral, 0),
     selected: colors.value('cyan', 950),
     selection-border: colors.value('cyan', 700),
