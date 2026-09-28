@@ -1669,6 +1669,56 @@ After the drain, read only: the previous revision `Active` false and
 its last log line; `messaging.kept-status-unapplied` within the hour;
 the two fuel hand-over rules; users created in the overlap.
 
+### Webhook drain and cutover plan (messaging)
+
+Root: no silent status loss, no deployment yet. What the overlap can do
+to a delivery status, after d0f52a16 and d20e51c9, and how each path
+ends - observed facts first: a revision deployed without traffic had no
+instance and ran nothing (the `0e6add5d` release); after traffic moves,
+new requests, webhooks included, reach the new revision; the previous
+one finishes its requests and runs its background work until it stops
+(19 s then).
+
+| Path | How it ends |
+| --- | --- |
+| The previous binary saves an id whose status the new one kept | applied by `KeptStatusReconciliation` within about a minute; `messaging.kept-status-unapplied` if not |
+| A webhook in flight to the previous revision at the switch, for an id it has not saved yet | dropped, as before F27; later statuses (delivered, read) still apply; if it was the last one - a failure - the message stays accepted and `messaging.accepted-without-status` reviews it after 30 minutes as delivery unknown |
+| The previous instance stops during a provider call | the attempt stays sending: the outbox marks the reply unknown, `routing.fuel-handover-uncertain` reviews a fuel text; a status for it is kept and discarded after an hour, as the id is never saved |
+| Statuses of messages sent before the release | applied by the new binary as they arrive |
+
+So no path ends silently, but the second loses the status itself - a
+failure is shown as "delivery unknown", not as failed with its code -
+because WhatsApp offers no status query. It needs a webhook in flight
+at the switch for a message sent in the seconds before it. The steps
+make that window empty rather than accept it:
+
+0. Owner, before the release: confirm where the business number's
+   webhooks go. On 2026-09-25 a WABA-level override sent them to the demo
+   company's URL; if that still holds, the switch touches no production
+   status. No change to the Meta configuration is part of this plan.
+1. Send freeze for the switch, about two minutes: dispatchers send no
+   replies or fuel texts. Automatic fuel sending, where enabled, runs in
+   the previous binary's background until it stops, so step 2 checks it.
+2. Immediately before moving traffic, read only: no reply queued or
+   sending, no fuel text sending in the last two minutes, and the count
+   of kept statuses (migration 78's table). Anything in flight: wait
+   and read again.
+3. Move traffic; wait for the previous revision's shutdown
+   (`TrafficShutDown` true and its last log line); end the freeze.
+4. Two minutes after: `messaging.kept-status-unapplied` has no finding
+   (reconciled), nor `messaging.outbound-overdue` or the two fuel
+   hand-over rules; `api/diagnostics/background` shows the outbox
+   progressing. The audit runs every ten minutes; its on-demand run is
+   an Admin action and part of the authorized release, not of this plan.
+5. Thirty minutes after: `messaging.accepted-without-status` lists no
+   message sent in the switch window; any it lists is told to the
+   dispatcher as delivery unknown.
+
+Rollback undoes this: the previous binary has neither the kept statuses
+nor the rules, so every early status is dropped again as before F27,
+and silently. Rolling back is a decision to accept that until the next
+release.
+
 Rollback of the API: redeploy the previous image; no Down is needed for
 any of 75-79. After it, the behaviours above return for as long as the
 previous binary runs; kept statuses stay unapplied until a new binary
