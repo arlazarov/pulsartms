@@ -985,6 +985,27 @@
     max-width: none;
     justify-self: stretch;
   }
+  // A chosen truck's panel is as tall as what it says; the map shows
+  // beneath it. The empty state keeps the column.
+  .fleet-map-stage
+    > .fleet-map-info-reserved.fleet-map-inspector.has-selection {
+    align-self: start;
+    max-height: 100%;
+  }
+  // In daylight a later trip's card is a fine solid rim with its colour on
+  // a bar at the left, not a dashed outline.
+  :root[data-theme='light'] {
+    .fleet-trip-chain__card {
+      border: 1px solid ui.theme(border);
+      box-shadow: inset 3px 0 0 currentColor;
+    }
+    .fleet-trip-chain .is-selected .fleet-trip-chain__card {
+      border-color: currentColor;
+      box-shadow:
+        inset 3px 0 0 currentColor,
+        0 0 0 3px ui.theme(accent, 0.12);
+    }
+  }
   .fleet-map-info-reserved {
     // No scrollbar lane: the head reaches the panel's right edge; the
     // panel still scrolls by wheel, touch and keyboard.

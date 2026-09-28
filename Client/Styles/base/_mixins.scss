@@ -236,12 +236,14 @@
     fn.shadow(panel);
 
   :root[data-theme='light'] & {
+    // Clean white glass: opaque enough, and not saturating, so the map's
+    // colours do not tint it.
     background: linear-gradient(
       180deg,
-      fn.theme(surface, 0.86),
-      fn.theme(surface-soft, 0.7)
+      fn.theme(surface, 0.93),
+      fn.theme(surface-soft, 0.86)
     );
-    backdrop-filter: blur(22px) saturate(1.6) brightness(1.04);
+    backdrop-filter: blur(18px) saturate(1);
     box-shadow:
       inset 0 1px 0 fn.theme(surface),
       inset 0 0 0 1px fn.theme(surface, 0.4),

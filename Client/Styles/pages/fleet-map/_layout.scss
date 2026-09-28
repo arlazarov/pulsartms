@@ -83,3 +83,17 @@
     opacity: 0;
   }
 }
+
+// The light road map in the workspace's key (the owner, September 27):
+// Google's pastel greens and blues quieted to cool steel, a trace of blue
+// kept on the water. Only Google's own layer is filtered - the trucks,
+// roads and marks are drawn above it and keep their colours - and never
+// the satellite imagery.
+:root[data-theme='light'] #fleet-map:not(.is-satellite) .gm-style {
+  filter: grayscale(0.82) sepia(0.12) hue-rotate(175deg) brightness(1.03)
+    contrast(0.94);
+}
+#fleet-map .gm-style {
+  transition: filter 300ms ease;
+}
+

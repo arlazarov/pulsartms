@@ -14,7 +14,8 @@ visual inspection only, never acceptance.
 | Top bar: brand, section / page, theme, clock, account | Built, Seen dark/light |
 | Rail of destinations, glass panels with corner ticks, canvas glows | Built, Seen |
 | Dark is the default theme; no white flash at start | Built (client start); server "never chosen" is Dispatch's |
-| Light theme in the same class as dark: cool steel canvas with a fine instrument grid and stronger cyan light; panels as white glass with a cyan rim, bold corner ticks, lit top edge, cool shadow and cyan halo | Built (first pass; the Google light basemap itself is unchanged) |
+| Light theme in the same class as dark: steel canvas with a fine instrument grid; clean white glass panels (no map tint) with a cyan rim, bold ticks and cool shadow; Google's light road map quieted to cool steel (satellite untouched, trucks and routes keep their colours); later trip cards a solid rim with a colour bar | Built, Seen light 1100 px |
+| Truck panel as tall as its content; the map shows beneath it | Built, Seen |
 | Theme switch applies without a page reload: the map is made again in place (Google fixes its scheme at creation), keeping camera, chosen truck, Follow, list, chain and panel | Built, Seen dark→light |
 | Theme switch is smooth: the page cross-fades its colours; the last map stays under the new one until it has drawn, then fades out | Built |
 | Phone shell (pulse top bar, bottom nav) | Open (mobile pass later) |

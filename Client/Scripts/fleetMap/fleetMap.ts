@@ -409,9 +409,12 @@ export async function createFleetMap(
     );
     cleanup.push(() => clickListener.remove());
     // Satellite imagery at close zoom, the road map further out.
+    // The page's styles quiet the light road map, never the imagery.
+    element.classList.toggle('is-satellite', false);
     const mapTypeListener = map.addListener('idle', () => {
       const mapType = (map.getZoom() ?? 0) >= 15 ? 'hybrid' : 'roadmap';
       if (map.getMapTypeId() !== mapType) map.setMapTypeId(mapType);
+      element.classList.toggle('is-satellite', mapType === 'hybrid');
     });
     cleanup.push(() => mapTypeListener.remove());
     let routeVersion = 0;
