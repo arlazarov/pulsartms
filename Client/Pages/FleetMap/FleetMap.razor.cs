@@ -105,6 +105,12 @@ public partial class FleetMap : IAsyncDisposable
 
   private void ToggleMobileDetails() => _mobileExpanded = !_mobileExpanded;
 
+  private string CompactDistance =>
+    _routeState?.Plan is null || LeftMiles is not { } miles
+      ? "—"
+      : $"{DisplayUnits.Default.DistanceValue(miles)} mi / "
+        + $"{DisplayUnits.Default.Kilometers(miles)} km";
+
   private double? LeftMiles =>
     DistanceLeft.Miles(NextStopMiles, RemainingMiles);
 

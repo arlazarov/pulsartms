@@ -233,16 +233,15 @@
             @if (SelectedTruck is { } compact)
             {
                 <button type="button" class="fleet-map-inspector__compact"
+                        aria-label="@($"Truck {compact.UnitNumber}, "
+                            + $"{CompactDistance} to the next stop")"
                         aria-expanded="@(_mobileExpanded ? "true" : "false")"
                         aria-controls="fleet-map-details"
                         @onclick="ToggleMobileDetails">
-                    <strong>Truck @compact.UnitNumber</strong>
-                    @* Miles and kilometres together here, whatever the
-                       page's unit (the owner, September 28). *@
-                    <span>@(_routeState?.Plan is null || LeftMiles is null
-                        ? "Next stop —"
-                        : DisplayUnits.Default.FormatDistance(LeftMiles)
-                          + " to next stop")</span>
+                    @* The unit and the distance alone, miles and
+                       kilometres together (the owner, September 28). *@
+                    <strong>@compact.UnitNumber</strong>
+                    <span>@CompactDistance</span>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
                 </button>
             }
