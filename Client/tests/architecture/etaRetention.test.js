@@ -15,12 +15,18 @@ test('previous ETA retention is bounded, stop-scoped and limited to pending reca
     new URL('../../Pages/FleetMap/FleetMap.razor', import.meta.url),
     'utf8',
   );
-  // The card head and the route section each show the arrival, so each is
-  // given the same dispatch, stop and pending flag - and its own memory,
-  // because one memory updated twice per render would advance its
-  // "stop changed" state twice for a single change.
+  // The truck panel's next stop line (owner, September 27: "Next stop line
+  // at the top of the truck panel", which replaced the old card head) and
+  // the route section each show the arrival, so each is given the same
+  // dispatch, stop and pending flag - and its own memory, because one
+  // memory updated twice per render would advance its "stop changed" state
+  // twice for a single change.
   const estimates = page.match(/<ArrivalEstimate\b[\s\S]*?\/>/g) || [];
-  assert.equal(estimates.length, 2, 'the head and the route each retain one');
+  assert.equal(
+    estimates.length,
+    2,
+    'the next stop line and the route each retain one',
+  );
   const memories = new Set();
   for (const estimate of estimates) {
     const memory = estimate.match(/Memory="(_\w+)"/)?.[1];
@@ -30,5 +36,9 @@ test('previous ETA retention is bounded, stop-scoped and limited to pending reca
     assert.match(estimate, /Stop="ScheduledStop"/);
     assert.match(estimate, /Refreshing="_etaRefreshPending"/);
   }
-  assert.equal(memories.size, 2, 'the two estimates keep separate memories');
+  assert.equal(
+    memories.size,
+    estimates.length,
+    'the estimates keep separate memories',
+  );
 });

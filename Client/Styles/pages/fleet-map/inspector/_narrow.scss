@@ -15,20 +15,10 @@
       grid-template-rows: none;
       row-gap: ui.pg(xs);
       padding-block: ui.pg(xs);
-      > .fleet-map-route-info__visit,
       > .fleet-map-route-info__facts,
       > .fleet-map-route-info__messages {
         grid-column: 1;
         grid-row: auto;
-      }
-      > .fleet-map-route-info__visit {
-        padding-inline-end: 0;
-        padding-block-end: ui.pg(sm);
-        border-inline-end: 0;
-        border-block-end: 1px solid ui.theme(border-subtle);
-      }
-      .fleet-map-route-info__appointment > strong {
-        overflow-wrap: normal;
       }
     }
   }
@@ -49,10 +39,7 @@
       grid-template-columns: minmax(0, 1fr) max-content;
       grid-template-areas:
         'eyebrow controls'
-        'title controls'
-        'crew crew'
-        'distance distance'
-        'hours hours';
+        'title controls';
       gap: ui.pg(xs) ui.pg(sm);
     }
     .fleet-map-inspector__identity {
@@ -64,78 +51,9 @@
     .fleet-map-inspector__title {
       grid-area: title;
     }
-    // On a row of its own the crew needs no rule before it.
-    .fleet-map-inspector__title + .fleet-map-inspector__crew > :first-child {
-      padding-inline-start: 0;
-      border-inline-start: 0;
-    }
-    .fleet-map-inspector__crew {
-      grid-area: crew;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: ui.pg(xs) ui.pg(sm);
-      min-width: 0;
-    }
-    .fleet-map-inspector__row {
-      grid-template-columns: minmax(0, 1fr);
-      row-gap: ui.pg(sm);
-      > :nth-child(2) {
-        justify-self: start;
-        padding-inline-start: 0;
-        border-inline-start: 0;
-      }
-    }
-    .fleet-map-mobile-summary__remaining {
-      min-inline-size: 0;
-    }
-    // "Order 568349636" is one unbreakable phrase, and at 200% text it is
-    // wider than a phone card. The label may step above its number; the
-    // number itself still never breaks.
-    .fleet-map-mobile-summary__order {
-      flex-wrap: wrap;
-      white-space: normal;
-    }
-    // Beside the crew, what is left takes what room there is and folds
-    // rather than ellipsising; it never breaks between a number and its
-    // unit: those gaps are non-breaking.
-    .fleet-map-mobile-summary__distance {
-      justify-self: start;
-      justify-items: start;
-      inline-size: auto;
-      max-inline-size: 100%;
-    }
-    .fleet-map-mobile-summary__distance-text {
-      overflow: visible;
-      text-overflow: clip;
-      white-space: normal;
-    }
-    // The clocks start the row on their own and fold when they must. A
-    // hairline that a fold puts at the start of a line separates nothing,
-    // so a phone card sets its readings apart by space alone.
-    .fleet-map-inspector__clocks {
-      justify-self: start;
-      max-inline-size: 100%;
-      --hos-wrap: wrap;
-      --hos-gap: #{ui.pg(xs)} #{ui.pg(md)};
-      --hos-divider: 0;
-      --hos-divider-gap: 0;
-    }
 
     // Nothing here re-columns on open. The header a dispatcher reads while
     // the card is shut keeps every row and every column when it opens;
     // opening only adds the actions and the detail below them.
-  }
-
-  // Too narrow for a label column beside the arrival: each label takes
-  // only what it needs, and the booking's value goes under its label.
-  @container map-truck-card
-    (width < #{ui.breakpoint(map-truck-arrival-stacked)}) {
-    .fleet-map-inspector__arrival {
-      --route-fact-label: 0px;
-    }
-    .fleet-map-inspector__appointment {
-      grid-template-columns: minmax(0, 1fr);
-    }
   }
 }

@@ -3,6 +3,8 @@
 // What the card says about the run when it is opened: the stop on the left,
 // the facts about it on the right.
 .fleet-map-inspector[data-inspector-mode='truck'] {
+  // Two columns of equal weight. Left is the stop and the window it has to
+  // make; right is the load, as rows of label and value on one shared
   // label column so the eye runs down the values.
   .fleet-map-route-info {
     --route-fact-label: 7rem;
@@ -12,20 +14,6 @@
     gap: ui.pg(xs) ui.pg(lg);
     min-height: 0;
     padding: ui.pg(sm) ui.pg(md);
-    // The next stop and where the truck is now, side by side when the
-    // column has room for both and one under the other when it has not.
-    &__visit {
-      grid-column: 1;
-      grid-row: 1;
-      align-self: stretch;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
-      align-content: start;
-      gap: ui.pg(xs) ui.pg(lg);
-      min-width: 0;
-      padding-inline-end: ui.pg(lg);
-      border-inline-end: 1px solid ui.theme(border-subtle);
-    }
     // The actions, in a grid of equal cells beside the stop: the cycle
     // and the fuel on arrival left this column (the owner, September 26)
     // and what is left of the load moved up to the stop's heading, so the
@@ -57,41 +45,6 @@
         display: none;
       }
     }
-    // The stop's other column: what is left of the load over where the
-    // truck is, both at the top of it.
-    &__where {
-      display: grid;
-      align-content: start;
-      gap: ui.pg(xs);
-      min-width: 0;
-    }
-    // What is left of the load, in the shape of the location under it: an
-    // icon and a quiet label on one line, the value under the label, which
-    // never breaks between its number, unit and kilometres. One line, then
-    // two, then four as the column narrowed was not a shape at all.
-    &__metric {
-      display: grid;
-      grid-template-columns: max-content minmax(0, 1fr);
-      align-content: start;
-      align-items: center;
-      column-gap: ui.pg(sm);
-      row-gap: ui.pg(micro);
-      min-width: 0;
-      margin: 0;
-      padding: 0;
-      border: 0;
-      > svg {
-        grid-row: 1;
-        inline-size: ui.fs(heading);
-        block-size: ui.fs(heading);
-        color: ui.theme(text-secondary);
-      }
-      > .fleet-map-route-info__progress {
-        grid-column: 2;
-        flex-wrap: nowrap;
-        white-space: nowrap;
-      }
-    }
     &__label {
       margin: 0;
       font-weight: 400;
@@ -101,185 +54,10 @@
       color: ui.theme(text-secondary);
       font-size: ui.fs(small);
     }
-    // The section names itself the way the card's other groups do not
-    // need to: in small capitals, over the stop it introduces.
-    &__section {
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-    // The visit and its booking, led by the truck that makes it.
-    &__delivery > svg {
-      align-self: center;
-      inline-size: ui.fs(heading);
-      block-size: ui.fs(heading);
-      color: ui.theme(text-secondary);
-    }
-    &__progress {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 0 ui.pg(xs);
-      min-width: 0;
-      font-variant-numeric: tabular-nums;
-    }
-    &__total {
-      margin: 0;
-      color: ui.theme(text-secondary);
-    }
-    &__metric strong {
-      color: ui.theme(text);
-      font-size: ui.fs(body);
-      font-weight: 600;
-      line-height: 1.4;
-    }
-    // The stop: what happens there, who it is, where, and by when. The
-    // wider page layout places these two by grid line; here they simply
-    // follow one another down the stop's own column.
-    &__next,
-    &__appointment {
-      grid-column: auto;
-      grid-row: auto;
-      min-width: 0;
-      min-height: 0;
-      padding: 0;
-      border: 0;
-    }
-    &__next {
-      display: grid;
-      // Beside a taller neighbour the stop is stretched to its height; its
-      // heading and its address stay together at the top rather than a
-      // blank band opening between them (the owner, September 26).
-      align-content: start;
-      gap: ui.pg(xs);
-    }
-    &__visit-heading {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: ui.pg(xs);
-      min-width: 0;
-    }
-    &__distance {
-      display: inline-flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: ui.pg(xs);
-      color: ui.theme(text-secondary);
-      font-size: ui.fs(body);
-      > strong {
-        color: ui.theme(text);
-        white-space: nowrap;
-      }
-      small {
-        font: inherit;
-        font-weight: 400;
-      }
-      > .fleet-map-route-info__secondary {
-        font-size: inherit;
-        white-space: nowrap;
-      }
-    }
-    &__next strong,
-    &__appointment > strong {
-      font-size: ui.fs(body);
-      font-weight: 600;
-    }
     &__copy-address {
       flex-direction: row;
       align-items: center;
       gap: ui.pg(xs);
-    }
-    // Street and city share a line when the column has room for both, so
-    // the stop takes the same four lines as the facts beside it.
-    &__address-lines {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 0 ui.pg(xs);
-      text-align: start;
-    }
-    // The street and the city each take a line, as an envelope does.
-    &__address-lines > .fleet-map-route-info__street,
-    &__address-lines > .fleet-map-route-info__address {
-      flex-basis: 100%;
-    }
-    &__address-lines > span,
-    &__address-lines > .fleet-map-route-info__address {
-      font-size: ui.fs(body);
-      font-weight: 400;
-      color: ui.theme(text-secondary);
-    }
-    // One line, cut short: a long facility name took two and pushed the
-    // address down; the full name is the block's title.
-    &__address-lines > .fleet-map-route-info__facility {
-      flex-basis: 100%;
-      min-width: 0;
-      color: ui.theme(text);
-      font-size: ui.fs(lead);
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    &__appointment {
-      display: flex;
-      // The page-wide rule stacks the label over the window; here there is
-      // room for both on one line, and the stop stays four lines tall.
-      flex-direction: row;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 0 ui.pg(xs);
-      > strong {
-        overflow-wrap: anywhere;
-      }
-    }
-    &.has-final-stop .fleet-map-route-info__distance,
-    &.is-awaiting-route .fleet-map-route-info__distance {
-      display: none;
-    }
-    // At the load's last stop what is left of the load is the head's Left.
-    &.has-final-stop .fleet-map-route-info__metric {
-      display: none;
-    }
-  }
-  // A truck with no work to show keeps only where it is, not a skeleton of
-  // the route it does not have.
-  .fleet-map-inspector__where {
-    padding: ui.pg(sm) ui.pg(md);
-  }
-  // Where the truck is, under the facts: the pin and its label on one
-  // line, the address under the label. A long one wraps; it never pushes
-  // the card sideways.
-  .fleet-map-inspector__location {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-    // Beside a taller neighbour the block is stretched to its height; its
-    // two rows stay together at the top rather than spreading through it.
-    align-content: start;
-    column-gap: ui.pg(sm);
-    row-gap: ui.pg(micro);
-    align-items: center;
-    > svg {
-      grid-row: 1;
-      inline-size: ui.fs(heading);
-      block-size: ui.fs(heading);
-      color: ui.theme(text-secondary);
-    }
-    > span {
-      color: ui.theme(text-secondary);
-      font-size: ui.fs(small);
-    }
-    > strong {
-      grid-column: 2;
-      min-width: 0;
-      max-inline-size: 100%;
-      font-size: ui.fs(body);
-      font-weight: 400;
-      > button {
-        max-inline-size: 100%;
-        text-align: start;
-        overflow-wrap: anywhere;
-      }
     }
   }
 }

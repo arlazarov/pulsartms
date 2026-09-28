@@ -31,10 +31,9 @@ public partial class TruckWeather : IDisposable
   [Parameter]
   public CancellationToken OwnerCancellation { get; set; }
 
-  // What this reading shows, for a page that repeats it elsewhere without
-  // reading the weather a second time.
+  // "reading" (the truck readings' line) or "fact" (a truck panel fact).
   [Parameter]
-  public EventCallback<TruckWeatherShown> Shown { get; set; }
+  public string Variant { get; set; } = "reading";
 
   private (Guid, bool)? selection;
   private CancellationTokenSource? lifetime;
@@ -69,7 +68,6 @@ public partial class TruckWeather : IDisposable
     lifetime?.Dispose();
     lifetime = null;
     reading = null;
-    _ = Shown.InvokeAsync(new(Icon, Value, Title));
     if (!Current || TruckId == Guid.Empty)
       return;
     lifetime = CancellationTokenSource.CreateLinkedTokenSource(
@@ -118,7 +116,6 @@ public partial class TruckWeather : IDisposable
           next = null;
         reading = next;
         await InvokeAsync(StateHasChanged);
-        await InvokeAsync(() => Shown.InvokeAsync(new(Icon, Value, Title)));
         emptyReads = next is null ? emptyReads + 1 : 0;
         var delay =
           next is not null ? TimeSpan.FromMinutes(10)
@@ -165,6 +162,3 @@ public partial class TruckWeather : IDisposable
     lifetime?.Dispose();
   }
 }
-
-// The shown outside temperature: its icon, its words and its source line.
-public sealed record TruckWeatherShown(string Icon, string Value, string Title);

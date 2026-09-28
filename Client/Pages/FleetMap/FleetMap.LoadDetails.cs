@@ -10,13 +10,10 @@ public partial class FleetMap
   private int _loadDetailsVersion;
   private readonly ArrivalDisplayMemory _arrivalMemory = new();
 
-  // The card head shows the same arrival as the route section, but keeps its
-  // own memory: one instance updated twice per render would advance its
-  // "stop changed" state twice for a single change.
-  private readonly ArrivalDisplayMemory _headArrivalMemory = new();
-
-  // The docked truck panel's next-stop line, a third reader of the same
-  // forecast, with its own memory for the same reason.
+  // The truck panel's next-stop line shows the same arrival as the retained
+  // route section, but keeps its own memory: one instance updated twice per
+  // render would advance its "stop changed" state twice for a single
+  // change.
   private readonly ArrivalDisplayMemory _panelArrivalMemory = new();
   private bool NextStopIsFinal =>
     _routeState?.Plan

@@ -82,9 +82,22 @@ test('the roads a truck is given are the map route roles, in order', () => {
 const mapsOwn = new Map([
   ['#006aeb', 'the line a truck is driving now'],
   ['#315eea', 'the badge of a stop on that line'],
-  ['#1e293b', 'the edge of a stop that is picked'],
+  // A picked stop's rim is white now (the owner, September 27: glass-core
+  // badges, "the picked badge's rim turns white"): #1e293b is gone.
   ['#0b1626', 'the dark glass core under every mark on the map'],
-  ['#22d3ee', "the map instruments' accent: sonar, fuel pump and its number"],
+  [
+    '#22d3ee',
+    "the map instruments' accent: sonar, road flow, the fuel plan's number",
+  ],
+  // The owner's HUD marks (September 27): truck tags as HUD plates, the
+  // flow grains on the roads, empty miles as a dashed amber line.
+  ['#0c2636', "a truck tag's ink on the light map's plate"],
+  ['#083344', "the chosen truck tag's ink on the light map's plate"],
+  ['#dceefa', "a truck tag's ink on the dark map's plate"],
+  ['#ecfeff', "the chosen truck tag's ink on the dark map's plate"],
+  ['#e0fcff', "the bright head of a road's flow on the dark map"],
+  ['#d97706', 'empty miles on the light map'],
+  ['#fbbf24', 'empty miles on the dark map'],
   ['#9169c9', 'a road still to come'],
   ['#ffffff', 'paper, behind a badge or under a line'],
   ['#000000', 'ink, where a shadow is drawn'],

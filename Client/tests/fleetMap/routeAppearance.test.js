@@ -4,9 +4,33 @@ import { routeLayers } from '../../Scripts/fleetMap/rendering/routeAppearance.ts
 import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.ts';
 import { sceneMetrics } from '../../Scripts/fleetMap/rendering/sceneMetrics.ts';
 
-// An upcoming road or empty miles at rest, and the white keyline around it.
+// An upcoming road at rest, and the white keyline the dark map draws
+// around it.
 const secondary = sceneMetrics.routeSecondaryWidth;
 const keyline = secondary + sceneMetrics.routeOutlineWidth;
+// The light map draws every road as a finer line of its colour in a haze of
+// the same colour, with no white casing (the owner, September 27): three
+// quarters of the width, never under three pixels, the haze five wider.
+const fine = width => Math.max(3, width * 0.75);
+// Empty miles as the HUD draws them (the owner, September 27): a fine
+// dashed amber line over a faint amber halo, no white casing, one width
+// whether picked or not.
+const lightAmber = [217, 119, 6, 235];
+const darkAmber = [251, 191, 36, 235];
+const emptyWidth = 2.5;
+const emptyHalo = 8;
+const emptyDashes = [2.2, 2.2];
+
+// The map's theme is the page's; without a page the light map stands.
+function onDarkMap(check) {
+  const outer = globalThis.document;
+  globalThis.document = { documentElement: { dataset: { theme: 'dark' } } };
+  try {
+    check();
+  } finally {
+    globalThis.document = outer;
+  }
+}
 import {
   currentRouteColor,
   currentRouteLineColor,
@@ -92,8 +116,12 @@ test('per-load route colors invalidate only changed appearance and keep role def
   delete line.routeColor;
   assert.deepEqual(routeLayers(line, Layer)[1].getColor, [145, 105, 201, 240]);
   line.routeRole = 'deadhead';
-  // Empty miles carry no load, so they are orange wherever they appear.
-  assert.deepEqual(routeLayers(line, Layer)[1].getColor, [234, 88, 12, 255]);
+  // Empty miles carry no load, so they are amber wherever they appear.
+  assert.deepEqual(routeLayers(line, Layer)[1].getColor, lightAmber);
+  onDarkMap(() => {
+    line.strokeWeight = 3;
+    assert.deepEqual(routeLayers(line, Layer)[1].getColor, darkAmber);
+  });
 });
 
 test('route outline shares geometry and cached layers survive camera-only updates', () => {
@@ -116,8 +144,8 @@ test('route outline shares geometry and cached layers survive camera-only update
   const layers = routeLayers(line, Layer);
   assert.equal(layers.length, 2);
   assert.equal(layers[0].data, layers[1].data);
-  assert.equal(layers[0].getWidth, keyline);
-  assert.equal(layers[1].getWidth, secondary);
+  assert.equal(layers[0].getWidth, emptyHalo);
+  assert.equal(layers[1].getWidth, emptyWidth);
   assert.equal(routeLayers(line, Layer), layers);
   line.visible = false;
   assert.equal(routeLayers(line, Layer)[1].visible, false);
@@ -130,7 +158,7 @@ test('route outline shares geometry and cached layers survive camera-only update
   assert.notDeepEqual(routeLayers(line, Layer)[1].getColor, emptyColor);
 });
 
-test('future routes retain their hue with a secondary stroke and bounded white outline', () => {
+test('future routes retain their hue with a secondary stroke and a bounded outline', () => {
   class Layer {
     constructor(options) {
       Object.assign(this, options);
@@ -149,9 +177,10 @@ test('future routes retain their hue with a secondary stroke and bounded white o
   };
   const [outline, route] = routeLayers(future, Layer);
   assert.deepEqual(route.getColor, [145, 105, 201, 240]);
-  assert.equal(route.getWidth, secondary);
-  assert.equal(outline.getWidth, keyline);
-  assert.deepEqual(outline.getColor, [255, 255, 255, 210]);
+  assert.equal(route.getWidth, fine(secondary));
+  // Light: a haze of the road's own colour, not a white casing.
+  assert.equal(outline.getWidth, fine(secondary) + 5);
+  assert.deepEqual(outline.getColor, [145, 105, 201, 28]);
   assert.equal(outline.data, route.data);
   assert.equal(
     routeLayers(future, Layer)[1],
@@ -164,8 +193,20 @@ test('future routes retain their hue with a secondary stroke and bounded white o
   );
   assert.deepEqual(
     routeLayers({ ...future, routeRole: 'deadhead' }, Layer)[1].getColor,
-    [234, 88, 12, 255],
+    lightAmber,
   );
+  // The dark map keeps the bounded white keyline. A theme switch makes the
+  // map and its lines again, so the dark line is a new one.
+  onDarkMap(() => {
+    const [darkOutline, darkRoute] = routeLayers(
+      { id: 'future', data: future.data, strokeWeight: 2, routeRole: 'future' },
+      Layer,
+    );
+    assert.equal(darkRoute.getWidth, secondary);
+    assert.equal(darkOutline.getWidth, keyline);
+    assert.deepEqual(darkOutline.getColor, [255, 255, 255, 210]);
+    assert.equal(darkOutline.data, darkRoute.data);
+  });
 });
 
 test('zoomed-out current future and empty routes keep a readable minimum width', () => {
@@ -174,7 +215,7 @@ test('zoomed-out current future and empty routes keep a readable minimum width',
       Object.assign(this, options);
     }
   }
-  for (const role of ['current', 'future', 'deadhead']) {
+  const check = (role, dark) => {
     const line = {
       id: role,
       data: [
@@ -186,73 +227,98 @@ test('zoomed-out current future and empty routes keep a readable minimum width',
       strokeWeight: 2,
       routeRole: role,
     };
+    const drawn = width => (dark ? width : fine(width));
+    const casing = width =>
+      dark ? width + sceneMetrics.routeOutlineWidth : fine(width) + 5;
     const [outline, route] = routeLayers(line, Layer);
-    assert.equal(route.getWidth, role === 'current' ? 5 : secondary);
-    assert.equal(outline.getWidth, role === 'current' ? 7 : keyline);
+    if (role === 'deadhead') {
+      assert.equal(route.getWidth, emptyWidth);
+      assert.equal(outline.getWidth, emptyHalo);
+    } else {
+      const rest = role === 'current' ? 5 : secondary;
+      assert.equal(route.getWidth, drawn(rest));
+      assert.equal(outline.getWidth, casing(rest));
+      assert.ok(route.getWidth >= 3, 'never thinner than three pixels');
+    }
     assert.equal(route.widthUnits, 'pixels');
     assert.equal(routeLayers(line, Layer)[1], route);
     line.strokeWeight = 4;
     line.routeSelected = true;
     assert.equal(
       routeLayers(line, Layer)[1].getWidth,
-      role === 'current' ? 5 : 7,
+      role === 'deadhead' ? emptyWidth : drawn(role === 'current' ? 5 : 7),
       'explicit wider future strokes remain supported',
     );
-  }
+  };
+  for (const role of ['current', 'future', 'deadhead']) check(role, false);
+  onDarkMap(() => {
+    for (const role of ['current', 'future', 'deadhead']) check(role, true);
+  });
 });
 
+// Measured on the dark map, which keeps the full widths; the light map
+// draws the same widths finer (the owner, September 27).
 test('current route stays at five pixels while a selected future route gets explicit emphasis', () => {
   class Layer {
     constructor(options) {
       Object.assign(this, options);
     }
   }
-  for (const strokeWeight of [2, 3, 4]) {
-    const line = {
-      id: 'current',
+  onDarkMap(() => {
+    for (const strokeWeight of [2, 3, 4]) {
+      const line = {
+        id: 'current',
+        data: [
+          [
+            [0, 0],
+            [1, 1],
+          ],
+        ],
+        strokeWeight,
+        routeRole: 'current',
+      };
+      const [outline, route] = routeLayers(line, Layer);
+      assert.equal(route.getWidth, 5);
+      assert.equal(outline.getWidth, 7);
+      assert.equal(routeLayers(line, Layer)[1], route);
+      line.strokeWeight = 6;
+      assert.equal(
+        routeLayers(line, Layer)[1].getWidth,
+        7.5,
+        'larger explicit emphasis remains supported',
+      );
+    }
+    const future = {
+      id: 'future',
       data: [
         [
           [0, 0],
           [1, 1],
         ],
       ],
-      strokeWeight,
-      routeRole: 'current',
+      strokeWeight: 4,
+      routeRole: 'future',
     };
-    const [outline, route] = routeLayers(line, Layer);
-    assert.equal(route.getWidth, 5);
-    assert.equal(outline.getWidth, 7);
-    assert.equal(routeLayers(line, Layer)[1], route);
-    line.strokeWeight = 6;
+    assert.equal(routeLayers(future, Layer)[1].getWidth, secondary);
+    future.routeSelected = true;
     assert.equal(
-      routeLayers(line, Layer)[1].getWidth,
-      7.5,
-      'larger explicit emphasis remains supported',
+      routeLayers(future, Layer)[1].getWidth,
+      7,
+      'selection expands only the chosen future route',
     );
-  }
-  const future = {
-    id: 'future',
-    data: [
-      [
-        [0, 0],
-        [1, 1],
-      ],
-    ],
-    strokeWeight: 4,
-    routeRole: 'future',
+    future.routeSelected = false;
+    assert.equal(routeLayers(future, Layer)[1].getWidth, secondary);
+  });
+  const light = {
+    id: 'current',
+    data: [],
+    strokeWeight: 2,
+    routeRole: 'current',
   };
-  assert.equal(routeLayers(future, Layer)[1].getWidth, secondary);
-  future.routeSelected = true;
-  assert.equal(
-    routeLayers(future, Layer)[1].getWidth,
-    7,
-    'selection expands only the chosen future route',
-  );
-  future.routeSelected = false;
-  assert.equal(routeLayers(future, Layer)[1].getWidth, secondary);
+  assert.equal(routeLayers(light, Layer)[1].getWidth, fine(5));
 });
 
-test('empty-mile dashes keep cached extensions and align their white outlines without changing geometry', () => {
+test('empty-mile dashes keep cached extensions without changing geometry', () => {
   class Layer {
     constructor(options) {
       Object.assign(this, options);
@@ -277,22 +343,22 @@ test('empty-mile dashes keep cached extensions and align their white outlines wi
         path,
         'dashes never split, copy or densify route points',
       );
-      assert.equal(layer.extensions, extensions);
-      assert.equal(
-        layer.dashJustified,
-        false,
-        'high-precision continuity must not restart per segment',
-      );
       assert.equal(layer.capRounded, true);
       assert.equal(layer.jointRounded, true);
     }
-    assert.deepEqual(initial[1].getColor, [234, 88, 12, 255]);
-    for (let index = 0; index < 2; index++)
-      assert.equal(
-        (initial[0].getDashArray[index] * initial[0].getWidth) / 2,
-        (initial[1].getDashArray[index] * initial[1].getWidth) / 2,
-        'outline and fill have matching physical dash/gap lengths',
-      );
+    // The dashed line carries the extension; the halo under it is solid,
+    // so there are no two dash patterns to keep aligned.
+    const [halo, dashes] = initial;
+    assert.equal(dashes.extensions, extensions);
+    assert.equal(
+      dashes.dashJustified,
+      false,
+      'high-precision continuity must not restart per segment',
+    );
+    assert.deepEqual(dashes.getDashArray, emptyDashes);
+    assert.equal(halo.getDashArray, undefined);
+    assert.equal(halo.pickable, false);
+    assert.deepEqual(dashes.getColor, lightAmber);
     for (let frame = 0; frame < 100; frame++)
       assert.equal(routeLayers(line, Layer, extensions), initial);
     line.strokeWeight = 4;
@@ -358,11 +424,14 @@ test('scene-layer composition forwards one stable dash extension port only to em
     vehicles: [],
   };
   const initial = render(input);
+  // Only the dashed line of the empty miles; its halo is solid (the owner,
+  // September 27).
   for (const layer of initial)
     assert.equal(
       layer.props.extensions,
-      layer.props.id.startsWith('deadhead') ? routeDashExtensions : undefined,
+      layer.props.id === 'deadhead' ? routeDashExtensions : undefined,
     );
+  assert.ok(initial.some(layer => layer.props.id === 'deadhead'));
   assert.deepEqual(render({ ...input, stationZoom: 15 }), initial);
 });
 
@@ -429,7 +498,7 @@ test('selected next routes dim every other road and restore their appearance whe
   );
   assert.equal(
     selected.at(-1).getWidth,
-    5,
+    fine(5),
     'selection changes priority without increasing thickness',
   );
   assert.deepEqual(selected.at(-1).getColor, [145, 105, 201, 240]);
@@ -474,31 +543,44 @@ test('selected next routes dim every other road and restore their appearance whe
   assert.ok(roads().every(layer => layer.data === data));
 });
 
+// The road already driven is a HUD trace (the owner, September 27): a fine
+// solid line of the instrument ink over a faint halo of the same, no white
+// casing, quieter and finer than the road ahead.
 test('traveled route stays solid and dimmer than remaining route', () => {
   class Layer {
     constructor(options) {
       Object.assign(this, options);
     }
   }
-  const line = {
-    id: 'history',
-    data: [],
-    strokeWeight: 4,
-    routeRole: 'traveled',
+  const check = ink => {
+    const line = {
+      id: 'history',
+      data: [],
+      strokeWeight: 4,
+      routeRole: 'traveled',
+    };
+    const history = routeLayers(line, Layer);
+    const current = routeLayers({ ...line, routeRole: 'current' }, Layer);
+    assert.ok(history[1].getColor[3] > 0);
+    assert.ok(history[1].getColor[3] < current[1].getColor[3]);
+    assert.ok(history[0].getColor[3] < history[1].getColor[3]);
+    assert.deepEqual(history[1].getColor.slice(0, 3), ink);
+    assert.deepEqual(history[0].getColor.slice(0, 3), ink);
+    assert.ok(history[1].getWidth < current[1].getWidth);
+    assert.equal(history[1].getDashArray, undefined);
+    assert.equal(history[0].pickable, false);
+    assert.equal(history[0].data, history[1].data);
+    assert.equal(routeLayers(line, Layer), history);
   };
-  const history = routeLayers(line, Layer);
-  const current = routeLayers({ ...line, routeRole: 'current' }, Layer);
-  assert.ok(history[1].opacity > 0);
-  assert.ok(history[1].opacity < current[1].opacity);
-  assert.deepEqual(history[1].getColor, current[1].getColor);
-  assert.equal(history[1].getDashArray, undefined);
+  check([14, 116, 144]);
+  onDarkMap(() => check([34, 211, 238]));
 });
 
 // An unpicked later load's road is fine dashes in the load's colour, told
-// from empty miles (dashed orange) by the dashes' rhythm; the picked one is
+// from empty miles (dashed amber) by the dashes' rhythm; the picked one is
 // solid at full width (the owner, September 27, replacing the solid rule of
 // September 26).
-test('an unpicked upcoming road is fine dashes in its colour and empty miles are dashed orange', () => {
+test('an unpicked upcoming road is fine dashes in its colour and empty miles are dashed amber', () => {
   class Layer {
     constructor(options) {
       Object.assign(this, options);
@@ -517,26 +599,46 @@ test('an unpicked upcoming road is fine dashes in its colour and empty miles are
     routeColor: futureRouteColor(0),
   });
   const extensions = [{ dash: true }];
-  const [outline, loaded] = routeLayers(road('future'), Layer, extensions);
-  assert.deepEqual(loaded.getColor, futureRouteColor(0));
-  assert.deepEqual(loaded.getDashArray, sceneMetrics.routeFutureDashArray);
-  assert.equal(loaded.extensions, extensions);
-  assert.deepEqual(outline.getColor, [255, 255, 255, 210]);
-  const picked = routeLayers(
-    { ...road('future'), routeSelected: true },
-    Layer,
-    extensions,
-  )[1];
-  assert.equal(picked.getDashArray, undefined);
-  const empty = routeLayers(road('deadhead'), Layer, extensions)[1];
-  assert.deepEqual(empty.getColor, [234, 88, 12, 255]);
-  assert.deepEqual(empty.getDashArray, sceneMetrics.routeDashArray);
-  assert.equal(empty.extensions, extensions);
-  // Picked, either keeps its colour and takes the full width.
-  for (const role of ['future', 'deadhead'])
-    assert.equal(
-      routeLayers({ ...road(role), routeSelected: true }, Layer, extensions)[1]
-        .getWidth,
-      5,
+  const check = dark => {
+    const [outline, loaded] = routeLayers(road('future'), Layer, extensions);
+    assert.deepEqual(loaded.getColor, futureRouteColor(0));
+    assert.deepEqual(loaded.getDashArray, sceneMetrics.routeFutureDashArray);
+    assert.equal(loaded.extensions, extensions);
+    assert.deepEqual(
+      outline.getColor,
+      dark ? [255, 255, 255, 210] : [...futureRouteColor(0).slice(0, 3), 28],
     );
+    // The outline under the dashes keeps the same physical dashes and gaps.
+    for (let index = 0; index < 2; index++)
+      assert.ok(
+        Math.abs(
+          outline.getDashArray[index] * outline.getWidth -
+            loaded.getDashArray[index] * loaded.getWidth,
+        ) < 1e-9,
+        'outline and fill have matching physical dash/gap lengths',
+      );
+    const picked = routeLayers(
+      { ...road('future'), routeSelected: true },
+      Layer,
+      extensions,
+    )[1];
+    assert.equal(picked.getDashArray, undefined);
+    assert.equal(picked.getWidth, dark ? 5 : fine(5));
+    const empty = routeLayers(road('deadhead'), Layer, extensions)[1];
+    assert.deepEqual(empty.getColor, dark ? darkAmber : lightAmber);
+    assert.deepEqual(empty.getDashArray, emptyDashes);
+    assert.notDeepEqual(empty.getDashArray, loaded.getDashArray);
+    assert.equal(empty.extensions, extensions);
+    // Picked, empty miles stay one fine dashed line.
+    assert.equal(
+      routeLayers(
+        { ...road('deadhead'), routeSelected: true },
+        Layer,
+        extensions,
+      )[1].getWidth,
+      emptyWidth,
+    );
+  };
+  check(false);
+  onDarkMap(() => check(true));
 });

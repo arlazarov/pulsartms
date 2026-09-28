@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { createScene } from '../../Scripts/fleetMap/rendering/scene.ts';
 import { currentRouteColor } from '../../Scripts/fleetMap/rendering/routePalette.ts';
 import {
+  labelPlate,
+  plateText,
+} from '../../Scripts/fleetMap/rendering/labelPlates.ts';
+import {
   stopAppearance,
   stopMarkerIcon,
 } from '../../Scripts/fleetMap/rendering/stopAppearance.ts';
@@ -191,8 +195,8 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   map.getZoom = () => 12;
   listeners.get('zoom_changed')();
   flush();
-  // Every station is an 18px pump (the owner, September 27).
-  assert.equal(initial['fuel-points'].props.getSize, 18);
+  // Every station is a dot, never a pump icon (the owner, September 27).
+  assert.equal(initial['fuel-points'].props.getRadius, 8);
   assert.equal(initial['route-stop-1-points'].props.getSize, 28);
   // Marks in this order: a truck under the badges, its label over them. A
   // badge is never moved to clear a truck - the gap between the two is how
@@ -355,20 +359,22 @@ test('scene reuses static layers across motion, invalidates only changed stops a
     decodeURIComponent(
       movingTruckLayer.props.getIcon(movingTruckLayer.props.data[0]).url,
     ),
-    // One ink body; the engine is its edge (truckAppearance.ts).
-    /<path[^>]*fill="#1e293b"[^>]*stroke="#16a34a"/,
+    // The light map keeps the classic marks (the owner, September 27): a
+    // green arrow moving, a green or grey circle standing; the dark map's
+    // glass marks are covered in truckAppearance.test.js.
+    /<path[^>]*fill="#16a34a"/,
   );
   assert.match(
     decodeURIComponent(
       movingTruckLayer.props.getIcon({ engine: 'on', speed: 0 }).url,
     ),
-    /<circle[^>]*fill="#1e293b"[^>]*stroke="#16a34a"/,
+    /<circle[^>]*fill="#16a34a"/,
   );
   assert.match(
     decodeURIComponent(
       movingTruckLayer.props.getIcon({ engine: 'off', speed: 0 }).url,
     ),
-    /<circle[^>]*fill="#1e293b"[^>]*stroke="#94a3b8" stroke-width="2"\/>/,
+    /<circle[^>]*fill="#64748b"/,
   );
   movingTruckLayer.props.onHover({ object: movingTruckLayer.props.data[0] });
   flush();
@@ -405,12 +411,19 @@ test('scene reuses static layers across motion, invalidates only changed stops a
   assert.equal(layers()['route-stop-distances'].props.data[0].text, distance);
   truck.setSelected(true);
   flush();
-  assert.deepEqual(
-    layers()['truck-numbers'].props.getBackgroundColor(
-      layers()['truck-numbers'].props.data[0],
-    ),
-    [49, 94, 234, 255],
-  );
+  // The chosen truck's number stands on the lit HUD plate in its own ink
+  // (the owner, September 27: truck tags are HUD plates in both themes).
+  {
+    const chosen = layers()['truck-numbers'].props.data[0];
+    assert.deepEqual(
+      layers()['truck-numbers'].props.getColor(chosen),
+      plateText('chosen'),
+    );
+    assert.equal(
+      layers()['truck-number-plates'].props.getIcon(chosen),
+      labelPlate(chosen.unit, 'chosen', [9, 4]),
+    );
+  }
   stations.setPoint(
     'fuel',
     { lng: -80, lat: 35 },

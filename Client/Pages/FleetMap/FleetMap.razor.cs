@@ -98,18 +98,6 @@ public partial class FleetMap : IAsyncDisposable
   private double? LeftMiles =>
     DistanceLeft.Miles(NextStopMiles, RemainingMiles);
 
-  // The truck has reached the stop it was heading for and the stop is still
-  // open: it is standing there, waiting on the appointment. There is nothing
-  // left to forecast, which is why the server sends an ETA with no stops in
-  // it.
-  private bool AtNextStop =>
-    _routeState?.Plan
-      is { InputsChanged: false, Tracking.AllStopsPassed: false } plan
-    && plan.Tracking.NextStopId is not null
-    && LeftMiles is { } remaining
-    && double.IsFinite(remaining)
-    && remaining < 0.5;
-
   private bool _showTruckInfo;
   private bool _followingTruck;
   private bool _mobileFiltersOpen;
@@ -575,7 +563,6 @@ public partial class FleetMap : IAsyncDisposable
     _fuelRevalidationPending = false;
     _activeTruckId = null;
     _arrivalMemory.Update(null, null, null);
-    _headArrivalMemory.Update(null, null, null);
     _panelArrivalMemory.Update(null, null, null);
     _loadDetailsVersion++;
     _loadDetails = null;
@@ -642,7 +629,6 @@ public partial class FleetMap : IAsyncDisposable
     _recalculatingFuel = false;
     _fuelRevalidationPending = false;
     _arrivalMemory.Update(null, null, null);
-    _headArrivalMemory.Update(null, null, null);
     _panelArrivalMemory.Update(null, null, null);
     _activeTruckId = truckId;
     _activeDispatchId = dispatchId;

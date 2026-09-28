@@ -286,7 +286,14 @@ test('selection emphasizes the chosen road and subdues others without replacing 
       part => part.opacity === 0.4 && part.data === currentLayers[0].data,
     ),
   );
-  assert.equal(mutedCurrent[1].getWidth, 5);
+  // On the light map a road is a finer line in a haze of its own colour
+  // (the owner, September 27): three quarters of its width, never under 3;
+  // empty miles are one fine dashed amber line whether picked or not.
+  const drawnWidth = (line, chosen) =>
+    line.routeRole === 'deadhead'
+      ? 2.5
+      : Math.max(3, (chosen ? 5 : sceneMetrics.routeSecondaryWidth) * 0.75);
+  assert.equal(mutedCurrent[1].getWidth, 3.75);
   assert.equal(mutedCurrent[1].getColor, currentLayers[1].getColor);
   assert.equal(
     Object.hasOwn(current, 'routeMuted'),
@@ -299,13 +306,11 @@ test('selection emphasizes the chosen road and subdues others without replacing 
         part => part.opacity === (index < 3 ? 1 : 0.4) && part.visible,
       ),
     );
-    assert.equal(
-      pair[1].getWidth,
-      index < 3 ? 5 : sceneMetrics.routeSecondaryWidth,
-    );
+    assert.equal(pair[1].getWidth, drawnWidth(lines[index], index < 3));
     assert.equal(pair[0].data, paths[index]);
     assert.equal(pair[1].data, paths[index]);
-    assert.equal(
+    // By value: empty miles build their amber afresh with the layer.
+    assert.deepEqual(
       pair[1].getColor,
       initial[index][1].getColor,
       'per-load hue and deadhead alpha remain unchanged',
@@ -349,7 +354,7 @@ test('selection emphasizes the chosen road and subdues others without replacing 
   );
   assert.deepEqual(
     render().map(pair => pair[1].getWidth),
-    [...Array(3).fill(sceneMetrics.routeSecondaryWidth), 5, 5, 5],
+    lines.map((line, index) => drawnWidth(line, index >= 3)),
   );
   layer.clearSelection();
   // Clearing the selection restores the upcoming roads to their resting
@@ -363,11 +368,11 @@ test('selection emphasizes the chosen road and subdues others without replacing 
   );
   assert.ok(
     render().every(
-      pair => pair[1].getWidth === sceneMetrics.routeSecondaryWidth,
+      (pair, index) => pair[1].getWidth === drawnWidth(lines[index], false),
     ),
   );
   assert.ok(current.cachedLayer.every(part => part.opacity === 1));
-  assert.equal(current.cachedLayer[1].getWidth, 5);
+  assert.equal(current.cachedLayer[1].getWidth, 3.75);
   assert.ok(lines.every((line, index) => line.data === paths[index]));
   const restoredCurrent = current.cachedLayer;
   current.routeMuted = true;
@@ -1133,7 +1138,8 @@ test('pointing at a load lights its road and its badges, and lets go when the cu
 // else: the circles it was picked for were off the screen, and there was no
 // way to ask the map for them.
 test('picking a load road selects that load and offers it to be revealed', () => {
-  const revealed = [];
+  const revealed = [],
+    stopsRevealed = [];
   const markers = [],
     lines = [],
     selections = [];
@@ -1163,6 +1169,7 @@ test('picking a load road selects that load and offers it to be revealed', () =>
     Stop,
     (...args) => selections.push(args),
     geometry => revealed.push(geometry),
+    position => stopsRevealed.push(position),
   );
   layer.set([
     {
@@ -1189,20 +1196,26 @@ test('picking a load road selects that load and offers it to be revealed', () =>
 
   assert.deepEqual(selections, [['far', 0, 'leg']]);
   assert.ok(markers.every(marker => marker.highlighted));
-  // Everything the load stands on: its road and the stops at its ends, so
-  // the map can decide whether any of it is on the screen already.
-  const geometry = revealed.at(-1);
+  // The pick opens the load's stop, and the camera brings that stop into
+  // view (the owner, September 27: a P / D press opens it, a hidden stop
+  // brought into the free part); the whole road is fitted only when the
+  // stop's place is not known.
+  assert.deepEqual(stopsRevealed, [{ lat: 35.6, lng: -80.8 }]);
+  assert.deepEqual(revealed, []);
+  // Everything the load stands on stays available to a camera that wants
+  // all of it: its road and the stops at its ends.
+  const geometry = layer.geometryOf('far', 'leg');
   assert.ok(geometry.length >= 4);
   assert.ok(
     geometry.some(point => point.lat === 35.6 && point.lng === -80.8) &&
       geometry.some(point => point.lat === 42.9 && point.lng === -74.2),
   );
 
-  // A badge picked by hand reveals its load the same way.
-  revealed.length = 0;
+  // A badge picked by hand reveals its own stop the same way.
   markers[1].onSelect();
   assert.equal(selections.length, 2);
-  assert.ok(revealed.at(-1).length >= 4);
+  assert.deepEqual(stopsRevealed.at(-1), { lat: 42.9, lng: -74.2 });
+  assert.deepEqual(revealed, []);
 });
 
 test('a stop asked for before its load is drawn opens when the load arrives', () => {

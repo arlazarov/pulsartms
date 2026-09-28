@@ -29,7 +29,7 @@ test('mobile truck panels scroll normally within the bounded map inspector', () 
     css,
     new RegExp(
       String.raw`@container map-truck-card \(width >= 40rem\)\s*\{\s*` +
-        `${selector}\\.is-mobile-collapsed \\.fleet-map-info-content,` +
+        `${selector}\\.is-mobile-collapsed \\.fleet-map-info-content` +
         String.raw`[\s\S]*?\{\s*display: none;`,
     ),
   );

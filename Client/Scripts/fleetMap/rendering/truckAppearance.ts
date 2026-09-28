@@ -40,7 +40,10 @@ export function truckState(engine: unknown, speed = 0): string {
 export function truckColor(engine: unknown, speed = 0): string {
   if (isLightMap())
     return truckState(engine, speed) === 'off' ? ringQuiet : engineOn;
-  return truckEngine(engine) === 'on' ? engineOn : ringQuiet;
+  // On the dark map the ring matches the mark: green running, cyan off,
+  // grey when the reading is unknown.
+  const reading = truckEngine(engine);
+  return reading === 'on' ? engineOn : reading === 'off' ? offGlow : ringQuiet;
 }
 
 const engineOn = '#16a34a';

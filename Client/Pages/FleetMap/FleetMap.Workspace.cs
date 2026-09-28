@@ -6,7 +6,6 @@ using Client.Models.DTO.Planning;
 using Client.Services;
 using Client.Shared.DriverStatus.DriverDutySummary;
 using Client.Shared.Trucks;
-using Client.Shared.Trucks.TruckWeather;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -120,16 +119,6 @@ public partial class FleetMap
 
   // The stop cards on the map hear which stops the server has completed,
   // from the same board read the chain shows.
-  private TruckWeatherShown? _weatherShown;
-
-  private void OnWeatherShown(TruckWeatherShown shown)
-  {
-    if (_weatherShown == shown || _disposed)
-      return;
-    _weatherShown = shown;
-    StateHasChanged();
-  }
-
   // A later trip's place among the next loads the map draws, which picks
   // its road's colour there.
   private int? NextRouteIndex(DispatchResponse load)

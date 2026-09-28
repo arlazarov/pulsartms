@@ -25,10 +25,7 @@
     align-content: start;
     align-self: start;
   }
-  &__metric,
-  > .fleet-map-route-info__load,
-  &__next,
-  &__appointment {
+  > .fleet-map-route-info__load {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -37,35 +34,12 @@
     padding-right: ui.pg(lg);
     border-right: 1px solid ui.theme(border-subtle);
   }
-  &__next {
-    min-height: 0;
-  }
-  &__metric {
-    min-width: ui.size(route-metric);
-    strong {
-      font-size: ui.fs(subtitle);
-      line-height: 1.15;
-      font-variant-numeric: tabular-nums;
-    }
-    small {
-      font-size: ui.fs(body);
-      font-weight: 600;
-    }
-  }
   &__load {
     line-height: 1.4;
   }
   &__load .fleet-map-route-info__secondary {
     font-size: ui.fs(caption);
     overflow-wrap: anywhere;
-  }
-  &__total {
-    margin-top: ui.pg(micro);
-  }
-  &__appointment > strong {
-    font-size: ui.fs(body);
-    font-weight: 600;
-    line-height: 1.4;
   }
   &__label {
     font-size: ui.fs(small);
@@ -74,11 +48,6 @@
   &__secondary {
     font-size: ui.fs(small);
     color: ui.theme(text-secondary);
-  }
-  &__next strong {
-    overflow-wrap: anywhere;
-    font-size: ui.fs(lead);
-    font-weight: 600;
   }
   &__address {
     overflow-wrap: anywhere;
@@ -108,26 +77,6 @@
     // The address may be narrower than the words in it; without this the
     // column holding it grew to the longest street instead.
     min-inline-size: 0;
-  }
-  > .fleet-map-route-info__next .fleet-map-route-info__copy-address {
-    flex-direction: row;
-    align-items: center;
-    gap: ui.pg(sm);
-  }
-  &__address-lines {
-    display: grid;
-    flex: 1;
-    gap: ui.pg(xs);
-    min-width: 0;
-  }
-  &__street {
-    // A flex item does not shrink below its content unless it is told it
-    // may: without this the ellipsis never appeared and a long street
-    // widened the stop's column instead.
-    min-inline-size: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   &__messages {
     flex-basis: 100%;
@@ -161,36 +110,19 @@
     // Narrow: the cycle reads smaller, and a time does not break in two.
     --stop-hours-cycle-size: #{ui.fs(caption)};
     --stop-hours-value-white-space: nowrap;
-    &__metric {
-      grid-row: 1;
-      min-width: 0;
-    }
     > .fleet-map-route-info__load {
       grid-column: 1;
       grid-row: 2;
-    }
-    &__next {
-      grid-column: 2;
-      grid-row: 2;
-    }
-    &__appointment {
-      grid-column: 1;
-      grid-row: 3;
     }
     > .arrival-estimate {
       grid-column: 2;
       grid-row: 3;
     }
-    &__metric,
-    > .fleet-map-route-info__load,
-    &__next,
-    &__appointment {
+    > .fleet-map-route-info__load {
       padding-right: 0;
       border-right: 0;
     }
     > .fleet-map-route-info__load,
-    &__next,
-    &__appointment,
     > .arrival-estimate {
       padding-top: ui.pg(sm);
       border-top: 1px solid ui.theme(border-subtle);
@@ -201,8 +133,6 @@
 @container map-truck-card (width < #{ui.breakpoint(map-info-stacked)}) {
   .fleet-map-route-info {
     > .fleet-map-route-info__load,
-    > .fleet-map-route-info__next,
-    > .fleet-map-route-info__appointment,
     > .arrival-estimate {
       grid-column: 1 / -1;
       grid-row: auto;

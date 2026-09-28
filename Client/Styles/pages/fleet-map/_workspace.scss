@@ -565,10 +565,6 @@
 // dense head rows on every screen; on a phone too (the owner, September
 // 27: the mobile pass), where Details opens the facts and the clocks.
 .fleet-map-inspector[data-inspector-mode='truck'] {
-  .fleet-map-inspector__crew,
-  .fleet-map-mobile-summary__distance,
-  .fleet-map-inspector__hours,
-  .fleet-map-inspector__where,
   .fleet-map-route-info > :not(.fleet-map-route-info__messages) {
     display: none;
   }
@@ -1178,7 +1174,6 @@
       display: inline-flex;
     }
     .fleet-map-inspector.is-mobile-collapsed .fleet-map-info-content,
-    .fleet-map-inspector.is-mobile-collapsed .fleet-map-inspector__duty,
     .fleet-map-inspector.is-mobile-collapsed .fleet-trip-stops,
     .fleet-map-inspector.is-mobile-collapsed .fleet-truck-facts,
     .fleet-map-inspector.is-mobile-collapsed .fleet-truck-clocks {

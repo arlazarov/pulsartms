@@ -2,6 +2,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSceneLayers } from '../../Scripts/fleetMap/rendering/sceneLayers.ts';
 import { sceneMetrics as metrics } from '../../Scripts/fleetMap/rendering/sceneMetrics.ts';
+import {
+  labelPlate,
+  plateText,
+} from '../../Scripts/fleetMap/rendering/labelPlates.ts';
+
+const padding = metrics.truckLabelPadding;
+
+// The map's theme is the page's; without a page the light map stands.
+function withDarkMap(check) {
+  const outer = globalThis.document;
+  globalThis.document = { documentElement: { dataset: { theme: 'dark' } } };
+  try {
+    check();
+  } finally {
+    globalThis.document = outer;
+  }
+}
 
 class Layer {
   constructor(props) {
@@ -101,11 +118,32 @@ test('choosing a truck changes no truck size, and trucks stay smaller than stops
   assert.ok(order.indexOf('truck-hits') < order.indexOf('truck-icons-quiet'));
   assert.ok(order.indexOf('truck-icons-quiet') < order.indexOf('truck-icons'));
 
-  const numbers = layers['truck-numbers'].props;
-  assert.deepEqual(numbers.getColor, [255, 255, 255, 255]);
-  assert.deepEqual(numbers.getBackgroundColor(chosen), [49, 94, 234, 255]);
-  assert.deepEqual(numbers.getBackgroundColor(other), [30, 41, 59, 255]);
-  assert.deepEqual(numbers.getBorderColor, [255, 255, 255, 220]);
+  // Truck numbers stand on HUD plates (the owner, September 27): the
+  // chosen truck's plate and ink are lit, the others' are plain.
+  const numbers = layers['truck-numbers'].props,
+    plates = layers['truck-number-plates'].props;
+  assert.deepEqual(numbers.getColor(chosen), plateText('chosen'));
+  assert.deepEqual(numbers.getColor(other), plateText('truck'));
+  assert.equal(plates.getIcon(chosen), labelPlate('11006', 'chosen', padding));
+  assert.equal(plates.getIcon(other), labelPlate('54777', 'truck', padding));
+  assert.equal(plates.pickable, false, 'the text layer keeps the picking');
+
+  // The dark map's glass marks are one size, standing or moving (the
+  // owner, September 27), still smaller than a stop's badge, and choosing
+  // or hovering a truck changes none of them.
+  withDarkMap(() => {
+    const dark = byId(draw([chosen, other, moving]));
+    for (const row of [other, moving])
+      assert.equal(
+        dark['truck-icons-quiet'].props.getSize(row),
+        metrics.truckDarkSize,
+      );
+    assert.equal(
+      dark['truck-icons'].props.getSize(chosen),
+      metrics.truckDarkSize,
+    );
+    assert.ok(metrics.truckDarkSize < metrics.stopBadgeDiameter);
+  });
 });
 
 test('with nothing chosen every truck is drawn at full strength', () => {
@@ -114,8 +152,8 @@ test('with nothing chosen every truck is drawn at full strength', () => {
   assert.equal(layers['truck-icons'].props.data.length, 2);
   assert.equal(layers['truck-icons'].props.opacity, 1);
   const numbers = layers['truck-numbers'].props;
-  assert.deepEqual(numbers.getColor, [255, 255, 255, 255]);
-  assert.deepEqual(numbers.getBorderColor, [255, 255, 255, 220]);
+  for (const row of numbers.data)
+    assert.deepEqual(numbers.getColor(row), plateText('truck'));
 });
 
 // From the design: zoomed out, only planned stops; everything else waits

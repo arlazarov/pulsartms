@@ -48,20 +48,6 @@ public partial class FleetMap
     && _showTruckInfo
     && _inspectorMode != MapInspectorMode.Closed
     && (_inspectorMode != MapInspectorMode.Truck || HasTruckInspection);
-  private string TruckLocationLabel =>
-    SelectedDate == DateOnly.FromDateTime(DateTime.Today)
-      ? "Current location"
-      : "Recorded location";
-
-  private static DateTimeOffset? TruckLocationTimestamp(
-    TruckLocationMapDto truck
-  ) =>
-    truck.UpdatedAt == default
-      ? null
-      : new DateTimeOffset(
-        DateTime.SpecifyKind(truck.UpdatedAt, DateTimeKind.Utc)
-      );
-
   // The speed is known only from a report, and only while the route does
   // not call the truck's GPS stale: otherwise the card says nothing about
   // it rather than a confident 0 mph "normal".

@@ -1167,8 +1167,10 @@ test('ETA expiry and unknown distance stay explicit, and a closed or passed stop
 });
 
 // A stop the truck has already worked reads as finished at a glance, and
-// says so instead of forecasting an arrival it has already made.
-test('a passed stop is marked done and its badge is outlined, not filled', t => {
+// says so instead of forecasting an arrival it has already made. Finished
+// is the server's completion, not GPS passage (the owner, September 27:
+// "Stop the server completed (IsCompleted, not GPS or load state)").
+test('a completed stop is marked done and its badge is outlined; passage alone is not done', t => {
   const { stops, markers, state } = fixture(t);
   const route = plan([
     stop({ id: 'pickup', job: 'Pickup' }),
@@ -1179,6 +1181,12 @@ test('a passed stop is marked done and its badge is outlined, not filled', t => 
     referenceStops: route.stops,
     tracking: { passedStopIds: ['pickup'] },
   });
+  // Driven past, but not completed: the card claims nothing.
+  markers[0].onSelect();
+  const passed = row(state.shown, 'fleet-route-popup__head');
+  assert.equal(passed.children[0].className, 'fleet-route-popup__number');
+  assert.equal(row(passed, 'fleet-route-popup__state'), undefined);
+  stops.setCompletions([{ id: 'pickup', at: null }]);
   markers[0].onSelect();
   const head = row(state.shown, 'fleet-route-popup__head');
   assert.equal(head.children[0].className, 'fleet-route-popup__number is-done');
@@ -1186,12 +1194,12 @@ test('a passed stop is marked done and its badge is outlined, not filled', t => 
   const done = row(head, 'fleet-route-popup__job').children[0];
   assert.deepEqual(
     [done.className, done.textContent],
-    ['fleet-route-popup__state fleet-route-popup__state--success', 'Done'],
+    ['fleet-route-popup__state fleet-route-popup__state--success', 'Completed'],
   );
   assert.equal(
     row(state.shown, 'fleet-route-popup__status'),
     undefined,
-    'a stop behind the truck says Done, not how its arrival stood',
+    'a completed stop says so, not how its arrival stood',
   );
   markers[1].onSelect();
   const next = row(state.shown, 'fleet-route-popup__head');
