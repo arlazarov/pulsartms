@@ -1803,8 +1803,19 @@ figure names its source.
   unknown. Open: a dropped status itself cannot be recovered (no
   provider query); done when root accepts that as the bounded cost of a
   release, or the release drains webhooks before moving traffic.
-- **Liveness of operations without a heartbeat.** Owner: the background
-  owners. Done when each has a heartbeat or a documented reason.
+- **Liveness of operations without a heartbeat.** Done: root decided
+  per-operation progress reports stale work and never restarts the only
+  instance. `BackgroundProgress` (apart from the liveness
+  `BackgroundHeartbeat`) is fed by the 13 operations - ten periodic, three
+  on demand (ETA, driver hours, truck history, stale only while a round
+  overruns) - and read at `api/diagnostics/background` and as degraded
+  readiness. The synchronization loop keeps its heartbeat; the audit's
+  stall shows as stale coverage. An architecture test requires every new
+  operation to report. Groups routing, fleet, messaging, fuel and
+  synchronization green (diagnostic-6R5g0n); returning Unhealthy, calling
+  idle on-demand work stale, or dropping one operation's registration
+  fails the tests (diagnostic-NuIYG6). No alert reads it yet: owner
+  operations, done when a monitor polls readiness or the report.
 
 The audit is not complete until these are closed or explicitly accepted
 by root.

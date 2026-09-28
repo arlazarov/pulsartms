@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Application.Interfaces;
 using MediatR;
@@ -14,8 +15,12 @@ public sealed class TruckHistoryOperation(
 {
   public async Task RunAsync(CancellationToken ct)
   {
+    // Runs when a truck's history is asked for; a refresh is cut at three
+    // minutes, so one running past five is stale.
+    BackgroundProgress.OnDemand("TruckHistory", TimeSpan.FromMinutes(5));
     await foreach (var query in queue.ReadAsync(ct))
     {
+      BackgroundProgress.Started("TruckHistory");
       try
       {
         await using var scope = scopes.CreateAsyncScope();
@@ -47,6 +52,7 @@ public sealed class TruckHistoryOperation(
       finally
       {
         queue.Complete(query);
+        BackgroundProgress.Finished("TruckHistory");
       }
     }
   }

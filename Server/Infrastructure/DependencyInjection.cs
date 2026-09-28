@@ -45,6 +45,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 
 namespace Infrastructure;
@@ -75,7 +76,14 @@ public static class DependencyInjection
       .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
       // Tagged "live": a process whose background work has stopped is not
       // alive in any useful sense, and the platform should replace it.
-      .AddCheck<BackgroundWorkHealthCheck>("background", tags: ["live"]);
+      .AddCheck<BackgroundWorkHealthCheck>("background", tags: ["live"])
+      // Tagged "ready" and only ever degraded: it reports, it never
+      // restarts the one instance.
+      .AddCheck<BackgroundProgressHealthCheck>(
+        "background-progress",
+        failureStatus: HealthStatus.Degraded,
+        tags: ["ready"]
+      );
 
     services
       .AddDataProtection()

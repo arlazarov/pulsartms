@@ -25,6 +25,12 @@ public sealed class DiagnosticsController : BaseController
   public Task<IActionResult> Stages(CancellationToken cancellationToken) =>
     HandleUnwrappedRequest(new GetStageDiagnosticsQuery(), cancellationToken);
 
+  // Which background operations are making progress; a report that never
+  // fails liveness or readiness.
+  [HttpGet("background")]
+  public Task<IActionResult> Background(CancellationToken cancellationToken) =>
+    HandleUnwrappedRequest(new GetBackgroundProgressQuery(), cancellationToken);
+
   // Business-state audit: findings, coverage and the durable journal. It is
   // separate from liveness and readiness and never affects either.
   [HttpGet("consistency")]

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Diagnostics;
 using Application.Features.Messaging.Commands;
 using Application.Features.Messaging.Interfaces;
 using Application.Features.Messaging.Services;
@@ -53,8 +54,10 @@ public sealed class OutboundMessageOperation(
 
   public async Task RunAsync(CancellationToken ct)
   {
+    BackgroundProgress.Expect("OutboundMessage", Poll);
     while (!ct.IsCancellationRequested)
     {
+      BackgroundProgress.Started("OutboundMessage");
       try
       {
         await using var scope = scopes.CreateAsyncScope();

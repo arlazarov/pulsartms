@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Messaging.Interfaces;
 using Application.Features.Messaging.Services;
 using Application.Storage;
@@ -30,8 +31,10 @@ public sealed class InboundMediaOperation(
 
   public async Task RunAsync(CancellationToken ct)
   {
+    BackgroundProgress.Expect("InboundMedia", Interval);
     while (!ct.IsCancellationRequested)
     {
+      BackgroundProgress.Started("InboundMedia");
       try
       {
         await using var scope = scopes.CreateAsyncScope();

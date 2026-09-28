@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Fuel.Services;
 using Application.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,8 +14,10 @@ public sealed class GmailWatchOperation(
   public async Task RunAsync(CancellationToken ct)
   {
     using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
+    BackgroundProgress.Expect("GmailWatch", TimeSpan.FromMinutes(1));
     while (await timer.WaitForNextTickAsync(ct))
     {
+      BackgroundProgress.Started("GmailWatch");
       var runId = Guid.NewGuid();
       try
       {

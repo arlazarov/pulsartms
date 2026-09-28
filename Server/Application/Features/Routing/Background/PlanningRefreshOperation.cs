@@ -20,18 +20,23 @@ public sealed class PlanningRefreshOperation(
   ILogger<PlanningRefreshOperation> logger
 ) : IPlanningRefreshOperation
 {
-  public Task RunAsync(CancellationToken stoppingToken) =>
-    Task.WhenAll(
+  public Task RunAsync(CancellationToken stoppingToken)
+  {
+    // Each consumer waits at most five seconds for the signal.
+    BackgroundProgress.Expect("PlanningRefresh", TimeSpan.FromSeconds(5));
+    return Task.WhenAll(
       Enumerable
         .Range(0, options.Value.PlanningConcurrency)
         .Select(index => RunConsumerAsync(index == 0, stoppingToken))
     );
+  }
 
   private async Task RunConsumerAsync(bool prune, CancellationToken ct)
   {
     var nextPrune = DateTime.MinValue;
     while (!ct.IsCancellationRequested)
     {
+      BackgroundProgress.Started("PlanningRefresh");
       PlanningRefreshWork? work = null;
       try
       {

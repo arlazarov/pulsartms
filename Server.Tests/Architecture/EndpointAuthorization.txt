@@ -23,6 +23,7 @@ Brokers.Search GET api/brokers -> Dispatch
 Costs.ForLoad GET api/dispatch/{id:guid}/costs -> Dispatch
 Costs.Record POST api/costs/expenses -> Dispatch
 Costs.SetAttribution PUT api/costs/expenses/{id:guid}/attribution -> Dispatch
+Diagnostics.Background GET api/diagnostics/background -> Admin
 Diagnostics.Consistency GET api/diagnostics/consistency -> Admin
 Diagnostics.ConsistencyEvents GET api/diagnostics/consistency/events -> Admin
 Diagnostics.ConsistencyIncidents GET api/diagnostics/consistency/incidents -> Admin
