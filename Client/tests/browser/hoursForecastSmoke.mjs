@@ -945,45 +945,28 @@ async function isPhonePanel(page) {
 }
 
 async function expandTruckCard(page, name) {
-  const toggle = page.locator(
-    `${panelSelector} .fleet-map-mobile-summary__toggle`,
-  );
-  if (
-    (await toggle.isVisible()) &&
-    (await toggle.getAttribute('aria-expanded')) === 'false'
-  )
-    await toggle.click();
+  // The panel is open whole at every width: the phone's Details / Hide
+  // details left it (owner decision of 2026-09-28).
   check(
-    (await page.locator('.fleet-truck-facts').isVisible()) &&
+    (await page
+      .locator(`${panelSelector} .fleet-map-mobile-summary__toggle`)
+      .count()) === 0 &&
+      (await page.locator('.fleet-truck-facts').isVisible()) &&
       (await page.locator('.fleet-truck-clocks').isVisible()),
-    `${name}: the open panel shows the facts and the clocks`,
+    `${name}: the panel shows its facts and clocks, with no disclosure`,
   );
 }
 
 async function measureTruckControls(page, name) {
   const panel = page.locator(panelSelector);
-  const toggle = panel.locator('.fleet-map-mobile-summary__toggle');
-  if (await toggle.isVisible()) {
-    // The disclosure says what it does; both words share one cell, so it
-    // keeps one width open and closed.
-    check(
+  // No disclosure at any width (owner decision of 2026-09-28).
+  check(
+    (await panel.locator('.fleet-map-mobile-summary__toggle').count()) === 0 &&
       (await panel
         .getByRole('button', { name: /^(Details|Hide details)$/ })
-        .count()) === 1,
-      `${name}: the panel has one disclosure, named Details or Hide details`,
-    );
-    if ((await toggle.getAttribute('aria-expanded')) === 'true')
-      await toggle.click();
-    const closed = await toggle.boundingBox();
-    await toggle.click();
-    const opened = await toggle.boundingBox();
-    check(
-      ['x', 'y', 'width', 'height'].every(
-        key => Math.abs(closed[key] - opened[key]) <= 1,
-      ),
-      `${name}: opening the panel does not move its own control`,
-    );
-  }
+        .count()) === 0,
+    `${name}: the panel has no Details / Hide details`,
+  );
   for (const selector of [
     '.fleet-map-inspector__title',
     '.fleet-truck-facts',
@@ -991,7 +974,7 @@ async function measureTruckControls(page, name) {
   ])
     check(
       await panel.locator(selector).isVisible(),
-      `${name}: ${selector} is shown once the panel is open`,
+      `${name}: ${selector} is shown`,
     );
   const result = await page
     .getByRole('button', { name: 'Close map information', exact: true })
@@ -2866,10 +2849,9 @@ try {
             JSON.stringify({ initial: initialTitleControls, now: controls }),
         );
       };
-      // A cold panel: on a phone it opens closed on the next stop, with the
-      // facts and the clocks behind Details; wider, it shows them whole.
-      // Follow is the map tool bar's alone: the owner removed the phone
-      // head's duplicate (owner decision of 2026-09-28).
+      // A cold panel is open whole at every width: the phone's Details /
+      // Hide details left it, and Follow is the map tool bar's alone
+      // (owner decisions of 2026-09-28).
       const toolBarFollow = page
         .locator('.fleet-map-controls')
         .getByRole('button', { name: 'Follow', exact: true });
@@ -2878,7 +2860,7 @@ try {
         clocks: await page.locator('.fleet-truck-clocks').isVisible(),
         toggle: await page
           .locator(`${panelSelector} .fleet-map-mobile-summary__toggle`)
-          .isVisible(),
+          .count(),
         headFollow: await page
           .locator(`${panelSelector} .fleet-map-inspector__header`)
           .getByRole('button', { name: /^Follow/ })
@@ -2904,19 +2886,13 @@ try {
           })),
       };
       check(
-        phone
-          ? !cold.facts &&
-              !cold.clocks &&
-              cold.toggle &&
-              cold.headFollow === 0 &&
-              cold.toolBarFollow
-          : cold.facts && cold.clocks && cold.toolBarFollow,
-        `${name}: a cold ${
-          phone
-            ? 'phone panel is closed with Details in its head and Follow ' +
-              'in the tool bar'
-            : 'panel shows its facts and clocks, Follow in the tool bar'
-        } (${JSON.stringify(cold)})`,
+        cold.facts &&
+          cold.clocks &&
+          !cold.toggle &&
+          cold.headFollow === 0 &&
+          cold.toolBarFollow,
+        `${name}: a cold panel is open whole, with no Details and no ` +
+          `Follow in its head, Follow in the tool bar (${JSON.stringify(cold)})`,
       );
       await expandTruckCard(page, `${name}-cold`);
       await checkTitleControls('cold-open');

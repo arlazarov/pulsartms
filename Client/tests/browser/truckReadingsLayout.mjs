@@ -76,17 +76,6 @@ export async function checkTruckReadingsLayout(
       }, font);
       for (const width of [767, 600, 520, 441, 390, 320]) {
         await page.setViewportSize({ ...originalViewport, width });
-        // A phone's panel opens closed on the next stop; open it, as a
-        // dispatcher would, before reading the facts. A wider one is whole.
-        const toggle = page.locator(
-          '.fleet-map-inspector[data-inspector-mode="truck"] ' +
-            '.fleet-map-mobile-summary__toggle',
-        );
-        if (
-          (await toggle.isVisible()) &&
-          (await toggle.getAttribute('aria-expanded')) === 'false'
-        )
-          await toggle.click();
         const g = await geometry();
         const variant = `${name}-${width}-${font}-readings`;
         check(
