@@ -13,6 +13,16 @@ public partial class FleetMap
   // the other views) so coming back to the truck shows the same forecast.
   private readonly ArrivalDisplayMemory _arrivalMemory = new();
 
+  // The load named in the truck panel: the details only while they are
+  // of the work the planning owner names current. The truck's first load,
+  // read when no work is named, is never shown as current.
+  private DispatchResponse? CurrentLoad =>
+    _loadDetails is { } load
+    && SelectedDispatchId is { } current
+    && load.Id == current
+      ? load
+      : null;
+
   private bool NextStopIsFinal =>
     _routeState?.Plan
       is { InputsChanged: false, Tracking.AllStopsPassed: false } plan

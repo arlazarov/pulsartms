@@ -469,6 +469,55 @@
   }
 }
 
+// The truck's current load on one compact line over the next stop: the
+// load number opens the load, the order number copies it.
+.fleet-truck-load {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: ui.pg(micro) ui.pg(lg);
+  margin: ui.pg(xs) ui.pg(lg) 0;
+  padding: 0 ui.pg(md);
+  &__pair {
+    display: inline-flex;
+    align-items: baseline;
+    gap: ui.pg(sm);
+    min-width: 0;
+  }
+  &__term {
+    @include ui.hud-label;
+    color: ui.theme(text-muted);
+    @include ui.hud-type;
+  }
+  &__link {
+    display: inline-flex;
+    align-items: baseline;
+    gap: ui.pg(micro);
+    color: ui.theme(accent);
+    font-weight: 700;
+    text-decoration: none;
+    svg {
+      width: ui.pg(md);
+      height: ui.pg(md);
+    }
+    &:hover,
+    &:focus-visible {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+  }
+  &__order {
+    position: relative;
+    color: ui.theme(text);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  &__copied {
+    top: 0;
+    left: calc(100% + #{ui.pg(xs)});
+  }
+}
+
 // The panel's parts arrive as the HUD shows new information: the next
 // stop when the stop changes, the facts (one after another) and the clocks
 // when another truck is chosen. Labels write themselves; values appear
