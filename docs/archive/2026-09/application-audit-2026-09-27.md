@@ -1866,6 +1866,19 @@ figure names its source.
   idle on-demand work stale, or dropping one operation's registration
   fails the tests (diagnostic-NuIYG6). No alert reads it yet: owner
   operations, done when a monitor polls readiness or the report.
+  Root's review of ad7f5c69: the readiness check in Infrastructure
+  called Application's `BackgroundProgress.Read` directly, which the
+  constructor-only boundary test cannot see. An IL scan of Infrastructure
+  (diagnostic-npGpkr) found three such calls: that one, the liveness
+  check's `BackgroundHeartbeat.Stalled` (older) and `PerformanceStages`
+  in the TomTom provider and `ExecutionReadScope`. They now go through
+  `IBackgroundState` and `IStageTimings`, declared in Application and
+  implemented there. `InfrastructureCallsApplicationOnlyThroughContracts`
+  reads every Infrastructure method's IL and allows only contract data
+  (interfaces, records, value types, exceptions, Models, Interfaces and
+  Options types) - never a command or query, never another concrete
+  class; putting either static call back fails it. Routing, dispatch and
+  synchronization groups green (diagnostic-E8MCq5).
 
 The audit is not complete until these are closed or explicitly accepted
 by root.

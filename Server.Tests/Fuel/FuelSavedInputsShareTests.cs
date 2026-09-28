@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.FuelPlanning;
 using Domain.Models.Routing;
@@ -343,7 +344,7 @@ public sealed class FuelSavedInputsShareTests
       new(
         Services.Roads,
         Services.DeadheadHistory,
-        new ExecutionReadScope(Fixture.Db),
+        new ExecutionReadScope(Fixture.Db, new StageTimings()),
         Services.Reads
       );
 

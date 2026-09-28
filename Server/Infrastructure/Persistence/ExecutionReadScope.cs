@@ -1,13 +1,14 @@
 using System.Data;
 using System.Diagnostics;
-using Application.Diagnostics;
 using Application.Features.Execution.Interfaces;
+using Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Infrastructure.Persistence;
 
-public sealed class ExecutionReadScope(AppDbContext db) : IExecutionReadScope
+public sealed class ExecutionReadScope(AppDbContext db, IStageTimings timings)
+  : IExecutionReadScope
 {
   public async Task<T> ReadAsync<T>(
     Func<CancellationToken, Task<T>> read,
@@ -54,11 +55,11 @@ public sealed class ExecutionReadScope(AppDbContext db) : IExecutionReadScope
           level,
           ct
         );
-        PerformanceStages.Elapsed("execution-scope", "open", opening);
+        timings.Elapsed("execution-scope", "open", opening);
         var result = await read(ct);
         var committing = Stopwatch.GetTimestamp();
         await transaction.CommitAsync(ct);
-        PerformanceStages.Elapsed("execution-scope", "commit", committing);
+        timings.Elapsed("execution-scope", "commit", committing);
         return result;
       });
   }

@@ -1,5 +1,6 @@
 using Application.Behaviors;
 using Application.Caching;
+using Application.Diagnostics;
 using Application.Diagnostics.Consistency;
 using Application.Features.Dispatch.Audit;
 using Application.Features.Dispatch.Services;
@@ -127,6 +128,8 @@ public static class DependencyInjection
     services.AddSingleton<KeptStatusRetries>();
     services.AddScoped<IDriverTextDelivery, DriverTextDelivery>();
     services.AddSingleton<MessagingEvents>();
+    services.AddSingleton<IBackgroundState, BackgroundState>();
+    services.AddSingleton<IStageTimings, StageTimings>();
     services.AddSingleton<MessagingMailboxes>();
     services.AddSingleton<IInboundMediaOperation, InboundMediaOperation>();
     services.AddSingleton<OutboxSignal>();

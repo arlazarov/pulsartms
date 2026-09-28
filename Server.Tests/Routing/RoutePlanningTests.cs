@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Application.Diagnostics;
 using Application.Features.Routing.Services.Routes;
 using Domain.Models.Routing;
 using Domain.Rules;
@@ -214,7 +215,8 @@ public class RoutePlanningTests
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
       new RouteSectionValidator(),
-      new RouteRegionLookup()
+      new RouteRegionLookup(),
+      new StageTimings()
     );
     var points = new List<RoutePoint> { new(40, -80), new(40, -79) };
     var first = await provider.CalculateAsync(points, Profile(), default);
@@ -226,7 +228,8 @@ public class RoutePlanningTests
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
       new RouteSectionValidator(),
-      new RouteRegionLookup()
+      new RouteRegionLookup(),
+      new StageTimings()
     ).CalculateAsync(points, Profile(), default);
     Assert.Equal(1, handler.Calls);
     Assert.Equal(first.Miles, second.Miles);
@@ -266,7 +269,8 @@ public class RoutePlanningTests
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
       new RouteSectionValidator(),
-      new RouteRegionLookup()
+      new RouteRegionLookup(),
+      new StageTimings()
     );
     await provider.CalculateAsync(
       [new(40, -80), new(40, -79)],
@@ -306,7 +310,8 @@ public class RoutePlanningTests
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
       new RouteSectionValidator(),
-      new RouteRegionLookup()
+      new RouteRegionLookup(),
+      new StageTimings()
     );
     var route = await provider.CalculateAsync(
       [new(40, -80), new(40, -79)],
@@ -398,7 +403,8 @@ public class RoutePlanningTests
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
       new RouteSectionValidator(),
-      new RouteRegionLookup()
+      new RouteRegionLookup(),
+      new StageTimings()
     );
     var input = new[]
     {

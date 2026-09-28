@@ -23,7 +23,8 @@ public sealed partial class TomTomRoutingProvider(
   IRouteRequestValidator validator,
   IAddressGeocoder geocoder,
   IRouteSectionValidator sectionsValidator,
-  IRouteRegionLookup regions
+  IRouteRegionLookup regions,
+  IStageTimings timings
 ) : IRoutingProvider, IRouteAlternativesProvider
 {
   private static readonly TomTomRequestGates RequestGates = new();

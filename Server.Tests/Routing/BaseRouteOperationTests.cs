@@ -1,4 +1,5 @@
 using Application.Caching;
+using Application.Diagnostics;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Queries;
 using Application.Features.Execution.Services;
@@ -1096,7 +1097,10 @@ public sealed class BaseRouteOperationTests
         provider.GetRequiredService<IAppDbContext>(),
         provider.GetRequiredService<PlanningTestServices>().Profiles,
         provider.GetRequiredService<PlanningTestServices>().DeadheadHistory,
-        new ExecutionReadScope(provider.GetRequiredService<AppDbContext>())
+        new ExecutionReadScope(
+          provider.GetRequiredService<AppDbContext>(),
+          new StageTimings()
+        )
       ));
       services.AddScoped(provider => new StopAddressService(
         provider.GetRequiredService<IAppDbContext>(),

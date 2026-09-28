@@ -1,5 +1,6 @@
 using System.Data;
 using Application.Caching;
+using Application.Diagnostics;
 using Application.Features.Execution.Services;
 using Application.Features.Routing.Services.Routes;
 using Application.Features.Synchronization.Options;
@@ -347,7 +348,7 @@ public sealed class PlanningPublicationTests
     await db.SaveChangesAsync();
     var reader = new TruckItineraryReader(
       db,
-      new ExecutionReadScope(db),
+      new ExecutionReadScope(db, new StageTimings()),
       new FleetNames(db),
       new ActiveTransfers(db)
     );
@@ -360,7 +361,7 @@ public sealed class PlanningPublicationTests
       new(
         db,
         new DeadheadHistoryReader(db),
-        new ExecutionReadScope(db),
+        new ExecutionReadScope(db, new StageTimings()),
         new FleetNames(db),
         new ActiveTransfers(db)
       ),

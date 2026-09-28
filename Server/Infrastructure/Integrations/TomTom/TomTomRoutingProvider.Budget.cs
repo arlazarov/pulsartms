@@ -5,7 +5,6 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Application.Diagnostics;
 using Application.Features.Routing.Interfaces;
 using Application.Interfaces;
 using Domain.Entities.Dispatch;
@@ -59,7 +58,7 @@ public sealed partial class TomTomRoutingProvider
       .OrderByDescending(x => x.RequestHash == hash)
       .ThenByDescending(x => x.CreatedAt)
       .FirstOrDefaultAsync(ct);
-    PerformanceStages.Elapsed("routing", "cache-probe", probing);
+    timings.Elapsed("routing", "cache-probe", probing);
     if (existing?.ResultJson is { } existingJson)
       return readCached(existingJson, existing.RequestHash == hash);
     using (await RequestGates.EnterAsync(hash, ct))
@@ -77,7 +76,7 @@ public sealed partial class TomTomRoutingProvider
           .OrderByDescending(x => x.RequestHash == hash)
           .ThenByDescending(x => x.CreatedAt)
           .FirstOrDefaultAsync(ct);
-        PerformanceStages.Elapsed("routing", "cache-recheck", rechecking);
+        timings.Elapsed("routing", "cache-recheck", rechecking);
         if (refreshed?.ResultJson is { } refreshedJson)
           return readCached(refreshedJson, refreshed.RequestHash == hash);
         if (refreshed is not null)
@@ -86,8 +85,8 @@ public sealed partial class TomTomRoutingProvider
             refreshed.ExpiresAt
           );
       }
-      PerformanceStages.Count("routing", "provider-attempts-queued", 1);
-      using (PerformanceStages.Start("routing", "provider-slot-wait"))
+      timings.Count("routing", "provider-attempts-queued", 1);
+      using (timings.Start("routing", "provider-slot-wait"))
         await ProviderSlots.WaitAsync(ct);
       try
       {
@@ -126,22 +125,19 @@ public sealed partial class TomTomRoutingProvider
     try
     {
       DateTime now;
-      using (PerformanceStages.Start("routing", "reservation-wait"))
+      using (timings.Start("routing", "reservation-wait"))
         await ReservationGate.WaitAsync(ct);
       try
       {
         // "reservation-total" CONTAINS every stage started below it. Read it
         // as the cost of reserving, and read the others as its breakdown -
         // adding them to it counts the same milliseconds twice.
-        using var reserving = PerformanceStages.Start(
-          "routing",
-          "reservation-total"
-        );
+        using var reserving = timings.Start("routing", "reservation-total");
         var opening = Stopwatch.GetTimestamp();
         await using var transaction = await db.Database.BeginTransactionAsync(
           ct
         );
-        PerformanceStages.Elapsed("routing", "reservation-begin", opening);
+        timings.Elapsed("routing", "reservation-begin", opening);
         if (db.Database.IsNpgsql())
         {
           var locking = Stopwatch.GetTimestamp();
@@ -149,7 +145,7 @@ public sealed partial class TomTomRoutingProvider
             "SELECT pg_advisory_xact_lock(710246710)",
             ct
           );
-          PerformanceStages.Elapsed("routing", "reservation-lock", locking);
+          timings.Elapsed("routing", "reservation-lock", locking);
         }
         now = DateTime.UtcNow;
         var looking = Stopwatch.GetTimestamp();
@@ -162,7 +158,7 @@ public sealed partial class TomTomRoutingProvider
           .OrderByDescending(x => x.RequestHash == hash)
           .ThenByDescending(x => x.CreatedAt)
           .FirstOrDefaultAsync(ct);
-        PerformanceStages.Elapsed("routing", "reservation-cache-read", looking);
+        timings.Elapsed("routing", "reservation-cache-read", looking);
         if (cached?.ResultJson is { } cachedJson)
           return readCached(cachedJson, cached.RequestHash == hash);
         if (cached is not null)
@@ -184,7 +180,7 @@ public sealed partial class TomTomRoutingProvider
           x => x.CreatedAt >= dayStart,
           ct
         );
-        PerformanceStages.Elapsed("routing", "reservation-limit-day", counting);
+        timings.Elapsed("routing", "reservation-limit-day", counting);
         if (spentToday >= dailyLimit)
           throw new RoutePlanningException(
             "The daily TomTom request limit has been reached. Saved routes remain available.",
@@ -195,11 +191,7 @@ public sealed partial class TomTomRoutingProvider
           x => x.CreatedAt >= minuteStart,
           ct
         );
-        PerformanceStages.Elapsed(
-          "routing",
-          "reservation-limit-minute",
-          counting
-        );
+        timings.Elapsed("routing", "reservation-limit-minute", counting);
         if (
           spentThisMinute
           >= Math.Clamp(
@@ -224,12 +216,12 @@ public sealed partial class TomTomRoutingProvider
         db.RoutingApiCalls.Add(call);
         var writing = Stopwatch.GetTimestamp();
         await db.SaveChangesAsync(ct);
-        PerformanceStages.Elapsed("routing", "reservation-write", writing);
+        timings.Elapsed("routing", "reservation-write", writing);
         // The committed reservation survives cancellation or process loss after
         // dispatch.
         var committing = Stopwatch.GetTimestamp();
         await transaction.CommitAsync(ct);
-        PerformanceStages.Elapsed("routing", "reservation-commit", committing);
+        timings.Elapsed("routing", "reservation-commit", committing);
       }
       finally
       {
@@ -241,7 +233,7 @@ public sealed partial class TomTomRoutingProvider
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         if (http.Timeout != Timeout.InfiniteTimeSpan)
           timeout.CancelAfter(http.Timeout);
-        using (PerformanceStages.Start("routing", "provider-body"))
+        using (timings.Start("routing", "provider-body"))
         using (
           var response = await http.GetAsync(
             "https://api.tomtom.com/"
@@ -300,7 +292,7 @@ public sealed partial class TomTomRoutingProvider
       }
       var saving = Stopwatch.GetTimestamp();
       await db.SaveChangesAsync(ct);
-      PerformanceStages.Elapsed("routing", "result-save", saving);
+      timings.Elapsed("routing", "result-save", saving);
       return result;
     }
     finally

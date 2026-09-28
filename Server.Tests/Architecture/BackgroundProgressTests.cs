@@ -88,12 +88,15 @@ public sealed class BackgroundProgressTests
     try
     {
       var later = new ManualTimeProvider(Now.AddHours(1));
+      var state = new BackgroundState();
       var ready = await new BackgroundProgressHealthCheck(
+        state,
         later
       ).CheckHealthAsync(new());
-      var live = await new BackgroundWorkHealthCheck(later).CheckHealthAsync(
-        new()
-      );
+      var live = await new BackgroundWorkHealthCheck(
+        state,
+        later
+      ).CheckHealthAsync(new());
 
       Assert.Equal(HealthStatus.Degraded, ready.Status);
       Assert.Contains(name, ready.Description);
