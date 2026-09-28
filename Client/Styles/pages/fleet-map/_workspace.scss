@@ -635,10 +635,11 @@
   }
 }
 
-// Too narrow for four clocks abreast (enlarged text): two by two.
+// Too narrow for four clocks abreast (enlarged text): two by two, or one
+// under another where a reading would not fit half the width.
 @container map-truck-card (width < #{ui.breakpoint(truck-clocks-stacked)}) {
   .fleet-truck-clocks {
-    --hos-cell-columns: repeat(2, minmax(0, 1fr));
+    --hos-cell-columns: repeat(auto-fit, minmax(min(100%, 6rem), 1fr));
     --hos-cell-flow: row;
   }
 }
@@ -1278,10 +1279,10 @@
   .fleet-trip-chain {
     grid-area: chain;
   }
-  // At enlarged text on a narrow screen the tool bar wrapped into rows
-  // that covered the floating card's head and facts: the stage takes the
-  // screen's height (the page scrolls), the bar a single row of its own
-  // above the map that scrolls across, and the card starts below it.
+  // At enlarged text on a narrow screen the tool bar wraps into rows that
+  // covered the floating card's head and facts: the stage takes the
+  // screen's height (the page scrolls), the bar a row of its own above
+  // the map, every button in view, and the card starts below it.
   @container fleet-page (width < #{ui.breakpoint(map-tools-apart)}) {
     .fleet-map-stage {
       min-height: 100dvh;
@@ -1291,13 +1292,8 @@
     .fleet-map-controls {
       grid-area: tools;
       align-self: start;
-      flex-wrap: nowrap;
       max-width: 100%;
       margin: 0;
-      overflow-x: auto;
-      > .fleet-map-inspector__actions {
-        flex-wrap: nowrap;
-      }
     }
   }
 }
