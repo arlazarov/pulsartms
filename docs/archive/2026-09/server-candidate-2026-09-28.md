@@ -88,14 +88,51 @@ two small tables.
 | Browser checks `uiSmoke`, `messagingTabsSmoke` | not run - part of the gate |
 | PostgreSQL fixture tests | run in the groups where the fixture is recorded (none skipped) |
 
+## Decisions prepared (read only, 2026-09-28)
+
+**Operator identities.** Production has three accounts: two Admins of
+`amfcarrier` and the Meta reviewer, a Dispatch user of
+`meta-review-demo`. The Operator policy needs Admin as well, so the
+reviewer can never be one. Proposed: the owner's own identity only -
+the person who deploys and proves the drain - set as
+`Operations__Operators__0` on the new revision; the second Admin only if
+the owner wants a second person able to release. The identity ids are
+given to the owner directly, not recorded here.
+
+**Where the business number's webhooks go** (diagnostic-uGFNee in this
+worktree: the Cloud Run request log for `/api/webhooks/whatsapp/{key}`
+over four days, query strings dropped, and the production messaging
+timeline read in a read-only transaction):
+
+- 2026-09-25 00:35 the demo company's URL was verified; from 00:36 the
+  provider posted to `meta-review-demo` (44 requests that day), until
+  2026-09-26 00:36.
+- 2026-09-26 01:22 the `amfcarrier` URL was verified again; since then
+  every post went to `amfcarrier` (27 on the 26th, 3 on the 27th, the
+  last 2026-09-27 10:58), none to the demo company.
+- The database agrees: every `amfcarrier` reply from 2026-09-26 on is
+  delivered; the 12 replies still "accepted" were all sent 2026-09-25,
+  while statuses went to the demo company. Both companies use one
+  business number.
+
+So, as of the last webhook, statuses reach production under
+`amfcarrier`. The log shows where the provider sent, not its current
+setting: a change after 10:58 on the 27th shows only with the next
+webhook. Step 0 of the cutover is therefore a read of the next
+`amfcarrier` webhook in the log, or the owner reading the setting in
+Meta's dashboard; nothing in this plan changes it.
+
+Expected after the release: `messaging.accepted-without-status` will
+list those 12 replies of 2026-09-25 - delivery unknown, from before the
+release, not caused by it.
+
 ## Before publication
 
 1. Root's correctness review of the commits still under review
    (`53e83d86`, `6972e1af`, `dca3d714`, `f39f9688`, the merge) and of
    this record.
-2. Owner: the operator identities for `Operations:Operators`; confirm
-   where the business number's webhooks go (on 2026-09-25 a WABA-level
-   override sent them to the demo company).
+2. Owner: the operator identities for `Operations:Operators` (proposed
+   above); the webhook destination read again just before the switch.
 3. The release gate on the frozen tree, once.
 
 ## Cutover
