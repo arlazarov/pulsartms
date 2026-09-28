@@ -38,10 +38,17 @@
                 <li class="fleet-trip-chain__link @PhaseClass(load) @RouteClass(load, index) @(selected ? "is-selected" : "")"
                     @key="(load.Id, load.ExecutionLegId)"
                     style="--hud-index: @index">
-                    <div class="fleet-trip-chain__card">
+                    @* The whole card shows the trip's whole road, again when
+                       it is already chosen (the owner, September 28): a
+                       press anywhere on it - words, arrow, status, padding -
+                       lands here. The trip button is its keyboard control
+                       (its press bubbles here too); the stop numbers and
+                       the open-load link keep their own actions and do not
+                       pass the press on. *@
+                    <div class="fleet-trip-chain__card"
+                         @onclick="() => Selected.InvokeAsync(load)">
                         <button type="button" class="fleet-trip-chain__trip"
-                                aria-pressed="@(selected ? "true" : "false")"
-                                @onclick="() => Selected.InvokeAsync(load)">
+                                aria-pressed="@(selected ? "true" : "false")">
                             <span class="fleet-trip-chain__load">
                                 <Client.Shared.Dispatch.LoadNumber.LoadNumber Value="load.LoadNumber" />
                             </span>
@@ -53,12 +60,10 @@
                             </span>
                         </button>
                         @* The route as its stops: a marker chooses that exact
-                           stop; anywhere else on the line chooses the whole
-                           trip, as its button does for the keyboard. Each
-                           marker is checked once the server says the stop is
-                           done (never from GPS passing it). *@
-                        <div class="fleet-trip-chain__route"
-                             @onclick="() => Selected.InvokeAsync(load)">
+                           stop; anywhere else on the card chooses the whole
+                           trip. Each marker is checked once the server says
+                           the stop is done (never from GPS passing it). *@
+                        <div class="fleet-trip-chain__route">
                             @foreach (var (visit, at) in DispatchStopPresentation.OrderedVisits(load.Stops).Select((v, i) => (v, i)))
                             {
                                 var stop = visit.Stop;
@@ -88,6 +93,7 @@
                         @if (LoadHref?.Invoke(load) is { } href)
                         {
                             <a class="fleet-trip-chain__open" href="@href"
+                               @onclick:stopPropagation="true"
                                title="Open load"
                                aria-label="@($"Open load {load.LoadNumber}")">
                                 <ActionIcon Kind="external-link" />
