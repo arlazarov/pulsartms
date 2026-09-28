@@ -50,9 +50,9 @@ $roles: (
   map-route-option-one: colors.value('violet', 700),
   map-route-option-two: colors.value('teal', 700),
   map-route-option-three: colors.value('rose', 700),
-  // Bright, with only a breath of cool blue - no grey (the owner,
+  // White: any tint read as grey beside the white panels (the owner,
   // September 27).
-  canvas: colors.value(ice, 50),
+  canvas: colors.value(ice, 0),
   surface: colors.value(ice, 0),
   surface-soft: colors.value(ice, 50),
   surface-muted: colors.value(ice, 150),
