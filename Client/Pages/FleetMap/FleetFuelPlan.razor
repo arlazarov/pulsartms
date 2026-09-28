@@ -32,6 +32,11 @@
                 : "No fuel stops are planned for this load.")
         </p>
     }
+    else if (Plan.Stops.Count == 0)
+    {
+        <p class="fleet-fuel-plan__empty">No fuel stop is needed: the tank
+            covers the planned work.</p>
+    }
     else
     {
         <ol class="fleet-fuel-plan__stops">

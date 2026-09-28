@@ -1084,6 +1084,9 @@ public partial class FleetMap : IAsyncDisposable
   // publishes its replacement (the owner, September 28): a driver with no
   // fuel stop at all is the worse answer. A plan that needs updating is
   // shown as stale (FuelPlan.Stale); the server's scope guard hides a plan
-  // made for another truck, leg or assignment revision.
-  private static bool Usable(FuelPlan? fuel) => fuel is { Stops.Count: > 0 };
+  // made for another truck, leg or assignment revision. A current plan
+  // with no stop is an answer too - the tank covers the work (truck 11005,
+  // September 28) - and only a stale one without stops has nothing to keep.
+  private static bool Usable(FuelPlan? fuel) =>
+    fuel is not null && (fuel.Stops.Count > 0 || !fuel.Stale);
 }
