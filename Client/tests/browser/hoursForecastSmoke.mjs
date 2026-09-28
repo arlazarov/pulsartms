@@ -1631,24 +1631,27 @@ async function panelGeometry(page) {
       own,
       map: rect(document.querySelector('#fleet-map')),
       stage: rect(document.querySelector('.fleet-map-stage')),
+      chain: document.querySelector('.fleet-trip-chain')
+        ? rect(document.querySelector('.fleet-trip-chain'))
+        : null,
+      rowGap:
+        parseFloat(
+          getComputedStyle(document.querySelector('.fleet-map-stage')).rowGap,
+        ) || 0,
+      rem: parseFloat(getComputedStyle(document.documentElement).fontSize),
+      viewport: innerWidth,
       heading: rect(document.querySelector('.fleet-map-page h1')),
       position: style.position,
       overflowY: style.overflowY,
       maxHeight: style.maxHeight,
       scrollHeight: element.scrollHeight,
       clientHeight: element.clientHeight,
-      contentGap:
-        own.bottom -
-        parseFloat(style.paddingBottom) -
-        parseFloat(style.borderBottomWidth) -
-        Math.max(...visible.map(node => node.getBoundingClientRect().bottom)) -
-        element.scrollTop,
       horizontalOverflow: element.scrollWidth > element.clientWidth + 1,
     };
   });
 }
 
-function checkPanelGeometry(geometry, name, docked, phoneOpen) {
+function checkPanelGeometry(geometry, name, docked) {
   const { own, map } = geometry;
   check(
     own.top >= geometry.heading.bottom &&
@@ -1664,22 +1667,36 @@ function checkPanelGeometry(geometry, name, docked, phoneOpen) {
       ['auto', 'scroll'].includes(geometry.overflowY),
     `${name}: the panel scrolls up and down inside itself, never sideways`,
   );
-  if (docked)
-    // As tall as what it says, the map showing beneath it.
-    check(
-      geometry.scrollHeight > geometry.clientHeight + 1 ||
-        geometry.contentGap <= 1,
-      `${name}: the docked panel is content-sized ` +
-        `(${geometry.contentGap.toFixed(1)}px below its content)`,
-    );
-  else
-    // On a phone the closed panel takes half the map at most; opened, most
-    // of it (inspector/_stage).
-    check(
-      own.height <= map.height * (phoneOpen ? 0.85 : 0.6) + 1,
-      `${name}: the floating panel leaves the map visible ` +
-        `(${own.height.toFixed(0)} of ${map.height.toFixed(0)})`,
-    );
+  // One box per breakpoint, whatever it shows and whenever its answers
+  // arrive (the owner, September 28): docked, its column's width and
+  // 36rem tall, or less where the row above the chain is shorter;
+  // floating, 56rem at most wide and 55% of the map tall; on a phone, the
+  // map's width and half its height.
+  const expected = docked
+    ? {
+        height: Math.min(
+          36 * geometry.rem,
+          geometry.chain
+            ? geometry.chain.top - geometry.rowGap - own.top
+            : Infinity,
+        ),
+      }
+    : geometry.viewport < 768
+      ? { width: map.width, height: map.height * 0.5 }
+      : {
+          width: Math.min(map.width, 56 * geometry.rem),
+          height: map.height * 0.55,
+        };
+  check(
+    Object.entries(expected).every(
+      ([key, value]) => Math.abs(own[key] - value) <= 1,
+    ),
+    `${name}: the panel is its breakpoint's box ` +
+      JSON.stringify({
+        own: { width: own.width, height: own.height },
+        expected,
+      }),
+  );
 }
 
 // With every value blank, as while it loads, the panel keeps its width and
@@ -3146,7 +3163,7 @@ try {
           )})`,
       );
       const overlayGeometry = await panelGeometry(page);
-      checkPanelGeometry(overlayGeometry, name, docked, phone);
+      checkPanelGeometry(overlayGeometry, name, docked);
       await checkNoReplayedArrival(page, name, interactionMark);
       await page.screenshot({
         path: resolve(output, `${name}-selected-info-retained.png`),
