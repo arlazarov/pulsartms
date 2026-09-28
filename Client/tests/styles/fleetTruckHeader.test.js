@@ -14,7 +14,6 @@ const css = compileString(
 const compact = compileString(
   "@use 'pages/fleet-map/inspector/card';" +
     " @use 'pages/fleet-map/inspector/hours-line';" +
-    " @use 'pages/fleet-map/inspector/route-facts';" +
     " @use 'pages/fleet-map/inspector/narrow';",
   { loadPaths },
 ).css;
@@ -24,9 +23,11 @@ test('map inspector content updates without reveal or fade animation', () => {
     assert.match(css, new RegExp(`\\.${selector}\\s*\\{[^}]*animation: none;`));
   assert.match(css, /\.fleet-map-info-reserved\s*\{[^}]*transition: none;/);
   assert.doesNotMatch(css, /@keyframes fleet-map-(?:reveal|info-fade)/);
+  // The route's messages under the panel, with the padding the panel's
+  // own rules used to set in the truck mode's route grid.
   assert.match(
     css,
-    /\.fleet-map-route-info\s*\{[^}]*padding: var\(--space-sm\) var\(--space-md\);/,
+    /\.fleet-map-route-info\s*\{[^}]*padding: var\(--space-xs\) var\(--space-md\);/,
   );
 });
 
@@ -52,14 +53,12 @@ test('map information caps its top gap by actual side clearance rather than view
     /\.fleet-map-info-reserved\s*\{[^}]*background: var\(--ui-surface\);/,
   );
   assert.match(css, /\.fleet-map-info-content\s*\{[^}]*gap: 0;/);
-  assert.match(
-    css,
-    /\.fleet-map-info-reserved \.fleet-map-route-info\s*\{\s*border: 0;\s*border-radius: 0;\s*background: transparent;/,
-  );
-  assert.match(
-    css,
-    /\.fleet-map-info-reserved \.fleet-map-route-info\s*\{\s*border-top: 1px solid var\(--ui-border-subtle\);/,
-  );
+  // The messages keep one rule above them and no box of their own; the
+  // owner sets that once instead of a reset and a re-border in the stage.
+  const routeInfo = css.match(/\n\.fleet-map-route-info\s*\{([^}]*)\}/)[1];
+  assert.match(routeInfo, /border-top: 1px solid var\(--ui-border-subtle\);/);
+  assert.doesNotMatch(routeInfo, /border(?:-radius)?: |background:/);
+  assert.doesNotMatch(css, /\.fleet-map-info-reserved \.fleet-map-route-info/);
   assert.match(
     css,
     /\.fleet-map-info-content\s*\{[^}]*display: flex;[^}]*flex-direction: column;/,

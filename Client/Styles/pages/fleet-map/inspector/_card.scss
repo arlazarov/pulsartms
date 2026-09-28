@@ -21,15 +21,10 @@
   .fleet-map-info-content {
     display: flex;
   }
-  // The head: the truck and what is left of its way beside it, then its
-  // rows - the load and its arrival, the vehicle and its clocks, where the
-  // truck is - each under a rule of its own.
-  // The split every row of the card shares: the load, the vehicle and the
-  // stop at the left; the arrival, the clocks and the facts at the right.
-  --truck-card-columns: minmax(0, 11fr) minmax(0, 9fr);
+  // The head: the unit, and Details and the close beside it.
   .fleet-map-inspector__header {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
     grid-template-areas: 'identity controls';
     align-items: center;
     column-gap: ui.pg(md);
@@ -44,9 +39,13 @@
   }
   // The toggle and the close, with a hairline between them so the one
   // that opens the card is never taken for the one that shuts it.
+  // The controls may give way to the unit: at enlarged text the close
+  // wraps under Details instead of running past the card.
   .fleet-map-inspector__controls {
     grid-area: controls;
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
     gap: ui.pg(sm);
     > .fleet-map-mobile-summary__toggle {
@@ -58,55 +57,5 @@
     @include ui.overlay-title;
     display: block;
     margin-right: 0;
-  }
-  // The actions read as words, under the detail they act on. They were six
-  // bare icons in the header, where the row had no room to say what any of
-  // them did. The load's own page opens from the load number in the head;
-  // the Open load button that repeated it is gone (September 26).
-  // Fuel's panel, under the actions: now and on arrival, then the plan's
-  // view and send.
-  .fleet-map-fuel-panel {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: end;
-    gap: ui.pg(sm) ui.pg(lg);
-    margin-inline: ui.pg(md);
-    padding: ui.pg(sm) 0;
-    border-top: 1px solid ui.theme(border-subtle);
-  }
-  .fleet-map-fuel-panel__reading {
-    display: grid;
-    gap: ui.pg(micro);
-    > strong {
-      color: ui.theme(text);
-      font-size: ui.fs(lead);
-      font-weight: 600;
-    }
-  }
-  .fleet-map-fuel-panel__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: ui.pg(xs);
-    margin-inline-start: auto;
-  }
-  .fleet-map-inspector__actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: ui.pg(xs);
-    min-width: 0;
-    max-width: 100%;
-    margin-inline: ui.pg(md);
-    padding: ui.pg(sm) 0;
-    border-top: 1px solid ui.theme(border-subtle);
-    .map-action-icon {
-      @include ui.compact-control;
-      & {
-        display: inline-flex;
-        align-items: center;
-        gap: ui.pg(xs);
-        white-space: nowrap;
-      }
-    }
   }
 }

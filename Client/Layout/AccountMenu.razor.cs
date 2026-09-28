@@ -25,6 +25,12 @@ public partial class AccountMenu
   [Parameter]
   public EventCallback Navigated { get; set; }
 
+  // Told of an Escape the closed menu does not use, so a holding menu can
+  // close. Keys never bubble past the menu: a conditional stop let the
+  // Escape that closed the actions also close the phone's menu.
+  [Parameter]
+  public EventCallback Escaped { get; set; }
+
   private bool Open;
   private ElementReference _toggle;
 
@@ -46,8 +52,13 @@ public partial class AccountMenu
 
   private async Task HandleKeyAsync(KeyboardEventArgs args)
   {
-    if (args.Key != "Escape" || !Open)
+    if (args.Key != "Escape")
       return;
+    if (!Open)
+    {
+      await Escaped.InvokeAsync();
+      return;
+    }
     Open = false;
     await _toggle.FocusAsync();
   }

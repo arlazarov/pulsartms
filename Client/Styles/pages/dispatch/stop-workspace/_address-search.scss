@@ -48,12 +48,6 @@
     border-color: ui.theme(selection-border);
   }
 
-  &__search-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: ui.pg(sm);
-  }
-
   &__address-result {
     width: 100%;
     flex-wrap: wrap;

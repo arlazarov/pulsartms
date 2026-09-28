@@ -102,11 +102,6 @@
   // not seen or reached (the owner, September 27).
   &__scope.is-unavailable {
     visibility: hidden;
-    // On a phone the scope wraps to a row of its own: an empty row there
-    // holds nothing still, so it leaves.
-    @include ui.below(md) {
-      display: none;
-    }
   }
   &__count {
     display: flex;

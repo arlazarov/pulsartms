@@ -195,10 +195,6 @@
       background: ui.theme(success-surface);
       color: ui.theme(success-text);
     }
-    &--danger {
-      background: ui.theme(danger-surface);
-      color: ui.theme(danger-text);
-    }
   }
   &__visit {
     color: ui.theme(text-secondary);
@@ -345,14 +341,6 @@
     background: ui.theme(warning-surface);
     color: ui.theme(warning-text);
   }
-  // The load's page is where the card ends: the one primary action, at the
-  // foot of the facts.
-  &__details-link {
-    align-self: flex-end;
-    display: inline-flex;
-    margin-top: ui.pg(md);
-    text-decoration: none;
-  }
 }
 
 @include ui.above(map-mobile) {
@@ -415,10 +403,6 @@
     padding: ui.pg(md) 0 0;
     border-top: 1px solid ui.theme(border-subtle);
     border-left: 0;
-  }
-  .fleet-route-popup__details-link {
-    align-self: stretch;
-    justify-content: center;
   }
 }
 @container map-inspector (width < #{ui.breakpoint(stop-card-stacked)}) {

@@ -21,7 +21,6 @@
     text-underline-offset: 3px;
   }
 
-  &__header,
   &__filters,
   &__pagination {
     display: flex;
@@ -30,9 +29,6 @@
     gap: ui.pg(md);
   }
 
-  &__header {
-    justify-content: space-between;
-  }
   &__filters {
     align-items: end;
     label {
@@ -65,31 +61,6 @@
     }
   }
 
-  &__summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-    gap: ui.pg(md);
-    dt {
-      color: ui.theme(text-secondary);
-      font-size: ui.fs(label);
-    }
-    dd {
-      overflow-wrap: anywhere;
-    }
-  }
-
-  &__stop {
-    display: grid;
-    gap: ui.pg(md);
-    padding: ui.pg(lg);
-    border: 1px solid ui.theme(border-subtle);
-    border-radius: ui.radius(sm);
-    background: ui.theme(surface);
-  }
-
-  &__notes {
-    white-space: pre-wrap;
-  }
   &__error {
     color: ui.theme(danger-text);
   }

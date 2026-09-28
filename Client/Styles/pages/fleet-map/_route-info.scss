@@ -1,39 +1,17 @@
 @use '../../base' as ui;
 
 .fleet-map-route-info {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  align-items: flex-start;
-  gap: ui.pg(sm) ui.pg(md);
-  padding: ui.pg(sm) ui.pg(md);
-  border: 1px solid ui.theme(border-subtle);
-  border-radius: ui.radius(sm);
-  background: ui.theme(surface);
-  font-size: ui.fs(body);
+  // Under the truck panel, the route's messages: load conflicts, route
+  // warnings, off-route or stale GPS and a planning error. Its element
+  // classes also dress the load reference and the next load's card.
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: ui.pg(xs) ui.pg(lg);
   min-height: 0;
-  align-content: start;
-  > * {
-    flex: 0 1 auto;
-    max-width: 100%;
-  }
-
-  > .arrival-estimate {
-    min-width: 0;
-    max-width: 100%;
-    min-height: 0;
-    align-content: start;
-    align-self: start;
-  }
-  > .fleet-map-route-info__load {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: ui.pg(xs);
-    min-width: 0;
-    padding-right: ui.pg(lg);
-    border-right: 1px solid ui.theme(border-subtle);
-  }
+  padding: ui.pg(xs) ui.pg(md);
+  border-top: 1px solid ui.theme(border-subtle);
+  font-size: ui.fs(body);
   &__load {
     line-height: 1.4;
   }
@@ -79,7 +57,6 @@
     min-inline-size: 0;
   }
   &__messages {
-    flex-basis: 100%;
     display: flex;
     flex-wrap: wrap;
     align-content: start;
@@ -102,40 +79,5 @@
     gap: ui.pg(sm);
     color: ui.theme(warning-text);
     font-size: ui.fs(small);
-  }
-
-  @include ui.below(map-route-columns) {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    // Narrow: the cycle reads smaller, and a time does not break in two.
-    --stop-hours-cycle-size: #{ui.fs(caption)};
-    --stop-hours-value-white-space: nowrap;
-    > .fleet-map-route-info__load {
-      grid-column: 1;
-      grid-row: 2;
-    }
-    > .arrival-estimate {
-      grid-column: 2;
-      grid-row: 3;
-    }
-    > .fleet-map-route-info__load {
-      padding-right: 0;
-      border-right: 0;
-    }
-    > .fleet-map-route-info__load,
-    > .arrival-estimate {
-      padding-top: ui.pg(sm);
-      border-top: 1px solid ui.theme(border-subtle);
-    }
-  }
-}
-
-@container map-truck-card (width < #{ui.breakpoint(map-info-stacked)}) {
-  .fleet-map-route-info {
-    > .fleet-map-route-info__load,
-    > .arrival-estimate {
-      grid-column: 1 / -1;
-      grid-row: auto;
-    }
   }
 }

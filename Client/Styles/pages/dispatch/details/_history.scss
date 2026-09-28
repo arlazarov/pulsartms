@@ -82,25 +82,6 @@
     min-width: 0;
   }
 
-  &__section-heading {
-    display: grid;
-    gap: ui.pg(sm);
-
-    h2,
-    p {
-      margin: 0;
-    }
-
-    h2 {
-      font-size: ui.fs(lead);
-    }
-
-    p {
-      color: ui.theme(text-secondary);
-      font-size: ui.fs(small);
-    }
-  }
-
   &__history {
     list-style: none;
     padding: 0;

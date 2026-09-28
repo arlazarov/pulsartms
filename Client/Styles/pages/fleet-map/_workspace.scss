@@ -95,14 +95,6 @@
   }
 }
 
-// Every panel of the workspace is glass with corner ticks; the map is a
-// panel too, its ticks drawn by the stage around it.
-#fleet-map {
-  border-color: ui.theme(accent, 0.2);
-  border-radius: ui.radius(panel);
-  box-shadow: ui.shadow(panel);
-}
-
 .fleet-map-info-reserved {
   border: 1px solid ui.theme(accent, 0.2);
 }
@@ -130,12 +122,25 @@
   background: ui.theme(surface, 0.86);
   backdrop-filter: blur(10px);
   box-shadow: ui.shadow(panel);
+  // In daylight the bar is rimmed in the cyan glow and its icons are cyan.
+  :root[data-theme='light'] & {
+    border-color: ui.theme(hud-glow, 0.45);
+    .map-action-icon,
+    .fleet-map-controls__button {
+      color: ui.theme(accent);
+    }
+  }
   &__layers {
     position: relative;
   }
-  // The chosen truck's actions lead the bar, set off by a hairline.
+  // The chosen truck's actions lead the bar, set off by a hairline; they
+  // wrap with the bar at enlarged text rather than run past the map.
   > .fleet-map-inspector__actions {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    min-width: 0;
+    max-width: 100%;
     gap: ui.pg(micro);
     margin: 0;
     padding: 0 ui.pg(xs) 0 0;
@@ -154,6 +159,11 @@
     background: none;
     color: ui.theme(text-secondary);
     box-shadow: none;
+    // Touch targets below 800px, as every action button there.
+    @include ui.below(md) {
+      width: ui.size(control-touch);
+      height: ui.size(control-touch);
+    }
     > span {
       position: absolute;
       width: 1px;
@@ -208,14 +218,11 @@
       cursor: default;
     }
   }
-  // A phone's card floats over the map's top: the bar sits low in the
-  // corner, clear of it; fingers zoom, and the layers are in Filters.
-  @include ui.below(map-mobile) {
+  // Wherever the card floats over the map's top (below the docked
+  // layout), the bar sits low, clear of it and of its head's controls.
+  @include ui.below(fleet-docked) {
     align-self: end;
     margin-bottom: ui.pg(section);
-    &__button--zoom {
-      display: none;
-    }
   }
 }
 
@@ -358,6 +365,9 @@
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    :root[data-theme='light'] & {
+      color: ui.theme(accent);
+    }
     > :last-child {
       text-align: right;
     }
@@ -384,6 +394,12 @@
     &.is-selected {
       background: ui.theme(accent, 0.1);
       box-shadow: inset 3px 0 0 ui.theme(accent);
+      :root[data-theme='light'] & {
+        background: ui.theme(selected);
+        box-shadow:
+          inset 3px 0 0 ui.theme(hud-line),
+          inset 12px 0 16px -12px ui.theme(hud-glow, 0.5);
+      }
     }
   }
   &__unit {
@@ -442,6 +458,7 @@
 }
 
 .fleet-truck-next {
+  container: truck-next / inline-size;
   display: grid;
   gap: ui.pg(xs);
   margin: ui.pg(xs) ui.pg(lg) ui.pg(md);
@@ -500,25 +517,49 @@
   }
   &__hours {
     display: grid;
+    min-width: 0;
     font-variant-numeric: tabular-nums;
+  }
+  // Too narrow for a label column (a phone at enlarged text): each label
+  // stands over its value, words whole, never broken mid-word.
+  @container truck-next (width < #{ui.breakpoint(truck-next-stacked)}) {
+    &__eta {
+      --route-fact-label: 0px;
+      --stop-hours-columns: minmax(0, 1fr);
+    }
+    &__booking {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 }
 
+// The truck's facts: two columns of bordered cells, a lit frame and HUD
+// labels docked. Light draws the grid in the cyan instrument lines.
 .fleet-truck-facts {
+  --facts-rim: #{ui.theme(border)};
+  --facts-line: #{ui.theme(border-subtle)};
+  --facts-icon: #{ui.theme(accent)};
+  --facts-label: #{ui.theme(text-muted)};
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin: 0 ui.pg(lg) ui.pg(md);
-  border: 1px solid ui.theme(border);
+  border: 1px solid var(--facts-rim);
   border-radius: ui.radius(md);
-  background: ui.theme(surface);
+  background-color: ui.theme(surface);
+  :root[data-theme='light'] & {
+    --facts-rim: #{ui.theme(selection-border, 0.9)};
+    --facts-line: #{ui.theme(selection-border, 0.7)};
+    --facts-icon: #{ui.theme(hud-line)};
+    --facts-label: #{ui.theme(accent)};
+  }
   &__fact {
     display: flex;
     gap: ui.pg(sm);
     min-width: 0;
     padding: ui.pg(sm) ui.pg(md);
-    border-bottom: 1px solid ui.theme(border-subtle);
+    border-bottom: 1px solid var(--facts-line);
     &:nth-child(odd) {
-      border-right: 1px solid ui.theme(border-subtle);
+      border-right: 1px solid var(--facts-line);
     }
     &:nth-last-child(-n + 2) {
       border-bottom: 0;
@@ -528,16 +569,26 @@
       width: ui.pg(lg);
       height: ui.pg(lg);
       margin-top: ui.pg(micro);
-      color: ui.theme(accent);
+      color: var(--facts-icon);
     }
     > div {
       min-width: 0;
     }
   }
   dt {
-    color: ui.theme(text-muted);
+    color: var(--facts-label);
     font-size: ui.fs(caption);
     letter-spacing: 0.04em;
+  }
+  // Docked, the facts wear the instrument frame and HUD labels.
+  @include ui.above(fleet-docked) {
+    --facts-rim: #{ui.theme(accent, 0.22)};
+    @include ui.hud-frame;
+    margin-top: ui.pg(xs);
+    dt {
+      @include ui.hud-label;
+      color: var(--facts-label);
+    }
   }
   dd {
     margin: ui.pg(hair) 0 0;
@@ -581,16 +632,50 @@
   }
 }
 
-.fleet-truck-clocks {
-  margin: 0 ui.pg(lg) ui.pg(md);
+// Too narrow for four clocks abreast (enlarged text): two by two.
+@container map-truck-card (width < #{ui.breakpoint(truck-clocks-stacked)}) {
+  .fleet-truck-clocks {
+    --hos-cell-columns: repeat(2, minmax(0, 1fr));
+    --hos-cell-flow: row;
+  }
+}
+// A narrow card at enlarged text keeps the two columns (the approved
+// grid) and makes room in each cell: the icon stands over its label,
+// the padding closes, and a long label is hyphenated at a syllable
+// rather than pushed past its cell.
+@container map-truck-card (width < #{ui.breakpoint(truck-facts-stacked)}) {
+  .fleet-truck-facts {
+    &__fact {
+      flex-direction: column;
+      gap: ui.pg(xs);
+      padding-inline: ui.pg(sm);
+      > svg {
+        margin-top: 0;
+      }
+    }
+    dt {
+      hyphens: auto;
+      overflow-wrap: break-word;
+    }
+  }
 }
 
-// The concept's panel - next stop, facts, clocks - replaces the card's
-// dense head rows on every screen; on a phone too (the owner, September
-// 27: the mobile pass), where Details opens the facts and the clocks.
-.fleet-map-inspector[data-inspector-mode='truck'] {
-  .fleet-map-route-info > :not(.fleet-map-route-info__messages) {
-    display: none;
+// The driver's clocks as cells with bars. Docked, edged in the accent;
+// in daylight drawn in the cyan instrument lines with a lit top edge.
+.fleet-truck-clocks {
+  margin: 0 ui.pg(lg) ui.pg(md);
+  @include ui.above(fleet-docked) {
+    --hos-cell-border: #{ui.theme(accent, 0.2)};
+    --hos-cell-shadow: inset 0 1px 0 #{ui.theme(accent, 0.35)};
+  }
+  :root[data-theme='light'] & {
+    --hos-cell-border: #{ui.theme(selection-border, 0.9)};
+    --hos-cell-background:
+      linear-gradient(#{ui.theme(hud-line)}, #{ui.theme(hud-line)}) top center /
+        calc(100% - 2 * #{ui.radius(sm)}) 2px no-repeat,
+      #{ui.theme(surface)};
+    --hos-cell-shadow: none;
+    --hos-cell-label: #{ui.theme(accent)};
   }
 }
 
@@ -665,9 +750,8 @@
   }
 }
 
-// The truck panel as the stop cards are drawn (the owner, September 27): a
-// truck emblem at its head, a lit frame over its facts, HUD labels, and
-// clocks edged in the accent.
+// The truck panel's head as the stop cards are drawn (the owner,
+// September 27): a truck emblem beside the unit.
 @include ui.above(fleet-docked) {
   .fleet-map-inspector[data-inspector-mode='truck'] {
     // On the head itself: it stays sticky, and its grid is untouched. No
@@ -684,21 +768,6 @@
       &::after {
         left: calc(#{ui.pg(lg)} + #{ui.pg(sm)});
       }
-    }
-    .fleet-truck-facts {
-      @include ui.hud-frame;
-      margin-top: ui.pg(xs);
-      border-color: ui.theme(accent, 0.22);
-      :root[data-theme='light'] & {
-        border-color: ui.theme(border);
-      }
-      dt {
-        @include ui.hud-label;
-      }
-    }
-    .fleet-truck-clocks {
-      --hos-cell-border: #{ui.theme(accent, 0.2)};
-      --hos-cell-shadow: inset 0 1px 0 #{ui.theme(accent, 0.35)};
     }
   }
 }
@@ -721,6 +790,9 @@
     font-weight: 600;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+    :root[data-theme='light'] & {
+      color: ui.theme(accent);
+    }
   }
   // A phone's head has no room for the eyebrow.
   @include ui.below(map-mobile) {
@@ -730,8 +802,8 @@
   }
 }
 
-// The trip chain: every trip of the truck as a card, wrapping into rows;
-// nothing in it scrolls sideways. A phone lists them down, scrolling.
+// The trip chain: every trip of the truck as a card in one row that
+// scrolls across (the mouse wheel moves it sideways), on phones too.
 .fleet-trip-chain {
   @include ui.glass-panel;
   display: grid;
@@ -993,75 +1065,13 @@
   }
 }
 
-// The layout comes last: its narrow-screen rules override the components'
-// own display above, by order at equal specificity.
+// The chain in daylight (the owner, September 27): the trips strung on
+// a fine line through their step tokens; each trip a clean white tile
+// with a straight line of its colour along the top edge (clear of the
+// rounded corners), the phase a soft tint without a rim; the chosen trip
+// rimmed in its colour, softly lit and lifted. Docked layout only, as
+// approved.
 @include ui.above(fleet-docked) {
-  .fleet-map-stage {
-    display: grid;
-    grid-template-columns:
-      ui.size(fleet-list) minmax(0, 1fr)
-      ui.size(fleet-panel);
-    grid-template-rows: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'list map inspector'
-      'chain chain chain';
-    gap: ui.pg(md);
-    position: relative;
-    padding: ui.pg(md);
-  }
-  // The map lies under the whole workspace; the list, the panel and the
-  // chain float over it as tempered glass (the owner, September 27). The
-  // camera keeps what it shows clear of them.
-  .fleet-map-stage > #fleet-map {
-    position: absolute;
-    inset: 0;
-    width: auto;
-    border-radius: ui.radius(panel);
-  }
-  .fleet-truck-list,
-  .fleet-trip-chain,
-  .fleet-map-info-reserved {
-    @include ui.tempered-glass;
-    z-index: ui.layer(raised);
-  }
-  // Whatever card the panel shows - truck, stop, station - it fills its
-  // column to the right edge; the floating card's own widths do not apply
-  // here (the owner, September 27).
-  .fleet-map-stage
-    > .fleet-map-info-reserved.fleet-map-inspector[data-inspector-mode] {
-    width: auto;
-    min-width: 0;
-    max-width: none;
-    justify-self: stretch;
-  }
-  // A station's quote is a narrower card, kept at the column's right edge
-  // (the owner, September 27).
-  .fleet-map-stage
-    > .fleet-map-info-reserved.fleet-map-inspector[data-inspector-mode='fuel']:not(
-      :has(.fleet-station-popup--planned)
-    ) {
-    width: min(100%, #{ui.size(map-fuel-quote)});
-    min-width: 0;
-    max-width: 100%;
-    justify-self: end;
-  }
-  // The list is as tall as its trucks; the map shows beneath it.
-  .fleet-map-stage > .fleet-truck-list:not(.is-collapsed) {
-    align-self: start;
-    max-height: 100%;
-  }
-  // A chosen truck's panel is as tall as what it says; the map shows
-  // beneath it. The empty state keeps the column.
-  .fleet-map-stage
-    > .fleet-map-info-reserved.fleet-map-inspector.has-selection {
-    align-self: start;
-    max-height: 100%;
-  }
-  // The chain in daylight (the owner, September 27): the trips strung on
-  // a fine line through their step tokens; each trip a clean white tile
-  // with a straight line of its colour along the top edge (clear of the
-  // rounded corners), the phase a soft tint without a rim; the chosen trip
-  // rimmed in its colour, softly lit and lifted.
   :root[data-theme='light'] {
     // The line the trips hang on carries a slow current of cyan dashes.
     .fleet-trip-chain__links {
@@ -1108,6 +1118,66 @@
       background: color-mix(in srgb, currentColor 12%, transparent);
     }
   }
+}
+
+// The layout comes last: its narrow-screen rules override the components'
+// own display above, by order at equal specificity.
+@include ui.above(fleet-docked) {
+  .fleet-map-stage {
+    display: grid;
+    // The list and the panel give way before the page does: at enlarged
+    // text their rem widths outgrew the screen and the chain under them
+    // ran past it. The map lies under the whole stage either way.
+    grid-template-columns:
+      minmax(0, ui.size(fleet-list)) minmax(0, 1fr)
+      minmax(0, ui.size(fleet-panel));
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'list map inspector'
+      'chain chain chain';
+    gap: ui.pg(md);
+    position: relative;
+    padding: ui.pg(md);
+  }
+  .fleet-truck-list,
+  .fleet-trip-chain,
+  .fleet-map-info-reserved {
+    @include ui.tempered-glass;
+    z-index: ui.layer(raised);
+  }
+  // Whatever card the panel shows - truck, stop, station - it fills its
+  // column to the right edge; the floating card's own widths do not apply
+  // here (the owner, September 27).
+  .fleet-map-stage
+    > .fleet-map-info-reserved.fleet-map-inspector[data-inspector-mode] {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    justify-self: stretch;
+  }
+  // A station's quote is a narrower card, kept at the column's right edge
+  // (the owner, September 27).
+  .fleet-map-stage
+    > .fleet-map-info-reserved.fleet-map-inspector[data-inspector-mode='fuel']:not(
+      :has(.fleet-station-popup--planned)
+    ) {
+    width: min(100%, #{ui.size(map-fuel-quote)});
+    min-width: 0;
+    max-width: 100%;
+    justify-self: end;
+  }
+  // The list is as tall as its trucks; the map shows beneath it.
+  .fleet-map-stage > .fleet-truck-list:not(.is-collapsed) {
+    align-self: start;
+    max-height: 100%;
+  }
+  // A chosen truck's panel is as tall as what it says; the map shows
+  // beneath it. The empty state keeps the column.
+  .fleet-map-stage
+    > .fleet-map-info-reserved.fleet-map-inspector.has-selection {
+    align-self: start;
+    max-height: 100%;
+  }
   .fleet-map-info-reserved {
     // No scrollbar lane: the head reaches the panel's right edge; the
     // panel still scrolls by wheel, touch and keyboard.
@@ -1132,6 +1202,11 @@
     > :not(.fleet-map-inspector__empty) {
       display: none;
     }
+  }
+  // While an editor or the camera is open the panel is not drawn: it
+  // would say no truck is chosen while one is.
+  .fleet-map-info-reserved.is-overlaid {
+    display: none;
   }
   .fleet-truck-list {
     grid-area: list;
@@ -1159,10 +1234,12 @@
   }
   // Editors stand where the card they edit stands; the route choices and
   // the key belong over the map.
+  // Auto width, so the panel's reach to the map's right edge applies to
+  // the editor too and it keeps the plan card's width.
   .fuel-plan-editor {
     grid-area: inspector;
     top: 0;
-    width: 100%;
+    width: auto;
     max-height: 100%;
   }
   .route-editor,
@@ -1170,24 +1247,6 @@
   .fleet-map-weather-source,
   .fleet-map-controls {
     grid-area: map;
-  }
-}
-
-// On a phone the card opens closed: the head and its next stop, with an
-// explicit Details / Hide details; Follow is the map bar's (the owner,
-// September 27: a second Follow in the head repeated its icon).
-@include ui.below(fleet-docked) {
-  @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
-    .fleet-map-inspector[data-inspector-mode='truck']
-      .fleet-map-mobile-summary__toggle {
-      display: inline-flex;
-    }
-    .fleet-map-inspector.is-mobile-collapsed .fleet-map-info-content,
-    .fleet-map-inspector.is-mobile-collapsed .fleet-trip-stops,
-    .fleet-map-inspector.is-mobile-collapsed .fleet-truck-facts,
-    .fleet-map-inspector.is-mobile-collapsed .fleet-truck-clocks {
-      display: none;
-    }
   }
 }
 
@@ -1215,51 +1274,5 @@
   }
   .fleet-trip-chain {
     grid-area: chain;
-  }
-}
-
-// The light theme as an instrument in daylight (the owner, September 27:
-// the light mode lacked the dark one's HUD character). White and the map's
-// own colours stay; what makes it a HUD is the bright cyan the dark theme
-// glows with - fine grid lines, accent labels, lit value bars and a glow
-// on the chosen row - never grey fills.
-:root[data-theme='light'] {
-  .fleet-truck-facts {
-    border-color: ui.theme(selection-border, 0.9);
-    &__fact {
-      border-color: ui.theme(selection-border, 0.7);
-      > svg {
-        color: ui.theme(hud-line);
-      }
-    }
-    dt {
-      color: ui.theme(accent);
-    }
-  }
-  .fleet-truck-clocks {
-    --hos-cell-border: #{ui.theme(selection-border, 0.9)};
-    --hos-cell-background:
-      linear-gradient(#{ui.theme(hud-line)}, #{ui.theme(hud-line)}) top center /
-        calc(100% - 2 * #{ui.radius(sm)}) 2px no-repeat,
-      #{ui.theme(surface)};
-    --hos-cell-shadow: none;
-    --hos-cell-label: #{ui.theme(accent)};
-  }
-  .fleet-truck-list__columns,
-  .fleet-map-inspector__eyebrow {
-    color: ui.theme(accent);
-  }
-  .fleet-truck-list__row.is-selected {
-    background: ui.theme(selected);
-    box-shadow:
-      inset 3px 0 0 ui.theme(hud-line),
-      inset 12px 0 16px -12px ui.theme(hud-glow, 0.5);
-  }
-  .fleet-map-controls {
-    border-color: ui.theme(hud-glow, 0.45);
-    .map-action-icon,
-    .fleet-map-controls__button {
-      color: ui.theme(accent);
-    }
   }
 }

@@ -207,6 +207,7 @@
     </div>
     <section class="fleet-map-info-reserved fleet-map-inspector
                     @(InspectorVisible ? "has-selection" : "")
+                    @(MapOverlayOpen ? "is-overlaid" : "")
                     @(_mobileTruckDetailsOpen
                         ? "is-mobile-expanded" : "is-mobile-collapsed")"
              aria-label="Map information"

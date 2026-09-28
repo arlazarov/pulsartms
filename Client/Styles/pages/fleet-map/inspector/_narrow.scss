@@ -1,41 +1,12 @@
 @use '../../../base' as ui;
 
-// Too narrow for the wide head: its rows keep their order in two equal
-// columns, and the facts go under the stop.
+// A narrow card (docked or on a phone) sets its head as the unit under
+// its eyebrow, with the controls beside them.
 .fleet-map-inspector[data-inspector-mode='truck'] {
-  // 700px wide has room for both columns and was stacked anyway.
   @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
-    .fleet-map-route-info {
-      // A label column of a fixed 7rem is most of a phone card once the
-      // reader asks for 200% text, and every value beside it was squeezed
-      // into a sideways scroll. Here the label takes what it needs and the
-      // value keeps the rest.
-      --route-fact-label: minmax(0, max-content);
-      grid-template-columns: minmax(0, 1fr);
-      grid-template-rows: none;
-      row-gap: ui.pg(xs);
-      padding-block: ui.pg(xs);
-      > .fleet-map-route-info__messages {
-        grid-column: 1;
-        grid-row: auto;
-      }
-    }
-  }
-  @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
-    .fleet-map-inspector__desktop-title {
-      display: block;
-    }
-    // Open whole on a phone: it takes half the stage at most and scrolls.
-    .fleet-map-mobile-summary__toggle {
-      display: none;
-    }
-    // The docked card and a phone keep the head in the same order: the
-    // unit under its eyebrow, with the controls beside it, then the crew and what is left, then the rows, each of
-    // which stacks its answer under its fact instead of squeezing the two
-    // abreast.
     .fleet-map-inspector__header {
       position: static;
-      grid-template-columns: minmax(0, 1fr) max-content;
+      grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
       grid-template-areas:
         'eyebrow controls'
         'title controls';
@@ -50,9 +21,5 @@
     .fleet-map-inspector__title {
       grid-area: title;
     }
-
-    // Nothing here re-columns on open. The header a dispatcher reads while
-    // the card is shut keeps every row and every column when it opens;
-    // opening only adds the actions and the detail below them.
   }
 }

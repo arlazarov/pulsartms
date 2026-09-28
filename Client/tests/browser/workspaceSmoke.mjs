@@ -850,8 +850,11 @@ try {
       );
 
       // Follow: close zoom, satellite, and the moving truck kept in view.
-      const follow = tab.locator('button[aria-label="Follow"]');
-      const quickFollow = tab.locator('button[aria-label="Follow truck"]');
+      // Follow lives only in the map tool bar (the owner, 2026-09-28: the
+      // head's quick Follow repeated it and was removed).
+      const follow = tab.locator(
+        '.fleet-map-controls button[aria-label="Follow"]',
+      );
       await follow.click();
       await tab.waitForTimeout(3000);
       const c0 = await tab.evaluate(() => window.camera());
@@ -888,13 +891,20 @@ try {
       await tab.waitForTimeout(1200);
       now = await panel();
       const c2 = await tab.evaluate(() => window.camera());
-      // Its stop's own facts (distance, fresh ETA) come with the trip; Follow
-      // stays in the card's head.
+      // Its stop's own facts (distance, fresh ETA) come with the trip; the
+      // tool bar's Follow stays on, visible and enabled.
+      const followBox = await follow.boundingBox();
+      const viewport = tab.viewportSize();
       check(
         now.trips === 1 &&
           now.trip === 'AMF1410' &&
           now.mode === 'nextstop' &&
-          (await quickFollow.getAttribute('aria-pressed')) === 'true' &&
+          (await follow.getAttribute('aria-pressed')) === 'true' &&
+          (await follow.isVisible()) &&
+          (await follow.isEnabled()) &&
+          followBox !== null &&
+          followBox.x >= 0 &&
+          followBox.x + followBox.width <= viewport.width &&
           c2.zoom === c0.zoom,
         'choosing a later trip shows only it and keeps Follow',
         { now, c2 },
@@ -1069,8 +1079,9 @@ try {
         // The phone card opens closed with its summary and Details; Follow
         // is the map bar's.
         const card = await tab.evaluate(() => ({
-          follow: !!document.querySelector('.fleet-map-inspector__follow')
-            ?.offsetParent,
+          follow: !!document.querySelector(
+            '.fleet-map-controls .fleet-map-inspector__follow',
+          )?.offsetParent,
           details: !!document.querySelector('.fleet-map-mobile-summary__toggle')
             ?.offsetParent,
           hidden:
@@ -1149,7 +1160,9 @@ try {
         );
 
         // Follow, a drag that ends it, and Follow again, at 360 px.
-        const quick = tab.locator('.fleet-map-inspector__follow');
+        const quick = tab.locator(
+          '.fleet-map-controls .fleet-map-inspector__follow',
+        );
         await quick.click();
         await tab.waitForTimeout(2500);
         const followed = await quick.getAttribute('aria-pressed');

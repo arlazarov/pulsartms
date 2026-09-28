@@ -27,10 +27,6 @@
       flex: 1 1 16rem;
     }
   }
-  &__name {
-    font-size: ui.fs(lead);
-  }
-
   dl {
     display: grid;
     gap: ui.pg(sm);

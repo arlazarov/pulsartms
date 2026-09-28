@@ -12,9 +12,12 @@ public partial class Sidebar
 
   private void CloseMenu() => MenuOpen = false;
 
-  private async Task HandleMenuKeyAsync(KeyboardEventArgs args)
+  private Task HandleMenuKeyAsync(KeyboardEventArgs args) =>
+    args.Key == "Escape" ? CloseMenuAndFocusAsync() : Task.CompletedTask;
+
+  private async Task CloseMenuAndFocusAsync()
   {
-    if (args.Key != "Escape" || !MenuOpen)
+    if (!MenuOpen)
       return;
     CloseMenu();
     await MenuToggle.FocusAsync();
