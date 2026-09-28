@@ -113,6 +113,9 @@ export async function createFleetMap(
     fullscreenControl: false,
     cameraControl: false,
     zoomControl: false,
+    // No keyboard-shortcuts link in the corner (the owner, September 27);
+    // Google's own data credit and Terms link are required and stay.
+    keyboardShortcuts: false,
   });
   const map = mountedMap.map;
   const cleanup = [() => mountedMap.release()];
