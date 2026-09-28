@@ -50,7 +50,9 @@ $roles: (
   map-route-option-one: colors.value('violet', 700),
   map-route-option-two: colors.value('teal', 700),
   map-route-option-three: colors.value('rose', 700),
-  canvas: colors.value(ice, 100),
+  // A cool steel canvas, a step deeper than the glass, so the light
+  // theme's white panels stand on it.
+  canvas: colors.value(ice, 200),
   surface: colors.value(ice, 0),
   surface-soft: colors.value(ice, 50),
   surface-muted: colors.value(ice, 150),
