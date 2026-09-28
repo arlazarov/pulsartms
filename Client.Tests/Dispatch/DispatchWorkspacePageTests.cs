@@ -116,6 +116,79 @@ public sealed class DispatchWorkspacePageTests
     await Select(1);
   }
 
+  // A completed load's fields are read-only (CanEdit false), yet a stop the
+  // server marks CanCorrect still takes status corrections; the toolbar
+  // must save them (load 1385, September 28).
+  [Theory]
+  [InlineData(true)]
+  [InlineData(false)]
+  public async Task CompletedLoadSavesPermittedStopCorrection(bool canCorrect)
+  {
+    var data = Workspace();
+    data.Load.Status = "completed";
+    data.Load.Completed = true;
+    data.CanEdit = false;
+    data.ReadOnlyReason =
+      "Load fields are read-only. Completed stops still allow status and "
+      + "assignment corrections.";
+    var stop = data.Stops[0];
+    stop.Job = "Delivery";
+    stop.CanEdit = false;
+    stop.CanMove = false;
+    stop.CanRemove = false;
+    stop.CanCorrect = canCorrect;
+    data.Load.Stops.Add(new() { Id = stop.Id, Job = stop.Job });
+    var writes = new List<StopCorrectionRequest>();
+    using var context = Context(
+      async (request, ct) =>
+      {
+        if (request.RequestUri!.AbsolutePath.StartsWith("/api/fleet/"))
+          return MileageComponentResponses.Ok(
+            new { items = Array.Empty<object>() }
+          );
+        if (request.Method == HttpMethod.Get)
+          return MileageComponentResponses.Ok(data);
+        Assert.EndsWith(
+          $"/stops/{stop.Id}/correction",
+          request.RequestUri.AbsolutePath
+        );
+        writes.Add(
+          (await request.Content!.ReadFromJsonAsync<StopCorrectionRequest>(ct))!
+        );
+        data.Load.Stops[0].CompletionOverride = true;
+        data.Load.Stops[0].IsCompleted = true;
+        data.Revision++;
+        return MileageComponentResponses.Ok(data);
+      }
+    );
+    var page = context.Render<DispatchDetails>(p =>
+      p.Add(x => x.Id, data.Load.Id)
+    );
+    page.WaitForAssertion(
+      () => Assert.Single(page.FindAll(".stop-workspace__select"))
+    );
+    if (!canCorrect)
+    {
+      Assert.Empty(page.FindAll("#correction-status"));
+      Assert.True(Button(page, "Save changes").HasAttribute("disabled"));
+      Assert.Empty(writes);
+      return;
+    }
+    page.WaitForAssertion(
+      () => Assert.Single(page.FindAll("#correction-status"))
+    );
+    await page.Find("#correction-status").ClickAsync(new());
+    page.WaitForAssertion(
+      () => Assert.False(Button(page, "Save changes").HasAttribute("disabled"))
+    );
+    await Click(page, "Save changes");
+    page.WaitForAssertion(() => Assert.Single(writes));
+    Assert.Equal("completed", writes[0].Completion);
+    page.WaitForAssertion(
+      () => Assert.True(Button(page, "Save changes").HasAttribute("disabled"))
+    );
+  }
+
   [Theory]
   [InlineData(false, false, false)]
   [InlineData(true, false, false)]

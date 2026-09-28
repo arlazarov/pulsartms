@@ -146,8 +146,11 @@ public partial class DispatchDetails : IDisposable
     || _correctionDirty
     || _stopDrafts.HasChanges
     || _operationDirty;
+
+  // Load fields need CanEdit; a stop correction needs only its stop's
+  // CanCorrect, which a completed load keeps (the server re-checks both).
   private bool CanSave =>
-    _workspace?.CanEdit == true
+    _workspace is not null
     && !_brokerBusy
     && !_transferDirty
     && HasToolbarDraft
@@ -156,10 +159,16 @@ public partial class DispatchDetails : IDisposable
     && !_conflict
     && !_verifying
     && (
-      _stopDrafts.HasChanges ? _stopDrafts.CanSubmit
-      : _operationDirty ? _operationEditor?.CanSubmit == true
+      _stopDrafts.HasChanges ? _stopDrafts.CanSubmit && StopDraftsCorrectable
+      : _operationDirty
+        ? _workspace.CanEdit && _operationEditor?.CanSubmit == true
       : _correctionDirty ? _correctionEditor?.CanSubmit == true
-      : true
+      : _workspace.CanEdit
+    );
+  private bool StopDraftsCorrectable =>
+    _workspace is { } workspace
+    && _stopDrafts.Entries.Keys.All(id =>
+      workspace.Stops.Any(stop => stop.Id == id && stop.CanCorrect)
     );
   private string SaveStatus =>
     ToolbarSaving ? "Saving…"
