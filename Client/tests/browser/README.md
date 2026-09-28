@@ -105,19 +105,20 @@ checks settled document/listener bounds. No heap files, live authentication,
 provider calls or database operations are involved. JavaScript heap readings do
 not establish .NET WASM heap, GPU or production memory retention.
 
-The default hours forecast matrix also checks bounded phone truck scrolling.
-On phones, the compact truck row retains title, remaining distance, Details and
-Close. Details reveals telemetry, HOS, GPS location and route facts in the bounded
-inspector; Hide returns to the compact row. Portrait, short-screen and 200% text
-checks retain keyboard access to the truck actions and unchanged map bounds
-without clipping overflow.
-Readings also sweep 320–767px at 100% and 200% text: telemetry stays compact,
-HOS sits beside it when space permits, and whole groups wrap without shrinking
-icons or clocks. Screenshots cover the stacked phone and adjacent wider layout.
+The default hours forecast matrix also checks the phone truck panel
+(`mobileTruckScrolling.mjs`): it opens closed on the next stop with Details
+and Close in its head, Follow reachable in the map tool bar only (owner
+decision of 2026-09-28); Details opens the facts and the clocks. In portrait, a
+600px-tall screen and 200% text, closed and open, the panel stays over the
+map within its stylesheet cap (half the map closed, 85% open), scrolls only
+vertically, never sideways, and reaches its last clock.
+`truckReadingsLayout.mjs` sweeps 320–767px at 100% and 200% text: the eight
+facts keep two columns in reading order with the location last, one square
+icon each, and the four clocks stay text cells in one or two rows.
 The Fleet-only matrix also checks explicit Show route interop without selection
-auto-fit, repeated background clicks retaining the truck and both panels,
-Back replacing Close, and equal rendered text gaps for appointments and ETA.
-Map-provider behavior is covered separately by the map JavaScript tests.
+auto-fit, repeated background clicks retaining the mounted panel, and Back
+to truck from a next load's stop. Map-provider behavior is covered separately
+by the map JavaScript tests.
 
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/brandSmoke.mjs`
 from Client checks the actual staged anonymous Login and authenticated Users/sidebar
@@ -225,24 +226,30 @@ and dark) for fuel stops given to a driver. It checks:
 Output: managed `browser-station-popup`.
 
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/fuelEditorSmoke.mjs`
-from Client exercises the actual staged fuel editor at 1440px/390px in both themes.
-It checks full-tank gauges, adding and ordering visits, five-gallon manual input
-from a 25-gallon minimum, and server-prepared 25→35 / 100→90 redistribution with no
-quantity-preview HTTP request. It also checks displayed
-server errors, save/cancel behavior, stale dispatch callbacks and horizontal bounds.
-Calculate automatically submits one reset immediately without a confirmation;
-opening the editor, Cancel and Escape do not write.
-Real mouse and touch pointer drags cross fixed pickup/delivery anchors and fuel
-rows; keyboard arrows exercise the same ordering contract. It also checks
-server-provided purchase costs, selected-station focus callbacks, visit-number
-contrast and mobile Route/Fuel/Map panes inside the existing map bounds. Selection
-and quantity controls are checked after scrolling the mobile editor.
-Selected-truck HOS probes cover 320–2000px widths, both themes and 100%/200%
-root font sizes, including two-digit hours and a custom wrapper dial size.
-All API calls, including simulated saves, are intercepted fixtures; no business
-records or provider requests are made. Screenshots and the JSON report go to
-the managed `browser-fuel-editor` run; `FUEL_EDITOR_OUTPUT_DIR` overrides that path.
-This verifies UI interaction and layout, not live fuel calculations or GPU selection.
+from Client exercises the actual staged fuel editor at 1440×1000, 390×844,
+390×667 and 320×667 in both themes. The plan opens from the map tool bar's
+Fuel; its card's Edit plan opens the editor in the card's place and width,
+with the map still interactive beside or under it. It checks the tank before
+and after the chosen stop in words, adding and ordering visits, five-gallon
+manual input from a 25-gallon minimum, and server-prepared 25→35 / 100→90
+redistribution with no quantity-preview HTTP request. It also checks
+displayed server errors, save/cancel behavior (both return to the plan card
+with the truck panel still mounted and nothing reread), stale dispatch
+callbacks and horizontal bounds. Calculate automatically submits one reset
+immediately without a confirmation; opening the editor, Cancel and Escape do
+not write. Real mouse and touch pointer drags cross fixed pickup/delivery
+anchors and fuel rows; keyboard arrows exercise the same ordering contract.
+It also checks server-provided purchase costs, selected-station focus
+callbacks, visit-number contrast, one scrolling list between the totals and
+the footer, and that every row is reachable. Truck panel probes cover
+320–2000px widths and 100%/200% root font sizes: the panel shows its next
+stop, facts and clocks, the clocks stay unclipped text, and fact values share
+one type and baseline per row. All API calls, including simulated saves, are
+intercepted fixtures; no business records or provider requests are made.
+Screenshots and the JSON report go to the managed `browser-fuel-editor` run;
+`FUEL_EDITOR_OUTPUT_DIR` overrides that path. `FUEL_EDITOR_CASE` runs one
+case (for example `390-844-light`). This verifies UI interaction and layout,
+not live fuel calculations or GPU selection.
 
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/stopDetailsSmoke.mjs`
 from Client runs a separate future-stop details scenario against the actual staged
@@ -276,73 +283,42 @@ reachable inspector content and the retained map bounds.
 
 `MAP_TEST_ARTIFACT_DIR=/absolute/publish/wwwroot node tests/browser/hoursForecastSmoke.mjs`
 from Client checks the shared Road ETA/cycle display in the actual staged Dispatch
-cards, the shared load popup and selected future pickup/delivery inspector. Ten scenarios cover 2344px/1920px/1440px/1200px/390px in
-both themes: signed cycle balances, Cycle short without a green ETA, known
-lateness alongside unknown cycle data, conditional recap alternatives, explicit
-absence of reset alternatives even when supplied by the server fixture, and
-the Dispatch current-driver next recap with only its local date and credited hours. The selected
-truck card's head checks four fresh HOS clocks read as text, wrapping
-without clipping on smaller screens, and fuel readings without maintenance wording.
-Its selected truck and route panels form one width-bounded surface centered at the
-map's top edge with the shared shadow and corners. The top inset is capped by
-actual side clearance and disappears at full width; truck and route rows retain
-their shared surface without a gap between them. The card opens closed at every
-width: the head names the unit, keeps the trailer and driver beside it, and
-carries the arrival, the load and its order, the miles left to the next stop and
-the four clocks, with no duty line and no Next recap. The chevron opens the rest
+board and load workspace and in the Fleet Map's truck panel and next-load stop
+card. Twelve scenarios cover 2344/1920/1440/1200/900/390px in both themes;
+`HOURS_TEST_WIDTHS`, `HOURS_TEST_THEMES` and `HOURS_TEST_FLEET_ONLY=1` narrow a
+run. Dispatch: signed cycle balances, Cycle short without a green ETA, known
+lateness alongside unknown cycle data, conditional recap alternatives, no reset
+alternatives even when supplied, no Next recap on the board card (the owner,
+September 27), one summary read without per-truck planning, and forecasts
+that stay unchanged through pending and held polling and are replaced without
+an empty intermediate render.
 
-- the route facts, the GPS block, the vehicle line's speed, fuel and engine
-  readings with equal-sized icons, and the truck actions. The GPS block retains
-  its timestamp and Route & load details link. Outside temperature uses one compact Fahrenheit/Celsius row directly
-  below the three telemetry readings, with no new action or column. The load link retains
-  its disabled placeholder while the load identity is pending. The head keeps its
-  own bounds through the disclosure, and every new selection closes the card again,
-  so a check that reads the lower section opens it first. On phones, selection starts with a narrow
-  truck title strip, centered remaining distance in the configured primary unit, and
-  accessible Details/Close controls. The distance stays visible with a stable slot
-  through pending data, Details and Hide; it adds no desktop duplicate. Details opens
-  the retained readings, HOS, GPS location and route/load information; Hide restores
-  the strip without clearing the selection or moving the map. Title, remaining
-  distance, Details/Hide and Close retain the same bounds in every state. The one
-  disclosure supports keyboard activation and retains the map bounds. Its collapsed
-  state and stable title controls are checked in both themes at every width.
-  Neutral address and forecast placeholders reserve
-  the ordinary loaded geometry while the lower section is open during a pending read.
-  The saved preview intentionally omits appointment dates: Delivery retains the same
-  timing-row element and position while the load reference supplies its date and the
-  live plan catches up. It never renders under Load. The single appointment above ETA
-  belongs to the tracked next stop, not a later delivery.
-  Intermediate-stop layout probes place the distance in its pickup/delivery heading,
-  not in another vertical metric below Remaining. Cloned inspector screenshots isolate
-  that layout from live route calculations, checking inline alignment on wide cards
-  and overflow at narrow widths in both unit configurations.
-  Narrow cards stack the readings, HOS and action groups;
-  expanding retains the shared width cap without changing the map bounds. Both densities retain the selected truck's
-  provider-supplied GPS address and exact observation timestamp independently of
-  the next route stop. First selection,
-  pending/complete reads, repeated selection and clearing must retain the same map
-  element, native inspector host and exact viewport rectangle at desktop and mobile
-  widths. Future-stop details replace the visible truck content in that same top
-  inspector; the retained truck components remain hidden and no lower popup opens.
-  Dispatch's wide header groups identity, status/fuel and mileage, and HOS together
-  on the left without elastic gaps, with duty/rest and Next recap in the shared strip
-  beneath. Fleet HOS circles keep equal compact gaps even on spacious screens.
-  Real component polling receives empty pending
-  forecasts and must retain the previous ETA, cycle, recap and alternative values,
-  including the same status text and colors without Previous/Updating labels.
-  Held polling responses also cross a short fixture validity deadline using the
-  browser's controlled clock. Dispatch and Fleet ETA cards must stay unchanged while
-  HTTP is pending, then replace each complete forecast without an empty intermediate render.
-  The same scenarios verify the absence of a standalone future-trip fuel summary
-  and retention of server fuel quantities, truck-relative distance and dated
-  historical schedule metadata on the map bridge through ETA refresh.
-  Checks also cover English text, street-first two-line current addresses with full-value
-  copying, and horizontal bounds. Initial, pending and refreshed screenshots and the
-  JSON report are saved to the managed `browser-hours-forecast` run;
-  `HOURS_TEST_OUTPUT_DIR` overrides that path. The script intercepts every request and
-  uses deterministic map callbacks and API fixtures. It does not exercise GPU
-  rendering, real provider requests, authentication, database state, server calculation
-  accuracy or production performance.
+Fleet Map, the truck panel of September 27: its next stop names the stop and
+town, the miles left in the saved unit on the label's line, the booked window
+and the one forecast on a shared value column with the cycle word beside or
+under the hour; eight facts (Driver, Trailer, Motion, Duty, Fuel, Engine,
+Temperature in the saved unit, Location copying the full address) stand in two
+columns with one icon each; four fresh clocks read as text with no dials, duty
+line or recap. With the preview, the load and the live plan held in turn, the
+head never moves and the facts and clocks move only by the next stop arriving,
+keeping their shape; a longer forecast pushes them down whole. Blank values
+keep the panel's width and the map's place; 200% text neither clips nor
+overlaps its parts. The map element, its bounds and the native inspector host
+survive selection, reselection (no rereads), Follow, background clicks, pending
+and replaced forecasts and clearing. The tool bar keeps Follow, Fit route,
+Camera, Route options, Fuel and (wider than a phone) Layers whole over the map,
+Fuel enabled only with a truck, and touch-sized buttons below 800px. The unit
+must be read whole, under no control. A next load's stop card takes the
+inspector while the panel stays mounted and hidden, keeps its clocks through
+the refresh, and Back to truck rereads nothing. Server fuel metadata on the map
+bridge survives every refresh. The report records whether the docked empty
+state is shown (its stylesheets disagree). Initial, pending and refreshed
+screenshots and the JSON report are saved to the managed
+`browser-hours-forecast` run; `HOURS_TEST_OUTPUT_DIR` overrides that path. The
+script intercepts every request and uses deterministic map callbacks and API
+fixtures. It does not exercise GPU rendering, real provider requests,
+authentication, database state, server calculation accuracy or production
+performance.
 
 The 2026-09-08 local run passed all 44 cases against a fresh strict publish, with
 zero browser errors, unexpected requests or checked geometry failures. It caught

@@ -13,6 +13,7 @@ started again under the current project policy.
 - [Frontend release, September 28](2026-09/release-2026-09-28-frontend.md)
 - [Current-work release](2026-09/release-2026-09-27-current-work.md)
 - [Current-work publication candidate](2026-09/current-work-candidate-2026-09-27.md)
+- [Truck panel probe migration](2026-09/truck-panel-probe-migration-2026-09-27.md)
 - [Fleet workspace candidate (sole interface; legacy at tag ui-legacy-2026-09-27)](2026-09/futuristic-interface-candidate-2026-09-27.md)
 - [Application architecture audit](2026-09/application-audit-2026-09-26.md)
 - [Architecture guardrail corrections][architecture-guardrails]

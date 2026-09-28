@@ -1076,26 +1076,30 @@ try {
         }
       }
       if (size === 'narrow') {
-        // The phone card opens closed with its summary and Details; Follow
-        // is the map bar's.
+        // The phone card is open whole: no Details / Hide details, and
+        // Follow only in the map tool bar (owner decisions of 2026-09-28).
         const card = await tab.evaluate(() => ({
+          headFollow: !!document.querySelector(
+            '.fleet-map-inspector__quick-follow',
+          ),
+          details: !!document.querySelector(
+            '.fleet-map-mobile-summary__toggle',
+          ),
+          facts: !!document.querySelector('.fleet-truck-facts')?.offsetParent,
+          clocks: !!document.querySelector('.fleet-truck-clocks')?.offsetParent,
           follow: !!document.querySelector(
-            '.fleet-map-controls .fleet-map-inspector__follow',
+            '.fleet-map-controls button[aria-label="Follow"]',
           )?.offsetParent,
-          details: !!document.querySelector('.fleet-map-mobile-summary__toggle')
-            ?.offsetParent,
-          hidden:
-            getComputedStyle(document.querySelector('#fleet-map-details'))
-              .display === 'none',
         }));
         check(
-          card.follow && card.details && card.hidden,
-          'narrow: the card opens closed with Details and Follow in reach',
+          !card.headFollow &&
+            !card.details &&
+            card.facts &&
+            card.clocks &&
+            card.follow,
+          'narrow: the card is open whole, Follow in the tool bar',
           card,
         );
-        await shot(tab, 'narrow-card-closed');
-        await tab.locator('.fleet-map-mobile-summary__toggle').click();
-        await tab.waitForTimeout(400);
         await shot(tab, 'narrow-card-open');
 
         // The map's own buttons that a phone keeps, and the layers in the
@@ -1160,8 +1164,9 @@ try {
         );
 
         // Follow, a drag that ends it, and Follow again, at 360 px.
+        // Follow is the map tool bar's alone (owner decision of 2026-09-28).
         const quick = tab.locator(
-          '.fleet-map-controls .fleet-map-inspector__follow',
+          '.fleet-map-controls button[aria-label="Follow"]',
         );
         await quick.click();
         await tab.waitForTimeout(2500);
@@ -1209,9 +1214,6 @@ try {
             state: 'attached',
           });
           await tab.waitForTimeout(3500);
-          // A phone's card opens closed; its actions are behind Details.
-          const details = tab.locator('.fleet-map-mobile-summary__toggle');
-          if (await details.isVisible()) await details.click();
           await tab.locator('button[aria-label="Fuel"]').waitFor();
         };
         const inView = async (selector, label) => {
