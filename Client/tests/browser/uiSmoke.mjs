@@ -1769,6 +1769,11 @@ try {
               fleetToolbar: document.querySelector('.fleet-map-toolbar')
                 ? rect(document.querySelector('.fleet-map-toolbar'))
                 : null,
+              // The Fleet Map's title is the h1 with its purpose line; the
+              // block, not the h1 alone, stands in the toolbar's row.
+              fleetTitle: document.querySelector('.fleet-map-title')
+                ? rect(document.querySelector('.fleet-map-title'))
+                : null,
               controls,
               dispatchCards,
               routeSummary,
@@ -2874,8 +2879,8 @@ try {
           check(
             inlineToolbar
               ? Math.abs(
-                  page.heading.y +
-                    page.heading.height / 2 -
+                  (page.fleetTitle ?? page.heading).y +
+                    (page.fleetTitle ?? page.heading).height / 2 -
                     page.fleetToolbar.y -
                     page.fleetToolbar.height / 2,
                 ) <= 1
