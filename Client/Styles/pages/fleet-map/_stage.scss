@@ -47,14 +47,12 @@
 }
 
 @include ui.below(map-mobile) {
-  // The page is one screen tall and the toolbar takes what it needs, so at
-  // a large text size the map and its panel were left a strip in which the
-  // fuel plan showed nothing but its own heading. The stage keeps half the
-  // screen at least - the page scrolls past the toolbar for it - and the
-  // panel half of that: the map is what the page is for, and the card
-  // scrolls for the rest.
+  // The stage is at least the screen's height - the page scrolls past the
+  // search for it - so the fuel plan's editor has room for the opened
+  // stop and the next row (the owner, September 28); the map is what the
+  // page is for, and the panel scrolls for the rest.
   .fleet-map-stage {
-    min-height: 50dvh;
+    min-height: 100dvh;
   }
   .fleet-map-inspector {
     &[data-inspector-mode='fuel']:has(.fleet-station-popup--planned),

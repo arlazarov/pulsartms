@@ -90,7 +90,7 @@ test('a phone gives the editor the whole width and most of the map, with reachab
   );
   assert.match(
     mobile,
-    /\.fuel-plan-editor\s*\{[^}]*width: 100%;[^}]*max-height: 85%;/,
+    /\.fuel-plan-editor\s*\{[^}]*width: 100%;[^}]*max-height: 90%;/,
   );
   assert.doesNotMatch(
     mobile.match(/\.fuel-plan-editor\s*\{([^}]+)\}/)[1],

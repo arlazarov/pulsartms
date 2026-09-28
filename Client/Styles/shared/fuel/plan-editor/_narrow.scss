@@ -8,7 +8,7 @@
 .fuel-plan-editor {
   @include ui.below(map-mobile) {
     width: 100%;
-    max-height: 85%;
+    max-height: 90%;
     // Half a phone's stage has no room for a heading over the list or the
     // truck's own line: the list starts at its first stop.
     &__timeline-heading,
