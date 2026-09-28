@@ -282,7 +282,6 @@ public sealed class FuelStationImportLookupTests
         new(Store, places, TimeProvider.System),
         reads,
         TimeProvider.System,
-        new(),
         NullLogger<ImportFuelDiscountsHandler>.Instance
       );
 

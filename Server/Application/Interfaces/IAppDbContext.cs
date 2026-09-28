@@ -51,6 +51,7 @@ public interface IAppDbContext
   DbSet<FuelDiscount> FuelDiscounts { get; }
   DbSet<FuelTransaction> FuelTransactions { get; }
   DbSet<FuelImportSource> FuelImportSources { get; }
+  DbSet<FuelImportSkip> FuelImportSkips { get; }
   DbSet<IftaTaxRate> IftaTaxRates { get; }
   DbSet<Truck> Trucks { get; }
   DbSet<Trailer> Trailers { get; }

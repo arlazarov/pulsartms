@@ -283,6 +283,7 @@ does; everything else in this guide is target design.
 | `messaging.unread-arrival-behind` | `InboxRecorder` | violation, warning | none; next driver message | implemented, detection tested |
 | `messaging.outbound-overdue` | `OutboundMessageOperation` | violation, warning | none; the outbox's next pass | implemented, detection tested |
 | `messaging.kept-status-unapplied` | `KeptStatusReconciliation` | violation, warning | reconciled by the outbox once a minute | implemented, detection and repair tested |
+| `fuel.import-message-skipped` | `ImportFuelDiscountsHandler` | review, warning | none; fix the cause within the mailbox window | implemented, detection tested |
 | `messaging.accepted-without-status` | `DriverMessagingWebhookHandlers` | review, warning | none; delivery unknown, never marked failed | implemented, detection tested |
 | `dispatch.filed-document-unavailable` | `FileMessageAttachment` | violation, warning | none; stored file's owner | implemented, detection tested |
 | `routing.base-road-leaves-country` | `BaseRouteService` | violation, warning | none; rebuild the load | implemented, detection tested |

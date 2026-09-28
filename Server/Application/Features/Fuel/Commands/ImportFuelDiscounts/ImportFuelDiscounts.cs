@@ -17,7 +17,6 @@ public class ImportFuelDiscountsHandler(
   FuelStationLookupService lookups,
   ReadCache reads,
   TimeProvider time,
-  FuelImportSkips skips,
   ILogger<ImportFuelDiscountsHandler> logger
 ) : IRequestHandler<ImportFuelDiscountsCommand, RequestResponse<int>>
 {
@@ -26,6 +25,10 @@ public class ImportFuelDiscountsHandler(
   // received more than Furthest ago.
   public static readonly TimeSpan Overlap = TimeSpan.FromDays(2);
   public static readonly TimeSpan Furthest = TimeSpan.FromDays(30);
+
+  // A skipped message is kept this long, well past the window in which a
+  // corrected parser could still import it; the table stays small.
+  public static readonly TimeSpan KeepSkips = TimeSpan.FromDays(180);
 
   public async Task<RequestResponse<int>> Handle(
     ImportFuelDiscountsCommand request,
@@ -42,6 +45,9 @@ public class ImportFuelDiscountsHandler(
       cancellationToken
     );
     var since = Since(now, last);
+    await dbContext
+      .FuelImportSkips.Where(x => x.SkippedAt < now - KeepSkips)
+      .ExecuteDeleteAsync(cancellationToken);
     var imports = await fuelDiscountProvider.GetDiscountsAsync(
       importedMessageIds,
       since,
@@ -66,12 +72,12 @@ public class ImportFuelDiscountsHandler(
         )
       )
       {
-        if (skips.First(message.Key))
-          logger.LogWarning(
-            "Fuel import skipped message {MessageId}: {Reason}",
-            message.Key,
-            message.Any(x => x.Unreadable) ? "unreadable" : "empty"
-          );
+        await SkipAsync(
+          message.Key,
+          message.Any(x => x.Unreadable) ? "unreadable" : "empty",
+          now,
+          cancellationToken
+        );
         continue;
       }
 
@@ -146,10 +152,53 @@ public class ImportFuelDiscountsHandler(
         }
       );
       count += await dbContext.SaveChangesAsync(cancellationToken);
+      // Imported after all - a corrected parser - so no longer skipped.
+      await dbContext
+        .FuelImportSkips.Where(x => x.GmailMessageId == message.Key)
+        .ExecuteDeleteAsync(cancellationToken);
       await transaction.CommitAsync(cancellationToken);
       reads.Invalidate(ReadGroups.Fuel);
     }
     return RequestResponse<int>.Ok(count);
+  }
+
+  // Recorded once per message, under the import's own lock, and reported
+  // then: the auditor lists what stays skipped (fuel.import-message-skipped)
+  // and every push that meets the message again changes nothing.
+  private async Task SkipAsync(
+    string? messageId,
+    string reason,
+    DateTime now,
+    CancellationToken ct
+  )
+  {
+    var key = string.IsNullOrWhiteSpace(messageId) ? "(no id)" : messageId;
+    await using var transaction =
+      await dbContext.Database.BeginTransactionAsync(ct);
+    await dbContext.LockFuelImportAsync(ct);
+    if (
+      await dbContext.FuelImportSkips.AnyAsync(x => x.GmailMessageId == key, ct)
+    )
+    {
+      await transaction.CommitAsync(ct);
+      return;
+    }
+    dbContext.FuelImportSkips.Add(
+      new FuelImportSkip
+      {
+        Id = Guid.NewGuid(),
+        GmailMessageId = key,
+        Reason = reason,
+        SkippedAt = now,
+      }
+    );
+    await dbContext.SaveChangesAsync(ct);
+    await transaction.CommitAsync(ct);
+    logger.LogWarning(
+      "Fuel import skipped message {MessageId}: {Reason}",
+      key,
+      reason
+    );
   }
 
   internal static DateTime Since(DateTime now, DateTime? lastImport)

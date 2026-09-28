@@ -15,6 +15,7 @@ using Application.Features.Fleet.Background;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Application.Features.Fleet.Services;
+using Application.Features.Fuel.Audit;
 using Application.Features.Fuel.Background;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Services;
@@ -83,7 +84,6 @@ public static class DependencyInjection
     services.AddMemoryCache(options => options.TrackStatistics = true);
     services.AddSingleton<ICacheMemorySource, SharedCacheMemorySource>();
     services.AddSingleton(TimeProvider.System);
-    services.AddSingleton<FuelImportSkips>();
     services.AddScoped<GmailWatchLifecycle>();
     services.AddScoped<FuelStationLookupService>();
     services.AddSingleton<
@@ -166,6 +166,7 @@ public static class DependencyInjection
     services.AddScoped<IConsistencyRule, OutboundOverdueRule>();
     services.AddScoped<IConsistencyRule, KeptStatusUnappliedRule>();
     services.AddScoped<IConsistencyRule, AcceptedWithoutStatusRule>();
+    services.AddScoped<IConsistencyRule, FuelImportSkipRule>();
     services.AddScoped<IConsistencyRule, FiledDocumentRule>();
     services.AddScoped<IConsistencyRule, BaseRoadBorderRule>();
     services.AddScoped<IConsistencyRule, BaseRoadBorderUnknownRule>();

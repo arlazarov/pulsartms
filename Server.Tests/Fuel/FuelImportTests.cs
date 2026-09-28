@@ -1,7 +1,10 @@
+using Application.Diagnostics.Consistency;
+using Application.Features.Fuel.Audit;
 using Application.Features.Fuel.Commands.ImportFuelDiscounts;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Models;
 using Application.Features.Fuel.Services;
+using Domain.Entities;
 using Domain.Entities.Fuel;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
@@ -36,7 +39,6 @@ public class FuelImportTests
       ),
       reads,
       TimeProvider.System,
-      new(),
       NullLogger<ImportFuelDiscountsHandler>.Instance
     );
     Assert.True((await handler.Handle(new(), default)).Success);
@@ -80,7 +82,6 @@ public class FuelImportTests
         ),
         reads,
         TimeProvider.System,
-        new(),
         NullLogger<ImportFuelDiscountsHandler>.Instance
       );
       await Assert.ThrowsAsync<HttpRequestException>(
@@ -119,7 +120,6 @@ public class FuelImportTests
       ),
       reads,
       TimeProvider.System,
-      new(),
       NullLogger<ImportFuelDiscountsHandler>.Instance
     );
 
@@ -133,9 +133,10 @@ public class FuelImportTests
     Assert.Equal(1, await db.FuelDiscounts.CountAsync());
   }
 
-  // An attachment that could not be read skips its message, is reported
-  // once however often the mailbox shows it again, and is not marked
-  // imported: a corrected parser still imports it.
+  // An attachment that could not be read skips its message, is recorded
+  // and reported once however often the mailbox shows it again (audit F20,
+  // fuel.import-message-skipped), and is not marked imported: a corrected
+  // parser still imports it, and the record goes.
   [Fact]
   public async Task AnUnreadableMessageIsSkippedAndReportedOnce()
   {
@@ -151,7 +152,6 @@ public class FuelImportTests
     unreadable.Rows.Clear();
     unreadable.Unreadable = true;
     var log = new Warnings();
-    var skips = new FuelImportSkips();
     ImportFuelDiscountsHandler Handler() =>
       new(
         db,
@@ -163,7 +163,6 @@ public class FuelImportTests
         ),
         reads,
         TimeProvider.System,
-        skips,
         log
       );
 
@@ -178,7 +177,96 @@ public class FuelImportTests
       ["Fuel import skipped message unreadable: unreadable"],
       log.Lines
     );
+    Assert.Equal(
+      [("unreadable", "unreadable")],
+      await db
+        .FuelImportSkips.Select(x =>
+          ValueTuple.Create(x.GmailMessageId, x.Reason)
+        )
+        .ToListAsync()
+    );
+    Assert.Single(await SkippedAsync(db));
+
+    unreadable.Unreadable = false;
+    unreadable.Rows.AddRange(Import("CAD").Rows);
+    Assert.True((await Handler().Handle(new(), default)).Success);
+
+    Assert.Contains(
+      "unreadable",
+      await db.FuelImportSources.Select(x => x.GmailMessageId).ToListAsync()
+    );
+    Assert.Empty(await db.FuelImportSkips.ToListAsync());
+    Assert.Empty(await SkippedAsync(db));
   }
+
+  // A skip older than the mailbox window is kept but no longer a finding:
+  // nothing retries it. One older than KeepSkips is removed by the next
+  // import pass.
+  [Fact]
+  public async Task OldSkipsLeaveTheFindingsThenTheTable()
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>().UseSqlite(connection).Options
+    );
+    await db.Database.EnsureCreatedAsync();
+    using var reads = TestCache.Create();
+    var now = DateTime.UtcNow;
+    foreach (
+      var (id, age) in new[]
+      {
+        ("recent", TimeSpan.FromDays(1)),
+        ("outside-window", TimeSpan.FromDays(40)),
+        (
+          "expired",
+          ImportFuelDiscountsHandler.KeepSkips + TimeSpan.FromDays(1)
+        ),
+      }
+    )
+      db.FuelImportSkips.Add(
+        new FuelImportSkip
+        {
+          Id = Guid.NewGuid(),
+          GmailMessageId = id,
+          Reason = "empty",
+          SkippedAt = now - age,
+        }
+      );
+    await db.SaveChangesAsync();
+
+    Assert.Single(await SkippedAsync(db));
+    await new ImportFuelDiscountsHandler(
+      db,
+      new Provider([]),
+      new FuelStationLookupService(
+        new MemoryFuelStationLookupStore(),
+        new Places(),
+        TimeProvider.System
+      ),
+      reads,
+      TimeProvider.System,
+      NullLogger<ImportFuelDiscountsHandler>.Instance
+    ).Handle(new(), default);
+
+    Assert.Equal(
+      ["outside-window", "recent"],
+      await db
+        .FuelImportSkips.OrderBy(x => x.GmailMessageId)
+        .Select(x => x.GmailMessageId)
+        .ToListAsync()
+    );
+  }
+
+  private static async Task<IReadOnlyList<ConsistencyObservation>> SkippedAsync(
+    AppDbContext db
+  ) =>
+    (
+      await new FuelImportSkipRule(db).ReadAsync(
+        new(Company.Amf, DateTime.UtcNow, null, 10, TimeSpan.FromMinutes(30)),
+        default
+      )
+    ).Observed;
 
   // The mailbox is read from two days before the last import, so a longer
   // outage loses no message; never less than two days back nor more than
@@ -208,7 +296,6 @@ public class FuelImportTests
       ),
       reads,
       time,
-      new(),
       NullLogger<ImportFuelDiscountsHandler>.Instance
     );
     async Task<DateTime> SinceAfter(DateTime? imported)

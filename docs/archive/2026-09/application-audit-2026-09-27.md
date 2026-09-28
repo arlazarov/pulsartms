@@ -1909,10 +1909,15 @@ figure names its source.
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done
   when D1 is deployed and a reason is logged for each.
-- **A skipped fuel-import message is only logged (F20).** Owner: Fuel.
-  Done when, after this branch is integrated with the released
-  migrations, the skip is stored with the message and an auditor rule
-  reports it, or the Gmail intake is retired.
+- **A skipped fuel-import message is only logged (F20).** Done: a
+  skipped message is recorded (`FuelImportSkips`, migration 81) once, under
+  the import's lock, and warned once; importing it later - a corrected
+  parser - removes the record; `fuel.import-message-skipped` reviews those
+  within the 30-day mailbox window; records older than 180 days are
+  removed by the next pass. Replaces the process-local memory of skips.
+  Mutations - keeping the record after import, recording every pass,
+  dropping the window or the pruning - fail (diagnostic-utgEZy); fuel,
+  database and messaging groups green (diagnostic-gaIv0y).
 - **Road requests for completed loads never finish (F23).** Owner:
   Routing. Done when, with D1 released, the step is known for the 30
   requests, and completed legs either get their road or settle without

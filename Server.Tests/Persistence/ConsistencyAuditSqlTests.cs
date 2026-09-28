@@ -1,6 +1,7 @@
 using Application.Diagnostics.Consistency;
 using Application.Features.Dispatch.Audit;
 using Application.Features.Execution.Audit;
+using Application.Features.Fuel.Audit;
 using Application.Features.Messaging.Audit;
 using Application.Features.Routing.Audit;
 using Application.Storage;
@@ -41,6 +42,7 @@ public sealed class ConsistencyAuditSqlTests
       "messaging.outbound-overdue",
       "messaging.kept-status-unapplied",
       "messaging.accepted-without-status",
+      "fuel.import-message-skipped",
       "dispatch.filed-document-unavailable",
       "routing.base-road-leaves-country",
       "routing.base-road-border-unverified",
@@ -91,6 +93,8 @@ public sealed class ConsistencyAuditSqlTests
         new KeptStatusUnappliedRule(db).ReadAsync(request, default),
       "messaging.accepted-without-status" => () =>
         new AcceptedWithoutStatusRule(db).ReadAsync(request, default),
+      "fuel.import-message-skipped" => () =>
+        new FuelImportSkipRule(db).ReadAsync(request, default),
       "dispatch.filed-document-unavailable" => () =>
         new FiledDocumentRule(db).ReadAsync(request, default),
       "routing.base-road-leaves-country" => () =>

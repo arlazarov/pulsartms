@@ -76,6 +76,7 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
   public DbSet<FuelDiscount> FuelDiscounts => Set<FuelDiscount>();
   public DbSet<FuelTransaction> FuelTransactions => Set<FuelTransaction>();
   public DbSet<FuelImportSource> FuelImportSources => Set<FuelImportSource>();
+  public DbSet<FuelImportSkip> FuelImportSkips => Set<FuelImportSkip>();
   public DbSet<IftaTaxRate> IftaTaxRates => Set<IftaTaxRate>();
   public DbSet<Truck> Trucks => Set<Truck>();
   public DbSet<Trailer> Trailers => Set<Trailer>();
