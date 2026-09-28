@@ -1727,7 +1727,10 @@ waits and a fuel send answers 503 until the release. Mutations - no
 coalescing, any revision's record, ignoring the requirement, the
 sender's missing case, the delivery's or outbox's hold removed - each
 fail. Messaging, fuel, database (PostgreSQL migrations) and
-synchronization groups green.
+synchronization groups green. `EveryProviderSendIsHeld` finds the
+provider's send called only by the outbox and Messaging's delivery, and
+each of them asking the hold; a delivery without it fails
+(diagnostic-T728dK, diagnostic-4PX3zN).
 
 What it guarantees: no message this revision sends can have a status
 dropped by the revision before it, provided the release is recorded

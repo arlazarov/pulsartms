@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Text.RegularExpressions;
 using Application.Features.Messaging.Commands;
 using Application.Features.Messaging.Services;
 using Application.Interfaces;
@@ -124,6 +125,58 @@ public sealed class ReleaseSendHoldTests
     Assert.Single(await db.SendReleases.AsNoTracking().ToListAsync());
     clock.Advance(SendHold.Recheck);
     Assert.False(await hold.HeldAsync(default));
+  }
+
+  // Every call to the provider goes through a held path: the outbox and
+  // Messaging's delivery. A new caller of the provider's send fails this
+  // until it is held too.
+  [Fact]
+  public void EveryProviderSendIsHeld()
+  {
+    var root = RepositoryFiles.Root();
+    var callers = new[] { "Application", "Infrastructure" }
+      .SelectMany(project =>
+        Directory.GetFiles(
+          Path.Combine(root, "Server", project),
+          "*.cs",
+          SearchOption.AllDirectories
+        )
+      )
+      .Where(file =>
+        !file.Contains(
+          $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"
+        )
+        && !file.Contains(
+          $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"
+        )
+      )
+      .Where(file =>
+        Regex.IsMatch(
+          File.ReadAllText(file),
+          @"\.Send(?:Text|Template|File)Async\("
+        )
+      )
+      .Select(Path.GetFileName)
+      .Order(StringComparer.Ordinal)
+      .ToArray();
+
+    Assert.Equal(
+      ["DriverTextDelivery.cs", "OutboundMessageOperation.cs"],
+      callers
+    );
+    foreach (var file in callers)
+      Assert.Contains(
+        "HeldAsync(",
+        File.ReadAllText(
+          Directory
+            .GetFiles(
+              Path.Combine(root, "Server", "Application"),
+              file!,
+              SearchOption.AllDirectories
+            )
+            .Single()
+        )
+      );
   }
 
   private sealed class Caller : ICurrentUser
