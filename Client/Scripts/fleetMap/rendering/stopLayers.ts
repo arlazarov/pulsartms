@@ -4,8 +4,8 @@ import type { StopRow } from './stopMarkerLayout.ts';
 import type { LabelFonts } from './sceneMetrics.ts';
 import { memoizeLast } from './layerCache.ts';
 import {
-  isLightMap,
   stopAppearance,
+  stopBadgeCheckRoom,
   stopMarkerIcon,
 } from './stopAppearance.ts';
 import { sceneMetrics as metrics, labelSubLayers } from './sceneMetrics.ts';
@@ -84,21 +84,20 @@ export function createStopLayers({
         // The load being looked at is named on its own circles: the road
         // was emphasised and the badges were not, so picking a load lit
         // everything except the stops it was picked for. It is the badge's
-        // own edge that darkens - nothing is added beside it and nothing
+        // own rim that grows heavier, in its trip's colour - nothing is
+        // added beside it and nothing
         // grows, because a badge that grows pushes its neighbours aside,
         // and badges that shuffle when a load is picked are what made one
         // hard to follow in the first place.
         const { url: iconAtlas, ...circle } = stopMarkerIcon(
           appearance.fill,
-          stop.highlighted && !stop.standing
-            ? isLightMap()
-              ? metrics.stopBadgePickedEdgeLight
-              : metrics.stopBadgePickedEdge
-            : appearance.border,
-          stop.done ? metrics.stopBadgeDoneRadius : undefined,
+          appearance.border,
+          undefined,
           stop.standing,
           stop.stacked,
           stop.markerLabel ?? '',
+          stop.highlighted === true && !stop.standing,
+          stop.done === true,
         );
         const layers = [
           ...(stop.markerOffsetX || stop.markerOffsetY
@@ -130,11 +129,15 @@ export function createStopLayers({
             iconMapping: { circle: { ...circle, x: 0, y: 0 } },
             // Deck resolves packed frames through an accessor, not a constant attribute.
             getIcon: () => 'circle',
-            getSize: stop.standing
-              ? metrics.stopBadgeStandingDiameter
-              : stop.stacked
-                ? metrics.stopBadgeStackedDiameter
-                : metrics.stopBadgeDiameter,
+            // A completed badge's check is drawn around it too, so the
+            // badge itself keeps the size of every other.
+            getSize:
+              (stop.standing
+                ? metrics.stopBadgeStandingDiameter
+                : stop.stacked
+                  ? metrics.stopBadgeStackedDiameter
+                  : metrics.stopBadgeDiameter) +
+              (stop.done ? stopBadgeCheckRoom * 2 : 0),
             sizeUnits: 'pixels',
             getPixelOffset: (s: StopRow) => [s.markerOffsetX, s.markerOffsetY],
             billboard: true,

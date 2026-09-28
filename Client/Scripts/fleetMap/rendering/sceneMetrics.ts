@@ -20,16 +20,11 @@ export const sceneMetrics = Object.freeze({
   stopBadgeStackedDiameter: 32,
   // The edge a badge wears while its load is the one being looked at: the
   // dark of the map's labels, which reads against every route colour.
-  stopBadgePickedEdge: [255, 255, 255, 255],
-  // In daylight a picked load's badges take a graphite rim instead.
-  stopBadgePickedEdgeLight: [29, 37, 48, 255],
+
   // How much of a truck must show from behind a badge for the crescent to
   // read as a truck. Less than this and the badge wears the truck as a ring
   // instead: a white rim with nothing behind it says the stop is alone.
   truckCrescent: 6,
-  // Where the filled badge's edge falls, so an outlined one does not read as
-  // the larger of the two.
-  stopBadgeDoneRadius: 11,
   stopBadgeGap: 2,
   stationRadius: 8,
   stationHitRadius: 10,

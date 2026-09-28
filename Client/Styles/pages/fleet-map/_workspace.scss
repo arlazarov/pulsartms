@@ -66,13 +66,13 @@
     font-weight: 600;
     white-space: nowrap;
     cursor: pointer;
+    // Chosen: a flat tint inside its one thin border - no ring, halo or
+    // inset (the owner, September 28). Keyboard focus keeps the page's
+    // own :focus-visible outline, apart from this state.
     &[aria-pressed='true'] {
-      border-color: ui.theme(accent, 0.42);
-      background: ui.theme(accent, 0.1);
+      border-color: ui.theme(accent, 0.55);
+      background: ui.theme(accent, 0.08);
       color: ui.theme(accent);
-      box-shadow:
-        0 0 0 1px ui.theme(accent, 0.18),
-        0 0 18px ui.theme(accent, 0.16);
     }
   }
   &__dot {
@@ -84,10 +84,12 @@
   &__chip--moving &__dot {
     background: ui.theme(success-text);
   }
+  // The count is a quiet tint, not a second outline inside the chip; its
+  // rim is transparent so its size stays.
   &__count {
     min-width: ui.pg(xxl);
     padding: 0 ui.pg(xs);
-    border: 1px solid ui.theme(border-subtle);
+    border: 1px solid transparent;
     border-radius: ui.radius(sm);
     background: ui.theme(surface-soft);
     font-size: ui.fs(small);
@@ -1262,15 +1264,13 @@
   .fleet-trip-chain {
     grid-area: chain;
   }
-  // The right panel stands against the map's top and right edges (the
-  // owner, September 27: the strips of map above and beside it were
-  // wasted); its outer corner follows the map's.
+  // The right panel keeps the same outer gutter as the fleet list - the
+  // stage's padding - with its top level with the list's (the owner,
+  // September 28, over September 27's panel flush to the map's edges).
+  // No auto margins: the floating card centres itself with them.
   .fleet-map-info-reserved,
   .fuel-plan-editor {
-    margin: calc(-1 * #{ui.pg(md)}) calc(-1 * #{ui.pg(md)}) 0 0;
-    border-top-width: 0;
-    border-right-width: 0;
-    border-radius: 0 ui.radius(panel) 0 ui.radius(panel);
+    margin: 0;
   }
   .fleet-map-info-reserved {
     grid-area: inspector;
@@ -1353,11 +1353,10 @@
   .fleet-truck-list__columns {
     background: ui.theme(surface, 0.97);
   }
-  // No decorative glow in daylight (the owner, September 28): a pressed
-  // chip, a running Follow, a focused search and today's price read by
-  // their rim and tint; a focus keeps its fine ring.
+  // No decorative glow in daylight (the owner, September 28): a running
+  // Follow, a focused search and today's price read by their rim and
+  // tint; a focus keeps its fine ring.
   .fleet-map-toolbar .search-input input:focus,
-  .fleet-map-motion__chip[aria-pressed='true'],
   .fleet-map-controls .map-action-icon[aria-pressed='true'] {
     box-shadow: 0 0 0 1px ui.theme(accent, 0.3);
   }

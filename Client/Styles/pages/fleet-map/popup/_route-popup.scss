@@ -431,3 +431,42 @@
 @container next-stop-inspection (width < #{ui.breakpoint(stop-card-stacked)}) {
   @include stacked-stop-card;
 }
+
+// One type scale for every fact on a stop's card (the owner, September
+// 28: ETA, appointment, leg, left, fuel and the cycle read at different
+// sizes and weights). Labels are the card's small quiet caps; values are
+// body size, semibold, tabular, on one line height - the stop's own facts
+// and the hours forecast drawn inside the card alike. A warning or status
+// is a compact word of its own, never a stretched pill.
+.fleet-route-popup--stop {
+  --stop-fact-label-size: #{ui.fs(micro)};
+  --stop-fact-value-size: #{ui.fs(body)};
+  .stop-hours__heading,
+  .stop-hours__label,
+  .fleet-map-next-load-card__metrics dt {
+    color: ui.theme(text-muted);
+    font-size: var(--stop-fact-label-size);
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    line-height: 1.5;
+    text-transform: uppercase;
+  }
+  .fleet-route-popup__value,
+  .stop-hours__value,
+  .stop-hours__road time,
+  .fleet-map-next-load-card__metrics dd {
+    font-size: var(--stop-fact-value-size);
+    font-weight: 600;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+  }
+  .fleet-route-popup__status,
+  .stop-hours__status,
+  .stop-hours__cycle-status {
+    justify-self: start;
+    inline-size: fit-content;
+    max-inline-size: 100%;
+    font-size: ui.fs(small);
+    line-height: 1.4;
+  }
+}
